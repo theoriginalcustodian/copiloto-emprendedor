@@ -190,3 +190,35 @@
   color: var(--label);
   margin: 0;
 }
+
+/* AvatarCuenta (BL-X1) — mismo par de tokens que el avatar del rail; cero color propio. */
+.avatar-cuenta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  color: var(--avatar-fg);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+}
+
+/* K-09: el punto de estado — hay una conexión caída para mirar en Ajustes. */
+.avatar-cuenta__punto {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 2px solid var(--avatar-bg);
+}

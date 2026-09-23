@@ -166,6 +166,10 @@ export interface FilaTicket {
   origen: Record<string, unknown> | null;
   ultima_nota: string | null;
   dedupe_count: number | null;
+  /** K-08 (BL-J12) — persistido en `copiloto_feedback`, no inventado por el frontend: antes de esto
+   *  el listado no lo traía y la marca sólo vivía en el estado de React (se perdía al recargar). */
+  escuchado: boolean;
+  escuchado_en: string | null;
 }
 
 /** Fila de `AuditoriaStore.listar()` — append-only, quién hizo qué en la consola. */
@@ -409,6 +413,16 @@ export function adminResponderTicketSoporte(
     `/admin/soporte/tickets/${encodeURIComponent(ticketId)}/responder`,
     { texto, cerrar },
   );
+}
+
+/**
+ * K-08 (BL-J12) — el equipo marca un feedback como «escuchado»; el emprendedor lo ve en «Lo pediste
+ * vos». Escribe con el tenant dueño del lado del backend (molde de `responder`) y audita.
+ */
+export function adminMarcarFeedbackEscuchado(
+  feedbackId: number,
+): Promise<{ id: number; escuchado: boolean; escuchado_en: string }> {
+  return apiClient.post(`/admin/feedback/${encodeURIComponent(feedbackId)}/escuchado`, {});
 }
 
 /**

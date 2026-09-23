@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { leerCapacidades } from './capacidades';
+import { agruparCapacidadesPorRotulo, leerCapacidades } from './capacidades';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -149,5 +149,35 @@ describe('leerCapacidades — lo que NO inventa', () => {
     const res = await leerCapacidades();
 
     expect(res.status).toBe('no_disponible');
+  });
+});
+
+describe('agruparCapacidadesPorRotulo — BL-W12: el catálogo repite rótulo, la guía no repite encabezado', () => {
+  it('🔴 dos `tool` con el mismo rótulo (caso real: "Presupuestos") se funden en UN grupo con los ejemplos de las dos', () => {
+    const grupos = agruparCapacidadesPorRotulo([
+      { tool: 'crear_presupuesto', rotulo: 'Presupuestos', ejemplos: ['armame un presupuesto para Juan'] },
+      { tool: 'listar_presupuestos', rotulo: 'Presupuestos', ejemplos: ['qué presupuestos tengo pendientes'] },
+      { tool: 'registrar_gasto', rotulo: 'Gastos', ejemplos: ['gasté 3 mil en nafta'] },
+    ]);
+
+    expect(grupos.map((g) => g.rotulo)).toEqual(['Presupuestos', 'Gastos']); // un solo "Presupuestos"
+    expect(grupos[0].ejemplos).toEqual([
+      'armame un presupuesto para Juan',
+      'qué presupuestos tengo pendientes',
+    ]);
+  });
+
+  it('CONTROL: sin rótulos repetidos, cada capacidad sigue siendo su propio grupo (1:1)', () => {
+    const grupos = agruparCapacidadesPorRotulo([
+      { tool: 'a', rotulo: 'Gastos', ejemplos: ['x'] },
+      { tool: 'b', rotulo: 'Ingresos', ejemplos: ['y'] },
+    ]);
+
+    expect(grupos).toHaveLength(2);
+    expect(grupos.map((g) => g.rotulo)).toEqual(['Gastos', 'Ingresos']);
+  });
+
+  it('lista vacía -> ningún grupo', () => {
+    expect(agruparCapacidadesPorRotulo([])).toEqual([]);
   });
 });

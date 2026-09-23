@@ -21,7 +21,7 @@ import pytest
 
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, GastoStore, hoy_del_negocio
-from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries
+from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries, variacion_pct
 from presupuesto_store import PresupuestoStore
 from trabajo_store import TrabajoStore
 
@@ -140,15 +140,72 @@ def test_ENTRO_son_los_TRES_origenes_y_el_MP_no_aprobado_no_cuenta(conn_de_tenan
 
 
 @necesita_pg
-def test_caja_y_rentabilidad_son_entro_menos_salio_del_mes(conn_de_tenant, tenants):
+def test_caja_es_entro_menos_salio_del_mes_y_rentabilidad_es_null(conn_de_tenant, tenants):
+    """H-A4-3: `caja.saldo` sigue siendo flujo de caja del mes (ingresos − gastos); `mes.rentabilidad`
+    es `None` porque no existe asignación gasto→trabajo (sin eso, no hay rentabilidad real que
+    calcular — mostrar el mismo número que `caja.saldo` bajo ese nombre era un estado inalcanzable)."""
     a, _ = tenants
     CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")
     _gasto(conn_de_tenant, a, "400.00", categoria="mercaderia")
     mes = InteligenciaQueries(conn_de_tenant(a), a).portada()
     assert Decimal(mes["mes"]["gastos"]) == Decimal("400.00")
-    assert Decimal(mes["mes"]["rentabilidad"]) == Decimal("600.00")
+    assert mes["mes"]["rentabilidad"] is None
     assert Decimal(mes["caja"]["saldo"]) == Decimal("600.00")
     assert mes["caja"]["moneda"] == "ARS"
+
+
+# ── K-03: fecha de corte y variación contra el mes calendario anterior (BL-J2 + BL-J3) ─────────────
+
+@pytest.mark.parametrize("actual,anterior,esperado", [
+    ("286000", "348780.49", "-18.0"),
+    ("150", "100", "50.0"),
+    ("100", "100", "0.0"),
+    ("-50", "100", "-150.0"),    # de +100 a −50: cae 150 %
+    ("-50", "-100", "50.0"),     # pérdida que se achica: el signo va con la mejora, no con el número
+    ("10", "0", None),           # no se puede calcular ≠ 0 %
+])
+def test_variacion_pct_formula_y_signo(actual, anterior, esperado):
+    assert variacion_pct(Decimal(actual), Decimal(anterior)) == esperado
+
+
+@necesita_pg
+def test_K03_un_solo_mes_de_historia_variacion_null_y_fecha_de_corte_presente(conn_de_tenant, tenants):
+    a, _ = tenants
+    CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")
+    caja = InteligenciaQueries(conn_de_tenant(a), a).portada()["caja"]
+    assert caja["fecha_corte"] == hoy_del_negocio().isoformat()
+    assert caja["variacion_pct"] is None
+
+
+@necesita_pg
+def test_K03_dos_meses_variacion_numerica_con_signo_correcto(conn_de_tenant, tenants):
+    a, _ = tenants
+    dia_mes_previo = hoy_del_negocio().day  # dias_atras == día del mes ⇒ último día del mes anterior
+    _gasto(conn_de_tenant, a, "200.00", dias_atras=dia_mes_previo)         # previo: −200
+    CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")  # actual: +1000
+    caja = InteligenciaQueries(conn_de_tenant(a), a).portada()["caja"]
+    # (1000 − (−200)) / |−200| × 100 = 600 %: mejoró, signo positivo.
+    assert caja["variacion_pct"] == "600.0"
+
+    b_conn = InteligenciaQueries(conn_de_tenant(a), a)
+    _gasto(conn_de_tenant, a, "1400.00", dias_atras=0)                     # actual: 1000 − 1400 = −400
+    assert b_conn.portada()["caja"]["variacion_pct"] == "-100.0"           # (−400 − (−200)) / 200
+
+
+@necesita_pg
+def test_K03_mes_anterior_en_cero_es_null_no_cero_por_ciento(conn_de_tenant, tenants):
+    a, _ = tenants
+    CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")
+    _gasto(conn_de_tenant, a, "100.00", dias_atras=hoy_del_negocio().day + 40)  # dos meses atrás, no el anterior
+    assert InteligenciaQueries(conn_de_tenant(a), a).portada()["caja"]["variacion_pct"] is None
+
+
+@necesita_pg
+def test_K03_la_variacion_de_A_no_usa_el_mes_anterior_de_B(conn_de_tenant, tenants):
+    a, b = tenants
+    _gasto(conn_de_tenant, b, "500.00", dias_atras=hoy_del_negocio().day)  # B tiene historia; A no
+    CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")
+    assert InteligenciaQueries(conn_de_tenant(a), a).portada()["caja"]["variacion_pct"] is None
 
 
 @necesita_pg

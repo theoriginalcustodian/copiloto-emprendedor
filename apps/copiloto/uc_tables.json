@@ -20,6 +20,7 @@
     "refresh_token_enc text NOT NULL",
     "expires_at bigint NOT NULL",
     "public_key text",
+    "reauth_desde timestamptz",
     "updated_at timestamptz DEFAULT now()"
   ],
   "mp_payments": [
@@ -64,6 +65,8 @@
     "a_quien text NOT NULL DEFAULT 'ambos'",
     "nombre_comercial text NOT NULL DEFAULT ''",
     "horario_atencion text NOT NULL DEFAULT ''",
+    "telefono text NOT NULL DEFAULT ''",
+    "email text NOT NULL DEFAULT ''",
     "formalidad text NOT NULL DEFAULT 'cercano'",
     "largo_respuesta text NOT NULL DEFAULT 'breve'",
     "nombre_copiloto text NOT NULL DEFAULT ''",
@@ -90,6 +93,7 @@
     "cliente_ref bigint",
     "estado text NOT NULL DEFAULT 'pendiente'",
     "estado_actualizado_en timestamptz",
+    "idem_key text",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuesto_items": [
@@ -113,7 +117,8 @@
     "created_at timestamptz DEFAULT now()",
     "presupuesto_ref bigint",
     "comprobante_ref bigint",
-    "cobro_ref bigint"
+    "cobro_ref bigint",
+    "idem_key text"
   ],
   "copiloto_clientes": [
     "nombre text NOT NULL DEFAULT ''",
@@ -198,7 +203,9 @@
     "tipo text NOT NULL",
     "texto text NOT NULL",
     "contexto text",
-    "created_at timestamptz DEFAULT now()"
+    "created_at timestamptz DEFAULT now()",
+    "escuchado boolean NOT NULL DEFAULT false",
+    "escuchado_en timestamptz"
   ],
   "copiloto_avisos_emitidos": [
     "regla text NOT NULL",

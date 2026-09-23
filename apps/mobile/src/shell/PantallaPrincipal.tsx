@@ -180,7 +180,11 @@ export function PantallaPrincipal() {
             />
           }
         >
-          <PantallaMiDia comoPortada onAjustes={() => empujarUnaVez('/ajustes')} />
+          <PantallaMiDia
+            comoPortada
+            onAjustes={() => empujarUnaVez('/ajustes')}
+            onAgenda={() => empujarUnaVez('/agenda')}
+          />
         </PanelFunciones>
       }>
       <ChatView />

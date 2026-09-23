@@ -1,4 +1,4 @@
-import { ETIQUETA_CATEGORIA, formatearImporte, type ResumenGastos } from '@copiloto/core';
+import { ETIQUETA_CATEGORIA, formatearFechaCorta, formatearImporte, type ResumenGastos } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
@@ -19,8 +19,10 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
 
   return (
     <Surface variant="bloque" className="gastos-resumen" data-testid="gastos-resumen">
+      {/* H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend — ISO crudo si se pinta
+          tal cual. `formatearFechaCorta` ya resuelve un período sin día como su día 1. */}
       <p className="gastos-resumen__periodo" data-testid="gastos-resumen-periodo">
-        Gastado en {resumen.periodo}
+        Gastado en {formatearFechaCorta(resumen.periodo)}
       </p>
       <p className="gastos-resumen__total" data-testid="gastos-resumen-total">
         {formatearImporte(resumen.total)}

@@ -37,6 +37,37 @@ function noDesplegado(err: unknown): boolean {
  */
 
 /** Una integración del catálogo (`catalog._entry`), normalizada a camelCase. */
+export type EstadoConexion = 'conectado' | 'nunca_conectado' | 'caido';
+
+/** Valida el `status` crudo del backend; cualquier otro valor cae al booleano (fail-soft). */
+export function estadoDeConexion(status: unknown, connected: boolean): EstadoConexion {
+  if (status === 'conectado' || status === 'nunca_conectado' || status === 'caido') return status;
+  return connected ? 'conectado' : 'nunca_conectado';
+}
+
+/** ¿Hay ≥ 1 servicio con la conexión caída? Alimenta el punto del avatar (K-09). */
+export function hayConexionCaida(servicios: readonly { estado: EstadoConexion }[]): boolean {
+  return servicios.some((s) => s.estado === 'caido');
+}
+
+/** El slug del catálogo para Google Calendar — mismo `key` que el resto de los toolkits Composio
+ *  (verificado contra el catálogo vivo, ver `ServiceCard.test.tsx`). Único lugar que lo escribe: el
+ *  panel de agenda de Mi día (BL-W11) lo usa para filtrar, nunca lo reconstruye a mano. */
+export const KEY_GOOGLE_CALENDAR = 'googlecalendar';
+
+/**
+ * El estado de conexión de UN servicio del catálogo por su `key` (BL-W11: el panel de agenda de Mi
+ * día necesita distinguir "nunca conectada" de "caída", algo que `/mi-dia/calendario` no trae —
+ * ver el docstring de `CalendarioMiDia`). `null` si el catálogo no tiene ese servicio (no
+ * desplegado, o no vino en la respuesta): el llamador decide cómo degradar, nunca se inventa acá.
+ */
+export function estadoDeServicio(
+  servicios: readonly { key: string; estado: EstadoConexion }[],
+  key: string,
+): EstadoConexion | null {
+  return servicios.find((s) => s.key === key)?.estado ?? null;
+}
+
 export interface ServicioCatalogo {
   /** El slug real del toolkit (`googledrive`, `gmail`…) o `mercadopago`. */
   key: string;
@@ -54,6 +85,13 @@ export interface ServicioCatalogo {
    * existe pero no sirve para trabajar.
    */
   conectado: boolean;
+  /**
+   * K-09 (BL-J4): la salud de la conexión — `conectado`, `nunca_conectado` o `caido` (existió una
+   * conexión activa y ya no lo está: revocada/expirada). Aditivo: un backend anterior no lo manda y
+   * entonces se deduce del booleano (`conectado` → conectado; el resto → nunca_conectado, porque sin
+   * la señal NO se puede afirmar que se cayó algo).
+   */
+  estado: EstadoConexion;
   /** El path que hay que pedir para obtener el link de vinculación. Del backend, sin reconstruir. */
   connectPath: string;
   /**
@@ -75,6 +113,7 @@ interface ServicioCrudo {
   description: string;
   capabilities: string[];
   connected: boolean;
+  status?: unknown;
   connect_path: string;
   disconnect_path?: string;
 }
@@ -89,6 +128,7 @@ function normalizar(s: ServicioCrudo): ServicioCatalogo {
     descripcion: s.description,
     capacidades: s.capabilities ?? [],
     conectado: s.connected,
+    estado: estadoDeConexion(s.status, s.connected),
     connectPath: s.connect_path,
     disconnectPath: s.disconnect_path,
   };

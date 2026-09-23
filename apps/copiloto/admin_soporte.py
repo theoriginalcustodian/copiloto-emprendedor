@@ -47,6 +47,7 @@ def resumen_soporte(conn_factory, *, limite: int = 50) -> list[dict]:
         with conn.cursor() as cur:
             cur.execute(
                 f"""SELECT f.id, f.cliente_id::text, f.tipo, f.texto, f.created_at,
+                        f.escuchado, f.escuchado_en,
                         (t.id IS NOT NULL) AS derivo_en_autosanacion,
                         t.estado AS estado_reparacion,
                         t.contexto -> 'origen' AS origen,
@@ -60,6 +61,19 @@ def resumen_soporte(conn_factory, *, limite: int = 50) -> list[dict]:
                 (limite,))
             cols = [d[0] for d in cur.description]
             return [dict(zip(cols, fila)) for fila in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def obtener_feedback_admin(conn_factory, feedback_id: int) -> dict | None:
+    """`{id, cliente_id}` de UN feedback, cross-tenant (`copiloto_consola`) -- el insumo de K-08 para saber
+    a qué tenant dueño escribirle el «escuchado» (el rol consola es `SELECT`-only)."""
+    conn = conn_factory()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT id, cliente_id::text FROM {TABLA_FEEDBACK} WHERE id = %s", (feedback_id,))
+            fila = cur.fetchone()
+            return None if fila is None else {"id": fila[0], "cliente_id": fila[1]}
     finally:
         conn.close()
 

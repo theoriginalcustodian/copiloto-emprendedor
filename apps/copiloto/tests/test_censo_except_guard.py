@@ -30,7 +30,7 @@ _CENSO = _RAIZ / "scripts" / "censo-except.py"
 #: clasificados: best-effort legítimo o conversión a error de negocio visible. Cero fallos
 #: evaporados vivos. Si tocás uno y el número cambia, actualizá ESTA constante en el mismo commit,
 #: con el porqué en el mensaje.
-BASELINE_EVAPORA_MUDO = 29
+BASELINE_EVAPORA_MUDO = 28
 
 
 def _correr_censo() -> dict:

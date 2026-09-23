@@ -21,9 +21,17 @@
 #   UC_SKIP_DRIFT_CHECK   saltea el guard de checkout-vs-main   (default: sin setear = guard activo)
 #   UC_AUTH_URL           base pública de auth para el botón Google (VITE_AUTH_URL en el build de
 #                         frontend) (default: https://copilotoemprendedor.duckdns.org)
+#   UC_DURABILIDAD        =1 arma una conversación Y un HITL ANTES del restart de [5/7] y los
+#                         verifica al final (BL-B1/E3, scripts/e2e_g6_durabilidad_worker_restart.py)
+#                         (default: sin setear = deploy normal, sin la prueba de durabilidad)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# BL-B7: sólo se despliega lo mergeado (HEAD==origin/main), con árbol limpio y candado único.
+# shellcheck source=guard-deploy.sh
+source "$(dirname "${BASH_SOURCE[0]}")/guard-deploy.sh"
+guard_deploy "$LOCAL" "deploy.sh" || exit 1
 
 # Guard: un checkout desactualizado sube apps/copiloto/motor TAL CUAL el disco y regresiona en
 # silencio código ya arreglado en origin/main -- sin conflicto de git, sin error (pasó el
@@ -347,6 +355,14 @@ for m in serve worker_b worker_soporte; do
 done
 REMOTE_IMPORT_GATE
 
+if [ -n "${UC_DURABILIDAD:-}" ]; then
+  echo "==> [4.95/7] UC_DURABILIDAD=1: armando conversación + HITL ANTES del restart de [5/7]"
+  # Tiene que correr ACÁ, no antes: el turno 1 y el gate HITL quedan "en vuelo" justo antes del
+  # restart real de [5/7], que es lo que la prueba necesita ejercitar (BL-B1/E3, spec §0 -- el
+  # moat es que Temporal sobrevive un restart real del worker, no uno simulado).
+  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar
+fi
+
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
 ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" <<'REMOTE_UNITS'
 set -euo pipefail
@@ -448,5 +464,10 @@ curl -s -o /dev/null -w 'root: %{http_code}\n' "https://${BASE_DOMAIN}/" || true
 curl -s -o /dev/null -w 'hermes: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
 curl -s -o /dev/null -w 'temporal: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
 REMOTE_SMOKE
+
+if [ -n "${UC_DURABILIDAD:-}" ]; then
+  echo "==> [8/8] UC_DURABILIDAD=1: verificando que la conversación y el gate HITL sobrevivieron el restart real"
+  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
+fi
 
 echo "==> Deploy completo."

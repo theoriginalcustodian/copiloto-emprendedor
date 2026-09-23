@@ -116,6 +116,70 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     unmount();
   });
 
+  // BL-D4 — control negativo: el token que viaja al backend (`cancel:2:0`) NUNCA es lo que la
+  // burbuja del usuario pinta. Sin `displayText` (el estado previo al fix, donde la burbuja usaba
+  // `trimmed` directo), este test falla mostrando el token crudo en `estado.messages[0].text`.
+  it('BL-D4: con displayText, la burbuja pinta el label -- NUNCA el token técnico enviado al backend', async () => {
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.send('cancel:2:0', { kind: 'callback', displayText: 'Cancelar' });
+    });
+
+    const burbuja = result.current.estado?.messages[0];
+    expect(burbuja).toMatchObject({ role: 'user', text: 'Cancelar' });
+    expect(burbuja?.text).not.toContain('cancel:');
+    expect(api.sendChat).toHaveBeenCalledWith(expect.objectContaining({ text: 'cancel:2:0' }));
+    unmount();
+  });
+
+  // H-A4-9 — el confirm/cancel de un gate con `opts.hitlMessageId` marca ESA card `hitlRespondido`,
+  // atómico con la burbuja nueva (mismo reducer, ver `chatMachine.test.ts` en `@copiloto/core`).
+  it('H-A4-9: el confirm/cancel de un gate con hitlMessageId marca ESA card hitlRespondido', async () => {
+    jest.mocked(api.getReply)
+      // Un poll real trae el reply con la card HITL (confirmar/cancelar) -- así llega en producción.
+      .mockResolvedValueOnce({
+        replies: [
+          {
+            id: 5,
+            text: 'Vas a publicar en Instagram. ¿Confirmás?',
+            choices: [
+              { label: 'Publicar', value: 'confirm:0:0' },
+              { label: 'Cancelar', value: 'cancel:0:0' },
+            ],
+          },
+        ],
+        next_id: 5,
+      })
+      .mockResolvedValue({ replies: [], next_id: 5 });
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-hitl', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+
+    const gateMsg = result.current.estado?.messages[0];
+    expect(gateMsg?.hitlRespondido).toBeUndefined(); // todavía activa
+
+    await act(async () => {
+      await result.current.send('cancel:0:0', {
+        kind: 'callback',
+        displayText: 'Cancelar',
+        hitlMessageId: gateMsg!.id,
+      });
+    });
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      id: gateMsg!.id,
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    expect(result.current.estado?.messages[1]).toMatchObject({ role: 'user', text: 'Cancelar' });
+    unmount();
+  });
+
   it('no se puede enviar vacío o sólo espacios', async () => {
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
@@ -270,6 +334,262 @@ describe('useChat -- aislamiento por clienteId (no cross-tenant leak)', () => {
   });
 });
 
+/**
+ * H-A4-9 — una card HITL ya respondida no puede seguir siendo clickeable, NI SIQUIERA tras un
+ * reload de la app: el estado "ya respondida" tiene que vivir en `AsyncStorage` (dentro del
+ * mensaje), no en un estado efímero que se pierde al remontar. Usa el mismo `AlmacenClave` con
+ * estado REAL que el bloque de aislamiento por tenant (arriba) para poder sembrar el historial
+ * ANTES del primer render, como lo dejaría una sesión previa de verdad.
+ */
+describe('useChat -- HITL ya respondida sobrevive a un reload (H-A4-9)', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-hitl-reload';
+  // Mismo formato que `claveMensajes` (privado, `useChat.ts`): `${PREFIJO_MENSAJES}:${clienteId}:${sessionId}`.
+  const CLAVE_MENSAJES_PREFIJO = 'copiloto-chat-msgs';
+  const CLAVE_SESSION_PREFIJO = 'copiloto-chat-session-id';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`${CLAVE_SESSION_PREFIJO}:${CLIENTE_ID}`, sessionId);
+    store.set(`${CLAVE_MENSAJES_PREFIJO}:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  it('rehidrata un HITL YA marcado hitlRespondido tal cual -- sigue deshabilitado', async () => {
+    sembrarHistorial('sess-1', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+        hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+      },
+      { id: 'user-9', role: 'user', text: 'Cancelar' },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    unmount();
+  });
+
+  it('sanitiza un HITL viejo con el token LEGACY (pre-#624, "cancel:0:0") al rehidratar', async () => {
+    sembrarHistorial('sess-2', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'cancel:0:0' }, // token crudo LEGACY, no un label
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    unmount();
+  });
+
+  it('un HITL sin respuesta después (sigue activo) NO se marca hitlRespondido', async () => {
+    sembrarHistorial('sess-3', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+
+    expect(result.current.estado?.messages[0]?.hitlRespondido).toBeUndefined();
+    unmount();
+  });
+});
+
+/**
+ * K-11 / BL-J8 Parte 1 (mobile) — mismo criterio que el bloque HITL de arriba: `descartarConexion`
+ * tiene que persistir la marca `conexionDescartada` en `AsyncStorage` (dentro del mensaje), para que
+ * un remonte real (`unmount` + `renderHook` nuevo sobre el MISMO `AlmacenClave`) la rehidrate ya
+ * marcada -- no un `useState` efímero que un remonte real perdería.
+ */
+describe('useChat -- descartarConexion persiste conexionDescartada y sobrevive a un reload', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-conexion-reload';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`copiloto-chat-session-id:${CLIENTE_ID}`, sessionId);
+    store.set(`copiloto-chat-msgs:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  const CARD_CONEXION = { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' };
+
+  it('marca conexionDescartada y persiste -- un remonte nuevo la rehidrata ya marcada', async () => {
+    sembrarHistorial('sess-1', [
+      { id: 'u1', role: 'user', text: 'mandale un mail a Juan' },
+      { id: 'a1', role: 'assistant', text: 'Conectá Gmail primero.', card: CARD_CONEXION },
+    ]);
+
+    const primero = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(primero.result.current.estado?.messages).toHaveLength(2));
+
+    await act(async () => {
+      primero.result.current.descartarConexion('a1');
+    });
+    expect(primero.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      conexionDescartada: true,
+    });
+    await primero.unmount();
+
+    // CONTROL: un remonte real (nuevo hook, mismo AlmacenClave) -- si la marca viviera en un
+    // `useState` en vez de en el mensaje persistido, este segundo montaje la vería sin marcar.
+    const segundo = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(segundo.result.current.estado?.messages).toHaveLength(2));
+    expect(segundo.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      conexionDescartada: true,
+    });
+    await segundo.unmount();
+  });
+
+  it('sin descarte previo, el mensaje rehidrata SIN conexionDescartada', async () => {
+    sembrarHistorial('sess-2', [
+      { id: 'u1', role: 'user', text: 'mandale un mail a Juan' },
+      { id: 'a1', role: 'assistant', text: 'Conectá Gmail primero.', card: CARD_CONEXION },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[1]?.conexionDescartada).toBeUndefined();
+    unmount();
+  });
+});
+
+/**
+ * GUARDM parte 2 — `marcarCardResuelta` es el mismo mecanismo que `descartarConexion` (evento
+ * `tarjeta_resuelta` de `reducirChat`, persistencia vía `AlmacenClave`), genérico entre las 5 cards
+ * de propuesta. Mismo criterio de control: un remonte real (no un re-render) tiene que rehidratar la
+ * marca ya puesta.
+ */
+describe('useChat -- marcarCardResuelta persiste el campo terminal y sobrevive a un reload', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-tarjeta-reload';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`copiloto-chat-session-id:${CLIENTE_ID}`, sessionId);
+    store.set(`copiloto-chat-msgs:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  const CARD_GASTO = { kind: 'gasto_propuesto', data: { monto: '50000.00' } };
+
+  it('marca gastoResuelto y persiste -- un remonte nuevo la rehidrata ya marcada', async () => {
+    sembrarHistorial('sess-1', [
+      { id: 'u1', role: 'user', text: 'anotá un gasto de 50000' },
+      { id: 'a1', role: 'assistant', text: 'Entendí este gasto.', card: CARD_GASTO },
+    ]);
+
+    const primero = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(primero.result.current.estado?.messages).toHaveLength(2));
+
+    await act(async () => {
+      primero.result.current.marcarCardResuelta('a1', { gastoResuelto: { estado: 'guardado', monto: '50000.00' } });
+    });
+    expect(primero.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+    await primero.unmount();
+
+    // CONTROL: un remonte real (nuevo hook, mismo AlmacenClave) -- si la marca viviera en un
+    // `useState` de la card en vez de en el mensaje persistido, este segundo montaje la vería sin
+    // marcar y la card volvería a mostrarse editable (el bug original de esta tanda).
+    const segundo = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(segundo.result.current.estado?.messages).toHaveLength(2));
+    expect(segundo.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+    await segundo.unmount();
+  });
+
+  it('sin resolución previa, el mensaje rehidrata SIN gastoResuelto', async () => {
+    sembrarHistorial('sess-2', [
+      { id: 'u1', role: 'user', text: 'anotá un gasto de 50000' },
+      { id: 'a1', role: 'assistant', text: 'Entendí este gasto.', card: CARD_GASTO },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[1]?.gastoResuelto).toBeUndefined();
+    unmount();
+  });
+});
+
 const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
 const ARCHIVO_FOTO = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
 
@@ -289,11 +609,11 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.messages).toEqual([
-      expect.objectContaining({ role: 'user', text: 'anotá esto' }),
+      expect.objectContaining({ role: 'user', text: 'anotá esto', porVoz: { duracionSeg: 4 } }),
     ]);
     expect(result.current.estado?.sendStatus).toBe('waiting');
     // `cliente_id` viaja SIEMPRE, vacío -- ver el docstring del módulo.
@@ -308,7 +628,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
@@ -322,7 +642,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
@@ -338,7 +658,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.sendStatus).toBe('error');
@@ -355,7 +675,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.motivoFallo).toBe('audio_muy_grande');

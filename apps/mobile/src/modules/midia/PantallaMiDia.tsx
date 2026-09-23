@@ -9,12 +9,24 @@ import Animated, { type SharedValue } from 'react-native-reanimated';
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  estadoDeServicio,
+  fechaDeHoyMidia,
   formatearImporte,
   horaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerCalendario,
+  hayConexionCaida,
   leerPortada,
+  listarCatalogo,
   leerTablero,
   type CalendarioMiDia,
+  CATEGORIAS,
+  ETIQUETA_CATEGORIA_TARJETA,
+  filtrarPorCategoria,
+  hayCategorias,
+  tarjetasCriticas,
+  type CategoriaTarjeta,
+  type EstadoConexion,
   type EventoCalendario,
   type IdSolapa,
   type Portada,
@@ -23,12 +35,6 @@ import {
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
-import {
-  CATEGORIAS,
-  ETIQUETA_CATEGORIA,
-  filtrarPorCategoria,
-  type CategoriaTarjeta,
-} from './categoriaTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -127,18 +133,21 @@ function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSo
  * Los chips de categoría del prototipo. Filtran la solapa activa; **«Todo» es el default y no
  * filtra**.
  *
- * ⚠️ De qué categoría es cada tarjeta lo deriva el frontend hoy — ver `categoriaTarjeta.ts` y el
- * punto B-3 del pedido a backend. Los chips en sí no dependen de eso: el día que la categoría viaje
- * en la tarjeta, esto no cambia.
+ * Filtran por `t.categoria`, que decide el detector del backend (BL-J5, K-06) — la vista no deduce
+ * nada. Con un backend previo al campo (ninguna tarjeta trae categoría) no se dibujan: un chip que
+ * filtra a vacío mentiría.
  */
 function ChipsCategoria({
   activa,
   onCambiar,
+  tablero,
 }: {
   activa: CategoriaTarjeta;
   onCambiar: (c: CategoriaTarjeta) => void;
+  tablero: TableroMiDia | null;
 }) {
   const tema = useTema();
+  if (!hayCategorias(tablero)) return null;
   return (
     <ScrollView
       horizontal
@@ -173,7 +182,7 @@ function ChipsCategoria({
                   fontSize: tema.tipo.chico,
                 }}
               >
-                {ETIQUETA_CATEGORIA[c]}
+                {ETIQUETA_CATEGORIA_TARJETA[c]}
               </Text>
             </View>
           </Pressable>
@@ -183,20 +192,14 @@ function ChipsCategoria({
   );
 }
 
-/**
- * El contador del prototipo: «3 para hoy · 1 en curso».
- *
- * ⚠️ **Falta «· 1 crítico», y no se inventa.** La criticidad es una propiedad de la regla que hoy no
- * viaja en la tarjeta (B-3). Deducirla del nombre de la regla sería decidir, desde la vista, que un
- * CAE por vencer urge más que un margen negativo — una jerarquía sobre el negocio de otro. Por el
- * mismo motivo no está el **banner de alerta crítica** separado que el prototipo pone arriba.
- */
+/** El contador del prototipo: «3 para hoy · 1 en curso · 1 crítico». */
 function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
   const tema = useTema();
   if (tablero == null) return null;
   const cuenta = (id: IdSolapa) => tablero.solapas.find((s) => s.id === id)?.tarjetas.length ?? 0;
   const paraHoy = cuenta('para_hoy');
   const enCurso = cuenta('haciendo');
+  const criticas = tarjetasCriticas(tablero).length;
   if (paraHoy === 0 && enCurso === 0) return null;
 
   return (
@@ -209,8 +212,41 @@ function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
         paddingTop: 8,
       }}
     >
-      {paraHoy} para hoy · {enCurso} en curso
+      {paraHoy} para hoy · {enCurso} en curso{criticas > 0 ? ` · ${criticas} crítico${criticas === 1 ? '' : 's'}` : ''}
     </Text>
+  );
+}
+
+/**
+ * El banner de alerta crítica (`.alerta` del prototipo): arriba de las solapas porque es transversal a
+ * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
+ * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
+ */
+function BannerCritico({ tablero }: { tablero: TableroMiDia | null }) {
+  const tema = useTema();
+  const criticas = tarjetasCriticas(tablero);
+  if (criticas.length === 0) return null;
+  return (
+    <View
+      testID="midia-alerta"
+      accessibilityRole="alert"
+      style={[styles.alerta, { backgroundColor: tema.color.bloque, borderRadius: tema.radio.lg }]}
+    >
+      {criticas.map((t) => (
+        <View key={t.id} testID={`midia-alerta-${t.id}`} style={styles.alertaItem}>
+          <Text style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+            {t.texto}
+          </Text>
+          {t.verbo != null && (
+            <View style={[styles.alertaAccion, { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo }]}>
+              <Text style={{ color: tema.color.bloqueApoyo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                {t.verbo}
+              </Text>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -235,9 +271,11 @@ export interface PantallaMiDiaProps {
   comoPortada?: boolean;
   /** Tocar el avatar. Sólo se usa con `comoPortada`; la navegación la cablea el shell. */
   onAjustes?: () => void;
+  /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
+  onAgenda?: () => void;
 }
 
-export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaProps = {}) {
+export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
@@ -247,6 +285,12 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
   const [portada, setPortada] = useState<Portada | null>(null);
+  // K-09: ≥ 1 servicio con la conexión caída → punto en el avatar. Apagado si el catálogo no responde.
+  const [conexionCaida, setConexionCaida] = useState(false);
+  // BL-W11: la salud DE Google Calendar puntual (distinta de `conexionCaida`, que es "hay ≥1 caída
+  // en cualquier servicio") — desempata "nunca conectada" de "caída" en `PanelCalendario`, algo que
+  // `/mi-dia/calendario` no trae (ver `CalendarioMiDia`). `null` si el catálogo no responde.
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -295,16 +339,30 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
     }
   }, []);
 
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (!vivo.current) return;
+      if (res.status === 'ok') {
+        setConexionCaida(hayConexionCaida(res.servicios));
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo el punto queda como estaba. */
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
       void cargar();
       void cargarCalendario();
       void cargarPortada();
+      void cargarSaludConexiones();
       return () => {
         vivo.current = false;
       };
-    }, [cargar, cargarCalendario, cargarPortada]),
+    }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]),
   );
 
   async function avanzar(t: TarjetaMiDia) {
@@ -341,13 +399,30 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
             sería peor que la ausencia. */}
         {portada != null && <PortadaNegocio portada={portada} />}
 
-        <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+        <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
+
+        {estadoCalendario === 'ok' && onAgenda != null && (
+          <Pressable
+            testID="midia-ver-agenda"
+            accessibilityRole="button"
+            accessibilityLabel="Ver agenda"
+            onPress={onAgenda}
+            style={styles.verAgenda}
+            hitSlop={8}
+          >
+            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+              Ver agenda
+            </Text>
+          </Pressable>
+        )}
 
         <ContadorTablero tablero={tablero} />
 
+        <BannerCritico tablero={tablero} />
+
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
 
-        <ChipsCategoria activa={categoria} onCambiar={setCategoria} />
+        <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
 
         {estado === 'cargando' && (
           <View style={styles.centro}>
@@ -374,7 +449,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
                     como «no tengo nada pendiente». Sin ilustración — este vacío no se celebra. */}
                 <EstadoVacio
                   testID="midia-vacio-filtro"
-                  titulo={`Nada en ${ETIQUETA_CATEGORIA[categoria]} por acá.`}
+                  titulo={`Nada en ${ETIQUETA_CATEGORIA_TARJETA[categoria]} por acá.`}
                   cuerpo="Tocá «Todo» para ver el resto."
                 />
               </View>
@@ -431,13 +506,19 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
       {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
           ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
       <View style={styles.encabezadoPortada}>
-        <Text
-          testID="midia-wordmark"
-          style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
-        >
-          Odobi
-        </Text>
-        <AvatarCuenta onPress={onAjustes} />
+        <View>
+          <Text
+            testID="midia-wordmark"
+            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
+          >
+            Odobi
+          </Text>
+          {/* BL-W11 fila 4a: fecha de hoy, sin hora — bajo el wordmark, no compite con él. */}
+          <Text testID="midia-fecha" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            {fechaDeHoyMidia()}
+          </Text>
+        </View>
+        <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
       </View>
       {cuerpo}
     </View>
@@ -449,8 +530,20 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
  * "información para mostrar", como fija el contrato (§0, decisión de arquitectura ya cerrada). Un
  * evento sin hora reconocible (`horaDeEvento` → `null`, ver `@copiloto/core`) igual se muestra, sólo
  * con el título — no se descarta ni se inventa una hora.
+ *
+ * BL-W11 fila 4b: `!calendario.conectado` agrupa "nunca conectada" y "caída" —
+ * `/mi-dia/calendario` no las distingue. `estadoConexion` (leído del catálogo, K-09) desempata; sin
+ * esa señal se degrada al texto de "nunca conectada", el menos alarmante ante la duda.
  */
-function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+function PanelCalendario({
+  estado,
+  calendario,
+  estadoConexion,
+}: {
+  estado: EstadoLista;
+  calendario: CalendarioMiDia | null;
+  estadoConexion: EstadoConexion | null;
+}) {
   const tema = useTema();
 
   // `cargando`/`no_disponible` no tienen su propio texto: un calendario que no está listo (o que
@@ -459,6 +552,16 @@ function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendar
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
+    if (estadoConexion === 'caido') {
+      return (
+        <View style={styles.calendario} testID="midia-calendario-caida">
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
+            tus eventos de hoy.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.calendario} testID="midia-calendario-no-conectado">
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
@@ -582,6 +685,14 @@ function TarjetaMiDiaRow({
           >
             {tarjeta.texto}
           </Text>
+          {expandida && tarjeta.verbo != null && (
+            <Text
+              testID={`midia-tarjeta-${tarjeta.id}-verbo`}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+            >
+              {tarjeta.verbo}
+            </Text>
+          )}
           {expandida && detalle !== '' && (
             <Text testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               {detalle}
@@ -607,9 +718,13 @@ const styles = StyleSheet.create({
   raiz: { flex: 1 },
   calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
+  verAgenda: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  alerta: { marginHorizontal: 16, marginTop: 12, padding: 16, gap: 12 },
+  alertaItem: { gap: 8, alignItems: 'flex-start' },
+  alertaAccion: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
   solapaPresionable: { flexGrow: 1 },
   solapa: {
     minHeight: 0,

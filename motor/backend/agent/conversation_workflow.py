@@ -213,8 +213,11 @@ class ConversationWorkflow:
             #
             # Versionado porque el `except` agenda una activity que no está en el history de las
             # ejecuciones que ya venían corriendo (78 medidas contra el Temporal del VPS): en un
-            # replay, `patched` devuelve False y toman el camino de siempre; de su próximo turno
-            # NUEVO en adelante, el fix ya las cubre.
+            # replay, `patched` devuelve False y toman el camino de siempre. OJO (ADR-003, enmienda
+            # 2026-09-22, H-A3-3): `patched()` se memoiza POR RUN — ese `False` se pega para TODOS
+            # los turnos siguientes del mismo run, incluidos los nuevos, no sólo para el turno
+            # reproducido. El fix recién cubre a una sesión vieja desde su PRÓXIMO CONTINUE-AS-NEW,
+            # no desde su próximo turno. Ver `memoria/patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md`.
             if workflow.patched("un-turno-roto-no-mata-la-sesion"):
                 try:
                     done = await self._despachar_turno(config, msg, domain, channel, channel_ref,
@@ -404,7 +407,10 @@ class ConversationWorkflow:
         #    turno normal lo mandaría al LLM como si fuera un mensaje de usuario (fuga del mecanismo interno
         #    del gate al scratchpad). Corte determinístico, sin LLM, sin tocar el estado.
         if kind == "callback" and not parked:
-            await self._react_send(channel, channel_ref, cliente_id, "Listo 👍", None)
+            # H-A4-9: "Listo 👍" mentía -- confirmaba una acción que esta rama, por definición, NUNCA
+            # ejecuta (el gate ya no está parqueado). Texto honesto: no se hizo nada.
+            await self._react_send(channel, channel_ref, cliente_id,
+                                    "Ese botón ya no sirve: se resolvió antes o llegó tarde 🙈", None)
             return False
 
         # ── reingreso de confirmación (callback determinístico, SIN LLM) ──────────────────────────
@@ -430,7 +436,19 @@ class ConversationWorkflow:
                 tc_msg = _assistant_tool_call_msg(pend["tool_call"])
                 # minor (defensa): indexado directo `tr["observation"]` -> KeyError = no-determinismo que
                 # cuelga la corrida; `.get(...) or {}` es la misma defensa que ya usa el resto del loop.
-                tr_msg = _tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {})
+                observation = tr.get("observation") or {}
+                # H-A3-2(a): si la conexión se cayó ENTRE el confirm y la ejecución (execute_tool de arriba
+                # devuelve `gate_card`, ej. "conectá Gmail"), esta rama reingresaba a _react_loop con
+                # gate_card SIEMPRE en None -- la card se perdía sin llegar al front (medido en prod,
+                # historia e2e-g6-durabilidad-hitl). Misma extracción que `:626-641` (acá gate_card local
+                # arranca en None siempre, así que la "precedencia" es un no-op, pero se replica la forma
+                # para no bifurcar el criterio entre las dos ramas que lo pueblan).
+                initial_gate_card = None
+                if workflow.patched("gate-card-sobrevive-confirm"):
+                    if isinstance(observation.get("gate_card"), dict):
+                        observation = dict(observation)
+                        initial_gate_card = observation.pop("gate_card")
+                tr_msg = _tool_result_msg(pend["tool_call"]["id"], observation)
                 messages.append(tc_msg)
                 messages.append(tr_msg)
                 self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
@@ -438,6 +456,7 @@ class ConversationWorkflow:
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"),
+                                              initial_gate_card=initial_gate_card,
                                               # sembrado: esta tool YA ejecutó (confirmed=True, arriba) ANTES de
                                               # entrar al loop -- sin esto el marcador del cierre "olvida" el
                                               # tool_call que resolvió el gate de confirmación.
@@ -525,13 +544,18 @@ class ConversationWorkflow:
 
     async def _react_loop(self, config: dict, domain: str, conv: dict, channel: str, channel_ref: str,
                           cliente_id: str, messages: list, *, start_turn_ix: int, start_step: int,
-                          last_artifact, tool_trace: list | None = None) -> bool:
+                          last_artifact, tool_trace: list | None = None,
+                          initial_gate_card: dict | None = None) -> bool:
         step = start_step
         last_sig = None                                          # detección de no-progreso (major #7)
         # tools YA ejecutadas de este turno (fix narra-sin-hacer): sembrado con lo que ejecutó el reingreso de
         # confirmación (_run_react_turn) antes de entrar acá, y se sigue completando abajo con cada tool que
         # este loop resuelve. Viaja a _react_finish para que el marcador cubra TODO el turno, no solo esta pasada.
         trace = list(tool_trace) if tool_trace else []
+        # K-11: card del último gate estructurado (ej. requiere_conexion) que dejó una tool. H-A3-2(a):
+        # sembrada con lo que ya extrajo el reingreso de confirmación (sólo ese call site la pasa; el
+        # arranque normal del turno sigue en None, sin cambio de comportamiento).
+        gate_card = initial_gate_card
         while step < self.REACT_MAX_STEPS:
             resp = await workflow.execute_activity(
                 "call_llm_tools",
@@ -567,8 +591,13 @@ class ConversationWorkflow:
                 # rompería el replay (NonDeterminismError). Retirar vía patch NUEVO que envuelve el viejo es
                 # replay-safe para AMBOS: al reproducir turnos VIEJOS (el marker `narra-guardrail-retirado`
                 # no existe en esa porción de la historia) devuelve False y el chequeo viejo se evalúa
-                # IDÉNTICO a como quedó grabado -- ningún turno pasado cambia. Para cualquier turno NUEVO
-                # (sesión vieja continuando o sesión nueva) devuelve True y el guardrail queda retirado.
+                # IDÉNTICO a como quedó grabado -- ningún turno pasado cambia. OJO (ADR-003, enmienda
+                # 2026-09-22, H-A3-3): `patched()` se memoiza POR RUN, no por turno -- si el replay de un
+                # turno viejo de ESTE run ya consultó el marker y recibió False, ese False se pega para
+                # todos los turnos siguientes del MISMO run, incluidos los nuevos, hasta su próximo
+                # continue-as-new. El guardrail queda retirado desde el próximo turno nuevo sólo en runs
+                # que todavía no lo consultaron en falso; en runs que sí, recién en el continue-as-new. Ver
+                # `memoria/patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md`.
                 # Evidencia de que retirarlo es seguro: `scripts/retest_narra_guardrail_caso2.py`, 10/10
                 # rondas honestas contra el LLM real Y el guardrail nunca disparó (verificado contando
                 # `call_llm_tools` en el history real de Temporal: 2/2, nunca 3) -- ver
@@ -586,7 +615,7 @@ class ConversationWorkflow:
                     content = resp.get("content") or content
                 if not tool_calls:
                     await self._react_finish(channel, channel_ref, cliente_id, content, last_artifact,
-                                             tool_trace=trace)
+                                             tool_trace=trace, card=gate_card)
                     return False
             tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
             sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
@@ -616,8 +645,32 @@ class ConversationWorkflow:
                                        choices=_confirm_choices(start_turn_ix, step),  # token por gate (HIGH)
                                        card=card)
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
+            observation = tr.get("observation") or {}
+            # K-11: una tool puede dejar en su observación un `gate_card` (ej. «conectá Gmail»). El motor NO
+            # conoce su contenido (capa PLANTILLA, domain-blind): sólo lo saca del mensaje que ve el LLM y lo
+            # adjunta a la respuesta final del turno. Se limpia si una tool posterior sí resuelve. La misma
+            # activity `send_channel_message` con otro valor de `card`: mismo Command sequence, replay-safe;
+            # el `patched` se consulta SÓLO cuando hay gate (las historias viejas nunca pasan por acá).
+            if isinstance(observation.get("gate_card"), dict):
+                observation = dict(observation)
+                nuevo_gate = observation.pop("gate_card")
+                if workflow.patched("gate-card-requiere-conexion"):
+                    # A2/K-07-B: "última tool gana" perdía la card que BLOQUEA (ej. «conectá Gmail»)
+                    # cuando llegaba primero y una que no bloquea (ej. la sugerencia de factura) llegaba
+                    # después en el mismo turno -- medido roto en auditoría A2. El motor sigue sin
+                    # conocer `kind`: la prioridad viaja EN la card (`bloquea`, contrato K-07-B §2).
+                    # `patched` nuevo porque cambia qué `card` termina en el Command `send_channel_message`
+                    # (mismo cuidado que `gate-card-requiere-conexion`): una historia vieja en vuelo debe
+                    # seguir recomputando el "última gana" con el que ya se grabó.
+                    if workflow.patched("gate-card-precedencia-bloquea"):
+                        if gate_card is None or not gate_card.get("bloquea") or nuevo_gate.get("bloquea"):
+                            gate_card = nuevo_gate
+                    else:
+                        gate_card = nuevo_gate
+            elif tr.get("status") == "ok":
+                gate_card = None
             tc_msg = _assistant_tool_call_msg(tc)
-            tr_msg = _tool_result_msg(tc["id"], tr.get("observation") or {})
+            tr_msg = _tool_result_msg(tc["id"], observation)
             messages.append(tc_msg)
             messages.append(tr_msg)
             self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
@@ -640,7 +693,7 @@ class ConversationWorkflow:
         return False
 
     async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact,
-                            tool_trace: list | None = None) -> None:
+                            tool_trace: list | None = None, card: dict | None = None) -> None:
         """Cierre TERMINAL del turno (texto final, no la card del gate): apendea a self._history para memoria/CAN
         (major #4) y despacha por el canal con el artifact clicable.
 
@@ -666,7 +719,7 @@ class ConversationWorkflow:
         # así que un turno futuro ve la secuencia completa (pidió X -> tool_call -> tool_result -> texto), no solo
         # el texto suelto que el marcador de PR#85 intentaba compensar sin éxito.
         self._react_transcript.append({"role": "assistant", "content": text})
-        await self._react_send(channel, channel_ref, cliente_id, text, artifact)
+        await self._react_send(channel, channel_ref, cliente_id, text, artifact, card=card)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
                           choices=None, card=None) -> None:

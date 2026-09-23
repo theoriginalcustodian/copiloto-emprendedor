@@ -1,4 +1,5 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { EJEMPLOS, MS_POR_EJEMPLO, RodilloEjemplos } from './RodilloEjemplos';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -11,7 +12,12 @@ function montar() {
   );
 }
 
-beforeEach(() => jest.useFakeTimers());
+const leerAjuste = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled');
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  leerAjuste.mockResolvedValue(false);
+});
 afterEach(() => jest.useRealTimers());
 
 describe('RodilloEjemplos — el tambor del chat vacío', () => {
@@ -51,6 +57,41 @@ describe('RodilloEjemplos — el tambor del chat vacío', () => {
       await Promise.resolve();
     });
     expect(ver('rodillo-0').props.accessibilityElementsHidden).toBe(false);
+  });
+
+  it('BL-W4: Pausar frena la rotación y Reanudar la retoma', async () => {
+    await montar();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await fireEvent.press(screen.getByTestId('rodillo-pausa'));
+    await act(async () => {
+      jest.advanceTimersByTime(MS_POR_EJEMPLO * 3);
+      await Promise.resolve();
+    });
+    expect(ver('rodillo-0').props.accessibilityElementsHidden).toBe(false); // sigue en la primera
+
+    await fireEvent.press(screen.getByTestId('rodillo-pausa'));
+    await act(async () => {
+      jest.advanceTimersByTime(MS_POR_EJEMPLO);
+      await Promise.resolve();
+    });
+    expect(ver('rodillo-1').props.accessibilityElementsHidden).toBe(false);
+  });
+
+  it('BL-W4: con movimiento reducido del sistema queda QUIETO y no ofrece pausa', async () => {
+    leerAjuste.mockResolvedValue(true);
+    await montar();
+    await act(async () => {
+      await Promise.resolve(); // llega el ajuste del sistema y el efecto se reprograma
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(MS_POR_EJEMPLO); // un solo tick: si rotara, estaría en la segunda
+      await Promise.resolve();
+    });
+    expect(ver('rodillo-0').props.accessibilityElementsHidden).toBe(false);
+    expect(ver('rodillo-1').props.accessibilityElementsHidden).toBe(true);
+    expect(screen.queryByTestId('rodillo-pausa')).toBeNull();
   });
 
   /** Sin limpieza, cada montaje del chat vacío dejaría un intervalo corriendo para siempre. */

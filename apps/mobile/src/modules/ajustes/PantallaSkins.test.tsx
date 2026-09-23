@@ -59,19 +59,38 @@ describe('PantallaSkins (pantalla propia con cards de color, ex-selector dentro 
     await waitFor(() => expect(screen.getByTestId('skin-card-oscuro').props.accessibilityState.selected).toBe(true));
   });
 
-  it('las 2 etiquetas visibles son las pieles de ODOBI -- no traducciones inventadas', async () => {
+  it('ofrece las 2 pieles de ODOBI y «Como el teléfono» -- no traducciones inventadas', async () => {
     await envolver();
     expect(screen.getByText('Claro')).toBeTruthy();
     expect(screen.getByText('Oscuro')).toBeTruthy();
+    expect(screen.getByText('Como el teléfono')).toBeTruthy();
     expect(screen.queryByText('Nocturno')).toBeNull();
   });
 
-  // «Nocturno» se eliminó el 17/09 (el sistema declara DOS pieles). Un usuario que la tenía
-  // guardada cae al default: `ThemeProvider` valida con `guardado in SKINS` antes de aplicarla.
-  it('un skin guardado que ya no existe no rompe: cae al default', async () => {
+  it('🔴 «Como el teléfono» persiste `sistema` y sigue al esquema del sistema EN VIVO', async () => {
+    const rn = jest.requireActual('react-native');
+    const spy = jest.spyOn(rn, 'useColorScheme').mockReturnValue('light');
+    const { rerender } = await envolver();
+    await fireEvent.press(screen.getByTestId('skin-card-sistema'));
+    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), 'sistema'));
+    expect(screen.getByTestId('skin-card-sistema').props.accessibilityState.selected).toBe(true);
+    // El teléfono pasa a oscuro con la app abierta: la piel resuelta cambia, la preferencia sigue en sistema.
+    spy.mockReturnValue('dark');
+    await rerender(
+      <ThemeProvider>
+        <PantallaSkins />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('skin-card-sistema').props.accessibilityState.selected).toBe(true);
+    spy.mockRestore();
+  });
+
+  // «Nocturno» se eliminó (el sistema declara DOS pieles). Quien la tenía guardada pasa a `oscuro`, su
+  // familia; un valor desconocido cae al default.
+  it('un skin guardado que ya no existe no rompe: nocturno migra a oscuro, lo desconocido cae a claro', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValueOnce('nocturno');
     await envolver();
-    await waitFor(() => expect(screen.getByTestId('skin-card-claro').props.accessibilityState.selected).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('skin-card-oscuro').props.accessibilityState.selected).toBe(true));
   });
 
   it('cada card muestra 4 chips de color -- la MUESTRA real, no sólo el nombre', async () => {

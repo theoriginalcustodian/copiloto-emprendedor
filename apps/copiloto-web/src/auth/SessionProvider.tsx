@@ -1,5 +1,5 @@
 import { alExpirarSesion, marcarSesionViva, MENSAJE_SESION_EXPIRADA } from '@copiloto/core';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
 import { consumeOauthCallback } from './oauth';
@@ -7,6 +7,7 @@ import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from
 import {
   SessionContext,
   type LoginResult,
+  type OrigenSesion,
   type SessionStatus,
   type UseSessionResult,
 } from './useSession';
@@ -29,6 +30,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('checking');
   const [me, setMe] = useState<MeResponse | undefined>(undefined);
   const [avisoSesion, setAvisoSesion] = useState<string | undefined>(undefined);
+  // BL-X10: 'restaurada' por default (arranque con token guardado, el camino más frecuente); el
+  // efecto de montaje y `login()` lo corrigen a 'recien-autenticada' cuando corresponde, ANTES de
+  // llamar a `fetchMe` — así `AppRouter` ya lo lee bien apenas `status` pasa a 'checking'/'authed'.
+  const [origenSesion, setOrigenSesion] = useState<OrigenSesion>('restaurada');
+  // BL-X12w: gemelo de `cierreVoluntario` en mobile (`modules/auth/SessionProvider.tsx`).
+  const [cierreVoluntario, setCierreVoluntario] = useState<{ email: string | null } | undefined>(undefined);
+  // BL-X10 (fila 2): `true` sólo cuando el arranque no encuentra NI token NI refresh — nunca hubo
+  // sesión en este dispositivo. Gemelo de mobile (`modules/auth/SessionProvider.tsx`).
+  const [primeraVez, setPrimeraVez] = useState(false);
+  // Espejo en ref de `primeraVez`/`cierreVoluntario`: `login()` los necesita AL MOMENTO del click,
+  // no como dependencia de `useCallback` (cambiarían su identidad en cada logout/arranque).
+  const primeraVezRef = useRef(false);
+  primeraVezRef.current = primeraVez;
+  const cierreVoluntarioRef = useRef<{ email: string | null } | undefined>(undefined);
+  cierreVoluntarioRef.current = cierreVoluntario;
 
   // Valida el token actual contra /me y deja el estado consistente. Se reusa en el chequeo de
   // montaje y después de un login exitoso.
@@ -78,6 +94,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // 1) ¿Volvemos de un callback OAuth (Google)? GoTrue deja los tokens en el fragment de la URL.
     const oauth = consumeOauthCallback();
     if (oauth) {
+      setOrigenSesion('recien-autenticada'); // BL-X10: callback OAuth = ingreso recién ocurrido
       setToken(oauth.access_token);
       if (oauth.refresh_token) setRefreshToken(oauth.refresh_token);
       void (async () => {
@@ -99,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // HTTP al hacer el probe. Cortar acá declarando 'anon' impedía que nadie llegara a intentarlo,
     // y era la razón por la que el fix del cliente no se veía en el navegador.
     if (!getToken() && !getRefreshToken()) {
+      setPrimeraVez(true); // BL-X10: nunca hubo sesión acá -> reveal de primer ingreso, no el formulario
       setStatus('anon');
       return;
     }
@@ -110,6 +128,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // El aviso describe la sesión ANTERIOR: dejarlo puesto mientras se reintenta haría convivir
       // «tu sesión expiró» con el error del intento nuevo, y el usuario no sabría cuál leer.
       setAvisoSesion(undefined);
+      // BL-X10 (fila 2): «después del login no se repite» — si se llega acá desde el reveal (primer
+      // ingreso o volver), la identidad YA se mostró ahí; repetir el splash largo acá sería la
+      // segunda vez. Sólo la sesión caída sola (CTA5, sin reveal previo) preserva el splash largo
+      // post-login de siempre.
+      if (!primeraVezRef.current && cierreVoluntarioRef.current == null) {
+        setOrigenSesion('recien-autenticada');
+      }
       try {
         const response = await api.login(email, password);
         setToken(response.access_token);
@@ -127,14 +152,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [fetchMe],
   );
 
+  // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
+  // cae la sesión sola, no es «volver» ni «primera vez»).
+  useEffect(() => {
+    if (status === 'authed') {
+      setCierreVoluntario(undefined);
+      setPrimeraVez(false);
+    }
+  }, [status]);
+
+  const emailRef = useRef<string | null>(null);
+  emailRef.current = me?.email ?? null;
+
   const logout = useCallback(() => {
     clearToken();
+    setCierreVoluntario({ email: emailRef.current });
     setMe(undefined);
     setStatus('anon');
     // Salir a propósito no es que se te haya caído la sesión: el aviso no corresponde.
     setAvisoSesion(undefined);
   }, []);
 
-  const value: UseSessionResult = { status, me, avisoSesion, login, logout };
+  const value: UseSessionResult = {
+    status,
+    me,
+    avisoSesion,
+    origenSesion,
+    cierreVoluntario: status === 'anon' ? cierreVoluntario : undefined,
+    primeraVez: status === 'anon' ? primeraVez : false,
+    login,
+    logout,
+  };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

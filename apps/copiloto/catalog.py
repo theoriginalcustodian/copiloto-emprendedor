@@ -85,7 +85,7 @@ def _default_presentation(toolkit: str) -> dict:
     }
 
 
-def _entry(key: str, *, kind: str, connected: bool) -> dict:
+def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -> dict:
     presentation = _PRESENTATION.get(key) or _default_presentation(key)
     es_pago = kind == "payments"
     connect_path = "/mp/connect" if es_pago else f"/composio/connect?service={key}"
@@ -101,20 +101,62 @@ def _entry(key: str, *, kind: str, connected: bool) -> dict:
         "kind": kind,
         "description": presentation["description"],
         "capabilities": list(presentation["capabilities"]),
+        # K-09: `status` distingue «caido» (hubo conexión y ya no sirve) de «nunca_conectado».
+        # `connected` se conserva para clientes viejos y es siempre `status == "conectado"`.
         "connected": connected,
+        "status": status or ("conectado" if connected else "nunca_conectado"),
         "connect_path": connect_path,
         "disconnect_path": disconnect_path,
     }
 
 
-def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected) -> list[dict]:
+KIND_REQUIERE_CONEXION = "requiere_conexion"
+
+
+def requiere_conexion_card(service: str, label: str) -> dict:
+    """`card` del reply cuando un turno cae en `ConnectionRequired` (K-11, BL-J8): el sheet «conectá X»
+    que la app pinta en contexto. `alcance` y `connect_path` salen de `_entry`, la MISMA fuente que
+    `GET /catalog` (cero copy duplicado: una segunda lista de permisos driftearía). `label` lo pone quien
+    llama para que coincida con el texto del reply.
+
+    `bloquea: True` (A2/K-07-B): esta card nunca la pisa una `gate_card` posterior que no bloquea —
+    la prioridad viaja EN la card porque `conversation_workflow` es domain-blind y no puede decidir por
+    `kind` (contrato K-07-B §2). Ver `conversation_workflow._react_loop`."""
+    key = (service or "").lower()
+    entry = _entry(key, kind="payments" if key == MERCADOPAGO_KEY else "composio", connected=False)
+    return {"kind": KIND_REQUIERE_CONEXION, "service": key, "label": label, "bloquea": True,
+            "alcance": entry["capabilities"], "connect_path": entry["connect_path"]}
+
+
+KIND_SUGERENCIA_ARMAR_FACTURA = "sugerencia_armar_factura"
+
+
+def sugerencia_armar_factura_card(presupuesto_id: int, texto: str) -> dict:
+    """`card` del reply al APROBAR un presupuesto (K-07-B, BL-J9): el chip «¿Te armo la factura?».
+    NO es un gate (no pausa el turno ni pide confirmación): informa y ofrece. El cliente decide por
+    `kind`, nunca por `texto`. Viaja por el mismo camino que `requiere_conexion_card` (`gate_card`).
+
+    `bloquea: False` explícito (A2): si el mismo turno también deja una card que bloquea (p. ej.
+    `requiere_conexion_card`), ésta no la pisa — ver `conversation_workflow._react_loop`."""
+    return {"kind": KIND_SUGERENCIA_ARMAR_FACTURA, "presupuesto_id": presupuesto_id, "texto": texto,
+            "bloquea": False}
+
+
+def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
+                  mp_status: str | None = None, composio_caidos=()) -> list[dict]:
     """Catálogo completo (MercadoPago + todos los toolkits Composio soportados), en el shape del contrato
     `GET /catalog` (handoff §7.7). `valid_toolkits`: iterable de slugs Composio (derivado por el caller de la
     MISMA fuente que valida `/composio/connect`, NUNCA hardcodeado acá). `composio_connected`: iterable de
     slugs conectados (mismo shape que `/me`). Orden determinístico (sorted) -- ni `valid_toolkits` (puede ser
     un frozenset/dict) ni `composio_connected` garantizan orden estable entre corridas."""
     connected_set = set(composio_connected or ())
-    services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected))]
+    caidos = set(composio_caidos or ())
+    if mp_status is not None:
+        mp_connected = mp_status == "conectado"
+    services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected), status=mp_status)]
     for toolkit in sorted(valid_toolkits or ()):
-        services.append(_entry(toolkit, kind="composio", connected=toolkit in connected_set))
+        conectado = toolkit in connected_set
+        services.append(_entry(toolkit, kind="composio", connected=conectado,
+                               status="conectado" if conectado else
+                               ("caido" if toolkit in caidos else "nunca_conectado")))
     return services

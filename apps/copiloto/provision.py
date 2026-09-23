@@ -233,6 +233,32 @@ def _ensure_presupuestos_cliente_ref_column(conn) -> None:
           flush=True)
 
 
+def _ensure_presupuestos_idem_key_column(conn) -> None:
+    """Migración aditiva de `copiloto_presupuestos.idem_key text` (K-01, BL-D1/BL-J1).
+
+    Mismo criterio que `_ensure_presupuestos_cliente_ref_column`: corre ANTES del pase estándar. El
+    índice único parcial `(cliente_id, idem_key) WHERE idem_key IS NOT NULL` vive en
+    `presupuestos_migrations.sql` (se aplica al final, con la tabla ya creada). Parcial: las filas
+    existentes y las de clientes viejos no la traen y no deben bloquearse entre sí."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_presupuestos "
+                f"ADD COLUMN IF NOT EXISTS idem_key text;")
+    print(f"OK {SCHEMA}.copiloto_presupuestos.idem_key (columna aditiva text, idempotente)", flush=True)
+
+
+def _ensure_gastos_idem_key_column(conn) -> None:
+    """Migración aditiva de `copiloto_gastos.idem_key text` (contrato IDEM-gasto-duplica-plata).
+
+    Mismo criterio que `_ensure_presupuestos_idem_key_column`: corre ANTES del pase estándar. El
+    índice único parcial `(cliente_id, idem_key) WHERE idem_key IS NOT NULL` vive en
+    `gastos_migrations.sql` (se aplica al final, con la tabla ya creada). Parcial: las filas
+    existentes y las de clientes viejos no la traen y no deben bloquearse entre sí."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_gastos "
+                f"ADD COLUMN IF NOT EXISTS idem_key text;")
+    print(f"OK {SCHEMA}.copiloto_gastos.idem_key (columna aditiva text, idempotente)", flush=True)
+
+
 def _ensure_clientes_homonimo_column(conn) -> None:
     """Migración aditiva de `copiloto_clientes.homonimo integer NOT NULL DEFAULT 0`.
 
@@ -395,6 +421,54 @@ def _ensure_modo_ceremonia(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
 
 
+def _ensure_onboarding_completado(conn) -> None:
+    """`tenants.onboarding_completado boolean NOT NULL DEFAULT false` (K-14, BL-X8). `tenants` es DDL
+    bespoke (`_provision_tenants`), fuera de `uc_tables.json`: la columna se agrega acá, y como
+    `ADD COLUMN IF NOT EXISTS` es idempotente corre igual sobre DB fresca o existente. Los tenants que ya
+    existen quedan en `false` (verán el onboarding una vez, y «Después» lo cierra)."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.{TENANTS_TABLE} "
+                f"ADD COLUMN IF NOT EXISTS onboarding_completado boolean NOT NULL DEFAULT false;")
+    print(f"OK {SCHEMA}.{TENANTS_TABLE}.onboarding_completado (idempotente)", flush=True)
+
+
+def _ensure_feedback_escuchado(conn) -> None:
+    """`copiloto_feedback.escuchado boolean NOT NULL DEFAULT false` + `.escuchado_en timestamptz NULL`
+    (K-08, BL-J12, «Lo pediste vos»). Las marca el operador desde la consola; el emprendedor ve el badge
+    en su lista de feedback. `false`/`NULL` es lo correcto para las filas existentes: ninguna fue
+    escuchada todavía. Corre ANTES del pase estándar (mismo motivo que las demás `_ensure_*`)."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_feedback "
+                f"ADD COLUMN IF NOT EXISTS escuchado boolean NOT NULL DEFAULT false;")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_feedback "
+                f"ADD COLUMN IF NOT EXISTS escuchado_en timestamptz;")
+    print(f"OK {SCHEMA}.copiloto_feedback.escuchado/.escuchado_en (idempotente)", flush=True)
+
+
+def _ensure_mp_reauth(conn) -> None:
+    """`mp_credentials.reauth_desde timestamptz NULL` -- desde cuándo la conexión de MercadoPago pide
+    reconectar (K-09, BL-J4). La marca el refresh cuando MP rechaza el `refresh_token` (`needs_reauth`)
+    y se limpia sola al guardar tokens nuevos. `NULL` es lo correcto para las filas existentes: ninguna
+    se sabe caída. Sin esta columna «caído» era indistinguible de «nunca conectado»."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.mp_credentials "
+                f"ADD COLUMN IF NOT EXISTS reauth_desde timestamptz;")
+    print(f"OK {SCHEMA}.mp_credentials.reauth_desde (idempotente)", flush=True)
+
+
+def _ensure_telefono_email(conn) -> None:
+    """`copiloto_perfil_negocio.telefono` y `.email` `text NOT NULL DEFAULT ''` — contacto comercial
+    del negocio (K-05, BL-J10). Distinto del perfil fiscal (`afip_perfil`). `DEFAULT ''` es lo correcto
+    para las filas que ya existían: ninguna declaró nunca un contacto, y `''` es «sin cargar», igual
+    que el resto de los textos del perfil. Corre ANTES del pase estándar (mismo motivo que las demás
+    `_ensure_*`: el anti-colisión aborta si una columna declarada falta en la tabla viva)."""
+    cur = conn.cursor()
+    for col in ("telefono", "email"):
+        cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_perfil_negocio "
+                    f"ADD COLUMN IF NOT EXISTS {col} text NOT NULL DEFAULT '';")
+    print(f"OK {SCHEMA}.copiloto_perfil_negocio.telefono/.email (idempotente)", flush=True)
+
+
 def _ensure_nacio_completo(conn) -> None:
     """`copiloto_cobros.nacio_completo boolean` — ¿el ingreso entró completo **de una**?
 
@@ -538,17 +612,23 @@ def provision(conn) -> dict:
     _ensure_reply_idem_key(conn)      # ídem para `copiloto_web_replies.idem_key` (+ índice único parcial).
     _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
+    _ensure_presupuestos_idem_key_column(conn)      # ídem para `copiloto_presupuestos.idem_key` (K-01).
+    _ensure_gastos_idem_key_column(conn)            # ídem para `copiloto_gastos.idem_key` (IDEM).
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     _ensure_clientes_contacto_drop(conn)            # paso 2/2: borra `contacto` (OK operador 2026-08-04).
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
+    _ensure_telefono_email(conn)                    # ídem para `copiloto_perfil_negocio.telefono/.email`.
+    _ensure_mp_reauth(conn)                         # ídem para `mp_credentials.reauth_desde` (K-09).
+    _ensure_feedback_escuchado(conn)                # ídem para `copiloto_feedback.escuchado/.escuchado_en` (K-08).
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).
     _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
+    _ensure_onboarding_completado(conn)             # K-14: flag del onboarding en `tenants`.
     _provision_ticket_secuencia(conn)  # SOP3/B3: contador atómico por tenant del código SOP-XXXX.
     sql_aplicados = _apply_sql_files(conn)
     return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,

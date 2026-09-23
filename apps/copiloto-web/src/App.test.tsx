@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -23,6 +24,31 @@ vi.mock('./shell/ResponsiveShell', () => ({
   ),
 }));
 
+vi.mock('./modules/onboarding', () => ({
+  Onboarding: ({ onTerminar }: { onTerminar: () => void }) => (
+    <button type="button" data-testid="onboarding-stub" onClick={onTerminar} />
+  ),
+}));
+
+// BL-X10: `Splash`/`EntradaDiaria` corren por tiempo real (6,8 s / 1,5 s) -- acá se stubean
+// auto-disparando `onFin` en un `useEffect` (sin timers) para que `render()`/`rerender()` de RTL,
+// que flushea los efectos, deje la MISMA aserción de siempre disponible sin tocar cada test de
+// `authed`. `identidadCalls` registra CUÁL de los dos montó (el testid solo no alcanza: el efecto
+// ya disparó `onFin` y desmontó el stub para cuando `render()` vuelve).
+const identidadCalls: string[] = [];
+vi.mock('./modules/splash', () => ({
+  Splash: ({ onFin }: { onFin: () => void }) => {
+    identidadCalls.push('splash');
+    useEffect(onFin, [onFin]);
+    return <div data-testid="splash-stub" />;
+  },
+  EntradaDiaria: ({ onFin }: { onFin: () => void }) => {
+    identidadCalls.push('entrada');
+    useEffect(onFin, [onFin]);
+    return <div data-testid="entrada-stub" />;
+  },
+}));
+
 vi.mock('./lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/api')>();
   return {
@@ -43,6 +69,7 @@ describe('App (router raíz)', () => {
   beforeEach(() => {
     mockUseSession.mockReturnValue({ status: 'anon', login: vi.fn(), logout: vi.fn() });
     setUrl('');
+    identidadCalls.length = 0;
   });
 
   afterEach(() => {
@@ -123,5 +150,50 @@ describe('App (router raíz)', () => {
     expect(screen.getByTestId('app-shell-splash')).toBeInTheDocument();
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument();
     expect(screen.queryByTestId('responsive-shell-stub')).not.toBeInTheDocument();
+  });
+
+  // BL-X10: `origenSesion` decide CUÁL identidad se muestra antes del shell.
+  it('checking con origenSesion restaurada (default) -> EntradaDiaria, no Splash', () => {
+    mockUseSession.mockReturnValue({
+      status: 'checking',
+      origenSesion: 'restaurada',
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(<App />);
+    expect(identidadCalls).toEqual(['entrada']);
+  });
+
+  it('authed con origenSesion recien-autenticada -> Splash, no EntradaDiaria, y llega al shell', () => {
+    mockUseSession.mockReturnValue({
+      status: 'authed',
+      me: { cliente_id: 't', onboarding_completado: true },
+      origenSesion: 'recien-autenticada',
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(<App />);
+    expect(identidadCalls).toEqual(['splash']);
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
+  });
+
+  // K-14 / BL-X8: el hilo de bienvenida sólo con `onboarding_completado: false` EXPLÍCITO.
+  it('authed con onboarding_completado=false -> Onboarding; al terminar entra al shell', () => {
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't', onboarding_completado: false }, login: vi.fn(), logout: vi.fn() });
+    render(<App />);
+    expect(screen.queryByTestId('responsive-shell-stub')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('onboarding-stub'));
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
+  });
+
+  it('authed con onboarding_completado=true o ausente (backend anterior) -> directo al shell', () => {
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't', onboarding_completado: true }, login: vi.fn(), logout: vi.fn() });
+    const { unmount } = render(<App />);
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
+    unmount();
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't' }, login: vi.fn(), logout: vi.fn() });
+    render(<App />);
+    expect(screen.queryByTestId('onboarding-stub')).not.toBeInTheDocument();
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
   });
 });

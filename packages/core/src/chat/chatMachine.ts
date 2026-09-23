@@ -24,6 +24,7 @@
  */
 
 import type { ChatContenido, ReplyCard, ReplyChoice, ReplyMessage } from '../api/types';
+import type { Cliente, DuplicadoCliente } from '../api/clientes';
 
 /**
  * Cota dura del historial en memoria/persistido (C6, ver
@@ -46,6 +47,59 @@ export interface ChatMessage {
    * consume `hitl.ts` (`kind==='confirm'`) o la vista de artefacto de cada plataforma
    * (`kind==='clinical_saved'` / `'start_recording'` / `'start_upload'`). */
   card?: ReplyCard;
+  /** Instante del mensaje (ms epoch). Lo usan los separadores de día (`separadoresFecha.ts`); ausente
+   * en el historial persistido antes de BL-C3 o si el reply no trajo `created_at`. */
+  creadoEn?: number;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useVozComando`/`MicButton`): alimenta el chip
+   * «Por voz · Ns» de la burbuja del usuario en ambas plataformas. Ausente en mensajes escritos. */
+  porVoz?: { duracionSeg: number };
+  /** H-A4-9 — si ESTA card HITL (mensaje `assistant` cuyos `choices` clasifican `'hitl'`, ver
+   * `hitl.ts`) ya fue respondida, y con qué. Ausente = todavía activa/clickeable. Se setea ATÓMICO
+   * junto con el mensaje de respuesta (ver `mensaje_usuario_agregado.hitlRespondido` abajo) para que
+   * nunca haya un instante en memoria donde la card esté respondida pero sin marcar — y por lo tanto
+   * SE PERSISTE con `messages` (mismo mecanismo que el resto del historial), así sobrevive a un
+   * reload. Historial viejo que no tiene este campo se migra al rehidratar con
+   * `sanitizarHitlRespondido` (`hitl.ts`) — el caller (hook de cada plataforma) es quien la invoca
+   * ANTES de sembrar el estado inicial. */
+  hitlRespondido?: { value: string; label: string };
+  /** K-11 / BL-J8 Parte 1 (mobile) — la card `requiere_conexion` de ESTE mensaje (assistant) fue
+   * descartada con «Ahora no» (`useConexionRequerida.ts`). Ausente = la card sigue activa/evaluable
+   * (mismo criterio que `hitlRespondido` ausente = sin responder). Se persiste DENTRO del mensaje —
+   * mismo patrón B que `hitlRespondido` — para que sobreviva a un reload sin la fuga de una clave
+   * separada en storage (esa es la fuga conocida del patrón A de la web, bloqueada para mobile hasta
+   * que se resuelva PODA/BL-V32; ver el contrato de este fix). */
+  conexionDescartada?: true;
+  /** GUARDM parte 2 — estado terminal de la card `gasto_propuesto` de ESTE mensaje
+   * (`TarjetaGastoPropuesto.tsx`). Ausente = sigue en `'editando'` (mismo criterio que
+   * `hitlRespondido`/`conexionDescartada` ausentes = sin resolver). Patrón B: se persiste DENTRO del
+   * mensaje, no en una clave `AsyncStorage` separada — la fuga que tenía ESE mecanismo (patrón A,
+   * mobile no poda esas claves) es la razón por la que `TarjetaPresupuestoPropuesto` migró a este
+   * mismo patrón (`presupuestoResuelto`, abajo) en la misma tanda que esta card. */
+  gastoResuelto?: { estado: 'guardado'; monto: string } | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo que `gastoResuelto`, para `ingreso_propuesto`
+   * (`TarjetaIngresoPropuesto.tsx`). */
+  ingresoResuelto?: { estado: 'guardado'; monto: string } | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo que `gastoResuelto`, para `cliente_propuesto`
+   * (`TarjetaClientePropuesto.tsx`) — 3 salidas terminales en vez de 2, porque el 409 por documento
+   * ("ya existe") no es ni guardado ni descartado. */
+  clienteResuelto?:
+    | { estado: 'guardado'; cliente: Cliente }
+    | { estado: 'ya_existe'; duplicado: DuplicadoCliente }
+    | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo, para `factura_propuesta` (`TarjetaFacturaPropuesta.tsx`).
+   * Sólo hay un camino terminal real: `emitida` (emitir es un acto fiscal irreversible; "Completar a
+   * mano" navega afuera sin cambiar el estado de esta card, así que NO tiene marca — ver docstring de
+   * la card). Al rehidratar con esto en `true`, la card no tiene el comprobante (CAE/PDF) porque ese
+   * dato vive en estado efímero: re-consulta `estadoFactura` para poblarlo, en vez de asumirlo. */
+  facturaResuelta?: true;
+  /** GUARDM parte 2 — mismo mecanismo, para `presupuesto_propuesto` (`TarjetaPresupuestoPropuesto.tsx`).
+   * 🔴 **Migración de patrón A a patrón B** (corrección de alcance de planificación, no parte del
+   * diseño original de esta tanda): esta card nació con un guard cross-remount propio en
+   * `AsyncStorage` (`copiloto-presupuesto-propuesto-resuelto:<mensajeId>`, PR #663/K-01) — funcional,
+   * pero mobile no tiene ningún mecanismo de poda para esas claves (a diferencia de la web, que ya
+   * podó su propio patrón A), así que cada mensaje resuelto deja una clave que nunca se borra. Patrón
+   * B no tiene nada que podar: la marca vive y muere con el mensaje persistido. */
+  presupuestoResuelto?: { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -109,8 +163,14 @@ export interface EstadoChat {
 export type EventoChat =
   /** Un mensaje de usuario que ya se sabe mostrar — optimista (`send`, ANTES de que la red
    * responda) o con el transcript ya resuelto (`sendAudio`, DESPUÉS del STT). No toca `sendStatus`:
-   * el caller manda ese evento aparte (`envio_iniciado`), en el orden que corresponda a cada flujo. */
-  | { tipo: 'mensaje_usuario_agregado'; mensaje: ChatMessage }
+   * el caller manda ese evento aparte (`envio_iniciado`), en el orden que corresponda a cada flujo.
+   * `hitlRespondido` (H-A4-9) — presente cuando `mensaje` es la respuesta a UNA card HITL puntual:
+   * marca ESE mensaje (no el que se está agregando) con `hitlRespondido`, en la MISMA transición. */
+  | {
+      tipo: 'mensaje_usuario_agregado';
+      mensaje: ChatMessage;
+      hitlRespondido?: { mensajeId: string; value: string; label: string };
+    }
   /** Arranca el ciclo de envío. */
   | { tipo: 'envio_iniciado' }
   /** El POST se aceptó — el caller arranca el polling (efecto) y el reducer pasa a `waiting`. */
@@ -126,6 +186,26 @@ export type EventoChat =
   | { tipo: 'respuestas_recibidas'; replies: ReplyMessage[]; nextId: number }
   /** Venció `WAIT_TIMEOUT_MS` sin respuesta. */
   | { tipo: 'tiempo_agotado' }
+  /** K-11 / BL-J8 Parte 1 (mobile) — «Ahora no» en el sheet de conexión. A diferencia de
+   * `mensaje_usuario_agregado` (que ATA una marca a un mensaje NUEVO que se está agregando), este
+   * evento no agrega ningún mensaje — sólo marca uno YA EXISTENTE (más parecido en forma a
+   * `tiempo_agotado` que a `mensaje_usuario_agregado`). */
+  | { tipo: 'conexion_descartada'; mensajeId: string }
+  /** GUARDM parte 2 — mismo criterio de forma que `conexion_descartada` (marca un mensaje YA
+   * EXISTENTE, no agrega ninguno): una de las 5 cards de propuesta
+   * (gasto/ingreso/cliente/factura/presupuesto) llegó a su estado terminal. `patch` trae SÓLO el
+   * campo que corresponde a esa card —genérico entre las 5 porque la transición es idéntica: pisar
+   * ese campo del mensaje sin tocar el resto. */
+  | {
+      tipo: 'tarjeta_resuelta';
+      mensajeId: string;
+      patch: Partial<
+        Pick<
+          ChatMessage,
+          'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+        >
+      >;
+    }
   /** Arranca una conversación nueva: el caller ya generó el `session_id` y ya limpió la
    * persistencia vieja (efectos) — acá sólo se resetea el estado en memoria. */
   | { tipo: 'nueva_sesion'; sessionId: string };
@@ -232,8 +312,25 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
         motivoFallo: null,
       };
 
-    case 'mensaje_usuario_agregado':
-      return { ...estado, messages: [...estado.messages, evento.mensaje].slice(-MAX_MENSAJES_HISTORIAL) };
+    case 'mensaje_usuario_agregado': {
+      // H-A4-9: si esta respuesta resuelve una card HITL puntual, marcarla ANTES de agregar el
+      // mensaje nuevo — atómico en la misma transición, para que nunca haya un estado intermedio
+      // con la card sin marcar.
+      const previos = evento.hitlRespondido
+        ? estado.messages.map((mensaje) =>
+            mensaje.id === evento.hitlRespondido!.mensajeId
+              ? {
+                  ...mensaje,
+                  hitlRespondido: {
+                    value: evento.hitlRespondido!.value,
+                    label: evento.hitlRespondido!.label,
+                  },
+                }
+              : mensaje,
+          )
+        : estado.messages;
+      return { ...estado, messages: [...previos, evento.mensaje].slice(-MAX_MENSAJES_HISTORIAL) };
+    }
 
     case 'envio_iniciado':
       // Limpia el motivo del fallo anterior: si sobreviviera, la pantalla explicaría un fallo que ya
@@ -247,6 +344,25 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
       // Sin motivo -> 'servidor'. NUNCA se adivina 'red': mandar a revisar la conexión cuando el
       // problema era otro es exactamente el error que este campo existe para no repetir.
       return { ...estado, sendStatus: 'error', motivoFallo: evento.motivo ?? 'servidor' };
+
+    case 'conexion_descartada':
+      // Sólo marca el mensaje `evento.mensajeId` — inmutable, spread, mismo patrón que
+      // `mensaje_usuario_agregado` usa para marcar `hitlRespondido` en un mensaje previo.
+      return {
+        ...estado,
+        messages: estado.messages.map((mensaje) =>
+          mensaje.id === evento.mensajeId ? { ...mensaje, conexionDescartada: true } : mensaje,
+        ),
+      };
+
+    case 'tarjeta_resuelta':
+      // Mismo criterio que `conexion_descartada`: inmutable, spread, sólo toca el mensaje de este id.
+      return {
+        ...estado,
+        messages: estado.messages.map((mensaje) =>
+          mensaje.id === evento.mensajeId ? { ...mensaje, ...evento.patch } : mensaje,
+        ),
+      };
 
     case 'tiempo_agotado':
       // Sólo degrada 'waiting' -> 'timeout' (mismo guard que el `setSendStatus((current) => ...)`
@@ -266,6 +382,7 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
           text: reply.text,
           choices: reply.choices,
           card: reply.card,
+          creadoEn: reply.createdAt,
         });
       }
       if (additions.length === 0) {

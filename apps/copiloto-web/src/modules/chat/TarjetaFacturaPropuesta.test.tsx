@@ -8,14 +8,35 @@ vi.mock('@copiloto/core', async (importOriginal) => {
   return {
     ...original,
     confirmarConTokenFresco: vi.fn(),
+    estadoFactura: vi.fn(),
   };
 });
 
-import { confirmarConTokenFresco, leerFacturaPropuesta } from '@copiloto/core';
+import { confirmarConTokenFresco, estadoFactura, leerFacturaPropuesta, type EstadoFacturaResp } from '@copiloto/core';
 
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 
 const mockConfirmar = vi.mocked(confirmarConTokenFresco);
+const mockEstado = vi.mocked(estadoFactura);
+
+function estadoEmitido(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
+  return {
+    estado: 'emitida',
+    faltantes: [],
+    items: [],
+    total: '50000',
+    tokenConfirmacion: null,
+    resultado: { ok: true, duplicado: false, cae: '74123456789012', caeVto: '2026-10-01', nro: 42, tipoCbte: 11, puntoVenta: 1, id: null },
+    pdf: null,
+    drive: null,
+    receptor: null,
+    datosVenta: null,
+    motivo: null,
+    motivoCodigo: null,
+    terminado: false,
+    ...over,
+  };
+}
 
 function propuesta(over: Record<string, unknown> = {}) {
   const p = leerFacturaPropuesta({
@@ -47,6 +68,12 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(screen.getByText('Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.')).toBeInTheDocument();
   });
 
+  it('🔴 avisa ANTES de emitir que se anula con nota de crédito, no se borra (H-23)', () => {
+    render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    expect(screen.getByTestId('factura-propuesta-aviso-anulacion')).toHaveTextContent('nota de crédito');
+  });
+
   it('muestra cliente, ítems y total', () => {
     render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
@@ -72,6 +99,55 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(mockConfirmar).toHaveBeenCalledWith('presu-12');
     await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeInTheDocument());
     expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent('Factura emitida.');
+  });
+
+  it('BL-C2: tras emitir muestra número, CAE y vencimiento; el PDF que llega después aparece sin recargar', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mockConfirmar.mockResolvedValue({ emitida: true, estado: estadoEmitido() });
+      mockEstado.mockResolvedValue(
+        estadoEmitido({ terminado: true, pdf: { url: 'https://afip.test/f.pdf', nombre: 'f.pdf', expiraAt: null } }),
+      );
+      render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+      fireEvent.click(screen.getByTestId('factura-propuesta-emitir'));
+
+      await waitFor(() => expect(screen.getByTestId('factura-emitida-cae')).toHaveTextContent('74123456789012'));
+      expect(screen.getByTestId('factura-emitida-numero')).toHaveTextContent('0001-00000042');
+      expect(screen.getByTestId('factura-emitida-vto')).toHaveTextContent('2026-10-01');
+      expect(screen.getByTestId('factura-emitida-preparando')).toBeInTheDocument();
+      expect(screen.queryByTestId('factura-emitida-pdf')).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(1600);
+
+      const pdf = await screen.findByTestId('factura-emitida-pdf');
+      expect(pdf).toHaveAttribute('href', 'https://afip.test/f.pdf');
+      expect(screen.queryByTestId('factura-emitida-preparando')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('BL-C2: terminado sin PDF ni Drive dice que se emitió (CAE válido), no que falló', async () => {
+    mockConfirmar.mockResolvedValue({ emitida: true, estado: estadoEmitido({ terminado: true }) });
+    render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+    fireEvent.click(screen.getByTestId('factura-propuesta-emitir'));
+    expect(await screen.findByTestId('factura-emitida-sin-pdf')).toHaveTextContent('CAE es válido');
+    expect(screen.getByTestId('factura-emitida-cae')).toBeInTheDocument();
+  });
+
+  it('BL-C2: Drive gana sobre el link de AFIP (no vence)', async () => {
+    mockConfirmar.mockResolvedValue({
+      emitida: true,
+      estado: estadoEmitido({
+        terminado: true,
+        pdf: { url: 'https://afip.test/f.pdf', nombre: 'f.pdf', expiraAt: null },
+        drive: { guardado: true, link: 'https://drive.test/f' },
+      }),
+    });
+    render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+    fireEvent.click(screen.getByTestId('factura-propuesta-emitir'));
+    expect(await screen.findByTestId('factura-emitida-pdf')).toHaveAttribute('href', 'https://drive.test/f');
   });
 
   it('🔴 `emitida:false` (no-op del backend) NO pasa a terminal — muestra el motivo y se puede reintentar', async () => {

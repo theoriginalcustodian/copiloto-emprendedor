@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER,
+from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA,
                              REGLA_FACTURAS_IMPAGAS_VIEJAS,
                              REGLA_GASTO_MES_ALTO, REGLA_PRESUPUESTOS_ENFRIANDOSE,
                              REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
@@ -27,13 +27,13 @@ def _texto_certificado(d: dict) -> str:
     """Tres estados bien distintos. Decirlos con una sola frase mentiría en dos: "vence en -12
     días" no es un aviso, es un bug a la vista del emprendedor."""
     if d.get("ilegible"):
-        return ("No pudimos leer tu certificado de AFIP. Revisalo: si está dañado, no vas a poder "
+        return ("No pudimos leer tu certificado de ARCA. Revisalo: si está dañado, no vas a poder "
                 "facturar.")
     dias = d.get("dias")
     if d.get("vencido"):
-        return (f"Tu certificado de AFIP venció hace {abs(dias or 0)} días. Hasta que lo renueves "
+        return (f"Tu certificado de ARCA venció hace {abs(dias or 0)} días. Hasta que lo renueves "
                 f"no vas a poder facturar.")
-    return (f"Tu certificado de AFIP vence en {dias} días. Renovalo antes de esa fecha para no "
+    return (f"Tu certificado de ARCA vence en {dias} días. Renovalo antes de esa fecha para no "
             f"quedarte sin facturar.")
 
 _PLANTILLAS = {
@@ -54,6 +54,11 @@ _PLANTILLAS = {
     REGLA_CAE_POR_VENCER:
         lambda d: f"La factura {d.get('nro') or ''} tiene el CAE por vencer en {d.get('dias')} días.",
     REGLA_CERTIFICADO_POR_VENCER: _texto_certificado,
+    REGLA_CONEXION_CAIDA:
+        lambda d: (f"Se me cayó la conexión con {d.get('nombre') or 'un servicio'}"
+                   + (", así que los cobros de hoy pueden estar incompletos."
+                      if d.get("servicio") == "mercadopago" else ".")
+                   + " Reconectala y sigo."),
 }
 
 
@@ -66,7 +71,8 @@ def _redactar_plantilla(regla: str, datos: dict) -> str:
     return plantilla(datos or {}) if plantilla else f"Aviso: {regla}."
 
 
-def avanzar_tablero(conn_factory: Callable, cliente_id: str) -> dict:
+def avanzar_tablero(conn_factory: Callable, cliente_id: str,
+                    composio_conexiones: Callable | None = None) -> dict:
     """Corre el pipeline entero y devuelve el tablero YA actualizado
     (`TarjetaStore.listar_tablero`).
 
@@ -77,7 +83,7 @@ def avanzar_tablero(conn_factory: Callable, cliente_id: str) -> dict:
       un candidato silenciado sigue siendo VERDADERO (ver docstring de `detectar_todos`); filtrar
       por silencio acá cerraría por error tarjetas de algo que sigue vigente.
     """
-    crudos = detectar_todos(conn_factory, cliente_id)
+    crudos = detectar_todos(conn_factory, cliente_id, composio_conexiones=composio_conexiones)
     avisos = AvisosEmitidosStore(conn_factory, cliente_id)
     tarjetas = TarjetaStore(conn_factory, cliente_id)
 

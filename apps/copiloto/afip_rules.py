@@ -411,7 +411,7 @@ def validar_datos_venta(
             ErrorValidacion(
                 "fecha_fuera_de_rango",
                 "fecha",
-                f"AFIP sólo acepta comprobantes con fecha dentro de "
+                f"ARCA sólo acepta comprobantes con fecha dentro de "
                 f"±{MARGEN_DIAS_FECHA_COMPROBANTE} días (la indicada difiere en {delta}).",
             )
         )
@@ -435,7 +435,7 @@ def validar_datos_venta(
                 ErrorValidacion(
                     "fecha_servicio_faltante",
                     nombre,
-                    "Al facturar servicios, AFIP exige el período del servicio y el vencimiento del pago.",
+                    "Al facturar servicios, ARCA exige el período del servicio y el vencimiento del pago.",
                 )
             )
         if (
@@ -797,7 +797,7 @@ def validar_anulacion(comprobante: dict | None, *, importe_nc=None) -> list[Erro
     if not comprobante.get("cae"):
         errores.append(ErrorValidacion(
             "sin_cae", "comprobante",
-            "El comprobante no tiene CAE: no llegó a autorizarse en AFIP, no hay nada que anular."))
+            "El comprobante no tiene CAE: no llegó a autorizarse en ARCA, no hay nada que anular."))
 
     if importe_nc is not None and comprobante.get("total") is not None:
         try:

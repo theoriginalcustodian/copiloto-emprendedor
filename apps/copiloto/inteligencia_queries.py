@@ -22,11 +22,12 @@ explícito es la barrera efectiva, con test adversarial que la ejercita (regla 7
 from __future__ import annotations
 
 import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
+from mp_credential_store import MpCredentialStore
 from trabajo_store import TrabajoStore
 
 _SCHEMA = "uc_factory"
@@ -56,6 +57,15 @@ _GASTOS = f"SELECT fecha AS dia, monto FROM {_SCHEMA}.copiloto_gastos WHERE clie
 DIAS_VENCIDO = 30
 
 MONEDA = "ARS"
+
+
+def variacion_pct(actual: Decimal, anterior: Decimal) -> str | None:
+    """`(actual − anterior) / |anterior| × 100` a 1 decimal, como string. `None` si `anterior == 0`:
+    no es «0% de variación», es «no se puede calcular» (la app omite el chip entero, nunca pinta 0%)."""
+    if anterior == 0:
+        return None
+    pct = (actual - anterior) / abs(anterior) * 100
+    return str(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _primer_dia_del_mes(d: datetime.date) -> datetime.date:
@@ -178,9 +188,16 @@ class InteligenciaQueries:
     def portada(self) -> dict:
         """El §3.1 completo, con datos reales. Importes como decimal string (regla del repo: el float
         de JS pierde centavos). `caja.saldo` = «Queda» del MES (ingresos − gastos del mes), coherente
-        con el titular mensual del contrato §1 («Julio · Entró/Salió/Queda»); es igual a
-        `mes.rentabilidad`. [COSTURA a confirmar en el connect: si se quiere la caja ACUMULADA de toda
-        la historia en vez de la del mes, es un cambio de una línea — se marca en el avance.]"""
+        con el titular mensual del contrato §1 («Julio · Entró/Salió/Queda»). [COSTURA a confirmar en
+        el connect: si se quiere la caja ACUMULADA de toda la historia en vez de la del mes, es un
+        cambio de una línea — se marca en el avance.]
+
+        `mes.rentabilidad` (H-A4-3, auditoría A4) es `None`: "rentabilidad" real es ingresos menos
+        gastos ASIGNADOS a un trabajo, y hoy no existe esa asignación (gasto → trabajo) en el modelo —
+        `ingresos_mes - gastos_mes` es flujo de caja del mes (lo que YA calcula `caja.saldo`), no
+        rentabilidad. Mostrar ese mismo número bajo el nombre "rentabilidad" es un estado del prototipo
+        que el código nunca podía alcanzar (auditoría A4, H-A4-3). Vuelve a tener valor cuando exista
+        esa asignación."""
         hoy = hoy_del_negocio()
         ini_mes, ini_prox = _primer_dia_del_mes(hoy), _mes_siguiente(hoy)
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -191,12 +208,22 @@ class InteligenciaQueries:
             serie = self._serie_mensual(cur, 6)
             mejores = self._mejores_clientes(cur, 5)
         rentabilidad_mes = ingresos_mes - gastos_mes
+        # Mes calendario anterior COMPLETO = penúltimo punto de la serie (sin huecos, el último es el
+        # mes en curso). Mismo cálculo que `caja.saldo`, aplicado al mes de antes (BL-J3).
+        previo = serie[-2]
+        rentabilidad_previa = Decimal(previo["ingresos"]) - Decimal(previo["gastos"])
+        # K-09: MercadoPago es hoy la única fuente automática de cobros; con su conexión caída «lo que
+        # entró» puede estar incompleto y la app no debe comparar contra el mes anterior.
+        incompleta = MpCredentialStore(self._conn_factory, self._cliente_id, None).salud() == "caido"
         return {
-            "caja": {"saldo": dos_decimales(rentabilidad_mes), "moneda": MONEDA},
+            "caja": {"saldo": dos_decimales(rentabilidad_mes), "moneda": MONEDA,
+                     "fecha_corte": hoy.isoformat(),
+                     "variacion_pct": variacion_pct(rentabilidad_mes, rentabilidad_previa),
+                     "incompleta": incompleta},
             "mes": {
                 "ingresos": dos_decimales(ingresos_mes),
                 "gastos": dos_decimales(gastos_mes),
-                "rentabilidad": dos_decimales(rentabilidad_mes),
+                "rentabilidad": None,  # H-A4-3: sin asignación gasto→trabajo, no hay rentabilidad real
                 "facturado": dos_decimales(facturado_mes),
                 "cobrado": dos_decimales(cobrado_mes),
             },

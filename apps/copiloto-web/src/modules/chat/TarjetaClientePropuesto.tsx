@@ -2,9 +2,14 @@ import { useState } from 'react';
 
 import type { DatosCliente, DuplicadoCliente } from '@copiloto/core';
 
-import { Button, Surface } from '../../design-system';
+import { Recibo, Surface } from '../../design-system';
 import { FormularioCliente } from '../clientes/FormularioCliente';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_CLIENTE,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -42,7 +47,7 @@ type Resolucion =
   | { estado: 'ya_existe'; duenoNombre: string | null; duenoId: number | null }
   | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-cliente-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_CLIENTE;
 
 function leerResolucion(mensajeId: string): Resolucion | null {
   const parsed = leerResolucionCardCruda(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId));
@@ -100,45 +105,36 @@ export function TarjetaClientePropuesto({
 
   if (estado.fase === 'guardado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="cliente-propuesto-guardado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Cliente agregado: {estado.nombre}
-        </Surface>
-      </div>
+      <Recibo testId="cliente-propuesto-guardado" tono="exito" titulo={`Cliente agregado: ${estado.nombre}`} />
     );
   }
 
   if (estado.fase === 'ya_existe') {
     const { duenoNombre, duenoId } = estado;
     return (
-      <div className="chat-row chat-row--assistant" data-testid="cliente-propuesto-ya-existe">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          <p>
-            {duenoNombre != null
-              ? `Ese cliente ya está en tu cartera: ${duenoNombre}.`
-              : 'Ese cliente ya está en tu cartera.'}
-          </p>
-          {duenoId != null && onAbrirCliente != null && (
-            <Button
-              variant="cancel"
-              onClick={() => onAbrirCliente(duenoId)}
-              data-testid="cliente-propuesto-ver-cliente"
-            >
-              Ver cliente
-            </Button>
-          )}
-        </Surface>
-      </div>
+      <Recibo
+        testId="cliente-propuesto-ya-existe"
+        titulo={
+          duenoNombre != null
+            ? `Ese cliente ya está en tu cartera: ${duenoNombre}.`
+            : 'Ese cliente ya está en tu cartera.'
+        }
+        accion={
+          duenoId != null && onAbrirCliente != null
+            ? {
+                etiqueta: 'Ver cliente',
+                onClick: () => onAbrirCliente(duenoId),
+                testId: 'cliente-propuesto-ver-cliente',
+              }
+            : undefined
+        }
+      />
     );
   }
 
   if (estado.fase === 'descartado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="cliente-propuesto-descartado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          No lo agregamos.
-        </Surface>
-      </div>
+      <Recibo testId="cliente-propuesto-descartado" titulo="No lo agregamos." />
     );
   }
 

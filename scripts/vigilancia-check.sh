@@ -22,10 +22,10 @@
 #     para juzgar si una sesión trabaja (.claude/commands/monitoreo.md). Acá sólo se mide "hace
 #     cuántos minutos escribió algo", que es justamente lo que no le costó nada acertar.
 #
-# LÍMITE DOCUMENTADO: cola-check.sh deriva su propio PLAN.md desde SU PATH de script, no acepta
-# override — así que el chequeo de COLA sólo corre contra el buzón REAL (coordinacion/ del repo).
-# Contra un buzón de prueba (BUZON_DIR apuntando a un fixture sin PLAN.md) ese paso se salta solo
-# (no hay PLAN.md ahí) — no hace falta tocar cola-check.sh para poder probar este script aislado.
+# COLA: cola-check.sh lee el PLAN.md del MISMO buzón que se vigila (COLA_PLAN="$BUZON/PLAN.md").
+# Antes lo derivaba de su propio path: desde un worktree buscaba `coordinacion/` ahí, no existe, y
+# el vigilante daba exit 1 fijo por «No existe PLAN.md» (21/09). Si el buzón no tiene PLAN.md
+# (fixture de prueba), el paso se salta solo.
 #
 # Uso:
 #   scripts/vigilancia-check.sh                  # contra el buzón y transcripts reales
@@ -40,6 +40,37 @@ BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
 # shellcheck source=lib/buzon-roles.sh
 . "$REPO_ROOT/scripts/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 TRANSCRIPTS="${TRANSCRIPTS_DIR:-$HOME/.claude/projects/c--Proyectos-Claude-Claude-code-copiloto-emprendedor}"
+RAMAS_GIT_DIR="${RAMAS_GIT_DIR:-$REPO_ROOT}"   # repo del que salen las ramas-señal (override para test)
+SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
+
+# Slugs de los WORKTREES de este repo. Claude Code guarda el transcript bajo un slug derivado del
+# cwd donde arrancó la ventana: una sesión lanzada desde `C:/gfw-src/wt-fe1b` escribe en
+# `C--gfw-src-wt-fe1b/`, no en el slug principal. El bloque 3 sólo miraba el principal, así que
+# una sesión de worktree que se muriera no disparaba nunca SESION MUDA — el `mt=0 → continue`
+# se la comía (medido 2026-09-21: FE1, FE2 y auditoría corrían las tres desde worktrees).
+# Se derivan de `git worktree list`, no de una lista escrita a mano ni de un glob por nombre de
+# rol (`wt-fe1b` no contiene «frontend1»: ése es el agujero del 3.bis).
+#   TRANSCRIPTS_EXTRA_DIRS sin definir + TRANSCRIPTS_DIR sin definir → auto (uso real)
+#   TRANSCRIPTS_DIR definido (test)                                  → ninguno: el fixture aísla
+#   TRANSCRIPTS_EXTRA_DIRS=auto                                      → auto, contra RAMAS_GIT_DIR/SLUGS_ROOT
+#   TRANSCRIPTS_EXTRA_DIRS=<dirs separados por newline>              → esos
+slugs_de_worktrees() {
+  local wt slug d
+  git -C "$RAMAS_GIT_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' |
+  while IFS= read -r wt; do
+    slug="$(printf '%s' "$wt" | sed 's/[^A-Za-z0-9]/-/g')"
+    # La letra de unidad cambia de caja según quién abrió la ventana (`c--` / `C--`).
+    d="$(find "$SLUGS_ROOT" -mindepth 1 -maxdepth 1 -type d -iname "$slug" 2>/dev/null | head -1)"
+    [ -n "$d" ] && [ "$d" != "$TRANSCRIPTS" ] && printf '%s\n' "$d"
+  done
+}
+if [ "${TRANSCRIPTS_EXTRA_DIRS:-}" = "auto" ] || { [ -z "${TRANSCRIPTS_EXTRA_DIRS+x}" ] && [ -z "${TRANSCRIPTS_DIR:-}" ]; }; then
+  TRANSCRIPTS_EXTRA="$(slugs_de_worktrees)"
+else
+  TRANSCRIPTS_EXTRA="${TRANSCRIPTS_EXTRA_DIRS:-}"
+fi
+TRANSCRIPTS_TODOS=("$TRANSCRIPTS")
+while IFS= read -r _d; do [ -n "$_d" ] && [ -d "$_d" ] && TRANSCRIPTS_TODOS+=("$_d"); done <<< "$TRANSCRIPTS_EXTRA"
 UMBRAL_MUERTA_MIN="${UMBRAL_MUERTA_MIN:-30}"
 QUIET=0
 DRY_RUN=0
@@ -52,9 +83,32 @@ alarma=0
 reporte=()
 add() { reporte+=("$1"); alarma=1; }
 
+# ── 0) HOOKS: el pre-push de secretos depende de una config LOCAL compartida ──────────────────
+# `core.hooksPath` no está versionada y la comparten todos los worktrees: si alguien la deja
+# absoluta, el scanner de secretos (#601) deja de correr en TODOS los pushes sin aviso, y el repo
+# es público. Pasó dos veces (H-A3-1, H-A4-1) y nadie encontró quién la reescribe. `gate.sh` la
+# chequea (mismo criterio, H-A4-1), pero sólo cuando alguien corre un gate. Acá se chequea en cada
+# latido de cron: la ventana ciega baja a ~3 min, y el mtime del config deja la HORA del cambio
+# para correlacionarla con lo que hacía cada sesión en ese minuto (la causa raíz sigue sin nombre).
+# Fuente parametrizada (HOOKS_REPO_DIR): sin eso, un fixture con TRANSCRIPTS_DIR leería el `.git`
+# REAL y su veredicto dependería de la máquina (memoria un-fixture-no-aisla-lo-que-el-script-lee-
+# por-fuera). En modo fixture sin HOOKS_REPO_DIR, el chequeo se salta.
+if [ -n "${HOOKS_REPO_DIR:-}" ] || [ -z "${TRANSCRIPTS_DIR:-}" ]; then
+  hooks_repo="${HOOKS_REPO_DIR:-$REPO_ROOT}"
+  hooks_actual="$(git -C "$hooks_repo" config --get core.hooksPath 2>/dev/null || echo '(sin setear)')"
+  if [ "$hooks_actual" != ".githooks" ]; then
+    hooks_cfg="$(git -C "$hooks_repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/config"
+    hooks_mt="$(stat -c %Y "$hooks_cfg" 2>/dev/null || echo 0)"
+    add "HOOKS: core.hooksPath='$hooks_actual' (esperado '.githooks'). El pre-push de secretos puede
+no estar corriendo en NINGÚN worktree y el repo es PÚBLICO. Config tocado por última vez a las
+$(date -d "@$hooks_mt" '+%H:%M:%S') — cruzalo con lo que hacía cada sesión en ese minuto (H-A4-1).
+Fix: git config core.hooksPath .githooks"
+  fi
+fi
+
 # ── 1) COLA: hito arrancable sin arrancar (sólo aplica al buzón real, ver nota arriba) ─────────
 if [ -f "$BUZON/PLAN.md" ]; then
-  cola_out="$(bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
+  cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
   [ -n "$cola_out" ] && add "COLA:
 $cola_out"
 fi
@@ -62,14 +116,34 @@ fi
 # ── 2) ESCALADORES DE EDAD (Gancho 3): contrato_/pedido_/en-curso viejos ───────────────────────
 # --dry-run se propaga: permite correr TODO este script contra el buzón real sin escribir
 # urgente_ — sólo lectura, útil para smoke-test/evidencia sin riesgo de mutar el canal vivo.
+# Override SOLO para test: el gate tiene que poder probarse contra un escalador de mentira que
+# simule morirse a mitad. Sin este seam el centinela de abajo no es verificable, y un control
+# que no se puede ejercitar es indistinguible de uno ausente.
+ESCALADOR_SH="${ESCALADOR_SH:-$REPO_ROOT/scripts/escaladores-buzon.sh}"
 if [ "$DRY_RUN" = "1" ]; then
-  esc_out="$(bash "$REPO_ROOT/scripts/escaladores-buzon.sh" --dry-run "$BUZON" 2>&1)"
+  esc_out="$(bash "$ESCALADOR_SH" --dry-run "$BUZON" 2>&1)"
 else
-  esc_out="$(bash "$REPO_ROOT/scripts/escaladores-buzon.sh" "$BUZON" 2>&1)"
+  esc_out="$(bash "$ESCALADOR_SH" "$BUZON" 2>&1)"
 fi
 esc_rc=$?
-[ "$esc_rc" -ne 0 ] && add "ESCALADORES:
+# El escalador termina SIEMPRE con la linea centinela. Si no esta, no llego al final: murio a
+# mitad (el 2026-09-21 fue por agotamiento de forks, con 16 worktrees y 5 sesiones sobre el mismo
+# Git for Windows). Un escalador muerto a mitad devuelve un reporte PARCIAL, y un reporte parcial
+# sin alarmas es indistinguible de "no hay nada que escalar" — que es exactamente el silencio que
+# este gate existe para no producir. Sin el centinela, mergear el fix del escalador no alcanzaba:
+# el gate seguia pudiendo reportar calma sobre una medicion que nunca ocurrio.
+esc_completo=0
+case "$esc_out" in *"ESCALADORES: FIN-OK"*) esc_completo=1 ;; esac
+esc_out="${esc_out%ESCALADORES: FIN-OK}"
+esc_out="${esc_out%$'\n'}"
+if [ "$esc_completo" = "0" ]; then
+  add "ESCALADORES NO TERMINARON (rc=${esc_rc}) — falta la linea centinela: el reporte de abajo
+esta INCOMPLETO y su falta de alarmas no es dato. Volve a correrlo antes de concluir nada.
 $esc_out"
+elif [ "$esc_rc" -ne 0 ]; then
+  add "ESCALADORES:
+$esc_out"
+fi
 
 # ── 2.bis) LINT de contratos: un contrato_ nuevo sin artefacto es prosa ambigua ──────────────
 # Regla del formato desde 2026-07-26 (context engineering): todo contrato_/addendum_ baja con
@@ -152,6 +226,13 @@ if [ -d "$TRANSCRIPTS" ]; then
   mt_be=0; mt_fe=0; mt_pl=0; mt_me=0; mt_sin_rol=0
   while IFS= read -r -d '' f; do
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    # Corridas del SDK (revisión de seguridad del pre-push, `claude -p`…) no son ventanas: no tienen
+    # cron ni rol. Contadas como «ventana SIN rol» tapaban una SESION MUDA real con un AVISO
+    # (21/09: un security-review en wt-fe1b escondió a BACKEND callado). `grep -m1` sobre el archivo
+    # entero, no sobre un `head -c`: el primer mensaje de un review trae el diff y el entrypoint
+    # quedaba después de los primeros 20 KB (medido: e628061a salía sin entrypoint).
+    ep="$(grep -o -m1 '"entrypoint":"[^"]*"' "$f" 2>/dev/null || true)"
+    [[ "$ep" == *'"sdk-'* ]] && continue
     # ⚠️ El rol se cuenta SÓLO dentro de las líneas que son el PROMPT DEL CRON que esta ventana
     # RECIBE — no en cualquier mención del texto. Contar menciones sueltas ya falló dos veces:
     # una sesión que le escribe contratos a otra la nombra más que a sí misma. Medido 2026-07-24
@@ -159,7 +240,7 @@ if [ -d "$TRANSCRIPTS" ]; then
     # 'PLANIFICACIÓN' 2 → se rotulaba a sí misma como BACKEND. La identidad la asigna quien manda
     # el cron, no el contenido del trabajo. (En JSONL cada mensaje es UNA línea, así que el prompt
     # del cron entero cae en una sola.)
-    cron_txt="$(tail -c 400000 "$f" 2>/dev/null | grep -E 'Vig[ií]a de coordinaci[oó]n|Control de (sesiones|SESIONES)|Monitor de PAR[AÁ]LISIS' || true)"
+    cron_txt="$(tail -c 400000 "$f" 2>/dev/null | grep -E 'Vig(i|í)a de coordinaci(o|ó)n|Control de (sesiones|SESIONES)|Monitor de PAR(A|Á)LISIS' || true)"
     b=$( printf '%s' "$cron_txt" | grep -oc 'sesión BACKEND' || true)
     fr=$(printf '%s' "$cron_txt" | grep -oc 'sesión FRONTEND' || true)
     pl=$(printf '%s' "$cron_txt" | grep -oc 'sesión PLANIFICACIÓN' || true)
@@ -189,7 +270,7 @@ if [ -d "$TRANSCRIPTS" ]; then
     esac
   # -newermt '-4 hours': mismo filtro que no-ocio-check.sh para ignorar transcripts de sesiones
   # cerradas hace días (ventanas viejas no son "sesión muda hoy", son ruido de fondo).
-  done < <(find "$TRANSCRIPTS" -maxdepth 1 -name '*.jsonl' -newermt '-4 hours' -print0 2>/dev/null)
+  done < <(find "${TRANSCRIPTS_TODOS[@]}" -maxdepth 1 -name '*.jsonl' -newermt '-4 hours' -print0 2>/dev/null)
 
   for par in "BACKEND:$mt_be" "FRONTEND:$mt_fe" "PLANIFICACION:$mt_pl" "MANEJO_DE_ERRORES:$mt_me"; do
     rol="${par%%:*}"; mt="${par##*:}"
@@ -234,7 +315,7 @@ fi
 #   b) los slugs hermanos, donde el rol viaja en el NOMBRE del directorio — una sesión lanzada
 #      desde su propio worktree tiene slug propio (`…--claude-worktrees-auditoria`) y jamás
 #      aparece en (a). Ése es exactamente el caso que dejó a auditoría fuera del radar.
-SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
+# SLUGS_ROOT se define arriba, junto a los slugs de worktrees que también lo usan.
 # Los mt_* nacen dentro del `if [ -d "$TRANSCRIPTS" ]` de arriba: si ese directorio no existe
 # quedan sin definir y `set -u` abortaría el script justo en el chequeo que existe para el caso
 # en que NO hay transcripts. Default explícito antes de tocarlos.
@@ -256,6 +337,30 @@ senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$mejor" ] && mejor="$m"
   done < <(find "$BUZON" -type f \( "${_firma_args[@]:1}" \) -newermt '-8 hours' -print0 2>/dev/null)
+  # (d) el último COMMIT en una rama cuyo nombre lleva el rol. Es la señal que faltaba para la
+  # sesión que está haciendo justo lo que se le pidió: código, no mensajes. (b) no la ve porque los
+  # tres transcripts comparten slug, y (c) tampoco, porque el buzón sólo se toca al cerrar un hito
+  # — entre dos `avance_` pueden pasar horas de trabajo real. Ver rama_patrones() en
+  # lib/buzon-roles.sh para por qué los prefijos son estrictos.
+  # Local y sin red: los 14 worktrees comparten un solo `.git`, así que `for-each-ref` ya tiene las
+  # ramas de las otras sesiones aunque nunca hayan pusheado.
+  #
+  # RAMAS_GIT_DIR existe por la misma razón que SLUGS_ROOT: sin override, un fixture NO aísla esta
+  # señal —el buzón es de mentira pero el `.git` es el real— y el control positivo del caso 1 pasa
+  # a verde porque backend commiteó hace un minuto en la máquina donde corre el test. Se verificó
+  # en vivo: con la señal (d) sin parametrizar, test-vigilancia-rol-ausente dio 4 fallos.
+  local _prefijos; _prefijos="$(rama_patrones "$rol")"
+  if [ -n "$_prefijos" ]; then
+    while IFS=' ' read -r ts ref; do
+      [ -z "${ts:-}" ] && continue
+      ref="${ref#origin/}"
+      while IFS= read -r p; do
+        case "$ref" in "$p"*) [ "$ts" -gt "$mejor" ] && mejor="$ts"; break ;; esac
+      done <<< "$_prefijos"
+    done < <(git -C "$RAMAS_GIT_DIR" for-each-ref --sort=-committerdate \
+               --format='%(committerdate:unix) %(refname:short)' \
+               refs/heads refs/remotes/origin 2>/dev/null | head -40)
+  fi
   printf '%s' "$mejor"
 }
 

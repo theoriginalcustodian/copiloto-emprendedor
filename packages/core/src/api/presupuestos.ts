@@ -354,6 +354,13 @@ export interface CrearPresupuestoRequest {
    * circulando serían indistinguibles para el emprendedor.
    */
   reemplazaA?: number;
+  /**
+   * Clave de idempotencia (K-01 / BL-D1): un UUID generado UNA vez por instancia de formulario. Mismo
+   * `idemKey` ⇒ el backend devuelve el presupuesto ya creado en vez de crear otro (doble toque, reintento
+   * de red). Un cliente que no la manda se comporta como antes. No se regenera en un reintento del mismo
+   * submit — regenerarla anula la protección.
+   */
+  idemKey?: string;
 }
 
 function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
@@ -377,6 +384,7 @@ function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
   };
   if (req.moneda !== undefined) body.moneda = req.moneda;
   if (req.reemplazaA !== undefined) body.reemplaza_a = req.reemplazaA;
+  if (req.idemKey !== undefined) body.idem_key = req.idemKey;
   return body;
 }
 
@@ -391,15 +399,54 @@ function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
  */
 export async function crearPresupuesto(
   req: CrearPresupuestoRequest,
-): Promise<ConDisponibilidad<{ presupuesto: Presupuesto }>> {
+): Promise<ConDisponibilidad<{ presupuesto: Presupuesto; repetido?: boolean; sugerencias?: SugerenciasPresupuesto | null }>> {
   try {
-    const raw = await apiClient.post<{ presupuesto: PresupuestoCrudo }>('/presupuestos', aBodyCrudo(req));
+    const raw = await apiClient.post<{
+      presupuesto: PresupuestoCrudo;
+      repetido?: boolean;
+      sugerencias?: { mandar_por_mail?: { doc_link?: string | null } | null } | null;
+    }>(
+      '/presupuestos',
+      aBodyCrudo(req),
+    );
     if (!esRespuestaDelEndpoint(raw, 'presupuesto')) return { status: 'no_disponible' };
-    return { status: 'ok', presupuesto: normalizar(raw.presupuesto) };
+    // `repetido` informa, no ramifica: el destino visual es el mismo presupuesto en los dos casos.
+    return {
+      status: 'ok',
+      presupuesto: normalizar(raw.presupuesto),
+      repetido: raw.repetido === true,
+      sugerencias: normalizarSugerencias(raw.sugerencias),
+    };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     throw err;
   }
+}
+
+/**
+ * K-07 — acciones que el backend sugiere tras guardar. **Aditivo**: un backend viejo no manda el campo y
+ * eso es `null` (cliente viejo = comportamiento de antes). `mandarPorMail` sólo viene con un Doc que
+ * mandar; sin él no se ofrece nada. Ofrecer NO envía: el mail lo compone el usuario en su app de correo.
+ */
+export interface SugerenciasPresupuesto {
+  mandarPorMail: { docLink: string } | null;
+}
+
+function normalizarSugerencias(
+  raw: { mandar_por_mail?: { doc_link?: string | null } | null } | null | undefined,
+): SugerenciasPresupuesto | null {
+  const docLink = raw?.mandar_por_mail?.doc_link;
+  if (typeof docLink !== 'string' || docLink === '') return null;
+  return { mandarPorMail: { docLink } };
+}
+
+/** `mailto:` con el Doc adentro — «Mandalo por mail» abre el correo del usuario, no manda nada solo. */
+export function mailtoMandarPresupuesto(p: { numero: number; contacto: string }, docLink: string): string {
+  const para = p.contacto.includes('@') ? encodeURIComponent(p.contacto.trim()) : '';
+  const asunto = encodeURIComponent(`Presupuesto N° ${p.numero}`);
+  const cuerpo = encodeURIComponent(`Hola, te paso el presupuesto:
+${docLink}`);
+  return `mailto:${para}?subject=${asunto}&body=${cuerpo}`;
 }
 
 /**

@@ -37,6 +37,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+from catalog import requiere_conexion_card, sugerencia_armar_factura_card  # noqa: E402
 from deposito_traumas import depositar as depositar_trauma  # noqa: E402
 from fingerprint import fingerprint_de_error  # noqa: E402
 # La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
@@ -51,6 +52,7 @@ from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # n
 # literal acá y un rename allá se descubren en producción, cuando el copiloto marca y no pasa nada.
 from cobro_store import COBRADA, ORIGEN_MANUAL  # noqa: E402
 from mi_dia_tarjeta_store import HACIENDO, HECHA, PARA_HOY, EstadoInvalido  # noqa: E402
+from presupuesto_sugerencias import sugerencia_de_aprobacion  # noqa: E402
 from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E402
                                TransicionInvalida)
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
@@ -263,7 +265,7 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
 
 EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
     "name": "emitir_factura",
-    "description": "Arma una factura AFIP a partir de lo dictado ('facturale 50 mil a Juan por el "
+    "description": "Arma una factura electrónica ARCA (ex AFIP) a partir de lo dictado ('facturale 50 mil a Juan por el "
                    "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
                    "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
                    "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió — el "
@@ -273,7 +275,7 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
                    "de llamarla — la tarjeta que devuelve ya lo pide con un campo editable si falta. "
                    "Si el concepto es 'servicios' (p. ej. un service), TAMPOCO le preguntes por el "
                    "período del servicio ni por el vencimiento del pago — esos datos NI SIQUIERA SON "
-                   "PARÁMETROS de esta tool, así que no hay forma de que se los des igual; si AFIP los "
+                   "PARÁMETROS de esta tool, así que no hay forma de que se los des igual; si ARCA los "
                    "exige, la tarjeta los va a pedir con un campo editable, igual que cualquier otro "
                    "faltante. Preguntar antes de llamar es el error: la tool está hecha para invocación "
                    "parcial.",
@@ -596,14 +598,21 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
                           observation={"error": "MercadoPago no esta disponible en tu cuenta"})
     if not amount:
         return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "falta el monto"})
+    creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
+    if not creds:
+        # H-A4-11: no pedir HITL sobre algo imposible -- mismo criterio que H-A3-2(b) (tool_catalog.py
+        # ~1612) para el camino genérico de servicios Composio, acá aplicado a MercadoPago (que tiene
+        # SU PROPIO store de credenciales, no pasa por `gateway.connection_status`). Se lo decimos ANTES
+        # de pedir confirmación, con la MISMA card (`requiere_conexion_card`) que usa cualquier otra
+        # tool -- no es un `if name == "cobro_mp"` en el flujo de dispatch, es esta tool chequeando SU
+        # propia capacidad, igual que ya hace cada módulo de servicio con `mod.TOOLKIT`.
+        return ToolResult(tool_call_id=idem_key, status="error",
+                          observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
+                                       "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
                           observation={"preview": f"generar link de cobro por ${amount} ({concept})",
                                        **_obs_service("mercadopago")})
-    creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
-    if not creds:
-        return ToolResult(tool_call_id=idem_key, status="error",
-                          observation={"error": "conecta tu cuenta de MercadoPago primero"})
     dedup = mp_dedup_factory(ctx.cliente_id) if mp_dedup_factory else None
     if dedup:                                             # spike C: MP no deduplica -> dedup app-side
         cached = dedup.get(idem_key)
@@ -1252,12 +1261,20 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                           observation={"result": "No pude encontrar ese presupuesto. Preguntale a "
                                                  "cuál se refiere."})
     verbo = "aprobado" if nuevo == APROBADO else "descartado"
+    sugerencia = sugerencia_de_aprobacion(actualizado) if nuevo == APROBADO else None
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Marqué el presupuesto {actualizado['numero']} de "
                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
                                              f"({_plata(actualizado['total'])}) como {verbo}. "
                                              f"Confirmáselo en una línea corta.",
-                                   "presupuesto": actualizado})
+                                   "presupuesto": actualizado,
+                                   # K-07: sólo al APROBAR el cliente ofrece armar la factura (nunca al descartar).
+                                   **({"sugerencia": sugerencia,
+                                       # K-07-B: el motor la saca del mensaje al LLM y la adjunta al reply como
+                                       # `card` (mismo camino que K-11; sin activity nueva -> replay-safe).
+                                       "gate_card": sugerencia_armar_factura_card(
+                                           sugerencia["presupuesto_id"], sugerencia["texto"])}
+                                      if sugerencia else {})})
 
 
 # ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────
@@ -1599,6 +1616,13 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                   observation={"result": out.summarize(res)})
             if isinstance(out, Proposal):
                 if not confirmed:
+                    # H-A3-2(b): no pedir HITL sobre algo imposible — si el servicio no está
+                    # conectado, se lo decimos ANTES de pedir confirmación, no recién al ejecutar.
+                    if gateway.connection_status(ctx.composio_user_id, mod.TOOLKIT) != "ACTIVE":
+                        return ToolResult(tool_call_id=idem_key, status="error",
+                                          observation={"error": f"servicio no conectado: {mod.TOOLKIT}",
+                                                       "needs_connect": mod.TOOLKIT,
+                                                       "gate_card": requiere_conexion_card(mod.TOOLKIT, _friendly_toolkit(mod.TOOLKIT))})
                     return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
                                       observation={"preview": out.reply_text, **_obs_service(mod.TOOLKIT)},
                                       artifact=Artifact(kind="pending", data={"reply_text": out.reply_text}))
@@ -1609,7 +1633,10 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "resultado inesperado"})
         except ConnectionRequired as e:
             return ToolResult(tool_call_id=idem_key, status="error",
-                              observation={"error": f"servicio no conectado: {e.toolkit}", "needs_connect": e.toolkit})
+                              observation={"error": f"servicio no conectado: {e.toolkit}", "needs_connect": e.toolkit,
+                                           # K-11: el motor lo saca del mensaje al LLM y lo adjunta a la
+                                           # respuesta como `card` (sheet «conectá X» en la app).
+                                           "gate_card": requiere_conexion_card(e.toolkit, _friendly_toolkit(e.toolkit))})
         except ComposioExecutionError:
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "el servicio falló; reintentá en un rato"})

@@ -1,6 +1,6 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día — la respuesta llega, es plausible, y es de otro sujeto. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día; una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero; una octava con tasklist buscando un PID de MSYS entre los de Windows. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
 metadata:
   type: feedback
 ---
@@ -18,6 +18,57 @@ Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido n
 | 4 | búsqueda de worktrees huérfanos | 0 huérfanos | miraba `$REPO_ROOT/.claude/worktrees`, que **no existe** cuando el script corre desde un worktree. Había 21 |
 | 5 | escalador de edad del buzón | `999999min` (≈1900 años) | comparaba `fecha_del_nombre != hoy` para decir «de un día **anterior**». Las sesiones nombran en UTC y `date` corre en local: a las 22:41 los **13 archivos de hoy** eran «de otro día» |
 | 6 | lint de contratos «PROSA PURA» | contrato sin artefacto | aceptaba `docs/…`, `.png`, `mockup` — **no** un path de código. El contrato citaba `…/FormularioIngreso.tsx:255` y salía marcado |
+| 7 | `git log -S'texto' -- <path>` (2026-09-22) | **vacío**: «ese commit no existe» | `git log` sin ref arranca en **`HEAD`**, y el checkout compartido está 141 commits atrás. El commit existía; estaba adelante. Con `git log origin/main -S…` aparece al instante |
+| 8 | `tasklist //FI "PID eq 63148"` para saber si un lock estaba huérfano (2026-09-22) | «no hay tareas»: el proceso murió | el lock guarda `$$` de bash = un **PID de MSYS**; `tasklist` enumera **PIDs de Windows**. Dos numeraciones distintas: preguntó por un proceso que nunca estuvo en esa lista. `ps` y `kill -0` decían **VIVO** |
+
+## El caso 7 merece su párrafo: el cero salió del sujeto por defecto
+
+Buscaba cuándo se había agregado el escáner de secretos al `pre-push`. `git log -S'secretos-check' --
+.githooks/pre-push` devolvió **nada**. Cero hits, sin error. La lectura natural de ese cero es «no
+existe tal commit» — y con ella habría concluido que el hook nunca tuvo scanner.
+
+Lo que lo cazó fue haber puesto un control positivo en el **mismo** comando: `git show
+'origin/main:.githooks/pre-push' | wc -l` devolvió 139. Un archivo de 139 líneas cuya historia
+supuestamente no contiene el cambio que sí está en su contenido: la contradicción es visible en la
+misma salida, y sin ella el cero pasaba como hecho.
+
+La trampa específica: **`git log`, `git grep` y `git diff` usan `HEAD` cuando no les nombrás un ref**,
+y en este repo `HEAD` es el checkout compartido, crónicamente atrasado. El comando corre, no se queja,
+y contesta sobre el pasado. El mismo turno me pasó con `git log -S` y estuvo a punto de repetirse en el
+script que estaba escribiendo — la línea que elegía la «base vieja» tenía el mismo bug, y habría
+abortado con «no ubico el commit», haciéndome creer que el commit no existía.
+
+## El caso 8 agrega la variante peor de todas: dos universos de nombres
+
+Un `pre-push` avisó que el sync del grafo no había completado. Para saber si el lock estaba huérfano
+—proceso muerto sin liberar— o simplemente ocupado por un sync vivo, leí el pid del lock y pregunté:
+
+```
+$ tasklist //FI "PID eq 63148"
+INFORMACIÓN: no hay tareas ejecutándose que coincidan con los criterios
+```
+
+Con eso iba a reportar «lock huérfano, el sync murió». **Y el proceso estaba vivo.** El lock guarda
+`$$` de bash, que es un PID del espacio de **MSYS**; `tasklist` enumera el espacio de **Windows**.
+Son dos numeraciones independientes: la pregunta era sintácticamente válida y semánticamente
+disparatada. `ps` de Git Bash y `kill -0 63148` contestaron **VIVO**, y `ps` mostraba `/usr/bin/bash`
+arrancado a las 21:27:02, exactamente cuando se creó el lock.
+
+Lo distinto de este caso es que **puse un control positivo y no alcanzó**: verifiqué que `tasklist`
+funcionaba preguntándole por `git.exe`, y me contestó dos procesos. El control probó que la
+herramienta responde — no que responde **sobre mi sujeto**. Un control positivo tomado del universo
+equivocado confirma el instrumento y deja intacto el error.
+
+Lo que sí lo cazó fue un **segundo instrumento, de otra naturaleza**: el WAL del checkpoint se había
+modificado 40 segundos antes. Un proceso muerto no escribe. La contradicción entre «no existe» y
+«escribió hace un rato» obligó a decidir cuál mentía, y ganó el que miraba el **efecto** en vez del
+registro.
+
+De los tres casos del mismo día (7, 8 y el `git -C` de abajo) sale una regla más filosa que
+«poné un control positivo»: **cuando un instrumento contesta "no existe", la pregunta no es si lo
+corriste bien, sino sobre qué universo lo corriste.** `git log` responde sobre el universo que cuelga
+de `HEAD`. `tasklist` responde sobre el universo de procesos de Windows. Ninguno se queja de que le
+preguntes por algo de otro universo: **te contesta que no está, y tiene razón.**
 
 ## El caso que da más miedo, porque git no falla
 
@@ -76,6 +127,14 @@ Antes de creerle a un chequeo que sale limpio, **verificá que vio al sujeto**:
   `[ "$(git -C "$d" rev-parse --show-toplevel)" = "$d" ]`.
 - **Un cero es una hipótesis, no un resultado** (canon 5). «0 huérfanos», «0 hallazgos», «nada
   pendiente»: contrastá con un conteo independiente antes de reportarlo.
+- **Ante un «no existe», nombrá el universo enumerado** antes que la sintaxis del comando. Un PID de
+  MSYS no vive en la lista de `tasklist`, un commit adelantado no vive en la historia de `HEAD`, un
+  proceso de otro contenedor no vive en tu `ps`. El control positivo tiene que salir **del mismo
+  universo que el sujeto** — preguntarle a `tasklist` por `git.exe` prueba que `tasklist` anda, no que
+  sepa de tu proceso (caso 8).
+- **Cuando dos instrumentos se contradicen, ganá con el que mide EFECTO.** Un archivo que cambió de
+  tamaño, una ref que llegó al remoto, una fila escrita: eso lo produce el sujeto. Un registro —una
+  lista, un marcador, un log— lo produce alguien **acerca** del sujeto, y puede estar mirando otro.
 - **Cuidado con lo que parece prudencia.** El caso 3 se ve conservador («no mergeado, no toco»), y por
   eso pasó desapercibido: un instrumento que nunca dice que sí es indistinguible de no tenerlo.
 

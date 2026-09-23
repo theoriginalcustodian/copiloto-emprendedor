@@ -10,10 +10,12 @@ import {
 } from '@copiloto/core';
 
 import { DetalleGasto } from './DetalleGasto';
-import { FormularioGasto } from './FormularioGasto';
+import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
+import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { MicFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -60,6 +62,15 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   const [vista, setVista] = useState<Vista>('listado');
   const [refrescando, setRefrescando] = useState(false);
   const [detalle, setDetalle] = useState<Gasto | null>(null);
+  // BL-J7/K-10: dictado desde la fila de acciones (fuera del formulario) — llena `descripcion`, el
+  // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
+  // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
+  // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
+  // `/gastos/leer-foto` devolvió 200, nunca por defecto.
+  const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
+  const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -120,9 +131,44 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
   function alCrear() {
     setVista('listado');
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     // Se RELEE en vez de insertar el objeto devuelto: el resumen es un agregado del backend y no se
     // puede recalcular a mano sin volver a hacer aritmética de plata del lado del cliente.
     void cargar(true);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  function alDictarGasto(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ descripcion: texto });
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
+  function alLeerFoto(iniciales: ValoresInicialesGasto) {
+    setErrorFoto(null);
+    setInicialesDictado(iniciales);
+    setOrigenAlta('foto');
+    setVista('formulario');
+  }
+
+  // Cualquier error (413/415/422/502/503/401) NUNCA bloquea la carga manual (contrato §3): se
+  // muestra el aviso y el alta se abre igual, en blanco, para que el emprendedor tipee a mano.
+  function alErrorFoto(mensaje: string) {
+    setErrorFoto(mensaje);
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setVista('formulario');
   }
 
   const hayGastos = gastos.length > 0;
@@ -168,23 +214,53 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             />
           }
         >
+          {/* BL-J7 3er ítem del DoD: el error de lectura de foto se muestra ACÁ, fuera del ternario
+              de abajo — `alErrorFoto` ya abrió el formulario en blanco (contrato §3: nunca bloquea
+              la carga manual), así que el aviso tiene que sobrevivir al cambio de vista. */}
+          {errorFoto != null && (
+            <Text testID="gastos-foto-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              {errorFoto}
+            </Text>
+          )}
+
           {vista === 'formulario' ? (
-            <FormularioGasto origen="manual" onCreado={alCrear} onCancelar={() => setVista('listado')} />
+            <FormularioGasto
+              origen={origenAlta}
+              iniciales={inicialesDictado}
+              onCreado={alCrear}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); setOrigenAlta('manual'); setErrorFoto(null); }}
+            />
           ) : (
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
-              <FilaBotones
-                testID="gastos-acciones"
-                botones={[
-                  {
-                    etiqueta: 'Anotar un gasto',
-                    onPress: () => setVista('formulario'),
-                    variante: 'primario',
-                    testID: 'gastos-nuevo',
-                  },
-                ]}
-              />
+              {/* BL-J7/K-10: mic + foto viven junto al botón de alta — dictar/leer una foto abren el
+                  formulario con `descripcion`/la propuesta del OCR prellenada (K-10/§2, sin sesión de
+                  chat), nunca envían nada solo. `scrollRef` se omite: `ScrollFormulario` no es un
+                  `FlatList` de RNGH. */}
+              <View style={styles.filaConMic}>
+                <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
+                <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
+                <View style={styles.botonesFlex}>
+                  <FilaBotones
+                    testID="gastos-acciones"
+                    botones={[
+                      {
+                        etiqueta: 'Anotar un gasto',
+                        onPress: abrirFormularioEnBlanco,
+                        variante: 'primario',
+                        testID: 'gastos-nuevo',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {errorMic != null && (
+                <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
                   query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
@@ -223,4 +299,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // BL-J7/K-10 — ver el mismo comentario en el JSX: mic de tamaño fijo + botón que ocupa el resto.
+  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  botonesFlex: { flex: 1 },
 });

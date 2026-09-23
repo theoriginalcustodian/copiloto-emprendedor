@@ -2,9 +2,14 @@ import { useState } from 'react';
 
 import type { PresupuestoPropuesto } from '@copiloto/core';
 
-import { Surface } from '../../design-system';
+import { Recibo, Surface } from '../../design-system';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_PRESUPUESTO,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -37,7 +42,7 @@ type Estado = 'editando' | 'guardado' | 'descartado';
 
 type Resolucion = { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-presupuesto-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_PRESUPUESTO;
 
 /** Valida lo que vino de `localStorage` — la parte genérica (lectura/escritura best-effort) vive en
  * `resolucionCardPropuesta.ts`, compartida con las demás cards `*_propuesto`. */
@@ -70,21 +75,17 @@ export function TarjetaPresupuestoPropuesto({ propuesta, mensajeId }: TarjetaPre
 
   if (estado === 'guardado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="presupuesto-propuesto-guardado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Presupuesto anotado{numero != null ? ` — N° ${numero}` : ''}
-        </Surface>
-      </div>
+      <Recibo
+        testId="presupuesto-propuesto-guardado"
+        tono="exito"
+        titulo={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
+      />
     );
   }
 
   if (estado === 'descartado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="presupuesto-propuesto-descartado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          No lo guardamos.
-        </Surface>
-      </div>
+      <Recibo testId="presupuesto-propuesto-descartado" titulo="No lo guardamos." />
     );
   }
 

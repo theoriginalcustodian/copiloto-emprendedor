@@ -8,6 +8,17 @@ cd "$ROOT"
 npm install --no-audit --no-fund
 npx eslint packages/core/src apps/mobile/src apps/copiloto-web/src
 
+# BL-B3: repo PÚBLICO — cero secretos en TODA la historia (gitleaks fijado) y cero fuentes de marca
+# con licencia (.otf) trackeadas (R-8). Fail-closed: si el escáner no puede correr, el job falla.
+bash "$ROOT/scripts/secretos-check.sh" --arbol
+if [ -n "$(git ls-files '*.otf')" ]; then
+  echo "❌ hay .otf trackeados (fuentes con licencia en repo público):"; git ls-files '*.otf'; exit 1
+fi
+
+# BL-Q1: paridad testID (mobile) <-> data-testid (web). El escaneo es del script; sólo la
+# excepción unilateral se declara a mano, con motivo y fecha (scripts/ci/testid-paridad-excepciones.json).
+python3 "$ROOT/scripts/ci/testid_paridad.py" --root "$ROOT" --check
+
 # Tests de los scripts de coordinación. Van en "lint" y no en "core" porque son bash puro: no
 # necesitan DB, node ni el venv del VPS, y corren en segundos. Sin este bucle, `scripts/tests/`
 # es letra muerta — un test que nadie ejecuta no es un control, es un archivo.

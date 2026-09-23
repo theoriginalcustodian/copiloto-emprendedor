@@ -1,0 +1,85 @@
+/* BL-X10 — entrada diaria (arranques 2..n): isotipo dibujándose, cubre la latencia de carga.
+   Puerto de explorations/isotipo-david/entrada.html (paths/tiempos vigentes; fondo ya invertido a
+   blanco desde 19/08). Duración total PROVISIONAL: se ajusta contra la latencia real de "Mi día". */
+
+.identidad-entrada {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  animation-name: identidad-entrada-fade;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-entrada-fade {
+  100% {
+    opacity: 0;
+  }
+}
+
+.identidad-entrada__signo {
+  width: 132px;
+  height: 132px;
+}
+
+.identidad-entrada__trazo {
+  fill: none;
+  stroke: #de7250;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation-name: identidad-entrada-draw;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-entrada-draw {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.identidad-entrada__onda {
+  fill: none;
+  stroke: #de7250;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  transform-origin: 11px 12px;
+  opacity: 0;
+  animation-name: identidad-entrada-onda;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-entrada-onda {
+  0% {
+    opacity: 0;
+    transform: translateX(-3px) scaleX(0.7);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .identidad-entrada,
+  .identidad-entrada__trazo,
+  .identidad-entrada__onda {
+    animation: none !important;
+  }
+  .identidad-entrada__trazo,
+  .identidad-entrada__onda {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -243,3 +243,25 @@ button.account-screen__row:focus-visible {
 .account-switch--on .account-switch__knob {
   transform: translateX(18px);
 }
+
+/* K-12: formularios inline de «Cambiar contraseña» / «Cambiar email». */
+.account-screen__credencial {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.account-screen__credencial label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--label);
+}
+
+.account-screen__credencial-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger-fg);
+}

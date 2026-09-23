@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { confirmarConTokenFresco, type FacturaPropuesta } from '@copiloto/core';
+import {
+  AVISO_FACTURA_ANULACION,
+  confirmarConTokenFresco,
+  estadoFactura,
+  type EstadoFacturaResp,
+  type FacturaPropuesta,
+} from '@copiloto/core';
 
-import { Button, Surface } from '../../design-system';
+import { Button, Recibo, Surface } from '../../design-system';
 import './chat.css';
 
 /**
@@ -39,6 +45,24 @@ import './chat.css';
  */
 type Estado = 'mostrando' | 'emitida';
 
+/** Sondeo del PDF tras emitir (BL-C2): el CAE llega antes que el PDF, así que se relee el estado hasta
+ *  `terminado` — el flag EXPLÍCITO del workflow (`EstadoFacturaResp.terminado`), no una lista de
+ *  estados. Mismo criterio que mobile (`facturacion/comprobante.tsx`). Tope: ~60 s. */
+const SONDEO_MS = 1500;
+const SONDEO_MAX_INTENTOS = 40;
+
+/** «0001-00000042» — punto de venta y número con el relleno habitual del comprobante. */
+function numeroComprobante(puntoVenta: number, nro: number): string {
+  return `${String(puntoVenta).padStart(4, '0')}-${String(nro).padStart(8, '0')}`;
+}
+
+/** Drive primero (no vence); el link de AfipSDK muere a las 24 h. */
+function linkPdf(estado: EstadoFacturaResp | null): string | null {
+  if (estado == null) return null;
+  if (estado.drive?.guardado === true && estado.drive.link != null) return estado.drive.link;
+  return estado.pdf?.url ?? null;
+}
+
 export interface TarjetaFacturaPropuestaProps {
   propuesta: FacturaPropuesta;
   /** El `id` del `ChatMessage` que trae esta card — sólo para `data-testid` estable, no hay guard
@@ -53,16 +77,68 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
   const [estado, setEstado] = useState<Estado>('mostrando');
   const [enviando, setEnviando] = useState(false);
   const [motivo, setMotivo] = useState<string | null>(null);
+  /** El estado releído de la factura ya emitida (CAE, número, vencimiento, PDF). */
+  const [comprobante, setComprobante] = useState<EstadoFacturaResp | null>(null);
+  const [sondeoAgotado, setSondeoAgotado] = useState(false);
+
+  useEffect(() => {
+    if (estado !== 'emitida' || comprobante == null || comprobante.terminado) return;
+    let cancelado = false;
+    let intentos = 0;
+    const timer = setInterval(() => {
+      intentos += 1;
+      void estadoFactura(propuesta.facturaId)
+        .then((nuevo) => {
+          if (cancelado) return;
+          setComprobante(nuevo);
+          if (nuevo.terminado) clearInterval(timer);
+        })
+        .catch(() => undefined); // un tropiezo de red no tira el CAE ya mostrado: se reintenta
+      if (intentos >= SONDEO_MAX_INTENTOS) {
+        clearInterval(timer);
+        if (!cancelado) setSondeoAgotado(true);
+      }
+    }, SONDEO_MS);
+    return () => {
+      cancelado = true;
+      clearInterval(timer);
+    };
+  }, [estado, comprobante, propuesta.facturaId]);
 
   const lista = propuesta.faltantes.length === 0;
 
   if (estado === 'emitida') {
+    const resultado = comprobante?.resultado ?? null;
+    const link = linkPdf(comprobante);
+    const preparando = link == null && comprobante?.terminado !== true && !sondeoAgotado;
     return (
-      <div className="chat-row chat-row--assistant" data-testid="factura-propuesta-emitida">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Factura emitida.
-        </Surface>
-      </div>
+      <Recibo
+        testId="factura-propuesta-emitida"
+        tono="exito"
+        titulo="Factura emitida."
+        lineas={
+          resultado != null
+            ? [
+                { etiqueta: 'N°', valor: numeroComprobante(resultado.puntoVenta, resultado.nro), testId: 'factura-emitida-numero' },
+                { etiqueta: 'CAE', valor: resultado.cae, testId: 'factura-emitida-cae' },
+                ...(resultado.caeVto != null
+                  ? [{ etiqueta: 'Vence', valor: resultado.caeVto, testId: 'factura-emitida-vto' }]
+                  : []),
+              ]
+            : undefined
+        }
+        accion={link != null ? { etiqueta: 'Ver PDF', href: link, testId: 'factura-emitida-pdf' } : undefined}
+        nota={
+          link != null
+            ? undefined
+            : preparando
+              ? { texto: 'Preparando el PDF…', testId: 'factura-emitida-preparando' }
+              : {
+                  texto: 'La factura se emitió y el CAE es válido. El PDF no está disponible por ahora.',
+                  testId: 'factura-emitida-sin-pdf',
+                }
+        }
+      />
     );
   }
 
@@ -73,6 +149,7 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
     try {
       const res = await confirmarConTokenFresco(propuesta.facturaId);
       if (res.emitida) {
+        setComprobante(res.estado ?? null);
         setEstado('emitida');
       } else {
         setMotivo(res.motivo ?? 'No pudimos emitirla. Revisá el resumen antes de reintentar.');
@@ -121,6 +198,12 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
         {motivo != null && (
           <p className="propuesta-card__aviso propuesta-card__aviso--error" data-testid="factura-propuesta-error">
             {motivo}
+          </p>
+        )}
+
+        {lista && (
+          <p className="propuesta-card__aviso" data-testid="factura-propuesta-aviso-anulacion">
+            {AVISO_FACTURA_ANULACION}
           </p>
         )}
 

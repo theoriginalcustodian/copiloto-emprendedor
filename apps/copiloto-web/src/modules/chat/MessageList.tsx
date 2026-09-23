@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 import {
@@ -7,10 +7,15 @@ import {
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  leerSugerenciaArmarFactura,
+  separadoresDeDia,
 } from '@copiloto/core';
 
+import { Marca } from '../../design-system/Marca';
 import { Bubble } from './Bubble';
+import { ChipArmarFactura } from './ChipArmarFactura';
 import { DisambiguationChips } from './DisambiguationChips';
+import { RodilloEjemplos } from './RodilloEjemplos';
 import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
@@ -31,7 +36,10 @@ const OVERSCAN_FILAS = 6;
 
 export interface MessageListProps {
   messages: ChatMessage[];
-  onChoice: (value: string) => void;
+  /** H-A4-9 — `messageId` (3er arg, opcional) viaja SÓLO desde `HitlCard` (vía
+   * `hitlMapping.buildHitlCardProps`) — `DisambiguationChips` sigue llamando con 2 args, la
+   * marcación de "respondida" es específica de la card HITL, no de la desambiguación. */
+  onChoice: (value: string, label: string, messageId?: string) => void;
   emptyHint?: string;
   /** Hide-on-scroll (EXTRACT §2.3): reporta si la tab-bar debe ocultarse. `true` al scrollear hacia
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
@@ -53,6 +61,10 @@ export interface MessageListProps {
    * incompleta (botón "Completar a mano" de `TarjetaFacturaPropuesta`). Pasa a través hasta
    * `FilaMensaje`. Opcional — sin él la card no ofrece el botón. */
   onFacturar?: (facturaId: string) => void;
+  /** H-A4-4: el rodillo de ejemplos ("Gasté 15 lucas en nafta"...) es del chat GENERAL de negocio —
+   * no aplica al chat de Soporte, que tiene su propio `emptyHint` sin ejemplos que mostrar. Default
+   * `true` (comportamiento previo del chat general, sin cambios). */
+  mostrarEjemplos?: boolean;
 }
 
 /**
@@ -76,6 +88,7 @@ export function MessageList({
   sessionMarker,
   onAbrirCliente,
   onFacturar,
+  mostrarEjemplos = true,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -96,6 +109,10 @@ export function MessageList({
     overscan: OVERSCAN_FILAS,
     getItemKey: (index) => messages[index].id,
   });
+
+  // BL-C3: un divisor por cambio de día (hora de Buenos Aires), dentro de la fila del primer mensaje
+  // del día — así los índices del virtualizer no cambian.
+  const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
 
   useEffect(() => {
     // Con la lista virtualizada ya no hay un sentinela al fondo que `scrollIntoView` — el propio
@@ -156,7 +173,21 @@ export function MessageList({
       onPointerDown={handlePointerDown}
       onClick={handleSurfaceClick}
     >
-      {messages.length === 0 && emptyHint && <p className="chat-messages__empty">{emptyHint}</p>}
+      {messages.length === 0 && emptyHint && (
+        mostrarEjemplos ? (
+          // Verbatim `Prototipo frontend/odobi-ui/prototipo/index.html:1879-1886` (`#vacio`): isotipo
+          // + headline centrados arriba del rodillo, y el texto de contrato AL FINAL — sólo el chat
+          // GENERAL (matriz web A4 Criterio 3 fila 1); Soporte sigue con el `<p>` liso de antes.
+          <div className="chat-messages__empty-state" data-testid="chat-vacio">
+            <Marca size={96} />
+            <h3 className="chat-messages__empty-headline">¿En qué te ayudo?</h3>
+            <RodilloEjemplos />
+            <p className="chat-messages__empty">{emptyHint}</p>
+          </div>
+        ) : (
+          <p className="chat-messages__empty">{emptyHint}</p>
+        )
+      )}
 
       {sessionMarker && messages.length > 0 && (
         <div className="chat-messages__session-marker">{sessionMarker}</div>
@@ -178,6 +209,11 @@ export function MessageList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
+              {separadores.has(message.id) && (
+                <div className="chat-messages__day-separator" role="separator" data-testid="separador-dia">
+                  {separadores.get(message.id)}
+                </div>
+              )}
               <FilaMensaje
                 message={message}
                 onChoice={onChoice}
@@ -194,7 +230,7 @@ export function MessageList({
 
 interface FilaMensajeProps {
   message: ChatMessage;
-  onChoice: (value: string) => void;
+  onChoice: (value: string, label: string, messageId?: string) => void;
   onAbrirCliente?: (id: number) => void;
   onFacturar?: (facturaId: string) => void;
 }
@@ -203,7 +239,7 @@ interface FilaMensajeProps {
  * mida exactamente el contenido de ESTA fila (no el scroller entero). */
 function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMensajeProps) {
   if (message.role === 'user') {
-    return <Bubble role="user" text={message.text} />;
+    return <Bubble role="user" text={message.text} porVoz={message.porVoz} />;
   }
 
   // Ninguna card `*_propuesto` lleva `choices` (mismo motivo en las 4: `classifyChoices` las
@@ -246,6 +282,18 @@ function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMens
         mensajeId={message.id}
         onCompletarAMano={onFacturar}
       />
+    );
+  }
+
+  // BL-J9 — `sugerencia_armar_factura`: burbuja con el texto + chip. Sin `choices` (mismo motivo que las
+  // `*_propuesto`), así que va antes del gate HITL.
+  const sugerenciaFactura = leerSugerenciaArmarFactura(message.card);
+  if (sugerenciaFactura) {
+    return (
+      <div className="chat-message-group">
+        <Bubble role="assistant" text={message.text} />
+        <ChipArmarFactura sugerencia={sugerenciaFactura} onFacturar={onFacturar} />
+      </div>
     );
   }
 

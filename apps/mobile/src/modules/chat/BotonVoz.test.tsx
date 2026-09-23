@@ -6,7 +6,7 @@ import { Gesture, type FlatList } from 'react-native-gesture-handler';
 
 import { ECUALIZADOR_BARRAS } from '../../theme/glass/ecualizadorPalette';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { BotonVoz, UMBRAL_FIJAR_PX, type BotonVozProps } from './BotonVoz';
+import { BotonVoz, DURACION_MINIMA_MS, UMBRAL_CANCELAR_PX, UMBRAL_FIJAR_PX, type BotonVozProps } from './BotonVoz';
 
 /**
  * `GestureDetector` está mockeado GLOBALMENTE como passthrough en `jest.setup.js`, así que **el
@@ -30,6 +30,7 @@ function ArnesConScrollRef(props: Partial<Omit<BotonVozProps, 'scrollRef'>>) {
         onIniciar={jest.fn()}
         onSoltarSinFijar={jest.fn()}
         onFijar={jest.fn()}
+        onCancelar={jest.fn()}
         {...props}
         scrollRef={scrollRef}
       />
@@ -46,7 +47,7 @@ async function montar(props: Partial<Omit<BotonVozProps, 'scrollRef'>> = {}) {
  *  ÚNICA forma de ejercitar la decisión del gesto con `GestureDetector` mockeado a passthrough. */
 interface HandlersDelGesto {
   onBegin?: (evento: unknown) => void;
-  onUpdate?: (evento: { translationY: number }) => void;
+  onUpdate?: (evento: { translationX: number; translationY: number }) => void;
   onFinalize?: (evento: unknown, exito: boolean) => void;
 }
 
@@ -76,10 +77,22 @@ async function montarCapturandoElGesto(props: Partial<Omit<BotonVozProps, 'scrol
  * un thenable, llamarlo sin `await` deja el scope abierto y **rompe todo render posterior del
  * archivo** (se vio así: este describe verde en su primer test y 14 fallos en cascada después).
  */
-function gestoCompleto(handlers: HandlersDelGesto, desplazamientosY: number[]) {
+function gestoCompleto(
+  handlers: HandlersDelGesto,
+  desplazamientosY: number[],
+  { duracionMs = DURACION_MINIMA_MS + 100, desplazamientosX = [] as number[] } = {},
+) {
+  // Reloj controlado: `comenzar()` y `soltar()` miden el toque con `Date.now()`.
+  let ahora = 1_000_000;
+  const espia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
   handlers.onBegin?.({});
-  desplazamientosY.forEach((translationY) => handlers.onUpdate?.({ translationY }));
+  ahora += duracionMs;
+  const n = Math.max(desplazamientosY.length, desplazamientosX.length);
+  for (let i = 0; i < n; i++) {
+    handlers.onUpdate?.({ translationX: desplazamientosX[i] ?? 0, translationY: desplazamientosY[i] ?? 0 });
+  }
   handlers.onFinalize?.({}, true);
+  espia.mockRestore();
 }
 
 describe('BotonVoz -- 🔴 regresión: deslizar-para-fijar NO puede enviar (bug de device 2026-08-19)', () => {
@@ -171,6 +184,58 @@ describe('BotonVoz -- 🔴 regresión: deslizar-para-fijar NO puede enviar (bug 
     // empezar, medir y soltar son el MISMO gesto.
     expect(espiaLongPress).not.toHaveBeenCalled();
     expect(espiaSimultaneous).not.toHaveBeenCalled();
+  });
+});
+
+describe('BotonVoz -- BL-D2: deslizar a la izquierda cancela, toque corto descarta', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('pasar el umbral a la izquierda avisa ANTES de soltar y al soltar cancela sin enviar', async () => {
+    const onCancelar = jest.fn();
+    const onCancelando = jest.fn();
+    const onSoltarSinFijar = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCancelar, onCancelando, onSoltarSinFijar });
+
+    gestoCompleto(handlers, [0], { desplazamientosX: [-(UMBRAL_CANCELAR_PX + 1)] });
+
+    expect(onCancelando).toHaveBeenNthCalledWith(1, true);
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+    expect(onSoltarSinFijar).not.toHaveBeenCalled();
+  });
+
+  it('volver por debajo del umbral antes de soltar des-arma la cancelación y envía', async () => {
+    const onCancelar = jest.fn();
+    const onSoltarSinFijar = jest.fn();
+    const onCancelando = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCancelar, onSoltarSinFijar, onCancelando });
+
+    gestoCompleto(handlers, [0, 0], { desplazamientosX: [-(UMBRAL_CANCELAR_PX + 1), -(UMBRAL_CANCELAR_PX - 1)] });
+
+    expect(onCancelando).toHaveBeenLastCalledWith(false);
+    expect(onCancelar).not.toHaveBeenCalled();
+    expect(onSoltarSinFijar).toHaveBeenCalledTimes(1);
+  });
+
+  it('un toque más corto que DURACION_MINIMA_MS se descarta y NO envía; justo en el umbral envía', async () => {
+    const onCancelar = jest.fn();
+    const onSoltarSinFijar = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCancelar, onSoltarSinFijar });
+
+    gestoCompleto(handlers, [], { duracionMs: DURACION_MINIMA_MS - 1 });
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+    expect(onSoltarSinFijar).not.toHaveBeenCalled();
+
+    gestoCompleto(handlers, [], { duracionMs: DURACION_MINIMA_MS });
+    expect(onSoltarSinFijar).toHaveBeenCalledTimes(1);
+  });
+
+  it('deslizar a la izquierda NO es fijar: no se llama a onFijar', async () => {
+    const onFijar = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onFijar });
+    gestoCompleto(handlers, [0], { desplazamientosX: [-(UMBRAL_CANCELAR_PX + 50)] });
+    expect(onFijar).not.toHaveBeenCalled();
   });
 });
 

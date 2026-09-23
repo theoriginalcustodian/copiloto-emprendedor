@@ -8,6 +8,7 @@ import {
   adminDetalleTicketSoporte,
   adminErrores,
   adminListarTicketsSoporte,
+  adminMarcarFeedbackEscuchado,
   adminReintentarError,
   adminResponderTicketSoporte,
   adminSalud,
@@ -144,6 +145,9 @@ export function AdminScreen() {
   // Mismo criterio que CTA1: estado de carga PROPIO, separado del `Promise.all` general — al
   // escribir esto `/admin/soporte/tickets*` todavía no existe en `main`, y su ausencia no puede
   // apagar Salud/Uso/Errores/Soporte(feedback)/Auditoría, que sí funcionan.
+  // K-08: ids de feedback que ESTA sesión marcó «escuchado» (el listado no trae el estado).
+  const [feedbackEscuchado, setFeedbackEscuchado] = useState<ReadonlySet<number>>(new Set());
+  const [feedbackMarcando, setFeedbackMarcando] = useState<number | null>(null);
   const [ticketsAdmin, setTicketsAdmin] = useState<TicketSoporte[]>([]);
   const [ticketsAdminEstado, setTicketsAdminEstado] = useState<'cargando' | 'ok' | 'no_disponible'>(
     'cargando',
@@ -346,6 +350,19 @@ export function AdminScreen() {
    * negocio **inline como aviso**, no como excepción. No se crea un modal de confirmación genérico:
    * el contrato lo prohíbe explícitamente y no existe uno en `copiloto-web`.
    */
+  const marcarEscuchado = useCallback(async (id: number) => {
+    setFeedbackMarcando(id);
+    try {
+      await adminMarcarFeedbackEscuchado(id);
+      if (vivo.current) setFeedbackEscuchado((prev) => new Set(prev).add(id));
+    } catch {
+      // Sin marca local: el botón sigue disponible para reintentar; no se afirma un «escuchado» que
+      // el backend no confirmó.
+    } finally {
+      if (vivo.current) setFeedbackMarcando(null);
+    }
+  }, []);
+
   const cambiarEstado = useCallback(
     async (status: EstadoTenant, idExplicito?: string) => {
       // CTA1: la fila de la lista pasa su `cliente_id`; el campo manual sigue usando el tipeado.
@@ -704,6 +721,7 @@ export function AdminScreen() {
                       <th scope="col">Tipo</th>
                       <th scope="col">Qué dijo</th>
                       <th scope="col">Reparación</th>
+                      <th scope="col">Escuchado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -725,6 +743,25 @@ export function AdminScreen() {
                             </Badge>
                           ) : (
                             <span className="admin-screen__ventana-activa">sin derivar</span>
+                          )}
+                        </td>
+                        <td>
+                          {/* K-08 (BL-J12): `t.escuchado` es lo que persistió el backend (sobrevive
+                              a un reload); `feedbackEscuchado` es sólo la marca optimista de ESTA
+                              sesión, para no esperar el próximo `cargar()` tras clickear. */}
+                          {t.escuchado || feedbackEscuchado.has(t.id) ? (
+                            <Badge variant="ok">
+                              <span data-testid={`admin-ticket-escuchado-${t.id}`}>Escuchado</span>
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="cancel"
+                              disabled={feedbackMarcando === t.id}
+                              data-testid={`admin-ticket-marcar-escuchado-${t.id}`}
+                              onClick={() => void marcarEscuchado(t.id)}
+                            >
+                              Marcar escuchado
+                            </Button>
                           )}
                         </td>
                       </tr>

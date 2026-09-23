@@ -14,7 +14,7 @@ const mockLeer = leerPerfilNegocio as jest.MockedFunction<typeof leerPerfilNegoc
 
 function perfil(over: Partial<PerfilNegocio> = {}): PerfilNegocio {
   return {
-    queVende: '', aQuien: 'ambos', nombreComercial: '', horarioAtencion: '', formalidad: 'cercano',
+    queVende: '', aQuien: 'ambos', nombreComercial: '', horarioAtencion: '', telefono: '', email: '', formalidad: 'cercano',
     largoRespuesta: 'breve', nombreCopiloto: '', modoCeremonia: 'confirmacion', actualizadoEn: '', ...over,
   };
 }

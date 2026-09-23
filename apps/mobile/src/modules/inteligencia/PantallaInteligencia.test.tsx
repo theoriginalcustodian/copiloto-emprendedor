@@ -16,11 +16,10 @@ jest.mock('@copiloto/core', () => {
     leerGraficoEntroVsSalio: jest.fn(),
     leerGraficoCategorias: jest.fn(),
     leerGraficoMargenTrabajo: jest.fn(),
-    preguntarInteligencia: jest.fn(),
   };
 });
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 import {
   leerGraficoCategorias,
@@ -28,21 +27,19 @@ import {
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   leerPortada,
-  preguntarInteligencia,
 } from '@copiloto/core';
 
 import { PantallaInteligencia } from './PantallaInteligencia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const leerMock = leerPortada as jest.MockedFunction<typeof leerPortada>;
-const preguntarMock = preguntarInteligencia as jest.MockedFunction<typeof preguntarInteligencia>;
 const facturacionMock = leerGraficoFacturacion as jest.MockedFunction<typeof leerGraficoFacturacion>;
 const entroVsSalioMock = leerGraficoEntroVsSalio as jest.MockedFunction<typeof leerGraficoEntroVsSalio>;
 const categoriasMock = leerGraficoCategorias as jest.MockedFunction<typeof leerGraficoCategorias>;
 const margenTrabajoMock = leerGraficoMargenTrabajo as jest.MockedFunction<typeof leerGraficoMargenTrabajo>;
 
 const PORTADA = {
-  caja: { saldo: '184000.00', moneda: 'ARS' },
+  caja: { saldo: '184000.00', moneda: 'ARS', fechaCorte: null, variacionPct: null, incompleta: false },
   mes: { ingresos: '95000.00', gastos: '31000.00', rentabilidad: '64000.00', facturado: '120000.00', cobrado: '90000.00' },
   serieMensual: [
     { mes: '2026-03', ingresos: '80000.00', gastos: '20000.00' },
@@ -69,7 +66,6 @@ beforeEach(() => {
   entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
   categoriasMock.mockResolvedValue({ status: 'no_disponible' });
   margenTrabajoMock.mockResolvedValue({ status: 'no_disponible' });
-  preguntarMock.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Gastaste $18.000 este mes.', fuente: 'sql' } });
 });
 
 describe('PantallaInteligencia — lo que muestra', () => {
@@ -116,7 +112,7 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     // distintas, y un cero por default sería un KPI que miente.
     leerMock.mockResolvedValue({
       status: 'ok',
-      portada: { ...PORTADA, caja: { saldo: null, moneda: 'ARS' }, mes: { ...PORTADA.mes, facturado: null } },
+      portada: { ...PORTADA, caja: { saldo: null, moneda: 'ARS', fechaCorte: null, variacionPct: null, incompleta: false }, mes: { ...PORTADA.mes, facturado: null } },
     });
 
     await montar();
@@ -125,6 +121,36 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     // Y NO hay ningún «$0» inventado en pantalla.
     expect(screen.queryByText(/\$\s?0(\D|$)/)).toBeNull();
+  });
+
+  it('🔴 rentabilidad en `null` muestra la nota "no se puede calcular", nunca «$0» ni «NaN» (H-A4-3)', async () => {
+    // Cuando el backend no puede calcular la rentabilidad del mes (p.ej. gastos sin asignar a
+    // trabajos), viene `null` — no es que el negocio rindió cero. Mismo patrón que web
+    // (InteligenciaScreen `.kpi.sindato`): "—" en el número + una nota explicando por qué.
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: { ...PORTADA, mes: { ...PORTADA.mes, rentabilidad: null } },
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-rentabilidad')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-rentabilidad-nota')).toBeTruthy();
+    expect(
+      screen.getByText('Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.'),
+    ).toBeTruthy();
+
+    const celdaRentabilidad = screen.getByTestId('inteligencia-mes-rentabilidad');
+    expect(within(celdaRentabilidad).getByText('—')).toBeTruthy();
+    expect(within(celdaRentabilidad).queryByText(/\$\s?0(\D|$)/)).toBeNull();
+    expect(within(celdaRentabilidad).queryByText(/NaN/)).toBeNull();
+  });
+
+  it('🔴 rentabilidad con dato NO muestra la nota "no se puede calcular"', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-rentabilidad')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-rentabilidad-nota')).toBeNull();
   });
 
   it('🔴 mejores clientes vacío muestra el aviso, no una lista rota', async () => {
@@ -151,11 +177,11 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
 
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
 
-    expect(screen.getByTestId('chat-inteligencia')).toBeTruthy();
+    expect(screen.getByTestId('preguntar-inteligencia')).toBeTruthy();
     expect(screen.queryByTestId('inteligencia-portada')).toBeNull();
   });
 
-  it('volver a "Resumen" restaura la portada sin perder la pregunta ya hecha', async () => {
+  it('volver a "Resumen" restaura la portada ', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
 
@@ -163,7 +189,7 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
 
     expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
-    expect(screen.queryByTestId('chat-inteligencia')).toBeNull();
+    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
   });
 
   it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {
@@ -179,5 +205,33 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
 
     await waitFor(() => expect(screen.getByTestId('inteligencia-graficos-seccion')).toBeTruthy());
     expect(screen.getByTestId('inteligencia-grafico-facturacion')).toBeTruthy();
+  });
+});
+
+describe('PantallaInteligencia — estados textuales del refresco (BL-W6)', () => {
+  it('reposo: «Tirá para actualizar»; arrastre pasado el umbral: «Soltá»; al soltar: «Actualizando…» y luego «Al día · recién»', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-portada')).toBeTruthy());
+    const texto = () => screen.getByTestId('inteligencia-refresco-estado').props.children as string;
+    expect(texto()).toBe('Tirá para actualizar');
+
+    // iOS: arrastrar más allá del tope da contentOffset.y negativo.
+    await fireEvent.scroll(screen.getByTestId('inteligencia-portada'), {
+      nativeEvent: { contentOffset: { y: -80 } },
+    });
+    expect(texto()).toBe('Soltá para actualizar');
+
+    // Soltar: el RefreshControl dispara onRefresh.
+    let liberar: () => void = () => undefined;
+    leerMock.mockImplementationOnce(
+      () => new Promise((res) => { liberar = () => res({ status: 'ok', portada: PORTADA }); }),
+    );
+    await act(async () => {
+      screen.getByTestId('inteligencia-portada').props.refreshControl.props.onRefresh();
+    });
+    expect(texto()).toBe('Actualizando…');
+
+    await act(async () => liberar());
+    await waitFor(() => expect(texto()).toBe('Al día · recién'));
   });
 });

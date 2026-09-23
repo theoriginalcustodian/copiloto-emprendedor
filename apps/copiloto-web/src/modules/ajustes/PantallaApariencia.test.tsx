@@ -21,11 +21,34 @@ describe('PantallaApariencia', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renderiza los 3 nombres de piel ODOBI', () => {
+  it('ofrece Claro, Oscuro y «Como el teléfono», y ya no Nocturno', () => {
     renderApariencia();
     expect(screen.getByText('Claro')).toBeInTheDocument();
     expect(screen.getByText('Oscuro')).toBeInTheDocument();
-    expect(screen.getByText('Nocturno')).toBeInTheDocument();
+    expect(screen.getByText('Como el teléfono')).toBeInTheDocument();
+    expect(screen.queryByText('Nocturno')).toBeNull();
+  });
+
+  it('Claro y Oscuro muestran su muestra real (H-A4-7: 2 tiles, «Como el teléfono» sin muestra propia)', () => {
+    const { container } = renderApariencia();
+    expect(container.querySelectorAll('[data-muestra="claro"]').length).toBe(1);
+    expect(container.querySelectorAll('[data-muestra="oscuro"]').length).toBe(1);
+  });
+
+  it('H-A4-7: «Como el teléfono» es una fila propia, con subtítulo y fuera del grid de 2 tiles', () => {
+    renderApariencia();
+    expect(screen.getByText('Cambia solo según tu sistema')).toBeInTheDocument();
+    // Control negativo: antes del fix, las 3 preferencias vivían en el mismo grid de 3 columnas —
+    // sin distinguir visualmente la regla "sistema" de las 2 pieles reales.
+    expect(screen.getByTestId('theme-pill-sistema').className).toContain('sistema-fila');
+    expect(screen.getByTestId('theme-pill-claro').className).toContain('tema-tile');
+  });
+
+  it('elegir «Como el teléfono» persiste sistema', () => {
+    renderApariencia();
+    fireEvent.click(screen.getByTestId('theme-pill-sistema'));
+    expect(window.localStorage.getItem('copiloto-theme')).toBe('sistema');
+    expect(screen.getByTestId('theme-pill-sistema')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('el selector de tema cambia el theme activo y persiste en localStorage', () => {

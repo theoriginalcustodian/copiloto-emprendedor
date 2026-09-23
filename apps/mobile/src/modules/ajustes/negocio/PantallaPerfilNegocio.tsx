@@ -5,6 +5,8 @@ import {
   ApiError,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,
+  errorDeEmail,
+  errorDeTelefono,
   guardarPerfilNegocio,
   leerPerfilNegocio,
   type AQuienVende,
@@ -23,6 +25,8 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
+import { Row } from '../../../theme/glass/Row';
+import { OPCIONES_FORMALIDAD, OPCIONES_LARGO, PantallaTono } from './PantallaTono';
 import { SeccionCatalogo } from './SeccionCatalogo';
 import { useTema } from '../../../theme/ThemeProvider';
 
@@ -62,21 +66,13 @@ const OPCIONES_A_QUIEN: OpcionSelect[] = [
   { valor: 'ambos', etiqueta: 'Ambos' },
 ];
 
-const OPCIONES_FORMALIDAD: OpcionSelect[] = [
-  { valor: 'formal', etiqueta: 'Formal' },
-  { valor: 'cercano', etiqueta: 'Cercano' },
-];
-
-const OPCIONES_LARGO: OpcionSelect[] = [
-  { valor: 'breve', etiqueta: 'Breve' },
-  { valor: 'detallado', etiqueta: 'Detallado' },
-];
-
 interface Campos {
   queVende: string;
   aQuien: AQuienVende;
   nombreComercial: string;
   horarioAtencion: string;
+  telefono: string;
+  email: string;
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
@@ -95,6 +91,8 @@ const CAMPOS_VACIOS: Campos = {
   aQuien: 'ambos',
   nombreComercial: '',
   horarioAtencion: '',
+  telefono: '',
+  email: '',
   formalidad: 'cercano',
   largoRespuesta: 'breve',
   nombreCopiloto: '',
@@ -110,6 +108,8 @@ function aCampos(p: PerfilNegocio): Campos {
     aQuien: p.aQuien,
     nombreComercial: p.nombreComercial,
     horarioAtencion: p.horarioAtencion,
+    telefono: p.telefono,
+    email: p.email,
     formalidad: p.formalidad,
     largoRespuesta: p.largoRespuesta,
     nombreCopiloto: p.nombreCopiloto,
@@ -121,7 +121,7 @@ type EstadoCarga = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type EstadoGuardado = 'idle' | 'enviando' | 'ok' | 'error';
 
 /** Qué sección se está guardando — para que el "Guardando…" aparezca en SU botón y no en los dos. */
-type Seccion = 'negocio' | 'personalidad' | 'modo';
+type Seccion = 'negocio' | 'modo';
 
 interface SeccionProps {
   titulo: string;
@@ -160,16 +160,33 @@ function Seccion({ titulo, testID, children }: SeccionProps) {
  * servidor con campos opcionales vacíos**: los dos estados conviven en la misma pantalla. En un alta
  * no hay valor guardado que confundir.
  */
+/** Resumen de la fila que lleva a «Cómo hablarle»: «Cercano · Breve · Copi». */
+function resumenDeTono(c: { formalidad: FormalidadCopiloto; largoRespuesta: LargoRespuesta; nombreCopiloto: string }): string {
+  const f = OPCIONES_FORMALIDAD.find((o) => o.valor === c.formalidad)?.etiqueta ?? '';
+  const l = OPCIONES_LARGO.find((o) => o.valor === c.largoRespuesta)?.etiqueta ?? '';
+  return [f, l, c.nombreCopiloto.trim()].filter((x) => x !== '').join(' · ');
+}
+
 export function PantallaPerfilNegocio() {
   const tema = useTema();
   const [campos, setCampos] = useState<Campos>(CAMPOS_VACIOS);
+  // K-15: «Cómo hablarle» es una vista de esta misma ruta (no una ruta nueva: registrarla exigiría
+  // tocar `app/_layout.tsx`, de FE1).
+  const [verTono, setVerTono] = useState(false);
   const [estadoCarga, setEstadoCarga] = useState<EstadoCarga>('cargando');
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  const [erroresContacto, setErroresContacto] = useState<{ telefono: string | null; email: string | null }>({
+    telefono: null,
+    email: null,
+  });
 
   function actualizar<K extends keyof Campos>(campo: K, valor: Campos[K]) {
     setCampos((prev) => ({ ...prev, [campo]: valor }));
+    if (campo === 'telefono' || campo === 'email') {
+      setErroresContacto((prev) => ({ ...prev, [campo]: null }));
+    }
     // Un cambio invalida el "Guardado" anterior: dejarlo en pantalla mientras el usuario edita diría
     // que lo que está viendo ya está a salvo, y no lo está.
     setEstadoGuardado('idle');
@@ -199,19 +216,24 @@ export function PantallaPerfilNegocio() {
   }, []);
 
   async function guardar(seccion: Seccion) {
-    const parcial: GuardarPerfilNegocioRequest =
-      seccion === 'negocio'
-        ? {
-            queVende: campos.queVende,
-            aQuien: campos.aQuien,
-            nombreComercial: campos.nombreComercial,
-            horarioAtencion: campos.horarioAtencion,
-          }
-        : {
-            formalidad: campos.formalidad,
-            largoRespuesta: campos.largoRespuesta,
-            nombreCopiloto: campos.nombreCopiloto,
-          };
+    // BL-J10: el formato del contacto se avisa EN el campo y no viaja nada si está mal. El backend
+    // sigue siendo la fuente de verdad (su 400 igual se muestra abajo).
+    if (seccion === 'negocio') {
+      const errores = {
+        telefono: errorDeTelefono(campos.telefono),
+        email: errorDeEmail(campos.email),
+      };
+      setErroresContacto(errores);
+      if (errores.telefono != null || errores.email != null) return;
+    }
+    const parcial: GuardarPerfilNegocioRequest = {
+      queVende: campos.queVende,
+      aQuien: campos.aQuien,
+      nombreComercial: campos.nombreComercial,
+      horarioAtencion: campos.horarioAtencion,
+      telefono: campos.telefono,
+      email: campos.email,
+    };
 
     setSeccionEnCurso(seccion);
     setEstadoGuardado('enviando');
@@ -284,6 +306,10 @@ export function PantallaPerfilNegocio() {
 
   const enviando = estadoGuardado === 'enviando';
 
+  if (verTono) {
+    return <PantallaTono onVolver={() => setVerTono(false)} onGuardado={(perfil) => setCampos(aCampos(perfil))} />;
+  }
+
   // `icono="miNegocio"`: el set de 21 tiene un glifo propio con este mismo nombre (local/vidriera),
   // así que ya no hace falta pedir prestado `chat` del catálogo viejo.
   return (
@@ -351,6 +377,27 @@ export function PantallaPerfilNegocio() {
               placeholder="ej.: Lunes a viernes de 8 a 17"
               maxLength={LIMITE_CAMPO_CORTO}
             />
+            <CampoTexto
+              testID="perfil-negocio-telefono"
+              etiqueta="Teléfono"
+              valor={campos.telefono}
+              onChange={(v) => actualizar('telefono', v)}
+              placeholder="ej.: 341 590 6309"
+              keyboardType="phone-pad"
+              maxLength={LIMITE_CAMPO_CORTO}
+              error={erroresContacto.telefono ?? undefined}
+            />
+            <CampoTexto
+              testID="perfil-negocio-email"
+              etiqueta="Email"
+              valor={campos.email}
+              onChange={(v) => actualizar('email', v)}
+              placeholder="ej.: contacto@elgalpon.com.ar"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              maxLength={LIMITE_CAMPO_CORTO}
+              error={erroresContacto.email ?? undefined}
+            />
             <FilaBotones
               testID="perfil-negocio-guardar-negocio-botones"
               botones={[
@@ -406,41 +453,13 @@ export function PantallaPerfilNegocio() {
             )}
           </Seccion>
 
+          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono); acá sólo el resumen. */}
           <Seccion titulo="Cómo te habla el copiloto" testID="perfil-negocio-seccion-personalidad">
-            <CampoSelect
-              testID="perfil-negocio-formalidad"
-              etiqueta="Tono"
-              opciones={OPCIONES_FORMALIDAD}
-              valor={campos.formalidad}
-              onChange={(v) => actualizar('formalidad', v as FormalidadCopiloto)}
-            />
-            <CampoSelect
-              testID="perfil-negocio-largo"
-              etiqueta="Largo de las respuestas"
-              opciones={OPCIONES_LARGO}
-              valor={campos.largoRespuesta}
-              onChange={(v) => actualizar('largoRespuesta', v as LargoRespuesta)}
-            />
-            <CampoTexto
-              testID="perfil-negocio-nombre-copiloto"
-              etiqueta="¿Cómo querés llamarlo?"
-              valor={campos.nombreCopiloto}
-              onChange={(v) => actualizar('nombreCopiloto', v)}
-              placeholder="ej.: Copi"
-              maxLength={LIMITE_CAMPO_CORTO}
-            />
-            <FilaBotones
-              testID="perfil-negocio-guardar-personalidad-botones"
-              botones={[
-                {
-                  etiqueta: enviando && seccionEnCurso === 'personalidad' ? 'Guardando…' : 'Guardar',
-                  onPress: () => void guardar('personalidad'),
-                  variante: 'primario',
-                  deshabilitado: enviando,
-                  testID: 'perfil-negocio-guardar-personalidad',
-                },
-              ]}
-            />
+            <Row testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Cómo te habla el copiloto">
+              <Text testID="perfil-negocio-tono-resumen" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+                {resumenDeTono(campos)} ›
+              </Text>
+            </Row>
           </Seccion>
 
           {estadoGuardado === 'ok' && (

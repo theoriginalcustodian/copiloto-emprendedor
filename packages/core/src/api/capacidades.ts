@@ -51,6 +51,35 @@ export interface GuiaCapacidades {
   fechas: FechasQueEntiende;
 }
 
+/** Un grupo de la guía, ya fundido por rótulo — ver `agruparCapacidadesPorRotulo`. */
+export interface CapacidadAgrupada {
+  rotulo: string;
+  ejemplos: readonly string[];
+}
+
+/**
+ * 🔴 **El catálogo (`tool_catalog.py`) puede publicar DOS `tool` distintas con el MISMO rótulo**
+ * («Presupuestos» sale de `crear_presupuesto` y de `listar_presupuestos` por separado). Pintar
+ * `capacidades` tal cual llega repite el encabezado y encima parte los ejemplos en dos bloques —
+ * cada uno mostrando sólo la mitad de lo que el emprendedor puede pedir bajo ese rótulo. Agrupar acá,
+ * una sola vez, es lo que hace cierto en las DOS apps (web y mobile consumen esta misma función) que
+ * «un rótulo = un encabezado», sin que cada pantalla tenga que acordarse de deduplicar por su cuenta.
+ */
+export function agruparCapacidadesPorRotulo(
+  capacidades: readonly CapacidadCopiloto[],
+): readonly CapacidadAgrupada[] {
+  const orden: string[] = [];
+  const ejemplosPorRotulo = new Map<string, string[]>();
+  for (const c of capacidades) {
+    if (!ejemplosPorRotulo.has(c.rotulo)) {
+      ejemplosPorRotulo.set(c.rotulo, []);
+      orden.push(c.rotulo);
+    }
+    ejemplosPorRotulo.get(c.rotulo)!.push(...c.ejemplos);
+  }
+  return orden.map((rotulo) => ({ rotulo, ejemplos: ejemplosPorRotulo.get(rotulo)! }));
+}
+
 interface CapacidadRaw {
   tool?: unknown;
   rotulo?: unknown;

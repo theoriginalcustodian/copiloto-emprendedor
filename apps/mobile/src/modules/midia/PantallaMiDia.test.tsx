@@ -26,6 +26,7 @@ jest.mock('@copiloto/core', () => {
     cambiarEstadoTarjetaMiDia: jest.fn(),
     borrarTarjetaMiDia: jest.fn(),
     leerCalendario: jest.fn(),
+    listarCatalogo: jest.fn(),
   };
 });
 
@@ -51,7 +52,15 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, leerCalendario, leerTablero } from '@copiloto/core';
+import {
+  borrarTarjetaMiDia,
+  cambiarEstadoTarjetaMiDia,
+  fechaDeHoyMidia,
+  KEY_GOOGLE_CALENDAR,
+  leerCalendario,
+  leerTablero,
+  listarCatalogo,
+} from '@copiloto/core';
 
 import { PantallaMiDia } from './PantallaMiDia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -60,6 +69,7 @@ const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
 const cambiarEstadoMock = cambiarEstadoTarjetaMiDia as jest.MockedFunction<typeof cambiarEstadoTarjetaMiDia>;
 const borrarMock = borrarTarjetaMiDia as jest.MockedFunction<typeof borrarTarjetaMiDia>;
 const leerCalendarioMock = leerCalendario as jest.MockedFunction<typeof leerCalendario>;
+const listarCatalogoMock = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
 
 const TABLERO = {
   solapas: [
@@ -77,6 +87,9 @@ const TABLERO = {
           cliente: 'Panadería del barrio',
           monto: '-8000.00',
           fecha: '2026-07-22',
+          categoria: null,
+          criticidad: 'pronto',
+          verbo: 'Revisar el trabajo',
         },
       ],
     },
@@ -95,6 +108,9 @@ const TABLERO = {
           cliente: null,
           monto: null,
           fecha: null,
+          categoria: null,
+          criticidad: 'sin_plazo',
+          verbo: 'Borrar',
         },
       ],
     },
@@ -115,6 +131,7 @@ beforeEach(() => {
   cambiarEstadoMock.mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockResolvedValue({ status: 'ok' });
   leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+  listarCatalogoMock.mockResolvedValue({ status: 'ok', servicios: [] });
 });
 
 describe('PantallaMiDia — las 3 solapas', () => {
@@ -160,6 +177,79 @@ describe('PantallaMiDia — expandir', () => {
 
     await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
     expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
+  });
+});
+
+function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
+  return {
+    id, texto: `Tarjeta ${id}`, regla: 'x', entidadTipo: null, entidadId: null, estado: 'pendiente',
+    cliente: null, monto: null, fecha: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
+  };
+}
+function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
+  return {
+    solapas: [
+      { id: 'para_hoy' as const, titulo: 'Para hoy', tarjetas: para },
+      { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+      { id: 'hecha' as const, titulo: 'Hechas', tarjetas: [] },
+    ],
+  };
+}
+
+describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)', () => {
+  it('los chips filtran por `t.categoria`; categoria null sólo aparece en «Todo»', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([tarjetaDe('a', { categoria: 'arca' }), tarjetaDe('n', { categoria: null })]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('midia-chip-arca'));
+    expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-n')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-chip-todo'));
+    expect(screen.getByTestId('midia-tarjeta-n')).toBeTruthy();
+  });
+
+  it('🔴 backend previo (ninguna tarjeta con categoría): no se dibujan chips', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-chips')).toBeNull();
+  });
+
+  it('banner crítico: con una tarjeta `critico` aparece con su verbo y el contador la cuenta', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { criticidad: 'critico', verbo: 'Renovarlo', texto: 'Tu certificado vence en 12 días' }),
+        tarjetaDe('p'),
+      ]),
+    });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-alerta')).toBeTruthy());
+    expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
+    expect(screen.queryByTestId('midia-alerta-p')).toBeNull();
+    expect(screen.getByText('Renovarlo')).toBeTruthy();
+    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
+  });
+
+  it('sin tarjeta crítica no hay banner', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-alerta')).toBeNull();
+  });
+
+  it('el verbo se muestra en la tarjeta expandida', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-tarjeta-t1-verbo')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
+
+    expect(screen.getByTestId('midia-tarjeta-t1-verbo')).toHaveTextContent('Revisar el trabajo');
   });
 });
 
@@ -290,5 +380,69 @@ describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', (
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
     expect(screen.queryByTestId('midia-calendario')).toBeNull();
     expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
+  });
+
+  it('BL-W11 fila 4b: sin conexión pero el catálogo dice que ESTÁ caída — copy distinta, ofrece reconectar', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({
+      status: 'ok',
+      servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-caida')).toBeTruthy());
+    expect(screen.getByText(/Se cayó la conexión con Google Calendar/)).toBeTruthy();
+    expect(screen.getByText(/Reconectala/)).toBeTruthy();
+    expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
+  });
+
+  it('sin catálogo (fail-soft) degrada al texto de "nunca conectada", no se inventa una caída', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({ status: 'no_disponible' });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeTruthy());
+    expect(screen.queryByTestId('midia-calendario-caida')).toBeNull();
+  });
+});
+
+describe('PantallaMiDia — fecha de hoy en la portada (BL-W11 fila 4a)', () => {
+  it('la portada (home) muestra la fecha de hoy, sin hora, junto al wordmark', async () => {
+    render(
+      <ThemeProvider>
+        <PantallaMiDia comoPortada />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-fecha')).toBeTruthy());
+    expect(screen.getByText(fechaDeHoyMidia())).toBeTruthy();
+  });
+});
+
+describe('PantallaMiDia — entrada a la agenda (BL-J13)', () => {
+  it('con `onAgenda` y el calendario listo, «Ver agenda» la abre', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+    const onAgenda = jest.fn();
+
+    render(
+      <ThemeProvider>
+        <PantallaMiDia onAgenda={onAgenda} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-ver-agenda')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-ver-agenda'));
+    expect(onAgenda).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin `onAgenda` no hay entrada (la ruta glass /midia no la ofrece)', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-vacio')).toBeTruthy());
+    expect(screen.queryByTestId('midia-ver-agenda')).toBeNull();
   });
 });

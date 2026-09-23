@@ -56,12 +56,14 @@ describe('DesktopShell', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renderiza el rail + por default monta la pantalla del tab Chat (ChatScreen)', () => {
+  it('renderiza el rail + por default aterriza en Mi día (BL-X1)', () => {
     renderDesktopShell();
     expect(screen.getByTestId('desktop-shell')).toBeInTheDocument();
     expect(screen.getByTestId('rail')).toBeInTheDocument();
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('pantalla-midia')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mi día' })).toHaveAttribute('aria-current', 'page');
+    // Escritorio: la puerta a Ajustes es el bloque de usuario del rail; NO se duplica el avatar.
+    expect(screen.queryByTestId('avatar-cuenta')).not.toBeInTheDocument();
   });
 
   it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   ETIQUETA_CATEGORIA,
+  formatearFechaLarga,
   formatearImporte,
   obtenerGasto,
   type Gasto,
@@ -126,7 +127,9 @@ export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
 
         <View style={{ gap: tema.espacio.sm }}>
           <Dato etiqueta="Categoría" valor={ETIQUETA_CATEGORIA[g.categoria]} testID="detalle-gasto-categoria" />
-          <Dato etiqueta="Fecha" valor={g.fecha} testID="detalle-gasto-fecha" />
+          {/* H-A4-6: `g.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se pinta tal
+              cual. `Larga` (con año) porque acá SÍ importa — es el detalle, no la card. */}
+          <Dato etiqueta="Fecha" valor={formatearFechaLarga(g.fecha)} testID="detalle-gasto-fecha" />
           {g.proveedor != null && (
             <Dato etiqueta="Proveedor" valor={g.proveedor} testID="detalle-gasto-proveedor" />
           )}

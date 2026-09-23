@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
-import { Button, PresenceOrb, Surface } from '../design-system';
+import { Button, Surface } from '../design-system';
+import { Marca } from '../design-system/Marca';
 import './login.css';
 import { googleAuthUrl } from './oauth';
 import { useSession } from './useSession';
@@ -12,11 +13,19 @@ import { useSession } from './useSession';
  * 5 estados vía `useSession().login` — diseño final).
  */
 
+const LOCKUP_SIMBOLO = 44;
+
 type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 'error-red';
 
-export function LoginScreen() {
+export interface LoginScreenProps {
+  /** BL-X12w — prellenado al volver desde el reveal ("Entrar" trae el mail; "Entrar con otra
+   *  cuenta" llega en blanco), gemelo de mobile `PantallaLogin.emailInicial` (BL-X12m). */
+  emailInicial?: string;
+}
+
+export function LoginScreen({ emailInicial = '' }: LoginScreenProps) {
   const { status, avisoSesion, login } = useSession();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
 
@@ -50,12 +59,22 @@ export function LoginScreen() {
   return (
     <div className="app-frame login-screen" data-testid="login-screen">
       <div className="login-screen__inner">
+        {/* Lockup símbolo + «Odobi» en horizontal (BL-X11 / BL-X12w, DEC-10; mismo que mobile
+            `PantallaLogin`): acá el nombre es información —quien mira está por entrar a una cuenta y
+            tiene que ver a cuál—, presentado una vez. La tagline se cae: el producto ya se explicó
+            antes de llegar acá. Separación = 0,3 × el ancho del símbolo (spec del isotipo). */}
         <div className="login-screen__brand">
-          <div className="login-screen__brand-row">
-            <PresenceOrb size={26} />
-            <span className="login-screen__brand-title">Odobi</span>
-          </div>
-          <p className="login-screen__tagline">tu copiloto de ia · en línea · durable</p>
+          <Marca size={LOCKUP_SIMBOLO} />
+          <span className="login-screen__brand-title" data-testid="login-wordmark">
+            Odobi
+          </span>
+        </div>
+
+        <div className="login-screen__heading">
+          <h1 className="login-screen__title" data-testid="login-titulo">
+            Entrá a tu cuenta
+          </h1>
+          <p className="login-screen__subtitle">Con el mail y la contraseña que ya usás.</p>
         </div>
 
         <Surface variant="card" blur className="login-screen__card">
@@ -88,9 +107,10 @@ export function LoginScreen() {
                 autoComplete="current-password"
                 required
                 disabled={disabled}
+                aria-invalid={effectiveState === 'error-credenciales' || undefined}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="login-screen__input"
+                className={`login-screen__input${effectiveState === 'error-credenciales' ? ' login-screen__input--error' : ''}`}
               />
             </div>
 
@@ -110,7 +130,7 @@ export function LoginScreen() {
           )}
           {effectiveState === 'error-credenciales' && (
             <p role="alert" className="login-screen__alert login-screen__alert--danger">
-              Email o contraseña incorrectos. Probá de nuevo.
+              Ese mail y esa contraseña no coinciden. Probá de nuevo.
             </p>
           )}
           {effectiveState === 'no-habilitada' && (
@@ -136,14 +156,9 @@ export function LoginScreen() {
           )}
         </Surface>
 
-        <div className="login-screen__links">
-          <p className="login-screen__link-row">
-            ¿Olvidaste tu contraseña? <span className="login-screen__link-hint">Escribinos.</span>
-          </p>
-          <p className="login-screen__link-row">
-            ¿No tenés cuenta? <span className="login-screen__link-hint">Escribinos.</span>
-          </p>
-        </div>
+        <p className="login-screen__pie" data-testid="login-pie">
+          Tus datos quedan guardados: al volver a entrar está todo como lo dejaste.
+        </p>
       </div>
     </div>
   );

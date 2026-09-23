@@ -11,13 +11,13 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ListaMensajes } from './ListaMensajes';
 
 // `render` de esta versión de @testing-library/react-native es `async` -- hay que awaitearlo.
-async function envolver(messages: ChatMessage[], onChoice = jest.fn()) {
+async function envolver(messages: ChatMessage[], onChoice = jest.fn(), onResolverTarjeta = jest.fn()) {
   await render(
     <ThemeProvider>
-      <ListaMensajes messages={messages} onChoice={onChoice} />
+      <ListaMensajes messages={messages} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
     </ThemeProvider>,
   );
-  return { onChoice };
+  return { onChoice, onResolverTarjeta };
 }
 
 describe('ListaMensajes', () => {
@@ -35,6 +35,18 @@ describe('ListaMensajes', () => {
 
     expect(screen.getByText('hola copiloto')).toBeTruthy();
     expect(screen.queryByTestId('tarjeta-confirmacion')).toBeNull();
+    expect(screen.queryByTestId('chat-bubble-voz')).toBeNull();
+  });
+
+  it('BL-J7 (H-A3-7): un mensaje llegado por dictado muestra el chip «Por voz · Ns»', async () => {
+    const mensajes: ChatMessage[] = [
+      { id: 'user-2', role: 'user', text: 'anotá un gasto de 500', porVoz: { duracionSeg: 7 } },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.getByTestId('chat-bubble-voz')).toBeTruthy();
+    expect(screen.getByText('Por voz · 7s')).toBeTruthy();
   });
 
   it('el gate de confirmación (par confirmar/cancelar) se renderiza como tarjeta, no como burbuja', async () => {
@@ -72,7 +84,11 @@ describe('ListaMensajes', () => {
 
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
 
-    expect(onChoice).toHaveBeenCalledWith('confirm');
+    // BL-D4 — el label ('Cobrar') viaja en `opts.displayText`: es lo que la burbuja optimista del
+    // usuario tiene que pintar, nunca el `value` técnico ('confirm') que espera el backend.
+    // H-A4-9 — `opts.hitlMessageId` (`message.id`) es lo que permite a `useChat().send` marcar ESTA
+    // card `hitlRespondido` para que quede deshabilitada aun después de un reload.
+    expect(onChoice).toHaveBeenCalledWith('confirm', { displayText: 'Cobrar', hitlMessageId: 'assistant-1' });
   });
 
   it('cancelar manda el value de cancelar', async () => {
@@ -91,7 +107,186 @@ describe('ListaMensajes', () => {
 
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-cancelar'));
 
-    expect(onChoice).toHaveBeenCalledWith('cancel');
+    expect(onChoice).toHaveBeenCalledWith('cancel', { displayText: 'Cancelar', hitlMessageId: 'assistant-1' });
+  });
+
+  // H-A4-9 — control positivo + negativo: una card HITL YA respondida (`hitlRespondido` en el
+  // mensaje) queda deshabilitada — `disabled` nativo de `Pressable` bloquea el toque, y
+  // `fireEvent.press` no dispara ningún callback. Sin el fix, la card seguiría activa y el press
+  // reenviaría confirm/cancel aunque el turno ya esté resuelto.
+  it('H-A4-9: card HITL con hitlRespondido queda deshabilitada — press no dispara onChoice', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrar $500 por MercadoPago. ¿Confirmás?',
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+        hitlRespondido: { value: 'cancel', label: 'Cancelar' },
+      },
+    ];
+    const { onChoice } = await envolver(mensajes);
+
+    const botonConfirmar = screen.getByTestId('tarjeta-confirmacion-confirmar');
+    const botonCancelar = screen.getByTestId('tarjeta-confirmacion-cancelar');
+
+    // `Pressable` NO reenvía `disabled`/`onPress` tal cual al host node: los consume y los traduce a
+    // `accessibilityState.disabled` (ver `Pressable.js` de RN) — por eso se lee ahí, no en `.props.disabled`.
+    // Y el control funcional (abajo) es la prueba real: aunque algo leyera mal el accessibilityState,
+    // el press no debe disparar `onChoice`.
+    expect(botonConfirmar.props.accessibilityState?.disabled).toBe(true);
+    expect(botonCancelar.props.accessibilityState?.disabled).toBe(true);
+
+    await fireEvent.press(botonConfirmar);
+    await fireEvent.press(botonCancelar);
+
+    expect(onChoice).not.toHaveBeenCalled();
+  });
+
+  it('sin hitlRespondido (control negativo): la card sigue activa, press dispara onChoice', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrar $500 por MercadoPago. ¿Confirmás?',
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ];
+    const { onChoice } = await envolver(mensajes);
+
+    // control negativo del test H-A4-9 de arriba — misma lectura via `accessibilityState`.
+    expect(screen.getByTestId('tarjeta-confirmacion-confirmar').props.accessibilityState?.disabled).toBeFalsy();
+
+    await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+    expect(onChoice).toHaveBeenCalledTimes(1);
+  });
+
+  it('BL-D3: gate irreversible (Instagram) EXIGE la advertencia, el badge y el servicio', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        card: { kind: 'confirm', service: 'instagram', label: 'Instagram' },
+        choices: [
+          { label: 'Publicar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-irreversible')).toBeTruthy();
+    expect(screen.getByText('IRREVERSIBLE')).toBeTruthy();
+    expect(screen.getByText('Instagram')).toBeTruthy();
+  });
+
+  it('BL-D3: gate reversible NO muestra la advertencia; Mercado Pago muestra PARA y MONTO', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrarle **Juan Pérez** $15.000, confirmá',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
+    expect(screen.getByText('REVISAR')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-confirmacion-para')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-confirmacion-monto')).toBeTruthy();
+  });
+
+  // H-A4-12 (auditoría 2026-09-22): el backend manda el monto CRUDO, sin separador de miles
+  // (`f"...por ${amount}..."`, ver `dispatcher_emprendedor.py`). Control positivo de esa forma real +
+  // control negativo explícito: con el código viejo (`amount: markdown.match(AMOUNT_RE)?.[1]` sin
+  // formatear) esto pintaba `$80000`, no `$80.000`.
+  it('H-A4-12: monto CRUDO del backend (sin separadores) se muestra formateado con miles', async () => {
+    await envolver([
+      {
+        id: 'assistant-monto-crudo',
+        role: 'assistant',
+        text: 'Voy a generar un link de cobro de MercadoPago por $80000 (Diseño de logo). ¿Confirmás?',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByText('$80.000')).toBeTruthy();
+    expect(screen.queryByText('$80000')).toBeNull();
+  });
+
+  it('BL-D3: el gate pinta el LOGO real del servicio (por serviceKey)', async () => {
+    await envolver([
+      {
+        id: 'assistant-mercadopago',
+        role: 'assistant',
+        text: 'Confirmá',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Ok', value: 'confirm' },
+          { label: 'No', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-logo')).toBeTruthy();
+    expect(screen.queryByTestId('tarjeta-confirmacion-punto')).toBeNull();
+  });
+
+  it('BL-D3: un servicio sin logo (Instagram) cae al punto genérico', async () => {
+    await envolver([
+      {
+        id: 'assistant-instagram',
+        role: 'assistant',
+        text: 'Confirmá',
+        card: { kind: 'confirm', service: 'instagram', label: 'Instagram' },
+        choices: [
+          { label: 'Ok', value: 'confirm' },
+          { label: 'No', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-punto')).toBeTruthy();
+    expect(screen.queryByTestId('tarjeta-confirmacion-logo')).toBeNull();
+  });
+
+  it('BL-C3: el separador de día cambia en la medianoche de Buenos Aires, no en la del runtime', async () => {
+    // 21/09 23:59 BA = 22/09 02:59Z; 22/09 00:01 BA = 22/09 03:01Z. En UTC ambos serían «22»: acá son dos días.
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 8, 22, 15, 0, 0));
+    try {
+      await envolver([
+        { id: 'u1', role: 'user', text: 'antes', creadoEn: Date.UTC(2026, 8, 22, 2, 59, 0) },
+        { id: 'u2', role: 'user', text: 'después', creadoEn: Date.UTC(2026, 8, 22, 3, 1, 0) },
+      ]);
+      const etiquetas = screen.getAllByTestId('separador-dia').map((n) => n.props.children);
+      expect(etiquetas).toEqual(['Ayer', 'Hoy']);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('BL-D3: sin card, tarjeta neutra sin badge ni advertencia', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a mandar un mail. ¿Confirmás?',
+        choices: [
+          { label: 'Enviar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.queryByTestId('tarjeta-confirmacion-riesgo')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
   });
 
   it('🔴 un `cliente_propuesto` se renderiza como CARD editable, no como burbuja', async () => {
@@ -281,5 +476,134 @@ describe('ListaMensajes', () => {
 
     expect(screen.getByText('¿Cuál de estos clientes?')).toBeTruthy();
     expect(screen.queryByTestId('tarjeta-confirmacion')).toBeNull();
+  });
+
+  it('BL-F2: una card payment_link se renderiza como tarjeta de cobro, no como burbuja', async () => {
+    await envolver([
+      {
+        id: 'assistant-9',
+        role: 'assistant',
+        text: 'Listo, ahí tenés el link.',
+        card: { kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 2500, concept: 'Clase' } },
+      },
+    ]);
+
+    expect(screen.getByTestId('tarjeta-link-cobro')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-link-cobro-monto')).toHaveTextContent('$2.500');
+  });
+
+  it('BL-F2: un payment_link sin url cae a la burbuja de texto', async () => {
+    await envolver([
+      { id: 'assistant-10', role: 'assistant', text: 'No pude armar el link.', card: { kind: 'payment_link', data: {} } },
+    ]);
+
+    expect(screen.queryByTestId('tarjeta-link-cobro')).toBeNull();
+    expect(screen.getByText('No pude armar el link.')).toBeTruthy();
+  });
+
+  /**
+   * GUARDM parte 2 — la parte que ningún test a nivel card puede ver: que `ListaMensajes` derive
+   * `resuelto` de CADA campo correcto del mensaje (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/
+   * `facturaResuelta`/`presupuestoResuelto`) y ate `onResolverTarjeta` al `mensaje.id` real, con el
+   * patch envuelto en la clave que le corresponde a esa card. Mismo criterio de control
+   * positivo/negativo que H-A4-9 arriba.
+   */
+  describe('GUARDM parte 2 — wiring de `resuelto`/`onResolverTarjeta` por card', () => {
+    it('gasto: con `gastoResuelto` ya seteado, renderiza DIRECTO el terminal (control positivo)', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+          gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('gasto-propuesto-guardado')).toBeTruthy();
+      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+    });
+
+    it('gasto: sin `gastoResuelto` sigue editable (control negativo)', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+    });
+
+    it('gasto: descartar llama a `onResolverTarjeta` con el `mensaje.id` real y el patch bajo `gastoResuelto`', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-gasto-7',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+        },
+      ];
+      const { onResolverTarjeta } = await envolver(mensajes);
+
+      await fireEvent.press(screen.getByTestId('gasto-cancelar'));
+
+      expect(onResolverTarjeta).toHaveBeenCalledWith('assistant-gasto-7', {
+        gastoResuelto: { estado: 'descartado' },
+      });
+    });
+
+    it('presupuesto: con `presupuestoResuelto` ya seteado, renderiza DIRECTO el terminal', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este presupuesto.',
+          card: {
+            kind: 'presupuesto_propuesto',
+            data: {
+              concepto: 'Instalación eléctrica',
+              receptor: { nombre: 'Juan Pérez' },
+              items: [{ descripcion: 'Mano de obra', cantidad: '1', precio_unitario: '30000' }],
+            },
+          },
+          presupuestoResuelto: { estado: 'guardado', numero: 7 },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent(
+        'Presupuesto anotado — N° 7',
+      );
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario')).toBeNull();
+    });
+
+    it('cliente: cancelar llama a `onResolverTarjeta` con el `mensaje.id` real y el patch bajo `clienteResuelto`', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-cliente-3',
+          role: 'assistant',
+          text: 'Entendí este cliente.',
+          card: {
+            kind: 'cliente_propuesto',
+            data: { nombre: 'Ferretería El Tornillo', doc_tipo: 80, doc_nro: '30712345678', origen: 'voz' },
+          },
+        },
+      ];
+      const { onResolverTarjeta } = await envolver(mensajes);
+
+      await fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-cancelar'));
+
+      expect(onResolverTarjeta).toHaveBeenCalledWith('assistant-cliente-3', {
+        clienteResuelto: { estado: 'descartado' },
+      });
+    });
   });
 });

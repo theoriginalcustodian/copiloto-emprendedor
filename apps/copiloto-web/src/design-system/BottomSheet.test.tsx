@@ -113,6 +113,28 @@ describe('BottomSheet', () => {
     expect(screen.getByRole('button', { name: 'Primero' })).toHaveFocus();
   });
 
+  // HOJA — a 390px la tab-bar del shell (`.tab-bar`, z-index:30) tapaba el 100% de «Ahora no»
+  // porque el sheet vivía dentro de un ancestro `isolation: isolate` (`ChatScreen`'s `.app-frame`,
+  // shell.css) que acotaba su z-index:50 a esa sub-jerarquía — medido con Playwright contra el CSS
+  // real del repo (harness `scratchpad/hoja-repro/`): `elementFromPoint` en el centro del botón
+  // devolvía la tab-bar, no el botón (`esElMismo:false`, `pctTapado:100`). jsdom no renderiza layout
+  // real (no puede reproducir esa medición), pero SÍ puede verificar el mecanismo que la resuelve:
+  // el sheet portado a `document.body` deja de ser descendiente de CUALQUIER contenedor con
+  // `isolation`/`overflow` ajeno, así que su z-index siempre compite en el nivel más alto.
+  it('HOJA: el sheet se porta a document.body — no queda anidado en el contenedor del que lo renderiza', () => {
+    const { container } = render(
+      <BottomSheet open onClose={() => {}} title="Tus apps">
+        <p>contenido</p>
+      </BottomSheet>,
+    );
+
+    // El contenedor de `render` (normalmente hijo de document.body) queda VACÍO: el sheet no es su
+    // descendiente. El diálogo sí existe, pero como hijo directo de document.body (el portal).
+    expect(container).toBeEmptyDOMElement();
+    const dialog = screen.getByRole('dialog', { name: 'Tus apps' });
+    expect(dialog.closest('.uc-sheet-root')?.parentElement).toBe(document.body);
+  });
+
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     render(

@@ -8,7 +8,7 @@ metadata:
 # Historia — Copiloto del Emprendedor (hitos cerrados)
 
 > **Qué es:** entradas de memoria de **hitos cerrados**, y **casos particulares** cuyo principio ya vive
-> en `MEMORY.md`. Salen del índice activo porque éste tiene un techo duro de carga (~25.000 caracteres:
+> en `MEMORY.md`. Salen del índice activo porque éste tiene un techo duro de carga (24.000 caracteres — el que aplica el gate:
 > arriba de eso se trunca y no existe — ver [[el-indice-truncado-fabrica-duplicados]]), pero el topic
 > file sigue en `memoria/` y es **buscable**. NO es estado vivo: el "¿qué sigue?" vive en `HANDOFF.md`,
 > el detalle en `CLAUDE.md §4-5`, el tablero en `coordinacion/PLAN.md`, la doctrina viva en `MEMORY.md`.
@@ -196,3 +196,67 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 - [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — deuda diferida, no gap.
 - [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — GoTrue `MAILER_AUTOCONFIRM=true`; slot para Gmail SMTP.
+
+## Movidos del índice el 2026-09-22 (el índice se pasaba 71 chars del techo al sumar el cierre de A4)
+
+- [🕰️ Recall temporal — "qué hice ayer"](copiloto-recall-temporal.md) — `consultar_actividad`; `valid_at` naive→UTC; anti-injection.
+
+## 🔄 2026-09-22 — rescatadas del slug al reconciliar las dos memorias
+
+> Estas 31 entradas vivían **sólo** en el slug del harness. Quedaron versionadas al correr
+> `seed-memory.sh` (bidireccional desde el 2026-07-31), pero el índice activo ya estaba en 23.930 de
+> un techo de 24.000: por la política del propio `MEMORY.md`, lo que no entra **baja acá**, que es
+> buscable. Varias son lecciones recientes sobre instrumentos que mintieron — si alguna se vuelve
+> central para el trabajo del día, subila al índice cambiándola por una de allá.
+
+- [Bajar evidencia por buzón Y además escribir el doc es invadir](bajar-evidencia-por-buzon-y-ademas-escribir-el-doc-es-invadir.md) — el `dato_` ES la entrega; la dueña integra. Me costó un PR cerrado.
+- [`grep -q` con pipefail y `[AÁ]` con locale C mienten](bash-grep-q-con-pipefail-y-corchetes-con-tilde-mienten.md) — falso rojo/verde por SIGPIPE; tilde en corchetes no matchea. Here-string + alternancia.
+- [book-skill-builder v1 operativa](book-skill-builder-v1-operativa.md) — skill global libro→skill con 4 gates; DoD v1 Y DoD-grafo cerrados 2026-08-11 (tenant skills vivo, Alice en el grafo).
+- [El clasificador bloquea mutar prod standalone en autónomo](clasificador-de-seguridad-bloquea-mutar-prod-standalone-en-autonomo.md) — el mismo restart pasa dentro de `deploy.sh` pero no como script suelto; no rodear, documentar y pedir ejecución puntual.
+- [Control negativo estático no caza una constante equivocada](control-negativo-estatico-no-caza-constante-equivocada.md) — auditar leyendo el test confirma el acople, no el valor; certifiqué rojo como verde en Fase D. Computá el literal o corré el test.
+- [Defense-in-depth enmascara el control negativo de la capa interna](defense-in-depth-enmascara-el-control-negativo-de-la-capa-interna.md) — revertir el filtro app-side no da rojo si RLS FORCE tapa; el test verifica el sistema, no aísla la capa. Fase D lote C.
+- [El buzón no ve lo que otra sesión ya hizo en main](el-buzon-no-ve-lo-que-otra-sesion-ya-hizo-en-main.md) — mirar `git log origin/main` + PRs, no sólo el buzón.
+- [El clasificador no lee tool results como consentimiento](el-clasificador-no-lee-tool-results-como-consentimiento.md) — autorizar por menú/hook/CLAUDE.md no le llega: sólo un mensaje escrito por el operador.
+- [El gate verifica el par declarado, no el par pintado](el-gate-verifica-el-par-declarado-no-el-par-pintado.md) — el botón de voz y el hero del login sin cobertura, gate en verde. Enumerá consumidores, no combinaciones.
+- [En bypassPermissions sólo sobrevive `permissions.deny`](en-bypasspermissions-solo-sobrevive-permissions-deny.md) — se repusieron 12 reglas (force push ×5 formas + `.env` del repo). Gap: falta scanner de secretos en el pre-push.
+- [Filtro `-a-planificacion_` no ve destinatarios compuestos](filtro-a-planificacion-no-ve-destinatarios-compuestos.md) — `-a-backend-y-planificacion_` se escapó (K-07-B); buscar `*planificacion_*`.
+- [El headless-gate exige `claude -p` pero el clasificador lo bloquea igual](headless-gate-exige-claude-p-pero-el-clasificador-lo-bloquea-igual.md) — DOS capas: modo `auto` + bug propio del hook (`=== true`). Cerradas 2026-08-13. Los hooks bloquean en TODO modo; un `ask` en autónomo es un deny.
+- [La alarma de worktree huérfano sugiere borrar lo que hay que salvar](la-alarma-de-worktree-huerfano-sugiere-borrar-lo-que-hay-que-salvar.md) — el remedio del propio gate iba a destruir 19 días de auditoría D9. Antes de remover: `git log origin/main..HEAD`.
+- [La excepción documentada que nunca disparó](la-excepcion-documentada-que-nunca-disparo.md) — regla de escape rota = regla ausente. Testeala con markdown real, con control de fail-open.
+- [Los crones corren los scripts del checkout principal, no los de `main`](los-crones-corren-los-scripts-del-checkout-principal-no-los-de-main.md) — mergear un fix de instrumento NO lo pone en producción; ese árbol estaba 36 commits atrás.
+- [`pr create && checks --watch; merge` mergea SIN CI](merge-encadenado-tras-pr-create-mergea-sin-ci.md) — sin checks registrados el watch sale rc≠0 ya; merge sólo con `&&` tras esperar que existan (#584).
+- [Parkear un hook fuera de `hooks` vuelve FATAL todo el settings](parkear-un-hook-fuera-de-hooks-vuelve-fatal-todo-el-settings.md) — Claude Code 2.1.263 descarta el archivo ENTERO; se cayeron los 12 deny ~24 h. El prefijo `_disabled_` no exime.
+- [Plugin oficial Telegram no engancha polling salvo sesión nueva](plugin-telegram-oficial-requiere-sesion-nueva-para-enganchar-polling.md) — `mcp get` "Connected" es falso positivo; verificar con `getUpdates`/`bot.pid`, no con el status del MCP.
+- [Remote Control, no Channels, es el gate de decisión](remote-control-es-el-mecanismo-de-gate-no-channels.md) — responder desde el teléfono continúa la sesión (verif. 2026-08-18). Desde 2026-09-21 NO arranca solo: `/remote-control` por sesión.
+- **Canal Telegram↔Claude Code verificado end-to-end** — entrada **LOCAL, no versionada** (`.gitignore`): guarda el chat_id del operador y el repo es público. Vive sólo en el slug de memoria de cada sesión. Dato reusable sin el identificador: los `getUpdates` de Telegram expiran a las 24 h — que no aparezcan no es un bug de webhook.
+- [Un contrato bajado YA desbloquea las dos mitades](un-contrato-bajado-ya-desbloquea-esperar-la-otra-mitad-vuelve-serie-la-junta.md) — esperar a que el otro lado implemente vuelve serie la junta; FE2 se declaró sin cola con 9 filas arrancables.
+- [Un fixture no aísla lo que el script lee por fuera](un-fixture-no-aisla-lo-que-el-script-lee-por-fuera.md) — sumar una fuente de datos sin parametrizarla volvió 4 controles positivos falsos verdes. Y si la señal CALLA la alarma, ante duda NO contar.
+- [Un instrumento tiene DOS modos de no saber: callarse e inundar](un-instrumento-tiene-dos-modos-de-no-saber-callarse-e-inundar.md) — una variable vacía vale 0 en aritmética bash; el segundo modo aparece al testear el primero.
+- [Una allowlist manual no puede saber lo que le falta](una-allowlist-manual-no-puede-saber-lo-que-le-falta.md) — el gate miraba 10 de 16 tokens y estaba verde; RECONECTAR daba 1,98:1 en claro. Computá declarados − cubiertos.
+- [Una cifra en un comentario es un cache sin invalidación](una-cifra-en-un-comentario-es-un-cache-sin-invalidacion.md) — el 2,87 era correcto EN WEB y migró a mobile sin su par; viajó 4 saltos hasta el operador. Recomputá antes de citar.
+- [Una regla de allow propia puede anular la built-in que la motivó](una-regla-de-allow-propia-puede-anular-la-builtin-que-la-motivo.md) — enumerar flags fabrica una plantilla de bypass. Correr `claude auto-mode critique`.
+- [Una ventana por tamaño mide menos a quien más produce](una-ventana-por-tamano-mide-menos-a-quien-mas-produce.md) — propiedad estable ⇒ archivo entero. La ventana ahorraba 25 ms y costaba ver a las 2 sesiones vigiladas.
+- [AFIP en prod no estaba vacía: era una consulta ciega por FORCE RLS](afip-vacia-en-prod-era-una-consulta-ciega-por-force-rls.md) — un `count` sin claims no es dato.
+- [La cola viva quedó vacía (2026-08-11)](copiloto-cola-viva-vacia-2026-08-11.md) — hito cerrado; nada arrancable sin decisión nueva del operador.
+- [Primer diff de cobertura funcional prototipo↔app (2026-09-08)](diff-cobertura-prototipo-vs-app-2026-09-08.md) — 3 pantallas ausentes, 8 parciales.
+- [Martín diseña, no programa: la vara es su prototipo final](martin-disena-y-la-meta-es-su-prototipo-final.md) — y desde 54fac3ea (2026-09-21) SÍ está en el repo: medila, no la recuerdes.
+- [Gotchas y lecciones aprendidas (agregador)](GOTCHAS.md) — NO es una entrada de memoria: es el archivo que se desprendió de `MEMORY.md` para bajar el bloat, con las lecciones pasadas por tópico. Se consulta por nombre cuando aparece un bug extraño.
+
+## 🔄 2026-09-22 — bajadas del índice por el techo de LÍNEAS
+
+- **🛡️ Manejo de errores — COMPLETO en prod (cerrado ~2026-08-01)** (#151→#185) + autohealing que abre PRs solo, con gate que distingue *arregla* de *no rompe*. [[no-romper-no-es-arreglar]]
+- [Un cierre correcto por la causa equivocada](un-cierre-correcto-por-la-causa-equivocada.md) — el veredicto tapa la causa, y la causa es lo que se hereda; «no verificable» clausura la medición.
+- [Una barrera que excluye el archivo y deja el dato en el índice](una-barrera-que-excluye-el-archivo-y-deja-el-dato-en-el-indice.md) — protegí el continente, no el contenido; grepeá el dato, no la ruta.
+
+- [El control que va antes no detecta deriva](el-control-que-va-antes-no-detecta-deriva.md) — una serie monótona confunde efecto con deriva; repetí el control DESPUÉS de la condición cara.
+
+- [Cambiar el alcance deja mintiendo lo que otros ya escribieron](cambiar-el-alcance-deja-mintiendo-lo-que-otros-ya-escribieron.md) — el trabajo TERMINADO es donde el alcance viejo quedó congelado; barrelo en el mismo turno.
+- [Romper la capa interna de un control en profundidad sale VERDE](romper-la-capa-interna-de-un-control-en-profundidad-sale-verde.md) — rompé la capa MÁS EXTERNA; el verde de una interna es un hallazgo, no un test roto.
+
+- [El sujeto correcto al empezar dejó de serlo a mitad de la corrida](el-sujeto-correcto-al-empezar-dejo-de-serlo-a-mitad-de-la-corrida.md) — fijá el SHA y re-medilo AL ENTREGAR; verificar al abrir no protege nada.
+- [Un daño afirmado desde UN SOLO lado no es hallazgo](un-dano-afirmado-desde-un-solo-lado-no-es-hallazgo.md) — al buscar la defensa del acusado, preguntá por TODOS sus hermanos: ahí apareció el que no la tenía.
+
+> Estas entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
+- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde" ≠ "fase validada".
+- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
+- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.

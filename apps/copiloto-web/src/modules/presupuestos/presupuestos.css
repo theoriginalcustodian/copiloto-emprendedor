@@ -62,6 +62,19 @@
   gap: 12px;
 }
 
+/* BL-J7/K-10 — ver el mismo comentario en `gastos.css`. */
+.presupuestos-screen__fila-lbl-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.presupuestos-screen__mic-error {
+  color: var(--danger-fg);
+  font-size: 12px;
+  margin: -4px 0 4px;
+}
+
 .presupuestos-screen__lista-lbl {
   font-family: var(--font-body);
   font-size: 11px;
@@ -379,8 +392,12 @@
   gap: 8px;
 }
 
+/* H-A4-8: sin `min-width: 0` el item flex no baja de su ancho intrínseco (default `min-width: auto`
+   de un flex item) y el par de campos desborda a 390px — el input de precio se corta contra el borde
+   de la card. `flex: 1` ya repartía el espacio; faltaba permitir que ESE espacio se achique. */
 .formulario-presupuesto__item-numeros .formulario-presupuesto__campo {
   flex: 1;
+  min-width: 0;
 }
 
 .formulario-presupuesto__acciones {

@@ -28,6 +28,13 @@ export interface UseConnectionsResult {
    * MP/Composio acá). El CALLER decide cómo abrirla (ej. `window.location.assign`).
    */
   connect: (service: CatalogService) => Promise<string>;
+  /**
+   * Desconecta el servicio por su `disconnect_path` (data-driven, como `connect`) y re-lee el
+   * catálogo: el estado de la card sale del backend, no de un flip local optimista — si el DELETE
+   * falla (404/red) la tarjeta sigue «Conectada» y el error llega al caller. Sin `disconnect_path`
+   * (backend viejo) no hay nada que llamar: rechaza en vez de fingir.
+   */
+  disconnect: (service: CatalogService) => Promise<void>;
   /** Re-fetch explícito del catálogo (ej. botón "Reintentar", o al volver del OAuth). */
   refresh: () => Promise<void>;
 }
@@ -93,6 +100,20 @@ export function useConnections(): UseConnectionsResult {
     return url;
   }, []);
 
+  const disconnect = useCallback(
+    async (service: CatalogService): Promise<void> => {
+      if (!service.disconnect_path) {
+        throw new Error(`El catálogo no trae disconnect_path para ${service.key}`);
+      }
+      await api.disconnect(service.disconnect_path);
+      // `silent`: la pantalla ya tiene datos; un fallo de la relectura no debe tirarla a «error».
+      // `load` ignora el pedido si hay otro fetch en curso (loadingRef) — se espera a que termine.
+      while (loadingRef.current) await new Promise((r) => setTimeout(r, 20));
+      await load({ silent: true });
+    },
+    [load],
+  );
+
   const refresh = useCallback(() => load(), [load]);
 
   const connectedCount = services.filter((service) => service.connected).length;
@@ -104,6 +125,7 @@ export function useConnections(): UseConnectionsResult {
     connectedCount,
     totalCount: services.length,
     connect,
+    disconnect,
     refresh,
   };
 }

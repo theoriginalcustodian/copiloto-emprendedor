@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi } from './config';
 import { ApiError } from './errors';
-import { enviarFeedback, enviarFeedbackAudio } from './feedback';
+import { enviarFeedback, enviarFeedbackAudio, listarFeedbackPropio } from './feedback';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
 
@@ -94,6 +94,42 @@ describe('feedback.ts', () => {
     it('propaga el 422 (transcripción vacía)', async () => {
       responder = () => respuesta(422, { detail: 'no se entendió el audio' });
       await expect(enviarFeedbackAudio(archivo)).rejects.toMatchObject({ status: 422 });
+    });
+  });
+
+  describe('listarFeedbackPropio (K-08, BL-J12) — GET /feedback', () => {
+    it('normaliza los items y respeta el estado escuchado', async () => {
+      responder = () =>
+        respuesta(200, {
+          items: [
+            { id: 42, tipo: 'texto', texto: 'más rápido', contexto: 'chat', created_at: '2026-09-20T14:00:00Z', escuchado: true, escuchado_en: '2026-09-21T09:00:00Z' },
+            { id: 41, tipo: 'voz', texto: 'agregar dark', contexto: null, created_at: '2026-09-19T10:00:00Z', escuchado: false, escuchado_en: null },
+          ],
+        });
+      const items = await listarFeedbackPropio();
+      expect(peticiones[0]!.metodo).toBe('GET');
+      expect(peticiones[0]!.path).toBe('/feedback');
+      expect(items).toEqual([
+        { id: 42, tipo: 'texto', texto: 'más rápido', contexto: 'chat', creadoEn: '2026-09-20T14:00:00Z', escuchado: true, escuchadoEn: '2026-09-21T09:00:00Z' },
+        { id: 41, tipo: 'voz', texto: 'agregar dark', contexto: null, creadoEn: '2026-09-19T10:00:00Z', escuchado: false, escuchadoEn: null },
+      ]);
+    });
+
+    it('un item sin `escuchado` NO cuenta como escuchado; uno sin id/texto se descarta', async () => {
+      responder = () => respuesta(200, { items: [{ id: 1, texto: 'a' }, { texto: 'sin id' }, { id: 2 }] });
+      const items = await listarFeedbackPropio();
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({ id: 1, escuchado: false, escuchadoEn: null, tipo: 'texto' });
+    });
+
+    it('lista vacía o body sin items → []', async () => {
+      responder = () => respuesta(200, {});
+      expect(await listarFeedbackPropio()).toEqual([]);
+    });
+
+    it('propaga el error del backend (ApiError) para que la UI degrade sola', async () => {
+      responder = () => respuesta(500, { detail: 'boom' });
+      await expect(listarFeedbackPropio()).rejects.toBeInstanceOf(ApiError);
     });
   });
 });

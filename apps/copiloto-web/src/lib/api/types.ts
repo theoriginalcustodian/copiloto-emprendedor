@@ -51,6 +51,10 @@ export interface MeResponse {
    *  fuente. `null`/ausente si el token no lo trae (login por teléfono/anónimo, o si
    *  `require_claims` no está activo) -- ausente, no inventado. */
   email?: string | null;
+  /** K-12: la cuenta entra con Google (sin contraseña propia). Ausente en un backend anterior → se trata como `false`. */
+  cuenta_google?: boolean;
+  /** K-14: ver `packages/core/src/api/types.ts`. Ausente → no se muestra el hilo de bienvenida. */
+  onboarding_completado?: boolean;
   mp_connected: boolean;
   composio_connected: string[];
   /** ¿Este usuario ve la Consola de operador? Sale del MISMO predicado que el guard real
@@ -101,7 +105,12 @@ export interface CatalogService {
   description: string;
   capabilities: string[];
   connected: boolean;
+  /** K-09: salud de la conexión. Opcional (backend anterior): sin él se usa `connected`. */
+  status?: 'conectado' | 'nunca_conectado' | 'caido';
   connect_path: string;
+  /** Path de desconexión que decide el BACKEND por servicio (`DELETE`, MP y Composio van por rutas
+   * distintas). Opcional: un backend viejo no lo manda y entonces la card no ofrece «Desconectar». */
+  disconnect_path?: string;
 }
 
 export interface CatalogResponse {
@@ -213,6 +222,8 @@ export interface ReplyMessage {
   text: string;
   choices?: ReplyChoice[];
   card?: ReplyCard;
+  /** `created_at` del backend en ms epoch (ausente si no vino o no parsea). */
+  createdAt?: number;
 }
 
 export interface ReplyResponse {
@@ -256,6 +267,9 @@ export interface CopilotApi {
   catalog(): Promise<CatalogResponse>;
   /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */
   connect(connectPath: string): Promise<ConnectResponse>;
+  /** `DELETE` al `disconnect_path` del catálogo — el backend resuelve la conexión del tenant del
+   * token (nunca viaja un id de conexión desde el cliente). */
+  disconnect(disconnectPath: string): Promise<void>;
   sendChat(payload: ChatRequest): Promise<ChatResponse>;
   /** Sube una nota de voz (multipart) para transcribir — ver `SendAudioResponse`. */
   sendAudio(sessionId: string, blob: Blob): Promise<SendAudioResponse>;

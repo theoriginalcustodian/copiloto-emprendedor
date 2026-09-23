@@ -111,6 +111,19 @@ Conversation — ver motivo por entrada en el manifest. Se prioriza cobertura do
   esa disciplina falla, no un sustituto de seguirla a propósito.
 - **7 de 9 workflows de producción sin fixture** (§3.3, §4c) — decisión visible y revisable, documentada
   acá y en el propio manifest, no una laguna descubierta después.
+- **`patched()` se memoiza POR RUN (enmienda 2026-09-22, H-A3-3) — un patch no llega a un run que ya lo
+  consultó en replay sin marker.** `temporalio` 1.28.0 cachea el resultado de `patched(id)` por run
+  (`_workflow_instance.py:1355-1369`): si una sesión viva tuvo un turno que corrió esa rama de código
+  ANTES de que existiera el patch, el replay de ese turno consulta `patched(id)`, no encuentra marker y
+  devuelve `False` — y ese `False` se pega para TODOS los turnos siguientes del mismo run, incluidos los
+  nuevos, hasta el `continue-as-new`. «El fix está desplegado» no significa «el fix corre en cada sesión
+  viva» para patches anidados bajo uno más viejo. Antes de afirmar el alcance de un fix por patch en
+  sesiones permanentes: **el impacto se mide, no se argumenta** — consultar Visibility
+  (`ExecutionStatus='Running' AND TemporalChangeVersion='<patch>'`) con
+  `scripts/temporal_contar_por_change_version.py` (idempotente, sólo lectura), no asumir que «ninguna
+  ejecución vieja podía tomar la rama». Detalle y evidencia (spike con dos controles en verde, caso real
+  #607 anidado bajo #570, 0/69 sesiones vivas afectadas en A3):
+  `memoria/patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md`.
 
 ## 6. Consecuencias
 

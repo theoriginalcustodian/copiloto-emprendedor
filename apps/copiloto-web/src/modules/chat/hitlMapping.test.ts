@@ -70,7 +70,23 @@ describe('hitlMapping', () => {
     );
     expect(props.service).toBe('mercadopago');
     expect(props.badge).toEqual({ variant: 'warning', text: 'REVISAR' });
-    expect(props.amount).toBe('15.000');
+    expect(props.amount).toBe('15,000'); // el `.` del texto se lee como DECIMAL (`formatearImporte`), no miles
+  });
+
+  // H-A4-12 (auditoría 2026-09-22): el backend manda el monto CRUDO, sin separador de miles
+  // (`f"...por ${amount}..."`, ver `dispatcher_emprendedor.py`) — control positivo de esa forma real,
+  // y control negativo explícito: con el código viejo (`amount: amountMatch?.[1]` sin formatear) esto
+  // daba `'80000'`, no `'80.000'`.
+  it('Mercado Pago: monto CRUDO del backend (sin separadores) se muestra formateado', () => {
+    const props = buildHitlCardProps(
+      msg({
+        text: 'Voy a generar un link de cobro de MercadoPago por $80000 (Diseño de logo). ¿Confirmás?',
+        card: { service: 'mercadopago', label: 'Mercado Pago' },
+      }),
+      vi.fn(),
+    );
+    expect(props.amount).toBe('80.000');
+    expect(props.amount).not.toBe('80000');
   });
 
   it('Instagram: badge IRREVERSIBLE + dangerBorder', () => {
@@ -93,6 +109,7 @@ describe('hitlMapping', () => {
     const onChoice = vi.fn();
     const props = buildHitlCardProps(
       msg({
+        id: 'assistant-42',
         text: 'Cobro a **Juan Pérez** por $15.000.',
         card: { service: 'mercadopago', label: 'Mercado Pago' },
       }),
@@ -103,9 +120,60 @@ describe('hitlMapping', () => {
     expect(props.cancelLabel).toBe('Cancelar');
 
     props.onConfirm();
-    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1');
+    // H-A4-9 — `onChoice` también recibe el `id` del mensaje HITL (3er arg): es lo que `send()` usa
+    // para marcar la card `hitlRespondido`.
+    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1', 'Sí, cobrar $15.000', 'assistant-42');
 
     props.onCancel();
-    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1');
+    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1', 'Cancelar', 'assistant-42');
+  });
+
+  // BL-D4 — control positivo: `onChoice` también recibe el LABEL, no sólo el `value` técnico.
+  // Sin esto, `ChatScreen`/`SoporteScreen` no tienen de dónde sacar el texto legible para la
+  // burbuja optimista y terminan pintando el `value` crudo (`confirm_charge_1`/`cancel_charge_1`).
+  it('dispara onChoice con (value, label, messageId) — la burbuja del usuario nunca debe pintar el value', () => {
+    const onChoice = vi.fn();
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-7',
+        text: 'Cobro a **Juan Pérez** por $15.000.',
+        card: { service: 'mercadopago', label: 'Mercado Pago' },
+      }),
+      onChoice,
+    );
+
+    props.onConfirm();
+    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1', 'Sí, cobrar $15.000', 'assistant-7');
+
+    props.onCancel();
+    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1', 'Cancelar', 'assistant-7');
+  });
+
+  // H-A4-9 — control positivo + negativo: con `message.hitlRespondido` ya presente, `disabled` es
+  // `true` y `onConfirm`/`onCancel` son no-ops (defensa en profundidad: aunque algo la siga montando
+  // activa, un click no dispara ningún envío). Sin el fix, `disabled` no existiría y los closures
+  // seguirían llamando a `onChoice` normal — el control negativo (mock llamado) lo cazaría.
+  it('H-A4-9: message.hitlRespondido -> disabled=true y onConfirm/onCancel son no-ops', () => {
+    const onChoice = vi.fn();
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-9',
+        text: 'Cobro a **Juan Pérez** por $15.000.',
+        card: { service: 'mercadopago', label: 'Mercado Pago' },
+        hitlRespondido: { value: 'cancel_charge_1', label: 'Cancelar' },
+      }),
+      onChoice,
+    );
+
+    expect(props.disabled).toBe(true);
+
+    props.onConfirm();
+    props.onCancel();
+    expect(onChoice).not.toHaveBeenCalled();
+  });
+
+  it('sin hitlRespondido: disabled=false — control negativo del test anterior', () => {
+    const props = buildHitlCardProps(msg({ id: 'assistant-10' }), vi.fn());
+    expect(props.disabled).toBe(false);
   });
 });

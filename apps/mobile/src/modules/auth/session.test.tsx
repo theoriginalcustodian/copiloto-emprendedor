@@ -44,10 +44,11 @@ describe('useSession (vía SessionProvider)', () => {
     jest.mocked(api.me).mockReset();
   });
 
-  it('sin token persistido -> anon (nunca llama a /me)', async () => {
+  it('sin token persistido -> anon (nunca llama a /me), primeraVez true (BL-X10 fila 2)', async () => {
     const { result } = await renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.estado).toBe('anon'));
     expect(api.me).not.toHaveBeenCalled();
+    expect(result.current.primeraVez).toBe(true);
   });
 
   it('con token persistido válido -> autenticado (chequeo de montaje vía /me) y expone la identidad', async () => {
@@ -81,6 +82,7 @@ describe('useSession (vía SessionProvider)', () => {
 
     expect(loginResult).toEqual({ ok: true });
     expect(result.current.estado).toBe('autenticado');
+    expect(result.current.primeraVez).toBe(false);
   });
 
   it('login con 401 -> error de credenciales, estado queda anon', async () => {

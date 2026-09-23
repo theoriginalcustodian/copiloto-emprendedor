@@ -8,7 +8,6 @@ import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
-import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
@@ -16,7 +15,7 @@ import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
-import { AjustesScreen } from '../modules/ajustes';
+import { AjustesScreen, PantallaComoUsarLaApp } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
@@ -27,7 +26,8 @@ import { Rail } from './Rail';
 import { type TabKey } from './TabBar';
 import './desktop.css';
 
-const DEFAULT_TAB: TabKey = 'chat';
+// BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
+const DEFAULT_TAB: TabKey = 'midia';
 
 /**
  * Shell de escritorio (DESIGN-SYSTEM-EXTRACT-WEB.md §3/§4): Rail lateral + columna de contenido a
@@ -135,7 +135,6 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             {activeTab === 'connections' && <ConnectionsScreen />}
             {activeTab === 'gastos' && <GastosScreen />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
-            {activeTab === 'contabilidad' && <ContabilidadScreen />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen
@@ -145,8 +144,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               />
             )}
             {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
-            {activeTab === 'inteligencia' && <InteligenciaScreen />}
-            {activeTab === 'midia' && <MidiaScreen />}
+            {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => setActiveTab('chat')} />}
+            {activeTab === 'midia' && <MidiaScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'escritorio' && (
               <EscritorioScreen
                 onFuncion={(key) => {
@@ -163,7 +162,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               />
             )}
             {activeTab === 'recientes' && <RecientesScreen />}
-            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} onAbrirSoporte={() => abrirSoporte('soporte_tecnico')} />}
             {activeTab === 'facturacion' && (
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
@@ -177,7 +176,13 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             {activeTab === 'account' && (
               <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
             )}
-            {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
+            {activeTab === 'soporte' &&
+              (funcionSoporte === 'como_uso_la_app' ? (
+                // BL-W9: «Cómo uso la app» no es un chat de ayuda propio — cada tema abre el chat principal.
+                <PantallaComoUsarLaApp onAbrirChat={() => setActiveTab('chat')} />
+              ) : (
+                <SoporteScreen funcion={funcionSoporte} />
+              ))}
           </>
         )}
       </main>

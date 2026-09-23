@@ -10,7 +10,7 @@ import {
   type EventoChat,
 } from './chatMachine';
 import type { ChatContenido } from '../api/types';
-import { mapearGate } from './hitl';
+import { mapearGate, sanitizarHitlRespondido } from './hitl';
 
 /**
  * Estos tests prueban el reducer AISLADO de red/timers/storage: cada evento es la traducción pura de
@@ -132,6 +132,229 @@ describe('una respuesta con `card` dispara el gate correcto', () => {
 
     const [mensaje] = estado.messages;
     expect(mapearGate(mensaje!)).toBeNull();
+  });
+});
+
+// H-A4-9 — una card HITL ya respondida no puede seguir siendo clickeable, NI SIQUIERA tras un
+// reload: el estado "ya respondida" tiene que vivir en el MENSAJE persistido (`hitlRespondido`),
+// no en un estado efímero de React/hook que se pierde al remontar.
+describe('HITL ya respondida (H-A4-9)', () => {
+  it('`mensaje_usuario_agregado` con `hitlRespondido` marca ESE mensaje, atómico con la burbuja nueva', () => {
+    const gateMsg: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: '¿Confirmás?',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:0:0' },
+        { label: 'Cancelar', value: 'cancel:0:0' },
+      ],
+    };
+    const respuesta: ChatMessage = { id: 'user-9', role: 'user', text: 'Cancelar' };
+
+    const estado = correr(
+      { ...estadoBase(), messages: [gateMsg] },
+      {
+        tipo: 'mensaje_usuario_agregado',
+        mensaje: respuesta,
+        hitlRespondido: { mensajeId: 'assistant-5', value: 'cancel:0:0', label: 'Cancelar' },
+      },
+    );
+
+    expect(estado.messages).toHaveLength(2);
+    expect(estado.messages[0]).toMatchObject({
+      id: 'assistant-5',
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    expect(estado.messages[1]).toEqual(respuesta);
+    // `mapearGate` refleja `hitlRespondido` en `respondido` — la vista lo usa para deshabilitar.
+    expect(mapearGate(estado.messages[0]!)?.respondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+  });
+
+  it('`mensaje_usuario_agregado` SIN `hitlRespondido` (texto libre) no marca ningún mensaje previo', () => {
+    const gateMsg: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: '¿Confirmás?',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:0:0' },
+        { label: 'Cancelar', value: 'cancel:0:0' },
+      ],
+    };
+    const libre: ChatMessage = { id: 'user-9', role: 'user', text: 'otra cosa' };
+
+    const estado = correr({ ...estadoBase(), messages: [gateMsg] }, { tipo: 'mensaje_usuario_agregado', mensaje: libre });
+
+    expect(estado.messages[0]!.hitlRespondido).toBeUndefined();
+    expect(mapearGate(estado.messages[0]!)?.respondido).toBeUndefined();
+  });
+
+  it('sanitizarHitlRespondido migra el token LEGACY (pre-#624, "cancel:0:0") al rehidratar', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'cancel:0:0' }, // token crudo LEGACY, no un label
+    ];
+
+    const migrado = sanitizarHitlRespondido(historial);
+
+    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+    expect(migrado[1]).toEqual(historial[1]); // el mensaje de usuario no cambia
+  });
+
+  it('sanitizarHitlRespondido migra el formato NUEVO (post-#624, label "Confirmar") al rehidratar', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'Confirmar' }, // label BL-D4, sin `hitlRespondido` todavía
+    ];
+
+    const migrado = sanitizarHitlRespondido(historial);
+
+    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'Confirmar', label: 'Confirmar' });
+  });
+
+  it('sin respuesta después, sigue activa — sanitizarHitlRespondido NO la marca', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+    ];
+
+    expect(sanitizarHitlRespondido(historial)[0]!.hitlRespondido).toBeUndefined();
+  });
+
+  it('sanitizarHitlRespondido es idempotente — no re-marca un mensaje ya migrado', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+        hitlRespondido: { value: 'confirm:0:0', label: 'Confirmar' },
+      },
+      { id: 'user-9', role: 'user', text: 'algo distinto que no debería pisar nada' },
+    ];
+
+    expect(sanitizarHitlRespondido(historial)[0]!.hitlRespondido).toEqual({
+      value: 'confirm:0:0',
+      label: 'Confirmar',
+    });
+  });
+});
+
+// K-11 / BL-J8 Parte 1 (mobile) — el sheet «Conectá X» descartado con «Ahora no» tiene que
+// sobrevivir a un reload: la marca vive en el MENSAJE persistido, igual que `hitlRespondido`.
+describe('conexion_descartada (K-11 / BL-J8 Parte 1)', () => {
+  it('marca `conexionDescartada` en el mensaje indicado, sin tocar los demás', () => {
+    const otraCard: ChatMessage = { id: 'assistant-3', role: 'assistant', text: 'otra cosa' };
+    const conCard: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: 'Para eso necesito que conectes Gmail primero.',
+      card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail' },
+    };
+
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [otraCard, conCard] },
+      { tipo: 'conexion_descartada', mensajeId: 'assistant-5' },
+    );
+
+    expect(estado.messages[0]).toEqual(otraCard); // sin marca -- no era el mensaje descartado
+    expect(estado.messages[1]).toMatchObject({ id: 'assistant-5', conexionDescartada: true });
+  });
+
+  it('un `mensajeId` que no existe en `messages` es un no-op (no lanza, no muta nada)', () => {
+    const mensaje: ChatMessage = { id: 'assistant-5', role: 'assistant', text: 'x' };
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [mensaje] },
+      { tipo: 'conexion_descartada', mensajeId: 'no-existe' },
+    );
+    expect(estado.messages).toEqual([mensaje]);
+  });
+});
+
+describe('tarjeta_resuelta (GUARDM parte 2) — guard cross-remount genérico de las 5 cards de propuesta', () => {
+  it('marca SÓLO el campo del patch, en el mensaje indicado, sin tocar los demás', () => {
+    const otraCard: ChatMessage = { id: 'assistant-3', role: 'assistant', text: 'otra cosa' };
+    const conCard: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: 'Entendí este gasto.',
+      card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+    };
+
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [otraCard, conCard] },
+      {
+        tipo: 'tarjeta_resuelta',
+        mensajeId: 'assistant-5',
+        patch: { gastoResuelto: { estado: 'guardado', monto: '50000.00' } },
+      },
+    );
+
+    expect(estado.messages[0]).toEqual(otraCard); // sin marca -- no era el mensaje resuelto
+    expect(estado.messages[1]).toMatchObject({
+      id: 'assistant-5',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+  });
+
+  it('es genérico entre las 5 cards -- cada campo del patch cae en su propia clave', () => {
+    const base: ChatMessage = { id: 'assistant-1', role: 'assistant', text: 'x' };
+
+    const conGasto = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'assistant-1', patch: { gastoResuelto: { estado: 'descartado' } } },
+    );
+    expect(conGasto.messages[0]).toMatchObject({ gastoResuelto: { estado: 'descartado' } });
+
+    const conFactura = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'assistant-1', patch: { facturaResuelta: true } },
+    );
+    expect(conFactura.messages[0]).toMatchObject({ facturaResuelta: true });
+
+    const conPresupuesto = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      {
+        tipo: 'tarjeta_resuelta',
+        mensajeId: 'assistant-1',
+        patch: { presupuestoResuelto: { estado: 'guardado', numero: 7 } },
+      },
+    );
+    expect(conPresupuesto.messages[0]).toMatchObject({ presupuestoResuelto: { estado: 'guardado', numero: 7 } });
+  });
+
+  it('un `mensajeId` que no existe en `messages` es un no-op (no lanza, no muta nada)', () => {
+    const mensaje: ChatMessage = { id: 'assistant-5', role: 'assistant', text: 'x' };
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [mensaje] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'no-existe', patch: { gastoResuelto: { estado: 'descartado' } } },
+    );
+    expect(estado.messages).toEqual([mensaje]);
   });
 });
 

@@ -174,4 +174,31 @@ describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () 
     // que el test termine — evita un warning de act() por un `setState` que cae después del `expect`.
     expect(await screen.findByTestId('presupuesto-concepto')).toBeInTheDocument(); // el 2º sigue editable
   });
+
+  it('🔴 K-01: dos clicks rápidos en Guardar NO disparan una segunda llamada, y se manda la idem_key', async () => {
+    let resolver: (v: Awaited<ReturnType<typeof crearPresupuesto>>) => void = () => {};
+    mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    const boton = await screen.findByRole('button', { name: /guardar presupuesto/i });
+    fireEvent.click(boton);
+    fireEvent.click(boton);
+
+    expect(mockCrear).toHaveBeenCalledTimes(1);
+    expect(mockCrear.mock.calls[0]?.[0].idemKey).toMatch(/^[0-9a-f-]{36}$/);
+    resolver({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeInTheDocument());
+  });
+
+  it('K-01: el reintento tras un error usa la MISMA idem_key', async () => {
+    mockCrear.mockRejectedValueOnce(new Error('red')).mockResolvedValueOnce({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
+
+    expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
+  });
 });

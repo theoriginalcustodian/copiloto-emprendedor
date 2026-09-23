@@ -11,7 +11,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
-import { crearPresupuesto, leerPresupuestoPropuesto, type Presupuesto } from '@copiloto/core';
+import { crearPresupuesto, leerPresupuestoPropuesto, type ChatMessage, type Presupuesto } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
@@ -44,12 +44,33 @@ function presupuestoGuardado(numero: number): Presupuesto {
   } as unknown as Presupuesto;
 }
 
-async function montar(p = propuesta()) {
-  return render(
+/** `resuelto` ya llega SINCRÓNICO (patrón B, vive en el mensaje) — pero `FormularioPresupuesto`
+ *  sigue disparando `listarConceptos()` (red, async) sin gate en su propio mount (línea ~155-157).
+ *  Sin esperar a que asiente, esa resolución de promesa cae FUERA de cualquier `act()` de este test
+ *  y pisa el `screen` del próximo — mismo `waitFor` que usaba el `montar()` original (pre-migración,
+ *  cuando lo que flusheaba era la lectura async de `AsyncStorage`), ahora sólo para el catálogo. */
+async function montar(
+  p = propuesta(),
+  opts: { mensajeId?: string; resuelto?: ChatMessage['presupuestoResuelto']; onResolver?: (patch: NonNullable<ChatMessage['presupuestoResuelto']>) => void } = {},
+) {
+  const r = render(
     <ThemeProvider>
-      <TarjetaPresupuestoPropuesto propuesta={p} />
+      <TarjetaPresupuestoPropuesto
+        propuesta={p}
+        mensajeId={opts.mensajeId ?? 'assistant-1'}
+        resuelto={opts.resuelto}
+        onResolver={opts.onResolver}
+      />
     </ThemeProvider>,
   );
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('presupuesto-propuesto') ??
+        screen.queryByTestId('presupuesto-propuesto-guardado') ??
+        screen.queryByTestId('presupuesto-propuesto-descartado'),
+    ).toBeTruthy(),
+  );
+  return r;
 }
 
 describe('TarjetaPresupuestoPropuesto', () => {
@@ -145,5 +166,91 @@ describe('TarjetaPresupuestoPropuesto', () => {
 
     expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
     expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('🔴 tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key derivada del mensajeId', async () => {
+    let resolver: (v: Awaited<ReturnType<typeof crearPresupuesto>>) => void = () => {};
+    mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    expect(mockCrear).toHaveBeenCalledTimes(1);
+    // BL-V32: ya no nace con el montaje (UUID) — se DERIVA del `mensajeId` de la card ('assistant-1',
+    // ver `montar()` arriba), con el prefijo `presupuesto:` para no chocar con la idem_key de otra alta.
+    expect(mockCrear.mock.calls[0]?.[0].idemKey).toBe('presupuesto:assistant-1');
+    await act(async () => resolver({ status: 'ok', presupuesto: presupuestoGuardado(7) }));
+  });
+
+  it('K-01: un reintento tras error usa la MISMA idem_key (regenerarla anularía la protección)', async () => {
+    mockCrear.mockRejectedValueOnce(new Error('red')).mockResolvedValueOnce({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    expect(mockCrear).toHaveBeenCalledTimes(2);
+    expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
+  });
+
+  /**
+   * GUARDM parte 2 — guard cross-remount MIGRADO de patrón A (`AsyncStorage`, K-01/BL-D1) a patrón B
+   * (`resuelto`/`onResolver`, la marca vive DENTRO del mensaje). Control positivo/negativo mismo
+   * criterio que `hitlRespondido` en `ListaMensajes.test.tsx`.
+   */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: guardado` renderiza DIRECTO el terminal, sin el formulario', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'guardado', numero: 7 } });
+
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent(
+        'Presupuesto anotado — N° 7',
+      );
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+      expect(mockCrear).not.toHaveBeenCalled();
+    });
+
+    it('control positivo: `resuelto: descartado` renderiza DIRECTO el terminal de descarte', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'descartado' } });
+
+      expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
+    });
+
+    it('al guardar, llama a `onResolver` con el número asignado', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', numero: 7 });
+    });
+
+    it('al descartar, llama a `onResolver` con `descartado`', async () => {
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-cancelar'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
+    });
   });
 });

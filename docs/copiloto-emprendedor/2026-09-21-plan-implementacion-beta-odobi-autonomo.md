@@ -48,7 +48,7 @@ El operador respondió el 21/09. Estas respuestas son **vinculantes** para el pl
 
 ### 3.1 Entra: se cierra de forma autónoma (Cierre A)
 
-Todos los ítems del backlog salvo los de §3.2 y §3.3. Son **62 ítems del backlog** más **4 nuevos** que este plan agrega porque, sin ellos, la ejecución paralela se rompe:
+Todos los ítems del backlog salvo los de §3.2 y §3.3. Son **62 ítems del backlog** más **6 nuevos** que este plan agrega porque, sin ellos, la ejecución paralela se rompe:
 
 | ID nuevo | Qué | Por qué es necesario |
 |---|---|---|
@@ -56,6 +56,8 @@ Todos los ítems del backlog salvo los de §3.2 y §3.3. Son **62 ítems del bac
 | **BL-B6** | `gate.sh` aislado por sesión: base de tests, puerto y *stage* del VPS propios. | **Medido:** `test-db.sh` usa un contenedor fijo (`copiloto-test-db`, puerto `55432`) y `sync-test-backend.sh` un *stage* fijo (`/opt/uc-copiloto-cliente-stage`). Tres sesiones corriendo el gate a la vez se pisan la base y el código bajo test, y producen rojos y verdes falsos. Las tres variables ya son parametrizables (`UC_TESTDB_NAME`, `UC_TESTDB_PORT`, `UC_TEST_STAGE`). |
 | **BL-B7** | Todo deploy sale de `origin/main`, desde un worktree de deploy dedicado y con un candado. | `sync-web.sh` y `deploy.sh` suben el árbol **local**. Si FRONTEND-1 despliega desde su rama, **revierte en prod** lo que FRONTEND-2 mergeó un minuto antes. Es la misma falla que `memoria/un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md`. |
 | **BL-P8** | Comando de arranque de la sesión AUDITORÍA con un cron barato. | No existe `.claude/commands/monitoreo-auditoria.md`. Un cron de 3 minutos sobre Fable quema tokens sin trabajo (§9.4). |
+| **BL-X12m** | `volver` (reveal post-logout), `ingresar` e `ingresar-error` en **mobile**. | Entradas nuevas del mapa en #516, medidas por auditoría el 21/09 sobre `5ec87b8e`: `volver` AUSENTE en las dos plataformas; `ingresar`/`ingresar-error` PARCIALES. Dueño: FRONTEND-1, con `BL-X10` (mismo flujo de entrada). |
+| **BL-X12w** | `ingresar` e `ingresar-error` en **web**. | `LoginScreen.tsx` sigue en el patrón derogado (marca en tres bloques, enlaces «Escribinos»). Dueño: FRONTEND-2, en el PR de `BL-X11`. |
 
 **DoD de los nuevos:**
 - **BL-O9:**
@@ -206,7 +208,7 @@ Todos los ítems del backlog salvo los de §3.2 y §3.3. Son **62 ítems del bac
 
 | Sesión | Worktree | Triada del gate (`BL-B6`) |
 |---|---|---|
-| BACKEND | `C:/gfw-src/wt-backend` | `UC_TESTDB_NAME=copiloto-test-db-be` · `UC_TESTDB_PORT=55432` · `UC_TEST_STAGE=/opt/uc-copiloto-cliente-stage-be` |
+| BACKEND | `C:/gfw-src/wt-backend` | `UC_TESTDB_NAME=copiloto-test-db-be` · `UC_TESTDB_PORT=55435` · `UC_TEST_STAGE=/opt/uc-copiloto-cliente-stage-be` |
 | FRONTEND-1 | `C:/gfw-src/wt-fe1` (hoy en `fix/recording-overlay-sin-scrim`: ver §14.1) | `…-fe1` · `55433` · `…-stage-fe1` |
 | FRONTEND-2 | `C:/gfw-src/wt-fe2` (nuevo) | `…-fe2` · `55434` · `…-stage-fe2` |
 | Deploys | `C:/gfw-src/wt-deploy` (*detached*) | — |
@@ -218,6 +220,8 @@ Reglas duras, sin excepción:
 - `git status` antes de cada commit, y un grep de formas de credencial en lo que se va a subir. **El repo es público.**
 - `coordinacion/` nunca se versiona.
 - En su **propio** worktree, una sesión sí puede hacer `switch -c` desde `origin/main`. La prohibición de §1 protege el checkout compartido.
+
+> **55435, no 55432 (corregido el 21/09).** El `55432` del VPS ya lo publica el contenedor legacy `copiloto-test-db`, que es el default histórico de `gate.sh` sin parámetros: provisionar la triada de BACKEND ahí da `port is already allocated`. No se borra el contenedor; se corre BACKEND en el `55435`. Retirar el legacy es deuda de Cierre B (dueño: planificación).
 
 ### 5.5 Cero ocio
 
@@ -392,11 +396,12 @@ Cada fila dice qué la bloquea. Si no dice nada, arranca ya.
 | 2 | 18 | **BL-X3** «Preguntar» abre el chat principal; se borra el mini-chat | web + mobile | BL-W9 (el puente) | |
 | 2 | 19 | **BL-J9** (FE) chips «Mandalo por mail» / «¿Te armo la factura?» | web + mobile | K-07 | |
 | 2 | 20 | **BL-J12** (FE) sección «Lo pediste vos» | web + mobile | K-08 | |
-| 3 | 21 | **BL-J8** (FE) *sheet* de consentimiento en contexto | web + mobile | K-11 | |
-| 3 | 22 | **BL-J7** (FE) componente `MicFuncion` + hook + chip «Por voz · duración» | web + mobile | K-10 | Lo entrega a FE2 con `dato_` para el montaje. |
-| 3 | 23 | **BL-X10** splash, entrada y reveal con Reanimated (y equivalente en web) | web + mobile | — | Medir el TTI antes y después (`callstack-react-native-performance`). Video del primer y del segundo arranque. |
-| 3 | 24 | **BL-Q1** control de paridad de `testID` en CI | repo | Pantallas de las Olas 1–2 mergeadas | Control positivo: se borra un id en una sola app y el gate da rojo. |
-| 4 | 25 | **BL-Q3** (web) barrido de las pantallas de su dominio en el PWA | web | — | SW purgado, lado a lado. |
+| 2 | 21 | **BL-X12m** `volver` + `ingresar` + `ingresar-error` en mobile | mobile | BL-X10 | El lockup de `ingresar` NO se toca hasta que Martín conteste (§3.4). |
+| 3 | 22 | **BL-J8** (FE) *sheet* de consentimiento en contexto | web + mobile | K-11 | |
+| 3 | 23 | **BL-J7** (FE) componente `MicFuncion` + hook + chip «Por voz · duración» | web + mobile | K-10 | Lo entrega a FE2 con `dato_` para el montaje. |
+| 3 | 24 | **BL-X10** splash, entrada y reveal con Reanimated (y equivalente en web) | web + mobile | — | Medir el TTI antes y después (`callstack-react-native-performance`). Video del primer y del segundo arranque. |
+| 3 | 25 | **BL-Q1** control de paridad de `testID` en CI | repo | Pantallas de las Olas 1–2 mergeadas | Control positivo: se borra un id en una sola app y el gate da rojo. |
+| 4 | 26 | **BL-Q3** (web) barrido de las pantallas de su dominio en el PWA | web | — | SW purgado, lado a lado. |
 
 ### 8.3 FRONTEND-2 — Superficies
 
@@ -419,11 +424,14 @@ Cada fila dice qué la bloquea. Si no dice nada, arranca ya.
 | 2 | 15 | **BL-J11** (FE) cambiar mail y contraseña; la fila se oculta o explica para cuentas de Google | web + mobile | K-12 | |
 | 2 | 16 | **BL-J2 + BL-J3** (FE) fecha de corte y variación en la portada | web + mobile | K-03 | |
 | 2 | 17 | **BL-J5** (FE) tablero desde el detector; se borran `categoriaTarjeta.ts` y su gemelo | web + mobile | K-06 | Grep vacío. |
-| 3 | 18 | **BL-J4** (FE) portada incompleta que lo dice + punto del avatar + badge «Reconectar» | web + mobile | K-09 | |
-| 3 | 19 | **BL-J7** (FE) monta `MicFuncion` en Gastos, Ingresos, Presupuestos y Clientes; foto directa desde Gastos | web + mobile | Entrega de FE1 (K-10) | |
-| 3 | 20 | **BL-J13** (FE) pantalla Agenda + «Nuevo evento» | web + mobile | K-13 | |
-| 3 | 21 | **BL-X8** (FE) onboarding: hilo de 2 permisos + recibo del primer insight | web + mobile | K-14 | En device se prueba **reseteando el flag de onboarding de `e2e-device`** (no se crea otro usuario). En mobile se monta con la línea de FE1 en `_layout.tsx`. |
-| 4 | 22 | **BL-Q3** (web) barrido de las pantallas de su dominio en el PWA | web | — | |
+| 2 | 18 | **BL-X12w** `ingresar` + `ingresar-error` en web, dentro del PR de `BL-X11` | web | — | Comparte el texto del error con `BL-X12m`. |
+| 3 | 19 | **BL-J4** (FE) portada incompleta que lo dice + punto del avatar + badge «Reconectar» | web + mobile | K-09 | |
+| 3 | 20 | **BL-J7** (FE) monta `MicFuncion` en Gastos, Ingresos, Presupuestos y Clientes; foto directa desde Gastos | web + mobile | Entrega de FE1 (K-10) | |
+| 3 | 21 | **BL-J13** (FE) pantalla Agenda + «Nuevo evento» | web + mobile | K-13 | |
+| 3 | 22 | **BL-X8** (FE) onboarding: hilo de 2 permisos + recibo del primer insight | web + mobile | K-14 | En device se prueba **reseteando el flag de onboarding de `e2e-device`** (no se crea otro usuario). En mobile se monta con la línea de FE1 en `_layout.tsx`. |
+| 4 | 23 | **BL-Q3** (web) barrido de las pantallas de su dominio en el PWA | web | — | |
+
+> **Tamaño de la matriz (fijado el 21/09 con la medición de auditoría sobre `5ec87b8e`):** **51 entradas** del mapa (`mapa-pantallas/index.html`), más los **9 hilos** del prototipo que no son entrada del mapa como filas de la pantalla que los contiene (`chat`), no como pantallas propias. Un hilo es un estado de conversación: el prototipo lo abre con `abrirHilo(ver)` encima de la pantalla base.
 
 ### 8.4 AUDITORÍA
 

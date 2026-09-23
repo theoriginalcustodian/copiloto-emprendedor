@@ -5,6 +5,7 @@ import type { FlatList } from 'react-native-gesture-handler';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
+import { AvisoCancelar } from './AvisoCancelar';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
@@ -12,7 +13,9 @@ import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { useCapturaFoto } from './useCapturaFoto';
+import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { useChat } from './useChat';
+import { useConexionRequerida } from './useConexionRequerida';
 import { useVozComando } from './useVozComando';
 
 /**
@@ -91,12 +94,15 @@ export function ChatView() {
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio, enviarFoto } = useChat(me?.cliente_id ?? '');
+  const { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta } = useChat(
+    me?.cliente_id ?? '',
+  );
   const voz = useVozComando();
   const foto = useCapturaFoto();
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -115,6 +121,9 @@ export function ChatView() {
   }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
+
+  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
+  const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio, descartarConexion);
 
   /**
    * 🔴 **El puente de la Decisión C**: lo que otra pantalla dejó pendiente entra ACÁ, en el chat
@@ -138,12 +147,19 @@ export function ChatView() {
   // El confirm/cancel del gate (`ListaMensajes`/`mapearGate`) reenvía acá como `kind:'callback'` —
   // mismo criterio que `handleChoice` en `ChatScreen.tsx` de la PWA.
   const manejarEleccion = useCallback(
-    (value: string, opts?: { payload?: Record<string, unknown> | null }) =>
-      void send(value, { kind: 'callback', payload: opts?.payload }),
+    (value: string, opts?: { payload?: Record<string, unknown> | null; displayText?: string }) =>
+      void send(value, { kind: 'callback', payload: opts?.payload, displayText: opts?.displayText }),
     [send],
   );
 
+  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx` (voz standalone): el instante del toque que
+  // arranca la grabación mide la duración del dictado para el chip «Por voz · Ns» de la burbuja. No
+  // se usa `voz.segundos` (el reloj propio del grabador, que excluye pausas) para no ensanchar el
+  // contrato de `useVozComando` — hook compartido con `feedback`/`soporte`, fuera del alcance de esta
+  // fila.
+  const inicioMsRef = useRef(0);
   const alIniciarVoz = useCallback(() => {
+    inicioMsRef.current = Date.now();
     void (async () => {
       const ok = await vozRef.current.iniciar();
       if (!ok) {
@@ -170,11 +186,14 @@ export function ChatView() {
     }
     const audio = actual.tomar();
     if (audio === null) return; // no llegó a grabar nada
-    void enviarAudio(audio);
+    const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
+    void enviarAudio(audio, duracionSeg);
   }, [enviarAudio]);
 
   const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
   const onFijarVoz = useCallback(() => setFijado(true), []);
+  // BL-D2: deslizar a la izquierda / toque corto -> se descarta lo grabado sin enviarlo.
+  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
   // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
@@ -201,7 +220,20 @@ export function ChatView() {
         <IndicadorModoCeremonia />
       </View>
 
-      <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+      <ListaMensajes
+        ref={scrollRef}
+        messages={estado?.messages ?? []}
+        onChoice={manejarEleccion}
+        onResolverTarjeta={marcarCardResuelta}
+      />
+
+      <SheetRequiereConexion
+        conexion={conexion.pendiente?.conexion ?? null}
+        onConectar={conexion.conectar}
+        onAhoraNo={conexion.ahoraNo}
+        ocupado={conexion.ocupado}
+        error={conexion.error}
+      />
 
       {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
           esté fijado: con controles flotantes abajo, mantener el botón visible sumaría ruido). Se
@@ -217,10 +249,15 @@ export function ChatView() {
               <Onda niveles={voz.niveles} />
             </View>
           )}
+          {cancelando && (
+            <AvisoCancelar />
+          )}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
             onFijar={onFijarVoz}
+            onCancelar={onCancelarVoz}
+            onCancelando={setCancelando}
             disabled={voz.fase !== 'inactivo'}
             scrollRef={scrollRef}
           />

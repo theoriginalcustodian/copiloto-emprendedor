@@ -36,7 +36,8 @@ function initial(clienteId: string | undefined): string {
  * foco) vive en el hook; acá solo presentación + el flujo de abrir el OAuth.
  */
 export function ConnectionsScreen() {
-  const { status, services, connectedCount, totalCount, connect, refresh } = useConnections();
+  const { status, services, connectedCount, totalCount, connect, disconnect, refresh } =
+    useConnections();
   const { me } = useSession();
   const [query, setQuery] = useState('');
   const [connectingKey, setConnectingKey] = useState<string | null>(null);
@@ -63,7 +64,9 @@ export function ConnectionsScreen() {
     <div className="connections-screen" data-testid="connections-screen">
       <header className="connections-screen__header">
         <div className="connections-screen__heading">
-          <h1 className="connections-screen__title">Conexiones</h1>
+          {/* BL-D8: título "Apps" — alinea con mobile (`PantallaApps.tsx`), que ya usa ese nombre.
+              La clase `connections-screen__title` queda igual: cambia el texto, no el CSS. */}
+          <h1 className="connections-screen__title">Apps</h1>
           {status === 'ready' && (
             <p className="connections-screen__count">
               {connectedCount} activas · {totalCount - connectedCount} disponibles
@@ -116,6 +119,7 @@ export function ConnectionsScreen() {
                   key={service.key}
                   service={service}
                   onConnect={(s) => void handleConnect(s)}
+                  onDisconnect={disconnect}
                   connecting={connectingKey === service.key}
                 />
               ))}

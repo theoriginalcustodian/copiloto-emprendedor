@@ -53,7 +53,7 @@ def _gateway_con_certificado(cliente_id: str, cuit: str):
     creds = _cred_store_factory(cliente_id).get(cuit)
     if not creds:
         raise ApplicationError(
-            f"el tenant no tiene certificado AFIP para el CUIT {cuit}",
+            f"el tenant no tiene certificado ARCA para el CUIT {cuit}",
             type="SinCertificado", non_retryable=True)
     return _gateway_factory(cuit, creds["cert"], creds["key"], creds.get("ambiente", "dev"))
 
@@ -115,7 +115,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
     if gateway.existe_comprobante(numero=siguiente, punto_venta=punto_venta, tipo_cbte=tipo_cbte):
         info = gateway.info_comprobante(numero=siguiente, punto_venta=punto_venta, tipo_cbte=tipo_cbte)
         activity.logger.warning(
-            "el comprobante %s-%s ya estaba autorizado en AFIP: se adopta en vez de reemitir",
+            "el comprobante %s-%s ya estaba autorizado en ARCA: se adopta en vez de reemitir",
             punto_venta, siguiente)
         # El campo del código de autorización CAMBIA según la operación del WS: `FECompConsultar`
         # lo devuelve en `CodAutorizacion`/`FchVto`, mientras que `FECAESolicitar` usa `CAE`/`CAEFchVto`.

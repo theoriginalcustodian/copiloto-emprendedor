@@ -35,7 +35,7 @@ export class ForbiddenError extends ApiError {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   /** Default true: inyecta `Authorization: Bearer <token>` si hay token persistido. */
   auth?: boolean;
@@ -191,6 +191,9 @@ export const apiClient = {
   },
   post<T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
     return request<T>(path, { ...opts, method: 'POST', body });
+  },
+  delete<T>(path: string, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return request<T>(path, { ...opts, method: 'DELETE' });
   },
 };
 

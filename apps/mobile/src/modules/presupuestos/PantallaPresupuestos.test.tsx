@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Gesture } from 'react-native-gesture-handler';
 
 /**
  * Partial mock de `@copiloto/core`: sólo las funciones de red. `ApiError` y los formateadores se
@@ -13,14 +14,34 @@ jest.mock('@copiloto/core', () => {
     obtenerPresupuesto: jest.fn(),
     crearPresupuesto: jest.fn(),
     facturarPresupuesto: jest.fn(),
+    transcribir: jest.fn(),
   };
 });
+
+// BL-J7/K-10 — mismo arnés que `modules/voz/MicFuncion.test.tsx`: `MicFuncion` (mobile) envuelve
+// `BotonVoz`/`useVozComando`, no `MediaRecorder` como en web.
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockVoz = {
+  fase: 'inactivo' as 'inactivo' | 'grabando' | 'pausado' | 'listo',
+  niveles: [] as number[],
+  iniciar: jest.fn().mockResolvedValue(true),
+  pausar: jest.fn(),
+  reanudar: jest.fn(),
+  detener: jest.fn().mockResolvedValue(undefined),
+  descartar: jest.fn().mockResolvedValue(undefined),
+  tomar: jest.fn(),
+};
+jest.mock('../chat/useVozComando', () => ({ useVozComando: () => mockVoz }));
 
 import {
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
   obtenerPresupuesto,
+  transcribir,
   type Presupuesto,
 } from '@copiloto/core';
 
@@ -31,6 +52,26 @@ const mockListar = listarPresupuestos as jest.MockedFunction<typeof listarPresup
 const mockObtener = obtenerPresupuesto as jest.MockedFunction<typeof obtenerPresupuesto>;
 const mockCrear = crearPresupuesto as jest.MockedFunction<typeof crearPresupuesto>;
 const mockFacturar = facturarPresupuesto as jest.MockedFunction<typeof facturarPresupuesto>;
+const mockTranscribir = transcribir as jest.MockedFunction<typeof transcribir>;
+
+/** Dispara el ciclo completo del gesto de `BotonVoz` (apretar `MIN_HOLD_MS` y soltar) — mismo
+ * mecanismo que `modules/voz/MicFuncion.test.tsx` (mobile). `espiaPan` tiene que estar activo DESDE
+ * ANTES del `render`: el recognizer se crea al montar `MicFuncion`, que vive en el listado. */
+async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
+  const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
+    handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
+  };
+  let ahora = 1_000_000;
+  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  await act(async () => {
+    recognizer.handlers.onBegin?.({});
+  });
+  ahora += 400;
+  await act(async () => {
+    recognizer.handlers.onFinalize?.({}, true);
+  });
+  relojEspia.mockRestore();
+}
 
 function presupuesto(over: Partial<Presupuesto> = {}): Presupuesto {
   return {
@@ -376,6 +417,33 @@ describe('PantallaPresupuestos', () => {
       await waitFor(() => expect(mockCrear).toHaveBeenCalled());
     });
 
+    it('K-07: tras guardar con Doc el detalle ofrece «Mandalo por mail»; sin sugerencia no', async () => {
+      mockCrear.mockResolvedValue({
+        status: 'ok',
+        presupuesto: presupuesto({ id: 13, docLink: 'https://docs.google.com/d/13' }),
+        sugerencias: { mandarPorMail: { docLink: 'https://docs.google.com/d/13' } },
+      });
+
+      await montar();
+      await abrirFormularioNuevo();
+      await completarMinimo();
+      fireEvent.press(screen.getByTestId('formulario-presupuesto-guardar'));
+
+      await waitFor(() => expect(screen.getByTestId('detalle-presupuesto-mandar-por-mail')).toBeTruthy());
+    });
+
+    it('K-07: guardar sin sugerencias (sin Doc) no ofrece «Mandalo por mail»', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuesto({ id: 13 }), sugerencias: null });
+
+      await montar();
+      await abrirFormularioNuevo();
+      await completarMinimo();
+      fireEvent.press(screen.getByTestId('formulario-presupuesto-guardar'));
+
+      await waitFor(() => expect(screen.getByTestId('detalle-presupuesto')).toBeTruthy());
+      expect(screen.queryByTestId('detalle-presupuesto-mandar-por-mail')).toBeNull();
+    });
+
     it('relee la lista tras crear — el alta puede haber sacado a otro del listado vigente', async () => {
       mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuesto({ id: 13 }) });
 
@@ -409,5 +477,72 @@ describe('PantallaPresupuestos', () => {
       await waitFor(() => expect(mockCrear).toHaveBeenCalled());
       expect(mockCrear.mock.calls[0][0].reemplazaA).toBe(12);
     });
+  });
+});
+
+describe('PantallaPresupuestos — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    onFacturar.mockReset();
+    mockListar.mockReset();
+    mockCrear.mockReset();
+    mockListar.mockResolvedValue({ status: 'ok', presupuestos: [] });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    mockTranscribir.mockReset();
+    // `Gesture.Pan` se espía DESDE ANTES del `render`: `MicFuncion` vive en el listado.
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    espiaPan.mockRestore();
+  });
+
+  it('dictado → abre el alta con `concepto` prellenado, y NO guarda nada solo, nunca una corrección (DoD FE2 §4)', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'reforma del local' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('presupuestos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('formulario-presupuesto-concepto-input')).toBeTruthy());
+    expect(screen.getByTestId('formulario-presupuesto-concepto-input').props.value).toBe('reforma del local');
+    expect(screen.queryByTestId('formulario-presupuesto-aviso-correccion')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: '   ' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('presupuestos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('presupuestos-mic-error')).toBeTruthy());
+    expect(screen.getByTestId('presupuestos-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('formulario-presupuesto-concepto-input')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Nuevo presupuesto» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('presupuestos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuestos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('formulario-presupuesto-concepto-input')).toBeTruthy());
+    expect(screen.getByTestId('formulario-presupuesto-concepto-input').props.value).toBeFalsy();
+    expect(mockTranscribir).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
@@ -26,6 +27,8 @@ from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
 from deposito_traumas import FabricaDeTraumas, depositar
+from perfil_negocio_prompt import ejemplo_de_tono
+from presupuesto_sugerencias import sugerencias_de_guardado
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
@@ -52,10 +55,15 @@ class PerfilBody(BaseModel):
     a_quien: str | None = None
     nombre_comercial: str | None = None
     horario_atencion: str | None = None
+    telefono: str | None = None
+    email: str | None = None
     formalidad: str | None = None
     largo_respuesta: str | None = None
     nombre_copiloto: str | None = None
     modo_ceremonia: str | None = None
+
+
+_EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
 def _validar_perfil(body: PerfilBody) -> dict:
@@ -83,6 +91,18 @@ def _validar_perfil(body: PerfilBody) -> dict:
         if campo in cambios and len(cambios[campo]) > tope:
             raise HTTPException(status_code=400,
                                 detail=f"{campo} no puede superar los {tope} caracteres")
+    # Contacto comercial (K-05): texto libre validado LAXO. `""` vacía el campo (ausente = no tocar),
+    # así que sólo se valida el formato cuando hay algo escrito.
+    tel = cambios.get("telefono", "").strip()
+    if tel and len(re.sub(r"\D", "", tel)) < 8:
+        raise HTTPException(status_code=400, detail="telefono tiene que tener al menos 8 dígitos")
+    mail = cambios.get("email", "").strip()
+    if mail and not _EMAIL.fullmatch(mail):
+        raise HTTPException(status_code=400,
+                            detail="email no es una dirección válida (falta el @ o el dominio)")
+    for campo in ("telefono", "email"):
+        if campo in cambios:
+            cambios[campo] = cambios[campo].strip()
     return cambios
 
 
@@ -125,6 +145,9 @@ class NuevoPresupuestoBody(BaseModel):
     items: list[ItemBody] = Field(min_length=1)
     moneda: str = "ARS"
     reemplaza_a: int | None = None
+    # K-01: UUID del cliente, estable por instancia de formulario. Opcional: un cliente viejo sin él
+    # se comporta exactamente como antes.
+    idem_key: str | None = Field(default=None, max_length=100)
 
 
 def _decimal_o_400(valor, campo: str) -> Decimal:
@@ -206,6 +229,18 @@ def create_presupuestos_app(
         perfil = await asyncio.to_thread(perfil_negocio_store_factory(cliente_id).get)
         return {"perfil": perfil}
 
+    @app.get("/perfil-negocio/ejemplo")
+    async def ejemplo_tono(formalidad: str | None = None, largo_respuesta: str | None = None,
+                           cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-15: cómo sonaría el copiloto con esa combinación de tono y largo. Copy estático derivado de
+        la MISMA tabla que el prompt real (`perfil_negocio_prompt`); no lee ni escribe datos del negocio,
+        por eso `require_tenant` sólo exige sesión. 400 si algún valor no es uno de los válidos."""
+        ejemplo = ejemplo_de_tono(formalidad or "", largo_respuesta or "")
+        if ejemplo is None:
+            raise HTTPException(400, f"formalidad tiene que ser una de {sorted(FORMALIDAD)} y "
+                                     f"largo_respuesta una de {sorted(LARGO_RESPUESTA)}")
+        return {"ejemplo": ejemplo}
+
     @app.post("/perfil-negocio")
     async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
         cambios = _validar_perfil(body)          # 400 ANTES de tocar la base: el control de "¿está
@@ -232,9 +267,15 @@ def create_presupuestos_app(
                 "codigo": it.codigo or "",
             })
         store = presupuesto_store_factory(cliente_id)
-        presupuesto = await asyncio.to_thread(
-            lambda: store.crear(concepto=body.concepto, receptor=body.receptor.model_dump(),
-                                items=items, moneda=body.moneda, reemplaza_a=body.reemplaza_a))
+        presupuesto, repetido = await asyncio.to_thread(
+            lambda: store.crear_idem(concepto=body.concepto, receptor=body.receptor.model_dump(),
+                                     items=items, moneda=body.moneda, reemplaza_a=body.reemplaza_a,
+                                     idem_key=body.idem_key))
+        if repetido:
+            # Misma clave ⇒ mismo presupuesto ya creado (y ya con su Doc, si se pudo): no se vuelve a
+            # generar nada. Informa, no ramifica (mismo criterio que `borradorNuevo` de facturar).
+            return {"presupuesto": presupuesto, "repetido": True,
+                    "sugerencias": sugerencias_de_guardado(presupuesto)}
 
         if generar_doc is not None:
             try:
@@ -260,7 +301,8 @@ def create_presupuestos_app(
                           contexto={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
-        return {"presupuesto": presupuesto}
+        return {"presupuesto": presupuesto, "repetido": False,
+                "sugerencias": sugerencias_de_guardado(presupuesto)}
 
     @app.get("/presupuestos")
     async def listar_presupuestos(limit: int = LIMITE_LISTADO_DEFAULT,

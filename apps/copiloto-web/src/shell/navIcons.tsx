@@ -108,19 +108,6 @@ export function ClientesIcon(): ReactNode {
   );
 }
 
-/** Contabilidad -- barra + dos flechas (acento, entra/sale), verbatim del set de 21. */
-export function ContabilidadIcon(): ReactNode {
-  return (
-    <svg {...svgProps}>
-      <path d="M4 15.5h16" {...strokeProps} />
-      <path d="M8 11V5" {...acentoProps} />
-      <path d="M5.5 7.5L8 5l2.5 2.5" {...acentoProps} />
-      <path d="M16 5v6" {...acentoProps} />
-      <path d="M13.5 8.5L16 11l2.5-2.5" {...acentoProps} />
-    </svg>
-  );
-}
-
 /** Ingresos -- billetera con flecha hacia abajo (acento) = plata que ENTRA. Verbatim del set de 21. */
 export function IngresosIcon(): ReactNode {
   return (
@@ -267,7 +254,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   connections: ConnectionsIcon,
   gastos: GastosIcon,
   clientes: ClientesIcon,
-  contabilidad: ContabilidadIcon,
   ingresos: IngresosIcon,
   actividad: ActividadIcon,
   presupuestos: PresupuestosIcon,

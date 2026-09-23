@@ -2,6 +2,7 @@ import { type FormEvent, useRef, useState } from 'react';
 
 import {
   completarIngreso,
+  formatearFechaCorta,
   formatearImporte,
   normalizarDecimal,
   registrarIngreso,
@@ -199,7 +200,8 @@ export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar, o
           {duplicado.candidato != null && (
             <p className="formulario-ingreso__aviso-candidato" data-testid="ingreso-duplicado-candidato">
               {duplicado.candidato.monto != null ? formatearImporte(duplicado.candidato.monto) : 'Sin monto'}
-              {duplicado.candidato.fecha != null ? ` · ${duplicado.candidato.fecha}` : ''}
+              {/* H-A4-6: `fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se pinta tal cual. */}
+              {duplicado.candidato.fecha != null ? ` · ${formatearFechaCorta(duplicado.candidato.fecha)}` : ''}
               {duplicado.candidato.clienteNombre != null ? ` · ${duplicado.candidato.clienteNombre}` : ''}
             </p>
           )}

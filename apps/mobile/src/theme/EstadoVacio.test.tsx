@@ -1,3 +1,4 @@
+import { fechaLocalISO } from '@copiloto/core';
 import { render, screen, waitFor } from '@testing-library/react-native';
 
 import { almacenClave } from '../adapters/almacen';
@@ -55,7 +56,7 @@ describe('EstadoVacio', () => {
 
   /** Se cuentan días, no visitas: diez entradas en una mañana son un día. */
   it('volver el mismo día no gasta una de las veces', async () => {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = fechaLocalISO(new Date());
     leer.mockResolvedValue(JSON.stringify([hoy]));
 
     await montar({ cuerpo: 'explicación' });

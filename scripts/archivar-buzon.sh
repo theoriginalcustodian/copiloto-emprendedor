@@ -10,13 +10,24 @@
 # dueño del estado (PLANIFICACIÓN) en cada ciclo de su cadencia de monitor. Idempotente.
 #
 # CICLO DE VIDA (qué vive en abierto/, qué se archiva):
-#   OBLIGACIONES abiertas  → contrato_ · pedido_ · urgente_   → NUNCA se auto-archivan.
+#   OBLIGACIONES abiertas  → contrato_ · pedido_ · urgente_ · hallazgo_  → NUNCA se auto-archivan.
 #                            Se cierran a mano cuando su trabajo/incidente se resuelve
 #                            (mv a cerrado/, o un `cierre_`/`listo_` del hilo lo salda).
 #   TRÁFICO FRESCO         → cualquier archivo mtime < TTL      → se queda (hilo en curso).
-#   HISTORIA               → todo lo demás (dato_/avance_/listo_/hallazgo_/respuesta_/
+#   HISTORIA               → todo lo demás (dato_/avance_/listo_/respuesta_/
 #                            correccion_/cierre_/addendum_/regla_ más viejo que el TTL)
 #                            → se archiva a cerrado/<fecha-del-nombre>/.
+#
+# `hallazgo_` ENTRÓ a las obligaciones el 2026-09-21, y no estaba ahí por olvido: la versión
+# anterior lo listaba explícitamente como HISTORIA. Ese día el janitor archivó dos
+# `hallazgo_auditoria-a-planificacion_` a los 90 min —uno de 887 líneas— y planificación se enteró
+# sólo porque auditoría se lo mencionó por otro canal. El hallazgo es el PRODUCTO de la sesión más
+# cara de la flota (Fable): si nadie lo acusó, no es historia, es una obligación abierta, igual que
+# un `pedido_` sin respuesta. Un `dato_` que se pierde cuesta un mensaje; un hallazgo que se pierde
+# cuesta la auditoría entera y nadie se entera, porque el archivado no falla — archiva.
+#
+# El costo de la decisión es que `abierto/` acumula hallazgos hasta que se cierran a mano. Eso es
+# lo buscado: un hallazgo sin atender TIENE que doler a la vista.
 #
 # coordinacion/ es gitignored → mover NO toca git, es `mv` puro. Cero riesgo de race.
 #
@@ -37,7 +48,7 @@ DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
 
 # Obligaciones que jamás se auto-archivan (se cierran a mano al resolverse).
-OBLIGACIONES='^[0-9-]+_(contrato|pedido|urgente)_'
+OBLIGACIONES='^[0-9-]+_(contrato|pedido|urgente|hallazgo)_'
 
 [ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }
 

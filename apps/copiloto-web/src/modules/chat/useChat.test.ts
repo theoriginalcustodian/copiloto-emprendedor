@@ -92,6 +92,34 @@ describe('useChat', () => {
     expect(api.getReply).toHaveBeenCalledTimes(3);
   });
 
+  // BL-D4 — control negativo: un HITL/desambiguación manda al backend el token técnico
+  // (`cancel:2:0`) pero la burbuja del usuario tiene que pintar el LABEL que vio y tocó
+  // ('Cancelar'), nunca el token. Si `send()` no soporta `displayText` (el estado previo al fix,
+  // donde la burbuja usaba directamente `trimmed`), este test falla mostrando el token crudo.
+  it('BL-D4: con displayText, la burbuja pinta el label — NUNCA el token técnico enviado al backend', async () => {
+    vi.mocked(api.sendChat).mockResolvedValueOnce({ wf_id: 'wf-hitl-1', accepted: true });
+    vi.mocked(api.getReply)
+      .mockResolvedValueOnce({ replies: [], next_id: 0 }) // poll de rehidratación al montar
+      .mockResolvedValueOnce({ replies: [], next_id: 0 }); // 1er poll tras el callback
+
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await act(async () => {
+      await result.current.send('cancel:2:0', { kind: 'callback', displayText: 'Cancelar' });
+    });
+
+    // La burbuja optimista muestra el label...
+    expect(result.current.messages[0]).toMatchObject({ role: 'user', text: 'Cancelar' });
+    expect(result.current.messages[0].text).not.toContain('cancel:');
+    // ...pero el backend igual recibe el token técnico que espera el protocolo HITL.
+    expect(api.sendChat).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'cancel:2:0', kind: 'callback' }),
+    );
+  });
+
   it('ignora texto vacío/solo-espacios sin llamar a la API', async () => {
     const { result } = renderHook(() => useChat());
 
@@ -142,12 +170,16 @@ describe('useChat', () => {
       expect(api.getReply).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        await result.current.sendAudio(blob);
+        await result.current.sendAudio(blob, 6);
       });
 
       expect(api.sendAudio).toHaveBeenCalledWith(expect.any(String), blob);
       expect(result.current.messages).toHaveLength(1);
-      expect(result.current.messages[0]).toMatchObject({ role: 'user', text: 'Mandale un mail a Juan' });
+      expect(result.current.messages[0]).toMatchObject({
+        role: 'user',
+        text: 'Mandale un mail a Juan',
+        porVoz: { duracionSeg: 6 },
+      });
       expect(result.current.sendStatus).toBe('waiting');
 
       await act(async () => {
@@ -178,7 +210,7 @@ describe('useChat', () => {
       expect(api.getReply).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        await result.current.sendAudio(blob);
+        await result.current.sendAudio(blob, 3);
       });
 
       expect(result.current.sendStatus).toBe('error');
@@ -266,6 +298,263 @@ describe('useChat', () => {
       const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
       expect(stored).toHaveLength(1);
       expect(stored).toMatchObject([{ role: 'user', text: 'Hola de nuevo' }]);
+    });
+  });
+
+  // H-A4-9 — una card HITL ya respondida no debe seguir siendo clickeable, NI SIQUIERA tras un
+  // reload: el estado de "ya respondida" tiene que vivir en el MENSAJE persistido, no en un estado
+  // efímero de React que se pierde al remontar.
+  describe('HITL ya respondida sobrevive a un reload (H-A4-9)', () => {
+    const SESSION_ID = 'sess-hitl-respondida-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('rehidrata un HITL YA marcado hitlRespondido tal cual — sigue deshabilitado', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Cobro a **Juan** por $1.000.',
+          choices: [
+            { label: 'Sí, cobrar', value: 'confirm_1' },
+            { label: 'Cancelar', value: 'cancel_1' },
+          ],
+          card: { service: 'mercadopago', label: 'Mercado Pago' },
+          hitlRespondido: { value: 'cancel_1', label: 'Cancelar' },
+        },
+        { id: 'user-1', role: 'user', text: 'Cancelar' },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      // Control negativo implícito: si el código viejo no soportara `hitlRespondido`, este campo se
+      // perdería al pasar por `acotarMensajes`/`JSON.parse` — no es el caso, viaja tal cual.
+      expect(result.current.messages[0]).toMatchObject({
+        hitlRespondido: { value: 'cancel_1', label: 'Cancelar' },
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('sanitiza un HITL viejo con el token LEGACY (pre-#624, "cancel:2:0") al rehidratar', async () => {
+      // Formato de ANTES de BL-D4/#624: la burbuja de respuesta pintaba el `value` técnico crudo
+      // (`cancel:<turn>:<step>`), no el label — y `hitlRespondido` ni existía todavía.
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+        { id: 'user-1', role: 'user', text: 'cancel:2:0' }, // token crudo LEGACY, no un label
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0]).toMatchObject({
+        hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' },
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('un HITL sin respuesta después (sigue activo) NO se marca hitlRespondido', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0].hitlRespondido).toBeUndefined();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('send con hitlMessageId marca ESA card hitlRespondido, atómico con la burbuja nueva, y persiste', async () => {
+      vi.mocked(api.sendChat).mockResolvedValueOnce({ wf_id: 'wf-hitl-2', accepted: true });
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages[0].hitlRespondido).toBeUndefined(); // todavía activa
+
+      await act(async () => {
+        await result.current.send('cancel:2:0', {
+          kind: 'callback',
+          displayText: 'Cancelar',
+          hitlMessageId: 'assistant-1',
+        });
+      });
+
+      expect(result.current.messages[0]).toMatchObject({
+        id: 'assistant-1',
+        hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' },
+      });
+
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([
+        { id: 'assistant-1', hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' } },
+        { role: 'user', text: 'Cancelar' },
+      ]);
+    });
+  });
+
+  // HOJA — «Ahora no» (sheet «conectá X») tiene que sobrevivir a un reload igual que `hitlRespondido`
+  // arriba: la marca vive en el MENSAJE persistido, no en el `useState<Set>` que tenía
+  // `useConexionRequerida.ts` antes del fix (memoria, se perdía al recargar y la hoja reaparecía
+  // tapando el composer — BIS2 paso (c)).
+  describe('«Ahora no» sobrevive a un reload (HOJA)', () => {
+    const SESSION_ID = 'sess-hoja-ahora-no-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('marcarConexionDescartada marca el mensaje y lo persiste en localStorage', async () => {
+      const persisted = [
+        { id: 'user-1', role: 'user', text: 'mandale un mail a Juan' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages[1].conexionDescartada).toBeUndefined(); // todavía vigente
+
+      act(() => result.current.marcarConexionDescartada('assistant-1'));
+
+      expect(result.current.messages[1]).toMatchObject({ id: 'assistant-1', conexionDescartada: true });
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([{ id: 'user-1' }, { id: 'assistant-1', conexionDescartada: true }]);
+    });
+
+    it('rehidrata un mensaje YA marcado conexionDescartada tal cual', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+          conexionDescartada: true,
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0]).toMatchObject({ conexionDescartada: true });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+  });
+
+  // PODA (BL-V32) — el guard A (`resolucionCardPropuesta.ts`) nunca borraba: `startNewSession`
+  // borraba los MENSAJES de la sesión previa pero dejaba huérfana la marca de resolución de cada
+  // card `*_propuesto` de esos mensajes (medido en prod: ~20 claves acumuladas en un tenant de
+  // prueba). Control negativo obligatorio (pedido del peer antes de cerrar): sin el `podarResolucionesCard`
+  // dentro de `startNewSession`, este test tiene que dar ROJO — lo verifiqué comentando esa línea
+  // antes de escribir el fix.
+  describe('poda de marcas huérfanas del guard A al arrancar sesión nueva (PODA / BL-V32)', () => {
+    const SESSION_ID = 'sess-poda-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('startNewSession borra las marcas de resolución (guard A) de los mensajes de la sesión descartada', async () => {
+      const persisted = [
+        { id: 'user-1', role: 'user', text: 'gasté 5000 en nafta' },
+        { id: 'assistant-1', role: 'assistant', text: 'Anoté el gasto.', card: { kind: 'gasto_propuesto' } },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+      // Simula lo que `TarjetaGastoPropuesto` ya habría guardado (guard A, prefijo real).
+      window.localStorage.setItem(
+        'copiloto-gasto-propuesto-resuelto:assistant-1',
+        JSON.stringify({ estado: 'guardado', monto: '5000' }),
+      );
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages).toHaveLength(2);
+
+      act(() => result.current.startNewSession());
+
+      expect(window.localStorage.getItem('copiloto-gasto-propuesto-resuelto:assistant-1')).toBeNull();
+    });
+
+    it('control negativo — una marca de OTRO mensaje (no de la sesión descartada) sobrevive', async () => {
+      const persisted = [{ id: 'assistant-1', role: 'assistant', text: 'x', card: { kind: 'gasto_propuesto' } }];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+      window.localStorage.setItem(
+        'copiloto-gasto-propuesto-resuelto:assistant-999',
+        JSON.stringify({ estado: 'guardado', monto: '1' }),
+      );
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => result.current.startNewSession());
+
+      // Si la poda fuera un `clear()` general en vez de por `id` de mensaje, esto también
+      // desaparecería — el control demuestra que borra lo que corresponde, no todo.
+      expect(window.localStorage.getItem('copiloto-gasto-propuesto-resuelto:assistant-999')).not.toBeNull();
     });
   });
 

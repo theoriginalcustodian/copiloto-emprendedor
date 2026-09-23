@@ -29,6 +29,13 @@
   margin: 0;
 }
 
+/* BL-W11 fila 4a: fecha de hoy bajo el título, sin hora. */
+.midia-screen__fecha {
+  font-size: 13px;
+  color: var(--label);
+  margin: 2px 0 0;
+}
+
 /* ---------- Solapas ---------- */
 .midia-screen__solapas {
   display: flex;
@@ -158,9 +165,16 @@
   margin: 0;
 }
 
+/* BL-D6: el `<p>` colapsado se veía en blanco de forma intermitente — el `alto` real del box (medido
+ * en vivo con DevTools) SÍ calculaba bien, y el texto reaparecía al expandir (que quita esta clase y
+ * fuerza un reflow), así que no es un bug de layout/color sino de PINTADO: sin la propiedad estándar
+ * `line-clamp`, Chromium depende sólo del modelo legado `-webkit-box`, que a veces no repinta el
+ * texto tras el font-swap hasta el próximo reflow. Mismo patrón ya probado sin este bug en
+ * `connections.css:162-166` (`service-card__description`) — se iguala acá. */
 .midia-tarjeta__frase--clamp {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -172,7 +186,161 @@
   margin: 0;
 }
 
+.midia-tarjeta__verbo {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.midia-alerta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.midia-alerta__texto {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.midia-alerta__accion {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
 .midia-tarjeta__acciones {
   display: flex;
   gap: 8px;
+}
+
+/* ---------- Portada del negocio (BL-W8) ---------- */
+.midia-portada__rotulo {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.midia-portada__aviso {
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.midia-portada__chip {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.midia-portada__cifra {
+  margin: 4px 0 10px;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.midia-portada__trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.midia-portada__celda {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.midia-portada__celda b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- Chips de categoría (BL-W7) — borde y texto, sin relleno ---------- */
+.midia-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.midia-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+  background: transparent;
+  border: var(--cancel-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.midia-chip--activo {
+  color: var(--text);
+  border: var(--card-border);
+}
+
+.midia-contador {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+/* ---------- Agenda (BL-J13) ---------- */
+.agenda-screen__titulos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agenda-screen__volver {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--core);
+  cursor: pointer;
+}
+
+.agenda-screen__grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.agenda-screen__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agenda-screen__grupo-titulo {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
 }

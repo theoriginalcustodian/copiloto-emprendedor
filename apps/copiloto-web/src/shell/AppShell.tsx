@@ -8,15 +8,15 @@ import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
-import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
 import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
+import { AvatarCuenta } from './AvatarCuenta';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
-import { AjustesScreen } from '../modules/ajustes';
+import { AjustesScreen, PantallaComoUsarLaApp } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
@@ -27,7 +27,8 @@ import { useBackGuard } from './useBackGuard';
 import { useChromeAutoHide } from './useChromeAutoHide';
 import './shell.css';
 
-const DEFAULT_TAB: TabKey = 'chat';
+// BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
+const DEFAULT_TAB: TabKey = 'midia';
 
 /**
  * Shell mobile (Task 9, EXTRACT §2.3/§4): contenedor de navegación con tab-bar flotante que
@@ -206,7 +207,6 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
             {activeTab === 'connections' && <ConnectionsScreen />}
             {activeTab === 'gastos' && <GastosScreen />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
-            {activeTab === 'contabilidad' && <ContabilidadScreen />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen
@@ -216,10 +216,11 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
-            {activeTab === 'inteligencia' && <InteligenciaScreen />}
-            {activeTab === 'midia' && <MidiaScreen />}
+            {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => changeTab('chat')} />}
+            {activeTab === 'midia' && <MidiaScreen avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />} onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'escritorio' && (
               <EscritorioScreen
+                avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />}
                 onFuncion={(key) => {
                   const tab = FUNCION_A_TAB[key];
                   if (tab == null) {
@@ -234,7 +235,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'recientes' && <RecientesScreen />}
-            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} onAbrirSoporte={() => abrirSoporte('soporte_tecnico')} />}
             {activeTab === 'facturacion' && (
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
@@ -247,7 +248,13 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
             {activeTab === 'account' && (
               <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
             )}
-            {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
+            {activeTab === 'soporte' &&
+              (funcionSoporte === 'como_uso_la_app' ? (
+                // BL-W9: «Cómo uso la app» no es un chat de ayuda propio — cada tema abre el chat principal.
+                <PantallaComoUsarLaApp onAbrirChat={() => changeTab('chat')} />
+              ) : (
+                <SoporteScreen funcion={funcionSoporte} />
+              ))}
           </>
         )}
       </div>

@@ -65,6 +65,18 @@ export function esCategoriaValida(valor: string): valor is CategoriaGasto {
 /** De dónde salió el gasto. **No es decorativo** — ver `Gasto.origen`. */
 export type OrigenGasto = 'voz' | 'manual' | 'foto';
 
+/**
+ * Cómo se le dice al usuario de dónde salió el gasto (BL-C4). Un solo mapa para web y mobile: los
+ * tres valores son los que acepta el backend (`gasto_store.ORIGENES`) — no hay un `mail` porque el
+ * backend no lo distingue todavía, y una etiqueta sobre un valor que nunca llega sería inventar.
+ * `Record<OrigenGasto, …>` hace que agregar un origen nuevo sin etiqueta rompa la compilación.
+ */
+export const ETIQUETA_ORIGEN_GASTO: Record<OrigenGasto, string> = {
+  voz: 'Lo dictaste',
+  foto: 'Salió de una foto',
+  manual: 'Lo cargaste a mano',
+};
+
 export interface Gasto {
   /** Entero (`bigserial`), no uuid — igual que presupuestos. */
   id: number;

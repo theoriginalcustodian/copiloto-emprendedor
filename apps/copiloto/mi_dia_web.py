@@ -11,7 +11,7 @@ manual, y el mismo camino que usan las tools de voz del copiloto.
 
 `GET /mi-dia/calendario` (contrato CAL1, sólo lectura — NO es una solapa del Kanban, decisión de
 arquitectura ya cerrada: "SOLO LECTURA para mostrar/BI. NO importar eventos como turnos"): eventos
-de HOY de Google Calendar del tenant, sin gate HITL (mismo trato que `consultar_actividad`). Con
+de Google Calendar (por defecto HOY; `desde`/`hasta` hasta 14 días + `grupos`, ADR-004) del tenant, sin gate HITL (mismo trato que `consultar_actividad`). Con
 gracia si el toolkit no está conectado (`ConnectionRequired` -> `conectado=False`, nunca 500) — ver
 `spikes/calendar-find-event/RESULT.md`, que dejó ese camino verificado contra Composio real. El
 parseo de la RESPUESTA (`_eventos_de`) sigue `[ASSUMED_PENDING_VERIFY]`: el tenant canónico no tiene
@@ -25,7 +25,7 @@ Mismo patrón que el resto de los `*_web.py`: deps inyectadas, se testea entero 
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
@@ -41,15 +41,67 @@ from clients.agent.providers.composio_gateway import ConnectionRequired  # noqa:
 from mi_dia_tarjeta_store import ESTADOS, SOLAPAS_TITULOS, EstadoInvalido  # noqa: E402
 
 
+MAX_DIAS_AGENDA = 14   # ADR-004: tope de la ventana de lectura (400 si se excede)
+
+GRUPOS_AGENDA = (("hoy", "Hoy"), ("manana", "Mañana"), ("semana", "Esta semana"), ("sin_hora", "Sin hora"))
+
+
+def _rango(desde: date | None = None, hasta: date | None = None, tz: str = DEFAULT_TZ
+           ) -> tuple[str, str, date, date]:
+    """[00:00 de `desde`, 23:59:59 de `hasta`] en `tz`, con el offset embebido en el string (el formato
+    que `GOOGLECALENDAR_FIND_EVENT` ya demostró aceptar — ver `test_e2e.py`/el spike de CAL1). Sin
+    argumentos = HOY (retrocompatible con CAL1). El offset sale de `ZoneInfo`, no hardcodeado.
+    Levanta `ValueError` con el motivo si la ventana es inválida (el endpoint lo vuelve 400)."""
+    zona = ZoneInfo(tz)
+    hoy = datetime.now(zona).date()
+    desde = desde or hoy
+    hasta = hasta or desde
+    if hasta < desde:
+        raise ValueError("hasta no puede ser anterior a desde")
+    if (hasta - desde).days + 1 > MAX_DIAS_AGENDA:
+        raise ValueError(f"la ventana no puede pasar de {MAX_DIAS_AGENDA} días")
+    inicio = datetime.combine(desde, time.min, tzinfo=zona)
+    fin = datetime.combine(hasta, time.min, tzinfo=zona) + timedelta(days=1) - timedelta(seconds=1)
+    return inicio.isoformat(), fin.isoformat(), desde, hasta
+
+
 def _rango_hoy(tz: str = DEFAULT_TZ) -> tuple[str, str]:
-    """[00:00, 23:59:59] de HOY en `tz`, con el offset embebido en el string (el formato que
-    `GOOGLECALENDAR_FIND_EVENT` ya demostró aceptar — ver `test_e2e.py`/el spike de CAL1). El offset
-    sale de `ZoneInfo`, no hardcodeado: Argentina no tiene horario de verano hoy, pero derivarlo evita
-    que este código sea el que hay que acordarse de tocar si eso cambia."""
-    ahora = datetime.now(ZoneInfo(tz))
-    inicio = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
-    fin = inicio + timedelta(days=1) - timedelta(seconds=1)
-    return inicio.isoformat(), fin.isoformat()
+    """Compat CAL1: [00:00, 23:59:59] de HOY."""
+    a, b, _, _ = _rango(None, None, tz)
+    return a, b
+
+
+def _dia_de(inicio, tz: str = DEFAULT_TZ) -> date | None:
+    """Día local de un `start` de Google Calendar: `{"dateTime": ...}` con hora, `{"date": ...}` de día
+    completo (devuelve None: sin hora), o un string ISO. None también si no se puede leer."""
+    if isinstance(inicio, dict):
+        inicio = inicio.get("dateTime")
+    if not isinstance(inicio, str):
+        return None
+    try:
+        return datetime.fromisoformat(inicio.replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date()
+    except ValueError:
+        # degradar es lo correcto: un start ilegible no puede tirar la agenda entera; el evento cae en
+        # «sin hora» (ADR-004 §2) y se sigue mostrando.
+        return None
+
+
+def _agrupar(eventos: list[dict], hoy: date, tz: str = DEFAULT_TZ) -> list[dict]:
+    """ADR-004 §2: grupos en orden fijo (hoy · mañana · semana · sin_hora), siempre los 4 (la UI no
+    decide qué mostrar). «Sin hora» = día completo o start ilegible; «semana» = el resto de la ventana
+    con hora. El orden cronológico ya viene de `order_by=startTime`."""
+    cubetas: dict[str, list[dict]] = {k: [] for k, _ in GRUPOS_AGENDA}
+    for ev in eventos:
+        dia = _dia_de(ev.get("inicio"), tz)
+        if dia is None:
+            cubetas["sin_hora"].append(ev)
+        elif dia == hoy:
+            cubetas["hoy"].append(ev)
+        elif dia == hoy + timedelta(days=1):
+            cubetas["manana"].append(ev)
+        else:
+            cubetas["semana"].append(ev)
+    return [{"id": k, "titulo": t, "eventos": cubetas[k]} for k, t in GRUPOS_AGENDA]
 
 
 def _eventos_de(res: dict) -> list[dict]:
@@ -65,7 +117,10 @@ def _eventos_de(res: dict) -> list[dict]:
     def _walk(o):
         if isinstance(o, dict):
             if o.get("id") and o.get("summary") is not None:
-                acc.append({"id": o["id"], "titulo": o["summary"], "inicio": o.get("start")})
+                ini = o.get("start")
+                acc.append({"id": o["id"], "titulo": o["summary"], "inicio": ini, "fin": o.get("end"),
+                            # Google: día completo = `start.date` sin `dateTime` (ADR-004 §2)
+                            "dia_completo": isinstance(ini, dict) and "date" in ini and "dateTime" not in ini})
             for v in o.values():
                 _walk(v)
         elif isinstance(o, list):
@@ -118,10 +173,18 @@ def create_mi_dia_app(*, require_tenant: Callable,
         return _solapas(await asyncio.to_thread(avanzar_tablero_fn, cliente_id))
 
     @app.get("/mi-dia/calendario")
-    async def calendario(cliente_id: str = Depends(require_tenant)) -> dict:
+    async def calendario(desde: str | None = None, hasta: str | None = None,
+                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """ADR-004: `desde`/`hasta` (YYYY-MM-DD, en DEFAULT_TZ) opcionales; sin ellos = hoy (CAL1). Suma
+        `grupos` (hoy/mañana/semana/sin_hora); `eventos` sigue plano para no romper a los clientes CAL1."""
+        try:
+            d = date.fromisoformat(desde) if desde else None
+            h = date.fromisoformat(hasta) if hasta else None
+            time_min, time_max, d, h = _rango(d, h)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
         if composio_gateway is None:
-            return {"conectado": False, "eventos": []}
-        time_min, time_max = _rango_hoy()
+            return {"conectado": False, "eventos": [], "grupos": _agrupar([], datetime.now(ZoneInfo(DEFAULT_TZ)).date())}
         try:
             res = await asyncio.to_thread(
                 composio_gateway.execute, FIND_EVENT_SLUG, user_id=cliente_id,
@@ -131,8 +194,10 @@ def create_mi_dia_app(*, require_tenant: Callable,
         except ConnectionRequired:
             # sin conectar no es un error: degrada a "conectado: false", mismo trato que el
             # resto del catálogo Composio (ver dispatcher_emprendedor.dispatch)
-            return {"conectado": False, "eventos": []}
-        return {"conectado": True, "eventos": _eventos_de(res)}
+            return {"conectado": False, "eventos": [], "grupos": _agrupar([], datetime.now(ZoneInfo(DEFAULT_TZ)).date())}
+        eventos = _eventos_de(res)
+        return {"conectado": True, "eventos": eventos,
+                "grupos": _agrupar(eventos, datetime.now(ZoneInfo(DEFAULT_TZ)).date())}
 
     @app.post("/mi-dia/tarjetas", status_code=201)
     async def crear_tarjeta(body: TarjetaBody, cliente_id: str = Depends(require_tenant)) -> dict:

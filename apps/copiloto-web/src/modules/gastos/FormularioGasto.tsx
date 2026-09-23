@@ -5,6 +5,7 @@ import {
   CATEGORIAS_GASTO,
   crearGasto,
   ETIQUETA_CATEGORIA,
+  ETIQUETA_ORIGEN_GASTO,
   esDecimalPositivo,
   normalizarDecimal,
   type CategoriaGasto,
@@ -84,6 +85,12 @@ export function FormularioGasto({ origen, iniciales, onCreado, onCancelar }: For
 
   return (
     <form className="formulario-gasto" data-testid="formulario-gasto" onSubmit={(e) => void guardar(e)}>
+      {/* BL-C4: de dónde salió lo que se está confirmando. Es lo que le dice al usuario cuánto
+          confiar en los valores precargados (una lectura de foto o de voz vs. algo que tipeó él). */}
+      <p className="formulario-gasto__origen" data-testid="gasto-origen" data-origen={origen}>
+        {ETIQUETA_ORIGEN_GASTO[origen]}
+      </p>
+
       <label className="formulario-gasto__campo">
         <span className="formulario-gasto__etiqueta">Cuánto gastaste</span>
         <input

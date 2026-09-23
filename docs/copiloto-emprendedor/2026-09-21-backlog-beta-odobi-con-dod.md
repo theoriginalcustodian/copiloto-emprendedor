@@ -101,12 +101,12 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P4 · Re-emitir el contrato del 16/09 con el estado real
 - **Qué:** el contrato sigue en `abierto/` sin acuse ni avance; el trabajo 2 se hizo en mobile por fuera. Hay que cerrarlo y emitir uno nuevo con `BL-C1`–`BL-C6` y su estado de hoy.
-- **DoD:** [ ] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo; [ ] contrato nuevo en `abierto/` citando este backlog.
+- **DoD:** [x] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo (`cerrado/2026-09-21/2026-09-16_contrato_planificacion-a-frontend_seis-trabajos-…`, línea 1: «REEMPLAZADO … (BL-P4)»); [x] contrato nuevo citando este backlog: `2026-09-21_contrato_planificacion-a-frontend2_cola-del-plan-autonomo-beta-odobi.md` (BL-C1–C6 en la cola de FE2; hoy en `cerrado/2026-09-22/`). Checkboxes tildados el 2026-09-22 tras A4 (auditoría lo verificó).
 
 ### BL-P5 · Marcar spec vs visión en el mapa del prototipo
 - **Qué:** P-3. `mapa.html:97` presenta `plan` como spec aunque `index.html:915` dice VISIÓN; `limite`, `pres-marca`, `fact-sinarca` y `cobro-voz` no figuran en el mapa. Sin esto, «48/48 coherentes» se mide contra pantallas que nadie va a construir.
 - **Depende de:** `BL-P2` (sobre la versión final), DEC-8.
-- **DoD:** [ ] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar; [ ] el criterio de cierre del frente (§13) cita esa lista.
+- **DoD:** [x] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar (`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`: 54 spec · 2 visión · 1 propuesta · 7 fuera); [x] el criterio de cierre del frente (§13) cita esa lista.
 
 ### BL-P6 · Corregir `fact-sinarca` en el prototipo
 - **Qué:** el hilo muestra facturar con un solo comando de voz y CAE inmediato, sin confirmación. El producto **prohíbe** emitir sin HITL: `apps/copiloto/tool_catalog.py:267-269` («NO la emite: la deja lista para que él la revise») y `kb-usuario/chat.md:96-98` («No emite una factura solo con la voz»). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. No se implementa: se corrige el prototipo.
@@ -114,7 +114,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P7 · Cerrar los mensajes viejos de `abierto/`
 - **Qué:** 8 `avance_`/`dato_` del 07–08/09 ya materializados siguen en `abierto/` (el barrendero no los movió). Ruido que esconde lo vivo.
-- **DoD:** [ ] cada uno movido a `cerrado/<fecha-original>/`; [ ] `abierto/` sólo contiene trabajo vivo.
+- **DoD:** [x] cada uno movido a `cerrado/<fecha-original>/`; [x] `abierto/` sólo contiene trabajo vivo (2026-09-22: `find abierto -name '2026-09-0[78]_*'` → 0; auditoría contó los archivos de `abierto/`: todos del 22/09).
 
 ---
 
@@ -148,9 +148,56 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
 - **Evidencia:** `apps/mobile/src/modules/chat/ListaMensajes.tsx:68-115` (`TarjetaConfirmacion`: sólo `gate.markdown` + Confirmar/Cancelar) · referencia web `apps/copiloto-web/src/modules/chat/HitlCard.tsx:41-125`.
 - **Depende de:** nada (el payload del gate ya trae `service`/`label`/riesgo; web lo consume).
 - **DoD:**
-  - [ ] Paridad de campos con web: ícono + label del servicio, PARA, MONTO, badge de riesgo, preview, aviso «no se puede deshacer» con borde de alerta.
+  - [ ] Paridad de campos con web: ícono + label del servicio, PARA, MONTO, badge de riesgo, aviso «no se puede deshacer» con borde de alerta. (corregido 2026-09-21 post-A1: `preview` sale del DoD — el motor lo manda como texto del mensaje, `conversation_workflow.py:608-615`; ninguna app tiene productor de `preview`.)
   - [ ] Test de componente: un gate irreversible **exige** el aviso; uno reversible no lo muestra.
   - [ ] Device: captura de un HITL irreversible real (p. ej. mandar un mail) lado a lado con `?ver=hitl`.
+
+### BL-D4 · El hilo muestra el token interno del HITL (`cancel:2:0`)
+- **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE1, 2026-09-22) · **Pantalla:** `hitl`
+- **Evidencia:** el `value` de la elección es `confirm:`/`cancel:<turn>:<step>` (`motor/backend/agent/conversation_workflow.py:712-716`; `:401-404` dice que nunca es texto del interlocutor) · web `hitlMapping.ts:98-99` → `ChatScreen.tsx:77` → `useChat.ts:296` (eco optimista con el valor crudo) → `MessageList.tsx:223-224` · mobile `ListaMensajes.tsx:250-251` → `useChat.ts:291` → `packages/core/src/chat/chatMachine.ts:238-239` → `ListaMensajes.tsx:186-187`. Web tiene además su `useChat` propio, que no usa el reducer de core (`useChat.ts:118-123`).
+- **Contrato:** `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 1.
+- **DoD:**
+  - [ ] Tras Confirmar o Cancelar, la burbuja muestra el label elegido (o no hay burbuja), igual en las dos apps; nunca el `value`.
+  - [ ] Recargar el hilo tampoco lo muestra. Si el backend lo persiste como turno del usuario, es junta (`pedido_`), no un filtro en el front.
+  - [ ] Test con control negativo en core y en el `useChat` de web.
+  - [ ] Captura PWA del hilo tras cancelar un cobro de prueba.
+
+### BL-D5 · Total del presupuesto con 4 decimales («$30.000,0000»)
+- **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE1) · **Pantalla:** `pres-hitl`
+- **Evidencia:** `multiplicarDecimal` (web `modules/presupuestos/FormularioPresupuesto.tsx:66-75`, mobile `:73-82`, copia línea a línea) suma los decimales de los dos operandos sin redondear a centavos; lo llama `TarjetaPresupuestoPropuesto.tsx:93-103`. `formatearImporte` (`packages/core/src/dinero/formatoDinero.ts:84-105`) respeta a propósito los decimales que recibe (`:78-79`): no es el culpable.
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 2.
+- **DoD:**
+  - [ ] El cálculo vive una sola vez en `packages/core` y redondea a 2 decimales; se borra la copia duplicada.
+  - [ ] Test: «1.00» × «30000.00» → `$30.000,00`, más un caso de redondeo.
+  - [ ] Captura PWA de `pres-hitl`.
+
+### BL-D6 · Mi día web: las tarjetas de «Para hoy» se ven en blanco colapsadas
+- **Plataforma:** web · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantallas:** `(vacío)`, `tablero`
+- **Evidencia:** `modules/midia/MidiaScreen.tsx:335-355` · `midia.css:140-145,161-165` (`-webkit-line-clamp` sin el `line-clamp` estándar, que `connections.css:164` sí tiene). Es la causa probable por inspección; falta confirmarla en vivo. Al expandir, el texto aparece.
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 1.
+- **DoD:**
+  - [ ] Causa confirmada en el PWA y nombrada en el PR.
+  - [ ] Texto visible recortado a 2 líneas con la tarjeta colapsada.
+  - [ ] Test que falle sin el fix.
+  - [ ] Captura con `?ver=tablero`.
+
+### BL-D7 · La barra de pestañas de web mete 10 ítems a ancho de teléfono
+- **Plataforma:** web · **Tamaño:** S–M · **Origen:** barrido BL-Q3 web (FE2, transversal; es regresión de #587) · **Depende de:** `DEC-2`
+- **Evidencia:** `shell/TabBar.tsx:62-74,109-136` pinta 10 `TABS` (+ admin) bajo 900 px (`ResponsiveShell.tsx:21-27`); a 390 px los rótulos se pisan. El docstring (`:101`) todavía dice «4 ítems fijos». En mobile, las 6 funciones viven en el escritorio (`BL-X1`), no en la barra.
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 3.
+- **DoD:**
+  - [ ] Bajo 900 px, las puertas fijas de mobile (chat · Mi día · Funciones, + admin); cada función se abre desde el escritorio.
+  - [ ] Desde 900 px, sin cambios.
+  - [ ] Test del shell: a 390 px hay ≤ 4 pestañas.
+  - [ ] Captura a 390 px sin rótulos pisados.
+
+### BL-D8 · Conexiones web: ícono de Google Docs en blanco y título
+- **Plataforma:** web · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantalla:** `apps`
+- **Evidencia:** el SVG es válido (`design-system/serviceIcons.tsx:4,46` → `logos/docs.svg`, igual al de mobile), así que la causa no es estática: hay que reproducirla en el PWA. Título: web «Conexiones» (`ConnectionsScreen.tsx:33,67`), mobile «Apps» (`apps/mobile/src/modules/apps/PantallaApps.tsx:211`). La grilla de 2 columnas es una decisión con test (`ConnectionsScreen.test.tsx:107-121`) y queda.
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 6.
+- **DoD:**
+  - [ ] Causa del ícono nombrada, con captura antes y después.
+  - [ ] Título «Apps».
 
 ---
 
@@ -187,7 +234,7 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** trabajo 4, H-18
 - **Evidencia:** web `apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx:39,45,64` (envía `origen`, sólo muestra la cita OCR si es `foto`, `:100`) · mobile `apps/mobile/src/modules/gastos/FormularioGasto.tsx:52,60,85` (sólo lo envía).
 - **DoD:**
-  - [ ] El formulario muestra el origen para los cuatro valores en ambas apps.
+  - [ ] El formulario muestra el origen para los tres valores (voz / foto / manual) en ambas apps. (corregido 2026-09-21 post-A1: `mail` nunca existió, `gasto_store.py:20` `ORIGENES`; un origen por mail sería fila nueva de ingesta, fuera de la beta.)
   - [ ] Test de componente por valor de `origen`.
   - [ ] Captura de una propuesta por voz y una por foto en device.
 
@@ -273,7 +320,7 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 - **DoD:**
   - [ ] Chips Todo / Cobros / ARCA / Presupuestos / Tuyas y contador «N para hoy · N en curso · N crítico».
   - [ ] La derivación vive en un único módulo borrable (misma forma que mobile).
-  - [ ] Test unitario del mapeo `regla → categoría`; captura en el PWA.
+  - [ ] Test del mapeo `regla → categoría` **en backend** (`test_mi_dia_clasificacion.py`, K-06 lo movió ahí); captura en el PWA. (corregido 2026-09-21 post-A1: el FE ya no mapea.)
 
 ### BL-W8 · Portada financiera de Mi día como componente
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-04 (a) · **Pantalla:** `/`
@@ -300,6 +347,28 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Web muestra el mismo encabezado que mobile (isotipo + «Soporte de Odobi»).
   - [ ] El texto de tiempo de respuesta coincide con el SLA de `BL-O7`; si no hay SLA, no se promete un número.
 
+### BL-W11 · Mi día: fecha, agenda con la conexión caída y aviso de caja que nombra a Mercado Pago
+- **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantallas:** `(vacío)`, `agenda`, `caida`
+- **Evidencia:** el prototipo pone marca + fecha arriba (`prototipo/index.html:1645`); web (`MidiaScreen.tsx:169-172`) y mobile (`PantallaMiDia.tsx:493-505`) no muestran fecha. El panel de agenda dice «Conectá Google Calendar…» aunque la conexión existe y está caída: no distingue *nunca conectada* de *caída* (web `MidiaScreen.tsx:284-289`, mobile `:517-533`). El aviso de caja incompleta es genérico (`packages/core/src/midia/caja.ts:63-64`), aunque la condición (`apps/copiloto/inteligencia_queries.py:210`) sólo mira Mercado Pago.
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 4.
+- **DoD:**
+  - [ ] Fecha en el encabezado de Mi día, en las dos apps.
+  - [ ] El panel de agenda usa la salud por conexión del catálogo (#550): si Calendar está caída, lo dice y ofrece reconectar.
+  - [ ] El aviso de caja nombra a Mercado Pago.
+  - [ ] Tests de los tres estados.
+  - [ ] Captura PWA.
+  - `caida` del prototipo (el banner en «En caja») exige Mercado Pago caído → tanda de device.
+
+### BL-W12 · Ajustes de web igual a mobile y fin de la guía «Cómo hablarle»
+- **Plataforma:** web (+ la guía en mobile) · **Tamaño:** S–M · **Origen:** barrido BL-Q3 web (FE2; `hablar` como «diferencia grave») · **Pantallas:** `ajustes`, `hablar` · **Depende de:** `DEC-6`, `DEC-10`
+- **Evidencia:** la grilla de mobile (`apps/mobile/src/modules/ajustes/PantallaAjustes.tsx:54-88`) es una decisión de Martín del 18/09 (`51437353`) aceptada por DEC-10. Web conserva el tile `ajuste-tile-comoHablarle` (`PantallaAjustes.tsx:23,40`), que abre la guía de `/capacidades` (`AjustesScreen.tsx:66`), mientras que «Cómo hablarle» es el editor de tono (#560, DEC-6) y se abre desde Mi negocio (`AjustesScreen.tsx:63`). «Presupuestos» sale repetido porque hay dos capacidades con ese rótulo (`apps/copiloto/tool_catalog.py:369-370`) y la guía arma un bloque por tool (`PantallaComoHablarle.tsx:78-85`).
+- **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 5.
+- **DoD:**
+  - [ ] Web con los mismos tiles, orden y grupo «Ayuda» que mobile.
+  - [ ] «Cómo usar la app» absorbe la guía, como en mobile; se borran `PantallaComoHablarle` y su tile.
+  - [ ] La guía agrupa por rótulo en las dos apps (test con dos capacidades de igual rótulo).
+  - [ ] Captura PWA lado a lado con la de mobile. El prototipo (`?ver=ajustes`) queda desalineado → acta §4.
+
 ---
 
 ## 6. Frontend pendiente en ambas o en mobile, sin decisión (`BL-F`)
@@ -317,7 +386,7 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 - **Plataforma:** mobile · **Tamaño:** S · **Origen:** hilo `cobro-voz` (fuera del mapa; el prototipo lo marca spec, `index.html:3134-3139`)
 - **Evidencia:** backend listo (`apps/copiloto/tool_catalog.py:102-108,588-630`, `mp_charge` genera el link y no cobra) · web lo pinta (`apps/copiloto-web/src/modules/chat/ArtifactView.tsx:23`, tests `ArtifactView.test.tsx:20-65`) · mobile **no porta el renderer de artefactos** (`apps/mobile/src/modules/chat/Burbuja.tsx:20-22`); grep de `payment_link`/`init_point` en `apps/mobile/src` vacío, con control positivo en web.
 - **DoD:**
-  - [ ] Mobile renderiza `payment_link` con monto, vencimiento y acciones Copiar / Compartir (share sheet nativo).
+  - [ ] Mobile renderiza `payment_link` con monto, concepto y acciones Compartir (share sheet nativo, que incluye copiar) / Abrir. (corregido 2026-09-21 post-A1: el backend no emite vencimiento, `tool_catalog.py:613-615`; «Copiar» propio exige `expo-clipboard`, nativo congelado — Compartir lo cubre.)
   - [ ] Decidido en el PR qué otros `kind` de artefacto porta (`email_draft`, etc.) o se abre ítem por cada uno.
   - [ ] Device: «hacele un link de cobro a …» → HITL → tarjeta con el link real de MercadoPago; compartir por WhatsApp.
 
@@ -347,7 +416,7 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-04, sesión de Martín
 - **Evidencia:** `apps/mobile/src/modules/midia/PortadaNegocio.tsx:14-18` (`serieMensual` trae ingresos y gastos, no saldo por mes).
 - **DoD:**
-  - [ ] Saldo del mes anterior (o delta) expuesto; la portada muestra la variación con «—» si falta.
+  - [ ] Saldo del mes anterior (o delta) expuesto; si falta (`variacion_pct: null`) la portada **omite el chip entero**. (corregido 2026-09-21 post-A1: manda K-03 l.49.)
   - [ ] Test backend con un tenant de un solo mes de historia (sin mes anterior).
 
 ### BL-J4 · Salud por conexión (`MC-H3`) + alerta en el detector
@@ -381,10 +450,11 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-16, H-33, H-17, T-2 · **Pantallas:** `card`, `gastos`, `vozchat`, `ingresos`
 - **Evidencia:** sin `MicButton`/`BotonVoz`/`useVozComando` en `modules/gastos/` de ninguna app; `TarjetaGastoPropuesto` sólo en `modules/chat`. Riesgo R-3.
 - **DoD:**
-  - [ ] El dispatcher acepta un contexto de función **opcional**; sin él, la ruta del chat queda idéntica (test de regresión del dispatcher en el VPS antes de tocar FE).
-  - [ ] Mic en la fila del rótulo de Gastos, Ingresos, Presupuestos y Clientes; la card propuesta aterriza en esa pantalla, no en el hilo.
+  - [x] ~~El dispatcher acepta un contexto de función **opcional**; sin él, la ruta del chat queda idéntica (test de regresión del dispatcher en el VPS antes de tocar FE).~~ **Corregido por el contrato `K-10` §1 (2026-09-21):** transcribir por el dispatcher arrancaba un workflow por cada dictado de campo y ensuciaba el hilo del chat con mensajes que el emprendedor no mandó. Se resolvió con endpoints nuevos que **no pasan por el dispatcher**: `POST /transcribir` (#573) y `POST /gastos/leer-foto` (#615). La ruta del chat queda idéntica por construcción, porque no se tocó; el replay del `ConversationWorkflow` lo confirma (A3, 15/15 en el VPS sobre `b59588d2`).
+  - [ ] Mic en la fila del rótulo de Gastos, Ingresos, Presupuestos y Clientes; el texto dictado **rellena el formulario de esa pantalla y no se guarda solo** (`K-10` §4: una transcripción es una propuesta, como las cards del agente), no va al hilo.
   - [ ] Foto del ticket como disparador directo desde Gastos.
-  - [ ] Chip «Por voz · duración» en la card (H-17): la duración viaja en el mensaje.
+  - [x] ~~Chip «Por voz · duración» en la card (H-17): la duración viaja en el mensaje.~~ **Corregido tras A3 (H-A3-7, 2026-09-22):** `K-10` (DoD #5 de FE1) y el plan §8.2 fila 23 lo resolvieron en el cliente. El chip vive en `MicFuncion` (web `MicFuncion.tsx:64,89-93`, mobile `:151-158`), la duración se mide localmente y **no viaja** al backend. Para la beta vale así; persistirla pasa a `BL-V19`.
+  - [ ] El mensaje dictado **en el chat** lleva el chip «Por voz · m:ss» en su burbuja (prototipo `vozAlChat(dur)`, `index.html:2903`; `specs/mobile-coherencia.md:210` B-6), dibujado en el cliente. Está en `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, anexo, fila 6.
   - [ ] Device: dictar un gasto desde Gastos y verlo aterrizar ahí; captura lado a lado con `?ver=card`.
 
 ### BL-J8 · Consentimiento en contexto (`requiere_conexion`)
@@ -394,6 +464,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] El dispatcher emite un gate estructurado `requiere_conexion` con servicio y alcance.
   - [ ] Sheet en contexto con el alcance por permiso, Conectar / Ahora no, y el hilo visible detrás; al conectar, el pedido original se reanuda.
   - [ ] Device: pedir algo de Gmail con Gmail desconectado → sheet → conectar → se ejecuta.
+  - [ ] **(A3, H-A3-2)** Una tool de escritura con HITL sobre un servicio no conectado muestra la card **antes** de pedir confirmación (hoy `tool_catalog.py:1611-1615` chequea después). Si la conexión cae entre el confirm y la ejecución, la rama del confirm (`conversation_workflow.py:424-433`) extrae `gate_card` como `:621-641`. Medido en prod: la card llegaba vacía (`card: {}`).
+  - [ ] **(A3, H-A3-4)** Fixture de replay que atraviese la rama `gate_card` (lo pedía `K-11` DoD l.58 y #570 no lo agregó). Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 2.
 
 ### BL-J9 · Acciones sugeridas tras guardar o aprobar un presupuesto
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-27 · **Pantalla:** `pres-ciclo`
@@ -402,6 +474,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] La respuesta de guardar trae «Mandalo por mail» / link al Doc; la de aprobar trae «¿Te armo la factura?» con chip.
   - [ ] Tocar «Armá la factura» abre la propuesta de factura con los ítems del presupuesto (HITL normal).
   - [ ] Decisión explícita en el PR sobre el botón Aprobar en pantalla (`presupuestos/DetallePresupuesto.tsx:28` dice que no hay).
+  - [ ] Si el mismo turno deja una card que bloquea (`requiere_conexion`) y la sugerencia, **gana la que bloquea**, en los dos órdenes de llegada; test de regresión en el motor con ambos órdenes y el replay intacto. *(Agregado tras A2: estaba en la forma de K-07-B §2 y no en su DoD, y quedó sin implementar.)*
+  - [ ] Adversarial a nivel **reply** (par `two_tenants` de `test_adversarial_multitenant.py`): la card de A nunca aparece en el `GET /reply` de B.
   - [ ] Device: ciclo presupuesto → aprobado → factura de punta a punta.
 
 ### BL-J10 · Teléfono y email del negocio
@@ -417,10 +491,11 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Evidencia:** `packages/core/src/api/auth.ts` sólo expone login · web `AccountScreen.tsx:88-224` · mobile `PantallaCuenta.tsx:28-122`.
 - **DoD:**
   - [ ] Cambiar mail con confirmación al mail nuevo; cambiar contraseña con reautenticación.
-  - [ ] Test de integración contra la GoTrue dedicada (`copiloto-auth`); un token de A no cambia la cuenta de B.
+  - [ ] Test de integración contra una GoTrue de **TEST** (nunca `copiloto-auth` de prod), con cuentas efímeras creadas y destruidas por el propio test; un token de A no cambia la cuenta de B. *(Corregido tras A2: la línea anterior decía `copiloto-auth`, y el contrato K-12 §3 prohíbe prod. `MockTransport` no cumple esta línea.)*
   - [ ] Cuentas creadas con Google: la fila de contraseña se oculta o explica (decisión en el contrato).
   - [ ] Cerrar sesión queda en su propio grupo.
   - [ ] Probado con una cuenta descartable, **no** con `e2e-device` (no romper el usuario canónico).
+  - [ ] **(A3, H-A3-11)** Los 8 tests contra GoTrue real corren en **cada** `gate.sh`. Hoy se saltean si falta `UC_TEST_GOTRUE_URL`; A3 los corrió a mano, 8/8. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 5.
 
 ### BL-J12 · «Lo pediste vos» (feedback propio y su estado)
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-51 · **Pantalla:** `feedback`
@@ -436,7 +511,7 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Depende de:** ADR (CAL1 §3 fijó sólo-hoy) + `contrato_`.
 - **DoD:**
   - [ ] ADR que reemplaza la decisión sólo-hoy de CAL1 §3.
-  - [ ] Pantalla Agenda con Hoy / Mañana / Vencen esta semana / Sin hora y franja horaria.
+  - [ ] Pantalla Agenda con Hoy / Mañana / Esta semana / Sin hora y franja horaria (títulos literales de `GRUPOS_AGENDA`, `mi_dia_web.py:46`; K-13 §5).
   - [ ] Crear un evento por voz y desde «Nuevo evento», siempre con HITL; aparece en Google Calendar de `e2e-device`.
   - [ ] Test adversarial: A no lee la agenda de B (la conexión de Composio es por tenant).
   - [ ] La capa 3 (cruce evento ↔ cliente) queda afuera: `BL-V3`.
@@ -483,12 +558,13 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 - **Plataforma:** web (+ barrido backend de textos al usuario) · **Tamaño:** S · **Origen:** DA-11 · **Depende de:** `DEC-2`
 - **DoD:**
   - [ ] grep de `AFIP` en strings visibles de `apps/copiloto-web/src` y en respuestas del agente al usuario → 0 (los identificadores internos no se renombran).
+- **Nota de trazabilidad (A3, H-A3-12):** el cuerpo de #618, su commit y el insumo de backend describen `test_arca_no_afip_visible.py`, con allowlist, guard de huérfanos y barrido de `motor/`. Lo que se mergeó es `test_arca_sin_afip_visible.py`, con exención por archivo (`INTERNOS`). El invariante se cumple igual: A3 lo recomputó por AST (4 strings, 3 internos + 1 equivalencia «ex AFIP») y dio 4/4 en el VPS.
 
 ### BL-X6 · Tipografía de la app + retiro de los `.otf` del repo público
 - **Plataforma:** web + mobile + repo · **Tamaño:** M · **Origen:** DA-4, §6.1.5 · **Depende de:** `DEC-5`
 - **Evidencia:** web `apps/copiloto-web/src/design-system/fonts.css:38-39,79` (`@font-face` a un `.woff2` que no existe) · 9 `.otf` en `docs/Imagen de marca/Neue_Einstellung/` (desde #264) + 1 en `Prototipo frontend/odobi-ui/assets/fonts/`. Mobile **ya la retiró** del bundle por la licencia de app impaga (`apps/mobile/app/_layout.tsx:83-87`; hoy Plus Jakarta Sans + Inter); web la sigue nombrando primero en `--font-display` con su propio TODO «antes de abrir la beta a testers externos» (`fonts.css:32-36`).
 - **DoD:**
-  - [ ] La fuente decidida cargada en ambas; ningún `@font-face` apunta a un archivo inexistente (test que resuelve cada `src`).
+  - [ ] La fuente decidida cargada en ambas; ningún `@font-face` apunta a un archivo inexistente (test que cruza cada `src` contra lo que baja `fetch-fonts.sh`: los `.otf` no se versionan, así que resolverlos en el test es imposible sin red. *Sustituto aceptado por planificación tras A2.*).
   - [ ] Si la licencia no permite redistribuir: archivos fuera del árbol **y** de la historia según lo que decida `DEC-5` (filter-repo = MAYOR).
   - [ ] Capturas de las dos pieles.
 
@@ -503,6 +579,7 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 ### BL-X8 · Onboarding de 2 permisos + primer insight
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-28, H-29, DA-6 · **Depende de:** `DEC-7`
 - **DoD:** se escribe cuando `DEC-7` fije el alcance. Mínimo: alta → hilo de 2 permisos con alcance dicho antes → recibo con un primer dato real del negocio; probado con una cuenta nueva en device.
+- **Estado 2026-09-22:** backend ✅ (#558, `K-14`, adversariales en verde en A3). Web está montado, pero como **pantalla completa** (`App.tsx`). Mobile está **sin montar**: `PantallaOnboarding` tiene 0 consumidores (A3, H-A3-5). DEC-7 + `mockups/01-onboarding/DECISIONES.md` fijan que el onboarding es una **conversación en el hilo**, no una pantalla. Resto → `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 3 + anexo: el hilo en web y mobile, montado en el Guard de `_layout.tsx`, sin tabbar, receipt + completar idempotente y la promesa cumplida con el insight real. `onb-cumplida` → tanda de device.
 
 ### BL-X9 · Plan, medidor de acciones y tope
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-31, H-32, T-7, DA-7 · **Depende de:** `DEC-8`
@@ -516,10 +593,11 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Primer ingreso: 4 formas → O (6,8 s); arranques 2..n: isotipo dibujándose; reveal con «se dice o-DO-bi» y botón que reproduce la pronunciación.
   - [ ] Respeta movimiento reducido; no retrasa el TTI medido (callstack-performance).
   - [ ] Video en device de primer y segundo arranque.
+- **Estado 2026-09-22:** #616 cubrió los arranques 2..n y `volver`. Falta (barrido BL-Q3 web + A3 H-A3-6): el reveal de primer ingreso (`TEXTOS_REVEAL.primeraVez` tiene 0 consumidores), el Splash de 6,84 s en mobile (hoy dura ~1,5 s), que web no repita el splash después del login, `PRONUNCIACION_MARCA` en las dos apps y el test de movimiento reducido en mobile. **Decisión de planificación sobre la pronunciación:** sin asset no hay botón en ninguna de las dos apps; se retira el TTS del navegador de web, y el audio «o-DO-bi» lo aporta el operador. Está en `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 2 + anexo.
 
 ### BL-X11 · Aplicar las decisiones de Martín posteriores al 07/09 que se acepten
 - **Plataforma:** web (mobile ya las tiene) · **Tamaño:** S–M · **Origen:** auditoría §6.3 · **Depende de:** `DEC-2`, `DEC-10`
-- **Incluye:** isotipo en el avatar de Soporte · trazo 1,3 del isotipo · logos reales de apps (`logosMarca.ts`; `assets/logos/` falta en el repo) · Calma 3 vs 5 días · cinco íconos provisorios (`mapaIconos.ts:12-16`) · lockup en el login.
+- **Incluye:** isotipo en el avatar de Soporte · trazo 1,3 del isotipo · logos reales de apps (`logosMarca.ts`; `assets/logos/` falta en el repo) · Calma 3 vs 5 días · cinco íconos provisorios (`mapaIconos.ts:12-16`) · lockup en el login. (corregido 2026-09-21 post-A1: en **web** el avatar de Soporte y los cinco íconos son N/A — no hay Soporte en `apps/copiloto-web`; se acepta el acta de #528. En mobile siguen incluidos.)
 - **DoD:**
   - [ ] Cada decisión con acta; las aceptadas, en web; las rechazadas, revertidas en mobile.
   - [ ] Los logos de apps con fuente versionada y licencia de uso de marca anotada.
@@ -535,6 +613,7 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Script corrido contra un restart real (el de un deploy) con una conversación y un HITL en vuelo; ambos retoman sin pérdida.
   - [ ] Salida completa a archivo (no por `tail`) citada en el cierre.
   - [ ] Decidido si se cablea a `deploy.sh` para que no vuelva a quedar sin correr.
+  - [ ] **(A3, H-A3-8)** El VERDE del script discrimina por la activity ejecutada (`execute_tool confirmed:true` después del restart). Hoy `_reply_resolvio_el_gate` (`e2e_g6_durabilidad_worker_restart.py:134-138`) da verde también con «Listo 👍». Falta el control negativo corrido, y que el nombre «en vuelo» se sostenga o pase a «continuidad». El hecho de fondo lo verificó A3 leyendo la historia de prod. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 3.
 
 ### BL-B2 · Ventana de vida del `FacturaWorkflow` (dictado abandonado)
 - **Plataforma:** backend (Temporal) · **Tamaño:** M · **Origen:** `TODO(hito9-dictado-sin-ventana-de-vida, backend, antes de habilitar producción)`
@@ -553,8 +632,10 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Scanner (gitleaks o equivalente, versión fijada) en `pre-push` **y** en `scripts/ci/lint.sh`.
   - [ ] Control positivo: un commit de prueba con una credencial falsa con forma real es **bloqueado**; control negativo: los fixtures conocidos (`gphy_test`, `eyJ…` que no decodifican) pasan con allowlist explícita.
   - [ ] Pasada sobre la historia completa con el resultado anotado.
+  - [ ] **(A3, H-A3-1)** El hook corre **de verdad** en cada worktree. `core.hooksPath` era absoluto y apuntaba al checkout compartido (114 commits atrás, sin el paso de #601), así que ningún push corría gitleaks. Arreglo: `hooksPath` relativo, más un push de prueba con una credencial sintética que **falla**. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 1; ver la memoria `hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees`.
 
 ### BL-B4 · `gate.sh` que corra en macOS (bash 3.2)
+- **➡️ Movido a post-beta `BL-V16`** por `DEC-1` (acta `:11`, plan `:87`). No se implementa en la beta.
 - **Plataforma:** repo · **Tamaño:** S · **Origen:** ADR-001; PR #511–#513 mergeados sin recibo
 - **Depende de:** `DEC-1` (si la sesión de Martín sigue implementando).
 - **DoD:**
@@ -639,9 +720,12 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
 ### BL-Q1 · Control de paridad web ↔ mobile en CI
 - **Tamaño:** M · **Origen:** reporte 16/09 §7, auditoría §11.6 (R-2 ya ocurrió tres veces: D-1, H-14 y el lote del 18/09).
 - **DoD:**
-  - [ ] Inventario versionado de `testID` / `data-testid` equivalentes por pantalla.
-  - [ ] Un script en `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada.
-  - [ ] Control positivo: borrar un id en una sola app pone el gate en rojo.
+  - [x] Inventario versionado de `testID` / `data-testid` equivalentes **por pantalla** (`scripts/ci/testid_paridad.py --inventario`; agrupa por el mapeo `modules/<feature>` que web y mobile ya comparten).
+  - [x] `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada (`--check`, clave `pantalla::id`).
+  - [x] Control positivo: borrar un id en una sola app pone el gate en rojo, nombrando `pantalla::id`.
+  - [x] Trinquete: el archivo de excepciones sólo puede achicarse — una excepción cuyo id ya no existe o ya tiene su par en la misma pantalla hace fallar el gate ("sacala del baseline"), no se puede acumular en silencio.
+  - [x] Ids dinámicos (`testID={...}` / `data-testid={...}`) no se pierden: se cuentan y reportan aparte como "no medidos" (656 usos hoy: 402 mobile / 254 web), nunca como par ni como falta.
+  - [x] Baseline inicial: 535 excepciones `pantalla::id` sin triage id-por-id, con dueño y disparador — ver `BL-V17`. Bajó a **484** con #617 (el gate dejó de escanear `*.test.tsx`/`*.spec.tsx`/`__tests__/`: 51 venían de archivos de test, que no son pantallas) y #616 no lo movió (medido en `main` @ `b704a685`).
 
 ### BL-Q2 · Smoke E2E completo contra producción
 - **Tamaño:** S · **Evidencia:** `deploy/copiloto/smoke_beta_e2e.py`; última corrida con evidencia `37/37` el 13/08 (`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:107`); `deploy.sh` sólo corre `/healthz` + un smoke corto.
@@ -655,12 +739,34 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Cada una de las 48 pantallas marcada ✅ capturada en device y en el PWA (con `unregister` del service worker + `caches.delete` antes de medir) lado a lado con su `?ver=`.
   - [ ] `fact-voz` y `pres-voz` ejercitados por voz real: el agente pide un dato por vez y no completa un precio no dicho.
   - [ ] Cada diferencia encontrada, ítem nuevo en este backlog.
+- **Mitad web medida el 2026-09-22 entre las 02:10 y las 02:11** (prod `index-w80j8z6l.js`, `main` @ `ed4e31c0`, `e2e-device`, SW limpio; capturas fuera del repo, en `C:/gfw-src/_ctl/bl-q3-web/`). Los 54 ids se repartieron así: FE1 35, FE2 19.
+
+  | Sesión | COHERENTE | DIFERENCIA | NO_REPRODUCIBLE_SIN_EFECTO | PENDIENTE_DEVICE |
+  |---|---|---|---|---|
+  | FE1 (35) | 22 | 1 (`reveal`) | 8 | 4 (`vozchat`, `pres-voz`, `fact-voz`, `cobro-voz`) |
+  | FE2 (19) | 7 | 9 | 3 | — |
+
+  (Los números de FE2 salen de recontar su tabla; el resumen de su `dato_` decía 8/8.) Cada diferencia tiene su ítem:
+  - `reveal` → BL-X10;
+  - el token `cancel:2:0` en el hilo, visto en `hitl` → BL-D4;
+  - «$30.000,0000» en `pres-hitl` → BL-D5;
+  - `(vacío)` y `tablero` → BL-D6;
+  - la barra de 10 pestañas → BL-D7;
+  - `apps` → BL-D8;
+  - `agenda`, `caida` y la fecha → BL-W11;
+  - `ajustes` y `hablar` → BL-W12;
+  - `onb-promesa` → BL-X8;
+  - `gastos` → verificación: el desglose existe en el código (`ResumenMes.tsx`);
+  - `clientes` → BL-V18 (el CUIT ya se muestra).
+
+  **Pasan a la tanda de device del sprint siguiente** (BACKEND fuerza el estado sobre `e2e-device` y lo restaura después): `grabando`, `bloqueado`, `fact-hitl`, `fact-cae`, `recibo`, `card-factura`, `consent`, `bi-vacio`, `vacio`, `vacio-visto`, `onb-cumplida` y los 4 de voz. Precondiciones: `e2e-device` con Google Calendar conectado (A3, H-A3-9; necesita un consentimiento OAuth humano) y el flag de onboarding reseteado.
 
 ### BL-Q4 · Contrastes re-medidos sobre los tokens de hoy
 - **Tamaño:** S · **Origen:** DA-4 (la auditoría no los re-midió), R-6 · **Depende de:** `DEC-11` para las dos excepciones.
 - **DoD:**
   - [ ] Todos los pares **pintados** (no sólo los declarados) computados en las pieles vigentes de cada app; el gate de contraste cubre declarados − cubiertos = 0.
   - [ ] Las dos excepciones con acta (DEC-11) o corregidas.
+- **Estado 2026-09-22 (A3, H-A3-10):** web deriva los pares de lo que pinta (`paresPintadosContraste.test.ts:140-183`) ✅. Mobile sigue con el mapa manual `SUPERFICIES`: `temaContraste.test.ts:344-348` lo declara no automatizable, sin acta. Por ahí entró un par nuevo bajo AA que no está entre los 34 escalados: `textoTenue` sobre la burbuja del operador de `PantallaTicket`, 4,381:1 en oscuro. El resto está en `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, anexo, fila 5. El par se suma a la decisión del operador (CIERREB).
 
 ### BL-Q5 · Re-medición de la matriz de 48 pantallas por bloque
 - **Tamaño:** S por bloque · **Origen:** reporte 16/09 §11.2, auditoría §11.8.
@@ -689,6 +795,27 @@ No bloquean la beta. Cada uno con su condición de entrada.
 | BL-V13 | Memoria busca top-10 por similitud | Deuda condicional no disparada | `apps/copiloto/inteligencia_chat.py:130-135` |
 | BL-V14 | TODO muerto del guardrail de narración | Cosmético | `motor/backend/agent/conversation_workflow.py:548` |
 | BL-V15 | Config OAuth propia de Google en Composio (branding propio) | Funciona con la de Composio; sale de `DEC-12` si se decide | `composio_gateway.py:190-234` |
+| BL-V16 | `gate.sh` y `scripts/ci/*.sh` en bash 3.2 (macOS), ex `BL-B4` | `DEC-1`: Martín diseña y no commitea código; vuelve si eso cambia | `scripts/gate.sh` · acta `DEC-1` |
+| BL-V17 | Triage id-por-id de las 484 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (484 entradas tras #617, `main` @ `b704a685`, 2026-09-22) |
+| BL-V18 | Cantidad de comprobantes por cliente en la lista de Clientes (`clientes` del prototipo) | La API de clientes no la expone. El CUIT/DNI sí se muestra cuando existe | barrido BL-Q3 web (FE2) · `apps/copiloto-web/src/modules/clientes/TarjetaCliente.tsx:48-59` |
+| BL-V19 | Persistir los metadatos de voz del mensaje (origen + duración), para que el chip «Por voz · m:ss» sobreviva a recargar el hilo | Para la beta el chip se dibuja en el cliente (BL-J7, H-A3-7); la duración no viaja al backend | A3 §1, fila BL-J7 |
+| BL-V20 | Alinear al prototipo final las divergencias de **patrón** que declaró la matriz web A4 de FE2: `detalle` (pestañas + filtros en «Para hoy» vs lista simple; sin composer embebido en Mi día; Entró/Salió/Por cobrar en texto vs chips) · `ingresos` (botón «Actualizar» y fecha en el encabezado; sin ícono por ítem; «Borrar» visible; montos con decimales; sin composer embebido — el aviso de MercadoPago sí está, bajo el pliegue) · `negocio` (campos sueltos vs card envolvente; etiquetas en pregunta vs mayúsculas; «¿A quién le vendés?» `select` vs texto libre; título duplicado; «el copiloto» vs «Odobi») · `afip` (asistente numerado vs página de ajustes; sin la línea «● ARCA vinculada · CUIT») · `cuenta` (título, enlace «‹ Ajustes», subtítulo, secciones reorganizadas) | Las cinco pantallas funcionan y cada diferencia está declarada con su causa: son decisiones de forma tomadas al construir, que el prototipo del 17–18/09 cambió después. Se alinean cuando Martín cierre su prototipo final (`BL-P2`). «Cambiar el mail» no entra acá: ya es `[DIFERIDO_CIERRE_B]` por K-12 | `dato_frontend2-a-planificacion_matriz-web-re-medida.md` (2026-09-22) · A4 §C, filas `negocio`/`cuenta` ✅ con la misma vara |
+| BL-V20b | Rótulo y chip del CUIT en `afip`: prod muestra «CUIT 20-11111111-2» + botón **«Cambiar»**, sin el chip «Bloqueado»; el proto (`prototipo/index.html:2316-2318`) muestra «[Bloqueado]» + «Necesito cambiarlo ›» | **La matriz web cierra 16/16** (M-2, 2026-09-22): `cuitBloqueado=true` y el input NO es editable, así que la conclusión de FE2 («no cuenta como defecto») **se sostiene** — lo que no se sostenía era su causa («no verificable, tenant no vinculado»: el tenant SÍ está vinculado). La causa correcta ya estaba escrita en `specs/mobile-coherencia.md:198` (fila A-3): **el prototipo se contradice** —sus reglas dicen bloqueado sin acción y su render muestra «Necesito cambiarlo ›»— y el código siguió al render en el PATRÓN, no en el literal. **No es decisión de UX: tiene implicancia fiscal y está abierta en el operador.** Estas dos diferencias quedan SUBORDINADAS a A-3: si se decide «sin salida», el botón desaparece y el rótulo es irrelevante. **No amerita trabajo antes de esa decisión** | A4-bis ítem 3 + M-2 · `PantallaAfipSetup.tsx:370-383` |
+| BL-V21 | Paridad del landing de **Facturación en mobile** con el fix web de `H-A4-5`: hoy `apps/mobile` auto-crea el borrador al montar la pantalla, en vez de aterrizar en el resumen + las emitidas y abrir el wizard desde «Nueva factura» | **Diferida a la tanda de device del sprint siguiente** (orden del operador, 2026-09-22). No es el mismo bug que se arregló en web: en mobile es un diseño intencional distinto, fijado por ~15 tests que el port rompería — necesita decidir el contrato antes de tocarlo, y verificarse en device. La cita de la auditoría («mismo patrón que mobile», `PantallaFacturacion.tsx:428`) está en el archivo **web**, nombrando a mobile como origen del patrón; no es una nota escrita en mobile | A4 `H-A4-5` (§3 `factura`, §5) · `avance_frontend1-a-planificacion_A4-estado-8-filas.md` (2026-09-22) · web cerrada en #644 |
+| BL-V22 | **Bloqueo real del push de secretos (server-side).** A4-bis probó con un push REAL que con `core.hooksPath` apuntado a otro árbol git **no invoca** `.githooks/pre-push`: el commit con secreto sintético entró al remoto (caso 1c, rc=0; control 1d limpio también entró, así que los rechazos de 1a/1b prueban algo). El repo es **público** y GitHub tenía `secret_scanning` y `secret_scanning_push_protection` **disabled** cuando se midió; el operador los activó el mismo día y hoy los dos leen **`enabled`** (re-medido por API 2026-09-22 post-reboot). **Lo que sigue apagado es `secret_scanning_non_provider_patterns`**, así que push protection sólo intercepta el **catálogo de proveedores** — no un `.env` ni un token interno, que son justo los que este repo usa | **No es un bug del hook.** El hook está bien escrito y es fail-closed; el techo es de la capa: ningún hook local puede defenderse de que git no lo invoque. Detección ya cubierta por dos capas independientes (`scripts/gate.sh:105-111` #649, con control negativo; y `scripts/vigilancia-check.sh:87-105` en el cron de 3 min, con test de 3 casos) — lo que falta es **bloqueo**, que sólo puede ser server-side. Es gratis en repos públicos. **Escalado al operador** (Telegram 2026-09-22, msg 25) porque el `PATCH` lo bloquea el clasificador de permisos — y **lo activó**. Residual: `non_provider_patterns`, que el operador decidió encender **al terminar el sprint**, no antes, porque sus falsos positivos frenarían pushes legítimos. **DoD:** push protection habilitada + re-corrida del fixture 1c contra el remoto real → rechazado por el servidor | A4-bis ítem 1 (`a4bis-h1-push-y-gate.log`, refs `rama-a2 rama-b2`) · el Cierre A afirmaba «ya no apaga el hook en los demás worktrees», y **esa frase es falsa**: 1b prueba otra cosa (que el segundo worktree hereda bien el hook cuando el `hooksPath` es relativo) |
+| BL-V23 | **Agenda le dice «Conectá» a quien ya había conectado.** Cuando la conexión con Google Calendar se CAE, Mi día dice «se cayó… Reconectar» y Agenda dice «conectá Google Calendar en Ajustes → Apps» | **Medido por auditoría (M-1, 2026-09-22) y reducido respecto del reporte inicial: no son «dos estados contradictorios», es una pantalla que no consulta la señal que desempata.** Las dos leen `GET /mi-dia/calendario` (`conectado:false`) y las dos aciertan; Mi día además lee `GET /catalog`, donde `googlecalendar` es `status:"caido"` mientras los otros 5 servicios son `nunca_conectado` — el backend distingue, y a favor de Mi día. El desempate está en `MidiaScreen.tsx:323-337` y documentado como deliberado en `:305-312` (BL-W11 4b); `AgendaScreen.tsx:91-95` tiene el caso único y nunca se portó. **El fix ya existe a 40 líneas de distancia.** Impacto: guía, no dato — le pierde al usuario la acción correcta («Reconectar»). **Y la fila `agenda` de FE2 NO se cerró sobre premisa falsa:** «el tenant no tiene Calendar vinculado» es VERDADERO; lo incompleto es el porqué. No es el caso de `afip` | A4-bis H-BIS-2 + `dato_auditoria-a-planificacion_BIS-mediciones.md` (3 fuentes crudas de prod, con control negativo propio en los otros 5 servicios) |
+| BL-V24 | **Con una hoja de conexión abierta, el envío NO SALE** — la fila era «la latencia de `pres-hitl` no es constante» y la medición la reclasificó | **Lo que decía era el síntoma equivocado.** Auditoría midió (B-1, con control de 0 tomado en cada sesión): 1 pendiente = **1,4×**, 2 pendientes = **3,2×** — sí escala, y cada pendiente cuesta más que la anterior, así que el problema es el *costo por pendiente*, no «no dejes ninguna abierta». El tiempo vive **entero en el backend**: el payload mide **490 B en las cuatro condiciones**, o sea con pendientes no vuelve más contenido, vuelve el mismo resultado más tarde — descarta transferencia y serialización sin abrir el backend. **Y el «>151 s» original no era lentitud:** el timeout ocurrió en el *clic de enviar*. Tratarlo como latencia habría llevado a subir un timeout para tapar un composer bloqueado → ver `BL-V29` | A4-bis H-BIS-4 + `dato_…BIS2-latencia-y-barrido.md`. Candidato NO medido del costo por pendiente: `HISTORY_TAIL = 54` (`conversation_workflow.py:49` + `:502`) — declarado como hipótesis, no como causa |
+| BL-V25 | (menor, pulido) El detalle de presupuesto deja leer el resumen por detrás: `.detalle-presupuesto` tiene fondo con alpha 0,95 y **`backdrop-filter: none`** | El texto del detalle se lee bien igual — es pulido, no legibilidad. Auditoría descartó antes los dos artefactos de instrumento posibles: reproduce en captura de **viewport** (no sólo `fullPage`) y **con GPU** habilitada, y no hay `backdrop-filter` que el headless pudiera estar omitiendo | A4-bis H-BIS-5 |
+| BL-V26 | (higiene menor, **reducida al verificarla**) Dos feedbacks de instrumentación conviven en «LO PEDISTE VOS» con los del usuario | **La formulación anterior pedía algo que ya existe.** Decía «decidir si las corridas futuras marcan sus escrituras»: la marca **ya existe y es única** — el único sitio del repo que escribe un feedback de evidencia es `scripts/evidencia/fe1-ola1-pwa.mjs:28`, con prefijo `[e2e <ID> <ISO>]`, y los dos de prod son dos corridas del mismo script. **Y sospeché que el muro era cross-tenant: me equivoqué.** `/feedback` filtra con doble barrera — `web.py:882-886` (`Depends(require_tenant)`, el tenant sale del token) + `feedback_store.py:41` (`WHERE cliente_id`) + RLS ENABLE/FORCE con policy `tenant_isolation`. Lo que se ve es el **tenant de prueba ensuciando su propio sandbox**, no contaminación entre usuarios. Queda como higiene: borrarlas muta prod (necesita autorización) y destruiría la evidencia | Verificado 2026-09-22 por planificación. El hallazgo real que salió de mirarlo está en `BL-V28` |
+| BL-V27 | La fila `afip` de la matriz web cierra como **diferencia declarada — con otra causa que la registrada** | **El veredicto de FE2 se sostiene; su causa no.** No es «no verificable porque el tenant no está vinculado» (falso: está vinculado y prod lo renderiza — «Tu cuenta ya está vinculada con ARCA en Homologación», CUIT bloqueado, botón presente). La causa real ya estaba escrita hace días en `Prototipo frontend/odobi-ui/specs/mobile-coherencia.md:198` (A-3): **el prototipo se contradice consigo mismo** —sus reglas piden «bloqueado, sin acción» y su render muestra «Necesito cambiarlo ›»— y la decisión **tiene implicancia fiscal, no la toma frontend**. Escalada al operador (Telegram msg 26). Subordinados a esa decisión, sin trabajo antes: rótulo «Cambiar» vs «Necesito cambiarlo ›» y chip «Bloqueado» ausente (`PantallaAfipSetup.tsx:370-383`) — si decide «sin salida», el botón desaparece | Medición M-2 de auditoría. **Matriz web: 16/16 con veredicto.** Lección en `memoria/un-cierre-correcto-por-la-causa-equivocada.md` |
+| BL-V28 | ✅ **CERRADA 2026-09-22** — `GET /feedback` ya tiene test adversarial HTTP | `test_adversarial_http_feedback_a_cannot_read_b_feedback` en `test_adversarial_multitenant.py`, PR **#660** squash `847ec197`, CI 6/6, gate local `ab7e7522` 5/5 `sucio:false` ✅ CUBRE, suite VPS 2088 passed / 27 skipped. Test-only, sin deploy. **El control positivo dejó un hallazgo que vale más que el test:** romper sólo el `WHERE` interno salió **VERDE** —RLS FORCE lo enmascara— y sólo romper `require_tenant` dio rojo. O sea: un control de dos capas **no se puede validar rompiendo la de adentro**, y quien lo intente va a leer el verde como «el test no sirve» en vez de «hay defensa en profundidad». Backend declaró qué rompió y qué color dio cada capa, que es exactamente la forma correcta | Barrido del mismo patrón que backend dejó abierto → `BL-V33` |
+| BL-V29 | 🔴 **La hoja de conexión deja la app inusable para quien vuelve** — DOS defectos que se potencian | **(1) «Ahora no» no persiste:** clic real verificado con `elementFromPoint` *antes* de tocarlo; cierra, se recarga y **vuelve**, con el composer tapado por `div.sheet-conexion__acciones`. Control: con Escape da idéntico ⇒ es producto, no el instrumento. localStorage: 27 claves antes y después, ninguna nueva — con control positivo de que la app sabe persistir esto (las claves `*-propuesto-resuelto:assistant-<id>` que sí conviven). Causa: `useConexionRequerida.ts:63` (`useState(new Set())`) contra `useChat.ts:116-138`, que persiste los mensajes: al recargar vuelve el historial sobre un set vacío. **(2) A 390 px el botón es intocable:** la tab-bar cubre «Ahora no» entero (`pctTapado=100`, franja libre **0 px**) y en táctil no hay Escape. **Juntos: el usuario móvil que vuelve no tiene camino previsto de salida y el chat no acepta escribir.** El fix ya existe en otro call-site: `resolucionCardPropuesta.ts` (#419) resolvió esto para las 4 tarjetas `*_propuesto` y la hoja nunca entró al barrido | Contrato a FE2, por encima de su cola. **No medido:** si reaparece sin recargar · si el swipe-down cierra en móvil |
+| BL-V30 | ✅ **BARRIDO CERRADO 2026-09-22** — **2 hallazgos reales en web**, y el patrón no era uno sino **dos** | Sujeto `origin/main` `847ec197`, 264 archivos, 435 declaraciones, **dos controles positivos en verde**. **Lo que reencuadra todo:** conviven dos soluciones probadas al mismo defecto — **A** `resolucionCardPropuesta.ts` (#419, marca en `localStorage` por `mensajeId`, 4 tarjetas de web) y **B** `hitlRespondido` (H-A4-9, la marca va **dentro del mensaje persistido**; lo usan web y mobile, `useChat.ts:82` lo dice textual). La hoja de conexión de `BL-V29` **no usa ninguno, teniendo los dos en su propio módulo**. Los 2 reales: (1) `TarjetaFacturaPropuesta.tsx:77/81` — es la **quinta** tarjeta del chat y sólo 4 importan el guard: tras recargar vuelve a pedir «Emitir» sobre una factura que **ya tiene CAE**; (2) `SeccionMisComprobantes.tsx:85` — recargar entre «Sí, anular» y «Confirmar» pierde el `anulacionId` y reaparece «Anular». **Ninguno de los dos duplica la acción**, y eso lo verificó auditoría en vez de heredarlo: `confirmarConTokenFresco` es fail-closed, y la anulación es idempotente en el **servidor** (`web.py:423-429`, workflow id determinístico por comprobante con `USE_EXISTING`) — el sub-agente lo había dejado como riesgo fiscal no descartado y habría reportado una nota de crédito duplicada **que no existe** | 17 candidatos + 33 dudosos triados como transitorios con evidencia caso por caso. `App.tsx:49 onboardingCerrado` **bien resuelto** (POST al backend, la condición vuelve de `me.onboarding_completado`). Del instrumento: v1 buscaba por nombre de variable y **su control lo reprobó** (veía 1 de 4); y `origin/main` avanzó un commit durante el barrido — re-corrido sobre el nuevo, mismos 19 |
+| BL-V31 | 🔴 **`apps/mobile` no tiene el guard A en NINGUNA de sus 5 tarjetas** — y es la app que va a beta en device | Barrido con ámbito `apps/mobile/src` y **las 4 tarjetas de web metidas adentro como canario**, para que el control positivo viaje en la misma corrida en vez de comparar dos salidas: 191 archivos, 433 declaraciones, `CUBIERTO = 8` y **las 8 son de web**. Mobile: cero. Los 5: `useConexionRequerida.ts:42` (**el mismo defecto que se midió en prod web hoy** — es lógica, no layout: el device no lo salva) · `TarjetaFacturaPropuesta.tsx:74` · `TarjetaGastoPropuesto.tsx:39` (**en web esta SÍ está cubierta**) · `TarjetaPresupuestoPropuesto.tsx:76` (la que **ya generó un presupuesto duplicado en prod** antes del guard de web) · `SeccionMisComprobantes.tsx:75`. **Costo: 5 lugares, no uno** — `TarjetaPropuestaShell.tsx:19-26` declara «los estados TERMINALES no entran acá… cada tarjeta tiene los suyos», así que no hay punto único donde persistir. **La deuda ya estaba anotada… dentro de un comentario de web** (`TarjetaPresupuestoPropuesto.tsx:20-27`) y nunca salió a un tablero: por eso esta fila existe. **Precondición: `BL-V32`** — propagar A sin poda multiplica la fuga por 5 | Código mobile, entra al sprint (lo que sale es device/EAS). **Límite declarado por auditoría:** el resto de candidatos de mobile son espejo exacto de los transitorios de web pero **no se leyeron uno por uno** — analogía, no verificado |
+| BL-V32 | ⚖️ **Decisión de diseño ANTES de propagar: el guard A no tiene poda** — y la poda tiene un punto único que ya existe | El guard A escribe `${prefix}:${mensajeId}` en `localStorage` y **nada borra**; `useChat.ts:446` borra los mensajes de la sesión previa (`removeItem(messagesStorageKey(previous))`) y **deja sus marcas huérfanas** — en el navegador de la corrida ya había ~20 claves acumuladas. El guard B no tiene el problema: la marca vive **dentro del mensaje**, así que muere con él. **Decisión (planificación, 2026-09-22, verificada en el archivo, no por analogía):** (1) para todo estado nuevo del tipo «el usuario ya descartó / ya resolvió esto», **preferir B** cuando el estado pertenece a un mensaje persistido — cero fuga por construcción; (2) A se conserva donde ya está (no invalidar claves de browsers reales, que es justo por lo que #419 reusó el prefijo viejo) y **su poda se ata a `useChat.ts:443-447`**, el único punto del código que ya borra estado de sesión previa: leer los ids de los mensajes **antes** del `removeItem` y borrar `${prefix}:${id}` por cada prefijo conocido — determinístico y sin tocar la sesión viva; (3) **no propagar A a mobile sin (2)**. **DoD:** poda implementada + test que deja marcas, resetea sesión y verifica que `localStorage` vuelve al conteo previo (**control positivo: sin la poda, ese test tiene que dar rojo**) | Bloquea `BL-V31`. Planteado por auditoría antes de que el pedido fijara la decisión — correcto: el pedido la habría congelado |
+| BL-V33 | **Tres endpoints más con el patrón store-only: control implementado, caso hostil sólo a nivel store** | Barrido que backend dejó explícito al cerrar `BL-V28`, para batchear en un PR: `GET /catalog` (`web.py:1067` → `MpCredentialStore.salud`) · `DELETE /mp/connection` (`web.py:1157` → `MpCredentialStore.delete_all`, **agrava: es mutación**, no lectura) · `POST /me/onboarding/completar` (`web.py:1042` → `TenantOnboardingStore.completar`). Mismo razonamiento que `BL-V28`: el test de store recibe el `cliente_id` **ya resuelto** y por lo tanto no ejercita `require_tenant`, que es la pieza que decide de quién es el request. **DoD:** un test HTTP adversarial por endpoint + control positivo **rompiendo `require_tenant`** (romper el `WHERE` interno queda enmascarado por RLS FORCE — medido en #660, no repetir el intento a ciegas). Menor de la misma corrida: el test HTTP de `/me` **nunca ejercita `onboarding_completado=True` en A**, cobertura parcial de esa dimensión | `cerrado/2026-09-22/…_cierre_backend-a-planificacion_feedback-test-adversarial-http.md` |
+| BL-V34 | 🔴 **Anotar un gasto dos veces crea dos gastos** — y presupuesto igual, por otra causa | **Gastos no tiene idempotencia en NINGUNA capa.** Verificado con control positivo del grep (`cobro_store.py` 30 hits · `cliente_store.py` 3 · gasto **0** en front, `packages/core/src/api/gastos.ts`, `gasto_store.py`, `gastos_web.py` y la migración; el único hit era la palabra «Idempotente» en un comentario **sobre la migración**). Como la card remonta accionable tras recargar (`BL-V31`), el segundo «Guardar» **inserta plata duplicada, sin pregunta y sin 409**. **Presupuesto es otro caso y se arregla más barato:** el backend YA tiene `idem_key` + índice único parcial y el front YA la manda — el defecto es que **la clave nace con el montaje** (`useRef(generarId())`: web `:104`→`:177`, mobile `:125`→`:231`), así que al remontar es otra y el backend la ve como intención nueva. ⚠️ **El que duplica es el de MOBILE**; web está tapado por el guard A, así que un fix sobre `:177` sale verde y deja el daño intacto. **Causa de clase:** las claves cubren «un gesto con reintentos», no «la misma intención re-disparada desde una card que sobrevivió a la app» ⇒ **derivarla del `mensajeId`** arregla ambas sin almacenamiento nuevo ni claves que podar. **DoD:** montar→guardar→DESMONTAR→montar y no poder volver a guardar, **escrito contra mobile primero**; control positivo obligatorio (sin el fix, ROJO) — los 5 tests de esas tarjetas existen y **ninguno monta dos veces**, así que el verde actual no dice que esté bien, dice que nadie preguntó | Contrato de junta bajado 2026-09-22 (backend + FE1/FE2). El repo ya registra el daño ocurrido: «un click en Guardar generaba un presupuesto duplicado en prod» |
+| BL-V35 | (media) **La ventana anti-duplicado de cobros mira la fecha DICTADA, no la de creación** | `cobro_store.py:409-426` filtra `fecha >= CURRENT_DATE - 5`. Dictar un cobro con fecha de más de 5 días atrás y repetirlo tras reiniciar **escapa a los dos guardas**, porque ambos miran esa misma ventana. Pide fecha vieja + reinicio + volver a tocar Guardar, por eso no es alta. Entra en el PR de `BL-V34` si no lo complica | Hallazgo de auditoría, barrido 2026-09-22 |
 
 ---
 
@@ -698,7 +825,7 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).
 2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD, y los `BL-X` cuya decisión los mantuvo en la beta.
-3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5`, contra el prototipo final de Martín (`BL-P2`).
+3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5` — la lista es [`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`](2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md) §2, **54 ids** —, contra el prototipo final de Martín (`BL-P2`).
 4. `smoke_beta_e2e.py` en verde contra prod (`BL-Q2`) y durabilidad demostrada (`BL-B1`).
 5. Un tester que no es del equipo completa, sin ayuda y en su propio teléfono: alta → conectar una app → dictar un gasto → emitir una factura en homologación → pedir soporte. Con video.
 
@@ -731,3 +858,19 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 | `cobro-voz` | BL-F2 | | H-50 | BL-W10 |
 | `fact-sinarca` | BL-P6 | | H-51 | BL-W3, BL-J12 |
 | `pres-marca` | BL-V1 | | `limite` | DEC-8, BL-P5 |
+
+**Barrido BL-Q3 web (2026-09-22) y auditoría A3 (#622):**
+
+| Hallazgo | Ítem(s) | | Hallazgo | Ítem(s) |
+|---|---|---|---|---|
+| `hitl`: token `cancel:` en el hilo | BL-D4 | | H-A3-1 | BL-B3 |
+| `pres-hitl`: 4 decimales | BL-D5 | | H-A3-2, H-A3-4 | BL-J8 |
+| `(vacío)`, `tablero` | BL-D6 | | H-A3-3 | ADR-003 (contrato backend A3, fila 4) |
+| barra de 10 pestañas | BL-D7 | | H-A3-5 | BL-X8 |
+| `apps` | BL-D8 | | H-A3-6 | BL-X10 |
+| `agenda`, `caida`, fecha de Mi día | BL-W11 | | H-A3-7 | BL-J7, BL-V19 |
+| `ajustes`, `hablar` | BL-W12 | | H-A3-8 | BL-B1 |
+| `reveal` | BL-X10 | | H-A3-9 | BL-Q3 (precondición de device) |
+| `onb-promesa` | BL-X8 | | H-A3-10 | BL-Q4 |
+| `clientes` | BL-V18 | | H-A3-11 | BL-J11 |
+| `gastos` | verificación (FE2, fila 7) | | H-A3-12 | BL-X5 (nota) |

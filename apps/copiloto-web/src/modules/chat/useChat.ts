@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { MAX_MENSAJES_HISTORIAL } from '@copiloto/core';
+// `clasificarChoices` (no `hitlMapping.ts`, ver H-A4-9 abajo): evita un import circular entre este
+// módulo y `hitlMapping.ts` (que ya importa `type ChatMessage` de acá) — `@copiloto/core` es la
+// fuente canónica de la clasificación de todos modos.
+import { MAX_MENSAJES_HISTORIAL, clasificarChoices } from '@copiloto/core';
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 import { generarId as generateId } from '../../util/id';
+import { podarResolucionesCard } from './resolucionCardPropuesta';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -69,6 +73,47 @@ function messagesStorageKey(sessionId: string): string {
   return `${MESSAGES_STORAGE_PREFIX}:${sessionId}`;
 }
 
+/** Token técnico LEGACY (pre-#624/BL-D4): antes de ese fix la burbuja optimista del usuario pintaba
+ * el `value` crudo del choice elegido (`cancel:<turn>:<step>`/`confirm:<turn>:<step>`) en vez del
+ * label que vio y tocó. Sólo sirve para RECONOCER ese formato viejo al rehidratar. */
+const LEGACY_HITL_TOKEN_RE = /^(cancel|confirm):/i;
+
+/**
+ * H-A4-9 — migra un historial rehidratado para que una card HITL ya respondida quede marcada
+ * `hitlRespondido`: sin esto, `HitlCard` la vuelve a mostrar activa en cada reload, y un click
+ * tardío reenvía confirm/cancel aunque el turno ya se haya resuelto. Copia hermana de
+ * `sanitizarHitlRespondido` en `packages/core/src/chat/hitl.ts` (la usa `apps/mobile`) — este hook
+ * ya es una reimplementación standalone (ver docstring del módulo) sobre un `ChatMessage` propio,
+ * así que se duplica la heurística en vez de importar el tipo cruzado; SI algún día converge a
+ * `reducirChat`/`hidratarEstado` de `@copiloto/core`, esta copia se elimina con esa migración.
+ *
+ * Heurística (idéntica a la de core): un `assistant` clasificado `'hitl'` (par confirmar/cancelar,
+ * `hitlMapping.classifyChoices`) SIN `hitlRespondido` cuyo mensaje INMEDIATO SIGUIENTE es de
+ * `role: 'user'` ya fue respondido — el gate bloquea el turno, así que ese mensaje es su respuesta.
+ * El texto de esa respuesta llega en dos formatos posibles: el LABEL (post-#624) o el token técnico
+ * crudo LEGACY (pre-#624, `LEGACY_HITL_TOKEN_RE`); en cualquiera de los dos alcanza con saber QUE
+ * fue respondida — el legacy se normaliza a "Cancelar"/"Confirmar" en vez de mostrar `cancel:2:0`.
+ */
+function sanitizeLegacyHitlTokens(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((message, index) => {
+    if (message.role !== 'assistant') return message;
+    if (message.hitlRespondido) return message;
+    if (clasificarChoices(message.choices) !== 'hitl') return message;
+
+    const next = messages[index + 1];
+    if (!next || next.role !== 'user') return message; // sin respuesta después -> sigue activa
+
+    const legacyMatch = LEGACY_HITL_TOKEN_RE.exec(next.text);
+    const label = legacyMatch
+      ? legacyMatch[1].toLowerCase() === 'cancel'
+        ? 'Cancelar'
+        : 'Confirmar'
+      : next.text;
+
+    return { ...message, hitlRespondido: { value: next.text, label } };
+  });
+}
+
 /** Rehidrata los mensajes persistidos de este `session_id` — best-effort (localStorage puede
  * fallar en modo privado/cuota llena, o traer basura si otro código escribió la key) y NUNCA debe
  * romper el mount: cualquier problema degrada a "sin historial", igual que `getToken` en
@@ -79,7 +124,10 @@ function loadPersistedMessages(sessionId: string): ChatMessage[] {
     const raw = window.localStorage.getItem(messagesStorageKey(sessionId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+    const messages = Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+    // H-A4-9 — sanitizar ANTES de derivar `nextIdRef`/`seenIdsRef` (más abajo en `useChat`): la
+    // migración sólo agrega el campo `hitlRespondido`, nunca cambia ids ni cantidad de mensajes.
+    return sanitizeLegacyHitlTokens(messages);
   } catch {
     return [];
   }
@@ -146,6 +194,21 @@ export interface ChatMessage {
   /** Metadata de presentación del reply (gate HITL o artefacto terminal, Task 17) — la usa
    * `hitlMapping`/`HitlCard` (kind='confirm') o `Bubble`/`ArtifactView` (otros kinds). */
   card?: ReplyCard;
+  /** Instante del mensaje (ms epoch) — separadores de día (BL-C3). Ausente en historial viejo. */
+  creadoEn?: number;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`sendAudio`): alimenta el chip «Por voz · Ns»
+   * en `Bubble`. Ausente en mensajes escritos o en historial viejo (no se persiste todavía). */
+  porVoz?: { duracionSeg: number };
+  /** H-A4-9 — si ESTA card HITL (mensaje `assistant` con `choices` clasificados `'hitl'`) ya fue
+   * respondida, y con qué. Ausente = todavía activa/clickeable. Se persiste con `messages` (mismo
+   * efecto de la línea 225) así sobrevive a un reload; el historial viejo sin este campo se migra al
+   * rehidratar con `sanitizeLegacyHitlTokens` (arriba). */
+  hitlRespondido?: { value: string; label: string };
+  /** HOJA — si ESTA card `requiere_conexion` (mensaje `assistant`) ya fue descartada con «Ahora
+   * no», mismo patrón que `hitlRespondido`: la marca vive DENTRO del mensaje persistido, no en un
+   * `useState<Set>` en memoria (`useConexionRequerida.ts`, versión previa) que se perdía al
+   * recargar y reabría la hoja. Ausente = sigue vigente/clickeable. */
+  conexionDescartada?: true;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -153,20 +216,36 @@ export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
 export interface SendOptions {
   kind?: ChatMessageKind;
   mode?: string | null;
+  /** BL-D4 — texto a mostrar en la burbuja optimista del usuario cuando difiere del `text` que se
+   * manda al backend. Lo usa el HITL (`kind:'callback'`): el backend espera el `value` crudo del
+   * choice elegido (`confirm:<turn>:<step>`), pero el usuario nunca escribió eso — eligió un botón
+   * con un label ("Confirmar"/"Cancelar"). Sin este campo, la burbuja pintaba el `value` técnico
+   * tal cual (`hitlMapping.ts` → `ChatScreen.tsx` → acá). Ausente: se usa `text` como siempre. */
+  displayText?: string;
+  /** H-A4-9 — id del `ChatMessage` HITL que esta respuesta resuelve (`message.id` de la card en
+   * `hitlMapping.buildHitlCardProps`). Presente en el confirm/cancel de la card: además de mandar la
+   * respuesta, marca ESE mensaje `hitlRespondido` (atómico con la burbuja nueva, ver `send` abajo)
+   * para que quede deshabilitado aun después de un reload. Ausente en cualquier otro `send`. */
+  hitlMessageId?: string;
 }
 
 export interface UseChatResult {
   messages: ChatMessage[];
   sendStatus: SendStatus;
   send: (text: string, opts?: SendOptions) => Promise<void>;
-  /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función. */
-  sendAudio: (blob: Blob) => Promise<void>;
+  /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función.
+   * `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns» en la burbuja del usuario. */
+  sendAudio: (blob: Blob, duracionSeg: number) => Promise<void>;
   /** `session_id` activo (para mostrar un fragmento en el header de escritorio, ej. `sess_9f2a`). */
   sessionId: string;
   /** Arranca una conversación nueva: genera un `session_id` fresco, lo persiste, descarta el
    * historial viejo y vacía los mensajes. Lo consume el botón "Nueva conversación" del header
    * de escritorio (`Copiloto Web.dc.html:98-101`); el shell mobile no lo usa. */
   startNewSession: () => void;
+  /** HOJA — marca el mensaje `mensajeId` (la card `requiere_conexion`) `conexionDescartada`, para
+   * que «Ahora no» (`useConexionRequerida.ts`) sobreviva a un reload. Atómico vía `setMessages`,
+   * mismo mecanismo que la marca `hitlRespondido` de `send`. */
+  marcarConexionDescartada: (mensajeId: string) => void;
 }
 
 export function useChat(): UseChatResult {
@@ -227,7 +306,7 @@ export function useChat(): UseChatResult {
         if (seenIdsRef.current.has(reply.id)) continue; // dedupe defensivo además del cursor next_id
         seenIdsRef.current.add(reply.id);
         additions.push({ id: `assistant-${reply.id}`, role: 'assistant', text: reply.text,
-                         choices: reply.choices, card: reply.card });
+                         choices: reply.choices, card: reply.card, creadoEn: reply.createdAt });
       }
       if (additions.length > 0) {
         seenIdsRef.current = acotarSeenIds(seenIdsRef.current);
@@ -291,8 +370,25 @@ export function useChat(): UseChatResult {
       if (!trimmed) return;
 
       stopPolling();
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: trimmed };
-      setMessages((prev) => acotarMensajes([...prev, userMessage]));
+      const userMessage: ChatMessage = {
+        id: `user-${generateId()}`,
+        role: 'user',
+        text: opts?.displayText ?? trimmed,
+        creadoEn: Date.now(),
+      };
+      // H-A4-9 — si `opts.hitlMessageId` está presente, marcar ESA card `hitlRespondido` en la
+      // MISMA actualización que agrega la burbuja nueva: atómico, nunca hay un render intermedio
+      // donde la card ya se respondió pero sigue activa.
+      setMessages((prev) => {
+        const marked = opts?.hitlMessageId
+          ? prev.map((m) =>
+              m.id === opts.hitlMessageId
+                ? { ...m, hitlRespondido: { value: trimmed, label: userMessage.text } }
+                : m,
+            )
+          : prev;
+        return acotarMensajes([...marked, userMessage]);
+      });
       setSendStatus('sending');
 
       try {
@@ -320,7 +416,7 @@ export function useChat(): UseChatResult {
    * igual que `send`.
    */
   const sendAudio = useCallback(
-    async (blob: Blob) => {
+    async (blob: Blob, duracionSeg: number) => {
       stopPolling();
       setSendStatus('sending');
 
@@ -333,7 +429,13 @@ export function useChat(): UseChatResult {
         return;
       }
 
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript };
+      const userMessage: ChatMessage = {
+        id: `user-${generateId()}`,
+        role: 'user',
+        text: transcript,
+        creadoEn: Date.now(),
+        porVoz: { duracionSeg },
+      };
       setMessages((prev) => acotarMensajes([...prev, userMessage]));
 
       startWaitingForReply();
@@ -356,10 +458,20 @@ export function useChat(): UseChatResult {
         // best-effort — si localStorage falla, igual reseteamos el estado en memoria.
       }
     }
-    setMessages([]);
+    // PODA (BL-V32): el guard A (`resolucionCardPropuesta.ts`) nunca borraba — sin esto, las
+    // marcas de resolución de los mensajes de la sesión que se descarta quedaban huérfanas para
+    // siempre. `prev` (no una dependencia de closure) para no arrastrar un `messages` desactualizado.
+    setMessages((prev) => {
+      podarResolucionesCard(prev.map((m) => m.id));
+      return [];
+    });
     setSessionId(created);
     setSendStatus('idle');
   }, [stopPolling]);
 
-  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession };
+  const marcarConexionDescartada = useCallback((mensajeId: string) => {
+    setMessages((prev) => prev.map((m) => (m.id === mensajeId ? { ...m, conexionDescartada: true } : m)));
+  }, []);
+
+  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession, marcarConexionDescartada };
 }

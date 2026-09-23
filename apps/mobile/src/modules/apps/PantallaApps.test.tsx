@@ -26,6 +26,7 @@ function servicioMock(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo {
     descripcion: 'Creá y buscá archivos en tu Google Drive.',
     capacidades: ['Crear archivo'],
     conectado: false,
+    estado: 'nunca_conectado',
     connectPath: '/composio/connect?service=googledrive',
     ...over,
   };

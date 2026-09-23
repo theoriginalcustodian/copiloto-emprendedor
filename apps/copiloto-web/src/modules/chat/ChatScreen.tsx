@@ -1,12 +1,17 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+
+import { tomarPendiente } from '@copiloto/core';
 
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { useChat } from './useChat';
+import { useConexionRequerida } from './useConexionRequerida';
 import './chat.css';
 
-const WELCOME_TEXT =
-  'Contame qué necesitás y lo hago. Antes de tocar nada —cobrar, agendar, mandar un mail— siempre te pido que confirmes.';
+// Verbatim `Prototipo frontend/odobi-ui/prototipo/index.html:1886` (`.contrato`) — matriz web
+// A4 Criterio 3 fila 1: la app decía otra cosa, se alinea al texto literal del proto.
+const WELCOME_TEXT = 'Antes de ejecutar algo importante, te lo muestro para que lo confirmes.';
 
 /**
  * Pantalla de Chat completa. Toda la lógica de envío/polling/durabilidad vive en `useChat`; acá
@@ -53,18 +58,47 @@ export function ChatScreen({
   onAbrirCliente,
   onFacturar,
 }: ChatScreenProps = {}) {
-  const { messages, sendStatus, send, sendAudio } = useChat();
+  const { messages, sendStatus, send, sendAudio, marcarConexionDescartada } = useChat();
   const isDesktop = variant === 'desktop';
+  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el
+  // pedido. HOJA: `marcarConexionDescartada` persiste «Ahora no» en el mensaje (sobrevive a un reload).
+  const conexion = useConexionRequerida(messages, send, undefined, marcarConexionDescartada);
+
+  // BL-W9: una pantalla de ayuda dejó una pregunta en el buzón — se manda al montar el chat, UNA vez
+  // (`tomarPendiente` vacía el buzón, así que no se reenvía sola al volver a esta pantalla).
+  useEffect(() => {
+    const pendiente = tomarPendiente();
+    if (pendiente != null) void send(pendiente, { mode: null });
+  }, [send]);
 
   const handleSend = useCallback(
     (text: string, mode: string | null) => void send(text, { mode }),
     [send],
   );
+  // BL-D4: `label` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta en su burbuja
+  // optimista. `value` es el token técnico que espera el backend (`cancel:<turn>:<step>`) y sigue
+  // siendo lo que se manda en el POST; nunca se muestra.
+  // H-A4-9: `messageId` (3er arg, sólo desde `HitlCard`) marca esa card `hitlRespondido` en la MISMA
+  // actualización que agrega la burbuja — así queda deshabilitada aun después de un reload.
   const handleChoice = useCallback(
-    (value: string) => void send(value, { kind: 'callback' }),
+    (value: string, label: string, messageId?: string) =>
+      void send(value, { kind: 'callback', displayText: label, hitlMessageId: messageId }),
     [send],
   );
-  const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);
+  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx`: el instante del `pointerdown` (vía
+  // `onRecordingStart`, ya expuesto por `MicButton`) mide la duración del dictado para el chip
+  // «Por voz · Ns» de la burbuja, sin duplicar el cronómetro interno de `MicButton`.
+  const inicioMsRef = useRef(0);
+  const handleRecordingStart = useCallback(() => {
+    inicioMsRef.current = Date.now();
+  }, []);
+  const handleSendAudio = useCallback(
+    (blob: Blob) => {
+      const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
+      void sendAudio(blob, duracionSeg);
+    },
+    [sendAudio],
+  );
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
@@ -82,6 +116,14 @@ export function ChatScreen({
         sendStatus={sendStatus}
         onSend={handleSend}
         onSendAudio={handleSendAudio}
+        onRecordingStart={handleRecordingStart}
+      />
+      <SheetRequiereConexion
+        conexion={conexion.pendiente?.conexion ?? null}
+        onConectar={conexion.conectar}
+        onAhoraNo={conexion.ahoraNo}
+        ocupado={conexion.ocupado}
+        error={conexion.error}
       />
     </div>
   );

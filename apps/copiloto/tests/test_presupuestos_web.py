@@ -60,8 +60,18 @@ class _FakePresupuestoStore:
     def _mios(self) -> dict:
         return self._datos.setdefault(self._cid, {})
 
-    def crear(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None) -> dict:
+    def crear(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None,
+              idem_key=None) -> dict:
+        return self.crear_idem(concepto=concepto, receptor=receptor, items=items, moneda=moneda,
+                               reemplaza_a=reemplaza_a, idem_key=idem_key)[0]
+
+    def crear_idem(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None,
+                   idem_key=None):
         mios = self._mios()
+        if idem_key:
+            previo = next((p for p in mios.values() if p.get("_idem_key") == idem_key), None)
+            if previo:
+                return previo, True
         pid = max(mios) + 1 if mios else 1
         total = sum(float(i["cantidad"]) * float(i["precio_unitario"]) for i in items)
         p = {"id": pid, "numero": len(mios) + 1, "fecha": "2026-07-21T00:00:00Z",
@@ -74,8 +84,10 @@ class _FakePresupuestoStore:
                         "cantidad": f"{float(i['cantidad']):.2f}",
                         "precio_unitario": f"{float(i['precio_unitario']):.2f}",
                         "codigo": i.get("codigo", "")} for n, i in enumerate(items)]}
+        if idem_key:
+            p["_idem_key"] = idem_key
         mios[pid] = p
-        return p
+        return p, False
 
     def detalle(self, presupuesto_id: int):
         return self._mios().get(presupuesto_id)
@@ -195,6 +207,28 @@ def test_perfil_sin_configurar_devuelve_200_con_null_no_404():
     assert r.json() == {"perfil": None}
 
 
+@pytest.mark.parametrize("formalidad,largo", [(f, l) for f in ("formal", "cercano") for l in ("breve", "detallado")])
+def test_K15_ejemplo_de_tono_devuelve_el_texto_de_la_combinacion(formalidad, largo):
+    from perfil_negocio_prompt import ejemplo_de_tono
+    cli, *_ = _app()
+    r = cli.get("/perfil-negocio/ejemplo", params={"formalidad": formalidad, "largo_respuesta": largo})
+    assert r.status_code == 200
+    assert r.json() == {"ejemplo": ejemplo_de_tono(formalidad, largo)}
+
+
+@pytest.mark.parametrize("params", [{}, {"formalidad": "formal"}, {"formalidad": "x", "largo_respuesta": "breve"},
+                                    {"formalidad": "formal", "largo_respuesta": "eterno"}])
+def test_K15_ejemplo_de_tono_valor_invalido_o_faltante_es_400(params):
+    cli, *_ = _app()
+    assert cli.get("/perfil-negocio/ejemplo", params=params).status_code == 400
+
+
+def test_K15_ejemplo_de_tono_sin_token_es_401():
+    cli, *_ = _app(require_tenant=_require_tenant_401())
+    assert cli.get("/perfil-negocio/ejemplo",
+                   params={"formalidad": "formal", "largo_respuesta": "breve"}).status_code == 401
+
+
 def test_perfil_sin_token_es_401():
     cli, *_ = _app(require_tenant=_require_tenant_401())
     assert cli.get("/perfil-negocio").status_code == 401
@@ -244,6 +278,32 @@ def test_perfil_cadena_vacia_SI_vacia_el_campo():
 def test_perfil_texto_demasiado_largo_es_400():
     cli, *_ = _app()
     assert cli.post("/perfil-negocio", json={"que_vende": "x" * 501}).status_code == 400
+
+
+@pytest.mark.parametrize("campo,valor,msg", [
+    ("telefono", "590-63", "al menos 8 dígitos"),
+    ("telefono", "abc", "al menos 8 dígitos"),
+    ("email", "contacto.elgalpon.com.ar", "falta el @ o el dominio"),
+    ("email", "contacto@sinpunto", "falta el @ o el dominio"),
+    ("email", "con tacto@x.com", "falta el @ o el dominio"),
+])
+def test_K05_contacto_invalido_es_400_accionable_y_NO_escribe(campo, valor, msg):
+    cli, _, _, perfiles = _app()
+    r = cli.post("/perfil-negocio", json={campo: valor})
+    assert r.status_code == 400 and msg in r.json()["detail"]
+    assert perfiles == {}
+
+
+def test_K05_contacto_valido_se_guarda_recortado_y_un_POST_viejo_no_lo_toca():
+    cli, *_ = _app()
+    r = cli.post("/perfil-negocio", json={"telefono": " 341 590 6309 ", "email": "contacto@elgalpon.com.ar"})
+    assert r.json()["perfil"]["telefono"] == "341 590 6309"
+    # Cliente viejo: no manda los campos nuevos -> siguen intactos.
+    r = cli.post("/perfil-negocio", json={"formalidad": "formal"})
+    assert r.json()["perfil"]["telefono"] == "341 590 6309"
+    assert r.json()["perfil"]["email"] == "contacto@elgalpon.com.ar"
+    # `""` explícito vacía (y no se valida el formato de un vacío).
+    assert cli.post("/perfil-negocio", json={"telefono": ""}).json()["perfil"]["telefono"] == ""
 
 
 # --- presupuestos: creación ---------------------------------------------------
@@ -301,6 +361,23 @@ def test_el_doc_cuando_funciona_queda_pegado_al_presupuesto():
     cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
     p = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]
     assert (p["doc_id"], p["doc_link"]) == ("doc-1", "https://docs/x")
+
+
+def test_K07_con_doc_ofrece_mandar_por_mail_y_sin_doc_es_null():
+    cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
+    r = cli.post("/presupuestos", json=_BODY).json()
+    assert r["sugerencias"] == {"mandar_por_mail": {"doc_link": "https://docs/x"}}
+    assert r["presupuesto"]["doc_link"] == "https://docs/x"          # los campos existentes siguen iguales
+    cli, *_ = _app()
+    assert cli.post("/presupuestos", json=_BODY).json()["sugerencias"] is None
+
+
+def test_K07_doc_que_falla_no_ofrece_mandar_por_mail():
+    def _rota(cid, p):
+        raise RuntimeError("google caído")
+    cli, *_ = _app(generar_doc=_rota)
+    r = cli.post("/presupuestos", json=_BODY)
+    assert r.status_code == 201 and r.json()["sugerencias"] is None
 
 
 @necesita_pg
@@ -563,3 +640,21 @@ def test_el_borrador_de_un_tenant_no_colisiona_con_el_del_otro():
 def test_facturar_sin_token_es_401():
     cli, *_ = _app(require_tenant=_require_tenant_401())
     assert cli.post("/presupuestos/1/facturar").status_code == 401
+
+
+def test_K01_misma_idem_key_devuelve_el_mismo_presupuesto_y_repetido_true():
+    cli, *_ = _app()
+    clave = "c3f1e2a0-0000-4000-8000-000000000001"
+    r1 = cli.post("/presupuestos", json={**_BODY, "idem_key": clave})
+    r2 = cli.post("/presupuestos", json={**_BODY, "idem_key": clave})
+    assert (r1.status_code, r2.status_code) == (201, 201)
+    assert r1.json()["repetido"] is False and r2.json()["repetido"] is True
+    assert r1.json()["presupuesto"]["id"] == r2.json()["presupuesto"]["id"]
+    assert len(cli.get("/presupuestos").json()["presupuestos"]) == 1
+
+
+def test_K01_compatibilidad_sin_idem_key_sigue_creando_una_fila_por_alta():
+    cli, *_ = _app()
+    assert cli.post("/presupuestos", json=_BODY).json()["repetido"] is False
+    assert cli.post("/presupuestos", json=_BODY).json()["repetido"] is False
+    assert len(cli.get("/presupuestos").json()["presupuestos"]) == 2

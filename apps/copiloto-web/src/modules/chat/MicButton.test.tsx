@@ -29,7 +29,7 @@ if (typeof window.PointerEvent === 'undefined') {
  */
 class MockMediaRecorder {
   static isTypeSupported = vi.fn(() => true);
-  state: 'inactive' | 'recording' = 'inactive';
+  state: 'inactive' | 'recording' | 'paused' = 'inactive';
   ondataavailable: ((event: { data: Blob }) => void) | null = null;
   onstop: (() => void) | null = null;
 
@@ -39,6 +39,14 @@ class MockMediaRecorder {
   ) {}
 
   start() {
+    this.state = 'recording';
+  }
+
+  pause() {
+    this.state = 'paused';
+  }
+
+  resume() {
     this.state = 'recording';
   }
 
@@ -111,6 +119,106 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
     expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
   });
 
+  it('BL-W1: fijado, Pausar congela el cronómetro, Reanudar lo retoma y Enviar entrega el audio entero', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+    });
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientY: 200 }); // fija
+    });
+    clock.advance(2000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('voz-pausar'));
+    });
+    expect(screen.getByText('00:02')).toBeInTheDocument();
+    expect(screen.getByTestId('voz-reanudar')).toHaveTextContent('Reanudar');
+
+    clock.advance(10_000); // tiempo en pausa: NO cuenta
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('voz-reanudar'));
+    });
+    expect(screen.getByTestId('voz-pausar')).toBeInTheDocument();
+    clock.advance(1000);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 150)); // un tick del timer (100 ms)
+    });
+    expect(screen.getByText('00:03')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enviar audio' }));
+    });
+    expect(onSendAudio).toHaveBeenCalledTimes(1);
+    expect(onSendAudio.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+  });
+
+  it('BL-W1: Eliminar estando en pausa descarta — no envía', async () => {
+    const onSendAudio = vi.fn();
+    mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+    });
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientY: 200 });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('voz-pausar'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    });
+    expect(onSendAudio).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+  });
+
+  it('BL-D2: deslizar >80px a la izquierda avisa ANTES de soltar y al soltar CANCELA (no envía)', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientX: 300, clientY: 300 });
+    });
+    clock.advance(500);
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 300 - 81, clientY: 300 });
+    });
+    expect(screen.getByText('Soltá para cancelar')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+
+    expect(onSendAudio).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+  });
+
+  it('BL-D2: volver por debajo del umbral antes de soltar des-arma la cancelación y envía', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientX: 300, clientY: 300 });
+    });
+    clock.advance(500);
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 200, clientY: 300 });
+    });
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 250, clientY: 300 });
+    });
+    expect(screen.queryByText('Soltá para cancelar')).not.toBeInTheDocument();
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+
+    expect(onSendAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('tap corto (held < 350ms) NO envía y muestra el hint "Mantené presionado para grabar"', async () => {
     const onSendAudio = vi.fn();
     const clock = mockClock();
@@ -171,7 +279,7 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
       fireEvent.pointerMove(document, { clientY: 300 - 50 }); // delta 50px > 46px
     });
 
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enviar audio' })).toBeInTheDocument();
 
     await act(async () => {
@@ -203,7 +311,7 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
     expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
   });
 
-  it('fijado + "Cancelar" descarta el audio — NUNCA llama onSendAudio', async () => {
+  it('fijado + "Eliminar" descarta el audio — NUNCA llama onSendAudio', async () => {
     const onSendAudio = vi.fn();
     render(<MicButton onSendAudio={onSendAudio} />);
 
@@ -217,7 +325,7 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
       fireEvent.pointerUp(document);
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
     });
 
     expect(onSendAudio).not.toHaveBeenCalled();

@@ -2,10 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
-import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
+import {
+  faseRefresco,
+  formatearImporte,
+  leerPortada,
+  MS_AL_DIA,
+  TEXTO_REFRESCO,
+  type Portada,
+} from '@copiloto/core';
 
 import { AcumuladoAnual } from './AcumuladoAnual';
-import { ChatInteligencia } from './ChatInteligencia';
+import { PreguntarInteligencia } from './PreguntarInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -33,7 +40,7 @@ import { useTema } from '../../theme/ThemeProvider';
  *
  * 🔴 **La decisión de placement (`dato_planificacion-a-frontend_IN-vacio-...`) — una sola pantalla,
  * dos solapas.** Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo
- * scroll — leen de un vistazo, no multiplican rutas para algo chico. El chat (`ChatInteligencia`) NO
+ * scroll — leen de un vistazo, no multiplican rutas para algo chico. La solapa «Preguntar» (`PreguntarInteligencia`) NO
  * entra al mismo scroll: es un `flex:1` con su propio teclado/scroll interno, anidarlo abajo de los
  * gráficos lo dejaría compitiendo por alto con contenido que no es suyo. Por eso "Preguntar" es una
  * solapa aparte, no una sección más — mismo `MarcoGlass`, dos cuerpos que se turnan.
@@ -85,6 +92,9 @@ export function PantallaInteligencia() {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [portada, setPortada] = useState<Portada | null>(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [alDia, setAlDia] = useState(false);
+  const [arrastrePx, setArrastrePx] = useState(0);
+  const timerAlDia = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [vista, setVista] = useState<Vista>('resumen');
   const vivo = useRef(true);
 
@@ -104,6 +114,7 @@ export function PantallaInteligencia() {
     void cargar();
     return () => {
       vivo.current = false;
+      if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
     };
   }, [cargar]);
 
@@ -112,7 +123,15 @@ export function PantallaInteligencia() {
     try {
       await cargar();
     } finally {
-      if (vivo.current) setRefrescando(false);
+      if (vivo.current) {
+        setRefrescando(false);
+        // «Al día · recién» es la confirmación textual de que terminó (WCAG 1.4.1: no sólo el spinner).
+        setAlDia(true);
+        if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
+        timerAlDia.current = setTimeout(() => {
+          if (vivo.current) setAlDia(false);
+        }, MS_AL_DIA);
+      }
     }
   }
 
@@ -125,7 +144,7 @@ export function PantallaInteligencia() {
         <Solapas vista={vista} onChange={setVista} />
 
         {vista === 'preguntar' ? (
-          <ChatInteligencia />
+          <PreguntarInteligencia />
         ) : (
           <>
             {estado === 'cargando' && (
@@ -146,7 +165,22 @@ export function PantallaInteligencia() {
             )}
 
       {estado === 'ok' && portada != null && (
+        <>
+        <Text
+          testID="inteligencia-refresco-estado"
+          accessibilityRole="text"
+          accessibilityLiveRegion="polite"
+          style={{
+            color: tema.color.textoTenue,
+            fontSize: tema.tipo.chico,
+            textAlign: 'center',
+            paddingTop: tema.espacio.xs,
+          }}
+        >
+          {TEXTO_REFRESCO[faseRefresco({ actualizando: refrescando, alDia, arrastrePx: -arrastrePx })]}
+        </Text>
         <ScrollFormulario
+          onOffsetY={setArrastrePx}
           testID="inteligencia-portada"
           contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
           refreshControl={
@@ -191,14 +225,15 @@ export function PantallaInteligencia() {
             </View>
           </BloqueCifra>
 
-          {/* EL MES — cinco números, en una grilla de dos columnas. */}
+          {/* EL MES — cuatro números en grilla de dos columnas + Rentabilidad en fila completa con
+              su nota cuando falta el dato (mismo patrón que web `.kpi.sindato`: «no es cero, es que
+              todavía no se puede calcular» — H-A4-3). */}
           <Text style={rotulo(tema)}>ESTE MES</Text>
           <View style={styles.grillaKpis}>
             {(
               [
                 ['Ingresos', portada.mes.ingresos, tema.color.exito],
                 ['Gastos', portada.mes.gastos, tema.color.peligro],
-                ['Rentabilidad', portada.mes.rentabilidad, tema.color.acento],
                 ['Facturado', portada.mes.facturado, tema.color.texto],
                 ['Cobrado', portada.mes.cobrado, tema.color.texto],
               ] as const
@@ -210,6 +245,25 @@ export function PantallaInteligencia() {
                 </Text>
               </View>
             ))}
+            <View
+              style={[styles.kpiCelda, styles.kpiCeldaAncha]}
+              testID="inteligencia-mes-rentabilidad"
+            >
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Rentabilidad</Text>
+              <Text
+                style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.titulo }}
+              >
+                {kpi(portada.mes.rentabilidad)}
+              </Text>
+              {portada.mes.rentabilidad == null && (
+                <Text
+                  testID="inteligencia-rentabilidad-nota"
+                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+                >
+                  Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* ACUMULADO DEL AÑO + tope de monotributo — llegó de Contabilidad al fundirse las dos
@@ -266,6 +320,7 @@ export function PantallaInteligencia() {
             <GraficosInteligencia />
           </View>
         </ScrollFormulario>
+        </>
             )}
           </>
         )}
@@ -335,6 +390,7 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
+  kpiCeldaAncha: { flexBasis: '100%' },
   filaEntre: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
   serieCol: { alignItems: 'center', gap: 4 },

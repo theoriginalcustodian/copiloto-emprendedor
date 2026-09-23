@@ -1,20 +1,34 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  estadoDeServicio,
+  ETIQUETA_CATEGORIA_TARJETA,
+  fechaDeHoyMidia,
+  filtrarPorCategoria,
   formatearImporte,
   horaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerCalendario,
+  leerPortada,
   leerTablero,
+  listarCatalogo,
   type CalendarioMiDia,
+  type CategoriaTarjeta,
+  type EstadoConexion,
   type EventoCalendario,
   type IdSolapa,
+  type Portada,
   type TarjetaMiDia,
   type TableroMiDia,
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
+import { EstadoVacio } from '../../design-system/EstadoVacio';
+import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
+import { AgendaScreen } from './AgendaScreen';
+import { PortadaNegocio } from './PortadaNegocio';
 import './midia.css';
 
 const SKELETON_ROWS = 3;
@@ -47,7 +61,9 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
 
-export function MidiaScreen() {
+export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbrirChat?: () => void } = {}) {
+  // BL-J13: la agenda de varios días es una sub-vista de Mi día (sin ruta propia, como las de Ajustes).
+  const [verAgenda, setVerAgenda] = useState(false);
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
@@ -55,6 +71,12 @@ export function MidiaScreen() {
   const [error, setError] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
+  // BL-W11: `/mi-dia/calendario` sólo trae `conectado: boolean` — no distingue "nunca conectada" de
+  // "caída". Esa salud vive en el catálogo (K-09), se lee aparte y degrada en silencio (fail-soft,
+  // mismo criterio que `AvatarCuenta`): sin catálogo, el panel muestra el texto de "nunca conectada".
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
+  const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
+  const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -88,15 +110,43 @@ export function MidiaScreen() {
     }
   }, []);
 
+  // Igual que el calendario: la portada carga y degrada por su cuenta. Sin portada la pantalla no se
+  // rompe, sólo muestra menos.
+  const cargarPortada = useCallback(async () => {
+    try {
+      const res = await leerPortada();
+      if (vivo.current && res.status === 'ok') setPortada(res.portada);
+    } catch {
+      /* silencio deliberado */
+    }
+  }, []);
+
+  // BL-W11: mismo criterio fail-soft que `AvatarCuenta` — sin catálogo, `estadoGoogleCalendar` queda
+  // `null` y el panel cae al texto de "nunca conectada" (el mismo que mostraba antes de esta fila).
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (vivo.current && res.status === 'ok') {
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo, el panel degrada a "nunca conectada". */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
     void cargarCalendario();
+    void cargarPortada();
+    void cargarSaludConexiones();
 
     function alVolverElFoco() {
       if (document.visibilityState === 'visible') {
         void cargar();
         void cargarCalendario();
+        void cargarPortada();
+        void cargarSaludConexiones();
       }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
@@ -105,7 +155,7 @@ export function MidiaScreen() {
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar, cargarCalendario]);
+  }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -131,15 +181,36 @@ export function MidiaScreen() {
     setError('No se pudo borrar la tarjeta. Probá de nuevo en un momento.');
   }
 
+  if (verAgenda && onAbrirChat != null) {
+    return <AgendaScreen onVolver={() => setVerAgenda(false)} onAbrirChat={onAbrirChat} />;
+  }
+
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
+  const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
   return (
     <div className="midia-screen" data-testid="pantalla-midia">
       <header className="midia-screen__header">
-        <h1 className="midia-screen__title">Mi día</h1>
+        <div>
+          <h1 className="midia-screen__title">Mi día</h1>
+          <p className="midia-screen__fecha" data-testid="midia-fecha">{fechaDeHoyMidia()}</p>
+        </div>
+        {avatar}
       </header>
 
-      <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+      {portada != null && <PortadaNegocio portada={portada} />}
+
+      <ContadorTablero tablero={tablero} />
+
+      <BannerCritico tablero={tablero} />
+
+      <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
+
+      {estadoCalendario === 'ok' && onAbrirChat != null && (
+        <Button variant="ghost" data-testid="midia-ver-agenda" onClick={() => setVerAgenda(true)}>
+          Ver agenda
+        </Button>
+      )}
 
       <div className="midia-screen__solapas" data-testid="midia-solapas">
         {OPCIONES_SOLAPA.map((o) => {
@@ -158,6 +229,8 @@ export function MidiaScreen() {
           );
         })}
       </div>
+
+      <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
 
       {error != null && (
         <div className="midia-screen__error" data-testid="midia-error" role="alert">
@@ -184,17 +257,34 @@ export function MidiaScreen() {
 
       {estado === 'ok' && (
         <>
-          {(solapa == null || solapa.tarjetas.length === 0) && (
-            <p className="midia-screen__empty" data-testid="midia-vacio">
-              {solapaActiva === 'para_hoy'
-                ? 'Hoy no tenés nada pendiente. Cuando el copiloto detecte algo, aparece acá.'
-                : 'No hay tarjetas acá todavía.'}
-            </p>
+          {tarjetas.length === 0 && categoria !== 'todo' && (
+            /* Vacío POR EL FILTRO, no por el día: decirlo evita que un chip mal elegido se lea como
+               «no tengo nada pendiente». Sin ilustración: este vacío no se celebra. */
+            <EstadoVacio
+              testId="midia-vacio-filtro"
+              titulo={`Nada en ${ETIQUETA_CATEGORIA_TARJETA[categoria]} por acá.`}
+              cuerpo="Tocá «Todo» para ver el resto."
+            />
           )}
 
-          {solapa != null && solapa.tarjetas.length > 0 && (
+          {tarjetas.length === 0 && categoria === 'todo' && (
+            /* La taza va SÓLO en «Para hoy» sin pendientes (buena noticia); en las otras solapas el
+               vacío es «todavía no hay nada», que no se celebra. */
+            solapaActiva === 'para_hoy' ? (
+              <EstadoVacio
+                testId="midia-vacio"
+                ilustracion
+                titulo="Nada urgente por hoy"
+                cuerpo="Cuando el copiloto detecte algo, aparece acá."
+              />
+            ) : (
+              <EstadoVacio testId="midia-vacio" titulo="No hay tarjetas acá todavía." />
+            )
+          )}
+
+          {tarjetas.length > 0 && (
             <div className="midia-screen__lista" data-testid="midia-lista">
-              {solapa.tarjetas.map((t) => (
+              {tarjetas.map((t) => (
                 <TarjetaMiDiaRow
                   key={t.id}
                   tarjeta={t}
@@ -214,11 +304,31 @@ export function MidiaScreen() {
 }
 
 /** Panel de sólo lectura de eventos de hoy (CAL1 §3) — mismo criterio que la versión mobile: sin
- *  acciones, sin swipe, un evento sin hora reconocible se muestra igual sólo con el título. */
-function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+ *  acciones, sin swipe, un evento sin hora reconocible se muestra igual sólo con el título.
+ *
+ *  BL-W11 fila 4b: `!calendario.conectado` agrupa DOS casos que `/mi-dia/calendario` no distingue
+ *  (nunca conectada / caída) — `estadoConexion`, leído aparte del catálogo (K-09), desempata. Sin
+ *  esa señal (`null`, catálogo caído o backend viejo) se degrada al texto de "nunca conectada", que
+ *  ya era correcto para ese caso y es el menos alarmante de los dos ante la duda. */
+function PanelCalendario({
+  estado,
+  calendario,
+  estadoConexion,
+}: {
+  estado: EstadoLista;
+  calendario: CalendarioMiDia | null;
+  estadoConexion: EstadoConexion | null;
+}) {
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
+    if (estadoConexion === 'caido') {
+      return (
+        <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-caida">
+          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tus eventos de hoy.
+        </p>
+      );
+    }
     return (
       <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-no-conectado">
         Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
@@ -279,6 +389,11 @@ function TarjetaMiDiaRow({
         aria-label={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
       >
         <p className={`midia-tarjeta__frase${expandida ? '' : ' midia-tarjeta__frase--clamp'}`}>{tarjeta.texto}</p>
+        {expandida && tarjeta.verbo != null && (
+          <p className="midia-tarjeta__verbo" data-testid={`midia-tarjeta-${tarjeta.id}-verbo`}>
+            {tarjeta.verbo}
+          </p>
+        )}
         {expandida && detalle !== '' && (
           <p className="midia-tarjeta__detalle" data-testid={`midia-tarjeta-${tarjeta.id}-detalle`}>
             {detalle}

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Gesture } from 'react-native-gesture-handler';
 
 /**
  * Partial mock de `@copiloto/core`: sólo las funciones de red. `ApiError`, `formatearImporte` y
@@ -14,14 +15,42 @@ jest.mock('@copiloto/core', () => {
     obtenerResumenGastos: jest.fn(),
     crearGasto: jest.fn(),
     obtenerGasto: jest.fn(),
+    transcribir: jest.fn(),
+    leerFotoGasto: jest.fn(),
   };
 });
 
+// BL-J7 3er ítem del DoD — `FotoFuncion` (mobile) envuelve `useCapturaFoto` (Gastos Fase 2, YA
+// existe en `chat/useCapturaFoto.ts`): se mockea acá para controlar qué "elige" el picker sin tocar
+// `expo-image-picker` real.
+const mockElegirFoto = jest.fn();
+jest.mock('../chat/useCapturaFoto', () => ({ useCapturaFoto: () => ({ elegir: mockElegirFoto }) }));
+
+// BL-J7/K-10 — mismo arnés que `modules/voz/MicFuncion.test.tsx`: `MicFuncion` (mobile) envuelve
+// `BotonVoz`/`useVozComando`, no `MediaRecorder` como en web.
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockVoz = {
+  fase: 'inactivo' as 'inactivo' | 'grabando' | 'pausado' | 'listo',
+  niveles: [] as number[],
+  iniciar: jest.fn().mockResolvedValue(true),
+  pausar: jest.fn(),
+  reanudar: jest.fn(),
+  detener: jest.fn().mockResolvedValue(undefined),
+  descartar: jest.fn().mockResolvedValue(undefined),
+  tomar: jest.fn(),
+};
+jest.mock('../chat/useVozComando', () => ({ useVozComando: () => mockVoz }));
+
 import {
   crearGasto,
+  leerFotoGasto,
   listarGastos,
   obtenerGasto,
   obtenerResumenGastos,
+  transcribir,
   type Gasto,
   type ResumenGastos,
 } from '@copiloto/core';
@@ -33,6 +62,28 @@ const mockListar = listarGastos as jest.MockedFunction<typeof listarGastos>;
 const mockResumen = obtenerResumenGastos as jest.MockedFunction<typeof obtenerResumenGastos>;
 const mockCrear = crearGasto as jest.MockedFunction<typeof crearGasto>;
 const mockDetalle = obtenerGasto as jest.MockedFunction<typeof obtenerGasto>;
+const mockTranscribir = transcribir as jest.MockedFunction<typeof transcribir>;
+const mockLeerFoto = leerFotoGasto as jest.MockedFunction<typeof leerFotoGasto>;
+
+/** Dispara el ciclo completo del gesto de `BotonVoz` (apretar `MIN_HOLD_MS` y soltar) — mismo
+ * mecanismo que `MicFuncion.test.tsx` (mobile): `Gesture.Pan` tiene que estar espiado DESDE ANTES
+ * del `render` (el recognizer se crea al montar `MicFuncion`, que vive en el listado, no dentro del
+ * formulario) — por eso el `jest.spyOn` se arma en `beforeEach`, no acá adentro. */
+async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
+  const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
+    handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
+  };
+  let ahora = 1_000_000;
+  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  await act(async () => {
+    recognizer.handlers.onBegin?.({});
+  });
+  ahora += 400; // supera DURACION_MINIMA_MS (350ms) de BotonVoz
+  await act(async () => {
+    recognizer.handlers.onFinalize?.({}, true);
+  });
+  relojEspia.mockRestore();
+}
 
 function gasto(over: Partial<Gasto> = {}): Gasto {
   return {
@@ -300,5 +351,158 @@ describe('PantallaGastos', () => {
       await waitFor(() => expect(screen.getByTestId('gasto-error')).toBeTruthy());
       expect(screen.getByTestId('gasto-error')).toHaveTextContent('falta monto');
     });
+  });
+});
+
+describe('PantallaGastos — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
+    mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen({ total: '0.00', porCategoria: [] }) });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    // `Gesture.Pan` se espía DESDE ANTES del `render`: `MicFuncion` vive en el listado y crea el
+    // recognizer al montar, no al abrir el formulario.
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    espiaPan.mockRestore();
+  });
+
+  it('dictado → abre el alta con `descripcion` prellenada, y NO guarda nada solo (DoD FE2 §4)', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'cuarenta litros de nafta' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBe('cuarenta litros de nafta');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: '   ' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gastos-mic-error')).toBeTruthy());
+    expect(screen.getByTestId('gastos-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('gasto-descripcion-input')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Nuevo gasto» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gastos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBeFalsy();
+    expect(mockTranscribir).not.toHaveBeenCalled();
+  });
+});
+
+/** BL-J7 3er ítem del DoD — `POST /gastos/leer-foto`: forma EXACTA del contrato §2 (snake_case). */
+function dataFotoGasto(over: Record<string, unknown> = {}) {
+  return {
+    monto: '',
+    monto_sugerido: '4590.00',
+    fecha: '2026-09-22',
+    categoria: 'mercaderia',
+    proveedor: 'Kiosco Once',
+    medio_pago: null,
+    descripcion: null,
+    origen: 'foto',
+    ...over,
+  };
+}
+
+describe('PantallaGastos — BL-J7 3er ítem del DoD (foto del ticket sin chat, contrato §2/§3)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
+    mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen({ total: '0.00', porCategoria: [] }) });
+  });
+
+  it('200 → abre el alta con la propuesta del OCR: `monto` vacío, `montoSugerido` como sugerencia tocable, origen "foto"', async () => {
+    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' });
+    mockLeerFoto.mockResolvedValue({ gasto: dataFotoGasto() });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('foto-funcion-boton'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('');
+    expect(screen.getByTestId('gasto-monto-sugerido')).toHaveTextContent('Del ticket leímos: 4590.00 — tocá para usarlo');
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Salió de una foto');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('archivo null (canceló el picker o sin permiso) es un no-op — no llama a `leerFotoGasto`', async () => {
+    mockElegirFoto.mockResolvedValue(null);
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('foto-funcion-boton'));
+    });
+
+    expect(mockLeerFoto).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('formulario-gasto')).toBeNull();
+  });
+
+  it('422 → mensaje del error de foto Y el alta se abre igual, en blanco (nunca bloquea la carga manual)', async () => {
+    const { ApiError } = jest.requireActual('@copiloto/core');
+    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' });
+    mockLeerFoto.mockRejectedValue(new ApiError(422, 'no se reconoció un ticket en la imagen'));
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('foto-funcion-boton'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gastos-foto-error')).toBeTruthy());
+    expect(screen.getByTestId('gastos-foto-error')).toHaveTextContent(
+      'No pude leer el ticket. Probá con otra foto o cargalo a mano.',
+    );
+    expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo cargaste a mano');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Anotar un gasto» manual NO llama a `leerFotoGasto`', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gastos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(mockLeerFoto).not.toHaveBeenCalled();
   });
 });

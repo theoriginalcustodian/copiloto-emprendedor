@@ -80,12 +80,40 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
-export { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
-export type { ServicioCatalogo } from './catalogo';
+export { cambiarContrasena, cambiarEmail } from './auth';
+export type { ResultadoCambioCredencial } from './auth';
+export {
+  completarOnboarding,
+  debeMostrarOnboarding,
+  permisosCompletos,
+  permisosDelHilo,
+  primerInsight,
+  textoDelInsight,
+  type PermisoDelHilo,
+  type PermisoOnboarding,
+  type PrimerInsight,
+} from './onboarding';
+export {
+  desconectarServicio,
+  estadoDeServicio,
+  hayConexionCaida,
+  KEY_GOOGLE_CALENDAR,
+  listarCatalogo,
+  pedirLinkDeVinculacion,
+} from './catalogo';
+export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 
 // `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`
 // NO es un error: es el estado normal del primer día. Ver el docstring de `perfilNegocio.ts`.
-export { guardarPerfilNegocio, leerPerfilNegocio, LIMITE_CAMPO_CORTO, LIMITE_QUE_VENDE } from './perfilNegocio';
+export {
+  errorDeEmail,
+  errorDeTelefono,
+  guardarPerfilNegocio,
+  leerEjemploDeTono,
+  leerPerfilNegocio,
+  LIMITE_CAMPO_CORTO,
+  LIMITE_QUE_VENDE,
+} from './perfilNegocio';
 export type {
   AQuienVende,
   FormalidadCopiloto,
@@ -104,6 +132,7 @@ export {
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
+  mailtoMandarPresupuesto,
   obtenerPresupuesto,
 } from './presupuestos';
 export type {
@@ -115,6 +144,7 @@ export type {
   Presupuesto,
   ReceptorPresupuesto,
   ResultadoFacturar,
+  SugerenciasPresupuesto,
 } from './presupuestos';
 
 // `/gastos` — lo que sale: alta, listado, detalle y el resumen del mes. Mismo criterio de plata que
@@ -125,6 +155,7 @@ export {
   crearGasto,
   esCategoriaValida,
   ETIQUETA_CATEGORIA,
+  ETIQUETA_ORIGEN_GASTO,
   listarGastos,
   obtenerGasto,
   obtenerResumenGastos,
@@ -295,6 +326,20 @@ export type {
   TarjetaMiDia,
 } from './miDia';
 /**
+ * `GET /mi-dia/calendario?desde&hasta` (BL-J13, K-13) — agenda de varios días: 4 grupos fijos, rango
+ * armado por el cliente (<= 14 días). «Nuevo evento» va por el chat (`dejarPendiente`), sin endpoint.
+ */
+export {
+  DIAS_AGENDA_DEFAULT,
+  DIAS_MAX_AGENDA,
+  ORDEN_GRUPOS_AGENDA,
+  TEXTO_NUEVO_EVENTO,
+  franjaDeEvento,
+  leerAgenda,
+  rangoAgenda,
+} from './agenda';
+export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda } from './agenda';
+/**
  * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
  * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
  * `no_disponible` hasta el connect. Plata como string, `ausente ≠ cero`. Ver el docstring.
@@ -338,8 +383,8 @@ export type {
  * **proyección** de las tools vivas: una capacidad se publica sólo si su tool existe, así que la poda
  * y el alta de tools actualizan la guía solas. **Sin lista de respaldo** — ver el docstring.
  */
-export { leerCapacidades } from './capacidades';
-export type { CapacidadCopiloto, FechasQueEntiende, GuiaCapacidades } from './capacidades';
+export { agruparCapacidadesPorRotulo, leerCapacidades } from './capacidades';
+export type { CapacidadAgrupada, CapacidadCopiloto, FechasQueEntiende, GuiaCapacidades } from './capacidades';
 /**
  * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
  * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
@@ -364,7 +409,8 @@ export type {
 } from './cobros';
 
 /** `/feedback` — BETA-1a, feedback in-app (voz + texto). Ver el docstring de `feedback.ts`. */
-export { enviarFeedback, enviarFeedbackAudio } from './feedback';
+export { enviarFeedback, enviarFeedbackAudio, listarFeedbackPropio } from './feedback';
+export type { FeedbackPropio } from './feedback';
 
 /** `/soporte/chat` — SOP5, ruta dedicada del agente de soporte. Ver el docstring de `soporte.ts`
  * sobre por qué NO se une a `CopilotApi`/`apiReal`: es una acción de otro dominio, no del chat de
@@ -376,3 +422,13 @@ export type { FuncionSoporte, SoporteAudioResponse, SoporteChatRequest, SoporteC
  * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */
 export { obtenerMiTicket } from './soporteTicket';
 export type { EstadoTicketPropio, MensajeTicketPropio, MiTicketResult, TicketPropio } from './soporteTicket';
+
+/** `POST /transcribir` — BL-J7/K-10, transcribe SIN despachar al agente. Ver el docstring de
+ * `transcribir.ts` para la diferencia con `sendAudio` (`/chat/audio`, sí dispara un workflow). */
+export { avisoErrorTranscripcion, transcribir } from './transcribir';
+export type { ContextoTranscripcion, TranscribirResponse } from './transcribir';
+
+/** `POST /gastos/leer-foto` — BL-J7 3er ítem del DoD, foto del ticket SIN chat. Ver el docstring de
+ * `leerFotoGasto.ts` para la diferencia con `/chat/foto` (ese sí abre sesión y escribe al hilo). */
+export { avisoErrorLecturaFoto, leerFotoGasto } from './leerFotoGasto';
+export type { LeerFotoGastoResponse } from './leerFotoGasto';

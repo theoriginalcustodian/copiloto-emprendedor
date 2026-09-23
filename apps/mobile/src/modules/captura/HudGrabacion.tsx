@@ -57,7 +57,7 @@ export function BotonPrimario({
       style={pressableStyle([styles.botonBase, disabled && styles.apagado])}
     >
       <LinearGradient
-        colors={[tema.glass.accent2, tema.color.acento]}
+        colors={[tema.glass.ub1, tema.glass.ub2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}

@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { ApiError, enviarFeedback, enviarFeedbackAudio } from '@copiloto/core';
 
 import { useVozComando } from '../chat/useVozComando';
+import { LoPedisteVos } from './LoPedisteVos';
 import { Row } from '../../theme/glass/Row';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
@@ -49,6 +50,8 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
   const [envioAudio, setEnvioAudio] = useState<EnvioAudio>('idle');
   const [errorAudio, setErrorAudio] = useState<string | null>(null);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
+  // Sube en cada envío confirmado para que «Lo pediste vos» refresque sin recargar.
+  const [versionLista, setVersionLista] = useState(0);
 
   const puedeEnviarTexto = texto.trim() !== '' && envioTexto !== 'enviando';
 
@@ -58,6 +61,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
     try {
       await enviarFeedback(texto.trim(), contexto);
       setEnvioTexto('confirmado');
+      setVersionLista((v) => v + 1);
       setTexto('');
     } catch (err) {
       // Mismo criterio que `FormularioGasto`: el `detail` del backend ya viene explicado
@@ -83,6 +87,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
       try {
         const res = await enviarFeedbackAudio(archivo, contexto);
         setEnvioAudio('confirmado');
+        setVersionLista((v) => v + 1);
         setTranscripcion(res.transcripcion);
       } catch (err) {
         const detalle = err instanceof ApiError ? err.detail : null;
@@ -219,6 +224,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
             </Text>
           )}
         </View>
+        <LoPedisteVos version={versionLista} />
       </ScrollFormulario>
     </MarcoGlass>
   );

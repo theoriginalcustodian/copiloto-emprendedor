@@ -33,9 +33,41 @@ describe('useSession (vía SessionProvider)', () => {
     vi.mocked(api.me).mockReset();
   });
 
-  it('sin token persistido -> anon', async () => {
+  it('sin token persistido -> anon con primeraVez true (BL-X10 fila 2)', async () => {
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
+    expect(result.current.primeraVez).toBe(true);
+  });
+
+  it('con token persistido válido -> primeraVez queda false (no es un arranque limpio)', async () => {
+    setToken('tok-valido');
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    await waitFor(() => expect(result.current.status).toBe('authed'));
+    expect(result.current.primeraVez).toBe(false);
+  });
+
+  it('login exitoso desde primer arranque resetea primeraVez al autenticarse', async () => {
+    vi.mocked(api.login).mockResolvedValueOnce({
+      access_token: 'nuevo-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'r',
+      user: {},
+    });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.primeraVez).toBe(true));
+
+    await act(async () => {
+      await result.current.login('a@a.com', 'secreta');
+    });
+
+    expect(result.current.status).toBe('authed');
+    expect(result.current.primeraVez).toBe(false);
   });
 
   it('con token persistido válido -> authed + me (chequeo de montaje)', async () => {

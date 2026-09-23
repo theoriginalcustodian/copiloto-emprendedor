@@ -12,6 +12,7 @@ import pytest
 from fastapi import Header, HTTPException
 from fastapi.testclient import TestClient
 
+from gasto_store import hoy_del_negocio
 from inteligencia_web import create_inteligencia_app
 
 
@@ -45,7 +46,9 @@ def test_sin_queries_es_200_con_la_forma_final_y_ceros_calculados():
     assert r.status_code == 200
     body = r.json()
     assert set(body) == CLAVES_PORTADA
-    assert body["caja"] == {"saldo": "0.00", "moneda": "ARS"}
+    assert body["caja"] == {"saldo": "0.00", "moneda": "ARS",
+                            "fecha_corte": hoy_del_negocio().isoformat(), "variacion_pct": None,
+                            "incompleta": False}
     assert set(body["mes"]) == CLAVES_MES
     assert all(v == "0.00" for v in body["mes"].values())
     assert body["serie_mensual"] == [] and body["mejores_clientes"] == []

@@ -4,6 +4,7 @@ import {
   CATEGORIAS_GASTO,
   ETIQUETA_CATEGORIA,
   esCategoriaValida,
+  formatearFechaCorta,
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
@@ -30,6 +31,18 @@ import { GraficoTorta } from './GraficoTorta';
  * tiene sección propia en ese mockup (es una vista adicional que ya existía acá) — queda con su
  * rótulo tal cual, sólo con la card nueva.
  */
+
+/**
+ * H-A4-6: `res.periodo` llega ISO crudo — `"2026-07"` (período simple) o `"2026-02..2026-07"` (rango,
+ * el que devuelven los 4 gráficos con ventana móvil). No es "otro formateador": reusa
+ * `formatearFechaCorta` para cada lado del rango — sólo agrega el `split('..')` que ninguna función
+ * de `@copiloto/core` resuelve porque el rango es específico de estos gráficos.
+ */
+function formatearPeriodo(periodo: string): string {
+  const partes = periodo.split('..');
+  if (partes.length === 2) return `${formatearFechaCorta(partes[0])} – ${formatearFechaCorta(partes[1])}`;
+  return formatearFechaCorta(periodo);
+}
 
 function useGrafico<R>(leer: () => Promise<R>): R | null {
   const [resultado, setResultado] = useState<R | null>(null);
@@ -72,7 +85,7 @@ function TarjetaFacturacion() {
               valores: res.serie.map((p) => p.total),
             },
           ]}
-          epigrafe={res.periodo !== '' ? res.periodo : undefined}
+          epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
         />
       </div>
     </Surface>
@@ -98,7 +111,7 @@ function TarjetaEntroVsSalio() {
             { id: 'entro', etiqueta: 'Entró', color: 'var(--ok-fg)', valores: res.serie.map((p) => p.entro) },
             { id: 'salio', etiqueta: 'Salió', color: 'var(--danger-fg)', valores: res.serie.map((p) => p.salio) },
           ]}
-          epigrafe={res.periodo !== '' ? res.periodo : undefined}
+          epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
         />
       </div>
     </Surface>
@@ -129,7 +142,7 @@ function TarjetaCategorias() {
         testId="grafico-categorias"
         porciones={porciones}
         orden={ordenEtiquetas}
-        epigrafe={res.periodo !== '' ? res.periodo : undefined}
+        epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
       />
     </Surface>
   );

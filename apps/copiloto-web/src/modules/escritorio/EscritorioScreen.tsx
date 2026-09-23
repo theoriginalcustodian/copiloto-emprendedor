@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ActividadItem } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
@@ -16,7 +17,7 @@ import './escritorio.css';
  * `onFuncion`/`onAbrirGasto`/`onAbrirCliente`/`onVerRecientes`.
  *
  * El grid no scrollea horizontal como en mobile (acá no hay el mismo problema de ancho acotado):
- * 9 tiles entran cómodos en un CSS grid de 3 columnas, mismo criterio de grid plano que
+ * 6 tiles entran cómodos en un CSS grid de 3 columnas (2 filas; BL-X2 retiró Contabilidad, fusionada en Inteligencia), mismo criterio de grid plano que
  * `connections-screen__grid`.
  */
 export type FuncionKey =
@@ -25,10 +26,7 @@ export type FuncionKey =
   | 'gastos'
   | 'presupuestos'
   | 'clientes'
-  | 'midia'
-  | 'inteligencia'
-  | 'contabilidad'
-  | 'ajustes';
+  | 'inteligencia';
 
 interface DefinicionTile {
   key: FuncionKey;
@@ -43,7 +41,7 @@ interface DefinicionTile {
  * completo; acá se hereda el orden ya validado, no se vuelve a decidir.
  *
  * Íconos: emoji directo, mismo criterio que `ICONO_POR_TIPO` de `FilaActividad` — web no tiene un
- * catálogo `GlassIcon` propio, así que no se inventa uno para 9 tiles.
+ * catálogo `GlassIcon` propio, así que no se inventa uno para 6 tiles.
  */
 export const TILES: readonly DefinicionTile[] = [
   { key: 'facturacion', label: 'Facturación', icono: '🧾' },
@@ -51,10 +49,7 @@ export const TILES: readonly DefinicionTile[] = [
   { key: 'gastos', label: 'Gastos', icono: '💸' },
   { key: 'presupuestos', label: 'Presupuestos', icono: '📝' },
   { key: 'clientes', label: 'Clientes', icono: '👤' },
-  { key: 'midia', label: 'Mi día', icono: '🕐' },
   { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: '📊' },
-  { key: 'contabilidad', label: 'Contabilidad', icono: '📁' },
-  { key: 'ajustes', label: 'Ajustes', icono: '⚙️' },
 ];
 
 export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
@@ -78,6 +73,8 @@ export interface EscritorioScreenProps {
   /** Tocar el encabezado "Actividad reciente" → entra a la lista completa. Si no se pasa, el
    *  encabezado se muestra sin flecha, no tapeable. */
   onVerRecientes?: () => void;
+  /** BL-X1: la puerta a Ajustes (avatar). Lo monta el shell angosto; en escritorio la puerta es el Rail. */
+  avatar?: ReactNode;
 }
 
 export function EscritorioScreen({
@@ -87,11 +84,13 @@ export function EscritorioScreen({
   onAbrirGasto,
   onAbrirCliente,
   onVerRecientes,
+  avatar,
 }: EscritorioScreenProps = {}) {
   return (
     <div className="escritorio-screen" data-testid="pantalla-escritorio">
       <header className="escritorio-screen__header">
         <h1 className="escritorio-screen__title">Funciones</h1>
+        {avatar}
       </header>
 
       <div className="escritorio-screen__grid" data-testid="escritorio-grid">

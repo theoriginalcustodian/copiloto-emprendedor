@@ -2,10 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import type { FuncionSoporte } from '@copiloto/core';
+import {
+  SOPORTE_PRESENTACION,
+  SOPORTE_QUE_VIAJA,
+  SOPORTE_QUIEN,
+  SOPORTE_TIEMPO_RESPUESTA,
+  type FuncionSoporte,
+} from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
+import { AvisoCancelar } from '../chat/AvisoCancelar';
 import { BotonVoz } from '../chat/BotonVoz';
 import { Composer } from '../chat/Composer';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
@@ -71,6 +78,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -125,6 +133,8 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
 
   const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
   const onFijarVoz = useCallback(() => setFijado(true), []);
+  // BL-D2: deslizar a la izquierda / toque corto descarta lo grabado sin enviarlo.
+  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
@@ -152,10 +162,16 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
               testID="soporte-quien"
               style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
             >
-              Soporte de Odobi
+              {SOPORTE_QUIEN}
             </Text>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
-              Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.
+              {SOPORTE_PRESENTACION}
+            </Text>
+            <Text
+              testID="soporte-detalle"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}
+            >
+              {SOPORTE_TIEMPO_RESPUESTA} {SOPORTE_QUE_VIAJA}
             </Text>
           </View>
         </View>
@@ -175,10 +191,13 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
                 <Onda niveles={voz.niveles} />
               </View>
             )}
+            {cancelando && <AvisoCancelar />}
             <BotonVoz
               onIniciar={alIniciarVoz}
               onSoltarSinFijar={onSoltarSinFijarVoz}
               onFijar={onFijarVoz}
+              onCancelar={onCancelarVoz}
+              onCancelando={setCancelando}
               disabled={voz.fase !== 'inactivo'}
               scrollRef={scrollRef}
             />

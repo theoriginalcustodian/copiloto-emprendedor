@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listarGastos, obtenerResumenGastos, type Gasto, type ResumenGastos } from '@copiloto/core';
+import { formatearFechaCorta, listarGastos, obtenerResumenGastos, type Gasto, type ResumenGastos } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { FormularioGasto } from './FormularioGasto';
+import { MicFuncion } from '../voz';
+import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
+import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import './gastos.css';
@@ -27,6 +29,15 @@ export function GastosScreen() {
   const [resumen, setResumen] = useState<ResumenGastos | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
+  // BL-J7/K-10: dictado desde la fila del rótulo (fuera del formulario) — llena `descripcion`, el
+  // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
+  // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
+  // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
+  // `/gastos/leer-foto` devolvió 200, nunca por defecto (ver `FormularioGasto.__origen` que lo pinta).
+  const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
+  const [errorFoto, setErrorFoto] = useState<string | null>(null);
   // `vivo.current = true` va DENTRO del setup del efecto, no sólo en `useRef(true)` -- en
   // StrictMode (dev) React invoca cada efecto setup→cleanup→setup de nuevo al montar; sin repetir
   // la asignación acá, el cleanup del primer paso deja `vivo.current` en `false` para siempre y
@@ -74,7 +85,42 @@ export function GastosScreen() {
 
   function alCrear() {
     setVista('listado');
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     void cargar(true);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  function alDictarGasto(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ descripcion: texto });
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
+  function alLeerFoto(iniciales: ValoresInicialesGasto) {
+    setErrorFoto(null);
+    setInicialesDictado(iniciales);
+    setOrigenAlta('foto');
+    setVista('formulario');
+  }
+
+  // Cualquier error (413/415/422/502/503/401) NUNCA bloquea la carga manual (contrato §3): se
+  // muestra el aviso y el alta se abre igual, en blanco, para que el emprendedor tipee a mano.
+  function alErrorFoto(mensaje: string) {
+    setErrorFoto(mensaje);
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setVista('formulario');
   }
 
   const hayGastos = gastos.length > 0;
@@ -102,7 +148,9 @@ export function GastosScreen() {
             </Button>
           )}
         </span>
-        {resumen != null && <span className="gastos-screen__periodo">{resumen.periodo}</span>}
+        {/* H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend — ISO crudo si se pinta
+            tal cual. `formatearFechaCorta` ya resuelve un período sin día como su día 1. */}
+        {resumen != null && <span className="gastos-screen__periodo">{formatearFechaCorta(resumen.periodo)}</span>}
       </header>
 
       {estado === 'cargando' && (
@@ -130,29 +178,56 @@ export function GastosScreen() {
 
       {estado === 'ok' && (
         <div className="gastos-screen__body">
+          {/* BL-J7 3er ítem del DoD: un error de lectura de foto se muestra ACÁ, fuera del ternario
+              de abajo — `alErrorFoto` ya abrió el formulario en blanco (contrato §3: nunca bloquea
+              la carga manual), así que el aviso tiene que sobrevivir al cambio de vista o desaparece
+              justo cuando el emprendedor lo necesita leer. */}
+          {errorFoto != null && (
+            <p className="gastos-screen__mic-error" data-testid="gastos-foto-error" role="alert">
+              {errorFoto}
+            </p>
+          )}
+
           {vista === 'formulario' ? (
-            <FormularioGasto origen="manual" onCreado={alCrear} onCancelar={() => setVista('listado')} />
+            <FormularioGasto
+              origen={origenAlta}
+              iniciales={inicialesDictado}
+              onCreado={alCrear}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); setOrigenAlta('manual'); setErrorFoto(null); }}
+            />
           ) : (
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
                   — compite con el mic, que es el gesto que el producto quiere enseñar. "Nuevo
-                  gasto" es el verbo textual del repo, no "Agregar"/"Cargar". */}
+                  gasto" es el verbo textual del repo, no "Agregar"/"Cargar". BL-J7/K-10: el mic vive
+                  acá, junto al pill — dictar abre el formulario con `descripcion` prellenada (K-10,
+                  `/transcribir`, sin sesión de chat), nunca envía nada solo. */}
               <div className="gastos-screen__fila-lbl">
                 <span className="gastos-screen__lista-lbl">Últimos</span>
-                <button
-                  type="button"
-                  className="gastos-screen__pill-nuevo"
-                  onClick={() => setVista('formulario')}
-                  data-testid="gastos-nuevo"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Nuevo gasto
-                </button>
+                <div className="gastos-screen__fila-lbl-acciones">
+                  <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
+                  <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
+                  <button
+                    type="button"
+                    className="gastos-screen__pill-nuevo"
+                    onClick={abrirFormularioEnBlanco}
+                    data-testid="gastos-nuevo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nuevo gasto
+                  </button>
+                </div>
               </div>
+
+              {errorMic != null && (
+                <p className="gastos-screen__mic-error" data-testid="gastos-mic-error" role="alert">
+                  {errorMic}
+                </p>
+              )}
 
               {!hayGastos && (
                 <p className="gastos-screen__empty" data-testid="gastos-vacio">

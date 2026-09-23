@@ -95,6 +95,17 @@ type EstadoGate =
  * optimización de primera pintura), esta pantalla le pregunta siempre al backend vía `estadoAfip()` sin
  * parámetro -- el backend ya resuelve el CUIT con `primer_cuit()` cuando la llamada va sin argumento
  * (confirmado contra `afip.ts::EstadoAfip.cuit`). No hay `cuitCache.ts` que portar en PR1.
+ *
+ * 🔴 **El wizard queda DETRÁS de "Nueva factura" (H-A4-5, auditoría 2026-09-22).** El mockup fuente
+ * (`Prototipo frontend/odobi-ui/mockups/05-facturacion/DECISIONES.md`) es explícito: *"la app de
+ * Facturación en Apps queda como historial/listado, no como flujo de creación"* -- crear una factura
+ * es un acto del chat, no de esta pantalla. Antes de este fix, el efecto 3 (más abajo) creaba un
+ * borrador SOLO por abrir la pantalla, así que el aterrizaje era el wizard, no el listado. `vista`
+ * decide si se muestra el listado (resumen + «Te deben» + «Últimas emitidas») o el wizard; sólo entra
+ * a `'wizard'` una acción explícita del usuario (el pill "Nueva factura", que reusa `nuevaFactura` --
+ * mismo handler para "arrancar desde el listado" y "hacer otra factura tras terminar una", porque las
+ * dos son literalmente la misma acción). Con `facturaIdInicial` (adoptar un borrador de un presupuesto)
+ * arranca directo en `'wizard'`: ESA sí es una acción explícita, ocurrida en la pantalla de origen.
  */
 export interface PantallaFacturacionProps {
   /**
@@ -111,6 +122,9 @@ export interface PantallaFacturacionProps {
 
 export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: PantallaFacturacionProps = {}) {
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'verificando' });
+  // H-A4-5: arranca en 'listado' salvo que llegue un borrador de afuera (`facturaIdInicial`), que ya ES
+  // la acción explícita que justifica entrar directo al wizard. Ver el docstring del módulo.
+  const [vista, setVista] = useState<'listado' | 'wizard'>(facturaIdInicial != null ? 'wizard' : 'listado');
   const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
@@ -191,9 +205,11 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
     };
   }, [facturaIdInicial]);
 
-  // 3. Gate pasado y sin factura activa -> crear el borrador y esperar a que el estado se estabilice.
+  // 3. Gate pasado, vista wizard y sin factura activa -> crear el borrador y esperar a que el estado
+  // se estabilice. `vista !== 'wizard'` es el guard de H-A4-5: sin él, este efecto crea un borrador
+  // por el solo hecho de abrir la pantalla -- exactamente el bug que reportó la auditoría.
   useEffect(() => {
-    if (gate.tipo !== 'listo' || facturaId !== null) return;
+    if (vista !== 'wizard' || gate.tipo !== 'listo' || facturaId !== null) return;
     let cancelado = false;
     setCreandoBorrador(true);
     setErrorBorrador(false);
@@ -223,7 +239,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `reintentoBorrador` sólo existe para forzar un rearranque manual.
-  }, [gate, facturaId, reintentoBorrador]);
+  }, [vista, gate, facturaId, reintentoBorrador]);
 
   const pasoBackend = estadoFacturaActual ? derivarPasoVisible(estadoFacturaActual) : null;
 
@@ -350,6 +366,11 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
     await actualizarEstado();
   }, [facturaId, actualizarEstado]);
 
+  /**
+   * Entra al wizard y arranca un borrador nuevo. Es el ÚNICO camino de entrada (H-A4-5): lo usa tanto
+   * el pill "Nueva factura" del listado (arrancar desde cero) como los botones "Nueva factura" de los
+   * estados terminales (comprobante/rechazada/cancelada, hacer otra) -- misma acción, dos lugares.
+   */
   const nuevaFactura = useCallback(() => {
     setFacturaId(null);
     setEstadoFacturaActual(null);
@@ -357,6 +378,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
     setClienteLocal(null);
     setPasoEdicion(null);
     setErrorBorrador(false);
+    setVista('wizard');
   }, []);
 
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
@@ -395,6 +417,10 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
             Reintentar
           </Button>
         </div>
+      ) : vista === 'listado' ? (
+        // H-A4-5: aterrizaje en el listado -- nada que pintar acá, «Te deben» + «Últimas emitidas»
+        // (con el pill "Nueva factura" que entra al wizard) van más abajo, fuera de este bloque.
+        null
       ) : creandoBorrador || !facturaId || !estadoFacturaActual || pasoBackend == null ? (
         <div className="facturacion-screen__loading" data-testid="facturacion-cargando">
           <Skeleton height={64} radius={16} />
@@ -494,7 +520,7 @@ function BloqueConfigurar({
 }) {
   return (
     <div className="facturacion-screen__cta-configurar" data-testid={testID}>
-      <p>Todavía no configuraste tu facturación AFIP. Vinculá tu cuenta para emitir comprobantes.</p>
+      <p>Todavía no configuraste tu facturación ARCA. Vinculá tu cuenta para emitir comprobantes.</p>
       <Button disabled={onConfigurar == null} onClick={onConfigurar} data-testid={`${testID}-boton`}>
         Configurar facturación
       </Button>

@@ -129,7 +129,18 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
   // de cerrar D9 -- ver `docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md` fila D9.
   jest.setTimeout(30000);
 
+  // BL-V12 (2026-09-22): `useVozComando` corre un `setInterval` REAL de 100ms (muestreo de la
+  // onda/cronómetro) todo el tiempo que `fase==='grabando'`, y este describe entra a esa fase y se
+  // queda ahí durante varios `waitFor`/aserciones. Con el reloj real, bajo la contención de las
+  // otras ~106 suites del job mobile, cada tick + 2 re-renders se encarece y el test degrada ~10x
+  // (3,1s aislado -> >30000ms dentro del gate completo) -- tercera aparición del mismo patrón en el
+  // año, ya cerrado dos veces subiendo el timeout (no vuelve a repetirse: el fix de raíz es sacar el
+  // test del reloj real). Fake timers desacoplan la duración del test de la carga de la máquina.
+  // Ningún test de este describe asserta sobre `segundos`/`niveles` cambiando con el tiempo -- sólo
+  // presencia/ausencia de `onda-flotante`, que se renderiza incondicional según `fase` -- así que no
+  // hace falta avanzar el reloj para que las aserciones existentes sigan viendo lo mismo.
   beforeEach(() => {
+    jest.useFakeTimers({ legacyFakeTimers: false });
     jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(sendSoporteAudio).mockReset().mockResolvedValue({
       wf_id: 'wf-1',
@@ -139,6 +150,13 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     });
     mockRequestRecordingPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
     mockGrabadorVoz.uri = null;
+  });
+
+  // Teardown OBLIGATORIO -- `jest.setup.js` (líneas 58-68) ya documentó que un timer real sin
+  // limpiar de un test se filtra al SIGUIENTE archivo del mismo worker de Jest. Un `useFakeTimers`
+  // sin `useRealTimers` de vuelta es el mismo riesgo en la otra dirección.
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('monta sin crashear y termina con el composer editable', async () => {
@@ -269,5 +287,19 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     expect(screen.queryByTestId('onda-flotante')).toBeNull();
 
     alertSpy.mockRestore();
+  });
+});
+
+describe('PantallaSoporte -- encabezado (BL-W10)', () => {
+  it('dice el tiempo de respuesta y qué viaja con el ticket, sin prometer un número de horas', async () => {
+    await renderPantallaSoporte();
+    const detalle = screen.getByTestId('soporte-detalle');
+    const texto = (Array.isArray(detalle.props.children) ? detalle.props.children.join('') : String(detalle.props.children));
+    expect(texto).toContain('plazo de respuesta');
+    expect(texto).toContain('asunto y un resumen');
+    expect(texto).not.toMatch(/\d+\s*(h|hs|horas|hábiles)/i);
+    // H-A4-4: SOPORTE_QUIEN (packages/core/src/ayuda/textosSoporte.ts) es compartido con web; el
+    // cambio de "Soporte de Odobi" a "Soporte técnico" pegó acá sin tocar código de mobile.
+    expect(screen.getByTestId('soporte-quien').props.children).toBe('Soporte técnico');
   });
 });

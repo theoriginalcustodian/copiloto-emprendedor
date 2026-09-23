@@ -7,11 +7,11 @@ import './ajustes.css';
  * `EscritorioScreen` (grid de tiles + callback genérico) — el mapeo `AjusteKey -> pantalla/tab` lo
  * hace el wiring del shell, no este componente.
  *
- * Mismas 6 entradas que mobile, mismo orden. El tile `apariencia` queda con su key intacta a
- * propósito: en web el selector de tema vive en `ajustes/PantallaApariencia.tsx`
- * (`useTheme()`/`ThemeProvider`, 3 pieles `claro`/`oscuro`/`nocturno`) — un sistema distinto de
- * los 5 `SKINS` de mobile, y no existe un `PantallaSkins` equivalente en web. A dónde apunta ese
- * tile lo decide el shell.
+ * Mismas 9 entradas que mobile, mismo orden (BL-W12, `TILES_AJUSTES` abajo trae el detalle del grupo
+ * «Ayuda»). El tile `apariencia` queda con su key intacta a propósito: en web el selector de tema
+ * vive en `ajustes/PantallaApariencia.tsx` (`useTheme()`/`ThemeProvider`, 3 pieles
+ * `claro`/`oscuro`/`nocturno`) — un sistema distinto de los 5 `SKINS` de mobile, y no existe un
+ * `PantallaSkins` equivalente en web. A dónde apunta cada tile lo decide el shell.
  */
 export type AjusteKey =
   | 'perfilNegocio'
@@ -20,7 +20,9 @@ export type AjusteKey =
   | 'miPlan'
   | 'cuenta'
   | 'apariencia'
-  | 'comoHablarle';
+  | 'comoUsar'
+  | 'soporte'
+  | 'feedback';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -28,15 +30,23 @@ interface DefinicionTileAjuste {
   icono: string;
 }
 
-/** Mismo orden que `TILES_AJUSTES` en mobile — ver ese archivo para el porqué de cada posición. */
+/**
+ * Mismos tiles que `TILES_AJUSTES` en mobile (`apps/mobile/.../PantallaAjustes.tsx:54-88`), mismo
+ * orden, mismos rótulos (BL-W12, DEC-10 — web sigue a mobile, no al prototipo). El grupo «Ayuda»
+ * (`comoUsar`/`soporte`/`feedback`) se agregó el 2026-09-18 en mobile: `comoHablarle` (la guía sola)
+ * se fusionó en «Cómo usar la app», y se sumó «Soporte técnico» — que en web YA tenía pantalla
+ * (`modules/soporte/SoporteScreen.tsx`), sólo le faltaba la puerta desde este grid.
+ */
 const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'perfilNegocio', label: 'Mi negocio', icono: '💬' },
-  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: '🧾' },
+  { key: 'facturacionAfip', label: 'Facturación ARCA', icono: '🧾' },
   { key: 'apps', label: 'Apps conectadas', icono: '📁' },
   { key: 'miPlan', label: 'Mi plan', icono: '📊' },
   { key: 'cuenta', label: 'Mi cuenta', icono: '👤' },
   { key: 'apariencia', label: 'Apariencia', icono: '🎨' },
-  { key: 'comoHablarle', label: 'Cómo hablarle', icono: '🎙️' },
+  { key: 'comoUsar', label: 'Cómo usar la app', icono: '🎙️' },
+  { key: 'soporte', label: 'Soporte técnico', icono: '🎧' },
+  { key: 'feedback', label: 'Contanos qué tal', icono: '💬' },
 ];
 
 export interface PantallaAjustesProps {

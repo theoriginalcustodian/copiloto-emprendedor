@@ -13,7 +13,7 @@ import {
   type EstadoAfip,
 } from '@copiloto/core';
 
-import { Button } from '../../../design-system';
+import { Badge, Button } from '../../../design-system';
 import '../ajustes.css';
 
 /**
@@ -361,7 +361,7 @@ export function PantallaAfipSetup() {
   // -------------------------------------------------------------------------------------------
   return (
     <div className="afip-setup-screen" data-testid="pantalla-afip-setup">
-      <h1 className="afip-setup-screen__title">Facturación AFIP</h1>
+      <h1 className="afip-setup-screen__title">Facturación ARCA</h1>
 
       {/* ---------------------------- Bloque 1 -- Perfil fiscal ---------------------------- */}
       <section className="afip-setup-bloque" data-testid="afip-bloque-perfil">
@@ -372,14 +372,15 @@ export function PantallaAfipSetup() {
             <span className="afip-setup-cuit-fijo__valor" data-testid="afip-perfil-cuit-fijo">
               CUIT {formatearCuit(cuit)}
             </span>
-            <button
-              type="button"
-              className="afip-setup-cuit-fijo__cambiar"
-              data-testid="afip-perfil-cuit-cambiar"
-              onClick={() => setCuitBloqueado(false)}
-            >
-              Cambiar
-            </button>
+            {/* Vinculado con ARCA: el CUIT no se cambia desde la app (implicancia fiscal, no
+                preferencia de UI -- decisión del operador, BL-V27). Por eso acá no hay ningún
+                control, sólo el chip de estado.
+                `Badge` no reenvía props DOM extra (`data-testid` incluido) a su `<span>` -- envolver
+                acá, en vez de tocar el primitivo compartido del design-system (otras sesiones lo
+                usan en paralelo). */}
+            <span data-testid="afip-perfil-cuit-bloqueado">
+              <Badge variant="neutral">Bloqueado</Badge>
+            </span>
           </div>
         ) : (
           <label className="afip-setup-bloque__campo">
@@ -392,7 +393,11 @@ export function PantallaAfipSetup() {
               onChange={(e) => setCuit(e.target.value.replace(/\D/g, '').slice(0, 11))}
               maxLength={11}
             />
-            {erroresPerfil.cuit && <p className="afip-setup-bloque__error">{erroresPerfil.cuit}</p>}
+            {erroresPerfil.cuit && (
+              <p className="afip-setup-bloque__error" data-testid="afip-perfil-cuit-error">
+                {erroresPerfil.cuit}
+              </p>
+            )}
           </label>
         )}
 
@@ -678,7 +683,7 @@ export function PantallaAfipSetup() {
             data-testid="afip-ambiente-no-disponible"
           >
             {estadoGeneralNoDisponible
-              ? 'La configuración de AFIP todavía no está disponible.'
+              ? 'La configuración de ARCA todavía no está disponible.'
               : 'Todavía no sabemos qué ambientes tenés vinculados. Vinculá tu cuenta con ARCA arriba y volvé acá.'}
           </p>
         ) : (
@@ -736,7 +741,7 @@ export function PantallaAfipSetup() {
       <section className="afip-setup-bloque" data-testid="afip-bloque-drive">
         <h2 className="afip-setup-bloque__titulo">4. Copia en tu Drive</h2>
         <p className="afip-setup-bloque__texto afip-setup-bloque__texto--tenue">
-          Guardá una copia de cada factura en tu Google Drive. El link de AFIP vence a las 24 horas;
+          Guardá una copia de cada factura en tu Google Drive. El link de ARCA vence a las 24 horas;
           el de tu Drive no.
         </p>
 

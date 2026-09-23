@@ -201,7 +201,7 @@ El ADR se redactó a las ~19:00 y quedó cumplido a las ~21:00. Cada casilla, co
 | **Control diferencial en rojo** | ✅ | test roto a propósito ⇒ `core.sh` **EXIT 1** (`1 failed \| 434 passed`); test restaurado y confirmado **por hash** |
 | Guard anti-drift | ✅ | `scripts/ci/no-drift.sh` + job `drift` (este PR) |
 | `gate.sh` escribe `.ci-recibos/<sha>.json` | ✅ | `scripts/gate.sh:61` |
-| Mirror del repo en el VPS | ✅ | `scripts/setup-vps-mirror.sh` (#298) |
+| Mirror del repo en el VPS | ⚠️ **scriptado, NUNCA corrido** (corregido 2026-09-21, ver §12) | `scripts/setup-vps-mirror.sh` (#298) existe; ningún push real lo verificó. Esta casilla decía ✅ y contradecía la última viñeta de este mismo §11. |
 
 ### El guard tiene su propio control positivo, y no es adorno
 
@@ -230,3 +230,25 @@ problema nunca fue que el tercero fallara — fue depender de él sin alternativ
   decidió en §6(e). Ahora sí es barato: la definición ya está afuera.
 - El mirror está **scriptado pero no verificado con un push real** — `setup-vps-mirror.sh` existe;
   falta correrlo. Deuda con dueño (backend) y visible acá, no invisible.
+
+## 12. Enmienda 2026-09-21 (BL-B5) — el ADR dice una sola cosa
+
+§11 decía dos cosas incompatibles sobre el mirror: la tabla lo marcaba ✅ y la última viñeta admitía que
+nunca se había corrido. Manda la viñeta (es la que tiene evidencia): **el mirror NO está verificado**.
+
+**Decisión (beta): el gate sigue siendo manual.** Un dev (o la sesión backend) corre `scripts/gate.sh` y
+cita el recibo del head (`.ci-recibos/<sha>.json`) en el PR; GitHub Actions es la segunda confirmación,
+no la única. **Se difieren, no se descartan:**
+- **Mirror bare en el VPS** (`setup-vps-mirror.sh`): probarlo con un push real es trabajo sin usuario
+  detrás; el riesgo que cubre (punto único de fallo del código) no se materializó.
+- **v2, runner automático `post-receive`** (§6e).
+
+**Disparador para reabrir (cualquiera):** (a) el primer usuario que paga en producción; (b) una segunda
+caída de GitHub Actions de más de 1 h que frene un merge; (c) un merge a `main` sin recibo del head
+detectado por el guard. Dueño: backend. Hasta entonces, `setup-vps-mirror.sh` es un script sin verificar y
+así debe leerse.
+
+**Lo que cambió en el gate desde este ADR (#577, para que el texto no envejezca):** `gate.sh` acepta 0..N
+jobs (argumento inválido ⇒ exit 2, ya no un falso «TODOS OK»), y el recibo se **acumula**: `jobs` = último
+resultado y `detalle.<job>` conserva `historial[]` (failed→ok) con el log de cada corrida en
+`.ci-recibos/logs/`. Un reintento no borra el rastro de un fallo previo.

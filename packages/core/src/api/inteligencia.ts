@@ -37,6 +37,14 @@ function importe(v: unknown): string | null {
 export interface CajaPortada {
   saldo: string | null;
   moneda: string;
+  /** K-03: fecha ISO `YYYY-MM-DD` del corte del saldo. `null` si un backend viejo no la manda. */
+  fechaCorte: string | null;
+  /** K-03: variación % contra el mes anterior COMPLETO, como string decimal («-18.0»). `null` = no se
+   *  puede calcular (un solo mes de historia o base cero): la portada omite el chip entero. */
+  variacionPct: string | null;
+  /** K-09: ≥ 1 servicio que alimenta la caja está caído, así que los números pueden estar incompletos.
+   *  Default `false` (backend anterior). Con `true` la portada NO muestra la variación (sería falsa). */
+  incompleta: boolean;
 }
 
 /** El mes en curso: los cinco números que resumen cómo viene. */
@@ -77,7 +85,7 @@ export interface Portada {
 }
 
 interface PortadaRaw {
-  caja?: { saldo?: unknown; moneda?: unknown };
+  caja?: { saldo?: unknown; moneda?: unknown; fecha_corte?: unknown; variacion_pct?: unknown; incompleta?: unknown };
   mes?: { ingresos?: unknown; gastos?: unknown; rentabilidad?: unknown; facturado?: unknown; cobrado?: unknown };
   serie_mensual?: unknown;
   mejores_clientes?: unknown;
@@ -128,6 +136,11 @@ export async function leerPortada(): Promise<ConDisponibilidad<{ portada: Portad
           saldo: importe(caja.saldo),
           // La moneda es una etiqueta, no plata; si no vino, ARS es el default del producto (mercado AR).
           moneda: typeof caja.moneda === 'string' && caja.moneda.trim() !== '' ? caja.moneda.trim() : 'ARS',
+          // K-03, aditivos y opcionales: un backend anterior a este contrato no los manda -> null, y la
+          // portada omite fecha y chip. Ausente NUNCA se vuelve 0.
+          fechaCorte: typeof caja.fecha_corte === 'string' && caja.fecha_corte.trim() !== '' ? caja.fecha_corte.trim() : null,
+          variacionPct: importe(caja.variacion_pct),
+          incompleta: caja.incompleta === true,
         },
         mes: {
           ingresos: importe(mes.ingresos),

@@ -67,6 +67,8 @@ export type CodigoConflicto =
   | 'documento_de_otro_cliente'
   | 'sin_certificado_afip'
   | 'ambiente_no_vinculado'
+  /** K-02 / BL-C6: `POST /afip/perfil` con un CUIT que no está entre los vinculados a la clave fiscal del tenant. */
+  | 'cuit_no_vinculado'
   | 'sin_perfil_fiscal'
   | 'modo_automatico_no_disponible'
   /** El gate HITL no tomó la confirmación (factura o anulación). El porqué puntual viaja aparte, en

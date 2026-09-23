@@ -36,6 +36,26 @@ _LARGO_TEXTO = {
     "detallado": "Podés extenderte y explicar el detalle cuando aporte.",
 }
 
+# K-15: una respuesta de EJEMPLO por cada combinación tono × largo, que la app muestra mientras se elige
+# («Cómo hablarle»). Vive JUNTO a las dos tablas de arriba a propósito: quien cambie una instrucción de
+# registro o de largo tiene el ejemplo en la misma pantalla. `tests/test_perfil_negocio_ejemplo.py`
+# falla si una combinación queda sin ejemplo (o sobra una) y arma el prompt real de cada combinación.
+_EJEMPLO_TEXTO = {
+    ("cercano", "breve"): "Dale, ya te dejo el presupuesto listo — lo revisás y me decís.",
+    ("cercano", "detallado"): ("Dale, ya armé el presupuesto: son 3 ítems por $45.000 en total, con el IVA "
+                               "incluido. Si querés cambiar algo, decime y lo ajusto antes de mandárselo."),
+    ("formal", "breve"): "El presupuesto está listo para su revisión. Avíseme si desea modificar algo.",
+    ("formal", "detallado"): ("He preparado el presupuesto con los tres ítems solicitados, por un total de "
+                              "$45.000 con IVA incluido. Quedo a disposición para ajustar cualquier detalle "
+                              "antes de enviarlo al cliente."),
+}
+
+
+def ejemplo_de_tono(formalidad: str, largo_respuesta: str) -> str | None:
+    """La respuesta de ejemplo de esa combinación, o `None` si alguno de los dos valores no es válido
+    (el endpoint lo traduce a 400). Pura: sin DB ni estado."""
+    return _EJEMPLO_TEXTO.get((formalidad, largo_respuesta))
+
 
 def bloque_de_contexto(perfil: dict | None) -> str:
     """El bloque a anteponer al system prompt. `""` si no hay perfil.

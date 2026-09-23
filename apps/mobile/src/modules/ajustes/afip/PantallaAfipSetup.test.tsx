@@ -192,7 +192,7 @@ describe('PantallaAfipSetup', () => {
   // -----------------------------------------------------------------------------------------
   // Precarga del perfil.
   // -----------------------------------------------------------------------------------------
-  it('precarga el perfil desde el CUIT cacheado al montar, y bloquea el CUIT', async () => {
+  it('precarga el perfil desde el CUIT cacheado al montar, bloquea el CUIT y no ofrece cambiarlo', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
 
@@ -206,6 +206,9 @@ describe('PantallaAfipSetup', () => {
     expect(screen.getByTestId('afip-perfil-punto-venta-input').props.value).toBe('3');
     // Bloqueado -- el CampoTexto editable del CUIT ya no está en el árbol.
     expect(screen.queryByTestId('afip-perfil-cuit-input')).toBeNull();
+    // BL-V27: chip "Bloqueado" visible y CERO control que sugiera cambiar el CUIT vinculado.
+    expect(screen.getByTestId('afip-perfil-cuit-bloqueado')).toHaveTextContent('Bloqueado');
+    expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
@@ -239,6 +242,27 @@ describe('PantallaAfipSetup', () => {
     expect(screen.getByTestId('afip-perfil-domicilio-error')).toHaveTextContent('Falta el domicilio comercial');
     // Ningún otro campo se pinta -- el error es del CAMPO que lo trajo, no un banner genérico.
     expect(screen.queryByTestId('afip-perfil-ingresos-brutos-error')).toBeNull();
+  });
+
+  it('un 409 cuit_no_vinculado (K-02) pinta el error sobre el campo CUIT y deja el formulario editable', async () => {
+    jest.mocked(guardarPerfil).mockRejectedValueOnce(
+      new ErrorValidacionFiscal([
+        { codigo: 'cuit_no_vinculado', campo: 'cuit', mensaje: 'Ese CUIT no está vinculado a tu clave fiscal.' },
+      ]),
+    );
+
+    await montar();
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('afip-perfil-cuit-error')).toHaveTextContent(
+        'Ese CUIT no está vinculado a tu clave fiscal.',
+      ),
+    );
+    // No se re-bloquea: el usuario puede corregir el CUIT y reintentar.
+    expect(screen.getByTestId('afip-perfil-cuit-input')).toBeTruthy();
+    expect(screen.queryByTestId('afip-perfil-cuit-fijo')).toBeNull();
   });
 
   // -----------------------------------------------------------------------------------------

@@ -31,7 +31,20 @@ sólo confirma la hipótesis (reproducir la contención afuera). (4) Ojo con el 
 sólo aguanta con la máquina ociosa —acá 5000ms para un gesto *hold-and-wait*, con 10 worktrees y
 pushes de 2+ min— estaba mal elegido desde el principio; subirlo no es tapar el flake.
 
+**Segunda vuelta, 2026-09-22 — la excusa también tapa bugs del script propio.** La máquina estaba
+de verdad saturada (10 worktrees, gates en fila, un Chromium por captura), así que «contención»
+explicaba todo y era **verdad en general**. Con esa frase disponible, FE2 documentó por escrito que 5
+intentos de capturar pres-hitl a 390 morían por carga; cuando volvió a mirar, la causa era un
+*unhandled promise rejection* de su script más un testid equivocado — se arregló en minutos y la
+captura salió. El mismo día el gate dio **dos clases distintas** de rojo (EPERM de la caché de jest y
+un timeout de suite lenta), y distinguirlas es lo único que decide si un reintento es legítimo: por
+eso el reintento que se codificó (`scripts/ci/jest-con-reintento-eperm.sh`) perdona sólo el EPERM y
+**nunca** un timeout ni una aserción. **Regla que agrega esta vuelta:** antes de escribir «fue la
+máquina» en un `dato_` o un `cierre_`, correr el instrumento con el error visible (sin `catch` mudo) y
+leer el mensaje real — un entorno ruidoso de verdad es el mejor escondite de un bug propio.
+
 Relacionado: [[instrumentos-que-confirman-en-vez-de-verificar]] (aquél es el instrumento que **afirma
 sin verificar**; éste es el que **verifica bien pero de a ratos**, que es peor de detectar porque a
 veces tiene razón) · [[no-romper-no-es-arreglar]] ·
-[[barrer-llamadores-incluye-los-instrumentos-de-verificacion]]
+[[barrer-llamadores-incluye-los-instrumentos-de-verificacion]] ·
+[[pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo]]

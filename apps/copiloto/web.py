@@ -30,7 +30,7 @@ from typing import Callable
 from _paths import ensure_paths
 ensure_paths()
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -40,6 +40,8 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
+from conexiones_salud import composio_caidos
+from tenant_onboarding_store import TenantOnboardingStore
 from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
 # el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
@@ -59,7 +61,8 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
-from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
+from errores_web import EMAIL_YA_REGISTRADO, conflicto
+from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
@@ -93,6 +96,8 @@ MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 # tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
 # real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
 MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
+# K-10: formularios que pueden dictar (etiqueta de telemetría de `POST /transcribir`).
+CONTEXTOS_TRANSCRIBIR = frozenset({"gasto", "ingreso", "presupuesto", "cliente"})
 
 # Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
 # 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
@@ -384,13 +389,10 @@ def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
     visibility-acotada-por-StartTime`). Sin match, `emitir_factura` abre un borrador nuevo (su propio
     fallback) — nunca produce un CAE de más, como mucho un borrador huérfano.
 
-    Acotado por `StartTime`: un `FacturaWorkflow` NO caduca solo por sí mismo
-    (`await workflow.wait_condition(lambda: self._confirmado or self._cancelado)`, sin timeout,
-    `afip_factura_workflow.py:208`). Sin ventana, un dictado abandonado de hace días podría
-    "continuarse" con los datos de hoy — no se ve como error, se ve como una factura con datos
-    mezclados. TODO(hito9-dictado-sin-ventana-de-vida, backend, antes de habilitar producción): el
-    workflow en sí no expira; ponerle un timeout real es un cambio de historia (versionado/`patched`,
-    no es el momento en medio del hito) — anotado también en `memoria/`.
+    Acotado por `StartTime` (`VENTANA_DICTADO_ABIERTO`, 15 min) para continuar un dictado; y desde BL-B2
+    el propio `FacturaWorkflow` expira a las 24 h sin confirmar (`VENTANA_VIDA_BORRADOR`, con
+    `workflow.patched`): un dictado abandonado termina CANCELADA `dictado_vencido` y el link directo ya
+    no lo reanuda (Temporal contesta NOT_FOUND al update sobre un workflow cerrado → 404).
     """
     async def buscar(cliente_id: str) -> str | None:
         # `cliente_id` hoy es un UUID server-side (`resolve_cliente_id`), pero la query de Visibility
@@ -601,6 +603,31 @@ class SignupIn(BaseModel):
     invite_token: str = ""
 
 
+_EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def _es_cuenta_google(claims: dict) -> bool:
+    """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
+    claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
+    en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`, sólo para cuentas email/password; el caso Google
+    real es `[ASSUMED_PENDING_VERIFY]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
+    fila es lo seguro, mostrarla llevaría a un error confuso."""
+    meta = claims.get("app_metadata") or {}
+    proveedores = set(meta.get("providers") or [])
+    if meta.get("provider"):
+        proveedores.add(meta["provider"])
+    return "google" in proveedores
+
+
+class CambiarContrasenaIn(BaseModel):
+    contrasena_actual: str
+    contrasena_nueva: str
+
+
+class CambiarEmailIn(BaseModel):
+    email_nuevo: str
+
+
 class LoginIn(BaseModel):
     email: str
     password: str
@@ -629,7 +656,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
                    extraer_ticket: Callable[[bytes, str], dict] | None = None,
-                   warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
+                   warm_fn: Callable[[str], bool] | None = None,
+                   jwt_secret: str | None = None, jwt_issuer: str | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
     `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `COPILOTO_FERNET_KEY` del
@@ -650,7 +678,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     tenant en `POST /warm` (el front lo dispara al abrir la app / volver a la pestaña de chat, ANTES del 1er
     mensaje → el grafo llega caliente y el 1er turno no paga el cache-miss). `None` (default) → `/warm` es
     no-op (`{"warmed": false}`): apps sin memoria no cambian. En prod lo inyecta `serve.py` desde los MISMOS
-    `GRAPHITY_*` que el worker (via `build_memory_provider`). Best-effort: nunca 500."""
+    `GRAPHITY_*` que el worker (via `build_memory_provider`). Best-effort: nunca 500.
+
+    `jwt_secret`/`jwt_issuer` (H-A4-10): mismo secreto+issuer que `require_tenant`, inyectados acá
+    SOLO para que `RateLimitMiddleware` pueda cupar por usuario (`sub` del JWT) en vez de por IP.
+    `None` (default, ej. en tests que no pasan este par) -> el rate-limit sigue siendo por IP, el
+    comportamiento de siempre; no rompe nada que no lo pase."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
     transcribe = transcribe or _default_transcribe
@@ -662,7 +695,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # BETA-2.d: rate-limit del front-door completo (protege costo LLM + abuso). Middleware ASGI puro
     # -> envuelve TODO el stack, incluye los sub-apps montados (/mp, /afip, etc.) sin tocarlos. Ver
     # docstring de `rate_limit.py` (asume proceso único, confirmado contra el systemd unit real).
-    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware, jwt_secret=jwt_secret, jwt_issuer=jwt_issuer)
 
     # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
     # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
@@ -686,15 +719,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
 
-    @app.post("/chat/audio")
-    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
-                         cliente_id: str = Depends(require_tenant)) -> dict:
-        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
-        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
-        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
-        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
-        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
-        rutas `def`)."""
+    async def _transcribir_audio(audio: UploadFile) -> str:
+        """Tramo COMÚN de voz de `/chat/audio` y `/transcribir` (K-10): tope de tamaño, magic bytes,
+        STT y transcripción vacía. UNA sola definición: si cambia el límite o la validación, cambia en los
+        dos. Devuelve el texto ya `strip`eado; los errores salen como `HTTPException` (413/415/422/502/503)."""
         # Cap ANTES de cargar en RAM (review HIGH-1): rechazá por el Content-Length del multipart
         # (lo setea el browser) para no OOM-ear el front-door compartido; backstop tras leer por si
         # el `size` no viene en la parte.
@@ -722,6 +750,32 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # Vacío O solo-espacios (el STT no captó nada útil) -> 422; nunca despachamos un
             # mensaje en blanco al agente.
             raise HTTPException(status_code=422, detail="no se entendió el audio")
+        return transcript
+
+    @app.post("/transcribir")
+    async def transcribir(audio: UploadFile = File(...), contexto: str | None = Form(None),
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-10 (BL-J7, voz DENTRO de las funciones): transcribe y devuelve el texto, SIN despachar al agente
+        (a diferencia de `/chat/audio`). Sin estado, sin sesión, sin persistencia: el dictado rellena un campo
+        del formulario y quien lo monta decide qué hacer. `contexto` es sólo una etiqueta de telemetría: fuera
+        de la lista se ignora y se loguea, nunca es un 422."""
+        if contexto is not None and contexto not in CONTEXTOS_TRANSCRIBIR:
+            _log.info("transcribir: contexto ignorado %r (cliente=%s)", contexto[:40], cliente_id)
+            contexto = None
+        transcript = await _transcribir_audio(audio)
+        _log.info("transcribir: ok contexto=%s cliente=%s chars=%d", contexto, cliente_id, len(transcript))
+        return {"transcript": transcript}
+
+    @app.post("/chat/audio")
+    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
+                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
+        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
+        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
+        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
+        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
+        rutas `def`)."""
+        transcript = await _transcribir_audio(audio)
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
             task_queue=AGENT_B_TASK_QUEUE,
@@ -825,6 +879,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         mensajes = store.listar_mensajes(ticket_id=ticket_id)
         return {"ticket": ticket, "mensajes": mensajes}
 
+    @app.get("/feedback")
+    def feedback_propio(cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-08 («Lo pediste vos»): el feedback que el emprendedor mandó, con si ya fue escuchado.
+        Filtra por el `cliente_id` del token (nunca del query)."""
+        return {"items": FeedbackStore(conn_factory, cliente_id).listar_propio()}
+
     @app.post("/feedback")
     def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:
         """Feedback in-app del emprendedor por texto (BETA-1a, contrato
@@ -866,19 +926,13 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             tipo="voz", texto=transcript, contexto=contexto)
         return {"id": feedback_id, "ok": True, "transcripcion": transcript, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
-    @app.post("/chat/foto")
-    async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
-                        cliente_id: str = Depends(require_tenant)) -> dict:
-        """Front-door de OCR de tickets (Gastos Fase 2). A diferencia de `/chat`/`/chat/audio`, NO
-        pasa por `route_inbound`/el loop ReAct: la vision call YA decide los campos del gasto, y
-        bajarlos a texto libre para que el LLM los reinterprete perdería la distinción `monto` vacío /
-        `monto_sugerido` que es el punto central del addendum de la foto (spike
-        `spikes/ocr-tickets/RESULT.md` §3 — "legible" nunca es señal de confianza, no se usa acá para
-        nada). El reply se escribe por el MISMO `adapter.send(...)` que usa la activity
-        `send_channel_message` (mismo `reply_store`, mismo `/reply`): la app ve la card idéntica a como
-        la vería si hubiera llegado por voz. `wf_id` en la respuesta es SINTÉTICO (no hay workflow de
-        Temporal en este camino) -- ningún consumidor de `/chat`/`/chat/audio` lo lee hoy (grep vacío en
-        `apps/mobile`); se mantiene solo por paridad de shape con esos dos endpoints."""
+    async def _leer_gasto_de_foto(imagen: UploadFile) -> dict:
+        """Tramo COMÚN de OCR de tickets de `/chat/foto` y `/gastos/leer-foto` (BL-J7, foto SIN chat,
+        contrato `endpoint-foto-gasto-sin-chat` 2026-09-22): tope de tamaño, whitelist de content-type,
+        magic bytes (D6), OCR y el gate de "ningún campo reconocible". UNA sola definición: si cambia
+        el límite o la validación, cambia en los dos. Devuelve el `data` de la card `gasto_propuesto`
+        (`construir_gasto_desde_foto`); los errores salen como `HTTPException` (413/415/422/502/503).
+        NO tiene side effects: no escribe en ningún lado, eso lo decide cada endpoint que la llama."""
         if imagen.size is not None and imagen.size > MAX_IMAGEN_BYTES:
             raise HTTPException(status_code=413, detail="imagen demasiado grande (máx 10 MB)")
         imagen_bytes = await imagen.read()
@@ -905,7 +959,22 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if not extraido or not any(extraido.get(k) is not None
                                    for k in ("monto", "fecha", "proveedor", "categoria")):
             raise HTTPException(status_code=422, detail="no se reconoció un ticket en la imagen")
-        gasto = construir_gasto_desde_foto(extraido)
+        return construir_gasto_desde_foto(extraido)
+
+    @app.post("/chat/foto")
+    async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
+                        cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de OCR de tickets (Gastos Fase 2). A diferencia de `/chat`/`/chat/audio`, NO
+        pasa por `route_inbound`/el loop ReAct: la vision call YA decide los campos del gasto, y
+        bajarlos a texto libre para que el LLM los reinterprete perdería la distinción `monto` vacío /
+        `monto_sugerido` que es el punto central del addendum de la foto (spike
+        `spikes/ocr-tickets/RESULT.md` §3 — "legible" nunca es señal de confianza, no se usa acá para
+        nada). El reply se escribe por el MISMO `adapter.send(...)` que usa la activity
+        `send_channel_message` (mismo `reply_store`, mismo `/reply`): la app ve la card idéntica a como
+        la vería si hubiera llegado por voz. `wf_id` en la respuesta es SINTÉTICO (no hay workflow de
+        Temporal en este camino) -- ningún consumidor de `/chat`/`/chat/audio` lo lee hoy (grep vacío en
+        `apps/mobile`); se mantiene solo por paridad de shape con esos dos endpoints."""
+        gasto = await _leer_gasto_de_foto(imagen)
         idem_key = f"foto:{uuid.uuid4().hex}"
         sugerido = f" (leí ${gasto['monto_sugerido']})" if gasto["monto_sugerido"] else ""
         # Mismo guardrail verbal que `_run_registrar_gasto` (ver `tool_catalog.py`):
@@ -915,6 +984,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         adapter.send(session_id, texto, None, cliente_id=cliente_id,
                     card={"kind": "gasto_propuesto", "data": gasto}, idem_key=idem_key)
         return {"wf_id": idem_key, "accepted": True}
+
+    @app.post("/gastos/leer-foto")
+    async def gastos_leer_foto(imagen: UploadFile = File(...),
+                               cliente_id: str = Depends(require_tenant)) -> dict:
+        """BL-J7 (3er ítem del DoD): la foto del ticket SIN chat -- mismo patrón hermano que
+        `/transcribir` (K-10) respecto de `/chat/audio`: sin `session_id`, sin despacho, sin
+        persistencia, devuelve sólo `{"gasto": ...}` (el mismo `data` que la card `gasto_propuesto`
+        de `/chat/foto`). `require_tenant` es el único uso de `cliente_id` -- no hay `adapter.send`,
+        `reply_store` ni Temporal en este camino; el gasto recién se guarda cuando el usuario confirma
+        el formulario, por el camino que YA existe (contrato `endpoint-foto-gasto-sin-chat`,
+        2026-09-22)."""
+        del cliente_id  # sólo el guard de require_tenant -- ver docstring
+        gasto = await _leer_gasto_de_foto(imagen)
+        return {"gasto": gasto}
 
     # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
     # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
@@ -940,7 +1023,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                                   if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
                     "mp_connected": seller is not None, "composio_connected": composio_connected,
-                    "es_admin": es_admin(claims)}
+                    "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -952,7 +1036,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # puerta de la consola nunca es un agujero de seguridad (el guard real es
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected, "es_admin": False}
+                    "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+
+    @app.post("/me/onboarding/completar")
+    def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-14: marca el onboarding como hecho (también lo llama «Después»: cerrar el hilo cuenta).
+        Sin body: el tenant sale SÓLO del token, nunca de un valor que mande el cliente. Idempotente."""
+        TenantOnboardingStore(conn_factory, cliente_id).completar()
+        return {"onboarding_completado": True}
 
     @app.post("/warm")
     def warm(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -979,12 +1071,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
         SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
         literal que pueda driftear de `/composio/connect`."""
-        seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+        mp_status = MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+        conexiones = composio_gateway.list_connections(cliente_id)
+        composio_connected = [c["toolkit"] for c in conexiones
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
-                                          mp_connected=seller is not None,
-                                          composio_connected=composio_connected)}
+                                          mp_connected=mp_status == "conectado",
+                                          composio_connected=composio_connected,
+                                          mp_status=mp_status,
+                                          composio_caidos=composio_caidos(conexiones))}
 
     @app.get("/capacidades")
     def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1102,6 +1197,66 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.password_grant(body.email, body.password)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="credenciales inválidas")
+
+    # --- cambiar contraseña / mail de la PROPIA cuenta (K-12) ------------------------------------
+    # Sólo con `require_claims` (necesita el email del token para reautenticar). El Bearer de la request
+    # es lo que se reenvía a GoTrue: ninguna de las dos rutas acepta un identificador de cuenta en el
+    # body, así que un token de A no tiene forma de apuntar a B (test adversarial en `test_cambiar_cuenta.py`).
+    if require_claims is not None:
+        def _bearer(request: Request) -> str:
+            auth = request.headers.get("authorization", "")
+            return auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+
+        @app.post("/auth/cambiar-contrasena")
+        def cambiar_contrasena(body: CambiarContrasenaIn, request: Request,
+                               cliente_id: str = Depends(require_tenant),
+                               claims: dict = Depends(require_claims)) -> dict:
+            """Reautentica con la contraseña ACTUAL (`password_grant`, 401 propio si no coincide) y sólo
+            entonces cambia la contraseña con el Bearer del usuario. Nunca loguea contraseñas."""
+            email = claims.get("email")
+            if not email:
+                raise HTTPException(status_code=400, detail={
+                    "codigo": "cuenta_sin_email", "mensaje": "Esta cuenta no tiene un email asociado."})
+            try:
+                gotrue.password_grant(email, body.contrasena_actual)
+            except InvalidCredentials:
+                raise HTTPException(status_code=401, detail={
+                    "codigo": "contrasena_actual_incorrecta",
+                    "mensaje": "La contraseña actual no coincide."})
+            try:
+                gotrue.update_user(_bearer(request), {"password": body.contrasena_nueva})
+            except GoTrueUserError as e:
+                if e.codigo == "same_password":
+                    mensaje = "La contraseña nueva tiene que ser distinta de la actual."
+                elif e.codigo == "weak_password":
+                    mensaje = "La contraseña nueva es muy débil: usá al menos 6 caracteres."
+                else:
+                    raise HTTPException(status_code=502, detail={
+                        "codigo": "no_se_pudo_cambiar", "mensaje": "No pudimos cambiar la contraseña ahora."})
+                raise HTTPException(status_code=422, detail={"codigo": "contrasena_invalida", "mensaje": mensaje})
+            return {"ok": True}
+
+        @app.post("/auth/cambiar-email")
+        def cambiar_email(body: CambiarEmailIn, request: Request,
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+            """Pide el cambio al mail nuevo. GoTrue lo deja PENDIENTE hasta que se confirme desde el mail:
+            `email` sigue siendo el viejo hasta entonces (por eso `confirmacion_pendiente: true`, nunca
+            «cambiado»)."""
+            nuevo = (body.email_nuevo or "").strip()
+            if not _EMAIL_VALIDO.fullmatch(nuevo):
+                raise HTTPException(status_code=400, detail={
+                    "codigo": "email_invalido", "mensaje": "Ese email no es una dirección válida."})
+            try:
+                gotrue.update_user(_bearer(request), {"email": nuevo})
+            except GoTrueUserError as e:
+                if e.codigo == "email_exists":
+                    raise conflicto(EMAIL_YA_REGISTRADO, "Ese email ya está en uso.")
+                if e.codigo == "validation_failed":
+                    raise HTTPException(status_code=400, detail={
+                        "codigo": "email_invalido", "mensaje": "Ese email no es una dirección válida."})
+                raise HTTPException(status_code=502, detail={
+                    "codigo": "no_se_pudo_cambiar", "mensaje": "No pudimos pedir el cambio de email ahora."})
+            return {"ok": True, "confirmacion_pendiente": True}
 
     @app.post("/auth/refresh")
     def refresh(body: RefreshIn) -> dict:

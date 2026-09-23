@@ -12,4 +12,6 @@ export { Toast, type ToastProps, type ToastVariant } from './Toast';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { StatusBar, type StatusBarProps } from './StatusBar';
 export { PresenceOrb, type PresenceOrbProps } from './PresenceOrb';
+export { EstadoVacio, type EstadoVacioProps } from './EstadoVacio';
 export { Kit } from './Kit';
+export { Recibo, type ReciboProps, type LineaRecibo, type AccionRecibo } from './Recibo';

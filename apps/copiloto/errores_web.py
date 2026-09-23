@@ -28,6 +28,7 @@ FALTA_CUIT = "falta_cuit"
 PRESUPUESTO_NO_FACTURABLE = "presupuesto_no_facturable"
 TRANSICION_INVALIDA = "transicion_invalida"
 CONCEPTO_DUPLICADO = "concepto_duplicado"
+EMAIL_YA_REGISTRADO = "email_ya_registrado"  # K-12: cambiar-email a una dirección de otra cuenta
 INGRESO_DUPLICADO_PROBABLE = "ingreso_duplicado_probable"
 DOCUMENTO_DE_OTRO_CLIENTE = "documento_de_otro_cliente"
 
@@ -36,6 +37,8 @@ DOCUMENTO_DE_OTRO_CLIENTE = "documento_de_otro_cliente"
 # romper al cliente que ya los lee, justamente en el commit que viene a que eso no pase.
 SIN_CERTIFICADO_AFIP = "sin_certificado_afip"
 AMBIENTE_NO_VINCULADO = "ambiente_no_vinculado"
+# K-02 (BL-C6): pidió guardar el perfil fiscal con un CUIT que este tenant no tiene vinculado.
+CUIT_NO_VINCULADO = "cuit_no_vinculado"
 SIN_PERFIL_FISCAL = "sin_perfil_fiscal"
 
 # Bloqueo TEMPORAL y gestionado, no una regla del producto. El modo automático espera a que se corrija
@@ -57,9 +60,10 @@ CONFIRMACION_NO_TOMADA = "confirmacion_no_tomada"
 TRAUMA_DOMINIO_PROHIBIDO = "trauma_dominio_prohibido"
 
 CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
-                     TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, INGRESO_DUPLICADO_PROBABLE,
+                     TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, EMAIL_YA_REGISTRADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
-                     SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA, TRAUMA_DOMINIO_PROHIBIDO})
+                     SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA, TRAUMA_DOMINIO_PROHIBIDO,
+                     CUIT_NO_VINCULADO})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:

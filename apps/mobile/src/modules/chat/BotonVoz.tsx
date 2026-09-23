@@ -31,6 +31,15 @@ const ISOTIPO_STROKE_WIDTH = 1.3 / ISOTIPO_ESCALA;
  *  sosteniendo el teléfono no fija por accidente, pero un deslizamiento franco sí. */
 export const UMBRAL_FIJAR_PX = 80;
 
+/** Cuánto hay que deslizar hacia la IZQUIERDA (px) para armar la cancelación (BL-D2) — mismo valor
+ *  que el eje vertical: un temblor no cancela, un deslizamiento franco sí. Spec:
+ *  `Prototipo frontend/odobi-ui/mockups/03-home-conversacional/DECISIONES.md:95,108`. */
+export const UMBRAL_CANCELAR_PX = 80;
+
+/** Un toque más corto que esto (ms) es un toque accidental, no un dictado: se descarta sin enviar.
+ *  Mismo valor que la PWA (`MicButton.tsx`, descarte de toques <350 ms). */
+export const DURACION_MINIMA_MS = 350;
+
 export interface BotonVozProps {
   /** Mantener apretado — arranca la grabación de inmediato (contrato `dictado-por-voz-sin-glass`). */
   onIniciar: () => void;
@@ -39,13 +48,22 @@ export interface BotonVozProps {
   /** Deslizar hacia arriba más de `UMBRAL_FIJAR_PX` mientras se graba — fija la grabación; a partir
    *  de acá el propio botón no hace más nada, los controles flotantes (afuera) toman el mando. */
   onFijar: () => void;
+  /** Soltar tras deslizar a la izquierda, o un toque <`DURACION_MINIMA_MS`: descarta la captura sin
+   *  enviarla (BL-D2). */
+  onCancelar: () => void;
+  /** Avisa apenas el dedo cruza (o deja de cruzar) el umbral de cancelación, ANTES de soltar, para
+   *  que el padre muestre el feedback visual. */
+  onCancelando?: (cancelando: boolean) => void;
   /** Se apaga mientras ya hay una captura en curso (grabando/pausada/lista) — un segundo `onIniciar`
    *  no puede reiniciar `useVozComando` a mitad de una captura. */
   disabled?: boolean;
   /** El `ref` de `ListaMensajes` (su `FlatList` de RNGH, ver C6 — antes `ScrollView`) — este botón
    *  flota encima y su gesto tiene que declararse `simultaneousWithExternalGesture` con el scroll
-   *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo. */
-  scrollRef: React.RefObject<FlatList | null>;
+   *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo.
+   *  **Opcional** (BL-J7/K-10, `MicFuncion`): montado dentro de un formulario puede no haber ningún
+   *  scroll con el que arbitrar — sin `scrollRef`, el gesto se declara sin
+   *  `simultaneousWithExternalGesture` (ver el `useMemo` de `gesto`). */
+  scrollRef?: React.RefObject<FlatList | null>;
 }
 
 /**
@@ -74,7 +92,15 @@ export interface BotonVozProps {
  * planas), así que necesitan `scheduleOnRN` para cruzar del hilo de UI (donde corre el gesto, con
  * Reanimated instalado) al de JS — mismo patrón ya probado en `MarcoGlass.tsx`.
  */
-export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = false, scrollRef }: BotonVozProps) {
+export function BotonVoz({
+  onIniciar,
+  onSoltarSinFijar,
+  onFijar,
+  onCancelar,
+  onCancelando,
+  disabled = false,
+  scrollRef,
+}: BotonVozProps) {
   const tema = useTema();
 
   const pulso = useRef(new Animated.Value(1)).current;
@@ -85,6 +111,11 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
   // que le importa a la UI (mostrar los controles flotantes) lo dueño es `ChatView` vía `onFijar`;
   // acá sólo hace falta la guarda idempotente de "no fijar dos veces" / "fijado no suelta".
   const fijadoRef = useRef(false);
+  // Cancelación armada (dedo pasado el umbral a la izquierda) e instante del apretón, para el descarte
+  // por toque corto. Refs, no estado: los lee `soltar()` y no deben re-renderizar el botón en pleno
+  // gesto (ver el docstring de `gesto`).
+  const cancelandoRef = useRef(false);
+  const inicioRef = useRef(0);
 
   // Espejo síncrono de `disabled` — ver el docstring de `gesto` más abajo (hallazgo de device
   // 2026-08-12): la guarda de "no reiniciar una captura en curso" tiene que leerse acá, DENTRO de
@@ -120,19 +151,41 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
     // de abajo — ver su docstring para por qué eso reconstruía el gesto activo en pleno vuelo.
     if (disabledRef.current) return;
     fijadoRef.current = false;
+    cancelandoRef.current = false;
+    inicioRef.current = Date.now();
     onIniciar();
   }, [onIniciar]);
+
+  const marcarCancelando = useCallback(
+    (cancelando: boolean) => {
+      if (fijadoRef.current || cancelandoRef.current === cancelando) return;
+      cancelandoRef.current = cancelando;
+      onCancelando?.(cancelando);
+    },
+    [onCancelando],
+  );
 
   const fijar = useCallback(() => {
     if (fijadoRef.current) return; // idempotente: no reavisa dos veces por el mismo cruce de umbral
     fijadoRef.current = true;
+    if (cancelandoRef.current) {
+      cancelandoRef.current = false;
+      onCancelando?.(false);
+    }
     onFijar();
-  }, [onFijar]);
+  }, [onFijar, onCancelando]);
 
   const soltar = useCallback(() => {
     if (fijadoRef.current) return; // fijado: soltar el dedo YA NO detiene (contrato §1, fila 4)
-    onSoltarSinFijar();
-  }, [onSoltarSinFijar]);
+    const corto = Date.now() - inicioRef.current < DURACION_MINIMA_MS;
+    const cancelar = cancelandoRef.current || corto;
+    if (cancelandoRef.current) {
+      cancelandoRef.current = false;
+      onCancelando?.(false);
+    }
+    if (cancelar) onCancelar();
+    else onSoltarSinFijar();
+  }, [onSoltarSinFijar, onCancelar, onCancelando]);
 
   /**
    * 🔴 **BUG real de device (backend, ODOBI8 §C, 2026-08-11): el micrófono quedaba grabando para
@@ -195,9 +248,12 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
     // vacías) que pide esta firma de RNGH (a diferencia del viejo `ScrollView`, con props opcionales).
     // Es un gap de tipos upstream, no una incompatibilidad real: RNGH sólo usa el handle nativo para
     // la arbitración de gestos, nunca renderiza nada con esas props.
-    const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null>;
-    return Gesture.Pan()
-      .simultaneousWithExternalGesture(refParaArbitraje)
+    const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null> | undefined;
+    const base = Gesture.Pan();
+    // BL-J7/K-10: sin `scrollRef` (montado fuera del chat, sin scroll con el que arbitrar) el gesto
+    // se declara SIN `simultaneousWithExternalGesture` — nada con qué componer.
+    const pan = refParaArbitraje ? base.simultaneousWithExternalGesture(refParaArbitraje) : base;
+    return pan
       .onBegin(() => {
         scheduleOnRN(comenzar);
       })
@@ -205,12 +261,16 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
         // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
         if (-e.translationY > UMBRAL_FIJAR_PX) {
           scheduleOnRN(fijar);
+        } else {
+          // Eje horizontal (BL-D2): `translationX` negativo = el dedo fue a la izquierda. Fijar (arriba)
+          // gana sobre cancelar (izquierda) si el dedo hizo las dos cosas.
+          scheduleOnRN(marcarCancelando, -e.translationX > UMBRAL_CANCELAR_PX);
         }
       })
       .onFinalize(() => {
         scheduleOnRN(soltar);
       });
-  }, [scrollRef, comenzar, fijar, soltar]);
+  }, [scrollRef, comenzar, fijar, soltar, marcarCancelando]);
 
   const etiqueta = disabled
     ? 'Grabando — ya hay una captura en curso'

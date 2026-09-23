@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { FuncionSoporte } from '../../lib/api';
 import { Button, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
+import { CambiarCredenciales } from './CambiarCredenciales';
 import './account.css';
 
 /** `email` sale de `/me` (`apps/copiloto/web.py:625-636`) — mismo claim ya validado por
@@ -132,11 +133,14 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
           <div className="account-screen__row-texts">
             <span className="account-screen__row-label">No molestar</span>
             <span className="account-screen__row-desc">
-              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
+              Para silenciarme tengo que tocar una configuración de tu teléfono. Todavía no lo hago
+              solo.
             </span>
           </div>
         </div>
       </div>
+
+      <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
 
       <div className="account-screen__list">
         {/* SOP5 — `<button>`, no `<div>`: el rail ya aprendió esa lección (PR 299, "bloque de

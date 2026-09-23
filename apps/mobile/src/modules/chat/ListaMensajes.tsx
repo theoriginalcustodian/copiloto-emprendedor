@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 import type { ListRenderItemInfo } from 'react-native';
@@ -6,10 +6,13 @@ import type { ListRenderItemInfo } from 'react-native';
 import {
   leerClientePropuesto,
   leerFacturaPropuesta,
+  leerLinkDeCobro,
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  leerSugerenciaArmarFactura,
   mapearGate,
+  separadoresDeDia,
   type ChatMessage,
   type Gate,
 } from '@copiloto/core';
@@ -17,9 +20,12 @@ import {
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
+import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { ChipArmarFactura } from './ChipArmarFactura';
+import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
@@ -40,14 +46,41 @@ export interface ListaMensajesProps {
   messages: ChatMessage[];
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
-   * gate de este sprint lo usa todavía. */
-  onChoice: (value: string, opts?: { payload?: Record<string, unknown> | null }) => void;
+   * gate de este sprint lo usa todavía.
+   * `opts.displayText` (BL-D4) — el label que el usuario vio y tocó (`gate.confirmLabel`/
+   * `cancelLabel`); `useChat().send` lo pinta en la burbuja optimista en vez del `value` técnico.
+   * `opts.hitlMessageId` (H-A4-9) — el `id` de la card HITL que se está respondiendo; `useChat().send`
+   * lo usa para marcar esa card `hitlRespondido` (persistido, sobrevive a un reload). */
+  onChoice: (
+    value: string,
+    opts?: { payload?: Record<string, unknown> | null; displayText?: string; hitlMessageId?: string },
+  ) => void;
+  /** GUARDM parte 2 — `useChat().marcarCardResuelta`. Persiste el estado terminal de cualquiera de
+   * las 5 cards de propuesta (gasto/ingreso/cliente/factura/presupuesto) en el mensaje que la trae,
+   * para que sobreviva a un remount (scroll, recarga del hilo, reabrir la app) sin volver a mostrarse
+   * editable. `FilaMensaje` la ata al `mensaje.id` de cada card antes de pasarla — las cards mismas
+   * nunca conocen ningún id, sólo llaman `onResolver(patch)`.
+   * Opcional: `PantallaSoporte.tsx` (hilo de soporte) y algún test montan `ListaMensajes` sin ninguna
+   * de las 5 cards de propuesta posibles en sus mensajes — ahí no hay nada que persistir y no vale
+   * forzarles un callback que nunca van a necesitar. Sin ella, `FilaMensaje` usa un no-op. */
+  onResolverTarjeta?: (
+    mensajeId: string,
+    patch: Partial<
+      Pick<
+        ChatMessage,
+        'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+      >
+    >,
+  ) => void;
 }
 
 interface TarjetaConfirmacionProps {
   gate: Gate;
   onConfirm: () => void;
   onCancel: () => void;
+  /** H-A4-9 — `true` cuando `gate.respondido` ya está presente: la card se deja de leer nada más
+   * (sin `onPress` activo en ninguno de los dos botones, opacidad reducida). */
+  disabled?: boolean;
 }
 
 /**
@@ -65,28 +98,83 @@ interface TarjetaConfirmacionProps {
  * -- jerga sin equivalente natural, justo lo que la consigna de terminología pide evitar. Por eso acá
  * `gate.markdown` se muestra como texto plano, no editable.
  */
-function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionProps) {
+function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaConfirmacionProps) {
   const tema = useTema();
 
   // Mismo nivel de vidrio que el gate de DocuMed ("informe"): flota DENTRO de la conversación, con su
   // propio ocluyente -- sin esto el chat de atrás se leería A TRAVÉS de la superficie donde el
   // usuario confirma lo que se va a ejecutar.
   return (
-    <CristalVidrio nivel="informe" testID="tarjeta-confirmacion" style={styles.tarjetaGate}>
+    <CristalVidrio
+      nivel="informe"
+      testID="tarjeta-confirmacion"
+      style={[
+        gate.riesgo?.irreversible
+          ? { ...styles.tarjetaGate, borderWidth: 1, borderColor: tema.color.peligro }
+          : styles.tarjetaGate,
+        // H-A4-9 — ya respondida: opacidad reducida, mismo criterio visual que `.uc-btn:disabled`
+        // en la web (`primitives.css`).
+        disabled ? { opacity: 0.55 } : {},
+      ]}
+    >
       <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
         <View style={styles.encabezadoGate}>
-          <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }} />
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700' }}>
-            Confirmá antes de continuar
+          {gate.service != null && hayLogoDe(gate.service) ? (
+            <LogoMarca servicio={gate.service} tamano={20} testID="tarjeta-confirmacion-logo" />
+          ) : (
+            <View
+              testID="tarjeta-confirmacion-punto"
+              style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }}
+            />
+          )}
+          <Text
+            testID="tarjeta-confirmacion-servicio"
+            style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700', flex: 1 }}
+          >
+            {gate.service ? gate.label : 'Confirmá antes de continuar'}
           </Text>
+          {gate.riesgo && (
+            <Text
+              testID="tarjeta-confirmacion-riesgo"
+              style={{
+                color: gate.riesgo.tono === 'danger' ? tema.color.peligro : tema.color.texto,
+                fontSize: tema.tipo.base - 2,
+                fontWeight: '700',
+              }}
+            >
+              {gate.riesgo.badge}
+            </Text>
+          )}
         </View>
+        {gate.name && (
+          <Text testID="tarjeta-confirmacion-para" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            Para: <Text style={{ fontWeight: '700' }}>{gate.name}</Text>
+          </Text>
+        )}
+        {gate.amount && (
+          <Text testID="tarjeta-confirmacion-monto" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            Monto: <Text style={{ fontWeight: '700' }}>{`$${gate.amount}`}</Text>
+          </Text>
+        )}
         <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: Math.round(tema.tipo.base * 1.4) }}>
           {gate.markdown}
         </Text>
+        {gate.riesgo?.irreversible && (
+          <Text
+            testID="tarjeta-confirmacion-irreversible"
+            accessibilityRole="alert"
+            style={{ color: tema.color.peligro, fontSize: tema.tipo.base, fontWeight: '600' }}
+          >
+            No se puede deshacer · queda público
+          </Text>
+        )}
         <View style={[styles.accionesGate, { gap: tema.espacio.sm }]}>
+          {/* H-A4-9 — `disabled` (nativo de `Pressable`, no sólo `onPress={undefined}`) bloquea el
+              toque sin lógica extra: mismo criterio que `disabled` en el `<button>` de la web. */}
           <Pressable
             testID="tarjeta-confirmacion-confirmar"
-            onPress={onConfirm}
+            onPress={disabled ? undefined : onConfirm}
+            disabled={disabled}
             style={pressableStyle([
               styles.botonGate,
               { backgroundColor: tema.color.acentoSuperficie, borderRadius: tema.radio.md },
@@ -98,7 +186,8 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
           </Pressable>
           <Pressable
             testID="tarjeta-confirmacion-cancelar"
-            onPress={onCancel}
+            onPress={disabled ? undefined : onCancel}
+            disabled={disabled}
             style={pressableStyle([
               styles.botonGate,
               { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md },
@@ -117,6 +206,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
 interface FilaMensajeProps {
   mensaje: ChatMessage;
   onChoice: ListaMensajesProps['onChoice'];
+  onResolverTarjeta: ListaMensajesProps['onResolverTarjeta'];
 }
 
 /**
@@ -127,9 +217,13 @@ interface FilaMensajeProps {
  * cambia SI el `renderItem` no es una arrow function inline (si lo fuera, `React.memo` no podría
  * comparar props y memoizar no serviría de nada) — de ahí que viva afuera, no inline en el JSX.
  */
-const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensajeProps) {
+const FilaMensaje = memo(function FilaMensaje({
+  mensaje,
+  onChoice,
+  onResolverTarjeta = () => {},
+}: FilaMensajeProps) {
   if (mensaje.role === 'user') {
-    return <Burbuja role="user" text={mensaje.text} />;
+    return <Burbuja role="user" text={mensaje.text} porVoz={mensaje.porVoz} />;
   }
 
   // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que
@@ -137,7 +231,16 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   // copiloto y ningún lugar donde corregir el monto.
   const propuesta = leerGastoPropuesto(mensaje.card);
   if (propuesta) {
-    return <TarjetaGastoPropuesto propuesta={propuesta} />;
+    // GUARDM parte 2 — `resuelto` viene de `mensaje.gastoResuelto` (mismo criterio que
+    // `gate.respondido` viniendo de `mensaje.hitlRespondido` más abajo); `onResolver` ya llega atado
+    // a ESTE `mensaje.id`, la card nunca conoce ningún id.
+    return (
+      <TarjetaGastoPropuesto
+        propuesta={propuesta}
+        resuelto={mensaje.gastoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { gastoResuelto: patch })}
+      />
+    );
   }
 
   // Mismo motivo que el gasto: `cliente_propuesto` no lleva `choices`, así que `mapearGate` la
@@ -147,36 +250,89 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   if (clientePropuesto) {
     // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
     // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
-    return <TarjetaClientePropuesto propuesta={clientePropuesto} texto={mensaje.text} />;
+    return (
+      <TarjetaClientePropuesto
+        propuesta={clientePropuesto}
+        texto={mensaje.text}
+        resuelto={mensaje.clienteResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { clienteResuelto: patch })}
+      />
+    );
   }
 
   // `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112).
   const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
   if (ingresoPropuesto) {
-    return <TarjetaIngresoPropuesto propuesta={ingresoPropuesto} />;
+    return (
+      <TarjetaIngresoPropuesto
+        propuesta={ingresoPropuesto}
+        resuelto={mensaje.ingresoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { ingresoResuelto: patch })}
+      />
+    );
   }
 
   // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
   // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
   if (presupuestoPropuesto) {
-    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} />;
+    return (
+      <TarjetaPresupuestoPropuesto
+        propuesta={presupuestoPropuesto}
+        mensajeId={mensaje.id}
+        resuelto={mensaje.presupuestoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { presupuestoResuelto: patch })}
+      />
+    );
   }
 
   // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
   // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
   const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
   if (facturaPropuesta) {
-    return <TarjetaFacturaPropuesta propuesta={facturaPropuesta} />;
+    return (
+      <TarjetaFacturaPropuesta
+        propuesta={facturaPropuesta}
+        resuelto={mensaje.facturaResuelta}
+        onResolver={() => onResolverTarjeta(mensaje.id, { facturaResuelta: true })}
+      />
+    );
+  }
+
+  // `payment_link` — el link que `mp_charge` ya generó (BL-F2). Sin `url` no hay card y cae a `Burbuja`.
+  const linkDeCobro = leerLinkDeCobro(mensaje.card);
+  if (linkDeCobro) {
+    return <TarjetaLinkDeCobro link={linkDeCobro} />;
+  }
+
+  // BL-J9 — `sugerencia_armar_factura`: burbuja con el texto + chip que abre el gate de factura.
+  const sugerenciaFactura = leerSugerenciaArmarFactura(mensaje.card);
+  if (sugerenciaFactura) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <ChipArmarFactura sugerencia={sugerenciaFactura} />
+      </View>
+    );
   }
 
   const gate = mapearGate(mensaje);
   if (gate) {
+    // H-A4-9 — `gate.respondido` viene de `mensaje.hitlRespondido` (ver `mapearGate`/`hitl.ts`): ya
+    // sea porque esta sesión la marcó al responder, o porque `sanitizarHitlRespondido` la migró al
+    // rehidratar. Deshabilitada: se pasa `hitlMessageId` de todos modos por si algún día algo la
+    // sigue mostrando activa (defensa en profundidad), pero `TarjetaConfirmacion` ya bloquea el
+    // toque por su cuenta con `disabled`.
     return (
       <TarjetaConfirmacion
         gate={gate}
-        onConfirm={() => onChoice(gate.confirmValue)}
-        onCancel={() => onChoice(gate.cancelValue)}
+        disabled={Boolean(gate.respondido)}
+        onConfirm={() =>
+          onChoice(gate.confirmValue, { displayText: gate.confirmLabel, hitlMessageId: mensaje.id })
+        }
+        onCancel={() =>
+          onChoice(gate.cancelValue, { displayText: gate.cancelLabel, hitlMessageId: mensaje.id })
+        }
       />
     );
   }
@@ -213,7 +369,7 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -222,9 +378,31 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
       listRef.current?.scrollToEnd?.({ animated: true });
     }, [messages.length]);
 
+    // BL-C3: un divisor por cambio de día (hora de Buenos Aires) sobre el primer mensaje del día.
+    const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
+
     const renderItem = useCallback(
-      ({ item }: ListRenderItemInfo<ChatMessage>) => <FilaMensaje mensaje={item} onChoice={onChoice} />,
-      [onChoice],
+      ({ item }: ListRenderItemInfo<ChatMessage>) => (
+        <View>
+          {separadores.has(item.id) && (
+            <Text
+              testID="separador-dia"
+              accessibilityRole="header"
+              style={{
+                alignSelf: 'center',
+                color: tema.color.textoTenue,
+                fontSize: tema.tipo.chico,
+                fontWeight: '600',
+                paddingVertical: tema.espacio.sm,
+              }}
+            >
+              {separadores.get(item.id)}
+            </Text>
+          )}
+          <FilaMensaje mensaje={item} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
+        </View>
+      ),
+      [onChoice, onResolverTarjeta, separadores, tema],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 

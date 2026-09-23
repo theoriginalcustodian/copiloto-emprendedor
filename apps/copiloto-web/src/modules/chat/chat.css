@@ -119,6 +119,34 @@
   padding: 24px 4px;
 }
 
+/* Estado vacío del chat GENERAL (proto `#vacio`): isotipo + headline + rodillo + contrato,
+   todo centrado. Sólo se monta con `mostrarEjemplos` (Soporte sigue con `.chat-messages__empty`
+   liso, sin este wrapper). */
+.chat-messages__empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 32px 16px;
+}
+
+.chat-messages__empty-headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.chat-messages__empty-state .chat-messages__empty {
+  padding: 0;
+  max-width: 280px;
+}
+
 /* Marcador de sesión al tope del scroll (verbatim Copiloto App.dc.html:64). */
 .chat-messages__session-marker {
   align-self: center;
@@ -128,6 +156,16 @@
   color: var(--label);
   opacity: 0.8;
   padding: 2px 0;
+}
+
+.chat-messages__day-separator {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+  padding: 10px 0 6px;
 }
 
 .chat-message-group {
@@ -180,6 +218,16 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--ok-fg);
+}
+
+/* Chip «Por voz · Ns» en la burbuja (BL-J7 H-A3-7) — mismo token/tamaño que `.mic-funcion__chip`
+ * (`modules/voz/MicFuncion.css`), la única otra instancia del chip: `--label` es el token real de
+ * "texto atenuado" verificado contra AA en los 4 temas (BL-Q4). */
+.chat-bubble__voz {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--label);
 }
 
 /* ---------- Artifact view (Task 17, artefactos clicables) ----------
@@ -657,6 +705,16 @@ a.artifact:focus-visible {
   margin: 0;
 }
 
+.recording-overlay__dot--paused {
+  animation: none;
+  opacity: 0.4;
+}
+
+.recording-overlay__hint--cancel {
+  color: var(--danger-fg);
+  font-weight: 600;
+}
+
 .recording-overlay__hint-arrow {
   color: var(--text);
 }
@@ -703,4 +761,129 @@ a.artifact:focus-visible {
 .recording-overlay__send:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+/* ---------- Rodillo de ejemplos del chat vacío (BL-W4) ---------- */
+.rodillo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.rodillo__ventana {
+  position: relative;
+  height: 24px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.rodillo__frase {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 24px;
+  font-style: italic;
+  color: var(--label);
+  transition:
+    transform 620ms cubic-bezier(0.45, 0.05, 0.35, 1),
+    opacity 620ms cubic-bezier(0.45, 0.05, 0.35, 1);
+}
+
+.rodillo__frase--activa {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.rodillo__frase--sale {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.rodillo__frase--espera {
+  transform: translateY(100%);
+  opacity: 0;
+  transition: none;
+}
+
+.rodillo__pausa {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rodillo__pausa:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rodillo__frase {
+    transition: none;
+  }
+}
+
+/* ---------- SheetRequiereConexion (K-11 / BL-J8) ---------- */
+.sheet-conexion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 4px 8px;
+}
+
+.sheet-conexion__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet-conexion__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--heading);
+  margin: 0;
+}
+
+.sheet-conexion__sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 2px 0 0;
+}
+
+.sheet-conexion__alcance {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--heading);
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet-conexion__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
+/* Las dos acciones del MISMO tamaño: mismo ancho, sin que una empuje a aceptar. */
+.sheet-conexion__acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.sheet-conexion__acciones > * {
+  flex: 1;
 }

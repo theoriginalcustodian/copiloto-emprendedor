@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Badge, Button, MonoLabel, Surface } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import type { CatalogService } from '../../lib/api';
@@ -9,6 +11,13 @@ export interface ServiceCardProps {
   service: CatalogService;
   /** Conectar toca `useConnections.connect(service)` — este componente NO llama a la API. */
   onConnect: (service: CatalogService) => void;
+  /**
+   * Desconectar toca `useConnections.disconnect(service)`. La card sólo ofrece la acción si el
+   * catálogo trae `disconnect_path` (backend nuevo) Y el caller pasa este handler; lo que se pierde
+   * se le dice al usuario en una confirmación en la propia card (sin diálogo modal: un solo toque
+   * no debe cortar el acceso del copiloto a una app).
+   */
+  onDisconnect?: (service: CatalogService) => Promise<void> | void;
   /** Mientras se está pidiendo la URL de OAuth (deshabilita el botón + cambia el copy). */
   connecting?: boolean;
   /**
@@ -32,6 +41,10 @@ export interface ServiceCardProps {
  * `deriveState` pasa a leer ese campo en vez de asumir "solo 2 estados posibles".
  */
 function deriveState(service: CatalogService): ServiceCardState {
+  // K-09: con `status` (backend nuevo) los 3 estados son reales; sin él, el booleano de siempre.
+  if (service.status === 'caido') return 'reconnect';
+  if (service.status === 'conectado') return 'connected';
+  if (service.status === 'nunca_conectado') return 'disconnected';
   return service.connected ? 'connected' : 'disconnected';
 }
 
@@ -49,8 +62,54 @@ function deriveState(service: CatalogService): ServiceCardState {
  * `--tile-*`) en vez de duplicar esos tokens acá — los 2 estados que PISAN ese token base
  * (`--reconnect` borde de alerta, `--disconnected` opacidad) viven en `connections.css`.
  */
-export function ServiceCard({ service, onConnect, connecting = false, state }: ServiceCardProps) {
+/**
+ * Qué pierde el usuario al desconectar, dicho con las capacidades REALES del servicio (mismo criterio
+ * que mobile `PantallaApps.tsx`): un «¿estás seguro?» pelado no informa nada. Sin capacidades
+ * declaradas cae en una frase genérica, nunca en una lista vacía que insinúe que no se pierde nada.
+ * Drive tiene una consecuencia que no está en sus capacidades — la facturación — y se dice en
+ * CONDICIONAL porque esta pantalla no conoce el perfil fiscal (afirmarlo sería inventar un dato).
+ */
+const CONSECUENCIA_EXTRA: Record<string, string> = {
+  googledrive:
+    'Si tenés activado "guardar mis facturas en Drive", tus facturas nuevas van a dejar de archivarse ahí.',
+};
+
+export function loQueSePierde(service: CatalogService): string {
+  const base =
+    service.capabilities.length === 0
+      ? `El copiloto va a dejar de poder usar ${service.display_name} hasta que lo vuelvas a conectar.`
+      : `El copiloto va a dejar de poder ${service.capabilities.map((c) => c.toLowerCase()).join(', ')} hasta que vuelvas a conectar ${service.display_name}.`;
+  const extra = CONSECUENCIA_EXTRA[service.key];
+  return extra ? `${base} ${extra}` : base;
+}
+
+export function ServiceCard({
+  service,
+  onConnect,
+  onDisconnect,
+  connecting = false,
+  state,
+}: ServiceCardProps) {
   const resolvedState = state ?? deriveState(service);
+  const canDisconnect = Boolean(onDisconnect && service.disconnect_path);
+  const [confirming, setConfirming] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const confirmDisconnect = async () => {
+    if (!onDisconnect) return;
+    setDisconnecting(true);
+    setFailed(false);
+    try {
+      await onDisconnect(service);
+      setConfirming(false);
+    } catch {
+      // El backend rechazó (o no hubo red): la card sigue conectada y se lo decimos.
+      setFailed(true);
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   return (
     <Surface
@@ -64,6 +123,11 @@ export function ServiceCard({ service, onConnect, connecting = false, state }: S
 
       <div className="service-card__body">
         <p className="service-card__name">{service.display_name}</p>
+        {service.description && (
+          <p className="service-card__description" data-testid={`service-card-description-${service.key}`}>
+            {service.description}
+          </p>
+        )}
       </div>
 
       <div className="service-card__footer">
@@ -74,7 +138,30 @@ export function ServiceCard({ service, onConnect, connecting = false, state }: S
           </span>
         )}
 
-        {resolvedState === 'reconnect' && <Badge variant="warning">RECONECTAR</Badge>}
+        {resolvedState === 'connected' && canDisconnect && !confirming && (
+          <Button
+            variant="ghost"
+            className="service-card__disconnect"
+            onClick={() => setConfirming(true)}
+            aria-label={`Desconectar ${service.display_name}`}
+          >
+            Desconectar
+          </Button>
+        )}
+
+        {resolvedState === 'reconnect' && (
+          <>
+            <Badge variant="warning">RECONECTAR</Badge>
+            <Button
+              variant="ghost"
+              className="service-card__connect"
+              onClick={() => onConnect(service)}
+              disabled={connecting}
+            >
+              {connecting ? 'Conectando…' : 'Reconectar'}
+            </Button>
+          </>
+        )}
 
         {resolvedState === 'disconnected' && (
           <Button
@@ -87,6 +174,30 @@ export function ServiceCard({ service, onConnect, connecting = false, state }: S
           </Button>
         )}
       </div>
+
+      {confirming && (
+        <div
+          className="service-card__confirm"
+          role="alertdialog"
+          aria-label={`Desconectar ${service.display_name}`}
+          data-testid={`service-card-confirm-${service.key}`}
+        >
+          <p className="service-card__confirm-text">{loQueSePierde(service)}</p>
+          {failed && (
+            <p className="service-card__confirm-error" role="alert">
+              No pudimos desconectarlo. Probá de nuevo.
+            </p>
+          )}
+          <div className="service-card__confirm-actions">
+            <Button variant="cancel" onClick={() => setConfirming(false)} disabled={disconnecting}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={() => void confirmDisconnect()} disabled={disconnecting}>
+              {disconnecting ? 'Desconectando…' : 'Sí, desconectar'}
+            </Button>
+          </div>
+        </div>
+      )}
     </Surface>
   );
 }

@@ -119,6 +119,10 @@ export const mockApi: CopilotApi = {
     return { url: `https://mock-oauth.example.com/authorize?connect_path=${encodeURIComponent(connectPath)}` };
   },
 
+  async disconnect(_disconnectPath: string): Promise<void> {
+    await delay(undefined);
+  },
+
   async sendChat(payload: ChatRequest): Promise<ChatResponse> {
     const wfId = `mock-wf-${Date.now()}`;
     const replyId = ++replyIdSeq;

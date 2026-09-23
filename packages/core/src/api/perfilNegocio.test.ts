@@ -4,7 +4,7 @@ import { configurarApi } from './config';
 import { ApiError } from './errors';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
-import { guardarPerfilNegocio, leerPerfilNegocio } from './perfilNegocio';
+import { errorDeEmail, errorDeTelefono, guardarPerfilNegocio, leerPerfilNegocio } from './perfilNegocio';
 
 function respuesta(status: number, body: unknown): RespuestaHttp {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
@@ -37,6 +37,8 @@ function perfilCrudo(over: Record<string, unknown> = {}) {
     a_quien: 'ambos',
     nombre_comercial: 'Electricidad Pérez',
     horario_atencion: 'Lunes a viernes de 8 a 17',
+    telefono: '341 590 6309',
+    email: 'contacto@elgalpon.com.ar',
     formalidad: 'cercano',
     largo_respuesta: 'breve',
     nombre_copiloto: 'Copi',
@@ -74,6 +76,8 @@ describe('perfilNegocio.ts', () => {
         aQuien: 'ambos',
         nombreComercial: 'Electricidad Pérez',
         horarioAtencion: 'Lunes a viernes de 8 a 17',
+        telefono: '341 590 6309',
+        email: 'contacto@elgalpon.com.ar',
         formalidad: 'cercano',
         largoRespuesta: 'breve',
         nombreCopiloto: 'Copi',
@@ -232,6 +236,41 @@ describe('perfilNegocio.ts', () => {
       await guardarPerfilNegocio({ nombreComercial: 'Kiosco' });
 
       expect(peticiones[0].cuerpoJson).toEqual({ nombre_comercial: 'Kiosco' });
+    });
+  });
+
+  describe('BL-J10 — teléfono y email', () => {
+    it('perfil de un deploy previo (sin los campos) los lee como string vacío, no undefined', async () => {
+      responder = () => respuesta(200, { perfil: perfilCrudo({ telefono: undefined, email: undefined }) });
+
+      const res = await leerPerfilNegocio();
+
+      expect(res.status === 'ok' && res.perfil?.telefono).toBe('');
+      expect(res.status === 'ok' && res.perfil?.email).toBe('');
+    });
+
+    it('los manda como `telefono`/`email` y NO los manda si no se pasan (parcial)', async () => {
+      responder = () => respuesta(200, { perfil: perfilCrudo() });
+
+      await guardarPerfilNegocio({ telefono: '341 590 6309', email: 'a@b.co' });
+      await guardarPerfilNegocio({ nombreComercial: 'X' });
+
+      expect(peticiones[0].cuerpoJson).toEqual({ telefono: '341 590 6309', email: 'a@b.co' });
+      expect(peticiones[1].cuerpoJson).toEqual({ nombre_comercial: 'X' });
+    });
+
+    it('errorDeTelefono: vacío es válido, <8 dígitos no, espacios y guiones no cuentan', () => {
+      expect(errorDeTelefono('')).toBeNull();
+      expect(errorDeTelefono('341 590 6309')).toBeNull();
+      expect(errorDeTelefono('341-590-6309')).toBeNull();
+      expect(errorDeTelefono('590 630')).toBe('Poné al menos 8 dígitos, con característica');
+    });
+
+    it('errorDeEmail: vacío es válido; sin @ o sin dominio no', () => {
+      expect(errorDeEmail('')).toBeNull();
+      expect(errorDeEmail('contacto@elgalpon.com.ar')).toBeNull();
+      expect(errorDeEmail('contacto.elgalpon.com')).not.toBeNull();
+      expect(errorDeEmail('contacto@elgalpon')).not.toBeNull();
     });
   });
 });

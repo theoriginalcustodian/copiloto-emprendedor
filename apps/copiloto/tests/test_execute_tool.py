@@ -14,13 +14,19 @@ necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
 
 
 class _FakeGateway:
-    def __init__(self, exec_result=None):
+    def __init__(self, exec_result=None, connected="ACTIVE"):
         self.calls = []
         self._exec_result = exec_result or {"successful": True, "data": {}}
+        self._connected = connected      # H-A3-2(b): "ACTIVE" por defecto -- conectado, como asumían
+        self.connection_status_calls = []  # todos los tests previos a este fix
 
     def execute(self, slug, *, user_id, arguments, confirmed=False):
         self.calls.append((slug, confirmed, dict(arguments)))
         return self._exec_result
+
+    def connection_status(self, user_id, toolkit):
+        self.connection_status_calls.append((user_id, toolkit))
+        return self._connected
 
 
 class _Ctx:
@@ -203,6 +209,25 @@ def test_mp_charge_needs_confirmation_observation_has_service():
     assert tr.observation["label"] == "Mercado Pago"
 
 
+def test_mp_charge_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
+    """H-A4-11: mismo criterio que H-A3-2(b) (test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion,
+    arriba) pero para MercadoPago, que tiene SU PROPIO store de credenciales (`mp_cred_store`) y no pasa
+    por `gateway.connection_status` como el camino genérico de servicios Composio (ese path ya lo cubre
+    test_dispatcher.py con `googledocs`, no sólo gmail). Sin credencial MP: la tool corta ANTES del
+    `needs_confirmation` -- no tiene sentido pedir HITL para cobrar con una cuenta no conectada."""
+    gw = _FakeMpGw()
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    ctx = _mp_ctx(gw)
+    ctx.mp_cred_store = _FakeCred()
+    ctx.mp_cred_store.get = lambda seller: None    # sin credencial guardada para este seller
+    tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=False, idem_key="run1-a4-11")
+    assert tr.status == "error"                        # NO needs_confirmation
+    assert tr.observation["needs_connect"] == "mercadopago"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago" and card["label"] == "Mercado Pago"
+    assert gw.calls == 0                                # no llamó create_payment_link
+
+
 def test_calendar_book_needs_confirmation_observation_has_service():
     """Mismo fix aplicado a calendar_book (2da tool de 1ra clase): `service='googlecalendar'`."""
     ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
@@ -212,12 +237,64 @@ def test_calendar_book_needs_confirmation_observation_has_service():
     assert tr.observation["service"] == "googlecalendar"
 
 
+def test_agendar_reunion_manana_a_las_10_termina_en_la_gate_HITL_sin_escribir():
+    """K-13 / ADR-004: «agendá una reunión mañana a las 10» NO crea el evento: `calendar_book` queda en
+    `needs_confirmation` y el gateway no recibió ninguna llamada. Sólo con `confirmed=True` escribe."""
+    gw = _FakeGateway()
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-09-21T12:00:00")
+    tr = ex("calendar_book", {"title": "Reunión", "date_raw": "mañana", "time_raw": "10"},
+           _Ctx(), confirmed=False, idem_key="run1-cal")
+    assert tr.status == "needs_confirmation" and gw.calls == []
+    assert "calendar_book" in tool_catalog.WRITE_TOOLS
+
+
 def test_service_proposal_needs_confirmation_observation_has_service():
     """Mismo fix aplicado al path de servicio plug-in (Proposal): `service` = `mod.TOOLKIT` real."""
     tr = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")(
         "gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-2")
     assert tr.status == "needs_confirmation"
     assert tr.observation["service"] == "gmail"
+
+
+def test_K11_connection_required_deja_gate_card_con_alcance_del_catalogo():
+    from clients.agent.providers.composio_gateway import ConnectionRequired
+
+    class _SinConexion:
+        def execute(self, *a, **k):
+            raise ConnectionRequired("gmail")
+
+    ex = tool_catalog.make_tool_executor(_SinConexion(), now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "subject": "s", "body": "hola"}, _Ctx(), confirmed=True, idem_key="k11")
+    assert tr.status == "error" and tr.observation["needs_connect"] == "gmail"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "gmail" and card["label"] == "Gmail"
+    assert card["connect_path"] == "/composio/connect?service=gmail" and card["alcance"]
+
+
+def test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
+    """H-A3-2(b): una tool de escritura (Proposal, path de servicio plug-in) sobre un toolkit NO
+    conectado no debe pedir HITL sobre algo imposible -- el chequeo de conexión es PROACTIVO, antes
+    del `needs_confirmation`, no reactivo recién al ejecutar (el K11 de arriba cubre el caso
+    confirmed=True, reactivo, que sigue existiendo como defensa)."""
+    gw = _FakeGateway(connected="EXPIRED")
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-a3-2b")
+    assert tr.status == "error"                       # NO needs_confirmation
+    assert tr.observation["needs_connect"] == "gmail"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "gmail"
+    assert gw.calls == []                              # no llamó execute -- el chequeo cortó antes
+    assert gw.connection_status_calls == [("42", "gmail")]
+
+
+def test_H_A3_2b_proposal_conectado_sigue_pidiendo_confirmacion_normal():
+    """Control positivo: con conexión ACTIVA el needs_confirmation de siempre sigue intacto (no
+    regresiona lo que ya cubre test_write_without_confirm_opens_gate_without_executing)."""
+    gw = _FakeGateway()   # default: ACTIVE
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-a3-2b-ok")
+    assert tr.status == "needs_confirmation"
+    assert gw.calls == []
 
 
 def test_unexpected_exception_in_executor_returns_error_not_propagates():

@@ -9,6 +9,7 @@ import {
   hidratarEstado,
   motivoDeError,
   reducirChat,
+  sanitizarHitlRespondido,
   type ArchivoSubida,
   type ChatMessage,
   type ChatMessageKind,
@@ -123,6 +124,17 @@ export interface SendOptions {
   /** El confirm/cancel del gate de confirmación genérico (ver `mapearGate`, `@copiloto/core/chat`) —
    * viaja tal cual a `ChatRequest.payload`. `null`/ausente en cualquier otro turno. */
   payload?: Record<string, unknown> | null;
+  /** BL-D4 — texto a mostrar en la burbuja optimista del usuario cuando difiere del `text` que se
+   * manda al backend. Lo usa el gate confirmar/cancelar (`kind:'callback'`): el backend espera el
+   * `value` crudo del choice elegido (`confirm:<turn>:<step>`), pero el usuario nunca escribió eso —
+   * tocó un botón con un label ("Confirmar"/"Cancelar", `gate.confirmLabel`/`gate.cancelLabel`). Sin
+   * este campo, la burbuja pintaba el `value` técnico tal cual. Ausente: se usa `text` como siempre. */
+  displayText?: string;
+  /** H-A4-9 — id del `ChatMessage` HITL que esta respuesta resuelve (`mensaje.id` de la card en
+   * `ListaMensajes`). Presente en el confirm/cancel del gate: además de mandar la respuesta, marca
+   * ESE mensaje `hitlRespondido` (atómico, ver `reducirChat`) para que quede deshabilitado aun
+   * después de un reload. Ausente en cualquier otro `send` (texto libre, voz, foto). */
+  hitlMessageId?: string;
 }
 
 export interface UseChatResult {
@@ -131,11 +143,32 @@ export interface UseChatResult {
   estado: EstadoChat | null;
   send: (text: string, opts?: SendOptions) => Promise<void>;
   /** Sube un dictado corto (`useVozComando`) para transcribir y despachar -- ver el docstring de
-   * `enviarAudio` más abajo. */
-  enviarAudio: (audio: ArchivoSubida) => Promise<void>;
+   * `enviarAudio` más abajo. `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns». */
+  enviarAudio: (audio: ArchivoSubida, duracionSeg: number) => Promise<void>;
   /** Sube una foto de ticket (`useCapturaFoto`) para OCR y despachar -- ver el docstring de
    * `enviarFoto` más abajo. */
   enviarFoto: (foto: ArchivoSubida) => Promise<void>;
+  /** K-11 / BL-J8 Parte 1 — marca la card `requiere_conexion` de `mensajeId` como descartada
+   * («Ahora no» en `useConexionRequerida.ts`) y persiste el cambio. Síncrono y sin red, a diferencia
+   * de `send`/`enviarAudio`/`enviarFoto`: no hay ciclo de envío, sólo una transición de estado sobre
+   * un mensaje ya existente. */
+  descartarConexion: (mensajeId: string) => void;
+  /** GUARDM parte 2 — marca el campo terminal (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/
+   * `facturaResuelta`/`presupuestoResuelto`) de `mensajeId` y persiste, mismo mecanismo síncrono y sin
+   * red que `descartarConexion` (patrón B: la marca vive DENTRO del mensaje, no en una clave
+   * `AsyncStorage` aparte). Genérico entre las 5 cards porque todas necesitan exactamente lo mismo:
+   * pisar un campo del mensaje ya existente sin tocar el resto del estado. La transición vive en
+   * `reducirChat` (evento `tarjeta_resuelta`) — este hook sólo dispara el evento y persiste, mismo
+   * criterio que el resto de las acciones del módulo. */
+  marcarCardResuelta: (
+    mensajeId: string,
+    patch: Partial<
+      Pick<
+        ChatMessage,
+        'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+      >
+    >,
+  ) => void;
 }
 
 /**
@@ -238,7 +271,9 @@ export function useChat(clienteId: string): UseChatResult {
       const sessionId = await leerOCrearSessionId(clienteId);
       const persistidos = await leerMensajesPersistidos(clienteId, sessionId);
       if (!montadoRef.current) return;
-      actualizarEstado(hidratarEstado(sessionId, persistidos));
+      // H-A4-9 — migra historial viejo (sin `hitlRespondido`, o con el token legacy pre-#624) ANTES
+      // de sembrar el reducer: ver el docstring de `sanitizarHitlRespondido`.
+      actualizarEstado(hidratarEstado(sessionId, sanitizarHitlRespondido(persistidos)));
       void poll();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite: recrearlo en cada
@@ -288,10 +323,25 @@ export function useChat(clienteId: string): UseChatResult {
 
       detenerPolling();
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: trimmed };
+      // BL-D4: `opts.displayText` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta
+      // en su burbuja. `trimmed` sigue siendo lo que se manda al backend (`cancel:<turn>:<step>`).
+      const mensajeUsuario: ChatMessage = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: opts?.displayText ?? trimmed,
+        creadoEn: Date.now(),
+      };
       // Dos eventos separados: agregar el mensaje NO toca `sendStatus` — ese cambio es explícito vía
       // `envio_iniciado`, así el mensaje aparece OPTIMISTA (antes de que la red responda).
-      let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
+      // H-A4-9 — `opts.hitlMessageId` viaja como `hitlRespondido` del evento: el reducer marca la
+      // card HITL respondida en la MISMA transición que agrega esta burbuja.
+      let siguiente = reducirChat(actual, {
+        tipo: 'mensaje_usuario_agregado',
+        mensaje: mensajeUsuario,
+        hitlRespondido: opts?.hitlMessageId
+          ? { mensajeId: opts.hitlMessageId, value: trimmed, label: mensajeUsuario.text }
+          : undefined,
+      });
       siguiente = reducirChat(siguiente, { tipo: 'envio_iniciado' });
       persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
@@ -333,7 +383,7 @@ export function useChat(clienteId: string): UseChatResult {
    * en la caché de `expo-audio` por cada dictado.
    */
   const enviarAudio = useCallback(
-    async (audio: ArchivoSubida) => {
+    async (audio: ArchivoSubida, duracionSeg: number) => {
       const actual = estadoRef.current;
       if (!actual) return;
 
@@ -364,7 +414,13 @@ export function useChat(clienteId: string): UseChatResult {
         return;
       }
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: transcript };
+      const mensajeUsuario: ChatMessage = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: transcript,
+        creadoEn: Date.now(),
+        porVoz: { duracionSeg },
+      };
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });
@@ -416,6 +472,7 @@ export function useChat(clienteId: string): UseChatResult {
         id: `user-${generarId()}`,
         role: 'user',
         text: '📷 Foto del ticket enviada',
+        creadoEn: Date.now(),
       };
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
@@ -428,5 +485,47 @@ export function useChat(clienteId: string): UseChatResult {
     [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
   );
 
-  return { estado, send, enviarAudio, enviarFoto };
+  /**
+   * K-11 / BL-J8 Parte 1 — «Ahora no» del sheet de conexión. Sin red, sin ciclo `envio_*`: sólo
+   * marca `conexionDescartada` en el mensaje existente y persiste, mismo patrón B que
+   * `hitlRespondido` (la marca vive DENTRO del mensaje, sin la fuga de una clave separada).
+   */
+  const descartarConexion = useCallback(
+    (mensajeId: string) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+      const siguiente = reducirChat(actual, { tipo: 'conexion_descartada', mensajeId });
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+    },
+    [actualizarEstado, clienteId],
+  );
+
+  /**
+   * GUARDM parte 2 — mismo mecanismo exacto que `descartarConexion` (sin red, sin ciclo `envio_*`),
+   * genérico entre las 5 cards de propuesta: el evento `tarjeta_resuelta` (`reducirChat`) decide QUÉ
+   * campo pisar, este hook sólo dispara y persiste. Lee `estadoRef.current` (no un `estado` cerrado
+   * por closure) por el mismo motivo que el resto del módulo: evitar el closure stale si la card llama
+   * esto después de que algún otro evento (un poll, un envío) ya actualizó el estado.
+   */
+  const marcarCardResuelta = useCallback(
+    (
+      mensajeId: string,
+      patch: Partial<
+        Pick<
+          ChatMessage,
+          'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+        >
+      >,
+    ) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+      const siguiente = reducirChat(actual, { tipo: 'tarjeta_resuelta', mensajeId, patch });
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+    },
+    [actualizarEstado, clienteId],
+  );
+
+  return { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta };
 }

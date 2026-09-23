@@ -6,6 +6,7 @@ import { useSession } from '../auth';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
+import { CambiarCredenciales } from './CambiarCredenciales';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -50,6 +51,8 @@ export function PantallaCuenta() {
           </View>
         </Row>
 
+        <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
+
         {/* 🔴 **BL-O6 parte A (2026-09-22): van ACÁ y no en el alta, porque mobile no tiene alta.**
             El DoD original decía "desde el alta de mobile se llega a ToS y a Privacidad" — pero
             `PantallaLogin` es login-only (no hay `SignupScreen` en esta plataforma, sólo en web).
@@ -88,7 +91,8 @@ export function PantallaCuenta() {
               No molestar
             </Text>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
+              Para silenciarme tengo que tocar una configuración de tu teléfono. Todavía no lo hago
+              solo.
             </Text>
           </View>
         </Row>

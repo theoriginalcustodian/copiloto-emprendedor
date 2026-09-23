@@ -90,10 +90,16 @@
 }
 
 /* Grid PLANO (diseño línea 332): 2 columnas, SIN agrupar por categoría — `desktop.css` (fuera de
-   mi ownership) sube esto a 3 columnas en escritorio via `.connections-screen__grid`. */
+   mi ownership) sube esto a 3 columnas en escritorio via `.connections-screen__grid`.
+ *
+ * H-A4-14: `1fr 1fr` sin `minmax(0, …)` deja cada track con `min-width: auto` (default de un
+ * grid item) — el algoritmo de sizing le da a cada columna el min-content de su celda MÁS ANCHA
+ * antes de repartir el resto en `fr`, así que una columna con cards de contenido más largo
+ * (ej. `RECONECTAR` + botón «Reconectar») termina más ancha que la otra (medido: ~212 vs ~140 px
+ * a 390). `minmax(0, 1fr)` fuerza el mínimo a 0 — mismo patrón que `min-width: 0` en flex (H-A4-8). */
 .connections-screen__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 13px;
 }
 
@@ -151,6 +157,21 @@
   margin: 0;
 }
 
+/* BL-W2: la capacidad de la app («Mandar correos por vos. No puede leerlos.»). Máx. 3 líneas para
+   que una descripción larga no desparrame el grid de 2 columnas. */
+.service-card__description {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--label);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .service-card__footer {
   margin-top: auto;
   display: flex;
@@ -182,5 +203,52 @@
   min-height: 0;
   padding: 7px;
   border-radius: var(--r-pill);
+  font-size: 12.5px;
+}
+
+/* BL-C1: «Desconectar» discreto al pie de la card conectada (mismo hug-content que «Conectar») y su
+   confirmación en la propia card — dice qué se pierde antes de cortar el acceso del copiloto. */
+.service-card__footer {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.service-card__disconnect {
+  min-height: 0;
+  padding: 7px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+
+.service-card__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: var(--danger-border);
+}
+
+.service-card__confirm-text,
+.service-card__confirm-error {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.service-card__confirm-error {
+  color: var(--danger-fg);
+}
+
+.service-card__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.service-card__confirm-actions .uc-btn {
+  min-height: 0;
+  padding: 8px 12px;
   font-size: 12.5px;
 }

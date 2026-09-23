@@ -27,6 +27,8 @@ const PERFIL = {
   aQuien: 'ambos' as const,
   nombreComercial: 'Electricidad Pérez',
   horarioAtencion: 'Lunes a viernes de 8 a 17',
+  telefono: '341 590 6309',
+  email: 'contacto@elgalpon.com.ar',
   formalidad: 'cercano' as const,
   largoRespuesta: 'breve' as const,
   nombreCopiloto: 'Copi',
@@ -83,27 +85,15 @@ describe('PantallaPerfilNegocio', () => {
     expect(screen.queryByTestId('perfil-negocio-seccion-negocio')).toBeNull();
   });
 
-  /**
-   * 🔴 El invariante que justifica que el POST sea parcial. Si "Guardar" de Personalidad mandara
-   * también los campos del negocio, pisaría con lo que haya en pantalla —que puede ser viejo— lo
-   * que el usuario cambió en otro dispositivo. Este test es rojo si alguien "simplifica" mandando
-   * el objeto entero desde cualquiera de los dos botones.
-   */
-  it('cada sección manda SÓLO sus claves', async () => {
+  it('K-15: la fila-resumen refleja el valor guardado y abre «Cómo hablarle»; el editor ya no vive acá', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    expect(screen.getByTestId('perfil-negocio-tono-resumen')).toHaveTextContent(/Cercano · Breve · Copi/);
+    expect(screen.queryByTestId('perfil-negocio-formalidad')).toBeNull();
+    expect(screen.queryByTestId('perfil-negocio-largo')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-personalidad'));
-    await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
-
-    expect(mockGuardar).toHaveBeenCalledWith({
-      formalidad: 'cercano',
-      largoRespuesta: 'breve',
-      nombreCopiloto: 'Copi',
-    });
-    const enviado = mockGuardar.mock.calls[0][0] as Record<string, unknown>;
-    expect(enviado).not.toHaveProperty('queVende');
-    expect(enviado).not.toHaveProperty('nombreComercial');
+    await fireEvent.press(screen.getByTestId('perfil-negocio-tono-fila'));
+    expect(await screen.findByTestId('pantalla-tono')).toBeTruthy();
   });
 
   it('el botón de Negocio manda sólo los campos del negocio', async () => {
@@ -114,7 +104,40 @@ describe('PantallaPerfilNegocio', () => {
     await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
 
     const enviado = mockGuardar.mock.calls[0][0] as Record<string, unknown>;
-    expect(Object.keys(enviado).sort()).toEqual(['aQuien', 'horarioAtencion', 'nombreComercial', 'queVende']);
+    expect(Object.keys(enviado).sort()).toEqual([
+      'aQuien',
+      'email',
+      'horarioAtencion',
+      'nombreComercial',
+      'queVende',
+      'telefono',
+    ]);
+  });
+
+  it('BL-J10: precarga teléfono y email y los manda al guardar', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    expect(screen.getByTestId('perfil-negocio-telefono-input').props.value).toBe('341 590 6309');
+    expect(screen.getByTestId('perfil-negocio-email-input').props.value).toBe('contacto@elgalpon.com.ar');
+
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-telefono-input'), '011 4444 5555');
+    await fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
+
+    await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
+    expect(mockGuardar.mock.calls[0][0]).toMatchObject({ telefono: '011 4444 5555', email: 'contacto@elgalpon.com.ar' });
+  });
+
+  it('🔴 BL-J10: formato inválido avisa en el campo y NO llama al backend', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-telefono-input'), '590 630');
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-email-input'), 'sin-arroba');
+
+    await fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
+
+    await waitFor(() => expect(screen.getByText('Poné al menos 8 dígitos, con característica')).toBeTruthy());
+    expect(screen.getByText(/Falta el @ o el dominio/)).toBeTruthy();
+    expect(mockGuardar).not.toHaveBeenCalled();
   });
 
   it('muestra el detail del 400 en vez de un error genérico', async () => {
@@ -142,7 +165,7 @@ describe('PantallaPerfilNegocio', () => {
 
     await montar();
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
-    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-personalidad'));
+    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
 
     await waitFor(() =>
       expect(screen.getByTestId('perfil-negocio-nombre-comercial-input').props.value).toContain('S.R.L.'),

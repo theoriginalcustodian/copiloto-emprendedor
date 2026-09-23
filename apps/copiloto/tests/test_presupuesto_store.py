@@ -79,3 +79,62 @@ def test_aislamiento_A_no_puede_cambiar_el_estado_del_presupuesto_de_B(conn_de_t
     resultado = PresupuestoStore(conn_de_tenant(a), a).cambiar_estado(creado["id"], "aprobado")
     assert resultado is None
     assert PresupuestoStore(conn_de_tenant(b), b).detalle(creado["id"])["estado"] == "pendiente"
+
+
+# --- K-01 (BL-D1/BL-J1): idempotencia del alta, contra Postgres real ---------------------------
+
+def _crear(store, **kw):
+    return store.crear_idem(concepto="Reparación", receptor={"nombre": "Los Tilos"},
+                            items=[{"descripcion": "Mano de obra", "cantidad": 1,
+                                    "precio_unitario": "8000.00"}], **kw)
+
+
+def _cuantos(conn_de_tenant, cid):
+    conn = conn_de_tenant(cid)()
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM uc_factory.copiloto_presupuestos WHERE cliente_id = %s",
+                    (cid,))
+        return cur.fetchone()[0]
+
+
+@necesita_pg
+def test_K01_dos_crear_con_la_misma_idem_key_dejan_UN_registro(conn_de_tenant, tenants):
+    a, _ = tenants
+    store = PresupuestoStore(conn_de_tenant(a), a)
+    p1, rep1 = _crear(store, idem_key="clave-k01-1")
+    p2, rep2 = _crear(store, idem_key="clave-k01-1")
+    assert (rep1, rep2) == (False, True)
+    assert p1["id"] == p2["id"] and p1["numero"] == p2["numero"]
+    assert _cuantos(conn_de_tenant, a) == 1          # conteo CON claims (la conexión ya las lleva)
+
+
+@necesita_pg
+def test_K01_sin_idem_key_o_con_None_repetido_sigue_creando_una_fila_nueva(conn_de_tenant, tenants):
+    a, _ = tenants
+    store = PresupuestoStore(conn_de_tenant(a), a)
+    _crear(store); _crear(store, idem_key=None); _crear(store, idem_key="   ")
+    assert _cuantos(conn_de_tenant, a) == 3
+
+
+@necesita_pg
+def test_K01_carrera_dos_altas_concurrentes_misma_clave_dejan_UN_registro(conn_de_tenant, tenants):
+    """La ventana SELECT→INSERT: sin el índice único parcial, las dos pasarían el SELECT vacío."""
+    from concurrent.futures import ThreadPoolExecutor
+    a, _ = tenants
+    def alta(_):
+        return _crear(PresupuestoStore(conn_de_tenant(a), a), idem_key="clave-carrera")
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        resultados = list(ex.map(alta, range(2)))
+    assert _cuantos(conn_de_tenant, a) == 1
+    assert len({r[0]["id"] for r in resultados}) == 1
+    assert sorted(r[1] for r in resultados) == [False, True]
+
+
+@necesita_pg
+def test_K01_la_misma_clave_en_otro_tenant_NO_colisiona_ni_devuelve_lo_ajeno(conn_de_tenant, tenants):
+    """Adversarial barato: la clave es única POR tenant; B con la clave de A crea el suyo."""
+    a, b = tenants
+    pa, _ = _crear(PresupuestoStore(conn_de_tenant(a), a), idem_key="clave-compartida")
+    pb, rep = _crear(PresupuestoStore(conn_de_tenant(b), b), idem_key="clave-compartida")
+    assert rep is False and pb["id"] != pa["id"]
+    assert PresupuestoStore(conn_de_tenant(b), b).detalle(pa["id"]) is None

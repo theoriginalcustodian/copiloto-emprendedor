@@ -118,7 +118,7 @@ Porque una foto de ticket no incluye esa información —no hay forma de que el 
 
 **¿Puedo cargar un gasto de un mes anterior?** Sí, podés elegir cualquier fecha al cargarlo; a diferencia de las facturas, no hay una restricción de rango de días para los gastos.
 
-**¿Los gastos afectan mis facturas o mis impuestos de alguna forma automática?** No directamente: Gastos es un registro interno tuyo, separado del circuito fiscal de Facturación. Te sirve para tu propio control, no genera ningún movimiento ante AFIP.
+**¿Los gastos afectan mis facturas o mis impuestos de alguna forma automática?** No directamente: Gastos es un registro interno tuyo, separado del circuito fiscal de Facturación. Te sirve para tu propio control, no genera ningún movimiento ante ARCA.
 
 **¿Qué pasa si cargo dos veces el mismo gasto por error?** No hay una detección automática de gastos duplicados como sí existe para los ingresos. Prestá atención antes de guardar, sobre todo si cargás el mismo ticket dos veces por accidente.
 

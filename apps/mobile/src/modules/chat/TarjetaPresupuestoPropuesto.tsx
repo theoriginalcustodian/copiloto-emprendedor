@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { PresupuestoPropuesto } from '@copiloto/core';
+import type { ChatMessage, PresupuestoPropuesto } from '@copiloto/core';
 
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
@@ -20,21 +20,44 @@ import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropue
  * sería construir algo nuevo para quitar una capacidad que nadie reportó como problema. "Corregir un
  * ítem que el motor entendió mal" y "agregar el que se olvidó" son la misma corrección para quien
  * dicta.
+ *
+ * 🔴 **Guard cross-remount — MIGRADO de patrón A a patrón B (GUARDM parte 2).** Nació con un guard
+ * propio en `AsyncStorage` (K-01/BL-D1, PR #663: `copiloto-presupuesto-propuesto-resuelto:<mensajeId>`,
+ * misma clave/forma que la web). Funcionaba, pero mobile no tiene ningún mecanismo de poda para esas
+ * claves — a diferencia de la web, que ya podó su propio patrón A —, así que cada mensaje resuelto
+ * dejaba una clave que nunca se borraba: la misma fuga que ya se había bloqueado para las otras 4 cards
+ * de propuesta. Ahora `resuelto` (`mensaje.presupuestoResuelto`) vive DENTRO del mensaje persistido —
+ * mismo mecanismo que `hitlRespondido`/`conexionDescartada`/`gastoResuelto` — y no hay nada que podar:
+ * la marca muere con el mensaje. `mensajeId` se queda (lo sigue necesitando `FormularioPresupuesto` para
+ * derivar la `idem_key`, mecanismo INDEPENDIENTE del guard de resolución que se migró acá).
  */
 
 type Estado = 'editando' | 'guardado' | 'descartado';
 
 export interface TarjetaPresupuestoPropuestoProps {
   propuesta: PresupuestoPropuesto;
+  /** El `id` del `ChatMessage` que trae esta card — sólo para la `idem_key` de `FormularioPresupuesto`
+   * (ver docstring del módulo). Ya NO es la clave de ningún guard local. */
+  mensajeId: string;
+  /** GUARDM parte 2 — `mensaje.presupuestoResuelto`. Ausente = sigue en `'editando'`. */
+  resuelto?: ChatMessage['presupuestoResuelto'];
+  /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
+   * los tests que no verifican persistencia lo omiten sin romper nada. */
+  onResolver?: (patch: NonNullable<ChatMessage['presupuestoResuelto']>) => void;
   testID?: string;
 }
 
 export function TarjetaPresupuestoPropuesto({
   propuesta,
+  mensajeId,
+  resuelto,
+  onResolver,
   testID = 'presupuesto-propuesto',
 }: TarjetaPresupuestoPropuestoProps) {
-  const [estado, setEstado] = useState<Estado>('editando');
-  const [numero, setNumero] = useState<number | null>(null);
+  // Patrón B: `resuelto` ya está disponible SINCRÓNICAMENTE (vive en el mensaje, no en un storage
+  // async) — sin `useEffect` de lectura ni estado `leido` que gatee el primer render.
+  const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
+  const [numero, setNumero] = useState<number | null>(resuelto?.estado === 'guardado' ? resuelto.numero : null);
 
   if (estado === 'guardado') {
     return (
@@ -53,6 +76,7 @@ export function TarjetaPresupuestoPropuesto({
   return (
     <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.">
       <FormularioPresupuesto
+        mensajeId={mensajeId}
         iniciales={{
           concepto: propuesta.concepto,
           receptor: {
@@ -66,8 +90,12 @@ export function TarjetaPresupuestoPropuesto({
         onCreado={(p) => {
           setNumero(p.numero);
           setEstado('guardado');
+          onResolver?.({ estado: 'guardado', numero: p.numero });
         }}
-        onCancelar={() => setEstado('descartado')}
+        onCancelar={() => {
+          setEstado('descartado');
+          onResolver?.({ estado: 'descartado' });
+        }}
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarPresupuestos, obtenerPresupuesto, type Presupuesto } from '@copiloto/core';
+import { listarPresupuestos, obtenerPresupuesto, type Presupuesto, type SugerenciasPresupuesto } from '@copiloto/core';
 
 import { DetallePresupuesto } from './DetallePresupuesto';
-import { FormularioPresupuesto } from './FormularioPresupuesto';
+import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { MicFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -62,8 +63,14 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const [vista, setVista] = useState<Vista>('listado');
   const [corrigiendo, setCorrigiendo] = useState<Presupuesto | null>(null);
   const [detalle, setDetalle] = useState<Presupuesto | null>(null);
+  // K-07: «Mandalo por mail» sólo se ofrece sobre el presupuesto recién guardado con Doc.
+  const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
+  // llena `concepto` (nunca es una corrección, por eso no toca `corrigiendo`).
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -120,14 +127,29 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
     if (vivo.current) setRefrescando(false);
   }
 
-  function alCrear(nuevo: Presupuesto) {
+  function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
+    setInicialesDictado(undefined);
     // Se RELEE en vez de insertar el objeto devuelto en la lista local: el alta puede haber
     // reemplazado a otro, y ese otro tiene que DESAPARECER del listado vigente. Insertar a mano
     // dejaría los dos visibles — justo el problema que el filtro del backend resuelve.
     void cargar(true);
+    setSugerenciaMail(sugerencias?.mandarPorMail ?? null);
     setDetalle(nuevo);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setCorrigiendo(null);
+    setInicialesDictado(undefined);
+    setVista('formulario');
+  }
+
+  function alDictarPresupuesto(texto: string) {
+    setErrorMic(null);
+    setCorrigiendo(null);
+    setInicialesDictado({ concepto: texto });
+    setVista('formulario');
   }
 
   function abrirCorreccion(p: Presupuesto) {
@@ -188,28 +210,41 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
           {vista === 'formulario' ? (
             <FormularioPresupuesto
               corrige={corrigiendo}
+              iniciales={inicialesDictado}
               onCreado={alCrear}
               onCancelar={() => {
                 setVista('listado');
                 setCorrigiendo(null);
+                setInicialesDictado(undefined);
               }}
             />
           ) : (
             <>
-              <FilaBotones
-                testID="presupuestos-acciones"
-                botones={[
-                  {
-                    etiqueta: 'Nuevo presupuesto',
-                    onPress: () => {
-                      setCorrigiendo(null);
-                      setVista('formulario');
-                    },
-                    variante: 'primario',
-                    testID: 'presupuestos-nuevo',
-                  },
-                ]}
-              />
+              {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
+                  formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat),
+                  nunca una corrección. */}
+              <View style={styles.filaConMic}>
+                <MicFuncion contexto="presupuesto" onTranscripcion={alDictarPresupuesto} onError={setErrorMic} />
+                <View style={styles.botonesFlex}>
+                  <FilaBotones
+                    testID="presupuestos-acciones"
+                    botones={[
+                      {
+                        etiqueta: 'Nuevo presupuesto',
+                        onPress: abrirFormularioEnBlanco,
+                        variante: 'primario',
+                        testID: 'presupuestos-nuevo',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {errorMic != null && (
+                <Text testID="presupuestos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {/* 🔴 Decisión C: la lista rica de presupuestos (con estado, el toggle de historial) NO
                   se toca — la envuelve el buscador. Sin query, se muestra intacta; con query, pega a
@@ -257,7 +292,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
       {detalle != null && (
         <DetallePresupuesto
           presupuesto={detalle}
-          onCerrar={() => setDetalle(null)}
+          sugerenciaMandarPorMail={sugerenciaMail}
+          onCerrar={() => { setDetalle(null); setSugerenciaMail(null); }}
           onFacturar={facturarDesdeDetalle}
           onCorregir={abrirCorreccion}
           // El estado cambió en la hoja: se pisa la fila de la lista de atrás con lo que devolvió el
@@ -275,4 +311,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`.
+  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  botonesFlex: { flex: 1 },
 });

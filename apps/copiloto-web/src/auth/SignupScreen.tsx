@@ -17,10 +17,12 @@ import { useSession } from './useSession';
  * 'no-habilitada') en vez de reimplementarla acá.
  *
  * 🔴 Reachable hoy SOLO por ruta directa (`?signup=1`, ver `App.tsx`) — el link público "Crear
- * cuenta" del login NO se expone todavía: `POST /auth/signup` no tiene invite-gate (cualquiera con
- * la URL puede autoprovisionarse un tenant), y la decisión operador #3 (modo de alta: invitación
- * directa / lista de espera) sigue sin resolver. Ver
- * `hallazgo_frontend-a-todos_BETA-4b-signup-endpoint-existe-pero-publico-y-sin-tokens.md`.
+ * cuenta" del login NO se expone todavía. La decisión operador #3 (modo de alta) YA está resuelta
+ * desde 2026-08-04 (allow-list fail-closed, `apps/copiloto/web.py:550-592`: Google OAuth o
+ * invite-token de env) — pero este formulario NO manda invite-token, así que contra el backend real
+ * toda alta por email termina rechazada salvo esta ruta directa para invitados. El alta self-service
+ * de la beta es Google (BETA-5): ahí "entrar" y "crear cuenta" son el mismo acto, ya cubierto por
+ * `Entrar` en el login.
  */
 
 type FormState =

@@ -1,4 +1,4 @@
-import { esParConfirmarCancelar, type TipoMensaje, clasificarChoices } from '@copiloto/core';
+import { esParConfirmarCancelar, formatearImporte, type TipoMensaje, clasificarChoices } from '@copiloto/core';
 import type { BadgeVariant } from '../../design-system';
 import type { ReplyChoice } from '../../lib/api';
 import type { ChatMessage } from './useChat';
@@ -62,15 +62,26 @@ export interface HitlCardMappedProps {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** H-A4-9 — `true` cuando `message.hitlRespondido` ya está presente: `<HitlCard>` debe
+   * deshabilitarse (sin `onClick` activo, opacidad reducida vía `disabled` nativo del `<button>`). */
+  disabled: boolean;
 }
 
 /**
  * Convierte un `ChatMessage` (ya clasificado como HITL vía `classifyChoices`) en las props que
- * consume `<HitlCard>`. `onChoice` dispara `send(value, {kind:'callback'})`.
+ * consume `<HitlCard>`. `onChoice(value, label, messageId)` dispara `send(value, {kind:'callback',
+ * displayText: label, hitlMessageId: messageId})` — BL-D4: la burbuja del usuario muestra el label
+ * elegido, nunca el `value` técnico. H-A4-9: `messageId` (`message.id`) es lo que permite a `send`
+ * marcar ESTA card como respondida, para que quede deshabilitada aun después de un reload.
+ *
+ * Si `message.hitlRespondido` ya está presente (esta sesión la respondió, o
+ * `sanitizeLegacyHitlTokens` la migró al rehidratar), `onConfirm`/`onCancel` son no-ops — defensa en
+ * profundidad además de `disabled` en la vista: aunque algo la siga montando activa, un click no
+ * dispara ningún envío.
  */
 export function buildHitlCardProps(
   message: ChatMessage,
-  onChoice: (value: string) => void,
+  onChoice: (value: string, label: string, messageId?: string) => void,
 ): HitlCardMappedProps {
   const choices = message.choices ?? [];
   const confirmChoice =
@@ -83,19 +94,25 @@ export function buildHitlCardProps(
   const label = message.card?.label || 'Confirmación';
   const risk = SERVICE_RISK[service] ?? {};
   const boldMatch = message.text.match(BOLD_NAME_RE);
+  // El backend manda el monto CRUDO en el texto (`f"...por ${amount}..."`, sin separador de miles —
+  // ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar `$` (el
+  // consumidor `<HitlCard>` ya pone su propio signo). H-A4-12.
   const amountMatch = risk.showAmount ? message.text.match(AMOUNT_RE) : null;
+  const amountRaw = amountMatch?.[1];
+  const disabled = Boolean(message.hitlRespondido);
 
   return {
     service,
     label,
     name: boldMatch?.[1],
-    amount: amountMatch?.[1],
+    amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
     concept: message.text,
     badge: risk.badge,
     dangerBorder: risk.dangerBorder,
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
-    onConfirm: () => onChoice(confirmChoice.value),
-    onCancel: () => onChoice(cancelChoice.value),
+    disabled,
+    onConfirm: disabled ? () => {} : () => onChoice(confirmChoice.value, confirmChoice.label, message.id),
+    onCancel: disabled ? () => {} : () => onChoice(cancelChoice.value, cancelChoice.label, message.id),
   };
 }

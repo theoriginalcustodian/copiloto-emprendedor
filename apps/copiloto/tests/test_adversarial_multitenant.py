@@ -34,6 +34,7 @@ from context_factory import make_context_factory  # noqa: E402
 from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
 from mi_dia_web import create_mi_dia_app  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
+from tenant_onboarding_store import TenantOnboardingStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
 from mp_web import create_mp_app  # noqa: E402
 from reply_store import make_pg_reply_sink, read_replies  # noqa: E402
@@ -354,6 +355,33 @@ def test_adversarial_http_calendario_a_cannot_read_b_events(two_tenants):
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
+def test_adversarial_http_calendario_con_rango_a_cannot_read_b_events(two_tenants):
+    """K-13: mismo aislamiento que CAL1 pero CON `?desde&hasta` de 7 días. La ventana ampliada no puede
+    cambiar de quién es el `user_id` que viaja a Composio: A pide 7 días y a Composio sólo llega A, con el
+    rango pedido; nada de B se lee ni se devuelve."""
+    a, b = two_tenants
+    eventos_por_user = {
+        a.cliente_id: {"data": {"items": [{"id": "evt-a", "summary": "Evento de A", "start": {}}]}},
+        b.cliente_id: {"data": {"items": [{"id": "evt-b", "summary": "Evento de B", "start": {}}]}},
+    }
+    gw = _SpyComposioGateway(eventos_por_user=eventos_por_user)
+    client = TestClient(_build_mi_dia_http_app(two_tenants, gw=gw))
+    rango = {"desde": "2026-09-22", "hasta": "2026-09-28"}
+
+    r_a = client.get("/mi-dia/calendario", params=rango, headers={"Authorization": f"Bearer {a.token}"})
+    assert r_a.status_code == 200
+    assert [e["id"] for e in r_a.json()["eventos"]] == ["evt-a"]
+    assert [c["user_id"] for c in gw.execute_calls] == [a.cliente_id]   # a Composio no llegó B
+    args = gw.execute_calls[0]["arguments"]
+    assert "2026-09-22" in args["time_min"] and "2026-09-28" in args["time_max"]   # el rango pedido viajó
+
+    # control positivo: B con el mismo rango ve SUS eventos (un endpoint que devolviera vacío pasaría lo de arriba).
+    r_b = client.get("/mi-dia/calendario", params=rango, headers={"Authorization": f"Bearer {b.token}"})
+    assert [e["id"] for e in r_b.json()["eventos"]] == ["evt-b"]
+    assert [c["user_id"] for c in gw.execute_calls] == [a.cliente_id, b.cliente_id]
+    declarar_tenant(None)
+
+
 def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, crypto):
     """A nivel HTTP: token de A + `session_id` de B (ej. adivinado/leakeado por otro canal) -> el
     front-door NUNCA debe devolver el reply de B. Si `/reply` derivara cliente_id de otra fuente que
@@ -375,6 +403,41 @@ def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, cr
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
 
 
+def test_adversarial_http_reply_card_a_cannot_read_b_card(two_tenants, crypto, conn_de_tenant):
+    """K-07-B contrato §3 (auditoría A2): mismo patrón que el test de arriba, pero sobre `card` -- la
+    metadata HITL/sugerencia (K-11/K-07-B) que viaja en la MISMA fila que `reply_text`. `card` es un
+    payload nuevo; sin un assert propio, un bug que sólo tocara SU proyección (ej. un JOIN que la
+    resolviera por fuera del filtro `cliente_id`/`session_id` de `reply_store.read_replies`) pasaría
+    inadvertido detrás del test de `reply_text`, que no mira `card`."""
+    a, b = two_tenants
+    card_a = {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail", "bloquea": True,
+              "alcance": ["Leer mails"], "connect_path": "/composio/connect?service=gmail"}
+    card_b = {"kind": "sugerencia_armar_factura", "presupuesto_id": 999, "texto": "¿Te armo la factura?",
+              "bloquea": False}
+    make_pg_reply_sink(conn_de_tenant(a.cliente_id))(a.cliente_id, a.session_id, "conectá Gmail", None, card_a)
+    make_pg_reply_sink(conn_de_tenant(b.cliente_id))(b.cliente_id, b.session_id, "¿armo la factura?", None, card_b)
+
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    # token de A + session_id de B: ni texto ni card de B viajan.
+    r = client.get("/reply", params={"session_id": b.session_id},
+                   headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json()["replies"] == []
+
+    # control positivo: cada uno ve SU PROPIA card con su propio token+session (nunca la del otro, y
+    # nunca None por una proyección que la pierda).
+    r_a = client.get("/reply", params={"session_id": a.session_id},
+                     headers={"Authorization": f"Bearer {a.token}"})
+    assert [x["card"] for x in r_a.json()["replies"]][-1] == card_a
+
+    r_b = client.get("/reply", params={"session_id": b.session_id},
+                     headers={"Authorization": f"Bearer {b.token}"})
+    assert [x["card"] for x in r_b.json()["replies"]][-1] == card_b
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
 def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants, crypto):
     """`/me` con el token de A refleja SOLO el estado de A (su propio mp_connected/seller propio,
     su propia lista de composio_connected) -- nunca el de B, aunque la MISMA instancia de app y el
@@ -388,9 +451,147 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
 
     assert me_a == {"cliente_id": a.cliente_id, "mp_connected": True, "composio_connected": ["gmail"],
-                    "es_admin": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
     # y B NO ve la conexión composio que solo existe para A.
     assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": [],
-                    "es_admin": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+def test_adversarial_http_catalog_reflects_only_own_tenant_state(two_tenants, crypto, conn_de_tenant):
+    """`GET /catalog` (gap store-only señalado en #660, contrato STORE3): usa
+    `MpCredentialStore.salud()` + `composio_gateway.list_connections`, mismo dato que `/me` pero con
+    metadata de presentación. Mismo patrón que `test_adversarial_http_me_endpoint_...`: si `/catalog`
+    derivara el tenant de otra fuente que no fuera `Depends(require_tenant)`, este test lo cazaría.
+
+    Borro la credencial MP de B (que el fixture `two_tenants` sembró vencida, igual que la de A) para
+    que A y B queden en estados DISTINTOS ("caido" vs "nunca_conectado") -- si el status cruzara de
+    tenant, ambos leerían el mismo valor por accidente."""
+    a, b = two_tenants
+    MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).delete_all()
+    composio_connections = {a.cliente_id: [{"id": "1", "toolkit": "gmail", "status": "ACTIVE"}]}
+    app = _build_http_app(two_tenants, crypto, composio_connections=composio_connections)
+    client = TestClient(app)
+
+    cat_a = client.get("/catalog", headers={"Authorization": f"Bearer {a.token}"}).json()["services"]
+    cat_b = client.get("/catalog", headers={"Authorization": f"Bearer {b.token}"}).json()["services"]
+
+    mp_a = next(s for s in cat_a if s["key"] == "mercadopago")
+    mp_b = next(s for s in cat_b if s["key"] == "mercadopago")
+    assert mp_a["status"] == "caido"            # A: la credencial vencida del fixture
+    assert mp_b["status"] == "nunca_conectado"  # B: borrada -- si "caido" cruzara de A, fallaría acá
+
+    gmail_a = next(s for s in cat_a if s["key"] == "gmail")
+    gmail_b = next(s for s in cat_b if s["key"] == "gmail")
+    assert gmail_a["connected"] is True
+    assert gmail_b["connected"] is False  # composio_connected de A no se filtra hacia B
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+def test_adversarial_http_mp_disconnect_a_cannot_delete_b_connection(two_tenants, crypto, conn_de_tenant):
+    """`DELETE /mp/connection` AGRAVA respecto a los tests de arriba: no es una lectura que se filtra,
+    es una MUTACIÓN que borra filas. El caso hostil no es "A ve algo de B" -- es que la conexión de B,
+    sembrada por el MISMO fixture, siga viva después de que A la borra con SU PROPIO token. Que la
+    respuesta de A sea 200/404 no prueba nada por sí solo (contrato STORE3 §3): lo que prueba el
+    aislamiento es leer la fila de B directamente del store DESPUÉS del DELETE de A."""
+    a, b = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    # control positivo de la mutación misma: A borra SU PROPIA conexión (sembrada por el fixture).
+    r = client.delete("/mp/connection", headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json() == {"desconectado": True, "revocadas": 1}
+
+    # el caso hostil: la conexión de B sigue viva -- el DELETE de A no debe haber tocado su fila.
+    assert MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).get(b.seller) is not None
+
+    # A ya no tiene nada que borrar -> 404 (no hay ambigüedad entre "no tenía" y "no puede").
+    r2 = client.delete("/mp/connection", headers={"Authorization": f"Bearer {a.token}"})
+    assert r2.status_code == 404
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
+
+
+# --- K-14: onboarding_completado por tenant ---------------------------------------
+
+def test_K14_completar_con_el_cliente_de_A_no_cambia_la_fila_de_B(two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    TenantOnboardingStore(conn_de_tenant(a.cliente_id), a.cliente_id).completar()
+    assert TenantOnboardingStore(conn_de_tenant(b.cliente_id), b.cliente_id).completado() is False
+
+
+def test_adversarial_http_onboarding_completar_a_cannot_complete_for_b(two_tenants, crypto):
+    """`POST /me/onboarding/completar` a nivel HTTP (gap del mismo patrón que K-14 store-level, señalado
+    por planificación en #660/contrato STORE3): el test de arriba recibe el `cliente_id` YA RESUELTO y
+    no ejercita `require_tenant`. De paso cierra el menor de la misma corrida: el test HTTP de `/me`
+    nunca ejercitaba `onboarding_completado=True` -- acá sí, vía `/me` después de completar."""
+    a, b = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    r = client.post("/me/onboarding/completar", headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json() == {"onboarding_completado": True}
+
+    me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
+    me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
+    assert me_a["onboarding_completado"] is True
+    assert me_b["onboarding_completado"] is False  # completar de A no cambió la fila de B
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+# --- K-08: feedback propio ("Lo pediste vos") -------------------------------------
+
+def test_K08_el_feedback_de_A_no_aparece_en_la_lista_de_B(two_tenants, conn_de_tenant):
+    from feedback_store import FeedbackStore
+    a, b = two_tenants
+    try:
+        fid = FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            tipo="texto", texto="secreto de A", contexto=None)
+        assert [i["id"] for i in FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).listar_propio()] == [fid]
+        assert FeedbackStore(conn_de_tenant(b.cliente_id), b.cliente_id).listar_propio() == []
+    finally:
+        conn = conn_de_tenant(a.cliente_id)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_feedback WHERE cliente_id = %s", (a.cliente_id,))
+        conn.commit()
+        conn.close()
+
+
+def test_adversarial_http_feedback_a_cannot_read_b_feedback(two_tenants, crypto, conn_de_tenant):
+    """K-08 a nivel HTTP (gap encontrado por planificación, 2026-09-22): el test de arriba ejercita el
+    aislamiento a nivel STORE con el `cliente_id` YA RESUELTO -- no pasa por `require_tenant`, que es
+    justo la pieza que decide de quién es el request. Si `/feedback` derivara el tenant de otra fuente
+    (query param, header custom, default), ese test pasaría igual. Mismo patrón que
+    `test_adversarial_http_reply_endpoint_a_cannot_read_b_session`: token real contra el endpoint HTTP
+    real, con control positivo para que un endpoint que siempre devolviera `[]` no pase por accidente."""
+    from feedback_store import FeedbackStore
+    a, b = two_tenants
+    try:
+        FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            tipo="texto", texto="secreto de A", contexto=None)
+        FeedbackStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            tipo="texto", texto="secreto de B", contexto=None)
+
+        app = _build_http_app(two_tenants, crypto)
+        client = TestClient(app)
+
+        r_a = client.get("/feedback", headers={"Authorization": f"Bearer {a.token}"})
+        assert r_a.status_code == 200
+        assert [i["texto"] for i in r_a.json()["items"]] == ["secreto de A"]
+
+        # control positivo (misma app, token distinto): B ve SU PROPIO feedback, nunca el de A ni una
+        # lista vacía por accidente -- sin esto, un endpoint que siempre devolviera [] pasaría el
+        # assert de arriba por la razón equivocada.
+        r_b = client.get("/feedback", headers={"Authorization": f"Bearer {b.token}"})
+        assert r_b.status_code == 200
+        assert [i["texto"] for i in r_b.json()["items"]] == ["secreto de B"]
+        declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+    finally:
+        conn = conn_de_tenant(a.cliente_id)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_feedback WHERE cliente_id IN (%s, %s)",
+                        (a.cliente_id, b.cliente_id))
+        conn.commit()
+        conn.close()

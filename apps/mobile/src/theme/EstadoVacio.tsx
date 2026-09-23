@@ -19,14 +19,24 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 
+import {
+  CLAVE_DIAS_CALMA,
+  DIAS_PARA_RETIRAR_EXPLICACION,
+  TAZA,
+  VIEWBOX_TAZA,
+  fechaLocalISO,
+  mostrarExplicacion,
+  parsearDiasVistos,
+  registrarDiaVisto,
+  type RolTaza,
+} from '@copiloto/core';
+
 import { almacenClave } from '../adapters/almacen';
-import { TAZA, VIEWBOX_TAZA, type RolTaza } from './ilustracionTaza';
 import { useTema } from './ThemeProvider';
 
-/** Cuántos días DISTINTOS hay que ver el vacío antes de que la explicación se retire. */
-export const DIAS_PARA_RETIRAR_EXPLICACION = 3;
-
-const CLAVE_DIAS_CALMA = 'odobi-calma-dias';
+/** La constante vive en `@copiloto/core` (BL-W5: UNA sola N para web y mobile); se reexporta acá
+ *  porque el test de este componente la importa desde el componente. */
+export { DIAS_PARA_RETIRAR_EXPLICACION };
 
 export interface EstadoVacioProps {
   titulo: string;
@@ -46,12 +56,12 @@ export function EstadoVacio({ titulo, cuerpo, ilustracion = false, testID }: Est
     let vivo = true;
     void (async () => {
       try {
-        const hoy = new Date().toISOString().slice(0, 10);
-        const crudo = await almacenClave.leer(CLAVE_DIAS_CALMA);
-        const dias: string[] = crudo != null ? (JSON.parse(crudo) as string[]) : [];
-        const conHoy = dias.includes(hoy) ? dias : [...dias, hoy];
+        // Día LOCAL, no UTC (`fechaLocalISO`): con `toISOString()` el «día» cambiaba a las 21:00 ART.
+        const hoy = fechaLocalISO(new Date());
+        const dias = parsearDiasVistos(await almacenClave.leer(CLAVE_DIAS_CALMA));
+        const conHoy = registrarDiaVisto(dias, hoy);
         if (conHoy !== dias) await almacenClave.guardar(CLAVE_DIAS_CALMA, JSON.stringify(conHoy));
-        if (vivo) setMostrarCuerpo(conHoy.length < DIAS_PARA_RETIRAR_EXPLICACION);
+        if (vivo) setMostrarCuerpo(mostrarExplicacion(conHoy));
       } catch {
         // Sin almacenamiento la explicación se muestra: el default menos malo es explicar de más.
         // ⚠️ El try/catch va ADENTRO y no como `.catch()` colgado del IIFE: con el `.catch()` afuera,

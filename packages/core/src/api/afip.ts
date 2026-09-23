@@ -570,6 +570,19 @@ export async function guardarPerfil(perfil: GuardarPerfilRequest): Promise<ConDi
     const faltantes = faltantesDeDetail(detailCrudo(body));
     if (faltantes) throw new ErrorValidacionFiscal(faltantes);
   }
+  // K-02 / BL-C6 — «Cambiar» el CUIT: el backend rechaza uno que no esté vinculado a la clave fiscal
+  // del tenant con `409 cuit_no_vinculado`. Se normaliza a `ErrorValidacionFiscal` con `campo: 'cuit'`
+  // para que web y mobile muestren el `mensaje` del backend inline sobre el campo CUIT por el MISMO
+  // camino que ya usan los 422 (`erroresPerfil.cuit`), sin ramificar por plataforma.
+  if (res.status === 409 && codigoDeConflicto(body) === 'cuit_no_vinculado') {
+    throw new ErrorValidacionFiscal([
+      {
+        codigo: 'cuit_no_vinculado',
+        campo: 'cuit',
+        mensaje: mensajeDeConflicto(body) ?? 'Ese CUIT todavía no está vinculado a tu cuenta de ARCA.',
+      },
+    ]);
+  }
   return mapearErrorGenerico(res.status, body);
 }
 

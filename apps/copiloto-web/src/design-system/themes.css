@@ -104,6 +104,11 @@
   --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
   --core-glow: none;
   --halo: none;
+  /* BL-X10 — wordmark del splash/identidad (`modules/splash/`). FIJO, no varía por tema: es la
+     misma pieza de marca (splash-port-reanimated.md) para las tres pieles. Logotipo, exento WCAG
+     1.4.3 (decisión Martin 22/07, citada en la spec §8) — 2,86:1 sobre `#F7F3EC` (crema, el
+     extremo del degradé de fondo con MENOS contraste), mismo patrón de exención que `--core`. */
+  --identidad-word: #DE7250;
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   --chip-fg: #2E2A20;
@@ -216,7 +221,8 @@
 }
 
 /* claro — piel default de ODOBI (§2.1 del DoD, crema + acento terracota) */
-:root[data-theme='claro'] {
+:root[data-theme='claro'],
+[data-muestra='claro'] {
   --bg: #EFE6D2;
   --bg-layer: none;
   --text: #2E2A20;
@@ -238,6 +244,7 @@
   --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
   --core-glow: none;
   --halo: none;
+  --identidad-word: #DE7250; /* BL-X10 — fijo, ver el comentario en el bloque default de arriba */
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   /* Chip: sin declaración propia en el DoD — se reusa el tinte de "Nav activo"
@@ -345,7 +352,8 @@
 }
 
 /* oscuro — §2.2 del DoD */
-:root[data-theme='oscuro'] {
+:root[data-theme='oscuro'],
+[data-muestra='oscuro'] {
   --bg: #1E1610;
   --bg-layer: none;
   --text: #F1E4CC;
@@ -362,6 +370,7 @@
   --core: #DE7250; /* texto/trazo sobre superficie oscura — 5,33-6,30:1, el caso que la regla permite (CLAUDE.md §2) */
   --core-glow: none;
   --halo: none;
+  --identidad-word: #DE7250; /* BL-X10 — fijo, ver el comentario en el bloque default de arriba */
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   --chip-fg: #E8A088; /* Apoyo/Arena (CLAUDE.md §2) sobre chip-bg oscuro — 5,82-6,84:1; el E67A5E viejo era un 3er terracota no declarado */
@@ -433,104 +442,6 @@
   --danger-btn-bg: #ff8fa0;
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(241, 228, 204, 0.1);
-  --nav-active: rgba(222, 114, 80, 0.18);
-  --scrollbar-thumb: rgba(222, 114, 80, 0.24);
-  --scrollbar-thumb-hover: rgba(222, 114, 80, 0.44);
-}
-
-/* nocturno — §2.8 del DoD, derivado de `oscuro` (monocromo profundo, `[ASSUMED_PENDING_VERIFY]`
-   según el propio DoD: si no convence en device, se ajusta o descarta sin bloquear el sprint). */
-:root[data-theme='nocturno'] {
-  --bg: #0C0805;
-  --bg-layer: none;
-  --text: #F1E4CC;
-  /* Texto/secundario/terciario reusados de `oscuro` (§2.8: "texto idéntico al oscuro"; el DoD no
-     declara secundario/terciario propios para nocturno) — con el fondo más oscuro de esta piel
-     dan AÚN más contraste, siguen AA sin re-ajustar. */
-  --mono: #928777;
-  --status-fg: #F1E4CC;
-  --heading: #F1E4CC;
-  --label: #928777;
-  --concept: #8E8374;
-  --name-fg: #F1E4CC;
-  --core-size: 18px;
-  --core: #DE7250; /* texto/trazo sobre superficie oscura — 5,33-6,30:1, el caso que la regla permite (CLAUDE.md §2) */
-  --core-glow: none;
-  --halo: none;
-  --presence-wrap-bg: transparent;
-  --presence-wrap-shadow: none;
-  --chip-fg: #E8A088; /* Apoyo/Arena (CLAUDE.md §2) sobre chip-bg oscuro — 5,82-6,84:1; el E67A5E viejo era un 3er terracota no declarado */
-  --chip-bg: rgba(222, 114, 80, 0.24);
-  --chip-border: 1px solid rgba(241, 228, 204, 0.18);
-  --avatar-bg: #141009;
-  --avatar-border: 1px solid rgba(241, 228, 204, 0.1);
-  --avatar-shadow: none;
-  --avatar-fg: #DE7250; /* 24px/600 sobre avatar-bg oscuro — 5,33-5,98:1 */
-  --bubble-bg: #141009;
-  --bubble-border: 1px solid rgba(241, 228, 204, 0.1);
-  /* Nivel 1 nocturno (§2.8: "relieve nivel 1-2 con rgba(0,0,0,.75), SIN luz interna cálida") — sin
-     `inset`, a diferencia de claro/oscuro. */
-  --bubble-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
-  --bubble-blur: none;
-  --bubble-fg: #D8C6A8;
-  --user-bg: #B04A2E; /* sólido (no degradé): FBEEE6 encima da 2,79:1 contra DE7250 (falla), 4,78:1 contra B04A2E (AA ✅), ver cabecera */
-  --user-border: none;
-  --user-fg: #FBEEE6;
-  --card-bg: #141009;
-  --card-border: 1px solid rgba(241, 228, 204, 0.1);
-  --card-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
-  --card-blur: none;
-  /* "Bloque" de cifra — mismo criterio invertido que `oscuro` (ver esa nota y la cabecera del
-     archivo): `#F7F3EC` da 18,04:1 contra `--bg` acá (el mejor margen de las 3 pieles). */
-  --bloque-cifra-bg: #F7F3EC;
-  --bloque-cifra-fg: #1A1512;
-  --bloque-cifra-fg-secondary: #6A6457;
-  --bloque-cifra-chip-bg: color-mix(in srgb, var(--bloque-cifra-fg) 8%, transparent);
-  --amount-size: 46px;
-  --amount-fg: #F1E4CC;
-  --amount-sign: #DE7250; /* 20px/400 NORMAL sobre card-bg oscuro — 5,33-5,98:1; B04A2E daría 3,11:1, falla AA acá */
-  --badge-fg: #C6952E;
-  --badge-bg: rgba(198, 149, 46, 0.14);
-  --badge-border: 1px solid rgba(198, 149, 46, 0.4);
-  --btn-bg: #B04A2E; /* sólido: texto 15,5px/600 no llega al piso de 19px Bold que habilitaría DE7250 (2,87:1); B04A2E da 4,92:1 */
-  --btn-fg: #FBF3E2;
-  /* Nivel 3 — no redeclarado en §2.8, hereda de oscuro (idéntico en las 3 pieles). */
-  --btn-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 10px 26px -6px rgba(126, 36, 23, 0.5);
-  --cancel-fg: #928777;
-  --cancel-bg: transparent;
-  --cancel-border: 1px solid rgba(241, 228, 204, 0.18);
-  --cancel-shadow: none;
-  --send-bg: #B04A2E; /* mismo criterio que --btn-bg */
-  --send-fg: #FBF3E2;
-  /* Campo = `rgba(20,13,8,.5)` (mismo rgba de §2.3 que usa `oscuro`) aplanado sobre la superficie
-     PROPIA de nocturno (`#141009`, no la de oscuro) — misma técnica de composición, base distinta. */
-  --input-bg: #140E08;
-  --input-border: 1px solid rgba(241, 228, 204, 0.1);
-  --input-shadow: none;
-  --input-blur: none;
-  --input-fg: #928777;
-  --tab-active: #F1E4CC;
-  --tab-inactive: #928777;
-  --tab-border: 1px solid rgba(241, 228, 204, 0.08);
-  --nav-bg: #141009;
-  --nav-border: rgba(241, 228, 204, 0.1);
-  --tile-bg: #141009;
-  --tile-border: 1px solid rgba(241, 228, 204, 0.1);
-  /* Nivel 2 nocturno — misma opacidad `.75` que el nivel 1 (§2.8 los agrupa), sin `inset`. */
-  --tile-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
-  --tile-blur: none;
-  /* Nivel 4 — no redeclarado en §2.8, hereda de oscuro. */
-  --shadow-nivel4: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
-  --shadow-nivel4-shell: 0 34px 70px -24px rgba(0, 0, 0, 0.72);
-  --ok-fg: #34e5a0;
-  --ok-bg: rgba(52, 229, 160, 0.14);
-  --ok-border: 1px solid rgba(52, 229, 160, 0.42);
-  --danger-fg: #ff8fa0;
-  --danger-bg: rgba(255, 90, 120, 0.14);
-  --danger-border: 1px solid rgba(255, 110, 130, 0.46);
-  --danger-btn-bg: #ff8fa0;
-  --danger-btn-fg: #2e0810;
-  --row-border: 1px solid rgba(241, 228, 204, 0.08);
   --nav-active: rgba(222, 114, 80, 0.18);
   --scrollbar-thumb: rgba(222, 114, 80, 0.24);
   --scrollbar-thumb-hover: rgba(222, 114, 80, 0.44);

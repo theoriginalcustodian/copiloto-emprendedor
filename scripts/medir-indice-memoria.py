@@ -46,6 +46,12 @@ def main() -> int:
                     help="caracteres que el harness carga del índice antes de truncar. Medido "
                          "2026-08-01: cortó a los 24.683 chars y la línea siguiente cruzaba 25.000. "
                          "El default deja margen para crecer sin volver a truncarse")
+    ap.add_argument("--max-lineas", type=int, default=200,
+                    help="líneas que el harness carga del índice antes de truncar. Es un límite "
+                         "SEPARADO del de caracteres y se alcanza primero cuando las líneas son "
+                         "cortas. Medido 2026-09-22: el índice estaba en 23.930/24.000 chars —este "
+                         "control en OK— y el harness igual avisó «207 lines (limit: 200)», así que "
+                         "7 líneas no existían para ninguna sesión mientras el gate decía que sí")
     ap.add_argument("--umbral-duplicado", type=float, default=0.82)
     args = ap.parse_args()
 
@@ -72,6 +78,15 @@ def main() -> int:
     if not ok_peso:
         sobra = peso - args.presupuesto
         fallas.append(f"el índice se pasa {sobra} chars: se trunca y esa cola no existe para la sesión")
+
+    # --- 1.bis presupuesto en LÍNEAS: el harness trunca por las DOS dimensiones ---
+    # Medir sólo caracteres deja un modo de falla mudo: líneas cortas agotan el cupo de líneas con
+    # el de chars todavía en verde, y el gate firma OK sobre un índice que llega cortado.
+    ok_lineas = lineas <= args.max_lineas
+    print(f"[{'OK ' if ok_lineas else 'MAL'}] líneas: {lineas} / {args.max_lineas}")
+    if not ok_lineas:
+        fallas.append(f"el índice se pasa {lineas - args.max_lineas} líneas: la cola se trunca "
+                      f"aunque el presupuesto en chars esté en verde")
 
     # --- 2. cobertura ---
     huerfanas = [f.name for f in topicos if f.name not in refs]

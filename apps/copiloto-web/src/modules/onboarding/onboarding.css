@@ -1,0 +1,31 @@
+/*
+ * Estilos del onboarding conversacional (K-14 / BL-X8 resto) — el guión y la tarjeta "Tus servicios"
+ * reusan las clases de `chat.css` (`.chat-row`, `.chat-bubble`, `.hitl-card`) para que el hilo de
+ * bienvenida sea VISUALMENTE el mismo hilo, no un formulario aparte (`mockups/01-onboarding/
+ * DECISIONES.md`). Acá sólo lo que ese CSS no cubre: el contenedor de página y estados chicos.
+ * Theme-aware vía CSS vars, cero color literal (mismo criterio que account.css/connections.css).
+ */
+
+.onboarding-hilo {
+  flex: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.onboarding__ok {
+  font-size: 13px;
+  color: var(--label);
+}
+
+.onboarding-hilo__cargando {
+  margin: 0;
+  font-size: 14px;
+  color: var(--label);
+}

@@ -274,6 +274,12 @@
   gap: 6px;
 }
 
+.perfil-negocio-seccion__error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--danger-fg);
+}
+
 .perfil-negocio-seccion__etiqueta {
   font-family: var(--font-body);
   font-size: 12px;
@@ -557,17 +563,6 @@
   color: var(--text);
 }
 
-.afip-setup-cuit-fijo__cambiar {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--core);
-  padding: 4px;
-}
-
 .afip-setup-ambiente-lista {
   display: flex;
   flex-wrap: wrap;
@@ -630,42 +625,147 @@
   margin: 0;
 }
 
-.apariencia-screen__theme-grid {
+.apariencia-screen__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.apariencia-screen__tema-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
-.apariencia-screen__theme-pill {
-  min-height: 44px;
-  padding: 10px 14px;
+.apariencia-screen__muestra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 44px;
+  padding: 6px 8px;
   border-radius: var(--r-s);
+  background: var(--bg);
+  border: 1px solid var(--label);
+  box-sizing: border-box;
+}
+
+.apariencia-screen__muestra-texto {
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.apariencia-screen__muestra-acento {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+}
+
+.apariencia-screen__tema-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 44px;
+  padding: 14px;
+  border-radius: var(--r-m, var(--r-s));
   background: var(--tile-bg);
-  border: var(--tile-border);
+  border: 2px solid transparent;
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  text-align: center;
   cursor: pointer;
   transition:
     filter 0.15s ease,
-    opacity 0.15s ease;
+    border-color 0.15s ease;
 }
 
-.apariencia-screen__theme-pill:hover {
+.apariencia-screen__tema-tile:hover {
   filter: brightness(1.08);
 }
 
-.apariencia-screen__theme-pill:focus-visible {
+.apariencia-screen__tema-tile:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
 
-.apariencia-screen__theme-pill--active {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  box-shadow: var(--btn-shadow);
+/* Anillo terracota (`--core`) alrededor del tile elegido — igual al prototipo, sin invertir fondo. */
+.apariencia-screen__tema-tile--active {
+  border-color: var(--core);
+}
+
+.apariencia-screen__sistema-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: var(--r-m, var(--r-s));
+  background: var(--tile-bg);
+  border: 2px solid transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.apariencia-screen__sistema-fila:hover {
+  filter: brightness(1.08);
+}
+
+.apariencia-screen__sistema-fila:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.apariencia-screen__sistema-fila--active {
+  border-color: var(--core);
+}
+
+.apariencia-screen__sistema-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apariencia-screen__sistema-titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
   font-weight: 600;
+  color: var(--heading);
+}
+
+.apariencia-screen__sistema-detalle {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.apariencia-screen__sistema-chevron {
+  font-size: 18px;
+  color: var(--label);
+  line-height: 1;
+}
+
+.apariencia-screen__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
 }
 
 .afip-setup-ambiente-chip__accion {
@@ -678,4 +778,240 @@
   color: var(--core);
   padding: 0;
   text-align: left;
+}
+
+/* ---------- Cómo usar la app: los temas que abren el chat principal (BL-W9, fusión BL-W12) ---------- */
+.como-usar-screen__seccion {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--core);
+}
+
+.como-usar-tema {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.como-usar-tema:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.como-usar-tema__titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--heading);
+}
+
+.como-usar-tema__detalle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+/* ---------- «Contanos qué tal» (feedback, BL-W3) ---------- */
+.feedback-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 16px 24px;
+}
+
+/* Título de PÁGINA (proto `.titulo-pag`, `index.html:2195`) — matriz web A4 Criterio 3 fila 2,
+   mismo patrón que `.apariencia-screen__title`/`__intro`. */
+.feedback-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.feedback-screen__title-intro {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+/* La PREGUNTA guiada (proto `.fb-preg`) — sub-encabezado, más chica que el título de página. */
+.feedback-screen__pregunta {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--heading);
+}
+
+.feedback-screen__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.feedback-screen__texto {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: var(--row-border);
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  resize: vertical;
+}
+
+.feedback-screen__ok,
+.feedback-screen__error,
+.feedback-screen__estado {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.feedback-screen__ok {
+  color: var(--text);
+}
+
+.feedback-screen__error {
+  color: var(--danger-fg);
+}
+
+.feedback-screen__estado {
+  color: var(--label);
+}
+
+.feedback-screen__soporte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feedback-screen__soporte:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.feedback-screen__soporte-titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--heading);
+}
+
+.feedback-screen__soporte-detalle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.feedback-screen__voz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* K-15: la fila-resumen de Mi negocio hacia «Cómo hablarle», y el ejemplo de respuesta. */
+.perfil-negocio-seccion__fila-tono {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.perfil-negocio-seccion__resumen {
+  font-size: 13px;
+  color: var(--label);
+}
+
+.perfil-negocio-seccion__ejemplo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--label);
+  font-size: 14px;
+}
+
+/* ---------- «Lo pediste vos» (BL-J12) ---------- */
+.lo-pediste-vos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lo-pediste-vos__titulo {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--label);
+  margin: 0;
+}
+
+.lo-pediste-vos__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lo-pediste-vos__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.lo-pediste-vos__texto {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lo-pediste-vos__estado {
+  align-self: flex-start;
+}
+
+.lo-pediste-vos__pendiente {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
 }

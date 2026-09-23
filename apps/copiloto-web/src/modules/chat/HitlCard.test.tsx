@@ -31,7 +31,7 @@ describe('HitlCard', () => {
     expect(card).toBeInTheDocument();
     expect(screen.getByText('Google Docs')).toBeInTheDocument();
     expect(screen.queryByText('AGENDA')).not.toBeInTheDocument();
-    expect(card.querySelector('svg')).toBeInTheDocument(); // ícono de marca, no la marca-letra
+    expect(card.querySelector('img[data-testid="logo-googledocs"]')).toBeInTheDocument(); // logo real (BL-X11)
   });
 
   it('NUNCA muestra la nota "Los turnos duran 60 min." (se eliminó de todos los carteles)', () => {
@@ -82,6 +82,29 @@ describe('HitlCard', () => {
     const { onCancel } = renderCard();
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  // H-A4-9 — control positivo + negativo: con `disabled`, los dos botones quedan `disabled` nativo
+  // (bloquea el click sin lógica extra, ver `Button`) y un click NO dispara ningún callback. Sin
+  // este control, un click tardío sobre una card ya respondida reenviaría confirm/cancel.
+  it('H-A4-9: disabled=true bloquea confirmar/cancelar (nativo) y NO dispara ningún callback', () => {
+    const { onConfirm, onCancel } = renderCard({ disabled: true });
+    const botonConfirmar = screen.getByRole('button', { name: 'Confirmar' });
+    const botonCancelar = screen.getByRole('button', { name: 'Cancelar' });
+
+    expect(botonConfirmar).toBeDisabled();
+    expect(botonCancelar).toBeDisabled();
+
+    fireEvent.click(botonConfirmar);
+    fireEvent.click(botonCancelar);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('sin disabled (default): los botones NO están disabled — control negativo del test anterior', () => {
+    renderCard();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).not.toBeDisabled();
   });
 
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {

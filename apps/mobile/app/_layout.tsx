@@ -10,8 +10,10 @@
  *   - Fuentes antes de renderizar: pintar con la fuente del sistema y re-flowear al cargar la real
  *     es un salto visual que ensuciaría la medición.
  */
+import { debeMostrarOnboarding } from '@copiloto/core';
 import { Inter_400Regular, Inter_500Medium, useFonts } from '@expo-google-fonts/inter';
 import { Stack, usePathname } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,8 +22,10 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 // `@copiloto/core`. Sin esto, cualquier llamada al backend sale sin transporte configurado. Es la
 // única vez que se ejecuta en toda la app.
 import '../src/adapters/plataforma';
-import { PantallaLogin, SessionProvider, useSession } from '../src/modules/auth';
+import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
+import { PantallaOnboarding } from '../src/modules/onboarding';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
+import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 /**
@@ -65,19 +69,37 @@ function Splash() {
 /** Rutas alcanzables sin sesión. Hoy no hay ninguna: toda la app vive detrás del guard de sesión. */
 const RUTAS_LIBRES: string[] = [];
 
+// Identidad estable (no un arrow inline): `EntradaDiaria` depende de `onFin` en su propio efecto
+// (timer de cierre) -- uno nuevo en cada render de `Guard` lo reiniciaría de más. El fin de la
+// animación no gatea nada acá: en cuanto `estado` resuelve, `Guard` ya cambia de rama solo.
+function sinOp() {}
+
 /**
  * Decide qué se ve según el estado de sesión. Tres estados, no dos: mientras `AsyncStorage` resuelve
  * el token guardado el estado es `verificando`, y ahí NO se puede mostrar el login — quien ya tenía
  * sesión vería la pantalla de login parpadear en cada arranque antes de entrar.
+ *
+ * **BL-X8 resto (K-14, ANEXO 2026-09-22):** único punto de montaje del onboarding conversacional en
+ * mobile (`PantallaOnboarding.tsx` lo declara así en su propio docstring). Mismo patrón que
+ * `App.tsx` en web: un flag local `onboardingCerrado` evita que, tras «Entrar»/«Después», un
+ * `me` todavía no refrescado por el backend vuelva a mostrar el hilo en el mismo arranque.
  */
-function Guard({ children }: { children: React.ReactNode }) {
-  const { estado } = useSession();
+export function Guard({ children }: { children: React.ReactNode }) {
+  const { estado, me } = useSession();
   const ruta = usePathname();
+  const [onboardingCerrado, setOnboardingCerrado] = useState(false);
 
   if (RUTAS_LIBRES.includes(ruta)) return <>{children}</>;
-  if (estado === 'verificando') return <Splash />;
-  if (estado === 'autenticado') return <>{children}</>;
-  return <PantallaLogin />;
+  // BL-X10: arranques 2..n (token restaurado) -- el isotipo dibujándose cubre la latencia real de
+  // `/me`, no la extiende (`EntradaDiaria` no gatea nada por sí sola).
+  if (estado === 'verificando') return <EntradaDiaria onFin={sinOp} />;
+  if (estado === 'autenticado') {
+    if (!onboardingCerrado && debeMostrarOnboarding(me)) {
+      return <PantallaOnboarding onTerminar={() => setOnboardingCerrado(true)} />;
+    }
+    return <>{children}</>;
+  }
+  return <EntradaSesion />;
 }
 
 export default function LayoutRaiz() {
@@ -126,6 +148,9 @@ export default function LayoutRaiz() {
                     // se llega deslizando, no entrando. La ruta sigue viva porque el puente de las
                     // tarjetas (`destinoActividad`) y los enlaces internos la usan.
                     'midia',
+                    // BL-J13: la agenda de varios días, glass hoja que se abre desde el panel de
+                    // calendario de Mi día (`empujarUnaVez('/agenda')`).
+                    'agenda',
                     // `ajustes` tampoco es tile: su única puerta es el avatar (Ola 4). La pantalla
                     // no cambió — cambió desde dónde se entra.
                     'ajustes',

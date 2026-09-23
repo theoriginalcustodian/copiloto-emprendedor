@@ -2,6 +2,8 @@ export * from './ports';
 export * from './chatMachine';
 export * from './motivoFallo';
 export * from './hitl';
+export * from './ejemplos';
+export * from './separadoresFecha';
 export * from './modo';
 // `gasto_propuesto` — la card editable del gasto dictado. Propone, NO guarda: el write lo hace la app
 // cuando el emprendedor toca Guardar. Ver el docstring del módulo.
@@ -16,3 +18,10 @@ export * from './presupuestoPropuesto';
 // `factura_propuesta` — hito 9: `data` confirmada por el contrato §2.1; sólo el `kind` es
 // [ASSUMED_PENDING_VERIFY]. Ver el docstring del módulo.
 export * from './facturaPropuesta';
+// `payment_link` — el link de cobro de MercadoPago (BL-F2). Ver el docstring del módulo.
+export * from './linkDeCobro';
+// El buzón de un solo mensaje pantalla → chat principal (BL-W9; antes sólo mobile).
+export * from './mensajePendiente';
+export * from './avisosCard';
+export * from './requiereConexion';
+export * from './sugerenciaArmarFactura';

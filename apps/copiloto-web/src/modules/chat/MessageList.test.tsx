@@ -22,6 +22,46 @@ describe('MessageList', () => {
     expect(screen.getByText('Contame qué necesitás.')).toBeInTheDocument();
   });
 
+  it('sin `mostrarEjemplos` (default), el vacío SÍ dibuja el rodillo de ejemplos (chat general, sin cambios)', () => {
+    render(<MessageList messages={[]} onChoice={vi.fn()} emptyHint="Contame qué necesitás." />);
+    expect(screen.getByTestId('rodillo-ejemplos')).toBeInTheDocument();
+  });
+
+  it('A4 Criterio 3 fila 1: chat general -> isotipo + headline "¿En qué te ayudo?" centrados arriba del rodillo (verbatim proto `#vacio`)', () => {
+    render(<MessageList messages={[]} onChoice={vi.fn()} emptyHint="Contame qué necesitás." />);
+    expect(screen.getByTestId('chat-vacio')).toBeInTheDocument();
+    expect(screen.getByTestId('marca')).toBeInTheDocument();
+    expect(screen.getByText('¿En qué te ayudo?')).toBeInTheDocument();
+  });
+
+  it('H-A4-4: con `mostrarEjemplos={false}` (Soporte) NO se monta el isotipo/headline del chat general', () => {
+    render(
+      <MessageList
+        messages={[]}
+        onChoice={vi.fn()}
+        emptyHint="Algo no funciona como debería"
+        mostrarEjemplos={false}
+      />,
+    );
+    expect(screen.queryByTestId('chat-vacio')).not.toBeInTheDocument();
+    expect(screen.queryByText('¿En qué te ayudo?')).not.toBeInTheDocument();
+  });
+
+  it('H-A4-4: con `mostrarEjemplos={false}` (Soporte), el vacío NO dibuja el rodillo de ejemplos del chat general', () => {
+    // Control negativo: antes del fix, MessageList montaba RodilloEjemplos siempre que había
+    // `emptyHint`, sin importar el chat — Soporte mostraba "Gasté 15 lucas en nafta" etc.
+    render(
+      <MessageList
+        messages={[]}
+        onChoice={vi.fn()}
+        emptyHint="Algo no funciona como debería"
+        mostrarEjemplos={false}
+      />,
+    );
+    expect(screen.getByText('Algo no funciona como debería')).toBeInTheDocument();
+    expect(screen.queryByTestId('rodillo-ejemplos')).not.toBeInTheDocument();
+  });
+
   it('renderiza burbuja de usuario y de asistente sin choices', () => {
     const messages: ChatMessage[] = [
       { id: 'u1', role: 'user', text: 'Hola' },
@@ -30,6 +70,22 @@ describe('MessageList', () => {
     render(<MessageList messages={messages} onChoice={vi.fn()} />);
     expect(screen.getByText('Hola')).toBeInTheDocument();
     expect(screen.getByText('Hola, en qué te ayudo?')).toBeInTheDocument();
+  });
+
+  it('BL-C3: un separador por cambio de día, con Hoy/Ayer, y ninguno sin fechas', () => {
+    const ahora = Date.now();
+    const conFechas: ChatMessage[] = [
+      { id: 'u1', role: 'user', text: 'de ayer', creadoEn: ahora - 24 * 3600_000 },
+      { id: 'u2', role: 'user', text: 'de hoy A', creadoEn: ahora },
+      { id: 'u3', role: 'user', text: 'de hoy B', creadoEn: ahora },
+    ];
+    const { unmount } = render(<MessageList messages={conFechas} onChoice={vi.fn()} />);
+    expect(screen.getAllByTestId('separador-dia')).toHaveLength(2);
+    expect(screen.getByText('Hoy')).toBeInTheDocument();
+    expect(screen.getByText('Ayer')).toBeInTheDocument();
+    unmount();
+    render(<MessageList messages={[{ id: 'u1', role: 'user', text: 'viejo' }]} onChoice={vi.fn()} />);
+    expect(screen.queryByTestId('separador-dia')).not.toBeInTheDocument();
   });
 
   it('choices de desambiguación -> burbuja + chips (no HitlCard)', () => {
@@ -57,14 +113,16 @@ describe('MessageList', () => {
     expect(screen.queryByTestId('disambiguation-chips')).not.toBeInTheDocument();
   });
 
-  it('elegir un chip de desambiguación dispara onChoice con el value', () => {
+  it('elegir un chip de desambiguación dispara onChoice con (value, label)', () => {
     const onChoice = vi.fn();
     const messages: ChatMessage[] = [
       { id: 'a1', role: 'assistant', text: '¿Cuál Juan?', choices: DISAMBIGUATION },
     ];
     render(<MessageList messages={messages} onChoice={onChoice} />);
     fireEvent.click(screen.getByRole('button', { name: 'Juan Gómez' }));
-    expect(onChoice).toHaveBeenCalledWith('juan_gomez');
+    // BL-D4 — el label ('Juan Gómez') es lo que la burbuja optimista del usuario debe pintar;
+    // sin él, el caller sólo tiene el `value` técnico y termina mostrando 'juan_gomez' crudo.
+    expect(onChoice).toHaveBeenCalledWith('juan_gomez', 'Juan Gómez');
   });
 
   it('card `presupuesto_propuesto` -> TarjetaPresupuestoPropuesto editable (no burbuja lisa, no HitlCard)', () => {

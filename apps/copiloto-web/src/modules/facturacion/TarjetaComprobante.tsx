@@ -8,7 +8,7 @@ import { SeccionCobro } from './SeccionCobro';
 const TIPO_NOTA_CREDITO = 13;
 
 const AVISO_24H =
-  'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de AFIP con el CAE.';
+  'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de ARCA con el CAE.';
 const AVISO_EN_DRIVE = 'Guardada en tu Drive. Ese link no vence.';
 
 /**
@@ -114,7 +114,7 @@ export function TarjetaComprobante({
          */
         <p className="facturacion-comprobante__sin-pdf" data-testid={`${testID}-sin-pdf`}>
           Tu factura se emitió correctamente y el CAE de arriba es válido. El PDF no está disponible en
-          este momento -- podés descargarlo más tarde desde el portal de AFIP con ese CAE.
+          este momento -- podés descargarlo más tarde desde el portal de ARCA con ese CAE.
         </p>
       ) : (
         <>

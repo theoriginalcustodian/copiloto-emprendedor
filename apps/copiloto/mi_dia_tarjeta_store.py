@@ -15,6 +15,8 @@ import json
 import os
 from typing import Callable
 
+from mi_dia_clasificacion import clasificar
+
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_mi_dia_tarjetas"
 
@@ -47,6 +49,8 @@ def _fila_a_dict(fila: tuple) -> dict:
         "texto": texto, "estado": estado, "datos": datos,
         "creada_en": creada.isoformat() if creada else None,
         "movida_en": movida.isoformat() if movida else None,
+        # K-06: derivados de `regla` al leer (sin columna); aditivos para el cliente viejo.
+        **clasificar(regla),
     }
 
 
