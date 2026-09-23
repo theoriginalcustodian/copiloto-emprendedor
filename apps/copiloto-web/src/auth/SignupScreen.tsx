@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
 
+import { LEGAL_VERSION } from '@copiloto/core';
+
 import { Button, PresenceOrb, Surface } from '../design-system';
 import './login.css';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { LegalScreen, type LegalKind } from './LegalScreen';
 import { useSession } from './useSession';
 
@@ -23,7 +25,13 @@ import { useSession } from './useSession';
  * `Entrar` en el login.
  */
 
-type FormState = 'idle' | 'enviando' | 'error-red' | 'error-login-tras-signup';
+type FormState =
+  | 'idle'
+  | 'enviando'
+  | 'error-red'
+  | 'error-login-tras-signup'
+  | 'error-legal-desactualizada'
+  | 'error-legal';
 
 export interface SignupScreenProps {
   /** Vuelve a `LoginScreen` — no hay router, el toggle vive en el padre (`App.tsx`). */
@@ -42,11 +50,37 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
   // router, "abrir" ToS/Privacidad es reemplazar el form por `LegalScreen` y volver reconstruye el
   // mismo estado (email/password NO se pierden, siguen en el `useState` de este componente).
   const [legalAbierto, setLegalAbierto] = useState<LegalKind | null>(null);
+  // 409 de `/me/legal/aceptar`: `errores_web.conflicto()` manda la versión vigente en
+  // `extra.vigente` (ver `pedido_..._BL-O6-parte-A-el-409-cambio-de-shape...md`) — sin esto el
+  // aviso sólo podía decir "recargá", no CUÁL versión hay que aceptar.
+  const [vigenteNueva, setVigenteNueva] = useState<string | null>(null);
 
   const disabled = formState === 'enviando';
 
   if (legalAbierto) {
     return <LegalScreen kind={legalAbierto} onVolver={() => setLegalAbierto(null)} />;
+  }
+
+  /**
+   * BL-O6 parte B: registra la aceptación **después** de loguear (necesita Bearer — `require_tenant`
+   * en el server). El alta NO se completa si esto falla — un alta sin aceptación registrada es
+   * justamente lo que este contrato existe para evitar (`contrato_..._BL-O6-parte-B...md` §2).
+   */
+  async function aceptarLegalOFallar(): Promise<boolean> {
+    try {
+      await api.aceptarLegal(LEGAL_VERSION);
+      return true;
+    } catch (err) {
+      // 409 = el bundle que sirvió este form quedó viejo (la versión vigente en el server cambió
+      // entre el render y el submit) — no es un error de red, es "recargá la página".
+      const es409 = err instanceof ApiError && err.status === 409;
+      if (es409) {
+        const vigente = err.extra?.vigente;
+        setVigenteNueva(typeof vigente === 'string' ? vigente : null);
+      }
+      setFormState(es409 ? 'error-legal-desactualizada' : 'error-legal');
+      return false;
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -62,14 +96,24 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
     }
 
     const result = await login(email, password);
-    if (result.ok) {
-      onSignupExitoso();
+    if (!result.ok) {
+      // El signup fue idempotente (email ya existía) pero la password no matchea la cuenta
+      // ORIGINAL — `admin_create_user` no verifica password en el camino de "ya existe", así que
+      // esto NO es un error de red: es "esa cuenta ya es de otra persona/sesión anterior".
+      setFormState('error-login-tras-signup');
       return;
     }
-    // El signup fue idempotente (email ya existía) pero la password no matchea la cuenta
-    // ORIGINAL — `admin_create_user` no verifica password en el camino de "ya existe", así que
-    // esto NO es un error de red: es "esa cuenta ya es de otra persona/sesión anterior".
-    setFormState('error-login-tras-signup');
+
+    if (!(await aceptarLegalOFallar())) return;
+    onSignupExitoso();
+  }
+
+  /** Ya hay sesión (login ya salió bien) — reintentar sólo pide el POST de aceptación de nuevo,
+   *  no todo el signup (reenviar el form chocaría con "el email ya existe"). */
+  async function reintentarAceptarLegal() {
+    setFormState('enviando');
+    if (!(await aceptarLegalOFallar())) return;
+    onSignupExitoso();
   }
 
   return (
@@ -154,6 +198,28 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
             <p role="alert" className="login-screen__alert login-screen__alert--danger">
               No pudimos crear tu cuenta. Probá de nuevo en un toque.
             </p>
+          )}
+          {formState === 'error-legal-desactualizada' && (
+            <p role="alert" className="login-screen__alert login-screen__alert--warning">
+              Se actualizó el texto legal mientras completabas el formulario
+              {vigenteNueva ? ` (versión vigente: ${vigenteNueva})` : ''}. Recargá la página para
+              verla y volvé a intentar.
+            </p>
+          )}
+          {formState === 'error-legal' && (
+            <>
+              <p role="alert" className="login-screen__alert login-screen__alert--danger">
+                Tu cuenta se creó, pero no pudimos registrar la aceptación. Probá de nuevo.
+              </p>
+              <Button
+                type="button"
+                onClick={reintentarAceptarLegal}
+                className="login-screen__submit"
+                style={{ marginTop: 8 }}
+              >
+                Reintentar
+              </Button>
+            </>
           )}
         </Surface>
 

@@ -133,6 +133,31 @@ describe('apiClient', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(500);
   });
+
+  it('409 de `errores_web.conflicto()` -- `detail` es OBJETO {codigo,mensaje,...extra}, no string plano', async () => {
+    // Shape real de un 409 hecho con `conflicto(codigo, mensaje, **extra)` -- BL-O6 (`vigente`) es
+    // el caso que motivó esto, pero `factura_id`/`candidato` de otros 409 pasan por el mismo
+    // camino. Sin este test, `readErrorDetail` mostraría `"[object Object]"` o `undefined` en
+    // silencio si alguien rompiera el branch de objeto -- nada lo hubiera detectado.
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(409, {
+        detail: {
+          codigo: 'version_desactualizada',
+          mensaje: 'Aceptaste una versión del documento legal que ya no es la vigente.',
+          vigente: '2026-09-22',
+        },
+      }),
+    );
+
+    const error = (await apiClient.post('/me/legal/aceptar', { version: '2026-09-01' }).catch(
+      (err: unknown) => err,
+    )) as ApiError;
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(409);
+    expect(error.detail).toBe('Aceptaste una versión del documento legal que ya no es la vigente.');
+    expect(error.extra).toEqual({ codigo: 'version_desactualizada', vigente: '2026-09-22' });
+  });
 });
 
 describe('postMultipart — refresh-on-401 (EL QUE IMPORTA: sin esto, un dictado con token vencido se pierde en vez de reintentar)', () => {

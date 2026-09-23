@@ -411,7 +411,9 @@
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--bg) 95%, transparent);
+  /* H-BIS-5: alpha 0,95 dejaba sangrar 5% de la tarjeta de resumen detrás (legible, no glass).
+     Fondo opaco + backdrop-filter:none (consistente con "sin glass, color pleno" del design system). */
+  background: var(--bg);
   display: flex;
   flex-direction: column;
 }
