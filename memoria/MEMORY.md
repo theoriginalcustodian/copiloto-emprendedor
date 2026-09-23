@@ -8,13 +8,12 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **🟠 Beta Odobi: A4 dio «Cierre A NO cierra»** (2026-09-22) → arreglos A4 + re-check A4-bis; device/EAS al siguiente. `coordinacion/PLAN.md`.
+- **🟠 Beta Odobi NO cierra** (A5, 2026-09-23): criterio 3 lo mide el propio medido + grafo. Ambos, decisión del operador. `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** — la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** — HEAD viejo, pero ~100 archivos editados a mano y al día. Lo escrito ahí no llega a `main`. Diffeá el archivo; el contador de commits no lo mide.
 - **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
-- **✅ Cerrados:** AFIP E2E en device · presupuestos + perfil · clientes (falta voz) · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]]
-- **🚧 Abiertos:** OAuth Google (es de Composio) · ingesta real al grafo (MAYOR). [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
+- **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta real al grafo (MAYOR). [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras — se cumplen, no se evalúan)
@@ -101,6 +100,7 @@
 - [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — sin contexto rechaza, y parece prudencia.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto.
+- [🎰 El gate compartido PERDONA al que llega acompañado](el-gate-compartido-perdona-al-que-llega-acompanado.md) — pasó por contención, no por salud.
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — declará si el rechazo es permanente.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — el hueco vive en el par.
 
