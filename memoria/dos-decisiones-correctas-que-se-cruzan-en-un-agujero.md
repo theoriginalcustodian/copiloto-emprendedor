@@ -50,5 +50,38 @@ ninguna de las dos historias de usuario menciona la otra.
 Hermana temporal de [[el-fix-ya-existe-en-otro-call-site]]: allá el defecto es no propagar un fix
 conocido; acá es no mirar la casilla que dos fixes correctos crean entre ambos.
 
+## Segundo caso — 2026-09-22 · `.gitignore` × rescate de huérfanos, y el agujero apuntaba a PUBLICAR
+
+Mismo molde, otro par, y esta vez la celda vacía era de **seguridad**:
+
+| Decisión | Regla | Por qué |
+|---|---|---|
+| `.gitignore:94` | `memoria/telegram-composio-canal-operador.md` no se versiona | guarda el `chat_id` del operador y el repo es PÚBLICO desde 2026-08-06; su propio cuerpo lo dice |
+| `seed-memory.sh` §1 RESCATE | lo que vive sólo en el slug se copia a `memoria/` | una memoria que sólo existe en el slug se perdería; el `--delete` de julio ya la borró una vez |
+
+En la intersección, el rescate copiaba a `memoria/` **en cada corrida** exactamente el archivo que
+`.gitignore` excluye a propósito — y remataba con `[RESCATADO] … (COMMITEAR)` y
+`git add memoria/ && git commit`. O sea: **el instrumento instruía a publicar el dato que la otra
+decisión protege.**
+
+### Por qué el guard que ya existía no lo cubrió
+
+El script **sí** tenía guard para el caso vecino — «¿estuvo versionado y se borró a propósito?» vía
+`git log --diff-filter=D`. Pero eso mira **una sola huella** de la intención «este archivo no va al
+repo». Un archivo que **nunca estuvo versionado** porque está ignorado desde siempre no deja commit
+de borrado que encontrar: el guard lo consulta, no halla nada, y concluye «no fue deliberado».
+
+> Un guard que pregunta «¿esto fue deliberado?» tiene que enumerar **todas las formas de dejarlo
+> asentado**, no la que tenía en mente su autor. Acá había dos —borrado versionado e ignorado
+> versionado— y cubrir una convirtió a la otra en un falso «accidente a reparar».
+
+Fix: `git check-ignore -q` **antes** del guard de borrado, con salida propia `[EXCLUIDO]` — ni se
+rescata ni se purga. Control positivo corrido: el archivo no entró al repo **y** sigue en el slug.
+
+Cómo se destapó: no lo vio ningún test, lo vio el medidor de índice fallando por *cobertura* —
+motivo totalmente distinto ([[vacio-no-es-hallazgo-correr-el-control]]). Fue suerte, no diseño: el
+archivo venía reapareciendo en `memoria/` desde hacía corridas y el bucle no daba síntoma propio
+porque `.gitignore` lo tapaba del `git status` ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+
 Relacionadas: [[el-guard-que-caza-a-su-propio-autor]] · [[no-romper-no-es-arreglar]] ·
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
