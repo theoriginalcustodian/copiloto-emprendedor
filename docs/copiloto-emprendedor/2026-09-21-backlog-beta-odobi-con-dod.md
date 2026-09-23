@@ -3,6 +3,52 @@
 **Fecha:** 2026-09-21 · **Base verificada:** `main @ e6544f3b` (= `origin/main`, 0 PR abiertos) · **Autor:** planificación
 **Qué es:** el inventario **completo** de lo que falta para que la beta de Odobi funcione de punta a punta, en web, mobile, backend y operación. **Qué no es:** el plan. Acá no hay orden de ejecución ni fechas; hay ítems con evidencia, dependencias y DoD, para que el plan se arme encima sin volver a investigar.
 
+## ⚠️ ESTE DOCUMENTO NO ES FUENTE CONFIABLE DE «QUÉ ESTÁ ABIERTO» — medido el 2026-09-23
+
+Barrido de sus **73 ids marcados abiertos** contra los **400 PR mergeados** del repo:
+
+```
+73 "abiertos" = 51 YA MERGEADOS + 5 parciales + 16 abiertos de verdad + 1 ambiguo
+```
+
+**El 70% de lo que este doc lista como pendiente ya está en `main`.** Cada ítem afectado lleva ahora
+una línea `📌 Evidencia medida` con sus PR. **Eso NO es un cierre declarado**: las casillas de DoD
+siguen sin verificar una por una, y tildar 51 ítems por conteo sería la aprobación ritual que el
+repo prohíbe. Sirve para **no reimplementar**, no para dar por cerrado.
+
+### Por qué envejeció — no fue descuido de nadie
+
+El trabajo se registra en **tres espacios de ids** y este documento sólo puede grepear el suyo:
+
+| espacio | quién lo usa | ejemplo |
+|---|---|---|
+| `BL-*` | este backlog | `BL-J6` |
+| `K-*` | los contratos de las juntas backend↔frontend | #542 cerró `K-04`, que **es** `BL-J6` |
+| `H-A3-*` / `H-A4-*` | los hallazgos de auditoría | #628 cerró `H-A3-8`, que **es** `BL-B1` |
+
+**Las mitades backend de casi todas las `BL-J` se mergearon citando sólo su `K-`.** Por eso seis
+ítems arrastran el sello `[PENDIENTE_INTEGRACION]` **aunque su mitad backend entró el mismo día**: lo
+puso el PR de frontend y nada lo retira cuando el otro lado cierra. Las anotaciones de abajo tienden
+ese puente de forma explícita.
+
+**Nació así:** el merge no registrado más viejo (#521) es de **cinco horas después** de cortarse la
+base de este propio documento (`e6544f3b`, #514). Nunca registró un solo cierre de código.
+
+### Los 16 abiertos de verdad
+
+`BL-P1` `BL-P2` `BL-P3` `BL-P6` (operador + Martín) · `BL-O1`…`BL-O5` `BL-O7` `BL-O8` (operación de
+la beta) · `BL-C5` (frenado por `DEC-4`) · `BL-X9` (frenado por `DEC-8`) · `BL-B4` (macOS, que el
+propio doc declara fuera de la beta) · `BL-Q2` `BL-Q5` (calidad recurrente).
+
+**Ninguno es código de app.** El ambiguo es `BL-J1`: ningún PR lo nombra, pero #522 («idempotencia
+del alta con `idem_key`, `K-01` backend») parece ser exactamente su mitad backend — pendiente de
+confirmar contra el código, asignado a backend.
+
+### Antes de tomar un ítem de acá
+
+`gh pr list --state merged --limit 400 --json number,title` y buscá el id **y su `K-`**. Si aparece
+mergeado, no lo tomes: avisá a planificación y se anota.
+
 ## 0. Cómo leer este documento
 
 ### 0.1 Fuentes (no se re-auditó lo ya auditado)
@@ -123,6 +169,8 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión.
 
 ### BL-D1 · Presupuesto duplicado al recargar (idempotencia + guard mobile)
+
+> **📌 Evidencia medida 2026-09-23:** PR #522, #543 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + mobile · **Tamaño:** M · **Origen:** D-1, H-26 · **Pantalla:** `pres-hitl`
 - **Evidencia:** `apps/copiloto/presupuesto_store.py:213-251` (`crear` inserta con `max(numero)+1`, sin clave de idempotencia) · `apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx:25,32-37` (`useState` sin persistencia; el docstring 17-27 admite el gap) · referencia web resuelta `apps/copiloto-web/src/modules/chat/TarjetaPresupuestoPropuesto.tsx:22-34`.
 - **Depende de:** nada. **Contrato:** sí (junta J1: forma de la clave de idempotencia).
@@ -133,6 +181,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Consulta **con claims** (no ciega bajo `FORCE`) de presupuestos duplicados existentes, antes y después (R-8); resultado anotado en el cierre.
 
 ### BL-D2 · Deslizar a la izquierda cancela la grabación
+
+> **📌 Evidencia medida 2026-09-23:** PR #523 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** D-2, H-14 · **Pantalla:** `grabando`
 - **Evidencia:** mobile `apps/mobile/src/modules/chat/ChatView.tsx:155` (soltar ⇒ envío) · `BotonVoz.tsx:193-207` (`Gesture.Pan` lee sólo `translationY`) · web `apps/copiloto-web/src/modules/chat/MicButton.tsx:194` (sin eje horizontal) · spec `Prototipo frontend/odobi-ui/mockups/03-home-conversacional/DECISIONES.md:95,108`.
 - **Incluye:** portar a mobile el descarte del toque < 350 ms que ya tiene web (`MicButton.tsx:212-214`).
@@ -144,6 +194,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Web: test de componente del gesto horizontal + captura en el PWA.
 
 ### BL-D3 · HITL genérico de mobile completo (servicio, campos, riesgo, irreversible)
+
+> **📌 Evidencia medida 2026-09-23:** PR #523, #576 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** mobile · **Tamaño:** S · **Origen:** D-3, H-20 · **Pantalla:** `hitl`
 - **Evidencia:** `apps/mobile/src/modules/chat/ListaMensajes.tsx:68-115` (`TarjetaConfirmacion`: sólo `gate.markdown` + Confirmar/Cancelar) · referencia web `apps/copiloto-web/src/modules/chat/HitlCard.tsx:41-125`.
 - **Depende de:** nada (el payload del gate ya trae `service`/`label`/riesgo; web lo consume).
@@ -153,6 +205,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Device: captura de un HITL irreversible real (p. ej. mandar un mail) lado a lado con `?ver=hitl`.
 
 ### BL-D4 · El hilo muestra el token interno del HITL (`cancel:2:0`)
+
+> **📌 Evidencia medida 2026-09-23:** PR #624 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE1, 2026-09-22) · **Pantalla:** `hitl`
 - **Evidencia:** el `value` de la elección es `confirm:`/`cancel:<turn>:<step>` (`motor/backend/agent/conversation_workflow.py:712-716`; `:401-404` dice que nunca es texto del interlocutor) · web `hitlMapping.ts:98-99` → `ChatScreen.tsx:77` → `useChat.ts:296` (eco optimista con el valor crudo) → `MessageList.tsx:223-224` · mobile `ListaMensajes.tsx:250-251` → `useChat.ts:291` → `packages/core/src/chat/chatMachine.ts:238-239` → `ListaMensajes.tsx:186-187`. Web tiene además su `useChat` propio, que no usa el reducer de core (`useChat.ts:118-123`).
 - **Contrato:** `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 1.
@@ -163,6 +217,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Captura PWA del hilo tras cancelar un cobro de prueba.
 
 ### BL-D5 · Total del presupuesto con 4 decimales («$30.000,0000»)
+
+> **📌 Evidencia medida 2026-09-23:** PR #625 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE1) · **Pantalla:** `pres-hitl`
 - **Evidencia:** `multiplicarDecimal` (web `modules/presupuestos/FormularioPresupuesto.tsx:66-75`, mobile `:73-82`, copia línea a línea) suma los decimales de los dos operandos sin redondear a centavos; lo llama `TarjetaPresupuestoPropuesto.tsx:93-103`. `formatearImporte` (`packages/core/src/dinero/formatoDinero.ts:84-105`) respeta a propósito los decimales que recibe (`:78-79`): no es el culpable.
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 2.
@@ -172,6 +228,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Captura PWA de `pres-hitl`.
 
 ### BL-D6 · Mi día web: las tarjetas de «Para hoy» se ven en blanco colapsadas
+
+> **📌 Evidencia medida 2026-09-23:** PR #625 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantallas:** `(vacío)`, `tablero`
 - **Evidencia:** `modules/midia/MidiaScreen.tsx:335-355` · `midia.css:140-145,161-165` (`-webkit-line-clamp` sin el `line-clamp` estándar, que `connections.css:164` sí tiene). Es la causa probable por inspección; falta confirmarla en vivo. Al expandir, el texto aparece.
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 1.
@@ -182,6 +240,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Captura con `?ver=tablero`.
 
 ### BL-D7 · La barra de pestañas de web mete 10 ítems a ancho de teléfono
+
+> **📌 Evidencia medida 2026-09-23:** PR #625 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S–M · **Origen:** barrido BL-Q3 web (FE2, transversal; es regresión de #587) · **Depende de:** `DEC-2`
 - **Evidencia:** `shell/TabBar.tsx:62-74,109-136` pinta 10 `TABS` (+ admin) bajo 900 px (`ResponsiveShell.tsx:21-27`); a 390 px los rótulos se pisan. El docstring (`:101`) todavía dice «4 ítems fijos». En mobile, las 6 funciones viven en el escritorio (`BL-X1`), no en la barra.
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 3.
@@ -192,6 +252,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
   - [ ] Captura a 390 px sin rótulos pisados.
 
 ### BL-D8 · Conexiones web: ícono de Google Docs en blanco y título
+
+> **📌 Evidencia medida 2026-09-23:** PR #633 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantalla:** `apps`
 - **Evidencia:** el SVG es válido (`design-system/serviceIcons.tsx:4,46` → `logos/docs.svg`, igual al de mobile), así que la causa no es estática: hay que reproducirla en el PWA. Título: web «Conexiones» (`ConnectionsScreen.tsx:33,67`), mobile «Apps» (`apps/mobile/src/modules/apps/PantallaApps.tsx:211`). La grilla de 2 columnas es una decisión con test (`ConnectionsScreen.test.tsx:107-121`) y queda.
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 6.
@@ -206,6 +268,8 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
 Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis-trabajos-...md`. Estado real al 21/09 (auditoría §7): **nadie lo tomó**; el trabajo 2 se hizo en mobile por fuera del buzón (#511). Hay que re-emitirlo con este estado (ver `BL-P4`).
 
 ### BL-C1 · Desconectar una app (web)
+
+> **📌 Evidencia medida 2026-09-23:** PR #521 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** contrato 16/09 trabajo 1, H-44 · **Pantalla:** `apps`
 - **Evidencia:** `apps/copiloto-web/src/modules/connections/ServiceCard.tsx:30-35,55-92` (sólo sello CONECTADO) · backend listo `apps/copiloto/web.py:1030,1063`, `apps/copiloto/catalog.py:92-106` (`disconnect_path`).
 - **DoD:**
@@ -214,6 +278,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Test de componente de los dos estados.
 
 ### BL-C2 · CAE, número, vencimiento y PDF en la card del chat (web)
+
+> **📌 Evidencia medida 2026-09-23:** PR #527 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S (mobile ya hecho, #511) · **Origen:** trabajo 2, H-24 · **Pantalla:** `fact-cae`
 - **Evidencia:** `apps/copiloto-web/src/modules/chat/TarjetaFacturaPropuesta.tsx:59-66` · dato ya en cliente `packages/core/src/api/afip.ts:109-116` · diseño a portar `facturacion/TarjetaComprobante.tsx:71-87` · referencia mobile `apps/mobile/src/modules/facturacion/comprobante.tsx` (sondea hasta `terminado`: el CAE llega antes que el PDF).
 - **Depende de:** nada. Convive con `BL-F1` (Recibo): si el Recibo se hace antes, se monta ahí.
@@ -223,6 +289,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Evidencia: factura real en homologación con `e2e-device` (tiene credencial) en el PWA, lado a lado con `?ver=fact-cae`.
 
 ### BL-C3 · Separadores de fecha en el historial del chat
+
+> **📌 Evidencia medida 2026-09-23:** PR #526, #576 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** trabajo 3, H-13
 - **Evidencia:** web `apps/copiloto-web/src/modules/chat/MessageList.tsx:160-163` (un solo `sessionMarker`) · mobile `apps/mobile/src/modules/chat/ListaMensajes.tsx` (tampoco los tiene; no estaba en el contrato).
 - **DoD:**
@@ -231,6 +299,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Captura de un hilo con mensajes de ≥ 2 días en PWA y device.
 
 ### BL-C4 · Origen real de la propuesta (voz / foto / mail / manual)
+
+> **📌 Evidencia medida 2026-09-23:** PR #521 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** trabajo 4, H-18
 - **Evidencia:** web `apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx:39,45,64` (envía `origen`, sólo muestra la cita OCR si es `foto`, `:100`) · mobile `apps/mobile/src/modules/gastos/FormularioGasto.tsx:52,60,85` (sólo lo envía).
 - **DoD:**
@@ -247,6 +317,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Build EAS con el cambio instalado en el device; video del flujo con Gmail (o el servicio que esté conectable).
 
 ### BL-C6 · «Cambiar» el CUIT, validado por backend
+
+> **📌 Evidencia medida 2026-09-23:** PR #530, #538, #574 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** trabajo 6, H-43, P-1 · **Pantalla:** `afip`
 - **Evidencia:** web `apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx:376-382` · mobile `apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx:550-553` (`setCuitBloqueado(false)` sin validar) · backend `apps/copiloto/afip_web.py:183-209` (no rechaza un CUIT no vinculado).
 - **Depende de:** `DEC-9` (DA-10: CUIT con o sin salida).
@@ -264,6 +336,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
 Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la versión de mobile, no se reinventa.
 
 ### BL-W1 · Pausar y Reanudar en la grabación fijada
+
+> **📌 Evidencia medida 2026-09-23:** PR #529 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** H-15 · **Pantalla:** `bloqueado`
 - **Evidencia:** web `apps/copiloto-web/src/modules/chat/RecordingOverlay.tsx:41-62` · referencia mobile `ControlesFlotantes.tsx:30-44` · spec `03-home-conversacional/DECISIONES.md:95,108,133`.
 - **DoD:**
@@ -272,6 +346,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura en el PWA lado a lado con `?ver=bloqueado`.
 
 ### BL-W2 · Descripción por capacidad bajo cada app
+
+> **📌 Evidencia medida 2026-09-23:** PR #521 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** H-44 · **Pantalla:** `apps`
 - **Evidencia:** `ServiceCard.tsx:55-92` no pinta `service.description` (ya llega; `ConnectionsScreen.tsx:20` la usa para filtrar).
 - **DoD:**
@@ -279,6 +355,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura en el PWA con ≥ 3 servicios.
 
 ### BL-W3 · Pantalla «Contanos qué tal» (feedback) en web
+
+> **📌 Evidencia medida 2026-09-23:** PR #551 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** H-51 · **Pantalla:** `feedback`
 - **Evidencia:** web sin pantalla (sólo panel interno `admin/AdminScreen.tsx:686`); backend `/feedback` vivo; referencia mobile `apps/mobile/src/modules/feedback/PantallaFeedback.tsx:103-171` (pregunta guiada + derivación a Soporte).
 - **DoD:**
@@ -288,6 +366,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] «Lo pediste vos» NO entra acá: es `BL-J12`.
 
 ### BL-W4 · Rodillo de ejemplos del chat, con pausa desde el principio
+
+> **📌 Evidencia medida 2026-09-23:** PR #532 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web (+ deuda mobile) · **Tamaño:** M · **Origen:** H-12 · **Pantalla:** `chat`
 - **Evidencia:** web `ChatScreen.tsx:8-9`, `MessageList.tsx:159` (párrafo fijo) · mobile hecho con deuda: `apps/mobile/src/modules/chat/RodilloEjemplos.tsx:22-24` (sin pausa y corre con movimiento reducido).
 - **DoD:**
@@ -297,6 +377,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura en PWA y device.
 
 ### BL-W5 · Vacío con título, cuerpo e ilustración, y retiro progresivo
+
+> **📌 Evidencia medida 2026-09-23:** PR #524 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-09, H-10 · **Pantallas:** `vacio`, `vacio-visto`
 - **Evidencia:** web `apps/copiloto-web/src/modules/midia/MidiaScreen.tsx:187-193` (texto plano) · referencia mobile `apps/mobile/src/theme/EstadoVacio.tsx:26-64` (clave `odobi-calma-dias`, días distintos) y `PantallaMiDia.tsx:383-398`.
 - **Depende de:** umbral 3 vs 5 días (`DEC-10`, decisión de Martín §6.3) — se puede construir parametrizado y fijar el número después.
@@ -307,6 +389,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura en el PWA antes y después del umbral.
 
 ### BL-W6 · Textos de estado del refresco (Tirá / Soltá / Actualizando / Al día)
+
+> **📌 Evidencia medida 2026-09-23:** PR #556 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** H-39 · **Pantalla:** `bi-refresh`
 - **Evidencia:** web `InteligenciaScreen.tsx:47-50,112-121` (botón, sin textos) · mobile `PantallaInteligencia.tsx:150-158` (`RefreshControl` sin textos; WCAG 1.4.1 sin verificar).
 - **DoD:**
@@ -315,6 +399,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura del ciclo completo en device y PWA.
 
 ### BL-W7 · Categorías y contador del tablero (parte frontend)
+
+> **📌 Evidencia medida 2026-09-23:** PR #524 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-06 (FE) · **Pantalla:** `tablero`
 - **Evidencia:** web `MidiaScreen.tsx:36-48,110-132,197-208` · referencia mobile `apps/mobile/src/modules/midia/categoriaTarjeta.ts:5,25` (deriva del cliente, aislado para borrarse cuando llegue `BL-J5`).
 - **DoD:**
@@ -323,6 +409,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Test del mapeo `regla → categoría` **en backend** (`test_mi_dia_clasificacion.py`, K-06 lo movió ahí); captura en el PWA. (corregido 2026-09-21 post-A1: el FE ya no mapea.)
 
 ### BL-W8 · Portada financiera de Mi día como componente
+
+> **📌 Evidencia medida 2026-09-23:** PR #524 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-04 (a) · **Pantalla:** `/`
 - **Evidencia:** web `MidiaScreen.tsx:50-214` sin portada · referencia mobile `apps/mobile/src/modules/midia/PortadaNegocio.tsx`.
 - **Depende de:** no de la posición (DA-1): se construye autocontenida. Fecha de corte y variación esperan `BL-J2`/`BL-J3`.
@@ -332,6 +420,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Captura en el PWA con datos de `e2e-device`.
 
 ### BL-W9 · «Cómo usar la app» abre el chat principal
+
+> **📌 Evidencia medida 2026-09-23:** PR #537 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** S · **Origen:** H-49 · **Pantalla:** `comousar`
 - **Evidencia:** web `AccountScreen.tsx:158-166` → chat de soporte propio (`SoporteScreen.tsx:10-13`, `useChatSoporte.ts:36-47`) · referencia mobile `PantallaComoUsarLaApp.tsx:48-105` + `mensajePendiente.ts:20-33` (sin backend).
 - **Depende de:** nada; la junta de backend de la Ola 3 **sobra** (auditoría §8).
@@ -340,6 +430,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Test del puente de un solo mensaje; captura en el PWA.
 
 ### BL-W10 · Soporte: tiempo de respuesta y qué datos viajan con el ticket
+
+> **📌 Evidencia medida 2026-09-23:** PR #553 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** H-50 · **Pantalla:** `soporte`
 - **Evidencia:** grep de «4 h hábiles» / «Va con esta conversación» sin resultados en `apps/mobile/src` ni `apps/copiloto`; web `SoporteScreen.tsx:31-48`. El avatar = isotipo es decisión de Martín (`PantallaSoporte.tsx:136-146`, #513) — web lo sigue.
 - **DoD:**
@@ -348,6 +440,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] El texto de tiempo de respuesta coincide con el SLA de `BL-O7`; si no hay SLA, no se promete un número.
 
 ### BL-W11 · Mi día: fecha, agenda con la conexión caída y aviso de caja que nombra a Mercado Pago
+
+> **📌 Evidencia medida 2026-09-23:** PR #630 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** barrido BL-Q3 web (FE2) · **Pantallas:** `(vacío)`, `agenda`, `caida`
 - **Evidencia:** el prototipo pone marca + fecha arriba (`prototipo/index.html:1645`); web (`MidiaScreen.tsx:169-172`) y mobile (`PantallaMiDia.tsx:493-505`) no muestran fecha. El panel de agenda dice «Conectá Google Calendar…» aunque la conexión existe y está caída: no distingue *nunca conectada* de *caída* (web `MidiaScreen.tsx:284-289`, mobile `:517-533`). El aviso de caja incompleta es genérico (`packages/core/src/midia/caja.ts:63-64`), aunque la condición (`apps/copiloto/inteligencia_queries.py:210`) sólo mira Mercado Pago.
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 4.
@@ -360,6 +454,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - `caida` del prototipo (el banner en «En caja») exige Mercado Pago caído → tanda de device.
 
 ### BL-W12 · Ajustes de web igual a mobile y fin de la guía «Cómo hablarle»
+
+> **📌 Evidencia medida 2026-09-23:** PR #637 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web (+ la guía en mobile) · **Tamaño:** S–M · **Origen:** barrido BL-Q3 web (FE2; `hablar` como «diferencia grave») · **Pantallas:** `ajustes`, `hablar` · **Depende de:** `DEC-6`, `DEC-10`
 - **Evidencia:** la grilla de mobile (`apps/mobile/src/modules/ajustes/PantallaAjustes.tsx:54-88`) es una decisión de Martín del 18/09 (`51437353`) aceptada por DEC-10. Web conserva el tile `ajuste-tile-comoHablarle` (`PantallaAjustes.tsx:23,40`), que abre la guía de `/capacidades` (`AjustesScreen.tsx:66`), mientras que «Cómo hablarle» es el editor de tono (#560, DEC-6) y se abre desde Mi negocio (`AjustesScreen.tsx:63`). «Presupuestos» sale repetido porque hay dos capacidades con ese rótulo (`apps/copiloto/tool_catalog.py:369-370`) y la guía arma un bloque por tool (`PantallaComoHablarle.tsx:78-85`).
 - **Contrato:** `contrato_planificacion-a-frontend2_BL-Q3-web-arreglos-D5-D6-D7-D8-W11-W12`, fila 5.
@@ -374,6 +470,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 ## 6. Frontend pendiente en ambas o en mobile, sin decisión (`BL-F`)
 
 ### BL-F1 · Componente `Recibo` compartido
+
+> **📌 Evidencia medida 2026-09-23:** PR #562 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** H-21, H-23, T-3 · **Pantallas:** `recibo`, `fact-hitl`
 - **Evidencia:** web `TarjetaFacturaPropuesta.tsx:59-64`, `MessageList.tsx:252-263` · mobile `TarjetaPropuestaShell.tsx:69-90`; `apps/mobile/src/modules/facturacion/comprobante.tsx` queda absorbido (#511 lo dejó «Pendiente de David»).
 - **DoD:**
@@ -383,6 +481,8 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
   - [ ] Test de componente con lector de pantalla simulado (anuncio `aria-live`); capturas en ambas.
 
 ### BL-F2 · Tarjeta del link de cobro en mobile (`cobro-voz`)
+
+> **📌 Evidencia medida 2026-09-23:** PR #535 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** mobile · **Tamaño:** S · **Origen:** hilo `cobro-voz` (fuera del mapa; el prototipo lo marca spec, `index.html:3134-3139`)
 - **Evidencia:** backend listo (`apps/copiloto/tool_catalog.py:102-108,588-630`, `mp_charge` genera el link y no cobra) · web lo pinta (`apps/copiloto-web/src/modules/chat/ArtifactView.tsx:23`, tests `ArtifactView.test.tsx:20-65`) · mobile **no porta el renderer de artefactos** (`apps/mobile/src/modules/chat/Burbuja.tsx:20-22`); grep de `payment_link`/`init_point` en `apps/mobile/src` vacío, con control positivo en web.
 - **DoD:**
@@ -406,6 +506,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **DoD:** el que figura en `BL-D1`.
 
 ### BL-J2 · Fecha de corte del saldo
+
+> **📌 Evidencia medida 2026-09-23:** PR #539 mergeado(s). su mitad backend entró como **`K-03`** en #540 — no nombra `BL-J2`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** S · **Origen:** H-04, sesión de Martín (#511, «Lo que NO entra» 1)
 - **Evidencia:** `CajaPortada` es `{saldo, moneda}`; el prototipo muestra «Al 19 de agosto».
 - **DoD:**
@@ -413,6 +515,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Sin dato → la card no muestra fecha, no inventa «hoy».
 
 ### BL-J3 · Variación del saldo contra el mes anterior (`MC-H2`)
+
+> **📌 Evidencia medida 2026-09-23:** PR #539 mergeado(s). su mitad backend entró como **`K-03`** en #540 — no nombra `BL-J3`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-04, sesión de Martín
 - **Evidencia:** `apps/mobile/src/modules/midia/PortadaNegocio.tsx:14-18` (`serieMensual` trae ingresos y gastos, no saldo por mes).
 - **DoD:**
@@ -420,6 +524,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Test backend con un tenant de un solo mes de historia (sin mes anterior).
 
 ### BL-J4 · Salud por conexión (`MC-H3`) + alerta en el detector
+
+> **📌 Evidencia medida 2026-09-23:** PR #550 mergeado(s). su mitad backend entró como **`K-09`** en #552 — no nombra `BL-J4`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-11, sesión de Martín · **Pantallas:** `caida`, `/`, avatar
 - **Evidencia:** `PortadaNegocio.tsx:19-24` (la portada no sabe que está incompleta) · `apps/mobile/src/modules/midia/AvatarCuenta.tsx:13-17` (punto `avisa` cableado y apagado) · web `ServiceCard.tsx:6,22-36,77` («HOY nada en el catálogo lo dispara»).
 - **DoD:**
@@ -430,6 +536,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Captura device + PWA lado a lado con `?ver=caida`.
 
 ### BL-J5 · Verbo contextual y criticidad por regla (`MC-B3`)
+
+> **📌 Evidencia medida 2026-09-23:** PR #548 mergeado(s). su mitad backend entró como **`K-06`** en #547 — no nombra `BL-J5`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-06 · **Pantalla:** `tablero`
 - **Evidencia:** `apps/mobile/src/modules/midia/categoriaTarjeta.ts:5,25` (derivación del cliente, provisoria) · `PantallaMiDia.tsx:131,190` · `packages/core/src/api/miDia.ts:17`.
 - **DoD:**
@@ -439,6 +547,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Captura del tablero con ≥ 1 tarjeta crítica.
 
 ### BL-J6 · Agregado de cartera del tenant en `/clientes`
+
+> **📌 Evidencia medida 2026-09-23:** PR #541 mergeado(s). su mitad backend entró como **`K-04`** en #542 — no nombra `BL-J6`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** S · **Origen:** H-40
 - **Evidencia:** `apps/mobile/src/modules/clientes/PantallaClientes.tsx:93-95` (`agregadosEsteMes` sale de la página cargada; dice «pedido a backend en curso» pero no hay `pedido_`); web igual (`ClientesScreen.tsx:60-70`).
 - **DoD:**
@@ -447,6 +557,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Test adversarial: el total de A no cuenta clientes de B.
 
 ### BL-J7 · Voz dentro de las funciones (contexto de función en el dispatcher)
+
+> **📌 Evidencia medida 2026-09-23:** PR #573, #609, #614, #615, #619, #638 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-16, H-33, H-17, T-2 · **Pantallas:** `card`, `gastos`, `vozchat`, `ingresos`
 - **Evidencia:** sin `MicButton`/`BotonVoz`/`useVozComando` en `modules/gastos/` de ninguna app; `TarjetaGastoPropuesto` sólo en `modules/chat`. Riesgo R-3.
 - **DoD:**
@@ -458,6 +570,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Device: dictar un gasto desde Gastos y verlo aterrizar ahí; captura lado a lado con `?ver=card`.
 
 ### BL-J8 · Consentimiento en contexto (`requiere_conexion`)
+
+> **📌 Evidencia medida 2026-09-23:** PR #594, #626 mergeado(s). su mitad backend entró como **`K-11`** en #570, y #626 cerró **`H-A3-2`/`H-A3-4`** — ninguno nombra `BL-J8`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-30 · **Pantalla:** `consent`
 - **Evidencia:** `apps/copiloto/dispatcher_emprendedor.py:279-283` (responde texto «Andá a Conexiones…»).
 - **DoD:**
@@ -468,6 +582,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] **(A3, H-A3-4)** Fixture de replay que atraviese la rama `gate_card` (lo pedía `K-11` DoD l.58 y #570 no lo agregó). Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 2.
 
 ### BL-J9 · Acciones sugeridas tras guardar o aprobar un presupuesto
+
+> **📌 Evidencia medida 2026-09-23:** PR #588, #595, #602, #606 mergeado(s). con **`K-07`** en #564 y #607 — no nombran `BL-J9`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-27 · **Pantalla:** `pres-ciclo`
 - **Evidencia:** `apps/copiloto/tool_catalog.py:367,1201-1259` (`marcar_presupuesto` sin sugerencia); grep de «Armá la factura» / «Mandalo por mail» vacío en ambas apps.
 - **DoD:**
@@ -479,6 +595,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Device: ciclo presupuesto → aprobado → factura de punta a punta.
 
 ### BL-J10 · Teléfono y email del negocio
+
+> **📌 Evidencia medida 2026-09-23:** PR #545 mergeado(s). su mitad backend entró como **`K-05`** en #546 — no nombra `BL-J10`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** S · **Origen:** H-42 · **Pantalla:** `negocio`
 - **Evidencia:** `packages/core/src/api/perfilNegocio.ts:40-60` sin `telefono`/`email`; spec `prototipo/index.html:2200-2203`.
 - **DoD:**
@@ -487,6 +605,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Validación de formato en ambos lados; captura de guardar y releer.
 
 ### BL-J11 · Cambiar el mail y la contraseña (GoTrue)
+
+> **📌 Evidencia medida 2026-09-23:** PR #554, #559, #608, #610, #631 mergeado(s). **PARCIAL.** La contraseña está cerrada (#631 cerró **`H-A3-11`**). **Falta «Cambiar el mail»**: #566 lo desmontó a propósito con `[DIFERIDO_CIERRE_B]`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-46 · **Pantalla:** `cuenta`
 - **Evidencia:** `packages/core/src/api/auth.ts` sólo expone login · web `AccountScreen.tsx:88-224` · mobile `PantallaCuenta.tsx:28-122`.
 - **DoD:**
@@ -498,6 +618,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] **(A3, H-A3-11)** Los 8 tests contra GoTrue real corren en **cada** `gate.sh`. Hoy se saltean si falta `UC_TEST_GOTRUE_URL`; A3 los corrió a mano, 8/8. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 5.
 
 ### BL-J12 · «Lo pediste vos» (feedback propio y su estado)
+
+> **📌 Evidencia medida 2026-09-23:** PR #589, #609, #660 mergeado(s). su mitad backend entró como **`K-08`** en #567 — no nombra `BL-J12`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-51 · **Pantalla:** `feedback`
 - **Evidencia:** grep de «Lo pediste vos» vacío; el prototipo la marca «LA PIEZA» (`index.html:2114-2117`).
 - **DoD:**
@@ -506,6 +628,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] Sección en ambas apps; captura con un pedido marcado como escuchado.
 
 ### BL-J13 · Agenda de varios días y escritura de eventos (incluye Calendar capa 1)
+
+> **📌 Evidencia medida 2026-09-23:** PR #585, #596, #599 mergeado(s). con #591 — la navegación entró como **`K-13`**. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-07; `PLAN.md` bandeja (Calendar × Mi día capas 1 y 3; CAL1 cerró sólo la capa 2) · **Pantalla:** `agenda`
 - **Evidencia:** `apps/copiloto/mi_dia_web.py:44` (`_rango_hoy`) · web `MidiaScreen.tsx:142,216-250` · mobile `PantallaMiDia.tsx:259-310` · `GOOGLECALENDAR_CREATE_EVENT` ya en la policy.
 - **Depende de:** ADR (CAL1 §3 fijó sólo-hoy) + `contrato_`.
@@ -525,6 +649,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es trabajo a riesgo de tirar (contrato 16/09, Parte 2).
 
 ### BL-X1 · Armazón en capas en web, aterrizaje en Mi día, avatar como única puerta a Ajustes
+
+> **📌 Evidencia medida 2026-09-23:** PR #533 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** L · **Origen:** H-04 (b), H-05, H-41, T-1 · **Depende de:** `DEC-2`
 - **Estado:** aplicado en mobile (`PantallaPrincipal.tsx:183`, `EscritorioFunciones.tsx:70-91`, `PantallaMiDia.tsx:429-441`).
 - **DoD:**
@@ -533,6 +659,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Capturas de `/`, `esc`, `chat`, `ajustes` lado a lado con el prototipo.
 
 ### BL-X2 · 6 funciones y fusión Contabilidad + Inteligencia en web
+
+> **📌 Evidencia medida 2026-09-23:** PR #587 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-05, H-37, DA-2 · **Depende de:** `DEC-2`
 - **Estado:** hecho en mobile (`apps/mobile/src/modules/inteligencia/AcumuladoAnual.tsx:1-114`).
 - **DoD:**
@@ -540,6 +668,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Semáforo y fail-soft (`tope: null`) iguales a mobile; captura en el PWA.
 
 ### BL-X3 · «Preguntar» en el chat principal, no en un mini-chat de Inteligencia
+
+> **📌 Evidencia medida 2026-09-23:** PR #586 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** H-19 · **Depende de:** `DEC-2`
 - **Evidencia:** `inteligencia/ChatInteligencia.tsx` en ambas (sincrónico, aparte).
 - **DoD:**
@@ -547,6 +677,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Device: pregunta desde Inteligencia → respuesta en el hilo principal.
 
 ### BL-X4 · Temas: 2 exactos con muestras + «Como el teléfono»
+
+> **📌 Evidencia medida 2026-09-23:** PR #568 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** H-47, DA-5 · **Depende de:** `DEC-2` (para web)
 - **Evidencia:** web `PantallaApariencia.tsx:7-11,20-46` (3 temas, sin muestras) · mobile `skinsCatalogo.ts:10-18` (2 temas con muestras) · falta «Como el teléfono» en ambas.
 - **DoD:**
@@ -555,12 +687,16 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Captura cambiando el tema del sistema con la app abierta.
 
 ### BL-X5 · AFIP → ARCA en todo texto visible de web
+
+> **📌 Evidencia medida 2026-09-23:** PR #521, #580, #618 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web (+ barrido backend de textos al usuario) · **Tamaño:** S · **Origen:** DA-11 · **Depende de:** `DEC-2`
 - **DoD:**
   - [ ] grep de `AFIP` en strings visibles de `apps/copiloto-web/src` y en respuestas del agente al usuario → 0 (los identificadores internos no se renombran).
 - **Nota de trazabilidad (A3, H-A3-12):** el cuerpo de #618, su commit y el insumo de backend describen `test_arca_no_afip_visible.py`, con allowlist, guard de huérfanos y barrido de `motor/`. Lo que se mergeó es `test_arca_sin_afip_visible.py`, con exención por archivo (`INTERNOS`). El invariante se cumple igual: A3 lo recomputó por AST (4 strings, 3 internos + 1 equivalencia «ex AFIP») y dio 4/4 en el VPS.
 
 ### BL-X6 · Tipografía de la app + retiro de los `.otf` del repo público
+
+> **📌 Evidencia medida 2026-09-23:** PR #578, #606 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile + repo · **Tamaño:** M · **Origen:** DA-4, §6.1.5 · **Depende de:** `DEC-5`
 - **Evidencia:** web `apps/copiloto-web/src/design-system/fonts.css:38-39,79` (`@font-face` a un `.woff2` que no existe) · 9 `.otf` en `docs/Imagen de marca/Neue_Einstellung/` (desde #264) + 1 en `Prototipo frontend/odobi-ui/assets/fonts/`. Mobile **ya la retiró** del bundle por la licencia de app impaga (`apps/mobile/app/_layout.tsx:83-87`; hoy Plus Jakarta Sans + Inter); web la sigue nombrando primero en `--font-display` con su propio TODO «antes de abrir la beta a testers externos» (`fonts.css:32-36`).
 - **DoD:**
@@ -569,6 +705,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Capturas de las dos pieles.
 
 ### BL-X7 · Editor de tono «Cómo hablarle» con respuesta de ejemplo
+
+> **📌 Evidencia medida 2026-09-23:** PR #560 mergeado(s). su mitad backend entró como **`K-15`** en #555 — no nombra `BL-X7`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** H-48, H-42, DA-9 · **Depende de:** `DEC-6`
 - **Evidencia:** editor sin ejemplo en `negocio/PantallaPerfilNegocio.tsx:409-444` (ambas); web `PantallaComoHablarle.tsx:8-104` es una guía de capacidades.
 - **DoD:**
@@ -577,6 +715,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] El ejemplo refleja lo que el agente realmente usa (test que arma el prompt con cada combinación).
 
 ### BL-X8 · Onboarding de 2 permisos + primer insight
+
+> **📌 Evidencia medida 2026-09-23:** PR #563, #627 mergeado(s). su mitad backend entró como **`K-14`** en #558 — no nombra `BL-X8`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-28, H-29, DA-6 · **Depende de:** `DEC-7`
 - **DoD:** se escribe cuando `DEC-7` fije el alcance. Mínimo: alta → hilo de 2 permisos con alcance dicho antes → recibo con un primer dato real del negocio; probado con una cuenta nueva en device.
 - **Estado 2026-09-22:** backend ✅ (#558, `K-14`, adversariales en verde en A3). Web está montado, pero como **pantalla completa** (`App.tsx`). Mobile está **sin montar**: `PantallaOnboarding` tiene 0 consumidores (A3, H-A3-5). DEC-7 + `mockups/01-onboarding/DECISIONES.md` fijan que el onboarding es una **conversación en el hilo**, no una pantalla. Resto → `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 3 + anexo: el hilo en web y mobile, montado en el Guard de `_layout.tsx`, sin tabbar, receipt + completar idempotente y la promesa cumplida con el insight real. `onb-cumplida` → tanda de device.
@@ -587,6 +727,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 - **DoD:** se escribe cuando `DEC-8` fije el modelo. Mínimo: ledger de acciones por tenant con RLS + test adversarial; preguntar no gasta (test); mensaje de tope en el chat con dos salidas del mismo tamaño.
 
 ### BL-X10 · Splash, entrada y reveal
+
+> **📌 Evidencia medida 2026-09-23:** PR #616, #635 mergeado(s). **PARCIAL.** Arranques 2..n (#616) y reveal de primer ingreso (#635). **Falta** el Splash de 6,84 s en mobile (hoy ~1,5 s) y `PRONUNCIACION_MARCA`, que espera un asset de audio del operador. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web + mobile · **Tamaño:** M · **Origen:** H-01, H-02, H-03, DA-8 · **Depende de:** `DEC-3` (librería)
 - **Evidencia:** spec lista `specs/splash-port-reanimated.md`; web `App.tsx:39-46`; mobile `app/_layout.tsx`.
 - **DoD:**
@@ -596,6 +738,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 - **Estado 2026-09-22:** #616 cubrió los arranques 2..n y `volver`. Falta (barrido BL-Q3 web + A3 H-A3-6): el reveal de primer ingreso (`TEXTOS_REVEAL.primeraVez` tiene 0 consumidores), el Splash de 6,84 s en mobile (hoy dura ~1,5 s), que web no repita el splash después del login, `PRONUNCIACION_MARCA` en las dos apps y el test de movimiento reducido en mobile. **Decisión de planificación sobre la pronunciación:** sin asset no hay botón en ninguna de las dos apps; se retira el TTS del navegador de web, y el audio «o-DO-bi» lo aporta el operador. Está en `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 2 + anexo.
 
 ### BL-X11 · Aplicar las decisiones de Martín posteriores al 07/09 que se acepten
+
+> **📌 Evidencia medida 2026-09-23:** PR #528, #572 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** web (mobile ya las tiene) · **Tamaño:** S–M · **Origen:** auditoría §6.3 · **Depende de:** `DEC-2`, `DEC-10`
 - **Incluye:** isotipo en el avatar de Soporte · trazo 1,3 del isotipo · logos reales de apps (`logosMarca.ts`; `assets/logos/` falta en el repo) · Calma 3 vs 5 días · cinco íconos provisorios (`mapaIconos.ts:12-16`) · lockup en el login. (corregido 2026-09-21 post-A1: en **web** el avatar de Soporte y los cinco íconos son N/A — no hay Soporte en `apps/copiloto-web`; se acepta el acta de #528. En mobile siguen incluidos.)
 - **DoD:**
@@ -607,6 +751,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 ## 9. Backend y plataforma sin pantalla (`BL-B`)
 
 ### BL-B1 · Evidencia de durabilidad ante un restart real del worker (E3)
+
+> **📌 Evidencia medida 2026-09-23:** PR #603, #628 mergeado(s). #628 cerró **`H-A3-8`** — no nombra `BL-B1`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend · **Tamaño:** S · **Origen:** `Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:54,58,99,462-491`
 - **Evidencia:** el disparador era «el próximo deploy de backend que reinicie el worker por mérito propio». Desde el 13/08 hay **10 commits** en `apps/copiloto`/`motor` desplegados, y `scripts/e2e_g6_durabilidad_worker_restart.py` nunca se corrió después. Es la evidencia del moat del producto.
 - **DoD:**
@@ -616,6 +762,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] **(A3, H-A3-8)** El VERDE del script discrimina por la activity ejecutada (`execute_tool confirmed:true` después del restart). Hoy `_reply_resolvio_el_gate` (`e2e_g6_durabilidad_worker_restart.py:134-138`) da verde también con «Listo 👍». Falta el control negativo corrido, y que el nombre «en vuelo» se sostenga o pase a «continuidad». El hecho de fondo lo verificó A3 leyendo la historia de prod. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 3.
 
 ### BL-B2 · Ventana de vida del `FacturaWorkflow` (dictado abandonado)
+
+> **📌 Evidencia medida 2026-09-23:** PR #592 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** backend (Temporal) · **Tamaño:** M · **Origen:** `TODO(hito9-dictado-sin-ventana-de-vida, backend, antes de habilitar producción)`
 - **Evidencia:** `apps/copiloto/web.py:391` · `apps/copiloto/afip_factura_workflow.py:241` (`wait_condition` sin timeout). La condición de pago del propio TODO («antes de producción») ya se cruzó: la beta está viva. Hoy lo acota sólo la ventana de 15 min por `StartTime` en `web.py:376`.
 - **Depende de:** skill `temporal-developer` antes de tocar (regla 3 del repo).
@@ -626,6 +774,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] TODO borrado del código y de `memoria/`.
 
 ### BL-B3 · Scanner de secretos antes del push
+
+> **📌 Evidencia medida 2026-09-23:** PR #601, #649 mergeado(s). **PARCIAL, y NO como lo clasificó el barrido.** El guard de `core.hooksPath` **existe**: `scripts/gate.sh:90-121` + `scripts/tests/test-gate-hook-secretos.sh`, con `secretos-check.sh` y su test. El barrido lo dio por abierto leyendo el **título** de #649 («reabre H-A3-1») en vez del código. Lo que falta es la mitad **server-side** (`non_provider_patterns`), que es del operador. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** repo · **Tamaño:** M · **Origen:** gap de `memoria/en-bypasspermissions-solo-sobrevive-permissions-deny.md`
 - **Evidencia:** `.githooks/pre-push` sólo sincroniza el grafo; grep de `secret`/`gitleaks`/`trufflehog` vacío. El repo es público desde el 06/08.
 - **DoD:**
@@ -643,6 +793,8 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Un PR desde la máquina de Martín trae su recibo.
 
 ### BL-B5 · Estado real del gate automático en el servidor (ADR-001 v2)
+
+> **📌 Evidencia medida 2026-09-23:** PR #600 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Plataforma:** repo · **Tamaño:** S (decidir) / M (hacer) · **Origen:** ADR-001 §6(e); `scripts/setup-vps-mirror.sh` nunca corrido
 - **Evidencia:** el ADR se contradice: fila «✅» en la tabla de estado (línea 204) vs «scripteado pero no verificado con push real» (línea 231).
 - **DoD:**
@@ -695,6 +847,8 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] **Restore probado** en una base descartable, con el conteo de filas de una tabla con RLS hecho **con claims**.
 
 ### BL-O6 · Términos y privacidad reales, en las dos apps
+
+> **📌 Evidencia medida 2026-09-23:** PR #678, #679, #681 mergeado(s). verificado contra el código en `main`: `packages/core/src/legal.ts`, `PantallaLegal.tsx`, `tenant_legal_store.py` y el E2E `scripts/e2e_bl_o6_legal_aceptacion.py`. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Evidencia:** web `apps/copiloto-web/src/auth/LegalScreen.tsx:5-9,125` es una **plantilla genérica** que se declara así en pantalla; mobile no tiene pantalla legal (grep de términos/privacidad en `apps/mobile` sin resultados relevantes). El assessment de julio lo marca ❌ (§3.5, §3.9).
 - **DoD:**
   - [ ] Texto propio que nombra los terceros que ven datos (Composio, ARCA, MercadoPago, proveedor de LLM, Graphity) y qué se guarda (la clave fiscal no).
@@ -734,6 +888,8 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Se vuelve a correr al cerrar cada bloque del plan y antes de invitar testers.
 
 ### BL-Q3 · Barrido de device de todo lo marcado ✅ sin ver
+
+> **📌 Evidencia medida 2026-09-23:** PR #623, #625, #630, #633, #637 mergeado(s). **PARCIAL.** La mitad **web** está hecha. **Falta la mitad device** (48 pantallas), que el propio doc manda a la tanda de device del sprint siguiente. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Tamaño:** M · **Origen:** R-7; `[NO VERIFICADO]` de H-15 (papelera), H-22 y H-25 (un dato por vez), H-35 (chips de estado), H-36 (layout), H-39 (WCAG 1.4.1), H-43 («la clave fiscal no se guarda», vinculación de varios minutos); `PWA` con service worker viejo (`memoria/pwa-sw-staleness-gotcha.md`).
 - **DoD:**
   - [ ] Cada una de las 48 pantallas marcada ✅ capturada en device y en el PWA (con `unregister` del service worker + `caches.delete` antes de medir) lado a lado con su `?ver=`.
@@ -762,6 +918,8 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   **Pasan a la tanda de device del sprint siguiente** (BACKEND fuerza el estado sobre `e2e-device` y lo restaura después): `grabando`, `bloqueado`, `fact-hitl`, `fact-cae`, `recibo`, `card-factura`, `consent`, `bi-vacio`, `vacio`, `vacio-visto`, `onb-cumplida` y los 4 de voz. Precondiciones: `e2e-device` con Google Calendar conectado (A3, H-A3-9; necesita un consentimiento OAuth humano) y el flag de onboarding reseteado.
 
 ### BL-Q4 · Contrastes re-medidos sobre los tokens de hoy
+
+> **📌 Evidencia medida 2026-09-23:** PR #581, #609, #639, #582 mergeado(s). **PARCIAL.** Contrastes re-medidos en web y mobile. **Falta el acta de `DEC-11`** para las dos excepciones firmadas — decisión del operador, no código. **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
 - **Tamaño:** S · **Origen:** DA-4 (la auditoría no los re-midió), R-6 · **Depende de:** `DEC-11` para las dos excepciones.
 - **DoD:**
   - [ ] Todos los pares **pintados** (no sólo los declarados) computados en las pieles vigentes de cada app; el gate de contraste cubre declarados − cubiertos = 0.
