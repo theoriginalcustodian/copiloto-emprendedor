@@ -261,3 +261,7 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.
 - [Un procedimiento nuevo mueve el instrumento a un contexto que nadie probó](un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo.md) — detached: stage compartido (#632) y recibo perdido (#634).  _(bajada del índice 2026-09-23 por el techo de 24.000 chars; la entrada sigue viva en `memoria/`)_
+
+## 🔄 2026-09-23 — cupo justo, entra una entrada nueva
+
+- [`patched()` se memoiza por run: un fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new. Medí con `TemporalChangeVersion`. Bajada (backend, cupo justo) para entrar [[aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname]]: caso narrow de Temporal, baja recurrencia con el sprint cerrando.
