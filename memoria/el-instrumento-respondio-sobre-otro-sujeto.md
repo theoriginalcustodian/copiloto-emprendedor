@@ -232,3 +232,32 @@ antes — un PR que se cerró sin mergear porque su patch-id ya estaba aplicado.
 grande y barata merece una segunda forma de preguntar **antes** de que la alarma circule. La primera
 lectura era plausible, urgente y reenviable — la peor combinación. Ver
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+
+## La señal de alarma: dos mediciones distintas que dan el MISMO número exacto
+
+Caso chico y rápido (2026-09-23), útil por el síntoma. Buscaba escapes unicode sin interpretar
+(`\u2014` literal, que un heredoc de bash deja crudo) en los archivos de memoria. Corrí en Python:
+
+```
+s.count("\\u2014")  ->  17      # «escapes literales»
+s.count("\u2014")      ->  17      # em-dashes reales
+```
+
+Concluí «17 escapes rotos» y, como `grep` encontraba **una** sola línea, acusé a `grep` de leer el
+archivo como binario. **`grep` tenía razón: había 1.** El heredoc se comía un backslash, así que las
+dos líneas de Python buscaban **lo mismo** — el em-dash— y por eso daban igual. Mi contador respondió,
+pero sobre **otro sujeto**.
+
+**La señal estaba a la vista y casi la paso por alto:** dos consultas que miden cosas **distintas** y
+devuelven el **mismo número exacto** son sospechosas de ser la misma consulta escrita dos veces.
+Una coincidencia así no es tranquilizadora — es la forma típica de un control que colapsó sobre su
+propio sujeto.
+
+**Y el reflejo peligroso:** cuando el instrumento propio y uno ajeno discrepan, la conclusión cómoda
+es que el ajeno está roto — inventé una explicación plausible («grep lo trata como binario») en vez
+de desconfiar del mío. La regla barata: ante discrepancia, **pedile a cada uno que imprima lo que
+encontró**, no sólo cuánto. Un `repr()` del match habría cerrado el caso en un paso.
+
+**El barrido corregido, con control:** 311 archivos, **2** escapes reales (uno recién introducido por
+mí, otro preexistente), ambos convertidos a su carácter; re-escaneo posterior → **0**.

@@ -132,7 +132,7 @@ Las dos sesiones habían terminado su trabajo y **avisado por el canal correcto*
 **127 minutos de ocio que yo leí como silencio de ellas y era ceguera mía.** El aviso existía, estaba
 bien escrito, en el lugar acordado, desde antes.
 
-**Por qué no da síntoma:** un filtro que descarta de más devuelve una lista **plausible** \u2014 no vacía,
+**Por qué no da síntoma:** un filtro que descarta de más devuelve una lista **plausible** — no vacía,
 no rota, con archivos de verdad adentro. No hay error, no hay rojo. La forma de la salida es correcta
 y sólo el **contenido** está mutilado, que es justo lo que no se revisa cuando el resultado confirma
 lo que esperabas («nadie escribió» es una hipótesis cómoda: no exige nada).
