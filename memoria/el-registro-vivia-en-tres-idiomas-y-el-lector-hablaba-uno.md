@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-# 🗂️🈳 El registro vivía en tres idiomas, y el lector hablaba uno
+# 🗂️🈳 El registro vivía en cuatro idiomas, y el lector hablaba uno
 
 El 2026-09-23 barrí los **73 ids que el backlog de la beta marcaba abiertos** contra los 400 PR
 mergeados del repo:
@@ -68,3 +68,43 @@ producido un registro nuevo igual de plausible y también equivocado.
 Ver también [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]] y
 [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]] — la familia de «el registro no está atado
 al hecho».
+
+## El cuarto idioma: el acta (y por qué el conteo bajó tres veces)
+
+**Horas después apareció un cuarto registro, y volvió a pasar lo mismo.** De los 15 frentes que
+sobrevivían al barrido, **11 tenían una decisión firmada en el acta del 21/09** que los cerraba, los
+difería a Cierre B o los sacaba de la beta. El acta **se declara el cierre de dos de ellos en su
+primer renglón** — «Cierra: `BL-P1` y `BL-P3`». El backlog los listaba abiertos igual.
+
+La secuencia completa de un mismo día: **71 → 16 → 4**. Tres correcciones a la baja, y las tres
+fueron **el mismo defecto**, no tres errores distintos:
+
+| Idioma del cierre | Ejemplo | Quién lo lee |
+|---|---|---|
+| Pull request | `#678` | GitHub |
+| Namespace de junta / auditoría | `K-07`, `H-A4-3` | el buzón, la auditoría |
+| **Acta de decisiones** | `DEC-8`, `DEC-12` | el operador |
+| Backlog | `BL-X9` | el backlog |
+
+Cuatro registros, todos **correctos por separado**, y **nada los compara**. Ahí está el punto: una
+desincronización en la que ningún documento contradice a otro **no puede producir un rojo**. No hay
+gate que falle porque el gate compara código con código, no registro con registro.
+
+**Y la deriva tiene dirección:** las tres correcciones bajaron el conteo. Un registro que sólo sabe
+leer su propio idioma **siempre sobreestima lo pendiente**, nunca lo subestima — porque puede perder
+avisos de cierre, pero no puede inventar trabajo. Un backlog que crece sin que nadie cierre nada no
+es señal de atraso: es señal de que **el cierre se está escribiendo en otro lado**.
+
+## El caso que muestra el costo real
+
+`BL-O6` (legal propio) estaba en la fila del acta que dice «no se enciende todavía: backups, legal
+propio, horario de soporte → Cierre B». **Se implementó y se mergeó igual.** El backlog lo mostraba
+abierto, que es exactamente el defecto de arriba.
+
+Y el daño no fue trabajo desperdiciado — fue peor: **se construyó lo que la decisión había diferido
+precisamente por no estar listo legalmente**, y el texto salió sin una sola palabra de descargo
+(medido: 0 ocurrencias de «abogad», «no constituye», «asesor», «orientativo»). El diferimiento
+existía para cubrir ese riesgo; saltearlo lo materializó.
+
+**El registro desincronizado no cuesta tiempo. Cuesta las decisiones que el diferimiento protegía.**
+Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] y [[desplegado-no-significa-con-clientes]].
