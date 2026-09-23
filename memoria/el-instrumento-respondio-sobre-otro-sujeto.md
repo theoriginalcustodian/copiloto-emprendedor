@@ -1,6 +1,6 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día — la respuesta llega, es plausible, y es de otro sujeto. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día, y una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
 metadata:
   type: feedback
 ---
@@ -18,6 +18,24 @@ Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido n
 | 4 | búsqueda de worktrees huérfanos | 0 huérfanos | miraba `$REPO_ROOT/.claude/worktrees`, que **no existe** cuando el script corre desde un worktree. Había 21 |
 | 5 | escalador de edad del buzón | `999999min` (≈1900 años) | comparaba `fecha_del_nombre != hoy` para decir «de un día **anterior**». Las sesiones nombran en UTC y `date` corre en local: a las 22:41 los **13 archivos de hoy** eran «de otro día» |
 | 6 | lint de contratos «PROSA PURA» | contrato sin artefacto | aceptaba `docs/…`, `.png`, `mockup` — **no** un path de código. El contrato citaba `…/FormularioIngreso.tsx:255` y salía marcado |
+| 7 | `git log -S'texto' -- <path>` (2026-09-22) | **vacío**: «ese commit no existe» | `git log` sin ref arranca en **`HEAD`**, y el checkout compartido está 141 commits atrás. El commit existía; estaba adelante. Con `git log origin/main -S…` aparece al instante |
+
+## El caso 7 merece su párrafo: el cero salió del sujeto por defecto
+
+Buscaba cuándo se había agregado el escáner de secretos al `pre-push`. `git log -S'secretos-check' --
+.githooks/pre-push` devolvió **nada**. Cero hits, sin error. La lectura natural de ese cero es «no
+existe tal commit» — y con ella habría concluido que el hook nunca tuvo scanner.
+
+Lo que lo cazó fue haber puesto un control positivo en el **mismo** comando: `git show
+'origin/main:.githooks/pre-push' | wc -l` devolvió 139. Un archivo de 139 líneas cuya historia
+supuestamente no contiene el cambio que sí está en su contenido: la contradicción es visible en la
+misma salida, y sin ella el cero pasaba como hecho.
+
+La trampa específica: **`git log`, `git grep` y `git diff` usan `HEAD` cuando no les nombrás un ref**,
+y en este repo `HEAD` es el checkout compartido, crónicamente atrasado. El comando corre, no se queja,
+y contesta sobre el pasado. El mismo turno me pasó con `git log -S` y estuvo a punto de repetirse en el
+script que estaba escribiendo — la línea que elegía la «base vieja» tenía el mismo bug, y habría
+abortado con «no ubico el commit», haciéndome creer que el commit no existía.
 
 ## El caso que da más miedo, porque git no falla
 
