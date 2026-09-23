@@ -51,7 +51,13 @@ resolver_binario() {
 
 BIN="$(resolver_binario)"
 [ "$("$BIN" version 2>/dev/null)" = "$GL_VERSION" ] || fatal "el binario '$BIN' no es gitleaks $GL_VERSION"
-COMUN=(--redact --no-banner --config "$ROOT/.gitleaks.toml" --gitleaks-ignore-path "$ROOT/.gitleaksignore")
+# `-v`: sin él, gitleaks sólo dice «leaks found: N» y NO dice dónde. El 2026-09-22 eso costó una
+# investigación a mano y terminó con una sesión editando .gitleaksignore para destrabarse: un guard
+# que acusa sin señalar empuja a saltearlo. Con `-v` imprime File/Line/Fingerprint -- el fingerprint
+# es justo lo que hace falta para aceptar una excepción de verdad, en vez de desarmar el escáner.
+# Verificado que NO filtra el valor: con --redact sale `Secret: REDACTED` (control positivo con un
+# canario `ghp_` que SÍ se detecta, y control negativo sin --redact donde el valor sí aparece).
+COMUN=(--redact --no-banner -v --config "$ROOT/.gitleaks.toml" --gitleaks-ignore-path "$ROOT/.gitleaksignore")
 
 # gitleaks devuelve rc=1 por DOS causas distintas — «encontré un secreto» y «no pude cargar la
 # config» — y este script las mapeaba al mismo mensaje. Medido el 2026-09-22 (test M-3): con
