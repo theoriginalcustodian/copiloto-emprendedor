@@ -144,6 +144,7 @@
 ### Coordinación entre sesiones
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) — `dato_` NO escala; ¿querés reclamo? → `pedido_`.
+- [📢📋 De dos artefactos con distinta precisión gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) — el tablero decía «pasa a veces»; el mensaje, «bloqueado». Paró a 2 sesiones.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — nunca a mano.
 - [`>>` a ruta supuesta del buzón + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) — perdí K-07/08/10/11; ubicar con `find` y `mv -n`.
 - [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno mide OCIO.
@@ -185,7 +186,6 @@
 - [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
 - [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. Ídem [[playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono]].
-- [Un procedimiento nuevo mueve el instrumento a un contexto que nadie probó](un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo.md) — detached: stage compartido (#632) y recibo perdido (#634).
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 
 ## 🗄️ Historia
