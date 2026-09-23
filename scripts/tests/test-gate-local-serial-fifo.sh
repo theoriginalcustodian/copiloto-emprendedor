@@ -43,14 +43,23 @@ ticket_viejo() { mkdir -p "$COLA"; rm -f "$COLA"/*; echo 'otro wt' > "$COLA/1000
 # 1
 ticket_viejo "$VIVO"
 correr GATE_LOCAL_CMD="echo CORRIO"; rc=$?
-# La aserción acepta las DOS salidas legítimas de la cola. Con WAIT=1s y la máquina cargada (5
+# La aserción acepta las TRES salidas legítimas de la cola. Con WAIT=1s y la máquina cargada (5
 # sesiones), la primera vuelta del loop puede caer YA pasado el segundo y salir por TIMEOUT sin
 # imprimir nunca «no es mi turno»: afirmar sólo esa línea medía la carga de la máquina, no la cola.
 # Lo capturó FE2 el 2026-09-22 y acá no se reproducía. Lo que el caso 1 mide se mantiene entero
 # —no corrió, y fue la cola— porque ambas ramas atribuyen a la cola y el caso 2 (NOFIFO) aísla que
 # sea ella. Subir el WAIT haría el flake más raro, no imposible: eso sería tapar, no arreglar.
+# 2026-09-22 — ahi estaba el flake que backend reportó con 3 gates simultáneos: `gate-local-serial.sh`
+# parte el TIMEOUT en DOS mensajes según el candado (`:96` vs `:98`), y sólo uno tenía el patrón que
+# se grepeaba acá:
+#   polling         -> «no es mi turno»                                        (ya aceptado)
+#   timeout, LIBRE  -> «… ticket(s) más viejo(s) delante en la cola»            (ya aceptado)
+#   timeout, TOMADO -> «sigo sin turno tras Ns: lo tiene 'X'. No corro encima»  (FALTABA)
+# La tercera sale cuando el script alcanza a hacer `mkdir` del candado antes de mirar la cola — orden
+# que cambia bajo contención real, por eso no se reproduce aislado. NO se sube `GATE_LOCAL_WAIT`,
+# que era lo que pedía el reporte: el margen no es la causa. El caso 7 la ejercita a propósito.
 [ "$rc" -ne 0 ] && ! grep -q CORRIO "$T/out" \
-  && grep -qE 'no es mi turno|más viejo\(s\) delante en la cola' "$T/out" \
+  && grep -qE 'no es mi turno|más viejo\(s\) delante en la cola|sigo sin turno tras [0-9]+s: lo tiene' "$T/out" \
   && ok "1 ticket más viejo vivo -> espera su turno, no corre" \
   || fail "1 rc=$rc corrió=$(grep -c CORRIO "$T/out") out=$(tail -1 "$T/out" | cut -c1-60)"
 
@@ -90,5 +99,30 @@ rm -rf "$COLA"
 correr GATE_LOCAL_CMD="bash $T/rojo.sh"; rc=$?
 [ "$rc" -eq 3 ] && grep -q rojo "$T/out" && ok "6 gate rojo -> devuelve el rc del gate (3), no el del tee" \
   || fail "6 rc=$rc, esperaba 3 — el tee se estaría comiendo el rojo"
+
+# 7 — la TERCERA salida de timeout, ejercitada A PROPÓSITO y no por suerte de scheduling. Ampliar el
+# grep del caso 1 no alcanza: si ninguna corrida produce esa rama, la alternativa nueva del patrón
+# nunca se ejercita y el test pasaría igual estando rota
+# (memoria/instrumento-que-no-mira-nunca-falla.md). Acá el candado queda TOMADO por un dueño VIVO y
+# sin tickets: `mi_turno` es cierto, el `mkdir` de :78 falla porque el dir ya existe, y el loop sale
+# por la rama `-d "$LOCK"` de :96. Determinista — no depende de la carga de la máquina.
+rm -rf "$COLA" "$LOCK"; mkdir -p "$LOCK"; echo "$VIVO otro-worktree" > "$LOCK/owner"
+env GATE_LOCAL_LOCK="$LOCK" GATE_LOCAL_WAIT=1 GATE_LOCAL_POLL=1 GATE_LOCAL_TTL=3600 GATE_LOCAL_LOGDIR="$LOGDIR" GATE_LOCAL_CMD="echo CORRIO" bash "$SCRIPT" > "$T/out" 2>&1; rc=$?
+if [ "$rc" -ne 0 ] && ! grep -q CORRIO "$T/out" && grep -qE "sigo sin turno tras [0-9]+s: lo tiene" "$T/out"; then
+  ok "7 candado tomado por dueño vivo -> 3.ª salida de timeout, la que el caso 1 no aceptaba"
+else
+  fail "7 rc=$rc corrio=$(grep -c CORRIO "$T/out") out=$(tail -1 "$T/out" | cut -c1-70)"
+fi
+
+# 8 — CONTROL POSITIVO del 7: el MISMO montaje con el dueño MUERTO tiene que correr. Sin esto, el 7
+# pasaría igual si el script se negara a correr por cualquier otro motivo, y no probaría que lo que
+# frena es un dueño VIVO.
+rm -rf "$COLA" "$LOCK"; mkdir -p "$LOCK"; echo "$MUERTO otro-worktree" > "$LOCK/owner"
+env GATE_LOCAL_LOCK="$LOCK" GATE_LOCAL_WAIT=5 GATE_LOCAL_POLL=1 GATE_LOCAL_TTL=3600 GATE_LOCAL_LOGDIR="$LOGDIR" GATE_LOCAL_CMD="echo CORRIO" bash "$SCRIPT" > "$T/out" 2>&1; rc=$?
+if [ "$rc" -eq 0 ] && grep -q CORRIO "$T/out"; then
+  ok "8 control: mismo montaje con dueño muerto -> libera el huérfano y SÍ corre"
+else
+  fail "8 rc=$rc — el 7 no prueba que lo que frena sea un dueño VIVO"
+fi
 
 [ "$fallos" -eq 0 ] && echo "  OK" || { echo "  $fallos fallo(s)"; exit 1; }
