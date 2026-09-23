@@ -267,3 +267,4 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 - [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
   *(bajada el 2026-09-23 por presupuesto del índice: aplica sólo al aplicar `patch` de Temporal sobre workflows vivos, que no está en la cola de ninguna sesión. Sigue buscable acá.)*
+- [🎤🔒 El Playwright MCP compartido es de UNA sesión y no concede el micrófono](playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono.md) — bajada del índice 2026-09-23: su única referencia vivía dentro del gancho de `git-stash-es-comun-a-todos-los-worktrees`, y al comprimir esa línea la entrada quedó huérfana.
