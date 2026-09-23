@@ -6,6 +6,7 @@ del guardado, y ninguna se ve en un fake.
 """
 from __future__ import annotations
 
+import datetime
 import os
 import uuid
 from decimal import Decimal
@@ -13,7 +14,7 @@ from decimal import Decimal
 import pytest
 
 from cobro_store import CobroStore
-from gasto_store import GastoStore
+from gasto_store import GastoStore, hoy_del_negocio
 from presupuesto_store import PresupuestoStore
 from trabajo_store import TrabajoInexistente, TrabajoStore
 
@@ -266,6 +267,21 @@ def test_el_duplicado_probable_se_DETECTA__y_no_bloquea(conn_de_tenant, tenants)
     # y el segundo cobro entra igual: el store nunca bloqueó, la decisión es del endpoint
     store.registrar_suelto(monto="85000", cliente_nombre="Panadería", medio="efectivo")
     assert len(store.listar_ingresos()["ingresos"]) == 2
+
+
+@necesita_pg
+def test_el_duplicado_probable_se_detecta_aunque_la_FECHA_dictada_sea_vieja(conn_de_tenant, tenants):
+    """BL-V35: la ventana mira `created_at` (cuándo se tipeó), no `fecha` (la que dictó el
+    emprendedor). Un cobro backdateado 20 días y cargado DOS veces ahora tiene que detectarse igual
+    -- si la ventana mirara `fecha`, "últimos 5 días" quedaría corrida al pasado y no vería nada,
+    que es exactamente el gap que este test ejercita como control positivo."""
+    a, _ = tenants
+    store = CobroStore(conn_de_tenant(a), a)
+    vieja = (hoy_del_negocio() - datetime.timedelta(days=20)).isoformat()
+    store.registrar_suelto(monto="60000", cliente_nombre="Ferretería", medio="efectivo", fecha=vieja)
+
+    candidato = store.posible_duplicado(monto="60000", cliente_nombre="ferretería")
+    assert candidato is not None and candidato["monto"] == "60000.00"
 
 
 @necesita_pg

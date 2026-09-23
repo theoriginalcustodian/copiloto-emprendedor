@@ -415,6 +415,12 @@ class CobroStore:
 
         Y avisa, **no prohíbe** — mismo criterio que el 409 de clientes: el emprendedor sabe mejor que
         el sistema si le pagaron dos veces lo mismo.
+
+        🔴 **La ventana es sobre `created_at` (cuándo se REGISTRÓ), no sobre `fecha` (la que dictó el
+        emprendedor, BL-V35).** `fecha` puede venir backdateada: alguien que carga hoy un cobro con
+        `fecha` de hace 3 semanas, y lo carga dos veces seguidas por error, no aparecía acá si el
+        filtro miraba `fecha` — la ventana de "últimos N días" quedaba corrida al pasado en vez de
+        mirar el momento real en que se está tipeando.
         """
         importe = _decimal(monto, "monto")
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -422,10 +428,10 @@ class CobroStore:
                 SELECT id, monto, medio, fecha, origen, cliente_nombre
                   FROM {_TABLE}
                  WHERE cliente_id = %s
-                   AND fecha >= CURRENT_DATE - %s
+                   AND created_at >= now() - make_interval(days => %s)
                    AND monto = %s
                    AND (%s = '' OR lower(cliente_nombre) = lower(%s))
-                 ORDER BY fecha DESC, id DESC LIMIT 1
+                 ORDER BY created_at DESC, id DESC LIMIT 1
             """, (self._cliente_id, int(dias), importe,
                   (cliente_nombre or "").strip(), (cliente_nombre or "").strip()))
             fila = cur.fetchone()
