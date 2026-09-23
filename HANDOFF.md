@@ -6,64 +6,6 @@
 
 ---
 
-## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12, act. 18:05)
-
-> Este bloque existe porque **`coordinacion/` NO está versionada**: el buzón con los contratos vivos
-> no viaja con el repo, así que una sesión nueva no tiene forma de enterarse de esto salvo acá.
-> Cuando la ronda cierre del todo (G2/G3/G8), se borra.
-
-**🏁 Leé primero el informe de cierre:**
-[`Auditorias/2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md)
-(#401) — consolida las 3 pasadas, los 11 del backlog y los nuevos. Sustituye a leer 19 archivos.
-Está marcado **🟡 PARCIAL a propósito**: se completa cuando backend mergee los lotes B y C.
-
-**Titular de la ronda: 0 P0 nuevos en las tres pasadas.** Lo más grave del ciclo —C4.1— no fue un
-hallazgo: era una fila del backlog marcada ⚠️ PARCIAL desde el 2026-08-04. **El riesgo no estaba
-escondido, estaba registrado y sin dueño.** Faltaba ejecución, no auditoría.
-
-| | Estado |
-|---|---|
-| Pasadas 1, 2 y 3 | ✅ **las tres cerradas → G1 cumplido**. Balance nuevo: **0 P0 · 5 P1 · 10 P2 · 1 P3** |
-| **C4.1** — `/auth/signup` abierto (**era el P0 que bloqueaba la beta**) | ✅ **CERRADO Y VERIFICADO EN PROD** (#399) — ver ⚠️ abajo, tiene una consecuencia viva |
-| **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393) |
-| **D9** — flake del `mobile` en `gate.sh` | 🔴 **ABIERTA, causa re-localizada (2026-08-19).** El timeout global **nunca fue la causa**: 22 timeouts medidos, los 22 de `30000 ms`, cero del global. Falla local a **2 suites de 83** (`ChatView`, `PantallaSoporte` — gesto de voz), 3/5 reproducible. Subir el timeout **ya no mitiga**. Dueño: frontend |
-| Lotes B y C (backend) | 🟡 **B en curso** (B1: los 3 `print()` con PII). C en cola, arranca al cerrar B |
-| Fase D — re-verificar con control negativo | ⏳ **auditoría**, armada y esperando que lote B mergee |
-
-**⚠️ Consecuencia viva de C4.1 — leé esto antes de intentar crear un usuario.** El alta ahora exige
-**invitación** y el gate es **fail-closed**: sin la env, no entra nadie. Prod tiene **un solo email
-habilitado** (`e2e-device@copiloto.test`, el canónico). **Ningún tester nuevo puede darse de alta**
-—ni por password ni por Google, `ensure-tenant` también quedó detrás de la allow-list— hasta que el
-operador defina la lista. Está estacionado como `decision_` en el buzón; **no lo decidas por él**.
-
-**⚠️ D9 estaba marcada cerrada acá y era falso.** El flake volvió **con su fix presente**, así que un
-`mobile` rojo **se discrimina** (re-correr aislado, log completo a archivo), **no se atribuye** por
-parecido. Una vez que "es el flake conocido" queda instalado como explicación disponible, la próxima
-regresión real pasa con la misma frase.
-
-Si estás abriendo una sesión, lo que queda es, en este orden:
-
-1. **Lote B** (higiene: `print()` con PII, errores tragados, C8, canario de C5) — **backend**, en
-   curso. Ojo con B1: `motor/**` **no puede** importar de `apps/copiloto/**` (dirección invertida a
-   `CLAUDE.md §2`); si hace falta logging estructurado en el motor, es por **inyección**.
-2. **Lote C** (los 4 P1, ordenados por consecuencia: el riesgo de cobro doble va primero) —
-   **backend**, arranca al mergear B.
-3. **Fase D del DoD** — re-verificar los fixes con control negativo. **Auditoría**; sin lote B/C
-   mergeado no tiene qué verificar.
-4. **D9** — **frontend**. Ya no es "capturar el próximo rojo": el rojo se reprodujo a demanda y la
-   causa está acotada. Leer
-   [`Auditorias/2026-08-19-D9-el-timeout-global-no-era-la-causa.md`](docs/copiloto-emprendedor/Auditorias/2026-08-19-D9-el-timeout-global-no-era-la-causa.md).
-   **No subir más el timeout** — ya se probó 5000 → 15000 → 30000 y el flake sigue. Lo que falta es
-   un spike sobre por qué `ChatView.test.tsx` y `PantallaSoporte.test.tsx` tardan 48-70s cuando las
-   otras 81 suites juntas tardan 14s. Rediseñarlas o sacarlas del gate es **decisión del operador**.
-
-Normativa del ciclo:
-[`Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md)
-· Deuda viva con dueño y fecha:
-[`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md).
-
----
-
 ## 0. Qué es (30 segundos)
 
 **Copiloto del Emprendedor** = un **agente conversacional durable multi-tenant** para emprendedores: chatea por
@@ -81,7 +23,7 @@ sí; frontend-pesado-como-producto, no.
 
 ---
 
-## 1. Estado actual (2026-08-07)
+## 1. Estado actual (2026-09-23)
 
 > **El tablero de frentes vivo es `coordinacion/PLAN.md`** (COLA-VIVA + `scripts/cola-check.sh`), no
 > esta tabla: acá va lo estructural, que cambia poco. Si los dos discrepan, **gana el tablero**.
@@ -89,22 +31,46 @@ sí; frontend-pesado-como-producto, no.
 | Frente | Estado |
 |---|---|
 | **🌐 El repo es PÚBLICO** | Desde el **2026-08-06**, por decisión del operador (Actions gratis e ilimitado; el CI se había vuelto cuello de botella). **Cambia el costo de un error, no la regla:** un `.env` mal commiteado es público en el instante del push. Auditoría de toda la historia: **0 secretos**. Ver `CLAUDE.md` §cabecera. |
-| **Sprint BETA + sprint M-WEB** | ✅ **Cerrados el 2026-08-05**, verificados independientemente. Los dos gates de BETA-5 satisfechos — falta sólo que el operador mande las invitaciones a los 10-15 testers. |
+| **Sprint BETA + sprint M-WEB** | ✅ **Cerrados el 2026-08-05**, verificados independientemente. Los dos gates de BETA-5 satisfechos. **Lo que bloquea la beta HOY no es esto:** es **Cierre A** (criterio 3 — la paridad de testids web/mobile, medida sobre 7 de 54 ids) + **Cierre B** (los interruptores que sólo toca el operador). Las invitaciones son una consecuencia, no la causa. |
 | **CI propio (ADR-001)** | ✅ **Cerrado 2026-08-06**, ADR `ACCEPTED`. La definición de la suite ya **no vive en GitHub**: `scripts/ci/{backend,core,web,mobile,lint}.sh` + `scripts/gate.sh` (escribe recibo `.ci-recibos/<sha>.json`) + guard `no-drift.sh`. Actions es respaldo/atestación. Nació de un outage `critical` de 5 h con los webhooks al 15%. **Deuda PAGADA el 2026-08-07 por backend**, con control positivo: el bare del VPS existía pero `main` nunca había llegado (`does not have any commits yet`). Tras `setup-vps-mirror.sh main`, verificado por SSH en `8d040e4`, idéntico a `origin/main`. |
-| **Sprint CONSOLA DE OPERADOR** | 🔥 **En curso.** CONS0a/0b/1/2/3/4 y CONS5 cerrados; CONS6 arrancable; CONS7 con contrato bajado. Estado real → `coordinacion/PLAN.md`. |
-| **Graduación Fase 0+1+2** | ✅ Hecha. Repo propio `github.com/theoriginalcustodian/copiloto-emprendedor`, 123 commits con historia preservada (filter-repo). Motor vendorizado en `motor/` (**fork duro** desde 2026-07-07: no se sincroniza más con la fábrica). |
-| **Copiloto vivo (prod-beta)** | ✅ Desplegado en el VPS, multitenant real, smoke E2E 10/10 (BETA-READY). Corre desde `/opt/uc-repos/copiloto`, **deployado desde ESTE repo** (cutover hecho 2026-07-06). |
-| **Fase 2.5 — cutover del deploy** | ✅ **Hecho (2026-07-06).** El servicio vivo corre desde este repo (layout `motor/`; PYTHONPATH del proceso verificado en `/proc/PID/environ`; `reference` viejo eliminado). Smoke E2E **10/10 BETA-READY** post-switch. Backup del origen previo: `/opt/uc-repos/copiloto.bak-pre-graduacion-20260706T141252Z`. |
+| **Sprint CONSOLA DE OPERADOR** | ✅ **Cerrado el 2026-08-07** (CONS8, 30/30). El sprint vivo es la **beta Odobi** → `coordinacion/PLAN.md` (bloque COLA-VIVA). |
+| **Graduación Fase 0+1+2** | ✅ Hecha. Repo propio `github.com/theoriginalcustodian/copiloto-emprendedor`, con la historia preservada (filter-repo, 2026-07-06). Motor vendorizado en `motor/` (**fork duro** desde 2026-07-07: no se sincroniza más con la fábrica). |
+| **Copiloto vivo (prod-beta)** | ✅ Desplegado en el VPS, multitenant real, smoke E2E en **BETA-READY**. Corre desde `/opt/uc-repos/copiloto`, **deployado desde ESTE repo** (cutover hecho 2026-07-06). |
+| **Fase 2.5 — cutover del deploy** | ✅ **Hecho (2026-07-06).** El servicio vivo corre desde este repo (layout `motor/`; PYTHONPATH del proceso verificado en `/proc/PID/environ`; `reference` viejo eliminado). Smoke E2E **BETA-READY** post-switch. Backup del origen previo: `/opt/uc-repos/copiloto.bak-pre-graduacion-20260706T141252Z`. |
 | **Fase 3 — infra 3 nodos dedicados** | ⏳ Diferida (hoy comparte VPS con la fábrica). Ver `memoria/copiloto-arquitectura-prod-3-nodos.md`. |
 
 **Deudas abiertas relevantes:** secretos a rotar pre-prod (`memoria/deuda-secretos-rotar.md`) · passwords temporales de GoTrue · `dispatcher_emprendedor` divergente del genérico R1 (deuda visible, registrada).
 
+> El registro con **dueño y fecha** de cada diferido vive en
+> `docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`; la ronda
+> de auditorías que lo abrió cerró el 2026-08-12 (`Auditorias/2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md`).
+
+> ⚠️ **Antes de intentar crear un usuario — consecuencia viva de C4.1.** El alta exige
+> **invitación** y el gate es **fail-closed**: sin la env no entra nadie. Prod tiene **un solo email
+> habilitado** (`e2e-device@copiloto.test`, el canónico), y no hay puerta lateral: ni por password ni
+> por Google, porque `ensure-tenant` también quedó detrás de la allow-list
+> (`apps/copiloto/web.py:551-593` + `deploy/copiloto/deploy.sh:236`). Ampliarla es **decisión del
+> operador**, estacionada como `decision_` en el buzón — **no la decidas por él.**
+
+> 🔴 **D9 — el flake de `mobile` en el gate.** Causa raíz encontrada y fixeada el 2026-09-22 (#657
+> `076c9a3c`: `useVozComando` corría un `setInterval` **real** de 100 ms; fake timers en ambos
+> describes de voz). **Sin declaración formal de cierre:** el registro de deuda la mantiene `abierto`
+> por la sub-clase EPERM intra-run, y la única evidencia post-fix son 13 recibos verdes en una
+> ventana de 7 h — eso no cierra un flake intermitente. Un `mobile` rojo **se discrimina**
+> (re-correr aislado, log completo **a archivo**), **no se atribuye** por parecido: una vez que
+> «es el flake conocido» queda instalado como explicación disponible, la próxima regresión real pasa
+> con la misma frase.
+
 > ⚠️ **Si trabajás en el checkout compartido de las tres sesiones, leé esto antes de commitear.**
-> Esa rama (`docs/production-readiness-brief`) tiene merge-base con `main` en el **24 de julio**: 237
-> commits y 697 archivos de retraso. Pierde en las dos direcciones — lo que commiteás ahí **no llega
-> a `main`** (ni al grafo de código, que ingesta `main`), y las herramientas que sirve el cwd (hooks,
-> slash commands, scripts) son las de entonces. **Docs y memoria: escribilos en un worktree desde
-> `origin/main` y abrí PR.** Detalle y controles en
+> **Docs y memoria: escribilos en un worktree desde `origin/main` y abrí PR.** La razón de fondo no
+> es el drift —hoy es chico: **5 detrás / 4 adelante** al 2026-09-23— sino que lo que commiteás ahí
+> **puede no llegar nunca a `main`** (ni al grafo de código, que ingesta `main`), y que el cwd sirve
+> las herramientas de la rama en la que esté: hooks, slash commands y scripts **de entonces**.
+> **Medilo, no lo cites de memoria:** `git rev-list --left-right --count origin/main...HEAD`.
+>
+> Y el riesgo que de verdad muerde en un repo PÚBLICO no es el drift: si `core.hooksPath` quedó
+> apuntando al path absoluto de otro worktree, **el pre-push de gitleaks no corre**
+> (`memoria/hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md`). Detalle y controles en
 > `memoria/el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md`.
 
 ---
@@ -117,7 +83,7 @@ git clone git@github.com:theoriginalcustodian/copiloto-emprendedor.git
 cd copiloto-emprendedor
 
 # 2) Sembrá la memoria del proyecto en el slug de auto-memory de Claude Code
-#    (idempotente; deja el índice + las ~163 entradas vivas donde el harness las levanta)
+#    (idempotente y BIDIRECCIONAL: rescata al repo lo que sólo vive en el slug antes de reconciliar)
 ./scripts/seed-memory.sh
 
 # 3) Apuntá a la fábrica para poder sincronizar el motor vendorizado (ver §4)
@@ -156,9 +122,10 @@ Memoria:   Graphity (aislada por tenant) · Persistencia: Postgres (fusion) · S
 ```
 
 **Boundary del motor:** `apps/copiloto/_paths.py` es la **fuente única** del mount — resuelve `motor/` (o el env
-`UC_MOTOR_REF_PATH`) y lo agrega a `sys.path` vía `ensure_paths()`, que llaman los 4 entry points
-(`serve`, `web`, `worker_b`, `provision`). En el VPS el systemd además setea `PYTHONPATH=.../motor:.../deploy/worker`
-(doble cinturón). **Graduar/mover el repo NO toca los 56 archivos del backend** — solo el default de `_paths.py`.
+`UC_MOTOR_REF_PATH`) y lo agrega a `sys.path` vía `ensure_paths()`, que llaman los entry points y
+**todos** los módulos que cruzan el boundary — cuántos son se mide, no se cita:
+`grep -rl ensure_paths --include=*.py apps/ deploy/`. En el VPS el systemd además setea `PYTHONPATH=.../motor:.../deploy/worker`
+(doble cinturón). **Graduar/mover el repo NO toca los módulos del backend** — solo el default de `_paths.py`.
 
 ---
 
@@ -171,7 +138,8 @@ copiloto-emprendedor/
 ├── apps/
 │   ├── copiloto/           ← backend front-door + worker (serve.py, web.py, worker_b.py, provision.py,
 │   │                          services/, tool_catalog.py, context_factory.py, _paths.py, conftest.py, tests/)
-│   └── copiloto-web/       ← cliente PWA (Vite; build servido mismo-origen por _mount_spa)
+│   ├── copiloto-web/       ← cliente PWA (Vite; build servido mismo-origen por _mount_spa)
+│   └── mobile/             ← app Expo/RN `copiloto-mobile` — la que va a beta en device
 ├── motor/                  ← MOTOR VENDORIZADO (arquetipo conversational_agent de la fábrica)
 │   ├── backend/agent/      ← runtime durable, conversation_workflow, activities, inbound_router
 │   └── clients/agent/      ← channels/web, providers (llm, composio_gateway, mercadopago_gateway, stt…)
@@ -180,13 +148,17 @@ copiloto-emprendedor/
 │   │                          sync-web.sh, sync-test-backend.sh, fetch-fonts.sh, Caddyfile.snippet,
 │   │                          gotrue/ (GoTrue dedicada: deploy-gotrue.sh, migrate-and-cutover.sh, compose…)
 │   └── worker/             ← provision_tables.py (infra-fábrica compartida)
-├── scripts/
-│   ├── seed-memory.sh      ← siembra memoria/ en el slug de auto-memory (init)
-│   └── sync-motor.sh       ← reconcilia motor/ con la fábrica (check|sync)
+├── scripts/                 ← ~50 utilidades; las que importan al arrancar:
+│   ├── seed-memory.sh      ← siembra memoria/ en el slug de auto-memory (init, bidireccional)
+│   ├── gate.sh             ← EL gate (ADR-001): 5 jobs + recibo .ci-recibos/<sha>.json
+│   └── sync-motor.sh       ← RETIRADO (fail-closed): fork duro desde 2026-07-07, ver la sección 6
 ├── docs/                   ← diseño, planes, decisiones (incl. copiloto-emprendedor/)
-├── memoria/                ← memoria del proyecto (MEMORY.md ~163 vivas + HISTORIA.md 66 bajadas + checkpoints)
+├── memoria/                ← memoria del proyecto (MEMORY.md = índice vivo, HISTORIA.md = bajadas,
+│                              checkpoints). Los conteos y los DOS techos del índice se miden con
+│                              `python scripts/medir-indice-memoria.py` — nunca se citan de memoria
 ├── requirements.txt        ← pin de deps del venv de prod (fuente: pip freeze del VPS)
-└── .github/workflows/      ← CI (backend: colección+unit; frontend: build)
+└── .github/workflows/      ← CI de RESPALDO: 6 jobs (backend, core, mobile, web, lint, drift).
+                               La suite se DEFINE en `scripts/ci/`, no acá (ADR-001)
 ```
 
 ---
@@ -228,13 +200,14 @@ ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/depl
 
 ### 5.4 Smoke / verificación
 ```bash
-ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # 36/36 = BETA-READY
+ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # el veredicto es la linea final, no el numero
 ```
 
-> El `10/10` que decía acá quedó viejo en CONS8: el smoke incorporó el bloque `consola` (6 adversariales
-> con control positivo + los dos ciclos mutar→auditar), y pasó a **30 checks**. CTA4 (2026-08-07) sumó
-> el bloque 11 (artefacto de la web servida, 4 checks) → **36**. Un número esperado que envejece es
-> peor que ninguno — te hace leer `26/30` como "sobran 20" en vez de "faltan 4".
+> **El veredicto es la línea final (`BETA-READY` / `BLOQUEA BETA`), no el total.** Acá decía `10/10`,
+> después `30` (CONS8 sumó el bloque `consola`), después `36` (CTA4 sumó el artefacto de la web
+> servida); la última corrida, del 2026-09-21, fue **37/37**. Va a volver a cambiar: el smoke crece
+> con cada bloque nuevo. Un número esperado que envejece es peor que ninguno — te hace leer `26/30`
+> como "sobran 20" en vez de "faltan 4".
 
 ### 5.5 Entrar a la Consola de operador
 
@@ -318,10 +291,23 @@ nunca un sync ciego.
 
 ## 9. Qué sigue
 
-1. **Fase 2.5 — ✅ hecha.** El vivo corre desde este repo (smoke 10/10 post-switch). Pendiente menor: tras
-   confirmar estabilidad unos días, borrar el backup `/opt/uc-repos/copiloto.bak-pre-graduacion-*` del VPS.
-2. **Fase 3** — infra de prod en 3 nodos dedicados (app+temporal / clon fusion / clon graphity) + load test.
-   `memoria/copiloto-arquitectura-prod-3-nodos.md`.
-3. **Producto** — retomar los frentes vivos del roadmap (voz, automatizaciones recurrentes, trazabilidad/BI).
-   Índice completo en `docs/` y `memoria/copiloto-emprendedor-roadmap.md`.
-```
+**La cola viva no vive acá: está en `coordinacion/PLAN.md` (bloque COLA-VIVA) y se consulta con
+`bash scripts/cola-check.sh`.** Esto es lo estructural, que cambia poco; si discrepan, **gana el
+tablero**.
+
+Al **2026-09-23** el sprint vivo es la **beta Odobi**, y la bloquean dos cierres, los dos del operador:
+
+1. **Cierre A — criterio 3 (paridad de testids web/mobile).** Está medido sobre **7 de 54** ids: el
+   generador `scripts/evidencia/criterio3-matriz.mjs` recorre 7 (`SOLO_IDS`), con navegación escrita a
+   mano por id. O se extiende a los 54, o se re-declara el criterio con un acta.
+2. **Cierre B — los interruptores que sólo toca él**: SMTP + Caddy `/auth/v1/verify*` +
+   `API_EXTERNAL_URL`, texto legal final, invitaciones a testers. Listados en el `decision_` del buzón.
+
+Diferido, sin dueño hoy:
+
+3. **Fase 3** — infra de prod en 3 nodos dedicados (app+temporal / clon fusion / clon graphity) + load
+   test. `memoria/copiloto-arquitectura-prod-3-nodos.md`.
+4. **Limpieza del VPS** — tras confirmar estabilidad, borrar el backup
+   `/opt/uc-repos/copiloto.bak-pre-graduacion-*`. Pendiente desde el cutover del 2026-07-06.
+5. **Producto** — los frentes del roadmap (voz, automatizaciones recurrentes, trazabilidad/BI):
+   `memoria/copiloto-emprendedor-roadmap.md`.
