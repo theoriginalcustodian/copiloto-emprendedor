@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""IDEM-gasto/PARID: paridad mobile<->web del patrón "idemKey deriva de mensajeId".
+"""Ratchets de drift silencioso entre plataformas/lenguajes -- IDEM-gasto/PARID y BL-O6/LEGAL.
+
+Dos chequeos independientes, un solo runner (el escaneo dinámico + filtro de comentarios se
+reutiliza para ambos; el pedido de LEGAL fue explícito: "extendé ese patrón, no inventes otro
+runner"):
+
+  1. PARID -- paridad mobile<->web del patrón "idemKey deriva de mensajeId" (ver abajo).
+  2. LEGAL -- paridad de la versión legal entre `packages/core/src/legal.ts` (TS, lo que el front
+     manda), `apps/copiloto/tenant_legal_store.py` (Python, lo que el backend exige) y
+     `scripts/e2e_bl_o6_legal_aceptacion.py` (E2E, la hardcodea para pegarle a prod). Los tres
+     literales viajan por CONVENCIÓN -- no hay import cruzado posible entre TS y Python -- así que
+     nada los compara salvo este script. Si el operador bumpea uno y no los otros dos, el backend
+     rechaza TODA aceptación con 409 `legal_version_desactualizada` y ningún tester completa el
+     alta; el síntoma no aparece al editar el texto, aparece en el primer alta.
+
+## PARID -- paridad mobile<->web del patrón "idemKey deriva de mensajeId".
 
 El bug de origen (`IDEM-gasto-duplica-plata`): una card de propuesta que remonta (scroll, reload,
 reapertura) con una `idemKey` que nace en el montaje genera una clave NUEVA por instancia, y el
@@ -27,12 +42,31 @@ Lo que importa para el ratchet es la PARIDAD, no que las dos plataformas usen `m
 - mobile y web en estados DISTINTOS, o el archivo falta de un lado -> ROJO, nombrando el archivo.
   Esto es lo que agarra "el fix entró por un solo lado" el día que alguien lo escriba a mano.
 
+## LEGAL -- paridad de la versión legal (TS <-> Python <-> E2E).
+
+Extrae el literal de cada archivo con una regex anclada al NOMBRE de la constante (no a la fecha:
+un ratchet que busque "2026-09-22" se desactualiza con lo que vigila), filtrando comentarios antes
+de buscar -- mismo riesgo ya pagado en PARID: los tres archivos se citan por nombre entre sí en
+comentarios (`tenant_legal_store.py` menciona "apps/copiloto-web"/"apps/mobile", el E2E comenta
+"apps/copiloto/tenant_legal_store.py" en la misma línea del literal), así que sin el filtro un
+literal viejo dejado en un comentario podría matchear antes que el real.
+
+Sobre el E2E: se decidió sumarlo como TERCER literal a la misma comparación de igualdad, en vez de
+hacer que importe `tenant_legal_store.py` como fuente de verdad. Es un script HTTP standalone
+pensado para correr aislado contra prod (ver su propio docstring) -- acoplarlo a un import interno
+del backend le cambia la naturaleza para resolver el mismo riesgo que comparar el literal ya
+resuelve sin tocarlo. No hay ratchet de excepciones para LEGAL (a diferencia de PARID): una
+divergencia entre estos tres literales nunca es "por diseño", siempre es un bump que se hizo a
+medias -- por eso es un chequeo de igualdad estricta, no un archivo de excepciones con trinquete.
+
 Uso:
-    idemkey_paridad.py --check                     # gate: exit 1 si hay drift sin excepción o trinquete roto
+    idemkey_paridad.py --check                     # gate: exit 1 si hay drift (PARID) o desalineación (LEGAL)
     idemkey_paridad.py --inventario                 # inventario completo (JSON, a stdout)
 
-Fail-closed (control negativo del propio DoD): si el archivo de excepciones no existe, está vacío
-de forma o no parsea como JSON con la forma esperada, --check falla igual que si hubiera drift real.
+Fail-closed (control negativo del propio DoD): si el archivo de excepciones de PARID no existe,
+está vacío de forma o no parsea como JSON con la forma esperada, --check falla igual que si hubiera
+drift real. Ídem LEGAL si falta cualquiera de los 3 archivos o ninguno define el literal esperado
+(constante renombrada/movida) -- un chequeo que no pudo leer no es un chequeo verde, es un salto.
 """
 from __future__ import annotations
 
@@ -63,7 +97,7 @@ def _es_arnes_de_test(f: Path) -> bool:
     return bool(_ARNES_DE_TEST_RE.search(f.name)) or "__tests__" in f.parts
 
 
-_COMENTARIO_RE = re.compile(r"^\s*(//|\*(?!/)|/\*)")
+_COMENTARIO_RE = re.compile(r"^\s*(//|\*(?!/)|/\*|#)")
 
 
 def _sin_comentarios(lineas: list[str]) -> list[str]:
@@ -73,9 +107,12 @@ def _sin_comentarios(lineas: list[str]) -> list[str]:
     ("mismo mecanismo que mensajeId ... la idemKey se DERIVA de ...") que menciona las dos
     palabras en la MISMA línea del comentario -- sin este filtro, sacar la derivación real del
     cuerpo del componente seguía dando "deriva" por el docstring, y el control positivo del DoD
-    quedó en verde cuando debía estar rojo. No es un parser de JS: sólo tapa el estilo de
-    comentario que domina este repo (línea que empieza con //, * o /*), mismo trade-off
-    pragmático que testid_paridad.py con los ids dinámicos."""
+    quedó en verde cuando debía estar rojo. No es un parser de JS/Python: sólo tapa los estilos de
+    comentario de línea de este repo (//, * y /* del lado TS; # del lado Python, para el chequeo
+    LEGAL), mismo trade-off pragmático que testid_paridad.py con los ids dinámicos. No cubre
+    comentarios trailing en la misma línea del código (`valor = "x"  # nota`) porque ahí el literal
+    real precede al comentario -- la regex de extracción matchea igual y el riesgo que esto
+    filtra es el opuesto: un comentario que MENCIONA el literal sin ser la asignación real."""
     return ["" if _COMENTARIO_RE.match(l) else l for l in lineas]
 
 
@@ -147,6 +184,51 @@ def comparar(mobile: dict[str, tuple[str, str]], web: dict[str, tuple[str, str]]
     return drift, sin_asimetria
 
 
+LEGAL_TS = "packages/core/src/legal.ts"
+LEGAL_PY = "apps/copiloto/tenant_legal_store.py"
+LEGAL_E2E = "scripts/e2e_bl_o6_legal_aceptacion.py"
+
+# Ancladas al NOMBRE de la constante, no a la fecha que vigilan -- extraer, no hardcodear.
+_LEGAL_TS_RE = re.compile(r"\bLEGAL_VERSION\s*=\s*['\"]([^'\"]+)['\"]")
+_LEGAL_PY_RE = re.compile(r"\bLEGAL_VERSION_VIGENTE\s*=\s*[\"']([^\"']+)[\"']")
+_LEGAL_E2E_RE = _LEGAL_PY_RE  # mismo nombre de constante, mismo estilo de asignación (Python)
+
+
+def _extraer_literal_legal(root: Path, rel_path: str, patron: re.Pattern) -> tuple[str | None, str | None]:
+    """(valor, motivo_si_no_se_pudo_extraer). Filtra comentarios antes de matchear -- ver
+    `_sin_comentarios`: los tres archivos legales se citan por nombre entre sí en comentarios."""
+    f = root / rel_path
+    if not f.exists():
+        return None, f"{rel_path} no existe"
+    texto = f.read_text(encoding="utf-8", errors="ignore")
+    for linea in _sin_comentarios(texto.splitlines()):
+        m = patron.search(linea)
+        if m:
+            return m.group(1), None
+    return None, f"{rel_path} no define el literal esperado (¿se renombró o movió la constante?)"
+
+
+def chequear_version_legal(root: Path):
+    """(ok, mensaje, valores). Chequeo de IGUALDAD estricta entre los 3 literales -- no hay
+    excepciones/trinquete acá (a diferencia de PARID): una divergencia entre estos tres nunca es
+    "por diseño", siempre es un bump que se hizo a medias. Fail-closed: si falta cualquiera de los
+    3 archivos o no se pudo extraer su literal, es error, no salto silencioso."""
+    ts_val, ts_err = _extraer_literal_legal(root, LEGAL_TS, _LEGAL_TS_RE)
+    py_val, py_err = _extraer_literal_legal(root, LEGAL_PY, _LEGAL_PY_RE)
+    e2e_val, e2e_err = _extraer_literal_legal(root, LEGAL_E2E, _LEGAL_E2E_RE)
+
+    errores_extraccion = [e for e in (ts_err, py_err, e2e_err) if e]
+    valores = {LEGAL_TS: ts_val, LEGAL_PY: py_val, LEGAL_E2E: e2e_val}
+    if errores_extraccion:
+        return False, "; ".join(errores_extraccion), valores
+
+    if len({ts_val, py_val, e2e_val}) > 1:
+        detalle = ", ".join(f"{k}={v!r}" for k, v in valores.items())
+        return False, f"version legal DESALINEADA -- {detalle}", valores
+
+    return True, f"version legal alineada en TS/PY/E2E: {ts_val!r}", valores
+
+
 def cargar_excepciones(path: Path) -> dict | None:
     if not path.exists():
         return None
@@ -170,6 +252,7 @@ def main() -> int:
     root = Path(args.root).resolve()
     mobile, web = escanear(root)
     drift, sin_asimetria = comparar(mobile, web)
+    legal_ok, legal_msg, legal_valores = chequear_version_legal(root)
 
     if args.inventario:
         print(json.dumps({
@@ -177,6 +260,7 @@ def main() -> int:
             "web": {k: {"path": v[0], "estado": v[1]} for k, v in web.items()},
             "drift": drift,
             "sin_asimetria_pero_sin_derivar": sin_asimetria,
+            "legal": {"ok": legal_ok, "mensaje": legal_msg, "valores": legal_valores},
         }, ensure_ascii=False, indent=2))
         return 0
 
@@ -208,8 +292,11 @@ def main() -> int:
                 errores.append(f"[STALE] {nombre} -- ya no es drift real (paridad restaurada o el archivo "
                                 "desapareció), sacala del baseline")
 
+        if not legal_ok:
+            errores.append(f"[LEGAL] {legal_msg}")
+
         if errores:
-            print(f"[FAIL] paridad idemKey mobile<->web -- {len(errores)} problema(s):", file=sys.stderr)
+            print(f"[FAIL] paridad idemKey/legal mobile<->web -- {len(errores)} problema(s):", file=sys.stderr)
             for e in errores:
                 print(f"  - {e}", file=sys.stderr)
             return 1
@@ -217,7 +304,7 @@ def main() -> int:
         print(f"[OK] paridad idemKey mobile<->web -- {len(mobile) + len(web)} formularios candidatos, "
               f"{len(excepciones)} excepciones vigentes, 0 sin cubrir, 0 excepciones obsoletas. "
               f"{len(sin_asimetria)} formulario(s) sin derivar en NINGUN lado (deuda conocida, no falta "
-              f"de paridad): {', '.join(sorted(sin_asimetria)) or '-'}.")
+              f"de paridad): {', '.join(sorted(sin_asimetria)) or '-'}. {legal_msg}.")
         return 0
 
     ap.print_help()
