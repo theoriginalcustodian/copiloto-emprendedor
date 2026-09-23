@@ -26,7 +26,6 @@ import {
 
 import { Button, Skeleton } from '../../design-system';
 import { EstadoVacio } from '../../design-system/EstadoVacio';
-import { AvisoConexionCalendario } from './AvisoConexionCalendario';
 import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
 import { AgendaScreen } from './AgendaScreen';
 import { PortadaNegocio } from './PortadaNegocio';
@@ -323,14 +322,17 @@ function PanelCalendario({
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
+    if (estadoConexion === 'caido') {
+      return (
+        <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-caida">
+          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tus eventos de hoy.
+        </p>
+      );
+    }
     return (
-      <AvisoConexionCalendario
-        estadoConexion={estadoConexion}
-        testIdCaida="midia-calendario-caida"
-        testIdNoConectado="midia-calendario-no-conectado"
-        mensajeCaida="Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tus eventos de hoy."
-        mensajeNoConectado="Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy."
-      />
+      <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-no-conectado">
+        Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
+      </p>
     );
   }
 

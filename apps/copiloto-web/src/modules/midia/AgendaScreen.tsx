@@ -14,7 +14,6 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { AvisoConexionCalendario } from './AvisoConexionCalendario';
 import './midia.css';
 
 /**
@@ -115,14 +114,16 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
         </p>
       )}
 
-      {estado === 'ok' && agenda != null && !agenda.conectado && (
-        <AvisoConexionCalendario
-          estadoConexion={estadoGoogleCalendar}
-          testIdCaida="agenda-calendario-caida"
-          testIdNoConectado="agenda-no-conectado"
-          mensajeCaida="Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tu agenda."
-          mensajeNoConectado="Conectá Google Calendar en Ajustes → Apps para ver acá tu agenda."
-        />
+      {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar === 'caido' && (
+        <p className="midia-screen__calendario-invitacion" data-testid="agenda-calendario-caida">
+          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tu agenda.
+        </p>
+      )}
+
+      {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar !== 'caido' && (
+        <p className="midia-screen__calendario-invitacion" data-testid="agenda-no-conectado">
+          Conectá Google Calendar en Ajustes → Apps para ver acá tu agenda.
+        </p>
       )}
 
       {estado === 'ok' && agenda != null && agenda.conectado && (
