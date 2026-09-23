@@ -233,11 +233,13 @@ const FilaMensaje = memo(function FilaMensaje({
   if (propuesta) {
     // GUARDM parte 2 — `resuelto` viene de `mensaje.gastoResuelto` (mismo criterio que
     // `gate.respondido` viniendo de `mensaje.hitlRespondido` más abajo); `onResolver` ya llega atado
-    // a ESTE `mensaje.id`, la card nunca conoce ningún id.
+    // a ESTE `mensaje.id` para el guard. `mensajeId` SÍ se pasa (IDEM-gasto/BL-V33): la card lo usa
+    // sólo para derivar la `idemKey` de `FormularioGasto`, no para el guard cross-remount de arriba.
     return (
       <TarjetaGastoPropuesto
         propuesta={propuesta}
         resuelto={mensaje.gastoResuelto}
+        mensajeId={mensaje.id}
         onResolver={(patch) => onResolverTarjeta(mensaje.id, { gastoResuelto: patch })}
       />
     );

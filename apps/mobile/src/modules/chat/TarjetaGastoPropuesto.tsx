@@ -42,6 +42,13 @@ export interface TarjetaGastoPropuestoProps {
   /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
    * los tests que no verifican persistencia lo omiten sin romper nada. */
   onResolver?: (patch: NonNullable<ChatMessage['gastoResuelto']>) => void;
+  /**
+   * El `id` del mensaje, sólo para la `idemKey` de `FormularioGasto` (IDEM-gasto/BL-V33) — el guard
+   * cross-remount de ESTA card no lo necesita (vive en `resuelto`/`onResolver`, patrón B, arriba).
+   * Opcional por lo mismo que en `TarjetaPresupuestoPropuesto`: los tests que no ejercitan
+   * idempotencia lo omiten sin romper nada.
+   */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -49,6 +56,7 @@ export function TarjetaGastoPropuesto({
   propuesta,
   resuelto,
   onResolver,
+  mensajeId,
   testID = 'gasto-propuesto',
 }: TarjetaGastoPropuestoProps) {
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
@@ -102,6 +110,7 @@ export function TarjetaGastoPropuesto({
           setEstado('descartado');
           onResolver?.({ estado: 'descartado' });
         }}
+        mensajeId={mensajeId}
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

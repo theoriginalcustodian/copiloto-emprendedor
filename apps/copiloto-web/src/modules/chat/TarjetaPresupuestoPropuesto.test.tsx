@@ -185,7 +185,8 @@ describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () 
     fireEvent.click(boton);
 
     expect(mockCrear).toHaveBeenCalledTimes(1);
-    expect(mockCrear.mock.calls[0]?.[0].idemKey).toMatch(/^[0-9a-f-]{36}$/);
+    // Con `mensajeId` la clave se DERIVA (BL-V32/K-01 ampliado) — ya no es un UUID por instancia.
+    expect(mockCrear.mock.calls[0]?.[0].idemKey).toBe(`presupuesto:${MENSAJE_ID}`);
     resolver({ status: 'ok', presupuesto: presupuestoGuardado(7) });
     await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeInTheDocument());
   });
@@ -200,5 +201,54 @@ describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () 
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
 
     expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
+  });
+});
+
+/**
+ * BL-V32/K-01 ampliado a web: la `idemKey` se deriva de `mensajeId` (mismo mecanismo que mobile,
+ * ver `FormularioPresupuesto.tsx` mobile). Antes de este fix, un reload que remontaba la MISMA card
+ * (guard cross-reload best-effort en localStorage falla abierto) generaba una `idemKey` nueva por
+ * cada montaje y el backend no podía dedupear — el mismo bug que K-01 ya había cerrado en mobile.
+ */
+describe('TarjetaPresupuestoPropuesto — idemKey deriva del mensajeId (BL-V32/K-01 web)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('🔴 CONTROL POSITIVO: mismo mensajeId, tras DESMONTAR y volver a montar ⇒ MISMA idemKey', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
+    unmount();
+    window.localStorage.clear(); // aísla del guard cross-reload — lo que se mide acá es la idemKey, no el guard
+
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
+
+    const primera = mockCrear.mock.calls[0]?.[0].idemKey;
+    const segunda = mockCrear.mock.calls[1]?.[0].idemKey;
+    expect(primera).toBe('presupuesto:assistant-123');
+    expect(segunda).toBe('presupuesto:assistant-123');
+  });
+
+  it('CONTROL NEGATIVO: dos mensajeId legítimamente distintos ⇒ idemKey DISTINTAS', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
+    unmount();
+
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-456" />);
+    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
+
+    const primera = mockCrear.mock.calls[0]?.[0].idemKey;
+    const segunda = mockCrear.mock.calls[1]?.[0].idemKey;
+    expect(primera).toBe('presupuesto:assistant-123');
+    expect(segunda).toBe('presupuesto:assistant-456');
+    expect(primera).not.toBe(segunda);
   });
 });
