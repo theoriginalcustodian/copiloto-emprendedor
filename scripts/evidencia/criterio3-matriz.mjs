@@ -123,6 +123,15 @@ const PROTO_VISTA = {
   factura: '#factura.on',
   gastos: '#funcion.on',
   apar: '#s-apar.on',
+  // Los de abajo salen de `sonda-forEach.mjs`, no de leer el código: medidos contra el DOM real.
+  comousar: '#s-comousar.on',
+  soporte: '#s-soporte.on',
+  'bi-refresh': '#bi-refresh.cargando',
+  // `esc` es el único del bloque que NO marca una clase: `abrirEscritorio()` escribe
+  // `#midia.style.transform = translateY(H() - ASOMO)`, un valor que DEPENDE DEL VIEWPORT
+  // (782px a 390×844, otro a 1440×900) — así que no se puede fijar el número. Lo estable es la
+  // forma: tiene translateY y no es el 0px del estado cerrado.
+  esc: '#midia[style*="translateY"]:not([style*="translateY(0px)"])',
   hablar: '#s-hablar.on',
   apps: '#s-apps.on',
   plan: '#s-plan.on',
