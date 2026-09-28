@@ -92,3 +92,7 @@ client_secret_*.json
 # `telegram-composio-canal-operador.md` lleva el chat_id del operador — dato semi-sensible, y el
 # propio archivo lo dice. Un chat_id es un número: ni gitleaks ni un escáner de patrones lo cazan.
 memoria/telegram-composio-canal-operador.md
+
+# temporal del control positivo del brazo pageerror (scripts/evidencia/correr-canario.sh):
+# el runner se GENERA desde el archivo canonico en cada corrida, no se versiona.
+scripts/evidencia/.canario-tmp/
