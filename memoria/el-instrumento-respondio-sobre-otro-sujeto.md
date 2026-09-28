@@ -251,8 +251,20 @@ Habría sido el consejo opuesto al correcto.
 La causa estaba escrita en el `repos.toml` del bridge: el 2026-08-19 el árbol que el bridge LEE dejó
 de ser el que el sync ESCRIBE, y el drift vivió **>1 mes invisible** (arreglado en `dd7cbd0`, el
 2026-09-22 21:25, **el mismo día del marcador**). Medido en el rango real —desde el inicio de la
-ceguera— hay **24 borrados, 13 de código indexable, 1 renombrado**: 13-14 archivos × decenas de
-objetos cada uno ≈ 400. **Los 436 son basura legítima y el tope de 200 estaba funcionando.**
+ceguera— hay **24 borrados, 13 de código indexable, 1 renombrado**. **Los 436 son basura legítima y el tope
+de 200 estaba funcionando** — pero mi aritmética para llegar ahí («13-14 archivos × decenas de objetos
+≈ 400») **estaba mal, y me la refutaron con la lista del dry-run**: de 4 archivos-fuente de la muestra,
+**2 SÍ existen** (`EscritorioFunciones.tsx`, y `LegalScreen.tsx` creado esta semana). La segunda mitad
+de la población son **símbolos eliminados DENTRO de archivos que sobrevivieron**, que mi conteo por
+archivo no podía ver. Por eso el «≈400» salía forzado: **conté en archivos una población que se mide en
+símbolos y aristas** ([[contar-un-simbolo-no-dice-en-que-rol-aparece]]).
+
+**Y el argumento fuerte no era ninguno de los dos conteos: era `FALTANTES: 0`.**
+`expected 39296 / present 39732 / zombies 436 / FALTANTES 0` — todo lo que el árbol vivo espera ya
+estaba presente, así que el reconcile sólo podía **quitar sobrante**, nunca dejar hueco. Eso se lee en
+una línea, no depende de reconstruir la historia, y es el criterio reusable para la próxima vez que el
+tope frene: **preguntar cuántos FALTAN, no cuántos se borran.** Yo pasé el rato midiendo la magnitud del
+borrado cuando la pregunta que decidía era si el borrado podía dejar un agujero.
 
 **Por qué el rango era el sujeto equivocado, y por qué es peor que un path mal escrito:** el marcador
 es el **puntero de progreso** del propio proceso, y avanzaba **correctamente** mientras la fuente que
