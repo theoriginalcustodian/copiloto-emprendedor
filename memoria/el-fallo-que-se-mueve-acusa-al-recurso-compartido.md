@@ -70,6 +70,26 @@ o el instrumento?*— y la respuesta está en **la forma del patrón, no en el c
 La primera mitad la pagué el mismo día: busqué `.card` cuando `abrirCard` monta `#card` por ID, y
 salieron **5/5 timeouts idénticos**. La segunda es este archivo.
 
+## Contador: el mismo patrón, CUATRO veces en un día, y el mismo culpable
+
+No es una anécdota que se cita una vez — es la firma del instrumento que tenemos. Las cuatro veces el
+**sujeto cambió** y el server no:
+
+| # | Cómo se veía | Sujeto que «fallaba» |
+|---|---|---|
+| 1 | tres capturas faltantes en B1 | `apar` · `soporte` · `esc` |
+| 2 | sonda de tasa al 40-60% | 6 celdas **distintas** |
+| 3 | celda abortada por `console.error` | `hitl`, y en la pasada siguiente `ingresos` |
+| 4 | activación perdida sin error (reportada por otra sesión) | `desktop` sí, `390` no |
+
+**Cuando el contador llega a dos, dejá de diagnosticar el sujeto y andá al recurso.** Lo que costó
+caro no fue ninguno de los cuatro: fue tratarlos como cuatro problemas.
+
+⚠️ **Y el corolario de limpieza, que es parte del patrón:** un server de prueba que queda vivo en un
+puerto es el próximo recurso compartido que va a fabricar un falso rojo **para otra sesión**, que no
+sabe que existe. Al terminar se baja, cruzando el PID contra el propio comando antes de matarlo
+([[el-puerto-que-contesta-puede-ser-de-otra-sesion]]).
+
 ## El caso que cerró las dos mitades, contra mi propio instrumento (2026-09-28, tarde)
 
 Probando un guard ajeno, una celda abortó por `console.error: Failed to load resource: 404` **con la
