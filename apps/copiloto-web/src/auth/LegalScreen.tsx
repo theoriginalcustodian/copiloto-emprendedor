@@ -1,4 +1,4 @@
-import { LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
+import { LEGAL_DESCARGO, LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
 import { Button, Surface } from '../design-system';
 import './login.css';
 
@@ -8,6 +8,9 @@ import './login.css';
  * verificados contra el código (`packages/core/src/legal.ts`), compartido con mobile para que no
  * diverja. El aviso de plantilla sigue en pantalla a propósito — retirarlo es decisión del
  * operador (`contrato_..._BL-O6-legal-parte-A...md` §3), no un olvido.
+ *
+ * Descargo de responsabilidad (2026-09-28, firmado por el operador): `LEGAL_DESCARGO`, PROVISORIO
+ * hasta revisión de un abogado — ver docstring en `packages/core/src/legal.ts`.
  *
  * Reusa `login.css` (mismo `.app-frame`/`Surface` que Login/Signup) — cero CSS nuevo para una
  * pantalla de puro texto.
@@ -35,6 +38,9 @@ export function LegalScreen({ kind, onVolver }: LegalScreenProps) {
             data-testid="legal-screen-placeholder-notice"
           >
             Plantilla estándar genérica — no es una revisión legal específica de este negocio.
+          </p>
+          <p className="login-screen__alert" role="note" data-testid="legal-screen-descargo">
+            {LEGAL_DESCARGO}
           </p>
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {parrafosDe(kind).map((parrafo) => (

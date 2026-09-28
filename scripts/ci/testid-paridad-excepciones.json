@@ -1261,6 +1261,16 @@
       "motivo": "BL-O6 parte A: el mismo id 'legal-screen-version' SI existe del lado web, pero bajo la pantalla 'src/auth' (LegalScreen.tsx se abre desde SignupScreen ahi) -- no bajo 'modules/ajustes', que es donde vive la pantalla mobile equivalente (PantallaLegal, se abre desde Mi cuenta). Es la misma asimetria de punto de entrada que las dos excepciones de arriba, no contenido faltante. Ver tambien src/auth::legal-screen-version.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::legal-screen-descargo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaLegal.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-28",
+      "id": "legal-screen-descargo",
+      "motivo": "BL-O6 parte A (descargo, firmado por el operador 2026-09-28): mismo id 'legal-screen-descargo' SI existe del lado web, pero bajo la pantalla 'src/auth' (LegalScreen.tsx se abre desde SignupScreen ahi) -- no bajo 'modules/ajustes', que es donde vive la pantalla mobile equivalente (PantallaLegal, se abre desde Mi cuenta). Misma asimetria de punto de entrada que legal-screen-version/legal-screen-placeholder-notice, no contenido faltante. Ver tambien src/auth::legal-screen-descargo. Dueno: frontend2.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::lo-pediste-vos": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/LoPedisteVos.tsx"
@@ -4355,6 +4365,16 @@
       "fecha": "2026-09-22",
       "id": "legal-screen-version",
       "motivo": "BL-O6 parte A: el par de este id vive en PantallaLegal.tsx (mobile), pero bajo la pantalla 'modules/ajustes' -- no bajo 'src/auth', que no existe como pantalla mobile (mobile no tiene un modulo de auth propio, el login vive en app/). Ver tambien modules/ajustes::legal-screen-version.",
+      "pantalla": "src/auth"
+    },
+    "src/auth::legal-screen-descargo": {
+      "en": [
+        "apps/copiloto-web/src/auth/LegalScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-28",
+      "id": "legal-screen-descargo",
+      "motivo": "BL-O6 parte A (descargo, firmado por el operador 2026-09-28): el par de este id vive en PantallaLegal.tsx (mobile), pero bajo la pantalla 'modules/ajustes' -- no bajo 'src/auth', que no existe como pantalla mobile. Misma asimetria de punto de entrada que legal-screen-version/legal-screen-placeholder-notice. Ver tambien modules/ajustes::legal-screen-descargo. Dueno: frontend2.",
       "pantalla": "src/auth"
     },
     "src/auth::login-google": {
