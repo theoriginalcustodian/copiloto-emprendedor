@@ -25,6 +25,14 @@ http.createServer((req, res) => {
   // Sin path traversal: se normaliza y se exige que quede dentro de la raíz.
   let ruta = decodeURIComponent(req.url.split('?')[0]);
   if (ruta.endsWith('/')) ruta += 'index.html';
+  // El favicon se responde 204 en vez de 404, y no es cosmético: el prototipo no declara ninguno
+  // (`grep -c favicon index.html` = 0), así que Chrome lo pide por su cuenta y el 404 sale como
+  // `console.error: Failed to load resource` en la consola del browser. Medido el 2026-09-28: pasa
+  // en 1 de cada 10 cargas del MISMO id — Chrome lo pide sólo a veces —, y un generador que aborte
+  // la celda al ver un `console.error` tumba ~1,4 de sus 14 celdas de proto por corrida, cada vez
+  // OTRA. Un falso positivo intermitente es peor que uno constante: fabrica la excusa «es el flake
+  // conocido», y con ella se lava la próxima regresión real. Se mata en el origen.
+  if (ruta === '/favicon.ico') { res.writeHead(204).end(); return; }
   const abs = normalize(join(RAIZ, ruta));
   if (!abs.startsWith(normalize(RAIZ))) { res.writeHead(403).end(); return; }
   let st;
