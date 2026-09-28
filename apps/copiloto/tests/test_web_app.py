@@ -434,7 +434,29 @@ def test_mp_callback_accessible_without_token():
 def test_healthz_without_token_returns_ok():
     app, _ = _build_app(require_tenant=_require_tenant_401())
     r = TestClient(app).get("/healthz")
-    assert r.status_code == 200 and r.json() == {"status": "ok"}
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+
+
+def test_healthz_sin_UC_BUILD_SHA_devuelve_sha_null_no_rompe(monkeypatch):
+    """BUILDSHA (contrato 2026-09-28), DoD backend punto 2: sin la env var (deploy que no la
+    inyectó, o dev local) el endpoint NO rompe -- reporta la ausencia en vez de inferir nada."""
+    monkeypatch.delenv("UC_BUILD_SHA", raising=False)
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).get("/healthz")
+    assert r.status_code == 200
+    assert r.json()["sha"] is None
+
+
+def test_healthz_con_UC_BUILD_SHA_lo_reporta_y_arrancado_es_string(monkeypatch):
+    """DoD backend punto 1: con la env var seteada (como la inyecta `deploy.sh`), `/healthz` la
+    reporta tal cual -- leída una vez al construir la app (composition root), no por request."""
+    sha_falso = "a" * 40
+    monkeypatch.setenv("UC_BUILD_SHA", sha_falso)
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).get("/healthz")
+    body = r.json()
+    assert body["sha"] == sha_falso
+    assert isinstance(body["arrancado"], str) and body["arrancado"]
 
 
 # --- /auth/signup ------------------------------------------------------------------
