@@ -102,7 +102,49 @@ incluir pares que ya se corrigieron entre medio (el propio `--badge-fg` se corri
 contar sub-casos que acá se agrupan por patrón. **No ajusté la medición para que dé 34** (el pedido
 mismo lo pide así): reporto los 23 que el barrido AUTOMATIZADO actual encuentra y deja `DEUDA_CONOCIDA`.
 
-## 3. DoD
+## 3. Reconciliación 23 vs. 34 — aporte de FRONTEND1 (trabajó el mismo hito en paralelo)
+
+Planificación detectó la duplicación (asignación cruzada, falla suya no de ejecución) y pidió
+consolidar en un solo documento en vez de dos cierres paralelos. Lo que sigue es el aporte de
+FRONTEND1, verificado por mí contra el código antes de incorporarlo (no transcribo sin probar).
+
+**Los dos números no compiten — miden universos distintos, y ninguno se promedia:**
+
+- **23 (este doc):** entradas ya catalogadas en `EXEMPT_FG_TOKENS` (web) + `DEUDA_CONOCIDA`
+  (web/mobile) — el catálogo **vivo** de hoy, un renglón por token/patrón declarado en el gate real.
+- **34 (auditoría A2 original):** reglas/selectores CSS que fallan AA en el **árbol renderizado**
+  (`paresPintadosContraste.test.ts:88-105,111-116` web + `temaContraste.test.ts:103-263` mobile) —
+  29 web + 5 mobile. Cuenta ocurrencias en el DOM, no tokens únicos: varias filas del árbol pueden
+  compartir el mismo token.
+
+**Verificado — los 29 renglones web colapsan a 3 variables raíz de `themes.css` (piel claro):**
+
+| Token | Actual | Ratio actual | Variante candidata | Ratio verificado | Nota |
+|---|---|---|---|---|---|
+| `--ok-fg` (`#3C8069`) | vs `--bg` `#EFE6D2` = 3,77 · vs `--bg-layer` `#F5EBD5` = 3,95 | — | `#35725d` (mismo hue, ΔL 11% más oscuro) | **4,55** / **4,77** — re-verificado, coincide | Candidata sólida, mínima. |
+| `--core` (`#B04A2E`) | vs `--bg` = 4,38 | — | Existe `#ac492d` (ΔL 2%) → 4,52 | re-verificado, coincide | **No aplicable sin tocar marca**: `themes.css:1-26` (header) documenta explícitamente la regla "nunca 3 terracotas conviven" (CLAUDE.md §4.1 del audit citado ahí mismo) — el palette de acento está cerrado a 2 valores y ya declara esto como deuda heredada visible, no bug de este PR. Confirmado leyendo el comentario, no de oídas. |
+| `--danger-btn-fg` (`#F5EBD5`) | vs `--danger-btn-bg` `#c7455a` = 4,00 | — | Variante matemática `#fcf9f2` (4,51) o **`#FFFFFF`** (4,74, valor limpio) | re-verificado, ambas coinciden | FE1 recomienda `#FFFFFF` por ser un valor "limpio" en vez de una fracción — no toca el fill. |
+
+**Mobile — reutilización de derivación, no recalculada aparte (verificado el hex compartido,
+archivo:línea de ambos lados):**
+
+| Token web | Token mobile | Hex | Coincide |
+|---|---|---|---|
+| `--ok-fg` claro (`themes.css:174`/`:335`) | `exito` claro (`tokens.ts:513`) | `#3C8069` | ✅ |
+| `--danger-btn-bg` claro (`themes.css:180`/`:343`) | `peligro` claro (`tokens.ts:381`) | `#c7455a` | ✅ |
+| `--ok-fg` oscuro (`themes.css:436`) | `exito` oscuro (`tokens.ts:372`) | `#34e5a0` | ✅ (dato extra de FE1, verificado) |
+
+La piel oscura mobile de `peligro` (`tokens.ts:372`, `#ff8fa0`) NO coincide con nada de `themes.css`
+oscuro — hex propio, no reutilizado. La misma variante derivada arriba (`--ok-fg`→`#35725d`) aplica
+al par claro sin recalcular; los 19 pares mobile de la sección 2 ya cubren el resto del catálogo.
+
+**Conclusión para el operador — el número no mueve el trabajo, mueve el relato:** en cualquiera de
+los dos conteos (23 vivo o 34 histórico), lo que se firma son **3 tokens web** (`--ok-fg`, `--core`,
+`--danger-btn-fg`) — uno de ellos (`--core`) ya bloqueado por la regla de marca, no por falta de
+cálculo. Se reportan los dos números con su definición al lado; el que se usa para "cuánto falta" es
+el 23 (deuda viva del walker de hoy), no el 34 (deuda histórica con casos ya corregidos entre medio).
+
+## 4. DoD
 
 - [x] Pares pintados (no sólo declarados) — ya cubierto por el gate existente, no remedido de cero.
 - [x] Variante mínima calculada para cada par catalogado, con archivo:línea donde aplica.
