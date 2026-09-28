@@ -14,6 +14,13 @@ class _FakeMpGateway:
 
 class _FakeMpCred:
     def get(self, seller): return {"access_token": "AT"}
+    def salud(self): return "conectado"
+
+
+class _FakeMpCredCaido:
+    """Fila EXISTE (creds truthy) pero `salud()` == "caido" -- el caso que `not creds` solo no detecta."""
+    def get(self, seller): return {"access_token": "AT-VENCIDO"}
+    def salud(self): return "caido"
 
 
 def _ctx(*, mp_gateway=None, mp_cred_store=None, mp_seller_user_id="146",
@@ -64,6 +71,25 @@ def test_mp_charge_without_connection_asks_to_connect():
     r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
            {"pending": r1.state_patch["pending"]}, ctx)
     assert "conect" in r2.reply_text.lower()   # pide conectar MercadoPago primero
+    assert r2.card.get("service") == "mercadopago"   # K-11: sheet, no sólo texto
+
+
+def test_mp_charge_caido_pide_reconectar_no_llama_al_gateway_con_token_vencido():
+    """Regresión (hallazgo frontend1, BL-Q3 v2, fila `consent`, 2026-09-28): una fila `caida`
+    (reauth_desde marcado o token vencido) es TRUTHY para `creds.get()` -- antes de este fix pasaba
+    de largo el guard y llamaba a `mpgw.create_payment_link` con el token vencido; MP rechazaba y
+    `MercadoPagoError` no tenía catch en `dispatch()`, así que el usuario nunca veía el sheet de
+    reconexión (K-11), sólo lo que agarrara el catch-all genérico de más afuera."""
+    class _GwSpy(_FakeMpGateway):
+        def create_payment_link(self, *a, **kw):
+            raise AssertionError("no debe llamar a MP con una conexión caída")
+    ctx = _ctx(mp_gateway=_GwSpy(), mp_cred_store=_FakeMpCredCaido())
+    d = _dispatch()
+    r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "x"}, reply_es=""), {}, ctx)
+    r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+           {"pending": r1.state_patch["pending"]}, ctx)
+    assert "conect" in r2.reply_text.lower()
+    assert r2.card.get("service") == "mercadopago"   # dispara el sheet, no texto plano genérico
 
 
 def test_mp_charge_without_gateway_is_graceful_not_crash():

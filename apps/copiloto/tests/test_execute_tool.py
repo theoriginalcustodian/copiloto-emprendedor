@@ -117,6 +117,7 @@ class _FakeMpGw:
 
 class _FakeCred:
     def get(self, seller): return {"access_token": "tok"}
+    def salud(self): return "conectado"
 
 
 def _mp_ctx(gw):
@@ -226,6 +227,28 @@ def test_mp_charge_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
     card = tr.observation["gate_card"]
     assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago" and card["label"] == "Mercado Pago"
     assert gw.calls == 0                                # no llamó create_payment_link
+
+
+def test_mp_charge_caido_devuelve_card_en_vez_de_llamar_a_mp_con_token_vencido():
+    """Regresión (hallazgo frontend1, BL-Q3 v2, fila `consent`, 2026-09-28): `creds.get()` devuelve una
+    fila EXISTENTE (truthy) para una conexión `caida` (reauth_desde marcado o token vencido) -- el guard
+    `not creds` solo no la detecta. Antes del fix, la tool llamaba a `mpgw.create_payment_link` con el
+    token vencido, MP rechazaba con `MercadoPagoError`, y el catch-all genérico (línea ~1643) devolvía
+    "no pude generar el cobro ahora" SIN `gate_card` -- el sheet de reconexión (K-11) nunca aparecía,
+    a diferencia de cualquier servicio Composio (que si pasa por `ConnectionRequired`)."""
+    gw = _FakeMpGw()
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    ctx = _mp_ctx(gw)
+    class _CredCaida:
+        def get(self, seller): return {"access_token": "vencido"}   # fila EXISTE -> truthy
+        def salud(self): return "caido"
+    ctx.mp_cred_store = _CredCaida()
+    tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=True, idem_key="run1-caido")
+    assert tr.status == "error"
+    assert tr.observation["needs_connect"] == "mercadopago"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago"
+    assert gw.calls == 0                                # NUNCA llamó a MP con el token vencido
 
 
 def test_calendar_book_needs_confirmation_observation_has_service():

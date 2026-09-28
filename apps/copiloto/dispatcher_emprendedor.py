@@ -102,9 +102,20 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
         arguments[resolve['into']] ANTES del write. Fail-closed: si no se resuelve, NO escribimos."""
         if pending.get("provider") == "mercadopago":
             creds = mpcred.get(mpseller)
-            if not creds:
+            # `not creds` sólo cubre "nunca conectado" -- una fila `caida` (reauth_desde marcado o token
+            # vencido) es TRUTHY y pasaba de largo hasta `mpgw.create_payment_link` con credenciales
+            # inválidas: MP rechazaba y `MercadoPagoError` no tenía catch en `dispatch()` (sólo
+            # `ConnectionRequired`/`ComposioExecutionError`, arriba) — ni sheet ni el texto de este `if`,
+            # sino lo que agarre el catch-all de más afuera (hallazgo frontend1, BL-Q3 v2, fila `consent`;
+            # mismo fix aplicado a la gemela `tool_catalog._run_mp_charge`, canon 3: reutilizar `salud()`).
+            if not creds or mpcred.salud() == "caido":
+                # K-11: mismo `card` estructurado que dispara el sheet para cualquier otro servicio
+                # (línea 292) -- antes esta rama sólo mandaba `reply_text`, así que MercadoPago nunca
+                # mostraba `SheetRequiereConexion` ni siquiera en el caso "nunca conectado" (parte del
+                # mismo hallazgo: la familia `payments` es la única sin sheet in-context).
                 return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
-                                      done=False, state_patch={"pending": None})
+                                      done=False, state_patch={"pending": None},
+                                      card=requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago")))
             dedup = mp_dedup_factory(cid) if mp_dedup_factory else None
             if dedup and idem_key:
                 cached = dedup.get(idem_key)
