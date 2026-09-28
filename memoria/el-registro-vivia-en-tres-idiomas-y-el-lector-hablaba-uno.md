@@ -108,3 +108,50 @@ existía para cubrir ese riesgo; saltearlo lo materializó.
 
 **El registro desincronizado no cuesta tiempo. Cuesta las decisiones que el diferimiento protegía.**
 Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] y [[desplegado-no-significa-con-clientes]].
+
+
+## El quinto idioma, y el que enseña algo nuevo: **el mismo lote registra en DOS FORMAS y el contador lee una** (2026-09-28)
+
+FE1 reportó **12** DESVÍO y mi acta decía **11**, en la **misma unidad** (mediciones). Cuando dos
+mediciones de la misma unidad no coinciden, una está mal — y acá era la del instrumento.
+
+`scripts/evidencia/contar-veredictos.py` reconocía dos formas de registro: el campo `veredicto: X` y la
+última celda de una fila de tabla. El lote B usa una **tercera**, en el mismo documento: la medición
+escrita en un **bullet de prosa**.
+
+```
+- **`gastos`** — CAMINO-ÚNICO confirmado … Veredicto sin cambios (sólo vocabulario): **DESVÍO**
+```
+
+Entre «Veredicto» y los dos puntos hay 31 caracteres, así que no entraba por el patrón de campo; y la
+línea no empieza con `|`, así que tampoco por el de fila. **No daba HUECO: desaparecía.** Con `gastos`
+se perdían también `ingresos` y `presu`, así que el otro número estaba mal igual: COHERENTE era 11, no
+10. Ninguno de los dos errores dio síntoma.
+
+### Lo nuevo, y es sobre el CONTROL, no sobre el patrón
+
+El instrumento tenía un control positivo horneado — «lote A ≥ 15 bloques, lote B ≥ 10 filas, si alguno
+da 0 el formato cambió y el conteo NO se lee» — y **pasó**. Tenía que pasar: las filas estaban ahí.
+
+> **Un control positivo que verifica que el formato que el instrumento SÍ mira sigue existiendo no dice
+> absolutamente nada sobre un segundo formato que no mira.** Confirma el brazo que ya tengo, y por eso
+> se siente como cobertura: lo que no puede hacer es descubrir un brazo que falta.
+
+**La pregunta que lo caza, y es un cambio de sujeto:** no «¿cuántos veredictos leí?» sino **«¿cuántos
+de los `id` que EXISTEN rindieron algún veredicto?»**. Contar veredictos sólo encuentra los que ya sé
+leer — el universo lo define el lector. Contar **sujetos** lo define el dato, y ahí el que falta
+aparece como ausencia. Es la misma inversión que [[instrumento-que-no-mira-nunca-falla]] y
+[[vacio-no-es-hallazgo-correr-el-control]], aplicada al conteo.
+
+### Y la señal social, que llegó antes que la técnica
+
+**Dos sesiones reportando números distintos en la misma unidad es un instrumento roto hasta que se
+demuestre lo contrario, y el sospechoso es el automatizado.** Mi primer reflejo fue pedirle a FE1 que
+cruzara cuál fila le sobraba — o sea, mandar a la persona a auditar su lectura para defender a mi
+script. FE1 había leído el documento; yo había leído el documento **a través de** un parser.
+
+Fix de raíz (`18b34724`): tercer brazo `bullet`, acotado a líneas que ya son medición para no cazar
+prosa suelta, + un control que **aborta** si hay bullets de identidad y ninguno rinde veredicto. Ese
+control nació dando un falso ROJO contra un brazo sano — desempaquetaba una lista de dicts como
+tuplas, leía `"forma"` (la clave) en vez del valor y daba 0 siempre
+([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).

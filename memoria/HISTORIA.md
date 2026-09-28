@@ -294,3 +294,12 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
 - [🧪🔌 Aislar un binario del PATH se hace por WHITELIST, no por dirname](aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname.md) — `dirname(sh):dirname(cat)` asumía separación que el runner no tenía. — **bajada el 2026-09-28 por cupo de chars** (entra el testigo del deploy). Su lección vive CO-LOCALIZADA donde únicamente aplica: `scripts/tests/test-ci-verde-gh-presente.sh:28-31` explica el fallo de `msys-2.0.dll`, y `test-ci-verde-veredicto-monotono.sh:72-74` lo cita («el mismo molde [...] No se reinventa»). Quien escriba el próximo test de aislamiento copia ese molde y lee el porqué ahí; no llega por el índice.
 ## 🔄 2026-09-23 — cupo justo, entra una entrada nueva
+
+## Bajadas del índice el 2026-09-28 (techo de líneas; la lección quedó CO-LOCALIZADA)
+
+> No se bajaron por ser menos importantes: se bajaron porque la regla ya vive donde dispara,
+> así que perder el renglón del índice no pierde la lección.
+
+- [vácio no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — «horneá el control en el script» pasó a ser ESTRUCTURA: el canario por brazo de `scripts/evidencia/contar-veredictos.py` (exit 5) y `scripts/tests/test-ci-verde-veredicto-monotono.sh`. Y su versión más filosa entró al índice el mismo día: `el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md`.
+- [contar un símbolo no dice en qué rol aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — es literalmente el docstring de `veredictos_de()` («Cuenta la FORMA, no el símbolo») y lo vigila `por_forma` más el canario.
+- [el guard que caza a su propio autor](el-guard-que-caza-a-su-propio-autor.md) — «si nunca te frenó, no sabés si funciona» pasó a ser ESTRUCTURA el 2026-09-28: el canario por brazo de `contar-veredictos.py` sale por exit 5 si romper un brazo no mueve la métrica, y el renglón nuevo `el-fallback-que-sustituye-…` la subsume con la regla accionable («rompé cada brazo por separado»).

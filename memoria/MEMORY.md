@@ -69,7 +69,6 @@
 - [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
-- [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el buzón manda.
 - [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — preguntá qué evento reinicia el contador.
@@ -80,7 +79,6 @@
 - [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — el falso empuja al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
-- [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — horneá el control en el script.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) — contá definiciones, no usos.
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
@@ -98,12 +96,12 @@
 - [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) — el freno no es un monitor.
 - [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) — 71→4 en un día.
 - [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
+- [🕳️➕ El fallback que SUSTITUYE al valor perdido hace ciego al control](el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md) — rompé cada brazo por separado; el total se conserva.
 - [📝💥 El TESTIGO del deploy se sobreescribe y borra la prueba](el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren.md) — `cat >` de ranura única. Append-only.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR.
-- [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona.
 - [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) — 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — sin contexto rechaza, y parece prudencia.
 - [📜🎯 Un contrato define QUÉ DECLARAR — no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) — 4 de 4 refutadas en un día.
@@ -120,6 +118,7 @@
 - [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — el veredicto es la SALIDA.
 - [🚀🎭 `git push` sale exit 0 SIN haber pusheado](git-push-puede-salir-exit-0-sin-haber-pusheado.md) — el control es `ls-remote`, no el exit.
 - [🏷️ Clasificar un hallazgo por su ETIQUETA, no por su código](clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo.md) — "firma" me hizo inventar una vuln cripto; llegó mergeada a `main`.
+- [🗂️🕳️ Documentar el cambio en un comentario NUEVO deja vivo el viejo](documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo.md) — 8 de 27 líneas del proto se contradicen. Grepeá si hay uno POSTERIOR.
 
 ### Diseño y arquitectura
 - [🗓️ El metadato anti-envejecimiento lo CAUSA si anota la lectura más nueva](el-metadato-contra-el-envejecimiento-lo-causa-si-anota-la-lectura-mas-nueva.md) — eslabón más viejo.

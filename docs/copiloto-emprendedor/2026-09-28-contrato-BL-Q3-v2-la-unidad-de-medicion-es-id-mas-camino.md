@@ -893,6 +893,19 @@ fuentes independientes que coinciden:
 | `data-build-sha` del `<html>` servido | `8a2f883437a6c549d2805e8b2365ff8ee44b42ac` |
 | `git ls-remote origin refs/heads/main` | `8a2f883437a6c549d2805e8b2365ff8ee44b42ac` |
 
+🆕 **Y una segunda lectura, 24 minutos después, que vale más que la primera:** a las
+**17:20:58Z** las mismas tres fuentes daban `202d6f6407e0ec0cae8810866118385655dcec1a` — otro deploy.
+
+| hora de mi lectura | `sha` servido (3 fuentes coincidiendo) |
+|---|---|
+| 2026-09-28T16:56:05Z | `8a2f8834…` |
+| 2026-09-28T17:20:58Z | `202d6f64…` |
+
+**El sujeto se movió dos veces en 25 minutos.** Eso no es color: es la demostración empírica de por qué
+el `sha` se **lee** y no se deduce. Una captura tomada entre las dos lecturas recibe, por inferencia, el
+SHA de `origin/main` a su `mtime` — y acierta **sólo si** el deploy estaba al día en ese instante, que
+es precisamente lo que la inferencia no puede saber. Con el atributo, la pregunta ni se hace.
+
 **Qué cambia, en una línea:** el instrumento **lee** de la superficie fotografiada qué código era, en
 vez de **deducirlo** de la hora. Con eso muere el modo de falla que el contrato ya tenía escrito: un
 `servido@` no era prueba de que la captura fuera de ese código, sólo de que no fuera más nueva — y
@@ -909,7 +922,9 @@ es el defecto** — lo que se arregló es que de acá en adelante no se pueda vo
 puede leerlo, la fila **no** cae a la inferencia en silencio: escribe `servido@?` y eso es un hueco
 declarado, no un techo disfrazado.
 
-> ⚠️ Lo que **todavía** no está cerrado es el testigo del deploy: H1 dejó el manifiesto en `.jsonl`
+> ✅ **Y el testigo del deploy CERRÓ el mismo día** (H1, backend): el segundo deploy real dejó **2 líneas** en `DEPLOY-MANIFEST.jsonl` con shas y timestamps distintos, que es lo que faltaba — con una sola línea no se distingue un append de un `cat >`. Queda dicho abajo cómo estaba antes de cerrar, porque el criterio sirve igual:
+>
+> ⚠️ H1 dejó el manifiesto en `.jsonl`
 > append-only, pero con **una sola** línea real no se distingue un append de un `cat >`. Backend lo
 > dejó abierto explícitamente hasta el **segundo** deploy real, y tiene razón: un mecanismo verificado
 > sintéticamente no reemplaza el ciclo real
