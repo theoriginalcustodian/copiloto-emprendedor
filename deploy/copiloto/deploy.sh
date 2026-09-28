@@ -104,23 +104,20 @@ tar -C "$LOCAL" \
 # sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
 # "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
 # un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
-echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.jsonl (append-only, H1)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
-_manifiesto="$(cat <<JSON
-{
-  "desplegado_en": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "origin_main_sha": "${_sha}",
-  "gate_de_drift": "${_gate}",
-  "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
-  "paths_NO_verificados": ["apps/copiloto-web", "packages/core", "deploy/worker", "deploy/copiloto"],
-  "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
-  "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
-}
-JSON
-)"
-printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
+# H1 (2026-09-28): antes se armaba con un heredoc multilínea y se escribía con `cat >` -- ranura
+# única, cada deploy borraba la identidad del anterior. Dos sesiones midieron el mismo bundle en el
+# mismo día y dieron resultados distintos (0 y 1 ocurrencias de un placeholder) porque el testigo
+# que lo resolvía se había pisado solo. Ahora: UNA línea armada por `printf` (nunca multilínea, así
+# que es JSONL válido sin post-procesar) + `cat >>` (append-only: dos deploys que se pisen no
+# corrompen el archivo, no hay que releer ni parsear lo anterior). `.jsonl`, no `.json` -- nada en
+# el repo consume el nombre viejo (verificado por grep), así que no hace falta escribir los dos.
+_manifiesto="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nota":"El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}")"
+printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.jsonl'" \
   || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
