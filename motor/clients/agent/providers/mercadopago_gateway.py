@@ -14,7 +14,15 @@ API = "https://api.mercadopago.com"
 
 
 class MercadoPagoError(Exception):
-    """Fallo de una llamada a la API de MercadoPago (sin secretos en el mensaje)."""
+    """Fallo de una llamada a la API de MercadoPago (sin secretos en el mensaje).
+
+    `status_code`: el HTTP status real devuelto por MP, cuando lo hay (None para fallos que no
+    llegaron a golpear la API, como el `falta <ENV>`). El caller lo usa para discriminar 401
+    (credencial inválida/vencida -> reconexión) de cualquier otro fallo, sin parsear el mensaje."""
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class MercadoPagoAuthError(MercadoPagoError):
@@ -66,7 +74,7 @@ class MercadoPagoGateway:
                 "client_secret": self._env(self._client_secret_env), **extra}
         r = self._client.post(TOKEN_URL, json=body)
         if r.status_code != 200:
-            raise MercadoPagoAuthError(f"POST /oauth/token → HTTP {r.status_code}")
+            raise MercadoPagoAuthError(f"POST /oauth/token → HTTP {r.status_code}", status_code=r.status_code)
         d = r.json()
         if not d.get("access_token"):
             raise MercadoPagoAuthError("respuesta de /oauth/token sin access_token")
@@ -82,7 +90,7 @@ class MercadoPagoGateway:
         r = self._client.post(f"{API}/checkout/preferences", json=pref,
                               headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"})
         if r.status_code not in (200, 201):
-            raise MercadoPagoError(f"POST /checkout/preferences → HTTP {r.status_code}")
+            raise MercadoPagoError(f"POST /checkout/preferences → HTTP {r.status_code}", status_code=r.status_code)
         d = r.json()
         return {"id": d.get("id"), "init_point": d.get("init_point"), "external_reference": external_reference}
 
@@ -90,7 +98,7 @@ class MercadoPagoGateway:
         r = self._client.get(f"{API}/v1/payments/{payment_id}",
                              headers={"Authorization": f"Bearer {access_token}"})
         if r.status_code != 200:
-            raise MercadoPagoError(f"GET /v1/payments/{payment_id} → HTTP {r.status_code}")
+            raise MercadoPagoError(f"GET /v1/payments/{payment_id} → HTTP {r.status_code}", status_code=r.status_code)
         return r.json()
 
     def search_payments(self, access_token: str, *, since: str | None = None) -> list:
@@ -100,7 +108,7 @@ class MercadoPagoGateway:
         r = self._client.get(f"{API}/v1/payments/search",
                              headers={"Authorization": f"Bearer {access_token}"}, params=params)
         if r.status_code != 200:
-            raise MercadoPagoError(f"GET /v1/payments/search → HTTP {r.status_code}")
+            raise MercadoPagoError(f"GET /v1/payments/search → HTTP {r.status_code}", status_code=r.status_code)
         d = r.json()
         return d.get("results", []) if isinstance(d, dict) else []
 

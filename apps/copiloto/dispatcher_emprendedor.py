@@ -21,6 +21,7 @@ ensure_paths()
 from backend.agent.types import DispatchResult, Intent
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired
+from clients.agent.providers.mercadopago_gateway import MercadoPagoError
 
 from activity_summary import summarize_activity
 from calendar_policy import CREATE_EVENT_SLUG
@@ -102,9 +103,20 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
         arguments[resolve['into']] ANTES del write. Fail-closed: si no se resuelve, NO escribimos."""
         if pending.get("provider") == "mercadopago":
             creds = mpcred.get(mpseller)
-            if not creds:
+            # `not creds` sólo cubre "nunca conectado" -- una fila `caida` (reauth_desde marcado o token
+            # vencido) es TRUTHY y pasaba de largo hasta `mpgw.create_payment_link` con credenciales
+            # inválidas: MP rechazaba y `MercadoPagoError` no tenía catch en `dispatch()` (sólo
+            # `ConnectionRequired`/`ComposioExecutionError`, arriba) — ni sheet ni el texto de este `if`,
+            # sino lo que agarre el catch-all de más afuera (hallazgo frontend1, BL-Q3 v2, fila `consent`;
+            # mismo fix aplicado a la gemela `tool_catalog._run_mp_charge`, canon 3: reutilizar `salud()`).
+            if not creds or mpcred.salud() == "caido":
+                # K-11: mismo `card` estructurado que dispara el sheet para cualquier otro servicio
+                # (línea 292) -- antes esta rama sólo mandaba `reply_text`, así que MercadoPago nunca
+                # mostraba `SheetRequiereConexion` ni siquiera en el caso "nunca conectado" (parte del
+                # mismo hallazgo: la familia `payments` es la única sin sheet in-context).
                 return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
-                                      done=False, state_patch={"pending": None})
+                                      done=False, state_patch={"pending": None},
+                                      card=requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago")))
             dedup = mp_dedup_factory(cid) if mp_dedup_factory else None
             if dedup and idem_key:
                 cached = dedup.get(idem_key)
@@ -289,6 +301,22 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
                 reply_text="Uy, no pude completar esa acción con el servicio ahora mismo. "
                            "Probemos de nuevo en un ratito.",
                 done=False, state_patch={"pending": None})
+        except MercadoPagoError as e:
+            # `_execute_pending` no tenía NINGÚN catch para esto -- el guard preventivo de arriba
+            # (línea ~111, `salud() == "caido"`) sólo atrapa un token YA marcado caído ANTES de la
+            # llamada; uno que vence A MITAD de esta sesión pasa el guard y MP lo rechaza acá, sin
+            # nada que lo atrape: excepción cruda hasta el activity Temporal, "Pensando…" eterno
+            # (exactamente lo que este wrapper existe para evitar, ver docstring de dispatch()).
+            # Mismo split 401 que la gemela protegida `tool_catalog._run_mp_charge`: el veredicto
+            # sale del status code real, nunca del texto del mensaje.
+            if e.status_code == 401:
+                if ctx.mp_seller_user_id:
+                    ctx.mp_cred_store.marcar_reauth(ctx.mp_seller_user_id)  # self-healing
+                return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
+                                      done=False, state_patch={"pending": None},
+                                      card=requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago")))
+            return DispatchResult(reply_text="No pude generar el cobro ahora; probá de nuevo en un rato.",
+                                  done=False, state_patch={"pending": None})
 
     return dispatch
 

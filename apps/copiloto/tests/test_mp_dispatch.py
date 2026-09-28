@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from backend.agent.types import Intent  # noqa: E402
+from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa: E402
 from context_factory import TenantCtx  # noqa: E402
 from dispatcher_emprendedor import make_dispatcher  # noqa: E402
 
@@ -14,6 +15,13 @@ class _FakeMpGateway:
 
 class _FakeMpCred:
     def get(self, seller): return {"access_token": "AT"}
+    def salud(self): return "conectado"
+
+
+class _FakeMpCredCaido:
+    """Fila EXISTE (creds truthy) pero `salud()` == "caido" -- el caso que `not creds` solo no detecta."""
+    def get(self, seller): return {"access_token": "AT-VENCIDO"}
+    def salud(self): return "caido"
 
 
 def _ctx(*, mp_gateway=None, mp_cred_store=None, mp_seller_user_id="146",
@@ -64,6 +72,25 @@ def test_mp_charge_without_connection_asks_to_connect():
     r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
            {"pending": r1.state_patch["pending"]}, ctx)
     assert "conect" in r2.reply_text.lower()   # pide conectar MercadoPago primero
+    assert r2.card.get("service") == "mercadopago"   # K-11: sheet, no sólo texto
+
+
+def test_mp_charge_caido_pide_reconectar_no_llama_al_gateway_con_token_vencido():
+    """Regresión (hallazgo frontend1, BL-Q3 v2, fila `consent`, 2026-09-28): una fila `caida`
+    (reauth_desde marcado o token vencido) es TRUTHY para `creds.get()` -- antes de este fix pasaba
+    de largo el guard y llamaba a `mpgw.create_payment_link` con el token vencido; MP rechazaba y
+    `MercadoPagoError` no tenía catch en `dispatch()`, así que el usuario nunca veía el sheet de
+    reconexión (K-11), sólo lo que agarrara el catch-all genérico de más afuera."""
+    class _GwSpy(_FakeMpGateway):
+        def create_payment_link(self, *a, **kw):
+            raise AssertionError("no debe llamar a MP con una conexión caída")
+    ctx = _ctx(mp_gateway=_GwSpy(), mp_cred_store=_FakeMpCredCaido())
+    d = _dispatch()
+    r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "x"}, reply_es=""), {}, ctx)
+    r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+           {"pending": r1.state_patch["pending"]}, ctx)
+    assert "conect" in r2.reply_text.lower()
+    assert r2.card.get("service") == "mercadopago"   # dispara el sheet, no texto plano genérico
 
 
 def test_mp_charge_without_gateway_is_graceful_not_crash():
@@ -171,6 +198,57 @@ def test_mp_charge_sin_mp_dedup_factory_funciona_como_antes():
     d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx)
 
     assert gw.calls == 2   # sin factory, no hay con qué deduplicar -- conducta previa al fix
+
+
+# ═══════════════════ split status_code/401 (mid-sesión) — el guard preventivo no alcanza ═══════════════════
+# El guard `salud() == "caido"` sólo atrapa un token YA marcado caído ANTES de esta llamada. Un token
+# que vence A MITAD de esta sesión (salud() todavía dice "conectado") pasa el guard y MP lo rechaza acá
+# -- antes `dispatch()` no tenía NINGÚN catch para `MercadoPagoError` (excepción cruda, "Pensando…"
+# eterno); ahora discrimina por el status code real, no por el texto del mensaje.
+
+class _FakeMpCredConectadoSpy:
+    """`salud()` dice "conectado" (pasa el guard preventivo) -- registra si `marcar_reauth` se llamó."""
+    def __init__(self):
+        self.reauth_calls = []
+    def get(self, seller): return {"access_token": "AT"}
+    def salud(self): return "conectado"
+    def marcar_reauth(self, seller_user_id): self.reauth_calls.append(seller_user_id)
+
+
+def test_mp_charge_401_a_mitad_de_sesion_marca_reauth_y_pide_reconectar():
+    class _Gw401(_FakeMpGateway):
+        def create_payment_link(self, *a, **kw):
+            raise MercadoPagoError("POST /checkout/preferences → HTTP 401", status_code=401)
+
+    cred = _FakeMpCredConectadoSpy()
+    ctx = _ctx(mp_gateway=_Gw401(), mp_cred_store=cred)
+    d = _dispatch()
+    r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "x"}, reply_es=""), {}, ctx)
+    r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+          {"pending": r1.state_patch["pending"]}, ctx)
+
+    assert "conect" in r2.reply_text.lower()
+    assert r2.card.get("service") == "mercadopago"        # dispara el sheet, no una excepción cruda
+    assert cred.reauth_calls == ["146"]                    # self-healing: el guard preventivo la atrapa la próxima vez
+
+
+def test_mp_charge_error_no_401_no_marca_reauth_mensaje_generico():
+    """Un 500/timeout de MP NO es "credencial inválida" -- no corresponde marcar_reauth ni el sheet de
+    reconexión (sería engañoso: el usuario reconectaría algo que no está roto)."""
+    class _Gw500(_FakeMpGateway):
+        def create_payment_link(self, *a, **kw):
+            raise MercadoPagoError("POST /checkout/preferences → HTTP 500", status_code=500)
+
+    cred = _FakeMpCredConectadoSpy()
+    ctx = _ctx(mp_gateway=_Gw500(), mp_cred_store=cred)
+    d = _dispatch()
+    r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "x"}, reply_es=""), {}, ctx)
+    r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+          {"pending": r1.state_patch["pending"]}, ctx)
+
+    assert "no pude generar el cobro" in r2.reply_text.lower()
+    assert not r2.card                                      # sin card de reconexión (default vacío)
+    assert cred.reauth_calls == []
 
 
 def test_mp_charge_missing_init_point_no_llama_dedup_save():
