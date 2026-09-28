@@ -25,6 +25,9 @@
 #         exit 2 = no se pudo medir (mismo molde que `command -v uv` en graph-sync.sh: sin
 #         esta guarda, `gh` ausente da un error de "comando no encontrado" indistinguible de
 #         un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE real).
+#   El veredicto es EL EXIT CODE, no el texto. Si aun asi grepeas la salida: la ultima linea
+#   dice VERDE o ROJO, nunca ambas, y ninguna es substring de la otra -- por eso no es
+#   "NO VERDE". Un `grep -q VERDE` sobre el rechazo daba TRUE y mergeaba en rojo (28/09).
 set -uo pipefail
 
 command -v gh >/dev/null 2>&1 || { echo "❌ gh no está en el PATH — no puedo medir nada"; exit 2; }
@@ -72,5 +75,12 @@ if [ "$falta" -eq 0 ]; then
   echo "VERDE — se puede mergear"
   exit 0
 fi
-echo "NO VERDE — no mergear"
+# 🔴 Dice ROJO y NO "NO VERDE" a proposito, y no es cosmetica: el veredicto positivo era
+# SUBSTRING del negativo, asi que un consumidor que grepeara "VERDE" en la salida (en vez de
+# usar el exit code) matcheaba TAMBIEN el rechazo -- y fallaba ABIERTO, hacia el merge. Cazado
+# el 2026-09-28: un loop mergeo el PR #693 con el CI todavia corriendo por exactamente eso, y
+# salio verde por suerte. La forma correcta ya la usaba este repo (smoke_afip_http.py:157,
+# e2e_facturacion_http.py:217): VERDE / ROJO, que no son prefijo uno del otro.
+# El veredicto sigue siendo EL EXIT CODE; esto solo hace que leer la salida mal no fallen abierto.
+echo "ROJO — no mergear (falta o fallo algun job)"
 exit 1
