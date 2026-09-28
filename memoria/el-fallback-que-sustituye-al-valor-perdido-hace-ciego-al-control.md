@@ -23,6 +23,13 @@ mueve un byte. El brazo `bullet` sí tiene control porque **se agregó el día q
 ahí está la segunda mitad de la regla: **un control por-incidente deja a los otros brazos bajo el
 control agregado, que es insuficiente.** Cada brazo necesita su propio positivo.
 
+**Y el patrón no es de este instrumento: es del autor de cualquier guarda.** El mismo día, en
+`scripts/ci-verde.sh`, el mismo diseño: el contrato reserva `exit 2` para «no se pudo medir», la
+guarda de `gh` ausente lo usa (`:30`), y el caso hermano —no se pudo leer el rollup, p. ej. un número
+de PR equivocado— quedó en `exit 1`, indistinguible de un CI rojo (`:36`). Probado: `ci-verde.sh
+999999` → exit 1, igual que un PR real corriendo. **Enumerá los casos de la clase; no parchees el que
+dolió.**
+
 **Test de 15 segundos, antes de confiar en cualquier contador.**
 1. ¿El «no pude leer» va a la misma lista/contador que el resultado? ⇒ el total no sirve como control.
 2. Rompé **cada** brazo por separado, no el parser entero, y exigí que el total **cambie**.

@@ -183,6 +183,40 @@ los dos es autoritativo no es universal, se mide por instrumento**
 
 ---
 
+## 8.bis H-H · MEDIA — el MISMO patrón en `ci-verde.sh`: un número de PR equivocado es indistinguible de un CI rojo
+
+Salió solo al usar el gate para mergear este PR, así que va con la evidencia de la corrida.
+
+Su contrato, `scripts/ci-verde.sh:24-26`: «exit 0 = verde · exit 1 = NO verde (falta alguno o alguno
+falló) · **exit 2 = no se pudo medir**», con la razón escrita: «sin esta guarda, `gh` ausente da un
+error indistinguible de un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE
+real». **El diagnóstico está bien hecho y aplicado a la mitad de los casos.**
+
+| caso | línea | exit que da | exit que el contrato pide |
+|---|---|---|---|
+| `gh` no está en el PATH | `:30` | **2** ✅ | 2 |
+| **no se pudo leer el rollup** («¿número correcto? ¿gh autenticado?») | `:36` | **1** ❌ | **2** |
+| algún job IN_PROGRESS | `:57` | 1 ✅ | 1 — «falta alguno» está **explícitamente** en el contrato, no es hallazgo |
+
+**Canario, con sus dos controles:**
+
+```
+ci-verde.sh 999999  → EXIT 1   «no pude leer el rollup del PR 999999 (¿número correcto?…)»
+ci-verde.sh 701     → EXIT 1   (control POSITIVO: un PR real, corriendo)   ⇒ indistinguibles
+:30 gh ausente      → EXIT 2   (control NEGATIVO: el concepto existe y funciona en su otro caso)
+```
+
+**Efecto:** un typo en el número de PR se lee como «el CI está rojo» y manda a buscar un fallo que no
+existe; en la dirección peligrosa, entrena a descontar el exit 1. **Es fail-closed, así que no puede
+mergear nada indebido** — por eso es MEDIA y no ALTA.
+
+**Y la forma es la de H-B, otra vez:** la guarda se escribió para el caso que ya había quemado (`gh`
+ausente) y el caso hermano quedó con el comportamiento viejo. Dos instrumentos distintos, el mismo día,
+el mismo patrón: **un control por-incidente no cubre a sus hermanos**; hay que enumerar los casos de la
+clase, no parchear el que dolió.
+
+---
+
 ## 9. Veredicto del frente 1
 
 **El instrumento NO alcanza como control del lote.** Reporta 52 veredictos y lee 32, de los cuales 31
@@ -192,7 +226,7 @@ con el valor correcto; fabrica 19 huecos y deja 13 mediciones sin ver, con un br
 pudo leer, dentro de la colección cuyo largo es la métrica del control, **hace que el control sea ciego
 por construcción** — no por un caso borde. Eso vale para cualquier contador de este repo, no sólo éste.
 
-**No abrí trabajo nuevo.** Los 7 hallazgos son filas para que planificación asigne; el fix es del dueño
+**No abrí trabajo nuevo.** Los 8 hallazgos son filas para que planificación asigne; el fix es del dueño
 del instrumento, por pedido explícito de que el cazador y el que parchea no sean el mismo.
 
 ---
