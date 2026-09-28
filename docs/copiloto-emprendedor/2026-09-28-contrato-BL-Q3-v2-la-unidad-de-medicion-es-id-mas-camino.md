@@ -482,3 +482,67 @@ declarar** (camino §1, superficie §10, dimensión §11) sobrevivieron todas.
 `[ASSUMED_PENDING_VERIFY]` y el que mide la reemplaza. **Una prescripción sin medición propia no es un
 contrato: es una hipótesis con autoridad**, y la autoridad es justo lo que impide que la refuten a
 tiempo.
+
+---
+
+## §12 — ⛔ Mis «ocho montajes» de `mic-funcion` eran CUATRO, y la afirmación original estaba bien
+
+**Retiro la corrección del §8.1. El número bueno era el que ya estaba.** Dije que `mic-funcion` se
+montaba en ocho pantallas; auditoría midió **4**, y mi 8 salió de contar el **símbolo** en vez de la
+**forma**:
+
+| archivo | aparece `MicFuncion` | monta `<MicFuncion` |
+|---|---|---|
+| `Bubble.tsx:18` | sí, **en un comentario** («mismo criterio que `MicFuncion` fuera del chat») | **0** |
+| `MicButton.tsx:12` | sí, **en un comentario** (`MicFuncion` (BL-J7/K-10) mide la duración) | **0** |
+| `ChatScreen.tsx` · `FotoFuncion.tsx` | sí, en el grep | **0** |
+| `ClientesScreen` · `GastosScreen` · `IngresosScreen` · `PresupuestosScreen` | sí | **4 ← los reales** |
+
+Lo que hace esto peor que un error de cuentas: **tengo la regla escrita**
+(`memoria/contar-un-simbolo-no-dice-en-que-rol-aparece.md` y `el-guard-se-satisface-con-su-propio-comentario`)
+y la violé igual, en un contrato, sobre un número que otra sesión iba a usar para decidir un arreglo.
+**Un ancla falsa en un contrato es peor que ninguna** — y es la segunda vez hoy que escribo esa frase
+sobre mí mismo (la primera fue §9.ter).
+
+**Lo que NO se cae:** el punto de fondo del §8.1 sigue siendo el correcto — `mic-funcion` es **una
+definición** de un componente reusable (`modules/voz/MicFuncion.tsx:83` web / `:113` mobile), no cuatro
+testids copiados. El diagnóstico se arregla por ahí. Sólo la cifra estaba inflada.
+
+**Y cómo se cazó, que es lo reutilizable:** auditoría horneó mi 8 como **control positivo** de un script
+nuevo (`scripts/evidencia/anclas-ambiguas.py`). El script abortó en la primera corrida dando 4, y
+**no tocó el umbral para que pasara** — fue a ver cuál de los dos estaba mal. El valor esperado era el
+que estaba mal. Un control positivo con un esperado falso acusa al script; hay que poder sospechar del
+esperado.
+
+## §13 — 🆕 Campo obligatorio `ancla`: contenedor de pantalla + testid, aseverado ANTES de la captura
+
+**Medido por auditoría: 954 testids (536 web + 418 mobile), 20 ambiguos.** No es una molestia de
+nomenclatura — **rompe la unidad de medición de este contrato**, porque un testid que vive en 22
+pantallas no identifica un camino.
+
+| testid | en cuántas pantallas | definido en |
+|---|---|---|
+| `glass-handle` · `glass-titulo` · `glass-volver` · `glass-zona-arrastre-identidad` | **22 cada uno** | `apps/mobile/src/theme/glass/MarcoGlass.tsx:259-283` |
+| `fila-botones` | 13 | `theme/glass/campos/FilaBotones.tsx:59` |
+| `campo-texto` | 5 | `theme/glass/campos/CampoTexto.tsx:55` |
+| `mic-funcion` · `mic-funcion-chip` (+ `-fijado` mobile) | 4 | `modules/voz/MicFuncion.tsx:83` web / `:113` mobile |
+| `campo-select` · `marca` · `marca-isotipo` | 3 | — |
+| `chat-vacio` · `message-list` · `separador-dia` · `presence-orb` | 2 | `MessageList.tsx:170-213` · `PresenceOrb.tsx:52` |
+
+Más **un duplicado real**: `onda-flotante` está **escrito en dos archivos** (`ChatView.tsx:248` y
+`PantallaSoporte.tsx:190`), el caso que el gate de paridad tolera por su propiedad 4.
+
+**La regla, y por qué no hay alternativa cómoda.** Toda fila agrega el campo **`ancla`** =
+`<contenedor-de-pantalla> + <testid>`, y el generador **asevera el contenedor antes de disparar la
+captura**. Es el mismo patrón que `ASERCION_PROTO` del lado del prototipo, aplicado del lado de la app.
+
+Yo había ofrecido esto como «una alternativa cómoda»; auditoría midió que **es la única que funciona**:
+desambiguar cuatro testids montados en 22 pantallas cada uno significa tocar el marco de **toda** la app
+mobile. El costo de la alternativa la descarta, no la preferencia.
+
+**Consecuencia inmediata, para quien esté midiendo ahora:** `chat-vacio`, `message-list` y
+`separador-dia` son ambiguos **en web**, y caen justo sobre el id `chat`. Una fila de `chat` anclada a
+`message-list` sin nombrar el contenedor **no distingue** entre las dos pantallas que lo montan.
+
+**Baja al contrato con `path:línea` exactos, no con paráfrasis:**
+`python scripts/evidencia/anclas-ambiguas.py --json`.
