@@ -270,3 +270,7 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🎤🔒 El Playwright MCP compartido es de UNA sesión y no concede el micrófono](playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono.md) — bajada del índice 2026-09-23: su única referencia vivía dentro del gancho de `git-stash-es-comun-a-todos-los-worktrees`, y al comprimir esa línea la entrada quedó huérfana.
 - [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
   *(bajada del índice el 2026-09-23 por presupuesto. Sigue vigente: si `core.hooksPath` queda absoluto, el pre-push de TODOS los worktrees usa un hook viejo y sin gitleaks — en un repo público eso es el escáner de secretos apagado. Buscable acá.)*
+
+## Movidos del índice el 2026-09-28 (cupo justo, entra la entrada del adversario E2E)
+
+- [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — caso particular ya cubierto por la regla dura de checkout compartido (canon 9).
