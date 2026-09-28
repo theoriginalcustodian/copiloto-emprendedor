@@ -292,4 +292,5 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
 - [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
+- [🧪🔌 Aislar un binario del PATH se hace por WHITELIST, no por dirname](aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname.md) — `dirname(sh):dirname(cat)` asumía separación que el runner no tenía. — **bajada el 2026-09-28 por cupo de chars** (entra el testigo del deploy). Su lección vive CO-LOCALIZADA donde únicamente aplica: `scripts/tests/test-ci-verde-gh-presente.sh:28-31` explica el fallo de `msys-2.0.dll`, y `test-ci-verde-veredicto-monotono.sh:72-74` lo cita («el mismo molde [...] No se reinventa»). Quien escriba el próximo test de aislamiento copia ese molde y lee el porqué ahí; no llega por el índice.
 ## 🔄 2026-09-23 — cupo justo, entra una entrada nueva
