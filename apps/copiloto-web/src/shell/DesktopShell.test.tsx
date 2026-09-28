@@ -1,17 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-/** Partial mock: sólo la red de Actividad/Clientes — ver el mismo arnés en `AppShell.test.tsx`. */
+/** Partial mock: sólo la red de Actividad/Clientes/Gastos — ver el mismo arnés en `AppShell.test.tsx`. */
 vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
   return {
     ...original,
     listarActividad: vi.fn(),
     obtenerCliente: vi.fn(),
+    obtenerGasto: vi.fn(),
   };
 });
 
-import { listarActividad, obtenerCliente, type Cliente } from '@copiloto/core';
+import { listarActividad, obtenerCliente, obtenerGasto, type Cliente, type Gasto } from '@copiloto/core';
 
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
@@ -21,6 +22,7 @@ import { ModeProvider } from './modeStore';
 
 const mockListarActividad = vi.mocked(listarActividad);
 const mockObtenerCliente = vi.mocked(obtenerCliente);
+const mockObtenerGasto = vi.mocked(obtenerGasto);
 
 function clienteFixture(id: number, nombre: string): Cliente {
   return {
@@ -34,6 +36,21 @@ function clienteFixture(id: number, nombre: string): Cliente {
     telefono: null,
     notas: null,
     origen: 'derivado',
+    creadoEn: '2026-08-01T00:00:00Z',
+  };
+}
+
+function gastoFixture(id: number, proveedor: string): Gasto {
+  return {
+    id,
+    monto: '15000.50',
+    montoSugerido: null,
+    fecha: '2026-08-01',
+    categoria: 'mercaderia',
+    proveedor,
+    medioPago: null,
+    descripcion: null,
+    origen: 'manual',
     creadoEn: '2026-08-01T00:00:00Z',
   };
 }
@@ -182,5 +199,57 @@ describe('DesktopShell — D14 (fila de Actividad "cliente" abre la ficha por id
     expect(screen.queryByTestId('ficha-cliente')).not.toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 50));
     expect(mockObtenerCliente.mock.calls.length).toBe(llamadasPrevias);
+  });
+});
+
+describe('DesktopShell — ACTID (fila de Actividad "gasto" abre el detalle por id)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    vi.clearAllMocks();
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-08-10T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+      ],
+      cursor: null,
+    });
+  });
+
+  it('tocar la fila navega a Gastos y el id llega a la capa de datos (obtenerGasto) -- abre ESE gasto', async () => {
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderDesktopShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
+    const fila = await screen.findByTestId('actividad-gasto:7');
+    fireEvent.click(fila);
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    await waitFor(() => expect(mockObtenerGasto).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('detalle-gasto')).toBeInTheDocument();
+    expect(screen.getByTestId('detalle-gasto-proveedor')).toHaveTextContent('Ferretería Central');
+  });
+
+  it('control negativo del reset: volver a Gastos por el RAIL (no por la fila) no reabre el último detalle', async () => {
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderDesktopShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
+    fireEvent.click(await screen.findByTestId('actividad-gasto:7'));
+    await waitFor(() => expect(screen.getByTestId('detalle-gasto')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gastos' }));
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    expect(screen.queryByTestId('detalle-gasto')).not.toBeInTheDocument();
   });
 });

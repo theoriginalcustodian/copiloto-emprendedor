@@ -2765,34 +2765,14 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/feedback"
     },
-    "modules/gastos::detalle-gasto": {
+    "modules/gastos::detalle-gasto-cerrar": {
       "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
+        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
       ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-acciones": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-acciones",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-cargando": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-cargando",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "falta_en": "mobile",
+      "fecha": "2026-09-28",
+      "id": "detalle-gasto-cerrar",
+      "motivo": "ACTID: el boton existe en las dos plataformas -- mobile lo declara como testID: 'detalle-gasto-cerrar' dentro del array botones=[{...}] de un componente de lista de acciones (config-object, no atributo JSX directo), y el regex de literales (testID=\"...\") no ve esa forma; el docstring del script ya documenta el caso testID={...} dinamico como punto ciego, pero no este (literal dentro de un objeto). No es gap de UX ni de paridad real: el boton Cerrar existe y funciona en ambas plataformas, verificado en el codigo (DetalleGasto.tsx mobile linea 166, web linea 133). Dueno: frontend2.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::detalle-gasto-categoria": {
@@ -2802,26 +2782,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "detalle-gasto-categoria",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-descripcion": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-descripcion",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-error": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-error",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
@@ -2845,46 +2805,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
-    "modules/gastos::detalle-gasto-monto": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-monto",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-monto-sugerido": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-monto-sugerido",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-no-disponible": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-no-disponible",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-no-encontrado": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-no-encontrado",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
     "modules/gastos::detalle-gasto-origen": {
       "en": [
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
@@ -2902,16 +2822,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "detalle-gasto-proveedor",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-scroll": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "detalle-gasto-scroll",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },

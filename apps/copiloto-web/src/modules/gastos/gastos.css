@@ -11,6 +11,7 @@
   flex-direction: column;
   gap: 18px;
   padding: 6px 16px 24px;
+  position: relative;
 }
 
 /* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup.
@@ -354,4 +355,97 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mono);
+}
+
+/* ---------- DetalleGasto (ACTID) — mismo molde que `ficha-cliente` en clientes.css. ---------- */
+.detalle-gasto {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-gasto__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.detalle-gasto__monto {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0;
+}
+
+.detalle-gasto__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detalle-gasto__aviso,
+.detalle-gasto__error {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--label);
+  margin: 0;
+}
+
+.detalle-gasto__error {
+  color: var(--danger-fg);
+}
+
+.detalle-gasto__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detalle-gasto__dato {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.detalle-gasto__dato-etiqueta {
+  flex: 1;
+  color: var(--label);
+}
+
+.detalle-gasto__dato-valor {
+  color: var(--text);
+}
+
+.detalle-gasto__descripcion {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--label);
+  margin: 0;
+}
+
+.detalle-gasto__sugerido {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.detalle-gasto__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 8px;
 }
