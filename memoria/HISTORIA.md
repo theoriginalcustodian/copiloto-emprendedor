@@ -273,6 +273,10 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 ## Movidos del índice el 2026-09-28 (cupo justo, entra la entrada del adversario E2E)
 
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja; pero está MEZCLADO: diffeá el archivo, no cuentes commits. — **bajada el 2026-09-28 por cupo:** su contenido operativo ya está DUPLICADO en la sección `Estado vivo` del índice («Checkout compartido: MEZCLADO — diffeá el archivo; el contador de commits no lo mide»), que se carga primero y es la que alguien lee al arrancar. Dos líneas para el mismo hecho es lo que hace que el índice se pase del techo y trunque la cola.
+
+- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`. — **bajada el 2026-09-28:** su consecuencia operativa se desinfló el mismo día. Auditoría midió que `orchestrator/sync.py:94` calcula `expected` sobre el grafo COMPLETO, no sobre el subgrafo del `--since` (que alimenta sólo la ingesta, `:65-88`), y el docstring lo declara deliberado «para no borrar lo no tocado». O sea: la base del `--since` no mueve el conteo del reconcile, que era lo que hacía útil saber contra qué rama se calculaba. El hecho sigue siendo cierto; lo que ya no cuelga de él es una decisión.
+
 - [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — caso particular ya cubierto por la regla dura de checkout compartido (canon 9).
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. — ya cubierta por la regla dura del canon 9 (prohibido `stash` en checkout compartido).
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está. — ya es la práctica por defecto; el MCP de github no se usa desde meses.
@@ -288,3 +292,4 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
 - [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
+## 🔄 2026-09-23 — cupo justo, entra una entrada nueva

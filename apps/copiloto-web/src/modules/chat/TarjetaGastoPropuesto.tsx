@@ -81,6 +81,7 @@ export function TarjetaGastoPropuesto({ propuesta, mensajeId }: TarjetaGastoProp
         {dicho != null && dicho !== '' && <p className="propuesta-card__dicho">«{dicho}»</p>}
         <FormularioGasto
           origen={propuesta.origen}
+          mensajeId={mensajeId}
           iniciales={{
             monto: propuesta.monto,
             categoria: propuesta.categoria,

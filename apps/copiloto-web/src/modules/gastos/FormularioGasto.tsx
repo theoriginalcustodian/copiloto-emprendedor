@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 
 import {
   ApiError,
@@ -14,6 +14,7 @@ import {
 } from '@copiloto/core';
 
 import { Button } from '../../design-system';
+import { generarId } from '../../util/id';
 
 /**
  * Port de `apps/mobile/src/modules/gastos/FormularioGasto.tsx` — MISMA validación (sólo el monto es
@@ -41,9 +42,21 @@ export interface FormularioGastoProps {
   iniciales?: ValoresInicialesGasto;
   onCreado: (gasto: Gasto) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` que trae la card (IDEM-gasto/BL-V33, mismo mecanismo que `mensajeId`
+   * de `FormularioPresupuesto` — ver el docstring mobile de `FormularioGasto` para el porqué). Si
+   * viene, la `idemKey` se deriva de él en vez de nacer con el montaje.
+   */
+  mensajeId?: string;
 }
 
-export function FormularioGasto({ origen, iniciales, onCreado, onCancelar }: FormularioGastoProps) {
+export function FormularioGasto({
+  origen,
+  iniciales,
+  onCreado,
+  onCancelar,
+  mensajeId,
+}: FormularioGastoProps) {
   const [monto, setMonto] = useState(iniciales?.monto ?? '');
   const [categoria, setCategoria] = useState<CategoriaGasto>(iniciales?.categoria ?? 'otros');
   const [proveedor, setProveedor] = useState(iniciales?.proveedor ?? '');
@@ -51,6 +64,8 @@ export function FormularioGasto({ origen, iniciales, onCreado, onCancelar }: For
   const [descripcion, setDescripcion] = useState(iniciales?.descripcion ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // IDEM-gasto/BL-V33: misma derivación que el mobile — ver el docstring de `mensajeId`.
+  const idemKey = useRef(mensajeId != null ? `gasto:${mensajeId}` : generarId());
 
   const puedeGuardar = esDecimalPositivo(monto) && !guardando;
 
@@ -69,6 +84,7 @@ export function FormularioGasto({ origen, iniciales, onCreado, onCancelar }: For
         ...(descripcion.trim() !== '' ? { descripcion: descripcion.trim() } : {}),
         ...(iniciales?.fecha !== undefined ? { fecha: iniciales.fecha } : {}),
         ...(iniciales?.montoSugerido !== undefined ? { montoSugerido: iniciales.montoSugerido } : {}),
+        idemKey: idemKey.current,
       });
       if (res.status === 'no_disponible') {
         setError('Los gastos todavía no están disponibles en tu copiloto.');

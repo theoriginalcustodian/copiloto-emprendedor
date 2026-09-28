@@ -263,6 +263,13 @@ export interface CrearGastoRequest {
   descripcion?: string;
   /** Lo que leyó el OCR, cuando `origen: 'foto'`. Ver `Gasto.montoSugerido`. */
   montoSugerido?: string;
+  /**
+   * Clave de idempotencia (IDEM-gasto/BL-V33): mismo mecanismo que `idemKey` de
+   * `CrearPresupuestoRequest` — misma clave ⇒ el backend devuelve el gasto ya creado en vez de
+   * duplicarlo (`GastoStore.crear`, PR #666). Sin ella, dos toques de Guardar sobre la misma card
+   * crean dos gastos con la misma plata.
+   */
+  idemKey?: string;
 }
 
 /**
@@ -278,6 +285,7 @@ function aBodyCrudo(req: CrearGastoRequest): Record<string, unknown> {
   if (req.medioPago !== undefined) body.medio_pago = req.medioPago;
   if (req.descripcion !== undefined) body.descripcion = req.descripcion;
   if (req.montoSugerido !== undefined) body.monto_sugerido = req.montoSugerido;
+  if (req.idemKey !== undefined) body.idem_key = req.idemKey;
   return body;
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import {
@@ -15,6 +15,7 @@ import {
 } from '@copiloto/core';
 
 import { CampoNumero, CampoSelect, CampoTexto, FilaBotones } from '../../theme/glass/campos';
+import { generarId } from '../../util/id';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -54,6 +55,15 @@ export interface FormularioGastoProps {
   iniciales?: ValoresInicialesGasto;
   onCreado: (gasto: Gasto) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` que trae la card que envuelve este formulario (IDEM-gasto/BL-V33,
+   * mismo mecanismo que `mensajeId` de `FormularioPresupuesto`). Si viene, la `idemKey` se DERIVA de
+   * él en vez de nacer con el montaje: sobrevive a un remount de la card (scroll, recarga del hilo,
+   * reabrir la app) y el backend dedupea aunque el guard cross-reload de `TarjetaGastoPropuesto`
+   * falle abierto. Sin `mensajeId` (alta manual desde `PantallaGastos`, sin card) se mantiene una
+   * clave por instancia, como antes.
+   */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -62,6 +72,7 @@ export function FormularioGasto({
   iniciales,
   onCreado,
   onCancelar,
+  mensajeId,
   testID = 'formulario-gasto',
 }: FormularioGastoProps) {
   const tema = useTema();
@@ -72,6 +83,8 @@ export function FormularioGasto({
   const [descripcion, setDescripcion] = useState(iniciales?.descripcion ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // IDEM-gasto/BL-V33: misma derivación que `FormularioPresupuesto` — ver el docstring de `mensajeId`.
+  const idemKey = useRef(mensajeId != null ? `gasto:${mensajeId}` : generarId());
 
   // El backend rechaza monto ausente, cero, negativo o no numérico con 400 (medido). Esta condición
   // es la MISMA, no una más estricta: si divergen, la app traba altas que el backend aceptaría.
@@ -92,6 +105,7 @@ export function FormularioGasto({
         ...(descripcion.trim() !== '' ? { descripcion: descripcion.trim() } : {}),
         ...(iniciales?.fecha !== undefined ? { fecha: iniciales.fecha } : {}),
         ...(iniciales?.montoSugerido !== undefined ? { montoSugerido: iniciales.montoSugerido } : {}),
+        idemKey: idemKey.current,
       });
       if (res.status === 'no_disponible') {
         setError('Los gastos todavía no están disponibles en tu copiloto.');

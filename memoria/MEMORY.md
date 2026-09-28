@@ -64,10 +64,12 @@
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
+- [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) — muestreá la población, no el total.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
+- [🧪🔌 Aislar un binario del PATH se hace por WHITELIST, no por dirname](aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname.md) — `dirname(sh):dirname(cat)` asumía separación que el runner no tenía.
 - [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el buzón manda.
@@ -159,10 +161,8 @@
 ### Git, deploy y checkout compartido
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — usá `merge-base`.
-- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja; pero está MEZCLADO: diffeá el archivo, no cuentes commits.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa mudo.
 - [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual.
-- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama en prod.
 - [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu último fix local](push-es-el-ultimo-paso-no-el-primero.md) — repushear y comparar con `ls-remote` antes de mergear.
