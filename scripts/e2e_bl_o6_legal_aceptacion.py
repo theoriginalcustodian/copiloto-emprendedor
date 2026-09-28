@@ -13,7 +13,7 @@ Casos (los 3 que pidió el `pedido_`, más el happy-path que los ancla):
      pasa a `legal_aceptado: true`. Sin esto los casos hostiles no prueban nada real.
   2. HOSTIL -- sin token: `POST /me/legal/aceptar` sin `Authorization` -> 401 (require_tenant).
   3. HOSTIL -- versión vencida: `POST /me/legal/aceptar {"version": "<vieja>"}` -> 409 con
-     `detail.codigo == "legal_version_desactualizada"` y `detail.vigente == "2026-09-22"` (el shape
+     `detail.codigo == "version_desactualizada"` y `detail.vigente == "2026-09-22"` (el shape
      que se arregló en `096d8d08`, `ApiError.extra`).
   4. HOSTIL -- cross-tenant: un tenant adversario, recién provisionado y SIN relación con el
      canónico, nunca ve la aceptación del canónico como propia -- su `GET /me` sigue en
