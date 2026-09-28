@@ -92,8 +92,17 @@ compartido:
 | **libre** | reconcilia → `abortado: el diff borraría 436 objetos (tope 200)` | ⛔ frenado |
 | **ocupado por otra sesión** | `otro sync está corriendo (pid=…) — salgo sin tocar el árbol` | ✅ **pasa** |
 
-**La rama que autoriza es la que no pudo hacer su trabajo.** Consecuencia propia y peor que el
-bug: lo medí **una sola vez**, con el lock libre, y escalé como bloqueo permanente —«esa línea es
+**La rama que autoriza es la que no pudo hacer su trabajo.** ⚠️ **Matiz medido después, y hay que
+ser exacto: acá la degradación está DECLARADA, no es un fail-open accidental.** `.githooks/pre-push`
+abre con `set -euo pipefail` (`:4`), así que un sync que **falla** mata el hook y aborta el push —
+fail-closed real—; el `exit 0` de `:80` se alcanza **sólo** cuando `graph-sync.sh` sale 0, y el
+comentario de `:70-73` dice por qué: *«es contención, no fallo: el marcador queda viejo y el próximo
+push reintenta»*. El escáner de secretos además corre **antes** de todo el bloque del grafo (`:15-16`),
+así que un push que pasa por contención **no** se salta el control del repo público. El patrón sigue
+siendo el que hay que vigilar —preguntar qué rama autoriza—, pero **este diseño lo resolvió bien**:
+el defecto era mío, no suyo.
+
+Consecuencia propia y peor que el bug: lo medí **una sola vez**, con el lock libre, y escalé como bloqueo permanente —«esa línea es
 del operador»— algo intermitente, en tres documentos. Un `pre-push` que sale sin reconciliar no
 dice «todo bien», dice «no miré» ([[instrumento-que-no-mira-nunca-falla]],
 [[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]).
