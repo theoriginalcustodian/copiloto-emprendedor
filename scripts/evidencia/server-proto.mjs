@@ -11,18 +11,21 @@
 // generador ni del prototipo.
 import http from 'node:http';
 import { createReadStream, statSync } from 'node:fs';
-import { join, normalize, extname } from 'node:path';
+import { join, resolve, sep, extname } from 'node:path';
 
 const RAIZ = process.env.PROTO_DIR;
 const PUERTO = Number(process.env.PORT || 8124);
 if (!RAIZ) { console.error('falta PROTO_DIR'); process.exit(2); }
+const RAIZ_ABS = resolve(RAIZ);   // una vez: el guard compara contra esto, no contra el env crudo
 
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript',
   '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json' };
 
 http.createServer((req, res) => {
-  // Sin path traversal: se normaliza y se exige que quede dentro de la raíz.
+  // Sin path traversal — y el guard es el de abajo, con separador. Este comentario decia
+  // «se exige que quede dentro de la raiz» mientras el codigo NO lo hacia: afirmaba la
+  // propiedad en vez de tenerla (`memoria/el-guard-se-satisface-con-su-propio-comentario.md`).
   let ruta = decodeURIComponent(req.url.split('?')[0]);
   if (ruta.endsWith('/')) ruta += 'index.html';
   // El favicon se responde 204 en vez de 404, y no es cosmético: el prototipo no declara ninguno
@@ -33,8 +36,14 @@ http.createServer((req, res) => {
   // OTRA. Un falso positivo intermitente es peor que uno constante: fabrica la excusa «es el flake
   // conocido», y con ella se lava la próxima regresión real. Se mata en el origen.
   if (ruta === '/favicon.ico') { res.writeHead(204).end(); return; }
-  const abs = normalize(join(RAIZ, ruta));
-  if (!abs.startsWith(normalize(RAIZ))) { res.writeHead(403).end(); return; }
+  // El guard NO puede ser `startsWith(RAIZ)` pelado: sin el separador, un HERMANO cuyo nombre
+  // empieza igual que RAIZ pasa el prefijo (`<raiz>-secreto/x` empieza con `<raiz>`). Medido el
+  // 2026-09-28 con `probar-traversal.sh`: servia el archivo del hermano con HTTP 200, mientras el
+  // caso obvio (`/../../fuera`) SI daba 403 — el guard bloqueaba lo lejano y dejaba pasar lo vecino,
+  // que es justo su caso de activacion (`memoria/el-guard-falla-abierto-en-su-caso-de-activacion.md`).
+  // `join` neutraliza un `rel` absoluto, `resolve` colapsa los `..`, y el separador cierra el prefijo.
+  const abs = resolve(join(RAIZ_ABS, ruta));
+  if (abs !== RAIZ_ABS && !abs.startsWith(RAIZ_ABS + sep)) { res.writeHead(403).end(); return; }
   let st;
   try { st = statSync(abs); } catch { res.writeHead(404).end('no existe'); return; }
   if (st.isDirectory()) { res.writeHead(404).end('es un directorio'); return; }

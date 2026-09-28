@@ -17,12 +17,13 @@
 // Uso: RAIZ=<.../Prototipo frontend/odobi-ui> CANARIO=1 PUERTO=8123 node server-canario.mjs
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { join, normalize, extname } from 'node:path';
+import { join, resolve, sep, extname } from 'node:path';
 
 const RAIZ = process.env.RAIZ;
 const PUERTO = Number(process.env.PUERTO ?? 8123);
 const CANARIO = process.env.CANARIO ?? '0';
 if (!RAIZ) { console.error('falta RAIZ'); process.exit(2); }
+const RAIZ_ABS = resolve(RAIZ);   // una vez: el guard compara contra esto, no contra el env crudo
 
 const INYECCIONES = {
   1: `<script>setTimeout(function(){throw new Error('CANARIO-1-PAGEERROR-INOCUO')},300);</script>`,
@@ -42,8 +43,14 @@ createServer(async (req, res) => {
   // llegaba como `console.error`, tumbando celdas con la activación intacta (tasa medida 1/10).
   if (ruta === '/favicon.ico') { res.writeHead(204).end(); return; }
   const rel = ruta.endsWith('/') ? join(ruta, 'index.html') : ruta;
-  const abs = normalize(join(RAIZ, rel));
-  if (!abs.startsWith(normalize(RAIZ))) { res.writeHead(403).end(); return; }
+  // El guard NO puede ser `startsWith(RAIZ)` pelado: sin el separador, un HERMANO cuyo nombre
+  // empieza igual que RAIZ pasa el prefijo (`<raiz>-secreto/x` empieza con `<raiz>`). Medido el
+  // 2026-09-28 con `probar-traversal.sh`: servia el archivo del hermano con HTTP 200, mientras el
+  // caso obvio (`/../../fuera`) SI daba 403 — el guard bloqueaba lo lejano y dejaba pasar lo vecino,
+  // que es justo su caso de activacion (`memoria/el-guard-falla-abierto-en-su-caso-de-activacion.md`).
+  // `join` neutraliza un `rel` absoluto, `resolve` colapsa los `..`, y el separador cierra el prefijo.
+  const abs = resolve(join(RAIZ_ABS, rel));
+  if (abs !== RAIZ_ABS && !abs.startsWith(RAIZ_ABS + sep)) { res.writeHead(403).end(); return; }
   try {
     let cuerpo = await readFile(abs);
     const ext = extname(abs).toLowerCase();

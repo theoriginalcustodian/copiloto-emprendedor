@@ -58,3 +58,51 @@ si el valor de "no pude averiguar" es el mismo que el de "no hay problema", es f
 que invertirlo — *si no puedo confirmar que es seguro, no procedo*, y el caso va a reconciliación.
 Relacionado: [[idempotencia-con-un-if-tiene-ventana]] (la capa 1 de este mismo caso),
 [[cero-que-no-se-puede-afirmar]], [[guard-caza-algo-distinto-de-lo-que-vigilaba]].
+
+---
+
+## Dos casos más de la misma clase, medidos el 2026-09-28 — y los dos dejan pasar **lo vecino**
+
+**Caso 2 · el guard de path que bloquea lo lejano y sirve al hermano.** Los dos servers de
+evidencia (`scripts/evidencia/server-proto.mjs:37`, `server-canario.mjs:46`) tenían
+`if (!abs.startsWith(normalize(RAIZ))) 403` — **sin separador**. Medido con
+`scripts/evidencia/probar-traversal.sh` (monta un RAIZ de juguete y un hermano con el mismo
+prefijo, sin tocar el proto real):
+
+| pedido | esperado | **medido antes del fix** |
+|---|---|---|
+| `/prototipo/` (legítimo) | 200 | 200 |
+| `/../<raiz>-secreto/secreto.txt` | 403 | 🔴 **200 — sirvió el archivo de afuera** |
+| `/%2e%2e/<raiz>-secreto/secreto.txt` | 403 | 🔴 **200** |
+| `/../../fuera.txt` | 403 | ✅ 403 |
+
+**La fila que engaña es la última.** El caso obvio —salir dos niveles— **sí** daba 403, y es el
+único que uno prueba a mano; el que pasaba era el vecino de al lado, que es justo el caso de
+activación del guard. Encima el comentario de `server-proto.mjs` decía *«se normaliza y se exige
+que quede dentro de la raíz»*: la propiedad **afirmada**, no tenida ([[el-guard-se-satisface-con-su-propio-comentario]]).
+Fix: `resolve(join(RAIZ_ABS, rel))` y comparar contra `RAIZ_ABS + sep`. Vivía **dos veces** y el
+fix fue a los dos ([[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]).
+
+**Caso 3 · el hook cuya rama DEGRADADA es la que deja pasar.** El `pre-push` del repo reconcilia
+el grafo antes de empujar. Mismo hook, mismo contenido, veredictos opuestos según un recurso
+compartido:
+
+| estado del lock del grafo | qué hace | push |
+|---|---|---|
+| **libre** | reconcilia → `abortado: el diff borraría 436 objetos (tope 200)` | ⛔ frenado |
+| **ocupado por otra sesión** | `otro sync está corriendo (pid=…) — salgo sin tocar el árbol` | ✅ **pasa** |
+
+**La rama que autoriza es la que no pudo hacer su trabajo.** Consecuencia propia y peor que el
+bug: lo medí **una sola vez**, con el lock libre, y escalé como bloqueo permanente —«esa línea es
+del operador»— algo intermitente, en tres documentos. Un `pre-push` que sale sin reconciliar no
+dice «todo bien», dice «no miré» ([[instrumento-que-no-mira-nunca-falla]],
+[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]).
+
+**How to apply, agregado a lo de arriba:** (3) probá el guard con **el caso VECINO**, no con el
+lejano: el hermano cuyo nombre comparte prefijo, el registro del tenant de al lado, el número
+inmediatamente anterior. El lejano es el que el guard sí ataja y el que fabrica la confianza.
+(4) Enumerá las ramas de salida del guard y preguntá **cuál autoriza**: si la rama de «no pude
+medir / otro tiene el lock / timeout» comparte salida con «está todo bien», es fail-open aunque
+el log lo cuente. (5) Antes de escalar un bloqueo a alguien, **re-medilo** — un bloqueo que
+depende de un recurso compartido se mueve, y declararlo permanente le pasa a otro una deuda que
+no existe.
