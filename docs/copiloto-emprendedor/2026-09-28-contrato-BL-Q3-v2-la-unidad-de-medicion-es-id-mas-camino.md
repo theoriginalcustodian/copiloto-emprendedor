@@ -609,3 +609,31 @@ Nada de esto invalida una sola fila. Los dos cierres traen el settle por fila, e
 importaba, y dos `[ASSUMED_PENDING_VERIFY]` correctamente marcados (`reveal` mobile · `pres-ciclo`
 superficie del proto). **La reconciliación es de vocabulario y de unidad, no de medición** — y eso se
 arregla renombrando columnas, no volviendo a medir.
+
+---
+
+## §14.5 — 🔢 Y aplicar el §14.2 cambió el total: **31 mediciones, 32 veredictos**
+
+FE2 aplicó las dos correcciones y verifiqué el archivo: `tablero` → `DESVÍO`, y `onb-promesa` partido en
+`contenido: COHERENTE · componente: FUERA-DE-REFERENCIA`, con sección de trazado propia. Las 6
+apariciones restantes de `DIFERENCIA` son históricas («era DIFERENCIA GRAVE el 22/09») o de la sección de
+corrección — **ninguna en una columna de veredicto**.
+
+**Pero partir esa fila movió el total, y las dos cifras son distintas:**
+
+| unidad | cuántas | por qué |
+|---|---|---|
+| **mediciones** (`id + camino`, la unidad del §1) | **31** | `onb-promesa` es **una** medición |
+| **veredictos** | **32** | esa medición emite **dos**, uno por dimensión (§14.2) |
+
+Las dos son correctas y **no son la misma cosa**. Ya di «31» a quien tiene que auditar el agregado, así
+que lo corrijo antes de que cuente: si cuenta veredictos le va a dar 32 y va a concluir que mi conteo
+está mal.
+
+**La regla que faltaba:** cuando el §14.2 parte una fila, **sube el conteo de veredictos y NO el de
+mediciones.** Todo número de esta matriz se escribe **con su unidad** — «31» y «32» sueltos son
+indistinguibles de un error, y hoy ya circularon cuatro cifras de este frente (12, 14, 30, 31) que eran
+todas de unidades distintas.
+
+Es la séptima vez en el día que un número de este frente se cae por no llevar su unidad pegada. El patrón
+no es de aritmética: **la unidad viaja en la cabeza del que contó y no en el papel.**
