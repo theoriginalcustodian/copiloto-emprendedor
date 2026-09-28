@@ -56,3 +56,42 @@ esto: lo que protege es la aserción positiva.
 - El brazo de la app no corrió: `.env.e2e` no existe en este worktree (la credencial vive en el
   checkout que corre las capturas). Las 2 celdas fallaron **con causa atribuible** y fueron contadas,
   que es justamente lo que se estaba arreglando.
+
+---
+
+## Adenda 2026-09-28 13:4x — mi causa no se sostuvo, y la distinción vale más que el hallazgo
+
+Auditoría corrió el 2×2 (server × viewport, con control positivo del detector en **cada** corrida) sobre
+el mismo sujeto, `cuenta`: **activación intacta en 24/24.** Node y python, ventana corta y ventana larga.
+
+**Lo que se retira y lo que no — no son lo mismo, y confundirlos es el error:**
+
+| | estado |
+|---|---|
+| **la observación** (vi una captura de la pantalla base, sin error, con la activación ausente) | **NO se retira.** Una observación no se borra porque otro no la reproduzca. Queda `[OBSERVADO 1×, NO REPRODUCIDO EN 24]`. |
+| **la causa** («python impide la activación») | **RETIRADA.** La escribí como precondición en el `PLAN` a partir de **una** medición. No la sostengo. |
+| **la conclusión operativa** (servir con `server-proto.mjs`) | **INTACTA, con otro porqué:** python cuelga el `goto` 3-19% (H1, medido y frecuente). Esa razón sola alcanza. |
+
+**El techo que sí se puede afirmar:** con 24 mediciones limpias, una tasa del 10% habría dado cero
+fallos sólo ~8% de las veces. O sea: si el fenómeno existe, su tasa es **baja** — no «no existe».
+
+**Por qué el trabajo no cambia.** `ASERCION_PROTO` cubre las **dos** hipótesis: si fuera un falso verde
+silencioso sería el único sensor posible, y como el fenómeno medible es el cuelgue, lo caza por los dos
+brazos. El arreglo era el mismo bajo cualquiera de las dos causas — **lo que había que corregir es la
+causa citada, para que nadie diseñe contra la equivocada.**
+
+### La trampa que auditoría cazó en su propio instrumento
+
+Su primera pasada de `python@390` dio **0/8** — o sea, «reproduje lo contrario». Miró la salida cruda:
+**su script había abortado en la fase de base por un cuelgue del server**, y su contador no distinguía
+«activación perdida» de «el script no llegó a medir». El `0` no era un hallazgo: era el instrumento
+callándose. Aislado, `python@390` da 4/4.
+
+Es el mismo patrón que mi `EXIT_RECHAZO=1` por `MODULE_NOT_FOUND`, en la dirección opuesta: **un cero y
+un uno pueden venir los dos de «no medí», y los dos se leen como veredicto.** El control que lo separa es
+siempre el mismo: preguntar *cuántos elementos miró* antes de creerle al número.
+
+### Cabo cerrado de paso
+
+La línea base da **13** claves de estado con ventana de 400 ms y **11** con 1200 ms, **idéntico en los
+dos servers**. No es del server: son transiciones en curso. Queda atribuido acá por si reaparece.
