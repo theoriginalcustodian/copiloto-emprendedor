@@ -333,6 +333,7 @@ export function FormularioPresupuesto({
                   inputMode="decimal"
                   value={it.precioUnitario}
                   onChange={(e) => actualizarItem(i, 'precioUnitario', e.target.value)}
+                  placeholder="1500,50"
                   disabled={enviando}
                 />
               </label>
