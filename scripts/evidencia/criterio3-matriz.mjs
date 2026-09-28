@@ -74,9 +74,20 @@ async function protoFoto(verId, sufijo, viewport) {
     if (esperado) {
       const hay = await page.$(esperado);
       if (!hay) {
+        // Los dos mensajes NO compiten: la excepción de JS puede ser LA CAUSA de que falte el
+        // selector. Medido por auditoría 2026-09-28 inyectando el TypeError real de
+        // `index.html:3472-3474` (borrar `#s-cuenta` ⇒ el proto llama `.classList` sobre null): el
+        // guard abortaba bien, pero el mensaje que salía era «falta `#s-cuenta.on`» y quien lo lee
+        // va a buscar el selector, no la excepción que lo tumbó. Mover el chequeo de `errores`
+        // ARRIBA de esta aserción NO sirve: se pierde el caso simétrico (excepción inocua + la
+        // activación falla por otro motivo). Se ACUMULA: el mensaje dice qué faltó Y qué se rompió,
+        // y no elige la causa. Clase: `memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md`.
         throw new Error(
           `proto ${verId}: la activación NO ocurrió — falta \`${esperado}\`. La foto sería de la ` +
           `pantalla base, no de ${verId}. NO se captura: una celda no medida vale más que una medida mal.`
+          + (errores.length
+              ? ` ⚠️ Y hubo ${errores.length} excepción(es) de JS que pueden ser LA CAUSA, no un dato aparte: ${errores.join(' | ')}`
+              : '')
         );
       }
     }

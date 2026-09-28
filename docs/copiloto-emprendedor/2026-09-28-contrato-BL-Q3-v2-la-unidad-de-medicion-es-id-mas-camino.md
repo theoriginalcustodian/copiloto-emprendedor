@@ -637,3 +637,175 @@ todas de unidades distintas.
 
 Es la séptima vez en el día que un número de este frente se cae por no llevar su unidad pegada. El patrón
 no es de aritmética: **la unidad viaja en la cabeza del que contó y no en el papel.**
+
+---
+
+## §15 — ⛔ Auditoría dictaminó **NO** sobre el agregado, y las 4 acciones son de metadato. Con dos correcciones mías, medidas
+
+Dictamen: `coordinacion/abierto/2026-09-28_dictamen_auditoria-a-planificacion_el-agregado-NO-alcanza-y-faltan-4-acciones-no-remedir.md`.
+**El «no» no es por rigor de la medición** — auditoría lo dice explícito: las 36 filas están medidas con
+evidencia y las limitaciones están **declaradas, no ocultas**. El «no» es por **un metadato ausente en 34
+de 36 filas**: el **SHA medido** que el DoD de `BL-Q5` pidió y las filas no traen.
+
+Y eso importa porque es **el antídoto exacto contra el modo de falla que ya tumbó esta matriz una vez**.
+El dictamen del 23/09 cerró pidiéndolo textual: «cualquier DoD que diga "republicar la matriz" necesita
+decir también **contra qué SHA** y **qué la invalida** — si no, se convierte en un documento que envejece
+en silencio mientras todos lo citan como vigente». Se pidió, y no se puso.
+
+### §15.1 — ⛔ Mi conteo era 31; son **36 mediciones / 37 veredictos**. Y el recorte coincidió con el punto ciego
+
+`31 = 20 (lote A) + 11 (tabla del lote B)`. **Faltaban 5**: las de la sección en prosa del lote B
+(`gastos`, `ingresos`, `presu`, `recibo`×2), firmadas con veredicto en el mismo documento. Conté la
+**tabla** y la prosa quedó afuera.
+
+Pero el error aritmético es lo menor. **Lo que importa es cuáles eran las 5:** tres cierran con
+«Veredicto sin cambios (22/09)» — heredadas sin re-medir. Yo pregunté por «los tres firme-no-re-medido»
+y **hay nueve**; tres de los que me faltaban son exactamente los que mi denominador no contaba.
+
+> 🔴 **El recorte del denominador y el punto ciego coincidieron, y no es casualidad: una fila que no se
+> cuenta tampoco se revisa.** Un conteo no es sólo un número — es la lista de lo que va a ser mirado.
+> Cuando recorté el denominador por un criterio de formato (tabla sí, prosa no), recorté **también** el
+> alcance de mi propia auditoría, y el recorte cayó justo sobre las filas más débiles. Ésta es la lección
+> del §15, no la aritmética.
+
+### §15.2 — 🆕 El campo es `medido_contra:`, no «el SHA», y se especifica en TRES formas
+
+Poner «`sha_medido: <hash>`» y llamarlo hecho **reintroduce el problema con otra cara**, por dos cosas que
+medí hoy y que el dictamen no podía ver:
+
+**(a) Casi ninguna fila del lote B se midió capturando: se midió LEYENDO CÓDIGO.** El documento del lote B
+cita **un solo** nombre de `.png` (`pres-ciclo-app.png`) para 16 mediciones. Para una fila leída en código,
+el árbol que se leyó **es el worktree del medidor**, que puede diferir de `origin/main` **en los dos
+sentidos** (commits propios sin pushear, y commits de `origin` sin mergear). Anotar `origin/main` ahí sería
+anotar un árbol que nadie leyó.
+
+**(b) Una fila puede mezclar dos fechas, y el campo tal cual registraría la que favorece.** `detalle` tiene
+captura de **hoy** y su celda dice «descripción validada **22/09**; `?ver=detalle` exacto **no releído esta
+pasada**». Un `sha_medido` tomado de la captura diría `b7fa0e23` (hoy 08:32) y la fila pasaría el control de
+caducidad — cuando **la parte que sostiene el veredicto es del 22/09** y es justo la que los tres commits de
+BL-V23 impactan. **El campo diseñado para impedir el envejecimiento silencioso lo CAUSARÍA.**
+
+> ### Especificación del campo `medido_contra:`
+>
+> Obligatorio por medición (`id` + `camino`). Nombra **el árbol que se leyó o se sirvió**, no «el repo»:
+>
+> | forma | cuándo | qué se anota |
+> |---|---|---|
+> | `servido@<sha>` | la app se midió corriendo (captura) | SHA de `origin/main` vigente a la **hora de la captura** — la escribe el instrumento en el `mtime` del PNG, no la memoria del medidor |
+> | `leido@<rama>:<sha>` | la fila se midió leyendo código | SHA **del worktree donde se leyó**, más su rama. Si difiere de `origin/main`, agregar `merge-base=<sha>` |
+> | `proto@<sha>` | el lado prototipo | SHA del commit que trae ese `index.html` |
+>
+> **Regla del eslabón más viejo (la que evita el (b)):** si el veredicto se apoya en **más de una** lectura
+> y alguna es heredada, `medido_contra` anota **la más VIEJA de las que sostienen el veredicto**, nunca la
+> más nueva. Test: *¿qué lectura, si estuviera desactualizada, cambiaría el veredicto?* Esa es la que se
+> anota. Una fila con captura de hoy y descripción del 22/09 anota **el 22/09**.
+>
+> ⚠️ **Límite declarado, no escondido:** la app no expone ningún marcador de build — `/healthz`
+> (`apps/copiloto/web.py:1319-1321`) devuelve `{"status": "ok"}` y no hay `VITE_BUILD`/`GIT_SHA` en el
+> front. Así que `servido@<sha>` es un **techo**, no el SHA desplegado: si el deploy venía atrasado, la
+> captura midió una superficie MÁS VIEJA que el SHA anotado, y el control de caducidad **falla abierto por
+> exactamente el atraso del deploy**. Cerrar eso es un marcador de build (fila `BUILDSHA` del tablero), no
+> un detalle de esta matriz.
+
+### §15.3 — 🔢 El SHA medido de las capturas de hoy: **81 de 82 son `b7fa0e23`**, y eso cambia las dos «caducadas»
+
+Medido con el `mtime` de los 82 PNG de hoy contra la tabla de commits de `origin/main`, con **control
+positivo en las dos mitades del instrumento** (ver §15.3.bis):
+
+| tramo | SHA | capturas |
+|---|---|---|
+| 08:32:29 → 10:00:15 | **`b7fa0e23`** | **81** |
+| 10:00:15 → 10:35:55 | `bead3e88` (docs de BL-Q4, no toca superficie) | 1 |
+
+**El corte global de `2026-09-22 14:28` que auditoría tuvo que usar era cinco días y medio más
+conservador que lo real.** Con el SHA medido:
+
+| fila | auditoría (corte global) | con el SHA medido | por qué |
+|---|---|---|---|
+| `pres-hitl` | ⛔ CADUCA (3 commits) | ✅ **VIGENTE** | sus tres commits son `fc37dc3f` (22/09 14:29), `3ba91a2e` (22/09 22:06) y `03e9c200` (hoy **08:28:12**) — los tres **anteriores** a `b7fa0e23` (08:32:29). Una medición de 08:32 ya los incluye. Auditoría lo predijo: «con SHA por fila, `pres-hitl` podría salir vigente» |
+| `detalle` | ⛔ CADUCA (3 commits) | ⛔ **CADUCA IGUAL** | sus tres commits son del **22/09** (17:23·21:22·21:55), anteriores a la captura de hoy… **pero por §15.2(b) esta fila anota el 22/09**, no hoy: su descripción es heredada del 22/09 y es la que sostiene el veredicto. La captura fresca no la salva |
+
+> **`detalle` es lo peor del dictamen y sigue siéndolo.** El dictamen del **23/09** ya la listaba
+> impactada por `e41a54fe`/`221de832` — y cinco días después se firmó COHERENTE. **No es una omisión
+> nueva: es la reincidencia de un hallazgo escrito.** Falló el canal, no el medidor: el hallazgo viajó
+> como `dato_`, y un `dato_` **nadie lo persigue**
+> (`memoria/el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md`). Fix estructural en §15.7.
+
+### §15.3.bis — El control positivo cubría la mitad del instrumento, y la mitad sin cubrir dio un CERO falso
+
+Mi primera corrida imprimió **`VACIO`** con 82 PNG en disco. Causa: le pasé a Python de Windows una ruta
+de Git Bash (`/c/Proyectos/...`), y **`os.walk` sobre una ruta inexistente no lanza: itera cero veces**.
+
+Yo había horneado control positivo — **tres anclas sobre la función del SHA**, y las tres pasaron. Lo que
+no tenía control era **el descubrimiento de archivos**, y ahí estaba el defecto.
+
+> ⚠️ **Un control positivo cubre la mitad que se sospecha, y la mitad restante queda muda.** Las tres
+> anclas verdes daban una sensación de instrumento verificado que el instrumento no tenía. La regla no es
+> «poner control positivo», es **preguntarse a qué afirmación NO se lo puso** — acá: «miré 82 archivos».
+> Instrumentado: `if not os.path.isdir(base): abortar`. Clase:
+> `memoria/instrumento-que-no-mira-nunca-falla.md` + `memoria/vacio-no-es-hallazgo-correr-el-control.md`.
+
+### §15.4 — 🆕 La fila partida arranca con `PARTIDO:` (o se pierde ENTERA y sin avisar)
+
+Auditoría midió que su primer contador dio **10** filas en la tabla del lote B en vez de 11: `onb-promesa`
+cierra con `contenido: COHERENTE · componente: FUERA-DE-REFERENCIA`, celda que **arranca en minúscula**
+mientras las otras diez arrancan con el veredicto. **La fila partida no se cuenta mal: desaparece — ni 1
+ni 2, y sin error.**
+
+**Formato obligatorio desde ahora:** `PARTIDO: contenido=<VEREDICTO> · componente=<VEREDICTO>`.
+Y para todo contador de esta matriz: una fila de tabla que no rinde veredicto **se emite como
+`SIN_VEREDICTO_PARSEABLE`**, nunca se omite — *un hueco se nombra, no se cuenta como cero.*
+
+### §15.5 — 🆕 Los TRES cajones de «no comparé», y cuál corresponde
+
+El cajón `NO_MEDIBLE` se estaba usando para tres cosas distintas, y **sólo una es una limitación de
+medición**. Auditoría midió que 3 de las 11 no-comparaciones estaban **mal clasificadas**, no eran pereza:
+
+| el hecho es… | cajón correcto | ejemplo medido |
+|---|---|---|
+| **no existe en el prototipo** — no hay con qué comparar | `FUERA-DE-REFERENCIA` | `clientes` (ficha): el proto no tiene vista de detalle · `card-factura`: `HILOS` no modela «incompleta» |
+| **no hay camino al estado** — verificado, es un RESULTADO | `FUERA-DE-REFERENCIA` + hallazgo linkeado | `apps`-AppsScreen: «código muerto verificado» **es un hallazgo**, y meterlo en `NO_MEDIBLE` lo esconde dentro del cajón de lo no sabido |
+| **existe y no lo puedo forzar sin efecto irreversible** | `NO_MEDIBLE` / `NO_REPRODUCIBLE_SIN_EFECTO`, con la limitación **declarada** | `afip` (vincular ARCA es irreversible) · `fact-cae` (emisión fiscal real) — `fact-cae` es el modelo de cómo se cierra bien |
+
+> **Regla:** antes de escribir `NO_MEDIBLE`, contestar *«¿esto es algo que no sé, o algo que sí sé?»*. Si
+> la celda contiene una comparación con resultado, el veredicto **no** es «no pude». `vacio-visto` es el
+> caso: su celda dice que la app **no tiene** el contador `odobi-calma-dias` del proto — **eso es una
+> comparación hecha, con resultado y por código**, y el veredicto decía «no reproducible».
+
+### §15.6 — 🆕 Regla de `[ASSUMED_PENDING_VERIFY]` (de auditoría, §5 de su dictamen)
+
+> **Una marca `[ASSUMED_PENDING_VERIFY]` no bloquea el cierre de su fila si y sólo si lo asumido NO es lo
+> que el veredicto afirma.**
+>
+> - ✅ **Tolerada** cuando lo asumido es un **corroborante** (una línea no releída de la plataforma
+>   análoga, un testid no re-verificado) y el veredicto se sostiene sin ella.
+> - ⛔ **Bloqueante** cuando lo asumido **es el sujeto** del veredicto.
+> - **Test operativo:** *¿si el supuesto fuera falso, cambiaría el veredicto?* Sí → bloqueante.
+>
+> **Aplicada:** `reveal` **tolerada** (lo asumido es la línea mobile; el veredicto es de contenido web).
+> `pres-ciclo` **BLOQUEANTE**: lo asumido es *cuál de dos superficies del proto* es la referencia — y esa
+> elección **es** lo que el veredicto compara.
+>
+> **Por qué no se prohíben:** prohibirlas no las elimina, las vuelve **invisibles**. La marca tiene que ser
+> **barata de poner y cara de ignorar** — mismo motivo por el que un guard que grita en el caso normal se
+> desarma solo.
+
+### §15.7 — 🔴 Fix estructural: la fila carga su propia historia de caducidad
+
+`detalle` se firmó COHERENTE cinco días después de que un dictamen escrito la nombrara impactada. El
+medidor no fue negligente: **el hallazgo estaba en un `dato_` del buzón y quien midió la fila leyó el
+contrato, no el buzón de hace cinco días.**
+
+**Desde ahora, todo id que un dictamen declare impactado entra en una sección de este contrato —
+`§CADUCIDADES CONOCIDAS` — con el commit y la fecha.** Medir una fila obliga a leer su propia línea ahí.
+La razón es la asimetría de los canales: un `dato_` **se lee una vez y nadie lo persigue**; el contrato se
+abre **cada vez** que se toca la fila. Poner el aviso en el canal que se relee no es redundancia: es la
+diferencia entre un aviso y un aviso que llega.
+
+#### §CADUCIDADES CONOCIDAS (al 2026-09-28)
+
+| id | commits que impactan su superficie | declarado en |
+|---|---|---|
+| `agenda` (A y B) | `ef8ded27` (22/09 17:23) · `e41a54fe` (22/09 21:22) · `221de832` (22/09 21:55) | dictamen 23/09 |
+| `detalle` | los mismos tres — **y por eso caduca: su descripción es del 22/09** | dictamen 23/09 **y reincidido 28/09** |
+| `pres-hitl` | `fc37dc3f` · `3ba91a2e` · `03e9c200` — **todos anteriores a `b7fa0e23`** ⇒ vigente si se midió hoy ≥08:32 | dictamen 28/09, resuelto en §15.3 |
