@@ -251,6 +251,61 @@ def test_mp_charge_caido_devuelve_card_en_vez_de_llamar_a_mp_con_token_vencido()
     assert gw.calls == 0                                # NUNCA llamó a MP con el token vencido
 
 
+# ═══════════════════ split status_code/401 (mid-sesión) — el guard preventivo no alcanza ═══════════════════
+# `salud() == "caido"` sólo atrapa un token YA marcado caído ANTES de esta llamada. Uno que vence A
+# MITAD de esta sesión (salud() todavía dice "conectado") pasa el guard y MP lo rechaza acá -- antes
+# el catch-all genérico (`except MercadoPagoError:`) no distinguía esto de cualquier otro fallo.
+
+class _FakeCredConectadoSpy:
+    """`salud()` dice "conectado" (pasa el guard preventivo) -- registra si `marcar_reauth` se llamó."""
+    def __init__(self):
+        self.reauth_calls = []
+    def get(self, seller): return {"access_token": "tok"}
+    def salud(self): return "conectado"
+    def marcar_reauth(self, seller_user_id): self.reauth_calls.append(seller_user_id)
+
+
+def test_mp_charge_401_a_mitad_de_sesion_marca_reauth_y_devuelve_card():
+    from clients.agent.providers.mercadopago_gateway import MercadoPagoError
+
+    class _Gw401:
+        def create_payment_link(self, *a, **k):
+            raise MercadoPagoError("POST /checkout/preferences → HTTP 401", status_code=401)
+
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    ctx = _mp_ctx(_Gw401())
+    cred = _FakeCredConectadoSpy()
+    ctx.mp_cred_store = cred
+    tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=True, idem_key="run1-401")
+
+    assert tr.status == "error"
+    assert tr.observation["needs_connect"] == "mercadopago"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago"
+    assert cred.reauth_calls == ["seller1"]     # self-healing: el guard preventivo la atrapa la próxima vez
+
+
+def test_mp_charge_error_no_401_no_marca_reauth_ni_pide_reconectar():
+    """Un 500/timeout de MP NO es "credencial inválida" -- no corresponde marcar_reauth ni el sheet de
+    reconexión (sería engañoso: el usuario reconectaría algo que no está roto)."""
+    from clients.agent.providers.mercadopago_gateway import MercadoPagoError
+
+    class _Gw500:
+        def create_payment_link(self, *a, **k):
+            raise MercadoPagoError("POST /checkout/preferences → HTTP 500", status_code=500)
+
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    ctx = _mp_ctx(_Gw500())
+    cred = _FakeCredConectadoSpy()
+    ctx.mp_cred_store = cred
+    tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=True, idem_key="run1-500")
+
+    assert tr.status == "error"
+    assert "needs_connect" not in tr.observation
+    assert "no pude generar el cobro" in tr.observation["error"].lower()
+    assert cred.reauth_calls == []
+
+
 def test_calendar_book_needs_confirmation_observation_has_service():
     """Mismo fix aplicado a calendar_book (2da tool de 1ra clase): `service='googlecalendar'`."""
     ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
