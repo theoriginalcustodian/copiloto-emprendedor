@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { formatearFechaCorta, listarGastos, obtenerResumenGastos, type Gasto, type ResumenGastos } from '@copiloto/core';
+import {
+  formatearFechaCorta,
+  listarGastos,
+  obtenerGasto,
+  obtenerResumenGastos,
+  type Gasto,
+  type ResumenGastos,
+} from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
 import { MicFuncion } from '../voz';
+import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
@@ -15,6 +23,13 @@ const SKELETON_ROWS = 3;
 type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type Vista = 'listado' | 'formulario';
 
+export interface GastosScreenProps {
+  /** ACTID — id que llegó desde una fila de Actividad/Escritorio: abre su detalle al montar.
+   * Mismo criterio que `clienteIdInicial` de `ClientesScreen`: el shell lo resetea a `null` en
+   * cada cambio de tab, así que un remount sin id nuevo no reabre el detalle viejo. */
+  gastoIdInicial?: number;
+}
+
 /**
  * `GastosScreen` — M-WEB spike 1 (`contrato_planificacion-a-frontend_MWEB-spike-gastos-portado-a-web.md`):
  * port de `apps/mobile/src/modules/gastos/PantallaGastos.tsx` a `copiloto-web`. Misma lógica de carga
@@ -22,13 +37,14 @@ type Vista = 'listado' | 'formulario';
  * (`@copiloto/core`, sin cambios). Lo que NO se porta 1:1: `RefreshControl` (gesto táctil de "tirar
  * para refrescar") no existe en web — se reemplaza por un botón "Actualizar" explícito.
  */
-export function GastosScreen() {
+export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [total, setTotal] = useState(0);
   const [resumen, setResumen] = useState<ResumenGastos | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
+  const [detalle, setDetalle] = useState<Gasto | null>(null);
   // BL-J7/K-10: dictado desde la fila del rótulo (fuera del formulario) — llena `descripcion`, el
   // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
   // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
@@ -76,6 +92,22 @@ export function GastosScreen() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  /**
+   * ACTID — abrir directo un gasto que llegó por la lista de Actividad/Escritorio. Se busca por
+   * id, no se confía en el listado (puede estar viejo o el id puede no estar en la página
+   * cargada): si no se encuentra, no se abre nada y la pantalla queda en su listado — mismo
+   * criterio que `PantallaGastos` en mobile.
+   */
+  useEffect(() => {
+    if (gastoIdInicial == null) return;
+    let cancelado = false;
+    void obtenerGasto(gastoIdInicial).then((res) => {
+      if (cancelado || !vivo.current) return;
+      if (res.status === 'ok') setDetalle(res.gasto);
+    });
+    return () => { cancelado = true; };
+  }, [gastoIdInicial]);
 
   async function actualizar() {
     setActualizando(true);
@@ -237,7 +269,7 @@ export function GastosScreen() {
 
               <div className="gastos-screen__lista">
                 {gastos.map((g) => (
-                  <TarjetaGasto key={g.id} gasto={g} />
+                  <TarjetaGasto key={g.id} gasto={g} onSelect={setDetalle} />
                 ))}
               </div>
 
@@ -250,6 +282,8 @@ export function GastosScreen() {
           )}
         </div>
       )}
+
+      {detalle != null && <DetalleGasto gasto={detalle} onCerrar={() => setDetalle(null)} />}
     </div>
   );
 }

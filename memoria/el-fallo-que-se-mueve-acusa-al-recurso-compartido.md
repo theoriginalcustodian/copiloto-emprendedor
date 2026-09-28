@@ -57,6 +57,92 @@ salida de la primera sonda, debajo del veredicto que decía lo contrario.
 3. **Un patrón que encaja con tu hipótesis no la confirma si medís la misma cosa dos veces.** Buscá
    el número que la refutaría — acá, las demoras de los éxitos contra el presupuesto del timeout.
 
+## El par simétrico: quién falla vs. cómo fallan
+
+Las dos mitades salieron del mismo día y se leen juntas, porque la pregunta es la misma —*¿el sujeto
+o el instrumento?*— y la respuesta está en **la forma del patrón, no en el contenido del error**:
+
+| Lo que ves | A quién acusa | Por qué |
+|---|---|---|
+| **TODOS fallan idéntico** | **al instrumento** | Un sistema roto falla distinto en cada punto. 5/5 con el mismo mensaje es la firma de un selector, un path o una credencial mal escritos. |
+| **CAMBIA el que falla** entre corridas | **a lo compartido** | El id, el viewport y el sujeto son fijos entre intentos. Si el fallo se mueve, la variable es lo que los tres comparten: un server, un puerto, un lock, una DB de test, el disco. |
+
+La primera mitad la pagué el mismo día: busqué `.card` cuando `abrirCard` monta `#card` por ID, y
+salieron **5/5 timeouts idénticos**. La segunda es este archivo.
+
+## Contador: el mismo patrón, CUATRO veces en un día, y el mismo culpable
+
+No es una anécdota que se cita una vez — es la firma del instrumento que tenemos. Las cuatro veces el
+**sujeto cambió** y el server no:
+
+| # | Cómo se veía | Sujeto que «fallaba» |
+|---|---|---|
+| 1 | tres capturas faltantes en B1 | `apar` · `soporte` · `esc` |
+| 2 | sonda de tasa al 40-60% | 6 celdas **distintas** |
+| 3 | celda abortada por `console.error` | `hitl`, y en la pasada siguiente `ingresos` |
+| 4 | activación perdida sin error (reportada por otra sesión) | `desktop` sí, `390` no |
+
+**Cuando el contador llega a dos, dejá de diagnosticar el sujeto y andá al recurso.** Lo que costó
+caro no fue ninguno de los cuatro: fue tratarlos como cuatro problemas.
+
+⚠️ **Y el corolario de limpieza, que es parte del patrón:** un server de prueba que queda vivo en un
+puerto es el próximo recurso compartido que va a fabricar un falso rojo **para otra sesión**, que no
+sabe que existe. Al terminar se baja, cruzando el PID contra el propio comando antes de matarlo
+([[el-puerto-que-contesta-puede-ser-de-otra-sesion]]).
+
+## El caso que cerró las dos mitades, contra mi propio instrumento (2026-09-28, tarde)
+
+Probando un guard ajeno, una celda abortó por `console.error: Failed to load resource: 404` **con la
+activación intacta**. En la pasada siguiente la celda abortada fue **otra**, y la primera salió
+limpia. Apliqué la regla de la tabla: no era de ninguna celda.
+
+Era **el favicon**. El prototipo no declara ninguno (`grep -c favicon index.html` = 0), Chrome lo
+pide por su cuenta, y el server devolvía 404. Tasa medida: **1 de cada 10 cargas del mismo id** —
+Chrome sólo lo pide a veces. Sobre 14 celdas por corrida eso tumba ~1,4, **cada vez otra**.
+
+Tres cosas que dejó, y ninguna es sobre faviconos:
+
+1. **Un falso positivo INTERMITENTE es peor que uno constante.** El constante se caza en la primera
+   corrida; el intermitente fabrica la excusa «es el flake conocido», y con ella se lava la próxima
+   regresión real. Ver [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]].
+2. **`pageerror`, `http>=400` y `console.error` son tres clases de señal y no entran en un
+   contador.** `pageerror` (excepción de JS sin atrapar) invalida la captura; un recurso faltante no
+   necesariamente; `console.error` mezcla las dos más lo que el sitio decida loguear. Un gate que
+   suma las tres tumba celdas buenas. Separadas en `scripts/evidencia/clasificar-senales-browser.mjs`.
+   Dato fino: el 404 del favicon **no** aparece como `response` de Playwright (`http>=400` da 0), así
+   que no se puede filtrar mirando respuestas — hay que distinguir por clase de evento.
+3. **La VENTANA decide qué señal existe.** Con `domcontentloaded` + 1200 ms no vi el 404 en 41 ids;
+   con `networkidle` + 400 ms aparece. Las dos mediciones eran ciertas sobre ventanas distintas — así
+   que «mi instrumento no lo ve» no refuta al que sí lo ve, y al comparar dos gates hay que comparar
+   primero sus ventanas. Emparentada con [[instrumento-que-no-mira-nunca-falla]].
+
+**Y el arreglo va en el origen, no en el gate:** el server responde **204** al favicon, con control
+en las dos direcciones — un archivo inexistente **sigue** dando 404, así que el fix no enmascara
+faltantes reales. Tasa antes 1/10, después 0/20. Silenciar el gate habría dejado la señal viva para
+el próximo que la mirara.
+
+## Y el corolario que costó dos reescrituras: sin LÍNEA BASE no hay delta
+
+El mismo día, el detector de superficie del prototipo se equivocó **dos veces seguidas** por no tener
+base, y las dos veces el error se leyó como hallazgo sobre el sujeto:
+
+- **v1** miraba sólo `[id].on` → reportó tres ids como «no monta nada». Los tres montaban, por vías
+  que no miraba.
+- **v2** agregó esas vías → y clasificó `caida` como «chat desplazado 844px», que es el chat **en
+  reposo**. Leía la línea base y se la atribuía al `?ver=`.
+
+**«Lo que hay» no se distingue de «lo que este id hizo» sin medir la página sin el parámetro.** Y un
+delta vacío no significa nada hasta que el detector prueba que sabe decir «no cambió nada»: la base
+se mide **tres** veces — dos para descontar el ruido de los `setInterval`, una tercera como si fuera
+un id, cuyo delta tiene que salir vacío o el script aborta.
+
+Un tercer caso, más fino: `?ver=card` abre la card con «Nuevo gasto», que es **exactamente** el
+título que la base ya tiene, así que el delta de texto sale vacío y la card quedaba clasificada como
+contenedor. **El valor por defecto enmascara el delta** — cuando el estado esperado coincide con el
+default, el diferencial no puede atribuir, y hay que buscar otra señal (acá, que el nodo se monte).
+Emparentada con [[dos-causas-suficientes-el-test-no-atribuye]] y con
+[[verificar-la-composicion-root-no-el-default]].
+
 ## Emparentadas, y en qué se diferencian
 
 - [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] — ahí el wrapper

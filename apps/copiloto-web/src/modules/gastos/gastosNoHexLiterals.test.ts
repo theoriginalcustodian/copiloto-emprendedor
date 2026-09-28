@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 // texto crudo), no un módulo real (mismo patrón que modules/connections/connectionsNoHexLiterals.test.ts).
 import gastosCss from './gastos.css?raw';
 import gastosScreenSource from './GastosScreen.tsx?raw';
+import detalleGastoSource from './DetalleGasto.tsx?raw';
 import formularioGastoSource from './FormularioGasto.tsx?raw';
 import resumenMesSource from './ResumenMes.tsx?raw';
 import tarjetaGastoSource from './TarjetaGasto.tsx?raw';
@@ -25,6 +26,7 @@ const sinComentarios = (source: string): string =>
 const SOURCES: Record<string, string> = {
   'gastos.css': gastosCss,
   'GastosScreen.tsx': gastosScreenSource,
+  'DetalleGasto.tsx': detalleGastoSource,
   'FormularioGasto.tsx': formularioGastoSource,
   'ResumenMes.tsx': resumenMesSource,
   'TarjetaGasto.tsx': tarjetaGastoSource,

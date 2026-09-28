@@ -233,6 +233,73 @@ grande y barata merece una segunda forma de preguntar **antes** de que la alarma
 lectura era plausible, urgente y reenviable — la peor combinación. Ver
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
 
+---
+
+## Novena, y la variante peor: el sujeto equivocado fue **el RANGO**, y lo eligió el sistema
+
+2026-09-28. Pregunta: *¿los 436 objetos que el reconcile del grafo quiere borrar son drift legítimo o
+una anomalía?* De eso dependía recomendar al operador firmar `--force` o **no** firmarlo.
+
+Medí los archivos borrados en el rango del **marcador del grafo** (`1542e3ad..origin/main`, 28
+commits): **0 borrados, 0 renombrados**, 116 modificados y 28 agregados. Y **con control positivo
+verde**: la misma sintaxis ve 159 borrados en los últimos 300 commits y 11 en `HEAD~150..origin/main`.
+El instrumento veía borrados; el `0` era real.
+
+**Conclusión que casi entregué: «436 muertos sin un solo archivo borrado ⇒ anomalía ⇒ NO firmes».**
+Habría sido el consejo opuesto al correcto.
+
+La causa estaba escrita en el `repos.toml` del bridge: el 2026-08-19 el árbol que el bridge LEE dejó
+de ser el que el sync ESCRIBE, y el drift vivió **>1 mes invisible** (arreglado en `dd7cbd0`, el
+2026-09-22 21:25, **el mismo día del marcador**). Medido en el rango real —desde el inicio de la
+ceguera— hay **24 borrados, 13 de código indexable, 1 renombrado**. **Los 436 son basura legítima y el tope
+de 200 estaba funcionando** — pero mi aritmética para llegar ahí («13-14 archivos × decenas de objetos
+≈ 400») **estaba mal, y me la refutaron con la lista del dry-run**: de 4 archivos-fuente de la muestra,
+**2 SÍ existen** (`EscritorioFunciones.tsx`, y `LegalScreen.tsx` creado esta semana). La segunda mitad
+de la población son **símbolos eliminados DENTRO de archivos que sobrevivieron**, que mi conteo por
+archivo no podía ver. Por eso el «≈400» salía forzado: **conté en archivos una población que se mide en
+símbolos y aristas** ([[contar-un-simbolo-no-dice-en-que-rol-aparece]]).
+
+**Y el argumento fuerte no era ninguno de los dos conteos: era `FALTANTES: 0`.**
+`expected 39296 / present 39732 / zombies 436 / FALTANTES 0` — todo lo que el árbol vivo espera ya
+estaba presente, así que el reconcile sólo podía **quitar sobrante**, nunca dejar hueco. Eso se lee en
+una línea, no depende de reconstruir la historia, y es el criterio reusable para la próxima vez que el
+tope frene: **preguntar cuántos FALTAN, no cuántos se borran.** Yo pasé el rato midiendo la magnitud del
+borrado cuando la pregunta que decidía era si el borrado podía dejar un agujero.
+
+**Por qué el rango era el sujeto equivocado, y por qué es peor que un path mal escrito:** el marcador
+es el **puntero de progreso** del propio proceso, y avanzaba **correctamente** mientras la fuente que
+alimentaba al proceso estaba mal. Un puntero de progreso no dice «hasta acá procesé bien»: dice
+«hasta acá corrí». Con la fuente roto, el puntero mide corridas, no trabajo — así que **usarlo para
+delimitar el rango del daño devuelve cero por construcción.** El rango del daño va desde que **la
+fuente** se rompió, no desde donde quedó el puntero. Y a diferencia de un `git -C` mal apuntado, acá
+**no elegí el sujeto**: lo heredé del estado del sistema, que es lo que lo hace invisible.
+
+**Y el control positivo no podía salvarme**, lo cual es lo más importante de este caso: validó que el
+instrumento **ve borrados**, no que **le pregunté por el período correcto**. Un control positivo
+prueba la sensibilidad del instrumento, **nunca la pertinencia del sujeto** — son dos afirmaciones
+distintas y la segunda casi nunca tiene control. Hermano de
+[[vacio-no-es-hallazgo-correr-el-control]] por el lado opuesto: allá el control faltaba, acá estaba
+verde y era irrelevante.
+
+**How to apply:** ante un `0` que llega **con control positivo verde**, hacer una pregunta más:
+**¿de dónde salió el rango / el sujeto, y quién lo movió?** Si salió de un puntero, checkpoint,
+marcador, `--since`, `HEAD` o «última corrida», **ese valor es parte de la hipótesis, no del método**:
+va verificado igual que el resto. La versión corta: *un control positivo dice que el instrumento ve;
+no dice que le preguntaste por el sujeto correcto.* Y ante un daño acumulado, el rango se toma desde
+**el evento que rompió la fuente**, que se busca en la historia de la configuración, no en la del
+código.
+
+## La precondición que se resuelve a mano se pierde justo cuando hay apuro
+
+El mismo incidente tuvo una segunda mitad: el generador necesitaba cuatro precondiciones
+(`NODE_PATH`, `CHROME_PATH`, entorno E2E, servidor del prototipo). **Las cuatro estaban documentadas
+en el header del script.** Se perdieron igual.
+
+> **Una precondición que hay que resolver a mano en cada corrida se pierde en la corrida en que uno
+> tiene apuro** — y esa es, sistemáticamente, la corrida que importa.
+
+Documentar no es un remedio: es una nota al que ya está apurado. El remedio fue un script que
+**resuelve** las cuatro y, si no puede, **aborta imprimiendo el comando exacto que falta**.
 
 ## La señal de alarma: dos mediciones distintas que dan el MISMO número exacto
 
@@ -284,15 +351,3 @@ opcional que se puede escribir mal en silencio.
 
 **Y el control que lo caza en cualquier corrida:** *comparar el N pedido contra el N medido*. Si
 pediste 3 y el informe dice 7, no hace falta saber por qué para saber que no sirve.
-
-## La precondición que se resuelve a mano se pierde justo cuando hay apuro
-
-El mismo incidente tuvo una segunda mitad: el generador necesitaba cuatro precondiciones
-(`NODE_PATH`, `CHROME_PATH`, entorno E2E, servidor del prototipo). **Las cuatro estaban documentadas
-en el header del script.** Se perdieron igual.
-
-> **Una precondición que hay que resolver a mano en cada corrida se pierde en la corrida en que uno
-> tiene apuro** — y esa es, sistemáticamente, la corrida que importa.
-
-Documentar no es un remedio: es una nota al que ya está apurado. El remedio fue un script que
-**resuelve** las cuatro y, si no puede, **aborta imprimiendo el comando exacto que falta**.

@@ -77,6 +77,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const [ticketIdAbierto, setTicketIdAbierto] = useState<number | null>(null);
   // D14 — ver el mismo comentario en `AppShell.tsx`.
   const [clienteIdAbierto, setClienteIdAbierto] = useState<number | null>(null);
+  // ACTID — ver el mismo comentario en `AppShell.tsx`.
+  const [gastoIdAbierto, setGastoIdAbierto] = useState<number | null>(null);
 
   // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
   // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
@@ -91,6 +93,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     setTicketIdAbierto(null);
     // D14 — ver el mismo comentario en `AppShell.tsx`.
     setClienteIdAbierto(null);
+    // ACTID — ver el mismo comentario en `AppShell.tsx`.
+    setGastoIdAbierto(null);
     setActiveTab(key);
   }, []);
 
@@ -99,6 +103,13 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const abrirCliente = useCallback((id: number) => {
     setActiveTab('clientes');
     setClienteIdAbierto(id);
+  }, []);
+
+  // ACTID — variante de `setActiveTab('gastos')` que además abre el detalle de `id`. Mismo
+  // criterio que `abrirCliente`: navegación directa, no pasa por `handleTabChange`.
+  const abrirGasto = useCallback((id: number) => {
+    setActiveTab('gastos');
+    setGastoIdAbierto(id);
   }, []);
 
   // D12 — ver el mismo comentario en `AppShell.tsx`: mismo handoff que "Facturar" desde un
@@ -133,12 +144,12 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               <ChatScreen variant="desktop" onAbrirCliente={abrirCliente} onFacturar={irAFacturar} />
             )}
             {activeTab === 'connections' && <ConnectionsScreen />}
-            {activeTab === 'gastos' && <GastosScreen />}
+            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen
-                onAbrirGasto={() => setActiveTab('gastos')}
+                onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onAbrirTicket={setTicketIdAbierto}
               />
@@ -156,7 +167,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
                   }
                   setActiveTab(tab);
                 }}
-                onAbrirGasto={() => setActiveTab('gastos')}
+                onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onVerRecientes={() => setActiveTab('recientes')}
               />
