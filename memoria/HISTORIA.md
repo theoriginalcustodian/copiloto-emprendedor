@@ -274,3 +274,4 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 ## Movidos del índice el 2026-09-28 (cupo justo, entra la entrada del adversario E2E)
 
 - [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — caso particular ya cubierto por la regla dura de checkout compartido (canon 9).
+- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. — ya cubierta por la regla dura del canon 9 (prohibido `stash` en checkout compartido).
