@@ -97,6 +97,13 @@ const TEXT_TOKENS = [
   '--name-fg',
   '--cancel-fg',
   '--badge-fg',
+  // Sumados por FE2 (BL-Q4, 2026-09-28): la deuda de diseño escalada a planificación el 2026-09-08
+  // (ver git blame de `EXEMPT_FG_TOKENS` más abajo) se resolvió — `--danger-btn-bg`/`--ok-fg`
+  // recibieron un tono nuevo (`scripts/contraste-aa.py`, medido contra su fondo real, no `--bg`
+  // ingenuo) y ya pasan 4.5:1 en las 2 pieles. Salen de `EXEMPT_FG_TOKENS` y entran acá para que
+  // una regresión futura la cace este gate, no quede otra vez invisible.
+  '--danger-btn-fg',
+  '--ok-fg',
 ] as const;
 
 /**
@@ -155,6 +162,15 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   // `--badge-fg` SÍ tiene fondo propio (`--badge-bg`, rgba con tinte) — `resolveSurface` lo
   // alpha-composita sobre `--bg` antes de medir (mismo mecanismo ya usado para `--chip-bg` etc.).
   '--badge-fg': '--badge-bg',
+  // `--danger-btn-fg` siempre se pinta sobre el fill sólido de `--danger-btn-bg` (botón), nunca
+  // sobre `--bg` — mismo motivo que `--btn-fg`/`--send-fg` arriba.
+  '--danger-btn-fg': '--danger-btn-bg',
+  // `--ok-fg` tiene DOS superficies reales, igual que `--danger-fg`: texto suelto sobre `--bg`
+  // (`ingresos.css`/`chat.css`/etc.) y texto dentro del chip `--ok-bg` (rgba, `primitives.css`
+  // líneas 124-125). Medido (BL-Q4, 2026-09-28): el chip compuesto es SIEMPRE el más exigente de
+  // los dos (claro 4.59 vs 5.36 suelto; oscuro 8.23 vs 10.92 suelto) — se mapea a `--ok-bg` y
+  // `resolveSurface` lo alpha-composita solo, mismo mecanismo que `--chip-fg`/`--badge-fg`.
+  '--ok-fg': '--ok-bg',
 };
 
 /**
@@ -167,22 +183,9 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
  */
 const EXEMPT_FG_TOKENS: Record<string, string> = {
   // Dual-role (icono/trazo decorativo, no texto puro) — ver comentario extenso arriba de
-  // `OWN_BG_TOKEN`. Documentado con deuda conocida en claro (4.38:1), no una regresión nueva.
+  // `OWN_BG_TOKEN`. `claro` pasó a 4.82:1 (BL-Q4, 2026-09-28, `#A5462B`) — ya no es deuda, pero
+  // sigue exento por su categoría (mayoría de usos son gráficos, no texto), no por el número.
   '--core': 'dual-role decorativo/texto — ver comentario junto a OWN_BG_TOKEN; no termina en -fg así que ni siquiera aplica el auto-derive, queda listado acá por completitud.',
-  // Deuda real medida por FE2 (2026-09-08), NO corregida: `--danger-btn-fg`=#F5EBD5 sobre su
-  // `--danger-btn-bg` real (#c7455a) da 4.00:1 en claro/root-default (8.36:1 en oscuro/nocturno,
-  // sin problema ahí). Pasa el piso 3:1 no-textual pero no el 4.5:1 AA de texto. Corregirlo cambia
-  // un tono, no sólo su luminosidad recuperando contraste (a diferencia de `--badge-fg`, que sí se
-  // corrigió en este mismo cambio) — el contrato de tokens semánticos no autoriza esa decisión de
-  // diseño. Escalado a planificación con esta cifra vía buzón el 2026-09-08; sale de acá el día que
-  // se resuelva (con el fix, no con más exención).
-  '--danger-btn-fg': 'AA-debt claro/root-default 4.00:1 (piso 3:1 OK) — escalado a planificación 2026-09-08, requiere decisión de diseño, no lo corrige este contrato.',
-  // Deuda real medida por FE2 (2026-09-08), NO corregida: `--ok-fg`=#3C8069 da 3.77:1 contra `--bg`
-  // / 3.95:1 contra `--card-bg` en claro/root-default (10.3-12.2:1 en oscuro/nocturno). Se usa en
-  // texto real de 13px (`ingresos`, `chat`), así que el piso 3:1 no alcanza — es AA-debt genuino,
-  // no un caso límite ignorable. Mismo motivo que `--danger-btn-fg`: la corrección es una decisión
-  // de color, no una recuperación mecánica de contraste. Escalado a planificación 2026-09-08.
-  '--ok-fg': 'AA-debt claro/root-default 3.77-3.95:1 (piso 3:1 OK, usado en texto real 13px) — escalado a planificación 2026-09-08, requiere decisión de diseño, no lo corrige este contrato.',
 };
 
 /** Todo custom property `--algo-fg` declarado en un bloque de vars ya parseado. */
