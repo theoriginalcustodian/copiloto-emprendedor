@@ -278,3 +278,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está. — ya es la práctica por defecto; el MCP de github no se usa desde meses.
 - [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo. — ya vive en el `CLAUDE.md` global como postura; baja por cupo, no por falsa.
 - [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica — es la regla 6 del `CLAUDE.md` del repo; baja por cupo, no por falsa.
+- [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado. — baja por cupo: es la regla 2 del `CLAUDE.md` del repo.
+- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró". — baja por cupo: específica de un cálculo de negocio puntual.
+- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie. — baja por cupo: su lección vive operativa en la junta con dueña de §3.quater.
