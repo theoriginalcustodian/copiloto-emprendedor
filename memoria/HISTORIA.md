@@ -282,3 +282,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró". — baja por cupo: específica de un cálculo de negocio puntual.
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie. — baja por cupo: su lección vive operativa en la junta con dueña de §3.quater.
 - [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — default: sigue vigente. — baja por cupo; sigue vigente como regla.
+- [🎯📏 La regla que manda a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — qué regla te desvía. — baja por cupo del índice; sigue vigente.
+- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — leé el `WHERE`, no el nombre. — baja por cupo del índice; sigue vigente.
+- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando esté listo" no llega. — baja por cupo del índice; sigue vigente.
