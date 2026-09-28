@@ -106,6 +106,11 @@ tar -C "$LOCAL" \
 # un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
 echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
+# BUILDSHA (2026-09-28, contrato planificación): HEAD del working tree que se tar-ea, no
+# origin/main -- _sha de arriba es la referencia que ancla el gate de drift, no necesariamente
+# lo que hay en disco para apps/copiloto-web (el propio manifiesto ya declara ese path como
+# "paths_NO_verificados"). data-build-sha necesita el commit real de lo que se está sirviendo.
+_build_sha="$(git -C "$LOCAL" rev-parse HEAD 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
 _manifiesto="$(cat <<JSON
@@ -124,9 +129,9 @@ printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'
   || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$_build_sha" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"; AUTH_URL="$2"
+REMOTE="$1"; AUTH_URL="$2"; BUILD_SHA="$3"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -134,8 +139,8 @@ npm install --no-audit --no-fund --loglevel=error
 # Vite hornea las VITE_* del entorno al bundle -- sin esto, VITE_AUTH_URL queda sin definir y
 # `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
-# con que sync-web.sh lo haga bien.
-VITE_AUTH_URL="$AUTH_URL" npm run build
+# con que sync-web.sh lo haga bien. VITE_BUILD_SHA: mismo motivo, mismo patrón (BUILDSHA, 2026-09-28).
+VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$BUILD_SHA" npm run build
 test -f dist/index.html
 echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
 REMOTE_WEB

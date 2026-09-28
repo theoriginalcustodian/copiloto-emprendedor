@@ -1,12 +1,27 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { injectBuildSha, resolveBuildSha } from './src/util/buildSha';
+
+// BUILDSHA (2026-09-28, contrato planificación): `servido@<sha>` pasa de inferencia (hora del
+// PNG cruzada contra origin/main) a lectura real -- data-build-sha en <html> es lo que el
+// instrumento de captura lee del mismo snapshot que fotografía. VITE_BUILD_SHA se inyecta en
+// deploy.sh y sync-web.sh (las DOS rutas de build), no acá: acá sólo se lee el env ya presente.
+function buildShaPlugin(): Plugin {
+  return {
+    name: 'build-sha-attr',
+    transformIndexHtml(html) {
+      return injectBuildSha(html, resolveBuildSha(process.env.VITE_BUILD_SHA));
+    },
+  };
+}
 
 // Odobi — cliente PWA mobile-first + desktop responsive.
 export default defineConfig({
   base: '/',
   plugins: [
     react(),
+    buildShaPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       // Un redeploy DEBE llegar al navegador sin que el usuario limpie nada a mano:
