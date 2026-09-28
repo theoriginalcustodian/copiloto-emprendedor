@@ -668,7 +668,7 @@ y **hay nueve**; tres de los que me faltaban son exactamente los que mi denomina
 > alcance de mi propia auditoría, y el recorte cayó justo sobre las filas más débiles. Ésta es la lección
 > del §15, no la aritmética.
 
-### §15.2 — 🆕 El campo es `medido_contra:`, no «el SHA», y se especifica en TRES formas
+### §15.2 — 🆕 El campo es `medido_contra:`, no «el SHA», y se especifica en CUATRO formas
 
 Poner «`sha_medido: <hash>`» y llamarlo hecho **reintroduce el problema con otra cara**, por dos cosas que
 medí hoy y que el dictamen no podía ver:
@@ -694,6 +694,13 @@ BL-V23 impactan. **El campo diseñado para impedir el envejecimiento silencioso 
 > | `servido@<sha>` | la app se midió corriendo (captura) | SHA de `origin/main` vigente a la **hora de la captura** — la escribe el instrumento en el `mtime` del PNG, no la memoria del medidor |
 > | `leido@<rama>:<sha>` | la fila se midió leyendo código | SHA **del worktree donde se leyó**, más su rama. Si difiere de `origin/main`, agregar `merge-base=<sha>` |
 > | `proto@<sha>` | el lado prototipo | SHA del commit que trae ese `index.html` |
+> | `reconstruido@<path>:<ultimo-commit>` | 🆕 **la fila se mide HOY pero el veredicto es de una pasada ANTERIOR** (backfill) | el path que se leyó y el último commit que lo tocó **antes** de la fecha del veredicto. **Marca la fila como reconstrucción, no como medición** |
+>
+> 🆕 **La cuarta forma existe porque el spec NO es backfilleable, y eso lo midió auditoría, no yo.** Un veredicto escrito ayer sin el campo **no se puede completar hoy**: nadie sabe qué árbol tenía el worktree del medidor en ese momento. Si se reparte el backfill con las tres formas de arriba, lo que vuelve son `leido@` **aproximados presentados como medidos** — exactamente el modo de falla que el campo existe para prevenir, reintroducido por el remedio. Así que el backfill tiene su propia forma, y **es visiblemente distinta a simple vista**.
+>
+> **Su límite, escrito y no escondido:** `reconstruido@` dice *«esto es lo que el archivo dice HOY, y el veredicto es de ANTES»*. **No sostiene un veredicto por sí solo**: si entre el último commit citado y la fecha del veredicto el archivo cambió, la fila **no se reconstruye — se re-mide**. La prueba para elegir la forma es una sola pregunta: *¿abrí el archivo/la app ahora, o estoy completando el campo desde el historial?* Lo primero es `leido@`/`servido@`; lo segundo es `reconstruido@` **siempre**, aunque el resultado coincida. **Y la forma no se elige por lo prolijo que quedó el renglón:** una reconstrucción que se disfraza de `leido@` es peor que un hueco, porque el hueco se ve.
+>
+> ✅ **Ejemplo de uso correcto medido el 28/09 (frontend1, lote A):** FE1 tuvo el caso límite y eligió bien — declaró `leido@<rama>:<sha>`, **no** `reconstruido@`, y dejó escrito el por qué: *«es una lectura del contenido actual del archivo, hecha ahora, no una inferencia desde el historial de commits»*, y lo respaldó con `git diff HEAD origin/main` vacío sobre los paths citados. Esa es la distinción operativa, no la etiqueta más prolija.
 >
 > **Regla del eslabón más viejo (la que evita el (b)):** si el veredicto se apoya en **más de una** lectura
 > y alguna es heredada, `medido_contra` anota **la más VIEJA de las que sostienen el veredicto**, nunca la
@@ -809,3 +816,5 @@ diferencia entre un aviso y un aviso que llega.
 | `agenda` (A y B) | `ef8ded27` (22/09 17:23) · `e41a54fe` (22/09 21:22) · `221de832` (22/09 21:55) | dictamen 23/09 |
 | `detalle` | los mismos tres — **y por eso caduca: su descripción es del 22/09** | dictamen 23/09 **y reincidido 28/09** |
 | `pres-hitl` | `fc37dc3f` · `3ba91a2e` · `03e9c200` — **todos anteriores a `b7fa0e23`** ⇒ vigente si se midió hoy ≥08:32 | dictamen 28/09, resuelto en §15.3 |
+
+⚠️ 🆕 **Y una caducidad que no es de una fila sino de UNA FORMA ENTERA: `servido@<sha>` es hoy una INFERENCIA, no una lectura.** El instrumento toma el `mtime` del PNG y lo cruza contra el log de `origin/main`: eso **asume** que lo desplegado era `origin/main` a esa hora. **El supuesto ya falló, medido el 28/09:** el `placeholder="1500,50"` de #689 está **presente** en `origin/main` (`FormularioPresupuesto.tsx:350`, 1 ocurrencia) y **ausente del bundle servido** (0 ocurrencias) — producción estaba atrasada. Cuando la app corre código más viejo que `origin/main`, `servido@` anota un SHA **más nuevo** que la superficie fotografiada: el campo puesto contra el envejecimiento **falla abierto por exactamente el atraso del deploy**. Consecuencia para quien lee una fila: **un `servido@` no prueba que la captura sea de ese código, sólo que no es más nueva que él** — es un techo. Los `servido@` ya escritos quedan **sospechosos, no falsos**, y no se re-miden por este contrato. El remedio es el marcador de build (`contrato_ BUILDSHA`, fila del tablero, dueños backend+FE2): hasta que el HTML servido traiga `data-build-sha`, esta forma se lee con el techo a la vista.
