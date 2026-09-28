@@ -56,3 +56,23 @@ Lo único que funcionó: haber pedido el ataque. La categoría duró veinte minu
 asignación mandé un `pedido_` a auditoría diciendo «refutala, acá está la pregunta que la decide».
 [[al-juez-tambien-hay-que-darle-el-plano]] — y el juez necesita que le den el **paso débil** marcado,
 no sólo la conclusión.
+
+## Un mensaje de commit NO es una medición del código
+
+2026-09-28. Clasifiqué un desvío como «queda fuera a propósito» citando el mensaje del commit #256, y
+bajé esa clasificación a otra sesión **dos veces**. Las dos estaban mal:
+
+- el mensaje decía «menú de 6 tiles» y el array tiene **9** — el comentario del código ya estaba viejo
+  y el commit **congeló la cifra vieja** al citarla;
+- su lista de «queda fuera a propósito» nombraba otras dos pantallas, **no** la que yo le atribuí.
+
+**Un mensaje de commit sirve para redactar la causa y asignar dueño. Nunca para decidir *si hay*
+desvío.** Eso se mide en el ejecutable: el array, el `WHERE`, el selector.
+
+Y el agravante de método: un veredicto que **desactiva** trabajo («esto no es un hallazgo») necesita
+más evidencia que uno que lo crea, porque nadie vuelve a mirar lo desactivado. Yo usé menos.
+
+Corolario medido el mismo día, del lado del prototipo: un archivo puede **documentar su cambio en un
+comentario nuevo y dejar el viejo intacto**, y los dos conviven — el lector encuentra el que busca
+primero. Ver `[[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]]`.
+

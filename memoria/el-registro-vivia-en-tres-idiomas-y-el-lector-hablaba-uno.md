@@ -155,3 +155,42 @@ prosa suelta, + un control que **aborta** si hay bullets de identidad y ninguno 
 control nació dando un falso ROJO contra un brazo sano — desempaquetaba una lista de dicts como
 tuplas, leía `"forma"` (la clave) en vez del valor y daba 0 siempre
 ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
+
+## El cierre: no se arregla agregando idiomas. Se cambia la UNIDAD — y el canal
+
+Después de tres idiomas encontrados vinieron un cuarto y un quinto, y ahí se ve que el camino estaba
+mal: **cada forma nueva de registrar una medición iba a ser invisible otra vez.** Auditoría lo dijo
+mejor que yo: «arreglar por forma va a quedarse atrás en la próxima operación nueva del protocolo».
+
+**La inversión que sí cierra:** la unidad primaria pasa a ser el **SUJETO** (acá `id`+`camino`), no el
+veredicto. Contar veredictos sólo encuentra los que el lector ya sabe parsear; contar sujetos hace que
+una forma nueva salga como **hueco con nombre** en vez de desaparecer.
+
+### Pero «externo» no alcanza: tiene que ser el PADRÓN CORRECTO
+
+Mi primer intento sacó el universo de sujetos de una fuente externa al parser —correcto en la
+intención— y era **la namespace equivocada**: 27 *vistas del prototipo* contra sujetos de medición que
+se llamaban `cobro-voz`, `onb-promesa`, `pres-ciclo`. El control de cobertura dio 0 de 27 y parecía que
+el instrumento estaba roto. No lo estaba: estaba midiendo **otro conjunto**.
+
+> Elegir una fuente porque es externa, sin verificar que enumere **los mismos sujetos**, es la misma
+> familia que `[[el-instrumento-respondio-sobre-otro-sujeto]]`: la respuesta llega, no falla, y es de
+> otra cosa.
+
+### Y lo que le da poder a la inversión: DOS CANALES, no uno
+
+La inversión sirve sólo si el canal que declara el sujeto es **distinto y más estable** que el que
+registra la medición. Acá lo era, medido:
+
+- **sujeto** → el id **siempre** entre backticks, en 3 formas (encabezado, bullet, primera celda)
+- **veredicto** → 5 formas y contando, una por cada operación nueva del protocolo
+
+Si los dos viajaran por el mismo canal, contar sujetos no compraría nada. **La pregunta a hacerse no
+es «¿qué formas me faltan?» sino «¿por qué canal me enteraría de que existe algo que no sé leer?».**
+
+### Cómo se prueba que sirvió (y no se promete)
+
+Un canario por brazo: romper cada forma **de a una** y exigir que la métrica baje. En su primera
+corrida declaró CIEGO el brazo que yo acababa de agregar — el defecto estaba en mi parche, sin
+commitear. Ver `[[el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control]]`.
+
