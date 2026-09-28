@@ -65,7 +65,6 @@
 - [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
-- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
@@ -123,6 +122,7 @@
 ### Diseño y arquitectura
 - [♻️🔒 Reutilizar es REGLA — inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — todo `contrato_` abre con §0.
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — el ACCESO elige la arquitectura.
+- [🧩🏷️ Una fila por VALOR de una variable no es una fila](una-fila-por-valor-de-una-variable-no-es-una-fila.md) — el id es plantilla: ¿qué MIDE?
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente colapsa el problema.
 - [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?*
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — medí el EFECTO.

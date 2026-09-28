@@ -277,3 +277,4 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. — ya cubierta por la regla dura del canon 9 (prohibido `stash` en checkout compartido).
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está. — ya es la práctica por defecto; el MCP de github no se usa desde meses.
 - [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo. — ya vive en el `CLAUDE.md` global como postura; baja por cupo, no por falsa.
+- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica — es la regla 6 del `CLAUDE.md` del repo; baja por cupo, no por falsa.
