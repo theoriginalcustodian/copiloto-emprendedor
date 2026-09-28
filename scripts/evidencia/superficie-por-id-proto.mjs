@@ -38,11 +38,19 @@ const BASE = `http://localhost:${process.env.PROTO_PORT ?? '8124'}/prototipo`;
 // activación ocurra — un falso verde que no acusa al server sino al margen.
 const ESPERA = Number(process.env.ESPERA_MS ?? 1200);
 const WAIT_UNTIL = process.env.WAIT_UNTIL ?? 'domcontentloaded';
+// ⚠️ Esta lista se saco del inventario REAL del proto, no de memoria, y cuatro ids faltaban:
+// `comousar`, `soporte` y `feedback` NO se declaran con `ver === '<literal>'` sino dentro de un
+// `['comousar','soporte','feedback'].forEach(k => { if (ver === k) ... })` (index.html:3597-3601), asi
+// que un grep del literal los pierde; `splash` (:3391) se habia perdido sin excusa. El detector tenia
+// 41 ids y el proto declara 41 -> el total COINCIDIA mientras cuatro estaban ciegos y cuatro `card-*`
+// derivados los compensaban. Contar el total no dice que se conto: ver
+// `memoria/contar-un-simbolo-no-dice-en-que-rol-aparece.md`. Control: comparar contra
+// `grep -oE "ver === '[a-z0-9-]+'|ver.startsWith\('[a-z0-9-]+'" index.html` MAS el forEach.
 const IDS = (process.env.SOLO_IDS || [
   'afip', 'agenda', 'ajustes', 'apar', 'apps', 'bi', 'bi-refresh', 'bi-vacio', 'bloqueado', 'caida',
   'card', 'card-presu', 'card-cobro', 'card-factura', 'card-cliente', 'cargando', 'chat', 'clientes',
-  'consent', 'cuenta', 'detalle', 'entrada', 'esc', 'escucha', 'factura', 'gastos', 'grabando', 'hablar',
-  'hitl', 'ingresar', 'ingresar-error', 'ingresos', 'negocio', 'plan', 'presu', 'reveal', 'tablero',
+  'comousar', 'consent', 'cuenta', 'detalle', 'entrada', 'esc', 'escucha', 'factura', 'feedback', 'gastos', 'grabando', 'hablar',
+  'hitl', 'ingresar', 'ingresar-error', 'ingresos', 'negocio', 'plan', 'presu', 'reveal', 'soporte', 'splash', 'tablero',
   'vacio', 'vacio-visto', 'volver', 'vozchat',
 ].join(',')).split(',');
 
