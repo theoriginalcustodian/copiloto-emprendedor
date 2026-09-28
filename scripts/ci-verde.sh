@@ -28,15 +28,32 @@
 #   El veredicto es EL EXIT CODE, no el texto. Si aun asi grepeas la salida: la ultima linea
 #   dice VERDE o ROJO, nunca ambas, y ninguna es substring de la otra -- por eso no es
 #   "NO VERDE". Un `grep -q VERDE` sobre el rechazo daba TRUE y mergeaba en rojo (28/09).
+#
+# SALIDA MONOTONA (invariante, con test propio en scripts/tests/test-ci-verde-veredicto-monotono.sh):
+#   TODA salida imprime exactamente UNO de {VERDE, ROJO}. Nunca ninguno, nunca los dos.
+#   Renombrar el rechazo (vuelta 1) cerro la lectura por token POSITIVO; faltaba la lectura
+#   por token NEGATIVO (`! grep ROJO` => asumo verde), que fallaba ABIERTO en las rutas MUDAS:
+#   `gh` ausente y falta de argumento imprimian un error sin veredicto. Y `gh` ausente es la
+#   ruta MAS probable en un entorno nuevo, o sea la peor para fallar abierto.
+#   Sigue valiendo: el veredicto es EL EXIT CODE. Esto solo hace que las dos lecturas
+#   ingenuas del texto fallen CERRADAS en vez de una sola.
 set -uo pipefail
 
-command -v gh >/dev/null 2>&1 || { echo "❌ gh no está en el PATH — no puedo medir nada"; exit 2; }
+command -v gh >/dev/null 2>&1 || { echo "ROJO — no pude medir: gh no está en el PATH"; exit 2; }
 
-PR="${1:?uso: ci-verde.sh <numero-de-PR> [\"job1 job2 ...\"]}"
+# Falta de argumento es "no pude medir" (exit 2), NO "el PR esta rojo" (exit 1). El `${1:?}`
+# que habia aca salia por 1 y era indistinguible de un CI fallado -- el MISMO defecto que el
+# guard de `gh` de arriba vino a cerrar, vivo dos lineas mas abajo.
+if [ "$#" -lt 1 ]; then
+  echo "ROJO — no pude medir: falta el número de PR."
+  echo "   uso: ci-verde.sh <numero-de-PR> [\"job1 job2 ...\"]"
+  exit 2
+fi
+PR="$1"
 ESPERADOS="${2:-backend core web mobile lint drift}"
 
 json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
-  echo "❌ no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 1; }
+  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 1; }
 
 falta=0
 for j in $ESPERADOS; do
