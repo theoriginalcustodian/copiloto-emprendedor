@@ -1647,9 +1647,21 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
         except ComposioExecutionError:
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "el servicio falló; reintentá en un rato"})
-        except MercadoPagoError:
-            # cobro MP falló (HTTP != 201, etc.): error de NEGOCIO como observación, nunca excepción propagada
-            # (el contrato del executor promete "nunca excepción → retry ∞"; alinea con la regla dura PR #114).
+        except MercadoPagoError as e:
+            # cobro MP falló: error de NEGOCIO como observación, nunca excepción propagada (el contrato
+            # del executor promete "nunca excepción → retry ∞"; alinea con la regla dura PR #114).
+            #
+            # El guard preventivo de _run_mp_charge (`salud() == "caido"`) sólo atrapa un token YA
+            # marcado caído ANTES de esta llamada -- un token que vence A MITAD de esta sesión todavía
+            # pasa el guard y MP lo rechaza acá, con 401 (invalid_access_token, doc oficial de MP). El
+            # veredicto sale del status code real, nunca del texto del mensaje (instrumento que lee
+            # texto en vez de efecto = el mismo modo de falla que el guard de arriba ya tuvo una vez).
+            if e.status_code == 401:
+                if ctx.mp_seller_user_id:
+                    ctx.mp_cred_store.marcar_reauth(ctx.mp_seller_user_id)  # self-healing: el guard preventivo la atrapa la próxima vez
+                return ToolResult(tool_call_id=idem_key, status="error",
+                                  observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
+                                               "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "no pude generar el cobro ahora; probá de nuevo en un rato"})
         except Exception as exc:

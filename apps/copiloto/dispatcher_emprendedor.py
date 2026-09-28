@@ -21,6 +21,7 @@ ensure_paths()
 from backend.agent.types import DispatchResult, Intent
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired
+from clients.agent.providers.mercadopago_gateway import MercadoPagoError
 
 from activity_summary import summarize_activity
 from calendar_policy import CREATE_EVENT_SLUG
@@ -300,6 +301,22 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
                 reply_text="Uy, no pude completar esa acción con el servicio ahora mismo. "
                            "Probemos de nuevo en un ratito.",
                 done=False, state_patch={"pending": None})
+        except MercadoPagoError as e:
+            # `_execute_pending` no tenía NINGÚN catch para esto -- el guard preventivo de arriba
+            # (línea ~111, `salud() == "caido"`) sólo atrapa un token YA marcado caído ANTES de la
+            # llamada; uno que vence A MITAD de esta sesión pasa el guard y MP lo rechaza acá, sin
+            # nada que lo atrape: excepción cruda hasta el activity Temporal, "Pensando…" eterno
+            # (exactamente lo que este wrapper existe para evitar, ver docstring de dispatch()).
+            # Mismo split 401 que la gemela protegida `tool_catalog._run_mp_charge`: el veredicto
+            # sale del status code real, nunca del texto del mensaje.
+            if e.status_code == 401:
+                if ctx.mp_seller_user_id:
+                    ctx.mp_cred_store.marcar_reauth(ctx.mp_seller_user_id)  # self-healing
+                return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
+                                      done=False, state_patch={"pending": None},
+                                      card=requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago")))
+            return DispatchResult(reply_text="No pude generar el cobro ahora; probá de nuevo en un rato.",
+                                  done=False, state_patch={"pending": None})
 
     return dispatch
 
