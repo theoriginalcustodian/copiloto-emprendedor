@@ -51,7 +51,6 @@
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
 - [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) — leé el cuerpo, no el semáforo.
-- [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — default: sigue vigente.
 - [📦⏪ Un rebuild desde OTRA base revierte un fix cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) — ejercitá la función, no el log.
 - [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) — cruzá el PID contra tu proceso.
 - [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada dueño necesita su renglón.
@@ -61,6 +60,7 @@
 
 ### Evidencia: el instrumento antes que el resultado
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
+- [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) — ¿quién LEE lo que escribo?
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
 - [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
 
