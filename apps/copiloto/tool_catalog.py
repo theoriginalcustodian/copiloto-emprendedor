@@ -599,13 +599,20 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
     if not amount:
         return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "falta el monto"})
     creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
-    if not creds:
+    if not creds or ctx.mp_cred_store.salud() == "caido":
         # H-A4-11: no pedir HITL sobre algo imposible -- mismo criterio que H-A3-2(b) (tool_catalog.py
         # ~1612) para el camino genérico de servicios Composio, acá aplicado a MercadoPago (que tiene
         # SU PROPIO store de credenciales, no pasa por `gateway.connection_status`). Se lo decimos ANTES
         # de pedir confirmación, con la MISMA card (`requiere_conexion_card`) que usa cualquier otra
         # tool -- no es un `if name == "cobro_mp"` en el flujo de dispatch, es esta tool chequeando SU
         # propia capacidad, igual que ya hace cada módulo de servicio con `mod.TOOLKIT`.
+        #
+        # `not creds` sólo cubre "nunca conectado" -- una fila `caida` (reauth_desde marcado o token
+        # vencido) es TRUTHY y pasaba de largo hasta llamar a MP con credenciales inválidas: la API
+        # rechazaba, `MercadoPagoError` caía al catch genérico (~línea 1643) y el usuario veía "no pude
+        # generar el cobro ahora" en vez del sheet de reconexión (hallazgo frontend1, BL-Q3 v2, fila
+        # `consent`). `salud()` es la MISMA fuente que ya usan `conexiones_salud.py`/`web.py`/
+        # `inteligencia_queries.py` para esta distinción -- reutilizada, no reinventada.
         return ToolResult(tool_call_id=idem_key, status="error",
                           observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
                                        "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
