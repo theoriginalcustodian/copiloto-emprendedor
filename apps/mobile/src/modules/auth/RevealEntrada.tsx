@@ -1,15 +1,66 @@
 import { useAudioPlayer, type AudioSource } from 'expo-audio';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { PRONUNCIACION_MARCA } from '@copiloto/core';
 
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
-import { IdentidadEntrada } from '../splash/IdentidadEntrada';
+import { EASE_BOUNCE, EASE_SETTLE, IdentidadEntrada, LETTER, LETTER_STAGGER, SETTLE, T_O, T_WORDMARK } from '../splash/IdentidadEntrada';
 
 const LOCKUP_SIMBOLO = 54;
 const ALTO_BOTON = 54;
+
+/** "O" ya cubierta por `Marca` (`app/_layout.tsx:113` — el monograma ES el glifo real de la O): el
+ * wordmark sólo necesita animar el resto, igual que web separa `__o` de `__rest` (H-A4-2). */
+const LETRAS_WORDMARK = ['d', 'o', 'b', 'i'];
+/** 0.4em del `fontSize` del wordmark (40) — mismo offset que `translateY(0.4em)` de `Splash.css`. */
+const OFFSET_LETRA = 16;
+
+/** Settle de la "O" (`Marca`): mismo fade+scale(1.06→1) que `.identidad-splash__o` en web. */
+function OAsentada({ reducido, children }: { reducido: boolean; children: React.ReactNode }) {
+  const opacidad = useSharedValue(reducido ? 1 : 0);
+  const escala = useSharedValue(reducido ? 1 : 1.06);
+
+  useEffect(() => {
+    if (reducido) return;
+    opacidad.value = withDelay(T_O, withTiming(1, { duration: SETTLE, easing: EASE_SETTLE }));
+    escala.value = withDelay(T_O, withTiming(1, { duration: SETTLE, easing: EASE_SETTLE }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
+  }, []);
+
+  const estilo = useAnimatedStyle(() => ({
+    opacity: opacidad.value,
+    transform: [{ scale: escala.value }],
+  }));
+
+  return <Animated.View style={estilo}>{children}</Animated.View>;
+}
+
+/** Una letra del wordmark "dobi": fade + bounce, mismo tempo/curva que `.identidad-splash__letra`. */
+function LetraWordmark({ letra, indice, reducido, estilo }: { letra: string; indice: number; reducido: boolean; estilo: object }) {
+  const opacidad = useSharedValue(reducido ? 1 : 0);
+  const traslado = useSharedValue(reducido ? 0 : OFFSET_LETRA);
+
+  useEffect(() => {
+    if (reducido) return;
+    const delay = T_WORDMARK + indice * LETTER_STAGGER;
+    // CSS: opacity llega a 1 al 40% del keyframe (`identidad-letra-bounce`) mientras translateY sigue
+    // hasta el 100% -- se separan en dos `withTiming` porque Reanimated no tiene keyframes intermedios.
+    opacidad.value = withDelay(delay, withTiming(1, { duration: Math.round(LETTER * 0.4) }));
+    traslado.value = withDelay(delay, withTiming(0, { duration: LETTER, easing: EASE_BOUNCE }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
+  }, []);
+
+  const estiloAnim = useAnimatedStyle(() => ({
+    opacity: opacidad.value,
+    transform: [{ translateY: traslado.value }],
+  }));
+
+  return <Animated.Text style={[estilo, estiloAnim]}>{letra}</Animated.Text>;
+}
 
 export interface RevealEntradaProps {
   /** Etiquetas de las dos puertas (`TEXTOS_REVEAL`): el mismo reveal aterriza distinto según la sesión. */
@@ -44,7 +95,9 @@ export function RevealEntrada({
   pronunciacionAsset,
 }: RevealEntradaProps) {
   const tema = useTema();
+  const reducido = useReducedMotion();
   const reproductor = useAudioPlayer(pronunciacionAsset ?? null);
+  const estiloLetra = { color: tema.color.acentoTinta, fontSize: 40, fontFamily: tema.fuente.display, fontWeight: '800' as const, letterSpacing: -0.5 };
 
   function pronunciar() {
     reproductor.seekTo(0);
@@ -56,10 +109,14 @@ export function RevealEntrada({
       <View style={styles.medio}>
         <IdentidadEntrada>
           <View style={[styles.lockup, { gap: Math.round(LOCKUP_SIMBOLO * 0.3) }]}>
-            <Marca size={LOCKUP_SIMBOLO} />
-            <Text style={{ color: tema.color.acentoTinta, fontSize: 40, fontFamily: tema.fuente.display, fontWeight: '800', letterSpacing: -0.5 }}>
-              Odobi
-            </Text>
+            <OAsentada reducido={reducido}>
+              <Marca size={LOCKUP_SIMBOLO} />
+            </OAsentada>
+            <View style={styles.wordmark}>
+              {LETRAS_WORDMARK.map((letra, indice) => (
+                <LetraWordmark key={letra + indice} letra={letra} indice={indice} reducido={reducido} estilo={estiloLetra} />
+              ))}
+            </View>
           </View>
         </IdentidadEntrada>
         <View style={styles.pronunciacion}>
@@ -110,6 +167,7 @@ const styles = StyleSheet.create({
   raiz: { flex: 1, justifyContent: 'space-between' },
   medio: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   lockup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  wordmark: { flexDirection: 'row' },
   pronunciacion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   botonPronunciar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   boton: { alignItems: 'center', justifyContent: 'center' },
