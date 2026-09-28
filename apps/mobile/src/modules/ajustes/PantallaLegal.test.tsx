@@ -5,7 +5,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
-import { LEGAL_VERSION } from '@copiloto/core';
+import { LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaLegal } from './PantallaLegal';
@@ -50,5 +50,10 @@ describe('PantallaLegal — port mobile de LegalScreen (BL-O6 parte A)', () => {
   it('muestra la versión compartida del documento', async () => {
     await montar('privacidad');
     expect(screen.getByTestId('legal-screen-version')).toHaveTextContent(new RegExp(LEGAL_VERSION));
+  });
+
+  it('muestra el descargo de responsabilidad (BL-O6, provisorio)', async () => {
+    await montar('tos');
+    expect(screen.getByTestId('legal-screen-descargo')).toHaveTextContent(LEGAL_DESCARGO);
   });
 });

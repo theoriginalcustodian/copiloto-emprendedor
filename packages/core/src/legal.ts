@@ -13,6 +13,17 @@
 
 export const LEGAL_VERSION = '2026-09-22';
 
+/**
+ * PROVISORIO — pendiente de revisión legal, dueño: operador (BL-O6, firmado 2026-09-28).
+ * El acta había diferido el texto legal completo a Cierre B por no estar listo; se implementó
+ * ToS/Privacidad igual (parte A) pero sin este descargo, y quedó ausente ~1 semana sin dueño
+ * visible. No se retira el aviso de plantilla genérica (decisión aparte, sigue vigente) — este
+ * descargo es un párrafo adicional, redactado por planificación (copy, no arquitectura), sin
+ * fecha de reemplazo porque no la tiene: el reemplazo real lo escribe un abogado.
+ */
+export const LEGAL_DESCARGO =
+  'Odobi es una herramienta de gestión. La información, los cálculos y los documentos que genera —presupuestos, comprobantes y resúmenes de actividad— tienen carácter orientativo y no constituyen asesoramiento contable, impositivo, legal ni financiero. No reemplazan la intervención de un profesional matriculado ni la consulta a los organismos correspondientes. La verificación de los datos, la emisión de comprobantes fiscales y el cumplimiento de las obligaciones tributarias son responsabilidad exclusiva del usuario. Odobi no garantiza la exactitud, integridad ni vigencia de la información que obtiene de servicios de terceros.';
+
 export type LegalKind = 'tos' | 'privacidad';
 
 export const LEGAL_TITULOS: Record<LegalKind, string> = {

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LEGAL_VERSION } from '@copiloto/core';
+import { LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
 
 import '../design-system/themes.css';
 import { THEMES } from '../design-system/ThemeProvider';
@@ -50,6 +50,11 @@ describe('LegalScreen', () => {
   it('muestra la versión compartida del documento', () => {
     render(<LegalScreen kind="tos" onVolver={vi.fn()} />);
     expect(screen.getByTestId('legal-screen-version')).toHaveTextContent(LEGAL_VERSION);
+  });
+
+  it('muestra el descargo de responsabilidad (BL-O6, provisorio) en ambos kinds', () => {
+    render(<LegalScreen kind="tos" onVolver={vi.fn()} />);
+    expect(screen.getByTestId('legal-screen-descargo')).toHaveTextContent(LEGAL_DESCARGO);
   });
 
   it.each(THEMES)('renderiza sin romper bajo el tema "%s"', (theme) => {
