@@ -326,8 +326,9 @@ produce `.hitl` en el chat.
 
 ### Filas afectadas
 
-- **`card`, `card-presu`, `card-cobro`** → el id apunta a `#funcion` y el equivalente de la app es el
-  hilo. **Se reasignan a `vozchat`**, superficie `.hitl` del chat en los dos lados. Los análisis ya
+- **`card`, `card-presu`, `card-cobro`** → ⛔ **la reasignación a `vozchat` quedó RETIRADA — ver §11.**
+  Lo escribí antes de contar los componentes del hilo y estaba mal: hay **seis**, no uno.
+  La superficie declarada sigue valiendo; el id nuevo, no. Los análisis ya
   hechos contra `#card` **no se tiran**: entran como `dato_` y sirven si se decide medir también
   `#funcion`, que es una fila **distinta**, no la misma con otro id.
 - **`hitl`** → el lado app estaba bien elegido (`factura`, por el argumento de la capacidad ausente),
@@ -365,3 +366,68 @@ convierte un fallo detectable en una foto perfecta de otra cosa.
 alcanza**, porque no emite nada: ahí hace falta una **aserción positiva post-click** (que el
 `.hitl` esperado exista) antes de sacar la foto. La regla general: **una acción que habilita la
 medición necesita aserción propia, no un `if` que la saltee en silencio.**
+
+---
+
+## §11 — El veredicto declara su DIMENSIÓN: componente o contenido (y así se resuelve `hitl`)
+
+⛔ **Retiro la reasignación de §10.** La escribí asumiendo que las cards del hilo eran una plantilla
+con el tipo como variable — el patrón de §9. **Conté los componentes y son seis, cada uno con su
+archivo y su rama:**
+
+| línea | rama | componente |
+|---|---|---|
+| `MessageList.tsx:252` | `leerGastoPropuesto(message.card)` | `TarjetaGastoPropuesto` |
+| `:269` | `leerIngresoPropuesto(...)` | `TarjetaIngresoPropuesto` |
+| `:274` | `leerPresupuestoPropuesto(...)` | `TarjetaPresupuestoPropuesto` |
+| `:277` | `leerFacturaPropuesta(...)` | `TarjetaFacturaPropuesta` |
+| — | (cliente) | `TarjetaClientePropuesto` |
+| `:304` | `classifyChoices(message.choices)` | `HitlCard` |
+
+**`card`, `card-presu` y `card-ingreso` son tres filas legítimas**, no tres valores de una. La regla de
+§9 se aplicó bien a `caido` (**una** rama en `ServiceCard.tsx:45`) y la iba a aplicar mal acá (**tres**
+ramas, tres archivos). **La pregunta de §9 es la correcta; la respuesta se mide, no se supone.**
+
+Y el comentario de `MessageList.tsx:245-249` declara dos cosas que ninguna fila estaba usando: las
+cards `*_propuesto` **no llevan `choices`** y se chequean **antes** del gate HITL, en orden fijo
+(gasto → cliente → ingreso → presupuesto → factura), **igual que
+`apps/mobile/src/modules/chat/ListaMensajes.tsx`**. Es decir: las cards propuestas y `HitlCard` son
+**mutuamente excluyentes por diseño**, y la paridad web/mobile del orden ya está escrita en el código.
+
+### La colisión de `hitl`: dos sesiones, dos veredictos opuestos, ninguna equivocada
+
+FE1 declaró `hitl` **COHERENTE** (§4, mismo componente, lado app = HITL de Mercado Pago). Auditoría midió
+`?ver=hitl` del prototipo y encontró **«Recordatorio a Lucía»**, concluyendo **no comparable**. Medí la
+pieza que faltaba: `classifyChoices` es un alias de `clasificarChoices`
+(`hitlMapping.ts:24`) y clasifica **por `choices`, no por tipo de negocio** — así que **`HitlCard`
+renderiza cualquier confirmación con opciones**, un cobro MP o un recordatorio.
+
+**Los dos veredictos son verdaderos sobre dimensiones distintas:** mismo componente, contenido
+distinto. No hay nada que dirimir, y el contrato no tenía dónde escribirlo.
+
+### Campo obligatorio nuevo de §2
+
+> **`dimension`** — `componente` · `contenido` · `ambas`. Un veredicto sin dimensión declarada es
+> ambiguo: **COHERENTE-por-componente y no-comparable-por-contenido pueden ser ciertos a la vez**, y
+> dos sesiones competentes van a firmar lo contrario sin contradecirse.
+
+Aplicado a `hitl`: **COHERENTE en `dimension: componente`** (queda firme, es de FE1) · **no comparable
+en `dimension: contenido`** (queda firme, es de auditoría). **Una sola fila no podía sostener las dos.**
+
+### Lo que FE1 corrigió, y se toma
+
+1. **`card-presu` ya estaba cubierto en la superficie correcta:** su `pres-hitl` = COHERENTE vía
+   `MessageList.tsx:274`. Reasignarlo habría **duplicado** una fila ya medida.
+2. **`vozchat` exige audio real** → `PENDIENTE_DEVICE` (ya así en su barrido del 22). Mi reasignación
+   habría movido **tres filas medibles a un estado que el operador difirió al sprint siguiente** — el
+   contrato habría empeorado el cierre en vez de destrabarlo.
+3. **Nadie mezcló los sentidos de `cobro`:** FE1 comparó `ingresos-nuevo` contra `CARDS.cobro` del
+   proto, los dos «Anotar que me pagaron». **El renombre a `card-ingreso` sigue en pie**, pero como
+   **prevención del glosario, no como corrección de un error cometido** — mi §10 se lo imputó y no
+   corresponde.
+
+> ⚠️ **Tres correcciones en dos horas sobre el mismo contrato, y el patrón es uno:** cada vez que
+> escribí una **prescripción** (cambien el `waitUntil` §8.6, reasignen a `vozchat` §10) resultaba
+> refutada por una medición que no había hecho; cada vez que escribí una **regla de qué declarar**
+> (camino §1, superficie §10, dimensión §11) sobrevivió. **Un contrato define qué hay que declarar; las
+> asignaciones concretas las pone quien mide.**
