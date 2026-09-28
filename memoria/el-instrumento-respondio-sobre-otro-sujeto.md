@@ -288,3 +288,44 @@ va verificado igual que el resto. La versión corta: *un control positivo dice q
 no dice que le preguntaste por el sujeto correcto.* Y ante un daño acumulado, el rango se toma desde
 **el evento que rompió la fuente**, que se busca en la historia de la configuración, no en la del
 código.
+
+---
+
+## Caso 11 (2026-09-28) — el sujeto era **el FILESYSTEM** cuando la afirmación era sobre **el TRONCO**
+
+Cuatro afirmaciones falsas en **un solo mensaje** de una sesión competente, todas con la misma forma:
+*«X no existe»* / *«X ya está en la raíz»*, medidas **grepeando el árbol de trabajo**.
+
+| afirmación | cómo se midió | la verdad, medida contra `origin/main` |
+|---|---|---|
+| «tu entrada de memoria no existe en ningún checkout» | `ls memoria/el-testigo-*.md` en el compartido y en su worktree → 0 | **presente**, 3 560 bytes, desde `e8fe864f` |
+| «el guard de path no está en `main`» | ídem | **presente**, 1 ocurrencia en cada servidor, y 0 archivos con el patrón viejo |
+| «el fix de `ci-verde.sh` ya está en la raíz» | lo escribió en su checkout | **NO está**: `origin/main:scripts/ci-verde.sh:75` sigue diciendo `NO VERDE`, y **0 commits al archivo ese día** |
+| (el espejo, y es mío) «el compartido tiene ~100 archivos editados a mano» | de memoria, sin medir | **3** sucios, todos `docs/`+`memoria/` |
+
+**Por qué este repo lo amplifica hasta volverlo el default.** Hay **36 worktrees** con HEAD distinto.
+«¿Existe el archivo X?» **no es una pregunta bien formada** sin nombrar el ref: tiene 36 respuestas y el
+grep devuelve la del árbol donde estás parado, sin avisar que eligió. Peor con **squash-merge**: la
+rama fusionada **no es ancestro** de `main`, así que el árbol local puede tener el archivo y `main`
+también, o el árbol tenerlo y `main` no, en las dos direcciones, sin que nada falle.
+
+**El control, y es de una línea:**
+
+```bash
+git fetch -q origin main
+git cat-file -e "origin/main:<path>" && echo PRESENTE || echo AUSENTE   # existencia
+git log --since='<hoy>' origin/main -- <path>                            # "¿entró el fix?"
+git show origin/main:<path> | grep -n '<patrón>'                         # contenido, no el del disco
+```
+Más el **negativo que discrimina**: `git cat-file -e origin/main:docs/no-existe-control.md` tiene que
+dar ausente. Sin él, un `PRESENTE` para todo se lee igual que un acierto.
+
+**La regla, en una línea:** *«está en `main`» es una afirmación sobre un **ref**, y sólo se contesta
+nombrando el ref.* Un `ls`/`grep` sin ref contesta sobre el disco, que es **otro sujeto** — y con 36
+worktrees, casi seguro uno atrasado.
+
+**Y el filo que no es sobre git:** las cuatro salieron de alguien que ese mismo día había escrito la
+regla de *«medí contra el sistema real»* y aplicado controles positivos correctos en otros frentes. La
+lección no falla por ignorancia: falla porque **el grep del árbol de trabajo se siente como medir**. Es
+el mismo mecanismo del caso 10 — la lección escrita no se aplica sola ni a su autor
+([[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]]).
