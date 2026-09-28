@@ -695,6 +695,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     extraer_ticket = extraer_ticket or _default_extraer_ticket
     crypto = FernetCrypto()
 
+    # BUILDSHA (contrato 2026-09-28): leído UNA vez al arrancar el proceso (composition root, no por
+    # request) -- un `os.environ.get` en el handler mediría el env del proceso vivo igual, pero fijarlo
+    # acá deja explícito que /healthz reporta la identidad de ESTE proceso, no una lectura que podría
+    # cambiar si algo mutara el env en caliente. Sin UC_BUILD_SHA (deploy que no la inyectó, o dev
+    # local): None -> el endpoint no rompe, sólo reporta que no hay marcador (§3 del contrato: el
+    # fallback no infiere nada, sólo declara la ausencia).
+    _build_sha = os.environ.get("UC_BUILD_SHA") or None
+    _arrancado_en = datetime.now(timezone.utc).isoformat()
+
     app = FastAPI(title="Copiloto — front-door")
 
     # BETA-2.d: rate-limit del front-door completo (protege costo LLM + abuso). Middleware ASGI puro
@@ -1352,7 +1361,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
 
     @app.get("/healthz")
     def healthz() -> dict:
-        return {"status": "ok"}
+        return {"status": "ok", "sha": _build_sha, "arrancado": _arrancado_en}
 
     @app.post(RUTA_CANARIO)
     def canario(cliente_id: str = Depends(require_tenant)) -> dict:

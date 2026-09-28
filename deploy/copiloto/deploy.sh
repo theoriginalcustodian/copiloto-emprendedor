@@ -104,32 +104,24 @@ tar -C "$LOCAL" \
 # sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
 # "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
 # un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
-echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.jsonl (append-only, H1)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
-# BUILDSHA (2026-09-28, contrato planificación): HEAD del working tree que se tar-ea, no
-# origin/main -- _sha de arriba es la referencia que ancla el gate de drift, no necesariamente
-# lo que hay en disco para apps/copiloto-web (el propio manifiesto ya declara ese path como
-# "paths_NO_verificados"). data-build-sha necesita el commit real de lo que se está sirviendo.
-_build_sha="$(git -C "$LOCAL" rev-parse HEAD 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
-_manifiesto="$(cat <<JSON
-{
-  "desplegado_en": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "origin_main_sha": "${_sha}",
-  "gate_de_drift": "${_gate}",
-  "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
-  "paths_NO_verificados": ["apps/copiloto-web", "packages/core", "deploy/worker", "deploy/copiloto"],
-  "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
-  "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
-}
-JSON
-)"
-printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
+# H1 (2026-09-28): antes se armaba con un heredoc multilínea y se escribía con `cat >` -- ranura
+# única, cada deploy borraba la identidad del anterior. Dos sesiones midieron el mismo bundle en el
+# mismo día y dieron resultados distintos (0 y 1 ocurrencias de un placeholder) porque el testigo
+# que lo resolvía se había pisado solo. Ahora: UNA línea armada por `printf` (nunca multilínea, así
+# que es JSONL válido sin post-procesar) + `cat >>` (append-only: dos deploys que se pisen no
+# corrompen el archivo, no hay que releer ni parsear lo anterior). `.jsonl`, no `.json` -- nada en
+# el repo consume el nombre viejo (verificado por grep), así que no hace falta escribir los dos.
+_manifiesto="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nota":"El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}")"
+printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.jsonl'" \
   || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$_build_sha" <<'REMOTE_WEB'
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$_sha" <<'REMOTE_WEB'
 set -euo pipefail
 REMOTE="$1"; AUTH_URL="$2"; BUILD_SHA="$3"
 cd "$REMOTE/apps/copiloto-web"
@@ -139,7 +131,9 @@ npm install --no-audit --no-fund --loglevel=error
 # Vite hornea las VITE_* del entorno al bundle -- sin esto, VITE_AUTH_URL queda sin definir y
 # `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
-# con que sync-web.sh lo haga bien. VITE_BUILD_SHA: mismo motivo, mismo patrón (BUILDSHA, 2026-09-28).
+# con que sync-web.sh lo haga bien. Mismo criterio para VITE_BUILD_SHA (BUILDSHA, contrato
+# 2026-09-28): el consumo (`data-build-sha` en index.html) es de frontend2 en vite.config.ts; acá
+# sólo se exporta la env var para que ese `define` la encuentre en ESTA ruta de build también.
 VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$BUILD_SHA" npm run build
 test -f dist/index.html
 echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
@@ -326,6 +320,25 @@ set +a
 cd "$REMOTE/deploy/worker"
 "$VENV/bin/python" ensure_grafo_sync_schedules.py
 REMOTE_GRAFO_SYNC_SCHEDULES
+
+echo "==> [4.8/7] UC_BUILD_SHA -> ${ENVDIR}/copiloto.env (BUILDSHA, contrato 2026-09-28)"
+# `/healthz` necesita saber QUÉ commit corre el proceso vivo (spec: servido@<sha> deja de ser
+# inferencia). A diferencia de COPILOTO_INVITE_TOKEN (arriba, nunca se rota), acá el upsert es
+# INCONDICIONAL -- es la identidad del build de ESTE deploy, tiene que reflejar el `_sha` actual
+# en cada corrida, no sólo la primera vez. Reutiliza el MISMO `_sha` (origin/main) que ya firma
+# DEPLOY-MANIFEST.jsonl (H1) -- un solo cálculo, dos consumidores, sin duplicar la fuente de verdad.
+ssh "$HOST" bash -s -- "$ENVDIR" "$_sha" <<'REMOTE_BUILD_SHA'
+set -euo pipefail
+ENVDIR="$1"; SHA="$2"
+DST="$ENVDIR/copiloto.env"
+[ -f "$DST" ] || { echo "FALTA $DST" >&2; exit 1; }
+if grep -q '^UC_BUILD_SHA=' "$DST"; then
+  sed -i "s|^UC_BUILD_SHA=.*|UC_BUILD_SHA=${SHA}|" "$DST"
+else
+  printf 'UC_BUILD_SHA=%s\n' "$SHA" >> "$DST"
+fi
+echo "UC_BUILD_SHA=${SHA}"
+REMOTE_BUILD_SHA
 
 echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"
 # Por qué existe (incidente 2026-07-21, 15 x `ImportError: cannot import name 'make_consultar_anulacion'
