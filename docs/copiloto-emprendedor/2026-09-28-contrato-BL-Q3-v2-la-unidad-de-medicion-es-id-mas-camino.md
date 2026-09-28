@@ -691,7 +691,7 @@ BL-V23 impactan. **El campo diseñado para impedir el envejecimiento silencioso 
 >
 > | forma | cuándo | qué se anota |
 > |---|---|---|
-> | `servido@<sha>` | la app se midió corriendo (captura) | SHA de `origin/main` vigente a la **hora de la captura** — la escribe el instrumento en el `mtime` del PNG, no la memoria del medidor |
+> | `servido@<sha>` | la app se midió corriendo (captura) | 🆕 el `data-build-sha` del HTML servido — **se LEE**, no se infiere del calendario de deploys. Disponible desde el **2026-09-28T16:56:05Z**; una captura anterior a esa hora cae a la inferencia vieja (SHA de `origin/main` al `mtime` del PNG) y **se marca como techo** |
 > | `leido@<rama>:<sha>` | la fila se midió leyendo código | SHA **del worktree donde se leyó**, más su rama. Si difiere de `origin/main`, agregar `merge-base=<sha>` |
 > | `proto@<sha>` | el lado prototipo | SHA del commit que trae ese `index.html` |
 > | `reconstruido@<path>:<ultimo-commit>` | 🆕 **la fila se mide HOY pero el veredicto es de una pasada ANTERIOR** (backfill) | el path que se leyó y el último commit que lo tocó **antes** de la fecha del veredicto. **Marca la fila como reconstrucción, no como medición** |
@@ -876,3 +876,41 @@ diferencia entre un aviso y un aviso que llega.
 ⚠️ 🆕 **Y una caducidad que no es de una fila sino de UNA FORMA ENTERA: `servido@<sha>` es hoy una INFERENCIA, no una lectura.** El instrumento toma el `mtime` del PNG y lo cruza contra el log de `origin/main`: eso **asume** que lo desplegado era `origin/main` a esa hora. **El supuesto ya falló, medido el 28/09:** el `placeholder="1500,50"` de #689 está **presente** en `origin/main` (`FormularioPresupuesto.tsx:350`, 1 ocurrencia) y **ausente del bundle servido** (0 ocurrencias) — producción estaba atrasada. Cuando la app corre código más viejo que `origin/main`, `servido@` anota un SHA **más nuevo** que la superficie fotografiada: el campo puesto contra el envejecimiento **falla abierto por exactamente el atraso del deploy**. Consecuencia para quien lee una fila: **un `servido@` no prueba que la captura sea de ese código, sólo que no es más nueva que él** — es un techo. Los `servido@` ya escritos quedan **sospechosos, no falsos**, y no se re-miden por este contrato. El remedio es el marcador de build (`contrato_ BUILDSHA`, fila del tablero, dueños backend+FE2): hasta que el HTML servido traiga `data-build-sha`, esta forma se lee con el techo a la vista.
 
 🆕 **Y el matiz que lo vuelve peor, medido en el VPS el mismo día (auditoría): producción NO está atrasada — LO ESTABA.** Hubo un deploy a las **11:56:53 -03** entre las dos lecturas (bundle `index-Cr4NxCOh.js` → `index-BDcH8fIG.js`), así que mi 0 ocurrencias y su 1 ocurrencia **eran las dos verdad**: ningún instrumento falló, **el sujeto se movió entre las dos mediciones** ([[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]). Y de ahí sale la conclusión que ninguna de las dos lecturas sola dejaba ver: **los 18 `servido@b7fa0e23` del lote A aciertan — pero aciertan por el CALENDARIO, no por el método.** `b7fa0e23` (08:32) es ancestro del SHA desplegado y las capturas son ANTERIORES al deploy, así que lo servido no tenía los 2 commits intermedios. **Si el deploy hubiera corrido a las 10:40, la misma inferencia escribía un SHA con 2 commits que la captura no mostraba, y sin un solo síntoma.** Un campo correcto por suerte es **indistinguible** de uno correcto por medición — y esa indistinguibilidad ES el defecto, no el riesgo residual. Corolario para el control de caducidad: **«la fila coincide» no valida el método que la escribió.**
+
+---
+
+## §15.6 · 🆕 El remedio LLEGÓ: `servido@` pasa de inferencia a lectura (2026-09-28, 16:56 Z)
+
+La caducidad de forma de §15.5 decía: *«hasta que el HTML servido traiga `data-build-sha`, esta forma
+se lee con el techo a la vista»*. **Ya lo trae.**
+
+Medido por planificación **contra el sitio público**, no contra el reporte de quien deployó, con tres
+fuentes independientes que coinciden:
+
+| fuente | valor |
+|---|---|
+| `GET /healthz` → `.sha` | `8a2f883437a6c549d2805e8b2365ff8ee44b42ac` (`arrancado 2026-09-28T16:56:05Z`) |
+| `data-build-sha` del `<html>` servido | `8a2f883437a6c549d2805e8b2365ff8ee44b42ac` |
+| `git ls-remote origin refs/heads/main` | `8a2f883437a6c549d2805e8b2365ff8ee44b42ac` |
+
+**Qué cambia, en una línea:** el instrumento **lee** de la superficie fotografiada qué código era, en
+vez de **deducirlo** de la hora. Con eso muere el modo de falla que el contrato ya tenía escrito: un
+`servido@` no era prueba de que la captura fuera de ese código, sólo de que no fuera más nueva — y
+fallaba abierto por **exactamente** el atraso del deploy, que es el caso en que hace falta.
+
+**Qué NO cambia, y es la parte que importa:** los `servido@` ya escritos **no se re-miden** por esto.
+Los 18 `servido@b7fa0e23` del lote A siguen siendo correctos **por calendario** (las capturas son
+anteriores al deploy de las 11:56:53 -03), y eso sigue siendo lo que son: correctos por suerte. Un
+campo correcto por suerte es indistinguible de uno correcto por medición, **y esa indistinguibilidad
+es el defecto** — lo que se arregló es que de acá en adelante no se pueda volver a acertar así.
+
+**Regla operativa, desde ahora, para cualquier captura nueva:** el `sha` de `servido@` sale de
+`data-build-sha` (o `/healthz.sha`) **en la misma corrida que toma la foto**. Si el instrumento no
+puede leerlo, la fila **no** cae a la inferencia en silencio: escribe `servido@?` y eso es un hueco
+declarado, no un techo disfrazado.
+
+> ⚠️ Lo que **todavía** no está cerrado es el testigo del deploy: H1 dejó el manifiesto en `.jsonl`
+> append-only, pero con **una sola** línea real no se distingue un append de un `cat >`. Backend lo
+> dejó abierto explícitamente hasta el **segundo** deploy real, y tiene razón: un mecanismo verificado
+> sintéticamente no reemplaza el ciclo real
+> (`memoria/el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren.md`).
