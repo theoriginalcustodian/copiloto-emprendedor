@@ -714,6 +714,62 @@ BL-V23 impactan. **El campo diseñado para impedir el envejecimiento silencioso 
 > exactamente el atraso del deploy**. Cerrar eso es un marcador de build (fila `BUILDSHA` del tablero), no
 > un detalle de esta matriz.
 
+### §15.2.bis — 🆕 ¿El CAMINO DE ACCESO cuenta como eslabón? **NO, salvo que el veredicto hable de él.** (decisión, no aclaración)
+
+Auditoría **ejercitó** el spec en dos filas reales antes de repartir nada y encontró que la regla del
+eslabón más viejo **no se puede aplicar sin ambigüedad** — y no por descuido del medidor. En la fila
+`negocio` hay **dos lecturas con apoyo textual y cuatro días de diferencia**:
+
+| lectura | qué considera eslabón | eslabón más viejo |
+|---|---|---|
+| **A** — sólo lo comparado | los 6 campos (`PantallaPerfilNegocio.tsx` `6d2726b8`) y `#s-negocio` del proto | `proto@54fac3ea` (09-21 12:09) |
+| **B** — la superficie declarada | la columna `superficie` nombra `#ajustes`, cuyo equivalente mobile es `PantallaAjustes.tsx` | `leido@…:51437353` (**09-18** 17:33) |
+
+**En un frente donde una fila caducó por HORAS, cuatro días deciden un control de caducidad.**
+
+> ### Decisión (mía, planificación): **`medido_contra:` cubre sólo los eslabones de los que depende la AFIRMACIÓN del veredicto.** El camino de acceso queda **excluido por defecto**.
+>
+> La columna `superficie` es un **localizador** — dice dónde se miró —, **no** parte de lo afirmado.
+> Que nombre el contenedor (`#ajustes › #s-negocio`) es para que otro encuentre la misma pantalla, no
+> para afirmar algo sobre el contenedor.
+>
+> **Y la decisión no es arbitraria: la fuerza el test que ya estaba escrito.** *¿Qué lectura, si
+> estuviera desactualizada, cambiaría el veredicto?* Si `PantallaAjustes.tsx` hubiera cambiado el 09-18,
+> los 6 campos de `PantallaPerfilNegocio.tsx` **seguirían coincidiendo** con el proto y el `COHERENTE`
+> quedaría igual. Entonces **no es un eslabón del veredicto**. La lectura A es la correcta *por la regla
+> vigente*; lo que faltaba no era la regla sino **decir que la columna `superficie` no la activa**.
+> Rechazo por eso el `camino_medido_contra:` que auditoría propuso como alternativa: un campo más para
+> un dato que no sostiene ningún veredicto es **ceremonia**, y cada campo obligatorio nuevo es una
+> celda más que se llena de memoria.
+>
+> ⚠️ **La excepción, y es la que importa:** si el veredicto **afirma algo sobre el camino** — «al
+> enviar navega al chat sin responder inline», «el botón no tiene disparador alcanzable», «auto-envía
+> al montar» — entonces el archivo del camino **SÍ es eslabón** y entra en el cálculo del más viejo.
+> El discriminante no es dónde vive el archivo: es **si el renglón `Motivo:` lo menciona como parte de
+> lo que se comprobó**. Filas ya existentes que hacen exactamente esto: `preg` (afirma la navegación),
+> `apps`-AppsScreen (afirma la inalcanzabilidad), `chat`-camino-B (afirma el auto-send).
+>
+> 🆕 **Desempate por HORA, no por fecha** (lo pidió auditoría y es gratis): `54fac3ea` y
+> `6d2726b8` son **los dos del 09-21** y los separan **6 h 44 m**. «La más vieja» entre dos commits del
+> mismo día es indecidible con fecha sola, así que la comparación se hace con
+> `git log -1 --date=iso` — y cuando la celda cita dos eslabones del mismo día, **lleva la hora**.
+
+#### §15.2.ter — La fila que NO se destraba con un campo mejor: `pres-ciclo`
+
+Auditoría eligió a propósito una fila que sospechaba que rompía el spec, y la rompió: `pres-ciclo`
+tiene **`medido_contra` inescribible**, y no por pereza. No hay `proto@<sha>` porque **dos superficies
+compiten por el id** (`HILOS['pres-ciclo']` `index.html:3365-3371`, un hilo de chat, vs. los chips de
+lista `#presu` `:2088,2093,2098`) y **nadie decidió cuál es la referencia**: un SHA ahí anotaría el
+archivo, no la superficie, y la fila seguiría comparando contra algo sin definir. Tampoco hay `leido@`
+porque su propio veredicto dice *«firme, no re-medido»* — la lectura que lo sostiene es de otra pasada.
+
+**Conclusión que vale como regla:** cuando `medido_contra` es inescribible, eso **no es un problema del
+campo — es el campo funcionando**. Está diciendo que la fila no tiene referencia decidida. `pres-ciclo`
+se destraba **decidiendo la superficie**, no rellenando la celda, y sigue siendo el único
+`[ASSUMED_PENDING_VERIFY]` bloqueante. Rellenarla con el eslabón medible más cercano (los de la app,
+`63c49cc9` / `63fd6f15`) sería anotar **un eslabón que no sostiene el veredicto**: el defecto (b) de
+§15.2 con otra cara.
+
 ### §15.3 — 🔢 El SHA medido de las capturas de hoy: **81 de 82 son `b7fa0e23`**, y eso cambia las dos «caducadas»
 
 Medido con el `mtime` de los 82 PNG de hoy contra la tabla de commits de `origin/main`, con **control
@@ -818,3 +874,5 @@ diferencia entre un aviso y un aviso que llega.
 | `pres-hitl` | `fc37dc3f` · `3ba91a2e` · `03e9c200` — **todos anteriores a `b7fa0e23`** ⇒ vigente si se midió hoy ≥08:32 | dictamen 28/09, resuelto en §15.3 |
 
 ⚠️ 🆕 **Y una caducidad que no es de una fila sino de UNA FORMA ENTERA: `servido@<sha>` es hoy una INFERENCIA, no una lectura.** El instrumento toma el `mtime` del PNG y lo cruza contra el log de `origin/main`: eso **asume** que lo desplegado era `origin/main` a esa hora. **El supuesto ya falló, medido el 28/09:** el `placeholder="1500,50"` de #689 está **presente** en `origin/main` (`FormularioPresupuesto.tsx:350`, 1 ocurrencia) y **ausente del bundle servido** (0 ocurrencias) — producción estaba atrasada. Cuando la app corre código más viejo que `origin/main`, `servido@` anota un SHA **más nuevo** que la superficie fotografiada: el campo puesto contra el envejecimiento **falla abierto por exactamente el atraso del deploy**. Consecuencia para quien lee una fila: **un `servido@` no prueba que la captura sea de ese código, sólo que no es más nueva que él** — es un techo. Los `servido@` ya escritos quedan **sospechosos, no falsos**, y no se re-miden por este contrato. El remedio es el marcador de build (`contrato_ BUILDSHA`, fila del tablero, dueños backend+FE2): hasta que el HTML servido traiga `data-build-sha`, esta forma se lee con el techo a la vista.
+
+🆕 **Y el matiz que lo vuelve peor, medido en el VPS el mismo día (auditoría): producción NO está atrasada — LO ESTABA.** Hubo un deploy a las **11:56:53 -03** entre las dos lecturas (bundle `index-Cr4NxCOh.js` → `index-BDcH8fIG.js`), así que mi 0 ocurrencias y su 1 ocurrencia **eran las dos verdad**: ningún instrumento falló, **el sujeto se movió entre las dos mediciones** ([[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]). Y de ahí sale la conclusión que ninguna de las dos lecturas sola dejaba ver: **los 18 `servido@b7fa0e23` del lote A aciertan — pero aciertan por el CALENDARIO, no por el método.** `b7fa0e23` (08:32) es ancestro del SHA desplegado y las capturas son ANTERIORES al deploy, así que lo servido no tenía los 2 commits intermedios. **Si el deploy hubiera corrido a las 10:40, la misma inferencia escribía un SHA con 2 commits que la captura no mostraba, y sin un solo síntoma.** Un campo correcto por suerte es **indistinguible** de uno correcto por medición — y esa indistinguibilidad ES el defecto, no el riesgo residual. Corolario para el control de caducidad: **«la fila coincide» no valida el método que la escribió.**
