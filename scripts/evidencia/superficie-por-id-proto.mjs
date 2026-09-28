@@ -31,7 +31,13 @@
 import { chromium } from './pwa-lib.mjs';
 
 const BASE = `http://localhost:${process.env.PROTO_PORT ?? '8124'}/prototipo`;
-const ESPERA = 1200;   // ventana fija: acá OBSERVO el estado resultante, no espero uno
+// Ventana fija: acá OBSERVO el estado resultante, no espero uno. Es PARÁMETRO porque la ventana
+// decide qué señal existe, y comparar dos generadores exige igualar primero sus ventanas: el
+// prototipo activa cada `?ver=` con un `setTimeout` de 60-120 ms disparado por un script inline, así
+// que una ventana corta contra un server lento puede fotografiar la pantalla base **antes** de que la
+// activación ocurra — un falso verde que no acusa al server sino al margen.
+const ESPERA = Number(process.env.ESPERA_MS ?? 1200);
+const WAIT_UNTIL = process.env.WAIT_UNTIL ?? 'domcontentloaded';
 const IDS = (process.env.SOLO_IDS || [
   'afip', 'agenda', 'ajustes', 'apar', 'apps', 'bi', 'bi-refresh', 'bi-vacio', 'bloqueado', 'caida',
   'card', 'card-presu', 'card-cobro', 'card-factura', 'card-cliente', 'cargando', 'chat', 'clientes',
@@ -51,7 +57,7 @@ const capturar = async (url) => {
   const errores = [];
   page.on('pageerror', (e) => errores.push('pageerror: ' + String(e.message).split('\n')[0].slice(0, 70)));
   page.on('console', (m) => { if (m.type() === 'error') errores.push('console.error: ' + m.text().slice(0, 70)); });
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.goto(url, { waitUntil: WAIT_UNTIL });
   await page.waitForTimeout(ESPERA);
   const est = await page.evaluate(() => {
     const firma = (e) => e.id ? '#' + e.id
