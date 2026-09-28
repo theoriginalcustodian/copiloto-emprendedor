@@ -58,7 +58,7 @@ if [ -z "$bloque" ]; then
   exit 0
 fi
 
-arrancando=""; head_id=""; head_nombre=""; head_disp=""; malformados=""; bloqueados=""
+arrancando=""; n_arrancando=0; head_id=""; head_nombre=""; head_disp=""; malformados=""; bloqueados=""
 while IFS= read -r linea; do
   id=$(echo "${linea%%|*}" | tr -d ' ')
   # Un `continue` mudo acá borraba la fila entera: una línea escrita como tabla markdown (con `|`
@@ -77,7 +77,12 @@ while IFS= read -r linea; do
   # El disparador es lo que queda entre el nombre y el estado (puede traer `|`).
   disp=$(echo "$resto" | sed -E 's/^[^|]*\|//; s/\|[^|]*$//; s/^ +| +$//g')
   case "$estado" in
-    arrancando) arrancando="$id ($nombre)" ;;
+    # ACUMULA, no sobreescribe: con 3-4 sesiones en paralelo hay varios frentes activos a la vez, y
+    # un `arrancando="$id"` reportaba SÓLO EL ÚLTIMO del archivo — el resto quedaba invisible aunque
+    # el enum estuviera perfecto. Medido el 2026-09-28: B1 (auditoría) desapareció del veredicto al
+    # insertar Q3R debajo. Un frente activo que no se ve es exactamente lo que este script existe
+    # para cazar.
+    arrancando) arrancando="${arrancando:+$arrancando · }$id ($nombre)"; n_arrancando=$((n_arrancando+1)) ;;
     pendiente)  [ -z "$head_id" ] && { head_id="$id"; head_nombre="$nombre"; head_disp="$disp"; } ;;  # primer PENDIENTE = cabeza
     ✅*|❌*)     : ;;  # cerrado / entregado: tiene su propio seguimiento, no es cabeza de cola
     # ⏳ = hecho pero trabado por un disparador EXTERNO a la cola (hoy: el push del grafo, que
@@ -105,6 +110,7 @@ fi
 # ── Veredicto ────────────────────────────────────────────────────────────────
 if [ -n "$arrancando" ]; then
   [ "$QUIET" = "1" ] && exit 0
+  [ "$n_arrancando" -gt 1 ] && echo "COLA: 🔥 $n_arrancando frentes activos en paralelo"
   echo "COLA: 🔥 arrancando $arrancando · siguiente: ${head_id:-— (cola casi vacía)}${head_nombre:+ ($head_nombre)}"
   exit 0
 fi
