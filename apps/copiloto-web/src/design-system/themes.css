@@ -17,13 +17,15 @@
  *
  *   - `--core` / `--avatar-fg` / `--amount-sign`: usados como TEXTO chico (13-24px) o trazo de
  *     ícono. Antes invariantes entre pieles (mismo valor en las 3) — ahora dependen de la piel,
- *     como el resto de los tokens de este archivo: `claro` → `#B04A2E` (sobre lienzo claro),
+ *     como el resto de los tokens de este archivo: `claro` → `#A5462B` (sobre lienzo claro),
  *     `oscuro`/`nocturno` → `#DE7250` (sobre superficie oscura, el caso que la regla permite).
- *     `--core` en `claro` da 4,38:1 sobre `--bg` (`#EFE6D2`) — por debajo del 4,5:1 estricto para
- *     texto normal, pero es la MEJOR opción entre los 2 valores cerrados del palette (el viejo
- *     `#C2452E` daba 4,04:1, así que no es una regresión) — deuda heredada visible, no un bug de
- *     este PR: no hay un tercer valor de acento para tapar ese resto sin violar "nunca 3
- *     terracotas convivas" (CLAUDE.md §4.1 del audit).
+ *     ⚠️ BL-Q4 (2026-09-28, `scripts/contraste-aa.py`): `--core` en `claro` daba 4,38:1 sobre
+ *     `--bg` — bajo el 4,5:1 estricto para texto normal — con el valor viejo `#B04A2E` (el previo
+ *     `#C2452E` daba 4,04:1, tampoco pasaba). Se cerró subiendo a `#A5462B` (4,82:1, AA ✅) sin
+ *     salir del palette de acento — `--avatar-fg`/`--amount-sign` NO se tocan: comparten el hex
+ *     viejo pero corren en contextos que ya pasaban solos (texto grande ≥3:1, o contra `card-bg`
+ *     en vez de `--bg`) — ver el valor propio de cada uno más abajo. No violan "nunca 3
+ *     terracotas convivas" (CLAUDE.md §4.1 del audit): sigue habiendo 2 acentos, no 3.
  *   - `--user-bg` / `--btn-bg` / `--send-bg`: eran un DEGRADÉ de 2 puntas del acento viejo, con
  *     texto NORMAL (14,5-15,5px, ninguno llega al piso de "display ≥19px Bold" que el DoD exige
  *     para usar `#DE7250` con texto) montado ENCIMA. Un degradé que toque `#DE7250` en cualquier
@@ -101,7 +103,7 @@
   --concept: #6A6457;
   --name-fg: #2E2A20;
   --core-size: 18px;
-  --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
+  --core: #A5462B; /* texto/trazo sobre lienzo claro — 4,82:1, AA (BL-Q4, 2026-09-28: reemplaza #B04A2E/4,38:1, ver cabecera) */
   --core-glow: none;
   --halo: none;
   /* BL-X10 — wordmark del splash/identidad (`modules/splash/`). FIJO, no varía por tema: es la
@@ -171,13 +173,13 @@
   --tile-blur: none;
   --shadow-nivel4: 0 30px 60px -20px rgba(110, 75, 44, 0.4);
   --shadow-nivel4-shell: 0 34px 70px -24px rgba(110, 75, 44, 0.4);
-  --ok-fg: #3C8069;
+  --ok-fg: #306654; /* BL-Q4 (2026-09-28): reemplaza #3C8069 — 3,77:1 sobre --bg y 3,23:1 compuesto sobre --ok-bg, ambos bajo AA. #306654 da 5,36:1 y 4,59:1 respectivamente. */
   --ok-bg: rgba(60, 128, 105, 0.14);
   --ok-border: 1px solid rgba(60, 128, 105, 0.4);
   --danger-fg: #b03549;
   --danger-bg: rgba(199, 69, 90, 0.1);
   --danger-border: 1px solid rgba(199, 69, 90, 0.45);
-  --danger-btn-bg: #c7455a;
+  --danger-btn-bg: #AB3B4D; /* BL-Q4 (2026-09-28): reemplaza #c7455a — 4,00:1 con --danger-btn-fg, bajo AA. #AB3B4D da 5,12:1. */
   --danger-btn-fg: #F5EBD5;
   --row-border: 1px solid rgba(46, 42, 32, 0.1);
   --nav-active: rgba(222, 114, 80, 0.18);
@@ -241,7 +243,7 @@
   /* El "orb" de presencia de IA (glow radial + halo) es del rediseño anterior — Mariposas no lo
      trae, y "sin glass" (§1.3) retira los efectos ambiente. `--core` queda como punto sólido del
      acento; `--core-glow`/`--halo` van a `none` en vez de inventar un glow cálido nuevo. */
-  --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
+  --core: #A5462B; /* texto/trazo sobre lienzo claro — 4,82:1, AA (BL-Q4, 2026-09-28: reemplaza #B04A2E/4,38:1, ver cabecera) */
   --core-glow: none;
   --halo: none;
   --identidad-word: #DE7250; /* BL-X10 — fijo, ver el comentario en el bloque default de arriba */
@@ -332,7 +334,7 @@
   /* Éxito con valor propio en el DoD (§2.1: `#3C8069`, fondo `rgba(60,128,105,.3)` — bajado a
      `.14`/borde `.4` para que "caja" no tape el texto que pueda ir adentro, mismo patrón que el
      resto de los semánticos de este archivo). */
-  --ok-fg: #3C8069;
+  --ok-fg: #306654; /* BL-Q4 (2026-09-28): reemplaza #3C8069 — 3,77:1 sobre --bg y 3,23:1 compuesto sobre --ok-bg, ambos bajo AA. #306654 da 5,36:1 y 4,59:1 respectivamente. */
   --ok-bg: rgba(60, 128, 105, 0.14);
   --ok-border: 1px solid rgba(60, 128, 105, 0.4);
   /* Peligro NO tiene valor propio en el DoD de ODOBI — se reusa el par ya validado de
@@ -340,7 +342,7 @@
   --danger-fg: #b03549;
   --danger-bg: rgba(199, 69, 90, 0.1);
   --danger-border: 1px solid rgba(199, 69, 90, 0.45);
-  --danger-btn-bg: #c7455a;
+  --danger-btn-bg: #AB3B4D; /* BL-Q4 (2026-09-28): reemplaza #c7455a — 4,00:1 con --danger-btn-fg, bajo AA. #AB3B4D da 5,12:1. */
   --danger-btn-fg: #F5EBD5;
   --row-border: 1px solid rgba(46, 42, 32, 0.1);
   /* "Nav activo" del DoD es un gradiente + inset (§2.1) — ese nivel de relieve es hito 2. Acá un
