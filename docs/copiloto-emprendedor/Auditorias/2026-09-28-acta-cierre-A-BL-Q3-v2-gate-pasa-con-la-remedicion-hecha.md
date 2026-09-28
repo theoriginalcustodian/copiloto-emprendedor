@@ -10,13 +10,17 @@
 ## 1 · Veredicto, y de dónde sale el número
 
 **GATE DEL AGREGADO: ✅ PASA — 31 veredictos · 22 comparaciones reales · 0 huecos.**
+> ⚠️ **Conteo corregido el mismo día: son 24 comparaciones, no 22** (DESVÍO 12 · COHERENTE 11 ·
+> CORREGIDO 1). El número de arriba salió de un instrumento CIEGO a una tercera forma de registro —
+> ver §7. El resto del acta (huecos, sellos, cajones) no cambia.
 
 | lote | dueño | sha256 (12) | bytes | mtime | veredictos |
 |---|---|---|---|---|---|
 | A | frontend1 | `ccf510c5b9e4` | 20 752 | 11:50:24 | 19 |
 | B | frontend2 | `2d89880c1478` | 20 643 | 12:21:53 | 12 |
 
-Desglose de las 22 comparaciones: **DESVÍO 11 · COHERENTE 10 · CORREGIDO 1.** Los 9 restantes no son
+Desglose de las comparaciones: **DESVÍO 12 · COHERENTE 11 · CORREGIDO 1** — 24, no 22 (§7: el
+contador no leía las mediciones escritas en bullet). Los 9 restantes no son
 comparación y están en su cajón declarado (`PENDIENTE_DEVICE` 2 · `NO_MEDIBLE` 2 ·
 `FUERA-DE-REFERENCIA` 3 · `NO_REPRODUCIBLE_SIN_EFECTO` 2).
 
@@ -147,6 +151,37 @@ archivo, no la superficie.
 - [x] Los límites que quedan (`servido@` como techo) **escritos en el contrato que se relee**, no en un
       mensaje que se lee una vez.
 
-**Lo que este acta no afirma:** que la app coincida con el prototipo. Afirma que **22 comparaciones
-están medidas y son auditables**, y 11 de ellas son DESVÍO — cada uno es trabajo de producto, no de
+**Lo que este acta no afirma:** que la app coincida con el prototipo. Afirma que **24 comparaciones
+están medidas y son auditables**, y 12 de ellas son DESVÍO — cada uno es trabajo de producto, no de
 medición. Esa cola no entra acá.
+
+---
+
+## §7 · Corrección del conteo — mi instrumento leía dos formas y el lote registra TRES
+
+FE1 reportó **12** DESVÍO y este acta decía **11**, en la **misma unidad** (mediciones). O sea: uno de
+los dos estaba mal, y era el mío.
+
+`scripts/evidencia/contar-veredictos.py` reconocía dos formas de registro — el campo `veredicto: X` y
+la última celda de una fila de tabla. El lote B usa una **tercera**: la medición escrita en un bullet
+de prosa (`«Medidos con evidencia nueva»` → `- **`gastos`** … Veredicto sin cambios (sólo
+vocabulario): **DESVÍO**`). Ahí «Veredicto» y los dos puntos están separados por 31 caracteres de
+texto, así que no matcheaba el patrón de campo; y la línea no empieza con `|`, así que tampoco
+entraba por el de fila. **No daba HUECO: desaparecía.** Junto con `gastos` se perdían `ingresos` y
+`presu` (COHERENTE), de ahí que también COHERENTE pase de 10 a 11.
+
+**Lo que hay que mirar de esto no es el ±1.** Es que el **control positivo pasó**: verificaba
+«≥ 10 filas en lote B», y las filas estaban ahí. Un control que confirma que el formato que el
+instrumento **sí** mira sigue existiendo no dice absolutamente nada sobre un segundo formato que no
+mira (`memoria/el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md`,
+`memoria/instrumento-que-no-mira-nunca-falla.md`).
+
+**Fix de raíz, no del número:** tercer brazo `bullet` en el contador + un control propio que cuenta
+los bullets de identidad y **aborta** si hay bullets y ninguno rinde veredicto. Y ese control nació
+condenando un brazo sano — desempaquetaba una lista de dicts como tuplas, así que leía `"forma"` (la
+clave) en vez del valor y daba 0 siempre: falso rojo del propio control, corregido en el mismo commit
+(`memoria/el-instrumento-tambien-CONDENA-no-solo-absuelve.md`).
+
+**Medición vigente** (contador con los tres brazos, lote A `sha256:adf4c91324b7` · lote B
+`sha256:70518ee78487`): lote A 8 DESVÍO + lote B 4 DESVÍO = **12** · COHERENTE 5 + 6 = **11** ·
+CORREGIDO **1**.

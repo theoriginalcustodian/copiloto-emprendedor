@@ -28,6 +28,10 @@ from pathlib import Path
 COORD = Path("C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion")
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO", "PENDIENTE_DEVICE")
 
+# Un bullet de IDENTIDAD: `- **`gastos`**` / `- **gastos**`. Es la tercera forma en que este
+# frente registra mediciones, y la que mi conteo no veia.
+BULLET_ID = re.compile(r"^\s*[-*]\s+\*\*`?[a-z0-9][a-z0-9\-]{1,30}`?\*\*")
+
 
 def ubicar(patron):
     for base in ("abierto", "en-curso", "cerrado"):
@@ -57,6 +61,17 @@ def veredictos_de(texto):
         if m:
             hits.append((n, m.group(1), "campo"))
             continue
+        # TERCER brazo: la medicion registrada en un BULLET de identidad, no en la tabla ni como
+        # campo. `- **`gastos`** ... «Veredicto sin cambios (solo vocabulario): **DESVIO**»` no
+        # matchea el patron de arriba (hay texto entre `Veredicto` y los dos puntos) ni el de fila
+        # (no empieza con `|`), asi que no daba HUECO: desaparecia. Por eso mi conteo dijo 11 y el
+        # de FE1 12, en la MISMA unidad. Se acota a lineas que YA se identifican como medicion (un
+        # id en bullet) para no cazar prosa que menciona un veredicto de pasada.
+        if BULLET_ID.match(linea):
+            m3 = re.search(r"[Vv]eredicto[^:]{0,60}:\s*\*{0,2}([A-ZÁÉÍÓÚÑ_\-]{3,})", linea)
+            if m3:
+                hits.append((n, m3.group(1), "bullet"))
+                continue
         if linea.strip().startswith("|") and linea.count("|") >= 4:
             if set(linea.strip().strip("|").replace("|", "").strip()) <= set("-: "):
                 continue                      # separador de tabla markdown, no una fila
@@ -109,6 +124,24 @@ if a < 15 or b < 10:
     print(f"CONTROL POSITIVO FALLA: lote A={a} (esperado >=15), lote B={b} (esperado >=10). "
           f"El formato cambio o el patron no matchea. El conteo NO se lee.", file=sys.stderr)
     sys.exit(3)
+
+# --- control del TERCER brazo: un formato que no se mira no falla nunca --------------------
+# El control de arriba solo prueba que el formato que YA miraba sigue existiendo. Este prueba que
+# el brazo de bullets sigue viendo: si un lote tiene bullets de identidad y NINGUNO rinde
+# veredicto, el brazo se rompio (o el formato cambio) y el conteo esta subestimado en silencio,
+# que es exactamente como nacio la diferencia 11 vs 12.
+for k, p in docs.items():
+    txt_ctrl = io.open(p, encoding="utf-8", errors="replace").read()
+    bullets = [l for l in txt_ctrl.splitlines() if BULLET_ID.match(l)]
+    # `detalle` es una lista de DICTS, no de tuplas: desempaquetarlo como `_, _, f` dejaba
+    # `f` en "forma" (la clave) y el control condenaba un brazo sano. Falso rojo propio.
+    rinden = sum(1 for d in res["lotes"][k]["detalle"] if d["forma"] == "bullet")
+    res["lotes"][k]["bullets_de_identidad"] = len(bullets)
+    res["lotes"][k]["bullets_con_veredicto"] = rinden
+    if bullets and rinden == 0:
+        print(f"CONTROL DEL BRAZO DE BULLETS FALLA en {k}: {len(bullets)} bullets de identidad y 0 "
+              f"veredictos leidos de ellos. El conteo NO se lee.", file=sys.stderr)
+        sys.exit(4)
 
 if "--json" in sys.argv:
     print(json.dumps(res, ensure_ascii=False, indent=2))
