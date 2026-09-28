@@ -41,6 +41,9 @@ guard_deploy "$LOCAL" "sync-web.sh" || exit 1
 HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
 AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # default = dominio propio duckdns (no *.sslip.io, que redes de terceros bloquean). nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
+# BUILDSHA (2026-09-28, contrato planificación): guard_deploy ya exigió HEAD==origin/main arriba,
+# así que HEAD es un valor seguro y honesto de "qué se está sirviendo" -- mismo patrón que deploy.sh.
+_build_sha="$(git -C "$LOCAL" rev-parse HEAD 2>/dev/null || echo indeterminado)"
 WEB_SUBDIR="apps/copiloto-web"
 CORE_SUBDIR="packages/core"   # ADR-010: copiloto-web depende de @copiloto/core vía file:../../packages/core -- sin sincronizarlo, npm install en el VPS no resuelve el import (gap detectado 2026-08-04, PR#237)
 # ODOBI hito 6: fetch-fonts.sh convierte este .otf a .woff2 (default UC_NEUE_EINSTELLUNG_SRC), pero
@@ -73,14 +76,16 @@ echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si y
 ssh "$HOST" "bash '$REMOTE/deploy/copiloto/fetch-fonts.sh'"
 
 echo "==> [3/3] npm install (NO ci -- sin lockfile pre-generado asumido) + build (VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>})"
-ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" "$AUTH_URL" <<'REMOTE_BUILD'
+ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" "$AUTH_URL" "$_build_sha" <<'REMOTE_BUILD'
 set -euo pipefail
-WEB_DIR="$1"; AUTH_URL="$2"
+WEB_DIR="$1"; AUTH_URL="$2"; BUILD_SHA="$3"
 cd "$WEB_DIR"
 npm install
 # Vite hornea las VITE_* del entorno al bundle. VITE_AUTH_URL habilita el botón "Entrar con Google"
 # (vacío ⇒ botón oculto). Cero hardcoding: sale del parámetro UC_AUTH_URL (default dominio propio duckdns).
-VITE_AUTH_URL="$AUTH_URL" npm run build
+# VITE_BUILD_SHA: mismo patrón, para data-build-sha en <html> (BUILDSHA, 2026-09-28) -- esta ruta de
+# build es la SEGUNDA definición que el contrato exige cubrir, no sólo la de deploy.sh.
+VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$BUILD_SHA" npm run build
 echo "--- dist/ generado en: ---"
 realpath "$WEB_DIR/dist"
 REMOTE_BUILD
