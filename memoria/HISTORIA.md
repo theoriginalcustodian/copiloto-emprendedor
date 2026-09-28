@@ -285,3 +285,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🎯📏 La regla que manda a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — qué regla te desvía. — baja por cupo del índice; sigue vigente.
 - [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — leé el `WHERE`, no el nombre. — baja por cupo del índice; sigue vigente.
 - [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando esté listo" no llega. — baja por cupo del índice; sigue vigente.
+- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
+- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
+- [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.

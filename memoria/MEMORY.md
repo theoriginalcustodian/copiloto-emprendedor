@@ -58,10 +58,10 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
+- [🎯 El control positivo cubre sólo la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) — el verde acredita al defecto que no mira.
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
 - [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) — ¿quién LEE lo que escribo?
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
-- [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
@@ -115,12 +115,12 @@
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío primero.
 - [👻🚫 UI escrita e INALCANZABLE — nadie la mide porque no se llega navegando](ui-escrita-e-inalcanzable-nadie-la-mide-porque-no-se-llega-navegando.md) — grepeá quién la MONTA.
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) — otra capa puede sobreescribirla.
-- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
 - [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — el veredicto es la SALIDA.
 - [🚀🎭 `git push` sale exit 0 SIN haber pusheado](git-push-puede-salir-exit-0-sin-haber-pusheado.md) — el control es `ls-remote`, no el exit.
 - [🏷️ Clasificar un hallazgo por su ETIQUETA, no por su código](clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo.md) — "firma" me hizo inventar una vuln cripto; llegó mergeada a `main`.
 
 ### Diseño y arquitectura
+- [🗓️ El metadato anti-envejecimiento lo CAUSA si anota la lectura más nueva](el-metadato-contra-el-envejecimiento-lo-causa-si-anota-la-lectura-mas-nueva.md) — eslabón más viejo.
 - [♻️🔒 Reutilizar es REGLA — inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — todo `contrato_` abre con §0.
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — el ACCESO elige la arquitectura.
 - [🧩🏷️ Una fila por VALOR de una variable no es una fila](una-fila-por-valor-de-una-variable-no-es-una-fila.md) — el id es plantilla: ¿qué MIDE?
@@ -134,7 +134,6 @@
 - [🪤🏷️ El fallo que se MUEVE acusa al RECURSO COMPARTIDO — y un `catch` sobre dos `await` no atribuye](el-fallo-que-se-mueve-acusa-al-recurso-compartido.md) — id y viewport son fijos; el server no.
 - [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en comentario.
 - [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — de un sistema: leé su código.
-- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
 - [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) — "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
