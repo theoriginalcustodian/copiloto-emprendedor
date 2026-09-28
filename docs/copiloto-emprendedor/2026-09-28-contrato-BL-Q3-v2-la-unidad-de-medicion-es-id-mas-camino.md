@@ -546,3 +546,66 @@ mobile. El costo de la alternativa la descarta, no la preferencia.
 
 **Baja al contrato con `path:línea` exactos, no con paráfrasis:**
 `python scripts/evidencia/anclas-ambiguas.py --json`.
+
+---
+
+## §14 — 🔴 El veredicto se emite POR DIMENSIÓN, y «14 filas» eran 20 mediciones
+
+Los dos lotes volvieron completos y **no se pueden sumar todavía**. No por descuido de nadie: por dos
+defectos de este contrato que sólo se ven cuando los dos lados entregan.
+
+### 14.1 — Dos vocabularios para la misma cosa
+
+| lote | palabra usada | cuántas |
+|---|---|---|
+| A (FE1) | **`DESVÍO`** (+ «leve», + «con salvedad de captura») | 8 |
+| B (FE2) | **`DIFERENCIA`** / «DIFERENCIA (presentación)» | 2 |
+
+El §2 fijó los campos y **nunca fijó el vocabulario de la columna `veredicto`**. Dos sesiones
+competentes eligieron palabras distintas para lo mismo y ninguna se equivocó. Agregar esto mapeando
+`DIFERENCIA→DESVÍO` en silencio sería inventar una equivalencia que nadie midió.
+
+**Vocabulario cerrado, desde ahora:** `COHERENTE` · `DESVÍO` · `FUERA-DE-REFERENCIA` ·
+`NO_REPRODUCIBLE_SIN_EFECTO` · `NO_MEDIBLE` · `PENDIENTE_DEVICE` · `NO_DISTINGUIBLE_POR_CONTENEDOR`.
+Cualquier otra palabra es un veredicto **sin definición**, y un veredicto sin definición no se agrega.
+
+### 14.2 — Un veredicto no puede cruzar dos dimensiones
+
+`onb-promesa` salió **«DIFERENCIA (presentación)»** con `dimension: contenido (copy coincide)` y la
+observación de que el componente **no es comparable 1:1** (el proto lo embebe en el hilo, la app es una
+pantalla propia). Leído con el §11, eso **no es un veredicto**: son **dos**.
+
+| dimensión | veredicto real |
+|---|---|
+| `contenido` | **COHERENTE** — el copy coincide |
+| `componente` | **FUERA-DE-REFERENCIA** — el proto embebe en `#hilo`, la app monta pantalla propia |
+
+Una sola palabra para las dos dimensiones tiene que **elegir una y callar la otra**, y la que se calla
+es información medida que se pierde. **Regla:** el veredicto se escribe **con su dimensión**
+(`contenido: COHERENTE · componente: FUERA-DE-REFERENCIA`). Si las dos dimensiones no coinciden, la fila
+lleva **dos veredictos**, no un promedio.
+
+Es el mismo defecto que el §11 arregló para el barrido —una fila sin la dimensión suficiente para
+distinguirla de su vecina— reapareciendo **en la columna de salida** después de arreglarlo en la de
+entrada.
+
+### 14.3 — «Lote A = 14 filas» eran **20 mediciones**
+
+Conté el reparto en **ids** cuando el §1 de este contrato declara que la unidad es **`id + camino`**.
+Varios ids de lote A tienen dos caminos (`agenda` A/B, `clientes` listado/ficha, `apps`
+connections/AppsScreen), así que las «14 filas» produjeron **20 veredictos**: 5 COHERENTE · 8 DESVÍO ·
+5 NO_MEDIBLE · 2 FUERA-DE-REFERENCIA. Lote B: **11 y 11**, porque su reparto ya venía por camino único.
+
+> **El contrato que define la unidad de medición repartió el trabajo en otra unidad.** Los números que
+> circularon (12, 14, 30) eran de ids; los medidos son de caminos. Nadie midió mal: el reparto y el
+> contrato contaban cosas distintas, y eso **no se ve** hasta que alguien suma.
+
+**Total real de la segunda pasada: 31 mediciones** (20 + 11) **+ 5 de voz `PENDIENTE_DEVICE`.** El «30»
+del título del reparto queda retirado como cifra y vive sólo como nombre del frente.
+
+### 14.4 — Lo que NO se toca de lo entregado
+
+Nada de esto invalida una sola fila. Los dos cierres traen el settle por fila, el dato crudo donde
+importaba, y dos `[ASSUMED_PENDING_VERIFY]` correctamente marcados (`reveal` mobile · `pres-ciclo`
+superficie del proto). **La reconciliación es de vocabulario y de unidad, no de medición** — y eso se
+arregla renombrando columnas, no volviendo a medir.
