@@ -431,3 +431,54 @@ en `dimension: contenido`** (queda firme, es de auditoría). **Una sola fila no 
 > refutada por una medición que no había hecho; cada vez que escribí una **regla de qué declarar**
 > (camino §1, superficie §10, dimensión §11) sobrevivió. **Un contrato define qué hay que declarar; las
 > asignaciones concretas las pone quien mide.**
+
+---
+
+## §9.ter — ⛔ `caida` está MEDIDA y COHERENTE, y mi ancla de §9 era falsa
+
+FE2 volvió a medir en vivo antes de ejecutar §9 y **desarmó la base del problema**: `googlecalendar`
+**ya viene con `status:"caido"` en prod**, consistente en 4 corridas limpias, para `e2e-device`, ahora.
+No hacía falta fixture, ni backend, ni mi alternativa de `ServiceCard`, ni el gateway inyectable.
+
+**La causa era un race en su propia medición, y nació de una decisión de producto CORRECTA.**
+`useEstadoGoogleCalendar` arranca en `null`, y el docstring de `PanelCalendario`
+(`MidiaScreen.tsx:305-312`) declara por qué: sin esa señal (`null`, catálogo caído o backend viejo) se
+degrada al texto de «nunca conectada», **«el menos alarmante de los dos ante la duda»**. Su primer
+ch equeo, con un timeout fijo de 1.5s, cayó en ese render transitorio. Con el settle correcto
+(esperar la respuesta real de `/catalog`, e inspeccionar el body crudo como control) el estado final y
+estable es **`midia-calendario-caida`**.
+
+> ⚠️ **La clase, y es nueva:** *un degradado prudente hacia el estado benigno hace que el instrumento
+> mida el caso benigno y no lo sepa.* «El menos alarmante ante la duda» es la decisión correcta para el
+> emprendedor y **veneno para la medición**: no hay error, no hay vacío, hay una pantalla plausible del
+> **otro** caso. Hermana directa del `if (a) a.click()` de §10: las dos convierten una falla detectable
+> en una foto perfecta de otra cosa, y las dos fueron escritas por prudencia.
+
+### Mi ancla de §9 era falsa — corregida acá, verificada por mí
+
+Escribí «se mide `service-card-status-*` en estado `caido` vía `mercadopago`». **Ese testid no existe
+en el estado caído:** `ServiceCard.tsx:134` lo guardea a `resolvedState === 'connected'` y adentro dice
+`CONECTADO`. El estado caído se lee por **`data-state="reconnect"` en la card padre** (`:120`
+`data-state={resolvedState}`, rama en `:152`); el badge «RECONECTAR» **no tiene testid propio**.
+
+- **La regla de §9 sigue valiendo** (FE2 lo dice y coincido): cuando el id es una plantilla, la fila es
+  la plantilla y el camino elige la instancia. **El ejemplo concreto que le puse era falso**, y un
+  ancla falsa en un contrato es peor que ninguna.
+- **La fila se cierra por el camino que §3 ya designaba** — Mi día, «porque el prototipo lo ubica
+  ahí» — con `midia-calendario-caida`, evidencia `BLQ3-caida-mi-dia-FINAL.png`, texto real: «Se cayó
+  la conexión con Google Calendar. Reconectala en Ajustes → Apps…». **COHERENTE.**
+- Y `service-card-googlecalendar` **ya estaba** en `data-state="reconnect"` en Conexiones: los dos
+  lados coincidían todo el tiempo.
+
+### Cuatro de cuatro: el patrón ya no es anécdota
+
+`§8.6` (cambien el `waitUntil`) · `§10` (reasignen a `vozchat`) · `§9` (midan por `mercadopago`) · y el
+`NO_MEDIBLE` que estuve a punto de firmar: **cuatro prescripciones mías, cuatro refutadas por una
+medición que no hice** — y las cuatro veces las refutó quien fue a medir. Las **reglas de qué
+declarar** (camino §1, superficie §10, dimensión §11) sobrevivieron todas.
+
+**Regla operativa que queda, y aplica a mí primero:** un contrato **no** asigna anclas concretas
+(`path:línea`, ids, selectores) que su autor no midió. Si hace falta una, se escribe como
+`[ASSUMED_PENDING_VERIFY]` y el que mide la reemplaza. **Una prescripción sin medición propia no es un
+contrato: es una hipótesis con autoridad**, y la autoridad es justo lo que impide que la refuten a
+tiempo.
