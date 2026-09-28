@@ -11,6 +11,15 @@
 > o fixtures (`gphy_test`), y los `eyJ…` de dos fixtures **no decodifican como JWT**. Cada pasada con
 > control positivo. Nada que rotar. **Antes de commitear algo nuevo con forma de credencial, asumí que
 > lo estás publicando.**
+> ⚠️ **Esa atestación tiene FECHA y ya fue superada: el 2026-08-19 entró un token real** (PR#464,
+> `Prototipo frontend/odobi-ui/.mcp.json`, `Authorization: Bearer` de **60fps.design**), estuvo **24
+> días** expuesto en repo público y se sacó de HEAD el 2026-09-08 (#505). **El blob sigue siendo
+> recuperable desde la historia de `main`** (`git show 39decb95:…`, 259 bytes), así que sacarlo de HEAD
+> cortó la exposición futura, no la pasada — lo dice el propio `.gitignore:20-24`: «el token sigue vivo
+> en el historial y TIENE QUE rotarse igual». **No estaba en `memoria/deuda-secretos-rotar.md`**, porque
+> ese inventario clasifica por «secretos que pasaron por chat» y éste se filtró por la otra vía (medido
+> 2026-09-28). **Leé «0 secretos» como «al 2026-08-06», nunca como estado vigente:** una atestación sin
+> fecha de vencimiento se cita como si fuera de hoy, y es lo que pasó acá.
 > **Idioma:** instrucciones y comentarios en español; código, scripts e identificadores en inglés.
 > **Origen:** graduado de `unreal-copilot` el 2026-07-06 vía `git filter-repo` (historia/blame preservada). El copiloto era la app-estrella del arquetipo `conversational_agent` de la fábrica; se extrajo a repo propio para separación comercial/producto.
 > **Arranque de sesión → [`HANDOFF.md`](HANDOFF.md)** (init cero-fricción: seed de memoria, accesos, flujos de trabajo).
