@@ -298,3 +298,70 @@ sesiones corren.
 ⛔ **No apliquen §9 a `agenda`.** Forzar un Calendar conectado para que la captura coincida con el
 prototipo es fabricar el resultado que se está midiendo. La pregunta que separa los dos casos es
 siempre la misma: **¿la rama es una sola?**
+
+---
+
+## §10 — La fila declara SUPERFICIE, o el veredicto no aplica (y tres filas quedan sin id)
+
+Tercera vez hoy que el mismo defecto de contrato cambia de disfraz: **v1 no declaraba camino, v2 no
+declaraba superficie.** Auditoría lo cazó midiendo el DOM del prototipo (commit `b765af0b`, control
+positivo: `#card.dataset.card` coincidió con el `?ver=` pedido en 5/5).
+
+| `?ver=` del prototipo | qué muestra | **dónde vive** |
+|---|---|---|
+| `card` · `card-presu` · `card-cobro` | «Nuevo gasto» · «Nuevo presupuesto» · «Nuevo ingreso» | `#card` **dentro de `#funcion`** |
+| **`vozchat`** | «Nuevo gasto» | **`.hitl` en el CHAT** |
+| `hitl` | **«Recordatorio a Lucía»** | `.hitl` en el chat, otro contenido |
+
+En la app las cards viven **en el hilo** — verificado por mí, no transmitido:
+`MessageList.tsx:274` retorna `TarjetaPresupuestoPropuesto` y `:304` retorna `HitlCard`, las dos
+dentro del render del mensaje. Las cinco `card*` del prototipo montan en `#funcion` y **ninguna**
+produce `.hitl` en el chat.
+
+### Campo obligatorio nuevo de §2
+
+> **`superficie`** — el contenedor del DOM donde vive lo que se compara, en **los dos** lados
+> (`#funcion` / `.hitl` del chat / `#ajustes` / …). Sin superficie declarada en ambos lados, la fila
+> **no admite veredicto**: no es COHERENTE, no es DESVÍO, es **no comparable**.
+
+### Filas afectadas
+
+- **`card`, `card-presu`, `card-cobro`** → el id apunta a `#funcion` y el equivalente de la app es el
+  hilo. **Se reasignan a `vozchat`**, superficie `.hitl` del chat en los dos lados. Los análisis ya
+  hechos contra `#card` **no se tiran**: entran como `dato_` y sirven si se decide medir también
+  `#funcion`, que es una fila **distinta**, no la misma con otro id.
+- **`hitl`** → el lado app estaba bien elegido (`factura`, por el argumento de la capacidad ausente),
+  pero el lado prototipo muestra un **recordatorio**, no una card de confirmación: **no tiene con qué
+  comparar**. Queda en espera de declarar superficie **y contenido**.
+
+### ⚠️ `card-cobro` arrastra la colisión del glosario — la fila se renombra
+
+En el prototipo es **«Nuevo ingreso / Anotar que me pagaron»**: plata que **ya entró**. **No** es
+generar un link de cobro de MercadoPago. Es la colisión que `CONTEXT.md` advierte con
+`ingreso`/`cobro`/`pago`, y con el nombre actual el desvío que se reporte va a ser **del nombre, no
+de la UI**. **La fila pasa a `card-ingreso`**; si además hay que medir el cobro MP, es **otra** fila
+con su propio nombre. Un id que usa la palabra ambigua del glosario fabrica un falso desvío.
+
+### H5 corregido — el guard de prudencia borró la única señal
+
+Auditoría reportó `index.html:3470` (`if (ver === 'hitl') … const a = $('#accion-lucia'); if (a) a.click();`)
+como «sin rama else: si el nodo no existe, la captura sale de la pantalla base sin error». **Lo
+verifiqué y es peor que eso, por comparación con sus vecinas:**
+
+```
+3470  if (ver === 'hitl')   … const a = $('#accion-lucia'); if (a) a.click();   ← falla MUDA
+3472  if (ver === 'cuenta') … $('#ajustes').classList.add('on'); …              ← falla con TypeError
+3473  if (ver === 'apar')   … $('#ajustes').classList.add('on'); …              ← falla con TypeError
+3474  if (ver === 'hablar') … $('#ajustes').classList.add('on'); …              ← falla con TypeError
+```
+
+Las tres vecinas **no** tienen guard de nulidad, y por eso dejan rastro: un `TypeError` en la consola
+del browser. La línea 3470 **sí** lo tiene, y el `if (a)` escrito por prudencia **eliminó la única
+señal disponible**. Un guard de nulidad sobre la acción que **es** la medición no protege nada:
+convierte un fallo detectable en una foto perfecta de otra cosa.
+
+**Control que se agrega al generador** (dueño: planificación, este sprint): leer
+`page.on('console')` y abortar la celda si hubo error — caza las tres vecinas. **Para `hitl` no
+alcanza**, porque no emite nada: ahí hace falta una **aserción positiva post-click** (que el
+`.hitl` esperado exista) antes de sacar la foto. La regla general: **una acción que habilita la
+medición necesita aserción propia, no un `if` que la saltee en silencio.**
