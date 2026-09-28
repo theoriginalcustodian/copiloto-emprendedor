@@ -130,6 +130,7 @@
 - [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX.
 - [🧬🔁 El MISMO defecto vivía DOS veces](el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo.md) — ¿qué capa usa la UI: el core o su copia?
 - [🎭 DOS causas suficientes = el test no ATRIBUYE](dos-causas-suficientes-el-test-no-atribuye.md) — el diferencial sale VERDE.
+- [🪤🏷️ El fallo que se MUEVE acusa al RECURSO COMPARTIDO — y un `catch` sobre dos `await` no atribuye](el-fallo-que-se-mueve-acusa-al-recurso-compartido.md) — id y viewport son fijos; el server no.
 - [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en comentario.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró".
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie.
@@ -145,7 +146,6 @@
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — sin cargar completo ⇒ duplicados.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — leer antes. Escribí en `memoria/` del repo.
-- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo.
 - [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) — el contrato apunta a paths, no dice «explorá».
 
 ### Coordinación entre sesiones
@@ -167,7 +167,6 @@
 - [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama en prod.
 - [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`
-- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está.
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu último fix local](push-es-el-ultimo-paso-no-el-primero.md) — repushear y comparar con `ls-remote` antes de mergear.
 
 ## 🏭 El producto — LEER antes de tocar

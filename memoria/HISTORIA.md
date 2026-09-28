@@ -275,3 +275,5 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 - [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — caso particular ya cubierto por la regla dura de checkout compartido (canon 9).
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. — ya cubierta por la regla dura del canon 9 (prohibido `stash` en checkout compartido).
+- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está. — ya es la práctica por defecto; el MCP de github no se usa desde meses.
+- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo. — ya vive en el `CLAUDE.md` global como postura; baja por cupo, no por falsa.
