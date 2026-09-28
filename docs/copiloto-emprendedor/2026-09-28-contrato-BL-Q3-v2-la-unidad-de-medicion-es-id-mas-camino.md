@@ -80,7 +80,7 @@ es una pantalla viva sin entrada. Va al backlog como fila propia, no a la matriz
 
 Invalidado por comparar otra pantalla: **`card`, `card-presu`, `card-cobro`** (FE1, contra las cards
 del chat y el HITL de MP) · **`factura`** (FE1, medido como «form vacío» = comportamiento anterior a
-**#644**) · **`caida`** (FE2, medido sobre Conexiones) · y los ya corregidos por auditoría, `agenda` y
+**#644**) · **`caida`** (FE2, medido sobre Conexiones) — y ojo: FE2 midió en vivo contra prod y el testid real hoy es `midia-calendario-no-conectado`, **no** `midia-calendario-caida`: el tenant no está en el estado que la fila necesita (`catalog.py:104,146,153,161` → depende de `composio_caidos`, que resuelve backend). Si sembrar «googlecalendar caído» no se puede sin round-trip real a Composio, la fila se declara **NO_MEDIBLE con esa causa**, no se fuerza · y los ya corregidos por auditoría, `agenda` y
 `presu`.
 
 **No invalidado:** todo id CAMINO-UNICO. Los 19 siguen valiendo tal como se midieron —
@@ -169,9 +169,102 @@ El sub-agente de auditoría contó **pantallas** con ≥2 caminos y UI distinta 
 planificación contó **pares (id, camino)** (16). Distinta granularidad, misma dirección. Se registran
 los dos números con su definición al lado; ninguno se promedia.
 
-### 8.6 Arreglo de instrumento que sale de esto (aplica a `criterio3-matriz.mjs`, no sólo a una sonda)
+### 8.6 ⛔ **RETIRADO** — el `waitUntil` NO era la causa; era el **server**. Y «arreglarlo» habría enterrado la causa real
 
-`page.goto` con `waitUntil:'load'` **colgó 30 s en `?ver=esc`**. El prototipo lee `?ver=` inline
-(`index.html:3389`), sin `load` ni `DOMContentLoaded`, así que esperar `load` no aporta y puede tumbar
-la corrida. **Barrer llamadores incluye los instrumentos:** si el generador oficial también espera
-`load`, hay que arreglarlo ahí, no sólo en la sonda que lo descubrió.
+Esta sección pedía cambiar `waitUntil:'load'` en `criterio3-matriz.mjs`. **No lo hagan.** Auditoría lo
+midió en tres pasos y cada uno refutó al anterior:
+
+1. **El prototipo está sano.** `MutationObserver` vía `addInitScript` + `pageerror`, 24 cargas:
+   **24/24** con la marca puesta, 82-126 ms, **cero errores de JS**, `?ver=` nunca se pierde. Nada que
+   arreglar en `index.html`.
+2. **La hipótesis del `waitUntil` es falsa, y la mató el brazo de control.** Contra
+   `python -m http.server`: `networkidle` 26/32 y `domcontentloaded` **31/32** — el `goto` se colgó
+   **también** con `domcontentloaded`. Sin el brazo de control se veía «mejoró de 26 a 31» y se
+   cantaba un arreglo falso.
+3. **La causa es el server.** Lo delata que **los fallos se mueven de celda en celda entre corridas**
+   (B1 vio `apar`/`soporte`/`esc` a desktop; la sonda de tasa, 6 celdas distintas; el A/B,
+   `soporte@390` y `esc@desktop`). Id, viewport y prototipo son **fijos** entre intentos; lo único
+   compartido que varía es el server. Con un server estático Node y el A/B idéntico: **32/32 en los
+   dos `waitUntil`**.
+
+**Arreglado donde vive — la precondición, no el generador:** `correr-criterio3.sh` levanta el server
+Node, y si encuentra uno ajeno vivo **le mide la concurrencia** (8 pedidos en paralelo) antes de
+confiar. Control positivo en las dos direcciones: contra python 1/8 fallidos ⇒ aborta; contra el
+propio 0/8 ⇒ pasa. **Un control que sólo pregunta «¿contesta 200?» no distingue un server que va a
+colgarse** — y la sonda de salud anterior lo declaraba sano tres veces por corrida.
+
+> 🧩 **El patrón, que es lo más reutilizable del día:** *un fallo que **cambia de sujeto** entre
+> corridas acusa al **recurso compartido**, no al sujeto.* Leer «falló `apar@desktop`» como un hecho
+> sobre `apar` costó dos turnos de diagnosticar el prototipo y el timeout del selector, que estaban
+> los dos bien.
+
+**Y la lección para este contrato:** yo escribí el §8.6 original a partir de una hipótesis ajena sin
+brazo de control, y lo redacté como una instrucción («arreglalo también en el generador»). Una
+instrucción en un contrato se ejecuta; una hipótesis se prueba. **No van hipótesis en modo
+imperativo.**
+
+---
+
+## §9 — Cuando el id es una PLANTILLA, el camino elige la instancia (y `caida` nunca fue una fila)
+
+FE2 pidió a backend un `googlecalendar` en estado caído para capturar la celda `caida`. Backend midió
+la cadena entera con `path:línea` y contestó, correctamente, que **no se puede fabricar**: el status
+`EXPIRED` lo decide Composio server-side (`conexiones_salud.py:18-30` filtra `EXPIRED` sin `ACTIVE`
+del mismo toolkit; el dato viene del SDK real en `composio_gateway.py:257-277`), y el único método de
+escritura del gateway es `revoke()` (`composio_gateway.py:308-309`), que **borra** la conexión —
+dejaría `nunca_conectado`, el estado opuesto al que se quiere capturar. Su conclusión fue
+`NO_MEDIBLE` con causa, y cerró honestamente con «alternativa NO explorada por mí».
+
+**Esa alternativa era mía de explorar, y el resultado da vuelta la respuesta: `NO_MEDIBLE` es el
+veredicto equivocado, porque la pregunta estaba mal formulada.**
+
+### Lo que se midió
+
+1. **El testid es una plantilla, no un id.** `ServiceCard.tsx:119,127,135,183` emite
+   `service-card-${service.key}`, `service-card-status-${service.key}`,
+   `service-card-description-${service.key}`, `service-card-confirm-${service.key}`. No existe ningún
+   id literal `…-googlecalendar` en el código: existe `${service.key}` interpolado.
+2. **La rama de `caido` es UNA, y no se ramifica por proveedor.** `ServiceCard.tsx:45` —
+   `if (service.status === 'caido') return 'reconnect'`. Una sola comparación, cero condicionales por
+   `key`. El proveedor entra en el **id**, nunca en el **comportamiento**.
+3. **Hay UNA definición de `ServiceCard`** (`apps/copiloto-web/src/modules/connections/ServiceCard.tsx`);
+   el resto de los hits son su test, su css, su `index.ts` y `ConnectionsScreen.tsx` que la monta.
+   Contar definiciones y no usos, otra vez, cambia el trabajo.
+4. **`caido` SÍ es alcanzable con datos propios, por otra instancia.** `conexiones_salud.py` declara en
+   su docstring **una sola definición** del estado para las tres caras que lo muestran (`/catalog`
+   `status`, el detector de Mi día, `caja.incompleta` de la portada), y `conexiones_caidas()` produce
+   `mercadopago` desde `MpCredentialStore.salud()` — tabla **nuestra** (`mp_credentials`), que el seed
+   escribe. Ese camino ejercita la **misma** rama de la línea 45.
+
+### La regla que se agrega al contrato
+
+> **Cuando el id es una plantilla (`prefijo-${variable}`), la fila de la matriz es la PLANTILLA, y el
+> `camino` elige qué instancia la ejercita. Una fila por valor de la variable no es una fila: es un
+> dato.** Se mide la plantilla con la instancia **alcanzable con estado propio**, y se declara en la
+> evidencia cuál se usó y por qué.
+
+Aplicado: la fila se mide como `service-card-status-*` en estado `caido` **vía `mercadopago`**, y la
+celda `googlecalendar` **se retira de la matriz** — no por no medible, sino porque nunca fue una fila
+distinta. Cero fixture nuevo, cero inyección, cero riesgo en prod.
+
+### Lo que NO se hace, y por qué queda escrito
+
+El gateway **es** inyectable: composition root único en `serve.py:125`, pasado como parámetro
+`composio_gateway=` a las tres apps (`serve.py:177,285,309`; receptores con default `None` en
+`mi_dia_web.py:146` y `afip_web.py:157`). Sustituir el borde de terceros ahí habría sido
+arquitectónicamente correcto. **No se hace igual**, porque con la plantilla medida por `mercadopago`
+no compra nada, y el costo es un doble encendido en el servidor vivo con riesgo de quedarse puesto.
+Queda registrado acá para que nadie lo re-descubra: **es deuda deliberada y visible, no un olvido.**
+
+### Dueños
+
+- **FE2** — mide `service-card-status-*` en `caido` por `mercadopago` y declara la instancia en la
+  evidencia. **Si el seed de MP no logra el estado `caido`, volvé con eso**: la escribibilidad de
+  `mp_credentials` es una afirmación de backend con `path`, no una medición mía.
+- **Backend** — tu diagnóstico de Composio queda **vigente y citado**; lo que cambia es la pregunta,
+  no tu respuesta. No hay trabajo nuevo para vos en esta celda.
+
+> ⚠️ **El error de fondo, que es mío:** la matriz v1 tenía una fila por **proveedor** donde el código
+> tiene una plantilla. Preguntamos «¿cómo fabrico este valor?» durante dos intercambios entre dos
+> sesiones, cuando la pregunta era «¿qué mide realmente esta fila?». Una fila mal recortada convierte
+> un dato en un bloqueo, y el bloqueo parece técnico.
