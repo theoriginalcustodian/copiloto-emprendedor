@@ -63,18 +63,25 @@ export interface FilaTotalAproximado {
 
 /**
  * El aproximado del total de un presupuesto, redondeado a 2 decimales — o `null` si alguna fila
- * (con descripción o precio tipeados) todavía no es un número válido.
+ * (con descripción o precio tipeados) todavía no es un número válido, **o si ningún ítem real
+ * cargó nada todavía** (dato faltante ≠ cero, `memoria/cero-que-no-se-puede-afirmar.md`: mostrar
+ * "$0,00" en un formulario recién abierto afirma "no hay monto" cuando lo real es "no se cargó
+ * nada aún"). Antes esta función devolvía `"0.00"` en ese caso — la card de
+ * `FormularioPresupuesto` lo interpretaba como `!= null` y mostraba "$0,00" con el formulario
+ * vacío; el `null` explícito hace que la card no se muestre.
  *
  * Filas totalmente vacías (sin descripción NI precio) se saltean, igual que hacían las dos copias
  * originales — son la fila en blanco al final del formulario, no un ítem a punto de cargarse.
  */
 export function calcularTotalAproximado(items: readonly FilaTotalAproximado[]): string | null {
   let acumulado = '0';
+  let huboItemReal = false;
   for (const it of items) {
     if (it.descripcion.trim() === '' && it.precioUnitario.trim() === '') continue;
     const parcial = multiplicarDecimal(it.cantidad, it.precioUnitario);
     if (parcial == null) return null;
     acumulado = sumarDecimal(acumulado, parcial);
+    huboItemReal = true;
   }
-  return redondear(acumulado, 2);
+  return huboItemReal ? redondear(acumulado, 2) : null;
 }

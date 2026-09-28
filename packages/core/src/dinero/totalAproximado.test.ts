@@ -40,7 +40,21 @@ describe('calcularTotalAproximado', () => {
     ).toBeNull();
   });
 
-  it('sin filas (o todas en blanco) da 0.00', () => {
-    expect(calcularTotalAproximado([])).toBe('0.00');
+  /**
+   * Punto 2 del pedido ACTID-mas-dos-defectos (2026-09-28): antes daba `'0.00'` acá, y
+   * `FormularioPresupuesto` lo mostraba como "Total aproximado: $0,00" en un formulario recién
+   * abierto — dato faltante mostrado como cero, viola `cero-que-no-se-puede-afirmar`.
+   */
+  it('sin filas (o todas en blanco) da null -- no hay dato, no es "$0,00"', () => {
+    expect(calcularTotalAproximado([])).toBeNull();
+    expect(
+      calcularTotalAproximado([{ descripcion: '', cantidad: '1', precioUnitario: '' }]),
+    ).toBeNull();
+  });
+
+  it('un ítem real con precio "0" SÍ da 0.00 -- cero cargado no es lo mismo que nada cargado', () => {
+    expect(
+      calcularTotalAproximado([{ descripcion: 'Cortesía', cantidad: '1', precioUnitario: '0' }]),
+    ).toBe('0.00');
   });
 });
