@@ -32,15 +32,52 @@ const fotoA = (page, nombre) => page.screenshot({ path: join(OUT, `${nombre}.png
 const DESKTOP = { ancho: 1440, alto: 900 };
 const MOVIL = { ancho: 390, alto: 844 };
 
+// El prototipo activa cada `?ver=` con un `setTimeout` que hace click en un nodo. Dos formas de
+// fallar CALLADO, medidas el 2026-09-28 (BL-Q3 v2 §10, `index.html:3470-3474`):
+//   1. `$('#ajustes').classList...` sin guard (3472-3474) → TypeError en la consola del browser. Un
+//      error dentro de un setTimeout NO rompe la captura: Playwright saca la foto de la pantalla
+//      base y la celda sale «bien».
+//   2. `const a = $('#accion-lucia'); if (a) a.click();` (3470) → el guard de nulidad se comió la
+//      única señal. No emite NADA: foto perfecta de otra cosa.
+// Para (1) alcanza escuchar la consola. Para (2) hace falta una aserción POSITIVA de que la
+// activación ocurrió — un `if` que saltea la acción que ES la medición no protege nada.
+const ASERCION_PROTO = {
+  hitl: '.hitl',          // `?ver=hitl` clickea #accion-lucia; sin él no hay `.hitl` y no hay error
+  vozchat: '.hitl',       // misma superficie, otro disparador
+  cuenta: '#s-cuenta.on',
+  apar: '#s-apar.on',
+  hablar: '#s-hablar.on',
+};
+
 async function protoFoto(verId, sufijo, viewport) {
   // Browser propio y CERRADO al final: con la máquina cargada, un Chromium colgado por captura
   // compite con los gates (ver gate-local-serial.sh).
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+  const errores = [];
   try {
     const ctx = await browser.newContext({ viewport: { width: viewport.ancho, height: viewport.alto } });
     const page = await ctx.newPage();
+    page.on('pageerror', (e) => errores.push(`pageerror: ${e.message}`));
+    page.on('console', (m) => { if (m.type() === 'error') errores.push(`console.error: ${m.text()}`); });
     await page.goto(`${PROTO_BASE}/?ver=${verId}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);
+
+    const esperado = ASERCION_PROTO[verId];
+    if (esperado) {
+      const hay = await page.$(esperado);
+      if (!hay) {
+        throw new Error(
+          `proto ${verId}: la activación NO ocurrió — falta \`${esperado}\`. La foto sería de la ` +
+          `pantalla base, no de ${verId}. NO se captura: una celda no medida vale más que una medida mal.`
+        );
+      }
+    }
+    if (errores.length) {
+      throw new Error(
+        `proto ${verId}: ${errores.length} error(es) en el browser — la captura no es de fiar: `
+        + errores.join(' | ')
+      );
+    }
     await fotoA(page, `criterio3-${verId}-proto-${sufijo}`);
   } finally {
     await browser.close();
