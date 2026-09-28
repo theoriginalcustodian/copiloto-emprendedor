@@ -233,10 +233,17 @@ def receptor_desde_payload(payload: dict) -> Receptor:
     es el caso más común— pasaba de largo con la cadena vacía, y el template del PDF responde 400
     ("El campo Nombre receptor es obligatorio"): factura con CAE y sin comprobante imprimible. Con
     `null` era peor: `str(None)` habría impreso literalmente "None" en la factura.
+
+    `condicion_iva`/`tipo_doc` tenían el mismo agujero sin el `or`: un cliente creado por voz
+    (`tool_catalog.py` arma `"condicion_iva": None` a propósito, sin derivarla) o un presupuesto con
+    ese campo en `NULL` en la DB llegan con la clave PRESENTE pero en `None`, y `int(None)` explota
+    con `TypeError` antes de llegar al 422 legible — "facturar" queda roto para ese cliente sin
+    aviso. Ningún valor real de `CondicionIVA`/`TipoDoc` es `0`, así que `or default` es seguro acá
+    igual que ya lo era para los otros tres campos.
     """
     return Receptor(
-        condicion_iva=CondicionIVA(int(payload.get("condicion_iva", 5))),
-        tipo_doc=TipoDoc(int(payload.get("tipo_doc", 99))),
+        condicion_iva=CondicionIVA(int(payload.get("condicion_iva") or 5)),
+        tipo_doc=TipoDoc(int(payload.get("tipo_doc") or 99)),
         nro_doc=str(payload.get("nro_doc") or "0"),
         nombre=str(payload.get("nombre") or "Consumidor Final"),
         domicilio=str(payload.get("domicilio") or "-"),
