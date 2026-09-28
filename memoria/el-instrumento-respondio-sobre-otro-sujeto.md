@@ -232,3 +232,47 @@ antes — un PR que se cerró sin mergear porque su patch-id ya estaba aplicado.
 grande y barata merece una segunda forma de preguntar **antes** de que la alarma circule. La primera
 lectura era plausible, urgente y reenviable — la peor combinación. Ver
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+---
+
+## Novena, y la variante peor: el sujeto equivocado fue **el RANGO**, y lo eligió el sistema
+
+2026-09-28. Pregunta: *¿los 436 objetos que el reconcile del grafo quiere borrar son drift legítimo o
+una anomalía?* De eso dependía recomendar al operador firmar `--force` o **no** firmarlo.
+
+Medí los archivos borrados en el rango del **marcador del grafo** (`1542e3ad..origin/main`, 28
+commits): **0 borrados, 0 renombrados**, 116 modificados y 28 agregados. Y **con control positivo
+verde**: la misma sintaxis ve 159 borrados en los últimos 300 commits y 11 en `HEAD~150..origin/main`.
+El instrumento veía borrados; el `0` era real.
+
+**Conclusión que casi entregué: «436 muertos sin un solo archivo borrado ⇒ anomalía ⇒ NO firmes».**
+Habría sido el consejo opuesto al correcto.
+
+La causa estaba escrita en el `repos.toml` del bridge: el 2026-08-19 el árbol que el bridge LEE dejó
+de ser el que el sync ESCRIBE, y el drift vivió **>1 mes invisible** (arreglado en `dd7cbd0`, el
+2026-09-22 21:25, **el mismo día del marcador**). Medido en el rango real —desde el inicio de la
+ceguera— hay **24 borrados, 13 de código indexable, 1 renombrado**: 13-14 archivos × decenas de
+objetos cada uno ≈ 400. **Los 436 son basura legítima y el tope de 200 estaba funcionando.**
+
+**Por qué el rango era el sujeto equivocado, y por qué es peor que un path mal escrito:** el marcador
+es el **puntero de progreso** del propio proceso, y avanzaba **correctamente** mientras la fuente que
+alimentaba al proceso estaba mal. Un puntero de progreso no dice «hasta acá procesé bien»: dice
+«hasta acá corrí». Con la fuente roto, el puntero mide corridas, no trabajo — así que **usarlo para
+delimitar el rango del daño devuelve cero por construcción.** El rango del daño va desde que **la
+fuente** se rompió, no desde donde quedó el puntero. Y a diferencia de un `git -C` mal apuntado, acá
+**no elegí el sujeto**: lo heredé del estado del sistema, que es lo que lo hace invisible.
+
+**Y el control positivo no podía salvarme**, lo cual es lo más importante de este caso: validó que el
+instrumento **ve borrados**, no que **le pregunté por el período correcto**. Un control positivo
+prueba la sensibilidad del instrumento, **nunca la pertinencia del sujeto** — son dos afirmaciones
+distintas y la segunda casi nunca tiene control. Hermano de
+[[vacio-no-es-hallazgo-correr-el-control]] por el lado opuesto: allá el control faltaba, acá estaba
+verde y era irrelevante.
+
+**How to apply:** ante un `0` que llega **con control positivo verde**, hacer una pregunta más:
+**¿de dónde salió el rango / el sujeto, y quién lo movió?** Si salió de un puntero, checkpoint,
+marcador, `--since`, `HEAD` o «última corrida», **ese valor es parte de la hipótesis, no del método**:
+va verificado igual que el resto. La versión corta: *un control positivo dice que el instrumento ve;
+no dice que le preguntaste por el sujeto correcto.* Y ante un daño acumulado, el rango se toma desde
+**el evento que rompió la fuente**, que se busca en la historia de la configuración, no en la del
+código.
