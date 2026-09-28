@@ -268,3 +268,33 @@ Queda registrado acá para que nadie lo re-descubra: **es deuda deliberada y vis
 > tiene una plantilla. Preguntamos «¿cómo fabrico este valor?» durante dos intercambios entre dos
 > sesiones, cuando la pregunta era «¿qué mide realmente esta fila?». Una fila mal recortada convierte
 > un dato en un bloqueo, y el bloqueo parece técnico.
+
+### §9.bis — ⛔ `agenda` NO es `caida`: el criterio ya estaba escrito en el generador
+
+**Límite de §9, y hay que leerlo antes de aplicarlo.** Son **dos matrices distintas** y casi las
+mezclo: `scripts/evidencia/criterio3-matriz.mjs` mide **7 pantallas × 2 viewports**
+(`detalle,agenda,ingresos,presu,negocio,afip,cuenta`, línea 125); `caida` pertenece a la matriz de
+**testids** de BL-Q3. Una celda de una no es una fila de la otra.
+
+Y el caso gemelo ya tenía criterio firmado **en el código, desde antes**
+(`criterio3-matriz.mjs:17-21` y el warning de la línea 115):
+
+> `agenda` → sub-vista de Mi día, visible sólo si Calendar está `'ok'`. El prototipo la muestra
+> SIEMPRE conectada (mock); si el tenant no tiene Calendar, la app muestra «no conectado» y **se
+> documenta, no se fuerza**.
+
+**Nadie lo citó** — ni FE2 al pedir el estado, ni backend al diagnosticarlo, ni yo al escribir §9.
+La respuesta a «¿qué hago si el estado depende de un tercero?» estaba en el generador que las tres
+sesiones corren.
+
+**Por qué los dos criterios no se contradicen**, que es lo único que hay que retener:
+
+| | `agenda` | `caido` |
+|---|---|---|
+| ¿El comportamiento se ramifica por el valor? | **Sí** — la sub-vista existe o no existe | **No** — una sola rama (`ServiceCard.tsx:45`) |
+| ¿Hay otra instancia alcanzable que lo produzca? | **No** | **Sí** — `mercadopago`, desde tabla propia |
+| Criterio | **se documenta, no se fuerza** | **se mide por la instancia alcanzable** |
+
+⛔ **No apliquen §9 a `agenda`.** Forzar un Calendar conectado para que la captura coincida con el
+prototipo es fabricar el resultado que se está midiendo. La pregunta que separa los dos casos es
+siempre la misma: **¿la rama es una sola?**
