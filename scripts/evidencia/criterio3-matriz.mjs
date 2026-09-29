@@ -1,5 +1,30 @@
-// Matriz web del Criterio 3 (Cierre A): captura cada pantalla `spec` de BL-P5 en la PWA de prod,
-// a 390 y a escritorio, lado a lado con el prototipo final (BL-P2). Ver pwa-lib.mjs.
+// Matriz web del Criterio 3 (Cierre A): captura cada pantalla `spec` de BL-P5 en la PWA de prod.
+// La APP se captura a 390 y a escritorio; el PROTOTIPO **solo a 390**. Ver pwa-lib.mjs.
+//
+// PROTO_SOLO_390 — 2026-09-29, decision de planificacion, medida (acta
+// `docs/copiloto-emprendedor/Auditorias/2026-09-29-acta-cierre-A-reemitida.md`):
+//   El prototipo es MOBILE-ONLY POR DISENO. De sus 3900 lineas tiene UNA sola media query de layout
+//   (`prototipo/index.html:63`, `min-width:520px`) y las otras seis son `prefers-reduced-motion`.
+//   Lo que esa regla hace lo dice su propio comentario: «En el telefono ocupa todo; en escritorio,
+//   un marco de 390x844 para verlo en contexto». A 1440 NO reflowea: dibuja un telefono centrado.
+//
+//   Y el eje de escritorio NO viene del criterio: en la spec de BL-P5 las palabras `escritorio`,
+//   `desktop`, `1440` y `viewport` no aparecen ni una vez, y sus «2 columnas» son un layout de tabla
+//   partida en dos mitades (`| ?ver= | Item que la cubre | | ?ver= | Item que la cubre |`), no dos
+//   plataformas. **Lo agrego este script.** Asi que esto no recorta el criterio: lo hace medir lo
+//   que el criterio pide. El denominador sigue en 54 y no se pierde ninguna fila.
+//
+//   Se capturaron 10 `criterio3-*-proto-desktop.png` antes de esto. Son evidencia cuyo NOMBRE
+//   afirma una comparacion imposible — peor que un instrumento que falla, porque acusa al producto
+//   por un defecto propio (`memoria/el-instrumento-respondio-sobre-otro-sujeto.md`).
+//
+//   Los tres ejes, y cual es medible:
+//     app@390  vs proto@390   -> SI. Es el criterio 3.
+//     app@1440 vs proto@1440  -> NO. La referencia no existe por diseno.
+//     app@390  vs app@1440    -> SI, y es util, pero NO es criterio 3: consistencia interna de la
+//                                app. De ahi salio C3-12 («Facturado este mes» da $165.000,00 a 390
+//                                y «—» a 1440, misma corrida y mismo tenant). Por eso la APP sigue
+//                                capturandose en los dos viewports.
 //
 // Versionado desde la re-medición de FE2 (2026-09-22, `dato_frontend2-a-planificacion_matriz-web-
 // re-medida.md`), con sus tres arreglos de raíz: esperar a que la pantalla termine de cargar en vez
@@ -395,8 +420,14 @@ for (const id of IDS) {
   }
   console.log(`→ ${id}  ·  ${CAMINO[id]}`);
   for (const [sufijo, viewport] of [['390', MOVIL], ['desktop', DESKTOP]]) {
+    // El PROTOTIPO solo se captura a 390 (PROTO_SOLO_390, ver el encabezado): a 1440 no reflowea,
+    // dibuja una maqueta de telefono. Una captura `proto-desktop` afirma con su NOMBRE una
+    // comparacion que no se puede hacer, y todo desvio que saliera de ella acusaria al producto por
+    // un defecto del instrumento. La APP si se captura en los dos: alimenta el eje de consistencia
+    // interna (app@390 vs app@1440), que es medible y ya rindio (C3-12).
+    const protoMedible = sufijo === '390';
     esperados.add(join(OUT, `criterio3-${id}-app-${sufijo}.png`));
-    esperados.add(join(OUT, `criterio3-${id}-proto-${sufijo}.png`));
+    if (protoMedible) esperados.add(join(OUT, `criterio3-${id}-proto-${sufijo}.png`));
     try {
       const { browser, page } = await abrirLogueado(viewport);
       try {
@@ -409,10 +440,12 @@ for (const id of IDS) {
       console.log(`  ❌ app ${id} ${sufijo}: ${e.message}`);
       fallos.push(`app ${id} ${sufijo}: ${e.message}`);
     }
-    await protoFoto(id, sufijo, viewport).catch((e) => {
-      console.log(`  ❌ proto ${id} ${sufijo}: ${e.message}`);
-      fallos.push(`proto ${id} ${sufijo}: ${e.message}`);
-    });
+    if (protoMedible) {
+      await protoFoto(id, sufijo, viewport).catch((e) => {
+        console.log(`  ❌ proto ${id} ${sufijo}: ${e.message}`);
+        fallos.push(`proto ${id} ${sufijo}: ${e.message}`);
+      });
+    }
   }
 }
 
