@@ -1,6 +1,6 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día; una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero; una octava con tasklist buscando un PID de MSYS entre los de Windows. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar. Y un PR MERGED con --json files poblado cuyo merge no cambio un byte: el control es comparar el arbol del merge con el de su padre.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día; una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero; una octava con tasklist buscando un PID de MSYS entre los de Windows. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar. Y un PR MERGED con --json files poblado cuyo merge no cambio un byte: el control es comparar el arbol del merge con el de su padre.
 metadata:
   type: feedback
 ---
@@ -481,3 +481,34 @@ el contenido** (`git log origin/main -- <path>`), no el PR que uno acaba de merg
 commit casi siempre; cuando no lo son, el que importa es el primero. Y antes de contar un merge como
 trabajo entregado, comparale el árbol con el de su padre: es más barato que leer el diff y no se puede
 malinterpretar.
+
+### Posdata, medida al escribir este caso: dos controles míos fallaron en la misma edición
+
+**(a) `perl -i -pe '...'` sale 0 aunque la regex no matchee nunca.** Actualicé el `description` de
+arriba con `perl -i -pe 's{...}{...}' archivo && echo "description actualizado"`. Imprimió
+`description actualizado`. **La sustitución no ocurrió.** El `&&` encadena con el **exit code del
+comando**, y `perl -i` considera exitoso reescribir el archivo idéntico a sí mismo: mi «evidencia»
+media que perl corrió, no que el texto cambió. Lo mismo vale para `sed -i`. **El control que
+distingue es comparar el archivo, no leer el exit:** `grep -c '<el texto nuevo>'` después, o
+directamente escribir con una herramienta que falle si el ancla no está.
+
+**(b) Y el control que puse miró el lugar donde el cambio no podía estar.** Verifiqué con
+`sed -n '1,6p' | cut -c1-120`. El `description` es una línea de ~400 caracteres y el texto agregado
+va **al final**: `cut -c1-120` imprime exactamente la parte que no cambió. Salió plausible, salió
+rápido, y no podía contradecirme ni si el cambio hubiera fallado del todo — que es lo que pasó.
+**Cuando el cambio va al final de algo, el control tiene que mirar el final** (`tail -c`, `grep` del
+texto nuevo). Un truncado por legibilidad es una decisión sobre **qué parte del sujeto se mide**.
+
+**(c) Bonus del mismo rato: `grep -c $'\r'` no cuenta CR.** Lo usé para medir si `perl -i` había
+convertido el archivo a CRLF, y devolvió 483 en el archivo nuevo y 410 en su padre — números
+creíbles que parecían confirmar la hipótesis. Son **la cantidad de líneas de cada uno**: el patrón
+no llegó a `grep` como un CR y matcheó todo. El instrumento que usé para medir el daño daba la
+respuesta que yo esperaba, **por una razón distinta de la que creía**, y con eso habría «confirmado»
+igual un archivo intacto. Lo cerró `python -c "print(open(f,'rb').read().count(b'\r'))"` → **0**, y
+`git diff --ignore-cr-at-eol` (74 líneas reales contra 869 del diff crudo).
+
+Las tres tienen la forma de esta entrada, y las tres me pasaron **mientras la escribía**. Lo único
+que las cazó fue que el número final no cerraba: un commit de *74 líneas agregadas* no puede
+reportar *471 insertions y 398 deletions*. **La aritmética que no cierra es el detector más barato que
+hay, y es el último que uno mira** — ver la señal de «dos mediciones distintas que dan el mismo
+número exacto», más arriba: misma familia, signo opuesto.
