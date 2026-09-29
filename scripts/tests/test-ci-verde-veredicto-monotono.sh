@@ -112,4 +112,20 @@ out4="$T/4.txt"
 PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out4" 2>&1
 verificar "4 rollup 6/6 SUCCESS" VERDE 0 "$?" "$out4"
 
+# --- Caso 5: el rollup NO SE PUDO LEER — «no medí» ≠ «está rojo» -------------------------------
+# `gh` existe y está autenticado, pero `gh pr view` falla (número inexistente, permiso, red). Esa
+# ruta imprimía ROJO con rc=1, IDÉNTICO a un CI con jobs fallados: medido con `ci-verde.sh 999999`
+# antes del fix. El veredicto de texto estaba bien (ROJO, fail-closed); lo que mentía era el CÓDIGO,
+# que es lo que un script consumidor lee para decidir si reintentar, avisar o mirar el CI.
+# Es el mismo molde que los casos 1 y 2, que ya distinguían «no pude medir» con rc=2: esta ruta
+# quedó afuera porque la guarda se escribió para las dos que habían dolido. Por eso el caso existe.
+cat > "$T/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+echo "gh: Could not resolve to a PullRequest with the number of 999999." >&2
+exit 1
+STUB
+out5="$T/5.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999999 > "$out5" 2>&1
+verificar "5 rollup ilegible (no medí)" ROJO 2 "$?" "$out5"
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }

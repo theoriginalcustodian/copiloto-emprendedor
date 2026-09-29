@@ -46,6 +46,7 @@
 - [🔧🤐 El workaround de RUTINA deja de parecer información](el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion.md) — 3ª vez, escribilo.
 - [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — buscá antes de reabrir.
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — no cierra hasta desplegado y probado.
+- [🎯🚫 Un criterio de cierre con algo FUERA DE ALCANCE no se cumple nunca](un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca.md) — pospuesto 2× sin medición ⇒ auditá la DEFINICIÓN, no la ejecución.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?* Si no, no terminó.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
@@ -62,6 +63,8 @@
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
 - [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) — ¿quién LEE lo que escribo?
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
+- [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) — omite Y inventa; medí el EFECTO.
+- [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) — descomponé, no compares totales
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) — muestreá la población, no el total.
@@ -75,13 +78,11 @@
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) — ¿el número lo midió alguien o lo escribió alguien?
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) — la conclusión suele sobrevivir con otro porqué.
 - [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar causa no refuta hecho.
-- [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
 - [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — el falso empuja al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) — contá definiciones, no usos.
-- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
 - [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 - [🩹🎭 Un degradado PRUDENTE hacia el caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) — grepá «ante la duda» antes de medir.
@@ -95,7 +96,6 @@
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 - [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) — el freno no es un monitor.
 - [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) — 71→4 en un día.
-- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
 - [🕳️➕ El fallback que SUSTITUYE al valor perdido hace ciego al control](el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md) — rompé cada brazo por separado; el total se conserva.
 - [📝💥 El TESTIGO del deploy se sobreescribe y borra la prueba](el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren.md) — `cat >` de ranura única. Append-only.
 
@@ -118,7 +118,6 @@
 - [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — el veredicto es la SALIDA.
 - [🚀🎭 `git push` sale exit 0 SIN haber pusheado](git-push-puede-salir-exit-0-sin-haber-pusheado.md) — el control es `ls-remote`, no el exit.
 - [🏷️ Clasificar un hallazgo por su ETIQUETA, no por su código](clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo.md) — "firma" me hizo inventar una vuln cripto; llegó mergeada a `main`.
-- [🗂️🕳️ Documentar el cambio en un comentario NUEVO deja vivo el viejo](documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo.md) — 8 de 27 líneas del proto se contradicen. Grepeá si hay uno POSTERIOR.
 
 ### Diseño y arquitectura
 - [🗓️ El metadato anti-envejecimiento lo CAUSA si anota la lectura más nueva](el-metadato-contra-el-envejecimiento-lo-causa-si-anota-la-lectura-mas-nueva.md) — eslabón más viejo.

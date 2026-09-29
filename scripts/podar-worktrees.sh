@@ -28,14 +28,33 @@
 #      minutos = una sesión que acaba de mergear y SIGUE PARADA AHÍ; borrarlo le invalida el cwd a
 #      mitad de trabajo.
 #
-# NUNCA TOCA: el worktree principal, ni nada fuera de `.claude/worktrees/` (`C:/gfw-src/…`,
-# `_documed-wt` y compañía son de otros propósitos), ni el worktree desde el que se lo invoca.
+# NUNCA TOCA: el worktree principal, ni el worktree desde el que se lo invoca, ni nada fuera de
+# las BASES declaradas (default `.claude/worktrees/`).
+#
+# ⚠️ LA BASE ES PARÁMETRO, Y ANTES ERA UN SUPUESTO VENCIDO (2026-09-29). Este filtro decía
+# literalmente «fuera de .claude/worktrees/ no se toca nunca: NO SON worktrees de trabajo de estas
+# sesiones» — cierto al escribirlo (22/09), falso una semana después: las 4 sesiones pasaron a
+# trabajar en `C:/gfw-src/wt-*`. Medido el 29/09: de 34 worktrees registrados el script clasificaba
+# **2**, ignoraba **23** por este `case`, y su resumen decía «0 no mergeados» — que se lee como «no
+# hay», cuando significaba «no miré». Un instrumento que no mira nunca falla; es la misma clase que
+# `memoria/instrumento-que-no-mira-nunca-falla.md` y la razón por la que el resumen ahora imprime
+# SIEMPRE cuántos worktrees entraron al análisis y cuántos quedaron fuera por base.
+#
+# Por qué PARAMETRIZAR y no cambiar el path hardcodeado por otro: el próximo layout de worktrees
+# vuelve a dejar el script ciego, y la ceguera es muda. Con `--base` la elección es explícita en el
+# comando, y el default conserva el comportamiento de los crones que ya lo invocan.
+#
+# El riesgo de una base equivocada es el MISMO que el de `PODAR_REF` (ver abajo): decide qué entra
+# al análisis. Por eso una base tiene que existir, no puede ser `/` ni el checkout principal, y las
+# tres guardas (mergeado + limpio + sin actividad) se aplican igual a lo que entra por `--base`.
 #
 # Uso:
 #   scripts/podar-worktrees.sh                 # dry-run: clasifica y no borra NADA (default)
 #   scripts/podar-worktrees.sh --podar         # borra sólo los PODABLE
 #   scripts/podar-worktrees.sh --horas 24      # sube la gracia
 #   scripts/podar-worktrees.sh --quiet         # sólo el resumen (para crones)
+#   scripts/podar-worktrees.sh --base /c/gfw-src            # otra base (repetible)
+#   scripts/podar-worktrees.sh --base /c/gfw-src --podar    # …y borrar lo que las 3 guardas aprueben
 #
 # Exit code: siempre 0 salvo error de uso. Esto informa, no gatea: un worktree de más no es un fallo.
 set -uo pipefail
@@ -44,11 +63,21 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PODAR=0
 QUIET=0
 HORAS_GRACIA=6
+BASES=()          # vacío ⇒ se rellena con el default `.claude/worktrees/` después de parsear flags
 while [ $# -gt 0 ]; do
   case "$1" in
     --podar) PODAR=1 ;;
     --quiet) QUIET=1 ;;
     --horas) HORAS_GRACIA="${2:-6}"; shift ;;
+    --base)
+      b="${2:-}"
+      [ -n "$b" ] || { echo "--base necesita un directorio" >&2; exit 2; }
+      b_real="$(cd "$b" 2>/dev/null && pwd -P)" || { echo "--base: no existe el directorio '$b'" >&2; exit 2; }
+      # Una base demasiado ancha mete el checkout principal y los repos vecinos al análisis. Las 3
+      # guardas seguirían protegiendo, pero el informe se vuelve ilegible y el riesgo innecesario.
+      [ "$b_real" = "/" ] && { echo "--base '/' no: metería todo el filesystem al análisis." >&2; exit 2; }
+      BASES+=("$b_real")
+      shift ;;
     -h|--help) sed -n '2,40p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "opción desconocida: $1" >&2; exit 2 ;;
   esac
@@ -57,6 +86,16 @@ done
 
 AQUI="$(pwd -P)"
 GRACIA_SEG=$((HORAS_GRACIA * 3600))
+
+# Default: el layout historico. Se resuelve DESPUES de parsear flags para que `--base` no tenga que
+# repetirlo, y contra el checkout PRINCIPAL (no $REPO_ROOT): este script corre desde un worktree y
+# ahi `$REPO_ROOT/.claude/worktrees` no existe -- el mismo pozo que ya documenta la seccion de
+# huerfanos mas abajo.
+if [ "${#BASES[@]}" -eq 0 ]; then
+  _principal="$(git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0,10); exit}')"
+  _def="${_principal:-$REPO_ROOT}/.claude/worktrees"
+  BASES+=("$(cd "$_def" 2>/dev/null && pwd -P || echo "$_def")")
+fi
 AHORA="$(date +%s)"
 
 # PODAR_REF es parametrizable SÓLO para poder testear donde `origin/main` no existe (Actions clona
@@ -131,19 +170,27 @@ tocado_recientemente() {
 }
 
 podables=(); sucios=(); no_mergeados=(); en_gracia=(); ignorados=(); rotos=()
+ANALIZADOS=0; REGISTRADOS=0
 
 while IFS= read -r wt; do
   [ -z "$wt" ] && continue
+  REGISTRADOS=$((REGISTRADOS+1))
   wt_real="$(cd "$wt" 2>/dev/null && pwd -P)" || { ignorados+=("$wt (inaccesible)"); continue; }
+  # Fuera de `.claude/worktrees/` el corte por `/worktrees/` no aplica y devolvia la ruta ENTERA,
+  # que hace ilegible el informe justo en las bases nuevas. Se cae al basename.
   nombre="${wt_real##*/worktrees/}"
+  [ "$nombre" = "$wt_real" ] && nombre="${wt_real##*/}"
 
-  # Fuera de .claude/worktrees/ no se toca nunca: no son worktrees de trabajo de estas sesiones.
-  case "$wt_real" in
-    *"/.claude/worktrees/"*) : ;;
-    *) ignorados+=("$nombre (fuera de .claude/worktrees/)"); continue ;;
-  esac
+  # Sólo entra al análisis lo que cuelga de una BASE declarada. Ver el bloque ⚠️ del encabezado:
+  # esto era un path fijo y el script quedó ciego justo donde las sesiones trabajan.
+  en_base=0
+  for _b in "${BASES[@]}"; do
+    case "$wt_real/" in "$_b"/*) en_base=1; break ;; esac
+  done
+  [ "$en_base" = "1" ] || { ignorados+=("$nombre (fuera de las bases declaradas)"); continue; }
   # Ni el worktree desde el que corre este script.
   [ "$wt_real" = "$AQUI" ] && { ignorados+=("$nombre (es el worktree actual)"); continue; }
+  ANALIZADOS=$((ANALIZADOS+1))
 
   # ── GUARDA 0 · ¿es un worktree DE VERDAD? ──────────────────────────────────────────────────
   # Medido el 2026-08-13: hay directorios registrados en `git worktree list` que perdieron su
@@ -221,6 +268,7 @@ if [ "$QUIET" = "0" ]; then
 fi
 
 if [ "$PODAR" = "0" ]; then
+  echo "🔎 CONTROL: $ANALIZADOS de $REGISTRADOS worktrees entraron al analisis ($((REGISTRADOS-ANALIZADOS)) fuera por base/actual). Un conteo de podables NO se lee sin esta linea."
   printf '\n📋 dry-run · %s podable(s) · %s sucio(s) · %s no mergeado(s) · %s en gracia (%sh) · %s roto(s) · %s huérfano(s)\n' \
     "${#podables[@]}" "${#sucios[@]}" "${#no_mergeados[@]}" "${#en_gracia[@]}" "$HORAS_GRACIA" \
     "${#rotos[@]}" "${#huerfanos[@]}"
