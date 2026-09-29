@@ -25,3 +25,30 @@ moverlo, `mv -n` (no-clobber) y verificar que el origen desapareció. Tamaño so
 contrato (< 1 KB) = pisado: `find … -name '*contrato_*' -size -1k`.
 
 Relacionado: [[buzon-se-ordena-por-janitor-no-por-disciplina]] · [[rastro-del-intento-pisa-al-hecho]]
+
+## ADENDA 2026-09-29 — `find | head -1` eligió la copia de una carpeta de ESTADO, no el original
+
+La regla de arriba dice «ubicar con `find` y `mv -n`». **La cumplí y falló igual**, por una razón que
+no estaba escrita: el `find` barría `coordinacion/` **entera**, y el buzón tiene carpetas de estado de
+otras herramientas con **los mismos nombres de archivo**. `coordinacion/.escalador-estado/` guarda 54
+copias de pedidos. Mi `find … | head -1` devolvió la copia del escalador, y el `mv` la sacó de ahí —
+tocando el estado interno de un proceso ajeno — mientras **el original seguía en `abierto/`**, sin
+cerrar.
+
+Control que lo detectó: contar el pedido en cada carpeta por separado, en vez de asumir que el `find`
+había encontrado «el» archivo. Reparado devolviendo la copia a `.escalador-estado/` y moviendo después
+el original de `abierto/`; estado final medido carpeta por carpeta (`abierto 0 · cerrado 1 ·
+escalador 54`).
+
+**Dos reglas concretas:**
+
+1. El `find` va **anclado a la carpeta de estado** que te importa (`coordinacion/abierto/`), nunca a
+   `coordinacion/` entera.
+2. Si devuelve **más de un hit, pará** — no `head -1`. Varias copias del mismo nombre significan que
+   hay estado ajeno en juego, y ahí elegir la primera es elegir al azar cuál proceso rompés.
+
+**Y un dato para el dueño del escalador:** la copia de `.escalador-estado/` y el original de `abierto/`
+tenían **sha256 distintos**, así que esa carpeta no guarda una copia fiel del pedido vigente.
+
+Emparentado: [[el-instrumento-respondio-sobre-otro-sujeto]] — el comando contestó, pero sobre otro
+archivo, y sin fallar.

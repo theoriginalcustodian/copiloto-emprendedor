@@ -128,7 +128,7 @@ Y los 17 **no son un bloque**: se descomponen en tres poblaciones con dueño y c
 |---|---|---|---|
 | **A** | **5** — el instrumento **ya sabe llegar**; nadie corrió | `apar` `comousar` `esc` `factura` `soporte` | **correr el instrumento.** Cero trabajo de código. |
 | **B** | **3** — motivo **ya escrito** en `MEDIBILIDAD`, nunca pasado al registro | `entrada` `hitl` `splash` | **transcribir**, no investigar. El instrumento explica por qué no los captura; el registro no lo sabe. |
-| **C** | **9** — trabajo real | `(vacio)` `caida` `card` `card-cliente` `card-cobro` `card-presu` `ingresar` `ingresar-error` `volver` | declarar camino + medir. **Los 9 son alcanzables** (§4). |
+| **C** | **9** — trabajo real | `(home)` `caida` `card` `card-cliente` `card-cobro` `card-presu` `ingresar` `ingresar-error` `volver` | declarar camino + medir. **Los 9 son alcanzables** (§4). |
 
 Aritmética verificada por script: 34 + 3 + 17 = **54**; 5 + 3 + 9 = **17**.
 
@@ -172,7 +172,7 @@ Lote de 12, con control positivo redescubriendo `cuenta` y `negocio` **sin mirar
 comparando después: coincidieron exactamente. Cuatro de las 12 filas tocan el **diseño** del padrón, no
 sólo su relleno:
 
-- **`tablero` y `(vacío)` son el mismo componente con el mismo testid** (`pantalla-midia`, ambas
+- **`tablero` y la home son el mismo componente con el mismo testid** (`pantalla-midia`, ambas
   plataformas). Lo que cambia es el sub-testid interno (`midia-lista` vs `midia-vacio`), no la pantalla.
   El padrón cuenta dos ids donde hay una pantalla en dos estados de datos.
 - **`apps` son dos componentes distintos según plataforma**: web resuelve a `ConnectionsScreen`
@@ -190,7 +190,8 @@ sólo su relleno:
 
 | # | hallazgo | por qué importa | severidad |
 |---|---|---|---|
-| **C3-1** | **`vacio` quedó `NO_REPRODUCIBLE_SIN_EFECTO` mientras su gemelo `vacio-visto` fue reclasificado** (Q3RECL) a `DESVÍO`. El motivo escrito para `vacio` es «no reproducible sin borrar datos reales del tenant» — pero marcar/borrar tarjetas del tenant de prueba es un UPDATE local, **no** un efecto hacia ARCA/MP/mail, que es el eje del contrato. | **El fix llegó a uno de los dos gemelos.** Y es un veredicto que **desactiva** trabajo: nadie vuelve a mirar lo marcado irreproducible, así que esa clasificación exige *más* evidencia que las otras, no menos. | 🔴 **ALTA** |
+| ~~**C3-1**~~ | ~~**`vacio` quedó `NO_REPRODUCIBLE_SIN_EFECTO` mientras su gemelo `vacio-visto` fue reclasificado** (Q3RECL) a `DESVÍO` — «el fix llegó a uno de los dos gemelos».~~ **RETIRADO 2026-09-29 17:05: era falso positivo.** Las dos filas **preguntan cosas distintas** — `vacio-visto` se responde por **ausencia de mecanismo** (no hay contador equivalente, el cuerpo nunca cambia) y `vacio` exige **ver la pantalla vacía**. El criterio real de Q3RECL, escrito en el cierre [B] `:58-60`, no es «¿es reproducible?» sino **«¿la comparación ya tiene resultado?»**. Con ese criterio, la asimetría es **correcta**. | Apliqué el patrón «el fix llegó a un gemelo» sin verificar su precondición: que ambos lados respondan lo mismo. Emparejar por simetría habría **inventado una comparación que la fila declara ausente** (`N/A — no hubo comparación`). Ver `memoria/una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md`. | ~~🔴~~ **retirado** |
+| **C3-1′** | **El cajón de `vacio` sí está mal, pero por otra razón: el estado ES reproducible sin efecto externo.** El eje del contrato es el efecto hacia afuera (ARCA/MP/mail), no tocar la DB; marcar tarjetas como `hecha` en el tenant de prueba es un UPDATE local, y `seed-midia-e2e.py` ya siembra 8 tarjetas activas — llegar a `vacio` es la operación inversa, mismo tipo y mismo costo. No corresponde `DESVÍO` (no hay comparación) **ni** `NO_REPRODUCIBLE_SIN_EFECTO` (sí es reproducible): corresponde **pendiente de medición con estado sembrado**. | `NO_REPRODUCIBLE_SIN_EFECTO` es un cajón que **apaga trabajo** — nadie vuelve a mirar lo que está ahí. Un id reproducible metido en ese cajón desaparece del plan sin que nadie decida sacarlo. **El falso positivo de C3-1 me estaba tapando este hallazgo.** | 🟠 media |
 | **C3-2** | **`cobro-voz` no está en `MEDIBILIDAD`** pese a ser el único id del padrón que exige un efecto real hacia afuera. Hoy el generador lo trataría como medible. | Un id irreproducible sin declarar produce o un fallo confuso, o la tentación de generar un cobro real para «completar la matriz». | 🔴 **ALTA** |
 | **C3-3** | **El seed existe, es idempotente, y no se está usando para el criterio 3.** 7 ids dependen de estado sembrado y el mecanismo ya está escrito y probado. | Trabajo ya pago que se está por volver a pagar — o peor, se declara «no reproducible» lo que el seed produce (ver C3-1). | 🟠 media |
 | **C3-4** | **El barrido del 2026-09-28 declara haber medido contra el checkout compartido «con cambios locales sin commitear»**, no contra `origin/main`. Verificado: su cita `ChatScreen.tsx:121` para `consent` no corresponde a nada de consent en `origin/main` (ahí esa línea es el `<Composer>`). | Un barrido medido contra un árbol sucio **no es reproducible por nadie**, ni por su autor mañana. Sus filas no se pueden citar sin re-verificar una por una. | 🟠 media |
@@ -235,14 +236,17 @@ intentos reales (`:186-194`). Dos barridos independientes, mismo mapeo: la hipó
 | **C3-A** | correr el instrumento sobre `apar comousar esc factura soporte` | auditoría (ya en curso) | 5 filas con SHA, o el fallo honesto de cada una |
 | **C3-B** | pasar al registro los motivos ya escritos de `entrada` `hitl` `splash` | dueño del registro | los 3 con motivo citado desde `criterio3-matriz.mjs:77-91` |
 | **C3-C** | declarar `CAMINO` de los 9 de la población C | **frontend** (es conocimiento de la app) | 9 entradas; los 9 son alcanzables (§4) |
-| **C3-1** | revisar la clasificación de `vacio` con la misma vara que su gemelo `vacio-visto` | quien emitió [B] | `vacio` reclasificado o su motivo re-fundado |
+| ~~**C3-1**~~ | ~~revisar la clasificación de `vacio` con la misma vara que su gemelo~~ — **retirada**, era falso positivo (§6) | — | — |
+| **C3-1′** | mover `vacio` de `NO_REPRODUCIBLE_SIN_EFECTO` a pendiente-con-estado-sembrado, y medirlo con el seed | backend (dueño del seed) + quien emitió [B] | `vacio` con comparación real contra `#calma`, o su motivo re-fundado sobre el eje correcto |
 | **C3-2** | agregar `cobro-voz` a `MEDIBILIDAD` con motivo | frontend o auditoría | entrada escrita; el motivo ya está redactado en el tono del archivo |
 | **C3-3** | usar `seed-midia-e2e.py` para los 7 ids sembrables | backend (dueño del seed) | los 7 estados alcanzados sin tocar ARCA/MP |
 | **C3-4** | re-verificar o retirar las filas del barrido del 28/09 | quien lo emitió | cada fila citada contra un SHA de `origin/main` |
 | **C3-5/6/7/8** | validar el registro de mediciones: `plataforma` obligatoria, conteo declarado = filas, `medido_contra` con SHA | planificación (dueña del contrato) | un control que **falle** ante una fila sin plataforma o sin SHA |
 
-**C3-1 es la que pido mirar primero**, y no por costo: es un veredicto que apaga trabajo. Un id marcado
-irreproducible no lo vuelve a mirar nadie, y su gemelo ya fue reclasificado por esta misma razón.
+**C3-1′ es la que pido mirar primero**, y no por costo: es un veredicto que apaga trabajo. Un id marcado
+irreproducible no lo vuelve a mirar nadie. Ojo con el argumento que **no** hay que usar para moverlo: no
+es «su gemelo fue reclasificado, emparejemos» — eso fue mi C3-1 retirada, y emparejar habría inventado
+una comparación ausente. Es que **el estado es reproducible sin efecto externo y el seed ya existe**.
 
 ---
 
