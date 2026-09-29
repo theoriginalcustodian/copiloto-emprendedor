@@ -238,9 +238,56 @@ else
   fi
 fi
 
+echo "── Caso 8: CONTROL POSITIVO del gate «MEDICIÓN QUE NO MIDE» — caza al MAL clasificado"
+# `sin_clasificar` (caso 7) caza al documento que nadie clasificó. Este caza al que está clasificado
+# MAL, que es el único camino por el que un documento analítico entra al corpus como medición.
+# Ya demostró que dispara en la vida real: en su primera corrida cazó una clave que yo había escrito
+# ADIVINANDO el basename de una tabla que lo mostraba truncado. Pero un `exit 9` sin caso en la suite
+# es una promesa — el guard que nunca se ejercita es indistinguible de un `pass`.
+cp "$CONTADOR" "$FAKE/scripts/evidencia/mudo.py"
+"$PY" - "$FAKE/scripts/evidencia/mudo.py" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+lineas = io.open(p, encoding="utf-8").read().split("\n")
+# Línea por línea, NO regex multilínea: un `\n` en un literal de regex dentro de un heredoc se
+# expande a salto real y parte el string. Es lo que rompió el caso 7 la primera vez.
+dentro, salida, saltadas = False, [], 0
+for ln in lineas:
+    if ln.startswith("MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {"):
+        dentro = True
+        salida.append(ln)
+        continue
+    if dentro:
+        if ln.startswith("}"):
+            dentro = False
+        elif "BLOQUE-A" in ln or (saltadas and ln.startswith("        ")):
+            # se saca la entrada de BLOQUE-A: su clave y las líneas de motivo que la siguen
+            saltadas += 1
+            continue
+        elif saltadas and not ln.startswith("        "):
+            saltadas = 0
+    salida.append(ln)
+assert saltadas or any("BLOQUE-A" not in l for l in salida), "no pude sacar la entrada"
+nuevo = "\n".join(salida)
+assert "BLOQUE-A-6-de-54" not in nuevo.split("MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {", 1)[1].split("\n}", 1)[0], \
+    "la entrada sigue en el dict: el fixture no fabricó el caso"
+io.open(p, "w", encoding="utf-8", newline="\n").write(nuevo)
+PYEOF
+if [ "$?" != "0" ]; then
+  fail "no pude fabricar la versión sin la excepción: el gate queda sin control positivo"
+elif "$PY" "$FAKE/scripts/evidencia/mudo.py" --json > /dev/null 2> "$TMP/mudo.err"; then
+  fail "el gate NO caza una medición declarada que aporta 0 veredictos cerrados: salió VERDE"
+else
+  if grep -q "MEDICION QUE NO MIDE" "$TMP/mudo.err"; then
+    ok "una medición declarada sin veredictos cerrados rompe el gate, por el motivo correcto"
+  else
+    fail "rompió por otra razón: $(head -2 "$TMP/mudo.err" | tr '\n' ' ')"
+  fi
+fi
+
 echo
 if [ "$fallos" = "0" ]; then
-  echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, y los dos gates tienen control"
+  echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, y los TRES gates tienen control"
   exit 0
 fi
 echo "❌ $fallos fallo(s)"

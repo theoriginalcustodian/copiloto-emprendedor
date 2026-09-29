@@ -122,6 +122,8 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    "2026-09-29_cierre_auditoria-a-planificacion_remedicion-50-de-54-confirmada-y-tu-control-a-premia-al-vector-de-ataque.md":
+        "Razona SOBRE el instrumento: cita veredictos y cifras de otros documentos para arbitrar el contador. No compara ninguna pantalla contra el prototipo y ningun id trae superficie, dimension ni `medido_contra` propio. Motivo escrito por auditoria, que se nego a auto-clasificarse.",
     "2026-09-28_dictamen_auditoria-a-planificacion_el-agregado-NO-alcanza-y-faltan-4-acciones-no-remedir.md":
         "DICTAMEN: cita 12 sujetos con veredicto para dictaminar SOBRE mediciones ajenas. Es el "
         "fixture negativo mas grande del corpus — sumarlo inflaria la cifra en 12 y se veria como "
@@ -337,6 +339,58 @@ def ubicar(patron):
     return None
 
 
+# 🔴 DOS discriminantes ESTRUCTURALES de rol fallaron, y el segundo lo medi antes de embarcarlo.
+#
+# (1) El mio: «un id sostenido por un solo documento es sospechoso». Auditoria lo rompio sin encontrar
+#     un id falso — demostro que **premia al vector de ataque**. Un documento que cita mucho corrobora
+#     a todos los demas, asi que la propiedad que lo delata es la que lo aprueba. (Y mi cifra estaba
+#     mal: reporte 0 ids de un solo documento; son 20 de los 50, con `apar`/`caida`/`soporte` entre
+#     los nuevos. Un control que absuelve y que ademas conto mal.)
+#
+# (2) El de auditoria, en reemplazo: «un documento que cubre >80% del padron es normativo». Medido
+#     antes de escribirlo, sobre el corpus real:
+#
+#         techo de MENCIONES de una medicion  : 29/54 (53%)
+#         techo de MENCIONES de un descartado : 29/54 (53%)   <- empate literal
+#         techo de VEREDICTOS de una medicion : 22/54
+#         techo de VEREDICTOS de un descartado: 12/54          <- las mediciones estan ARRIBA
+#
+#     No separa en ninguna de las dos unidades. Un gate al 80% **nunca dispararia**: un instrumento
+#     que no mira es peor que ninguno, porque entrega la garantia que no tiene. No se embarco.
+#
+# La conclusion no es «falta el discriminante bueno»: es que **el formato no codifica el rol**, y ya
+# fallo desde los dos lados. Lo que protege es (i) la clasificacion DECLARADA con exit 8 y (ii) el
+# VOCABULARIO CERRADO, que neutraliza a un analitico aunque este mal clasificado — `BLOQUE-A` esta
+# declarado medicion, es analitico, y aporta 0 ids cerrados igual.
+#
+# Lo que la medicion SI dio es un discriminante que **dispara hoy**, abajo.
+
+# Una medicion declarada que aporta CERO ids con veredicto del vocabulario cerrado esta declarada para
+# medir y no mide nada legible. No es un umbral calibrado: es la aritmetica del rol. `sin_clasificar`
+# caza al NO clasificado; esto caza al MAL clasificado, que es el unico camino por el que un analitico
+# entra al corpus como medicion.
+#
+# Los 4 de hoy son inocuos para la cifra (el vocabulario cerrado ya los neutraliza), pero su
+# clasificacion es FALSA y envenena el corpus del que lo lea manana. Se declaran con motivo, no se
+# silencian con un umbral.
+MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {
+    "2026-09-23_cierre_auditoria-a-planificacion_BLOQUE-A-6-de-54-y-que-son-realmente-las-29-filas.md":
+        "Analitico, no medicion: auditoria lo declara «misma clase que mi dictamen». Sus 6 veredictos "
+        "son vocabulario de triage (CONFIRMADO/REQUIERE_TRIAGE), no del criterio 3. Queda declarado "
+        "aca en vez de moverse a NO_SON_MEDICION porque el piso del ratchet lo cuenta como medicion "
+        "desde el 23/09 y moverlo sin que auditoria lo confirme romperia `perdidos`. [POR VERIFICAR]",
+    "2026-09-29_cierre_auditoria-a-planificacion_poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia-de-escritorio.md":
+        "Mide poblacion A, pero sus veredictos usan vocabulario de triage; 0 cerrados. Los ids que "
+        "aporta ya estan medidos en otros documentos, asi que no mueve la cifra. [POR VERIFICAR]",
+    "2026-09-21_dato_planificacion-a-frontend1_filas-nuevas-volver-e-ingresar-mobile.md":
+        "Es mio y es un ENCARGO, no una medicion: nombra 3 ids para que FE1 los mida. Aporta 0 "
+        "cerrados, que es lo correcto. Deberia moverse a NO_SON_MEDICION en el proximo barrido.",
+    "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md":
+        "Hallazgo sobre el PADRON (51 vs 54 entradas del prototipo), no sobre pantallas medidas. "
+        "Auditoria verifico que aporta 0 cerrados y 0 exclusivos.",
+}
+
+
 def descubrir_documentos(ids):
     """Descubre por glob los documentos con veredictos y exige que cada uno este CLASIFICADO.
 
@@ -349,7 +403,7 @@ def descubrir_documentos(ids):
 
     Devuelve (docs, descartados) con docs = {basename: Path} de las mediciones vigentes.
     """
-    candidatos, descartados = {}, {}
+    candidatos, descartados, cobertura, cerrados_por_doc = {}, {}, {}, {}
     for base in ("abierto", "en-curso", "cerrado"):
         raiz = COORD / base
         if not raiz.exists():
@@ -364,6 +418,11 @@ def descubrir_documentos(ids):
                                   # es un archivo que el filesystem no entrega. Ver el control abajo.
             con = medir(txt, ids)[1]
             if ids_del_criterio(con, ids):
+                # Se guarda para TODOS los candidatos, medidos y descartados: la cobertura de los
+                # descartados es la evidencia de que el discriminante separa, y sin ella el gate seria
+                # un umbral sin control positivo.
+                cobertura[p.name] = len(ids_del_criterio(con, ids))
+                cerrados_por_doc[p.name] = len(ids_del_criterio_cerrados(con, ids))
                 if p.name in NO_SON_MEDICION:
                     descartados[p.name] = NO_SON_MEDICION[p.name]
                 else:
@@ -389,9 +448,26 @@ def descubrir_documentos(ids):
               f"no existe.", file=sys.stderr)
         sys.exit(8)
 
+    # 🔴 EL GATE QUE FALTABA: `sin_clasificar` caza al NO clasificado; esto caza al MAL clasificado,
+    # que es el unico camino por el que un documento analitico entra al corpus como medicion.
+    mudos = sorted(n for n in candidatos
+                   if cerrados_por_doc.get(n, 0) == 0
+                   and n not in MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA)
+    if mudos:
+        print(f"DOCUMENTOS: MEDICION QUE NO MIDE — {len(mudos)} documento(s) declarado(s) como "
+              f"MEDICION aportan CERO ids con veredicto del vocabulario cerrado:", file=sys.stderr)
+        for n in mudos:
+            print(f"  · {n}  ({cobertura.get(n, 0)} id(s) con algo en rol de veredicto, 0 "
+                  f"interpretable(s))", file=sys.stderr)
+        print("Declarado para medir y no mide nada legible: o es analitico mal clasificado (va a "
+              "NO_SON_MEDICION con el motivo), o usa vocabulario viejo que hay que mapear, o el "
+              "parser dejo de leer su forma. Las tres hay que verlas. Si es legitimo y no aporta, "
+              "va a MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA con el motivo.", file=sys.stderr)
+        sys.exit(9)
+
     if not docs_control(candidatos):
         sys.exit(8)
-    return candidatos, descartados
+    return candidatos, descartados, cobertura
 
 
 def docs_control(candidatos):
@@ -681,7 +757,7 @@ def medir(txt, ids, armas=ARMAS):
 def main():
     ids = universo_de_sujetos()
     ciegos, retirados = control_de_cobertura(ids)
-    docs, descartados = descubrir_documentos(ids)
+    docs, descartados, cobertura = descubrir_documentos(ids)
 
     res = {"medido_en": time.strftime("%Y-%m-%d %H:%M:%S"), "universo_de_sujetos": ids,
            "cobertura_del_instrumento": {
@@ -894,6 +970,16 @@ def main():
                     for i in d["ids_del_criterio_con_veredicto_lista"]})
     ocurrencias = sum(d["ocurrencias_de_veredicto"] for d in res["lotes"].values())
     print(f"CORPUS: {len(res['lotes'])} documentos medidos · {len(descartados)} descartados con motivo")
+    # La cobertura se REPORTA y no se usa como gate: medida sobre el corpus real, el techo de una
+    # medicion y el de un descartado EMPATAN (29/54 los dos), asi que ningun umbral los separa. Queda
+    # impresa para que el proximo que proponga ese discriminante vea el empate antes de escribirlo,
+    # en vez de re-derivarlo — es la unica forma de que un callejon sin salida no se recorra dos veces.
+    _med = sorted(((cobertura[n], n) for n in docs if n in cobertura), reverse=True)
+    _des = sorted(((cobertura[n], n) for n in descartados if n in cobertura), reverse=True)
+    if _med and _des:
+        print(f"   forma del corpus (NO es un gate: no separa): la medicion que mas ids con veredicto "
+              f"aporta llega a {_med[0][0]}/{len(ids)}, el descartado que mas cita a "
+              f"{_des[0][0]}/{len(ids)} — sin brecha utilizable entre los dos roles")
     cerrada = sorted({i for d in res["lotes"].values()
                       for i in d["ids_del_criterio_con_veredicto_cerrado_lista"]})
     print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los 54 con veredicto DEL VOCABULARIO "
