@@ -90,7 +90,7 @@ import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
-import { PantallaFacturacion } from './PantallaFacturacion';
+import { CLAVE_IDEM_STORAGE_KEY, PantallaFacturacion } from './PantallaFacturacion';
 
 const CUIT = '20111111112';
 
@@ -158,9 +158,28 @@ async function montar(props: { facturaIdInicial?: string } = {}) {
   );
 }
 
+/**
+ * H-A4-5: el wizard queda detrás de "Nueva factura" -- monta la pantalla y toca el pill para llegar al
+ * mismo punto de partida que tenía toda esta suite antes del guard. El resto de los tests de esta
+ * describe no verifican el guard en sí (eso vive en su propia describe, más abajo), así que este
+ * helper les evita repetir el mismo `waitFor` + `press` en cada uno.
+ */
+async function montarYEntrarAlWizard(props: { facturaIdInicial?: string } = {}) {
+  const utils = await montar(props);
+  await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+  await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+  return utils;
+}
+
 describe('PantallaFacturacion', () => {
   beforeEach(() => {
-    jest.mocked(almacenClave.leer).mockReset().mockResolvedValue(CUIT);
+    // Diferenciado por clave: `CLAVE_CUIT_AFIP` (caché de CUIT, mismo default de siempre) vs
+    // `CLAVE_IDEM_STORAGE_KEY` (FACTID) -- un `mockResolvedValue` único devolvía el CUIT también para
+    // la idem_key, y `leerClaveIdemGuardada` lo hubiera tratado como storage corrupto (inofensivo por
+    // casualidad, pero no es lo que este mock dice probar).
+    jest.mocked(almacenClave.leer).mockReset().mockImplementation(async (clave: string) =>
+      clave === CLAVE_CUIT_AFIP ? CUIT : null,
+    );
     jest.mocked(almacenClave.guardar).mockReset().mockResolvedValue(undefined);
     jest.mocked(almacenClave.borrar).mockReset().mockResolvedValue(undefined);
 
@@ -216,7 +235,9 @@ describe('PantallaFacturacion', () => {
     await montar();
 
     await waitFor(() => expect(estadoAfip).toHaveBeenCalledWith(undefined));
-    await waitFor(() => expect(crearFactura).toHaveBeenCalledWith('20111222339'));
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledWith('20111222339', expect.any(String)));
   });
 
   /** Sin caché Y sin CUIT del backend sí es el estado inicial legítimo: el tenant no vinculó nada. */
@@ -306,7 +327,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId(testIdEsperado)).toBeTruthy());
   });
@@ -322,7 +343,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-rechazada')).toBeTruthy());
     expect(screen.getByText('todavía faltan datos para emitir')).toBeTruthy();
@@ -339,7 +360,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
     expect(screen.queryByTestId('facturacion-rechazada')).toBeNull();
@@ -351,7 +372,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-confirmar')).toBeTruthy());
     expect(screen.getByTestId('facturacion-paso-resumen-cancelar')).toBeTruthy();
@@ -367,7 +388,7 @@ describe('PantallaFacturacion', () => {
       estado: enResumen,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
     await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-confirmar')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('facturacion-paso-resumen-confirmar'));
 
@@ -390,7 +411,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-comprobante-sin-pdf')).toBeTruthy());
     expect(screen.getByTestId('facturacion-comprobante-cae')).toHaveTextContent('86294776469171', { exact: false });
@@ -409,7 +430,7 @@ describe('PantallaFacturacion', () => {
       convergio: true,
     });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-comprobante-aviso-24h')).toBeTruthy());
     expect(screen.getByTestId('facturacion-comprobante-aviso-24h')).toHaveTextContent('24 horas', { exact: false });
@@ -449,7 +470,7 @@ describe('PantallaFacturacion', () => {
       .mockResolvedValueOnce({ status: 'ok', comprobantes: [comprobanteMock({ nro: 15 })] })
       .mockResolvedValue({ status: 'ok', comprobantes: [comprobanteMock({ nro: 18 }), comprobanteMock({ nro: 15 })] });
 
-    await montar();
+    await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeTruthy());
   });
@@ -585,12 +606,182 @@ describe('PantallaFacturacion', () => {
       expect(screen.queryByTestId('facturacion-paso-resumen-datos-venta-no-disponible')).toBeNull();
     });
 
-    it('sin el parámetro sigue creando su propio borrador — el camino de siempre no cambia', async () => {
-      // El control diferencial: si este test también pasara con `crearFactura` sin llamar, los dos
-      // de arriba no estarían probando nada.
+    it('sin el parámetro -- aterriza en el listado en vez de crear su propio borrador (H-A4-5)', async () => {
+      // Contraparte del guard: CON `facturaIdInicial` arranca directo en el wizard (acción explícita ya
+      // ocurrida en la pantalla de origen); SIN él, arranca en el listado y espera el pill -- ver la
+      // describe "aterrizaje en listado" (más abajo) para el mecanismo completo. Antes de H-A4-5 este
+      // test afirmaba lo opuesto (`crearFactura` SÍ se llamaba sin ninguna acción): era el bug, no el
+      // control diferencial que el comentario decía ser.
       await montar();
 
-      await waitFor(() => expect(crearFactura).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+      expect(crearFactura).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * 🔴 **H-A4-5 (contrato `planificacion-a-todos_FACTID-mitad-frontend-idem-key-en-nueva-factura`,
+ * 2026-09-29, §4).** Antes de este fix, abrir la pantalla SIN un borrador externo (`facturaIdInicial`)
+ * creaba uno solo -- el efecto 3 llamaba `crearFactura` apenas el gate resolvía `puedeFacturar:true`,
+ * así que tocar el tile "Facturación" del escritorio creaba un borrador por el solo hecho de montar.
+ * Mismo mockup fuente que web (`Prototipo frontend/odobi-ui/mockups/05-facturacion/DECISIONES.md`): la
+ * pantalla standalone de Facturación es historial/listado, no flujo de creación. Control negativo: con
+ * el código viejo, `crearFactura` SÍ se llama sin ninguna acción del usuario -- este test falla contra
+ * ese código.
+ */
+describe('PantallaFacturacion (mobile) — aterrizaje en listado, wizard detrás de "Nueva factura" (H-A4-5)', () => {
+  // Describe TOP-LEVEL (hermano de `describe('PantallaFacturacion', ...)`, no anidado): no hereda el
+  // `beforeEach` de la línea 175, así que `crearFactura.mock.calls` arrastraría el conteo del último
+  // test ejecutado ahí sin este reset propio -- mismo patrón que el test web (`vi.clearAllMocks()` en
+  // su describe H-A4-5).
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) =>
+      clave === CLAVE_CUIT_AFIP ? CUIT : null,
+    );
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+    jest.mocked(almacenClave.borrar).mockResolvedValue(undefined);
+    jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+    jest.mocked(crearFactura).mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
+    jest.mocked(esperarEstadoEstable).mockResolvedValue({ estado: estadoMock(), convergio: true });
+  });
+
+  it('sin facturaIdInicial -- aterriza en el listado y NO crea un borrador solo', async () => {
+    await montar();
+
+    // El pill "Nueva factura" es la señal de que el listado ya pintó.
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+
+    expect(crearFactura).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('facturacion-paso-datos-venta')).toBeNull();
+    expect(screen.queryByTestId('facturacion-cargando')).toBeNull();
+  });
+
+  it('tocar "Nueva factura" -- recién ahí crea el borrador y entra al wizard', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+    expect(crearFactura).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+
+    // FACTID (2026-09-29): `crearFactura` ahora manda una `idem_key` -- ver la describe de abajo para
+    // el ciclo de vida completo. Acá sólo importa que se llame con CUIT + alguna clave.
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledWith(CUIT, expect.any(String)));
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeTruthy());
+  });
+});
+
+/**
+ * FACTID (`contrato_planificacion-a-todos_FACTID-mitad-frontend-idem-key-en-nueva-factura`,
+ * 2026-09-29, §2): la `idem_key` se genera al primer intento de crear el borrador, se REUSA mientras
+ * el intento no terminó (reintento, remonte) y se BORRA en cuanto llega el `facturaId` -- nunca al
+ * emitir. `AsyncStorage` (vía `almacenClave`, mismo adapter que `cuitCache.ts`) para sobrevivir al
+ * remonte, con TTL de 10 min. Mismos cuatro tests que la contraparte web -- mismo mecanismo, mismo
+ * contrato, ver `apps/copiloto-web/.../PantallaFacturacion.test.tsx` para el original.
+ */
+describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)', () => {
+  // Mismo motivo que el describe de arriba: top-level, sin `beforeEach` propio el conteo de
+  // `crearFactura` se arrastra entre tests (medido: "Expected 1, Received 4/5/6" antes de este fix).
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) =>
+      clave === CLAVE_CUIT_AFIP ? CUIT : null,
+    );
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+    jest.mocked(almacenClave.borrar).mockResolvedValue(undefined);
+    jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+    jest.mocked(crearFactura).mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
+    jest.mocked(esperarEstadoEstable).mockResolvedValue({ estado: estadoMock(), convergio: true });
+  });
+
+  async function irAlWizard() {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+  }
+
+  it('dos corridas del efecto SIN éxito mandan la MISMA clave (reintentoBorrador)', async () => {
+    jest.mocked(crearFactura).mockResolvedValueOnce({ status: 'no_disponible' });
+    await irAlWizard();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-error-borrador')).toBeTruthy());
+    const claveInicial = jest.mocked(crearFactura).mock.calls[0]![1];
+    expect(claveInicial).toEqual(expect.any(String));
+
+    jest.mocked(crearFactura).mockResolvedValueOnce({ status: 'no_disponible' });
+    await fireEvent.press(screen.getByTestId('facturacion-error-borrador-reintentar'));
+
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(2));
+    expect(jest.mocked(crearFactura).mock.calls[1]![1]).toBe(claveInicial);
+  });
+
+  /**
+   * 🔴 Control negativo obligatorio (§3 del contrato): sin esto, «se reusa la clave» pasa igual con una
+   * constante hardcodeada -- que sería una clave fija para siempre, deduplicando TODAS las facturas del
+   * tenant contra la primera.
+   */
+  it('después de un éxito, el intento siguiente manda una clave DISTINTA', async () => {
+    await irAlWizard();
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
+    const claveInicial = jest.mocked(crearFactura).mock.calls[0]![1];
+
+    jest.mocked(crearFactura).mockResolvedValueOnce({ status: 'ok', ok: true, facturaId: 'factura-2' });
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({ convergio: true, estado: estadoMock() });
+    // "Nueva factura" es fila FIJA (no sólo del listado): abandona el borrador recién creado y arranca
+    // otro -- ver el docstring del componente.
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(2));
+    expect(jest.mocked(crearFactura).mock.calls[1]![1]).not.toBe(claveInicial);
+  });
+
+  it('la clave sobrevive a un remonte dentro del TTL -- mismo POST en vuelo, mismo borrador', async () => {
+    // `almacenClave.guardar` ES el storage acá: lo que esta corrida guarda, la corrida siguiente (tras
+    // el remonte) lo tiene que poder leer -- por eso el mock de `leer` lee de `clavePersistida` en vez
+    // de un valor fijo.
+    let clavePersistida: string | null = null;
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave: string, valor: string) => {
+      if (clave === CLAVE_IDEM_STORAGE_KEY) clavePersistida = valor;
+    });
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => {
+      if (clave === CLAVE_CUIT_AFIP) return CUIT;
+      if (clave === CLAVE_IDEM_STORAGE_KEY) return clavePersistida;
+      return null;
+    });
+    jest.mocked(crearFactura).mockImplementation(() => new Promise(() => {})); // nunca resuelve: intento en vuelo
+    const { unmount } = await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
+    const claveInicial = jest.mocked(crearFactura).mock.calls[0]![1];
+    await act(async () => {
+      unmount();
+    });
+
+    jest.mocked(crearFactura).mockClear();
+    jest.mocked(crearFactura).mockImplementation(() => new Promise(() => {}));
+    await irAlWizard();
+
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(crearFactura).mock.calls[0]![1]).toBe(claveInicial);
+  });
+
+  it('la clave NO sobrevive fuera del TTL -- se genera una nueva', async () => {
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => {
+      if (clave === CLAVE_CUIT_AFIP) return CUIT;
+      if (clave === CLAVE_IDEM_STORAGE_KEY) {
+        return JSON.stringify({ clave: 'clave-vieja-huerfana', ts: Date.now() - 11 * 60 * 1000 });
+      }
+      return null;
+    });
+
+    await irAlWizard();
+
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(crearFactura).mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
   });
 });
