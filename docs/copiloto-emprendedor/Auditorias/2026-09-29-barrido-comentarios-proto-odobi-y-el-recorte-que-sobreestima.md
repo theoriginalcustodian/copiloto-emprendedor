@@ -10,8 +10,8 @@
 ## §0 · Método y controles
 
 - **Procedencia, recomputada y no citada.** `wc -l` = 3899, `wc -c` = 305 719; ancla `:2111` →
-  `<div id="ajustes">`, ancla `:2337` → `<div class="subp" id="s-apps">`. Hay ~28 otros `index.html`
-  bajo ese árbol: el guard de procedencia no es ceremonia, es lo único que distingue el archivo vivo
+  `<div id="ajustes">`, ancla `:2337` → `<div class="subp" id="s-apps">`. Hay **27** `index.html`
+  bajo ese árbol —26 que no son el sujeto— recomputados con `find` (control negativo `index.htmlZZ` → 0): el guard de procedencia no es ceremonia, es lo único que distingue el archivo vivo
   de una copia.
 - **Control del instrumento (mi grep).** Positivo `grep -c '<!--'` → **70** (>0). Negativo
   `grep -c 'ZZNOMATCHZZ'` → **0**. El par **discrimina**: si los dos hubieran dado lo mismo, no habría
