@@ -316,4 +316,25 @@ describe('MidiaScreen — agenda de varios días (BL-J13)', () => {
     await screen.findByTestId('midia-calendario-vacio');
     expect(screen.queryByTestId('midia-ver-agenda')).not.toBeInTheDocument();
   });
+
+  it('AGCAID: con Calendar CAÍDO no hay «Ver agenda» -- no hay agenda que mostrar', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({
+      status: 'ok',
+      servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+    });
+    render(<MidiaScreen onAbrirChat={() => {}} />);
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-caida')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-ver-agenda')).not.toBeInTheDocument();
+  });
+
+  it('AGCAID (control negativo): `nunca_conectado` -- sin catálogo con salud, «Ver agenda» sigue ofreciéndose', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({ status: 'no_disponible' });
+    render(<MidiaScreen onAbrirChat={() => {}} />);
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-ver-agenda')).toBeInTheDocument();
+  });
 });
