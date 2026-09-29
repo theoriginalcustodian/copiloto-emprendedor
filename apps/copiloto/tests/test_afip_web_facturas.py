@@ -42,7 +42,7 @@ class Espia:
         self._estricto = estricto
         self._abiertos: set[str] = set()
 
-    def iniciar_factura(self, cliente_id, cuit):
+    def iniciar_factura(self, cliente_id, cuit, idem_key=None):
         self.iniciadas.append((cliente_id, cuit))
         self._abiertos.add(_wf_id_factura(cliente_id, "fact-123"))
         return "fact-123"

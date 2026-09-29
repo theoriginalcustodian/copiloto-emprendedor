@@ -190,7 +190,7 @@ def test_crear_factura_sin_certificado_es_409_y_no_abre_workflow():
         cred_store_factory=lambda cid: store,
         handoff_factory=lambda cid: HandoffFake(),
         start_onboarding=lambda *a, **k: "wf",
-        iniciar_factura=lambda cid, cuit: (iniciadas.append(cuit), "no-deberia")[1],
+        iniciar_factura=lambda cid, cuit, idem_key=None: (iniciadas.append(cuit), "no-deberia")[1],
     )
     app = FastAPI()
     app.include_router(afip.router)
@@ -211,7 +211,7 @@ def test_crear_factura_con_certificado_sigue_funcionando():
         cred_store_factory=lambda cid: store,
         handoff_factory=lambda cid: HandoffFake(),
         start_onboarding=lambda *a, **k: "wf",
-        iniciar_factura=lambda cid, cuit: (iniciadas.append(cuit), "fact-1")[1],
+        iniciar_factura=lambda cid, cuit, idem_key=None: (iniciadas.append(cuit), "fact-1")[1],
     )
     app = FastAPI()
     app.include_router(afip.router)
