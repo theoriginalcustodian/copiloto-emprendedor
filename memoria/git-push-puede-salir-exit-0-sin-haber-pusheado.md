@@ -72,3 +72,22 @@ reintentar alcanza; la del `cd` no imprime nada útil — el comando simplemente
 esperando una autorización que nadie ve. Si un push no avanza **y no hay `fatal:`**, no reintentes:
 reescribilo sin `cd`.
 
+## El caso espejo, 2026-09-29: `gh pr merge` sale ROJO con el merge YA HECHO
+
+Auditoría mergeó el PR #708 y `gh pr merge` devolvió
+`fatal: 'main' is already used by worktree at C:/gfw-src/wt-a4reg` con exit ≠ 0. **El merge había
+ocurrido** (`state: MERGED`, 19:53:28Z, `main` de `6f969fbe` a `5278a169`). Lo que falló fue la fase
+**post-merge**: `gh` quiso hacer checkout local de `main` para borrar la rama, y con ~20 worktrees
+activos `main` ya estaba tomado por otro.
+
+**Por qué es el espejo exacto del caso de arriba y no otro bug:** ahí el exit `0` mentía diciendo
+«hice algo» sin haberlo hecho; acá el exit rojo miente diciendo «no hice nada» después de haberlo
+hecho. **Las dos direcciones del mismo error: tomar el exit code como veredicto de un efecto.** Y el
+rojo es el más peligroso de los dos, porque invita a **reintentar** una operación ya aplicada.
+
+**El control es el mismo de siempre, el EFECTO:** para un merge, `gh pr view <N> --json state`, o
+`git log origin/main` después de un `fetch`. Nunca el exit de `gh`.
+
+**Y el agravante estructural:** con muchos worktrees esto le va a pasar a cualquiera, porque `main`
+está tomado por construcción — casi ninguna sesión trabaja en el checkout principal. No es un caso
+raro: es el caso normal de este repo.

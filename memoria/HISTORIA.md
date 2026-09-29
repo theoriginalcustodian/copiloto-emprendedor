@@ -321,3 +321,5 @@ que sí enuncia una regla sin padre en el índice.
 
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. — **bajada del índice el 2026-09-29**, no por longitud: el operador movió device/EAS al SPRINT SIGUIENTE el 22/09, así que su disparador no puede dispararse en este sprint. **Subíla de vuelta el día que device vuelva a la cola.**
+- [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.  
+  ↪ **bajada del índice el 2026-09-29.** Criterio: el bucle device/Metro está FUERA de este sprint por decisión del operador del 22/09 (device/EAS al sprint siguiente). **No se bajó por longitud** — vuelve al índice cuando arranque el sprint de device. Mismo criterio con que se bajó `receta-avion-reverse-connect-destraba-dev-launcher`.
