@@ -128,7 +128,7 @@ Y los 17 **no son un bloque**: se descomponen en tres poblaciones con dueño y c
 |---|---|---|---|
 | **A** | **5** — el instrumento **ya sabe llegar**; nadie corrió | `apar` `comousar` `esc` `factura` `soporte` | **correr el instrumento.** Cero trabajo de código. |
 | **B** | **3** — motivo **ya escrito** en `MEDIBILIDAD`, nunca pasado al registro | `entrada` `hitl` `splash` | **transcribir**, no investigar. El instrumento explica por qué no los captura; el registro no lo sabe. |
-| **C** | **9** — trabajo real | `(vacio)` `caida` `card` `card-cliente` `card-cobro` `card-presu` `ingresar` `ingresar-error` `volver` | declarar camino + medir. **Los 9 son alcanzables** (§4). |
+| **C** | **9** — trabajo real | `(home)` `caida` `card` `card-cliente` `card-cobro` `card-presu` `ingresar` `ingresar-error` `volver` | declarar camino + medir. **Los 9 son alcanzables** (§4). |
 
 Aritmética verificada por script: 34 + 3 + 17 = **54**; 5 + 3 + 9 = **17**.
 
@@ -172,7 +172,7 @@ Lote de 12, con control positivo redescubriendo `cuenta` y `negocio` **sin mirar
 comparando después: coincidieron exactamente. Cuatro de las 12 filas tocan el **diseño** del padrón, no
 sólo su relleno:
 
-- **`tablero` y `(vacío)` son el mismo componente con el mismo testid** (`pantalla-midia`, ambas
+- **`tablero` y la home son el mismo componente con el mismo testid** (`pantalla-midia`, ambas
   plataformas). Lo que cambia es el sub-testid interno (`midia-lista` vs `midia-vacio`), no la pantalla.
   El padrón cuenta dos ids donde hay una pantalla en dos estados de datos.
 - **`apps` son dos componentes distintos según plataforma**: web resuelve a `ConnectionsScreen`

@@ -94,16 +94,29 @@ echo "✓ prototipo   $PROTO_URL  (HTTP 200)"
 # instrumento que no mira. Una carga del prototipo pide 1 html + 1 fuente + 7 svg a la vez, así que
 # 8 en paralelo es menos carga que la medición real: lo que falla acá falla seguro midiendo.
 fallidos="$(mktemp)"; : > "$fallidos"
+# `wait` SOLO sobre los PIDs de los curls, NUNCA pelado. Un `wait` sin argumentos espera a TODOS los
+# jobs del shell — y este script acaba de lanzar el server del prototipo con `nohup ... &` unas lineas
+# arriba. Un server no termina nunca, asi que el `wait` pelado colgaba el runner para siempre, justo
+# despues de imprimir "prototipo HTTP 200" y sin escribir una sola captura.
+# Medido el 2026-09-29 con reproduccion minima aislada: `nohup sleep 300 &` + 3 jobs que terminan ya +
+# `wait` => cuelga (timeout); con `wait $pids` => pasa; sin el server en background, el `wait` pelado
+# tampoco cuelga (control negativo). Las dos corridas que se colgaron ese dia fueron las dos en que el
+# runner levanto el server el mismo; cuando ya estaba vivo, no lo levanta y no habia job que esperar.
+pids=""
 for _ in $(seq 1 8); do
   ( curl -s -o /dev/null --max-time 4 "${PROTO_URL}?ver=soporte" || echo x >> "$fallidos" ) &
+  pids="$pids $!"
 done
-wait
+wait $pids
 lentos="$(wc -l < "$fallidos" | tr -d ' ')"
 rm -f "$fallidos"
 if [ "${lentos:-0}" -gt 0 ]; then
   echo "✗ el server de :$PROTO_PORT falló $lentos/8 pedidos EN PARALELO: no aguanta la medición."
-  echo "  → es el cuelgue intermitente medido el 2026-09-28. Matá ese server y dejá que este runner"
-  echo "    levante el propio:  PROTO_DIR='$PROTO_DIR' PORT=$PROTO_PORT node scripts/evidencia/server-proto.mjs"
+  echo "  → server realmente saturado. OJO: hasta el 2026-09-29 esta linea decia «matá ese server y"
+  echo "    dejá que este runner levante el propio» — ese consejo INVERTIA la causa y garantizaba el"
+  echo "    cuelgue, porque el runner levantaba el server con \`&\` y despues hacia \`wait\` pelado."
+  echo "    Arreglado el bug (wait sobre PIDs). Si aun asi falla, levantalo aparte y dejalo vivo:"
+  echo "      PROTO_DIR='$PROTO_DIR' PORT=$PROTO_PORT node scripts/evidencia/server-proto.mjs &"
   echo; echo "ABORTO: la precondición del server no se cumple. No se mide nada."
   exit 2
 fi
