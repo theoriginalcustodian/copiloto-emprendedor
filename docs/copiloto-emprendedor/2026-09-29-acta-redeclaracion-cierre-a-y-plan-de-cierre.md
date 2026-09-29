@@ -23,7 +23,7 @@ fila `SOP7` del tablero ya lo decía con esas palabras desde hace días; nadie s
 |---|---|
 | «se re-trabaja todo tres veces» | **Falso.** 1,51 PRs por ítem; 62 de 87 ids cerraron en un solo PR. |
 | «vamos lento» | **Falso.** El 21/09 se mergearon **85 PRs en un día**. |
-| «hay 8 ramas con trabajo perdido» | **Falso.** Las 8 son residuo: 44 archivos verificados por contenido en `main`, con canario negativo. |
+| «hay 8 ramas con trabajo perdido» | **Falso para ESE lote de 8**, cierto para otro — ver §6.bis. Las 8 medidas primero son residuo (44 archivos verificados por contenido, con canario negativo); un segundo lote **sí** tenía trabajo vivo. |
 | «4 ítems del backlog están ciegos» | **Falso.** `BL-P4` y `BL-P7` tienen DoD `[x]` con evidencia; `BL-J1` y `BL-Q5` son parciales conocidos. |
 
 **Lo que la medición sí sostiene:** 4 días consecutivos con **0 commits en cualquier rama** (24–27/09)
@@ -92,8 +92,7 @@ el criterio 4). **Nada más entra a este bloque** — cero instrumentos nuevos, 
 
 `CIVERDE2` (hecho, PR #710) · `PROTOCOM` (4 hallazgos P-1..P-4 de auditoría) · `DOCANC` · `COCHANGE`
 · `REFSAUS` · los 3 worktrees **sucios** con trabajo sin commitear (`b6-ctl-fe1`, `wt-plan2`,
-`wt-seed-midia`) · los 8 worktrees que el podador conserva y que un barrido por contenido da por
-residuo — **discrepancia entre dos instrumentos, se resuelve antes de borrarlos**.
+`wt-seed-midia`). La discrepancia de los otros 8 **quedó resuelta** — ver §6.bis.
 
 ---
 
@@ -120,3 +119,39 @@ residuo — **discrepancia entre dos instrumentos, se resuelve antes de borrarlo
   Ahora la base es parámetro y el resumen declara **siempre** cuántos entraron al análisis. PR #710.
 - **`ci-verde.sh`:** el rollup ilegible salía por `exit 1`, indistinguible de un CI en rojo. Ahora
   sale por `2` («no pude medir»), con el caso 5 en su test. Mismo PR.
+
+---
+
+## 6.bis · CORRECCIÓN 2026-09-29 — la discrepancia se resolvió, y había trabajo perdido de verdad
+
+§1 decía «las 8 ramas son residuo». **Eso era de un lote de 8, y se leía como «no hay trabajo perdido
+en ningún lado».** Un segundo lote —parcialmente distinto, 3 ramas en común— se midió después y
+**4 de sus 8 tienen trabajo vivo**. Los 3 que se solapan coinciden en ambos barridos, así que ninguna
+medición se contradice: **lo que engañaba era mi generalización, no el instrumento.**
+
+| rama | veredicto | qué falta en `main` |
+|---|---|---|
+| `backend/spike-idempotencia-facturacion` | 🔴 **vivo — y NUNCA se pusheó** | `RESULT.md` (113 líneas) + `spike.py` (199) del spike FACTID, medidos contra Postgres real. Vivía en **un solo disco**. **Empujado al remoto el 29/09** (`eae4bb86`, verificado con `ls-remote` + `cat-file`). |
+| `fe1/bl-v23-agenda-desempate-conexion` | 🔴 **vivo** | `AvisoConexionCalendario.tsx` **no existe** en `main`; `AgendaScreen`/`MidiaScreen` (web) no lo importan y `PantallaAgenda` (mobile) no tiene el desempate «caído / no conectado». Feature completa sin mergear. |
+| `auditoria/controles-propios-y-barrido-proto` | 🔴 vivo | PR **#708 abierto**. Worktree **vivo** de auditoría: no se poda aunque diera residuo. |
+| `fe1/cuit-bloqueado-bl-v27` | 🟡 vivo pero **obsoleto** | `main` ya resolvió `BL-V27` por otro camino (span envolvente en vez de prop en `Badge`) y retiró la excepción de `testid-paridad-excepciones.json`. No falta función; sobra código. |
+| `a4-fila4-ratelimit` · `a4-fila5-mp-conexion` · `blq2-blj1` · `fe1-a4-h7` | 🟢 residuo confirmado | su aporte está íntegro en `main`, línea por línea. |
+
+### La causa de la discrepancia, que es la lección
+
+Los dos instrumentos **miden cosas distintas con el mismo nombre** («¿está mergeado?»):
+
+- `podar-worktrees.sh` exige que el **archivo completo** sea **byte-idéntico** a `origin/main`.
+- El barrido por contenido exige que **lo que la rama aportó** esté **presente**.
+
+En un repo donde el mismo archivo sigue recibiendo commits de otras ramas, la identidad estricta se
+rompe con cualquier cambio posterior **no relacionado** — así el podador degrada a «no mergeada» una
+rama cuyo trabajo ya llegó entero. Es conservador y está bien que lo sea: **conservar de más cuesta
+una línea en un listado; borrar de menos cuesta el trabajo de otra sesión.** Un caso textual:
+`tool_catalog.py` daba «línea ausente» porque `main` extendió `if not creds:` a
+`if not creds or ctx.mp_cred_store.salud() == "caido":` — el guard se amplió, no se perdió.
+
+> **Y lo que casi se pierde no lo cazó ningún gate:** una rama que nunca se pusheó no aparece en
+> ningún PR, ningún CI y ninguna lista de «pendientes». El único instrumento que la ve es preguntar
+> al remoto por su ref — `git ls-remote`, no `git branch`.
+
