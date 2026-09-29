@@ -210,7 +210,99 @@ describe('PantallaFacturacion (web) — aterrizaje en listado, wizard detrás de
 
     fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
 
-    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledWith('20111111112'));
+    // FACTID (2026-09-29): `crearFactura` ahora manda una `idem_key` -- ver el describe de abajo para
+    // el ciclo de vida completo. Acá sólo importa que se llame con CUIT + alguna clave.
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledWith('20111111112', expect.any(String)));
     await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeInTheDocument());
+  });
+});
+
+/**
+ * FACTID (`contrato_planificacion-a-todos_FACTID-mitad-frontend-idem-key-en-nueva-factura`,
+ * 2026-09-29, §2): la `idem_key` se genera al primer intento de crear el borrador, se REUSA mientras
+ * el intento no terminó (reintento, remonte, segunda pestaña) y se BORRA en cuanto llega el
+ * `facturaId` -- nunca al emitir. `localStorage` para sobrevivir al remonte, con TTL de 10 min.
+ */
+describe('PantallaFacturacion (web) — idem_key en "Nueva factura" (FACTID)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock());
+  });
+
+  it('dos corridas del efecto SIN éxito mandan la MISMA clave (reintentoBorrador)', async () => {
+    mockCrearFactura.mockResolvedValueOnce({ status: 'no_disponible' });
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(screen.getByTestId('facturacion-error-borrador')).toBeInTheDocument());
+    const claveInicial = mockCrearFactura.mock.calls[0]![1];
+    expect(claveInicial).toEqual(expect.any(String));
+
+    mockCrearFactura.mockResolvedValueOnce({ status: 'no_disponible' });
+    fireEvent.click(screen.getByTestId('facturacion-error-borrador-reintentar'));
+
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(2));
+    expect(mockCrearFactura.mock.calls[1]![1]).toBe(claveInicial);
+  });
+
+  /**
+   * 🔴 Control negativo obligatorio (§3 del contrato): sin esto, «se reusa la clave» pasa igual con una
+   * constante hardcodeada -- que sería una clave fija para siempre, deduplicando TODAS las facturas del
+   * tenant contra la primera.
+   */
+  it('después de un éxito, el intento siguiente manda una clave DISTINTA', async () => {
+    mockCrearFactura.mockResolvedValueOnce({ status: 'ok', ok: true, facturaId: 'factura-1' });
+    mockEsperarEstadoEstable.mockResolvedValueOnce({ convergio: true, estado: estadoMock() });
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(1));
+    const claveInicial = mockCrearFactura.mock.calls[0]![1];
+
+    mockCrearFactura.mockResolvedValueOnce({ status: 'ok', ok: true, facturaId: 'factura-2' });
+    mockEsperarEstadoEstable.mockResolvedValueOnce({ convergio: true, estado: estadoMock() });
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(2));
+    expect(mockCrearFactura.mock.calls[1]![1]).not.toBe(claveInicial);
+  });
+
+  it('la clave sobrevive a un remonte dentro del TTL -- mismo POST en vuelo, mismo borrador', async () => {
+    mockCrearFactura.mockImplementation(() => new Promise(() => {})); // nunca resuelve: intento en vuelo
+    const { unmount } = render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(1));
+    const claveInicial = mockCrearFactura.mock.calls[0]![1];
+    unmount();
+
+    mockCrearFactura.mockClear();
+    mockCrearFactura.mockImplementation(() => new Promise(() => {}));
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(1));
+    expect(mockCrearFactura.mock.calls[0]![1]).toBe(claveInicial);
+  });
+
+  it('la clave NO sobrevive fuera del TTL -- se genera una nueva', async () => {
+    window.localStorage.setItem(
+      'copiloto-facturacion-idem-key',
+      JSON.stringify({ clave: 'clave-vieja-huerfana', ts: Date.now() - 11 * 60 * 1000 }),
+    );
+    mockCrearFactura.mockResolvedValueOnce({ status: 'ok', ok: true, facturaId: 'factura-1' });
+    mockEsperarEstadoEstable.mockResolvedValueOnce({ convergio: true, estado: estadoMock() });
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(1));
+    expect(mockCrearFactura.mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
   });
 });

@@ -791,10 +791,20 @@ function normalizarEstadoFactura(raw: EstadoFacturaRaw): EstadoFacturaResp {
 }
 
 /** `POST /afip/facturas` — Bearer requerido. Abre un borrador durable; 503 (`iniciar_factura` no
- * inyectado) → `no_disponible`, mismo criterio que `anularComprobante`. */
-export async function crearFactura(cuit: string): Promise<ConDisponibilidad<{ ok: true; facturaId: string }>> {
+ * inyectado) → `no_disponible`, mismo criterio que `anularComprobante`.
+ *
+ * `idemKey` OPCIONAL (contrato `planificacion-a-todos_FACTID-mitad-frontend...`, 2026-09-29): sin ella
+ * el comportamiento es idéntico al de antes (retrocompatible por diseño). Se manda sólo si el caller la
+ * pasa — mismo patrón condicional que `ambiente` en `conectarArca`, no una constante ni un default acá:
+ * el ciclo de vida de la clave (generar/reusar/borrar) es responsabilidad de la pantalla, no de esta capa. */
+export async function crearFactura(
+  cuit: string,
+  idemKey?: string,
+): Promise<ConDisponibilidad<{ ok: true; facturaId: string }>> {
   try {
-    const raw = await apiClient.post<{ ok: boolean; factura_id: string }>('/afip/facturas', { cuit });
+    const cuerpo: Record<string, unknown> = { cuit };
+    if (idemKey) cuerpo.idem_key = idemKey;
+    const raw = await apiClient.post<{ ok: boolean; factura_id: string }>('/afip/facturas', cuerpo);
     return { status: 'ok', ok: true, facturaId: raw.factura_id };
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) throw new SinCertificadoError(err.detail);
