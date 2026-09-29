@@ -121,6 +121,10 @@ class AjustesBody(BaseModel):
 
 class NuevaFacturaBody(BaseModel):
     cuit: str = Field(min_length=11, max_length=11)
+    # FACTID: opcional y retrocompatible — sin este campo, el comportamiento es EXACTAMENTE el de
+    # antes (factura_id aleatorio). El cliente debería generarlo una sola vez por intento real de
+    # facturar (ej. al montar la pantalla) y reenviar el MISMO valor en reintentos/dos pestañas.
+    idem_key: str | None = Field(default=None, max_length=200)
 
 
 class ConfirmarBody(BaseModel):
@@ -273,7 +277,7 @@ def create_afip_app(
         if not creds:
             raise conflicto(SIN_CERTIFICADO_AFIP, "Todavía no vinculaste tu cuenta de ARCA.")
 
-        factura_id = await _maybe_async(iniciar_factura, cliente_id, body.cuit)
+        factura_id = await _maybe_async(iniciar_factura, cliente_id, body.cuit, body.idem_key)
         return {"ok": True, "factura_id": factura_id}
 
     @app.get("/afip/facturas/{factura_id}")
