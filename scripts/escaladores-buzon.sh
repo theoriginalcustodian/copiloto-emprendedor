@@ -63,7 +63,18 @@ ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
 # Sidecar de la Regla 2 (ver edad_alta_min) — fuera de abierto/en-curso/cerrado para que ningún
 # otro escaneo del buzón lo confunda con un mensaje.
+#
+# ⚠️ Esa proteccion es por UBICACION, y el 2026-09-29 se midio que no alcanza: proteger por
+# directorio protege a los escaneos que respetan el directorio, y un `find -name '<pedido>.md'`
+# recursivo no lo respeta — devolvia DOS hits para el mismo nombre, el pedido y su sidecar. Un `>>`
+# a la ruta equivocada no da ningun error, y asi se perdieron 33 lineas de una correccion de alcance
+# del pedido BL-Q4 de FE2: el append cayo en el sidecar, el pedido se cerro seis dias despues sin
+# ellas y FE2 nunca vio la correccion. Recuperadas intactas. Por eso el sidecar ahora lleva el
+# sufijo `.first-seen` (ver edad_alta_min): ningun `find -name '*.md'` puede alcanzarlo.
 SIDECAR_DIR="$BUZON/.escalador-estado"
+# Sufijo del sidecar. Es lo que lo saca del namespace de los mensajes: se protege por NOMBRE,
+# no solo por carpeta.
+SIDECAR_SUF=".first-seen"
 
 UMBRAL_CONTRATO_MIN="${UMBRAL_CONTRATO_MIN:-120}"          # 2h, del pendiente
 UMBRAL_PEDIDO_MIN="${UMBRAL_PEDIDO_MIN:-30}"                # 30min, del pendiente
@@ -139,7 +150,7 @@ edad_min() {
 # sin importar mtime ni sidecar. Para el caso del mismo día (donde el piso no alcanza), un sidecar
 # — la primera vez que este script VE el archivo, graba cuándo; toques posteriores no lo tocan.
 edad_alta_min() {
-  local f="$1" b fecha_archivo fecha_hoy sidecar_file primera
+  local f="$1" b fecha_archivo fecha_hoy sidecar_file sidecar_legacy primera
   b="${f##*/}"                 # builtin, no `basename`: un fork menos por archivo
   fecha_archivo="${b:0:10}"
   fecha_hoy="$FECHA_HOY"       # calculada una vez arriba, no por archivo
@@ -156,7 +167,22 @@ edad_alta_min() {
     echo 999999   # de un día anterior: por encima de cualquier umbral en minutos, sin más cálculo
     return
   fi
-  sidecar_file="$SIDECAR_DIR/$b"
+  sidecar_file="$SIDECAR_DIR/$b$SIDECAR_SUF"
+  # Migracion del namespace viejo (sidecar con el nombre EXACTO del mensaje). Es idempotente y se
+  # hace por `mv`, no por copia, para que la medicion acumulada no se pierda: si se ignorara el
+  # archivo viejo, cada pedido en vuelo volveria a su primer avistamiento y el escalador pasaria a
+  # mentir HACIA ABAJO — el modo que no se nota, el mismo que ya se pago al arreglar el atajo por
+  # fecha. En --dry-run no se mueve nada, pero se LEE el viejo: un dry-run que midiera distinto que
+  # la corrida real seria un instrumento que no mide a su propio sujeto.
+  sidecar_legacy="$SIDECAR_DIR/$b"
+  if [ ! -f "$sidecar_file" ] && [ -f "$sidecar_legacy" ]; then
+    if [ "$DRY_RUN" = "0" ]; then
+      mkdir -p "$SIDECAR_DIR" 2>/dev/null || true
+      mv -f "$sidecar_legacy" "$sidecar_file" 2>/dev/null || sidecar_file="$sidecar_legacy"
+    else
+      sidecar_file="$sidecar_legacy"
+    fi
+  fi
   if [ -f "$sidecar_file" ]; then
     primera="$(cat "$sidecar_file" 2>/dev/null || echo "$now")"
   else
@@ -218,6 +244,10 @@ shopt -s nullglob
 # Acumuladores por destinatario: el reporte a stdout sigue siendo uno por contrato, pero el
 # `urgente_` que se ESCRIBE en el buzón es uno por rol (ver el bloque que cierra la regla).
 declare -A sin_tomar_n=() sin_tomar_lista=() sin_tomar_edad=() sin_tomar_viejo=()
+# sin_tomar_bc: ¿alguno de los contratos que le escalan a ESTE rol venia de un broadcast? Decide si
+# el urgente_ le explica que no se toma moviendolo — la instruccion vieja era imposible de cumplir
+# para un broadcast, y una instruccion imposible es lo que entrena a ignorar el canal entero.
+declare -A sin_tomar_bc=()
 # Glob anclado por POSICIÓN (`<fecha>_<tipo>_…`), no por substring: `*_contrato_*` se comía las
 # alertas que este mismo script autogenera, porque embeben el nombre del contrato huérfano en el
 # suyo (`…_urgente_vigilancia-a-backend_contrato-sin-tomar-<nombre del contrato>.md`). Medido en el
@@ -246,16 +276,58 @@ for f in "$ABIERTO"/????-??-??_contrato_*.md; do
   fi
   para="$(destinatario_de_nombre "$b")"
   para="${para:-todos}"
-  alarma=1
-  echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> le toca a ${para}"
-  # Se ACUMULA por destinatario en vez de escribir el urgente_ acá. Ver el bloque de abajo.
-  sin_tomar_n["$para"]=$(( ${sin_tomar_n["$para"]:-0} + 1 ))
-  sin_tomar_lista["$para"]="${sin_tomar_lista["$para"]:-}  · ${b} (${edad}min)
-"
-  if [ "${edad}" -gt "${sin_tomar_edad["$para"]:-0}" ]; then
-    sin_tomar_edad["$para"]="$edad"
-    sin_tomar_viejo["$para"]="$b"
+
+  # Un BROADCAST no se puede TOMAR, y esta regla mediía «¿lo movieron a en-curso/?». Medido el
+  # 2026-09-29: `contrato_planificacion-a-todos_cierre-A-redeclarado` llevaba 429 min escalando y
+  # NINGUNA sesion podia apagarlo — moverlo a en-curso/ lo habria borrado del abierto/ de las otras
+  # tres. O sea que la unica forma de obedecer la instruccion del urgente_ era romper el buzon.
+  #
+  # Y el costo no era el ruido: `vigilancia-check.sh` usa el exit 1 de este script para decidir si
+  # hay PARALISIS, asi que mientras un broadcast escalaba, el gate de paralisis de las cuatro
+  # sesiones estaba sonando por una causa que nadie podia resolver. Una alarma permanente es un
+  # instrumento apagado, no uno estricto — es el mismo defecto del watchdog (#394/#400) y el del
+  # ancla `^DISPARADOR:` de mas abajo, tercera reincidencia en este archivo.
+  #
+  # El fix es medir lo que la regla QUIERE decir: un broadcast se atiende REPORTANDO, no moviendo.
+  # Asi que se expande a los roles que lo heredan (roles_de_broadcast, fuente unica en
+  # lib/buzon-roles.sh) y escala solo a los que no reportaron nada DESPUES del contrato. Si todos
+  # reportaron, no hay alarma: es el control positivo de que esto se puede apagar.
+  destinos=(); es_bc=0
+  if es_broadcast_buzon "$para"; then
+    es_bc=1
+    # El mtime del contrato, no su primera vista: si alguien lo AMPLIA, el piso avanza y se vuelve a
+    # exigir un reporte mas nuevo. Es el lado conservador a proposito — ampliar un contrato es
+    # cambiarlo, y un avance_ anterior a la ampliacion no puede haberla contestado.
+    epoch_contrato="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    emisor="$(emisor_de_nombre "$b")"
+    mudos=0
+    while IFS= read -r rol; do
+      [ -n "$rol" ] || continue
+      avance_mas_reciente_epoch "$rol"
+      if [ "${AVANCE_EPOCH:-0}" -gt "$epoch_contrato" ] 2>/dev/null; then continue; fi
+      destinos+=("$rol"); mudos=$(( mudos + 1 ))
+    done < <(roles_de_broadcast "$para" "$emisor")
+    if [ "$mudos" = "0" ]; then
+      echo "BROADCAST ATENDIDO (${edad}min): $b -> todos los roles reportaron despues; no escala"
+      continue
+    fi
+    echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> broadcast '${para}', sin reporte posterior: ${destinos[*]}"
+  else
+    destinos=("$para")
+    echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> le toca a ${para}"
   fi
+  alarma=1
+  # Se ACUMULA por destinatario en vez de escribir el urgente_ acá. Ver el bloque de abajo.
+  for para_d in "${destinos[@]}"; do
+    [ "$es_bc" = "1" ] && sin_tomar_bc["$para_d"]=1
+    sin_tomar_n["$para_d"]=$(( ${sin_tomar_n["$para_d"]:-0} + 1 ))
+    sin_tomar_lista["$para_d"]="${sin_tomar_lista["$para_d"]:-}  · ${b} (${edad}min)
+"
+    if [ "${edad}" -gt "${sin_tomar_edad["$para_d"]:-0}" ]; then
+      sin_tomar_edad["$para_d"]="$edad"
+      sin_tomar_viejo["$para_d"]="$b"
+    fi
+  done
 done
 
 # UN urgente_ por DESTINATARIO, no uno por contrato. El 2026-09-21 14:52 backend tenía 6 contratos
@@ -272,6 +344,7 @@ done
 fecha_hoy="$FECHA_HOY"
 for para in "${!sin_tomar_n[@]}"; do
   n="${sin_tomar_n[$para]}"
+  hay_broadcast="${sin_tomar_bc[$para]:-0}"
   urgente="$ABIERTO/${fecha_hoy}_urgente_vigilancia-a-${para}_contratos-sin-tomar.md"
   [ "$DRY_RUN" = "0" ] || continue
   # Idempotente por DÍA y destinatario: si ya existe, se REESCRIBE con la lista actual en vez de
@@ -292,6 +365,13 @@ for para in "${!sin_tomar_n[@]}"; do
     echo
     echo "Tomalos en orden. Si alguno en realidad espera algo, declaralo con una linea"
     echo "'DISPARADOR: pendiente' en el propio contrato para que deje de escalar."
+    if [ "${hay_broadcast:-0}" = "1" ]; then
+      echo
+      echo "Alguno de los de arriba va dirigido a un BROADCAST (-a-todos_ / -a-frontend_), y esos NO"
+      echo "se toman moviendolos: sacarlo de abierto/ lo borraria del buzon de las otras sesiones."
+      echo "Se atienden REPORTANDO -- un avance_ o cierre_ tuyo posterior al contrato lo apaga para"
+      echo "vos, y solo para vos. Por eso aparece con tu nombre y no como 'todos'."
+    fi
     if [ "$n" -ge 4 ]; then
       echo
       echo "Si son mas de los que tu cola absorbe, eso es un dato para PLANIFICACION, no una deuda"
