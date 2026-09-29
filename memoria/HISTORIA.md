@@ -320,4 +320,4 @@ principio. Se baja al agregar `un-criterio-de-cierre-con-algo-fuera-de-alcance-n
 que sí enuncia una regla sin padre en el índice.
 
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
-
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. — **bajada del índice el 2026-09-29**, no por longitud: el operador movió device/EAS al SPRINT SIGUIENTE el 22/09, así que su disparador no puede dispararse en este sprint. **Subíla de vuelta el día que device vuelva a la cola.**
