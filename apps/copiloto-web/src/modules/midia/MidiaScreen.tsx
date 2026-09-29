@@ -3,14 +3,17 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  estadoDeServicio,
   ETIQUETA_CATEGORIA_TARJETA,
   fechaDeHoyMidia,
   filtrarPorCategoria,
   formatearImporte,
   horaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerCalendario,
   leerPortada,
   leerTablero,
+  listarCatalogo,
   type CalendarioMiDia,
   type CategoriaTarjeta,
   type EstadoConexion,
@@ -23,10 +26,10 @@ import {
 
 import { Button, Skeleton } from '../../design-system';
 import { EstadoVacio } from '../../design-system/EstadoVacio';
+import { AvisoConexionCalendario } from './AvisoConexionCalendario';
 import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
 import { AgendaScreen } from './AgendaScreen';
 import { PortadaNegocio } from './PortadaNegocio';
-import { useEstadoGoogleCalendar } from './useEstadoGoogleCalendar';
 import './midia.css';
 
 const SKELETON_ROWS = 3;
@@ -69,9 +72,10 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
   const [error, setError] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
-  // BL-W11/BL-V23: el desempate "nunca conectada" vs "caída" vive en el catálogo (K-09), no en
-  // `/mi-dia/calendario` — ver `useEstadoGoogleCalendar`. Compartido con `AgendaScreen`.
-  const { estadoGoogleCalendar, recargarEstadoGoogleCalendar } = useEstadoGoogleCalendar();
+  // BL-W11: `/mi-dia/calendario` sólo trae `conectado: boolean` — no distingue "nunca conectada" de
+  // "caída". Esa salud vive en el catálogo (K-09), se lee aparte y degrada en silencio (fail-soft,
+  // mismo criterio que `AvatarCuenta`): sin catálogo, el panel muestra el texto de "nunca conectada".
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
   const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
@@ -118,18 +122,32 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
     }
   }, []);
 
+  // BL-W11: mismo criterio fail-soft que `AvatarCuenta` — sin catálogo, `estadoGoogleCalendar` queda
+  // `null` y el panel cae al texto de "nunca conectada" (el mismo que mostraba antes de esta fila).
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (vivo.current && res.status === 'ok') {
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo, el panel degrada a "nunca conectada". */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
     void cargarCalendario();
     void cargarPortada();
+    void cargarSaludConexiones();
 
     function alVolverElFoco() {
       if (document.visibilityState === 'visible') {
         void cargar();
         void cargarCalendario();
         void cargarPortada();
-        void recargarEstadoGoogleCalendar();
+        void cargarSaludConexiones();
       }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
@@ -138,7 +156,7 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar, cargarCalendario, cargarPortada, recargarEstadoGoogleCalendar]);
+  }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -305,18 +323,14 @@ function PanelCalendario({
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
-    if (estadoConexion === 'caido') {
-      return (
-        <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-caida">
-          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
-          tus eventos de hoy.
-        </p>
-      );
-    }
     return (
-      <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-no-conectado">
-        Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
-      </p>
+      <AvisoConexionCalendario
+        estadoConexion={estadoConexion}
+        testIdCaida="midia-calendario-caida"
+        testIdNoConectado="midia-calendario-no-conectado"
+        mensajeCaida="Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tus eventos de hoy."
+        mensajeNoConectado="Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy."
+      />
     );
   }
 
