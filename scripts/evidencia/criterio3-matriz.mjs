@@ -139,25 +139,71 @@ const PROTO_VISTA = {
   reveal: '#reveal.on',
   ingresar: '#ingresar.on',
   consent: '#consent.on',
+  // 🆕 `vozchat` no marca una clase propia: `?ver=vozchat` clickea un disparador que
+  // monta la MISMA superficie que `hitl` (`.hitl`). Sin esta entrada el script cae a la espera
+  // por reloj y la foto puede ser de la pantalla base -- y a diferencia de `hitl`, `vozchat` no
+  // esta declarado en MEDIBILIDAD, asi que nada mas lo cubre.
+  vozchat: '.hitl',
 };
 
 async function protoFoto(verId, sufijo, viewport) {
   // Browser propio y CERRADO al final: con la máquina cargada, un Chromium colgado por captura
   // compite con los gates (ver gate-local-serial.sh).
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+  // 🆕 DOS clases de señal, DOS brazos — y NO entran en un contador (medido 2026-09-28):
+  //   · `pageerror` = excepción de JS sin atrapar ⇒ INVALIDA la captura, aborta.
+  //   · `console.error` / `http>=400` = recurso faltante; la activación puede estar INTACTA.
+  //     Abortar por esto tumbaba celdas buenas: Chrome pedía un `/favicon.ico` que el server del
+  //     proto no tenía, 1 de cada 10 cargas del MISMO id, y el fallo se movía de id en id
+  //     (`memoria/un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md`). Se AVISA y
+  //     se captura igual; el `waitForSelector` de abajo es el que decide si hubo activación.
+  const errores = [];   // sólo lo que INVALIDA la captura
+  const avisos = [];    // lo que hay que MIRAR, pero no invalida
   try {
     const ctx = await browser.newContext({ viewport: { width: viewport.ancho, height: viewport.alto } });
     const page = await ctx.newPage();
+    page.on('pageerror', (e) => errores.push(`pageerror: ${e.message}`));
+    page.on('console', (m) => { if (m.type() === 'error') avisos.push(`console.error: ${m.text()}`); });
+    page.on('response', (r) => { if (r.status() >= 400) avisos.push(`http ${r.status()} ${r.url()}`); });
     await page.goto(`${PROTO_BASE}/?ver=${verId}`, { waitUntil: 'networkidle' });
     const sel = PROTO_VISTA[verId];
     if (sel) {
       // Si la vista no monta, esto TIRA y la captura no se toma: es preferible no tener la imagen
       // a tener la de otra pantalla con el nombre de ésta.
-      await page.waitForSelector(sel, { state: 'visible', timeout: 10000 });
+      try {
+        await page.waitForSelector(sel, { state: 'visible', timeout: 10000 });
+      } catch (e) {
+        // 🆕 Los dos mensajes NO compiten: la excepción de JS puede ser LA CAUSA de que el
+        // selector no monte. Medido inyectando el TypeError real de `index.html:3472-3474` (borrar
+        // `#s-cuenta` ⇒ el proto llama `.classList` sobre null): el guard abortaba bien, pero el
+        // mensaje decía «falta `#s-cuenta.on`» y quien lo lee va a buscar el selector, no la
+        // excepción que lo tumbó. Mover el chequeo de `errores` ARRIBA del `waitForSelector` NO
+        // sirve: se pierde el caso simétrico (excepción inocua + la activación falla por otro
+        // motivo). Se ACUMULA y no elige la causa
+        // (`memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md`).
+        throw new Error(
+          `proto ${verId}: la activación NO ocurrió — falta \`${sel}\`. La foto sería de la ` +
+          `pantalla base, no de ${verId}. NO se captura: una celda no medida vale más que una medida mal.`
+          + (errores.length
+              ? ` ⚠️ Y hubo ${errores.length} excepción(es) de JS que pueden ser LA CAUSA, no un dato aparte: ${errores.join(' | ')}`
+              : ` (sin excepciones de JS: el selector falta por sí mismo, no por un error tumbando el script.)`)
+        );
+      }
       await page.waitForTimeout(250); // que asiente la transición ya montada
     } else {
       console.log(`  ⚠️  ${verId}: sin selector de vista en PROTO_VISTA — cayendo a espera por reloj`);
       await page.waitForTimeout(400);
+    }
+    // 🆕 Una excepción de JS con la vista montada igual invalida: el proto pudo montar la
+    // clase y romperse a mitad de pintar el contenido. La foto sale linda y midió algo roto.
+    if (errores.length) {
+      throw new Error(
+        `proto ${verId}: ${errores.length} excepción(es) de JS sin atrapar — la captura no es de fiar: `
+        + errores.join(' | ')
+      );
+    }
+    if (avisos.length) {
+      console.log(`  ⚠️  proto ${verId} ${sufijo}: ${avisos.length} aviso(s) NO fatales (activación verificada) — ${avisos.slice(0, 3).join(' | ')}`);
     }
     await fotoA(page, `criterio3-${verId}-proto-${sufijo}`);
   } finally {

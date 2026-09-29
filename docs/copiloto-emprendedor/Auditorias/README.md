@@ -35,12 +35,21 @@ Detalle: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 | 2026-09-21 | `2026-09-21-auditoria-A2-ola-2.md` | **Auditoría A2 — Ola 2 de la beta Odobi @ `6b410923`:** gate 5/5, backend re-corrido por test (`-rA`), 5 costuras, 18 filas (12 `[PENDIENTE_DEVICE]` · 1 ASSUMED · 1 ✅ · 4 ❌) y 6 clases de hallazgo; K-07-B «gana `requiere_conexion`» demostrado roto en runtime. Trae la **fe de erratas de A1 §1.2** |
 | 2026-09-22 | `2026-09-22-auditoria-A3-ola-3.md` | **Auditoría A3 — Ola 3 de la beta Odobi @ `debf962f`:** gate 5/5 (backend 2063), adversariales corridos, 6 filas (2 ✅ salvo device · 4 ❌: J7, J8, X8, X10), replay 15/15 y el argumento de ADR-003 refutado para #607 (memoización de `patched`, spike con SDK real; 0/69 sesiones vivas afectadas), 8 fixes (6 cierran · 2 no: pre-push de gitleaks inactivo en todo worktree, Q4 mobile manual) y 12 hallazgos |
 | 2026-09-22 | `2026-09-22-auditoria-A4-cierre-A.md` | **Auditoría A4 — Cierre A de la beta Odobi @ `b76cb47b` (= prod): NO cierra** (criterios 1 ✅ · 2 ❌ · 3 ❌ web / DIFERIDO mobile · 4 ✅). A: 9 de 10 hallazgos de A3 cierran; H-A3-1 no (un push con secreto sintético pasa). B: 9/10 ✅; X10 ❌ (el reveal termina con la O tapando «dobi», y sin O con movimiento reducido). C: 5 de 8 pantallas con diferencias no declaradas, así que los barridos de FE1 y FE2 no bastan para la matriz. Smoke 37/37 corrido por auditoría. 15 hallazgos nuevos |
-| 2026-09-22 | `2026-09-22-registro-A4-estado-vigente.md` | **📌 VIVO — estado de cierre de A4:** las 15 filas con qué era / cómo está hoy / qué lo prueba. **13 cerradas · 1 abierta (H-A4-1, la cierra push protection, que es del operador) · 1 sin decisión.** El informe de arriba es la foto del día; esto es lo que hay que leer para saber qué falta |
+| 2026-09-22 | `2026-09-22-registro-A4-estado-vigente.md` | **📌 VIVO — estado de cierre de A4:** las 15 filas con qué era / cómo está hoy / qué lo prueba. El informe de arriba es la foto del día; esto es lo que hay que leer para saber qué falta. **Incluye el re-check A5 (2026-09-23)**: veredicto del Cierre A, H-A4-1 refutado en su mitad local (el guard de `core.hooksPath` existe) y los dos hallazgos nuevos **achicados al verificarlos contra el código** — H-A5-3 resultó un docstring; H-A5-4 quedó partido: el ratchet de RLS enumera solo, pero **a nivel endpoint no hay ninguno** (17 casos a mano, 7 paths). Los conteos de filas no se citan acá a propósito: envejecen: se leen en el registro |
 
 ## Estado vigente
 
-**🏁 Empezá por `2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md`** — consolida todo lo de abajo. Lo
-que sigue queda como referencia histórica del camino, no como punto de entrada.
+**🏁 Empezá por `2026-09-22-registro-A4-estado-vigente.md`** — es el estado de cierre de la
+**beta Odobi**, el sprint en curso, y trae adentro el re-check **A5** del 2026-09-23.
+
+*Hasta el 2026-09-23 esta línea mandaba a empezar por `2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md`.
+Esa ronda cerró el 2026-08-12: sigue siendo la referencia de aquel ciclo, pero como punto de entrada
+manda a trabajar en un estado de hace seis semanas — el mismo defecto que se acaba de arreglar en el
+`HANDOFF.md`. Todo lo que sigue es historia del camino.*
+
+**Veredicto vigente (A5, 2026-09-23): el Cierre A NO cierra, por el criterio 3** — y lo que bloquea
+no es la falta de medición sino **quién mide**: el DoD pide que republique auditoría y las 29 filas
+web las publicó el propio medido. Decisión del operador, escalada con tres opciones.
 
 **Resultado de la ronda (2026-08-12): 0 P0 nuevos en las tres pasadas.** Lo más grave del ciclo
 —C4.1, el alta abierta— **no fue un hallazgo nuevo: era una fila del backlog marcada ⚠️ PARCIAL desde

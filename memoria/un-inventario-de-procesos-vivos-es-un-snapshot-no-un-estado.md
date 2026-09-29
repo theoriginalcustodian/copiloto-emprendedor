@@ -55,3 +55,31 @@ Hermanas: [[el-instrumento-respondio-sobre-otro-sujeto]] ·
 [[una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd]] ·
 [[mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo]] ·
 [[el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el]]
+
+---
+
+## El caso más difícil de ver: el dato del ARRANQUE de la sesión (2026-09-23)
+
+Una sesión avisó que el índice de memoria estaba **truncado en 207 líneas**. Medido en los cuatro
+checkouts: **ninguno pasaba de 196**. La acción que proponía —bajar entradas a `HISTORIA.md` para
+hacer lugar— **habría borrado índice sin necesidad**, y un gancho fuera del índice no lo lee ninguna
+sesión nueva: el remedio causaba el daño que quería evitar.
+
+**Pero el 207 no era falso: era viejo.** Salía del warning que el harness le inyectó **al arrancar su
+sesión**. Entre ese arranque y el momento de citarlo entraron dos commits que arreglaron el índice.
+El warning midió bien y **no se actualiza nunca**.
+
+> **Todo lo que llega al arrancar la sesión es una foto: el `git status` inicial, la lista de
+> worktrees, los warnings del harness, el estado del buzón.** Se lee como si fuera de ahora, y en una
+> sesión larga puede tener horas.
+
+Lo traicionero es que **no se parece a una medición**: no lo corriste vos, no tiene timestamp a la
+vista, y aparece arriba de todo como si fuera contexto permanente. Un `ls` viejo se nota; un warning
+de arranque, no.
+
+**Antes de actuar sobre un dato del arranque, re-medilo.** Cuesta un comando. En este caso, medirlo
+costó un `python -c` y evitó borrar entradas del índice — que es de las pocas pérdidas que **no dejan
+rastro**: nada falla cuando un gancho desaparece, simplemente nadie vuelve a encontrar esa entrada.
+
+Ver [[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]] ·
+[[el-indice-truncado-fabrica-duplicados]] · [[la-evidencia-vence-y-el-documento-no-lo-dice]].

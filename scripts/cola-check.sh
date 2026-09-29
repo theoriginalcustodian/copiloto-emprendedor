@@ -45,18 +45,26 @@ if [ ! -f "$PLAN" ]; then
   exit 2
 fi
 
+# `|| true` NO es cosmético: con `set -euo pipefail` (línea 24) un `grep` sin match mata el
+# script ACÁ, y el guard de abajo —escrito justo para «marcadores movidos»— era CÓDIGO
+# INALCANZABLE: su `echo` nunca se imprimió. El síntoma era un exit 1 MUDO que el vigilante
+# mezcla con una alarma real. Medido con control positivo el 2026-09-28.
 # Extraer sólo las líneas del bloque COLA-VIVA (entre los marcadores, sin las fences ```).
 bloque="$(awk '/COLA-VIVA:INICIO/{on=1;next} /COLA-VIVA:FIN/{on=0} on' "$PLAN" \
-          | grep -vE '^\s*```' | grep -E '\|')"
+          | grep -vE '^\s*```' | grep -E '\|' || true)"
 
 if [ -z "$bloque" ]; then
   echo "⚠️  COLA: no encuentro el bloque COLA-VIVA en PLAN.md (¿marcadores movidos?). Verificá a mano."
   exit 0
 fi
 
-arrancando=""; head_id=""; head_nombre=""; head_disp=""; malformados=""
+arrancando=""; n_arrancando=0; head_id=""; head_nombre=""; head_disp=""; malformados=""; bloqueados=""
 while IFS= read -r linea; do
-  id=$(echo "${linea%%|*}" | tr -d ' '); [ -z "$id" ] && continue
+  id=$(echo "${linea%%|*}" | tr -d ' ')
+  # Un `continue` mudo acá borraba la fila entera: una línea escrita como tabla markdown (con `|`
+  # inicial) deja el id vacío y se descartaba EN SILENCIO — la cola salía «✅ vacía» con hitos
+  # vivos adentro. Medido el 2026-09-28 con un fixture en formato tabla: 5 filas, 0 leídas, exit 0.
+  if [ -z "$id" ]; then malformados="$malformados <id-vacio:${linea:0:24}…>"; continue; fi
   resto="${linea#*|}"
   nombre=$(echo "${resto%%|*}" | sed -E 's/^ +| +$//g')
   # El estado es el ÚLTIMO campo, no el 4.º: la narrativa de un hito lleva `|` adentro (tablas,
@@ -69,24 +77,40 @@ while IFS= read -r linea; do
   # El disparador es lo que queda entre el nombre y el estado (puede traer `|`).
   disp=$(echo "$resto" | sed -E 's/^[^|]*\|//; s/\|[^|]*$//; s/^ +| +$//g')
   case "$estado" in
-    arrancando) arrancando="$id ($nombre)" ;;
+    # ACUMULA, no sobreescribe: con 3-4 sesiones en paralelo hay varios frentes activos a la vez, y
+    # un `arrancando="$id"` reportaba SÓLO EL ÚLTIMO del archivo — el resto quedaba invisible aunque
+    # el enum estuviera perfecto. Medido el 2026-09-28: B1 (auditoría) desapareció del veredicto al
+    # insertar Q3R debajo. Un frente activo que no se ve es exactamente lo que este script existe
+    # para cazar.
+    arrancando) arrancando="${arrancando:+$arrancando · }$id ($nombre)"; n_arrancando=$((n_arrancando+1)) ;;
     pendiente)  [ -z "$head_id" ] && { head_id="$id"; head_nombre="$nombre"; head_disp="$disp"; } ;;  # primer PENDIENTE = cabeza
     ✅*|❌*)     : ;;  # cerrado / entregado: tiene su propio seguimiento, no es cabeza de cola
+    # ⏳ = hecho pero trabado por un disparador EXTERNO a la cola (hoy: el push del grafo, que
+    # sólo el operador destraba). No es `pendiente` — nadie tiene que arrancarlo— ni ✅ — no cerró.
+    # Sin este caso la fila caía en `malformados` y el warning se volvía rutina: dos sesiones lo
+    # reportaron el 2026-09-28 en sus ticks, y un guard que grita en el caso normal se desarma solo.
+    ⏳*)         bloqueados="$bloqueados $id" ;;
     # Cualquier otra cosa NO se traga en silencio: un enum pisado es indistinguible de un hito
     # legítimamente cerrado, y el precio de confundirlos es no ver un frente activo.
     *)          malformados="$malformados $id" ;;
   esac
 done <<< "$bloque"
 
+if [ -n "$bloqueados" ]; then
+  echo "⏳ COLA: bloqueados por disparador externo:$bloqueados — hechos, sin poder avanzar. No son"
+  echo "    cabeza de cola ni cierres: no los re-asignes ni los cuentes como pendientes."
+fi
+
 if [ -n "$malformados" ]; then
   echo "⚠️  COLA: estado no reconocido en:$malformados — el último campo del renglón debe ser"
-  echo "    exactamente 'pendiente', 'arrancando' o empezar con ✅/❌. Un hito así es INVISIBLE"
+  echo "    exactamente 'pendiente', 'arrancando', '⏳ …' o empezar con ✅/❌. Un hito así es INVISIBLE"
   echo "    para la cola: arreglá el renglón antes de creerle al veredicto de abajo."
 fi
 
 # ── Veredicto ────────────────────────────────────────────────────────────────
 if [ -n "$arrancando" ]; then
   [ "$QUIET" = "1" ] && exit 0
+  [ "$n_arrancando" -gt 1 ] && echo "COLA: 🔥 $n_arrancando frentes activos en paralelo"
   echo "COLA: 🔥 arrancando $arrancando · siguiente: ${head_id:-— (cola casi vacía)}${head_nombre:+ ($head_nombre)}"
   exit 0
 fi

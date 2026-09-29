@@ -91,3 +91,28 @@ Y el remate: el modo de falla estaba escrito **en el comentario del propio `cola
 había leído ese mismo día al arreglar los dos casos anteriores. **Conocer el modo de falla no lo
 evita.** Lo único que lo evita es correr el instrumento **después** de editar el archivo que el
 instrumento lee — acá, un `bash scripts/cola-check.sh` de dos segundos.
+
+---
+
+## Caso 4 (2026-09-23) — lo cometí **veinte minutos después de escribir el caso 3**
+
+Agregué una fila al tablero y la cerré con `| en curso — bloqueada por GRAFO`. Ni `pendiente`, ni
+`arrancando`, ni `✅`: **inválida**. La fila quedaba invisible para `cola-check.sh`, igual que las
+nueve del caso 3.
+
+Y no fue descuido ni prisa. Fue **querer decir dos cosas en un campo que sólo admite una**: el
+estado (*en curso*) y el motivo (*bloqueada*). El enum no tiene lugar para el matiz, así que se lo
+agregué — exactamente el mismo impulso del caso 3, que fue «mejorar» `✅ cerrada` a
+`CERRADA -- #676 en main`. **El campo parseado atrae contexto como un imán**, porque es el que se
+lee de un vistazo; y es justo el que no lo tolera. El matiz va en el campo de texto libre, que está
+al lado y no tiene límite.
+
+**Lo que lo atrapó no fue acordarme de esta memoria: fue correr `cola-check.sh` inmediatamente
+después de editar.** Lo escribo así de crudo porque tenía el archivo abierto y el aprendizaje
+fresco, y lo repetí igual. La conclusión del caso 3 —«conocer el modo de falla no lo evita; lo evita
+correr el instrumento»— queda **confirmada por reincidencia**, que es la única forma seria de
+confirmarla.
+
+**Regla operativa, sin excepción:** después de editar un archivo que un instrumento parsea, **correr
+el instrumento en el mismo comando**. No al final de la tanda, no antes de commitear: en el mismo
+comando, mientras el cambio todavía es el sospechoso obvio.

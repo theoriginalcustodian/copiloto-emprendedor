@@ -52,3 +52,49 @@ depender de la configuración de un rol que el script no controla.
 un patrón no inmuniza contra él: la pregunta *"¿qué devolvería esto si lo que mido estuviera roto?"*
 hay que hacérsela **a cada instrumento nuevo**, incluido el que audita a los demás. Y hay una asimetría
 que lo hace fácil de pasar por alto: verificar la lógica del instrumento no verifica sus **permisos**.
+
+---
+
+## La otra cara: «CONFORME» en vez de «no puedo medir esto» (2026-09-23)
+
+Allá el instrumento decía **«no hay»** donde correspondía **«no veo»**. Acá dijo **«conforme»** donde
+correspondía **«no puedo medir esto»** — y es peor, porque el primero al menos suena a ausencia.
+
+Una matriz de conformidad visual comparaba capturas de la app contra el prototipo. Dos de sus filas,
+`splash` y `entrada`, figuran **COHERENTE** — y la comparación **no podía hacerse**:
+
+| | app | prototipo |
+|---|---|---|
+| `splash` | 6840 ms, **termina en estado final estable** | `setInterval` de 11 s, **en loop, sin estado final** |
+| `entrada` | 1500 ms, termina | loop de 6 s |
+
+**El lado no medible era el PROTOTIPO, no la app** — dato que importa, porque cambia el remedio: no
+hay que renunciar a medir la app, hay que **congelar el proto** (puede alcanzar con
+`animation-play-state: paused`). Sólo es irreductible si el loop no pasa por ningún frame que
+corresponda al estado final de la app.
+
+⚠️ **Y el atajo que parece la solución no lo es:** *no* emular `prefers-reduced-motion` para
+congelarlas. La app colapsa su timeout a 0 ms y la pantalla **no llega a pintarse** — se captura un
+blanco y no se entiende por qué.
+
+**El instrumento no falló.** Sacó una foto perfectamente válida de algo que no se puede medir con una
+foto. No hay nada raro en el resultado: un verde así es **indistinguible** de un verde real, y no se
+detecta mirando la salida — sólo sabiendo qué hay del otro lado.
+
+Es distinto de todos los otros defectos del mismo instrumento que aparecieron ese día (camino
+equivocado, estado equivocado, foto a mitad de transición, timeout corto): **en aquellos la fila era
+medible y se midió mal. Acá la fila no era medible y salió aprobada.**
+
+**La forma general:** *un instrumento sin el estado «no sé» convierte todo lo que no puede medir en
+un resultado*, y el resultado por defecto suele ser el que no llama la atención.
+
+**El arreglo no es medir mejor: es agregar el estado que falta.** Que cada sujeto declare **si es
+medible por este instrumento**, y que el que no lo sea **no pueda salir aprobado** — sale «no
+medible», que es honesto y distinto de «falla». Un dato que el instrumento **exige** no se puede
+olvidar; uno que el contrato pide, sí.
+
+**La pregunta que lo caza:** *¿hay algún sujeto acá que mi instrumento no pueda medir? ¿Qué devuelve
+cuando lo intenta?* Si la respuesta es «lo mismo que cuando sí puede», el verde no significa nada.
+
+Origen: la sesión de auditoría. Ver [[el-veredicto-no-dice-cuantas-veces-lo-miraron]] ·
+[[instrumento-que-no-mira-nunca-falla]] · [[el-canario-el-control-positivo-de-lo-que-falla-callado]].

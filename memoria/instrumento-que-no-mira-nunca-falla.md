@@ -111,3 +111,38 @@ adentro de un archivo con nombre inocente; el de nombre caza el archivo que el c
 Control positivo obligatorio también acá: el primer barrido tiene que encontrar algo que ya sabés
 que existe, o el «cero resultados» no distingue entre *limpio* y *mal escrito el patrón*. Lo corrí
 contra la carpeta donde acababa de mover los cinco: 4 de 4.
+
+## El caso caro: un FILTRO con falso negativo deja el buzón «vacío» sin estar vacío
+
+Lo cometí **dos veces en la misma sesión** (2026-09-23), y la segunda costó ocio ajeno medible.
+
+Para ver qué mensajes me interpelaban, filtraba el buzón por nombre. El filtro estaba mal armado:
+descartaba por un prefijo que también aparecía en los mensajes **entrantes**. Resultado: veía
+`abierto/` lleno de archivos **míos** y concluía «nadie me escribió».
+
+**Lo que había debajo, medido cuando corrí el filtro correcto:**
+
+```
+cierre_backend-a-planificacion_...     "Cola de backend vacía otra vez."
+cierre_frontend2-a-planificacion_...   "Sin frente propio abierto."
+```
+
+Las dos sesiones habían terminado su trabajo y **avisado por el canal correcto**. Mientras tanto
+`no-ocio-check.sh` las marcaba: backend **51 min girando en vacío**, frontend2 **76 min muda**.
+**127 minutos de ocio que yo leí como silencio de ellas y era ceguera mía.** El aviso existía, estaba
+bien escrito, en el lugar acordado, desde antes.
+
+**Por qué no da síntoma:** un filtro que descarta de más devuelve una lista **plausible** — no vacía,
+no rota, con archivos de verdad adentro. No hay error, no hay rojo. La forma de la salida es correcta
+y sólo el **contenido** está mutilado, que es justo lo que no se revisa cuando el resultado confirma
+lo que esperabas («nadie escribió» es una hipótesis cómoda: no exige nada).
+
+**La regla, y es la misma de arriba aplicada a un filtro:** un filtro necesita su **control
+positivo** igual que un escáner. Antes de concluir «no hay», poné a mano el caso que **sabés** que
+debería pasar el filtro y verificá que pasa. Si no tenés un caso conocido, comparar el total contra
+el filtrado ya alcanza: `N archivos, el filtro dejó 0` con N grande es una afirmación sobre el
+filtro, no sobre el buzón.
+
+**Y el corolario de dirección:** cuando dos sesiones aparecen ociosas al mismo tiempo, la hipótesis
+barata no es que las dos se distrajeron — es que **el canal por el que iban a avisar no está
+llegando**. Un ocio simultáneo apunta al lector, no a los escritores.

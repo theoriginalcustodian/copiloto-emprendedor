@@ -329,3 +329,66 @@ regla de *«medí contra el sistema real»* y aplicado controles positivos corre
 lección no falla por ignorancia: falla porque **el grep del árbol de trabajo se siente como medir**. Es
 el mismo mecanismo del caso 10 — la lección escrita no se aplica sola ni a su autor
 ([[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]]).
+
+## La precondición que se resuelve a mano se pierde justo cuando hay apuro
+
+El mismo incidente tuvo una segunda mitad: el generador necesitaba cuatro precondiciones
+(`NODE_PATH`, `CHROME_PATH`, entorno E2E, servidor del prototipo). **Las cuatro estaban documentadas
+en el header del script.** Se perdieron igual.
+
+> **Una precondición que hay que resolver a mano en cada corrida se pierde en la corrida en que uno
+> tiene apuro** — y esa es, sistemáticamente, la corrida que importa.
+
+Documentar no es un remedio: es una nota al que ya está apurado. El remedio fue un script que
+**resuelve** las cuatro y, si no puede, **aborta imprimiendo el comando exacto que falta**.
+
+## La señal de alarma: dos mediciones distintas que dan el MISMO número exacto
+
+Caso chico y rápido (2026-09-23), útil por el síntoma. Buscaba escapes unicode sin interpretar
+(`\u2014` literal, que un heredoc de bash deja crudo) en los archivos de memoria. Corrí en Python:
+
+```
+s.count("\\u2014")  ->  17      # «escapes literales»
+s.count("\u2014")      ->  17      # em-dashes reales
+```
+
+Concluí «17 escapes rotos» y, como `grep` encontraba **una** sola línea, acusé a `grep` de leer el
+archivo como binario. **`grep` tenía razón: había 1.** El heredoc se comía un backslash, así que las
+dos líneas de Python buscaban **lo mismo** — el em-dash— y por eso daban igual. Mi contador respondió,
+pero sobre **otro sujeto**.
+
+**La señal estaba a la vista y casi la paso por alto:** dos consultas que miden cosas **distintas** y
+devuelven el **mismo número exacto** son sospechosas de ser la misma consulta escrita dos veces.
+Una coincidencia así no es tranquilizadora — es la forma típica de un control que colapsó sobre su
+propio sujeto.
+
+**Y el reflejo peligroso:** cuando el instrumento propio y uno ajeno discrepan, la conclusión cómoda
+es que el ajeno está roto — inventé una explicación plausible («grep lo trata como binario») en vez
+de desconfiar del mío. La regla barata: ante discrepancia, **pedile a cada uno que imprima lo que
+encontró**, no sólo cuánto. Un `repr()` del match habría cerrado el caso en un paso.
+
+**El barrido corregido, con control:** 311 archivos, **2** escapes reales (uno recién introducido por
+mí, otro preexistente), ambos convertidos a su carácter; re-escaneo posterior → **0**.
+
+---
+
+## La variante más barata de provocar esto: un typo en el NOMBRE de una variable de entorno (2026-09-23)
+
+Se le pidió al generador medir **3 ids** pasando `IDS=...`. La variable que el script lee es
+`SOLO_IDS`. **El script ignoró el filtro, cayó a su default y midió 7 — informando con total
+normalidad.**
+
+> **Un nombre de variable de entorno mal escrito no da error: da otra medición.** No hay «variable no
+> definida» que salte, porque el script tiene un default razonable. El valor que pasaste simplemente
+> no existe para nadie.
+
+Es el mismo daño que el `git -C` sobre un worktree roto: **el instrumento contestó bien, sobre otro
+sujeto**. Y acá es peor de detectar, porque la salida tiene la forma esperada — sólo el N delata, si
+alguien lo mira.
+
+**El remedio no es acordarse del nombre: es quitarle la oportunidad.** Que el script tome los sujetos
+como **argumento posicional**, que no se puede errar sin que falte, en vez de una variable de entorno
+opcional que se puede escribir mal en silencio.
+
+**Y el control que lo caza en cualquier corrida:** *comparar el N pedido contra el N medido*. Si
+pediste 3 y el informe dice 7, no hace falta saber por qué para saber que no sirve.

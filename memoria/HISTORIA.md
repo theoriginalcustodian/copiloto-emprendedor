@@ -261,7 +261,45 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.
 - [Un procedimiento nuevo mueve el instrumento a un contexto que nadie probó](un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo.md) — detached: stage compartido (#632) y recibo perdido (#634).  _(bajada del índice 2026-09-23 por el techo de 24.000 chars; la entrada sigue viva en `memoria/`)_
+- **Cerrados de la beta Odobi** (bajado del índice 2026-09-23): AFIP E2E en device · presupuestos + perfil · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]] — *clientes por voz sigue ABIERTO y quedó en el índice.*
 
+## Bajadas del índice
+
+- [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
+  *(bajada el 2026-09-23 por presupuesto del índice: aplica sólo al aplicar `patch` de Temporal sobre workflows vivos, que no está en la cola de ninguna sesión. Sigue buscable acá.)*
+- [🎤🔒 El Playwright MCP compartido es de UNA sesión y no concede el micrófono](playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono.md) — bajada del índice 2026-09-23: su única referencia vivía dentro del gancho de `git-stash-es-comun-a-todos-los-worktrees`, y al comprimir esa línea la entrada quedó huérfana.
+- [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
+  *(bajada del índice el 2026-09-23 por presupuesto. Sigue vigente: si `core.hooksPath` queda absoluto, el pre-push de TODOS los worktrees usa un hook viejo y sin gitleaks — en un repo público eso es el escáner de secretos apagado. Buscable acá.)*
+
+## Movidos del índice el 2026-09-28 (cupo justo, entra la entrada del adversario E2E)
+
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja; pero está MEZCLADO: diffeá el archivo, no cuentes commits. — **bajada el 2026-09-28 por cupo:** su contenido operativo ya está DUPLICADO en la sección `Estado vivo` del índice («Checkout compartido: MEZCLADO — diffeá el archivo; el contador de commits no lo mide»), que se carga primero y es la que alguien lee al arrancar. Dos líneas para el mismo hecho es lo que hace que el índice se pase del techo y trunque la cola.
+
+- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`. — **bajada el 2026-09-28:** su consecuencia operativa se desinfló el mismo día. Auditoría midió que `orchestrator/sync.py:94` calcula `expected` sobre el grafo COMPLETO, no sobre el subgrafo del `--since` (que alimenta sólo la ingesta, `:65-88`), y el docstring lo declara deliberado «para no borrar lo no tocado». O sea: la base del `--since` no mueve el conteo del reconcile, que era lo que hacía útil saber contra qué rama se calculaba. El hecho sigue siendo cierto; lo que ya no cuelga de él es una decisión.
+
+- [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — caso particular ya cubierto por la regla dura de checkout compartido (canon 9).
+- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. — ya cubierta por la regla dura del canon 9 (prohibido `stash` en checkout compartido).
+- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está. — ya es la práctica por defecto; el MCP de github no se usa desde meses.
+- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo. — ya vive en el `CLAUDE.md` global como postura; baja por cupo, no por falsa.
+- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica — es la regla 6 del `CLAUDE.md` del repo; baja por cupo, no por falsa.
+- [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado. — baja por cupo: es la regla 2 del `CLAUDE.md` del repo.
+- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró". — baja por cupo: específica de un cálculo de negocio puntual.
+- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie. — baja por cupo: su lección vive operativa en la junta con dueña de §3.quater.
+- [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — default: sigue vigente. — baja por cupo; sigue vigente como regla.
+- [🎯📏 La regla que manda a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — qué regla te desvía. — baja por cupo del índice; sigue vigente.
+- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — leé el `WHERE`, no el nombre. — baja por cupo del índice; sigue vigente.
+- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando esté listo" no llega. — baja por cupo del índice; sigue vigente.
+- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
+- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
+- [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
+- [🧪🔌 Aislar un binario del PATH se hace por WHITELIST, no por dirname](aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname.md) — `dirname(sh):dirname(cat)` asumía separación que el runner no tenía. — **bajada el 2026-09-28 por cupo de chars** (entra el testigo del deploy). Su lección vive CO-LOCALIZADA donde únicamente aplica: `scripts/tests/test-ci-verde-gh-presente.sh:28-31` explica el fallo de `msys-2.0.dll`, y `test-ci-verde-veredicto-monotono.sh:72-74` lo cita («el mismo molde [...] No se reinventa»). Quien escriba el próximo test de aislamiento copia ese molde y lee el porqué ahí; no llega por el índice.
 ## 🔄 2026-09-23 — cupo justo, entra una entrada nueva
 
-- [`patched()` se memoiza por run: un fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new. Medí con `TemporalChangeVersion`. Bajada (backend, cupo justo) para entrar [[aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname]]: caso narrow de Temporal, baja recurrencia con el sprint cerrando.
+## Bajadas del índice el 2026-09-28 (techo de líneas; la lección quedó CO-LOCALIZADA)
+
+> No se bajaron por ser menos importantes: se bajaron porque la regla ya vive donde dispara,
+> así que perder el renglón del índice no pierde la lección.
+
+- [vácio no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — «horneá el control en el script» pasó a ser ESTRUCTURA: el canario por brazo de `scripts/evidencia/contar-veredictos.py` (exit 5) y `scripts/tests/test-ci-verde-veredicto-monotono.sh`. Y su versión más filosa entró al índice el mismo día: `el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md`.
+- [contar un símbolo no dice en qué rol aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — es literalmente el docstring de `veredictos_de()` («Cuenta la FORMA, no el símbolo») y lo vigila `por_forma` más el canario.
+- [el guard que caza a su propio autor](el-guard-que-caza-a-su-propio-autor.md) — «si nunca te frenó, no sabés si funciona» pasó a ser ESTRUCTURA el 2026-09-28: el canario por brazo de `contar-veredictos.py` sale por exit 5 si romper un brazo no mueve la métrica, y el renglón nuevo `el-fallback-que-sustituye-…` la subsume con la regla accionable («rompé cada brazo por separado»).

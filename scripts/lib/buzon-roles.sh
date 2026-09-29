@@ -73,9 +73,22 @@ rol_regex_buzon() {
 # un falso positivo es acusar, y sólo el segundo desarma el gate.
 firma_patrones() {
   local s="$1"
-  printf '%s\n' "*_${s}-a-*"
+  # `frontend` es BROADCAST, no un emisor: NADIE firma `frontend-a-`. Medido 2026-09-23 sobre 353
+  # mensajes del buzón: `frontend1-a-` 64 · `frontend2-a-` 56 · `frontend-a-` **0**. Pedirle la
+  # firma devolvía un patrón que no matchea a nadie, el `find` daba 0 archivos y `no-ocio-check.sh`
+  # lo leía como "buzón mudo" -> centinela -> DEAD-MAN falso sobre frontend1 mientras tenía 11
+  # archivos commiteados. El desdoble frontend1/frontend2 arregló el lado DESTINATARIO
+  # (lee_patrones) y dejó el lado EMISOR contestando por un rol que no escribe nunca.
+  if [ "$s" = "frontend" ]; then
+    printf '%s
+' '*_frontend1-a-*' '*_frontend2-a-*' '*_frontend-a-*'
+    return
+  fi
+  printf '%s
+' "*_${s}-a-*"
   case "$s" in
-    frontend1|frontend2) printf '%s\n' '*_frontend-a-*' ;;   # firmas previas al desdoble
+    frontend1|frontend2) printf '%s
+' '*_frontend-a-*' ;;   # firmas previas al desdoble
   esac
 }
 
