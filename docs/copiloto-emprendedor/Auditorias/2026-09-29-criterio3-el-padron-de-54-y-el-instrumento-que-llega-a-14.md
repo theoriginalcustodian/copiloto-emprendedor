@@ -589,3 +589,157 @@ en el generador, y el próximo que lo lea va a buscar un falso verde que no exis
 planificación: actualizar ese comentario** (es `scripts/`, tuyo). Es el caso exacto de
 `el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio`: **el registro envejece en silencio y el
 comentario es el último en enterarse.**
+
+---
+
+# ADENDA 20:10 — **me corrijo dos veces**, y una de las correcciones destapó un DESVÍO que no existe
+
+Esta adenda corrige dos afirmaciones **mías** publicadas en la adenda anterior de este mismo
+dictamen. Las dos venían del mismo defecto de método, y una de ellas estaba a punto de costar una
+decisión de producto sobre una pantalla que ya coincide.
+
+## 1. 🔴 Corrección de (a): **11 de 20 filas del lote A midieron a 1280×900**
+
+La adenda anterior abre con «**(a) 🟢 Ninguno de los veredictos previos midió contra
+`proto-desktop`. Los 38 no están contaminados por C3-10**». **Es falso.**
+
+FE1 contestó la pregunta de una línea que había despachado, **midiendo los archivos**; lo verifiqué
+leyendo el IHDR de los 54 PNG de `evidencia-out/bl-q3-v2-lote-a/`:
+
+```
+{(1280, 900): 30, (390, 844): 24}
+```
+
+**Por qué mi instrumento no podía encontrarlo.** Grepeé `1440` — el ancho que usa **mi** generador
+(`criterio3-matriz.mjs:54`). FE1 capturó a **1280**. El `0` no era evidencia de ausencia: era un
+control positivo calibrado al valor que **yo mismo** produzco. No decía «no hubo comparación de
+escritorio», decía «no hubo comparación con *mi* escritorio». Lo que destapó el error fue haber
+declarado el límite y despachado la pregunta — no el instrumento.
+
+### El desglose correcto: dos regímenes, y ninguna fila los declara
+
+Cruzado **fila por fila contra el ancho real del PNG que cada una cita** (control: 35 PNG citados,
+**0 ausentes**):
+
+| régimen | filas | ids |
+|---|---|---|
+| **@1280×900** ambos lados | **11** | `afip` · `agenda`-A · `ajustes` · `apps`-Connections · `bi` · `bi-refresh` · `bloqueado` · `clientes`-listado · `clientes`-ficha · `consent` · `cuenta` |
+| **@390×844** ambos lados | **6** | `chat` · `preg` · `feedback` · `card-factura` · `fact-hitl` · `fact-cae` |
+| sin PNG (sustento por lectura) | **3** | `agenda`-B · `apps`-AppsScreen · `bi-vacio` |
+
+**Y qué es realmente un `proto-*@1280`.** El prototipo **no reflowea**: `prototipo/index.html:63`
+
+```css
+@media (min-width:520px){ #app{width:390px;height:844px;border-radius:40px;
+     border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.18)} }
+```
+
+A cualquier ancho ≥520px dibuja **un teléfono de 390×844 centrado, con marco y sombra**. Así que una
+captura `proto-*@1280` no es «el proto a escritorio»: es **el proto móvil dentro de un marco**. Las
+11 filas @1280 compararon *app con layout de escritorio* contra *proto móvil enmarcado* — **dos
+sujetos distintos**. (El mecanismo lo aportó planificación; la línea está verificada acá.)
+
+## 2. 🔴 C3-17 · el DESVÍO `bi` es un **falso positivo de captura**
+
+El motivo escrito dice: «app muestra **2 cards** (Gastos/Cobrado) vs proto **4 cards**
+(Ingresos/Gastos/Facturado/Cobrado) + bloque "Saldo en caja"/"Entró" que la app no expone así».
+
+**Las dos afirmaciones son falsas**, verificado por **código**, no por foto:
+
+| la afirmación | lo que dice el código |
+|---|---|
+| «la app muestra 2 cards» | `InteligenciaScreen.tsx:224-227` renderiza **las 4**: `['Ingresos',…]['Gastos',…]['Facturado',…]['Cobrado',…]` |
+| «la app no expone Saldo en caja / Entró» | `:200-211` renderiza **«Saldo en caja»** + mini-grid **Entró/Salió**, y `:196` cita literal el mockup **`.bi-grid`** — que es el selector del proto `:731` |
+| el lado proto | `index.html:1960-1963` las 4 `kpi` idénticas · `:1945-1949` «Saldo en caja» + `Entró` |
+
+Están construidos uno contra el otro.
+
+**El mecanismo es C3-10 puro.** Miré las dos capturas: el **Rail lateral expandido tapa la columna
+izquierda entera** de una grilla de 2 columnas. Las 2 cards contadas como «las que tiene la app» son
+la **columna derecha**; `Ingresos` y `Facturado` —justo las dos declaradas ausentes— están **debajo
+del Rail**. Ídem `Entró`, tapado, mientras `Salió` se lee. El Rail **sólo existe en el shell de
+escritorio** (`InteligenciaScreen.tsx:121`: «web conserva su propio chrome (Rail/TabBar)»): a 390 no
+hay Rail y no habría nada tapado.
+
+`medido_contra:` app = `InteligenciaScreen.tsx` sha256 `16dc85cd…`, último commit **`2c247335` del
+21/09**, o sea **sin tocar desde antes de la captura del 28/09**: la app fotografiada es exactamente
+ésta. proto = `7f63e94e…` (working tree de hoy; el suyo fue `proto@54fac3ea`, que no puedo igualar —
+lo declaro).
+
+**Estado:** planificación lo tenía como «pregunta de producto» (§4) y lo **retiró** al recibir esto.
+Queda como recaptura sin Rail + reclasificación a COHERENTE. Dueño: FE1.
+
+## 3. El criterio de validez de una fila @1280 — general, no caso por caso
+
+Verifiqué los **6** DESVÍO @1280 motivo por motivo, porque «el ancho no invalida ninguno» es un
+veredicto que **desactiva trabajo** y exige más evidencia, no menos:
+
+| DESVÍO @1280 | qué mira su motivo | veredicto |
+|---|---|---|
+| `ajustes` | grid plano vs 3 secciones con encabezados → **contenido** | sobrevive |
+| `apps`-Connections | taxonomía de agrupación → **contenido** | sobrevive |
+| `consent` | causa raíz `kind:payments` vs `kind:composio` → **backend** | sobrevive |
+| `cuenta` | inventario de filas → **contenido** | sobrevive |
+| `bloqueado` | composición de controles → **contenido** (y atribuyó el frame mobile-card al proto) | sobrevive |
+| **`bi`** | **cuántas cards se ven → visibilidad del render** | **🔴 CAE** |
+
+**La regla que sale de acá, y reemplaza la verificación a mano:** una fila @1280 **sobrevive si su
+motivo es sobre contenido**, y **cae si es sobre disposición o visibilidad**. El contenido no depende
+del ancho de la referencia; cuántos elementos se ven, sí.
+
+## 4. 🟠 C3-18 · el contador suma las **notas de corrección de vocabulario** como veredictos: 13 donde hay 11
+
+Segunda corrección mía. La adenda anterior dice «**13 desvíos, no ≥3**». **13 es correcto en
+veredictos y equivocado como trabajo.** El JSON del contador da 13 ocurrencias, y **dos traen
+`"corregido": true`** en las líneas `:113` y `:120` del lote B — que están bajo el encabezado
+`## Corrección de vocabulario 2026-09-28` y son **re-menciones** de `tablero` y `gastos`, ya contados
+en `:23` y `:31`.
+
+| unidad | cifra |
+|---|---|
+| ocurrencias de DESVÍO (lo que reporta el contador) | **13** |
+| **sujetos con DESVÍO** (lo que es trabajo) | **11** |
+| menos `bi`, falso positivo (§2) | **10 desvíos reales** |
+
+**11 coincide exactamente con el triage de FE1** («triage de los 11 DESVÍO»): FE1 tenía el número
+bien y el mío traía el doble conteo. El brazo `reclasif` del canario **ve** esas formas —por eso
+aparecen— pero las **suma** en vez de deduplicar por sujeto. Dueño: planificación (`scripts/` suyo).
+
+**Es la tercera vez en esta misma auditoría que la unidad rompe una cifra:** veredictos ≠ sujetos ≠
+comparaciones · archivos ≠ pares (35 archivos son **6** pares completos) · y ahora menciones ≠
+sujetos. Deja de ser un desliz: **cada cifra declara su unidad o no se cita.**
+
+## 5. La clase que vale más que el caso: **nadie audita un COHERENTE**
+
+La salvedad del Rail —«la captura quedó parcialmente tapada… si hace falta certeza total,
+recapturar»— está escrita en `bi` (**DESVÍO**, acusa) y **no** en `bi-refresh` (**COHERENTE**,
+absuelve). Misma pantalla, mismo ancho, mismo método, misma corrida. Verifiqué mirando las dos
+imágenes: **el Rail tapa idénticamente la misma columna en las dos.**
+
+`bi-refresh` **sobrevive** —lo que afirma («Actualizando…» idéntico) está en la zona visible— pero
+eso es suerte, no método. De los 9 COHERENTE del lote A, **2 están @1280** (`bi-refresh` y
+`clientes`-listado, éste re-declarado por lectura de código): los dos sobreviven por razones
+nombrables, y **nadie los había mirado hasta hoy**.
+
+**El sesgo de revisión tiene dirección.** Se audita lo que acusa. Un falso DESVÍO cuesta una
+recaptura y alguien lo encuentra al ir a arreglarlo; **un falso COHERENTE cierra un frente que
+estaba roto y no deja rastro** — y es el veredicto que desactiva trabajo, o sea el que menos ojos
+recibe y el que menos puede permitírselo.
+
+**El fix estructural: una salvedad de captura es de la CORRIDA, no de la fila.** Se declara una vez
+y se hereda a todas las filas que citan PNG de esa corrida; el que quiera exceptuar una, lo escribe.
+Al revés no funciona, porque depende de que el autor sospeche justo en la fila correcta.
+
+## 6. Filas que deja esta adenda
+
+| fila | dueño |
+|---|---|
+| `bi`: recapturar sin Rail + reclasificar a COHERENTE | FE1 |
+| marcar las 11 filas @1280 con `medido_contra: <archivo>@<ancho>x<alto>` | FE1 |
+| C3-18: deduplicar por sujeto las notas de reclasificación en el contador | planificación |
+| salvedad de captura heredada por corrida, no por fila | planificación (norma del registro) |
+| cada cifra declara su unidad o no se cita | planificación (norma del registro) |
+
+**delegación:** 0 sub-agentes · 14 lecturas inline (2 imágenes: `app-bi.png`, `app-bi-refresh.png`) ·
+**scripts: 6 corridas** (IHDR de los 54 PNG · cruce fila↔ancho de las 20 filas · `contar-veredictos.py`
+`--json` · 3 greps de código con control positivo) · 0 en background.
