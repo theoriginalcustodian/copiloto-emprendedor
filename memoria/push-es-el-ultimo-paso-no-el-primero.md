@@ -50,3 +50,10 @@ no se distingue de uno que funciona** hasta que falla — por eso el control de 
 el `--is-ancestor` ya te dio la respuesta que esperabas.
 
 Ver también [[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] (ejercitá la función, no el log).
+
+**El espejo, y conviene leer los dos juntos:** acá el squash produce un falso **ROJO** (dice «falta» y
+no falta). El caso inverso —un merge que sale **verde sin aportar nada**: PR `MERGED`, `--json files`
+poblado, y el árbol del merge idéntico al de su padre— está en
+[[el-instrumento-respondio-sobre-otro-sujeto]], caso 12, con su control propio (comparar
+`git rev-parse <merge>^{tree}` contra el del padre). Mismo mecanismo, direcciones opuestas: uno niega
+trabajo hecho, el otro acredita trabajo que no existió.

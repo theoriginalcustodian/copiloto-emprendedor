@@ -338,3 +338,22 @@ El id `(vacio)` de la población C **no existía en la spec: lo fabricaba este d
 nombre colisionaba con `vacio` (BL-W5, spec `:43`), que es otro id. Renombrado a **`(home)`**. Le costó
 un turno a frontend2, cuya población C queda en **8 ids**; la home pasa a la cola de auditoría. El
 conteo no se mueve: 27 filas × 2 columnas = 54 celdas, control de no-regresión en 54 = 54.
+
+## `(home)` MEDIDO — sale de los 17, sin correr el instrumento
+
+El id que tomé de la población C queda cerrado por la vía `leido@` (el contrato admite cuatro, y el
+criterio no se mide sólo con el generador):
+
+- **Cuerpo:** la home es el mismo componente que `tablero` — `MidiaScreen.tsx:192` es **el único** lugar
+  que monta `data-testid="pantalla-midia"` (los otros 7 hits del grep son tests). El veredicto de
+  `tablero` (lote B) cubre el cuerpo.
+- **Lo único propio de la home es el ruteo por defecto**, y está verificado:
+  `AppShell.tsx:31` `const DEFAULT_TAB: TabKey = 'midia'` · `:63`
+  `useState<TabKey>(initialTab ?? DEFAULT_TAB)` · `App.tsx:79` pasa `undefined` salvo signup reciente.
+- **Y hay test, en los dos breakpoints:** `AppShell.test.tsx:61-68` («por default aterriza en Mi día
+  (BL-X1)», asertando además `aria-current="page"` en el botón «Mi día») y
+  `ResponsiveShell.test.tsx:61-70` («en ambos breakpoints monta la misma pantalla de módulo (Mi día)
+  por default»).
+
+**Consecuencia para el conteo de huecos:** la población C baja de **9 a 8** (los 8 de frontend2), y
+`(home)` pasa a **medido**. Los 17 sin nada pasan a **16**.
