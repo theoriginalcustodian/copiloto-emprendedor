@@ -54,6 +54,17 @@ que alguien se equivocó: una columna decía `Resolución: H-A4-4 confirmado des
 respondía *¿el hallazgo quedó resuelto?* y la otra *¿coincide con el prototipo?* — **dos preguntas
 distintas con el mismo vocabulario**, sumadas en el mismo padrón, y el conteo no distinguía cuál.
 
+⚠️ **Y esto ya estaba escrito:** [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]] dice, del
+mismo día, «pueden estar preguntando cosas distintas, y entonces la asimetría es información. Antes de
+emparejar, escribí qué pregunta hace cada lado». Lo re-derivé desde cero **porque esa entrada está
+huérfana del índice** — segunda vez en el mismo turno (la otra:
+[[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]]). Dos lecciones ya escritas, re-pagadas
+en un solo turno, por 13 entradas sin línea en `MEMORY.md`. El costo de
+[[el-indice-truncado-fabrica-duplicados]] dejó de ser hipotético: **está medido, y el precio es
+re-derivar con evidencia lo que otro ya cerró.** Por eso el contraste `id → veredictos` que pido acá
+tiene un gemelo en el plano de la memoria: **un control que liste las entradas huérfanas debe correr en
+un gate de PR**, porque hoy existe, funciona, y nadie lo mira.
+
 Hermanas: [[el-nombre-es-una-hipotesis-sobre-el-contenido]] ·
 [[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]] ·
 [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] ·
