@@ -20,6 +20,7 @@ Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido n
 | 6 | lint de contratos «PROSA PURA» | contrato sin artefacto | aceptaba `docs/…`, `.png`, `mockup` — **no** un path de código. El contrato citaba `…/FormularioIngreso.tsx:255` y salía marcado |
 | 7 | `git log -S'texto' -- <path>` (2026-09-22) | **vacío**: «ese commit no existe» | `git log` sin ref arranca en **`HEAD`**, y el checkout compartido está 141 commits atrás. El commit existía; estaba adelante. Con `git log origin/main -S…` aparece al instante |
 | 8 | `tasklist //FI "PID eq 63148"` para saber si un lock estaba huérfano (2026-09-22) | «no hay tareas»: el proceso murió | el lock guarda `$$` de bash = un **PID de MSYS**; `tasklist` enumera **PIDs de Windows**. Dos numeraciones distintas: preguntó por un proceso que nunca estuvo en esa lista. `ps` y `kill -0` decían **VIVO** |
+| 9 | `git cat-file -e origin/main:<path>` para «esto ya está en main» (2026-09-29) | «no existe» ⇒ la fila sigue pendiente | **`cat-file` no consulta el remoto**: lee la copia local de la ref. Sin `git fetch` previo el sujeto es *tu* `origin/main`, no el de GitHub — y acá llegó a estar **141 commits atrás**. Lo mergeado hace diez minutos sale AUSENTE, y el informe queda limpio **por ceguera** |
 
 ## El caso 7 merece su párrafo: el cero salió del sujeto por defecto
 
@@ -392,3 +393,18 @@ opcional que se puede escribir mal en silencio.
 
 **Y el control que lo caza en cualquier corrida:** *comparar el N pedido contra el N medido*. Si
 pediste 3 y el informe dice 7, no hace falta saber por qué para saber que no sirve.
+
+## El caso 9 y la familia entera: **el ref local es un sujeto distinto del remoto**
+
+Los casos 3, 7 y 9 son el mismo error con tres comandos (`merge-base`, `git log -S`, `cat-file -e`), y
+conviene verlos juntos porque el reflejo «preguntarle a git» se siente como preguntarle al repositorio,
+cuando en realidad le preguntás **a tu copia**. Ninguno de los tres avisa: los tres contestan rápido,
+sin error, sobre un pasado.
+
+La regla que los cubre a los tres: **`git fetch` antes de cualquier afirmación sobre `origin/*`** — y
+si el instrumento es un script, el fetch va **adentro**, no en la cabeza de quien lo corre. Un script
+que depende de que alguien haya fetcheado antes es un script que funciona hasta que lo automatizan.
+
+Está horneado en `scripts/plan-drift-check.sh`: el fetch es la primera medición, y si falla el script
+sale con **exit 2 — «no pude medir»— nunca con 0. Un instrumento que no pudo mirar tiene que decirlo
+distinto de un instrumento que miró y no encontró nada.
