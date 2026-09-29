@@ -51,6 +51,29 @@ for _f in (sys.stdout, sys.stderr):
 RAIZ = Path(__file__).resolve().parents[2]
 COORD = Path("C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion")
 MATRIZ = RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"
+# La SPEC es la fuente de verdad del criterio: el backlog §13 punto 3 dice, con esas palabras, que
+# se mide «contra la sección spec de este documento». Hasta el 2026-09-29 el universo salía de
+# MATRIZ — o sea del INSTRUMENTO — y eso es C3-13: la matriz conoce 27 ids de los 54, así que los
+# otros 28 no podían aparecer ni como «hueco con nombre». No eran los marginales: `cobro-voz`, las
+# cinco `card-*`, `fact-voz`/`fact-hitl`/`pres-voz`/`pres-hitl`, `vacio`/`vacio-visto`, la home.
+SPEC = (RAIZ / "docs" / "copiloto-emprendedor" /
+        "2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md")
+
+# Ratchet de cobertura del instrumento. NO es una lista de exclusiones: es el PISO medido, y el gate
+# falla en las DOS direcciones — si aparece un ciego nuevo (regresión) y si uno declarado dejó de
+# serlo sin bajar de esta lista (piso viejo). Un ratchet que sólo aprieta hacia arriba se afloja solo:
+# la lista queda vieja y el gate pasa a certificar un estado que ya no existe.
+CIEGOS_DECLARADOS = {
+    "bi-refresh", "bi-vacio", "bloqueado", "caida", "card", "card-cliente", "card-cobro",
+    "card-factura", "card-presu", "chat", "cobro-voz", "fact-cae", "fact-hitl", "fact-voz",
+    "feedback", "grabando", "ingresar-error", "onb-cumplida", "onb-promesa", "preg", "pres-ciclo",
+    "pres-hitl", "pres-voz", "recibo", "vacio", "vacio-visto", "volver", "(home)",
+}
+# `plan` está en la matriz y NO en la spec: salió por DEC-8 (visión, `BL-V2`). Es C3-14, y la
+# ironía se mide sola — la spec existe porque «48/48 coherentes» se medía contra pantallas que nadie
+# va a construir, y `plan` figuraba como una. La spec lo corrigió en su primera página; el
+# instrumento lo heredó. Un diff de universo es BIDIRECCIONAL: faltantes Y retirados.
+RETIRADOS_DECLARADOS = {"plan"}
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
                   "PENDIENTE_DEVICE")
@@ -131,12 +154,10 @@ def claves_nivel1(texto, nombre):
     return claves
 
 
-def universo_de_sujetos():
-    """El universo es EXTERNO a este parser. Si sale de los docs medidos, una forma nueva esconde
-    el sujeto y volvemos al defecto que este script vino a cerrar."""
+def ids_de_la_matriz():
+    """Lo que el INSTRUMENTO sabe capturar. Ya no es el universo: es una de las dos patas del diff."""
     if not MATRIZ.exists():
-        print(f"ABORTA: no encontré {MATRIZ}. El universo de sujetos NO se deduce de los docs "
-              f"medidos: eso reintroduce el defecto (una forma nueva esconde el sujeto).",
+        print(f"ABORTA: no encontré {MATRIZ}. Sin la matriz no se puede medir la cobertura.",
               file=sys.stderr)
         sys.exit(2)
     s = io.open(MATRIZ, encoding="utf-8").read()
@@ -148,6 +169,98 @@ def universo_de_sujetos():
               file=sys.stderr)
         sys.exit(2)
     return ids
+
+
+def universo_de_sujetos():
+    """Los 54 ids del criterio, parseados de la sección «spec» de la SPEC.
+
+    El universo sigue siendo EXTERNO a este parser (si saliera de los docs medidos, una forma nueva
+    escondería el sujeto), pero ahora la fuente externa es la que el criterio nombra, no el
+    instrumento que lo mide. Ver C3-13 arriba.
+
+    El control es ARITMÉTICO y la spec se lo da servido: su §3 cierra «51 − 2 + 4 + 1 = 54,
+    recontado sobre la tabla de §2: 54 ids, ninguno repetido». Así que 54 exactos, sin duplicados,
+    o el parser NO entendió la tabla y aborta. Un conteo aproximado acá no es un conteo: 53 podría
+    ser una fila mal leída y se vería igual de plausible.
+    """
+    if not SPEC.exists():
+        print(f"ABORTA: no encontré {SPEC}. El universo NO se deduce de la matriz (C3-13).",
+              file=sys.stderr)
+        sys.exit(2)
+    txt = io.open(SPEC, encoding="utf-8").read()
+    m = re.search(r"^### spec[^\n]*\n(.*?)(?=^### )", txt, re.S | re.M)
+    if not m:
+        print("ABORTA: no encontré la sección «### spec» en la spec. Cambió su estructura.",
+              file=sys.stderr)
+        sys.exit(2)
+    ids, home = [], 0
+    for linea in m.group(1).splitlines():
+        if not linea.lstrip().startswith("|"):
+            continue
+        if "?ver=" in linea or set(linea.replace("|", "").strip()) <= set("-: "):
+            continue                      # cabecera y separador
+        celdas = linea.split("|")
+        for pos in (1, 4):                # las dos mitades de la tabla partida; la 3 es el hueco
+            if pos >= len(celdas):
+                continue
+            c = celdas[pos].strip()
+            if not c:
+                continue
+            b = re.findall(r"`([a-z][a-z0-9-]*)`", c)
+            if b:
+                ids.extend(b)
+            elif "vac" in c and "Mi d" in c:
+                home += 1                 # la home no tiene `?ver=`: es el 54º y entra como (home)
+    dups = sorted(i for i in set(ids) if ids.count(i) > 1)
+    if dups:
+        print(f"CONTROL DE LA SPEC FALLA: ids repetidos en §2 {dups}. La spec declara «ninguno "
+              f"repetido» (§3): o la spec cambió o el parser lee mal.", file=sys.stderr)
+        sys.exit(2)
+    univ = sorted(set(ids)) + (["(home)"] if home else [])
+    if len(univ) != 54:
+        print(f"CONTROL DE LA SPEC FALLA: parseé {len(univ)} ids de la sección «spec» "
+              f"({len(ids)} literales + {home} home) y la spec declara 54 en §3. El parser no "
+              f"entendió la tabla: el conteo NO se lee.", file=sys.stderr)
+        sys.exit(2)
+    return univ
+
+
+def control_de_cobertura(ids):
+    """DIFF BIDIRECCIONAL entre el universo del criterio y lo que la matriz sabe capturar.
+
+    Es el control que faltaba, y su ausencia es la forma de la que ya hay varias en este repo: los
+    dos controles horneados (`len(ids) >= 15` y el canario de 5 brazos) miran hacia ADENTRO del
+    parser. Prueban que los brazos funcionan; ninguno pregunta si el universo está completo. Con 28
+    de 54 ids invisibles, el conteo salía verde y sonaba a cobertura.
+
+    Devuelve (ciegos, retirados) y aborta si el ratchet no cuadra en cualquiera de las dos
+    direcciones.
+    """
+    mids = set(ids_de_la_matriz())
+    ciegos = {i for i in ids if i not in mids}
+    retirados = {i for i in mids if i not in set(ids)}
+
+    nuevos_ciegos = sorted(ciegos - CIEGOS_DECLARADOS)
+    ya_cubiertos = sorted(CIEGOS_DECLARADOS - ciegos)
+    nuevos_retirados = sorted(retirados - RETIRADOS_DECLARADOS)
+    ya_no_retirados = sorted(RETIRADOS_DECLARADOS - retirados)
+
+    if nuevos_ciegos:
+        print(f"COBERTURA: REGRESIÓN — {len(nuevos_ciegos)} id(s) de la spec que la matriz dejó de "
+              f"cubrir: {nuevos_ciegos}. Si es deliberado, bajalos a CIEGOS_DECLARADOS con el por "
+              f"qué; si no, la matriz perdió una captura.", file=sys.stderr)
+        sys.exit(6)
+    if ya_cubiertos:
+        print(f"COBERTURA: EL PISO QUEDÓ VIEJO — la matriz ya cubre {ya_cubiertos}, que siguen "
+              f"declarados como ciegos. Sacalos de CIEGOS_DECLARADOS: un ratchet que no se aprieta "
+              f"certifica un estado que ya no existe.", file=sys.stderr)
+        sys.exit(6)
+    if nuevos_retirados or ya_no_retirados:
+        print(f"COBERTURA: el diff de retirados no cuadra — nuevos {nuevos_retirados}, "
+              f"ya-no {ya_no_retirados}. RETIRADOS_DECLARADOS tiene que reflejar la spec vigente.",
+              file=sys.stderr)
+        sys.exit(6)
+    return sorted(ciegos), sorted(retirados)
 
 
 def ubicar(patron):
@@ -341,8 +454,44 @@ def mediciones_de(texto, armas=ARMAS):
     return hits, meds, huerfanos
 
 
+def ids_del_criterio(con, ids):
+    """Los ids DEL CRITERIO que tienen veredicto: el cruce entre lo medido y el padron.
+
+    Vive en una funcion y no inline porque el canario del padron (control 4) tiene que ejercitar
+    ESTE camino, no recomputar el cruce por su cuenta. La primera version del canario lo recomputaba
+    y por eso no cazaba nada: con el cruce neutralizado en el reporte, el canario seguia cruzando en
+    su propia linea y veia bajar la cifra igual. Un control que recalcula la metrica en vez de
+    llamar al codigo que la produce mide su propia aritmetica
+    (`memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md`).
+
+    Se cuenta por ID, no por `id·camino`: un mismo id medido en dos caminos es UN id cubierto.
+    """
+    return sorted({c.split("·")[0] for c in con} & set(ids))
+
+
 def medir(txt, ids, armas=ARMAS):
     """`con` = mediciones con veredicto legible · `sin` = HUECOS CON NOMBRE (`id·camino`).
+
+    ⚠️ 2026-09-29 — EL PADRON ERA INERTE. Esta funcion recibia `ids` y NO lo usaba en ninguna
+    linea de su cuerpo: todo salia de `mediciones_de(txt, armas)`. Medido con el control que
+    faltaba, y que es de una linea: con el padron VACIO el resultado era identico byte a byte
+    (lote A 21 sujetos / 26 hits con 54 ids, con 27 ids y con 0 ids).
+
+    Lo que eso implica es mas grande que el universo chico de C3-13: ningun `id` se validaba contra
+    nada, asi que un typo del documento (`facutra`) entraba como sujeto legitimo, y la cifra que
+    este script existe para dar —«N de 54»— NO se computaba en ninguna parte. El acta del 22/09
+    afirmo «29 de 54» sin registro de donde contarlo; el instrumento hecho para arreglar eso
+    tampoco lo tenia.
+
+    Y el detalle que lo dejo vivir: `universo_de_sujetos()` tenia su propio control
+    (`CONTROL DEL UNIVERSO FALLA` si extraia <15 ids) protegiendo un valor que nadie consumia. Un
+    control sobre un dato inerte da verde con toda razon y no significa nada. El canario de 5 brazos
+    probaba las FORMAS del parser; el padron era un sexto brazo sin canario. Por eso ahora hay uno
+    (control 4, en main): sacarle al padron UN id que el doc mide tiene que bajar la cifra en
+    exactamente 1. Formularlo como «con padron vacio tiene que dar 0» no sirve — eso se computa
+    como una interseccion con el conjunto vacio y da 0 por definicion, no por el comportamiento
+    del codigo: habria salido verde sobre el padron inerte. Un control que no puede fallar no es
+    un control.
 
     Se agrega POR SUJETO, no por sitio de declaración: un `id·camino` que rinde veredicto en algún
     lugar del doc está medido, aunque además aparezca en una tabla que no lleva columna de veredicto
@@ -350,19 +499,27 @@ def medir(txt, ids, armas=ARMAS):
     esta agregación, esas 16 filas vuelven como huecos — el mismo falso positivo que el gate de
     cabecera cerró a nivel fila, reapareciendo a nivel sujeto (auditoría, H-C)."""
     hits, meds, huerfanos = mediciones_de(txt, armas)
-    con, sitios = {}, {}
+    padron = set(ids)
+    con, sitios, fuera = {}, {}, {}
     for m in meds:
         clave = f"{m['id']}·{m['camino'] or 'único'}"
+        if padron and m["id"] not in padron:
+            # NO se descarta: se cuenta aparte. Descartarlo en silencio seria el error espejo del
+            # que este bloque arregla — un id fuera del padron puede ser un typo del doc (`facutra`),
+            # un id nuevo que la spec todavia no tiene, o una pantalla retirada. Las tres cosas hay
+            # que verlas; ninguna se puede resolver borrandola.
+            fuera.setdefault(m["id"], []).append(m["linea"])
         sitios.setdefault(clave, []).append(m["linea"])
         if m["veredictos"]:
             con.setdefault(clave, []).extend(m["veredictos"])
     sin = [f"{c} (declarado en L{','.join(str(x) for x in ls)})"
            for c, ls in sitios.items() if c not in con]
-    return hits, con, sin, sitios, huerfanos
+    return hits, con, sin, sitios, huerfanos, fuera
 
 
 def main():
     ids = universo_de_sujetos()
+    ciegos, retirados = control_de_cobertura(ids)
     docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}
     faltan = [k for k, v in docs.items() if v is None]
     if faltan:
@@ -370,11 +527,22 @@ def main():
               file=sys.stderr)
         sys.exit(2)
 
-    res = {"medido_en": time.strftime("%Y-%m-%d %H:%M:%S"), "universo_de_sujetos": ids, "lotes": {}}
+    res = {"medido_en": time.strftime("%Y-%m-%d %H:%M:%S"), "universo_de_sujetos": ids,
+           "cobertura_del_instrumento": {
+               "fuente_del_universo": str(SPEC.name),
+               "ids_del_criterio": len(ids),
+               "ids_que_la_matriz_captura": len(ids) - len(ciegos),
+               "ciegos": ciegos,
+               "retirados_de_la_spec_que_la_matriz_conserva": retirados,
+           },
+           "lotes": {}}
     textos = {}
     for k, p in docs.items():
         txt = textos[k] = io.open(p, encoding="utf-8", errors="replace").read()
-        hits, con, sin, sitios, huerfanos = medir(txt, ids)
+        hits, con, sin, sitios, huerfanos, fuera = medir(txt, ids)
+        # La cifra que pide el criterio, por fin computada: de los 54 ids de la spec, cuantos tienen
+        # veredicto en este doc.
+        ids_con_veredicto = ids_del_criterio(con, ids)
         porClase, porForma = {}, {}
         for _, v, f, _ in hits:
             porClase[v] = porClase.get(v, 0) + 1
@@ -384,6 +552,9 @@ def main():
             "mediciones_declaradas": len(sitios),
             "veredictos_huerfanos": huerfanos,
             "sujetos_con_veredicto": len(con),
+            "ids_del_criterio_con_veredicto": len(ids_con_veredicto),
+            "ids_del_criterio_con_veredicto_lista": ids_con_veredicto,
+            "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},
             "sujetos_nombrados_sin_veredicto": sin,
             "veredictos_total": len([h for h in hits if h[2] != "hueco"]),
             "por_clase": dict(sorted(porClase.items(), key=lambda x: -x[1])),
@@ -448,6 +619,37 @@ def main():
             sys.exit(5)
         print(f"\nCANARIO OK: los {len(ARMAS)} brazos tienen control — romper cualquiera se ve.")
         return
+
+    # --- control 4: CANARIO DEL PADRON -----------------------------------------------------------
+    # El sexto brazo, el que no tenia canario. Mismo criterio que el canario por brazos —«un brazo
+    # cuya rotura no mueve nada es un brazo sin control»— aplicado al padron, que es justo donde no
+    # se habia aplicado.
+    #
+    # Y OJO CON LA FORMA DE ESTE CONTROL, porque la primera version que escribi era tautologica:
+    # «con padron vacio la cifra tiene que dar 0» se computa como `set(medidos) & set([])`, que es 0
+    # por definicion de interseccion, no por el comportamiento del codigo. Habria salido verde sobre
+    # el padron inerte que este commit arregla. Un control que no puede fallar no es un control, y el
+    # unico modo de saberlo es preguntarle «¿que tendria que pasar para que esto diera rojo?».
+    #
+    # El control que SI discrimina rompe el padron de a un id: se le saca uno que este doc mide, y la
+    # cifra tiene que bajar EXACTAMENTE 1. Si no se mueve, `ids` volvio a ser decorado.
+    for k in docs:
+        base = res["lotes"][k]["ids_del_criterio_con_veredicto"]
+        if base == 0:
+            print(f"CANARIO DEL PADRON FALLA en {k}: 0 ids del criterio con veredicto. O el doc no "
+                  f"mide nada del criterio, o el cruce con el padron se rompio. Sin un >0 aca, "
+                  f"romper el padron no puede mover nada y el canario no probaria nada.",
+                  file=sys.stderr)
+            sys.exit(7)
+        victima = res["lotes"][k]["ids_del_criterio_con_veredicto_lista"][0]
+        recortado = [i for i in ids if i != victima]
+        con2 = medir(textos[k], recortado)[1]
+        baja = len(ids_del_criterio(con2, recortado))
+        if baja != base - 1:
+            print(f"CANARIO DEL PADRON FALLA en {k}: saque `{victima}` del padron y la cifra fue "
+                  f"{base} -> {baja} (esperaba {base - 1}). El padron no participa de la cuenta: es "
+                  f"el defecto inerte de vuelta.", file=sys.stderr)
+            sys.exit(7)
 
     if "--json" in sys.argv:
         print(json.dumps(res, ensure_ascii=False, indent=2))
