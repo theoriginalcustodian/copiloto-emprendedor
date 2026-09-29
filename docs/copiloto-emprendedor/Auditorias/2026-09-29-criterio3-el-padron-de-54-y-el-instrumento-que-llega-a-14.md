@@ -387,3 +387,205 @@ propio diseño** — y existe candidata: el handoff `2026-07-03-cliente-web-mobi
 **Recomendación a planificación** (la decisión sigue siendo suya): el eje `@desktop` del criterio 3 se
 mide contra el handoff/design-system web por la vía `leido@`, no contra `proto@`. No hace falta
 construir una referencia nueva: **ya existe y nadie la estaba usando.**
+
+---
+
+## ADENDA 18:40 — la pasada de verificabilidad de los previos: **ninguno midió contra `proto-desktop`**, y el contador es ciego a 28 de los 54
+
+**Encargo** (acta re-emitida §3.bis, dueño: auditoría): en **una** pasada, (a) cuáles de los veredictos
+previos midieron contra `proto-desktop` ⇒ no valen, y (b) el desglose **coincide vs desvío** que el acta
+no tenía. Planificación declaró explícitamente que **no lo estimaba**, y no lo estimó.
+
+**Instrumentos: los dos ya existían y se reutilizaron sin tocarlos** — `scripts/evidencia/contar-veredictos.py`
+(493 líneas, vocabulario cerrado, canario por brazo) y `scripts/evidencia/criterio3-padron.sh`. Cero
+scripts nuevos.
+
+### (a) 🟢 Ninguno de los veredictos previos midió contra `proto-desktop`. Los 38 **no** están contaminados por C3-10
+
+Los veredictos previos viven en **dos** archivos del buzón, no en 107:
+
+| lote | archivo | versión medida |
+|---|---|---|
+| A | `abierto/2026-09-28_cierre_frontend1-…_BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md` | `sha256:501d42969120` · 24.960 B · mtime **2026-09-29 10:47:31** |
+| B | `abierto/2026-09-28_cierre_frontend2-…_BL-Q3-v2-lote-B-11-de-11-completo.md` | `sha256:70518ee78487` · 21.945 B · mtime **2026-09-28 13:18:55** |
+
+| huella de una comparación de escritorio | lote A | lote B | **control positivo** (este dictamen) |
+|---|---|---|---|
+| `proto-desktop` | **0** | **0** | **3** |
+| `1440` | **0** | **0** | (22 hits de desktop/1440/escritorio) |
+| `viewport` | 1 | 0 | — |
+
+**Y la evidencia positiva del método:** los **34 PNG distintos** que cita el lote A no llevan **ningún**
+sufijo de viewport — son `app-afip.png` / `proto-afip.png`, `app-bi.png` / `proto-bi.png`: **un par
+app/proto por id, no un par de anchos.** Un grep de `desktop|1440` sobre esa lista de nombres da **0**, y
+uno de `390|mobile|movil` también da **0**. El lote B casi no cita PNG (1) y midió por **código** — lo
+declaró él mismo en
+`dato_frontend2-a-planificacion_C3-10-no-me-afecta-mi-metodo-fue-codigo-no-captura-de-escritorio`.
+
+**Las 3 menciones de «desktop» del lote A no son comparaciones**, son otra cosa: `:22` un hallazgo aparte
+(`AppsScreen` muerto en desktop), `:113` una cita de código (`DesktopShell.tsx:81-83`), y `:147` —la
+interesante— **«además usa un frame tipo mobile-card incluso en viewport desktop (inconsistencia propia
+del proto)»**. FE1 **vio** la maqueta de teléfono a ancho de escritorio y la atribuyó **al prototipo**, no
+a la app. Es exactamente la lectura correcta de C3-10, hecha un día antes de que C3-10 se escribiera, y es
+la conducta opuesta a la que el instrumento induce
+(`memoria/el-instrumento-fabrica-una-referencia-que-no-existe.md`).
+
+**El límite de lo que puedo afirmar, declarado:** los nombres **no declaran el ancho**, así que lo medido
+es **«no hubo comparación de dos anchos»**, no «fueron @390». Si el lote A hubiera capturado el par a 1440
+sin decirlo en el nombre, seguiría siendo artefacto. `:147` es evidencia lateral fuerte en contra, pero no
+es una declaración. **`[ASSUMED_PENDING_VERIFY]` — FE1: ¿a qué ancho corriste los 34 PNG?** Es una
+pregunta de una línea, **no** una re-medición: si contesta «390», los 38 quedan verificados sin tocar nada.
+
+### (b) El desglose coincide/desvío, **medido** — y la unidad, que es lo que rompió el acta anterior
+
+Canario del contador corrido, **no prometido**: los 5 brazos tienen control (`campo` 21→6, `tabla` 15→6,
+`bullet` 15→12, `tabla-partida` 21→19, `reclasif` 21→20). Ningún brazo es invisible.
+
+| lote | sujetos c/ veredicto | **COHERENTE** | **DESVÍO** | no-comparación | veredictos |
+|---|---|---|---|---|---|
+| A (FE1) | 21 de 21 declaradas | **9** | **7** | 10 (5 `NO_MEDIBLE` · 3 `FUERA-DE-REFERENCIA` · 2 `PENDIENTE_DEVICE`) | 26 |
+| B (FE2) | 15 de 15 declaradas | **10** | **6** | 5 (3 `NO_REPRODUCIBLE_SIN_EFECTO` · 2 `FUERA-DE-REFERENCIA`) | 21 |
+| **total** | **36 sujetos** | **19** | **13** | **15** | **47** |
+
+**Tres advertencias que viajan con esos números, y sin ellas el número miente:**
+
+1. **La unidad.** 47 es en **veredictos**; 36 en **sujetos**; 32 en **comparaciones** (19+13). Una medición
+   partida por dimensión emite dos veredictos. El acta dice **38**: la diferencia con 36 son los sujetos
+   cuyo veredicto **no vive en estos dos archivos** (la home, cerrada por `leido@`). No relleno el hueco.
+2. **13 desvíos, no «≥ 3».** El acta re-emitida anota «≥ 3» para población A. El instrumento mide **13**
+   en los dos lotes previos. Es trabajo de frontend ya medido que no está en el tablero como filas.
+3. **4 veredictos huérfanos en el lote B** — leídos, pero sin sujeto declarado arriba, así que no se
+   atribuyen a ninguna medición. No son un hueco de medición: son un hueco de **atribución**.
+
+### 🔴 C3-13 — el universo «externo» del contador cubre **26 de los 54**, y los otros 28 no pueden aparecer ni como hueco
+
+`contar-veredictos.py:20-25` da vuelta el numerador a propósito: la unidad primaria es el **sujeto**, y el
+universo sale de una fuente **externa al parser** «por eso una forma de registro nueva no puede esconder un
+sujeto: el id sigue en la lista, y si no se le pudo leer veredicto aparece como **HUECO CON NOMBRE**».
+El diseño es correcto y el canario lo prueba. **Pero esa fuente externa tiene su propio denominador:**
+
+| fuente | ids | control |
+|---|---|---|
+| spec BL-P5 (fuente de verdad) | **54** | `criterio3-padron.sh`: `54 de 54` @ `db18820b` |
+| `criterio3-matriz.mjs` (universo del contador) | **27** | 26 en la spec + `plan` |
+| **ciegos al contador** | **28** | `26 + 28 = 54` ✅ |
+
+**Los 28, nominados** (un id fuera del universo no baja ninguna métrica, no genera hueco y el canario
+tampoco lo ve — el canario prueba los **brazos del parser**, no la **cobertura del universo**):
+
+```
+(home)  bi-refresh  bi-vacio  bloqueado  caida  card  card-cliente  card-cobro
+card-factura  card-presu  chat  cobro-voz  fact-cae  fact-hitl  fact-voz  feedback
+grabando  ingresar-error  onb-cumplida  onb-promesa  preg  pres-ciclo  pres-hitl
+pres-voz  recibo  vacio  vacio-visto  volver
+```
+
+No son los marginales: están `cobro-voz` (el gate duro), las cuatro `card-*` (las cards por voz),
+`fact-hitl`/`fact-voz`/`pres-voz`/`pres-hitl`, `vacio`/`vacio-visto` y la home. **Así que «21 de 21
+declaradas» es cierto y suena completo, y lo que manda es «26 de 54 del universo».**
+
+**El control que falta** (y es del mismo script, no uno nuevo): diff nominal del universo contra la spec,
+que **falle** si hay un id de la fuente de verdad fuera del universo sin justificación.
+`criterio3-matriz.mjs:119` ya lo confesaba —«Ampliables para el Bloque B (los 22 ids de FE1 y **el resto de
+los 54 de la spec**)»— y nadie lo leyó como un límite del **conteo**. **Dueño: planificación** (declaró
+`scripts/` suyo).
+
+### 🟠 C3-14 — `plan` es un id **retirado** que el instrumento sigue contando
+
+`plan` está en el universo y **no** en la spec. La spec lo saca explícitamente: `:95` «**−2:** `plan` y
+`limite` salen (visión, DEC-8)», y `:72` lo marca «⚠️ VISIÓN: el backend no expone plan ni consumo».
+
+Y la ironía mide sola: `:8` de esa misma spec dice que la lista existe porque **«48/48 coherentes» se
+medía contra pantallas que nadie va a construir: `plan` figuraba como una**. La spec corrigió el defecto
+en su primera página; `criterio3-matriz.mjs` lo heredó y lo sigue contando como sujeto legítimo.
+**Un diff de universo es bidireccional:** faltantes (28 ciegos) y sobrantes (1 retirado que infla).
+
+### Lo que esta pasada **no** es
+
+No es una re-medición de los 38, y no la pide nadie: el encargo era de **verificabilidad**, y se contesta
+con la huella del método, que es más barata y más dura que volver a mirar 38 pantallas. Tampoco declaro
+verificados los 38 — declaro que **la causa por la que no eran verificables (C3-10) no los afecta**, y que
+lo único que falta es una línea de FE1 sobre el ancho.
+
+**delegación:** 0 sub-agentes (la capa 0 lo resolvió entero: 2 instrumentos ya existentes + 4 cruces
+deterministas; no hubo barrido que necesitara criterio para recolectar) · 8 lecturas inline ·
+**scripts: 6 corridas** (`contar-veredictos.py` ×3 incl. `--canario`, `criterio3-padron.sh`, 2 cruces
+python) · 0 en background.
+
+### 🔴 C3-15 — el contador lee **dos paths fijos**, y el registro ya tiene tres archivos. Mis cifras de arriba son correctas **para esos dos**, no son el estado del registro
+
+Esto lo encontré **después** de escribir el desglose de (b), buscando el motivo de los 3 ids de
+transcripción. Corrige el alcance de mis propios números, así que va acá y no en una nota al pie.
+
+`contar-veredictos.py:366` fija el universo de **documentos**:
+
+```python
+docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}
+```
+
+Dos archivos del **28/09**. Pero **el 29/09 FE1 cerró B1 con 13 ids** —
+`abierto/2026-09-29_cierre_frontend1-a-planificacion_B1-13-ids-superficie-y-dimension.md`, **251 líneas**,
+16 ocurrencias de `COHERENTE` y 13 de `DESVÍO` — y **el contador no lo mira**. Mismo defecto de clase que
+C3-13, en el otro eje: **C3-13 es el universo de sujetos incompleto; C3-15 es el universo de documentos
+incompleto.** El script blindó el numerador de sujetos y dejó los dos denominadores sin control.
+
+| medición | cifra | qué es exactamente |
+|---|---|---|
+| sujetos con veredicto legible en los **2** archivos que el contador lee | **36** | dura, con canario de 5 brazos verde |
+| ids del padrón **citados con backticks** en los **3** cierres | **48 de 54** | **cota superior** — citado ≠ tiene veredicto |
+| por archivo | A **22** · B **18** · B1 **13** | del padrón de 54 |
+
+**No resuelvo la diferencia con los «43» del acta.** Las tres cifras miden cosas distintas y sólo la
+primera es una medición de veredictos. Lo que sí afirmo: **el registro está más avanzado que lo que
+cualquiera de los instrumentos reporta**, y ninguno de los dos números puede citarse como «el estado».
+
+### 🟠 C3-16 — los **5** ids de mi población A están los **5** en el B1 de FE1 del mismo día
+
+| | |
+|---|---|
+| mi población A (29/09) | `apar` · `comousar` · `esc` · `factura` · `soporte` |
+| en el B1 de FE1 (29/09) | **los 5** |
+| solapamiento B1 ↔ lote A | 3 (`bi`, `bi-refresh`, `comousar`) |
+| solapamiento B1 ↔ lote B | 0 |
+
+**No afirmo que sea trabajo duplicado, y ése es el punto.** El cierre de FE1 se llama «superficie y
+dimensión» y el mío midió paridad visual @390: si los **ejes** son distintos, es complementario y está
+bien; si son el mismo, dos sesiones midieron los mismos 5 ids el mismo día sin saberlo. **Nadie puede
+distinguir los dos casos leyendo el registro, porque el registro no declara `eje`** — que es exactamente
+el campo que planificación acaba de crear en la acta re-emitida (`eje ∈ {paridad@390, consistencia-app}`).
+
+Esto es evidencia empírica a favor de ese campo, y sube su prioridad: sin él, el registro no puede
+distinguir **cobertura** de **repetición**, y las dos se ven igual — un id con dos filas parece mejor
+medido que uno con una, cuando puede ser el mismo trabajo hecho dos veces.
+
+**Y el costo ya se pagó en mi propia cola:** iba a transcribir los motivos de `entrada`/`splash`/`hitl`
+como «trabajo de transcripción pendiente». **FE1 ya lo hizo hoy**, en ese mismo B1: `:142` «`entrada` /
+`splash` — motivo transcripto textual desde `criterio3-matriz.mjs`», con las dos filas declaradas
+**NO_MEDIBLE** y citando `leido@auditoria/controles-propios-y-barrido-proto:de533f80`. El aviso estaba en
+el buzón, en un `cierre_` dirigido **a planificación**, no a mí — y por eso no lo abrí. **Un `cierre_`
+dirigido a otro puede contener exactamente tu cola.**
+
+### 🟢 Lo que sí queda cerrado de los 3 «de transcripción»
+
+Con `entrada` y `splash` ya transcriptos por FE1, el motivo de los tres está en el generador
+(`criterio3-matriz.mjs:77-104`) y es **declarado, no un hueco**:
+
+| id | por qué no se mide con captura | quién lo cerró |
+|---|---|---|
+| `splash` | app determinista (`SPLASH_TOTAL_MS = 6840`, estado final estable) vs **proto en loop `setInterval(play, 11000)` sin estado final**. Una captura compara un frame arbitrario del loop contra el final de la app: «la foto sale limpia y la comparación no significa nada». **El lado no medible es el proto, no la app** | FE1, B1 `:48` |
+| `entrada` | igual con otros números: app `ENTRADA_TOTAL_MS = 1500` (sólo en reload) vs proto en loop de 6 s. Y **no emular `prefers-reduced-motion`** para medirlas: la app colapsa el timeout a 0 ms y la pantalla no llega a pintarse | FE1, B1 `:47` |
+| `hitl` | **técnicamente medible** —pantalla determinista, estado estable— pero **no se puede llegar sin cruzar el contrato del barrido** (§2.5, «prohibido producir efectos reales»): su único camino es pedirle al chat una acción real. Si el HITL fallara abierto, el costo sería un cobro o una factura **reales** para sacar una captura de paridad visual. Se mide con ruta de fixture, o en device con un operador mirando | declarado en el generador; **fila mía cerrada acá** |
+
+**Y un falso verde que el propio generador denuncia y nadie transcribió** (`criterio3-matriz.mjs:105-107`):
+
+> «Los dos ids de arriba están hoy declarados **COHERENTE** en la matriz de FE1. Ese veredicto se emitió
+> sobre un par de capturas que el instrumento no podía tomar bien — no es una medición equivocada, **es una
+> medición imposible que salió verde**.»
+
+**Medido: ese COHERENTE ya no está.** `splash` tiene **0** ocurrencias en el lote A (control positivo del
+grep en el mismo archivo: `agenda` 17, `afip` 4, `gastos` 2), y en el B1 de hoy las dos filas figuran
+**NO_MEDIBLE**. Así que el comentario documenta un estado **ya corregido** — pero sigue escrito en presente
+en el generador, y el próximo que lo lea va a buscar un falso verde que no existe. **Fila de una línea para
+planificación: actualizar ese comentario** (es `scripts/`, tuyo). Es el caso exacto de
+`el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio`: **el registro envejece en silencio y el
+comentario es el último en enterarse.**
