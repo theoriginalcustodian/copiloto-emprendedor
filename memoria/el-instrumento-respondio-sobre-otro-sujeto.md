@@ -1,6 +1,6 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día; una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero; una octava con tasklist buscando un PID de MSYS entre los de Windows. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día; una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero; una octava con tasklist buscando un PID de MSYS entre los de Windows. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar. Y un PR MERGED con --json files poblado cuyo merge no cambio un byte: el control es comparar el arbol del merge con el de su padre.
 metadata:
   type: feedback
 ---
@@ -408,3 +408,76 @@ que depende de que alguien haya fetcheado antes es un script que funciona hasta 
 Está horneado en `scripts/plan-drift-check.sh`: el fetch es la primera medición, y si falla el script
 sale con **exit 2 — «no pude medir»— nunca con 0. Un instrumento que no pudo mirar tiene que decirlo
 distinto de un instrumento que miró y no encontró nada.
+
+---
+
+## Caso 12 (2026-09-29) — un PR sale `MERGED`, lista sus archivos, y su merge **no aportó nada**
+
+El PR #720 («ratchet de endpoint para el aislamiento cross-tenant») se mergeó con 6/6 verde. Todo lo
+que un tablero mira dice que aportó el ratchet:
+
+```
+$ gh pr view 720 --json state,mergeCommit,files
+{"state":"MERGED","mergeCommit":"1ca62d36",
+ "files":["apps/copiloto/tests/test_ratchet_endpoint_tenant_scope.py"]}
+```
+
+**Y el merge no cambió un solo byte de `main`:**
+
+```
+$ git rev-parse 1ca62d36^{tree}   ->  9968121bb447…
+$ git rev-parse 5601a416^{tree}   ->  9968121bb447…   # su PADRE: el MISMO arbol
+$ git diff --stat 5601a416 1ca62d36
+                                   # vacio
+```
+
+El contenido ya estaba: `git log origin/main -- <el archivo>` lo atribuye a `2d4b3113` (PR **#709**,
+*«batch de 7 ramas huérfanas — sólo 2 eran nuevas»*), mergeado antes.
+
+**`--json files` es el sujeto equivocado, y es el que uno mira.** Devuelve el diff del PR **contra su
+base original**, no lo que el merge aportó a `main`. Las dos cifras coinciden casi siempre, así que
+nadie las distingue — hasta que el contenido entró por otra vía y sólo una de las dos se entera. Lo
+mismo vale para el `state: MERGED`: describe el destino del PR, no su efecto.
+
+> **El control es de una línea y no existe en ninguna otra parte de este repo:**
+> `[ "$(git rev-parse <merge>^{tree})" != "$(git rev-parse <merge>~1^{tree})" ]`
+> Si los árboles son iguales, el merge fue **vacío**: el PR se cerró, el CI corrió, y `main` no cambió.
+
+### Lo transferible no es el squash: es cómo se eligió a quién medirle el diff
+
+El barrido que encontró la rama listó ramas «no mergeadas contra `origin/main`» — el **caso 3** de
+este mismo archivo, ya escrito: acá se mergea con squash, la rama nunca es ancestro, y el criterio
+devuelve falsos positivos por construcción. Pero eso no es lo interesante, porque quien barrió **sí
+conocía el control**: a `a4-fila2/3/6` y a `blq2-blj1` les midió el diff, las vio vacías, y las
+clasificó correctamente como residuo.
+
+**A ésta no se lo midió.** La diferencia entre las ramas que recibieron el control y la que no fue
+cómo **se veían**: las primeras parecían residuo (nombres de consolidaciones ya cerradas), y ésta
+parecía trabajo real — 25 tests, verificada en el VPS, un `avance_` que la documentaba. Lo era. El
+error no fue confundir residuo con sustancia:
+
+> **«¿esta rama tiene sustancia?» y «¿falta su contenido en `main`?» son dos preguntas distintas, y
+> sólo la segunda es la que un barrido de ramas huérfanas quiere responder.** Una rama puede ser
+> trabajo excelente *y* estar íntegramente mergeada. La sustancia predice bien si vale la pena
+> mirarla; no predice nada sobre si falta.
+
+Y ahí está el mecanismo, que es el de esta entrada entera: **la apariencia del sujeto decidió qué
+instrumento se le aplicaba.** Lo que parecía vacío recibió el control de vacío; lo que parecía lleno
+se dio por bueno sin control. Un control que se aplica sólo donde uno ya sospecha no es un control:
+es una confirmación. Hermano de [[el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas]] — allá el
+canario se elige por disponibilidad, acá el control se elige por sospecha, y las dos veces el sesgo lo
+introduce **quién es el sujeto**, no la lógica del instrumento.
+
+### El costo no es el CI desperdiciado: es la trazabilidad invertida
+
+Un PR y seis jobs es barato. Lo caro es que el tablero queda diciendo «RATCH cerrado por #720», y eso
+**miente en las dos direcciones para cualquiera que después quiera revertir**: revertir #720 no saca
+el ratchet (no aportó nada), y revertir #709 creyendo que era «sólo docs y ramas huérfanas» **sí** se
+lo lleva. La atribución equivocada no molesta hasta el día en que alguien la usa para decidir, y ese
+día no avisa.
+
+**How to apply:** al cerrar una fila «por efecto», el efecto que se cita es el **commit que introdujo
+el contenido** (`git log origin/main -- <path>`), no el PR que uno acaba de mergear. Son el mismo
+commit casi siempre; cuando no lo son, el que importa es el primero. Y antes de contar un merge como
+trabajo entregado, comparale el árbol con el de su padre: es más barato que leer el diff y no se puede
+malinterpretar.
