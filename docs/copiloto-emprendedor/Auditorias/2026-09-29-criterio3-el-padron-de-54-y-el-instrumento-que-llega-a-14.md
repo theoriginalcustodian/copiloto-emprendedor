@@ -743,3 +743,163 @@ Al revés no funciona, porque depende de que el autor sospeche justo en la fila 
 **delegación:** 0 sub-agentes · 14 lecturas inline (2 imágenes: `app-bi.png`, `app-bi-refresh.png`) ·
 **scripts: 6 corridas** (IHDR de los 54 PNG · cruce fila↔ancho de las 20 filas · `contar-veredictos.py`
 `--json` · 3 greps de código con control positivo) · 0 en background.
+
+---
+
+# SEGUNDA ADENDA (2026-09-29, tarde) — **C3-20 · C3-21 · C3-22**
+
+Salieron de un ítem que parecía menor: *«46 ocurrencias `VOCABULARIO_DESCONOCIDO`; cuatro documentos
+aportan 17 ids donde el 100% de los veredictos cae ahí — vocabulario de triage, no del criterio 3»*.
+La hipótesis era que esos cuatro documentos **no miden**. Uno de ellos era una medición mía real, y
+tirar de ese hilo destapó un defecto del instrumento y dos problemas del padrón.
+
+**La cifra no se mueve: 50 de 54.** Todo lo de abajo cambia la GARANTÍA, no el número — y lo cambia en
+los dos sentidos: peor en lo que el instrumento podía detectar, mejor en la independencia.
+
+## C3-20 🔴 · El contador perdía **15 de 199 filas** de tabla, por dos defectos que se encadenan
+
+Medido sobre el corpus completo (`42f1468b`), 16 de 16 documentos declarados medición:
+
+```
+FILAS DE TABLA examinadas: 199 de 199
+PIERDEN un veredicto del VOCABULARIO CERRADO: 15   (emoji 9 · reversed 6)
+
+  matriz-web-re-medida  (FE1, 22/09)  4  COHERENTE  bi · apar · soporte · factura
+  C3-poblacion-C        (FE2, 29/09)  5  DESVÍO     card · card-cliente · card-cobro · card-presu · caida
+  poblacion-A-medida    (auditoría)   3  DESVÍO     comousar · esc · soporte
+  BLOQUE-A              (auditoría)   2  (son CITAS de veredictos ajenos: NO se recuperan)
+  BL-Q3-v2-lote-B       (FE2, 28/09)  1  COHERENTE  onb-promesa
+```
+
+**Causa 1 — `limpiar()` enumera la decoración conocida en vez de definir la clase**
+(`scripts/evidencia/contar-veredictos.py:167`). Saca backticks y asteriscos; el `re.match` está
+**anclado** al inicio de la celda, así que `🔴 **DESVÍO**` → `🔴 DESVÍO` → **sin match**. Su propio
+docstring ya nombra la clase — «cada patrón fallaba por UN carácter y perdía la medición sin dar
+hueco» — y el fix de entonces **agregó dos caracteres a la lista y dejó la clase abierta**.
+Verificado sobre 6 de 6 formas de celda: `**DESVÍO**` matchea, `🔴 **DESVÍO**` no.
+
+**Causa 2 — `reversed(celdas)` + `break`** (`:518-524`): se toma la primera celda que matchea
+recorriendo **de derecha a izquierda**, de modo que cualquier columna a la derecha del veredicto lo
+tapa. La matriz de FE1 es `| Pantalla | Veredicto | Diferencias | Resolución | Capturas |`: ganaba
+`Resolución` («H-A4-3 confirmado desplegado…»).
+
+**Y la composición es lo que lo hace mudo.** Sin la causa 2, el emoji habría producido
+`SIN_VEREDICTO_PARSEABLE` — un **hueco visible, que el reporte ya imprime**. La columna de la derecha
+**rellena el hueco con un token falso** (`SIN_REFERENCIA`, `REQUIERE_TRIAGE`, `H-A4-3…`) y lo apaga.
+Dos defectos que por separado se delatan; juntos, silencio limpio.
+
+### Lo que esto invalida del ítem original, y es lo incómodo
+
+**`poblacion-A-medida` SÍ es una medición.** Su tabla tiene `DESVÍO` ×3 — vocabulario **cerrado**, no
+de triage — y aporta 0 porque el parser no los lee. **El «100% de veredictos desconocidos» de ese
+documento era un síntoma del bug, no una propiedad del documento.** Clasificarlo `NO_SON_MEDICION` por
+ese motivo habría grabado una razón falsa en la lista, y con ella la falsa validación del gate nuevo.
+
+### C3-20.bis · el gate nuevo mide el síntoma del bug, no el rol
+
+El gate «MEDICIÓN QUE NO MIDE» (exit 9) acusa a *una medición declarada que aporta cero ids con
+veredicto del vocabulario cerrado*. **Ese cero es, palabra por palabra, lo que produce la causa 1.**
+Corrido antes del fix acusa a `poblacion-A-medida`, que mide 5 ids con evidencia por fila. Un gate
+cuyo predicado es el síntoma de un bug abierto **convierte el bug en veredicto de rol**, y el veredicto
+sobrevive al fix. Remedio: correrlo después del fix, o partir el predicado — «0 cerrados **y** ningún
+token del vocabulario en ninguna celda» es rol; «0 cerrados **pero** hay tokens en el texto» es defecto
+de lectura, con otro exit y otro mensaje.
+
+**Y la dependencia de orden tiene espejo:** arreglar el parser **sin** excluir antes a los analíticos
+hace lo contrario — los `COHERENTE` que `BLOQUE-A` **cita** de FE2 empezarían a contar como mediciones
+propias. **Excluir primero, arreglar después.**
+
+## C3-21 🔴 · El defecto no costaba cobertura: **silenciaba los CONFLICTOS entre veredictos**
+
+Éste es el hallazgo de más valor de la jornada, y refuta el reparto de culpas de mi propia adenda
+anterior sobre `bi`.
+
+`cerrado/2026-09-22/…matriz-web-re-medida.md:75-76` declara, seis días **antes** del `DESVÍO`:
+
+```
+| `bi`         | COHERENTE | H-A4-3 confirmado desplegado. Recapturado con espera real a datos
+|              |           | (`page.waitForFunction`, no el wait insuficiente de 500ms) …
+| `bi-refresh` | COHERENTE | … estructura idéntica al proto (Saldo en caja, …)
+```
+
+Contra el **mismo prototipo** (`54fac3ea`, capturas `-proto.png`). **Dos veredictos opuestos sobre la
+misma pantalla, y el instrumento no podía exhibirlos juntos porque no leía uno de los dos.**
+
+Mi falso positivo de `bi` costó una investigación de imágenes + código. **Con los dos veredictos
+visibles se cazaba con un cruce de dos líneas.** Y lo cacé sólo porque el contrato me obliga a exigir
+más evidencia al veredicto que desactiva trabajo; nada en el instrumento apuntaba ahí.
+
+**La reformulación que importa:** un parser de veredictos se lee como instrumento de **cobertura**
+(«¿cuántos ids están medidos?») y así se lo audita. Pero su función más valiosa es de **CONTRASTE**: es
+lo único capaz de exhibir dos veredictos incompatibles sobre el mismo sujeto — y el contraste es donde
+vive el **falso COHERENTE**, el veredicto que desactiva trabajo y que nadie audita. Un veredicto
+perdido no cuesta cobertura: **cuesta la capacidad de detectar el error de juicio.**
+
+**Fila concreta, y es la de mayor rendimiento del criterio 3:** un contraste `id → veredictos` que
+liste todo id con veredictos incompatibles entre documentos. Barato (ya está el JSON), y es el único
+control que puede cazar un falso verde.
+
+## C3-22 🟠 · El padrón suma **dos preguntas distintas** bajo el mismo vocabulario
+
+Al cruzar los veredictos recuperados aparecieron dos ids con COHERENTE de un lado y DESVÍO del otro
+**sobre el mismo hecho**:
+
+| id | FE1 · 22/09 · web | auditoría · 29/09 · teléfono |
+|---|---|---|
+| `soporte` | **COHERENTE** — «título "Soporte técnico" (ya no "Soporte de Odobi")» | **DESVÍO** — «app "Soporte técnico" vs proto "Soporte de Odobi"» |
+| `comousar` | **COHERENTE** — «mismos 5 ítems, mismos títulos y subtítulos» | **DESVÍO** — «el proto numera 1-5 con chevron; la app usa tarjetas sueltas» |
+
+**Las dos mediciones observaron lo mismo y lo nombraron distinto.** La columna `Resolución` de FE1 da
+la clave: su pregunta era *¿el hallazgo H-A4-4 quedó resuelto y desplegado?*; la mía, *¿coincide con el
+prototipo?*. Dos preguntas legítimas, **un solo token** (`COHERENTE`), sumadas en el mismo padrón. Se
+agrega una segunda capa: el mismo id nombra **superficies distintas** (web de un lado, teléfono del
+otro) sin que ninguna fila lo declare.
+
+**Consecuencia sobre la cifra:** el 50 de 54 responde «¿este id tiene un veredicto?», **no** «¿este id
+coincide con el prototipo?». Son dos afirmaciones distintas y hasta hoy se leían como una. Queda
+pendiente de FE1 confirmar cuál era su pregunta — es una línea, y cierra C3-22 sin re-medir nada.
+
+## Lo que NO se movió, verificado por vía nueva
+
+| control | resultado |
+|---|---|
+| **la cifra** | **50 de 54**. Los ids de las 15 filas tapadas ∩ los 4 sin veredicto (`grabando`,`pres-voz`,`vozchat`,`(home)`) = **VACÍA, 0 de 4** |
+| **aporte de los 4 documentos de rol dudoso** | **0 ids exclusivos cada uno** → clasificarlos de cualquier modo no toca la cifra |
+| **independencia** | **mejora: 20 → 17** ids que dependen de un solo documento. `apar` 1→2 · `caida` 1→2 · `soporte` 1→3 |
+
+## Clasificación de los 4 documentos, con motivo escrito (uno por uno, no en bloque)
+
+| documento | veredicto | motivo |
+|---|---|---|
+| `BLOQUE-A` (auditoría, 23/09) | **NO_SON_MEDICION** ✅ | su tabla pone el veredicto **de FE2 citado** en la col2 y el juicio propio (`REQUIERE_TRIAGE — no se sostiene`) en la col3. Re-evaluación de veredictos ajenos, misma clase que este dictamen |
+| `delta-516` (auditoría, 21/09) | **NO_SON_MEDICION** ✅ | su tabla es `Qué / Al 16/09 / Al 21/09` — **delta de inventario del prototipo**; sus «ids» son conteos, no pantallas comparadas |
+| `filas-nuevas-volver-e-ingresar` (planificación, 21/09) | **NO_SON_MEDICION** ✅ | es un **encargo** a FE1, vocabulario propio `AUSENTE`/`PARCIAL`. Verificado que no pierde nada: `volver`/`ingresar`/`ingresar-error` tienen **3 aportantes cada uno** |
+| **`poblacion-A-medida`** (auditoría, 29/09) | **🔴 ES MEDICIÓN — no excluir** | mide 5 ids con evidencia por fila y **`DESVÍO` ×3 del vocabulario cerrado**. Su 0 es el bug del emoji (C3-20) |
+
+## Corrección de una cifra propia, al mismo nivel en que la afirmé
+
+En la primera adenda sostuve que mi dictamen «cita **54 de 54** ids del padrón», y de ahí que
+clasificarlo como medición cerraría el criterio en 100% sin medir voz ni home. **Eran menciones con
+backticks contadas a mano; medido con el padrón da 29, y veredictos atribuidos 12.** El hallazgo
+estructural (un control de corroboración cruzada premia al documento que más cita) **se sostiene**; el
+cálculo del daño **no**. Es la cuarta vez en el día que la unidad rompe una cifra mía — y esta vez
+dentro del mensaje que corregía a otro por unidades.
+
+## El cierre del eje, que es mejor que cualquiera de los dos controles
+
+El control (a) de corroboración cruzada se retiró. Su reemplazo (cobertura >80%) se midió antes de
+embarcarlo: **techo de menciones de una medición 29/54 vs. de un descartado 29/54 — empate literal**, un
+gate que nunca dispararía. **Dos discriminantes estructurales opuestos, los dos inertes.** Eso no es
+mala suerte: **el formato no codifica el rol.** Lo único que protege es la clasificación **declarada**
+con motivo escrito y abort por documento sin clasificar, más el **vocabulario cerrado**, que neutraliza
+a un analítico aunque esté mal clasificado. El empate quedó impreso en el reporte con la marca «NO es
+un gate: no separa» — un callejón sin señalizar se recorre dos veces.
+
+**delegación:** 0 sub-agentes · 9 lecturas inline · **scripts: 7 corridas** (control del `reversed`
+sobre 199 filas · control del emoji sobre 6 formas de celda · barrido 199 filas × 16 docs con las dos
+causas separadas · cruce ids-tapados ↔ 4 faltantes · independencia por id antes/después · aporte
+exclusivo de los 4 dudosos · re-resolución por basename exacto) · 0 en background.
+**Un error propio en el camino:** resolví un documento con `rglob`+`startswith` y medí
+`matriz-web-re-medida-v2` creyendo que era `matriz-web-re-medida`; las 4 filas volvieron sin ids y casi
+las descarté como ruido. Repetido con igualdad de basename salieron `bi`/`apar`/`soporte`/`factura` —
+o sea C3-21 entero estuvo a un `startswith` de no existir.
