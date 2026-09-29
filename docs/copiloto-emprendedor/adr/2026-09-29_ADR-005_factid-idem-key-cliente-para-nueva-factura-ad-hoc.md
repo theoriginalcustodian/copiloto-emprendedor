@@ -57,6 +57,12 @@ deshabilitado en el cliente no es idempotencia.
    `factura_id = f"idem-{sha256(idem_key)[:32]}"` y usa `WorkflowIDConflictPolicy.FAIL` (no
    `USE_EXISTING`) — mismo patrón exacto que `make_abrir_borrador_de_presupuesto` ya usa para el
    camino presupuesto. Sin `idem_key`, cae al camino viejo sin cambios (id aleatorio, `USE_EXISTING`).
+   ⚠️ **`FAIL` es la política del SDK de Temporal, no el comportamiento que ve el caller HTTP**: el
+   segundo `start_workflow` con el mismo `factura_id` levanta `WorkflowAlreadyStartedError` en el
+   *starter* (`web.py:265-278`), y ahí mismo se captura con `except ...: pass` y se devuelve el mismo
+   `factura_id` ya derivado — el reintento con la misma `idem_key` es recuperable de punta a punta, no
+   un error que el frontend tenga que manejar. La adopción la hace el `except`, no el `FAIL`; sin esta
+   aclaración el título sugiere lo contrario.
 3. **Defensa de la carrera en la capa de base** (`afip_factura_activities.py`,
    `_registrar_con_defensa_idem`): envuelve `store.registrar()` en `try/except UniqueViolation` — si
    pierde la carrera contra el índice único `afip_comprobantes_idem`, el comprobante YA es real
