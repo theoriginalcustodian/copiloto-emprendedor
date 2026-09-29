@@ -309,3 +309,15 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
 
 - [🗂️🕳️ Documentar el cambio en un comentario NUEVO deja vivo el viejo](documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo.md) — 8 de 27 líneas del proto se contradicen. Grepeá si hay uno POSTERIOR.
+
+### Bajada del índice 2026-09-29
+
+**Criterio (no es longitud):** `gate-jsdom-no-ve-gestos-tactiles` es el **caso particular** de dos
+reglas que siguen INDEXADAS y la alcanzan — `el-test-que-no-usa-el-camino-de-produccion-no-puede-
+verlo-fallar` (dos renglones más arriba en la misma sección) e `instrumento-que-no-mira-nunca-falla`.
+Un lector que llegue a cualquiera de las dos tiene la regla; esta entrada aporta el ejemplo, no el
+principio. Se baja al agregar `un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca`,
+que sí enuncia una regla sin padre en el índice.
+
+- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
+
