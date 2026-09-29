@@ -103,6 +103,11 @@ while IFS= read -r linea; do
   fecha_fila="$(echo "$linea" | grep -oE '20[0-9]{2}-[0-1][0-9]-[0-3][0-9]' | sort | tail -1)"
   falta=0; frescos=""
   for a in $arts; do
+    # Un artefacto cuya PROPIA RUTA contiene la fecha de la fila no puede testificar sobre ella: la
+    # «fecha de evidencia» sale de su nombre, no de una medición, así que su último cambio coincide
+    # con la fila por construcción y marcaría SIEMPRE. Medido el 29/09 con `DEC11FILL`, que cita
+    # `Auditorias/2026-09-28-BL-Q4-...md`: falso positivo garantizado.
+    if [ -n "$fecha_fila" ] && case "$a" in *"$fecha_fila"*) true ;; *) false ;; esac; then continue; fi
     ruta="$a"
     if ! existe_en_main "$ruta"; then
       ruta="$(grep -m1 -F -- "/$(basename "$a")" "$INDICE" || true)"

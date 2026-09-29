@@ -40,7 +40,7 @@ Medido sobre **un mismo SHA** de `main`.
 | # | criterio | estado al 29/09 |
 |---|---|---|
 | 1 | Todos los DEC con acta (§2) | 🟢 **13/13 firmados** por el operador el 21/09. Deuda menor: el acta de `DEC-11` no registra los valores hex ni el par `textoTenue`. |
-| 2 | Todos los ítems de §3.1 cerrados con su DoD | 🟠 **abierto.** 62 del backlog + 6 agregados por el plan. Falta el control que mide fila-a-fila contra el EFECTO en `main` (fila `PLANDRIFT`). |
+| 2 | Todos los ítems de §3.1 cerrados con su DoD | 🟠 **abierto, pero ya no por falta de instrumento.** El control existe: `scripts/plan-drift-check.sh` (PR #712, en `main`) mide cada fila contra el **EFECTO** en `origin/main`, no contra un número de PR. Primera corrida: **11 de 11 examinadas → 0 candidatos a drift**. Lo que resta son los ítems en sí: 62 del backlog + 6 del plan. |
 | 3 | Matriz re-medida: ✅ en web **y** mobile para toda pantalla **spec** de `BL-P5` | 🟠 **abierto.** 29 de **54** ids. Decisión del operador (29/09): **(a′) reabrir auditoría y republicar los 54** sobre el SHA actual. |
 | 4 | `smoke_beta_e2e.py` verde contra prod y `BL-B1` verde sobre el último deploy | 🟠 **abierto.** El instrumento **existe** (`deploy/copiloto/smoke_beta_e2e.py`, corre en el VPS); falta la corrida sobre este SHA. |
 | ~~5~~ | ~~APK `preview` build #2 en el device + barrido `BL-Q3`~~ | ⚫ **SALE del Cierre A.** Pasa a ser **criterio de ENTRADA del sprint siguiente**, no de salida de éste. |

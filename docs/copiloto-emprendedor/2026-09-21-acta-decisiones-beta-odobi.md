@@ -58,6 +58,39 @@ La nota de `soporte` del mapa («el avatar NO es el isotipo») queda **reemplaza
 1. **`fact-sinarca` (`BL-P6`):** el hilo muestra facturar con un comando de voz y CAE inmediato. El producto **no emite sin confirmación** (`apps/copiloto/tool_catalog.py:267-269`; `kb-usuario/chat.md:96-98`). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. Pedido: ajustarlo o retirarlo del prototipo.
 2. **Fuente:** Neue Einstellung salió del repo (DEC-5), incluido `assets/fonts/NeueEinstellung-Bold.otf` del prototipo; el prototipo cae a su fuente de respaldo. En próximas entregas, nada de `.otf` / `.woff*` con licencia paga. La app usa Plus Jakarta Sans + Inter.
 3. **Contrastes (DEC-11):** el sello de acción y el botón de grabar van a cambiar de token para pasar WCAG. Cuando FRONTEND-1 cierre `BL-Q4`, esta acta se actualiza con los valores nuevos, en hex y con su ratio computado, para que los lleves al prototipo.
+
+> ### ⚠️ ACTUALIZACIÓN 2026-09-29 — **`DEC-11` NO está cerrado, y no es deuda de documentación**
+>
+> Esta acta esperaba «los valores nuevos, en hex y con su ratio computado» para cuando FRONTEND-1
+> cerrara `BL-Q4`. Al ir a buscarlos apareció que **no existen todavía: el fix no se aplicó.** Lo que
+> hay es la medición y **una decisión de diseño sin tomar**, que es lo que en realidad bloquea.
+> Evidencia: `docs/copiloto-emprendedor/Auditorias/2026-09-28-BL-Q4-variantes-AA-texto-sin-tocar-marca.md`.
+>
+> | par | dónde | hoy | variante fg-only | ¿es mínima? |
+> |---|---|---|---|---|
+> | **Sello de acción** — isotipo `acentoTexto` sobre `acento` sólido `#DE7250` | `apps/mobile/src/theme/tokens.ts:594` · `Marca.tsx`, `BotonVoz.tsx:339-366` | `#FFFFFF` → **3,17:1** | invertir el isotipo a gris oscuro | **no**: es cambio de identidad, no de tono |
+> | **Botón de grabar** — mismo `acentoTexto` contra el 1er stop (`glass.accent2` = `#F8E0D9`) | `apps/mobile/src/modules/chat/BotonVoz.tsx:323` + `:339-366` | `#FFFFFF` → **1,26:1** | `#666666` → 4,55:1 | **no**: ídem |
+>
+> **El repo ya eligió el otro camino, y funcionó.** `HudGrabacion.tsx` — el HUD que se ve *mientras*
+> se graba, hermano de `BotonVoz.tsx` — tenía el **mismo** defecto y se corrigió **tocando el fill, no
+> el texto**: su degradé pasó de `[glass.accent2, acento, acento]` a `glass.ub1 → glass.ub2`
+> (`#B04A2E → #722717`), **conservó el isotipo blanco** y llegó a **5,43:1** en el peor punto
+> (`tokens.ts:441-443`, comentario `BL-Q4 (DEC-11)`). `BotonVoz.tsx` es **la mitad de la pareja que no
+> se tocó**.
+>
+> **Recomendación de planificación:** replicar en `BotonVoz.tsx` el fix de fill de su hermano, y
+> aplicar el mismo criterio al sello. Cumple `DEC-11` «sin excepción firmada», **no toca la marca**, y
+> tiene precedente medido en el propio repo — mientras que invertir el isotipo es una decisión de
+> identidad visual, que no es de una sesión.
+>
+> **Por qué esto no se veía:** la decisión estaba firmada («se corrigen») y el renglón pendiente
+> quedó redactado como «falta anotar los hex». Una decisión trabada que se archiva como deuda de
+> registro deja de pedir turno: nadie va a buscar un bloqueo donde el texto promete una anotación.
+>
+> **Tokens de referencia, ya que el renglón los pedía:** `textoTenue` = `p.dim`
+> (`tokens.ts:590`) → **claro `#6A6457`** (`:497`), **oscuro `#928777`** (`:536`).
+>
+> Fila de seguimiento: `DEC11FILL` en `coordinacion/PLAN.md`.
 4. **Calma = 3 días**, confirmado por Martín en #516. Falta alinear el prototipo: `prototipo/index.html:3703` todavía dice `CALMA_TOPE = 5`.
 5. **Ajustes (`?ver=ajustes`):** el prototipo tiene una lista agrupada en 3 secciones («Tu negocio» / «La app» / «Ayuda») con la identidad del negocio arriba. Tu mobile del 18/09 (`51437353`, aceptado por DEC-10) usa en cambio una grilla de tiles con el grupo «Ayuda», y ahí «Cómo usar la app» absorbe la guía. Web va a seguir a mobile (`BL-W12`, barrido BL-Q3 web del 2026-09-22). Pedido: alinear el prototipo con tu decisión, o avisar si la lista agrupada es la versión final (en ese caso se reabre DEC-10 para Ajustes).
 
