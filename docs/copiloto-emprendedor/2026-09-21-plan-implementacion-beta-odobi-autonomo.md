@@ -499,7 +499,17 @@ DoD base del backlog §0.4 (1–9) + DoD propio del ítem. **Nada menos.** Un í
 - [ ] `BL-Q2` smoke contra prod: 0 fallas, o cada falla con ítem nuevo asignado.
 - [ ] Entrada de auditoría cerrada, con sus hallazgos asignados.
 
-### 11.3 Cierre A: beta técnica completa (autónomo)
+### 11.3 Cierre A: beta técnica completa (autónomo) — **RE-DECLARADO 2026-09-29**
+
+> ⚠️ **Esta sección fue re-declarada por acta del operador el 2026-09-29.**
+> Texto vigente y estado medido de cada criterio →
+> [`2026-09-29-acta-redeclaracion-cierre-a-y-plan-de-cierre.md`](2026-09-29-acta-redeclaracion-cierre-a-y-plan-de-cierre.md)
+>
+> **Qué cambió y por qué:** el criterio 5 exigía un APK en el device, y el operador había movido
+> device/EAS al sprint siguiente el 22/09. Un criterio de cierre que contiene algo declarado fuera
+> de alcance **no puede cumplirse nunca** — el sprint no se estiraba por lentitud sino porque su
+> condición de término era inalcanzable por decisión propia. El criterio 5 pasa a ser criterio de
+> **entrada** del sprint siguiente. Los otros 6 quedan intactos.
 
 Medido sobre **un mismo SHA** de `main`:
 
@@ -507,7 +517,7 @@ Medido sobre **un mismo SHA** de `main`:
 - [ ] Todos los ítems de §3.1 cerrados con su DoD.
 - [ ] Matriz re-medida por A4: ✅ en web **y** mobile para toda pantalla marcada **spec** en `BL-P5`, contra el prototipo final (`BL-P2`).
 - [ ] `smoke_beta_e2e.py` verde contra prod y `BL-B1` verde sobre el último deploy.
-- [ ] APK `preview` (build #2) instalado en el device, con el barrido `BL-Q3` hecho sobre él.
+- [x] ~~APK `preview` (build #2) instalado en el device, con el barrido `BL-Q3` hecho sobre él.~~ → **FUERA del Cierre A** (acta 2026-09-29); es criterio de ENTRADA del sprint siguiente.
 - [ ] `git ls-files '*.otf'` vacío; gitleaks verde sobre `HEAD`.
 - [ ] Runbook de Cierre B (§13) en `main`, con cada interruptor listo.
 
