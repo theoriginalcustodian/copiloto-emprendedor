@@ -23,6 +23,29 @@
 # la fila, pasó algo después de escribirla → candidato. Si el último cambio es anterior, su presencia no
 # informa nada → `PRESENCIA-VIEJA`, que NO es candidato.
 #
+# ── EL FORMATO DE LA CITA, y por que se documenta ACA ────────────────────────────────────────────
+# Una fila puede citar un path por DOS roles distintos, y el detector los trataba igual:
+#   * **entregable** — lo que la fila produce. Path a secas. Si `main` lo tocó, es señal.
+#   * **fundamento** — la razón por la que la fila dice lo que dice (una lección, un ADR, un acta).
+#     Va **entre `(ver: ...)`**, y el extractor lo DESCARTA: que se mueva el fundamento no informa
+#     nada sobre si la fila está hecha.
+#
+# Medido el 2026-09-29 con `FACTIDFIX`, que citaba
+# `(memoria/un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca.md)` como fundamento:
+# `main` lo tocó ese mismo día porque la lección se escribió ese día ⇒ falso positivo garantizado.
+#
+# **Auditoría refutó por medición las dos salidas que no requieren cambiar el formato:** (a) leer el
+# rol de la COLUMNA — las tablas del plan no tienen el mismo número de campos entre sí (6/7, 6/7,
+# 4/6) y en `FACTIDFIX` la cita vive dentro de la descripción larga, que mezcla razón y entregable en
+# un campo; (b) leer el rol de la ANTIGÜEDAD — un fundamento del 29/09 y un entregable del 29/09
+# coexisten, este repo produce lecciones al ritmo de las filas que las citan.
+# ⇒ **La información no estaba en el texto, así que ningún parser podía recuperarla.** La raíz era
+# el protocolo, no el extractor — y por eso el formato y el parser cambian en el MISMO commit.
+#
+# **Y se documenta en este docstring, no sólo en `COORDINACION.md`, a propósito:** `coordinacion/`
+# está gitignoreada, así que una regla que viva sólo ahí no sobrevive a un clon ni a una limpieza del
+# buzón. La lección equivalente del 28/09 se perdió exactamente así.
+#
 # Uso:
 #   bash scripts/plan-drift-check.sh              # informe + exit 1 si hay candidatos
 #   bash scripts/plan-drift-check.sh --quiet      # sólo el resumen
@@ -48,6 +71,41 @@ PLAN="$BUZON/PLAN.md"
 
 fatal() { echo "🛑 NO PUDE MEDIR: $*" >&2; exit 2; }
 
+# El autotest del extractor va ACA, antes de tocar git: es trabajo de strings y no depende de
+# nada externo. Cuando estaba despues del `fetch`, romper el parser a proposito daba rc=2 — el
+# codigo correcto — pero por «el fetch falló», o sea el control pasaba por la causa equivocada.
+# El control mas barato y mas especifico corre primero.
+# ── El extractor de artefactos, y su autotest ──────────────────────────────────────────────────
+# Los segmentos `(ver: ...)` se descartan: son citas de FUNDAMENTO (ver el docstring).
+extraer_artefactos() {
+  printf '%s' "$1" \
+    | sed 's/([Vv]er:[^)]*)//g' \
+    | grep -oE '[A-Za-z0-9_./-]+\.(tsx|ts|jsx|js|mjs|py|sh|sql|json|md|yml|yaml)' \
+    | sort -u
+}
+
+# El autotest corre SIEMPRE, no detrás de un flag: es trabajo de strings, cuesta nada, y un control
+# que hay que acordarse de invocar es un control que no corre. Necesita las DOS direcciones — con
+# sólo la primera, un `sed` que borrara el renglón entero pasaría igual (memoria
+# `un-mecanismo-roto-hacia-el-no-no-da-sintoma`).
+autotest_extraccion() {
+  local fila_fund="DEMO | la razón es X (ver: memoria/lec-demo.md) y el entregable es scripts/foo-demo.sh | pendiente"
+  local fila_ent="DEMO | hay que escribir memoria/lec-demo.md | pendiente"
+  local a b
+  a="$(extraer_artefactos "$fila_fund")"
+  case "$a" in *memoria/lec-demo.md*)
+    fatal "AUTOTEST: un path dentro de '(ver: ...)' salió como artefacto. La exclusión de fundamentos NO funciona y todo fundamento va a marcar falso positivo." ;;
+  esac
+  case "$a" in *scripts/foo-demo.sh*) : ;; *)
+    fatal "AUTOTEST: el entregable de la MISMA fila desapareció. La exclusión borra de más y el detector quedaría ciego — saldría verde por no mirar." ;;
+  esac
+  b="$(extraer_artefactos "$fila_ent")"
+  case "$b" in *memoria/lec-demo.md*) : ;; *)
+    fatal "AUTOTEST (control negativo): el mismo path SIN '(ver: ...)' tampoco salió. La exclusión no discrimina por rol: está filtrando por carpeta, no por cita." ;;
+  esac
+}
+autotest_extraccion
+
 [ -f "$PLAN" ] || fatal "no encuentro $PLAN. NO es 'sin drift': es que el instrumento no tiene sujeto. Pasá BUZON=<ruta absoluta>."
 
 # ── El fetch va PRIMERO, y su ausencia es la forma en que este script mentiría ──────────────────────
@@ -64,6 +122,7 @@ existe_en_main() { git -C "$REPO" cat-file -e "origin/main:$1" 2>/dev/null; }
 # El `|| true` es a propósito: un path ausente devuelve vacío, y vacío NO puede significar «viejo» por
 # defecto — ésa es exactamente la forma en que un no-medido se disfraza de medición.
 tocado_en_main() { git -C "$REPO" log -1 --format=%cs "origin/main" -- "$1" 2>/dev/null || true; }
+
 
 existe_en_main "README.md" || fatal "control POSITIVO falló: 'README.md' no aparece en origin/main. El instrumento está ciego, no el repo limpio."
 if existe_en_main "no-existe-jamas-canario-$$.md"; then fatal "control NEGATIVO falló: un path inventado dio PRESENTE. La prueba de existencia no discrimina."; fi
@@ -91,7 +150,7 @@ while IFS= read -r linea; do
   FILAS_PEND=$((FILAS_PEND+1))
 
   # Artefactos citados: tokens con extensión de código o path con barra. Los backticks los delimitan.
-  arts="$(echo "$linea" | grep -oE '[A-Za-z0-9_./-]+\.(tsx|ts|jsx|js|mjs|py|sh|sql|json|md|yml|yaml)' | sort -u)"
+  arts="$(extraer_artefactos "$linea")"
   if [ -z "$arts" ]; then
     N_NOMED=$((N_NOMED+1)); EXAMINADAS=$((EXAMINADAS+1))
     NOMED="$NOMED$id "
