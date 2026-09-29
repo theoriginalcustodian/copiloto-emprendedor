@@ -157,10 +157,21 @@ function aplanarHexAlpha(hex6: string, alphaHex2: string, hexFondo: string): str
 // §2 — El caminador del árbol renderizado (el mecanismo nuevo: NO hay mapa manual acá abajo).
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * `origen` (DEC-11, BL-Q4): de qué PROP salió el color, no una inferencia posterior — se fija en el
+ * único lugar donde `recorrer()` empuja un `ParPintado`, así que es un hecho estructural del render,
+ * no una etiqueta que alguien pueda adivinar mal. `style.color`/`placeholderTextColor` sólo existen
+ * sobre `<Text>` -> siempre `'texto'`. `stroke` sólo existe sobre una forma SVG -> siempre `'grafico'`.
+ * Ningún `<Text>` real puede aparecer jamás como `'grafico'`: es este campo, no el nombre del token,
+ * el que decide la clase de contraste exigible (ver `evaluarPar` más abajo).
+ */
+type OrigenPar = 'texto' | 'grafico';
+
 interface ParPintado {
   ruta: string;
   color: string;
   bg: string;
+  origen: OrigenPar;
 }
 
 /**
@@ -317,15 +328,15 @@ function recorrer(
   const style = StyleSheet.flatten((props.style as never) ?? {}) as Record<string, unknown>;
   if (typeof style.color === 'string') {
     const c = colorEfectivo(style.color, base);
-    if (c) for (const bg of candidatosTexto) pares.push({ ruta, color: c, bg });
+    if (c) for (const bg of candidatosTexto) pares.push({ ruta, color: c, bg, origen: 'texto' });
   }
   if (typeof props.placeholderTextColor === 'string') {
     const c = colorEfectivo(props.placeholderTextColor, base);
-    if (c) for (const bg of candidatosTexto) pares.push({ ruta: `${ruta} · placeholder`, color: c, bg });
+    if (c) for (const bg of candidatosTexto) pares.push({ ruta: `${ruta} · placeholder`, color: c, bg, origen: 'texto' });
   }
   if (typeof props.stroke === 'string' && props.stroke !== 'none') {
     const c = colorEfectivo(props.stroke, base);
-    if (c) for (const bg of candidatosTexto) pares.push({ ruta: `${ruta} · stroke`, color: c, bg });
+    if (c) for (const bg of candidatosTexto) pares.push({ ruta: `${ruta} · stroke`, color: c, bg, origen: 'grafico' });
   }
 
   const hijos = Array.isArray(n.children) ? n.children : [];
@@ -731,13 +742,59 @@ beforeAll(async () => {
 // resuelto (no la ruta, que varía con el testID/estructura): estable mientras el color no cambie.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * DEC-11 (`contrato_planificacion-a-frontend2_DEC11-el-umbral-era-el-instrumento-equivocado.md`):
+ * el gate aplicaba 4,5:1 (WCAG 1.4.3, TEXTO) a todo par por igual. Un trazo SVG (`stroke`) no es un
+ * glifo de texto: su umbral es 3:1 (WCAG 1.4.11, Non-text Contrast), y un logotipo está exento por la
+ * norma. **La clase es DECLARADA acá, nunca inferida del nombre del token** (un `acentoTexto` usado
+ * como trazo de isotipo sigue siendo `no-texto`: el nombre no manda). `evaluarPar` (más abajo) además
+ * la cruza contra `ParPintado.origen` -- si el walker vio el par salir de `style.color` (un `<Text>`
+ * real), NINGUNA excepción puede declararlo `no-texto`/`logotipo` para aflojarle el piso a 3:1: el
+ * origen estructural gana siempre. Sin esa cruza, alguien podría "resolver" un texto real sub-AA
+ * bajándole la clase en vez de subirle el contraste -- ver el control positivo de más abajo.
+ */
+type ClaseContraste = 'texto' | 'no-texto' | 'logotipo';
+
+/** `logotipo` no tiene piso de ratio (exento por norma) -- 0 nunca dispara `ratio < umbral`. */
+const UMBRAL_POR_CLASE: Record<ClaseContraste, number> = { texto: 4.5, 'no-texto': 3.0, logotipo: 0 };
+
 interface Excepcion {
   min: number;
   motivo: string;
+  /** Obligatoria (TypeScript no compila sin ella): ver el docstring de `ClaseContraste` arriba. */
+  clase: ClaseContraste;
 }
 
 function clavePar(p: ParPintado): string {
   return `${p.color}→${p.bg}`;
+}
+
+/**
+ * El veredicto de UN par ya resuelto contra su excepción (si tiene). Extraído a función pura --
+ * reusada por el `it` del gate (§7) y por los controles positivos de DEC-11 (§7.bis), que necesitan
+ * ejercitar la lógica de clase SIN montar un componente real.
+ */
+function evaluarPar(par: ParPintado, excepcion: Excepcion | undefined): string | null {
+  const ratio = contraste(par.color, par.bg);
+  if (ratio >= 4.5) return null; // AA de texto: nadie por debajo de esto necesita excepción, sea la clase que sea.
+
+  if (!excepcion) {
+    return `${par.ruta}: ${par.color} sobre ${par.bg} = ${ratio.toFixed(2)}:1 (SIN registrar)`;
+  }
+  if (excepcion.clase == null) {
+    return `${par.ruta}: excepción SIN "clase" declarada (texto/no-texto/logotipo) -- rompe el gate por diseño, no hay default.`;
+  }
+  if (par.origen === 'texto' && excepcion.clase !== 'texto') {
+    return `${par.ruta}: origen texto (glifo real de <Text>) no puede exceptuarse con clase "${excepcion.clase}" -- el origen estructural manda sobre lo declarado.`;
+  }
+
+  const umbral = UMBRAL_POR_CLASE[excepcion.clase];
+  if (ratio >= umbral) return null; // pasa según SU clase -- acá sale de la lista #ffffff→#de7250.
+
+  if (ratio < excepcion.min - 0.01) {
+    return `${par.ruta}: ${par.color} sobre ${par.bg} = ${ratio.toFixed(2)}:1 EMPEORÓ el piso registrado (${excepcion.min}:1) -- ${excepcion.motivo}`;
+  }
+  return null;
 }
 
 // Valores tomados de una corrida REAL del barrido (no inventados): cada `min` es el piso observado
@@ -751,31 +808,36 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `tema.color.acento` (#de7250) como texto/link directo sobre superficies claras neutras --
     // patrón "texto acento sobre tarjeta clara" repetido en detalle de presupuesto/comprobante,
     // botón "confirmar" de PasoResumen, chip seleccionado de CampoSelect.
-    '#de7250→#faf7ec': { min: 2.95, motivo: 'acento como texto (total/CAE) sobre superficie clara -- DetallePresupuesto/DetalleComprobante.' },
-    '#de7250→#eeebe0': { min: 2.65, motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie clara.' },
-    '#de7250→#ebe7e0': { min: 2.57, motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel clara.' },
-    '#de7250→#fffefe': { min: 3.14, motivo: 'acento como texto de chip seleccionado en CampoSelect, fondo de opción no seleccionada.' },
-    '#de7250→#fdfcf7': { min: 3.08, motivo: 'acento como texto de chip seleccionado en CampoSelect, variante de superficie.' },
+    '#de7250→#faf7ec': { min: 2.95, clase: 'texto', motivo: 'acento como texto (total/CAE) sobre superficie clara -- DetallePresupuesto/DetalleComprobante.' },
+    '#de7250→#eeebe0': { min: 2.65, clase: 'texto', motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie clara.' },
+    '#de7250→#ebe7e0': { min: 2.57, clase: 'texto', motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel clara.' },
+    '#de7250→#fffefe': { min: 3.14, clase: 'texto', motivo: 'acento como texto de chip seleccionado en CampoSelect, fondo de opción no seleccionada.' },
+    '#de7250→#fdfcf7': { min: 3.08, clase: 'texto', motivo: 'acento como texto de chip seleccionado en CampoSelect, variante de superficie.' },
     // `tema.color.peligro` (#c7455a) como texto/ícono de acción destructiva sobre superficies rosadas
     // claras (`peligroFondo`) -- cancelar, cerrar sesión, desconectar, anular, descartar.
-    '#c7455a→#f2e2dd': { min: 3.77, motivo: 'peligro como texto (cancelar/cerrar sesión/descartar) sobre peligroFondo, piel clara.' },
-    '#c7455a→#f9ecee': { min: 4.12, motivo: 'peligro como texto (desconectar/anular) sobre variante de peligroFondo, piel clara.' },
-    '#c7455a→#F7F3EC': { min: 4.28, motivo: 'peligro como texto de error de campo (CampoSelect/CampoTexto/CampoFecha) sobre el fondo de pantalla (montaje standalone), y status de error de Composer.' },
+    '#c7455a→#f2e2dd': { min: 3.77, clase: 'texto', motivo: 'peligro como texto (cancelar/cerrar sesión/descartar) sobre peligroFondo, piel clara.' },
+    '#c7455a→#f9ecee': { min: 4.12, clase: 'texto', motivo: 'peligro como texto (desconectar/anular) sobre variante de peligroFondo, piel clara.' },
+    '#c7455a→#F7F3EC': { min: 4.28, clase: 'texto', motivo: 'peligro como texto de error de campo (CampoSelect/CampoTexto/CampoFecha) sobre el fondo de pantalla (montaje standalone), y status de error de Composer.' },
     // `tema.color.exito`-ish (#3c8069) como texto de estado sobre superficies casi blancas.
-    '#3c8069→#faf7ec': { min: 4.36, motivo: '"facturado" (DetallePresupuesto) sobre superficie clara -- borde de AA, no se sube en esta tarea.' },
-    '#3c8069→#fcfaf7': { min: 4.49, motivo: '"conectada" (PantallaApps) sobre superficie casi blanca -- a milésimas de AA.' },
+    '#3c8069→#faf7ec': { min: 4.36, clase: 'texto', motivo: '"facturado" (DetallePresupuesto) sobre superficie clara -- borde de AA, no se sube en esta tarea.' },
+    '#3c8069→#fcfaf7': { min: 4.49, clase: 'texto', motivo: '"conectada" (PantallaApps) sobre superficie casi blanca -- a milésimas de AA.' },
     // Isotipo (trazo blanco de Marca/BotonVoz) sobre los stops de su propio relleno -- degradado
     // `[glass.accent2, tema.color.acento, tema.color.acento]` en BotonVoz, `tema.color.acento` sólido
-    // en Marca. `#ffffff sobre #de7250` (3,17:1, el ÚLTIMO stop / relleno sólido de Marca) YA era
-    // deuda conocida en el mapa `SUPERFICIES` viejo ("isotipo de Marca / BotonVoz, offset final").
-    '#ffffff→#de7250': { min: 3.16, motivo: 'isotipo (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. Deuda ya conocida en el mapa SUPERFICIES viejo.' },
-    // 🆕 HALLAZGO NUEVO de este mecanismo (el mapa manual NO lo tenía): el walker mide el trazo TAMBIÉN
-    // contra el PRIMER stop del degradado de BotonVoz (`glass.accent2`, resuelto a `#f8e0d9`) -- mucho
-    // peor que el 3,17:1 ya conocido. El mapa a mano sólo registraba "el offset final"; nunca contra el
-    // borde del degradado radial. Se registra como piso, pero VER REPORTE -- corresponde un `pedido_`
-    // a planificación, no se arregla acá.
-    '#ffffff→#f8e0d9': { min: 1.26, motivo: 'NUEVO (no estaba en SUPERFICIES): isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- casi invisible. Candidato a pedido_ a planificación.' },
-    '#f8e0d9→#ebe7e0': { min: 1.02, motivo: 'ícono de enviar (Composer, chat-enviar) casi invisible contra su propio fondo -- parece estado inactivo/vacío (sin texto en el composer al montar). Pre-existente, no se arregla acá.' },
+    // en Marca. DEC-11 §3 Pieza C: la Marca es un LOGOTIPO (exento por norma) Y de paso pasa 3:1
+    // (no-texto) -- 3,17:1 medido, verificado independientemente contra la fórmula WCAG del propio
+    // archivo (no es el mismo `2.87:1` que dice `tokens.ts:86`; ese comentario está desactualizado,
+    // ver el fix de esa línea en el mismo PR). El trazo de `BotonVoz` contra su ÚLTIMO stop (el mismo
+    // par exacto, `acento` sólido) comparte la exención: geométricamente es el mismo isotipo Odobi.
+    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. 3,17:1 (pasa 3:1 de no-texto) y además exento por ser logotipo -- DEC-11 Pieza C.' },
+    // 🔴 DEC-11: sigue siendo deuda -- el trazo del isotipo contra el PRIMER stop del degradado
+    // (`glass.accent2`) es un objeto gráfico (no-texto, 3:1), no texto, pero 1,26:1 no llega ni a eso.
+    // La Pieza A (mover la geometría del degradado) es la que lo resuelve; hasta que no ocurra, se
+    // mide con el walker real (jest.setup.js mockea SVG a `View`s pass-through: el mock NO hace
+    // sampling geométrico de gradientes, colecta TODOS los stops como candidatos por igual --
+    // confirmado con un spike de este mismo cambio, ver el `hallazgo_` a planificación) -- así que
+    // ninguna geometría podía hacerlo desaparecer de ESTE gate. Sigue rojo a propósito.
+    '#ffffff→#f8e0d9': { min: 1.26, clase: 'no-texto', motivo: 'isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- objeto gráfico, no texto, pero 1,26:1 no llega a 3:1. Pendiente de Pieza A (ver hallazgo_ DEC-11-A-inviable-con-este-walker); el walker no puede verificar un fix geométrico (colecta TODOS los stops del gradiente como candidatos, sin geometría).' },
+    '#f8e0d9→#ebe7e0': { min: 1.02, clase: 'no-texto', motivo: 'ícono de enviar (Composer, chat-enviar), trazo SVG -- objeto gráfico, casi invisible contra su propio fondo (parece estado inactivo/vacío, sin texto en el composer al montar). Pre-existente, ajeno a DEC-11, no se arregla acá.' },
   },
   oscuro: {
     // 🔴 EL PAR QUE EL DoD DE ESTA TAREA PIDE EXPLÍCITAMENTE COMO EXCEPCIÓN NOMBRADA, NO ARREGLADA ACÁ:
@@ -783,18 +845,18 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `SUPERFICIES` lo tenía redondeado a "4,381:1"; el walker mide 4,3873:1 sobre el MISMO par real
     // (textoTenue / burbuja `acento+1f` del operador) -- la diferencia de milésimas es el método de
     // redondeo del mapa manual, no una piel distinta. Mismo hallazgo, mecanismo más preciso.
-    '#928777→#32201a': { min: 4.38, motivo: 'PantallaTicket: textoTenue sobre la burbuja del operador (oscuro) -- ~4,39:1 (el mapa viejo lo redondeaba a 4,381:1). Deuda ya conocida, NO se arregla en esta tarea (BL-Q4 fila 5).' },
-    '#de7250→#322a23': { min: 4.44, motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie oscura -- a milésimas de AA.' },
-    '#de7250→#312c2a': { min: 4.34, motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel oscura -- a milésimas de AA.' },
-    '#de7250→#3b332d': { min: 3.90, motivo: 'acento como texto de chip seleccionado en CampoSelect, piel oscura.' },
-    '#ffffff→#de7250': { min: 3.16, motivo: 'isotipo (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. Deuda ya conocida en el mapa SUPERFICIES viejo (misma piel que en claro: el acento no cambia entre pieles).' },
-    '#ffffff→#f8e0d9': { min: 1.26, motivo: 'NUEVO (no estaba en SUPERFICIES): isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- casi invisible. Candidato a pedido_ a planificación.' },
+    '#928777→#32201a': { min: 4.38, clase: 'texto', motivo: 'PantallaTicket: textoTenue sobre la burbuja del operador (oscuro) -- ~4,39:1 (el mapa viejo lo redondeaba a 4,381:1). Deuda ya conocida, NO se arregla en esta tarea (BL-Q4 fila 5).' },
+    '#de7250→#322a23': { min: 4.44, clase: 'texto', motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie oscura -- a milésimas de AA.' },
+    '#de7250→#312c2a': { min: 4.34, clase: 'texto', motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel oscura -- a milésimas de AA.' },
+    '#de7250→#3b332d': { min: 3.90, clase: 'texto', motivo: 'acento como texto de chip seleccionado en CampoSelect, piel oscura.' },
+    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. 3,17:1 (pasa 3:1 de no-texto) y además exento por ser logotipo -- DEC-11 Pieza C (misma piel que en claro: el acento no cambia entre pieles).' },
+    '#ffffff→#f8e0d9': { min: 1.26, clase: 'no-texto', motivo: 'isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- objeto gráfico, no texto, pero 1,26:1 no llega a 3:1. Pendiente de Pieza A (ver hallazgo_ DEC-11-A-inviable-con-este-walker).' },
     // `tema.color.textoTenue` (#928777) sobre superficies oscuras -- patrón SISTÉMICO en la piel
     // oscura: etiquetas secundarias, placeholders, descripciones de chip, texto de "detalle" en listas.
     // Repetido en 8+ componentes distintos con el MISMO par exacto -- indica que `textoTenue` en piel
     // oscura está, como familia, corriendo cerca del piso AA (no es un caso aislado).
-    '#928777→#3a3633': { min: 3.39, motivo: 'textoTenue sobre superficieAlta oscura -- patrón sistémico: PantallaCuenta, PantallaApps, PasoResumen, Composer(placeholder), SeccionMisComprobantes. Pre-existente, no se arregla acá.' },
-    '#928777→#3b332d': { min: 3.50, motivo: 'textoTenue sobre el vidrio de campo (EnvolturaCampo/CampoSelect/CampoTexto/CampoFecha), piel oscura -- mismo patrón sistémico que #928777→#3a3633, superficie levemente distinta (vidrio vs. superficieAlta).' },
+    '#928777→#3a3633': { min: 3.39, clase: 'texto', motivo: 'textoTenue sobre superficieAlta oscura -- patrón sistémico: PantallaCuenta, PantallaApps, PasoResumen, Composer(placeholder), SeccionMisComprobantes. Pre-existente, no se arregla acá.' },
+    '#928777→#3b332d': { min: 3.50, clase: 'texto', motivo: 'textoTenue sobre el vidrio de campo (EnvolturaCampo/CampoSelect/CampoTexto/CampoFecha), piel oscura -- mismo patrón sistémico que #928777→#3a3633, superficie levemente distinta (vidrio vs. superficieAlta).' },
   },
 };
 
@@ -822,19 +884,11 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
   });
 
   for (const piel of PIELES) {
-    it(`piel ${piel}: todo par sub-AA (< 4.5:1) está registrado en DEUDA_CONOCIDA, ninguno es nuevo`, () => {
+    it(`piel ${piel}: todo par sub-umbral-de-su-clase está registrado en DEUDA_CONOCIDA, ninguno es nuevo`, () => {
       const fallas: string[] = [];
       for (const par of PARES_POR_PIEL[piel]) {
-        const ratio = contraste(par.color, par.bg);
-        if (ratio >= 4.5) continue;
-        const excepcion = DEUDA_CONOCIDA[piel][clavePar(par)];
-        if (!excepcion) {
-          fallas.push(`${par.ruta}: ${par.color} sobre ${par.bg} = ${ratio.toFixed(2)}:1 (SIN registrar)`);
-          continue;
-        }
-        if (ratio < excepcion.min - 0.01) {
-          fallas.push(`${par.ruta}: ${par.color} sobre ${par.bg} = ${ratio.toFixed(2)}:1 EMPEORÓ el piso registrado (${excepcion.min}:1) -- ${excepcion.motivo}`);
-        }
+        const falla = evaluarPar(par, DEUDA_CONOCIDA[piel][clavePar(par)]);
+        if (falla) fallas.push(falla);
       }
       expect(fallas).toEqual([]);
     });
@@ -850,6 +904,48 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
     expect(gradiente).not.toBeNull();
     expect(gradiente[1]).not.toMatch(/accent2/);
     expect(gradiente[1]).toMatch(/glass\.ub1/);
+  });
+});
+
+describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs logotipo exento)', () => {
+  it('control anti-aflojamiento: el ÚNICO par cuyo veredicto cambia frente al umbral uniforme de 4.5 es #ffffff→#de7250', () => {
+    // "Veredicto" = ¿necesita registrarse como deuda (rojo) o no (verde)? -- independiente de si HOY
+    // ya estaba o no en `DEUDA_CONOCIDA` (eso es detalle de mantenimiento, no del criterio WCAG).
+    // DoD Pieza B, DEC-11 §3: si aparece un SEGUNDO par en esta lista, el cambio afloja el gate en vez
+    // de corregirlo -- paren y avisen, no lo acepten.
+    const cambios: string[] = [];
+    for (const piel of PIELES) {
+      for (const par of PARES_POR_PIEL[piel]) {
+        const ratio = contraste(par.color, par.bg);
+        const veredictoViejo = ratio >= 4.5 ? 'verde' : 'rojo';
+        const clase = DEUDA_CONOCIDA[piel][clavePar(par)]?.clase;
+        const umbralNuevo = clase ? UMBRAL_POR_CLASE[clase] : 4.5; // sin excepción, conservador: 4.5 (no baja el piso solo).
+        const veredictoNuevo = ratio >= umbralNuevo ? 'verde' : 'rojo';
+        if (veredictoViejo !== veredictoNuevo) cambios.push(clavePar(par));
+      }
+    }
+    expect(dedup(cambios)).toEqual(['#ffffff→#de7250']);
+  });
+
+  it('control positivo: declarar clase "no-texto" en un par de TEXTO real NO lo exceptúa -- el origen estructural manda', () => {
+    // Simula el ataque que el DoD pide cubrir: alguien "resuelve" un texto sub-AA bajándole la clase
+    // en vez de subirle el contraste. `textoTenue` real (origen: 'texto') con una excepción mal
+    // declarada como 'no-texto' -- si esto pasara, el par desaparecería de la lista sin arreglarse.
+    const parDeTextoReal: ParPintado = { ruta: 'control · texto real', color: '#928777', bg: '#3a3633', origen: 'texto' };
+    const excepcionMalDeclarada: Excepcion = { min: 3.39, clase: 'no-texto', motivo: 'control -- clase deliberadamente mal puesta' };
+    const falla = evaluarPar(parDeTextoReal, excepcionMalDeclarada);
+    expect(falla).not.toBeNull();
+    expect(falla).toMatch(/origen texto.*no puede exceptuarse/);
+  });
+
+  it('control positivo: una excepción SIN "clase" declarada rompe el gate -- no hay default silencioso', () => {
+    // TypeScript ya exige `clase` en `Excepcion` (no compila sin ella) -- este control ejercita el
+    // camino en RUNTIME (p.ej. un objeto armado dinámicamente que se saltee el chequeo del compilador).
+    const parGrafico: ParPintado = { ruta: 'control · sin clase', color: '#ffffff', bg: '#f8e0d9', origen: 'grafico' };
+    const excepcionSinClase = { min: 1.26, motivo: 'control -- clase omitida a propósito' } as unknown as Excepcion;
+    const falla = evaluarPar(parGrafico, excepcionSinClase);
+    expect(falla).not.toBeNull();
+    expect(falla).toMatch(/SIN "clase" declarada/);
   });
 });
 
