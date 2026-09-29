@@ -376,7 +376,6 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     return () => {
       cancelado = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `reintentoBorrador` sólo existe para forzar un rearranque manual.
   }, [vista, gate, facturaId, reintentoBorrador]);
 
   const pasoBackend = estadoFacturaActual ? derivarPasoVisible(estadoFacturaActual) : null;
