@@ -255,3 +255,86 @@ es el **exit code**, no el texto): `scripts/evidencia/criterio3-padron.sh` · `s
 
 **delegación:** 4 sub-agentes (0 haiku / 4 sonnet) · ~30 lecturas inline · scripts: 2 propios escritos,
 11 corridas · 1 corrida del instrumento de terceros.
+
+---
+
+# ADENDA 2026-09-29 17:40 — población A medida (5/5), y el criterio 3 **no tiene referencia de escritorio**
+
+Cierra el §7, que declaraba pendiente la corrida sobre los 5 ids de población A.
+
+## El instrumento: dos defectos arreglados, uno de raíz
+
+`correr-criterio3.sh` colgaba para siempre justo después de `✓ prototipo … (HTTP 200)`, sin escribir
+una captura. **Causa: levanta el server del prototipo con `nohup … &` y después hace `wait` SIN
+argumentos**, que espera a *todos* los jobs del shell — incluido un server que no termina.
+Reproducción mínima aislada: `wait` pelado ⇒ timeout; `wait $pids` ⇒ pasa; sin server en background el
+`wait` pelado tampoco cuelga (control negativo). Intermitente porque si el server ya está vivo, el
+runner no lo levanta y no hay job que esperar.
+
+**Y el comentario del propio script invertía la causa**: mandaba a «matá ese server y dejá que este
+runner levante el propio» — el consejo que *garantiza* el cuelgue. Corregido (PR #722, `34ed5fb1`).
+
+Con el fix: **exit 0**, 20 PNGs (5 ids × 2 viewports × app/proto) + `criterio3-caminos.json`.
+
+## 🔴 C3-10 · No existe referencia de escritorio (afecta a todos los lotes)
+
+`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **única media query en 3900 líneas**:
+
+```css
+/* En el teléfono ocupa todo; en escritorio, un marco de 390×844 para verlo en contexto. */
+@media (min-width:520px){ #app{width:390px;height:844px;border-radius:40px;...} }
+```
+
+El prototipo **es mobile-only por diseño**. A 1440 no reflowea: dibuja una maqueta de teléfono
+centrada. Entonces la comparación `@desktop` enfrenta el diseño *mobile* del proto contra el layout
+*desktop* de la app, y **todo desvío de escritorio derivado de ahí es artefacto del instrumento**.
+
+Peor: el instrumento **no falla** — produce 10 archivos `…-proto-desktop.png` cuyo nombre afirma lo que
+el contenido no cumple. Es un instrumento que acusa al producto por un defecto propio.
+
+**No afirmo que los 34 veredictos existentes estén mal**: no declaran `plataforma` (C3-5), así que no se
+puede saber contra qué midieron. Sí afirmo: **si alguno midió desktop contra el proto, esa fila no es
+válida.** La decisión de alcance es de planificación.
+
+## 🟠 C3-11 · El instrumento no puede afirmar ausencias — y la vuelta útil
+
+Las capturas son de **viewport**, y el proto corre con `overflow:hidden` + scroll interno: «no está en
+el proto» puede ser «está debajo del fold». **Pero** la captura `proto-desktop`, inservible como
+referencia de escritorio, **es la referencia mobile completa** (marco entero de 390×844 con fondo vacío
+al pie). Si sobra fondo, la pantalla terminó y la ausencia **sí** es afirmable. Ese es el criterio
+usado abajo.
+
+## Los 5 veredictos · teléfono · `medido_contra: proto@34ed5fb1` + app servida
+
+| id | @390 | qué | @desktop |
+|---|---|---|---|
+| `apar` | ✅ **COINCIDE** | misma estructura, orden y textos; termina con fondo vacío en ambos ⇒ comparación completa | `SIN_REFERENCIA` |
+| `comousar` | 🔴 **DESVÍO** | proto: los 5 temas en **una tarjeta, numerados 1-5, con chevron**; app: tarjetas sueltas **sin número ni chevron**. Y la app **agrega** «LO QUE LE PODÉS PEDIR» (GASTOS/INGRESOS/FACTURAS), que el proto no tiene | `SIN_REFERENCIA` |
+| `esc` | 🔴 **DESVÍO** | título «Funciones» vs «**Tus funciones**» · **fila 1 del grid invertida**: app `Facturación·Ingresos·Gastos`, proto `Gastos·Ingresos·Facturación` (fila 2 coincide) · chevron en «Actividad reciente» sólo en app | `SIN_REFERENCIA` |
+| `soporte` | 🔴 **DESVÍO** | proto tiene breadcrumb «‹ Ajustes» y **H1 de página**; en la app el título vive **dentro de la burbuja** · emisor «Soporte técnico» vs «**Soporte de Odobi**» · **affordance**: app ofrece **micrófono**, proto ofrece **adjuntar (clip)** | `SIN_REFERENCIA` |
+| `factura` | ⚠️ **NO MEDIBLE — app sin datos** | las 2 filas de «ÚLTIMAS EMITIDAS» salen **vacías** (placeholders): no se puede comparar estructura de fila. Lo comparable coincide (header, card negra, «+ Nueva factura») | `SIN_REFERENCIA` |
+
+**Supuesto declarado, no verificado —** `[ASSUMED_PENDING_VERIFY]`: el proto **nunca** dibuja la barra
+inferior y navega por gesto («Subí para volver a Mi día»); la app la muestra siempre. Se la pasé a los
+recolectores **como legítima**, así que pudo sesgarlos. Si no es decisión tomada, es un desvío que
+atraviesa las 5 pantallas.
+
+## 🟠 C3-12 · Hallazgo de producto, de rebote (no es del criterio 3)
+
+En `factura`, el mismo dato está en un viewport y falta en el otro:
+
+| | «Facturado este mes» | píldora |
+|---|---|---|
+| app @390 | **$165.000,00** | «3 facturas · 3 impagas» |
+| app @desktop | **«—»** | **ausente** |
+
+Mismo tenant, misma corrida. Un importe que está a 390 y no a 1440 no es del prototipo: es de la app.
+Fila para frontend (o backend, si el shell desktop lo pide por otra query).
+
+## Corrección de nomenclatura
+
+El id `(vacio)` de la población C **no existía en la spec: lo fabricaba este dictamen** vía
+`criterio3-padron.sh`. La celda real es `*(vacío)* Mi día` — **la home** (`?ver=` sin valor) — y el
+nombre colisionaba con `vacio` (BL-W5, spec `:43`), que es otro id. Renombrado a **`(home)`**. Le costó
+un turno a frontend2, cuya población C queda en **8 ids**; la home pasa a la cola de auditoría. El
+conteo no se mueve: 27 filas × 2 columnas = 54 celdas, control de no-regresión en 54 = 54.
