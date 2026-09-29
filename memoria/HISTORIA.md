@@ -303,3 +303,9 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [vácio no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — «horneá el control en el script» pasó a ser ESTRUCTURA: el canario por brazo de `scripts/evidencia/contar-veredictos.py` (exit 5) y `scripts/tests/test-ci-verde-veredicto-monotono.sh`. Y su versión más filosa entró al índice el mismo día: `el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md`.
 - [contar un símbolo no dice en qué rol aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — es literalmente el docstring de `veredictos_de()` («Cuenta la FORMA, no el símbolo») y lo vigila `por_forma` más el canario.
 - [el guard que caza a su propio autor](el-guard-que-caza-a-su-propio-autor.md) — «si nunca te frenó, no sabés si funciona» pasó a ser ESTRUCTURA el 2026-09-28: el canario por brazo de `contar-veredictos.py` sale por exit 5 si romper un brazo no mueve la métrica, y el renglón nuevo `el-fallback-que-sustituye-…` la subsume con la regla accionable («rompé cada brazo por separado»).
+
+## Bajadas del índice el 2026-09-29 (co-localizadas en [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]], que las cita y vuelve a enunciar su regla con una instancia más común)
+- [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
+- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
+
+- [🗂️🕳️ Documentar el cambio en un comentario NUEVO deja vivo el viejo](documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo.md) — 8 de 27 líneas del proto se contradicen. Grepeá si hay uno POSTERIOR.

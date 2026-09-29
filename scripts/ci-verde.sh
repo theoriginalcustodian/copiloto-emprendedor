@@ -52,8 +52,27 @@ fi
 PR="$1"
 ESPERADOS="${2:-backend core web mobile lint drift}"
 
+# exit 2, NO 1: esto es «no pude MEDIR», y el docstring (:24-27) ya le reservaba el 2 a eso. Con
+# `exit 1` un número de PR equivocado era INDISTINGUIBLE de un CI en rojo — medido por auditoría:
+# `ci-verde.sh 999999` daba exit 1, idéntico a un PR con jobs fallados. Es fail-closed (nunca
+# mergea de más), por eso MEDIA y no ALTA; lo que rompe es el DIAGNÓSTICO: manda a mirar el CI
+# cuando el problema es el número o el login de `gh`. Misma clase que
+# `memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md`.
+#
+# LA CLASE, enumerada (era el DoD de este fix: arreglar el caso que quemó NO alcanza — la guarda
+# se escribe para el que ya dolió y los hermanos quedan con el comportamiento viejo):
+#   · `scripts/ci-verde.sh` — 3 rutas no-medibles ya daban 2 (`gh` ausente :42, falta de argumento
+#     :48); ÉSTA era la única que quedó en 1. Arreglada acá.
+#   · `scripts/evidencia/correr-canario.sh` — NO es de la clase: sus 4 rutas no-medibles usan
+#     `ABORT(9)` de forma UNIFORME (:34,:35,:41,:43). Otro código que el 2, pero sin ambigüedad
+#     interna. Se revisó y se descarta; enumerar no es acusar.
+#   · `scripts/deuda-check.sh:74-80` — comparte el defecto EN ESPECIE: su `exit 1` significa a la
+#     vez «hay deuda impaga» y «no pude leer el registro». Pero es DELIBERADO (su comentario lo
+#     argumenta como fail-LOUD) y está fijado por un test
+#     (`scripts/tests/test-deuda-disparador-cumplido.sh:209` afirma exit 1 para ese mensaje), así
+#     que cambiarlo es un cambio de contrato, no un fix. Queda como fila con dueño, no se toca acá.
 json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
-  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 1; }
+  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
 
 falta=0
 for j in $ESPERADOS; do
