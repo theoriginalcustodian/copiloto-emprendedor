@@ -75,6 +75,72 @@ CIEGOS_DECLARADOS = {
 # instrumento lo heredó. Un diff de universo es BIDIRECCIONAL: faltantes Y retirados.
 RETIRADOS_DECLARADOS = {"plan"}
 
+# ── C3-15: QUE DOCUMENTOS SE MIDEN ──────────────────────────────────────────────────────────────
+# Hasta el 2026-09-29 esto era `docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}`:
+# DOS documentos fijos, elegidos a mano. Medido con el glob: hay **22** documentos del buzon que
+# producen al menos un id del criterio con veredicto. El contador miraba 2 de 22 y **no lo decia** —
+# la cifra «34 de 54» era real para esos dos y se leia como si fuera del corpus.
+#
+# Lo que el glob NO puede decidir solo es el ROL: si el documento MIDE un sujeto o lo CITA. Medido:
+# el `dictamen` del 28/09 produce 12 ids con veredicto y no mide ninguno —dictamina sobre mediciones
+# ajenas—, y su estructura (12 ids / 14 sitios) es indistinguible de una medicion real. La relacion
+# entre cifras tampoco alcanza. Eso no es falta de ingenio del parser: **el formato no codifica el
+# rol**, y ningun parser recupera lo que el documento no escribio.
+#
+# Asi que el descubrimiento es automatico y la CLASIFICACION es declarada, con ratchet en las dos
+# direcciones: un candidato sin clasificar ROMPE el gate (exit 8) en vez de sumarse o descartarse en
+# silencio. El instrumento no puede volver a ignorar un documento callado.
+#
+# 🔴 La clave es el BASENAME, no la ruta. El estado de un mensaje ES su ubicacion (`abierto/` ->
+# `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
+# janitor archiva — un falso rojo diario, que es como se desarma un guard.
+MEDICIONES_DECLARADAS = {
+    # BL-Q3 v2 — los dos lotes que este script ya miraba
+    "2026-09-28_cierre_frontend1-a-planificacion_BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md",
+    "2026-09-28_cierre_frontend2-a-planificacion_BL-Q3-v2-lote-B-11-de-11-completo.md",
+    # BL-Q3 v2 — los que quedaban afuera
+    "2026-09-28_cierre_frontend1-a-planificacion_BL-Q3-v2-mis-4-ids-completos-con-superficie-y-dimension.md",
+    "2026-09-28_dato_frontend1-a-planificacion_BL-Q3-v2-re-medicion-card-card-cobro-card-presu-factura.md",
+    "2026-09-28_dato_frontend1-a-planificacion_BL-Q3-v2-card-presu-cerrado-mas-2-hallazgos.md",
+    # B1 / poblacion C — 29/09 (el frente que el `docs` fijo no podia ver)
+    "2026-09-29_cierre_frontend1-a-planificacion_B1-13-ids-superficie-y-dimension.md",
+    "2026-09-29_cierre_frontend1-a-planificacion_poblacion-C-mobile-5-ids-y-correccion-de-mapeo.md",
+    "2026-09-29_cierre_frontend2-a-planificacion_C3-poblacion-C-8-de-9-ids-web-medidos.md",
+    # matrices del 22/09 — la mas grande del corpus (22 ids) y nunca se habia contado
+    "2026-09-22_dato_frontend1-a-planificacion_matriz-web-re-medida.md",
+    "2026-09-22_dato_frontend1-a-planificacion_matriz-web-re-medida-v2.md",
+    "2026-09-22_dato_frontend2-a-planificacion_matriz-web-re-medida.md",
+    "2026-09-22_dato_frontend2-a-planificacion_BL-Q3-web-barrido-pwa-vs-prototipo.md",
+    # auditoria midiendo (no dictaminando)
+    "2026-09-23_cierre_auditoria-a-planificacion_BLOQUE-A-6-de-54-y-que-son-realmente-las-29-filas.md",
+    "2026-09-29_cierre_auditoria-a-planificacion_poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia-de-escritorio.md",
+    "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md",
+    "2026-09-21_dato_planificacion-a-frontend1_filas-nuevas-volver-e-ingresar-mobile.md",
+}
+
+# Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
+# lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
+# hace desaparecer un dato incomodo sin que nadie lo note.
+NO_SON_MEDICION = {
+    "2026-09-28_dictamen_auditoria-a-planificacion_el-agregado-NO-alcanza-y-faltan-4-acciones-no-remedir.md":
+        "DICTAMEN: cita 12 sujetos con veredicto para dictaminar SOBRE mediciones ajenas. Es el "
+        "fixture negativo mas grande del corpus — sumarlo inflaria la cifra en 12 y se veria como "
+        "progreso, que es exactamente el riesgo de descubrir documentos por glob.",
+    "2026-09-28_dato_frontend1-a-planificacion_cierre-A-paso1-lista-de-filas-invalidadas.md":
+        "CRUCE de invalidacion: nombra 15 sujetos y su columna «resultado» dice «fuera del cruce», "
+        "no un veredicto. 1 id con veredicto contra 15 sitios.",
+    "2026-09-28_cierre_auditoria-a-planificacion_frente1-el-brazo-tabla-es-invisible-y-19-de-20-huecos-son-inventados.md":
+        "Documento SOBRE el instrumento: cita ids como ejemplos de un defecto del parser.",
+    "2026-09-29_dato_frontend1-a-frontend2_ingresar-volver-ya-medidos-en-B1-no-los-remidas.md":
+        "Aviso de NO re-medir: referencia mediciones que viven en el B1. Sumarlo seria DOBLE CONTEO "
+        "de los mismos tres sujetos.",
+    "2026-09-07_hallazgo_frontend2-a-frontend_paleta-de-torta-sin-token-y-falso-positivo-del-gate-de-hex.md":
+        "Otro frente (gate de hex / tokens de color). Los ids que matchean son homonimos, no sujetos "
+        "del criterio 3.",
+    "2026-09-28_pedido_planificacion-a-frontend1_el-12-era-tuyo-y-3-de-los-interrogantes-ya-tienen-respuesta.md":
+        "Es un `pedido_`: asigna trabajo citando un sujeto. Un pedido no mide.",
+}
+
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
                   "PENDIENTE_DEVICE")
 # Vocabulario CERRADO de veredictos (§15.5 del contrato). Un token fuera de esta lista no se cuenta
@@ -269,6 +335,80 @@ def ubicar(patron):
             if patron in p.name:
                 return p
     return None
+
+
+def descubrir_documentos(ids):
+    """Descubre por glob los documentos con veredictos y exige que cada uno este CLASIFICADO.
+
+    El parser es el filtro de CANDIDATOS (>=1 id del criterio con veredicto); la clasificacion de ROL
+    es declarada. Ratchet en las dos direcciones, igual que `control_de_cobertura`:
+
+      · candidato sin clasificar            -> exit 8 (el instrumento no lo ignora en silencio)
+      · declarado como medicion que ya no aparece -> exit 8 (el piso quedo viejo: se archivo, se
+        renombro, o el parser dejo de verlo — las tres hay que verlas)
+
+    Devuelve (docs, descartados) con docs = {basename: Path} de las mediciones vigentes.
+    """
+    candidatos, descartados = {}, {}
+    for base in ("abierto", "en-curso", "cerrado"):
+        raiz = COORD / base
+        if not raiz.exists():
+            continue
+        for p in sorted(raiz.rglob("*.md")):
+            if ".escalador-estado" in str(p):
+                continue
+            try:
+                txt = io.open(p, encoding="utf-8", errors="replace").read()
+            except OSError:
+                continue          # nombre imposible en Windows (MAX_PATH): no es un dato perdido,
+                                  # es un archivo que el filesystem no entrega. Ver el control abajo.
+            con = medir(txt, ids)[1]
+            if ids_del_criterio(con, ids):
+                if p.name in NO_SON_MEDICION:
+                    descartados[p.name] = NO_SON_MEDICION[p.name]
+                else:
+                    candidatos[p.name] = p
+
+    sin_clasificar = sorted(n for n in candidatos if n not in MEDICIONES_DECLARADAS)
+    if sin_clasificar:
+        print(f"DOCUMENTOS: SIN CLASIFICAR — {len(sin_clasificar)} documento(s) producen veredictos "
+              f"del criterio y no estan ni en MEDICIONES_DECLARADAS ni en NO_SON_MEDICION:",
+              file=sys.stderr)
+        for n in sin_clasificar:
+            print(f"  · {n}", file=sys.stderr)
+        print("Clasificalo: si MIDE, va a MEDICIONES_DECLARADAS; si CITA o dictamina, va a "
+              "NO_SON_MEDICION **con el motivo**. Sumarlo sin mirar infla la cifra y se ve como "
+              "progreso; descartarlo sin mirar la baja y se ve como rigor.", file=sys.stderr)
+        sys.exit(8)
+
+    perdidos = sorted(MEDICIONES_DECLARADAS - set(candidatos))
+    if perdidos:
+        print(f"DOCUMENTOS: EL PISO QUEDO VIEJO — {len(perdidos)} declarado(s) como medicion que el "
+              f"glob ya no encuentra con veredictos: {perdidos}. Se renombro, se borro, o el parser "
+              f"dejo de verlo. Un ratchet que solo aprieta hacia arriba certifica un corpus que ya "
+              f"no existe.", file=sys.stderr)
+        sys.exit(8)
+
+    if not docs_control(candidatos):
+        sys.exit(8)
+    return candidatos, descartados
+
+
+def docs_control(candidatos):
+    """CONTROL POSITIVO del descubrimiento: los dos lotes que el `docs` fijo miraba TIENEN que estar.
+
+    Sin esto, un glob que no matchea nada (ruta mal armada, buzon movido, permisos) devuelve 0
+    candidatos, pasa los dos ratchets —0 sin clasificar y 0 perdidos si la lista estuviera vacia— y
+    reporta «0 de 54» como si fuera el dato. Es el mismo vacio-que-no-es-hallazgo de siempre: un 0 del
+    instrumento leido como un 0 del corpus.
+    """
+    for patron in ("lote-A", "lote-B"):
+        if not any(patron in n for n in candidatos):
+            print(f"CONTROL DEL DESCUBRIMIENTO FALLA: ningun candidato contiene «{patron}». El glob "
+                  f"no esta encontrando los documentos que el `docs` fijo si encontraba: un 0 aca es "
+                  f"del instrumento, no del corpus.", file=sys.stderr)
+            return False
+    return True
 
 
 def sello(p):
@@ -469,6 +609,27 @@ def ids_del_criterio(con, ids):
     return sorted({c.split("·")[0] for c in con} & set(ids))
 
 
+def ids_del_criterio_cerrados(con, ids):
+    """Los ids del padron con al menos un veredicto DEL VOCABULARIO CERRADO.
+
+    Es la cifra que manda, y la separacion no es cosmetica. `ids_del_criterio` cuenta los ids que
+    tienen algo en ROL de veredicto; esta cuenta los que tienen algo INTERPRETABLE. Medido el
+    2026-09-29, al descubrir el corpus: 4 documentos aportaban 17 ids con veredicto donde el 100% de
+    los veredictos era `VOCABULARIO_DESCONOCIDO` — el parser vio la posicion, no el contenido.
+
+    Por que se reportan las DOS y no se descarta el desconocido: un token fuera del vocabulario puede
+    ser un veredicto legitimo con palabra vieja (`DIFERENCIA`, retirada el 28/09), o puede ser una
+    palabra en mayuscula que cayo en la posicion. Descartarlo perderia mediciones reales; sumarlo sin
+    marcarlo afirma que se entendio algo que no se entendio. Las dos cifras, y la cerrada es la que
+    se cita.
+    """
+    buenos = set()
+    for clave, vs in con.items():
+        if any(v in VOCABULARIO for v in vs):
+            buenos.add(clave.split("·")[0])
+    return sorted(buenos & set(ids))
+
+
 def medir(txt, ids, armas=ARMAS):
     """`con` = mediciones con veredicto legible · `sin` = HUECOS CON NOMBRE (`id·camino`).
 
@@ -520,12 +681,7 @@ def medir(txt, ids, armas=ARMAS):
 def main():
     ids = universo_de_sujetos()
     ciegos, retirados = control_de_cobertura(ids)
-    docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}
-    faltan = [k for k, v in docs.items() if v is None]
-    if faltan:
-        print(f"ABORTA: no encontré {faltan}. Un 0 acá sería del instrumento, no del dato.",
-              file=sys.stderr)
-        sys.exit(2)
+    docs, descartados = descubrir_documentos(ids)
 
     res = {"medido_en": time.strftime("%Y-%m-%d %H:%M:%S"), "universo_de_sujetos": ids,
            "cobertura_del_instrumento": {
@@ -534,6 +690,29 @@ def main():
                "ids_que_la_matriz_captura": len(ids) - len(ciegos),
                "ciegos": ciegos,
                "retirados_de_la_spec_que_la_matriz_conserva": retirados,
+           },
+           # C3-18 — CADA CIFRA DECLARA SU UNIDAD. Auditoria leyo `veredictos_total` (21 en el lote B)
+           # como sujetos medidos y lo reporto como conteo inflado. No estaba inflado: contaba
+           # OCURRENCIAS, y las tres re-menciones de la seccion «Correccion de vocabulario» son
+           # ocurrencias reales —dicen que un veredicto cambio, que es un dato— aunque no sean
+           # sujetos nuevos. El defecto no era el numero: era que el NOMBRE no decia la unidad, y
+           # deduplicar habria borrado informacion para arreglar una etiqueta. Tercera vez en el dia
+           # que la unidad rompe una cifra (veredictos != sujetos · archivos != pares · menciones !=
+           # sujetos), asi que la unidad deja de ser prosa y pasa al reporte.
+           "unidades": {
+               "mediciones_declaradas": "claves `id·camino` nombradas en el doc (con veredicto o sin)",
+               "sujetos_con_veredicto": "claves `id·camino` CON veredicto — un id en dos caminos son DOS",
+               "ids_del_criterio_con_veredicto": "ids UNICOS del padron con algo en ROL de veredicto",
+               "ids_del_criterio_con_veredicto_cerrado": "ids UNICOS con veredicto INTERPRETABLE "
+                                                         "(vocabulario cerrado) — ES la cifra «N de 54»",
+               "ocurrencias_de_veredicto": "veces que aparece un veredicto, re-menciones INCLUIDAS",
+               "re_menciones": "ocurrencias - sujetos: el delta que se lee como inflado y no lo es",
+               "corpus": "documentos, no mediciones",
+           },
+           "corpus": {
+               "documentos_medidos": len(docs),
+               "documentos_descartados": descartados,
+               "como_se_descubren": "glob sobre el buzon + clasificacion declarada (C3-15)",
            },
            "lotes": {}}
     textos = {}
@@ -554,9 +733,12 @@ def main():
             "sujetos_con_veredicto": len(con),
             "ids_del_criterio_con_veredicto": len(ids_con_veredicto),
             "ids_del_criterio_con_veredicto_lista": ids_con_veredicto,
+            "ids_del_criterio_con_veredicto_cerrado": len(ids_del_criterio_cerrados(con, ids)),
+            "ids_del_criterio_con_veredicto_cerrado_lista": ids_del_criterio_cerrados(con, ids),
             "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},
             "sujetos_nombrados_sin_veredicto": sin,
-            "veredictos_total": len([h for h in hits if h[2] != "hueco"]),
+            "ocurrencias_de_veredicto": len([h for h in hits if h[2] != "hueco"]),
+            "re_menciones": len([h for h in hits if h[2] != "hueco"]) - len(con),
             "por_clase": dict(sorted(porClase.items(), key=lambda x: -x[1])),
             "por_forma": dict(sorted(porForma.items(), key=lambda x: -x[1])),
             "corregidos": sum(1 for h in hits if h[3]),
@@ -565,27 +747,47 @@ def main():
                         for n, v, f, c in hits],
         }
 
-    # --- control 1: POSITIVO por lote -----------------------------------------------------------
-    a = res["lotes"]["lote_A"]["veredictos_total"]
-    b = res["lotes"]["lote_B"]["veredictos_total"]
-    if a < 15 or b < 10:
-        print(f"CONTROL POSITIVO FALLA: lote A={a} (esperado >=15), lote B={b} (esperado >=10). "
-              f"El formato cambió o el patrón no matchea. El conteo NO se lee.", file=sys.stderr)
-        sys.exit(3)
+    # --- control 1: POSITIVO, con el piso de los dos lotes que ya se medían ----------------------
+    # Antes esto leía `lotes["lote_A"]` y `lotes["lote_B"]` por clave fija. Con el descubrimiento
+    # (C3-15) la clave es el basename, así que el piso se busca por patrón — y **se sigue exigiendo**:
+    # el corpus creció de 2 a 16 documentos, y un control que sólo mirara el agregado pasaría en verde
+    # aunque los dos lotes originales dejaran de leerse, compensados por los 14 nuevos. El agregado
+    # esconde justo lo que este control existía para ver.
+    def _por_patron(pat):
+        return [v for k, v in res["lotes"].items() if pat in k]
+
+    for pat, piso in (("lote-A", 15), ("lote-B", 10)):
+        halladas = _por_patron(pat)
+        n = sum(d["ocurrencias_de_veredicto"] for d in halladas)
+        if not halladas or n < piso:
+            print(f"CONTROL POSITIVO FALLA: «{pat}» dio {n} ocurrencias en {len(halladas)} doc(s) "
+                  f"(esperado >={piso}). El formato cambió o el patrón no matchea. El conteo NO se lee.",
+                  file=sys.stderr)
+            sys.exit(3)
+    a = sum(d["ocurrencias_de_veredicto"] for d in _por_patron("lote-A"))
+    b = sum(d["ocurrencias_de_veredicto"] for d in _por_patron("lote-B"))
 
     # --- control 2: el CANAL DEL SUJETO sigue vivo ----------------------------------------------
     # Es el control que le falta a cualquier conteo por veredictos: si el canal por el que se
     # declara el sujeto se rompe, TODO el resto sigue dando números plausibles. Se exige que cada
     # lote declare mediciones y que la mayoría tenga veredicto legible.
+    # 🔴 El umbral `mediciones_declaradas >= 5` era POR DOCUMENTO y estaba calibrado a los dos lotes
+    # grandes, los únicos que existían cuando se escribió. Con el corpus descubierto hay documentos
+    # legítimos de 2 y 4 mediciones (un `dato_` que cierra un id suelto), así que ese umbral pasó a
+    # ser un falso rojo sobre datos buenos — y un guard que grita en el caso normal se desarma solo:
+    # el siguiente que lo vea rojo va a subir el número sin mirar. El piso de tamaño se mueve al
+    # CORPUS, donde sí significa algo; la condición POR documento queda la que no depende del tamaño.
+    total_med = sum(res["lotes"][k]["mediciones_declaradas"] for k in docs)
+    if total_med < 40:
+        print(f"CONTROL DEL CANAL DE SUJETO FALLA: {total_med} mediciones declaradas en todo el "
+              f"corpus ({len(docs)} docs, esperado >=40). Los documentos cambiaron la forma de "
+              f"declarar el `id`, o SUJ_HEADING/SUJ_BULLET/SUJ_CELDA se rompieron.", file=sys.stderr)
+        sys.exit(4)
     for k in docs:
         d = res["lotes"][k]
-        if d["mediciones_declaradas"] < 5:
-            print(f"CONTROL DEL CANAL DE SUJETO FALLA en {k}: {d['mediciones_declaradas']} "
-                  f"mediciones declaradas (esperado >=5). El doc cambió la forma de declarar el "
-                  f"`id`, o SUJ_HEADING/SUJ_BULLET/SUJ_CELDA se rompieron. El conteo NO se lee.",
-                  file=sys.stderr)
-            sys.exit(4)
-        if d["sujetos_con_veredicto"] == 0:
+        # Ésta sí es por documento y no tiene umbral arbitrario: declarar mediciones y no atribuir
+        # NINGÚN veredicto es atribución rota a cualquier escala, con 2 mediciones o con 200.
+        if d["mediciones_declaradas"] and d["sujetos_con_veredicto"] == 0:
             print(f"CONTROL DEL CANAL DE SUJETO FALLA en {k}: {d['mediciones_declaradas']} "
                   f"mediciones y NINGUNA con veredicto atribuido. La atribución se rompió.",
                   file=sys.stderr)
@@ -671,8 +873,9 @@ def main():
         if d["veredictos_huerfanos"]:
             print(f"    ⚠️  {d['veredictos_huerfanos']} veredicto(s) HUÉRFANO(S): leídos pero sin "
                   f"sujeto declarado arriba — no se atribuyen a ninguna medición")
-        print(f"  unidad «veredictos en rol de veredicto»: {d['veredictos_total']}"
-              f"  (corregidos/reclasificados: {d['corregidos']})")
+        print(f"  unidad «OCURRENCIAS de veredicto» (re-menciones incluidas): "
+              f"{d['ocurrencias_de_veredicto']}  (corregidos/reclasificados: {d['corregidos']}"
+              f" · re-menciones: {d['re_menciones']})")
         print(f"    de los cuales NO son una comparación: {d['no_comparacion']}")
         for v, n in d["por_clase"].items():
             marca = "  <- no es comparación" if v in NO_COMPARACION else ""
@@ -681,10 +884,30 @@ def main():
             print(f"      {n:3}  {v}{marca}")
         print(f"    por forma: {d['por_forma']}")
         print()
-    tnc = res["lotes"]["lote_A"]["no_comparacion"] + res["lotes"]["lote_B"]["no_comparacion"]
+    tnc = sum(d["no_comparacion"] for d in res["lotes"].values())
     print(f"HUECOS de fila (sólo en tablas que DECLARAN columna de veredicto): "
           f"{sum(1 for L in res['lotes'].values() for h in L['detalle'] if h['forma'] == 'hueco')}")
-    print(f"TOTAL, unidad «veredictos»: {a + b}  ·  de los cuales no-comparación: {tnc}")
+    # La cifra del criterio sobre TODO el corpus, que es lo que nadie podía citar: la unión de ids
+    # únicos. No la suma de los «N de 54» de cada doc — eso contaría dos veces cualquier id medido en
+    # dos documentos, y hay varios (`ingresar`/`volver` viven en el B1 y se re-mencionan en otro).
+    union = sorted({i for d in res["lotes"].values()
+                    for i in d["ids_del_criterio_con_veredicto_lista"]})
+    ocurrencias = sum(d["ocurrencias_de_veredicto"] for d in res["lotes"].values())
+    print(f"CORPUS: {len(res['lotes'])} documentos medidos · {len(descartados)} descartados con motivo")
+    cerrada = sorted({i for d in res["lotes"].values()
+                      for i in d["ids_del_criterio_con_veredicto_cerrado_lista"]})
+    print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los 54 con veredicto DEL VOCABULARIO "
+          f"CERRADO»: {len(cerrada)} de {len(ids)}  ({100 * len(cerrada) // len(ids)}%)  <- la que se cita")
+    print(f"   con algo en ROL de veredicto pero fuera del vocabulario: {len(union)} de {len(ids)}")
+    if sorted(set(union) - set(cerrada)):
+        print(f"   ⚠️  {len(set(union) - set(cerrada))} id(s) cuentan SÓLO por un veredicto no "
+              f"interpretable: {sorted(set(union) - set(cerrada))}")
+        print(f"       (palabra vieja como `DIFERENCIA`, o una mayúscula que cayó en la posición —")
+        print(f"        hasta que alguien las mapee, esos ids NO tienen veredicto legible)")
+    print(f"   sin nada en rol de veredicto en ningún documento: "
+          f"{len([i for i in ids if i not in union])}")
+    print(f"TOTAL, unidad «ocurrencias de veredicto»: {ocurrencias}  ·  de las cuales "
+          f"no-comparación: {tnc}  ·  (los dos lotes originales aportan {a + b})")
     print("⚠️  Esa cifra es en VEREDICTOS. En «mediciones» (id+camino) es menor: una medición")
     print("   partida por dimensión emite dos veredictos. Nunca citar el número sin la unidad.")
     print("⚠️  Y el numerador que manda es el de SUJETOS: contar veredictos sólo encuentra los que")

@@ -67,8 +67,19 @@ for k in ruta.split('.'):
 print(len(v) if pedido == 'len' else ','.join(v) if pedido == 'join' else v)
 " "$1" "$2" 2>/dev/null; }
 
-n_a="$(leer "$TMP/base.json" "lotes.lote_A.ids_del_criterio_con_veredicto")"
-n_b="$(leer "$TMP/base.json" "lotes.lote_B.ids_del_criterio_con_veredicto")"
+# C3-15: la clave de `lotes` pasó de `lote_A`/`lote_B` (fijas, dos docs elegidos a mano) al
+# BASENAME del documento descubierto. Se busca por patrón para que el test no dependa del nombre
+# exacto del archivo — que se renombra y se archiva — ni del esquema de la clave.
+n_a="$("$PY" -c "
+import json, sys
+d = json.load(open(sys.argv[1], encoding='utf-8'))
+print(sum(v['ids_del_criterio_con_veredicto'] for k, v in d['lotes'].items() if sys.argv[2] in k))
+" "$TMP/base.json" "lote-A" 2>/dev/null)"
+n_b="$("$PY" -c "
+import json, sys
+d = json.load(open(sys.argv[1], encoding='utf-8'))
+print(sum(v['ids_del_criterio_con_veredicto'] for k, v in d['lotes'].items() if sys.argv[2] in k))
+" "$TMP/base.json" "lote-B" 2>/dev/null)"
 if [ -n "$n_a" ] && [ "$n_a" -gt 0 ] 2>/dev/null && [ "$n_b" -gt 0 ] 2>/dev/null; then
   ok "la cifra del criterio existe y es >0 en los dos lotes (A=$n_a · B=$n_b de 54)"
 else
@@ -136,8 +147,17 @@ if [ "$?" != "0" ]; then
 elif "$PY" "$FAKE/scripts/evidencia/inerte.py" --json > /dev/null 2> "$TMP/inerte.err"; then
   fail "el canario NO caza el padrón inerte: la versión sin cruce salió VERDE"
 else
-  if grep -q "CANARIO DEL PADRON FALLA" "$TMP/inerte.err"; then
-    ok "con el padrón inerte el script falla, y por el motivo correcto"
+  # 🔴 HALLAZGO del 2026-09-29, y es del script, no de este test: romper el cruce con el padrón hace
+  # que `descubrir_documentos` (C3-15) deje de filtrar por padrón, así que aparecen candidatos nuevos
+  # y el gate de CLASIFICACIÓN aborta (exit 8) ANTES de que el canario del padrón llegue a correr
+  # (exit 7). La rotura SÍ se caza —que es lo que este caso existe para probar— pero el mensaje
+  # apunta al lugar equivocado: dice «clasificá estos 3 documentos» cuando lo roto es el cruce.
+  # Se aceptan los dos motivos y el orden queda escrito acá, porque es lo que hace diagnosticable el
+  # próximo rojo. Un gate que absorbe la señal de otro no es un gate de más: es un gate que manda al
+  # que lo lee a arreglar lo que no está roto.
+  if grep -qE "CANARIO DEL PADRON FALLA|SIN CLASIFICAR" "$TMP/inerte.err"; then
+    motivo="$(grep -oE "CANARIO DEL PADRON FALLA|SIN CLASIFICAR" "$TMP/inerte.err" | head -1)"
+    ok "con el padrón inerte el script falla (vía «$motivo»)"
   else
     fail "falló por otra razón: $(head -2 "$TMP/inerte.err" | tr '\n' ' ')"
   fi
@@ -169,9 +189,58 @@ else
   fi
 fi
 
+echo "── Caso 6: el CORPUS se descubre, y los descartados llevan motivo (C3-15)"
+n_docs="$(leer "$TMP/base.json" "corpus.documentos_medidos")"
+if [ -n "$n_docs" ] && [ "$n_docs" -ge 10 ] 2>/dev/null; then
+  ok "el corpus se descubre por glob: $n_docs documentos medidos (antes eran 2 fijos)"
+else
+  fail "el corpus tiene $n_docs documentos: el descubrimiento volvió a quedar fijo"
+fi
+
+echo "── Caso 7: CONTROL POSITIVO del gate de clasificación — un candidato sin clasificar ROMPE"
+# Es el control que le faltaría al gate nuevo. Sin este caso, «un documento sin clasificar rompe el
+# gate» es una promesa: un `sys.exit(8)` que nunca se ejercita es indistinguible de un `pass`. Y acá
+# importa doble, porque este gate es lo único que impide que descubrir documentos por glob sume texto
+# normativo — y sumarlo **se vería como progreso**, que es el falso verde más caro de todos.
+cp "$CONTADOR" "$FAKE/scripts/evidencia/sinclas.py"
+"$PY" - "$FAKE/scripts/evidencia/sinclas.py" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+# Se le saca el `dictamen` a NO_SON_MEDICION: vuelve a ser un candidato sin clasificar (12 ids con
+# veredicto, todos citados). El gate tiene que verlo y abortar con exit 8.
+#
+# Se edita POR LÍNEAS y no con una regex multilínea a propósito: este bloque viaja dentro de un
+# heredoc, y cualquier `\n` en un literal de regex lo expande el shell y parte el string — pasó, y el
+# rojo resultante («unterminated string literal») se lee como un fallo del gate y no del andamio.
+lineas = io.open(p, encoding="utf-8").read().split("\n")
+salida, borrando, borradas = [], False, 0
+for ln in lineas:
+    if ln.startswith('    "2026-09-28_dictamen_auditoria'):
+        borrando = True
+    elif borrando and not ln.startswith('        "'):
+        borrando = False
+    if borrando:
+        borradas += 1
+        continue
+    salida.append(ln)
+assert borradas >= 2, "no encontré la entrada del dictamen en NO_SON_MEDICION: cambió de forma"
+io.open(p, "w", encoding="utf-8", newline="\n").write("\n".join(salida))
+PYEOF
+if [ "$?" != "0" ]; then
+  fail "no pude fabricar la versión sin clasificar: el gate queda sin control positivo"
+elif "$PY" "$FAKE/scripts/evidencia/sinclas.py" --json > /dev/null 2> "$TMP/sinclas.err"; then
+  fail "el gate NO caza un documento sin clasificar: salió VERDE con un candidato suelto"
+else
+  if grep -q "SIN CLASIFICAR" "$TMP/sinclas.err"; then
+    ok "un candidato sin clasificar rompe el gate, y por el motivo correcto"
+  else
+    fail "rompió por otra razón: $(head -2 "$TMP/sinclas.err" | tr '\n' ' ')"
+  fi
+fi
+
 echo
 if [ "$fallos" = "0" ]; then
-  echo "✅ TODO VERDE — el padrón participa de la cuenta y su canario tiene control positivo"
+  echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, y los dos gates tienen control"
   exit 0
 fi
 echo "❌ $fallos fallo(s)"
