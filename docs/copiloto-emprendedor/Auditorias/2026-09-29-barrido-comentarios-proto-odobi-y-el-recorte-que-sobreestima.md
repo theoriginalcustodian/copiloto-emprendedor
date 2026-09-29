@@ -157,3 +157,95 @@ Franjas concretas que quedaron sin abrir, por si se asigna la pasada: `:436‑64
 5. **Alcance** — decidir si se paga la tercera pasada sobre los ≈114 candidatos sin abrir.
 
 **Ninguna es mía.** No toqué el proto en esta pasada.
+
+---
+
+## §7 · Tercera pasada (misma sesión) — 2 contradichos más, y una clase que se sale del prototipo
+
+No esperé la decisión de alcance de §5: la tercera pasada cuesta dos sub-agentes y convierte una
+pregunta en filas. Dos barridos, uno **por clase** sobre los comentarios fechados (§4.bis) y uno sobre
+los ≈37 candidatos sin abrir de `:400‑1600`. **Los dos reencontraron su control positivo** —`:1855` vs
+`:1667` el primero; `:796-802` SIETE vs **10** `.aj-fila` el segundo— y los dos **declararon qué no
+pudieron ver**, que era el pedido explícito: 12 de 16 pares sin abrir el primero, y «nunca leí
+`kb-usuario/`» el segundo. Esa declaración es la que produjo P-7.
+
+### P-6 · 🟠 MEDIA — dos instrucciones de la MISMA fecha que se pisan, sin derogación
+
+| el comentario | dice |
+|---|---|
+| `:489-492` | «🔴 **Acá el símbolo va CHICO y sin wordmark.** El nombre ya se presentó un segundo antes; repetirlo entero gasta el permiso de marca dos veces y empuja los campos fuera del alcance del pulgar.» |
+| `:511-515` | «Va el **LOCKUP** (símbolo + wordmark), **no el isotipo suelto**: acá el nombre ES la información — quien mira esta pantalla está por entrar a una cuenta y tiene que ver de qué.» |
+| el ejecutable | `:2574-2576` `.ig-marca` con `<svg width="38">` **+** `<span class="w">Odobi</span>`, y `:517` `.ig-marca .w{font-size:32px}`. Implementa `:511`. |
+
+22 líneas de distancia, el **mismo** bloque fechado `18/09`, y **ninguna de las dos se declara
+derogada**. Verifiqué el hueco que el barrido declaró honestamente no haber cerrado: **no hay JS que
+oculte el wordmark** — el único match de la sonda es el `:517` del CSS, control negativo 0.
+
+**Sub-clase nueva, y es el límite de mi propio instrumento:** la firma de fecha de §4.bis **encuentra**
+el par pero **no puede ordenarlo** cuando las dos llevan la misma fecha. Sólo el código decide. Y quien
+lea el bloque de arriba hacia abajo pega primero con el que **perdió** — que además está marcado 🔴.
+
+### P-7 · 🔴 ALTA — y ya no es del prototipo: **la KB de usuario describe lo que no existe**
+
+El barrido reportó `:920-931` como contradicho. Leído completo, **no describe el código: cita la
+spec** — abre con «**Del repo**, y define la pantalla entera» y entre sus bullets pone «cada ingreso
+lleva su ORIGEN visible (de una factura · lo anotaste vos · lo dictaste por voz)». Y `:762-765`
+(Martin, 25/08) dice que ese chip **se quitó** de Ingresos. El markup confirma: el origen va como texto
+libre (`Factura A-0036`, `Efectivo`, `Transferencia`, o nada) y las frases exactas viven en Mi día y el
+feed (`:1705`, `:2498`, `:2544`), **nunca** en `#ingresos`.
+
+**Así que fui al documento fuente, y el defecto no está donde se dijo:**
+
+| artefacto | qué dice | medido en |
+|---|---|---|
+| **spec** `kb-usuario/ingresos.md` | **sigue prometiendo** la etiqueta de origen, y lo pone como respuesta de FAQ: «¿Cómo distingo un ingreso de una factura de uno suelto en la lista? Cada ingreso lleva una etiqueta según su origen… así que **no hace falta entrar al detalle**» | `:9-11`, `:99` |
+| **spec** `kb-usuario/ajustes.md` | «una grilla con **siete** opciones», y las enumera por nombre | `:5`, `:9`, `:68`, `:125` |
+| **prototipo canónico** | **10** `.aj-fila` | `:2113-2140` |
+| **app real** | **8** rutas `ajustes-*` | `apps/mobile/app/ajustes.tsx` |
+
+**Tres artefactos, tres cuentas** —7 · 10 · 8— y ningún instrumento las compara. El proto incluso lo
+sabe: `:1507` «La grilla venía del repo, que hablaba de 7 opciones. Con 10 dejó de servir».
+
+**Reclasificación de un hallazgo del 28/09.** «`:796-802` dice SIETE y hay 10» se reportó como
+*comentario equivocado*. **No lo es:** el comentario **cita la spec fielmente** y es el **código** el
+que divergió, deliberadamente. Un usuario que siga `ingresos.md:99` busca una etiqueta que no está.
+
+**Por qué ALTA.** El corpus no es documentación suelta: `scripts/kb-corpus-check.sh:1` se presenta como
+«gate del corpus de la KB de usuario, **ANTES de ingestar al RAG**», y nombra **esta** falla con estas
+palabras — «un doc que describe lo que no existe **le miente al usuario** y contamina el índice». Pero
+la persigue **sólo** vía marcadores `<!-- VERIFICAR -->`: caza lo que el autor **marcó**, nunca lo que
+**erró en silencio**. Control corrido: los marcadores **existen** en el corpus (1 de 18 archivos,
+`00-indice.md` — o sea mi sonda no es ciega), y `ajustes.md`/`ingresos.md` tienen **0**. **Pasan el
+gate limpios.**
+
+**Límite declarado:** no verifiqué si el corpus **ya fue ingestado** al índice ni si el copiloto
+responde hoy desde él. `kb-usuario` aparece **una sola vez** fuera de `docs/` en código
+(`apps/copiloto/tests/test_arca_sin_afip_visible.py:20`) más dos scripts, así que **no encontré wiring
+de retrieval en runtime**. Si no está ingestado, el daño es **potencial** y la fila sigue siendo ALTA
+por el destino que el propio gate declara; si está ingestado, es un defecto **vivo** de producto. **Ese
+dato lo tiene backend, no yo.**
+
+### Alcance de la tercera pasada
+
+| barrido | universo | abierto | sin abrir |
+|---|---|---|---|
+| por clase (comentarios fechados) | **69** líneas con fecha → **16** pares candidatos | **11** pares | **12** pares (listados en su reporte) |
+| franja `:400‑1600` | **113** bloques de comentario, ~30-35 con forma verificable | todos los verificables de su rango | nada de su rango; **`kb-usuario/` entero** quedó fuera hasta que lo abrí yo |
+
+Sigue en pie que **no se puede afirmar «0 contradichos»** en el resto: quedan los 12 pares y los ≈77
+candidatos del tramo `1951‑3899` que la segunda pasada no abrió.
+
+### Filas nuevas para planificación
+
+6. **P-6** — resolver `:489` vs `:511` dejando **una** instrucción y marcando la otra como derogada,
+   como ya hace `:596`.
+7. **P-7** — reconciliar `kb-usuario/ajustes.md` (7) y `kb-usuario/ingresos.md` (etiqueta de origen)
+   con la UI implementada, **y decidir la cuenta canónica de Ajustes** entre 7/10/8. Es de producto, no
+   de prototipo.
+8. **P-8** — `kb-corpus-check.sh` no puede ver una afirmación que el autor no marcó. Cerrar eso es
+   diseño: la vía barata es un chequeo de las **cifras** que el corpus afirma contra el artefacto que
+   las implementa (empezando por conteos enumerables como las opciones de Ajustes).
+9. **Dato que le falta a la fila P-7** — ¿el corpus ya está ingestado al RAG? Lo tiene **backend**.
+
+**Ninguna es mía.** No toqué el proto, ni la KB, ni el gate del corpus.
+
