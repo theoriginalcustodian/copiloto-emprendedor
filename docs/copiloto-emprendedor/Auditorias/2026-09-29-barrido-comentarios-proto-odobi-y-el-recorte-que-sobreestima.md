@@ -39,6 +39,8 @@ Lo que me llevó al falso rojo fue **una ventana de 5 líneas sobre un comentari
 El hallazgo caminó 🔴 ALTA → 🟠 MEDIA → 🟡 BAJA, y cada paso salió de leer **más del archivo real**.
 La lección general está en §4; es la más valiosa de esta pasada.
 
+**Y una segunda vez, sobre mi propio hallazgo.** Escribí P-1 como «tres comentarios **del 20/08**». Sólo `:1855` cita esa fecha; los otros dos no citan ninguna, y yo la heredé del vecino que sí leí. Mismo mecanismo: la ventana. Lo que apareció al leer los bloques **hasta su delimitador** fortaleció el hallazgo en vez de tumbarlo — `:1667` deroga «el "avance del día" **(20/08)**» por nombre, y `:3729-3730` enumera el conjunto de FIJOS—, pero eso es suerte: la atribución estaba mal y podía haber caído para el otro lado.
+
 ---
 
 ## §1 · Veredicto binario
@@ -55,7 +57,7 @@ La lección general está en §4; es la más valiosa de esta pasada.
 
 | # | sev | hallazgo | `path:línea` | causa raíz |
 |---|---|---|---|---|
-| **P-1** | 🟠 MEDIA | **Un edit del 25/08 dejó vivos tres comentarios del 20/08 que describen el mecanismo anterior.** `:1855` «el avance… se muda acá» · `:1859` «su línea de pendientes… ahora quedan **FIJOS**» · `:3744-3746` «el avance se muda al bloque de calma… diciendo **"2 de 6"**». El ejecutable dice lo contrario en dos lugares independientes. | comentarios `:1855`, `:1859`, `:3744-3746` vs código `:3739` y `:3843-3850` | Un solo cambio, **tres** comentarios vecinos sin barrer. Y la contradicción está **fechada**: los tres viejos citan «20/08», el nuevo cita «Martin, 25/08» — el dato para detectarla ya está escrito en el archivo. |
+| **P-1** | 🟠 MEDIA | **Un edit del 25/08 dejó vivos tres comentarios que describen el mecanismo anterior** (uno fechado 20/08, dos sin fecha). `:1855` «el avance… se muda acá» · `:1859` «su línea de pendientes… ahora quedan **FIJOS**» · `:3744-3746` «el avance se muda al bloque de calma… diciendo **"2 de 6"**». El ejecutable dice lo contrario en dos lugares independientes. | comentarios `:1855`, `:1859`, `:3744-3746` vs código `:3739` y `:3843-3850` | Un solo cambio, **tres** comentarios sin barrer. **La derogación está escrita dos veces y bien** —`:1667-1671` en markup, `:3843-3845` en JS— y `:1667` incluso **deroga por nombre** «el "avance del día" (20/08)», que es exactamente la nota que sigue viva en `:1855`. **El archivo carga la prueba de su propia obsolescencia.** |
 | **P-2** | 🟠 MEDIA | **`:3172` documenta `?vacio=1`; el parámetro que el código lee es `ver`.** La URL documentada **entra a medias**: dispara `:3682` por el fallback `location.search.includes('vacio')`, pero **no** `:3680`, que exige `ver === 'vacio'` para `localStorage.removeItem('odobi-calma-dias')`. | `:3172` vs `:3680`, `:3682`; el nombre real en `:3669`, `:3717`, `:3835` | El **fallback genérico** hace que la URL equivocada *parezca* funcionar. No falla: **difiere**. Quien siga el comentario reproduce un estado distinto del que el comentario promete, y sin síntoma. |
 | **P-3** | 🟡 BAJA | **Encabezado vencido sobre código correcto.** `:3852-3853` titula «3 · checkbox, sólo en tarjetas propias» y le atribuye la alternativa de WCAG 2.5.1 a un checkbox: `grep -c 'type="checkbox"'` = **0**. El código de esa misma sección (`:3857`) es el handler de `[data-borrar]` — que **es** la alternativa, como dice `:1427-1432`. | `:3852-3853` vs `:1427-1432`, `:1708`, `:2498`, `:3857` | Se renombró el mecanismo (20/08) y **no el encabezado de su propia sección**. El control funciona; el rótulo quedó del mecanismo retirado. Riesgo real pero acotado: un port que lea el encabezado reconstruye el control equivocado. |
 | **P-4** | 🟡 BAJA | **`:3539-3540` «Mismo rebote que el swipe de descarte: pasado el tope avanza el 30 %»** — el descarte usa `* 0.28` (`:3134`), este pull-to-refresh usa `* 0.3` (`:3541`). No es «el mismo». | `:3539-3541` vs `:3134` | Se copió el comentario con el número redondeado. (Los `0.35` de `:2732`/`:2741` son **umbrales**, no factores de rebote: no entran.) |
@@ -64,7 +66,7 @@ La lección general está en §4; es la más valiosa de esta pasada.
 
 | el comentario afirma | el ejecutable |
 |---|---|
-| `:1859` la línea de pendientes «ahora **queda FIJA**» | `:3739` `$('#prog').style.display = calmo ? '' : 'none'` — **oculta por defecto**. Y el comentario de al lado (`:3736-3738`) lo dice con todas las letras: «La línea de la semana aparece **SÓLO** con el día limpio (Martin, 25/08)». |
+| `:1859` la línea de pendientes «ahora **queda FIJA**» | `:3729-3730` define el conjunto de FIJOS con exactamente **dos** miembros —«el rótulo "Para hoy" y su "Ver tablero ›"… igual que "Ahora / Ver agenda ›"»— y `:1859` mete un **tercero**. El código oculta ese tercero: `:3739` `$('#prog').style.display = calmo ? '' : 'none'`, y `:3736-3738` lo dice con todas las letras: «La línea de la semana aparece **SÓLO** con el día limpio (Martin, 25/08)». |
 | `:3744-3746` el avance «se muda al bloque de calma», «diciendo **"2 de 6"**» | `:3845` «`pintarAvance()` quedó **DEROGADO** el 25/08 junto con la barra de cerradas» · `:3850` `function pintarAvance(){}` — cuerpo **vacío**. Y `:3843-3844`: «lo hecho no se comunica, sólo lo que falta» — **"2 de 6" es exactamente el vocabulario que la derogación retira.** |
 | `:1855` el avance «se muda acá» (dentro de `#calma`) | En el DOM `#calma` y `#prog` (`:1672`, `<div class="pend" id="prog">`) son **hermanos**: no hay anidamiento. |
 
@@ -111,6 +113,18 @@ Hermana de [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (ahí el falso ro
 roto; acá de un campo de visión recortado) y de
 [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] (ahí el hueco vive en el par de decisiones;
 acá el **sentido** vive en el par de fragmentos).
+
+---
+
+## §4.bis · La clase tiene FIRMA MECÁNICA, y el archivo tiene control positivo
+
+P-1 no es un caso: es una **clase** con firma buscable. Los comentarios del proto **citan fecha** — 16 dicen «20/08», 12 «25/08», 10 «30/08», 9 «19/08» (denominador recomputado con `grep -oE '[0-9]{1,2}/0[0-9]' | sort | uniq -c`, control negativo `99/99` → 0). Cada par de fechas distintas que describe **el mismo mecanismo** es un candidato, y eso se barre por clase en vez de línea por línea.
+
+**Y el archivo trae su propio control positivo:** sabe derogar notas explícitamente cuando alguien se acuerda —
+`:596` «**El avatar ES el isotipo** (Martin, 18/09) — **deroga la nota anterior**», `:1667` «**DEROGA** el "avance del día" (20/08)», `:3498` «quedó derogada el 24/08, **pero el mapa y el mockup 11 la enlazan**» (deuda que el propio proto declara).
+Así que dejar la nota vieja **no es una convención del archivo: es una omisión**, y el patrón correcto ya existe adentro para copiarlo.
+
+**Un control más, que salió consistente:** `:1146-1147` afirma el estado de **otro** repo — «`apps/mobile` tiene Reanimated 4.5.0 y no tiene Rive». Verificado en `apps/mobile/package.json`: `"react-native-reanimated": "4.5.0"` literal, cero ocurrencias de Rive (control negativo `riveZZ` → 0). **Los comentarios del proto no están uniformemente vencidos**, y decirlo importa tanto como listar los que sí.
 
 ---
 
