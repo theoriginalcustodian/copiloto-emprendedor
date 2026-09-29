@@ -357,3 +357,33 @@ criterio no se mide sólo con el generador):
 
 **Consecuencia para el conteo de huecos:** la población C baja de **9 a 8** (los 8 de frontend2), y
 `(home)` pasa a **medido**. Los 17 sin nada pasan a **16**.
+
+## El supuesto de la tab bar: VERIFICADO — es decisión declarada, no desvío. Y señala el camino de C3-10
+
+Declaré `[ASSUMED_PENDING_VERIFY]` que la barra inferior de la app (ausente en el prototipo, que
+navega por gesto) fuera decisión tomada. **Lo es, y está escrito desde antes del prototipo** —
+`docs/copiloto-emprendedor/2026-07-03-cliente-web-mobile-design-handoff.md`:
+
+- `:48` — «**Forma UX:** Híbrido: chat protagonista + rail de módulos. **Desktop = split (rail ⟺ chat);
+  mobile = chat full + tab bar.**»
+- `:90-91` — «**Desktop:** rail izquierdo: Chat · Conexiones · Caja · Agenda · Cuenta. · **Mobile:** tab
+  bar inferior (mismos ítems).»
+- `:259` — «**Responsive real** (desktop split / mobile tab bar / tablet)».
+
+Control de que el prototipo efectivamente no la tiene: **0 ocurrencias de «Consola»** —el nombre de una
+de las pestañas— en las 3900 líneas del prototipo, con control positivo verde («Funciones» aparece).
+
+**Los 5 veredictos no cambian:** la diferencia existe pero es arquitectura de navegación decidida
+(handoff 03/07), no desvío contra el prototipo (spec 22/09).
+
+### Y esto le da salida a C3-10
+
+El mismo handoff **declara un diseño de escritorio** («Desktop = split (rail ⟺ chat)», rail izquierdo
+con sus ítems) que el prototipo, siendo una maqueta de teléfono de 390×844, **no modela ni pretende
+modelar**. Entonces la referencia de escritorio del criterio 3 **no es el prototipo por definición del
+propio diseño** — y existe candidata: el handoff `2026-07-03-cliente-web-mobile-design-handoff.md` y
+`docs/copiloto-emprendedor/DESIGN-SYSTEM-EXTRACT-WEB.md`.
+
+**Recomendación a planificación** (la decisión sigue siendo suya): el eje `@desktop` del criterio 3 se
+mide contra el handoff/design-system web por la vía `leido@`, no contra `proto@`. No hace falta
+construir una referencia nueva: **ya existe y nadie la estaba usando.**
