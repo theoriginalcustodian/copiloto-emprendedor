@@ -22,6 +22,7 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
+import { generarId } from '../../util/id';
 import { DetalleComprobante } from './DetalleComprobante';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
 import { PasoCliente } from './PasoCliente';
@@ -35,6 +36,51 @@ import { TarjetaComprobante } from './TarjetaComprobante';
 import './facturacion.css';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
+
+const CLAVE_IDEM_STORAGE_KEY = 'copiloto-facturacion-idem-key';
+const CLAVE_IDEM_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Ciclo de vida de `idem_key` para "Nueva factura" (contrato
+ * `planificacion-a-todos_FACTID-mitad-frontend-idem-key-en-nueva-factura`, 2026-09-29, §2): la clave
+ * vive SÓLO mientras el POST a `crearFactura` está en vuelo -- se genera con el primer intento, se
+ * reusa en reintentos (red, `reintentoBorrador`, remonte, segunda pestaña dentro de la ventana) y se
+ * borra apenas llega el `facturaId`. `localStorage` (no `sessionStorage`: el caso "dos pestañas" exige
+ * compartir storage) con TTL de 10 min para que un corte de conexión no deje una clave huérfana que
+ * adopte un borrador viejo para siempre -- mismo bug de fondo que `podarResolucionesCard` (BL-V32).
+ * Best-effort, igual que `resolucionCardPropuesta.ts`: si `localStorage` falla, se degrada a generar
+ * una clave nueva por intento, que es el comportamiento de ANTES de este mecanismo.
+ */
+function leerClaveIdemGuardada(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(CLAVE_IDEM_STORAGE_KEY);
+    if (!raw) return null;
+    const { clave, ts } = JSON.parse(raw) as { clave?: string; ts?: number };
+    if (!clave || typeof ts !== 'number' || Date.now() - ts > CLAVE_IDEM_TTL_MS) return null;
+    return clave;
+  } catch {
+    return null;
+  }
+}
+
+function guardarClaveIdem(clave: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(CLAVE_IDEM_STORAGE_KEY, JSON.stringify({ clave, ts: Date.now() }));
+  } catch {
+    // best-effort -- ver docstring de arriba.
+  }
+}
+
+function borrarClaveIdem(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(CLAVE_IDEM_STORAGE_KEY);
+  } catch {
+    // best-effort -- ver docstring de arriba.
+  }
+}
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -141,6 +187,8 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
   const refMeDeben = useRef<SeccionMeDebenHandle>(null);
+  /** `idem_key` en vuelo -- ver docstring de `leerClaveIdemGuardada` más arriba. */
+  const claveIdem = useRef<string | null>(null);
 
   const vivo = useRef(true);
   useEffect(() => {
@@ -214,14 +262,24 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
     setCreandoBorrador(true);
     setErrorBorrador(false);
     const { cuit } = gate;
+    // FACTID §2: se reusa la clave de un intento en vuelo (ref, mismo montaje) o de un intento que no
+    // terminó antes del remonte/segunda pestaña (storage, dentro del TTL); si no hay ninguna, es la
+    // primera vez que este borrador se intenta y se genera una nueva.
+    const clave = claveIdem.current ?? leerClaveIdemGuardada() ?? generarId();
+    claveIdem.current = clave;
+    guardarClaveIdem(clave);
     (async () => {
-      const res = await crearFactura(cuit);
+      const res = await crearFactura(cuit, clave);
       if (cancelado || !vivo.current) return;
       if (res.status === 'no_disponible') {
         setErrorBorrador(true);
         setCreandoBorrador(false);
         return;
       }
+      // FACTID §2(6): la clave se borra en cuanto llega el `facturaId`, no al emitir -- desde acá la
+      // próxima "Nueva factura" tiene que generar una clave distinta.
+      claveIdem.current = null;
+      borrarClaveIdem();
       const { estado } = await esperarEstadoEstable(res.facturaId);
       if (cancelado || !vivo.current) return;
       setFacturaId(res.facturaId);
