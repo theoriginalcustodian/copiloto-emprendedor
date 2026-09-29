@@ -207,7 +207,11 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
 
       <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
 
-      {estadoCalendario === 'ok' && onAbrirChat != null && (
+      {/* AGCAID: con la conexión CAÍDA no hay agenda que mostrar (misma señal que el aviso de
+          arriba, `PanelCalendario`) -- el botón llevaba a una pantalla vacía o a un error, no a
+          "reconectar". Con `nunca_conectado` sigue visible: ese caso ya lo cubre AgendaScreen
+          invitando a conectar. */}
+      {estadoCalendario === 'ok' && onAbrirChat != null && estadoGoogleCalendar !== 'caido' && (
         <Button variant="ghost" data-testid="midia-ver-agenda" onClick={() => setVerAgenda(true)}>
           Ver agenda
         </Button>
