@@ -20,6 +20,7 @@ Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido n
 | 6 | lint de contratos «PROSA PURA» | contrato sin artefacto | aceptaba `docs/…`, `.png`, `mockup` — **no** un path de código. El contrato citaba `…/FormularioIngreso.tsx:255` y salía marcado |
 | 7 | `git log -S'texto' -- <path>` (2026-09-22) | **vacío**: «ese commit no existe» | `git log` sin ref arranca en **`HEAD`**, y el checkout compartido está 141 commits atrás. El commit existía; estaba adelante. Con `git log origin/main -S…` aparece al instante |
 | 8 | `tasklist //FI "PID eq 63148"` para saber si un lock estaba huérfano (2026-09-22) | «no hay tareas»: el proceso murió | el lock guarda `$$` de bash = un **PID de MSYS**; `tasklist` enumera **PIDs de Windows**. Dos numeraciones distintas: preguntó por un proceso que nunca estuvo en esa lista. `ps` y `kill -0` decían **VIVO** |
+| 9 | `git cat-file -e origin/main:<path>` para «esto ya está en main» (2026-09-29) | «no existe» ⇒ la fila sigue pendiente | **`cat-file` no consulta el remoto**: lee la copia local de la ref. Sin `git fetch` previo el sujeto es *tu* `origin/main`, no el de GitHub — y acá llegó a estar **141 commits atrás**. Lo mergeado hace diez minutos sale AUSENTE, y el informe queda limpio **por ceguera** |
 
 ## El caso 7 merece su párrafo: el cero salió del sujeto por defecto
 
@@ -141,3 +142,269 @@ Antes de creerle a un chequeo que sale limpio, **verificá que vio al sujeto**:
 Relacionadas: [[el-checkout-compartido-sirve-comandos-viejos]] (el contador de commits no mide el
 working tree) · [[instrumentos-que-confirman-en-vez-de-verificar]] ·
 [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]].
+
+## Dos más el 2026-09-22 — y el primero es el GEMELO del caso 1
+
+**Caso 8 — el mismo `-f $BUZON/PLAN.md`, en el chequeo de al lado.** El caso 1 de la tabla se
+arregló: el bloque DEUDA de `vigilancia-check.sh` pasó a gatearse con «`BUZON_DIR` sin setear», y
+se le escribió el porqué al lado, **nombrando explícitamente a COLA** como el contraejemplo que
+todavía tenía la condición vieja. COLA siguió 40 días con el defecto idéntico, en el MISMO archivo,
+60 líneas más abajo. Desde cualquier worktree —26 vivos, el caso normal de este repo— el paso COLA
+no se medía y tampoco se decía: el ciclo cerraba «sin novedades». Y abajo, `cola-check.sh` remataba
+con `exit 0` sobre «No existe $PLAN» — el instrumento que existe para cazar una fábrica parada en
+silencio se paraba en silencio él mismo.
+
+Lo que esto agrega: **escribir el hallazgo no propaga el fix.** El comentario que nombraba al
+gemelo estuvo ahí todo el tiempo y no alcanzó. Al arreglar un instrumento, grepeá el patrón del
+**FIX** —no el del bug— en el mismo archivo y en sus vecinos: [[el-fix-ya-existe-en-otro-call-site]].
+
+**Caso 9 — comparar el estado de HOY para explicar lo que un proceso leyó DÍAS ATRÁS.** El bridge
+del grafo tenía un árbol configurado y el reconcile quiso borrar 420 objetos. Para decidir si el
+borrado era legítimo comparé los dos árboles candidatos: los dos sanos, a una hora uno del otro, 0
+archivos borrados entre ellos. Conclusión: «no hay divergencia que justifique 420 borrados».
+**Falsa** — y encima había refutado con ella una hipótesis correcta. Los árboles que miraba no eran
+los que el bridge leyó durante las ingestas: el `reflog` de uno tenía UNA entrada, de ese mismo día
+a las 21:15. Lo habían **creado una hora antes**; hasta entonces el path configurado no existía y
+el grafo estaba clavado en el pasado.
+
+`ls`, `rev-parse` y `git log` contestan por el estado ACTUAL. Cuando la pregunta es «¿qué leyó este
+proceso cuando escribió esto?», el sujeto es la **historia** del árbol, no el árbol: `git reflog`,
+el mtime del marcador, la bitácora. Un árbol sano hoy no declara nada sobre lo que fue ayer — y la
+trampa es que responde igual de rápido y de seguro.
+
+## Caso 10, el mismo día — escribí «el hallazgo no propaga el fix» y no lo propagué
+
+El caso 8 (arriba) cierra diciendo: *al arreglar un instrumento, grepeá el patrón del **FIX** —no el
+del bug— en el mismo archivo y en sus vecinos*. Lo escribí, abrí el PR con `cola-check.sh` y
+`vigilancia-check.sh` arreglados… y **no grepeé**. Horas después corrí `scripts/archivar-buzon.sh`
+desde un worktree y salió:
+
+```
+No existe /c/gfw-src/wt-a4reg/coordinacion/abierto
+```
+
+Exit **0**. El tercer gemelo, con **las dos líneas idénticas**: `BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"`
+y `[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }`.
+
+Y este tenía consecuencia acumulada: el vigía lo invoca en su paso 4 desde cualquier worktree, así
+que **el janitor no corría nunca** y el ciclo reportaba el buzón ordenado. Al arreglarlo, la primera
+corrida archivó **11** — el mismo número que una medición independiente había contado como vencidos.
+La cuenta ya estaba ahí; lo que faltaba era un instrumento que la mirara.
+
+**Lo que esto agrega sobre el caso 8:** la lección escrita no se aplica sola **ni siquiera al autor,
+ni siquiera el mismo día, ni siquiera con el texto fresco**. Un hallazgo sobre un patrón no es un
+recordatorio: es una tarea de barrido, y termina cuando corriste el grep, no cuando redactaste el
+párrafo. El grep que faltaba era de una línea:
+
+```bash
+grep -rn 'exit 0; }' scripts/ | grep -i 'no existe'
+```
+
+Si el hallazgo no viene con su barrido **en el mismo commit**, el gemelo siguiente ya está esperando.
+Ver [[el-fix-ya-existe-en-otro-call-site]] y [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
+
+---
+
+## 2026-09-23 — `git diff A B` no contesta «¿qué agrega esta rama?», y sus borrados son una ilusión
+
+Quise saber qué aportaba la rama de backend y corrí `git diff --stat origin/main 4489ea19`. La
+salida mostraba **745 borrados**, entre ellos `PantallaLegal.tsx`, `legal.ts` y `_layout.tsx` — justo
+los archivos que la otra sesión acababa de mergear. La lectura inmediata fue: *«si backend mergea sin
+traer main, revierte la pantalla legal de FE2»*. Estuve a un mensaje de bajar esa alarma.
+
+**Era falsa.** `git diff A B` compara **dos puntas**: lo que aparece como `-` es simplemente lo que
+A tiene y B no. No describe lo que un merge haría — un merge es un three-way contra la **base
+común**, y los archivos que sólo existen en `main` **se quedan**. El instrumento contestó bien; yo
+le había preguntado otra cosa.
+
+La pregunta «¿qué agrega esta rama sobre main?» tiene su propia forma, con **tres** puntos:
+
+```bash
+git log origin/main..LA_RAMA --oneline      # commits que la rama suma
+git diff origin/main...LA_RAMA              # el diff desde la BASE COMUN, no entre puntas
+git diff origin/main..LA_RAMA -- <paths>    # vacio => su contenido YA esta en main
+```
+
+Ese último fue el que cerró el caso: **vacío** ⇒ el trabajo de backend ya estaba íntegro en `main`
+(entró por #679 mientras yo medía), sin duplicar nada. El mismo control que había cerrado #677 horas
+antes — un PR que se cerró sin mergear porque su patch-id ya estaba aplicado.
+
+**Lo que hay que aprender no es el flag, es el reflejo:** una medición que produce una alarma
+grande y barata merece una segunda forma de preguntar **antes** de que la alarma circule. La primera
+lectura era plausible, urgente y reenviable — la peor combinación. Ver
+[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+---
+
+## Novena, y la variante peor: el sujeto equivocado fue **el RANGO**, y lo eligió el sistema
+
+2026-09-28. Pregunta: *¿los 436 objetos que el reconcile del grafo quiere borrar son drift legítimo o
+una anomalía?* De eso dependía recomendar al operador firmar `--force` o **no** firmarlo.
+
+Medí los archivos borrados en el rango del **marcador del grafo** (`1542e3ad..origin/main`, 28
+commits): **0 borrados, 0 renombrados**, 116 modificados y 28 agregados. Y **con control positivo
+verde**: la misma sintaxis ve 159 borrados en los últimos 300 commits y 11 en `HEAD~150..origin/main`.
+El instrumento veía borrados; el `0` era real.
+
+**Conclusión que casi entregué: «436 muertos sin un solo archivo borrado ⇒ anomalía ⇒ NO firmes».**
+Habría sido el consejo opuesto al correcto.
+
+La causa estaba escrita en el `repos.toml` del bridge: el 2026-08-19 el árbol que el bridge LEE dejó
+de ser el que el sync ESCRIBE, y el drift vivió **>1 mes invisible** (arreglado en `dd7cbd0`, el
+2026-09-22 21:25, **el mismo día del marcador**). Medido en el rango real —desde el inicio de la
+ceguera— hay **24 borrados, 13 de código indexable, 1 renombrado**. **Los 436 son basura legítima y el tope
+de 200 estaba funcionando** — pero mi aritmética para llegar ahí («13-14 archivos × decenas de objetos
+≈ 400») **estaba mal, y me la refutaron con la lista del dry-run**: de 4 archivos-fuente de la muestra,
+**2 SÍ existen** (`EscritorioFunciones.tsx`, y `LegalScreen.tsx` creado esta semana). La segunda mitad
+de la población son **símbolos eliminados DENTRO de archivos que sobrevivieron**, que mi conteo por
+archivo no podía ver. Por eso el «≈400» salía forzado: **conté en archivos una población que se mide en
+símbolos y aristas** ([[contar-un-simbolo-no-dice-en-que-rol-aparece]]).
+
+**Y el argumento fuerte no era ninguno de los dos conteos: era `FALTANTES: 0`.**
+`expected 39296 / present 39732 / zombies 436 / FALTANTES 0` — todo lo que el árbol vivo espera ya
+estaba presente, así que el reconcile sólo podía **quitar sobrante**, nunca dejar hueco. Eso se lee en
+una línea, no depende de reconstruir la historia, y es el criterio reusable para la próxima vez que el
+tope frene: **preguntar cuántos FALTAN, no cuántos se borran.** Yo pasé el rato midiendo la magnitud del
+borrado cuando la pregunta que decidía era si el borrado podía dejar un agujero.
+
+**Por qué el rango era el sujeto equivocado, y por qué es peor que un path mal escrito:** el marcador
+es el **puntero de progreso** del propio proceso, y avanzaba **correctamente** mientras la fuente que
+alimentaba al proceso estaba mal. Un puntero de progreso no dice «hasta acá procesé bien»: dice
+«hasta acá corrí». Con la fuente roto, el puntero mide corridas, no trabajo — así que **usarlo para
+delimitar el rango del daño devuelve cero por construcción.** El rango del daño va desde que **la
+fuente** se rompió, no desde donde quedó el puntero. Y a diferencia de un `git -C` mal apuntado, acá
+**no elegí el sujeto**: lo heredé del estado del sistema, que es lo que lo hace invisible.
+
+**Y el control positivo no podía salvarme**, lo cual es lo más importante de este caso: validó que el
+instrumento **ve borrados**, no que **le pregunté por el período correcto**. Un control positivo
+prueba la sensibilidad del instrumento, **nunca la pertinencia del sujeto** — son dos afirmaciones
+distintas y la segunda casi nunca tiene control. Hermano de
+[[vacio-no-es-hallazgo-correr-el-control]] por el lado opuesto: allá el control faltaba, acá estaba
+verde y era irrelevante.
+
+**How to apply:** ante un `0` que llega **con control positivo verde**, hacer una pregunta más:
+**¿de dónde salió el rango / el sujeto, y quién lo movió?** Si salió de un puntero, checkpoint,
+marcador, `--since`, `HEAD` o «última corrida», **ese valor es parte de la hipótesis, no del método**:
+va verificado igual que el resto. La versión corta: *un control positivo dice que el instrumento ve;
+no dice que le preguntaste por el sujeto correcto.* Y ante un daño acumulado, el rango se toma desde
+**el evento que rompió la fuente**, que se busca en la historia de la configuración, no en la del
+código.
+
+---
+
+## Caso 11 (2026-09-28) — el sujeto era **el FILESYSTEM** cuando la afirmación era sobre **el TRONCO**
+
+Cuatro afirmaciones falsas en **un solo mensaje** de una sesión competente, todas con la misma forma:
+*«X no existe»* / *«X ya está en la raíz»*, medidas **grepeando el árbol de trabajo**.
+
+| afirmación | cómo se midió | la verdad, medida contra `origin/main` |
+|---|---|---|
+| «tu entrada de memoria no existe en ningún checkout» | `ls memoria/el-testigo-*.md` en el compartido y en su worktree → 0 | **presente**, 3 560 bytes, desde `e8fe864f` |
+| «el guard de path no está en `main`» | ídem | **presente**, 1 ocurrencia en cada servidor, y 0 archivos con el patrón viejo |
+| «el fix de `ci-verde.sh` ya está en la raíz» | lo escribió en su checkout | **NO está**: `origin/main:scripts/ci-verde.sh:75` sigue diciendo `NO VERDE`, y **0 commits al archivo ese día** |
+| (el espejo, y es mío) «el compartido tiene ~100 archivos editados a mano» | de memoria, sin medir | **3** sucios, todos `docs/`+`memoria/` |
+
+**Por qué este repo lo amplifica hasta volverlo el default.** Hay **36 worktrees** con HEAD distinto.
+«¿Existe el archivo X?» **no es una pregunta bien formada** sin nombrar el ref: tiene 36 respuestas y el
+grep devuelve la del árbol donde estás parado, sin avisar que eligió. Peor con **squash-merge**: la
+rama fusionada **no es ancestro** de `main`, así que el árbol local puede tener el archivo y `main`
+también, o el árbol tenerlo y `main` no, en las dos direcciones, sin que nada falle.
+
+**El control, y es de una línea:**
+
+```bash
+git fetch -q origin main
+git cat-file -e "origin/main:<path>" && echo PRESENTE || echo AUSENTE   # existencia
+git log --since='<hoy>' origin/main -- <path>                            # "¿entró el fix?"
+git show origin/main:<path> | grep -n '<patrón>'                         # contenido, no el del disco
+```
+Más el **negativo que discrimina**: `git cat-file -e origin/main:docs/no-existe-control.md` tiene que
+dar ausente. Sin él, un `PRESENTE` para todo se lee igual que un acierto.
+
+**La regla, en una línea:** *«está en `main`» es una afirmación sobre un **ref**, y sólo se contesta
+nombrando el ref.* Un `ls`/`grep` sin ref contesta sobre el disco, que es **otro sujeto** — y con 36
+worktrees, casi seguro uno atrasado.
+
+**Y el filo que no es sobre git:** las cuatro salieron de alguien que ese mismo día había escrito la
+regla de *«medí contra el sistema real»* y aplicado controles positivos correctos en otros frentes. La
+lección no falla por ignorancia: falla porque **el grep del árbol de trabajo se siente como medir**. Es
+el mismo mecanismo del caso 10 — la lección escrita no se aplica sola ni a su autor
+([[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]]).
+
+## La precondición que se resuelve a mano se pierde justo cuando hay apuro
+
+El mismo incidente tuvo una segunda mitad: el generador necesitaba cuatro precondiciones
+(`NODE_PATH`, `CHROME_PATH`, entorno E2E, servidor del prototipo). **Las cuatro estaban documentadas
+en el header del script.** Se perdieron igual.
+
+> **Una precondición que hay que resolver a mano en cada corrida se pierde en la corrida en que uno
+> tiene apuro** — y esa es, sistemáticamente, la corrida que importa.
+
+Documentar no es un remedio: es una nota al que ya está apurado. El remedio fue un script que
+**resuelve** las cuatro y, si no puede, **aborta imprimiendo el comando exacto que falta**.
+
+## La señal de alarma: dos mediciones distintas que dan el MISMO número exacto
+
+Caso chico y rápido (2026-09-23), útil por el síntoma. Buscaba escapes unicode sin interpretar
+(`\u2014` literal, que un heredoc de bash deja crudo) en los archivos de memoria. Corrí en Python:
+
+```
+s.count("\\u2014")  ->  17      # «escapes literales»
+s.count("\u2014")      ->  17      # em-dashes reales
+```
+
+Concluí «17 escapes rotos» y, como `grep` encontraba **una** sola línea, acusé a `grep` de leer el
+archivo como binario. **`grep` tenía razón: había 1.** El heredoc se comía un backslash, así que las
+dos líneas de Python buscaban **lo mismo** — el em-dash— y por eso daban igual. Mi contador respondió,
+pero sobre **otro sujeto**.
+
+**La señal estaba a la vista y casi la paso por alto:** dos consultas que miden cosas **distintas** y
+devuelven el **mismo número exacto** son sospechosas de ser la misma consulta escrita dos veces.
+Una coincidencia así no es tranquilizadora — es la forma típica de un control que colapsó sobre su
+propio sujeto.
+
+**Y el reflejo peligroso:** cuando el instrumento propio y uno ajeno discrepan, la conclusión cómoda
+es que el ajeno está roto — inventé una explicación plausible («grep lo trata como binario») en vez
+de desconfiar del mío. La regla barata: ante discrepancia, **pedile a cada uno que imprima lo que
+encontró**, no sólo cuánto. Un `repr()` del match habría cerrado el caso en un paso.
+
+**El barrido corregido, con control:** 311 archivos, **2** escapes reales (uno recién introducido por
+mí, otro preexistente), ambos convertidos a su carácter; re-escaneo posterior → **0**.
+
+---
+
+## La variante más barata de provocar esto: un typo en el NOMBRE de una variable de entorno (2026-09-23)
+
+Se le pidió al generador medir **3 ids** pasando `IDS=...`. La variable que el script lee es
+`SOLO_IDS`. **El script ignoró el filtro, cayó a su default y midió 7 — informando con total
+normalidad.**
+
+> **Un nombre de variable de entorno mal escrito no da error: da otra medición.** No hay «variable no
+> definida» que salte, porque el script tiene un default razonable. El valor que pasaste simplemente
+> no existe para nadie.
+
+Es el mismo daño que el `git -C` sobre un worktree roto: **el instrumento contestó bien, sobre otro
+sujeto**. Y acá es peor de detectar, porque la salida tiene la forma esperada — sólo el N delata, si
+alguien lo mira.
+
+**El remedio no es acordarse del nombre: es quitarle la oportunidad.** Que el script tome los sujetos
+como **argumento posicional**, que no se puede errar sin que falte, en vez de una variable de entorno
+opcional que se puede escribir mal en silencio.
+
+**Y el control que lo caza en cualquier corrida:** *comparar el N pedido contra el N medido*. Si
+pediste 3 y el informe dice 7, no hace falta saber por qué para saber que no sirve.
+
+## El caso 9 y la familia entera: **el ref local es un sujeto distinto del remoto**
+
+Los casos 3, 7 y 9 son el mismo error con tres comandos (`merge-base`, `git log -S`, `cat-file -e`), y
+conviene verlos juntos porque el reflejo «preguntarle a git» se siente como preguntarle al repositorio,
+cuando en realidad le preguntás **a tu copia**. Ninguno de los tres avisa: los tres contestan rápido,
+sin error, sobre un pasado.
+
+La regla que los cubre a los tres: **`git fetch` antes de cualquier afirmación sobre `origin/*`** — y
+si el instrumento es un script, el fetch va **adentro**, no en la cabeza de quien lo corre. Un script
+que depende de que alguien haya fetcheado antes es un script que funciona hasta que lo automatizan.
+
+Está horneado en `scripts/plan-drift-check.sh`: el fetch es la primera medición, y si falla el script
+sale con **exit 2 — «no pude medir»— nunca con 0. Un instrumento que no pudo mirar tiene que decirlo
+distinto de un instrumento que miró y no encontró nada.

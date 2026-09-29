@@ -21,14 +21,58 @@
 #   bash scripts/ci-verde.sh 311 "core lint"          # sólo dos, para un PR docs-only
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
-# SALIDA: exit 0 = verde (mergeable) · exit 1 = NO verde (falta alguno o alguno falló).
+# SALIDA: exit 0 = verde (mergeable) · exit 1 = NO verde (falta alguno o alguno falló) ·
+#         exit 2 = no se pudo medir (mismo molde que `command -v uv` en graph-sync.sh: sin
+#         esta guarda, `gh` ausente da un error de "comando no encontrado" indistinguible de
+#         un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE real).
+#   El veredicto es EL EXIT CODE, no el texto. Si aun asi grepeas la salida: la ultima linea
+#   dice VERDE o ROJO, nunca ambas, y ninguna es substring de la otra -- por eso no es
+#   "NO VERDE". Un `grep -q VERDE` sobre el rechazo daba TRUE y mergeaba en rojo (28/09).
+#
+# SALIDA MONOTONA (invariante, con test propio en scripts/tests/test-ci-verde-veredicto-monotono.sh):
+#   TODA salida imprime exactamente UNO de {VERDE, ROJO}. Nunca ninguno, nunca los dos.
+#   Renombrar el rechazo (vuelta 1) cerro la lectura por token POSITIVO; faltaba la lectura
+#   por token NEGATIVO (`! grep ROJO` => asumo verde), que fallaba ABIERTO en las rutas MUDAS:
+#   `gh` ausente y falta de argumento imprimian un error sin veredicto. Y `gh` ausente es la
+#   ruta MAS probable en un entorno nuevo, o sea la peor para fallar abierto.
+#   Sigue valiendo: el veredicto es EL EXIT CODE. Esto solo hace que las dos lecturas
+#   ingenuas del texto fallen CERRADAS en vez de una sola.
 set -uo pipefail
 
-PR="${1:?uso: ci-verde.sh <numero-de-PR> [\"job1 job2 ...\"]}"
+command -v gh >/dev/null 2>&1 || { echo "ROJO — no pude medir: gh no está en el PATH"; exit 2; }
+
+# Falta de argumento es "no pude medir" (exit 2), NO "el PR esta rojo" (exit 1). El `${1:?}`
+# que habia aca salia por 1 y era indistinguible de un CI fallado -- el MISMO defecto que el
+# guard de `gh` de arriba vino a cerrar, vivo dos lineas mas abajo.
+if [ "$#" -lt 1 ]; then
+  echo "ROJO — no pude medir: falta el número de PR."
+  echo "   uso: ci-verde.sh <numero-de-PR> [\"job1 job2 ...\"]"
+  exit 2
+fi
+PR="$1"
 ESPERADOS="${2:-backend core web mobile lint drift}"
 
+# exit 2, NO 1: esto es «no pude MEDIR», y el docstring (:24-27) ya le reservaba el 2 a eso. Con
+# `exit 1` un número de PR equivocado era INDISTINGUIBLE de un CI en rojo — medido por auditoría:
+# `ci-verde.sh 999999` daba exit 1, idéntico a un PR con jobs fallados. Es fail-closed (nunca
+# mergea de más), por eso MEDIA y no ALTA; lo que rompe es el DIAGNÓSTICO: manda a mirar el CI
+# cuando el problema es el número o el login de `gh`. Misma clase que
+# `memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md`.
+#
+# LA CLASE, enumerada (era el DoD de este fix: arreglar el caso que quemó NO alcanza — la guarda
+# se escribe para el que ya dolió y los hermanos quedan con el comportamiento viejo):
+#   · `scripts/ci-verde.sh` — 3 rutas no-medibles ya daban 2 (`gh` ausente :42, falta de argumento
+#     :48); ÉSTA era la única que quedó en 1. Arreglada acá.
+#   · `scripts/evidencia/correr-canario.sh` — NO es de la clase: sus 4 rutas no-medibles usan
+#     `ABORT(9)` de forma UNIFORME (:34,:35,:41,:43). Otro código que el 2, pero sin ambigüedad
+#     interna. Se revisó y se descarta; enumerar no es acusar.
+#   · `scripts/deuda-check.sh:74-80` — comparte el defecto EN ESPECIE: su `exit 1` significa a la
+#     vez «hay deuda impaga» y «no pude leer el registro». Pero es DELIBERADO (su comentario lo
+#     argumenta como fail-LOUD) y está fijado por un test
+#     (`scripts/tests/test-deuda-disparador-cumplido.sh:209` afirma exit 1 para ese mensaje), así
+#     que cambiarlo es un cambio de contrato, no un fix. Queda como fila con dueño, no se toca acá.
 json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
-  echo "❌ no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 1; }
+  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
 
 falta=0
 for j in $ESPERADOS; do
@@ -67,5 +111,12 @@ if [ "$falta" -eq 0 ]; then
   echo "VERDE — se puede mergear"
   exit 0
 fi
-echo "NO VERDE — no mergear"
+# 🔴 Dice ROJO y NO "NO VERDE" a proposito, y no es cosmetica: el veredicto positivo era
+# SUBSTRING del negativo, asi que un consumidor que grepeara "VERDE" en la salida (en vez de
+# usar el exit code) matcheaba TAMBIEN el rechazo -- y fallaba ABIERTO, hacia el merge. Cazado
+# el 2026-09-28: un loop mergeo el PR #693 con el CI todavia corriendo por exactamente eso, y
+# salio verde por suerte. La forma correcta ya la usaba este repo (smoke_afip_http.py:157,
+# e2e_facturacion_http.py:217): VERDE / ROJO, que no son prefijo uno del otro.
+# El veredicto sigue siendo EL EXIT CODE; esto solo hace que leer la salida mal no fallen abierto.
+echo "ROJO — no mergear (falta o fallo algun job)"
 exit 1

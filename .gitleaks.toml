@@ -11,4 +11,15 @@ useDefault = true
 # local termine, aunque sea redactado, en la salida del escáner.
 [allowlist]
 description = "excluye archivos que nunca deben escanearse (secretos locales gitignored)"
-paths = ['''(^|/)\.env\.e2e$''']
+paths = [
+  '''(^|/)\.env\.e2e$''',
+  # Worktrees de agentes del harness: son CHECKOUTS de ramas de este mismo repo, no contenido nuevo.
+  # `--arbol` los escanea como archivos crudos y re-reporta hallazgos que YA están aceptados en
+  # .gitleaksignore para su ruta canónica -- pero con el prefijo `.claude/worktrees/agent-<azar>/`,
+  # que ningún fingerprint puede cubrir porque el nombre del worktree es aleatorio por agente.
+  # Ruido INCOBRABLE por diseño: no se puede pre-aceptar, sólo aprender a saltear el guard. El
+  # 2026-09-22 ya empujó a una sesión a editar .gitleaksignore a mano para destrabar su PR.
+  # NO baja la cobertura real: el camino a publicación es commit+push, y ahí manda el modo `git`
+  # (`--refs-stdin` del pre-push), que sí escanea esos commits y corre PRIMERO y fail-closed.
+  '''^\.claude/worktrees/''',
+]

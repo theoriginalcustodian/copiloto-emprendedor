@@ -46,7 +46,18 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRY_RUN=0
 if [ "${1:-}" = "--dry-run" ]; then DRY_RUN=1; shift; fi
-BUZON="${1:-${BUZON_DIR:-$REPO_ROOT/coordinacion}}"
+# `coordinacion/` NO está versionada y existe UNA sola vez: en el checkout principal. Derivarla del
+# root de ESTE script lo dejaba ciego en cualquier worktree (26 vivos = el caso NORMAL). Cuarto y
+# quinto gemelo del mismo par de líneas (PR #676): los encontró el grep de una línea, no la lectura.
+_resolver_buzon() {
+  if [ -n "${1:-}" ]; then printf '%s' "$1"; return; fi
+  if [ -n "${BUZON_DIR:-}" ]; then printf '%s' "$BUZON_DIR"; return; fi
+  if [ -d "$REPO_ROOT/coordinacion" ]; then printf '%s' "$REPO_ROOT/coordinacion"; return; fi
+  _gc="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_gc" ]; then printf '%s' "$(dirname "$_gc")/coordinacion"
+  else printf '%s' "$REPO_ROOT/coordinacion"; fi
+}
+BUZON="$(_resolver_buzon "${1:-}")"
 ABIERTO="$BUZON/abierto"
 ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
@@ -58,7 +69,12 @@ UMBRAL_CONTRATO_MIN="${UMBRAL_CONTRATO_MIN:-120}"          # 2h, del pendiente
 UMBRAL_PEDIDO_MIN="${UMBRAL_PEDIDO_MIN:-30}"                # 30min, del pendiente
 UMBRAL_SILENCIO_DEFAULT_MIN="${UMBRAL_SILENCIO_DEFAULT_MIN:-90}"   # default ya usado por Cron 2
 
-[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }
+if [ ! -d "$ABIERTO" ]; then
+  # Fail-CLOSED: el `exit 0` de antes reportaba calma sobre una carpeta que nunca miró.
+  echo "❌ ESCALADORES: no puedo ver mi sujeto — no existe $ABIERTO" >&2
+  echo "    'coordinacion/' existe UNA sola vez (checkout principal). Apuntala: BUZON_DIR=<ruta>" >&2
+  exit 2
+fi
 now="$(date +%s)"
 alarma=0
 

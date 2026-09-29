@@ -101,6 +101,11 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // que `ticketIdAbierto`: estado del shell, se limpia en cada `changeTab` para que volver al tab
   // por la barra (no por `abrirCliente`) no reabra la última ficha.
   const [clienteIdAbierto, setClienteIdAbierto] = useState<number | null>(null);
+  // ACTID — id del gasto a abrir en el tab Gastos, disparado desde una fila de Actividad/
+  // Escritorio. Mismo criterio que `clienteIdAbierto`: estado del shell, se limpia en cada
+  // `changeTab` para que volver al tab por la barra (no por `abrirGasto`) no reabra el último
+  // detalle.
+  const [gastoIdAbierto, setGastoIdAbierto] = useState<number | null>(null);
 
   // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
   // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
@@ -122,6 +127,8 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     // Ajustes) no debe dejar `clienteIdAbierto` viejo esperando para la próxima vez que se entre a
     // Clientes. `abrirCliente` lo re-setea DESPUÉS de llamar a este `changeTab`.
     setClienteIdAbierto(null);
+    // ACTID: mismo criterio, para `gastoIdAbierto`.
+    setGastoIdAbierto(null);
     setActiveTab(key);
   }, [setTabHidden]);
 
@@ -131,6 +138,14 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   const abrirCliente = useCallback((id: number) => {
     changeTab('clientes');
     setClienteIdAbierto(id);
+  }, [changeTab]);
+
+  // ACTID — variante de `changeTab('gastos')` que además abre el detalle de `id`. Mismo mecanismo
+  // que `abrirCliente`: `changeTab` limpia `gastoIdAbierto` en su cuerpo, y el `setGastoIdAbierto(id)`
+  // de acá corre DESPUÉS en el mismo batch, así que gana.
+  const abrirGasto = useCallback((id: number) => {
+    changeTab('gastos');
+    setGastoIdAbierto(id);
   }, [changeTab]);
 
   // D12 — mismo handoff que ya usaba "Facturar" desde un presupuesto (línea de abajo), ahora
@@ -205,12 +220,12 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'connections' && <ConnectionsScreen />}
-            {activeTab === 'gastos' && <GastosScreen />}
+            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen
-                onAbrirGasto={() => changeTab('gastos')}
+                onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onAbrirTicket={setTicketIdAbierto}
               />
@@ -229,7 +244,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
                   }
                   changeTab(tab);
                 }}
-                onAbrirGasto={() => changeTab('gastos')}
+                onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onVerRecientes={() => changeTab('recientes')}
               />

@@ -49,8 +49,8 @@ local. El control que debía suplirlo es **server-side**, y el 2026-09-22 el ope
 "enabled"`, `"secret_scanning": "enabled"`).
 
 **Ahí habría terminado el análisis si el `PATCH` con código 200 contara como verificación.** Al ir a
-leer la configuración en vez de confiar en el 200, apareció
-el control —en vez de darlo por bueno porque el `PATCH` devolvió 200— apareció el alcance real:
+**leer la configuración** en vez de darla por buena porque el `PATCH` devolvió 200, apareció el
+alcance real:
 
 ```
 secret_scanning:                        enabled
@@ -138,6 +138,73 @@ reinicio de la PC y auditoría tiene el **verde explícito**, con el diseño de 
 nueva cuenta» **no va** en el reveal: en una beta cerrada las altas las hace él y nadie se registra
 solo. Cero trabajo de código. Se registra acá porque una decisión que sólo vive en un chat envejece
 igual que un cierre que sólo vive en el buzón — que es la razón por la que este archivo existe.
+
+## A5 (2026-09-23) — re-check del Cierre A: NO cierra, y el motivo es el criterio 3
+
+Re-verificación acotada, con juez independiente. **Veredicto: el Cierre A no cierra.** No por una
+fila nueva, sino por el criterio 3 (paridad de testids web/mobile).
+
+**Lo que bloquea no es la falta de medición: es quién mide.** El DoD de `BL-Q5` pide que **auditoría**
+republique la matriz. Las **29 filas web** que hay las publicaron FE1 y FE2 —la fuente que A4 §C
+invalidó— y auditoría dejó por escrito que no re-midió (§116 del informe A4: «A4 muestrea; no
+re-midió los 54 ids»). Aunque mañana estuvieran los 54 con veredicto, si los publica el propio medido
+el criterio sigue sin cumplir su DoD. La salida es una decisión del operador: reabrir auditoría,
+re-declarar la vara con acta, o aceptar las 29 filas web dejando constancia de quién las midió.
+
+**Cuidado con los dos «54» del backlog**, que se mezclan fácil (me pasó al bajar el primer veredicto):
+uno es el universo de ids de la spec (`BL-Q5`, tras el salto `48 → 51 → 54` del PR #611 — el título
+del frente todavía dice «48 pantallas» y quedó viejo); el otro, «54 spec · 2 visión · 1 propuesta»,
+son **pantallas** clasificadas en `BL-P5`. Y el headline «matriz web 16/16» **no es 16 de 48**: son
+las 16 filas que estaban sin veredicto.
+
+**El generador mide 7, no 54.** `scripts/evidencia/criterio3-matriz.mjs:125` recorre
+`detalle,agenda,ingresos,presu,negocio,afip,cuenta`, con navegación escrita a mano por id. Extenderlo
+es trabajo real que **no** cierra el criterio, por lo de arriba.
+
+### Hallazgos del re-check
+
+| ID | Qué | Estado |
+|---|---|---|
+| **H-A4-1** | El juez lo dio por **refutado** en su mitad local: el guard fail-closed de `core.hooksPath` existe (`gate.sh:90-121` + `test-gate-hook-secretos.sh`, 4 casos). Este registro ya lo decía en su fila; lo que sigue abierta es la mitad **server-side** (`non_provider_patterns` disabled) | sin cambio — ver «Lo que falta» |
+| **H-A5-3** | Drift docstring↔código en `scripts/e2e_bl_o6_legal_aceptacion.py`. **Verificado: el código está bien** (L131 compara `"version_desactualizada"`, el valor real de `errores_web.py:35`); miente el **docstring** (L16 promete `"legal_version_desactualizada"`, que es el *nombre* de la constante, no su valor). En la misma línea, fija `detail.vigente == "2026-09-22"` en vez de citar `LEGAL_VERSION_VIGENTE` | 🟡 cosmético, 1 renglón, sin PR propio |
+| **H-A5-4** | «Falta ratchet en el control cross-tenant». **Parcialmente refutado:** para RLS el ratchet **existe y enumera solo** — `test_rls_invariantes.py::test_toda_tabla_con_RLS_forzado_tiene_politica_de_LECTURA_y_de_ESCRITURA` consulta `pg_policy` y falla ante cualquier policy `FOR ALL` sin `WITH CHECK`, sin depender de ninguna lista. **CONFIRMADO en su otra mitad (2026-09-23):** a nivel **endpoint no hay ratchet** — `test_adversarial_multitenant.py` son **17 casos hostiles escritos a mano**, y los paths que ejercita por HTTP son **7** (`/catalog`, `/feedback`, `/me`, `/me/onboarding/completar`, `/mi-dia/calendario`, `/mp/connection`, `/reply`). El único test que recorre `app.routes` (`test_web_app.py:680`) lo usa como helper de un ratchet de **escala** (`def` vs `async def`), no de autorización, y también sobre una lista fija. **Una ruta tenant-scoped nueva sin test adversarial no rompe nada** | 🔴 confirmado — la mitad RLS refutada, la mitad endpoint en pie |
+
+### H-A5-4, la mitad que faltaba: el tamaño del hueco, y lo que la medición NO dice
+
+El repo declara **109 rutas HTTP** fuera de tests (`@app.get/post/...`, once módulos `*_web.py`),
+todas en archivos que manejan `cliente_id`. Con caso hostil por HTTP: **7 paths**.
+
+**El límite de este número, dicho antes de que alguien lo cite mal.** El 109 clasifica por
+*archivo*, no por ruta: `admin_web.py` (12 rutas) es cross-tenant por diseño y no debería contar
+como descubierto. Así que **109 no es el denominador**, es su cota superior. El denominador exacto
+requiere clasificar ruta por ruta — que es, justamente, lo que haría el ratchet ausente. No repito
+acá el error del «54»: si vas a citar un número de esta fila, citá **7 paths cubiertos**, que es el
+único de los dos que está medido de punta a punta.
+
+**Por qué igual es un hallazgo y no una queja.** La regla dura del repo dice que un control de
+autorización sin test adversarial **no está verificado**. Con cobertura curada, esa regla depende de
+que cada autor se acuerde: el día que alguien agregue una ruta que devuelve datos por tenant y no
+escriba su caso hostil, **el gate sale verde igual**. Es exactamente el modo de falla de ADR-013
+§3.3.4 — control especificado, nunca ejercitado, drift vivo ~2 meses — con la diferencia de que acá
+el aviso llega antes del incidente.
+
+**Forma del ratchet, para quien lo implemente:** enumerar las rutas de cada app, quedarse con las que
+dependen de `require_tenant`, y fallar si alguna no aparece en el conjunto que el adversarial
+ejercita. Es el mismo patrón que ya funciona para RLS en `test_rls_invariantes.py` — consultar la
+fuente (ahí `pg_policy`, acá `app.routes`) en vez de mantener una lista. **No se implementa en este
+PR:** es código de `apps/`, y esta sesión no implementa. Queda con dueño (backend) y sin fecha,
+registrado como deuda **gestionada y visible**, no impaga.
+
+### Lo que este re-check dice del método
+
+El estado del criterio 3 **ya estaba escrito, y mejor**, en `BL-Q5` del backlog, **un día antes** de
+que el re-check lo «descubriera» y lo escalara con un número mezclado. No faltó medición: faltó abrir
+la fila del frente que ya la tenía. Antes de publicar un hallazgo sobre un frente con id propio, se
+lee su fila del backlog — cuesta un `grep` y es la diferencia entre aportar y hacer ruido.
+
+Y los dos hallazgos que sobrevivieron al re-check se **achicaron** al verificarlos de a uno contra el
+código: uno era un comentario, el otro estaba medio hecho. Un hallazgo sin verificar cuesta el tiempo
+de quien lo recibe, no el de quien lo emite.
 
 ## Cómo se construyó este registro
 

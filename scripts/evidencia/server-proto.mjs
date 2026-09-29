@@ -1,0 +1,56 @@
+// Server estático mínimo para el prototipo. Node core, cero dependencias, concurrente y sin logging.
+//
+// Por qué existe: el prototipo se venía sirviendo con `python -m http.server`, y el A/B del
+// `waitUntil` mostró que los `page.goto` se cuelgan >8 s en celdas que CAMBIAN de corrida en
+// corrida (`soporte@390` en una, `apar@390` en otra, `esc@desktop` en la tercera). Un fallo que se
+// mueve no puede ser del id, del viewport ni del prototipo: los tres son fijos. Lo único compartido
+// que varía entre intentos es el server.
+//
+// Este es el control positivo de esa hipótesis: si el mismo A/B sale 32/32 contra este server,
+// la causa está aislada y el arreglo es de la PRECONDICIÓN (cómo se levanta el proto), no del
+// generador ni del prototipo.
+import http from 'node:http';
+import { createReadStream, statSync } from 'node:fs';
+import { join, resolve, sep, extname } from 'node:path';
+
+const RAIZ = process.env.PROTO_DIR;
+const PUERTO = Number(process.env.PORT || 8124);
+if (!RAIZ) { console.error('falta PROTO_DIR'); process.exit(2); }
+const RAIZ_ABS = resolve(RAIZ);   // una vez: el guard compara contra esto, no contra el env crudo
+
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript',
+  '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.png': 'image/png',
+  '.jpg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json' };
+
+http.createServer((req, res) => {
+  // Sin path traversal — y el guard es el de abajo, con separador. Este comentario decia
+  // «se exige que quede dentro de la raiz» mientras el codigo NO lo hacia: afirmaba la
+  // propiedad en vez de tenerla (`memoria/el-guard-se-satisface-con-su-propio-comentario.md`).
+  let ruta = decodeURIComponent(req.url.split('?')[0]);
+  if (ruta.endsWith('/')) ruta += 'index.html';
+  // El favicon se responde 204 en vez de 404, y no es cosmético: el prototipo no declara ninguno
+  // (`grep -c favicon index.html` = 0), así que Chrome lo pide por su cuenta y el 404 sale como
+  // `console.error: Failed to load resource` en la consola del browser. Medido el 2026-09-28: pasa
+  // en 1 de cada 10 cargas del MISMO id — Chrome lo pide sólo a veces —, y un generador que aborte
+  // la celda al ver un `console.error` tumba ~1,4 de sus 14 celdas de proto por corrida, cada vez
+  // OTRA. Un falso positivo intermitente es peor que uno constante: fabrica la excusa «es el flake
+  // conocido», y con ella se lava la próxima regresión real. Se mata en el origen.
+  if (ruta === '/favicon.ico') { res.writeHead(204).end(); return; }
+  // El guard NO puede ser `startsWith(RAIZ)` pelado: sin el separador, un HERMANO cuyo nombre
+  // empieza igual que RAIZ pasa el prefijo (`<raiz>-secreto/x` empieza con `<raiz>`). Medido el
+  // 2026-09-28 con `probar-traversal.sh`: servia el archivo del hermano con HTTP 200, mientras el
+  // caso obvio (`/../../fuera`) SI daba 403 — el guard bloqueaba lo lejano y dejaba pasar lo vecino,
+  // que es justo su caso de activacion (`memoria/el-guard-falla-abierto-en-su-caso-de-activacion.md`).
+  // `join` neutraliza un `rel` absoluto, `resolve` colapsa los `..`, y el separador cierra el prefijo.
+  const abs = resolve(join(RAIZ_ABS, ruta));
+  if (abs !== RAIZ_ABS && !abs.startsWith(RAIZ_ABS + sep)) { res.writeHead(403).end(); return; }
+  let st;
+  try { st = statSync(abs); } catch { res.writeHead(404).end('no existe'); return; }
+  if (st.isDirectory()) { res.writeHead(404).end('es un directorio'); return; }
+  res.writeHead(200, {
+    'content-type': TIPOS[extname(abs).toLowerCase()] || 'application/octet-stream',
+    'content-length': st.size,
+    'cache-control': 'no-store',
+  });
+  createReadStream(abs).pipe(res);
+}).listen(PUERTO, '127.0.0.1', () => console.log(`proto en http://127.0.0.1:${PUERTO}/ raiz=${RAIZ}`));

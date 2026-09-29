@@ -2,6 +2,12 @@
 
 **Fecha:** 2026-09-16 · **Medido contra:** `main` @ `b67dc7c9` (worktree limpio) · **Fuente del diseño:** `Prototipo frontend/odobi-ui/mapa-pantallas/index.html` (48 pantallas) renderizadas por `prototipo/index.html?ver=<clave>`.
 
+> ⚠️ **DOCANC — esta fecha/SHA es del documento, no de cada fila.** Salvo que una fila tenga su
+> propia nota `[OBSOLETO — corregido <fecha>, medido contra <ref>]` (hoy: `consent`, `fact-cae`), esa
+> fila **sigue siendo la medición del 2026-09-16 contra `b67dc7c9`** y **no está re-verificada** contra
+> el estado actual de `main`. Una fila sin fecha propia no significa "vigente": significa "no se volvió
+> a mirar". Re-auditar el documento completo es trabajo de otro id (criterio 3, en curso en auditoría).
+
 Lectura pura, sin cambios de código. Actualiza y **amplía** los diffs del 08/09 (`2026-09-08-diff-pantalla-por-pantalla-prototipo-vs-app{,-mobile}.md`), que comparaban 14 mockups; este compara las **48 pantallas del mapa**. Desde el 08/09 el único cambio de frontend en `main` fue #507 (quita el scrim de grabación en web).
 
 **Método:** 6 auditores en paralelo (uno por dominio, 8 pantallas c/u), cada veredicto con `path:línea` leído; AUSENTE sólo tras grep amplio. Verificación cruzada manual de 6 citas al azar (DEFAULT_TAB web, capas mobile, CUIT «Cambiar» web+mobile, Pausar/Reanudar mobile, ausencia de mic en Gastos): 6/6 coinciden.

@@ -31,7 +31,18 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUZON="$REPO_ROOT/coordinacion"
+# `coordinacion/` NO está versionada y existe UNA sola vez: en el checkout principal. Derivarla del
+# root de ESTE script lo dejaba ciego en cualquier worktree (26 vivos = el caso NORMAL). Cuarto y
+# quinto gemelo del mismo par de líneas (PR #676): los encontró el grep de una línea, no la lectura.
+_resolver_buzon() {
+  if [ -n "${1:-}" ]; then printf '%s' "$1"; return; fi
+  if [ -n "${BUZON_DIR:-}" ]; then printf '%s' "$BUZON_DIR"; return; fi
+  if [ -d "$REPO_ROOT/coordinacion" ]; then printf '%s' "$REPO_ROOT/coordinacion"; return; fi
+  _gc="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_gc" ]; then printf '%s' "$(dirname "$_gc")/coordinacion"
+  else printf '%s' "$REPO_ROOT/coordinacion"; fi
+}
+BUZON="$(_resolver_buzon "")"
 ABIERTO="$BUZON/abierto"
 HOY="$(date +%Y-%m-%d)"
 CERRADO_HOY="$BUZON/cerrado/$HOY"
@@ -45,7 +56,12 @@ UMBRAL_OCIO=6         # min sin actividad de UNA sesión mientras hay trabajo su
 UMBRAL_MUERTA=30      # min de REPL muda en camino crítico → push al operador + reasignar
 UMBRAL_BLOQUEO=15     # min de un bloqueo operator-only sin respuesta → push (de noche, inmediato)
 
-[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }
+if [ ! -d "$ABIERTO" ]; then
+  # Fail-CLOSED: el `exit 0` de antes reportaba calma sobre una carpeta que nunca miró.
+  echo "❌ NO-OCIO: no puedo ver mi sujeto — no existe $ABIERTO" >&2
+  echo "    'coordinacion/' existe UNA sola vez (checkout principal). Apuntala: BUZON_DIR=<ruta>" >&2
+  exit 2
+fi
 now="$(date +%s)"
 
 # mtime más reciente (epoch) entre los archivos AUTOREADOS por una sesión (nombre contiene <sesion>-a-)
@@ -62,7 +78,13 @@ ult_actividad() {
   done < <(find "$ABIERTO" "$CERRADO_HOY" -maxdepth 1 -type f \( "${_fa[@]:1}" \) -print0 2>/dev/null)
   echo "$newest"
 }
-min_desde() { local e="$1"; [ "$e" -eq 0 ] && { echo 9999; return; }; echo $(( (now - e) / 60 )); }
+# 9999 NO es una medición: es el centinela de "no pude medir". Tiene nombre porque el 2026-09-23
+# se imprimió como `frontend 9999min` y se leyó como un dato -> declaré DEAD-MAN sobre una sesión
+# que estaba trabajando. Un centinela numérico disfrazado de número de minutos se lee como medición.
+SIN_MEDIR=9999
+min_desde() { local e="$1"; [ "$e" -eq 0 ] && { echo "$SIN_MEDIR"; return; }; echo $(( (now - e) / 60 )); }
+# Formatea para HUMANOS: nunca imprime el centinela como si fueran minutos.
+fmt_min() { [ "${1:-}" = "$SIN_MEDIR" ] && echo "SIN MEDIR" || echo "${1}min"; }
 
 be="$(ult_actividad backend)";  min_be="$(min_desde "$be")"
 fe="$(ult_actividad frontend)"; min_fe="$(min_desde "$fe")"
@@ -216,7 +238,7 @@ prod_min() {   # imprime el MENOR "minutos desde el último Write/Edit" entre lo
 }
 prod_be="$(prod_min ${tfs_be:-})"
 prod_fe="$(prod_min ${tfs_fe:-})"
-echo "PRODUCCIÓN (último Write/Edit): backend ${prod_be}min · frontend ${prod_fe}min"
+echo "PRODUCCIÓN (último Write/Edit): backend $(fmt_min "$prod_be") · frontend $(fmt_min "$prod_fe")"
 
 # Alarma propia: viva pero improductiva = gira en vacío. Es el caso que el umbral de VIDA no ve.
 for par in "backend:${vida_be:-9999}:${prod_be}" "frontend:${vida_fe:-9999}:${prod_fe}"; do
@@ -236,7 +258,7 @@ hora="$(date +%H)"; es_noche=0; { [ "$hora" -ge 0 ] && [ "$hora" -lt 8 ]; } && e
 # Markers de bloqueo operator-only pendientes
 bloqueos="$(find "$ABIERTO" -maxdepth 1 -type f -name "bloqueo-operador_*.md" 2>/dev/null | sort || true)"
 
-echo "OCIO: backend ${min_be}min · frontend ${min_fe}min  (umbral parada ${UMBRAL_OCIO}min · muerta ${UMBRAL_MUERTA}min)"
+echo "OCIO: backend $(fmt_min "$min_be") · frontend $(fmt_min "$min_fe")  (umbral parada ${UMBRAL_OCIO}min · muerta ${UMBRAL_MUERTA}min)"
 
 alarma=0
 
@@ -254,6 +276,16 @@ for par in "backend:$min_be:$vida_be" "frontend:$min_fe:$vida_fe"; do
   # corte el bloque de abajo cae al sensor del buzón y afirma dead-man sobre una sesión que puede
   # estar mergeando PRs (medido 2×, 2026-08-07). El control positivo es barato y externo al
   # transcript — que la sesión ACTÚE en el remoto — así que se exige ANTES de declarar nada.
+  # 🔴 EL CENTINELA NO SE COMPARA. `min_desde` devuelve $SIN_MEDIR cuando no encontró NINGÚN archivo
+  # del buzón de esa sesión: eso es ceguera sobre el buzón, no silencio de la sesión. Sin este corte
+  # el centinela cae en `$m -ge $UMBRAL_MUERTA` (9999 >= 30, siempre cierto) y fabrica un DEAD-MAN
+  # que se lee idéntico a uno real. Pasó el 2026-09-23 contra frontend1, que estaba produciendo.
+  if [ "$m" = "$SIN_MEDIR" ]; then
+    echo "🕶️  $s BUZÓN SIN MEDIR: no encontré ningún archivo suyo en el buzón. Es CEGUERA, no silencio."
+    echo "    → El control es externo al buzón: \`git log --all --author-date-order -3\` en sus worktrees,"
+    echo "       o preguntale directo. NO declares dead-man con esto."
+    continue
+  fi
   if [ -z "$v" ]; then
     echo "🕶️  $s SIN SEÑAL: no veo ningún transcript suyo (buzón mudo ${m}min). Eso es CEGUERA, no muerte."
     echo "    → CORRÉ EL CONTROL antes de afirmar nada: \`gh pr list --state all -L 5\` y \`git log origin/main -3\`."

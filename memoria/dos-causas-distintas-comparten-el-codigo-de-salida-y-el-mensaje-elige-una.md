@@ -61,6 +61,39 @@ Regla que sale de ahí: **una variable de entorno puesta para arreglar un comand
 hijos.** Si el hijo es un binario nativo y la variable gobierna la traducción de paths, la arreglaste
 para uno y la rompiste para el otro. Va inline en el comando que la necesita, nunca exportada.
 
+## Caso 2 (2026-09-28) — la TERCERA causa que comparte `rc=1`: **el sujeto todavía no existe**
+
+Encadené `gh pr create` → `gh pr checks --watch` → `ci-verde.sh` → merge, para no quedarme mirando el
+CI. Midió **8 segundos** después de crear el PR y salió `rc=1` con los seis jobs en «NO ESTÁ en el
+rollup». Se lee **idéntico a un CI rojo**, y mi propio script imprimió «NO MERGEO (gate=1)».
+
+**`gh pr checks --watch` no espera a que los checks EXISTAN.** Con el rollup vacío no espera: sale con
+error. Los PR anteriores del día funcionaron por casualidad —creé el PR en una llamada aparte, así que
+pasaron minutos antes del watch—. Re-medido un minuto después: **6/6 presentes**, 5 corriendo. El CI
+estaba sano; lo que estaba mal era *cuándo* pregunté.
+
+Así que al eje de este archivo se le suma una fila, y es la más traicionera porque no es un fallo de
+nada:
+
+| situación | rc |
+|---|---|
+| el gate encontró algo | 1 |
+| el gate no pudo medir | 1 |
+| **el sujeto todavía no se creó** | **1** |
+
+**Y lo que lo cazó es exactamente el remedio que este archivo prescribe, funcionando.** `ci-verde.sh`
+no traduce el código: imprime «⚠️ el rollup vino VACÍO: **no es que el CI falló, es que no estás
+midiendo nada**» y cuenta los jobs presentes contra los esperados. Sin esa línea habría ido a buscar un
+fallo inexistente en un PR de dos archivos de documentación. Vale decirlo completo: le abrí un hallazgo
+a ese mismo script el mismo día (un número de PR inexistente sale `rc=1` en vez del `rc=2` que su
+contrato reserva), y su control de rollup vacío es el que **a mi cadena le faltaba**. Un instrumento
+con un hueco puede seguir siendo el que te salva.
+
+**El remedio de la cadena:** antes de `--watch`, esperar a que el rollup tenga ≥1 fila. Un «esperá a
+que termine» que no espera a que **empiece** no es una espera bloqueante: es una medición temprana con
+cara de veredicto. Misma familia que
+[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]] — re-medí al **afirmar**, no al planear.
+
 ## How to apply
 
 - **Al envolver una herramienta, no traduzcas el exit code: leé su salida.** Antes de anunciar

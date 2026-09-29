@@ -19,6 +19,14 @@ fi
 # excepción unilateral se declara a mano, con motivo y fecha (scripts/ci/testid-paridad-excepciones.json).
 python3 "$ROOT/scripts/ci/testid_paridad.py" --root "$ROOT" --check
 
+# PARID + LEGAL: paridad mobile<->web de "idemKey deriva de mensajeId" (IDEM-gasto-duplica-plata) +
+# paridad de LEGAL_VERSION entre packages/core/src/legal.ts <-> apps/copiloto/tenant_legal_store.py
+# <-> scripts/e2e_bl_o6_legal_aceptacion.py (BL-O6: un bump a medias deja a todo tester en 409
+# permanente). El escaneo es del script; sólo una asimetría de PARID aceptada POR DISEÑO se declara
+# a mano (scripts/ci/idemkey-paridad-excepciones.json) -- LEGAL no tiene excepciones, es igualdad
+# estricta.
+python3 "$ROOT/scripts/ci/idemkey_paridad.py" --root "$ROOT" --check
+
 # Tests de los scripts de coordinación. Van en "lint" y no en "core" porque son bash puro: no
 # necesitan DB, node ni el venv del VPS, y corren en segundos. Sin este bucle, `scripts/tests/`
 # es letra muerta — un test que nadie ejecuta no es un control, es un archivo.

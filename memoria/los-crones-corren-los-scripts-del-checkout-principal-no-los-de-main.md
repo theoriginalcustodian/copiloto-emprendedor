@@ -34,5 +34,5 @@ versionar, y la regla dura prohíbe `pull`/`checkout`/`reset` ahí
 comprobá si sus cambios *tracked* ya están en `main` y decíselo con la evidencia — el 21/09 el
 único archivo modificado era una copia literal de un PR ya mergeado.
 
-Relacionado: [[el-device-no-corre-main-corre-lo-que-metro-sirve]] \u2014 es el mismo error de fondo:
+Relacionado: [[el-device-no-corre-main-corre-lo-que-metro-sirve]] — es el mismo error de fondo:
 preguntá qué árbol lee realmente el proceso que estás midiendo, no cuál creés que lee.

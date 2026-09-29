@@ -51,19 +51,50 @@ resolver_binario() {
 
 BIN="$(resolver_binario)"
 [ "$("$BIN" version 2>/dev/null)" = "$GL_VERSION" ] || fatal "el binario '$BIN' no es gitleaks $GL_VERSION"
-COMUN=(--redact --no-banner --config "$ROOT/.gitleaks.toml" --gitleaks-ignore-path "$ROOT/.gitleaksignore")
+# `-v`: sin él, gitleaks sólo dice «leaks found: N» y NO dice dónde. El 2026-09-22 eso costó una
+# investigación a mano y terminó con una sesión editando .gitleaksignore para destrabarse: un guard
+# que acusa sin señalar empuja a saltearlo. Con `-v` imprime File/Line/Fingerprint -- el fingerprint
+# es justo lo que hace falta para aceptar una excepción de verdad, en vez de desarmar el escáner.
+# Verificado que NO filtra el valor: con --redact sale `Secret: REDACTED` (control positivo con un
+# canario `ghp_` que SÍ se detecta, y control negativo sin --redact donde el valor sí aparece).
+COMUN=(--redact --no-banner -v --config "$ROOT/.gitleaks.toml" --gitleaks-ignore-path "$ROOT/.gitleaksignore")
 
-reportar_rc() {
+# gitleaks devuelve rc=1 por DOS causas distintas — «encontré un secreto» y «no pude cargar la
+# config» — y este script las mapeaba al mismo mensaje. Medido el 2026-09-22 (test M-3): con
+# `MSYS_NO_PATHCONV=1` heredada del entorno, gitleaks (binario nativo) recibe $ROOT en formato MSYS,
+# no puede cargar .gitleaks.toml y sale 1. Dos casos de un test adversarial se anunciaron
+# «ABORTA · hallazgo» habiendo abortado SIN ESCANEAR NADA — el veredicto era falso y parecía correcto.
+# Sigue siendo fail-closed, pero mandaba a buscar un secreto inexistente, y eso empuja al `--no-verify`,
+# que apaga el hook ENTERO. El discriminante es la línea FTL de gitleaks, no su código de salida.
+reportar_rc() {   # $1 = rc · $2 = archivo con la salida capturada (opcional)
+  if [ "$1" = "1" ] && [ -n "${2:-}" ] && [ -f "$2" ] \
+     && grep -qE '(^|[[:space:]])FTL([[:space:]]|$)|unable to load|failed to load|error parsing' "$2"; then
+    fatal "gitleaks NO pudo cargar su configuración: el escaneo NUNCA CORRIÓ (ver el FTL arriba).
+         NO es un hallazgo. Causa típica: MSYS_NO_PATHCONV=1 exportada — gitleaks es un binario
+         nativo y recibe '$ROOT' en formato MSYS. Corré el escaneo sin esa variable exportada."
+  fi
   case "$1" in 0) return 0 ;; 1) echo "[secretos] ❌ gitleaks encontró posibles secretos (ver arriba). Repo PÚBLICO: no lo pushees." >&2; return 1 ;;
     *) fatal "gitleaks falló con rc=$1" ;; esac
 }
 
+# La salida se captura para poder LEERLA (el discriminante FTL de arriba) y se reemite íntegra a
+# stderr: sin capturarla, la única señal disponible es el rc, que es justamente el que no distingue.
+GL_TMPS=""
+correr_gitleaks() {   # "$@" = args de gitleaks; deja la salida en $SALIDA_GL, devuelve el rc real
+  local rc=0
+  SALIDA_GL="$(mktemp)"; GL_TMPS="$GL_TMPS $SALIDA_GL"
+  "$BIN" "$@" > "$SALIDA_GL" 2>&1 || rc=$?
+  cat "$SALIDA_GL" >&2
+  return "$rc"
+}
+trap '[ -n "${GL_TMPS:-}" ] && rm -f $GL_TMPS' EXIT
+
 escanear() {   # $1 = log-opts opcional (modo `git`, historia)
   local rc=0
-  if [ -n "${1:-}" ]; then "$BIN" git "${COMUN[@]}" --log-opts="$1" . || rc=$?
-  else "$BIN" git "${COMUN[@]}" . || rc=$?
+  if [ -n "${1:-}" ]; then correr_gitleaks git "${COMUN[@]}" --log-opts="$1" . || rc=$?
+  else correr_gitleaks git "${COMUN[@]}" . || rc=$?
   fi
-  reportar_rc "$rc"
+  reportar_rc "$rc" "${SALIDA_GL:-}"
 }
 
 escanear_arbol() {   # modo `detect --no-git`: el checkout actual, sin depender de cuánta historia haya
@@ -71,8 +102,8 @@ escanear_arbol() {   # modo `detect --no-git`: el checkout actual, sin depender 
   # -s . (relativo, con cwd=ROOT ya seteado arriba), NO -s "$ROOT": una ruta absoluta hace que el
   # fingerprint incluya el path absoluto (`C:/gfw-src/wt-a16/docs/...`), que nunca matchea un
   # .gitleaksignore escrito en rutas relativas -- medido corriendo el script tal cual esta línea decía.
-  "$BIN" detect --no-git -s . "${COMUN[@]}" || rc=$?
-  reportar_rc "$rc"
+  correr_gitleaks detect --no-git -s . "${COMUN[@]}" || rc=$?
+  reportar_rc "$rc" "${SALIDA_GL:-}"
 }
 
 modo="${1:-}"

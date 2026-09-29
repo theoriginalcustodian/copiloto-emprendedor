@@ -20,9 +20,16 @@ metadata:
 | **Graphity key** | **5 lugares** (grep antes de rotar para enumerar exacto) | Reconciliar TODAS en el mismo PR (grep-first). |
 | **Composio key** | config MCP user-scope | Riesgo lethal trifecta; NO heredar a agentes autónomos. |
 | **code-server secret** | VPS | — |
+| 🔴 **Token MCP de 60fps.design** | **la HISTORIA de `main`** — `39decb95:Prototipo frontend/odobi-ui/.mcp.json` (PR#464, 2026-08-19 → #505, 2026-09-08) | ⚠️ **Único de esta tabla cuya condición de pago YA se cumplió:** estuvo 24 días en un repo **público** y el blob sigue recuperable. Sacarlo de HEAD no lo saca del historial. |
 
 **Decisiones explícitas (NO rotar / excepciones):**
 - **Bot HITL de Telegram (`Unreal_Copilot_HITL_bot`):** el operador decidió **NO rotar** — riesgo aceptado, uso personal, el token **nunca tocó el repo**.
+
+**⚠️ Por qué este inventario no lo tenía (medido 2026-09-28, auditoría).** Su criterio de entrada es «secretos que **pasaron por chat**» y el de 60fps se filtró por **la otra vía**: commiteado. Un inventario clasificado por *cómo se filtró* deja sin dueño a lo que se filtra por el otro camino — y justo el caso sin dueño era el único **públicamente expuesto**. Notá también que la excepción de Telegram usa «el token **nunca tocó el repo**» como razón para no rotar: el mismo razonamiento, aplicado a éste, concluye lo contrario. **La lista se organiza por EXPOSICIÓN, no por vía de filtración.**
+
+**✅ Y el barrido que cierra la pregunta «¿hay más?» (2026-09-28, auditoría).** Se enumeraron **todos los 2 812 paths jamás agregados** en cualquier commit alcanzable (`git log --all --diff-filter=A --name-only`) y se filtró por forma de credencial. **El token de 60fps es la ÚNICA credencial que entró a la historia.** Los dos archivos que el `.gitignore:16,18` nombra —la API key de OpenAI y la clave fiscal AFIP— **nunca entraron**; de shapes `.env*` sólo hay `.template`, que se versionan a propósito (`!.env*.template`); cero `.pem` / `.p12` / `id_rsa` / `.key` / keystore / `client_secret_*.json`. `secreto-sintetico-descartable-2.txt` es un **fixture del propio gate** («control negativo A4, secreto sintético 36ch forma `ghp_`, descartable», `b97ed322`) y está ausente de `main`.
+**Controles del barrido** (sin ellos un «0» no vale): positivo = el `.mcp.json` conocido **aparece**; negativo = un path inventado da **0**. **No se leyó el contenido de ningún archivo sospechoso**: si el nombre miente, abrirlo publica el secreto en el transcript — la clasificación se hizo por procedencia (mensaje del commit, que es lo único que puede atestiguar «sintético») y por ausencia del árbol.
+⚠️ **Alcance declarado:** el barrido es por **path**, no por contenido. Un secreto pegado **dentro** de un archivo de nombre inocente no lo detecta — para eso está `scripts/secretos-check.sh`, que corre en el `pre-push`. Este barrido cierra «¿entró un archivo de credenciales?», no «¿hay una key en claro adentro de un `.py`?».
 - **wa-sender bot token** (canal WhatsApp): rotar pre-prod.
 
 **Why:** un secreto pegado en chat = comprometido (regla de oro #6). Tenerlos dispersos en ~6 entradas = deuda invisible; consolidarlos en un solo inventario la vuelve gestionada.

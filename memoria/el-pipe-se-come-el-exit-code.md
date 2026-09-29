@@ -25,3 +25,28 @@ propósito. El pipe convierte un fallo ruidoso en un éxito silencioso — la fo
 
 Corolario del mismo caso: **el grafo desactualizado es peor que no tener grafo** — responde con
 confianza sobre el estado anterior. Ver [[grafo-primero-codigo-despues-para-localizar]] §frescura.
+
+---
+
+## La variante que engaña a quien mira notificaciones: el harness reporta el exit del ÚLTIMO comando
+
+No hace falta un pipe. **Un `;` alcanza.** Un comando en background que termina en
+`... ; echo EXIT=$?` devuelve el exit del **`echo`**, no el del trabajo — y el harness anuncia
+**«completed, exit code 0»** sobre una corrida donde el proceso murió.
+
+Lo vivido (2026-09-23): el veredicto verde y el fallo real quedaron **en el mismo archivo**, y el
+verde era el que llegaba como notificación.
+
+> **El «exit code» de una tarea en background es el del último comando del compuesto, no el del
+> trabajo que te importa.** Si tu comando termina en `echo`, `tail`, `python -c` o cualquier resumen,
+> ese exit no mide nada.
+
+**Dos formas de no depender de él:**
+1. **Capturar el código inmediatamente:** `mi_trabajo; RC=$?; ...; exit $RC`.
+2. **Mejor: no creerle al exit y leer el artefacto** — el recibo, el JSON, el log. El exit es una
+   señal de un solo bit que atraviesa varias capas; el artefacto lo escribió el trabajo mismo.
+
+**Y un modo de falla del artefacto, para no reemplazar un engaño por otro:** leer una clave que no
+existe. `d.get("arbol_sucio")` sobre un recibo cuyo campo se llama `sucio` devuelve `None` sin
+fallar, y `None` **no es** «limpio» ni «sucio»: es «no miré». Imprimir las claves disponibles antes de
+consultarlas cuesta una línea.

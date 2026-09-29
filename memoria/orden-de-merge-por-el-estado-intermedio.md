@@ -37,3 +37,34 @@ porque esa mitad es la probada, y porque la ventana la controla quien mergea —
 seguidos**.
 
 Hermanas: [[no-codificar-la-esperanza-principio-raiz]] · [[trabajo-por-fases-no-anticipar]]
+
+---
+
+## 2026-09-23 — el que hay que ordenar puede no ser el MERGE sino el DEPLOY
+
+Variante que el título de arriba no cubre: acá **las dos mitades podían mergear en cualquier orden
+sin romper nada**, y aun así existía un orden obligatorio. El estado peligroso no vivía en `main`:
+vivía en **producción**.
+
+BL-O6: la web registra la aceptación legal con `POST /me/legal/aceptar` y es **fail-closed a
+propósito** — «el alta NO se completa si esto falla», que es la decisión correcta (un alta sin
+aceptación registrada no sirve). FE2 mergeó su mitad (#678); backend todavía no la suya. `main`
+quedó con una web que **exige un endpoint que el backend de prod no tiene**. Mergear eso no rompe
+nada. **Desplegarlo deja a cualquier emprendedor sin poder registrarse.**
+
+El contrato de la junta declaraba las dos mitades y su DoD por lado. No declaraba el **orden de
+puesta en producción**, porque el modelo mental era «cuando las dos estén mergeadas, listo». Entre
+«las dos mergeadas» y «las dos desplegadas» hay una ventana, y la ventana tiene un lado seguro
+(backend primero) y uno que rompe.
+
+**La pregunta que hay que hacerle a toda junta fail-closed:** *si despliego sólo esta mitad, ¿qué
+deja de funcionar?* Si la respuesta no es «nada», el contrato necesita un **orden de deploy** con su
+disparador medible, no sólo un DoD por lado. Acá el disparador es un número: `POST` sin token tiene
+que devolver **401**; mientras devuelva 405, el endpoint no está.
+
+**Y el 405 casi me engaña.** `POST /me/legal/aceptar` → `405` se lee como «existe, método
+equivocado». El control negativo lo desarmó: una ruta **inventada** (`/me/legal/no-existe-xyz`)
+devolvía **el mismo 405**, mientras el control positivo (`/me/onboarding/completar`, que existe)
+devolvía **401**. Con un solo control la conclusión habría sido la contraria. Ver
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]] y
+[[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].

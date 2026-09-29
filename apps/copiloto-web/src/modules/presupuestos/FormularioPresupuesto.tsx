@@ -70,6 +70,17 @@ export interface FormularioPresupuestoProps {
   iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto, sugerencias: SugerenciasPresupuesto | null) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` que trae la card que envuelve este formulario (BL-V32/K-01, mismo
+   * mecanismo que el mobile — puerto 1:1, ver su docstring). Si viene, la `idemKey` se DERIVA de él
+   * en vez de nacer con el montaje: sobrevive a un remount de `TarjetaPresupuestoPropuesto` (reload
+   * de página) cuando el guard cross-reload best-effort (`resolucionCardPropuesta.ts`, localStorage)
+   * falla abierto — antes de este fix, ESE remount sí generaba una `idemKey` nueva y el backend no
+   * podía dedupear, exactamente el bug que K-01 ya había cerrado en mobile pero no acá. Sin
+   * `mensajeId` (alta manual desde `PantallaPresupuestos`, sin card) se mantiene una clave por
+   * instancia, como antes.
+   */
+  mensajeId?: string;
 }
 
 export function FormularioPresupuesto({
@@ -77,6 +88,7 @@ export function FormularioPresupuesto({
   iniciales = null,
   onCreado,
   onCancelar,
+  mensajeId,
 }: FormularioPresupuestoProps) {
   const [concepto, setConcepto] = useState(corrige?.concepto ?? iniciales?.concepto ?? '');
   const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? iniciales?.receptor?.nombre ?? '');
@@ -100,8 +112,10 @@ export function FormularioPresupuesto({
   });
   const [enviando, setEnviando] = useState(false);
   const enviandoRef = useRef(false);
-  // Una `idem_key` por instancia de formulario (K-01): estable a través de reintentos del mismo submit.
-  const idemKey = useRef(generarId());
+  // BL-V32/K-01: si viene `mensajeId` (la card sobrevive a un reload), la clave se DERIVA de él — misma
+  // card, misma clave, siempre. Sin `mensajeId` se mantiene una por instancia, estable a través de
+  // reintentos del mismo submit (comportamiento previo).
+  const idemKey = useRef(mensajeId != null ? `presupuesto:${mensajeId}` : generarId());
   const [error, setError] = useState<string | null>(null);
   const [conceptos, setConceptos] = useState<readonly Concepto[]>([]);
 
@@ -333,6 +347,7 @@ export function FormularioPresupuesto({
                   inputMode="decimal"
                   value={it.precioUnitario}
                   onChange={(e) => actualizarItem(i, 'precioUnitario', e.target.value)}
+                  placeholder="1500,50"
                   disabled={enviando}
                 />
               </label>

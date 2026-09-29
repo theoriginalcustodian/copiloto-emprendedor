@@ -1,0 +1,4 @@
+{
+  "_leeme": "Excepciones de PARID (paridad mobile<->web del patron 'idemKey deriva de mensajeId'). El ESCANEO y la clasificacion por formulario son siempre de idemkey_paridad.py -- lo unico manual aca es declarar que una asimetria puntual esta aceptada POR DISENO, con motivo y fecha. TRINQUETE: una excepcion que ya no es drift real (se arreglo, o el archivo desaparecio) hace fallar el gate ('sacala del baseline') -- este archivo solo puede achicarse. Un formulario que hoy no deriva de mensajeId en NINGUN lado (Cliente, Ingreso) no es asimetria y no necesita entrada aca -- ver la seccion 'sin_asimetria_pero_sin_derivar' del --inventario.",
+  "excepciones": {}
+}

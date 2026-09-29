@@ -80,3 +80,92 @@ más buscadas. Un fallo que se lleva justo lo más valioso sin levantar la mano.
 Relacionadas: [[vacio-no-es-hallazgo-correr-el-control]] (el vacío es una pregunta) ·
 [[el-pipe-se-come-el-exit-code]] (la otra forma de leer verde sin medir) ·
 [[bucle-canonico-dos-auditorias-y-el-enganche]] (§12, la ley de los instrumentos).
+
+---
+
+## 2026-09-23 — «el escáner dio limpio» significa «ninguno de los formatos que conozco»
+
+Variante del mismo defecto, pero el instrumento acá **sí mira**: mira todo el árbol, archivo por
+archivo. Lo que no tiene es una **regla** para lo que está buscando.
+
+Después de sacar del repo público cinco archivos con credenciales que gitleaks había marcado, barrí
+los 25 worktrees por *nombre* de archivo —`*token*.txt`, `*apikey*.txt`, `client_secret_*.json`,
+`*.pem`— y apareció un sexto en la misma raíz: `apikey Composio Copiloto Emprendedores.txt`. **No
+estaba entre los 12 hallazgos.** No lo perdonó una allowlist ni un fingerprint: las keys de Composio
+no matchean ninguna regla, así que el escáner nunca lo vio.
+
+Y el stack está lleno de proveedores sin regla: Composio, MercadoPago, Graphity, ARCA, DuckDNS.
+Todos los secretos de esos servicios son invisibles para el escáner de contenido, en un repo
+público, para siempre — no hasta que se actualice: **hasta que alguien escriba esa regla**.
+
+**La pregunta que falta hacerle a todo detector basado en catálogo** —escáneres de secretos, linters
+de seguridad, antivirus, validadores de esquema—: *¿contra qué lista compara, y qué de lo mío no
+está en esa lista?* La respuesta no es «casi todo»: es enumerable, y en este repo son los cuatro o
+cinco proveedores del stack.
+
+**El complemento cuesta un `find`.** Lo que una persona guarda a mano casi siempre **se llama como
+lo que es** —«apikey …», «token …», «client_secret_…»—, así que un barrido por nombre cubre justo el
+hueco que deja el barrido por contenido. Son ortogonales: el de contenido caza el secreto pegado
+adentro de un archivo con nombre inocente; el de nombre caza el archivo que el catálogo no reconoce.
+
+Control positivo obligatorio también acá: el primer barrido tiene que encontrar algo que ya sabés
+que existe, o el «cero resultados» no distingue entre *limpio* y *mal escrito el patrón*. Lo corrí
+contra la carpeta donde acababa de mover los cinco: 4 de 4.
+
+## El caso caro: un FILTRO con falso negativo deja el buzón «vacío» sin estar vacío
+
+Lo cometí **dos veces en la misma sesión** (2026-09-23), y la segunda costó ocio ajeno medible.
+
+Para ver qué mensajes me interpelaban, filtraba el buzón por nombre. El filtro estaba mal armado:
+descartaba por un prefijo que también aparecía en los mensajes **entrantes**. Resultado: veía
+`abierto/` lleno de archivos **míos** y concluía «nadie me escribió».
+
+**Lo que había debajo, medido cuando corrí el filtro correcto:**
+
+```
+cierre_backend-a-planificacion_...     "Cola de backend vacía otra vez."
+cierre_frontend2-a-planificacion_...   "Sin frente propio abierto."
+```
+
+Las dos sesiones habían terminado su trabajo y **avisado por el canal correcto**. Mientras tanto
+`no-ocio-check.sh` las marcaba: backend **51 min girando en vacío**, frontend2 **76 min muda**.
+**127 minutos de ocio que yo leí como silencio de ellas y era ceguera mía.** El aviso existía, estaba
+bien escrito, en el lugar acordado, desde antes.
+
+**Por qué no da síntoma:** un filtro que descarta de más devuelve una lista **plausible** — no vacía,
+no rota, con archivos de verdad adentro. No hay error, no hay rojo. La forma de la salida es correcta
+y sólo el **contenido** está mutilado, que es justo lo que no se revisa cuando el resultado confirma
+lo que esperabas («nadie escribió» es una hipótesis cómoda: no exige nada).
+
+**La regla, y es la misma de arriba aplicada a un filtro:** un filtro necesita su **control
+positivo** igual que un escáner. Antes de concluir «no hay», poné a mano el caso que **sabés** que
+debería pasar el filtro y verificá que pasa. Si no tenés un caso conocido, comparar el total contra
+el filtrado ya alcanza: `N archivos, el filtro dejó 0` con N grande es una afirmación sobre el
+filtro, no sobre el buzón.
+
+**Y el corolario de dirección:** cuando dos sesiones aparecen ociosas al mismo tiempo, la hipótesis
+barata no es que las dos se distrajeron — es que **el canal por el que iban a avisar no está
+llegando**. Un ocio simultáneo apunta al lector, no a los escritores.
+
+## El caso donde el instrumento fue CIERTO y venció (2026-09-29)
+
+`scripts/podar-worktrees.sh` filtraba por un path **fijo**: `.claude/worktrees/`, con el comentario
+«fuera de acá no son worktrees de trabajo de estas sesiones». **Era verdad el día que se escribió** —
+y falso una semana después, cuando las 4 sesiones pasaron a trabajar en `C:/gfw-src/wt-*`.
+
+Medido antes de tocarlo: de **34** worktrees registrados clasificaba **2**, ignoraba **23**, y su
+resumen imprimía `0 no mergeado(s) · 0 sucio(s)`. Nadie lo lee como «no miré»: se lee como «no hay».
+
+Lo que aparecía al destaparlo eran **3 worktrees sucios con trabajo sin commitear** — o sea trabajo
+que no está en ninguna rama, exactamente el riesgo que el script existe para no correr.
+
+**La variante nueva:** acá el supuesto no nació mal, **venció**. Un filtro escrito contra el layout
+de hoy es correcto hoy y ciego dentro de una semana, sin que nada avise. Por eso el arreglo no fue
+cambiar un path por otro —el próximo layout vuelve a dejarlo ciego— sino **parametrizar la base** y
+hacer que el resumen declare SIEMPRE `N de M entraron al análisis`. Un conteo de resultados no es
+interpretable sin el conteo de cobertura, y ésa es la línea que faltaba para que el defecto se viera.
+
+> La pregunta que lo caza: *¿este filtro describe el mundo, o el mundo del día que lo escribí?*
+> Emparenta con `[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]`: allá el dato
+> envejecía, acá envejece **el criterio de selección**, que es peor porque no se vuelve a mirar.
+

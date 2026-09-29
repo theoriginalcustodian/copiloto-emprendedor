@@ -257,6 +257,17 @@ describe('gastos.ts', () => {
         status: 'no_disponible',
       });
     });
+
+    it('IDEM-gasto/BL-V33: manda idem_key cuando se la da, y no la manda si no (cliente viejo = comportamiento de antes)', async () => {
+      // Molde: presupuestos.test.ts K-01. Mismo mecanismo, mismo backend (PR #666).
+      responder = () => respuesta(201, gastoCrudo());
+
+      await crearGasto({ monto: '15000.50', origen: 'manual', idemKey: 'gasto:assistant-123' });
+      await crearGasto({ monto: '15000.50', origen: 'manual' });
+
+      expect(peticiones[0].cuerpoJson).toHaveProperty('idem_key', 'gasto:assistant-123');
+      expect(peticiones[1].cuerpoJson).not.toHaveProperty('idem_key');
+    });
   });
 
   describe('obtenerResumenGastos', () => {

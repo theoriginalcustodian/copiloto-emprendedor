@@ -91,3 +91,33 @@ higiene.
 Antídoto operativo: en comandos que cruzan a otra máquina, `export MSYS_NO_PATHCONV=1` una vez al
 principio del script — y **no silenciar** la salida del comando de instrumentación hasta haber visto
 una corrida completa.
+
+---
+
+## 2026-09-23 — el remedio es GLOBAL al comando, y rompe los argumentos que sí necesitaban conversión
+
+`MSYS_NO_PATHCONV=1` no exime al argumento problemático: **apaga la conversión de rutas para todo el
+comando**. Eso convierte el remedio en la causa siguiente cuando el comando lleva, además, un path
+POSIX que Git Bash sí tenía que traducir.
+
+```bash
+# el ref se mangla si no se apaga la conversión…
+git -C "/c/gfw-src/wt-a4reg" show "origin/main:.gitleaks.toml"
+
+# …pero apagarla se lleva puesto el -C:
+MSYS_NO_PATHCONV=1 git -C "/c/gfw-src/wt-a4reg" show "origin/main:.gitleaks.toml"
+#   fatal: cannot change to '/c/gfw-src/wt-a4reg': No such file or directory
+
+# lo que funciona: el cd hace de conversión, la variable protege sólo al ref
+( cd "$WT" && MSYS_NO_PATHCONV=1 git show "origin/main:.gitleaks.toml" )
+```
+
+El `fatal` dice «No such file or directory» sobre un directorio **que existe**, así que el mensaje
+manda a buscar un worktree roto en vez del envoltorio del comando. Y en el script original estaba
+detrás de un `2>/dev/null || { echo "no pude traer el config viejo"; exit 2; }`: dos intentos se
+fueron en releer la línea de `git show`, que era la única parte sana. **La redirección que “limpia”
+la salida de un comando que puede fallar por varias causas se lleva justo el dato que las distingue**
+— ver [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].
+
+Regla: cuando `MSYS_NO_PATHCONV=1` haga falta, **acotala a un subshell con un solo comando adentro**,
+y que los paths lleguen por `cd`, no como argumento.

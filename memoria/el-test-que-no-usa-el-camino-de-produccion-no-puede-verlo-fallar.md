@@ -47,3 +47,29 @@ fábrica envuelta, atada al tenant — 16 copias colapsadas a uno.
 **Señal de alarma barata:** un `import` de bajo nivel (`psycopg2`, `httpx`, el SDK crudo) dentro de un
 archivo de test cuando la app tiene una capa que lo envuelve. Grepearlo cuesta un comando y encuentra
 exactamente esta clase de divergencia. [[verificar-la-composicion-root-no-el-default]]
+
+## Hermana de entorno, 2026-09-22 — el recibo local 5/5 con el CI en rojo
+
+El mismo principio, un nivel más arriba: no «el test no usa el camino de producción» sino **el test
+no corre en la máquina de producción**.
+
+`gate.sh` dio **5/5 con recibo sobre árbol limpio**; GitHub Actions dio `lint` en **rojo** sobre ese
+mismo árbol. Causa: `test-graph-sync-lock-y-drift.sh` ejercita `graph-sync.sh`, que exige `uv` y
+aborta si falta (`:82`). El runner no tiene `uv`, así que allá los 5 primeros casos medían «falta
+uv» en vez de lock/drift/bitácora — **rojo en GitHub y verde en la PC desde que el test existe**.
+
+Lo que hay que llevarse, porque el reflejo es el contrario: cuando el gate local y el CI difieren,
+**la diferencia es información y el que suele tener razón es el entorno que NO elegiste**. Un recibo
+verde no puede ver esta clase de fallo por construcción — todo lo que dependa de qué hay instalado.
+
+**Y el control que casi me hace cerrarlo como «no reproducible»:** para reproducir saqué del `PATH`
+el directorio de `uv`… y el test pasó 7/7. Conclusión falsa: esta PC tiene **dos** `uv` instalados
+(`.local/bin` y `hermes/bin`) y seguía encontrando el otro. Un `command -v uv` **antes** de medir lo
+decía en un segundo. Es [[vacio-no-es-hallazgo-correr-el-control]] aplicado al revés: no un vacío que
+parece hallazgo, sino un **verde que parece refutación**. Antes de declarar «no se reproduce»,
+probá que tu reproducción reproduce.
+
+**Fix:** stub de la dependencia dentro del test, **antepuesto al PATH** para ganarle también a la
+herramienta real. Instalarla en el runner parece más fiel pero acopla una prueba de lógica bash a un
+gestor de paquetes Python que no participa; y dejar ganar a la de la máquina mantiene el defecto de
+fondo, que no es el rojo: es que **el test medía cosas distintas en cada máquina**.

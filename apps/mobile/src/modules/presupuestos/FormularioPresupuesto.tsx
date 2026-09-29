@@ -371,6 +371,7 @@ export function FormularioPresupuesto({
                   valor={it.precioUnitario}
                   onChange={(v) => actualizarItem(i, 'precioUnitario', v)}
                   keyboardType="decimal-pad"
+                  placeholder="1500,50"
                 />
               </View>
             </View>

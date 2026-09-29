@@ -1,6 +1,6 @@
 import { Text } from 'react-native';
 
-import { LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
+import { LEGAL_DESCARGO, LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
 
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -17,6 +17,9 @@ export interface PantallaLegalProps {
  *
  * El aviso de plantilla queda **a propósito** (ver docstring de la versión web): retirarlo es
  * decisión del operador, no de esta pantalla.
+ *
+ * Descargo de responsabilidad (2026-09-28, firmado por el operador): `LEGAL_DESCARGO`, PROVISORIO
+ * hasta revisión de un abogado — ver docstring en `packages/core/src/legal.ts`.
  */
 export function PantallaLegal({ kind }: PantallaLegalProps) {
   const tema = useTema();
@@ -32,6 +35,13 @@ export function PantallaLegal({ kind }: PantallaLegalProps) {
           style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico }}
         >
           Plantilla estándar genérica — no es una revisión legal específica de este negocio.
+        </Text>
+
+        <Text
+          testID="legal-screen-descargo"
+          style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico }}
+        >
+          {LEGAL_DESCARGO}
         </Text>
 
         {parrafosDe(kind).map((parrafo) => (

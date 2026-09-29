@@ -96,6 +96,7 @@ export function TarjetaPresupuestoPropuesto({ propuesta, mensajeId }: TarjetaPre
           Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.
         </p>
         <FormularioPresupuesto
+          mensajeId={mensajeId}
           iniciales={{
             concepto: propuesta.concepto,
             receptor: {

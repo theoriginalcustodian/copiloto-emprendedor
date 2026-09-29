@@ -11,6 +11,15 @@
 > o fixtures (`gphy_test`), y los `eyJ…` de dos fixtures **no decodifican como JWT**. Cada pasada con
 > control positivo. Nada que rotar. **Antes de commitear algo nuevo con forma de credencial, asumí que
 > lo estás publicando.**
+> ⚠️ **Esa atestación tiene FECHA y ya fue superada: el 2026-08-19 entró un token real** (PR#464,
+> `Prototipo frontend/odobi-ui/.mcp.json`, `Authorization: Bearer` de **60fps.design**), estuvo **24
+> días** expuesto en repo público y se sacó de HEAD el 2026-09-08 (#505). **El blob sigue siendo
+> recuperable desde la historia de `main`** (`git show 39decb95:…`, 259 bytes), así que sacarlo de HEAD
+> cortó la exposición futura, no la pasada — lo dice el propio `.gitignore:20-24`: «el token sigue vivo
+> en el historial y TIENE QUE rotarse igual». **No estaba en `memoria/deuda-secretos-rotar.md`**, porque
+> ese inventario clasifica por «secretos que pasaron por chat» y éste se filtró por la otra vía (medido
+> 2026-09-28). **Leé «0 secretos» como «al 2026-08-06», nunca como estado vigente:** una atestación sin
+> fecha de vencimiento se cita como si fuera de hoy, y es lo que pasó acá.
 > **Idioma:** instrucciones y comentarios en español; código, scripts e identificadores en inglés.
 > **Origen:** graduado de `unreal-copilot` el 2026-07-06 vía `git filter-repo` (historia/blame preservada). El copiloto era la app-estrella del arquetipo `conversational_agent` de la fábrica; se extrajo a repo propio para separación comercial/producto.
 > **Arranque de sesión → [`HANDOFF.md`](HANDOFF.md)** (init cero-fricción: seed de memoria, accesos, flujos de trabajo).
@@ -183,7 +192,7 @@ El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquest
   con tres nombres · `actividad` nombra **dos sistemas sin relación** (el feed SQL de negocio y la
   memoria conversacional) · `cliente` es a quien le vende el emprendedor, **nunca** el tenant.
 - **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md`; 256 entradas en el repo y 267 en el slug al 2026-09-22 — la cifra se mide, no se cita de memoria); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
-- **🔍 Auditorías → [`docs/copiloto-emprendedor/Auditorias/`](docs/copiloto-emprendedor/Auditorias/)** (regla del operador, 2026-08-06). **TODO lo relacionado con auditorías se guarda ACÁ**, nunca suelto en `docs/`: el loop Fable (`eval-fable5-*`), los mapas de clases de error, las re-verificaciones, los handoffs de auditoría. Índice + estado vigente en su `README.md`. Doc maestro actual: `Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md` (11 problemas re-verificados + fixes de raíz + decisiones). Loop reutilizable: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
+- **🔍 Auditorías → [`docs/copiloto-emprendedor/Auditorias/`](docs/copiloto-emprendedor/Auditorias/)** (regla del operador, 2026-08-06). **TODO lo relacionado con auditorías se guarda ACÁ**, nunca suelto en `docs/`: el loop Fable (`eval-fable5-*`), los mapas de clases de error, las re-verificaciones, los handoffs de auditoría. Índice + estado vigente en su `README.md`. **Doc maestro actual: `Auditorias/2026-09-22-registro-A4-estado-vigente.md`** — estado de cierre de la beta Odobi, con el re-check A5 adentro. *(Hasta el 2026-09-23 esta línea apuntaba a `2026-08-04-listado-problemas-fixes-reverificado.md`, que sigue siendo el maestro de **aquella** ronda — 11 problemas re-verificados con sus fixes de raíz — pero dejó de ser el actual hace seis semanas.)* Loop reutilizable: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 - Plan de graduación (Fase 0/1/2): `docs/copiloto-emprendedor/2026-07-06-graduacion-plan-fase0-fase1.md`.
 - Dominio propio + auth Google: `docs/copiloto-emprendedor/` + config en `deploy/copiloto/`.
 - Assets de diseño/voz (fuera del repo): `docs/ASSETS-EXTERNAL.md`.
