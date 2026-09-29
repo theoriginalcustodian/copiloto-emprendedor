@@ -73,3 +73,51 @@ escribir que un agujero se cerró, preguntá qué caso exacto ejercitó la prueb
   reincidir en [[una-cifra-en-un-comentario-es-un-cache-sin-invalidacion]].
 - Mientras tanto, un scanner que se saltea en silencio no es defensa: antes de commitear algo con
   forma de credencial, asumí que no hay red. Ver [[en-bypasspermissions-solo-sobrevive-permissions-deny]].
+
+---
+
+## El MISMO acoplamiento con la polaridad INVERTIDA — y el ruidoso es el bueno (2026-09-29)
+
+Arriba: **un** worktree desvía `core.hooksPath` y el control **no corre** en ninguna sesión. Push
+aceptado, secreto al remoto, repo público. Fail-**open** silencioso.
+
+Hoy, el espejo. Un `git push` mío abortó así:
+
+```
+[pre-push] origin/main se movió (c9c8c852db7d -> 2d4b311383e6); sincronizando el grafo…
+[graph-sync] ❌ 'C:/gfw-src/copiloto-grafo' tiene la rama 'backend/batch-a4-ratchet-blq2' checkouteada.
+[graph-sync]    El worktree del grafo va SIEMPRE detached; con rama es un árbol de trabajo
+[graph-sync]    y este script lo sanearía con 'reset --hard'. Abortando antes de destruir.
+```
+
+Mismo acoplamiento —**un** worktree, todas las sesiones—, resultado opuesto: el control **corre**,
+**rechaza**, y frena el push de cualquiera. Fail-**closed** ruidoso. Y de paso le salvó a su dueño un
+`reset --hard` sobre un árbol de trabajo con su rama adentro.
+
+**La trampa está en que los dos se sienten iguales:** un `rc=1` en el push por algo que no tiene nada
+que ver con tu diff, y la salida «obvia» es la misma — `--no-verify`. Ahí **convertís el buen fallo en
+el malo**: le sacás el escáner de secretos en un repo público, que es el agujero de la mitad de arriba
+de esta entrada. [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].
+
+**Y el escape documentado tampoco era la salida.** `graph-sync.sh:202` sugiere
+`UC_GRAPH_WORKTREE=<path-exclusivo>`, correcto **para su caso** (aislar tu propio árbol). Usado para
+saltear el rechazo es un bypass: `UC_GRAPH_LOCK` sale de `${WT}.sync.lock` (`:217`), así que mover
+`WT` **mueve el lock** — dos sesiones escribiéndole al grafo compartido sin mutex. *Un escape
+documentado es correcto para el problema que documenta; usarlo para saltear un guard es `--no-verify`
+con otro nombre.*
+
+**El diagnóstico reusable:** el mensaje del guard nombra **el árbol**, no al dueño. **La rama sí lo
+nombra** — `backend/batch-a4-ratchet-blq2` dice de quién es. Medí el estado
+(`git -C <árbol> rev-parse --abbrev-ref HEAD` + `status --short`), identificá al dueño por el prefijo
+de la rama, pedíselo. Acá lo dejó detached en minutos, y se resolvió **sin que ninguna sesión toque el
+árbol de otra**. Verificado por mí después, no por su reporte: `rev-parse --abbrev-ref HEAD` → `HEAD`
+(detached), `status --short` → 0 archivos.
+
+> Cuando un guard **compartido** te rechaza, la pregunta no es «cómo lo salteo» sino **«qué invariante
+> global rompió quién»**. Si el invariante es de un recurso común —el árbol del grafo, su lock, el
+> `hooksPath`— restaurarlo es del dueño; romperlo por tu cuenta es asumir exclusividad sobre estado
+> que no es tuyo.
+
+Hermana de [[git-stash-es-comun-a-todos-los-worktrees]] y
+[[el-puerto-que-contesta-puede-ser-de-otra-sesion]]: la misma clase de estado que git **no** aísla por
+worktree.
