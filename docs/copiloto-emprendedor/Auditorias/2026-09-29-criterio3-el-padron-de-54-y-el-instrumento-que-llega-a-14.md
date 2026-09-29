@@ -255,3 +255,135 @@ es el **exit code**, no el texto): `scripts/evidencia/criterio3-padron.sh` · `s
 
 **delegación:** 4 sub-agentes (0 haiku / 4 sonnet) · ~30 lecturas inline · scripts: 2 propios escritos,
 11 corridas · 1 corrida del instrumento de terceros.
+
+---
+
+# ADENDA 2026-09-29 17:40 — población A medida (5/5), y el criterio 3 **no tiene referencia de escritorio**
+
+Cierra el §7, que declaraba pendiente la corrida sobre los 5 ids de población A.
+
+## El instrumento: dos defectos arreglados, uno de raíz
+
+`correr-criterio3.sh` colgaba para siempre justo después de `✓ prototipo … (HTTP 200)`, sin escribir
+una captura. **Causa: levanta el server del prototipo con `nohup … &` y después hace `wait` SIN
+argumentos**, que espera a *todos* los jobs del shell — incluido un server que no termina.
+Reproducción mínima aislada: `wait` pelado ⇒ timeout; `wait $pids` ⇒ pasa; sin server en background el
+`wait` pelado tampoco cuelga (control negativo). Intermitente porque si el server ya está vivo, el
+runner no lo levanta y no hay job que esperar.
+
+**Y el comentario del propio script invertía la causa**: mandaba a «matá ese server y dejá que este
+runner levante el propio» — el consejo que *garantiza* el cuelgue. Corregido (PR #722, `34ed5fb1`).
+
+Con el fix: **exit 0**, 20 PNGs (5 ids × 2 viewports × app/proto) + `criterio3-caminos.json`.
+
+## 🔴 C3-10 · No existe referencia de escritorio (afecta a todos los lotes)
+
+`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **única media query en 3900 líneas**:
+
+```css
+/* En el teléfono ocupa todo; en escritorio, un marco de 390×844 para verlo en contexto. */
+@media (min-width:520px){ #app{width:390px;height:844px;border-radius:40px;...} }
+```
+
+El prototipo **es mobile-only por diseño**. A 1440 no reflowea: dibuja una maqueta de teléfono
+centrada. Entonces la comparación `@desktop` enfrenta el diseño *mobile* del proto contra el layout
+*desktop* de la app, y **todo desvío de escritorio derivado de ahí es artefacto del instrumento**.
+
+Peor: el instrumento **no falla** — produce 10 archivos `…-proto-desktop.png` cuyo nombre afirma lo que
+el contenido no cumple. Es un instrumento que acusa al producto por un defecto propio.
+
+**No afirmo que los 34 veredictos existentes estén mal**: no declaran `plataforma` (C3-5), así que no se
+puede saber contra qué midieron. Sí afirmo: **si alguno midió desktop contra el proto, esa fila no es
+válida.** La decisión de alcance es de planificación.
+
+## 🟠 C3-11 · El instrumento no puede afirmar ausencias — y la vuelta útil
+
+Las capturas son de **viewport**, y el proto corre con `overflow:hidden` + scroll interno: «no está en
+el proto» puede ser «está debajo del fold». **Pero** la captura `proto-desktop`, inservible como
+referencia de escritorio, **es la referencia mobile completa** (marco entero de 390×844 con fondo vacío
+al pie). Si sobra fondo, la pantalla terminó y la ausencia **sí** es afirmable. Ese es el criterio
+usado abajo.
+
+## Los 5 veredictos · teléfono · `medido_contra: proto@34ed5fb1` + app servida
+
+| id | @390 | qué | @desktop |
+|---|---|---|---|
+| `apar` | ✅ **COINCIDE** | misma estructura, orden y textos; termina con fondo vacío en ambos ⇒ comparación completa | `SIN_REFERENCIA` |
+| `comousar` | 🔴 **DESVÍO** | proto: los 5 temas en **una tarjeta, numerados 1-5, con chevron**; app: tarjetas sueltas **sin número ni chevron**. Y la app **agrega** «LO QUE LE PODÉS PEDIR» (GASTOS/INGRESOS/FACTURAS), que el proto no tiene | `SIN_REFERENCIA` |
+| `esc` | 🔴 **DESVÍO** | título «Funciones» vs «**Tus funciones**» · **fila 1 del grid invertida**: app `Facturación·Ingresos·Gastos`, proto `Gastos·Ingresos·Facturación` (fila 2 coincide) · chevron en «Actividad reciente» sólo en app | `SIN_REFERENCIA` |
+| `soporte` | 🔴 **DESVÍO** | proto tiene breadcrumb «‹ Ajustes» y **H1 de página**; en la app el título vive **dentro de la burbuja** · emisor «Soporte técnico» vs «**Soporte de Odobi**» · **affordance**: app ofrece **micrófono**, proto ofrece **adjuntar (clip)** | `SIN_REFERENCIA` |
+| `factura` | ⚠️ **NO MEDIBLE — app sin datos** | las 2 filas de «ÚLTIMAS EMITIDAS» salen **vacías** (placeholders): no se puede comparar estructura de fila. Lo comparable coincide (header, card negra, «+ Nueva factura») | `SIN_REFERENCIA` |
+
+**Supuesto declarado, no verificado —** `[ASSUMED_PENDING_VERIFY]`: el proto **nunca** dibuja la barra
+inferior y navega por gesto («Subí para volver a Mi día»); la app la muestra siempre. Se la pasé a los
+recolectores **como legítima**, así que pudo sesgarlos. Si no es decisión tomada, es un desvío que
+atraviesa las 5 pantallas.
+
+## 🟠 C3-12 · Hallazgo de producto, de rebote (no es del criterio 3)
+
+En `factura`, el mismo dato está en un viewport y falta en el otro:
+
+| | «Facturado este mes» | píldora |
+|---|---|---|
+| app @390 | **$165.000,00** | «3 facturas · 3 impagas» |
+| app @desktop | **«—»** | **ausente** |
+
+Mismo tenant, misma corrida. Un importe que está a 390 y no a 1440 no es del prototipo: es de la app.
+Fila para frontend (o backend, si el shell desktop lo pide por otra query).
+
+## Corrección de nomenclatura
+
+El id `(vacio)` de la población C **no existía en la spec: lo fabricaba este dictamen** vía
+`criterio3-padron.sh`. La celda real es `*(vacío)* Mi día` — **la home** (`?ver=` sin valor) — y el
+nombre colisionaba con `vacio` (BL-W5, spec `:43`), que es otro id. Renombrado a **`(home)`**. Le costó
+un turno a frontend2, cuya población C queda en **8 ids**; la home pasa a la cola de auditoría. El
+conteo no se mueve: 27 filas × 2 columnas = 54 celdas, control de no-regresión en 54 = 54.
+
+## `(home)` MEDIDO — sale de los 17, sin correr el instrumento
+
+El id que tomé de la población C queda cerrado por la vía `leido@` (el contrato admite cuatro, y el
+criterio no se mide sólo con el generador):
+
+- **Cuerpo:** la home es el mismo componente que `tablero` — `MidiaScreen.tsx:192` es **el único** lugar
+  que monta `data-testid="pantalla-midia"` (los otros 7 hits del grep son tests). El veredicto de
+  `tablero` (lote B) cubre el cuerpo.
+- **Lo único propio de la home es el ruteo por defecto**, y está verificado:
+  `AppShell.tsx:31` `const DEFAULT_TAB: TabKey = 'midia'` · `:63`
+  `useState<TabKey>(initialTab ?? DEFAULT_TAB)` · `App.tsx:79` pasa `undefined` salvo signup reciente.
+- **Y hay test, en los dos breakpoints:** `AppShell.test.tsx:61-68` («por default aterriza en Mi día
+  (BL-X1)», asertando además `aria-current="page"` en el botón «Mi día») y
+  `ResponsiveShell.test.tsx:61-70` («en ambos breakpoints monta la misma pantalla de módulo (Mi día)
+  por default»).
+
+**Consecuencia para el conteo de huecos:** la población C baja de **9 a 8** (los 8 de frontend2), y
+`(home)` pasa a **medido**. Los 17 sin nada pasan a **16**.
+
+## El supuesto de la tab bar: VERIFICADO — es decisión declarada, no desvío. Y señala el camino de C3-10
+
+Declaré `[ASSUMED_PENDING_VERIFY]` que la barra inferior de la app (ausente en el prototipo, que
+navega por gesto) fuera decisión tomada. **Lo es, y está escrito desde antes del prototipo** —
+`docs/copiloto-emprendedor/2026-07-03-cliente-web-mobile-design-handoff.md`:
+
+- `:48` — «**Forma UX:** Híbrido: chat protagonista + rail de módulos. **Desktop = split (rail ⟺ chat);
+  mobile = chat full + tab bar.**»
+- `:90-91` — «**Desktop:** rail izquierdo: Chat · Conexiones · Caja · Agenda · Cuenta. · **Mobile:** tab
+  bar inferior (mismos ítems).»
+- `:259` — «**Responsive real** (desktop split / mobile tab bar / tablet)».
+
+Control de que el prototipo efectivamente no la tiene: **0 ocurrencias de «Consola»** —el nombre de una
+de las pestañas— en las 3900 líneas del prototipo, con control positivo verde («Funciones» aparece).
+
+**Los 5 veredictos no cambian:** la diferencia existe pero es arquitectura de navegación decidida
+(handoff 03/07), no desvío contra el prototipo (spec 22/09).
+
+### Y esto le da salida a C3-10
+
+El mismo handoff **declara un diseño de escritorio** («Desktop = split (rail ⟺ chat)», rail izquierdo
+con sus ítems) que el prototipo, siendo una maqueta de teléfono de 390×844, **no modela ni pretende
+modelar**. Entonces la referencia de escritorio del criterio 3 **no es el prototipo por definición del
+propio diseño** — y existe candidata: el handoff `2026-07-03-cliente-web-mobile-design-handoff.md` y
+`docs/copiloto-emprendedor/DESIGN-SYSTEM-EXTRACT-WEB.md`.
+
+**Recomendación a planificación** (la decisión sigue siendo suya): el eje `@desktop` del criterio 3 se
+mide contra el handoff/design-system web por la vía `leido@`, no contra `proto@`. No hace falta
+construir una referencia nueva: **ya existe y nadie la estaba usando.**
