@@ -1,7 +1,6 @@
 # Memoria — Copiloto del Emprendedor
 > **Una línea = un gancho, no un resumen** (≤160 chars): el detalle vive en el topic file.
-> **DOS techos y el de líneas se alcanza primero: 200 LÍNEAS y 24.000 chars.** El que se pase trunca la cola, y esa parte no existe para la sesión ([[el-indice-truncado-fabrica-duplicados]]). El 2026-09-22 estaba en 23.930 chars —verde— y el harness cortó 7 líneas igual, llevándose dos reglas duras. Al tocar cualquiera de los dos no se comprime: se baja a
-> ([[el-indice-truncado-fabrica-duplicados]]). Al llegar al techo no se comprime más: se baja a
+> **DOS techos: 24.000 chars y 200 líneas — el que aprieta es el de CHARS** (medido hoy: 188/200 líneas y los chars pasados). Pasarse trunca la cola y esa parte **no existe** para la sesión ([[el-indice-truncado-fabrica-duplicados]]). Salidas, en orden: fusionar hermanas bajo un gancho conservando los links · bajar a
 > [HISTORIA.md](HISTORIA.md) (no se carga; buscable). Control: `scripts/medir-indice-memoria.py`.
 
 ## 🚦 Estado vivo
@@ -24,7 +23,6 @@
 - [Un solo usuario de prueba canónico, a fuego](usuario-de-prueba-canonico-uno-solo-a-fuego.md) — `e2e-device@copiloto.test`. Ningún agente elige otro.
 - ["Terminado" exige evidencia de DEVICE](una-orden-cerrada-exige-evidencia-de-device.md) — implementado + desplegado + probado en device + `cierre_`.
 - [Iterar en device NO compila nada](iterar-en-device-es-metro-local-con-dev-client-ya-instalado.md) — dev-client ya instalado + Metro local por USB.
-- [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.
 - [Para gestos RNGH, `adb input motionevent` — nunca `input tap`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — DOWN/MOVE/UP sí ejercita un Pan.
 - [Aplicar `/ejecutar-con-eficiencia` siempre](aplicar-siempre-ejecutar-con-eficiencia.md) — proactiva y constante, no sólo si se invoca.
 - [TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — la PC SOLO edita. Montar en local rechazado 2×.
@@ -46,7 +44,6 @@
 - [🔧🤐 El workaround de RUTINA deja de parecer información](el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion.md) — 3ª vez, escribilo.
 - [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — buscá antes de reabrir.
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — no cierra hasta desplegado y probado.
-- [🎯🚫 Un criterio de cierre con algo FUERA DE ALCANCE no se cumple nunca](un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca.md) — pospuesto 2× sin medición ⇒ auditá la DEFINICIÓN, no la ejecución.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?* Si no, no terminó.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
@@ -63,15 +60,23 @@
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
 - [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) — ¿quién LEE lo que escribo?
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
+- 🟢🙈 [Nadie audita un COHERENTE — desactiva trabajo sin rastro](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) · [el formato no codifica el ROL](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md)
+- 🖼️🎭 El instrumento INVENTA: [una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id fabricado](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) — nadie los distingue.
+- 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
+- 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) — ¿qué pregunta hace cada lado?
+- 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
+- [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) — verde + hallazgo falso: ¿en qué mundo saldría ROJO?
 - [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) — omite Y inventa; medí el EFECTO.
 - [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) — descomponé, no compares totales
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) — muestreá la población, no el total.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
-- [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.
-- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
+- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró. · [y el que corre DESPUÉS del guard no llega a mirar](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
+- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA no es un gate](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) — vivía tras el `return` de `--json`.
+- 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) — un empate no separa.
+- 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) — el analítico aprueba.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el buzón manda.
 - [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — preguntá qué evento reinicia el contador.
@@ -91,13 +96,11 @@
 - [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real.
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) — 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — medí contra la expectativa, no contra el reloj.
-- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: `CronList` al reanudar.
+- [💀⏰ El vigilante muere — y apagarlo A PROPÓSITO borra el RELOJ del reinicio](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — 5h30 × 4 sesiones. Reinicio ⇒ `CronCreate`, nunca prosa.
 - [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la verde tapa a la roja. Background → archivo COMPLETO.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 - [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) — el freno no es un monitor.
 - [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) — 71→4 en un día.
-- [🕳️➕ El fallback que SUSTITUYE al valor perdido hace ciego al control](el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md) — rompé cada brazo por separado; el total se conserva.
-- [📝💥 El TESTIGO del deploy se sobreescribe y borra la prueba](el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren.md) — `cat >` de ranura única. Append-only.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
@@ -106,28 +109,22 @@
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — sin contexto rechaza, y parece prudencia.
 - [📜🎯 Un contrato define QUÉ DECLARAR — no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) — 4 de 4 refutadas en un día.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto.
-- [🎰 El gate compartido PERDONA al que llega acompañado](el-gate-compartido-perdona-al-que-llega-acompanado.md) — pasó por contención, no por salud.
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — declará si el rechazo es permanente.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — el hueco vive en el par.
 
 ### Diagnóstico: leer el contrato antes de explicar
 - [Raíz, no parche](raiz-no-parche.md) — hook `root_cause_suggester`
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío primero.
-- [👻🚫 UI escrita e INALCANZABLE — nadie la mide porque no se llega navegando](ui-escrita-e-inalcanzable-nadie-la-mide-porque-no-se-llega-navegando.md) — grepeá quién la MONTA.
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) — otra capa puede sobreescribirla.
-- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — el veredicto es la SALIDA.
-- [🚀🎭 `git push` sale exit 0 SIN haber pusheado](git-push-puede-salir-exit-0-sin-haber-pusheado.md) — el control es `ls-remote`, no el exit.
-- [🏷️ Clasificar un hallazgo por su ETIQUETA, no por su código](clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo.md) — "firma" me hizo inventar una vuln cripto; llegó mergeada a `main`.
+- 🎭 El exit code MIENTE en los dos sentidos: [el pipe se lo come](el-pipe-se-come-el-exit-code.md) · [0 sin pushear; ROJO con el merge hecho](git-push-puede-salir-exit-0-sin-haber-pusheado.md) — el control es el EFECTO.
 
 ### Diseño y arquitectura
-- [🗓️ El metadato anti-envejecimiento lo CAUSA si anota la lectura más nueva](el-metadato-contra-el-envejecimiento-lo-causa-si-anota-la-lectura-mas-nueva.md) — eslabón más viejo.
 - [♻️🔒 Reutilizar es REGLA — inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — todo `contrato_` abre con §0.
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — el ACCESO elige la arquitectura.
 - [🧩🏷️ Una fila por VALOR de una variable no es una fila](una-fila-por-valor-de-una-variable-no-es-una-fila.md) — el id es plantilla: ¿qué MIDE?
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente colapsa el problema.
 - [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?*
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — medí el EFECTO.
-- [🔁🧪 Adversario E2E con email fijo se rompe en el rerun](adversario-e2e-con-email-estatico-y-password-random-se-rompe-en-el-rerun.md) — el 2º run falla el login.
 - [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX.
 - [🧬🔁 El MISMO defecto vivía DOS veces](el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo.md) — ¿qué capa usa la UI: el core o su copia?
 - [🎭 DOS causas suficientes = el test no ATRIBUYE](dos-causas-suficientes-el-test-no-atribuye.md) — el diferencial sale VERDE.

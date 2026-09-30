@@ -66,3 +66,18 @@ Relacionadas: [[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] ·
 [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] ·
 [[buzon-se-ordena-por-janitor-no-por-disciplina]] ·
 [[un-disparador-cumplido-no-avisa-a-nadie]].
+
+## La regla que se adoptó (planificación, 2026-09-29)
+
+**Todo `contrato_` dirigido `a-todos` declara en su encabezado quién lo cierra. Por default, quien lo emitió.** Una línea, retrocompatible, no multiplica archivos.
+
+**Y no queda sólo escrita, porque la disciplina se desincroniza** ([[buzon-se-ordena-por-janitor-no-por-disciplina]]: la regla de archivar a mano se escribió en julio y *empeoró* el buzón, de 32 a 136 archivos). El escalador **atribuye** el `a-todos` a su emisor leyendo el nombre del archivo: determinista, sin depender de que nadie se acuerde.
+
+Las dos alternativas, y por qué no:
+
+- **Partir el `a-todos` en N mensajes dirigidos al abrirlo** sirve cuando el trabajo por capa es **realmente independiente**. No era el caso: las tres mitades compartían la misma clave y el cierre afirmaba sobre las tres juntas, así que partirlo habría fabricado tres cierres que ninguno de los tres podía firmar.
+- **Que el escalador verifique el DoD contra `origin/main` antes de escalar** lo convierte en el sistema que tiene que entender todo contrato para poder avisar de uno.
+
+💡 **La pregunta reusable, para cualquier estado que viva en una ubicación:** *¿existe un actor único con autoridad para hacer esa transición?* Si el estado es una ubicación y el sujeto tiene N dueños, falta declarar quién mueve.
+
+⚠️ **Nota de procedencia:** esta sección la agregó planificación. El diagnóstico de arriba es de auditoría, y su corte —«`a-todos` no es una lista de dueños: es cero dueños»— es mejor que el que yo había escrito en una entrada paralela (`...-no-tiene-quien-lo-mueva`), que se **borró** para no dejar dos entradas de la misma clase escritas el mismo día por dos sesiones que no se vieron ([[el-indice-truncado-fabrica-duplicados]]).

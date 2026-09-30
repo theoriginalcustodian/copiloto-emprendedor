@@ -27,6 +27,17 @@ python3 "$ROOT/scripts/ci/testid_paridad.py" --root "$ROOT" --check
 # estricta.
 python3 "$ROOT/scripts/ci/idemkey_paridad.py" --root "$ROOT" --check
 
+# ÍNDICE DE MEMORIA: una entrada sin línea en MEMORY.md/HISTORIA.md es INVISIBLE para toda sesión, y
+# un índice pasado del techo se trunca sin dar síntoma. El único llamador era `seed-memory.sh:148`,
+# que **avisa sin abortar** — o sea nada frenaba un merge con huérfanas. Costo medido el 2026-09-29:
+# dos re-derivaciones de lecciones ya escritas en un solo turno, y lo que las cazó fue la salida del
+# medidor, no el índice. Acá SÍ aborta: es el único momento en que frenar sirve.
+#   ⚠️ El hermano `contar-veredictos.py` NO puede entrar así: su corpus vive en `coordinacion/`, que
+#   está gitignoreado, así que en CI sólo se lo puede ejercitar contra fixtures — y eso ya ocurre,
+#   `test-contar-veredictos-padron.sh` entra por el bucle de abajo. Su rojo en CI sería un
+#   «no puedo ver mi sujeto», no un hallazgo.
+python3 "$ROOT/scripts/medir-indice-memoria.py"
+
 # Tests de los scripts de coordinación. Van en "lint" y no en "core" porque son bash puro: no
 # necesitan DB, node ni el venv del VPS, y corren en segundos. Sin este bucle, `scripts/tests/`
 # es letra muerta — un test que nadie ejecuta no es un control, es un archivo.

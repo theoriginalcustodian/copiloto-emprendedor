@@ -25,6 +25,31 @@ ROLES_BUZON=(planificacion backend frontend1 frontend2 manejo-de-errores auditor
 # Roles que existen SÓLO como broadcast: nadie firma como ellos, pero se les puede escribir.
 ROLES_BROADCAST_BUZON=(frontend todos)
 
+# es_broadcast_buzon <rol> — ¿ese destinatario es un broadcast? Salio de que ROLES_BROADCAST_BUZON
+# estaba declarado arriba desde el 2026-09-07 y NINGUN consumidor lo leia (medido con grep -rn el
+# 2026-09-29: 1 solo hit, su propia declaracion). Una tabla que nadie consulta no es una fuente
+# unica, es documentacion: el escalador seguia tratando `a-todos` como un destinatario mas.
+es_broadcast_buzon() {
+  local r="$1" b
+  for b in "${ROLES_BROADCAST_BUZON[@]}"; do [ "$r" = "$b" ] && return 0; done
+  return 1
+}
+
+# roles_de_broadcast <broadcast> [emisor] — expande un broadcast a los roles REALES que lo heredan,
+# uno por linea, excluyendo al emisor (nadie se escala a si mismo). Es la inversa de lee_patrones():
+# esa contesta «¿este archivo es para mi?» y esta «¿a quienes interpela este archivo?». Las dos
+# salen de la misma tabla a proposito — si divergen, un mensaje aparece en un gate y no en el otro.
+roles_de_broadcast() {
+  local bc="$1" emisor="${2:-}" r
+  for r in "${ROLES_BUZON[@]}"; do
+    [ "$r" = "$emisor" ] && continue
+    case "$bc" in
+      todos)    printf '%s\n' "$r" ;;
+      frontend) case "$r" in frontend1|frontend2) printf '%s\n' "$r" ;; esac ;;
+    esac
+  done
+}
+
 # Charclass del campo emisor/destinatario. Incluye dígitos (frontend1) y guiones para los
 # destinatarios compuestos que el buzón ya usaba (`-a-backend-y-frontend_`, `manejo-de-errores`).
 BUZON_ROL_RE='[a-z0-9-]+'
