@@ -90,6 +90,19 @@ BUZON_DIR="$bz" bash "$sandbox/scripts/a-todos-sin-cierre.sh" --quiet >/dev/null
 check "rc con lector ciego" "2" "$?"
 rm -rf "$sandbox" "$bz"
 
+echo "== 9. un cierre_/dato_/avance_ dirigido a TODOS informa: no pide cerrador ni entra a la lista"
+# Lo cazó la primera corrida real: el `cierre_` que estrenaba la convención se listaba a sí mismo como
+# «sin cierre declarado». Sólo las obligaciones (contrato|pedido|urgente|hallazgo) piden un cerrador.
+bz="$(nuevo_buzon)"
+: > "$bz/abierto/2000-01-01_cierre_planificacion-a-todos_informa-algo.md"
+: > "$bz/abierto/2000-01-01_dato_planificacion-a-todos_informa-otra-cosa.md"
+: > "$bz/abierto/2000-01-01_avance_planificacion-a-todos_y-otra-mas.md"
+: > "$bz/abierto/$A_TODOS"   # el control positivo: la obligacion SI tiene que salir
+out="$(BUZON_DIR="$bz" bash "$SCRIPT" --quiet 2>&1)"
+check "los 3 informativos no entran, la obligacion si" "si" "$(printf '%s' "$out" | grep -qE '0 cerrables .+ 1 sin cierre declarado' && echo si || echo no)"
+check "examino los 4 igual (el filtro no lo vuelve ciego)" "si" "$(printf '%s' "$out" | grep -q 'de 4 archivos examinados' && echo si || echo no)"
+rm -rf "$bz"
+
 echo "== 8. el corpus REAL: si existe corre y no mueve nada; si NO existe, el veredicto honesto es 2"
 # `coordinacion/` está GITIGNOREADA y vive UNA sola vez, en el checkout principal. En el runner de CI
 # no existe, y ahí el `exit 2` («no pude medir») ES la respuesta correcta — no una falla del script.
@@ -107,5 +120,5 @@ else
 fi
 
 echo
-if [ "$fallos" -eq 0 ]; then echo "TODOS OK (8 casos)"; exit 0
+if [ "$fallos" -eq 0 ]; then echo "TODOS OK (9 casos)"; exit 0
 else echo "$fallos FALLA(S)"; exit 1; fi

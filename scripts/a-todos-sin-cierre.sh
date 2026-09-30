@@ -99,6 +99,14 @@ medir() {
     examinados=$((examinados + 1))
     dest="$(destinatario_de_nombre "$base")"
     [ "$dest" = "todos" ] || continue
+    # 🔴 Sólo las OBLIGACIONES piden un cerrador declarado. Mismo conjunto que `archivar-buzon.sh:66`
+    # (el cuarto gemelo otra vez, a propósito): un `cierre_`/`dato_`/`avance_` dirigido a todos
+    # **informa**, no obliga — nadie tiene que declararlo muerto. Sin este filtro, el propio `cierre_`
+    # que estrena un `CIERRA:` aparece en la lista como pendiente, y eso lo midió la PRIMERA corrida
+    # real después de estrenar la convención: el reportador se listó a sí mismo. Una lista con ítems
+    # que no piden acción enseña a no leerla (`el-guard-que-grita-en-el-caso-normal-se-desarma-solo`),
+    # y acá el falso positivo CRECE con cada broadcast: el instrumento se apagaba solo con el uso.
+    [[ "$base" =~ ^[0-9-]+_(contrato|pedido|urgente|hallazgo)_ ]] || continue
     if printf '%s\n' "$decl" | grep -qxF "$base"; then
       printf 'CERRABLE\t%s\n' "$base"
     else
