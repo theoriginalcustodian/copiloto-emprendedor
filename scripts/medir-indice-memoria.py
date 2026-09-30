@@ -97,6 +97,10 @@ def main() -> int:
     # vacío). Borradas: 22881 bytes y el veredicto pasó a «Índice sano», con las 360 entradas intactas.
     # El control 4 existía y no podía verlo: compara DESCRIPCIONES DE ENTRADAS con umbral de
     # similitud, y estas líneas no son entradas — el append duplicado cae justo en el hueco.
+    # ⚠️ Mira SOLO el indice, y no se extiende tal cual a HISTORIA.md: ahi los separadores `---`
+    # se repiten legitimamente (medido 2026-09-30: 3 veces, 8 bytes) y este control gritaria en el
+    # caso NORMAL, que es como un guard se desarma solo. HISTORIA se audita por OTRO criterio -- la
+    # misma entrada linkeada dos veces --, y ese sale limpio: 220 links, 220 distintos, 0 repetidas.
     cuenta = collections.Counter(l for l in texto_indice.splitlines() if l.strip())
     dups = {l: n for l, n in cuenta.items() if n > 1}
     desperdicio = sum((len(l.encode("utf-8")) + 1) * (n - 1) for l, n in dups.items())
