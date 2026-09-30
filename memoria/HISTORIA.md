@@ -368,6 +368,8 @@ sesión re-derive una lección con evidencia?* Las tres ya lo provocaron el mism
 - [👯❓ Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) — ¿qué pregunta hace cada lado? Y un empate tiene TRES resoluciones, no dos.
 - [📬🎁 Un `cierre_` ajeno puede traer tu cola ya hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) — ciego a las entregas.
 - [📜🚪 Una NORMA no tiene estado terminal en un buzón](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md) — cierra su bajada, no ella.
+- [🧬🔀 Una corrida cita el BLOB, no el path — el script del disco no declara su procedencia](una-corrida-cita-el-blob-no-el-path-el-script-del-disco-no-declara-su-procedencia.md) — tres versiones del mismo archivo; corre la del disco.
+- 🔝 [🎭🚦 El veredicto SUPERADO es el único legible si el corrector no está en el vocabulario](el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario.md) — el falso verde estaba en el instrumento, no en las filas.
 - [📮🕳️ Un contrato `a-todos` no tiene quien lo CIERRE](un-contrato-dirigido-a-todos-no-tiene-quien-lo-cierre.md) — cero dueños, no varios; el urgente grita eterno.
 - [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.  
   ↪ **bajada del índice el 2026-09-29.** Criterio: el bucle device/Metro está FUERA de este sprint por decisión del operador del 22/09 (device/EAS al sprint siguiente). **No se bajó por longitud** — vuelve al índice cuando arranque el sprint de device. Mismo criterio con que se bajó `receta-avion-reverse-connect-destraba-dev-launcher`.

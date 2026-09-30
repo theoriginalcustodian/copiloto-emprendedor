@@ -1192,3 +1192,219 @@ sujeto** — y acá el sujeto correcto estaba escrito en la propia celda («coin
 **delegación:** 0 sub-agentes · 3 lecturas inline (la fila 81, el módulo de facturación, el mensaje de FE1) ·
 scripts: 0 · 8 mediciones `git` (`git grep` sobre `54fac3ea` y `git cat-file`/`log` sobre `origin/main`),
 cada barrido con su control positivo y un negativo.
+
+---
+
+## C3-25 🔴 **ALTA — un falso verde PROBADO dentro del instrumento: el veredicto SUPERADO es el único legible. Y el recuento cierra en 2 de 10, después de decir 8, 5 y 0**
+
+Esta adenda hace dos cosas: retira mi propio hallazgo central de C3-24 —que era falso por tercera
+vez— y lo reemplaza por uno **medido con el módulo real del parser**, que es más grave y no es una
+hipótesis. Va con la serie completa de mis cifras equivocadas, porque el patrón de por qué fallaron es
+el dato más útil de todo el eje.
+
+### 1. El falso verde, probado
+
+Los dos documentos de frontend2 del 22/09 están **ambos** en `MEDICIONES_DECLARADAS`. Corriendo
+`medir()` e `ids_del_criterio()` de `scripts/evidencia/contar-veredictos.py` importado como módulo
+(read-only, sin modificarlo), con `universo_de_sujetos()` real = **54 ids**:
+
+```
+barrido f2 (COHERENTE, 02:11)   cuenta·único   -> ['COHERENTE']
+barrido f2 (COHERENTE, 02:11)   detalle·único  -> ['COHERENTE']
+re-medida f2 (posterior)        cuenta·único   -> ['VOCABULARIO_DESCONOCIDO']
+re-medida f2 (posterior)        detalle·único  -> ['VOCABULARIO_DESCONOCIDO']
+```
+
+**El único veredicto legible para `cuenta` y `detalle` es el `COHERENTE` que una re-medición posterior
+ya bajó.** Esa re-medición existe, es del mismo autor, y dice `REQUIERE_TRIAGE` con diferencias
+concretas: *«Título "Cuenta" (app) vs "Mi cuenta" (proto). Falta el link "‹ Ajustes" que tiene el
+proto. Falta subtítulo descriptivo»*. Para el instrumento que cuenta los COHERENTE, esa corrección
+**no existe**.
+
+> **Ningún defecto por separado produce esto.** Hacen falta los dos: que la sucesión entre documentos
+> no esté declarada en ninguna parte, **y** que el estado con el que se corrige un COHERENTE no esté en
+> el vocabulario que el parser admite. El primero deja vivo el veredicto viejo; el segundo enmudece el
+> nuevo. El producto es un `COHERENTE` vigente, legible, contado, y **superado hace una semana**.
+
+Esto es lo que este eje buscaba desde el principio, y estaba **adentro del instrumento**, no en las
+filas: [[un-parser-que-pierde-veredictos-silencia-los-conflictos]] ·
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]].
+
+### 2. Los tres defectos, cada uno con su canario diferencial
+
+**H-1 · Una tabla de DOS columnas pierde todos sus veredictos, y no deja hueco.** La misma fila, con lo
+único que cambia siendo el ancho de la tabla:
+
+| entrada sintética | ids que el parser ve |
+|---|---|
+| 3 columnas, `` | `card` (gasto) | COHERENTE | foo.png | `` | `['card']` |
+| **2 columnas**, `` | `card` (gasto) | COHERENTE | `` | **`[]`** |
+| 2 columnas, id sin sufijo | `[]` |
+| control positivo: `` `factura` `` a 3 columnas | `['factura']` |
+
+En el corpus real el par existe y mide lo mismo por los dos lados:
+
+| documento | pipes por fila | ids vistos | filas COHERENTE | celdas con backtick |
+|---|---|---|---|---|
+| `matriz-web-re-medida-v2.md` | 4 | **9** | 9 | 9 |
+| `matriz-web-re-medida-v2-filas-3-a-6.md` | 3 | **0** | **7** | 7 |
+
+Mismos ids, mismos veredictos, distinto ancho. **Daño real hoy: cero**, porque `v2` cubre esas 7 filas
+con tres columnas. Es un fixture diferencial que el corpus regaló y que no se puede fabricar: dos
+documentos que dicen lo mismo y sólo uno es legible.
+
+**H-2 · Sin backticks se pierde todo igual** (`3 columnas, SIN backticks -> []`, porque `SUJ_CELDA`
+—`contar-veredictos.py:546`— exige el backtick). Eso es el barrido de 35 pantallas: **0 celdas con
+backtick, 22 filas COHERENTE, 0 ids reconocidos → INVISIBLE.** No llega a `candidatos`, así que el
+guard de «documentos sin clasificar» —que sí existe y funciona— tampoco lo ve.
+
+⚠️ **Y el matiz lo empeora en vez de salvarlo:** ese documento **está retirado como evidencia**, así que
+no contarlo es el resultado *correcto*. **El parser acierta por accidente.** Una medición vigente
+escrita sin backticks desaparece del mismo modo, y nadie lo va a notar, porque el único caso visible
+hoy salió bien. Es [[un-gate-cuyo-predicado-es-el-sintoma-de-un-bug-abierto]] al revés: un defecto cuyo
+síntoma actual es el comportamiento deseado.
+
+**H-3 · `VOCABULARIO_DESCONOCIDO` no produce hueco, y eso está bien.** Medido: `sin(huecos)=[]` para los
+tres tokens. El diseño es deliberado y está escrito en el código —«visible y MAL es peor que un
+hueco»— y es la decisión correcta. **El defecto no es del parser: es del contrato §15.5.** El
+vocabulario tiene 7 tokens (`COHERENTE`, `DESVÍO`, `DESVIO`, `NO_MEDIBLE`, `FUERA-DE-REFERENCIA`,
+`NO_REPRODUCIBLE_SIN_EFECTO`, `PENDIENTE_DEVICE`) y ninguno cubre un estado que **dos autores usan en
+6 archivos**, con la grafía partida por autor:
+
+| grafía | archivos del buzón |
+|---|---|
+| `REQUIRES_TRIAGE` | 3 |
+| `REQUIERE_TRIAGE` | 3 |
+| `INCOMPLETO` | fuera del vocabulario también |
+
+Un parser que elija una de las dos grafías pierde las filas del otro autor sin dar señal. La decisión
+es de planificación, dueña del contrato: si es veredicto del criterio, entra con **grafía única**; si
+no lo es, hay 10 filas del 22/09 que no son mediciones y conviene que lo digan. Lo que no puede
+sostenerse es que **el estado con el que se corrige un COHERENTE sea ilegible para el instrumento que
+cuenta los COHERENTE** — ahí nace §1.
+
+### 3. El recuento definitivo, y las cuatro cifras que dije
+
+| ids | COHERENTE viene de | estado de esa fuente | ¿es el mecanismo de C3-24? |
+|---|---|---|---|
+| `card` · `card-cliente` · `card-cobro` · `card-presu` · `preg` | `matriz-web-re-medida-v2` (+ el gemelo de 2 columnas) | **vigente** — `v2` existe *para* cerrar esas filas | **no** |
+| `esc` · `factura` · `ingresar` | `matriz-web-re-medida` (f1) | **vigente** | **no** |
+| **`cuenta` · `detalle`** | barrido pwa f2 (02:11) | **superado** por la re-medida f2, ilegible para el parser | **SÍ — 2 de 10** |
+
+**8 de 10 tienen COHERENTE vigente. 2 de 10 comparan contra un veredicto superado.** La hipótesis de
+planificación era **más sólida** de lo que dije, no menos: lo que cerró la fila fue el universo medible
+de 17 de 54 ids, no mi hallazgo.
+
+**Dije 8, después 5, después 0, y cierra en 2.** Las cuatro fallaron por lo mismo, y no por
+razonamiento: **el universo de documentos**.
+
+- **8 y 5** salieron de leer **2 de 6** documentos de medición del 22/09, elegidos **por el nombre del
+  archivo** (mi filtro pedía «matriz-web-re-medida» o «barrido-35-pantallas»). Los `REQUIRES_TRIAGE`
+  que cité como «el veredicto vigente» eran el estado **intermedio** que `v2` vino a cerrar — y el
+  encabezado de `v2` lo dice solo: «consolida las 9 filas que el barrido original dejó "sin veredicto"».
+- **0** salió de un cruce de 10 ids × 5 documentos cuyo patrón no matcheaba las celdas: **la primera
+  columna no es el id**, es `` `detalle` (Mi día, tarjeta expandida) ``, `` `card` (gasto) ``,
+  `` `afip` (Facturación ARCA) ``. Un grep por `` | `id` | `` da **falso cero con la fila delante**.
+  Tercera forma distinta del mismo falso cero en un día: backticks a la mañana, nombre-de-archivo al
+  mediodía, paréntesis-de-sufijo ahora. El `SUJ_CELDA` del parser lo maneja bien; el bug era mi grep.
+- **2** es lo que queda cuando el universo es el corpus completo y el veredicto se lee con el módulo
+  del parser en vez de con un grep propio.
+
+### 4. El corpus no tiene índice, y por eso «el documento vigente» es una elección del lector
+
+Medido sobre el buzón entero: **149 filas de veredicto en 34 archivos**, en `abierto/`, `en-curso/` y
+`cerrado/<fecha>/`, de tres autores. Sólo del 22/09 hay **6 documentos de medición web**, con esta
+cadena y **ninguna marca de sucesión en ningún lado**:
+
+```
+barrido BL-Q3 f1 (35 pantallas, 22 COHERENTE)  ← retirado por el siguiente, sus 36 filas no lo dicen
+   └─ matriz-web-re-medida f1 (22 ids)          ← refuta 4, deja 9 sin veredicto
+        ├─ matriz-web-re-medida-v2 f1 (9 ids)   ← cierra esas 9
+        └─ ...-v2-filas-3-a-6 f1 (7 ids)        ← el detalle delegado, INVISIBLE (2 columnas)
+barrido pwa f2 (7 pantallas ✅)                  ← superado por el siguiente, sin marca
+   └─ matriz-web-re-medida f2 (7 ids)           ← baja 5 a REQUIERE_TRIAGE, ilegible para el parser
+```
+
+Elegí «el vigente» por tamaño y por parecido de nombre, y caí en el **del medio de una cadena**. Eso
+corrige el remedio que propuse en C3-24-bis: **`RETIRADO_POR:` no alcanza, porque la mitad de los casos
+no es un retiro total sino un cierre parcial de filas abiertas.** Necesita su par en el documento que
+llega después — `SUPERSEDE:` / `CIERRA_FILAS_DE:` — declarado por quien escribe el nuevo, que es el
+único que sabe a qué viene. Y sigue valiendo el orden: **marcar la sucesión primero, contrastar
+después**.
+
+La generalización de [[el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron]] aguanta y se
+endurece: no es sólo que el retirado no diga que lo retiraron. **Es que hay cuatro candidatos a
+«vigente» y ninguno dice cuál manda.** Una cadena de versiones sin sucesión declarada no tiene un
+documento vigente: tiene el que eligió el lector.
+
+### 5. Lo que sobrevive de C3-24 y C3-24-bis, separado de lo que se cae
+
+**Se cae:** «5 de 10 comparan un DESVÍO vigente contra un COHERENTE retirado» → son **2**, y no por
+retiro sino por **sucesión ilegible**.
+
+**Sobrevive, cada uno por su propia evidencia:**
+
+1. El defecto de formato del barrido retirado es real y sigue justificando la marca por fila: está
+   retirado y **ninguna de sus 36 filas lo dice**. Lo que ya no puede afirmar es que explique estos
+   conflictos.
+2. **La fila 81 (`factura`, «Te deben») queda reforzada** con mejor instrumento. Universo: los **19
+   `.html`** del proto @`54fac3ea` (`prototipo/index.html` navegable + `mockups/` + `mapa-pantallas/`,
+   excluidos `explorations/` y `audit/`), **7.687.291 chars** normalizados —tags removidos y entidades
+   resueltas, para que un texto partido por markup no dé un falso ausente—, control positivo **3/3** y
+   «Te deben» en **0**. Sobre todo el árbol: **21 archivos** lo contienen y **ninguno bajo
+   `Prototipo frontend/`**. La partición de la fila queda igual.
+3. El universo medible **17 de 54** y la partición de `factura`: intactos.
+
+### 6. Dos cosas que este eje deja para otros, ya medidas
+
+- **`CONFLIC2` cerrada, no reencuadrada.** `cuenta`/`detalle` **sí** están entre las 7 pantallas que
+  frontend2 re-midió; no es «un barrido de estatus sin declarar». La re-medición ocurrió, el veredicto
+  nuevo existe y el instrumento no lo lee. Es §1.
+- **El guard de documentos sin clasificar funciona, y me cazó a mí.** `contar-veredictos.py` aborta con
+  **exit 8** porque mi propio `cierre_` del buzón produce veredictos del criterio y no está clasificado.
+  Es correcto: mi `cierre_` **cita** los 10 ids para dictaminar, no los mide, así que va a
+  `NO_SON_MEDICION` con ese motivo. Sólo yo, como autor, puedo declararlo; se lo paso a planificación
+  porque `scripts/` es suyo. [[el-guard-que-caza-a-su-propio-autor]].
+
+**delegación:** 0 sub-agentes · 4 lecturas inline (los 4 documentos del 22/09 que faltaban) · **scripts:
+5 corridas** — 3 probes propios contra el módulo real del parser (descubrimiento de 6 de 6 documentos ·
+canario diferencial de columnas y vocabulario · el par superado/legible), 1 spike de citas contra el
+proto con controles 3/3, 1 corrida de `correr-criterio3.sh ingresar` (exit 0). Cada corrida con su
+control de denominador («N de N examinados»), y **los dos errores de universo de esta sesión los cazó ese
+control, no una lectura**: el spike esperaba 2 documentos y encontró 5, y su umbral de archivos del proto
+estaba calibrado contra el universo equivocado y **frenó bien igual** — un control de denominador mal
+calibrado sirve porque su trabajo es discrepar, al revés de un control positivo, que mal calibrado da
+verde y te deja pasar.
+
+### 7. Procedencia del instrumento medido, que casi me cuesta la adenda entera
+
+Después de escribir §1-6 apareció que `scripts/evidencia/contar-veredictos.py` existía en **tres
+versiones distintas a la vez**, y que mis probes habían leído la del medio:
+
+| versión | líneas | blob |
+|---|---|---|
+| `HEAD` de mi rama | 493 | `5c0f07c3` |
+| **working tree** (lo que leyeron los probes) | 918 | `7f998371` |
+| **`origin/main`** (la vigente) | **1239** | `4e989f3e` |
+
+`python script.py` **mide el archivo del disco**, y un archivo del disco no declara su procedencia. Cinco
+horas de probes contra una versión que no estaba ni commiteada ni pusheada — quinta vez en la jornada que
+el sujeto no era el que yo creía, y la primera en que el sujeto equivocado es **el instrumento mismo**.
+
+**Re-corrido contra `origin/main`, el resultado es idéntico renglón por renglón**: `3 col -> ['card']` ·
+`2 col -> []` · `sin backticks -> []` · positivo `factura -> ['factura']` · las tres grafías →
+`VOCABULARIO_DESCONOCIDO` sin hueco · `v2` 9 ids / 4 pipes vs `v2-filas-3-a-6` 0 ids / 3 pipes. **Nada de
+§1-6 cambia**, y ahora está medido contra el blob que gobierna.
+
+Que coincidan es suerte, no método: las 460 líneas de diferencia tocaban el **universo** (`SPEC` en vez de
+`MATRIZ`, `CIEGOS_DECLARADOS`), no las formas que estos canarios ejercitan. Si el diff hubiera tocado
+`SUJ_CELDA`, la adenda entera habría medido un instrumento que nadie corre.
+
+> **La regla que sale de acá: toda corrida que se cite como evidencia declara el BLOB, no el path.** Un
+> path identifica un archivo; sólo el blob identifica qué código corrió. Es la misma familia que
+> [[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]] y
+> [[el-instrumento-respondio-sobre-otro-sujeto]], aplicada al código del propio instrumento.
+
+Y el residuo sin commitear **no era trabajo perdido**: medido por marcas distintivas
+(`CIEGOS_DECLARADOS` 5=5, `C3-13` 4=4, la `SPEC` 1=1), ya está todo en `origin/main`. Es un estado
+intermedio superado, no WIP a rescatar. No lo toqué: `scripts/` es de planificación.
