@@ -56,3 +56,30 @@ se busca. Recién al ubicarlo en `scripts/evidencia/` midió lo que decía medir
 
 La pregunta que separa las dos: *¿el rojo que obtuve vino del defecto que quiero cazar, o de otro?*
 Un control positivo que pasa por el motivo equivocado es [[dos-causas-suficientes-el-test-no-atribuye]].
+
+---
+
+## Refuerzo (2026-09-30): el control pasó porque su fixture tenía DATOS, y el que se rompió fue el caso VACÍO
+
+Escribí `a-todos-sin-cierre.sh` con un control positivo horneado que corre **siempre** y ejercita la
+misma `medir()` que la corrida real. Buen diseño, y no alcanzó: la **primera corrida real salió `rc=1`
+sin una sola línea de salida**.
+
+La causa: `printf … | grep '^CERRABLE' | while …` con `set -euo pipefail`. Con **0 coincidencias**
+`grep` sale 1 y `pipefail` mata el script. O sea el script moría **justo en el caso normal** — el
+corpus real tiene 0 cerrables de 6, el 100% de las corridas.
+
+**Y el control positivo pasó.** Su fixture declara un `CIERRA:` a propósito, así que ahí siempre hay
+al menos un `CERRABLE` y el `grep` **nunca** llega a 0 coincidencias. Cubrió exactamente la mitad que
+yo sospechaba (¿reconoce una declaración real? ¿inventa cierres?) y la mitad que nunca sospeché —el
+**vacío**— quedó muda. Es también
+[[disenar-contra-el-riesgo-temido-ciega-al-caso-normal]]: diseñé contra el lector ciego y me comí el
+conteo cero.
+
+**La pregunta que lo caza, y es distinta de «¿tengo control positivo?»:** *¿mi fixture contiene el
+caso que va a ocurrir el 100% de las veces?* Un fixture se llena de datos porque un fixture vacío
+«no prueba nada» — y ese reflejo es el que deja el camino vacío sin ejercitar.
+
+**Cómo quedó cerrado:** el caso vacío es el **caso 2** del test, de primera clase, antes que el caso
+del lector ciego. Y el fix no fue `|| true` a secas sino `{ grep … || true; }`, porque con `pipefail`
+el `|| true` suelto no rescata a un `grep` que está **en medio** de la tubería.

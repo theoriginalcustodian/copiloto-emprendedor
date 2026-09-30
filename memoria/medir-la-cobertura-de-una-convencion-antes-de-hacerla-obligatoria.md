@@ -45,3 +45,26 @@ después el que lee lo usa.
 
 **Corolario que vale para el diseño:** el campo opcional que se agrega «por si algún día lo leemos»
 nace con 26% garantizado. Si el plan es leerlo, tiene que nacer exigido.
+
+---
+
+## Refuerzo (2026-09-30): con cobertura 0, el instrumento REPORTA — no actúa
+
+Corolario operativo que faltaba. Cuando una convención nueva tiene cobertura ~0, el instrumento que
+la consume **no puede ser el que toma la acción**, ni aunque la acción sea correcta.
+
+**El caso.** Adopté `CIERRA: <nombre>` para cerrar los `a-todos` inmortales del buzón. La tentación
+era escribirlo en `archivar-buzon.sh` y que archivara los declarados. Con cobertura 0, ese archivador
+habría movido **cero archivos** — y `archivados=0` es **indistinguible de un glob roto**, que es el
+filo que auditoría ya había nombrado sobre otro retiro (`retirados_obsoletos=0`).
+
+Peor: el día que alguien escribiera el primer `CIERRA:` y el glob estuviera mal, el síntoma sería
+«sigue sin archivar», idéntico al estado anterior. El defecto nacería invisible y con coartada.
+
+**Por eso `a-todos-sin-cierre.sh` es un REPORTADOR:** lista los `a-todos` con su cerrador declarado o
+su ausencia, y **no mueve nada**. Se convierte en archivador el día que la cobertura lo justifique.
+
+**La regla:** *primero se exige al escribir, después se lee, y sólo al final se actúa.* Saltar del
+paso 1 al 3 produce un mecanismo cuyo «no hizo nada» no se puede leer. Y el reportador paga solo: con
+`0 cerrables · 6 sin cierre · de 9 examinados` la cobertura **se mide en cada corrida** en vez de
+estimarse una vez.
