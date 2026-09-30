@@ -101,6 +101,7 @@ silenciosamente hasta que alguien mira. El cierre es `git push origin --delete <
 `ls-remote` como veredicto (⚠️ ese push dispara el `pre-push` completo — batería + gitleaks — así que
 pasa de los 120 s y va a background).
 
+
 ---
 
 ## Refuerzo (2026-09-30): el script que horneó este patrón salió `rc=4` en su PRIMER uso real, y estuvo bien

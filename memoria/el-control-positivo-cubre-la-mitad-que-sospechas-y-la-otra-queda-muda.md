@@ -57,6 +57,7 @@ se busca. Recién al ubicarlo en `scripts/evidencia/` midió lo que decía medir
 La pregunta que separa las dos: *¿el rojo que obtuve vino del defecto que quiero cazar, o de otro?*
 Un control positivo que pasa por el motivo equivocado es [[dos-causas-suficientes-el-test-no-atribuye]].
 
+
 ---
 
 ## Refuerzo (2026-09-30): el control pasó porque su fixture tenía DATOS, y el que se rompió fue el caso VACÍO

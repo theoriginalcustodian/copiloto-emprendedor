@@ -53,7 +53,7 @@ def referencias(texto: str) -> set[str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--presupuesto", type=int, default=24_000,
-                    help="caracteres que el harness carga del índice antes de truncar. Medido "
+                    help="BYTES que el harness carga del índice antes de truncar. Medido "
                          "2026-08-01: cortó a los 24.683 chars y la línea siguiente cruzaba 25.000. "
                          "El default deja margen para crecer sin volver a truncarse")
     ap.add_argument("--max-lineas", type=int, default=200,
@@ -87,23 +87,40 @@ def main() -> int:
     topicos = sorted(f for f in MEM.glob("*.md") if f.name not in ("MEMORY.md", "HISTORIA.md"))
     fallas = []
 
-    # --- 1. presupuesto (en CARACTERES: es lo que el harness cuenta, no bytes) ---
-    peso = len(texto_indice)
+    # --- 1. presupuesto (en BYTES) ---
+    # ⚠️ Acá vivía `peso = len(texto_indice)` con el comentario «en CARACTERES: es lo que el harness
+    # cuenta, no bytes». Esa afirmación nunca se verificó y es FALSA — medido 2026-09-30:
+    #   MEMORY.md = 23.875 caracteres pero 25.210 BYTES (1.335 de diferencia: 167 `—`, los acentos
+    #   y 43 variation-selectors de emoji, que pesan 3-4 bytes cada uno).
+    # O sea: este control decía `23875/24000 [OK ] margen 125` sobre un índice que en disco pesaba
+    # 1.210 bytes MÁS que el techo. Llevaba absolviendo un índice truncado.
+    #
+    # El corte del 2026-09-22 es el control positivo histórico y estaba MAL ATRIBUIDO: el script lo
+    # adjudicó al límite de LÍNEAS (207 > 200) y construyó el control 1.bis sobre esa lectura. Pero
+    # había DOS causas suficientes y eligió una — 23.930 chars con esta densidad son ~25.268 bytes,
+    # ya pasados. Ver memoria/dos-causas-suficientes-el-test-no-atribuye.md. El control de líneas
+    # se queda: sigue siendo un techo real e independiente. Lo que cambia es que ya no es la única
+    # explicación disponible.
+    #
+    # La unidad exacta que cuenta el harness no está documentada. De las tres candidatas, los BYTES
+    # son la única que explica LOS DOS cortes observados (2026-08-01 y 2026-09-22) y es la
+    # conservadora. Si alguna vez se documenta que cuenta tokens, se cambia acá y se cita la fuente.
+    peso = len(texto_indice.encode("utf-8"))
     lineas = texto_indice.count("\n") + 1
     ok_peso = peso <= args.presupuesto
     borde_peso = ok_peso and peso >= args.presupuesto * args.aviso_pct
-    print(f"[{'⚠️ ' if borde_peso else ('OK ' if ok_peso else 'MAL')}] presupuesto: {peso} / {args.presupuesto} chars  ({lineas} líneas)")
+    print(f"[{'⚠️ ' if borde_peso else ('OK ' if ok_peso else 'MAL')}] presupuesto: {peso} / {args.presupuesto} bytes  ({lineas} líneas, {len(texto_indice)} chars)")
     if borde_peso:
         margen = args.presupuesto - peso
         # La acción concreta, porque «estás cerca» no le dice a nadie qué hacer. La unidad es la
         # LÍNEA de índice, que el propio encabezado del MEMORY.md limita a 160 chars: con menos de
         # eso de margen, la próxima entrada no entra y se trunca sin avisar.
-        print(f"      margen: {margen} chars = {margen // 160} línea(s) de índice (el techo por línea es 160).")
+        print(f"      margen: {margen} bytes = {margen // 175} línea(s) de índice (el techo por línea es 160 chars ~= 175 bytes).")
         print(f"      ACCIÓN: bajá entradas a HISTORIA.md ANTES del próximo puntero. No se comprime,")
         print(f"      se baja: HISTORIA.md no se carga y sigue siendo buscable.")
     if not ok_peso:
         sobra = peso - args.presupuesto
-        fallas.append(f"el índice se pasa {sobra} chars: se trunca y esa cola no existe para la sesión")
+        fallas.append(f"el índice se pasa {sobra} bytes: se trunca y esa cola no existe para la sesión")
 
     # --- 1.bis presupuesto en LÍNEAS: el harness trunca por las DOS dimensiones ---
     # Medir sólo caracteres deja un modo de falla mudo: líneas cortas agotan el cupo de líneas con
@@ -118,7 +135,7 @@ def main() -> int:
         print(f"      margen: {args.max_lineas - lineas} línea(s). Misma ACCIÓN: bajar a HISTORIA.md.")
     if not ok_lineas:
         fallas.append(f"el índice se pasa {lineas - args.max_lineas} líneas: la cola se trunca "
-                      f"aunque el presupuesto en chars esté en verde")
+                      f"aunque el presupuesto en bytes esté en verde")
 
     # --- 2. cobertura ---
     huerfanas = [f.name for f in topicos if f.name not in refs]
@@ -160,10 +177,10 @@ def main() -> int:
         return 1
     if borde_peso or borde_lineas:
         print(f"Índice SIN MARGEN: {len(topicos)} entradas, todas alcanzables, {peso} de "
-              f"{args.presupuesto} chars y {lineas} de {args.max_lineas} líneas. Exit 0 porque "
+              f"{args.presupuesto} bytes y {lineas} de {args.max_lineas} líneas. Exit 0 porque "
               f"todavía entra completo, pero la próxima entrada NO va a entrar.")
         return 0
-    print(f"Índice sano: {len(topicos)} entradas, todas alcanzables, {peso} de {args.presupuesto} chars.")
+    print(f"Índice sano: {len(topicos)} entradas, todas alcanzables, {peso} de {args.presupuesto} bytes.")
     return 0
 
 
