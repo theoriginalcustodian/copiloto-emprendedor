@@ -72,7 +72,7 @@
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) — muestreá la población, no el total.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
-- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
+- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró. · [y el que corre DESPUÉS del guard no llega a mirar](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
 - [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA no es un gate](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) — vivía tras el `return` de `--json`.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) — un empate no separa.
