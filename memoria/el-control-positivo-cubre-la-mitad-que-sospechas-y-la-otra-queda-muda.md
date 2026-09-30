@@ -32,3 +32,27 @@ devolviendo vacío en vez de tirando.
 Hermanas: [[instrumento-que-no-mira-nunca-falla]] · [[vacio-no-es-hallazgo-correr-el-control]] ·
 [[un-control-positivo-con-esperado-falso-acusa-al-script]] ·
 [[el-instrumento-respondio-sobre-otro-sujeto]]
+
+## Refuerzo (2026-09-30): el cebo metido en la lista blanca, y el control que falla por otra razón
+
+Dos formas de control positivo inválido, medidas el mismo día sobre el canario del padrón:
+
+**1. El cebo entró por la puerta que el guard abre a propósito.** Para probar que el lector del
+padrón no sabe leer ids raros, el primer control inyectó un cebo `((cebo-del-canario))` **dentro**
+de la lista de ids del padrón. El parser lo dio por legible — **con razón**: el lector reconoce lo
+que el padrón *declara*, y meter el cebo en el padrón lo declaró.
+
+> **Un guard condicionado a una lista blanca no se puede probar metiendo el cebo en la lista
+> blanca**: entra por la misma puerta que el guard abre a propósito.
+
+El control correcto no prueba que un token sea raro: prueba que el canario detecta un **lector
+ciego**.
+
+**2. El control falló primero por la razón equivocada, y el veredicto seguía siendo «correcto».**
+Copiado a `/tmp`, el parser viejo devolvía `exit 2` porque resuelve la spec relativa a su propia
+ubicación y ahí no la encontraba. Por contrato el veredicto era bueno («no pude medir» ≠ «todo
+legible»), pero **no ejercitaba el caso**: un rojo por una causa ajena acredita igual que el rojo que
+se busca. Recién al ubicarlo en `scripts/evidencia/` midió lo que decía medir.
+
+La pregunta que separa las dos: *¿el rojo que obtuve vino del defecto que quiero cazar, o de otro?*
+Un control positivo que pasa por el motivo equivocado es [[dos-causas-suficientes-el-test-no-atribuye]].

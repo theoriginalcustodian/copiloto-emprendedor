@@ -91,3 +91,12 @@ rojo es el más peligroso de los dos, porque invita a **reintentar** una operaci
 **Y el agravante estructural:** con muchos worktrees esto le va a pasar a cualquiera, porque `main`
 está tomado por construcción — casi ninguna sesión trabaja en el checkout principal. No es un caso
 raro: es el caso normal de este repo.
+
+**Refuerzo (2026-09-30), la parte operativa que faltaba:** cuando `gh pr merge --squash
+--delete-branch` sale **rc=1 con el merge YA hecho**, el borrado de la rama **queda sin ejecutar** —
+es un paso posterior en la misma invocación, y el fallo local de `main` lo corta antes. Medido en el
+PR #747: `MERGED` con commit `f36a842d` en el remoto, y `ls-remote` seguía devolviendo la rama. Así
+que el rc=1 no deja sólo un veredicto falso: deja el trabajo **a medias**, y la rama sobrevive
+silenciosamente hasta que alguien mira. El cierre es `git push origin --delete <rama>` aparte, con
+`ls-remote` como veredicto (⚠️ ese push dispara el `pre-push` completo — batería + gitleaks — así que
+pasa de los 120 s y va a background).

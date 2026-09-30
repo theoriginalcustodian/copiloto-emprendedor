@@ -52,3 +52,18 @@ tenían **sha256 distintos**, así que esa carpeta no guarda una copia fiel del 
 
 Emparentado: [[el-instrumento-respondio-sobre-otro-sujeto]] — el comando contestó, pero sobre otro
 archivo, y sin fallar.
+
+**Refuerzo (2026-09-30) — `find` sobre el buzón devuelve TAMBIÉN el sidecar.** Usar `find` para
+ubicar el archivo (que es la lección de arriba) tiene su propio filo: el escalador mantiene
+`coordinacion/.escalador-estado/<nombre>.first-seen` por cada mensaje, así que un `find` sin acotar
+matchea **dos** rutas para un solo mensaje. Unidas por newline en `$(...)`, el `mv` y el `cat`
+reciben un argumento inexistente:
+
+```
+mv: cannot stat '…first-seen'$'\n''…abierto/….md': No such file or directory
+```
+
+El error señala un archivo que «no existe» cuando los dos existen — la falla no se parece a su causa.
+Se acota con `find "$BZ/abierto" -maxdepth 1 -name "*<slug>*.md" -type f`: la carpeta, la
+profundidad y la extensión, las tres. El sidecar vive **fuera** de `abierto/`, así que `-maxdepth 1`
+sobre la carpeta correcta ya lo excluye.
