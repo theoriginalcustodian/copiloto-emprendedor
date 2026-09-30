@@ -381,3 +381,16 @@ sesión re-derive una lección con evidencia?* Las tres ya lo provocaron el mism
 - [👻🚫 UI escrita e INALCANZABLE — nadie la mide porque no se llega navegando](ui-escrita-e-inalcanzable-nadie-la-mide-porque-no-se-llega-navegando.md) — grepeá quién la MONTA.  ↪ **bajada:** caso de `APPSM`, ya cerrado; su regla general («grepeá quién la MONTA») se alcanza desde `la-costura-leia-un-campo-que-nadie-escribe` («grepeá quién ESCRIBE»).
 - [🎰 El gate compartido PERDONA al que llega acompañado](el-gate-compartido-perdona-al-que-llega-acompanado.md) — pasó por contención, no por salud.  ↪ **bajada:** su raíz está indexada dos veces: `un-instrumento-compartido-intermitente-fabrica-una-excusa-lista` y `el-fallo-que-se-mueve-acusa-al-recurso-compartido`.
 - [🔁🧪 Adversario E2E con email fijo se rompe en el rerun](adversario-e2e-con-email-estatico-y-password-random-se-rompe-en-el-rerun.md) — el 2º run falla el login.  ↪ **bajada:** el caso concreto quedó cubierto por la regla dura del usuario de prueba canónico.
+
+## Bajadas del índice 2026-09-30 - por el techo en BYTES
+
+El medidor contaba caracteres; el techo trunca por bytes (ver `el-indice-truncado-fabrica-duplicados.md`). Estas ocho salieron del índice porque su lección general ya está cubierta por una hermana más amplia del propio índice, o porque eran situacionales. Siguen acá y siguen siendo buscables - lo que se pierde es el recall automático al arrancar, no el contenido.
+
+- [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) - ¿quién LEE lo que escribo?  (lo cubre [[instrumento-que-no-mira-nunca-falla]])
+- [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) - muestreá la población, no el total.  (situacional: un umbral de ese dia)
+- [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) - preguntá qué evento reinicia el contador.  (situacional)
+- [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) - refutar causa no refuta hecho.  (lo cubre [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]])
+- [🔁👁️ El veredicto no dice cuántas veces lo MIRARON](el-veredicto-no-dice-cuantas-veces-lo-miraron.md) - el riesgo está en lo MENOS mirado, no en lo más.  (coordinacion, situacional)
+- [💀⏰ El vigilante muere, y apagarlo a propósito borra el RELOJ](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) - 5h30 × 4. `CronCreate`.  (lo cubre [[la-costura-leia-un-campo-que-nadie-escribe]])
+- [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) - el freno no es un monitor.  (lo cubre [[el-instrumento-tambien-CONDENA-no-solo-absuelve]])
+- [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) - 71→4 en un día.  (hay otra del vigilante en Referencia)
