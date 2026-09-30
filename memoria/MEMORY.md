@@ -1,12 +1,15 @@
 # Memoria - Copiloto del Emprendedor
 > **Una línea = un gancho, no un resumen** (≤160 chars): el detalle vive en el topic file.
-> **DOS techos: 24.000 chars y 200 líneas; aprieta CHARS.** Pasarse trunca la cola: esa parte **no existe** ([[el-indice-truncado-fabrica-duplicados]]).
+> **DOS techos: 24.000 BYTES y 200 líneas.** No chars: los acentos y emoji pesan 2-4 bytes, y medirlo en chars absolvió un índice 1210 bytes truncado. Pasarse borra la cola ([[el-indice-truncado-fabrica-duplicados]]).
 > Salida ÚNICA: bajar a [HISTORIA.md](HISTORIA.md) (no se carga; buscable) - fusionar NO ahorra chars. Control: `medir-indice-memoria.py`.
 
 ## 🚦 Estado vivo
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
+- **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
+- **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
+- **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
 - **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
@@ -29,6 +32,8 @@
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) - leerla ANTES de implementar. Portar adaptando, no copiar ciego.
 - [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) - se juntan. Reincidí con 7 PRs en una sesión.
 - [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) - diferido a prod; sólo no commitear ni pegar en chat.
+## 🔑 Órdenes del operador (reglas duras - se cumplen, no se evalúan)
+
 
 ## 🧭 Cómo trabajo
 ### Cadencia, cierre y ocio
@@ -46,13 +51,7 @@
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) - no cierra hasta desplegado y probado.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) - test *¿puede volver?* Si no, no terminó.
 - [♻️ Cero deuda de MEJORA - implementar TODAS al cerrar](cero-deuda-de-mejora.md) - sólo se difiere no-código + MAYOR.
-- [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) - deliberada + visible OK; impaga o invisible, prohibida.
-- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) - leé el cuerpo, no el semáforo.
-- [📦⏪ Un rebuild desde OTRA base revierte un fix cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) - ejercitá la función, no el log.
-- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) - cruzá el PID contra tu proceso.
 - [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) - cada dueño necesita su renglón.
-- [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) - acá es `coordinacion/PLAN.md`.
-- [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) - 3 en una noche; barrelos al cerrar.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
@@ -64,7 +63,6 @@
 - 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
 - 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) - ¿qué pregunta hace cada lado?
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
-- [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) - verde + hallazgo falso: ¿en qué mundo saldría ROJO?
 - [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite Y inventa; medí el EFECTO.
 - [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales
 
@@ -75,7 +73,6 @@
 - [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA no es un gate](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return` de `--json`.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
-- [🔇🔨 Mudo ≠ parado - el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) - mirá toda la corrida.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿el número lo midió alguien o lo escribió alguien?
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión suele sobrevivir con otro porqué.
@@ -93,6 +90,8 @@
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra la expectativa, no contra el reloj.
 - [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa a la roja. Background → archivo COMPLETO.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
+- 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
+- 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
@@ -147,6 +146,7 @@
 - [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) - un turno mide OCIO.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
+
 
 ### Git, deploy y checkout compartido
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.

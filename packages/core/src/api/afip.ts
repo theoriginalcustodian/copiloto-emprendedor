@@ -126,6 +126,13 @@ export interface ResultadoEmision {
    * solo: el día que `resultado.id` llegue con número, el toque aparece sin tocar la card.
    */
   id: number | null;
+  /**
+   * 🔴 **La carrera de `idem_key` no se PREVIENE, se DETECTA** (`test_afip_idem_key_carrera.py:75-90`).
+   * Cuando la perdedora de la carrera reintenta sin `idem_key`, el backend registra su comprobante
+   * (ya emitido en AFIP) y devuelve esto en `true`: hay DOS CAE reales para la misma factura y el
+   * emprendedor tiene uno de más para anular. `false`/ausente es el caso normal (99,99% de las veces).
+   */
+  alertaDobleEmision: boolean;
 }
 
 /** `GET /afip/facturas/{id}` — el shape completo que `FacturaWorkflow.estado()` devuelve, normalizado. */
@@ -688,6 +695,8 @@ interface ResultadoEmisionRaw {
   punto_venta: number;
   /** Opcional: el payload del workflow todavía no lo trae. Ver `ResultadoEmision.id`. */
   id?: number | null;
+  /** Ver `ResultadoEmision.alertaDobleEmision`. */
+  alerta_doble_emision?: boolean;
 }
 
 function normalizarResultadoEmision(raw: ResultadoEmisionRaw): ResultadoEmision {
@@ -701,6 +710,7 @@ function normalizarResultadoEmision(raw: ResultadoEmisionRaw): ResultadoEmision 
     puntoVenta: raw.punto_venta,
     // `ausente ≠ 0`: sin id la card de éxito no ofrece cobrar. Ver `ResultadoEmision.id`.
     id: typeof raw.id === 'number' ? raw.id : null,
+    alertaDobleEmision: raw.alerta_doble_emision === true,
   };
 }
 

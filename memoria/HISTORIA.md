@@ -394,3 +394,15 @@ El medidor contaba caracteres; el techo trunca por bytes (ver `el-indice-truncad
 - [💀⏰ El vigilante muere, y apagarlo a propósito borra el RELOJ](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) - 5h30 × 4. `CronCreate`.  (lo cubre [[la-costura-leia-un-campo-que-nadie-escribe]])
 - [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) - el freno no es un monitor.  (lo cubre [[el-instrumento-tambien-CONDENA-no-solo-absuelve]])
 - [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) - 71→4 en un día.  (hay otra del vigilante en Referencia)
+
+## Bajadas del índice 2026-09-30 (2.ª vuelta) - el merge con main restauró las primeras
+
+La unión de un merge lee «quitado en mi lado» como «presente en el otro», así que las ocho de la 1.ª vuelta volvieron al índice solas. Se re-bajan, y se suman estas ocho por el mismo criterio: situacional, o cubierta por una hermana más amplia del propio índice.
+
+- [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) - deliberada + visible OK; impaga o invisible, prohibida.  (lo cubre [[cero-deuda-de-mejora]])
+- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) - leé el cuerpo, no el semáforo.  (situacional)
+- [📦⏪ Un rebuild desde OTRA base revierte un fix cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) - ejercitá la función, no el log.  (situacional)
+- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) - cruzá el PID contra tu proceso.  (situacional)
+- [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) - acá es `coordinacion/PLAN.md`.  (es un puntero a coordinacion/PLAN.md, redundante con Estado vivo)
+- [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) - 3 en una noche; barrelos al cerrar.  (situacional)
+- [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) - verde + hallazgo falso: ¿en qué mundo saldría ROJO?  (lo cubre [[el-canario-el-control-positivo-de-lo-que-falla-callado]])

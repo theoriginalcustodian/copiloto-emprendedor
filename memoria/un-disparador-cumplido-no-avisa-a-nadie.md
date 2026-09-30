@@ -71,3 +71,37 @@ pruebas no es verde en producción.
 
 Ver también: [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] — misma familia, la
 señal que no existe se cuela por el camino feliz.
+
+---
+
+## Refuerzo 2026-09-30 — CINCO en un día, y el sesgo que explica por qué nadie los corrige
+
+En una sola jornada encontré **cinco** ítems declarados pendientes cuyo trabajo ya estaba en `main`:
+
+| ítem | decía | estaba |
+|---|---|---|
+| CONDIVA | «push abortado por GRAFO, decisión pendiente» | `afip_rules.py:245` en `main` |
+| CONSMP (2ª guarda) | «pregunta de producto pendiente» | `tool_catalog.py:602` en `main` |
+| `factura` | «BLOQUEADO, no es mío resolverlo» | desbloqueado por #702, **2 días** antes |
+| ACTID | «los 4 shells TIRAN el id» + «DIFERIDO» | cableado completo, PR #690, **el mismo día** del hallazgo |
+| CIERRE A #2 y #6 | «0 ocurrencias» · «dueño FE2, pendiente» | descargo en `main` con tests · PR #694 mergeado |
+
+Cinco veces el mismo defecto, y ninguna era del trabajo: **lo que faltaba era el camino de vuelta al
+tablero.**
+
+**El sesgo, que es la parte que no había nombrado:** un tablero desactualizado **no miente al azar —
+miente en la dirección que frena el cierre**. Un falso «✅ cerrado» molesta a alguien enseguida (el que
+va a usar la cosa y no está), así que se corrige solo. Un falso «⏳ pendiente» **no molesta a nadie**: el
+que lo hizo cree que terminó, el que lee el tablero cree que hay trabajo, y los dos tienen razón desde
+donde están. Por eso los falsos pendientes se acumulan y los falsos cerrados no. No es entropía
+simétrica: es un sesgo con una sola dirección, y la dirección es «no cerrar».
+
+**Consecuencia práctica, y es lo que voy a hacer distinto:** al leer una fila que dice «pendiente» **sin
+fecha de medición al lado**, el primer paso no es planificar el trabajo — es medir si el trabajo existe.
+Costó un `ls` en un caso y un `git grep` en los otros cuatro. Y al revés, cuando yo declaro algo
+pendiente: la fila lleva **la fecha de la medición**, porque «pendiente» sin fecha es una afirmación
+sobre el pasado disfrazada de estado presente.
+
+⚠️ Y el corolario para los `a-todos`: el hallazgo de ACTID sobrevivió **dos días** a su propio fix porque
+un broadcast **no tiene quién lo mueva**. Ver [[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] y la
+convención `CIERRA:`, que existe justo para eso.

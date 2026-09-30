@@ -150,7 +150,15 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      # `fetch-depth: 0` — el default de checkout@v4 es un clone SHALLOW (depth 1), y el bucle de
+      # `scripts/tests/test-*.sh` que corre este job necesita historia: `test-gate-args-y-recibo.sh`
+      # arma su fixture de TIPOCOMP con el padre del último commit que tocó `packages/core/src` (el
+      # cambio real que rompió los 7 fixtures, #751), y en un clone de profundidad 1 ese commit no
+      # existe. Sin esto los casos 4-6 no se medirían en el único lugar donde importa medirlos, y el
+      # test lo diría en rojo (a propósito: bajo CI, historia ausente es regresión, no entorno).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

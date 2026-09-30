@@ -116,3 +116,39 @@ confirmarla.
 **Regla operativa, sin excepción:** después de editar un archivo que un instrumento parsea, **correr
 el instrumento en el mismo comando**. No al final de la tanda, no antes de commitear: en el mismo
 comando, mientras el cambio todavía es el sospechoso obvio.
+
+---
+
+## Refuerzo 2026-09-30 — el enum no lo borra sólo el que appendea: lo borra un `|` en la PROSA
+
+Variante nueva y más barata de disparar. `cola-check.sh:76` no parsea columnas: toma **todo lo que
+viene después del ÚLTIMO carácter `|` de la línea** (`${linea##*|}`, después `tr -d ' '` y a
+minúsculas). O sea que el "último campo" no es el quinto campo de la tabla: es lo que quede a la
+derecha del último pipe, **venga de donde venga**.
+
+Lo rompí yo mismo escribiendo una fila del PLAN. En el campo de detalle puse un grep entre backticks:
+
+```
+… el cableado (`gastoIdInicial|abrirGasto`) …  | backend | … | pendiente
+```
+
+Ese `|` de la alternación del grep no era una columna: era prosa. Pero para `cola-check.sh` el último
+pipe pasó a ser otro, y el estado de la fila quedó ilegible → **fila malformada**, o peor, el frente
+deja de contarse sin que nadie lo note. Dos frentes se me volvieron invisibles así en un día.
+
+**Por qué esta variante es peor que la original:** la de arriba (el que appendea al final del renglón)
+requiere que alguien edite el final de la fila. Ésta se dispara desde el **medio** del texto, en un
+campo que no tiene nada que ver con el estado, escribiendo algo perfectamente correcto —un patrón de
+grep, una alternancia de regex, una tabla anidada, un `awk -F'|'` citado—. El autor no está tocando el
+estado y no tiene motivo para sospechar que lo movió.
+
+**La regla operativa:** en una fila cuyo estado se lee por posición, **el separador es un carácter
+reservado y la prosa no lo puede contener**. Si hace falta nombrar una alternancia, se escribe
+`gastoIdInicial` / `abrirGasto` con barra, o se saca el detalle a otro campo. Y el control es correr
+el lector (`cola-check.sh`) **después de cada edición del tablero**, no al final de la sesión: es lo
+que cazó las dos filas mías, incluyendo una donde además había marcado `⏳` (bloqueado por tercero) un
+trabajo que era **mío y arrancable** — el instrumento corrigió dos errores distintos de la misma edición.
+
+⚠️ Y el hermano del mismo día, midiendo con `awk -F' \| '`: el `|` desnudo en una ERE es **alternancia**,
+así que `awk` partió por espacios y me devolvió `"hoy)."` como último campo. Un instrumento malo que
+se veía igual que una fila rota. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]].
