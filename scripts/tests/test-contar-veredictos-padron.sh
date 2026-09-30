@@ -238,50 +238,98 @@ else
   fi
 fi
 
-echo "── Caso 8: CONTROL POSITIVO del gate «MEDICIÓN QUE NO MIDE» — caza al MAL clasificado"
-# `sin_clasificar` (caso 7) caza al documento que nadie clasificó. Este caza al que está clasificado
-# MAL, que es el único camino por el que un documento analítico entra al corpus como medición.
-# Ya demostró que dispara en la vida real: en su primera corrida cazó una clave que yo había escrito
-# ADIVINANDO el basename de una tabla que lo mostraba truncado. Pero un `exit 9` sin caso en la suite
-# es una promesa — el guard que nunca se ejercita es indistinguible de un `pass`.
-cp "$CONTADOR" "$FAKE/scripts/evidencia/mudo.py"
-"$PY" - "$FAKE/scripts/evidencia/mudo.py" <<'PYEOF'
+# ── Helper de fixture: mueve un documento de NO_SON_MEDICION a MEDICIONES_DECLARADAS ──────────
+# Es la mala clasificación que los gates 9 y 10 existen para cazar, así que el fixture ejercita el
+# MECANISMO y no un dato del día. La versión anterior del caso 8 sacaba una entrada de un dict de
+# excepciones que después quedó vacío: el fixture dejó de fabricar el caso y el gate pareció roto.
+cat > "$TMP/mover.py" <<'MOVEREOF'
+import io, sys
+p, clave = sys.argv[1], sys.argv[2]
+t = io.open(p, encoding="utf-8").read()
+ini = "NO_SON_MEDICION = {"
+a, b = t.split(ini, 1)
+cuerpo, resto = b.split("\n}", 1)
+lineas, quedan, sacando, saque = cuerpo.split("\n"), [], False, 0
+for ln in lineas:
+    if clave in ln:
+        sacando, saque = True, saque + 1
+        continue
+    if sacando:
+        if ln.startswith("        "):     # las líneas del motivo, indentadas
+            continue
+        sacando = False
+    quedan.append(ln)
+assert saque == 1, "el fixture no encontró la clave %r en NO_SON_MEDICION" % clave
+t = a + ini + "\n".join(quedan) + "\n}" + resto
+anc = "MEDICIONES_DECLARADAS = {\n"
+assert t.count(anc) == 1
+t = t.replace(anc, anc + '    "%s",\n' % clave, 1)
+io.open(p, "w", encoding="utf-8", newline="\n").write(t)
+MOVEREOF
+
+echo "── Caso 8: CONTROL POSITIVO de «MEDICIÓN QUE NO MIDE» (exit 9) — el MAL clasificado"
+# `sin_clasificar` (caso 7) caza al que nadie clasificó. Éste caza al que está clasificado MAL, que
+# es el único camino por el que un documento analítico entra al corpus como medición. Ya demostró
+# que dispara en la vida real: en su primera corrida cazó una clave que yo había escrito adivinando
+# el basename de una tabla que lo mostraba truncado.
+cp "$CONTADOR" "$FAKE/scripts/evidencia/rol.py"
+if "$PY" "$TMP/mover.py" "$FAKE/scripts/evidencia/rol.py" "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md" 2>"$TMP/mover9.err"; then
+  if "$PY" "$FAKE/scripts/evidencia/rol.py" --json > /dev/null 2> "$TMP/rol.err"; then
+    fail "el gate NO caza un analítico declarado como medición: salió VERDE"
+  elif grep -q "MEDICION QUE NO MIDE" "$TMP/rol.err"; then
+    ok "un analítico declarado medición rompe el gate, por el motivo correcto (exit 9)"
+  else
+    fail "rompió por otra razón: $(head -2 "$TMP/rol.err" | tr '\n' ' ')"
+  fi
+else
+  fail "el fixture del caso 8 no pudo mover la clave: $(head -1 "$TMP/mover9.err")"
+fi
+
+echo "── Caso 9: CONTROL POSITIVO de «MEDICIÓN QUE NO SE LEE» (exit 10) — rol vs lectura"
+# El predicado de «no mide» (cero veredictos cerrados) es EXACTAMENTE el síntoma del bug del emoji
+# en `limpiar()`. Sin partirlo, el gate acusaba de «no mide» a documentos que medían y no se leían —
+# un gate cuyo predicado es el síntoma de un bug abierto convierte el bug en veredicto de rol.
+# Este caso fija la separación: 0 cerrados PERO con tokens del vocabulario en el texto = LECTURA.
+cp "$CONTADOR" "$FAKE/scripts/evidencia/lectura.py"
+if "$PY" "$TMP/mover.py" "$FAKE/scripts/evidencia/lectura.py" "2026-09-29_cierre_auditoria-a-planificacion_verificabilidad-de-los-38-ninguno-midio-desktop-y-el-contador-es-ciego-a-28.md" 2>"$TMP/mover10.err"; then
+  if "$PY" "$FAKE/scripts/evidencia/lectura.py" --json > /dev/null 2> "$TMP/lect.err"; then
+    fail "el gate NO distingue «no se lee»: salió VERDE con 0 cerrados y vocabulario en el texto"
+  elif grep -q "MEDICION QUE NO SE LEE" "$TMP/lect.err"; then
+    ok "0 cerrados + vocabulario en el texto sale por LECTURA, no por ROL (exit 10)"
+  else
+    fail "rompió por otra razón: $(head -2 "$TMP/lect.err" | tr '\n' ' ')"
+  fi
+else
+  fail "el fixture del caso 9 no pudo mover la clave: $(head -1 "$TMP/mover10.err")"
+fi
+
+echo "── Caso 10: CONTROL POSITIVO del CONTRASTE id→veredictos (exit 11) — el falso COHERENTE"
+# Es el único control que caza un COHERENTE falso, y un COHERENTE falso desactiva trabajo sin dejar
+# rastro (un DESVÍO falso cuesta una recaptura y se descubre). Si el ratchet se rompe, el contraste
+# se degrada a una línea de reporte que nadie atiende.
+cp "$CONTADOR" "$FAKE/scripts/evidencia/confl.py"
+"$PY" - "$FAKE/scripts/evidencia/confl.py" <<'PYEOF'
 import io, sys
 p = sys.argv[1]
 lineas = io.open(p, encoding="utf-8").read().split("\n")
-# Línea por línea, NO regex multilínea: un `\n` en un literal de regex dentro de un heredoc se
-# expande a salto real y parte el string. Es lo que rompió el caso 7 la primera vez.
-dentro, salida, saltadas = False, [], 0
+salida, saque = [], 0
 for ln in lineas:
-    if ln.startswith("MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {"):
-        dentro = True
-        salida.append(ln)
+    if ln.strip().startswith('"card": HIPOTESIS_MATRIZ_2209'):
+        saque += 1
         continue
-    if dentro:
-        if ln.startswith("}"):
-            dentro = False
-        elif "BLOQUE-A" in ln or (saltadas and ln.startswith("        ")):
-            # se saca la entrada de BLOQUE-A: su clave y las líneas de motivo que la siguen
-            saltadas += 1
-            continue
-        elif saltadas and not ln.startswith("        "):
-            saltadas = 0
     salida.append(ln)
-assert saltadas or any("BLOQUE-A" not in l for l in salida), "no pude sacar la entrada"
-nuevo = "\n".join(salida)
-assert "BLOQUE-A-6-de-54" not in nuevo.split("MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {", 1)[1].split("\n}", 1)[0], \
-    "la entrada sigue en el dict: el fixture no fabricó el caso"
-io.open(p, "w", encoding="utf-8", newline="\n").write(nuevo)
+assert saque == 1, "el fixture no encontró la entrada de `card` en CONFLICTOS_CONOCIDOS"
+io.open(p, "w", encoding="utf-8", newline="\n").write("\n".join(salida))
 PYEOF
 if [ "$?" != "0" ]; then
-  fail "no pude fabricar la versión sin la excepción: el gate queda sin control positivo"
-elif "$PY" "$FAKE/scripts/evidencia/mudo.py" --json > /dev/null 2> "$TMP/mudo.err"; then
-  fail "el gate NO caza una medición declarada que aporta 0 veredictos cerrados: salió VERDE"
+  fail "el fixture del caso 10 no pudo sacar el conflicto declarado"
+elif "$PY" "$FAKE/scripts/evidencia/confl.py" --json > /dev/null 2> "$TMP/confl.err"; then
+  fail "el ratchet de conflictos NO caza uno sin declarar: salió VERDE"
 else
-  if grep -q "MEDICION QUE NO MIDE" "$TMP/mudo.err"; then
-    ok "una medición declarada sin veredictos cerrados rompe el gate, por el motivo correcto"
+  if grep -q "CONFLICTO NUEVO" "$TMP/confl.err"; then
+    ok "un conflicto de veredictos sin declarar rompe el gate (exit 11)"
   else
-    fail "rompió por otra razón: $(head -2 "$TMP/mudo.err" | tr '\n' ' ')"
+    fail "rompió por otra razón: $(head -2 "$TMP/confl.err" | tr '\n' ' ')"
   fi
 fi
 

@@ -61,3 +61,26 @@ mismo acababa de escribir *sabiendo* de esa clase de trampa.
 Hermana de [[vacio-no-es-hallazgo-correr-el-control]] (allá el control positivo prueba que el
 instrumento *ve*; acá el diferencial prueba que además *discrimina*) y de
 [[el-instrumento-tambien-CONDENA-no-solo-absuelve]].
+
+## Reincidencia del 2026-09-29: tres veces en un día, y la forma generalizada
+
+Tener esta entrada escrita **no alcanzó**. Reincidí tres veces el mismo día, y las tres con un disfraz
+distinto — por eso vale generalizar la regla en vez de sumar casos:
+
+1. Un control negativo buscaba `docs = {"lote_A"` en el texto para probar que el patrón ya no estaba…
+   y **el comentario que documentaba el cambio contenía la cadena**. Verde por su propia prosa.
+2. Un check de idempotencia preguntaba `if REAL in t` — y el basename **ya vivía en otra lista del
+   mismo archivo**, por un motivo legítimo y distinto. Dio «ya aplicado» sin haber aplicado nada.
+3. Una clave de excepción la escribí **adivinando el basename de una tabla que lo mostraba truncado
+   a 66 chars**. Ésa la cazó el gate nuevo en su primera corrida (ver
+   [[el-guard-que-caza-a-su-propio-autor]]).
+
+**La forma generalizada:** preguntar «¿aparece esta cadena?» casi nunca es la pregunta. La pregunta es
+**«¿aparece en el ROL que me importa?»** — como código y no como comentario, dentro de *este* dict y no
+de otro, escrito y no citado. El match por presencia contesta sí por el motivo equivocado, y contesta
+rápido, que es lo que lo hace pasar.
+
+Operativamente: acotá el sujeto **antes** de buscar (partir el archivo por el bloque que te interesa,
+descartar comentarios, exigir el indent del contexto), y el ancla llevá el salto de línea y la sangría
+de su rol (`'\n    docs = {'`, no `'docs = {'`). Ídem
+[[contar-un-simbolo-no-dice-en-que-rol-aparece]] y [[el-instrumento-respondio-sobre-otro-sujeto]].

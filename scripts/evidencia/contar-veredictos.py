@@ -95,6 +95,7 @@ RETIRADOS_DECLARADOS = {"plan"}
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    "2026-09-28_cierre_auditoria-a-planificacion_lado-proto-de-factura-y-comousar-medido.md",
     # BL-Q3 v2 — los dos lotes que este script ya miraba
     "2026-09-28_cierre_frontend1-a-planificacion_BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md",
     "2026-09-28_cierre_frontend2-a-planificacion_BL-Q3-v2-lote-B-11-de-11-completo.md",
@@ -112,16 +113,23 @@ MEDICIONES_DECLARADAS = {
     "2026-09-22_dato_frontend2-a-planificacion_matriz-web-re-medida.md",
     "2026-09-22_dato_frontend2-a-planificacion_BL-Q3-web-barrido-pwa-vs-prototipo.md",
     # auditoria midiendo (no dictaminando)
-    "2026-09-23_cierre_auditoria-a-planificacion_BLOQUE-A-6-de-54-y-que-son-realmente-las-29-filas.md",
     "2026-09-29_cierre_auditoria-a-planificacion_poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia-de-escritorio.md",
-    "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md",
-    "2026-09-21_dato_planificacion-a-frontend1_filas-nuevas-volver-e-ingresar-mobile.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    "2026-09-28_contrato_planificacion-a-todos_BL-Q3-v2-la-unidad-de-medicion-es-id-mas-camino.md":
+        "NORMATIVO y es MIO: DEFINE la unidad de medicion y el vocabulario. Su tabla es `| clasificacion | ids |` — taxonomia con conteos, no pantallas medidas. Es el candidato mas peligroso del corpus: un documento que DEFINE el vocabulario contiene todos sus tokens (16 COHERENTE, 7 DESVIO, 11 NO_MEDIBLE), asi que clasificado como medicion inyectaria 28 senales falsas. Lo destapo el gate al arreglarse el parser, no yo.",
+    "2026-09-29_cierre_auditoria-a-planificacion_verificabilidad-de-los-38-ninguno-midio-desktop-y-el-contador-es-ciego-a-28.md":
+        "Razona SOBRE el instrumento y sobre los documentos, no sobre pantallas: su tabla es `| lote | sha256 | mtime |`. Los veredictos que contiene son citas de los lotes ajenos.",
+    "2026-09-23_cierre_auditoria-a-planificacion_BLOQUE-A-6-de-54-y-que-son-realmente-las-29-filas.md":
+        "RE-EVALUACION, no medicion: su tabla es `| id | COHERENTE | REQUIERE_TRIAGE -- no se sostiene |`, donde la col2 es el veredicto de FE2 CITADO y la col3 el juicio de auditoria sobre el. Confirmado analitico por auditoria 2026-09-29. Excluido ANTES del fix de `limpiar()` a proposito: con el parser arreglado, esos COHERENTE citados entrarian como mediciones propias suyas.",
+    "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md":
+        "Delta de INVENTARIO del prototipo, no de pantallas: su tabla es `| Que | Al 16/09 | Al 21/09 |` y sus «ids» son conteos. Confirmado por contenido (auditoria 2026-09-29). Aporta 0 exclusivos.",
+    "2026-09-21_dato_planificacion-a-frontend1_filas-nuevas-volver-e-ingresar-mobile.md":
+        "ENCARGO mio a FE1, no medicion: nombra ids para que los midan, con vocabulario propio (AUSENTE/PARCIAL). Verificado que no se pierde nada: `volver`/`ingresar`/`ingresar-error` tienen 3 aportantes cada uno.",
     "2026-09-29_cierre_auditoria-a-planificacion_remedicion-50-de-54-confirmada-y-tu-control-a-premia-al-vector-de-ataque.md":
         "Razona SOBRE el instrumento: cita veredictos y cifras de otros documentos para arbitrar el contador. No compara ninguna pantalla contra el prototipo y ningun id trae superficie, dimension ni `medido_contra` propio. Motivo escrito por auditoria, que se nego a auto-clasificarse.",
     "2026-09-28_dictamen_auditoria-a-planificacion_el-agregado-NO-alcanza-y-faltan-4-acciones-no-remedir.md":
@@ -178,6 +186,15 @@ def limpiar(s):
     que la próxima forma decorada no necesite un patrón nuevo.
     NO se usa para detectar el SUJETO: ahí los backticks son justamente la señal."""
     s = s.replace("`", "").replace("*", "")
+    # 🔴 Y la DECORACIÓN INICIAL no alfabética — el emoji-semáforo, sobre todo. El brazo `tabla`
+    # matchea con `re.match`, que está ANCLADO: `🔴 **DESVÍO**` se limpiaba a `🔴 DESVÍO` y el
+    # emoji bloqueaba el ancla, perdiendo la medición sin dar hueco. Medido por auditoría el
+    # 2026-09-29: **9 filas** de 199, en documentos de FE1, FE2 y auditoría.
+    # Es la MISMA clase que este docstring ya describe («cada patrón fallaba por UN carácter»): el
+    # fix de entonces agregó el backtick y el asterisco, y dejó el tercer carácter afuera. Por eso
+    # esto no saca "el emoji" sino **todo lo que no sea palabra al inicio**: enumerar decoraciones
+    # es lo que garantiza que la cuarta vuelva a pasar.
+    s = re.sub(r"^[^\wÁÉÍÓÚÑáéíóúñ]+", "", s)
     return re.sub(r"(?<=[A-ZÁÉÍÓÚÑ_\-])/[a-záéíóúñ\-]+", "", s)
 # Una fila PARTIDA por dimensión (§14.2). La etiqueta viene en BACKTICKS en el doc real
 # (`` `contenido`: COHERENTE · `componente`: FUERA-DE-REFERENCIA ``) y el `\s*` no matchea un
@@ -374,20 +391,13 @@ def ubicar(patron):
 # clasificacion es FALSA y envenena el corpus del que lo lea manana. Se declaran con motivo, no se
 # silencian con un umbral.
 MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {
-    "2026-09-23_cierre_auditoria-a-planificacion_BLOQUE-A-6-de-54-y-que-son-realmente-las-29-filas.md":
-        "Analitico, no medicion: auditoria lo declara «misma clase que mi dictamen». Sus 6 veredictos "
-        "son vocabulario de triage (CONFIRMADO/REQUIERE_TRIAGE), no del criterio 3. Queda declarado "
-        "aca en vez de moverse a NO_SON_MEDICION porque el piso del ratchet lo cuenta como medicion "
-        "desde el 23/09 y moverlo sin que auditoria lo confirme romperia `perdidos`. [POR VERIFICAR]",
-    "2026-09-29_cierre_auditoria-a-planificacion_poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia-de-escritorio.md":
-        "Mide poblacion A, pero sus veredictos usan vocabulario de triage; 0 cerrados. Los ids que "
-        "aporta ya estan medidos en otros documentos, asi que no mueve la cifra. [POR VERIFICAR]",
-    "2026-09-21_dato_planificacion-a-frontend1_filas-nuevas-volver-e-ingresar-mobile.md":
-        "Es mio y es un ENCARGO, no una medicion: nombra 3 ids para que FE1 los mida. Aporta 0 "
-        "cerrados, que es lo correcto. Deberia moverse a NO_SON_MEDICION en el proximo barrido.",
-    "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md":
-        "Hallazgo sobre el PADRON (51 vs 54 entradas del prototipo), no sobre pantallas medidas. "
-        "Auditoria verifico que aporta 0 cerrados y 0 exclusivos.",
+    # VACIO A PROPOSITO, y eso es el resultado, no un pendiente. Las 4 entradas que vivieron aca
+    # unas horas eran: 3 documentos analiticos (ya movidos a NO_SON_MEDICION, donde corresponde) y
+    # `poblacion-A-medida`, que NO era un rol — mide 3 ids con `DESVIO`, vocabulario cerrado, y su
+    # cero venia del bug del emoji en `limpiar()`. Declararla excepcion habria firmado un bug del
+    # parser como decision de clasificacion, que es el error que este gate tenia que evitar.
+    # Si vuelve a hacer falta una entrada aca, la pregunta primero es si el documento NO MIDE o si
+    # NO SE LEE: el exit 10 las separa.
 }
 
 
@@ -403,7 +413,7 @@ def descubrir_documentos(ids):
 
     Devuelve (docs, descartados) con docs = {basename: Path} de las mediciones vigentes.
     """
-    candidatos, descartados, cobertura, cerrados_por_doc = {}, {}, {}, {}
+    candidatos, descartados, cobertura, cerrados_por_doc, vocab_en_texto = {}, {}, {}, {}, {}
     for base in ("abierto", "en-curso", "cerrado"):
         raiz = COORD / base
         if not raiz.exists():
@@ -423,6 +433,13 @@ def descubrir_documentos(ids):
                 # un umbral sin control positivo.
                 cobertura[p.name] = len(ids_del_criterio(con, ids))
                 cerrados_por_doc[p.name] = len(ids_del_criterio_cerrados(con, ids))
+                # Tokens del vocabulario presentes en el TEXTO, atribuidos o no: es lo que distingue
+                # «no mide» (no hay veredictos) de «no se lee» (hay y el parser no los ve).
+                vocab_en_texto[p.name] = sum(
+                    len(re.findall(r"(?<![A-ZÁÉÍÓÚÑ_-])"
+                                   + re.escape(v)
+                                   + r"(?![A-ZÁÉÍÓÚÑ_-])", txt))
+                    for v in VOCABULARIO)
                 if p.name in NO_SON_MEDICION:
                     descartados[p.name] = NO_SON_MEDICION[p.name]
                 else:
@@ -450,8 +467,32 @@ def descubrir_documentos(ids):
 
     # 🔴 EL GATE QUE FALTABA: `sin_clasificar` caza al NO clasificado; esto caza al MAL clasificado,
     # que es el unico camino por el que un documento analitico entra al corpus como medicion.
+    # 🔴 El predicado se PARTE. «0 ids cerrados» era exactamente el sintoma del bug del emoji, asi
+    # que el gate acusaba de «no mide» a documentos que median y no se leian — un gate cuyo predicado
+    # es el sintoma de un bug abierto convierte el bug en veredicto de rol. Y es la clase que ya
+    # esta escrita: dos causas distintas comparten el codigo de salida y el mensaje elige una.
+    #   · 0 cerrados Y ningun token del vocabulario en el texto  -> ROL     (exit 9)
+    #   · 0 cerrados PERO hay tokens del vocabulario en el texto -> LECTURA (exit 10)
+    ilegibles = sorted(n for n in candidatos
+                       if cerrados_por_doc.get(n, 0) == 0
+                       and vocab_en_texto.get(n, 0) > 0
+                       and n not in MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA)
+    if ilegibles:
+        print(f"DOCUMENTOS: MEDICION QUE NO SE LEE — {len(ilegibles)} documento(s) declarado(s) como "
+              f"MEDICION aportan CERO ids cerrados PERO tienen tokens del vocabulario en el texto:",
+              file=sys.stderr)
+        for n in ilegibles:
+            print(f"  · {n}  ({vocab_en_texto[n]} token(s) del vocabulario en el texto, 0 "
+                  f"atribuido(s) a un id)", file=sys.stderr)
+        print("Esto NO es un rol: es un defecto de LECTURA. El documento escribio veredictos del "
+              "vocabulario y el parser no los atribuyo a ningun sujeto. Arreglar el parser, no "
+              "reclasificar el documento — reclasificarlo convierte un bug en veredicto de rol.",
+              file=sys.stderr)
+        sys.exit(10)
+
     mudos = sorted(n for n in candidatos
                    if cerrados_por_doc.get(n, 0) == 0
+                   and vocab_en_texto.get(n, 0) == 0
                    and n not in MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA)
     if mudos:
         print(f"DOCUMENTOS: MEDICION QUE NO MIDE — {len(mudos)} documento(s) declarado(s) como "
@@ -539,14 +580,23 @@ def veredictos_de(texto, armas=ARMAS):
     # es la CABECERA si la línea siguiente es el separador `|---|`. Sin tabla en curso queda True,
     # porque suprimir por defecto convertiría este gate en «un instrumento que no mira nunca falla».
     cabecera_mide = True
+    col_veredicto = None        # el índice que la cabecera identifica y que antes se tiraba
     for n, linea in enumerate(lineas, 1):
         if es_separador(linea):
             continue                             # el separador no es fila ni cabecera
         celdas = fila_de_tabla(linea)
         if celdas is None:
             cabecera_mide = True                 # fuera de tabla, el estado no se arrastra
+            col_veredicto = None
         elif n < len(lineas) and es_separador(lineas[n]):
             cabecera_mide = "veredicto" in " ".join(celdas).lower()
+            # 🔴 La cabecera ya sabía CUÁL es la columna del veredicto y el índice se tiraba, así que
+            # el brazo `tabla` tenía que adivinar con `reversed(celdas)` — y cualquier columna a la
+            # derecha lo tapaba (6 filas de 199, medidas por auditoría). Guardar el índice es la raíz;
+            # invertir el barrido habría sido el parche espejo, y rompe los documentos donde el
+            # veredicto SÍ está a la derecha.
+            col_veredicto = next((i for i, c in enumerate(celdas)
+                                  if "veredicto" in c.lower()), None)
             continue                             # una cabecera no es una medición
 
         # Todos los brazos buscan sobre la línea SIN decoración: ahí murieron `tabla-partida` (H-A)
@@ -590,13 +640,40 @@ def veredictos_de(texto, armas=ARMAS):
         if celdas is None:
             continue
         antes = len(hits)
-        for c in (limpiar(x) for x in reversed(celdas)):
-            if "tabla" in armas:
-                m2 = re.match(r"\*{0,2}([A-ZÁÉÍÓÚÑ_\-]{3,})", c)
+        if "tabla" in armas:
+            # Orden de preferencia, de la señal más fuerte a la más débil:
+            #   1. la celda de la columna que la CABECERA declara como veredicto
+            #   2. cualquier celda cuyo token esté en el VOCABULARIO CERRADO
+            #   3. la primera celda con forma de veredicto, de derecha a izquierda (el viejo)
+            # El paso 2 existe porque un token desconocido (`SIN_REFERENCIA`) no debe ganarle a uno
+            # interpretable por estar más a la derecha: eso es lo que rellenaba el hueco con un
+            # veredicto falso y enmascaraba al bug del emoji.
+            def _tok(cel):
+                m2 = re.match(r"\*{0,2}([A-ZÁÉÍÓÚÑ_\-]{3,})", limpiar(cel))
                 if m2 and m2.group(1) not in ("N/A", "SHA", "ID"):
-                    v, corr = normalizar(m2.group(1), c)
-                    hits.append((n, v, "tabla", corr))
-                    break
+                    return m2.group(1)
+                return None
+
+            elegida = None
+            if col_veredicto is not None and col_veredicto < len(celdas):
+                t = _tok(celdas[col_veredicto])
+                if t:
+                    elegida = (t, celdas[col_veredicto])
+            if elegida is None:
+                for cel in celdas:
+                    t = _tok(cel)
+                    if t and t in VOCABULARIO:
+                        elegida = (t, cel)
+                        break
+            if elegida is None:
+                for cel in reversed(celdas):
+                    t = _tok(cel)
+                    if t:
+                        elegida = (t, cel)
+                        break
+            if elegida is not None:
+                v, corr = normalizar(elegida[0], limpiar(elegida[1]))
+                hits.append((n, v, "tabla", corr))
         if len(hits) == antes and cabecera_mide:
             # Un HUECO sólo tiene sentido en una tabla que DECLARA columna de veredicto. Sin este
             # gate, las 16 filas de la tabla `medido_contra` y los encabezados volvían como huecos:
@@ -706,6 +783,113 @@ def ids_del_criterio_cerrados(con, ids):
     return sorted(buenos & set(ids))
 
 
+def contraste_de_veredictos(res):
+    """({id: {veredicto: [documentos]}} en conflicto, [ids NO declarados]).
+
+    Separada de `main` porque el ABORT tiene que correr antes de la bifurcación de `--json` y la
+    TABLA después: mezclarlas es lo que dejó el gate inerte en el único camino que se usa.
+    """
+    por_id = {}
+    for nombre, d in res["lotes"].items():
+        for i, vs in d.get("veredictos_por_id", {}).items():
+            for v in vs:
+                por_id.setdefault(i, {}).setdefault(v, []).append(nombre)
+    conflictos = {}
+    for i, mapa in por_id.items():
+        # `v1, v2` y no `a, b`: en `main`, `a`/`b` son los conteos de los lotes que se imprimen más
+        # abajo («lote A={a}, lote B={b}»). Con el bloque al final daba igual; al subirlo, el
+        # desempaquetado los pisaba con dos strings y el reporte mentía la cifra de control.
+        for v1, v2 in INCOMPATIBLES:
+            if v1 in mapa and v2 in mapa:
+                conflictos[i] = mapa
+    return conflictos, sorted(set(conflictos) - set(CONFLICTOS_CONOCIDOS))
+
+
+def veredictos_por_id(con, ids):
+    """{id del padron: [veredictos CERRADOS, ordenados]}. Solo vocabulario cerrado: un token que el
+    parser no interpreta no puede sostener ni un acuerdo ni un conflicto."""
+    salida = {}
+    for clave, vs in con.items():
+        i = clave.split("\u00b7")[0]
+        if i not in ids:
+            continue
+        buenos = sorted({v for v in vs if v in VOCABULARIO})
+        if buenos:
+            salida.setdefault(i, [])
+            salida[i] = sorted(set(salida[i]) | set(buenos))
+    return salida
+
+
+# Los pares de veredictos que NO pueden ser ciertos los dos sobre la misma pantalla contra el mismo
+# proto. `NO_MEDIBLE` y `FUERA-DE-REFERENCIA` no entran: no afirman coincidencia ni desvio, dicen que
+# la comparacion no se puede hacer — chocar con ellos es una discusion de alcance, no de hecho.
+INCOMPATIBLES = (("COHERENTE", "DESVIO"), ("COHERENTE", "DESV\u00cdO"))
+
+# Ratchet de conflictos: los de hoy con su LECTURA; uno nuevo aborta. Un reporte que nadie tiene que
+# atender no es un control — es una linea que se scrollea.
+# Los 10 conflictos que destapo el contraste en su primera corrida NO son 10 causas: son UNA, y
+# declararlos con 10 motivos distintos habria escondido justo eso. Todos tienen la misma forma:
+#
+#     `matriz-web-re-medida` (FE1, 2026-09-22, superficie WEB)   dice COHERENTE
+#     las mediciones del 28-29/09 (lote A, poblacion-C, B1)      dicen DESVIO
+#
+# Mismo id, mismo camino (`unico` en los dos lados), misma superficie web en varios de ellos. No es
+# un desacuerdo puntual: es un documento entero cuyos COHERENTE choca sistematicamente con lo que se
+# midio una semana despues.
+#
+# DOS lecturas posibles y NO las dirimo yo (requiere re-medir, y medir no es de esta sesion):
+#   (a) SUCESION legitima: las pantallas cambiaron entre el 22 y el 29, y el veredicto viejo esta
+#       superado. Entonces el contraste esta viendo historia, no contradiccion — y lo que falta es
+#       que el instrumento sepa que un veredicto puede caducar.
+#   (b) CONTAMINACION de regimen: la matriz del 22/09 se midio en un ancho donde el prototipo NO
+#       refluye (`prototipo/index.html:63` lo dibuja como telefono de 390px), asi que comparo el
+#       layout de escritorio de la app contra el proto mobile enmarcado. Es el mismo defecto que ya
+#       contamino 11 veredictos (C3-10), apareciendo ahora desde el lado de los COHERENTE.
+#
+# La (b) es la que importa: un DESVIO falso cuesta una recaptura y se descubre; un COHERENTE falso
+# **desactiva trabajo** y no deja rastro. Si la matriz del 22/09 esta contaminada, hay 10 pantallas
+# marcadas «no hay nada que hacer» que si lo tienen.
+#
+# DUENO: auditoria (dirimir) + FE1 (su documento). TEST QUE FALSA LA (b): re-medir uno de los 10 a
+# 390px contra `54fac3ea`; si sale DESVIO, la matriz del 22/09 esta contaminada y sus COHERENTE se
+# retiran en bloque.
+#
+# 🔓 La cifra NO depende de como se resuelva: un id EN CONFLICTO tiene, por definicion, veredicto en
+# >=2 documentos, asi que ninguno de los 10 se apoya solo en la matriz del 22/09. Los 50 de 54
+# aguantan cualquiera de las dos lecturas. Eso es lo que permite declararlos sin congelar el frente.
+#
+# LIMITACION CONOCIDA del contraste: la clave es `id·camino` y **no lleva la superficie**, asi
+# que no puede distinguir por si mismo un conflicto real de una comparacion web-vs-mobile. Para los
+# 10 de hoy se verifico a mano que el camino coincide; para los proximos, hay que mirarlo.
+HIPOTESIS_MATRIZ_2209 = ("[POR VERIFICAR] Choque sistematico matriz-web-22/09 (COHERENTE) vs "
+                         "mediciones 28-29/09 (DESVIO). Una causa, no diez. Dueno: auditoria + FE1. "
+                         "Ver el comentario de arriba: lecturas (a) sucesion / (b) contaminacion de "
+                         "regimen, y el test que falsa la (b).")
+
+CONFLICTOS_CONOCIDOS = {
+    "card": HIPOTESIS_MATRIZ_2209,
+    "card-cliente": HIPOTESIS_MATRIZ_2209,
+    "card-cobro": HIPOTESIS_MATRIZ_2209,
+    "card-presu": HIPOTESIS_MATRIZ_2209,
+    "cuenta": HIPOTESIS_MATRIZ_2209,
+    "detalle": HIPOTESIS_MATRIZ_2209,
+    "esc": HIPOTESIS_MATRIZ_2209,
+    "factura": HIPOTESIS_MATRIZ_2209,
+    "ingresar": HIPOTESIS_MATRIZ_2209,
+    "preg": HIPOTESIS_MATRIZ_2209,
+    "bi": "COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
+          "DESVIO (lote A, 28/09). Auditoria ya resolvio que su DESVIO era FALSO POSITIVO del rail, "
+          "y lo retiro el 2026-09-29 — el conflicto ya esta dirimido y a favor del COHERENTE. "
+          "Se deja declarado porque es el caso que motivo este control.",
+    "soporte": "COHERENTE (FE1 web 22/09) vs DESVIO (poblacion-A, auditoria 29/09). Puede ser "
+               "conflicto REAL o de PREGUNTA: la columna `Resolucion` de FE1 dice «H-A4-4 confirmado "
+               "desplegado» — mide EL HALLAZGO RESUELTO; auditoria mide COINCIDE CON EL PROTO. Dos "
+               "preguntas distintas sobre el mismo id. [POR VERIFICAR]",
+    "comousar": "Misma forma que `soporte`: COHERENTE (FE1 web 22/09) vs DESVIO (auditoria 29/09), "
+                "y la sospecha es la misma — hallazgo-resuelto vs coincide-con-proto. [POR VERIFICAR]",
+}
+
+
 def medir(txt, ids, armas=ARMAS):
     """`con` = mediciones con veredicto legible · `sin` = HUECOS CON NOMBRE (`id·camino`).
 
@@ -811,6 +995,10 @@ def main():
             "ids_del_criterio_con_veredicto_lista": ids_con_veredicto,
             "ids_del_criterio_con_veredicto_cerrado": len(ids_del_criterio_cerrados(con, ids)),
             "ids_del_criterio_con_veredicto_cerrado_lista": ids_del_criterio_cerrados(con, ids),
+            # El mapa id -> veredictos CERRADOS. Sin el, `detalle` lista veredictos por linea sin
+            # sujeto, asi que no se podia cruzar el mismo id entre documentos — y ese cruce es lo
+            # unico que caza un COHERENTE falso.
+            "veredictos_por_id": veredictos_por_id(con, ids),
             "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},
             "sujetos_nombrados_sin_veredicto": sin,
             "ocurrencias_de_veredicto": len([h for h in hits if h[2] != "hueco"]),
@@ -929,6 +1117,21 @@ def main():
                   f"el defecto inerte de vuelta.", file=sys.stderr)
             sys.exit(7)
 
+    # ── CONTRASTE id -> veredictos: el único control que caza un COHERENTE falso ──────────────
+    # 🔴 Esto vivía DESPUÉS del `return` de `--json`, o sea INERTE en el único camino que alguien
+    # llama (la suite entera usa `--json`). Lo cazó su propio control positivo saliendo verde. El
+    # alcance de un gate no puede depender del FORMATO DE SALIDA: la detección y el abort son del
+    # gate, la tabla legible es del reporte. Espejo de `el-test-que-no-usa-el-camino-de-produccion`:
+    # acá el test sí usaba el camino real y el GATE era el que estaba en el otro.
+    conflictos, nuevos = contraste_de_veredictos(res)
+    if nuevos:
+        print(f"CONTRASTE: CONFLICTO NUEVO — {len(nuevos)} id(s) con veredictos incompatibles que "
+              f"nadie declaro: {nuevos}. Dos documentos afirman cosas opuestas sobre la misma "
+              f"pantalla. Dirimilo y declaralo en CONFLICTOS_CONOCIDOS con la lectura: es el unico "
+              f"control que caza un COHERENTE falso, y un COHERENTE falso desactiva trabajo sin "
+              f"dejar rastro.", file=sys.stderr)
+        sys.exit(11)
+
     if "--json" in sys.argv:
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return
@@ -969,6 +1172,17 @@ def main():
     union = sorted({i for d in res["lotes"].values()
                     for i in d["ids_del_criterio_con_veredicto_lista"]})
     ocurrencias = sum(d["ocurrencias_de_veredicto"] for d in res["lotes"].values())
+    # La TABLA del contraste; la detección y el abort viven arriba, antes de la bifurcación de
+    # `--json` (ver `contraste_de_veredictos`). Acá sólo se muestra, así que `conflictos` siempre
+    # está calculado y `nuevos` siempre está vacío: si no lo estuviera, no se habría llegado.
+    if conflictos:
+        print(f"⚠️  CONTRASTE: {len(conflictos)} id(s) con veredictos INCOMPATIBLES entre "
+              f"documentos — {len(nuevos)} sin declarar")
+        for i in sorted(conflictos):
+            marca = "<<< NUEVO" if i in nuevos else "declarado"
+            print(f"   {i:<14} {marca}")
+            for v, docs_v in sorted(conflictos[i].items()):
+                print(f"      {v:<22} <- {', '.join(n[:52] for n in sorted(docs_v))}")
     print(f"CORPUS: {len(res['lotes'])} documentos medidos · {len(descartados)} descartados con motivo")
     # La cobertura se REPORTA y no se usa como gate: medida sobre el corpus real, el techo de una
     # medicion y el de un descartado EMPATAN (29/54 los dos), asi que ningun umbral los separa. Queda
