@@ -50,7 +50,7 @@ el parser no esconda sujetos; no resuelve que el universo los tenga.
 
 Y el número se cita con las dos cifras: **«21 de 21 declaradas» es cierto y suena completo, pero lo que
 manda es «26 de 54 del universo»**. El mismo defecto que este script vino a matar
-([[contar-un-simbolo-no-dice-en-que-rol-aparece]] · [[un-vacio-del-propio-instrumento-no-es-hallazgo]]).
+([[contar-un-simbolo-no-dice-en-que-rol-aparece]] · [[vacio-no-es-hallazgo-correr-el-control]]).
 
 ## El corolario: un sujeto RETIRADO también es deriva del universo
 

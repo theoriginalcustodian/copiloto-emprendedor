@@ -200,4 +200,4 @@ mirar. Un barrido tiene que poder decir **cuántos** miró, no sólo cuántos en
 contrato>.md`). Si el contrato ya es un `urgente_` compuesto, el nombre se anida otra vez y crece sin
 techo — los 4 casos son exactamente eso, con «contrato-sin-tomar» dos veces en el mismo nombre. Un
 generador de nombres sin límite de longitud fabrica archivos que después nadie puede leer.
-Ver [[un-vacio-del-propio-instrumento-no-es-hallazgo]] · [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]].
+Ver [[vacio-no-es-hallazgo-correr-el-control]] · [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]].

@@ -16,6 +16,7 @@ Sale 1 si alguna medida falla — sirve como gate.
 from __future__ import annotations
 
 import argparse
+import difflib
 import re
 import sys
 from difflib import SequenceMatcher
@@ -39,14 +40,30 @@ WIKILINK = re.compile(r"\[\[([A-Za-z0-9._-]+)\]\]")
 DESCRIPCION = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
 
 
+BLOQUE_CODIGO = re.compile(r"```.*?```", re.S)
+CODIGO_INLINE = re.compile(r"`[^`\n]*`")
+
+
+def sin_codigo(texto: str) -> str:
+    """Saca bloques y código inline: lo que está en backticks es SINTAXIS citada, no una referencia.
+
+    Sin esto el control reporta los ejemplos que la propia memoria usa para explicarse. Medido:
+    `[[wikilink]]` y `[[links]]` en el-indice-truncado-fabrica-duplicados.md eran 2 de los 11
+    «rotos» -- y un guard que grita en el caso normal se desarma solo, así que reportarlos habría
+    costado más que el agujero que cierra.
+    """
+    return CODIGO_INLINE.sub(" ", BLOQUE_CODIGO.sub(" ", texto))
+
+
 def referencias(texto: str) -> set[str]:
     """Nombres de archivo referenciados, por link markdown Y por wikilink.
 
     Mirar sólo uno de los dos da falsos: la 1ª versión de este control reportó 25
     huérfanas donde había 24.
     """
-    nombres = set(LINK_MD.findall(texto))
-    nombres |= {f"{w}.md" for w in WIKILINK.findall(texto)}
+    limpio = sin_codigo(texto)
+    nombres = set(LINK_MD.findall(limpio))
+    nombres |= {f"{w}.md" for w in WIKILINK.findall(limpio)}
     return nombres
 
 
@@ -86,6 +103,15 @@ def main() -> int:
 
     topicos = sorted(f for f in MEM.glob("*.md") if f.name not in ("MEMORY.md", "HISTORIA.md"))
     fallas = []
+
+    # Referencias de TODOS los archivos (índice, historia y topics), con QUIÉN cita a cada destino.
+    # Separada de `refs` a propósito: ver el comentario del control 3.
+    citas: dict[str, list[str]] = {}
+    for f in [indice, historia, *topicos]:
+        if not f.exists():
+            continue
+        for destino in referencias(f.read_text(encoding="utf-8")):
+            citas.setdefault(destino, []).append(f.name)
 
     # --- 1. presupuesto (en BYTES) ---
     # ⚠️ Acá vivía `peso = len(texto_indice)` con el comentario «en CARACTERES: es lo que el harness
@@ -147,9 +173,25 @@ def main() -> int:
 
     # --- 3. inverso: el índice promete y no entrega ---
     existentes = {f.name for f in MEM.glob("*.md")}
-    rotos = sorted(r for r in refs if r not in existentes)
-    print(f"[{'OK ' if not rotos else 'MAL'}] links a archivos inexistentes: {len(rotos)}")
+    # ⚠️ El universo es `citas`, NO `refs`. Hasta 2026-09-30 esto leía `refs` -- o sea sólo lo que
+    # prometían el ÍNDICE y HISTORIA-- y los topic files se citan entre sí con ~1300 referencias que
+    # ningún control miraba. Medido ese día: **11 destinos rotos con el medidor en verde**, y 7 de
+    # los 11 por la misma causa (el wikilink escrito con el ARTÍCULO del gancho del índice: el
+    # gancho dice «Un instrumento que NO MIRA nunca falla» y el archivo es
+    # `instrumento-que-no-mira-nunca-falla`). Importa más que como higiene: IDXFORMATO va a
+    # renombrar ~150 archivos de memoria/, y sin este control el rename rompe los wikilinks EN
+    # SILENCIO con el veredicto en verde -- que es el modo de falla que este script existe para
+    # cerrar, entrando por la puerta de al lado.
+    rotos = sorted(r for r in citas if r not in existentes)
+    print(f"[{'OK ' if not rotos else 'MAL'}] links a archivos inexistentes: {len(rotos)} "
+          f"(sobre {len(citas)} destinos citados por {len(topicos) + 2} archivos)")
     for r in rotos:
+        # El candidato cercano no es un adorno: 7 de los 11 rotos del 2026-09-30 eran una variante
+        # de prefijo del slug real, y sin la sugerencia cada arreglo es una búsqueda a mano.
+        cerca = difflib.get_close_matches(r, existentes, n=1, cutoff=0.6)
+        quien = ", ".join(sorted(citas[r])[:3])
+        extra = f" — ¿quisiste decir {cerca[0]}?" if cerca else ""
+        print(f"      citado por {quien}{extra}")
         print(f"      roto: {r}")
     if rotos:
         fallas.append(f"{len(rotos)} links apuntan a archivos que no existen")

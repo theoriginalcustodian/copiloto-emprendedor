@@ -30,7 +30,7 @@ mientras backend logueaba otro (`e2e-device`) y el login no reemplazaba el token
 más un susto de "datos desaparecidos" que en realidad era cache cross-tenant sin scope
 ([[el-mensaje-niega-el-efecto-que-ya-ocurrio]] / fix en PR#79). La ambigüedad de "cuál usuario" es
 exactamente el margen donde los agentes alucinan y se pierde tiempo. Cero margen de error: UN usuario, fijo,
-documentado. [[device-fisico-exige-dueno-unico]] [[build-local-por-usb-es-la-metodologia-nunca-la-nube-para-iterar]]
+documentado. [[device-fisico-exige-dueno-unico]]
 
 **How to apply:** todo trabajo de device / E2E usa **exclusivamente** `e2e-device@copiloto.test`. El teléfono
 **siempre debe estar logueado en este usuario** — si muestra otro, se hace logout+login limpio a este (el

@@ -36,5 +36,5 @@ instalado** (`expo start` + `adb reverse`, conectar por `localhost:8081` directo
 está instalado o quedó incompatible y hay que rebuildearlo, eso es **MAYOR** (necesita toolchain en alguna
 máquina o build EAS que tarda horas) → se pregunta, NO se asume ni se dispara para "iterar". Antes de
 proponer cualquier camino de device: verificar el `package.json` de `apps/mobile` Y preguntar el flujo si
-hay duda — no adivinar. [[build-local-por-usb-es-la-metodologia-nunca-la-nube-para-iterar]] quedó RETIRADA
+hay duda — no adivinar. `build-local-por-usb-es-la-metodologia-nunca-la-nube-para-iterar` quedó RETIRADA
 (decía `expo run:android`, era falso).

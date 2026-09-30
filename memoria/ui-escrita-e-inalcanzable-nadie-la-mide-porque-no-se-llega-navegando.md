@@ -33,4 +33,4 @@ quién lee.
 contraparte en el prototipo y mezclarla convierte un hallazgo estructural en un desvío que alguien va
 a intentar «corregir» dibujándolo.
 
-Relacionado: [[el-instrumento-que-no-mira-nunca-falla]] · [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]]
+Relacionado: [[instrumento-que-no-mira-nunca-falla]] · [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]]
