@@ -1375,3 +1375,36 @@ control, no una lectura**: el spike esperaba 2 documentos y encontró 5, y su um
 estaba calibrado contra el universo equivocado y **frenó bien igual** — un control de denominador mal
 calibrado sirve porque su trabajo es discrepar, al revés de un control positivo, que mal calibrado da
 verde y te deja pasar.
+
+### 7. Procedencia del instrumento medido, que casi me cuesta la adenda entera
+
+Después de escribir §1-6 apareció que `scripts/evidencia/contar-veredictos.py` existía en **tres
+versiones distintas a la vez**, y que mis probes habían leído la del medio:
+
+| versión | líneas | blob |
+|---|---|---|
+| `HEAD` de mi rama | 493 | `5c0f07c3` |
+| **working tree** (lo que leyeron los probes) | 918 | `7f998371` |
+| **`origin/main`** (la vigente) | **1239** | `4e989f3e` |
+
+`python script.py` **mide el archivo del disco**, y un archivo del disco no declara su procedencia. Cinco
+horas de probes contra una versión que no estaba ni commiteada ni pusheada — quinta vez en la jornada que
+el sujeto no era el que yo creía, y la primera en que el sujeto equivocado es **el instrumento mismo**.
+
+**Re-corrido contra `origin/main`, el resultado es idéntico renglón por renglón**: `3 col -> ['card']` ·
+`2 col -> []` · `sin backticks -> []` · positivo `factura -> ['factura']` · las tres grafías →
+`VOCABULARIO_DESCONOCIDO` sin hueco · `v2` 9 ids / 4 pipes vs `v2-filas-3-a-6` 0 ids / 3 pipes. **Nada de
+§1-6 cambia**, y ahora está medido contra el blob que gobierna.
+
+Que coincidan es suerte, no método: las 460 líneas de diferencia tocaban el **universo** (`SPEC` en vez de
+`MATRIZ`, `CIEGOS_DECLARADOS`), no las formas que estos canarios ejercitan. Si el diff hubiera tocado
+`SUJ_CELDA`, la adenda entera habría medido un instrumento que nadie corre.
+
+> **La regla que sale de acá: toda corrida que se cite como evidencia declara el BLOB, no el path.** Un
+> path identifica un archivo; sólo el blob identifica qué código corrió. Es la misma familia que
+> [[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]] y
+> [[el-instrumento-respondio-sobre-otro-sujeto]], aplicada al código del propio instrumento.
+
+Y el residuo sin commitear **no era trabajo perdido**: medido por marcas distintivas
+(`CIEGOS_DECLARADOS` 5=5, `C3-13` 4=4, la `SPEC` 1=1), ya está todo en `origin/main`. Es un estado
+intermedio superado, no WIP a rescatar. No lo toqué: `scripts/` es de planificación.
