@@ -315,14 +315,20 @@ export function BotonVoz({
                 !disabled && sombraNivel(tema.glass.relieve.nivel3),
               ]}
             >
-              {/* La esfera: degradado RADIAL `accent2 -> accent`. `expo-linear-gradient` sólo hace
-                  lineales, así que el radial va por SVG. */}
+              {/* La esfera: degradado RADIAL `glass.ub1 -> glass.ub2` (DEC-11/DEC11FILL, Pieza A —
+                  antes `accent2 -> acento` daba 1,26:1 con el isotipo blanco, deuda que PR #730
+                  (Pieza B/C) dejó registrada a propósito porque un ajuste GEOMÉTRICO (mover cx/cy/r)
+                  no cambia qué colores ve el gate. Esto no es geométrico: es el mismo par
+                  `glass.ub1 → glass.ub2` que `HudGrabacion.tsx` ya usa para su burbuja, aplicado al
+                  degradado radial en vez de lineal porque la esfera necesita seguir leyéndose como
+                  fuente de luz, no como un círculo pintado — peor caso 5,43:1, igual que ahí.
+                  `expo-linear-gradient` sólo hace lineales, así que el radial va por SVG. */}
               <Svg width="100%" height="100%" viewBox="0 0 80 80">
                 <Defs>
                   <RadialGradient id="esferaVoz" cx="38%" cy="30%" r="75%">
-                    <Stop offset="0" stopColor={disabled ? tema.color.superficieAlta : tema.glass.accent2} />
-                    <Stop offset="0.7" stopColor={disabled ? tema.color.superficie : tema.color.acento} />
-                    <Stop offset="1" stopColor={disabled ? tema.color.superficie : tema.color.acento} />
+                    <Stop offset="0" stopColor={disabled ? tema.color.superficieAlta : tema.glass.ub1} />
+                    <Stop offset="0.7" stopColor={disabled ? tema.color.superficie : tema.glass.ub2} />
+                    <Stop offset="1" stopColor={disabled ? tema.color.superficie : tema.glass.ub2} />
                   </RadialGradient>
                 </Defs>
                 <Circle cx="40" cy="40" r="40" fill="url(#esferaVoz)" />
