@@ -103,3 +103,42 @@ su ausencia, y **no mueve nada**. Se convierte en archivador el día que la cobe
 paso 1 al 3 produce un mecanismo cuyo «no hizo nada» no se puede leer. Y el reportador paga solo: con
 `0 cerrables · 6 sin cierre · de 9 examinados` la cobertura **se mide en cada corrida** en vez de
 estimarse una vez.
+
+---
+
+## Tercer régimen (2026-09-30): la convención PARTIDA EN DOS FORMATOS — el lector mide la mitad y cree tener el total
+
+Los dos casos de arriba son «poco usada» (26%) y «no puede existir» (0%). Falta el peor de los tres,
+porque **no da síntoma**: la convención existe, se usa mucho, y se escribe de **dos maneras**. Cualquier
+lector único ve una, devuelve un número redondo, y **nada indica que le falta la otra mitad**.
+
+**Tres casos, todos en el mismo turno, midiendo el Cierre A:**
+
+| convención | forma A | forma B | qué devolvía el lector de una sola forma |
+|---|---|---|---|
+| plataforma de una medición | FE2: columna `\| plataforma \|` | FE1: dentro de `medido_contra` («`leido@` (mobile…)»), columna `dimension` | 11 tablas / 40 filas; el doc de FE1 titulado «5 ids» aportaba **0** |
+| casilla de DoD en el backlog | lista: `- [ ] casilla` | inline: `- **DoD:** [x] uno; [x] dos` | **1 de 66** ítems con DoD completo — falso; el correcto es 3, y `BL-P4` solo ya tenía 2 `[x]` |
+| ubicación de un componente | `modules/chat/BotonVoz.tsx` | mi supuesto `modules/voz/` | `git show` devolvió **0 líneas**, no un error |
+
+**Lo que los tres tienen en común: el resultado parecía plausible.** `1 de 66` en un backlog largo, `40
+filas` en un buzón de 2085, un archivo que «no tiene ese gradiente». Ninguno se veía como un fallo del
+lector, y dos de los tres habrían entrado a un veredicto como hallazgo del *sujeto*.
+
+**Lo único que los cazó fue el control positivo elegido contra un hecho SABIDO POR OTRA VÍA** — no un
+control genérico:
+
+- para el DoD: *el acta afirma que `BL-P4` y `BL-P7` están tildados* ⇒ el lector tiene que verlos. Salió
+  `[2,0]` y `[0,4]` en `BL-B1`, ambos coincidiendo con lo leído a mano.
+- para la plataforma: *hay un doc titulado «5 ids» mobile* ⇒ tiene que aportar ~5 filas. Aportó 1, y
+  después 0.
+- para el archivo: *si el lector ve el archivo, `wc -l` > 0*. Dio 0.
+
+Un control positivo **construido desde el propio instrumento** («¿el regex matchea algo?») habría pasado
+en los tres. El que sirve viene de **afuera**: un número que otro documento afirma, y que el lector está
+obligado a reproducir.
+
+**Cómo aplicarlo:** cuando un lector devuelva una cifra sobre un corpus escrito por varias sesiones,
+buscá **una segunda forma** de la misma convención antes de publicarla — abrí dos documentos de **emisores
+distintos** y compará cómo escriben el mismo dato. Y elegí el control positivo apuntando a un hecho que
+ya esté afirmado en otro lado: si tu control lo inventás vos, mide tu regex, no el mundo. Ver
+[[contar-un-simbolo-no-dice-en-que-rol-aparece]] e [[instrumento-que-no-mira-nunca-falla]].
