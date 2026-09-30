@@ -35,7 +35,24 @@ EXIT CODES
   2  SIN MEDIR -- no se pudo leer el registro, el buzon o el parser. NO es un rojo del sujeto.
   3  control POSITIVO en rojo -- el instrumento no reproduce un hecho ya afirmado por su autor
   4  control NEGATIVO en rojo -- el instrumento acepta una relacion inventada
-  5  cadena ROTA -- un `SUPERSEDE:`/`COMPLEMENTA:` apunta a un documento que no existe
+  5  cadena ROTA -- un `SUPERSEDE:`/`COMPLEMENTA:`/`CORRIGE_FILAS:` apunta a un doc que no existe
+  6  CAMPOS incompletos -- una relacion sin `ALCANCE:` (el paso 3 no sabe cuantas filas retirar)
+  8  ANCLA en rojo -- la cita que el registro afirma NO esta en el documento de su autor
+  9  ENCABEZADO MUDO -- un `### <doc>.md` que no produjo ninguna relacion. Existe porque la 5a
+     relacion desaparecio del reporte sin un solo error: el encabezado habia quedado DENTRO del
+     fence (la plantilla del registro lo mostraba asi) y el parser no leyo sus campos. Una
+     relacion que se pierde en silencio es peor que un rojo.
+
+TRES REGIMENES, NO UNO (medido 2026-09-30)
+------------------------------------------
+`SUPERSEDE`/`COMPLEMENTA` relacionan DOCUMENTOS. Pero la invalidacion a nivel FILA tiene su
+propio documento canonico y su propia regla, y su unico caso se resolvio de una tercera forma:
+el autor corrigio la fila DENTRO del mismo archivo, sin sucesor y sin cambiar de path
+(`CORRIGE_FILAS:`). Un excluidor por (documento, id) no ve esa correccion: para los dos lados
+del par el path y el id son iguales, y lo que cambio vive adentro
+(`memoria/un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md`). Por eso `CORRIGE_FILAS`
+NO cuenta como retiro: el documento citado sigue vigente -- lo que caduco es usarlo como fuente
+de exclusion.
 """
 from __future__ import annotations
 
@@ -64,7 +81,7 @@ BUZON_ALT = Path("C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinac
 # Tolerante a markdown (negritas, backticks, viñeta) igual que el ancla `DISPARADOR:` de
 # `escaladores-buzon.sh:274`, porque el registro es un documento que tambien lee un humano.
 CAMPO = re.compile(
-    r"^\s*(?:[-*]\s*)?\**(SUPERSEDE|COMPLEMENTA|ALCANCE|IDS|DECLARANTE)\**\s*:\s*\**\s*`?([^`\n]*?)`?\s*\**\s*$",
+    r"^\s*(?:[-*]\s*)?\**(SUPERSEDE|COMPLEMENTA|CORRIGE_FILAS|ALCANCE|IDS|ANCLA|FORMA|DECLARANTE)\**\s*:\s*\**\s*`?([^`\n]*?)`?\s*\**\s*$",
     re.IGNORECASE,
 )
 ENCABEZADO = re.compile(r"^###\s+`?([^`\s]+\.md)`?\s*$")
@@ -105,7 +122,7 @@ def universo_declarado() -> set[str]:
     return set()  # inalcanzable
 
 
-def leer_registro() -> list[dict]:
+def leer_registro() -> tuple[list[dict], list[str]]:
     if not REGISTRO.is_file():
         morir(2, f"SIN MEDIR: no encuentro el registro en {REGISTRO}")
     entradas: list[dict] = []
@@ -115,12 +132,25 @@ def leer_registro() -> list[dict]:
     # `alcance=?`. Es el patron de
     # `memoria/un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md`: quien appendea
     # temprano publica un estado incompleto, y el campo que falta parece ausente del corpus.
+    mudos: list[str] = []
     bloque: dict | None = None
     rels: list[tuple[str, str]] = []
+    # Los campos se leen SOLO dentro del fence ``` que sigue al `###`, y el fence CIERRA el bloque.
+    # Bug medido 2026-09-30, destapado por la 5a relacion: el bloque no tenia delimitador de cierre,
+    # asi que el ultimo quedaba abierto hasta EOF y absorbia las lineas `ALCANCE:` de la SALIDA DE
+    # ESTE MISMO SCRIPT que el registro transcribe en sus secciones 5 y 6. El `alcance` real (`total`)
+    # se perdia y el control CAMPOS pasaba igual, satisfecho con basura -- un fail-open.
+    # No daba sintoma con 4 bloques porque a cada uno lo seguia otro `###`
+    # (`memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`), y el parser no distinguia una
+    # declaracion de una transcripcion de su propia salida
+    # (`memoria/el-guard-se-satisface-con-su-propio-comentario.md`).
+    dentro_fence = False
 
     def cerrar() -> None:
         if bloque is None:
             return
+        if not rels:
+            mudos.append(bloque["sucesor"])
         for rel, otro in rels:
             e = dict(bloque)
             e["rel"], e["otro"] = rel, otro
@@ -132,18 +162,28 @@ def leer_registro() -> list[dict]:
             cerrar()
             bloque = {"sucesor": enc.group(1)}
             rels = []
+            dentro_fence = False
             continue
         if bloque is None:
+            continue
+        if linea.strip().startswith("```"):
+            if not dentro_fence:
+                dentro_fence = True
+            else:
+                cerrar()
+                bloque, rels, dentro_fence = None, [], False
+            continue
+        if not dentro_fence:
             continue
         campo = CAMPO.match(linea)
         if campo:
             clave, valor = campo.group(1).upper(), campo.group(2).strip()
-            if clave in ("SUPERSEDE", "COMPLEMENTA"):
+            if clave in ("SUPERSEDE", "COMPLEMENTA", "CORRIGE_FILAS"):
                 rels.append((clave, valor))
             else:
                 bloque[clave.lower()] = valor
     cerrar()
-    return entradas
+    return entradas, mudos
 
 
 def main() -> int:
@@ -166,8 +206,11 @@ def main() -> int:
                  "-- no un cero del corpus.")
 
     universo = universo_declarado()
-    entradas = leer_registro()
-    presentes = {p.name for p in buzon.rglob("*.md")}
+    entradas, mudos = leer_registro()
+    paths_buzon: dict[str, Path] = {}
+    for _p in buzon.rglob("*.md"):
+        paths_buzon.setdefault(_p.name, _p)
+    presentes = set(paths_buzon)
 
     print("=" * 96)
     print("VIGENCIA DE LAS MEDICIONES -- reportador (no excluye ni mueve nada)")
@@ -200,6 +243,9 @@ def main() -> int:
         print(f" {marca} {e['rel']:12s} {e['sucesor'][:58]}")
         print(f"     -> {e['otro'][:70]}")
         print(f"        alcance={alcance} | sucesor {en_univ} | declarante: {e.get('declarante','?')[:40]}")
+        if e["rel"] == "CORRIGE_FILAS":
+            print(f"        ^ regimen POR FILA: corrige in-situ ({e.get('forma','?')}). "
+                  f"NO retira el doc citado -- caduca usarlo como fuente de exclusion")
         if e["rel"] == "SUPERSEDE":
             superados.setdefault(e["otro"], []).append(e)
 
@@ -240,6 +286,31 @@ def main() -> int:
     for e in sin_alcance:
         print(f"   ! {e['sucesor'][:40]} -> {e['otro'][:46]} sin ALCANCE")
 
+    # ANCLA: la cita que este registro pone en boca de un autor tiene que ESTAR en su documento.
+    # Sin este control, el registro afirma relaciones cuya evidencia nadie re-lee -- y una cita
+    # copiada de memoria o de otro documento se lee igual de bien que una verdadera.
+    # Es el control positivo POR RELACION, y va anclado afuera: el texto lo escribio su autor.
+    ok_mudo = not mudos
+    print(f" MUDO (todo encabezado produce relacion) .... {'ok' if ok_mudo else 'ROJO'}")
+    for m in mudos:
+        print(f"   ! {m[:56]} no produjo NINGUNA relacion -- campos fuera del fence?")
+    sin_ancla = [e for e in entradas if not e.get("ancla")]
+    ancla_rota = []
+    for e in entradas:
+        a = e.get("ancla")
+        if not a:
+            continue
+        f = paths_buzon.get(e["sucesor"])
+        if f is None or a not in f.read_text(encoding="utf-8", errors="replace"):
+            ancla_rota.append(e)
+    ok_ancla = not sin_ancla and not ancla_rota
+    print(f" ANCLA (la cita existe en el doc de su autor) {'ok' if ok_ancla else 'ROJO'}"
+          f"   [{len(entradas) - len(sin_ancla) - len(ancla_rota)} de {len(entradas)} verificadas]")
+    for e in sin_ancla:
+        print(f"   ! {e['sucesor'][:46]} sin ANCLA -- la cita no es verificable")
+    for e in ancla_rota:
+        print(f"   ! {e['sucesor'][:46]}: «{e['ancla'][:44]}» NO aparece en el documento")
+
     if not ok_pos:
         morir(3, "CONTROL POSITIVO EN ROJO: el reportador no reproduce el retiro que FE1 declaro "
                  "en su propio documento el 22/09. El instrumento esta roto, no el corpus.")
@@ -250,12 +321,18 @@ def main() -> int:
     if not ok_cadena:
         morir(5, "CADENA ROTA: hay relaciones que apuntan a documentos ausentes del buzon. "
                  "Un retiro hacia un documento que no existe no se puede aplicar.")
+    if not ok_mudo:
+        morir(9, "ENCABEZADO MUDO: hay un `### <doc>.md` que no produjo ninguna relacion. Sus "
+                 "campos quedaron fuera del fence y el reporte perdio la relacion en silencio.")
+    if not ok_ancla:
+        morir(8, "ANCLA EN ROJO: el registro afirma una cita que no esta en el documento de su "
+                 "autor. Una relacion cuya evidencia no se puede releer no es una relacion.")
     if not ok_campos:
         morir(6, "CAMPOS INCOMPLETOS: hay relaciones sin ALCANCE. El paso 3 excluye por fila y "
                  "sin alcance no puede saber cuantas.")
 
     print("\n" + "=" * 96)
-    print("VERDICTO: REPORTE COMPLETO -- 5 de 5 controles en verde. Nada fue excluido ni movido.")
+    print("VERDICTO: REPORTE COMPLETO -- 7 de 7 controles en verde. Nada fue excluido ni movido.")
     print("El paso 3 (que el contraste excluya las filas retiradas) es de planificacion, y su "
           "control\nes: una fila retirada no puede aparecer como conflicto NUEVO.")
     print("=" * 96)

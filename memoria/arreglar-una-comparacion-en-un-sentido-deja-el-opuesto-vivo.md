@@ -48,3 +48,44 @@ opuesto resulta indistinguible de un caso legítimo, eso no es «no aplica»: es
 dato, y decirlo en el comentario evita que el próximo lector crea que el fix cerró las dos puntas. Ver
 [[el-guard-falla-abierto-en-su-caso-de-activacion]] y
 [[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]].
+
+---
+
+## Segundo caso (2026-09-30): el opuesto de una PREGUNTA, no de un operador
+
+El caso de arriba es un operador (`!=` → `<`). El mismo patrón aparece cuando lo que tiene dos sentidos
+es la **pregunta**: un instrumento nace para cazar «X dice que sí pero Y no pasó», y queda ciego a «Y
+pasó pero X dice que no».
+
+**Caso.** `scripts/ci-verde.sh` existe porque una mañana `mergeStateStatus: CLEAN` convivió con un
+`statusCheckRollup` **vacío** — «nada me bloquea» no es «todo pasó». El script lo documenta en su
+cabecera y cubre bien esa dirección: mide los jobs, exige el conteo, reserva `exit 2` para «no pude
+medir».
+
+**El sentido opuesto quedó vivo, y lo medí con dos PR míos el mismo minuto:**
+
+```
+#765  ci-verde: «VERDE -- se puede mergear» exit 0   ·  mergeable: MERGEABLE/CLEAN        -> cierto
+#760  ci-verde: «VERDE -- se puede mergear» exit 0   ·  mergeable: CONFLICTING/DIRTY      -> FALSO
+```
+
+**Frase idéntica, y sólo una de las dos veces es verdad.** Grepeado: `mergeable`/`mergeStateStatus`
+aparecen 2 veces en el archivo y **las dos en comentarios** — el script estructuralmente no puede
+saberlo, aunque su línea de contrato afirme «exit 0 = verde (mergeable)». Y sus 9 casos de test cubren
+rollup vacío, job ausente, re-run y `gh` ausente: **ninguno cubre «jobs verdes + rama conflictuada»**,
+porque nadie lo había visto fallar.
+
+**Dos filos propios de esta variante:**
+
+1. **El fix ingenuo rompe otro invariante.** El script garantiza salida monótona —exactamente uno de
+   {`VERDE`, `ROJO`}, ninguno substring del otro, con test— así que un tercer token («AMARILLO», «VERDE
+   PERO…») lo viola. La salida correcta mantiene el token binario y **distingue la causa por exit code**,
+   que es el molde que el script ya usa para «SIN MEDIR».
+2. **El estado `UNKNOWN` reintroduce el fail-open.** La primera consulta a GitHub devolvió `UNKNOWN` y a
+   los segundos `CONFLICTING`: tratar «todavía no sé» como mergeable es exactamente el bug de nuevo, un
+   nivel más abajo.
+
+**Cómo aplicarlo:** cuando un instrumento nace de un incidente, escribí la pregunta que contesta y la
+pregunta **inversa**, y buscá la inversa en sus tests. Si ninguno la cubre, no está cubierta — y el aviso
+llega cuando alguien confía en la frase. Ver [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y
+[[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].

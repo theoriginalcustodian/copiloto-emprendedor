@@ -37,11 +37,25 @@ muts = {
                   "SUPERSEDE: 2026-09-22_dato_frontendX-a-planificacion_documento-fantasma.md"),
  # una relacion pierde su ALCANCE, del que depende la exclusion POR FILA del paso 3
  "c3-campos.md": (f"SUPERSEDE: {M}\nALCANCE: parcial\n", f"SUPERSEDE: {M}\n"),
- # entra la relacion inventada que el control negativo busca
+ # entra la relacion inventada que el control negativo busca. El fence es OBLIGATORIO desde el
+ # fix del 30/09: sin el, los campos no se leen, el mutante deja de mutar el sentido que probaba
+ # y el control MUDO lo delata (paso: este mismo caso salio exit 9 en vez de 4).
  "c4-negativo.md": ("### `2026-09-22_dato_frontend2-a-planificacion_matriz-web-re-medida.md`",
                     "### `2026-09-22_dato_frontend9-a-planificacion_documento-que-no-existe.md`\n"
-                    f"SUPERSEDE: {M}\nALCANCE: total\n\n"
+                    "```\n" f"SUPERSEDE: {M}\nALCANCE: total\nANCLA: pres-ciclo\n```\n\n"
                     "### `2026-09-22_dato_frontend2-a-planificacion_matriz-web-re-medida.md`"),
+ # la cita que el registro pone en boca de FE1 deja de estar en el documento de FE1
+ "c5-ancla.md": ("ANCLA: invalida como evidencia las 22 filas",
+                 "ANCLA: esta-frase-no-esta-en-ningun-documento-del-buzon"),
+ # el encabezado cae DENTRO del fence: los campos no se leen y la relacion se pierde MUDA, que es
+ # como desaparecio la 5a relacion del reporte sin un solo error.
+ "c6-mudo.md": ("-2-pendiente-device.md`\n```",
+                "-2-pendiente-device.md`"),
+ # una linea `ALCANCE:` FUERA de todo fence, como las que este registro transcribe de su PROPIA
+ # salida en §5 y §6. El parser no la debe tomar. Se asierta por CONTENIDO: un valor basura
+ # satisface al control CAMPOS igual que uno bueno, y asi el fail-open paso desapercibido.
+ "c7-contaminacion.md": ("## 4 · Lo que este documento NO hace",
+                         "ALCANCE: VALORCONTAMINADO\n\n## 4 · Lo que este documento NO hace"),
 }
 for nombre, (viejo, nuevo) in muts.items():
     if viejo not in src:
@@ -58,7 +72,8 @@ rc=$?
 ok=0; total=0
 # caso : exit esperado : nombre del control
 for caso in "c1-positivo.md:3:POSITIVO" "c2-cadena.md:5:CADENA" "c3-campos.md:6:CAMPOS" \
-            "c4-negativo.md:4:NEGATIVO"; do
+            "c4-negativo.md:4:NEGATIVO" "c5-ancla.md:8:ANCLA" "c6-mudo.md:9:MUDO" \
+            "c7-contaminacion.md:0:CONTAMINACION(exit)"; do
   f="${caso%%:*}"; resto="${caso#*:}"; esperado="${resto%%:*}"; nombre="${resto##*:}"
   python "$SCRIPT" --registro "$TMP/$f" > "$TMP/$f.out" 2>&1
   got=$?
@@ -69,6 +84,16 @@ for caso in "c1-positivo.md:3:POSITIVO" "c2-cadena.md:5:CADENA" "c3-campos.md:6:
     echo "  FALLA    $nombre -> exit=$got (esperado $esperado)"; sed 's/^/           /' "$TMP/$f.out" | tail -5
   fi
 done
+
+# c7 por CONTENIDO: el exit 0 no alcanza. Un `ALCANCE:` con valor basura satisface al control
+# CAMPOS igual que uno bueno, asi que el unico modo de probar que la linea de AFUERA del fence
+# fue ignorada es buscar su valor en el reporte.
+total=$((total+1))
+if grep -q "VALORCONTAMINADO" "$TMP/c7-contaminacion.md.out"; then
+  echo "  FALLA    CONTAMINACION(contenido) -> el parser leyo un ALCANCE: de FUERA del fence"
+else
+  echo "  ok       CONTAMINACION(contenido) -> la linea de fuera del fence fue ignorada"; ok=$((ok+1))
+fi
 
 # Y el hermano verde: el registro REAL tiene que salir 0. Sin esto, un script que devolviera
 # siempre un rojo pasaria los 4 canarios.
@@ -84,4 +109,5 @@ total=$((total+1))
 echo ""
 echo "CANARIO: $ok de $total casos con el veredicto esperado"
 [[ $ok -eq $total ]] || exit 1
-echo "VERDE: los 4 controles pueden ponerse rojo y el registro real sale limpio."
+echo "VERDE: los 7 controles pueden ponerse rojo, la contaminacion fuera del fence se ignora,"
+echo "       y el registro real sale limpio."
