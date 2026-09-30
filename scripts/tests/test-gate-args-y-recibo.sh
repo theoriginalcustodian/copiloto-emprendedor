@@ -40,10 +40,19 @@ done
 # 2. POSITIVO: dos corridas parciales, mismo SHA
 rm -rf "$T/rec"
 STUB_LINT_RC=1 gate core lint; rc1=$?
-SHA="$(git -C "$ROOT" rev-parse HEAD)"; R="$T/rec/$SHA.json"
 [ "$rc1" -eq 1 ] && ok "corrida con lint rojo -> exit 1" || fail "corrida con lint rojo rc=$rc1 (esperaba 1)"
 STUB_LINT_RC=0 gate core web; rc2=$?
 [ "$rc2" -eq 0 ] && ok "segunda corrida (core web) -> exit 0" || fail "segunda corrida rc=$rc2 (esperaba 0)"
+# El recibo se ubica por GLOB, no re-calculando HEAD: si HEAD se mueve entre la corrida y la lectura
+# (otra sesión commiteando sobre el mismo repo, que acá es el caso normal) el nombre que se calcula ya
+# no es el que gate.sh escribió. Y si aparecen DOS recibos, HEAD se movió ENTRE las dos corridas: el
+# sujeto de este caso —acumular sobre el MISMO sha— no es medible, y eso se DICE en vez de fallar con
+# un mensaje que acusa al recibo. Medido: me pasó en esta sesión, commiteando mientras corría la suite.
+n_recibos="$(ls "$T"/rec/*.json 2>/dev/null | wc -l)"
+R="$(ls "$T"/rec/*.json 2>/dev/null | head -1)"
+if [ "$n_recibos" -gt 1 ]; then
+  echo "  nota  HEAD se movió durante la corrida ($n_recibos recibos): acumulación por sha NO MEDIBLE acá"
+else
 jobs_presentes="$(jq -r '.jobs | keys | join(",")' "$R" 2>/dev/null)"
 # Se pide CONTENENCIA, no igualdad exacta: desde TIPOCOMP el gate puede agregar jobs que nadie pidió
 # (y eso es correcto), así que `keys == "core,lint,web"` medía de más — afirmaba también "no corrió
@@ -58,10 +67,18 @@ log="$(jq -r '.detalle.web.log' "$R")"
 [ -f "$log" ] && ok "la ruta de log del job existe" || fail "log inexistente: $log"
 jq -e '.detalle.web | (.inicio <= .fin) and (.inicio > 0)' "$R" >/dev/null && ok "inicio y fin registrados (inicio<=fin)" || fail "inicio/fin inválidos"
 
-# 3. HISTORIAL: failed y luego ok del mismo job
+# 3. HISTORIAL: failed y luego ok del mismo job. Es una TERCERA corrida, así que su medibilidad se
+#    re-chequea ACÁ y no arriba: si HEAD se movió recién ahora, este `gate lint` escribe un recibo
+#    NUEVO y `$R` sigue apuntando al viejo — el historial se leería incompleto y el rojo culparía al
+#    acumulador. La condición se mide en el punto de LECTURA, no una vez al principio.
 STUB_LINT_RC=0 gate lint; rc3=$?
-[ "$(jq -r '.jobs.lint' "$R")" = "ok" ] && [ "$(jq -r '[.detalle.lint.historial[].resultado] | join(",")' "$R")" = "failed,ok" ] \
-  && ok "lint failed->ok: el estado es ok pero el historial conserva el failed" || fail "historial de lint: $(jq -c '.detalle.lint.historial' "$R")"
+if [ "$(ls "$T"/rec/*.json 2>/dev/null | wc -l)" -gt 1 ]; then
+  echo "  nota  HEAD se movió antes de la 3ª corrida: historial por sha NO MEDIBLE acá"
+else
+  [ "$(jq -r '.jobs.lint' "$R")" = "ok" ] && [ "$(jq -r '[.detalle.lint.historial[].resultado] | join(",")' "$R")" = "failed,ok" ] \
+    && ok "lint failed->ok: el estado es ok pero el historial conserva el failed" || fail "historial de lint: $(jq -c '.detalle.lint.historial' "$R")"
+fi
+fi
 
 # 4-6. TIPOCOMP: un subconjunto de jobs no mide un cambio en `packages/core/src`.
 #   Fixture HONESTO: la base es el padre del último commit que tocó `packages/core/src` — hoy es
@@ -84,7 +101,12 @@ else
   # 4. POSITIVO: pido `web`, tienen que correr también core y mobile.
   rm -rf "$T/rec"
   GATE_BASE_REF="$BASE_CORE" gate web; rc4=$?
-  R4="$T/rec/$(git -C "$ROOT" rev-parse HEAD).json"
+  # El recibo se ubica por GLOB, no re-calculando HEAD: `$T/rec` se limpia antes de cada caso, así
+  # que hay exactamente uno. Re-calcular `rev-parse HEAD` lo buscaba por un nombre que puede haber
+  # CAMBIADO entre la corrida y la lectura — con varias sesiones commiteando sobre el mismo repo eso
+  # es el caso normal, y se veía como "NO ensanchó: jobs=[]", un rojo que acusa al código equivocado.
+  # Medido: me pasó en esta misma sesión, commiteando mientras la suite corría.
+  R4="$(ls "$T"/rec/*.json 2>/dev/null | head -1)"
   jobs4="$(jq -r '.jobs | keys | join(",")' "$R4" 2>/dev/null)"
   [ "$jobs4" = "core,mobile,web" ] && ok "cambio en packages/core/src: 'gate web' ensancha a core,mobile,web" \
     || fail "NO ensanchó: jobs=[$jobs4] (esperaba core,mobile,web)"
@@ -106,7 +128,7 @@ else
   else
     rm -rf "$T/rec"
     GATE_BASE_REF="$(git -C "$ROOT" rev-parse HEAD)" gate web; rc6=$?
-    jobs6="$(jq -r '.jobs | keys | join(",")' "$T/rec/$(git -C "$ROOT" rev-parse HEAD).json" 2>/dev/null)"
+    jobs6="$(jq -r '.jobs | keys | join(",")' "$(ls "$T"/rec/*.json 2>/dev/null | head -1)" 2>/dev/null)"
     [ "$jobs6" = "web" ] && ok "sin cambios en core: 'gate web' corre SÓLO web (no ensancha de más)" \
       || fail "ensanchó sin motivo: jobs=[$jobs6] (esperaba web)"
     grep -q 'ensancho la selección' "$T/out.txt" && fail "gritó en el caso normal: avisó de ensanchado sin cambios en core" \
