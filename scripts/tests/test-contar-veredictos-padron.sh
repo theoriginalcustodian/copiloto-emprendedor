@@ -43,8 +43,13 @@ fi
 
 # El contador lee el buzón real, que NO está versionado: en un clon sin `coordinacion/` aborta con 2
 # por diseño («un 0 acá sería del instrumento, no del dato»). Eso no es un fallo de este test.
-if ! "$PY" "$CONTADOR" --json > "$TMP/base.json" 2> "$TMP/base.err"; then
-  if grep -qE "ABORTA: no encontré \['lote" "$TMP/base.err"; then
+"$PY" "$CONTADOR" --json > "$TMP/base.json" 2> "$TMP/base.err"; rc_base=$?
+if [ "$rc_base" -ne 0 ]; then
+  # El SKIP se decide por el CODIGO DE SALIDA, no por el texto. La version anterior grepeaba
+  # «ABORTA: no encontré ['lote», un mensaje que el refactor de `docs_control` dejo de
+  # imprimir: el skip quedo muerto sin dar sintoma y el rojo de ceguera se leyo como hallazgo.
+  # exit 2 = «no puedo medir» en todo el contador (matriz ausente, spec ausente, buzon ausente).
+  if [ "$rc_base" -eq 2 ]; then
     echo "  ⏭️  sin coordinacion/ en este checkout — salteado (el contador aborta por diseño)"
     exit 0
   fi

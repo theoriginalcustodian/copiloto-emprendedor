@@ -49,7 +49,12 @@ for _f in (sys.stdout, sys.stderr):
         _f.reconfigure(encoding="utf-8", errors="replace")
 
 RAIZ = Path(__file__).resolve().parents[2]
-COORD = Path("C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion")
+# El buzon NO esta versionado (`coordinacion/` esta gitignoreada), asi que esta ruta no
+# existe en CI ni en un clon limpio. Parametrizable para que el test pueda apuntarla a un
+# fixture y ejercitar la CEGUERA a proposito: sin eso, el unico control de ceguera posible
+# es no tener corpus, que es justo el caso que no se puede provocar en la maquina que lo tiene.
+COORD = Path(os.environ.get("COPILOTO_COORD",
+                            "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion"))
 MATRIZ = RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"
 # La SPEC es la fuente de verdad del criterio: el backlog §13 punto 3 dice, con esas palabras, que
 # se mide «contra la sección spec de este documento». Hasta el 2026-09-29 el universo salía de
@@ -120,6 +125,8 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    "2026-09-29_cierre_auditoria-a-planificacion_HIPOTESIS-MATRIZ-2209-se-cae-8-de-10-son-contra-evidencia-retirada.md":
+        "ANALITICO: mide la PROCEDENCIA de veredictos ajenos, no pantallas. Su hallazgo, en sus palabras: 8 de los 10 COHERENTE no vienen de la matriz re-medida, vienen del barrido original que esa misma matriz declaro INVALIDO como evidencia el mismo dia. Para sostenerlo cita las filas de los dos documentos enteras, asi que clasificado como medicion inyectaria como propios los mismos veredictos cuya vigencia esta discutiendo -- y ademas los RETIRADOS. Es el caso limite del corpus, tercera aparicion: un documento que razona sobre veredictos los contiene todos. Motivo escrito por planificacion porque el gate frenaba un PR; auditoria es la duena y lo reclasifica si discrepa.",
     "2026-09-28_contrato_planificacion-a-todos_BL-Q3-v2-la-unidad-de-medicion-es-id-mas-camino.md":
         "NORMATIVO y es MIO: DEFINE la unidad de medicion y el vocabulario. Su tabla es `| clasificacion | ids |` — taxonomia con conteos, no pantallas medidas. Es el candidato mas peligroso del corpus: un documento que DEFINE el vocabulario contiene todos sus tokens (16 COHERENTE, 7 DESVIO, 11 NO_MEDIBLE), asi que clasificado como medicion inyectaria 28 senales falsas. Lo destapo el gate al arreglarse el parser, no yo.",
     "2026-09-29_cierre_auditoria-a-planificacion_verificabilidad-de-los-38-ninguno-midio-desktop-y-el-contador-es-ciego-a-28.md":
@@ -445,6 +452,22 @@ def descubrir_documentos(ids):
                 else:
                     candidatos[p.name] = p
 
+    # 🚦 EL ORDEN ES EL ARREGLO. Este control existia y estaba BIEN escrito -- su docstring
+    # describe exactamente este fallo -- pero corria al FINAL, despues de los ratchets. Con el
+    # corpus ausente (CI, clon limpio, buzon movido) el glob da 0 candidatos, `perdidos` dispara
+    # primero y el rojo acusa «EL PISO QUEDO VIEJO -- 14 declarados que el glob ya no encuentra»
+    # sobre 14 archivos que existen perfectamente. Medido en CI el 2026-09-29: ese rojo bloqueo un
+    # PR y mandaba a buscar renombres inexistentes. Un control de ceguera que corre DESPUES del
+    # guard que la ceguera dispara no protege nada: el mensaje elige la causa equivocada.
+    # Sale por exit 2, que en todo este script ya significa «no puedo medir», no por exit 8.
+    if not (COORD / "abierto").exists() and not (COORD / "cerrado").exists():
+        print(f"ABORTA: no veo el buzon en {COORD}. `coordinacion/` no esta versionada, asi que en"
+              f" CI o en un clon limpio este corpus no existe -- y un 0 de aca seria del"
+              f" instrumento, no del dato. Apuntalo: COPILOTO_COORD=<ruta>.", file=sys.stderr)
+        sys.exit(2)
+    if not docs_control(candidatos):
+        sys.exit(2)
+
     sin_clasificar = sorted(n for n in candidatos if n not in MEDICIONES_DECLARADAS)
     if sin_clasificar:
         print(f"DOCUMENTOS: SIN CLASIFICAR — {len(sin_clasificar)} documento(s) producen veredictos "
@@ -506,8 +529,6 @@ def descubrir_documentos(ids):
               "va a MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA con el motivo.", file=sys.stderr)
         sys.exit(9)
 
-    if not docs_control(candidatos):
-        sys.exit(8)
     return candidatos, descartados, cobertura
 
 
