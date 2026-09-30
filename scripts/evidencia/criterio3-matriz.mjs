@@ -85,6 +85,16 @@ const MOVIL = { ancho: 390, alto: 844 };
 const INICIO = Date.now();
 const fallos = [];
 const noMedibles = [];
+// Un loading detectado en RUNTIME tiene que salir por el mismo canal que MEDIBILIDAD (noMedibles),
+// no por console.log: el 2026-09-30 `factura` se capturo en pleno esqueleto de carga y la fila se
+// reporto igual que una medida. `esperarCargado` YA detectaba el caso y lo imprimia — pero no
+// devolvia el resultado (no habia `return`), asi que ningun call-site podia propagarlo aunque
+// quisiera. MEDIBILIDAD es declaracion estatica a mano; esto es la condicion de runtime.
+let loadingEnCurso = [];
+// Canario del guard de arriba: con CANARIO_LOADING_TIMEOUT=1 toda espera de carga falla, y TODA fila
+// medida debe salir NO_MEDIBLE. Sin la env, las mismas filas deben salir medidas. Si el canario no
+// cambia nada, el guard no esta cableado.
+const CANARIO_LOADING_TIMEOUT = Number(process.env.CANARIO_LOADING_TIMEOUT ?? 0) || 0;
 const esperados = new Set();
 
 // Selector que prueba que el prototipo montó LA vista pedida. Sale de `index.html` (bloque
@@ -253,11 +263,16 @@ async function protoFoto(verId, sufijo, viewport) {
 // para la navegación pero no para el round-trip que llena la pantalla. Se espera la condición real
 // (que el testid `*-cargando` se desmonte), no un timeout más largo.
 async function esperarCargado(page, testidCargando, timeout = 30000) {
+  const tope = CANARIO_LOADING_TIMEOUT || timeout;
   const ok = await page
-    .waitForSelector(`[data-testid=${testidCargando}]`, { state: 'detached', timeout })
+    .waitForSelector(`[data-testid=${testidCargando}]`, { state: 'detached', timeout: tope })
     .then(() => true)
     .catch(() => false);
-  if (!ok) console.log(`  ⚠️  ${testidCargando}: seguía visible tras ${timeout}ms — la captura puede estar en loading`);
+  if (!ok) {
+    console.log(`  ⚠️  ${testidCargando}: seguía visible tras ${tope}ms — la captura puede estar en loading`);
+    loadingEnCurso.push(`${testidCargando} seguía visible tras ${tope}ms`);
+  }
+  return ok;
 }
 
 // Un contrato de medición visual tiene que nombrar el CAMINO DE ACCESO, no sólo la pantalla.
@@ -295,6 +310,7 @@ const CAMINO = {
 };
 
 async function appNavegar(page, id) {
+  loadingEnCurso = [];
   switch (id) {
     case 'ingresos':
       await page.getByRole('button', { name: 'Funciones' }).click().catch(() => {});
@@ -349,7 +365,10 @@ async function appNavegar(page, id) {
             '[data-testid=agenda-no-disponible], [data-testid=agenda-no-conectado], [data-testid=agenda-calendario-caida], [data-testid^=agenda-grupo-]',
             { timeout: 20000 },
           )
-          .catch(() => console.log('  ⚠️  agenda: ningún estado final visible tras 20s — la captura puede estar en loading'));
+          .catch(() => {
+            console.log('  ⚠️  agenda: ningún estado final visible tras 20s — la captura puede estar en loading');
+            loadingEnCurso.push('agenda: ningún estado final visible tras 20s');
+          });
       } else {
         console.log(`  ⚠️  agenda: "Ver agenda" no visible (Calendar no 'ok' en el tenant) — capturo Mi día tal cual`);
       }
@@ -447,7 +466,18 @@ for (const id of IDS) {
       const { browser, page } = await abrirLogueado(viewport);
       try {
         await appNavegar(page, id);
+        // La captura se toma IGUAL (sirve como evidencia visual de que quedó en loading), pero la
+        // fila NO se reporta como medida: un PNG de esqueleto contra el proto da un desvío enorme
+        // que acusa al producto por un defecto del instrumento — o lo compara quien no nota que no
+        // hay nada que comparar.
         await fotoA(page, `criterio3-${id}-app-${sufijo}`);
+        if (loadingEnCurso.length && !noMedibles.some((n) => n.id === id)) {
+          const porque =
+            `CAPTURADA EN LOADING (${sufijo}): ` + loadingEnCurso.join(' · ') +
+            '. El PNG existe y muestra el esqueleto de carga; no se emite veredicto de paridad sobre él.';
+          noMedibles.push({ id, porque });
+          console.log(`⊘ ${id}: NO_MEDIBLE — capturada en loading`);
+        }
       } finally {
         await browser.close();
       }
