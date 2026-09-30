@@ -1,6 +1,6 @@
 ---
 name: medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero
-description: Medir contra un ref equivocado falla en TRES modos — omite (el vacío se lee como 0), inventa (el squash deja la distancia alta para siempre) y ECOA el argumento (rev-parse devuelve lo que le pasaste y cut lo disfraza de hash); el control es el EFECTO más el rc de cada consulta.
+description: Medir contra un ref equivocado falla en CUATRO modos — omite (el vacío se lee como 0), inventa (el squash deja la distancia alta para siempre) y ECOA el argumento (rev-parse devuelve lo que le pasaste y cut lo disfraza de hash), y NUNCA TUVO UN REF (el else de un guard de existencia asigna prosa y el pipe se come el rc, asi que un ref basura imprime el mismo '0 archivos' que un delta vacio legitimo); el control es el EFECTO más el rc de cada consulta.
 metadata:
   type: feedback
 ---
@@ -99,6 +99,71 @@ b=$(git rev-parse "$r2:$p"); rcb=$?
 Con eso corrido, el control negativo dio `eac365c3` vs `2dfa8ce5`, **dos rc=0** y distintos: el método
 discrimina **y ahora se sabe por qué**.
 
+
+## Cuarto modo, y lo cometí **en el turno siguiente** a escribir el punto (3) de acá arriba
+
+**2026-09-30, midiendo si mi propio push ya podía pasar.** Los tres modos de arriba son variantes de
+*un ref que no resuelve*. Este es peor, porque **no hay ningún ref**: la variable nunca tuvo uno.
+
+```bash
+MARC="C:/gfw-src/copiloto-grafo/.bridge/last-synced-copiloto-emprendedor.sha"   # ruta SUPUESTA
+if [ -f "$MARC" ]; then ULT=$(cat "$MARC"); else ULT="(marcador NO esta en la ruta supuesta)"; fi
+...
+echo "delta: $(git diff --name-only "$ULT".."$MAIN" | wc -l) archivos"
+```
+
+El archivo no estaba ahí (vive en `graphify-graphity-bridge`, que el hook declara en su `L30`; yo lo
+busqué en tres árboles y no incluí ese). Entonces `$ULT` quedó con **la prosa del `else`**, y esa prosa
+entró como ref a un `git diff`. Salida:
+
+```
+delta que el incremental habria mandado: 0 archivos          <= es PROSA restada contra un commit
+el marcador es ancestro de main? NO (divergente o invalido)  <= no es un veredicto: es "no pude medir"
+```
+
+Con la ruta correcta y los dos refs verificados, el número real era **7**.
+
+**Son dos mecanismos compuestos, y cada uno ya tiene su propia entrada acá:**
+
+1. **El `else` de un guard de existencia produce un dato.** Puse un mensaje de error donde el resto del
+   script esperaba un SHA. El guard hizo su trabajo —detectó la ausencia— y en el mismo gesto **fabricó
+   el valor que la hizo invisible**. Un `else` de un chequeo de existencia tiene que **cortar**
+   (`exit 2`, «SIN MEDIR»), nunca asignar.
+2. **El `| wc -l` se comió el rc.** `git diff` con un ref basura sale rc≠0, y el pipe devuelve el rc del
+   `wc` ([[el-pipe-se-come-el-exit-code]]). Sin el pipe habría gritado.
+
+Ninguno de los dos solo alcanza para el falso dato: **el primero fabrica el argumento y el segundo
+silencia la queja.** Es [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] — el guard es correcto,
+el conteo es correcto, y el hueco vive en el par.
+
+**Y el mensaje del `else` eligió la lectura equivocada por mí:** «NO (divergente o invalido)» ofrece dos
+causas —una grave, una de instrumento— y yo leí la grave
+([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). El texto que escribí para
+cubrirme fue el que me desvió.
+
+**La forma que lo cierra**, corrida en el mismo turno:
+
+```bash
+[ -f "$MARC" ] || { echo "SIN MEDIR: el marcador no esta en la ruta declarada"; exit 2; }
+ULT=$(tr -d ' \r\n' < "$MARC")
+git cat-file -e "${ULT}^{commit}" 2>/dev/null || { echo "SIN MEDIR: el marcador no es un commit"; exit 2; }
+git cat-file -e "${MAIN}^{commit}" 2>/dev/null || { echo "SIN MEDIR: main no resolvio"; exit 2; }
+n=$(git diff --name-only "$ULT".."$MAIN" | wc -l)      # recien ahora el numero significa algo
+```
+
+Y el **control positivo del método**, que es lo que faltaba las dos veces: pasarle a propósito un ref
+inventado y exigir que se vea distinto de un delta vacío legítimo.
+
+```
+c1e91870          => ES commit (rc=0)
+5330e0602ee4      => ES commit (rc=0)
+texto-basura...   => NO es commit (rc!=0) · SIN MEDIR
+git diff con el ref basura => "0 archivos"    <= identico a un delta vacio de verdad
+```
+
+**Esa última línea es el hallazgo entero:** un delta vacío legítimo y un ref inexistente imprimen **el
+mismo texto**. Sin el rc, no hay forma de distinguirlos mirando la salida.
+
 **Why:** porque un reporte de riesgo es lo que decide si alguien puede borrar un worktree. Un `0`
 por ceguera hace perder trabajo real —acá había un `test(RATCH)` de aislamiento cross-tenant sólo en
 disco—, y un «13 en riesgo» inventado gasta el turno de otra sesión en rescatar lo que ya está
@@ -112,4 +177,4 @@ la distancia en commits, porque el squash la deja alta para siempre; (3) corré 
 propio resultado **aunque acabes de escribir la advertencia** — el turno en que detectás la clase es
 el turno en que más confiado estás; (4) **nunca leas un hash sin el rc de la consulta que lo produjo**
 — `git rev-parse` ecoa el argumento cuando no resuelve, y `cut -c1-8` lo disfraza de blob; para
-«¿existe este path en este ref?» usá `git cat-file -e`, que no imprime nada y sale rc≠0.
+«¿existe este path en este ref?» usá `git cat-file -e`, que no imprime nada y sale rc≠0. **(5)** el `else` de un chequeo de existencia **corta** (`exit 2`, «SIN MEDIR»), nunca asigna: un mensaje de error guardado en una variable se convierte en el argumento de la medición siguiente, y el `| wc -l` se come la queja. Y el control positivo del barrido es pasarle **a propósito** un ref inventado: si su salida no se distingue de un resultado vacío legítimo, el barrido no está midiendo.
