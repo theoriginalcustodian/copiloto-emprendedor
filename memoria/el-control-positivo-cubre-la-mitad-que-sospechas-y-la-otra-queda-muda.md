@@ -83,3 +83,38 @@ caso que va a ocurrir el 100% de las veces?* Un fixture se llena de datos porque
 **Cómo quedó cerrado:** el caso vacío es el **caso 2** del test, de primera clase, antes que el caso
 del lector ciego. Y el fix no fue `|| true` a secas sino `{ grep … || true; }`, porque con `pipefail`
 el `|| true` suelto no rescata a un `grep` que está **en medio** de la tubería.
+
+---
+
+## Refuerzo 2026-09-30 — la otra mitad muda era EL ENTORNO, y el mismo PR la pagó dos veces
+
+El mismo día, el mismo script, dos rojos de CI con el gate local en verde. Los dos son esta lección con
+el sujeto cambiado: no era mi fixture la mitad muda, **era el entorno donde el test iba a correr**.
+
+**(1) `[ -x "$SCRIPT" ]` como precondición.** En Git Bash `-x` da **true para cualquier `.sh`**, sin
+mirar el modo del índice; el repo versiona todos sus `.sh` en `100644` y `lint.sh:46` los invoca con
+`bash "$t"`. Local: verde. Runner Linux: `FALLA: no existe o no es ejecutable`. Era el único test del
+repo que pedía el bit, y **ningún caso lo necesitaba** — todos corren `bash "$SCRIPT"`. Una precondición
+que el entorno local **no puede falsear** no es un control: es una moneda al aire que siempre sale cara
+donde uno mira.
+
+**(2) Un caso asserteando `rc=0` sobre un corpus GITIGNOREADO.** El caso 8 corría el script contra el
+buzón real (`coordinacion/`), que **no existe en CI**: ahí el script sale `2` («no pude medir»), que es
+la respuesta **correcta**. El assert fijo fabricaba un rojo que no era un hallazgo. El arreglo no fue
+debilitar el caso: fue assertear **el veredicto que corresponde al entorno** y exigir que en el entorno
+sin corpus el script *diga* «NO PUDE MEDIR» en vez de devolver un `0` tranquilizador. El propio
+`lint.sh:36-39` ya tenía ese filo escrito para `contar-veredictos.py` — estaba documentado y lo pagué
+igual, que es el patrón de esta memoria.
+
+**La pregunta que cierra el par, y va antes de pushear un test nuevo:**
+*¿puedo correr este test en un entorno donde la precondición sea FALSA?* Si no puedo, no sé si mide.
+Para (1) y (2) la respuesta era simulable en 10 segundos: `BUZON_DIR=/ruta/que/no/existe bash
+scripts/tests/test-….sh` reproduce el entorno de CI completo, y es el control que ahora corro **antes**
+del push, no después del rojo. Con él, el segundo defecto —que CI no había llegado a ver, porque abortó
+en el primero— salió a la luz en el mismo push.
+
+⚠️ Y el hermano con otra causa, medido el mismo día por frontend2: agregar un campo **requerido** a un
+tipo de `packages/core` rompió **7 fixtures hand-built** de `core`/`mobile`/`web`; su gate local de un
+solo paquete salió verde y recién CI mostró `TS2741`. Tres instancias en un día del `a-todos` inmortal
+«el recibo local no garantiza CI verde» — y por primera vez con una causa **mecanizable**: no es «el
+entorno», es *qué corrió*. Fila `TIPOCOMP` del PLAN.
