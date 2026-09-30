@@ -100,6 +100,28 @@ RETIRADOS_DECLARADOS = {"plan"}
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    # ── 2026-09-29: los 3 que este PR hizo VISIBLES ─────────────────────────────────────
+    # No son documentos nuevos: ya producian veredictos antes. Eran invisibles porque el
+    # parser no leia sus formas (tabla de 2 columnas, celdas sin backtick), asi que no
+    # llegaban ni a candidatos y el guard de `sin clasificar` tampoco los veia.
+    #
+    # Barrido de las 35 pantallas. MIDE, y mide con todo: prod real con el bundle fijado
+    # (`assets/index-w80j8z6l.js`, confirmado al cierre), `main` en `ed4e31c0`, prototipo al
+    # mismo viewport, usuario canonico, capturas por id. 22 filas COHERENTE.
+    # ⚠️ Auditoria lo da por RETIRADO (C3-25). Buscado en TODO el buzon: el retiro existe
+    # UNICAMENTE en su `cierre_` del 29/09 — el documento no lo dice, ningun contrato lo dice,
+    # y `RETIRADOS_DECLARADOS` es de ids de pantalla, no de documentos. Asi que se clasifica
+    # por lo que el documento AFIRMA DE SI MISMO, que es una medicion. Si esta superado, el
+    # retiro tiene que estar escrito donde el instrumento pueda leerlo: eso es la fila E del
+    # eje (`SUPERSEDE:`/`RETIRADO_POR:`), dueño planificacion, y hasta entonces excluirlo
+    # seria aplicar un retiro que solo vive en la memoria de una sesion.
+    "2026-09-22_dato_frontend1-a-planificacion_BL-Q3-web-barrido-35-pantallas.md",
+    # Filas 3-6 de la matriz web. MIDE: 7 veredictos (`card`, `card-cobro`, `card-presu`,
+    # `card-cliente`, `pres-hitl`, `pres-ciclo`, `preg`) sobre prod real con purga de SW.
+    # Es la mitad de `matriz-web-re-medida-v2` que vivia en una tabla de DOS columnas, y por
+    # eso daba 0 ids mientras su gemela de 3 columnas daba 9. Mismos ids, mismos veredictos,
+    # distinto ancho de tabla: el fixture diferencial de la fila B, ya en el corpus.
+    "2026-09-22_dato_frontend1-a-planificacion_matriz-web-re-medida-v2-filas-3-a-6.md",
     "2026-09-28_cierre_auditoria-a-planificacion_lado-proto-de-factura-y-comousar-medido.md",
     # BL-Q3 v2 — los dos lotes que este script ya miraba
     "2026-09-28_cierre_frontend1-a-planificacion_BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md",
@@ -125,8 +147,27 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
-    "2026-09-29_cierre_auditoria-a-planificacion_HIPOTESIS-MATRIZ-2209-se-cae-8-de-10-son-contra-evidencia-retirada.md":
-        "ANALITICO: mide la PROCEDENCIA de veredictos ajenos, no pantallas. Su hallazgo, en sus palabras: 8 de los 10 COHERENTE no vienen de la matriz re-medida, vienen del barrido original que esa misma matriz declaro INVALIDO como evidencia el mismo dia. Para sostenerlo cita las filas de los dos documentos enteras, asi que clasificado como medicion inyectaria como propios los mismos veredictos cuya vigencia esta discutiendo -- y ademas los RETIRADOS. Es el caso limite del corpus, tercera aparicion: un documento que razona sobre veredictos los contiene todos. Motivo escrito por planificacion porque el gate frenaba un PR; auditoria es la duena y lo reclasifica si discrepa.",
+    # 2026-09-29 — visible por primera vez con el fix de formas de este PR.
+    # DICTAMINA sobre mediciones ajenas: responde el `dato_` de frontend1 sobre los 34 png,
+    # le da la razon en 6 de 7 y declara `bi` falso positivo del rail. No mide ninguna
+    # pantalla propia — cita las de frontend1 para juzgarlas.
+    # ⚠️ MOTIVO REDACTADO POR PLANIFICACION, NO POR SU AUTOR (auditoria). La regla es que lo
+    # declare quien escribio el documento; se redacta aca porque el guard bloquea el PR que
+    # lo hizo visible, y esperar el motivo para desbloquear el gate seria dejar rojo el
+    # tronco de las cuatro sesiones. Sujeto a correccion del autor.
+    "2026-09-29_cierre_auditoria-a-frontend1_si-a-la-marca-de-ancho-y-bi-es-falso-positivo-del-rail.md":
+        "CIERRE de auditoria a frontend1: dictamina sobre la medicion de los 34 png ajena "
+        "(6 de 7 se sostienen, `bi` es falso positivo del rail). No mide pantallas propias. "
+        "[motivo de planificacion, pendiente de confirmacion del autor]",
+    # Clave SIN el titular editorial: este archivo se renombro TRES veces en un dia
+    # (`se-cae-8-de-10` -> `-5-de-10` -> `-2-de-10-y-el-falso-verde-esta-en-el-parser`) y la
+    # clasificacion anclada al nombre completo quedo apuntando a un archivo inexistente, con lo
+    # que el documento real volvio a abortar el parser con exit 8. El sujeto (fecha + emisor +
+    # tema) es estable; el titulo es del autor y cambia cuando cambia la cifra.
+    "2026-09-29_cierre_auditoria-a-planificacion_HIPOTESIS-MATRIZ-2209":
+        "CIERRE de auditoria: cita los 10 ids de la hipotesis con sus veredictos para dictaminar "
+        "SOBRE mediciones ajenas. No mide ninguna pantalla. (Motivo redactado por su autor, "
+        "auditoria, 2026-09-29: es el unico que puede declararlo.)",
     "2026-09-28_contrato_planificacion-a-todos_BL-Q3-v2-la-unidad-de-medicion-es-id-mas-camino.md":
         "NORMATIVO y es MIO: DEFINE la unidad de medicion y el vocabulario. Su tabla es `| clasificacion | ids |` — taxonomia con conteos, no pantallas medidas. Es el candidato mas peligroso del corpus: un documento que DEFINE el vocabulario contiene todos sus tokens (16 COHERENTE, 7 DESVIO, 11 NO_MEDIBLE), asi que clasificado como medicion inyectaria 28 senales falsas. Lo destapo el gate al arreglarse el parser, no yo.",
     "2026-09-29_cierre_auditoria-a-planificacion_verificabilidad-de-los-38-ninguno-midio-desktop-y-el-contador-es-ciego-a-28.md":
@@ -165,7 +206,22 @@ NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFEC
 # `**CORREGIDO — COHERENTE (era DIFERENCIA GRAVE…)**` entraba como si `CORREGIDO` fuera un veredicto
 # y ensuciaba `por_clase` — visible y MAL, que es peor que un hueco (auditoría, H-D).
 VOCABULARIO = {"COHERENTE", "DESVÍO", "DESVIO", "NO_MEDIBLE", "FUERA-DE-REFERENCIA",
-               "NO_REPRODUCIBLE_SIN_EFECTO", "PENDIENTE_DEVICE"}
+               "NO_REPRODUCIBLE_SIN_EFECTO", "PENDIENTE_DEVICE",
+               # 2026-09-29: dos estados que DOS autores usaban en 6 archivos y el vocabulario
+               # no cubria, asi que caian en VOCABULARIO_DESCONOCIDO. El costo no era cosmetico:
+               # `REQUIERE_TRIAGE` es el estado con el que frontend2 BAJO su propio COHERENTE de
+               # `cuenta`/`detalle` el 22/09 -- la correccion existia y el instrumento leia solo
+               # el COHERENTE ya superado. Un contador de COHERENTE ciego al token que los
+               # corrige fabrica el falso verde que existe para cazar.
+               "REQUIERE_TRIAGE", "INCOMPLETO"}
+# La grafia se CANONIZA, no se lista dos veces. `DESVÍO`/`DESVIO` estan los dos arriba y por eso
+# `INCOMPATIBLES` necesita dos tuplas y un mismo id parece tener dos veredictos distintos: ese
+# parche ya se pago. Con el token nuevo la grafia venia partida 3 y 3 entre los dos autores, asi
+# que elegir una sola habria perdido las filas del otro.
+# ⚠️ DEUDA DECLARADA (planificacion, 2026-09-29): `DESVIO` -> `DESVÍO` NO se canoniza todavia.
+# Moverlo cambia `INCOMPATIBLES` y el ratchet de 10 conflictos conocidos, asi que va en un
+# cambio propio con su evidencia, no de arrastre en este.
+ALIAS_VEREDICTO = {"REQUIRES_TRIAGE": "REQUIERE_TRIAGE"}
 # Anotaciones de ESTADO que preceden al veredicto real y no son veredictos: `CORREGIDO — COHERENTE`
 # vale COHERENTE, con la marca de que se corrigió.
 ANOTACIONES = {"CORREGIDO", "RECLASIFICADO", "REVISADO"}
@@ -447,8 +503,10 @@ def descubrir_documentos(ids):
                                    + re.escape(v)
                                    + r"(?![A-ZÁÉÍÓÚÑ_-])", txt))
                     for v in VOCABULARIO)
-                if p.name in NO_SON_MEDICION:
-                    descartados[p.name] = NO_SON_MEDICION[p.name]
+                clave = next((k for k in NO_SON_MEDICION
+                              if p.name == k or p.name.startswith(k)), None)
+                if clave:
+                    descartados[p.name] = NO_SON_MEDICION[clave]
                 else:
                     candidatos[p.name] = p
 
@@ -549,6 +607,29 @@ def docs_control(candidatos):
     return True
 
 
+def sello_del_instrumento():
+    """El `git hash-object` de ESTE script, para que el JSON diga con que version se midio.
+
+    Lo pidio auditoria (C3-25, fila G) despues de que sus probes corrieran el blob equivocado:
+    el mismo path tenia TRES versiones a la vez (su HEAD 493 lineas, su working tree 918, y
+    `origin/main` 1239) y `python script.py` corre el archivo del DISCO, que no declara su
+    procedencia. Sus hallazgos coincidieron igual, pero por suerte: el diff tocaba el universo,
+    no las formas que sus canarios ejercitaban. Un control de denominador no podia cazarlo
+    -- el archivo era el correcto, lo que estaba mal era CUAL DE SUS VERSIONES.
+
+    Se computa a mano y no con `git hash-object` a proposito: el script tiene que poder sellarse
+    sin git en el PATH y sin estar dentro de un repo.
+    """
+    b = Path(__file__).read_bytes()
+    blob = b"blob " + str(len(b)).encode() + b"\0" + b
+    return {
+        "path": Path(__file__).name,
+        "git_blob": hashlib.sha1(blob).hexdigest(),
+        "bytes": len(b),
+        "lineas": b.count(b"\n") + 1,
+    }
+
+
 def sello(p):
     b = p.read_bytes()
     return {
@@ -561,6 +642,7 @@ def sello(p):
 
 def normalizar(tok, crudo):
     """Devuelve (veredicto, corregido) validando contra el vocabulario CERRADO."""
+    tok = ALIAS_VEREDICTO.get(tok, tok)
     if tok in ANOTACIONES:
         m = re.search(r"(?:—|-|:)\s*\*{0,2}([A-ZÁÉÍÓÚÑ_\-]{3,})", crudo)
         if m and m.group(1) in VOCABULARIO:
@@ -577,13 +659,13 @@ def es_separador(linea):
     la cabecera por su contenido («¿son palabras en minúscula?») falla con
     `| id (· camino) | tipo | medido_contra |` — y falló: dejó las 16 filas del backfill volviendo
     como huecos (auditoría, H-C)."""
-    if not (linea.strip().startswith("|") and linea.count("|") >= 4):
+    if not (linea.strip().startswith("|") and linea.count("|") >= 3):
         return False
     return set(linea.strip().strip("|").replace("|", "").strip()) <= set("-: ")
 
 
 def fila_de_tabla(linea):
-    if not (linea.strip().startswith("|") and linea.count("|") >= 4):
+    if not (linea.strip().startswith("|") and linea.count("|") >= 3):
         return None
     if es_separador(linea):
         return None                              # separador de tabla markdown, no una fila
@@ -718,6 +800,18 @@ def veredictos_de(texto, armas=ARMAS):
 SUJ_HEADING = re.compile(r"^#{2,4}\s+\*{0,2}`([a-z0-9][a-z0-9\-]{1,30})`\*{0,2}\s*(.*)$")
 SUJ_BULLET = re.compile(r"^\s*[-*]+\s+\*\*`?([a-z0-9][a-z0-9\-]{1,30})`?\*\*\s*(.*)$")
 SUJ_CELDA = re.compile(r"^\*{0,2}`([a-z0-9][a-z0-9\-]{1,40})`")
+# El MISMO sujeto sin backticks. Va en una constante aparte y NO relajando `SUJ_CELDA` porque
+# las dos formas no valen lo mismo: el backtick es una DECLARACION explicita del autor y se
+# acepta sola, mientras que una primera celda en prosa (`| card (gasto) |`, y tambien `| ok |`
+# o `| sujeto |`) solo cuenta si el id esta en el PADRON. Sin esa asimetria, relajar el
+# backtick convierte cada cabecera y cada celda de texto en una medicion fantasma con nombre
+# inventado.
+# Medido (auditoria C3-25, 2026-09-29): el barrido de 35 pantallas tiene 22 filas COHERENTE y
+# CERO backticks, asi que era INVISIBLE -- ni medicion ni hueco, y por eso el guard de `sin
+# clasificar` tampoco lo veia. Y el detalle que lo dejo vivir: ese documento esta RETIRADO, asi
+# que su invisibilidad era el resultado correcto. El guard acertaba por accidente, y una
+# medicion vigente escrita igual habria desaparecido sin dar sintoma.
+SUJ_CELDA_PELADA = re.compile(r"^\*{0,2}([a-z0-9][a-z0-9\-]{1,40})\b")
 
 
 def camino_de(cola):
@@ -726,7 +820,7 @@ def camino_de(cola):
     return m.group(1).strip() if m else ""
 
 
-def mediciones_de(texto, armas=ARMAS):
+def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
     """Devuelve las MEDICIONES (`id`+`camino`, §1) con los veredictos que se le pudieron leer a cada
     una. Una medición sin veredicto legible es un HUECO CON NOMBRE: accionable y con dueño, que es
     exactamente lo que el conteo por veredictos no podía producir."""
@@ -737,13 +831,28 @@ def mediciones_de(texto, armas=ARMAS):
             por_linea.setdefault(n, []).append((v, f, c))
 
     meds, actual = [], None
-    for n, linea in enumerate(texto.splitlines(), 1):
+    lineas = texto.splitlines()
+    # La fila ANTERIOR a un separador es la cabecera (`es_separador` lo documenta). Saltearla es
+    # obligatorio desde que existe `SUJ_CELDA_PELADA`: `| sujeto | veredicto |` matchea `sujeto`
+    # y la cabecera entraria como medicion. Antes no hacia falta porque el backtick la excluia
+    # sin quererlo -- otro guard que acertaba por accidente.
+    cabeceras = {n for n in range(1, len(lineas) + 1)
+                 if n < len(lineas) and es_separador(lineas[n])}
+    for n, linea in enumerate(lineas, 1):
+        if n in cabeceras:
+            continue
         celdas = fila_de_tabla(linea)
         nueva = None
         if celdas:
             m = SUJ_CELDA.match(celdas[0])
+            pelada = False
+            if not m:
+                mp = SUJ_CELDA_PELADA.match(celdas[0])
+                if mp and mp.group(1) in ids:
+                    m, pelada = mp, True
             if m:
-                nueva = {"id": m.group(1), "camino": "", "linea": n, "forma_decl": "celda",
+                nueva = {"id": m.group(1), "camino": "", "linea": n,
+                         "forma_decl": "celda-pelada" if pelada else "celda",
                          "veredictos": []}
                 # En una tabla el sujeto y el veredicto viven en la MISMA línea: la medición se
                 # cierra acá y no arrastra contexto a la fila siguiente.
@@ -816,6 +925,15 @@ def contraste_de_veredictos(res):
             for v in vs:
                 por_id.setdefault(i, {}).setdefault(v, []).append(nombre)
     conflictos = {}
+    # Cada documento con su FECHA, para que el lector pueda ver la SUCESION sin recomputarla.
+    # El ratchet de abajo declara dos lecturas posibles -- (a) sucesion legitima, (b)
+    # contradiccion -- y dice que no las dirime porque requiere re-medir. Sigue sin dirimirlas:
+    # esto NO elige el mas nuevo. Decidir por `mtime` le pondria veredicto a algo que necesita
+    # una medicion, y dos veredictos distintos pueden ser de dos superficies distintas y los dos
+    # vigentes. Lo que se arregla es que la fecha ESTE a la vista: con `REQUIERE_TRIAGE` ya
+    # legible (2026-09-29), el par `cuenta`/`detalle` muestra los tres eslabones en orden
+    # -- COHERENTE 22/09, REQUIERE_TRIAGE 22/09 posterior, DESVÍO 28/09 -- y la lectura (a) se
+    # lee sola. Antes el eslabon del medio era invisible y el conflicto parecia un desacuerdo.
     for i, mapa in por_id.items():
         # `v1, v2` y no `a, b`: en `main`, `a`/`b` son los conteos de los lotes que se imprimen más
         # abajo («lote A={a}, lote B={b}»). Con el bloque al final daba igual; al subirlo, el
@@ -940,7 +1058,7 @@ def medir(txt, ids, armas=ARMAS):
     (el backfill de `medido_contra` declara 16 ids sin veredicto y todos están medidos arriba). Sin
     esta agregación, esas 16 filas vuelven como huecos — el mismo falso positivo que el gate de
     cabecera cerró a nivel fila, reapareciendo a nivel sujeto (auditoría, H-C)."""
-    hits, meds, huerfanos = mediciones_de(txt, armas)
+    hits, meds, huerfanos = mediciones_de(txt, armas, ids)
     padron = set(ids)
     con, sitios, fuera = {}, {}, {}
     for m in meds:
@@ -1154,6 +1272,7 @@ def main():
         sys.exit(11)
 
     if "--json" in sys.argv:
+        res["instrumento"] = sello_del_instrumento()
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return
 
