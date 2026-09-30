@@ -90,3 +90,36 @@ Prima de [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] (ahí el hueco
 decisiones; acá el **sentido** vive en el par de fragmentos) y de
 [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]] (ahí lo que
 engaña es el agregado; acá, el fragmento).
+
+---
+
+## Tercera faz (2026-09-30): el cebo del control positivo entra por la puerta que el guard abre a propósito
+
+El falso rojo no siempre viene de un recorte. Puede venir del **control positivo mal construido**, y
+entonces el instrumento condena justo al sujeto que estaba **bien**.
+
+**Caso.** Escribí un canario que cruza los 54 ids del padrón del criterio 3 contra el lector que los
+parsea (`memoria/vacio-no-es-hallazgo-correr-el-control.md` es su abuela). Su control positivo usaba un
+cebo con forma imposible, `((cebo-del-canario))`, y lo pasaba **dentro de `ids`** para poder buscarlo.
+Sobre el parser viejo dio bien. Sobre el parser **arreglado** (#742) el cebo salió **legible**, el
+control se declaró roto y el canario devolvió `exit 2` — *precondición faltante* — sobre el único lector
+que leía los 54 ids correctamente.
+
+**Y el parser tenía razón.** Su fix reconoce los tokens que el padrón **declara**; al meter el cebo en
+el padrón, **yo lo había declarado**. El cebo no era imposible: lo autoricé. El control entró por la
+misma puerta que el guard abre a propósito, así que no medía la ceguera del lector: medía la lista
+blanca que yo mismo había ampliado.
+
+**La regla:** *un guard condicionado a una lista blanca no se puede probar metiendo el cebo en la lista
+blanca.* Cuando el mecanismo bajo prueba es «acepto lo que la fuente declara», el control positivo no
+puede consistir en declarar algo nuevo — eso ejercita el camino del **sí**, no el del **no**.
+
+**El control que sí sirve:** inyectar un **lector ciego** (monkeypatch del parser devolviendo vacío) y
+exigir que **los 54 de 54** salgan ilegibles. Así el control mide al canario, no al parser, y vale con
+cualquier lector — incluido uno que todavía no existe. Verificado en las dos direcciones: `main` →
+`exit 1` nombrando `['(home)']`; #742 → `exit 0`, `0 de 54`.
+
+**Cómo detectarlo antes de pagarlo:** preguntá *¿mi cebo llega al instrumento por el mismo canal que el
+instrumento está autorizado a aceptar?* Si la respuesta es sí, el control no discrimina. Hermana de
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] (allá falta el control positivo; acá **existe y apunta al
+lado equivocado**) y de [[el-guard-que-caza-a-su-propio-autor]].
