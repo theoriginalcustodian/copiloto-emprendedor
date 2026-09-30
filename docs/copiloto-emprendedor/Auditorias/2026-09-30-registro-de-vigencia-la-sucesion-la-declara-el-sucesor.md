@@ -279,7 +279,9 @@ planificación», y `PLAN.md:247` dice «Dueño: **auditoría** (es su parser)»
 |---|---|---|---|
 | 1 ✅ | este registro | auditoría | los 4 bloques citan a su autor; el reportador los reproduce |
 | 2 ✅ | `scripts/evidencia/vigencia-de-mediciones.py` — **reporta**, no actúa | auditoría | el barrido de 35 pantallas **tiene que** salir RETIRADO por `matriz-web-re-medida`; si no, el instrumento está roto |
-| 3 ⏳ | el contraste **excluye** las filas retiradas en vez de exhibirlas como conflicto | **planificación** (`contar-veredictos.py`) | **una fila retirada no puede aparecer como conflicto nuevo** — y el negativo que falta: con el registro vacío, el contraste tiene que volver a exhibir los conflictos de hoy |
+| 3 ⏳ | el contraste **excluye** las filas retiradas en vez de exhibirlas como conflicto. **Por fila Y POR VERSIÓN** (§3.bis), y la fuente es **el documento medido**, no la lista de invalidadas | **planificación** (`contar-veredictos.py`) | **una fila retirada no puede aparecer como conflicto nuevo** · negativo: con el registro vacío, el contraste tiene que volver a exhibir los conflictos de hoy · **y el tercero, de §3.bis: una fila corregida *in-situ* NO se excluye** — la lista del 28/09 la declara invalidada y su autor ya la corrigió, así que excluirla retira 2 filas vigentes |
+| 3.bis ⏳ | el `IDS` de la relación de FE2, que el registro dejó `[POR CONFIRMAR]` | **FE2** (es su declaración) | no enumero 7 pantallas que su autor no enumeró |
+| 3.ter ⏳ | cablear `test-vigencia-canario.sh` a `lint.sh` | **planificación** (`scripts/ci/` es suyo) | hoy corre solo; sin cablear, el próximo cambio al reportador no lo ejercita |
 
 **La corrida del paso 2, sobre `origin/main` @ `4f5692ef`:**
 
