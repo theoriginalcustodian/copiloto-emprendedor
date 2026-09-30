@@ -87,4 +87,17 @@ exactamente el número que el corpus menciona, el instrumento parecía estar de 
 régimen, y que la suma dé el total declarado), nunca por la presencia de una palabra. Y anclá el control
 en **la cifra que el autor afirma**: acá el autor escribe «1 fila invalidada, no 6», así que el extractor
 tiene que reproducir 1 — cualquier otra cosa es el instrumento, no el corpus.
+**Cuarto caso, el mismo día y con la decisión colgando de él (2026-09-30).** Para saber si podía
+invocar `python` (sin el `3`) en un test que iba a entrar al CI, conté cuántos de los tests ya verdes lo
+usan: `grep -c 'python '` → **5 archivos** ⇒ «existe en el runner». Verificado **por rol** —excluyendo
+comentarios— los 5 eran: 1 **mención en un comentario**, 3 invocaciones reales, y la quinta era *el
+resolvedor que yo estaba por inventar*: `PY="$(command -v python || command -v python3)"` en
+`scripts/tests/test-contar-veredictos-padron.sh:38`. El conteo crudo habría sostenido la decisión
+correcta por el motivo equivocado, y me habría hecho escribir una segunda forma de algo que el repo ya
+resolvía (`scripts/ci/lint.sh` usa `python3`, y el job `lint` **no tiene `setup-python`**).
+
+**Lo nuevo que enseña este caso:** verificar el rol no sólo corrige el número — **encuentra la
+reutilización**. La línea que no era una invocación era la solución. Contar la palabra es lo que impide
+verla.
+
 Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[vacio-no-es-hallazgo-correr-el-control]].

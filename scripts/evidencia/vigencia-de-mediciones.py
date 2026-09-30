@@ -199,7 +199,21 @@ def main() -> int:
         REGISTRO = Path(sys.argv[i + 1])
         print(f"[canario] registro sustituido por {REGISTRO}")
 
-    buzon = BUZON if BUZON.is_dir() else BUZON_ALT
+    # `--buzon <path>`: sustituye el corpus. Existe porque el buzon NO esta versionado, asi que en
+    # un clon limpio (el CI) este script sale 2 SIN MEDIR ANTES de llegar a un solo control -- y un
+    # canario que dependa del corpus real es un test que el gate no puede correr. `scripts/ci/lint.sh`
+    # lo dice de si mismo: «un test que nadie ejecuta no es un control, es un archivo».
+    # Lo que el fixture verifica es el INSTRUMENTO -- que cada control PUEDE ponerse rojo. Lo que NO
+    # verifica es que las anclas del corpus real sean ciertas: eso lo prueba la corrida contra el
+    # buzon real, que el canario suma como caso extra cuando el buzon existe.
+    if "--buzon" in sys.argv:
+        i = sys.argv.index("--buzon")
+        if i + 1 >= len(sys.argv):
+            morir(2, "SIN MEDIR: --buzon sin valor.")
+        buzon = Path(sys.argv[i + 1])
+        print(f"[canario] buzon sustituido por {buzon}")
+    else:
+        buzon = BUZON if BUZON.is_dir() else BUZON_ALT
     if not buzon.is_dir():
         morir(2, "SIN MEDIR: el buzon no existe en este checkout. NO esta versionado "
                  "(0 archivos en origin/main), asi que en un clon limpio esto es lo esperado "
