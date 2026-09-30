@@ -71,7 +71,7 @@ SPEC = (RAIZ / "docs" / "copiloto-emprendedor" /
 CIEGOS_DECLARADOS = {
     "bi-refresh", "bi-vacio", "bloqueado", "caida", "card", "card-cliente", "card-cobro",
     "card-factura", "card-presu", "chat", "cobro-voz", "fact-cae", "fact-hitl", "fact-voz",
-    "feedback", "grabando", "ingresar-error", "onb-cumplida", "onb-promesa", "pres-ciclo",
+    "feedback", "grabando", "ingresar-error", "onb-cumplida", "onb-promesa", "preg", "pres-ciclo",
     "pres-hitl", "pres-voz", "recibo", "vacio", "vacio-visto", "volver", "(home)",
 }
 # `plan` está en la matriz y NO en la spec: salió por DEC-8 (visión, `BL-V2`). Es C3-14, y la
