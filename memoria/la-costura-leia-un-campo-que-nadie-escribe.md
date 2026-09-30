@@ -103,3 +103,37 @@ hueco del corpus: es que el lector está mirando el extremo equivocado. Y antes 
 mirá si el corpus ya declara ese dato de alguna forma — un campo que pide lo imposible nace con cobertura
 0 y la mantiene. Ver [[medir-la-cobertura-de-una-convencion-antes-de-hacerla-obligatoria]] y
 [[el-nombre-es-una-hipotesis-sobre-el-contenido]].
+
+---
+
+## Refuerzo (2026-09-30): el espejo — el detector CALCULA la condición, la imprime, y no la devuelve
+
+Mismo tronco, lado opuesto: allá un lector leía un campo que nadie escribía; acá **el emisor detecta el
+problema y no lo publica**, así que ningún lector puede propagarlo aunque quiera.
+
+```js
+async function esperarCargado(page, testidCargando, timeout = 30000) {
+  const ok = await page.waitForSelector(..., { state: 'detached', timeout })
+    .then(() => true).catch(() => false);
+  if (!ok) console.log(`  ⚠️  ${testidCargando}: seguía visible — la captura puede estar en loading`);
+}                       // <-- no hay `return ok`
+```
+
+Ocho call-sites hacen `await esperarCargado(...)`. **Ninguno ignora el resultado: no hay resultado.**
+La función sabe exactamente lo que hace falta saber —la pantalla quedó en esqueleto de carga—, lo dice
+por consola entre cientos de líneas, y la fila se reporta igual que una medida. El mismo instrumento
+tenía el canal correcto a diez líneas de distancia (una lista `noMedibles` con su `porque`, y un
+comentario propio que decía *«sin este campo, el instrumento convierte lo no medible en aprobado»*):
+lo que faltaba era que el detector de runtime **hablara ese idioma**. Y el defecto vivía dos veces —el
+detector de Agenda, quince líneas más abajo, tenía el mismo `.catch(() => console.log(...))`.
+
+**Why:** porque un `console.log` se lee como «ya está reportado» cuando en realidad es el lugar donde la
+información muere. La revisión no lo caza: el aviso **existe**, es correcto, está bien redactado, y el
+que lo escribió entendió el problema. Lo que no existe es el cable entre el aviso y el veredicto.
+
+**How to apply:** (1) ante una función que detecta algo, preguntá **qué devuelve** — si no devuelve, el
+único destino de lo que detectó es la consola; (2) `grep` del nombre de la función y mirá si algún
+call-site **usa** el valor: cero usos puede significar «no hay valor», que es peor que ignorarlo;
+(3) todo detector de una condición que invalida una medición tiene que emitir por el mismo canal que
+las demás invalidaciones — si el proyecto ya tiene un «no medible», el detector nuevo entra ahí, no a
+`console.log`; (4) contá cuántas veces está el patrón antes de arreglar uno.
