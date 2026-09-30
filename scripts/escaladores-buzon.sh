@@ -77,6 +77,22 @@ SIDECAR_DIR="$BUZON/.escalador-estado"
 # no solo por carpeta.
 SIDECAR_SUF=".first-seen"
 
+# Fuente UNICA del nombre del `urgente_` de contratos sin tomar. Vivia dos veces —la rama que lo
+# ESCRIBE y la que lo RETIRA (#740)— y auditoria midio que ese nombre **ya cambio una vez**, hace
+# ocho dias: 46 archivos con la forma vieja (`_contrato-sin-tomar-<contrato>.md`, singular) del
+# 2026-08-03 al 09-22, y 7 con la actual desde el 09-21. Con el nombre duplicado, el dia del proximo
+# cambio la rama de escritura seguiria escribiendo y la de retiro no matchearia nada: volveria el
+# `urgente_` inmortal, y `retirados_obsoletos=0` seria indistinguible de «no habia nada que retirar»
+# — un silencio que ya no se puede leer. Derivar las dos del mismo par infijo/sufijo hace que la
+# divergencia no pueda ocurrir, que es mejor que detectarla.
+# El `:-` NO es configuracion: existe para que el control positivo de mas abajo sea EJERCITABLE.
+# Sin override no hay forma de fabricar el caso «el nombre que genero no lo alcanza mi patron», y un
+# guard que nunca se pudo ver fallar es indistinguible de uno ausente. Un override INCOHERENTE
+# (cambiar uno solo) es exactamente lo que el control caza, que es lo que el test hace a proposito.
+URGENTE_ST_INFIJO="${URGENTE_ST_INFIJO:-_urgente_vigilancia-a-}"
+URGENTE_ST_SUF="${URGENTE_ST_SUF:-_contratos-sin-tomar.md}"
+URGENTE_ST_GLOB_INFIJO="${URGENTE_ST_GLOB_INFIJO:-$URGENTE_ST_INFIJO}"
+
 UMBRAL_CONTRATO_MIN="${UMBRAL_CONTRATO_MIN:-120}"          # 2h, del pendiente
 UMBRAL_PEDIDO_MIN="${UMBRAL_PEDIDO_MIN:-30}"                # 30min, del pendiente
 UMBRAL_SILENCIO_DEFAULT_MIN="${UMBRAL_SILENCIO_DEFAULT_MIN:-90}"   # default ya usado por Cron 2
@@ -164,9 +180,39 @@ edad_alta_min() {
   # estaba bien, la comparación no. En ISO-8601 el orden lexicográfico ES el cronológico, así que
   # `<` dice exactamente lo que la regla quiere decir, y una fecha futura (o de otra zona horaria)
   # cae al sidecar, que es el mecanismo correcto para medirle la edad de verdad.
+  # ⚠️⚠️ Y NO protegia contra la fecha ATRASADA, que es el CRUCE DE MEDIANOCHE. Medido en vivo por
+  # auditoria el 2026-09-30 00:0x: un `pedido_` de TRES MINUTOS de vida reportando `999999min`,
+  # porque lo nombro `2026-09-29_` — su jornada mental seguia siendo la de ayer. Las cuatro sesiones
+  # venian fechando 29 toda la jornada, asi que no era un caso de borde: era todos los archivos que
+  # cualquiera escribiera en las horas siguientes. Y con el escalador ya sabiendo retirar (#740) el
+  # dano no es solo ruido: cada uno de esos nacia por encima de todo umbral y generaba su `urgente_`.
+  #
+  # El error del piso NO era la comparacion (`<` es correcto), era el SUPUESTO: «un archivo con
+  # fecha de un dia anterior ya es viejo, sin importar mtime ni sidecar». La fecha del nombre es una
+  # DECLARACION del autor, no una medicion — y el que cruza la medianoche no se da cuenta de que la
+  # escribio mal, porque para el sigue siendo el mismo dia de trabajo.
+  #
+  # Por que no alcanza con quitar el piso: existia para cubrir un caso real —un archivo viejo al que
+  # le tocaron el mtime y que este script nunca vio (sin sidecar)— y sin el, ese caso deja de
+  # escalar. Mentir hacia abajo es el modo que no se nota, y es el que este archivo ya pago dos
+  # veces. Asi que el piso no se quita: se REEMPLAZA por el dato que discrimina los dos casos, que
+  # es el NACIMIENTO del archivo (`stat -c %W`). Medido en este filesystem antes de codificarlo:
+  #
+  #     archivo recien creado   -> %W == %Y == ahora
+  #     urgente_ real de ayer   -> %W = nacio hace 2.5h · %Y = 40min despues (nacio antes, lo tocaron)
+  #
+  # El nacimiento es inmune a las ediciones posteriores, que es exactamente la propiedad que el
+  # sidecar fue a buscar. Con el, las DOS protecciones se cumplen sin canje: el del cruce de
+  # medianoche mide 3 min y no escala, y el viejo con mtime tocado mide su edad real y escala igual.
+  #
+  # La fecha del nombre pasa entonces de PISO a SEÑAL DE DISCREPANCIA: cuando el nombre declara un
+  # dia anterior y la fisica dice que nacio hoy, gana la fisica y se avisa por stderr con la accion
+  # concreta (renombrar), porque ahi el dato de control esta mal escrito y sigue mal hasta que
+  # alguien lo arregle. No pone `alarma`: avisar de un nombre mal fechado no es un hallazgo del
+  # buzon, y una limpieza que alarma es el defecto que #740 vino a cerrar.
+  local fecha_declara_viejo=0
   if [[ "$fecha_archivo" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [[ "$fecha_archivo" < "$fecha_hoy" ]]; then
-    echo 999999   # de un día anterior: por encima de cualquier umbral en minutos, sin más cálculo
-    return
+    fecha_declara_viejo=1
   fi
   sidecar_file="$SIDECAR_DIR/$b$SIDECAR_SUF"
   # Migracion del namespace viejo (sidecar con el nombre EXACTO del mensaje). Es idempotente y se
@@ -195,9 +241,18 @@ edad_alta_min() {
     # al arreglar el atajo por fecha, un pedido_ de 40 min reales pasó a reportar 0 min — el
     # escalador dejaba de mentir hacia arriba para empezar a mentir hacia abajo, que es peor porque
     # no se nota.
-    local m_archivo
+    # `%W` = NACIMIENTO. Es mejor piso que el mtime por la misma razon por la que existe el
+    # sidecar (una edicion posterior no lo mueve), y encima cubre el caso que el sidecar no puede:
+    # el archivo que este script ve por PRIMERA vez y que ya venia editado. No esta disponible en
+    # todos los filesystems — `stat` devuelve `0` (o `-`) cuando no lo tiene —, asi que se valida
+    # antes de usarlo y se cae al mtime, que es el comportamiento anterior.
+    local m_archivo m_nacimiento
     m_archivo="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
+    m_nacimiento="$(stat -c %W "$f" 2>/dev/null || echo 0)"
     primera="$m_archivo"
+    if es_medicion "$m_nacimiento" && [ "$m_nacimiento" -gt 0 ] && [ "$m_nacimiento" -le "$m_archivo" ]; then
+      primera="$m_nacimiento"
+    fi
     [ "$primera" -gt "$now" ] 2>/dev/null && primera="$now"   # reloj adelantado: nunca edad negativa
     if [ "$DRY_RUN" = "0" ]; then
       mkdir -p "$SIDECAR_DIR" 2>/dev/null || true
@@ -212,7 +267,19 @@ edad_alta_min() {
   # hacia arriba y mentir hacia abajo son los dos modos de no saber. Devolver vacio deja que el
   # llamador lo cuente como medicion fallida, que es lo unico cierto que se puede decir.
   es_medicion "$primera" || { echo ""; return; }
-  echo $(( (now - primera) / 60 ))
+  local edad_real=$(( (now - primera) / 60 ))
+  # La fisica gana, y si contradice al nombre se avisa. El umbral del aviso es el de los pedidos:
+  # por debajo de el la discrepancia no cambia ninguna decision, y avisar de lo que no cambia nada
+  # es el ruido que desarma al instrumento.
+  if [ "$fecha_declara_viejo" = "1" ] && [ "$edad_real" -lt "$UMBRAL_PEDIDO_MIN" ]; then
+    printf '   -> ⚠️ FECHA MAL ESCRITA en %s: el nombre declara %s (dia anterior) pero el archivo
+' "$b" "$fecha_archivo" >&2
+    printf '      nacio hace %s min. Gana la medicion. Renombralo a %s_ para que el dato de control
+' "$edad_real" "$fecha_hoy" >&2
+    printf '      diga la verdad -- es el cruce de medianoche, no un descuido tuyo.
+' >&2
+  fi
+  echo "$edad_real"
 }
 
 # epoch del avance_ o cierre_ MÁS RECIENTE que el frente <destinatario> mandó (patrón
@@ -365,7 +432,25 @@ fecha_hoy="$FECHA_HOY"
 for para in "${!sin_tomar_n[@]}"; do
   n="${sin_tomar_n[$para]}"
   hay_broadcast="${sin_tomar_bc[$para]:-0}"
-  urgente="$ABIERTO/${fecha_hoy}_urgente_vigilancia-a-${para}_contratos-sin-tomar.md"
+  urgente="$ABIERTO/${fecha_hoy}${URGENTE_ST_INFIJO}${para}${URGENTE_ST_SUF}"
+  # CONTROL POSITIVO HORNEADO, y corre aunque no haya nada que retirar. La fuente unica de arriba
+  # impide que los dos literales diverjan, pero no impide que el GLOB del retiro deje de alcanzar
+  # al nombre por otra razon (un rol con un caracter que el glob no cubra, un prefijo de fecha
+  # distinto). Lo que se verifica es la propiedad que importa: **lo que este script acaba de
+  # nombrar, este script tiene que poder volver a encontrarlo**. Si no, el defecto es del
+  # instrumento —no del buzon— y tiene que gritar: callado reaparece como `urgente_` inmortal, que
+  # es lo que #740 vino a cerrar. Mismo criterio con el que se endurecio el caso 4 del test de
+  # `ROLES:`, que pasaba por la razon equivocada.
+  case "${urgente##*/}" in
+    ????-??-??"$URGENTE_ST_GLOB_INFIJO"*"$URGENTE_ST_SUF") ;;
+    *)
+      alarma=1
+      echo "INSTRUMENTO ROTO: el urgente_ que genero no lo alcanza mi propio patron de retiro."
+      echo "   generado: ${urgente##*/}"
+      echo "   patron:   ????-??-??${URGENTE_ST_GLOB_INFIJO}*${URGENTE_ST_SUF}"
+      echo "   Mientras no coincidan, cada aviso que escriba queda INMORTAL en abierto/ (ver #740)."
+      ;;
+  esac
   [ "$DRY_RUN" = "0" ] || continue
   # Idempotente por DÍA y destinatario: si ya existe, se REESCRIBE con la lista actual en vez de
   # saltearse. Saltear dejaba el aviso congelado en la foto del primer ciclo — un contrato que
@@ -428,10 +513,10 @@ done
 # un `urgente_` escrito por una sesion; y NO toca `alarma`, porque una limpieza que pusiera
 # alarma=1 seria otra alarma permanente, que es exactamente el defecto que viene a cerrar.
 retirados_obsoletos=0
-for f in "$ABIERTO"/????-??-??_urgente_vigilancia-a-*_contratos-sin-tomar.md; do
+for f in "$ABIERTO"/????-??-??"$URGENTE_ST_GLOB_INFIJO"*"$URGENTE_ST_SUF"; do
   [ -e "$f" ] || continue
   b="${f##*/}"
-  rol="${b#*_urgente_vigilancia-a-}"; rol="${rol%_contratos-sin-tomar.md}"
+  rol="${b#*"$URGENTE_ST_GLOB_INFIJO"}"; rol="${rol%"$URGENTE_ST_SUF"}"
   if [ -n "${sin_tomar_n[$rol]:-}" ] && [ "${b:0:10}" = "$fecha_hoy" ]; then continue; fi
   if [ "$DRY_RUN" != "0" ]; then
     echo "RETIRARIA urgente_ obsoleto (causa resuelta): $b"
@@ -470,8 +555,34 @@ for f in "$ABIERTO"/????-??-??_pedido_*.md; do   # anclado por posición, ver Re
   [ "$edad" -ge "$UMBRAL_PEDIDO_MIN" ] || continue
   para="$(destinatario_de_nombre "$b")"
   alarma=1
+  regla2_hubo=1
   echo "PEDIDO SIN RESPUESTA (${edad}min >= ${UMBRAL_PEDIDO_MIN}): $b -> deudora: ${para:-todos}"
 done
+
+# La accion que APAGA esto, dicha por el instrumento. Es el punto 2 del veredicto de auditoria del
+# 2026-09-30, y la razon por la que no se implementa el punto que uno querria (que la regla LEA la
+# respuesta): auditoria midio la cobertura de la convencion de citar el `pedido_` en el cuerpo sobre
+# el buzon entero -- **82 de 313 (26%)**, y no la cumple nadie (planificacion 22%, auditoria 24%,
+# frontend1 8%). Emparejando por cita, el 74% de las respuestas CORRECTAS no apagaria nada y la
+# alarma sonaria encima de trabajo terminado; emparejando por heuristica («cualquier cierre_
+# posterior del destinatario al emisor») se apagarian pedidos que nadie contesto, que es fail-open y
+# en un gate de parálisis no da sintoma nunca. Entre gritar de mas y callar de menos, el segundo es
+# el que no se descubre. Si algun dia se lee de verdad, el orden es al revés del intuitivo: primero
+# se EXIGE la declaracion al escribir, despues se la LEE -- el 26% mide la consecuencia pasada, no
+# la voluntad futura.
+#
+# Mientras tanto, lo barato y lo que faltaba de verdad: **decirlo**. Los dos —auditoria y yo—
+# respondimos sin mover el archivo y la alarma siguio 94 y 96 min, y no fue falta de disciplina: el
+# instrumento mide la ubicacion y nunca le dijo a nadie que la ubicacion ES el acto. Cuando el
+# mecanismo caza a su propio autor, «falta disciplina» queda descartada por la evidencia.
+if [ "${regla2_hubo:-0}" = "1" ]; then
+  echo "   -> lo que APAGA estas alarmas es MOVER el pedido_ a cerrado/<fecha>/ (o a en-curso/ si lo"
+  echo "      estas trabajando). Una respuesta ESCRITA no las apaga: esta regla mide la UBICACION del"
+  echo "      archivo, no si alguien contesto. Responder y no mover deja el aviso sonando sobre"
+  echo "      trabajo ya hecho -- paso el 2026-09-29 entre planificacion y auditoria, en los dos"
+  echo "      sentidos. El pedido_ tiene destinatario unico, asi que moverlo no afirma nada sobre"
+  echo "      nadie mas: es el unico caso del buzon donde el cierre SI tiene una sola mano."
+fi
 
 # ── Regla 3: en-curso/ sin actividad dentro del umbral declarado ───────────────
 if [ -d "$ENCURSO" ]; then
