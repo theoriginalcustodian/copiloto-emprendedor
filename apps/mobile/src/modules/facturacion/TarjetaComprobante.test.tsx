@@ -37,7 +37,7 @@ function estado(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
     tokenConfirmacion: null,
     // `id: null` por defecto: sin id la card NO ofrece cobrar, que es el estado de hoy (el payload del
     // workflow todavía no trae el id de fila). Los tests de cobro pasan un `resultado` con `id`.
-    resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6, id: null },
+    resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6, id: null, alertaDobleEmision: false },
     pdf: { url: 'https://afipsdk/f.pdf', nombre: 'f.pdf', expiraAt: null },
     drive: null,
     receptor: null,
@@ -121,7 +121,7 @@ describe('TarjetaComprobante', () => {
     it('🔴 con `resultado.id` y factura emitida, la sección de cobro aparece', async () => {
       // El caso que justifica el campo: apenas se emite, el emprendedor puede marcar «ya me la pagaron»
       // sin navegar a la factura. La sección se alimenta de la MISMA vía viva que el detalle.
-      await montar(estado({ resultado: { ok: true, duplicado: false, cae: 'c', caeVto: null, nro: 8, tipoCbte: 11, puntoVenta: 6, id: 15 } }));
+      await montar(estado({ resultado: { ok: true, duplicado: false, cae: 'c', caeVto: null, nro: 8, tipoCbte: 11, puntoVenta: 6, id: 15, alertaDobleEmision: false } }));
 
       await waitFor(() => expect(screen.getByTestId('facturacion-comprobante-cobro')).toBeTruthy());
       expect(mockListarCobros).toHaveBeenCalledWith(15);
@@ -142,7 +142,7 @@ describe('TarjetaComprobante', () => {
 
     it('🔴 sobre una nota de crédito (tipo 13) no ofrece cobrar, aunque tenga id', async () => {
       // Una NC no es plata que alguien deba: ofrecer «ya me la pagaron» ahí contradice el documento.
-      await montar(estado({ resultado: { ok: true, duplicado: false, cae: 'c', caeVto: null, nro: 8, tipoCbte: 13, puntoVenta: 6, id: 15 } }));
+      await montar(estado({ resultado: { ok: true, duplicado: false, cae: 'c', caeVto: null, nro: 8, tipoCbte: 13, puntoVenta: 6, id: 15, alertaDobleEmision: false } }));
 
       // La sección se monta pero `SeccionCobro` con `cobrable=false` no dibuja nada ni consulta.
       expect(screen.queryByTestId('facturacion-comprobante-cobro-marcar')).toBeNull();

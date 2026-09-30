@@ -66,6 +66,7 @@ function emitida(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
       tipoCbte: 11,
       puntoVenta: 6,
       id: null,
+      alertaDobleEmision: false,
     },
     pdf: { url: 'https://afipsdk/f.pdf', nombre: 'f.pdf', expiraAt: null },
     drive: null,
