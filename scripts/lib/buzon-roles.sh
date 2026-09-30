@@ -50,6 +50,42 @@ roles_de_broadcast() {
   done
 }
 
+# roles_declarados_en <archivo> — los roles que EL CONTRATO declara con una línea `ROLES:`,
+# uno por línea, o nada si no la declara o si ninguno es válido.
+#
+# Por qué existe (FACTID, 2026-09-29): `roles_de_broadcast` contesta «¿a quiénes ALCANZA este
+# broadcast?», que no es la misma pregunta que «¿quiénes tienen que reportar?». FACTID declaraba
+# tres piezas —core, web, mobile— y el escalador exigía un reporte también a
+# `manejo-de-errores`, que no tenía ninguna. La única forma de apagar ese `urgente_` era que esa
+# sesión reportara sobre trabajo que no era suyo: pedirle que afirme algo que no midió.
+#
+# El ancla tolera el markdown real —`**ROLES:**`, `> _ROLES_:`, con backticks— porque el mismo
+# archivo ya pagó ese error dos veces con `^DISPARADOR:`, que no matcheaba
+# `**DISPARADOR: pendiente.**` y por eso la regla existía y no disparó NUNCA.
+#
+# Un rol desconocido se DESCARTA, nunca se devuelve: un `urgente_` dirigido a un rol inexistente
+# no lo lee nadie. Y si la línea no deja ningún rol válido, se devuelve vacío para que el
+# llamador caiga al comportamiento por defecto — un typo no puede apagar el escalador para un
+# contrato. Escalar de más cuesta ruido; escalar de menos pierde el contrato.
+roles_declarados_en() {
+  local f="$1" linea crudo tok r valido
+  [ -f "$f" ] || return 0
+  # El adorno puede ir ANTES de los dos puntos (`_ROLES_:`) y el valor venir con backticks
+  # (`` `backend` ``). El patrón de `DISPARADOR:?` no sirve tal cual: ahí los dos puntos van pegados
+  # al nombre. Cuarta vuelta del mismo error en este archivo, así que el ancla se prueba, no se
+  # supone -- el caso 3 del test es exactamente esta línea.
+  linea="$(grep -m1 -iE '^[[:space:]>*_-]*ROLES[[:space:]*_]*:?[[:space:]*_`]*[a-z]' "$f" 2>/dev/null)" || return 0
+  [ -n "$linea" ] || return 0
+  # Todo lo que sigue a los dos puntos, con los adornos de markdown y los separadores a espacios.
+  crudo="$(printf '%s' "$linea" | sed -E 's/^[[:space:]>*_-]*[Rr][Oo][Ll][Ee][Ss][[:space:]*_]*:?//' \
+                                 | tr -d '`*_' | tr ',;/' '   ')"
+  for tok in $crudo; do
+    valido=0
+    for r in "${ROLES_BUZON[@]}"; do [ "$tok" = "$r" ] && valido=1 && break; done
+    [ "$valido" = "1" ] && printf '%s\n' "$tok"
+  done
+}
+
 # Charclass del campo emisor/destinatario. Incluye dígitos (frontend1) y guiones para los
 # destinatarios compuestos que el buzón ya usaba (`-a-backend-y-frontend_`, `manejo-de-errores`).
 BUZON_ROL_RE='[a-z0-9-]+'

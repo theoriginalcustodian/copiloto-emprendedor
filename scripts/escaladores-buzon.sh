@@ -301,17 +301,27 @@ for f in "$ABIERTO"/????-??-??_contrato_*.md; do
     epoch_contrato="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     emisor="$(emisor_de_nombre "$b")"
     mudos=0
+    # La lista sale del CONTRATO si la declara, y del broadcast si no. Son dos preguntas
+    # distintas: `roles_de_broadcast` dice a quiénes ALCANZA `a-todos`, y `ROLES:` dice quiénes
+    # tienen algo que reportar. Usar la primera como si fuera la segunda es lo que le exigía un
+    # reporte a `manejo-de-errores` sobre FACTID, donde no tenía ninguna de las tres piezas.
+    # Sin la línea, el comportamiento es idéntico al de antes (caso 1 del test).
+    declarados="$(roles_declarados_en "$f")"
+    if [ -n "$declarados" ]; then fuente_roles="ROLES: del contrato"
+    else fuente_roles="broadcast '${para}'"; fi
     while IFS= read -r rol; do
       [ -n "$rol" ] || continue
+      [ "$rol" = "$emisor" ] && continue   # nadie se escala a si mismo, tambien si lo declaro
       avance_mas_reciente_epoch "$rol"
       if [ "${AVANCE_EPOCH:-0}" -gt "$epoch_contrato" ] 2>/dev/null; then continue; fi
       destinos+=("$rol"); mudos=$(( mudos + 1 ))
-    done < <(roles_de_broadcast "$para" "$emisor")
+    done < <(if [ -n "$declarados" ]; then printf '%s\n' "$declarados"
+             else roles_de_broadcast "$para" "$emisor"; fi)
     if [ "$mudos" = "0" ]; then
       echo "BROADCAST ATENDIDO (${edad}min): $b -> todos los roles reportaron despues; no escala"
       continue
     fi
-    echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> broadcast '${para}', sin reporte posterior: ${destinos[*]}"
+    echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> ${fuente_roles}, sin reporte posterior: ${destinos[*]}"
   else
     destinos=("$para")
     echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> le toca a ${para}"
@@ -416,7 +426,45 @@ if [ -d "$ENCURSO" ]; then
       anotar_fallo "$b" "en-curso sin avance"; continue
     fi
     [ "$m_movido" -gt "$m_contrato" ] && m_contrato="$m_movido"
-    avance_mas_reciente_epoch "${para:-desconocido}"; m_avance="$AVANCE_EPOCH"
+    # Un broadcast en en-curso/ tenia el defecto ENTERO, y peor que en abierto/: esta rama
+    # pedia el avance del rol literal `todos`, que NADIE firma, asi que `AVANCE_EPOCH` volvia 0
+    # siempre y la edad no bajaba nunca. Medido el 2026-09-29 sobre el buzon real: tres
+    # contratos `-a-todos_` en alarma permanente, uno de **2137 min** (35 h), con reportes de
+    # las cuatro sesiones en el buzon. Esa es la version literal de «ninguna sesion podia
+    # apagarlo»: no habia reporte posible que lo bajara.
+    #
+    # Y el costo es el de siempre, amplificado: `vigilancia-check.sh` usa el exit 1 de este
+    # script para decidir si hay PARALISIS, asi que estos tres tenian el gate de las cuatro
+    # sesiones sonando por una causa inapagable. Una alarma permanente es un instrumento
+    # apagado, no uno estricto.
+    #
+    # El fix es el mismo que en abierto/ y por eso se lee igual: se expande a los roles que el
+    # CONTRATO declara (`ROLES:`) o, si no los declara, a los que el broadcast alcanza; se toma
+    # el avance MAS RECIENTE de entre ellos para la edad (si alguien esta trabajando, no se
+    # grita) y se nombra a los MUDOS. Si no hay mudos, no hay alarma: ese es el control
+    # positivo de que se puede apagar.
+    mudos_ec=(); m_avance=0
+    if es_broadcast_buzon "${para:-}"; then
+      declarados_ec="$(roles_declarados_en "$f")"
+      emisor_ec="$(emisor_de_nombre "$b")"
+      while IFS= read -r rol; do
+        [ -n "$rol" ] || continue
+        [ "$rol" = "$emisor_ec" ] && continue
+        avance_mas_reciente_epoch "$rol"
+        [ "${AVANCE_EPOCH:-0}" -gt "$m_avance" ] 2>/dev/null && m_avance="$AVANCE_EPOCH"
+        if [ "${AVANCE_EPOCH:-0}" -gt "$m_contrato" ] 2>/dev/null; then continue; fi
+        mudos_ec+=("$rol")
+      done < <(if [ -n "$declarados_ec" ]; then printf '%s\n' "$declarados_ec"
+               else roles_de_broadcast "${para}" "$emisor_ec"; fi)
+      if [ "${#mudos_ec[@]}" = "0" ]; then
+        echo "BROADCAST EN CURSO ATENDIDO: $b -> todos los roles reportaron despues; no escala"
+        continue
+      fi
+      para_reporte="sin reporte posterior: ${mudos_ec[*]}"
+    else
+      avance_mas_reciente_epoch "${para:-desconocido}"; m_avance="$AVANCE_EPOCH"
+      para_reporte="dueño del frente: ${para:-desconocido}"
+    fi
     m_mejor="$m_contrato"
     [ "$m_avance" -gt "$m_mejor" ] && m_mejor="$m_avance"
     edad=$(( (now - m_mejor) / 60 ))
@@ -425,7 +473,7 @@ if [ -d "$ENCURSO" ]; then
     [ -n "${declarado:-}" ] && umbral="$declarado"
     [ "$edad" -ge "$umbral" ] || continue
     alarma=1
-    echo "EN-CURSO SIN AVANCE (${edad}min >= ${umbral}): $b -> dueño del frente: ${para:-desconocido}"
+    echo "EN-CURSO SIN AVANCE (${edad}min >= ${umbral}): $b -> ${para_reporte}"
   done
 fi
 
