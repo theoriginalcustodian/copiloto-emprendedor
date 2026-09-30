@@ -25,6 +25,9 @@
 #   3. rollup con un job FAILURE → ROJO presente, VERDE ausente, exit 1
 #   4. rollup 6/6 SUCCESS → VERDE presente, ROJO ausente, exit 0
 #
+# Los casos 6-11 (rollup vacío) y 12-14 (mergeable) están documentados en su propio bloque, más
+# abajo, cada uno con el incidente que lo puso ahí.
+#
 # El veredicto de `ci-verde.sh` sigue siendo EL EXIT CODE. Este test no cambia eso: verifica que
 # leer el texto mal no pueda fallar hacia el lado peligroso.
 set -uo pipefail
@@ -104,9 +107,17 @@ PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out3" 2>&1
 verificar "3 un job FAILURE" ROJO 1 "$?" "$out3"
 
 # --- Caso 4: verde real (la otra mitad del control) -------------------------------------------
+# ⚠️ A DIFERENCIA de los casos 1-3 y 5, este stub DISCRIMINA por argumentos. Desde 2026-09-30 el
+# script hace una consulta mas (`--json mergeable,mergeStateStatus`) antes de decir VERDE, y este
+# es el unico de los casos 1-5 que llega hasta ahi: los otros salen por ROJO antes. Un stub que
+# contestara el rollup a TODO le daria a `estado_de_merge` un array JSON en vez de
+# «MERGEABLE/CLEAN», y el caso 4 saldria exit 2 por el stub, no por el script.
 cat > "$T/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-echo '[{"name":"backend","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
+case "$*" in
+  *mergeable*) echo 'MERGEABLE/CLEAN' ;;
+  *) echo '[{"name":"backend","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]' ;;
+esac
 STUB
 out4="$T/4.txt"
 PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out4" 2>&1
@@ -163,7 +174,13 @@ verificar "5 rollup ilegible (no medí)" ROJO 2 "$?" "$out5"
 # exactamente eso y los casos 7 y 10 salían ROJO **por la causa equivocada** (el fallback no
 # tomaba efecto y todo caía en «no está en el rollup»), verdes de casualidad. Los cazaron las
 # aserciones extra que exigen nombrar el job fallado y citar la fuente.
-stub_gh() {   # stub_gh <json-del-rollup-ya-filtrado> <json-crudo-de-check_runs>
+stub_gh() {   # stub_gh <rollup-ya-filtrado> <check_runs-crudo> [mergeable;mergeable-2da]
+  # El 3er argumento admite VARIAS respuestas separadas por `;`, una por consulta
+  # sucesiva: es lo que permite ejercitar la REPREGUNTA de `estado_de_merge` (caso 14).
+  # Con un solo valor y sin `;`, `cut` devuelve la linea entera en cualquier -f, o sea
+  # que el mismo valor se repite -- que es justo lo que quieren los casos 6-11.
+  # Default MERGEABLE/CLEAN: los casos 6, 9 y 11 esperan VERDE y no hablan de merge.
+  echo 1 > "$T/mergeable.n"   # contador: cuantas veces se consulto mergeable
   {
     echo '#!/usr/bin/env bash'
     echo 'case "$*" in'
@@ -175,6 +192,12 @@ stub_gh() {   # stub_gh <json-del-rollup-ya-filtrado> <json-crudo-de-check_runs>
     echo '    filtro=""; prev=""'
     echo '    for a in "$@"; do [ "$prev" = "--jq" ] && filtro="$a"; prev="$a"; done'
     echo '    if [ -n "$filtro" ]; then printf %s "$CRUDO" | jq -r "$filtro"; else printf %s "$CRUDO"; fi'
+    echo '    ;;'
+    echo '  *mergeable*)'
+    printf "    RESP='%s'\n" "${3:-MERGEABLE/CLEAN}"
+    echo '    n="$(cat "'"$T"'/mergeable.n" 2>/dev/null || echo 1)"'
+    echo '    echo $((n+1)) > "'"$T"'/mergeable.n"'
+    echo '    printf %s "$RESP" | cut -d";" -f"$n"'
     echo '    ;;'
     echo "  *)                   echo '[]' ;;"
     echo 'esac'
@@ -234,6 +257,74 @@ out11="$T/11.txt"
 PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out11" 2>&1
 verificar "11 rollup poblado: el fallback NO se consulta" VERDE 0 "$?" "$out11"
 grep -q "rollup del PR" "$out11" || mal "11 no citó el rollup como fuente: el fallback se usó de más"
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# CASOS 12-14 (2026-09-30): «el CI está verde» NO es «se puede mergear»
+#
+# Caso real, medido por auditoría con DOS PR el mismo minuto: este script decía
+# «VERDE — se puede mergear» mirando sólo los jobs del CI, y la frase salió idéntica sobre el
+# PR #765 (`MERGEABLE`, se mergeó de verdad) y sobre el #760 (`CONFLICTING`/`DIRTY`, 5 archivos en
+# conflicto). Una de las dos veces era mentira, y el lector no tenía cómo saber cuál.
+#
+# No era una medición mal hecha: era OTRA pregunta contestada con las palabras de ésta — el modo
+# de falla más difícil de ver, porque el instrumento devuelve exactamente la frase que uno
+# necesita oír. Fail-open en el TEXTO: inofensivo mientras GitHub rechace el merge por su lado, y
+# nada inofensivo con `--admin`, que es lo que alguien prueba cuando un merge «verde» no entra.
+#
+#  12. CI verde + CONFLICTING  → ROJO, exit 4  ← el caso que fallaba abierto
+#  13. CI verde + UNKNOWN 2×   → ROJO, exit 2  (no pude medir ≠ está rojo)
+#  14. CI verde + UNKNOWN→OK   → VERDE, exit 0 ← CONTROL POSITIVO de la repregunta
+#  15. CI verde + MERGEABLE/UNSTABLE → VERDE, exit 0  (estado real medido en el #760)
+#
+# El 14 es el que impide que la repregunta sea código muerto: GitHub calcula `mergeable` de forma
+# asíncrona y contesta UNKNOWN en los primeros segundos de un PR recién abierto o actualizado. Sin
+# repreguntar, el gate diría ROJO en un caso PERFECTAMENTE NORMAL — y un guard que grita en el caso
+# normal se desarma solo (memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md). Y sin
+# el 14, un `estado_de_merge` que nunca repreguntara pasaría el 12 y el 13 igual.
+#
+# Los tres afirman también CUÁNTAS veces se consultó, porque el número es lo único que distingue
+# «repreguntó y obtuvo otra cosa» de «el stub devolvía eso desde el principio».
+
+consultas_mergeable() { echo "$(( $(cat "$T/mergeable.n" 2>/dev/null || echo 1) - 1 ))"; }
+
+# Caso 12: el CI está 6/6 verde y el PR tiene conflictos. Dice ROJO (no un tercer token: el
+# invariante {VERDE, ROJO} tiene que aguantar) y exit 4, que NO se funde con el 1 («mirá tu
+# código») ni con el 2 («no pude medir»): la acción que destraba es resolver el merge.
+stub_gh "$ROLLUP_OK" '{"check_runs":[]}' 'CONFLICTING/DIRTY'
+out12="$T/12.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 760 > "$out12" 2>&1
+verificar "12 CI verde + CONFLICTING" ROJO 4 "$?" "$out12"
+grep -q "CONFLICTOS" "$out12" || mal "12 no nombró el conflicto: manda a buscar un bug que no existe"
+[ "$(consultas_mergeable)" = 1 ] || mal "12 consultó mergeable $(consultas_mergeable) veces: con una respuesta definitiva no se repregunta"
+
+# Caso 13: GitHub no informa ni a la segunda. Es «no pude medir» (exit 2), el mismo cubo que `gh`
+# ausente y que el rollup ilegible — no un rojo del PR.
+stub_gh "$ROLLUP_OK" '{"check_runs":[]}' 'UNKNOWN/UNKNOWN;UNKNOWN/UNKNOWN'
+out13="$T/13.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 760 > "$out13" 2>&1
+verificar "13 CI verde + UNKNOWN persistente" ROJO 2 "$?" "$out13"
+grep -q "SIN MEDIR" "$out13" || mal "13 no distinguió sin-medir de rojo en el texto que se lee"
+[ "$(consultas_mergeable)" = 2 ] || mal "13 consultó mergeable $(consultas_mergeable) veces, esperaba 2 (la repregunta no ocurrió)"
+
+# Caso 14: UNKNOWN la primera vez, MERGEABLE la segunda — el caso NORMAL de un PR recién abierto.
+# Sin la repregunta esto sería ROJO y el gate frenaría merges legítimos hasta que alguien aprenda
+# a ignorarlo. La aserción del contador es la que prueba que el verde salió de la SEGUNDA consulta.
+stub_gh "$ROLLUP_OK" '{"check_runs":[]}' 'UNKNOWN/UNKNOWN;MERGEABLE/CLEAN'
+out14="$T/14.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 760 > "$out14" 2>&1
+verificar "14 CI verde + UNKNOWN que se resuelve (control positivo)" VERDE 0 "$?" "$out14"
+[ "$(consultas_mergeable)" = 2 ] || mal "14 consultó mergeable $(consultas_mergeable) veces: el verde no vino de la repregunta"
+
+# Caso 15: `MERGEABLE/UNSTABLE` — el estado REAL del PR #760 medido el 2026-09-30 12:5x, después
+# de que su rama se pushara. `UNSTABLE` NO significa «no se puede mergear»: significa que hay algún
+# check no exitoso que la branch protection no exige. Quién decide es `mergeable`, y `ci-verde.sh`
+# ya midió los 6 jobs por su cuenta unas líneas antes. El caso existe porque el `case` discrimina
+# con el glob `MERGEABLE/*` y un futuro refactor a igualdad exacta contra `MERGEABLE/CLEAN`
+# rechazaría este PR real sin que ningún otro caso se pusiera rojo.
+stub_gh "$ROLLUP_OK" '{"check_runs":[]}' 'MERGEABLE/UNSTABLE'
+out15="$T/15.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 760 > "$out15" 2>&1
+verificar "15 CI verde + MERGEABLE/UNSTABLE (estado real del #760)" VERDE 0 "$?" "$out15"
 
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
 
