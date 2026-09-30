@@ -993,6 +993,13 @@ un borrador vacío; el chip «Completar a mano» del chat lo abre prellenado). U
 
 ---
 
+> 🛑 **PREMISA FALSA — CORREGIDA EN §9 (C3-27). Leer §9 antes que esta sección.** El «retiro» del
+> barrido de 35 pantallas que atraviesa toda esta sección **no está escrito en ningún documento**:
+> el contrato BL-Q3 v2 reemplaza el *contrato* v1, no las mediciones, y declara que los ids
+> camino-único **siguen valiendo tal como se midieron**. Lo que sí existe es invalidación
+> **parcial, por id** (§6): 7 invalidados, 19 vigentes, **29 de 54 sin declaración**. El efecto
+> sobre cada afirmación de esta sección está en §9.2 y §9.5.
+
 ## C3-24 🔴 **ALTA** · Ocho de los diez «conflictos» son contra **evidencia retirada**, y el formato no codifica la vigencia
 
 Planificación agrupó 13 conflictos de veredicto, **10 bajo una sola hipótesis** (`HIPOTESIS_MATRIZ_2209`:
@@ -1408,3 +1415,220 @@ Que coincidan es suerte, no método: las 460 líneas de diferencia tocaban el **
 Y el residuo sin commitear **no era trabajo perdido**: medido por marcas distintivas
 (`CIEGOS_DECLARADOS` 5=5, `C3-13` 4=4, la `SPEC` 1=1), ya está todo en `origin/main`. Es un estado
 intermedio superado, no WIP a rescatar. No lo toqué: `scripts/` es de planificación.
+
+---
+
+## §8 — C3-26: el gate de contenido que yo mismo recomendé, medido: **13 de 14 falsos positivos**
+
+**Por qué esta sección revisa una recomendación mía.** En §C3-25 entregué `VIGENCIA` partida en dos
+mecanismos, y el segundo era un **gate de contenido**: «cada elemento citado tiene que existir en los dos
+lados». Lo entregué como diseño, con la magnitud estimada, no medida. Antes de que planificación gaste un
+PR en construirlo, lo **medí** — y el resultado es que **no se debe construir así**.
+
+### 8.1 · Lo que se midió (denominadores horneados, como pide §C3-25)
+
+| dimensión | cifra | control |
+|---|---|---|
+| documentos del corpus | **6 de 6** | `assert len(DOCS)==6` — el mismo denominador que cazó los cuatro errores de universo |
+| filas `COHERENTE` examinadas | **53 de 53** | contadas, no estimadas |
+| citas de texto extraídas | **43 de 43** | |
+| universo de referencia (el proto) | **19 de 19** `.html` @`54fac3ea` · **7.687.291** chars normalizados | positivo 3/3 (`facturado este mes`, `nueva factura`, `funciones`) · negativo (`te deben` ausente) OK |
+
+### 8.2 · Primer resultado: **2 de las 16 «citas ausentes» las fabricó mi propio regex**
+
+El extractor del spike era `[«"]([^»"]{4,45})[»"]`: **abre con `«` y puede cerrar con `"`**, y no excluye
+`«` del cuerpo. Con eso captura el texto que vive **entre** dos citas legítimas. Corregido a pares
+homogéneos (`«…»` o `"…"`, con el delimitador propio excluido), sobre el mismo corpus:
+
+```
+CRUZADO   : 43 de 43 citas -> 16 ausentes
+HOMOGENEO : 43 de 43 citas -> 14 ausentes
+fabricadas por el regex: 2   («`) y botón»   ·   «` en la app / `»)
+```
+
+**Cuarta variante del falso resultado por la FORMA, el mismo día** (backticks · nombre de archivo ·
+paréntesis de sufijo · comillas cruzadas). Y una que **sobrevive al arreglo**: con comillas rectas
+`"` la apertura y el cierre son **el mismo carácter**, así que `volver` sigue produciendo `«) entre»`.
+Eso no es arreglable en el regex: es una propiedad del delimitador.
+
+### 8.3 · Segundo resultado, el que decide: las 14 restantes son **casi todas falsos positivos, en 5 clases**
+
+Leídas una por una con su línea de origen (el veredicto no se delega):
+
+| clase | caso | por qué el proto **no debe** contenerlo |
+|---|---|---|
+| **dato de runtime** | `«Se enfría · 40 días»` · `«$0,00 · 0 facturas · 0 impagas»` · `«Total aproximado: $30.000,0000»` | son valores de la cuenta de test — un prototipo estático no puede tenerlos |
+| **cita dentro de una NEGACIÓN** | `bi`: «**no** es el caso de `"rentabilidad null"`» | el autor afirma que eso **no** ocurre |
+| **cita de un documento anterior** | `apar`: «el framing original (`"pendiente de redeploy"`) estaba desactualizado» | cita un texto de gestión, no una pantalla |
+| **elemento declarado EXTRA por el autor** | `presu`: «un botón adicional `"Ver también los reemplazados"` (**elemento extra, no carencia**)» | **el autor ya declaró que no está en el proto** — el gate «descubriría» lo que la fila dice |
+| **basura de delimitador** | `volver`: `«) entre»` | ni es cita |
+
+**La raíz es una sola: el texto entre comillas no codifica su ROL.** Chrome de pantalla, valor de
+runtime, cita de otro documento y elemento declarado extra se escriben todos igual. Un gate que compare
+contra una referencia externa hereda **todos** los roles y no puede distinguirlos, así que grita en el
+caso normal — y un guard que grita en el caso normal
+[se desarma solo](../../../memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md).
+
+### 8.4 · Tercer resultado: el detector que **no necesita referencia externa** — y discrimina
+
+Si dos filas `COHERENTE` del **mismo id**, en documentos distintos, citan chrome **disjunto**, una de las
+dos describe otra pantalla. Eso se caza **sin el proto y sin saber quién sucede a quién**:
+
+```
+filas COHERENTE 53 de 53 · citas 43 de 43
+descartadas por ROL: 5 runtime · 2 negada/extra-declarado -> 36 de chrome
+ids con COHERENTE en >1 documento: 2 de 18
+
+  `factura`  ∅ DISJUNTO   ['datos de venta','todavía no emitiste ningún comprobante']
+                       vs ['facturado este mes','nueva factura','te deben','últimas emitidas']
+  `volver`   solapa      ['entrar','entrar con otra cuenta']  en ambos
+```
+
+**El contraste ES el control.** De los dos ids medidos dos veces, uno sale disjunto y el otro solapado:
+el detector **discrimina**, no marca todo. Y el único que marca es **exactamente el caso del falso verde
+de §C3-25** (`factura`: la fila retirada describe el wizard, la vigente describe el listado) — el
+mecanismo barato caza el caso caro, **sin el proto y sin la marca de sucesión**.
+
+⚠️ **Límite declarado:** sólo puede hablar de ids medidos **≥2 veces** — hoy 2 de 18. No sustituye al
+puntero de sucesión (C3-25-E), que es el que cubre el resto. Pero su potencia crece justo donde está el
+riesgo: un id se re-mide **porque** alguien dudó de su veredicto.
+
+### 8.5 · Qué cambia en las filas de §C3-25
+
+- **C3-25-E se PARTE otra vez.** El puntero `SUPERSEDE:` / `CIERRA_FILAS_DE:` **queda en pie**. El gate
+  de contenido contra el proto **se archiva con la medición**: 13 falsos de 14 sobre el único corpus que
+  tenemos. En su lugar, **C3-26**: detector de contradicción intra-corpus, sin referencia externa.
+- **No abro trabajo.** C3-26 es una fila para que planificación asigne, como las otras siete.
+
+### 8.6 · Lo reusable, en una línea
+
+**Un gate que compara contra una referencia EXTERNA hereda todos los roles del texto citado; uno que
+compara el corpus CONTRA SÍ MISMO no necesita distinguir rol, porque las dos mitades hablan el mismo
+idioma.** Medido en el mismo corpus, el mismo día, sobre el mismo hallazgo: ~1 verdadero de 14 contra
+1 de 1. **Antes de construir un gate contra una referencia, preguntá si el corpus se contradice solo.**
+
+**delegación:** 0 sub-agentes · 14 lecturas inline (una por candidato, con su línea de origen) ·
+**scripts: 3 corridas** — spike completado sobre los 6 documentos, triaje con los dos extractores en
+paralelo, detector intra-corpus. Cada una con denominador horneado y control positivo; los 2 falsos
+positivos de regex los cazó **la comparación entre extractores**, no una lectura.
+
+---
+
+## §9 — C3-27: **mi propia fila C se apoyaba en un retiro que ningún documento declara**
+
+Lo cazó **planificación** (`copiloto-emprendedor-d7`), al clasificar el barrido de 35 pantallas como
+**MEDICIÓN** en vez de retirado y pedirme que dijera *dónde* está escrito el retiro. Lo medí. No está.
+
+### 9.1 · Qué dice el documento que gobierna, literalmente
+
+`coordinacion/**/2026-09-28_contrato_planificacion-a-todos_BL-Q3-v2-la-unidad-de-medicion-es-id-mas-camino.md`:
+
+```
+línea 3  : Reemplaza: el contrato de BL-Q3 v1 en todo lo que se refiere a *qué* se mide.
+§6       : Invalidado …: card, card-presu, card-cobro · factura (FE1, medido como «form vacío»
+           = comportamiento anterior a #644) · caida (FE2) · y los ya corregidos, agenda y presu.
+§6       : No invalidado: todo id CAMINO-UNICO. Los 19 siguen valiendo TAL COMO SE MIDIERON —
+           esc, apar, feedback, negocio, hablar, consent, onb-promesa, onb-cumplida, vozchat,
+           hitl, cuenta, agenda, entrada, reveal, volver, cobro-voz, fact-hitl, fact-voz, pres-hitl.
+§7 DoD   : Ningún id CAMINO-UNICO se re-mide: no hay motivo.
+```
+
+Controles: el propio documento del barrido tiene **0 hits** de `retirad|superad|reemplaz|obsolet|invalidad`
+(positivo: 23 hits de `COHERENTE`, 68 líneas); barrido de los 76 documentos del buzón que lo mencionan,
+con control negativo (token inexistente → 0). **Lo que reemplaza el v2 es el CONTRATO, no las mediciones**
+— y de las mediciones nombra una por una las 7 que caen, entre ellas `factura`, dejando las demás vigentes.
+
+### 9.2 · Lo que esto le hace a mis propias filas
+
+| fila | antes (mío) | ahora, medido |
+|---|---|---|
+| **C3-25-C** | 🟠 MEDIA · «el doc está retirado, así que **el parser acierta por accidente**; daño hoy **cero**» | 🔴 **ALTA · daño ACTIVO.** El barrido está **parcialmente** invalidado: cae su fila `factura`, y las demás son ids que el contrato declara **vigentes**. El parser pierde **22 filas `COHERENTE`** de mediciones que valen. No acierta por accidente: **se equivoca**. |
+| **C3-25-E** | «el puntero de sucesión es recomendable» | **precondición**, y la prueba soy yo: apliqué un retiro que sólo existía en mi cabeza, y lo usé para bajarle la severidad a un defecto real. |
+| **C3-26** (§8) | «el detector intra-corpus caza el caso caro» | **se sostiene y gana un caveat**: la contradicción de `factura` que detectó **ya estaba dirimida** en §6 del contrato. El detector la ve; lo que faltaba en mi corpus era el documento que la resuelve. |
+| **C3-25-A** | falso verde en `cuenta`/`detalle` | **intacta.** «No invalidado» del §6 significa *no hay que re-medirlo por el cambio de esquema*, **no** «su veredicto sigue siendo COHERENTE». Invalidación de esquema y veredicto son ejes distintos. |
+
+### 9.3 · El error de método, que es el quinto del día y de una clase nueva
+
+Los cuatro anteriores fueron **universo de mediciones incompleto**. Este es distinto: mi corpus estaba
+definido por el **tipo** de documento —«los documentos de medición del 22/09»— y
+
+> **un corpus definido por TIPO de documento excluye por construcción al documento que DIRIME.** El que
+> resuelve una contradicción entre mediciones no es una medición: es un contrato, una decisión, un
+> cierre. Filtrar por `dato_frontend*` garantiza no encontrarlo.
+
+Y el síntoma es engañoso porque **el filtro funciona**: 6 de 6 documentos, denominador verde, positivo
+verde. El denominador sólo puede discrepar dentro del universo que le diste;
+[[un-control-positivo-prueba-que-el-instrumento-ve-no-que-mira-donde-hay-que-mirar]], un nivel más
+arriba. La cura no es otro control: es que **la pregunta «¿quién dirime esto?» se conteste con un grep
+antes de escribir el veredicto**, porque la respuesta nunca está en el corpus que elegiste.
+
+### 9.4 · Sobre el hallazgo de quién lo cazó
+
+Lo encontró planificación **no midiendo mejor, sino negándose a aplicar un retiro sin documento** —
+«excluirlo sería aplicar un retiro que sólo vive en la memoria de una sesión». Es la regla de esta
+auditoría aplicada **a la auditoría**: la pedí para el corpus y no la apliqué a mi propia premisa.
+Su clasificación del barrido como MEDICIÓN es **correcta** y no hay que cambiarla.
+
+**delegación:** 0 sub-agentes · 3 lecturas inline (el contrato §6, el doc del barrido, la lista de filas
+invalidadas) · **scripts: 2 corridas** — barrido de 76 documentos con control negativo, y grep dirigido
+sobre los 3 candidatos. El hallazgo **no** lo produjo un control mío: lo produjo una sesión par pidiendo
+la cita que yo no tenía.
+
+### 9.5 · El efecto real, id por id: para 3 de 5 coincide, para 2 **no hay declaración de nadie**
+
+Mi C3-24 afirmaba que cinco ids tenían `COHERENTE` «sólo en el barrido retirado». Cruzado contra las dos
+listas del §6 (padrón de 54 del parser, blob **`4e989f3e`** = `origin/main`; controles positivos `esc`→vigente
+y `caida`→invalidado, negativo id inexistente → 0):
+
+| id del «grupo 5» | §6 dice | efecto sobre mi C3-24 |
+|---|---|---|
+| `card` · `card-cobro` · `card-presu` | 🔴 **INVALIDADO** explícitamente | **coincide en el efecto, no en el motivo**: su `COHERENTE` no vale, pero porque el contrato lo invalida **por id**, no porque el documento esté retirado |
+| `card-cliente` · `preg` | ❔ **nadie los nombra** | mi afirmación era falsa **y** el contrato no la reemplaza: quedan sin declaración de vigencia |
+
+Y el dato que lo generaliza:
+
+```
+padrón: 54 ids (parser blob 4e989f3e)
+§6 (líneas 79-90): 7 invalidados · 19 vigentes  ->  declara vigencia de 25 de 54
+                                                     SIN declaración: 29 de 54
+sin declaración incluye: detalle, card-cliente, preg, afip, bi, chat, ingresos, comousar,
+                         ingresar, pres-ciclo, tablero, vacio, vacio-visto, …
+```
+
+**`detalle` —uno de los dos ids de mi falso verde C3-25-A— está entre los 29 sin declaración.** Así que
+para ese id no hay ni retiro ni vigencia escritos en ninguna parte: exactamente el vacío que la fila E
+existe para cerrar, ahora **con cifra: 29 de 54**.
+
+---
+
+## §10 — C3-28 🟠 **el documento que DIRIME se contradice a sí mismo**: `agenda` está en las dos listas del §6
+
+Lo cazó un control que puse por costumbre —que dos conjuntos presentados como complementarios no se
+solapen— y que yo esperaba ver en verde:
+
+```
+>>> ids en AMBAS listas del §6: ['agenda']
+invalidados (7): agenda, caida, card, card-cobro, card-presu, factura, presu
+vigentes   (19): …, hitl, cuenta, agenda, entrada, reveal, volver, …
+```
+
+Las dos menciones son textuales y están **a siete líneas de distancia**: «*…y los ya corregidos por
+auditoría, `agenda` y `presu`*» (invalidados) y la lista de camino-único que incluye `` `agenda` ``. El
+documento que existe para decidir qué medición vale **no decide** para uno de los ids que nombra.
+
+**Y es la misma clase que §8 (C3-26), aplicada un nivel más arriba.** El detector de C3-26 compara dos
+mediciones del mismo sujeto y pregunta si son disjuntas; este control compara dos **listas** del mismo
+documento y pregunta lo mismo. Uno y otro son el mismo mecanismo:
+
+> **Cada vez que un documento presenta dos conjuntos como complementarios —invalidado/vigente,
+> cubierto/pendiente, incluido/excluido— la intersección es un control gratis que nadie corre.** No
+> necesita referencia externa ni saber quién sucede a quién: el documento se contradice **solo**, y un
+> `set & set` lo dice. Costó una línea y encontró un defecto en el documento que gobierna el sprint.
+
+**DoD propuesto (fila para planificación, no la tomo):** el §6 declara `agenda` en **una** lista, y el
+ratchet gana el control de intersección + el denominador «declara N de 54». Hoy: **25 de 54, con 1 en
+ambas y 29 sin declaración.**
+
+**delegación:** 0 sub-agentes · 2 lecturas inline · **scripts: 2 corridas** (cruce del grupo 5 con
+controles ±, y el cruce padrón×§6 con el control de intersección). El hallazgo lo produjo **el control que
+esperaba ver verde** — no una lectura, y no la hipótesis que estaba probando.
