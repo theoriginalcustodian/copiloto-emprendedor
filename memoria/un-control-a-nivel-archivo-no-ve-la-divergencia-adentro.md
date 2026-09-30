@@ -63,3 +63,23 @@ Un cero correcto a la pregunta equivocada se siente idéntico a luz verde.
 entradas) **divergen en ambas direcciones**: 64 entradas viven sólo en el slug. Reconciliarlos es un
 merge de índices a mano, no un sembrado — y hasta que se haga, **`seed-memory.sh` no se corre**.
 Contexto de fondo en [[memoria-repo-vs-slug-drift]].
+
+---
+
+## Segundo caso (2026-09-30): la corrección **in-situ** — mismo path, mismo id, y lo que cambió vive adentro
+
+Buscaba qué filas de mediciones viejas están retiradas, para que un contraste las excluya. La única fila
+invalidada del corpus (`chat`) **ya no lo está**: su autor la corrigió **dentro del mismo archivo** el
+mismo día —la partió en dos caminos (`PARTIDO: camino-directo · camino-buzón-de-pendientes`), dejó la
+marca «Actualizado Cierre A Paso 2» y **borró la frase que se reprochaba** (0 ocurrencias hoy)—. No hay
+sucesor, no hay cambio de path, no hay documento nuevo.
+
+**Por qué rompe el excluidor:** un excluidor por `(documento, id)` ve **el mismo par en los dos lados**.
+No tiene nada que excluir, y si igual toma la lista de invalidadas como fuente de verdad **retira dos
+filas vigentes y corregidas** — el daño exacto que venía a evitar, un nivel más abajo. «Excluir por fila
+en vez de por documento» no alcanza: hace falta **por fila y por versión**.
+
+**Cómo aplicar:** antes de comparar dos cosas por su identidad, preguntá **«¿esta unidad puede cambiar sin
+cambiar su nombre?»**. Si la respuesta es sí —un archivo editable, una fila de tabla, un mensaje que su
+autor puede corregir—, el par `(nombre, id)` no distingue versiones y la fuente de verdad no es la lista
+que declara el problema: es **el documento medido**. Ver [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]].
