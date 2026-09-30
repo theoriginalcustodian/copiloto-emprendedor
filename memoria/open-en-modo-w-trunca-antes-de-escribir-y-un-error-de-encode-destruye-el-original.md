@@ -100,3 +100,52 @@ patrón y ordena antes alfabéticamente.
 
 **How to apply (agregado):** al verificar lo que acabás de escribir, listá los matches con su tamaño
 antes de leer uno; y si el patrón matchea más de uno, eso ya es el hallazgo.
+
+---
+
+## Refuerzo 2 (2026-09-30, tercera mordida del mismo día): el heredoc **sin** comillas ejecuta los backticks, y el texto queda **gramatical y vacío**
+
+Tercera vez que la herramienta de editar documentos me muerde, y la peor, porque esta **no deja
+rastro de error**.
+
+Necesitaba interpolar una ruta larga, así que abrí el heredoc sin comillas — `python3 <<XX` en vez de
+`python3 <<'XX'`. El shell trató cada `` `...` `` del markdown como **sustitución de comando**:
+ejecutó `min_support 2→3`, falló con `command not found`, y **sustituyó por cadena vacía**. Lo que
+se escribió fue:
+
+    | re-poda  | **1403** |  con , todas |
+
+**El párrafo quedó sintácticamente entero y sin un solo término técnico.** Se lee como prosa
+descuidada, no como corrupción, así que nadie lo revisa dos veces. Y el script imprimió «corrección
+appendeada» con éxito: el `os.replace` funcionó perfecto, sólo que sobre contenido ya destruido.
+**El patrón seguro protege del fallo de escritura; no protege de que el texto llegue mutilado.**
+
+## El control que no podía funcionar
+
+Verifiqué con un `grep` de backticks dobles, buscando backticks «vacíos». Dio 4, que eran las cercas
+de bloques de código legítimos. **Los backticks no quedaron vacíos: desaparecieron con su contenido
+adentro.** Buscaba una forma que el defecto no puede producir — mismo error que
+[[instrumento-que-no-mira-nunca-falla]] — y me habría dejado creer que el archivo estaba bien.
+
+El control correcto es **positivo sobre el contenido esperado**: listar las palabras que tienen que
+estar y contar cada una. `attributes.context` daba **0**; tras reescribir, **1**. Eso sí discrimina.
+
+## Y la tercera capa, que pagué escribiendo este refuerzo
+
+Reintenté con el heredoc **quoted**, que es el fix correcto… y falló igual: el contenido incluía el
+ejemplo del defecto, y **la línea con el delimitador cerró el heredoc antes de tiempo**. Python
+reventó con `unterminated triple-quoted string` y el resto del texto se lo comió bash como comandos.
+Nada se escribió (el original quedó intacto), pero el patrón es claro: **un documento que explica un
+heredoc no puede viajar dentro de un heredoc con el mismo delimitador.** Delimitador largo y único, y
+el ejemplo interno con uno ficticio.
+
+**How to apply (agregado):**
+1. **Heredoc con markdown → SIEMPRE quoted.** Si hace falta una ruta variable, va por **entorno**
+   (`export F=...` + `os.environ["F"]`), nunca abriendo el heredoc. El markdown técnico está *hecho*
+   de backticks: interpolarlo es garantizar el daño.
+2. **Delimitador largo y único** (`REFUERZO_FIN_2026_09_30`, no `EOF`/`PY`), y si el texto muestra un
+   heredoc, que el ejemplo use un delimitador ficticio.
+3. **Después de escribir markdown desde el shell, contá las palabras clave, no la puntuación.** Un
+   grep de la sintaxis que sospechás no ve las ausencias.
+4. Si ya salió mutilado: **reescribir el bloque entero**, nunca parchear palabra por palabra — no hay
+   forma de saber cuántas se comió.
