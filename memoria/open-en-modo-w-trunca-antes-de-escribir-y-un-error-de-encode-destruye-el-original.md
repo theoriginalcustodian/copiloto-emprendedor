@@ -149,3 +149,28 @@ el ejemplo interno con uno ficticio.
    grep de la sintaxis que sospechás no ve las ausencias.
 4. Si ya salió mutilado: **reescribir el bloque entero**, nunca parchear palabra por palabra — no hay
    forma de saber cuántas se comió.
+
+**Y la cuarta capa, el mismo dia:** con el heredoc quoted y el delimitador unico, escribi un script
+que insertaba `texto.split("\n")` en otro archivo. Lo que llego al disco fue
+`split(` + un **newline real** + `)`, y el archivo quedo con `SyntaxError: unterminated string literal`.
+El escape **no sobrevive el canal** heredoc -> Python -> archivo: en algun paso se interpreta, y el
+resultado es un salto de linea metido dentro de un string.
+
+**Y la quinta, en el intento de escribir la cuarta:** use un raw string (prefijo `r`) para que el escape
+quedara literal, y adentro puse el ejemplo de un raw string **con sus tres comillas**. Esas tres comillas
+**cerraron el string que las contenia**, y el resto del parrafo quedo como codigo suelto:
+`SyntaxError: invalid character`. Identico al delimitador del heredoc, un nivel mas adentro.
+
+## La regla, que cubre las cinco capas
+
+**Si el texto que escribis contiene un escape o un delimitador, ESE es el bug: eliminalo, no lo
+protejas.**
+
+- Escape de newline -> `splitlines()`; si hace falta el caracter, `chr(10)`.
+- Backslash, comillas triples, el delimitador del heredoc -> construilos con `chr()` o nombralos en
+  prosa. **Nunca literales**: el que cierra el continente siempre gana.
+- Un documento que explica un mecanismo de citado **no puede viajar dentro de ese mecanismo** sin
+  neutralizar sus delimitadores. Este parrafo es la tercera prueba del dia.
+
+El codigo que **evita** el escape no puede perderlo; el que lo escribe bien depende de que tres capas
+lo respeten, y hoy ninguna de las tres lo hizo.
