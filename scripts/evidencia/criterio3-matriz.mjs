@@ -102,6 +102,19 @@ const MEDIBILIDAD = {
       'prototipo en loop de 6 s. Además NO emular `prefers-reduced-motion` para medirlas: la app colapsa el timeout ' +
       'a 0 ms y la pantalla no llega a pintarse.',
   },
+  ingresar: {
+    captura: false,
+    porque:
+      'Misma clase que `hitl`: técnicamente medible, pero el único camino real para LLEGAR a ella es ' +
+      'cerrar sesión (`account-cerrar-sesion` → confirmar `account-cerrar-sesion-si` → `useSession().logout()`, ' +
+      '`AccountScreen.tsx:179-197`), y el fixture de prueba es el usuario canónico ÚNICO y COMPARTIDO ' +
+      'entre las sesiones paralelas (`memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md`). Cerrarle la ' +
+      'sesión para sacar una captura invalida la sesión autenticada de CUALQUIER otra ventana/sesión que esté ' +
+      'usando ese mismo usuario en ese momento — un efecto real sobre estado compartido, no reversible desde este ' +
+      'script. No lo automatizamos sin coordinar explícitamente con las demás sesiones antes de correrlo (avisar ' +
+      'y esperar confirmación de que nadie tiene una sesión activa con ese usuario), o medirlo en el pase de ' +
+      'device con un operador mirando.',
+  },
 };
 
 // Los dos ids de arriba están hoy declarados COHERENTE en la matriz de FE1. Ese veredicto se emitió
@@ -252,6 +265,8 @@ const CAMINO = {
   splash: 'Arranque de sesión: aparece sola tras el login. No hay navegación que la abra.',
   entrada: 'Reload de la app ya logueada. No hay navegación que la abra.',
   hitl: 'Chat -> pedir una acción que requiera confirmación -> la tarjeta de propuesta. NO tocar «Confirmar».',
+  ingresar: 'Menú de cuenta -> «Cerrar sesión» -> confirmar (`account-cerrar-sesion-si`) -> pantalla de login. ' +
+    'Requiere logout del usuario de prueba canónico compartido — ver MEDIBILIDAD.ingresar, no automatizar sin coordinar.',
 };
 
 async function appNavegar(page, id) {
