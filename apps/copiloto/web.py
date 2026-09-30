@@ -17,6 +17,7 @@ tenants sin fugas. Todas las deps (`require_tenant`, `conn_factory`, `gotrue`, `
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import logging
 import os
@@ -250,9 +251,32 @@ def _wf_id_anulacion(cliente_id: str, anulacion_id: str) -> str:
 
 
 def make_iniciar_factura(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
-    """Abre un borrador durable y devuelve su id público."""
+    """Abre un borrador durable y devuelve su id público.
 
-    async def iniciar_factura(cliente_id: str, cuit: str) -> str:
+    **FACTID** (`memoria/` — spike idempotencia facturación): sin `idem_key` del cliente, `factura_id`
+    era `uuid.uuid4()` — DISTINTO en cada llamada — y `USE_EXISTING` no protege nada contra un id que
+    nunca puede repetirse. Dos toques reales (doble click, reintento de red, dos pestañas) arrancaban
+    DOS workflows y emitían DOS facturas AFIP con CAE real. Con `idem_key` (opcional, retrocompatible:
+    ausente = comportamiento viejo sin cambios), `factura_id` se deriva DETERMINÍSTICAMENTE de esa
+    clave y la política pasa a **FAIL** — mismo patrón que `make_abrir_borrador_de_presupuesto`: el
+    segundo toque con la misma clave no crea un workflow nuevo, adopta el que ya existe.
+    """
+
+    async def iniciar_factura(cliente_id: str, cuit: str, idem_key: str | None = None) -> str:
+        if idem_key:
+            factura_id = f"idem-{hashlib.sha256(idem_key.encode()).hexdigest()[:32]}"
+            try:
+                await temporal_client.start_workflow(
+                    "FacturaWorkflow",
+                    args=[cliente_id, cuit, factura_id],
+                    id=_wf_id_factura(cliente_id, factura_id),
+                    task_queue=task_queue,
+                    id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+                )
+            except WorkflowAlreadyStartedError:
+                pass  # ya había un borrador con esta idem_key: se reusa (mismo factura_id, abajo)
+            return factura_id
+
         factura_id = uuid.uuid4().hex
         await temporal_client.start_workflow(
             "FacturaWorkflow",

@@ -593,6 +593,13 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
     volver a llamar a la gateway (POST) — nunca un 2do link para el mismo paso del workflow."""
     amount = arguments.get("amount")
     concept = arguments.get("concept") or "Cobro"
+    # CONSMP (2026-09-30): rama medida INALCANZABLE en prod, texto plano a propósito (no
+    # requiere_conexion_card). Los dos composition roots que construyen TenantCtx inyectan
+    # mp_gateway sin flag/condicional -- worker_b.py:181 y serve.py:121, ambos
+    # `mp_gateway = MercadoPagoGateway()` incondicional, __init__ lazy (nunca lee env al
+    # construirse, ver mercadopago_gateway.py) -- así que nunca None en un deploy real. Y
+    # ctx.mp_cred_store tampoco: context_factory.py construye `cred_store` siempre, nunca None.
+    # No se rediseña una rama que ningún emprendedor real puede pisar ([[verificar-la-composicion-root-no-el-default]]).
     if ctx.mp_gateway is None or ctx.mp_cred_store is None:
         return ToolResult(tool_call_id=idem_key, status="error",
                           observation={"error": "MercadoPago no esta disponible en tu cuenta"})
@@ -1395,11 +1402,23 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
             "fecha": borrador.datos_venta.fecha.isoformat(),
             "concepto": int(borrador.datos_venta.concepto),
             "condicion_venta": borrador.datos_venta.condicion_venta})
-        # `agregar_item` ACUMULA, no reemplaza (mismo comentario que `presupuestos_web.py:327-329`):
-        # sólo se cargan items si el borrador TODAVÍA no tiene ninguno, para no duplicarlos en la
-        # continuación del turno 2. Limitación conocida: si el turno 2 corrige un ítem del turno 1
-        # (no agrega uno nuevo), esa corrección no se aplica acá — se termina a mano en la pantalla.
-        if borrador.items and not (estado_previo and estado_previo.get("items")):
+        # `agregar_item` ACUMULA, no reemplaza (mismo comentario que `presupuestos_web.py:327-329`).
+        # FHMONTO (2026-09-28, hallazgo de FE1): un dictado NUEVO y completo en sí mismo (p.ej.
+        # "$5000 por mercadería varia") dentro de la ventana de 15 min de un borrador previo sin
+        # confirmar (p.ej. "servicios varios" $10.000, todavía Running) se trataba SIEMPRE como
+        # continuación del anterior — `buscar_borrador_dictado` no distingue "está completando la
+        # pregunta del turno 1" de "está pidiendo algo distinto mientras el turno 1 sigue abierto".
+        # El guard viejo (`borrador.items and not estado_previo.items`) omitía cargar los items
+        # nuevos apenas el borrador YA tenía alguno — la card mostraba en silencio lo del intento
+        # anterior. No es el LLM: el dictado nuevo llega con el monto/concepto correctos, se pierden acá.
+        items_previos = [(i["descripcion"], i["cantidad"], i["precio_unitario"])
+                          for i in (estado_previo or {}).get("items") or []]
+        items_nuevos = [(i.descripcion, str(i.cantidad), str(i.precio_unitario)) for i in borrador.items]
+        if items_nuevos and items_nuevos != items_previos:
+            # Reemplazo real: si había otros items cargados (turno anterior o mismo turno con otro
+            # concepto), se sacan antes de cargar los de este dictado — nunca se mezclan intentos.
+            for _ in items_previos:
+                await signal_factura_dictado(ctx.cliente_id, factura_id, "quitar_item", 0)
             for item in borrador.items:
                 await signal_factura_dictado(ctx.cliente_id, factura_id, "agregar_item", {
                     "descripcion": item.descripcion, "cantidad": str(item.cantidad),

@@ -190,7 +190,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
 - [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — ya hay un duplicado bajado el 2026-08-07 arriba.
 - [🎨🕳️ Un token con DOS definiciones](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — tocar la equivocada no da síntoma: contá **definiciones**, no usos.
-- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.
 
 ### Deuda diferida ya trackeada (deliberada + visible, sólo baja de frecuencia de carga)
 
@@ -303,3 +302,107 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [vácio no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — «horneá el control en el script» pasó a ser ESTRUCTURA: el canario por brazo de `scripts/evidencia/contar-veredictos.py` (exit 5) y `scripts/tests/test-ci-verde-veredicto-monotono.sh`. Y su versión más filosa entró al índice el mismo día: `el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md`.
 - [contar un símbolo no dice en qué rol aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — es literalmente el docstring de `veredictos_de()` («Cuenta la FORMA, no el símbolo») y lo vigila `por_forma` más el canario.
 - [el guard que caza a su propio autor](el-guard-que-caza-a-su-propio-autor.md) — «si nunca te frenó, no sabés si funciona» pasó a ser ESTRUCTURA el 2026-09-28: el canario por brazo de `contar-veredictos.py` sale por exit 5 si romper un brazo no mueve la métrica, y el renglón nuevo `el-fallback-que-sustituye-…` la subsume con la regla accionable («rompé cada brazo por separado»).
+
+## Bajadas del índice el 2026-09-29 (co-localizadas en [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]], que las cita y vuelve a enunciar su regla con una instancia más común)
+- [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
+- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
+
+- [🗂️🕳️ Documentar el cambio en un comentario NUEVO deja vivo el viejo](documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo.md) — 8 de 27 líneas del proto se contradicen. Grepeá si hay uno POSTERIOR.
+
+### Bajada del índice 2026-09-29
+
+**Criterio (no es longitud):** `gate-jsdom-no-ve-gestos-tactiles` es el **caso particular** de dos
+reglas que siguen INDEXADAS y la alcanzan — `el-test-que-no-usa-el-camino-de-produccion-no-puede-
+verlo-fallar` (dos renglones más arriba en la misma sección) e `instrumento-que-no-mira-nunca-falla`.
+Un lector que llegue a cualquiera de las dos tiene la regla; esta entrada aporta el ejemplo, no el
+principio. Se baja al agregar `un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca`,
+que sí enuncia una regla sin padre en el índice.
+
+- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. — **bajada del índice el 2026-09-29**, no por longitud: el operador movió device/EAS al SPRINT SIGUIENTE el 22/09, así que su disparador no puede dispararse en este sprint. **Subíla de vuelta el día que device vuelva a la cola.**
+
+---
+
+## 2026-09-29 · Las 14 entradas del eje «criterio 3» entran acá **porque el índice está saturado**, no por ser casos menores
+
+No se bajaron del índice: **nunca pudieron entrar en ESTA copia**. Medido el 2026-09-29 sobre
+`MEMORY.md` de esta rama: `presupuesto 23958 / 24000 chars (190 líneas)` — **42 caracteres y 10 líneas de
+margen para 14 entradas**. El medidor (`scripts/medir-indice-memoria.py`, cableado al gate por
+planificación) las cuenta indexadas acá, así que dejan de ser invisibles y quedan buscables.
+
+⚠️ **Corrección del mismo día, y es una trampa de copia.** Escribí primero que «el mecanismo de fusión de
+hermanas llegó a su techo» y que toda entrada nueva sólo podía ir acá. **Falso, y medido sobre el archivo
+equivocado:** planificación tiene la misma copia en **23830/24000 (187 líneas), 341/341, exit 0** — con
+**170 chars y 13 líneas** de margen — porque recortó las 6 líneas más verbosas, que eran las suyas, y ganó
+242 chars **sin perder un solo link**. `MEMORY.md` existe en cuatro lugares (esta rama, `wt-mem-idx`, el
+checkout compartido y el slug del harness): **una cifra del índice no significa nada sin decir de cuál
+copia sale**, y «el techo» era verbosidad propia, no capacidad. Antes de bajar contenido ajeno, el margen
+sale de recortar el propio.
+
+Lo que **sí** está medido sobre el tronco, con control positivo y negativo: **las 14 faltan en
+`origin/main:memoria/MEMORY.md`**. El índice corregido de planificación vive en su rama (`109342d9`, PR
+#721) y no en `main` — la clase que ella misma nombró: **el índice y lo indexado se mergean por separado,
+así que un índice correcto en su rama es un índice roto en el tronco.** Por eso estas líneas quedan acá:
+dejan `main` consistente en cualquiera de los dos órdenes de merge.
+
+📌 **Deuda declarada, con dueño:** cuando #721 mergee, las entradas que su `MEMORY.md` ya indexe hay que
+**quitarlas de esta sección** para no tener el puntero duplicado en dos índices. No rompe el gate (el
+medidor exige que cada entrada esté indexada en alguno de los dos), así que es limpieza, no bloqueo —
+auditoría, al mergear #721.
+
+⚠️ **Tres merecen subir al índice cargado en cuanto haya lugar**, y van marcadas con 🔝 abajo: son las que
+cambian una decisión en curso, no las que explican un caso. El criterio: *¿su ausencia hace que otra
+sesión re-derive una lección con evidencia?* Las tres ya lo provocaron el mismo día en que se escribieron.
+
+- 🔝 [🔇⚔️ Un parser que pierde veredictos silencia los CONFLICTOS](un-parser-que-pierde-veredictos-silencia-los-conflictos.md) — ahí vive el falso verde.
+- [🎭 Dos discriminantes OPUESTOS fallaron ⇒ el rol no está en el formato](el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron.md) — 2º caso de la raíz de arriba.
+- [🚦🐛 Un gate cuyo predicado es el SÍNTOMA de un bug lo vuelve veredicto](un-gate-cuyo-predicado-es-el-sintoma-de-un-bug-abierto.md) — ¿qué otra causa lo da?
+- [🧬🔀 Una corrida cita el BLOB, no el path — el script del disco no declara su procedencia](una-corrida-cita-el-blob-no-el-path-el-script-del-disco-no-declara-su-procedencia.md) — tres versiones del mismo archivo; corre la del disco.
+- 🔝 [🎭🚦 El veredicto SUPERADO es el único legible si el corrector no está en el vocabulario](el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario.md)
+- 🔝 [🕳️📑 Un corpus definido por TIPO de documento excluye al que DIRIME](un-corpus-definido-por-tipo-de-documento-excluye-al-que-dirime.md) — afirmé un retiro que nadie escribió; el denominador sale verde porque sólo discrepa dentro del universo que le diste.
+- 🔝 [🎯♻️ Un gate contra referencia EXTERNA hereda los roles; el que compara el corpus consigo mismo, no](un-gate-contra-referencia-externa-hereda-los-roles-el-que-compara-el-corpus-consigo-mismo-no.md) — 13 falsos de 14. Y `set & set` entre dos listas complementarias es un control gratis. — el falso verde estaba en el instrumento, no en las filas.
+- 🔝 [📊🚦 Medí la COBERTURA de una convención antes de hacerla obligatoria](medir-la-cobertura-de-una-convencion-antes-de-hacerla-obligatoria.md) — 26% vuelve alarma falsa el 74% correcto; y con cobertura 0% el proxy disponible (PR mergeado) mide "se escribio", no "se resolvio".
+- 🔝 [↔️🕳️ Arreglar una comparación en UN sentido deja el opuesto vivo](arreglar-una-comparacion-en-un-sentido-deja-el-opuesto-vivo.md) — `!=`→`<` cerró la fecha adelantada; la atrasada da 999999min y es indistinguible del caso legítimo.
+- [📮🕳️ Un contrato `a-todos` no tiene quien lo CIERRE](un-contrato-dirigido-a-todos-no-tiene-quien-lo-cierre.md) — cero dueños, no varios; el urgente grita eterno.
+- [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.  
+  ↪ **bajada del índice el 2026-09-29.** Criterio: el bucle device/Metro está FUERA de este sprint por decisión del operador del 22/09 (device/EAS al sprint siguiente). **No se bajó por longitud** — vuelve al índice cuando arranque el sprint de device. Mismo criterio con que se bajó `receta-avion-reverse-connect-destraba-dev-launcher`.
+## Bajadas del índice el 2026-09-29 (el techo de chars, no el de líneas)
+- 🟩🎯 [Un control POSITIVO prueba que el instrumento VE, no que mira donde hay que mirar](un-control-positivo-prueba-que-el-instrumento-ve-no-que-mira-donde-hay-que-mirar.md) — tres errores el mismo día con el positivo en **verde**: sujeto equivocado (la app en vez del proto), universo incompleto (2 documentos de 6) y árbol viejo. Lo que los cazó fue un control de **DENOMINADOR** — cuántos elementos examiné contra cuántos esperaba —, no un positivo. El verde del positivo **aumenta** la confianza en una medición cuyo defecto no puede ver.  ↪ **indexada acá y no en `MEMORY.md`:** el índice cargado está a 52 chars del techo; se promueve cuando haya margen. Frase de auditoría, citada con su autoría.
+- 🛡️🎲 [Un guard que acierta por ACCIDENTE no da síntoma](un-guard-que-acierta-por-accidente-no-da-sintoma.md) — dos cegueras del parser tenían su único caso observable saliendo **bien por la razón equivocada**: el documento sin backticks estaba retirado, así que no contarlo era correcto; y el backtick excluía la cabecera sin que nadie lo diseñara para eso, así que al relajarlo `| sujeto |` entró como medición. La pregunta no es *¿sale bien?* sino ***¿por qué sale bien este caso?*** — un control positivo da verde en los dos, porque lo que está mal es la **causa**. Relajar un patrón exige escribir primero qué excluye sin querer.  ↪ **indexada acá y no en `MEMORY.md`:** el índice cargado está a 52 chars del techo. Par de [[un-control-positivo-prueba-que-el-instrumento-ve-no-que-mira-donde-hay-que-mirar]].
+**Escritas el 2026-09-29 e indexadas acá a propósito.** No por falta de lugar: con el índice cargado a 170 chars del techo, meter cuatro entradas habría forzado a bajar lecciones ajenas, y acá el medidor las cuenta igual. Indexarlas en `HISTORIA.md` deja el tronco consistente en **cualquiera** de los dos órdenes de merge, sin que ningún PR dependa del otro. Promoverlas al índice cargado cuando haya margen es deuda declarada.
+- 📚🔀 **El índice y lo indexado se mergean por separado**, así que uno correcto en su rama es un índice ROTO en el tronco. Y toda cifra de cobertura necesita decir **de qué copia** sale: son cuatro archivos. Me cazó en los dos sentidos el mismo turno: midiendo de menos sobre un árbol atrasado, y afirmando de más al contar desde mi rama lo que faltaba en `main` [la entrada](el-indice-y-lo-indexado-se-mergean-por-separado.md)  ↪ **indexada acá y no en `MEMORY.md`:** caso particular de `el-instrumento-respondio-sobre-otro-sujeto`, que sigue indexada y es la raíz.
+- 🚧💸 **Un gate nuevo mide el ÁRBOL MERGEADO**, así que si la deuda ya vive en el tronco el merge lo deja rojo para todas las sesiones, y el primer reflejo de quien se topa con un rojo ajeno es **desarmarlo**. La deuda se paga en el MISMO PR que enciende el gate, y el margen sale de la verbosidad **propia** antes que de bajar una lección ajena [la entrada](un-gate-que-entra-en-vigencia-con-deuda-preexistente.md)  ↪ **indexada acá y no en `MEMORY.md`:** cara de `el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege`, que ya está en el índice.
+- [📝💥 El TESTIGO del deploy se sobreescribe y borra la prueba](el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren.md) — `cat >` de ranura única. Append-only.  ↪ **bajada:** misma raiz que `pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo`, que sigue indexada: la corrida buena borra la evidencia de la mala.
+- [🏷️ Clasificar un hallazgo por su ETIQUETA, no por su código](clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo.md) — "firma" me hizo inventar una vuln cripto; llegó mergeada a `main`.  ↪ **bajada:** cubierta por `el-nombre-es-una-hipotesis-sobre-el-contenido`, que es su raiz: la etiqueta no dice que hay adentro.
+- [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.  ↪ **bajada:** dos líneas llevan a su raíz: `un-instrumento-compartido-intermitente-fabrica-una-excusa-lista` y `el-fallo-que-se-mueve-acusa-al-recurso-compartido`.
+- [🕳️➕ El fallback que SUSTITUYE al valor perdido hace ciego al control](el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control.md) — rompé cada brazo por separado; el total se conserva.  ↪ **bajada:** cubierta por `un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo` y `vacio-no-es-hallazgo-correr-el-control`, que siguen indexadas.
+- [🎯🚫 Un criterio de cierre con algo FUERA DE ALCANCE no se cumple nunca](un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca.md) — pospuesto 2× sin medición ⇒ auditá la DEFINICIÓN, no la ejecución.  ↪ **bajada:** su raíz quedó en `el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio`.
+- [🗓️ El metadato anti-envejecimiento lo CAUSA si anota la lectura más nueva](el-metadato-contra-el-envejecimiento-lo-causa-si-anota-la-lectura-mas-nueva.md) — eslabón más viejo.  ↪ **bajada:** caso particular de `un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo`.
+- [👻🚫 UI escrita e INALCANZABLE — nadie la mide porque no se llega navegando](ui-escrita-e-inalcanzable-nadie-la-mide-porque-no-se-llega-navegando.md) — grepeá quién la MONTA.  ↪ **bajada:** caso de `APPSM`, ya cerrado; su regla general («grepeá quién la MONTA») se alcanza desde `la-costura-leia-un-campo-que-nadie-escribe` («grepeá quién ESCRIBE»).
+- [🎰 El gate compartido PERDONA al que llega acompañado](el-gate-compartido-perdona-al-que-llega-acompanado.md) — pasó por contención, no por salud.  ↪ **bajada:** su raíz está indexada dos veces: `un-instrumento-compartido-intermitente-fabrica-una-excusa-lista` y `el-fallo-que-se-mueve-acusa-al-recurso-compartido`.
+- [🔁🧪 Adversario E2E con email fijo se rompe en el rerun](adversario-e2e-con-email-estatico-y-password-random-se-rompe-en-el-rerun.md) — el 2º run falla el login.  ↪ **bajada:** el caso concreto quedó cubierto por la regla dura del usuario de prueba canónico.
+
+## Bajadas del índice 2026-09-30 - por el techo en BYTES
+
+El medidor contaba caracteres; el techo trunca por bytes (ver `el-indice-truncado-fabrica-duplicados.md`). Estas ocho salieron del índice porque su lección general ya está cubierta por una hermana más amplia del propio índice, o porque eran situacionales. Siguen acá y siguen siendo buscables - lo que se pierde es el recall automático al arrancar, no el contenido.
+
+- [🔌🕳️ Un callback que RECIBE un parámetro y lo ignora no da síntoma](un-callback-que-recibe-un-parametro-y-lo-ignora-no-da-sintoma.md) - ¿quién LEE lo que escribo?  (lo cubre [[instrumento-que-no-mira-nunca-falla]])
+- [📏🎯 Un ORDEN DE MAGNITUD que coincide no confirma la causa](un-orden-de-magnitud-que-coincide-no-confirma-la-causa.md) - muestreá la población, no el total.  (situacional: un umbral de ese dia)
+- [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) - preguntá qué evento reinicia el contador.  (situacional)
+- [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) - refutar causa no refuta hecho.  (lo cubre [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]])
+- [🔁👁️ El veredicto no dice cuántas veces lo MIRARON](el-veredicto-no-dice-cuantas-veces-lo-miraron.md) - el riesgo está en lo MENOS mirado, no en lo más.  (coordinacion, situacional)
+- [💀⏰ El vigilante muere, y apagarlo a propósito borra el RELOJ](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) - 5h30 × 4. `CronCreate`.  (lo cubre [[la-costura-leia-un-campo-que-nadie-escribe]])
+- [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) - el freno no es un monitor.  (lo cubre [[el-instrumento-tambien-CONDENA-no-solo-absuelve]])
+- [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) - 71→4 en un día.  (hay otra del vigilante en Referencia)
+
+## Bajadas del índice 2026-09-30 (2.ª vuelta) - el merge con main restauró las primeras
+
+La unión de un merge lee «quitado en mi lado» como «presente en el otro», así que las ocho de la 1.ª vuelta volvieron al índice solas. Se re-bajan, y se suman estas ocho por el mismo criterio: situacional, o cubierta por una hermana más amplia del propio índice.
+
+- [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) - deliberada + visible OK; impaga o invisible, prohibida.  (lo cubre [[cero-deuda-de-mejora]])
+- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) - leé el cuerpo, no el semáforo.  (situacional)
+- [📦⏪ Un rebuild desde OTRA base revierte un fix cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) - ejercitá la función, no el log.  (situacional)
+- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) - cruzá el PID contra tu proceso.  (situacional)
+- [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) - acá es `coordinacion/PLAN.md`.  (es un puntero a coordinacion/PLAN.md, redundante con Estado vivo)
+- [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) - 3 en una noche; barrelos al cerrar.  (situacional)
+- [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) - verde + hallazgo falso: ¿en qué mundo saldría ROJO?  (lo cubre [[el-canario-el-control-positivo-de-lo-que-falla-callado]])

@@ -88,6 +88,18 @@ export function TarjetaComprobante({
         </div>
       )}
 
+      {/* 🔴 La carrera de `idem_key` no se PREVIENE, se DETECTA (backend, `alerta_doble_emision`).
+          Cuando pasa, hay DOS CAE reales para esta factura y el emprendedor tiene uno de más -- sin
+          este aviso no hay forma de enterarse (el campo llega hasta `GET /afip/facturas/{id}` y
+          moría ahí, ningún `.tsx` lo leía). Texto neutro a propósito: qué hacer con el duplicado
+          (nota de crédito / anular / contador) es decisión del operador, todavía sin cerrar -- este
+          `data-testid` es estable para que ese texto cambie sin tocar el mecanismo. */}
+      {resultado?.alertaDobleEmision === true && (
+        <p className="facturacion-comprobante__alerta-doble-emision" data-testid={`${testID}-alerta-doble-emision`}>
+          Se emitieron dos comprobantes para esta factura.
+        </p>
+      )}
+
       {/* 🔴 «¿Ya la cobraste?» EN EL MOMENTO de emitir — mismo contrato de Contabilidad que mobile.
           Reusa `SeccionCobro` tal cual, o sea la MISMA vía viva (`/afip/comprobantes/{id}/cobros`).
 

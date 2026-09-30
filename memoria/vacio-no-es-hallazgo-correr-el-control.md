@@ -82,6 +82,35 @@ Un `exit 9` reservado para «no pude medir» separa de una vez las dos poblacion
 Y para el caso 4: cuando una unidad del documento no rinde dato, **emitirla como
 `SIN_VEREDICTO_PARSEABLE` en vez de no emitir nada** — un hueco se nombra, no se cuenta como cero.
 
+## El par de controles se compara ENTRE SÍ, no contra tu expectativa (2026-09-29)
+
+**Regla nueva, y es la que más rinde de toda esta entrada:** si el control **positivo** y el
+**negativo** devuelven **el mismo valor**, el par no discrimina — no absolviste ni condenaste, **no
+medisteis**. La entrada ya decía «si todas las celdas dan el resultado esperado, se midió el entorno».
+Esto es la otra mitad: si dan el **mismo** resultado entre ellas, da igual cuál esperabas.
+
+El caso: verifiqué por efecto un merge propio y salió `EFECTO=0` — la frase no estaba en `origin/main`.
+Se lee como «el merge no llegó». **El control negativo también dio 0.** Dos ceros: el par estaba vacío.
+Y era mío — grepeé la entrada de memoria buscando una frase que sólo existía en el **doc de auditoría**
+del mismo PR. Re-medido con una sonda que primero probé contra el archivo local (positivo 1 y 2,
+negativo 0, ahora sí distintos): el merge había entrado perfecto, `#707` → `c9c8c852`.
+
+**Lo barato que lo cierra:** antes de grepear el sujeto remoto, grepeá **el archivo local** con la misma
+sonda y exigí `>0`. Si la sonda no encuentra nada donde sabés que está, no mide nada donde no sabés.
+
+**Y el contador sigue: TRES más el mismo día, todas mías, todas cazadas por el control y ninguna por la
+lectura.**
+
+| # | lo que dijo | lo que era |
+|---|---|---|
+| 5 | `0` comentarios de una forma en dos lotes | un `for` sobre `find` se partió en el espacio de «Claude code» y grepeaba la palabra `Claude` como si fuera un archivo. Lo cazó el positivo: una forma que el propio reporte declaraba en 3 tenía que dar >0 |
+| 6 | `0` huérfanos leyendo el JSON | **el ciego era mi lector**: busqué las claves `huerfanos`/`detalle[].huerfano` y la real es `veredictos_huerfanos`. La salida humana decía 4. Casi acuso al instrumento ajeno con el mío roto |
+| 7 | `EFECTO=0` post-merge | sonda inexistente en el archivo grepeado (arriba) |
+
+Las tres son de un turno en el que **auditaba instrumentos ajenos**. Ahí está lo incómodo y lo útil: el
+que mide instrumentos usa más instrumentos que nadie, y no hay razón para que los propios estén mejor
+controlados que los que juzga. **El control no es un trámite del sujeto: es del acto de medir.**
+
 ## Y el reverso, que vale igual: un control que FALLA puede acusar al valor esperado
 
 Dos veces el mismo dia un control horneado aborto y el equivocado era **el numero de referencia**, no

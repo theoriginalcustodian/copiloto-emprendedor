@@ -499,7 +499,17 @@ DoD base del backlog §0.4 (1–9) + DoD propio del ítem. **Nada menos.** Un í
 - [ ] `BL-Q2` smoke contra prod: 0 fallas, o cada falla con ítem nuevo asignado.
 - [ ] Entrada de auditoría cerrada, con sus hallazgos asignados.
 
-### 11.3 Cierre A: beta técnica completa (autónomo)
+### 11.3 Cierre A: beta técnica completa (autónomo) — **RE-DECLARADO 2026-09-29**
+
+> ⚠️ **Esta sección fue re-declarada por acta del operador el 2026-09-29.**
+> Texto vigente y estado medido de cada criterio →
+> [`2026-09-29-acta-redeclaracion-cierre-a-y-plan-de-cierre.md`](2026-09-29-acta-redeclaracion-cierre-a-y-plan-de-cierre.md)
+>
+> **Qué cambió y por qué:** el criterio 5 exigía un APK en el device, y el operador había movido
+> device/EAS al sprint siguiente el 22/09. Un criterio de cierre que contiene algo declarado fuera
+> de alcance **no puede cumplirse nunca** — el sprint no se estiraba por lentitud sino porque su
+> condición de término era inalcanzable por decisión propia. El criterio 5 pasa a ser criterio de
+> **entrada** del sprint siguiente. Los otros 6 quedan intactos.
 
 Medido sobre **un mismo SHA** de `main`:
 
@@ -507,7 +517,7 @@ Medido sobre **un mismo SHA** de `main`:
 - [ ] Todos los ítems de §3.1 cerrados con su DoD.
 - [ ] Matriz re-medida por A4: ✅ en web **y** mobile para toda pantalla marcada **spec** en `BL-P5`, contra el prototipo final (`BL-P2`).
 - [ ] `smoke_beta_e2e.py` verde contra prod y `BL-B1` verde sobre el último deploy.
-- [ ] APK `preview` (build #2) instalado en el device, con el barrido `BL-Q3` hecho sobre él.
+- [x] ~~APK `preview` (build #2) instalado en el device, con el barrido `BL-Q3` hecho sobre él.~~ → **FUERA del Cierre A** (acta 2026-09-29); es criterio de ENTRADA del sprint siguiente.
 - [ ] `git ls-files '*.otf'` vacío; gitleaks verde sobre `HEAD`.
 - [ ] Runbook de Cierre B (§13) en `main`, con cada interruptor listo.
 
@@ -553,7 +563,7 @@ Lo redacta planificación durante la Ola 4. Cada interruptor queda preparado par
 | 4 | Backups (`BL-O5`) | WAL-G + B2 ya construidos; checklist de restore con conteo con claims | Das la orden de encender |
 | 5 | Legal (`BL-O6`) | Borrador que nombra a los terceros (Composio, ARCA, MercadoPago, proveedor LLM, Graphity) y dice que la clave fiscal no se guarda | Aprobás el texto |
 | 6 | Soporte (`BL-O7`) | Lugar donde va el SLA en `BL-W10` | Fijás responsable y horario |
-| 7 | Rotaciones (`BL-O8`) | Recordatorio: token de 60fps.design y `DATABASE_URL` de fusion; ARCA de `341lin` | Las ejecutás |
+| 7 | Rotaciones (`BL-O8`) | `DATABASE_URL` de fusion; ARCA de `341lin`. ~~token de 60fps.design~~ — **retirado de la cola por el operador el 2026-09-29** | Las ejecutás |
 | 8 | Historia sin `.otf` (DEC-5) | §13.2 | Lo corrés vos (el force push está bloqueado para los agentes por diseño) |
 
 ### 13.2 Reescritura de la historia (DEC-5)
@@ -565,7 +575,8 @@ Lo redacta planificación durante la Ola 4. Cada interruptor queda preparado par
 
 **Pasos** (los scripts quedan en `scripts/operador/`, versionados y sin secretos):
 1. Backup espejo: `git clone --mirror`, guardado **fuera** del repo.
-2. En un clon fresco: `git filter-repo --path-glob '*.otf' --invert-paths`. Si decidís también sacar el token de 60fps de la historia: `--replace-text` con un archivo de patrones que **no** se commitea.
+2. En un clon fresco: `git filter-repo --path-glob '*.otf' --invert-paths`.
+   > ⚠️ **Actualizado 2026-09-29:** este paso nombraba además el token de 60fps.design como opcional (`--replace-text`). **El operador retiró ese token de la cola el 29/09**, así que el paso queda **sólo con los `.otf`**. Si alguna vez vuelve a entrar, vuelve como decisión propia con su acta — no colgado de este runbook, donde envejecía sin que nadie lo mirara.
 3. Verificación: `git log --all -- '*.otf'` vacío; gitleaks sobre toda la historia verde.
 4. `git push --force --mirror` (lo hacés vos).
 5. Borrar y volver a crear todos los worktrees locales (`wt-*`) y el checkout compartido. `memoria/`, `coordinacion/` y los `.env` locales se preservan fuera del árbol antes de hacerlo.

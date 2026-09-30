@@ -24,6 +24,7 @@ import {
   type ReceptorInput,
 } from '@copiloto/core';
 
+import { almacenClave } from '../../adapters/almacen';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { useTema } from '../../theme/ThemeProvider';
@@ -31,6 +32,7 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
 import { PasoCliente } from './PasoCliente';
@@ -43,6 +45,40 @@ import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './Sec
 import { TarjetaComprobante } from './TarjetaComprobante';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
+
+export const CLAVE_IDEM_STORAGE_KEY = 'copiloto-facturacion-idem-key';
+const CLAVE_IDEM_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Ciclo de vida de `idem_key` para "Nueva factura" (contrato
+ * `planificacion-a-todos_FACTID-mitad-frontend-idem-key-en-nueva-factura`, 2026-09-29, §2 -- mismo
+ * mecanismo que `apps/copiloto-web/.../PantallaFacturacion.tsx`, portado con `AsyncStorage` vía
+ * `almacenClave` (adapter ya usado en esta misma pantalla para `cuitCache`) en vez de reenvolver
+ * `AsyncStorage`. La clave vive SÓLO mientras el POST a `crearFactura` está en vuelo -- se genera con
+ * el primer intento, se reusa en reintentos (red, `reintentoBorrador`, remonte) y se borra apenas
+ * llega el `facturaId`. TTL de 10 min para que un corte de conexión no deje una clave huérfana que
+ * adopte un borrador viejo para siempre -- mismo bug de fondo que `podarResolucionesCard` (BL-V32).
+ * `almacenClave` ya es best-effort (degrada en silencio si el storage falla).
+ */
+async function leerClaveIdemGuardada(): Promise<string | null> {
+  const raw = await almacenClave.leer(CLAVE_IDEM_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const { clave, ts } = JSON.parse(raw) as { clave?: string; ts?: number };
+    if (!clave || typeof ts !== 'number' || Date.now() - ts > CLAVE_IDEM_TTL_MS) return null;
+    return clave;
+  } catch {
+    return null;
+  }
+}
+
+async function guardarClaveIdem(clave: string): Promise<void> {
+  await almacenClave.guardar(CLAVE_IDEM_STORAGE_KEY, JSON.stringify({ clave, ts: Date.now() }));
+}
+
+async function borrarClaveIdem(): Promise<void> {
+  await almacenClave.borrar(CLAVE_IDEM_STORAGE_KEY);
+}
 
 type PasoEditable = Extract<PasoVisible, 'datos_venta' | 'items' | 'cliente'>;
 
@@ -97,6 +133,18 @@ type EstadoGate =
  * shippeado) ni `packages/core` (NO-TOCAR de esta sesión) lo expone aunque el backend ya lo mande. Sin
  * CUIT cacheado, esta pantalla se comporta EXACTAMENTE como `puedeFacturar:false`: mismo CTA, mismo
  * copy -- porque, para el usuario, el resultado es el mismo ("todavía no configuraste tu facturación").
+ *
+ * 🔴 **El wizard queda DETRÁS de "Nueva factura" (H-A4-5, auditoría 2026-09-22) -- acá también.** El
+ * fix llegó a web (`apps/copiloto-web/.../PantallaFacturacion.tsx`) y no cruzó a esta pantalla: hasta
+ * este commit, tocar el tile "Facturación" del escritorio creaba un borrador por el solo hecho de
+ * montar (confirmado por el propio test `sin el parámetro sigue creando su propio borrador`, que
+ * documentaba el bug como "el camino de siempre"). Mismo mockup fuente que web
+ * (`Prototipo frontend/odobi-ui/mockups/05-facturacion/DECISIONES.md`: *"la app de Facturación en Apps
+ * queda como historial/listado, no como flujo de creación"*), mismo fix: `vista` decide si se muestra
+ * el listado («Te deben» + «Mis comprobantes» + el pill "Nueva factura") o el wizard; sólo entra a
+ * `'wizard'` una acción explícita (el pill, o los botones "Nueva factura" de los estados terminales,
+ * que reusan el mismo handler). Con `facturaIdInicial` (adoptar un borrador de un presupuesto) arranca
+ * directo en `'wizard'`: ESA sí es una acción explícita, ocurrida en la pantalla de origen.
  */
 export interface PantallaFacturacionProps {
   /**
@@ -150,10 +198,15 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   );
   const tema = useTema();
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'resolviendo_cuit' });
+  // H-A4-5: arranca en 'listado' salvo que llegue un borrador de afuera (`facturaIdInicial`), que ya ES
+  // la acción explícita que justifica entrar directo al wizard. Ver el docstring del módulo.
+  const [vista, setVista] = useState<'listado' | 'wizard'>(facturaIdInicial != null ? 'wizard' : 'listado');
   /** La fila cuyo detalle se está mirando. Vive ACÁ y no en la sección — ver el porqué en el render. */
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
   const refMeDeben = useRef<SeccionMeDebenHandle>(null);
+  /** `idem_key` en vuelo -- ver docstring de `leerClaveIdemGuardada` más arriba. */
+  const claveIdem = useRef<string | null>(null);
   const [refrescandoLista, setRefrescandoLista] = useState(false);
   // Sembrado con el borrador que llega de afuera, si lo hay: el efecto de creación (más abajo) sale
   // temprano cuando `facturaId !== null`, así que esto es todo lo que hace falta para adoptarlo — el
@@ -279,21 +332,34 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     };
   }, [facturaIdInicial]);
 
-  // 3. Gate pasado y sin factura activa -> crear el borrador y esperar a que el estado se estabilice.
+  // 3. Gate pasado, vista wizard y sin factura activa -> crear el borrador y esperar a que el estado
+  // se estabilice. `vista !== 'wizard'` es el guard de H-A4-5: sin él, este efecto crea un borrador
+  // por el solo hecho de abrir la pantalla -- exactamente el bug que reportó la auditoría.
   useEffect(() => {
-    if (gate.tipo !== 'listo' || facturaId !== null) return;
+    if (vista !== 'wizard' || gate.tipo !== 'listo' || facturaId !== null) return;
     let cancelado = false;
     setCreandoBorrador(true);
     setErrorBorrador(false);
     const { cuit } = gate;
+    // FACTID §2: se reusa la clave de un intento en vuelo (ref, mismo montaje) o de un intento que no
+    // terminó antes del remonte (storage, dentro del TTL); si no hay ninguna, es la primera vez que
+    // este borrador se intenta y se genera una nueva.
     (async () => {
-      const res = await crearFactura(cuit);
+      const clave = claveIdem.current ?? (await leerClaveIdemGuardada()) ?? generarId();
+      if (cancelado || !vivo.current) return;
+      claveIdem.current = clave;
+      await guardarClaveIdem(clave);
+      const res = await crearFactura(cuit, clave);
       if (cancelado || !vivo.current) return;
       if (res.status === 'no_disponible') {
         setErrorBorrador(true);
         setCreandoBorrador(false);
         return;
       }
+      // FACTID §2(6): la clave se borra en cuanto llega el `facturaId`, no al emitir -- desde acá la
+      // próxima "Nueva factura" tiene que generar una clave distinta.
+      claveIdem.current = null;
+      await borrarClaveIdem();
       const { estado } = await esperarEstadoEstable(res.facturaId);
       if (cancelado || !vivo.current) return;
       setFacturaId(res.facturaId);
@@ -310,8 +376,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     return () => {
       cancelado = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `reintentoBorrador` sólo existe para forzar un rearranque manual.
-  }, [gate, facturaId, reintentoBorrador]);
+  }, [vista, gate, facturaId, reintentoBorrador]);
 
   const pasoBackend = estadoFacturaActual ? derivarPasoVisible(estadoFacturaActual) : null;
 
@@ -473,6 +538,11 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     await actualizarEstado();
   }, [facturaId, actualizarEstado]);
 
+  /**
+   * Entra al wizard y arranca un borrador nuevo. Es el ÚNICO camino de entrada (H-A4-5): lo usa tanto
+   * el pill "Nueva factura" del listado (arrancar desde cero) como los botones "Nueva factura" de los
+   * estados terminales (comprobante/rechazada/cancelada) -- misma acción, dos lugares.
+   */
   const nuevaFactura = useCallback(() => {
     setFacturaId(null);
     setEstadoFacturaActual(null);
@@ -480,6 +550,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     setClienteLocal(null);
     setPasoEdicion(null);
     setErrorBorrador(false);
+    setVista('wizard');
   }, []);
 
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
@@ -528,6 +599,10 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
               ]}
             />
           </View>
+        ) : vista === 'listado' ? (
+          // H-A4-5: aterrizaje en el listado -- nada que pintar acá, «Te deben» + «Mis comprobantes»
+          // (con el pill "Nueva factura" que entra al wizard) van más abajo, fuera de este bloque.
+          null
         ) : creandoBorrador || !facturaId || !estadoFacturaActual || pasoBackend == null ? (
           <ActivityIndicator testID="facturacion-cargando" color={tema.color.acento} />
         ) : (
@@ -561,6 +636,23 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
                 las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
                 lugares está una factura concreta. */}
             <SeccionMeDeben ref={refMeDeben} />
+            {/* H-A4-5: fila FIJA (no condicionada a `vista`, igual que web) -- reusa `nuevaFactura`, el
+                mismo handler que ya resetea el wizard para arrancar otra factura desde los estados
+                terminales (comprobante/rechazada/cancelada). Siempre visible con `cuitConocido`: es la
+                MISMA acción que abandona un wizard a medio hacer y arranca uno nuevo, no sólo la puerta
+                de entrada desde el listado. Mismo testID que web (`facturacion-nueva-factura-pill`)
+                para la paridad que audita `scripts/ci/testid-paridad-excepciones.json`. */}
+            <FilaBotones
+              testID="facturacion-nueva-factura-fila"
+              botones={[
+                {
+                  etiqueta: 'Nueva factura',
+                  onPress: nuevaFactura,
+                  variante: 'primario',
+                  testID: 'facturacion-nueva-factura-pill',
+                },
+              ]}
+            />
             {/* 🔴 Decisión C: el buscador envuelve SÓLO «Mis comprobantes» —no «Te deben» (otra
                 pregunta) ni el wizard—. Sin query, la sección rica (con anular, PDF, CAE) se muestra
                 intacta; con query pega a `/actividad?funcion=facturacion&q=` (cruza factura +

@@ -146,3 +146,26 @@ filtro, no sobre el buzón.
 **Y el corolario de dirección:** cuando dos sesiones aparecen ociosas al mismo tiempo, la hipótesis
 barata no es que las dos se distrajeron — es que **el canal por el que iban a avisar no está
 llegando**. Un ocio simultáneo apunta al lector, no a los escritores.
+
+## El caso donde el instrumento fue CIERTO y venció (2026-09-29)
+
+`scripts/podar-worktrees.sh` filtraba por un path **fijo**: `.claude/worktrees/`, con el comentario
+«fuera de acá no son worktrees de trabajo de estas sesiones». **Era verdad el día que se escribió** —
+y falso una semana después, cuando las 4 sesiones pasaron a trabajar en `C:/gfw-src/wt-*`.
+
+Medido antes de tocarlo: de **34** worktrees registrados clasificaba **2**, ignoraba **23**, y su
+resumen imprimía `0 no mergeado(s) · 0 sucio(s)`. Nadie lo lee como «no miré»: se lee como «no hay».
+
+Lo que aparecía al destaparlo eran **3 worktrees sucios con trabajo sin commitear** — o sea trabajo
+que no está en ninguna rama, exactamente el riesgo que el script existe para no correr.
+
+**La variante nueva:** acá el supuesto no nació mal, **venció**. Un filtro escrito contra el layout
+de hoy es correcto hoy y ciego dentro de una semana, sin que nada avise. Por eso el arreglo no fue
+cambiar un path por otro —el próximo layout vuelve a dejarlo ciego— sino **parametrizar la base** y
+hacer que el resumen declare SIEMPRE `N de M entraron al análisis`. Un conteo de resultados no es
+interpretable sin el conteo de cobertura, y ésa es la línea que faltaba para que el defecto se viera.
+
+> La pregunta que lo caza: *¿este filtro describe el mundo, o el mundo del día que lo escribí?*
+> Emparenta con `[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]`: allá el dato
+> envejecía, acá envejece **el criterio de selección**, que es peor porque no se vuelve a mirar.
+

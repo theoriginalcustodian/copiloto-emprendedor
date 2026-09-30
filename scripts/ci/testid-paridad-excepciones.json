@@ -1241,6 +1241,16 @@
       "motivo": "matriz web A4 Criterio 3 fila 2 (contrato planificacion->frontend1): agrega el titulo de pagina 'Contanos que tal' (index.html:2195), que faltaba en web. En mobile el titulo de pantalla lo pinta el shell compartido MarcoGlass con un testID FIJO por diseno (glass-titulo, igual en TODAS las pantallas, ver theme/glass/MarcoGlass.tsx:271) -- no hay un id por-pantalla con el que parear sin inventar uno redundante fuera de este contrato (que es web-only). Dueno: frontend1. Disparador para triar: si mobile alguna vez agrega un testID de titulo propio por pantalla (dejaria de ser glass-titulo generico).",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::legal-screen-descargo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaLegal.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-29",
+      "id": "legal-screen-descargo",
+      "motivo": "BL-O6 parte A (#693): el mismo id 'legal-screen-descargo' SI existe del lado web, pero bajo la pantalla 'src/auth' (LegalScreen.tsx se abre desde SignupScreen ahi) -- no bajo 'modules/ajustes', que es donde vive la pantalla mobile equivalente (PantallaLegal, se abre desde Mi cuenta). Es la misma asimetria de punto de entrada que legal-screen-version y legal-screen-placeholder-notice (ver esas dos excepciones arriba), un id que quedo afuera del contrato original por descuido -- no contenido faltante. Ver tambien src/auth::legal-screen-descargo.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::legal-screen-placeholder-notice": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaLegal.tsx"
@@ -1259,16 +1269,6 @@
       "fecha": "2026-09-22",
       "id": "legal-screen-version",
       "motivo": "BL-O6 parte A: el mismo id 'legal-screen-version' SI existe del lado web, pero bajo la pantalla 'src/auth' (LegalScreen.tsx se abre desde SignupScreen ahi) -- no bajo 'modules/ajustes', que es donde vive la pantalla mobile equivalente (PantallaLegal, se abre desde Mi cuenta). Es la misma asimetria de punto de entrada que las dos excepciones de arriba, no contenido faltante. Ver tambien src/auth::legal-screen-version.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::legal-screen-descargo": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaLegal.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-28",
-      "id": "legal-screen-descargo",
-      "motivo": "BL-O6 parte A (descargo, firmado por el operador 2026-09-28): mismo id 'legal-screen-descargo' SI existe del lado web, pero bajo la pantalla 'src/auth' (LegalScreen.tsx se abre desde SignupScreen ahi) -- no bajo 'modules/ajustes', que es donde vive la pantalla mobile equivalente (PantallaLegal, se abre desde Mi cuenta). Misma asimetria de punto de entrada que legal-screen-version/legal-screen-placeholder-notice, no contenido faltante. Ver tambien src/auth::legal-screen-descargo. Dueno: frontend2.",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::lo-pediste-vos": {
@@ -2615,14 +2615,25 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
+    "modules/facturacion::facturacion-nueva-factura-fila": {
+      "en": [
+        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-29",
+      "id": "facturacion-nueva-factura-fila",
+      "motivo": "FACTID + H-A4-5 (mobile, 2026-09-29): testID del `FilaBotones` contenedor del pill -- detalle de layout de mobile (mismo patron que facturacion-error-borrador-botones), sin equivalente semantico en web, que sólo tiene el pill suelto. No es asimetria a resolver.",
+      "pantalla": "modules/facturacion"
+    },
     "modules/facturacion::facturacion-nueva-factura-pill": {
       "en": [
-        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx"
+        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx",
+        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
       ],
       "falta_en": "mobile",
-      "fecha": "2026-09-22",
+      "fecha": "2026-09-29",
       "id": "facturacion-nueva-factura-pill",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "FACTID + H-A4-5 (mobile, 2026-09-29): falso positivo del gate, no drift real -- el testID SI existe en mobile (linea 653), pasado como `testID: '...'` dentro del array `botones` de `FilaBotones`, no como literal JSX `testID=\"...\"` -- el regex del script (LITERAL_MOBILE_RE) no lo detecta, mismo patron que facturacion-error-borrador-reintentar (tambien via FilaBotones). Confirmado con los 2 tests H-A4-5 en PantallaFacturacion.test.tsx (mobile) que ejercitan justo este pill.",
       "pantalla": "modules/facturacion"
     },
     "modules/facturacion::facturacion-rechazada-botones": {
@@ -4347,6 +4358,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/voz"
     },
+    "src/auth::legal-screen-descargo": {
+      "en": [
+        "apps/copiloto-web/src/auth/LegalScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-29",
+      "id": "legal-screen-descargo",
+      "motivo": "BL-O6 parte A (#693): el par de este id vive en PantallaLegal.tsx (mobile), pero bajo la pantalla 'modules/ajustes' -- no bajo 'src/auth', que no existe como pantalla mobile (mobile no tiene un modulo de auth propio, el login vive en app/). Misma asimetria que legal-screen-version y legal-screen-placeholder-notice, un id que quedo afuera del contrato original por descuido. Ver tambien modules/ajustes::legal-screen-descargo.",
+      "pantalla": "src/auth"
+    },
     "src/auth::legal-screen-placeholder-notice": {
       "en": [
         "apps/copiloto-web/src/auth/LegalScreen.tsx"
@@ -4365,16 +4386,6 @@
       "fecha": "2026-09-22",
       "id": "legal-screen-version",
       "motivo": "BL-O6 parte A: el par de este id vive en PantallaLegal.tsx (mobile), pero bajo la pantalla 'modules/ajustes' -- no bajo 'src/auth', que no existe como pantalla mobile (mobile no tiene un modulo de auth propio, el login vive en app/). Ver tambien modules/ajustes::legal-screen-version.",
-      "pantalla": "src/auth"
-    },
-    "src/auth::legal-screen-descargo": {
-      "en": [
-        "apps/copiloto-web/src/auth/LegalScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-28",
-      "id": "legal-screen-descargo",
-      "motivo": "BL-O6 parte A (descargo, firmado por el operador 2026-09-28): el par de este id vive en PantallaLegal.tsx (mobile), pero bajo la pantalla 'modules/ajustes' -- no bajo 'src/auth', que no existe como pantalla mobile. Misma asimetria de punto de entrada que legal-screen-version/legal-screen-placeholder-notice. Ver tambien modules/ajustes::legal-screen-descargo. Dueno: frontend2.",
       "pantalla": "src/auth"
     },
     "src/auth::login-google": {

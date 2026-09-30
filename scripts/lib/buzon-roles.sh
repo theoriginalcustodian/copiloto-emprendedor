@@ -25,6 +25,67 @@ ROLES_BUZON=(planificacion backend frontend1 frontend2 manejo-de-errores auditor
 # Roles que existen SÓLO como broadcast: nadie firma como ellos, pero se les puede escribir.
 ROLES_BROADCAST_BUZON=(frontend todos)
 
+# es_broadcast_buzon <rol> — ¿ese destinatario es un broadcast? Salio de que ROLES_BROADCAST_BUZON
+# estaba declarado arriba desde el 2026-09-07 y NINGUN consumidor lo leia (medido con grep -rn el
+# 2026-09-29: 1 solo hit, su propia declaracion). Una tabla que nadie consulta no es una fuente
+# unica, es documentacion: el escalador seguia tratando `a-todos` como un destinatario mas.
+es_broadcast_buzon() {
+  local r="$1" b
+  for b in "${ROLES_BROADCAST_BUZON[@]}"; do [ "$r" = "$b" ] && return 0; done
+  return 1
+}
+
+# roles_de_broadcast <broadcast> [emisor] — expande un broadcast a los roles REALES que lo heredan,
+# uno por linea, excluyendo al emisor (nadie se escala a si mismo). Es la inversa de lee_patrones():
+# esa contesta «¿este archivo es para mi?» y esta «¿a quienes interpela este archivo?». Las dos
+# salen de la misma tabla a proposito — si divergen, un mensaje aparece en un gate y no en el otro.
+roles_de_broadcast() {
+  local bc="$1" emisor="${2:-}" r
+  for r in "${ROLES_BUZON[@]}"; do
+    [ "$r" = "$emisor" ] && continue
+    case "$bc" in
+      todos)    printf '%s\n' "$r" ;;
+      frontend) case "$r" in frontend1|frontend2) printf '%s\n' "$r" ;; esac ;;
+    esac
+  done
+}
+
+# roles_declarados_en <archivo> — los roles que EL CONTRATO declara con una línea `ROLES:`,
+# uno por línea, o nada si no la declara o si ninguno es válido.
+#
+# Por qué existe (FACTID, 2026-09-29): `roles_de_broadcast` contesta «¿a quiénes ALCANZA este
+# broadcast?», que no es la misma pregunta que «¿quiénes tienen que reportar?». FACTID declaraba
+# tres piezas —core, web, mobile— y el escalador exigía un reporte también a
+# `manejo-de-errores`, que no tenía ninguna. La única forma de apagar ese `urgente_` era que esa
+# sesión reportara sobre trabajo que no era suyo: pedirle que afirme algo que no midió.
+#
+# El ancla tolera el markdown real —`**ROLES:**`, `> _ROLES_:`, con backticks— porque el mismo
+# archivo ya pagó ese error dos veces con `^DISPARADOR:`, que no matcheaba
+# `**DISPARADOR: pendiente.**` y por eso la regla existía y no disparó NUNCA.
+#
+# Un rol desconocido se DESCARTA, nunca se devuelve: un `urgente_` dirigido a un rol inexistente
+# no lo lee nadie. Y si la línea no deja ningún rol válido, se devuelve vacío para que el
+# llamador caiga al comportamiento por defecto — un typo no puede apagar el escalador para un
+# contrato. Escalar de más cuesta ruido; escalar de menos pierde el contrato.
+roles_declarados_en() {
+  local f="$1" linea crudo tok r valido
+  [ -f "$f" ] || return 0
+  # El adorno puede ir ANTES de los dos puntos (`_ROLES_:`) y el valor venir con backticks
+  # (`` `backend` ``). El patrón de `DISPARADOR:?` no sirve tal cual: ahí los dos puntos van pegados
+  # al nombre. Cuarta vuelta del mismo error en este archivo, así que el ancla se prueba, no se
+  # supone -- el caso 3 del test es exactamente esta línea.
+  linea="$(grep -m1 -iE '^[[:space:]>*_-]*ROLES[[:space:]*_]*:?[[:space:]*_`]*[a-z]' "$f" 2>/dev/null)" || return 0
+  [ -n "$linea" ] || return 0
+  # Todo lo que sigue a los dos puntos, con los adornos de markdown y los separadores a espacios.
+  crudo="$(printf '%s' "$linea" | sed -E 's/^[[:space:]>*_-]*[Rr][Oo][Ll][Ee][Ss][[:space:]*_]*:?//' \
+                                 | tr -d '`*_' | tr ',;/' '   ')"
+  for tok in $crudo; do
+    valido=0
+    for r in "${ROLES_BUZON[@]}"; do [ "$tok" = "$r" ] && valido=1 && break; done
+    [ "$valido" = "1" ] && printf '%s\n' "$tok"
+  done
+}
+
 # Charclass del campo emisor/destinatario. Incluye dígitos (frontend1) y guiones para los
 # destinatarios compuestos que el buzón ya usaba (`-a-backend-y-frontend_`, `manejo-de-errores`).
 BUZON_ROL_RE='[a-z0-9-]+'

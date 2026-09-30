@@ -486,6 +486,24 @@ describe('afip.ts', () => {
       responder = () => respuesta(404, { detail: 'not found' });
       expect(await crearFactura('1')).toEqual({ status: 'no_disponible' });
     });
+
+    /**
+     * FACTID (`contrato_planificacion-a-todos_FACTID-mitad-frontend...`, 2026-09-29): `idem_key`
+     * OPCIONAL, retrocompatible. Los dos casos, no uno solo — el segundo es el que protege que sin
+     * `idemKey` el body siga exactamente como hoy (mismo criterio que el test de `ambiente` en
+     * `conectarArca`, arriba).
+     */
+    it('sin idemKey, el body NO lleva idem_key (retrocompatible)', async () => {
+      responder = () => respuesta(200, { ok: true, factura_id: 'f-1' });
+      await crearFactura('1');
+      expect('idem_key' in (peticiones[0]!.cuerpoJson as Record<string, unknown>)).toBe(false);
+    });
+
+    it('con idemKey, el body la lleva tal cual', async () => {
+      responder = () => respuesta(200, { ok: true, factura_id: 'f-1' });
+      await crearFactura('1', 'clave-abc');
+      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).idem_key).toBe('clave-abc');
+    });
   });
 
   describe('estadoFactura — GET /afip/facturas/{id} (id dinámico: NO usa no_disponible)', () => {
@@ -511,7 +529,7 @@ describe('afip.ts', () => {
         items: [{ descripcion: 'Consultoría', cantidad: '2', precioUnitario: '100.00', subtotal: '200.00' }],
         total: '200.00',
         tokenConfirmacion: null,
-        resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1, id: null },
+        resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1, id: null, alertaDobleEmision: false },
         pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expiraAt: '2026-07-22T00:00:00Z' },
         drive: null,
         receptor: null,
@@ -748,7 +766,7 @@ describe('afip.ts', () => {
 
       expect(result.paso).toBe('anulada');
       expect(result.original?.cbteAsocNro).toBe(6);
-      expect(result.resultado).toEqual({ ok: true, duplicado: false, cae: 'y', caeVto: '2026-08-01', nro: 6, tipoCbte: 13, puntoVenta: 1, id: null });
+      expect(result.resultado).toEqual({ ok: true, duplicado: false, cae: 'y', caeVto: '2026-08-01', nro: 6, tipoCbte: 13, puntoVenta: 1, id: null, alertaDobleEmision: false });
     });
 
     it('estadoAnulacion 404 ("anulación no encontrada", id dinámico) -> ApiError', async () => {

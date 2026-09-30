@@ -1852,13 +1852,10 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
           </svg>
         <h3>Nada urgente por hoy.</h3>
         <p id="calma-expl">Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.</p>
-        <!-- El avance NO se pierde con la lista: se muda acá. Sigue contando sobre el
-             total del día (decisión 20/08) — cerrar cosas ES el trabajo del día y verlo
-             avanzar es la única devolución que el usuario recibe. Lo que cambia es que
-             deja de flotar sobre una sección que ya no existe. -->
-        <!-- Lo que queda por delante y la puerta al tablero NO van acá: viven arriba,
-             en el rótulo de la sección y en su línea de pendientes, que ahora quedan
-             FIJOS. Repetirlos adentro sería decir lo mismo dos veces. -->
+        <!-- Lo que queda por delante y la puerta al tablero NO van acá adentro: el
+             rótulo ("Para hoy" + "Ver tablero ›") queda FIJO arriba (ver :3729). #prog,
+             en cambio, es lo opuesto de fijo: sólo se muestra en este mismo estado
+             calmo (ver :3739), oculto el resto del tiempo. -->
       </div>
     </div>
     <div class="peek" id="peek-chat">
@@ -3169,8 +3166,13 @@ $('#deshacer').addEventListener('click', () => {
 
 document.querySelectorAll('#tablero .fi').forEach(descartable);
 
-/* ?vacio=1 arranca sin tarjetas — para ver el estado de calma sin tener que
-   descartarlas a mano. Es una ayuda del prototipo, no una función del producto. */
+/* ?ver=vacio arranca sin tarjetas — para ver el estado de calma sin tener que
+   descartarlas a mano. Es una ayuda del prototipo, no una función del producto.
+   ⚠️ Cualquier URL que sólo contenga "vacio" (p. ej. `?vacio=1`) también dispara el
+   vaciado de tarjetas vía el fallback `location.search.includes('vacio')` (:3679),
+   pero NO limpia `odobi-calma-dias` — eso exige el valor exacto `ver=vacio` (:3677).
+   Usar `?ver=vacio`, no una variante: las otras reproducen un estado distinto sin
+   avisar. */
 
 
 
@@ -3536,8 +3538,8 @@ if (ver === 'bloqueado') setTimeout(() => demoVoz(true), 80);
     const d = e.clientY - y0;
     /* hacia arriba, o ya no estamos en el tope: no es este gesto */
     if (d <= 0 || sc.scrollTop > 0) { if (listo || ind.style.height) cerrar(); activo = false; return; }
-    /* Mismo rebote que el swipe de descarte: pasado el tope avanza el 30%.
-       Comunica "hasta acá llega" sin cartel. */
+    /* Mismo MECANISMO de rebote que el swipe de descarte (28%, :3131), no el mismo
+       número: acá avanza el 30%. Comunica "hasta acá llega" sin cartel. */
     const vis = d > TOPE ? TOPE + (d - TOPE) * 0.3 : d;
     ind.style.height = Math.min(vis, TOPE + 20) + 'px';
     listo = d > TOPE;
@@ -3741,10 +3743,6 @@ function revisarCalma(){
      "nada" repetiría lo que ya dice el título del estado vacío. */
   const cont = $('#sec-hoy').querySelector('.cont');
   if (cont) cont.style.display = calmo ? 'none' : '';
-  /* El avance se muda al bloque de calma en vez de desaparecer: lo que no puede
-     pasar es que quede flotando arriba de una sección vacía, diciendo "2 de 6"
-     al lado de "nada urgente". */
-
 }
 revisarCalma();
 
@@ -3849,8 +3847,11 @@ document.querySelectorAll('#exp .ex').forEach(descartable);
 const PEND_SEMANA = 2;
 function pintarAvance(){}
 
-/* ── 3 · checkbox, sólo en tarjetas propias ────────────────────────
-   Alternativa de un solo puntero para WCAG 2.5.1: marcar hecho ya no depende del swipe. */
+/* ── 3 · "Borrar", sólo en tarjetas propias ─────────────────────────
+   El checkbox se probó y se quitó (Martin, 20/08): una anotación propia ya
+   cumplida no se archiva, se borra. La alternativa de un solo puntero para
+   WCAG 2.5.1 es el "Borrar" de la tarjeta expandida (handler `[data-borrar]`
+   más abajo), no un checkbox. */
 pintarAvance();
 
 /* "Borrar" del expandido: misma salida que el swipe, sin gesto (WCAG 2.5.1). */

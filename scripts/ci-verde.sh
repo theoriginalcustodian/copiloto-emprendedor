@@ -21,10 +21,15 @@
 #   bash scripts/ci-verde.sh 311 "core lint"          # sólo dos, para un PR docs-only
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
-# SALIDA: exit 0 = verde (mergeable) · exit 1 = NO verde (falta alguno o alguno falló) ·
-#         exit 2 = no se pudo medir (mismo molde que `command -v uv` en graph-sync.sh: sin
+# SALIDA: exit 0 = verde (mergeable) · exit 1 = ROJO medido (falta alguno o alguno falló) ·
+#         exit 2 = NO SE PUDO MEDIR (mismo molde que `command -v uv` en graph-sync.sh: sin
 #         esta guarda, `gh` ausente da un error de "comando no encontrado" indistinguible de
 #         un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE real).
+#         Las DOS causas no son la misma decisión: exit 1 dice «mirá tu código», exit 2 dice
+#         «no hay medición, andá a buscarla». Fundirlas mandaba a cazar un bug inexistente, y el
+#         falso rojo es el que enseña a pasar por encima del gate. Desde el 2026-09-30 el exit 2
+#         cubre también el caso «rollup vacío Y check-runs del commit vacíos», que antes salía
+#         por 1; y un rollup vacío con check-runs presentes ya no es SIN MEDIR: se miden ellos.
 #   El veredicto es EL EXIT CODE, no el texto. Si aun asi grepeas la salida: la ultima linea
 #   dice VERDE o ROJO, nunca ambas, y ninguna es substring de la otra -- por eso no es
 #   "NO VERDE". Un `grep -q VERDE` sobre el rechazo daba TRUE y mergeaba en rojo (28/09).
@@ -52,8 +57,87 @@ fi
 PR="$1"
 ESPERADOS="${2:-backend core web mobile lint drift}"
 
+# exit 2, NO 1: esto es «no pude MEDIR», y el docstring (:24-27) ya le reservaba el 2 a eso. Con
+# `exit 1` un número de PR equivocado era INDISTINGUIBLE de un CI en rojo — medido por auditoría:
+# `ci-verde.sh 999999` daba exit 1, idéntico a un PR con jobs fallados. Es fail-closed (nunca
+# mergea de más), por eso MEDIA y no ALTA; lo que rompe es el DIAGNÓSTICO: manda a mirar el CI
+# cuando el problema es el número o el login de `gh`. Misma clase que
+# `memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md`.
+#
+# LA CLASE, enumerada (era el DoD de este fix: arreglar el caso que quemó NO alcanza — la guarda
+# se escribe para el que ya dolió y los hermanos quedan con el comportamiento viejo):
+#   · `scripts/ci-verde.sh` — 3 rutas no-medibles ya daban 2 (`gh` ausente :42, falta de argumento
+#     :48); ÉSTA era la única que quedó en 1. Arreglada acá.
+#   · `scripts/evidencia/correr-canario.sh` — NO es de la clase: sus 4 rutas no-medibles usan
+#     `ABORT(9)` de forma UNIFORME (:34,:35,:41,:43). Otro código que el 2, pero sin ambigüedad
+#     interna. Se revisó y se descarta; enumerar no es acusar.
+#   · `scripts/deuda-check.sh:74-80` — comparte el defecto EN ESPECIE: su `exit 1` significa a la
+#     vez «hay deuda impaga» y «no pude leer el registro». Pero es DELIBERADO (su comentario lo
+#     argumenta como fail-LOUD) y está fijado por un test
+#     (`scripts/tests/test-deuda-disparador-cumplido.sh:209` afirma exit 1 para ese mensaje), así
+#     que cambiarlo es un cambio de contrato, no un fix. Queda como fila con dueño, no se toca acá.
 json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
-  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 1; }
+  echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
+
+# ── FALLBACK: el rollup VACÍO no es el único lugar donde viven los check-runs ──────────────────
+#
+# POR QUÉ (2026-09-30, medido por auditoría sobre el PR #739). El commit tenía los 6 check-runs y
+# todos verdes; `statusCheckRollup` devolvía length 0. Un run disparado con `workflow_dispatch`
+# **no aparece en ese rollup**. Y `workflow_dispatch` es justamente lo que `tests.yml` documenta,
+# desde el outage del 2026-08-06, como «la única forma real de re-pedir la corrida» — o sea que
+# **el remedio que este repo recomienda producía una medición que su propio gate no podía leer**.
+# El caso que lo destapa es reusar una rama para un segundo PR tras un squash-merge: el PR nuevo
+# no obtiene run propio. Los dos instrumentos eran correctos por separado y el hueco vivía en el
+# par, igual que janitor↔escalador con el `urgente_` inmortal.
+#
+# Por qué NO debilita el gate: un job fallado aparece en check-runs con su `conclusion`, así que
+# el camino nuevo puede decir ROJO — y el caso 7 del test lo exige, porque un fallback que sólo
+# supiera absolver sería un interruptor de apagado del gate.
+#
+# Las DOS trampas de la API REST, que son la razón por la que esto no es un one-liner:
+#   1. **Minúsculas.** `statusCheckRollup` da `SUCCESS`; `/check-runs` da `success`. Comparar sin
+#      normalizar habría dado ROJO en todo, y —peor— normalizar de más habría dado VERDE en todo.
+#   2. **Re-runs.** Un commit acumula TODOS los check-runs, así que un job re-corrido aparece dos
+#      veces: `failure` viejo y `success` nuevo. Sin desempatar, el veredicto depende del orden en
+#      que la API los devuelva, que es lo mismo que decir que no hay veredicto. Se toma el de
+#      `started_at` más reciente por nombre, explícitamente y sin confiar en el orden recibido.
+via_fallback=0
+if [ "$(echo "$json" | jq 'length')" -eq 0 ]; then
+  sha=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid' 2>/dev/null)
+  if [ -n "$sha" ] && [ "$sha" != "null" ]; then
+    # `group_by` exige orden previo: se ordena por nombre, se agrupa, y dentro de cada grupo se
+    # toma el de `started_at` máximo. `ascii_upcase` alinea el alfabeto de la REST con el del
+    # rollup; `status` se mapea a COMPLETED/lo-que-venga para que la rama "está CORRIENDO" del
+    # bucle de abajo siga funcionando igual por los dos caminos.
+    alt=$(gh api "repos/{owner}/{repo}/commits/$sha/check-runs" \
+            --jq '[.check_runs[]|{name,conclusion,status,started_at}]
+                  | sort_by(.name) | group_by(.name)
+                  | map(sort_by(.started_at // "") | last)
+                  | map({name, conclusion:((.conclusion//"")|ascii_upcase), status:((.status//"")|ascii_upcase)})' 2>/dev/null)
+    if [ -n "$alt" ] && [ "$(echo "$alt" | jq 'length' 2>/dev/null || echo 0)" -gt 0 ]; then
+      json="$alt"; via_fallback=1
+      echo "ℹ️  el rollup del PR vino vacío; midiendo los check-runs del commit ${sha:0:8}"
+      echo "   (pasa con runs de workflow_dispatch y con un 2º PR sobre una rama ya squash-mergeada)"
+    fi
+  fi
+fi
+
+# ── SIN MEDIR ≠ ROJO ───────────────────────────────────────────────────────────────────────────
+# Si NI el rollup NI los check-runs del commit tienen nada, no hay medición: no se puede afirmar
+# que el CI falló. Antes esto salía por exit 1, indistinguible de un job en rojo, y mandaba a
+# buscar un bug inexistente — el falso rojo, que es el que enseña a pasar por encima del gate
+# (`memoria/el-instrumento-tambien-CONDENA-no-solo-absuelve.md`). El exit 2 ya era, desde el
+# docstring, «no pude medir»; esta ruta era la única de la clase que seguía en 1.
+# Sigue diciendo el token ROJO a propósito: el invariante de salida monótona (exactamente uno de
+# {VERDE, ROJO} en toda salida) es lo que hace fallar CERRADAS a las dos lecturas ingenuas del
+# texto. Lo que distingue las dos causas es el EXIT CODE, que es el veredicto.
+if [ "$(echo "$json" | jq 'length')" -eq 0 ]; then
+  echo "--- CONTROL: 0 jobs presentes, $(echo $ESPERADOS | wc -w) esperados (rollup y check-runs, los dos vacíos) ---"
+  echo "ROJO — SIN MEDIR: no es que el CI falló, es que no hay ninguna medición del PR $PR."
+  echo "   destrabarlo:  gh workflow run tests.yml --ref \$(gh pr view $PR --json headRefName --jq .headRefName)"
+  echo "   y si ya corrió así, este script ahora lee los check-runs del commit — revisá que el PR exista."
+  exit 2
+fi
 
 falta=0
 for j in $ESPERADOS; do
@@ -85,8 +169,9 @@ done
 # Este contador distingue "el CI no terminó" de "no estoy viendo nada".
 presentes=$(echo "$json" | jq 'length')
 esperados_n=$(echo $ESPERADOS | wc -w)
-echo "--- CONTROL: $presentes jobs presentes en el rollup, $esperados_n esperados ---"
-[ "$presentes" -eq 0 ] && echo "⚠️  el rollup vino VACÍO: no es que el CI falló, es que no estás midiendo nada"
+fuente="rollup del PR"
+[ "$via_fallback" = "1" ] && fuente="check-runs del commit"
+echo "--- CONTROL: $presentes jobs presentes en el $fuente, $esperados_n esperados ---"
 
 if [ "$falta" -eq 0 ]; then
   echo "VERDE — se puede mergear"
@@ -99,5 +184,5 @@ fi
 # salio verde por suerte. La forma correcta ya la usaba este repo (smoke_afip_http.py:157,
 # e2e_facturacion_http.py:217): VERDE / ROJO, que no son prefijo uno del otro.
 # El veredicto sigue siendo EL EXIT CODE; esto solo hace que leer la salida mal no fallen abierto.
-echo "ROJO — no mergear (falta o fallo algun job)"
+echo "ROJO — no mergear: hay al menos un job ausente o fallado (medido, no supuesto)"
 exit 1

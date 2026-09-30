@@ -61,6 +61,39 @@ Regla que sale de ahí: **una variable de entorno puesta para arreglar un comand
 hijos.** Si el hijo es un binario nativo y la variable gobierna la traducción de paths, la arreglaste
 para uno y la rompiste para el otro. Va inline en el comando que la necesita, nunca exportada.
 
+## Caso 2 (2026-09-28) — la TERCERA causa que comparte `rc=1`: **el sujeto todavía no existe**
+
+Encadené `gh pr create` → `gh pr checks --watch` → `ci-verde.sh` → merge, para no quedarme mirando el
+CI. Midió **8 segundos** después de crear el PR y salió `rc=1` con los seis jobs en «NO ESTÁ en el
+rollup». Se lee **idéntico a un CI rojo**, y mi propio script imprimió «NO MERGEO (gate=1)».
+
+**`gh pr checks --watch` no espera a que los checks EXISTAN.** Con el rollup vacío no espera: sale con
+error. Los PR anteriores del día funcionaron por casualidad —creé el PR en una llamada aparte, así que
+pasaron minutos antes del watch—. Re-medido un minuto después: **6/6 presentes**, 5 corriendo. El CI
+estaba sano; lo que estaba mal era *cuándo* pregunté.
+
+Así que al eje de este archivo se le suma una fila, y es la más traicionera porque no es un fallo de
+nada:
+
+| situación | rc |
+|---|---|
+| el gate encontró algo | 1 |
+| el gate no pudo medir | 1 |
+| **el sujeto todavía no se creó** | **1** |
+
+**Y lo que lo cazó es exactamente el remedio que este archivo prescribe, funcionando.** `ci-verde.sh`
+no traduce el código: imprime «⚠️ el rollup vino VACÍO: **no es que el CI falló, es que no estás
+midiendo nada**» y cuenta los jobs presentes contra los esperados. Sin esa línea habría ido a buscar un
+fallo inexistente en un PR de dos archivos de documentación. Vale decirlo completo: le abrí un hallazgo
+a ese mismo script el mismo día (un número de PR inexistente sale `rc=1` en vez del `rc=2` que su
+contrato reserva), y su control de rollup vacío es el que **a mi cadena le faltaba**. Un instrumento
+con un hueco puede seguir siendo el que te salva.
+
+**El remedio de la cadena:** antes de `--watch`, esperar a que el rollup tenga ≥1 fila. Un «esperá a
+que termine» que no espera a que **empiece** no es una espera bloqueante: es una medición temprana con
+cara de veredicto. Misma familia que
+[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]] — re-medí al **afirmar**, no al planear.
+
 ## How to apply
 
 - **Al envolver una herramienta, no traduzcas el exit code: leé su salida.** Antes de anunciar
@@ -78,3 +111,41 @@ Relacionado: [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
 [[dos-causas-suficientes-el-test-no-atribuye]] ·
 [[clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo]] ·
 [[instrumentos-que-confirman-en-vez-de-verificar]]
+
+---
+
+## Cara nueva (2026-09-30): el instrumento **detectó** su propia ceguera, la imprimió, y el veredicto eligió acusar igual
+
+`ci-verde.sh 739` sobre un PR cuyo commit tenía **6 de 6 check-runs en `success`**:
+
+```
+❌ backend: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'      (×6 jobs)
+--- CONTROL: 0 jobs presentes en el rollup, 6 esperados ---
+⚠️  el rollup vino VACÍO: no es que el CI falló, es que no estás midiendo nada
+ROJO — no mergear (falta o fallo algun job)
+```
+
+Lo notable no es el falso rojo: es que **el instrumento ya sabía**. Su control de denominador funcionó
+perfecto y escribió la frase exacta — *«no es que el CI falló, es que no estás midiendo nada»* — y **la
+línea siguiente, que es la que se lee y la que devuelve el exit code, unió las dos causas en `falta o
+fallo`** y se quedó con la peor. Un aviso correcto tres líneas arriba del veredicto no cambia la decisión
+de nadie: el que corre el gate lee la última línea y el que automatiza lee `$?`.
+
+La causa medida, y no era la que parecía:
+
+```
+gh api repos/.../commits/3c418082/check-runs  -> total=6 · todos success
+gh pr view 739 --json statusCheckRollup       -> length 0
+```
+
+Los check-runs **existían**; vacío estaba el campo que `ci-verde.sh:74` consulta. Un run disparado por
+`workflow_dispatch` —el camino que el propio `tests.yml` documenta como «la única forma real de re-pedir
+la corrida»— no entra en el `statusCheckRollup` del PR. O sea: **el remedio documentado produce una
+medición que el gate no puede leer**, y los dos instrumentos son correctos por separado
+([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Lo que agrega esta cara:** distinguir las causas **en el aviso no alcanza**. La distinción tiene que
+llegar a las dos salidas que alguien consume: la última línea y el exit code. Mientras el veredicto
+funda dos causas, tener el diagnóstico correcto adentro sólo documenta que el instrumento podía haber
+acertado. Y **un vacío en el campo que consultás no es un vacío en el sistema**: antes de declarar,
+preguntá si el dato existe en otra fuente ([[vacio-no-es-hallazgo-correr-el-control]]).

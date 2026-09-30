@@ -112,4 +112,128 @@ out4="$T/4.txt"
 PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out4" 2>&1
 verificar "4 rollup 6/6 SUCCESS" VERDE 0 "$?" "$out4"
 
+# --- Caso 5: el rollup NO SE PUDO LEER — «no medí» ≠ «está rojo» -------------------------------
+# `gh` existe y está autenticado, pero `gh pr view` falla (número inexistente, permiso, red). Esa
+# ruta imprimía ROJO con rc=1, IDÉNTICO a un CI con jobs fallados: medido con `ci-verde.sh 999999`
+# antes del fix. El veredicto de texto estaba bien (ROJO, fail-closed); lo que mentía era el CÓDIGO,
+# que es lo que un script consumidor lee para decidir si reintentar, avisar o mirar el CI.
+# Es el mismo molde que los casos 1 y 2, que ya distinguían «no pude medir» con rc=2: esta ruta
+# quedó afuera porque la guarda se escribió para las dos que habían dolido. Por eso el caso existe.
+cat > "$T/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+echo "gh: Could not resolve to a PullRequest with the number of 999999." >&2
+exit 1
+STUB
+out5="$T/5.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999999 > "$out5" 2>&1
+verificar "5 rollup ilegible (no medí)" ROJO 2 "$?" "$out5"
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# CASOS 6-11 (2026-09-30): el rollup VACÍO no es «no hay medición»
+#
+# Caso real: PR #739. El commit tenía los 6 check-runs, todos verdes, y `statusCheckRollup`
+# devolvía length 0 — pasa con los runs de `workflow_dispatch`, que es justo lo que `tests.yml`
+# documenta como «la única forma real de re-pedir la corrida». El gate declaraba ROJO con exit 1,
+# indistinguible de un job fallado, y mandaba a buscar un bug que no existía.
+#
+# Los seis casos cubren las dos direcciones, el desempate y la no-regresión:
+#   6. rollup vacío + check-runs VERDES        → VERDE, exit 0   (el caso #739)
+#   7. rollup vacío + un check-run FAILURE     → ROJO,  exit 1   ← CONTROL POSITIVO del fallback
+#   8. rollup vacío + check-runs vacíos        → ROJO,  exit 2   (SIN MEDIR, no «rojo»)
+#   9. re-run: failure VIEJO + success NUEVO   → VERDE, exit 0
+#  10. re-run: success VIEJO + failure NUEVO   → ROJO,  exit 1
+#  11. rollup POBLADO ⇒ el fallback no se toca → VERDE, exit 0
+#
+# El 7 es el que impide que el fallback sea un interruptor de apagado del gate: un camino que
+# sólo supiera absolver es peor que no tenerlo. El par 9/10 prueba que se desempata por
+# `started_at` y no por el orden en que la API devuelve los elementos — en los dos casos la lista
+# viene ordenada EN CONTRA del resultado esperado, así que un script que tomara «el primero» o
+# «el último» sin ordenar falla en uno de los dos. Con un solo caso, la mitad de los órdenes pasa
+# por suerte.
+
+# Stub de `gh` que distingue las tres consultas que hace el script. Un stub que contestara lo
+# mismo a todo mediría el rollup y el fallback a la vez, y no se sabría cuál de los dos respondió.
+#
+# ⚠️ ASIMETRÍA DELIBERADA, y es la razón por la que estos casos sirven de algo. Para `check-runs`
+# el stub **aplica de verdad el `--jq`** que le pasa el script, con `jq` real sobre el JSON crudo;
+# para el rollup sigue devolviendo el array ya filtrado, como los casos 1-5.
+# Por qué: todo lo que puede mentir en el fallback vive DENTRO de ese filtro —normalizar el
+# alfabeto de la API REST y desempatar los re-runs por `started_at`—. Un stub que devolviera la
+# respuesta ya procesada probaría el stub, no el script: la primera versión de estos casos hacía
+# exactamente eso y los casos 7 y 10 salían ROJO **por la causa equivocada** (el fallback no
+# tomaba efecto y todo caía en «no está en el rollup»), verdes de casualidad. Los cazaron las
+# aserciones extra que exigen nombrar el job fallado y citar la fuente.
+stub_gh() {   # stub_gh <json-del-rollup-ya-filtrado> <json-crudo-de-check_runs>
+  {
+    echo '#!/usr/bin/env bash'
+    echo 'case "$*" in'
+    printf "  *statusCheckRollup*) echo '%s' ;;\n" "$1"
+    echo "  *headRefOid*)        echo '3c418082aaaabbbbccccddddeeeeffff00001111' ;;"
+    echo "  *headRefName*)       echo 'una/rama' ;;"
+    echo '  *check-runs*)'
+    printf "    CRUDO='%s'\n" "$2"
+    echo '    filtro=""; prev=""'
+    echo '    for a in "$@"; do [ "$prev" = "--jq" ] && filtro="$a"; prev="$a"; done'
+    echo '    if [ -n "$filtro" ]; then printf %s "$CRUDO" | jq -r "$filtro"; else printf %s "$CRUDO"; fi'
+    echo '    ;;'
+    echo "  *)                   echo '[]' ;;"
+    echo 'esac'
+  } > "$T/bin/gh"
+  chmod +x "$T/bin/gh"
+}
+
+# Un check-run como lo devuelve la API REST: minúscula y con `started_at`. Es el alfabeto que el
+# script tiene que normalizar; sin normalizar, el caso 6 daría ROJO con todo verde.
+cr() {  # cr <nombre> <conclusion> <hora>
+  printf '{"name":"%s","conclusion":"%s","status":"completed","started_at":"2026-09-30T%s:00:00Z"}' "$1" "$2" "$3"
+}
+CR_OK5="$(cr core success 02),$(cr web success 02),$(cr mobile success 02),$(cr lint success 02),$(cr drift success 02)"
+
+stub_gh '[]' "{\"check_runs\":[$(cr backend success 02),$CR_OK5]}"
+out6="$T/6.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out6" 2>&1
+verificar "6 rollup vacío + check-runs verdes" VERDE 0 "$?" "$out6"
+grep -q "check-runs del commit" "$out6" || mal "6 no dijo por qué camino midió — el veredicto no es auditable"
+
+# Caso 7: el MISMO camino, con un job fallado. Sin este caso, un fallback que devolviera VERDE
+# siempre pasaría el caso 6 y apagaría el gate en silencio.
+stub_gh '[]' "{\"check_runs\":[$(cr backend failure 02),$CR_OK5]}"
+out7="$T/7.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out7" 2>&1
+verificar "7 rollup vacío + un FAILURE (control positivo)" ROJO 1 "$?" "$out7"
+grep -q "backend: FAILURE" "$out7" || mal "7 no nombró el job fallado: el fallback absuelve sin discriminar"
+
+# Caso 8: no hay medición en ninguna de las dos fuentes. Antes salía por exit 1 = «está rojo».
+stub_gh '[]' '{"check_runs":[]}'
+out8="$T/8.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out8" 2>&1
+verificar "8 las dos fuentes vacías (SIN MEDIR)" ROJO 2 "$?" "$out8"
+grep -q "SIN MEDIR" "$out8" || mal "8 no distinguió sin-medir de rojo en el texto que se lee"
+grep -q "workflow run tests.yml" "$out8" || mal "8 no imprimió el comando que lo resuelve"
+
+# Caso 9: re-run. El `failure` es VIEJO y el `success` NUEVO ⇒ verde. La lista trae el success
+# PRIMERO, así que tomar «el último» sin ordenar daría el failure y este caso fallaría.
+stub_gh '[]' "{\"check_runs\":[$(cr backend success 03),$(cr backend failure 01),$CR_OK5]}"
+out9="$T/9.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out9" 2>&1
+verificar "9 re-run: failure viejo, success nuevo" VERDE 0 "$?" "$out9"
+
+# Caso 10: el espejo, con el orden de la lista INVERTIDO respecto del 9. Tomar «el primero» sin
+# ordenar acertaría en uno y fallaría en el otro: sólo ordenar por `started_at` pasa los dos.
+stub_gh '[]' "{\"check_runs\":[$(cr backend failure 03),$(cr backend success 01),$CR_OK5]}"
+out10="$T/10.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out10" 2>&1
+verificar "10 re-run: success viejo, failure nuevo (espejo del 9)" ROJO 1 "$?" "$out10"
+
+# Caso 11: NO-REGRESIÓN — con el rollup poblado, el fallback no se consulta. Si se consultara
+# igual, un check-run viejo del commit podría pisar la medición vigente del PR. El stub devuelve
+# rollup 6/6 verde y un check-run FALLADO: sólo pasa si el fallback no se usó.
+ROLLUP_OK='[{"name":"backend","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
+stub_gh "$ROLLUP_OK" "{\"check_runs\":[$(cr backend failure 09)]}"
+out11="$T/11.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 739 > "$out11" 2>&1
+verificar "11 rollup poblado: el fallback NO se consulta" VERDE 0 "$?" "$out11"
+grep -q "rollup del PR" "$out11" || mal "11 no citó el rollup como fuente: el fallback se usó de más"
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
+

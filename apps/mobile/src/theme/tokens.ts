@@ -83,10 +83,16 @@ export interface Tokens {
     /**
      * El acento cuando funciona como TINTA (texto sobre lienzo claro) o como superficie que lleva
      * texto encima. No es un color nuevo: es el 2º stop del acento (`#B04A2E`), el mismo que ya usa
-     * el gradiente. Existe porque `acento` (`#DE7250`) da 2.87:1 contra `acentoTexto` — por debajo
-     * del piso de 3:1 incluso para texto grande. Decisión del operador 2026-09-07 ("todo texto sobre
-     * acento va sobre #B04A2E"). Regla: si el color TOCA una glifo, es `acentoTinta`; si es puro
-     * adorno (borde, spinner, punto, degradé sin texto), es `acento`.
+     * el gradiente. Existe porque `acento` (`#DE7250`) da **3.17:1** contra `acentoTexto` (blanco) —
+     * por debajo del piso de 4.5:1 de texto normal. Decisión del operador 2026-09-07 ("todo texto
+     * sobre acento va sobre #B04A2E"). Regla: si el color TOCA una glifo, es `acentoTinta`; si es
+     * puro adorno (borde, spinner, punto, degradé sin texto), es `acento`.
+     * 🔴 **DEC-11 (2026-09-29): esta línea decía "2.87:1", cifra errónea/desactualizada.** Reconciliada
+     * contra el gate (`paresPintadosContraste.test.tsx`, que mide 3.16:1 redondeado hacia abajo) y
+     * contra la fórmula WCAG del propio archivo, aplicada a mano: **3.169:1**. El valor correcto —y el
+     * que ya usaba la línea 97 de este mismo archivo, sin que nadie cruzara las dos— es ~3.17:1, no
+     * 2.87. Esa cifra vieja era además la que bloqueaba cerrar la Pieza C de DEC-11 (¿pasa `Marca` el
+     * 3:1 de no-texto, o sólo se sostiene por exención de logotipo?): con 3.17:1 real, pasa las DOS.
      */
     acentoTinta: string;
     /**

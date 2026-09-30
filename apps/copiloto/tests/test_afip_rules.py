@@ -678,14 +678,15 @@ def test_receptor_desde_payload_normaliza_los_campos_vacios(vacio):
     assert r.nro_doc == "0"
 
 
-def test_receptor_desde_payload_condicion_iva_none_no_rompe_con_typeerror():
-    """Regresión (BL-Q3 v2, hallazgo frontend1 2026-09-28): un cliente creado por voz manda
-    `condicion_iva=None` a propósito (`tool_catalog.py`, sin derivarla), y un presupuesto puede
-    tener el mismo campo en `NULL` en la DB. Antes del fix, `int(None)` volaba `TypeError` y
-    "Facturar" quedaba roto sin aviso para ese cliente — no daba el 422 legible, rompía antes.
+def test_receptor_desde_payload_no_cae_con_doc_tipo_o_condicion_iva_en_none():
+    """FACTINT: facturar desde un presupuesto sin documento (consumidor final, el caso más común)
+    mandaba `tipo_doc`/`condicion_iva` con la CLAVE PRESENTE y valor `None`
+    (`ReceptorBody.doc_tipo: int | None = None`) — `payload.get(k, default)` sólo cubre la clave
+    ausente, así que devolvía `None` y `int(None)` reventaba. Capturado como "cliente inválido" en
+    `cargar_cliente`, pero bloqueaba el camino más común en vez de resolver a consumidor final.
     """
     r = receptor_desde_payload({"condicion_iva": None, "tipo_doc": None,
-                                "nombre": "Cliente X", "domicilio": "-", "nro_doc": "0"})
+                                "nombre": "Juan", "domicilio": "Calle 1", "nro_doc": "0"})
     assert r.condicion_iva is CondicionIVA.CONSUMIDOR_FINAL
     assert r.tipo_doc is TipoDoc.CONSUMIDOR_FINAL
 

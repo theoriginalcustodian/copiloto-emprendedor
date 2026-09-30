@@ -13,6 +13,6 @@ mkdir -p "$(dirname "$OUT")"
   echo "# durabilidad E3 (UC_DURABILIDAD=1) · $(date -u +%FT%TZ)"
   git -C "$DEPLOY_WT" fetch -q origin && git -C "$DEPLOY_WT" switch -q --detach origin/main
   echo "# deploy desde $(git -C "$DEPLOY_WT" rev-parse HEAD)"
-  ( cd "$DEPLOY_WT" && UC_DURABILIDAD=1 bash deploy/copiloto/deploy.sh ); echo "# deploy.sh rc=$?"
+  ( cd "$DEPLOY_WT" && UC_DURABILIDAD=1 UC_ENV_E2E_PATH="$ROOT/.env.e2e" bash deploy/copiloto/deploy.sh ); echo "# deploy.sh rc=$?"
 } > "$OUT" 2>&1
 echo "salida: $OUT"; tail -5 "$OUT"
