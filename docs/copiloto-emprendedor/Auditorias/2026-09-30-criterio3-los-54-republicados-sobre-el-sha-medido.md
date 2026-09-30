@@ -10,7 +10,7 @@
 | ref | SHA | ids con veredicto del vocabulario cerrado | `sin nada en rol de veredicto` |
 |---|---|---|---|
 | `origin/main` | `d131b3d274a3641d3377b529b03d9fd73f7e1b3e` | **53 de 54** (98%) | 1 → **`(home)`** |
-| PR **#742** (`scripts/parser-lee-los-ids-raros-del-padron`) | `ecaf7be2bccf3f2cfb81459484874e8764b7a386` | **54 de 54 (100%)** | **0** |
+| PR **#742** MERGEADO `1f347b50` (`scripts/parser-lee-los-ids-raros-del-padron`) | `ecaf7be2bccf3f2cfb81459484874e8764b7a386` | **54 de 54 (100%)** | **0** |
 
 **El faltante de `main` NO es trabajo sin hacer.** FE2 midió la home el **2026-09-30 a las 00:17**
 (`cierre_frontend2-a-planificacion_C3-home-medida-DESVIO-mi-dia-vs-tablero`, veredicto **DESVÍO**). Lo
