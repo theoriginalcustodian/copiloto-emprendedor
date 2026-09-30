@@ -48,6 +48,41 @@ nace con 26% garantizado. Si el plan es leerlo, tiene que nacer exigido.
 
 ---
 
+## Corolario (2026-09-30): cuando la cobertura es 0%, el proxy disponible mide OTRA COSA
+
+La versión de arriba supone que la convención existe y está poco usada. Hay un caso peor: **cobertura
+cero**, porque la convención no puede existir.
+
+**Caso.** Planificación nombró un defecto estructural del buzón: «un `a-todos` **no tiene quien lo
+mueva**» — con un destinatario único el dueño se reconoce, pero moverlo afirmaría algo sobre las otras
+dos sesiones, así que queda en `abierto/` **por construcción**. Antes de que eligiera el criterio de
+cierre, medí los dos candidatos sobre los 10 `a-todos` abiertos:
+
+```
+candidato A — "sus contrato_/pedido_ salieron de abierto/":  0 de 10 citan uno   (cobertura 0%)
+candidato B — "los PRs que cita estan mergeados":            6 de 10 aplican, 15 de 15 PRs MERGED
+```
+
+El A no aplica **nunca**: un `a-todos` no responde a un contrato, lo **abre**. Y el B, que parece
+funcionar con 15/15 verde, **falla hacia el sí**: el `hallazgo_…_A5-VEREDICTO-el-Cierre-A-NO-cierra` cita
+tres PRs **MERGED** y está **vivo** — `PLAN.md:28` sigue pidiendo «RE-MEDIR las filas invalidadas ANTES
+de cerrar». Uno de los tres PRs es `docs(bl-p5): cada pantalla del prototipo clasificada`: el **insumo**
+del hallazgo, no su cura.
+
+**La lección propia:** un PR mergeado prueba que **se escribió trabajo**, no que **el hallazgo murió**. El
+proxy estaba disponible, medible y verde, y medía otra cosa. Tasa de falso-cumplido **≥1 de 6**, y el
+falso «cumplido» en un buzón no vuelve a gritar nunca —
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
+
+**Cómo aplicarlo:** cuando no hay convención que medir, el reflejo es agarrar el dato que **sí** existe.
+Antes de usarlo, escribí qué afirma literalmente ese dato y comparalo con lo que necesitás afirmar. Si
+son distintos —«se escribió» vs «se resolvió», «se desplegó» vs «funciona», «el test pasó» vs «el camino
+de prod se ejercitó»— el proxy no es una aproximación: es otra medición. Y el veredicto correcto puede
+ser que **no hay ancla mecánica** y el cierre tiene que ser **declarado** por alguien. Ver
+[[el-nombre-es-una-hipotesis-sobre-el-contenido]] y [[un-vacio-no-es-hallazgo-correr-el-control]].
+
+---
+
 ## Refuerzo (2026-09-30): con cobertura 0, el instrumento REPORTA — no actúa
 
 Corolario operativo que faltaba. Cuando una convención nueva tiene cobertura ~0, el instrumento que
@@ -68,3 +103,42 @@ su ausencia, y **no mueve nada**. Se convierte en archivador el día que la cobe
 paso 1 al 3 produce un mecanismo cuyo «no hizo nada» no se puede leer. Y el reportador paga solo: con
 `0 cerrables · 6 sin cierre · de 9 examinados` la cobertura **se mide en cada corrida** en vez de
 estimarse una vez.
+
+---
+
+## Tercer régimen (2026-09-30): la convención PARTIDA EN DOS FORMATOS — el lector mide la mitad y cree tener el total
+
+Los dos casos de arriba son «poco usada» (26%) y «no puede existir» (0%). Falta el peor de los tres,
+porque **no da síntoma**: la convención existe, se usa mucho, y se escribe de **dos maneras**. Cualquier
+lector único ve una, devuelve un número redondo, y **nada indica que le falta la otra mitad**.
+
+**Tres casos, todos en el mismo turno, midiendo el Cierre A:**
+
+| convención | forma A | forma B | qué devolvía el lector de una sola forma |
+|---|---|---|---|
+| plataforma de una medición | FE2: columna `\| plataforma \|` | FE1: dentro de `medido_contra` («`leido@` (mobile…)»), columna `dimension` | 11 tablas / 40 filas; el doc de FE1 titulado «5 ids» aportaba **0** |
+| casilla de DoD en el backlog | lista: `- [ ] casilla` | inline: `- **DoD:** [x] uno; [x] dos` | **1 de 66** ítems con DoD completo — falso; el correcto es 3, y `BL-P4` solo ya tenía 2 `[x]` |
+| ubicación de un componente | `modules/chat/BotonVoz.tsx` | mi supuesto `modules/voz/` | `git show` devolvió **0 líneas**, no un error |
+
+**Lo que los tres tienen en común: el resultado parecía plausible.** `1 de 66` en un backlog largo, `40
+filas` en un buzón de 2085, un archivo que «no tiene ese gradiente». Ninguno se veía como un fallo del
+lector, y dos de los tres habrían entrado a un veredicto como hallazgo del *sujeto*.
+
+**Lo único que los cazó fue el control positivo elegido contra un hecho SABIDO POR OTRA VÍA** — no un
+control genérico:
+
+- para el DoD: *el acta afirma que `BL-P4` y `BL-P7` están tildados* ⇒ el lector tiene que verlos. Salió
+  `[2,0]` y `[0,4]` en `BL-B1`, ambos coincidiendo con lo leído a mano.
+- para la plataforma: *hay un doc titulado «5 ids» mobile* ⇒ tiene que aportar ~5 filas. Aportó 1, y
+  después 0.
+- para el archivo: *si el lector ve el archivo, `wc -l` > 0*. Dio 0.
+
+Un control positivo **construido desde el propio instrumento** («¿el regex matchea algo?») habría pasado
+en los tres. El que sirve viene de **afuera**: un número que otro documento afirma, y que el lector está
+obligado a reproducir.
+
+**Cómo aplicarlo:** cuando un lector devuelva una cifra sobre un corpus escrito por varias sesiones,
+buscá **una segunda forma** de la misma convención antes de publicarla — abrí dos documentos de **emisores
+distintos** y compará cómo escriben el mismo dato. Y elegí el control positivo apuntando a un hecho que
+ya esté afirmado en otro lado: si tu control lo inventás vos, mide tu regex, no el mundo. Ver
+[[contar-un-simbolo-no-dice-en-que-rol-aparece]] e [[instrumento-que-no-mira-nunca-falla]].

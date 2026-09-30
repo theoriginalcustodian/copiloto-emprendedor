@@ -82,3 +82,44 @@ cualquier conclusión sacada del contador es una inferencia disfrazada de medici
 generalices de un archivo a «todo `scripts/`». Y si vas a escribir la conclusión en un registro
 versionado con dueño ajeno, la barra es más alta, no más baja:
 [[una-orden-cerrada-exige-evidencia-de-device]] es la misma exigencia en otro contexto.
+
+---
+
+## Faz nueva (2026-09-30): con squash-merge, «¿este commit está en main?» es un NO **permanente**
+
+El gancho de esta entrada dice «diffeá el archivo; el contador de commits no lo mide». Falta el porqué, y
+el porqué es lo que hace que el error se sienta como una medición sólida.
+
+**Este repo mergea por squash.** Un squash crea en `main` un commit **nuevo**, con otro SHA y el **mismo
+árbol**. El commit original de la rama **nunca** pasa a ser ancestro de `main` — ni antes de mergear, ni
+después. Por lo tanto:
+
+```bash
+git merge-base --is-ancestor <commit-de-una-rama> origin/main   # -> NO, para siempre
+```
+
+**no distingue «falta mergear» de «ya se mergeó hace una semana».** Es un falso negativo por construcción,
+y el peor tipo: **no tiene estado de recuperación**, así que ninguna re-medición lo corrige.
+
+**Caso.** Verifiqué por efecto un ítem de cola (los hallazgos P-1..P-4 del prototipo). `--is-ancestor`
+dijo NO, `git branch -r --contains` confirmó que el commit sólo vivía en su rama, y emití un `pedido_` a
+frontend2 diciendo que su trabajo no llegaba a `main`. **Estaba mergeado desde el PR #717**: el blob del
+`index.html` del prototipo era **idéntico** (`2d20e38a`) en las dos puntas. Dos de los tres archivos que
+reclamé ya estaban, y el tercero estaba **más nuevo en `main`** que en su rama — o sea que mi reclamo
+apuntaba al revés. Tuve que retractarme ante una sesión par.
+
+**El test correcto es el blob, y cuesta lo mismo:**
+
+```bash
+[ "$(git rev-parse "$RAMA:$f")" = "$(git rev-parse "origin/main:$f")" ] && echo IDENTICO || echo DIFIERE
+```
+
+Sobre los 25 archivos que los commits tocaban: **18 idénticos · 7 difieren · 0 sólo en la rama**, con
+control positivo horneado (un archivo que se sabe igual **tiene** que salir idéntico, o el comparador está
+roto). Y cuando difiere, **el signo del diff dice la dirección**: `−11 líneas` del lado de la rama significa
+que `main` es el que está adelante.
+
+**Cómo aplicarlo:** cualquier afirmación de la forma «esto no llegó a `main`» se mide por **contenido**, no
+por pertenencia de commits — y antes de mandársela a otra sesión, con la dirección del diff escrita. Ver
+[[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]] y
+[[push-es-el-ultimo-paso-no-el-primero]].
