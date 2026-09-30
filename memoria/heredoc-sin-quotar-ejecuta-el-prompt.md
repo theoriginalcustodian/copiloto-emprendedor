@@ -34,3 +34,35 @@ lee como "está trabajando bien".
 buenos, entran a la síntesis, y contaminan un dossier entero. Es [[instrumentos-que-confirman-en-vez-de-verificar]]
 aplicado al **insumo** en vez de al resultado: acá el instrumento roto no era el que mide, era el que
 **pregunta**. Hermana de [[vacio-no-es-hallazgo-correr-el-control]].
+
+---
+
+## Refuerzo 2026-09-30 — el heredoc QUOTADO tampoco es seguro: colapsa `\\` a `\`
+
+La regla de arriba (quotar el delimitador) evita que el shell **expanda** el contenido. No evita el
+otro daño, que medí hoy: con `<<'PY'` —quotado, o sea el caso "seguro"— el contenido llegó a Python
+con los `\\` **colapsados a `\`**. Un patch cuyo texto incluía `printf '%s\n'` terminó escribiendo en
+el archivo un **salto de línea real** en medio de un string entre comillas simples.
+
+Cómo se detectó, y es lo que importa:
+
+1. Un `str.replace()` mío no encontró su ancla y tiré el assert. Bien: fallé temprano.
+2. Al diagnosticar por fragmentos, los que **no** tenían backslash daban `count == 1` y los que
+   **sí** tenían daban `0`. Eso localiza la causa en el transporte, no en el ancla.
+3. `cat -A` sobre el archivo ya parcheado mostró la línea partida en dos. Ground truth.
+
+**El filo que casi me lo tapa:** después del patch corrí `bash -n scripts/gate.sh` y dio **verde** —
+un newline dentro de un string quotado es sintaxis válida. Y peor: en el mismo turno corrí
+`bash -n` sobre el archivo de tests **cuyo patch había fallado**, y ese verde era sobre el archivo
+**sin modificar**. Un chequeo de sintaxis sobre el sujeto equivocado, exactamente
+[[el-instrumento-respondio-sobre-otro-sujeto]]. `bash -n` no puede ver este daño: hay que mirar bytes.
+
+**La regla operativa:** si el contenido a escribir tiene **backslashes** (o backticks, o comillas
+latinas), no va por heredoc — va por la herramienta de escritura de archivos, que no pasa por el
+shell. Para contenido largo en markdown ya lo sabía por las dos veces que el heredoc murió con
+`unexpected EOF`; lo nuevo es que el modo de falla **silencioso** (escribe algo distinto y sale 0) es
+peor que el ruidoso, y que sólo lo agarrás si comparás bytes.
+
+**Y el reemplazo barato de cada backslash, cuando igual querés bash:** `grep -qE 'patrón' <<< "$var"`
+en vez de `printf '%s\n' "$var" | grep -qE`, que además evita el pipe. Es el cambio que quedó en
+`gate.sh`, y no fue estético: fue quitar el único lugar donde el transporte podía deformar el código.

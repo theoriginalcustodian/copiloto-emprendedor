@@ -95,3 +95,31 @@ Y la exclusión que apaga el ruido se probó por sus dos mitades en la misma cor
 allowlist de paths es un guard al revés —cada patrón es un lugar donde se deja de mirar—: el secreto
 dentro de `.claude/worktrees/` se calla **y** el mismo secreto en `docs/` sigue dando rc=1. Sin esa
 segunda mitad, un `.*` habría pasado el test igual.
+
+---
+
+## Refuerzo 2026-09-30 — el falso positivo que CRECE con el uso, y el reportador que se listó a sí mismo
+
+El día que estrené la convención `CIERRA:` (un `cierre_` declara qué `a-todos` mata), el reportador que
+la lee salió a medir el corpus real y **se listó a sí mismo**: el `cierre_planificacion-a-todos_CONSMP…`
+—el archivo que *contiene la declaración*— apareció como «SIN CIERRE (nadie lo declaró muerto)».
+
+La causa es de una línea: `medir()` filtraba por **destinatario** (`dest == "todos"`) y no por **tipo**.
+Pero lo que importa es la forma del error, no la línea:
+
+**El falso positivo crecía con el uso.** Cada `cierre_`/`dato_`/`avance_` dirigido a todos —o sea cada
+vez que el mecanismo funcionaba— agregaba un ítem que no pedía acción. Un guard que grita de más en el
+caso normal se desarma solo; uno cuyo ruido **es proporcional a su propio éxito** se desarma más rápido,
+y encima justo cuando empieza a servir. La lista habría quedado inservible por la vía de usarla bien.
+
+El arreglo no fue inventar un criterio: fue **copiar el conjunto que el janitor ya usaba** —
+`archivar-buzon.sh:66`, `^[0-9-]+_(contrato|pedido|urgente|hallazgo)_` — porque esa distinción ya estaba
+decidida y probada en otro consumidor. Una obligación pide cerrador; un informativo informa.
+
+**La pregunta que no me había hecho, y va con las otras dos de arriba:**
+3. *Cuando esto grita de más, ¿el ruido crece con el uso del sistema que protege?* Si sí, el guard tiene
+   fecha de vencimiento aunque hoy dé pocos falsos — y la va a alcanzar sin que nadie toque nada.
+
+Y el dato de método: lo cazó **la primera corrida real**, no el test. El control positivo horneado pasó
+igual, porque su fixture tenía un a-todos declarado y otro sin declarar, no un `cierre_` a-todos. Ver
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].

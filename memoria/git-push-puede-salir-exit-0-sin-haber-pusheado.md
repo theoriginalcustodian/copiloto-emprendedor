@@ -91,3 +91,44 @@ rojo es el más peligroso de los dos, porque invita a **reintentar** una operaci
 **Y el agravante estructural:** con muchos worktrees esto le va a pasar a cualquiera, porque `main`
 está tomado por construcción — casi ninguna sesión trabaja en el checkout principal. No es un caso
 raro: es el caso normal de este repo.
+
+**Refuerzo (2026-09-30), la parte operativa que faltaba:** cuando `gh pr merge --squash
+--delete-branch` sale **rc=1 con el merge YA hecho**, el borrado de la rama **queda sin ejecutar** —
+es un paso posterior en la misma invocación, y el fallo local de `main` lo corta antes. Medido en el
+PR #747: `MERGED` con commit `f36a842d` en el remoto, y `ls-remote` seguía devolviendo la rama. Así
+que el rc=1 no deja sólo un veredicto falso: deja el trabajo **a medias**, y la rama sobrevive
+silenciosamente hasta que alguien mira. El cierre es `git push origin --delete <rama>` aparte, con
+`ls-remote` como veredicto (⚠️ ese push dispara el `pre-push` completo — batería + gitleaks — así que
+pasa de los 120 s y va a background).
+
+---
+
+## Refuerzo (2026-09-30): el script que horneó este patrón salió `rc=4` en su PRIMER uso real, y estuvo bien
+
+`scripts/mergear-pr.sh` nació justo para dejar de repetir a mano el «rc=1 con el merge ya hecho».
+Primer uso real, PR #749:
+
+```
+✅ PR 749 MERGED en el remoto · commit 418d5dac
+── borrando rama … (dispara el pre-push, puede tardar)
+❌ la rama … SIGUE en el remoto: el merge está hecho pero el trabajo quedó a medias
+rc=4
+```
+
+**El `rc=4` no es una falla del script: es el script funcionando.** Su contrato separa «mergeado **y**
+rama borrada» (0) de «mergeado, rama sobrevive» (4), y el veredicto salió de `ls-remote`, no de un
+exit code. Un script que hubiera devuelto 0 ahí habría dejado la rama huérfana con cara de éxito.
+
+**La causa del 4, y es ambiental, no lógica:** el `pre-push` sincroniza el grafo de código contra
+Graphity y **excede el timeout de la herramienta** (120 s). El borrado necesitó una segunda corrida en
+background; recién ahí `ls-remote` dio 0.
+
+**Lo que se aprende para cualquier envoltorio de `git push`:** el paso lento no es el push, es el
+**hook**. Un timeout de herramienta no distingue «el remoto rechazó» de «el hook todavía está
+corriendo», así que el envoltorio tiene que (a) mandar el push lento a background **con salida a
+archivo completo**, nunca por `tail` ([[pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo]]),
+y (b) dar su veredicto con `ls-remote` **después**, no con el exit del push.
+
+**Y la trampa de lectura:** la notificación del harness dijo «exit code 0» porque yo había appendeado
+`echo rc=$?` al log — el 0 era del **shell envolvente**, no del script. El `rc=4` real sólo estaba en
+el archivo. La notificación del wrapper no es el veredicto del programa.

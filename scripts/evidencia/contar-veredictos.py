@@ -814,6 +814,10 @@ def veredictos_de(texto, armas=ARMAS):
 # La clave del sujeto es `id` + `camino`, que es la unidad que declara el §1 del contrato. Por eso
 # `agenda — camino A` y `agenda — camino B` son DOS mediciones y no una fila ambigua.
 SUJ_HEADING = re.compile(r"^#{2,4}\s+\*{0,2}`([a-z0-9][a-z0-9\-]{1,30})`\*{0,2}\s*(.*)$")
+# CUALQUIER heading, sea sujeto o no: es lo que CIERRA el alcance de una declaracion `heading`.
+# `SUJ_HEADING` no sirve para esto — solo matchea los que declaran un id del padron, y un
+# `## Otra cosa` sin id tiene que cerrar igual.
+HEADING_CUALQUIERA = re.compile(r"^(#{1,6})\s")
 SUJ_BULLET = re.compile(r"^\s*[-*]+\s+\*\*`?([a-z0-9][a-z0-9\-]{1,30})`?\*\*\s*(.*)$")
 SUJ_CELDA = re.compile(r"^\*{0,2}`([a-z0-9][a-z0-9\-]{1,40})`")
 # El MISMO sujeto sin backticks. Va en una constante aparte y NO relajando `SUJ_CELDA` porque
@@ -863,7 +867,7 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
         if f != "hueco":
             por_linea.setdefault(n, []).append((v, f, c))
 
-    meds, actual = [], None
+    meds, actual, nivel_cierre = [], None, 0
     lineas = texto.splitlines()
     # La fila ANTERIOR a un separador es la cabecera (`es_separador` lo documenta). Saltearla es
     # obligatorio desde que existe `SUJ_CELDA_PELADA`: `| sujeto | veredicto |` matchea `sujeto`
@@ -907,14 +911,31 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
                 # cierra acá y no arrastra contexto a la fila siguiente.
                 nueva["veredictos"] = [v for v, _, _ in por_linea.get(n, [])]
                 meds.append(nueva)
-                actual = None
+                actual, nivel_cierre = None, 0
                 continue
         else:
+            # CIERRE DEL ALCANCE. Una `tabla` se cierra sola —sujeto y veredicto viven en la MISMA
+            # linea— pero un `heading` no tenia delimitador: `actual` acumulaba TODO lo que seguia
+            # hasta el proximo sujeto DECLARADO. Un heading que es el ULTIMO sujeto del documento
+            # se quedaba entonces con cada veredicto restante, y eso inventa artefactos en las dos
+            # direcciones: le roba el veredicto al vecino (CONTRASTE falso) o no encuentra ninguno
+            # (HUECO falso). Medido el 2026-09-30 en `..._B1-13-id...`: el mismo documento aportaba
+            # COHERENTE y DESVIO para `esc`, `factura`, `ingresar` y `soporte` — una contradiccion
+            # INTERNA, que es imposible si el parser lee bien.
+            #
+            # El limite es el de markdown, NO un umbral de distancia (un umbral seria una foto del
+            # corpus del dia): una seccion termina donde empieza otra de nivel igual o mayor. Un
+            # `bullet` vive DENTRO de una seccion, asi que lo cierra cualquier heading.
+            mh = HEADING_CUALQUIERA.match(linea)
+            if mh and actual is not None and len(mh.group(1)) <= nivel_cierre:
+                actual, nivel_cierre = None, 0
             m = SUJ_HEADING.match(linea) or SUJ_BULLET.match(linea)
             if m:
+                es_heading = linea.startswith("#")
                 actual = {"id": m.group(1), "camino": camino_de(m.group(2)), "linea": n,
-                          "forma_decl": "heading" if linea.startswith("#") else "bullet",
+                          "forma_decl": "heading" if es_heading else "bullet",
                           "veredictos": []}
+                nivel_cierre = (len(linea) - len(linea.lstrip("#"))) if es_heading else 6
                 meds.append(actual)
         if actual is not None and n in por_linea:
             actual["veredictos"] += [v for v, _, _ in por_linea[n]]
@@ -991,6 +1012,40 @@ def contraste_de_veredictos(res):
             if v1 in mapa and v2 in mapa:
                 conflictos[i] = mapa
     return conflictos, sorted(set(conflictos) - set(CONFLICTOS_CONOCIDOS))
+
+
+def contradicciones_internas(conflictos):
+    """{id: [documentos que aportan LAS DOS puntas del par incompatible]}.
+
+    El reporte decia «veredictos INCOMPATIBLES entre documentos» para todos, y para algunos era
+    literalmente falso: las dos puntas del par salian de UN solo documento, asi que no habia
+    discrepancia ENTRE mediciones. Medido el 2026-09-30: de 12 ids en contraste, 3 (`esc`,
+    `factura`, `soporte`) venian enteros del mismo cierre, que ademas declara la causa en el
+    titulo de cada seccion — «PARTIDO». Es el caso que este modulo ya describia sin separarlo:
+    «dos veredictos distintos pueden ser de dos superficies distintas y los dos vigentes».
+
+    Un id partido por dimension emite dos veredictos POR DISENO, y meterlo en la misma cifra que
+    una contradiccion real hace incitable el numero: el que lo lee no puede saber cuantos de los
+    12 son desacuerdos y cuantos son particiones declaradas. Separar no dirime nada —el interno
+    sigue reportandose, porque puede ser tambien un defecto del documento— pero deja de afirmar
+    un sujeto que no se midio.
+
+    No se separa por el rotulo «PARTIDO» del titulo: eso ataria el instrumento a una palabra que
+    un autor puede no escribir. Se separa por la ESTRUCTURA del dato, que siempre esta.
+    """
+    interno = {}
+    for i, mapa in conflictos.items():
+        ambas = set()
+        for v1, v2 in INCOMPATIBLES:
+            if v1 in mapa and v2 in mapa:
+                # INTERSECCION, no union: los documentos que aportan LAS DOS puntas del par.
+                # La union no separa nada —- medido: da 0 de 12, porque un id en contraste casi
+                # siempre tiene varias fuentes-- y el cero parecia «no hay internos» cuando era
+                # «mi criterio mide otra cosa».
+                ambas |= set(mapa[v1]) & set(mapa[v2])
+        if ambas:
+            interno[i] = sorted(ambas)
+    return interno
 
 
 def veredictos_por_id(con, ids):
@@ -1365,11 +1420,21 @@ def main():
     # `--json` (ver `contraste_de_veredictos`). Acá sólo se muestra, así que `conflictos` siempre
     # está calculado y `nuevos` siempre está vacío: si no lo estuviera, no se habría llegado.
     if conflictos:
-        print(f"⚠️  CONTRASTE: {len(conflictos)} id(s) con veredictos INCOMPATIBLES entre "
-              f"documentos — {len(nuevos)} sin declarar")
+        interno = contradicciones_internas(conflictos)
+        print(f"⚠️  CONTRASTE: {len(conflictos)} id(s) con veredictos INCOMPATIBLES "
+              f"— {len(nuevos)} sin declarar")
+        if interno:
+            print(f"   ⚑ de ellos, {len(interno)} con un documento que se contradice A SÍ MISMO "
+                  f"(aporta las DOS puntas del par): {', '.join(sorted(interno))}")
+            for i, docs_i in sorted(interno.items()):
+                print(f"      {i:<14} <- {', '.join(d[:52] for d in docs_i)}")
+            print(f"     Eso NO es desacuerdo entre mediciones: o el id está PARTIDO por dimensión "
+                  f"(las dos vigentes) o ese documento tiene un defecto propio. Se le pide al autor "
+                  f"que lo separe por dimensión; el instrumento no lo dirime.")
         for i in sorted(conflictos):
             marca = "<<< NUEVO" if i in nuevos else "declarado"
-            print(f"   {i:<14} {marca}")
+            origen = "SE CONTRADICE" if i in interno else "entre docs"
+            print(f"   {i:<14} {marca:<9} [{origen}]")
             for v, docs_v in sorted(conflictos[i].items()):
                 print(f"      {v:<22} <- {', '.join(n[:52] for n in sorted(docs_v))}")
     print(f"CORPUS: {len(res['lotes'])} documentos medidos · {len(descartados)} descartados con motivo")
@@ -1393,8 +1458,16 @@ def main():
               f"interpretable: {sorted(set(union) - set(cerrada))}")
         print(f"       (palabra vieja como `DIFERENCIA`, o una mayúscula que cayó en la posición —")
         print(f"        hasta que alguien las mapee, esos ids NO tienen veredicto legible)")
-    print(f"   sin nada en rol de veredicto en ningún documento: "
-          f"{len([i for i in ids if i not in union])}")
+    # NOMBRA los faltantes, no sólo los cuenta. Pedido de auditoría (2026-09-30) y su motivo es
+    # el caso `(home)`: el reporte decía «53 de 54» con el faltante CONTADO y SIN NOMBRAR, así que
+    # para saber cuál era hubo que capturar los locales de este `main()` con un tracer. El dato lo
+    # tiene sólo este script; hacer que el lector lo vuelva a deducir es pedirle trabajo y no darle
+    # lo único que no puede conseguir en otro lado. Es la misma falla que
+    # `memoria/instrumento-que-no-mira-nunca-falla.md` un paso más adelante: acá SÍ mira, pero no
+    # dice qué vio.
+    sin_nada = sorted(i for i in ids if i not in union)
+    print(f"   sin nada en rol de veredicto en ningún documento: {len(sin_nada)}"
+          + (f" -> {sin_nada}" if sin_nada else " (ninguno)"))
     print(f"TOTAL, unidad «ocurrencias de veredicto»: {ocurrencias}  ·  de las cuales "
           f"no-comparación: {tnc}  ·  (los dos lotes originales aportan {a + b})")
     print("⚠️  Esa cifra es en VEREDICTOS. En «mediciones» (id+camino) es menor: una medición")
