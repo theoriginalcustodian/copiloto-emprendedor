@@ -24,6 +24,7 @@ import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { Rail } from './Rail';
 import { type TabKey } from './TabBar';
+import { usePreviewActividad } from './usePreviewActividad';
 import './desktop.css';
 
 // BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
@@ -79,6 +80,11 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const [clienteIdAbierto, setClienteIdAbierto] = useState<number | null>(null);
   // ACTID — ver el mismo comentario en `AppShell.tsx`.
   const [gastoIdAbierto, setGastoIdAbierto] = useState<number | null>(null);
+
+  // ESCRACT — el preview de "Actividad reciente" del Escritorio. Ver `usePreviewActividad.ts`.
+  const { actividad: actividadPreview, cargandoActividad } = usePreviewActividad(
+    activeTab === 'escritorio',
+  );
 
   // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
   // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
@@ -167,6 +173,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
                   }
                   setActiveTab(tab);
                 }}
+                actividad={actividadPreview}
+                cargandoActividad={cargandoActividad}
                 onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onVerRecientes={() => setActiveTab('recientes')}

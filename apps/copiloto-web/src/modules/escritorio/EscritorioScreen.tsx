@@ -13,8 +13,8 @@ import './escritorio.css';
  * con el `Rail` de escritorio.
  *
  * Composición pura, igual que mobile: sin lógica de navegación ni de red acá — el fetch de
- * actividad y el mapeo `FuncionKey -> TabKey` los cablea el shell (Task de wiring posterior), vía
- * `onFuncion`/`onAbrirGasto`/`onAbrirCliente`/`onVerRecientes`.
+ * actividad (ESCRACT, `usePreviewActividad` en el shell) y el mapeo `FuncionKey -> TabKey` los
+ * cablea el shell, vía `onFuncion`/`onAbrirGasto`/`onAbrirCliente`/`onVerRecientes`.
  *
  * El grid no scrollea horizontal como en mobile (acá no hay el mismo problema de ancho acotado):
  * 6 tiles entran cómodos en un CSS grid de 3 columnas (2 filas; BL-X2 retiró Contabilidad, fusionada en Inteligencia), mismo criterio de grid plano que

@@ -74,6 +74,9 @@ describe('AppShell', () => {
   beforeEach(() => {
     mockMatchMedia();
     window.localStorage.clear();
+    // ESCRACT: el preview de Escritorio ahora pide `listarActividad` -- default inocuo para los
+    // tests de este describe que no lo ejercitan a propósito (los que sí, lo pisan).
+    mockListarActividad.mockResolvedValue({ status: 'ok', items: [], cursor: null });
   });
 
   it('renderiza el frame + tab-bar y por default aterriza en Mi día (BL-X1)', () => {
@@ -228,14 +231,15 @@ describe('AppShell — BL-D7: "Ver recientes" abre Recientes (registro), no la A
 
 /**
  * ACTID — mismo mecanismo que `DesktopShell.test.tsx` (`abrirGasto`/`gastoIdAbierto` en
- * `AppShell.tsx:104-108,130-131,146-149,223,226-232`), pero **NO hay camino de UI real hasta aquí**:
- * BL-D7 dejó `TabBar` (‹900px) con sólo 3 puertas fijas (Chat/Mi día/Funciones) y el preview de
- * "Actividad reciente" de `EscritorioScreen` nunca recibe `actividad` real en ningún shell web (el
- * fetch vive en `ActividadScreen`, no en el shell) — mismo hueco que ya documenta el describe BL-D7
- * de arriba para `cliente`. Se llega igual que ese caso de conexión/cuenta: por `initialTab`, la
- * única puerta que existe hoy. Ejercita el wiring interno (romper el reset a mano pone esto en
- * rojo), no una interacción de usuario alcanzable en producción — ese hueco es hallazgo de este
- * contrato, no algo que este test deba tapar.
+ * `AppShell.tsx:104-108,130-131,146-149,223,226-232`). Se llega por `initialTab` (BL-D7 dejó
+ * `TabBar` ‹900px con sólo 3 puertas fijas: Chat/Mi día/Funciones; `actividad` no tiene botón
+ * propio). Ejercita el wiring interno (romper el reset a mano pone esto en rojo).
+ *
+ * ⚠️ **ESCRACT cerró el hueco que este docstring documentaba** ("no hay camino de UI real hasta
+ * aquí"): ahora `EscritorioScreen` SÍ recibe `actividad` real (ver `usePreviewActividad.ts`), así
+ * que el mismo `abrirGasto` es alcanzable desde Funciones sin `initialTab` — ver el describe
+ * `AppShell — ESCRACT` más abajo, que ejercita ESE camino (el real, con la puerta que faltaba).
+ * Este describe queda igual: sigue siendo la cobertura más directa del reset (`gastoIdAbierto`).
  */
 describe('AppShell — ACTID (fila de Actividad "gasto" abre el detalle por id)', () => {
   beforeEach(() => {
@@ -285,5 +289,115 @@ describe('AppShell — ACTID (fila de Actividad "gasto" abre el detalle por id)'
 
     expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
     expect(screen.queryByTestId('detalle-gasto')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ESCRACT — el preview de "Actividad reciente" del Escritorio recibe datos reales (antes,
+ * `actividad`/`cargandoActividad` nunca se pasaban y el preview mostraba SIEMPRE el estado vacío,
+ * indistinguible de un tenant sin movimientos — ver el contrato). Fetch cableado en `AppShell.tsx`
+ * vía `usePreviewActividad`, mismo hook que `DesktopShell.tsx`.
+ */
+describe('AppShell — ESCRACT (preview de Actividad reciente del Escritorio)', () => {
+  beforeEach(() => {
+    mockMatchMedia();
+    window.localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  // Control de CEGUERA (el que importa, contrato §3): con ítems reales, el preview los renderiza y
+  // el vacío desaparece. Comentar `actividad={actividadPreview}` en `AppShell.tsx` a mano reproduce
+  // el rojo: sin el prop, `actividad` cae al default `[]` de `EscritorioScreen` y esta aserción
+  // falla -- exactamente el estado que tenía el código antes de este contrato.
+  it('positivo: con N ítems reales, el preview renderiza N filas y el vacío NO aparece', async () => {
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-09-30T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+        {
+          id: 'ingreso:3',
+          tipo: 'ingreso',
+          fecha: '2026-09-29T12:00:00-03:00',
+          titulo: 'Cobro recibido',
+          detalle: 'Panadería La Esquina',
+          monto: '8000',
+          signo: 'entra',
+        },
+      ],
+      cursor: null,
+    });
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+
+    expect(await screen.findByTestId('actividad-gasto:7')).toBeInTheDocument();
+    expect(screen.getByTestId('actividad-ingreso:3')).toBeInTheDocument();
+    expect(screen.queryByTestId('escritorio-actividad-vacia')).not.toBeInTheDocument();
+    expect(mockListarActividad).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  // Negativo: actividad genuinamente vacía (tenant nuevo) sigue mostrando el estado vacío -- el
+  // arreglo no puede volverlo desaparecer siempre.
+  it('negativo: con actividad genuinamente vacía, el estado vacío sigue apareciendo', async () => {
+    mockListarActividad.mockResolvedValue({ status: 'ok', items: [], cursor: null });
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+
+    expect(await screen.findByTestId('escritorio-actividad-vacia')).toBeInTheDocument();
+  });
+
+  // El camino real (contrato §3, "ahora que existe"): tocar una fila del preview del Escritorio
+  // abre el detalle del gasto en AppShell, sin `initialTab` -- la puerta que ACTID no podía
+  // ejercitar porque no existía.
+  it('camino real: tocar una fila del preview de Escritorio abre el detalle del gasto en AppShell (sin initialTab)', async () => {
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-09-30T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+      ],
+      cursor: null,
+    });
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderAppShell(); // SIN initialTab -- Mi día por default, camino 100% real.
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(await screen.findByTestId('actividad-gasto:7'));
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    await waitFor(() => expect(mockObtenerGasto).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('detalle-gasto')).toBeInTheDocument();
+    expect(screen.getByTestId('detalle-gasto-proveedor')).toHaveTextContent('Ferretería Central');
+  });
+
+  // No bloquea el primer paint: el grid de tiles está ANTES de que el fetch resuelva.
+  it('no bloquea el primer paint: el grid de Escritorio ya está mientras el preview sigue cargando', async () => {
+    let resolver: (v: { status: 'ok'; items: never[]; cursor: null }) => void = () => {};
+    mockListarActividad.mockImplementation(
+      () => new Promise((resolve) => { resolver = resolve; }),
+    );
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    expect(screen.getByTestId('escritorio-grid')).toBeInTheDocument();
+
+    resolver({ status: 'ok', items: [], cursor: null });
+    await waitFor(() => expect(mockListarActividad).toHaveBeenCalled());
   });
 });
