@@ -183,6 +183,26 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-09-30 — DICTAMEN SOBRE EL INSTRUMENTO, no sobre pantallas. Re-mide el radio de un defecto
+    # del brazo `tabla` sobre 2103 documentos (confirma el radio 0) y CITA las filas que encuentra,
+    # incluida la de un contrato mio. Lo que produce veredictos del criterio son esas citas.
+    #
+    # Su §3 es el hallazgo que importa, y es de los buenos: mi `contrato_..._C3-la-ultima-fila-medir-
+    # la-home...` ENSEÑA el formato de una fila de medicion, y para enseñarlo escribe una — con
+    # `(home)` y `COHERENTE`. La medicion real de `(home)` el MISMO dia es `DESVIO`. O sea que el
+    # ejemplo del formato contradice la medicion que el formato venia a recoger, y para un lector de
+    # FORMAS los dos son la misma cosa. Un COHERENTE fabricado asi es indistinguible de uno medido, y
+    # nadie lo audita porque coincide con lo que se espera leer.
+    #
+    # 🔴 La clase, que es mas grande que el caso: **un documento que explica un mecanismo no puede
+    # usar el mecanismo con valores reales.** Ya la pagamos por sintaxis (el ejemplo interno lleva un
+    # delimitador ficticio, nunca el real); esta es la version semantica. El fix vive en el contrato,
+    # no aca: el ejemplo usa un id FUERA del padron.
+    "2026-09-30_hallazgo_auditoria-a-planificacion_radio-0-confirmado":
+        "DICTAMEN sobre el parser: re-mide el radio del defecto del brazo `tabla` (4 filas en 3 docs, "
+        "las 3 descartadas) y CITA las filas halladas, no mide pantallas. Su §3 encuentra que un "
+        "contrato que ENSEÑA el formato emite `COHERENTE` sobre `(home)`, que la medicion real del "
+        "mismo dia da `DESVIO`.",
     # 2026-09-30 — EL GATE CAZO A SU PROPIA AUTORA. Es la respuesta de planificacion al hallazgo de
     # los 12 conflictos, y para explicar el defecto CITA el fixture minimo (una fila con COHERENTE /
     # REQUIERE_TRIAGE / DESVIO). Esa cita tiene forma de fila de medicion, asi que el documento que
@@ -1453,6 +1473,34 @@ def ids_solo_no_comparacion_por_plataforma(con, ids):
     return {p: sorted(s) for p, s in salida.items()}
 
 
+def huella_del_instrumento():
+    """Identidad del ARCHIVO que produjo la cifra: `sha12 · N lineas · <ruta>`.
+
+    🔴 Auditoria midio el 2026-09-30 que hay **cinco definiciones divergentes** de este mismo script
+    vivas al mismo tiempo, una por worktree (1361, 1407, 1480, 1663 y 1764 lineas). La cifra oficial
+    salio de UNA de las cinco y el numero no decia de cual. El padron de ciegos era identico en las
+    cinco, asi que la divergencia esta en el PARSER — justo lo que cambia el resultado.
+
+    El hash del contenido, y no `git rev-parse`: dos worktrees con el mismo contenido tienen que dar
+    la misma huella, y `git -C` en un worktree roto CONTESTA por el checkout principal sin fallar
+    (documentado en memoria). El hash no depende de git ni de que el arbol este limpio. La rama va al
+    lado como comodidad, pero la identidad es el sha.
+
+    Mientras el grafo bloquee los merges esto crece: es un COSTO del bloqueo, no una causa aparte.
+    """
+    try:
+        ruta = Path(__file__).resolve()
+        crudo = ruta.read_bytes()
+        return "%s · %d líneas · %s" % (
+            hashlib.sha256(crudo).hexdigest()[:12],
+            len(crudo.splitlines()),
+            ruta)
+    except OSError as e:
+        # Un fallo de lectura no puede tumbar la medicion, pero TAMPOCO puede pasar callado: sin
+        # huella, la cifra vuelve a ser anonima y eso es justo lo que este control corrige.
+        return "⚠️ HUELLA NO DISPONIBLE (%s) — la cifra de abajo no se puede atribuir a un archivo" % e
+
+
 def cruzar_no_comparacion(lotes):
     """{plataforma: [ids que en esa plataforma NO tuvieron comparacion en NINGUN documento]}.
 
@@ -1986,6 +2034,9 @@ def main():
             plat.setdefault(p, set()).update(lista)
     web, mob, indet = (sorted(plat.get(k, ())) for k in ("web", "mobile", "indeterminada"))
     solo_nc = cruzar_no_comparacion(res["lotes"].values())
+    # La huella va ARRIBA de la cifra y no en un pie: el que copia el numero se lleva la linea de
+    # al lado, no la del final del reporte.
+    print(f"🔬 INSTRUMENTO: {huella_del_instrumento()}")
     print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los {len(ids)} con veredicto DEL VOCABULARIO "
           f"CERRADO, POR PLATAFORMA»:")
     def _nc(p):
