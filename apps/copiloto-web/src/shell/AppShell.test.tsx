@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Partial mock: sólo la red de Actividad/Clientes — mismo arnés que `TarjetaClientePropuesto.test.tsx`.
@@ -10,19 +10,37 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     ...original,
     listarActividad: vi.fn(),
     obtenerCliente: vi.fn(),
+    obtenerGasto: vi.fn(),
   };
 });
 
-import { listarActividad, obtenerCliente } from '@copiloto/core';
+import { listarActividad, obtenerCliente, obtenerGasto, type Gasto } from '@copiloto/core';
 
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { AppShell } from './AppShell';
 import { ModeProvider } from './modeStore';
+import type { TabKey } from './TabBar';
 
 const mockListarActividad = vi.mocked(listarActividad);
 const mockObtenerCliente = vi.mocked(obtenerCliente);
+const mockObtenerGasto = vi.mocked(obtenerGasto);
+
+function gastoFixture(id: number, proveedor: string): Gasto {
+  return {
+    id,
+    monto: '15000.50',
+    montoSugerido: null,
+    fecha: '2026-08-01',
+    categoria: 'mercaderia',
+    proveedor,
+    medioPago: null,
+    descripcion: null,
+    origen: 'manual',
+    creadoEn: '2026-08-01T00:00:00Z',
+  };
+}
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -37,7 +55,7 @@ function mockMatchMedia() {
   }));
 }
 
-function renderAppShell(initialTab?: 'chat' | 'connections' | 'account') {
+function renderAppShell(initialTab?: TabKey) {
   return render(
     <ThemeProvider>
       <SessionProvider>
@@ -205,5 +223,67 @@ describe('AppShell — BL-D7: "Ver recientes" abre Recientes (registro), no la A
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByTestId('pantalla-clientes')).not.toBeInTheDocument();
     expect(mockObtenerCliente).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * ACTID — mismo mecanismo que `DesktopShell.test.tsx` (`abrirGasto`/`gastoIdAbierto` en
+ * `AppShell.tsx:104-108,130-131,146-149,223,226-232`), pero **NO hay camino de UI real hasta aquí**:
+ * BL-D7 dejó `TabBar` (‹900px) con sólo 3 puertas fijas (Chat/Mi día/Funciones) y el preview de
+ * "Actividad reciente" de `EscritorioScreen` nunca recibe `actividad` real en ningún shell web (el
+ * fetch vive en `ActividadScreen`, no en el shell) — mismo hueco que ya documenta el describe BL-D7
+ * de arriba para `cliente`. Se llega igual que ese caso de conexión/cuenta: por `initialTab`, la
+ * única puerta que existe hoy. Ejercita el wiring interno (romper el reset a mano pone esto en
+ * rojo), no una interacción de usuario alcanzable en producción — ese hueco es hallazgo de este
+ * contrato, no algo que este test deba tapar.
+ */
+describe('AppShell — ACTID (fila de Actividad "gasto" abre el detalle por id)', () => {
+  beforeEach(() => {
+    mockMatchMedia();
+    window.localStorage.clear();
+    vi.clearAllMocks();
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-08-10T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+      ],
+      cursor: null,
+    });
+  });
+
+  it('tocar la fila navega a Gastos y el id llega a la capa de datos (obtenerGasto) -- abre ESE gasto', async () => {
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderAppShell('actividad');
+
+    const fila = await screen.findByTestId('actividad-gasto:7');
+    fireEvent.click(fila);
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    await waitFor(() => expect(mockObtenerGasto).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('detalle-gasto')).toBeInTheDocument();
+    expect(screen.getByTestId('detalle-gasto-proveedor')).toHaveTextContent('Ferretería Central');
+  });
+
+  it('control negativo del reset: volver a Gastos por Funciones (no por la fila) no reabre el último detalle', async () => {
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderAppShell('actividad');
+
+    fireEvent.click(await screen.findByTestId('actividad-gasto:7'));
+    await waitFor(() => expect(screen.getByTestId('detalle-gasto')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('tile-gastos'));
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    expect(screen.queryByTestId('detalle-gasto')).not.toBeInTheDocument();
   });
 });
