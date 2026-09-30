@@ -18,7 +18,12 @@
 set -uo pipefail
 
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/a-todos-sin-cierre.sh"
-[ -x "$SCRIPT" ] || { echo "FALLA: no existe o no es ejecutable $SCRIPT"; exit 1; }
+# ⚠️ La precondición se mide con `-r`, NO con `-x`, y eso lo enseñó un rojo de CI: el repo versiona
+# TODOS sus .sh en modo 100644 y `lint.sh:46` los invoca con `bash "$t"`, así que el bit de ejecución
+# no es la convención. Pedirlo hacía un guard que pasaba en Git Bash (donde `-x` da true para
+# cualquier .sh, sin importar el modo del índice) y fallaba en el runner Linux — verde local, rojo
+# donde importa. Cada caso de abajo corre `bash "$SCRIPT"`: la ejecutabilidad nunca hizo falta.
+[ -r "$SCRIPT" ] || { echo "FALLA: no existe o no se puede leer $SCRIPT"; exit 1; }
 
 fallos=0
 check() { # check <descripcion> <esperado> <obtenido>
@@ -85,11 +90,21 @@ BUZON_DIR="$bz" bash "$sandbox/scripts/a-todos-sin-cierre.sh" --quiet >/dev/null
 check "rc con lector ciego" "2" "$?"
 rm -rf "$sandbox" "$bz"
 
-echo "== 8. el corpus REAL corre y no mueve nada"
+echo "== 8. el corpus REAL: si existe corre y no mueve nada; si NO existe, el veredicto honesto es 2"
+# `coordinacion/` está GITIGNOREADA y vive UNA sola vez, en el checkout principal. En el runner de CI
+# no existe, y ahí el `exit 2` («no pude medir») ES la respuesta correcta — no una falla del script.
+# Exigir 0 fijo fabricaba un rojo de CI que no era un hallazgo, el mismo filo que `lint.sh:36-39` ya
+# nombra para `contar-veredictos.py`. Así que se asserta el veredicto QUE CORRESPONDE AL ENTORNO, y
+# en los dos casos se ejercita la misma función: acá no hay rama sin control.
 antes="$(bash "$SCRIPT" --quiet 2>&1)"; rc=$?
-check "rc sobre el buzon real" "0" "$rc"
-despues="$(bash "$SCRIPT" --quiet 2>&1)"
-check "idempotente (dos corridas, misma cuenta)" "$antes" "$despues"
+if [ "$rc" = "2" ]; then
+  check "sin corpus real -> 2 y lo DICE (no un 0 tranquilizador)" "si" "$(printf '%s' "$antes" | grep -q 'NO PUDE MEDIR' && echo si || echo no)"
+  echo "  nota  corpus real ausente (el caso de CI): se midió el «no pude medir», no la idempotencia"
+else
+  check "rc sobre el buzon real" "0" "$rc"
+  despues="$(bash "$SCRIPT" --quiet 2>&1)"
+  check "idempotente (dos corridas, misma cuenta)" "$antes" "$despues"
+fi
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "TODOS OK (8 casos)"; exit 0
