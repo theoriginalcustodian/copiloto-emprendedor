@@ -160,3 +160,10 @@ un retiro total sino un cierre parcial de filas abiertas.** Necesita su par en e
 Y el cobro final está medido en [[el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario]]:
 combinada con un vocabulario que no admite el estado corrector, esta cara **produce un falso verde real**, no
 una ambigüedad de lectura.
+
+**Sexta cara (2026-09-29, el gate de contenido).** El mismo patrón un nivel más abajo: no es el rol del
+**documento** sino el de la **cita**. `"Guardar perfil"` (chrome), `"$0,00 · 0 facturas"` (runtime),
+`el framing original ("pendiente de redeploy")` (otro documento) y `"Ver también los reemplazados"
+(elemento extra, no carencia)` se escriben **idénticos**, y un gate que los compare contra una
+referencia externa da **13 falsos de 14**. Detalle y la alternativa que sí discrimina:
+[[un-gate-contra-referencia-externa-hereda-los-roles-el-que-compara-el-corpus-consigo-mismo-no]].
