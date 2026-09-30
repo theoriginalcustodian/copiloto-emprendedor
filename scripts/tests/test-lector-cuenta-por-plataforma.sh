@@ -39,7 +39,7 @@ def plataformas(txt):
 
 def sin_leer(txt):
     _, _, _, _, _, _, ps = cv.medir(txt, IDS)
-    return ps   # (lineas sin columna, {valor crudo: lineas})
+    return ps   # (filas de TABLA sin columna, {valor crudo: lineas}, fuera de tabla)
 
 # La forma REAL que escribe FE1 (`cierre_…B1-13-ids-superficie-y-dimension.md:38`), recortada a lo
 # que este test necesita. `superficie` y `dimension` quedan a proposito: son columnas distintas y el
@@ -75,7 +75,7 @@ casos.append(("sin columna -> indeterminada, no web",
 # son dos trabajos distintos.
 txt4 = CAB + "| `cuenta` (Mi cuenta) | pwa | app | layout | COHERENTE |\n"
 p = plataformas(txt4)
-_, invalidos = sin_leer(txt4)
+_, invalidos, _ = sin_leer(txt4)   # (filas de tabla, vocab invalido, fuera de tabla)
 casos.append(("vocabulario inventado (`pwa`) -> indeterminada Y nombrado",
               "cuenta" in p["indeterminada"] and "cuenta" not in p["web"]
               and "pwa" in invalidos, (p, sorted(invalidos))))
@@ -111,6 +111,22 @@ casos.append(("la columna no se hereda a la tabla siguiente",
               "factura" in p["web"] and "card" in p["indeterminada"]
               and "card" not in p["web"], p))
 
+# ── 9. DIFERENCIAL: «sin columna» (accionable) vs «fuera de tabla» (no lo es) ────────────────
+# El caso que ya costó una vuelta REAL. El reporte publicaba las dos poblaciones juntas como «77
+# medición(es) sin columna `plataforma`», y 48 de esas 77 eran headings y bullets — formas donde no
+# hay columna que agregar. Con esa cifra se le atribuyeron 20 filas al `cierre_` de FE1, que aporta
+# 0; FE1 contestó «0 sin columna» y tenía razón. Las dos mediciones eran honestas y contaban
+# poblaciones distintas: la costura no era de nadie hasta que alguien la midió.
+#
+# El test es DIFERENCIAL a propósito: las dos formas en el MISMO fixture, y cada una tiene que caer
+# en su cubo. Afirmar sólo una dejaría pasar un reporte que las mete a las dos en el mismo lado.
+FIX9 = (CAB_SIN + "| `card` (gasto) | app | layout | COHERENTE |\n"
+        + "\n### `factura` — camino A (ARCA)\n\nVeredicto: COHERENTE\n")
+tabla, invalidos, fuera = sin_leer(FIX9)
+casos.append(("DIFERENCIAL fila de tabla -> accionable, heading -> NO accionable",
+              len(tabla) == 1 and len(fuera) == 1 and not invalidos,
+              "tabla=%s fuera=%s" % (tabla, fuera)))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -128,6 +144,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 8 ] || { echo "❌ esperaba >=8 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 9 ] || { echo "❌ esperaba >=9 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
 echo "OK — $total/$total: la cifra se parte por plataforma y un veredicto de mobile no cuenta como web"

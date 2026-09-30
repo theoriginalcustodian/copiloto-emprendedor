@@ -100,6 +100,21 @@ RETIRADOS_DECLARADOS = {"plan"}
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    # 2026-09-30 — la re-emision limpia del §9 del `hallazgo_` de los 12 conflictos, pedida por
+    # planificacion justamente porque el documento mixto no se podia clasificar: su tabla de CITAS le
+    # daba al lector 8 COHERENTE superados. Clasificado MIDIENDO, no por el titulo: aporta 4 DESVIO
+    # (`cuenta`, `soporte`, `esc`, `comousar`), **0 veredictos huerfanos y 0 ids fuera del padron** —
+    # o sea cero contaminacion. Es el contraejemplo util del caso de al lado: la misma medicion, sin
+    # la tabla de citas, entra a la cifra sin traer nada mas.
+    # ⚠️ Sus 6 filas NO declaran `plataforma`, asi que los 4 DESVIO caen en `indeterminada` y no
+    # suman a web todavia (pedido a auditoria en el `dato_` de la cifra).
+    # ⚠️ NOMBRE COMPLETO, con `.md`. Las dos constantes hermanas NO se matchean igual:
+    # `NO_SON_MEDICION` se consulta con `p.name == k or p.name.startswith(k)` (`:621`, admite
+    # prefijo) y esta con `n not in MEDICIONES_DECLARADAS` (`:643`, igualdad exacta). Escribi
+    # el prefijo por analogia con la de al lado y el documento siguio saliendo sin clasificar
+    # — el gate hizo bien su trabajo, pero la asimetria entre dos constantes que se usan para
+    # lo mismo es una trampa. Queda anotada acá hasta que alguien unifique el matcheo.
+    "2026-09-30_cierre_auditoria-a-planificacion_mis-6-mediciones-del-criterio-3-tabla-limpia-sin-la-tabla-de-citas.md",
     # ── 2026-09-30: el que el fix de COLUMNA DE SUJETO hizo visible ─────────────────────
     # MIDE, y con vocabulario cerrado: 2 ids del padron (`factura`, `card-presu`), los dos
     # `FUERA-DE-REFERENCIA`, 0 huerfanos. Era invisible porque pone el ENUMERADOR en la primera
@@ -168,6 +183,16 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-09-30 — EL GATE CAZO A SU PROPIA AUTORA. Es la respuesta de planificacion al hallazgo de
+    # los 12 conflictos, y para explicar el defecto CITA el fixture minimo (una fila con COHERENTE /
+    # REQUIERE_TRIAGE / DESVIO). Esa cita tiene forma de fila de medicion, asi que el documento que
+    # describe el problema lo reproduce. No se arregla clasificando y nada mas: ver la fila TABLACITA
+    # del PLAN — el brazo `tabla` lee filas de tablas que NO declaran columna de veredicto, y ni el
+    # gate de cabecera ni un code fence lo detienen.
+    "2026-09-30_dato_planificacion-a-auditoria_hallazgo-12-conflictos":
+        "RESPUESTA de planificacion al hallazgo de los 12 conflictos: dictamina, decide la forma de "
+        "la sucesion y declara el costo de la clasificacion. Los veredictos que se le leen son la "
+        "CITA del fixture que demuestra el defecto del brazo `tabla`; no mide ninguna pantalla.",
     # 2026-09-30 — DICTAMEN, y la clasificacion se decidio MIDIENDO, no leyendo el titulo. El
     # documento es MIXTO: su §9 trae 4 mediciones propias (app@390 vs proto@390, con capturas) y su
     # §2 trae una tabla de CITAS de la sucesion `barrido -> correccion -> medicion posterior`.
@@ -1340,19 +1365,39 @@ def ids_cerrados_por_plataforma(con, ids):
     return {p: sorted(s) for p, s in salida.items()}
 
 
+# Las formas que VIVEN EN UNA TABLA, o sea las unicas donde «agregar la columna `plataforma`» es una
+# accion posible. `sujeto_de_celda` devuelve `celda*` (y `*-col` cuando el sujeto salio de la columna
+# que la cabecera nombra), asi que el prefijo alcanza y no hay que enumerar sus variantes.
+FORMAS_DE_TABLA = ("celda",)
+
+
 def plataformas_sin_leer(meds):
-    """Las mediciones cuya plataforma no se pudo leer, partidas por CAUSA: sin columna vs columna con
-    vocabulario inventado. Es lo que vuelve la cifra accionable en vez de solo honesta - FE1 y FE2
-    necesitan saber DONDE agregar la columna, no cuantas faltan."""
-    sin_col, vocab = [], {}
+    """(filas de TABLA sin columna, {valor crudo invalido: lineas}, mediciones FUERA de tabla).
+
+    🔴 Las tres cosas estan separadas porque mezclarlas ya mando trabajo al lugar equivocado. La
+    version anterior devolvia un solo `sin_col` con las 77 mediciones sin plataforma, y el reporte lo
+    publicaba como «77 medicion(es) sin columna `plataforma`» con los documentos que mas aportaban.
+    Medido despues: 44 de esas 77 son HEADINGS y 4 son BULLETS -- formas que no tienen columna y no
+    pueden tenerla-- y solo 29 son filas de tabla. Con esa cifra le atribui 20 filas al `cierre_` de
+    FE1, que aporta **0**; FE1 contesto «0 sin columna» y tenia razon. Las dos mediciones eran
+    honestas y contaban poblaciones distintas.
+
+    Y la consecuencia de diseño, que no se arregla con una columna: un heading o un bullet no pueden
+    declarar plataforma en una columna que no existe, asi que `indeterminada` **no puede bajar a 0**
+    agregando columnas. Esas 48 necesitan otro mecanismo de declaracion, y eso es junta (fila
+    PLATHEAD del PLAN), no un detalle del lector.
+    """
+    sin_col, vocab, fuera_de_tabla = [], {}, []
     for m in meds:
         if m.get("plataforma", SIN_PLATAFORMA) != SIN_PLATAFORMA:
             continue
         if m.get("plat_cruda"):
             vocab.setdefault(m["plat_cruda"], []).append(m["linea"])
-        else:
+        elif m.get("forma_decl", "").startswith(FORMAS_DE_TABLA):
             sin_col.append(m["linea"])
-    return sin_col, vocab
+        else:
+            fuera_de_tabla.append(m["linea"])
+    return sin_col, vocab, fuera_de_tabla
 
 
 def veredictos_por_id(con, ids):
@@ -1593,8 +1638,10 @@ def main():
             # agregado; la que se cita es esta, porque un veredicto de mobile contado como web es
             # cobertura que no existe.
             "ids_cerrados_por_plataforma": ids_cerrados_por_plataforma(con, ids),
+            # `_lineas` son SOLO filas de tabla: las unicas donde agregar la columna es posible.
             "plataforma_sin_leer_lineas": plat_sin_leer[0],
             "plataforma_vocabulario_invalido": plat_sin_leer[1],
+            "plataforma_fuera_de_tabla_lineas": plat_sin_leer[2],
             # El mapa id -> veredictos CERRADOS. Sin el, `detalle` lista veredictos por linea sin
             # sujeto, asi que no se podia cruzar el mismo id entre documentos — y ese cruce es lo
             # unico que caza un COHERENTE falso.
@@ -1828,14 +1875,20 @@ def main():
         # Sin esto la cifra es honesta y no accionable: el trabajo de FE1/FE2 es agregar la columna
         # en filas concretas, y el numero solo no dice en cuales.
         sin_col = sum(len(d.get("plataforma_sin_leer_lineas", ())) for d in res["lotes"].values())
+        fuera_tab = sum(len(d.get("plataforma_fuera_de_tabla_lineas", ())) for d in res["lotes"].values())
         invalidos = {}
         for d in res["lotes"].values():
             for crudo, ls in d.get("plataforma_vocabulario_invalido", {}).items():
                 invalidos.setdefault(crudo, 0)
                 invalidos[crudo] += len(ls)
-        print(f"      └─ causa: {sin_col} medición(es) sin columna `plataforma`" +
+        print(f"      └─ ACCIONABLE (agregar la columna): {sin_col} fila(s) de tabla" +
               (f" · {sum(invalidos.values())} con la columna y valor FUERA del vocabulario: "
                f"{sorted(invalidos)}" if invalidos else ""))
+        # Se imprime aparte y se dice que NO es accionable asi, porque publicarlo junto a lo de
+        # arriba manda a agregar una columna a un heading -- que es lo que hizo perder una vuelta.
+        print(f"      └─ NO accionable con una columna: {fuera_tab} medición(es) declaradas en "
+              f"heading o bullet, donde no hay columna que agregar (necesitan otro mecanismo de "
+              f"declaración — ver PLATHEAD)")
         peores = sorted(((len(d.get("plataforma_sin_leer_lineas", ())), n)
                          for n, d in res["lotes"].items()), reverse=True)[:3]
         if peores and peores[0][0]:
