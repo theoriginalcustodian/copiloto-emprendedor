@@ -53,11 +53,17 @@ leer "$GEN"  > "$TMP/gen.mjs" || true
 # La tabla es de DOS columnas de ids por fila: `| id | ítem | | id | ítem |`, o sea los campos 2 y 5.
 # Se delimita por su propio encabezado hasta el `###` siguiente: un rango de líneas fijo se
 # desincroniza en silencio cuando la spec crece (`memoria/el-instrumento-tambien-CONDENA...`).
+# La primera celda de la tabla NO es un id: es `*(vacío)* Mi día`, o sea la HOME (`?ver=` sin valor).
+# La spec SI la cuenta dentro de los 54 (27 filas x 2 columnas = 54 celdas, y §3 declara «54 ids»),
+# asi que se normaliza a un id sintetico. Se llama `(home)` y NO `(vacio)`: hasta el 2026-09-29 se
+# llamaba asi y colisionaba visualmente con `vacio` (BL-W5, spec :43), que es OTRO id — el estado
+# vacio de Mi dia. Le costo un turno a frontend2, que no podia saber cual de los dos nombres salia
+# del documento y cual lo fabricaba este script. Un id sintetico tiene que VERSE sintetico.
 awk '/^### spec/{d=1; next} /^### /{d=0} d' "$TMP/spec.md" \
   | awk -F'|' 'NF>=6 {print $2; print $5}' \
   | sed -e 's/`//g' -e 's/^ *//' -e 's/ *$//' \
   | awk 'NF' \
-  | sed -e 's/^\*(vacío)\* *Mi día$/(vacio)/' \
+  | sed -e 's/^\*(vacío)\* *Mi día$/(home)/' \
   | grep -vE '^(\?ver=|---|:?-+:?)$' \
   | sort -u > "$TMP/padron.txt"
 

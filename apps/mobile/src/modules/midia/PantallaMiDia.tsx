@@ -401,7 +401,9 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
 
         <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
 
-        {estadoCalendario === 'ok' && onAgenda != null && (
+        {/* AGCAID: con la conexión CAÍDA no hay agenda que mostrar -- mismo criterio que la web
+            (MidiaScreen.tsx). Con `nunca_conectado` sigue visible. */}
+        {estadoCalendario === 'ok' && onAgenda != null && estadoGoogleCalendar !== 'caido' && (
           <Pressable
             testID="midia-ver-agenda"
             accessibilityRole="button"

@@ -87,6 +87,9 @@ class _FacturaBackendFake:
             b.items.append(Item(descripcion=payload["descripcion"],
                                 cantidad=Decimal(payload["cantidad"]),
                                 precio_unitario=Decimal(payload["precio_unitario"])))
+        elif nombre == "quitar_item":
+            if 0 <= payload < len(b.items):
+                b.items.pop(payload)
         elif nombre == "cargar_cliente":
             b.receptor = Receptor(condicion_iva=CondicionIVA(payload["condicion_iva"]),
                                   tipo_doc=TipoDoc(payload["tipo_doc"]), nro_doc=payload["nro_doc"],
@@ -192,6 +195,25 @@ def test_doble_dictado_no_duplica_items():
     res = _correr(backend, {"cliente_nombre": "Juan", "items": [ITEM]}, perfil=perfil, idem_key="w1-2-0")
     assert len(res.artifact.data["items"]) == 1        # NO 2 — agregar_item acumula, no reemplaza
     assert len(backend.llamadas_abrir) == 1             # UN solo borrador, no dos
+
+
+# ── FHMONTO (2026-09-28, hallazgo FE1): un dictado NUEVO y distinto dentro de la ventana de 15 min ──
+# de un borrador previo sin confirmar reemplaza sus items, no los mezcla ni los pierde en silencio ──
+
+def test_dictado_distinto_dentro_de_la_ventana_reemplaza_los_items_del_anterior():
+    """Repro exacta del hallazgo: "servicios varios" $10.000 (turno 1, sin confirmar) seguido de
+    "mercadería varia" $5.000 (turno 2, mismo cliente, dentro de los 15 min). La card tiene que
+    mostrar el pedido NUEVO, no el viejo ni una mezcla de los dos."""
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    item_1 = {"descripcion": "servicios varios", "cantidad": "1", "precio_unitario": "10000"}
+    item_2 = {"descripcion": "mercadería varia", "cantidad": "1", "precio_unitario": "5000"}
+    _correr(backend, {"cliente_nombre": "Juan", "items": [item_1]}, perfil=perfil, idem_key="w1-1-0")
+    res = _correr(backend, {"cliente_nombre": "Juan", "items": [item_2]}, perfil=perfil, idem_key="w1-2-0")
+    assert len(backend.llamadas_abrir) == 1             # sigue siendo el MISMO borrador (turno 2)
+    assert len(res.artifact.data["items"]) == 1          # ni 0 (perdido) ni 2 (mezclado)
+    assert res.artifact.data["items"][0]["descripcion"] == "mercadería varia"
+    assert res.artifact.data["items"][0]["precio_unitario"] == "5000"
 
 
 # ── segunda red: ya emitida (CAE) → error, no reabre (id_reuse_policy default es ALLOW_DUPLICATE) ──

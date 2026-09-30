@@ -13,6 +13,7 @@ from latido import con_latido
 import asyncio
 from datetime import date, datetime
 
+import psycopg2
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
@@ -72,6 +73,38 @@ async def cargar_contexto_factura(cliente_id: str, cuit: str) -> dict:
     return await asyncio.to_thread(_cargar_contexto_sync, cliente_id, cuit)
 
 
+def _registrar_con_defensa_idem(store, *, idem_key: str, workflow_id: str, **campos) -> tuple[int, bool]:
+    """`store.registrar()` protegido contra la carrera de `idem_key` bajo concurrencia REAL.
+
+    Entre el `por_idem_key` de arriba y este registro no hay lock: dos ejecuciones con la MISMA
+    `idem_key` pueden pasar el chequeo ANTES de que cualquiera registre (spike FACTID, Experimento A,
+    medido con `threading.Barrier` contra Postgres real). Para cuando llegan acá, las DOS ya hicieron
+    su efecto real (emitieron en AFIP, o adoptaron una autorización ya existente) — esto no puede
+    deshacerlo, sólo evitar perder el comprobante de la que pierde la carrera contra el índice único
+    `afip_comprobantes_idem`.
+
+    Antes de este fix esa perdedora levantaba `UniqueViolation` sin clasificar desde una activity sin
+    `try/except` alrededor de `registrar()`: quedaba como activity failure, `UniqueViolation` no está
+    en `non_retryable_error_types` de `REINTENTO_EMISION`, así que Temporal la reintentaba — y el
+    reintento, con el MISMO `nro_reservado`, volvía a chocar contra el MISMO índice indefinidamente.
+
+    Se registra IGUAL, sin `idem_key` (la clave ya la tiene la ganadora — la columna es UNIQUE, no se
+    puede repetir): el comprobante es REAL y no puede quedar invisible en "mis facturas". Se loguea
+    como alerta operativa porque esto es evidencia de una doble emisión fiscal real, no un duplicado
+    limpio que el sistema pueda resolver solo — alguien tiene que decidir si corresponde una nota de
+    crédito.
+    """
+    try:
+        return store.registrar(idem_key=idem_key, workflow_id=workflow_id, **campos), False
+    except psycopg2.errors.UniqueViolation:
+        activity.logger.error(
+            "ALERTA doble emisión real bajo la MISMA idem_key=%s (workflow=%s, nro=%s, cae=%s): "
+            "otra ejecución ya registró con esta clave -- se registra igual, sin idem_key, para no "
+            "perder el comprobante fiscal. Requiere revisión manual.",
+            idem_key, workflow_id, campos.get("nro"), campos.get("cae"))
+        return store.registrar(idem_key=None, workflow_id=workflow_id, **campos), True
+
+
 def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
                  workflow_id: str, receptor_nombre: str = "",
                  nro_reservado: int | None = None) -> dict:
@@ -125,15 +158,17 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         # comprobante real"). Se aceptan ambos.
         cae = str(info.get("CodAutorizacion") or info.get("CAE") or "")
         if cae:
-            comprobante_id = store.registrar(
+            comprobante_id, hubo_alerta = _registrar_con_defensa_idem(
+                store, idem_key=idem_key, workflow_id=workflow_id,
                 cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=siguiente, cae=cae,
                 cae_vto=_fecha(info.get("FchVto") or info.get("CAEFchVto")),
                 fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
                 receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
-                total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
+                total=payload.get("ImpTotal"))
             return {"ok": True, "duplicado": True, "id": comprobante_id, "cae": cae, "nro": siguiente,
-                    "tipo_cbte": tipo_cbte, "punto_venta": punto_venta}
+                    "tipo_cbte": tipo_cbte, "punto_venta": punto_venta,
+                    "alerta_doble_emision": hubo_alerta}
 
     from afip_gateway import RechazoAfip
 
@@ -143,17 +178,18 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         # Rechazo de negocio: NO se reintenta. Es un resultado, no una falla.
         raise ApplicationError(str(exc), type="RechazoAfip", non_retryable=True) from None
 
-    comprobante_id = store.registrar(
+    comprobante_id, hubo_alerta = _registrar_con_defensa_idem(
+        store, idem_key=idem_key, workflow_id=workflow_id,
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=res.numero, cae=res.cae,
         cae_vto=res.cae_vto, fecha_emision=_fecha(payload.get("CbteFch")),
         doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
         receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
-        total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
+        total=payload.get("ImpTotal"))
 
     return {"ok": True, "duplicado": False, "id": comprobante_id, "cae": res.cae,
             "cae_vto": res.cae_vto.isoformat(),
             "nro": res.numero, "tipo_cbte": tipo_cbte, "punto_venta": punto_venta,
-            "resultado": res.resultado}
+            "resultado": res.resultado, "alerta_doble_emision": hubo_alerta}
 
 
 @activity.defn

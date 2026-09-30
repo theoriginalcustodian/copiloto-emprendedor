@@ -29,3 +29,31 @@ antes de tocar el PR — "ya pusheé" deja de ser cierto en cuanto hay un commit
 `main` quedó roja en Actions; dos sesiones distintas arreglaron el MISMO bug por separado sin verse
 (un PR ajeno y uno propio), y el propio quedó redundante y en conflicto contra el que ya había
 mergeado. El gate no mentía — medía un árbol que no era el que se publicó.
+
+## ADENDA 2026-09-29 — el control de un squash es el CONTENIDO, y `--is-ancestor` puede acertar por casualidad
+
+`git merge-base --is-ancestor <commit> origin/main` da **rojo aunque el contenido esté mergeado**: en un
+squash-merge el contenido viaja y el commit no. Rojo correcto de un hecho falso.
+
+Dos casos el mismo día, y el segundo es el que enseña:
+
+- **Auditoría:** el `--is-ancestor` frenó el borrado de una rama ya mergeada. Correcto por accidente.
+- **Planificación:** midió los commits de FE2 (`4a9f4f7c`, `f9ee1ec9`) con `--is-ancestor` → rojo; pero
+  midió **además** el contenido (`grep -c dc.html` sobre `origin/main:docs/ASSETS-EXTERNAL.md`) y ahí se
+  vio lo que pasaba. **Quedándose en el `--is-ancestor` habría llegado a la conclusión correcta por
+  casualidad** — y la próxima vez, con el mismo método, a la equivocada.
+
+**La regla:** después de un squash-merge, el control es el **contenido, archivo por archivo**
+(`grep` de una marca del cambio sobre `origin/main:<path>`, o `git show origin/main:<path> | diff -`),
+nunca la pertenencia del commit. Y el corolario más caro: **un instrumento que acierta por casualidad
+no se distingue de uno que funciona** hasta que falla — por eso el control de contenido va igual cuando
+el `--is-ancestor` ya te dio la respuesta que esperabas.
+
+Ver también [[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] (ejercitá la función, no el log).
+
+**El espejo, y conviene leer los dos juntos:** acá el squash produce un falso **ROJO** (dice «falta» y
+no falta). El caso inverso —un merge que sale **verde sin aportar nada**: PR `MERGED`, `--json files`
+poblado, y el árbol del merge idéntico al de su padre— está en
+[[el-instrumento-respondio-sobre-otro-sujeto]], caso 12, con su control propio (comparar
+`git rev-parse <merge>^{tree}` contra el del padre). Mismo mecanismo, direcciones opuestas: uno niega
+trabajo hecho, el otro acredita trabajo que no existió.

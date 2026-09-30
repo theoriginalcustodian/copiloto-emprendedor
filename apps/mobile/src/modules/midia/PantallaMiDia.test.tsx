@@ -445,4 +445,35 @@ describe('PantallaMiDia — entrada a la agenda (BL-J13)', () => {
     await waitFor(() => expect(screen.getByTestId('midia-calendario-vacio')).toBeTruthy());
     expect(screen.queryByTestId('midia-ver-agenda')).toBeNull();
   });
+
+  it('AGCAID: con Calendar CAÍDO no hay «Ver agenda» -- no hay agenda que mostrar', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({
+      status: 'ok',
+      servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+    });
+
+    render(
+      <ThemeProvider>
+        <PantallaMiDia onAgenda={jest.fn()} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-caida')).toBeTruthy());
+    expect(screen.queryByTestId('midia-ver-agenda')).toBeNull();
+  });
+
+  it('AGCAID (control negativo): `nunca_conectado` -- sin catálogo con salud, «Ver agenda» sigue ofreciéndose', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({ status: 'no_disponible' });
+
+    render(
+      <ThemeProvider>
+        <PantallaMiDia onAgenda={jest.fn()} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeTruthy());
+    expect(screen.getByTestId('midia-ver-agenda')).toBeTruthy();
+  });
 });
