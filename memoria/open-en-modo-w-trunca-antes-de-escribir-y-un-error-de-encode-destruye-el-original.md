@@ -174,3 +174,41 @@ protejas.**
 
 El codigo que **evita** el escape no puede perderlo; el que lo escribe bien depende de que tres capas
 lo respeten, y hoy ninguna de las tres lo hizo.
+
+---
+
+## Refuerzo 6 (2026-09-30, sexta capa): el heredoc **quoted y bien formado** también falla, y el error **no nombra el carácter**
+
+Apliqué las cinco reglas de arriba —heredoc quoted, delimitador largo y único
+(`FIN_PEDIDO_CLASIFICACION_2026_09_30_AUD`), cero escapes— para escribir un documento de 157 líneas de
+markdown técnico al buzón. Falló **dos veces, idéntico**:
+
+```
+/usr/bin/bash: -c: line 2: unexpected EOF while looking for matching `'`
+```
+
+La «línea 2» es la del `cat`, o sea **el abridor**, no el culpable. El mensaje dice que bash llegó al
+EOF sin cerrar algo, y **no dice qué carácter ni en qué línea del contenido**. Entre el primer y el
+segundo intento quité mi propio control de backticks (el candidato obvio) y el error no cambió en un
+byte: **el diagnóstico no discrimina entre hipótesis**, así que cada intento siguiente es una apuesta
+a ciegas sobre 9 KB de texto.
+
+Lo escribí con la **herramienta de escritura** en vez del shell y salió a la primera: 9280 B, 157
+líneas, 213 acentos, control positivo 8 de 8 términos técnicos presentes, negativo 0.
+
+## La regla que faltaba
+
+**Dos fallos idénticos del canal no son un bug a depurar: son la señal de cambiar de canal.** Las
+cinco capas de arriba enseñan a escribir el contenido de forma que sobreviva al shell; ésta dice que
+para un documento largo **el shell no es el medio**. El shell lleva comandos; un archivo de prosa lo
+escribe la herramienta que escribe archivos, sin intermediario que parsee.
+
+Y eso vale incluso cuando la instrucción vigente pide preferir el shell: «preferir» admite el fallback
+cuando el canal *demostrablemente* no puede, y dos fallos idénticos son esa demostración. Seguir
+intentando después del segundo no es obediencia, es [[no-codificar-la-esperanza-principio-raiz]] al
+revés — apostar a que el tercer intento adivine lo que el error se niega a decir.
+
+**How to apply (agregado):** heredoc sólo para bloques cortos que puedo leer de un vistazo. Documento
+largo, markdown con tablas, o cualquier cosa con comillas tipográficas y acentos → herramienta de
+escritura, y después el control positivo de términos clave. Si un heredoc falla **dos veces con el
+mismo mensaje**, no hago un tercer intento: cambio de canal.
