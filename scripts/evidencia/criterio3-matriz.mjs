@@ -110,6 +110,24 @@ const esperados = new Set();
 // Regla: `captura: false` ⇒ el par no se toma y el id sale `NO_MEDIBLE_POR_CAPTURA`,
 // que es un estado honesto y distinto tanto de COHERENTE como de «falla».
 const MEDIBILIDAD = {
+  preg: {
+    captura: false,
+    porque:
+      'CUARTA CLASE, y la más simple de las cuatro: el lado del PROTOTIPO no existe. No es que sea no ' +
+      'determinista (`splash`, `entrada`) ni que no se pueda LLEGAR sin efectos reales (`hitl`, `ingresar`): ' +
+      'la solapa «Preguntar» de Inteligencia está DEPRECADA en el diseño y el mockup fuente ya no la tiene. ' +
+      'Medido el 2026-09-30 sobre `Prototipo frontend/odobi-ui/prototipo/index.html`: el bloque `#inteligencia` ' +
+      '(líneas 1936-2028) tiene CERO coincidencias de `solapa`/`preguntar`, con control positivo en `s-comousar` ' +
+      '(2141-2213, 1 coincidencia) que prueba que el grep discrimina. Las menciones del archivo caen en el CSS y ' +
+      'en OTROS bloques, no en este. Ya lo había reportado frontend1 el 2026-09-07 ' +
+      '(`hallazgo_frontend1-inteligencia-a-planificacion_solapa-preguntar-ya-deprecada-en-el-diseno`, cerrado) y lo ' +
+      'repiten los comentarios de `InteligenciaScreen.tsx:56-60`. ' +
+      'EL CAMINO EXISTE y no es el problema: `bi` + click en `[data-testid=inteligencia-solapa-preguntar]` ' +
+      '(`InteligenciaScreen.tsx:151,158`, `Vista = "resumen" | "preguntar"`). Una captura de paridad daría ' +
+      'DESVÍO garantizado por una feature que el diseño retiró y el código todavía tiene — acusaría al ' +
+      'producto de un desvío que es una decisión de diseño pendiente de limpieza, no un defecto de implementación. ' +
+      'Se vuelve medible si el diseño la reincorpora, o deja de existir cuando el código la saque.',
+  },
   hitl: {
     captura: false,
     porque:
