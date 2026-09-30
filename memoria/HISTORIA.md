@@ -190,7 +190,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
 - [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — ya hay un duplicado bajado el 2026-08-07 arriba.
 - [🎨🕳️ Un token con DOS definiciones](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — tocar la equivocada no da síntoma: contá **definiciones**, no usos.
-- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.
 
 ### Deuda diferida ya trackeada (deliberada + visible, sólo baja de frecuencia de carga)
 
@@ -355,23 +354,15 @@ auditoría, al mergear #721.
 cambian una decisión en curso, no las que explican un caso. El criterio: *¿su ausencia hace que otra
 sesión re-derive una lección con evidencia?* Las tres ya lo provocaron el mismo día en que se escribieron.
 
-- 🔝 [🟢🙈 Nadie audita un COHERENTE — el veredicto que DESACTIVA trabajo](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) — no deja rastro.
 - 🔝 [🔇⚔️ Un parser que pierde veredictos silencia los CONFLICTOS](un-parser-que-pierde-veredictos-silencia-los-conflictos.md) — ahí vive el falso verde.
-- 🔝 [📄🎭 Si el formato no codifica el ROL, ningún parser lo recupera](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md) — la raíz es el protocolo.
 - [🎭 Dos discriminantes OPUESTOS fallaron ⇒ el rol no está en el formato](el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron.md) — 2º caso de la raíz de arriba.
-- [🐤⏳ El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) — uno viejo pasa igual sano o enfermo.
-- [🖼️🕳️ El instrumento FABRICA una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) — y quien la mire acusa al producto.
-- [🏷️🎭 Un id FABRICADO no puede parecerse a uno real](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) — el lector no los distingue.
-- [🌍🕳️ El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) — ¿los conoce a todos?
-- [🎚️🎯 Un control calibrado a TU valor no ve al productor ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md) — mide tu ausencia.
 - [🚦🐛 Un gate cuyo predicado es el SÍNTOMA de un bug lo vuelve veredicto](un-gate-cuyo-predicado-es-el-sintoma-de-un-bug-abierto.md) — ¿qué otra causa lo da?
-- [👯❓ Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) — ¿qué pregunta hace cada lado? Y un empate tiene TRES resoluciones, no dos.
-- [📬🎁 Un `cierre_` ajeno puede traer tu cola ya hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) — ciego a las entregas.
-- [📜🚪 Una NORMA no tiene estado terminal en un buzón](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md) — cierra su bajada, no ella.
 - [🧬🔀 Una corrida cita el BLOB, no el path — el script del disco no declara su procedencia](una-corrida-cita-el-blob-no-el-path-el-script-del-disco-no-declara-su-procedencia.md) — tres versiones del mismo archivo; corre la del disco.
 - 🔝 [🎭🚦 El veredicto SUPERADO es el único legible si el corrector no está en el vocabulario](el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario.md)
 - 🔝 [🕳️📑 Un corpus definido por TIPO de documento excluye al que DIRIME](un-corpus-definido-por-tipo-de-documento-excluye-al-que-dirime.md) — afirmé un retiro que nadie escribió; el denominador sale verde porque sólo discrepa dentro del universo que le diste.
 - 🔝 [🎯♻️ Un gate contra referencia EXTERNA hereda los roles; el que compara el corpus consigo mismo, no](un-gate-contra-referencia-externa-hereda-los-roles-el-que-compara-el-corpus-consigo-mismo-no.md) — 13 falsos de 14. Y `set & set` entre dos listas complementarias es un control gratis. — el falso verde estaba en el instrumento, no en las filas.
+- 🔝 [📊🚦 Medí la COBERTURA de una convención antes de hacerla obligatoria](medir-la-cobertura-de-una-convencion-antes-de-hacerla-obligatoria.md) — 82 de 313 (26%): empezar a leer un campo opcional vuelve alarma falsa el 74% de los casos correctos.
+- 🔝 [↔️🕳️ Arreglar una comparación en UN sentido deja el opuesto vivo](arreglar-una-comparacion-en-un-sentido-deja-el-opuesto-vivo.md) — `!=`→`<` cerró la fecha adelantada; la atrasada da 999999min y es indistinguible del caso legítimo.
 - [📮🕳️ Un contrato `a-todos` no tiene quien lo CIERRE](un-contrato-dirigido-a-todos-no-tiene-quien-lo-cierre.md) — cero dueños, no varios; el urgente grita eterno.
 - [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.  
   ↪ **bajada del índice el 2026-09-29.** Criterio: el bucle device/Metro está FUERA de este sprint por decisión del operador del 22/09 (device/EAS al sprint siguiente). **No se bajó por longitud** — vuelve al índice cuando arranque el sprint de device. Mismo criterio con que se bajó `receta-avion-reverse-connect-destraba-dev-launcher`.

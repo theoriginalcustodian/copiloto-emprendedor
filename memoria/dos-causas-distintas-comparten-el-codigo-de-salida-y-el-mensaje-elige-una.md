@@ -111,3 +111,41 @@ Relacionado: [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
 [[dos-causas-suficientes-el-test-no-atribuye]] ·
 [[clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo]] ·
 [[instrumentos-que-confirman-en-vez-de-verificar]]
+
+---
+
+## Cara nueva (2026-09-30): el instrumento **detectó** su propia ceguera, la imprimió, y el veredicto eligió acusar igual
+
+`ci-verde.sh 739` sobre un PR cuyo commit tenía **6 de 6 check-runs en `success`**:
+
+```
+❌ backend: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'      (×6 jobs)
+--- CONTROL: 0 jobs presentes en el rollup, 6 esperados ---
+⚠️  el rollup vino VACÍO: no es que el CI falló, es que no estás midiendo nada
+ROJO — no mergear (falta o fallo algun job)
+```
+
+Lo notable no es el falso rojo: es que **el instrumento ya sabía**. Su control de denominador funcionó
+perfecto y escribió la frase exacta — *«no es que el CI falló, es que no estás midiendo nada»* — y **la
+línea siguiente, que es la que se lee y la que devuelve el exit code, unió las dos causas en `falta o
+fallo`** y se quedó con la peor. Un aviso correcto tres líneas arriba del veredicto no cambia la decisión
+de nadie: el que corre el gate lee la última línea y el que automatiza lee `$?`.
+
+La causa medida, y no era la que parecía:
+
+```
+gh api repos/.../commits/3c418082/check-runs  -> total=6 · todos success
+gh pr view 739 --json statusCheckRollup       -> length 0
+```
+
+Los check-runs **existían**; vacío estaba el campo que `ci-verde.sh:74` consulta. Un run disparado por
+`workflow_dispatch` —el camino que el propio `tests.yml` documenta como «la única forma real de re-pedir
+la corrida»— no entra en el `statusCheckRollup` del PR. O sea: **el remedio documentado produce una
+medición que el gate no puede leer**, y los dos instrumentos son correctos por separado
+([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Lo que agrega esta cara:** distinguir las causas **en el aviso no alcanza**. La distinción tiene que
+llegar a las dos salidas que alguien consume: la última línea y el exit code. Mientras el veredicto
+funda dos causas, tener el diagnóstico correcto adentro sólo documenta que el instrumento podía haber
+acertado. Y **un vacío en el campo que consultás no es un vacío en el sistema**: antes de declarar,
+preguntá si el dato existe en otra fuente ([[vacio-no-es-hallazgo-correr-el-control]]).
