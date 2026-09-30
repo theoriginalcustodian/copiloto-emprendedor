@@ -990,3 +990,99 @@ un borrador vacío; el chip «Completar a mano» del chat lo abre prellenado). U
 
 **delegación:** 0 sub-agentes · 1 lectura inline (el log del instrumento) · scripts: 1 corrida
 (`correr-criterio3.sh`, 5 de 5 ids) · 1 en background.
+
+---
+
+## C3-24 🔴 **ALTA** · Ocho de los diez «conflictos» son contra **evidencia retirada**, y el formato no codifica la vigencia
+
+Planificación agrupó 13 conflictos de veredicto, **10 bajo una sola hipótesis** (`HIPOTESIS_MATRIZ_2209`:
+*todos COHERENTE en la matriz web del 22/09 y DESVÍO en los lotes posteriores*), y propuso un test de
+falsación: re-medir **uno** a 390px y, si coincide con su COHERENTE, **cerrar los diez juntos**.
+
+**El test no había que correrlo: la premisa es falsa para 8 de los 10.** Medido documento por documento,
+sin recapturar una sola pantalla:
+
+| id | barrido original 22/09 (`BL-Q3-web-barrido-35-pantallas`) | matriz RE-MEDIDA 22/09 (la vigente) |
+|---|---|---|
+| `card` · `card-cliente` · `card-cobro` · `card-presu` | **COHERENTE** | **REQUIRES_TRIAGE** — «+Nuevo» abre formulario en blanco vs card de revisión prellenada del proto |
+| `preg` | **COHERENTE** | **INCOMPLETO — no verificado, no es hallazgo** (el script nunca tipeó la pregunta) |
+| `esc` | **COHERENTE** «misma estructura de rail + tabs» | COHERENTE «misma grilla de 6 tiles» |
+| `factura` | **COHERENTE** | una de las **4 que la auditoría refutó** |
+| `ingresar` | **COHERENTE** | COHERENTE |
+| `cuenta` · `detalle` | no aparecen | no aparecen |
+
+Y la matriz re-medida **declara el retiro en su propio encabezado**, textual: *«Por contrato, eso invalida
+como evidencia las 22 filas completas — no sólo las 4 muestreadas»*. Su resultado fue **13 de 22
+confirmadas**.
+
+**Entonces no hay diez conflictos de veredicto.** Hay ocho filas que comparan un `DESVÍO` vigente contra
+un `COHERENTE` **que ya fue retirado como evidencia el mismo día en que se emitió** — y dos (`cuenta`,
+`detalle`) que no tienen medición del 22/09 en ninguno de los dos documentos, así que su conflicto es
+contra una fuente todavía sin ubicar.
+
+### La raíz: tercera aparición de la misma clase, ahora sobre la VIGENCIA
+
+El corpus contiene un documento **entero** cuyos veredictos están retirados, y **ninguna de sus 36 filas
+lo dice**. Para cualquier parser son indistinguibles de las vigentes. La clasificación
+`MEDICIONES_DECLARADAS` / `NO_SON_MEDICION` no lo cubre, y no por descuido: **el barrido original *era*
+una medición** — sólo que ya no cuenta. Hace falta un tercer estado, `RETIRADO_POR: <doc>`, y que el
+contraste excluya esas filas en vez de exhibirlas como conflicto.
+
+Es la misma raíz que ya apareció dos veces hoy en dos sistemas sin relación: fundamento-vs-entregable en
+`plan-drift-check.sh`, medir-vs-citar en `contar-veredictos.py`, **vigente-vs-retirado** acá.
+
+### Y el orden vuelve a decidir, igual que con la exclusión de los analíticos
+
+Si se arregla el contraste **antes** de marcar el retiro, las ocho filas se leen como «COHERENTE vs
+DESVÍO» y la resolución cómoda —«son dos preguntas distintas»— **cierra las diez juntas**. Eso fabricaría
+exactamente el falso verde que este eje vino a cazar, **sobre diez filas de una sola vez y con la firma
+de una hipótesis validada**. Marcar el retiro primero; contrastar después.
+
+### El único conflicto real de los diez, dirimido
+
+**`esc`.** Sus dos COHERENTE afirman **presencia**: «misma estructura de rail + tabs» (original), «misma
+grilla de 6 tiles de Funciones» (re-medición). La medición del 29/09 a 390px, con el instrumento en
+verde, encontró:
+
+- **el título difiere**: app «Funciones» vs proto «**Tus funciones**»;
+- **el orden de la fila 1 del grid está invertido**: app `Facturación · Ingresos · Gastos`, proto
+  `Gastos · Ingresos · Facturación` (la fila 2 coincide);
+- la app pone chevron en «Actividad reciente»; el proto, no.
+
+**Un orden invertido no lo produce una captura mala.** Es resolución (2) de las tres: misma pregunta,
+profundidades distintas → gana el más profundo y el `COHERENTE` queda **superado**. `DESVÍO` vigente, sin
+recaptura pendiente.
+
+### La causa común existe, pero es la inversa de la supuesta — y es falsable leyendo, no midiendo
+
+La hipótesis suponía que los `COHERENTE` eran correctos y los `DESVÍO` posteriores artefactos. Los motivos
+dicen lo contrario: **el barrido del 22/09 verificó por PRESENCIA y CONTEO de elementos, nunca por ORDEN
+ni por COPY exacto** — «misma estructura de rail + tabs», «misma grilla de 6 tiles», «mismo patrón»,
+«mismo copy de ejemplos». Es el mismo mecanismo de `comousar`, que contó cinco ítems de texto y no miró
+layout. Se comprueba leyendo los motivos de las 36 filas; no requiere una sola captura.
+
+### El universo medible del instrumento: **17 ids, no 54**
+
+`scripts/evidencia/criterio3-matriz.mjs:236` declara la tabla `CAMINO` con **17** ids —`afip agenda apar
+bi bi-refresh comousar cuenta detalle entrada esc factura hitl ingresos negocio presu soporte splash`—
+contra los **54** del padrón. De los diez de la hipótesis, sólo **cuatro** son medibles hoy (`cuenta`,
+`detalle`, `esc`, `factura`); los cuatro `card-*`, `ingresar` y `preg` **no tienen camino declarado**.
+
+Así que el test de falsación no podía cerrar a seis de los diez ni aun saliendo COHERENTE: **el
+instrumento no puede verlos.** Verificado ejercitándolo: `correr-criterio3.sh ingresar,card` sale **exit
+1** con «SIN CAMINO DECLARADO … esta corrida NO sirve como evidencia» — falla cerrado, no entrega una
+medición inventada.
+
+### Un vacío propio, cazado por el control positivo antes de publicarlo
+
+La primera pasada de esta medición devolvió **«no aparece» para los diez ids** en el barrido original, y
+la lectura natural era «ese documento no los tiene». El control positivo sobre ids que el encabezado de
+la matriz garantiza que existen (`factura`, `bi`, `soporte`, `apar`) devolvió **también cero** — y ahí se
+vio: el barrido original escribe los ids **sin backticks** (`| esc | COHERENTE |`), la matriz re-medida
+**con** (`` | `esc` | COHERENTE | ``). Mi regex exigía backticks. Diez ceros falsos, con forma de
+hallazgo. Sin el positivo en la misma corrida, este C3-24 se publicaba al revés.
+
+**delegación:** 0 sub-agentes · 4 lecturas inline (los dos documentos del 22/09, mi población A, el
+`cierre_` de planificación) · scripts: 2 corridas del instrumento (`apar,comousar,esc,factura,soporte` →
+exit 0, 5 de 5; `ingresar,card` → exit 1 por diseño) + 1 medición de `CAMINO` (17 de 17 ids) · 2 en
+background.
