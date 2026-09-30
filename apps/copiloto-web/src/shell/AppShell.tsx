@@ -25,6 +25,7 @@ import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
 import { useChromeAutoHide } from './useChromeAutoHide';
+import { usePreviewActividad } from './usePreviewActividad';
 import './shell.css';
 
 // BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
@@ -106,6 +107,11 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // `changeTab` para que volver al tab por la barra (no por `abrirGasto`) no reabra el último
   // detalle.
   const [gastoIdAbierto, setGastoIdAbierto] = useState<number | null>(null);
+
+  // ESCRACT — el preview de "Actividad reciente" del Escritorio. Ver `usePreviewActividad.ts`.
+  const { actividad: actividadPreview, cargandoActividad } = usePreviewActividad(
+    activeTab === 'escritorio',
+  );
 
   // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
   // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
@@ -244,6 +250,8 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
                   }
                   changeTab(tab);
                 }}
+                actividad={actividadPreview}
+                cargandoActividad={cargandoActividad}
                 onAbrirGasto={abrirGasto}
                 onAbrirCliente={abrirCliente}
                 onVerRecientes={() => changeTab('recientes')}

@@ -253,3 +253,90 @@ describe('DesktopShell — ACTID (fila de Actividad "gasto" abre el detalle por 
     expect(screen.queryByTestId('detalle-gasto')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * ESCRACT — mismo hueco que documenta `AppShell.test.tsx` (describe `AppShell — ESCRACT`): el
+ * preview de "Actividad reciente" del Escritorio nunca recibía `actividad` real acá tampoco. Fetch
+ * cableado en `DesktopShell.tsx` vía el mismo `usePreviewActividad` que usa `AppShell`.
+ */
+describe('DesktopShell — ESCRACT (preview de Actividad reciente del Escritorio)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    vi.clearAllMocks();
+  });
+
+  // Control de CEGUERA (contrato §3): con ítems reales, el preview los renderiza y el vacío
+  // desaparece -- comentar `actividad={actividadPreview}` en `DesktopShell.tsx` reproduce el rojo.
+  it('positivo: con N ítems reales, el preview renderiza N filas y el vacío NO aparece', async () => {
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-09-30T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+        {
+          id: 'ingreso:3',
+          tipo: 'ingreso',
+          fecha: '2026-09-29T12:00:00-03:00',
+          titulo: 'Cobro recibido',
+          detalle: 'Panadería La Esquina',
+          monto: '8000',
+          signo: 'entra',
+        },
+      ],
+      cursor: null,
+    });
+    renderDesktopShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+
+    expect(await screen.findByTestId('actividad-gasto:7')).toBeInTheDocument();
+    expect(screen.getByTestId('actividad-ingreso:3')).toBeInTheDocument();
+    expect(screen.queryByTestId('escritorio-actividad-vacia')).not.toBeInTheDocument();
+    expect(mockListarActividad).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  it('negativo: con actividad genuinamente vacía, el estado vacío sigue apareciendo', async () => {
+    mockListarActividad.mockResolvedValue({ status: 'ok', items: [], cursor: null });
+    renderDesktopShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+
+    expect(await screen.findByTestId('escritorio-actividad-vacia')).toBeInTheDocument();
+  });
+
+  it('camino real: tocar una fila del preview de Escritorio abre el detalle del gasto (sin initialTab)', async () => {
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'gasto:7',
+          tipo: 'gasto',
+          fecha: '2026-09-30T12:00:00-03:00',
+          titulo: 'Nuevo gasto',
+          detalle: 'Ferretería Central',
+          monto: '15000.50',
+          signo: 'sale',
+        },
+      ],
+      cursor: null,
+    });
+    mockObtenerGasto.mockResolvedValue({ status: 'ok', gasto: gastoFixture(7, 'Ferretería Central') });
+    renderDesktopShell(); // SIN initialTab -- Mi día por default, camino 100% real.
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(await screen.findByTestId('actividad-gasto:7'));
+
+    expect(await screen.findByTestId('pantalla-gastos')).toBeInTheDocument();
+    await waitFor(() => expect(mockObtenerGasto).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('detalle-gasto')).toBeInTheDocument();
+    expect(screen.getByTestId('detalle-gasto-proveedor')).toHaveTextContent('Ferretería Central');
+  });
+});
