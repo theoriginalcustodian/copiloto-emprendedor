@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import uuid
@@ -73,7 +74,9 @@ for _flujo in (sys.stdout, sys.stderr):
 
 BASE = "https://copilotoemprendedor.duckdns.org"
 RAIZ = Path(__file__).resolve().parent.parent
-ENV_E2E = RAIZ / ".env.e2e"
+# UC_ENV_E2E_PATH: override para correr desde un worktree aislado sin duplicar el
+# archivo gitignoreado (BLB1) — el default no cambia.
+ENV_E2E = Path(os.environ.get("UC_ENV_E2E_PATH") or (RAIZ / ".env.e2e"))
 ESTADO_PATH = RAIZ / ".e2e-state" / "g6-durabilidad-worker-restart.json"
 
 
