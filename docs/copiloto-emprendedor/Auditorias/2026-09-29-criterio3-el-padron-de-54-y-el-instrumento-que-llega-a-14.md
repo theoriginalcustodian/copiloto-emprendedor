@@ -743,3 +743,452 @@ Al revés no funciona, porque depende de que el autor sospeche justo en la fila 
 **delegación:** 0 sub-agentes · 14 lecturas inline (2 imágenes: `app-bi.png`, `app-bi-refresh.png`) ·
 **scripts: 6 corridas** (IHDR de los 54 PNG · cruce fila↔ancho de las 20 filas · `contar-veredictos.py`
 `--json` · 3 greps de código con control positivo) · 0 en background.
+
+---
+
+# SEGUNDA ADENDA (2026-09-29, tarde) — **C3-20 · C3-21 · C3-22**
+
+Salieron de un ítem que parecía menor: *«46 ocurrencias `VOCABULARIO_DESCONOCIDO`; cuatro documentos
+aportan 17 ids donde el 100% de los veredictos cae ahí — vocabulario de triage, no del criterio 3»*.
+La hipótesis era que esos cuatro documentos **no miden**. Uno de ellos era una medición mía real, y
+tirar de ese hilo destapó un defecto del instrumento y dos problemas del padrón.
+
+**La cifra no se mueve: 50 de 54.** Todo lo de abajo cambia la GARANTÍA, no el número — y lo cambia en
+los dos sentidos: peor en lo que el instrumento podía detectar, mejor en la independencia.
+
+## C3-20 🔴 · El contador perdía **15 de 199 filas** de tabla, por dos defectos que se encadenan
+
+Medido sobre el corpus completo (`42f1468b`), 16 de 16 documentos declarados medición:
+
+```
+FILAS DE TABLA examinadas: 199 de 199
+PIERDEN un veredicto del VOCABULARIO CERRADO: 15   (emoji 9 · reversed 6)
+
+  matriz-web-re-medida  (FE1, 22/09)  4  COHERENTE  bi · apar · soporte · factura
+  C3-poblacion-C        (FE2, 29/09)  5  DESVÍO     card · card-cliente · card-cobro · card-presu · caida
+  poblacion-A-medida    (auditoría)   3  DESVÍO     comousar · esc · soporte
+  BLOQUE-A              (auditoría)   2  (son CITAS de veredictos ajenos: NO se recuperan)
+  BL-Q3-v2-lote-B       (FE2, 28/09)  1  COHERENTE  onb-promesa
+```
+
+**Causa 1 — `limpiar()` enumera la decoración conocida en vez de definir la clase**
+(`scripts/evidencia/contar-veredictos.py:167`). Saca backticks y asteriscos; el `re.match` está
+**anclado** al inicio de la celda, así que `🔴 **DESVÍO**` → `🔴 DESVÍO` → **sin match**. Su propio
+docstring ya nombra la clase — «cada patrón fallaba por UN carácter y perdía la medición sin dar
+hueco» — y el fix de entonces **agregó dos caracteres a la lista y dejó la clase abierta**.
+Verificado sobre 6 de 6 formas de celda: `**DESVÍO**` matchea, `🔴 **DESVÍO**` no.
+
+**Causa 2 — `reversed(celdas)` + `break`** (`:518-524`): se toma la primera celda que matchea
+recorriendo **de derecha a izquierda**, de modo que cualquier columna a la derecha del veredicto lo
+tapa. La matriz de FE1 es `| Pantalla | Veredicto | Diferencias | Resolución | Capturas |`: ganaba
+`Resolución` («H-A4-3 confirmado desplegado…»).
+
+**Y la composición es lo que lo hace mudo.** Sin la causa 2, el emoji habría producido
+`SIN_VEREDICTO_PARSEABLE` — un **hueco visible, que el reporte ya imprime**. La columna de la derecha
+**rellena el hueco con un token falso** (`SIN_REFERENCIA`, `REQUIERE_TRIAGE`, `H-A4-3…`) y lo apaga.
+Dos defectos que por separado se delatan; juntos, silencio limpio.
+
+### Lo que esto invalida del ítem original, y es lo incómodo
+
+**`poblacion-A-medida` SÍ es una medición.** Su tabla tiene `DESVÍO` ×3 — vocabulario **cerrado**, no
+de triage — y aporta 0 porque el parser no los lee. **El «100% de veredictos desconocidos» de ese
+documento era un síntoma del bug, no una propiedad del documento.** Clasificarlo `NO_SON_MEDICION` por
+ese motivo habría grabado una razón falsa en la lista, y con ella la falsa validación del gate nuevo.
+
+### C3-20.bis · el gate nuevo mide el síntoma del bug, no el rol
+
+El gate «MEDICIÓN QUE NO MIDE» (exit 9) acusa a *una medición declarada que aporta cero ids con
+veredicto del vocabulario cerrado*. **Ese cero es, palabra por palabra, lo que produce la causa 1.**
+Corrido antes del fix acusa a `poblacion-A-medida`, que mide 5 ids con evidencia por fila. Un gate
+cuyo predicado es el síntoma de un bug abierto **convierte el bug en veredicto de rol**, y el veredicto
+sobrevive al fix. Remedio: correrlo después del fix, o partir el predicado — «0 cerrados **y** ningún
+token del vocabulario en ninguna celda» es rol; «0 cerrados **pero** hay tokens en el texto» es defecto
+de lectura, con otro exit y otro mensaje.
+
+**Y la dependencia de orden tiene espejo:** arreglar el parser **sin** excluir antes a los analíticos
+hace lo contrario — los `COHERENTE` que `BLOQUE-A` **cita** de FE2 empezarían a contar como mediciones
+propias. **Excluir primero, arreglar después.**
+
+## C3-21 🔴 · El defecto no costaba cobertura: **silenciaba los CONFLICTOS entre veredictos**
+
+Éste es el hallazgo de más valor de la jornada, y refuta el reparto de culpas de mi propia adenda
+anterior sobre `bi`.
+
+`cerrado/2026-09-22/…matriz-web-re-medida.md:75-76` declara, seis días **antes** del `DESVÍO`:
+
+```
+| `bi`         | COHERENTE | H-A4-3 confirmado desplegado. Recapturado con espera real a datos
+|              |           | (`page.waitForFunction`, no el wait insuficiente de 500ms) …
+| `bi-refresh` | COHERENTE | … estructura idéntica al proto (Saldo en caja, …)
+```
+
+Contra el **mismo prototipo** (`54fac3ea`, capturas `-proto.png`). **Dos veredictos opuestos sobre la
+misma pantalla, y el instrumento no podía exhibirlos juntos porque no leía uno de los dos.**
+
+Mi falso positivo de `bi` costó una investigación de imágenes + código. **Con los dos veredictos
+visibles se cazaba con un cruce de dos líneas.** Y lo cacé sólo porque el contrato me obliga a exigir
+más evidencia al veredicto que desactiva trabajo; nada en el instrumento apuntaba ahí.
+
+**La reformulación que importa:** un parser de veredictos se lee como instrumento de **cobertura**
+(«¿cuántos ids están medidos?») y así se lo audita. Pero su función más valiosa es de **CONTRASTE**: es
+lo único capaz de exhibir dos veredictos incompatibles sobre el mismo sujeto — y el contraste es donde
+vive el **falso COHERENTE**, el veredicto que desactiva trabajo y que nadie audita. Un veredicto
+perdido no cuesta cobertura: **cuesta la capacidad de detectar el error de juicio.**
+
+**Fila concreta, y es la de mayor rendimiento del criterio 3:** un contraste `id → veredictos` que
+liste todo id con veredictos incompatibles entre documentos. Barato (ya está el JSON), y es el único
+control que puede cazar un falso verde.
+
+## C3-22 🟠 · El padrón suma **dos preguntas distintas** bajo el mismo vocabulario
+
+Al cruzar los veredictos recuperados aparecieron dos ids con COHERENTE de un lado y DESVÍO del otro
+**sobre el mismo hecho**:
+
+| id | FE1 · 22/09 · web | auditoría · 29/09 · teléfono |
+|---|---|---|
+| `soporte` | **COHERENTE** — «título "Soporte técnico" (ya no "Soporte de Odobi")» | **DESVÍO** — «app "Soporte técnico" vs proto "Soporte de Odobi"» |
+| `comousar` | **COHERENTE** — «mismos 5 ítems, mismos títulos y subtítulos» | **DESVÍO** — «el proto numera 1-5 con chevron; la app usa tarjetas sueltas» |
+
+**Las dos mediciones observaron lo mismo y lo nombraron distinto.** La columna `Resolución` de FE1 da
+la clave: su pregunta era *¿el hallazgo H-A4-4 quedó resuelto y desplegado?*; la mía, *¿coincide con el
+prototipo?*. Dos preguntas legítimas, **un solo token** (`COHERENTE`), sumadas en el mismo padrón. Se
+agrega una segunda capa: el mismo id nombra **superficies distintas** (web de un lado, teléfono del
+otro) sin que ninguna fila lo declare.
+
+**Consecuencia sobre la cifra:** el 50 de 54 responde «¿este id tiene un veredicto?», **no** «¿este id
+coincide con el prototipo?». Son dos afirmaciones distintas y hasta hoy se leían como una. Queda
+pendiente de FE1 confirmar cuál era su pregunta — es una línea, y cierra C3-22 sin re-medir nada.
+
+## Lo que NO se movió, verificado por vía nueva
+
+| control | resultado |
+|---|---|
+| **la cifra** | **50 de 54**. Los ids de las 15 filas tapadas ∩ los 4 sin veredicto (`grabando`,`pres-voz`,`vozchat`,`(home)`) = **VACÍA, 0 de 4** |
+| **aporte de los 4 documentos de rol dudoso** | **0 ids exclusivos cada uno** → clasificarlos de cualquier modo no toca la cifra |
+| **independencia** | **mejora: 20 → 17** ids que dependen de un solo documento. `apar` 1→2 · `caida` 1→2 · `soporte` 1→3 |
+
+## Clasificación de los 4 documentos, con motivo escrito (uno por uno, no en bloque)
+
+| documento | veredicto | motivo |
+|---|---|---|
+| `BLOQUE-A` (auditoría, 23/09) | **NO_SON_MEDICION** ✅ | su tabla pone el veredicto **de FE2 citado** en la col2 y el juicio propio (`REQUIERE_TRIAGE — no se sostiene`) en la col3. Re-evaluación de veredictos ajenos, misma clase que este dictamen |
+| `delta-516` (auditoría, 21/09) | **NO_SON_MEDICION** ✅ | su tabla es `Qué / Al 16/09 / Al 21/09` — **delta de inventario del prototipo**; sus «ids» son conteos, no pantallas comparadas |
+| `filas-nuevas-volver-e-ingresar` (planificación, 21/09) | **NO_SON_MEDICION** ✅ | es un **encargo** a FE1, vocabulario propio `AUSENTE`/`PARCIAL`. Verificado que no pierde nada: `volver`/`ingresar`/`ingresar-error` tienen **3 aportantes cada uno** |
+| **`poblacion-A-medida`** (auditoría, 29/09) | **🔴 ES MEDICIÓN — no excluir** | mide 5 ids con evidencia por fila y **`DESVÍO` ×3 del vocabulario cerrado**. Su 0 es el bug del emoji (C3-20) |
+
+## Corrección de una cifra propia, al mismo nivel en que la afirmé
+
+En la primera adenda sostuve que mi dictamen «cita **54 de 54** ids del padrón», y de ahí que
+clasificarlo como medición cerraría el criterio en 100% sin medir voz ni home. **Eran menciones con
+backticks contadas a mano; medido con el padrón da 29, y veredictos atribuidos 12.** El hallazgo
+estructural (un control de corroboración cruzada premia al documento que más cita) **se sostiene**; el
+cálculo del daño **no**. Es la cuarta vez en el día que la unidad rompe una cifra mía — y esta vez
+dentro del mensaje que corregía a otro por unidades.
+
+## El cierre del eje, que es mejor que cualquiera de los dos controles
+
+El control (a) de corroboración cruzada se retiró. Su reemplazo (cobertura >80%) se midió antes de
+embarcarlo: **techo de menciones de una medición 29/54 vs. de un descartado 29/54 — empate literal**, un
+gate que nunca dispararía. **Dos discriminantes estructurales opuestos, los dos inertes.** Eso no es
+mala suerte: **el formato no codifica el rol.** Lo único que protege es la clasificación **declarada**
+con motivo escrito y abort por documento sin clasificar, más el **vocabulario cerrado**, que neutraliza
+a un analítico aunque esté mal clasificado. El empate quedó impreso en el reporte con la marca «NO es
+un gate: no separa» — un callejón sin señalizar se recorre dos veces.
+
+**delegación:** 0 sub-agentes · 9 lecturas inline · **scripts: 7 corridas** (control del `reversed`
+sobre 199 filas · control del emoji sobre 6 formas de celda · barrido 199 filas × 16 docs con las dos
+causas separadas · cruce ids-tapados ↔ 4 faltantes · independencia por id antes/después · aporte
+exclusivo de los 4 dudosos · re-resolución por basename exacto) · 0 en background.
+**Un error propio en el camino:** resolví un documento con `rglob`+`startswith` y medí
+`matriz-web-re-medida-v2` creyendo que era `matriz-web-re-medida`; las 4 filas volvieron sin ids y casi
+las descarté como ruido. Repetido con igualdad de basename salieron `bi`/`apar`/`soporte`/`factura` —
+o sea C3-21 entero estuvo a un `startswith` de no existir.
+
+---
+
+## 🔴 CORRECCIÓN a C3-22 (misma fecha) — **eran DOS casos, no uno, y mi explicación absolvía de más**
+
+FE1 contestó la pregunta de una línea mirando su propia celda fila por fila, y **partió C3-22 en dos**:
+
+| id | qué resultó | evidencia que lo decide |
+|---|---|---|
+| `soporte` | ✅ **dos preguntas distintas**, como planteé | su celda del 22/09 dice textual: «el proto sigue mostrando "Soporte de Odobi"… es **mockup desactualizado** respecto al fix (**drift esperado, no bug**)». Su COHERENTE contestaba *¿se desplegó H-A4-4?* |
+| `comousar` | 🔴 **NO es ese caso: misma pregunta, medición más superficial** | su COHERENTE del 22/09 decía sólo «mismos 5 ítems, mismos títulos y subtítulos» — miró **texto**, no layout ni la sección extra «LO QUE LE PODÉS PEDIR». Las dos preguntaban *¿coincide con el proto?*. **El DESVÍO del 29/09 gana; el COHERENTE queda superado** |
+
+**Lo que estaba mal en mi C3-22:** metí los dos ids en la misma bolsa y ofrecí una sola explicación. Y
+la explicación que elegí es la peligrosa: **«son dos preguntas distintas» ABSUELVE a los dos lados.**
+Aplicada a un caso que en realidad es (b), **deja vivo un COHERENTE superado — o sea fabrica exactamente
+el falso verde que este dictamen vino a cazar.** Es cómoda justamente porque no obliga a que nadie se
+haya equivocado.
+
+**La regla que sale, y es la que hay que usar al desempatar:** dos veredictos opuestos sobre el mismo
+sujeto tienen **tres** resoluciones, no dos —
+
+1. **dos preguntas distintas** → los dos son válidos y el padrón debe declarar cuál responde;
+2. **misma pregunta, profundidades distintas** → gana el más profundo y el otro queda **superado**, no
+   «vigente con otra pregunta»;
+3. **uno está mal** → se corrige.
+
+**Elegir (1) por defecto es el error**, porque es la única de las tres que no deja a nadie equivocado.
+El discriminante es barato y siempre está disponible: **leer qué dice el motivo de cada lado que miró**,
+no qué veredicto puso. `soporte` cita el proto y lo declara desactualizado a propósito → (1). `comousar`
+cita ítems de texto contra un motivo que habla de layout y de una sección entera → (2).
+
+**Y el corolario que corrige mi propia fila de trabajo:** en el tablero de 11 desvíos, `comousar` **no**
+es un caso de vocabulario ni de referencia — **es un DESVÍO vigente**, con el COHERENTE del 22/09
+superado. No hay nada que reconciliar ahí.
+
+`bi` quedó **reclasificado a COHERENTE sin recaptura**, citando el código y la matriz del 22/09, con
+`medido_contra: app=servido@b7fa0e23@1280x900 · proto=proto@54fac3ea@1280x900`. C3-21 cerrado del lado
+de FE1.
+
+**delegación:** 0 sub-agentes · 1 lectura inline (el `cierre_` de FE1) · scripts: 0 · 0 en background.
+
+---
+
+## C3-23 · El instrumento corrido sobre población A: **EXIT CODE 0** — y qué NO dice ese cero
+
+Planificación pidió, textual, *«correr el instrumento sobre los 5 de población A (`apar comousar esc
+factura soporte`) e incorporar su EXIT CODE al dictamen, no su texto»*. Corrido:
+
+```
+./scripts/evidencia/correr-criterio3.sh apar,comousar,esc,factura,soporte
+
+EXIT REAL DEL GENERADOR: 0
+EXIT CODE DEL INSTRUMENTO = 0
+```
+
+**Elementos examinados: 5 de 5 pedidos.** El log nombra los cinco (`· midiendo SOLO:
+apar,comousar,esc,factura,soporte`) y emite una línea `→` por cada uno, así que el N pedido y el N medido
+coinciden — el control que caza el caso del filtro que se ignora en silencio y cae al default
+(`IDS=` en vez de `SOLO_IDS=`: el script mide 7 e informa con total normalidad). Acá el argumento va
+posicional, que es el remedio ya horneado.
+
+Las cuatro precondiciones salieron resueltas por el propio script, no a mano: `NODE_PATH`,
+`CHROME_PATH`, `ENV_E2E` (apuntado, **su contenido no se imprime**) y el prototipo respondiendo
+`HTTP 200`, más un control de concurrencia `8/8 pedidos sin cuelgue`. Es la razón por la que se pidió el
+exit code: un `exit 2` habría significado «no pude medir» y es distinguible de «medí y no encontré nada».
+
+### Por qué el pedido dice «el exit code, no el texto» — y por qué eso es lo correcto
+
+Este exit `0` es una afirmación sobre **el instrumento**, no sobre **las pantallas**. Tres de los cinco
+ids (`comousar`, `esc`, `soporte`) están hoy en `DESVÍO`, y el instrumento salió `0` igual: es un
+generador de capturas, no un juez, así que su código de salida **es insensible al veredicto por
+diseño**. Confundir los dos sujetos sería el error que este dictamen entero viene cazando — el mismo
+molde del caso en que un `0` con control positivo verde contestaba sobre un rango equivocado.
+
+Lo que el `0` sí habilita, y es exactamente lo que faltaba: **las capturas de población A no están
+viciadas por una corrida fallida**, así que los tres `DESVÍO` de esos ids se sostienen sobre evidencia
+producida por un instrumento que pudo mirar. Sin este cero, cada uno de esos tres veredictos tenía dos
+causas suficientes —la pantalla difiere, o la captura salió mal— y el diferencial no atribuía.
+
+Y el texto del log, que **no** entra al dictamen como veredicto, sí deja una precondición documentada que
+vale registrar aparte, porque es una trampa de sujeto y no de medición: el id `factura` mide **el
+listado, no el wizard**, y el wizard tiene **dos orígenes con UI distinta** (la pill «Nueva factura» abre
+un borrador vacío; el chip «Completar a mano» del chat lo abre prellenado). Una fila que diga
+«Facturación» sin decir cuál de los tres es, mide un sujeto ambiguo.
+
+**delegación:** 0 sub-agentes · 1 lectura inline (el log del instrumento) · scripts: 1 corrida
+(`correr-criterio3.sh`, 5 de 5 ids) · 1 en background.
+
+---
+
+## C3-24 🔴 **ALTA** · Ocho de los diez «conflictos» son contra **evidencia retirada**, y el formato no codifica la vigencia
+
+Planificación agrupó 13 conflictos de veredicto, **10 bajo una sola hipótesis** (`HIPOTESIS_MATRIZ_2209`:
+*todos COHERENTE en la matriz web del 22/09 y DESVÍO en los lotes posteriores*), y propuso un test de
+falsación: re-medir **uno** a 390px y, si coincide con su COHERENTE, **cerrar los diez juntos**.
+
+**El test no había que correrlo: la premisa es falsa para 8 de los 10.** Medido documento por documento,
+sin recapturar una sola pantalla:
+
+| id | barrido original 22/09 (`BL-Q3-web-barrido-35-pantallas`) | matriz RE-MEDIDA 22/09 (la vigente) |
+|---|---|---|
+| `card` · `card-cliente` · `card-cobro` · `card-presu` | **COHERENTE** | **REQUIRES_TRIAGE** — «+Nuevo» abre formulario en blanco vs card de revisión prellenada del proto |
+| `preg` | **COHERENTE** | **INCOMPLETO — no verificado, no es hallazgo** (el script nunca tipeó la pregunta) |
+| `esc` | **COHERENTE** «misma estructura de rail + tabs» | COHERENTE «misma grilla de 6 tiles» |
+| `factura` | **COHERENTE** | una de las **4 que la auditoría refutó** |
+| `ingresar` | **COHERENTE** | COHERENTE |
+| `cuenta` · `detalle` | no aparecen | no aparecen |
+
+Y la matriz re-medida **declara el retiro en su propio encabezado**, textual: *«Por contrato, eso invalida
+como evidencia las 22 filas completas — no sólo las 4 muestreadas»*. Su resultado fue **13 de 22
+confirmadas**.
+
+**Entonces no hay diez conflictos de veredicto.** Hay ocho filas que comparan un `DESVÍO` vigente contra
+un `COHERENTE` **que ya fue retirado como evidencia el mismo día en que se emitió** — y dos (`cuenta`,
+`detalle`) que no tienen medición del 22/09 en ninguno de los dos documentos, así que su conflicto es
+contra una fuente todavía sin ubicar.
+
+### La raíz: tercera aparición de la misma clase, ahora sobre la VIGENCIA
+
+El corpus contiene un documento **entero** cuyos veredictos están retirados, y **ninguna de sus 36 filas
+lo dice**. Para cualquier parser son indistinguibles de las vigentes. La clasificación
+`MEDICIONES_DECLARADAS` / `NO_SON_MEDICION` no lo cubre, y no por descuido: **el barrido original *era*
+una medición** — sólo que ya no cuenta. Hace falta un tercer estado, `RETIRADO_POR: <doc>`, y que el
+contraste excluya esas filas en vez de exhibirlas como conflicto.
+
+Es la misma raíz que ya apareció dos veces hoy en dos sistemas sin relación: fundamento-vs-entregable en
+`plan-drift-check.sh`, medir-vs-citar en `contar-veredictos.py`, **vigente-vs-retirado** acá.
+
+### Y el orden vuelve a decidir, igual que con la exclusión de los analíticos
+
+Si se arregla el contraste **antes** de marcar el retiro, las ocho filas se leen como «COHERENTE vs
+DESVÍO» y la resolución cómoda —«son dos preguntas distintas»— **cierra las diez juntas**. Eso fabricaría
+exactamente el falso verde que este eje vino a cazar, **sobre diez filas de una sola vez y con la firma
+de una hipótesis validada**. Marcar el retiro primero; contrastar después.
+
+### El único conflicto real de los diez, dirimido
+
+**`esc`.** Sus dos COHERENTE afirman **presencia**: «misma estructura de rail + tabs» (original), «misma
+grilla de 6 tiles de Funciones» (re-medición). La medición del 29/09 a 390px, con el instrumento en
+verde, encontró:
+
+- **el título difiere**: app «Funciones» vs proto «**Tus funciones**»;
+- **el orden de la fila 1 del grid está invertido**: app `Facturación · Ingresos · Gastos`, proto
+  `Gastos · Ingresos · Facturación` (la fila 2 coincide);
+- la app pone chevron en «Actividad reciente»; el proto, no.
+
+**Un orden invertido no lo produce una captura mala.** Es resolución (2) de las tres: misma pregunta,
+profundidades distintas → gana el más profundo y el `COHERENTE` queda **superado**. `DESVÍO` vigente, sin
+recaptura pendiente.
+
+### La causa común existe, pero es la inversa de la supuesta — y es falsable leyendo, no midiendo
+
+La hipótesis suponía que los `COHERENTE` eran correctos y los `DESVÍO` posteriores artefactos. Los motivos
+dicen lo contrario: **el barrido del 22/09 verificó por PRESENCIA y CONTEO de elementos, nunca por ORDEN
+ni por COPY exacto** — «misma estructura de rail + tabs», «misma grilla de 6 tiles», «mismo patrón»,
+«mismo copy de ejemplos». Es el mismo mecanismo de `comousar`, que contó cinco ítems de texto y no miró
+layout. Se comprueba leyendo los motivos de las 36 filas; no requiere una sola captura.
+
+### El universo medible del instrumento: **17 ids, no 54**
+
+`scripts/evidencia/criterio3-matriz.mjs:236` declara la tabla `CAMINO` con **17** ids —`afip agenda apar
+bi bi-refresh comousar cuenta detalle entrada esc factura hitl ingresos negocio presu soporte splash`—
+contra los **54** del padrón. De los diez de la hipótesis, sólo **cuatro** son medibles hoy (`cuenta`,
+`detalle`, `esc`, `factura`); los cuatro `card-*`, `ingresar` y `preg` **no tienen camino declarado**.
+
+Así que el test de falsación no podía cerrar a seis de los diez ni aun saliendo COHERENTE: **el
+instrumento no puede verlos.** Verificado ejercitándolo: `correr-criterio3.sh ingresar,card` sale **exit
+1** con «SIN CAMINO DECLARADO … esta corrida NO sirve como evidencia» — falla cerrado, no entrega una
+medición inventada.
+
+### Un vacío propio, cazado por el control positivo antes de publicarlo
+
+La primera pasada de esta medición devolvió **«no aparece» para los diez ids** en el barrido original, y
+la lectura natural era «ese documento no los tiene». El control positivo sobre ids que el encabezado de
+la matriz garantiza que existen (`factura`, `bi`, `soporte`, `apar`) devolvió **también cero** — y ahí se
+vio: el barrido original escribe los ids **sin backticks** (`| esc | COHERENTE |`), la matriz re-medida
+**con** (`` | `esc` | COHERENTE | ``). Mi regex exigía backticks. Diez ceros falsos, con forma de
+hallazgo. Sin el positivo en la misma corrida, este C3-24 se publicaba al revés.
+
+**delegación:** 0 sub-agentes · 4 lecturas inline (los dos documentos del 22/09, mi población A, el
+`cierre_` de planificación) · scripts: 2 corridas del instrumento (`apar,comousar,esc,factura,soporte` →
+exit 0, 5 de 5; `ingresar,card` → exit 1 por diseño) + 1 medición de `CAMINO` (17 de 17 ids) · 2 en
+background.
+
+---
+
+## C3-24-bis ⚠️ **Dos correcciones a C3-24 (son 5 de 10, no 8) y un hallazgo peor: una fila VIGENTE que se contradice a sí misma**
+
+FE1 pidió verificar una cita antes de aceptar C3-24 y **tenía razón dos veces**: mi celda de `factura`
+estaba mal, y cuando fui a refutarlo **medí el sujeto equivocado**. Va acá con la misma prominencia que el
+hallazgo original, porque el «8 de 10» ya salió en el `cierre_` al buzón y en dos mensajes directos.
+
+### Corrección 1 — el recuento: **5 de los 10**, no 8
+
+Dije que `factura`, en la matriz vigente, era «una de las 4 que la auditoría refutó». **Falso.** La matriz
+vigente, línea 81, le da `COHERENTE`: *«H-A4-5 confirmado desplegado y verificado visualmente con espera real
+a datos: aterriza en el listado/resumen ("Facturado este mes", "Te deben", "ÚLTIMAS EMITIDAS" + botón "+
+Nueva factura"), **no** en el wizard — coincide con el proto»*. Es del mismo bloque de fixes verificados que
+`soporte`, escrito **después** de registrar las 4 con diferencias: **las 4 refutadas fueron el disparador de
+la re-medición, no su resultado.** Confundí el motivo por el que un documento se escribió con el veredicto
+que produjo.
+
+| | ids | situación |
+|---|---|---|
+| **5** | `card` · `card-cliente` · `card-cobro` · `card-presu` · `preg` | `COHERENTE` **sólo** en el barrido retirado; en el vigente `REQUIRES_TRIAGE` (los 4) e `INCOMPLETO — no es hallazgo` (`preg`) → **conflicto contra evidencia retirada** |
+| **3** | `esc` · `factura` · `ingresar` | `COHERENTE` **vigente** → se dirimen uno por uno |
+| **2** | `cuenta` · `detalle` | sin medición del 22/09 en **ninguno** de los dos documentos → fuente sin ubicar |
+
+**El mecanismo de C3-24 sobrevive entero y sigue 🔴 ALTA** —cinco filas comparan un `DESVÍO` vigente contra
+un `COHERENTE` retirado el mismo día, y ninguna de las 36 filas del documento retirado lo dice—, igual que
+la conclusión operativa: **los diez no se cierran juntos.** Lo que se cae es mi cifra.
+
+**Y el sesgo vale nombrarlo: inflé la cifra en la dirección que hacía más fuerte mi propia tesis.** El «8 de
+10» sostenía el hallazgo del documento retirado mejor que el «5 de 10». No lo verifiqué fila por fila.
+
+### Corrección 2 — fui a refutar a FE1 y **medí el sujeto equivocado**
+
+FE1 sospechaba que la fila 81 citaba un elemento inexistente. Fui a verificarlo y medí **la app**:
+`SeccionMeDeben.tsx:87` → `<h2>Te deben</h2>`, presente en `origin/main`, creado el **2026-08-04**
+(`c9cee1d0`, PR #258), declarado **sección FIJA** en `PantallaFacturacion.tsx:512`. Con eso iba a dar la
+cita por legítima.
+
+**La afirmación de FE1 era sobre el PROTO, no sobre la app** — y la fila dice, textual, «coincide con el
+proto». Medido sobre el sujeto correcto, contra el mismo SHA que la matriz cita (`54fac3ea`):
+
+| elemento que la fila 81 enumera como coincidencia | en el proto @`54fac3ea` |
+|---|---|
+| «Facturado este mes» | **1** archivo |
+| «+ Nueva factura» | **4** archivos |
+| «…emitidas» | **4** archivos |
+| **«Te deben»** | **0** — **no existe** |
+
+Control positivo dentro de la misma corrida: el instrumento **ve** el proto y encuentra los otros tres.
+Así que el cero no es ceguera. **De los cuatro elementos que la fila enumera como coincidencia con el proto,
+tres están y uno no.**
+
+Es mi propia clase, y la nombró planificación antes que yo:
+[[el-instrumento-fabrica-una-referencia-que-no-existe]]. Un `COHERENTE` que afirma coincidencia **sobre un
+elemento ausente del lado de la referencia**, y cae del lado que importa: el veredicto que **desactiva**
+trabajo.
+
+### El veredicto de `factura`, que es mío y lo doy con el corte fino
+
+**Se sostiene lo que la fila realmente midió; se cae la cláusula que extiende la afirmación.**
+
+- Su pregunta es *«¿se desplegó H-A4-5 — aterriza en el listado y no en el wizard?»*. Para eso, «Te deben»
+  **en la app** es evidencia válida y suficiente: el aterrizaje ocurrió. **Ese COHERENTE, sobre esa
+  pregunta, queda en pie.**
+- La cláusula **«coincide con el proto»** es **falsa para uno de los cuatro elementos que ella misma
+  enumera**, y no se puede reparar con una recaptura: el elemento no está en la referencia. La fila afirma
+  dos cosas y sólo una está medida.
+- **Acción:** la fila se parte. Queda `COHERENTE` para *«fix H-A4-5 desplegado»* y se abre una fila nueva
+  para *«¿el listado de facturación coincide con el proto?»*, que hoy **no tiene veredicto** — porque
+  además mi medición de población A la dejó **NO MEDIBLE** por otra razón («las 2 filas de ÚLTIMAS EMITIDAS
+  salen completamente vacías», app sin datos) y el COHERENTE del 22/09 dice explícitamente «con **espera
+  real a datos**». Dos mediciones del mismo id con el tenant en estados distintos.
+
+### Y esto responde la pregunta de diseño de planificación: **son DOS mecanismos, no uno**
+
+Planificación preguntó si `RETIRADO_POR:` alcanza para una fila inválida dentro de un documento vigente. **No
+alcanza, y la razón es dónde vive la invalidación:**
+
+| | el barrido retirado | la fila 81 |
+|---|---|---|
+| ¿existe la invalidación? | **sí**, declarada en el encabezado de otro documento | **no existe en ninguna parte** |
+| el problema es | **no viaja** a lo retirado | la fila **se contradice consigo misma** |
+| lo resuelve | `RETIRADO_POR: <doc>` — un puntero que propaga algo que ya está escrito | **ningún estado**: hace falta un **control de contenido** que verifique que cada elemento citado existe **en los dos lados** |
+
+Conclusión para el formato: **el estado de vigencia conviene por fila** (más granular no molesta y cubre
+retiros parciales), **pero el segundo caso no es un problema de estado** — es un gate que compara las citas
+contra la referencia. Y planificación tiene razón en que es **más grave**: el retiro al menos está declarado
+en algún encabezado; esto no está declarado en ninguna parte, y sólo apareció porque alguien fue a leer la
+celda.
+
+### Lo que este par de correcciones enseña, y es el filo
+
+**Las dos veces me corrigió el sujeto del dictamen leyendo su propia evidencia** — FE1 con el número de
+línea, planificación con el lado de la comparación. Tercera vez hoy. Eso ya no es anécdota: **la señal más
+barata para auditar un juez es preguntarle al juzgado cómo le fue**, y en este eje viene siendo más
+productiva que mis propios controles.
+
+Y el segundo error es peor que el primero, porque **fui a verificar con un control positivo bien puesto y
+contesté sobre otro universo**: medir la app prueba que el elemento existe en el producto, no que exista en
+la referencia. Un control positivo prueba la sensibilidad del instrumento, **nunca la pertinencia del
+sujeto** — y acá el sujeto correcto estaba escrito en la propia celda («coincide con **el proto**»).
+
+**delegación:** 0 sub-agentes · 3 lecturas inline (la fila 81, el módulo de facturación, el mensaje de FE1) ·
+scripts: 0 · 8 mediciones `git` (`git grep` sobre `54fac3ea` y `git cat-file`/`log` sobre `origin/main`),
+cada barrido con su control positivo y un negativo.

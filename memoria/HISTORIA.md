@@ -321,3 +321,51 @@ que sí enuncia una regla sin padre en el índice.
 
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. — **bajada del índice el 2026-09-29**, no por longitud: el operador movió device/EAS al SPRINT SIGUIENTE el 22/09, así que su disparador no puede dispararse en este sprint. **Subíla de vuelta el día que device vuelva a la cola.**
+
+---
+
+## 2026-09-29 · Las 14 entradas del eje «criterio 3» entran acá **porque el índice está saturado**, no por ser casos menores
+
+No se bajaron del índice: **nunca pudieron entrar en ESTA copia**. Medido el 2026-09-29 sobre
+`MEMORY.md` de esta rama: `presupuesto 23958 / 24000 chars (190 líneas)` — **42 caracteres y 10 líneas de
+margen para 14 entradas**. El medidor (`scripts/medir-indice-memoria.py`, cableado al gate por
+planificación) las cuenta indexadas acá, así que dejan de ser invisibles y quedan buscables.
+
+⚠️ **Corrección del mismo día, y es una trampa de copia.** Escribí primero que «el mecanismo de fusión de
+hermanas llegó a su techo» y que toda entrada nueva sólo podía ir acá. **Falso, y medido sobre el archivo
+equivocado:** planificación tiene la misma copia en **23830/24000 (187 líneas), 341/341, exit 0** — con
+**170 chars y 13 líneas** de margen — porque recortó las 6 líneas más verbosas, que eran las suyas, y ganó
+242 chars **sin perder un solo link**. `MEMORY.md` existe en cuatro lugares (esta rama, `wt-mem-idx`, el
+checkout compartido y el slug del harness): **una cifra del índice no significa nada sin decir de cuál
+copia sale**, y «el techo» era verbosidad propia, no capacidad. Antes de bajar contenido ajeno, el margen
+sale de recortar el propio.
+
+Lo que **sí** está medido sobre el tronco, con control positivo y negativo: **las 14 faltan en
+`origin/main:memoria/MEMORY.md`**. El índice corregido de planificación vive en su rama (`109342d9`, PR
+#721) y no en `main` — la clase que ella misma nombró: **el índice y lo indexado se mergean por separado,
+así que un índice correcto en su rama es un índice roto en el tronco.** Por eso estas líneas quedan acá:
+dejan `main` consistente en cualquiera de los dos órdenes de merge.
+
+📌 **Deuda declarada, con dueño:** cuando #721 mergee, las entradas que su `MEMORY.md` ya indexe hay que
+**quitarlas de esta sección** para no tener el puntero duplicado en dos índices. No rompe el gate (el
+medidor exige que cada entrada esté indexada en alguno de los dos), así que es limpieza, no bloqueo —
+auditoría, al mergear #721.
+
+⚠️ **Tres merecen subir al índice cargado en cuanto haya lugar**, y van marcadas con 🔝 abajo: son las que
+cambian una decisión en curso, no las que explican un caso. El criterio: *¿su ausencia hace que otra
+sesión re-derive una lección con evidencia?* Las tres ya lo provocaron el mismo día en que se escribieron.
+
+- 🔝 [🟢🙈 Nadie audita un COHERENTE — el veredicto que DESACTIVA trabajo](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) — no deja rastro.
+- 🔝 [🔇⚔️ Un parser que pierde veredictos silencia los CONFLICTOS](un-parser-que-pierde-veredictos-silencia-los-conflictos.md) — ahí vive el falso verde.
+- 🔝 [📄🎭 Si el formato no codifica el ROL, ningún parser lo recupera](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md) — la raíz es el protocolo.
+- [🎭 Dos discriminantes OPUESTOS fallaron ⇒ el rol no está en el formato](el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron.md) — 2º caso de la raíz de arriba.
+- [🐤⏳ El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) — uno viejo pasa igual sano o enfermo.
+- [🖼️🕳️ El instrumento FABRICA una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) — y quien la mire acusa al producto.
+- [🏷️🎭 Un id FABRICADO no puede parecerse a uno real](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) — el lector no los distingue.
+- [🌍🕳️ El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) — ¿los conoce a todos?
+- [🎚️🎯 Un control calibrado a TU valor no ve al productor ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md) — mide tu ausencia.
+- [🚦🐛 Un gate cuyo predicado es el SÍNTOMA de un bug lo vuelve veredicto](un-gate-cuyo-predicado-es-el-sintoma-de-un-bug-abierto.md) — ¿qué otra causa lo da?
+- [👯❓ Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) — ¿qué pregunta hace cada lado? Y un empate tiene TRES resoluciones, no dos.
+- [📬🎁 Un `cierre_` ajeno puede traer tu cola ya hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) — ciego a las entregas.
+- [📜🚪 Una NORMA no tiene estado terminal en un buzón](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md) — cierra su bajada, no ella.
+- [📮🕳️ Un contrato `a-todos` no tiene quien lo CIERRE](un-contrato-dirigido-a-todos-no-tiene-quien-lo-cierre.md) — cero dueños, no varios; el urgente grita eterno.

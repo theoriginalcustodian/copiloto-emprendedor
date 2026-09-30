@@ -38,6 +38,33 @@ tiene resultado?»**), la asimetría se explicó sola.
 la asimetría es información, no defecto. Y el **orden** es lo que decide: razón primero, comparación
 después. Al revés, la simetría se vuelve la hipótesis de trabajo y cualquier diferencia parece error.
 
+### ⚠️ Corrección del mismo día: la regla de arriba, aplicada de más, ABSUELVE de más
+
+Horas después usé «son dos preguntas distintas» para explicar **dos** empates a la vez (`soporte` y
+`comousar`, COHERENTE vs DESVÍO). **El autor de las filas me corrigió mirando su propia celda: era un
+caso de cada uno.** En `soporte` sí eran dos preguntas («el proto está desactualizado — drift esperado,
+no bug»). En `comousar` las dos preguntaban lo mismo y una **miró menos**: contó ítems de texto mientras
+la otra miraba layout y una sección entera. **Misma pregunta, profundidades distintas.**
+
+Así que un empate tiene **tres** resoluciones, no dos:
+
+| | resolución | qué pasa con cada lado |
+|---|---|---|
+| 1 | **dos preguntas distintas** | los dos válidos; el padrón debe declarar cuál responde cada uno |
+| 2 | **misma pregunta, profundidades distintas** | gana el más profundo; el otro queda **SUPERADO**, no «vigente con otra pregunta» |
+| 3 | **uno está mal** | se corrige |
+
+**La (1) es la única que no deja a nadie equivocado, y por eso es la que uno elige por defecto.**
+Aplicada a un caso que es (2), deja vivo un veredicto superado — y si el superado es el COHERENTE,
+**fabrica un falso verde**, que es el error que este eje entero venía a cazar
+([[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]]). El sesgo es simétrico al del
+error original: primero emparejé por simetría y acusé de más; después expliqué por «dos preguntas» y
+absolví de más. **Las dos veces el molde era cómodo y la precondición no estaba verificada.**
+
+**El discriminante es barato y siempre está a mano: leé qué dice el MOTIVO de cada lado que miró, no qué
+veredicto puso.** Un motivo que cita la referencia y la declara desactualizada a propósito es (1); dos
+motivos que citan **distinta cantidad de superficie** son (2).
+
 El parecido de los sujetos es justo lo que engaña: mismo componente, mismo testid, mismo archivo. Cuanto
 más gemelos son, más fuerte se siente el argumento de simetría — y menos dice sobre si sus preguntas
 coinciden.
