@@ -141,6 +141,12 @@ MEDICIONES_DECLARADAS = {
     "2026-09-22_dato_frontend2-a-planificacion_BL-Q3-web-barrido-pwa-vs-prototipo.md",
     # auditoria midiendo (no dictaminando)
     "2026-09-29_cierre_auditoria-a-planificacion_poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia-de-escritorio.md",
+    # `(home)`: la ULTIMA fila del criterio 3, medida por FE2 el 2026-09-30. Nadie la habia medido
+    # nunca, y no por olvido: el id era ILEGIBLE para este parser (ver SUJ_CELDA_RARA), asi que su
+    # veredicto quedaba huerfano y la cifra no podia pasar de 53 de 54 por mucho que se midiera.
+    # Este documento estaba en el buzon ANTES de que el fix existiera; lo que lo hizo aparecer no
+    # fue trabajo nuevo, fue el instrumento dejando de ser ciego.
+    "2026-09-30_cierre_frontend2-a-planificacion_C3-home-medida-DESVIO-mi-dia-vs-tablero.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
@@ -200,6 +206,13 @@ NO_SON_MEDICION = {
         "del criterio 3.",
     "2026-09-28_pedido_planificacion-a-frontend1_el-12-era-tuyo-y-3-de-los-interrogantes-ya-tienen-respuesta.md":
         "Es un `pedido_`: asigna trabajo citando un sujeto. Un pedido no mide.",
+    "2026-09-30_contrato_planificacion-a-frontend2_C3-la-ultima-fila-medir-la-home-mi-dia-con-ver-vacio.md":
+        "Es MIO y es el `contrato_` que ENCARGA la medicion de `(home)`: cita el sujeto y enumera el "
+        "vocabulario cerrado (incluido el retiro de `DIFERENCIA`/`COINCIDE`) para decirle a FE2 con "
+        "que palabras escribir. Un contrato que nombra los tokens permitidos los contiene todos: "
+        "clasificado como medicion inyectaria las senales que solo estaba citando. La medicion que "
+        "encarga es el `cierre_` de FE2, que si esta en MEDICIONES_DECLARADAS -- contar los dos "
+        "seria doble conteo del mismo sujeto.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
@@ -815,6 +828,23 @@ SUJ_CELDA = re.compile(r"^\*{0,2}`([a-z0-9][a-z0-9\-]{1,40})`")
 # que su invisibilidad era el resultado correcto. El guard acertaba por accidente, y una
 # medicion vigente escrita igual habria desaparecido sin dar sintoma.
 SUJ_CELDA_PELADA = re.compile(r"^\*{0,2}([a-z0-9][a-z0-9\-]{1,40})\b")
+# Los DOS de arriba exigen `[a-z0-9]` al inicio, y el padron tiene un id que EL PROPIO INSTRUMENTO
+# fabrica y que empieza con parentesis: `(home)`, que `criterio3-padron.sh:59` genera normalizando
+# la celda `*(vacio)* Mi dia` del SPEC. Medido el 2026-09-30 con control positivo (`factura` se
+# lee): `(home)` salia ILEGIBLE en las tres formas y su veredicto quedaba HUERFANO, asi que la
+# ultima fila del criterio 3 no podia cerrarse NUNCA -- por bien que alguien midiera la home, la
+# cifra se quedaba en 53 de 54. El universo y el lector no compartian el alfabeto, y el universo lo
+# escribe este mismo repo.
+#
+# Este captura el token DECLARADO sin exigirle forma, y queda condicionado a la pertenencia al
+# padron en el call-site. Por que es seguro y no una relajacion: es la MISMA asimetria que ya rige
+# arriba -- backtick = declaracion explicita del autor, token pelado = solo si esta en el padron --,
+# extendida al caso que el padron fabrico. El padron es EXTERNO y cerrado (54 ids parseados del
+# SPEC), asi que esto no puede inventar sujetos: solo reconoce los que ya estaban declarados.
+#
+# El ancla `^` es lo que separa el rol de SUJETO del de REFERENCIA: `| ver `(home)` mas arriba |`
+# menciona el id y NO es una medicion. El rol de la cita se escribe, no se infiere (#721).
+SUJ_CELDA_RARA = re.compile(r"^\*{0,2}\s*`([^`]{1,60})`")
 
 
 def camino_de(cola):
@@ -848,14 +878,30 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
         nueva = None
         if celdas:
             m = SUJ_CELDA.match(celdas[0])
-            pelada = False
-            if not m:
+            sujeto = m.group(1) if m else None
+            forma = "celda"
+            if sujeto is None:
                 mp = SUJ_CELDA_PELADA.match(celdas[0])
                 if mp and mp.group(1) in ids:
-                    m, pelada = mp, True
-            if m:
-                nueva = {"id": m.group(1), "camino": "", "linea": n,
-                         "forma_decl": "celda-pelada" if pelada else "celda",
+                    sujeto, forma = mp.group(1), "celda-pelada"
+            if sujeto is None:
+                # TERCER intento: el id del PADRON con la forma que el padron le dio (ver
+                # SUJ_CELDA_RARA). Dos variantes, las dos condicionadas a `ids`:
+                #   a) declarado entre backticks, con o sin glosa:  | `(home)` (Mi dia) |
+                #   b) la celda entera, pelada de adorno markdown:  | **(home)** |
+                # La (a) es la forma que los documentos usan DE VERDAD, y casi se me escapa: la
+                # primera version solo hacia (b), el caso (b) del test pasaba, y el verde parcial
+                # tapaba que la forma real seguia ilegible. Lo caza el caso con glosa.
+                mr = SUJ_CELDA_RARA.match(celdas[0])
+                if mr and mr.group(1).strip() in ids:
+                    sujeto, forma = mr.group(1).strip(), "celda-padron-bt"
+                else:
+                    crudo = celdas[0].strip().strip("*").strip().strip("`").strip()
+                    if crudo in ids:
+                        sujeto, forma = crudo, "celda-padron"
+            if sujeto is not None:
+                nueva = {"id": sujeto, "camino": "", "linea": n,
+                         "forma_decl": forma,
                          "veredictos": []}
                 # En una tabla el sujeto y el veredicto viven en la MISMA línea: la medición se
                 # cierra acá y no arrastra contexto a la fila siguiente.
