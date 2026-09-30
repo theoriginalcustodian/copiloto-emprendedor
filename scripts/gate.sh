@@ -57,6 +57,53 @@ command -v jq >/dev/null || { echo "gate.sh: falta jq (necesario para el recibo)
 mkdir -p "$RECIBO_DIR/logs"
 quiere() { [ "${#SELECCION[@]}" -eq 0 ] && return 0; local j; for j in "${SELECCION[@]}"; do [ "$j" = "$1" ] && return 0; done; return 1; }
 
+# TIPOCOMP — un SUBCONJUNTO de jobs no es una medición válida cuando el árbol toca `packages/core/src`.
+# Medido 2026-09-30, y el mismo día dos veces: agregar un campo REQUERIDO a un tipo de `packages/core`
+# rompió 7 fixtures hand-built de `core`/`mobile`/`web`; el gate local de UN paquete salió verde y el
+# rojo (`TS2741`) lo mostró recién CI. El agujero NO es el default —`gate.sh` sin argumentos ya corre
+# los 5— es que `gate.sh web` MIDE MENOS de lo que el cambio afecta y no lo dice: un recibo parcial
+# que después se cita como si cubriera el árbol. Tercera instancia del a-todos "el recibo local no
+# garantiza CI verde", y la primera con una causa mecanizable: no es «el entorno», es QUÉ CORRIÓ.
+#
+# Se ENSANCHA la selección, no se rechaza: un guard que obliga a retipear el comando enseña a saltear
+# el gate (memoria `el-guard-que-grita-en-el-caso-normal-se-desarma-solo`), y ensanchar hace lo
+# correcto solo. Y no grita en el caso normal: sin cambios en `packages/core/src` no imprime nada.
+# El escape honesto, si de verdad querés una sola suite, es `bash scripts/ci/<job>.sh` directo: eso no
+# pretende ser un gate ni escribe recibo, así que no puede citarse como cobertura.
+JOBS_ACOPLADOS_A_CORE=(core web mobile)
+AGREGADOS_POR_CORE=()
+if [ "${#SELECCION[@]}" -gt 0 ]; then
+  # `GATE_BASE_REF` parametriza SÓLO la base del diff: el barrido de abajo es el mismo `git diff` que
+  # corre en producción. Un override que inyectara la LISTA de cambios crearía un camino que el test
+  # ejercita y la corrida real no (memoria `el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar`).
+  BASE_CAMBIOS="${GATE_BASE_REF:-}"
+  if [ -z "$BASE_CAMBIOS" ] && git -C "$ROOT" rev-parse --verify -q origin/main >/dev/null 2>&1; then
+    # `merge-base`, no `origin/main`: una rama creada hace rato no "cambió" lo que main avanzó después
+    # (memoria `rama-nueva-no-significa-que-el-grafo-no-sepa-nada`).
+    BASE_CAMBIOS="$(git -C "$ROOT" merge-base origin/main HEAD 2>/dev/null || true)"
+  fi
+  # Sin `origin/main` (fixture con `git init` en un temp dir) no hay nada que ensanchar: se saltea
+  # mudo, igual que el check de `.githooks/pre-push` cuando el árbol no lo trae.
+  if [ -n "$BASE_CAMBIOS" ]; then
+    # Los jobs leen el DISCO, no git: un fixture nuevo SIN COMMITEAR entra a la corrida sin estar en
+    # ningún árbol — que es exactamente cómo se veía el rojo de hoy. Por eso el barrido suma
+    # `status --porcelain` al diff, mismo criterio que `SUCIO_AL_INICIO` de arriba.
+    CAMBIOS="$( { git -C "$ROOT" diff --name-only "$BASE_CAMBIOS" HEAD 2>/dev/null; \
+                  git -C "$ROOT" status --porcelain 2>/dev/null | sed 's/^...//'; } || true )"
+    # `-> ` cubre los renames de `status --porcelain` (`R  viejo -> packages/core/src/x.ts`): anclar
+    # sólo al principio de línea perdería el DESTINO, que es la mitad que importa.
+    if grep -qE '(^|-> )packages/core/src/' <<< "$CAMBIOS"; then
+      for j in "${JOBS_ACOPLADOS_A_CORE[@]}"; do
+        quiere "$j" || { SELECCION+=("$j"); AGREGADOS_POR_CORE+=("$j"); }
+      done
+      if [ "${#AGREGADOS_POR_CORE[@]}" -gt 0 ]; then
+        echo "==> gate.sh: el árbol toca packages/core/src -> ensancho la selección con: ${AGREGADOS_POR_CORE[*]}"
+        echo "    (un tipo compartido rompe fixtures de los otros paquetes; medir uno solo es un recibo parcial)"
+      fi
+    fi
+  fi
+fi
+
 # Triada por sesión (BL-B6): base de tests, puerto y stage propios -> dos sesiones no se pisan.
 # shellcheck source=ci/sesion-env.sh
 source "$ROOT/scripts/ci/sesion-env.sh"

@@ -149,3 +149,53 @@ Preguntá las dos, no una:
 - [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] — el falso rojo no choca con nada.
 - [[al-juez-tambien-hay-que-darle-el-plano]] — el otro caso del mismo día, misma forma.
 - [[instrumento-que-no-mira-nunca-falla.md]] — "0 recolectados" es no mirar.
+
+---
+
+## Refuerzo 2026-09-30 — el contador que sólo puede contar la DEUDA, nunca el pago
+
+El caso más limpio de esta memoria hasta hoy, y el más peligroso, porque el mecanismo roto hacia el
+«NO» estaba **adentro de un ratchet escrito con todo el rigor**: control positivo de ruta falsa,
+enumeración real en vez de lista a mano, clasificación por identidad del callable, deuda contada.
+
+`test_ratchet_endpoint_tenant_scope.py` cuenta la deuda de aislamiento así:
+
+```python
+sin_cobertura = set(clasificacion["tenant_scoped"]) - cubiertas
+```
+
+- `tenant_scoped` viene de `route.path` → guarda la **PLANTILLA**: `/afip/facturas/{factura_id}/estado`.
+- `cubiertas` sale por AST del archivo de tests, aceptando sólo `ast.Constant` que empiece con `/` →
+  guarda el **PATH CONCRETO DEL REQUEST**: `/afip/facturas/abc-123/estado`.
+
+**Esos dos strings nunca coinciden para una ruta con parámetro.** Entonces: ninguna de las 24 rutas
+tenant-scoped con id en el path puede registrarse como cubierta **jamás**, no importa cuántos casos
+hostiles se escriban. Y el remate, que es lo que lo vuelve un mecanismo roto hacia el «NO» y no un
+simple bug de conteo: el assert es `len(sin_cobertura) == _DEUDA_TENANT_SCOPED_SIN_TEST`, así que
+
+- si alguien escribe los casos y **baja** la constante como el propio mensaje de falla le ordena → el
+  conteo computado no bajó → **ROJO**;
+- si no la baja → **VERDE**, con cero progreso medido.
+
+**Verde premia la quietud y rojo castiga el avance.** Un contador que sólo sabe sumar deuda y no
+puede restar el pago no es un ratchet: es un trinquete soldado. Y no da síntoma porque `68 == 68`
+es exactamente lo que se espera ver cuando todo está bien.
+
+**Por qué estaba verde y nadie lo vio:** los 8 paths que el mecanismo sí cuenta son **planos**
+(`/me`, `/catalog`, `/reply`, `/mi-dia/calendario`…), donde plantilla == path del request. El
+instrumento acierta precisamente en el conjunto donde las dos dimensiones **colapsan por
+casualidad**, y es ciego en todo el resto — que es además el conjunto de mayor consecuencia (la forma
+BOLA / OWASP API1:2023, el modo de falla que ADR-013 §3.3.4 pagó con ~2 meses de drift en prod).
+
+**La pregunta que lo caza, y va con las de arriba:**
+*¿este contador puede llegar a CERO?* Si no existe ninguna acción que lo baje, no está midiendo deuda:
+está midiendo una constante. Formulada sobre un gate: *¿cuál es el diff exacto que lo pone verde?* Si
+no lo puedo escribir, el gate no sabe decir «sí».
+
+⚠️ **Y el dato de método, que es la mitad incómoda:** cometí el MISMO error de dimensión tres minutos
+antes de encontrarlo. Para medir la cobertura grepeé el archivo de tests buscando paths con `{` y me
+dio **0** — y por un segundo eso me pareció un hallazgo. No lo era: un test no pide
+`/afip/facturas/{factura_id}/estado`, pide `/afip/facturas/abc-123/estado`. Estaba contando plantillas
+contra instancias, igual que el ratchet. El cero de un instrumento que mira la dimensión equivocada se
+ve idéntico a un cero real; lo que lo separó fue preguntarme **cómo se escribe de verdad lo que estoy
+buscando**. Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y [[vacio-no-es-hallazgo-correr-el-control]].
