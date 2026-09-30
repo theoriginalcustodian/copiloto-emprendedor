@@ -178,3 +178,38 @@ propio resultado **aunque acabes de escribir la advertencia** — el turno en qu
 el turno en que más confiado estás; (4) **nunca leas un hash sin el rc de la consulta que lo produjo**
 — `git rev-parse` ecoa el argumento cuando no resuelve, y `cut -c1-8` lo disfraza de blob; para
 «¿existe este path en este ref?» usá `git cat-file -e`, que no imprime nada y sale rc≠0. **(5)** el `else` de un chequeo de existencia **corta** (`exit 2`, «SIN MEDIR»), nunca asigna: un mensaje de error guardado en una variable se convierte en el argumento de la medición siguiente, y el `| wc -l` se come la queja. Y el control positivo del barrido es pasarle **a propósito** un ref inventado: si su salida no se distingue de un resultado vacío legítimo, el barrido no está midiendo.
+
+---
+
+## Refuerzo (2026-09-30): imprimir la DISTRIBUCIÓN en vez del agregado es lo que lo caza
+
+Mismo defecto, en un parser propio de quince líneas, y el detalle que lo salvó es replicable.
+
+Estaba desglosando 1404 aristas de un `zombies.json` por tipo de relación:
+
+```python
+c = collections.Counter(a.get("relacion") or a.get("tipo") or a.get("type") or "?" for a in ar)
+...
+print(f"  zombies co_change MEDIDOS: {c.get('CO_CHANGES_WITH', 0)}")   # -> 0
+```
+
+La clave real era **`name`**. Ninguno de los tres nombres que probé existía, así que las 1404 cayeron en
+`"?"` y el `.get('CO_CHANGES_WITH', 0)` devolvió **0**. Mi aritmética siguió adelante sola e imprimió
+*«el medido (0) no es 1404 ni 1400: la diferencia es 1404, no 4 → ninguna hipótesis cuadra»* — una
+conclusión entera, con su razonamiento, **fabricada por la clave equivocada**.
+
+**Lo cacé porque imprimí el Counter crudo al lado:** `{'?': 1404}`. Ese `?` es imposible de leer como
+un resultado. Si hubiera impreso sólo el número agregado —que es lo natural cuando lo que querés es la
+cifra— el `0` se lee como un dato y la conclusión sale publicada.
+
+**Why:** porque el `or "?"` fue *mi* red de seguridad, puesta para que nada explotara, y por eso mismo
+convirtió un fallo de lectura en un valor plausible. El `.get(clave, 0)` hace lo mismo un paso después:
+**los dos defaults defensivos, encadenados, transforman «no sé leer esto» en «medí cero»**. Y cero es
+un número con el que se puede razonar.
+
+**How to apply:** (1) todo agregado se imprime **con su distribución al lado** — un `{'?': N}` o un
+`{None: N}` salta a la vista y un `0` no; (2) antes de contar por un campo, imprimí las **claves reales
+de un elemento** (`sorted(items[0].keys())`), que cuesta una línea; (3) desconfiá del `or` de fallback en
+un extractor: hace que la ausencia se vea como una categoría; (4) si el denominador de tu conteo no
+coincide con el total conocido, el parser miente antes que los datos — acá 1404 objetos, 1404 en `?`, y
+el total correcto estaba impreso por el propio dry-run treinta líneas más arriba.
