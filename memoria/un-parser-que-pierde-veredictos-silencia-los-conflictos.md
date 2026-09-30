@@ -49,10 +49,23 @@ ellos costó una investigación, y **sólo porque fui a mirar**. El control que 
 ## Y el hallazgo debajo del hallazgo
 
 Al cruzarlos aparecieron dos ids (`soporte`, `comousar`) con COHERENTE de un lado y DESVÍO del otro
-**sobre el mismo hecho** («el título dice "Soporte técnico", el proto dice "Soporte de Odobi"»). No es
-que alguien se equivocó: una columna decía `Resolución: H-A4-4 confirmado desplegado`. Una medición
-respondía *¿el hallazgo quedó resuelto?* y la otra *¿coincide con el prototipo?* — **dos preguntas
-distintas con el mismo vocabulario**, sumadas en el mismo padrón, y el conteo no distinguía cuál.
+**sobre el mismo hecho**. Expliqué los dos igual —«son dos preguntas distintas con el mismo
+vocabulario»— y **el autor me corrigió mirando su propia celda fila por fila: era un caso de cada
+uno.**
+
+- `soporte` **sí** eran dos preguntas: su celda decía «el proto sigue mostrando "Soporte de Odobi"… es
+  mockup desactualizado respecto al fix (**drift esperado, no bug**)». Su COHERENTE contestaba *¿se
+  desplegó el fix?*, no *¿coincide con el proto?*.
+- `comousar` **no**: las dos preguntaban lo mismo, y su COHERENTE miró **sólo texto** («mismos 5 ítems,
+  mismos títulos») mientras el DESVÍO miraba layout y una sección entera que el proto no tiene. **Misma
+  pregunta, profundidades distintas: gana el más profundo y el otro queda superado.**
+
+**Y acá está la trampa, que es la parte que vale:** de las tres resoluciones posibles de un empate
+—(1) dos preguntas distintas · (2) misma pregunta, uno más superficial · (3) uno está mal— **la (1) es
+la única que no deja a nadie equivocado**, y por eso es la que uno elige por defecto. Aplicada a un caso
+que es (2), **deja vivo un COHERENTE superado: fabrica el mismo falso verde que el contraste venía a
+cazar.** El discriminante es barato: **leé qué dice el MOTIVO de cada lado que miró, no qué veredicto
+puso.**
 
 ⚠️ **Y esto ya estaba escrito:** [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]] dice, del
 mismo día, «pueden estar preguntando cosas distintas, y entonces la asimetría es información. Antes de

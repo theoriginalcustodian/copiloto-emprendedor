@@ -903,3 +903,43 @@ exclusivo de los 4 dudosos · re-resolución por basename exacto) · 0 en backgr
 `matriz-web-re-medida-v2` creyendo que era `matriz-web-re-medida`; las 4 filas volvieron sin ids y casi
 las descarté como ruido. Repetido con igualdad de basename salieron `bi`/`apar`/`soporte`/`factura` —
 o sea C3-21 entero estuvo a un `startswith` de no existir.
+
+---
+
+## 🔴 CORRECCIÓN a C3-22 (misma fecha) — **eran DOS casos, no uno, y mi explicación absolvía de más**
+
+FE1 contestó la pregunta de una línea mirando su propia celda fila por fila, y **partió C3-22 en dos**:
+
+| id | qué resultó | evidencia que lo decide |
+|---|---|---|
+| `soporte` | ✅ **dos preguntas distintas**, como planteé | su celda del 22/09 dice textual: «el proto sigue mostrando "Soporte de Odobi"… es **mockup desactualizado** respecto al fix (**drift esperado, no bug**)». Su COHERENTE contestaba *¿se desplegó H-A4-4?* |
+| `comousar` | 🔴 **NO es ese caso: misma pregunta, medición más superficial** | su COHERENTE del 22/09 decía sólo «mismos 5 ítems, mismos títulos y subtítulos» — miró **texto**, no layout ni la sección extra «LO QUE LE PODÉS PEDIR». Las dos preguntaban *¿coincide con el proto?*. **El DESVÍO del 29/09 gana; el COHERENTE queda superado** |
+
+**Lo que estaba mal en mi C3-22:** metí los dos ids en la misma bolsa y ofrecí una sola explicación. Y
+la explicación que elegí es la peligrosa: **«son dos preguntas distintas» ABSUELVE a los dos lados.**
+Aplicada a un caso que en realidad es (b), **deja vivo un COHERENTE superado — o sea fabrica exactamente
+el falso verde que este dictamen vino a cazar.** Es cómoda justamente porque no obliga a que nadie se
+haya equivocado.
+
+**La regla que sale, y es la que hay que usar al desempatar:** dos veredictos opuestos sobre el mismo
+sujeto tienen **tres** resoluciones, no dos —
+
+1. **dos preguntas distintas** → los dos son válidos y el padrón debe declarar cuál responde;
+2. **misma pregunta, profundidades distintas** → gana el más profundo y el otro queda **superado**, no
+   «vigente con otra pregunta»;
+3. **uno está mal** → se corrige.
+
+**Elegir (1) por defecto es el error**, porque es la única de las tres que no deja a nadie equivocado.
+El discriminante es barato y siempre está disponible: **leer qué dice el motivo de cada lado que miró**,
+no qué veredicto puso. `soporte` cita el proto y lo declara desactualizado a propósito → (1). `comousar`
+cita ítems de texto contra un motivo que habla de layout y de una sección entera → (2).
+
+**Y el corolario que corrige mi propia fila de trabajo:** en el tablero de 11 desvíos, `comousar` **no**
+es un caso de vocabulario ni de referencia — **es un DESVÍO vigente**, con el COHERENTE del 22/09
+superado. No hay nada que reconciliar ahí.
+
+`bi` quedó **reclasificado a COHERENTE sin recaptura**, citando el código y la matriz del 22/09, con
+`medido_contra: app=servido@b7fa0e23@1280x900 · proto=proto@54fac3ea@1280x900`. C3-21 cerrado del lado
+de FE1.
+
+**delegación:** 0 sub-agentes · 1 lectura inline (el `cierre_` de FE1) · scripts: 0 · 0 en background.
