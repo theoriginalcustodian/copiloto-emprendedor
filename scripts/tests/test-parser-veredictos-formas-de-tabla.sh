@@ -101,5 +101,38 @@ if ! echo "$corrida" | grep -q '^OK.POSITIVO'; then
   echo "🛑 EL POSITIVO ESTA EN ROJO: la tanda entera es invalida, no leas los otros casos."
   exit 1
 fi
-[ "$fallos" -eq 0 ] && { echo "✅ todas las formas de tabla vistas ($(echo "$corrida" | grep -c '^OK') casos)"; exit 0; }
-exit 1
+if [ "$fallos" -ne 0 ]; then exit 1; fi
+echo "✅ todas las formas de tabla vistas ($(echo "$corrida" | grep -c '^OK') casos)"
+
+# ── CANARIO DEL ALFABETO: el padron contra su lector ───────────────────────────────────────────
+#
+# Los casos de arriba prueban FORMAS que yo elijo. Esto prueba algo distinto y que ninguno de
+# ellos puede: que **los 54 ids que el padron realmente contiene** son legibles por este parser.
+# La diferencia no es de grado — `(home)` fue ilegible 8 dias con todos los casos de forma en
+# verde, porque ninguno usaba un id del padron con parentesis. Y la falla no daba sintoma: un
+# documento cuyo UNICO sujeto es ilegible no llega a ser candidato, asi que no aparece ni entre
+# los medidos ni entre los descartados, y el ratchet `exit 8` nunca se entera.
+#
+# El padron es GENERADO (`criterio3-padron.sh:59` normalizo `*(vacio)* Mi dia` -> `(home)`), asi
+# que la proxima spec puede fabricar otro id raro. El canario falla **al construir**, no 8 dias
+# despues. Escrito por auditoria, con sus dos controles horneados (lector ciego inyectado /
+# token fuera del padron); se llama desde aca para que lo corra el gate y no la memoria de nadie.
+#
+# Su exit 2 se trata como ROJO a proposito: aca dentro «no pude establecer la precondicion» es un
+# fallo del gate, no una excusa. Lo contrario seria un vacio absolviendo
+# (`memoria/vacio-no-es-hallazgo-correr-el-control.md`).
+echo
+CANARIO="$(dirname "${BASH_SOURCE[0]}")/canario-alfabeto-padron.py"
+if [ ! -f "$CANARIO" ]; then
+  echo "❌ falta el canario del alfabeto ($CANARIO) — el cruce padron<->lector no se esta midiendo"
+  exit 1
+fi
+if python "$CANARIO"; then
+  echo "✅ canario del alfabeto: el padron y su lector comparten el alfabeto"
+else
+  rc_can=$?
+  echo "❌ canario del alfabeto: exit $rc_can — hay ids del padron que este parser NO puede leer"
+  echo "   (exit 1 = ilegibles, nombrados arriba · exit 2 = precondicion; las dos son rojo del gate)"
+  exit 1
+fi
+
