@@ -281,7 +281,7 @@ planificación», y `PLAN.md:247` dice «Dueño: **auditoría** (es su parser)»
 | 2 ✅ | `scripts/evidencia/vigencia-de-mediciones.py` — **reporta**, no actúa | auditoría | el barrido de 35 pantallas **tiene que** salir RETIRADO por `matriz-web-re-medida`; si no, el instrumento está roto |
 | 3 ⏳ | el contraste **excluye** las filas retiradas en vez de exhibirlas como conflicto. **Por fila Y POR VERSIÓN** (§3.bis), y la fuente es **el documento medido**, no la lista de invalidadas | **planificación** (`contar-veredictos.py`) | **una fila retirada no puede aparecer como conflicto nuevo** · negativo: con el registro vacío, el contraste tiene que volver a exhibir los conflictos de hoy · **y el tercero, de §3.bis: una fila corregida *in-situ* NO se excluye** — la lista del 28/09 la declara invalidada y su autor ya la corrigió, así que excluirla retira 2 filas vigentes |
 | 3.bis ⏳ | el `IDS` de la relación de FE2, que el registro dejó `[POR CONFIRMAR]` | **FE2** (es su declaración) | no enumero 7 pantallas que su autor no enumeró |
-| 3.ter ⏳ | cablear `test-vigencia-canario.sh` a `lint.sh` | **planificación** (`scripts/ci/` es suyo) | hoy corre solo; sin cablear, el próximo cambio al reportador no lo ejercita |
+| 3.ter ✅ | cablear el canario al CI — **lo hizo auditoría y NO era de planificación**: ver §7.bis | **auditoría** (el archivo es suyo; `lint.sh` no se tocó) | el bucle de `lint.sh` corre bajo `set -euo pipefail` sin `\|\| true` ⇒ **medido con control positivo:** un test que sale 1 aborta el job |
 
 **La corrida del paso 2, sobre `origin/main` @ `4f5692ef`:**
 
@@ -347,6 +347,54 @@ vigentes — 3 de las 5 relaciones son parciales. **Y §3.bis lo corrige un nive
 corregida *in-situ*, ni «por fila» alcanza — el paso 3 excluye **por fila y por versión**.
 
 ---
+
+## 7.bis · El renglón 3.ter era **mío**, y mi estimación de su costo tapaba que rompía el gate de las cuatro sesiones
+
+Se lo había asignado a planificación con esta frase: *«cablear el canario a `lint.sh` — es una línea o
+un `mv`»*. **Las dos mitades estaban mal, y la segunda era la peligrosa.**
+
+**El dueño.** `lint.sh` ya tiene el bucle (`for t in "$ROOT"/scripts/tests/test-*.sh`, 47 tests). No
+había nada que agregarle: el canario se llamaba `test-vigencia-canario.sh` pero vivía en
+`scripts/evidencia/`, así que **el nombre matcheaba el patrón y el glob no llegaba**. El archivo es mío
+⇒ el trabajo era mío. Le pasé como deuda ajena algo que sólo requería mover mi propio archivo.
+
+**El costo, medido.** Y un `mv` a secas habría puesto **9 fallos en el job `lint` de las cuatro
+sesiones**, porque `coordinacion/` **no está versionado**: en un clon limpio el reportador sale `2 SIN
+MEDIR` *antes de llegar a un solo control*. Medido a propósito, no deducido:
+
+```
+$ python scripts/evidencia/vigencia-de-mediciones.py --buzon /tmp/no-existe
+exit=2 · «SIN MEDIR: el buzon no existe en este checkout…»      ← ni un control corrió
+```
+
+**El fixture, y por qué tiene un par.** El registro **sí** está versionado (vive en `docs/`), así que
+los mutantes siguen saliendo del registro real y sólo el corpus se fabrica: un buzón `vestido` (cada
+documento citado existe y el del sucesor contiene su `ANCLA`) y uno `desnudo` (los mismos archivos,
+sin ninguna ancla). **El desnudo es lo que vuelve informativo al vestido:** mismo registro, `0` contra
+`8`, prueba que el veredicto sale del **contenido del buzón** y no de que el registro se declare
+correcto a sí mismo. Sin ese par, el verde del fixture sería indistinguible de un control que no mira.
+
+**Lo que el fixture NO prueba, dicho en el script:** que las anclas del corpus *real* sean ciertas. Ese
+caso corre sin `--buzon`, vale `exit 0` donde el buzón existe, y donde no se cuenta **`SALTADO` con el
+motivo** — nunca como verde. Hoy: **11 de 11** acá · **10 de 10 + 1 saltado** simulando el CI.
+
+**Y la rama del `SALTADO` tenía el defecto de siempre:** se estrenaba en el CI. Una rama hacia el «no
+medí» que nadie vio andar no se sabe si anda, y su primera corrida iba a ser el gate de las cuatro
+sesiones. Por eso el canario acepta `CANARIO_BUZON_REAL` — sólo para ejercitarla desde una máquina que
+**sí** tiene el buzón.
+
+**Tercera vez en el día del mismo error:** para decidir el intérprete conté `grep -c 'python '` sobre
+los tests que ya corren verdes y leí «5 archivos ⇒ existe en el runner». **Conté el símbolo, no el
+rol** (§3.bis, §6): verificado por rol, uno de los 5 era un comentario y otro era *el resolvedor que yo
+estaba por inventar* — `PY="$(command -v python || command -v python3)"`, en
+`scripts/tests/test-contar-veredictos-padron.sh:38`. Lo reutilicé en vez de escribir una segunda forma.
+Importa porque `scripts/ci/lint.sh` invoca `python3` y el job `lint` de `tests.yml` **no tiene
+`setup-python`** (sólo node).
+
+**El control del cableado, porque cablear no es vigilar:** el bucle corre bajo `set -euo pipefail` y sin
+`|| true`, así que un test rojo aborta el job — **medido** con un test de mentira que sale 1 (el bucle
+cortó con rc=1 y no llegó al final). Si el bucle hubiera ignorado el rc, mover el archivo habría sido
+decoración.
 
 **delegación:** 0 sub-agentes · ~14 lecturas inline · scripts: 3 corridas (versionado del buzón, cobertura
 de la convención con su control positivo, reportador con sus 4 controles).
