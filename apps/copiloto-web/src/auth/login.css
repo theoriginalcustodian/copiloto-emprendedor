@@ -31,7 +31,9 @@
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--core); /* wordmark en acento (Martín); 30px bold = texto grande, 4,38:1 >= 3:1 */
+  color: var(--core); /* wordmark en acento (Martín); 30px bold = texto grande >= 3:1.
+     Token vigente --core (BL-Q4, 2026-09-28): claro #A5462B/#EFE6D2 = 4,82:1;
+     oscuro #DE7250/#1E1610 = 5,63:1. (El #B04A2E/4,38:1 citado antes es el valor retirado.) */
 }
 
 .login-screen__heading {
