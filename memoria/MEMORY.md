@@ -7,10 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
-- **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
-- **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
-- **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
+- **✅ Criterio 3: 54 de 54 con veredicto** — `(home)`=DESVÍO (FE2, 30-09); la matriz del contador ve 27. `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
 - **Prod-beta multitenant vivo**, smoke **37/37 BETA-READY** (2026-09-23), RLS `FORCE`. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
@@ -32,7 +29,6 @@
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) - leerla ANTES de implementar. Portar adaptando, no copiar ciego.
 - [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) - se juntan. Reincidí con 7 PRs en una sesión.
 - [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) - diferido a prod; sólo no commitear ni pegar en chat.
-## 🔑 Órdenes del operador (reglas duras - se cumplen, no se evalúan)
 
 
 ## 🧭 Cómo trabajo
@@ -92,8 +88,6 @@
 - [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
 - [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
-- 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
-- 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
