@@ -60,3 +60,30 @@ control positivo), aplicado al sistema vivo en vez de a la suite de tests.
 **El canario encontró el fallo antes de existir.** Diseñarlo obligó a preguntar cómo entra realmente
 un error al sistema — y esa pregunta destapó que no entraba ninguno. Diseñar el detector es, en sí,
 una auditoría del camino que va a vigilar.
+
+---
+
+## Refuerzo (2026-09-30): el par vestido/desnudo se pisa a sí mismo si los dos escriben al mismo destino
+
+Corrí el par en secuencia dentro de un solo background —vestido (guard forzado a disparar), después
+desnudo (control positivo)— y leí el resultado al final. **El log mostraba las dos mitades correctas,
+pero la evidencia persistida era sólo la del desnudo:** el generador reescribe
+`evidencia-out/criterio3-caminos.json` en cada corrida, así que el `no_medibles_por_captura: 1` del
+vestido lo pisó el `0` del desnudo. Leído al final, el efecto decía **0 filas** — indistinguible de un
+guard que no disparó.
+
+Lo cacé porque el control que aplico es el **efecto**, no el log; si me hubiera quedado con el log
+—donde el `⊘ NO_MEDIBLE` aparece clarísimo— habría cerrado el fix con la evidencia del control positivo
+en lugar de la del caso probado. Re-corrí sólo el vestido y leí el json en el mismo paso: **1 fila, con
+su `porque` completo.**
+
+**Why:** porque el par vestido/desnudo está diseñado para producir dos resultados **distintos**, y por
+eso mismo el segundo borra al primero cuando comparten destino. La mitad que se pierde es siempre la
+misma: el desnudo va último porque es el control, así que lo que sobrevive es el resultado *benigno*.
+
+**How to apply:** (1) vestido y desnudo escriben a destinos distintos, o se lee la evidencia **entre**
+las dos corridas; (2) si el par corre sin supervisión, copiar el artefacto del primero antes de lanzar
+el segundo; (3) al cerrar un canario, mirá el **timestamp** del artefacto y cruzalo con cuál de las dos
+corridas lo escribió — un json con `corrida:` es lo que hace esto verificable; (4) el orden importa:
+correr el control positivo **primero** deja como sobreviviente el caso probado, que es el que se quiere
+adjuntar.

@@ -54,3 +54,47 @@ Hermana de **V-EXT** (`no-codificar-la-esperanza-principio-raiz`): aquélla disp
 que no cede tras 2 intentos; ésta ante un **comportamiento raro de un tercero** que ya tiene
 explicación publicada. Y de [[vacio-no-es-hallazgo-correr-el-control]]: el control te dice si tu
 instrumento sirve; el parte te dice si el problema es tuyo.
+
+---
+
+## Refuerzo (2026-09-30): el parte existía **en disco, en el propio repo**, y tres sesiones diagnosticaron a ciegas durante 8 horas
+
+El `reconcile` del grafo bloqueó el push de **tres sesiones** casi toda la jornada. Se discutió por
+mensajes: hipótesis del guard, del `exit 0` engañoso, del hook que saltea el sync. Todo correcto en parte
+y todo **inferido**.
+
+Había una bitácora que el propio script había agregado ocho días antes, exactamente para esto:
+
+```
+.bridge/graph-sync.log
+  2026-09-30T17:02:22  rc=0  motivo=contencion-otro-sync  marcador=c1e91870a003  origin_main=5330e0602ee4
+  2026-09-30T17:03:13  rc=1  motivo=sync-en-curso         marcador=c1e91870a003  origin_main=5330e0602ee4
+  …
+```
+
+Una línea por corrida, con **motivo, rc, pid y el marcador**. Su comentario en el código dice por qué
+existe: *«cuando el marcador no avanza hay cuatro fallas posibles y desde afuera las cuatro se ven igual:
+el marcador viejo»*. Es decir: **alguien ya había sufrido exactamente esta ambigüedad y dejó el
+instrumento que la resuelve.** Nadie lo abrió. Yo tampoco, hasta la octava hora.
+
+Y cuando lo leí, resolvió en seis líneas lo que no habían resuelto las hipótesis: que el caso de
+contención **ya había ocurrido de verdad** ese día (`rc=0`, rama aterrizada, marcador quieto), y que mi
+propia explicación anterior del mismo evento era falsa.
+
+## El segundo filo: el nombre del campo empuja a leerlo al revés
+
+`motivo=sync-en-curso` suena a «había otro sync corriendo». **Significa lo contrario**: se setea después
+de adquirir el lock (`graph-sync.sh:282`), o sea «yo tomé el lock, entré, y falló». La contención tiene su
+propio valor (`:277`). Leyéndolo por el nombre concluí que los pushes ni llegaban al reconcile — lo
+inverso de la verdad — y estuve por publicarlo. Lo frenó abrir el código que **escribe** el campo en vez
+de interpretar cómo se llama.
+
+**Why:** un registro estructurado se lee como dato duro y sus etiquetas como descripciones del mundo, pero
+una etiqueta la eligió alguien para describir **su rama del código**, no el estado del sistema. El valor es
+confiable; su nombre es prosa.
+
+**How to apply:** (1) ante cualquier fallo repetido de una herramienta propia, **buscar su log antes de
+hipotetizar** — `find . -name '*.log' -newermt '-1 day'` en el árbol de la herramienta cuesta un comando,
+y el comentario que lo creó suele explicar la ambigüedad que estás padeciendo; (2) antes de razonar sobre
+un valor de enum, **grepeá quién lo asigna** y leé esa rama — el nombre no dice cuándo se setea; (3) si el
+diagnóstico va por mensajes entre sesiones y nadie citó un log, eso ya es la señal.

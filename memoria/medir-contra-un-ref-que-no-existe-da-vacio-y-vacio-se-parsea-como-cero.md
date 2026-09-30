@@ -1,6 +1,6 @@
 ---
 name: medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero
-description: Un barrido de "qué trabajo está en riesgo" medido contra el ref equivocado falla en las DOS direcciones — omite y también inventa; el único control que cierra es preguntar por el EFECTO.
+description: Medir contra un ref equivocado falla en CUATRO modos — omite (el vacío se lee como 0), inventa (el squash deja la distancia alta para siempre) y ECOA el argumento (rev-parse devuelve lo que le pasaste y cut lo disfraza de hash), y NUNCA TUVO UN REF (el else de un guard de existencia asigna prosa y el pipe se come el rc, asi que un ref basura imprime el mismo '0 archivos' que un delta vacio legitimo); el control es el EFECTO más el rc de cada consulta.
 metadata:
   type: feedback
 ---
@@ -56,14 +56,160 @@ El caso espejo —dos errores opuestos que **se cancelan** y el total confirma�
 divergieron y ninguno de los dos totales servía; allá coincidieron y el total mentía. Misma familia:
 **un número no dice contra qué se midió.**
 
+## Tercer modo, y es PEOR que el vacío: `rev-parse` **ecoa el argumento** en vez de callarse
+
+**2026-09-30, verificando por blob que un squash-merge preservó mi contenido.** El método era
+`git rev-parse "<ref>:<path>"` en dos commits y comparar. Sobre un path que **no existía** en ese ref:
+
+```bash
+$ b=$(git rev-parse "e04cfcbe:scripts/evidencia/test-vigencia-canario.sh" 2>/dev/null | cut -c1-8)
+$ echo "$b"
+e04cfcbe          # ← NO es un blob: es el argumento ecoado, recortado a 8 chars
+```
+
+`git rev-parse` no resuelve y **devuelve lo que le pasaste**. Pasado por `cut -c1-8` sale
+`e04cfcbe`: largo de hash, forma de hash, **y coincide con el commit que nombré en la consulta**. El
+guard de este archivo —«¿puede este `0` significar *no medí*?»— **no dispara**, porque no hay ningún
+cero: hay un valor que parece una medición.
+
+**Cómo se ve el daño:** ese valor era el **control negativo** de mi verificación. Salió «distinto» del
+otro blob, o sea el control dijo *el método discrimina*… por la razón equivocada. Un control negativo
+que pasa por accidente deja los ✅ de al lado sin respaldo — y yo ya tenía 6 ✅ escritos
+([[un-guard-que-acierta-por-accidente-no-da-sintoma]]).
+
+**Lo que lo cazó:** que el valor **coincidiera con el nombre del commit**. No fue rigor: fue que el
+eco era visible porque el argumento empezaba con un hash. Si el path hubiera estado consultado con un
+ref simbólico (`origin/main:...`), el eco habría sido `origin/m` y tampoco se habría distinguido de
+un blob a simple vista.
+
+**Y el contrato ya decía el comando correcto, en este mismo archivo, arriba:** `git cat-file -e
+"<ref>:<path>"` — que **sale rc≠0 y no imprime nada**. Lo tenía escrito y medí con `rev-parse` igual.
+Es [[vacio-no-es-hallazgo-correr-el-control]] en su forma más barata: leer el contrato propio antes de
+elegir el comando.
+
+**Control que cierra este modo:** capturar el rc de **cada** consulta y declarar `SIN MEDIR` si alguna
+falla, en vez de comparar los dos valores.
+
+```bash
+a=$(git rev-parse "$r1:$p"); rca=$?
+b=$(git rev-parse "$r2:$p"); rcb=$?
+[ $rca -eq 0 ] && [ $rcb -eq 0 ] || { echo "SIN MEDIR: una consulta falló"; exit 2; }
+```
+
+Con eso corrido, el control negativo dio `eac365c3` vs `2dfa8ce5`, **dos rc=0** y distintos: el método
+discrimina **y ahora se sabe por qué**.
+
+
+## Cuarto modo, y lo cometí **en el turno siguiente** a escribir el punto (3) de acá arriba
+
+**2026-09-30, midiendo si mi propio push ya podía pasar.** Los tres modos de arriba son variantes de
+*un ref que no resuelve*. Este es peor, porque **no hay ningún ref**: la variable nunca tuvo uno.
+
+```bash
+MARC="C:/gfw-src/copiloto-grafo/.bridge/last-synced-copiloto-emprendedor.sha"   # ruta SUPUESTA
+if [ -f "$MARC" ]; then ULT=$(cat "$MARC"); else ULT="(marcador NO esta en la ruta supuesta)"; fi
+...
+echo "delta: $(git diff --name-only "$ULT".."$MAIN" | wc -l) archivos"
+```
+
+El archivo no estaba ahí (vive en `graphify-graphity-bridge`, que el hook declara en su `L30`; yo lo
+busqué en tres árboles y no incluí ese). Entonces `$ULT` quedó con **la prosa del `else`**, y esa prosa
+entró como ref a un `git diff`. Salida:
+
+```
+delta que el incremental habria mandado: 0 archivos          <= es PROSA restada contra un commit
+el marcador es ancestro de main? NO (divergente o invalido)  <= no es un veredicto: es "no pude medir"
+```
+
+Con la ruta correcta y los dos refs verificados, el número real era **7**.
+
+**Son dos mecanismos compuestos, y cada uno ya tiene su propia entrada acá:**
+
+1. **El `else` de un guard de existencia produce un dato.** Puse un mensaje de error donde el resto del
+   script esperaba un SHA. El guard hizo su trabajo —detectó la ausencia— y en el mismo gesto **fabricó
+   el valor que la hizo invisible**. Un `else` de un chequeo de existencia tiene que **cortar**
+   (`exit 2`, «SIN MEDIR»), nunca asignar.
+2. **El `| wc -l` se comió el rc.** `git diff` con un ref basura sale rc≠0, y el pipe devuelve el rc del
+   `wc` ([[el-pipe-se-come-el-exit-code]]). Sin el pipe habría gritado.
+
+Ninguno de los dos solo alcanza para el falso dato: **el primero fabrica el argumento y el segundo
+silencia la queja.** Es [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] — el guard es correcto,
+el conteo es correcto, y el hueco vive en el par.
+
+**Y el mensaje del `else` eligió la lectura equivocada por mí:** «NO (divergente o invalido)» ofrece dos
+causas —una grave, una de instrumento— y yo leí la grave
+([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). El texto que escribí para
+cubrirme fue el que me desvió.
+
+**La forma que lo cierra**, corrida en el mismo turno:
+
+```bash
+[ -f "$MARC" ] || { echo "SIN MEDIR: el marcador no esta en la ruta declarada"; exit 2; }
+ULT=$(tr -d ' \r\n' < "$MARC")
+git cat-file -e "${ULT}^{commit}" 2>/dev/null || { echo "SIN MEDIR: el marcador no es un commit"; exit 2; }
+git cat-file -e "${MAIN}^{commit}" 2>/dev/null || { echo "SIN MEDIR: main no resolvio"; exit 2; }
+n=$(git diff --name-only "$ULT".."$MAIN" | wc -l)      # recien ahora el numero significa algo
+```
+
+Y el **control positivo del método**, que es lo que faltaba las dos veces: pasarle a propósito un ref
+inventado y exigir que se vea distinto de un delta vacío legítimo.
+
+```
+c1e91870          => ES commit (rc=0)
+5330e0602ee4      => ES commit (rc=0)
+texto-basura...   => NO es commit (rc!=0) · SIN MEDIR
+git diff con el ref basura => "0 archivos"    <= identico a un delta vacio de verdad
+```
+
+**Esa última línea es el hallazgo entero:** un delta vacío legítimo y un ref inexistente imprimen **el
+mismo texto**. Sin el rc, no hay forma de distinguirlos mirando la salida.
+
 **Why:** porque un reporte de riesgo es lo que decide si alguien puede borrar un worktree. Un `0`
 por ceguera hace perder trabajo real —acá había un `test(RATCH)` de aislamiento cross-tenant sólo en
 disco—, y un «13 en riesgo» inventado gasta el turno de otra sesión en rescatar lo que ya está
-guardado.
+guardado. Y un valor **ecoado** es peor que los dos: no activa ninguna sospecha, porque no se ve como
+un vacío ni como un cero.
 
 **How to apply:** ante cualquier barrido de «qué falta / qué está en riesgo», antes de reportar:
 (1) preguntá si cada `0` puede significar «no medí» y no «no hay» — probá el caso que el barrido
 existe para cazar y exigí que se vea; (2) para «¿ya llegó?», medí el EFECTO en `origin/main`, nunca
 la distancia en commits, porque el squash la deja alta para siempre; (3) corré el control sobre tu
 propio resultado **aunque acabes de escribir la advertencia** — el turno en que detectás la clase es
-el turno en que más confiado estás.
+el turno en que más confiado estás; (4) **nunca leas un hash sin el rc de la consulta que lo produjo**
+— `git rev-parse` ecoa el argumento cuando no resuelve, y `cut -c1-8` lo disfraza de blob; para
+«¿existe este path en este ref?» usá `git cat-file -e`, que no imprime nada y sale rc≠0. **(5)** el `else` de un chequeo de existencia **corta** (`exit 2`, «SIN MEDIR»), nunca asigna: un mensaje de error guardado en una variable se convierte en el argumento de la medición siguiente, y el `| wc -l` se come la queja. Y el control positivo del barrido es pasarle **a propósito** un ref inventado: si su salida no se distingue de un resultado vacío legítimo, el barrido no está midiendo.
+
+---
+
+## Refuerzo (2026-09-30): imprimir la DISTRIBUCIÓN en vez del agregado es lo que lo caza
+
+Mismo defecto, en un parser propio de quince líneas, y el detalle que lo salvó es replicable.
+
+Estaba desglosando 1404 aristas de un `zombies.json` por tipo de relación:
+
+```python
+c = collections.Counter(a.get("relacion") or a.get("tipo") or a.get("type") or "?" for a in ar)
+...
+print(f"  zombies co_change MEDIDOS: {c.get('CO_CHANGES_WITH', 0)}")   # -> 0
+```
+
+La clave real era **`name`**. Ninguno de los tres nombres que probé existía, así que las 1404 cayeron en
+`"?"` y el `.get('CO_CHANGES_WITH', 0)` devolvió **0**. Mi aritmética siguió adelante sola e imprimió
+*«el medido (0) no es 1404 ni 1400: la diferencia es 1404, no 4 → ninguna hipótesis cuadra»* — una
+conclusión entera, con su razonamiento, **fabricada por la clave equivocada**.
+
+**Lo cacé porque imprimí el Counter crudo al lado:** `{'?': 1404}`. Ese `?` es imposible de leer como
+un resultado. Si hubiera impreso sólo el número agregado —que es lo natural cuando lo que querés es la
+cifra— el `0` se lee como un dato y la conclusión sale publicada.
+
+**Why:** porque el `or "?"` fue *mi* red de seguridad, puesta para que nada explotara, y por eso mismo
+convirtió un fallo de lectura en un valor plausible. El `.get(clave, 0)` hace lo mismo un paso después:
+**los dos defaults defensivos, encadenados, transforman «no sé leer esto» en «medí cero»**. Y cero es
+un número con el que se puede razonar.
+
+**How to apply:** (1) todo agregado se imprime **con su distribución al lado** — un `{'?': N}` o un
+`{None: N}` salta a la vista y un `0` no; (2) antes de contar por un campo, imprimí las **claves reales
+de un elemento** (`sorted(items[0].keys())`), que cuesta una línea; (3) desconfiá del `or` de fallback en
+un extractor: hace que la ausencia se vea como una categoría; (4) si el denominador de tu conteo no
+coincide con el total conocido, el parser miente antes que los datos — acá 1404 objetos, 1404 en `?`, y
+el total correcto estaba impreso por el propio dry-run treinta líneas más arriba.

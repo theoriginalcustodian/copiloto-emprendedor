@@ -149,3 +149,27 @@ llegar a las dos salidas que alguien consume: la última línea y el exit code. 
 funda dos causas, tener el diagnóstico correcto adentro sólo documenta que el instrumento podía haber
 acertado. Y **un vacío en el campo que consultás no es un vacío en el sistema**: antes de declarar,
 preguntá si el dato existe en otra fuente ([[vacio-no-es-hallazgo-correr-el-control]]).
+
+## Refuerzo (2026-09-30, mismo día, misma línea): **arreglar UNA causa del veredicto agregado no arregla las otras**
+
+La cara de arriba se arregló: hoy `ci-verde.sh` distingue «rollup vacío» y sale **2**. Y la misma línea
+sigue fundiendo otra causa. Corrí `ci-verde.sh 771` **dos minutos después de pushear** —el caso más
+frecuente de todos, porque `MEMORY.md` manda correrlo antes de cada merge— y obtuve:
+
+```
+❌ backend: sin conclusión todavía (status=IN_PROGRESS) — está CORRIENDO, no pasó   (×5)
+ROJO — no mergear: hay al menos un job ausente o fallado (medido, no supuesto)      exit 1
+```
+
+El detalle es **perfecto**: dice «está CORRIENDO». El veredicto ofrece dos causas —«ausente o
+fallado»— y **CORRIENDO no es ninguna**. Y el código tampoco: el propio archivo reserva `exit 2` para
+«no pude medir» y ya lo usa en cuatro rutas (`gh` ausente, sin argumento, rollup ilegible, `SIN
+MEDIR`). *Todavía no terminó de medirse* pertenece a esa familia, no a `exit 1` = «rojo medido». La
+distinción decide la acción: ante `2` se **reintenta en dos minutos**, ante `1` se **abre a investigar
+un fallo inexistente**.
+
+**Lo que agrega:** el veredicto agregado es un **cuello** por el que pasan N causas, y cada fix cubre
+la que dolió. Después de arreglar una, las demás siguen ahí y el arreglo previo da falsa tranquilidad
+—«esto ya se corrigió»—. Al tocar una línea de veredicto que funde causas, **enumerá todas las rutas
+que terminan en ella** (acá: `grep -n 'falta=1'` da cuatro) y decidí el par (texto, código) para cada
+una. Si no, se pagan de a una, y cada pago parece el último.

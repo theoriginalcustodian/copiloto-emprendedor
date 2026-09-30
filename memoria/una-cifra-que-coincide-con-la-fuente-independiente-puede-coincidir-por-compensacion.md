@@ -32,6 +32,38 @@ declarados era «3 sin explicar, y no lo cuento como cerrado». Descompuesto: **
 `PENDIENTE_DEVICE`, que el doc declara sin gastar veredicto) **− 1** (un token extra en `chat`) **= 23**.
 La descomposición explica; el total sólo tranquiliza.
 
+## Variante 2026-09-30: no coincidió el total — coincidió la **RESTA**, y eso fabrica una causa
+
+Auditando el control de cobertura de la memoria, dos cifras de la misma cosa aparente:
+
+```
+el medidor reporta ....................... 358 / 358 entradas indexadas
+mi barrido contó ......................... 365 topicos
+365 - 358 = 7   y yo tenía una clase de exactamente 7 archivos sin linea de indice
+```
+
+**Iba a escribir que el medidor «omite esas 7».** La resta encajaba al entero, con una explicación
+causal lista y verosimil. **Y es falso: son dos universos distintos.** El medidor cuenta
+`memoria/*.md` **del disco y no recursivo** (358); yo contaba `git ls-tree -r` **de `origin/main`**
+(recursivo, 365). Las 7 viven en `memoria/checkpoints/` y `memoria/Ideas de implementacion/` —
+subcarpetas que son **exactamente el mecanismo** para sacarlas del índice. El medidor no las omite: no
+son de su universo.
+
+**Por qué esta forma es más traicionera que la del total:** un total que coincide te deja sin saber nada
+nuevo. Una **resta** que coincide te **entrega una hipótesis causal ya armada** — «la diferencia son
+estas 7» — y la aritmética se siente como la verificación. No lo es: dos números restan limpio sin
+haber medido nunca lo mismo.
+
+**La pregunta que lo caza, y es una sola:** *¿estos dos números cuentan el mismo universo?* Se contesta
+comparando **las definiciones**, no las cifras: qué glob, qué ref, recursivo o no, disco o árbol. Acá el
+`glob("*.md")` del medidor (`medir-indice-memoria.py:87`) contra mi `ls-tree -r` — dos alcances, en la
+misma línea que [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+**Y el corolario del corolario:** el fix «obvio» que la falsa causa sugiere (hacer el medidor `rglob`)
+habría metido 7 checkpoints al control de cobertura, exigiendo línea de índice para cada uno en un
+índice con 521 bytes de margen. **Una causa inventada propone un fix que rompe lo que protege**
+([[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]]).
+
 **Why.** Una fuente independiente es la evidencia más fuerte que hay, y por eso apaga la duda de golpe.
 Pero «independiente» garantiza que el error no sea **el mismo**, no que no haya errores: dos sistemas que
 cuentan la misma cosa con criterios distintos tienen muchas formas de llegar al mismo número. El caso que
