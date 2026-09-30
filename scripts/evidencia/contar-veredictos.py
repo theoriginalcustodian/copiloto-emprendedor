@@ -32,6 +32,28 @@ CONTROLES HORNEADOS (tres, y el tercero es el que faltaba):
      dejó `tabla` sin control durante toda su vida. El control se corre, no se promete.
 
 Read-only. Uso: python contar-veredictos.py [--json] [--canario]
+
+────────────────────────────────────────────────────────────────────────────────────────────────
+CÓDIGOS DE SALIDA — cada uno nombra la ACCIÓN que destraba, porque dos de ellos piden lo
+CONTRARIO y hasta el 2026-09-30 compartían el 6:
+
+   0   medido y todos los controles pasaron.
+   2   NO PUEDO MEDIR (falta un archivo, cambió la forma de una tabla, el universo no se lee).
+       Nunca es un hallazgo sobre el dato: es ceguera del instrumento.
+   3-5, 7-11   controles de contenido; cada rama imprime su propia acción.
+   6   COBERTURA: REGRESIÓN — la matriz DEJÓ de cubrir un id de la spec.
+       Acción: arreglar la matriz (o bajar el id al piso, deliberadamente y con el por qué).
+   12  EL PISO QUEDÓ VIEJO — la matriz YA cubre un id que sigue en CIEGOS_DECLARADOS.
+       Acción: sacarlo del piso. Es la INVERSA del 6.
+   13  el diff de RETIRADOS_DECLARADOS no cuadra con la spec vigente.
+
+Por qué se partieron (caso real, 2026-09-30): el 6 decía «el piso quedó viejo, sacá `preg`» en un
+árbol y «la matriz dejó de cubrir `preg`, no lo saques» en otro — dos diagnósticos OPUESTOS bajo
+el mismo código. Auditoría midió este script copiándolo a SU directorio, así que
+`RAIZ = parents[2]` resolvió a SU matriz (la única que cubre `preg`); leí «le falta el ratchet»,
+traje su commit, y el contador pasó de 0 a 6 por la causa contraria. Un código compartido no
+sólo pierde información: cuando las acciones son inversas, ELIGE MAL por vos.
+────────────────────────────────────────────────────────────────────────────────────────────────
 """
 import hashlib
 import io
@@ -515,20 +537,24 @@ def control_de_cobertura(ids):
     ya_no_retirados = sorted(RETIRADOS_DECLARADOS - retirados)
 
     if nuevos_ciegos:
-        print(f"COBERTURA: REGRESIÓN — {len(nuevos_ciegos)} id(s) de la spec que la matriz dejó de "
-              f"cubrir: {nuevos_ciegos}. Si es deliberado, bajalos a CIEGOS_DECLARADOS con el por "
-              f"qué; si no, la matriz perdió una captura.", file=sys.stderr)
+        print(f"COBERTURA: REGRESIÓN (exit 6) — {len(nuevos_ciegos)} id(s) de la spec que la matriz "
+              f"dejó de cubrir: {nuevos_ciegos}. La matriz perdió una captura: arreglala, o bajalos a "
+              f"CIEGOS_DECLARADOS con el por qué si es deliberado. ⚠️ NO es el exit 12: acá el piso "
+              f"está BIEN y lo que falta es la captura. Sacar el id del piso empeora el fallo.",
+              file=sys.stderr)
         sys.exit(6)
     if ya_cubiertos:
-        print(f"COBERTURA: EL PISO QUEDÓ VIEJO — la matriz ya cubre {ya_cubiertos}, que siguen "
-              f"declarados como ciegos. Sacalos de CIEGOS_DECLARADOS: un ratchet que no se aprieta "
-              f"certifica un estado que ya no existe.", file=sys.stderr)
-        sys.exit(6)
+        print(f"COBERTURA: EL PISO QUEDÓ VIEJO (exit 12) — la matriz ya cubre {ya_cubiertos}, que "
+              f"siguen declarados como ciegos. Sacalos de CIEGOS_DECLARADOS: un ratchet que no se "
+              f"aprieta certifica un estado que ya no existe. ⚠️ Esto SÓLO vale si la matriz de ESTE "
+              f"árbol los cubre: un id que sólo está en la matriz de otra rama da exit 6 acá.",
+              file=sys.stderr)
+        sys.exit(12)
     if nuevos_retirados or ya_no_retirados:
         print(f"COBERTURA: el diff de retirados no cuadra — nuevos {nuevos_retirados}, "
               f"ya-no {ya_no_retirados}. RETIRADOS_DECLARADOS tiene que reflejar la spec vigente.",
               file=sys.stderr)
-        sys.exit(6)
+        sys.exit(13)
     return sorted(ciegos), sorted(retirados)
 
 
