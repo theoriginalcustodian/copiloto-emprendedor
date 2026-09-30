@@ -1414,6 +1414,67 @@ def ids_cerrados_por_plataforma(con, ids):
     return {p: sorted(s) for p, s in salida.items()}
 
 
+def ids_solo_no_comparacion_por_plataforma(con, ids):
+    """{plataforma: [ids cuya cobertura EN ESA PLATAFORMA es SOLO no-comparacion]}.
+
+    🔴 Lo destapo una pregunta de frontend2, y sin esto la cifra por plataforma miente hacia arriba.
+    `NO_REPRODUCIBLE_SIN_EFECTO`, `NO_MEDIBLE`, `FUERA-DE-REFERENCIA` y `PENDIENTE_DEVICE` estan en el
+    VOCABULARIO CERRADO, asi que un id con uno de esos cuenta como «cubierto» — pero ninguno es una
+    COMPARACION: son las cuatro formas de decir que la comparacion NO se hizo.
+
+    El caso concreto: `vacio` y `vacio-visto` son `NO_REPRODUCIBLE_SIN_EFECTO` (no hubo comparacion en
+    NINGUNA plataforma). Si se les agrega `plataforma: web` para bajar `indeterminada`, suben la cifra
+    de cobertura de web sin que nadie haya comparado nada — o sea que el trabajo de «completar la
+    columna» INFLA el numerador. frontend2 se nego a partirlas en dos por exactamente ese motivo, y
+    tenia razon: partirlas afirmaria dos intentos de medicion donde hubo cero.
+
+    El total por plataforma no se cambia (un `PENDIENTE_DEVICE` declarado ES informacion sobre esa
+    plataforma); lo que se hace es DECIRLO al lado, la misma regla que ya aplica el total de veredictos
+    con su «de las cuales no-comparacion».
+
+    Agrega por (id, plataforma) ANTES de decidir: un id con una fila de comparacion y otra de
+    no-comparacion en la MISMA plataforma no es «solo no-comparacion». Sin ese paso, la clave por
+    documento lo contaria dos veces y en cubos distintos.
+    """
+    porIdPlat = {}
+    for clave, vs in con.items():
+        i = clave.split(SEP_CLAVE)[0]
+        plat = clave.rsplit(SEP_CLAVE, 1)[1] if SEP_CLAVE in clave else SIN_PLATAFORMA
+        if i not in ids:
+            continue
+        delVocab = [v for v in vs if v in VOCABULARIO]
+        if not delVocab:
+            continue
+        porIdPlat.setdefault((i, plat), []).extend(delVocab)
+    salida = {p: set() for p in (*VOCABULARIO_PLATAFORMA.values(), SIN_PLATAFORMA)}
+    for (i, plat), vs in porIdPlat.items():
+        if all(v in NO_COMPARACION for v in vs):
+            salida.setdefault(plat, set()).add(i)
+    return {p: sorted(s) for p, s in salida.items()}
+
+
+def cruzar_no_comparacion(lotes):
+    """{plataforma: [ids que en esa plataforma NO tuvieron comparacion en NINGUN documento]}.
+
+    El cruce es por DOCUMENTO y no una union directa de los «solo no-comparacion» de cada uno. Un id
+    puede ser `NO_MEDIBLE` en un doc y `COHERENTE` en otro: unir los parciales lo dejaria marcado como
+    no comparado cuando SI se comparo en otro lugar, y entonces la advertencia seria tan mentirosa
+    como la cifra que existe para corregir.
+
+    Por eso primero se calcula quien tiene AL MENOS UNA comparacion en algun doc —`cerrados menos
+    solo-no-comparacion`, por doc— y ese conjunto RESTA.
+    """
+    comparados, parciales = {}, {}
+    for d in lotes:
+        cerr = d.get("ids_cerrados_por_plataforma", {}) or {}
+        nc = d.get("ids_solo_no_comparacion_por_plataforma", {}) or {}
+        for p, lista in cerr.items():
+            comparados.setdefault(p, set()).update(set(lista) - set(nc.get(p, ())))
+        for p, lista in nc.items():
+            parciales.setdefault(p, set()).update(lista)
+    return {p: sorted(s - comparados.get(p, set())) for p, s in parciales.items()}
+
+
 # Las formas que VIVEN EN UNA TABLA, o sea las unicas donde «agregar la columna `plataforma`» es una
 # accion posible. `sujeto_de_celda` devuelve `celda*` (y `*-col` cuando el sujeto salio de la columna
 # que la cabecera nombra), asi que el prefijo alcanza y no hay que enumerar sus variantes.
@@ -1652,6 +1713,10 @@ def main():
                "ids_cerrados_por_plataforma": "ids UNICOS del padron con veredicto CERRADO *en esa "
                                               "plataforma* - un id medido en web y en mobile cuenta "
                                               "en LAS DOS, y uno sin columna NO cuenta en ninguna",
+               "ids_solo_no_comparacion_por_plataforma":
+                   "de los de arriba, los que en esa plataforma SOLO tienen no-comparacion "
+                   "(NO_MEDIBLE / FUERA-DE-REFERENCIA / NO_REPRODUCIBLE_SIN_EFECTO / "
+                   "PENDIENTE_DEVICE): cuentan como cubiertos pero NO hubo comparacion",
                "indeterminada": "NO es una plataforma: es lo que el lector no pudo leer (sin columna "
                                 "`plataforma`, o con un valor fuera de {web, mobile})",
                "sujetos_con_veredicto": "claves `id·camino` CON veredicto — un id en dos caminos son DOS",
@@ -1692,6 +1757,8 @@ def main():
             # agregado; la que se cita es esta, porque un veredicto de mobile contado como web es
             # cobertura que no existe.
             "ids_cerrados_por_plataforma": ids_cerrados_por_plataforma(con, ids),
+            "ids_solo_no_comparacion_por_plataforma":
+                ids_solo_no_comparacion_por_plataforma(con, ids),
             # `_lineas` son SOLO filas de tabla: las unicas donde agregar la columna es posible.
             "plataforma_sin_leer_lineas": plat_sin_leer[0],
             "plataforma_vocabulario_invalido": plat_sin_leer[1],
@@ -1918,11 +1985,20 @@ def main():
         for p, lista in d.get("ids_cerrados_por_plataforma", {}).items():
             plat.setdefault(p, set()).update(lista)
     web, mob, indet = (sorted(plat.get(k, ())) for k in ("web", "mobile", "indeterminada"))
+    solo_nc = cruzar_no_comparacion(res["lotes"].values())
     print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los {len(ids)} con veredicto DEL VOCABULARIO "
           f"CERRADO, POR PLATAFORMA»:")
+    def _nc(p):
+        # La cifra CUENTA a estos ids (un `PENDIENTE_DEVICE` declarado ES informacion sobre esa
+        # plataforma), pero se dice al lado: sin esto, «completar la columna» sobre una fila que
+        # nunca se comparo INFLA el numerador de cobertura. Lo destapo una pregunta de frontend2.
+        n = solo_nc.get(p, ())
+        return (f"  ⚠️ de los cuales {len(n)} SIN comparación ({', '.join(n[:5])}"
+                f"{'…' if len(n) > 5 else ''})") if n else ""
     print(f"      web  {len(web)} de {len(ids)}   ({100 * len(web) // len(ids)}%)  <- la que se cita "
-          f"este sprint (criterio 3 acotado a web)")
-    print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)")
+          f"este sprint (criterio 3 acotado a web){_nc('web')}")
+    print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)"
+          f"{_nc('mobile')}")
     print(f"      indeterminada  {len(indet)} de {len(ids)}  <- NO es una plataforma: es lo que el "
           f"lector no pudo leer")
     if indet:

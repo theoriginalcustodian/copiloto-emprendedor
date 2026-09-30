@@ -37,6 +37,11 @@ def plataformas(txt):
     _, con, _, _, _, _, _ = cv.medir(txt, IDS)
     return cv.ids_cerrados_por_plataforma(con, IDS)
 
+def sin_comparacion(txt):
+    """{plataforma: [ids cubiertos EN esa plataforma pero sin ninguna comparacion]}."""
+    _, con, _, _, _, _, _ = cv.medir(txt, IDS)
+    return cv.ids_solo_no_comparacion_por_plataforma(con, IDS)
+
 def sin_leer(txt):
     _, _, _, _, _, _, ps = cv.medir(txt, IDS)
     return ps   # (filas de TABLA sin columna, {valor crudo: lineas}, fuera de tabla)
@@ -199,6 +204,42 @@ p = plataformas(CAB + "| `factura` (ARCA) | **`web`** | app | layout | COHERENTE
 casos.append(("la decoracion (`backticks`/**negrita**) no invalida la celda",
               "factura" in p["web"] and "factura" not in p["indeterminada"], p))
 
+# ── 16. un id CUBIERTO en web cuya unica medicion NO es una comparacion ──────────────────────
+# `NO_REPRODUCIBLE_SIN_EFECTO` esta en el vocabulario CERRADO, asi que el id cuenta como cubierto --
+# y no hubo comparacion de ninguna clase. Medido en el corpus: de 48 ids «cubiertos» en web, 7 son
+# de esta forma, o sea que la cobertura de COMPARACION real es 41 y no 48. Lo destapo una pregunta
+# de frontend2: se nego a partir `vacio`/`vacio-visto` en dos filas porque eso afirmaria dos intentos
+# de medicion donde hubo cero, y tenia razon.
+txt16 = CAB + "| `card` (gasto) | web | app | layout | NO_REPRODUCIBLE_SIN_EFECTO |\n"
+p = plataformas(txt16)
+nc = sin_comparacion(txt16)
+casos.append(("cubierto en web pero SIN comparacion -> contado Y marcado",
+              "card" in p["web"] and "card" in nc["web"], (p, nc)))
+
+# ── 17. una comparacion REAL en la misma plataforma desmarca al id ───────────────────────────
+# El `all()` es lo que decide: si el id tiene aunque sea UNA comparacion en esa plataforma, no es
+# «sin comparacion». Sin este caso, el 16 pasaria igual con un `any()` y la advertencia marcaria a
+# medio corpus -- un falso positivo que ensena a ignorarla.
+txt17 = (CAB + "| `card` (gasto) | web | app | layout | NO_REPRODUCIBLE_SIN_EFECTO |\n"
+             + "| `card` (gasto) | web | app | copy | COHERENTE |\n")
+p = plataformas(txt17)
+nc = sin_comparacion(txt17)
+casos.append(("una comparacion real en la misma plataforma lo DESMARCA",
+              "card" in p["web"] and "card" not in nc["web"], (p, nc)))
+
+# ── 18. EL CRUCE ENTRE DOCUMENTOS — el control de `cruzar_no_comparacion` ────────────────────
+# Un id puede ser `NO_MEDIBLE` en un documento y `COHERENTE` en otro. Unir los parciales de cada doc
+# lo dejaria marcado como no comparado aunque SI se comparo en otro lugar, y ahi la advertencia seria
+# tan mentirosa como la cifra que existe para corregir. Se ejercita la funcion del cruce con dos
+# lotes armados a mano, porque el agregado vive en el reporte y no en `medir`.
+doc_a = {"ids_cerrados_por_plataforma": {"web": ["factura", "card"]},
+         "ids_solo_no_comparacion_por_plataforma": {"web": ["factura", "card"]}}
+doc_b = {"ids_cerrados_por_plataforma": {"web": ["factura"]},
+         "ids_solo_no_comparacion_por_plataforma": {"web": []}}
+cruz = cv.cruzar_no_comparacion([doc_a, doc_b])
+casos.append(("el cruce entre docs: comparado en OTRO doc -> no se marca",
+              "factura" not in cruz["web"] and "card" in cruz["web"], cruz))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -216,6 +257,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 15 ] || { echo "❌ esperaba >=15 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 18 ] || { echo "❌ esperaba >=18 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
 echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, y un veredicto de mobile no cuenta como web"
