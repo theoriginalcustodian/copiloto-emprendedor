@@ -26,9 +26,14 @@ aviso ANTES del incidente, no después.
      webhook` que autentican por firma/state cifrado y no por JWT, el SPA catch-all).
    - Una ruta que no cae en ninguna de las tres -> el test FALLA nombrándola. Así se cierra el
      "no bloquea nada": una ruta nueva sin clasificar rompe el ratchet, no queda silenciosa.
-3. De las tenant-scoped, separa las que YA ejercita `test_adversarial_multitenant.py` -- ese
-   conjunto se EXTRAE por AST del archivo real (no se hand-listea "7" ni "8": los dos números que
-   circularon en el buzón esta noche quedan obsoletos apenas ese archivo cambie, el ratchet no).
+3. De las tenant-scoped, separa las que YA ejercita algún caso hostil real en
+   `_ARCHIVOS_ADVERSARIALES` (`test_adversarial_multitenant.py` + `test_afip_web_facturas.py`,
+   RATCH Parte B) -- ese conjunto se EXTRAE por AST de los archivos reales (no se hand-listea "7" ni
+   "8": los dos números que circularon en el buzón esta noche quedan obsoletos apenas esos archivos
+   cambien, el ratchet no), normalizando cada literal a su plantilla de ruta vía el propio
+   `path_regex` de Starlette y filtrando por VERBO HTTP (RATCH Parte A) -- sin esto último, un POST
+   hostil a `/x/anular` puede colarse como cobertura falsa de un GET a `/x/{id}` sólo porque
+   comparten forma de path.
 4. Lo que queda (tenant-scoped, sin caso hostil) es DEUDA -- hoy es real y grande (~80 rutas: AFIP,
    presupuestos, gastos, clientes, contabilidad, inteligencia, mi-dia, el front-door directo).
    Escribir los 80 casos hostiles NO es el alcance de RATCH (ver el dato original: "no bloqueante,
@@ -125,12 +130,21 @@ def _fernet_key_env(monkeypatch):
     nunca se cifre nada de verdad, sólo se inspeccionan firmas de endpoints."""
     monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
-# Medido 2026-09-23 corriendo este mismo archivo contra el front-door COMPLETO (11 sub-apps reales,
-# `app.routes` desenvuelto recursivamente -- ver `_rutas_reales`). Bajar este número a mano cuando
-# alguien cierre un caso hostil nuevo; subirlo a mano -- con motivo en el commit -- cuando una ruta
-# tenant-scoped nueva entra sin test adversarial todavía. Lo que el ratchet prohíbe es que suba SOLO,
-# sin que nadie lo note.
-_DEUDA_TENANT_SCOPED_SIN_TEST = 68
+# Medido 2026-09-30 corriendo este mismo archivo contra el front-door COMPLETO (11 sub-apps reales,
+# `app.routes` desenvuelto recursivamente -- ver `_rutas_reales`), tras RATCH Parte A (normalización
+# de literal a plantilla vía Starlette + filtro por verbo HTTP) y Parte B (escaneo ampliado a
+# `test_afip_web_facturas.py` + 7 casos hostiles nuevos sobre AFIP: detalle_comprobante,
+# registrar_cobro, listar_cobros, borrar_cobro, borrar_ingreso, completar_ingreso,
+# estado_anulacion). La deuda bajó de 68 a 65 -- pero OJO, los 3 puntos que bajaron
+# (`/afip/facturas`, `/afip/facturas/{factura_id}`, `/afip/comprobantes/anular`) vienen de tests
+# PRE-EXISTENTES con literal real que el escaneo ahora alcanza a ver, NO de los 7 casos nuevos: esos
+# 7 llaman con f-string (`f"/afip/comprobantes/{comp_b}"`) porque el id nace en runtime -- son
+# hostiles reales y pasan, pero el AST no puede resolver su valor, así que no cuentan para ESTE
+# ratchet (ver `_Cobertura.fstrings`; están nombrados archivo:línea, no desaparecen mudos). Bajar
+# este número a mano cuando alguien cierre un caso hostil nuevo; subirlo a mano -- con motivo en el
+# commit -- cuando una ruta tenant-scoped nueva entra sin test adversarial todavía. Lo que el ratchet
+# prohíbe es que suba SOLO, sin que nadie lo note.
+_DEUDA_TENANT_SCOPED_SIN_TEST = 65
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------
@@ -291,31 +305,53 @@ class _Cobertura(NamedTuple):
 
 
 def _llamadas_http_en_codigo(codigo: str, nombre_archivo: str) -> list:
-    """Primer argumento de cada `client.<verbo>(...)` del código, en orden -- `ast.Constant` para
-    un literal, `ast.JoinedStr` para un f-string, cualquier otra forma (variable, concatenación) se
-    ignora igual que antes (no hay forma estática de resolverla)."""
+    """(verbo, primer_argumento) de cada `client.<verbo>(...)` del código, en orden -- `ast.Constant`
+    para un literal, `ast.JoinedStr` para un f-string, cualquier otra forma (variable, concatenación)
+    se ignora igual que antes (no hay forma estática de resolverla). El verbo viaja junto al literal
+    porque el path por sí solo no alcanza para identificar la ruta: `/afip/comprobantes/anular`
+    (POST) y `/afip/comprobantes/{comprobante_id}` (GET) son dos rutas DISTINTAS cuyo path_regex
+    puede coincidir por forma -- sin el verbo, un POST hostil le regala cobertura falsa a un GET sin
+    ningún test.
+
+    Restringido a funciones cuyo NOMBRE contiene "adversarial" (case-insensitive). Con
+    `test_adversarial_multitenant.py` esto no cambiaba nada (el archivo es 100% adversarial por
+    convención de nombre), pero `test_afip_web_facturas.py` mezcla hostiles con tests funcionales
+    comunes (`test_crear_factura_devuelve_id`, etc.) -- sin este filtro, cualquier llamada HTTP de
+    un test feliz contaría como si hubiese un caso hostil detrás, e infla la cobertura con exactamente
+    la mitad que el ratchet existe para vigilar."""
     arbol = ast.parse(codigo, filename=nombre_archivo)
     primeros: list = []
-    for nodo in ast.walk(arbol):
-        if not isinstance(nodo, ast.Call):
+    for funcion in ast.walk(arbol):
+        if not isinstance(funcion, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        func = nodo.func
-        if not isinstance(func, ast.Attribute) or func.attr not in _VERBOS_HTTP:
+        if "adversarial" not in funcion.name.lower():
             continue
-        if not nodo.args:
-            continue
-        primeros.append(nodo.args[0])
+        for nodo in ast.walk(funcion):
+            if not isinstance(nodo, ast.Call):
+                continue
+            func = nodo.func
+            if not isinstance(func, ast.Attribute) or func.attr not in _VERBOS_HTTP:
+                continue
+            if not nodo.args:
+                continue
+            primeros.append((func.attr, nodo.args[0]))
     return primeros
 
 
-def _normalizar_a_plantilla(literal: str, rutas_reales: list) -> str | None:
+def _normalizar_a_plantilla(verbo: str, literal: str, rutas_reales: list) -> str | None:
     """Busca, en el mismo orden en que `app.routes` las expone (el orden en que Starlette
     efectivamente las prueba en runtime), la primera ruta cuyo `path_regex` matchea el literal
-    completo, y devuelve su plantilla. `None` si ninguna matchea."""
+    completo Y cuyos `methods` incluyen el verbo -- el path solo no identifica la ruta (dos rutas
+    con verbos distintos pueden compartir forma de path_regex por coincidencia)."""
+    verbo_http = verbo.upper()
     for route in rutas_reales:
         regex = getattr(route, "path_regex", None)
-        if regex is not None and regex.fullmatch(literal):
-            return route.path
+        methods = getattr(route, "methods", None)
+        if regex is None or not regex.fullmatch(literal):
+            continue
+        if methods is not None and verbo_http not in methods:
+            continue
+        return route.path
     return None
 
 
@@ -323,16 +359,17 @@ def _cobertura_desde_codigo(codigo: str, nombre_archivo: str, rutas_reales: list
     plantillas: set[str] = set()
     sin_match: list[str] = []
     fstrings: list[str] = []
-    for primero in _llamadas_http_en_codigo(codigo, nombre_archivo):
+    for verbo, primero in _llamadas_http_en_codigo(codigo, nombre_archivo):
         if isinstance(primero, ast.Constant) and isinstance(primero.value, str) \
                 and primero.value.startswith("/"):
-            plantilla = _normalizar_a_plantilla(primero.value, rutas_reales)
+            plantilla = _normalizar_a_plantilla(verbo, primero.value, rutas_reales)
             if plantilla is not None:
                 plantillas.add(plantilla)
             else:
                 sin_match.append(
-                    f"{nombre_archivo}:{primero.lineno}: {primero.value!r} no matchea ninguna "
-                    f"ruta del front-door -- ¿typo, o ruta que ya no existe?"
+                    f"{nombre_archivo}:{primero.lineno}: {verbo.upper()} {primero.value!r} no "
+                    f"matchea ninguna ruta del front-door -- ¿typo, verbo equivocado, o ruta que ya "
+                    f"no existe?"
                 )
         elif isinstance(primero, ast.JoinedStr):
             fstrings.append(
@@ -342,11 +379,28 @@ def _cobertura_desde_codigo(codigo: str, nombre_archivo: str, rutas_reales: list
     return _Cobertura(plantillas=plantillas, sin_match=sin_match, fstrings=fstrings)
 
 
+# Archivos con cobertura adversarial HTTP real (Depends(require_tenant) + TestClient real) que
+# cuentan para el ratchet. `test_afip_web_facturas.py` entra por RATCH Parte B: prueba las rutas de
+# facturas/anulación/comprobantes/cobros/ingresos contra un front-door de verdad. Deliberadamente
+# NO entra `test_cobros_y_catalogo.py`: sus adversariales llaman al store directo con un cliente_id
+# ya resuelto, nunca pasan por `Depends(require_tenant)` -- exactamente la mitad que este ratchet
+# existe para vigilar (ver docstring del módulo).
+_ARCHIVOS_ADVERSARIALES = ("test_adversarial_multitenant.py", "test_afip_web_facturas.py")
+
+
 def _cobertura_adversarial(rutas_reales: list) -> _Cobertura:
-    """Reemplaza el "7" (o "8") que circuló esta noche en el buzón: se mide contra el archivo real
-    de `test_adversarial_multitenant.py` en cada corrida, no se cita de memoria."""
-    ruta = Path(__file__).with_name("test_adversarial_multitenant.py")
-    return _cobertura_desde_codigo(ruta.read_text(encoding="utf-8"), ruta.name, rutas_reales)
+    """Reemplaza el "7" (o "8") que circuló esta noche en el buzón: se mide contra los archivos
+    reales de `_ARCHIVOS_ADVERSARIALES` en cada corrida, no se cita de memoria."""
+    plantillas: set[str] = set()
+    sin_match: list[str] = []
+    fstrings: list[str] = []
+    for nombre in _ARCHIVOS_ADVERSARIALES:
+        ruta = Path(__file__).with_name(nombre)
+        parcial = _cobertura_desde_codigo(ruta.read_text(encoding="utf-8"), ruta.name, rutas_reales)
+        plantillas |= parcial.plantillas
+        sin_match.extend(parcial.sin_match)
+        fstrings.extend(parcial.fstrings)
+    return _Cobertura(plantillas=plantillas, sin_match=sin_match, fstrings=fstrings)
 
 
 # --- El ratchet ----------------------------------------------------------------------------------
@@ -388,17 +442,19 @@ def test_deuda_de_cobertura_adversarial_no_crece_en_silencio():
 
 
 def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
-    """Documenta, no ratchea: cuántas PLANTILLAS distintas ejercita HOY
-    test_adversarial_multitenant.py, ya normalizadas (RATCH Parte A). Los 8 paths de hoy son planos
-    -- plantilla == literal del request --, por eso el set no cambia con la normalización; el
-    cambio real es que esta comparación ya no se rompe apenas alguien cubra una ruta con parámetro
-    (el bug que RATCH vino a cerrar)."""
+    """Documenta, no ratchea: cuántas PLANTILLAS distintas ejercitan HOY los archivos de
+    `_ARCHIVOS_ADVERSARIALES`, ya normalizadas (RATCH Parte A) y filtradas por verbo HTTP. Los 8
+    paths originales de `test_adversarial_multitenant.py` son planos -- plantilla == literal del
+    request --; los 3 nuevos (`/afip/facturas`, `/afip/facturas/{factura_id}`,
+    `/afip/comprobantes/anular`) llegan de `test_afip_web_facturas.py` (RATCH Parte B, escaneo
+    ampliado). Medido 2026-09-30."""
     app, _require_tenant = _build_full_app()
     rutas_reales = _rutas_reales(app.routes)
     cobertura = _cobertura_adversarial(rutas_reales)
     assert cobertura.plantillas == {
         "/mi-dia/calendario", "/reply", "/me", "/catalog", "/mp/connection",
         "/me/onboarding/completar", "/me/legal/aceptar", "/feedback",
+        "/afip/facturas", "/afip/facturas/{factura_id}", "/afip/comprobantes/anular",
     }
 
 
@@ -444,7 +500,9 @@ def test_A1_un_caso_nuevo_sobre_ruta_con_id_baja_la_deuda_exactamente_uno():
 
     candidata = next(p for p in deuda_hoy if "{" in p)
     literal = re.sub(r"\{[^}]+\}", "id-de-prueba-e2e2f4", candidata)
-    codigo = f'def test_x(client):\n    client.get({literal!r})\n'
+    ruta_candidata = next(r for r in rutas_reales if r.path == candidata)
+    verbo = next(m for m in ruta_candidata.methods if m != "HEAD").lower()
+    codigo = f'def test_ADVERSARIAL_x(client):\n    client.{verbo}({literal!r})\n'
     cobertura_extra = _cobertura_desde_codigo(codigo, "sintetico.py", rutas_reales)
     assert cobertura_extra.sin_match == [], (
         f"el literal sintético {literal!r} no matcheó ninguna ruta -- revisá la sustitución de "
@@ -461,7 +519,7 @@ def test_A2_literal_que_no_matchea_ninguna_ruta_se_reporta():
     contado como cobertura de otra ruta por accidente."""
     app, _require_tenant = _build_full_app()
     rutas_reales = _rutas_reales(app.routes)
-    codigo = 'def test_x(client):\n    client.get("/afip/facturas/x/no-existe-e2e2f4")\n'
+    codigo = 'def test_ADVERSARIAL_x(client):\n    client.get("/afip/facturas/x/no-existe-e2e2f4")\n'
     cobertura = _cobertura_desde_codigo(codigo, "sintetico.py", rutas_reales)
     assert cobertura.plantillas == set()
     assert len(cobertura.sin_match) == 1
@@ -475,7 +533,7 @@ def test_A3_fstring_no_desaparece_en_silencio():
     se reportaba: el test pasaba igual y nadie se enteraba de que el caso hostil no probaba nada)."""
     app, _require_tenant = _build_full_app()
     rutas_reales = _rutas_reales(app.routes)
-    codigo = 'def test_x(client, factura_id):\n    client.get(f"/afip/facturas/{factura_id}/estado")\n'
+    codigo = 'def test_ADVERSARIAL_x(client, factura_id):\n    client.get(f"/afip/facturas/{factura_id}/estado")\n'
     cobertura = _cobertura_desde_codigo(codigo, "sintetico.py", rutas_reales)
     assert cobertura.plantillas == set()
     assert len(cobertura.fstrings) == 1
