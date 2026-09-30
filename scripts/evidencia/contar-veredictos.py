@@ -100,6 +100,21 @@ RETIRADOS_DECLARADOS = {"plan"}
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    # ── 2026-09-30: el que el fix de COLUMNA DE SUJETO hizo visible ─────────────────────
+    # MIDE, y con vocabulario cerrado: 2 ids del padron (`factura`, `card-presu`), los dos
+    # `FUERA-DE-REFERENCIA`, 0 huerfanos. Era invisible porque pone el ENUMERADOR en la primera
+    # celda (`A-1`) y el id en la segunda, bajo `| # | camino | veredicto | … |`: el lector miraba
+    # solo la celda 1, no leia ningun sujeto, y al ser los unicos del documento este no llegaba
+    # siquiera a candidato — ni medido ni descartado, invisible a los cuatro ratchets.
+    # Mide 2 caminos contra el prototipo —`factura` con borrador desde presupuesto y `card-presu`
+    # vacio—, los dos FUERA-DE-REFERENCIA porque el proto no los modela: veredicto propio, no
+    # citado.
+    # ⚠️ ACA VA EL NOMBRE COMPLETO. Las dos constantes NO matchean igual y la asimetria no se ve:
+    # `NO_SON_MEDICION` se consulta con `p.name == k or p.name.startswith(k)`, asi que admite la
+    # clave corta que sobrevive a un renombre del titular; esta es un SET y se consulta por
+    # pertenencia exacta en los dos sentidos (`n not in …` y `… - set(candidatos)`), asi que una
+    # clave truncada aca no clasifica nada Y ademas dispara `perdidos` — rojo por los dos lados.
+    "2026-09-30_cierre_frontend2-a-planificacion_C3-2-mediciones-mas-A2b-y-el-banner-de-alerta-doble-emision.md",
     # ── 2026-09-29: los 3 que este PR hizo VISIBLES ─────────────────────────────────────
     # No son documentos nuevos: ya producian veredictos antes. Eran invisibles porque el
     # parser no leia sus formas (tabla de 2 columnas, celdas sin backtick), asi que no
@@ -153,6 +168,24 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-09-30 — visible por primera vez con el fix de COLUMNA DE SUJETO de este PR.
+    # Es un TABLERO DE TRABAJO, no una medicion: su cabecera es
+    # `| # | id · camino | cat | que hay que hacer | costo | dueño | estado |`, o sea tareas,
+    # costo, dueño y estado. Cita 12 ids del padron en rol de FILA DE TRABAJO y no emite un solo
+    # veredicto del vocabulario: los 12 salen con lista vacia. El unico token que el lector saca
+    # es `VOCABULARIO_DESCONOCIDO` sobre `bi`, y viene de `🔴 FALSO POSITIVO` en la columna `cat`
+    # — que clasifica la FILA, no mide la pantalla. Declararlo medicion lo mandaria derecho al
+    # exit 9 («declarado para medir y no mide nada legible»), que es el sintoma correcto de la
+    # clasificacion equivocada.
+    # ⚠️ MOTIVO REDACTADO POR PLANIFICACION, NO POR SU AUTOR (auditoria), por la misma razon que
+    # la entrada de abajo: el guard bloquea el PR que lo hizo visible y dejar rojo el tronco de
+    # las cuatro sesiones es peor. Sujeto a correccion del autor.
+    "2026-09-29_dato_auditoria-a-planificacion_los-11-desvios":
+        "DATO de auditoria: reorganiza los desvios abiertos como filas de un tablero de producto "
+        "(categoria, trabajo, costo, dueño, estado) y retira `bi` por falso positivo del Rail. "
+        "CITA los ids para asignarles trabajo; no compara ninguna pantalla contra el prototipo "
+        "ni emite veredicto de fidelidad. [REDACTADO POR PLANIFICACION 2026-09-30, sujeto a "
+        "correccion de auditoria]",
     # 2026-09-29 — visible por primera vez con el fix de formas de este PR.
     # DICTAMINA sobre mediciones ajenas: responde el `dato_` de frontend1 sobre los 34 png,
     # le da la razon en 6 de 7 y declara `bi` falso positivo del rail. No mide ninguna
@@ -469,6 +502,15 @@ def ubicar(patron):
 # Los 4 de hoy son inocuos para la cifra (el vocabulario cerrado ya los neutraliza), pero su
 # clasificacion es FALSA y envenena el corpus del que lo lea manana. Se declaran con motivo, no se
 # silencian con un umbral.
+FILAS_CIEGAS_JUSTIFICADAS = {
+    # VACIO A PROPOSITO, y medido: sobre los 1979 documentos del buzon el discriminante marca 1
+    # documento antes del fix de columna de sujeto y 0 despues (2026-09-30). Si algun dia hay que
+    # poner algo aca, la pregunta es la misma que arriba: el documento NO MIDE, o NO SE LEE. Una
+    # entrada aca firma «esta fila tiene forma de medicion y NO lo es» — si en realidad el lector no
+    # la sabe leer, esto convierte un bug del parser en una excepcion declarada, que es el error que
+    # `MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA` ya documenta de su lado.
+}
+
 MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA = {
     # VACIO A PROPOSITO, y eso es el resultado, no un pendiente. Las 4 entradas que vivieron aca
     # unas horas eran: 3 documentos analiticos (ya movidos a NO_SON_MEDICION, donde corresponde) y
@@ -493,6 +535,7 @@ def descubrir_documentos(ids):
     Devuelve (docs, descartados) con docs = {basename: Path} de las mediciones vigentes.
     """
     candidatos, descartados, cobertura, cerrados_por_doc, vocab_en_texto = {}, {}, {}, {}, {}
+    ciegos = {}
     for base in ("abierto", "en-curso", "cerrado"):
         raiz = COORD / base
         if not raiz.exists():
@@ -506,7 +549,16 @@ def descubrir_documentos(ids):
                 continue          # nombre imposible en Windows (MAX_PATH): no es un dato perdido,
                                   # es un archivo que el filesystem no entrega. Ver el control abajo.
             con = medir(txt, ids)[1]
-            if ids_del_criterio(con, ids):
+            if not ids_del_criterio(con, ids):
+                # EL DOCUMENTO QUE NO LLEGA A CANDIDATO. Los cuatro ratchets de abajo operan todos
+                # sobre `candidatos`, asi que un documento cuyos UNICOS sujetos son ilegibles no
+                # aparece ni entre los medidos ni entre los descartados: es el unico agujero que
+                # ninguno de ellos cubre, y el que dejo dos dias invisible al `cierre_` de
+                # frontend2. Esta rama es la que lo mira.
+                fc = filas_ciegas_de(txt, ids)
+                if fc and p.name not in FILAS_CIEGAS_JUSTIFICADAS:
+                    ciegos[p.name] = fc
+            else:
                 # Se guarda para TODOS los candidatos, medidos y descartados: la cobertura de los
                 # descartados es la evidencia de que el discriminante separa, y sin ella el gate seria
                 # un umbral sin control positivo.
@@ -602,6 +654,28 @@ def descubrir_documentos(ids):
               "parser dejo de leer su forma. Las tres hay que verlas. Si es legitimo y no aporta, "
               "va a MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA con el motivo.", file=sys.stderr)
         sys.exit(9)
+
+    # 🔴 EL TERCER MIEMBRO DE LA FAMILIA, y el unico que mira AFUERA de `candidatos`. `ilegibles`
+    # (10) y `mudos` (9) parten a un documento YA clasificado; esto caza al que ni siquiera llego a
+    # clasificarse porque sus sujetos son ilegibles. Corre ULTIMO a proposito: los otros dos operan
+    # sobre un conjunto que este no toca, asi que no puede taparles el mensaje — el orden importa en
+    # este archivo desde que un guard que corria antes que su control de ceguera acuso 14 archivos
+    # que existian.
+    if ciegos:
+        total = sum(len(v) for v in ciegos.values())
+        print(f"DOCUMENTOS: MEDICION QUE NO SE VE — {len(ciegos)} documento(s) NO llegan a "
+              f"candidato (0 ids del criterio atribuidos) PERO tienen {total} fila(s) con forma de "
+              f"medicion: un id del padron declarado fuera de la primera celda, con veredicto del "
+              f"vocabulario cerrado en la misma fila.", file=sys.stderr)
+        for n, fs in sorted(ciegos.items(), key=lambda kv: -len(kv[1])):
+            print(f"  · {n}", file=sys.stderr)
+            for ln, col, sid in fs:
+                print(f"      L{ln} columna {col} -> `{sid}`", file=sys.stderr)
+        print("Es un defecto de LECTURA, no de rol: el id es del padron CERRADO, asi que el "
+              "documento esta midiendo el criterio 3 y el veredicto esta en su misma fila. "
+              "Ensanchar el lector (ver `CABECERA_SUJETO`), no declarar la excepcion — declararla "
+              "convierte un bug del parser en una decision de clasificacion.", file=sys.stderr)
+        sys.exit(11)
 
     return candidatos, descartados, cobertura
 
@@ -850,6 +924,70 @@ SUJ_CELDA_PELADA = re.compile(r"^\*{0,2}([a-z0-9][a-z0-9\-]{1,40})\b")
 # menciona el id y NO es una medicion. El rol de la cita se escribe, no se infiere (#721).
 SUJ_CELDA_RARA = re.compile(r"^\*{0,2}\s*`([^`]{1,60})`")
 
+# Nombres con los que una cabecera DECLARA en qué columna vive el sujeto. Es el MISMO mecanismo que
+# `col_veredicto` en `veredictos_de` —el separador markdown identifica la cabecera y el índice se
+# GUARDA en vez de tirarse— aplicado al otro canal. Medido el 2026-09-30: el `cierre_` de frontend2
+# que aporta 2 mediciones del criterio 3 pone el ENUMERADOR en la primera celda (`A-1`) y el id en la
+# segunda, bajo `| # | camino | veredicto | … |`. El lector asumía el sujeto en la celda 1, así que
+# las dos mediciones quedaban ILEGIBLES — y por ser los únicos sujetos del documento, el documento no
+# llegaba a candidato: ni medido ni descartado, invisible a los cuatro ratchets.
+#
+# Esa ceguera estaba ESCRITA ocho días antes, en el comentario final de
+# `test-parser-veredictos-formas-de-tabla.sh`: «un documento cuyo UNICO sujeto es ilegible no llega a
+# ser candidato … y el ratchet exit 8 nunca se entera». Describía el agujero sin mecanismo que lo
+# cazara, que es la forma en que un defecto se vuelve invisible POR ESCRITO en vez de visible.
+#
+# Es un FALLBACK, nunca un override: la celda 1 se intenta siempre primero. La razón es `camino`, que
+# nombra DOS cosas en este corpus — la columna donde vive el id (este caso) y la dimensión `camino A`
+# / `camino B` de un id que vive en la celda 1 (el caso mayoritario). Leer la cabecera como autoridad
+# rompería el segundo; leerla como red sólo agrega documentos que hoy se pierden enteros.
+CABECERA_SUJETO = ("camino", "id", "sujeto", "pantalla")
+PALABRAS_CABECERA = re.compile(r"[a-záéíóúñ]+")
+
+
+def sujeto_de_celda(cel, ids):
+    """Los tres intentos de leerle un sujeto a UNA celda, de señal más fuerte a más débil.
+
+    Vive en una función porque hay DOS call-sites: la primera celda (siempre) y la columna que la
+    cabecera nombra (sólo si la primera no dio nada). Duplicar los tres intentos sería el defecto que
+    este repo ya pagó —un fix que llega a una sola de dos copias—, y acá el costo sería peor que de
+    costumbre: la asimetría backtick-vs-padrón es justamente la pieza que impide inventar sujetos
+    leyendo prosa, así que una copia desincronizada la aflojaría sin dar síntoma.
+    """
+    m = SUJ_CELDA.match(cel)
+    if m:
+        return m.group(1), "celda"
+    mp = SUJ_CELDA_PELADA.match(cel)
+    if mp and mp.group(1) in ids:
+        return mp.group(1), "celda-pelada"
+    # TERCER intento: el id del PADRON con la forma que el padron le dio (ver SUJ_CELDA_RARA). Dos
+    # variantes, las dos condicionadas a `ids`:
+    #   a) declarado entre backticks, con o sin glosa:  | `(home)` (Mi dia) |
+    #   b) la celda entera, pelada de adorno markdown:  | **(home)** |
+    # La (a) es la forma que los documentos usan DE VERDAD, y casi se me escapa: la primera version
+    # solo hacia (b), el caso (b) del test pasaba, y el verde parcial tapaba que la forma real seguia
+    # ilegible. Lo caza el caso con glosa.
+    mr = SUJ_CELDA_RARA.match(cel)
+    if mr and mr.group(1).strip() in ids:
+        return mr.group(1).strip(), "celda-padron-bt"
+    crudo = cel.strip().strip("*").strip().strip("`").strip()
+    if crudo in ids:
+        return crudo, "celda-padron"
+    return None, None
+
+
+def columna_de_sujeto(celdas):
+    """El índice que la CABECERA declara como columna de sujeto, o None si no declara ninguna.
+
+    Se compara por PALABRA y no por substring: `referencia_prototipo` no declara nada, `id del
+    hallazgo` sí. Un None acá no es un fallo — la enorme mayoría de las tablas pone el sujeto en la
+    primera celda y no necesita esto.
+    """
+    for i, c in enumerate(celdas or ()):
+        if set(PALABRAS_CABECERA.findall(limpiar(c).lower())) & set(CABECERA_SUJETO):
+            return i
+    return None
+
 
 def camino_de(cola):
     """El sufijo `— camino A (…)` distingue dos mediciones del mismo id. Sin él, `camino: único`."""
@@ -875,34 +1013,32 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
     # sin quererlo -- otro guard que acertaba por accidente.
     cabeceras = {n for n in range(1, len(lineas) + 1)
                  if n < len(lineas) and es_separador(lineas[n])}
+    col_sujeto = None
     for n, linea in enumerate(lineas, 1):
-        if n in cabeceras:
+        if es_separador(linea):
+            # El separador NO es fila ni cabecera: no abre ni cierra alcance. Saltearlo no es un
+            # detalle — `fila_de_tabla` le devuelve None, y el separador vive SIEMPRE entre la
+            # cabecera y sus filas, así que sin esta línea el reset de abajo borra `col_sujeto`
+            # exactamente una línea después de calcularlo y el fallback no corre NUNCA. Medido con
+            # fixture mínimo: `columna_de_sujeto` devolvía 1 en la cabecera y las dos filas salían
+            # con sujeto None igual. `veredictos_de` ya tenía esta guarda como primera línea de su
+            # loop; reimplementé el mecanismo de cabecera sin traerla.
             continue
         celdas = fila_de_tabla(linea)
+        if celdas is None:
+            col_sujeto = None          # el alcance de una cabecera muere con su tabla
+        if n in cabeceras:
+            col_sujeto = columna_de_sujeto(celdas)
+            continue
         nueva = None
         if celdas:
-            m = SUJ_CELDA.match(celdas[0])
-            sujeto = m.group(1) if m else None
-            forma = "celda"
-            if sujeto is None:
-                mp = SUJ_CELDA_PELADA.match(celdas[0])
-                if mp and mp.group(1) in ids:
-                    sujeto, forma = mp.group(1), "celda-pelada"
-            if sujeto is None:
-                # TERCER intento: el id del PADRON con la forma que el padron le dio (ver
-                # SUJ_CELDA_RARA). Dos variantes, las dos condicionadas a `ids`:
-                #   a) declarado entre backticks, con o sin glosa:  | `(home)` (Mi dia) |
-                #   b) la celda entera, pelada de adorno markdown:  | **(home)** |
-                # La (a) es la forma que los documentos usan DE VERDAD, y casi se me escapa: la
-                # primera version solo hacia (b), el caso (b) del test pasaba, y el verde parcial
-                # tapaba que la forma real seguia ilegible. Lo caza el caso con glosa.
-                mr = SUJ_CELDA_RARA.match(celdas[0])
-                if mr and mr.group(1).strip() in ids:
-                    sujeto, forma = mr.group(1).strip(), "celda-padron-bt"
-                else:
-                    crudo = celdas[0].strip().strip("*").strip().strip("`").strip()
-                    if crudo in ids:
-                        sujeto, forma = crudo, "celda-padron"
+            sujeto, forma = sujeto_de_celda(celdas[0], ids)
+            if sujeto is None and col_sujeto is not None and 0 < col_sujeto < len(celdas):
+                # SEGUNDA mirada, sólo si la primera celda no declaró nada: la columna que la
+                # cabecera nombra. `0 <` porque si la cabecera nombra la columna 0 ya se intentó.
+                sujeto, forma = sujeto_de_celda(celdas[col_sujeto], ids)
+                if sujeto is not None:
+                    forma += "-col"
             if sujeto is not None:
                 nueva = {"id": sujeto, "camino": "", "linea": n,
                          "forma_decl": forma,
@@ -945,6 +1081,53 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
     atribuidos = sum(len(m["veredictos"]) for m in meds)
     huerfanos = sum(len(v) for v in por_linea.values()) - atribuidos
     return hits, meds, huerfanos
+
+
+def filas_ciegas_de(texto, ids, armas=ARMAS):
+    """Filas con FORMA de medición del criterio que el lector no pudo atribuir a ningún sujeto.
+
+    Este detector es A PROPÓSITO más ancho que el lector: acepta el id del padrón en CUALQUIER
+    celda, mientras que `mediciones_de` sólo mira la primera y la que la cabecera nombra. Ese margen
+    ES el mecanismo — un detector tan ancho como su lector no puede avisar de la ceguera de su
+    lector, que es exactamente cómo el `cierre_` de frontend2 pasó dos días invisible.
+
+    Las tres condiciones de una fila ciega, y cada una está para descartar un falso positivo medido
+    sobre los 1979 documentos del buzón (2026-09-30):
+
+      · la fila tiene un veredicto del VOCABULARIO CERRADO leído en posición de medición. Sin esto,
+        se marcaba `A2.md` — 12 veredictos sobre filas del BACKLOG (`BL-F1`, `BL-J2`), que no mide
+        el criterio 3 y nunca debió entrar.
+      · alguna celda DESPUÉS de la primera declara un id DEL PADRÓN. El padrón es cerrado y externo,
+        así que esto no puede inventar sujetos; y la celda 1 se excluye porque si el id está ahí el
+        lector ya lo ve, y si no lo vio es el otro defecto (el del alfabeto, con su propio canario).
+      · el lector NO registró ninguna medición en esa línea.
+
+    Medición del discriminante, que es lo que decide que esto se pueda usar como gate: 1 documento
+    de 1979 antes del fix de columna, 0 después. La variante que además marcaba filas sueltas de
+    documentos que SÍ miden daba 3 falsos positivos de 5 — una tabla de taxonomía cuyos ids están en
+    rol de EJEMPLO (`| el hecho es… | cajón correcto | ejemplo medido |`). Por eso el call-site sólo
+    lo aplica a documentos que atribuyen CERO ids: se acepta el falso negativo de la tabla mixta
+    antes que un guard que grita en el caso normal y enseña a saltearlo.
+    """
+    hits, meds, _ = mediciones_de(texto, armas, ids)
+    cerrado_en = {n for n, v, f, _ in hits if f != "hueco" and v in VOCABULARIO}
+    leidas = {m["linea"] for m in meds if m["veredictos"]}
+    lineas = texto.splitlines()
+    cabeceras = {n for n in range(1, len(lineas) + 1)
+                 if n < len(lineas) and es_separador(lineas[n])}
+    ciegas = []
+    for n, linea in enumerate(lineas, 1):
+        if n in cabeceras or n not in cerrado_en or n in leidas:
+            continue
+        celdas = fila_de_tabla(linea)
+        if not celdas:
+            continue
+        for i, cel in enumerate(celdas[1:], 1):
+            sid, _forma = sujeto_de_celda(cel, ids)
+            if sid in ids:                 # el `in ids` NO es redundante: `sujeto_de_celda` acepta
+                ciegas.append((n, i, sid))  # cualquier token entre backticks (la asimetría), y acá
+                break                       # eso marcaría cualquier celda con una palabra citada.
+    return ciegas
 
 
 def ids_del_criterio(con, ids):

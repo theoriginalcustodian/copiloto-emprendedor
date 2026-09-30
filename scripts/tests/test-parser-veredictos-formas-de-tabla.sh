@@ -46,6 +46,13 @@ def med(t):
 
 CAB3 = "| sujeto | veredicto | notas |\n|---|---|---|\n"
 CAB2 = "| sujeto | veredicto |\n|---|---|\n"
+# La cabecera DECLARA donde vive el sujeto (`camino`) y el enumerador ocupa la primera celda. Es la
+# forma del `cierre_` de frontend2 del 30/09, invisible dos dias: no era una medicion nueva, era una
+# que el lector no podia atribuir, y por ser sus UNICOS sujetos el documento no llegaba a candidato.
+CAB_COL = "| # | camino | veredicto |\n|---|---|---|\n"
+# La MISMA forma con una cabecera que NO declara columna de sujeto. El lector no puede leerla —y no
+# debe inventarla— pero el DETECTOR si tiene que verla: ese margen entre los dos ES el mecanismo.
+CAB_SIN = "| # | nota | veredicto |\n|---|---|---|\n"
 CASOS = [
     # rotulo,                        texto,                                     id esperado, veredicto esperado
     ("POSITIVO 3col backtick",       CAB3 + "| `factura` (ARCA) | COHERENTE | ok |\n",   "factura", "COHERENTE"),
@@ -59,6 +66,9 @@ CASOS = [
     ("H-4 id del padron con bt",     CAB3 + "| `(home)` (Mi dia) | COHERENTE | ok |\n",  "(home)", "COHERENTE"),
     ("H-4 id del padron pelado",     CAB3 + "| (home) | COHERENTE | ok |\n",             "(home)", "COHERENTE"),
     ("H-4 id del padron en negrita", CAB3 + "| **`(home)`** | COHERENTE | ok |\n",       "(home)", "COHERENTE"),
+    # H-5: el sujeto NO esta en la primera celda; la cabecera dice en cual esta.
+    ("H-5 sujeto en la columna que la cabecera nombra",
+     CAB_COL + "| A-1 | `factura` / wizard con borrador | COHERENTE |\n", "factura", "COHERENTE"),
 ]
 for rot, txt, id_esp, v_esp in CASOS:
     ids, vs = med(txt)
@@ -90,6 +100,48 @@ print("%s\tNEGATIVO forma rara FUERA del padron sigue ilegible\tsujetos=%s" % ("
 _, meds2, _ = cv.mediciones_de(CAB2 + "| `card` (gasto) | COHERENTE |\n")
 print("%s\tNEGATIVO separador 2col no es fila\tmediciones=%d (esperado 1)"
       % ("OK" if len(meds2) == 1 else "FAIL", len(meds2)))
+
+# ── COLUMNA DE SUJETO: la cabecera es RED, no AUTORIDAD ───────────────────────────────────────
+# NEGATIVO 5 -- el caso que decide si el fallback es un fix o una relajacion. `camino` nombra DOS
+# cosas en este corpus: la columna donde vive el id, y la dimension `camino A`/`camino B` de un id
+# que vive en la celda 1 (el caso MAYORITARIO). Si la cabecera ganara, cada tabla con columna
+# `camino` empezaria a leer el sujeto de la columna equivocada -- y con `card` en la celda 1 el
+# error ni siquiera daria rojo: daria OTRO sujeto.
+_, meds5, _ = cv.mediciones_de(CAB_COL + "| `card` (gasto) | camino A | COHERENTE |\n", ids=IDS)
+f5 = [(m["id"], m["forma_decl"]) for m in meds5]
+ok5 = f5 == [("card", "celda")]
+print("%s\tNEGATIVO la celda 1 GANA sobre la columna de la cabecera\t%s (esperado [('card','celda')])"
+      % ("OK" if ok5 else "FAIL", f5))
+
+# NEGATIVO 6 -- sin cabecera que declare columna de sujeto, el lector NO inventa. `nota` no declara
+# nada, y el id de la celda 2 no puede leerse por adivinanza: seria exactamente la tabla de
+# taxonomia donde los ids del padron estan en rol de EJEMPLO (medida en el buzon: 3 filas asi).
+_, meds6, _ = cv.mediciones_de(CAB_SIN + "| A-1 | `factura` / wizard | COHERENTE |\n", ids=IDS)
+print("%s\tNEGATIVO sin columna declarada no se inventa sujeto\tsujetos=%s"
+      % ("OK" if not meds6 else "FAIL", [m["id"] for m in meds6]))
+
+# NEGATIVO 7 -- el ancla `^` sigue separando SUJETO de REFERENCIA tambien en la columna nombrada.
+_, meds7, _ = cv.mediciones_de(CAB_COL + "| A-1 | ver `factura` mas arriba | COHERENTE |\n", ids=IDS)
+print("%s\tNEGATIVO mencion en rol de referencia tampoco cuenta en la columna\tsujetos=%s"
+      % ("OK" if not meds7 else "FAIL", [m["id"] for m in meds7]))
+
+# ── EL DETECTOR ES MAS ANCHO QUE EL LECTOR ────────────────────────────────────────────────────
+# Este par es el diseno entero. Un detector tan ancho como su lector no puede avisar de la ceguera
+# de su lector: por eso `filas_ciegas_de` acepta el id del padron en CUALQUIER celda, y el lector
+# solo en la primera y en la que la cabecera nombra. El hueco entre los dos es la alarma.
+d_pos = cv.filas_ciegas_de(CAB_SIN + "| A-1 | `factura` / wizard | COHERENTE |\n", IDS)
+print("%s\tDETECTOR ve la fila que el lector NO puede leer\tfilas=%s (esperado 1)"
+      % ("OK" if len(d_pos) == 1 else "FAIL", d_pos))
+
+d_neg = cv.filas_ciegas_de(CAB_COL + "| A-1 | `factura` / wizard | COHERENTE |\n", IDS)
+print("%s\tDETECTOR callado cuando el lector SI la lee\tfilas=%s (esperado 0)"
+      % ("OK" if not d_neg else "FAIL", d_neg))
+
+# Y no dispara con un id FUERA del padron: el padron cerrado es lo que impide que esto marque
+# cualquier palabra citada entre backticks en cualquier celda.
+d_neg2 = cv.filas_ciegas_de(CAB_SIN + "| A-1 | `inventado` / x | COHERENTE |\n", IDS)
+print("%s\tDETECTOR no dispara con un id fuera del padron\tfilas=%s (esperado 0)"
+      % ("OK" if not d_neg2 else "FAIL", d_neg2))
 PYEOF
 )"
 echo "$corrida"
