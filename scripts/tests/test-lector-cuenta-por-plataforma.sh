@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Control POSITIVO de PLATCONV: el lector cuenta por PLATAFORMA, y un veredicto de mobile NO puede
+# aparecer como cobertura de web.
+#
+# Por que existe, y por que es OBLIGATORIO antes de publicar cualquier cifra: hasta el 2026-09-30 la
+# clave del lector era `id·camino` y **no llevaba la plataforma** -- el propio archivo lo declaraba en
+# un comentario («LIMITACION CONOCIDA del contraste»). Con esa clave, un id con veredicto WEB y nada
+# en mobile contaba como cubierto, y de ahi salia el «54 de 54»: un solo numero para DOS poblaciones.
+#
+# El arreglo es indistinguible del bug sin este test, y no por prolijidad: `ids_del_criterio_cerrados`
+# COLAPSA la clave al id (`clave.split(SEP)[0]`), asi que con la clave nueva devuelve exactamente el
+# mismo total. O sea que se puede "arreglar" el parser entero y seguir publicando la cifra mentirosa,
+# con el codigo nuevo corriendo. El caso 2 es el que lo caza.
+#
+# La UNICA variable entre casos es la columna `plataforma` (presente / ausente / con vocabulario
+# inventado). Si el POSITIVO falla, TODA la tanda es invalida.
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
+PY="${PYTHON:-python}"
+CONTADOR="scripts/evidencia/contar-veredictos.py"
+[ -f "$CONTADOR" ] || { echo "❌ no existe $CONTADOR"; exit 1; }
+
+corrida="$("$PY" - <<'PYEOF'
+# -*- coding: utf-8 -*-
+import importlib.util, pathlib, sys
+sys.stdout.reconfigure(encoding="utf-8")
+SRC = pathlib.Path("scripts/evidencia/contar-veredictos.py").resolve()
+spec = importlib.util.spec_from_file_location("cv", str(SRC)); cv = importlib.util.module_from_spec(spec)
+sys.argv = ["cv"]
+try: spec.loader.exec_module(cv)
+except SystemExit: pass
+
+IDS = {"factura", "card", "cuenta", "detalle"}
+
+def plataformas(txt):
+    """{plataforma: [ids]} tal como lo publica el reporte."""
+    _, con, _, _, _, _, _ = cv.medir(txt, IDS)
+    return cv.ids_cerrados_por_plataforma(con, IDS)
+
+def sin_leer(txt):
+    _, _, _, _, _, _, ps = cv.medir(txt, IDS)
+    return ps   # (lineas sin columna, {valor crudo: lineas})
+
+# La forma REAL que escribe FE1 (`cierre_…B1-13-ids-superficie-y-dimension.md:38`), recortada a lo
+# que este test necesita. `superficie` y `dimension` quedan a proposito: son columnas distintas y el
+# lector no las debe confundir con la plataforma.
+CAB = "| id (camino) | plataforma | superficie (app/proto) | dimension | veredicto |\n|---|---|---|---|---|\n"
+CAB_SIN = "| id (camino) | superficie (app/proto) | dimension | veredicto |\n|---|---|---|---|\n"
+
+casos = []
+
+# ── 1. POSITIVO: la columna dice web y el id cae en web ──────────────────────────────────────
+p = plataformas(CAB + "| `factura` (ARCA) | web | app | layout | COHERENTE |\n")
+casos.append(("POSITIVO columna web -> cubierto en web",
+              "factura" in p["web"] and "factura" not in p["mobile"]
+              and "factura" not in p["indeterminada"], p))
+
+# ── 2. EL CONTROL DEL CONTRATO: solo-mobile NO puede aparecer en web ─────────────────────────
+# Es el caso que el contrato exige clavar: «un id con veredicto sólo mobile **no** puede aparecer
+# como cubierto en web». Antes del fix, `factura` salia cubierto y la cifra de web lo contaba.
+p = plataformas(CAB + "| `factura` (ARCA) | mobile | app | layout | COHERENTE |\n")
+casos.append(("CONTRATO solo-mobile NO cuenta en web",
+              "factura" in p["mobile"] and "factura" not in p["web"], p))
+
+# ── 3. sin columna -> indeterminada, NUNCA web ───────────────────────────────────────────────
+# El fail-open de hoy: contar «no se» como «web». La mayoria del corpus no tiene la columna, asi
+# que este caso es el que decide si la cifra de web es real o heredada.
+p = plataformas(CAB_SIN + "| `card` (gasto) | app | layout | COHERENTE |\n")
+casos.append(("sin columna -> indeterminada, no web",
+              "card" in p["indeterminada"] and "card" not in p["web"], p))
+
+# ── 4. columna con vocabulario inventado -> indeterminada, y se NOMBRA ───────────────────────
+# `pwa` es el caso que el contrato le prohibe a FE2 explicitamente. Que caiga en indeterminada no
+# alcanza: hay que poder distinguir «falta la columna» de «la columna dice cualquier cosa», porque
+# son dos trabajos distintos.
+txt4 = CAB + "| `cuenta` (Mi cuenta) | pwa | app | layout | COHERENTE |\n"
+p = plataformas(txt4)
+_, invalidos = sin_leer(txt4)
+casos.append(("vocabulario inventado (`pwa`) -> indeterminada Y nombrado",
+              "cuenta" in p["indeterminada"] and "cuenta" not in p["web"]
+              and "pwa" in invalidos, (p, sorted(invalidos))))
+
+# ── 5. el MISMO id en las dos plataformas son DOS coberturas ─────────────────────────────────
+# Es lo que la clave nueva permite y la vieja no: con `id·camino` la segunda fila se fundia con la
+# primera y una de las dos mediciones desaparecia del reparto.
+p = plataformas(CAB + "| `detalle` (Mi día) | web | app | layout | COHERENTE |\n"
+                    + "| `detalle` (Mi día) | mobile | app | layout | DESVIO |\n")
+casos.append(("mismo id en web y mobile -> cuenta en LAS DOS",
+              "detalle" in p["web"] and "detalle" in p["mobile"], p))
+
+# ── 6. una celda que dice las dos no es medicion de ninguna ──────────────────────────────────
+# Elegir `web` porque aparece primero seria adivinar por orden de lectura con cara de medir.
+p = plataformas(CAB + "| `card` (gasto) | web y mobile | app | layout | COHERENTE |\n")
+casos.append(("«web y mobile» en una celda -> indeterminada",
+              "card" in p["indeterminada"] and "card" not in p["web"]
+              and "card" not in p["mobile"], p))
+
+# ── 7. heading/bullet no tienen columna: indeterminada, sin inferir del titulo ───────────────
+p = plataformas("# Medición de la app WEB de septiembre\n\n"
+                "### `factura` — camino A (ARCA)\n\nVeredicto: COHERENTE\n")
+casos.append(("heading -> indeterminada (no se infiere del titulo)",
+              "factura" in p["indeterminada"] and "factura" not in p["web"], p))
+
+# ── 8. el alcance de la cabecera MUERE con su tabla ──────────────────────────────────────────
+# Si `col_plataforma` sobrevive a la tabla, la segunda hereda una columna que no tiene y el valor
+# sale de la posicion equivocada: un dato inventado con apariencia de medido.
+p = plataformas(CAB + "| `factura` (ARCA) | web | app | layout | COHERENTE |\n"
+                + "\ntexto que cierra la tabla\n\n"
+                + CAB_SIN + "| `card` (gasto) | app | layout | COHERENTE |\n")
+casos.append(("la columna no se hereda a la tabla siguiente",
+              "factura" in p["web"] and "card" in p["indeterminada"]
+              and "card" not in p["web"], p))
+
+for rot, ok, detalle in casos:
+    print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
+PYEOF
+)"
+rc=$?
+echo "$corrida"
+[ "$rc" = 0 ] || { echo "❌ el python del test no completó (rc=$rc)"; exit 1; }
+
+total="$(printf '%s\n' "$corrida" | grep -c $'^\(OK\|FAIL\)\t')"
+malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
+# El POSITIVO se afirma aparte: si el fixture esta roto, los otros casos salen "bien" por la razon
+# equivocada y la tanda entera no vale nada.
+# `$'...'` y no `'...'`: en una ERE/BRE de grep, `\t` es una `t` literal, asi que el patron sin
+# comillas-dolar NO matchea nunca y este guard condena una tanda 8/8 -- justo el guard que grita en
+# el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
+printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
+  || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
+[ "$total" -ge 8 ] || { echo "❌ esperaba >=8 casos, corrieron $total"; exit 1; }
+[ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
+echo "OK — $total/$total: la cifra se parte por plataforma y un veredicto de mobile no cuenta como web"
