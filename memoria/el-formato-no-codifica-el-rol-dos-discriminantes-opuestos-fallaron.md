@@ -129,3 +129,34 @@ Y la segunda es **más grave que la primera**: el retiro al menos está escrito 
 así que es recuperable por un parser el día que se lo enseñe. Una afirmación sobre un elemento ausente **no
 deja rastro en ningún documento** — apareció sólo porque alguien fue a leer la celda y a contar los
 elementos uno por uno. Ver [[el-instrumento-fabrica-una-referencia-que-no-existe]].
+
+### Quinta cara, el mismo día: no hay UN retirado y UN vigente — hay una CADENA sin sucesión declarada
+
+Medido al final de la jornada: el corpus del 22/09 tiene **6 documentos de medición web, no 2**, en dos
+cadenas paralelas de dos autores, y **ninguno declara a quién sucede**:
+
+```
+barrido f1 (35 pantallas, 22 COHERENTE)   ← retirado; sus 36 filas no lo dicen
+  └─ re-medida f1 (22 ids)                ← refuta 4, deja 9 SIN VEREDICTO
+       ├─ v2 f1 (9 ids)                   ← cierra esas 9
+       └─ v2-filas-3-a-6 f1 (7 ids)       ← el detalle delegado
+barrido f2 (7 pantallas ✅)                ← superado; sin marca
+  └─ re-medida f2 (7 ids)                 ← baja 5 a REQUIERE_TRIAGE
+```
+
+Elegí «el vigente» **por tamaño y por parecido de nombre**, y caí en el del medio de una cadena: los
+`REQUIRES_TRIAGE` que cité como veredicto final eran el estado **intermedio** que `v2` vino a cerrar. Dije
+la cifra mal cuatro veces (8 → 5 → 0 → 2) y **ninguna falló por razonamiento: todas por el universo de
+documentos**.
+
+Eso corrige el remedio de la cuarta cara: **`RETIRADO_POR:` no alcanza, porque la mitad de los casos no es
+un retiro total sino un cierre parcial de filas abiertas.** Necesita su par en el que llega después
+—`SUPERSEDE:` / `CIERRA_FILAS_DE:`— declarado por quien lo escribe, que es el único que sabe a qué viene.
+
+> **Una cadena de versiones sin sucesión declarada no tiene un documento vigente: tiene el que eligió el
+> lector.** Y el lector elige por prominencia —el más grande, el de nombre más canónico—, que no correlaciona
+> con ser el último.
+
+Y el cobro final está medido en [[el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario]]:
+combinada con un vocabulario que no admite el estado corrector, esta cara **produce un falso verde real**, no
+una ambigüedad de lectura.
