@@ -50,3 +50,40 @@ verde era el que llegaba como notificación.
 existe. `d.get("arbol_sucio")` sobre un recibo cuyo campo se llama `sucio` devuelve `None` sin
 fallar, y `None` **no es** «limpio» ni «sucio»: es «no miré». Imprimir las claves disponibles antes de
 consultarlas cuesta una línea.
+
+---
+
+## Segunda faz (2026-09-30): el `; echo` final se lo come igual, y la NOTIFICACIÓN lo repite
+
+El pipe no es el único sumidero. **Cualquier cosa después del `;` se vuelve el veredicto**, y en un
+comando lanzado en background el harness reporta el exit del **último** comando de la línea.
+
+**Caso.** Lancé un push así, creyendo que lo estaba instrumentando mejor:
+
+```bash
+git push origin <rama> > push9.log 2>&1; echo "EXIT=$?"
+```
+
+La notificación del background dijo **«completed (exit code 0)»**. El log decía:
+
+```
+httpx.WriteTimeout: The write operation timed out
+[graph-sync] ❌ el sync salió con status 1.
+error: failed to push some refs to 'https://github.com/…'
+```
+
+**El push había fallado** (el pre-push aborta cuando el sync del grafo se cae — ver
+[[graphity-backup-cron-tumba-el-api-4x-dia-60-90s]]), y el `echo` final —que sí terminó bien— fue el
+exit que el harness reportó. Lo cazó el control correcto: `git ls-remote` mostraba el SHA **anterior**
+mientras `git rev-parse HEAD` mostraba el nuevo. Es [[git-push-puede-salir-exit-0-sin-haber-pusheado]],
+pero llegando por otra puerta: ahí el engaño era del `push`, acá del **envoltorio que yo mismo escribí
+para no ser engañado**.
+
+**El agravante:** el `echo "EXIT=$?"` **sí** imprime el código correcto **dentro** de la salida. Sirve si
+alguien lee la salida. No sirve para el resumen de una tarea en background, que es justo donde uno confía
+en el semáforo y no abre el archivo — [[el-parte-del-proveedor-existe-y-no-lo-lei]].
+
+**Cómo aplicarlo:** para una operación cuyo éxito importa, el veredicto no se lee del exit code **de
+ninguna forma** — se mide en el efecto: `ls-remote` para un push, contenido para un merge, el blob para
+un archivo. Y si igual querés el código, que el comando **termine** en la operación y no en un `echo`,
+un `tail` ni un `||  true`.
