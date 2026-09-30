@@ -37,3 +37,19 @@ Kill-switch: `touch ~/.claude/state/promesa_gate_off`. [[gates-mecanicos-de-efic
 menos dispara — el canal que sí llega mientras trabajás es el hook `buzon_watcher` (PostToolUse).
 Esperar que «el cron me despierte» para retomar lo prometido es apoyarse en el único canal que
 garantiza no llegar. [[el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion]]
+
+**Variante 2026-09-30 — no siempre es elusión: a veces el paso CORRIÓ, falló callado, y el anuncio ya
+había salido.** Le escribí a auditoría «queda como fila `IDXMERGE` en `PLAN.md`» y la fila no estaba.
+No la eludí: la escritura murió a mitad de **un solo comando que mezclaba dos intérpretes con distinta
+noción de la misma ruta** — el heredoc de Git Bash escribió en `/c/Users/Admin/.../scratchpad/fila.txt`
+y el Python nativo de Windows que debía leerla resolvió esa cadena POSIX como inexistente. `mkdir`
+rc=0, heredoc rc=0, archivo realmente en disco, y el `insert` muerto después: el tramo que acredita es
+el que corrió bien. Lo cazó auditoría grepeando el archivo con control positivo (dos filas que sí
+estaban) y negativo — no mi propia verificación.
+
+**Lo que agrega a la regla:** «hacela antes de escribir la frase» no alcanza si el hacer puede fallar
+en silencio. Entre el acto y el anuncio va la **medición del efecto**, no el `rc=0` del comando. Y el
+costo escala: un peer que cita tu anuncio propaga al operador una deuda que no existe en el registro
+— acá auditoría relayeó «el hueco quedó como deuda suya (IDXMERGE)» y su Stop hook la frenó por
+declarar verificado algo que le habían contado. Escribió uno, leyó otro, y el que decide no es el que
+midió. [[el-pipe-se-come-el-exit-code]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]
