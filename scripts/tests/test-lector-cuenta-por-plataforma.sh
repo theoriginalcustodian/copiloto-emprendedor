@@ -170,6 +170,35 @@ p = plataformas("### `detalle` — camino A (Mi día)\n\n"
 casos.append(("la cabecera `| ... | plataforma |` NO declara nada (control del patron)",
               "detalle" in p["indeterminada"] and "detalle" not in p["web"], p))
 
+# ── 14. EL HEDGE NO ES UNA DECLARACION — la celda REAL que se contaba como mobile limpio ─────
+# Copiada textual de `…_cierre_frontend2-…_BL-Q3-v2-lote-B-11-de-11-completo.md:23`. La celda dice
+# «ambas» y ADEMAS declara que mobile no fue verificado; el lector la contaba como `mobile` porque
+# era el unico token del vocabulario que aparecia. frontend2 reporto 4 filas `ambas` y el instrumento
+# reportaba 3: la cuarta no estaba perdida, estaba PROMOVIDA a una plataforma que nadie midio.
+# Sin este caso, el arreglo es indistinguible del bug: la cifra de web no cambia.
+# ⚠️ El sujeto es `detalle` y no `reveal` a proposito: `reveal` NO esta en `IDS`, y un id que el
+# lector no mide no cae en NINGUN cubo — asi que `"reveal" not in p["mobile"]` salia True sin
+# haber medido nada. La primera version de este caso salio VERDE mirando cero elementos, que es
+# el mismo defecto que el test existe para cazar. La asercion que manda es la POSITIVA
+# (`in p["indeterminada"]`), porque esa no se puede satisfacer por vacio.
+txt14 = (CAB + "| `detalle` (Mi día) | ambas (mobile `[ASSUMED_PENDING_VERIFY]`, línea no releída) "
+                "| app | layout | COHERENTE |\n")
+p = plataformas(txt14)
+_, invalidos14, _ = sin_leer(txt14)
+casos.append(("hedge «ambas (mobile …)» -> indeterminada, NO mobile, Y nombrado",
+              "detalle" in p["indeterminada"]
+              and "detalle" not in p["mobile"] and "detalle" not in p["web"]
+              and any("ambas" in k for k in invalidos14),
+              (p, sorted(invalidos14))))
+
+# ── 15. CONTROL DE SOBRE-ESTRICTEZ: la DECORACION no rompe una celda legitima ────────────────
+# El arreglo del 14 es un match EXACTO, asi que hay que probar el otro lado: una celda que ES el
+# token pero viene con backticks o negrita tiene que seguir contando. Un guard que se pasa de
+# estricto vuelve `indeterminada` a todo el corpus y eso se lee como «el lector no sabe leer».
+p = plataformas(CAB + "| `factura` (ARCA) | **`web`** | app | layout | COHERENTE |\n")
+casos.append(("la decoracion (`backticks`/**negrita**) no invalida la celda",
+              "factura" in p["web"] and "factura" not in p["indeterminada"], p))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -187,6 +216,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 13 ] || { echo "❌ esperaba >=13 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 15 ] || { echo "❌ esperaba >=15 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
 echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, y un veredicto de mobile no cuenta como web"

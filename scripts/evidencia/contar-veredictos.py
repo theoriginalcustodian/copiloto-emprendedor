@@ -1038,14 +1038,28 @@ def columna_de_plataforma(celdas):
 
 
 def plataforma_de_celda(cel):
-    """La plataforma que declara UNA celda, o None si no declara una sola del vocabulario cerrado.
+    """La plataforma que declara UNA celda, o None si no declara EXACTAMENTE una del vocabulario.
 
-    `len(halladas) == 1` y no `>= 1`: una fila que dice «web y mobile» no es una medicion de ninguna
-    de las dos - es una fila que hay que partir. Devolver `web` porque aparece primero seria elegir
-    por orden de lectura, que es adivinar con cara de medir."""
-    toks = set(PALABRAS_CABECERA.findall(limpiar(cel or "").lower()))
-    halladas = toks & set(VOCABULARIO_PLATAFORMA)
-    return VOCABULARIO_PLATAFORMA[halladas.pop()] if len(halladas) == 1 else None
+    La celda tiene que SER el token y nada mas. Antes bastaba con que contuviera **un solo** token del
+    vocabulario, y eso era un fail-open medido:
+
+        `reveal` -> plataforma = 'ambas (mobile `[ASSUMED_PENDING_VERIFY]`, linea no releida)'
+
+    Esa celda dice «ambas» y encima declara que mobile NO fue verificado — y el lector la contaba como
+    una medicion LIMPIA de `mobile`, porque `mobile` era el unico token del vocabulario que aparecia.
+    O sea que la unica palabra que el lector miraba era la del hedge. frontend2 reporto 4 filas
+    `ambas` en ese documento y mi instrumento reportaba 3: la cuarta no estaba perdida, estaba
+    PROMOVIDA a un veredicto de plataforma que nadie habia medido.
+
+    Un hedge no es una declaracion. Si la celda necesita explicar, lo que declara es la duda, y la
+    duda se cuenta en `indeterminada` con su valor crudo a la vista — que es accionable— en vez de
+    desaparecer dentro de una cifra de cobertura.
+
+    Sigue valiendo el motivo original de `== 1`: «web y mobile» no es una medicion de ninguna de las
+    dos, es una fila que hay que partir. Devolver `web` porque aparece primero seria elegir por orden
+    de lectura, que es adivinar con cara de medir."""
+    pelada = limpiar(cel or "").strip().lower()
+    return VOCABULARIO_PLATAFORMA.get(pelada)
 
 
 def sujeto_de_celda(cel, ids):
