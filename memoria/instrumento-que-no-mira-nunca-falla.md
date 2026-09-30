@@ -169,3 +169,35 @@ interpretable sin el conteo de cobertura, y ésa es la línea que faltaba para q
 > Emparenta con `[[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]]`: allá el dato
 > envejecía, acá envejece **el criterio de selección**, que es peor porque no se vuelve a mirar.
 
+
+---
+
+## (2026-09-30) `rglob` **LISTA** rutas que `read_text` no puede abrir: el MAX_PATH de Windows
+
+Barriendo el buzón (2104 `.md`), el script murió en un archivo que `rglob` acababa de enumerar:
+
+```
+FileNotFoundError: …coordinacion/cerrado/2026-08-05/2026-08-05_urgente_vigilancia-a-frontend_
+  contrato-sin-tomar-2026-08-04_urgente_vigilancia-a-frontend_contrato-sin-tomar-2026-08-04_
+  contrato_planificacion-a-frontend_MWEB-6-modulos-restantes-completo-paralelo.md
+```
+
+**El archivo existe.** Lo que falla es abrirlo: la ruta mide **295 caracteres** y el límite clásico de
+Windows es 260. Medido: **4 de 2104** archivos del buzón son ilegibles así (260, 295, 296 y 303 chars).
+
+**Por qué es esta patología y no un bug cualquiera:** la reacción natural al `FileNotFoundError` es
+envolver la lectura en `try/except: continue`. Con eso el barrido **reporta «0 hits» sobre archivos que
+nunca miró**, y no hay forma de distinguirlo de «los miré y no tenían nada». El instrumento no falla:
+**deja de mirar**.
+
+**Cómo aplicar:** (1) leé con el prefijo de ruta larga como segundo intento —`Path("\\?\\" + str(f.resolve()))`—
+y (2) **contá y reportá los ilegibles como una cifra propia** (`LEIDOS: 2100 de 2104 · ILEGIBLES: 4`, con
+su longitud y su nombre). Nunca `except: continue` a secas sobre un elemento del universo que declaraste
+mirar. Un barrido tiene que poder decir **cuántos** miró, no sólo cuántos encontró.
+
+**Y la causa de raíz, que es de planificación:** el escalador compone el nombre del `urgente_` metiendo
+**el nombre completo del contrato adentro** (`urgente_vigilancia-a-<rol>_contrato-sin-tomar-<nombre del
+contrato>.md`). Si el contrato ya es un `urgente_` compuesto, el nombre se anida otra vez y crece sin
+techo — los 4 casos son exactamente eso, con «contrato-sin-tomar» dos veces en el mismo nombre. Un
+generador de nombres sin límite de longitud fabrica archivos que después nadie puede leer.
+Ver [[un-vacio-del-propio-instrumento-no-es-hallazgo]] · [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]].
