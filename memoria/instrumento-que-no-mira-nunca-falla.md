@@ -262,3 +262,28 @@ el llamador, y sólo el segundo es el instrumento; (2) medí qué **fracción** 
 ser un absoluto: guardá el ANTES y exigí que los que pasaban sigan pasando; (4) el canario es inyectar el
 daño exacto que el cambio produciría **en el lugar donde lo produciría** — romper un link del índice no
 prueba nada sobre los cuerpos.
+
+---
+
+## Refuerzo (2026-09-30): el control no podía **ver** el carácter que buscaba — `grep` de un emoji bajo cp1252
+
+Verifiqué la firma de un mensaje recién escrito con `grep -c '\U0001F916' archivo` desde Git Bash y
+obtuve **0**. El emoji **sí estaba** (medido después con Python: `t.count(...) == 1`, archivo de 5144
+bytes). Lo que falló fue el camino del patrón: la consola de este entorno es **cp1252**, que no puede
+representar U+1F916, así que el literal se manglaba **antes de llegar a grep**. El mismo `print` en
+Python lo demostró reventando con `UnicodeEncodeError: 'charmap' codec can't encode character
+'\U0001f916'` — el error salió del **instrumento**, no del dato.
+
+Y el cero se lee idéntico a «no está». Un control que no puede representar lo que busca **siempre
+informa ausencia**, y la ausencia es justo el resultado que uno ya teme, así que se cree.
+
+**El control del control, que es una pregunta:** *¿el instrumento puede expresar el valor que busca?*
+Si el patrón viaja por una shell, un `argv`, un log o una terminal con otro encoding, la respuesta puede
+ser no — y entonces el `0` no mide el archivo, mide el canal.
+
+**How to apply:** para verificar caracteres fuera de ASCII en un archivo, medilo **dentro** del proceso
+que lee el archivo (`python -c` con `io.open(..., encoding='utf-8')` y comparación por codepoint),
+nunca pasando el carácter como literal por la shell; y cuando tengas que imprimirlo, `PYTHONIOENCODING=utf-8`
+o `\\uXXXX` con `backslashreplace`. Sumale el **control positivo barato**: buscá también un carácter que
+NO pusiste (yo usé U+1F600) — si tu método discrimina, tiene que dar presente/ausente distinto para los
+dos. Si ambos dan 0, no medió nada.

@@ -68,3 +68,35 @@ preguntá de dónde saldría la copia si el script falla — si la respuesta es 
 apostando; (3) emojis literales o `\U0001F...`, jamás pares surrogate; (4) si igual pasó: **reconstruí y
 declaralo en el propio archivo** (yo dejé un bloque diciendo que el cuerpo es una transcripción), porque
 quien lo lea después no tiene forma de saber que no es el original.
+
+---
+
+## Refuerzo (2026-09-30, el mismo día): el patrón seguro **protege el original y deja un residuo que engaña al próximo control**
+
+Apliqué esto mismo pocas horas después, escribiendo un `urgente_` al buzón, y **funcionó**: el emoji
+volvió a entrar como par surrogate (`\ud83e\udd16` en vez de `\U0001F916`), el `.write()` reventó, y el
+`os.replace` nunca corrió. **Ningún `.md` se perdió.** El patrón es correcto.
+
+**Lo que no había previsto es lo que queda en disco.** El `with` ya había creado
+`<nombre>.md.tmp`, así que el fallo deja **un huérfano de 0 bytes cuyo nombre empieza igual que el
+archivo bueno**. Y ahí muerde:
+
+```
+abierto/…-lo-acredita-un-push-que-paso-SIN-sincronizar-….md.tmp   0 B   <- residuo del fallo
+abierto/…-lo-puede-acreditar-un-push-que-paso-SIN-sincronizar-….md  5144 B <- el bueno
+```
+
+Mi verificación fue `glob('*un-push-que-paso-SIN-sincronizar*')[0]` → **tomó el `.tmp`**, midió 0 líneas
+y 0 acentos, y estuve a un paso de concluir que mi propio mensaje había salido vacío. El mensaje estaba
+perfecto; **el instrumento midió otro objeto**, porque el residuo del intento anterior matchea el mismo
+patrón y ordena antes alfabéticamente.
+
+**Dos consecuencias prácticas:**
+1. El `.tmp` va **fuera** del directorio que otros escanean, o con un prefijo que ningún glob del
+   dominio matchee (`.wip-<nombre>`), o se borra en un `except`/`finally`. En un buzón que se ordena por
+   janitor, un huérfano de 0 bytes es peor que nada: se cuenta como mensaje y se abre vacío.
+2. **Todo glob de verificación imprime CUÁNTOS objetos matcheó, no sólo el `[0]`.** Un `[0]` silencioso
+   es la misma familia de defecto que el `head -N` que trunca antes de llegar a la sección que buscabas.
+
+**How to apply (agregado):** al verificar lo que acabás de escribir, listá los matches con su tamaño
+antes de leer uno; y si el patrón matchea más de uno, eso ya es el hallazgo.
