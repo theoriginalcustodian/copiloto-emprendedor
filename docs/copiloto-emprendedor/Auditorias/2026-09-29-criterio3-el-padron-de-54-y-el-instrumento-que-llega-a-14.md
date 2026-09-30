@@ -1086,3 +1086,109 @@ hallazgo. Sin el positivo en la misma corrida, este C3-24 se publicaba al revés
 `cierre_` de planificación) · scripts: 2 corridas del instrumento (`apar,comousar,esc,factura,soporte` →
 exit 0, 5 de 5; `ingresar,card` → exit 1 por diseño) + 1 medición de `CAMINO` (17 de 17 ids) · 2 en
 background.
+
+---
+
+## C3-24-bis ⚠️ **Dos correcciones a C3-24 (son 5 de 10, no 8) y un hallazgo peor: una fila VIGENTE que se contradice a sí misma**
+
+FE1 pidió verificar una cita antes de aceptar C3-24 y **tenía razón dos veces**: mi celda de `factura`
+estaba mal, y cuando fui a refutarlo **medí el sujeto equivocado**. Va acá con la misma prominencia que el
+hallazgo original, porque el «8 de 10» ya salió en el `cierre_` al buzón y en dos mensajes directos.
+
+### Corrección 1 — el recuento: **5 de los 10**, no 8
+
+Dije que `factura`, en la matriz vigente, era «una de las 4 que la auditoría refutó». **Falso.** La matriz
+vigente, línea 81, le da `COHERENTE`: *«H-A4-5 confirmado desplegado y verificado visualmente con espera real
+a datos: aterriza en el listado/resumen ("Facturado este mes", "Te deben", "ÚLTIMAS EMITIDAS" + botón "+
+Nueva factura"), **no** en el wizard — coincide con el proto»*. Es del mismo bloque de fixes verificados que
+`soporte`, escrito **después** de registrar las 4 con diferencias: **las 4 refutadas fueron el disparador de
+la re-medición, no su resultado.** Confundí el motivo por el que un documento se escribió con el veredicto
+que produjo.
+
+| | ids | situación |
+|---|---|---|
+| **5** | `card` · `card-cliente` · `card-cobro` · `card-presu` · `preg` | `COHERENTE` **sólo** en el barrido retirado; en el vigente `REQUIRES_TRIAGE` (los 4) e `INCOMPLETO — no es hallazgo` (`preg`) → **conflicto contra evidencia retirada** |
+| **3** | `esc` · `factura` · `ingresar` | `COHERENTE` **vigente** → se dirimen uno por uno |
+| **2** | `cuenta` · `detalle` | sin medición del 22/09 en **ninguno** de los dos documentos → fuente sin ubicar |
+
+**El mecanismo de C3-24 sobrevive entero y sigue 🔴 ALTA** —cinco filas comparan un `DESVÍO` vigente contra
+un `COHERENTE` retirado el mismo día, y ninguna de las 36 filas del documento retirado lo dice—, igual que
+la conclusión operativa: **los diez no se cierran juntos.** Lo que se cae es mi cifra.
+
+**Y el sesgo vale nombrarlo: inflé la cifra en la dirección que hacía más fuerte mi propia tesis.** El «8 de
+10» sostenía el hallazgo del documento retirado mejor que el «5 de 10». No lo verifiqué fila por fila.
+
+### Corrección 2 — fui a refutar a FE1 y **medí el sujeto equivocado**
+
+FE1 sospechaba que la fila 81 citaba un elemento inexistente. Fui a verificarlo y medí **la app**:
+`SeccionMeDeben.tsx:87` → `<h2>Te deben</h2>`, presente en `origin/main`, creado el **2026-08-04**
+(`c9cee1d0`, PR #258), declarado **sección FIJA** en `PantallaFacturacion.tsx:512`. Con eso iba a dar la
+cita por legítima.
+
+**La afirmación de FE1 era sobre el PROTO, no sobre la app** — y la fila dice, textual, «coincide con el
+proto». Medido sobre el sujeto correcto, contra el mismo SHA que la matriz cita (`54fac3ea`):
+
+| elemento que la fila 81 enumera como coincidencia | en el proto @`54fac3ea` |
+|---|---|
+| «Facturado este mes» | **1** archivo |
+| «+ Nueva factura» | **4** archivos |
+| «…emitidas» | **4** archivos |
+| **«Te deben»** | **0** — **no existe** |
+
+Control positivo dentro de la misma corrida: el instrumento **ve** el proto y encuentra los otros tres.
+Así que el cero no es ceguera. **De los cuatro elementos que la fila enumera como coincidencia con el proto,
+tres están y uno no.**
+
+Es mi propia clase, y la nombró planificación antes que yo:
+[[el-instrumento-fabrica-una-referencia-que-no-existe]]. Un `COHERENTE` que afirma coincidencia **sobre un
+elemento ausente del lado de la referencia**, y cae del lado que importa: el veredicto que **desactiva**
+trabajo.
+
+### El veredicto de `factura`, que es mío y lo doy con el corte fino
+
+**Se sostiene lo que la fila realmente midió; se cae la cláusula que extiende la afirmación.**
+
+- Su pregunta es *«¿se desplegó H-A4-5 — aterriza en el listado y no en el wizard?»*. Para eso, «Te deben»
+  **en la app** es evidencia válida y suficiente: el aterrizaje ocurrió. **Ese COHERENTE, sobre esa
+  pregunta, queda en pie.**
+- La cláusula **«coincide con el proto»** es **falsa para uno de los cuatro elementos que ella misma
+  enumera**, y no se puede reparar con una recaptura: el elemento no está en la referencia. La fila afirma
+  dos cosas y sólo una está medida.
+- **Acción:** la fila se parte. Queda `COHERENTE` para *«fix H-A4-5 desplegado»* y se abre una fila nueva
+  para *«¿el listado de facturación coincide con el proto?»*, que hoy **no tiene veredicto** — porque
+  además mi medición de población A la dejó **NO MEDIBLE** por otra razón («las 2 filas de ÚLTIMAS EMITIDAS
+  salen completamente vacías», app sin datos) y el COHERENTE del 22/09 dice explícitamente «con **espera
+  real a datos**». Dos mediciones del mismo id con el tenant en estados distintos.
+
+### Y esto responde la pregunta de diseño de planificación: **son DOS mecanismos, no uno**
+
+Planificación preguntó si `RETIRADO_POR:` alcanza para una fila inválida dentro de un documento vigente. **No
+alcanza, y la razón es dónde vive la invalidación:**
+
+| | el barrido retirado | la fila 81 |
+|---|---|---|
+| ¿existe la invalidación? | **sí**, declarada en el encabezado de otro documento | **no existe en ninguna parte** |
+| el problema es | **no viaja** a lo retirado | la fila **se contradice consigo misma** |
+| lo resuelve | `RETIRADO_POR: <doc>` — un puntero que propaga algo que ya está escrito | **ningún estado**: hace falta un **control de contenido** que verifique que cada elemento citado existe **en los dos lados** |
+
+Conclusión para el formato: **el estado de vigencia conviene por fila** (más granular no molesta y cubre
+retiros parciales), **pero el segundo caso no es un problema de estado** — es un gate que compara las citas
+contra la referencia. Y planificación tiene razón en que es **más grave**: el retiro al menos está declarado
+en algún encabezado; esto no está declarado en ninguna parte, y sólo apareció porque alguien fue a leer la
+celda.
+
+### Lo que este par de correcciones enseña, y es el filo
+
+**Las dos veces me corrigió el sujeto del dictamen leyendo su propia evidencia** — FE1 con el número de
+línea, planificación con el lado de la comparación. Tercera vez hoy. Eso ya no es anécdota: **la señal más
+barata para auditar un juez es preguntarle al juzgado cómo le fue**, y en este eje viene siendo más
+productiva que mis propios controles.
+
+Y el segundo error es peor que el primero, porque **fui a verificar con un control positivo bien puesto y
+contesté sobre otro universo**: medir la app prueba que el elemento existe en el producto, no que exista en
+la referencia. Un control positivo prueba la sensibilidad del instrumento, **nunca la pertinencia del
+sujeto** — y acá el sujeto correcto estaba escrito en la propia celda («coincide con **el proto**»).
+
+**delegación:** 0 sub-agentes · 3 lecturas inline (la fila 81, el módulo de facturación, el mensaje de FE1) ·
+scripts: 0 · 8 mediciones `git` (`git grep` sobre `54fac3ea` y `git cat-file`/`log` sobre `origin/main`),
+cada barrido con su control positivo y un negativo.

@@ -1,6 +1,6 @@
 ---
 name: el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron
-description: SEGUNDA aparición de la raíz de [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]], el mismo día y en otro sistema: dos discriminantes más —opuestos entre sí— para deducir si un documento MIDE o sólo CITA, los dos inertes. Cuando dos hipótesis contrarias no separan, la respuesta ya es la raíz
+description: SEGUNDA y TERCERA aparición de la raíz de [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]], el mismo día y en otros dos sistemas: dos discriminantes opuestos para deducir si un documento MIDE o sólo CITA, los dos inertes; y después un documento entero RETIRADO como evidencia cuyas 36 filas no lo dicen. Cuando dos hipótesis contrarias no separan, la respuesta ya es la raíz
 metadata:
   type: feedback
 ---
@@ -64,3 +64,68 @@ Hermanas: [[un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno]] ·
 [[instrumento-que-no-mira-nunca-falla]] (un gate que nunca dispara entrega la garantía que no tiene) ·
 [[contar-un-simbolo-no-dice-en-que-rol-aparece]] ·
 [[un-gate-cuyo-predicado-es-el-sintoma-de-un-bug-abierto]].
+
+---
+
+## Tercera aparición, el mismo día: la propiedad que no está en el texto es la **VIGENCIA**
+
+**El caso.** Planificación agrupó 10 conflictos de veredicto bajo una sola hipótesis («todos COHERENTE en
+la matriz del 22/09 y DESVÍO después ⇒ una causa común») y propuso cerrar los diez juntos si un test de
+falsación confirmaba uno. Medido documento por documento, **8 de los 10 COHERENTE no venían de la matriz
+vigente: venían del barrido original del 22/09, que esa misma matriz declaró inválido el mismo día** —
+textual en su encabezado: *«invalida como evidencia las 22 filas completas»*. En el documento vigente esos
+ids son `REQUIRES_TRIAGE` e `INCOMPLETO`, no `COHERENTE`.
+
+**El mecanismo es el de esta entrada, con otra propiedad.** Un documento **entero** está retirado como
+evidencia y **ninguna de sus 36 filas lo dice**. Para cualquier parser son idénticas a las vigentes. Y no
+lo cubre la clasificación que sí se construyó (`MEDICIONES_DECLARADAS` / `NO_SON_MEDICION`), por una razón
+que vale entender: **el barrido retirado *era* una medición** — la clasificación por rol lo acepta con toda
+razón. Lo que no tiene es un tercer estado, `RETIRADO_POR: <doc>`.
+
+> **Una retractación no viaja con lo retractado.** El documento que retira lo dice en *su* encabezado; el
+> retirado sigue afirmando lo mismo que afirmaba, con el mismo formato y la misma autoridad aparente. El
+> lector que abre el retirado no tiene forma de saberlo, y el parser tampoco.
+
+Es el patrón de un ADR `SUPERSEDED` que no linkea a su sucesor, de una medición re-hecha que deja viva la
+primera, de un doc «v1» que nadie marcó cuando salió el «v2». **La marca siempre se pone en el lugar
+equivocado: en el nuevo, que es el que se está escribiendo.**
+
+## Lo que las tres juntas agregan sobre las dos
+
+Con dos casos la conclusión era «cuando dos hipótesis contrarias no separan, dejá de buscar la tercera». Con
+tres, en tres sistemas y un día, aparece algo más fuerte: **las tres propiedades que faltaban son
+propiedades de la RELACIÓN entre documentos, no del documento** — si un path es fundamento o entregable *de
+un plan*; si un doc mide o cita *a otros*; si un veredicto está vigente o retirado *por otro*. Ninguna es
+visible desde dentro del archivo, y ahí está la razón de fondo por la que ningún lector local —parser,
+sub-agente, sesión nueva— puede recuperarlas: **no están ausentes por descuido de formato, están en el
+lugar equivocado por construcción.** La relación se declara en un solo extremo, y casi siempre en el que no
+se consulta.
+
+## Y el orden, que en este caso decidía un falso verde de diez filas
+
+Arreglar el contraste **antes** de marcar el retiro deja las ocho filas leyéndose como «COHERENTE vs
+DESVÍO». La resolución cómoda de un empate —«son dos preguntas distintas»— las cierra juntas, y **fabrica
+el falso verde que el contraste venía a cazar, sobre diez filas de una vez y con la firma de una hipótesis
+validada** ([[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]], donde ya absolví de más una vez
+hoy). Es el mismo patrón de orden que la exclusión de los documentos analíticos: **excluir primero,
+arreglar después.**
+
+### Y una cuarta cara, que obliga a partir el remedio en dos
+
+Horas después apareció, en el **documento vigente** de ese mismo corpus, una fila que afirma «coincide con
+el proto» y enumera cuatro elementos: tres existen en el prototipo y **el cuarto no existe** (`0` hits
+contra el SHA que la fila cita, con control positivo verde sobre los otros tres). Nadie la retiró: **se
+contradice consigo misma**.
+
+Eso **no** lo arregla un estado de vigencia, y la distinción vale porque decide el diseño:
+
+| | documento retirado por otro | fila que se contradice sola |
+|---|---|---|
+| la invalidación | **existe**, declarada en el encabezado de otro doc | **no existe en ninguna parte** |
+| el defecto | **no viaja** a lo retirado | la fila afirma más de lo que midió |
+| el remedio | un puntero (`RETIRADO_POR: <doc>`) que propaga algo ya escrito | un **gate de contenido**: cada elemento citado tiene que existir **en los dos lados** |
+
+Y la segunda es **más grave que la primera**: el retiro al menos está escrito en algún lugar del corpus,
+así que es recuperable por un parser el día que se lo enseñe. Una afirmación sobre un elemento ausente **no
+deja rastro en ningún documento** — apareció sólo porque alguien fue a leer la celda y a contar los
+elementos uno por uno. Ver [[el-instrumento-fabrica-una-referencia-que-no-existe]].
