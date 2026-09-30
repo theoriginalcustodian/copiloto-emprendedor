@@ -478,6 +478,17 @@
   margin: 0;
 }
 
+.facturacion-comprobante__alerta-doble-emision {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--danger-bg);
+  border: var(--danger-border);
+  color: var(--danger-fg);
+}
+
 .facturacion-comprobante__acciones {
   display: flex;
   gap: 10px;
