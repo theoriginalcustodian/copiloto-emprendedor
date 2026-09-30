@@ -127,6 +127,49 @@ casos.append(("DIFERENCIAL fila de tabla -> accionable, heading -> NO accionable
               len(tabla) == 1 and len(fuera) == 1 and not invalidos,
               "tabla=%s fuera=%s" % (tabla, fuera)))
 
+# ── 10. POSITIVO INLINE: un heading declara plataforma con el campo `plataforma: web` ────────
+# El mecanismo NO lo invento el lector: frontend1 lo escribio 21 veces en su `cierre_` del lote A,
+# un documento en prosa por `###` id donde no hay tabla en la que poner una columna. Abri PLATHEAD
+# preguntando que mecanismo podian usar los headings, y la respuesta ya estaba en el corpus.
+p = plataformas("### `factura` — camino A (ARCA)\n\n"
+                "`medido_contra: app=servido@abc · proto=proto@def` · `plataforma: web`\n\n"
+                "Veredicto: COHERENTE\n")
+casos.append(("INLINE `plataforma: web` en un heading -> web",
+              "factura" in p["web"] and "factura" not in p["indeterminada"], p))
+
+# ── 11. el alcance del campo inline MUERE con su bloque ──────────────────────────────────────
+# Mismo riesgo que el de la cabecera (caso 8) pero por la otra forma: si la declaracion se pega al
+# heading siguiente, el segundo id sale `web` sin que nadie lo haya medido en web. Un dato inventado
+# con apariencia de medido es peor que un `indeterminada` honesto.
+p = plataformas("### `factura` — camino A (ARCA)\n\n`plataforma: web`\n\nVeredicto: COHERENTE\n\n"
+                "### `card` — camino A (gasto)\n\nVeredicto: DESVIO\n")
+casos.append(("la declaracion inline no se hereda al heading siguiente",
+              "factura" in p["web"] and "card" in p["indeterminada"]
+              and "card" not in p["web"], p))
+
+# ── 12. DOS declaraciones distintas en el mismo bloque -> ambiguo, no «gana la ultima» ───────
+# Elegir la ultima seria adivinar por orden de lectura con cara de medir: el mismo fail-open del
+# caso 6. Y se NOMBRA el conflicto, porque un `indeterminada` mudo no le dice a nadie que arreglar.
+txt12 = ("### `cuenta` — camino A (Mi cuenta)\n\n`plataforma: web`\n\n`plataforma: mobile`\n\n"
+         "Veredicto: COHERENTE\n")
+p = plataformas(txt12)
+_, invalidos12, _ = sin_leer(txt12)
+casos.append(("dos declaraciones inline distintas -> indeterminada Y el conflicto nombrado",
+              "cuenta" in p["indeterminada"] and "cuenta" not in p["web"]
+              and "cuenta" not in p["mobile"]
+              and any(k.startswith("conflicto:") for k in invalidos12),
+              (p, sorted(invalidos12))))
+
+# ── 13. CONTROL NEGATIVO del patron: la CABECERA de una tabla no es una declaracion inline ───
+# `| id | veredicto | causa | plataforma |` contiene la palabra pero no los dos puntos. Si el patron
+# fuera mas laxo, cada tabla con esa columna le declararia plataforma al heading que la precede --
+# una plataforma leida del ENCABEZADO y no de la medicion.
+p = plataformas("### `detalle` — camino A (Mi día)\n\n"
+                "| id | veredicto | causa | plataforma |\n|---|---|---|---|\n\n"
+                "Veredicto: COHERENTE\n")
+casos.append(("la cabecera `| ... | plataforma |` NO declara nada (control del patron)",
+              "detalle" in p["indeterminada"] and "detalle" not in p["web"], p))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -144,6 +187,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 9 ] || { echo "❌ esperaba >=9 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 13 ] || { echo "❌ esperaba >=13 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
-echo "OK — $total/$total: la cifra se parte por plataforma y un veredicto de mobile no cuenta como web"
+echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, y un veredicto de mobile no cuenta como web"

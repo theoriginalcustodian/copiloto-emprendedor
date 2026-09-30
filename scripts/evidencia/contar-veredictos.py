@@ -1011,6 +1011,19 @@ VOCABULARIO_PLATAFORMA = {"web": "web", "mobile": "mobile"}
 # porque el fail-open de hoy es contar eso como web.
 SIN_PLATAFORMA = "indeterminada"
 
+# El campo INLINE `plataforma: <valor>`, que es como declara plataforma una medicion que NO vive en
+# una tabla. NO lo invente yo: frontend1 ya lo escribio 21 veces en
+# `2026-09-28_cierre_..._BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md` (un documento en prosa
+# por `###` id), junto a cada `medido_contra:`. Abri PLATHEAD preguntando QUE mecanismo podian usar
+# los headings para declarar plataforma, y el mecanismo ya existia en el corpus: el que no lo miraba
+# era este lector. Es el reverso de la costura que ya tenemos documentada -- ahi el instrumento leia
+# un campo que nadie escribia; aca el campo se escribe y nadie lo lee.
+#
+# Exige los dos puntos, y por eso no matchea la CABECERA de una tabla (`| ... | plataforma |`) ni una
+# mencion en prosa («la columna `plataforma` no existe»). El valor se corta en el backtick o el fin
+# de linea, que es como esta escrito en el corpus.
+DECL_PLATAFORMA_INLINE = re.compile(r"`?\s*plataforma\s*:\s*([A-Za-z][\w/ -]*)", re.I)
+
 
 def columna_de_plataforma(celdas):
     """El indice que la CABECERA declara como columna de plataforma, o None.
@@ -1186,6 +1199,28 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
                           "veredictos": []}
                 nivel_cierre = (len(linea) - len(linea.lstrip("#"))) if es_heading else 6
                 meds.append(actual)
+        if actual is not None:
+            # La plataforma declarada INLINE en el bloque del heading. `actual` sólo se setea para
+            # heading/bullet (una fila de tabla cierra y hace `continue` más arriba), así que acá no
+            # hay riesgo de pisar lo que leyó la columna.
+            mp = DECL_PLATAFORMA_INLINE.search(linea)
+            if mp:
+                leida = plataforma_de_celda(mp.group(1))
+                previa = actual["plataforma"]
+                if leida is None:
+                    # Declarada y FUERA del vocabulario: se guarda cruda para poder nombrarla. Es la
+                    # misma distinción que en la columna — «no declaró» y «declaró `pwa`» son dos
+                    # trabajos distintos y un solo cubo los vuelve indistinguibles.
+                    if not actual["plat_cruda"]:
+                        actual["plat_cruda"] = mp.group(1).strip()
+                elif previa == SIN_PLATAFORMA:
+                    actual["plataforma"] = leida
+                elif previa != leida:
+                    # DOS declaraciones DISTINTAS en el mismo bloque. NO gana la última: eso sería
+                    # elegir por orden de lectura con cara de medir, el mismo fail-open que el caso
+                    # «web y mobile» en una celda. Ambiguo ⇒ indeterminada, y se dice por qué.
+                    actual["plataforma"] = SIN_PLATAFORMA
+                    actual["plat_cruda"] = "conflicto:%s+%s" % (previa, leida)
         if actual is not None and n in por_linea:
             actual["veredictos"] += [v for v, _, _ in por_linea[n]]
 
@@ -1382,10 +1417,15 @@ def plataformas_sin_leer(meds):
     FE1, que aporta **0**; FE1 contesto «0 sin columna» y tenia razon. Las dos mediciones eran
     honestas y contaban poblaciones distintas.
 
-    Y la consecuencia de diseño, que no se arregla con una columna: un heading o un bullet no pueden
-    declarar plataforma en una columna que no existe, asi que `indeterminada` **no puede bajar a 0**
-    agregando columnas. Esas 48 necesitan otro mecanismo de declaracion, y eso es junta (fila
-    PLATHEAD del PLAN), no un detalle del lector.
+    ✅ RESUELTO el 2026-09-30, y no por diseño nuevo: un heading no puede declarar plataforma en una
+    columna que no existe, asi que abri PLATHEAD preguntando QUE mecanismo usar. El mecanismo ya
+    estaba en el corpus — frontend1 escribio `plataforma: web` inline 21 veces en su `cierre_` del
+    lote A, junto a cada `medido_contra:`. Lo unico que faltaba era que este lector lo mirara
+    (`DECL_PLATAFORMA_INLINE`). Medido: `indeterminada` 31 -> 15, web 45 -> 48 de 54.
+
+    Por eso el tercer cubo sigue siendo ACCIONABLE: son las mediciones fuera de tabla que tampoco
+    usaron el campo inline. Lo que cambia es la accion (agregar el campo, no la columna), no la
+    accionabilidad.
     """
     sin_col, vocab, fuera_de_tabla = [], {}, []
     for m in meds:
@@ -1886,9 +1926,9 @@ def main():
                f"{sorted(invalidos)}" if invalidos else ""))
         # Se imprime aparte y se dice que NO es accionable asi, porque publicarlo junto a lo de
         # arriba manda a agregar una columna a un heading -- que es lo que hizo perder una vuelta.
-        print(f"      └─ NO accionable con una columna: {fuera_tab} medición(es) declaradas en "
-              f"heading o bullet, donde no hay columna que agregar (necesitan otro mecanismo de "
-              f"declaración — ver PLATHEAD)")
+        print(f"      └─ ACCIONABLE con el campo inline: {fuera_tab} medición(es) en heading o "
+              f"bullet sin columna posible, que tampoco declararon `plataforma: <valor>` en su "
+              f"bloque (el mecanismo existe: frontend1 lo usó 21 veces en el lote A)")
         peores = sorted(((len(d.get("plataforma_sin_leer_lineas", ())), n)
                          for n, d in res["lotes"].items()), reverse=True)[:3]
         if peores and peores[0][0]:
