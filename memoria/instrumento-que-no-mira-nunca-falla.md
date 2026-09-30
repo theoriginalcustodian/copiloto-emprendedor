@@ -201,3 +201,64 @@ contrato>.md`). Si el contrato ya es un `urgente_` compuesto, el nombre se anida
 techo — los 4 casos son exactamente eso, con «contrato-sin-tomar» dos veces en el mismo nombre. Un
 generador de nombres sin límite de longitud fabrica archivos que después nadie puede leer.
 Ver [[un-vacio-del-propio-instrumento-no-es-hallazgo]] · [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]].
+
+---
+
+## Refuerzo 2026-09-30 — el instrumento **sabe** hacer lo que no hace: capacidad ≠ alcance
+
+El caso de arriba es un control cuyo rango sale vacío. Este es peor, porque el instrumento **tiene la
+capacidad** de mirar lo que no mira, y eso hace que el lector concluya —correctamente— que lo cubre.
+
+`scripts/medir-indice-memoria.py` verifica, entre otras cosas, que ningún link apunte a un archivo
+inexistente. Su función de extracción trae los dos formatos, y el docstring lo dice:
+
+```python
+def referencias(texto: str) -> set[str]:
+    """Nombres de archivo referenciados, por link markdown Y por wikilink."""   # :43
+    nombres = set(LINK_MD.findall(texto))
+    nombres |= {f"{w}.md" for w in WIKILINK.findall(texto)}                     # :49
+```
+
+Y el universo sobre el que se lo llama:
+
+```python
+refs = referencias(texto_indice) | referencias(texto_historia)                  # :80
+```
+
+**Medido en `memoria/` el 2026-09-30:** 24 wikilinks viven en `MEMORY.md` + `HISTORIA.md`, y **1229 en los
+360 cuerpos**. El control ve el **1,9 %**. Cuando se lo nombró como verificación de un renombre masivo de
+~150 archivos —donde lo que se rompe son precisamente los links *de cuerpo a cuerpo*— el control seguía
+imprimiendo `[OK ] links a archivos inexistentes: 0`.
+
+**Canario, sobre una copia:** rompí a propósito un wikilink de un cuerpo.
+
+```
+SU control       (universo índice+historia):  0 rotos  -> VERDE  · ve el canario? NO
+control ampliado (universo cuerpos):         12 rotos  -> ROJO   · ve el canario? SÍ
+```
+
+### Por qué esta variante engaña más que el rango vacío
+
+Un control con rango vacío al menos **no promete**. Este promete en su propio docstring: dice «por link
+markdown **Y** por wikilink», y es **verdad** — para las 24 del índice. La afirmación es correcta y la
+conclusión que induce es falsa. **La capacidad de parsear un formato no dice nada sobre el conjunto al que
+se aplica**, y en el código esas dos cosas viven en líneas distintas y lejanas: la capacidad en `:49`, el
+alcance en `:80`. Quien lee la función se va convencido; el alcance está 30 líneas más abajo, en el
+llamador.
+
+### Y el segundo modo, que es el que lo deja vivir
+
+El control imprimía `0` **antes** del renombre y habría impreso `0` **después**. Un absoluto no puede medir
+un cambio cuando no separa la línea de base: la foto real era **238 de 249 destinos resuelven, 11 no** — los
+11 preexistentes, todos en cuerpos. Con «rotos = 0» como criterio, 30 roturas nuevas se habrían mezclado con
+los 11 viejos y se leerían como ruido conocido, que es
+[[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]] aplicado a un conteo.
+**El criterio correcto era diferencial: «los 238 que resolvían siguen resolviendo».**
+
+**How to apply (suma a lo de arriba):** (1) ante un control que se nombra para verificar un cambio,
+preguntá **sobre qué colección corre**, no qué sabe parsear — la capacidad vive en la función, el alcance en
+el llamador, y sólo el segundo es el instrumento; (2) medí qué **fracción** del universo real cubre («24 de
+1253» dice todo; «cubre wikilinks» no dice nada); (3) si la línea de base no es cero, el criterio no puede
+ser un absoluto: guardá el ANTES y exigí que los que pasaban sigan pasando; (4) el canario es inyectar el
+daño exacto que el cambio produciría **en el lugar donde lo produciría** — romper un link del índice no
+prueba nada sobre los cuerpos.
