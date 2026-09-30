@@ -76,13 +76,35 @@ if (-not $uv) {
 }
 if (-not $uv) { Die "no encontre 'uv'. Instalado en ~\.local\bin\uv.exe normalmente." }
 
-$bash = (Get-Command bash -ErrorAction SilentlyContinue).Source
-if (-not $bash) {
-    foreach ($c in @("$env:ProgramFiles\Git\bin\bash.exe", "${env:ProgramFiles(x86)}\Git\bin\bash.exe")) {
-        if (Test-Path $c) { $bash = $c; break }
-    }
+# 🔴 GIT BASH PRIMERO, y `Get-Command bash` al FINAL. Al revés ya fallo una corrida entera: en
+# Windows 11 hay un `C:\Windows\System32\bash.exe` que es el LANZADOR DE WSL, esta en el PATH, y
+# `Get-Command bash` lo devuelve antes que el de Git. Sin distro instalada imprime «Subsistema de
+# Windows para Linux no tiene distribuciones instaladas» y sale 1 — o sea que el instrumento
+# CONTESTO, pero era otro sujeto: `bash` existia, corria, y no era el bash que el script necesita.
+$bash = $null
+$cands = @(
+    "$env:ProgramFiles\Git\bin\bash.exe",
+    "$env:ProgramFiles\Git\usr\bin\bash.exe",
+    "${env:ProgramFiles(x86)}\Git\bin\bash.exe"
+)
+$deGetCommand = (Get-Command bash -ErrorAction SilentlyContinue).Source
+if ($deGetCommand) { $cands += $deGetCommand }
+foreach ($c in $cands) {
+    if (-not (Test-Path $c)) { continue }
+    # El stub de WSL vive en System32/SysWOW64. Descartarlo por RUTA y no por comportamiento es
+    # barato y no depende de que su mensaje de error siga igual en la proxima version.
+    if ($c -match '\\Sys(tem32|WOW64)\\') { continue }
+    $bash = $c; break
 }
-if (-not $bash) { Die "no encontre 'bash.exe' (Git for Windows)." }
+if (-not $bash) { Die "no encontre un bash.exe de Git for Windows (el de System32 es WSL y no sirve)." }
+
+# CONTROL POSITIVO del binario elegido. No alcanza con que el path exista: lo que hay que saber es
+# que ESE bash ejecuta un comando y devuelve su salida. Un stub roto pasa el Test-Path igual.
+$probe = (& $bash -lc 'echo CONTROL_BASH_OK' 2>&1 | Out-String)
+if ($probe -notmatch 'CONTROL_BASH_OK') {
+    Die "el bash elegido ($bash) no paso el control positivo. Devolvio: $($probe.Trim())"
+}
+Say "bash       : $bash  (control positivo OK)"
 
 if (-not (Test-Path $Bridge)) { Die "no existe el bridge: $Bridge" }
 if (-not (Test-Path $DryRun)) { Die "no existe el dry-run: $DryRun" }
@@ -173,8 +195,15 @@ Say "`n  bash -lc `"$cmd`"" 'DarkGray'
 & $bash -lc $cmd
 $rcSync = $LASTEXITCODE
 Say "`n  exit del sync: $rcSync" 'Cyan'
-Say "  ultimas 25 lineas del log (el COMPLETO esta en el archivo):" 'DarkGray'
-Get-Content $logSync -Tail 25 | ForEach-Object { Say "    $_" }
+if (Test-Path $logSync) {
+    Say "  ultimas 25 lineas del log (el COMPLETO esta en el archivo):" 'DarkGray'
+    Get-Content $logSync -Tail 25 | ForEach-Object { Say "    $_" }
+} else {
+    # El log AUSENTE es un hallazgo, no un detalle de presentacion: significa que el sync no llego
+    # ni a abrir su salida, asi que el fallo esta ANTES del script (bash equivocado, cd invalido).
+    # Sin este brazo, `Get-Content` tira su propia excepcion y tapa la causa real con un PathNotFound.
+    Say "  ⚠️ el log NO EXISTE: el sync no llego a arrancar. El fallo es de invocacion, no del reconcile." 'Red'
+}
 
 # ── 4. verificación con DOS instrumentos independientes ──────────────────────────────────────
 Say "`n=== PASO 3/3 — verificacion (dos instrumentos) ===" 'Yellow'
