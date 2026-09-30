@@ -59,6 +59,7 @@ _resolver_buzon() {
 }
 BUZON="$(_resolver_buzon "${1:-}")"
 ABIERTO="$BUZON/abierto"
+CERRADO="$BUZON/cerrado"   # mismo layout que archivar-buzon.sh: cerrado/<fecha>/
 ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
 # Sidecar de la Regla 2 (ver edad_alta_min) — fuera de abierto/en-curso/cerrado para que ningún
@@ -333,7 +334,16 @@ for f in "$ABIERTO"/????-??-??_contrato_*.md; do
     sin_tomar_n["$para_d"]=$(( ${sin_tomar_n["$para_d"]:-0} + 1 ))
     sin_tomar_lista["$para_d"]="${sin_tomar_lista["$para_d"]:-}  · ${b} (${edad}min)
 "
-    if [ "${edad}" -gt "${sin_tomar_edad["$para_d"]:-0}" ]; then
+    # `-z` PRIMERO, y no es defensivo: con `set -u`, un array que se puebla SOLO en la rama
+    # comparativa deja sin valor el caso en que la comparacion nunca da verdadera. Con `edad=0`,
+    # `0 -gt 0` es falso, `sin_tomar_viejo` quedaba sin setear y la linea que lo lee abajo mataba
+    # el script con «unbound variable» -- a mitad, con el urgente_ ya escrito y TRUNCADO, que es
+    # justo lo que el centinela `ESCALADORES: FIN-OK` existe para cazar (y lo cazo).
+    #
+    # En produccion no daba sintoma porque el umbral es 120 min, asi que la edad siempre es > 0. Y
+    # los tests no lo veian porque TODOS corrian en `--dry-run`, que hace `continue` antes de esta
+    # lectura: el camino de escritura real no estaba ejercitado por ninguno.
+    if [ -z "${sin_tomar_viejo["$para_d"]:-}" ] || [ "${edad}" -gt "${sin_tomar_edad["$para_d"]:-0}" ]; then
       sin_tomar_edad["$para_d"]="$edad"
       sin_tomar_viejo["$para_d"]="$b"
     fi
@@ -389,6 +399,55 @@ for para in "${!sin_tomar_n[@]}"; do
     fi
   } > "$urgente"
   echo "   -> generado $urgente (${n} contrato/s)"
+done
+
+# ── Retiro de los urgente_ que este script genero y cuya causa ya no existe ────────────────
+# El escalador sabia ENCENDER y no sabia apagar, y eso lo volvia una alarma permanente: no hay
+# un solo `rm` en todo el archivo, y el janitor declara `urgente_` OBLIGACION que «NUNCA se
+# auto-archiva». Asi que un `urgente_` generado aca era INMORTAL — la foto de una causa que ya
+# no existe quedaba en abierto/ para siempre, y `vigilancia-check.sh` la lee como deuda viva.
+#
+# Medido el 2026-09-29 21:42: un urgente_ a `manejo-de-errores` perseguia el contrato FACTID,
+# que ya estaba en `cerrado/2026-09-29/`, por una exigencia de reporte que el fix de `ROLES:`
+# eliminó ese mismo dia. Con 0 alarmas reales, el gate de las CUATRO sesiones seguia en rojo
+# por ese archivo. Y es el mismo agujero que el `a-todos` un nivel mas arriba: el artefacto no
+# tiene dueño. Su emisor es `vigilancia`, que no es una sesion — ninguna se reconoce dueña, y
+# el que podria moverlo es el destinatario, que si lo hace afirma que lo atendio.
+#
+# Vigente = el rol escala EN ESTA CORRIDA **y** el archivo es el de HOY, o sea el que el bloque
+# de arriba acaba de reescribir. Un urgente_ de una fecha anterior es obsoleto aunque el rol
+# siga en deuda: su informacion vive en el de hoy, y dejarlo duplica la alarma.
+#
+# Se ARCHIVA, no se borra (el registro de que se escalo es dato), y el sidecar se va con el:
+# son la misma unidad de medicion. Si la causa vuelve, el aviso es NUEVO y su edad tiene que
+# empezar de nuevo — con el sidecar sobreviviente heredaria la edad del primer avistamiento y
+# nacería ya por encima del umbral.
+#
+# ⚠️ Lo que este bloque NO puede hacer es apagar el escalador. Por eso: patron ANCLADO al
+# nombre que genera este script (`urgente_vigilancia-a-<rol>_contratos-sin-tomar.md`) y nunca
+# un `urgente_` escrito por una sesion; y NO toca `alarma`, porque una limpieza que pusiera
+# alarma=1 seria otra alarma permanente, que es exactamente el defecto que viene a cerrar.
+retirados_obsoletos=0
+for f in "$ABIERTO"/????-??-??_urgente_vigilancia-a-*_contratos-sin-tomar.md; do
+  [ -e "$f" ] || continue
+  b="${f##*/}"
+  rol="${b#*_urgente_vigilancia-a-}"; rol="${rol%_contratos-sin-tomar.md}"
+  if [ -n "${sin_tomar_n[$rol]:-}" ] && [ "${b:0:10}" = "$fecha_hoy" ]; then continue; fi
+  if [ "$DRY_RUN" != "0" ]; then
+    echo "RETIRARIA urgente_ obsoleto (causa resuelta): $b"
+    retirados_obsoletos=$(( retirados_obsoletos + 1 ))
+    continue
+  fi
+  d="${b:0:10}"
+  case "$d" in ????-??-??) ;; *) d="$fecha_hoy" ;; esac
+  mkdir -p "$CERRADO/$d" 2>/dev/null || true
+  if mv "$f" "$CERRADO/$d/" 2>/dev/null; then
+    rm -f "$SIDECAR_DIR/$b$SIDECAR_SUF" "$SIDECAR_DIR/$b" 2>/dev/null || true
+    echo "   -> retirado urgente_ obsoleto (causa resuelta): $b -> cerrado/$d/"
+    retirados_obsoletos=$(( retirados_obsoletos + 1 ))
+  else
+    echo "   -> NO pude retirar $b (mv fallo): queda en abierto/ y va a seguir escalando"
+  fi
 done
 
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
@@ -486,6 +545,10 @@ if [ "$medicion_fallida" -gt 0 ]; then
   echo "   -> el silencio de este reporte NO es dato: esos archivos quedaron sin mirar."
 fi
 
+if [ "${retirados_obsoletos:-0}" -gt 0 ] 2>/dev/null; then
+  echo "LIMPIEZA: ${retirados_obsoletos} urgente_ obsoleto(s) del propio escalador. No es alarma:"
+  echo "   su causa ya no existe, y mientras seguian en abierto/ mantenian el gate en rojo."
+fi
 if [ "$alarma" = "0" ]; then
   echo "ESCALADORES: nada que escalar."
 fi
