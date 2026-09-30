@@ -943,3 +943,50 @@ superado. No hay nada que reconciliar ahí.
 de FE1.
 
 **delegación:** 0 sub-agentes · 1 lectura inline (el `cierre_` de FE1) · scripts: 0 · 0 en background.
+
+---
+
+## C3-23 · El instrumento corrido sobre población A: **EXIT CODE 0** — y qué NO dice ese cero
+
+Planificación pidió, textual, *«correr el instrumento sobre los 5 de población A (`apar comousar esc
+factura soporte`) e incorporar su EXIT CODE al dictamen, no su texto»*. Corrido:
+
+```
+./scripts/evidencia/correr-criterio3.sh apar,comousar,esc,factura,soporte
+
+EXIT REAL DEL GENERADOR: 0
+EXIT CODE DEL INSTRUMENTO = 0
+```
+
+**Elementos examinados: 5 de 5 pedidos.** El log nombra los cinco (`· midiendo SOLO:
+apar,comousar,esc,factura,soporte`) y emite una línea `→` por cada uno, así que el N pedido y el N medido
+coinciden — el control que caza el caso del filtro que se ignora en silencio y cae al default
+(`IDS=` en vez de `SOLO_IDS=`: el script mide 7 e informa con total normalidad). Acá el argumento va
+posicional, que es el remedio ya horneado.
+
+Las cuatro precondiciones salieron resueltas por el propio script, no a mano: `NODE_PATH`,
+`CHROME_PATH`, `ENV_E2E` (apuntado, **su contenido no se imprime**) y el prototipo respondiendo
+`HTTP 200`, más un control de concurrencia `8/8 pedidos sin cuelgue`. Es la razón por la que se pidió el
+exit code: un `exit 2` habría significado «no pude medir» y es distinguible de «medí y no encontré nada».
+
+### Por qué el pedido dice «el exit code, no el texto» — y por qué eso es lo correcto
+
+Este exit `0` es una afirmación sobre **el instrumento**, no sobre **las pantallas**. Tres de los cinco
+ids (`comousar`, `esc`, `soporte`) están hoy en `DESVÍO`, y el instrumento salió `0` igual: es un
+generador de capturas, no un juez, así que su código de salida **es insensible al veredicto por
+diseño**. Confundir los dos sujetos sería el error que este dictamen entero viene cazando — el mismo
+molde del caso en que un `0` con control positivo verde contestaba sobre un rango equivocado.
+
+Lo que el `0` sí habilita, y es exactamente lo que faltaba: **las capturas de población A no están
+viciadas por una corrida fallida**, así que los tres `DESVÍO` de esos ids se sostienen sobre evidencia
+producida por un instrumento que pudo mirar. Sin este cero, cada uno de esos tres veredictos tenía dos
+causas suficientes —la pantalla difiere, o la captura salió mal— y el diferencial no atribuía.
+
+Y el texto del log, que **no** entra al dictamen como veredicto, sí deja una precondición documentada que
+vale registrar aparte, porque es una trampa de sujeto y no de medición: el id `factura` mide **el
+listado, no el wizard**, y el wizard tiene **dos orígenes con UI distinta** (la pill «Nueva factura» abre
+un borrador vacío; el chip «Completar a mano» del chat lo abre prellenado). Una fila que diga
+«Facturación» sin decir cuál de los tres es, mide un sujeto ambiguo.
+
+**delegación:** 0 sub-agentes · 1 lectura inline (el log del instrumento) · scripts: 1 corrida
+(`correr-criterio3.sh`, 5 de 5 ids) · 1 en background.
