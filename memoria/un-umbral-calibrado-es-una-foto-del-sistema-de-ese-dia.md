@@ -111,3 +111,16 @@ con 1210 uuids quitados de `present` **no** debe abortar — si las dos abortan,
 
 Ver también [[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]] (este guard frenó el push de
 las 4 sesiones) y [[el-guard-falla-abierto-en-su-caso-de-activacion]].
+
+**El canario, corrido el mismo día contra la función real** (`plan_deletions` es pura: no toca el
+remoto), con 9.000 esperados para que el umbral porcentual no interfiera:
+
+```
+pendiente 1406 -> ABORTA · 1206 -> ABORTA · 806 -> ABORTA · 406 -> ABORTA · 196 -> NO ABORTA
+control positivo: 201 -> ABORTA · 200 -> NO ABORTA   (la comparación es `>` estricta)
+```
+
+Y mostró un matiz peor que el enunciado: en la última corrida el guard **no sólo deja de abortar —
+devuelve los 196 borrados y el reconcile los aplica por el camino normal, sin `--force`**. La
+descripción precisa no es «se apaga», es «**completa el borrado él mismo**», y el tramo final entra
+como un sync sano. El enunciado que escribí primero era más benigno que el hecho; correrlo lo corrigió.
