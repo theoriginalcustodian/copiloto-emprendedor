@@ -236,6 +236,25 @@ su fuente no es la lista: es el documento medido.
 única definición mecánica de «fila invalidada» que hay en el corpus—; lo que caducó es **usarla como
 fuente de exclusión**. Un registro que la marcara «retirada» perdería la regla.
 
+### Cobertura del régimen in-situ: **1 de 17, y es el que está declarado**
+
+Barrido sobre **17 de 17** documentos del universo buscando **marca de edición posterior** —no la palabra
+«corregido»—: `**Actualizado …**` fechado, `CORRECCIÓN PROPIA`, «corrijo la fila», «tras la invalidación»,
+`(corregido YYYY-MM-DD)`. **Resultado: 1**, el lote-A, con control positivo (detecta el caso que ya
+verifiqué a mano) y negativo (marca inventada, 0 hits).
+
+**El primer intento de este barrido dio 213 de 2100 archivos**, porque incluí `CORREGIDO` como patrón:
+una palabra de prosa común. **Es el mismo error de §3.bis, cometido otra vez en el mismo turno** — contar
+la palabra en lugar de su rol. Lo que hace detectable una corrección in-situ no es la palabra: es una
+marca que **sólo tiene sentido si el documento se editó después de emitido**.
+
+**🔴 Y el límite, que es más grave que el número:** esto detecta correcciones in-situ **que dejaron marca**.
+Una edición silenciosa no deja rastro textual, y **`coordinacion/` no está versionado** (0 archivos en
+`origin/main`) — así que **no hay historial que consultar**. No es que sea difícil de detectar: es
+indetectable. Por eso la marca no es cortesía del autor, es la única evidencia que va a existir, y por eso
+el paso 3 no puede tratar al buzón como fuente estable: **su fuente es el documento medido, con la versión
+que midió.**
+
 ## 4 · Lo que este documento NO hace
 
 - **No excluye ni una fila de ningún contraste.** El paso 3 es otro, y adelantarlo es exactamente lo que
