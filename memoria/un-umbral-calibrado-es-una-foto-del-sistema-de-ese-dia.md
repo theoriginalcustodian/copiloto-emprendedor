@@ -61,3 +61,53 @@ Dos preguntas que los cazan:
 
 Ver también [[idempotente-no-es-convergente]] (un parámetro que no converge al estado deseado) y
 [[instrumento-que-no-mira-nunca-falla]].
+
+---
+
+## Refuerzo (2026-09-30): el guard mide el daño PENDIENTE, así que el daño PARCIAL lo erosiona hasta apagarlo
+
+El mismo guard de este sistema, un modo de falla distinto del envejecimiento: no es que el umbral
+quede viejo — es que **el propio daño lo baja hasta por debajo del umbral**.
+
+`bridge/reconciler/differ.py:78-86`, con `present` leído del remoto **en cada corrida**:
+
+```python
+zombies = present - expected      # present = lo que el remoto tiene AHORA
+if force: return zombies          # --force no evalúa ningún tope
+if len(zombies) > 200: raise ReconcileError(...)
+```
+
+Y su propio comentario nombra la condición que lo rompe: *«Tope ABSOLUTO de borrados **por
+corrida**»*. **No hay estado entre corridas** (`cli/main.py:68`, `orchestrator/sync.py:98`).
+
+El día en que el diff legítimo fue 1406 (una re-poda intencional: `min_support 2→3` bajó las aristas
+de 2190 a 786), el guard abortó — correcto. Pero el borrado se intentó con `--force` contra un host
+intermitente que corta a mitad, y el cliente borra **un HTTP DELETE por objeto, sin retry ni
+batching** (`client/graphity.py:167-173`). Cada corrida parcial deja N borrados aplicados:
+
+```
+1406 -> 1402 -> ~1200 -> ~900 -> ... -> < 200   <-- aca el guard DEJA de disparar
+```
+
+A partir de ahí una corrida **sin** `--force` borra el resto con exit 0 y se lee como un sync sano. El
+guard existe para cazar «cientos de borrados = anomalía»; el borrado parcial repetido **convierte una
+anomalía de 1406 en catorce de 100**, cada una bajo el tope, ninguna visible. Y la degradación es
+doble: `fraction = len(zombies)/len(present)` también cede, porque el denominador se encoge junto con
+el numerador.
+
+**Why:** porque el camino que erosiona el guard es el que suena razonable. La opción escrita como
+aceptable era *«reintentos manuales espaciados hasta que converjan — no es un bloqueo total, es
+attrition»*. Converge, y en el camino apaga la protección; el próximo accidente real (un enricher que
+devuelve vacío y borra cientos de aristas con exit 0 — el caso para el que el guard se escribió) ya no
+encuentra guard. Nadie miente y nadie se distrae: el mecanismo se consume solo.
+
+**How to apply:** (1) ante un guard con un tope, preguntá **contra qué estado se recalcula** — si el
+estado lo mueve la propia operación que el guard vigila, el guard es consumible; (2) un tope «por
+corrida» sobre una operación reintentable necesita **memoria entre corridas** (acumulado, o un plan
+persistido que no se recalcule), o deja de ser un tope; (3) el reintento va **en la unidad que falla**
+—acá el request HTTP— no en la corrida entera: reintentar la corrida es lo que fragmenta el daño;
+(4) el canario es una llamada doble en local: `plan_deletions` con `present` completo debe abortar, y
+con 1210 uuids quitados de `present` **no** debe abortar — si las dos abortan, no hay erosión.
+
+Ver también [[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]] (este guard frenó el push de
+las 4 sesiones) y [[el-guard-falla-abierto-en-su-caso-de-activacion]].
