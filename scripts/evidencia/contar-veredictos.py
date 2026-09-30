@@ -157,8 +157,11 @@ NO_SON_MEDICION = {
     # tronco de las cuatro sesiones. Sujeto a correccion del autor.
     "2026-09-29_cierre_auditoria-a-frontend1_si-a-la-marca-de-ancho-y-bi-es-falso-positivo-del-rail.md":
         "CIERRE de auditoria a frontend1: dictamina sobre la medicion de los 34 png ajena "
-        "(6 de 7 se sostienen, `bi` es falso positivo del rail). No mide pantallas propias. "
-        "[motivo de planificacion, pendiente de confirmacion del autor]",
+        "(6 de 7 se sostienen, `bi` es falso positivo del rail). EXAMINA una captura ajena "
+        "para explicar el falso positivo, sin comparar contra el prototipo ni emitir "
+        "veredicto de fidelidad propio. [CONFIRMADO por el autor (auditoria) 2026-09-29: "
+        "verifico las tres afirmaciones contra el documento -- «6 de 7» literal en :62, "
+        "`bi`/Rail en :82-91, y no mide pantallas propias]",
     # Clave SIN el titular editorial: este archivo se renombro TRES veces en un dia
     # (`se-cae-8-de-10` -> `-5-de-10` -> `-2-de-10-y-el-falso-verde-esta-en-el-parser`) y la
     # clasificacion anclada al nombre completo quedo apuntando a un archivo inexistente, con lo

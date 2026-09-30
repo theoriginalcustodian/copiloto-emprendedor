@@ -391,7 +391,19 @@ for para in "${!sin_tomar_n[@]}"; do
   echo "   -> generado $urgente (${n} contrato/s)"
 done
 
-# ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
+# ── Regla 2: pedido_ viejo que SIGUE EN abierto/ ──────────────────────────────
+# ⚠️ Lo que mide es la UBICACION, no la respuesta: un pedido contestado con un `cierre_` que
+# nadie movio de `abierto/` escala igual. El comentario decia «(= sin respuesta_, por
+# protocolo)», que es una equivalencia SUPUESTA -- vale solo si quien responde ademas mueve el
+# archivo. Dio sintoma el 2026-09-29: dos `pedido_` de auditoria escalaron 94 y 96 min con la
+# respuesta ya escrita en el buzon, y es el mismo patron que esos dos pedidos denunciaban un
+# nivel mas abajo (el `urgente_` que perseguia trabajo hecho).
+#
+# Aca la disciplina PUEDE funcionar, a diferencia del `a-todos`: un `pedido_` tiene destinatario
+# unico y ese destinatario puede moverlo sin afirmar nada sobre nadie. Si esta regla deberia
+# ademas LEER un `cierre_`/`respuesta_` dirigido al emisor es una decision de mecanismo abierta
+# (fila en PLAN.md, dueño planificacion). Mientras no se decida, el comentario dice lo que el
+# codigo hace y no lo que uno querria que hiciera.
 for f in "$ABIERTO"/????-??-??_pedido_*.md; do   # anclado por posición, ver Regla 1
   b="${f##*/}"
   edad="$(edad_alta_min "$f")"
