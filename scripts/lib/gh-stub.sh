@@ -2,8 +2,20 @@
 # gh-stub.sh — fabrica un stub de `gh` que DESPACHA por subcomando, en vez de contestar lo mismo a
 # todo. Se usa con `source`; su única función es `fabricar_gh_stub <dir>`.
 #
-# 🔴 POR QUÉ EXISTE (STUBGH, medido por auditoría el 2026-10-05: 5 stubs wildcard, 4 de ellos en
-# `test-ci-verde-veredicto-monotono.sh`). Un stub que ignora sus argumentos y escupe siempre el
+# 🔴 POR QUÉ EXISTE (STUBGH, 2026-10-05). La cifra de la primera versión de este header —«5 stubs
+# wildcard, 4 de ellos en `test-ci-verde-veredicto-monotono.sh`»— estaba INCOMPLETA, y el modo en
+# que falló vale más que el número: dejaba 1 solo fuera de ese archivo, el de
+# `test-ci-verde-gh-presente.sh`, que es el que este helper arregló. El de
+# `test-mergear-pr-veredicto-en-el-remoto.sh` NO ESTABA CONTADO, así que el fix lo dejó vivo y #772
+# siguió rojo con el header afirmando cobertura. Un inventario que nombra el hueco no lo tapa, y uno
+# que lo cuenta mal hace creer que sí. Recuento MEDIDO hoy (`grep -rn 'bin/gh' scripts/tests/`):
+#   · `test-ci-verde-gh-presente.sh`              -> migrado al helper (`3de96b14`)
+#   · `test-mergear-pr-veredicto-en-el-remoto.sh` -> migrado al helper (este commit)
+#   · `test-ci-verde-veredicto-monotono.sh`       -> 4 stubs a mano (casos 2,3,4,5) + un generador
+#     `stub_gh` que SÍ despacha (`*check-runs*`/`*mergeable*`) pero cuyo `*)` devuelve `[]`. DEUDA
+#     DECLARADA, no olvido: fila `STUBGH-4` en `coordinacion/PLAN.md`. Los 4 salen por ROJO antes
+#     de pedir `mergeable`, así que hoy no mienten; mentirán el día que `ci-verde.sh` pida un campo
+#     antes del rojo. El `*)` del stub de `git` de ese test NO cuenta: no es un `gh`. Un stub que ignora sus argumentos y escupe siempre el
 # rollup es indistinguible de un `gh` real MIENTRAS el script bajo prueba sólo pida el rollup. El
 # día que pide otra cosa, recibe el rollup igual — y el script no falla por su propio defecto, falla
 # porque el instrumento le mintió.
@@ -26,6 +38,14 @@
 #   GH_STUB_HEADOID     sha del head
 #   GH_STUB_CHECKRUNS   JSON de check_runs (para `gh api .../check-runs`)
 #   GH_STUB_LOG         archivo donde se registra cada invocación, una por línea
+#   GH_STUB_STATE       OPEN | MERGED | CLOSED              (para --json state)
+#   GH_STUB_MERGECOMMIT sha del merge commit                (para --json mergeCommit)
+#   GH_STUB_MERGE_RC    rc de `gh pr merge` (default 0)
+#   GH_STUB_MERGE_TESTIGO  archivo donde `gh pr merge` deja constancia de su invocación
+#   GH_STUB_MERGE_STDERR   lo que `gh pr merge` imprime (default: el fallo REAL de hoy —
+#                          «failed to run git: fatal: main is already used by worktree», que `gh`
+#                          tira al intentar el checkout local DESPUES de haber mergeado: el merge
+#                          está hecho y el rc miente. Es el caso que hay que poder ejercitar.)
 #
 # El stub NO implementa `--jq`: devuelve el JSON crudo y deja que el script bajo prueba corra su
 # propio `--jq`... lo cual `gh` hace del lado del cliente, así que para los casos que lo usan el
@@ -71,6 +91,16 @@ else:
 
 case "$1" in
   pr)
+    # `pr merge` NO lleva --json, asi que se despacha por el SUBCOMANDO antes de mirar los campos.
+    # Sin esta rama caia en la de `campos` vacios y salia 64: correcto como fail-closed, inutil para
+    # un test que necesita ejercitar el merge.
+    if [ "${2:-}" = "merge" ]; then
+      [ -n "${GH_STUB_MERGE_TESTIGO:-}" ] && printf '%s
+' "$args" >> "$GH_STUB_MERGE_TESTIGO"
+      printf '%s
+' "${GH_STUB_MERGE_STDERR:-failed to run git: fatal: main is already used by worktree}"
+      exit "${GH_STUB_MERGE_RC:-0}"
+    fi
     case "$campos" in
       *statusCheckRollup*)
         : "${GH_STUB_ROLLUP:?[gh-stub] el test pidió statusCheckRollup y no declaró GH_STUB_ROLLUP}"
@@ -93,6 +123,10 @@ case "$1" in
         if [[ "$args" == *--jq* ]]; then echo "$GH_STUB_HEADOID"; else echo "{\"headRefOid\":\"$GH_STUB_HEADOID\"}"; fi ;;
       *headRefName*)
         echo "${GH_STUB_HEADREF:-rama-de-fixture}" ;;
+      *state*)
+        echo "${GH_STUB_STATE:-OPEN}" ;;
+      *mergeCommit*)
+        echo "${GH_STUB_MERGECOMMIT:-abc1234567}" ;;
       "")
         echo "[gh-stub] \`gh pr $2\` sin --json no está implementado: $args" >&2; exit 64 ;;
       *)
