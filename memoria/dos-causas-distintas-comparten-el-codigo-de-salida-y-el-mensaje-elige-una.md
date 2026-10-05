@@ -173,3 +173,34 @@ la que dolió. Después de arreglar una, las demás siguen ahí y el arreglo pre
 —«esto ya se corrigió»—. Al tocar una línea de veredicto que funde causas, **enumerá todas las rutas
 que terminan en ella** (acá: `grep -n 'falta=1'` da cuatro) y decidí el par (texto, código) para cada
 una. Si no, se pagan de a una, y cada pago parece el último.
+
+---
+
+## Refuerzo 2026-10-05 · el `rc=1` de «no pude leer tu entrada» y el de «hay conflicto»
+
+Medí qué PR abiertos conflictúan contra `main` con `git merge-tree --write-tree`, decidiendo por el
+código de salida. Veredicto: **6 de 7 en CONFLICTO**. Falso, los 7 mergeaban limpio.
+
+`gh` y `jq` en Windows emiten **CRLF**, así que el `` viajaba **dentro del sha** leído por
+`while IFS=$'	' read`. `merge-tree` con un argumento que no resuelve contesta:
+
+```
+merge-tree: 4f7ca272b64d76bd872e3faea60205ed0096ddd4 - not something we can merge
+rc=1
+```
+
+**El mismo `rc=1` que un `CONFLICT (content)` real.** El mensaje que separa las dos causas estaba en
+la salida que mi script capturaba y no miraba.
+
+Dos cosas que agrega este caso:
+
+1. **El falso ROJO se disfraza de prudencia.** Un instrumento que inventa conflictos no se siente como
+   un bug: se siente como rigor. Si lo hubiera publicado, cuatro sesiones rebasean ramas sanas — y el
+   trabajo extra habría *confirmado* el instrumento, porque después del rebase el conflicto «ya no está».
+2. **El fix de raíz es doble, y el cómodo es sólo la mitad.** `tr -d ''` en la fuente arregla hoy;
+   lo que arregla mañana es **decidir el veredicto por el mensaje** y agregar la rama que faltaba:
+   `SIN-OBJETO` para el sha que no tengo local. Un instrumento necesita un estado para «no pude
+   medir este elemento» tanto como para «medí y está mal».
+
+**La pregunta:** *¿este código de salida lo puede producir algo que no sea el defecto que busco?* Si
+sí, el veredicto sale del mensaje, y el rc sólo decide si hubo que leerlo.

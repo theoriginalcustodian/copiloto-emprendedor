@@ -81,3 +81,29 @@ Dos cosas que lo hacen peligroso y no sólo incorrecto:
   evidencia; es una opinión con formato.
 - **Mientras un medidor corre sobre tu rama, no pushees a esa rama** — ni siquiera algo inocuo. El trabajo
   paralelo que invalida tu propia medición es el caso normal, no el raro.
+
+---
+
+## Refuerzo 2026-10-05 · una rama derivada de una rama squash-mergeada conflictúa consigo misma
+
+Mergeé un PR con **squash** y seguí trabajando en mi worktree desde el head local. La rama siguiente
+salió `CONFLICTING`/`DIRTY`: `main` tenía mi contenido en **un commit nuevo** mientras mi rama
+arrastraba los commits **originales** desde una base previa al squash, así que git intentaba aplicar
+dos veces lo mismo — y conflictuó justo en los archivos que el PR anterior ya había tocado.
+
+No lo resolví a mano: **resolver tomando un lado descarta una mitad**
+([[resolver-tomando-un-lado-nunca-converge]]). El control que lo vuelve mecánico:
+
+```bash
+# ¿el contenido de main es idéntico al del PADRE de mi commit en los archivos tocados?
+for f in $(git diff --name-only origin/main...HEAD); do
+  [ "$(git rev-parse "<padre>:$f")" = "$(git rev-parse "origin/main:$f")" ] && echo IDENTICO || echo DIVERGE
+done
+```
+
+Seis IDENTICO ⇒ el squash preservó el contenido byte a byte ⇒ `git cherry-pick <mi commit>` sobre
+`main` aplica **limpio por construcción**. Control del efecto: el diff dio exactamente los 3 archivos
+y +73 medidos antes, y `merge-tree --write-tree` pasó de `rc=1` a `rc=0`.
+
+**La regla:** después de un squash-merge, la rama siguiente **nace de `origin/main`**, no del head que
+tenías. Y si ya nació mal, se rebasa comparando blobs antes de tocar un solo marcador de conflicto.
