@@ -41,6 +41,26 @@ un nombre de función— **grepear esa superficie**. Y en el §2.1 de Contabilid
 directa: escribí *«la card de éxito ofrece…»* describiendo **una pantalla que no existe**. Describir
 el producto que imaginamos en vez del que corre es esta misma regla, aplicada al propio diseño.
 
+**La cara DUEÑO: asignarle a otra sesión un camino que no recorrí — y que rompía el gate de todos
+(2026-09-30).** Cerré el registro de vigencia con una fila de deuda para planificación: *«cablear
+`test-vigencia-canario.sh` a `lint.sh` — es una línea o un `mv`»*. Las dos mitades estaban mal.
+**El dueño:** `lint.sh` ya tenía el bucle (`for t in scripts/tests/test-*.sh`); el canario se llamaba
+`test-*.sh` pero vivía en `scripts/evidencia/`, así que **el nombre matcheaba el patrón y el glob no
+llegaba**. No había nada que agregarle a un archivo ajeno: había que mover el mío.
+**El costo:** el `mv` a secas habría puesto **9 fallos en el job `lint` de las cuatro sesiones**, porque
+el corpus que el test mide (`coordinacion/`) **no está versionado** y en un clon limpio el script sale
+`2 SIN MEDIR` antes de correr un solo control. Cablearlo de verdad pidió un buzón fixture, un par
+vestido/desnudo para que el verde no fuera vacuo, y una variable para ejercitar la rama del «no medí»
+antes de estrenarla en el CI.
+
+**Por qué esta cara es peor que mandar a un humano a un callejón:** una estimación de costo escrita en
+una tabla de asignaciones **se lee como medición**. «Es un `mv`» no invita a nadie a verificar; invita a
+ejecutarlo. Si planificación lo hubiera tomado tal como lo escribí, el rojo habría aparecido en el gate
+compartido y la causa —un corpus no versionado— no estaba en ninguna parte del renglón.
+**Cómo aplicar:** si vas a **estimar el costo** de un trabajo que le asignás a otro, o lo medís, o
+escribís que no lo mediste. Y antes de asignarlo, preguntá **de quién es el archivo**: la deuda que
+suena ajena porque toca la carpeta de otro puede ser tuya con un `git mv`.
+
 Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]] (cada mitad confirmaba lo suyo), de
 [[consultar-documed-siempre-antes-de-implementar]] (leer el archivo real antes de afirmar qué hay) y
 de [[regla-escrita-sobre-el-setup-de-otro]] (asumir el entorno ajeno en vez de preguntarlo).

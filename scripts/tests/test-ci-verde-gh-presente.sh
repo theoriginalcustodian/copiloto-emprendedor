@@ -46,24 +46,59 @@ else
   mal "1 gh ausente dio rc=$rc, salida: $(tr '\n' '|' < "$out" | cut -c1-120)"
 fi
 
-# --- Caso 2: gh PRESENTE (stub) -------------------------------------------------------------
-# El stub no simula el CI: sólo satisface `command -v gh` y devuelve un rollup fabricado con
-# los 6 jobs de tests.yml en SUCCESS, para que el script LLEGUE al veredicto en vez de abortar
-# antes por falta de la herramienta — lo único falso es `gh`, igual que el stub de `uv`.
+# --- Casos 2-4: gh PRESENTE, los TRES veredictos de `mergeable` -----------------------------
+# El stub sale de `scripts/lib/gh-stub.sh` y DESPACHA por subcomando. El de antes era wildcard
+# (contestaba el rollup a cualquier `--json`), y eso fue la causa medida de que #772 diera rojo
+# con el código correcto: agregó `gh pr view --json mergeable,mergeStateStatus`, el stub le
+# devolvió el array del rollup, el script no pudo leer el campo y salió por «no pude medir»
+# (rc=2). Cinco días de CI rojo atribuidos al cambio. Un stub que adivina acusa al script de su
+# propio hueco — este falla con rc=64 ante un campo no declarado.
+#
+# Los tres casos NO son redundantes: son los tres destinos del `case` de `ci-verde.sh:214+`, y
+# dos de ellos eran INALCANZABLES con el stub viejo. El 4 (UNKNOWN) es el que importa más de lo
+# que parece: GitHub calcula `mergeable` de forma asíncrona, así que UNKNOWN es el caso NORMAL
+# en los primeros segundos de un PR. Si algún día cae en el exit 1 del rojo, el gate empieza a
+# gritar sobre PRs sanos — y un guard que grita en el caso normal se desarma solo.
+# shellcheck source=../lib/gh-stub.sh
+. "$ROOT/scripts/lib/gh-stub.sh"
 mkdir -p "$T/bin"
-cat > "$T/bin/gh" <<'STUB'
-#!/usr/bin/env bash
-echo '[{"name":"backend","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
-STUB
-chmod +x "$T/bin/gh"
+fabricar_gh_stub "$T/bin"
 
-out2="$T/out2.txt"
-PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out2" 2>&1
-rc2=$?
-if [ "$rc2" -ne 2 ] && grep -q "VERDE — se puede mergear" "$out2"; then
-  ok "2 gh presente (stub) -> llega a medir, veredicto VERDE con el rollup fabricado"
+ROLLUP_6_VERDES='[{"name":"backend","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
+
+# $1 nombre · $2 mergeable · $3 mergeStateStatus · $4 rc esperado · $5 patrón que debe aparecer
+mide_veredicto() {
+  local nombre="$1" mrg="$2" mst="$3" rc_esp="$4" pat="$5" out rc
+  out="$T/out-${mrg}.txt"
+  PATH="$T/bin:$PATH" \
+    GH_STUB_ROLLUP="$ROLLUP_6_VERDES" GH_STUB_MERGEABLE="$mrg" GH_STUB_MERGESTATE="$mst" \
+    bash "$ROOT/scripts/ci-verde.sh" 999 > "$out" 2>&1
+  rc=$?
+  if [ "$rc" -eq "$rc_esp" ] && grep -q "$pat" "$out"; then
+    ok "$nombre"
+  else
+    mal "$nombre — rc=$rc (esperaba $rc_esp), salida: $(tr '\n' '|' < "$out" | cut -c1-140)"
+  fi
+}
+
+mide_veredicto "2 gh presente + MERGEABLE -> exit 0, llega al veredicto con el rollup fabricado" \
+  MERGEABLE CLEAN 0 "VERDE — se puede mergear"
+mide_veredicto "3 CI verde pero CONFLICTING -> exit 4 propio, no se funde con el rojo del CI" \
+  CONFLICTING DIRTY 4 "tiene CONFLICTOS"
+mide_veredicto "4 CI verde y mergeable UNKNOWN -> exit 2 (no pude medir), NO el exit 1 del rojo" \
+  UNKNOWN UNKNOWN 2 "no informa si el PR es mergeable"
+
+# --- Caso 5: CONTROL POSITIVO del stub -------------------------------------------------------
+# Sin esto, los tres casos de arriba podrían estar pasando porque el stub contesta cualquier cosa
+# plausible — que es el defecto que vinimos a matar. Acá se le pide un campo NO declarado y se
+# exige que FALLE con 64: es el canario de que el stub discrimina de verdad.
+if PATH="$T/bin:$PATH" GH_STUB_ROLLUP="$ROLLUP_6_VERDES" \
+     gh pr view 999 --json inventado >/dev/null 2>&1; then
+  mal "5 el stub contestó un --json NO declarado (inventado) — vuelve a ser wildcard"
 else
-  mal "2 gh presente dio rc=$rc2, salida: $(tr '\n' '|' < "$out2" | cut -c1-120)"
+  rc5=$?
+  [ "$rc5" -eq 64 ] && ok "5 CONTROL: campo no declarado -> el stub falla con 64, no adivina" \
+                    || mal "5 el stub falló con rc=$rc5, esperaba 64 (¿fallo por otra causa?)"
 fi
 
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }

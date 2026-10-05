@@ -821,22 +821,18 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `tema.color.exito`-ish (#3c8069) como texto de estado sobre superficies casi blancas.
     '#3c8069→#faf7ec': { min: 4.36, clase: 'texto', motivo: '"facturado" (DetallePresupuesto) sobre superficie clara -- borde de AA, no se sube en esta tarea.' },
     '#3c8069→#fcfaf7': { min: 4.49, clase: 'texto', motivo: '"conectada" (PantallaApps) sobre superficie casi blanca -- a milésimas de AA.' },
-    // Isotipo (trazo blanco de Marca/BotonVoz) sobre los stops de su propio relleno -- degradado
-    // `[glass.accent2, tema.color.acento, tema.color.acento]` en BotonVoz, `tema.color.acento` sólido
-    // en Marca. DEC-11 §3 Pieza C: la Marca es un LOGOTIPO (exento por norma) Y de paso pasa 3:1
-    // (no-texto) -- 3,17:1 medido, verificado independientemente contra la fórmula WCAG del propio
-    // archivo (no es el mismo `2.87:1` que dice `tokens.ts:86`; ese comentario está desactualizado,
-    // ver el fix de esa línea en el mismo PR). El trazo de `BotonVoz` contra su ÚLTIMO stop (el mismo
-    // par exacto, `acento` sólido) comparte la exención: geométricamente es el mismo isotipo Odobi.
-    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. 3,17:1 (pasa 3:1 de no-texto) y además exento por ser logotipo -- DEC-11 Pieza C.' },
-    // 🔴 DEC-11: sigue siendo deuda -- el trazo del isotipo contra el PRIMER stop del degradado
-    // (`glass.accent2`) es un objeto gráfico (no-texto, 3:1), no texto, pero 1,26:1 no llega ni a eso.
-    // La Pieza A (mover la geometría del degradado) es la que lo resuelve; hasta que no ocurra, se
-    // mide con el walker real (jest.setup.js mockea SVG a `View`s pass-through: el mock NO hace
-    // sampling geométrico de gradientes, colecta TODOS los stops como candidatos por igual --
-    // confirmado con un spike de este mismo cambio, ver el `hallazgo_` a planificación) -- así que
-    // ninguna geometría podía hacerlo desaparecer de ESTE gate. Sigue rojo a propósito.
-    '#ffffff→#f8e0d9': { min: 1.26, clase: 'no-texto', motivo: 'isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- objeto gráfico, no texto, pero 1,26:1 no llega a 3:1. Pendiente de Pieza A (ver hallazgo_ DEC-11-A-inviable-con-este-walker); el walker no puede verificar un fix geométrico (colecta TODOS los stops del gradiente como candidatos, sin geometría).' },
+    // Isotipo (trazo blanco de Marca) sobre `tema.color.acento` sólido -- LOGOTIPO (exento por norma)
+    // Y de paso pasa 3:1 (no-texto): 3,17:1 medido, verificado independientemente contra la fórmula
+    // WCAG del propio archivo -- DEC-11 §3 Pieza C.
+    // 🔴 DEC11FILL Pieza A (2026-09-30): `BotonVoz.tsx` SALIÓ de este par. PR #730 (Pieza B/C) había
+    // dejado la deuda de abajo registrada a propósito porque un ajuste GEOMÉTRICO (mover cx/cy/r) no
+    // cambia qué colores ve este gate (confirmado ahí con spike). El fix real no era geométrico: era
+    // recolorear los stops (`glass.accent2 -> glass.acento` a `glass.ub1 -> glass.ub2`, mismo par que
+    // `HudGrabacion.tsx` ya usaba para su burbuja) -- eso SÍ cambia lo que el walker ve, porque cambia
+    // qué color pinta cada stop, no dónde lo pinta. Ninguno de los 3 stops de BotonVoz resuelve ya a
+    // `#f8e0d9` ni a `#de7250`: los dos renglones de deuda que existían para ese par (éste y el de
+    // abajo, `no-texto`) se dan de baja -- ninguno de los dos vuelve a aparecer en el barrido.
+    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca (BotonVoz salió de este par en DEC11FILL Pieza A, 2026-09-30).' },
     '#f8e0d9→#ebe7e0': { min: 1.02, clase: 'no-texto', motivo: 'ícono de enviar (Composer, chat-enviar), trazo SVG -- objeto gráfico, casi invisible contra su propio fondo (parece estado inactivo/vacío, sin texto en el composer al montar). Pre-existente, ajeno a DEC-11, no se arregla acá.' },
   },
   oscuro: {
@@ -849,8 +845,7 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     '#de7250→#322a23': { min: 4.44, clase: 'texto', motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie oscura -- a milésimas de AA.' },
     '#de7250→#312c2a': { min: 4.34, clase: 'texto', motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel oscura -- a milésimas de AA.' },
     '#de7250→#3b332d': { min: 3.90, clase: 'texto', motivo: 'acento como texto de chip seleccionado en CampoSelect, piel oscura.' },
-    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca y último stop del degradado de BotonVoz. 3,17:1 (pasa 3:1 de no-texto) y además exento por ser logotipo -- DEC-11 Pieza C (misma piel que en claro: el acento no cambia entre pieles).' },
-    '#ffffff→#f8e0d9': { min: 1.26, clase: 'no-texto', motivo: 'isotipo de BotonVoz contra el PRIMER stop (glass.accent2) del degradado radial -- objeto gráfico, no texto, pero 1,26:1 no llega a 3:1. Pendiente de Pieza A (ver hallazgo_ DEC-11-A-inviable-con-este-walker).' },
+    '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca (BotonVoz salió de este par en DEC11FILL Pieza A, 2026-09-30). Misma piel que en claro: el acento no cambia entre pieles.' },
     // `tema.color.textoTenue` (#928777) sobre superficies oscuras -- patrón SISTÉMICO en la piel
     // oscura: etiquetas secundarias, placeholders, descripciones de chip, texto de "detalle" en listas.
     // Repetido en 8+ componentes distintos con el MISMO par exacto -- indica que `textoTenue` en piel
@@ -904,6 +899,21 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
     expect(gradiente).not.toBeNull();
     expect(gradiente[1]).not.toMatch(/accent2/);
     expect(gradiente[1]).toMatch(/glass\.ub1/);
+  });
+
+  it('DEC11FILL Pieza A: el botón de voz (esfera) no vuelve al degradado que terminaba en accent2 (1,26:1)', () => {
+    // Misma forma de control que el `it` de arriba para HudGrabacion, adaptada al `RadialGradient`
+    // de 3 `Stop` de BotonVoz (`stopColor`, no `colors={[...]}`) -- caza la regresión sobre el
+    // fuente, sin depender de que `react-native-svg` esté mockeado a passthrough en el árbol montado.
+    const fs = require('fs');
+    const path = require('path');
+    const boton = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'BotonVoz.tsx'), 'utf8');
+    const stops = [...boton.matchAll(/stopColor=\{disabled \? [^:]+ : ([^}]+)\}/g)].map((m) => m[1]);
+    expect(stops).toHaveLength(3);
+    for (const stop of stops) {
+      expect(stop).not.toMatch(/accent2|tema\.color\.acento\b/);
+      expect(stop).toMatch(/glass\.ub[12]/);
+    }
   });
 });
 

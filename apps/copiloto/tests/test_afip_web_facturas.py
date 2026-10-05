@@ -5,6 +5,9 @@ alcance para tocar la factura de otro tenant.
 """
 from __future__ import annotations
 
+import os
+import uuid
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -15,6 +18,9 @@ from web import _wf_id_anulacion, _wf_id_factura
 CUIT = "20409378472"
 TENANT_A = "tenant-a"
 TENANT_B = "tenant-b"
+
+necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
+                                 reason="requiere Postgres del VPS (DATABASE_URL)")
 
 
 class _WorkflowNoExiste(Exception):
@@ -87,7 +93,13 @@ class CredStoreConCertificado:
         return {"cert": "c", "key": "k", "ambiente": ambiente or "dev", "ws_autorizados": ["wsfe"]}
 
 
-def armar(tenant=TENANT_A, comprobantes=None, *, espia=None, raise_server_exceptions=True):
+def armar(tenant=TENANT_A, comprobantes=None, *, espia=None, raise_server_exceptions=True,
+         comprobante_store_factory=None, cobro_store_factory=None):
+    """`comprobante_store_factory`/`cobro_store_factory`: `None` usa el fake de siempre (comprobante)
+    o deja `/afip/comprobantes/{id}/cobros`+`/ingresos/*` en 503 (cobro, igual que produción sin
+    inyectarlo) -- los tests RATCH Parte B los pasan bindeados a Postgres real (`conn_de_tenant`),
+    porque el aislamiento que prueban vive en el filtro SQL + RLS, no en un fake que no puede mentir
+    pero tampoco puede confirmar nada (regla del repo: integración > mocks)."""
     espia = espia or Espia()
     store = ComprobanteStoreFake(comprobantes)
     afip = create_afip_app(
@@ -96,7 +108,8 @@ def armar(tenant=TENANT_A, comprobantes=None, *, espia=None, raise_server_except
         cred_store_factory=lambda cid: CredStoreConCertificado(),
         handoff_factory=lambda cid: None,
         start_onboarding=lambda *a: "wf",
-        comprobante_store_factory=lambda cid: store,
+        comprobante_store_factory=comprobante_store_factory or (lambda cid: store),
+        cobro_store_factory=cobro_store_factory,
         iniciar_factura=espia.iniciar_factura,
         consultar_factura=espia.consultar_factura,
         signal_factura=espia.signal_factura,
@@ -183,6 +196,23 @@ def test_ADVERSARIAL_confirmar_anulacion_no_alcanza_la_de_otro_tenant():
     r = client_a.post(f"/afip/anulaciones/{anulacion_b}/confirmar")
     assert r.status_code != 200, "confirmar la anulación de otro tenant no puede devolver 200"
     assert espia.signals == []
+
+
+def test_ADVERSARIAL_estado_anulacion_no_alcanza_la_de_otro_tenant():
+    """RATCH Parte B: `GET /afip/anulaciones/{id}` es el par-lectura de la mutación de arriba --
+    mismo mecanismo (`consultar_anulacion` resuelve el workflow_id con `_wf_id_anulacion(cliente_id,
+    ...)`, nunca con el id crudo del path), pero sin este test nadie lo ejercitaba a nivel HTTP."""
+    client_b, espia_b = armar(TENANT_B)
+    cuerpo = {"cuit": CUIT, "tipo_cbte": 11, "punto_venta": 6, "nro": 9}
+    anulacion_b = client_b.post("/afip/comprobantes/anular", json=cuerpo).json()["anulacion_id"]
+    espia_b.estados[_wf_id_anulacion(TENANT_B, anulacion_b)] = {"estado": "pendiente_confirmacion"}
+
+    assert client_b.get(f"/afip/anulaciones/{anulacion_b}").status_code == 200
+
+    client_a, espia_a = armar(TENANT_A)
+    espia_a.estados = espia_b.estados  # mismo "Temporal" detrás
+    r = client_a.get(f"/afip/anulaciones/{anulacion_b}")
+    assert r.status_code == 404, "el tenant A leyó el estado de la anulación del tenant B"
 
 
 def test_CONTROL_las_mutaciones_adversariales_pasan_si_el_espia_no_es_estricto():
@@ -284,3 +314,134 @@ def test_anular_valida_el_cuit(cuit):
     r = client.post("/afip/comprobantes/anular",
                     json={"cuit": cuit, "tipo_cbte": 11, "punto_venta": 6, "nro": 9})
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# RATCH Parte B — comprobantes/cobros/ingresos contra Postgres real. A diferencia del ciclo de
+# facturas (arriba, workflow-backed vía _wf_id_factura), estos endpoints leen/escriben con el filtro
+# `cliente_id` explícito del store + RLS -- el mismo mecanismo que ya prueba
+# test_cobros_y_catalogo.py a nivel STORE, acá ejercitado a nivel HTTP real (Depends(require_tenant)
+# incluido), que es justo la mitad que un test de store nunca toca.
+# ---------------------------------------------------------------------------
+
+from afip_comprobante_store import AfipComprobanteStore  # noqa: E402
+from cobro_store import CobroStore  # noqa: E402
+
+
+@pytest.fixture
+def tenants_pg(conn_de_tenant):
+    """Mismo patrón que `test_cobros_y_catalogo.py::tenants`: dos cliente_id sintéticos + barrido de
+    lo que este archivo escriba en las 2 tablas que toca."""
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    yield a, b
+    for cid in (a, b):
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_cobros WHERE cliente_id=%s", (cid,))
+            cur.execute("DELETE FROM uc_factory.afip_comprobantes WHERE cliente_id=%s", (cid,))
+        conn.close()
+
+
+def _comprobante_pg(conn_de_tenant, cliente_id: str, total: str, *, nro: int = 1):
+    conn = conn_de_tenant(cliente_id)()
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO uc_factory.afip_comprobantes
+                       (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
+                        estado, receptor_nombre)
+                       VALUES (%s, '30712345678', 6, 1, %s, 'CAE-TEST', CURRENT_DATE, %s,
+                               'emitida', 'Panadería')
+                       RETURNING id""", (cliente_id, nro, total))
+        return cur.fetchone()[0]
+
+
+def _armar_pg(tenant: str, conn_de_tenant, *, raise_server_exceptions=True):
+    return armar(tenant, raise_server_exceptions=raise_server_exceptions,
+                comprobante_store_factory=lambda cid: AfipComprobanteStore(conn_de_tenant(cid), cid),
+                cobro_store_factory=lambda cid: CobroStore(conn_de_tenant(cid), cid))
+
+
+@necesita_pg
+def test_ADVERSARIAL_detalle_comprobante_no_alcanza_el_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    comp_b = _comprobante_pg(conn_de_tenant, b, "1000.00", nro=40)
+
+    client_b, _ = _armar_pg(b, conn_de_tenant)
+    assert client_b.get(f"/afip/comprobantes/{comp_b}").status_code == 200
+
+    client_a, _ = _armar_pg(a, conn_de_tenant)
+    r = client_a.get(f"/afip/comprobantes/{comp_b}")
+    assert r.status_code == 404, "el tenant A leyó el detalle del comprobante del tenant B"
+
+
+@necesita_pg
+def test_ADVERSARIAL_registrar_cobro_no_alcanza_el_comprobante_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    comp_b = _comprobante_pg(conn_de_tenant, b, "1000.00", nro=41)
+
+    client_a, _ = _armar_pg(a, conn_de_tenant, raise_server_exceptions=False)
+    r = client_a.post(f"/afip/comprobantes/{comp_b}/cobros", json={"monto": "100.00"})
+    assert r.status_code == 404, "el tenant A pudo registrar un cobro sobre el comprobante del tenant B"
+
+    # el comprobante de B sigue impago: el intento de A no dejó rastro.
+    resumen_b = CobroStore(conn_de_tenant(b), b).resumen(comp_b)
+    assert resumen_b["cobrado"] in ("0", "0.00", 0), \
+        f"el intento de A ensució el comprobante de B: {resumen_b}"
+
+
+@necesita_pg
+def test_ADVERSARIAL_listar_cobros_no_alcanza_el_comprobante_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    comp_b = _comprobante_pg(conn_de_tenant, b, "1000.00", nro=42)
+
+    client_b, _ = _armar_pg(b, conn_de_tenant)
+    assert client_b.get(f"/afip/comprobantes/{comp_b}/cobros").status_code == 200
+
+    client_a, _ = _armar_pg(a, conn_de_tenant)
+    r = client_a.get(f"/afip/comprobantes/{comp_b}/cobros")
+    assert r.status_code == 404, "el tenant A listó los cobros del comprobante del tenant B"
+
+
+@necesita_pg
+def test_ADVERSARIAL_borrar_cobro_no_alcanza_el_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    comp_b = _comprobante_pg(conn_de_tenant, b, "1000.00", nro=43)
+    cobro_b, _ = CobroStore(conn_de_tenant(b), b).registrar(comp_b, monto="1000.00")
+
+    client_a, _ = _armar_pg(a, conn_de_tenant, raise_server_exceptions=False)
+    r = client_a.delete(f"/afip/comprobantes/{comp_b}/cobros/{cobro_b['id']}")
+    assert r.status_code == 404, "el tenant A borró el cobro del comprobante del tenant B"
+
+    # el cobro de B sigue intacto.
+    resumen_b = CobroStore(conn_de_tenant(b), b).resumen(comp_b)
+    assert resumen_b["cobrado"] not in ("0", "0.00", 0), \
+        f"el intento de A borró el cobro de B: {resumen_b}"
+
+
+@necesita_pg
+def test_ADVERSARIAL_borrar_ingreso_no_alcanza_el_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    ingreso_b = CobroStore(conn_de_tenant(b), b).registrar_suelto(
+        monto="777.00", cliente_nombre="Secreto de B")
+
+    client_a, _ = _armar_pg(a, conn_de_tenant, raise_server_exceptions=False)
+    r = client_a.delete(f"/ingresos/{ingreso_b['id']}")
+    assert r.status_code == 404, "el tenant A borró el ingreso manual del tenant B"
+
+    ingresos_b = CobroStore(conn_de_tenant(b), b).listar_ingresos()["ingresos"]
+    assert any(i["id"] == ingreso_b["id"] for i in ingresos_b), \
+        "el ingreso de B desapareció tras el intento de A"
+
+
+@necesita_pg
+def test_ADVERSARIAL_completar_ingreso_no_alcanza_el_de_otro_tenant(conn_de_tenant, tenants_pg):
+    a, b = tenants_pg
+    ingreso_b = CobroStore(conn_de_tenant(b), b).registrar_suelto(
+        monto="777.00", cliente_nombre="")
+
+    client_a, _ = _armar_pg(a, conn_de_tenant, raise_server_exceptions=False)
+    r = client_a.patch(f"/ingresos/{ingreso_b['id']}", json={"cliente_nombre": "Robado por A"})
+    assert r.status_code == 404, "el tenant A completó el ingreso manual del tenant B"
+
+    ingresos_b = CobroStore(conn_de_tenant(b), b).listar_ingresos()["ingresos"]
+    manual_b = next(i for i in ingresos_b if i["id"] == ingreso_b["id"])
+    assert manual_b["cliente_nombre"] != "Robado por A"

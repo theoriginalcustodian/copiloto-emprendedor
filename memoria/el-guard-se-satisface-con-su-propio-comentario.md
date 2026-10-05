@@ -84,3 +84,27 @@ Operativamente: acotá el sujeto **antes** de buscar (partir el archivo por el b
 descartar comentarios, exigir el indent del contexto), y el ancla llevá el salto de línea y la sangría
 de su rol (`'\n    docs = {'`, no `'docs = {'`). Ídem
 [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+---
+
+## (2026-09-30) El parser leyó **su propia salida**, transcrita en el documento, como declaración de entrada
+
+El registro de vigencia lleva adentro, en prosa, **el reporte que el script imprime** (para que un humano
+vea qué mide). Una de esas líneas transcritas es `ALCANCE: 3 de 4 relaciones son PARCIALES…`. El bloque de
+datos no tenía delimitador de cierre, así que el último quedaba abierto hasta EOF y **absorbía esa línea
+como si fuera su campo**: el `ALCANCE: total` real se perdió y el control «toda relación declara ALCANCE»
+**pasó igual, satisfecho con basura**. Fail-open perfecto: el campo existía, con el valor de otra cosa.
+
+Con 4 bloques no daba síntoma —a cada uno lo seguía otro encabezado, que lo cerraba por accidente—. Lo
+destapó el quinto ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+
+**Y su gemelo, por el lado opuesto:** la **plantilla del propio documento** mostraba el encabezado *dentro*
+del fence. Escribí el bloque nuevo copiando mi plantilla, y el parser **no leyó sus campos: la relación
+desapareció del reporte sin un solo error**. Un instrumento que pierde una declaración verdadera en
+silencio es peor que uno que acepta basura: la basura se ve en la salida.
+
+**Cómo aplicar:** si el documento que tu instrumento lee **contiene ejemplos o salidas del instrumento**
+—docs autodescriptivos, READMEs con su propio output, plantillas—, (1) delimitá explícitamente la zona de
+datos y **cerrala** (acá: los campos sólo cuentan dentro del fence, y el fence cierra el bloque); (2) exigí
+que **todo encabezado produzca un registro** (control de mudez, `exit 9`); (3) revisá que la plantilla que
+publicás sea **aceptada por tu propio parser** — la mía no lo era.

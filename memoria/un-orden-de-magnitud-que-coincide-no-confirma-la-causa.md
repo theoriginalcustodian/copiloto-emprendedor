@@ -41,3 +41,35 @@ Hermanas: [[no-codificar-la-esperanza-principio-raiz]] ·
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
 [[dos-causas-suficientes-el-test-no-atribuye]] · [[contar-un-simbolo-no-dice-en-que-rol-aparece]] ·
 [[el-nombre-es-una-hipotesis-sobre-el-contenido]]
+
+---
+
+## Refuerzo (2026-09-30): dos poblaciones del MISMO tamaño en la misma investigación
+
+Tercer modo, y el más fácil de creer: no es un orden de magnitud parecido ni un total que compensa —
+son **dos cifras exactamente iguales que nombran cosas distintas**, en el mismo hilo.
+
+Backend reportó **4** DELETE con `204` sobre el grafo. Al desglosar los 1406 zombies por `created_at`
+aparecieron **1402 + 4**: los 1402 de la re-poda (`created_at` 13:35, una sola tanda) y **4** objetos con
+`created_at` 13:10-13:11. La lectura se ofrece sola: *«los 4 que borró siguen ahí → el `204` mintió»*.
+
+**Los 4 del desglose tienen una explicación propia y completa:** son los huérfanos de un archivo
+**renombrado** (`test-vigencia-canario.sh`, de `scripts/evidencia/` a `scripts/tests/`) — 2 nodos + su
+`DEFINES` + 1 `CO_CHANGES_WITH`, un grupo coherente, con timestamp separado de la tanda grande. Nada que
+ver con los DELETE. **Coinciden en número y en nada más.**
+
+Y el mismo hilo tenía un segundo par de gemelos: yo había escrito que «si los 4 hubieran persistido, el
+dry-run habría medido **1402**» — y 1402 resultó ser, por otra vía completamente distinta, el tamaño real
+de la tanda de la re-poda. **Dos veces el mismo número por caminos que no se tocan, en una sola
+investigación.**
+
+**Why:** porque un número que coincide se siente como confirmación *y además* cierra la historia: explica
+la anomalía sin dejar cabos. La pista de que no lo era fue estructural, no numérica — los 4 formaban un
+conjunto con sentido propio (un archivo y sus relaciones) y tenían su propio `created_at`.
+
+**How to apply:** (1) cuando dos cifras coinciden, preguntá **qué población** cuenta cada una antes de
+asociarlas: ¿mismo universo, mismo instante, mismo criterio de inclusión?; (2) buscá si el conjunto
+sospechoso tiene **estructura interna** —un archivo con sus nodos y aristas, un commit, un tenant—: si la
+tiene, ya está explicado sin la coincidencia; (3) los timestamps separan poblaciones que los totales
+fusionan: `created_at` partió 1406 en 1402+4 y ese corte fue todo el hallazgo; (4) en un hilo donde ya
+apareció una coincidencia numérica, esperá la segunda.

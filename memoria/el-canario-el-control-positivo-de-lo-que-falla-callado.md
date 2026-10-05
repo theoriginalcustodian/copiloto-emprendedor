@@ -60,3 +60,64 @@ control positivo), aplicado al sistema vivo en vez de a la suite de tests.
 **El canario encontró el fallo antes de existir.** Diseñarlo obligó a preguntar cómo entra realmente
 un error al sistema — y esa pregunta destapó que no entraba ninguno. Diseñar el detector es, en sí,
 una auditoría del camino que va a vigilar.
+
+---
+
+## Refuerzo (2026-09-30): el par vestido/desnudo se pisa a sí mismo si los dos escriben al mismo destino
+
+Corrí el par en secuencia dentro de un solo background —vestido (guard forzado a disparar), después
+desnudo (control positivo)— y leí el resultado al final. **El log mostraba las dos mitades correctas,
+pero la evidencia persistida era sólo la del desnudo:** el generador reescribe
+`evidencia-out/criterio3-caminos.json` en cada corrida, así que el `no_medibles_por_captura: 1` del
+vestido lo pisó el `0` del desnudo. Leído al final, el efecto decía **0 filas** — indistinguible de un
+guard que no disparó.
+
+Lo cacé porque el control que aplico es el **efecto**, no el log; si me hubiera quedado con el log
+—donde el `⊘ NO_MEDIBLE` aparece clarísimo— habría cerrado el fix con la evidencia del control positivo
+en lugar de la del caso probado. Re-corrí sólo el vestido y leí el json en el mismo paso: **1 fila, con
+su `porque` completo.**
+
+**Why:** porque el par vestido/desnudo está diseñado para producir dos resultados **distintos**, y por
+eso mismo el segundo borra al primero cuando comparten destino. La mitad que se pierde es siempre la
+misma: el desnudo va último porque es el control, así que lo que sobrevive es el resultado *benigno*.
+
+**How to apply:** (1) vestido y desnudo escriben a destinos distintos, o se lee la evidencia **entre**
+las dos corridas; (2) si el par corre sin supervisión, copiar el artefacto del primero antes de lanzar
+el segundo; (3) al cerrar un canario, mirá el **timestamp** del artefacto y cruzalo con cuál de las dos
+corridas lo escribió — un json con `corrida:` es lo que hace esto verificable; (4) el orden importa:
+correr el control positivo **primero** deja como sobreviviente el caso probado, que es el que se quiere
+adjuntar.
+
+---
+
+## Refuerzo 2026-10-05 · un canario escrito en el formato que el instrumento YA ve no prueba cobertura: prueba una tautología
+
+Barrido de ramas comodín en los dobles de `gh`. El detector buscaba el comodín **literal** al principio del
+renglón (un `grep` anclado con `^`). Reportó `veredicto-monotono: sin comodín`, y para no creerle inyecté un
+canario: un stub con su `case` y su rama comodín indentada. Salió **cazado**, así que declaré el instrumento
+sano.
+
+**Era mentira.** Ese archivo tenía **5 comodines** que el grep no veía, porque no están escritos como código
+del archivo: están **generados**, adentro de un `echo`/`printf` que fabrica el stub en disco. El canario no
+los cubría porque **lo escribí en el único formato que el detector ya reconocía**: probé que el instrumento
+ve lo que ve.
+
+**La trampa es cómoda:** el canario se escribe de memoria, y la memoria la acaba de formar el patrón del
+propio detector. Sale verde, se siente rigor, y lo que acreditó es la mitad conocida — con el agravante de
+que ahora hay un verde que **desactiva** la sospecha.
+
+**Cómo escribir un canario que no sea tautológico:**
+1. Enumerá las **formas en que el fenómeno puede aparecer** antes de mirar el detector: literal · generado
+   dentro de una cadena · en otro lenguaje · con otra indentación o compartiendo renglón.
+2. Inyectá **una por forma** y exigí que el conteo suba en cada caso.
+3. Si una forma no sube el conteo, el instrumento no la mide: eso **es** el hallazgo, antes de cualquier
+   cifra publicada.
+4. Declará las **unidades que contás**. Acá el reparto correcto fue `stubs fabricados=6 · comodines
+   literales=2 · comodines generados=10` — tres números que la v1 colapsaba en uno, y la discusión «5 o 6»
+   era irresoluble sin ellos.
+
+El canario reescrito con la forma generada subió los comodines de 10 a 12: recién ahí el instrumento quedó
+acreditado para la forma que importaba.
+
+Ver también [[instrumento-que-no-mira-nunca-falla]] (el «sin comodín» era un *no mirado*, no un *limpio*) y
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].

@@ -172,6 +172,151 @@ interpretable sin el conteo de cobertura, y ésa es la línea que faltaba para q
 
 ---
 
+## (2026-09-30) `rglob` **LISTA** rutas que `read_text` no puede abrir: el MAX_PATH de Windows
+
+Barriendo el buzón (2104 `.md`), el script murió en un archivo que `rglob` acababa de enumerar:
+
+```
+FileNotFoundError: …coordinacion/cerrado/2026-08-05/2026-08-05_urgente_vigilancia-a-frontend_
+  contrato-sin-tomar-2026-08-04_urgente_vigilancia-a-frontend_contrato-sin-tomar-2026-08-04_
+  contrato_planificacion-a-frontend_MWEB-6-modulos-restantes-completo-paralelo.md
+```
+
+**El archivo existe.** Lo que falla es abrirlo: la ruta mide **295 caracteres** y el límite clásico de
+Windows es 260. Medido: **4 de 2104** archivos del buzón son ilegibles así (260, 295, 296 y 303 chars).
+
+**Por qué es esta patología y no un bug cualquiera:** la reacción natural al `FileNotFoundError` es
+envolver la lectura en `try/except: continue`. Con eso el barrido **reporta «0 hits» sobre archivos que
+nunca miró**, y no hay forma de distinguirlo de «los miré y no tenían nada». El instrumento no falla:
+**deja de mirar**.
+
+**Cómo aplicar:** (1) leé con el prefijo de ruta larga como segundo intento —`Path("\\?\\" + str(f.resolve()))`—
+y (2) **contá y reportá los ilegibles como una cifra propia** (`LEIDOS: 2100 de 2104 · ILEGIBLES: 4`, con
+su longitud y su nombre). Nunca `except: continue` a secas sobre un elemento del universo que declaraste
+mirar. Un barrido tiene que poder decir **cuántos** miró, no sólo cuántos encontró.
+
+**Y la causa de raíz, que es de planificación:** el escalador compone el nombre del `urgente_` metiendo
+**el nombre completo del contrato adentro** (`urgente_vigilancia-a-<rol>_contrato-sin-tomar-<nombre del
+contrato>.md`). Si el contrato ya es un `urgente_` compuesto, el nombre se anida otra vez y crece sin
+techo — los 4 casos son exactamente eso, con «contrato-sin-tomar» dos veces en el mismo nombre. Un
+generador de nombres sin límite de longitud fabrica archivos que después nadie puede leer.
+Ver [[un-vacio-del-propio-instrumento-no-es-hallazgo]] · [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]].
+
+---
+
+## Refuerzo 2026-09-30 — el instrumento **sabe** hacer lo que no hace: capacidad ≠ alcance
+
+El caso de arriba es un control cuyo rango sale vacío. Este es peor, porque el instrumento **tiene la
+capacidad** de mirar lo que no mira, y eso hace que el lector concluya —correctamente— que lo cubre.
+
+`scripts/medir-indice-memoria.py` verifica, entre otras cosas, que ningún link apunte a un archivo
+inexistente. Su función de extracción trae los dos formatos, y el docstring lo dice:
+
+```python
+def referencias(texto: str) -> set[str]:
+    """Nombres de archivo referenciados, por link markdown Y por wikilink."""   # :43
+    nombres = set(LINK_MD.findall(texto))
+    nombres |= {f"{w}.md" for w in WIKILINK.findall(texto)}                     # :49
+```
+
+Y el universo sobre el que se lo llama:
+
+```python
+refs = referencias(texto_indice) | referencias(texto_historia)                  # :80
+```
+
+**Medido en `memoria/` el 2026-09-30:** 24 wikilinks viven en `MEMORY.md` + `HISTORIA.md`, y **1229 en los
+360 cuerpos**. El control ve el **1,9 %**. Cuando se lo nombró como verificación de un renombre masivo de
+~150 archivos —donde lo que se rompe son precisamente los links *de cuerpo a cuerpo*— el control seguía
+imprimiendo `[OK ] links a archivos inexistentes: 0`.
+
+**Canario, sobre una copia:** rompí a propósito un wikilink de un cuerpo.
+
+```
+SU control       (universo índice+historia):  0 rotos  -> VERDE  · ve el canario? NO
+control ampliado (universo cuerpos):         12 rotos  -> ROJO   · ve el canario? SÍ
+```
+
+### Por qué esta variante engaña más que el rango vacío
+
+Un control con rango vacío al menos **no promete**. Este promete en su propio docstring: dice «por link
+markdown **Y** por wikilink», y es **verdad** — para las 24 del índice. La afirmación es correcta y la
+conclusión que induce es falsa. **La capacidad de parsear un formato no dice nada sobre el conjunto al que
+se aplica**, y en el código esas dos cosas viven en líneas distintas y lejanas: la capacidad en `:49`, el
+alcance en `:80`. Quien lee la función se va convencido; el alcance está 30 líneas más abajo, en el
+llamador.
+
+### Y el segundo modo, que es el que lo deja vivir
+
+El control imprimía `0` **antes** del renombre y habría impreso `0` **después**. Un absoluto no puede medir
+un cambio cuando no separa la línea de base: la foto real era **238 de 249 destinos resuelven, 11 no** — los
+11 preexistentes, todos en cuerpos. Con «rotos = 0» como criterio, 30 roturas nuevas se habrían mezclado con
+los 11 viejos y se leerían como ruido conocido, que es
+[[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]] aplicado a un conteo.
+**El criterio correcto era diferencial: «los 238 que resolvían siguen resolviendo».**
+
+**How to apply (suma a lo de arriba):** (1) ante un control que se nombra para verificar un cambio,
+preguntá **sobre qué colección corre**, no qué sabe parsear — la capacidad vive en la función, el alcance en
+el llamador, y sólo el segundo es el instrumento; (2) medí qué **fracción** del universo real cubre («24 de
+1253» dice todo; «cubre wikilinks» no dice nada); (3) si la línea de base no es cero, el criterio no puede
+ser un absoluto: guardá el ANTES y exigí que los que pasaban sigan pasando; (4) el canario es inyectar el
+daño exacto que el cambio produciría **en el lugar donde lo produciría** — romper un link del índice no
+prueba nada sobre los cuerpos.
+
+---
+
+## Refuerzo (2026-09-30): el control no podía **ver** el carácter que buscaba — `grep` de un emoji bajo cp1252
+
+Verifiqué la firma de un mensaje recién escrito con `grep -c '\U0001F916' archivo` desde Git Bash y
+obtuve **0**. El emoji **sí estaba** (medido después con Python: `t.count(...) == 1`, archivo de 5144
+bytes). Lo que falló fue el camino del patrón: la consola de este entorno es **cp1252**, que no puede
+representar U+1F916, así que el literal se manglaba **antes de llegar a grep**. El mismo `print` en
+Python lo demostró reventando con `UnicodeEncodeError: 'charmap' codec can't encode character
+'\U0001f916'` — el error salió del **instrumento**, no del dato.
+
+Y el cero se lee idéntico a «no está». Un control que no puede representar lo que busca **siempre
+informa ausencia**, y la ausencia es justo el resultado que uno ya teme, así que se cree.
+
+**El control del control, que es una pregunta:** *¿el instrumento puede expresar el valor que busca?*
+Si el patrón viaja por una shell, un `argv`, un log o una terminal con otro encoding, la respuesta puede
+ser no — y entonces el `0` no mide el archivo, mide el canal.
+
+**How to apply:** para verificar caracteres fuera de ASCII en un archivo, medilo **dentro** del proceso
+que lee el archivo (`python -c` con `io.open(..., encoding='utf-8')` y comparación por codepoint),
+nunca pasando el carácter como literal por la shell; y cuando tengas que imprimirlo, `PYTHONIOENCODING=utf-8`
+o `\\uXXXX` con `backslashreplace`. Sumale el **control positivo barato**: buscá también un carácter que
+NO pusiste (yo usé U+1F600) — si tu método discrimina, tiene que dar presente/ausente distinto para los
+dos. Si ambos dan 0, no medió nada.
+
+---
+
+## Refuerzo 2026-10-05 · arreglar el instrumento ciego NO barre las afirmaciones que su ceguera ya escribió
+
+El parser del criterio 3 no podía leer el id `(home)`: es sintético, empieza con paréntesis, y
+`limpiar('(home)')` devolvía `'home)'`. Consecuencia medida, en palabras del propio comentario del
+instrumento: *«la cifra no podía pasar de 53 de 54 por mucho que se midiera»*. El id **estaba medido**
+desde el 2026-09-30, con veredicto `DESVÍO` y un documento en el buzón; lo que faltaba era un parser
+que pudiera leer el nombre de la fila.
+
+El parser se arregló. **La frase que su ceguera había escrito siguió viva** — «falta `(home)`, nunca
+medida» — y el mismo día, en dos sesiones distintas, fabricó dos errores: una asignación de trabajo ya
+hecho y un veredicto publicado en un entregable. Ninguna de las dos midió: **las dos citaron el mismo
+renglón heredado**.
+
+**La clase:** una afirmación generada por un instrumento ciego **no se parece a un bug**. Se parece a
+estado conocido, y hereda la autoridad del lugar donde quedó escrita (un índice, un tablero, un
+`PLAN.md`). El fix del instrumento es visible y celebrado; las afirmaciones que produjo mientras era
+ciego son invisibles y sobreviven.
+
+**El cierre que faltaba, y es parte del fix, no un extra:** al arreglar un instrumento, **grepear las
+afirmaciones que produjo** mientras estaba ciego —en índices, tableros, docs maestros— y corregirlas
+en la misma operación. Si el arreglo subió una cifra, toda cita de la cifra vieja es ahora falsa.
+Corolario de proceso: el PR que arregla el parser y el que barre sus secuelas son **el mismo PR**,
+como en [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
+
+Hermana de [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]] y de
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]].
+
 ## Refuerzo 2026-09-30 — el DETECTOR tiene que ser más ancho que el LECTOR
 
 Regla de diseño, no anécdota: **un detector tan ancho como su lector no puede avisar de la ceguera

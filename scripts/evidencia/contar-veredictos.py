@@ -32,6 +32,28 @@ CONTROLES HORNEADOS (tres, y el tercero es el que faltaba):
      dejó `tabla` sin control durante toda su vida. El control se corre, no se promete.
 
 Read-only. Uso: python contar-veredictos.py [--json] [--canario]
+
+────────────────────────────────────────────────────────────────────────────────────────────────
+CÓDIGOS DE SALIDA — cada uno nombra la ACCIÓN que destraba, porque dos de ellos piden lo
+CONTRARIO y hasta el 2026-09-30 compartían el 6:
+
+   0   medido y todos los controles pasaron.
+   2   NO PUEDO MEDIR (falta un archivo, cambió la forma de una tabla, el universo no se lee).
+       Nunca es un hallazgo sobre el dato: es ceguera del instrumento.
+   3-5, 7-11   controles de contenido; cada rama imprime su propia acción.
+   6   COBERTURA: REGRESIÓN — la matriz DEJÓ de cubrir un id de la spec.
+       Acción: arreglar la matriz (o bajar el id al piso, deliberadamente y con el por qué).
+   12  EL PISO QUEDÓ VIEJO — la matriz YA cubre un id que sigue en CIEGOS_DECLARADOS.
+       Acción: sacarlo del piso. Es la INVERSA del 6.
+   13  el diff de RETIRADOS_DECLARADOS no cuadra con la spec vigente.
+
+Por qué se partieron (caso real, 2026-09-30): el 6 decía «el piso quedó viejo, sacá `preg`» en un
+árbol y «la matriz dejó de cubrir `preg`, no lo saques» en otro — dos diagnósticos OPUESTOS bajo
+el mismo código. Auditoría midió este script copiándolo a SU directorio, así que
+`RAIZ = parents[2]` resolvió a SU matriz (la única que cubre `preg`); leí «le falta el ratchet»,
+traje su commit, y el contador pasó de 0 a 6 por la causa contraria. Un código compartido no
+sólo pierde información: cuando las acciones son inversas, ELIGE MAL por vos.
+────────────────────────────────────────────────────────────────────────────────────────────────
 """
 import hashlib
 import io
@@ -55,14 +77,28 @@ RAIZ = Path(__file__).resolve().parents[2]
 # es no tener corpus, que es justo el caso que no se puede provocar en la maquina que lo tiene.
 COORD = Path(os.environ.get("COPILOTO_COORD",
                             "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion"))
-MATRIZ = RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"
+# ⚠️ MATRIZ y SPEC son parametrizables por la MISMA razón que COORD, más una propia y peor: con
+# `RAIZ = parents[2]`, el sujeto medido lo decide DÓNDE ESTÁ ESTE ARCHIVO. Copiar el script a otro
+# checkout lo repunta en silencio a la matriz de ESE árbol — el caso real del 2026-09-30 narrado en
+# el docstring, donde el mismo código dio dos diagnósticos opuestos sin que nada fallara. Poder
+# apuntarlos explícitamente hace dos cosas que el default no puede: (1) el sabotaje de los exit
+# 6/12/13 se monta sobre fixtures en vez de copiar el script — o sea el test ya NO necesita la misma
+# trampa que causó el incidente; (2) quien mide puede DECLARAR su sujeto en vez de heredarlo del
+# lugar donde quedó el archivo. El default no cambia: sin env, mide este árbol.
+MATRIZ = Path(os.environ.get("COPILOTO_MATRIZ",
+                             RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"))
 # La SPEC es la fuente de verdad del criterio: el backlog §13 punto 3 dice, con esas palabras, que
 # se mide «contra la sección spec de este documento». Hasta el 2026-09-29 el universo salía de
 # MATRIZ — o sea del INSTRUMENTO — y eso es C3-13: la matriz conoce 27 ids de los 54, así que los
 # otros 28 no podían aparecer ni como «hueco con nombre». No eran los marginales: `cobro-voz`, las
 # cinco `card-*`, `fact-voz`/`fact-hitl`/`pres-voz`/`pres-hitl`, `vacio`/`vacio-visto`, la home.
-SPEC = (RAIZ / "docs" / "copiloto-emprendedor" /
-        "2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md")
+SPEC = Path(os.environ.get("COPILOTO_SPEC",
+                           RAIZ / "docs" / "copiloto-emprendedor" /
+                           "2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md"))
+# El piso también se puede apuntar a un fixture, y SÓLO para eso: es lo que permite sabotear en las
+# dos direcciones (quitar del piso un id que la matriz no cubre ⇒ 6; dejar uno que sí cubre ⇒ 12)
+# sin editar la constante de este archivo. En uso normal queda en None y manda CIEGOS_DECLARADOS.
+PISO_OVERRIDE = os.environ.get("COPILOTO_PISO")
 
 # Ratchet de cobertura del instrumento. NO es una lista de exclusiones: es el PISO medido, y el gate
 # falla en las DOS direcciones — si aparece un ciego nuevo (regresión) y si uno declarado dejó de
@@ -71,7 +107,7 @@ SPEC = (RAIZ / "docs" / "copiloto-emprendedor" /
 CIEGOS_DECLARADOS = {
     "bi-refresh", "bi-vacio", "bloqueado", "caida", "card", "card-cliente", "card-cobro",
     "card-factura", "card-presu", "chat", "cobro-voz", "fact-cae", "fact-hitl", "fact-voz",
-    "feedback", "grabando", "ingresar-error", "onb-cumplida", "onb-promesa", "preg", "pres-ciclo",
+    "feedback", "grabando", "ingresar-error", "onb-cumplida", "onb-promesa", "pres-ciclo",
     "pres-hitl", "pres-voz", "recibo", "vacio", "vacio-visto", "volver", "(home)",
 }
 # `plan` está en la matriz y NO en la spec: salió por DEC-8 (visión, `BL-V2`). Es C3-14, y la
@@ -79,6 +115,39 @@ CIEGOS_DECLARADOS = {
 # va a construir, y `plan` figuraba como una. La spec lo corrigió en su primera página; el
 # instrumento lo heredó. Un diff de universo es BIDIRECCIONAL: faltantes Y retirados.
 RETIRADOS_DECLARADOS = {"plan"}
+
+# Techo ALCANZABLE del criterio en web. NO es una exclusion de cortesia: estos cuatro son dictado
+# (`BL-P5`) y el criterio 3 compara contra una referencia de ESCRITORIO que para ellos no existe —
+# auditoria lo midio el 2026-09-29: «el criterio 3 NO TIENE referencia de escritorio» para voz. Se
+# miden en mobile, con device, el sprint que viene.
+#
+# 🔴 POR QUE ESTA DECLARADO Y SE PUBLICA, en vez de quedar como nota en un plan: el 2026-10-05 el
+# DoD que escribi decia «web 54 de 54» y era INALCANZABLE, pero el reporte publicaba «49 de 54» sin
+# nombrar a nadie — asi que nadie podia ni cerrarlos ni DESCUBRIR que cuatro no se podian cerrar. Un
+# numerador que no puede llegar a su denominador manda a trabajar al vacio y encima inventa deuda:
+# cada vuelta alguien vuelve a preguntar por los mismos cuatro ids. El instrumento publica su techo.
+# 🔴 REFUTADA PARCIALMENTE POR AUDITORIA (2026-10-05) Y CORREGIDA ACA. Este set se llamaba
+# `FUERA_DE_ALCANCE_WEB` y DESCONTABA del techo, convirtiendo un 92% en «✅ COMPLETO». Dos defectos,
+# y el segundo es el grave:
+#
+#  1. EL EQUIVOCO DE PALABRA. «Escritorio» nombra DOS cosas sin relacion en este repo: la CAPA 0
+#     launcher del prototipo (`#escritorio`, index.html:1613) y el VIEWPORT de pantalla grande
+#     (index.html:63). La medicion de frontend1 prueba —con precision, lo dice en su :68— que estos
+#     4 ids no tocan la CAPA. Yo concluia que estan fuera del alcance WEB, que es el viewport. Se
+#     probo A y se concluyo B: entre uno y otro no hay inferencia. Peor: el predicado no es de web
+#     en absoluto — los mismos 4 salen «sin comparacion» en mobile, por la misma causa.
+#  2. EL TECHO ES LO QUE RESTA TRABAJO, no una cifra decorativa. Auditoria corrio este lector dos
+#     veces sobre el MISMO tree cambiando solo el set: la cifra medida es identica (50 de 54) y lo
+#     unico que cambia es si se imprime «✅ COMPLETO». Y `web_faltan_accionables` quedaba vacio **por
+#     construccion**: la lista de pendientes no podia tener elementos. Una exencion que vacia su
+#     propia lista de trabajo se auto-confirma, y un ✅ saca a todos el motivo de volver a mirar.
+#
+# Que queda: el HECHO medido (no hay referencia en la capa escritorio del prototipo) se conserva,
+# porque esta medido y es util. Lo que se retira es la CONCLUSION de alcance y el descuento del
+# techo. El camino para cerrarlos existe y es el vocabulario que este mismo lector ya habla:
+# `FUERA-DE-REFERENCIA` (ver NO_COMPARACION), usado en 8 lotes — pero lo declara el DOCUMENTO que
+# mide, no este set: un lector que asigna veredictos que no midio es peor que un techo mal puesto.
+SIN_REFERENCIA_EN_CAPA_ESCRITORIO = {"cobro-voz", "fact-voz", "pres-voz", "vozchat"}
 
 # ── C3-15: QUE DOCUMENTOS SE MIDEN ──────────────────────────────────────────────────────────────
 # Hasta el 2026-09-29 esto era `docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}`:
@@ -100,6 +169,21 @@ RETIRADOS_DECLARADOS = {"plan"}
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    # 2026-09-30 — la re-emision limpia del §9 del `hallazgo_` de los 12 conflictos, pedida por
+    # planificacion justamente porque el documento mixto no se podia clasificar: su tabla de CITAS le
+    # daba al lector 8 COHERENTE superados. Clasificado MIDIENDO, no por el titulo: aporta 4 DESVIO
+    # (`cuenta`, `soporte`, `esc`, `comousar`), **0 veredictos huerfanos y 0 ids fuera del padron** —
+    # o sea cero contaminacion. Es el contraejemplo util del caso de al lado: la misma medicion, sin
+    # la tabla de citas, entra a la cifra sin traer nada mas.
+    # ⚠️ Sus 6 filas NO declaran `plataforma`, asi que los 4 DESVIO caen en `indeterminada` y no
+    # suman a web todavia (pedido a auditoria en el `dato_` de la cifra).
+    # ⚠️ NOMBRE COMPLETO, con `.md`. Las dos constantes hermanas NO se matchean igual:
+    # `NO_SON_MEDICION` se consulta con `p.name == k or p.name.startswith(k)` (`:621`, admite
+    # prefijo) y esta con `n not in MEDICIONES_DECLARADAS` (`:643`, igualdad exacta). Escribi
+    # el prefijo por analogia con la de al lado y el documento siguio saliendo sin clasificar
+    # — el gate hizo bien su trabajo, pero la asimetria entre dos constantes que se usan para
+    # lo mismo es una trampa. Queda anotada acá hasta que alguien unifique el matcheo.
+    "2026-09-30_cierre_auditoria-a-planificacion_mis-6-mediciones-del-criterio-3-tabla-limpia-sin-la-tabla-de-citas.md",
     # ── 2026-09-30: el que el fix de COLUMNA DE SUJETO hizo visible ─────────────────────
     # MIDE, y con vocabulario cerrado: 2 ids del padron (`factura`, `card-presu`), los dos
     # `FUERA-DE-REFERENCIA`, 0 huerfanos. Era invisible porque pone el ENUMERADOR en la primera
@@ -168,6 +252,63 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-09-30 — DICTAMEN SOBRE EL INSTRUMENTO, no sobre pantallas. Re-mide el radio de un defecto
+    # del brazo `tabla` sobre 2103 documentos (confirma el radio 0) y CITA las filas que encuentra,
+    # incluida la de un contrato mio. Lo que produce veredictos del criterio son esas citas.
+    #
+    # Su §3 es el hallazgo que importa, y es de los buenos: mi `contrato_..._C3-la-ultima-fila-medir-
+    # la-home...` ENSEÑA el formato de una fila de medicion, y para enseñarlo escribe una — con
+    # `(home)` y `COHERENTE`. La medicion real de `(home)` el MISMO dia es `DESVIO`. O sea que el
+    # ejemplo del formato contradice la medicion que el formato venia a recoger, y para un lector de
+    # FORMAS los dos son la misma cosa. Un COHERENTE fabricado asi es indistinguible de uno medido, y
+    # nadie lo audita porque coincide con lo que se espera leer.
+    #
+    # 🔴 La clase, que es mas grande que el caso: **un documento que explica un mecanismo no puede
+    # usar el mecanismo con valores reales.** Ya la pagamos por sintaxis (el ejemplo interno lleva un
+    # delimitador ficticio, nunca el real); esta es la version semantica. El fix vive en el contrato,
+    # no aca: el ejemplo usa un id FUERA del padron.
+    "2026-09-30_hallazgo_auditoria-a-planificacion_radio-0-confirmado":
+        "DICTAMEN sobre el parser: re-mide el radio del defecto del brazo `tabla` (4 filas en 3 docs, "
+        "las 3 descartadas) y CITA las filas halladas, no mide pantallas. Su §3 encuentra que un "
+        "contrato que ENSEÑA el formato emite `COHERENTE` sobre `(home)`, que la medicion real del "
+        "mismo dia da `DESVIO`.",
+    # 2026-09-30 — EL GATE CAZO A SU PROPIA AUTORA. Es la respuesta de planificacion al hallazgo de
+    # los 12 conflictos, y para explicar el defecto CITA el fixture minimo (una fila con COHERENTE /
+    # REQUIERE_TRIAGE / DESVIO). Esa cita tiene forma de fila de medicion, asi que el documento que
+    # describe el problema lo reproduce. No se arregla clasificando y nada mas: ver la fila TABLACITA
+    # del PLAN — el brazo `tabla` lee filas de tablas que NO declaran columna de veredicto, y ni el
+    # gate de cabecera ni un code fence lo detienen.
+    "2026-09-30_dato_planificacion-a-auditoria_hallazgo-12-conflictos":
+        "RESPUESTA de planificacion al hallazgo de los 12 conflictos: dictamina, decide la forma de "
+        "la sucesion y declara el costo de la clasificacion. Los veredictos que se le leen son la "
+        "CITA del fixture que demuestra el defecto del brazo `tabla`; no mide ninguna pantalla.",
+    # 2026-09-30 — DICTAMEN, y la clasificacion se decidio MIDIENDO, no leyendo el titulo. El
+    # documento es MIXTO: su §9 trae 4 mediciones propias (app@390 vs proto@390, con capturas) y su
+    # §2 trae una tabla de CITAS de la sucesion `barrido -> correccion -> medicion posterior`.
+    # Importado como medicion, el lector saca 12 veredictos y 8 son `COHERENTE` de la tabla de citas
+    # (L39-46), medido:
+    #
+    #     L39  card         COHERENTE   | `card` | COHERENTE | **REQUIERE_TRIAGE** | DESVÍO (29/09) |
+    #     L201 cuenta       DESVÍO      | `cuenta` | **DESVÍO** | título «Cuenta» vs «Mi cuenta» …
+    #
+    # 🔴 O sea que el instrumento leeria, como mediciones frescas, EXACTAMENTE los `COHERENTE`
+    # superados que este documento existe para retirar — y en la misma fila ignora el `DESVÍO` que
+    # los supera, porque el brazo `tabla` toma el PRIMER token del vocabulario y en una tabla de
+    # sucesion el primero es siempre el mas viejo. Clasificarlo MEDICION resucita el falso verde
+    # citando al documento que lo desmiente.
+    #
+    # ⚠️ EL COSTO, declarado: se pierden las 4 mediciones reales de su §9 (`cuenta`, `soporte`,
+    # `esc`, `comousar`, las cuatro DESVÍO). No hay clasificacion binaria que salve las dos cosas:
+    # pedido a auditoria (`dato_…`) que re-emita su §9 como documento propio, con SOLO su tabla.
+    # Mientras eso no exista, esos 4 DESVÍO NO estan en la cifra — y es mejor que la alternativa,
+    # que es contarlos junto a 8 COHERENTE falsos.
+    "2026-09-30_hallazgo_auditoria-a-planificacion_los-12-conflictos":
+        "DICTAMEN de auditoria sobre la atribucion de los 12 conflictos: mide que el `COHERENTE` "
+        "sale del barrido BL-Q3 del 22/09 02:11 y no de `matriz-web-re-medida` (0 de 12), y "
+        "dirime la HIPOTESIS_MATRIZ_2209 a favor de la sucesion (la pantalla no cambio: 0 commits "
+        "en `account/` con control positivo de 111). Su §2 CITA la cadena barrido->correccion-> "
+        "medicion posterior, y esas citas tienen forma de fila de medicion. Sus 4 mediciones "
+        "propias (§9) esperan documento propio para entrar a la cifra.",
     # 2026-09-30 — visible por primera vez con el fix de COLUMNA DE SUJETO de este PR.
     # Es un TABLERO DE TRABAJO, no una medicion: su cabecera es
     # `| # | id · camino | cat | que hay que hacer | costo | dueño | estado |`, o sea tareas,
@@ -246,6 +387,88 @@ NO_SON_MEDICION = {
         "clasificado como medicion inyectaria las senales que solo estaba citando. La medicion que "
         "encarga es el `cierre_` de FE2, que si esta en MEDICIONES_DECLARADAS -- contar los dos "
         "seria doble conteo del mismo sujeto.",
+    # 2026-10-05 — MIDE, pero NO mide el criterio: mide su ALCANCE. Es la mitad empirica de la
+    # exencion `FUERA_DE_ALCANCE_WEB` (los 4 ids de voz; el set se renombro a `SIN_REFERENCIA_EN_CAPA_ESCRITORIO` el 2026-10-05 y ya NO descuenta del techo), con dos instrumentos independientes por id
+    # —lectura del `index.html` del prototipo + sonda en vivo contra el server Node— y su tabla final
+    # declara `veredicto = SIN-REFERENCIA-DE-ESCRITORIO` para los cuatro.
+    #
+    # 🔴 POR QUE ESTA ACA Y NO EN MEDICIONES_DECLARADAS, que es lo que su calidad sugeriria: el
+    # criterio 3 compara app vs prototipo y sus veredictos son COHERENTE / DESVIO / REQUIERE_TRIAGE.
+    # `SIN-REFERENCIA-DE-ESCRITORIO` no pertenece a ese vocabulario: responde «¿esta fila existe en
+    # escritorio?», que es una pregunta sobre el PADRON, no sobre una pantalla. Sumarlo daria 4
+    # veredictos nuevos en un idioma que el conteo no habla, y el total subiria sin que nadie midiera
+    # una pantalla mas — un progreso aparente, que es el modo exacto en que esta cifra se corrompe.
+    #
+    # 🔴 LA CLASE, mas grande que el caso: este dict tiene DOS cubos («mide» / «cita o dictamina») y
+    # la realidad tiene TRES — mide-el-criterio, mide-OTRA-cosa, y cita. El tercer caso entra igual
+    # porque el parser clasifica por FORMA (tabla con columna `veredicto`), y la forma no codifica el
+    # ROL de lo medido. Mientras falte el cubo, toda medicion de alcance aterriza aca con un motivo
+    # que tiene que desmentir la etiqueta del cubo que la contiene. Queda como fila propia, no como
+    # excepcion silenciosa: VOCABAJENO en PLAN.md.
+    "2026-10-05_cierre_frontend1-a-planificacion_los-4-ids-de-voz-SIN-REFERENCIA":
+        "MIDE el ALCANCE, no el criterio: confirma empiricamente (codigo + sonda en vivo, 2 "
+        "instrumentos por id) que `cobro-voz`/`fact-voz`/`pres-voz`/`vozchat` no tienen superficie "
+        "en la CAPA `#escritorio` del prototipo (no «fuera del alcance web»: son dos referentes distintos del mismo nombre). Su columna `veredicto` usa "
+        "`SIN-REFERENCIA-DE-ESCRITORIO`, que NO es del vocabulario del criterio 3 "
+        "(COHERENTE/DESVIO/REQUIERE_TRIAGE) — sumarlo inflaria el total sin medir ninguna pantalla.",
+    # 2026-10-05 — DICTAMEN SOBRE ESTE INSTRUMENTO, y es el que lo corrigio. Refuta parcialmente mi
+    # exencion: corrio este lector dos veces sobre el mismo tree cambiando solo el set y mostro que
+    # la cifra medida es identica — lo unico que cambiaba era el «✅ COMPLETO». CITA ids del padron
+    # (card-ingreso/card-cobro, los 4 de voz) para fundamentar, asi que produce veredictos con forma
+    # de medicion sin medir ninguna pantalla.
+    #
+    # El hallazgo que vale mas que la correccion: «escritorio» nombra DOS cosas en este repo —la
+    # CAPA 0 del prototipo y el VIEWPORT grande— y mi exencion probaba la primera para concluir la
+    # segunda. Tambien declara un error PROPIO corregido en 20 minutos (su §2.1 leyo las subvistas
+    # `#s-*` como prueba de escritorio-desktop, por el mismo equivoco) — un dictamen que se audita
+    # a si mismo adentro del mismo documento.
+    "2026-10-05_cierre_auditoria-a-planificacion_EXENCION-PARCIAL":
+        "DICTAMEN sobre este contador: refuta el DESCUENTO DEL TECHO de la exencion (la cifra medida "
+        "no cambia, solo el ✅) y nombra el equivoco de `escritorio` (capa vs viewport). Cita ids del "
+        "padron para fundamentar; no mide pantallas.",
+    # 2026-10-05 — TERCERA instancia de VOCABAJENO en el mismo dia, y la que mide su propia clase:
+    # barrio `escritorio|desktop` sobre 2168 .md y reparte 655 apariciones en 222 archivos (~311
+    # CAPA, ~297 VIEWPORT, 12 AMBIGUO, 4 SALTO, 6 META, 7 MIXTO, 18 OTRO). CITA `| esc | COHERENTE |`
+    # de `BL-Q3-web-barrido-35-pantallas` para fundamentar que ese conflicto no tiene via de cierre.
+    #
+    # 🔴 Y ES LA EVIDENCIA QUE CIERRA LINTALCANCE: este documento lo emitio OTRA sesion y puso el
+    # `lint` de las CUATRO ramas en rojo (exit 8) a los minutos de publicarse, por tercera vez hoy.
+    # El gate de merge evaluaba un ratchet de ESTADO DEL CORPUS —un corpus vivo, compartido y no
+    # versionado— sobre commits que no lo controlan. El aislamiento (COPILOTO_COORD + fixture) es el
+    # arreglo; esta linea es el parche que desbloquea mientras entra.
+    "2026-10-05_hallazgo_auditoria-a-planificacion_radio-del-equivoco-escritorio-medido":
+        "MIDE EL RADIO de un equivoco de VOCABULARIO (`escritorio` = capa del prototipo vs viewport) "
+        "sobre el corpus de .md, no pantallas contra el prototipo. Cita ids del padron (`esc`) para "
+        "fundamentar que un conflicto declarado no tiene mecanismo de cierre.",
+    # 2026-10-05 — EL GATE CAZO EL *REPORTE DE ESTE CONTADOR*, y es la TERCERA forma de la misma
+    # clase en este registro. Las dos anteriores fueron un contrato que ENSEÑA el formato (y para
+    # enseñarlo emite `(home)`+`COHERENTE`) y una respuesta que CITA el fixture del defecto. Esta es
+    # la que faltaba: **el documento que PUBLICA lo que el instrumento midio vuelve a entrar al
+    # universo del instrumento.** Los dos de abajo son mi reporte del frente SUPERADO y traen, pegadas
+    # por script desde el JSON, las tablas «quien aporta el lado COHERENTE» y «cuantos veredictos
+    # distintos tiene cada id» — o sea el inventario completo de veredictos del criterio, por
+    # construccion.
+    #
+    # 🔴 Lo que esto dice del circuito, y no es una anecdota: en este corpus **medir obliga a
+    # reportar, y reportar contamina el corpus que se mide.** No hay forma de informar un cruce de
+    # veredictos sin nombrar los veredictos cruzados. Asi que la clasificacion a mano no es una deuda
+    # que se termine de pagar: es una tasa por cada reporte, y crece con la cantidad de mediciones.
+    # El arreglo estructural es la fila TABLACITA (el brazo `tabla` exige CABECERA con columna de
+    # veredicto declarada; hoy lee cualquier tabla y ni el code fence lo detiene), no seguir
+    # appendeando entradas aca.
+    #
+    # ⚠️ Y lo que NO se hace, a proposito: una exencion por patron del tipo «lo que emite
+    # planificacion no es medicion». Seria fail-open sobre el rol que mas documentos escribe, y es
+    # exactamente la forma de `exencion-sin-autoridad` — una regla amplia que nadie vuelve a medir.
+    # Prefiero la tasa visible: el gate grita, yo clasifico, y el costo queda contado.
+    "2026-10-05_dato_planificacion-a-frontend1_SUPERADO-medido-12-sigue-en-12":
+        "REPORTE de este contador a frontend1: le devuelve la cifra medida (12 → 12 con su marca "
+        "puesta) y corrige dos pedidos mios equivocados. Sus tablas son el inventario de veredictos "
+        "que el contador publico, insertadas desde el JSON; no mide ninguna pantalla.",
+    "2026-10-05_hallazgo_planificacion-a-auditoria_UNDOCUMENTO-refutado-midiendo":
+        "REPORTE de este contador a auditoria: refuta por medicion la premisa de UNDOCUMENTO (la "
+        "superacion cierra 4 de 12, no 10) y nombra que 9 de los 10 dirimidos cuelgan de UNA "
+        "hipotesis compartida. Cita las mismas tablas del JSON; no mide pantallas.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
@@ -437,26 +660,36 @@ def control_de_cobertura(ids):
     ciegos = {i for i in ids if i not in mids}
     retirados = {i for i in mids if i not in set(ids)}
 
-    nuevos_ciegos = sorted(ciegos - CIEGOS_DECLARADOS)
-    ya_cubiertos = sorted(CIEGOS_DECLARADOS - ciegos)
+    # El piso efectivo: la constante, salvo que un fixture declare otro. Es lo único que permite
+    # sabotear las dos direcciones del ratchet sin copiar este archivo a otro árbol.
+    piso = CIEGOS_DECLARADOS
+    if PISO_OVERRIDE is not None:
+        piso = {t for t in re.split(r"[,\s]+", PISO_OVERRIDE) if t}
+
+    nuevos_ciegos = sorted(ciegos - piso)
+    ya_cubiertos = sorted(piso - ciegos)
     nuevos_retirados = sorted(retirados - RETIRADOS_DECLARADOS)
     ya_no_retirados = sorted(RETIRADOS_DECLARADOS - retirados)
 
     if nuevos_ciegos:
-        print(f"COBERTURA: REGRESIÓN — {len(nuevos_ciegos)} id(s) de la spec que la matriz dejó de "
-              f"cubrir: {nuevos_ciegos}. Si es deliberado, bajalos a CIEGOS_DECLARADOS con el por "
-              f"qué; si no, la matriz perdió una captura.", file=sys.stderr)
+        print(f"COBERTURA: REGRESIÓN (exit 6) — {len(nuevos_ciegos)} id(s) de la spec que la matriz "
+              f"dejó de cubrir: {nuevos_ciegos}. La matriz perdió una captura: arreglala, o bajalos a "
+              f"CIEGOS_DECLARADOS con el por qué si es deliberado. ⚠️ NO es el exit 12: acá el piso "
+              f"está BIEN y lo que falta es la captura. Sacar el id del piso empeora el fallo.",
+              file=sys.stderr)
         sys.exit(6)
     if ya_cubiertos:
-        print(f"COBERTURA: EL PISO QUEDÓ VIEJO — la matriz ya cubre {ya_cubiertos}, que siguen "
-              f"declarados como ciegos. Sacalos de CIEGOS_DECLARADOS: un ratchet que no se aprieta "
-              f"certifica un estado que ya no existe.", file=sys.stderr)
-        sys.exit(6)
+        print(f"COBERTURA: EL PISO QUEDÓ VIEJO (exit 12) — la matriz ya cubre {ya_cubiertos}, que "
+              f"siguen declarados como ciegos. Sacalos de CIEGOS_DECLARADOS: un ratchet que no se "
+              f"aprieta certifica un estado que ya no existe. ⚠️ Esto SÓLO vale si la matriz de ESTE "
+              f"árbol los cubre: un id que sólo está en la matriz de otra rama da exit 6 acá.",
+              file=sys.stderr)
+        sys.exit(12)
     if nuevos_retirados or ya_no_retirados:
         print(f"COBERTURA: el diff de retirados no cuadra — nuevos {nuevos_retirados}, "
               f"ya-no {ya_no_retirados}. RETIRADOS_DECLARADOS tiene que reflejar la spec vigente.",
               file=sys.stderr)
-        sys.exit(6)
+        sys.exit(13)
     return sorted(ciegos), sorted(retirados)
 
 
@@ -945,6 +1178,71 @@ CABECERA_SUJETO = ("camino", "id", "sujeto", "pantalla")
 PALABRAS_CABECERA = re.compile(r"[a-záéíóúñ]+")
 
 
+# PLATCONV (2026-09-30) - el vocabulario de `plataforma` es CERRADO y de dos valores. No admite
+# sinonimos a proposito: `pwa`, `desktop` y `app` NO son plataformas (`desktop` es un CAMINO dentro
+# de web, y `app`/`proto` son la columna `superficie`, que es otra cosa). Si cada documento elige su
+# palabra, el lector vuelve a tener una poblacion que no puede separar - que es el defecto que este
+# bloque cierra.
+# El separador de la clave, en UN solo lugar: se escribia literal en 4 sitios y la clave ahora
+# tiene 3 componentes, asi que un quinto literal desalineado seria un bug mudo.
+SEP_CLAVE = "\u00b7"
+CABECERA_PLATAFORMA = ("plataforma",)
+VOCABULARIO_PLATAFORMA = {"web": "web", "mobile": "mobile"}
+# El tercer cubo NO es un valor que alguien pueda escribir: es lo que el lector NO pudo leer. Existe
+# porque el fail-open de hoy es contar eso como web.
+SIN_PLATAFORMA = "indeterminada"
+
+# El campo INLINE `plataforma: <valor>`, que es como declara plataforma una medicion que NO vive en
+# una tabla. NO lo invente yo: frontend1 ya lo escribio 21 veces en
+# `2026-09-28_cierre_..._BL-Q3-v2-lote-A-14-filas-mas-2-pendiente-device.md` (un documento en prosa
+# por `###` id), junto a cada `medido_contra:`. Abri PLATHEAD preguntando QUE mecanismo podian usar
+# los headings para declarar plataforma, y el mecanismo ya existia en el corpus: el que no lo miraba
+# era este lector. Es el reverso de la costura que ya tenemos documentada -- ahi el instrumento leia
+# un campo que nadie escribia; aca el campo se escribe y nadie lo lee.
+#
+# Exige los dos puntos, y por eso no matchea la CABECERA de una tabla (`| ... | plataforma |`) ni una
+# mencion en prosa («la columna `plataforma` no existe»). El valor se corta en el backtick o el fin
+# de linea, que es como esta escrito en el corpus.
+DECL_PLATAFORMA_INLINE = re.compile(r"`?\s*plataforma\s*:\s*([A-Za-z][\w/ -]*)", re.I)
+
+
+def columna_de_plataforma(celdas):
+    """El indice que la CABECERA declara como columna de plataforma, o None.
+
+    Mismo mecanismo que `columna_de_sujeto` y por la misma razon: la cabecera ya sabe donde vive el
+    dato, y adivinarlo por contenido confundiria `web` (plataforma) con una celda que menciona la
+    web en prosa."""
+    for i, c in enumerate(celdas or ()):
+        if set(PALABRAS_CABECERA.findall(limpiar(c).lower())) & set(CABECERA_PLATAFORMA):
+            return i
+    return None
+
+
+def plataforma_de_celda(cel):
+    """La plataforma que declara UNA celda, o None si no declara EXACTAMENTE una del vocabulario.
+
+    La celda tiene que SER el token y nada mas. Antes bastaba con que contuviera **un solo** token del
+    vocabulario, y eso era un fail-open medido:
+
+        `reveal` -> plataforma = 'ambas (mobile `[ASSUMED_PENDING_VERIFY]`, linea no releida)'
+
+    Esa celda dice «ambas» y encima declara que mobile NO fue verificado — y el lector la contaba como
+    una medicion LIMPIA de `mobile`, porque `mobile` era el unico token del vocabulario que aparecia.
+    O sea que la unica palabra que el lector miraba era la del hedge. frontend2 reporto 4 filas
+    `ambas` en ese documento y mi instrumento reportaba 3: la cuarta no estaba perdida, estaba
+    PROMOVIDA a un veredicto de plataforma que nadie habia medido.
+
+    Un hedge no es una declaracion. Si la celda necesita explicar, lo que declara es la duda, y la
+    duda se cuenta en `indeterminada` con su valor crudo a la vista — que es accionable— en vez de
+    desaparecer dentro de una cifra de cobertura.
+
+    Sigue valiendo el motivo original de `== 1`: «web y mobile» no es una medicion de ninguna de las
+    dos, es una fila que hay que partir. Devolver `web` porque aparece primero seria elegir por orden
+    de lectura, que es adivinar con cara de medir."""
+    pelada = limpiar(cel or "").strip().lower()
+    return VOCABULARIO_PLATAFORMA.get(pelada)
+
+
 def sujeto_de_celda(cel, ids):
     """Los tres intentos de leerle un sujeto a UNA celda, de señal más fuerte a más débil.
 
@@ -1014,6 +1312,7 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
     cabeceras = {n for n in range(1, len(lineas) + 1)
                  if n < len(lineas) and es_separador(lineas[n])}
     col_sujeto = None
+    col_plataforma = None
     for n, linea in enumerate(lineas, 1):
         if es_separador(linea):
             # El separador NO es fila ni cabecera: no abre ni cierra alcance. Saltearlo no es un
@@ -1026,9 +1325,14 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
             continue
         celdas = fila_de_tabla(linea)
         if celdas is None:
-            col_sujeto = None          # el alcance de una cabecera muere con su tabla
+            # el alcance de una cabecera muere con su tabla - LAS DOS columnas, o la plataforma de
+            # una tabla se le pegaria a la siguiente, y eso es peor que no leerla: seria un valor
+            # inventado con apariencia de medido.
+            col_sujeto = None
+            col_plataforma = None
         if n in cabeceras:
             col_sujeto = columna_de_sujeto(celdas)
+            col_plataforma = columna_de_plataforma(celdas)
             continue
         nueva = None
         if celdas:
@@ -1040,8 +1344,21 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
                 if sujeto is not None:
                     forma += "-col"
             if sujeto is not None:
+                # La plataforma sale de la COLUMNA o no sale. Sin columna -> `indeterminada`, que se
+                # cuenta aparte y NUNCA dentro de web: contar «no se» como «web» es exactamente el
+                # fail-open que producia el `54 de 54`.
+                plat, cruda = SIN_PLATAFORMA, ""
+                if col_plataforma is not None and col_plataforma < len(celdas):
+                    leida = plataforma_de_celda(celdas[col_plataforma])
+                    if leida:
+                        plat = leida
+                    else:
+                        # La columna ESTA y su valor no es del vocabulario. Se guarda crudo para
+                        # poder nombrarlo: «falta la columna» y «la columna dice `pwa`» son dos
+                        # trabajos distintos, y un solo cubo los hace indistinguibles.
+                        cruda = celdas[col_plataforma].strip()
                 nueva = {"id": sujeto, "camino": "", "linea": n,
-                         "forma_decl": forma,
+                         "forma_decl": forma, "plataforma": plat, "plat_cruda": cruda,
                          "veredictos": []}
                 # En una tabla el sujeto y el veredicto viven en la MISMA línea: la medición se
                 # cierra acá y no arrastra contexto a la fila siguiente.
@@ -1068,11 +1385,37 @@ def mediciones_de(texto, armas=ARMAS, ids=frozenset()):
             m = SUJ_HEADING.match(linea) or SUJ_BULLET.match(linea)
             if m:
                 es_heading = linea.startswith("#")
+                # Un heading o un bullet no tienen columna, asi que la plataforma es
+                # `indeterminada` y NO se infiere del titulo del documento ni del nombre del
+                # archivo: el NOMBRE es una hipotesis sobre el contenido, no una medicion de el.
                 actual = {"id": m.group(1), "camino": camino_de(m.group(2)), "linea": n,
                           "forma_decl": "heading" if es_heading else "bullet",
+                          "plataforma": SIN_PLATAFORMA, "plat_cruda": "",
                           "veredictos": []}
                 nivel_cierre = (len(linea) - len(linea.lstrip("#"))) if es_heading else 6
                 meds.append(actual)
+        if actual is not None:
+            # La plataforma declarada INLINE en el bloque del heading. `actual` sólo se setea para
+            # heading/bullet (una fila de tabla cierra y hace `continue` más arriba), así que acá no
+            # hay riesgo de pisar lo que leyó la columna.
+            mp = DECL_PLATAFORMA_INLINE.search(linea)
+            if mp:
+                leida = plataforma_de_celda(mp.group(1))
+                previa = actual["plataforma"]
+                if leida is None:
+                    # Declarada y FUERA del vocabulario: se guarda cruda para poder nombrarla. Es la
+                    # misma distinción que en la columna — «no declaró» y «declaró `pwa`» son dos
+                    # trabajos distintos y un solo cubo los vuelve indistinguibles.
+                    if not actual["plat_cruda"]:
+                        actual["plat_cruda"] = mp.group(1).strip()
+                elif previa == SIN_PLATAFORMA:
+                    actual["plataforma"] = leida
+                elif previa != leida:
+                    # DOS declaraciones DISTINTAS en el mismo bloque. NO gana la última: eso sería
+                    # elegir por orden de lectura con cara de medir, el mismo fail-open que el caso
+                    # «web y mobile» en una celda. Ambiguo ⇒ indeterminada, y se dice por qué.
+                    actual["plataforma"] = SIN_PLATAFORMA
+                    actual["plat_cruda"] = "conflicto:%s+%s" % (previa, leida)
         if actual is not None and n in por_linea:
             actual["veredictos"] += [v for v, _, _ in por_linea[n]]
 
@@ -1231,6 +1574,293 @@ def contradicciones_internas(conflictos):
     return interno
 
 
+def ids_cerrados_por_plataforma(con, ids):
+    """{plataforma: [ids del padron con veredicto CERRADO *en esa plataforma*]}.
+
+    ES la cifra de PLATCONV, y reemplaza al numero unico. `ids_del_criterio_cerrados` colapsa la
+    clave al id, asi que devuelve el MISMO total con clave nueva - si la cifra publicada siguiera
+    saliendo de ahi, el arreglo seria invisible y el `54 de 54` volveria por la puerta de al lado.
+
+    Un id puede estar en DOS cubos (medido en web y en mobile) y eso es correcto: son dos coberturas.
+    Lo que no puede es estar en `web` por un veredicto que se midio en mobile - ese es el control
+    positivo que el contrato exige y el que el test clava.
+    """
+    salida = {p: set() for p in (*VOCABULARIO_PLATAFORMA.values(), SIN_PLATAFORMA)}
+    for clave, vs in con.items():
+        i = clave.split(SEP_CLAVE)[0]
+        plat = clave.rsplit(SEP_CLAVE, 1)[1] if SEP_CLAVE in clave else SIN_PLATAFORMA
+        if i not in ids or not any(v in VOCABULARIO for v in vs):
+            continue
+        salida.setdefault(plat, set()).add(i)
+    return {p: sorted(s) for p, s in salida.items()}
+
+
+def ids_solo_no_comparacion_por_plataforma(con, ids):
+    """{plataforma: [ids cuya cobertura EN ESA PLATAFORMA es SOLO no-comparacion]}.
+
+    🔴 Lo destapo una pregunta de frontend2, y sin esto la cifra por plataforma miente hacia arriba.
+    `NO_REPRODUCIBLE_SIN_EFECTO`, `NO_MEDIBLE`, `FUERA-DE-REFERENCIA` y `PENDIENTE_DEVICE` estan en el
+    VOCABULARIO CERRADO, asi que un id con uno de esos cuenta como «cubierto» — pero ninguno es una
+    COMPARACION: son las cuatro formas de decir que la comparacion NO se hizo.
+
+    El caso concreto: `vacio` y `vacio-visto` son `NO_REPRODUCIBLE_SIN_EFECTO` (no hubo comparacion en
+    NINGUNA plataforma). Si se les agrega `plataforma: web` para bajar `indeterminada`, suben la cifra
+    de cobertura de web sin que nadie haya comparado nada — o sea que el trabajo de «completar la
+    columna» INFLA el numerador. frontend2 se nego a partirlas en dos por exactamente ese motivo, y
+    tenia razon: partirlas afirmaria dos intentos de medicion donde hubo cero.
+
+    El total por plataforma no se cambia (un `PENDIENTE_DEVICE` declarado ES informacion sobre esa
+    plataforma); lo que se hace es DECIRLO al lado, la misma regla que ya aplica el total de veredictos
+    con su «de las cuales no-comparacion».
+
+    Agrega por (id, plataforma) ANTES de decidir: un id con una fila de comparacion y otra de
+    no-comparacion en la MISMA plataforma no es «solo no-comparacion». Sin ese paso, la clave por
+    documento lo contaria dos veces y en cubos distintos.
+    """
+    porIdPlat = {}
+    for clave, vs in con.items():
+        i = clave.split(SEP_CLAVE)[0]
+        plat = clave.rsplit(SEP_CLAVE, 1)[1] if SEP_CLAVE in clave else SIN_PLATAFORMA
+        if i not in ids:
+            continue
+        delVocab = [v for v in vs if v in VOCABULARIO]
+        if not delVocab:
+            continue
+        porIdPlat.setdefault((i, plat), []).extend(delVocab)
+    salida = {p: set() for p in (*VOCABULARIO_PLATAFORMA.values(), SIN_PLATAFORMA)}
+    for (i, plat), vs in porIdPlat.items():
+        if all(v in NO_COMPARACION for v in vs):
+            salida.setdefault(plat, set()).add(i)
+    return {p: sorted(s) for p, s in salida.items()}
+
+
+def huella_del_instrumento():
+    """Identidad del ARCHIVO que produjo la cifra: `sha12 · N lineas · <ruta>`.
+
+    🔴 Auditoria midio el 2026-09-30 que hay **cinco definiciones divergentes** de este mismo script
+    vivas al mismo tiempo, una por worktree (1361, 1407, 1480, 1663 y 1764 lineas). La cifra oficial
+    salio de UNA de las cinco y el numero no decia de cual. El padron de ciegos era identico en las
+    cinco, asi que la divergencia esta en el PARSER — justo lo que cambia el resultado.
+
+    El hash del contenido, y no `git rev-parse`: dos worktrees con el mismo contenido tienen que dar
+    la misma huella, y `git -C` en un worktree roto CONTESTA por el checkout principal sin fallar
+    (documentado en memoria). El hash no depende de git ni de que el arbol este limpio. La rama va al
+    lado como comodidad, pero la identidad es el sha.
+
+    Mientras el grafo bloquee los merges esto crece: es un COSTO del bloqueo, no una causa aparte.
+    """
+    try:
+        ruta = Path(__file__).resolve()
+        crudo = ruta.read_bytes()
+        return "%s · %d líneas · %s" % (
+            hashlib.sha256(crudo).hexdigest()[:12],
+            len(crudo.splitlines()),
+            ruta)
+    except OSError as e:
+        # Un fallo de lectura no puede tumbar la medicion, pero TAMPOCO puede pasar callado: sin
+        # huella, la cifra vuelve a ser anonima y eso es justo lo que este control corrige.
+        return "⚠️ HUELLA NO DISPONIBLE (%s) — la cifra de abajo no se puede atribuir a un archivo" % e
+
+
+def cruzar_no_comparacion(lotes):
+    """{plataforma: [ids que en esa plataforma NO tuvieron comparacion en NINGUN documento]}.
+
+    El cruce es por DOCUMENTO y no una union directa de los «solo no-comparacion» de cada uno. Un id
+    puede ser `NO_MEDIBLE` en un doc y `COHERENTE` en otro: unir los parciales lo dejaria marcado como
+    no comparado cuando SI se comparo en otro lugar, y entonces la advertencia seria tan mentirosa
+    como la cifra que existe para corregir.
+
+    Por eso primero se calcula quien tiene AL MENOS UNA comparacion en algun doc —`cerrados menos
+    solo-no-comparacion`, por doc— y ese conjunto RESTA.
+    """
+    comparados, parciales = {}, {}
+    for d in lotes:
+        cerr = d.get("ids_cerrados_por_plataforma", {}) or {}
+        nc = d.get("ids_solo_no_comparacion_por_plataforma", {}) or {}
+        for p, lista in cerr.items():
+            comparados.setdefault(p, set()).update(set(lista) - set(nc.get(p, ())))
+        for p, lista in nc.items():
+            parciales.setdefault(p, set()).update(lista)
+    return {p: sorted(s - comparados.get(p, set())) for p, s in parciales.items()}
+
+
+# Las formas que VIVEN EN UNA TABLA, o sea las unicas donde «agregar la columna `plataforma`» es una
+# accion posible. `sujeto_de_celda` devuelve `celda*` (y `*-col` cuando el sujeto salio de la columna
+# que la cabecera nombra), asi que el prefijo alcanza y no hay que enumerar sus variantes.
+FORMAS_DE_TABLA = ("celda",)
+
+
+def plataformas_sin_leer(meds, padron=()):
+    """(filas de TABLA sin columna, {valor crudo invalido: lineas}, fuera de tabla, AJENAS al padron).
+
+    🔴 Las tres cosas estan separadas porque mezclarlas ya mando trabajo al lugar equivocado. La
+    version anterior devolvia un solo `sin_col` con las 77 mediciones sin plataforma, y el reporte lo
+    publicaba como «77 medicion(es) sin columna `plataforma`» con los documentos que mas aportaban.
+    Medido despues: 44 de esas 77 son HEADINGS y 4 son BULLETS -- formas que no tienen columna y no
+    pueden tenerla-- y solo 29 son filas de tabla. Con esa cifra le atribui 20 filas al `cierre_` de
+    FE1, que aporta **0**; FE1 contesto «0 sin columna» y tenia razon. Las dos mediciones eran
+    honestas y contaban poblaciones distintas.
+
+    ✅ RESUELTO el 2026-09-30, y no por diseño nuevo: un heading no puede declarar plataforma en una
+    columna que no existe, asi que abri PLATHEAD preguntando QUE mecanismo usar. El mecanismo ya
+    estaba en el corpus — frontend1 escribio `plataforma: web` inline 21 veces en su `cierre_` del
+    lote A, junto a cada `medido_contra:`. Lo unico que faltaba era que este lector lo mirara
+    (`DECL_PLATAFORMA_INLINE`). Medido: `indeterminada` 31 -> 15, web 45 -> 48 de 54.
+
+    Por eso el tercer cubo sigue siendo ACCIONABLE: son las mediciones fuera de tabla que tampoco
+    usaron el campo inline. Lo que cambia es la accion (agregar el campo, no la columna), no la
+    accionabilidad.
+
+    🔴 ACCFALSO (2026-10-05) — EL CUARTO CUBO. La forma de tabla NO alcanza para pedir la columna:
+    hace falta que la fila hable de un SUJETO DEL PADRON. Sin ese filtro este lector reportaba
+    «ACCIONABLE (agregar la columna): 3 filas» sobre una tabla de CAMPOS DOM del `cierre_` de
+    frontend2 (`presupuesto-item-0-precio`, `gasto-monto`, `ingreso-monto`, con colores RGB): tiene
+    forma de tabla y no tiene la columna, pero no es una medicion del criterio 3 y agregarle
+    `plataforma` no significaria nada. Lo midio frontend2 cuando le atribui ese trabajo: «ninguna
+    fila ahi declara un id del padron». Un instrumento que manda a hacer trabajo inutil INFLA su
+    propio denominador de lo pendiente, y el que lo lee no puede distinguir las filas reales.
+
+    El filtro va ANTES del test de forma a proposito: un heading que mide `facutra` tampoco tiene
+    que declarar `plataforma: web` inline. El criterio de accionabilidad es el SUJETO, no la forma —
+    por eso el cubo se llama «ajenas al padron» y no «filas de tabla ajenas», y por eso al aplicarlo
+    bajaron los DOS cubos (3 filas de tabla y 1 heading, medido el 2026-10-05).
+
+    El dato ya existia y no se usaba: `medir()` separa `ids_medidos_fuera_del_padron` desde el
+    2026-09-29 y publicaba esos mismos 3 ids. Por eso el cuarto cubo se REPORTA y no se descarta —
+    un id ajeno al padron puede ser un typo (`facutra`), una pantalla retirada o un campo DOM, y las
+    tres se ven en ese cubo. Lo que cambia es que ya no se cobra como trabajo pendiente.
+    """
+    padron = set(padron)
+    sin_col, vocab, fuera_de_tabla, ajenas = [], {}, [], []
+    for m in meds:
+        if m.get("plataforma", SIN_PLATAFORMA) != SIN_PLATAFORMA:
+            continue
+        if m.get("plat_cruda"):
+            vocab.setdefault(m["plat_cruda"], []).append(m["linea"])
+        elif padron and m.get("id") not in padron:
+            # Sin padron (llamada sin el argumento) NO se filtra: un filtro que se activa con un
+            # default vacio borraria TODO el cubo accionable en silencio, que es peor que el falso
+            # positivo que arregla.
+            ajenas.append(m["linea"])
+        elif m.get("forma_decl", "").startswith(FORMAS_DE_TABLA):
+            sin_col.append(m["linea"])
+        else:
+            fuera_de_tabla.append(m["linea"])
+    return sin_col, vocab, fuera_de_tabla, ajenas
+
+
+def agregado_por_plataforma(lotes, ids):
+    """Union de los `ids_cerrados_por_plataforma` de todos los lotes + QUIENES faltan en web.
+
+    🔴 POR QUE ES UNA FUNCION Y NO SIGUE INLINE EN EL REPORTE: este agregado se computaba dentro del
+    bloque de impresion, o sea DESPUES del `return` de `--json` — exactamente el defecto que ya se
+    pago en este archivo con el gate de CONTRASTE (ver su comentario en `main`). La cifra del
+    criterio («web N de 54») existia SOLO en el texto para humanos, y el unico consumidor que la
+    suite llama de verdad es `--json`, que publicaba los lotes crudos y ningun agregado: para saber
+    la cifra habia que re-implementar esta union. Dos implementaciones de la misma cifra divergen, y
+    la que divergio ya mando a medir ids que estaban medidos.
+
+    FALTANTES NOMBRADOS, no contados: `web_faltan` existe porque «49 de 54» no nombraba a nadie, asi
+    que los 5 que faltaban no se podian cerrar NI se podia descubrir que 4 de ellos eran incerrables
+    (ver `SIN_REFERENCIA_EN_CAPA_ESCRITORIO`). El techo se publica al lado de la cifra."""
+    plat = {}
+    for d in lotes:
+        for p, lista in (d.get("ids_cerrados_por_plataforma") or {}).items():
+            plat.setdefault(p, set()).update(lista)
+    padron = set(ids)
+    web = plat.get("web", set())
+    faltan = sorted(padron - web)
+    sin_ref = [i for i in faltan if i in SIN_REFERENCIA_EN_CAPA_ESCRITORIO]
+    salida = {p: sorted(v) for p, v in sorted(plat.items())}
+    salida.update({
+        "web_faltan": faltan,
+        # El set ya NO descuenta: informa. `accionables` vuelve a ser TODOS los que faltan, porque
+        # para los 4 sin referencia tambien hay una accion nombrable (que su documento declare
+        # `FUERA-DE-REFERENCIA`). Mientras `accionables` se vaciaba por construccion, la lista de
+        # pendientes no podia tener elementos y nadie podia descubrir que faltaba hacer algo.
+        "web_faltan_sin_referencia_en_capa_escritorio": sin_ref,
+        "web_faltan_accionables": faltan,
+        "web_techo_alcanzable": len(padron),
+    })
+    return salida
+
+
+# ── SUPERACION DE VEREDICTOS: el mecanismo que faltaba en CONFLICTOSINDUENO ────────────────────
+#
+# EL PROBLEMA, medido el 2026-10-05. Auditoria barrio los 12 conflictos de veredicto y encontro que
+# 10 traen su COHERENTE del MISMO documento (un barrido de cascara del 22/09, superado despues por
+# mediciones mas finas DEL MISMO ROL). Frontend1 cerro su mitad ese mismo dia: agrego al final de su
+# documento una nota en prosa marcando las 10 filas como superadas, verificada linea por linea
+# contra los 5 documentos que las reemplazan. Trabajo correcto y completo.
+#
+# **Y la cifra siguio diciendo 12.** La nota estaba escrita en un idioma que el instrumento no lee,
+# asi que el trabajo del rol dueno no llego al reporte. Es la misma clase que
+# `memoria/el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md`, un nivel mas arriba: no
+# fallo un parser, fallo el circuito entre quien tiene la autoridad y quien publica la cifra.
+#
+# POR QUE NO SE PARSEA LA PROSA, aunque se podria. Dentro de esa nota los ids aparecen en backticks
+# — pero tambien aparecen los nombres de los 5 documentos, que contienen `card-cobro`, `card-presu`
+# y `factura` adentro. Un extractor de backticks filtrado por padron funcionaria HOY y retiraria un
+# veredicto de mas el dia que una explicacion mencione un id al pasar. Y el costo de un falso
+# positivo acá es el peor que tiene este instrumento: retirar un veredicto OCULTA un conflicto, o
+# sea fabrica el COHERENTE falso que todo este contraste existe para cazar. Un mecanismo cuyo modo
+# de falla es «desactiva trabajo sin dejar rastro» no se construye sobre una heuristica.
+#
+# LA FORMA CANONICA, en comentario HTML para que no altere el render del documento:
+#
+#   <!-- SUPERADO 2026-10-05 por frontend1: 10 ids -->
+#   <!-- SUPERADO-IDS: esc, factura, comousar, soporte, bi, card, card-cobro, card-presu, card-cliente, preg -->
+#
+# El CONTEO declarado es el control, y es lo que separa esto de una heuristica: si el parser lee una
+# cantidad distinta de la declarada, rompe. Sin el, un id mal tipeado o una coma de mas se tragan
+# en silencio — y «silencio» acá significa un veredicto que se retiro o que no se retiro sin que
+# nadie se enterara.
+#
+# La marca la escribe EL ROL DUENO en SU PROPIO documento, que es la unica forma de respetar las dos
+# reglas a la vez: la propiedad del veredicto es del rol (no de la sesion) y nadie edita la carpeta
+# de otra sesion. No hay lista central en este archivo a proposito: una lista central obligaria al
+# dueno del veredicto a pedirme que yo lo escriba, que es exactamente el cuello de botella que
+# CONFLICTOSINDUENO describe.
+SUPERADO_RX = re.compile(
+    r"<!--\s*SUPERADO\s+(\d{4}-\d{2}-\d{2})\s+por\s+([A-Za-z0-9_-]+)\s*:\s*(\d+)\s+ids?\s*-->")
+SUPERADO_IDS_RX = re.compile(r"<!--\s*SUPERADO-IDS\s*:\s*([^>]+?)\s*-->")
+# La forma EN PROSA que ya se uso (frontend1, 22/09 + nota del 05/10). No se parsea para retirar: se
+# detecta para REPORTAR que hay un trabajo hecho que el instrumento no esta contando. Es el canario
+# del circuito, no el circuito.
+SUPERADO_PROSA_RX = re.compile(r"\*\*Superad[oa]\s*\(", re.IGNORECASE)
+
+
+def superados_del_documento(txt, ids, doc):
+    """(set de ids superados, nota) leidos de la marca canonica. Rompe si el conteo no cierra.
+
+    Devuelve set() cuando no hay marca. `nota` describe lo que se encontro, para el reporte.
+    """
+    m = SUPERADO_RX.search(txt)
+    if not m:
+        if SUPERADO_PROSA_RX.search(txt):
+            return set(), {"en_prosa_no_leida": True}
+        return set(), {}
+    fecha, rol, cuantos = m.group(1), m.group(2), int(m.group(3))
+    mi = SUPERADO_IDS_RX.search(txt)
+    if not mi:
+        sys.exit(f"SUPERADO SIN LISTA — {doc} declara «SUPERADO {fecha} por {rol}: {cuantos} ids» y "
+                 f"no trae la linea `<!-- SUPERADO-IDS: a, b, c -->`. Declarar la cantidad sin la "
+                 f"lista no retira nada y se lee como si hubiera retirado {cuantos}.")
+    leidos = [x.strip().strip("`") for x in mi.group(1).split(",") if x.strip()]
+    if len(leidos) != cuantos:
+        sys.exit(f"SUPERADO: EL CONTEO NO CIERRA — {doc} declara {cuantos} ids y la lista trae "
+                 f"{len(leidos)}: {leidos}. Este control es el que separa esto de una heuristica: "
+                 f"sin el, una coma de mas o un id mal tipeado retira (o deja de retirar) un "
+                 f"veredicto en silencio, y retirar de mas OCULTA un conflicto — el COHERENTE falso "
+                 f"que este contraste existe para cazar.")
+    fuera = [i for i in leidos if i not in ids]
+    if fuera:
+        sys.exit(f"SUPERADO: IDS FUERA DEL PADRON — {doc} marca {fuera} como superados y no estan "
+                 f"en el padron de la spec. O el id esta mal escrito, o se esta retirando algo que "
+                 f"el criterio no mide; las dos cosas se arreglan mirando, no ignorando.")
+    return set(leidos), {"fecha": fecha, "rol": rol, "ids": sorted(leidos)}
+
+
 def veredictos_por_id(con, ids):
     """{id del padron: [veredictos CERRADOS, ordenados]}. Solo vocabulario cerrado: un token que el
     parser no interpreta no puede sostener ni un acuerdo ni un conflicto."""
@@ -1284,13 +1914,44 @@ INCOMPATIBLES = (("COHERENTE", "DESVIO"), ("COHERENTE", "DESV\u00cdO"))
 # >=2 documentos, asi que ninguno de los 10 se apoya solo en la matriz del 22/09. Los 50 de 54
 # aguantan cualquiera de las dos lecturas. Eso es lo que permite declararlos sin congelar el frente.
 #
-# LIMITACION CONOCIDA del contraste: la clave es `id·camino` y **no lleva la superficie**, asi
-# que no puede distinguir por si mismo un conflicto real de una comparacion web-vs-mobile. Para los
-# 10 de hoy se verifico a mano que el camino coincide; para los proximos, hay que mirarlo.
-HIPOTESIS_MATRIZ_2209 = ("[POR VERIFICAR] Choque sistematico matriz-web-22/09 (COHERENTE) vs "
-                         "mediciones 28-29/09 (DESVIO). Una causa, no diez. Dueno: auditoria + FE1. "
-                         "Ver el comentario de arriba: lecturas (a) sucesion / (b) contaminacion de "
-                         "regimen, y el test que falsa la (b).")
+# ✅ CERRADO (PLATCONV, 2026-09-30). Esta linea decia: «LIMITACION CONOCIDA del contraste: la clave
+# es `id·camino` y **no lleva la superficie**, asi que no puede distinguir por si mismo un conflicto
+# real de una comparacion web-vs-mobile». Era el defecto completo escrito por el propio instrumento,
+# y de ahi salia el `54 de 54`: la clave colapsaba dos poblaciones.
+#
+# Hoy la clave es `id·camino·plataforma` y la cifra se publica partida en web / mobile /
+# indeterminada. Lo que NO cambia y hay que seguir mirando: el contraste sigue cruzando por ID, asi
+# que dos veredictos distintos del MISMO id en plataformas distintas siguen entrando como conflicto
+# aunque no lo sean. La diferencia es que ahora la plataforma esta en la clave y se puede ver; antes
+# habia que verificarla a mano y nadie tenia como saber cuando hacia falta.
+# ✅ DIRIMIDO el 2026-09-30 por auditoria, con medicion propia. El texto anterior decia
+# «[POR VERIFICAR] Choque sistematico matriz-web-22/09 (COHERENTE) vs mediciones 28-29/09 (DESVIO)»
+# y ACUSABA AL DOCUMENTO EQUIVOCADO: medido desde la salida de este mismo script, `matriz-web-re-
+# medida` aporta 0 de 12 COHERENTE — los 12 salen del barrido `BL-Q3-web` del 22/09 02:11, y la
+# matriz del MISMO autor y el MISMO dia los baja a REQUIERE_TRIAGE en 6 de 12. Quien fue a dirimirlo
+# abrio el documento que no era y perdio una vuelta; el nombre de la constante fue parte del engaño.
+#
+# Gano la lectura (a) SUCESION, y no como estaba escrita: no es que la pantalla cambio entre el 22 y
+# el 29 —midieron 0 commits en `apps/copiloto-web/src/modules/account/` en esa ventana, con control
+# positivo de 111 commits en `origin/main`— es que la MEDICION fue corregida por su propio autor a
+# horas de distancia. La (b) (contaminacion de regimen) NO fue necesaria; queda como no descartable
+# porque las 21 capturas del proto del 22/09 no declaran viewport, y eso ya se arreglo hacia adelante
+# con `PROTO_SOLO_390`.
+#
+# Re-medidos hoy app@390 vs proto@390: `cuenta`, `soporte`, `esc` DESVIO · `comousar` DESVIO menor ·
+# `factura` y `preg` NO MEDIBLES. **Ninguno sobrevive como COHERENTE.** El barrido no acerto en
+# ninguno de los que se pudieron medir.
+#
+# ⚠️ Lo que este dictamen NO cierra, y es el mecanismo raiz: un veredicto de barrido y uno de
+# re-medicion tienen el MISMO formato y el MISMO peso, asi que el contraste no puede saber que uno
+# supera al otro y los cuenta a los dos vigentes. Ya estaba escrito en
+# `memoria/el-veredicto-superado-sobrevive-si-el-corrector-no-esta-en-el-vocabulario.md` como uno de
+# DOS defectos; el otro (el vocabulario no admitia `REQUIERE_TRIAGE`) ya se cerro. Falta este.
+HIPOTESIS_MATRIZ_2209 = ("[DIRIMIDO 2026-09-30] El COHERENTE sale del BARRIDO `BL-Q3-web` 22/09 "
+                         "02:11, NO de `matriz-web-re-medida` (0 de 12). Es una medicion y su "
+                         "propia correccion, del mismo autor y el mismo dia, contadas las dos como "
+                         "vigentes. Vigente: DESVIO — re-medido app@390 vs proto@390 en cuenta, "
+                         "soporte, esc y comousar. El COHERENTE del barrido queda RETIRADO.")
 
 CONFLICTOS_CONOCIDOS = {
     "card": HIPOTESIS_MATRIZ_2209,
@@ -1303,7 +1964,7 @@ CONFLICTOS_CONOCIDOS = {
     "factura": HIPOTESIS_MATRIZ_2209,
     "ingresar": HIPOTESIS_MATRIZ_2209,
     "preg": HIPOTESIS_MATRIZ_2209,
-    "bi": "COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
+    "bi": "[DIRIMIDO 2026-09-29] COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
           "DESVIO (lote A, 28/09). Auditoria ya resolvio que su DESVIO era FALSO POSITIVO del rail, "
           "y lo retiro el 2026-09-29 — el conflicto ya esta dirimido y a favor del COHERENTE. "
           "Se deja declarado porque es el caso que motivo este control.",
@@ -1349,7 +2010,11 @@ def medir(txt, ids, armas=ARMAS):
     padron = set(ids)
     con, sitios, fuera = {}, {}, {}
     for m in meds:
-        clave = f"{m['id']}·{m['camino'] or 'único'}"
+        # PLATCONV: la clave lleva la PLATAFORMA. Los consumidores que sacan el id siguen
+        # andando sin cambio porque todos usan `split(PUNTO)[0]` (verificado: `:1145`, `:1165`,
+        # `:1239`) y el id no puede contener el separador; la plataforma se saca con `rsplit`,
+        # no con un indice fijo, porque un `camino` si puede traerlo.
+        clave = f"{m['id']}·{m['camino'] or 'único'}·{m.get('plataforma', SIN_PLATAFORMA)}"
         if padron and m["id"] not in padron:
             # NO se descarta: se cuenta aparte. Descartarlo en silencio seria el error espejo del
             # que este bloque arregla — un id fuera del padron puede ser un typo del doc (`facutra`),
@@ -1361,7 +2026,10 @@ def medir(txt, ids, armas=ARMAS):
             con.setdefault(clave, []).extend(m["veredictos"])
     sin = [f"{c} (declarado en L{','.join(str(x) for x in ls)})"
            for c, ls in sitios.items() if c not in con]
-    return hits, con, sin, sitios, huerfanos, fuera
+    # `plataformas_sin_leer` se computa ACA y no en `main` porque necesita `meds`, que es
+    # interno de esta funcion. Devolver `meds` entero expondria la estructura del parser a
+    # quien solo quiere saber donde falta la columna.
+    return hits, con, sin, sitios, huerfanos, fuera, plataformas_sin_leer(meds, padron)
 
 
 def main():
@@ -1386,7 +2054,17 @@ def main():
            # que la unidad rompe una cifra (veredictos != sujetos · archivos != pares · menciones !=
            # sujetos), asi que la unidad deja de ser prosa y pasa al reporte.
            "unidades": {
-               "mediciones_declaradas": "claves `id·camino` nombradas en el doc (con veredicto o sin)",
+               "mediciones_declaradas": "claves `id·camino·plataforma` nombradas en el doc "
+                                        "(con veredicto o sin)",
+               "ids_cerrados_por_plataforma": "ids UNICOS del padron con veredicto CERRADO *en esa "
+                                              "plataforma* - un id medido en web y en mobile cuenta "
+                                              "en LAS DOS, y uno sin columna NO cuenta en ninguna",
+               "ids_solo_no_comparacion_por_plataforma":
+                   "de los de arriba, los que en esa plataforma SOLO tienen no-comparacion "
+                   "(NO_MEDIBLE / FUERA-DE-REFERENCIA / NO_REPRODUCIBLE_SIN_EFECTO / "
+                   "PENDIENTE_DEVICE): cuentan como cubiertos pero NO hubo comparacion",
+               "indeterminada": "NO es una plataforma: es lo que el lector no pudo leer (sin columna "
+                                "`plataforma`, o con un valor fuera de {web, mobile})",
                "sujetos_con_veredicto": "claves `id·camino` CON veredicto — un id en dos caminos son DOS",
                "ids_del_criterio_con_veredicto": "ids UNICOS del padron con algo en ROL de veredicto",
                "ids_del_criterio_con_veredicto_cerrado": "ids UNICOS con veredicto INTERPRETABLE "
@@ -1404,7 +2082,8 @@ def main():
     textos = {}
     for k, p in docs.items():
         txt = textos[k] = io.open(p, encoding="utf-8", errors="replace").read()
-        hits, con, sin, sitios, huerfanos, fuera = medir(txt, ids)
+        hits, con, sin, sitios, huerfanos, fuera, plat_sin_leer = medir(txt, ids)
+        superados, nota_sup = superados_del_documento(txt, ids, k)
         # La cifra que pide el criterio, por fin computada: de los 54 ids de la spec, cuantos tienen
         # veredicto en este doc.
         ids_con_veredicto = ids_del_criterio(con, ids)
@@ -1421,10 +2100,27 @@ def main():
             "ids_del_criterio_con_veredicto_lista": ids_con_veredicto,
             "ids_del_criterio_con_veredicto_cerrado": len(ids_del_criterio_cerrados(con, ids)),
             "ids_del_criterio_con_veredicto_cerrado_lista": ids_del_criterio_cerrados(con, ids),
+            # PLATCONV - la cifra PARTIDA. La de arriba es «en cualquier plataforma» y queda como
+            # agregado; la que se cita es esta, porque un veredicto de mobile contado como web es
+            # cobertura que no existe.
+            "ids_cerrados_por_plataforma": ids_cerrados_por_plataforma(con, ids),
+            "ids_solo_no_comparacion_por_plataforma":
+                ids_solo_no_comparacion_por_plataforma(con, ids),
+            # `_lineas` son SOLO filas de tabla: las unicas donde agregar la columna es posible.
+            "plataforma_sin_leer_lineas": plat_sin_leer[0],
+            "plataforma_vocabulario_invalido": plat_sin_leer[1],
+            "plataforma_fuera_de_tabla_lineas": plat_sin_leer[2],
+            "plataforma_sin_leer_ajenas_al_padron": plat_sin_leer[3],
             # El mapa id -> veredictos CERRADOS. Sin el, `detalle` lista veredictos por linea sin
             # sujeto, asi que no se podia cruzar el mismo id entre documentos — y ese cruce es lo
             # unico que caza un COHERENTE falso.
-            "veredictos_por_id": veredictos_por_id(con, ids),
+            # Los ids que el ROL DUENO marco como superados en SU documento no entran al cruce:
+            # un veredicto retirado por quien lo emitio no puede seguir sosteniendo un conflicto.
+            # Se publican aparte para que el retiro sea AUDITABLE — quien, cuando y cuales.
+            "veredictos_por_id": {i: v for i, v in veredictos_por_id(con, ids).items()
+                                  if i not in superados},
+            "superados": sorted(superados),
+            "superado_nota": nota_sup,
             "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},
             "sujetos_nombrados_sin_veredicto": sin,
             "ocurrencias_de_veredicto": len([h for h in hits if h[2] != "hueco"]),
@@ -1543,6 +2239,39 @@ def main():
                   f"el defecto inerte de vuelta.", file=sys.stderr)
             sys.exit(7)
 
+    # --- control 5: CANARIO DE ACCFALSO (el cubo accionable no puede quedar MUERTO) ------------
+    # Mismo criterio que los otros cuatro: un filtro cuya rotura no mueve nada es un filtro sin
+    # control. El de ACCFALSO es peligroso justamente porque RESTA trabajo pendiente — si quedara
+    # demasiado ancho, taparía filas reales a las que SÍ hay que agregarles la columna y el síntoma
+    # sería un reporte más limpio, que nadie audita.
+    #
+    # La forma que discrimina: declarar en el padrón los ids que hoy están afuera y exigir que (a) el
+    # cubo «ajenas» se vacíe —prueba que el filtro se apoya en el padrón de verdad y no en otra cosa—
+    # y (b) esas mediciones REAPAREZCAN en los cubos accionables, una por una. (b) es lo que separa
+    # «reclasificar» de «descartar en silencio», que es el error espejo y el que más barato sale de
+    # escribir. Tautológico habría sido medir sólo (a): el cubo se vacía por la condición misma.
+    #
+    # DEUDA DECLARADA, no fingida: la dirección contraria —que alguien QUITE el filtro— no tiene
+    # canario acá, porque su síntoma es `ajenas == 0`, que también es el estado legítimo de un corpus
+    # donde todos los sujetos son del padrón. Un abort ahí sería un falso rojo en el caso normal, y
+    # un guard que grita en el caso normal se desarma solo. Lo cubre el test de la suite, que fija
+    # un corpus con un id ajeno conocido.
+    for k in docs:
+        d = res["lotes"][k]
+        ajenas_n = len(d.get("plataforma_sin_leer_ajenas_al_padron") or ())
+        if not ajenas_n:
+            continue
+        base = len(d["plataforma_sin_leer_lineas"]) + len(d["plataforma_fuera_de_tabla_lineas"])
+        amp = medir(textos[k], list(ids) + sorted(d.get("ids_medidos_fuera_del_padron") or {}))[6]
+        rec = len(amp[0]) + len(amp[2])
+        if amp[3] or rec != base + ajenas_n:
+            print(f"CANARIO DE ACCFALSO FALLA en {k}: declare en el padron los {ajenas_n} id(s) "
+                  f"ajenos y el cubo «ajenas» quedo en {len(amp[3])} (esperaba 0) con "
+                  f"{rec} accionables (esperaba {base + ajenas_n}). O el filtro no se apoya en el "
+                  f"padron, o DESCARTA mediciones en vez de reclasificarlas: en el segundo caso el "
+                  f"reporte resta trabajo pendiente que si existe.", file=sys.stderr)
+            sys.exit(14)
+
     # ── CONTRASTE id -> veredictos: el único control que caza un COHERENTE falso ──────────────
     # 🔴 Esto vivía DESPUÉS del `return` de `--json`, o sea INERTE en el único camino que alguien
     # llama (la suite entera usa `--json`). Lo cazó su propio control positivo saliendo verde. El
@@ -1557,6 +2286,117 @@ def main():
               f"control que caza un COHERENTE falso, y un COHERENTE falso desactiva trabajo sin "
               f"dejar rastro.", file=sys.stderr)
         sys.exit(11)
+
+    # ARRIBA de la bifurcacion a proposito: la cifra del criterio no puede existir solo en el
+    # formato para humanos (ver el docstring de `agregado_por_plataforma`).
+    res["agregado_por_plataforma"] = agregado_por_plataforma(res["lotes"].values(), ids)
+
+    # CONTRASTEJSON (medido por auditoria el 2026-10-05): el bloque «CONTRASTE: N id(s) con
+    # veredictos INCOMPATIBLES» existia SOLO en el reporte de texto — 0 ocurrencias en `--json`, con
+    # control positivo (el JSON pesaba 101.168 B y «web» aparecia 39 veces, o sea se generaba
+    # completo). Quien consume el JSON —la suite, y cualquier automatizacion— no veia que 12 ids se
+    # contradicen entre documentos. Es el MISMO defecto de forma que el agregado por plataforma, que
+    # vivia despues del `return` de `--json`: el alcance de un dato no puede depender del formato de
+    # salida, porque el formato que las maquinas leen es el que decide.
+    # CONTRASTEDOCS (medido por auditoria el 2026-10-05, sobre este mismo JSON). El bloque de
+    # arriba publicaba `{i: sorted(vs)}`, y `vs` es el mapa veredicto -> DOCUMENTOS: quedarse con
+    # las claves tiraba justo el dato que vuelve accionable al reporte. El JSON decia
+    # `"bi": ["COHERENTE","DESVIO"]` -- se ve QUE choca y no QUIEN lo dijo, asi que auditoria tuvo
+    # que reconstruirlo desde `lotes` para poder trabajar. **Sin el documento no hay a quien pedirle
+    # la linea de cierre**, o sea faltaba exactamente la pieza que convierte el dato en una accion
+    # con dueno. Es el tercer caso de la misma clase en este archivo (el agregado por plataforma que
+    # vivia despues del `return` de `--json`, el contraste que solo existia en texto): el alcance de
+    # un dato no puede depender del formato que lo lee.
+    #
+    # Y LA RESOLUCION TAMBIEN SE PUBLICA, con una distincion que el dict escondia: 10 de las 12
+    # entradas de `CONFLICTOS_CONOCIDOS` apuntan al MISMO objeto `HIPOTESIS_MATRIZ_2209`. Eso no es
+    # «10 conflictos resueltos»: es UNA hipotesis compartida, declarada una vez y reusada. Se marca
+    # por IDENTIDAD del objeto (`is`), que es medible, en vez de inferirla del texto.
+    #
+    # `dirimido` NO lo adivina el parser: exige el prefijo `DIRIMIDO:` que escribe quien dirime. Una
+    # heuristica sobre el texto se equivocaria en el caso que importa -- `soporte` tiene texto propio
+    # y dice literalmente «Puede ser conflicto REAL o de PREGUNTA», o sea texto propio NO implica
+    # dirimido. Un marcador que pone el que decide no tiene falso positivo; una regex sobre prosa si.
+    # ⚠️ EL MARCADOR DE DIRIMIDO YA EXISTIA EN DOS IDIOMAS, y la primera version de este lector
+    # invento un TERCERO (`DIRIMIDO:` como prefijo). El efecto medido antes de corregirlo:
+    # `dirimidos: 1` sobre 12 cuando nueve textos declaraban `[DIRIMIDO 2026-09-30]` adentro. Un
+    # lector que habla un idioma propio no reporta «no hay declaracion»: reporta que no la
+    # encuentra, y eso se lee igual. Es el mismo caso que el registro en cuatro idiomas con un
+    # lector de uno (memoria/el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md), ahora
+    # pagado por mi propio parche a las dos horas de escribir la memoria.
+    #
+    # Se reconocen las formas QUE EL REGISTRO YA USA, y la fecha es obligatoria: un «dirimido» sin
+    # fecha no se puede contrastar contra la medicion que vino despues, que es justo para lo que se
+    # lo consulta. Los dos ejes son ORTOGONALES y se publican por separado -- `dirimido` dice si hay
+    # declaracion; `hipotesis_compartida` dice si esa declaracion es suya o una compartida por N ids
+    # (10 entradas apuntan al MISMO objeto `HIPOTESIS_MATRIZ_2209`, o sea UNA hipotesis reusada, no
+    # diez decisiones). Mezclarlos fue el error de la primera version: excluia del conteo justo a
+    # los que SI estaban declarados.
+    DIRIMIDO_RX = re.compile(r"\[?DIRIMID[OA](?:\s+el)?\s+(\d{4}-\d{2}-\d{2})")
+
+    def _resolucion(i):
+        r = CONFLICTOS_CONOCIDOS.get(i) if isinstance(CONFLICTOS_CONOCIDOS, dict) else None
+        m = DIRIMIDO_RX.search(r) if r else None
+        return {
+            "resolucion": r,
+            "hipotesis_compartida": r is HIPOTESIS_MATRIZ_2209,
+            "dirimido": bool(m),
+            "dirimido_el": m.group(1) if m else None,
+        }
+
+    if isinstance(conflictos, dict):
+        declarados = {}
+        for i, vs in sorted(conflictos.items()):
+            fila = {"veredictos": {v: sorted(docs) for v, docs in sorted(vs.items())}}
+            fila.update(_resolucion(i))
+            declarados[i] = fila
+        total = len(declarados)
+        dirimidos = sum(1 for f in declarados.values() if f["dirimido"])
+        hipotesis = sum(1 for f in declarados.values() if f["hipotesis_compartida"])
+        # Los cubos NO son excluyentes (un dirimido puede serlo por una hipotesis compartida), asi
+        # que `sin_dirimir` se resta de UNO solo. La primera version restaba los dos y publicaba
+        # `sin_resolucion: -7`: una cifra imposible es la unica suerte que hubo aca, porque una
+        # resta de cubos solapados que diera positivo se habria publicado como dato.
+        #
+        # `declaraciones_distintas` es la cifra que mide lo que auditoria encontro: 12 conflictos
+        # declarados NO son 12 decisiones. Se cuenta por IDENTIDAD de objeto, no por texto igual:
+        # dos declaraciones redactadas parecido son dos decisiones, y una reusada es una.
+        resumen = {
+            "total": total,
+            "dirimidos": dirimidos,
+            "sin_dirimir": total - dirimidos,
+            "hipotesis_compartida": hipotesis,
+            "declaraciones_distintas": len({id(f["resolucion"]) for f in declarados.values()
+                                            if f["resolucion"]}),
+            "sin_declaracion": sum(1 for f in declarados.values() if not f["resolucion"]),
+            # Una entrada de CONFLICTOS_CONOCIDOS que ya NO es conflicto: la declaracion sobrevivio
+            # a su causa. No rompe, pero se publica — es deuda de registro y se cuenta.
+            "declaradas_sin_conflicto_vigente": sorted(set(CONFLICTOS_CONOCIDOS) - set(declarados))
+                                                if isinstance(CONFLICTOS_CONOCIDOS, dict) else [],
+        }
+    else:
+        declarados = sorted(conflictos)
+        resumen = {"total": len(declarados), "dirimidos": 0, "hipotesis_compartida": 0,
+                   "sin_resolucion": len(declarados)}
+
+    _decl = CONFLICTOS_CONOCIDOS if isinstance(CONFLICTOS_CONOCIDOS, dict) else {}
+    mudos = sorted(i for i, r in _decl.items()
+                   if r and "DIRIMID" in r.upper() and not DIRIMIDO_RX.search(r))
+    if mudos:
+        print(f"CONTRASTE: DIRIMIDO EN OTRO IDIOMA — {len(mudos)} resolucion(es) dicen DIRIMID* sin "
+              f"una fecha que este lector sepa leer: {mudos}. Formas reconocidas: "
+              f"`[DIRIMIDO AAAA-MM-DD]` o `DIRIMIDO el AAAA-MM-DD`. Esto NO es cosmetico: sin "
+              f"fecha, la declaracion no se puede contrastar contra la medicion que vino despues, y "
+              f"un lector que no la lee reporta «no hay resolucion», que se lee igual que «nadie lo "
+              f"dirimio». Ya paso: la primera version de este lector inventaba un tercer idioma y "
+              f"contaba 1 de 12.", file=sys.stderr)
+        sys.exit(12)
+
+    res["contraste"] = {
+        "conflictos_declarados": declarados,
+        "conflictos_nuevos": sorted(nuevos),
+        "resolucion": resumen,
+    }
 
     if "--json" in sys.argv:
         res["instrumento"] = sello_del_instrumento()
@@ -1633,8 +2473,96 @@ def main():
               f"{_des[0][0]}/{len(ids)} — sin brecha utilizable entre los dos roles")
     cerrada = sorted({i for d in res["lotes"].values()
                       for i in d["ids_del_criterio_con_veredicto_cerrado_lista"]})
-    print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los 54 con veredicto DEL VOCABULARIO "
-          f"CERRADO»: {len(cerrada)} de {len(ids)}  ({100 * len(cerrada) // len(ids)}%)  <- la que se cita")
+    # PLATCONV (2026-09-30) - EL TITULAR SE PARTE. Hasta hoy esta linea decia «54 de 54» sobre una
+    # clave que no distinguia plataforma, asi que un id con veredicto WEB y nada en mobile contaba
+    # como cubierto: un solo numero para DOS poblaciones. `cerrada` sigue impresa abajo como
+    # agregado -no se descarta informacion- pero la cifra que se cita es la de la plataforma, y el
+    # criterio 3 de este sprint esta acotado a WEB por decision del operador.
+    agg = res["agregado_por_plataforma"]
+    web, mob, indet = (agg.get(k, []) for k in ("web", "mobile", "indeterminada"))
+    solo_nc = cruzar_no_comparacion(res["lotes"].values())
+    # La huella va ARRIBA de la cifra y no en un pie: el que copia el numero se lleva la linea de
+    # al lado, no la del final del reporte.
+    print(f"🔬 INSTRUMENTO: {huella_del_instrumento()}")
+    print(f"🎯 CIFRA DEL CRITERIO, unidad «ids únicos de los {len(ids)} con veredicto DEL VOCABULARIO "
+          f"CERRADO, POR PLATAFORMA»:")
+    def _nc(p):
+        # La cifra CUENTA a estos ids (un `PENDIENTE_DEVICE` declarado ES informacion sobre esa
+        # plataforma), pero se dice al lado: sin esto, «completar la columna» sobre una fila que
+        # nunca se comparo INFLA el numerador de cobertura. Lo destapo una pregunta de frontend2.
+        n = solo_nc.get(p, ())
+        return (f"  ⚠️ de los cuales {len(n)} SIN comparación ({', '.join(n[:5])}"
+                f"{'…' if len(n) > 5 else ''})") if n else ""
+    techo = agg["web_techo_alcanzable"]
+    print(f"      web  {len(web)} de {len(ids)}   ({100 * len(web) // len(ids)}%)  <- la que se cita "
+          f"este sprint (criterio 3 acotado a web) · TECHO ALCANZABLE {techo}"
+          f"{' ✅ COMPLETO' if len(web) >= techo else ''}{_nc('web')}")
+    # Los faltantes van NOMBRADOS y partidos en dos: el que lee tiene que poder cerrar los
+    # accionables y NO volver a preguntar por los otros. Un conteo sin sujetos no permite ninguna
+    # de las dos cosas — fue lo que dejo «49 de 54» congelado con un DoD inalcanzable.
+    if agg["web_faltan"]:
+        acc = agg["web_faltan_accionables"]
+        sin_ref = agg["web_faltan_sin_referencia_en_capa_escritorio"]
+        otros = [i for i in acc if i not in sin_ref]
+        if otros:
+            print(f"      └─ FALTAN en web ({len(otros)}): {', '.join(otros)}")
+        if sin_ref:
+            # Se dice el HECHO medido y la ACCION, no un dictamen de alcance. La version anterior
+            # decia «fuera de alcance web / NO se pueden cerrar en este sprint / se miden en mobile
+            # con device»: tres afirmaciones que la medicion no sostenia — y la tercera es falsa,
+            # porque los mismos ids salen sin comparacion en mobile por la misma causa.
+            print(f"      └─ FALTAN en web ({len(sin_ref)}), sin referencia en la CAPA `#escritorio` "
+                  f"del prototipo (medido por frontend1 el 2026-10-05, dos instrumentos por id): "
+                  f"{', '.join(sin_ref)}")
+            print(f"         ACCION para cerrarlos: que el documento que los midio declare el "
+                  f"veredicto canonico `FUERA-DE-REFERENCIA` (ya en el vocabulario, usado en 8 "
+                  f"lotes). NO lo declara este lector: asignar un veredicto que no medi es peor "
+                  f"que dejar el pendiente a la vista.")
+    print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)"
+          f"{_nc('mobile')}")
+    print(f"      indeterminada  {len(indet)} de {len(ids)}  <- NO es una plataforma: es lo que el "
+          f"lector no pudo leer")
+    if indet:
+        # Sin esto la cifra es honesta y no accionable: el trabajo de FE1/FE2 es agregar la columna
+        # en filas concretas, y el numero solo no dice en cuales.
+        sin_col = sum(len(d.get("plataforma_sin_leer_lineas", ())) for d in res["lotes"].values())
+        fuera_tab = sum(len(d.get("plataforma_fuera_de_tabla_lineas", ())) for d in res["lotes"].values())
+        invalidos = {}
+        for d in res["lotes"].values():
+            for crudo, ls in d.get("plataforma_vocabulario_invalido", {}).items():
+                invalidos.setdefault(crudo, 0)
+                invalidos[crudo] += len(ls)
+        ajenas = sum(len(d.get("plataforma_sin_leer_ajenas_al_padron", ()))
+                     for d in res["lotes"].values())
+        print(f"      └─ ACCIONABLE (agregar la columna): {sin_col} fila(s) de tabla" +
+              (f" · {sum(invalidos.values())} con la columna y valor FUERA del vocabulario: "
+               f"{sorted(invalidos)}" if invalidos else ""))
+        # Se imprime aparte y se dice que NO es accionable asi, porque publicarlo junto a lo de
+        # arriba manda a agregar una columna a un heading -- que es lo que hizo perder una vuelta.
+        print(f"      └─ ACCIONABLE con el campo inline: {fuera_tab} medición(es) en heading o "
+              f"bullet sin columna posible, que tampoco declararon `plataforma: <valor>` en su "
+              f"bloque (el mecanismo existe: frontend1 lo usó 21 veces en el lote A)")
+        if ajenas:
+            # ACCFALSO: se dice y NO se cobra. Antes caian en los dos cubos de arriba y mandaban a
+            # agregar `plataforma` a filas que no hablan de ninguna pantalla del padron.
+            #
+            # Se NOMBRAN los sujetos, no se cuentan: `card-ingreso` puede ser un typo que alguien
+            # arregla en 10 segundos y `gasto-monto` un campo DOM que no va a existir nunca — un
+            # numero solo no deja decidir ninguna de las dos. Es la misma leccion que la cifra del
+            # criterio: publicar el conteo sin los sujetos congela el frente.
+            ajenos_ids = sorted({i for d in res["lotes"].values()
+                                 for i in (d.get("ids_medidos_fuera_del_padron") or {})
+                                 if d.get("plataforma_sin_leer_ajenas_al_padron")})
+            print(f"      └─ NO accionable: {ajenas} medición(es) cuyo sujeto NO está en el padrón "
+                  f"— no necesitan `plataforma`: {', '.join(ajenos_ids)}. Si alguno es un typo de un "
+                  f"id real, ahí sí hay trabajo (y es del autor del documento)")
+        peores = sorted(((len(d.get("plataforma_sin_leer_lineas", ())), n)
+                         for n, d in res["lotes"].items()), reverse=True)[:3]
+        if peores and peores[0][0]:
+            print(f"      └─ donde agregar la columna primero: " +
+                  " · ".join(f"{n} ({c})" for c, n in peores if c))
+    print(f"   agregado, unidad «ids con veredicto cerrado en CUALQUIER plataforma» (NO es la cifra "
+          f"del criterio): {len(cerrada)} de {len(ids)}")
     print(f"   con algo en ROL de veredicto pero fuera del vocabulario: {len(union)} de {len(ids)}")
     if sorted(set(union) - set(cerrada)):
         print(f"   ⚠️  {len(set(union) - set(cerrada))} id(s) cuentan SÓLO por un veredicto no "
