@@ -53,7 +53,13 @@ Esa ronda cerró el 2026-08-12: sigue siendo la referencia de aquel ciclo, pero 
 manda a trabajar en un estado de hace seis semanas — el mismo defecto que se acaba de arreglar en el
 `HANDOFF.md`. Todo lo que sigue es historia del camino.*
 
-**Veredicto vigente (A5, 2026-09-23): el Cierre A NO cierra, por el criterio 3** — y lo que bloquea
+> ⚠️ **Leer esto antes del veredicto de abajo: la causa que cita fue RETIRADA el 2026-09-30, y con medición.** El tablero de planificación (`coordinacion/PLAN.md:32-33`) dice textual: «el criterio 3 ya **NO** es el motivo por el que el Cierre A no cierra, y la lista existe. Medido, no recordado: cobertura del criterio 3 = **54 de 54 (100%)** sobre `main`». El veredicto A5 sigue siendo el registro de lo que se decidió el 23/09 — **no el estado de hoy**.
+>
+> **Lo que sí sigue abierto del criterio 3 es otra cosa: los conflictos de veredicto** (dos documentos que miden el mismo id y no coinciden), y eso está en las dos rondas de este índice posteriores al A5 — **2026-09-30** (registro de vigencia: la sucesión la declara el sucesor) y **2026-10-05** (`HIPOTESIS_MATRIZ_2209` **REFUTADA**: el retiro que dirimía 9 ids alcanza a 0 de los `COHERENTE` que los producen).
+>
+> 📌 **Divergencia sin dueño, para planificación:** ese 54 de 54 del tablero convive con «53 de 54 — falta `(home)`, nunca medida» en el índice de memoria. **No la resuelvo acá**: la nombro para que no se herede como si fuera una sola cifra.
+
+**Veredicto del 2026-09-23 (A5), hoy con su causa retirada: el Cierre A NO cerraba, por el criterio 3** — y lo que bloquea
 no es la falta de medición sino **quién mide**: el DoD pide que republique auditoría y las 29 filas
 web las publicó el propio medido. Decisión del operador, escalada con tres opciones.
 
