@@ -213,3 +213,30 @@ de un elemento** (`sorted(items[0].keys())`), que cuesta una línea; (3) desconf
 un extractor: hace que la ausencia se vea como una categoría; (4) si el denominador de tu conteo no
 coincide con el total conocido, el parser miente antes que los datos — acá 1404 objetos, 1404 en `?`, y
 el total correcto estaba impreso por el propio dry-run treinta líneas más arriba.
+
+---
+
+## Refuerzo 2026-10-05 · una lista FIJA de delimitadores hace que el cuerpo salga vacío, y el clasificador premia el vacío
+
+Barriendo los 48 tests del repo para contar «stubs comodín» (dobles de un comando que contestan lo
+mismo a toda invocación), extraje el cuerpo de cada heredoc con una lista **fija** de terminadores
+—`STUB|FAKE|SH|EOF`—. El repo también usa `MUERE`, `SHIM` y `NPX`: para **4 de 6** el cuerpo salió
+**vacío**. Y el clasificador preguntaba *¿este cuerpo despacha por `$1`?* — un cuerpo vacío **no
+despacha**, así que los clasificó como el defecto que estaba buscando. Reporté «6 comodines» y había 5,
+en otro reparto: dos de los que acusé estaban **sanos**, y uno que contaba como uno eran **cuatro**.
+
+**Lo que lo vuelve de esta familia y no de otra:** no es que el dato faltara, es que la **ausencia de
+dato satisface el predicado**. `vacío` → «no encuentro la marca de sano» → «es el caso malo». El
+instrumento no distingue *medí y no está* de *no pude medir*, exactamente como un ref inexistente que
+devuelve vacío y se parsea como `0`.
+
+**How to apply (se suma a las de arriba):**
+- **Si el extractor usa una lista fija de tokens, el corpus la va a desbordar.** Leé el token del propio
+  dato (acá: el delimitador está escrito en el `<<'DELIM'` de la misma línea), en vez de enumerar los
+  que conocés hoy — es un caso de [[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]] aplicado a
+  un parser.
+- **Todo clasificador binario necesita un tercer veredicto: NO MEDIDA.** Si el predicado de «malo» es
+  la negación del de «bueno», el vacío cae siempre del lado malo. Con la tercera clase, el vacío se
+  vuelve visible y contable (acá: «no medida: 0» es parte del reporte).
+- **El denominador por elemento, no sólo por archivo:** la v1 contaba suites; la v2 contó **dobles**, y
+  ahí apareció que una sola suite tenía 4. Un archivo con N instancias del defecto cuenta como N.

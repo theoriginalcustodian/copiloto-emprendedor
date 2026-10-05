@@ -273,3 +273,40 @@ detalle dice CORRIENDO, el veredicto ofrece dos causas que no son ésa, y el có
 Y un recibo que venció mientras se medía: el rollup de #770 daba `pass:6` a las ~10:50 sobre
 `5344b393`; a las 10:55:55Z su head pasó a `a8d73c51` con el CI corriendo de nuevo. Un recibo vale
 para **un** SHA, y el merge toma el HEAD remoto.
+
+### Barrido: el comodín no estaba solo — **5 stubs**, todos de `gh`
+
+Si el comodín rompe al próximo cambio, la pregunta no es «arreglemos éste» sino **cuántos hay**.
+Barrido de las 48 suites, con el delimitador del heredoc leído del propio `<<'DELIM'`:
+
+| clase | n | dónde |
+|---|---|---|
+| **COMODÍN** | **5** | `test-ci-verde-gh-presente.sh` (1) · **`test-ci-verde-veredicto-monotono.sh` (4)** — todos dobles de `gh` |
+| despacha por invocación | 2 | `test-jest-con-reintento-eperm.sh` (`npx`) · `test-mergear-pr-veredicto-en-el-remoto.sh` (`git`) |
+| no medida | 0 | — |
+
+Denominadores: **48** suites · **7** dobles de comando en **4** suites. Controles: positivo (el comodín
+medido a mano sale comodín), negativo (el que despacha no se clasifica comodín), y cero suites sin medir.
+
+**Lo que predice:** arreglar el stub de `gh-presente` no alcanza. Los 4 de `veredicto-monotono` —el test
+central del veredicto— tienen el mismo defecto, así que **la próxima consulta nueva a `gh` dentro de
+`ci-verde.sh` rompe esos 4 casos igual**, y el rojo volverá a parecer del script. El peaje de #772,
+cobrado cuatro veces más.
+
+**Fix de raíz, no cinco parches:** un helper único que fabrique el stub de `gh` **despachando por
+subcomando** (`pr view --json mergeable,mergeStateStatus` → un `MERGEABLE/CLEAN` parametrizable; el
+rollup → el array de jobs parametrizable), y los 5 call-sites usándolo. Hoy cada caso reimplementa su
+rollup a mano, que es también **por qué el `exit 4` no tiene gate**: ningún stub sabe fabricar un
+`CONFLICTING`. Con el helper, ese camino deja de depender de que exista un PR conflictivo.
+
+### Y el barrido mintió primero — la misma clase, en mi propio instrumento
+
+La **v1** del barrido reportó «6 comodines». Era falso. Extraía el cuerpo del heredoc con una lista
+**fija** de delimitadores (`STUB|FAKE|SH|EOF`) y el repo usa además `MUERE`, `SHIM` y `NPX`: para 4 de
+las 6 el cuerpo salió **vacío**, y el clasificador —«no encuentro `case` ni `$1`»— **se satisface
+perfectamente con no haber mirado nada**. El vacío se parseaba como el hallazgo que buscaba.
+
+Fix de raíz: el delimitador se lee del propio `<<'DELIM'`, y un cuerpo vacío se clasifica **NO MEDIDA**,
+nunca comodín. Con eso, dos de los supuestos comodines resultaron **sanos** (`npx` despacha; `stat` no
+era lo que la v1 creía) y aparecieron los 4 de `veredicto-monotono`, que la v1 contaba como **uno**.
+Reportar la v1 habría mandado a arreglar dos stubs correctos y dejado tres sin tocar.
