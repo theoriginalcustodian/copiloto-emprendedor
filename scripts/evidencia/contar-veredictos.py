@@ -469,6 +469,32 @@ NO_SON_MEDICION = {
         "REPORTE de este contador a auditoria: refuta por medicion la premisa de UNDOCUMENTO (la "
         "superacion cierra 4 de 12, no 10) y nombra que 9 de los 10 dirimidos cuelgan de UNA "
         "hipotesis compartida. Cita las mismas tablas del JSON; no mide pantallas.",
+    # 2026-10-05 — CITA PARA MOSTRAR ESTRUCTURA, y este dict descarta justo al documento que le
+    # senala el eje que le falta. Sus 3 filas de tabla traen la COLUMNA DE PROCEDENCIA
+    # (`2026-09-29_cierre_frontend1...B1-13-ids-superficie-y-dimension.md`) y su :23 lo declara
+    # textual: «su propio veredicto, ninguna COHERENTE en este documento». Las otras 2 apariciones de
+    # la palabra son prosa explicativa, no veredictos. Verificado leyendo el documento, no por reporte.
+    #
+    # 🔴 EL DOBLE CONTEO QUE EVITA, medido: `esc` y `factura` son 2 de los 5 ids del conflicto
+    # vigente y sus veredictos YA se cuentan por el original del 29/09. Clasificarlo como medicion
+    # contaria los mismos dos veces —una por el original, otra por la cita— precisamente sobre ids en
+    # disputa, que es donde el doble conteo se lee como confirmacion independiente.
+    #
+    # 🔴 LO QUE ESTA CLASIFICACION TIRA, que es el hallazgo: el documento SI aporta algo nuevo —que
+    # `esc`/`factura`/`soporte` son EJE PARTIDO (contenido vs componente) y que `card` tiene un
+    # TERCER eje, `camino` (mic de la funcion / boton +Nuevo / card del chat central), que este
+    # contador no habla. Como el dict solo ofrece «mide» o «cita», el unico cajon correcto para la
+    # CIFRA descarta el aporte. Otra instancia de VOCABAJENO —y la primera en la que el hueco lo
+    # nombra el DOCUMENTO DESCARTADO y no el lector: lo dice en :25, «el contador no tiene ese tercer
+    # eje en su vocabulario». Un instrumento que descarta al unico documento que le describe su hueco
+    # se queda sin la via por la que se corregiria.
+    "2026-10-05_cierre_frontend1-a-planificacion_SUPERADO-los-4-de-contradiccion-interna":
+        "ANALISIS que CITA: trae 3 filas del `cierre_` del 29/09 —con su columna de procedencia— para "
+        "mostrar que `esc`/`factura`/`soporte` no son «fila a elegir» sino EJE PARTIDO (contenido vs "
+        "componente), y su :23 declara «ninguna COHERENTE en este documento». Clasificado como "
+        "medicion duplicaria los veredictos de `esc` y `factura`, 2 de los 5 ids en disputa. Su "
+        "aporte propio —el tercer eje `camino` para `card`— no tiene cajon en este dict: VOCABAJENO "
+        "en PLAN.md.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
