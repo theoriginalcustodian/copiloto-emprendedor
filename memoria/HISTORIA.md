@@ -418,3 +418,14 @@ dirección que medir. Entra acá y no al índice porque el índice está a 555 b
 lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pusheado]].
 
 - [🧮🕳️ «0 commits sin pushear» puede ser una rama que NUNCA se pusheó](wc-l-de-un-git-log-que-erroro-da-cero-no-nada-que-ver.md) - `git log origin/<rama>..HEAD | wc -l` da 0 también cuando el ref no existe: el stderr se pierde en el pipe. Preguntale al REMOTO con `ls-remote`. Caso raíz: 7 de 13 ramas backend nunca pusheadas, una con un test de aislamiento cross-tenant que vivía sólo en disco.
+
+## Movidos del índice el 2026-10-05 (margen de 555 B: la próxima entrada no entraba)
+
+> Por qué estas tres y no otras: son **hechos de herramienta de uso puntual** y un caso cuya
+> lección ya tiene tronco en el índice. Lo que NO se bajó, a propósito, es lo que se cobró en
+> esta misma sesión — pipear por `tail`, el instrumento que difiere por rama, la sesión en
+> worktree invisible al monitor. Siguen vigentes y arriba.
+
+- [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) - el cierre envejece en silencio.
+- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
+- [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.

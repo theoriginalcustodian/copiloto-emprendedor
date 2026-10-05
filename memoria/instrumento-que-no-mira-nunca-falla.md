@@ -287,3 +287,30 @@ nunca pasando el carácter como literal por la shell; y cuando tengas que imprim
 o `\\uXXXX` con `backslashreplace`. Sumale el **control positivo barato**: buscá también un carácter que
 NO pusiste (yo usé U+1F600) — si tu método discrimina, tiene que dar presente/ausente distinto para los
 dos. Si ambos dan 0, no medió nada.
+
+---
+
+## Refuerzo (2026-10-05): el ratchet miraba las FILAS PUBLICADAS, no el registro — y lo cazó su propio control positivo
+
+El ratchet nuevo del `exit 12` (ver
+`[[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]]`) iteraba `declarados`, que es el dict
+que el reporte **publica**: sólo los conflictos **vigentes**. Pero el registro que tiene que vigilar
+es `CONFLICTOS_CONOCIDOS` completo. La diferencia no es teórica: una declaración **huérfana** —su
+conflicto ya no se produce— escrita en un idioma nuevo pasaba muda, y hay una real (`ingresar` está
+declarado y hoy no rinde conflicto; el reporte ahora la publica como
+`declaradas_sin_conflicto_vigente`).
+
+Lo encontró el **caso 13**, el control positivo que escribí junto con el ratchet: inyectaba
+`"agenda": "DIRIMIDO ayer por quien corresponda, sin fecha"` y esperaba el `exit 12`. Salió verde. El
+fixture estaba bien; el que no miraba era el ratchet, porque `agenda` no era conflicto vigente y por
+lo tanto no estaba entre las filas publicadas. **Si hubiera inyectado el idioma nuevo en un id que SÍ
+era conflicto, el control habría pasado y el agujero quedaba.** El control positivo acertó por elegir
+un id de afuera del universo publicado — no por diseño, y eso es lo que hay que volver diseño:
+
+> Un control positivo tiene que inyectar el caso **en el borde del universo del instrumento**, no en
+> el medio. En el medio prueba que el mecanismo existe; en el borde prueba que el universo es el
+> correcto.
+
+**Síntoma generalizable:** cuando un gate itera una colección *derivada* (filtrada, publicada,
+proyectada) en vez de la *fuente*, su cobertura es la del filtro y nadie lo nota — el gate corre,
+reporta, y no miente: simplemente no mira ahí.

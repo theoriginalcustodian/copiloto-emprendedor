@@ -78,7 +78,6 @@
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
-- [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) - el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
 - [🩹🎭 Un degradado PRUDENTE hacia el caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda» antes de medir.
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
@@ -86,8 +85,6 @@
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra la expectativa, no contra el reloj.
 - [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa a la roja. Background → archivo COMPLETO.
-- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
-- [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 
 ### Guards, gates y jueces

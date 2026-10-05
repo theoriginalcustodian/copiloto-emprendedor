@@ -92,3 +92,27 @@ distintos** y contra una fuente **externa**, que es la forma más convincente. P
 [[instrumento-que-no-mira-nunca-falla]].
 
 **Evidencia:** `docs/copiloto-emprendedor/Auditorias/2026-09-29-el-21-que-coincide-por-compensacion-de-tres-discrepancias.md`.
+
+---
+
+## Refuerzo (2026-10-05): restar cubos que NO son excluyentes — y la cifra imposible fue la única suerte
+
+Mismo parche, tercer modo de falla. El resumen del contraste publicaba
+`sin_resolucion: total - dirimidos - hipotesis_compartida`, y los dos sustraendos **se solapan**: un
+conflicto puede estar dirimido *por* una hipótesis compartida, así que se restaba dos veces. Salió
+`sin_resolucion: -7` sobre `total: 12`.
+
+**Lo que hay que ver acá no es el bug, es la suerte.** Un negativo es imposible y se cazó de un
+vistazo. Si los números del día hubieran sido otros —digamos 3 dirimidos y 2 por hipótesis— la misma
+fórmula habría publicado `7` en vez de `9`, perfectamente plausible, y habría circulado como dato
+sobre cuánto trabajo queda. **La fórmula estaba igual de mal en los dos casos; lo único que cambió
+fue si el resultado era publicable.** No se arregla mirando resultados: se arregla preguntándole a
+cada agregado si sus cubos son excluyentes.
+
+**El control, barato:** para todo agregado que se calcule por resta, (a) escribí qué cubos pretende
+separar, (b) buscá **un elemento que esté en dos** — si existe, la resta está mal aunque hoy dé
+positivo, y (c) afirmá la invariante en el test (`assert sin_dirimir >= 0`), que es lo que ahora
+impide que vuelva. Lo que quedó publicado son **dos ejes ortogonales**, no cubos: `dirimido` (hay
+declaración fechada) y `hipotesis_compartida` (esa declaración es suya o reusada por N ids), más
+`declaraciones_distintas`, que es la cifra que de verdad contesta «¿son N decisiones o una?» —
+**4 declaraciones distintas para 12 conflictos**.
