@@ -57,3 +57,31 @@ completitud del mobile.** Lo que no se puede hacer es seguir usándolo con el no
 Emparentado: [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[instrumento-que-no-mira-nunca-falla]] ·
 [[un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo]] (el instrumento contesta «no hay» cuando
 lo cierto es «no veo»).
+
+---
+
+## Refuerzo (2026-10-05): la referencia fabricada puede ser **la cita de versión de tu propio informe**
+
+Dos formas del mismo defecto, medidas el mismo día sobre `contar-veredictos.py`:
+
+- **El sello del instrumento.** El reporte publica `instrumento.git_blob` para que cualquiera verifique qué
+  versión corrió. Se computa a propósito con `hashlib` sobre `Path(__file__).read_bytes()` —decisión
+  documentada en el código, para poder sellarse sin git en el PATH— y en Windows el checkout es **CRLF**
+  mientras git almacena **LF**: el valor publicado (`cfb210f6…`) da `fatal: could not get object info`, y el
+  mismo contenido en LF da `06c700a3…`, que sí resuelve. Un campo llamado `git_blob` que **nunca** resuelve
+  con git. Alcance medido: **0 de 2876** archivos lo publican todavía — el riesgo es del primero que lo cite.
+- **Mi propia cita.** Mi informe decía «instrumento @ `527e5408`». Ese commit existía en mi checkout y **no en
+  la historia de `main`**: era la rama de #770, squasheada a `515d50f6` y borrada. `git show` lo encuentra acá
+  y **falla en un clon nuevo**. Era la cita que más parecía verificable del documento.
+
+**La prueba, en una línea:** `git merge-base --is-ancestor <sha> origin/main` y `git cat-file -t <hash>`. Si
+no resuelven, la referencia es verificable sólo para quien la escribió.
+
+**Cómo aplicarlo:** antes de publicar un identificador —SHA, blob, id de corrida, ruta— preguntá *¿esto
+resuelve desde un clon limpio, en la máquina de otro?* Un SHA de rama borrada y un hash computado sobre bytes
+que el sistema no almacena fallan igual: **parecen** trazabilidad. Para versión de código citá el commit de
+`main` que la contiene (el squash), nunca el commit en que la escribiste.
+
+Emparentado: [[push-es-el-ultimo-paso-no-el-primero]] (el squash toma otro HEAD) ·
+[[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]] ·
+[[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]].
