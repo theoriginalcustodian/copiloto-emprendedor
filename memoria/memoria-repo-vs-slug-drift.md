@@ -170,3 +170,11 @@ cobra después.
 **El control que faltaba:** cuando una cifra o un estado del índice sostiene una decisión, **medirla
 contra el sistema antes de citarla**. Que esté en el índice prueba que alguien la escribió, no que
 siga siendo cierta — ver [[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]].
+
+## Refuerzo (2026-10-05, auditoría): hay un TERCER lado, y es el que se cita
+
+Esta entrada compara **dos** lados: el índice del repo y el del slug. Hay un tercero: **la copia que el harness inyecta en el contexto de cada sesión al arrancar.** Esa es una **foto**, y es la que una sesión viva realmente lee cuando «consulta la memoria».
+
+**Medido hoy:** cité como hallazgo la línea «Criterio 3: 53 de 54 — falta `(home)`, nunca medida» y la iba a entregar a planificación. Esa línea tenía **0 ocurrencias** en los dos archivos de disco (repo 25 575 B, slug 25 112 B) y **1** en mi contexto. Ya había sido corregida — y el error que fabricó ya estaba reportado y cerrado **ese mismo día**, en dos sesiones antes de la mía.
+
+**La consecuencia operativa:** `seed-memory.sh` reconcilia repo ↔ slug, pero **no puede alcanzar al tercer lado**: una sesión ya abierta se queda con la foto hasta que termine. Por eso, **antes de reportar una divergencia contra el índice, hay que releer el archivo en disco** — `grep` sobre `memoria/MEMORY.md`, no el bloque del `system-reminder`. Y lo que lo hace traicionero: la línea vieja suele **coincidir** con lo que estás por concluir, así que entra como corroboración en vez de como dato a verificar.
