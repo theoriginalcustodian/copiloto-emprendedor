@@ -219,3 +219,57 @@ garantizaba conflicto.
   pregunta de denominador aplicada a la **corrida**: `grep -c '▶'` contra las suites que existen.
 - `dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md` (refuerzo del 30/09)
   — C, y por qué arreglar **una** causa del veredicto agregado no arregla las otras.
+
+---
+
+## Re-verificación 2026-10-05 (parada levantada): el cuarto instrumento, y C sigue vivo
+
+### El rojo de #772 no era su script: era el **stub** del test
+
+`plan/ci-verde-mide-mergeable` llegó al reinicio con el job `lint` en rojo. El fallo es el caso 2 de
+`scripts/tests/test-ci-verde-gh-presente.sh`: «2 gh presente dio rc=2, salida: …VERDE».
+
+**Mecánica.** Ese stub responde el **mismo** array de 6 jobs a *cualquier* invocación de `gh`. La
+versión de #772 agregó una pregunta nueva —`gh pr view --json mergeable,mergeStateStatus`— y el stub le
+devuelve el array de jobs; el script no puede leer `mergeable`, repregunta una vez (su propio
+reintento ante `UNKNOWN`), sigue sin poder, y sale **exit 2** fail-closed. **El script se comporta
+bien; el fixture quedó viejo.** Atribuir ese rojo al script habría mandado a buscar un bug inexistente
+—el mismo costo que §C— y por eso la atribución se midió antes de reportarla.
+
+**Un stub que contesta lo mismo a toda invocación no es un doble: es un comodín.** Mientras el script
+pregunta una sola cosa, no se nota. En cuanto aprende a preguntar otra, el comodín responde con la
+respuesta vieja y el fallo aparece del lado del script.
+
+### Su feature nueva **sí** funciona, probada contra datos vivos
+
+La versión de #772 se extrajo a un scratchpad (sin tocar su worktree) y se corrió con el `gh` **real**
+contra tres PR con esperados distintos:
+
+| PR | estado real | salida | exit | esperado |
+|---|---|---|---|---|
+| **#776** | CI 6/6 `pass` pero **CONFLICTING** | «el CI pasó, pero el PR tiene CONFLICTOS (CONFLICTING/DIRTY) — resolvé el merge, no busques un bug» | **4** | 4 ✅ |
+| **#772** | `lint` FAILURE real | «hay al menos un job ausente o fallado» | 1 | 1 ✅ |
+| **#770** | CI `IN_PROGRESS` | «ausente o fallado» | 1 | — (ver abajo) |
+
+**El control positivo del `exit 4` sólo existe fuera del CI:** el stub no puede fabricar un
+`CONFLICTING`, así que ese camino únicamente se ejercita contra un PR realmente conflictivo. Hoy #776
+es ese PR. Un gate cuyo caso nuevo no es alcanzable por su propio fixture depende de que alguien lo
+corra a mano — y eso no sobrevive a una semana.
+
+### §C sigue vivo, y se midió en el minuto
+
+Corriendo la versión de #772 contra #770 **mientras su CI estaba `IN_PROGRESS`**: cuatro renglones
+«está CORRIENDO, no pasó» y después «ROJO — no mergear: hay al menos un job ausente o fallado», con
+`exit 1`. Así que **#772 no cubre §C** (queda para `plan/ci-verde-distingue-sin-medir-de-rojo`): el
+detalle dice CORRIENDO, el veredicto ofrece dos causas que no son ésa, y el código sale por la familia
+«ROJO medido» en vez de «no pude medir».
+
+### Estado del tronco al reanudar, medido del rollup y no del badge
+
+`origin/main` seguía en `148f9639` del 30/09 — **cero merges en cinco días** con 8 PR abiertos: 7
+`MERGEABLE` + #776 `CONFLICTING`; CI 6/6 en #773, #774, #775, #776 y #777; #772 en rojo por el stub;
+#771 verde. **Seis PR listos y el cuello de botella no es el código.**
+
+Y un recibo que venció mientras se medía: el rollup de #770 daba `pass:6` a las ~10:50 sobre
+`5344b393`; a las 10:55:55Z su head pasó a `a8d73c51` con el CI corriendo de nuevo. Un recibo vale
+para **un** SHA, y el merge toma el HEAD remoto.
