@@ -86,3 +86,38 @@ Hermanas: [[un-parser-que-pierde-veredictos-silencia-los-conflictos]] ·
 [[el-formato-no-codifica-el-rol-dos-discriminantes-opuestos-fallaron]] (quinta cara) ·
 [[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]] ·
 [[el-guard-que-caza-a-su-propio-autor]] (el mismo parser abortó por *mi* documento sin clasificar).
+
+---
+
+## Refuerzo 2026-10-05 · el dictamen RETIRA un documento que aporta 0 del veredicto en disputa — y el conflicto queda cerrado en el papel
+
+Un dictamen `[DIRIMIDO]` resolvió **10 ids** de una sola vez con este razonamiento: *«el `COHERENTE`
+sale del BARRIDO del 22/09, **no** de `matriz-web-re-medida` (0 de 12) … el `COHERENTE` del barrido
+queda RETIRADO»*. Medido con el instrumento que publica **qué documento dijo cada veredicto**, sobre
+los 5 de esos ids que seguían vigentes: el barrido acusado aporta **0** de los 11 `COHERENTE` en
+juego, y la familia `matriz-web-re-medida` —la que el dictamen exculpa— aporta **8**. Los **5 de 5**
+sobreviven al retiro. El dictamen estaba escrito al revés de la evidencia, y nadie lo notó en 5 días
+porque **el contraste sólo verifica que exista una declaración, no que el retiro alcance al veredicto
+que produce el conflicto**.
+
+**Por qué no da síntoma, y es la parte que importa:** un `[DIRIMIDO]` con fecha, autor y razonamiento
+plausible **se lee como trabajo terminado**. Es el peor caso de
+[[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]]: no desactiva una medición, sino
+**la sospecha sobre diez**. Y la concentración lo multiplica — cuando una sola declaración sostiene 9
+de 10 dirimidos, el error no se reparte: se aplica entero.
+
+**El control, y es mecánico con el dato que el contador ya publica:** cruzar los documentos que aportan
+el veredicto en disputa contra el documento que la declaración retira; **intersección vacía ⇒ el retiro
+no alcanza**, y el conflicto vuelve a `sin dirimir`. Dos preguntas que parecen una:
+*¿este documento es fuente del veredicto?* y *¿es la ÚNICA?* Un dictamen que contesta la primera y
+asume la segunda cierra el caso sin tocarlo.
+
+**El agravante de alcance:** la evidencia citada re-midió **4** ids y el dictamen se aplicó a **10**.
+De los 10, sólo **2** estaban re-medidos; **2** figuran en la propia evidencia como **NO MEDIBLES** y
+quedaron dirimidos igual; y los **2** que sí se midieron y no se asignaron son justamente los que
+siguen `[POR VERIFICAR]`. La evidencia estaba aplicada **al revés de su alcance**. Mismo tronco que
+[[un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi]].
+
+Pariente de [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]: ahí la
+conclusión sobrevive con otro porqué; acá **la conclusión cae y el hecho sobrevive** — los ids siguen
+en conflicto, sólo que nadie lo veía.
