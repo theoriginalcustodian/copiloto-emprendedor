@@ -55,6 +55,7 @@
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) - inyectá el caso a propósito.
 - 🟢🙈 [Nadie audita un COHERENTE - desactiva trabajo sin rastro](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) · [el formato no codifica el ROL](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md)
+- [🔁📤 Medir obliga a REPORTAR, y el reporte entra al corpus medido](medir-obliga-a-reportar-y-el-reporte-entra-al-corpus-medido.md) — clasificar es una TASA por reporte, no una deuda que se paga.
 - 🖼️🎭 El instrumento INVENTA: [una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id fabricado](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) - nadie los distingue.
 - 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
 - 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) - ¿qué pregunta hace cada lado?
