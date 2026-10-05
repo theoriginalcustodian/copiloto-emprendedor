@@ -90,3 +90,69 @@ Prima de [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] (ahí el hueco
 decisiones; acá el **sentido** vive en el par de fragmentos) y de
 [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]] (ahí lo que
 engaña es el agregado; acá, el fragmento).
+
+---
+
+## Tercera faz (2026-09-30): el cebo del control positivo entra por la puerta que el guard abre a propósito
+
+El falso rojo no siempre viene de un recorte. Puede venir del **control positivo mal construido**, y
+entonces el instrumento condena justo al sujeto que estaba **bien**.
+
+**Caso.** Escribí un canario que cruza los 54 ids del padrón del criterio 3 contra el lector que los
+parsea (`memoria/vacio-no-es-hallazgo-correr-el-control.md` es su abuela). Su control positivo usaba un
+cebo con forma imposible, `((cebo-del-canario))`, y lo pasaba **dentro de `ids`** para poder buscarlo.
+Sobre el parser viejo dio bien. Sobre el parser **arreglado** (#742) el cebo salió **legible**, el
+control se declaró roto y el canario devolvió `exit 2` — *precondición faltante* — sobre el único lector
+que leía los 54 ids correctamente.
+
+**Y el parser tenía razón.** Su fix reconoce los tokens que el padrón **declara**; al meter el cebo en
+el padrón, **yo lo había declarado**. El cebo no era imposible: lo autoricé. El control entró por la
+misma puerta que el guard abre a propósito, así que no medía la ceguera del lector: medía la lista
+blanca que yo mismo había ampliado.
+
+**La regla:** *un guard condicionado a una lista blanca no se puede probar metiendo el cebo en la lista
+blanca.* Cuando el mecanismo bajo prueba es «acepto lo que la fuente declara», el control positivo no
+puede consistir en declarar algo nuevo — eso ejercita el camino del **sí**, no el del **no**.
+
+**El control que sí sirve:** inyectar un **lector ciego** (monkeypatch del parser devolviendo vacío) y
+exigir que **los 54 de 54** salgan ilegibles. Así el control mide al canario, no al parser, y vale con
+cualquier lector — incluido uno que todavía no existe. Verificado en las dos direcciones: `main` →
+`exit 1` nombrando `['(home)']`; #742 → `exit 0`, `0 de 54`.
+
+**Cómo detectarlo antes de pagarlo:** preguntá *¿mi cebo llega al instrumento por el mismo canal que el
+instrumento está autorizado a aceptar?* Si la respuesta es sí, el control no discrimina. Hermana de
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] (allá falta el control positivo; acá **existe y apunta al
+lado equivocado**) y de [[el-guard-que-caza-a-su-propio-autor]].
+
+---
+
+## Cuarta faz (2026-09-30): el sujeto sin delimitador de cierre condena con el veredicto del vecino
+
+La faz 2 dice «leé hasta su delimitador de cierre». Falta la pregunta previa: **¿la forma que estás
+leyendo TIENE uno?**
+
+`contar-veredictos.py` reconoce dos formas de medición. Para la de **tabla** el propio código lo tiene
+escrito: «en una tabla el sujeto y el veredicto viven en la **MISMA línea**: la medición se cierra acá y
+no arrastra contexto a la fila siguiente». Para la de **heading** no existe la regla equivalente: la
+ventana se abre y se cierra recién con el próximo sujeto reconocido — **o con el fin del archivo**.
+
+Consecuencia medida en `2026-09-29_cierre_frontend1-…_B1-13-ids-superficie-y-dimension.md` (252 líneas):
+el heading `` ### `ingresar` / `ingresar-error` / `volver` `` (línea 160) fue el último sujeto del
+documento, así que su ventana fueron las **92 líneas restantes**, y capturó el único veredicto que caía
+ahí — **1 de 26** ocurrencias del vocabulario en todo el doc: la línea **237**,
+`contenido=DESVÍO (card "Te deben" ausente del proto)`, que es la medición partida de **`factura`**, 77
+líneas más abajo. Resultado: `ingresar` entra al contraste con un `DESVÍO` **de otro sujeto**, mientras
+la línea 207 del mismo documento dice «**`ingresar` es COHERENTE**» y el desglose que el heading abre lo
+confirma tres veces («1:1 con el mock del proto», «no hay drift»).
+
+**Y el instrumento contradice una declaración explícita del autor.** Tres de los cuatro casos son
+headings que dicen literalmente `— PARTIDO`, y uno agrega «coincide con el cierre del 28/09, **no lo
+contradice**». El rol de la sección está escrito; el lector no lo mira. Es #721 —*el rol de la cita se
+escribe, no se infiere*— con el agravante de que acá **está escrito**.
+
+**Cómo aplicarlo:** cuando un parser soporta varias formas de asociar sujeto→dato, listá las formas y
+preguntá por cada una **qué la cierra**. La que no tenga respuesta absorbe hasta el fin del archivo, y su
+falso positivo no se ve como bug: se ve como un documento que se contradice consigo mismo. Y un sujeto
+que nombra **varios** ids no es una medición de uno — adjudicar al primero es peor que ignorar, porque
+produce un dato con la forma correcta. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y
+[[el-instrumento-respondio-sobre-otro-sujeto]].

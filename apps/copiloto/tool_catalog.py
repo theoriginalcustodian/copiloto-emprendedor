@@ -593,6 +593,13 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
     volver a llamar a la gateway (POST) — nunca un 2do link para el mismo paso del workflow."""
     amount = arguments.get("amount")
     concept = arguments.get("concept") or "Cobro"
+    # CONSMP (2026-09-30): rama medida INALCANZABLE en prod, texto plano a propósito (no
+    # requiere_conexion_card). Los dos composition roots que construyen TenantCtx inyectan
+    # mp_gateway sin flag/condicional -- worker_b.py:181 y serve.py:121, ambos
+    # `mp_gateway = MercadoPagoGateway()` incondicional, __init__ lazy (nunca lee env al
+    # construirse, ver mercadopago_gateway.py) -- así que nunca None en un deploy real. Y
+    # ctx.mp_cred_store tampoco: context_factory.py construye `cred_store` siempre, nunca None.
+    # No se rediseña una rama que ningún emprendedor real puede pisar ([[verificar-la-composicion-root-no-el-default]]).
     if ctx.mp_gateway is None or ctx.mp_cred_store is None:
         return ToolResult(tool_call_id=idem_key, status="error",
                           observation={"error": "MercadoPago no esta disponible en tu cuenta"})

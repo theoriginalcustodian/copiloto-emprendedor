@@ -276,9 +276,18 @@ runner levante el propio» — el consejo que *garantiza* el cuelgue. Corregido 
 
 Con el fix: **exit 0**, 20 PNGs (5 ids × 2 viewports × app/proto) + `criterio3-caminos.json`.
 
-## 🔴 C3-10 · No existe referencia de escritorio (afecta a todos los lotes)
+## 🔴 C3-10 · No existe referencia de escritorio — **viewport, NO la capa** (afecta a todos los lotes)
 
-`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **única media query en 3900 líneas**:
+> ⚠️ **Desambiguación (2026-10-05).** En este repo «escritorio» nombra dos cosas sin relación:
+> el **viewport** de pantalla grande (de eso habla C3-10) y la **capa launcher** del prototipo
+> (`#escritorio`, CAPA 0, `index.html:1613`, «Tus funciones» + «Actividad reciente»). C3-10 mide el
+> primero. Leí mi propio título como si hablara del segundo y publiqué una autocorrección falsa de
+> C3-10; la retiré el mismo día. Si citás C3-10, citá el referente.
+
+`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **la única media query de ancho** (medido el 2026-10-05: hay **7** `@media` en el archivo; las otras 6 son
+`prefers-reduced-motion` — `:240`, `:700`, `:917`, `:1173`, `:1246`, `:1418`. La primera versión
+de esta línea decía «unica media query en 3900 líneas», y era un conteo falso: no afecta la
+conclusión de C3-10, pero una cifra que nadie contó no se cita):
 
 ```css
 /* En el teléfono ocupa todo; en escritorio, un marco de 390×844 para verlo en contexto. */
@@ -1632,3 +1641,39 @@ ambas y 29 sin declaración.**
 **delegación:** 0 sub-agentes · 2 lecturas inline · **scripts: 2 corridas** (cruce del grupo 5 con
 controles ±, y el cruce padrón×§6 con el control de intersección). El hallazgo lo produjo **el control que
 esperaba ver verde** — no una lectura, y no la hipótesis que estaba probando.
+
+---
+
+## §11 · El detector de §8 y §10, **entregado ejecutable** (no como recomendación)
+
+`docs/copiloto-emprendedor/Auditorias/2026-09-29-detector-contradiccion-intra-corpus-C3-26.py`
+
+**Por qué código y no un párrafo:** el archivo encarna los **cinco descartes por rol** que §8.3 sólo
+describe. Quien lo reimplemente leyendo la prosa reproduce los 13 falsos positivos — ya pasó una vez,
+con el extractor que cruzaba comillas curvas y rectas. Expone tres funciones: `chrome_por_sujeto()`,
+`contradicciones_intra_corpus()` y `listas_complementarias_solapadas()` (el control gratis de §10).
+
+**Control positivo reproducido contra el corpus real**, que es lo que lo hace citable:
+
+```
+documentos: 20 de 20 · filas COHERENTE 53 de 53 · citas 43 de 43
+descartadas por ROL: 5 runtime · 2 negada/extra-declarado · 0 jerga -> quedan 36 de chrome
+sujetos con veredicto en >1 documento: 2 de 18
+  [DISJUNTO] `factura`  ['datos de venta','todavía no emitiste ningún comprobante']
+                     vs ['facturado este mes','nueva factura','te deben','últimas emitidas']
+  [ok]       `volver`   solapa en ['entrar','entrar con otra cuenta']  <- discrimina
+exit 1 (con disjunto) · exit 0 (sin) · assert si el glob no matchea nada
+```
+
+⚠️ **Y el dato que más importa de esa corrida: el glob tomó 20 documentos, no los 6 de medición, y las
+cifras no se movieron** (53 filas, 43 citas, los mismos 2 sujetos). **El detector es robusto al universo
+— que es exactamente la cura del error que costó cuatro cifras mal en un día.** No hay que elegir bien
+el corpus para que funcione: ampliarlo no lo rompe, y por eso no hereda el defecto de §9.3.
+
+Tres controles horneados, verificados: sin sujetos repetidos **avisa** («eso NO es *sin
+contradicciones*, es *sin universo*») en vez de salir verde; con glob vacío **aborta**; y reporta los
+solapados junto a los disjuntos, porque un detector que sólo imprime hallazgos no se distingue de uno
+que marca todo.
+
+**No lo cableo al ratchet:** `scripts/` es de planificación. Queda como fila C3-26, con el código hecho
+para que el costo de adoptarlo sea cero.

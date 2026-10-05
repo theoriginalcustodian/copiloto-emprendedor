@@ -61,3 +61,43 @@ comentario, dato de otro módulo— y el conteo los suma todos sin decirlo.
 Hermana de [[el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis]] (allá el dato venía inflado
 por el default de la herramienta; acá por el rol del símbolo) y de
 [[el-control-corrido-contra-la-base-equivocada]].
+
+---
+
+## Tercer caso (2026-09-30): la cifra falsa **coincidió con la cifra que el documento existe para refutar**
+
+Conté las filas invalidadas de un cruce ajeno buscando `invalid` en la última columna de su tabla.
+Dio **6**. El título del documento es literalmente «**Cierre A, Paso 1 — la lista completa, y el número
+NO da 6**».
+
+Los 16 ids de esa tabla mezclan **tres régimenes** y la palabra aparece en dos:
+
+| régimen | filas | la frase |
+|---|---|---|
+| invalidada por la regla mecánica del cruce | **1** (`chat`) | `**INVALIDADA**` |
+| ya invalidado antes, por **§6 del contrato** | 4 | «ya **invalidado** desde §6 del contrato» |
+| fuera del cruce (no medido) | 7 | ausencia, no invalidación |
+
+**Por qué muerde más que un error de conteo:** una cifra que **coincide con una cifra citada en el
+corpus** se lee como confirmación, no como desvío. Si mi 6 hubiera dado 5 o 7 lo habría revisado; al dar
+exactamente el número que el corpus menciona, el instrumento parecía estar de acuerdo con el documento
+— cuando en realidad reprodujo el error que el documento fue escrito para corregir.
+
+**Cómo aplicar:** al contar filas de una tabla ajena, clasificá por el **rol de la frase** (una regex por
+régimen, y que la suma dé el total declarado), nunca por la presencia de una palabra. Y anclá el control
+en **la cifra que el autor afirma**: acá el autor escribe «1 fila invalidada, no 6», así que el extractor
+tiene que reproducir 1 — cualquier otra cosa es el instrumento, no el corpus.
+**Cuarto caso, el mismo día y con la decisión colgando de él (2026-09-30).** Para saber si podía
+invocar `python` (sin el `3`) en un test que iba a entrar al CI, conté cuántos de los tests ya verdes lo
+usan: `grep -c 'python '` → **5 archivos** ⇒ «existe en el runner». Verificado **por rol** —excluyendo
+comentarios— los 5 eran: 1 **mención en un comentario**, 3 invocaciones reales, y la quinta era *el
+resolvedor que yo estaba por inventar*: `PY="$(command -v python || command -v python3)"` en
+`scripts/tests/test-contar-veredictos-padron.sh:38`. El conteo crudo habría sostenido la decisión
+correcta por el motivo equivocado, y me habría hecho escribir una segunda forma de algo que el repo ya
+resolvía (`scripts/ci/lint.sh` usa `python3`, y el job `lint` **no tiene `setup-python`**).
+
+**Lo nuevo que enseña este caso:** verificar el rol no sólo corrige el número — **encuentra la
+reutilización**. La línea que no era una invocación era la solución. Contar la palabra es lo que impide
+verla.
+
+Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[vacio-no-es-hallazgo-correr-el-control]].

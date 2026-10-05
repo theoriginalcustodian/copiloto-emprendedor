@@ -83,3 +83,37 @@ rastro**: nada falla cuando un gancho desaparece, simplemente nadie vuelve a enc
 
 Ver [[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]] ·
 [[el-indice-truncado-fabrica-duplicados]] · [[la-evidencia-vence-y-el-documento-no-lo-dice]].
+
+---
+
+## Segunda faz (2026-09-30): el instrumento dio el resultado INESPERADO, y eso era el mundo cambiando
+
+La regla de arriba dice «re-medilo antes de actuar». Falta el caso en que la re-medición **contradice** lo
+que sabías, porque ahí el reflejo apunta al lugar equivocado: **«mi instrumento se rompió»** en vez de
+**«el sistema se movió»**.
+
+**Caso.** Escribí un `cierre_` de cola afirmando «#742 **sin mergear** → mientras no se mergee, `main`
+mide 53 de 54», más una tabla de cuatro hallazgos abiertos (H-1..H-4). Todo era verdad **cuando lo medí**.
+Después, por disciplina propia —re-medir al AFIRMAR, no al planear— volví a correr mi canario del
+alfabeto esperando `exit 1` con `(home)` ilegible. Dio **`exit 0`, 54 de 54 legibles**.
+
+**El primer impulso fue dudar del canario.** Lo que lo descartó fue su control positivo horneado: con el
+lector ciego inyectado, los 54 salían ilegibles. El instrumento medía bien. Entonces la única explicación
+era la otra, y era la correcta: **#742 se había mergeado mientras yo escribía** (`1f347b50`, 03:37Z), y mi
+rama lo contenía sin que yo lo supiera. Medido después: también **#743** (`a07f715a`) y **#744**
+(`94768da2`). De los cuatro hallazgos de mi tabla, **tres estaban cerrados** y el cuarto había que
+partirlo en dos (#744 arregló el *instrumento*; el *estado* —`MEMORY.md` en 24000 chars exactos— sigue en
+el borde).
+
+**Y la trampa espejo, en el mismo turno:** corrí el medidor de índice de **mi rama** y dijo `[OK]` con el
+presupuesto agotado — el bug exacto que #744 arregla. Casi lo reporté como hallazgo vivo. Lo frenó
+preguntar **qué commits contiene mi HEAD**: `git merge-base --is-ancestor 94768da2 HEAD` → **NO**. Estaba
+midiendo con el instrumento viejo — [[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] y
+[[el-instrumento-respondio-sobre-otro-sujeto]].
+
+**Cómo aplicarlo:** cuando un instrumento con control positivo verde da un resultado que no esperabas, el
+orden es (1) confirmar que el control positivo sigue pasando, (2) preguntar **qué cambió en el sujeto**, y
+sólo entonces (3) dudar del instrumento. Y en un repo con varias sesiones trabajando, «qué cambió» incluye
+**qué commits contiene tu HEAD ahora**, que no es lo mismo que qué contenía cuando abriste la rama. Un
+`cierre_` que lista trabajo ajeno como pendiente envejece en **minutos**, no en días:
+[[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]].

@@ -1,0 +1,91 @@
+---
+name: arreglar-una-comparacion-en-un-sentido-deja-el-opuesto-vivo
+description: Cambiar != por < arregló la fecha adelantada y dejó vivo el caso de la atrasada, que además es indistinguible del caso legítimo.
+metadata:
+  type: feedback
+---
+
+Cuando un bug es de **comparación** —`!=` que debía ser `<`, un `>` que debía ser `>=`— el fix suele
+arreglar el lado que dio síntoma y **dejar vivo el opuesto**. Y el opuesto no aparece en los tests,
+porque nadie lo vio fallar.
+
+**Caso, 2026-09-30 00:03.** `escaladores-buzon.sh`, función `edad_alta_min`: el piso de edad se decide
+por la fecha del nombre del archivo.
+
+```bash
+if [[ "$fecha_archivo" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [[ "$fecha_archivo" < "$fecha_hoy" ]]; then
+  echo 999999   # de un día anterior
+```
+
+El comentario documenta el fix del **2026-08-12**: con `!=`, los archivos nombrados en UTC
+(`2026-08-13`) mientras `date` local daba `2026-08-12` caían en esa rama, y **todo `pedido_` nuevo
+escalaba en el instante de nacer**. Se arregló con `<`, que es exactamente lo que la regla quiere decir.
+
+**Pero `<` sólo protege contra la fecha ADELANTADA.** Escribí a las 00:03 del 30 dos documentos fechados
+`2026-09-29` —mi jornada mental seguía siendo la de ayer— y el escalador reportó:
+
+```
+PEDIDO SIN RESPUESTA (999999min >= 30): 2026-09-29_pedido_... -> deudora: planificacion
+```
+
+Un `pedido_` de **tres minutos** con 999999 min. Renombrado a `2026-09-30_`, el dry-run pasó de
+`EXIT_ESCALADOR=1` a `0` («nada que escalar»).
+
+**Y acá está lo que hace la lección general:** el caso atrasado **no se puede arreglar con otro
+operador**, porque una fecha pasada es *indistinguible* de un archivo realmente viejo. El lado
+adelantado tenía una solución simple; el opuesto necesita un dato **distinto** (el `mtime`, que el propio
+sidecar ya usa para el primer avistamiento) o al menos un mensaje que no disfrace un piso de medición:
+`999999min` presentado como edad invita a creerlo, «de un día anterior (nombre: X, hoy: Y)» invita a
+mirar el nombre.
+
+**Segundo filo, y es el que me tocó a mí:** el que nombra el archivo no sabe que está escribiendo una
+**medición**. La fecha del nombre parece etiqueta narrativa y es dato de control. Pasada la medianoche se
+fecha con el día del reloj, aunque la jornada se sienta la de ayer — y esto aplica a las cuatro sesiones
+a la vez, porque todas cruzan la medianoche trabajando.
+
+**Cómo aplicarlo:** al arreglar una comparación, escribí el caso del **signo opuesto** y corrélo. Si el
+opuesto resulta indistinguible de un caso legítimo, eso no es «no aplica»: es que hace falta un segundo
+dato, y decirlo en el comentario evita que el próximo lector crea que el fix cerró las dos puntas. Ver
+[[el-guard-falla-abierto-en-su-caso-de-activacion]] y
+[[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]].
+
+---
+
+## Segundo caso (2026-09-30): el opuesto de una PREGUNTA, no de un operador
+
+El caso de arriba es un operador (`!=` → `<`). El mismo patrón aparece cuando lo que tiene dos sentidos
+es la **pregunta**: un instrumento nace para cazar «X dice que sí pero Y no pasó», y queda ciego a «Y
+pasó pero X dice que no».
+
+**Caso.** `scripts/ci-verde.sh` existe porque una mañana `mergeStateStatus: CLEAN` convivió con un
+`statusCheckRollup` **vacío** — «nada me bloquea» no es «todo pasó». El script lo documenta en su
+cabecera y cubre bien esa dirección: mide los jobs, exige el conteo, reserva `exit 2` para «no pude
+medir».
+
+**El sentido opuesto quedó vivo, y lo medí con dos PR míos el mismo minuto:**
+
+```
+#765  ci-verde: «VERDE -- se puede mergear» exit 0   ·  mergeable: MERGEABLE/CLEAN        -> cierto
+#760  ci-verde: «VERDE -- se puede mergear» exit 0   ·  mergeable: CONFLICTING/DIRTY      -> FALSO
+```
+
+**Frase idéntica, y sólo una de las dos veces es verdad.** Grepeado: `mergeable`/`mergeStateStatus`
+aparecen 2 veces en el archivo y **las dos en comentarios** — el script estructuralmente no puede
+saberlo, aunque su línea de contrato afirme «exit 0 = verde (mergeable)». Y sus 9 casos de test cubren
+rollup vacío, job ausente, re-run y `gh` ausente: **ninguno cubre «jobs verdes + rama conflictuada»**,
+porque nadie lo había visto fallar.
+
+**Dos filos propios de esta variante:**
+
+1. **El fix ingenuo rompe otro invariante.** El script garantiza salida monótona —exactamente uno de
+   {`VERDE`, `ROJO`}, ninguno substring del otro, con test— así que un tercer token («AMARILLO», «VERDE
+   PERO…») lo viola. La salida correcta mantiene el token binario y **distingue la causa por exit code**,
+   que es el molde que el script ya usa para «SIN MEDIR».
+2. **El estado `UNKNOWN` reintroduce el fail-open.** La primera consulta a GitHub devolvió `UNKNOWN` y a
+   los segundos `CONFLICTING`: tratar «todavía no sé» como mergeable es exactamente el bug de nuevo, un
+   nivel más abajo.
+
+**Cómo aplicarlo:** cuando un instrumento nace de un incidente, escribí la pregunta que contesta y la
+pregunta **inversa**, y buscá la inversa en sus tests. Si ninguno la cubre, no está cubierta — y el aviso
+llega cuando alguien confía en la frase. Ver [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y
+[[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].

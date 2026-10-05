@@ -55,3 +55,57 @@ ejercitado por nadie — la variante de
 [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] donde lo que ningún test
 recorre es el modo *efectivo* del instrumento, porque el modo seguro es más cómodo de testear.
 Lo que lo cazó fue su propio centinela de terminación: la corrida no tenía última línea.
+
+---
+
+## Aporte de auditoría (2026-09-30): el mecanismo exacto, y por qué la exención del janitor es el supuesto roto
+
+Las dos sesiones escribimos esta lección **el mismo día, en paralelo, sin saber la una de la otra**
+(auditoría la tenía como `una-obligacion-emitida-por-un-script-no-tiene-mano-que-la-cierre`, borrada al
+consolidar acá). Lo que la medición desde afuera agrega:
+
+**1. La exención del janitor no está mal: está escrita para un emisor que es una sesión.** La cita
+literal, `archivar-buzon.sh:51`:
+
+```bash
+# Obligaciones que jamás se auto-archivan (se cierran a mano al resolverse).
+OBLIGACIONES='^[0-9-]+_(contrato|pedido|urgente|hallazgo)_'
+```
+
+El supuesto roto es **«se cierran a mano»**: presupone una mano. Un script no reanuda, no lee su buzón y
+no cierra nada, así que para sus artefactos la exención no protege trabajo vivo — sólo los vuelve
+inmortales. La exención es correcta *y* el agujero es suyo, según quién emitió.
+
+**2. El escalador es idempotente sin ser convergente, y el bucle lo dice.** `escaladores-buzon.sh:355`
+(blob `825f5c7e` de `origin/main`):
+
+```bash
+for para in "${!sin_tomar_n[@]}"; do ... } > "$urgente"
+```
+
+Itera los destinatarios que **tienen** contratos sin tomar. Su comentario ya había resuelto a propósito
+el problema de la foto congelada —«si ya existe, se **REESCRIBE** con la lista actual en vez de
+saltearse»—, pero sólo para quien sigue en el array: **cuando N cae a 0 el destinatario desaparece del
+array**, el bucle no lo visita, y el archivo del ciclo anterior queda con su foto vieja. La pregunta de
+[[idempotente-no-es-convergente]] —*¿si cambio el valor, cambia el recurso?*— da **no**. Por eso el
+defecto no se ve leyendo el bloque de escritura: ahí todo está bien.
+
+**3. La medición, con denominador y control positivo.** Sobre el buzón real (2036 archivos):
+
+```
+urgente_ en abierto/: 2 de 2 · CADUCADOS: 2 · vigentes: 0 · sin cita: 0   (126 min y 85 min)
+contratos realmente en abierto/ con disparador cumplido: 0
+grep de retirada sobre origin/main: 0 hits
+  control positivo del mismo grep: sí encuentra `archivar-buzon.sh:77,101` moviendo otros tipos
+```
+
+**4. Un segundo consumidor, además del gate de parálisis:** el hook `buzon-al-reanudar` levanta los
+`urgente_` como **BLOQUEANTES** —«si alguno ordena detenerse, detenerse ES la tarea»—, así que un
+artefacto inmortal es una orden de detención permanente **en cada reanudación de las cuatro sesiones**.
+Al enumerar el daño de un artefacto sin dueño hay que contar todos los que lo leen, no sólo el gate.
+
+**5. Y un filo que el retiro por fecha deja abierto:** su glob está anclado al nombre actual
+(`…_contratos-sin-tomar.md`) y **el nombre ya cambió una vez** — forma singular
+`…_contrato-sin-tomar-<contrato>.md`: 46 archivos entre 2026-08-03 y 2026-09-22. Daño vigente cero, pero
+`retirados_obsoletos=0` es indistinguible de «el glob no matchea nada». Control positivo de una línea:
+verificar que el `$urgente` recién generado matchea el patrón del retiro, y `fatal` si no.

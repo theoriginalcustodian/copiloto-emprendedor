@@ -111,3 +111,96 @@ Relacionado: [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
 [[dos-causas-suficientes-el-test-no-atribuye]] ·
 [[clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo]] ·
 [[instrumentos-que-confirman-en-vez-de-verificar]]
+
+---
+
+## Cara nueva (2026-09-30): el instrumento **detectó** su propia ceguera, la imprimió, y el veredicto eligió acusar igual
+
+`ci-verde.sh 739` sobre un PR cuyo commit tenía **6 de 6 check-runs en `success`**:
+
+```
+❌ backend: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'      (×6 jobs)
+--- CONTROL: 0 jobs presentes en el rollup, 6 esperados ---
+⚠️  el rollup vino VACÍO: no es que el CI falló, es que no estás midiendo nada
+ROJO — no mergear (falta o fallo algun job)
+```
+
+Lo notable no es el falso rojo: es que **el instrumento ya sabía**. Su control de denominador funcionó
+perfecto y escribió la frase exacta — *«no es que el CI falló, es que no estás midiendo nada»* — y **la
+línea siguiente, que es la que se lee y la que devuelve el exit code, unió las dos causas en `falta o
+fallo`** y se quedó con la peor. Un aviso correcto tres líneas arriba del veredicto no cambia la decisión
+de nadie: el que corre el gate lee la última línea y el que automatiza lee `$?`.
+
+La causa medida, y no era la que parecía:
+
+```
+gh api repos/.../commits/3c418082/check-runs  -> total=6 · todos success
+gh pr view 739 --json statusCheckRollup       -> length 0
+```
+
+Los check-runs **existían**; vacío estaba el campo que `ci-verde.sh:74` consulta. Un run disparado por
+`workflow_dispatch` —el camino que el propio `tests.yml` documenta como «la única forma real de re-pedir
+la corrida»— no entra en el `statusCheckRollup` del PR. O sea: **el remedio documentado produce una
+medición que el gate no puede leer**, y los dos instrumentos son correctos por separado
+([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Lo que agrega esta cara:** distinguir las causas **en el aviso no alcanza**. La distinción tiene que
+llegar a las dos salidas que alguien consume: la última línea y el exit code. Mientras el veredicto
+funda dos causas, tener el diagnóstico correcto adentro sólo documenta que el instrumento podía haber
+acertado. Y **un vacío en el campo que consultás no es un vacío en el sistema**: antes de declarar,
+preguntá si el dato existe en otra fuente ([[vacio-no-es-hallazgo-correr-el-control]]).
+
+## Refuerzo (2026-09-30, mismo día, misma línea): **arreglar UNA causa del veredicto agregado no arregla las otras**
+
+La cara de arriba se arregló: hoy `ci-verde.sh` distingue «rollup vacío» y sale **2**. Y la misma línea
+sigue fundiendo otra causa. Corrí `ci-verde.sh 771` **dos minutos después de pushear** —el caso más
+frecuente de todos, porque `MEMORY.md` manda correrlo antes de cada merge— y obtuve:
+
+```
+❌ backend: sin conclusión todavía (status=IN_PROGRESS) — está CORRIENDO, no pasó   (×5)
+ROJO — no mergear: hay al menos un job ausente o fallado (medido, no supuesto)      exit 1
+```
+
+El detalle es **perfecto**: dice «está CORRIENDO». El veredicto ofrece dos causas —«ausente o
+fallado»— y **CORRIENDO no es ninguna**. Y el código tampoco: el propio archivo reserva `exit 2` para
+«no pude medir» y ya lo usa en cuatro rutas (`gh` ausente, sin argumento, rollup ilegible, `SIN
+MEDIR`). *Todavía no terminó de medirse* pertenece a esa familia, no a `exit 1` = «rojo medido». La
+distinción decide la acción: ante `2` se **reintenta en dos minutos**, ante `1` se **abre a investigar
+un fallo inexistente**.
+
+**Lo que agrega:** el veredicto agregado es un **cuello** por el que pasan N causas, y cada fix cubre
+la que dolió. Después de arreglar una, las demás siguen ahí y el arreglo previo da falsa tranquilidad
+—«esto ya se corrigió»—. Al tocar una línea de veredicto que funde causas, **enumerá todas las rutas
+que terminan en ella** (acá: `grep -n 'falta=1'` da cuatro) y decidí el par (texto, código) para cada
+una. Si no, se pagan de a una, y cada pago parece el último.
+
+---
+
+## Refuerzo 2026-10-05 · el `rc=1` de «no pude leer tu entrada» y el de «hay conflicto»
+
+Medí qué PR abiertos conflictúan contra `main` con `git merge-tree --write-tree`, decidiendo por el
+código de salida. Veredicto: **6 de 7 en CONFLICTO**. Falso, los 7 mergeaban limpio.
+
+`gh` y `jq` en Windows emiten **CRLF**, así que el `` viajaba **dentro del sha** leído por
+`while IFS=$'	' read`. `merge-tree` con un argumento que no resuelve contesta:
+
+```
+merge-tree: 4f7ca272b64d76bd872e3faea60205ed0096ddd4 - not something we can merge
+rc=1
+```
+
+**El mismo `rc=1` que un `CONFLICT (content)` real.** El mensaje que separa las dos causas estaba en
+la salida que mi script capturaba y no miraba.
+
+Dos cosas que agrega este caso:
+
+1. **El falso ROJO se disfraza de prudencia.** Un instrumento que inventa conflictos no se siente como
+   un bug: se siente como rigor. Si lo hubiera publicado, cuatro sesiones rebasean ramas sanas — y el
+   trabajo extra habría *confirmado* el instrumento, porque después del rebase el conflicto «ya no está».
+2. **El fix de raíz es doble, y el cómodo es sólo la mitad.** `tr -d ''` en la fuente arregla hoy;
+   lo que arregla mañana es **decidir el veredicto por el mensaje** y agregar la rama que faltaba:
+   `SIN-OBJETO` para el sha que no tengo local. Un instrumento necesita un estado para «no pude
+   medir este elemento» tanto como para «medí y está mal».
+
+**La pregunta:** *¿este código de salida lo puede producir algo que no sea el defecto que busco?* Si
+sí, el veredicto sale del mensaje, y el rc sólo decide si hubo que leerlo.

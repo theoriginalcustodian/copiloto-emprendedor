@@ -55,3 +55,27 @@ el contrato estable entre un script y su test; el texto es prosa que se reescrib
 
 ⚠️ **Lo que no hay que concluir:** que los ratchets estén mal. Son correctos y siguen. Lo que estaba
 mal era creerles cuando su entrada era un conjunto vacío que nadie verificó.
+
+---
+
+## Refuerzo 2026-10-05 · el guard de IDEMPOTENCIA no puede vivir después del lookup que su propio efecto invalida
+
+Script que agrega una columna a una tabla markdown: ubicaba la cabecera por **texto exacto** y, si ya
+tenía la columna, no tocaba nada. La 2ª corrida salió **`exit 2` «no encuentro la cabecera»** sobre un
+trabajo ya hecho — porque el chequeo de «ya está» vivía *después* del lookup, y el lookup buscaba la
+cabecera **vieja**, que mi propio cambio había dejado de existir.
+
+El orden estaba invertido: el guard que decide «no hay nada que hacer» se evaluaba sólo si antes
+acertaba una búsqueda que el éxito previo garantizaba fallar.
+
+**Lo que lo hace de esta familia:** el estado **correcto** es el que sale por la puerta de error, y encima
+por la puerta de «no pude medir» en vez de «ya está». Quien lo reusa ve un fallo donde hay éxito, y el
+reflejo es tocar el archivo de nuevo o forzar.
+
+**How to apply:**
+- **Un lookup por texto exacto sobre algo que vas a modificar tiene que reconocer los dos estados** — el
+  crudo y el ya-completado. Normalizá quitando tu propio efecto antes de comparar.
+- **Probá la idempotencia por los dos lados, no sólo corriendo dos veces:** estado completado → sin
+  cambios y exit 0; estado crudo **fabricado a propósito** → vuelve a completar. Sin el segundo, un
+  script que no hace nada pasa por idempotente ([[idempotente-no-es-convergente]]).
+- **«Ya está» y «no pude medir» nunca comparten código de salida** — es [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] dentro de una herramienta propia.

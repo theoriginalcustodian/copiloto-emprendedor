@@ -21,12 +21,15 @@
 #   UC_SKIP_DRIFT_CHECK   saltea el guard de checkout-vs-main   (default: sin setear = guard activo)
 #   UC_AUTH_URL           base pública de auth para el botón Google (VITE_AUTH_URL en el build de
 #                         frontend) (default: https://copilotoemprendedor.duckdns.org)
-#   UC_DURABILIDAD        =1 arma una conversación Y un HITL ANTES del restart de [5/7] y los
-#                         verifica al final (BL-B1/E3, scripts/e2e_g6_durabilidad_worker_restart.py)
-#                         (default: sin setear = deploy normal, sin la prueba de durabilidad)
+#   UC_SKIP_DURABILIDAD   =1 saltea la prueba de durabilidad (BL-B1/E3: arma una conversación Y un
+#                         HITL ANTES del restart de [5/7] y los verifica al final,
+#                         scripts/e2e_g6_durabilidad_worker_restart.py, decisión en
+#                         deploy/copiloto/durabilidad-gate.sh) (default: sin setear = CORRE; un
+#                         --armar fallido NO aborta el deploy, queda NO_MEDIBLE en [8/8])
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$LOCAL/deploy/copiloto/durabilidad-gate.sh"
 
 # BL-B7: sólo se despliega lo mergeado (HEAD==origin/main), con árbol limpio y candado único.
 # shellcheck source=guard-deploy.sh
@@ -101,29 +104,43 @@ tar -C "$LOCAL" \
 #
 # Honesto por diseño: el gate de drift de arriba sólo verifica `apps/copiloto` y `motor` contra
 # origin/main. Los otros 3 paths del tar van sin verificar, y el manifiesto lo dice en vez de
-# sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
-# "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
-# un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
-echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.jsonl (append-only, H1)"
+# sugerir que todo el árbol está anclado.
+#
+# NDJSON append-only (MANIFBIDIR, 2026-10-05, corrige el fix del 28/09 que resolvía sólo media
+# falla): con `cat >` cada deploy BORRABA el sello del anterior (dirección 1, auditoría). Pero
+# un `>>` que a veces NO SE EJECUTA es peor: medido en prod el 2026-10-05 -- el árbol se sincronizó
+# el 30/09 11:38 (mtime de apps/copiloto/web.py) y el servicio arrancó con ese código el 30/09
+# 11:55 y de nuevo el 02/10 06:26 (restart sin deploy), pero el manifiesto quedó congelado en el
+# registro del 28/09 -- el paso de abajo corrió (el script ya tenía este bloque desde 0eea89e0,
+# 2026-07-31) pero el `ssh ... cat >` falló y el aviso se perdió en stderr efímero (dirección 2).
+# Un historial que a veces no crece es MÁS creíble que un archivo con mtime viejo -- por eso el
+# fix no es sólo `>>`: es verificar POR EFECTO (tail -1 remoto == lo que mandé, no el exit code
+# del pipe, que miente en los dos sentidos) y, si no coincide, fallar RUIDOSO al final del script
+# (abajo, `_sello_ok`) sin abortar el resto del deploy ya aplicado.
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json (NDJSON append-only)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
-# H1 (2026-09-28): antes se armaba con un heredoc multilínea y se escribía con `cat >` -- ranura
-# única, cada deploy borraba la identidad del anterior. Dos sesiones midieron el mismo bundle en el
-# mismo día y dieron resultados distintos (0 y 1 ocurrencias de un placeholder) porque el testigo
-# que lo resolvía se había pisado solo. Ahora: UNA línea armada por `printf` (nunca multilínea, así
-# que es JSONL válido sin post-procesar) + `cat >>` (append-only: dos deploys que se pisen no
-# corrompen el archivo, no hay que releer ni parsear lo anterior). `.jsonl`, no `.json` -- nada en
-# el repo consume el nombre viejo (verificado por grep), así que no hace falta escribir los dos.
-_manifiesto="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nota":"El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."}' \
-  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}")"
-printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.jsonl'" \
-  || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
+_nonce="$(date +%s%N)-$$"
+_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nonce":"%s"}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_nonce}")"
+_sello_ok=0
+if printf '%s\n' "$_linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'"; then
+  _verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
+  if [ "$_verif" = "$_linea" ]; then
+    _sello_ok=1
+  fi
+fi
+if [ "$_sello_ok" != "1" ]; then
+  echo "    🔴 SELLO DE PROCEDENCIA NO CONFIRMADO (nonce ${_nonce}) -- el deploy sigue, pero el manifiesto" >&2
+  echo "       del VPS puede haber quedado SIN la entrada de esta corrida. El script va a fallar" >&2
+  echo "       (exit≠0) al final para que esto no quede mudo, aunque el resto del deploy ya se aplicó." >&2
+fi
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$_sha" <<'REMOTE_WEB'
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"; AUTH_URL="$2"; BUILD_SHA="$3"
+REMOTE="$1"; AUTH_URL="$2"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -131,10 +148,8 @@ npm install --no-audit --no-fund --loglevel=error
 # Vite hornea las VITE_* del entorno al bundle -- sin esto, VITE_AUTH_URL queda sin definir y
 # `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
-# con que sync-web.sh lo haga bien. Mismo criterio para VITE_BUILD_SHA (BUILDSHA, contrato
-# 2026-09-28): el consumo (`data-build-sha` en index.html) es de frontend2 en vite.config.ts; acá
-# sólo se exporta la env var para que ese `define` la encuentre en ESTA ruta de build también.
-VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$BUILD_SHA" npm run build
+# con que sync-web.sh lo haga bien.
+VITE_AUTH_URL="$AUTH_URL" npm run build
 test -f dist/index.html
 echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
 REMOTE_WEB
@@ -321,25 +336,6 @@ cd "$REMOTE/deploy/worker"
 "$VENV/bin/python" ensure_grafo_sync_schedules.py
 REMOTE_GRAFO_SYNC_SCHEDULES
 
-echo "==> [4.8/7] UC_BUILD_SHA -> ${ENVDIR}/copiloto.env (BUILDSHA, contrato 2026-09-28)"
-# `/healthz` necesita saber QUÉ commit corre el proceso vivo (spec: servido@<sha> deja de ser
-# inferencia). A diferencia de COPILOTO_INVITE_TOKEN (arriba, nunca se rota), acá el upsert es
-# INCONDICIONAL -- es la identidad del build de ESTE deploy, tiene que reflejar el `_sha` actual
-# en cada corrida, no sólo la primera vez. Reutiliza el MISMO `_sha` (origin/main) que ya firma
-# DEPLOY-MANIFEST.jsonl (H1) -- un solo cálculo, dos consumidores, sin duplicar la fuente de verdad.
-ssh "$HOST" bash -s -- "$ENVDIR" "$_sha" <<'REMOTE_BUILD_SHA'
-set -euo pipefail
-ENVDIR="$1"; SHA="$2"
-DST="$ENVDIR/copiloto.env"
-[ -f "$DST" ] || { echo "FALTA $DST" >&2; exit 1; }
-if grep -q '^UC_BUILD_SHA=' "$DST"; then
-  sed -i "s|^UC_BUILD_SHA=.*|UC_BUILD_SHA=${SHA}|" "$DST"
-else
-  printf 'UC_BUILD_SHA=%s\n' "$SHA" >> "$DST"
-fi
-echo "UC_BUILD_SHA=${SHA}"
-REMOTE_BUILD_SHA
-
 echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"
 # Por qué existe (incidente 2026-07-21, 15 x `ImportError: cannot import name 'make_consultar_anulacion'
 # from 'web'` en producción): el paso [6/7] valida el Caddyfile ANTES de aplicarlo y aborta sin tocar
@@ -373,12 +369,21 @@ for m in serve worker_b worker_soporte; do
 done
 REMOTE_IMPORT_GATE
 
-if [ -n "${UC_DURABILIDAD:-}" ]; then
-  echo "==> [4.95/7] UC_DURABILIDAD=1: armando conversación + HITL ANTES del restart de [5/7]"
+UC_DURABILIDAD_ARMADO_OK=0
+if uc_durabilidad_activa; then
+  echo "==> [4.95/7] armando conversación + HITL ANTES del restart de [5/7] (BL-B1/E3; opt-out con UC_SKIP_DURABILIDAD=1)"
   # Tiene que correr ACÁ, no antes: el turno 1 y el gate HITL quedan "en vuelo" justo antes del
   # restart real de [5/7], que es lo que la prueba necesita ejercitar (BL-B1/E3, spec §0 -- el
   # moat es que Temporal sobrevive un restart real del worker, no uno simulado).
-  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar
+  UC_DURABILIDAD_ARMADO_OK="$(uc_durabilidad_armar python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar)"
+  if [ "$UC_DURABILIDAD_ARMADO_OK" = "0" ]; then
+    echo "==> [4.95/7] ⚠️  NO_MEDIBLE: --armar falló -- el deploy CONTINÚA (Parte B: no bloqueante)."
+    echo "    [8/8] no va a poder verificar durabilidad esta corrida. Artefacto que levanta el"
+    echo "    NO_MEDIBLE: diagnosticar por qué --armar falló (login/servicio caído antes del"
+    echo "    deploy, etc.) y archivarlo como pedido_ en coordinacion/ -- no hallazgo_/dato_."
+  fi
+else
+  echo "==> [4.95/7] UC_SKIP_DURABILIDAD=1: prueba de durabilidad salteada explícitamente"
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
@@ -483,9 +488,20 @@ curl -s -o /dev/null -w 'hermes: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/
 curl -s -o /dev/null -w 'temporal: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
 REMOTE_SMOKE
 
-if [ -n "${UC_DURABILIDAD:-}" ]; then
-  echo "==> [8/8] UC_DURABILIDAD=1: verificando que la conversación y el gate HITL sobrevivieron el restart real"
-  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
+if uc_durabilidad_activa; then
+  if [ "$UC_DURABILIDAD_ARMADO_OK" = "1" ]; then
+    echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
+    python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
+  else
+    echo "==> [8/8] NO_MEDIBLE: --armar no corrió/falló antes del restart -- no hay estado que verificar (no es VERDE ni ROJO)."
+  fi
 fi
 
+if [ "${_sello_ok:-0}" != "1" ]; then
+  echo "🔴 DEPLOY COMPLETO, PERO EL SELLO DE PROCEDENCIA NO SE PUDO CONFIRMAR (ver [1.bis] arriba)."
+  echo "   DEPLOY-MANIFEST.json en el VPS puede estar desactualizado -- auditoría/autosanación/grafo"
+  echo "   leerían un sha viejo. Repetir el deploy, o escribir la línea a mano (ver [1.bis] para el"
+  echo "   formato NDJSON), antes de confiar en ese archivo."
+  exit 1
+fi
 echo "==> Deploy completo."
