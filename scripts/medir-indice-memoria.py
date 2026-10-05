@@ -16,6 +16,7 @@ Sale 1 si alguna medida falla — sirve como gate.
 from __future__ import annotations
 
 import argparse
+import collections
 import re
 import sys
 from difflib import SequenceMatcher
@@ -86,6 +87,30 @@ def main() -> int:
 
     topicos = sorted(f for f in MEM.glob("*.md") if f.name not in ("MEMORY.md", "HISTORIA.md"))
     fallas = []
+
+    # --- 0. duplicados EXACTOS de línea: el presupuesto MIENTE mientras haya copias ---
+    # Va PRIMERO a propósito: el control 1 mide bytes y, si hay líneas repetidas, las cuenta como
+    # contenido y manda a "bajar entradas a HISTORIA.md" — o sea a PERDER información para hacer
+    # lugar a basura. Medido 2026-09-30: el medidor decía «Índice SIN MARGEN: 23810/24000, la próxima
+    # entrada NO va a entrar» y 929 de esos bytes eran SEIS líneas duplicadas exactas (un bloque de 3
+    # en §Estado vivo, 2 en §Cómo trabajo, y el encabezado «Órdenes del operador» repetido huérfano y
+    # vacío). Borradas: 22881 bytes y el veredicto pasó a «Índice sano», con las 360 entradas intactas.
+    # El control 4 existía y no podía verlo: compara DESCRIPCIONES DE ENTRADAS con umbral de
+    # similitud, y estas líneas no son entradas — el append duplicado cae justo en el hueco.
+    # ⚠️ Mira SOLO el indice, y no se extiende tal cual a HISTORIA.md: ahi los separadores `---`
+    # se repiten legitimamente (medido 2026-09-30: 3 veces, 8 bytes) y este control gritaria en el
+    # caso NORMAL, que es como un guard se desarma solo. HISTORIA se audita por OTRO criterio -- la
+    # misma entrada linkeada dos veces --, y ese sale limpio: 220 links, 220 distintos, 0 repetidas.
+    cuenta = collections.Counter(l for l in texto_indice.splitlines() if l.strip())
+    dups = {l: n for l, n in cuenta.items() if n > 1}
+    desperdicio = sum((len(l.encode("utf-8")) + 1) * (n - 1) for l, n in dups.items())
+    print(f"[{'OK ' if not dups else 'MAL'}] líneas duplicadas exactas: {len(dups)}")
+    for l, n in sorted(dups.items(), key=lambda kv: -len(kv[0]) * (kv[1] - 1)):
+        print(f"      x{n}  desperdicia {(len(l.encode('utf-8')) + 1) * (n - 1):5d} B  |  {l[:88]}")
+    if dups:
+        fallas.append(f"{len(dups)} línea(s) duplicadas exactas desperdician {desperdicio} bytes: "
+                      f"borrá las copias ANTES de bajar nada a HISTORIA.md — el presupuesto de abajo "
+                      f"las cuenta como contenido y su recomendación te hace perder entradas")
 
     # --- 1. presupuesto (en BYTES) ---
     # ⚠️ Acá vivía `peso = len(texto_indice)` con el comentario «en CARACTERES: es lo que el harness

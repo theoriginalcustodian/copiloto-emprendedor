@@ -60,8 +60,13 @@ armar() {   # armar <chars_objetivo> <n_lineas_de_relleno>
   actual="$(chars_de "$dir/memoria/MEMORY.md")"
   falta=$(( objetivo - actual )); [ "$falta" -lt 1 ] && falta=1
   por_linea=$(( falta / nl )); [ "$por_linea" -lt 1 ] && por_linea=1
+  # El relleno lleva `r$i` para que las líneas salgan DISTINTAS entre sí. No es cosmética: el
+  # medidor trata las líneas duplicadas exactas como defecto y aborta (control 0, PR #771), así que
+  # un relleno idéntico repetido hacía fallar este caso por el FIXTURE, no por el sujeto — el mismo
+  # modo de falla que la cabecera de este archivo ya documenta para el 100%. El tamaño no se mueve:
+  # el presupuesto se mide del archivo YA escrito (`medir`), no de una constante.
   for i in $(seq 1 "$nl"); do
-    printf -- '- [T1](t1.md) - %s\n' "$(printf 'x%.0s' $(seq 1 $por_linea))" >> "$dir/memoria/MEMORY.md"
+    printf -- '- [T1](t1.md) - r%s %s\n' "$i" "$(printf 'x%.0s' $(seq 1 $por_linea))" >> "$dir/memoria/MEMORY.md"
   done
   echo "$dir"
 }

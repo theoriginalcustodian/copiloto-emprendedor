@@ -73,3 +73,32 @@ probá que tu reproducción reproduce.
 herramienta real. Instalarla en el runner parece más fiel pero acopla una prueba de lógica bash a un
 gestor de paquetes Python que no participa; y dejar ganar a la de la máquina mantiene el defecto de
 fondo, que no es el rojo: es que **el test medía cosas distintas en cada máquina**.
+
+---
+
+## Refuerzo 2026-10-05 · el stub COMODÍN: contesta lo mismo a toda invocación, y el fallo aparece del lado del script
+
+`scripts/tests/test-ci-verde-gh-presente.sh` fabrica un `gh` falso que imprime **el mismo** array de 6
+jobs ante *cualquier* subcomando. Mientras `ci-verde.sh` preguntaba una sola cosa (el rollup), alcanzaba.
+`plan/ci-verde-mide-mergeable` le agregó una pregunta —`gh pr view --json mergeable,mergeStateStatus`—
+y el comodín le devolvió el array de jobs: el script no pudo leer `mergeable`, repreguntó, siguió sin
+poder y salió `exit 2` fail-closed. El CI quedó rojo **con el script correcto**.
+
+**Dos cosas que esto agrega a la entrada:**
+
+1. **Un doble que no despacha por entrada es un comodín, y el comodín envejece sin avisar.** No falla
+   cuando se escribe: falla cuando el sujeto aprende a preguntar algo nuevo, y entonces acusa al
+   sujeto. La pregunta de diseño es *¿este stub distingue las invocaciones que el script hace, o
+   contesta una sola cosa?* — si contesta una sola, es una bomba de tiempo apuntada al próximo cambio.
+2. **El camino nuevo puede ser INALCANZABLE para el fixture, y entonces sólo lo prueba la realidad.**
+   El `exit 4` de ese PR (CI verde + PR `CONFLICTING`) no se puede ejercitar con el stub, porque el
+   stub no sabe fabricar un conflicto de merge. Se verificó corriendo el script contra un PR realmente
+   conflictivo (#776: 6/6 `pass`, `CONFLICTING`) → `exit 4` con el mensaje correcto. Un caso cuyo
+   control positivo vive **fuera** del CI depende de que alguien lo corra a mano, y eso no sobrevive a
+   una semana: hay que darle al fixture la capacidad de fabricarlo, o el caso queda sin gate.
+
+**Cómo se usó acá, que es lo transferible:** el rojo se podía reportar en un minuto como «tu PR rompe
+el caso verde». Medir **a quién** acusar costó dos comandos —leer el stub, y correr el script real
+contra tres PR con esperados distintos— y cambió el destinatario del trabajo. Ver
+[[un-control-positivo-con-esperado-falso-acusa-al-script]], que es el mismo error con el esperado en vez
+del doble.
