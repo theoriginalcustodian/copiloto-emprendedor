@@ -53,13 +53,17 @@ Esa ronda cerró el 2026-08-12: sigue siendo la referencia de aquel ciclo, pero 
 manda a trabajar en un estado de hace seis semanas — el mismo defecto que se acaba de arreglar en el
 `HANDOFF.md`. Todo lo que sigue es historia del camino.*
 
-> ⚠️ **Leer esto antes del veredicto de abajo: la causa que cita fue RETIRADA el 2026-09-30, y con medición.** El tablero de planificación (`coordinacion/PLAN.md:32-33`) dice textual: «el criterio 3 ya **NO** es el motivo por el que el Cierre A no cierra, y la lista existe. Medido, no recordado: cobertura del criterio 3 = **54 de 54 (100%)** sobre `main`». El veredicto A5 sigue siendo el registro de lo que se decidió el 23/09 — **no el estado de hoy**.
+> 🏁 **El veredicto VIGENTE no es el A5 del 23/09: es el A4-bis del 2026-09-30** — `2026-09-30-A4-bis-re-veredicto-del-cierre-A-sobre-los-6-criterios-vigentes.md`, emitido por auditoría sobre `origin/main @ e147e873` y prod medido. **El Cierre A NO cierra: 3 de los 6 criterios vigentes en ❌** (2 · ítems con DoD: 3 de 66 · 3 · matriz `BL-Q5` · 4 · smoke+durabilidad, por mitades). El A5 del 23/09 queda como registro de lo que se decidió ese día; **no es el estado de hoy**.
 >
-> **Lo que sí sigue abierto del criterio 3 es otra cosa: los conflictos de veredicto** (dos documentos que miden el mismo id y no coinciden), y eso está en las dos rondas de este índice posteriores al A5 — **2026-09-30** (registro de vigencia: la sucesión la declara el sucesor) y **2026-10-05** (`HIPOTESIS_MATRIZ_2209` **REFUTADA**: el retiro que dirimía 9 ids alcanza a 0 de los `COHERENTE` que los producen).
+> 🔍 **Del criterio 3 cambió el MOTIVO, no el veredicto.** Ya no es «falta medir»: la cobertura de la lista se cerró el 30/09 (el tablero de planificación la mide **54 de 54** y declaró ese frente cerrado con las 2 mediciones hechas en #751). Lo que sostiene el ❌ es lo que midió el A4-bis: **ese `54 de 54` cuenta UNA de las dos dimensiones que el criterio exige** — el acta pide `BL-Q5` ✅ en **web y mobile** para los 54 spec, y `contar-veredictos.py` **no distingue plataforma** (un id con veredicto en web y nada en mobile cuenta como cubierto). La dimensión mobile no está contada.
 >
-> 📌 **Divergencia sin dueño, para planificación:** ese 54 de 54 del tablero convive con «53 de 54 — falta `(home)`, nunca medida» en el índice de memoria. **No la resuelvo acá**: la nombro para que no se herede como si fuera una sola cifra.
+> ✏️ **Corrijo mi propia versión de este bloque, de hace minutos (PR #790):** citaba ese `54 de 54` como «el criterio 3 ya NO es el motivo». **Fuera de contexto.** Esa línea del tablero habla del frente «re-medir las filas invalidadas», no del criterio del acta, y tomarla como respuesta al acta contradecía mi propio re-veredicto publicado **en esta misma carpeta**. No es una contradicción de planificación: fue mi error de atribución. Lo dejo escrito porque el índice es lo que circula.
+>
+> 📌 **Divergencia menor, de planificación:** el `54 de 54` del tablero convive con «53 de 54 — falta `(home)`» en el índice de memoria. Subordinada a lo de arriba: **ninguna de las dos cifras mide mobile**.
+>
+> **Lo que sigue abierto del criterio 3 en el buzón son los conflictos de veredicto** (dos documentos que miden el mismo id y no coinciden): rondas **2026-09-30** (registro de vigencia) y **2026-10-05** (`HIPOTESIS_MATRIZ_2209` **REFUTADA**).
 
-**Veredicto del 2026-09-23 (A5), hoy con su causa retirada: el Cierre A NO cerraba, por el criterio 3** — y lo que bloquea
+**Veredicto del 2026-09-23 (A5), superado por el A4-bis del 30/09: el Cierre A NO cerraba, por el criterio 3** — y lo que bloquea
 no es la falta de medición sino **quién mide**: el DoD pide que republique auditoría y las 29 filas
 web las publicó el propio medido. Decisión del operador, escalada con tres opciones.
 
