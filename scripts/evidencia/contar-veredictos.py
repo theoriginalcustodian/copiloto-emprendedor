@@ -116,6 +116,18 @@ CIEGOS_DECLARADOS = {
 # instrumento lo heredó. Un diff de universo es BIDIRECCIONAL: faltantes Y retirados.
 RETIRADOS_DECLARADOS = {"plan"}
 
+# Techo ALCANZABLE del criterio en web. NO es una exclusion de cortesia: estos cuatro son dictado
+# (`BL-P5`) y el criterio 3 compara contra una referencia de ESCRITORIO que para ellos no existe —
+# auditoria lo midio el 2026-09-29: «el criterio 3 NO TIENE referencia de escritorio» para voz. Se
+# miden en mobile, con device, el sprint que viene.
+#
+# 🔴 POR QUE ESTA DECLARADO Y SE PUBLICA, en vez de quedar como nota en un plan: el 2026-10-05 el
+# DoD que escribi decia «web 54 de 54» y era INALCANZABLE, pero el reporte publicaba «49 de 54» sin
+# nombrar a nadie — asi que nadie podia ni cerrarlos ni DESCUBRIR que cuatro no se podian cerrar. Un
+# numerador que no puede llegar a su denominador manda a trabajar al vacio y encima inventa deuda:
+# cada vuelta alguien vuelve a preguntar por los mismos cuatro ids. El instrumento publica su techo.
+FUERA_DE_ALCANCE_WEB = {"cobro-voz", "fact-voz", "pres-voz", "vozchat"}
+
 # ── C3-15: QUE DOCUMENTOS SE MIDEN ──────────────────────────────────────────────────────────────
 # Hasta el 2026-09-29 esto era `docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}`:
 # DOS documentos fijos, elegidos a mano. Medido con el glob: hay **22** documentos del buzon que
@@ -1575,8 +1587,8 @@ def cruzar_no_comparacion(lotes):
 FORMAS_DE_TABLA = ("celda",)
 
 
-def plataformas_sin_leer(meds):
-    """(filas de TABLA sin columna, {valor crudo invalido: lineas}, mediciones FUERA de tabla).
+def plataformas_sin_leer(meds, padron=()):
+    """(filas de TABLA sin columna, {valor crudo invalido: lineas}, fuera de tabla, AJENAS al padron).
 
     🔴 Las tres cosas estan separadas porque mezclarlas ya mando trabajo al lugar equivocado. La
     version anterior devolvia un solo `sin_col` con las 77 mediciones sin plataforma, y el reporte lo
@@ -1595,18 +1607,75 @@ def plataformas_sin_leer(meds):
     Por eso el tercer cubo sigue siendo ACCIONABLE: son las mediciones fuera de tabla que tampoco
     usaron el campo inline. Lo que cambia es la accion (agregar el campo, no la columna), no la
     accionabilidad.
+
+    🔴 ACCFALSO (2026-10-05) — EL CUARTO CUBO. La forma de tabla NO alcanza para pedir la columna:
+    hace falta que la fila hable de un SUJETO DEL PADRON. Sin ese filtro este lector reportaba
+    «ACCIONABLE (agregar la columna): 3 filas» sobre una tabla de CAMPOS DOM del `cierre_` de
+    frontend2 (`presupuesto-item-0-precio`, `gasto-monto`, `ingreso-monto`, con colores RGB): tiene
+    forma de tabla y no tiene la columna, pero no es una medicion del criterio 3 y agregarle
+    `plataforma` no significaria nada. Lo midio frontend2 cuando le atribui ese trabajo: «ninguna
+    fila ahi declara un id del padron». Un instrumento que manda a hacer trabajo inutil INFLA su
+    propio denominador de lo pendiente, y el que lo lee no puede distinguir las filas reales.
+
+    El filtro va ANTES del test de forma a proposito: un heading que mide `facutra` tampoco tiene
+    que declarar `plataforma: web` inline. El criterio de accionabilidad es el SUJETO, no la forma —
+    por eso el cubo se llama «ajenas al padron» y no «filas de tabla ajenas», y por eso al aplicarlo
+    bajaron los DOS cubos (3 filas de tabla y 1 heading, medido el 2026-10-05).
+
+    El dato ya existia y no se usaba: `medir()` separa `ids_medidos_fuera_del_padron` desde el
+    2026-09-29 y publicaba esos mismos 3 ids. Por eso el cuarto cubo se REPORTA y no se descarta —
+    un id ajeno al padron puede ser un typo (`facutra`), una pantalla retirada o un campo DOM, y las
+    tres se ven en ese cubo. Lo que cambia es que ya no se cobra como trabajo pendiente.
     """
-    sin_col, vocab, fuera_de_tabla = [], {}, []
+    padron = set(padron)
+    sin_col, vocab, fuera_de_tabla, ajenas = [], {}, [], []
     for m in meds:
         if m.get("plataforma", SIN_PLATAFORMA) != SIN_PLATAFORMA:
             continue
         if m.get("plat_cruda"):
             vocab.setdefault(m["plat_cruda"], []).append(m["linea"])
+        elif padron and m.get("id") not in padron:
+            # Sin padron (llamada sin el argumento) NO se filtra: un filtro que se activa con un
+            # default vacio borraria TODO el cubo accionable en silencio, que es peor que el falso
+            # positivo que arregla.
+            ajenas.append(m["linea"])
         elif m.get("forma_decl", "").startswith(FORMAS_DE_TABLA):
             sin_col.append(m["linea"])
         else:
             fuera_de_tabla.append(m["linea"])
-    return sin_col, vocab, fuera_de_tabla
+    return sin_col, vocab, fuera_de_tabla, ajenas
+
+
+def agregado_por_plataforma(lotes, ids):
+    """Union de los `ids_cerrados_por_plataforma` de todos los lotes + QUIENES faltan en web.
+
+    🔴 POR QUE ES UNA FUNCION Y NO SIGUE INLINE EN EL REPORTE: este agregado se computaba dentro del
+    bloque de impresion, o sea DESPUES del `return` de `--json` — exactamente el defecto que ya se
+    pago en este archivo con el gate de CONTRASTE (ver su comentario en `main`). La cifra del
+    criterio («web N de 54») existia SOLO en el texto para humanos, y el unico consumidor que la
+    suite llama de verdad es `--json`, que publicaba los lotes crudos y ningun agregado: para saber
+    la cifra habia que re-implementar esta union. Dos implementaciones de la misma cifra divergen, y
+    la que divergio ya mando a medir ids que estaban medidos.
+
+    FALTANTES NOMBRADOS, no contados: `web_faltan` existe porque «49 de 54» no nombraba a nadie, asi
+    que los 5 que faltaban no se podian cerrar NI se podia descubrir que 4 de ellos eran incerrables
+    (ver `FUERA_DE_ALCANCE_WEB`). El techo se publica al lado de la cifra."""
+    plat = {}
+    for d in lotes:
+        for p, lista in (d.get("ids_cerrados_por_plataforma") or {}).items():
+            plat.setdefault(p, set()).update(lista)
+    padron = set(ids)
+    web = plat.get("web", set())
+    faltan = sorted(padron - web)
+    fuera = [i for i in faltan if i in FUERA_DE_ALCANCE_WEB]
+    salida = {p: sorted(v) for p, v in sorted(plat.items())}
+    salida.update({
+        "web_faltan": faltan,
+        "web_faltan_fuera_de_alcance": fuera,
+        "web_faltan_accionables": [i for i in faltan if i not in FUERA_DE_ALCANCE_WEB],
+        "web_techo_alcanzable": len(padron - FUERA_DE_ALCANCE_WEB),
+    })
+    return salida
 
 
 def veredictos_por_id(con, ids):
@@ -1777,7 +1846,7 @@ def medir(txt, ids, armas=ARMAS):
     # `plataformas_sin_leer` se computa ACA y no en `main` porque necesita `meds`, que es
     # interno de esta funcion. Devolver `meds` entero expondria la estructura del parser a
     # quien solo quiere saber donde falta la columna.
-    return hits, con, sin, sitios, huerfanos, fuera, plataformas_sin_leer(meds)
+    return hits, con, sin, sitios, huerfanos, fuera, plataformas_sin_leer(meds, padron)
 
 
 def main():
@@ -1857,6 +1926,7 @@ def main():
             "plataforma_sin_leer_lineas": plat_sin_leer[0],
             "plataforma_vocabulario_invalido": plat_sin_leer[1],
             "plataforma_fuera_de_tabla_lineas": plat_sin_leer[2],
+            "plataforma_sin_leer_ajenas_al_padron": plat_sin_leer[3],
             # El mapa id -> veredictos CERRADOS. Sin el, `detalle` lista veredictos por linea sin
             # sujeto, asi que no se podia cruzar el mismo id entre documentos — y ese cruce es lo
             # unico que caza un COHERENTE falso.
@@ -1979,6 +2049,39 @@ def main():
                   f"el defecto inerte de vuelta.", file=sys.stderr)
             sys.exit(7)
 
+    # --- control 5: CANARIO DE ACCFALSO (el cubo accionable no puede quedar MUERTO) ------------
+    # Mismo criterio que los otros cuatro: un filtro cuya rotura no mueve nada es un filtro sin
+    # control. El de ACCFALSO es peligroso justamente porque RESTA trabajo pendiente — si quedara
+    # demasiado ancho, taparía filas reales a las que SÍ hay que agregarles la columna y el síntoma
+    # sería un reporte más limpio, que nadie audita.
+    #
+    # La forma que discrimina: declarar en el padrón los ids que hoy están afuera y exigir que (a) el
+    # cubo «ajenas» se vacíe —prueba que el filtro se apoya en el padrón de verdad y no en otra cosa—
+    # y (b) esas mediciones REAPAREZCAN en los cubos accionables, una por una. (b) es lo que separa
+    # «reclasificar» de «descartar en silencio», que es el error espejo y el que más barato sale de
+    # escribir. Tautológico habría sido medir sólo (a): el cubo se vacía por la condición misma.
+    #
+    # DEUDA DECLARADA, no fingida: la dirección contraria —que alguien QUITE el filtro— no tiene
+    # canario acá, porque su síntoma es `ajenas == 0`, que también es el estado legítimo de un corpus
+    # donde todos los sujetos son del padrón. Un abort ahí sería un falso rojo en el caso normal, y
+    # un guard que grita en el caso normal se desarma solo. Lo cubre el test de la suite, que fija
+    # un corpus con un id ajeno conocido.
+    for k in docs:
+        d = res["lotes"][k]
+        ajenas_n = len(d.get("plataforma_sin_leer_ajenas_al_padron") or ())
+        if not ajenas_n:
+            continue
+        base = len(d["plataforma_sin_leer_lineas"]) + len(d["plataforma_fuera_de_tabla_lineas"])
+        amp = medir(textos[k], list(ids) + sorted(d.get("ids_medidos_fuera_del_padron") or {}))[6]
+        rec = len(amp[0]) + len(amp[2])
+        if amp[3] or rec != base + ajenas_n:
+            print(f"CANARIO DE ACCFALSO FALLA en {k}: declare en el padron los {ajenas_n} id(s) "
+                  f"ajenos y el cubo «ajenas» quedo en {len(amp[3])} (esperaba 0) con "
+                  f"{rec} accionables (esperaba {base + ajenas_n}). O el filtro no se apoya en el "
+                  f"padron, o DESCARTA mediciones en vez de reclasificarlas: en el segundo caso el "
+                  f"reporte resta trabajo pendiente que si existe.", file=sys.stderr)
+            sys.exit(14)
+
     # ── CONTRASTE id -> veredictos: el único control que caza un COHERENTE falso ──────────────
     # 🔴 Esto vivía DESPUÉS del `return` de `--json`, o sea INERTE en el único camino que alguien
     # llama (la suite entera usa `--json`). Lo cazó su propio control positivo saliendo verde. El
@@ -1993,6 +2096,10 @@ def main():
               f"control que caza un COHERENTE falso, y un COHERENTE falso desactiva trabajo sin "
               f"dejar rastro.", file=sys.stderr)
         sys.exit(11)
+
+    # ARRIBA de la bifurcacion a proposito: la cifra del criterio no puede existir solo en el
+    # formato para humanos (ver el docstring de `agregado_por_plataforma`).
+    res["agregado_por_plataforma"] = agregado_por_plataforma(res["lotes"].values(), ids)
 
     if "--json" in sys.argv:
         res["instrumento"] = sello_del_instrumento()
@@ -2074,11 +2181,8 @@ def main():
     # como cubierto: un solo numero para DOS poblaciones. `cerrada` sigue impresa abajo como
     # agregado -no se descarta informacion- pero la cifra que se cita es la de la plataforma, y el
     # criterio 3 de este sprint esta acotado a WEB por decision del operador.
-    plat = {}
-    for d in res["lotes"].values():
-        for p, lista in d.get("ids_cerrados_por_plataforma", {}).items():
-            plat.setdefault(p, set()).update(lista)
-    web, mob, indet = (sorted(plat.get(k, ())) for k in ("web", "mobile", "indeterminada"))
+    agg = res["agregado_por_plataforma"]
+    web, mob, indet = (agg.get(k, []) for k in ("web", "mobile", "indeterminada"))
     solo_nc = cruzar_no_comparacion(res["lotes"].values())
     # La huella va ARRIBA de la cifra y no en un pie: el que copia el numero se lleva la linea de
     # al lado, no la del final del reporte.
@@ -2092,8 +2196,21 @@ def main():
         n = solo_nc.get(p, ())
         return (f"  ⚠️ de los cuales {len(n)} SIN comparación ({', '.join(n[:5])}"
                 f"{'…' if len(n) > 5 else ''})") if n else ""
+    techo = agg["web_techo_alcanzable"]
     print(f"      web  {len(web)} de {len(ids)}   ({100 * len(web) // len(ids)}%)  <- la que se cita "
-          f"este sprint (criterio 3 acotado a web){_nc('web')}")
+          f"este sprint (criterio 3 acotado a web) · TECHO ALCANZABLE {techo}"
+          f"{' ✅ COMPLETO' if len(web) >= techo else ''}{_nc('web')}")
+    # Los faltantes van NOMBRADOS y partidos en dos: el que lee tiene que poder cerrar los
+    # accionables y NO volver a preguntar por los otros. Un conteo sin sujetos no permite ninguna
+    # de las dos cosas — fue lo que dejo «49 de 54» congelado con un DoD inalcanzable.
+    if agg["web_faltan"]:
+        acc, fue = agg["web_faltan_accionables"], agg["web_faltan_fuera_de_alcance"]
+        if acc:
+            print(f"      └─ FALTAN en web, accionables ({len(acc)}): {', '.join(acc)}")
+        if fue:
+            print(f"      └─ fuera de alcance web ({len(fue)}, NO se pueden cerrar en este sprint): "
+                  f"{', '.join(fue)} — dictado, sin referencia de escritorio (`BL-P5`); se miden en "
+                  f"mobile con device")
     print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)"
           f"{_nc('mobile')}")
     print(f"      indeterminada  {len(indet)} de {len(ids)}  <- NO es una plataforma: es lo que el "
@@ -2108,6 +2225,8 @@ def main():
             for crudo, ls in d.get("plataforma_vocabulario_invalido", {}).items():
                 invalidos.setdefault(crudo, 0)
                 invalidos[crudo] += len(ls)
+        ajenas = sum(len(d.get("plataforma_sin_leer_ajenas_al_padron", ()))
+                     for d in res["lotes"].values())
         print(f"      └─ ACCIONABLE (agregar la columna): {sin_col} fila(s) de tabla" +
               (f" · {sum(invalidos.values())} con la columna y valor FUERA del vocabulario: "
                f"{sorted(invalidos)}" if invalidos else ""))
@@ -2116,6 +2235,20 @@ def main():
         print(f"      └─ ACCIONABLE con el campo inline: {fuera_tab} medición(es) en heading o "
               f"bullet sin columna posible, que tampoco declararon `plataforma: <valor>` en su "
               f"bloque (el mecanismo existe: frontend1 lo usó 21 veces en el lote A)")
+        if ajenas:
+            # ACCFALSO: se dice y NO se cobra. Antes caian en los dos cubos de arriba y mandaban a
+            # agregar `plataforma` a filas que no hablan de ninguna pantalla del padron.
+            #
+            # Se NOMBRAN los sujetos, no se cuentan: `card-ingreso` puede ser un typo que alguien
+            # arregla en 10 segundos y `gasto-monto` un campo DOM que no va a existir nunca — un
+            # numero solo no deja decidir ninguna de las dos. Es la misma leccion que la cifra del
+            # criterio: publicar el conteo sin los sujetos congela el frente.
+            ajenos_ids = sorted({i for d in res["lotes"].values()
+                                 for i in (d.get("ids_medidos_fuera_del_padron") or {})
+                                 if d.get("plataforma_sin_leer_ajenas_al_padron")})
+            print(f"      └─ NO accionable: {ajenas} medición(es) cuyo sujeto NO está en el padrón "
+                  f"— no necesitan `plataforma`: {', '.join(ajenos_ids)}. Si alguno es un typo de un "
+                  f"id real, ahí sí hay trabajo (y es del autor del documento)")
         peores = sorted(((len(d.get("plataforma_sin_leer_lineas", ())), n)
                          for n, d in res["lotes"].items()), reverse=True)[:3]
         if peores and peores[0][0]:

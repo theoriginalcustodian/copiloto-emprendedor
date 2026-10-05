@@ -42,9 +42,12 @@ def sin_comparacion(txt):
     _, con, _, _, _, _, _ = cv.medir(txt, IDS)
     return cv.ids_solo_no_comparacion_por_plataforma(con, IDS)
 
-def sin_leer(txt):
-    _, _, _, _, _, _, ps = cv.medir(txt, IDS)
-    return ps   # (filas de TABLA sin columna, {valor crudo: lineas}, fuera de tabla)
+def sin_leer(txt, ids=None):
+    """(filas de TABLA sin columna, {valor crudo: lineas}, fuera de tabla, AJENAS al padron).
+
+    `ids` se puede pasar para ampliar el padron: es lo que ejercita el cuarto cubo (casos 19-20)."""
+    _, _, _, _, _, _, ps = cv.medir(txt, IDS if ids is None else ids)
+    return ps
 
 # La forma REAL que escribe FE1 (`cierre_…B1-13-ids-superficie-y-dimension.md:38`), recortada a lo
 # que este test necesita. `superficie` y `dimension` quedan a proposito: son columnas distintas y el
@@ -80,7 +83,7 @@ casos.append(("sin columna -> indeterminada, no web",
 # son dos trabajos distintos.
 txt4 = CAB + "| `cuenta` (Mi cuenta) | pwa | app | layout | COHERENTE |\n"
 p = plataformas(txt4)
-_, invalidos, _ = sin_leer(txt4)   # (filas de tabla, vocab invalido, fuera de tabla)
+_, invalidos, _, _ = sin_leer(txt4)   # (tabla, vocab invalido, fuera de tabla, ajenas)
 casos.append(("vocabulario inventado (`pwa`) -> indeterminada Y nombrado",
               "cuenta" in p["indeterminada"] and "cuenta" not in p["web"]
               and "pwa" in invalidos, (p, sorted(invalidos))))
@@ -127,7 +130,7 @@ casos.append(("la columna no se hereda a la tabla siguiente",
 # en su cubo. Afirmar sólo una dejaría pasar un reporte que las mete a las dos en el mismo lado.
 FIX9 = (CAB_SIN + "| `card` (gasto) | app | layout | COHERENTE |\n"
         + "\n### `factura` — camino A (ARCA)\n\nVeredicto: COHERENTE\n")
-tabla, invalidos, fuera = sin_leer(FIX9)
+tabla, invalidos, fuera, _ = sin_leer(FIX9)
 casos.append(("DIFERENCIAL fila de tabla -> accionable, heading -> NO accionable",
               len(tabla) == 1 and len(fuera) == 1 and not invalidos,
               "tabla=%s fuera=%s" % (tabla, fuera)))
@@ -158,7 +161,7 @@ casos.append(("la declaracion inline no se hereda al heading siguiente",
 txt12 = ("### `cuenta` — camino A (Mi cuenta)\n\n`plataforma: web`\n\n`plataforma: mobile`\n\n"
          "Veredicto: COHERENTE\n")
 p = plataformas(txt12)
-_, invalidos12, _ = sin_leer(txt12)
+_, invalidos12, _, _ = sin_leer(txt12)
 casos.append(("dos declaraciones inline distintas -> indeterminada Y el conflicto nombrado",
               "cuenta" in p["indeterminada"] and "cuenta" not in p["web"]
               and "cuenta" not in p["mobile"]
@@ -189,7 +192,7 @@ casos.append(("la cabecera `| ... | plataforma |` NO declara nada (control del p
 txt14 = (CAB + "| `detalle` (Mi día) | ambas (mobile `[ASSUMED_PENDING_VERIFY]`, línea no releída) "
                 "| app | layout | COHERENTE |\n")
 p = plataformas(txt14)
-_, invalidos14, _ = sin_leer(txt14)
+_, invalidos14, _, _ = sin_leer(txt14)
 casos.append(("hedge «ambas (mobile …)» -> indeterminada, NO mobile, Y nombrado",
               "detalle" in p["indeterminada"]
               and "detalle" not in p["mobile"] and "detalle" not in p["web"]
@@ -240,6 +243,35 @@ cruz = cv.cruzar_no_comparacion([doc_a, doc_b])
 casos.append(("el cruce entre docs: comparado en OTRO doc -> no se marca",
               "factura" not in cruz["web"] and "card" in cruz["web"], cruz))
 
+# ── 19. ACCFALSO — el cubo accionable exige SUJETO DEL PADRON (diferencial puro) ─────────────
+# El falso positivo REAL que esto cierra: el reporte publicaba «ACCIONABLE (agregar la columna): 3
+# filas» sobre una tabla de CAMPOS DOM del `cierre_` de frontend2 (`gasto-monto`, `ingreso-monto`,
+# `presupuesto-item-0-precio`, con colores RGB). Tiene forma de tabla y no tiene la columna, pero no
+# mide ninguna pantalla del padron: agregarle `plataforma` no significaria nada. Un instrumento que
+# manda a hacer trabajo inutil INFLA su propio denominador de lo pendiente, y el que lee el numero
+# no puede separar las filas reales de las que no lo son. Lo midio frontend2 cuando le atribui ese
+# trabajo: «ninguna fila ahi declara un id del padron».
+#
+# DIFERENCIAL en el MISMO fixture, misma tabla, misma ausencia de columna: la UNICA variable es si
+# el sujeto esta en el padron. Afirmar solo el lado ajeno dejaria pasar un filtro que se come las
+# dos filas -- que es el error espejo y resta trabajo que SI existe.
+FIX19 = (CAB_SIN + "| `card` (gasto) | app | layout | COHERENTE |\n"
+         + "| `gasto-monto` (form de gasto) | app | layout | COHERENTE |\n")
+tabla19, _, fuera19, ajenas19 = sin_leer(FIX19)
+casos.append(("ACCFALSO: fila del padron -> accionable, fila con sujeto AJENO -> no accionable",
+              len(tabla19) == 1 and len(ajenas19) == 1 and not fuera19,
+              "tabla=%s ajenas=%s fuera=%s" % (tabla19, ajenas19, fuera19)))
+
+# ── 20. CONTROL DE NO-DESCARTE: declarar el id ajeno lo DEVUELVE al cubo accionable ──────────
+# Lo que separa «reclasificar» de «descartar en silencio», que es la implementacion mas barata de
+# escribir y la que no da sintoma: con un `continue` los dos casos de arriba salen igual de verdes
+# (`ajenas` seria 0 y nadie lo nota) y el instrumento perderia mediciones reales. Si el filtro se
+# apoya de verdad en el padron, agregar `gasto-monto` tiene que mover la fila de cubo, no crearla.
+tabla20, _, _, ajenas20 = sin_leer(FIX19, IDS | {"gasto-monto"})
+casos.append(("declarar el id ajeno en el padron lo devuelve a accionable (no se descarto)",
+              len(tabla20) == 2 and not ajenas20,
+              "tabla=%s ajenas=%s" % (tabla20, ajenas20)))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -257,6 +289,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 18 ] || { echo "❌ esperaba >=18 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 20 ] || { echo "❌ esperaba >=20 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
-echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, y un veredicto de mobile no cuenta como web"
+echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, un veredicto de mobile no cuenta como web, y el cubo accionable exige sujeto del padrón"
