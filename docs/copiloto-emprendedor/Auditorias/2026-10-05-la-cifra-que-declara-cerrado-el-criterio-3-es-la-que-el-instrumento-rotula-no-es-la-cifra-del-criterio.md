@@ -111,7 +111,8 @@ No tomo ninguna: son filas para asignar.
 | id | Severidad | Qué | Acción propuesta | Dueño |
 |---|---|---|---|---|
 | `CIFRA3SINACOTAR` | **alta** | El `54 de 54 (100%)` de `PLAN.md:28-46` es la línea rotulada «NO es la cifra del criterio». La del criterio es web 50/54; la del acta, 9/54 | Citar la cifra **con su unidad y plataforma**, o citar el rótulo completo | planificación |
-| `CIFRA3NORECOMP` | **alta** | El instrumento aborta `rc=8` sobre el corpus vivo ⇒ la cifra del criterio 3 **no es recomputable hoy**; toda cita es histórica | Es el mismo documento sin clasificar ya reportado. **Bloquea cualquier declaración de cierre del criterio 3** | planificación |
+| ~~`CIFRA3NORECOMP`~~ | — | **RETIRADA el mismo día, §8: su disparador se cumplió mientras la escribía.** Planificación clasificó el documento y el instrumento pasa a `rc=0` sobre el corpus vivo | Nada que asignar | — |
+| `CANARIOTRASGUARD` | **alta** | El `--canario` —el control positivo del propio instrumento— también abortaba con `rc=8`: corre **después** del guard de clasificación, así que un documento sin clasificar no bloqueaba sólo la cifra, **bloqueaba la acreditación de la cifra**. Medido a las dos puntas: `rc=8` a las 17:3x, `rc=0` después del desbloqueo | Correr el canario **antes** del guard de corpus, o declarar que el canario no acredita nada mientras el guard pueda disparar | planificación |
 | `NCNOVIAJA` | media-alta | El aviso «N SIN comparación» vive en `:2483`, el `--json` sale en `:2403`. El JSON publica el numerador sin su acotamiento | Subir `cruzar_no_comparacion` arriba de `:2403` y publicarlo en `res` | planificación (dueña de `scripts/`) |
 | `MEMORYHOME` | media | `MEMORY.md` dice «53 de 54 — falta `(home)`, nunca medida». `(home)` **está** en la lista web; los que faltan en web son **4** (`cobro-voz`, `fact-voz`, `pres-voz`, `vozchat`), nombrados por el instrumento con su acción | Reemplazar por la cifra con unidad | planificación |
 | `MOBILESINCIERRE` | media | `mobile_*` = 0 ocurrencias vs `web_*` = 10: mobile no tiene techo, faltantes nombrados ni acción, así que su cifra no se puede cerrar con el mecanismo que cerró web | Decidir si mobile recibe el mismo mecanismo o si se declara explícitamente fuera del criterio este sprint | planificación |
@@ -130,6 +131,32 @@ No tomo ninguna: son filas para asignar.
 - **`indeterminada: 4`** (`card`, `card-cobro`, `card-presu`, `factura`) no infla ni desinfla: son
   veredictos cuya plataforma el lector no pudo leer, de ids que **además** tienen veredictos con
   plataforma. El instrumento ya los parte en accionables (16 con campo inline) y no accionables (4).
+
+---
+
+## 8. REPRODUCIDA sobre el corpus VIVO — y el canario que el guard tapaba
+
+Escrito el §1 de este documento, planificación **clasificó** el documento que frenaba el gate. Volví a medir, y hay tres cosas:
+
+**1. La cifra viva es idéntica a la congelada.** Instrumento de `origin/main @ 0ad42ab7` (huella `61380b0e`, **2617** líneas — otro archivo que el de §2, que tenía 2591), corpus **vivo**, `rc=0`:
+
+```
+web  50 de 54   (92%)  · TECHO ALCANZABLE 54  ⚠️ de los cuales 5 SIN comparación
+mobile  13 de 54   (sprint siguiente, con device/EAS)  ⚠️ de los cuales 5 SIN comparación
+indeterminada  4 de 54
+```
+
+Mismas cifras, mismos 5 sin comparar en cada plataforma, mismos 4 faltantes nombrados. **Dos corpus y dos instrumentos distintos dan el mismo resultado**, así que el veredicto de §1 no depende del congelado. Lo que `§3` dice sobre el `54 de 54` se mantiene palabra por palabra: el reporte vivo lo sigue rotulando «NO es la cifra del criterio».
+
+**2. Retiro mi fila `CIFRA3NORECOMP`.** La escribí con `rc=8` medido y para cuando la entregué ya era falsa. Es mi propia clase `un-disparador-cumplido-no-avisa-a-nadie`, cobrada dentro de la misma entrega. **La observación no se retira:** durante unas horas de hoy la cifra del criterio 3 **no fue recomputable**, y en esas horas se la citaba igual.
+
+**3. Hallazgo nuevo: el canario vivía detrás del guard.** Mientras el documento estuvo sin clasificar, `--canario` **también** abortaba con `rc=8` — lo corrí y lo medí. El control positivo del instrumento corre **después** del guard de corpus, así que un solo archivo sin clasificar no bloqueaba únicamente la cifra: bloqueaba **la prueba de que el lector funciona**. Después del desbloqueo: `rc=0` y «CANARIO OK: los 5 brazos tienen control». Es la clase `un-control-de-ceguera-ubicado-despues-del-guard-que-dispara`, y **el falso rojo del canario es peor que el de la cifra**: el que lo ve concluye que el instrumento está roto.
+
+**4. Mi fila `NCNOVIAJA` sobrevive a la re-medición.** En el instrumento nuevo el `json.dumps` está en **`:2429`** y `cruzar_no_comparacion` en **`:2509`** — siguen siendo **80 líneas** de distancia, el JSON sigue teniendo **9** claves de primer nivel y **ninguna** trae el agregado de no-comparación. La fila se entrega medida contra el árbol de hoy, no contra el de la corrida original.
+
+**5. Lo que planificación midió y yo no, y precisa mi §3** (se lo atribuyo, no lo verifiqué): el `54 de 54` del tablero **se tomó el 30/09 con el instrumento de ese día**, que no separaba plataforma ni filtraba vocabulario cerrado. O sea **no es una cifra vieja de la misma magnitud: es de otra magnitud**. Su clase, `CIFRASINUNIDAD`, es más general que mi fila `CIFRA3SINACOTAR` y la subsume: una cifra sin unidad se deja citar para cualquier pregunta. Ya corregido en `PLAN.md` del lado de planificación.
+
+**6. Dato medido, no fila mía:** el contrato `PLATCONV` sigue en `coordinacion/abierto/` y su DoD del lado **planificación** está **cumplido** — «el lector imprime las tres cifras separadas» ✅ (web/mobile/indeterminada), «el control positivo corre en verde y está versionado» ✅ (`--canario` `rc=0`, los 5 brazos). Lo que queda abierto es el lado **FE1/FE2**: el reporte vivo cuenta **16 medición(es)** en heading o bullet que no declararon `plataforma`.
 
 ---
 
