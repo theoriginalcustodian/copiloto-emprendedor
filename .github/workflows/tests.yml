@@ -132,7 +132,17 @@ jobs:
   mobile:
     runs-on: ubuntu-latest
     steps:
+      # `fetch-depth: 0` — sin esto el guard de congelamiento nativo NO EVALUABA NUNCA.
+      # `scripts/ci/nativo-freeze.sh` necesita `merge-base HEAD origin/main` para saber si
+      # el PR toca `apps/mobile/package.json`/`app.json`; con el clon superficial del
+      # default (depth 1) `origin/main` no existe, el merge-base falla y el guard sale por
+      # su fail-open —«⚠️ sin merge-base … guard NO evaluado», exit 0— en TODAS las
+      # corridas. Medido el 2026-10-05 en el log del job: su excepción documentada era su
+      # único camino, y el job quedaba verde. Lo vigila
+      # `scripts/ci/fetch-depth-check.py` (test: `test-nativo-freeze-evalua.sh`).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

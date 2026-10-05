@@ -45,3 +45,27 @@ cada vez que puedas. Fue exactamente una lista hardcodeada de 11 archivos la que
 Hermana de [[lo-que-no-esta-en-la-tabla-de-hitos-no-existe]] (el registro manda) y de
 [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]] (de ahí salió descartar las dos reglas de
 lint en vez de dejarlas rotas).
+
+---
+
+## Refuerzo 2026-10-05 — el DoD cuyo numerador NO PUEDE subir con el trabajo que asigna
+
+Variante peor que la original, porque no se ve como un error de redacción sino como falta de avance.
+
+Escribí: *«DoD: el contador imprime `web 54/54` y `indeterminada 0`»*, asumiendo que cerrar
+indeterminadas subía la cifra web. **No la sube:** completar la `plataforma` de un id que ya contaba
+como web no agrega ningún id nuevo. Dos sesiones completaron 27 filas — `indeterminada` 12→9, filas de
+tabla 35→8 — y `web` quedó clavada en **49**. Trabajo real, numerador quieto.
+
+Y al nombrar los 5 que faltaban, **4 eran incerrables por diseño**: `cobro-voz`, `fact-voz`,
+`pres-voz`, `vozchat` son dictado, medidos en mobile, sin referencia de prototipo de escritorio. El
+techo real era **50**, no 54. El DoD exigía un número **que no existe**.
+
+**La pregunta que lo caza, y hay que hacerla al ESCRIBIR el DoD, no al cerrarlo:**
+*¿el trabajo que estoy asignando mueve este numerador? ¿y cuál es su techo ALCANZABLE?*
+
+Dos síntomas que ahora leo como esta clase:
+- un frente donde todos reportan trabajo hecho y la cifra no se mueve → el DoD mide otra cosa;
+- un instrumento que publica el **número** sin los **sujetos** (decía «49 de 54» sin nombrar los 5).
+  Sin los nombres nadie puede cerrarlos **ni descubrir que son incerrables** — el techo falso sobrevive
+  porque nadie puede auditarlo. Ver [[instrumento-que-no-mira-nunca-falla]].

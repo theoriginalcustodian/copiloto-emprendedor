@@ -97,7 +97,35 @@ ESPERADOS="${2:-backend core web mobile lint drift}"
 #     argumenta como fail-LOUD) y está fijado por un test
 #     (`scripts/tests/test-deuda-disparador-cumplido.sh:209` afirma exit 1 para ese mensaje), así
 #     que cambiarlo es un cambio de contrato, no un fix. Queda como fila con dueño, no se toca acá.
-json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
+# ── El rollup trae cada job UNA VEZ POR RUN, y el gate leia los duplicados como un valor ──────
+#
+# 🔴 MEDIDO el 2026-10-05 sobre el PR #778 con dos pushes: `statusCheckRollup` devolvia **12**
+# entradas para **6** jobs (backend x2, core x2, ... cada una con su `startedAt`), porque el rollup
+# acumula los check-runs de TODOS los runs del PR, no los del ultimo. Con duplicados,
+# `jq '.[]|select(.name==$n)|.conclusion'` imprime DOS lineas y la comparacion `[ "$c" = "SUCCESS" ]`
+# recibe `"SUCCESS\nSUCCESS"` -> falso. Resultado: `❌ backend: SUCCESS` (condena un job que paso) y
+# el control `12 presentes / 6 esperados` cerraba en ROJO.
+#
+# Lo peligroso no es el rojo, es lo que ENSEÑA: un gate que se pone rojo en el caso NORMAL —dos
+# pushes a un PR es lo normal— es un gate que se saltea con `--admin`
+# ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). Y fallaba hacia el NO, que parece
+# prudencia ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
+#
+# 🔴 Y EL FIX YA EXISTIA 30 LINEAS MAS ABAJO: la rama de `/check-runs` (el fallback) ya desempata el
+# mismo nombre repetido tomando el `started_at` maximo, con su comentario explicando por que. El
+# defecto vivia en el otro call-site, que nadie habia tocado
+# ([[el-fix-ya-existe-en-otro-call-site]] · [[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).
+# `max_by` sobre ISO-8601 ordena cronologicamente; una entrada sin `startedAt` (un StatusContext, no
+# un CheckRun) cae a "" y pierde contra cualquiera fechada, y si esta sola se queda igual.
+#
+# ⚠️ ESTA EN UNA VARIABLE A PROPOSITO, no inline: los stubs de los tests de este gate reciben el
+# rollup **ya filtrado** y por eso entran POR DEBAJO de este `jq` — 14 casos verdes que no podian
+# ver este bug ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]). Con la
+# expresion en una variable, un test puede `eval` esta linea y ejercitar LA MISMA expresion que
+# produccion: `scripts/tests/test-ci-verde-rollup-duplicado.sh`.
+ROLLUP_JQ='[.statusCheckRollup[]|{name,conclusion,status,startedAt}] | group_by(.name) | map(max_by(.startedAt // ""))'
+
+json=$(gh pr view "$PR" --json statusCheckRollup --jq "$ROLLUP_JQ") || {
   echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
 
 # ── FALLBACK: el rollup VACÍO no es el único lugar donde viven los check-runs ──────────────────
@@ -214,7 +242,14 @@ if [ "$falta" -eq 0 ]; then
   ms="$(estado_de_merge "$PR")"
   case "$ms" in
     MERGEABLE/*)
-      echo "VERDE — se puede mergear"
+      # ⚠️ EL VEREDICTO DECLARA LO QUE MIDIO, y no es cosmetica: hasta hoy esta linea decia
+      # solo «VERDE — se puede mergear», que es **palabra por palabra** la salida del
+      # fail-open que #772 vino a matar (un `echo VERDE; exit 0` que no consultaba
+      # `mergeable`). O sea que el recibo que se pega en un PR era indistinguible entre «medi
+      # el merge y da MERGEABLE» y «no mire». El exit code no los separa: los dos son 0, y el
+      # unico que los separa es el TEXTO — la misma leccion que el `guard NO evaluado` del
+      # freeze nativo. Ahora el recibo trae el valor y el denominador.
+      echo "VERDE — se puede mergear (merge=$ms · $presentes/$esperados_n jobs del $fuente)"
       exit 0
       ;;
     CONFLICTING/*)

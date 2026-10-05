@@ -173,3 +173,12 @@ citarlo; (2) `--numstat` vacío no es lectura fallida ni «sin cambios» — com
 saber cuál de las dos; (3) todo veredicto de «aporte cero» se cierra con el tree hash, no con la
 lectura del diff; (4) antes de avisar, separá *perdió* de *redundante* — la primera manda a alguien a
 rehacer, la segunda sólo corrige un puntero.
+
+## Hermana medida aparte (2026-09-29, rescatada el 2026-10-05)
+
+El gemelo exacto del lado de la LECTURA: [[wc-l-de-un-git-log-que-erroro-da-cero-no-nada-que-ver]].
+Acá el push sale 0 sin haber pusheado; allá el conteo de ``commits sin pushear`` sale 0 porque el ref
+remoto nunca existió y el stderr se perdió en el pipe. Los dos colapsan ``no pude medir`` y ``medí cero``
+en la misma salida, y el control es el mismo: ``git ls-remote origin refs/heads/<rama>`` — preguntarle al
+servidor, nunca al ref local.
+

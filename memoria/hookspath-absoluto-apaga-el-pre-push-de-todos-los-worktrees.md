@@ -38,7 +38,9 @@ repo: lo escribe el harness.
   el que ejecuta es otro árbol.
 - El valor correcto es `core.hooksPath=.githooks` **relativo**, que git resuelve contra la raíz de
   cada worktree. Detectores: `gate.sh` da rojo si se desvía (H-A4-1) y `vigilancia-check.sh` alarma en
-  cada latido con la hora del cambio.
+  cada latido con la hora del cambio. El control de servidor (push protection de GitHub) se le
+  propuso al operador (Telegram 22) y sigue sin respuesta: hasta que exista, los dos detectores
+  son de cliente y un arbol con el valor absoluto los apaga a los dos.
 
 **🔴 DETECTAR NO ES BLOQUEAR — probado con un push real (A4-bis, 2026-09-22).** Los dos detectores de
 arriba funcionan y tienen control negativo, y aun así **un commit con secreto entró al remoto**: con el

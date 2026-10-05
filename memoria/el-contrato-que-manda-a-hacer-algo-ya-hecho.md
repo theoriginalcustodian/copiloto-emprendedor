@@ -57,3 +57,43 @@ no el título — son los dos últimos campos y son los que contradicen; (2) si 
 te encontrás buscando qué darle, pará: **medí cuántas filas abiertas tiene** antes de asignarle una, y
 si son cero, decilo en vez de rellenar; (3) escribí en el contrato que medir el tablero antes de
 arrancar es parte del trabajo — la sesión que obedece sin medir es la que produce el daño.
+
+## Refuerzo 2026-10-05 — un archivo DIVERGENTE no dice si es más nuevo o más VIEJO que `main`
+
+La forma más caliente de esta falla no es citar un id ya cerrado: es **leer «modificado / untracked»
+como «trabajo nuevo que todavía no llegó»**. El estado de git dice que el disco y `main` difieren.
+**No dice en qué dirección.** Y la dirección es todo el veredicto.
+
+Me pasó **dos veces en una hora**, el mismo día:
+
+1. **WIPCOMPART.** Medí 22 tracked + 82 untracked en el checkout compartido, vi `+101` en
+   `PantallaFacturacion.tsx` con la clave de idempotencia entera y su ADR-005 sin versionar, y bajé
+   dos contratos diciendo «FACTID está implementado de los dos lados y nada llegó a `main`, con
+   `FACTIDFIX` abierto como gate de AFIP **producción**». Frontend1 lo refutó en una pasada: **ya
+   estaba en `main` desde el 29/09** (PR #729, `6641e83a`). Lo del disco eran **copias viejas** — al
+   `.test.tsx` le faltaba contenido que `main` sí tiene. Convertí una limpieza en una alarma de
+   producción porque no medí la dirección.
+2. **Mi PR #776.** Acá sí la medí, y salió al revés de lo que suponía: **11 de 22 archivos ya
+   idénticos en `main`**, y de los 11 que divergían el diff contra `main` daba `+0 −105`, `+12 −413`,
+   `+1 −92`. O sea que la rama **borraría** cientos de líneas que `main` ya tiene. Las líneas «+» que
+   parecían su aporte eran el encabezado original de archivos que `main` ya reescribió.
+
+**La medición que decide, y es de una línea:**
+
+```bash
+git diff --numstat origin/main HEAD -- <archivo>   # ¿suma o RESTA contra main?
+```
+
+Si contra `main` el archivo **resta** líneas, la copia es la vieja: el veredicto es `YA-EN-MAIN` o
+`DESCARTAR`, nunca `MERGEAR`. En un checkout con HEAD viejo, **`YA-EN-MAIN` es la hipótesis por
+defecto**, no la excepción.
+
+**Por qué el error es asimétrico y siempre cae del mismo lado:** suponer «nuevo» produce una alarma
+—trabajo en riesgo, gate abierto, contratos bajados— y suponer «viejo» produce una limpieza. La
+alarma se siente como prudencia y nadie la audita, así que el falso positivo sobrevive. Y si alguien
+«resuelve» ese estado tomando el lado del disco (`--ours`, o un merge sin medir), **borra en silencio
+lo que `main` ya tenía** y el síntoma aparece semanas después.
+
+**La pregunta que lo caza:** *¿este archivo le agrega algo a `main`, o `main` le agrega algo a él?*
+Ver también [[checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree]] ·
+[[resolver-tomando-un-lado-nunca-converge]] · [[deploy-sh-no-valida-checkout-al-dia-con-main]].

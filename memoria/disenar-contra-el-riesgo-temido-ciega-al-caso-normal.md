@@ -55,3 +55,23 @@ que lo dispare — y eso, que era obvio para mí, no estaba escrito en ninguna p
 
 Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]]: allá el instrumento miente en verde,
 acá **obedece perfecto y paraliza**. En los dos casos el instrumento está sano y el resultado es falso.
+
+
+## Refuerzo (2026-10-05) — previne el corpus AUSENTE y quedé ciego al corpus PRESENTE Y MUTANDO
+
+`test-a-todos-sin-cierre.sh` caso 8 comparaba **dos corridas consecutivas sobre el buzón vivo**, que
+cuatro sesiones escriben en paralelo. Un archivo que nace entre las dos lecturas da `85` y `84`, y el
+test lo denuncia como «no es idempotente»: **acusa al CÓDIGO de lo que hizo el CORPUS**.
+
+Lo que hace a este caso texto de estudio es que la previsión estaba escrita, con cuidado, **al lado**:
+mi comentario `:107-111` explicaba que en CI `coordinacion/` no existe y que ahí el `exit 2` («no pude
+medir») es la respuesta correcta, no una falla. Diseñé contra la ausencia. El caso normal —el corpus
+está, y cambia mientras lo medís— no tenía una línea.
+
+Costo: el pre-push de un repo **público** en rojo, que es donde un falso rojo enseña el `--no-verify`
+con gitleaks colgando del mismo hook. El guard que grita en el caso normal se desarma solo.
+
+El arreglo no fue mover el corpus sino **separar dos preguntas que el caso tenía fundidas**: el `rc` es
+dato de ESTADO (y es estable ante archivos nuevos) mientras la idempotencia es propiedad del CÓDIGO, y
+por eso va sobre corpus congelado. **Pregunta portable:** *¿mi caso normal es «el recurso no está» o
+«el recurso está y se mueve»?* Si es el segundo y el test lo lee dos veces, el test mide la carrera.

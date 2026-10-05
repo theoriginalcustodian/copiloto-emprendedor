@@ -194,3 +194,31 @@ Un canario por brazo: romper cada forma **de a una** y exigir que la métrica ba
 corrida declaró CIEGO el brazo que yo acababa de agregar — el defecto estaba en mi parche, sin
 commitear. Ver `[[el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control]]`.
 
+---
+
+## Refuerzo (2026-10-05): el lector nuevo inventó un CUARTO idioma, dos horas después de escribir esta entrada
+
+Al implementar `CONTRASTEDOCS` —publicar la resolución de cada conflicto de veredictos— escribí el
+lector de «¿está dirimido?» con un marcador de mi propia cosecha: `r.startswith("DIRIMIDO:")`. El
+registro ya hablaba **dos** idiomas, los dos con fecha: `[DIRIMIDO 2026-09-30]` dentro del texto de
+`HIPOTESIS_MATRIZ_2209`, y `DIRIMIDO el 2026-09-30 por auditoría` en otro. Mi prefijo fue el tercero,
+y encima lo metí a mano en la entrada `bi` para que mi propio lector la reconociera: **adapté el dato
+al lector en vez de leer el dato.**
+
+**Lo que publicó:** `dirimidos: 1` sobre 12, con **nueve** textos que declaraban su fecha adentro. Y
+acá está el porqué esto no se ve: un lector que habla su propio idioma **no reporta «no entiendo»** —
+reporta «no hay declaración», que es indistinguible de «nadie lo dirimió». El síntoma es una cifra
+baja y plausible, no un error.
+
+Lo que lo cazó fue mirar el valor crudo de una entrada cualquiera (`cuenta`) en el JSON y ver el
+`[DIRIMIDO 2026-09-30]` ahí escrito. No lo cazó ningún test: los que había afirmaban la estructura.
+
+**Arreglo de raíz, no parche:** (a) el lector reconoce las formas **que el registro ya usa**
+(`DIRIMIDO_RX = \[?DIRIMID[OA](?:\s+el)?\s+(\d{4}-\d{2}-\d{2})`), con la fecha obligatoria porque un
+«dirimido» sin fecha no se puede contrastar contra la medición que vino después; (b) `bi` volvió al
+idioma del registro con su fecha real; (c) **ratchet `exit 12`**: un texto que dice `DIRIMID*` y no
+trae fecha legible rompe el gate, nombrando las formas válidas. Sin (c), el cuarto idioma vuelve.
+
+**El criterio que me faltó, en una pregunta:** antes de escribir el parser, *¿con qué palabras está
+escrito hoy el dato que voy a leer?* — un `grep` de 10 segundos (`grep -o 'DIRIMID.\{0,22\}'`) mostraba
+los dos idiomas y el mío al lado. Lo hice **después** de que la cifra saliera rara.

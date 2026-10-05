@@ -144,6 +144,29 @@ if [ -z "$BRIDGE_PATH" ]; then
   MOTIVO="repo-ausente-en-repos-toml"
   echo "[graph-sync] ❌ no encuentro el repo '$REPO_NAME' en '$BRIDGE/config/repos.toml'." >&2
   echo "[graph-sync]    Sin esa entrada el bridge no sabe qué ingerir. Abortando antes de sincronizar." >&2
+  # 2026-10-05: este rechazo es PERMANENTE, no transitorio — reintentar no lo arregla, y el de al
+  # lado (`drift-de-config`) ya daba su fix exacto mientras el más severo sólo decía «abortando».
+  # Un guard que bloquea TODO push sin decir cómo salir empuja al `--no-verify`, que en un repo
+  # PÚBLICO con gitleaks es justo lo que no podemos permitirnos.
+  #
+  # Y la causa medida ese día NO fue config perdida: el `repos.toml` versionado del bridge tiene las
+  # 7 entradas: lo que pasó es que su working tree estaba en OTRA RAMA (`backend/checkpoint-identity-fix`,
+  # 12 commits detrás de master, anterior al commit que agregó este repo). Por eso el mensaje pregunta
+  # por la rama antes que por el contenido: diagnosticar «se perdió la entrada» lleva a reescribir el
+  # archivo a mano, y eso PISA lo versionado — el bloque del copiloto trae un `min_support = 3`
+  # calibrado y confirmado el 2026-09-30 (786 aristas) que una reescritura de memoria baja a 2 sin
+  # que nadie lo note. El fix es un checkout, no un append.
+  RAMA_BRIDGE="$(git -C "$BRIDGE" branch --show-current 2>/dev/null || echo desconocida)"
+  echo "[graph-sync]" >&2
+  echo "[graph-sync]    ⚠️  NO se arregla reintentando ni esperando." >&2
+  echo "[graph-sync]    El bridge está en la rama: '$RAMA_BRIDGE'" >&2
+  echo "[graph-sync]    PRIMERO mirá si la entrada existe VERSIONADA en otra rama de ese repo:" >&2
+  echo "[graph-sync]      git -C \"$BRIDGE\" show master:config/repos.toml | grep -c '^\[\[repo\]\]'" >&2
+  echo "[graph-sync]    Si ahí está, el fix es devolver el bridge a master (su dueño es quien lo" >&2
+  echo "[graph-sync]    dejó en esa rama) — NO reescribas repos.toml a mano: pisarías valores" >&2
+  echo "[graph-sync]    calibrados (min_support, source_dirs, workdir) que no se deducen." >&2
+  echo "[graph-sync]    Y NO uses 'git push --no-verify': el mismo hook corre gitleaks y el repo" >&2
+  echo "[graph-sync]    es público." >&2
   exit 1
 fi
 if [ "$(norm_path "$BRIDGE_PATH")" != "$(norm_path "$WT")" ]; then

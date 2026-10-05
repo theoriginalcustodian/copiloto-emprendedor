@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **✅ Criterio 3: 54 de 54 con veredicto** — `(home)`=DESVÍO (FE2, 30-09); la matriz del contador ve 27. `coordinacion/PLAN.md`.
+- **✅ Criterio 3 web: 50 de 50 ALCANZABLES** (50/54 del padrón; los 4 de voz no tienen referencia de escritorio). `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
 - **Prod-beta multitenant vivo**, smoke **37/37 BETA-READY** (2026-09-23), RLS `FORCE`. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
@@ -55,6 +55,7 @@
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) - inyectá el caso a propósito.
 - 🟢🙈 [Nadie audita un COHERENTE - desactiva trabajo sin rastro](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) · [el formato no codifica el ROL](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md)
+- [🔁📤 Medir obliga a REPORTAR, y el reporte entra al corpus medido](medir-obliga-a-reportar-y-el-reporte-entra-al-corpus-medido.md) — clasificar es una TASA por reporte, no una deuda que se paga.
 - 🖼️🎭 El instrumento INVENTA: [una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id fabricado](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) - nadie los distingue.
 - 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
 - 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) - ¿qué pregunta hace cada lado?
@@ -79,7 +80,6 @@
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
-- [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) - el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
 - [🩹🎭 Un degradado PRUDENTE hacia el caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda» antes de medir.
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
@@ -87,8 +87,6 @@
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra la expectativa, no contra el reloj.
 - [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa a la roja. Background → archivo COMPLETO.
-- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
-- [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 
 ### Guards, gates y jueces
