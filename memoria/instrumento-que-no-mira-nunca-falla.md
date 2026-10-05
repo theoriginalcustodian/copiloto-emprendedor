@@ -287,3 +287,32 @@ nunca pasando el carácter como literal por la shell; y cuando tengas que imprim
 o `\\uXXXX` con `backslashreplace`. Sumale el **control positivo barato**: buscá también un carácter que
 NO pusiste (yo usé U+1F600) — si tu método discrimina, tiene que dar presente/ausente distinto para los
 dos. Si ambos dan 0, no medió nada.
+
+---
+
+## Refuerzo 2026-10-05 · arreglar el instrumento ciego NO barre las afirmaciones que su ceguera ya escribió
+
+El parser del criterio 3 no podía leer el id `(home)`: es sintético, empieza con paréntesis, y
+`limpiar('(home)')` devolvía `'home)'`. Consecuencia medida, en palabras del propio comentario del
+instrumento: *«la cifra no podía pasar de 53 de 54 por mucho que se midiera»*. El id **estaba medido**
+desde el 2026-09-30, con veredicto `DESVÍO` y un documento en el buzón; lo que faltaba era un parser
+que pudiera leer el nombre de la fila.
+
+El parser se arregló. **La frase que su ceguera había escrito siguió viva** — «falta `(home)`, nunca
+medida» — y el mismo día, en dos sesiones distintas, fabricó dos errores: una asignación de trabajo ya
+hecho y un veredicto publicado en un entregable. Ninguna de las dos midió: **las dos citaron el mismo
+renglón heredado**.
+
+**La clase:** una afirmación generada por un instrumento ciego **no se parece a un bug**. Se parece a
+estado conocido, y hereda la autoridad del lugar donde quedó escrita (un índice, un tablero, un
+`PLAN.md`). El fix del instrumento es visible y celebrado; las afirmaciones que produjo mientras era
+ciego son invisibles y sobreviven.
+
+**El cierre que faltaba, y es parte del fix, no un extra:** al arreglar un instrumento, **grepear las
+afirmaciones que produjo** mientras estaba ciego —en índices, tableros, docs maestros— y corregirlas
+en la misma operación. Si el arreglo subió una cifra, toda cita de la cifra vieja es ahora falsa.
+Corolario de proceso: el PR que arregla el parser y el que barre sus secuelas son **el mismo PR**,
+como en [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
+
+Hermana de [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]] y de
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]].
