@@ -87,3 +87,29 @@ en el semáforo y no abre el archivo — [[el-parte-del-proveedor-existe-y-no-lo
 ninguna forma** — se mide en el efecto: `ls-remote` para un push, contenido para un merge, el blob para
 un archivo. Y si igual querés el código, que el comando **termine** en la operación y no en un `echo`,
 un `tail` ni un `||  true`.
+
+---
+
+## Refuerzo 2026-10-05 · `merge-tree` salió **rc=0 con tres CONFLICT en el output**, y el culpable fue mi propio `tr`
+
+Midiendo conflictos de merge, el patrón era: capturar la salida de `git merge-tree --write-tree` pasándola
+por `tr -d` para limpiar los CR, y leer `$?` en la línea siguiente.
+
+`$?` quedó en **0** mientras la salida traía un `CONFLICT (add/add)` y dos `CONFLICT (content)`. No es una
+rareza de `merge-tree`: el código de una sustitución con tubería es el del **último** comando — `tr`, que
+siempre sale 0. Y el `tr` estaba ahí por una razón legítima: el CRLF de `gh`/`jq` en Windows ya había
+fabricado un falso rojo horas antes. **El fix de una capa se comió el canal de veredicto de la siguiente.**
+
+Lo que salvó la medición fue tener **dos** defensas y no una: el veredicto se decidía por el **mensaje**
+(buscando `CONFLICT`, con una rama aparte para `not something we can merge`) y el rc era sólo informativo.
+Con el rc como juez habría publicado «LIMPIO» sobre un merge con tres conflictos, y ese veredicto habría
+mandado a cuatro sesiones a mergear.
+
+**La regla, afilada:** cuando metés un filtro (`tr`, `sed`, `tail`) entre una operación y su veredicto,
+estás eligiendo el exit code del filtro. Si el código importa, sacalo **antes** del pipe —guardar la salida
+cruda y leer `$?` ahí, o `PIPESTATUS[0]`— y aun así, que el juez sea el efecto o el mensaje. Corolario de
+proceso: **un fix puede romper el instrumento de la capa de al lado**, y el único modo de notarlo es que el
+veredicto no dependa de un solo canal.
+
+Pariente de [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] y de
+[[git-push-puede-salir-exit-0-sin-haber-pusheado]].

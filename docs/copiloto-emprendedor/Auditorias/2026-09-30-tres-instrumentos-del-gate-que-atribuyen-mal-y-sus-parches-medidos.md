@@ -276,6 +276,26 @@ para **un** SHA, y el merge toma el HEAD remoto.
 
 ### Barrido: el comodín no estaba solo — **5 stubs**, todos de `gh`
 
+> 🔁 **CORREGIDO el 2026-10-05 — eran SEIS, y el error tiene nombre.** Planificación midió seis al
+> escribir el helper; yo publiqué cinco. Re-medido con instrumento propio sobre `origin/main`
+> (125 archivos mirados, 3 con dobles de `gh`): **6 stubs fabricados** = `gh-presente` (1) +
+> `veredicto-monotono` (4) + **`mergear-pr` (1)**, con 12 ramas comodín (2 literales y 10 generadas
+> dentro de un `echo`/`printf`).
+>
+> **La causa no fue aritmética: fue la unidad de la fila.** La tabla de abajo clasifica
+> `test-mergear-pr-veredicto-en-el-remoto.sh` como «despacha por invocación» — y es cierto **de su doble
+> de `git`**. Ese archivo fabrica **dos** stubs, y el sano absolvió al enfermo: su doble de `gh` **sí**
+> tiene comodín, y es el que dejó rojo el `lint` de #772 cinco días después. Clasificar por ARCHIVO
+> cuando la unidad real es el STUB hace que un hermano correcto emita el permiso del defectuoso.
+>
+> **Y ojo con el otro «6»:** el «6 comodines» de la v1 refutada (§ más abajo) es un seis **distinto** —
+> contaba `npx` y `stat` como comodines siendo sanos. Que los dos números coincidan es casualidad: este
+> seis sale de contar stubs fabricados; aquél, de un heredoc leído vacío.
+>
+> Lo que **no** cambia: la predicción se cumplió, y el fix de raíz (`scripts/lib/gh-stub.sh`) existe pero
+> **todavía no está en `main`** — vive en #772, sin mergear al 05/10.
+
+
 Si el comodín rompe al próximo cambio, la pregunta no es «arreglemos éste» sino **cuántos hay**.
 Barrido de las 48 suites, con el delimitador del heredoc leído del propio `<<'DELIM'`:
 

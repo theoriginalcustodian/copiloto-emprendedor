@@ -107,3 +107,35 @@ y +73 medidos antes, y `merge-tree --write-tree` pasó de `rc=1` a `rc=0`.
 
 **La regla:** después de un squash-merge, la rama siguiente **nace de `origin/main`**, no del head que
 tenías. Y si ya nació mal, se rebasa comparando blobs antes de tocar un solo marcador de conflicto.
+
+---
+
+## Refuerzo 2026-10-05 · 35 commits sin pushear y **cero** contenido nuevo: contá archivos, no commits
+
+Una rama propia acumuló **35 commits** sin pushear (1938 inserciones, 29 archivos: 24 entradas de memoria,
+un doc de auditoría de 427 líneas y 5 scripts). El bloqueo que los retenía —un pre-push que abortaba—
+cayó, y el disparador para empujarlos quedó cumplido. Antes de abrir el PR, medí archivo por archivo contra
+`origin/main`:
+
+```
+ya-en-main=27 · falta-entero=0 · parcial=2   (de 29)
+```
+
+Y los 2 «parciales» también eran falsos: en el `.md`, las *113 líneas mías ausentes* desaparecían al
+comparar sin CR (**CRLF**) y mi cambio real eran 24 líneas, con las 19 no vacías presentes en main; en el
+`.py`, mi cambio real era **una** línea, también presente. El contenido había llegado por **otras ramas**
+que sí se pushearon. Abrir el PR habría sido 1938 inserciones que **no agregan una sola línea**, con 3
+conflictos a resolver a mano y el riesgo de pisar 207 líneas ajenas en un script compartido.
+
+**Por qué engaña:** `git log origin/main..mi-rama` cuenta **commits**, y un commit cuyo contenido ya está en
+`main` por otro camino (cherry-pick, un PR hermano, un squash) **sigue apareciendo**. El contador mide
+*historia divergente*, no *contenido faltante*: en un repo con ramas que se cruzan, los dos números no se
+parecen.
+
+**El control, una línea por archivo:** comparar el blob (`git rev-parse <ref>:<path>`); si difiere,
+re-comparar **sin CR**; si todavía difiere, extraer *tu* diff contra la `merge-base` y preguntar si esas
+líneas están en `main`. Recién si faltan, hay trabajo. Corolario: **un disparador cumplido no implica que el
+trabajo que custodiaba siga existiendo** — medí el objeto antes de ejecutar la acción que esperaba.
+
+Hermana de [[un-disparador-cumplido-no-avisa-a-nadie]] y de
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]].
