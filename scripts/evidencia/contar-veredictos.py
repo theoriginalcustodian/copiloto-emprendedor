@@ -1859,7 +1859,7 @@ CONFLICTOS_CONOCIDOS = {
     "factura": HIPOTESIS_MATRIZ_2209,
     "ingresar": HIPOTESIS_MATRIZ_2209,
     "preg": HIPOTESIS_MATRIZ_2209,
-    "bi": "COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
+    "bi": "[DIRIMIDO 2026-09-29] COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
           "DESVIO (lote A, 28/09). Auditoria ya resolvio que su DESVIO era FALSO POSITIVO del rail, "
           "y lo retiro el 2026-09-29 — el conflicto ya esta dirimido y a favor del COHERENTE. "
           "Se deja declarado porque es el caso que motivo este control.",
@@ -2186,10 +2186,104 @@ def main():
     # contradicen entre documentos. Es el MISMO defecto de forma que el agregado por plataforma, que
     # vivia despues del `return` de `--json`: el alcance de un dato no puede depender del formato de
     # salida, porque el formato que las maquinas leen es el que decide.
+    # CONTRASTEDOCS (medido por auditoria el 2026-10-05, sobre este mismo JSON). El bloque de
+    # arriba publicaba `{i: sorted(vs)}`, y `vs` es el mapa veredicto -> DOCUMENTOS: quedarse con
+    # las claves tiraba justo el dato que vuelve accionable al reporte. El JSON decia
+    # `"bi": ["COHERENTE","DESVIO"]` -- se ve QUE choca y no QUIEN lo dijo, asi que auditoria tuvo
+    # que reconstruirlo desde `lotes` para poder trabajar. **Sin el documento no hay a quien pedirle
+    # la linea de cierre**, o sea faltaba exactamente la pieza que convierte el dato en una accion
+    # con dueno. Es el tercer caso de la misma clase en este archivo (el agregado por plataforma que
+    # vivia despues del `return` de `--json`, el contraste que solo existia en texto): el alcance de
+    # un dato no puede depender del formato que lo lee.
+    #
+    # Y LA RESOLUCION TAMBIEN SE PUBLICA, con una distincion que el dict escondia: 10 de las 12
+    # entradas de `CONFLICTOS_CONOCIDOS` apuntan al MISMO objeto `HIPOTESIS_MATRIZ_2209`. Eso no es
+    # «10 conflictos resueltos»: es UNA hipotesis compartida, declarada una vez y reusada. Se marca
+    # por IDENTIDAD del objeto (`is`), que es medible, en vez de inferirla del texto.
+    #
+    # `dirimido` NO lo adivina el parser: exige el prefijo `DIRIMIDO:` que escribe quien dirime. Una
+    # heuristica sobre el texto se equivocaria en el caso que importa -- `soporte` tiene texto propio
+    # y dice literalmente «Puede ser conflicto REAL o de PREGUNTA», o sea texto propio NO implica
+    # dirimido. Un marcador que pone el que decide no tiene falso positivo; una regex sobre prosa si.
+    # ⚠️ EL MARCADOR DE DIRIMIDO YA EXISTIA EN DOS IDIOMAS, y la primera version de este lector
+    # invento un TERCERO (`DIRIMIDO:` como prefijo). El efecto medido antes de corregirlo:
+    # `dirimidos: 1` sobre 12 cuando nueve textos declaraban `[DIRIMIDO 2026-09-30]` adentro. Un
+    # lector que habla un idioma propio no reporta «no hay declaracion»: reporta que no la
+    # encuentra, y eso se lee igual. Es el mismo caso que el registro en cuatro idiomas con un
+    # lector de uno (memoria/el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md), ahora
+    # pagado por mi propio parche a las dos horas de escribir la memoria.
+    #
+    # Se reconocen las formas QUE EL REGISTRO YA USA, y la fecha es obligatoria: un «dirimido» sin
+    # fecha no se puede contrastar contra la medicion que vino despues, que es justo para lo que se
+    # lo consulta. Los dos ejes son ORTOGONALES y se publican por separado -- `dirimido` dice si hay
+    # declaracion; `hipotesis_compartida` dice si esa declaracion es suya o una compartida por N ids
+    # (10 entradas apuntan al MISMO objeto `HIPOTESIS_MATRIZ_2209`, o sea UNA hipotesis reusada, no
+    # diez decisiones). Mezclarlos fue el error de la primera version: excluia del conteo justo a
+    # los que SI estaban declarados.
+    DIRIMIDO_RX = re.compile(r"\[?DIRIMID[OA](?:\s+el)?\s+(\d{4}-\d{2}-\d{2})")
+
+    def _resolucion(i):
+        r = CONFLICTOS_CONOCIDOS.get(i) if isinstance(CONFLICTOS_CONOCIDOS, dict) else None
+        m = DIRIMIDO_RX.search(r) if r else None
+        return {
+            "resolucion": r,
+            "hipotesis_compartida": r is HIPOTESIS_MATRIZ_2209,
+            "dirimido": bool(m),
+            "dirimido_el": m.group(1) if m else None,
+        }
+
+    if isinstance(conflictos, dict):
+        declarados = {}
+        for i, vs in sorted(conflictos.items()):
+            fila = {"veredictos": {v: sorted(docs) for v, docs in sorted(vs.items())}}
+            fila.update(_resolucion(i))
+            declarados[i] = fila
+        total = len(declarados)
+        dirimidos = sum(1 for f in declarados.values() if f["dirimido"])
+        hipotesis = sum(1 for f in declarados.values() if f["hipotesis_compartida"])
+        # Los cubos NO son excluyentes (un dirimido puede serlo por una hipotesis compartida), asi
+        # que `sin_dirimir` se resta de UNO solo. La primera version restaba los dos y publicaba
+        # `sin_resolucion: -7`: una cifra imposible es la unica suerte que hubo aca, porque una
+        # resta de cubos solapados que diera positivo se habria publicado como dato.
+        #
+        # `declaraciones_distintas` es la cifra que mide lo que auditoria encontro: 12 conflictos
+        # declarados NO son 12 decisiones. Se cuenta por IDENTIDAD de objeto, no por texto igual:
+        # dos declaraciones redactadas parecido son dos decisiones, y una reusada es una.
+        resumen = {
+            "total": total,
+            "dirimidos": dirimidos,
+            "sin_dirimir": total - dirimidos,
+            "hipotesis_compartida": hipotesis,
+            "declaraciones_distintas": len({id(f["resolucion"]) for f in declarados.values()
+                                            if f["resolucion"]}),
+            "sin_declaracion": sum(1 for f in declarados.values() if not f["resolucion"]),
+            # Una entrada de CONFLICTOS_CONOCIDOS que ya NO es conflicto: la declaracion sobrevivio
+            # a su causa. No rompe, pero se publica — es deuda de registro y se cuenta.
+            "declaradas_sin_conflicto_vigente": sorted(set(CONFLICTOS_CONOCIDOS) - set(declarados))
+                                                if isinstance(CONFLICTOS_CONOCIDOS, dict) else [],
+        }
+    else:
+        declarados = sorted(conflictos)
+        resumen = {"total": len(declarados), "dirimidos": 0, "hipotesis_compartida": 0,
+                   "sin_resolucion": len(declarados)}
+
+    _decl = CONFLICTOS_CONOCIDOS if isinstance(CONFLICTOS_CONOCIDOS, dict) else {}
+    mudos = sorted(i for i, r in _decl.items()
+                   if r and "DIRIMID" in r.upper() and not DIRIMIDO_RX.search(r))
+    if mudos:
+        print(f"CONTRASTE: DIRIMIDO EN OTRO IDIOMA — {len(mudos)} resolucion(es) dicen DIRIMID* sin "
+              f"una fecha que este lector sepa leer: {mudos}. Formas reconocidas: "
+              f"`[DIRIMIDO AAAA-MM-DD]` o `DIRIMIDO el AAAA-MM-DD`. Esto NO es cosmetico: sin "
+              f"fecha, la declaracion no se puede contrastar contra la medicion que vino despues, y "
+              f"un lector que no la lee reporta «no hay resolucion», que se lee igual que «nadie lo "
+              f"dirimio». Ya paso: la primera version de este lector inventaba un tercer idioma y "
+              f"contaba 1 de 12.", file=sys.stderr)
+        sys.exit(12)
+
     res["contraste"] = {
-        "conflictos_declarados": {i: sorted(vs) for i, vs in sorted(conflictos.items())}
-                                 if isinstance(conflictos, dict) else sorted(conflictos),
+        "conflictos_declarados": declarados,
         "conflictos_nuevos": sorted(nuevos),
+        "resolucion": resumen,
     }
 
     if "--json" in sys.argv:

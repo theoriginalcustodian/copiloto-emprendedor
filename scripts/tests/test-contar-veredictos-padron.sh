@@ -336,9 +336,108 @@ else
   fail "el fixture del caso 10 no pudo declarar la clave: $(head -1 "$TMP/decl10.err")"
 fi
 
+echo "── Caso 11: el contraste publica QUÉ DOCUMENTO dijo cada veredicto (CONTRASTEDOCS)"
+# CONTROL NEGATIVO medido antes del fix: el JSON decia `"bi": ["COHERENTE","DESVÍO"]` — las CLAVES
+# del mapa veredicto->documentos, con los documentos tirados. Se ve QUE choca y no QUIEN lo dijo, y
+# sin el documento no hay a quien pedirle la linea de cierre: faltaba justo la pieza que vuelve
+# accionable al dato. Auditoria tuvo que reconstruirlo desde `lotes` para poder trabajar.
+# Este caso afirma la ESTRUCTURA, no un id del dia: cualquier conflicto sirve.
+C11="$(corpus_nuevo contradocs)"
+if J="$(COPILOTO_COORD="$C11" "$PY" "$CONTADOR" --json 2> "$TMP/c11.err")"; then
+  if printf '%s' "$J" | "$PY" -c '
+import json, sys
+c = json.load(sys.stdin)["contraste"]
+d = c["conflictos_declarados"]
+assert isinstance(d, dict), "conflictos_declarados dejo de ser un dict por id"
+for i, f in d.items():
+    assert "veredictos" in f, "%s no publica el mapa veredicto->documentos" % i
+    for v, docs in f["veredictos"].items():
+        assert isinstance(docs, list) and docs, "%s/%s quedo sin documentos" % (i, v)
+        assert all(x.endswith(".md") for x in docs), "%s/%s no son nombres de documento: %r" % (i, v, docs)
+    for k in ("resolucion", "dirimido", "dirimido_el", "hipotesis_compartida"):
+        assert k in f, "%s no publica %s" % (i, k)
+r = c["resolucion"]
+for k in ("total", "dirimidos", "sin_dirimir", "hipotesis_compartida", "declaraciones_distintas"):
+    assert k in r, "el resumen no publica %s" % k
+assert r["sin_dirimir"] >= 0, "sin_dirimir negativo (%s): cubos solapados restados dos veces" % r["sin_dirimir"]
+assert r["total"] == len(d), "el total (%s) no coincide con las filas (%s)" % (r["total"], len(d))
+' 2> "$TMP/c11b.err"; then
+    ok "cada conflicto publica sus documentos por veredicto, y el resumen cierra"
+  else
+    fail "la estructura del contraste no cumple: $(head -2 "$TMP/c11b.err")"
+  fi
+else
+  fail "el contador no corrió sobre el fixture del caso 11: $(head -2 "$TMP/c11.err")"
+fi
+
+echo "── Caso 12: «dirimido» se lee en los DOS idiomas que el registro ya usaba"
+# 🔴 LO QUE ESTE CASO IMPIDE QUE VUELVA. La primera version de este lector invento un TERCER idioma
+# (`DIRIMIDO:` como prefijo) y conto `dirimidos: 1` de 12, mientras NUEVE textos declaraban
+# `[DIRIMIDO 2026-09-30]` adentro. Un lector que habla su propio idioma no reporta «no entiendo»:
+# reporta «no hay declaracion», que se lee igual que «nadie lo dirimio». Es el caso del registro en
+# varios idiomas con un lector de uno, pagado por el parche que venia a arreglar otra cosa.
+# El caso NO cita la cifra del dia (envejece): afirma que las DOS formas se leen y que la fecha sale.
+for forma in "[DIRIMIDO 2026-09-29] texto" "DIRIMIDO el 2026-09-29 por auditoria"; do
+  if printf '%s' "$forma" | "$PY" -c '
+import re, sys
+rx = re.compile(r"\[?DIRIMID[OA](?:\s+el)?\s+(\d{4}-\d{2}-\d{2})")
+t = sys.stdin.read()
+m = rx.search(t)
+assert m, "la forma %r no se reconoce" % t
+assert m.group(1) == "2026-09-29", "la fecha salio %r" % m.group(1)
+' 2> "$TMP/c12.err"; then
+    ok "se lee: ${forma:0:26}…"
+  else
+    fail "forma no reconocida ($forma): $(head -1 "$TMP/c12.err")"
+  fi
+done
+# Y el regex del test tiene que ser EL MISMO del contador, no una copia que derive: se compara.
+if grep -q 'DIRIMIDO_RX = re.compile' "$CONTADOR" && \
+   "$PY" -c '
+import ast, io, re, sys
+t = io.open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r"DIRIMIDO_RX = re\.compile\((.+?)\)\n", t, re.S)
+assert m, "no encontre DIRIMIDO_RX"
+pat = ast.literal_eval(m.group(1).strip())
+assert re.compile(pat).search("[DIRIMIDO 2026-09-29]"), "el patron del contador no lee la forma con corchetes"
+assert re.compile(pat).search("DIRIMIDO el 2026-09-29"), "el patron del contador no lee la forma con `el`"
+' "$CONTADOR" 2> "$TMP/c12b.err"; then
+  ok "el patrón que usa el CONTADOR lee las dos formas (no una copia del test)"
+else
+  fail "el patrón del contador no cubre las dos formas: $(head -2 "$TMP/c12b.err")"
+fi
+
+echo "── Caso 13: CONTROL POSITIVO del ratchet — un DIRIMIDO sin fecha ROMPE (exit 12)"
+# Sin este caso, el ratchet del idioma es una promesa. El modo de falla que vigila es SILENCIOSO —un
+# cuarto idioma se leeria como «sin resolucion»— y el unico sintoma seria una cifra que baja sin que
+# nadie toque el registro. El fixture inyecta el idioma nuevo A PROPOSITO sobre una copia del
+# contador: ejercita el mecanismo, no el estado del dia.
+C13="$(corpus_nuevo idioma)"
+if "$PY" - "$CONTADOR" "$FAKE/scripts/evidencia/idioma.py" <<'PYEOF'
+import io, re, sys
+src, dst = sys.argv[1], sys.argv[2]
+t = io.open(src, encoding="utf-8").read()
+anc = 'CONFLICTOS_CONOCIDOS = {\n'
+assert t.count(anc) == 1, "CONFLICTOS_CONOCIDOS cambio de forma"
+# Un idioma NUEVO: dice DIRIMIDO y no trae fecha legible. Es exactamente lo que el ratchet caza.
+inyectado = anc + '    "agenda": "DIRIMIDO ayer por quien corresponda, sin fecha",\n'
+io.open(dst, "w", encoding="utf-8", newline="\n").write(t.replace(anc, inyectado, 1))
+PYEOF
+then
+  if COPILOTO_COORD="$C13" "$PY" "$FAKE/scripts/evidencia/idioma.py" --json > /dev/null 2> "$TMP/c13.err"; then
+    fail "el ratchet NO caza un DIRIMIDO sin fecha: salió VERDE con un idioma nuevo"
+  elif grep -q "DIRIMIDO EN OTRO IDIOMA" "$TMP/c13.err"; then
+    ok "un DIRIMIDO sin fecha legible rompe el gate, por el motivo correcto (exit 12)"
+  else
+    fail "rompió por otra razón: $(head -2 "$TMP/c13.err")"
+  fi
+else
+  fail "el fixture del caso 13 no pudo inyectar el idioma nuevo"
+fi
+
 echo
 if [ "$fallos" = "0" ]; then
-  echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, y los TRES gates tienen control"
+  echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, los gates tienen control, y el contraste dice QUIÉN dijo cada veredicto"
   exit 0
 fi
 echo "❌ $fallos fallo(s)"
