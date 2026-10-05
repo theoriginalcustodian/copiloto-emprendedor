@@ -77,6 +77,29 @@ documento se ingesta, los chunks existen, el retrieval devuelve algo. Lo que fal
 preguntas de cada FAQ* — que en un corpus de soporte son las que se agregaron con el uso, o sea las
 más buscadas. Un fallo que se lleva justo lo más valioso sin levantar la mano.
 
+**REFUERZO 2026-10-05 — la versión en la que el instrumento DICE que no mira, y nadie lo lee.** El
+**guard del congelamiento nativo** (`scripts/ci/nativo-freeze.sh`) estaba cableado en el job `mobile`
+desde el plan §6 y **jamás bloqueó nada**. Necesita `git merge-base HEAD origin/main`; el
+`actions/checkout@v4` del job no declaraba `fetch-depth: 0`, y con el clon superficial del default
+`origin/main` no existe → el `merge-base` falla y el guard sale por su rama de fail-open —
+`⚠️ sin merge-base … guard NO evaluado`, `exit 0` — **en todas y cada una de las corridas**.
+
+Lo que lo hace invisible no es el silencio: es que **el fail-open es correcto como diseño** (avisa y
+no bloquea) **y catastrófico como estado permanente**. El aviso salía siempre, perdido entre los
+`npm warn deprecated`, y el job quedaba VERDE. Un warning que aparece en el 100% de las corridas deja
+de ser información.
+
+**El control que lo separa, y es de texto, no de exit code:** con base resoluble, la salida **no puede
+contener** `NO evaluado`. `exit 0` no distingue «miré y no hay cambios» de «no pude mirar» — los dos
+son 0. Quedó fijado como caso de test, junto con el inverso (sin base, sigue saliendo 0 **y
+gritando**: si alguien lo vuelve silencioso, se pone rojo).
+
+**Y el arreglo fue de la CLASE, no del caso:** un chequeo estático que exige que todo job cuya cadena
+de scripts mencione `merge-base`/`origin/main` declare `fetch-depth: 0`, fail-closed (exit 2) cuando
+no puede medir. Medido antes: rc=1 nombrando `mobile`. Después: rc=0. La evidencia de que el guard
+ahora sí evalúa no es el verde del job — es la línea del log:
+`nativo-freeze: ok (sin cambios en apps/mobile/package.json apps/mobile/app.json)`.
+
 Relacionadas: [[vacio-no-es-hallazgo-correr-el-control]] (el vacío es una pregunta) ·
 [[el-pipe-se-come-el-exit-code]] (la otra forma de leer verde sin medir) ·
 [[bucle-canonico-dos-auditorias-y-el-enganche]] (§12, la ley de los instrumentos).

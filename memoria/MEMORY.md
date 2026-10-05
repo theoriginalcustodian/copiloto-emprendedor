@@ -62,11 +62,13 @@
 - [🏷️🎭 Un NOMBRE con dos referentes: se prueba A y se concluye B](un-nombre-con-dos-referentes-prueba-A-y-concluye-B.md) — y el verificador confirma: mide A.
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
 - [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite Y inventa; medí el EFECTO.
+- [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
 - [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales
+- [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 
 - [No codificar la esperanza - el TRONCO](no-codificar-la-esperanza-principio-raiz.md) - la prueba vale, la aserción no.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
-- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) - preguntá cuántos elementos miró. · [y el que corre DESPUÉS del guard no llega a mirar](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
+- [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — ¿cuántos elementos miró? · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
 - [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA no es un gate](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return` de `--json`.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
@@ -150,6 +152,7 @@
 ### Git, deploy y checkout compartido
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
+- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — parche: temp + `os.replace`. Falla al escribir = ya truncó.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) - pisa mudo.
 - [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) - sube el disco tal cual.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) - primero la rama en prod.

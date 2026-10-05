@@ -102,3 +102,23 @@ el caso verde». Medir **a quién** acusar costó dos comandos —leer el stub, 
 contra tres PR con esperados distintos— y cambió el destinatario del trabajo. Ver
 [[un-control-positivo-con-esperado-falso-acusa-al-script]], que es el mismo error con el esperado en vez
 del doble.
+
+**REFUERZO 2026-10-05 — 14 casos verdes que eran estructuralmente incapaces de ver el bug.** El gate
+`ci-verde.sh` tenía 3 archivos de test y 14 casos sobre el veredicto. Ninguno podía cazar que el
+rollup trae cada job duplicado por run, porque **el `stub_gh` recibe el rollup *ya filtrado*** — así
+se llama su propio parámetro — y lo devuelve tal cual. Los tests entraban **por debajo del `jq`** del
+script, y el defecto vivía **en** el `jq`.
+
+El stub emulaba la *salida* de la transformación en vez de su *entrada*, y así la transformación
+nunca se ejercitó. Es la misma clase que el composition root, en miniatura: lo que el test salta es
+exactamente lo que nadie prueba.
+
+**El arreglo mantiene el stub viejo y no toca los 14 casos:** la expresión pasó a una variable
+(`ROLLUP_JQ=`) y el test nuevo hace `eval` de esa línea del script, así que ejercita **la misma
+expresión que corre en producción**, no una imitación. Fail-closed: si la variable desaparece o queda
+vacía, el test se pone rojo en vez de pasar en silencio.
+
+**Y el caso decisivo no es el que arregla el bug — es el que descarta el fail-open:** `FAILURE` nuevo
+sobre `SUCCESS` viejo tiene que dar **FAILURE**. Sin él, un dedupe que tomara «cualquiera de los dos»
+pasaría igual, porque en la corrida real los dos duplicados eran `SUCCESS`: la medición que motivó el
+fix no distinguía «tomé el más reciente» de «tomé uno».

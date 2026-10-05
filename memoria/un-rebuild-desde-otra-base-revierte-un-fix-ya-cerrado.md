@@ -57,3 +57,19 @@ APK anterior y **confirma** lo que ya sabías.
 
 Relacionado: [[iterar-en-device-es-metro-local-con-dev-client-ya-instalado]] ·
 [[el-checkout-compartido-sirve-comandos-viejos]] · [[borrar-el-archivo-no-borra-su-contrato]]
+
+**REFUERZO 2026-10-05 — un PR cuyo contenido ya llegó a `main` por otra rama no queda «vacío»: queda
+REGRESIVO.** Medido en 2 de 3 PR el mismo día. Sus archivos siguen trayendo la versión **vieja** de
+las líneas que `main` superó, así que el conflicto se resuelve a favor de una mitad ya obsoleta y el
+merge *revierte* trabajo cerrado. Lo peligroso es que el PR se ve sano: CI verde (de su día),
+`mergeable`, y un diff que parece aporte.
+
+En el caso concreto, las 5 líneas únicas que quedaban de la rama incluían
+`echo "VERDE — se puede mergear"; exit 0` **sin medir `mergeable`** — o sea el fail-open exacto que el
+otro PR había venido a matar. Mergearlo lo reintroducía.
+
+**El control que lo distingue en una corrida:** contar las líneas de la rama ausentes en `main` y
+mirar **qué son**. Si todas son formas superadas de líneas que `main` ya tiene, el PR se **cierra**,
+no se mergea. **Y el inverso también hay que mirarlo:** en el otro PR el código era redundante pero
+2 refuerzos de memoria no estaban en `main` (0 hits), así que cerrarlo entero habría perdido 83
+líneas que nadie más tenía.
