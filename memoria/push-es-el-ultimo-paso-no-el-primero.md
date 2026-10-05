@@ -139,3 +139,36 @@ trabajo que custodiaba siga existiendo** — medí el objeto antes de ejecutar l
 
 Hermana de [[un-disparador-cumplido-no-avisa-a-nadie]] y de
 [[el-contrato-que-manda-a-hacer-algo-ya-hecho]].
+
+---
+
+## Refuerzo (2026-10-05, auditoría): la asimetría también existe al LEER — `master` nombra DOS cosas y los dos controles obvios miran la local
+
+Esta entrada avisa que el squash toma el **HEAD remoto**. El mismo desajuste muerde al revés, cuando
+alguien **lee** el repo para declarar un estado.
+
+**Medido en `graphify-graphity-bridge`.** Un aviso me decía «el bridge ya está en `master` con la
+entrada `copiloto-emprendedor`», con dos mediciones correctas al lado: `git status --short` limpio y
+`git log --oneline master..HEAD` vacío. Fui a usar ese estado y encontré:
+
+| | |
+|---|---|
+| `copiloto-emprendedor` en `HEAD:config/repos.toml` | **4** ✅ |
+| `copiloto-emprendedor` en **`origin/master`**`:config/repos.toml` | **0** 🔴 |
+| `repos.toml` | `HEAD` 200 líneas / 7 repos · `origin/master` **32 / 1** |
+| divergencia | **12** commits sin pushear · **3** sin traer · 7 archivos |
+
+**Por qué los dos controles no lo ven, y son verdaderos igual:** `status` no mira el remoto, y
+`master..HEAD` compara **la rama local consigo misma** — da vacío siempre que estés en `master`. El
+que mide publicación es `origin/master..HEAD`. **Un repo puede estar impecablemente limpio y tener 12
+commits sin publicar**, y entonces «está en master» es cierto para la rama local y falso para lo que
+cualquier otro clon ve.
+
+**El control que no se deja engañar es el EFECTO, no el SHA:**
+`git show origin/master:<archivo> | grep -c <lo que necesitás>` ≥ 1. En ese repo un SHA ya había
+demostrado que no sobrevive: el `ae850b3c` del aviso no existía ni como objeto suelto, descartado por
+un `reset` previo ([[git-push-puede-salir-exit-0-sin-haber-pusheado]]).
+
+**Y el control positivo que vuelve creíble al cero:** el mismo `grep` contaba 7 repos en `HEAD` y 1 en
+`origin/master`. Sin eso, un `0` no se distingue de un lector que no mira
+([[instrumento-que-no-mira-nunca-falla]]).
