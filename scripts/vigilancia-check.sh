@@ -174,6 +174,24 @@ lint_rc=$?
 [ "$lint_rc" -ne 0 ] && add "CONTRATOS SIN ARTEFACTO:
 $lint_out"
 
+# ── 2.ter) CORPUS DEL BUZÓN: un documento con veredictos sin clasificar (LINTALCANCE) ─────────
+# Este ratchet vivía DENTRO del gate de merge (`test-contar-veredictos-padron.sh` corriendo el
+# contador contra `coordinacion/`) y el 2026-10-05 salió rojo tres veces en una hora, la última por
+# un `hallazgo_` ajeno a los minutos de publicarse: commits intactos y `lint` rojo en las CUATRO
+# ramas. Un gate cuyo veredicto depende de un estado que el commit no controla frena a todos sin
+# decir nada del código. Se mudó acá, donde la dueña de clasificar lo ve cada 3 minutos y puede
+# resolverlo sin trabar el merge de nadie. El gate conservó su poder de detección sobre el fixture
+# (casos 7-10 de ese test), así que esto NO es el ratchet desactivado: es el mismo ratchet con el
+# dueño correcto.
+#
+# Se saltea con `BUZON_DIR` seteado por el mismo motivo que DEUDA: una corrida de test contra un
+# fixture no tiene que empezar a fallar el día que alguien emita un documento sin clasificar.
+if [ -z "${BUZON_DIR:-}" ]; then
+  corpus_out="$(bash "${AUDITOR_CORPUS_SH:-$REPO_ROOT/scripts/evidencia/auditar-corpus-vivo.sh}" --quiet 2>&1)"
+  corpus_rc=$?
+  [ "$corpus_rc" -ne 0 ] && add "$corpus_out"
+fi
+
 # ── 2.quater) DEUDA: disparador cumplido y nadie la tomó ───────────────────────────────────────
 # Causa raíz (2026-08-12, informe G8 §5 lección 4): la cola de una sesión vive en DOS lugares —el
 # buzón y el registro de deuda versionado— y sólo el buzón se miraba solo. D5 y D7 tenían el

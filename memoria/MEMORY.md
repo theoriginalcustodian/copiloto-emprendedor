@@ -137,6 +137,7 @@
 - [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) - el contrato apunta a paths, no dice «explorá».
 
 ### Coordinación entre sesiones
+- [🛑🤖 Parar nombrando UN mecanismo deja el otro armado](una-orden-de-parada-que-nombra-un-mecanismo-deja-el-otro-armado.md) — el monitor sobrevive y ACTUA.
 - [📋🔃 El contrato que manda a hacer algo YA HECHO](el-contrato-que-manda-a-hacer-algo-ya-hecho.md) - medí estado y dueño de cada id ANTES de citarlo.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) - probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) - `dato_` NO escala; ¿querés reclamo? → `pedido_`.
