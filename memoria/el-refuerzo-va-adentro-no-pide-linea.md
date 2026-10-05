@@ -53,3 +53,30 @@ sostiene con refuerzos y con bajadas a `HISTORIA.md`, que sí pierden recall.
 
 ⚠️ No confundir con [[el-indice-truncado-fabrica-duplicados]]: ahí el daño es que la cola **no
 existe** para la sesión. Acá el índice entra completo; lo que se agotó es el espacio para crecer.
+
+---
+
+## Refuerzo (2026-10-05): la entrada que NO indexás por cortesía es el defecto que el gate vigila
+
+Escribí una entrada nueva y **dejé la línea del índice sin poner a propósito**: `MEMORY.md` es de
+planificación y estaba a 551 B del techo, así que le pasé el texto listo y le pedí que la agregara
+ella. El gate la cazó en el CI (`medir-indice-memoria.py`, vía `scripts/ci/lint.sh`):
+
+```
+[MAL] cobertura: 363/364 entradas indexadas
+      huérfana (invisible para toda sesión): un-nombre-con-dos-referentes-prueba-A-y-concluye-B.md
+FALLA: 1 entradas sin línea en MEMORY.md ni HISTORIA.md
+```
+
+PR rojo con 5 de 6 jobs verdes. Tres cosas que me dejo:
+
+1. **Un gate ajeno que te frena es TU bloqueo, no un pedido.** Mandarlo como pedido convierte
+   trabajo propio en deuda de otra sesión, y mientras se decide **el entregable no existe**.
+2. **La cortesía de propiedad no puede dejar el activo a medias.** Una entrada sin línea es
+   justamente lo que ese gate protege. Lo correcto: tocar el archivo ajeno con `git add` de ruta
+   explícita, avisar, y **retirar el pedido** para no fabricar un conflicto de 1 línea.
+3. **El margen ya no alcanza para elegir.** Mi línea costó 157 chars y el índice quedó en
+   23 606 / 24 000 B = 394 B = **2 líneas**. Desde acá el refuerzo no es la vía preferida: es la
+   única que no obliga a bajar algo a `HISTORIA.md` primero.
+
+Hermana directa: [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] — la entrada que disparó esto.

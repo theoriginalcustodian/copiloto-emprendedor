@@ -92,3 +92,16 @@ Y el mismo gatillo —borrar una rama— le dio al backend hoy **otra** causa (`
 `config: ['graphity-memory']`): un enunciado, dos defectos
 ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] ·
 [[el-contrato-que-manda-a-hacer-algo-ya-hecho]]).
+
+### Y `timeout` hace exactamente lo mismo que `TaskStop` (2026-10-05, segunda vez el mismo día)
+
+`timeout 300 git push --delete` murió a los 300 s y el `graph-sync` que el hook había lanzado **siguió
+vivo con el lock** (`pid=2745`). Dos mecanismos distintos, el mismo resultado: **matás al que lanzaste,
+no al árbol**. Si un proceso tuyo lanza nietos, tu forma de cancelarlo no los alcanza — y el recurso
+compartido se queda con ellos.
+
+Lo que **no** hay que hacer es subir el timeout. El huérfano terminó solo, escribió su marcador y el
+reintento pasó en 5 s, porque el hook **falla abierto** cuando el lock está ocupado. Reintentar >
+esperar más. Y medí el estado real antes de diagnosticar: yo escribí que el trabajo se había perdido
+—marcador viejo con el grafo ya ingerido— y era falso; dos minutos después el marcador estaba al día.
+Un estado intermedio no es un estado final.
