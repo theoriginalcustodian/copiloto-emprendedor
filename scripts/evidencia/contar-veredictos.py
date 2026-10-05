@@ -853,6 +853,23 @@ def descubrir_documentos(ids):
     if not docs_control(candidatos):
         sys.exit(2)
 
+    # 🔴 EL CONTROL POSITIVO DEL INSTRUMENTO VIVIA DETRAS DE ESTE GUARD. Medido por auditoria el
+    # 2026-10-05 a las dos puntas: con UN documento sin clasificar, `--canario` salia `rc=8`; con el
+    # documento clasificado, `rc=0` y «CANARIO OK: los 5 brazos tienen control». El canario corre en
+    # `main` (~:2212) y este guard vive en `descubrir_documentos`, que corre ANTES — asi que un solo
+    # archivo sin clasificar no bloqueaba solo la cifra: bloqueaba LA PRUEBA DE QUE EL LECTOR
+    # FUNCIONA. Y ese falso rojo es PEOR que el de la cifra: quien lo ve concluye «el instrumento
+    # esta roto», no «falta clasificar un doc» — y un instrumento declarado roto desactiva todo el
+    # trabajo que acredita, sin dejar rastro.
+    #
+    # EL FIX NO DEBILITA EL GUARD, lo acota al modo que publica cifra. Con `--canario` no se imprime
+    # ninguna cifra (el bloque termina en `return` antes del reporte): se rompe cada brazo y se exige
+    # que la metrica BAJE. Un documento extra sin clasificar no invalida eso — le da mas corpus.
+    # El aviso es RUIDOSO y solo aparece cuando hay sin clasificar, que no es el caso normal: un
+    # guard que grita en el caso normal se desarma solo, y este no grita ahi.
+    # [[un-control-de-ceguera-ubicado-despues-del-guard-que-dispara]] · [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
+    modo_canario = "--canario" in sys.argv
+
     sin_clasificar = sorted(n for n in candidatos if n not in MEDICIONES_DECLARADAS)
     if sin_clasificar:
         print(f"DOCUMENTOS: SIN CLASIFICAR — {len(sin_clasificar)} documento(s) producen veredictos "
@@ -863,7 +880,11 @@ def descubrir_documentos(ids):
         print("Clasificalo: si MIDE, va a MEDICIONES_DECLARADAS; si CITA o dictamina, va a "
               "NO_SON_MEDICION **con el motivo**. Sumarlo sin mirar infla la cifra y se ve como "
               "progreso; descartarlo sin mirar la baja y se ve como rigor.", file=sys.stderr)
-        sys.exit(8)
+        if not modo_canario:
+            sys.exit(8)
+        print(f"  ⚠️  `--canario` DEGRADA este guard a aviso y sigue: en modo canario no se publica "
+              f"ninguna cifra, se acredita el LECTOR. Los {len(sin_clasificar)} sin clasificar "
+              f"quedan en el corpus (mas corpus, no menos control).", file=sys.stderr)
 
     perdidos = sorted(MEDICIONES_DECLARADAS - set(candidatos))
     if perdidos:
@@ -871,7 +892,10 @@ def descubrir_documentos(ids):
               f"glob ya no encuentra con veredictos: {perdidos}. Se renombro, se borro, o el parser "
               f"dejo de verlo. Un ratchet que solo aprieta hacia arriba certifica un corpus que ya "
               f"no existe.", file=sys.stderr)
-        sys.exit(8)
+        if not modo_canario:
+            sys.exit(8)
+        print(f"  ⚠️  `--canario` lo degrada a aviso por el mismo motivo: el canario mide sobre los "
+              f"documentos DESCUBIERTOS, no sobre la lista declarada.", file=sys.stderr)
 
     # 🔴 EL GATE QUE FALTABA: `sin_clasificar` caza al NO clasificado; esto caza al MAL clasificado,
     # que es el unico camino por el que un documento analitico entra al corpus como medicion.
@@ -969,12 +993,27 @@ def sello_del_instrumento():
     Se computa a mano y no con `git hash-object` a proposito: el script tiene que poder sellarse
     sin git en el PATH y sin estar dentro de un repo.
     """
-    b = Path(__file__).read_bytes()
+    disco = Path(__file__).read_bytes()
+    # 🔴 SE HASHEA NORMALIZADO A LF, NO LOS BYTES DEL DISCO. Medido por auditoria el 2026-10-05: el
+    # mecanismo de arriba es correcto —arma el objeto git y lo sha1— y el sello resolvia exacto; lo
+    # rompen los FINALES DE LINEA. En Windows el archivo esta en disco con CRLF (173 664 B) y git
+    # almacena el blob normalizado a LF (173 560 B), asi que hashear el disco produce un sello con
+    # forma VALIDA que `git rev-parse <sha>:<path>` no resuelve. Es la forma mas cara del bug de
+    # finales de linea: no falla, no avisa, y publica una referencia inverificable que nadie
+    # distingue de una buena. [[el-open-w-trunca-antes-de-que-el-write-falle]] lleva la clase.
+    #
+    # Se publican LAS DOS cifras de tamaño a proposito: que `bytes` (lo hasheado) difiera de
+    # `bytes_en_disco` es CORRECTO en Windows, y declararlo evita que alguien «arregle» la
+    # diferencia el dia que la note. [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]
+    b = disco.replace(b"\r\n", b"\n")
     blob = b"blob " + str(len(b)).encode() + b"\0" + b
     return {
         "path": Path(__file__).name,
         "git_blob": hashlib.sha1(blob).hexdigest(),
+        "git_blob_unidad": "sha1 del objeto blob de git sobre el contenido NORMALIZADO A LF; "
+                           "resoluble con `git rev-parse <sha>:scripts/evidencia/contar-veredictos.py`",
         "bytes": len(b),
+        "bytes_en_disco": len(disco),
         "lineas": b.count(b"\n") + 1,
     }
 
@@ -1798,6 +1837,30 @@ def agregado_por_plataforma(lotes, ids):
     faltan = sorted(padron - web)
     sin_ref = [i for i in faltan if i in SIN_REFERENCIA_EN_CAPA_ESCRITORIO]
     salida = {p: sorted(v) for p, v in sorted(plat.items())}
+
+    # 🔴 LA CIFRA QUE EL ACTA EXIGE NO LA PUBLICABA NADIE. El acta pide el veredicto cerrado en WEB
+    # **Y** MOBILE para los 54 ids; esta funcion publicaba las dos listas por separado y nunca su
+    # conjuncion, asi que para responder la pregunta del acta habia que intersecar a mano — y quien
+    # no lo hacia citaba la cifra alta (`web 50 de 54`) como si respondiera. Publicar dos listas no
+    # es publicar su interseccion, y el lector asume que la cifra que encuentra es la respuesta a su
+    # pregunta: tres cifras del mismo criterio circularon el 2026-10-05 y gano la mas alta, que era
+    # la unica sin calificador. Computado primero por auditoria (9 de 54) y adoptado aca para que
+    # salga del instrumento y no de una re-implementacion: dos implementaciones de la misma cifra
+    # divergen, que es el defecto que el docstring de esta funcion ya documenta.
+    # [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]] · [[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]
+    mobile = plat.get("mobile", set())
+    ambas = sorted(web & mobile)
+    salida.update({
+        "ids_en_web_Y_mobile": ambas,
+        "ids_en_web_Y_mobile_n": len(ambas),
+        "ids_con_web_sin_mobile": sorted(web - mobile),
+        "ids_con_mobile_sin_web": sorted(mobile - web),
+        # La unidad va PEGADA a la cifra, no en el README: una cifra sin unidad se deja citar para
+        # cualquier pregunta, y es exactamente lo que paso con «54 de 54».
+        "unidad": (f"ids del padron de {len(padron)} con veredicto del vocabulario cerrado, POR "
+                   f"PLATAFORMA. `ids_en_web_Y_mobile_n` es la UNICA que responde el criterio del "
+                   f"acta (web Y mobile); las listas `web`/`mobile` por separado NO lo responden."),
+    })
     salida.update({
         "web_faltan": faltan,
         # El set ya NO descuenta: informa. `accionables` vuelve a ser TODOS los que faltan, porque
