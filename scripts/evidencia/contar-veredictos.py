@@ -440,6 +440,35 @@ NO_SON_MEDICION = {
         "MIDE EL RADIO de un equivoco de VOCABULARIO (`escritorio` = capa del prototipo vs viewport) "
         "sobre el corpus de .md, no pantallas contra el prototipo. Cita ids del padron (`esc`) para "
         "fundamentar que un conflicto declarado no tiene mecanismo de cierre.",
+    # 2026-10-05 — EL GATE CAZO EL *REPORTE DE ESTE CONTADOR*, y es la TERCERA forma de la misma
+    # clase en este registro. Las dos anteriores fueron un contrato que ENSEÑA el formato (y para
+    # enseñarlo emite `(home)`+`COHERENTE`) y una respuesta que CITA el fixture del defecto. Esta es
+    # la que faltaba: **el documento que PUBLICA lo que el instrumento midio vuelve a entrar al
+    # universo del instrumento.** Los dos de abajo son mi reporte del frente SUPERADO y traen, pegadas
+    # por script desde el JSON, las tablas «quien aporta el lado COHERENTE» y «cuantos veredictos
+    # distintos tiene cada id» — o sea el inventario completo de veredictos del criterio, por
+    # construccion.
+    #
+    # 🔴 Lo que esto dice del circuito, y no es una anecdota: en este corpus **medir obliga a
+    # reportar, y reportar contamina el corpus que se mide.** No hay forma de informar un cruce de
+    # veredictos sin nombrar los veredictos cruzados. Asi que la clasificacion a mano no es una deuda
+    # que se termine de pagar: es una tasa por cada reporte, y crece con la cantidad de mediciones.
+    # El arreglo estructural es la fila TABLACITA (el brazo `tabla` exige CABECERA con columna de
+    # veredicto declarada; hoy lee cualquier tabla y ni el code fence lo detiene), no seguir
+    # appendeando entradas aca.
+    #
+    # ⚠️ Y lo que NO se hace, a proposito: una exencion por patron del tipo «lo que emite
+    # planificacion no es medicion». Seria fail-open sobre el rol que mas documentos escribe, y es
+    # exactamente la forma de `exencion-sin-autoridad` — una regla amplia que nadie vuelve a medir.
+    # Prefiero la tasa visible: el gate grita, yo clasifico, y el costo queda contado.
+    "2026-10-05_dato_planificacion-a-frontend1_SUPERADO-medido-12-sigue-en-12":
+        "REPORTE de este contador a frontend1: le devuelve la cifra medida (12 → 12 con su marca "
+        "puesta) y corrige dos pedidos mios equivocados. Sus tablas son el inventario de veredictos "
+        "que el contador publico, insertadas desde el JSON; no mide ninguna pantalla.",
+    "2026-10-05_hallazgo_planificacion-a-auditoria_UNDOCUMENTO-refutado-midiendo":
+        "REPORTE de este contador a auditoria: refuta por medicion la premisa de UNDOCUMENTO (la "
+        "superacion cierra 4 de 12, no 10) y nombra que 9 de los 10 dirimidos cuelgan de UNA "
+        "hipotesis compartida. Cita las mismas tablas del JSON; no mide pantallas.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
