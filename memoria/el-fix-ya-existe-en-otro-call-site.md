@@ -73,3 +73,40 @@ mecanismo, no por el síntoma (`grep -rl dry.run\|reconcile` en `scripts/`, no �
 enunciés una decisión como binaria, escribí **qué buscaste** para descartar la tercera opción — si no
 buscaste, no es binaria, es desconocida; (4) el momento de mayor urgencia es el de mayor riesgo de
 reinventar: el bloqueo compartido presiona a actuar, no a inventariar.
+
+---
+
+## Refuerzo 2026-10-05 · «el fix ya existe» exige verificar que la pieza existente EJERCITE el camino del consumidor, no que comparta el nombre del problema
+
+Diagnostiqué bien un falso rojo del gate —un test comparaba dos lecturas de un recurso que otras
+sesiones mutan— y prescribí el fix con esta frase: *«El fix ya existe y es tuyo, no hay que diseñar
+nada: `fabricar-corpus-fixture.py`, que está en #770»*. La dueña del archivo lo arregló y **corrigió
+la prescripción**: ese fixture fabrica **tablas con veredictos** para el contador, y el test roto no
+lee tablas — lee **nombres de archivo** y busca un marcador en los `cierre_`. Un corpus de veredictos
+no ejercita nada de lo que ese test mira. Lo que sí servía ya estaba **dentro del propio test**
+(`nuevo_buzon()`, usado por sus otros casos) más una env var que el script ya acepta.
+
+**Por qué la recomendación se sentía sólida:** las dos piezas resuelven el mismo *enunciado* —«probá
+idempotencia sobre corpus congelado en vez del buzón vivo»— y comparten el vocabulario entero
+(corpus, congelado, buzón, fixture). La coincidencia de enunciado hizo de puente, y nunca verifiqué la
+pregunta que importaba: **¿qué LEE el consumidor?** Un fixture es intercambiable sólo si produce la
+forma que el consumidor consume; acá un lado produce filas de tabla y el otro consume nombres de
+archivo.
+
+**Y el arreglo de raíz tampoco era mover el corpus:** era **separar dos preguntas fundidas en un
+caso** — el `rc` sobre el buzón real es un dato de **estado** (estable ante archivos nuevos, porque el
+script los reporta en vez de fallar), mientras la **idempotencia es una propiedad del código** y por
+eso se prueba sobre corpus congelado. Dos aserciones, dos casos. Mi prescripción mantenía la fusión y
+sólo cambiaba el insumo.
+
+**El test antes de recomendar reutilizar algo ajeno:** nombrar el **formato** que la pieza existente
+produce y el **formato** que el consumidor lee, y exigir que coincidan — en el archivo, no de memoria.
+Si no puedo nombrar los dos, lo que tengo es una analogía de vocabulario. **Reutilizar sigue siendo la
+regla** ([[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]]); lo que no es gratis es
+**afirmar que una pieza encaja** — eso es alcance, y alcance se valida contra el sistema
+([[no-codificar-la-esperanza-principio-raiz]]).
+
+Corolario para un hallazgo entregado a otra sesión: **el diagnóstico y la prescripción se verifican
+por separado.** Acá el diagnóstico era exacto (mtime incluido) y la prescripción falsa, y venían en el
+mismo documento con el mismo tono — quien lo recibe no tiene cómo saber que una mitad está medida y la
+otra no, salvo que se lo diga. Marcá cuál es cuál.
