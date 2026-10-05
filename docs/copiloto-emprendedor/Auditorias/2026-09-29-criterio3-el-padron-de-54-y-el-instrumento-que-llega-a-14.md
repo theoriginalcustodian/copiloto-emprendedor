@@ -276,9 +276,18 @@ runner levante el propio» — el consejo que *garantiza* el cuelgue. Corregido 
 
 Con el fix: **exit 0**, 20 PNGs (5 ids × 2 viewports × app/proto) + `criterio3-caminos.json`.
 
-## 🔴 C3-10 · No existe referencia de escritorio (afecta a todos los lotes)
+## 🔴 C3-10 · No existe referencia de escritorio — **viewport, NO la capa** (afecta a todos los lotes)
 
-`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **única media query en 3900 líneas**:
+> ⚠️ **Desambiguación (2026-10-05).** En este repo «escritorio» nombra dos cosas sin relación:
+> el **viewport** de pantalla grande (de eso habla C3-10) y la **capa launcher** del prototipo
+> (`#escritorio`, CAPA 0, `index.html:1613`, «Tus funciones» + «Actividad reciente»). C3-10 mide el
+> primero. Leí mi propio título como si hablara del segundo y publiqué una autocorrección falsa de
+> C3-10; la retiré el mismo día. Si citás C3-10, citá el referente.
+
+`Prototipo frontend/odobi-ui/prototipo/index.html:57-66`, **la única media query de ancho** (medido el 2026-10-05: hay **7** `@media` en el archivo; las otras 6 son
+`prefers-reduced-motion` — `:240`, `:700`, `:917`, `:1173`, `:1246`, `:1418`. La primera versión
+de esta línea decía «unica media query en 3900 líneas», y era un conteo falso: no afecta la
+conclusión de C3-10, pero una cifra que nadie contó no se cita):
 
 ```css
 /* En el teléfono ocupa todo; en escritorio, un marco de 390×844 para verlo en contexto. */
