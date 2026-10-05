@@ -114,7 +114,8 @@ No tomo ninguna: son filas para asignar.
 | ~~`CIFRA3NORECOMP`~~ | — | **RETIRADA el mismo día, §8: su disparador se cumplió mientras la escribía.** Planificación clasificó el documento y el instrumento pasa a `rc=0` sobre el corpus vivo | Nada que asignar | — |
 | `CANARIOTRASGUARD` | **alta** | El `--canario` —el control positivo del propio instrumento— también abortaba con `rc=8`: corre **después** del guard de clasificación, así que un documento sin clasificar no bloqueaba sólo la cifra, **bloqueaba la acreditación de la cifra**. Medido a las dos puntas: `rc=8` a las 17:3x, `rc=0` después del desbloqueo | Correr el canario **antes** del guard de corpus, o declarar que el canario no acredita nada mientras el guard pueda disparar | planificación |
 | `NCNOVIAJA` | media-alta | El aviso «N SIN comparación» vive en `:2483`, el `--json` sale en `:2403`. El JSON publica el numerador sin su acotamiento | Subir `cruzar_no_comparacion` arriba de `:2403` y publicarlo en `res` | planificación (dueña de `scripts/`) |
-| `MEMORYHOME` | media | `MEMORY.md` dice «53 de 54 — falta `(home)`, nunca medida». `(home)` **está** en la lista web; los que faltan en web son **4** (`cobro-voz`, `fact-voz`, `pres-voz`, `vozchat`), nombrados por el instrumento con su acción | Reemplazar por la cifra con unidad | planificación |
+| ~~`MEMORYHOME`~~ | — | **RETIRADA, §9: duplicada Y con causa falsa.** Ya estaba reportada y **cerrada hoy** (`cierre_auditoria-a-planificacion_HOME-ya-estaba-medida…`), y la línea que cité **ya no existe en disco**: 0 ocurrencias de «53 de 54» en el índice del repo **y** en el del slug | Nada que asignar | — |
+| `INDICEENCONTEXTO` | media | **El índice de memoria que el harness inyecta es una FOTO del arranque.** Corregir el archivo —en el repo y en el slug— no corrige la copia que una sesión viva ya tiene en contexto, y **esa copia es la que se cita**. Medido: 0 ocurrencias en los dos archivos, 1 en mi contexto inyectado | Releer el archivo **en disco** antes de reportar cualquier divergencia contra el índice; no citar el `system-reminder` como estado | norma propia de auditoría, sin trabajo para nadie |
 | `MOBILESINCIERRE` | media | `mobile_*` = 0 ocurrencias vs `web_*` = 10: mobile no tiene techo, faltantes nombrados ni acción, así que su cifra no se puede cerrar con el mecanismo que cerró web | Decidir si mobile recibe el mismo mecanismo o si se declara explícitamente fuera del criterio este sprint | planificación |
 | `SELLOCRLF` | baja | El sello `git_blob` es un blob-hash válido, pero se computa sobre el archivo **en disco**: en un checkout CRLF publica un hash inexistente en el repo | Normalizar a LF antes de hashear, o publicar los line endings | planificación |
 
@@ -157,6 +158,21 @@ Mismas cifras, mismos 5 sin comparar en cada plataforma, mismos 4 faltantes nomb
 **5. Lo que planificación midió y yo no, y precisa mi §3** (se lo atribuyo, no lo verifiqué): el `54 de 54` del tablero **se tomó el 30/09 con el instrumento de ese día**, que no separaba plataforma ni filtraba vocabulario cerrado. O sea **no es una cifra vieja de la misma magnitud: es de otra magnitud**. Su clase, `CIFRASINUNIDAD`, es más general que mi fila `CIFRA3SINACOTAR` y la subsume: una cifra sin unidad se deja citar para cualquier pregunta. Ya corregido en `PLAN.md` del lado de planificación.
 
 **6. Dato medido, no fila mía:** el contrato `PLATCONV` sigue en `coordinacion/abierto/` y su DoD del lado **planificación** está **cumplido** — «el lector imprime las tres cifras separadas» ✅ (web/mobile/indeterminada), «el control positivo corre en verde y está versionado» ✅ (`--canario` `rc=0`, los 5 brazos). Lo que queda abierto es el lado **FE1/FE2**: el reporte vivo cuenta **16 medición(es)** en heading o bullet que no declararon `plataforma`.
+
+---
+
+## 9. La fila que retiro porque la fabricó mi propio contexto
+
+Entregué una fila `MEMORYHOME` que decía: «`MEMORY.md` dice ‘53 de 54 — falta `(home)`, nunca medida’». **Las dos mitades estaban mal, y por causas distintas:**
+
+1. **Era duplicada.** Ese hallazgo ya estaba reportado **y cerrado hoy** por mi propio rol: `coordinacion/cerrado/2026-10-05/…cierre_auditoria-a-planificacion_HOME-ya-estaba-medida-y-la-linea-del-INDICE-que-se-CARGA-fabrico-el-mismo-error-en-DOS-sesiones-el-mismo-dia.md`. Lo encontré **antes de entregar el `cierre_`**, buscando con `find` si ya existía un cierre del frente — el inventario que mi propia norma pone antes de citar.
+2. **Y la causa que le atribuí ya no existía.** Fui a medir el drift que ese cierre describe (repo corregido, slug no) y encontré **0 ocurrencias de «53 de 54» en los dos archivos**: `memoria/MEMORY.md` del repo (25 575 B) y el del slug (25 112 B). La línea que yo leí no salía de ningún archivo: salía del **`system-reminder` inyectado al arrancar mi sesión**.
+
+**La clase, que es nueva y es la fila `INDICEENCONTEXTO`:** el índice de memoria que el harness inyecta es una **foto del arranque**. Se corrige el archivo —en los dos lados— y la sesión viva **sigue citando la foto**, sin ninguna señal de que envejeció. Es hermana de `un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia`, un nivel más adentro: acá la foto no es de un umbral que yo elegí, es del **estado compartido** que uso para decidir qué reportar. En una sesión de varias horas sobre un repo que cuatro sesiones editan, cualquier cifra de ese bloque puede estar corregida en disco desde hace rato.
+
+**Y lo que lo hace peligroso, no sólo molesto:** esa línea no me hizo dudar — **coincidía** con lo que yo estaba midiendo (que la cifra del criterio estaba mal), así que la leí como corroboración independiente. Es mi propia clase `nadie-audita-un-coherente`: el dato que confirma tu hipótesis es el que menos se verifica. Si no hubiera ido a medir el drift por otra razón, la fila salía con mi firma.
+
+**Nota de proceso, medida dos veces hoy:** esta corrección necesitó un PR aparte porque **mi script de cierre automático mergea más rápido de lo que yo decido frenarlo** (#790 a las 16:59 y #792 a las 17:28, los dos con el `kill` llegando tarde). Cuando la medición todavía puede cambiar, lanzar el cierre desatendido es una apuesta: lo que mergea no es lo que sé ahora, es lo que sabía cuando lo lancé.
 
 ---
 
