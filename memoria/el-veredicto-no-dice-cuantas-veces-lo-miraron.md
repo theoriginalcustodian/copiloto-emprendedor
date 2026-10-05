@@ -84,3 +84,36 @@ pantalla. Elegir foto donde alcanzaba un grep es pagar de más **y** medir peor.
 
 Origen: la sesión de auditoría, que además bajó su propia tanda de 13 ids a 10 con este método — y los
 sacó **por verificados, no por baratos**, que es la distinción que hace válida la reducción.
+
+---
+
+## Refuerzo (2026-10-05): **la nota al pie era la sección menos mirada, y ahí estaba el estado real**
+
+Mi informe cerraba con un §8 de límites, y su última línea era la más cosmética de todo el documento: «el
+gate `sin-clasificar` dispara **antes** del parse de `sys.argv`, así que `--help` tampoco imprime ayuda». La
+había escrito sin medir. La verifiqué porque era lo único que me quedaba sin control.
+
+**Resultó correcta** —`--help` contra el instrumento de `main` da `rc=8` y ninguna línea de ayuda— y de paso
+destapó lo que ninguna de mis dos mediciones principales podía ver: **sobre el buzón VIVO el gate está
+frenado**, por un documento que produce 5 `COHERENTE` y que nadie clasificó. Con un agravante medido: esos 5
+son **citas** de otro cierre que ya los aporta (su propia línea dice «ninguna COHERENTE en este documento»),
+así que clasificarlo como medición **contaría el mismo veredicto dos veces**, sobre dos de los cinco ids en
+disputa.
+
+**Por qué mis dos corridas principales no podían encontrarlo: las dos usaron el corpus congelado.** Un corpus
+congelado es la herramienta correcta para que una medición sea reproducible —y me protegió, porque el
+documento entró al buzón después del corte— pero **responde por el pasado y no por el presente**. El estado
+operativo de hoy (¿el gate corre?, ¿alguien está frenado?) sólo aparece en la corrida viva.
+
+**Cómo aplicarlo:**
+- Antes de cerrar, **medí las afirmaciones que escribiste sin medir**, empezando por las que parecen
+  cosméticas: son las menos miradas por vos y por el lector, y es donde sobrevive lo no verificado.
+- Si congelaste el corpus para reproducibilidad, corré **además** una pasada viva antes de cerrar, y declará
+  cuál respondés con cada una. Las dos preguntas son distintas: *¿es reproducible?* y *¿corre hoy?*
+- Un documento que **cita** veredictos y uno que los **produce** son indistinguibles para un contador de
+  símbolos, y el error no es sólo de rol: **duplica el hecho**. Ver
+  [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]] y
+  [[contar-un-simbolo-no-dice-en-que-rol-aparece]].
+
+Emparentado: [[el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia]] ·
+[[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]] (el congelado es la misma foto, un día después).
