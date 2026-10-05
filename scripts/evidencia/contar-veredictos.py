@@ -1756,6 +1756,82 @@ def agregado_por_plataforma(lotes, ids):
     return salida
 
 
+# ── SUPERACION DE VEREDICTOS: el mecanismo que faltaba en CONFLICTOSINDUENO ────────────────────
+#
+# EL PROBLEMA, medido el 2026-10-05. Auditoria barrio los 12 conflictos de veredicto y encontro que
+# 10 traen su COHERENTE del MISMO documento (un barrido de cascara del 22/09, superado despues por
+# mediciones mas finas DEL MISMO ROL). Frontend1 cerro su mitad ese mismo dia: agrego al final de su
+# documento una nota en prosa marcando las 10 filas como superadas, verificada linea por linea
+# contra los 5 documentos que las reemplazan. Trabajo correcto y completo.
+#
+# **Y la cifra siguio diciendo 12.** La nota estaba escrita en un idioma que el instrumento no lee,
+# asi que el trabajo del rol dueno no llego al reporte. Es la misma clase que
+# `memoria/el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md`, un nivel mas arriba: no
+# fallo un parser, fallo el circuito entre quien tiene la autoridad y quien publica la cifra.
+#
+# POR QUE NO SE PARSEA LA PROSA, aunque se podria. Dentro de esa nota los ids aparecen en backticks
+# — pero tambien aparecen los nombres de los 5 documentos, que contienen `card-cobro`, `card-presu`
+# y `factura` adentro. Un extractor de backticks filtrado por padron funcionaria HOY y retiraria un
+# veredicto de mas el dia que una explicacion mencione un id al pasar. Y el costo de un falso
+# positivo acá es el peor que tiene este instrumento: retirar un veredicto OCULTA un conflicto, o
+# sea fabrica el COHERENTE falso que todo este contraste existe para cazar. Un mecanismo cuyo modo
+# de falla es «desactiva trabajo sin dejar rastro» no se construye sobre una heuristica.
+#
+# LA FORMA CANONICA, en comentario HTML para que no altere el render del documento:
+#
+#   <!-- SUPERADO 2026-10-05 por frontend1: 10 ids -->
+#   <!-- SUPERADO-IDS: esc, factura, comousar, soporte, bi, card, card-cobro, card-presu, card-cliente, preg -->
+#
+# El CONTEO declarado es el control, y es lo que separa esto de una heuristica: si el parser lee una
+# cantidad distinta de la declarada, rompe. Sin el, un id mal tipeado o una coma de mas se tragan
+# en silencio — y «silencio» acá significa un veredicto que se retiro o que no se retiro sin que
+# nadie se enterara.
+#
+# La marca la escribe EL ROL DUENO en SU PROPIO documento, que es la unica forma de respetar las dos
+# reglas a la vez: la propiedad del veredicto es del rol (no de la sesion) y nadie edita la carpeta
+# de otra sesion. No hay lista central en este archivo a proposito: una lista central obligaria al
+# dueno del veredicto a pedirme que yo lo escriba, que es exactamente el cuello de botella que
+# CONFLICTOSINDUENO describe.
+SUPERADO_RX = re.compile(
+    r"<!--\s*SUPERADO\s+(\d{4}-\d{2}-\d{2})\s+por\s+([A-Za-z0-9_-]+)\s*:\s*(\d+)\s+ids?\s*-->")
+SUPERADO_IDS_RX = re.compile(r"<!--\s*SUPERADO-IDS\s*:\s*([^>]+?)\s*-->")
+# La forma EN PROSA que ya se uso (frontend1, 22/09 + nota del 05/10). No se parsea para retirar: se
+# detecta para REPORTAR que hay un trabajo hecho que el instrumento no esta contando. Es el canario
+# del circuito, no el circuito.
+SUPERADO_PROSA_RX = re.compile(r"\*\*Superad[oa]\s*\(", re.IGNORECASE)
+
+
+def superados_del_documento(txt, ids, doc):
+    """(set de ids superados, nota) leidos de la marca canonica. Rompe si el conteo no cierra.
+
+    Devuelve set() cuando no hay marca. `nota` describe lo que se encontro, para el reporte.
+    """
+    m = SUPERADO_RX.search(txt)
+    if not m:
+        if SUPERADO_PROSA_RX.search(txt):
+            return set(), {"en_prosa_no_leida": True}
+        return set(), {}
+    fecha, rol, cuantos = m.group(1), m.group(2), int(m.group(3))
+    mi = SUPERADO_IDS_RX.search(txt)
+    if not mi:
+        sys.exit(f"SUPERADO SIN LISTA — {doc} declara «SUPERADO {fecha} por {rol}: {cuantos} ids» y "
+                 f"no trae la linea `<!-- SUPERADO-IDS: a, b, c -->`. Declarar la cantidad sin la "
+                 f"lista no retira nada y se lee como si hubiera retirado {cuantos}.")
+    leidos = [x.strip().strip("`") for x in mi.group(1).split(",") if x.strip()]
+    if len(leidos) != cuantos:
+        sys.exit(f"SUPERADO: EL CONTEO NO CIERRA — {doc} declara {cuantos} ids y la lista trae "
+                 f"{len(leidos)}: {leidos}. Este control es el que separa esto de una heuristica: "
+                 f"sin el, una coma de mas o un id mal tipeado retira (o deja de retirar) un "
+                 f"veredicto en silencio, y retirar de mas OCULTA un conflicto — el COHERENTE falso "
+                 f"que este contraste existe para cazar.")
+    fuera = [i for i in leidos if i not in ids]
+    if fuera:
+        sys.exit(f"SUPERADO: IDS FUERA DEL PADRON — {doc} marca {fuera} como superados y no estan "
+                 f"en el padron de la spec. O el id esta mal escrito, o se esta retirando algo que "
+                 f"el criterio no mide; las dos cosas se arreglan mirando, no ignorando.")
+    return set(leidos), {"fecha": fecha, "rol": rol, "ids": sorted(leidos)}
+
+
 def veredictos_por_id(con, ids):
     """{id del padron: [veredictos CERRADOS, ordenados]}. Solo vocabulario cerrado: un token que el
     parser no interpreta no puede sostener ni un acuerdo ni un conflicto."""
@@ -1978,6 +2054,7 @@ def main():
     for k, p in docs.items():
         txt = textos[k] = io.open(p, encoding="utf-8", errors="replace").read()
         hits, con, sin, sitios, huerfanos, fuera, plat_sin_leer = medir(txt, ids)
+        superados, nota_sup = superados_del_documento(txt, ids, k)
         # La cifra que pide el criterio, por fin computada: de los 54 ids de la spec, cuantos tienen
         # veredicto en este doc.
         ids_con_veredicto = ids_del_criterio(con, ids)
@@ -2008,7 +2085,13 @@ def main():
             # El mapa id -> veredictos CERRADOS. Sin el, `detalle` lista veredictos por linea sin
             # sujeto, asi que no se podia cruzar el mismo id entre documentos — y ese cruce es lo
             # unico que caza un COHERENTE falso.
-            "veredictos_por_id": veredictos_por_id(con, ids),
+            # Los ids que el ROL DUENO marco como superados en SU documento no entran al cruce:
+            # un veredicto retirado por quien lo emitio no puede seguir sosteniendo un conflicto.
+            # Se publican aparte para que el retiro sea AUDITABLE — quien, cuando y cuales.
+            "veredictos_por_id": {i: v for i, v in veredictos_por_id(con, ids).items()
+                                  if i not in superados},
+            "superados": sorted(superados),
+            "superado_nota": nota_sup,
             "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},
             "sujetos_nombrados_sin_veredicto": sin,
             "ocurrencias_de_veredicto": len([h for h in hits if h[2] != "hueco"]),

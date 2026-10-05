@@ -47,10 +47,38 @@ fi
 # Se corre SIN COPILOTO_COORD a propósito: el default del contador es el buzón real, y éste es el
 # único consumidor que lo quiere así. Si alguien lo exportó en el entorno, se respeta (sirve para
 # los tests), pero no se fija acá para que el script no mienta sobre qué corpus miró.
-err="$(mktemp)"; trap 'rm -f "$err"' EXIT
-"$PY" "$CONTADOR" --json > /dev/null 2> "$err"; rc=$?
+err="$(mktemp)"; jsn="$(mktemp)"; trap 'rm -f "$err" "$jsn"' EXIT
+"$PY" "$CONTADOR" --json > "$jsn" 2> "$err"; rc=$?
 
 if [ "$rc" -eq 0 ]; then
+  # CANARIO DEL CIRCUITO (2026-10-05). El contador puede salir 0 y haber trabajo del rol dueño que
+  # NO está llegando a la cifra: una superación de veredictos escrita en prosa, que el instrumento
+  # detecta y a propósito NO parsea (`superados_del_documento`). Pasó con las 10 filas que
+  # frontend1 marcó superadas el 05/10 — nota correcta, verificada línea por línea, y la cifra
+  # siguió diciendo 12. Un rc=0 ahí significa «el gate no tiene nada que objetar», no «el reporte
+  # está completo», y la diferencia es justo el trabajo de otro que se está perdiendo.
+  prosa="$("$PY" -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception as e:
+    print("CANARIO_ROTO " + str(e)[:80]); raise SystemExit(0)
+for k, v in sorted(d.get("lotes", {}).items()):
+    if (v.get("superado_nota") or {}).get("en_prosa_no_leida"):
+        print(k)
+' "$jsn" 2>/dev/null)"
+  if [ -n "$prosa" ]; then
+    echo "📋 SUPERACIÓN EN PROSA que la cifra NO cuenta ($(printf '%s
+' "$prosa" | grep -c .) documento(s)):"
+    printf '%s
+' "$prosa" | sed 's/^/   · /'
+    echo "   El rol dueño retiró veredictos y el instrumento no los lee. Pedirle las DOS líneas"
+    echo "   canónicas en SU documento (el conteo es el control):"
+    echo "     <!-- SUPERADO AAAA-MM-DD por <rol>: N ids -->"
+    echo "     <!-- SUPERADO-IDS: a, b, c -->"
+    echo "   NO lo escribas vos en su documento: la propiedad del veredicto es del rol."
+    exit 1
+  fi
   [ "$QUIET" = "1" ] || echo "CORPUS: sin novedades — todo documento con veredictos está clasificado."
   exit 0
 fi

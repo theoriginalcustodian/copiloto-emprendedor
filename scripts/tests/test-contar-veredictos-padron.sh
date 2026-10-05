@@ -435,6 +435,109 @@ else
   fail "el fixture del caso 13 no pudo inyectar el idioma nuevo"
 fi
 
+# ── Helper: agrega líneas al final del PRIMER documento del corpus fixture ────────────────────
+# Devuelve por stdout el id que ese documento mide, para que el caso afirme contra un dato REAL del
+# fixture y no contra un id elegido a mano (un id a mano envejece cuando cambia el padrón).
+marcar_doc() {   # marcar_doc <corpus> <texto a appendear, con {ID} sustituido por el id elegido>
+  local corpus="$1" texto="$2"
+  "$PY" - "$corpus" "$texto" <<'PYEOF'
+import io, re, sys
+corpus, texto = sys.argv[1], sys.argv[2]
+docs = sorted((io.open(p, encoding="utf-8").read(), p) for p in
+              __import__("pathlib").Path(corpus, "abierto").glob("*.md"))
+t, p = docs[0]
+ids = re.findall(r"^\| `([^`]+)` \|", t, re.M)
+assert ids, "el documento del fixture no trae filas con sujeto"
+io.open(p, "a", encoding="utf-8", newline="\n").write("\n" + texto.replace("{ID}", ids[0]) + "\n")
+print(ids[0])
+PYEOF
+}
+
+echo "── Caso 14: la marca canónica RETIRA el veredicto del cruce, y el retiro queda auditable"
+# El mecanismo que faltaba en CONFLICTOSINDUENO: el ROL DUEÑO marca en SU documento y la cifra lo
+# refleja. Lo que este caso impide es el modo de falla que ya se midió — frontend1 cerró su mitad en
+# prosa el 05/10, correcta y verificada línea por línea, y la cifra siguió diciendo 12 porque la
+# nota estaba en un idioma que el instrumento no lee. El trabajo del dueño no llegaba al reporte.
+C14="$(corpus_nuevo superado)"
+ID14="$(marcar_doc "$C14" '<!-- SUPERADO 2026-10-05 por fixture: 1 ids -->
+<!-- SUPERADO-IDS: {ID} -->')"
+if J14="$(COPILOTO_COORD="$C14" "$PY" "$CONTADOR" --json 2> "$TMP/c14.err")"; then
+  if printf '%s' "$J14" | "$PY" -c '
+import json, sys
+idq = sys.argv[1]
+lotes = json.load(sys.stdin)["lotes"]
+tocados = [d for d in lotes.values() if d.get("superados")]
+assert len(tocados) == 1, "esperaba 1 documento con superados, hay %d" % len(tocados)
+d = tocados[0]
+assert d["superados"] == [idq], "superados=%r, esperaba [%r]" % (d["superados"], idq)
+assert idq not in d["veredictos_por_id"], "%s sigue en el cruce despues de marcarlo superado" % idq
+n = d["superado_nota"]
+assert n.get("rol") == "fixture" and n.get("fecha") == "2026-10-05", "la nota no identifica quien y cuando: %r" % n
+' "$ID14" 2> "$TMP/c14b.err"; then
+    ok "un id marcado por su dueño sale del cruce, y queda quién/cuándo/cuáles"
+  else
+    fail "el retiro no cumple: $(head -2 "$TMP/c14b.err")"
+  fi
+else
+  fail "el contador no corrió con la marca canónica: $(head -2 "$TMP/c14.err")"
+fi
+
+echo "── Caso 15: CONTROL del CONTEO — declarar 3 y listar 1 ROMPE"
+# Es LO QUE SEPARA esto de una heurística, y por eso tiene caso propio. Sin el conteo, una coma de
+# más o un id mal tipeado retira (o deja de retirar) un veredicto EN SILENCIO — y retirar de más
+# oculta un conflicto, o sea fabrica el COHERENTE falso que todo este contraste existe para cazar.
+# Un mecanismo cuyo modo de falla es «desactiva trabajo sin dejar rastro» necesita el control adentro.
+C15="$(corpus_nuevo conteo)"
+marcar_doc "$C15" '<!-- SUPERADO 2026-10-05 por fixture: 3 ids -->
+<!-- SUPERADO-IDS: {ID} -->' > /dev/null
+if COPILOTO_COORD="$C15" "$PY" "$CONTADOR" --json > /dev/null 2> "$TMP/c15.err"; then
+  fail "el conteo mentido NO rompe: declaró 3 y listó 1, y salió VERDE"
+elif grep -q "EL CONTEO NO CIERRA" "$TMP/c15.err"; then
+  ok "declarar una cantidad distinta de la lista rompe, y lo dice"
+else
+  fail "rompió por otra razón: $(head -2 "$TMP/c15.err")"
+fi
+
+echo "── Caso 16: un id superado FUERA DEL PADRÓN rompe (no se retira lo que el criterio no mide)"
+C16="$(corpus_nuevo fuerapadron)"
+marcar_doc "$C16" '<!-- SUPERADO 2026-10-05 por fixture: 1 ids -->
+<!-- SUPERADO-IDS: pantalla-que-no-existe -->' > /dev/null
+if COPILOTO_COORD="$C16" "$PY" "$CONTADOR" --json > /dev/null 2> "$TMP/c16.err"; then
+  fail "un id superado fuera del padrón NO rompe: se retiró algo que el criterio no mide"
+elif grep -q "IDS FUERA DEL PADRON" "$TMP/c16.err"; then
+  ok "un id que no está en el padrón rompe: o está mal escrito, o no se mide"
+else
+  fail "rompió por otra razón: $(head -2 "$TMP/c16.err")"
+fi
+
+echo "── Caso 17: CANARIO — una superación EN PROSA se REPORTA y NO rompe"
+# El canario del circuito, no el circuito. Detecta que hay trabajo del rol dueño que el instrumento
+# no está contando, y NO retira nada: parsear esa prosa retiraría un veredicto de más el día que una
+# explicación mencione un id al pasar (en la nota real conviven los ids en backticks con los NOMBRES
+# de los documentos que los reemplazan, y esos nombres contienen `card-cobro`, `card-presu`,
+# `factura` adentro). Y NO rompe el gate a propósito: el documento es de otra sesión, así que un rojo
+# acá le factura a quien corre el gate lo que causó otro — el defecto de LINTALCANCE, ya pagado.
+C17="$(corpus_nuevo prosa)"
+ID17="$(marcar_doc "$C17" '> **Superado (2026-10-05), mismo rol (fixture).** La fila de `{ID}` quedó
+> reemplazada por una medición posterior más fina.')"
+if J17="$(COPILOTO_COORD="$C17" "$PY" "$CONTADOR" --json 2> "$TMP/c17.err")"; then
+  if printf '%s' "$J17" | "$PY" -c '
+import json, sys
+idq = sys.argv[1]
+lotes = json.load(sys.stdin)["lotes"]
+pr = [d for d in lotes.values() if d.get("superado_nota", {}).get("en_prosa_no_leida")]
+assert len(pr) == 1, "el canario vio %d documentos con superacion en prosa, esperaba 1" % len(pr)
+assert not pr[0]["superados"], "la prosa RETIRO %r: se parseo lo que no se debe parsear" % pr[0]["superados"]
+assert idq in pr[0]["veredictos_por_id"], "%s salio del cruce por una nota en prosa" % idq
+' "$ID17" 2> "$TMP/c17b.err"; then
+    ok "la prosa se reporta, no retira, y no rompe el gate de nadie"
+  else
+    fail "el canario no cumple: $(head -2 "$TMP/c17b.err")"
+  fi
+else
+  fail "una superación en prosa ROMPIÓ el gate: $(head -2 "$TMP/c17.err")"
+fi
+
 echo
 if [ "$fallos" = "0" ]; then
   echo "✅ TODO VERDE — el padrón participa, el corpus se descubre, los gates tienen control, y el contraste dice QUIÉN dijo cada veredicto"
