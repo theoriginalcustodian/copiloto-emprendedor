@@ -426,6 +426,20 @@ NO_SON_MEDICION = {
         "DICTAMEN sobre este contador: refuta el DESCUENTO DEL TECHO de la exencion (la cifra medida "
         "no cambia, solo el ✅) y nombra el equivoco de `escritorio` (capa vs viewport). Cita ids del "
         "padron para fundamentar; no mide pantallas.",
+    # 2026-10-05 — TERCERA instancia de VOCABAJENO en el mismo dia, y la que mide su propia clase:
+    # barrio `escritorio|desktop` sobre 2168 .md y reparte 655 apariciones en 222 archivos (~311
+    # CAPA, ~297 VIEWPORT, 12 AMBIGUO, 4 SALTO, 6 META, 7 MIXTO, 18 OTRO). CITA `| esc | COHERENTE |`
+    # de `BL-Q3-web-barrido-35-pantallas` para fundamentar que ese conflicto no tiene via de cierre.
+    #
+    # 🔴 Y ES LA EVIDENCIA QUE CIERRA LINTALCANCE: este documento lo emitio OTRA sesion y puso el
+    # `lint` de las CUATRO ramas en rojo (exit 8) a los minutos de publicarse, por tercera vez hoy.
+    # El gate de merge evaluaba un ratchet de ESTADO DEL CORPUS —un corpus vivo, compartido y no
+    # versionado— sobre commits que no lo controlan. El aislamiento (COPILOTO_COORD + fixture) es el
+    # arreglo; esta linea es el parche que desbloquea mientras entra.
+    "2026-10-05_hallazgo_auditoria-a-planificacion_radio-del-equivoco-escritorio-medido":
+        "MIDE EL RADIO de un equivoco de VOCABULARIO (`escritorio` = capa del prototipo vs viewport) "
+        "sobre el corpus de .md, no pantallas contra el prototipo. Cita ids del padron (`esc`) para "
+        "fundamentar que un conflicto declarado no tiene mecanismo de cierre.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",

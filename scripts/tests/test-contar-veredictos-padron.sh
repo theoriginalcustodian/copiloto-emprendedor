@@ -41,19 +41,36 @@ if [ -z "$PY" ]; then
   exit 0
 fi
 
-# El contador lee el buzón real, que NO está versionado: en un clon sin `coordinacion/` aborta con 2
-# por diseño («un 0 acá sería del instrumento, no del dato»). Eso no es un fallo de este test.
+# 🔴 EL CORPUS DEL GATE ES UN FIXTURE, NO EL BUZON VIVO (LINTALCANCE, 2026-10-05).
+#
+# Hasta hoy este test corria el contador contra `coordinacion/`: un corpus vivo, compartido entre
+# cuatro sesiones y NO versionado. Eso mezclaba dos cosas que el gate tiene que separar — los
+# ratchets de CODIGO (que el commit determina) y el ratchet de ESTADO «hay un documento sin
+# clasificar» (que lo determina quien emitio ultimo). Consecuencias medidas el mismo dia:
+#
+#   · tres veces en una hora, una emision de OTRA sesion puso rojo el `lint` de TODAS las ramas;
+#   · el mismo `lint.sh` daba distinto segun la rama (5 sin clasificar en una, 1 en otra), porque
+#     la clasificacion vive en el codigo de cada rama y el corpus es uno;
+#   · en CI `coordinacion/` no existe, asi que esto salteaba ENTERO por el rc=2 — un gate que no
+#     mide en el unico lugar donde es obligatorio, y cuyo SKIP se leia como verde.
+#
+# El ratchet de estado NO se perdio: vive en `scripts/evidencia/auditar-corpus-vivo.sh`, que corre
+# en el ciclo de vigilancia de planificacion —la duena de clasificar— y puede ponerse rojo sin
+# trabar el merge de nadie. Que el gate conserve su poder de deteccion sobre el fixture lo prueba
+# el caso 6; sin ese control, aislar el corpus seria indistinguible de desactivar el ratchet.
+CORPUS="$("$PY" "$REPO_ROOT/scripts/evidencia/fabricar-corpus-fixture.py" "$TMP" 2> "$TMP/fx.err")"
+if [ -z "$CORPUS" ] || [ ! -d "$CORPUS" ]; then
+  fail "no pude fabricar el corpus fixture: $(head -3 "$TMP/fx.err")"
+  echo "❌ 1 fallo(s)"; exit 1
+fi
+export COPILOTO_COORD="$CORPUS"
+
 "$PY" "$CONTADOR" --json > "$TMP/base.json" 2> "$TMP/base.err"; rc_base=$?
 if [ "$rc_base" -ne 0 ]; then
-  # El SKIP se decide por el CODIGO DE SALIDA, no por el texto. La version anterior grepeaba
-  # «ABORTA: no encontré ['lote», un mensaje que el refactor de `docs_control` dejo de
-  # imprimir: el skip quedo muerto sin dar sintoma y el rojo de ceguera se leyo como hallazgo.
-  # exit 2 = «no puedo medir» en todo el contador (matriz ausente, spec ausente, buzon ausente).
-  if [ "$rc_base" -eq 2 ]; then
-    echo "  ⏭️  sin coordinacion/ en este checkout — salteado (el contador aborta por diseño)"
-    exit 0
-  fi
-  fail "el contador no corre: $(head -3 "$TMP/base.err" | tr '\n' ' ')"
+  # Ya NO hay skip por rc=2. El corpus lo fabrica este test, asi que «no puedo medir» dejo de ser un
+  # estado legitimo del entorno y pasa a ser un defecto: o el fixture no sirve, o la spec/matriz del
+  # commit no se leen. Ninguna de las dos es un verde.
+  fail "el contador no corre contra el fixture (rc=$rc_base): $(head -3 "$TMP/base.err")"
   echo "❌ 1 fallo(s)"; exit 1
 fi
 
@@ -202,140 +219,121 @@ else
   fail "el corpus tiene $n_docs documentos: el descubrimiento volvió a quedar fijo"
 fi
 
-echo "── Caso 7: CONTROL POSITIVO del gate de clasificación — un candidato sin clasificar ROMPE"
-# Es el control que le faltaría al gate nuevo. Sin este caso, «un documento sin clasificar rompe el
-# gate» es una promesa: un `sys.exit(8)` que nunca se ejercita es indistinguible de un `pass`. Y acá
-# importa doble, porque este gate es lo único que impide que descubrir documentos por glob sume texto
-# normativo — y sumarlo **se vería como progreso**, que es el falso verde más caro de todos.
-cp "$CONTADOR" "$FAKE/scripts/evidencia/sinclas.py"
-"$PY" - "$FAKE/scripts/evidencia/sinclas.py" <<'PYEOF'
-import io, sys
-p = sys.argv[1]
-# Se le saca el `dictamen` a NO_SON_MEDICION: vuelve a ser un candidato sin clasificar (12 ids con
-# veredicto, todos citados). El gate tiene que verlo y abortar con exit 8.
+# ── Helpers del fixture para los gates de clasificacion ───────────────────────────────────────
+# ANTES: estos cuatro casos parcheaban el CODIGO (sacaban o movian una clasificacion) y esperaban
+# que el BUZON VIVO tuviera un documento con la propiedad exacta que el gate caza — 12 ids citados,
+# 0 veredictos cerrados, un conflicto en `card`. Dos fragilidades en una: dependian del corpus de un
+# dia Y de que una clave concreta siguiera existiendo en el fuente. La segunda ya cobro: el comentario
+# del caso 8 contaba que su version anterior sacaba una entrada de un dict que despues quedo vacio, y
+# el fixture dejo de fabricar el caso mientras el gate parecia roto.
 #
-# Se edita POR LÍNEAS y no con una regex multilínea a propósito: este bloque viaja dentro de un
-# heredoc, y cualquier `\n` en un literal de regex lo expande el shell y parte el string — pasó, y el
-# rojo resultante («unterminated string literal») se lee como un fallo del gate y no del andamio.
-lineas = io.open(p, encoding="utf-8").read().split("\n")
-salida, borrando, borradas = [], False, 0
-for ln in lineas:
-    if ln.startswith('    "2026-09-28_dictamen_auditoria'):
-        borrando = True
-    elif borrando and not ln.startswith('        "'):
-        borrando = False
-    if borrando:
-        borradas += 1
-        continue
-    salida.append(ln)
-assert borradas >= 2, "no encontré la entrada del dictamen en NO_SON_MEDICION: cambió de forma"
-io.open(p, "w", encoding="utf-8", newline="\n").write("\n".join(salida))
-PYEOF
-if [ "$?" != "0" ]; then
-  fail "no pude fabricar la versión sin clasificar: el gate queda sin control positivo"
-elif "$PY" "$FAKE/scripts/evidencia/sinclas.py" --json > /dev/null 2> "$TMP/sinclas.err"; then
-  fail "el gate NO caza un documento sin clasificar: salió VERDE con un candidato suelto"
-else
-  if grep -q "SIN CLASIFICAR" "$TMP/sinclas.err"; then
-    ok "un candidato sin clasificar rompe el gate, y por el motivo correcto"
-  else
-    fail "rompió por otra razón: $(head -2 "$TMP/sinclas.err" | tr '\n' ' ')"
-  fi
-fi
-
-# ── Helper de fixture: mueve un documento de NO_SON_MEDICION a MEDICIONES_DECLARADAS ──────────
-# Es la mala clasificación que los gates 9 y 10 existen para cazar, así que el fixture ejercita el
-# MECANISMO y no un dato del día. La versión anterior del caso 8 sacaba una entrada de un dict de
-# excepciones que después quedó vacío: el fixture dejó de fabricar el caso y el gate pareció roto.
-cat > "$TMP/mover.py" <<'MOVEREOF'
+# AHORA cada caso FABRICA su documento en un corpus propio y lo declara en una copia del contador.
+# Ejercita el MECANISMO —el predicado del gate— y no un dato del dia. Los predicados se midieron
+# antes de escribir esto, no se dedujeron del docstring:
+#   · veredicto fuera del vocabulario, sin tokens del vocabulario en el texto -> exit 9  (NO MIDE)
+#   · veredicto fuera del vocabulario, con un token suelto en la prosa        -> exit 10 (NO SE LEE)
+#   · dos documentos que le dan veredictos incompatibles al mismo id          -> exit 11 (CONFLICTO)
+# El corpus base del fixture sale rc=0 (medido arriba), asi que cada rojo es atribuible al documento
+# que el caso agrega: sin ese control negativo, un fixture ya roto "dispararia" por otra causa.
+corpus_nuevo() {   # $1 = etiqueta -> imprime la ruta de un corpus fixture recien fabricado
+  "$PY" "$REPO_ROOT/scripts/evidencia/fabricar-corpus-fixture.py" "$TMP/c-$1" 2>> "$TMP/fx.err"
+}
+declarar() {       # $1 = destino .py · $2 = clave a agregar a MEDICIONES_DECLARADAS
+  "$PY" - "$CONTADOR" "$1" "$2" <<'PYEOF'
 import io, sys
-p, clave = sys.argv[1], sys.argv[2]
-t = io.open(p, encoding="utf-8").read()
-ini = "NO_SON_MEDICION = {"
-a, b = t.split(ini, 1)
-cuerpo, resto = b.split("\n}", 1)
-lineas, quedan, sacando, saque = cuerpo.split("\n"), [], False, 0
-for ln in lineas:
-    if clave in ln:
-        sacando, saque = True, saque + 1
-        continue
-    if sacando:
-        if ln.startswith("        "):     # las líneas del motivo, indentadas
-            continue
-        sacando = False
-    quedan.append(ln)
-assert saque == 1, "el fixture no encontró la clave %r en NO_SON_MEDICION" % clave
-t = a + ini + "\n".join(quedan) + "\n}" + resto
+src, dst, clave = sys.argv[1], sys.argv[2], sys.argv[3]
+t = io.open(src, encoding="utf-8").read()
 anc = "MEDICIONES_DECLARADAS = {\n"
-assert t.count(anc) == 1
-t = t.replace(anc, anc + '    "%s",\n' % clave, 1)
-io.open(p, "w", encoding="utf-8", newline="\n").write(t)
-MOVEREOF
+assert t.count(anc) == 1, "no encontre MEDICIONES_DECLARADAS: cambio de forma"
+io.open(dst, "w", encoding="utf-8", newline="\n").write(
+    t.replace(anc, anc + '    "%s",\n' % clave, 1))
+PYEOF
+}
+CAB='| sujeto | plataforma | veredicto | nota |'
+SEP='|---|---|---|---|'
+
+echo "── Caso 7: CONTROL POSITIVO del gate de clasificación — un candidato sin clasificar ROMPE"
+# Sin este caso, «un documento sin clasificar rompe el gate» es una promesa: un `sys.exit(8)` que
+# nunca se ejercita es indistinguible de un `pass`. Y acá importa doble, porque este gate es lo único
+# que impide que descubrir documentos por glob sume texto normativo — y sumarlo **se vería como
+# progreso**, que es el falso verde más caro de todos.
+C7="$(corpus_nuevo sinclas)"
+D7="2026-10-05_dato_fixture-a-planificacion_SIN-CLASIFICAR.md"
+printf '# fixture\n\n%s\n%s\n| `factura` | web | DESVIO | nadie me clasifico |\n' "$CAB" "$SEP" \
+  > "$C7/abierto/$D7"
+if COPILOTO_COORD="$C7" "$PY" "$CONTADOR" --json > /dev/null 2> "$TMP/sinclas.err"; then
+  fail "el gate NO caza un documento sin clasificar: salió VERDE con un candidato suelto"
+elif grep -q "SIN CLASIFICAR" "$TMP/sinclas.err"; then
+  ok "un candidato sin clasificar rompe el gate, y por el motivo correcto (exit 8)"
+else
+  fail "rompió por otra razón: $(head -2 "$TMP/sinclas.err")"
+fi
 
 echo "── Caso 8: CONTROL POSITIVO de «MEDICIÓN QUE NO MIDE» (exit 9) — el MAL clasificado"
 # `sin_clasificar` (caso 7) caza al que nadie clasificó. Éste caza al que está clasificado MAL, que
-# es el único camino por el que un documento analítico entra al corpus como medición. Ya demostró
-# que dispara en la vida real: en su primera corrida cazó una clave que yo había escrito adivinando
-# el basename de una tabla que lo mostraba truncado.
-cp "$CONTADOR" "$FAKE/scripts/evidencia/rol.py"
-if "$PY" "$TMP/mover.py" "$FAKE/scripts/evidencia/rol.py" "2026-09-21_hallazgo_auditoria-a-planificacion_delta-516-del-prototipo-51-entradas-3-pantallas-nuevas-medidas-y-una-contradiccion-para-martin.md" 2>"$TMP/mover9.err"; then
-  if "$PY" "$FAKE/scripts/evidencia/rol.py" --json > /dev/null 2> "$TMP/rol.err"; then
+# es el único camino por el que un documento analítico entra al corpus como medición. El predicado es
+# «0 veredictos del vocabulario CERRADO y 0 tokens del vocabulario en el texto»: un token en rol de
+# veredicto que el vocabulario no reconoce (`APROBADO`) lo reproduce sin depender de ningún documento.
+C8="$(corpus_nuevo nomide)"
+D8="2026-10-05_dato_fixture-a-planificacion_NO-MIDE.md"
+printf '# fixture\n\n%s\n%s\n| `factura` | web | APROBADO | sin token del vocabulario |\n' "$CAB" "$SEP" \
+  > "$C8/abierto/$D8"
+if declarar "$FAKE/scripts/evidencia/rol.py" "$D8" 2> "$TMP/decl8.err"; then
+  if COPILOTO_COORD="$C8" "$PY" "$FAKE/scripts/evidencia/rol.py" --json > /dev/null 2> "$TMP/rol.err"; then
     fail "el gate NO caza un analítico declarado como medición: salió VERDE"
   elif grep -q "MEDICION QUE NO MIDE" "$TMP/rol.err"; then
     ok "un analítico declarado medición rompe el gate, por el motivo correcto (exit 9)"
   else
-    fail "rompió por otra razón: $(head -2 "$TMP/rol.err" | tr '\n' ' ')"
+    fail "rompió por otra razón: $(head -2 "$TMP/rol.err")"
   fi
 else
-  fail "el fixture del caso 8 no pudo mover la clave: $(head -1 "$TMP/mover9.err")"
+  fail "el fixture del caso 8 no pudo declarar la clave: $(head -1 "$TMP/decl8.err")"
 fi
 
 echo "── Caso 9: CONTROL POSITIVO de «MEDICIÓN QUE NO SE LEE» (exit 10) — rol vs lectura"
-# El predicado de «no mide» (cero veredictos cerrados) es EXACTAMENTE el síntoma del bug del emoji
-# en `limpiar()`. Sin partirlo, el gate acusaba de «no mide» a documentos que medían y no se leían —
-# un gate cuyo predicado es el síntoma de un bug abierto convierte el bug en veredicto de rol.
-# Este caso fija la separación: 0 cerrados PERO con tokens del vocabulario en el texto = LECTURA.
-cp "$CONTADOR" "$FAKE/scripts/evidencia/lectura.py"
-if "$PY" "$TMP/mover.py" "$FAKE/scripts/evidencia/lectura.py" "2026-09-29_cierre_auditoria-a-planificacion_verificabilidad-de-los-38-ninguno-midio-desktop-y-el-contador-es-ciego-a-28.md" 2>"$TMP/mover10.err"; then
-  if "$PY" "$FAKE/scripts/evidencia/lectura.py" --json > /dev/null 2> "$TMP/lect.err"; then
+# El predicado de «no mide» (cero veredictos cerrados) es EXACTAMENTE el síntoma del bug del emoji en
+# `limpiar()`. Sin partirlo, el gate acusaba de «no mide» a documentos que medían y no se leían — un
+# gate cuyo predicado es el síntoma de un bug abierto convierte el bug en veredicto de rol. Este caso
+# fija la separación, y la única diferencia con el 8 es UNA línea de prosa con un token del
+# vocabulario: si los dos exits se volvieran a fusionar, acá saldría «NO MIDE» y el caso lo diría.
+C9="$(corpus_nuevo nolee)"
+D9="2026-10-05_dato_fixture-a-planificacion_NO-SE-LEE.md"
+printf '# fixture\n\nEste COHERENTE quedó en la prosa y el parser no lo atribuyó a ningún sujeto.\n\n%s\n%s\n| `factura` | web | APROBADO | con vocabulario suelto |\n' "$CAB" "$SEP" \
+  > "$C9/abierto/$D9"
+if declarar "$FAKE/scripts/evidencia/lectura.py" "$D9" 2> "$TMP/decl9.err"; then
+  if COPILOTO_COORD="$C9" "$PY" "$FAKE/scripts/evidencia/lectura.py" --json > /dev/null 2> "$TMP/lect.err"; then
     fail "el gate NO distingue «no se lee»: salió VERDE con 0 cerrados y vocabulario en el texto"
   elif grep -q "MEDICION QUE NO SE LEE" "$TMP/lect.err"; then
     ok "0 cerrados + vocabulario en el texto sale por LECTURA, no por ROL (exit 10)"
   else
-    fail "rompió por otra razón: $(head -2 "$TMP/lect.err" | tr '\n' ' ')"
+    fail "rompió por otra razón: $(head -2 "$TMP/lect.err")"
   fi
 else
-  fail "el fixture del caso 9 no pudo mover la clave: $(head -1 "$TMP/mover10.err")"
+  fail "el fixture del caso 9 no pudo declarar la clave: $(head -1 "$TMP/decl9.err")"
 fi
 
 echo "── Caso 10: CONTROL POSITIVO del CONTRASTE id→veredictos (exit 11) — el falso COHERENTE"
 # Es el único control que caza un COHERENTE falso, y un COHERENTE falso desactiva trabajo sin dejar
-# rastro (un DESVÍO falso cuesta una recaptura y se descubre). Si el ratchet se rompe, el contraste
-# se degrada a una línea de reporte que nadie atiende.
-cp "$CONTADOR" "$FAKE/scripts/evidencia/confl.py"
-"$PY" - "$FAKE/scripts/evidencia/confl.py" <<'PYEOF'
-import io, sys
-p = sys.argv[1]
-lineas = io.open(p, encoding="utf-8").read().split("\n")
-salida, saque = [], 0
-for ln in lineas:
-    if ln.strip().startswith('"card": HIPOTESIS_MATRIZ_2209'):
-        saque += 1
-        continue
-    salida.append(ln)
-assert saque == 1, "el fixture no encontró la entrada de `card` en CONFLICTOS_CONOCIDOS"
-io.open(p, "w", encoding="utf-8", newline="\n").write("\n".join(salida))
-PYEOF
-if [ "$?" != "0" ]; then
-  fail "el fixture del caso 10 no pudo sacar el conflicto declarado"
-elif "$PY" "$FAKE/scripts/evidencia/confl.py" --json > /dev/null 2> "$TMP/confl.err"; then
-  fail "el ratchet de conflictos NO caza uno sin declarar: salió VERDE"
-else
-  if grep -q "CONFLICTO NUEVO" "$TMP/confl.err"; then
+# rastro (un DESVÍO falso cuesta una recaptura y se descubre). Si el ratchet se rompe, el contraste se
+# degrada a una línea de reporte que nadie atiende.
+#
+# El id es `agenda` y no `factura` A PROPÓSITO: `factura` está entre los 12 conflictos YA declarados,
+# así que un conflicto suyo no sería «nuevo» y el caso saldría verde midiendo otra cosa. Se elige un
+# id que el fixture mide COHERENTE y que nadie declaró en conflicto.
+C10="$(corpus_nuevo confl)"
+D10="2026-10-05_dato_fixture-a-planificacion_CONFLICTO.md"
+printf '# fixture\n\n%s\n%s\n| `agenda` | web | DESVIO | contradice al resto del fixture |\n' "$CAB" "$SEP" \
+  > "$C10/abierto/$D10"
+if declarar "$FAKE/scripts/evidencia/confl.py" "$D10" 2> "$TMP/decl10.err"; then
+  if COPILOTO_COORD="$C10" "$PY" "$FAKE/scripts/evidencia/confl.py" --json > /dev/null 2> "$TMP/confl.err"; then
+    fail "el ratchet de conflictos NO caza uno sin declarar: salió VERDE"
+  elif grep -q "CONFLICTO NUEVO" "$TMP/confl.err"; then
     ok "un conflicto de veredictos sin declarar rompe el gate (exit 11)"
   else
-    fail "rompió por otra razón: $(head -2 "$TMP/confl.err" | tr '\n' ' ')"
+    fail "rompió por otra razón: $(head -2 "$TMP/confl.err")"
   fi
+else
+  fail "el fixture del caso 10 no pudo declarar la clave: $(head -1 "$TMP/decl10.err")"
 fi
 
 echo
