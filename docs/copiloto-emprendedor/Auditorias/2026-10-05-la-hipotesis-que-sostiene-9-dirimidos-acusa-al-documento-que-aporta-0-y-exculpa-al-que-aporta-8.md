@@ -4,6 +4,7 @@
 - **Veredicto binario: REFUTADA** en su premisa de atribución. No hace falta que «caiga» para que los conflictos queden sin dirimir: **el retiro que declara no toca al veredicto que los produce**.
 - **Instrumento:** `scripts/evidencia/contar-veredictos.py` @ **`527e5408`** (rama `plan/lector-cuenta-por-plataforma`, PR #770 — no está en `main`). **`main` @ `a39017f6`.**
 - **Corpus:** buzón **congelado** el 2026-10-05 12:56 en `C:/gfw-src/_cong-aud`. 2319 archivos vistos, **2312 copiados**, 3 excluidos (declarados en §8), 4 no copiables por `MAX_PATH` (declarados en §8).
+- 🔁 **PRECISADO el mismo día → §4-bis.** El veredicto de §1 no cambia (se fortalece), pero **la causa que puse en §4 era el síntoma**: `matriz-web-re-medida` no es «la fuente que había que descartar», es el **SUCESOR VIGENTE** del barrido, y eso estaba medido en `main` desde el 30/09 (`registro-de-vigencia…`). El control que §6.2 propone **ya existe** (`vigencia-de-mediciones.py`, que distingue supersesión total de **parcial**): falta **conectarlo**, no construirlo.
 
 ---
 
@@ -104,6 +105,45 @@ Tres consecuencias medidas:
 2. **La marca de superación es por (documento × id), no por documento, y funciona.** Frontend1 marcó sus tres «para `card-cliente` y `preg`» — y son exactamente los dos que salieron del contraste. El mecanismo no está roto: su techo bajo (4 de 12, medido por planificación) es real y ahora tiene causa.
 3. **Un «marcá tus tres» no puede alcanzar al cuarto, porque es de otra dueña.** El miembro de frontend2 no tiene marca y nadie podía ponérsela sin editar el documento de otra sesión. La familia es de dos autoras; la instrucción fue de una.
 
+## §4-bis 🔴 La causa precisa, y **ya estaba escrita en `main` el mismo día**: la prosa llama «barrido» a **dos** documentos
+
+Corrección a mi propio §4, hecha al indexar este documento: la familia homónima es el **síntoma**; la causa
+está medida desde el 2026-09-30 en `Auditorias/2026-09-30-registro-de-vigencia-la-sucesion-la-declara-el-sucesor.md`,
+que es de auditoría y está en `main`. Lo que ese registro ya tenía resuelto, con `SUPERSEDE:` declarado por
+cada sucesor:
+
+```
+matriz-web-re-medida.md                 SUPERSEDE: BL-Q3-web-barrido-35-pantallas.md
+matriz-web-re-medida-v2.md              SUPERSEDE: matriz-web-re-medida.md      <- solo 9 filas
+matriz-web-re-medida-v2-filas-3-a-6.md  COMPLEMENTA: matriz-web-re-medida-v2.md
+frontend2 matriz-web-re-medida.md       SUPERSEDE: frontend2 BL-Q3-web-barrido-pwa-vs-prototipo.md
+```
+
+**Tres cosas que esto cambia, y las tres fortalecen el veredicto de §1:**
+
+1. **`matriz-web-re-medida` no es una fuente a descartar: es el SUCESOR VIGENTE del barrido.** El dictamen
+   la exculpa con un «0 de 12» como si fuera la medición superada, cuando es **la que supera**. Por eso
+   aporta los 8: no es una fuga, es la medición vigente haciendo su trabajo.
+2. **El retiro del barrido era correcto y por eso mismo inútil.** El barrido ya estaba superado desde el
+   22/09; retirarlo no podía mover nada. El dictamen retiró lo que ya no aportaba y dejó en pie al sucesor.
+3. **La advertencia exacta está en ese registro, `:98-99`**, y es anterior al dictamen: *«Se resuelve por el
+   path citado, **nunca por la etiqueta en prosa**. `matriz-web-re-medida-v2` llama «el barrido original» a
+   `matriz-web-re-medida.md`, **que no es el barrido original**»*. Hay **dos** documentos a los que la prosa
+   llama «el barrido», y el dictamen eligió por la etiqueta. El registro de vigencia había nombrado ese
+   riesgo el mismo día.
+
+**Y el control de §6.2 no hay que diseñarlo: existe y está medido.** `scripts/evidencia/vigencia-de-mediciones.py`
+ya computa estas relaciones, con su propio criterio de aceptación declarado en ese registro —*«el barrido de
+35 pantallas **tiene que** salir RETIRADO por `matriz-web-re-medida`; si no, el instrumento está roto»*— y
+con una propiedad que es justo la que faltaba: **distingue supersesión TOTAL de PARCIAL** («sólo esas 9; el
+resto de `matriz-web-re-medida` sigue vigente: v2 no lo reemplaza, lo completa»), y por eso el paso 3 excluye
+**por fila, no por documento**.
+
+El registro lo dice de sí mismo: **«reporta, no actúa»**. Ahí está el hueco entero — dos piezas correctas que
+no se hablan: el contraste acepta un `[DIRIMIDO]` en prosa y **nunca consulta** el registro que sabe quién
+supera a quién y con qué alcance. Es `dos-decisiones-correctas-que-se-cruzan-en-un-agujero`, y mueve la fila
+`RETIRONOALCANZA` de *«construir un control»* a **«conectar el control que ya existe»**.
+
 ## §5 Lo que **no** refuto — la parte de la hipótesis que se sostiene
 
 Justicia con el dictamen, porque su núcleo de razonamiento es correcto y vale conservarlo:
@@ -124,10 +164,10 @@ Justicia con el dictamen, porque su núcleo de razonamiento es correcto y vale c
 | id | severidad | dueño sugerido | qué |
 |---|---|---|---|
 | `HIPOTESIS9-REFUTADA` | **alta** | planificación | los 5 conflictos que cuelgan de `HIPOTESIS_MATRIZ_2209` vuelven a `sin_dirimir`: el retiro que declara alcanza a **0** de los 11 `COHERENTE` que los producen (§2). `factura` además está dirimido por una evidencia que lo declara **NO MEDIBLE** (§3). |
-| `RETIRONOALCANZA` | **alta** | planificación | el contraste acepta un `[DIRIMIDO]` sin verificar que el documento retirado **aporte** el veredicto en disputa. Control mecánico disponible con el dato que ya publica: intersección vacía ⇒ `retiro_no_alcanza` (§6.2). Es el gate que habría cazado esto el 30/09. |
-| `FAMILIAHOMONIMA` | media | planificación | `matriz-web-re-medida` son **4** documentos de **2** autoras; el «0 de 12» midió uno. Cualquier dictamen que nombre un documento debería declarar **cuántos archivos** matchean ese nombre (§4). |
+| `RETIRONOALCANZA` | **alta** | planificación | el contraste acepta un `[DIRIMIDO]` sin verificar que el documento retirado **aporte** el veredicto en disputa. **El control ya existe y no hay que diseñarlo** (§4-bis): `scripts/evidencia/vigencia-de-mediciones.py` computa `SUPERSEDE:`/`COMPLEMENTA:` y distingue total de **parcial**, pero **«reporta, no actúa»** y el contraste nunca lo consulta. Conectar, no construir. |
+| `FAMILIAHOMONIMA` | media | planificación | `matriz-web-re-medida` son **4** documentos de **2** autoras; el «0 de 12» midió uno (§4). **Causa precisa en §4-bis:** la prosa llama «el barrido» a **dos** documentos distintos, y el registro de vigencia ya había advertido que se resuelve **por path, nunca por la etiqueta en prosa** — el mismo día en que el dictamen eligió por la etiqueta. |
 | `MATRIZFE2SINMARCA` | media | planificación → frontend2 | el cuarto miembro (de frontend2) no tiene marca de superado y frontend1 no podía ponérsela. Si aplica la misma superación, es de frontend2 (§4). |
-| `DICTAMENSINAUDITOR` | media | planificación | **`main` tiene el dictamen y no tiene su auditor:** `HIPOTESIS_MATRIZ_2209` está en `a39017f6` (11 menciones), pero `hipotesis_compartida` y `conflictos_declarados` **sólo** en #770. Quien mida desde `main` ve los 10 dirimidos y **no puede** computar la refutación. |
+| ~~`DICTAMENSINAUDITOR`~~ | ~~media~~ | — | 🔁 **RETIRADA por mí el mismo día, su disparador se cumplió mientras la escribía.** Decía que `main` tenía el dictamen (`HIPOTESIS_MATRIZ_2209`) y no su auditor (`hipotesis_compartida`, `conflictos_declarados`, sólo en #770). **Medido tras el merge de #770 y #772:** en `origin/main` ahora `hipotesis_compartida` → 5, `conflictos_declarados` → 1, y las dos piezas que reporté ausentes (`fabricar-corpus-fixture.py`, `gh-stub.sh`) **están en `main`**. La refutación de §2 **es computable desde `main`**. Nada que asignar. |
 | `SOPORTECOMOUSAR` | baja | planificación | `soporte` y `comousar` siguen `[POR VERIFICAR]` aunque la re-medición del 30/09 los cubre explícitamente. Son los 2 más fáciles de cerrar y están ahí desde entonces (§3). |
 
 ## §8 Límites declarados
