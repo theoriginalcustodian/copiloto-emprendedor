@@ -366,6 +366,30 @@ NO_SON_MEDICION = {
         "clasificado como medicion inyectaria las senales que solo estaba citando. La medicion que "
         "encarga es el `cierre_` de FE2, que si esta en MEDICIONES_DECLARADAS -- contar los dos "
         "seria doble conteo del mismo sujeto.",
+    # 2026-10-05 — MIDE, pero NO mide el criterio: mide su ALCANCE. Es la mitad empirica de la
+    # exencion `FUERA_DE_ALCANCE_WEB` (los 4 ids de voz), con dos instrumentos independientes por id
+    # —lectura del `index.html` del prototipo + sonda en vivo contra el server Node— y su tabla final
+    # declara `veredicto = SIN-REFERENCIA-DE-ESCRITORIO` para los cuatro.
+    #
+    # 🔴 POR QUE ESTA ACA Y NO EN MEDICIONES_DECLARADAS, que es lo que su calidad sugeriria: el
+    # criterio 3 compara app vs prototipo y sus veredictos son COHERENTE / DESVIO / REQUIERE_TRIAGE.
+    # `SIN-REFERENCIA-DE-ESCRITORIO` no pertenece a ese vocabulario: responde «¿esta fila existe en
+    # escritorio?», que es una pregunta sobre el PADRON, no sobre una pantalla. Sumarlo daria 4
+    # veredictos nuevos en un idioma que el conteo no habla, y el total subiria sin que nadie midiera
+    # una pantalla mas — un progreso aparente, que es el modo exacto en que esta cifra se corrompe.
+    #
+    # 🔴 LA CLASE, mas grande que el caso: este dict tiene DOS cubos («mide» / «cita o dictamina») y
+    # la realidad tiene TRES — mide-el-criterio, mide-OTRA-cosa, y cita. El tercer caso entra igual
+    # porque el parser clasifica por FORMA (tabla con columna `veredicto`), y la forma no codifica el
+    # ROL de lo medido. Mientras falte el cubo, toda medicion de alcance aterriza aca con un motivo
+    # que tiene que desmentir la etiqueta del cubo que la contiene. Queda como fila propia, no como
+    # excepcion silenciosa: VOCABAJENO en PLAN.md.
+    "2026-10-05_cierre_frontend1-a-planificacion_los-4-ids-de-voz-SIN-REFERENCIA":
+        "MIDE el ALCANCE, no el criterio: confirma empiricamente (codigo + sonda en vivo, 2 "
+        "instrumentos por id) que `cobro-voz`/`fact-voz`/`pres-voz`/`vozchat` no tienen superficie "
+        "de escritorio en el prototipo, sosteniendo FUERA_DE_ALCANCE_WEB. Su columna `veredicto` usa "
+        "`SIN-REFERENCIA-DE-ESCRITORIO`, que NO es del vocabulario del criterio 3 "
+        "(COHERENTE/DESVIO/REQUIERE_TRIAGE) — sumarlo inflaria el total sin medir ninguna pantalla.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
