@@ -133,3 +133,43 @@ y (b) dar su veredicto con `ls-remote` **después**, no con el exit del push.
 **Y la trampa de lectura:** la notificación del harness dijo «exit code 0» porque yo había appendeado
 `echo rc=$?` al log — el 0 era del **shell envolvente**, no del script. El `rc=4` real sólo estaba en
 el archivo. La notificación del wrapper no es el veredicto del programa.
+
+---
+
+## Refuerzo (2026-09-30): un commit puede salir «merged» y verde con el árbol byte-idéntico al padre
+
+Misma familia —el control es el **efecto**, no el registro— en git y no en la red.
+
+Un PR se mergeó con el título `docs(A5REG): bajar al repo el veredicto del Cierre A y los dos
+hallazgos verificados contra el código (#760)`. Medido:
+
+```
+tree 7dc32747 : d4364390e3f3045150bb02022c97933522911e77
+tree 5330e060 : d4364390e3f3045150bb02022c97933522911e77   (su unico padre)
+=> IDENTICOS: el commit no cambia NI UN BYTE
+```
+
+**Nada en la vista normal lo distingue de un commit que aportó:** `git log --oneline` lo lista igual,
+el PR dice *merged*, el CI salió verde (no hay nada que pueda romper), y `git diff-tree --numstat`
+devuelve vacío — que se lee como «no pude leerlo», no como «no cambió nada». El título queda como
+única fuente, afirmando un contenido que el árbol no tiene.
+
+El control es de una línea y hay que pedirlo: **`git rev-parse HEAD^{tree}` vs `HEAD^1^{tree}`**. Y
+necesita control positivo, porque un método que dijera «vacío» de todo daría el mismo resultado: acá
+el mismo chequeo dio 2 archivos para el PR de al lado y 26 para otro commit del mismo prefijo, así que
+el vacío significaba algo.
+
+**Y la segunda mitad, que es la que evita la alarma falsa:** vacío admite dos causas —*perdió* el
+contenido, o era *redundante*— y son opuestas en gravedad. Se separan con `git log -- <archivo>` +
+`git merge-base --is-ancestor`: acá el contenido había entrado nueve horas antes por otro commit, que
+es ancestro del vacío. Redundante, nada perdido, nadie bloqueado. Publicar antes de dirimirlo habría
+mandado a otra sesión a rehacer trabajo que estaba hecho.
+
+**Why:** porque el costo no se paga al mergear, se paga cuando alguien cita ese commit como el lugar
+donde entró algo. El título sobrevive; el árbol vacío no se ve.
+
+**How to apply:** (1) si un commit importa como puntero («acá bajó X»), verificá el árbol antes de
+citarlo; (2) `--numstat` vacío no es lectura fallida ni «sin cambios» — comparalo con `^{tree}` para
+saber cuál de las dos; (3) todo veredicto de «aporte cero» se cierra con el tree hash, no con la
+lectura del diff; (4) antes de avisar, separá *perdió* de *redundante* — la primera manda a alguien a
+rehacer, la segunda sólo corrige un puntero.

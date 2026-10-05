@@ -43,3 +43,29 @@ Pariente de [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] y de
 [[un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo]]: las tres son el instrumento afirmando un
 estado cuando debería decir «todavía no sé». Y de [[supuesto-cuya-falla-parece-un-estado-legitimo]], que
 es la pregunta que lo caza: **¿cómo se vería esto si fuera falso?** Acá: idéntico a un caso legítimo.
+
+---
+
+## Refuerzo 2026-10-05 · completar una columna en LOTE con el valor mayoritario es fabricar dato
+
+Había que completar la columna `plataforma` de 16 mediciones repartidas en tres documentos. En dos
+documentos las 11 filas eran todas `web` y el relleno uniforme fue correcto. En el tercero, **una de
+las cinco era `mobile`** —la fila lo decía en su propio texto: «tercer estado en mobile — fuera del
+alcance del proto web»— y el relleno uniforme la habría metido dentro de la cifra de cobertura **web**,
+que es justo el número que el sprint usaba como DoD.
+
+Lo que empuja al error es que el lote parece prudente: 4 de 5 son `web`, el documento entero habla de
+un prototipo web, y el valor mayoritario «no puede estar muy mal». Pero una columna que alguien rellenó
+por mayoría no es una medición: es una afirmación con forma de dato, y queda indistinguible de las que
+sí se midieron.
+
+**How to apply:**
+- **El valor sale del elemento, no del documento.** Acá cada fila citaba su camino de código: tres
+  componentes existían sólo en `apps/copiloto-web` (`git ls-files` lo dijo) y uno decía `mobile` en
+  prosa. La evidencia por fila estaba escrita; lo que faltaba era leerla una por una.
+- **Desconfiá del relleno homogéneo cuando el valor alimenta una cifra de cobertura**: si el campo
+  decide en qué cubo cae la fila, un valor puesto por mayoría mueve el total sin que nadie mida nada.
+- **Mi primera hipótesis también era uniforme y al revés** («son todas mobile, el proto es mobile-only»).
+  Las dos lecturas uniformes estaban mal: el eje correcto era *qué plataforma de app se midió*, no *con
+  qué soporte se capturó*. Cuando dos valores uniformes compiten, suele faltar la pregunta, no el dato
+  ([[supuesto-cuya-falla-parece-un-estado-legitimo]]).

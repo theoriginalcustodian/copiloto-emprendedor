@@ -57,3 +57,27 @@ poblado, y el árbol del merge idéntico al de su padre— está en
 [[el-instrumento-respondio-sobre-otro-sujeto]], caso 12, con su control propio (comparar
 `git rev-parse <merge>^{tree}` contra el del padre). Mismo mecanismo, direcciones opuestas: uno niega
 trabajo hecho, el otro acredita trabajo que no existió.
+
+---
+
+## Refuerzo 2026-10-05 · un recibo que no registra el SHA **parece** un recibo, y el que lo invalida sos vos
+
+Dejé un script esperando a que terminaran los checks del PR para medir el veredicto. Volvió
+**`VERDE 6/6 · exit 0`**. Era falso: entre que arrancó (11:31) y midió (11:32:40) yo había pusheado otro
+commit, así que ese verde era del **SHA anterior**. El rollup del SHA nuevo recién arrancaba (11:33:59,
+5 jobs `pending`). Nada en el log permitía notarlo, porque **el log no escribía el SHA**.
+
+Dos cosas que lo hacen peligroso y no sólo incorrecto:
+- **El falso verde vino de mi propio push**, no de un tercero. El riesgo clásico es «otro movió el head»;
+  acá el que lo movió fui yo, en el mismo turno, haciendo trabajo legítimo (commit + push de otra cosa).
+- **Un recibo sin SHA no se puede refutar.** Con el SHA, la contradicción salta sola; sin él, el verde es
+  citable y nadie puede decir que no corresponde. Es la forma más limpia de fabricar una atestación.
+
+**How to apply:**
+- **Todo medidor asincrónico ancla su sujeto al arrancar y lo re-verifica antes de concluir.** Si el
+  sujeto se movió: **abortar con un código de «no pude medir»**, nunca medir el sujeto nuevo como si
+  fuera el pedido ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]).
+- **El recibo imprime PR + SHA + rc + timestamp en la misma línea.** Un veredicto sin sujeto no es
+  evidencia; es una opinión con formato.
+- **Mientras un medidor corre sobre tu rama, no pushees a esa rama** — ni siquiera algo inocuo. El trabajo
+  paralelo que invalida tu propia medición es el caso normal, no el raro.
