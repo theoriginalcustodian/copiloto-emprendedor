@@ -77,14 +77,28 @@ RAIZ = Path(__file__).resolve().parents[2]
 # es no tener corpus, que es justo el caso que no se puede provocar en la maquina que lo tiene.
 COORD = Path(os.environ.get("COPILOTO_COORD",
                             "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/coordinacion"))
-MATRIZ = RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"
+# ⚠️ MATRIZ y SPEC son parametrizables por la MISMA razón que COORD, más una propia y peor: con
+# `RAIZ = parents[2]`, el sujeto medido lo decide DÓNDE ESTÁ ESTE ARCHIVO. Copiar el script a otro
+# checkout lo repunta en silencio a la matriz de ESE árbol — el caso real del 2026-09-30 narrado en
+# el docstring, donde el mismo código dio dos diagnósticos opuestos sin que nada fallara. Poder
+# apuntarlos explícitamente hace dos cosas que el default no puede: (1) el sabotaje de los exit
+# 6/12/13 se monta sobre fixtures en vez de copiar el script — o sea el test ya NO necesita la misma
+# trampa que causó el incidente; (2) quien mide puede DECLARAR su sujeto en vez de heredarlo del
+# lugar donde quedó el archivo. El default no cambia: sin env, mide este árbol.
+MATRIZ = Path(os.environ.get("COPILOTO_MATRIZ",
+                             RAIZ / "scripts" / "evidencia" / "criterio3-matriz.mjs"))
 # La SPEC es la fuente de verdad del criterio: el backlog §13 punto 3 dice, con esas palabras, que
 # se mide «contra la sección spec de este documento». Hasta el 2026-09-29 el universo salía de
 # MATRIZ — o sea del INSTRUMENTO — y eso es C3-13: la matriz conoce 27 ids de los 54, así que los
 # otros 28 no podían aparecer ni como «hueco con nombre». No eran los marginales: `cobro-voz`, las
 # cinco `card-*`, `fact-voz`/`fact-hitl`/`pres-voz`/`pres-hitl`, `vacio`/`vacio-visto`, la home.
-SPEC = (RAIZ / "docs" / "copiloto-emprendedor" /
-        "2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md")
+SPEC = Path(os.environ.get("COPILOTO_SPEC",
+                           RAIZ / "docs" / "copiloto-emprendedor" /
+                           "2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md"))
+# El piso también se puede apuntar a un fixture, y SÓLO para eso: es lo que permite sabotear en las
+# dos direcciones (quitar del piso un id que la matriz no cubre ⇒ 6; dejar uno que sí cubre ⇒ 12)
+# sin editar la constante de este archivo. En uso normal queda en None y manda CIEGOS_DECLARADOS.
+PISO_OVERRIDE = os.environ.get("COPILOTO_PISO")
 
 # Ratchet de cobertura del instrumento. NO es una lista de exclusiones: es el PISO medido, y el gate
 # falla en las DOS direcciones — si aparece un ciego nuevo (regresión) y si uno declarado dejó de
@@ -531,8 +545,14 @@ def control_de_cobertura(ids):
     ciegos = {i for i in ids if i not in mids}
     retirados = {i for i in mids if i not in set(ids)}
 
-    nuevos_ciegos = sorted(ciegos - CIEGOS_DECLARADOS)
-    ya_cubiertos = sorted(CIEGOS_DECLARADOS - ciegos)
+    # El piso efectivo: la constante, salvo que un fixture declare otro. Es lo único que permite
+    # sabotear las dos direcciones del ratchet sin copiar este archivo a otro árbol.
+    piso = CIEGOS_DECLARADOS
+    if PISO_OVERRIDE is not None:
+        piso = {t for t in re.split(r"[,\s]+", PISO_OVERRIDE) if t}
+
+    nuevos_ciegos = sorted(ciegos - piso)
+    ya_cubiertos = sorted(piso - ciegos)
     nuevos_retirados = sorted(retirados - RETIRADOS_DECLARADOS)
     ya_no_retirados = sorted(RETIRADOS_DECLARADOS - retirados)
 
