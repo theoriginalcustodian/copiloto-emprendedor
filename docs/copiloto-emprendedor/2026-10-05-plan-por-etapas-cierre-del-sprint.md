@@ -125,13 +125,22 @@ Es la etapa que más rinde, porque un instrumento que miente **desactiva trabajo
 **DoD binario por fila:** el gate **dispara** sobre un sabotaje deliberado y **no** dispara en el caso
 normal. Sin las dos direcciones medidas, la fila no cierra.
 
-### E3 · Cerrar el criterio 3 — de **web 49/54** a 54/54, agregando la columna `plataforma`
+
+**Filas abiertas el 05/10, durante el desbloqueo del push** (todas con dueño, ninguna invisible):
+
+| id | qué | dueño |
+|---|---|---|
+| **`INSTRDISCO`** | **16 instrumentos del gate están VIEJOS en el checkout compartido** (medido por auditoría: 113 examinados, 22 distintos de `main`, 16 son el HEAD de `4a9f4f7c`). Incluye `gate.sh`, `ci/lint.sh`, `.githooks/pre-push`, `secretos-check.sh`, `seed-memory.sh`, `contar-veredictos.py`. **Decisión tomada: el checkout compartido es EDITOR, no EJECUTOR** — un instrumento que vive en un árbol que nadie puede actualizar no es un instrumento, así que el fix no es actualizarlo sino dejar de ejecutarlo. El caso peor es `secretos-check.sh`: sin el discriminante FTL anuncia «encontró posibles secretos» sobre un escaneo que **nunca corrió**, y ese falso rojo ya empujó a una sesión a editar `.gitleaksignore` el 22/09 | planificación (la regla + el guard de árbol divergente) |
+| **`GRAFOCONF`** | la config del grafo de ESTE repo vive en el working tree de OTRO (`graphify-graphity-bridge`), sin dueño declarado. Causó el bloqueo total de push de hoy | planificación (dueño) + backend (push) |
+| **`BRIDGEPUSH`** | esa config **nunca llegó a `origin/master`** del bridge: 8 commits locales de 2 meses tocando 3 repos. Mientras siga así, cualquier `checkout` ahí repite el bloqueo. **Decidido: se pushean**; el argumento de las rutas absolutas no aplica (`graphity-memory` ya está versionado con `C:/Proyectos/…`) | backend ejecuta |
+
+### E3 · ✅ CERRADO — criterio 3 en **web 50 de 50 alcanzables** (2026-10-05)
 
 | | |
 |---|---|
-| **Estado** | 🟢 arrancada |
-| **Dueños** | frontend2 (16 filas), auditoría (11 filas), planificación (el resto) |
-| **Estimación** | **~1 h 30** en paralelo · ~3 h serial |
+| **Estado** | ✅ **CERRADO el 05/10** |
+| **Dueños** | frontend2 (20 celdas), auditoría (11 filas), planificación (el techo y el lector) |
+| **Tardó** | ~40 min en paralelo (estimado ~1 h 30) |
 
 ⚠️ **Corregido el 05/10 contra el instrumento, no contra la memoria.** Acá decía «53 de 54, falta
 `(home)`». Las dos mitades eran falsas, y las refutó frontend2:
@@ -162,8 +171,45 @@ inline `plataforma: <valor>` — mecanismo que **ya existe**: frontend1 lo usó 
 Resto, de planificación: `PLATCONV`, `CRIT2DER`, `CITA751`, `TABLACITA`, `VIGENCIA`, `SUCESION`.
 `Q3RECLFE1` **ya estaba cerrado** por frontend1 el 30/09 (su `dato_` del 05/10 lo archivó).
 
-**DoD binario:** el contador imprime **`web 54 de 54`** con su huella al lado **y `indeterminada 0`**.
-Mientras quede una indeterminada, el 54/54 agregado es un número que nadie puede citar sin la unidad.
+⚠️ **El DoD anterior era INALCANZABLE, y lo descubrí midiendo quiénes faltaban.** Decía «el contador
+imprime `web 54 de 54`». Nombré los 5 que faltaban y cuatro **no pueden cerrarse en web**:
+
+| id | por qué no |
+|---|---|
+| `cobro-voz` · `fact-voz` · `pres-voz` · `vozchat` | medidos **en mobile**. Son capacidades de **dictado**; en `BL-P5` no tienen referencia de prototipo propia (tres con `—`, y `cobro-voz` es `BL-F2`, que «no figura en ningún mapa»). Auditoría ya lo había medido el 29/09: *«el criterio 3 NO TIENE referencia de escritorio»* |
+| **`gastos`** | medido pero **sin `plataforma` legible** ← el único accionable; asignado a frontend2 |
+
+⇒ **el techo de web es 50, no 54. Estamos en 49 de 50 alcanzables (98%).**
+
+Y el error que lo escondía: asumí que **cerrar indeterminadas subía la cifra web**. No la sube —
+completar la `plataforma` de un id que ya contaba como web no agrega ningún id nuevo. Las 27 filas que
+auditoría y frontend2 completaron hoy bajaron `indeterminada` de 12 a 9 y las filas de tabla de 35 a 8,
+con la cifra web quieta en 49. Un DoD así deja el sprint abierto para siempre persiguiendo un número
+que no existe, y el trabajo real parece no avanzar aunque avance.
+
+**DoD binario corregido — y CUMPLIDO el mismo día:**
+
+```
+web  50 de 54   (92%)        <- 50 de 50 ALCANZABLES
+mobile  13 de 54              (sprint siguiente, con device/EAS)
+indeterminada  4 de 54        (card, card-cobro, card-presu, factura — los 4 YA cubiertos en web)
+```
+huella del lector `4060ca304ff5` · `rc=0`
+
+Trayectoria medida del frente, sin interpolar: **42 web (30/09) → 49 (05/10 08:25) → 50 (05/10 08:4x)**.
+Los 4 de voz quedan **declarados fuera de alcance web**, no pendientes. Las 4 `indeterminada` que
+restan son mediciones *redundantes* de ids que ya cuentan en web: no bloquean nada.
+
+Lo cerró frontend2 con `gastos` + sus 3 vecinos del mismo bullet-block (`ingresos`, `presu`, `recibo`),
+que tenían el mismo defecto y arregló sin que se lo pidiera — mismo archivo, mismo fix.
+
+⚠️ **Y quedó un defecto de MI lector, que frontend2 cazó refutando mi asignación.** Le atribuí
+«3 filas sin `plataforma`» a su doc `C3-2-mediciones-mas-A2b…`; esas 3 filas (líneas 24-26) son una
+tabla de **campos DOM** (`presupuesto-item-0-precio`, `gasto-monto`, `ingreso-monto`) con columnas
+`value`/`placeholder`/colores RGB: **no son mediciones del criterio 3 y sus ids no están en el padrón.**
+El lector las reporta como accionables porque tienen forma de tabla y no declaran la columna — si
+alguien «arregla» eso, le agrega una columna `plataforma` a una tabla de colores. Un instrumento que
+manda a hacer trabajo inútil infla su propio denominador de lo pendiente. Fila `ACCFALSO`, mía.
 
 ### E4 · Deuda de producto y reconciliación
 
