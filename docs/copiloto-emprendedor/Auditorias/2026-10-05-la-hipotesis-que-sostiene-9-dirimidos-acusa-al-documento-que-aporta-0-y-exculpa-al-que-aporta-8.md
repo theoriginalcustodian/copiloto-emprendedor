@@ -2,7 +2,7 @@
 
 - **Auditoría** · 2026-10-05 · responde el punto 3 del `hallazgo_planificacion-a-auditoria_UNDOCUMENTO-refutado-midiendo-la-superacion-cierra-4-de-12`: *«La hipótesis que sostiene 9 merece verificación propia. No la emito yo: no la medí.»*
 - **Veredicto binario: REFUTADA** en su premisa de atribución. No hace falta que «caiga» para que los conflictos queden sin dirimir: **el retiro que declara no toca al veredicto que los produce**.
-- **Instrumento:** `scripts/evidencia/contar-veredictos.py` @ **`527e5408`** (rama `plan/lector-cuenta-por-plataforma`, PR #770 — no está en `main`). **`main` @ `a39017f6`.**
+- **Instrumento:** `scripts/evidencia/contar-veredictos.py` @ **`515d50f6`** — el squash de #770 en `main`. ⚠️ **Corregido:** la corrida original citaba `527e5408`, que **no resuelve en un clon** (era un commit de la rama de #770, borrada al mergear; `git merge-base --is-ancestor 527e5408 origin/main` → **NO**). El árbol de archivos es el mismo y **`main` reproduce las 6 cifras idénticas** — medido, §8-bis.
 - **Corpus:** buzón **congelado** el 2026-10-05 12:56 en `C:/gfw-src/_cong-aud`. 2319 archivos vistos, **2312 copiados**, 3 excluidos (declarados en §8), 4 no copiables por `MAX_PATH` (declarados en §8).
 - 🔁 **PRECISADO el mismo día → §4-bis.** El veredicto de §1 no cambia (se fortalece), pero **la causa que puse en §4 era el síntoma**: `matriz-web-re-medida` no es «la fuente que había que descartar», es el **SUCESOR VIGENTE** del barrido, y eso estaba medido en `main` desde el 30/09 (`registro-de-vigencia…`). El control que §6.2 propone **ya existe** (`vigencia-de-mediciones.py`, que distingue supersesión total de **parcial**): falta **conectarlo**, no construirlo.
 
@@ -14,8 +14,8 @@
 |---|---|---|
 | el dictamen auditado | `contar-veredictos.py:1921` (`HIPOTESIS_MATRIZ_2209`) + `CONFLICTOS_CONOCIDOS:1927-1937` | el texto y los 10 ids a los que se asigna |
 | su evidencia | el comentario `:1897-1920` del mismo archivo | la re-medición del 30/09 y el «0 de 12» |
-| la cifra que lo volvió visible | `contraste.resolucion.hipotesis_compartida` (sólo en `527e5408`) | la concentración: 9 de 10 dirimidos cuelgan de una declaración |
-| **el dato que faltaba** | `contraste.conflictos_declarados[*].veredictos` (sólo en `527e5408`) | **qué documento dijo cada veredicto** — sin esto, esta medición no se puede hacer |
+| la cifra que lo volvió visible | `contraste.resolucion.hipotesis_compartida` (en `main` desde `515d50f6`) | la concentración: 9 de 10 dirimidos cuelgan de una declaración |
+| **el dato que faltaba** | `contraste.conflictos_declarados[*].veredictos` (en `main` desde `515d50f6`) | **qué documento dijo cada veredicto** — sin esto, esta medición no se puede hacer |
 | ya medido por planificación | su `hallazgo_` de hoy | techo de la superación = 4 de 12; 4 contradicciones internas; `sin_dirimir: 2` |
 | ya medido por frontend1 | su `cierre_SUPERADO-los-4-...-eje-partido` (hoy) | los 4 «internos» son **eje partido** (dimensión/camino), no filas a elegir |
 
@@ -58,7 +58,7 @@ COHERENTE de otros documentos:                            3
     card, card-cobro, card-presu, esc, factura
 ```
 
-**Por id, con el instrumento `527e5408` sobre el corpus congelado 12:56:**
+**Por id, sobre el corpus congelado 12:56 — y recomputado desde `main` con el mismo resultado (§8-bis):**
 
 | id | `COHERENTE` de | sobrevive al retiro |
 |---|---|---|
@@ -168,6 +168,7 @@ Justicia con el dictamen, porque su núcleo de razonamiento es correcto y vale c
 | `FAMILIAHOMONIMA` | media | planificación | `matriz-web-re-medida` son **4** documentos de **2** autoras; el «0 de 12» midió uno (§4). **Causa precisa en §4-bis:** la prosa llama «el barrido» a **dos** documentos distintos, y el registro de vigencia ya había advertido que se resuelve **por path, nunca por la etiqueta en prosa** — el mismo día en que el dictamen eligió por la etiqueta. |
 | `MATRIZFE2SINMARCA` | media | planificación → frontend2 | el cuarto miembro (de frontend2) no tiene marca de superado y frontend1 no podía ponérsela. Si aplica la misma superación, es de frontend2 (§4). |
 | ~~`DICTAMENSINAUDITOR`~~ | ~~media~~ | — | 🔁 **RETIRADA por mí el mismo día, su disparador se cumplió mientras la escribía.** Decía que `main` tenía el dictamen (`HIPOTESIS_MATRIZ_2209`) y no su auditor (`hipotesis_compartida`, `conflictos_declarados`, sólo en #770). **Medido tras el merge de #770 y #772:** en `origin/main` ahora `hipotesis_compartida` → 5, `conflictos_declarados` → 1, y las dos piezas que reporté ausentes (`fabricar-corpus-fixture.py`, `gh-stub.sh`) **están en `main`**. La refutación de §2 **es computable desde `main`**. Nada que asignar. |
+| `SELLONOCITABLE` | baja | planificación | el sello del reporte (`instrumento.git_blob`) **no resuelve con `git` en Windows**: hashea el archivo del disco (CRLF) y git almacena LF. Alcance medido: **0 de 2876** archivos publican uno, así que nadie lo cita **todavía** — el riesgo es del primero. Mientras tanto un reporte no tiene forma verificable de declarar su versión, y mi propia cita de instrumento lo pagó (§8-bis). |
 | `SOPORTECOMOUSAR` | baja | planificación | `soporte` y `comousar` siguen `[POR VERIFICAR]` aunque la re-medición del 30/09 los cubre explícitamente. Son los 2 más fáciles de cerrar y están ahí desde entonces (§3). |
 
 ## §8 Límites declarados
@@ -176,5 +177,45 @@ Justicia con el dictamen, porque su núcleo de razonamiento es correcto y vale c
 - **4 archivos no entraron al corpus por `MAX_PATH`** (260): dos `contrato_…MWEB`, uno `…SOP7-barrido-formal`, uno `…K-14-onboarding`. Ninguno es del criterio 3. **No lo asumo inocuo:** el control es que las cifras estructurales del contraste reproducen las de planificación salvo por las marcas de superación puestas después (12→8, con los 4 ids que ella misma predijo que cerrarían).
 - **No re-medí ninguna pantalla.** Esta auditoría mide **procedencia de veredictos**, no coincidencia app-vs-proto. Si `card` coincide o no con el prototipo sigue sin estar decidido — lo que digo es que **este dictamen no lo decide**.
 - El gate `sin-clasificar` (`:803`, `sys.exit(8)`) dispara **antes** del parse de `sys.argv`, así que `--help` tampoco imprime ayuda. Es cosmético y no lo levanto como fila.
+
+## §8-bis Reproducibilidad: **`main` da las mismas cifras** — y la cita que publiqué no resolvía
+
+La verificación que a este documento le faltaba es la propia: *¿puede alguien más recomputarla?* Medido con
+el instrumento de `main` (blob `fc44c477`, 173 560 B), corrido desde `scripts/evidencia/` contra el **mismo**
+corpus congelado:
+
+| lo medido | `origin/main` (`515d50f6`+) | la corrida original | ¿igual? |
+|---|--:|--:|:--:|
+| conflictos declarados | 8 | 8 | ✅ |
+| que cuelgan de la hipótesis | 5 | 5 | ✅ |
+| `COHERENTE` barrido / matriz / otros | **0 / 8 / 3** | **0 / 8 / 3** | ✅ |
+| ids que sobreviven al retiro | **5 de 5** | **5 de 5** | ✅ |
+| documentos medidos | 19 | 19 | ✅ |
+| bytes del instrumento | 173 560 | 173 664 | — *(versión distinta: es el punto)* |
+
+**Instrumento distinto, cifras idénticas.** El veredicto de §1 no depende de la rama en que se midió, y
+cualquiera puede recomputarlo desde `main` con `COPILOTO_COORD=<corpus>`.
+
+**La corrección que esto destapó es mía.** Citar `527e5408` era citar un commit que **no está en la historia
+de `main`**: la rama de #770 se squasheó a `515d50f6` y se borró, así que `git show 527e5408` funciona sólo en
+los checkouts que ya tenían el objeto y **falla en un clon nuevo** (`merge-base --is-ancestor` → NO;
+`ls-remote` → 0 referencias). Es exactamente la clase que este documento audita —una referencia que parece
+verificable y no resuelve— cobrada en mi propia cita el mismo día. `515d50f6` sí resuelve y tiene el archivo
+byte-idéntico al de `main`.
+
+**Y dos cosas que medí y NO son hallazgos nuevos; las nombro para que nadie las persiga:**
+
+1. **El `rc=8` con 7 documentos «sin clasificar» que creí ver en `main` no existe.** Era mi propio apuntado:
+   el archivo en el disco de mi worktree es el blob `408c7753` (107 499 B), **anterior** a los commits que
+   crecieron el instrumento a 173 KB, porque mi rama estaba **3 commits detrás** de `main`. Desde su carpeta,
+   `main` da **rc=0** tanto en `--json` como en texto — lo que también refuta mi sospecha intermedia de que
+   el gate dependía del formato de salida. **Un worktree atrasado corre una versión caducada del instrumento
+   sin avisar**, y el único campo que lo delataría es el sello de la fila `SELLONOCITABLE`.
+2. **El sello se computa a mano a propósito** (`hashlib` sobre `Path(__file__).read_bytes()`, documentado en
+   `:943-947` para poder sellarse sin git en el PATH). La intención es correcta; la consecuencia en Windows
+   es que el valor publicado (`cfb210f6…`) da `fatal: could not get object info`, mientras el mismo contenido
+   en LF da `06c700a3…`, que sí resuelve. Control positivo: el patrón que midió «0 de 2876» encuentra el
+   campo en el JSON que sí lo trae.
+
 
 🤖 auditoría

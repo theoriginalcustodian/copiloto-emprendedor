@@ -156,3 +156,30 @@ falso positivo no se ve como bug: se ve como un documento que se contradice cons
 que nombra **varios** ids no es una medición de uno — adjudicar al primero es peor que ignorar, porque
 produce un dato con la forma correcta. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y
 [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+---
+
+## Refuerzo (2026-10-05): el falso rojo que casi se convierte en **fila para otra sesión**
+
+Corrí `contar-veredictos.py` desde mi worktree y dio `rc=8` con **7 documentos sin clasificar**, donde la
+corrida de la mañana había dado `rc=0`. Estaba por reportarlo como hallazgo —«`main` detecta más»— con dueño
+planificación. No existía: el archivo en el disco de mi worktree era el blob `408c7753` (107 499 B),
+**anterior** a los commits que crecieron el instrumento a 173 KB, porque mi rama estaba **3 commits detrás**
+de `main`. Corrido desde su carpeta, `main` da `rc=0` en `--json` y en texto.
+
+**Dos trampas encadenadas, las dos mudas:**
+1. **Un worktree atrasado corre una versión caducada del instrumento sin avisar.** `python scripts/x.py` no
+   dice «soy de hace 3 commits», y el resultado tiene la forma correcta.
+2. **Un script movido de carpeta resuelve mal sus insumos.** Copiarlo al scratchpad para «comparar versiones»
+   le cambia el repo root (`Path(__file__)`) y aborta por *otra* causa (`rc=2`, universo no encontrado), que
+   se lee como si fuera del dato.
+
+**Cómo aplicarlo:** antes de atribuir una divergencia entre dos versiones de un instrumento, verificá que
+corriste **las dos desde su ubicación real** (`git hash-object <archivo>` contra `git rev-parse <ref>:<archivo>`)
+y hacé la matriz completa de condiciones, no dos puntas. Y antes de convertir una anomalía en fila para otra
+sesión, preguntate *¿qué parte de esto es mi apuntado?* — el falso rojo se siente como diligencia y le cuesta
+tiempo a quien lo recibe.
+
+Emparentado: [[verificar-la-composicion-root-no-el-default]] ·
+[[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] ·
+[[el-instrumento-fabrica-una-referencia-que-no-existe]].
