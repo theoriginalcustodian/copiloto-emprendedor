@@ -19,7 +19,7 @@ tenemos… quiero saber con certeza qué fue lo que se terminó, cuánto tardamo
 | Hito | Evidencia verificable | Cuándo |
 |---|---|---|
 | 12 commits integrados a `main` | `git log origin/main` → de `4f5692ef` a `148f9639` | **30/09, 08:28 → 17:08** |
-| Criterio 3 medido | 53 de 54 pantallas | al 30/09 |
+| Criterio 3 medido | **web 49 de 54** (90%) · 12 mediciones sin columna `plataforma` | re-medido 05/10, huella `4060ca304ff5` |
 | Grafo destrabado (1406 zombies) | marcador `c1e91870a003` → `148f9639c414`, `motivo=ok`, dry-run `ZOMBIES 0 · FALTANTES 0` | 30/09 20:00 |
 | Parada segura de 4 sesiones | 4 `cierre_` en el buzón, 0 merges, 0 deploys | 30/09 20:29-20:37 |
 | **`SABOTEXIT` pagada** | `test-sabotaje-exit-cobertura.sh` **4/4**, commit `a8d73c51` pusheado | **05/10** |
@@ -125,20 +125,45 @@ Es la etapa que más rinde, porque un instrumento que miente **desactiva trabajo
 **DoD binario por fila:** el gate **dispara** sobre un sabotaje deliberado y **no** dispara en el caso
 normal. Sin las dos direcciones medidas, la fila no cierra.
 
-### E3 · Cerrar el criterio 3 — de 53/54 a 54/54
+### E3 · Cerrar el criterio 3 — de **web 49/54** a 54/54, agregando la columna `plataforma`
 
 | | |
 |---|---|
 | **Estado** | 🟢 arrancada |
-| **Dueños** | frontend2 (`(home)`), frontend1 (`Q3RECLFE1`), planificación (el resto) |
+| **Dueños** | frontend2 (16 filas), auditoría (11 filas), planificación (el resto) |
 | **Estimación** | **~1 h 30** en paralelo · ~3 h serial |
 
-`(home)` **asignada a frontend2 el 05/10** — es la única nunca medida, y se escapa de los barridos
-porque no tiene `?ver=` como las otras 53. Además: `PLATCONV`, `Q3RECLFE1`, `CRIT2DER`, `CITA751`,
-`TABLACITA`, `VIGENCIA`, `SUCESION`.
+⚠️ **Corregido el 05/10 contra el instrumento, no contra la memoria.** Acá decía «53 de 54, falta
+`(home)`». Las dos mitades eran falsas, y las refutó frontend2:
 
-**DoD binario:** el contador imprime **54/54** con su huella al lado, y cada fila declara su
-`plataforma`.
+- **`(home)` SÍ está medida** — 30/09, veredicto **DESVÍO** («home ≡ tablero»); su `cierre_` ya figura
+  en `MEDICIONES_DECLARADAS` de `origin/main:scripts/evidencia/contar-veredictos.py:164`. No fue olvido
+  de nadie: el id era **ilegible para el parser**, así que su veredicto quedaba huérfano y «la cifra no
+  podía pasar de 53 de 54 por mucho que se midiera». Lo que la destrabó fue el instrumento dejando de
+  ser ciego, no trabajo nuevo.
+- **La cifra del criterio no es 53/54 ni 54/54: es `web 49 de 54` (90%)** — medido en
+  `plan/lector-cuenta-por-plataforma`, huella `4060ca304ff5`. El `54 de 54` que el contador imprime
+  abajo es el **agregado en cualquier plataforma**, y el propio script avisa que **no es la cifra del
+  criterio**. `mobile 13/54` es del sprint siguiente (device/EAS).
+
+**Lo que falta de verdad son las 12 `indeterminada`** — y no son pantallas sin medir: son mediciones
+**sin columna `plataforma`**. El contador dice dónde están y cuántas, y **sólo quien midió sabe en qué
+plataforma lo hizo**, así que esto no es trabajo de planificación:
+
+| Dueño | Documento | Filas |
+|---|---|---|
+| **frontend2** | `2026-09-28_cierre_frontend2-…BL-Q3-v2-lote-B-11-de-11-completo.md` | **16** |
+| **auditoría** | `2026-09-30_cierre_…mis-6-mediciones-del-criterio-3-tabla-limpia…md` | **6** |
+| **auditoría** | `2026-09-29_cierre_…poblacion-A-medida-y-el-criterio-3-NO-TIENE-referencia…md` | **5** |
+
+35 filas de tabla admiten la columna; otras 21 mediciones viven en heading o bullet y usan el campo
+inline `plataforma: <valor>` — mecanismo que **ya existe**: frontend1 lo usó 21 veces en el lote A.
+
+Resto, de planificación: `PLATCONV`, `CRIT2DER`, `CITA751`, `TABLACITA`, `VIGENCIA`, `SUCESION`.
+`Q3RECLFE1` **ya estaba cerrado** por frontend1 el 30/09 (su `dato_` del 05/10 lo archivó).
+
+**DoD binario:** el contador imprime **`web 54 de 54`** con su huella al lado **y `indeterminada 0`**.
+Mientras quede una indeterminada, el 54/54 agregado es un número que nadie puede citar sin la unidad.
 
 ### E4 · Deuda de producto y reconciliación
 

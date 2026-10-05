@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
+- **🟠 Criterio 3: web 49/54** — faltan 12 sin columna `plataforma`; dueño = quien midió. `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
 - **🟠 Criterio 3: 53 de 54 medidos** - falta `(home)`, nunca medida. `coordinacion/PLAN.md`.
