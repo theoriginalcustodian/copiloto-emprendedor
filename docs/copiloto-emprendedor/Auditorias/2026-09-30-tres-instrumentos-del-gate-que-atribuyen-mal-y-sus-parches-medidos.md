@@ -310,3 +310,72 @@ Fix de raíz: el delimitador se lee del propio `<<'DELIM'`, y un cuerpo vacío s
 nunca comodín. Con eso, dos de los supuestos comodines resultaron **sanos** (`npx` despacha; `stat` no
 era lo que la v1 creía) y aparecieron los 4 de `veredicto-monotono`, que la v1 contaba como **uno**.
 Reportar la v1 habría mandado a arreglar dos stubs correctos y dejado tres sin tocar.
+
+---
+
+## §D · 2026-10-05 · el gate que frenó a las CUATRO sesiones, y el instrumento que le puso el nombre equivocado
+
+Cuarto caso del mismo patrón, descubierto porque me bloqueó un push propio: **frenó bien, nombró mal.**
+
+### D.1 · El síntoma y la causa, separados
+
+```
+[pre-push] origin/main se movió (148f9639c414 -> fa029fe2c1e1); sincronizando el grafo…
+[graph-sync] ❌ no encuentro el repo 'copiloto-emprendedor' en '…/graphify-graphity-bridge/config/repos.toml'.
+error: failed to push some refs
+```
+
+Control del **efecto**, no del exit code: `ls-remote` seguía en `05a0c3b4`. El commit quedó local.
+
+| medición (sólo lecturas sobre el repo del bridge) | valor |
+|---|---|
+| rama del bridge | `backend/checkpoint-identity-fix` @ `afedbb8` |
+| reflog | `07:56:51 checkout: moving from master to backend/checkpoint-identity-fix` → `reset` → `cherry-pick` |
+| `[[repo]]` en `master:config/repos.toml` | **7** — y coinciden 1:1 con los 7 `.bridge/checkpoint-*.db` |
+| `[[repo]]` en `HEAD:config/repos.toml` | **1** (sólo `graphity-memory`) |
+| commits de `master` que a `HEAD` le faltan | **12**, incluido `02dade0` (el que calibró `min_support` del copiloto) |
+| `git stash list` · `git status config/repos.toml` | vacío · limpio |
+
+**Nada se perdió y nadie borró nada:** el mtime de 07:56 es el checkout, no una edición. La config
+estaba —y está— commiteada en `master`. El árbol se movió a un commit anterior al que la agregó.
+
+Esto importa porque el diagnóstico equivocado («las entradas vivían como cambio local y se perdieron»)
+lleva a un fix **destructivo**: reescribir a mano un archivo versionado que ya está completo, perdiendo
+en silencio `source_dirs`, `graphify_workdir` y un `min_support` calibrado. El fix real es un
+`checkout`, y es del dueño del árbol.
+
+### D.2 · Por qué dos sesiones vieron dos causas distintas del mismo fallo
+
+| `scripts/graph-sync.sh` | blob | ¿tiene el guard que nombra la causa? |
+|---|---|---|
+| `origin/main` y la rama de auditoría (idénticos) | `8331fc2c` | **sí** (línea 145, desde `1c011840` / #676) |
+| **el disco del checkout compartido** | `467f870a` | **no** (0 ocurrencias) |
+
+La sesión que corrió la copia **en disco** no tuvo guard: el script llegó hasta el bridge y el error que
+volvió apuntaba al lugar equivocado (`especificá --repo … config: ['graphity-memory']`), de donde salió
+«config ambigua / falta `--repo`». No hay ambigüedad ni falta de flag: hay **cero** entradas, y ningún
+`--repo` hubiera servido.
+
+Esto extiende lo de §A con un eje peor que la rama: **el disco de un checkout mezclado no corresponde a
+ninguna rama**, así que su mensaje no se puede reproducir ni atribuir. El índice ya avisaba que lo
+escrito ahí no llega a `main`; falta decir que **el instrumento que corre ahí miente distinto**.
+
+### D.3 · Dos filas de raíz (emitidas a planificación, no resueltas acá)
+
+- **`GRAFOCONF`** — una config crítica del gate de *este* repo vive en el working tree de *otro*, sujeta
+  a la rama que cualquiera le deje puesta; el bridge no figura como estado compartido con dueño en
+  `COORDINACION.md`. Mientras la fila esté abierta, el camino de menor resistencia ante el bloqueo es
+  `--no-verify`, que en repo público apaga gitleaks. **El riesgo no es el bloqueo: es el bypass.**
+- **`INSTRDISCO`** — un control que compare los blobs de `scripts/` del checkout compartido contra
+  `main` y liste los divergentes. El patrón ya existe (`no-drift.sh` lo hace para `platform/`).
+
+### D.4 · Y mi propia herramienta repitió el defecto, del lado del que escribe
+
+Completando la columna `plataforma` de 11 mediciones, mi script buscaba la cabecera por **texto exacto**
+y le appendeaba la columna. La 2ª corrida salió `exit 2` **«no encuentro la cabecera»** sobre un trabajo
+que ya estaba hecho: el guard de idempotencia vivía *después* de un lookup que el propio cambio
+invalidaba, así que «ya está» y «no pude medir» salían por la misma puerta — con el peor sesgo posible,
+porque el que falla es el estado correcto. Raíz: el lookup reconoce la cabecera **cruda y completada**;
+probado por los dos lados (completado → exit 0 sin tocar; crudo fabricado a propósito → vuelve a
+completar las 6). Es §B/§C otra vez, en la herramienta y no en el gate: **todo guard de idempotencia va
+antes del lookup que su propio efecto rompe.**

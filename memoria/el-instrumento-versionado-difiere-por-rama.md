@@ -53,3 +53,33 @@ historia plausible («cada rama tiene la mitad») que nadie va a cuestionar porq
 5. **Corregí el TITULAR, no sólo el cuerpo.** El `pedido_` se llamaba «el-verde-del-lint-esta-PARTIDO…»:
    un apéndice al pie deja la afirmación refutada en el nombre, que es lo que se lee en el listado
    ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+
+---
+
+## Refuerzo 2026-10-05 · el eje peor no es la rama: es el DISCO de un checkout mezclado
+
+Un `pre-push` fail-closed frenó a las cuatro sesiones. Dos sesiones lo diagnosticaron distinto, y la
+diferencia era el archivo que cada una ejecutó:
+
+| `scripts/graph-sync.sh` | blob | ¿tiene el guard que nombra la causa? |
+|---|---|---|
+| `origin/main` y mi rama | `8331fc2c` | sí (línea 145) |
+| **disco del checkout compartido** | `467f870a` | **no** |
+
+La que corrió la copia del disco recibió un error del sistema de más abajo, que apuntaba a otro
+lugar, y publicó un diagnóstico equivocado («config ambigua, falta `--repo`») sobre una causa que era
+«la config no existe en esta rama». El guard correcto existía y estaba en `main`: simplemente no
+estaba en el archivo que se ejecutó.
+
+**Por qué es peor que la rama:** una rama es un nombre que se puede citar y reproducir. El disco de un
+checkout mezclado **no corresponde a ninguna rama**, así que el mensaje que produce no es reproducible
+por nadie — ni por quien lo vio. Un diagnóstico así no se puede atribuir ni refutar: se hereda.
+
+**How to apply (se suma a las de arriba):**
+- Cuando dos sesiones reportan **causas distintas del mismo fallo**, la primera medición no es la causa:
+  es `git hash-object` del instrumento en cada lado. Si los blobs difieren, no estaban discutiendo lo
+  mismo.
+- **Un mensaje de error es evidencia de qué archivo corrió**, no sólo de qué pasó. Antes de heredar un
+  diagnóstico ajeno, preguntá qué blob lo emitió.
+- Si el repo tiene un checkout compartido, el control que falta es el que ya existe para lo vendoreado:
+  comparar los blobs de `scripts/` contra `main` y listar los divergentes (`no-drift.sh` es el patrón).
