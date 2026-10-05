@@ -35,22 +35,34 @@ echo "test-mergear-pr-veredicto-en-el-remoto"
 
 BASH_BIN="$(command -v bash)"
 mkdir -p "$T/bin"
+# shellcheck source=scripts/lib/gh-stub.sh
+. "$ROOT/scripts/lib/gh-stub.sh"
 
-# `gh` de mentira. El rollup, el estado y el rc del merge se piden por env; el merge deja testigo.
-escribir_gh() {   # escribir_gh <conclusion-del-primer-job>
-  cat > "$T/bin/gh" <<STUB
-#!/usr/bin/env bash
-case "\$*" in
-  *"--json state"*)       echo "\${FAKE_ESTADO:-OPEN}" ;;
-  *"--json headRefName"*) echo "plan/rama-de-prueba" ;;
-  *"--json mergeCommit"*) echo "abc1234567" ;;
-  *"pr merge"*)           echo "\$*" >> "\$TESTIGO_MERGE"
-                          echo "failed to run git: fatal: main is already used by worktree"
-                          exit "\${FAKE_RC_MERGE:-0}" ;;
-  *) echo '[{"name":"backend","conclusion":"$1","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]' ;;
-esac
-STUB
-  chmod +x "$T/bin/gh"
+# 🔴 ERA EL QUINTO STUB WILDCARD, y mi propio inventario lo nombraba. El header de
+# `scripts/lib/gh-stub.sh` cita «5 stubs wildcard, 4 de ellos en test-ci-verde-veredicto-monotono.sh»
+# — o sea el fix de STUBGH (`3de96b14`) cubrio CUATRO y dejo vivo justo al que contaba aparte, porque
+# vive en un archivo que ese PR no tocaba. **Un inventario que nombra el hueco no lo tapa**, y el
+# hueco quedo en el unico lugar donde nadie iba a mirar: el que el propio texto declaraba como «el
+# otro».
+#
+# Lo que el `*)` hacia: devolver el array del rollup ante CUALQUIER invocacion. Cadena del rojo de
+# #772, medida por auditoria con diferencial de una variable: `mergear-pr.sh:46` delega el gate a
+# `ci-verde.sh` -> este pide `--json mergeable,mergeStateStatus --jq` -> el fake cae en su `*)` y le
+# devuelve el rollup -> `ci-verde.sh` sale 2 («SIN MEDIR: no informa si el PR es mergeable») ->
+# `mergear-pr.sh` frena en el Paso 1 con rc=1, y el Caso 4 esperaba 3.
+#
+# El parche comodo —ensenarle a este fake a contestar `MERGEABLE/CLEAN`— deja el `*)` vivo y el
+# proximo campo vuelve a romper igual. Por eso se migra al helper, que falla con rc=64 ante un
+# `--json` no declarado. El fake propio tampoco implementaba `--jq`, que `gh` aplica del lado del
+# CLIENTE: ahi murio el primer intento de arreglarlo.
+fabricar_gh_stub "$T/bin"
+rollup_con() {   # rollup_con <conclusion-del-primer-job> -> JSON para GH_STUB_ROLLUP
+  printf '[{"name":"backend","conclusion":"%s","status":"COMPLETED"},' "$1"
+  printf '{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},'
+  printf '{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},'
+  printf '{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},'
+  printf '{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},'
+  printf '{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
 }
 
 # `git` de mentira: la rama "existe" mientras exista su archivo marca.
@@ -66,46 +78,45 @@ chmod +x "$T/bin/git"
 
 correr() {   # correr <nombre=valor>... -> deja $rc y $out; la rama arranca EXISTIENDO
   : > "$T/testigo-merge"; : > "$T/marca-rama"
-  out="$(env "$@" TESTIGO_MERGE="$T/testigo-merge" MARCA_RAMA="$T/marca-rama" \
-             PATH="$T/bin:$PATH" "$BASH_BIN" "$SCRIPT" 999 2>&1)"
+  out="$(env "$@" GH_STUB_MERGE_TESTIGO="$T/testigo-merge" MARCA_RAMA="$T/marca-rama" GH_STUB_ROLLUP="${ROLLUP:-$(rollup_con SUCCESS)}" GH_STUB_HEADREF="plan/rama-de-prueba" PATH="$T/bin:$PATH" "$BASH_BIN" "$SCRIPT" 999 2>&1)"
   rc=$?
 }
 testigo_vacio() { [ ! -s "$T/testigo-merge" ]; }
 rama_existe()   { [ -f "$T/marca-rama" ]; }
 
 echo "-- Caso 1: gh AUSENTE"
-escribir_gh SUCCESS
+ROLLUP="$(rollup_con SUCCESS)"
 : > "$T/marca-rama"
 out="$(PATH="" MARCA_RAMA="$T/marca-rama" "$BASH_BIN" "$SCRIPT" 999 2>&1)"; rc=$?
 if [ "$rc" -eq 2 ]; then ok "exit 2: no-pude-medir no se confunde con no-verde"
 else mal "rc=$rc; compartir exit con no-verde obliga al mensaje a elegir una causa"; fi
 
 echo "-- Caso 2: PR NO VERDE"
-escribir_gh FAILURE
-correr FAKE_ESTADO=OPEN
+ROLLUP="$(rollup_con FAILURE)"
+correr GH_STUB_STATE=OPEN
 if [ "$rc" -eq 1 ] && testigo_vacio; then
   ok "exit 1 sin invocar el merge: el gate frena"
 else mal "rc=$rc testigo=$(wc -c < "$T/testigo-merge")B; iba a mergear con un job en FAILURE"; fi
 
 echo "-- Caso 3: gh rc=1 y el remoto dice MERGED (el caso real)"
-escribir_gh SUCCESS
-correr FAKE_ESTADO=MERGED FAKE_RC_MERGE=1
+ROLLUP="$(rollup_con SUCCESS)"
+correr GH_STUB_STATE=MERGED GH_STUB_MERGE_RC=1
 if [ "$rc" -eq 0 ] && ! rama_existe; then ok "rc=0 y rama borrada, aunque gh hubiera fallado"
 else mal "rc=$rc rama=$(rama_existe && echo presente || echo borrada); salida: $(tr '\n' '|' <<<"$out" | cut -c1-160)"; fi
 
 echo "-- Caso 4: el remoto NO dice MERGED aunque gh saliera 0"
-correr FAKE_ESTADO=OPEN FAKE_RC_MERGE=0
+correr GH_STUB_STATE=OPEN GH_STUB_MERGE_RC=0
 if [ "$rc" -eq 3 ]; then ok "exit 3: el remoto manda sobre el rc=0 de gh"
 else mal "rc=$rc; un rc=0 no puede declarar mergeado lo que el remoto dice OPEN"; fi
 
 echo "-- Caso 5: la rama sobrevive al borrado"
-correr FAKE_ESTADO=MERGED RAMA_INDESTRUCTIBLE=1
+correr GH_STUB_STATE=MERGED RAMA_INDESTRUCTIBLE=1
 if [ "$rc" -eq 4 ] && grep -q "a medias" <<<"$out"; then
   ok "exit 4 y lo nombra: mergeado pero el trabajo quedo a medias"
 else mal "rc=$rc; la rama huerfana necesita un codigo propio"; fi
 
 echo "-- Caso 6: PR ya MERGED, idempotente"
-correr FAKE_ESTADO=MERGED
+correr GH_STUB_STATE=MERGED
 if [ "$rc" -eq 0 ] && testigo_vacio; then
   ok "no reinvoco el merge y cerro la rama (corrible N veces)"
 else mal "rc=$rc testigo=$(wc -c < "$T/testigo-merge")B; reintentar un merge hecho es el otro modo de fallar"; fi

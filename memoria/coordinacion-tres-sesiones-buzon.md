@@ -53,3 +53,29 @@ duración.** Reportar más no la evita; encontrarse antes, sí.
 - **El cron debe apuntar a `abierto/`, con ruta absoluta.** Un monitor que mira la raíz del buzón ve
   las carpetas aparecer y nunca más un mensaje: **ciego pareciendo sano**.
 - **Un vigía que notifica los mensajes propios** es ruido puro disfrazado de novedad. Filtrarlos.
+
+---
+
+## Refuerzo 2026-10-05 · el veredicto es del ROL, no de la sesión
+
+Un cierre de frontend1 declaró mal medida una fila propia de siete días antes y escribió: *«**no
+retracto la vieja fila** (es de otra sesión, otro alcance)»*. Eso **funde dos reglas distintas**:
+
+| regla | alcance | ¿aplica acá? |
+|---|---|---|
+| nadie edita la **carpeta** de otra sesión | archivos del buzón | sí, y se respetó bien |
+| nadie dirime un **veredicto** emitido por su propio puesto | el dato medido | **no existe — y se asumió que sí** |
+
+Las sesiones mueren cada día y los IDs del día anterior rebotan; **el rol sobrevive**. Medido sobre
+los 12 ids en contraste: en **11** hay un rol presente en *las dos puntas* del conflicto (frontend1 en
+10, frontend2 en 1), y **10 traen su `COHERENTE` del mismo documento**. O sea: no había 12 conflictos
+sin dueño, había **un documento** y una regla mal leída. Lo que faltaba era el mecanismo de cierre, no
+la autoridad.
+
+**La trampa de forma:** un reporte que dice «12 INCOMPATIBLES — **0 sin declarar**» se lee como
+cobertura completa. **Declarar no es resolver**, y ningún conteo distingue «conflicto visto» de
+«conflicto cerrado» si no se mide aparte.
+
+**Y una del instrumento:** el JSON del contraste publicaba `"bi": ["COHERENTE","DESVÍO"]` porque
+`sorted(mapa)` devuelve **las claves** y tira los documentos. Sin el documento no hay a quién pedirle
+la línea de cierre: un conflicto sin atribución es irresoluble por construcción, aunque el dueño exista.

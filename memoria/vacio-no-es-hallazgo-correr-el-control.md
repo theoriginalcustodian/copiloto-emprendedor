@@ -123,3 +123,41 @@ vigentes filas caducadas de una matriz de conformidad.
 del esperado, no solo del instrumento — y cual de los dos es se averigua yendo a mirar, nunca
 ajustando hasta que aparezca el verde. Emparentada con
 [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+---
+
+## Refuerzo 2026-09-30 — el MISMO NÚMERO de antes no distingue «no hace falta» de «no corre»
+
+Apliqué un fix al lector de sujetos, corrí la medición sobre el corpus real y **dio exactamente lo
+mismo que antes**: las mismas 5 filas ciegas, en los mismos 2 documentos. Esa lectura admite dos
+explicaciones opuestas y el número no las separa:
+
+- el fix **no hacía falta** (el enfoque estaba mal), o
+- el fix **no corrió** (la implementación no se ejercita).
+
+Bajé a un **fixture mínimo** con la forma exacta del documento, imprimiendo el estado intermedio
+(`columna_de_sujeto` por línea). Ahí se vio en una corrida: la cabecera devolvía la columna correcta
+y las filas seguían saliendo sin sujeto. La causa era mía y de una línea — `fila_de_tabla` devuelve
+`None` para el **separador**, el separador vive **siempre** entre la cabecera y sus filas, y mi
+reset «si no es fila, se muere el alcance» borraba la columna **una línea después de calcularla**.
+El fallback no corrió nunca.
+
+**El detalle que lo vuelve regla:** `veredictos_de`, 100 líneas más arriba **en el mismo archivo**,
+ya abría su loop con `if es_separador(linea): continue`. Reimplementé su mecanismo de cabecera y
+dejé afuera su guarda. Es [[el-fix-ya-existe-en-otro-call-site]] en su forma más cara: no es que el
+fix estuviera en otro repo, estaba en la función de al lado, y aun así reescribí la mitad sin ella.
+**Al copiar un mecanismo, copiá también sus guardas — y andá a leer el original, no tu recuerdo.**
+
+**La regla operativa, que es de método:** cuando una medición sobre el sistema real da **idéntico**
+a la de antes del cambio, eso NO es evidencia de nada todavía. Antes de concluir sobre el enfoque,
+probar que el código nuevo **se ejecuta**: un fixture mínimo que imprima el estado intermedio, o un
+canario que falle a propósito. Sin eso, el instrumento está midiendo mi hipótesis sobre el diseño
+cuando el hecho es que la rama nueva no se toca. Hermano de
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y de
+[[el-instrumento-respondio-sobre-otro-sujeto]]: acá el sujeto era el correcto, pero la rama medida
+no era la nueva.
+
+**Y el contraste que cierra el aprendizaje:** una vez arreglado, el control decisivo fue correr el
+gate sobre `origin/main` y sobre la rama. `main` daba **verde** y el fix lo puso **rojo** (dos
+documentos sin clasificar). Ese rojo era el progreso: el verde de antes era verde **por ceguera**.
+Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]].

@@ -83,3 +83,30 @@ en vez de por documento» no alcanza: hace falta **por fila y por versión**.
 cambiar su nombre?»**. Si la respuesta es sí —un archivo editable, una fila de tabla, un mensaje que su
 autor puede corregir—, el par `(nombre, id)` no distingue versiones y la fuente de verdad no es la lista
 que declara el problema: es **el documento medido**. Ver [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]].
+
+---
+
+## Refuerzo 2026-10-05 · la variante HOMÓNIMA: el nombre no identificaba un documento, identificaba una familia de CUATRO (de dos autoras)
+
+Un dictamen midió `matriz-web-re-medida` y publicó **«0 de 12»** para exculparlo. La medición era
+correcta; el sujeto no existía. `matriz-web-re-medida` no es un documento: es un **prefijo** que
+matchea **cuatro** archivos —`…_frontend1…_matriz-web-re-medida.md`, `…-v2.md`,
+`…-v2-filas-3-a-6.md` y `…_frontend2…_matriz-web-re-medida.md`— que entre los cuatro aportan **8** de
+los 11 veredictos que el dictamen declaraba ajenos. El «0» salió de mirar **un** miembro y concluir
+sobre la familia.
+
+**Dos agravantes que el conteo por nombre no puede ver:**
+
+1. **La familia tiene dos AUTORAS.** Tres archivos son de una sesión y el cuarto de otra. La
+   instrucción que los superaba decía «marcá **tus tres**» — correcta y cumplida, y estructuralmente
+   incapaz de alcanzar al cuarto, porque **nadie edita el documento de otra sesión**. Un barrido por
+   dueño deja un hueco exactamente del tamaño de los homónimos ajenos.
+2. **El sufijo es donde vive la divergencia.** `-v2` y `-v2-filas-3-a-6` no son copias: son la
+   corrección y su continuación, y son las que aportan los veredictos. El prefijo compartido hace que
+   el miembro mirado **absuelva a los hermanos**, igual que en [[una-fila-por-valor-de-una-variable-no-es-una-fila]]
+   el stub sano absolvió al enfermo del mismo archivo.
+
+**El control, una línea antes de publicar la cifra:** cuando un dictamen (o un grep, o una exclusión)
+**nombra** un documento, contar cuántos archivos matchean ese nombre y **declarar el número**. Si es
+>1, el nombre no es el sujeto: el sujeto es el archivo, y hay que medirlos todos. Mismo test que
+[[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]] — contá definiciones, no usos.

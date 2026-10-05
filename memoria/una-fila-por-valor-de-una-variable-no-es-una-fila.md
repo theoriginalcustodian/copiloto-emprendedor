@@ -49,3 +49,30 @@ Pariente directo de [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y
 [[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]: las tres se resuelven **contando
 definiciones, no usos**. Y de [[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]]: el
 inventario de la plantilla habría recortado bien la fila el primer día.
+
+---
+
+## Refuerzo 2026-10-05 · la fila era el ARCHIVO y la unidad real era el STUB — un hermano sano absuelve al enfermo
+
+Un barrido de dobles de comando (el `gh` de mentira de las suites del gate) publicó **5 comodines** con su
+tabla por archivo. La cifra correcta era **6**, y el que faltaba vivía en un archivo clasificado
+**«despacha por invocación»** — veredicto *cierto*, pero de **otro stub del mismo archivo**:
+`test-mergear-pr-veredicto-en-el-remoto.sh` fabrica un doble de `git` (sano, despacha) **y** un doble de
+`gh` (con rama comodín). La fila tomó el archivo como sujeto, el hermano sano ganó la clasificación, y el
+comodín quedó **absuelto por convivencia**. Cinco días después ese comodín dejó rojo el `lint` de un PR, y
+el rojo pareció del script que lo consumía.
+
+**Por qué no da síntoma:** una tabla por archivo con el denominador bien declarado — *«7 dobles de comando
+en 4 suites»* — **se lee como completa**, y de hecho contó los 7. Lo que no hizo fue **emitir una fila por
+cada uno**: siete dobles colapsados en filas-archivo, con dos archivos portando dos dobles cada uno. El
+agregado por archivo es una proyección con pérdida, y la pérdida cae justo en el archivo heterogéneo.
+
+**El test, antes de publicar un conteo:** *¿puede un elemento de mi población tener DOS valores de la
+variable que estoy clasificando?* Si la respuesta es sí, el archivo (o el PR, la pantalla, el tenant) no es
+la fila: la fila es el elemento que porta **un solo** valor. Control mecánico: el total de filas tiene que
+igualar el denominador declarado — si declarás 7 dobles y publicás filas de 4 archivos, ya sabés que una
+fila está hablando por dos.
+
+Hermana de [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] (el barrido mira donde
+el sano lo invita a mirar) y de [[nada-cazaba-al-mal-clasificado-solo-al-no-clasificado]]: acá el elemento
+**estaba** clasificado, y por eso ningún control de cobertura lo reclamó.

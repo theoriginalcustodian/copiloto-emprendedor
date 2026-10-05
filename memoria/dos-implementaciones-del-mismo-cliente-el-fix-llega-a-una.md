@@ -70,3 +70,25 @@ Lo detectó y lo corrigió por escrito quien lo había dado por cerrado una hora
 lo descubriera un usuario**. Ese es el comportamiento correcto y hay que decirlo: la deuda que se
 vuelve visible cuesta una fracción de la que se descubre en producción
 ([[cero-deuda-no-gestionada]]).
+
+---
+
+## Refuerzo 2026-10-05 · el inventario estaba COMPLETO y el fix llegó a 4 de 5
+
+Yo había medido el radio: **5 stubs de `gh` wildcard**, y el header del fix lo cita textual — «5 stubs
+wildcard, 4 de ellos en `test-ci-verde-veredicto-monotono.sh`». El fix migró esos 4 al stub compartido.
+**El quinto dejó un PR rojo cinco días.**
+
+Vivía en `scripts/tests/test-mergear-pr-veredicto-en-el-remoto.sh`, el test **de otro frente**: el PR
+no lo tocaba, así que no apareció en su propio diff ni en su revisión. Y el modo de fallar es el peor
+disponible: `mergear-pr.sh` delega el gate a `ci-verde.sh`, el campo nuevo cae en el `*)` del fake, el
+fake devuelve el array del rollup, y **el rojo se le atribuye al cambio del PR** en vez de al
+call-site que faltaba migrar.
+
+**Lo que agrega:** contar bien el radio no alcanza. El inventario dijo 5 y el fix tocó 4 porque el
+criterio de «qué archivos revisar» fue *los que este PR cambia*, no *los que el inventario nombró*.
+Son dos listas distintas y la segunda es la que manda.
+
+**El control:** al cerrar un fix de N call-sites, **contá los que tocaste contra los que listaste** —
+no contra los que fallaban. Un call-site que todavía no fallaba es exactamente el que va a fallar
+cuando el consumidor pida el campo siguiente.

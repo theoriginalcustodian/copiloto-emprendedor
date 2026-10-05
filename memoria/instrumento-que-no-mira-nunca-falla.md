@@ -290,6 +290,73 @@ dos. Si ambos dan 0, no medió nada.
 
 ---
 
+## Refuerzo 2026-10-05 · arreglar el instrumento ciego NO barre las afirmaciones que su ceguera ya escribió
+
+El parser del criterio 3 no podía leer el id `(home)`: es sintético, empieza con paréntesis, y
+`limpiar('(home)')` devolvía `'home)'`. Consecuencia medida, en palabras del propio comentario del
+instrumento: *«la cifra no podía pasar de 53 de 54 por mucho que se midiera»*. El id **estaba medido**
+desde el 2026-09-30, con veredicto `DESVÍO` y un documento en el buzón; lo que faltaba era un parser
+que pudiera leer el nombre de la fila.
+
+El parser se arregló. **La frase que su ceguera había escrito siguió viva** — «falta `(home)`, nunca
+medida» — y el mismo día, en dos sesiones distintas, fabricó dos errores: una asignación de trabajo ya
+hecho y un veredicto publicado en un entregable. Ninguna de las dos midió: **las dos citaron el mismo
+renglón heredado**.
+
+**La clase:** una afirmación generada por un instrumento ciego **no se parece a un bug**. Se parece a
+estado conocido, y hereda la autoridad del lugar donde quedó escrita (un índice, un tablero, un
+`PLAN.md`). El fix del instrumento es visible y celebrado; las afirmaciones que produjo mientras era
+ciego son invisibles y sobreviven.
+
+**El cierre que faltaba, y es parte del fix, no un extra:** al arreglar un instrumento, **grepear las
+afirmaciones que produjo** mientras estaba ciego —en índices, tableros, docs maestros— y corregirlas
+en la misma operación. Si el arreglo subió una cifra, toda cita de la cifra vieja es ahora falsa.
+Corolario de proceso: el PR que arregla el parser y el que barre sus secuelas son **el mismo PR**,
+como en [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
+
+Hermana de [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]] y de
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]].
+
+## Refuerzo 2026-09-30 — el DETECTOR tiene que ser más ancho que el LECTOR
+
+Regla de diseño, no anécdota: **un detector tan ancho como su lector no puede avisar de la ceguera
+de su lector.** Si el instrumento que busca lo que se pierde usa el mismo criterio que el que lee,
+los dos son ciegos al mismo conjunto y el silencio se lee como «no hay nada».
+
+El caso: `contar-veredictos.py` leía el sujeto de una medición asumiéndolo en la **primera celda**
+de la fila. Un `cierre_` puso el enumerador ahí (`A-1`) y el id en la segunda, bajo
+`| # | camino | veredicto | … |`. Sus dos mediciones quedaron ilegibles — y por ser sus **únicos**
+sujetos, el documento no llegó a *candidato*: ni medido ni descartado, invisible a los **cuatro**
+ratchets del script, que operan todos sobre `candidatos`.
+
+El arreglo tiene dos mitades y la segunda es la que importa a futuro:
+
+1. **Lector**: guardar el índice de la columna que la cabecera declara (`camino`/`id`/`sujeto`), que
+   es el mismo mecanismo que ese archivo ya usaba para la columna de *veredicto*.
+2. **Detector**: `filas_ciegas_de()` acepta el id del padrón en **cualquier** celda. El margen entre
+   los dos ES la alarma: cuando aparezca una forma que el lector no cubre, el detector la nombra en
+   vez de perderla. Su exit nuevo mira justamente el conjunto que los otros cuatro no miran.
+
+**Lo que hace que esto sea construible y no un guard que grita:** el discriminante se **midió sobre
+el corpus entero antes de escribirlo** — 1 documento de 1979, 0 falsos positivos. La variante más
+fina (marcar filas sueltas dentro de documentos que sí miden) daba **3 falsos de 5**: una tabla de
+taxonomía donde los ids del padrón están en rol de *ejemplo*. Se eligió el falso negativo de la
+tabla mixta antes que el guard que grita en el caso normal — ver
+[[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].
+
+**Y la ceguera estaba ESCRITA ocho días antes**, en el comentario final del propio test del parser:
+«un documento cuyo ÚNICO sujeto es ilegible no llega a ser candidato … y el ratchet exit 8 nunca se
+entera». Describía el agujero sin mecanismo que lo cazara. Es la misma forma que
+[[el-guard-se-satisface-con-su-propio-comentario]] y que el docstring que reservaba un cableado
+nunca hecho: **dejarlo escrito lo vuelve invisible por escrito en vez de visible.** La pregunta que
+lo convierte en trabajo: *¿qué mecanismo falla si esto que acabo de describir pasa de nuevo?* Si la
+respuesta es «lo dice un comentario», no hay mecanismo.
+
+**El remate que mide el valor sin inflarlo:** con el fix, la cifra titular **no se movió** (54 de
+54) porque esos ids ya estaban cubiertos por otros documentos. Lo recuperado fueron *mediciones*,
+no *cobertura* — entre ellas una tercera fuente concordante para dos veredictos. Decir «subió la
+cifra» habría sido falso; el valor estaba en otro lado. Ver [[cero-que-no-se-puede-afirmar]].
+
 ## Refuerzo (2026-10-05): el ratchet miraba las FILAS PUBLICADAS, no el registro — y lo cazó su propio control positivo
 
 El ratchet nuevo del `exit 12` (ver

@@ -104,27 +104,38 @@ tar -C "$LOCAL" \
 #
 # Honesto por diseño: el gate de drift de arriba sólo verifica `apps/copiloto` y `motor` contra
 # origin/main. Los otros 3 paths del tar van sin verificar, y el manifiesto lo dice en vez de
-# sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
-# "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
-# un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
-echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
+# sugerir que todo el árbol está anclado.
+#
+# NDJSON append-only (MANIFBIDIR, 2026-10-05, corrige el fix del 28/09 que resolvía sólo media
+# falla): con `cat >` cada deploy BORRABA el sello del anterior (dirección 1, auditoría). Pero
+# un `>>` que a veces NO SE EJECUTA es peor: medido en prod el 2026-10-05 -- el árbol se sincronizó
+# el 30/09 11:38 (mtime de apps/copiloto/web.py) y el servicio arrancó con ese código el 30/09
+# 11:55 y de nuevo el 02/10 06:26 (restart sin deploy), pero el manifiesto quedó congelado en el
+# registro del 28/09 -- el paso de abajo corrió (el script ya tenía este bloque desde 0eea89e0,
+# 2026-07-31) pero el `ssh ... cat >` falló y el aviso se perdió en stderr efímero (dirección 2).
+# Un historial que a veces no crece es MÁS creíble que un archivo con mtime viejo -- por eso el
+# fix no es sólo `>>`: es verificar POR EFECTO (tail -1 remoto == lo que mandé, no el exit code
+# del pipe, que miente en los dos sentidos) y, si no coincide, fallar RUIDOSO al final del script
+# (abajo, `_sello_ok`) sin abortar el resto del deploy ya aplicado.
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json (NDJSON append-only)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
-_manifiesto="$(cat <<JSON
-{
-  "desplegado_en": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "origin_main_sha": "${_sha}",
-  "gate_de_drift": "${_gate}",
-  "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
-  "paths_NO_verificados": ["apps/copiloto-web", "packages/core", "deploy/worker", "deploy/copiloto"],
-  "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
-  "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
-}
-JSON
-)"
-printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
-  || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
+_nonce="$(date +%s%N)-$$"
+_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nonce":"%s"}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_nonce}")"
+_sello_ok=0
+if printf '%s\n' "$_linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'"; then
+  _verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
+  if [ "$_verif" = "$_linea" ]; then
+    _sello_ok=1
+  fi
+fi
+if [ "$_sello_ok" != "1" ]; then
+  echo "    🔴 SELLO DE PROCEDENCIA NO CONFIRMADO (nonce ${_nonce}) -- el deploy sigue, pero el manifiesto" >&2
+  echo "       del VPS puede haber quedado SIN la entrada de esta corrida. El script va a fallar" >&2
+  echo "       (exit≠0) al final para que esto no quede mudo, aunque el resto del deploy ya se aplicó." >&2
+fi
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
 ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
@@ -486,4 +497,11 @@ if uc_durabilidad_activa; then
   fi
 fi
 
+if [ "${_sello_ok:-0}" != "1" ]; then
+  echo "🔴 DEPLOY COMPLETO, PERO EL SELLO DE PROCEDENCIA NO SE PUDO CONFIRMAR (ver [1.bis] arriba)."
+  echo "   DEPLOY-MANIFEST.json en el VPS puede estar desactualizado -- auditoría/autosanación/grafo"
+  echo "   leerían un sha viejo. Repetir el deploy, o escribir la línea a mano (ver [1.bis] para el"
+  echo "   formato NDJSON), antes de confiar en ese archivo."
+  exit 1
+fi
 echo "==> Deploy completo."

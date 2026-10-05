@@ -276,6 +276,26 @@ para **un** SHA, y el merge toma el HEAD remoto.
 
 ### Barrido: el comodín no estaba solo — **5 stubs**, todos de `gh`
 
+> 🔁 **CORREGIDO el 2026-10-05 — eran SEIS, y el error tiene nombre.** Planificación midió seis al
+> escribir el helper; yo publiqué cinco. Re-medido con instrumento propio sobre `origin/main`
+> (125 archivos mirados, 3 con dobles de `gh`): **6 stubs fabricados** = `gh-presente` (1) +
+> `veredicto-monotono` (4) + **`mergear-pr` (1)**, con 12 ramas comodín (2 literales y 10 generadas
+> dentro de un `echo`/`printf`).
+>
+> **La causa no fue aritmética: fue la unidad de la fila.** La tabla de abajo clasifica
+> `test-mergear-pr-veredicto-en-el-remoto.sh` como «despacha por invocación» — y es cierto **de su doble
+> de `git`**. Ese archivo fabrica **dos** stubs, y el sano absolvió al enfermo: su doble de `gh` **sí**
+> tiene comodín, y es el que dejó rojo el `lint` de #772 cinco días después. Clasificar por ARCHIVO
+> cuando la unidad real es el STUB hace que un hermano correcto emita el permiso del defectuoso.
+>
+> **Y ojo con el otro «6»:** el «6 comodines» de la v1 refutada (§ más abajo) es un seis **distinto** —
+> contaba `npx` y `stat` como comodines siendo sanos. Que los dos números coincidan es casualidad: este
+> seis sale de contar stubs fabricados; aquél, de un heredoc leído vacío.
+>
+> Lo que **no** cambia: la predicción se cumplió, y el fix de raíz (`scripts/lib/gh-stub.sh`) existe pero
+> **todavía no está en `main`** — vive en #772, sin mergear al 05/10.
+
+
 Si el comodín rompe al próximo cambio, la pregunta no es «arreglemos éste» sino **cuántos hay**.
 Barrido de las 48 suites, con el delimitador del heredoc leído del propio `<<'DELIM'`:
 
@@ -425,3 +445,96 @@ checkout compartido sigue corriendo la versión que lo necesita.
 **Lo que NO se hace para arreglarlo:** un `pull`/`checkout` ciego en el checkout compartido. Tiene ~100
 archivos editados a mano y tres sesiones encima; es la operación que las reglas duras prohíben. La fila
 es: quién es dueño de poner ese checkout al día, y con qué procedimiento.
+
+### D.6 · El lock del grafo quedó tomado por un proceso **vivo pero detenido** — y «vivo» no es «avanzando»
+
+Cierre del `--delete` de mi rama ya mergeada (`a8c5973d`). El push no terminó; `TaskStop` cerró la
+tarea del harness. Medición 4 min después, **antes** de matar nada:
+
+| Qué medí | Resultado | Instrumento |
+|---|---|---|
+| los 3 PIDs del push tras el `TaskStop` | **los 3 vivos**: `pre-push` → `graph-sync.sh` → subshell | `ps -p` + `Get-CimInstance Win32_Process` |
+| dueño del `LOCKDIR` compartido | `pid=1590` — **mi propio proceso**, edad 261 s | `stat -c %Y` + `cat $LOCKDIR/pid` |
+| hijos `uv`/`python`/`git` del sync | **ninguno** ⇒ detenido, no trabajando | `Win32_Process` por `ParentProcessId` |
+| lock tras `kill -TERM` (hijo → padre) | **liberado** por el `trap` | `[ -d "$LOCKDIR" ]` |
+
+**`TaskStop` cierra la tarea, no el árbol de procesos:** el nieto sobrevive dueño del lock. Y el
+`pre-push`, ante un lock ocupado, sale `exit 0` sin sincronizar — camino que los dos archivos
+declaran (`graph-sync.sh:274` «*un lock ocupado NO es un fallo*», `.githooks/pre-push:78` escribe el
+warning y no aborta). Correcto entre dos sesiones vivas; con mi proceso detenido, es **verde
+silencioso para las otras tres**: push aceptado, grafo sin ingerir.
+
+**Lo que primero iba a escribir acá era falso, y el código lo refutó.** Iba a emitir una fila
+pidiendo que el lock mire el PID y no sólo la edad: **ya lo hace**, desde #676 (`graph-sync.sh:261`,
+`kill -0 "$pid_lock"`), y está en las tres versiones que comparé — mi fila habría mandado a hacer algo
+hecho ([[el-contrato-que-manda-a-hacer-algo-ya-hecho]]). El mecanismo real, leído entero
+(`graph-sync.sh:234-271`), es deliberado y tiene su porqué escrito:
+
+| Estado del dueño | Qué hace | Umbral |
+|---|---|---|
+| vivo (`kill -0` responde) | **el lock vale por viejo que sea** | hasta `LOCK_HARD_MAX=14400 s` (4 h) |
+| muerto o sin pid anotado | lo toma **de inmediato** | — |
+| vivo y > 4 h | lo trata como PID reciclado y lo toma | `LOCK_HARD_MAX` |
+
+Dos consecuencias que invierten lo intuitivo: `LOCK_MAX_AGE=600` **ya no decide** la recuperación, y
+un `kill -9` es **benigno** para el lock (el pid muere ⇒ el siguiente sync lo toma al instante). Lo
+tóxico es exactamente mi caso: **vivo pero detenido**, que retiene el lock hasta 4 h. Y no es un
+olvido — `graph-sync.sh:246-248` documenta por qué «vivo = válido»: un sync completo tras un mes de
+drift ingiere >17 min, y la regla por edad le robaba el lock a un sync vivo, con dos procesos
+reescribiendo el mismo árbol y el mismo checkpoint.
+
+**El diferencial, y su límite.** Tras correr el sync a mano (`rc=0 motivo=ok`, marcador `a8c5973d` =
+`origin/main`, control positivo contra el servidor: `copiloto_actividad_store`, uuid
+`83e79074-ab5a-5970-8094-a9ed50e782aa`), el **mismo** `--delete` salió en **3 s**, con el atajo del
+hook («grafo ya sincronizado — nada que hacer») y la rama borrada (`ls-remote` vacío). Un sync
+completo tarda ~2 min 50 s (28 152 filas, 43 particiones) ⇒ **el que no paga el sync se lo cobra al
+siguiente push**. Lo que **no** quedó probado es por qué se detuvo el primer intento: cambié dos
+variables a la vez (el `| tail -6` del comando y el marcador atrasado), así que el diferencial no
+atribuye, y no lo voy a atribuir — es el defecto que cataloga este mismo doc.
+
+**Distinto del `hallazgo_` del backend de hoy**, con el mismo gatillo (borrar una rama): el suyo falló
+**rápido**, `status 2` con `config: ['graphity-memory']` (`GRAFOCONF`); el mío se **detuvo** con la
+config ya correcta. Un mismo enunciado —"borrar una rama rompe el push"— nombra dos defectos.
+
+**Fila para planificación** (no la resuelvo acá: `scripts/` y `.githooks/` son suyos):
+
+- **`LOCKPROG`** — el lock prueba **existencia**, no **progreso**, y «vivo» es un proxy de
+  «avanzando» que falla justo en el caso que importa (proceso detenido ⇒ hasta 4 h de verde sin
+  sincronizar para las otras tres sesiones). Extensión del mecanismo que ya existe, no mecanismo
+  nuevo: el sync ya lee `mtime` y `pid` del `$LOCKDIR`, así que basta **un latido** —tocar un archivo
+  dentro del lock al cerrar cada paso— y comparar la edad del **último latido** en vez de la del
+  lock. Un sync lento legítimo late y conserva su lock; uno detenido lo pierde en segundos. El
+  umbral de 4 h puede quedar como techo de PID reciclado.
+
+#### D.6.bis · El mismo patrón, con `timeout` en vez de `TaskStop` — medido 09:45-09:52
+
+Volvió a pasar **el mismo día, con otro mecanismo**, y eso lo saca de anécdota: `timeout 300 git push
+origin --delete` fue matado a los 300 s, y el `graph-sync` que el `pre-push` había lanzado **siguió
+vivo como huérfano** (`pid=2745`) con el lock tomado. `timeout` mata el proceso que lanzó, **no el
+árbol**, exactamente como `TaskStop`.
+
+Lo que pasó después importa más que el cuelgue:
+
+| momento | medición |
+|---|---|
+| tras el `timeout` | rama **viva**, marcador en `1892710c`, grafo con `POST /api/v2/entity-types 200 OK` |
+| reintento (900 s de margen) | `[graph-sync] otro sync está corriendo (…sync.lock ocupado, pid=2745) — salgo sin tocar el árbol` + `[pre-push] ⚠️ el sync NO completó … el próximo push reintenta` → **push OK en 5 s**, rama borrada |
+| 2 min después | `pid=2745` muerto, lock **libre**, marcador en `4c1c8179` **== `origin/main`** |
+
+**Corrijo un diagnóstico intermedio propio.** Cuando vi el marcador en `1892710c` con el grafo ya
+ingerido, escribí que el `timeout` había matado el sync antes de escribir el marcador y que el trabajo
+se repetiría entero. **Era falso:** el sync no murió, siguió como huérfano, terminó solo y escribió el
+marcador. El sistema **convergió sin ayuda**. La prueba de que no era convergencia aparente: el pid
+muerto, el lock libre y el marcador igual a `origin/main`, medidos juntos.
+
+**La consecuencia operativa, que es la parte reutilizable:** ante un `push` que cuelga por el sync, lo
+correcto **no es subir el timeout** —el sync tarda lo que tarda— sino dejar que termine en su propio
+proceso y **reintentar**. El segundo intento pasa en segundos porque el `pre-push` **falla abierto a
+propósito** cuando el lock está ocupado (`graph-sync.sh:274`, «un lock ocupado NO es un fallo»): avisa
+que el marcador no avanzó y deja pasar el push. El fail-open acá es correcto, y es justo lo que evita
+que un ref-delete quede rehén de una ingesta.
+
+Esto **no duplica** la fila de backend del mismo día
+(`hallazgo_backend-…_borrar-una-rama-dispara-el-pre-push-y-el-graph-sync-rompe-con-config-ambigua`):
+su mecanismo es otro —`config: ['graphity-memory']`, el sync resolviendo el repo equivocado—. Acá no
+hubo error de config: hubo un huérfano con el lock y un fail-open que funcionó.
