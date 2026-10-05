@@ -43,22 +43,61 @@ tenemos… quiero saber con certeza qué fue lo que se terminó, cuánto tardamo
 Orden por dependencia real, no por preferencia. Las estimaciones asumen **waves en paralelo** con las
 4 sesiones vivas; el equivalente serial va al lado porque es lo que se paga si la flota queda en una.
 
-### E0 · Desbloquear el merge — **BLOQUEADA, y el bloqueo es del operador**
+### E0 · El merge — **gate de permisos de ESTA sesión: bloqueo PROPIO, no tarea tuya**
 
 | | |
 |---|---|
-| **Estado** | 🔴 bloqueada |
-| **Dueño del disparador** | **el operador** |
-| **Duración** | minutos, una vez desbloqueada |
+| **Estado** | 🔴 bloqueada para **mis** PR · 🟢 sin bloqueo para las otras sesiones |
+| **Dueño** | **mío declararlo · tuyo decidir si querés tocar los settings** |
+| **Duración** | minutos |
 
-`gh pr merge 770` fue **denegado por el clasificador de permisos** (`Merge Without Review`) con el CI
-medido en **6/6 y control de jobs presentes**. No se persigue por otra vía, ni se le pide a otra
-sesión: un peer ejecutando lo que esta sesión tiene denegado saltea una decisión del operador.
+🔻 **CORREGIDO 2026-10-05: hasta hoy esta etapa decía «el bloqueo es del operador» y eso estaba mal
+escrito.** `CLAUDE.md` §3.8 es explícito: *si un gate mecánico te frena, eso es problema tuyo, no
+tarea del operador; resolvelo o decilo como bloqueo propio — nunca se lo pases como «falta que
+apruebes»*. Yo había hecho exactamente eso, y es el mismo fallo del 06/08 que la constitución ya
+registra.
 
-**DoD binario:** existe una regla `Bash(gh pr merge:*)` en los settings, o el operador mergea él.
-**Hasta que esto no pase, E1 no puede correr y las ~6 h restantes no bajan.**
+**Lo medido hoy**, que es lo que corrige la atribución:
 
-### E1 · Integrar los 8 PR abiertos
+- **auditoría mergeó #771 desde su propia sesión, sin bloqueo** (`a8c5973d`, 11:40Z). El gate **no es
+  de la flota: es de esta sesión.**
+- Probé entonces si E1 se podía repartir por dueño, y **no se puede: los 7 PR abiertos son míos**
+  (6 con prefijo `plan/`, 1 `docs/`). No hay mitad ajena que avance en paralelo.
+- `gh pr merge` sigue denegado acá (`Merge Without Review`). **No se persigue por otra vía** — ni con
+  `scripts/mergear-pr.sh`, ni con un sub-agente, ni pidiéndoselo a un peer: eso último además viola
+  §3.quater (cada sesión mergea **sólo sus propios** PR).
+
+**Qué hago mientras, y no es esperar:** dejo cada PR en `MERGEABLE/CLEAN` con su recibo, y resuelvo lo
+que sí es mío. Hoy salió de ahí el hallazgo de #776 (ver E1). **Estado medido de los 7:**
+
+```
+#770 MERGEABLE CLEAN      lector del criterio 3 (ACCFALSO + agregado en --json)
+#773 MERGEABLE CLEAN      ci-verde: «no hay medición» salía ROJO
+#774 MERGEABLE CLEAN      escalador: la fecha del nombre no es la edad
+#775 MERGEABLE CLEAN      C3PARSER: sujeto por cabecera
+#778 MERGEABLE CLEAN      este plan + E3 (conflicto con #771 ya resuelto)
+#772 MERGEABLE UNSTABLE   ci-verde mide mergeable  <- un check no verde, mío de arreglar
+#776 CONFLICTING DIRTY    ❌ SUPERADA, se cierra sin mergear (ver E1)
+```
+
+**DoD binario:** los 6 vivos en `CLEAN`. El merge lo ejecutás vos, o agregás `Bash(gh pr merge:*)` a
+los settings si querés que esta sesión los cierre sola. **No es una pregunta que te bloquee nada**:
+las otras tres sesiones mergean lo suyo sin pasar por acá.
+
+### E1 · Integrar los PR abiertos — y uno NO se integra
+
+> 🔴 **#776 está SUPERADA: mergearla borraría trabajo de `main`.** Medido archivo por archivo, no
+> deducido: de sus 22 archivos **11 ya están idénticos en `main`**, y de los 11 que divergen el diff
+> contra `main` da `+0 −105`, `+12 −413`, `+1 −92`. La rama es **más vieja** que `main` y sus líneas
+> «+» son el encabezado original de archivos que `main` ya reescribió; los 13 renglones del backlog
+> (`BL-B4`, `BL-C5`, `BL-O1`…) ya están allá con otra forma. Resolver sus 10 conflictos tomando su
+> lado habría borrado cientos de líneas **en silencio**. Rescaté lo único que `main` no tenía (que
+> el push protection de GitHub se te propuso y sigue sin respuesta, commit `2dfbb938`) y el PR se
+> cierra con motivo escrito.
+>
+> **Esto es un patrón, no un caso:** el mismo día cometí la falla inversa con `WIPCOMPART` (ver E4).
+> Un archivo divergente **no dice si es más nuevo o más viejo**, y suponer «nuevo» produce una
+> alarma que nadie audita. Quedó en `memoria/el-contrato-que-manda-a-hacer-algo-ya-hecho.md`.
 
 | | |
 |---|---|
@@ -135,6 +174,20 @@ normal. Sin las dos direcciones medidas, la fila no cierra.
 | **`BRIDGEPUSH`** | esa config **nunca llegó a `origin/master`** del bridge: 8 commits locales de 2 meses tocando 3 repos. Mientras siga así, cualquier `checkout` ahí repite el bloqueo. **Decidido: se pushean**; el argumento de las rutas absolutas no aplica (`graphity-memory` ya está versionado con `C:/Proyectos/…`) | backend ejecuta |
 
 ### E3 · ✅ CERRADO — criterio 3 en **web 50 de 50 alcanzables** (2026-10-05)
+
+> ⚠️ **El ✅ depende de una exención que YO escribí y que está EN VERIFICACIÓN (dos pasadas pedidas
+> hoy).** `FUERA_DE_ALCANCE_WEB = {cobro-voz, fact-voz, pres-voz, vozchat}` es lo que convierte
+> «50 de 54» (92%) en «50 de 50 **COMPLETO**». La escribí citando *«el criterio 3 no tiene referencia
+> de escritorio»* de una medición de auditoría del 29/09 — **y no verifiqué la cita contra su
+> documento**. Una exención que convierte un 92% en un ✅ es **auto-confirmante**: si está mal, nadie
+> tiene motivo para mirarla, que es exactamente cómo 34 exentos terminaron apoyados en un acta de 2
+> casos.
+>
+> Por eso va con **dos métodos distintos y reparto explícito**: auditoría verifica lo **documental**
+> (¿su medición dice eso, y para los cuatro?) y frontend1 lo **empírico** (¿el prototipo tiene
+> pantalla de escritorio para esos 4 ids?). `vozchat` es el sospechoso: los otros tres son dictado
+> dentro de un flujo, pero el chat por voz podría tener pantalla de escritorio. **Si uno se refuta,
+> la cifra pasa a «50 de 51» y deja de ser COMPLETO.** Lo corrijo yo en el PR #770: la línea es mía.
 
 | | |
 |---|---|
@@ -219,9 +272,27 @@ manda a hacer trabajo inútil infla su propio denominador de lo pendiente. Fila 
 | **Dueños** | planificación (`WIPCOMPART`), backend (`BLO4OUT`, bridge) |
 | **Estimación** | **~1 h 30** en paralelo · ~2 h 30 serial |
 
-- **`WIPCOMPART`** — 22 archivos del checkout compartido, **+1.058/−191**, que no llegan a ninguna
-  rama. No se pierden solos (están en disco, no en un `stash`); el riesgo real es un `clean`/`checkout`
-  ahí, prohibido por CANON 9. Se reconcilia **archivo por archivo**, no por contador de commits.
+- 🔻 **`WIPCOMPART` — lo que esta fila decía era falso en las DOS mitades, corregido 2026-10-05.**
+  Decía «22 archivos, +1.058/−191, **los reconcilio yo**». Medido hoy: **22 tracked + 82 untracked**
+  (104), y el dueño no era yo solo — **9 backend · 7 frontend1 · el resto mío**. Yo puedo correr el
+  `git add` (dueña del estado compartido, CANON 9), pero **no puedo firmar el veredicto** de si un
+  cambio en `afip_rules.py` o en `PantallaFacturacion.tsx` va o se descarta: eso es de quien lo midió.
+  Mientras lo declaré mío entero, **nadie dio veredicto sobre el código de nadie**.
+
+  **Y mi alarma estaba refutada.** Al ver `+101` con la clave de idempotencia entera y su ADR-005 sin
+  versionar, bajé dos contratos diciendo «FACTID está implementado de los dos lados y nada llegó a
+  `main`, con `FACTIDFIX` abierto como gate de AFIP **producción**». Frontend1 lo midió en una pasada:
+  **ya estaba en `main` desde el 29/09** (PR #729, `6641e83a`); lo del disco son **copias viejas** —
+  al `.test.tsx` le falta contenido que `main` sí tiene. **No hay feature en riesgo.** Vi
+  «modificado/untracked» y leí «trabajo nuevo que no llegó»: el estado de git dice que el disco y
+  `main` difieren, **no en qué dirección**. La medición que decide es de una línea
+  (`git diff --numstat origin/main HEAD -- <archivo>`: si **resta**, la copia es la vieja), y en un
+  checkout con HEAD viejo **`YA-EN-MAIN` es la hipótesis por defecto**, no la excepción.
+
+  **Estado:** frontend1 ✅ cerró sus 7 (todos `YA-EN-MAIN` o `DESCARTAR`; los borro yo con rutas
+  explícitas) · backend ⏳ sus 13, con dos preguntas que ningún diff contesta: si los 3 tests
+  untracked pasan en el VPS, y si el `+25/−9` de `deploy.sh` **está aplicado en el VPS vivo o es sólo
+  disco** · el resto (`scripts/`, `memoria/`, 36 PNG, basura tipo `b.json`/`temp_backlog.md`) es mío.
 - `FACTNOMED` · `BLO4OUT` (PR ya abierto en `fleet-platform`) · `CIERREB`.
 - **`COCHANGE`** queda **deliberadamente intacta**: deuda declarada y visible, que es la única clase
   permitida.
@@ -240,12 +311,12 @@ No cuenta en el tiempo restante. Cuando entre, «terminado» exige evidencia **e
 
 | etapa | estado | paralelo | serial |
 |---|---|---|---|
-| E0 desbloquear merge | 🔴 **bloqueada (operador)** | minutos | minutos |
-| E1 integrar 8 PR | ⏸️ espera E0 | ~1 h | ~1 h 30 |
-| E2 instrumentos | 🟡 1/9 (entró `STUBGH`) | ~2 h | ~3 h |
-| E3 criterio 3 | 🟢 arrancada | ~1 h 30 | ~3 h |
-| E4 deuda y WIP | ⏸️ | ~1 h 30 | ~2 h 30 |
-| **TOTAL** | | **~6 h** | **~10 h** |
+| E0 el merge | 🔴 **gate de ESTA sesión** (bloqueo propio, no tuyo) | minutos | minutos |
+| E1 integrar los PR | 🟡 6 vivos en `CLEAN` · **#776 superada, se cierra** | ~1 h | ~1 h 30 |
+| E2 instrumentos | 🟡 2/9 (`STUBGH` · `ACCFALSO` cerrado hoy) | ~2 h | ~3 h |
+| E3 criterio 3 | 🟢 **cerrado 50/50** ⚠️ exención en verificación (2 pasadas) | — | — |
+| E4 deuda y WIP | 🟡 **frontend1 ✅ · backend ⏳ · resto mío** | ~1 h | ~2 h |
+| **TOTAL** | | **~4 h** | **~6 h 30** |
 
 **El número no bajó entre el 30/09 y el 05/10 porque no corrió trabajo, no porque el trabajo creciera.**
 Las ~6 h son horas-de-flota, no de calendario: con las 4 sesiones vivas y E0 desbloqueada, entran en
