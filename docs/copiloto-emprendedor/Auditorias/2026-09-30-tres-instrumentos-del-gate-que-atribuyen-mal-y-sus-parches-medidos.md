@@ -425,3 +425,63 @@ checkout compartido sigue corriendo la versión que lo necesita.
 **Lo que NO se hace para arreglarlo:** un `pull`/`checkout` ciego en el checkout compartido. Tiene ~100
 archivos editados a mano y tres sesiones encima; es la operación que las reglas duras prohíben. La fila
 es: quién es dueño de poner ese checkout al día, y con qué procedimiento.
+
+### D.6 · El lock del grafo quedó tomado por un proceso **vivo pero detenido** — y «vivo» no es «avanzando»
+
+Cierre del `--delete` de mi rama ya mergeada (`a8c5973d`). El push no terminó; `TaskStop` cerró la
+tarea del harness. Medición 4 min después, **antes** de matar nada:
+
+| Qué medí | Resultado | Instrumento |
+|---|---|---|
+| los 3 PIDs del push tras el `TaskStop` | **los 3 vivos**: `pre-push` → `graph-sync.sh` → subshell | `ps -p` + `Get-CimInstance Win32_Process` |
+| dueño del `LOCKDIR` compartido | `pid=1590` — **mi propio proceso**, edad 261 s | `stat -c %Y` + `cat $LOCKDIR/pid` |
+| hijos `uv`/`python`/`git` del sync | **ninguno** ⇒ detenido, no trabajando | `Win32_Process` por `ParentProcessId` |
+| lock tras `kill -TERM` (hijo → padre) | **liberado** por el `trap` | `[ -d "$LOCKDIR" ]` |
+
+**`TaskStop` cierra la tarea, no el árbol de procesos:** el nieto sobrevive dueño del lock. Y el
+`pre-push`, ante un lock ocupado, sale `exit 0` sin sincronizar — camino que los dos archivos
+declaran (`graph-sync.sh:274` «*un lock ocupado NO es un fallo*», `.githooks/pre-push:78` escribe el
+warning y no aborta). Correcto entre dos sesiones vivas; con mi proceso detenido, es **verde
+silencioso para las otras tres**: push aceptado, grafo sin ingerir.
+
+**Lo que primero iba a escribir acá era falso, y el código lo refutó.** Iba a emitir una fila
+pidiendo que el lock mire el PID y no sólo la edad: **ya lo hace**, desde #676 (`graph-sync.sh:261`,
+`kill -0 "$pid_lock"`), y está en las tres versiones que comparé — mi fila habría mandado a hacer algo
+hecho ([[el-contrato-que-manda-a-hacer-algo-ya-hecho]]). El mecanismo real, leído entero
+(`graph-sync.sh:234-271`), es deliberado y tiene su porqué escrito:
+
+| Estado del dueño | Qué hace | Umbral |
+|---|---|---|
+| vivo (`kill -0` responde) | **el lock vale por viejo que sea** | hasta `LOCK_HARD_MAX=14400 s` (4 h) |
+| muerto o sin pid anotado | lo toma **de inmediato** | — |
+| vivo y > 4 h | lo trata como PID reciclado y lo toma | `LOCK_HARD_MAX` |
+
+Dos consecuencias que invierten lo intuitivo: `LOCK_MAX_AGE=600` **ya no decide** la recuperación, y
+un `kill -9` es **benigno** para el lock (el pid muere ⇒ el siguiente sync lo toma al instante). Lo
+tóxico es exactamente mi caso: **vivo pero detenido**, que retiene el lock hasta 4 h. Y no es un
+olvido — `graph-sync.sh:246-248` documenta por qué «vivo = válido»: un sync completo tras un mes de
+drift ingiere >17 min, y la regla por edad le robaba el lock a un sync vivo, con dos procesos
+reescribiendo el mismo árbol y el mismo checkpoint.
+
+**El diferencial, y su límite.** Tras correr el sync a mano (`rc=0 motivo=ok`, marcador `a8c5973d` =
+`origin/main`, control positivo contra el servidor: `copiloto_actividad_store`, uuid
+`83e79074-ab5a-5970-8094-a9ed50e782aa`), el **mismo** `--delete` salió en **3 s**, con el atajo del
+hook («grafo ya sincronizado — nada que hacer») y la rama borrada (`ls-remote` vacío). Un sync
+completo tarda ~2 min 50 s (28 152 filas, 43 particiones) ⇒ **el que no paga el sync se lo cobra al
+siguiente push**. Lo que **no** quedó probado es por qué se detuvo el primer intento: cambié dos
+variables a la vez (el `| tail -6` del comando y el marcador atrasado), así que el diferencial no
+atribuye, y no lo voy a atribuir — es el defecto que cataloga este mismo doc.
+
+**Distinto del `hallazgo_` del backend de hoy**, con el mismo gatillo (borrar una rama): el suyo falló
+**rápido**, `status 2` con `config: ['graphity-memory']` (`GRAFOCONF`); el mío se **detuvo** con la
+config ya correcta. Un mismo enunciado —"borrar una rama rompe el push"— nombra dos defectos.
+
+**Fila para planificación** (no la resuelvo acá: `scripts/` y `.githooks/` son suyos):
+
+- **`LOCKPROG`** — el lock prueba **existencia**, no **progreso**, y «vivo» es un proxy de
+  «avanzando» que falla justo en el caso que importa (proceso detenido ⇒ hasta 4 h de verde sin
+  sincronizar para las otras tres sesiones). Extensión del mecanismo que ya existe, no mecanismo
+  nuevo: el sync ya lee `mtime` y `pid` del `$LOCKDIR`, así que basta **un latido** —tocar un archivo
+  dentro del lock al cerrar cada paso— y comparar la edad del **último latido** en vez de la del
+  lock. Un sync lento legítimo late y conserva su lock; uno detenido lo pierde en segundos. El
+  umbral de 4 h puede quedar como techo de PID reciclado.
