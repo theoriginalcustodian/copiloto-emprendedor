@@ -126,7 +126,28 @@ RETIRADOS_DECLARADOS = {"plan"}
 # nombrar a nadie — asi que nadie podia ni cerrarlos ni DESCUBRIR que cuatro no se podian cerrar. Un
 # numerador que no puede llegar a su denominador manda a trabajar al vacio y encima inventa deuda:
 # cada vuelta alguien vuelve a preguntar por los mismos cuatro ids. El instrumento publica su techo.
-FUERA_DE_ALCANCE_WEB = {"cobro-voz", "fact-voz", "pres-voz", "vozchat"}
+# 🔴 REFUTADA PARCIALMENTE POR AUDITORIA (2026-10-05) Y CORREGIDA ACA. Este set se llamaba
+# `FUERA_DE_ALCANCE_WEB` y DESCONTABA del techo, convirtiendo un 92% en «✅ COMPLETO». Dos defectos,
+# y el segundo es el grave:
+#
+#  1. EL EQUIVOCO DE PALABRA. «Escritorio» nombra DOS cosas sin relacion en este repo: la CAPA 0
+#     launcher del prototipo (`#escritorio`, index.html:1613) y el VIEWPORT de pantalla grande
+#     (index.html:63). La medicion de frontend1 prueba —con precision, lo dice en su :68— que estos
+#     4 ids no tocan la CAPA. Yo concluia que estan fuera del alcance WEB, que es el viewport. Se
+#     probo A y se concluyo B: entre uno y otro no hay inferencia. Peor: el predicado no es de web
+#     en absoluto — los mismos 4 salen «sin comparacion» en mobile, por la misma causa.
+#  2. EL TECHO ES LO QUE RESTA TRABAJO, no una cifra decorativa. Auditoria corrio este lector dos
+#     veces sobre el MISMO tree cambiando solo el set: la cifra medida es identica (50 de 54) y lo
+#     unico que cambia es si se imprime «✅ COMPLETO». Y `web_faltan_accionables` quedaba vacio **por
+#     construccion**: la lista de pendientes no podia tener elementos. Una exencion que vacia su
+#     propia lista de trabajo se auto-confirma, y un ✅ saca a todos el motivo de volver a mirar.
+#
+# Que queda: el HECHO medido (no hay referencia en la capa escritorio del prototipo) se conserva,
+# porque esta medido y es util. Lo que se retira es la CONCLUSION de alcance y el descuento del
+# techo. El camino para cerrarlos existe y es el vocabulario que este mismo lector ya habla:
+# `FUERA-DE-REFERENCIA` (ver NO_COMPARACION), usado en 8 lotes — pero lo declara el DOCUMENTO que
+# mide, no este set: un lector que asigna veredictos que no midio es peor que un techo mal puesto.
+SIN_REFERENCIA_EN_CAPA_ESCRITORIO = {"cobro-voz", "fact-voz", "pres-voz", "vozchat"}
 
 # ── C3-15: QUE DOCUMENTOS SE MIDEN ──────────────────────────────────────────────────────────────
 # Hasta el 2026-09-29 esto era `docs = {"lote_A": ubicar("lote-A"), "lote_B": ubicar("lote-B")}`:
@@ -367,7 +388,7 @@ NO_SON_MEDICION = {
         "encarga es el `cierre_` de FE2, que si esta en MEDICIONES_DECLARADAS -- contar los dos "
         "seria doble conteo del mismo sujeto.",
     # 2026-10-05 — MIDE, pero NO mide el criterio: mide su ALCANCE. Es la mitad empirica de la
-    # exencion `FUERA_DE_ALCANCE_WEB` (los 4 ids de voz), con dos instrumentos independientes por id
+    # exencion `FUERA_DE_ALCANCE_WEB` (los 4 ids de voz; el set se renombro a `SIN_REFERENCIA_EN_CAPA_ESCRITORIO` el 2026-10-05 y ya NO descuenta del techo), con dos instrumentos independientes por id
     # —lectura del `index.html` del prototipo + sonda en vivo contra el server Node— y su tabla final
     # declara `veredicto = SIN-REFERENCIA-DE-ESCRITORIO` para los cuatro.
     #
@@ -387,9 +408,24 @@ NO_SON_MEDICION = {
     "2026-10-05_cierre_frontend1-a-planificacion_los-4-ids-de-voz-SIN-REFERENCIA":
         "MIDE el ALCANCE, no el criterio: confirma empiricamente (codigo + sonda en vivo, 2 "
         "instrumentos por id) que `cobro-voz`/`fact-voz`/`pres-voz`/`vozchat` no tienen superficie "
-        "de escritorio en el prototipo, sosteniendo FUERA_DE_ALCANCE_WEB. Su columna `veredicto` usa "
+        "en la CAPA `#escritorio` del prototipo (no «fuera del alcance web»: son dos referentes distintos del mismo nombre). Su columna `veredicto` usa "
         "`SIN-REFERENCIA-DE-ESCRITORIO`, que NO es del vocabulario del criterio 3 "
         "(COHERENTE/DESVIO/REQUIERE_TRIAGE) — sumarlo inflaria el total sin medir ninguna pantalla.",
+    # 2026-10-05 — DICTAMEN SOBRE ESTE INSTRUMENTO, y es el que lo corrigio. Refuta parcialmente mi
+    # exencion: corrio este lector dos veces sobre el mismo tree cambiando solo el set y mostro que
+    # la cifra medida es identica — lo unico que cambiaba era el «✅ COMPLETO». CITA ids del padron
+    # (card-ingreso/card-cobro, los 4 de voz) para fundamentar, asi que produce veredictos con forma
+    # de medicion sin medir ninguna pantalla.
+    #
+    # El hallazgo que vale mas que la correccion: «escritorio» nombra DOS cosas en este repo —la
+    # CAPA 0 del prototipo y el VIEWPORT grande— y mi exencion probaba la primera para concluir la
+    # segunda. Tambien declara un error PROPIO corregido en 20 minutos (su §2.1 leyo las subvistas
+    # `#s-*` como prueba de escritorio-desktop, por el mismo equivoco) — un dictamen que se audita
+    # a si mismo adentro del mismo documento.
+    "2026-10-05_cierre_auditoria-a-planificacion_EXENCION-PARCIAL":
+        "DICTAMEN sobre este contador: refuta el DESCUENTO DEL TECHO de la exencion (la cifra medida "
+        "no cambia, solo el ✅) y nombra el equivoco de `escritorio` (capa vs viewport). Cita ids del "
+        "padron para fundamentar; no mide pantallas.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
@@ -1683,7 +1719,7 @@ def agregado_por_plataforma(lotes, ids):
 
     FALTANTES NOMBRADOS, no contados: `web_faltan` existe porque «49 de 54» no nombraba a nadie, asi
     que los 5 que faltaban no se podian cerrar NI se podia descubrir que 4 de ellos eran incerrables
-    (ver `FUERA_DE_ALCANCE_WEB`). El techo se publica al lado de la cifra."""
+    (ver `SIN_REFERENCIA_EN_CAPA_ESCRITORIO`). El techo se publica al lado de la cifra."""
     plat = {}
     for d in lotes:
         for p, lista in (d.get("ids_cerrados_por_plataforma") or {}).items():
@@ -1691,13 +1727,17 @@ def agregado_por_plataforma(lotes, ids):
     padron = set(ids)
     web = plat.get("web", set())
     faltan = sorted(padron - web)
-    fuera = [i for i in faltan if i in FUERA_DE_ALCANCE_WEB]
+    sin_ref = [i for i in faltan if i in SIN_REFERENCIA_EN_CAPA_ESCRITORIO]
     salida = {p: sorted(v) for p, v in sorted(plat.items())}
     salida.update({
         "web_faltan": faltan,
-        "web_faltan_fuera_de_alcance": fuera,
-        "web_faltan_accionables": [i for i in faltan if i not in FUERA_DE_ALCANCE_WEB],
-        "web_techo_alcanzable": len(padron - FUERA_DE_ALCANCE_WEB),
+        # El set ya NO descuenta: informa. `accionables` vuelve a ser TODOS los que faltan, porque
+        # para los 4 sin referencia tambien hay una accion nombrable (que su documento declare
+        # `FUERA-DE-REFERENCIA`). Mientras `accionables` se vaciaba por construccion, la lista de
+        # pendientes no podia tener elementos y nadie podia descubrir que faltaba hacer algo.
+        "web_faltan_sin_referencia_en_capa_escritorio": sin_ref,
+        "web_faltan_accionables": faltan,
+        "web_techo_alcanzable": len(padron),
     })
     return salida
 
@@ -2125,6 +2165,19 @@ def main():
     # formato para humanos (ver el docstring de `agregado_por_plataforma`).
     res["agregado_por_plataforma"] = agregado_por_plataforma(res["lotes"].values(), ids)
 
+    # CONTRASTEJSON (medido por auditoria el 2026-10-05): el bloque «CONTRASTE: N id(s) con
+    # veredictos INCOMPATIBLES» existia SOLO en el reporte de texto — 0 ocurrencias en `--json`, con
+    # control positivo (el JSON pesaba 101.168 B y «web» aparecia 39 veces, o sea se generaba
+    # completo). Quien consume el JSON —la suite, y cualquier automatizacion— no veia que 12 ids se
+    # contradicen entre documentos. Es el MISMO defecto de forma que el agregado por plataforma, que
+    # vivia despues del `return` de `--json`: el alcance de un dato no puede depender del formato de
+    # salida, porque el formato que las maquinas leen es el que decide.
+    res["contraste"] = {
+        "conflictos_declarados": {i: sorted(vs) for i, vs in sorted(conflictos.items())}
+                                 if isinstance(conflictos, dict) else sorted(conflictos),
+        "conflictos_nuevos": sorted(nuevos),
+    }
+
     if "--json" in sys.argv:
         res["instrumento"] = sello_del_instrumento()
         print(json.dumps(res, ensure_ascii=False, indent=2))
@@ -2228,13 +2281,23 @@ def main():
     # accionables y NO volver a preguntar por los otros. Un conteo sin sujetos no permite ninguna
     # de las dos cosas — fue lo que dejo «49 de 54» congelado con un DoD inalcanzable.
     if agg["web_faltan"]:
-        acc, fue = agg["web_faltan_accionables"], agg["web_faltan_fuera_de_alcance"]
-        if acc:
-            print(f"      └─ FALTAN en web, accionables ({len(acc)}): {', '.join(acc)}")
-        if fue:
-            print(f"      └─ fuera de alcance web ({len(fue)}, NO se pueden cerrar en este sprint): "
-                  f"{', '.join(fue)} — dictado, sin referencia de escritorio (`BL-P5`); se miden en "
-                  f"mobile con device")
+        acc = agg["web_faltan_accionables"]
+        sin_ref = agg["web_faltan_sin_referencia_en_capa_escritorio"]
+        otros = [i for i in acc if i not in sin_ref]
+        if otros:
+            print(f"      └─ FALTAN en web ({len(otros)}): {', '.join(otros)}")
+        if sin_ref:
+            # Se dice el HECHO medido y la ACCION, no un dictamen de alcance. La version anterior
+            # decia «fuera de alcance web / NO se pueden cerrar en este sprint / se miden en mobile
+            # con device»: tres afirmaciones que la medicion no sostenia — y la tercera es falsa,
+            # porque los mismos ids salen sin comparacion en mobile por la misma causa.
+            print(f"      └─ FALTAN en web ({len(sin_ref)}), sin referencia en la CAPA `#escritorio` "
+                  f"del prototipo (medido por frontend1 el 2026-10-05, dos instrumentos por id): "
+                  f"{', '.join(sin_ref)}")
+            print(f"         ACCION para cerrarlos: que el documento que los midio declare el "
+                  f"veredicto canonico `FUERA-DE-REFERENCIA` (ya en el vocabulario, usado en 8 "
+                  f"lotes). NO lo declara este lector: asignar un veredicto que no medi es peor "
+                  f"que dejar el pendiente a la vista.")
     print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)"
           f"{_nc('mobile')}")
     print(f"      indeterminada  {len(indet)} de {len(ids)}  <- NO es una plataforma: es lo que el "

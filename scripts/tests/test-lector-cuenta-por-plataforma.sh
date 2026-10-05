@@ -272,6 +272,30 @@ casos.append(("declarar el id ajeno en el padron lo devuelve a accionable (no se
               len(tabla20) == 2 and not ajenas20,
               "tabla=%s ajenas=%s" % (tabla20, ajenas20)))
 
+# ── 21-22. CANARIO DEL TECHO: un set declarado NO puede descontar del denominador ────────────
+# Por que existe (refutacion de auditoria, 2026-10-05): el set `SIN_REFERENCIA_EN_CAPA_ESCRITORIO`
+# se llamaba `FUERA_DE_ALCANCE_WEB` y RESTABA del techo, asi que un 50 de 54 se publicaba como
+# «TECHO ALCANZABLE 50 ✅ COMPLETO» y `web_faltan_accionables` quedaba vacio **por construccion** —
+# la lista de pendientes no podia tener elementos. Lo probo corriendo el lector dos veces sobre el
+# mismo tree cambiando solo el set: la cifra medida era identica y lo unico que cambiaba era el ✅.
+#
+# Ninguno de los 20 casos anteriores miraba el techo, asi que la correccion no tenia quien la
+# sostenga: reintroducir el descuento habria vuelto a salir 20/20 verde. Esto es el canario, y mide
+# la PROPIEDAD —el set informa, no descuenta— no la cifra del dia.
+LOTE21 = [{"ids_cerrados_por_plataforma": {"web": ["factura", "card"]}}]
+P21 = {"factura", "card", "cuenta", "detalle"}
+cv.SIN_REFERENCIA_EN_CAPA_ESCRITORIO = {"cuenta", "detalle"}   # los 2 que faltan, los 2 en el set
+a21 = cv.agregado_por_plataforma(LOTE21, P21)
+casos.append(("CANARIO DEL TECHO: el set declarado NO descuenta del denominador",
+              a21["web_techo_alcanzable"] == len(P21),
+              "techo=%s esperado=%s" % (a21["web_techo_alcanzable"], len(P21))))
+# La segunda mitad del mismo defecto: con TODOS los faltantes en el set, `accionables` se vaciaba —
+# y es la lista que el lector publica como «lo que queda por hacer». Si se vacia aca, se vacia
+# justo en el caso en que importa.
+casos.append(("CANARIO DEL TECHO: `accionables` no se vacia por estar los faltantes en el set",
+              sorted(a21["web_faltan_accionables"]) == sorted(a21["web_faltan"]) and bool(a21["web_faltan"]),
+              "faltan=%s accionables=%s" % (a21["web_faltan"], a21["web_faltan_accionables"])))
+
 for rot, ok, detalle in casos:
     print("%s\t%s\t%s" % ("OK" if ok else "FAIL", rot, detalle))
 PYEOF
@@ -289,6 +313,6 @@ malos="$(printf '%s\n' "$corrida" | grep -c '^FAIL')"
 # el caso normal. Le paso lo mismo al contador de arriba y ahi si estaba bien escrito.
 printf '%s\n' "$corrida" | grep -q $'^OK\tPOSITIVO' \
   || { echo "❌ el POSITIVO falló: el fixture no sirve y el resto de la tanda NO se puede leer"; exit 1; }
-[ "$total" -ge 20 ] || { echo "❌ esperaba >=20 casos, corrieron $total"; exit 1; }
+[ "$total" -ge 22 ] || { echo "❌ esperaba >=22 casos, corrieron $total"; exit 1; }
 [ "$malos" = 0 ] || { echo "❌ $malos de $total caso(s) fallaron"; exit 1; }
 echo "OK — $total/$total: la cifra se parte por plataforma, el campo inline se lee, un veredicto de mobile no cuenta como web, y el cubo accionable exige sujeto del padrón"
