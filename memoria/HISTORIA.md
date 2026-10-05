@@ -406,3 +406,15 @@ La unión de un merge lee «quitado en mi lado» como «presente en el otro», a
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) - acá es `coordinacion/PLAN.md`.  (es un puntero a coordinacion/PLAN.md, redundante con Estado vivo)
 - [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) - 3 en una noche; barrelos al cerrar.  (situacional)
 - [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) - verde + hallazgo falso: ¿en qué mundo saldría ROJO?  (lo cubre [[el-canario-el-control-positivo-de-lo-que-falla-callado]])
+
+## Rescatada del checkout compartido el 2026-10-05 — nunca estuvo en ninguna rama
+
+La escribió backend el 2026-09-29 y quedó **sólo en el disco** del checkout compartido: 1990 bytes
+que `git log --all --diff-filter=A` no encuentra en ninguna rama. La iba a borrar el `rm` de los
+untracked con que se completa el fast-forward de ese checkout, y no estaba en la lista de «contenido
+real a preservar» de nadie — ni en la tabla de backend (16 archivos) ni en el hallazgo de frontend2
+(17): las dos midieron **dirección de diff**, y un archivo que no existe en ninguna rama no tiene
+dirección que medir. Entra acá y no al índice porque el índice está a 555 bytes de su techo, y su
+lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pusheado]].
+
+- [🧮🕳️ «0 commits sin pushear» puede ser una rama que NUNCA se pusheó](wc-l-de-un-git-log-que-erroro-da-cero-no-nada-que-ver.md) - `git log origin/<rama>..HEAD | wc -l` da 0 también cuando el ref no existe: el stderr se pierde en el pipe. Preguntale al REMOTO con `ls-remote`. Caso raíz: 7 de 13 ramas backend nunca pusheadas, una con un test de aislamiento cross-tenant que vivía sólo en disco.
