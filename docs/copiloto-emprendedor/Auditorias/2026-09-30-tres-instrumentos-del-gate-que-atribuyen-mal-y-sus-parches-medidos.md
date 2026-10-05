@@ -379,3 +379,49 @@ porque el que falla es el estado correcto. Raíz: el lookup reconoce la cabecera
 probado por los dos lados (completado → exit 0 sin tocar; crudo fabricado a propósito → vuelve a
 completar las 6). Es §B/§C otra vez, en la herramienta y no en el gate: **todo guard de idempotencia va
 antes del lookup que su propio efecto rompe.**
+
+### D.5 · `INSTRDISCO` medido: **22 de 113** instrumentos del checkout compartido no son los de `main`
+
+La fila era una corazonada hasta tener denominador. Barrido de `scripts/` + `.githooks/` comparando
+`git hash-object` del disco contra el blob de `origin/main`:
+
+| clase | n | qué significa |
+|---|---|---|
+| idénticos a `main` | 91 | — |
+| **distintos** | **22** | de los cuales… |
+| → **VIEJOS** (= el HEAD del checkout, `4a9f4f7c`, rama que no está en `main`) | **16** | nadie los editó: el checkout está en una rama vieja |
+| → blob de **otra rama/commit** | 6 | p. ej. `contar-veredictos.py` es el de #747, no el de #770 — **dos lectores distintos** |
+| no existen en `main` | 0 | — |
+
+Controles: positivo (`graph-sync.sh`, medido a mano antes, aparece listado) y negativo (91 idénticos, así
+que no es un artefacto de CRLF que hiciera «divergir» todo).
+
+Entre los 16 viejos están **`.githooks/pre-push`**, **`gate.sh`**, **`gate-local-serial.sh`**,
+**`ci/lint.sh`**, **`secretos-check.sh`**, `seed-memory.sh` y `medir-indice-memoria.py`: el gate que corre
+en el checkout compartido no es el que define `main`.
+
+#### El caso de `secretos-check.sh`, medido antes de alarmar
+
+Le falta exactamente `1c011840` (#676). **No hay agujero de detección:** las dos versiones pasan
+`--config .gitleaks.toml` y `--gitleaks-ignore-path`, así que la cobertura de patrones es la misma y el
+repo público no quedó expuesto. Lo que falta es `-v` y el **discriminante FTL**:
+
+```
+# main (127 líneas)            disco del checkout (96 líneas)
+reportar_rc() {                reportar_rc() {
+  si rc=1 Y la salida trae       case 1) «gitleaks encontró posibles secretos … no lo pushees»
+  FTL/unable to load →         }
+  fatal «el escaneo NUNCA
+  CORRIÓ. NO es un hallazgo»
+```
+
+Dirección del fallo: **cerrado, con la causa equivocada.** Si gitleaks no puede cargar su config
+(`MSYS_NO_PATHCONV=1` exportada es la causa típica), sale rc=1 y la versión del disco lo anuncia con el
+mensaje más alarmante que existe en este repo —«encontró posibles secretos»— sobre un escaneo que no
+ocurrió. Y el peaje ya se pagó: el comentario que #676 agregó documenta que el 2026-09-22 eso terminó
+con **una sesión editando `.gitleaksignore` para destrabarse**. El fix vive en `main` desde entonces; el
+checkout compartido sigue corriendo la versión que lo necesita.
+
+**Lo que NO se hace para arreglarlo:** un `pull`/`checkout` ciego en el checkout compartido. Tiene ~100
+archivos editados a mano y tres sesiones encima; es la operación que las reglas duras prohíben. La fila
+es: quién es dueño de poner ese checkout al día, y con qué procedimiento.
