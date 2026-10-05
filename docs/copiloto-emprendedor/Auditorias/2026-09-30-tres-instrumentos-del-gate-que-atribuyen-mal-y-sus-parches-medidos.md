@@ -485,3 +485,36 @@ config ya correcta. Un mismo enunciado —"borrar una rama rompe el push"— nom
   dentro del lock al cerrar cada paso— y comparar la edad del **último latido** en vez de la del
   lock. Un sync lento legítimo late y conserva su lock; uno detenido lo pierde en segundos. El
   umbral de 4 h puede quedar como techo de PID reciclado.
+
+#### D.6.bis · El mismo patrón, con `timeout` en vez de `TaskStop` — medido 09:45-09:52
+
+Volvió a pasar **el mismo día, con otro mecanismo**, y eso lo saca de anécdota: `timeout 300 git push
+origin --delete` fue matado a los 300 s, y el `graph-sync` que el `pre-push` había lanzado **siguió
+vivo como huérfano** (`pid=2745`) con el lock tomado. `timeout` mata el proceso que lanzó, **no el
+árbol**, exactamente como `TaskStop`.
+
+Lo que pasó después importa más que el cuelgue:
+
+| momento | medición |
+|---|---|
+| tras el `timeout` | rama **viva**, marcador en `1892710c`, grafo con `POST /api/v2/entity-types 200 OK` |
+| reintento (900 s de margen) | `[graph-sync] otro sync está corriendo (…sync.lock ocupado, pid=2745) — salgo sin tocar el árbol` + `[pre-push] ⚠️ el sync NO completó … el próximo push reintenta` → **push OK en 5 s**, rama borrada |
+| 2 min después | `pid=2745` muerto, lock **libre**, marcador en `4c1c8179` **== `origin/main`** |
+
+**Corrijo un diagnóstico intermedio propio.** Cuando vi el marcador en `1892710c` con el grafo ya
+ingerido, escribí que el `timeout` había matado el sync antes de escribir el marcador y que el trabajo
+se repetiría entero. **Era falso:** el sync no murió, siguió como huérfano, terminó solo y escribió el
+marcador. El sistema **convergió sin ayuda**. La prueba de que no era convergencia aparente: el pid
+muerto, el lock libre y el marcador igual a `origin/main`, medidos juntos.
+
+**La consecuencia operativa, que es la parte reutilizable:** ante un `push` que cuelga por el sync, lo
+correcto **no es subir el timeout** —el sync tarda lo que tarda— sino dejar que termine en su propio
+proceso y **reintentar**. El segundo intento pasa en segundos porque el `pre-push` **falla abierto a
+propósito** cuando el lock está ocupado (`graph-sync.sh:274`, «un lock ocupado NO es un fallo»): avisa
+que el marcador no avanzó y deja pasar el push. El fail-open acá es correcto, y es justo lo que evita
+que un ref-delete quede rehén de una ingesta.
+
+Esto **no duplica** la fila de backend del mismo día
+(`hallazgo_backend-…_borrar-una-rama-dispara-el-pre-push-y-el-graph-sync-rompe-con-config-ambigua`):
+su mecanismo es otro —`config: ['graphity-memory']`, el sync resolviendo el repo equivocado—. Acá no
+hubo error de config: hubo un huérfano con el lock y un fail-open que funcionó.
