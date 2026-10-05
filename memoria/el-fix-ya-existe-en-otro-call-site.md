@@ -110,3 +110,19 @@ Corolario para un hallazgo entregado a otra sesión: **el diagnóstico y la pres
 por separado.** Acá el diagnóstico era exacto (mtime incluido) y la prescripción falsa, y venían en el
 mismo documento con el mismo tono — quien lo recibe no tiene cómo saber que una mitad está medida y la
 otra no, salvo que se lo diga. Marcá cuál es cuál.
+
+**REFUERZO 2026-10-05 — el fix estaba 30 líneas más abajo, en el mismo archivo.** `ci-verde.sh` daba
+**ROJO** en cualquier PR con **dos pushes**: `statusCheckRollup` trae cada job **una vez por run**
+(medido: 12 entradas para 6 jobs), así que `jq '.[]|select(.name==$n)|.conclusion'` devolvía dos
+líneas y la comparación recibía `"SUCCESS\nSUCCESS"` → `❌ backend: SUCCESS`, condenando un job que
+pasó.
+
+La rama de `/check-runs` del **mismo script** —el fallback, 30 líneas más abajo— ya desempataba el
+mismo nombre repetido tomando el `started_at` máximo, **con su comentario explicando por qué**. El
+defecto vivía en el otro call-site, que nadie había tocado. No había nada que diseñar: había que
+propagar.
+
+**El agravante que vuelve esto urgente y no cosmético:** dos pushes a un PR es el caso **normal**, así
+que el gate se ponía rojo casi siempre. Un guard que grita en el caso normal se saltea con `--admin`
+([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]), y fallaba hacia el NO, que parece
+prudencia ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
