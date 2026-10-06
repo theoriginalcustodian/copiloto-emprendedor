@@ -25,6 +25,7 @@ function servicioMock(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo {
     kind: 'composio',
     descripcion: 'Creá y buscá archivos en tu Google Drive.',
     capacidades: ['Crear archivo'],
+    acciones: [],
     conectado: false,
     estado: 'nunca_conectado',
     connectPath: '/composio/connect?service=googledrive',
@@ -166,21 +167,45 @@ describe('PantallaApps', () => {
     }
 
     /**
-     * 🔴 **La confirmación NOMBRA lo que se pierde.** Un "¿estás seguro?" pelado no le da al usuario
-     * con qué decidir. Las capacidades salen del catálogo, así que el aviso es específico del
-     * servicio y no una frase de molde — mismo criterio que la anulación de comprobantes, que dice
-     * "esto emite una nota de crédito" en vez de "¿anular?".
+     * 🔴 **CONTROL POSITIVO (A8): capacidades que MIENTEN.** Gmail declara «Leer y buscar» en
+     * `capabilities`, pero el conector sólo ejecuta `gmail_send`. La confirmación tiene que decir lo
+     * que el conector HACE («enviar emails») y no lo que el catálogo viejo afirmaba. Si la pantalla
+     * volviera a leer `capacidades`, este caso se pone rojo — verificado por efecto (ver `avance_`).
      */
-    it('pide confirmación diciendo qué deja de poder hacer el copiloto', async () => {
-      jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [conectado()] });
+    it('dice lo que el conector hace (acciones), no lo que dice capacidades', async () => {
+      jest.mocked(listarCatalogo).mockResolvedValue({
+        status: 'ok',
+        servicios: [conectado({ key: 'gmail', nombre: 'Gmail', capacidades: ['Leer y buscar'], acciones: ['gmail_send'] })],
+      });
+
+      await envolver();
+      await waitFor(() => expect(screen.getByTestId('app-gmail-desconectar')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('app-gmail-desconectar'));
+
+      await waitFor(() => expect(screen.getByTestId('app-gmail-baja-aviso')).toBeTruthy());
+      const aviso = screen.getByTestId('app-gmail-baja-aviso');
+      expect(aviso).toHaveTextContent('enviar emails', { exact: false });
+      expect(aviso).not.toHaveTextContent('leer y buscar', { exact: false });
+      // Y no desconectó nada todavía: falta confirmar.
+      expect(desconectarServicio).not.toHaveBeenCalled();
+    });
+
+    /**
+     * 🔴 **CONTROL NEGATIVO (A8): sin `acciones` la pantalla NO inventa capacidades.** Drive no
+     * declara acciones (su módulo no tiene `TOOLS`), así que el aviso cae en la frase genérica. Aunque
+     * `capacidades` diga «Crear archivo», ese texto no sale: la pantalla no lo lee.
+     */
+    it('sin acciones declaradas, dice la frase genérica y no reusa capacidades', async () => {
+      jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [conectado({ acciones: [] })] });
 
       await envolver();
       await waitFor(() => expect(screen.getByTestId('app-googledrive-desconectar')).toBeTruthy());
       await fireEvent.press(screen.getByTestId('app-googledrive-desconectar'));
 
       await waitFor(() => expect(screen.getByTestId('app-googledrive-baja-aviso')).toBeTruthy());
-      expect(screen.getByTestId('app-googledrive-baja-aviso')).toHaveTextContent('crear archivo', { exact: false });
-      // Y no desconectó nada todavía: falta confirmar.
+      const aviso = screen.getByTestId('app-googledrive-baja-aviso');
+      expect(aviso).toHaveTextContent('dejar de poder usar Google Drive', { exact: false });
+      expect(aviso).not.toHaveTextContent('crear archivo', { exact: false });
       expect(desconectarServicio).not.toHaveBeenCalled();
     });
 

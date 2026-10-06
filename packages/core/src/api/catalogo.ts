@@ -68,6 +68,24 @@ export function estadoDeServicio(
   return servicios.find((s) => s.key === key)?.estado ?? null;
 }
 
+/**
+ * A8: el verbo que promete cada acción REAL del conector (`acciones` de `/catalog`, derivado de
+ * `TOOLS` en backend). Es el único mapeo `acción → verbo` del cliente: la UI que dice «qué pierde el
+ * usuario» lo usa, no lo reescribe. Una acción sin verbo conocido se omite (no decir nada antes que
+ * inventar). Hoy lo consume mobile; web tiene su copia local en `ServiceCard.tsx` hasta que FE2 la migre.
+ */
+export const VERBO_POR_ACCION: Readonly<Record<string, string>> = {
+  gmail_send: 'enviar emails',
+  sheets_append_row: 'agregar filas a tus planillas',
+  docs_create_doc: 'crear documentos',
+  docs_read_doc: 'leer tus documentos',
+};
+
+/** Los verbos que el conector promete, en el orden del inventario. `[]` si no hay ninguno conocido. */
+export function verbosDeAcciones(acciones: readonly string[]): string[] {
+  return acciones.map((a) => VERBO_POR_ACCION[a]).filter((v): v is string => Boolean(v));
+}
+
 export interface ServicioCatalogo {
   /** El slug real del toolkit (`googledrive`, `gmail`…) o `mercadopago`. */
   key: string;
@@ -79,6 +97,12 @@ export interface ServicioCatalogo {
   kind: string;
   descripcion: string;
   capacidades: string[];
+  /**
+   * A8: las acciones REALES que ejecuta el conector (slugs, p.ej. `gmail_send`), del inventario de
+   * `/catalog`. Es la fuente de lo que se promete al desconectar. `capacidades` NO sirve para eso:
+   * dice «leer y buscar» en Gmail, que el conector no hace. `[]` si el backend no lo manda.
+   */
+  acciones: string[];
   /**
    * ¿Está vinculado y ACTIVE para este tenant? Lo calcula el backend con el mismo criterio que
    * `drive_conectado` de `/afip/estado`: una conexión EXPIRED cuenta como NO conectada, porque
@@ -112,6 +136,7 @@ interface ServicioCrudo {
   kind: string;
   description: string;
   capabilities: string[];
+  acciones?: string[];
   connected: boolean;
   status?: unknown;
   connect_path: string;
@@ -127,6 +152,7 @@ function normalizar(s: ServicioCrudo): ServicioCatalogo {
     kind: s.kind,
     descripcion: s.description,
     capacidades: s.capabilities ?? [],
+    acciones: s.acciones ?? [],
     conectado: s.connected,
     estado: estadoDeConexion(s.status, s.connected),
     connectPath: s.connect_path,

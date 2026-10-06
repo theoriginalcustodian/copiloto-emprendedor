@@ -439,6 +439,7 @@ function servicioFixture(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo
     kind: 'composio',
     descripcion: 'Creá y buscá archivos en tu Google Drive.',
     capacidades: ['Crear archivo'],
+    acciones: [],
     conectado: false,
     estado: 'nunca_conectado',
     connectPath: '/composio/connect?service=googledrive',
