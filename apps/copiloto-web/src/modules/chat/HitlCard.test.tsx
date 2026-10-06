@@ -107,6 +107,31 @@ describe('HitlCard', () => {
     expect(screen.getByRole('button', { name: 'Cancelar' })).not.toBeDisabled();
   });
 
+  // BL-F1 — control positivo + negativo: resuelta ⇒ `Recibo` (role=status, con el título de lo
+  // elegido y SIN botones). Si el componente ignorara `resuelta`, quedan los botones y este test
+  // se pone rojo; el de abajo fija que sin `resuelta` los botones siguen ahí.
+  it('BL-F1: resuelta muestra Recibo con lo elegido y sin botones', () => {
+    renderCard({ resuelta: { titulo: 'Sí, enviar', tono: 'exito' } });
+    const recibo = screen.getByTestId('hitl-card-googledocs');
+    expect(recibo).toHaveTextContent('Sí, enviar');
+    expect(recibo.querySelector('[role="status"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
+  });
+
+  it('BL-F1: el recibo conserva el texto de lo que se aprobó o canceló (rastro)', () => {
+    renderCard({ resuelta: { titulo: 'Sí, enviar', tono: 'exito' } });
+    expect(screen.getByTestId('hitl-card-googledocs')).toHaveTextContent(
+      'Voy a crear el documento «Presupuesto eléctrico» en Docs. ¿Confirmás?',
+    );
+  });
+
+  it('BL-F1: sin resuelta la card sigue activa con sus botones — control negativo del test anterior', () => {
+    renderCard();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
+  });
+
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     renderCard({

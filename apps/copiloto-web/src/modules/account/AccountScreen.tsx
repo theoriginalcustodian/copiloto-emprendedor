@@ -105,15 +105,7 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
       </header>
 
       <div className="account-screen__list">
-        {/* TODO backend: plan real desde /me (hoy no hay campo de plan/suscripción en
-            `MeResponse`) — fila estática hasta que el backend lo exponga. */}
-        <div className="account-screen__row">
-          <span className="account-screen__row-label">Plan</span>
-          <span className="account-screen__row-value">
-            Profesional
-            <ChevronIcon />
-          </span>
-        </div>
+        {/* DEC-8: sin fila «Plan» — no hay sustrato de planes en beta (ver AccountScreen.test). */}
         <div className="account-screen__row">
           <span className="account-screen__row-label">Idioma</span>
           <span className="account-screen__row-value">
