@@ -45,6 +45,36 @@ diversidad del evaluador es la fuente del valor.
 + 1 libre. La auditoría **no ocupa ranura permanente** — corre headless y termina. La ranura libre es
 capacidad de ráfaga, no un puesto asignado.
 
+**La propiedad de un veredicto es del ROL, no de la sesión.** Un id de sesión es del **proceso**,
+no del **puesto**: cuando una sesión se reinicia, se compacta o se abre en otro worktree, cambia el id
+y sigue siendo el mismo rol. De ahí sale la regla que faltaba escribir: **quién puede retractar,
+corregir o declarar superado un veredicto es el rol que lo emitió** —en cualquiera de sus
+encarnaciones—, no únicamente la sesión que tipeó el archivo.
+
+Se confunde con la regla de carpetas, que sigue intacta y dice **otra** cosa: *nadie edita el documento
+de otro rol; se pide.* Las dos juntas dejan un solo mecanismo que las respeta a la vez — el dueño
+del rol escribe la superación **en su propio documento**, con una marca canónica en comentario HTML
+que no altera el render:
+
+    <!-- SUPERADO <fecha> por <rol>: N ids -->
+    <!-- SUPERADO-IDS: a, b, c -->
+
+**El conteo declarado es el control**, y es lo que lo separa de una heurística: el gate rompe
+fail-closed si falta la lista, si el conteo no cierra, o si un id cae fuera del padrón. Por eso **no
+hay lista central**: una lista en el código de planificación obligaría al dueño del veredicto a
+pedirle a planificación que la escriba — justo el cuello de botella que el mecanismo evita.
+
+**Qué pasa sin esto, medido (2026-10-05).** Un rol cerró su mitad de un conflicto **en prosa**,
+correctamente y verificable línea por línea, y la cifra publicada siguió diciendo 12. No falló
+ningún parser: la nota estaba en un idioma que el instrumento no lee. Lo que falló fue el **circuito
+entre quien tiene la autoridad y quien publica la cifra.** Y la prosa **no se parsea a propósito**:
+dentro de una nota real los ids van en backticks y también los *nombres* de los documentos que los
+reemplazan, así que un extractor retiraría un veredicto de más — y el costo de ese falso
+positivo es el peor que tiene este instrumento, porque retirar un veredicto **oculta** un conflicto, o
+sea fabrica el falso verde que todo el contraste existe para cazar. En su lugar el **canario**
+(`auditar-corpus-vivo.sh`) **reporta** la superación en prosa sin retirar nada ni romper el gate de
+nadie: el documento es de otro rol, y un rojo ahí le factura a quien corre el gate lo que causó otro.
+
 ---
 
 ## 3. El bucle
