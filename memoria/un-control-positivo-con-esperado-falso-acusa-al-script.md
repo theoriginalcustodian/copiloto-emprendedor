@@ -94,3 +94,34 @@ contra la **afirmación en su contexto original**, no contra la cadena suelta.
 
 Relacionadas: [[el-fix-ya-existe-en-otro-call-site]] · [[instrumento-que-no-mira-nunca-falla]] ·
 [[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]]
+
+## Refuerzo (2026-10-06): el marcador que da el MISMO valor en los dos estados
+
+Hoy la clase me pegó a mí, con una variante **peor** que el esperado falso: no ajusté un esperado,
+**inventé un marcador y nunca le hice control positivo**.
+
+Para probar que prod servía un build viejo usé tres marcas grepeadas en el VPS. Dos eran buenas
+(`_campos_legales` y `legal_version_aceptada`, que pasaron de 0 a 3 y 2 con el deploy). La tercera era
+`acciones` en `tool_catalog.py` → **0**, y la leí como «el backend nuevo no está ». **Ese nombre no
+existe tampoco en `origin/main`** (medido: 0 en los dos lados). O sea: habría dado 0 **después de un
+deploy perfecto**. El símbolo real de A8 vivía en `apps/copiloto/catalog.py` (5 y 5).
+
+**La diferencia con el caso de arriba, y por qué esta forma es más difícil de ver:** un esperado
+falso **falla** y te obliga a mirar. Un marcador que no discrimina **no falla nunca** — devuelve el
+valor que confirma la hipótesis y se lee como medición. El 0 era **verdadero**; lo que era falso es
+que signifique algo.
+
+**La pregunta que lo caza, antes de citar cualquier marcador:** *¿qué valor daría este marcador si
+la hipótesis fuera FALSA?* Si la respuesta es «el mismo», no es evidencia. Es el control positivo
+aplicado al **marcador**, no al script: dos lados, dos valores distintos, o no sirve.
+
+**Y el cierre que importa igual: refutar un marcador no refutó el hallazgo.** Prod **sí** estaba
+viejo —lo probó el bundle del 30/09 y las otras dos marcas— y el deploy destapó tres defectos
+reales. Degradar el marcador no degrada la conclusión si la sostenía otra evidencia; lo que se
+retira es la **causa citada**, no la observación. Ver
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]] y
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]].
+
+**Lo cazó backend, no yo** — midió el marcador que le di en vez de cumplirlo, y reportó «el
+criterio del contrato no se puede cumplir tal como está escrito». Un dueño que verifica el criterio
+que recibe es el último control que queda cuando el que lo escribió no le hizo ninguno.
