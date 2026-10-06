@@ -1153,7 +1153,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                                           mp_connected=mp_status == "conectado",
                                           composio_connected=composio_connected,
                                           mp_status=mp_status,
-                                          composio_caidos=composio_caidos(conexiones))}
+                                          composio_caidos=composio_caidos(conexiones),
+                                          acciones_por_toolkit=services.acciones_por_toolkit())}
 
     @app.get("/capacidades")
     def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:
