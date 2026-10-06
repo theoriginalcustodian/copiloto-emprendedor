@@ -62,6 +62,12 @@ export interface Cliente {
    * cae al default, y el dato desaparece **sin error**.
    */
   creadoEn: string;
+  /**
+   * BL-V18 (A12). Sólo lo trae el **listado** (`GET /clientes`), y siempre como entero (`0` = real).
+   * Ausente en detalle, alta y edición: `undefined`, nunca `0`. Un `0` donde el backend no lo declara
+   * mentiría — la tarjeta muestra «—» en ese caso.
+   */
+  comprobantesCantidad?: number;
 }
 
 interface ClienteCrudo {
@@ -87,6 +93,7 @@ interface ClienteCrudo {
   notas?: string | null;
   origen?: string;
   creado_en?: string;
+  comprobantes_cantidad?: number;
 }
 
 function normalizar(c: ClienteCrudo): Cliente {
@@ -103,6 +110,7 @@ function normalizar(c: ClienteCrudo): Cliente {
     notas: c.notas ?? null,
     origen: origen === 'manual' || origen === 'voz' ? origen : 'derivado',
     creadoEn: c.creado_en ?? '',
+    ...(typeof c.comprobantes_cantidad === 'number' ? { comprobantesCantidad: c.comprobantes_cantidad } : {}),
   };
 }
 
