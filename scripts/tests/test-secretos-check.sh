@@ -171,4 +171,100 @@ else
   mal "el reporte no nombra el archivo del hallazgo: falta -v (o cambió el formato de gitleaks)"
 fi
 
+# ── 11) La FORMA del secreto: el eje que NINGÚN caso movía ──────────────────────────────────────
+# 🔴 HALLAZGO de auditoría, 2026-10-06, y es el más caro del día porque éste es el ÚNICO guard
+# fail-closed que corre en cada push y el repo es PÚBLICO. El guard cazaba `ghp_` y claves genéricas
+# y NO cazaba `ANTHROPIC_API_KEY=sk-ant-api03-…`, `DATABASE_URL=postgresql://postgres:<pass>@host` ni
+# `MP_ACCESS_TOKEN=APP_USR-…`. **No era «no caza X»: era «no caza X en la FORMA en que X aparece de
+# verdad»** — el mismo valor SUELTO sí lo cazaba `generic-api-key`; con su prefijo real se escapaba,
+# porque los guiones del prefijo y los `:/@` de un DSN rompen el match de alta-entropía contiguo.
+#
+# ⚠️ Y la mitad más incómoda: el agujero NO fue que faltara un test. Los 10 casos de arriba varían
+# MODOS del escáner (git/arbol/historia, allowlist, fingerprint, FTL, `-v`, `--redact`) y sus 4
+# controles positivos usan TODOS `ghp_`. Variaban todo salvo la única variable que decide si el
+# escáner caza algo. Este caso 11 es, literalmente, «variá la forma».
+#
+# 🎯 POR QUÉ SE ASERTA EL `RuleID` Y NO SÓLO `rc=1`: `generic-api-key` de `useDefault` puede disparar
+# sobre el mismo fixture por otra razón, y entonces el caso saldría VERDE con nuestras reglas
+# AUSENTES — un falso verde en el test que acredita el fix. Pedirle el RuleID propio es lo que
+# distingue «mi regla lo cazó» de «algo lo cazó».
+#
+# Higiene: valores SINTÉTICOS de alta entropía, nunca credenciales reales; viven sólo en un árbol
+# temporal que borra el `trap`; el escáner corre con `--redact`; `.gitleaksignore` NO se toca. Los
+# literales se parten en dos (`'sk-ant-''%s'`) para que el FUENTE de este test —que sí se commitea—
+# no contenga el patrón contiguo y no se autodenuncie. Mismo truco que los `ghp_` de arriba.
+T5="$(mktemp -d)"; trap 'rm -rf "$T" "$T2" "$T3" "$T4" "$T5"' EXIT
+
+_arbol_virgen() {   # arbol nuevo con la config REAL del repo (si no se copia, no se mide nada nuestro)
+  rm -rf "$T5"; mkdir -p "$T5/scripts"
+  cp "$ROOT/.gitleaks.toml" "$T5/.gitleaks.toml"; : > "$T5/.gitleaksignore"
+  cp "$CHK" "$T5/scripts/secretos-check.sh"
+  [ -d "$ROOT/.tools" ] && ln -sf "$ROOT/.tools" "$T5/.tools" 2>/dev/null || true
+}
+
+# caza <titulo> <regla esperada> <contenido del fixture>
+caza() {
+  _arbol_virgen; printf '%s\n' "$3" > "$T5/fixture.env"
+  local salida rc
+  salida="$(bash "$T5/scripts/secretos-check.sh" --arbol 2>&1)"; rc=$?
+  if [ "$rc" = 1 ] && printf '%s' "$salida" | grep -q "RuleID: *$2"; then
+    ok "11 caza $1 -> regla $2"
+  else
+    mal "11 NO caza $1 (rc=$rc, regla=$(printf '%s' "$salida" | grep -o 'RuleID: *[a-z0-9-]*' | head -1))"
+  fi
+}
+
+# no_caza <titulo> <contenido> -- la FRONTERA: lo que NO puede frenar un push
+no_caza() {
+  _arbol_virgen; printf '%s\n' "$2" > "$T5/fixture.env"
+  local salida rc
+  salida="$(bash "$T5/scripts/secretos-check.sh" --arbol 2>&1)"; rc=$?
+  if [ "$rc" = 0 ]; then
+    ok "11 FRONTERA: $1 no frena el push"
+  else
+    mal "11 FRONTERA ROTA: $1 dispara (rc=$rc) -- un guard que grita en el caso normal se desarma solo"
+  fi
+}
+
+caza "ANTHROPIC_API_KEY con su prefijo real" uc-anthropic-api-key \
+  "ANTHROPIC_API_KEY=$(printf 'sk-ant-''api03-%s' 'Kp7mQ2xR9vL4nT6bW8yZ3cF5gH1jD0sA7eU2iO4pY6kM8qS1wX3zV5nB7rT9lC2fG4hJ6dK8mP0aQ2sE4uI6oY8t')"
+caza "DATABASE_URL con password literal y host REMOTO" uc-postgres-url-con-password \
+  "DATABASE_URL=$(printf 'postgresql://postgres:''%s@db.ejemplo-vps.net:5432/fusion' 'xT4nR8qL2wZ6vB9cK1mJ7hG3')"
+caza "MP_ACCESS_TOKEN de produccion" uc-mercadopago-access-token-prod \
+  "MP_ACCESS_TOKEN=$(printf 'APP_USR''-%s' '8419273645098217-061402-a3f1c9b47e2d5086f41b9c7e35a2d618-284910375')"
+caza "MP access token de TEST" uc-mercadopago-access-token-test \
+  "MP_TEST_TOKEN=$(printf 'TEST''-%s' '84192736-061402-c3f1a9b47e2d5086f41b')"
+caza "GRAPHITY_API_KEY" uc-graphity-api-key \
+  "GRAPHITY_API_KEY=$(printf 'gphy_''%s' 'Qw8Er4Ty7Ui2Op5As')"
+
+# La frontera de la regla del DSN, medida como blast radius ANTES de embarcarla: el repo YA contiene
+# las dos formas de abajo (CI de `tests.yml`, `provision-rol-*.sh`, `docker-compose.gotrue.yml`). Si
+# cualquiera de las dos disparara, el push de las TRES sesiones fallaría y el camino de menor
+# resistencia sería `--no-verify` -- que apaga el gate entero, incluido el caso de arriba.
+no_caza "un DSN de CI contra localhost (password del service container)" \
+  "DATABASE_URL: postgresql://copiloto_app:copiloto@localhost:5432/copiloto_test"
+no_caza "un DSN cuya password es una VARIABLE, no un literal" \
+  'DSN="postgresql://${USUARIO_POOLER}:${CLAVE}@db.ejemplo-vps.net:5432/fusion"'
+
+# PAR DE CONTRASTE -- la misma entropía SIN el prefijo. Es el control que vuelve atribuible el
+# hallazgo: si el valor suelto se caza y el prefijado no, el escáner NO estaba ciego y la causa es la
+# FORMA. Sin este par, «lo arreglé» es indistinguible de «no hice nada»: las 3 filas rojas de
+# auditoría salían verdes igual. Acá se exige además que lo cace una regla AJENA a las nuestras
+# (`uc-*`), que es lo que prueba que el default ya cubría el valor desnudo.
+_arbol_virgen
+# ⚠️ El nombre de la variable es la OTRA variable del experimento, y la primera version de este
+# caso la movio sin darse cuenta: con `CLAVE_SUELTA=` el default NO disparaba, porque
+# `generic-api-key` de gitleaks esta condicionado por KEYWORD (`api_key`, `token`, `secret`...), no
+# solo por entropia. Un `CLAVE_` en espanol no es keyword de nadie. Variar prefijo Y nombre a la vez
+# hacia el par ininterpretable: no se sabia si lo que salvaba al valor era la forma o el nombre.
+# Hay que mantener el NOMBRE fijo (`ANTHROPIC_API_KEY`, que SI es keyword) y mover solo el prefijo.
+printf 'ANTHROPIC_API_KEY=%s\n' 'Kp7mQ2xR9vL4nT6bW8yZ3cF5gH1jD0sA7eU2iO4pY6kM8qS1wX3zV5nB7rT9lC2fG4hJ6dK8mP0aQ2sE4uI6oY8t' > "$T5/fixture.env"
+salida_suelta="$(bash "$T5/scripts/secretos-check.sh" --arbol 2>&1)"; rc_suelta=$?
+reglas_suelta="$(printf '%s' "$salida_suelta" | grep -o 'RuleID: *[a-z0-9-]*' | sed 's/.* //' | sort -u | tr '\n' ' ')"
+if [ "$rc_suelta" = 1 ] && [ -n "$(printf '%s' "$reglas_suelta" | tr ' ' '\n' | grep -v '^uc-' | grep -v '^$')" ]; then
+  ok "11 CONTRASTE: el MISMO valor sin prefijo ya lo cazaba el default ($reglas_suelta) -- el escáner nunca estuvo ciego: el agujero era la FORMA"
+else
+  mal "11 CONTRASTE roto: el valor desnudo dio rc=$rc_suelta reglas='$reglas_suelta' -- si el default tampoco lo caza, lo que falla es el escáner, no la forma"
+fi
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
