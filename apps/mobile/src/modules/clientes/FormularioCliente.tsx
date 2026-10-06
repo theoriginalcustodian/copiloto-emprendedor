@@ -133,7 +133,7 @@ export function FormularioCliente({
    * alta confirmado, no uno nuevo. Nunca se usa en la edición — `editarCliente` es PATCH parcial,
    * reintentar el mismo diff ya es seguro sin ella.
    */
-  const claveAlta = useRef<string | null>(mensajeId != null ? `cliente:${mensajeId}` : null);
+  const claveAlta = useRef<string | null>(null);
 
   /**
    * Lo tipeado, en la forma del contrato. Un campo vacío viaja como `null` ("no lo sé"), no como `""`:
@@ -199,7 +199,9 @@ export function FormularioCliente({
       } else {
         // Se asigna una sola vez por gesto de alta: si ya hay una clave en vuelo (este es un
         // reintento, o el paso "forzar" tras el 409), se reusa la misma.
-        if (claveAlta.current === null) claveAlta.current = generarId();
+        // La derivación va en la línea del uso (no en el inicializador): tras un 409 la clave se tira y
+        // el siguiente intento vuelve a derivarse del card, no cae a `generarId()`.
+        if (claveAlta.current === null) claveAlta.current = mensajeId != null ? `cliente:${mensajeId}` : generarId();
         res = await crearCliente(datos, { ...(forzar ? { forzar: true } : {}), idemKey: claveAlta.current });
       }
 
