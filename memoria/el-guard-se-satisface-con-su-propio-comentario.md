@@ -134,3 +134,21 @@ vigente**: exigir el marcador nuevo presente (eso sí es 0→1 y sólo existe de
 la cuenta de la vieja a las apariciones **fuera** del contexto de cita. El costo de equivocarse acá no
 es un parche mal hecho: es gastar la verificación persiguiendo un fantasma, con la mitad del riesgo de
 «arreglar» un archivo que estaba bien.
+
+**Refuerzo 2026-10-06 — la variante que más duele: el guard de IDEMPOTENCIA medido contra el ARCHIVO
+en vez de contra su TARGET.** Un script que corrige **una fila** de un tablero abrió con
+`if "REFUTADA POR MEDICI" in s:` sobre el archivo **entero**. La frase existía en **otra fila**
+(`UNDOCUMENTO`, L357, de otro día) ⇒ el script imprimió **«ya corregida (idempotente)»** y
+**no hizo nada**. La corrección quedó sin aplicar y el reporte decía que estaba hecha.
+
+🔑 **Por qué es peor que fallar:** un error hubiera gritado. Un guard de idempotencia que acierta
+de más **produce un verde**, y el verde se parece exactamente al trabajo hecho. Lo cazó un control
+por **efecto** (`grep -c` de la conclusión vieja), no el exit code — que fue 0 en los dos mundos.
+
+**Cómo aplicarlo**
+- El marcador de idempotencia se busca **en el renglón/bloque que vas a modificar**, nunca en el
+  archivo: `if MARCA in lineas[i]`, no `if MARCA in s`.
+- Y el control del resultado se hace sobre lo que tenía que **desaparecer**, no sobre lo que tenía
+  que aparecer: el texto nuevo suele **citar** al viejo para refutarlo, así que un `grep` de la
+  frase vieja da 1 en los dos casos. Elegií una cadena que sólo exista en la versión vieja.
+  → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
