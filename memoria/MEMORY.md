@@ -51,6 +51,7 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
+- [🔍🎭 No era «no caza X»: era «no caza X en su FORMA real»](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el par de contraste mueve UNA variable.
 - [📝🛡️ El comentario que DECLARA una protección desactiva la búsqueda](el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md) — 4 casos; cubre UNA mitad.
 - [🎯 El control positivo cubre sólo la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) - el verde acredita al defecto que no mira.
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
@@ -72,7 +73,6 @@
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿el número lo midió alguien o lo escribió alguien?
-- [🔬🎯 Una simulación calibrada a la línea base no valida la capa que NO modela](una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela.md) — dijo «0 regresiones»; el instrumento encontró 9.
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión suele sobrevivir con otro porqué.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno; el control es un archivo que nadie toca.
 - [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso empuja al `--no-verify`.
