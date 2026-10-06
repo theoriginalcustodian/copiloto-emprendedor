@@ -141,9 +141,10 @@ es un parche mal hecho: es gastar la verificación persiguiendo un fantasma, con
 justo donde alguien iría a buscarla.** `scripts/ci/lint.sh:11` dice *«repo PÚBLICO — cero secretos en TODA la
 historia (gitleaks fijado)»* y la línea siguiente, `:13`, corre `secretos-check.sh **--arbol**`. `--arbol` y
 `--historia` son modos distintos del mismo script: uno mira el working tree, el otro recorre los commits.
-Grep sobre `.githooks/`, `scripts/ci/` y `.github/`: **`--historia` no tiene ningún llamador automático**. O
-sea, en un repo **público**, **ningún gate, hook ni job mira la historia por secretos** — y la única línea que
-dice que sí, miente, con un *«Fail-closed:»* en el renglón de abajo que la hace sonar mecanizada.
+Grep sobre `.githooks/`, `scripts/ci/` y `.github/`: **`--historia` no tiene ningún llamador automático** — y
+la única línea que dice que sí, miente, con un *«Fail-closed:»* en el renglón de abajo que la hace sonar
+mecanizada. ⚠️ **La conclusión que saqué de ahí —«ningún gate mira la historia»— era demasiado fuerte, y está
+corregida al final de este refuerzo: el grep midió la BANDERA, no la CAPACIDAD.**
 
 **Por qué es peor que un hueco sin comentario:** un secreto commiteado y después borrado **sale del árbol y
 queda en la historia para siempre** — exactamente el caso que el `CLAUDE.md` nombra en su cabecera y el único
@@ -171,3 +172,25 @@ protección declarada preguntá *¿quién la provee: este archivo, otro, o nadie
 comentario honesto («esto mira el árbol; la historia se audita a mano, dueño X») vale **más** que el gate
 ausente, porque deja de apagar la próxima pregunta; (4) antes de mecanizar una garantía retroactiva, preguntá
 qué se hace con los hallazgos que ya existen: sin respuesta, el gate nace rojo y muere saltado.
+
+**Corrección del mismo día, y el error es el que estaba auditando: grepeé la BANDERA, no la CAPACIDAD.** De
+«`--historia` no tiene llamador» concluí «nadie mira la historia». Falso. El `pre-push` **sí** escanea la
+historia: `.githooks/pre-push:15` llama `secretos-check.sh --refs-stdin`, que en `:115-120` arma el rango
+(`$lsha --not --remotes` para una rama nueva) y lo pasa por **`gitleaks git --log-opts`** — el **mismo modo**
+que `--historia`, con otra bandera (`:92-95`). Lo vi en mi propio push de ese día: `1 commits scanned`. El
+hecho del hallazgo sobrevive —el comentario prometía la historia y el comando mira el árbol— pero su
+**magnitud** se degrada: lo que no existe es un llamador de la **historia COMPLETA**, no la cobertura
+([[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]). Medido: **1018 de 2394 commits
+(43%) son anteriores al hook** (lo instaló #601 el 2026-09-21), los **281** posteriores se escanearon al entrar
+pero **con las reglas de su día**, y la única pasada de la historia completa con las reglas de hoy fue **a
+mano**. Y buscando la cifra repetí el error un nivel más abajo: el pickaxe `-S'secretos-check.sh --refs-stdin'`
+dio **0 commits** porque la línea real lleva comillas en medio (`"$SCRIPT_DIR/scripts/secretos-check.sh"
+--refs-stdin`) — vacío que sólo se delató con el control positivo `-S'secretos-check.sh'` → 1
+([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
+
+**How to apply (5):** cuando un grep por un nombre te dé 0 y estés por concluir que **la capacidad no existe**,
+listá primero **cómo más podría proveerse** y grepeá eso: acá era el modo de la herramienta
+(`gitleaks git --log-opts`), no la bandera del wrapper. Un ausente **nombrado** es evidencia débil
+([[el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto]]); y si la conclusión es «nadie
+hace X», la forma de medirla es por el **efecto** —correr el camino real y ver qué escanea— no por el
+inventario de llamadores.
