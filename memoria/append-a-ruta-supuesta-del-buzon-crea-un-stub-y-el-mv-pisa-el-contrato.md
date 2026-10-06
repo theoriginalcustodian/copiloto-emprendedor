@@ -144,3 +144,31 @@ escribir, o el primero decide por vos; (3) después de un `>>`, imprimí **la ru
 archivo tocado — es una línea y separa «escribí donde quería» de «escribí donde el glob quiso»; (4) un
 mecanismo que guarda **estado derivado del nombre** de otro archivo (sidecars, caches, marcadores) convierte
 cualquier glob por nombre en ambiguo: ésa es la razón estructural, no un descuido mío puntual.
+
+---
+
+**Refuerzo (2026-10-06): retirar un mensaje propio deja su sidecar HUÉRFANO para siempre — el escalador sólo limpia los que él mismo generó.**
+Escribí un `pedido_`, 6 minutos después lo refuté con una medición propia y lo retiré para reescribirlo con el
+titular correcto. El `rm` del mensaje salió bien. **Pero el escalador ya lo había visto** y había creado su
+sidecar `coordinacion/.escalador-estado/<nombre completo>.md.first-seen` con el epoch.
+
+**`escaladores-buzon.sh` sí borra sidecars — en UN solo camino:** `:530`, dentro del bloque que retira un
+`urgente_` **obsoleto que el propio script autogeneró** (`mv` a `cerrado/` y después
+`rm -f "$SIDECAR_DIR/$b$SIDECAR_SUF"`). **No hay ninguna pasada que limpie sidecars cuyo mensaje desapareció por
+otra vía** — un `rm` a mano, un `mv` manual a `cerrado/`, un rename. Ese sidecar queda en el directorio
+**indefinidamente**, apuntando a un nombre que ya no existe.
+
+**Por qué importa más de lo que parece:** el sidecar es el reloj del escalador. Un directorio que acumula relojes
+de mensajes inexistentes no rompe nada hoy, pero **mide la edad de cosas que no están**, y cualquier control que
+cuente sidecars (o que los cruce contra `abierto/`) empieza a leer un denominador que no corresponde a ningún
+mensaje vivo. Es la cara simétrica de lo que esta entrada ya documenta: el sidecar **replica el nombre completo
+del mensaje**, así que es invisible a un `ls` del buzón y visible a cualquier glob por nombre.
+
+**How to apply:** (1) si retirás o renombrás un mensaje del buzón a mano, **borrá su sidecar en el mismo paso** —
+`coordinacion/.escalador-estado/<nombre exacto>.md.first-seen`, con la ruta completa, no con un glob; es tu
+rastro, y el sidecar no tiene valor sin su mensaje. (2) Después del `rm`, corré el control que **sí** vale:
+`find coordinacion/.escalador-estado -name '*<ID>*'` — si aparece algo, el mensaje se fue y el reloj quedó.
+(3) Y el control de integridad del directorio, que cuesta una línea y caza el daño que yo mismo hice una vez
+(48 líneas de markdown dentro de un sidecar): **todo sidecar tiene exactamente 1 línea** y es un epoch; medilo
+sobre el directorio entero (124 sidecars al 2026-10-06, todos de 1 línea) en vez de confiar en que el último
+`>>` fue al archivo correcto.
