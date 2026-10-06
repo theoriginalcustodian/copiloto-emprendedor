@@ -142,17 +142,46 @@ alguien haga hoy**, que es la definición de un guard que no grita en el caso no
 
 ## 7. DoD — qué tiene que estar medido para pasar a `ACCEPTED`
 
+> ⚠️ **ENMIENDA 2026-10-06 — la medición de auditoría GANA sobre el DoD que escribí.** El control 2
+> («un PR normal sigue leyendo `MERGEABLE/CLEAN`») **no atribuía**, y el defecto es el mismo que este
+> ADR denuncia en `ci-verde.sh`. Medido: `UNSTABLE` es el estado **normal** de un PR *mientras el CI
+> corre* — el mismo #853 leía `CLEAN` con 6 jobs en SUCCESS y pasó a `UNSTABLE` al pushear un tercer
+> commit. Como `ci-verde.sh` trata `UNSTABLE` como verde, **el control saldría «pasa» en los dos
+> mundos**: no distingue «el ruleset no me bloqueó» de «el ruleset me bloqueó pero el CI en vuelo gana
+> en el enum». Dos causas suficientes para el mismo resultado. Y es justo el estado en que uno está
+> tentado de medir, porque es el estado en que están los PR casi todo el tiempo.
+>
+> **Corrección, y sale más barata que lo que escribí:** el control 2 se corre **con el CI CERRADO
+> VERDE** — la única condición en que `CLEAN` y `BLOCKED` son distinguibles, porque sin checks
+> pendientes `UNSTABLE` no tiene de dónde salir. Y se agrega una **consulta** (no un experimento) que
+> ninguno de los dos sabía: con el ruleset puesto, qué lee un PR con el CI **corriendo**. Si lee
+> `BLOCKED`, el bloqueo gana sobre el pendiente y el gate lo ve; si lee `UNSTABLE`, **el bloqueo queda
+> invisible mientras el CI corre**, y ésa es exactamente la ventana en la que `ci-verde.sh` diría verde
+> sobre un PR bloqueado. El enum es de GitHub, no nuestro — el mismo argumento con el que este ADR
+> manda un estado desconocido a exit 2.
+>
+> → `memoria/dos-causas-suficientes-el-test-no-atribuye.md`
+
 - [x] `ci-verde.sh` enumerado + exit 5 + desconocido a exit 2, con canario de **11 casos** en
       `scripts/tests/test-ci-verde-gh-presente.sh`.
 - [x] **Control positivo del canario:** contra el `ci-verde.sh` **viejo**, los casos BLOCKED/BEHIND/
       DIRTY/desconocido/denominador salen **ROJOS** y `UNSTABLE` (el caso normal) sigue verde. Sin
       esto, el canario verde no distinguiría «lo arreglé» de «no mido nada».
-- [x] El commit del `case` **mergeado a `main` ANTES** de activar el ruleset.
+- [ ] El commit del `case` **mergeado a `main` ANTES** de activar el ruleset. ⚠️ Estaba marcado `[x]` sin estarlo: el PR es **#854** y al 2026-10-06 sigue abierto. Un `[x]` adelantado en un DoD es la misma falla que el ADR denuncia, un nivel más arriba.
 - [ ] 🔴 **Test adversarial (el que decide este ADR):** `git push` directo a `main` desde un clon con
       la credencial habitual ⇒ **rechazado por el remoto**. Un ruleset que existe en la API y no
       rechaza es indistinguible de ninguno.
-- [ ] **Control 2, el del caso normal:** un PR abierto después de activar el ruleset lee
-      `MERGEABLE/CLEAN` y `ci-verde.sh` da **exit 0**. Si diera exit 5, el ruleset está mal
-      configurado y **se revierte** — el guard no puede frenar el camino que todos usan.
+- [ ] **Control 2, el del caso normal, SÓLO con el CI cerrado verde** (ver enmienda): un PR abierto
+      después de activar el ruleset lee `MERGEABLE/CLEAN` y `ci-verde.sh` da **exit 0**. Si diera
+      exit 5, el ruleset está mal configurado y **se revierte** — el guard no puede frenar el camino
+      que todos usan. **Medido con CI en vuelo no vale:** `UNSTABLE` pasa en los dos mundos.
+- [ ] **Consulta de precedencia del enum:** con el ruleset puesto, qué lee un PR con el CI
+      **corriendo**. `BLOCKED` ⇒ el bloqueo gana y el gate lo ve. `UNSTABLE` ⇒ **el bloqueo es
+      invisible mientras el CI corre**, y hay que escribirlo acá y en `ci-verde.sh`, porque es la
+      ventana en que el gate diría verde sobre un PR bloqueado. Esto NO bloquea el `ACCEPTED`, pero
+      su respuesta sí entra al ADR: es la única parte del mecanismo que no controlamos nosotros.
+- [ ] **Línea base, registrada ANTES por auditoría** (2026-10-06, contra la que se compara):
+      `0 rulesets` · `main` → `404 Branch not protected` · #853 y #854 en `MERGEABLE/UNSTABLE` con CI
+      en vuelo. Sin línea base, un `CLEAN` posterior no prueba que algo cambió.
 
 🤖 planificación
