@@ -157,3 +157,34 @@ Relacionadas: [[una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-n
 [[dos-causas-suficientes-el-test-no-atribuye]] ·
 [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] ·
 [[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]]
+
+---
+
+**Refuerzo (2026-10-06): el caso más barato de este error es `git diff` — mide una diferencia y NO dice qué
+lado es el correcto.** Barrí el checkout compartido buscando trabajo en riesgo de perderse y conté: de 30
+archivos `M`, **9** eran iguales a `origin/main` (el `M` era ruido), **6** tenían su contenido respaldado por
+alguna de las 60 ramas remotas, y **15** no existían en ninguna. Llamé a esos 15 «trabajo que sólo vive en ese
+disco» y escribí la alarma. **Estaba al revés.** Los deltas eran `web.py` **+21/−122**, `HISTORIA.md` +2/−179,
+el backlog +13/−226, `graph-sync.sh` +4/−127: cuando los borrados aplastan a los agregados, el archivo está
+**ATRASADO** — esas 122 líneas «faltantes» son líneas que **main tiene y el disco no**.
+
+**Y el contenido confirmó la dirección de la peor manera:** las 21 líneas que el disco tenía de más eran
+`mp_connected: seller is not None` vía `first_seller_user_id()` — **el criterio que #850 había eliminado ese
+mismo día**. O sea, lo que yo estaba a punto de reportar como *trabajo valioso en riesgo* era **código obsoleto
+cuya única propiedad peligrosa es que commitearlo revierte un fix cerrado**
+([[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]]). Las dos lecturas piden acciones **opuestas**: una
+«commiteá antes de perderlo», la otra «no lo commitees».
+
+**Lo que separa los dos mundos son dos comandos que no son `diff`:** `git diff --numstat` (el **signo** del
+delta) y `git merge-base --is-ancestor HEAD origin/main` (si el checkout está detrás o tiene commits propios —
+acá dio *no ancestro*, con **7** commits legítimos de otra sesión, que es lo que impide tratar el árbol como
+basura). Un conteo de archivos que difieren es un **escalar sin signo**, y sobre un escalar sin signo cualquier
+narrativa calza.
+
+**How to apply:** (1) antes de nombrar un lado «correcto» o «en riesgo», medí la **dirección**, no la magnitud —
+en git es `--numstat` y `--is-ancestor`, y en general es *«¿qué pregunta responde cada lado?»*; (2) si la
+diferencia son líneas **borradas**, la hipótesis por defecto es **atraso**, no trabajo nuevo; (3) leé el
+**contenido** de las líneas en disputa antes de escribir la alarma: acá el contenido (`first_seller_user_id()`)
+fechaba el archivo solo; (4) una alarma con la dirección invertida es peor que ninguna, porque **recomienda el
+gesto exactamente equivocado** y suena urgente mientras lo hace
+([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]).
