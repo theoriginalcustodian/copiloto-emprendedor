@@ -1091,3 +1091,109 @@ def test_soporte_ticket_propio_404_si_es_de_otro_tenant():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
     r = TestClient(app).get("/soporte/tickets/1")
     assert r.status_code == 404
+# --- /me: los campos que NO dependen del token viven en UN helper, y los que SI no se tocan -------
+# Contexto, porque el numero enganaba: despues de colapsar los campos legales conte apariciones de los
+# demas campos de `/me` y `mp_connected`, `composio_connected`, `onboarding_completado`, `es_admin` y
+# `cuenta_google` daban «2 veces» cada uno -- una por rama. «2» es el MISMO numero para «duplicado» y
+# para «deliberadamente distinto por rama». Leyendo las dos ramas expresion por expresion:
+#   IDENTICOS (duplicacion real, ya colapsados en `_campos_tenant`):
+#       mp_connected · composio_connected · onboarding_completado
+#   DISTINTOS A PROPOSITO (NO se colapsan):
+#       es_admin      -> `es_admin(claims)` con token · `False` sin token  (fail-closed, web.py:1104)
+#       cuenta_google -> idem
+#       email         -> presente con token · AUSENTE sin token
+# Colapsar los tres de abajo habria borrado un fail-closed de autorizacion con un refactor que se ve
+# impecable y deja todos los tests de legal verdes. Ver
+# `memoria/el-fix-ya-existe-en-otro-call-site.md` (refuerzo del 06/10).
+
+
+class _ComposioConUnaConexion:
+    """Composio con UNA conexion ACTIVE y una que no, para que `composio_connected` no sea `[]`.
+
+    Importa que NO sea vacio: si los 3 campos salieran en su valor por defecto, comparar las dos ramas
+    no mediria nada -- dos vacios son iguales por construccion, no por el helper."""
+    def list_connections(self, user_id):
+        return [{"toolkit": "GMAIL", "status": "ACTIVE"},
+                {"toolkit": "DRIVE", "status": "INITIATED"}]
+
+    def authorize(self, user_id, toolkit):
+        return "https://composio.example/connect"
+
+
+_CAMPOS_DEL_HELPER = ("mp_connected", "composio_connected", "onboarding_completado")
+
+
+def _me_de_las_dos_ramas(claims: dict):
+    """El MISMO estado servido por las dos ramas del composition root. Devuelve (con_token, sin_token).
+
+    Un solo `_FakeTenantsDB` para las dos: si cada rama tuviera su propio estado, una diferencia en el
+    payload no distinguiria «las ramas calculan distinto» de «les di datos distintos»."""
+    db = _FakeTenantsDB()
+    db.mp_sellers["cid-A"] = "seller-777"      # mp_connected -> True (no el default)
+    db.onboarding["cid-A"] = True              # onboarding_completado -> True (no el default)
+    comun = dict(db=db, composio_gateway=_ComposioConUnaConexion(),
+                 require_tenant=_require_tenant_fixed("cid-A"))
+    app_con, _ = _build_app(require_claims=_require_claims_fixed(claims), **comun)
+    app_sin, _ = _build_app(require_claims=None, **comun)
+    return TestClient(app_con).get("/me").json(), TestClient(app_sin).get("/me").json()
+
+
+def test_los_3_campos_que_NO_dependen_del_TOKEN_salen_IGUALES_en_las_dos_ramas():
+    """`_campos_tenant` es un solo lugar para las dos ramas: el payload tiene que coincidir.
+
+    Se COMPARAN las dos respuestas entre si en vez de afirmar valores escritos a mano: un esperado
+    equivocado acusa al codigo cuando el error es del test
+    (`memoria/un-control-positivo-con-esperado-falso-acusa-al-script.md`)."""
+    con, sin = _me_de_las_dos_ramas({"sub": "auth-x", "email": "x@x.test"})
+    for campo in _CAMPOS_DEL_HELPER:
+        assert campo in con and campo in sin, f"`{campo}` falta en alguna rama de /me"
+        assert con[campo] == sin[campo], (
+            f"`{campo}` difiere entre las dos ramas de /me ({con[campo]!r} vs {sin[campo]!r}): "
+            "o no pasa por `_campos_tenant`, o alguien lo volvio a escribir dos veces")
+
+
+def test_el_FIXTURE_deja_los_3_campos_en_un_valor_DISTINGUIBLE_del_default():
+    """Control del test de arriba, y vive SEPARADO a proposito.
+
+    Si los 3 campos salieran en su valor por defecto (`False`, `[]`, `False`), compararlos entre las dos
+    ramas no mediria nada: dos defaults coinciden por construccion, no por el helper. Este test afirma
+    que el fixture los dejo en valores distinguibles.
+
+    Por que es un test aparte y no dos asserts mas alla arriba: lo medi con un mutante. Con los dos
+    controles en el MISMO test, invertir el valor dentro del helper pone rojo ese test unico, y el rojo
+    no dice CUAL de las dos cosas se rompio -- «el helper no unifica» y «el fixture no distingue» son
+    defectos distintos con arreglos distintos. Separados, el conjunto de tests rojos atribuye.
+    `memoria/dos-causas-suficientes-el-test-no-atribuye.md`."""
+    con, _ = _me_de_las_dos_ramas({"sub": "auth-x", "email": "x@x.test"})
+    assert con["mp_connected"] is True, "el fixture no dejo mp_connected en un valor distinguible"
+    assert con["composio_connected"] == ["GMAIL"], "solo las ACTIVE cuentan, y no puede ser []"
+    assert con["onboarding_completado"] is True, "el fixture no dejo onboarding en un valor distinguible"
+
+
+def test_ASIMETRIA_es_admin_y_cuenta_google_valen_False_sin_token_aunque_los_claims_digan_admin():
+    """EL CANARIO del fail-closed de `web.py:1104`, que hasta hoy vivia solo en un comentario.
+
+    La rama sin `require_claims` no tiene token que leer, asi que `es_admin`/`cuenta_google` son `False`
+    por decision, no por falta de datos. Si alguien mueve esos dos campos a `_campos_tenant` -- que es
+    exactamente lo que sugiere contar apariciones -- el refactor se ve limpio, los demas tests siguen
+    verdes, y el guard desaparece sin sintoma. **Este test se pone rojo.**
+
+    `email` entra en la misma asimetria: existe solo en la rama con token."""
+    from auth import es_admin as _es_admin_real
+    claims_admin = {"sub": "auth-adm", "email": "adm@x.test",
+                    "app_metadata": {"copiloto_admin": True}}
+    # Control positivo del fixture: estos claims SI son admin para la unica implementacion de la
+    # pregunta. Sin esto, un claim mal armado haria pasar el test por la razon equivocada.
+    assert _es_admin_real(claims_admin) is True, "el fixture de claims admin no es admin de verdad"
+
+    con, sin = _me_de_las_dos_ramas(claims_admin)
+
+    assert con["es_admin"] is True, "con token y claim de admin, /me tiene que decir True"
+    assert sin["es_admin"] is False, (
+        "FAIL-CLOSED ROTO: sin `require_claims` no hay token que leer, asi que `es_admin` DEBE ser "
+        "False. Si esto falla, alguien colapso `es_admin` en `_campos_tenant` -- no lo unifiques: "
+        "las dos ramas difieren A PROPOSITO (web.py:1104)")
+    assert con["cuenta_google"] is False and sin["cuenta_google"] is False, (
+        "`cuenta_google` sale de los claims; estos no son de Google en ninguna de las dos ramas")
+    assert "email" in con and "email" not in sin, (
+        "`email` es la tercera asimetria deliberada: solo existe en la rama con token")
