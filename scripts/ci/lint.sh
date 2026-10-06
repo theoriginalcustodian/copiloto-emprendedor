@@ -8,8 +8,29 @@ cd "$ROOT"
 npm install --no-audit --no-fund
 npx eslint packages/core/src apps/mobile/src apps/copiloto-web/src
 
-# BL-B3: repo PÚBLICO — cero secretos en TODA la historia (gitleaks fijado) y cero fuentes de marca
-# con licencia (.otf) trackeadas (R-8). Fail-closed: si el escáner no puede correr, el job falla.
+# BL-B3: repo PÚBLICO — cero secretos y cero fuentes de marca con licencia (.otf) trackeadas (R-8).
+# Fail-closed: si el escáner no puede correr, el job falla.
+#
+# ⚠️ ALCANCE REAL, y hasta el 2026-10-06 esta línea decía otra cosa: escanea **el ÁRBOL** (`--arbol`),
+# NO la historia. Decía «cero secretos en TODA la historia», y el `Fail-closed:` reforzaba que la
+# garantía estaba mecanizada ⇒ quien viniera a buscar si existe el gate de la historia lo encontraba
+# acá y DEJABA DE BUSCAR. No existe: `--historia` no tiene NINGÚN llamador en `scripts/`, `.githooks/`
+# ni `.github/` (medido el 2026-10-06 por dos sesiones con dos instrumentos). Hallazgo de auditoría,
+# fila `LINTHISTORIA` — tercera aparición en el día de un productor que declara una protección que
+# nadie provee, y la única de las tres que ningún consumidor tapaba.
+#
+# Lo que SÍ cubre la historia es incremental y vive en otro lado: el `pre-push` escanea el RANGO de
+# commits que se pushea (modo `git`, `--refs-stdin`), así que cada commit se midió al entrar — con las
+# reglas de ESE día. Quedan afuera: lo pusheado antes del hook, lo pusheado con `--no-verify`, y las
+# reglas AGREGADAS después. Por eso correr `--historia` A MANO al agregar una regla no es ritual: es
+# el único momento en que la historia se mide con la regla nueva (2026-10-06, al agregar las 5 formas
+# reales: 2142 commits, 1 hallazgo, un fixture sintético en `b97ed322` no alcanzable desde `main`).
+#
+# 🔴 Y NO se arregla poniendo `--historia` acá: un hallazgo histórico no se corrige sin reescribir la
+# historia, así que un `--historia` en el camino del PR deja rojo PERMANENTE sin acción posible, se
+# desarma en dos días y se lleva puesto el `--arbol`, que sí sirve. Si se mecaniza, va fuera del
+# camino del PR y con la pregunta contestada antes: ante un hallazgo histórico, ¿rewrite o
+# rotar-y-declarar? Sin esa respuesta escrita es un rojo sin salida.
 bash "$ROOT/scripts/secretos-check.sh" --arbol
 if [ -n "$(git ls-files '*.otf')" ]; then
   echo "❌ hay .otf trackeados (fuentes con licencia en repo público):"; git ls-files '*.otf'; exit 1

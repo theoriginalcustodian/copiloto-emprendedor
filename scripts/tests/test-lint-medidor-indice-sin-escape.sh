@@ -46,13 +46,21 @@ else
 fi
 rm -f "$FAKE"
 
-echo "── Caso 4: el medidor corre ANTES del bucle de 40 suites"
+echo "── Caso 4: el medidor corre ANTES de las suites de coordinación"
+# 🔻 2026-10-06: el ancla era `for t in`, el bucle literal dentro de `lint.sh`. El bucle se MUDÓ a
+# `scripts/ci/tests-coordinacion.sh` (fila `LINTDENOM`: adentro de lint.sh su caso interesante —el
+# glob sin match, que salía VERDE con cero tests— era inalcanzable sin copiar el script a otro
+# árbol). El INVARIANTE que este caso protege no cambió: el rojo del índice no se mezcla con el de
+# las suites. Lo que cambió es dónde está la invocación, así que se ancla en el nombre del script.
+# ⚠️ Y si NINGUNA de las dos anclas aparece, esto FALLA: un ancla que dejó de existir vuelve el
+# `-n` falso y la comparación nunca se hace — un control que no encuentra su sujeto no aprueba,
+# acusa. Fue exactamente así como este test cazó la mudanza en vez de aprobarla en silencio.
 n_med="$(grep -n 'medir-indice-memoria\.py' "$LINT" | head -1 | cut -d: -f1)"
-n_buc="$(grep -n 'for t in' "$LINT" | head -1 | cut -d: -f1)"
+n_buc="$(grep -nE 'tests-coordinacion\.sh|for t in' "$LINT" | head -1 | cut -d: -f1)"
 if [ -n "$n_med" ] && [ -n "$n_buc" ] && [ "$n_med" -lt "$n_buc" ]; then
   ok "el rojo del índice no se mezcla con el de las suites ($n_med < $n_buc)"
 else
-  fail "el medidor quedó después del bucle (medidor=$n_med bucle=$n_buc)"
+  fail "el medidor quedó después de las suites, o no encontré una de las dos anclas (medidor=$n_med suites=$n_buc)"
 fi
 
 echo
