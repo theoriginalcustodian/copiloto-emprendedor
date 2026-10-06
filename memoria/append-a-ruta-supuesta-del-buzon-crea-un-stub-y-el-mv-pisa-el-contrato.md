@@ -67,3 +67,39 @@ El error señala un archivo que «no existe» cuando los dos existen — la fall
 Se acota con `find "$BZ/abierto" -maxdepth 1 -name "*<slug>*.md" -type f`: la carpeta, la
 profundidad y la extensión, las tres. El sidecar vive **fuera** de `abierto/`, así que `-maxdepth 1`
 sobre la carpeta correcta ya lo excluye.
+
+## Refuerzo 2026-10-06 — reescribir un artefacto del buzón con un TYPO en el nombre no reemplaza: DUPLICA, y el refutado queda circulando
+
+Mismo día, dos formas de que la ruta del buzón traicione, y la segunda la pagué **justo mientras decía
+estar evitándola**.
+
+**El caso.** Había difundido un `urgente_` a tres sesiones con el diagnóstico de `main` ROJO. Un spike
+propio refutó mi mecanismo, así que fui a **reescribir el archivo en el cuerpo** —no appendeando, porque
+una corrección al final deja el titular equivocado adelante. Escribí el nombre con un typo
+(`el-cleanto-` por `el-cleanup-`) y el resultado fue **dos archivos de 5,5 KB con nombres casi idénticos**:
+uno con el titular refutado —el que ya había difundido por tres mensajes— y otro con la corrección.
+Durante ese rato, lo que circulaba era el equivocado, y la versión buena era invisible porque nadie tenía
+ese nombre.
+
+**Por qué el typo no da síntoma.** Una escritura a un nombre nuevo **siempre** tiene éxito: no hay colisión
+que avisar, no hay exit code que mirar, y el archivo nuevo se ve perfecto. La operación que yo creía estar
+haciendo —*reemplazar*— y la que hice —*crear*— **comparten el resultado «OK»**. Es el pariente del stub
+que crea un `>>` a ruta supuesta: en los dos casos, lo que falla es la **identidad del destino**, y la
+identidad no se verifica sola.
+
+**El control, y es de una línea:** después de escribir, **contar los artefactos del tema**, no verificar el
+que escribiste.
+
+```bash
+ls coordinacion/abierto/ | grep -c 'MAIN-ROJO'   # 1, o hay un duplicado circulando
+```
+
+Verificar «¿se escribió bien mi archivo?» da verde en los dos mundos. Verificar «¿cuántos archivos
+responden a este tema?» separa *reemplacé* de *dupliqué*. Mismo patrón que
+`[[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]`: contá **definiciones**, no
+mires la que acabás de tocar.
+
+**Y la regla de recuperación, que no es obvia:** el que sobrevive tiene que ser **el nombre ya difundido**,
+no el nombre correcto. Los tres mensajes que mandé citaban la ruta vieja; renombrar el bueno habría roto
+tres punteros para arreglar una letra. Se pisa el difundido con el contenido corregido y se borra el otro —
+`[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]`, aplicado a su propia corrección.

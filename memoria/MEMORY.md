@@ -86,6 +86,7 @@
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra la expectativa, no contra el reloj.
 - [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa a la roja. Background → archivo COMPLETO.
+- [🧟 Un script que MUTA y revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - el revert va en `finally`; backup en disco, no en memoria.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 
 ### Guards, gates y jueces
