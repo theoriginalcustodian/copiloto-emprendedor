@@ -1,7 +1,14 @@
 # Lo que espera tu decisión — 2026-10-06
 
-**Las tuyas son 4 de las 6 filas vivas del tablero.** Las otras dos están asignadas y moviéndose
-(`VERIFPRODWEB` → frontend2, `MOBILEVIVO` → frontend1; `DRIVECERO` baja a backend hoy).
+**Las tuyas son 4.** Las de sesión eran 2 cuando preguntaste y **ahora son 5**: el deploy de hoy
+destapó tres (`HEALTHZSHA` — `/healthz` miente sobre la versión desplegada, `DURABGATE` — el
+gate de durabilidad no frena, `DRIVECERO` — Drive se conecta y no hace nada). Las cinco están
+asignadas y moviéndose: `VERIFPRODWEB` → frontend2 · `MOBILEVIVO` → frontend1 · las tres
+nuevas → backend.
+
+🔻 **Corrijo el número que te di hace un rato:** dije «4 de 6» y en la misma hora pasó a «4 de
+9». **Lo tuyo no cambió** — cambió cuánto se está moviendo del otro lado.
+
 Las cuatro de abajo **ninguna sesión puede moverlas**, y por eso están paradas.
 
 De las cuatro, **una sola bloquea producto**. Las otras tres no frenan la beta: están acá para que no
