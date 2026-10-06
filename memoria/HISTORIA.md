@@ -437,3 +437,7 @@ lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pushe
 - 🟢🙈 [Nadie audita un COHERENTE - desactiva trabajo sin rastro](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) · [el formato no codifica el ROL](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md)
 - [🔁📤 Medir obliga a REPORTAR, y el reporte entra al corpus medido](medir-obliga-a-reportar-y-el-reporte-entra-al-corpus-medido.md) — clasificar es una TASA por reporte, no una deuda que se paga.
 - 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
+
+## Bajadas del indice
+- [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->
+- [📜🎯 Un contrato define QUÉ DECLARAR - no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) - 4 de 4 refutadas en un día.  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->

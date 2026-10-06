@@ -60,7 +60,6 @@
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
 - [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite Y inventa; medí el EFECTO.
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
-- [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 
 - [No codificar la esperanza - el TRONCO](no-codificar-la-esperanza-principio-raiz.md) - la prueba vale, la aserción no.
@@ -72,6 +71,7 @@
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿el número lo midió alguien o lo escribió alguien?
+- [🔬🎯 Una simulación calibrada a la línea base no valida la capa que NO modela](una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela.md) — dijo «0 regresiones»; el instrumento encontró 9.
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión suele sobrevivir con otro porqué.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno; el control es un archivo que nadie toca.
 - [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso empuja al `--no-verify`.
@@ -94,7 +94,6 @@
 - [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO, no al commit](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea: verde arriba, rojo abajo.
 - [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
-- [📜🎯 Un contrato define QUÉ DECLARAR - no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) - 4 de 4 refutadas en un día.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.

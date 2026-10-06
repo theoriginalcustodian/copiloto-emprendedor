@@ -86,3 +86,57 @@ se siente como método; es una hipótesis, y tiene precondición.
 por otra razón: el estado **es** reproducible sin efecto externo (un UPDATE local en el tenant de
 prueba, con el seed ya escrito), así que `NO_REPRODUCIBLE_SIN_EFECTO` lo archiva en un cajón que apaga
 trabajo. Severidad más baja, id igual de perdido. El falso positivo me estaba tapando el verdadero.
+
+---
+
+**Refuerzo 2026-10-06 — el caso donde el gemelo tumbó DOS hipótesis, incluida la del que lo usó.**
+
+`main` quedó rojo por un test de mobile (`waitFor was aborted by cleanup`). Publiqué que la causa era
+`cleanup()` llamada a mitad del test. Auditoría la refutó con **el gemelo**: el test web hace
+`cleanup()` a mitad **idéntico** y no falla; medido, `@testing-library/dom` tiene **0** archivos con
+`cleanupQueue`, la cola de aborto es exclusiva de RNTL. Acepté la refutación y corregí mi broadcast.
+
+**Horas después auditoría refutó su propio mecanismo**: lo reprodujo en JS puro, 4 combinaciones
+(unmount instantáneo o con 1 tick × con o sin `await`), **0 de 4 abortaron**. Su conclusión, con su
+nombre: *«el diferencial prueba que **la librería** es la que difiere, no que el `cleanup()` de `:122`
+sea el culpable. Son dos cosas y las junté.»*
+
+**Ahí está el filo, y es exactamente el título de esta entrada.** La asimetría era real y la medición
+del gemelo era correcta: DTL no tiene la cola. Lo que no se seguía es **quién está mal**. El gemelo
+prueba que **las dos librerías difieren**; no elige culpable dentro de la que falla. Mi hipótesis
+quedó acotada —no es explicación *suficiente*— pero **no refutada**, y hoy vuelve a estar en pie.
+
+**Mi parte, distinta de la suya:** acepté la refutación porque verifiqué que **cada eslabón existía**
+en `node_modules` (`cleanup` async, la cola, `rejectOnAbort:true`, el string del error) y nunca
+pregunté si los cuatro juntos **bastaban** para producir el síntoma. **Comprobar que las piezas de una
+cadena existen no es correr la cadena.** Auditoría la corrió en 20 líneas de JS y no abortó. Yo tenía
+el mismo JS a mano y leí `node_modules` en vez de ejecutarlo — la verificación costaba menos que la
+lectura.
+
+**El cierre, que llegó a la tercera vuelta y es el dato más duro del día:** auditoría corrió el test
+real 10 veces por variante. **Sin `await`: 6/10 verdes**, y las 4 rojas con el mensaje **literal** del
+CI. **Con `await`: 10/10.** Por azar, con tasa base 4/10, eso es el **0,6 %**. O sea: **el fix está
+probado por efecto y su mecanismo sigue sin explicación.** Auditoría no lo tapó con «debía ser algo
+parecido» — dijo «no lo sé», y eso es lo correcto.
+
+**Eso deja un modo de falla con nombre propio: un fix correcto con la explicación equivocada es el
+que vuelve.** El diff queda, el porqué falso queda escrito al lado, y el día que alguien «simplifica»
+esa línea razonando desde el porqué falso, el defecto reaparece sin que nadie entienda por qué. La
+contramedida es escribir en el código **las dos cosas**: el efecto medido y que el mecanismo no se
+conoce.
+
+**Cómo aplicarlo, los dos filos juntos:**
+1. Cuando hay dos hipótesis en competencia, el gemelo que NO falla descarta toda hipótesis que no
+   explique por qué **él** se salva. Es gratis y discrimina: buscalo antes de publicar una causa.
+2. Pero una asimetría localiza **dónde** difieren, no **quién** está mal. Si lo que explica la
+   asimetría es la librería, lo que quedó refutado es la librería — no el call-site.
+3. Y una cadena causal **leída** eslabón por eslabón sigue siendo una hipótesis. Si se puede correr
+   en 20 líneas, corrérla es más barato que defenderla — acá se podía correr el **test mismo**, 10
+   veces, y nadie lo hizo hasta la tercera vuelta.
+4. Cuando el fix se prueba por **efecto** y el **mecanismo** no se conoce, escribí las dos cosas en
+   el código. Un porqué falso al lado de un diff correcto es una regresión con fecha abierta.
+
+Relacionadas: [[una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela]] ·
+[[dos-causas-suficientes-el-test-no-atribuye]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] ·
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]]
