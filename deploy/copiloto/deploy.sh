@@ -489,7 +489,7 @@ REMOTE_CADDY
 ssh "$HOST" systemctl reload caddy
 echo "Caddy recargado."
 
-echo "==> [7/7] Smoke (evidencia real, no autoevaluación)"
+echo "==> [7/7] Sanidad del proceso vivo (NO es el smoke de la beta)"
 ssh "$HOST" bash -s -- "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$WEB_PORT" "$BASE_DOMAIN" <<'REMOTE_SMOKE'
 set -euo pipefail
 WEB_UNIT="$1"; WORKER_UNIT="$2"; WORKER_SOPORTE_UNIT="$3"; WEB_PORT="$4"; BASE_DOMAIN="$5"
@@ -503,11 +503,12 @@ echo "--- curl / (SPA index servido mismo-origen por _mount_spa) ---"
 curl -sf "http://127.0.0.1:${WEB_PORT}/" | head -c 200; echo
 echo "--- caddy validate (post-reload sanity) ---"
 caddy validate --config /etc/caddy/Caddyfile
-echo "--- vhosts preexistentes siguen respondiendo (status code informativo, hermes/temporal usan basic_auth -> 401 esperado) ---"
-curl -s -o /dev/null -w 'root: %{http_code}\n' "https://${BASE_DOMAIN}/" || true
-curl -s -o /dev/null -w 'hermes: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
-curl -s -o /dev/null -w 'temporal: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
+echo "--- vhosts preexistentes (INFORMATIVO: no cuenta como check; hermes/temporal usan basic_auth -> 401 esperado) ---"
+curl -s -o /dev/null -w 'root [informativo]: %{http_code}\n' "https://${BASE_DOMAIN}/" || true
+curl -s -o /dev/null -w 'hermes [informativo]: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
+curl -s -o /dev/null -w 'temporal [informativo]: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
 REMOTE_SMOKE
+echo "    Smoke de la beta (37 checks, muta prod) = scripts/run-smoke-prod.sh — NO corrido por este deploy."
 
 if uc_durabilidad_activa; then
   echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"

@@ -434,11 +434,42 @@ CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)
         # Crítico y no informativo: si el alta abierta vuelve, es una vulnerabilidad en un repo
         # público, no un check amarillo. Que tumbe el smoke es el punto.
         "alta SIN invite-token es rechazada (C4.1)"}
-fails = [s for s, ok, _ in results if not ok]
-crit_fails = [s for s in fails if s in CRIT]
+# Denominador: 37 = ruta completa (token admin, trauma fabricado, bundle, redirect). Medido con un
+# httpx de mentira que recorre todo el script (ver scripts/test-smoke-veredicto.py). Si un rec() se
+# borra o una rama deja de emitir, el total cambia y el veredicto sale ROJO: un check que desaparece
+# no puede pasar como verde.
+EXPECTED_TOTAL = 37
+
+def veredicto(results, crit, expected_total):
+    """(líneas, exit_code). Dice SIEMPRE los dos números: críticos y no-críticos.
+    Exit != 0 sólo por crítico rojo/ausente o por denominador distinto del esperado. Un no-crítico
+    rojo se muestra con su nombre y NO cambia el exit (política de CRIT, deliberada)."""
+    presentes = {s for s, _, _ in results}
+    crit_ok = sum(1 for s, ok, _ in results if s in crit and ok)
+    crit_rojos = [s for s, ok, _ in results if s in crit and not ok]
+    crit_ausentes = sorted(crit - presentes)
+    nc = [(s, ok) for s, ok, _ in results if s not in crit]
+    nc_ok = sum(1 for _, ok in nc if ok)
+    nc_rojos = [s for s, ok in nc if not ok]
+    lineas = [
+        f"checks ejecutados: {len(results)} de {expected_total} esperados",
+        f"{crit_ok}/{len(crit)} críticos · {nc_ok}/{len(nc)} no-críticos",
+    ]
+    if crit_rojos or crit_ausentes:
+        bloqueos = crit_rojos + [f"AUSENTE: {s}" for s in crit_ausentes]
+        lineas.append("VEREDICTO: BLOQUEA BETA (crítico rojo/ausente): " + " · ".join(bloqueos))
+        return lineas, 1
+    if len(results) != expected_total:
+        lineas.append(f"VEREDICTO: DENOMINADOR DISTINTO ({len(results)} != {expected_total}): "
+                      "falta o sobra un check; el smoke no vio lo que dice ver")
+        return lineas, 1
+    lineas.append("VEREDICTO: BETA-READY (críticos verdes)")
+    if nc_rojos:
+        lineas.append("no-críticos ROJOS (no bloquean, revisar): " + " · ".join(nc_rojos))
+    return lineas, 0
+
 print("\n===== RESUMEN SMOKE BETA =====")
-print(f"total={len(results)} pass={sum(1 for _, ok, _ in results if ok)} fail={len(fails)}")
-if fails:
-    print("FALLARON: " + " · ".join(fails))
-print("VEREDICTO: " + ("BETA-READY (criticos verdes)" if not crit_fails else "BLOQUEA BETA (critico rojo): " + " · ".join(crit_fails)))
-sys.exit(1 if crit_fails else 0)
+_lineas, _code = veredicto(results, CRIT, EXPECTED_TOTAL)
+for _l in _lineas:
+    print(_l)
+sys.exit(_code)
