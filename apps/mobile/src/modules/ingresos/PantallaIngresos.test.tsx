@@ -139,9 +139,10 @@ describe('PantallaIngresos — el listado', () => {
     expect(screen.queryByTestId('ingresos-resumen')).toBeNull();
   });
 
-  it('el aviso de MercadoPago viaja con el número, no en el pie', async () => {
+  it('ya no hay cartel «los cobros de MercadoPago no entran solos»: el cobro entra solo', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('ingresos-aviso-mercadopago')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('ingresos-resumen')).toBeTruthy());
+    expect(screen.queryByTestId('ingresos-aviso-mercadopago')).toBeNull();
   });
 
   it('🔴 la procedencia se ve en TODAS las filas, también en las que anotó el emprendedor', async () => {

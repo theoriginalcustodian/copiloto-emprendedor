@@ -38,10 +38,10 @@ GATE_LOCAL_CMD="bash $TMP/gate-falso.sh" RC=3 bash "$W" >/dev/null 2>&1; rc=$?
 
 echo "3) huérfano"
 mkdir "$GATE_LOCAL_LOCK"; echo "999999 wt-muerto" > "$GATE_LOCAL_LOCK/owner"
-t0=$(date +%s)
-out="$(GATE_LOCAL_TTL=3600 GATE_LOCAL_CMD="true" bash "$W" 2>&1)"; rc=$?
-dur=$(( $(date +%s) - t0 ))
-if [ "$rc" -eq 0 ] && grep -q "huérfano" <<<"$out" && [ "$dur" -lt 10 ]; then ok "liberado en ${dur}s"; else fail "rc=$rc dur=${dur}s: $out"; fi
+# Verificado por EFECTO, no por reloj: si el camino huérfano durmiera el POLL (3600 s), el `timeout 60`
+# lo corta y rc=124. Un umbral en segundos medía la carga de la máquina del día, no el código.
+out="$(GATE_LOCAL_TTL=3600 GATE_LOCAL_POLL=3600 GATE_LOCAL_CMD="true" timeout 60 bash "$W" 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && grep -q "huérfano" <<<"$out"; then ok "liberado y tomado sin dormir el POLL"; else fail "rc=$rc (124 = durmió el POLL): $out"; fi
 
 echo "4) libera"
 [ ! -e "$GATE_LOCAL_LOCK" ] && ok "sin candado al terminar" || fail "quedó el candado"

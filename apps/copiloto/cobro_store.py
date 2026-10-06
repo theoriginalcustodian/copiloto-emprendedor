@@ -230,7 +230,8 @@ class CobroStore:
 
     def registrar_suelto(self, *, monto, medio: str = "", fecha=None, cliente_ref: int | None = None,
                          presupuesto_ref: int | None = None, idem_key: str | None = None,
-                         cliente_nombre: str = "", concepto: str = "") -> dict:
+                         cliente_nombre: str = "", concepto: str = "",
+                         origen: str = ORIGEN_MANUAL) -> dict:
         """Un cobro SIN comprobante: *«me pagaron 85 mil en efectivo por el trabajo de la panadería»*.
 
         🔴 **Esto no es una comodidad: es lo que hace que la caja no mienta.** Hasta acá un cobro sólo
@@ -240,11 +241,13 @@ class CobroStore:
 
         `origen='manual'` lo distingue de lo que el sistema **vio** (`mercadopago`). No valen lo mismo
         como evidencia y la pantalla tiene que poder mostrarlos distinto: uno lo observó el sistema,
-        el otro lo tipeó alguien.
+        el otro lo tipeó alguien. Por eso el origen es parámetro: el que escribe es quien sabe qué vio.
         """
         importe = _decimal(monto, "monto")
         if importe <= 0:
             raise CobroInvalido("el monto tiene que ser mayor a cero")
+        if origen not in (ORIGEN_MANUAL, ORIGEN_MP):
+            raise CobroInvalido(f"origen no soportado para un cobro suelto: {origen!r}")
         with self._conn_factory() as conn, conn.cursor() as cur:
             if idem_key:
                 cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} "
@@ -263,10 +266,10 @@ class CobroStore:
                 cur.execute(
                     f"INSERT INTO {_TABLE} (cliente_id, monto, medio, fecha, idem_key, origen, "
                     f"cliente_ref, presupuesto_ref, cliente_nombre, concepto, nacio_completo) "
-                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s) "
+                    f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                     f"RETURNING {', '.join(_COLS)}",
                     (self._cliente_id, importe, (medio or "").strip()[:40], _fecha(fecha),
-                     idem_key or None, cliente_ref, presupuesto_ref,
+                     idem_key or None, origen, cliente_ref, presupuesto_ref,
                      (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500],
                      nacio_completo))
             except Exception as exc:
