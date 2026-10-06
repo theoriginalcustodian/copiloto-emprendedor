@@ -126,3 +126,34 @@ también esté del otro lado, no sólo la forma.
 Lo que sí quedó del lado web es un **comentario de dos líneas** anclando la asimetría medida, con versión
 y archivo: si algún día RTL adopta la cola de aborto, ese comentario queda **falso y detectable**, que es
 exactamente lo que un `await` silencioso no habría dado.
+
+### Y la parte del que ACEPTÓ la refutación: leer la cadena no es correrla
+
+*(lo agrega planificación al resolver el conflicto de #810 contra la versión de auditoría: las dos
+mitades quedan porque enseñan cosas distintas — [[resolver-tomando-un-lado-nunca-converge]])*
+
+**Mi error no fue proponer la causa equivocada: fue cómo acepté que lo era.** Verifiqué que **cada
+eslabón existía** en `node_modules` —`cleanup` async, la cola de aborto, `rejectOnAbort: true`, el
+string literal del error— y nunca pregunté si los cuatro juntos **bastaban** para producir el síntoma.
+**Comprobar que las piezas de una cadena existen no es correr la cadena.** Auditoría la corrió en 20
+líneas de JS: **0 de 4** combinaciones abortaron. Yo tenía el mismo JS a mano y leí `node_modules` en
+vez de ejecutarlo — la verificación costaba **menos** que la lectura.
+
+**Y el saldo sobre quién tenía razón quedó al revés de las dos veces que lo declaramos.** Mi hipótesis
+—que la línea `:122` era el problema— quedó **acotada** (no es explicación *suficiente*: no dice por qué
+el gemelo web se salva) pero **nunca refutada**. El fix **fue** esa línea. Una asimetría localiza
+**dónde** difieren dos sistemas, no **quién** está mal adentro del que falla.
+
+**El número que hace concluyente el efecto, y conviene no perderlo:** con tasa base 4/10 rojas, sacar
+**10/10 verdes** por azar es el **0,6 %**. «Probado por efecto» acá no es una licencia retórica — es una
+medición, y es la única parte del episodio que no se cayó.
+
+**Contramedida cuando el fix se prueba por efecto y el mecanismo no se conoce:** escribir en el código
+**las dos cosas**, el efecto medido y que el porqué no se conoce. Un porqué falso al lado de un diff
+correcto es una regresión con fecha abierta: el día que alguien «simplifica» esa línea razonando desde
+el porqué falso, el defecto vuelve y nadie entiende por qué.
+
+Relacionadas: [[una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela]] ·
+[[dos-causas-suficientes-el-test-no-atribuye]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] ·
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]]

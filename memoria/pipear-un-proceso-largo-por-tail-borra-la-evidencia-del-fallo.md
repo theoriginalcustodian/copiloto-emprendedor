@@ -27,3 +27,33 @@ de salida se ve **vacío** y no se puede seguir el avance. Con redirección dire
 por job, `tail`/`grep` del archivo para el detalle. Si un job da rojo, **leer y citar el texto del
 fallo antes de re-correr nada** — re-correr primero destruye el único dato que discrimina flake de
 regresión ([[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]).
+
+## Refuerzo 2026-10-06 — «0 bytes ≠ colgado» **no** significa «0 bytes = trabajando». Significa *sin información*
+
+Pusheé una rama con `git push … 2>&1 | tail -8`. La llamada pasó a background, el archivo de salida
+quedó en **0 bytes**, y ahí apliqué mal mi propia regla: leí los 0 bytes como «sigue trabajando,
+buffereado». Esperé ~15 minutos, y después salí a buscar contención de locks y procesos zombie.
+
+**No había nada corriendo.** El proceso se había muerto sin flushear: `tail` se come la salida de un
+proceso que no termina de forma ordenada, así que **murió sin dejar una sola línea**. Lo rehice
+escribiendo a un archivo completo, sin pipe: **tardó 10 segundos** (`11:55:25 → 11:55:35`), gitleaks
+limpio, ref creado. O sea el pipe convirtió una operación de **10 s** en un cuelgue aparente de 15
+minutos **y me empujó a un diagnóstico equivocado** (locks, backup del grafo) sobre un proceso
+inexistente.
+
+**El filo nuevo, y es sobre la regla vieja de esta misma entrada:** «0 bytes ≠ colgado» se me había
+quedado como «0 bytes = está trabajando». Es lo contrario de lo que dice. **0 bytes a través de un pipe
+no es un estado del proceso: es la ausencia de todo estado** — compatible con trabajando, muerto,
+nunca-arrancado y bloqueado esperando stdin. Un dato que es compatible con todas las hipótesis no es
+evidencia de ninguna.
+
+**Lo único que decidió fue el EFECTO**, no la salida: `git ls-remote origin <ref>` — el ref no existía,
+punto. Es la misma regla que ya está escrita para el exit code
+([[git-push-puede-salir-exit-0-sin-haber-pusheado]]): **el control es el efecto.** Y acá se extiende:
+cuando el canal de salida es el que está en duda, **ninguna lectura de ese canal puede resolver la
+duda** — hay que preguntarle al sistema, no al log.
+
+**Operativamente:** nunca `| tail` / `| head` sobre algo que pueda morir. Background ⇒ `>> archivo 2>&1`
+**completo**, con `[inicio $(date)]` y `[exit=$?]` alrededor, y la verificación por efecto en la misma
+llamada. El `[exit=…]` cuesta nada y es justo lo que faltó: su ausencia en el archivo habría dicho
+«murió» en lugar de no decir nada.
