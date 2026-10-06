@@ -99,3 +99,46 @@ repo se auto-limpia.
   con `MEMORY.md` en 0 líneas de diff, justamente porque el margen es de una línea.
 - **`idemkey-paridad-excepciones.json` tiene 0 excepciones** hoy, así que su trinquete no se ejercitó contra
   datos reales; su test sí lo cubre (`test-idemkey-paridad.sh:91`).
+
+## 5 — Addendum del mismo día: **el quinto candidato refutado, y una corrección contra mí mismo**
+
+Entre que medí este barrido (`d101ab7c`) y que lo pusheé, `origin/main` avanzó a `d69d244a`. De los 7 archivos
+auditados, **6 con 0 diff**; el séptimo, `scripts/ci/lint.sh`, **cambió — por mi propio hallazgo**: `LINTHISTORIA`
+(a) entró en #854 y el comentario ahora declara su alcance real. Pero el comentario nuevo trae una medición que
+yo **no** había hecho, y que corrige lo que afirmé:
+
+**Mi conclusión era demasiado fuerte, y el error es exactamente el que estaba auditando: grepeé la BANDERA, no
+la CAPACIDAD.** De «`--historia` no tiene llamador automático» concluí «ningún gate, hook ni job mira la
+historia por secretos». **Falso.** El `pre-push` sí la mira: `.githooks/pre-push:15` llama
+`secretos-check.sh --refs-stdin`, que arma el rango (`:115-120`, `$lsha --not --remotes` para una rama nueva) y
+lo pasa por **`gitleaks git --log-opts`** — el **mismo modo** que `--historia`, con otra bandera (`:92-95`). Lo
+confirmó el **efecto**, en mi propio push de este doc: `[secretos] escaneando 5e0b995… --not --remotes` →
+`1 commits scanned`.
+
+**Lo que sobrevive y lo que se degrada:** el hecho del hallazgo queda —el comentario prometía *TODA la historia*
+y el comando mira el árbol, y es lo que #854 corrigió—, pero su **magnitud** baja: lo que no existe es un
+llamador de la **historia COMPLETA**, no la cobertura. La cobertura es **incremental y con las reglas del día
+del push**. Medido ahora, que es la cifra que al comentario nuevo le falta:
+
+| | |
+|---|---|
+| commits en `--all` | **2394** |
+| anteriores al hook (lo instaló **#601**, 2026-09-21) | **1018 — el 43%, nunca pasaron por el pre-push** |
+| desde el hook hasta `main` | **281**, escaneados al entrar, **con las reglas de ESE día** |
+| pasadas de la historia completa con las reglas de hoy | **1, a mano** (2026-10-06, 5 formas nuevas: 1 hallazgo, fixture sintético no alcanzable desde `main`) |
+
+**Y repetí el error un nivel más abajo, buscando esa cifra:** el pickaxe `-S'secretos-check.sh --refs-stdin'`
+dio **0 commits**, porque la línea real lleva comillas en medio (`"$SCRIPT_DIR/scripts/secretos-check.sh"
+--refs-stdin`). Vacío que sólo se delató con el control positivo `-S'secretos-check.sh'` → **1**. Tres veces en
+un turno el mismo molde: **buscar la forma del nombre y leer el resultado como la ausencia de la capacidad.**
+
+**Quinto candidato, y muere:** «el gate de secretos es un **hook local** y hay **43 worktrees** — basta uno sin
+el hook instalado». Refutado: `core.hooksPath = .githooks` vive en el **config compartido** del repo y
+`extensions.worktreeConfig` **no está seteado**, así que no hay config per-worktree que pueda pisarlo: los 43
+comparten el hook. (Lo que **sí** lo saltea sigue siendo `--no-verify`, que es decisión de quien pushea, no
+agujero del mecanismo.)
+
+> **El aprendizaje, que es el único que me llevo de este addendum:** cuando un grep por un nombre da 0 y estás
+> por concluir que **la capacidad no existe**, listá primero **cómo más podría proveerse** y grepeá eso. Un
+> ausente *nombrado* es evidencia débil. Si la conclusión es «nadie hace X», se mide por el **efecto** —correr
+> el camino real y ver qué escanea— no por el inventario de llamadores.
