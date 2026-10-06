@@ -126,3 +126,40 @@ propagar.
 que el gate se ponía rojo casi siempre. Un guard que grita en el caso normal se saltea con `--admin`
 ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]), y fallaba hacia el NO, que parece
 prudencia ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
+
+## Refuerzo 2026-10-06 — antes de propagar: contar apariciones DETECTA el patron, pero no ATRIBUYE. Y el call-site que difiere puede ser un GUARD
+
+Esta entrada dice «el fix ya existe en otro call-site: propagar, no disenar». Hoy casi la aplico sobre
+un caso donde propagar **rompia un control de autorizacion**, y el error estaba en el instrumento con
+el que decidi que habia algo que propagar.
+
+Acababa de colapsar los dos campos legales de `/me` en un helper (`_campos_legales`, una expresion para
+las dos ramas). Conte apariciones de los demas campos en `web.py` para ver cuales quedaban con el
+patron viejo:
+
+| campo | veces | lo que lei |
+|---|---|---|
+| `legal_aceptado`, `legal_version_aceptada` | 1 | ya colapsados |
+| `mp_connected`, `composio_connected`, `es_admin` | **2** | «siguen duplicados, propaga el helper» |
+
+**«2 veces» es exactamente el mismo numero para «duplicado» y para «deliberadamente distinto por
+rama».** Fui a leer las dos ramas antes de recomendar nada:
+
+- `mp_connected` y `composio_connected`: **misma expresion** en las dos ⇒ duplicacion real.
+- `es_admin`: rama con token → `es_admin(claims)`. Rama sin token → **`False`**, con el comentario
+  `web.py:1104` *«Sin `require_claims` no hay token que leer: `es_admin=False` es fail-closed»*.
+- `cuenta_google`: igual, `False` en la rama sin token.
+
+**Colapsar `es_admin` en un helper habria borrado ese fail-closed.** Y el refactor se ve impecable: los
+tests de legal siguen verdes, el diff es «3 expresiones a una funcion», y nada grita. El guard no tiene
+test propio que lo defienda — su unica defensa es el comentario de una linea que el refactor pisa.
+
+**La regla, que es una precondicion de esta entrada, no una excepcion:** el conteo de apariciones sirve
+para **encontrar candidatos**, nunca para decidir. Antes de propagar un fix a N call-sites, **leer los N
+y comparar las expresiones**: si alguno difiere, la pregunta no es «como lo unifico» sino **«por que
+difiere, y que se pierde si dejan de diferir»**. Un call-site que difiere es, con sorprendente
+frecuencia, el unico lugar donde vive un guard.
+
+Y el sesgo que lo hace peligroso: yo venia de **cerrar** una duplicacion real: tenia el fix fresco, el
+patron en la cabeza y ganas de propagarlo. El momento de maxima confianza en un patron es el momento de
+menor atencion a los casos que no encajan.
