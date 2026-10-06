@@ -26,7 +26,7 @@ import { SessionProvider } from './SessionProvider';
 import { useSession } from './useSession';
 
 const wrapper = SessionProvider;
-const ME = { cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false };
+const ME = { cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true };
 
 describe('arranque con el access token AUSENTE pero el refresh guardado', () => {
   beforeEach(() => {

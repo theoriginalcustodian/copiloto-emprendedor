@@ -53,7 +53,7 @@ const ME_BASE = { cliente_id: 'cliente-123', mp_connected: false, composio_conne
 
 function darSesion(esAdmin: boolean) {
   setToken('tok-valido');
-  vi.mocked(api.me).mockResolvedValue({ ...ME_BASE, es_admin: esAdmin });
+  vi.mocked(api.me).mockResolvedValue({ ...ME_BASE, es_admin: esAdmin, legal_aceptado: true });
 }
 
 function renderShell(cual: 'mobile' | 'desktop') {

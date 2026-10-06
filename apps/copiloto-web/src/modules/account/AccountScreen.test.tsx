@@ -57,6 +57,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -74,6 +75,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -135,6 +137,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -153,6 +156,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -171,6 +175,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
