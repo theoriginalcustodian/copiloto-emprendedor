@@ -168,7 +168,7 @@ Lo que hay que saber sin abrir nada más:
 auto-memory del harness: divergen, y lo versionado es lo que sobrevive al clon.
 ⚠️ **Hasta 2026-09-22 acá decía que `scripts/seed-memory.sh` «espeja con `--delete`». Era falso desde
 el 2026-07-31**, cuando se pagó esa deuda: hoy hace `rsync -a --update` (verificado en
-`scripts/seed-memory.sh:116-117`), es **bidireccional** —rescata al repo lo que sólo vive en el slug
+`scripts/seed-memory.sh:131`), es **bidireccional** —rescata al repo lo que sólo vive en el slug
 antes de reconciliar— y reporta `rescatados / purgados / divergentes`. **Correrlo es seguro; no
 correrlo es lo que deja divergir las dos memorias.** Medido el 2026-09-22: 34 entradas sólo en el slug
 y 23 sólo en el repo, justamente por el miedo que sembraba esta línea. El único merge que NO hace solo

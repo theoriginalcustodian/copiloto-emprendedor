@@ -16,7 +16,8 @@ import uuid
 
 import pytest
 
-from cliente_store import ClienteStore
+from afip_comprobante_store import ESTADO_ANULADA, ESTADO_EMITIDA, AfipComprobanteStore
+from cliente_store import DOC_CONSUMIDOR_FINAL, DOC_DNI, ClienteStore
 from gasto_store import hoy_del_negocio
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
@@ -108,3 +109,61 @@ def test_K04_aislamiento_A_no_cuenta_los_derivados_de_B(conn_de_tenant, tenants)
     _derivado(conn_de_tenant, a, "Derivado de A")
     assert ClienteStore(conn_de_tenant(a), a).agregados_este_mes() == 1
     assert ClienteStore(conn_de_tenant(b), b).agregados_este_mes() == 2  # control: B ve los suyos
+
+
+# --- BL-V18: conteo de comprobantes por cliente en el listado -----------------------------------
+
+def _comprobante(conn_de_tenant, cid, nro, doc_tipo, doc_nro, estado=ESTADO_EMITIDA):
+    AfipComprobanteStore(conn_de_tenant(cid), cid).registrar(
+        cuit="30711111111", tipo_cbte=11, punto_venta=1, nro=nro, cae=f"CAE{nro}", cae_vto=None,
+        fecha_emision=hoy_del_negocio(), doc_tipo=doc_tipo, doc_nro=doc_nro, total=100, estado=estado)
+
+
+def _conteo(store, cliente_id: int) -> int:
+    fila = {i["id"]: i for i in store.listar()[0]}[cliente_id]
+    return fila["comprobantes_cantidad"]
+
+
+@pytest.fixture
+def comprobantes_limpios(conn_de_tenant, tenants):
+    yield tenants
+    for cid in tenants:
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.afip_comprobantes WHERE cliente_id = %s", (cid,))
+        conn.close()
+
+
+@necesita_pg
+def test_BL_V18_listar_cuenta_los_comprobantes_del_documento_sin_anuladas(conn_de_tenant, comprobantes_limpios):
+    a, _ = comprobantes_limpios
+    store = ClienteStore(conn_de_tenant(a), a)
+    cliente = store.crear(nombre="Con DNI", doc_tipo=DOC_DNI, doc_nro="30123456")
+    _comprobante(conn_de_tenant, a, 1, DOC_DNI, "30123456")
+    _comprobante(conn_de_tenant, a, 2, DOC_DNI, "30123456")
+    _comprobante(conn_de_tenant, a, 3, DOC_DNI, "30123456", estado=ESTADO_ANULADA)   # no cuenta
+    _comprobante(conn_de_tenant, a, 4, DOC_DNI, "99999999")                          # otro documento
+    assert _conteo(store, cliente["id"]) == 2
+
+
+@necesita_pg
+def test_ADVERSARIAL_BL_V18_A_no_cuenta_los_comprobantes_de_B_con_el_mismo_documento(
+        conn_de_tenant, comprobantes_limpios):
+    a, b = comprobantes_limpios
+    cli_a = ClienteStore(conn_de_tenant(a), a).crear(nombre="Cliente de A", doc_tipo=DOC_DNI, doc_nro="30123456")
+    cli_b = ClienteStore(conn_de_tenant(b), b).crear(nombre="Cliente de B", doc_tipo=DOC_DNI, doc_nro="30123456")
+    _comprobante(conn_de_tenant, a, 1, DOC_DNI, "30123456")
+    _comprobante(conn_de_tenant, b, 1, DOC_DNI, "30123456")
+    _comprobante(conn_de_tenant, b, 2, DOC_DNI, "30123456")
+    assert _conteo(ClienteStore(conn_de_tenant(a), a), cli_a["id"]) == 1     # sólo el suyo
+    assert _conteo(ClienteStore(conn_de_tenant(b), b), cli_b["id"]) == 2     # control: B ve los suyos
+
+
+@necesita_pg
+def test_BL_V18_cliente_sin_documento_cuenta_cero(conn_de_tenant, comprobantes_limpios):
+    a, _ = comprobantes_limpios
+    store = ClienteStore(conn_de_tenant(a), a)
+    cliente = store.crear(nombre="Sin documento")
+    # Un comprobante de consumidor final sin identificar NO es de este cliente: `doc_nro` vacío no matchea.
+    _comprobante(conn_de_tenant, a, 1, DOC_CONSUMIDOR_FINAL, "")
+    assert _conteo(store, cliente["id"]) == 0
