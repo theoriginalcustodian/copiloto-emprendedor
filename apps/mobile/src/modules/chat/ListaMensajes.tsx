@@ -261,6 +261,7 @@ const FilaMensaje = memo(function FilaMensaje({
         propuesta={clientePropuesto}
         texto={mensaje.text}
         resuelto={mensaje.clienteResuelto}
+        mensajeId={mensaje.id}
         onResolver={(patch) => onResolverTarjeta(mensaje.id, { clienteResuelto: patch })}
       />
     );
@@ -273,6 +274,7 @@ const FilaMensaje = memo(function FilaMensaje({
       <TarjetaIngresoPropuesto
         propuesta={ingresoPropuesto}
         resuelto={mensaje.ingresoResuelto}
+        mensajeId={mensaje.id}
         onResolver={(patch) => onResolverTarjeta(mensaje.id, { ingresoResuelto: patch })}
       />
     );
