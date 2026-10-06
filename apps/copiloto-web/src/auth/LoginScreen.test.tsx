@@ -21,6 +21,7 @@ import { api, ForbiddenError, UnauthorizedError } from '../lib/api';
 import { THEMES } from '../design-system/ThemeProvider';
 import { SessionProvider } from './SessionProvider';
 import { LoginScreen } from './LoginScreen';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 function renderLoginScreen() {
   return render(
@@ -64,7 +65,7 @@ describe('LoginScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderLoginScreen();

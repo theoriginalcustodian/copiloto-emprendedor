@@ -13,6 +13,7 @@ import type {
   SignupResponse,
   WarmResponse,
 } from './types';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 /**
  * Implementaciones mock — MISMAS firmas que el transporte real (`CopilotApi`), para dev local sin
@@ -78,7 +79,7 @@ export const mockApi: CopilotApi = {
       // (`auth/SignupScreen.tsx:71` → `POST /me/legal/aceptar`), así que `true` es el estado normal de
       // alguien que ya usa la app. Un doble que dejara el campo sin mandar lo volvería `undefined`, y
       // `undefined` se lee igual que «no aceptó»: el bug aparecería recién contra prod.
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     };
   },
 

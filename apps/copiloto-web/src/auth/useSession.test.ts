@@ -22,6 +22,7 @@ import { api, ForbiddenError, UnauthorizedError } from '../lib/api';
 import { setToken } from './session';
 import { SessionProvider } from './SessionProvider';
 import { useSession } from './useSession';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 // La sesión es compartida vía contexto: el hook se consume SIEMPRE dentro de <SessionProvider>.
 const wrapper = SessionProvider;
@@ -41,7 +42,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('con token persistido válido -> primeraVez queda false (no es un arranque limpio)', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
@@ -57,7 +58,7 @@ describe('useSession (vía SessionProvider)', () => {
       refresh_token: 'r',
       user: {},
     });
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.primeraVez).toBe(true));
@@ -72,7 +73,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('con token persistido válido -> authed + me (chequeo de montaje)', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
@@ -88,7 +89,7 @@ describe('useSession (vía SessionProvider)', () => {
       refresh_token: 'r',
       user: {},
     });
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
@@ -141,7 +142,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('logout limpia token y vuelve a anon', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('authed'));
