@@ -88,6 +88,20 @@ describe('clientes.ts', () => {
       expect(c.origen).toBe('derivado');
     });
 
+    it('BL-V18: el listado trae `comprobantes_cantidad` como entero, incluido el 0 real', async () => {
+      responder = () => respuesta(200, { clientes: [{ ...clienteCrudo(), comprobantes_cantidad: 0 }], total: 1 });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      expect(res.clientes[0].comprobantesCantidad).toBe(0);
+    });
+
+    it('BL-V18: sin el campo (listado viejo) queda `undefined`, nunca 0', async () => {
+      responder = () => respuesta(200, { clientes: [clienteCrudo()], total: 1 });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      expect(res.clientes[0]).not.toHaveProperty('comprobantesCantidad');
+    });
+
     it('una cartera vacía es `ok` con [], no un error — es el estado del primer día', async () => {
       responder = () => respuesta(200, { clientes: [], total: 0 });
 

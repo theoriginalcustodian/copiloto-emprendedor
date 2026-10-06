@@ -39,3 +39,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS afip_comprobantes_idem
 -- Listado "mis comprobantes": el orden natural es el más reciente primero.
 CREATE INDEX IF NOT EXISTS afip_comprobantes_listado
   ON uc_factory.afip_comprobantes (cliente_id, cuit, created_at DESC);
+
+-- Conteo de comprobantes por cliente (BL-V18, `ClienteStore.listar`): el cliente se liga por el DOCUMENTO
+-- del receptor, no por `cuit` (que es el emisor). Sin este índice, el conteo por fila del listado recorre
+-- la tabla entera por cada cliente de la página.
+CREATE INDEX IF NOT EXISTS afip_comprobantes_cliente_doc
+  ON uc_factory.afip_comprobantes (cliente_id, doc_tipo, doc_nro);

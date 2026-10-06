@@ -7,20 +7,12 @@ loop del worker — mismo patron que `infer` en la fabrica.
 from __future__ import annotations
 
 import asyncio
-import os
 
 from temporalio import activity
 
 from backend.agent.agent_runtime import get_channel, get_domain, get_staff_notifier, get_stt_provider
 from backend.agent.observabilidad import log_evento
 from backend.agent.types import DispatchResult, Intent
-
-def _log_stt_text_habilitado() -> bool:
-    """Gatea el TEXTO transcripto crudo en `STT_TRANSCRIPT` — puede traer PII/PHI (datos del cliente
-    hablados). Default OFF: sin la env, el evento sólo lleva `chars` (longitud), nunca el contenido.
-    Se lee la env EN CADA LLAMADA (no se cachea a nivel de módulo) para que un test pueda flipearla
-    con `monkeypatch.setenv` sin depender del orden de import."""
-    return os.environ.get("COPILOTO_LOG_STT_TEXT", "").strip().lower() in ("1", "true", "on")
 
 
 @activity.defn
@@ -122,11 +114,11 @@ async def transcribe_voice(payload: dict) -> dict:
         adapter = get_channel(payload["channel"])
         audio = await asyncio.to_thread(adapter.download_file, payload["file_id"])
         text = await asyncio.to_thread(stt.transcribe, audio)
-        # observabilidad de voz: queda en journalctl para auditar qué entendió el STT. El texto crudo
-        # sólo viaja con `COPILOTO_LOG_STT_TEXT=1` (puede traer PII/PHI) -- por default sólo la longitud.
+        # observabilidad de voz: sólo METADATA en journalctl (longitud, tamaño, id truncado). El texto
+        # transcripto NUNCA entra a un log: lo dijo el cliente y puede traer PII/PHI, y el repo es público
+        # (los logs del VPS son un canal de salida). Sin opt-in: un flag de debug que apaga esto es un
+        # camino para filtrarla. Para auditar qué entendió el STT, el texto va a la conversación, no al log.
         campos = {"file_id": str(payload.get("file_id"))[:14], "bytes": len(audio), "chars": len(text or "")}
-        if _log_stt_text_habilitado():
-            campos["text"] = text
         log_evento("STT_TRANSCRIPT", campos)
         return {"text": text or ""}
     except Exception as exc:  # noqa: BLE001 -- un fallo de STT NO debe romper el hilo: el motor pide texto

@@ -119,8 +119,10 @@ describe('SeccionMisComprobantes — anulación derivada del comprobante', () =>
     await waitFor(() => expect(anularComprobante).toHaveBeenCalled());
 
     // «Recarga»: el backend ya tiene la NC en curso; el estado en memoria de la pantalla se pierde.
-    cleanup();
-    await new Promise((r) => setTimeout(r, 0));
+    // await es EMPÍRICO, no derivado: sin él, este caso falla con «waitFor was aborted by cleanup» (medido
+    // 4/10 en CI-like, 2/2 local; con él, 10/10 verde). El mecanismo exacto de RNTL 14 no está aislado:
+    // si alguien quita el await «por simplificar», el flake vuelve. Main rojo desde #803.
+    await cleanup();
     jest.mocked(estadoAnulacion).mockReset().mockResolvedValue(estadoEsperando);
     montar();
     await abrirAnulacion();
