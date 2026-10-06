@@ -428,6 +428,31 @@ assert que importa (`403`, el id cross-tenant, el código de error) y con buscar
 `scripts/ci/*.sh`. Si el assert no aparece, el test mira otra cosa; si el archivo no aparece en ningún
 gate, el test no mira **nunca**.
 
+---
+
+## 🔻 2026-10-06 — la LISTA DE DESCARTE es la forma más silenciosa de no mirar
+
+`scripts/evidencia/contar-veredictos.py` declara dos listas: `MEDICIONES_DECLARADAS` y
+`NO_SON_MEDICION`. Un documento en la segunda **nunca llega a candidato** — el descarte se evalúa
+primero (`:833-838`) y el archivo no se abre para contar nada.
+
+El `cierre_` de frontend1 del 2026-10-05 medía los 4 ids de voz con **dos instrumentos por id**, y
+estaba descartado **con razón**: emitía su veredicto con un token fuera del vocabulario cerrado
+(`SIN-REFERENCIA-DE-ESCRITORIO`), así que no producía nada contable. Cuando frontend1 agregó el bloque
+con el token canónico, el documento **pasó a medir** — y la cifra no se movió: `web 50 de 54`, `rc=0`,
+ninguna alarma, corpus idéntico. El descarte, correcto el día que se escribió, pasó a **esconder una
+medición válida sin un solo síntoma**. Tras moverlo a `MEDICIONES_DECLARADAS`: `web 54 de 54 (100%) ✅
+COMPLETO`, corpus 20 medidos / 22 descartados.
+
+**Se vio sólo porque auditoría había pronosticado el efecto exacto (54 de 54, techo 54, 9 sin
+comparación) y el efecto no llegó.** Sin ese pronóstico, el 50 se citaba como completo y nadie
+auditaba un `rc=0`.
+
+→ **Pregunta operativa:** *¿cuál de mis exenciones afirma el PRESENTE de un archivo que puede cambiar,
+y qué la re-mira cuando cambia?* Una exención motivada en «no usa el vocabulario», «no tiene el campo»
+o «no declara plataforma» **caduca el día que su documento se corrige**, y clasificar es un acto
+fechado que nada revisa.
+
 Relacionadas: [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] ·
 [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] ·
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
