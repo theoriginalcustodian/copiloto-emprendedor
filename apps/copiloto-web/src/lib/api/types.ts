@@ -140,6 +140,9 @@ export interface CatalogService {
   kind: string;
   description: string;
   capabilities: string[];
+  /** A8: acciones REALES del conector (slugs, p.ej. `gmail_send`), derivadas de `TOOLS` en backend.
+   * Opcional (backend anterior): sin él la UI no afirma qué sabe hacer el servicio. */
+  acciones?: string[];
   connected: boolean;
   /** K-09: salud de la conexión. Opcional (backend anterior): sin él se usa `connected`. */
   status?: 'conectado' | 'nunca_conectado' | 'caido';

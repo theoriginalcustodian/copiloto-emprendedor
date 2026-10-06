@@ -15,8 +15,24 @@ CI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 RES="$(cygpath -m "$TMP" 2>/dev/null || printf '%s' "$TMP")/jest-resultado.json"
 
+# Paralelismo acotado FUERA de CI (2026-10-06). Mismo motivo que `scripts/ci/web.sh`: en la PC el gate
+# comparte CPU con las otras dos sesiones, y jest a N workers fabrica rojos por CONTENCIÓN, no por el
+# código — un falso rojo que empuja al `--no-verify`, y acá eso apaga gitleaks en un repo público.
+# Medido por FE1 sobre 59b902dd: a N workers el único rojo de mobile fue `TarjetaPresupuestoPropuesto`;
+# con 1 worker la suite completa da rc=0 (111 passed + 1 skipped de 112, 1015 tests, 0 «aborted by
+# cleanup»). ⚠️ Para mobile eso es UNA corrida: la contención es la HIPÓTESIS, no una causa probada —
+# lo probado es que el cap da verde reproducible. En CI (Linux, runner dedicado) no se toca nada: ahí
+# el paralelismo es la razón de que el job tarde minutos y no horas, y el rojo de CI sigue siendo real.
+# Y va ACÁ, no en `mobile.sh`: el re-run del EPERM de abajo descarta los args del llamador, así que un
+# cap puesto en el llamador se perdería justo en la re-corrida (el fix que llega a un solo call-site).
+CAP=()
+if [ -z "${CI:-}" ]; then
+  CAP=(--maxWorkers="${JEST_MOBILE_MAXWORKERS:-1}")
+  echo "[mobile] PC detectada (CI vacío) → ${CAP[*]}: el recibo mide el código, no la carga de la máquina"
+fi
+
 rc=0
-npx jest --json --outputFile="$RES" "$@" || rc=$?
+npx jest --json --outputFile="$RES" ${CAP[@]+"${CAP[@]}"} "$@" || rc=$?
 [ "$rc" -eq 0 ] && exit 0
 
 SUITES="$(node "$CI_DIR/jest-eperm-reintentable.mjs" "$RES")" || exit "$rc"
@@ -25,4 +41,4 @@ echo "⚠️  jest: el rojo es SÓLO el EPERM de la caché de transformación (W
 echo "   Re-corro UNA vez, con la caché ya caliente, estas suites:"
 printf '     %s\n' $SUITES
 mapfile -t suites <<< "$SUITES"
-npx jest --runTestsByPath "${suites[@]}"
+npx jest --runTestsByPath ${CAP[@]+"${CAP[@]}"} "${suites[@]}"

@@ -143,20 +143,26 @@ def sugerencia_armar_factura_card(presupuesto_id: int, texto: str) -> dict:
 
 
 def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
-                  mp_status: str | None = None, composio_caidos=()) -> list[dict]:
+                  mp_status: str | None = None, composio_caidos=(),
+                  acciones_por_toolkit=None) -> list[dict]:
     """Catálogo completo (MercadoPago + todos los toolkits Composio soportados), en el shape del contrato
     `GET /catalog` (handoff §7.7). `valid_toolkits`: iterable de slugs Composio (derivado por el caller de la
     MISMA fuente que valida `/composio/connect`, NUNCA hardcodeado acá). `composio_connected`: iterable de
     slugs conectados (mismo shape que `/me`). Orden determinístico (sorted) -- ni `valid_toolkits` (puede ser
-    un frozenset/dict) ni `composio_connected` garantizan orden estable entre corridas."""
+    un frozenset/dict) ni `composio_connected` garantizan orden estable entre corridas.
+    `acciones_por_toolkit` (`services.acciones_por_toolkit()`, derivado de `TOOLS`): cada entrada Composio
+    declara QUÉ acciones tiene, para que la UI no prometa lo que el conector no hace (A8)."""
     connected_set = set(composio_connected or ())
     caidos = set(composio_caidos or ())
+    acciones = acciones_por_toolkit or {}
     if mp_status is not None:
         mp_connected = mp_status == "conectado"
     services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected), status=mp_status)]
     for toolkit in sorted(valid_toolkits or ()):
         conectado = toolkit in connected_set
-        services.append(_entry(toolkit, kind="composio", connected=conectado,
-                               status="conectado" if conectado else
-                               ("caido" if toolkit in caidos else "nunca_conectado")))
+        entrada = _entry(toolkit, kind="composio", connected=conectado,
+                         status="conectado" if conectado else
+                         ("caido" if toolkit in caidos else "nunca_conectado"))
+        entrada["acciones"] = list(acciones.get(toolkit, ()))
+        services.append(entrada)
     return services

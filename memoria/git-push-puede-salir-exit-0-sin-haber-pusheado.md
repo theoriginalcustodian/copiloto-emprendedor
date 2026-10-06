@@ -182,3 +182,29 @@ remoto nunca existió y el stderr se perdió en el pipe. Los dos colapsan ``no p
 en la misma salida, y el control es el mismo: ``git ls-remote origin refs/heads/<rama>`` — preguntarle al
 servidor, nunca al ref local.
 
+
+## Refuerzo 2026-10-06 — con muchos worktrees, `gh pr merge --delete-branch` SIEMPRE sale exit 1 y el merge igual se hizo
+
+```
+VERDE — se puede mergear (6/6 jobs del rollup)
+failed to run git: fatal: 'main' is already used by worktree at 'C:/gfw-src/wt-a4reg'
+[merge exit=1]
+```
+
+**El merge se hizo.** `gh pr view 823` → `state=MERGED`, `mergedAt=16:07:43Z`, commit `5e038559`, y el
+cambio verificado en `git show origin/main:…`. Lo que falló fue el paso **local** de `--delete-branch`:
+`gh` intenta cambiarse de rama y no puede porque `main` está tomado por **otro worktree**. En este repo
+hay ~30 worktrees activos, así que esto no es un accidente: **todo merge que corra con
+`--delete-branch` desde un worktree va a reportar exit 1 con el merge ya hecho.**
+
+**Por qué muerde más que el caso inverso:** un exit 0 sin pushear se descubre al mirar el remoto. Un
+exit 1 con el merge hecho empuja a **reintentar** — y el reintento falla con un mensaje distinto («no
+está abierto»), que se lee como que algo está roto. Dos mediciones falsas seguidas sobre un trabajo que
+ya terminó bien.
+
+**Control, siempre el EFECTO y nunca el código de salida:** `gh pr view <n> --json state,mergeCommit`
+y `git show origin/main:<archivo>` por el contenido que tenía que entrar. Si `state=MERGED`, terminó:
+la rama sin borrar es cosmética. Y para evitarlo de entrada, mergeá **sin** `--delete-branch` desde un
+worktree, o borrala después con `git push origin --delete <rama>`, que no necesita checkout.
+
+Relacionadas: [[el-pipe-se-come-el-exit-code]] · [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]

@@ -433,3 +433,29 @@ ciego era **mi** instrumento, inventado en el momento en lugar de leer el gate.
 **La regla:** cuando verifiques a mano algo que un gate ya verifica, **copia el comando del gate**. Si
 improvisas uno, ese comando es un instrumento nuevo y necesita su propio canario antes de que su verde
 cuente. Un verde de un comando que nunca mire nada es indistinguible de un verde real.
+## Refuerzo 2026-10-06 — un archivo de test que se LLAMA como la ruta da impresión de cobertura que no tiene
+
+Auditoría barrió la autorización de las rutas `/admin` y midió algo que no se ve mirando el árbol:
+`test_admin_uso.py`, `test_admin_errores.py` y `test_admin_soporte.py` existen, suman **396 líneas**, y
+tienen **0 menciones de `403`**. Ocho de doce rutas `/admin` no tenían un solo test de denegación —
+incluida `POST /admin/tenants/{id}/estado`, que **suspende cualquier tenant**.
+
+**Por qué este caso es peor que un instrumento que no mira:** acá el que no mira es el **lector humano**.
+Un archivo llamado como la ruta responde afirmativamente a la pregunta que uno hace de verdad
+—«¿esto está testeado?»— sin responder la que importa, que es «¿se ejercita el caso **hostil**?». El
+nombre del archivo es la aserción; el contenido es la prueba, y nadie los compara.
+
+**Y tiene un hermano todavía más mudo, del mismo día:** `scripts/e2e_bl_o6_legal_aceptacion.py` **sí**
+corrió verde una vez (23/09, `af69d129`, con 3 casos hostiles) y **no corre en ningún gate**. El archivo
+existe, el último verde es citable, y nada lo vuelve a ejercer. Un control que se ejecutó una vez tiene
+**fecha de vencimiento silenciosa**: el día que se rompa lo que protegía, el síntoma es ninguno.
+
+**La pregunta operativa, que es barata y no la hace nadie:** no «¿hay tests de X?» sino **«¿cuántas
+veces se ejercitó el caso que me preocupa, y cuándo fue la última?»**. Se contesta con un `grep` del
+assert que importa (`403`, el id cross-tenant, el código de error) y con buscar el archivo en
+`scripts/ci/*.sh`. Si el assert no aparece, el test mira otra cosa; si el archivo no aparece en ningún
+gate, el test no mira **nunca**.
+
+Relacionadas: [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] ·
+[[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] ·
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]]
