@@ -356,6 +356,16 @@ fi
 # ReconcileError (umbral de borrado superado).
 _ERROR_GREP='GraphityError|Traceback \(most recent call last\)|^abortado:|reconcile abortado:'
 
+# LOGEFIMERO (2026-10-05): el detalle por-chunk de pipeline.py (`partición … chunk N ingerida`)
+# vivía SOLO en $OUT, que cleanup_exit borra en el trap EXIT — 6 corridas motivo=ok y cero
+# evidencia de que el chunking corrió. Se persiste ACÁ, en ESTE repo (no en graphify-graphity-
+# bridge/.bridge/, que es BRIDGEPUSH en vuelo), gitignored (.bridge/) porque trae paths/tenant
+# y el repo es público. Archivo NUEVO y aparte de $BITACORA: esa es por-corrida (pid/rc/motivo,
+# otro lector, otro idioma); este es por-chunk (memoria/el-registro-vivia-en-tres-idiomas...md).
+DETAIL_LOG="$REPO/.bridge/graph-sync-detalle.log"
+mkdir -p "$(dirname "$DETAIL_LOG")"
+DETAIL_LOG_MAX_BYTES="${UC_GRAPH_DETAIL_LOG_MAX_BYTES:-5242880}"
+
 OUT="$(mktemp)"
 
 (
@@ -371,6 +381,19 @@ OUT="$(mktemp)"
   fi
 ) 2>&1 | tee "$OUT"
 sync_status="${PIPESTATUS[0]}"
+
+# Se persiste SIEMPRE (éxito o fallo, con o sin chunks) — una corrida sin particiones también
+# tiene que dejar rastro, para distinguir "no hubo chunks" de "no se midió". No se toca el pipe
+# de arriba: esto lee $OUT ya cerrado, después de capturar $sync_status, cero riesgo sobre
+# PIPESTATUS (memoria/el-pipe-se-come-el-exit-code.md).
+if [ -f "$DETAIL_LOG" ] && [ "$(stat -c %s "$DETAIL_LOG" 2>/dev/null || echo 0)" -gt "$DETAIL_LOG_MAX_BYTES" ]; then
+  tail -n 2000 "$DETAIL_LOG" > "${DETAIL_LOG}.rot" && mv "${DETAIL_LOG}.rot" "$DETAIL_LOG"
+fi
+{
+  printf '=== %s repo=%s since=%s sha=%s status=%s ===\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$REPO_NAME" "${SINCE:-<full>}" "${SHA:0:12}" "$sync_status"
+  cat "$OUT"
+} >> "$DETAIL_LOG"
 
 if [ "$sync_status" -ne 0 ]; then
   echo "[graph-sync] ❌ el sync salió con status ${sync_status}." >&2
