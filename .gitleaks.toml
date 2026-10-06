@@ -9,6 +9,77 @@ useDefault = true
 # .env.e2e nunca se toca ni se muestra (regla del repo): siempre gitignored, jamás trackeado. Sólo lo
 # alcanza `--arbol` (escanea el filesystem crudo, no git); esta exclusión evita que un secreto REAL
 # local termine, aunque sea redactado, en la salida del escáner.
+# ──────────────────────────────────────────────────────────────────────────────────────────────
+# Formas REALES de los secretos de ESTE stack (2026-10-06, hallazgo de auditoría).
+#
+# 🔴 EL AGUJERO NO ERA «no caza X»: era «no caza X EN LA FORMA EN QUE X APARECE DE VERDAD».
+# Medido con entropía real y pares de contraste: el mismo secreto SUELTO lo cazaba
+# `generic-api-key` de `useDefault`; con su prefijo real se ESCAPABA. Dos causas, las dos del
+# default, no nuestras: (1) no hay regla de Anthropic / Graphity / MercadoPago en el set por
+# defecto; (2) los guiones del prefijo y los `:/@` de una URL de conexión ROMPEN el match de
+# alta-entropía contiguo que usa `generic-api-key`.
+#
+# El costo del agujero es el máximo que tiene este repo: es el ÚNICO guard fail-closed que corre
+# en cada push (`.githooks/pre-push`), y el repo es PÚBLICO — un `.env` commiteado es público en
+# el instante del push. Y el filo: `CLAUDE.md` cita una auditoría a mano para decir «`sk-ant-` 0»
+# mientras el guard automático que protege cada push NO cubría `sk-ant-`.
+#
+# ⚠️ Cada regla nueva se paga con su CASO 11 en `scripts/tests/test-secretos-check.sh`, que es el
+# único que varía la FORMA del secreto (los 10 casos previos varían MODOS del escáner y los 4
+# controles positivos usan todos `ghp_`: el eje que decide si caza algo quedaba fijo).
+# ──────────────────────────────────────────────────────────────────────────────────────────────
+
+[[rules]]
+id = "uc-anthropic-api-key"
+description = "Clave de la API de Anthropic (sk-ant-...). La usan el harness y los workers del motor."
+regex = '''sk-ant-[A-Za-z0-9_-]{20,}'''
+
+[[rules]]
+id = "uc-postgres-url-con-password"
+description = "URL de conexion a Postgres con contrasena LITERAL embebida (DATABASE_URL de fusion)."
+# La clase de la contrasena excluye `$`, `{` y `}` a proposito: `postgresql://${USER}:${CLAVE}@host`
+# NO es un secreto, es codigo que lee una variable. Sin esa exclusion la regla daba 4 falsos
+# positivos en `deploy/copiloto/provision-rol-*.sh`, `gotrue/docker-compose.gotrue.yml` y
+# `Auditorias/scripts-m3/m3_capa_local.sh` -- MEDIDO antes de commitear, no despues. Un guard que
+# grita en el caso normal se desarma solo: con esos 4, el push de las tres sesiones fallaba y el
+# camino de menor resistencia era `--no-verify` (que apaga el gate ENTERO) o editar
+# `.gitleaksignore` a ciegas, que es el dano que este repo ya pago una vez el 2026-09-22.
+regex = '''postgres(ql)?://[^:/\s]+:[^@\s${}]{8,}@'''
+
+  # Los otros 5 falsos positivos eran literales DE VERDAD, los cinco en `.github/workflows/tests.yml`:
+  # `postgresql://copiloto_app:copiloto@localhost:5432/...`, la password del service container de CI.
+  # Un DSN cuyo host es `localhost`/`127.0.0.1` no puede ser una credencial REMOTA, que es lo que esta
+  # regla existe para cazar (el caso de auditoria: `postgresql://postgres:<pass>@<vps>:5432/fusion`).
+  #
+  # 🔴 HUECO RESIDUAL, declarado y no invisible: un script que corra EN el VPS y hardcodee la password
+  # de prod contra `@localhost` se escapa de esta regla. Hoy no existe (la convencion del repo es
+  # leerla de `/etc/unreal-copilot/fusion-pg.env`), y la alternativa --no excluir localhost-- rompe
+  # cada push por el CI. Dueno: planificacion · 2026-10-06 · se revisa si aparece el primer script
+  # con password literal en el VPS. El caso 11 de `test-secretos-check.sh` ejercita ESTA frontera con
+  # un par de contraste (mismo DSN, host remoto -> caza · host localhost -> no caza), para que el dia
+  # que alguien la mueva el test diga cual de los dos lados cambio.
+  # `regexTarget = "line"`, NO "match": la regex de arriba TERMINA en `@`, asi que el texto
+  # matcheado nunca contiene el host -- un allowlist contra `match` no podia disparar jamas.
+  # Medido por efecto: con "match" quedaban los 5 falsos positivos; con "line", cero.
+  [[rules.allowlists]]
+  regexTarget = "line"
+  regexes = ['''@(localhost|127\.0\.0\.1)''']
+
+[[rules]]
+id = "uc-mercadopago-access-token-prod"
+description = "Access token de PRODUCCION de MercadoPago (APP_USR-...). Cobra plata real."
+regex = '''APP_USR-[0-9A-Za-z-]{20,}'''
+
+[[rules]]
+id = "uc-mercadopago-access-token-test"
+description = "Access token de TEST de MercadoPago (TEST-...). No cobra, pero identifica la cuenta."
+regex = '''TEST-[0-9]{8,}-[0-9]{6}-[0-9a-f]{20,}'''
+
+[[rules]]
+id = "uc-graphity-api-key"
+description = "API key de Graphity (gphy_...), la memoria de grafo por tenant."
+regex = '''gphy_[A-Za-z0-9]{16,}'''
+
 [allowlist]
 description = "excluye archivos que nunca deben escanearse (secretos locales gitignored)"
 paths = [
