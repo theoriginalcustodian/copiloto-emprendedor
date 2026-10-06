@@ -126,6 +126,15 @@ describe('SeccionMisComprobantes — anulación derivada del comprobante (web)',
     await waitFor(() => expect(anularComprobante).toHaveBeenCalled());
 
     // «Recarga»: el backend ya tiene la nota de crédito en curso; el estado en memoria se pierde.
+    // `cleanup()` va SIN `await` a propósito, y la asimetría con el gemelo de `apps/mobile` es medida,
+    // no estilística: acá RTL 16.3.2 define `cleanup` SÍNCRONO (`dist/pure.js:301`) y
+    // `@testing-library/dom` no tiene cola de aborto (0 hits de `cleanupQueue`), así que no hay nada que
+    // esperar. El gemelo de mobile SÍ necesita `await`: RNTL 14.0.1 lo define `async` (`dist/cleanup.js:11`)
+    // y sin él el test falla 4 de 10 corridas con «waitFor was aborted by cleanup» (medido 2026-10-06,
+    // 10 corridas por variante: 6/10 verdes sin el fix, 10/10 con el fix).
+    // NO propagar ese `await` acá por simetría: sería un await sobre una función síncrona justificado
+    // con una razón falsa. Si algún día RTL adopta la cola de aborto, este comentario queda falso y
+    // detectable, que es exactamente lo que un `await` silencioso no daría.
     cleanup();
     await new Promise((r) => setTimeout(r, 0));
     vi.mocked(estadoAnulacion).mockReset().mockResolvedValue(estadoEsperando);
