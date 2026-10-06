@@ -89,13 +89,15 @@ describe('hitlMapping', () => {
     expect(props.amount).not.toBe('80000');
   });
 
-  it('Instagram: badge IRREVERSIBLE + dangerBorder', () => {
+  // Control negativo (A9): Instagram NO tiene affordance de riesgo. Si alguien reinserta la entrada
+  // en SERVICE_RISK, este test se pone rojo: un test de presencia no lo detectaría.
+  it('Instagram (sin módulo): tarjeta neutra, SIN badge IRREVERSIBLE ni borde de peligro', () => {
     const props = buildHitlCardProps(
       msg({ text: 'Voy a publicar el posteo. ¿Confirmás?', card: { service: 'instagram', label: 'Instagram' } }),
       vi.fn(),
     );
-    expect(props.badge).toEqual({ variant: 'danger', text: 'IRREVERSIBLE' });
-    expect(props.dangerBorder).toBe(true);
+    expect(props.badge).toBeUndefined();
+    expect(props.dangerBorder).toBeFalsy();
   });
 
   it('sin `card` (legacy): tarjeta neutra "Confirmación", NUNCA "AGENDA", sin badge', () => {
