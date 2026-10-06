@@ -73,3 +73,26 @@ mirar **qué son**. Si todas son formas superadas de líneas que `main` ya tiene
 no se mergea. **Y el inverso también hay que mirarlo:** en el otro PR el código era redundante pero
 2 refuerzos de memoria no estaban en `main` (0 hits), así que cerrarlo entero habría perdido 83
 líneas que nadie más tenía.
+
+---
+
+## 🔻 2026-10-06 — la versión ATRASADA del instrumento fabrica trabajo que ya está hecho
+
+Corrí `contar-veredictos.py` en el worktree `wt-medidor` (base `148f9639`, 22 commits de una rama ya
+squash-mergeada) y me devolvió `rc=8 DOCUMENTOS SIN CLASIFICAR` sobre un documento que **`main` ya
+clasificaba desde su línea 491**. Clasifiqué lo clasificado y commiteé. Antes de abrir el PR medí el
+diff contra `origin/main`: **181 archivos, 521 inserciones, 9090 borrados** — ese PR habría revertido
+trabajo de las otras tres sesiones.
+
+Nada en la corrida avisaba: mismo formato, mismo corpus (19/23), misma cifra (`web 50 de 54`). **El
+instrumento se identifica solo y no lo leí** — imprime `🔬 INSTRUMENTO: <hash> · <N> líneas`:
+
+```
+f585fe6d90c9 · 2680 líneas   <- main @ 9911ced1 (el bueno)
+65a2dd3409a0 · 2614 líneas   <- wt-medidor (atrasado, miente con formato idéntico)
+```
+
+→ **Antes de creerle un `rc` o citar una cifra, comparar esa línea contra `main`.** Y para decidir
+entre mergear o cerrar una rama vieja, el control que vale es medir si su contenido ya está en main
+**archivo por archivo**: la entrada de memoria que parecía rescatable tenía 206 líneas en `main` y 151
+en la rama. Un `rev-list --count` alto no distingue «trabajo nuevo» de «base vieja».

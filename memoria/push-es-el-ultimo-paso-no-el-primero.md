@@ -172,3 +172,19 @@ un `reset` previo ([[git-push-puede-salir-exit-0-sin-haber-pusheado]]).
 **Y el control positivo que vuelve creíble al cero:** el mismo `grep` contaba 7 repos en `HEAD` y 1 en
 `origin/master`. Sin eso, un `0` no se distingue de un lector que no mira
 ([[instrumento-que-no-mira-nunca-falla]]).
+
+---
+
+## 🔻 2026-10-06 — `mergeable` es un CACHE del servidor, y la primera lectura puede ser vieja
+
+`gh pr list` devolvió `#829 CONFLICTING` y escribí que había un conflicto. Al re-consultar **el mismo
+PR** dio `MERGEABLE / UNSTABLE`: GitHub recalcula la mergeabilidad de forma asíncrona y la primera
+lectura pescó el estado intermedio.
+
+Peor que el error: para «verificar» hice `git fetch origin <rama>` + `git merge-tree --write-tree`, que
+salió **limpio**… sobre `ac2837c1`, que **no era el head del PR** (`f6151c0f`). Dos instrumentos
+midiendo otra cosa, y el segundo pareció confirmar al primero por casualidad invertida.
+
+→ **Antes de afirmar conflicto o limpieza: leer `headRefOid` del PR y compararlo con lo que tenés
+local.** `CONFLICTING` es hipótesis hasta la segunda lectura, y `UNSTABLE` **no es rojo** — son checks
+en vuelo.
