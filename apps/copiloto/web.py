@@ -638,6 +638,28 @@ class SignupIn(BaseModel):
 _EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
+def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, crypto) -> dict:
+    """Los campos de `/me` que NO dependen de los claims del token: salen iguales en las DOS ramas
+    del composition root, asi que viven en un solo lugar.
+
+    Por que existe este helper y por que NO incluye todo: los 6 campos restantes de `/me` se partian
+    en dos grupos que el conteo de apariciones NO distingue -- los dos aparecian «2 veces», uno por
+    rama. Medido expresion por expresion: `mp_connected`, `composio_connected` y
+    `onboarding_completado` eran IDENTICOS (duplicacion real), mientras `es_admin`, `cuenta_google` y
+    `email` DIFIEREN a proposito segun haya token o no. Colapsar esos tres habria borrado el
+    fail-closed documentado abajo, con un refactor que se ve impecable y deja los tests verdes.
+
+    `composio_gateway` y `crypto` entran por parametro y no por import: son las dependencias que el
+    composition root inyecta, y este helper no elige implementacion.
+    """
+    seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+    composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                          if (c["status"] or "").upper() == "ACTIVE"]
+    return {"mp_connected": seller is not None,
+            "composio_connected": composio_connected,
+            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+
+
 def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:
     """Los DOS campos legales de `/me`, derivados de UNA sola lectura de la DB.
 
@@ -1087,27 +1109,21 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # `email` sale del claim del MISMO token ya validado por require_tenant -- no una
             # segunda fuente que pueda divergir. `None` si el token no lo trae (login por
             # teléfono/anónimo, o un proveedor que no lo expone): ausente, no inventado.
-            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
-                                  if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
-                    "mp_connected": seller is not None, "composio_connected": composio_connected,
                     "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+                    **_campos_tenant(conn_factory, cliente_id, composio_gateway, crypto),
                     **_campos_legales(conn_factory, cliente_id)}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
-            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
-                                  if (c["status"] or "").upper() == "ACTIVE"]
             # Sin `require_claims` no hay token que leer: `es_admin=False` es fail-closed y
             # deliberado, no un bug -- sin claims no se puede AFIRMAR que sea admin, y esconder la
             # puerta de la consola nunca es un agujero de seguridad (el guard real es
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
-            return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+            # NO mover estos dos al helper `_campos_tenant`: difieren de la otra rama A PROPÓSITO, y
+            # el test `test_ASIMETRIA_es_admin...` existe para que ese colapso salga rojo.
+            return {"cliente_id": cliente_id, "es_admin": False, "cuenta_google": False,
+                    **_campos_tenant(conn_factory, cliente_id, composio_gateway, crypto),
                     **_campos_legales(conn_factory, cliente_id)}
 
     @app.post("/me/onboarding/completar")
