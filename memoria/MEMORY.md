@@ -51,6 +51,8 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
+- [🔍🎭 No era «no caza X»: era «no caza X en su FORMA real»](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el par de contraste mueve UNA variable.
+- [📝🛡️ El comentario que DECLARA una protección desactiva la búsqueda](el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md) — 4 casos; cubre UNA mitad.
 - [🎯 El control positivo cubre sólo la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) - el verde acredita al defecto que no mira.
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) - inyectá el caso a propósito.
@@ -71,7 +73,6 @@
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿el número lo midió alguien o lo escribió alguien?
-- [🔬🎯 Una simulación calibrada a la línea base no valida la capa que NO modela](una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela.md) — dijo «0 regresiones»; el instrumento encontró 9.
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión suele sobrevivir con otro porqué.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno; el control es un archivo que nadie toca.
 - [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso empuja al `--no-verify`.
@@ -135,7 +136,6 @@
 
 ### Coordinación entre sesiones
 - [🗺️🚫 PLANIFICACIÓN no implementa: baja contratos y destraba](planificacion-no-implementa-baja-contratos.md) — implementar desde acá pisa a la sesión dueña.
-- [📋🚩 CUATRO de mis SEIS filas estaban mal, y las cazó quien iba a implementar](cuatro-de-seis-filas-del-contrato-estaban-mal-y-las-cazo-quien-iba-a-implementar.md) — el §0 es HIPÓTESIS: invitá al rechazo.
 - [🛑🤖 Parar nombrando UN mecanismo deja el otro armado](una-orden-de-parada-que-nombra-un-mecanismo-deja-el-otro-armado.md) — el monitor sobrevive y ACTUA.
 - [📋🔃 El contrato que manda a hacer algo YA HECHO](el-contrato-que-manda-a-hacer-algo-ya-hecho.md) - medí estado y dueño de cada id ANTES de citarlo.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) - probá el cable.
@@ -149,6 +149,7 @@
 
 
 ### Git, deploy y checkout compartido
+- [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — el write que falla deja 0 bytes: tmp + `os.replace`.
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
 - [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — parche: temp + `os.replace`. Falla al escribir = ya truncó.
