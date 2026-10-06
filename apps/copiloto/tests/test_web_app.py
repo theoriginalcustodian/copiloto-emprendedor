@@ -76,6 +76,7 @@ class _FakeTenantsDB:
     def __init__(self) -> None:
         self.tenants: dict[str, dict] = {}     # auth_user_id -> {cliente_id, email, composio_user_id}
         self.mp_sellers: dict[str, str] = {}   # cliente_id -> seller_user_id (más reciente)
+        self.mp_caidos: set[str] = set()       # cliente_id con la fila marcada `reauth_desde` (caido)
         self.onboarding: dict[str, bool] = {}  # cliente_id -> onboarding_completado (K-14)
         self.legal: dict[str, tuple] = {}      # cliente_id -> (legal_version, legal_aceptado_en) (BL-O6)
         self.replies: list[dict] = []          # [{id, cliente_id, session_id, reply_text, choices}]
@@ -122,6 +123,15 @@ class _FakeCursor:
         elif s.startswith("UPDATE UC_FACTORY.TENANTS SET LEGAL_VERSION"):
             version, en, cliente_id = params
             self._db.legal[cliente_id] = (version, en)
+        elif s.startswith("SELECT REAUTH_DESDE, EXPIRES_AT FROM UC_FACTORY.MP_CREDENTIALS"):
+            # `salud()` (K-09): fila con `reauth_desde` => "caido"; fila sana (vence en 2100) => "conectado".
+            (cliente_id,) = params
+            if cliente_id in self._db.mp_caidos:
+                self._result = ("2026-01-01T00:00:00Z", None)
+            elif cliente_id in self._db.mp_sellers:
+                self._result = (None, 4102444800)
+            else:
+                self._result = None
         elif s.startswith("SELECT SELLER_USER_ID FROM UC_FACTORY.MP_CREDENTIALS"):
             (cliente_id,) = params
             seller = self._db.mp_sellers.get(cliente_id)
@@ -601,6 +611,19 @@ def test_me_without_mp_connection_reports_false():
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
                         "legal_aceptado": False, "legal_version_aceptada": None}
+
+
+def test_me_con_fila_pero_reauth_marcado_reporta_mp_connected_false():
+    """CONTROL ADVERSARIAL (mp_connected unificado): hay FILA de MP, pero la conexión pide reconectar
+    (`reauth_desde` marcado). `first_seller_user_id` decía `true` aquí; `salud()` dice `caido` => false.
+    Sin este caso el fix es indistinguible de no hacerlo: con conexión sana los dos ya dan igual."""
+    db = _FakeTenantsDB()
+    db.mp_sellers["cid-A"] = "seller-146"
+    db.mp_caidos.add("cid-A")
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    r = TestClient(app).get("/me")
+    assert r.status_code == 200
+    assert r.json()["mp_connected"] is False
 
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():

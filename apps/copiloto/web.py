@@ -638,6 +638,18 @@ class SignupIn(BaseModel):
 _EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
+def _estado_mp(conn_factory: Callable, cliente_id: str, crypto) -> str:
+    """Estado de la conexión MP de ESTE tenant: `salud()` (K-09), la ÚNICA fuente de `/me` y `/catalog`.
+    Por qué no `first_seller_user_id()`: responde «hay fila», y una fila con la credencial caída
+    (`reauth_desde` o vencida) le decía al emprendedor que podía cobrar cuando tenía que reconectar."""
+    return MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+
+
+def _mp_connected(estado: str) -> bool:
+    """El ÚNICO predicado de «puede cobrar»: `conectado` y nada más. Lo usan `/me` y `/catalog`."""
+    return estado == "conectado"
+
+
 def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, crypto) -> dict:
     """Los campos de `/me` que NO dependen de los claims del token: salen iguales en las DOS ramas
     del composition root, asi que viven en un solo lugar.
@@ -652,10 +664,10 @@ def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, cr
     `composio_gateway` y `crypto` entran por parametro y no por import: son las dependencias que el
     composition root inyecta, y este helper no elige implementacion.
     """
-    seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+    estado_mp = _estado_mp(conn_factory, cliente_id, crypto)
     composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
                           if (c["status"] or "").upper() == "ACTIVE"]
-    return {"mp_connected": seller is not None,
+    return {"mp_connected": _mp_connected(estado_mp),
             "composio_connected": composio_connected,
             "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
 
@@ -1183,12 +1195,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
         SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
         literal que pueda driftear de `/composio/connect`."""
-        mp_status = MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+        mp_status = _estado_mp(conn_factory, cliente_id, crypto)
         conexiones = composio_gateway.list_connections(cliente_id)
         composio_connected = [c["toolkit"] for c in conexiones
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
-                                          mp_connected=mp_status == "conectado",
+                                          mp_connected=_mp_connected(mp_status),
                                           composio_connected=composio_connected,
                                           mp_status=mp_status,
                                           composio_caidos=composio_caidos(conexiones),
