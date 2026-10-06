@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { FuncionSoporte } from '../../lib/api';
 import { Button, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
+import { LegalScreen, type LegalKind } from '../../auth/LegalScreen';
 import { CambiarCredenciales } from './CambiarCredenciales';
 import './account.css';
 
@@ -18,6 +19,24 @@ function accountLabel(me: { cliente_id?: string; email?: string | null } | undef
 
 function initial(clienteId: string | undefined): string {
   return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
+}
+
+/**
+ * BL-O6 (LEGALVERMICUENTA): qué versión legal aceptó este tenant, según los dos campos de `/me`.
+ * Tres estados reales más un caso que NO es ninguno de ellos: si el campo no llega (backend viejo,
+ * respuesta sin el campo) se dice que no se pudo verificar. Colapsarlo en «nunca aceptó» mostraría
+ * una mentira sin ninguna alarma (degradado prudente hacia el caso benigno).
+ */
+function descripcionLegal(
+  me: { legal_aceptado?: boolean; legal_version_aceptada?: string | null } | undefined,
+): string {
+  if (!me) return 'Cargando tu versión aceptada…';
+  if (typeof me.legal_aceptado !== 'boolean' || me.legal_version_aceptada === undefined) {
+    return 'No pudimos verificar qué versión aceptaste.';
+  }
+  if (me.legal_version_aceptada === null) return 'Todavía no aceptaste ninguna versión.';
+  if (me.legal_aceptado) return `Aceptaste la versión vigente (${me.legal_version_aceptada}).`;
+  return `Aceptaste la versión ${me.legal_version_aceptada}, que ya no es la vigente.`;
 }
 
 /** Chevron de fila (mismo patrón que `modules/apps/AppsScreen.tsx` `ChevronIcon`, verbatim
@@ -89,6 +108,11 @@ export interface AccountScreenProps {
 export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
   const { me, logout } = useSession();
   const [confirmandoSalida, setConfirmandoSalida] = useState(false);
+  const [legalAbierto, setLegalAbierto] = useState<LegalKind | null>(null);
+
+  if (legalAbierto) {
+    return <LegalScreen kind={legalAbierto} onVolver={() => setLegalAbierto(null)} />;
+  }
 
   return (
     <div className="account-screen" data-testid="account-screen">
@@ -130,6 +154,35 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* BL-O6 (LEGALVERMICUENTA): la versión que aceptó el tenant y los textos ya existentes. Sólo
+          muestra; qué se hace cuando no es la vigente es decisión del operador, no de esta fila. */}
+      <div className="account-screen__list">
+        <div className="account-screen__row" data-testid="account-legal-estado">
+          <div className="account-screen__row-texts">
+            <span className="account-screen__row-label">Términos y privacidad</span>
+            <span className="account-screen__row-desc">{descripcionLegal(me)}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="account-screen__row"
+          data-testid="account-legal-tos"
+          onClick={() => setLegalAbierto('tos')}
+        >
+          <span className="account-screen__row-label">Términos y condiciones</span>
+          <ChevronIcon />
+        </button>
+        <button
+          type="button"
+          className="account-screen__row"
+          data-testid="account-legal-privacidad"
+          onClick={() => setLegalAbierto('privacidad')}
+        >
+          <span className="account-screen__row-label">Política de privacidad</span>
+          <ChevronIcon />
+        </button>
       </div>
 
       <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
