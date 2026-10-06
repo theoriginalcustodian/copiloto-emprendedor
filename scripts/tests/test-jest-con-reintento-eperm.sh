@@ -10,7 +10,7 @@
 #   2. NEGATIVO  EPERM de caché pero el re-run falla -> exit ≠ 0, y no hay 3.ª llamada.
 #   3. NEGATIVO  aserción roja -> exit del jest original, 1 sola llamada.
 #   4. VERDE     jest verde -> exit 0, 1 sola llamada, sin aviso de reintento.
-#   6. POSITIVO  el cap de workers llega a las DOS llamadas (la 1.ª y el re-run). Es el control del
+#   6. POSITIVO  con `CI=` forzado (no heredado), el cap de workers llega a las DOS llamadas (la 1.ª y el re-run). Es el control del
 #                bug que el cap casi tuvo: el re-run descarta los args, así que puesto en el llamador
 #                habría quedado fuera justo de la re-corrida.
 #   7. NEGATIVO  con CI=1 el cap NO aparece en ninguna de las dos: en el runner manda el paralelismo.
@@ -77,8 +77,11 @@ correr "$E"; rc=$?
   || fail "4 rc=$rc llamadas=$(cat "$E/llamadas" 2>/dev/null)"
 
 # 6 — el cap llega a la 1.a llamada Y al re-run (sin esto, el fix viviria en un solo call-site)
+# ⚠️ `CI=` EXPLÍCITO: heredar `CI` del entorno hacía que este caso midiera DÓNDE corre el test en vez
+# de qué hace el script — verde en la PC, rojo en Actions (donde `CI=1` y el cap está ausente CON RAZÓN).
+# Un control tiene que FIJAR la condición que dice probar, no heredarla. Lo cazó el CI, 2026-10-06.
 E="$T/e6"; escenario "$E" failed "$EPERM" - 0 1 0
-correr "$E"; rc=$?
+(cd "$T/pkg" && ESC="$E" CI= PATH="$T/bin:$PATH" bash "$SCRIPT") > "$E/out" 2>&1; rc=$?
 if [ "$rc" -eq 0 ] && grep -qx -- '--maxWorkers=1' "$E/args1" && grep -qx -- '--maxWorkers=1' "$E/args2"; then
   ok "6 el cap de workers llega a la 1.ª llamada y al re-run"
 else

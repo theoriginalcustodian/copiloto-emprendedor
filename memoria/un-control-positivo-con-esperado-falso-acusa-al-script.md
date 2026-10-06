@@ -40,3 +40,27 @@ justo el momento de mirar el esperado primero.
 
 Corolario para quien escribe los contratos: **poné el `path:línea` del que mediste, no el número
 suelto.** Un número sin ancla no se puede refutar sin rehacer el trabajo.
+
+## Refuerzo 2026-10-06 — un control que HEREDA su condición del entorno mide el entorno, no el código
+
+Agregué un cap de workers al gate que se aplica **sólo fuera de CI** (`[ -z "${CI:-}" ]`), y con él un
+control positivo: «el cap llega a las dos llamadas de jest». **Verde en la PC, ROJO en Actions.**
+
+El rojo no era del código: en Actions el runner exporta `CI=1`, así que el cap estaba ausente **con
+razón** — exactamente lo que el cambio especifica. Lo que estaba mal era el control, porque **heredaba
+`CI` del ambiente** en vez de fijarlo. Medía *dónde corre el test*, no *qué hace el script*. Y acusaba
+al script, que era correcto.
+
+**La asimetría que lo hace fácil de no ver:** el caso negativo gemelo (`CI=1` ⇒ sin cap) **sí** fijaba
+su condición, porque para escribirlo tuve que ponerla explícita. El positivo no la fijó justo porque en
+mi máquina la condición ya era la del ambiente — el entorno de desarrollo **regala** el caso positivo y
+por eso no se nota que falta declararlo. El control más frágil es el que coincide con tu default.
+
+**Regla:** todo control fija la condición que dice probar, incluida la que ya es verdad donde lo
+escribís. Si una variable de entorno decide la rama bajo prueba, va en la invocación del caso
+(`CI= bash …` / `CI=1 bash …`), nunca heredada. El criterio operativo es el de siempre: **¿en qué
+mundo saldría distinto?** Si la respuesta es «en otra máquina», el control no está fijando nada.
+
+Relacionadas: [[verificar-la-composicion-root-no-el-default]] ·
+[[el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas]] ·
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
