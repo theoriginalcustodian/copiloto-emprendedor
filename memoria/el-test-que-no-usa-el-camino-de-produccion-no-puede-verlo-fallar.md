@@ -122,3 +122,23 @@ vacía, el test se pone rojo en vez de pasar en silencio.
 sobre `SUCCESS` viejo tiene que dar **FAILURE**. Sin él, un dedupe que tomara «cualquiera de los dos»
 pasaría igual, porque en la corrida real los dos duplicados eran `SUCCESS`: la medición que motivó el
 fix no distinguía «tomé el más reciente» de «tomé uno».
+
+## Refuerzo 2026-10-06 — el DEFAULT del harness elige la rama, y eligio la que produccion no usa
+
+`/me` se define **dos veces** en `web.py`, en dos ramas del composition root: `if require_claims is not
+None:` y su `else`. Las dos arman el payload del tenant.
+
+`serve.py:303` inyecta `require_claims` ⇒ **produccion corre la primera**. El harness de los tests
+(`_build_app` en `test_web_app.py:251`) declara `require_claims=None` **por default** ⇒ los **6** tests
+BL-O6 que cubrian `legal_aceptado` corrian **todos** por el `else`: la rama que en prod **no se
+ejecuta**. Nadie lo oculto; es el valor por defecto de un parametro.
+
+Por que no da sintoma: los 6 tests son correctos, pasan, y nombran bien lo que prueban. El campo existe
+en las dos ramas, asi que la cobertura **se ve** completa. Lo que no se ve es que la mitad que corre en
+prod no tenia ningun test propio -- y cuando agregue el campo nuevo, probarlo solo ahi lo habria dejado
+verde mientras el camino real seguia sin medirse.
+
+**La pregunta, y es distinta de «el test usa el camino de produccion?»:** *cuando una funcion se define
+mas de una vez segun una dependencia inyectada, **que valor de esa dependencia usa el default de mi
+harness, y es el mismo que usa el composition root de prod?*** Si difiere, parametrizá por las dos ramas:
+acá eso convirtió 3 casos en 6 y costó una línea de `parametrize`.

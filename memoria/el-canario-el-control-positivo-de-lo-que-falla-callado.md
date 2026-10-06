@@ -121,3 +121,31 @@ acreditado para la forma que importaba.
 
 Ver también [[instrumento-que-no-mira-nunca-falla]] (el «sin comodín» era un *no mirado*, no un *limpio*) y
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+## Refuerzo 2026-10-06 — UN mutante prueba que el test se pone rojo; N mutantes prueban QUE acredita cada test
+
+Cerre el wiring del `workflow_id` del router con 15 tests verdes. El verde no acredita nada solo, asi
+que inyecte mutantes. La leccion no es «inyecta un mutante» -- es **cuantos**.
+
+El cambio tenia **tres piezas independientes**: la formula (`workflow_id_for`, `:18`), su uso
+(`id=wf_id` en el `start_workflow`, `:37`) y el payload de arranque (`{"cliente_id": ...}`, `:35`). Un
+mutante sobre cualquiera pone la suite en rojo, y con eso yo habria cantado «control positivo OK».
+Los tres juntos dicen algo que ninguno dice solo:
+
+| mutante | rojos | lo que REVELA |
+|---|---|---|
+| M1 la formula | **9** | los 4 del id + los 4 adversariales + el de la ambiguedad |
+| M2 el uso del id | **8** | los mismos 8, **pero no** el de ambiguedad -> ese acredita la formula PURA, no el wiring |
+| M3 el payload | **4** | **solo** los del config -> id y payload son piezas independientes, y sin M3 nada probaba que el test del payload midiera algo distinto |
+
+Lo mismo en el contrato legal del mismo dia, con dos piezas (el campo nuevo sale / el booleano no cambia
+de semantica): M1 tumbo 5, M2 tumbo **3** -- y esos 3 eran **exactamente** el caso «acepto OTRA version»,
+que es el unico que distingue el campo nuevo del booleano viejo. **El mutante demostro que ese caso era
+discriminante en vez de que yo lo afirmara en el DoD.**
+
+**La regla operativa:** contá las piezas del cambio y poné un mutante por pieza. Si dos mutantes
+distintos tumban **el mismo conjunto** de tests, o no son dos piezas, o te falta el test que las separa.
+Y si un mutante tumba **todo**, el control positivo todavia no te dijo nada sobre el reparto.
+
+El revert va en `trap EXIT` con el backup **en disco**: con el cambio sin commitear,
+`git checkout -- <path>` no devuelve el original, **borra el trabajo**.
