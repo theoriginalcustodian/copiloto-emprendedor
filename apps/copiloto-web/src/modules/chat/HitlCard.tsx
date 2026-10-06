@@ -70,12 +70,15 @@ export function HitlCard({
       ...(name ? [{ etiqueta: 'PARA', valor: name }] : []),
       ...(amount ? [{ etiqueta: 'MONTO', valor: `$${amount}` }] : []),
     ];
+    // El texto de lo que se pidió aprobar se conserva como `nota`: el recibo es el rastro de qué se
+    // confirmó o canceló, no sólo de la elección.
     return (
       <Recibo
         testId={`hitl-card-${service || 'plain'}`}
         tono={resuelta.tono}
         titulo={resuelta.titulo}
         lineas={lineas}
+        nota={{ texto: concept }}
       />
     );
   }

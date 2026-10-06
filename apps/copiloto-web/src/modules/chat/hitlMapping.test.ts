@@ -204,6 +204,23 @@ describe('hitlMapping', () => {
     expect(props.resuelta).toEqual({ titulo: 'Cancelar', tono: 'neutro' });
   });
 
+  // Adversarial: una CANCELACIÓN cuyo value contiene «confirm» no puede mostrarse como éxito. Con el
+  // regex viejo (`CONFIRM_VALUE_RE` sobre el value) este caso daba `exito`.
+  it('BL-F1 adversarial: cancelación con «confirm» en el value -> neutro, nunca exito', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-14',
+        choices: [
+          { label: 'Sí, cobrar', value: 'confirm_charge_1' },
+          { label: 'Cancelar', value: 'cancel_confirm_1' },
+        ],
+        hitlRespondido: { value: 'cancel_confirm_1', label: 'Cancelar' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Cancelar', tono: 'neutro' });
+  });
+
   it('BL-F1: sin hitlRespondido no hay resuelta — control negativo', () => {
     const props = buildHitlCardProps(msg({ id: 'assistant-13', choices: CONFIRM_CANCEL }), vi.fn());
     expect(props.resuelta).toBeUndefined();

@@ -119,6 +119,13 @@ describe('HitlCard', () => {
     expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
   });
 
+  it('BL-F1: el recibo conserva el texto de lo que se aprobó o canceló (rastro)', () => {
+    renderCard({ resuelta: { titulo: 'Sí, enviar', tono: 'exito' } });
+    expect(screen.getByTestId('hitl-card-googledocs')).toHaveTextContent(
+      'Voy a crear el documento «Presupuesto eléctrico» en Docs. ¿Confirmás?',
+    );
+  });
+
   it('BL-F1: sin resuelta la card sigue activa con sus botones — control negativo del test anterior', () => {
     renderCard();
     expect(screen.queryByRole('status')).toBeNull();

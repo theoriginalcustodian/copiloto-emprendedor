@@ -115,10 +115,12 @@ export function buildHitlCardProps(
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
     disabled,
+    // Éxito = la elección guardada ES la opción de confirmar que muestran los botones (igualdad, no
+    // regex: un value de cancelación que contenga «confirm» no puede presentarse como confirmado).
     resuelta: message.hitlRespondido
       ? {
           titulo: message.hitlRespondido.label,
-          tono: CONFIRM_VALUE_RE.test(message.hitlRespondido.value) ? 'exito' : 'neutro',
+          tono: message.hitlRespondido.value === confirmChoice.value ? 'exito' : 'neutro',
         }
       : undefined,
     onConfirm: disabled ? () => {} : () => onChoice(confirmChoice.value, confirmChoice.label, message.id),
