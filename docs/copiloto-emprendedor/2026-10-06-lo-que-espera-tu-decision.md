@@ -1,13 +1,15 @@
 # Lo que espera tu decisión — 2026-10-06
 
-**Las tuyas son 4.** Las de sesión eran 2 cuando preguntaste y **ahora son 5**: el deploy de hoy
-destapó tres (`HEALTHZSHA` — `/healthz` miente sobre la versión desplegada, `DURABGATE` — el
-gate de durabilidad no frena, `DRIVECERO` — Drive se conecta y no hace nada). Las cinco están
-asignadas y moviéndose: `VERIFPRODWEB` → frontend2 · `MOBILEVIVO` → frontend1 · las tres
-nuevas → backend.
+**Las tuyas son 4, y no cambiaron en todo el día.** Lo que cambia es cuántas filas hay del otro
+lado: eran **2** cuando preguntaste, **5** cuando escribí esto y **8** un rato después — el deploy
+destapó tres (`HEALTHZSHA`, `DURABGATE`, `DRIVECERO`) y la auditoría del smoke cuatro más. Todas
+asignadas: frontend2, frontend1 y backend.
 
-🔻 **Corrijo el número que te di hace un rato:** dije «4 de 6» y en la misma hora pasó a «4 de
-9». **Lo tuyo no cambió** — cambió cuánto se está moviendo del otro lado.
+🔻 **Por eso este documento ya no cita ese número.** Te di «4 de 6» y en una hora fue «4 de 9» y
+«4 de 12»; una cifra viva metida en un documento envejece más rápido de lo que alcanzo a corregirla,
+y entonces el documento miente con cara de preciso. El recuento de sesión se **mide** en
+`coordinacion/PLAN.md` (bloque `COLA-VIVA`), que es lo que el instrumento lee. Acá queda sólo lo tuyo,
+que es lo único que ninguna sesión puede mover.
 
 Las cuatro de abajo **ninguna sesión puede moverlas**, y por eso están paradas.
 
