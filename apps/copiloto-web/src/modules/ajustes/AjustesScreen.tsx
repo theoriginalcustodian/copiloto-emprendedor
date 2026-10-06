@@ -9,6 +9,8 @@ import { PantallaTono } from './negocio/PantallaTono';
 import { PantallaAfipSetup } from './afip/PantallaAfipSetup';
 import './ajustes.css';
 
+// `miPlan` salió del union por DEC-8 (2026-09-21): «plan y límites NO entran en la beta».
+// Guardado en BL-V2 con su condición de entrada. No volver a agregarlo sin que BL-V2 esté abierto.
 type SubVista = 'perfilNegocio' | 'tono' | 'facturacionAfip' | 'comoUsar' | 'apariencia' | 'feedback';
 
 export interface AjustesScreenProps {
