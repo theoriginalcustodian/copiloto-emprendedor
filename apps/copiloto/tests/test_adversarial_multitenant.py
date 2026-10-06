@@ -451,15 +451,44 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
     me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
 
-    assert me_a == {"cliente_id": a.cliente_id, "mp_connected": True, "composio_connected": ["gmail"],
+    # El fixture siembra A y B con credencial VENCIDA (expires_at=1) => `salud()` = "caido" => mp_connected
+    # false para los dos. Antes esta aserción esperaba true porque `/me` miraba sólo que hubiera FILA:
+    # era el bug que `_estado_mp`/`_mp_connected` cierran. El aislamiento sigue probado por composio_connected.
+    assert me_a == {"cliente_id": a.cliente_id, "mp_connected": False, "composio_connected": ["gmail"],
                     "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
                     "legal_aceptado": False, "legal_version_aceptada": None}
-    # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
-    # y B NO ve la conexión composio que solo existe para A.
-    assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": [],
+    # B NO ve la conexión composio que solo existe para A.
+    assert me_b == {"cliente_id": b.cliente_id, "mp_connected": False, "composio_connected": [],
                     "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
                     "legal_aceptado": False, "legal_version_aceptada": None}
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+def test_adversarial_mp_connected_sale_de_salud_y_me_igual_catalog(two_tenants, crypto, conn_de_tenant):
+    """CONTROL ADVERSARIAL REAL (Postgres) de `mp_connected` unificado. Sobre la MISMA fila de A:
+    - sana (vence 2100, sin `reauth_desde`) ⇒ `/me` y `/catalog` dicen true / conectado;
+    - con `reauth_desde` marcado ⇒ `/me` y `/catalog` dicen FALSE / caido, aunque la fila siga.
+    El segundo caso es el que separa «lo arreglé» de «lo dije»: con la fila sana los dos valores ya
+    coincidían antes del fix; sólo la fila con la conexión caída mostraba el bug (`true` en `/me`)."""
+    a, _b = two_tenants
+    store_a = MpCredentialStore(conn_de_tenant(a.cliente_id), a.cliente_id, crypto)
+    client = TestClient(_build_http_app(two_tenants, crypto, composio_connections={}))
+    hdr = {"Authorization": f"Bearer {a.token}"}
+
+    def estado_de_a() -> tuple:
+        me = client.get("/me", headers=hdr).json()["mp_connected"]
+        cat = client.get("/catalog", headers=hdr).json()["services"]
+        mp = next(s for s in cat if s["key"] == "mercadopago")
+        return me, mp["connected"], mp["status"]
+
+    # 1) control NEGATIVO: credencial sana ⇒ los dos dicen que sí
+    store_a.update_tokens(a.seller, access_token="AT-A-SANA", refresh_token="RT-A-SANA", expires_at=4102444800)
+    assert estado_de_a() == (True, True, "conectado")
+
+    # 2) control POSITIVO: MISMA fila, conexión caída (reauth marcado) ⇒ los dos dicen que NO
+    store_a.marcar_reauth(a.seller)
+    assert estado_de_a() == (False, False, "caido")
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
 
 
 def test_adversarial_http_catalog_reflects_only_own_tenant_state(two_tenants, crypto, conn_de_tenant):
