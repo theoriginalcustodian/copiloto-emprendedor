@@ -154,6 +154,7 @@ export function TarjetaClientePropuesto({
         {dicho != null && dicho !== '' && <p className="propuesta-card__aviso">{dicho}</p>}
         <FormularioCliente
           iniciales={propuesta}
+          mensajeId={mensajeId}
           onGuardado={(cliente) => {
             guardarResolucion(mensajeId, { estado: 'guardado', nombre: cliente.nombre });
             setEstado({ fase: 'guardado', nombre: cliente.nombre });

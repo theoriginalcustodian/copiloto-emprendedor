@@ -81,6 +81,7 @@ describe('SignupScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
     vi.mocked(api.aceptarLegal).mockResolvedValueOnce({
       aceptado: true,
@@ -119,6 +120,7 @@ describe('SignupScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
     vi.mocked(api.aceptarLegal).mockRejectedValueOnce(new ApiError(409, 'version_desactualizada'));
 
@@ -152,6 +154,7 @@ describe('SignupScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
     vi.mocked(api.aceptarLegal).mockRejectedValueOnce(
       new ApiError(
@@ -189,6 +192,7 @@ describe('SignupScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
     vi.mocked(api.aceptarLegal).mockRejectedValueOnce(new Error('network down'));
 

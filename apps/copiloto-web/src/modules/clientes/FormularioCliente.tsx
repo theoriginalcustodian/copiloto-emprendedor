@@ -37,6 +37,12 @@ export interface FormularioClienteProps {
   onDuplicado: (duplicado: DuplicadoCliente) => void;
   onAbrirCliente: (cliente: Cliente) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` que trae la card (IDEMINGCLI, mismo mecanismo que `mensajeId` de
+   * `FormularioGasto`). Si viene, la idem-key del alta se DERIVA de él (`cliente:<id>`) en vez de
+   * nacer con `generarId()` en cada montaje: un remonte con el POST en vuelo reenvía la MISMA clave.
+   */
+  mensajeId?: string;
 }
 
 export function FormularioCliente({
@@ -46,6 +52,7 @@ export function FormularioCliente({
   onDuplicado,
   onAbrirCliente,
   onCancelar,
+  mensajeId,
 }: FormularioClienteProps) {
   const base = edita ?? iniciales;
   const [nombre, setNombre] = useState(base?.nombre ?? '');
@@ -102,7 +109,9 @@ export function FormularioCliente({
       if (edita != null) {
         res = await editarCliente(edita.id, cambiosDeCliente(edita, datos), forzar ? { forzar: true } : undefined);
       } else {
-        if (claveAlta.current === null) claveAlta.current = generarId();
+        if (claveAlta.current === null) {
+          claveAlta.current = mensajeId != null ? `cliente:${mensajeId}` : generarId();
+        }
         res = await crearCliente(datos, { ...(forzar ? { forzar: true } : {}), idemKey: claveAlta.current });
       }
 

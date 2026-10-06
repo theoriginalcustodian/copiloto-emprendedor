@@ -216,24 +216,35 @@ def test_composio_valid_toolkits_derived_matches_policy_union():
     """`_composio_valid_toolkits` no es una lista literal aparte -- es EXACTAMENTE la unión de
     CALENDAR_POLICY + services.merged_policy() (la misma que arma worker_b.py para el ComposioGateway
     real). Si un test de este archivo divergiera de la policy real, este assert lo cazaría."""
-    expected = frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
+    expected = frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
     assert web_module._composio_valid_toolkits() == expected
-    # Poda del hito 2: hubspot e instagram se fueron enteros. Quedan 5.
-    # googledrive SIGUE: no lo usa el agente sino `archivar_factura_en_drive` (el PDF de cada factura),
-    # que reusa la policy de este módulo. Ver el pedido a planificación del 2026-07-22.
-    assert len(expected) == 5   # gmail, googlecalendar, googledrive, googledocs, googlesheets
+    # Regla A7: conectable ⇔ tiene acciones. Drive se queda SIN conectar (TOOLS vacío), pero su policy
+    # sigue en el gateway del worker (`merged_policy`) para `archivar_factura_en_drive`.
+    drive = next(m.TOOLKIT for m in services.modules().values() if not getattr(m, "TOOLS", None))
+    assert drive not in expected
+    assert drive in services.merged_policy()
 
 
 @pytest.mark.parametrize("toolkit", sorted(
-    frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())))
+    frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())))
 def test_composio_connect_accepts_every_derived_toolkit(toolkit):
-    """Los 7 toolkits soportados hoy responden 200 -- ninguno queda rechazado por una lista
-    desactualizada a mano."""
+    """Todo toolkit conectable responde 200 -- ninguno queda rechazado por una lista desactualizada a mano."""
     gateway = _FakeComposioGateway()
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), composio_gateway=gateway)
     r = TestClient(app).get("/composio/connect", params={"service": toolkit})
     assert r.status_code == 200
     assert gateway.authorize_calls == [("cid-A", toolkit)]
+
+
+def test_composio_connect_rechaza_un_servicio_sin_acciones():
+    """A7: Drive no se puede conectar (no hay nada detrás). Un slug que no está en la lista conectable se
+    rechaza y NUNCA llega al gateway. Control: el mismo endpoint acepta uno conectable (test de arriba)."""
+    drive = next(m.TOOLKIT for m in services.modules().values() if not getattr(m, "TOOLS", None))
+    gateway = _FakeComposioGateway()
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), composio_gateway=gateway)
+    r = TestClient(app).get("/composio/connect", params={"service": drive})
+    assert r.status_code != 200
+    assert gateway.authorize_calls == []
 
 
 # --- DELETE /composio/connection ---------------------------------------------------

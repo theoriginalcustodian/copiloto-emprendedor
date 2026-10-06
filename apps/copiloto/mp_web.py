@@ -11,9 +11,14 @@ from typing import Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 
+from cobro_store import ORIGEN_MP, CobroInvalido
+
 
 def create_mp_app(*, gateway, crypto, cred_store_factory: Callable, payment_store_factory: Callable,
-                  start_refresh: Callable | None = None) -> FastAPI:
+                  start_refresh: Callable | None = None,
+                  cobro_store_factory: Callable | None = None) -> FastAPI:
+    """`cobro_store_factory` es lo que convierte un pago aprobado en un Ingreso (COBROMP). Opcional: sin
+    él el webhook sólo persiste el pago crudo (`mp_payments`), como antes."""
     app = FastAPI(title="Copiloto MercadoPago")
 
     @app.get("/mp/callback")
@@ -47,9 +52,27 @@ def create_mp_app(*, gateway, crypto, cred_store_factory: Callable, payment_stor
                 payment = await asyncio.to_thread(gateway.get_payment, creds["access_token"], data_id)
                 await asyncio.to_thread(payment_store_factory(cid).upsert_from_payment,
                                         payment, seller_user_id=seller)
+                if cobro_store_factory and payment.get("status") == "approved":
+                    # Sólo `approved`: un pending/rejected que entrara como ingreso sería plata que el
+                    # emprendedor ve y no tiene. La idem_key sale del payment id de MP: su reintento del
+                    # webhook choca con el índice `copiloto_cobros_idem_uk` (23505) y no duplica.
+                    await asyncio.to_thread(_registrar_ingreso_mp, cobro_store_factory(cid), payment)
         return Response("ok", status_code=200)
 
     return app
+
+
+def _registrar_ingreso_mp(cobro_store, payment: dict) -> None:
+    pid = str(payment.get("id"))
+    try:
+        cobro_store.registrar_suelto(
+            monto=payment.get("transaction_amount"), medio="mercadopago",
+            fecha=(payment.get("date_approved") or "")[:10] or None,
+            idem_key=f"mp:{pid}", origen=ORIGEN_MP)
+    except CobroInvalido:
+        # Monto nulo o ≤ 0: no es un ingreso. El pago crudo ya quedó en `mp_payments`. NO se propaga:
+        # un 500 haría que MercadoPago reintente el mismo webhook indefinidamente.
+        return
 
 
 async def _maybe_async(fn, *args):

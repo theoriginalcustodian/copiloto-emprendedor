@@ -2,8 +2,10 @@ import './ajustes.css';
 
 /**
  * `PantallaAndamiaje` — port de `apps/mobile/src/modules/ajustes/PantallaAndamiaje.tsx`. Andamiaje
- * HONESTO para "Mi plan": un vacío explícito, nunca un dato de mentira. Un solo componente
- * reusable (título/ícono/mensaje) en vez de triplicar el mismo JSX.
+ * HONESTO: un vacío explícito, nunca un dato de mentira. Un solo componente reusable
+ * (título/ícono/mensaje) en vez de triplicar el mismo JSX.
+ * Sin uso en web desde DEC-8 (2026-09-21): sólo se conserva porque el gate de paridad testID empareja
+ * `modules/ajustes::andamiaje-vacio` con mobile. Se borra en web junto con el de mobile (FE1).
  */
 export interface PantallaAndamiajeProps {
   titulo: string;

@@ -108,3 +108,29 @@ silencio es peor que uno que acepta basura: la basura se ve en la salida.
 datos y **cerrala** (acá: los campos sólo cuentan dentro del fence, y el fence cierra el bloque); (2) exigí
 que **todo encabezado produzca un registro** (control de mudez, `exit 9`); (3) revisá que la plantilla que
 publicás sea **aceptada por tu propio parser** — la mía no lo era.
+
+## (2026-10-06) El control positivo buscó la frase que mi propia RETRACCIÓN tiene que citar
+
+Parcheé una fila del tablero para retirar un anti-patrón: decía «falta que el operador lo mergee» y
+había que sacarlo. Horneé el control positivo en el script: *la frase vieja debe quedar en **0**
+apariciones*. Dio **1**, y lo leí como parche incompleto: busqué una segunda fila, medí duplicados,
+revisé si había parcheado una copia fuera de la cola viva.
+
+**No había nada que arreglar.** La aparición que quedaba estaba **dentro de mi propio texto nuevo**:
+*«Acá decía «falta que el operador lo mergee», y eso es exactamente el anti-patrón…»*. Una retracción
+bien escrita **tiene que citar lo que retracta** — si no, nadie puede verificar qué se retiró. O sea el
+esperado `0` era **imposible por construcción**: el parche correcto garantiza ≥1.
+
+Es el espejo en prosa de esta entrada: no es que el guard se satisfaga con su comentario, es que **se
+acusa a sí mismo por su propia cita**. Y el esperado lo **escribí yo**, no lo midió nadie
+([[un-control-positivo-con-esperado-falso-acusa-al-script]]).
+
+**La pregunta que lo separa, antes de hornear el número:** *¿el fix correcto puede hacer que esta
+cuenta llegue a 0?* Si el fix **documenta** lo que quita —retracciones, deprecaciones, changelogs,
+comentarios que explican por qué algo ya no se hace—, la respuesta es no.
+
+**Cómo escribirlo bien:** el control no cuenta la frase, cuenta la frase **en rol de afirmación
+vigente**: exigir el marcador nuevo presente (eso sí es 0→1 y sólo existe después del parche) y acotar
+la cuenta de la vieja a las apariciones **fuera** del contexto de cita. El costo de equivocarse acá no
+es un parche mal hecho: es gastar la verificación persiguiendo un fantasma, con la mitad del riesgo de
+«arreglar» un archivo que estaba bien.

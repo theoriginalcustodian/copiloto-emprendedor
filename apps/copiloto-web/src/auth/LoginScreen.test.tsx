@@ -64,6 +64,7 @@ describe('LoginScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderLoginScreen();

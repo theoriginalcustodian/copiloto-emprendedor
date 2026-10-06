@@ -122,6 +122,13 @@ _SIN_ESTADO = _sin_estado()
 # fuerzan a una de las tres categorías.
 _RUTAS_DE_FRAMEWORK = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
 
+# El fallback del SPA (`web.py` `_mount_spa`) NO es una ruta de API: es la entrega del build de la PWA,
+# y sólo existe si hay `dist` en disco (gitignored, así que el CI no lo tiene y el PC sí). Matchea
+# CUALQUIER path por diseño, así que si entra al conjunto de rutas reales, `_normalizar_a_plantilla`
+# le acredita como cobertura a cualquier literal inventado -- el falso rojo de A2 (RATCHETFALSOROJO).
+# Se descarta de `_rutas_reales`, y `test_RATCHFALSOROJO_*` prueba que el resultado no cambia con el dist.
+_RUTA_SPA_FALLBACK = "/{full_path:path}"
+
 
 @pytest.fixture(autouse=True)
 def _fernet_key_env(monkeypatch):
@@ -249,7 +256,7 @@ def _rutas_reales(routes) -> list:
         anidado = getattr(route, "original_router", None)
         if anidado is not None:
             reales.extend(_rutas_reales(anidado.routes))
-        elif hasattr(route, "path") and hasattr(route, "endpoint"):
+        elif hasattr(route, "path") and hasattr(route, "endpoint") and route.path != _RUTA_SPA_FALLBACK:
             reales.append(route)
     return reales
 
@@ -525,6 +532,31 @@ def test_A2_literal_que_no_matchea_ninguna_ruta_se_reporta():
     assert len(cobertura.sin_match) == 1
     assert "/afip/facturas/x/no-existe-e2e2f4" in cobertura.sin_match[0]
     assert "sintetico.py:2" in cobertura.sin_match[0]
+
+
+@pytest.mark.parametrize("con_dist", [True, False], ids=["dist_presente", "dist_ausente"])
+def test_RATCHFALSOROJO_el_resultado_no_depende_de_que_exista_el_build_local(monkeypatch, tmp_path, con_dist):
+    """Regresión RATCHETFALSOROJO: el CI clona sin `apps/copiloto-web/dist` y el PC lo tiene. El
+    ratchet tiene que dar lo mismo en las dos condiciones. Control positivo de la condición: con
+    `dist` el fallback del SPA SÍ queda registrado (si no, el test no ejercita nada). Un fix validado
+    sólo en una condición no prueba nada: por eso se parametriza."""
+    dist = tmp_path / "dist"
+    if con_dist:
+        dist.mkdir()
+        (dist / "index.html").write_text("<!doctype html><html></html>")
+    monkeypatch.setenv("COPILOTO_WEB_STATIC_DIR", str(dist))
+
+    app, require_tenant = _build_full_app()
+
+    spa_registrado = any(getattr(r, "path", None) == _RUTA_SPA_FALLBACK for r in app.routes)
+    assert spa_registrado == con_dist
+    codigo = 'def test_ADVERSARIAL_x(client):\n    client.get("/afip/facturas/x/no-existe-e2e2f4")\n'
+    cobertura = _cobertura_desde_codigo(codigo, "sintetico.py", _rutas_reales(app.routes))
+    assert cobertura.plantillas == set()
+    assert len(cobertura.sin_match) == 1
+    clasificacion = _clasificar_rutas(app, require_tenant)
+    assert clasificacion["sin_clasificar"] == []
+    assert _RUTA_SPA_FALLBACK not in clasificacion["tenant_scoped"] + clasificacion["sin_estado"]
 
 
 def test_A3_fstring_no_desaparece_en_silencio():

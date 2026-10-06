@@ -37,6 +37,12 @@ export interface ValoresInicialesIngreso {
 
 export interface FormularioIngresoProps {
   iniciales?: ValoresInicialesIngreso;
+  /**
+   * El `id` del `ChatMessage` que trae la card (IDEMINGCLI, mismo mecanismo que `mensajeId` de
+   * `FormularioGasto`). Si viene, la idem-key del POST se DERIVA de él (`ingreso:<id>`) en vez de
+   * nacer con `generarId()` en cada montaje: un remonte con el POST en vuelo reenvía la MISMA clave.
+   */
+  mensajeId?: string;
   origen?: OrigenIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
@@ -58,7 +64,14 @@ export interface FormularioIngresoProps {
  * lo que faltó se avisa DESPUÉS con el ingreso ya guardado y se completa con `completarIngreso`
  * (PATCH sobre el mismo registro, nunca uno nuevo). Ver ese archivo para el porqué de cada regla.
  */
-export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar, onListo }: FormularioIngresoProps) {
+export function FormularioIngreso({
+  iniciales,
+  origen,
+  onGuardado,
+  onCancelar,
+  onListo,
+  mensajeId,
+}: FormularioIngresoProps) {
   const [monto, setMonto] = useState(iniciales?.monto ?? '');
   const [cliente, setCliente] = useState(iniciales?.cliente ?? '');
   const [medio, setMedio] = useState(iniciales?.medio ?? '');
@@ -82,7 +95,7 @@ export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar, o
     const importe = normalizarDecimal(crudo);
     setEnviando(true);
     setError(null);
-    const clave = claveGesto.current ?? generarId();
+    const clave = claveGesto.current ?? (mensajeId != null ? `ingreso:${mensajeId}` : generarId());
     claveGesto.current = clave;
     try {
       const res = await registrarIngreso({

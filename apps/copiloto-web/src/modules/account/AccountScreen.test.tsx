@@ -57,6 +57,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -74,6 +75,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -89,12 +91,19 @@ describe('AccountScreen', () => {
     expect(screen.getByText('Tu copiloto sigue activo')).toBeInTheDocument();
   });
 
-  it('muestra las filas "Plan" e "Idioma" (fiel al diseño, valores estáticos hasta que /me los exponga)', () => {
+  it('muestra la fila "Idioma" (fiel al diseño, valor estático hasta que /me lo exponga)', () => {
     renderAccountScreen();
-    expect(screen.getByText('Plan')).toBeInTheDocument();
-    expect(screen.getByText('Profesional')).toBeInTheDocument();
     expect(screen.getByText('Idioma')).toBeInTheDocument();
     expect(screen.getByText('Español (AR)')).toBeInTheDocument();
+  });
+
+  // DEC-8 (web): NO hay sustrato de planes (`admin_web.py:4`: «7c queda fuera de v1, sin sustrato»).
+  // La fila «Plan: Profesional» afirmaba un plan contratado que no existe. Control negativo: si la
+  // fila vuelve, ESTE test se pone rojo (un test de presencia no lo detecta).
+  it('DEC-8: NO muestra la fila «Plan» ni ningún plan contratado', () => {
+    renderAccountScreen();
+    expect(screen.queryByText('Plan')).toBeNull();
+    expect(screen.queryByText('Profesional')).toBeNull();
   });
 
   it('"Privacidad del historial" es una fila simple (sin hint "Próximamente") y no hay fila de recuperar contraseña', () => {
@@ -128,6 +137,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -146,6 +156,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();
@@ -164,6 +175,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
 
     renderAccountScreen();

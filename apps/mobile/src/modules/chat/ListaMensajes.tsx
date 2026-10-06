@@ -25,6 +25,7 @@ import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
 import { ChipArmarFactura } from './ChipArmarFactura';
+import { Recibo } from './Recibo';
 import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
@@ -78,9 +79,6 @@ interface TarjetaConfirmacionProps {
   gate: Gate;
   onConfirm: () => void;
   onCancel: () => void;
-  /** H-A4-9 — `true` cuando `gate.respondido` ya está presente: la card se deja de leer nada más
-   * (sin `onPress` activo en ninguno de los dos botones, opacidad reducida). */
-  disabled?: boolean;
 }
 
 /**
@@ -98,8 +96,21 @@ interface TarjetaConfirmacionProps {
  * -- jerga sin equivalente natural, justo lo que la consigna de terminología pide evitar. Por eso acá
  * `gate.markdown` se muestra como texto plano, no editable.
  */
-function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaConfirmacionProps) {
+function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionProps) {
   const tema = useTema();
+
+  // Ya respondida (H-A4-9, persistida en `hitlRespondido`): el estado terminal es un `Recibo`, no la
+  // card atenuada. Así la card resuelta dice qué pasó, y no hay botones que parezcan activos.
+  if (gate.respondido) {
+    const cancelo = gate.respondido.value === gate.cancelValue;
+    return (
+      <Recibo
+        testID="tarjeta-confirmacion"
+        tono={cancelo ? 'tenue' : 'exito'}
+        titulo={cancelo ? 'No lo hicimos' : 'Confirmado'}
+      />
+    );
+  }
 
   // Mismo nivel de vidrio que el gate de DocuMed ("informe"): flota DENTRO de la conversación, con su
   // propio ocluyente -- sin esto el chat de atrás se leería A TRAVÉS de la superficie donde el
@@ -108,14 +119,11 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaCon
     <CristalVidrio
       nivel="informe"
       testID="tarjeta-confirmacion"
-      style={[
+      style={
         gate.riesgo?.irreversible
           ? { ...styles.tarjetaGate, borderWidth: 1, borderColor: tema.color.peligro }
-          : styles.tarjetaGate,
-        // H-A4-9 — ya respondida: opacidad reducida, mismo criterio visual que `.uc-btn:disabled`
-        // en la web (`primitives.css`).
-        disabled ? { opacity: 0.55 } : {},
-      ]}
+          : styles.tarjetaGate
+      }
     >
       <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
         <View style={styles.encabezadoGate}>
@@ -169,12 +177,9 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaCon
           </Text>
         )}
         <View style={[styles.accionesGate, { gap: tema.espacio.sm }]}>
-          {/* H-A4-9 — `disabled` (nativo de `Pressable`, no sólo `onPress={undefined}`) bloquea el
-              toque sin lógica extra: mismo criterio que `disabled` en el `<button>` de la web. */}
           <Pressable
             testID="tarjeta-confirmacion-confirmar"
-            onPress={disabled ? undefined : onConfirm}
-            disabled={disabled}
+            onPress={onConfirm}
             style={pressableStyle([
               styles.botonGate,
               { backgroundColor: tema.color.acentoSuperficie, borderRadius: tema.radio.md },
@@ -186,8 +191,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaCon
           </Pressable>
           <Pressable
             testID="tarjeta-confirmacion-cancelar"
-            onPress={disabled ? undefined : onCancel}
-            disabled={disabled}
+            onPress={onCancel}
             style={pressableStyle([
               styles.botonGate,
               { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md },
@@ -257,6 +261,7 @@ const FilaMensaje = memo(function FilaMensaje({
         propuesta={clientePropuesto}
         texto={mensaje.text}
         resuelto={mensaje.clienteResuelto}
+        mensajeId={mensaje.id}
         onResolver={(patch) => onResolverTarjeta(mensaje.id, { clienteResuelto: patch })}
       />
     );
@@ -269,6 +274,7 @@ const FilaMensaje = memo(function FilaMensaje({
       <TarjetaIngresoPropuesto
         propuesta={ingresoPropuesto}
         resuelto={mensaje.ingresoResuelto}
+        mensajeId={mensaje.id}
         onResolver={(patch) => onResolverTarjeta(mensaje.id, { ingresoResuelto: patch })}
       />
     );
@@ -322,13 +328,10 @@ const FilaMensaje = memo(function FilaMensaje({
   if (gate) {
     // H-A4-9 — `gate.respondido` viene de `mensaje.hitlRespondido` (ver `mapearGate`/`hitl.ts`): ya
     // sea porque esta sesión la marcó al responder, o porque `sanitizarHitlRespondido` la migró al
-    // rehidratar. Deshabilitada: se pasa `hitlMessageId` de todos modos por si algún día algo la
-    // sigue mostrando activa (defensa en profundidad), pero `TarjetaConfirmacion` ya bloquea el
-    // toque por su cuenta con `disabled`.
+    // rehidratar. `TarjetaConfirmacion` la resuelve como `Recibo` (A5), sin botones.
     return (
       <TarjetaConfirmacion
         gate={gate}
-        disabled={Boolean(gate.respondido)}
         onConfirm={() =>
           onChoice(gate.confirmValue, { displayText: gate.confirmLabel, hitlMessageId: mensaje.id })
         }

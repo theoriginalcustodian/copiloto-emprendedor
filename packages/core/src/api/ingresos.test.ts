@@ -190,6 +190,38 @@ describe('registrarIngreso', () => {
 
     expect(peticiones[0].cuerpoJson).toEqual({ monto: '1' });
   });
+
+  /**
+   * El transporte de `idemKey` existia desde el principio (`ingresos.ts:205`) y **nadie verificaba
+   * que viajara**: este archivo tenia 274 lineas y 0 menciones, contra 6 en `clientes.test.ts` y 4 en
+   * `gastos.test.ts`. Un wire sin test no falla cuando se rompe -- se renombra el campo, el alta
+   * sigue devolviendo 201, y la idempotencia deja de existir sin que nada se ponga rojo.
+   */
+  it('🔴 `idemKey` viaja como `idem_key` — y solo cuando vino, mismo criterio que `confirmarDuplicado`', async () => {
+    responder = () => respuesta(201, { ingreso: { id: 13, monto: '85000.00', origen: 'voz', falta: [] } });
+
+    await registrarIngreso({ monto: '85000', origen: 'voz', idemKey: 'ingreso:assistant-7' });
+    expect(peticiones[0].cuerpoJson).toEqual({
+      monto: '85000',
+      origen: 'voz',
+      idem_key: 'ingreso:assistant-7',
+    });
+
+    await registrarIngreso({ monto: '85000', origen: 'voz' });
+    expect(peticiones[1].cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
+  });
+
+  it('`idemKey` y `confirmarDuplicado` conviven — es el MISMO gesto, confirmado tras el 409', async () => {
+    responder = () => respuesta(201, { ingreso: { id: 14, monto: '85000.00', origen: 'voz', falta: [] } });
+
+    await registrarIngreso({ monto: '85000', idemKey: 'ingreso:assistant-7', confirmarDuplicado: true });
+
+    expect(peticiones[0].cuerpoJson).toEqual({
+      monto: '85000',
+      idem_key: 'ingreso:assistant-7',
+      confirmar_duplicado: true,
+    });
+  });
 });
 
 describe('completarIngreso', () => {
