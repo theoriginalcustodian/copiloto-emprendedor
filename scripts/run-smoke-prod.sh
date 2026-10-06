@@ -15,4 +15,30 @@ mkdir -p "$(dirname "$OUT")"
 } > "$OUT" 2>&1
 rc=$(grep -o '^# exit=[0-9]*' "$OUT" | tail -1 | cut -d= -f2)
 echo "smoke rc=${rc:-?} · $(grep -c '^\[PASS\]' "$OUT") PASS · $(grep -c '^\[FAIL\]' "$OUT") FAIL · $OUT"
+
+# Sello en el manifiesto del VPS (SMOKEFRESCURA §3.bis): sólo en verde, y para el sha que está VIVO
+# según /healthz (no el HEAD local: el smoke prueba lo desplegado). Append-only, como el sello de
+# deploy: se verifica por efecto (tail -1), y si no se confirma el script falla RUIDOSO.
+if [ "${rc:-1}" = "0" ]; then
+  REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
+  SMOKE_BASE_VIVO="${SMOKE_BASE:-http://127.0.0.1:8099}"
+  sha_vivo="$(ssh "$HOST" "curl -sf '$SMOKE_BASE_VIVO/healthz'" 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sha") or "")' 2>/dev/null || true)"
+  if [ -z "$sha_vivo" ] || [ "$sha_vivo" = "unknown" ]; then
+    echo "🔴 smoke VERDE pero sin sha vivo en /healthz: no se estampa smoke_beta (el manifiesto queda PENDIENTE)" >&2
+    exit 1
+  fi
+  if ssh "$HOST" "grep -q '\"smoke_beta\":\"OK ${sha_vivo} ' '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null; then
+    echo "smoke_beta ya estaba OK para $sha_vivo (no se duplica)"
+  else
+    linea="$(printf '{"evento":"smoke_beta","sha":"%s","smoke_beta":"OK %s %s","fuente":"run-smoke-prod.sh"}' \
+      "$sha_vivo" "$sha_vivo" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")"
+    printf '%s\n' "$linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'" || true
+    verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
+    if [ "$verif" != "$linea" ]; then
+      echo "🔴 smoke VERDE pero el sello smoke_beta NO quedó confirmado en $REMOTE/DEPLOY-MANIFEST.json" >&2
+      exit 1
+    fi
+    echo "smoke_beta OK estampado para $sha_vivo"
+  fi
+fi
 exit "${rc:-1}"

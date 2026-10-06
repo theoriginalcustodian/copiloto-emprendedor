@@ -123,8 +123,11 @@ _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
 _nonce="$(date +%s%N)-$$"
-_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"nonce":"%s"}' \
-  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_nonce}")"
+# smoke_beta: el smoke de la beta NO lo corre el deploy (muta prod). Nace PENDIENTE; sólo
+# scripts/run-smoke-prod.sh agrega, en verde, una línea de evento `smoke_beta` OK (append-only: el
+# estado es la última línea de ese sha). Un deploy sin smoke se lee como PENDIENTE, no como verificado.
+_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"smoke_beta":"PENDIENTE %s","nonce":"%s"}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_sha}" "${_nonce}")"
 _sello_ok=0
 if printf '%s\n' "$_linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'"; then
   _verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
