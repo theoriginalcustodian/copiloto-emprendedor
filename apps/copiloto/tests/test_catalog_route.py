@@ -120,8 +120,10 @@ def test_catalog_with_token_returns_services_list():
     assert "services" in body
     keys = {s["key"] for s in body["services"]}
     assert "mercadopago" in keys
-    assert "gmail" in keys           # uno de los 5 toolkits derivados de la policy real
-    assert len(keys) == 6            # mercadopago + 5 toolkits (poda del hito 2: eran 7)
+    assert "gmail" in keys           # uno de los toolkits con acciones (connectable_policy)
+    # A7: el catálogo ofrece sólo lo conectable (módulos con TOOLS). Drive no aparece: no tiene acciones.
+    assert "googledrive" not in keys
+    assert keys == {"mercadopago"} | set(web_module._composio_valid_toolkits())
 
 
 def test_catalog_reflects_mp_connected_true():

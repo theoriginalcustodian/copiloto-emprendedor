@@ -50,9 +50,24 @@ def modules() -> dict:
 
 
 def merged_policy() -> dict:
-    """{toolkit_slug: ToolkitPolicy} de TODOS los módulos → policy del ComposioGateway (allowlist mínima)."""
+    """{toolkit_slug: ToolkitPolicy} de TODOS los módulos → policy del ComposioGateway (allowlist mínima).
+
+    Ojo: esta allowlist también la usa el worker para archivar facturas en Drive (`archivar_factura_en_drive`),
+    así que NO se achica para ocultar un servicio. Lo que se ofrece al usuario sale de `connectable_policy()`.
+    """
     _discover()
     return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values()}
+
+
+def connectable_policy() -> dict:
+    """Subconjunto de `merged_policy()` que el usuario puede CONECTAR: sólo los módulos con al menos una acción.
+
+    Regla del DoD A7 (contrato de cierre): conectable + prometido en la UI sin una sola acción detrás es el
+    defecto. Un módulo con `TOOLS` vacío (poda deliberada, p. ej. Drive) sigue existiendo para el worker,
+    pero no se ofrece en el catálogo ni acepta `/composio/connect`.
+    """
+    _discover()
+    return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values() if getattr(mod, "TOOLS", None)}
 
 
 def prompt_fragments() -> str:
