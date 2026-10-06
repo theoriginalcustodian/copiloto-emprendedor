@@ -97,3 +97,33 @@ lo que `main` ya tenía** y el síntoma aparece semanas después.
 **La pregunta que lo caza:** *¿este archivo le agrega algo a `main`, o `main` le agrega algo a él?*
 Ver también [[checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree]] ·
 [[resolver-tomando-un-lado-nunca-converge]] · [[deploy-sh-no-valida-checkout-al-dia-con-main]].
+
+## Refuerzo 2026-10-06 — el contrato que llega TARDE no se nota desde el worktree viejo, y el `...` three-dot te muestra trabajo que ya existe
+
+Un `urgente_` de planificación me asignó la mitad web de A3 a las **11:05**, con worktree y rama
+nombrados. Lo obedecí hasta el punto de medir, y ahí se cayó: **#806 (esa mitad) se había mergeado
+13:19:10** y **#803 (la otra) 13:22:07** — el contrato era **2h14m anterior al cierre** de lo que
+pedía. No estaba mal escrito: **envejeció entre que se escribió y que lo leí.**
+
+**Lo que vale no es «medí el estado»: es QUÉ instrumento lo oculta.** Desde adentro del worktree, el
+reflejo es `git diff --stat origin/main...HEAD`, y me devolvió **+179/−2 en 2 archivos**: parecía
+trabajo pendiente y listo para PR. **El three-dot (`...`) parte del merge-base: muestra lo que TUS
+commits cambiaron, no si ese contenido ya está en el destino.** Un trabajo tuyo ya mergeado por squash
+sigue apareciendo ahí, idéntico, para siempre.
+
+El control que lo destapó es el **two-dot por archivo** — `git diff origin/main -- <path>`, que compara
+**estados**:
+
+| archivo | three-dot | two-dot vs `origin/main` |
+|---|---|---|
+| `SeccionMisComprobantes.tsx` | +43 | **0 líneas ⇒ ya está en main** |
+| su `.test.tsx` | +138 | 20 líneas, **y al revés: `main` tenía 9 líneas de comentario que mi worktree NO tenía** |
+
+Esa última fila es el peligro real: **mi worktree estaba ATRÁS**. Obedecer el contrato sin medir no
+habría sido trabajo redundante y benigno — habría abierto un PR que **revertía** comentarios ya
+mergeados, con el archivo de producción idéntico. El diff de un PR así se ve como trabajo nuevo.
+
+**La regla:** antes de tomar un contrato que nombra un worktree viejo, el control no es «¿tengo commits
+sin pushear?» sino **«¿el CONTENIDO de los archivos que nombra ya está en el destino, y en qué
+dirección?»** — two-dot por path, más la fecha de merge de los PR que lo cubrirían.
+Ver [[un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola]].
