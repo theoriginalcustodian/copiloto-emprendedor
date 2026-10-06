@@ -67,6 +67,8 @@ export interface TarjetaClientePropuestoProps {
   /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
    * los tests que no verifican persistencia lo omiten sin romper nada. */
   onResolver?: (patch: NonNullable<ChatMessage['clienteResuelto']>) => void;
+  /** IDEMINGCLI — `mensaje.id`. Se reenvía a `FormularioCliente`, que deriva de él la `idemKey` del alta. */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -80,6 +82,7 @@ export function TarjetaClientePropuesto({
   texto,
   resuelto,
   onResolver,
+  mensajeId,
   testID = 'cliente-propuesto',
 }: TarjetaClientePropuestoProps) {
   const tema = useTema();
@@ -164,6 +167,7 @@ export function TarjetaClientePropuesto({
 
       <FormularioCliente
         iniciales={propuesta}
+        mensajeId={mensajeId}
         onGuardado={(cliente) => {
           setEstado({ fase: 'guardado', cliente });
           onResolver?.({ estado: 'guardado', cliente });

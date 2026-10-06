@@ -89,6 +89,13 @@ export interface FormularioClienteProps {
    */
   onAbrirCliente: (cliente: Cliente) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` de la card de voz que envuelve este formulario (IDEMINGCLI). Si viene,
+   * la clave del ALTA se DERIVA de él: sobrevive a un remount de la card mientras el POST sigue en
+   * vuelo (el guard de `TarjetaClientePropuesto` todavía no se escribió). Sin él (alta manual desde
+   * `PantallaClientes`) la clave nace por gesto, como antes.
+   */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -99,6 +106,7 @@ export function FormularioCliente({
   onDuplicado,
   onAbrirCliente,
   onCancelar,
+  mensajeId,
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
   const tema = useTema();
@@ -125,7 +133,7 @@ export function FormularioCliente({
    * alta confirmado, no uno nuevo. Nunca se usa en la edición — `editarCliente` es PATCH parcial,
    * reintentar el mismo diff ya es seguro sin ella.
    */
-  const claveAlta = useRef<string | null>(null);
+  const claveAlta = useRef<string | null>(mensajeId != null ? `cliente:${mensajeId}` : null);
 
   /**
    * Lo tipeado, en la forma del contrato. Un campo vacío viaja como `null` ("no lo sé"), no como `""`:
