@@ -93,3 +93,80 @@ los 3 tests de GATE_CI_DIR                   -> las dos variables movidas siempr
 `[[instrumento-que-no-mira-nunca-falla]]` · `[[el-guard-se-satisface-con-su-propio-comentario]]`
 
 🤖 auditoría · Opus 5 (1M context)
+
+---
+
+## 4 🔴 `NODRIFTCONJUNTO` — y con esto el patrón deja de ser una fila
+
+Seguí con **`no-drift.sh`**, el 6º job del CI (`drift`) y el guard del ADR-001: *«la definición de la
+suite vive en `scripts/ci/`, no en `tests.yml`»*. Es un guard **bien escrito** —trae `--self-test`
+horneado, y su comentario nombra el problema mejor que yo: *«Un guard que nunca vio un rojo no está
+verificado: su rotura se ve idéntica a su funcionamiento — silencio en ambos casos»*.
+
+**Su regla 1 (`:50-58`) es condicional a que el job exista:**
+
+```bash
+for j in "${JOBS[@]}"; do
+  if grep -qE "^[[:space:]]+${j}:" "$wf"; then        # <- si el job NO esta declarado...
+    if ! grep -qE "bash[[:space:]]+scripts/ci/${j}\.sh" "$wf"; then ... fi
+  fi                                                   # <- ...no se exige NADA
+done
+```
+
+Medido con `WORKFLOW_FILE`, que el propio script parametriza (`:141`) — sin tocar `.github/`:
+
+| fixture | rc | |
+|---|---|---|
+| `--self-test` (los 4 fixtures del guard) | **0** | ✅ los 4 ok |
+| los 5 jobs delegando *(control +)* | **0** | 🟢 correcto |
+| `mobile` declarado y **sin** delegar *(control +)* | **1** | 🔴 correcto |
+| `npx vitest run` **inline** *(control +)* | **1** | 🔴 correcto |
+| `.github/workflows/tests.yml` **real** *(control +)* | **0** | 🟢 correcto |
+| **falta el job `mobile` entero** | **0** | 🟢 **VERDE** |
+| **sólo 2 de los 5 jobs** | **0** | 🟢 **VERDE** |
+| **`jobs:` y nada más** (el caso vacío) | **0** | 🟢 **VERDE** |
+| **un yml que no es un workflow en absoluto** | **0** | 🟢 **VERDE** |
+| **`lint` renombrado a `checks`** | **0** | 🟢 **VERDE** |
+
+Los cinco controles positivos dan lo esperado, así que las cinco filas de abajo miden el guard y no mi
+arnés. **Un archivo ausente sí es rojo** (`:44-47`), así que el fail-closed existe para «no hay archivo»;
+lo que no existe es para «el archivo no tiene lo que busco».
+
+> **El guard verifica el CONTENIDO de los jobs declarados y nunca el CONJUNTO de jobs.** Y el caso
+> realista no es borrar un job: es **renombrarlo**. `lint` → `checks` y el guard del ADR-001 queda
+> **mudo** — justo en el movimiento más común de drift de un workflow.
+
+**Y su `--self-test`, que es su mayor virtud, tiene el mismo punto ciego:** sus 4 fixtures varían **el
+contenido de un job declarado** (sano / inline / sin delegar / comentario). **Ninguno varía el conjunto de
+jobs.** Tercera aparición del eje no movido, en el guard que más explícitamente se preocupa por estar
+verificado.
+
+**Fila `NODRIFTCONJUNTO`** · dueño **planificación** · **severidad media** (alcanzable con un rename
+normal, no da síntoma). **DoD:** aserir que los 5 de `JOBS` estén **declarados**, no sólo que deleguen si
+están. **Control positivo:** los fixtures (falta uno / sólo 2 / vacío / renombrado) como casos 5-8 del
+`--self-test`.
+
+⚠️ **Trampa del fix, y es la razón de nombrarla acá:** el fixture *sano* del `--self-test` declara sólo
+`core` y `web`. Aserir el conjunto dentro de `auditar()` **lo pondría rojo** y el guard se auto-rompería —
+`[[barrer-llamadores-incluye-los-instrumentos-de-verificacion]]`. La aserción del conjunto va **fuera** de
+`auditar()` (sólo contra el workflow real), o el fixture sano se ensancha a los 5. **En el mismo cambio.**
+
+## 5 ⇒ Lo que esto revela, y es más que tres filas
+
+**Tres veces en un día, el mismo patrón estructural:**
+
+| el productor declara protección | quien de verdad protege |
+|---|---|
+| `gate.sh:40-41`: *«su recibo jamás va a la copia real»* | **`recibo-cubre.sh`**, exigiendo los 5 jobs |
+| `no-drift.sh`: el guard contra la divergencia de la suite | **`ci-verde.sh`**, aserendo los 6 jobs **por nombre** |
+| `secretos-check.sh:58-59`: *«control positivo con un canario `ghp_`»* | la regla `github-pat` **de gitleaks**, no la config del repo |
+
+> **Las defensas de esta cadena viven del lado del CONSUMIDOR, y los productores declaran garantías que
+> no dan.** Hoy el sistema es correcto —el consumidor cubre— pero la consecuencia es concreta y nadie la
+> tiene escrita: **`ci-verde.sh` y `recibo-cubre.sh` sostienen defensas que sus productores se atribuyen.**
+> Tocar el denominador de `ci-verde.sh` no afloja «un chequeo de jobs»: afloja **el guard anti-drift**, sin
+> que nada en `no-drift.sh` lo diga.
+
+**Sugerencia concreta, y es de una línea cada una:** que `no-drift.sh` y `gate.sh` digan en su cabecera
+**quién completa su defensa**. Un comentario que atribuye bien es un guard que no se puede desmantelar por
+accidente — y es más barato que el guard que falta.
