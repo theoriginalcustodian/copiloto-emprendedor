@@ -161,3 +161,63 @@ plausible. Lo cazó **descomponer** (emoji 8 + guion 15 = exactamente el «antes
 `[[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]]`. Defensa:
 construir el patrón con `chr(92)` y afirmar su longitud (`len(PAT) == 10`) **antes** de usarlo. Un
 patrón es un instrumento, y también necesita control positivo.
+
+---
+
+## 🔻 2026-10-06 — el test varió **todos** los ejes menos el que decide
+
+El escalón más barato de pasar por alto de esta entrada, porque acá **no falta el control positivo: hay
+cuatro, y los cuatro usan el mismo valor.**
+
+**Caso raíz: `scripts/tests/test-secretos-check.sh`**, el test del **único guard fail-closed** del repo
+(`secretos-check.sh`, gitleaks, y el repo es **público**). Son **174 líneas y 10 casos**, y es un test
+serio — cada caso mueve una dimensión distinta del instrumento:
+
+```
+modo:          1) historia limpia   3) rango   4) --refs-stdin   7) --arbol
+fail-closed:   5) binario inexistente -> rc=2, nunca 0
+config:        6) allowlist por fingerprint   9) exclusion de worktrees
+discrimina:    8) config rota != hallazgo (gitleaks da rc=1 por las DOS causas)
+salida:       10) -v dice DONDE sin decir QUE
+FORMA:         2) un token con forma de PAT de GitHub   <- el unico, y es constante
+```
+
+Conteo sobre ese archivo: **`ghp_` → 4 apariciones** (los 4 controles positivos) · `sk-ant` → **0** ·
+`APP_USR` → **0** · `postgresql://` → **0** · `eyJ` → **0**. *(Control del grep, mismo archivo: `rc=1` → 4,
+`arbol` → 22.)*
+
+> **Diez casos verdes ejercitan exhaustivamente los MODOS del instrumento y mantienen CONSTANTE la única
+> variable que decide si caza algo: la forma del secreto.** Un test de los **modos** del escáner se lee,
+> de buena fe, como un test **del escáner**.
+
+**Y la constante elegida era la única cubierta.** Medido con canario propio (9 formas reales de este
+stack, entropía real, en **pares de contraste**): `ghp_` se caza porque gitleaks trae regla dedicada
+`github-pat`; **`sk-ant-api03-…`, `APP_USR-…` y `postgresql://user:PASS@host` NO se cazan** — y el **mismo
+secreto, misma variable, misma entropía, suelto sin su prefijo, SÍ**. El prefijo que identifica a la
+credencial es lo que la salva: `generic-api-key` necesita una cadena contigua, y los guiones del prefijo o
+los `:/@` de la URL **parten el match**.
+
+→ **Pregunta operativa, distinta de la de arriba:**
+
+> Arriba: *¿qué afirmación del instrumento NO tiene control positivo?*
+> Acá: **¿qué variable mantuvieron CONSTANTE todos los casos que sí existen?** Un test con N casos verdes
+> prueba las N dimensiones que varió — y **la dimensión no movida es invisible precisamente porque las
+> otras N están cubiertas con rigor.** Listá los ejes del instrumento y marcá cuál no se mueve nunca.
+
+**Para un guard de patrón**, el corolario es concreto: el control positivo tiene que usar la **forma
+REAL** —con su prefijo, y dentro del contenedor donde el secreto aparece de verdad (una URL, un `.env`, un
+JSON)— y en **pares de contraste**, la misma entropía con y sin prefijo. **El par es lo que convierte «no
+lo cazó» en «lo salvó el prefijo»**, que es la diferencia entre un bug reportable y una observación.
+
+**El espejo, que casi reporté:** mi primer canario usó relleno `AAAA…` y **ni el `ghp_` se cazó** —
+gitleaks **filtra por entropía**, así que el fixture era el defecto. Iba a acusar de ciego al único guard
+que sí funciona → [[un-control-positivo-con-esperado-falso-acusa-al-script]]. Un fixture sintético es un
+instrumento: si no se parece al dato real **en la propiedad que el detector mide**, mide otra cosa.
+
+**Y el cierre que vale solo:** el `CLAUDE.md` de este repo cita una auditoría de toda la historia con
+*«`sk-ant-` 0»*, hecha con **greps a mano**. **El guard automático no cubre `sk-ant-`.** El inventario de
+riesgo que el proyecto escribió **nombra** lo que su guard no vigila, y nada lo señala: el escáner sale
+verde tanto si no hay una clave de Anthropic como si hay una →
+[[instrumento-que-no-mira-nunca-falla]] · [[medir-si-un-gate-dispara-antes-de-embarcarlo]].
+
+Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-el-escaner-de-secretos-caza-la-forma-generica-y-falla-en-la-real.md`
