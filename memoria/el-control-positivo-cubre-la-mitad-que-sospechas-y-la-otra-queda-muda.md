@@ -238,3 +238,45 @@ acredita. Al listar los ejes de un instrumento, contá también **los pares**: `
 implica `A` solo ni `B` solo.
 
 Doc: `docs/copiloto-emprendedor/Auditorias/2026-10-06-la-definicion-de-verde-resiste-y-la-defensa-mal-atribuida.md`
+
+---
+
+**Refuerzo (2026-10-06): el control positivo pasó, el instrumento era inservible, y lo cazó la
+IMPLAUSIBILIDAD DEL DENOMINADOR — no un control.** Variante nueva: acá el control no quedó mudo sobre
+otra mitad. Cubrió la afirmación correcta y **respondió bien**. El instrumento igual mentía, porque
+contestaba una pregunta **más ancha** que la que hacía cada caso medido.
+
+**El caso.** Escribí un barrido de premisas **negativas** («cero hits de X», «ninguna app lee X», «X no
+existe») sobre las filas cerradas del día: grepear el símbolo citado y marcar la premisa como vencida si
+hoy tiene hits productivos en `origin/main`. Le horneé el control positivo canónico — dos premisas de
+veredicto **ya conocido**, una que sabía vencida (`legal_version_aceptada`, agregada por #829/#836) y una
+que sabía vigente (`first_seller_user_id`, retirada de producción por #850) — y **las dos salieron como
+esperaba**. Resultado del barrido: **«50 premisas verificables · 32 vencidas»**.
+
+**64% de premisas vencidas en un día es implausible, y eso fue lo único que lo delató.** Al abrir los
+casos, tres fallas de raíz, ninguna de ellas visible para el control positivo:
+
+- **Ignora el ALCANCE.** *«0 hits de `mensajeId` **en los cuatro**»* es una afirmación sobre cuatro
+  archivos; el grep la midió contra todo el repo (**148 hits**) y la declaró vencida.
+- **Ignora el SIGNO.** Marcó una frase **positiva** —*«la navegación **es** `Stack`»*— como premisa
+  negativa vencida.
+- **Pesca el símbolo INCIDENTAL.** *«ninguna aborta nada»* → tomó `await` (**1040 hits**) por sujeto.
+
+**Por qué el control positivo no podía verlo.** Mis dos anclas eran premisas de alcance **global** y de
+sujeto **explícito** — justo la forma que el instrumento sí sabe medir. El control acredita el
+**mecanismo** (¿sabe marcar una premisa vencida?), nunca el **universo** (¿los 50 casos son premisas, con
+este sujeto y este alcance?). Dos preguntas distintas, y el verde de la primera presta autoridad a la
+segunda.
+
+**La regla que queda, y vale más que el barrido:** una afirmación negativa es auditable por script **sólo
+si su alcance es mecánico**. «0 hits de X» lo es; «0 hits de X **en los cuatro**» no, porque el alcance
+vive en la prosa. Si se quiere que una premisa sea re-medible, tiene que **declarar su comando**, no su
+resultado.
+
+**How to apply:** (1) después del control positivo, mirá el **denominador y la proporción** antes de
+publicar: si la tasa de hallazgos es implausible para la vida del sistema, el instrumento está midiendo
+otra cosa — esa implausibilidad es un control gratis que ningún ancla reemplaza. (2) Antes de contar,
+verificá en **tres casos a mano** que el sujeto extraído es el sujeto de la frase y que su alcance
+coincide; si uno falla, el conteo no significa nada. (3) Y el control más barato de todos: **¿aparece tu
+propio trabajo entre los hallazgos?** El barrido marcó dos mensajes míos escritos ese mismo día — un
+instrumento que acusa a lo que acabás de escribir está clasificando por forma, no por contenido.
