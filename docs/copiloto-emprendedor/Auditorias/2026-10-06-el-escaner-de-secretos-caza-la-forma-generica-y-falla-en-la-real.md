@@ -158,3 +158,127 @@ guard— y **no pusheé ningún fixture**, así que el camino `--refs-stdin` del
 por mí: lo cubre el caso 4 del test, que existe y pasa.
 
 🤖 auditoría · Opus 5 (1M context)
+
+---
+
+# 6 — La historia, medida · y **la regla que este doc propuso hace PANIC a gitleaks**
+
+**Agregado el 2026-10-06 21:55 UTC, el mismo día que el resto del doc.** El §3 propone reglas `[[rules]]`
+para las tres formas que el escáner no caza. Antes de pedir que alguien las implemente medí dos cosas que
+el DoD daba por sabidas: si alguna de esas formas estuvo en la historia, y **qué hace la regla propuesta
+cuando se la corre de verdad**. La segunda medición **refuta al §3 tres veces**, y una de las tres habría
+sido un incidente de flota.
+
+## 6.1 ✅ **No hay ninguna credencial real de las tres formas en la historia del repo**
+
+Pickaxe (`git log --all --full-history -S`) sobre **2384 commits y 824 refs**. No se imprimió ningún valor:
+sólo conteos, commit y archivo.
+
+| forma | commits con hit | qué eran |
+|---|---|---|
+| `sk-ant-` | 6 | **5 son los docs de esta misma auditoría** (el prefijo escrito en prosa) + `CLAUDE.md`, que documenta *«`sk-ant-` 0»* |
+| `APP_USR-` | 3 | 2 de esta auditoría + `apps/copiloto/tests/test_mp_crypto.py`: **fixture del roundtrip de Fernet**, valor sintético |
+| `gphy_` | 15 | esta auditoría + `CLAUDE.md` + el backlog: **nombres de variable**, y el `gphy_test` que el `CLAUDE.md` ya declara fixture |
+| `postgres(ql)://user:pass@` | 8 | ver 6.2 — **ninguna de producción** |
+
+**Control positivo del comando:** `copiloto` → **1063 commits**; un pickaxe que no encontrara daría 0 ahí.
+**Control positivo 2**, sobre la forma que el escáner **sí** caza: `ghp_` → **0 commits**, consistente con la
+auditoría declarada en el `CLAUDE.md`.
+
+⇒ **La afirmación de la cabecera del `CLAUDE.md` se sostiene** — y ahora, por primera vez, **medida contra
+la historia completa** y no sólo por greps de prefijo sobre el árbol. Nada que rotar.
+
+## 6.2 — Las 8 URLs de Postgres, clasificadas sin leer ningún valor
+
+Clasificador: **primer carácter del password y su longitud**, nada más. Verificado contra una interpolación
+y un literal inventados para el control.
+
+```
+deploy/copiloto/provision-rol-autosanacion.sh    usuario=${USUARIO_POOLER}   pw=$…   INTERPOLACION
+deploy/copiloto/provision-rol-consola.sh         usuario=${USUARIO_POOLER}   pw=$…   INTERPOLACION
+docs/…/Auditorias/scripts-m3/m3_capa_local.sh    usuario=copiloto            pw=$…   INTERPOLACION
+.github/workflows/tests.yml   (×5)               usuario=copiloto[_app]      pw literal, 8 chars, @localhost
+
+CONTROL POSITIVO del clasificador:
+  postgresql://u:${CLAVE}@h:5432/d               => INTERPOLACION   ✅
+  postgresql://u:<literal de 20 chars>@h:5432/d  => LITERAL         ✅
+```
+
+Los tres scripts **no tienen secreto**: el password es `${VAR}`. Los 5 de `tests.yml` son el **Postgres
+efímero del CI** — service container de GitHub Actions, `@localhost`, vida de minutos, sin datos reales.
+
+## 6.3 🔴 El canario de la regla propuesta: **tres defectos, en gitleaks 8.30.1 de verdad**
+
+Fixture de 4 líneas —las 3 formas normales del repo + un DSN con password literal y host real, **valor
+inventado para el canario**— en un repo temporal, contra el binario que el propio guard fija.
+
+```
+CONTRASTE  gitleaks default, sin reglas nuevas ....... 0 hallazgos  ✅ reconfirma el §2: hoy NO lo caza
+A  la regla del §3 tal como esta escrita ............. 4 hallazgos  🔴 lineas 1 2 3 4
+B  mi 1a correccion, con lookahead  (?!\$) ........... rc=2 PANIC   🔴 no compila
+C  variante RE2 + allowlist '@localhost' ............. 2 hallazgos  🔴 lineas 3 y 4 (la allowlist no excluyo)
+E  variante RE2 + allowlist con regexTarget="line" ... 1 hallazgo   🟢 solo la linea 4
+F  control POSITIVO: solo el DSN real ............... 1 hallazgo   🟢 lo caza
+G  control NEGATIVO: solo las 3 lineas normales ..... 0 hallazgos  🟢 el caso normal queda VERDE
+H  el ARBOL REAL del repo con la regla E puesta ..... 0 de mi regla 🟢 (2 de generic-api-key, ya exentos)
+```
+
+**A — la regla del §3 caza las 4, o sea 3 falsos positivos de 4.** `${CLAVE}` matchea `[^@\s]{8,}`, y
+`copiloto` —8 caracteres, el del Postgres efímero— también. Esa regla **pone rojo el pre-push de cualquiera
+que toque `tests.yml` o los dos `provision-rol-*.sh`**, archivos sin ningún secreto. En este repo saltear
+el pre-push arrastra gitleaks entero, así que una regla que grita en el caso normal **termina habilitando
+el secreto real que existía para atrapar** → `[[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]`.
+
+**B — y acá está lo caro: mi propia corrección NO COMPILA, y no falla suave: hace panic.**
+
+```
+E0000 re2.cc:237] Error parsing '…:(?!\$)[^@\s$]{8,}@': invalid perl operator: (?!
+panic: regexp: Compile(…): error parsing regexp: bad perl operator: `(?!`
+        github.com/zricethezav/gitleaks/v8/regexp.MustCompile(...)
+```
+
+**gitleaks es Go y usa RE2: no existe el lookahead negativo.** Escribí `(?!\$)` por reflejo de PCRE. Y el
+modo de falla es el peor posible: `MustCompile` **panic**ea, así que la config no se rechaza con un aviso —
+**el binario se cae**. En un guard **fail-closed** eso no es un falso negativo: es el **pre-push de las tres
+sesiones rojo**, con un stack de Go por mensaje. Mi corrección habría sido **peor que el defecto que
+arreglaba**, y la habría entregado como DoD listo para implementar.
+
+**C — la allowlist tampoco hacía lo que yo creía.** `rules.allowlist.regexes` se evalúa, por defecto,
+contra **el secreto capturado**, no contra la línea. Mi match termina en `@`, así que **nunca contiene
+`localhost`**: la exención no se aplicaba y el Postgres efímero seguía rojo. El fix es
+`regexTarget = "line"`, y sólo se ve **corriéndolo**.
+
+## 6.4 — Regla corregida **y medida** (reemplaza la del §3)
+
+```toml
+[[rules]]
+id = "copiloto-postgres-dsn-password"
+description = "password literal embebida en un DSN de Postgres (RE2: sin lookahead)"
+regex = '''postgres(?:ql)?://[^:/\s]+:[^@\s$][^@\s$]{7,}@'''   # 1er char != '$' descarta ${VAR} y $VAR
+  [rules.allowlist]
+  regexTarget = "line"                                          # SIN esto la exencion no se aplica
+  regexes = ['''@(?:localhost|127\.0\.0\.1)''']                 # Postgres efimero del CI y scripts locales
+```
+
+- `[^@\s$]` en la primera posición descarta **las 3 interpolaciones** (medido: E no las caza).
+- `regexTarget = "line"` + `@localhost|127.0.0.1` descarta **los 5 de `tests.yml`** (medido: C las cazaba, E no).
+- **Para `sk-ant-` y `APP_USR-` las reglas del §3 quedan como están**, y lo verifiqué contra este mismo doc:
+  `sk-ant-[A-Za-z0-9_-]{20,}` no matchea el `sk-ant-api03-<95 al azar>` que el §2 escribe en prosa (`<` no
+  está en la clase y `api03-` son 6 caracteres). Sin esa verificación, **las reglas nuevas habrían puesto
+  rojo el propio doc que las documenta.**
+
+**El DoD pasa a tener cuatro mitades, y tres no estaban:**
+
+1. los **pares de contraste** del §2 → las 3 formas reales deben salir **ROJAS**;
+2. **la config tiene que COMPILAR** — una regla con sintaxis PCRE hace panic en RE2 y tumba el guard;
+3. **el árbol actual completo, con las reglas puestas, debe seguir VERDE** (medido: H, 0 hallazgos de la
+   regla nueva; los 2 de `generic-api-key` están exentos por fingerprint y `secretos-check.sh --arbol` da
+   `no leaks found`);
+4. **el caso normal aislado** —sólo las líneas benignas— también verde (medido: G).
+
+> **Lo que este §6 agrega al §4 no es otro eje: es que el eje no movido era el mío.** El §4 mide
+> instrumentos ajenos y les cuenta los ejes. Este DoD, escrito en el mismo doc, proponía una regex **que
+> nadie había compilado ni corrido** — formato válido, contenido roto
+> (`[[el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional]]`). **Una regla propuesta en un
+> contrato es código no compilado**, y el motor que la va a correr —RE2, no PCRE— lo decide el consumidor,
+> no quien la escribe → `[[no-codificar-la-esperanza-principio-raiz]]`.

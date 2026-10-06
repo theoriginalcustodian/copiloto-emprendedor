@@ -221,3 +221,20 @@ verde tanto si no hay una clave de Anthropic como si hay una →
 [[instrumento-que-no-mira-nunca-falla]] · [[medir-si-un-gate-dispara-antes-de-embarcarlo]].
 
 Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-el-escaner-de-secretos-caza-la-forma-generica-y-falla-en-la-real.md`
+
+**Segunda instancia, el mismo día, en otro instrumento — y la que vuelve al patrón reconocible.** Los
+**tres** tests que ejercitan los overrides de `gate.sh` (`test-gate-args-y-recibo.sh:28`,
+`test-recibo-cubre.sh:77`, `test-gate-hook-secretos.sh:37`) setean `GATE_CI_DIR` **siempre junto con**
+`GATE_RECIBO_DIR`, o limpian los dos con `env -u`. **Ninguno mueve una sola de las dos.** Y el caso
+interesante es el de una sola: con `GATE_CI_DIR` solo, el recibo escrito por **jobs stub** cae en el
+`.ci-recibos/` **real** —medido en repo temporal, con los dos controles positivos— justo lo que el
+comentario de `gate.sh:40-41` afirma que no puede pasar. Lo que impide el falso verde no es esa
+protección: es `recibo-cubre.sh` exigiendo los 5 jobs, **del lado del consumidor**. Una defensa **mal
+atribuida** → `[[el-guard-se-satisface-con-su-propio-comentario]]`.
+
+⇒ **Dos variables que un test mueve siempre juntas son, para ese test, una sola variable.** La
+combinación que nadie probó es la que tiene el bug, y el verde de las corridas «con ambos overrides» la
+acredita. Al listar los ejes de un instrumento, contá también **los pares**: `(A, B)` cubiertos no
+implica `A` solo ni `B` solo.
+
+Doc: `docs/copiloto-emprendedor/Auditorias/2026-10-06-la-definicion-de-verde-resiste-y-la-defensa-mal-atribuida.md`

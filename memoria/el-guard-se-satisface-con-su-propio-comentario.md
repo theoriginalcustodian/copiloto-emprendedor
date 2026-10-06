@@ -134,3 +134,40 @@ vigente**: exigir el marcador nuevo presente (eso sí es 0→1 y sólo existe de
 la cuenta de la vieja a las apariciones **fuera** del contexto de cita. El costo de equivocarse acá no
 es un parche mal hecho: es gastar la verificación persiguiendo un fantasma, con la mitad del riesgo de
 «arreglar» un archivo que estaba bien.
+
+---
+
+**Refuerzo (2026-10-06): el caso extremo — el comentario no exagera la defensa, la INVENTA, y está parado
+justo donde alguien iría a buscarla.** `scripts/ci/lint.sh:11` dice *«repo PÚBLICO — cero secretos en TODA la
+historia (gitleaks fijado)»* y la línea siguiente, `:13`, corre `secretos-check.sh **--arbol**`. `--arbol` y
+`--historia` son modos distintos del mismo script: uno mira el working tree, el otro recorre los commits.
+Grep sobre `.githooks/`, `scripts/ci/` y `.github/`: **`--historia` no tiene ningún llamador automático**. O
+sea, en un repo **público**, **ningún gate, hook ni job mira la historia por secretos** — y la única línea que
+dice que sí, miente, con un *«Fail-closed:»* en el renglón de abajo que la hace sonar mecanizada.
+
+**Por qué es peor que un hueco sin comentario:** un secreto commiteado y después borrado **sale del árbol y
+queda en la historia para siempre** — exactamente el caso que el `CLAUDE.md` nombra en su cabecera y el único
+que `--arbol` no puede ver. Y el que se pregunte *«¿quién vigila la historia?»* llega a `lint.sh:11`, lee
+«TODA la historia» y **deja de buscar**. El comentario no sólo no protege: **desactiva la búsqueda del
+próximo**, que es la misma mecánica por la que un veredicto «coherente» desactiva trabajo
+([[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]]).
+
+Tercera aparición del día del productor que declara una protección que no da. Las dos primeras las cubría el
+**consumidor** (`recibo-cubre.sh` tapando a `gate.sh:40-41`; `ci-verde.sh` tapando a `no-drift.sh`); **esta no
+la cubre nadie.** ⇒ La gradación importa al leer un comentario de guard: *¿la defensa existe acá · existe en
+otra capa · o no existe?* Las tres se escriben igual.
+
+**Y el matiz del fix, que es el que evita el reflejo:** la respuesta **no** es mecanizar lo que el comentario
+promete. Un `--historia` dentro del job `lint` que encuentre algo **preexistente** deja **rojo permanente sin
+acción posible** —un hallazgo histórico no se arregla sin reescribir la historia— y se desarma en dos días,
+arrastrando al `--arbol`, que sí sirve ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). Primero
+**que la línea diga lo que hace** y nombre dónde vive la otra mitad y quién la corre a mano; después, si se
+quiere la garantía, **fuera del camino del PR** y con la pregunta contestada antes de encenderlo: *ante un
+hallazgo histórico, ¿rewrite o rotar-y-declarar?*
+
+**How to apply:** (1) al leer un comentario que declara una garantía, **leé el comando de la línea de abajo**
+— el verbo y la **bandera**, porque el modo es donde se separan el árbol y la historia; (2) para cada
+protección declarada preguntá *¿quién la provee: este archivo, otro, o nadie?* y escribilo al lado; (3) un
+comentario honesto («esto mira el árbol; la historia se audita a mano, dueño X») vale **más** que el gate
+ausente, porque deja de apagar la próxima pregunta; (4) antes de mecanizar una garantía retroactiva, preguntá
+qué se hace con los hallazgos que ya existen: sin respuesta, el gate nace rojo y muere saltado.
