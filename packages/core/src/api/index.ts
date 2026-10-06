@@ -100,6 +100,7 @@ export {
   KEY_GOOGLE_CALENDAR,
   listarCatalogo,
   pedirLinkDeVinculacion,
+  verbosDeAcciones,
 } from './catalogo';
 export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 

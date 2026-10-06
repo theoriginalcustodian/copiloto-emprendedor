@@ -38,6 +38,8 @@ mp.178-105-191-1.sslip.io {
 copilotoemprendedor.duckdns.org {
     handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }
     handle /auth/v1/callback*  { reverse_proxy 127.0.0.1:9997 }
+    # Links de mail (recovery/confirm) que GoTrue emite con COPILOTO_GOTRUE_PUBLIC_URL (…/auth/v1/verify).
+    handle /auth/v1/verify*    { reverse_proxy 127.0.0.1:9997 }
     handle                     { reverse_proxy 127.0.0.1:8099 }
 }
 

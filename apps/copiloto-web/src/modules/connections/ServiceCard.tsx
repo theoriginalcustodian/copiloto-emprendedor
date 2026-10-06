@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { verbosDeAcciones } from '@copiloto/core';
+
 import { Badge, Button, MonoLabel, Surface } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import type { CatalogService } from '../../lib/api';
@@ -75,20 +77,13 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
 };
 
 /**
- * A8: lo que se promete sale de `acciones` (inventario real de `/catalog`, derivado de `TOOLS` en
- * backend), NUNCA de `capabilities`: ese campo prometía «leer y buscar» en Gmail, que el conector no
- * hace. Una acción sin verbo conocido se omite (no decir nada antes que inventar). Sin inventario
+ * A8: lo que se promete sale de `acciones` (inventario real de `/catalog`), NUNCA de `capabilities`:
+ * ese campo prometía «leer y buscar» en Gmail, que el conector no hace. El mapeo acción → verbo vive
+ * en `@copiloto/core` (`verbosDeAcciones`), para que web y mobile digan lo mismo. Sin inventario
  * (backend anterior) cae en la frase genérica.
  */
-const VERBO_POR_ACCION: Record<string, string> = {
-  gmail_send: 'enviar emails',
-  sheets_append_row: 'agregar filas a tus planillas',
-  docs_create_doc: 'crear documentos',
-  docs_read_doc: 'leer tus documentos',
-};
-
 export function loQueSePierde(service: CatalogService): string {
-  const verbos = (service.acciones ?? []).map((a) => VERBO_POR_ACCION[a]).filter((v): v is string => Boolean(v));
+  const verbos = verbosDeAcciones(service.acciones ?? []);
   const base =
     verbos.length === 0
       ? `El copiloto va a dejar de poder usar ${service.display_name} hasta que lo vuelvas a conectar.`

@@ -169,6 +169,33 @@ SIN_REFERENCIA_EN_CAPA_ESCRITORIO = {"cobro-voz", "fact-voz", "pres-voz", "vozch
 # `en-curso/` -> `cerrado/<fecha>/`), asi que una clave por ruta romperia este gate cada vez que el
 # janitor archiva — un falso rojo diario, que es como se desarma un guard.
 MEDICIONES_DECLARADAS = {
+    # ── 2026-10-06: el que CAMBIÓ DE LADO, y el motivo es que el documento cambió ────
+    # Estaba en `NO_SON_MEDICION` y estaba BIEN clasificado: medía los 4 ids de voz con dos
+    # instrumentos por id, pero emitía su veredicto con un token FUERA del vocabulario cerrado
+    # (`SIN-REFERENCIA-DE-ESCRITORIO`), así que no producía ningún veredicto contable. El
+    # 2026-10-06 frontend1 agregó, a pedido de planificación, un bloque `> Corrección de
+    # vocabulario` con los 4 ids declarados `FUERA-DE-REFERENCIA` y `plataforma` en cabecera. La
+    # medición es la MISMA —nadie re-midió nada—; lo que cambió es que ahora está dicha en el
+    # idioma que este lector cuenta. Autoridad del canónico: cierre de auditoría del 2026-10-05
+    # §3 (los 4 entran al denominador declarados, no exentos).
+    #
+    # 🔴 LA CLASE, más grande que el caso: **una entrada de estas listas afirma el PRESENTE de
+    # un documento que puede cambiar después.** Clasificar es un acto fechado y nada avisa cuando
+    # el documento se corrige: el `rc` sigue en 0, la cifra no se mueve, y un descarte que fue
+    # correcto el día que se escribió pasa a ESCONDER una medición válida sin dar síntoma. Acá se
+    # vio sólo porque auditoría había pronosticado el efecto (54 de 54) y el efecto no llegó: sin
+    # ese pronóstico, el 50 se habría citado como completo. Un descarte motivado en «no usa el
+    # vocabulario» caduca el día que su documento cambia de tamaño.
+    #
+    # 📜 Lo que deciamos cuando estaba del otro lado, y que NO se pierde: el descarte original
+    # argumentaba que el documento mide el ALCANCE (¿existe esta fila en escritorio?) y no el
+    # criterio (app vs prototipo), y de ahi salio la observacion de que este dict tiene DOS cubos
+    # «mide / cita» mientras la realidad tiene TRES —mide-el-criterio, mide-OTRA-cosa, cita— porque
+    # el parser clasifica por FORMA y la forma no codifica el ROL. Ese hueco sigue abierto y vive en
+    # la fila VOCABAJENO de `coordinacion/PLAN.md`; lo que cambio hoy no es el argumento, es que el
+    # documento ahora declara tambien el veredicto del vocabulario cerrado, asi que ya no hace falta
+    # elegir entre contarlo en otro idioma o no contarlo.
+    "2026-10-05_cierre_frontend1-a-planificacion_los-4-ids-de-voz-SIN-REFERENCIA-DE-ESCRITORIO-confirmado-empirico.md",
     # 2026-09-30 — la re-emision limpia del §9 del `hallazgo_` de los 12 conflictos, pedida por
     # planificacion justamente porque el documento mixto no se podia clasificar: su tabla de CITAS le
     # daba al lector 8 COHERENTE superados. Clasificado MIDIENDO, no por el titulo: aporta 4 DESVIO
@@ -387,30 +414,6 @@ NO_SON_MEDICION = {
         "clasificado como medicion inyectaria las senales que solo estaba citando. La medicion que "
         "encarga es el `cierre_` de FE2, que si esta en MEDICIONES_DECLARADAS -- contar los dos "
         "seria doble conteo del mismo sujeto.",
-    # 2026-10-05 — MIDE, pero NO mide el criterio: mide su ALCANCE. Es la mitad empirica de la
-    # exencion `FUERA_DE_ALCANCE_WEB` (los 4 ids de voz; el set se renombro a `SIN_REFERENCIA_EN_CAPA_ESCRITORIO` el 2026-10-05 y ya NO descuenta del techo), con dos instrumentos independientes por id
-    # —lectura del `index.html` del prototipo + sonda en vivo contra el server Node— y su tabla final
-    # declara `veredicto = SIN-REFERENCIA-DE-ESCRITORIO` para los cuatro.
-    #
-    # 🔴 POR QUE ESTA ACA Y NO EN MEDICIONES_DECLARADAS, que es lo que su calidad sugeriria: el
-    # criterio 3 compara app vs prototipo y sus veredictos son COHERENTE / DESVIO / REQUIERE_TRIAGE.
-    # `SIN-REFERENCIA-DE-ESCRITORIO` no pertenece a ese vocabulario: responde «¿esta fila existe en
-    # escritorio?», que es una pregunta sobre el PADRON, no sobre una pantalla. Sumarlo daria 4
-    # veredictos nuevos en un idioma que el conteo no habla, y el total subiria sin que nadie midiera
-    # una pantalla mas — un progreso aparente, que es el modo exacto en que esta cifra se corrompe.
-    #
-    # 🔴 LA CLASE, mas grande que el caso: este dict tiene DOS cubos («mide» / «cita o dictamina») y
-    # la realidad tiene TRES — mide-el-criterio, mide-OTRA-cosa, y cita. El tercer caso entra igual
-    # porque el parser clasifica por FORMA (tabla con columna `veredicto`), y la forma no codifica el
-    # ROL de lo medido. Mientras falte el cubo, toda medicion de alcance aterriza aca con un motivo
-    # que tiene que desmentir la etiqueta del cubo que la contiene. Queda como fila propia, no como
-    # excepcion silenciosa: VOCABAJENO en PLAN.md.
-    "2026-10-05_cierre_frontend1-a-planificacion_los-4-ids-de-voz-SIN-REFERENCIA":
-        "MIDE el ALCANCE, no el criterio: confirma empiricamente (codigo + sonda en vivo, 2 "
-        "instrumentos por id) que `cobro-voz`/`fact-voz`/`pres-voz`/`vozchat` no tienen superficie "
-        "en la CAPA `#escritorio` del prototipo (no «fuera del alcance web»: son dos referentes distintos del mismo nombre). Su columna `veredicto` usa "
-        "`SIN-REFERENCIA-DE-ESCRITORIO`, que NO es del vocabulario del criterio 3 "
-        "(COHERENTE/DESVIO/REQUIERE_TRIAGE) — sumarlo inflaria el total sin medir ninguna pantalla.",
     # 2026-10-05 — DICTAMEN SOBRE ESTE INSTRUMENTO, y es el que lo corrigio. Refuta parcialmente mi
     # exencion: corrio este lector dos veces sobre el mismo tree cambiando solo el set y mostro que
     # la cifra medida es identica — lo unico que cambiaba era el «✅ COMPLETO». CITA ids del padron
