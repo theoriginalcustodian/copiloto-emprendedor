@@ -138,8 +138,17 @@ while IFS="$SEP" read -r id nombre disp estado prefijo; do
     # reconocido" en CADA corrida del monitor -- un warning permanente que ensena a ignorar
     # el warning, que es justo lo que despues tapa un enum de verdad pisado.
     ⏸*)         : ;;  # congelado / diferido con condicion de entrada declarada
-    # ⏳ = hecho pero trabado por un disparador EXTERNO a la cola (hoy: el push del grafo, que
-    # sólo el operador destraba). No es `pendiente` — nadie tiene que arrancarlo— ni ✅ — no cerró.
+    # ⏳ = trabado por un disparador EXTERNO a la cola — el criterio es «nadie de las sesiones
+    # puede moverlo», NO «ya está hecho». Dos instancias, y la segunda ensanchó la definición:
+    #   · el push del grafo (hecho, esperando al operador) — el caso original, 2026-09-28;
+    #   · CIERREB (2026-10-06): NO está hecho y aun así nadie puede arrancarlo, porque los 4
+    #     interruptores que faltan son acciones del operador. Estaba marcado `arrancando`, así que
+    #     este script la reportaba como frente ACTIVO y cabeza de cola: mandaba a las 3 sesiones a
+    #     lo único que no podían tomar, mientras su propio cuerpo decía «no lo listen como bloqueo
+    #     propio». El enum y la prosa se contradecían y el instrumento lee el enum.
+    # Test de categoría: ⏳ si el disparador es de alguien FUERA de las sesiones; `pendiente` si
+    # alguna puede empezar hoy. «Hecho o no» no entra en la decisión.
+    # No es `pendiente` — nadie tiene que arrancarlo— ni ✅ — no cerró.
     # Sin este caso la fila caía en `malformados` y el warning se volvía rutina: dos sesiones lo
     # reportaron el 2026-09-28 en sus ticks, y un guard que grita en el caso normal se desarma solo.
     ⏳*)         bloqueados="$bloqueados $id" ;;
@@ -156,8 +165,9 @@ while IFS="$SEP" read -r id nombre disp estado prefijo; do
 done <<< "$norm"
 
 if [ -n "$bloqueados" ]; then
-  echo "⏳ COLA: bloqueados por disparador externo:$bloqueados — hechos, sin poder avanzar. No son"
-  echo "    cabeza de cola ni cierres: no los re-asignes ni los cuentes como pendientes."
+  echo "⏳ COLA: bloqueados por disparador externo:$bloqueados — nadie de las sesiones puede"
+  echo "    moverlos (el disparador es de afuera). Pueden estar hechos o ni empezados: eso no decide."
+  echo "    NO son cabeza de cola ni cierres: no los re-asignes ni los cuentes como pendientes."
 fi
 
 if [ -n "$malformados" ]; then
