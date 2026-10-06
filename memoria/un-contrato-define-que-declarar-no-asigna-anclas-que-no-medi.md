@@ -82,3 +82,38 @@ siempre lo da el mismo instrumento que la contiene; (2) una hipótesis que nombr
 citar **cómo la midió**, igual que un contrato con sus anclas — «lo verifiqué a mano» no dice cuál miró;
 (3) cuando un ratchet permite declarar excepciones, la declaración necesita su propia fecha de revisión:
 silencia el control tanto si acierta como si no.
+
+---
+
+**Refuerzo (2026-10-06): el ancla no medida puede ser un ARTEFACTO EJECUTABLE, y entonces el contrato no
+queda incompleto — queda ROTO.** Mandé a planificación un DoD que pedía agregarle a `.gitleaks.toml` una
+regla para la URL de Postgres con password embebida, con su regex escrita en el contrato. La escribí sin
+correrla. Al canariarla contra el gitleaks que el propio guard fija (8.30.1, repo temporal, 4 líneas de
+fixture) salieron **tres** defectos en mi propia propuesta:
+
+1. la regex original cazaba **4 de 4** líneas: `${CLAVE}` matchea `[^@\s]{8,}` y el password de 8 chars del
+   Postgres efímero del CI también ⇒ **3 falsos positivos en el caso normal**;
+2. mi primera corrección usaba lookahead negativo `(?!\$)` — **gitleaks es Go y usa RE2, que no lo tiene**:
+   `MustCompile` **panic**ea. No es un rechazo con aviso: **el binario se cae**;
+3. la allowlist `@localhost` no excluía nada, porque `rules.allowlist.regexes` se evalúa contra **el secreto
+   capturado** y mi match termina en `@` — hacía falta `regexTarget = "line"`.
+
+**El 2 es el caro, y es el que invierte el signo del aporte.** El guard es **fail-closed**: una config que no
+compila no deja pasar secretos, **tumba el pre-push de las tres sesiones** con un stack de Go. El fix que
+propuse para que un guard no gritara en el caso normal habría **gritado en todos**. Y lo habría entregado
+firmado como DoD listo para implementar, en una sesión cuyo trabajo del día fue justamente medirles los ejes
+no movidos a los instrumentos ajenos.
+
+⇒ **Una regla, un snippet o un comando dentro de un contrato es código no compilado**, y **el motor que lo
+va a correr lo elige el consumidor, no quien lo escribe** (RE2 vs PCRE, `sh` vs `bash`, el parser de YAML de
+esa versión). El formato válido no dice nada del contenido —
+[[el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional]] — y proponerlo sin ejecutarlo es
+[[no-codificar-la-esperanza-principio-raiz]] con la firma de quien audita.
+
+**How to apply:** (1) **si el DoD contiene un artefacto ejecutable, correlo antes de mandarlo** — en repo
+temporal si hace falta, contra el binario y la versión que el consumidor fija, no contra el de tu cabeza;
+(2) el DoD de un guard necesita **cuatro** controles, no uno: caza lo que debe (positivo) · **compila** ·
+el árbol real queda verde · el caso normal aislado queda verde; (3) en un guard **fail-closed**, un fallo de
+**compilación** es más severo que el defecto que estás arreglando: preguntá *¿qué pasa si esta config está
+mal escrita?* antes de *¿caza el secreto?*; (4) nunca escribas `(?!`, `(?<=` ni backreferences para un motor
+Go — y verificá cuál motor es, porque la respuesta no está en la regex.
