@@ -51,7 +51,6 @@ describe('ruta /ajustes', () => {
     ['perfilNegocio', '/ajustes-negocio'],
     ['facturacionAfip', '/ajustes-afip'],
     ['apps', '/apps'],
-    ['miPlan', '/ajustes-mi-plan'],
     ['cuenta', '/ajustes-cuenta'],
     ['apariencia', '/ajustes-skins'],
     // Ayuda (Ola 5): las tres salieron de adentro de Mi cuenta y ahora tienen puerta propia.
