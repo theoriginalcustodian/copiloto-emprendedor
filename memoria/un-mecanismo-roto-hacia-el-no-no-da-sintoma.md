@@ -199,3 +199,66 @@ dio **0** — y por un segundo eso me pareció un hallazgo. No lo era: un test n
 contra instancias, igual que el ratchet. El cero de un instrumento que mira la dimensión equivocada se
 ve idéntico a un cero real; lo que lo separó fue preguntarme **cómo se escribe de verdad lo que estoy
 buscando**. Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y [[vacio-no-es-hallazgo-correr-el-control]].
+
+---
+
+## 🔻 2026-10-06 — el caso límite: el guard **no existe**, y la regla se cumple igual
+
+El escalón de arriba de esta entrada. Hasta acá el patrón era *un mecanismo roto hacia el «no» no da
+síntoma*. El caso de hoy es más barato de pasar por alto: **el mecanismo no está roto — no está.** Y el
+sistema se ve idéntico.
+
+«Prohibido push directo a `main`» es la regla más citada de este repo: está en `CLAUDE.md:65`, en el DoD
+del sprint autónomo, y en el `CLAUDE.md` global como no negociable con *«gobernanza el Día 0 (G-2), no
+como afterthought»*. **Medido, nada la hace cumplir:**
+
+```
+servidor: /branches/main/protection -> 404 "Branch not protected"   ·  /rulesets -> NINGUNO
+cliente:  core.hooksPath=.githooks, UN hook (pre-push, 139 lineas)
+          'refs/heads' -> 0 hits        <- nunca mira el ref de DESTINO
+          CONTROL POSITIVO: 'exit 1' -> 3 · 'origin/main' -> 7 · 'graph-sync' -> 7
+```
+
+**Lo que lo mantuvo invisible no es un falso verde: es el cumplimiento.** Control de efecto sobre
+`origin/main`, 7 días: **140 commits, 104 con `(#NNN)` de squash-merge y el resto merge-commits de PR** —
+ni un push directo. Un guard ausente hacia el «no» **no da síntoma mientras todos cooperan**, y con 38
+worktrees y tres sesiones autónomas con merge autorizado, «todos cooperan» es una propiedad **del día**,
+no del sistema. La evidencia de que la regla se respeta es, exactamente, la razón por la que nadie fue a
+ver si estaba mecanizada.
+
+→ **Pregunta operativa:**
+
+> **De las reglas que este proyecto repite como no negociables, ¿cuál tiene un mecanismo que la haga
+> cumplir, y cuál sólo tiene disciplina?** Y para cada una: *¿qué comando debería ser RECHAZADO, y lo
+> probé?* Un `git push origin main` que hoy sería aceptado es la prueba, y no hace falta correrlo para
+> saber que falta: basta preguntarle al servidor si la rama está protegida.
+
+**Y el corolario que no esperaba, que es el verdadero hallazgo:** el repo **sí** mecanizó, fail-closed, el
+riesgo que **temía** —un secreto en un repo público: `pre-push:13-16`, *«hallazgo o escáner roto ⇒ el push
+aborta»*— y dejó sin mecanizar el que da por **disciplinado**. El guard existe donde hubo miedo, no donde
+hubo confianza → [[disenar-contra-el-riesgo-temido-ciega-al-caso-normal]].
+
+**Y el filo operativo: cerrar este hueco, solo, ABRE otro.** `ci-verde.sh:244` decide con
+`case "$ms" in MERGEABLE/*)`, y el comodín **ignora el `mergeStateStatus`**. Medido con canario
+(`gh` stubeado, script real, 4 controles positivos): `MERGEABLE/BLOCKED`, `/BEHIND` y `/DIRTY` → **rc=0,
+«VERDE — se puede mergear»**. Hoy es inofensivo porque sin protección esos valores **no son alcanzables**
+(y `DRAFT` tampoco: 0 drafts en 100 PRs). Pero `BLOCKED` es justamente lo que GitHub devuelve **cuando un
+ruleset exige PR**:
+
+> **Activar la protección sin tocar el `case` convierte un guard ausente en un FALSO VERDE** — y peor que
+> antes, porque `mergear-pr.sh:46` delega en ese gate y no reimplementa la decisión. Los dos fixes van en
+> el mismo PR. → [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]
+
+**Cómo lo encontré, que es lo reutilizable:** no buscando esto. Fui a auditar `ci-verde.sh` por un
+fail-open **adentro** del script, y **tres de cuatro candidatos se cayeron al medirlos** (el rollup viene
+anclado al HEAD — 4 PRs, uno con 9 commits; el recibo sin `.detalle` sí avisa; el `UNKNOWN` de `pr list`
+era de PRs mergeados). El script estaba bien. **El agujero estaba una capa afuera del archivo que me
+pidieron mirar** — y sólo apareció porque, para calibrar la severidad de una fila menor, le pregunté a la
+plataforma si el caso era alcanzable. **Calibrar la severidad de un hallazgo chico es la forma de
+encontrar el grande.**
+
+Relacionadas: [[medir-si-un-gate-dispara-antes-de-embarcarlo]] ·
+[[instrumento-que-no-mira-nunca-falla]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]
+
+Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-que-decide-que-un-PR-se-puede-mergear.md`
