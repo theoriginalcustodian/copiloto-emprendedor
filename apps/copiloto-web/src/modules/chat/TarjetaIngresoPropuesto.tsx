@@ -104,6 +104,7 @@ export function TarjetaIngresoPropuesto({ propuesta, mensajeId }: TarjetaIngreso
         <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Anotar — todavía no lo guardé.</p>
         <FormularioIngreso
           origen="voz"
+          mensajeId={mensajeId}
           iniciales={{
             monto: propuesta.monto,
             cliente: propuesta.clienteNombre ?? undefined,
