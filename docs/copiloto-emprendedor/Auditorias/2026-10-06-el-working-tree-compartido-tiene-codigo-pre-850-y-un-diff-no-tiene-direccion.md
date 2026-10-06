@@ -106,3 +106,45 @@ barrido lo **absolvió**; eso bastaba para descartarlo antes de leer su cifra.
   instrumento más no es lo que el operador pidió (el foco es la beta).
 - **No verifiqué si los 6 archivos «respaldados» lo están en una rama VIVA** o en una ya mergeada y abandonada.
   Para el riesgo que reporto no cambia nada; para decidir qué se descarta, sí.
+
+## 6 — Ampliación del mismo día: **son DOS archivos pre-fix, no uno — y el segundo me salvó hoy**
+
+El §5 declaraba que de los 15 había leído el contenido de **uno**. Leí los otros cuatro que son código o
+instrumento, y el hallazgo se amplía en los dos sentidos.
+
+### 6.1 `scripts/graph-sync.sh` — el disco tiene la versión que roba el lock a un sync VIVO
+
+| | disco (`+4/−127`) | `origin/main` |
+|---|---|---|
+| criterio para tomar un lock ajeno | `:165` `if [ "$edad" -gt "$LOCK_MAX_AGE" ]` — **la edad sola** | `:274-275` `if [ -n "$pid_lock" ] && kill -0 "$pid_lock"` → el lock de un **dueño vivo** vale, y sólo cede al techo duro de `LOCK_HARD_MAX=14400` |
+| techos | **uno** (600 s) | **dos** (600 s dueño muerto · 4 h pid reciclado) |
+
+Es **exactamente** el bug que el comentario de main documenta: *«con la regla vieja, la siguiente sesión le roba
+el lock a un sync VIVO y las dos reescriben el mismo árbol y el mismo checkpoint, que es justamente lo que el
+lock evita»*.
+
+**Y lo midió este turno, por accidente:** mis dos pushes de hoy encontraron el lock tomado por el pid `1648592`
+**vivo**, con **540 s** de edad, y la versión de main **cedió** las dos veces (`salgo sin tocar el árbol`). Los
+dos pushes estuvieron a ~7 minutos uno del otro. Con la versión del disco, el segundo habría cruzado los 600 s
+**contra un sync vivo** y se lo habría robado. **El fix que `main` tiene evitó hoy el incidente que su propio
+comentario narra**, y el disco tiene la versión que lo causaba. Dueño: **planificación** (`scripts/` es suyo).
+
+### 6.2 Y la corrección a mi corrección: **`PantallaFacturacion.tsx` SÍ es trabajo local genuino**
+
+`+1/−0` — un agregado puro, cero borrados: un `// eslint-disable-next-line react-hooks/exhaustive-deps` con su
+justificación. Ahí mi **primera** lectura («trabajo que sólo vive en ese disco») era la correcta.
+
+> **La versión definitiva del molde, entonces, no es ninguna de mis dos narrativas globales.** No es «todo es
+> trabajo en riesgo» ni «todo es atraso»: **el signo lo decide archivo por archivo, y los dos casos conviven en
+> el mismo directorio.** `+21/−122` es atraso con código retirado adentro; `+1/−0` es trabajo sin respaldo. Una
+> cifra agregada sobre los 15 —la que yo publiqué primero— **no puede ser correcta para ninguno de los dos**,
+> porque promedia dos fenómenos con acciones opuestas. Es la misma trampa que
+> `[[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]]`: el total se forma
+> con signos contrarios y deja de significar algo.
+
+### 6.3 Los otros dos, sin veredicto fuerte
+
+`apps/copiloto/tool_catalog.py` (`+7/−23`) trae manejo de Instagram y un `except MercadoPagoError` — el signo
+dice atraso, pero **no confirmé** contra qué fix. `scripts/ci/testid-paridad-excepciones.json` (`+10/−71`) trae
+excepciones fechadas 2026-09-22; el trinquete del §1 del barrido las rechazaría solo si ya no son drift, así que
+ese archivo **tiene quien lo audite** y no necesita mi veredicto.
