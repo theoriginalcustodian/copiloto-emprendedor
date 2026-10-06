@@ -13,6 +13,8 @@ import './ajustes.css';
  * `claro`/`oscuro`/`nocturno`) — un sistema distinto de los 5 `SKINS` de mobile, y no existe un
  * `PantallaSkins` equivalente en web. A dónde apunta cada tile lo decide el shell.
  */
+// `miPlan` salió del union por DEC-8 (2026-09-21): «plan y límites NO entran en la beta».
+// Guardado en BL-V2 con su condición de entrada. No volver a agregarlo sin que BL-V2 esté abierto.
 export type AjusteKey =
   | 'perfilNegocio'
   | 'facturacionAfip'

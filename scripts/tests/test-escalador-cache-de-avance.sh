@@ -30,9 +30,16 @@ mkdir -p "$BUZON/abierto" "$BUZON/en-curso" "$BUZON/cerrado/2026-09-01"
 hoy="$(date +%Y-%m-%d)"
 for i in $(seq 1 300); do : > "$BUZON/cerrado/2026-09-01/2026-09-01_avance_frontend2-a-planificacion_n$i.md"; done
 for i in $(seq 1 8); do printf 'x\n' > "$BUZON/en-curso/${hoy}_contrato_planificacion-a-frontend2_c$i.md"; done
-ini=$(date +%s); sal="$(bash "$ESCALADOR" "$BUZON" 2>&1)"; fin=$(date +%s)
+# El reloj NO es el control de este test. El §1 de arriba ya prueba el efecto del cache (si la
+# funcion se invocara por $(...) el cache moriría en el subshell). Un `dur < 15` solo mediía la
+# carga de la maquina de hoy, y fallaba en los DOS sentidos: ROJO bajo carga con el cache sano,
+# VERDE en una maquina rapida con el cache roto. Segunda instancia de la misma clase en un dia
+# -- backend saco el gemelo (`dur < 10`) de test-gate-local-serial.sh el 2026-10-06, y un rojo
+# que no es del codigo ensena a ignorar el rojo, que es lo que despues lava una regresion real.
+# Lo que SI protegemos es el cuelgue: `timeout` es una cota de orden de magnitud (rc=124).
+ini=$(date +%s); sal="$(timeout 60 bash "$ESCALADOR" "$BUZON" 2>&1)"; rc_corrida=$?; fin=$(date +%s)
 dur=$((fin - ini))
-[ "$dur" -lt 15 ] && ok "300 avances × 8 contratos en ${dur}s" || fail "tardó ${dur}s (>= 15)"
+[ "$rc_corrida" -ne 124 ] && ok "300 avances × 8 contratos sin colgarse (${dur}s)" || fail "se colgó: superó el timeout de 60s"
 grep -qi "medici.n.*fall\|fallida" <<< "$sal" && fail "medición fallida: $sal" || ok "sin medición fallida"
 
 echo
