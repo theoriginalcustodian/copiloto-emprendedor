@@ -68,3 +68,35 @@ devolvía **el mismo 405**, mientras el control positivo (`/me/onboarding/comple
 devolvía **401**. Con un solo control la conclusión habría sido la contraria. Ver
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]] y
 [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]].
+
+## Refuerzo 2026-10-06 — el PR APILADO resuelve el estado intermedio, y trae su propia ambigüedad de dueño
+
+**El caso:** el ratchet de paridad es simétrico (`scripts/ci/idemkey_paridad.py:42`, «estados DISTINTOS
+→ ROJO»), así que de dos mitades —web deriva la idemKey (#817, FE2) y mobile la deriva (`3b0f294e`,
+FE1)— **cualquiera que entrara sola a `main` dejaba `mobile != web` y el lint rojo para las tres
+sesiones**. No existía orden secuencial bueno: el estado intermedio bloqueaba a todos.
+
+**La salida es apilar, no coordinar más fino:** el PR de FE1 apunta a la **rama de FE2**, no a `main`.
+El par entra a `main` en **un solo merge commit**, el CI del PR apilado mide la **combinación** —la
+prueba que ninguno de los dos árboles podía dar solo— y nadie edita el worktree ajeno ni cherry-pickea
+código de otro. Funcionó: #822 salió 6/6 verde y #817 quedó con las dos mitades.
+
+**Y acá está lo que no se ve al diseñarlo.** Hay dos modelos de propiedad del merge:
+
+- **por rama destino** — mergea el dueño de la rama que recibe (convención del buzón: nadie escribe en
+  el árbol ajeno);
+- **por PR** — mergea el dueño del PR (lo que el clasificador de permisos del host autoriza).
+
+En un PR normal **coinciden y la ambigüedad no da síntoma**. En un apilado son **personas distintas**,
+y los dos modelos señalan a sesiones opuestas: el contrato ordenó que mergeara el dueño de la rama
+destino, el host se lo bloqueó como *escritura ajena*, y la orden quedó **imposible de cumplir como
+estaba escrita** — con la cara de una asignación prudente.
+
+**Regla:** en un PR apilado mergea **el dueño del PR**. Es el único de los dos que el host autoriza, y
+el consentimiento del dueño de la rama destino ya está dado por el contrato que acordó el apilado.
+Nombrarlo explícito es lo que evita que dos sesiones se queden esperando con permiso cada una para lo
+que la otra tiene que hacer.
+
+Relacionadas: [[gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea]] ·
+[[el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege]] ·
+[[deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo]]
