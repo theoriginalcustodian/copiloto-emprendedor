@@ -10,7 +10,7 @@
 - **✅ Criterio 3 web: 50 de 50 ALCANZABLES** (50/54 del padrón; los 4 de voz no tienen referencia de escritorio). `coordinacion/PLAN.md`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO** - HEAD viejo, pero ~100 archivos editados a mano. Lo escrito ahí no llega a `main`. Diffeá el archivo, no cuentes commits.
-- **Prod-beta multitenant vivo**, smoke **37/37 BETA-READY** (2026-09-23), RLS `FORCE`. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
+- **Prod-beta vivo**, RLS `FORCE` · smoke **37/37 (06/10)**: `BETA-READY` afirma sólo **5 críticos** y ningún gate lo corre. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]

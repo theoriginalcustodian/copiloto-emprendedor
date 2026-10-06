@@ -37,3 +37,24 @@ hito, no merecía estar escrito.
 mano y por voz/IA—, el manual va primero. Es el que funciona sin micrófono, sin señal y sin que el
 modelo entienda un apellido. Poner el camino asistido delante deja al usuario **sin ninguno** mientras
 el asistido no esté.
+
+## Refuerzo (2026-10-06): tenía renglón, y aun así era invisible
+
+La fila `DRIVECERO` (Drive se conecta por OAuth y no puede hacer nada: `TOOLS = {}`) **existía en el
+tablero y estaba `pendiente`** desde días antes. Igual quedó como la última fila de producto sin
+contrato bajado, y no por falta de interés: vivía en la **línea 199**, en la tabla de criterios
+de producto, y `cola-check.sh` recorre **sólo** el bloque `COLA-VIVA` (líneas 233-404). El único
+instrumento que ofrece trabajo **nunca la pudo ofrecer**.
+
+**La corrección de la clase:** no alcanza con que el trabajo tenga renglón. Tiene que estar en la
+tabla que el **lector** recorre. Un documento puede tener dos tablas y un solo lector, y entonces la
+segunda tabla es prosa con forma de tabla — se lee igual de bien y **no se ejecuta**.
+
+**Cómo se ve el síntoma, que es lo que lo hace durar:** idéntico al del caso raíz. Nadie reporta
+la falta, porque el que mira el tablero ve su fila ahí, `pendiente`, esperando turno; y el que corre
+el instrumento ve una cola coherente sin ella. Los dos ven algo correcto.
+
+**How to apply, agregado:** al escribir una fila, verificar que cae **dentro de los delimitadores que
+el lector parsea** (acá: `COLA-VIVA:INICIO` / `:FIN`), y si hay dos tablas, dejar la de afuera como
+**puntero explícito** a la viva — nunca con estado propio, o habrá dos renglónes afirmando cosas
+distintas sobre lo mismo.
