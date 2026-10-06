@@ -478,10 +478,17 @@ def make_signal_anulacion(temporal_client) -> Callable:
 
 
 def _composio_valid_toolkits() -> frozenset[str]:
-    """Toolkits Composio soportados por ESTE Copiloto, DERIVADOS de la policy real (misma unión que
-    `worker_b.py` arma para el `ComposioGateway`: `{**CALENDAR_POLICY, **services.merged_policy()}`)
-    — no una lista literal aparte que pueda driftear. Sumar un servicio nuevo en `services/*.py`
-    (discovery por archivo, ver `services/__init__.py`) lo agrega acá sin tocar este módulo."""
+    """Toolkits Composio que el usuario puede CONECTAR, DERIVADOS de la policy real: `CALENDAR_POLICY` más los
+    módulos de `services/` con acciones (`services.connectable_policy()`). Sin lista literal que pueda driftear.
+    Un servicio sin `TOOLS` (Drive, tras la poda del hito 2) no aparece ni acepta `/composio/connect`.
+    El worker sigue usando `services.merged_policy()` completo para no romper el archivado de facturas."""
+    return frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
+
+
+def _composio_known_toolkits() -> frozenset[str]:
+    """Toolkits que el sistema CONOCE, conectables o no: la unión completa de policies. Sólo para REVOCAR.
+    Un tenant puede tener hoy una conexión de un servicio que ya no se ofrece (Drive, poda A7); tiene que
+    poder desconectarla, o quedaría atada a una conexión que no puede soltar."""
     return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 
@@ -1210,7 +1217,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
 
         404 cuando el tenant no tiene ese toolkit: sin eso, "desconectar" algo que nunca estuvo
         conectado respondería `desconectado: true` sobre un no-op silencioso."""
-        if service not in _composio_valid_toolkits():
+        if service not in _composio_known_toolkits():
             raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
         mias = [c for c in composio_gateway.list_connections(cliente_id)
                 if (c["toolkit"] or "").lower() == service.lower()]
