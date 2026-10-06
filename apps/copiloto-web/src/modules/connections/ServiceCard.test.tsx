@@ -13,6 +13,7 @@ const BASE_SERVICE: CatalogService = {
   kind: 'composio',
   description: 'Conectá tu Gmail para que el copiloto redacte y envíe emails por vos.',
   capabilities: ['send_email'],
+  acciones: ['gmail_send'],
   connected: true,
   connect_path: '/composio/connect?service=gmail',
   disconnect_path: '/composio/connection?service=gmail',
@@ -53,7 +54,7 @@ describe('ServiceCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Desconectar Gmail' }));
     const confirm = screen.getByTestId('service-card-confirm-gmail');
-    expect(confirm).toHaveTextContent('dejar de poder send_email');
+    expect(confirm).toHaveTextContent('dejar de poder enviar emails');
     expect(onDisconnect).not.toHaveBeenCalled(); // un toque solo no corta nada
   });
 
@@ -94,7 +95,52 @@ describe('ServiceCard', () => {
     expect(loQueSePierde({ ...BASE_SERVICE, key: 'googledrive', display_name: 'Google Drive' })).toContain(
       'Si tenés activado "guardar mis facturas en Drive"',
     );
-    expect(loQueSePierde({ ...BASE_SERVICE, capabilities: [] })).toContain('dejar de poder usar Gmail');
+    expect(loQueSePierde({ ...BASE_SERVICE, acciones: [] })).toContain('dejar de poder usar Gmail');
+  });
+
+  // A8 — la UI no promete una acción que el inventario de /catalog no declara.
+  it('A8: Gmail con inventario {gmail_send} promete enviar y NO leer ni buscar, aunque capabilities lo diga', () => {
+    const texto = loQueSePierde({
+      ...BASE_SERVICE,
+      capabilities: ['Leer', 'Enviar', 'Buscar'],
+      acciones: ['gmail_send'],
+    });
+    expect(texto).toContain('enviar emails');
+    expect(texto).not.toMatch(/leer|buscar/i);
+  });
+
+  it('A8: Sheets con inventario {sheets_append_row} promete agregar filas y NO leer', () => {
+    const texto = loQueSePierde({
+      ...BASE_SERVICE,
+      key: 'googlesheets',
+      display_name: 'Google Sheets',
+      capabilities: ['Leer', 'Escribir'],
+      acciones: ['sheets_append_row'],
+    });
+    expect(texto).toContain('agregar filas a tus planillas');
+    expect(texto).not.toMatch(/leer/i);
+  });
+
+  it('A8: Docs con dos acciones las promete las dos', () => {
+    const texto = loQueSePierde({
+      ...BASE_SERVICE,
+      key: 'googledocs',
+      display_name: 'Google Docs',
+      acciones: ['docs_create_doc', 'docs_read_doc'],
+    });
+    expect(texto).toContain('crear documentos');
+    expect(texto).toContain('leer tus documentos');
+  });
+
+  it('A8: sin inventario (backend viejo) NO promete desde capabilities: frase genérica', () => {
+    const texto = loQueSePierde({ ...BASE_SERVICE, acciones: undefined, capabilities: ['Leer', 'Enviar', 'Buscar'] });
+    expect(texto).toContain('dejar de poder usar Gmail');
+    expect(texto).not.toMatch(/leer|buscar/i);
+  });
+
+  it('A8: una acción sin verbo conocido no se inventa: frase genérica', () => {
+    const texto = loQueSePierde({ ...BASE_SERVICE, acciones: ['gmail_accion_nueva'] });
+    expect(texto).toContain('dejar de poder usar Gmail');
   });
 
   it('estado sin-conectar: muestra botón "Conectar" que dispara onConnect(service)', () => {
