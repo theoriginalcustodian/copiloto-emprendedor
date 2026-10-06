@@ -513,11 +513,24 @@ def test_adversarial_http_catalog_reflects_only_own_tenant_state(two_tenants, cr
     mp_b = next(s for s in cat_b if s["key"] == "mercadopago")
     assert mp_a["status"] == "caido"            # A: la credencial vencida del fixture
     assert mp_b["status"] == "nunca_conectado"  # B: borrada -- si "caido" cruzara de A, fallaría acá
+    assert mp_a["connected"] is False           # "caido" no es conectado (campo que decide #855)
+    assert mp_b["connected"] is False           # "nunca_conectado" tampoco
 
     gmail_a = next(s for s in cat_a if s["key"] == "gmail")
     gmail_b = next(s for s in cat_b if s["key"] == "gmail")
     assert gmail_a["connected"] is True
     assert gmail_b["connected"] is False  # composio_connected de A no se filtra hacia B
+
+    # Tercer estado: A sana, B sin credencial => `connected` DIFIERE entre tenants. Con los dos en
+    # False el aserto anterior no distingue un cruce de `connected`; con uno en True, sí.
+    MpCredentialStore(conn_de_tenant(a.cliente_id), a.cliente_id, crypto).update_tokens(
+        a.seller, access_token="AT-A-SANA", refresh_token="RT-A-SANA", expires_at=4102444800)
+    cat_a = client.get("/catalog", headers={"Authorization": f"Bearer {a.token}"}).json()["services"]
+    cat_b = client.get("/catalog", headers={"Authorization": f"Bearer {b.token}"}).json()["services"]
+    mp_a = next(s for s in cat_a if s["key"] == "mercadopago")
+    mp_b = next(s for s in cat_b if s["key"] == "mercadopago")
+    assert mp_a["connected"] is True and mp_a["status"] == "conectado"
+    assert mp_b["connected"] is False and mp_b["status"] == "nunca_conectado"
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
