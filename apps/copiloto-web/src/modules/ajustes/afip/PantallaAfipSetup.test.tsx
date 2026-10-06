@@ -89,3 +89,52 @@ describe('PantallaAfipSetup — CUIT vinculado queda bloqueado sin salida (BL-V2
     expect(screen.queryByTestId('afip-perfil-cuit')).toBeNull();
   });
 });
+
+/**
+ * DRIVECERO (#812, confirmado por planificación 2026-10-06): un tenant nuevo no puede conectar Drive,
+ * así que las ramas del bloque 4 no pueden mandarlo a «conectar en Apps». Control NEGATIVO: si alguien
+ * reintroduce el texto viejo, la aserción de ausencia se pone roja.
+ */
+describe('PantallaAfipSetup — copia en Drive sin salida hacia Apps (DRIVECERO)', () => {
+  const TEXTO_VIEJO = /Conectalo en Apps|conectado en Apps/;
+
+  function montarConEstado(driveConectado: 'false' | 'ausente') {
+    const http: HttpPort = {
+      async enviar(p) {
+        if (p.metodo === 'GET' && p.path.startsWith('/afip/estado')) {
+          const drive = driveConectado === 'false' ? { drive_conectado: false } : {};
+          return respuesta(200, { cuit: CUIT, conectado: false, ...drive });
+        }
+        if (p.metodo === 'POST' && p.path === '/afip/ajustes') {
+          return respuesta(200, { ok: true, guardar_en_drive: true });
+        }
+        return respuesta(404, {});
+      },
+    };
+    configurarApi({ http, tokens });
+  }
+
+  it('drive desconectado: explica que no está disponible y NO manda a conectar en Apps', async () => {
+    montarConEstado('false');
+    render(<PantallaAfipSetup />);
+
+    fireEvent.change(await screen.findByTestId('afip-drive-toggle'), { target: { value: 'si' } });
+
+    expect(await screen.findByTestId('afip-drive-desconectado')).toHaveTextContent(
+      'La copia en Drive no está disponible por ahora.',
+    );
+    expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
+  });
+
+  it('drive sin verificar (null): no promete una conexión en Apps', async () => {
+    montarConEstado('ausente');
+    render(<PantallaAfipSetup />);
+
+    fireEvent.change(await screen.findByTestId('afip-drive-toggle'), { target: { value: 'si' } });
+
+    expect(await screen.findByTestId('afip-drive-requiere-conexion')).toHaveTextContent(
+      'No pudimos verificar tu Google Drive.',
+    );
+    expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
+  });
+});
