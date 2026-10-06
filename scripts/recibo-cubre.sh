@@ -64,6 +64,11 @@ for r in "${todos[@]}"; do
     [ "$arbol_r" = "$arbol_obj" ] || continue
     mismo_arbol=$((mismo_arbol + 1))
     motivos=(); sin_dato=0
+    # Un recibo de corrida-con-overrides (jobs stub) NO cubre: mismo criterio que `sucio`. Un recibo
+    # viejo sin el campo no se castiga -- `has("stub")` distingue "no lo registraba" de "era stub".
+    if [ "$(jq -r 'if has("stub") then .stub else false end' "$r" 2>/dev/null)" = "true" ]; then
+      motivos+=("corrida con overrides de TEST (stub): no prueba nada")
+    fi
     for j in "${JOBS[@]}"; do
       res="$(jq -r --arg j "$j" '.jobs[$j] // "ausente"' "$r")"
       [ "$res" = "ok" ] || motivos+=("$j=$res")
