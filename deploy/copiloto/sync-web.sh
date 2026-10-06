@@ -90,6 +90,12 @@ echo "--- dist/ generado en: ---"
 realpath "$WEB_DIR/dist"
 REMOTE_BUILD
 
+# SHA real en el shell (hallazgo de frontend2, 2026-10-06): si el build no recibe VITE_BUILD_SHA, el
+# index.html sale con el placeholder `unknown` y el único control de versión del frontend se pierde en silencio.
+echo "==> [verif] data-build-sha del index.html buildeado == $_build_sha"
+ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR/dist/index.html" "$_build_sha" < "$LOCAL/deploy/copiloto/verifica-build-sha.sh" \
+  || { echo "ABORT: el shell no declara el SHA real del build (ver verifica-build-sha.sh)." >&2; exit 1; }
+
 # BL-B7: el bundle servido tiene que ser el que se acaba de buildear. Compara el `assets/index-<hash>.js`
 # que referencia el index.html del dist remoto con el que sirve la URL pública (el SW no interviene:
 # es un GET sin service worker). Un desfasaje = deploy que no llegó (o pisado por otro): falla ruidoso.
