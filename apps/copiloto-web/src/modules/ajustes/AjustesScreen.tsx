@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { PantallaAjustes, type AjusteKey } from './PantallaAjustes';
-import { PantallaAndamiaje } from './PantallaAndamiaje';
 import { PantallaApariencia } from './PantallaApariencia';
 import { PantallaComoUsarLaApp } from './PantallaComoUsarLaApp';
 import { PantallaFeedback } from './PantallaFeedback';
@@ -10,7 +9,7 @@ import { PantallaTono } from './negocio/PantallaTono';
 import { PantallaAfipSetup } from './afip/PantallaAfipSetup';
 import './ajustes.css';
 
-type SubVista = 'perfilNegocio' | 'tono' | 'facturacionAfip' | 'miPlan' | 'comoUsar' | 'apariencia' | 'feedback';
+type SubVista = 'perfilNegocio' | 'tono' | 'facturacionAfip' | 'comoUsar' | 'apariencia' | 'feedback';
 
 export interface AjustesScreenProps {
   /** `cuenta` navega al tab `account` existente (fusión con `AccountScreen`, M-WEB módulo 13).
@@ -27,7 +26,7 @@ export interface AjustesScreenProps {
 
 /**
  * Contenedor de `ajustes` (M-WEB módulo 13) — orquesta el menú (`PantallaAjustes`) y sus 5
- * sub-pantallas propias (`perfilNegocio`/`facturacionAfip`/`miPlan`/`comoUsar`/`apariencia`)
+ * sub-pantallas propias (`perfilNegocio`/`facturacionAfip`/`comoUsar`/`apariencia`)
  * con navegación LOCAL (mismo criterio que `PresupuestosScreen`/`InteligenciaScreen`: `useState`,
  * sin router). Las otras 3 entradas del menú (`apps`/`cuenta`/`soporte`) no tienen sub-vista propia
  * en web -- ya existen como tabs/pantallas del shell, así que delegan vía `onNavegarTab`/
@@ -72,13 +71,6 @@ export function AjustesScreen({ onNavegarTab, onAbrirSoporte }: AjustesScreenPro
       {vista === 'comoUsar' && <PantallaComoUsarLaApp onAbrirChat={() => onNavegarTab?.('chat')} />}
       {vista === 'apariencia' && <PantallaApariencia />}
       {vista === 'feedback' && <PantallaFeedback onAbrirSoporte={onAbrirSoporte} contexto="ajustes" />}
-      {vista === 'miPlan' && (
-        <PantallaAndamiaje
-          titulo="Mi plan"
-          icono="📊"
-          mensaje="Todavía no hay planes disponibles para elegir — esto llega en otra etapa."
-        />
-      )}
     </div>
   );
 }

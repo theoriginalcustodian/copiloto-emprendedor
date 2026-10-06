@@ -7,7 +7,7 @@ import './ajustes.css';
  * `EscritorioScreen` (grid de tiles + callback genérico) — el mapeo `AjusteKey -> pantalla/tab` lo
  * hace el wiring del shell, no este componente.
  *
- * Mismas 9 entradas que mobile, mismo orden (BL-W12, `TILES_AJUSTES` abajo trae el detalle del grupo
+ * Mismas 8 entradas que mobile, mismo orden (DEC-8: sin «Mi plan», el plan no entra en la beta; BL-W12, `TILES_AJUSTES` abajo trae el detalle del grupo
  * «Ayuda»). El tile `apariencia` queda con su key intacta a propósito: en web el selector de tema
  * vive en `ajustes/PantallaApariencia.tsx` (`useTheme()`/`ThemeProvider`, 3 pieles
  * `claro`/`oscuro`/`nocturno`) — un sistema distinto de los 5 `SKINS` de mobile, y no existe un
@@ -17,7 +17,6 @@ export type AjusteKey =
   | 'perfilNegocio'
   | 'facturacionAfip'
   | 'apps'
-  | 'miPlan'
   | 'cuenta'
   | 'apariencia'
   | 'comoUsar'
@@ -41,7 +40,6 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'perfilNegocio', label: 'Mi negocio', icono: '💬' },
   { key: 'facturacionAfip', label: 'Facturación ARCA', icono: '🧾' },
   { key: 'apps', label: 'Apps conectadas', icono: '📁' },
-  { key: 'miPlan', label: 'Mi plan', icono: '📊' },
   { key: 'cuenta', label: 'Mi cuenta', icono: '👤' },
   { key: 'apariencia', label: 'Apariencia', icono: '🎨' },
   { key: 'comoUsar', label: 'Cómo usar la app', icono: '🎙️' },

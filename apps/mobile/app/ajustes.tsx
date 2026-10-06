@@ -30,7 +30,6 @@ const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
   facturacionAfip: '/ajustes-afip',
   // La MISMA pantalla que antes se abría desde el escritorio: sólo cambió la puerta.
   apps: '/apps',
-  miPlan: '/ajustes-mi-plan',
   cuenta: '/ajustes-cuenta',
   apariencia: '/ajustes-skins',
   comoUsar: '/ajustes-como-usar',

@@ -8,14 +8,13 @@ import { useTema } from '../../theme/ThemeProvider';
 
 /**
  * Las entradas de Ajustes. Nació como port 1:1 del rediseño de vidrio de documed y creció a 8; el
- * 2026-07-22 volvió a 6 sacando andamiajes y fusionando los pares que se pisaban -- ver
- * `TILES_AJUSTES` para el detalle de qué se fue a dónde.
+ * 2026-07-22 volvió a 6 sacando andamiajes y fusionando los pares que se pisaban; el 2026-10-06 (DEC-8)
+ * salió «Mi plan» y quedaron 5 -- ver `TILES_AJUSTES` para el detalle de qué se fue a dónde.
  */
 export type AjusteKey =
   | 'perfilNegocio'
   | 'facturacionAfip'
   | 'apps'
-  | 'miPlan'
   | 'cuenta'
   | 'apariencia'
   | 'comoUsar'
@@ -29,7 +28,7 @@ interface DefinicionTileAjuste {
 }
 
 /**
- * Los 6 tiles de Ajustes, en orden de cuándo se necesitan.
+ * Los 5 tiles de Ajustes (8 → 6 el 2026-07-22, 6 → 5 el 2026-10-06), en orden de cuándo se necesitan.
  *
  * 🔴 **Quedó en 6 el 2026-07-22, y lo que se sacó importa más que lo que quedó.** De los 8 anteriores,
  * **tres eran `PantallaAndamiaje`** —el placeholder vacío— y había **dos pares que se pisaban**:
@@ -63,7 +62,6 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   // Antes `folder` (la carpeta que agrupa), heredado del escritorio. `appsConectadas` es el nombre
   // propio del set de 21 para este mismo concepto -- la pantalla es la misma, sólo cambió el glifo.
   { key: 'apps', label: 'Apps conectadas', icono: 'appsConectadas' },
-  { key: 'miPlan', label: 'Mi plan', icono: 'miPlan' },
   { key: 'cuenta', label: 'Mi cuenta', icono: 'cuenta' },
   // Antes `media` (ojo/preview) -- el catálogo viejo no tenía ningún glifo que significara
   // literalmente "paleta de colores". El set de 21 sí: `apariencia` es un semicírculo claro/oscuro,
@@ -122,9 +120,8 @@ export interface PantallaAjustesProps {
 }
 
 /**
- * Pantalla Ajustes -- grilla de iconos con las 6 entradas. La única sin fuente de datos real todavía
- * es "Mi plan", que se resuelve con `PantallaAndamiaje` y lo dice en pantalla. Esta pantalla sólo
- * cablea la navegación (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
+ * Pantalla Ajustes -- grilla de iconos con las 5 entradas. Esta pantalla sólo cablea la navegación
+ * (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
  */
 export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();
