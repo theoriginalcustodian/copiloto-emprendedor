@@ -77,6 +77,7 @@ chk("la última línea nunca dice que 'los 37 pasaron'", "pasaron" not in ultima
 # --- 2) denominador MEDIDO con el script completo y un httpx de mentira -----------------------
 STUB = '''
 import json as _j
+import os as _os
 class _R:
     def __init__(self, code=200, data=None, text=None, ctype="application/json", headers=None):
         self.status_code = code; self._d = data if data is not None else {}
@@ -91,7 +92,10 @@ BODY = {"cliente_id": "c1", "access_token": "t", "refresh_token": "r", "es_admin
 class Client:
     def __init__(self, base_url=None, timeout=None): pass
     def get(self, path, params=None, headers=None):
-        if path == "/index.html": return _R(text='<script src="/assets/a.js"></script>', ctype="text/html")
+        if path == "/index.html":
+            if _os.environ.get("STUB_MODE") == "INDEX_SIN_SCRIPT":
+                return _R(text="<html>sin script</html>", ctype="text/html")
+            return _R(text='<script src="/assets/a.js"></script>', ctype="text/html")
         if path.startswith("/assets/"): return _R(text="x copilotoemprendedor.duckdns.org x", ctype="application/javascript")
         return _R(data=BODY)
     def post(self, path, json=None, headers=None):
@@ -126,6 +130,21 @@ chk("ruta feliz medida: 37 checks ejecutados y exit 0",
 # y nombrados. Lo que se mide acá es el DENOMINADOR, no el estado de cada check.
 chk("ruta feliz: los 5 críticos verdes en el stub y veredicto con los dos números",
     "5/5 críticos" in out and "no-críticos ROJOS" in out and "BETA-READY" in out, out[-800:])
+
+# --- 2b) recuento FIJO: una rama que falla NO cambia el denominador (37), la falla sale roja con nombre
+rc3, out3 = correr_script(SMOKE, {"SUPABASE_URL": ""})  # grant admin sin credenciales => rama de falla
+chk("grant admin falla: sigue 37 de 37 (recuento fijo), exit 0 (no-crítico)",
+    f"checks ejecutados: {EXPECTED} de {EXPECTED}" in out3 and rc3 == 0, f"rc={rc3}\n{out3[-600:]}")
+chk("grant admin falla: el rojo sale NOMBRADO (grant y re-login)",
+    "FAIL] consola: otorgar claim admin" in out3 and "FAIL] consola: re-login post-grant" in out3, out3[-600:])
+
+rc4, out4 = correr_script(SMOKE, {"STUB_MODE": "INDEX_SIN_SCRIPT"})  # artefacto sin <script>
+chk("artefacto sin <script>: sigue 37 de 37 (no baja a 35)",
+    f"checks ejecutados: {EXPECTED} de {EXPECTED}" in out4 and rc4 == 0, f"rc={rc4}\n{out4[-600:]}")
+chk("artefacto sin <script>: index, bundle y control negativo salen rojos con nombre",
+    all(f"FAIL] {n}" in out4 for n in ("artefacto: index.html sirve un <script> de /assets",
+                                       "artefacto: control negativo -- string imposible da 0 ocurrencias")),
+    out4[-600:])
 
 # --- 3) control positivo sobre el script REAL: borrar un rec() ⇒ ROJO -------------------------
 LINEA = '    rec("/catalog", r.status_code == 200 and len(svcs) > 0, f"status={r.status_code} n_services={len(svcs)}")'

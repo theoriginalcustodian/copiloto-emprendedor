@@ -200,9 +200,13 @@ else:
 admin_token = None
 sup = (os.environ.get("SUPABASE_URL") or os.environ.get("COPILOTO_SUPABASE_URL") or "").rstrip("/")
 sr = os.environ.get("SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
+# RECUENTO FIJO: esta sección emite SIEMPRE exactamente 2 rec (grant + re-login), pase lo que pase.
+# Si el grant falla, el re-login sale ROJO con su causa, en vez de desaparecer y bajar el total
+# (un denominador que depende del resultado no es denominador: `SMOKEDENOM`, test-smoke-veredicto.sh).
+grant_ok, grant_detalle = False, ""
 try:
     if not (sup and sr and cliente_id):
-        rec("consola: otorgar claim admin", False, "faltan SUPABASE_URL/SERVICE_ROLE_KEY/cliente_id")
+        grant_detalle = "faltan SUPABASE_URL/SERVICE_ROLE_KEY/cliente_id"
     else:
         gh = {"apikey": sr, "Authorization": f"Bearer {sr}"}
         lookup = httpx.get(f"{sup}/auth/v1/admin/users", headers=gh, params={"filter": EMAIL}, timeout=15)
@@ -211,18 +215,26 @@ try:
         users = payload.get("users", []) if isinstance(payload, dict) else payload
         user = next((u for u in (users or []) if (u.get("email") or "").lower() == EMAIL.lower()), None)
         if user is None:
-            rec("consola: otorgar claim admin", False, f"'{EMAIL}' no aparece en el lookup de GoTrue")
+            grant_detalle = f"'{EMAIL}' no aparece en el lookup de GoTrue"
         else:
             put = httpx.put(f"{sup}/auth/v1/admin/users/{user['id']}", headers=gh,
                             json={"app_metadata": {"copiloto_admin": True}}, timeout=15)
             put.raise_for_status()
-            rec("consola: otorgar claim admin", True, f"user_id={user['id']}")
-            # re-login: el token viejo no refleja el claim nuevo (snapshot al momento de emitirse).
-            r2 = client.post("/auth/login", json={"email": EMAIL, "password": PASSWORD})
-            admin_token = r2.json().get("access_token") if r2.status_code == 200 else None
-            rec("consola: re-login post-grant", bool(admin_token), f"status={r2.status_code}")
+            grant_ok, grant_detalle = True, f"user_id={user['id']}"
 except Exception as e:
-    rec("consola: otorgar claim admin", False, repr(e))
+    grant_detalle = repr(e)
+rec("consola: otorgar claim admin", grant_ok, grant_detalle)
+
+relogin_detalle = "sin grant previo: no hay re-login que hacer"
+if grant_ok:
+    # re-login: el token viejo no refleja el claim nuevo (snapshot al momento de emitirse).
+    try:
+        r2 = client.post("/auth/login", json={"email": EMAIL, "password": PASSWORD})
+        admin_token = r2.json().get("access_token") if r2.status_code == 200 else None
+        relogin_detalle = f"status={r2.status_code}"
+    except Exception as e:
+        relogin_detalle = repr(e)
+rec("consola: re-login post-grant", bool(admin_token), relogin_detalle)
 
 # 10c) el camino admin, con control positivo -- el mismo listado que el adversarial de arriba
 # rechazó, ahora debe dar 200. El último paso es el que vale: cierra mutar→auditar por HTTP real.
@@ -343,29 +355,40 @@ else:
 # mismo `client` que el resto del smoke, sin CORS ni vhost aparte.
 AUTH_URL_ESPERADA = os.environ.get("SMOKE_AUTH_URL", "https://copilotoemprendedor.duckdns.org")
 AUTH_DOMINIO = AUTH_URL_ESPERADA.split("://", 1)[-1].rstrip("/")
+# RECUENTO FIJO: los tres checks de esta sección emiten SIEMPRE su rec, aunque la anterior falle.
+# Antes, si index.html no traía <script>, sólo salía 1 rec en vez de 3 (denominador variable).
+bundle_path, bundle = "", ""
 try:
     r_index = client.get("/index.html")
     m = re.search(r'src="(/assets/[^"]+\.js)"', r_index.text)
-    if r_index.status_code != 200 or not m:
-        rec("artefacto: index.html sirve un <script> de /assets", False,
-            f"status={r_index.status_code} match={bool(m)}")
-    else:
+    idx_ok = r_index.status_code == 200 and bool(m)
+    idx_detalle = f"status={r_index.status_code} match={bool(m)}"
+    if idx_ok:
         bundle_path = m.group(1)
-        rec("artefacto: index.html sirve un <script> de /assets", True, bundle_path)
+        idx_detalle = bundle_path
+except Exception as e:
+    idx_ok, idx_detalle = False, repr(e)
+rec("artefacto: index.html sirve un <script> de /assets", idx_ok, idx_detalle)
+
+try:
+    if bundle_path:
         r_bundle = client.get(bundle_path)
         bundle = r_bundle.text
         ocurrencias_dominio = bundle.count(AUTH_DOMINIO)
-        rec(f"artefacto: el bundle contiene la base de auth horneada ({AUTH_DOMINIO})",
-            r_bundle.status_code == 200 and ocurrencias_dominio > 0,
-            f"status={r_bundle.status_code} ocurrencias={ocurrencias_dominio}")
-
-        # Control NEGATIVO en la MISMA corrida -- un grep roto que matchea todo pasaría como verde
-        # sin esto (memoria: un-mecanismo-roto-hacia-el-no-no-da-sintoma).
-        imposible = f"dominio-imposible-{uuid.uuid4().hex}.invalid"
-        rec("artefacto: control negativo -- string imposible da 0 ocurrencias",
-            bundle.count(imposible) == 0, f"ocurrencias={bundle.count(imposible)}")
+        bundle_ok = r_bundle.status_code == 200 and ocurrencias_dominio > 0
+        bundle_detalle = f"status={r_bundle.status_code} ocurrencias={ocurrencias_dominio}"
+    else:
+        bundle_ok, bundle_detalle = False, "sin bundle: index.html no lo sirvió"
 except Exception as e:
-    rec("artefacto: el bundle contiene la base de auth horneada", False, repr(e))
+    bundle_ok, bundle_detalle = False, repr(e)
+rec(f"artefacto: el bundle contiene la base de auth horneada ({AUTH_DOMINIO})", bundle_ok, bundle_detalle)
+
+# Control NEGATIVO -- un grep roto que matchea todo pasaría como verde sin esto (memoria:
+# un-mecanismo-roto-hacia-el-no-no-da-sintoma). Sólo pasa con un bundle REAL leído: contra "" un 0
+# sería un pase vacío.
+imposible = f"dominio-imposible-{uuid.uuid4().hex}.invalid"
+rec("artefacto: control negativo -- string imposible da 0 ocurrencias",
+    bool(bundle) and bundle.count(imposible) == 0, f"ocurrencias={bundle.count(imposible)} bundle_len={len(bundle)}")
 
 # 11b) Opcional, barato -- punta a punta contra el vhost PÚBLICO (Caddy -> GoTrue, NO 127.0.0.1:8099
 # -- `Caddyfile.snippet`: `handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }`). Ya
