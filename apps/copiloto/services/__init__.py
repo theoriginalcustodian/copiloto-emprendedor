@@ -70,6 +70,15 @@ def connectable_policy() -> dict:
     return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values() if getattr(mod, "TOOLS", None)}
 
 
+def acciones_por_toolkit() -> dict:
+    """{toolkit_slug: (acciones…)} de los módulos conectables, DERIVADO de `TOOLS` -- no una constante a mano
+    que divergiría el día que alguien agregue una acción (A8, contrato de planificación). `GET /catalog` lo
+    expone para que la UI declare qué sabe hacer cada conector: si `TOOLS` cambia, esto cambia solo.
+    """
+    _discover()
+    return {mod.TOOLKIT: tuple(sorted(mod.TOOLS)) for mod in _BY_SERVICE.values() if getattr(mod, "TOOLS", None)}
+
+
 def prompt_fragments() -> str:
     """Concatena los PROMPT_FRAGMENT de todos los módulos para componer el system prompt."""
     _discover()
