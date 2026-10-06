@@ -67,6 +67,7 @@ jest.mock('@copiloto/core', () => {
 import { router } from 'expo-router';
 
 import {
+  ApiError,
   agregarItem,
   anularComprobante,
   cancelarFactura,
@@ -195,17 +196,9 @@ describe('PantallaFacturacion', () => {
     jest.mocked(cancelarFactura).mockReset().mockResolvedValue({ ok: true });
     jest.mocked(listarComprobantes).mockReset().mockResolvedValue({ status: 'ok', comprobantes: [] });
     jest.mocked(anularComprobante).mockReset().mockResolvedValue({ status: 'ok', ok: true, anulacionId: 'anulacion-1' });
-    jest.mocked(estadoAnulacion).mockReset().mockResolvedValue({
-      paso: 'esperando_confirmacion',
-      original: null,
-      // `marcada` es el nuevo campo de `EstadoAnulacion`: dice si la factura original quedó marcada
-      // en el libro propio. `true` acá porque este fixture es el camino feliz.
-      marcada: true,
-      errores: [],
-      resultado: null,
-      motivo: null,
-      terminado: false,
-    });
+    // Por defecto NO hay anulación en curso: el backend contesta 404 (`estado_anulacion`). Si este mock
+    // devolviera un estado, abrir el flujo retomaría esa anulación en vez de ofrecer «Sí, anular».
+    jest.mocked(estadoAnulacion).mockReset().mockRejectedValue(new ApiError(404, 'anulación no encontrada'));
     jest.mocked(confirmarAnulacion).mockReset().mockResolvedValue({ ok: true });
 
     jest.mocked(router.push).mockClear();

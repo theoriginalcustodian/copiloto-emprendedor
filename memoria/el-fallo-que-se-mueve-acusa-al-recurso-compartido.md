@@ -150,3 +150,38 @@ Emparentada con [[dos-causas-suficientes-el-test-no-atribuye]] y con
 - [[el-pipe-se-come-el-exit-code]] · [[pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo]] —
   la misma familia: el veredicto sobrevive y la evidencia que lo contradecía se descarta en el camino.
 - [[dos-causas-suficientes-el-test-no-atribuye]] — ahí dos causas reales; acá una sola, mal nombrada.
+
+## Refuerzo 2026-10-06 — el conjunto que falla CRECE con la carga, y todos los fallos traen el MISMO umbral: eso es la firma, y se lee en una línea
+
+Hoy el gate `web.sh` me dio ROJO sobre un diff de tres archivos (dos `.md` de memoria y **comentarios** en
+un test de facturación). «Es contención» era la excusa lista, y la excusa lista es justo la que no se
+acepta sin medir. Pero la medición no fue «¿pasa si lo corro de nuevo?» — fue **mirar qué conjunto falla**:
+
+```
+corrida 1 (web + lint en paralelo):  2 fallos  -> DesktopShell, shellConsolaAdmin
+corrida 2 (lint todavía corriendo):  4 fallos  -> + AppShell, + Rail
+los 8 fallos, sin excepción:         «Test timed out in 5000ms»
+```
+
+Dos señales, y ninguna necesita entender el código: **el conjunto se mueve Y crece con la carga**, y
+**todos los fallos comparten el mismo umbral**. Un defecto de código no gana archivos porque arranqués
+otro proceso, y no se presenta siempre exactamente en el mismo número redondo. Los cuatro son tests de
+`src/shell/` — los más pesados de la suite, los primeros en caerse cuando la máquina se llena. Esa es la
+firma de un recurso compartido, y se lee sin abrir un solo test.
+
+**El control que cierra el caso es EXTERNO, y existía todo el tiempo:** el CI corrió el **mismo SHA** en un
+runner limpio y dio `web pass` en 1 m 44 s, con `mobile`, `core`, `lint` y `drift` también verdes. Un gate
+local y un CI que discrepan sobre el mismo commit no empatan: el que corre aislado gana. Correr los dos
+archivos solos (3/3 verde) apuntaba al mismo lado.
+
+**La trampa que esto evita, y es la caritativa:** yo iba a reportar «2 fallos preexistentes en `src/shell/`,
+no son míos». Eso habría sido *cierto y tóxico* — habría sembrado un rojo fantasma en un archivo ajeno que
+nadie podía reproducir, y el próximo que lo viera lo habría archivado como «el flake conocido de shell»,
+que es exactamente el permiso que lava la siguiente regresión real
+([[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]).
+
+**Regla operativa para esta PC, donde corren varias sesiones a la vez:** un gate local rojo **no se
+reporta ni se atribuye** antes de (1) mirar si el conjunto que falla se mueve entre corridas, (2) chequear
+si todos los fallos comparten un umbral de timeout, y (3) comparar contra el CI del **mismo SHA**. Y no
+lances dos gates pesados en paralelo esperando medir algo: el único resultado garantizado es un rojo que no
+significa nada. Yo lo hice, y encima la segunda corrida tampoco estuvo sola.

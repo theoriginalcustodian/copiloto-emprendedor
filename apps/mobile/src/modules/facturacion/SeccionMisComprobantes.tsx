@@ -32,6 +32,30 @@ function claveDe(c: Comprobante): string {
 }
 
 /**
+ * Id de la anulación de un comprobante, derivado en la UI. Es la MISMA fórmula que el backend usa para
+ * nombrar el workflow (`apps/copiloto/web.py`, `make_iniciar_anulacion`): dos «anular» sobre la misma
+ * factura caen en la MISMA anulación. Derivarlo evita guardar en el dispositivo una verdad que el
+ * backend ya contesta (`GET /afip/anulaciones/{id}`).
+ */
+function anulacionIdDe(cuit: string, c: Comprobante): string {
+  return `${cuit}-${c.tipoCbte}-${c.puntoVenta}-${c.nro}`;
+}
+
+/**
+ * La anulación en curso de este comprobante, o `null` si no hay ninguna. El 404 es la respuesta normal de
+ * «no hay anulación» (`afip_web.py::estado_anulacion`), no un error. Cualquier otro fallo también cae en
+ * `null`: el botón «Sí, anular» se puede reintentar sin riesgo, porque el backend engancha la misma
+ * anulación (`USE_EXISTING`) en vez de emitir otra nota de crédito.
+ */
+async function anulacionEnCursoDe(cuit: string, c: Comprobante): Promise<EstadoAnulacion | null> {
+  try {
+    return (await estadoAnulacion(anulacionIdDe(cuit, c))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * "Mis comprobantes" -- segunda sección de la MISMA pantalla de Facturación (decisión del plan §0: "no
  * pantalla aparte"). Lista + anulación con su propia máquina de estados, independiente de la del
  * wizard de emisión (`maquinaEstado.ts`): es un recurso distinto (`AnulacionWorkflow`, no
@@ -80,6 +104,9 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   const [pollTick, setPollTick] = useState(0);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
+  // Clave del comprobante cuyo flujo de anulación está abierto. Sirve para descartar la respuesta de la
+  // consulta de «anulación en curso» si el usuario ya cerró o cambió el flujo mientras esperaba.
+  const pedidoRef = useRef<string | null>(null);
 
   /**
    * `silencioso` = no pasar por `cargando`. Una RE-carga (el tirón, o el refresco de después de
@@ -142,13 +169,22 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
     };
   }, [anulacionId, pollTick]);
 
-  function pedirAnulacion(c: Comprobante) {
+  async function pedirAnulacion(c: Comprobante) {
+    const clave = claveDe(c);
+    pedidoRef.current = clave;
     setObjetivoAnulacion(c);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
+    // Antes de ofrecer «Sí, anular», preguntar si ESTE comprobante ya tiene una anulación en curso: la app
+    // pudo recargarse entre «Sí, anular» y «Confirmar». Si la hay, el flujo retoma donde quedó.
+    const enCurso = await anulacionEnCursoDe(cuit, c);
+    if (!vivo.current || pedidoRef.current !== clave || !enCurso) return;
+    setAnulacionId(anulacionIdDe(cuit, c));
+    setEstadoAnulacionActual(enCurso);
   }
 
   function cancelarPedido() {
+    pedidoRef.current = null;
     setObjetivoAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
@@ -182,6 +218,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   }
 
   function cerrarYRefrescar() {
+    pedidoRef.current = null;
     setObjetivoAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);

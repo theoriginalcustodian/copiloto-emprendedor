@@ -34,6 +34,8 @@ export interface TarjetaIngresoPropuestoProps {
   /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
    * los tests que no verifican persistencia lo omiten sin romper nada. */
   onResolver?: (patch: NonNullable<ChatMessage['ingresoResuelto']>) => void;
+  /** IDEMINGCLI — `mensaje.id`. Se reenvía a `FormularioIngreso`, que deriva de él la `idemKey`. */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -41,6 +43,7 @@ export function TarjetaIngresoPropuesto({
   propuesta,
   resuelto,
   onResolver,
+  mensajeId,
   testID = 'ingreso-propuesto',
 }: TarjetaIngresoPropuestoProps) {
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
@@ -71,6 +74,7 @@ export function TarjetaIngresoPropuesto({
     >
       <FormularioIngreso
         origen="voz"
+        mensajeId={mensajeId}
         iniciales={{
           monto: propuesta.monto,
           cliente: propuesta.clienteNombre ?? undefined,

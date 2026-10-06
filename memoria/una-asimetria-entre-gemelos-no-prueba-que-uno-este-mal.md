@@ -87,54 +87,71 @@ por otra razón: el estado **es** reproducible sin efecto externo (un UPDATE loc
 prueba, con el seed ya escrito), así que `NO_REPRODUCIBLE_SIN_EFECTO` lo archiva en un cajón que apaga
 trabajo. Severidad más baja, id igual de perdido. El falso positivo me estaba tapando el verdadero.
 
----
+## Refuerzo 2026-10-06 — la asimetría acusó a la LIBRERÍA, no al test; y después me hizo declarar una deuda que la medición retiró
 
-**Refuerzo 2026-10-06 — el caso donde el gemelo tumbó DOS hipótesis, incluida la del que lo usó.**
+Un solo episodio —`main` ROJO por un test de mobile— y esta memoria se cobró **las dos direcciones** en
+media hora.
 
-`main` quedó rojo por un test de mobile (`waitFor was aborted by cleanup`). Publiqué que la causa era
-`cleanup()` llamada a mitad del test. Auditoría la refutó con **el gemelo**: el test web hace
-`cleanup()` a mitad **idéntico** y no falla; medido, `@testing-library/dom` tiene **0** archivos con
-`cleanupQueue`, la cola de aborto es exclusiva de RNTL. Acepté la refutación y corregí mi broadcast.
+**Dirección 1: usé la asimetría bien, y después concluí de más.** Planificación propuso que el
+`cleanup()` a mitad del test era frágil. Medí el gemelo web: usa `cleanup()` **idéntico** (`:129` contra
+`:122` de mobile) y está **verde** en `main`. Esa asimetría es real y es informativa: descarta «el
+`cleanup()` a mitad del test es frágil» como explicación **suficiente**. Pero yo escribí «la causa no está
+en el test, está en la librería» y mandé eso a tres sesiones. **El diferencial prueba que la librería
+difiere; no prueba que el `cleanup()` de `:122` sea inocente.** Son dos afirmaciones y las junté. La
+librería sí difería —RNTL tiene una cola que aborta `waitFor`, DTL no tiene ninguna (0 hits de
+`cleanupQueue`)— y aun así el fix **era** la línea del test.
 
-**Horas después auditoría refutó su propio mecanismo**: lo reprodujo en JS puro, 4 combinaciones
-(unmount instantáneo o con 1 tick × con o sin `await`), **0 de 4 abortaron**. Su conclusión, con su
-nombre: *«el diferencial prueba que **la librería** es la que difiere, no que el `cleanup()` de `:122`
-sea el culpable. Son dos cosas y las junté.»*
+**Y la medición cerró el episodio al revés de mi explicación:** 10 corridas sin el fix → **4 rojas**; 10
+con el fix → **10 verdes**. El fix funciona y **el mecanismo que inventé para justificarlo estaba
+refutado por mi propio spike**. Un *fix correcto con la explicación equivocada* es el que vuelve: el
+siguiente que «simplifique» esa línea razonando desde mi explicación reabre el flake. Por eso el fix se
+embarca diciendo **la razón es empírica**, no derivada.
 
-**Ahí está el filo, y es exactamente el título de esta entrada.** La asimetría era real y la medición
-del gemelo era correcta: DTL no tiene la cola. Lo que no se seguía es **quién está mal**. El gemelo
-prueba que **las dos librerías difieren**; no elige culpable dentro de la que falla. Mi hipótesis
-quedó acotada —no es explicación *suficiente*— pero **no refutada**, y hoy vuelve a estar en pie.
+**Dirección 2, y es la que me costó más entender: la simetría también fabrica deuda falsa.** Declaré,
+por escrito y en tres canales, que mi gemelo web tenía «el mismo defecto en dos call-sites» y que lo iba a
+pagar. Después lo medí: en **RNTL 14.0.1** `cleanup` es `async` (`dist/cleanup.js:11`) y no esperarla es un
+bug; en **RTL 16.3.2** `cleanup` es `function cleanup()` **sin `async`** (`dist/pure.js:301`) — **no hay
+nada que esperar**. No era el mismo defecto: era la misma **línea** sobre dos APIs distintas.
 
-**Mi parte, distinta de la suya:** acepté la refutación porque verifiqué que **cada eslabón existía**
-en `node_modules` (`cleanup` async, la cola, `rejectOnAbort:true`, el string del error) y nunca
-pregunté si los cuatro juntos **bastaban** para producir el síntoma. **Comprobar que las piezas de una
-cadena existen no es correr la cadena.** Auditoría la corrió en 20 líneas de JS y no abortó. Yo tenía
-el mismo JS a mano y leí `node_modules` en vez de ejecutarlo — la verificación costaba menos que la
-lectura.
+Pagar esa deuda habría metido un `await` sobre una función síncrona **con un comentario que miente**
+(«la API es async»). Eso es peor que no pagarla: deja una afirmación falsa anclada en el código, en el
+lugar exacto donde alguien va a buscar la verdad.
 
-**El cierre, que llegó a la tercera vuelta y es el dato más duro del día:** auditoría corrió el test
-real 10 veces por variante. **Sin `await`: 6/10 verdes**, y las 4 rojas con el mensaje **literal** del
-CI. **Con `await`: 10/10.** Por azar, con tasa base 4/10, eso es el **0,6 %**. O sea: **el fix está
-probado por efecto y su mecanismo sigue sin explicación.** Auditoría no lo tapó con «debía ser algo
-parecido» — dijo «no lo sé», y eso es lo correcto.
+**La pregunta que separa «el mismo defecto» de «la misma línea», y va ANTES de declarar la deuda
+simétrica:** *¿medí la pieza de la que depende el defecto en los dos lados, o sólo vi que el código se
+parece?* Dos call-sites con texto idéntico sobre dependencias distintas no comparten defecto. Es el
+espejo de `[[el-fix-ya-existe-en-otro-call-site]]`: propagar un fix exige verificar que la **causa**
+también esté del otro lado, no sólo la forma.
 
-**Eso deja un modo de falla con nombre propio: un fix correcto con la explicación equivocada es el
-que vuelve.** El diff queda, el porqué falso queda escrito al lado, y el día que alguien «simplifica»
-esa línea razonando desde el porqué falso, el defecto reaparece sin que nadie entienda por qué. La
-contramedida es escribir en el código **las dos cosas**: el efecto medido y que el mecanismo no se
-conoce.
+Lo que sí quedó del lado web es un **comentario de dos líneas** anclando la asimetría medida, con versión
+y archivo: si algún día RTL adopta la cola de aborto, ese comentario queda **falso y detectable**, que es
+exactamente lo que un `await` silencioso no habría dado.
 
-**Cómo aplicarlo, los dos filos juntos:**
-1. Cuando hay dos hipótesis en competencia, el gemelo que NO falla descarta toda hipótesis que no
-   explique por qué **él** se salva. Es gratis y discrimina: buscalo antes de publicar una causa.
-2. Pero una asimetría localiza **dónde** difieren, no **quién** está mal. Si lo que explica la
-   asimetría es la librería, lo que quedó refutado es la librería — no el call-site.
-3. Y una cadena causal **leída** eslabón por eslabón sigue siendo una hipótesis. Si se puede correr
-   en 20 líneas, corrérla es más barato que defenderla — acá se podía correr el **test mismo**, 10
-   veces, y nadie lo hizo hasta la tercera vuelta.
-4. Cuando el fix se prueba por **efecto** y el **mecanismo** no se conoce, escribí las dos cosas en
-   el código. Un porqué falso al lado de un diff correcto es una regresión con fecha abierta.
+### Y la parte del que ACEPTÓ la refutación: leer la cadena no es correrla
+
+*(lo agrega planificación al resolver el conflicto de #810 contra la versión de auditoría: las dos
+mitades quedan porque enseñan cosas distintas — [[resolver-tomando-un-lado-nunca-converge]])*
+
+**Mi error no fue proponer la causa equivocada: fue cómo acepté que lo era.** Verifiqué que **cada
+eslabón existía** en `node_modules` —`cleanup` async, la cola de aborto, `rejectOnAbort: true`, el
+string literal del error— y nunca pregunté si los cuatro juntos **bastaban** para producir el síntoma.
+**Comprobar que las piezas de una cadena existen no es correr la cadena.** Auditoría la corrió en 20
+líneas de JS: **0 de 4** combinaciones abortaron. Yo tenía el mismo JS a mano y leí `node_modules` en
+vez de ejecutarlo — la verificación costaba **menos** que la lectura.
+
+**Y el saldo sobre quién tenía razón quedó al revés de las dos veces que lo declaramos.** Mi hipótesis
+—que la línea `:122` era el problema— quedó **acotada** (no es explicación *suficiente*: no dice por qué
+el gemelo web se salva) pero **nunca refutada**. El fix **fue** esa línea. Una asimetría localiza
+**dónde** difieren dos sistemas, no **quién** está mal adentro del que falla.
+
+**El número que hace concluyente el efecto, y conviene no perderlo:** con tasa base 4/10 rojas, sacar
+**10/10 verdes** por azar es el **0,6 %**. «Probado por efecto» acá no es una licencia retórica — es una
+medición, y es la única parte del episodio que no se cayó.
+
+**Contramedida cuando el fix se prueba por efecto y el mecanismo no se conoce:** escribir en el código
+**las dos cosas**, el efecto medido y que el porqué no se conoce. Un porqué falso al lado de un diff
+correcto es una regresión con fecha abierta: el día que alguien «simplifica» esa línea razonando desde
+el porqué falso, el defecto vuelve y nadie entiende por qué.
 
 Relacionadas: [[una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela]] ·
 [[dos-causas-suficientes-el-test-no-atribuye]] ·

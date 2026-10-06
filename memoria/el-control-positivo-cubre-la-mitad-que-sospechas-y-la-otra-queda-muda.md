@@ -119,3 +119,45 @@ tipo de `packages/core` rompió **7 fixtures hand-built** de `core`/`mobile`/`we
 solo paquete salió verde y recién CI mostró `TS2741`. Tres instancias en un día del `a-todos` inmortal
 «el recibo local no garantiza CI verde» — y por primera vez con una causa **mecanizable**: no es «el
 entorno», es *qué corrió*. Fila `TIPOCOMP` del PLAN.
+
+## Refuerzo 2026-10-06 — con DOS piezas, un solo mutante no distingue QUÉ acredita cada test; y el que da MÁS rojo suele acreditar al BASELINE
+
+Dos controles positivos del mismo día, mismo patrón: el cambio tenía **dos piezas** (una fórmula y su
+uso; un nombre de campo y su condicionalidad) y **un único mutante da el ROJO igual** sin decir cuál de
+las dos quedó cubierta. La regla que sale: **un mutante por pieza afirmada, no uno por cambio.**
+
+**Caso A — A3-web, `SeccionMisComprobantes` (PR #806).** M1 apagó la consulta de estado: 3 de 4 tests
+rojos. Leído solo, eso dice «los 4 cubren la derivación del id». M2 rompió **sólo la fórmula** del id
+(`cuit-tipoCbte-puntoVenta-nro`): **1** test rojo. Los dos tests de retome **pasan con un id aleatorio**,
+porque el mock de `estadoAnulacion` contesta sin mirar el argumento. La **derivación** la acredita un
+único test; los otros dos acreditan **el flujo**. Son dos cosas, y el conteo de verdes no las separa.
+
+**Caso B — el wire de `idemKey` en `packages/core/src/api/ingresos.ts:205`.** Tres mutantes, y los dos
+resultados contraintuitivos son los que enseñan:
+
+| mutante | resultado | qué acredita de verdad |
+|---|---|---|
+| M1 renombra `idem_key` → `idem_key_x` | 🔴 **2** rojos, y los **2 son míos** | el **nombre** del campo: esto es lo único que mis tests nuevos acreditan **en exclusiva** |
+| M2 lo manda **siempre**, `undefined` cuando no vino | 🟢 **verde** | **nada, y está bien**: `JSON.stringify` **omite** las claves `undefined`, así que el wire observable es idéntico — es un **mutante equivalente** |
+| M3 lo manda **siempre**, `null` cuando no vino | 🔴 **6** rojos, **4 del baseline** | la condicionalidad **ya estaba cubierta** antes de mi test (`toEqual({ monto })` del caso mínimo) |
+
+**Las dos lecturas que invierten la intuición:**
+
+1. **Un mutante verde no siempre acusa al test.** Si el mutante no cambia **lo que el test puede
+   observar**, su verde es *correcto* y no mide nada — contarlo como hueco es acusar en falso al test
+   propio, que es `[[el-instrumento-tambien-CONDENA-no-solo-absuelve]]` aplicado al control positivo. La
+   pregunta que separa un hueco real de un mutante equivalente: **¿este mutante cambia el valor que el
+   test observa?** Para M2 la respuesta es no, y se sabe antes de correrlo.
+2. **El mutante que da MÁS rojo es el que menos te acredita.** M3 tumbó 6 y sólo 2 eran míos: cuanto más
+   amplio el rojo, más probable es que lo cace algo que **ya existía**. El conteo de rojos **no
+   atribuye** — hay que mirar **cuáles** tests caen y cuántos son los nuevos. Hermana de
+   `[[dos-causas-suficientes-el-test-no-atribuye]]`.
+
+**Y el control del control, que casi me come:** la primera corrida midió «antes 23 / después 23» y se
+leía como «no había nada que convertir». El patrón de búsqueda tenía un `\\` escrito a mano que **no
+sobrevivió las capas** (JSON del tool → heredoc → Python llegó con **un** backslash), así que dejó de
+ser el escape literal y pasó a ser el **carácter real**: contó otra población y el total pareció
+plausible. Lo cazó **descomponer** (emoji 8 + guion 15 = exactamente el «antes»), no comparar totales —
+`[[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]]`. Defensa:
+construir el patrón con `chr(92)` y afirmar su longitud (`len(PAT) == 10`) **antes** de usarlo. Un
+patrón es un instrumento, y también necesita control positivo.
