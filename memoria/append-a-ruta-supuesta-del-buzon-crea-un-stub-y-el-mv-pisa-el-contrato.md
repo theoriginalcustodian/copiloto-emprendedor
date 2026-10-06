@@ -103,3 +103,44 @@ mires la que acabás de tocar.
 no el nombre correcto. Los tres mensajes que mandé citaban la ruta vieja; renombrar el bueno habría roto
 tres punteros para arreglar una letra. Se pisa el difundido con el contenido corregido y se borra el otro —
 `[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]`, aplicado a su propia corrección.
+
+---
+
+**Refuerzo (2026-10-06): «ubicá con `find`» NO alcanza, y lo probé pisando un archivo de estado del escalador.**
+Esta entrada manda no suponer la ruta del buzón y localizar el archivo con `find`. Hice exactamente eso:
+
+```bash
+T=$(find "$BZ" -name '*pedido_auditoria-a-planificacion_REVERSIONLATENTE*' -print -quit)
+cat ampliacion.md >> "$T"
+```
+
+y las 48 líneas de la ampliación se fueron a
+**`coordinacion/.escalador-estado/<mismo-nombre>.md.first-seen`** — el **sidecar** que `escaladores-buzon.sh`
+usa para medir la edad del mensaje (`SIDECAR_SUF=".first-seen"`, `:78`). **El sidecar replica el nombre completo
+del mensaje y le agrega un sufijo, así que matchea el mismo glob** — y con `-print -quit` gana el que el
+recorrido encuentre primero, que fue el oculto. Resultado: la ampliación **no llegó a planificación** y un
+archivo que debía contener **un epoch y nada más** (`1791325537`) quedó con 48 líneas de markdown.
+
+**Lo que lo hace peor que un append a ruta inventada:** un stub en una ruta falsa es visible y no rompe nada
+ajeno. Acá el destino **existía, era legítimo y era de otro mecanismo** — el `find` no falló, acertó a un
+archivo que yo no sabía que existía. Y el daño es silencioso en los dos sentidos: nadie recibe el mensaje, y el
+instrumento que mide la edad de los pedidos queda con un valor que no es un número.
+
+**Lo correcto es `find` + la CARPETA acotada + `-maxdepth`:**
+
+```bash
+T=$(find "$BZ/abierto" -maxdepth 1 -name '*pedido_..._REVERSIONLATENTE*' -print -quit)
+```
+
+Con `abierto/` y `-maxdepth 1`, el sidecar de `.escalador-estado/` queda fuera por construcción. Y el control
+que lo cierra: **después de escribir, verificar el archivo que se tocó** (`wc -l`, y el estado del buzón **es la
+carpeta**, así que la carpeta es parte de la identidad del destino, no un detalle del camino).
+
+**How to apply:** (1) `find` para ubicar, **siempre con la carpeta de estado acotada** (`abierto/`,
+`en-curso/`, `cerrado/<fecha>/`) y `-maxdepth 1` — el estado es la ubicación, así que buscar en la raíz del
+buzón es buscar en todos los estados **más los directorios internos de los mecanismos**; (2) desconfiá de
+`-print -quit` cuando el glob puede matchear más de uno: pedí **todos** los matches y mirá la lista antes de
+escribir, o el primero decide por vos; (3) después de un `>>`, imprimí **la ruta completa y el `wc -l`** del
+archivo tocado — es una línea y separa «escribí donde quería» de «escribí donde el glob quiso»; (4) un
+mecanismo que guarda **estado derivado del nombre** de otro archivo (sidecars, caches, marcadores) convierte
+cualquier glob por nombre en ambiguo: ésa es la razón estructural, no un descuido mío puntual.
