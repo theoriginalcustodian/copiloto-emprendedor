@@ -24,8 +24,9 @@
 #   UC_SKIP_DURABILIDAD   =1 saltea la prueba de durabilidad (BL-B1/E3: arma una conversación Y un
 #                         HITL ANTES del restart de [5/7] y los verifica al final,
 #                         scripts/e2e_g6_durabilidad_worker_restart.py, decisión en
-#                         deploy/copiloto/durabilidad-gate.sh) (default: sin setear = CORRE; un
-#                         --armar fallido NO aborta el deploy, queda NO_MEDIBLE en [8/8])
+#                         deploy/copiloto/durabilidad-gate.sh) (default: sin setear = CORRE y es
+#                         BLOQUEANTE: un --armar fallido o sin .env.e2e aborta con exit 3 ANTES del
+#                         restart; el opt-out imprime un aviso ruidoso)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -372,21 +373,25 @@ for m in serve worker_b worker_soporte; do
 done
 REMOTE_IMPORT_GATE
 
-UC_DURABILIDAD_ARMADO_OK=0
 if uc_durabilidad_activa; then
-  echo "==> [4.95/7] armando conversación + HITL ANTES del restart de [5/7] (BL-B1/E3; opt-out con UC_SKIP_DURABILIDAD=1)"
+  echo "==> [4.95/7] armando conversación + HITL ANTES del restart de [5/7] (BL-B1/E3, BLOQUEANTE; opt-out ruidoso con UC_SKIP_DURABILIDAD=1)"
   # Tiene que correr ACÁ, no antes: el turno 1 y el gate HITL quedan "en vuelo" justo antes del
   # restart real de [5/7], que es lo que la prueba necesita ejercitar (BL-B1/E3, spec §0 -- el
   # moat es que Temporal sobrevive un restart real del worker, no uno simulado).
-  UC_DURABILIDAD_ARMADO_OK="$(uc_durabilidad_armar python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar)"
-  if [ "$UC_DURABILIDAD_ARMADO_OK" = "0" ]; then
-    echo "==> [4.95/7] ⚠️  NO_MEDIBLE: --armar falló -- el deploy CONTINÚA (Parte B: no bloqueante)."
-    echo "    [8/8] no va a poder verificar durabilidad esta corrida. Artefacto que levanta el"
-    echo "    NO_MEDIBLE: diagnosticar por qué --armar falló (login/servicio caído antes del"
-    echo "    deploy, etc.) y archivarlo como pedido_ en coordinacion/ -- no hallazgo_/dato_."
+  # Bloqueante (contrato POSTDEPLOY B): sin credencial o con --armar fallido, NO hay restart.
+  # Exit 3 distingue este aborto de un fallo general del deploy.
+  if ! ENV_E2E="$(uc_durabilidad_env_e2e "$LOCAL")"; then
+    echo "ABORT [4.95/7]: falta .env.e2e (no está en el worktree ni en el checkout común; es gitignored)." >&2
+    echo "   Sin credencial no hay prueba de durabilidad: el deploy NO reinicia servicios. Ver durabilidad-gate.sh." >&2
+    exit 3
+  fi
+  export UC_ENV_E2E_PATH="$ENV_E2E"
+  if ! python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar; then
+    echo "ABORT [4.95/7]: --armar falló. Los servicios viejos siguen arriba: el deploy NO reinicia." >&2
+    exit 3
   fi
 else
-  echo "==> [4.95/7] UC_SKIP_DURABILIDAD=1: prueba de durabilidad salteada explícitamente"
+  uc_durabilidad_aviso_opt_out
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
@@ -505,12 +510,10 @@ curl -s -o /dev/null -w 'temporal: %{http_code}\n' "https://temporal.${BASE_DOMA
 REMOTE_SMOKE
 
 if uc_durabilidad_activa; then
-  if [ "$UC_DURABILIDAD_ARMADO_OK" = "1" ]; then
-    echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
-    python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
-  else
-    echo "==> [8/8] NO_MEDIBLE: --armar no corrió/falló antes del restart -- no hay estado que verificar (no es VERDE ni ROJO)."
-  fi
+  echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
+  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
+else
+  echo "⚠️⚠️ [8/8] durabilidad NO verificada (UC_SKIP_DURABILIDAD=1). El deploy no lo acredita."
 fi
 
 if [ "${_sello_ok:-0}" != "1" ]; then
