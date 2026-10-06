@@ -16,18 +16,15 @@
  * prototipo y de la app web, palabra por palabra.
  */
 import { formatearImporte, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { BloqueCifra } from '../../theme/BloqueCifra';
-import { useTema } from '../../theme/ThemeProvider';
 
 export interface ResumenIngresosProps {
   resumen: ResumenIngresosDato;
 }
 
 export function ResumenIngresos({ resumen }: ResumenIngresosProps) {
-  const tema = useTema();
-
   return (
     <View style={styles.raiz}>
       <BloqueCifra
@@ -36,12 +33,6 @@ export function ResumenIngresos({ resumen }: ResumenIngresosProps) {
         cifra={formatearImporte(resumen.total)}
         chip={resumen.mesAnterior != null ? `Mes anterior: ${formatearImporte(resumen.mesAnterior)}` : undefined}
       />
-      <Text
-        testID="ingresos-aviso-mercadopago"
-        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}
-      >
-        Los cobros por MercadoPago todavía no entran solos. Si cobrás por ahí, anotalo.
-      </Text>
     </View>
   );
 }
