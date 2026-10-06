@@ -30,15 +30,22 @@ const ETIQUETA_CONDICION_IVA: Record<number, string> = {
  * al primer dato de contacto disponible, para no perder info del "cliente de mostrador" que sólo
  * tiene nombre y teléfono.
  *
- * ⚠️ El backend NO expone monto facturado ni cantidad de comprobantes por cliente en `/clientes`
- * (`packages/core/src/api/clientes.ts` — `Cliente` no tiene esos campos, y las secciones
- * `presupuestos`/`facturas` de la FICHA llegan vacías hasta el hito 3 del backend). Sin ese dato
- * real no se puede mostrar "N comprobantes" sin inventarlo — escalado a planificación:
- * `coordinacion/abierto/2026-09-07_hallazgo_frontend1-clientes-a-planificacion_monto-y-comprobantes-por-cliente-no-existen-en-la-api.md`.
- * Mientras tanto: el monto siempre es "—" (nunca "$0") y el chip de estado usa el único dato real
- * disponible (`origen`) — `derivado` es "Se agregó solo" (mockup: `.estado.auto`); el resto,
- * "Todavía sin comprar".
+ * El slot del monto muestra la cantidad de comprobantes del cliente (BL-V18, A12) cuando el listado
+ * la trae (`comprobantesCantidad`, sólo en `GET /clientes`). Si no viene, cae a "—": nunca un "$0" ni
+ * un cero inventado. El monto facturado en pesos sigue sin existir en la API. El chip de estado usa el
+ * único dato real disponible (`origen`) — `derivado` es "Se agregó solo" (mockup: `.estado.auto`); el
+ * resto, "Todavía sin comprar".
  */
+/**
+ * BL-V18 (A12): cantidad de comprobantes en el slot del monto. `undefined` (el listado no lo trajo)
+ * cae a «—»: un cero que el backend no declaró sería mentira. El backend declara `0` cuando el cliente
+ * no tiene comprobantes, y ahí sí se muestra.
+ */
+export function textoComprobantes(n: number | undefined): string {
+  if (n == null) return '—';
+  return n === 1 ? '1 comprobante' : `${n} comprobantes`;
+}
+
 export interface TarjetaClienteProps {
   cliente: Cliente;
   onSelect?: (cliente: Cliente) => void;
@@ -96,7 +103,7 @@ export function TarjetaCliente({ cliente, onSelect }: TarjetaClienteProps) {
       </div>
       <div className="tarjeta-cliente__derecha">
         <span className="tarjeta-cliente__monto" data-testid={`cliente-${cliente.id}-monto`}>
-          —
+          {textoComprobantes(cliente.comprobantesCantidad)}
         </span>
         <span
           className={`tarjeta-cliente__estado${esAuto ? ' tarjeta-cliente__estado--auto' : ''}`}
