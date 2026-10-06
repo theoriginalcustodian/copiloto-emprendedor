@@ -1,3 +1,29 @@
+> 🔻 **2026-10-06 — VENCIDA EN SU TITULAR: el guard EXISTE desde `BL-B7`.** Medido en
+> `origin/main`, no recordado. `deploy/copiloto/deploy.sh:37` corre `guard_deploy` (HEAD==origin/main +
+> árbol limpio + candado único) y `:56-68` **aborta por drift** de `apps/copiloto` + `motor`, con
+> escape hatch `UC_SKIP_DRIFT_CHECK=1` para el caso legítimo. El propio comentario del script **cita
+> este archivo** como el incidente que lo motivó. **El relato de abajo sigue siendo cierto como
+> historia; el titular «sube el disco tal cual» ya NO describe el presente.**
+>
+> ⚖️ **Lo que SÍ queda, y es el dato útil:** el gate ancla **2 de 6 paths**. Los otros cuatro
+> —`apps/copiloto-web`, `packages/core`, `deploy/worker`, `deploy/copiloto`— **no se verifican**, y el
+> script es honesto por diseño: el manifiesto los declara con nombre (`paths_NO_verificados`) y cuenta
+> los sucios (`archivos_sucios_en_paths_no_verificados`) en vez de sugerir que todo el árbol está
+> anclado. **Declarado ≠ frenado:** un deploy con el front sucio pasa, y lo único que queda es un
+> número en un NDJSON que alguien tiene que leer después.
+>
+> 🧪 **Control positivo del guard, corrido hoy contra el checkout compartido** (read-only, sin
+> desplegar): `HEAD=4a9f4f7c` vs `origin/main=f406b198` ⇒ `guard_deploy` aborta; y el gate de drift
+> mide **2538 líneas** ⇒ aborta otra vez. **Aborta dos veces**, así que el riesgo de producto del
+> checkout sucio está neutralizado y lo que queda de `WIPCOMPART` es cosmético, no un deploy malo
+> esperando a pasar.
+>
+> 📘 **La lección meta, que es la que se repite:** este archivo me hizo arrancar un contrato para
+> pedir un guard **que ya existía**. Una entrada de memoria afirma el presente en el título y el pasado
+> en el cuerpo, y el título es lo único que viaja al índice — así que una memoria que se arregló
+> **miente** hasta que alguien le edita el titular. Antes de diseñar contra una memoria: `grep` el
+> mecanismo en el código. → [[el-contrato-que-manda-a-hacer-algo-ya-hecho]]
+
 ---
 name: deploy-sh-no-valida-checkout-al-dia-con-main
 description: deploy/copiloto/deploy.sh sube apps/copiloto tal cual está en disco, sin chequear si el checkout está al día con main — un checkout viejo regresiona código ya arreglado EN SILENCIO
