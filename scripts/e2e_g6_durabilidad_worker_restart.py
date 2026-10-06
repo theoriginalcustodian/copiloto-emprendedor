@@ -204,7 +204,11 @@ def armar() -> int:
 
     session_id_hitl = f"e2e-g6-durabilidad-hitl-{uuid.uuid4()}"
     log(f"3) turno HITL (calendar_book sin confirmar) -- session_id={session_id_hitl}")
-    enviar(token, session_id_hitl, "agendame una reunión con un cliente mañana a las 10 de la mañana")
+    # Título, cliente y hora explícitos: sin ellos el agente PIDE los datos (calendar_book no llega a
+    # abrir el gate) y el armado falla. Medido 2026-10-06: el deploy abortó en [4.95/7] por esto.
+    enviar(token, session_id_hitl,
+           "agendá la reunión 'Prueba durabilidad E2E' con el cliente 'Cliente de prueba E2E' "
+           "mañana a las 10:00")
     log("   esperando la card de confirmación (ANTES del restart -- el gate tiene que quedar")
     log("   parqueado en el event history, no sólo en memoria viva del worker actual)")
     replies_hitl = esperar_reply(token, session_id_hitl, after_id=0, segundos=180)
