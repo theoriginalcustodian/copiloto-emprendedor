@@ -10,6 +10,10 @@
 #   2. NEGATIVO  EPERM de caché pero el re-run falla -> exit ≠ 0, y no hay 3.ª llamada.
 #   3. NEGATIVO  aserción roja -> exit del jest original, 1 sola llamada.
 #   4. VERDE     jest verde -> exit 0, 1 sola llamada, sin aviso de reintento.
+#   6. POSITIVO  con `CI=` forzado (no heredado), el cap de workers llega a las DOS llamadas (la 1.ª y el re-run). Es el control del
+#                bug que el cap casi tuvo: el re-run descarta los args, así que puesto en el llamador
+#                habría quedado fuera justo de la re-corrida.
+#   7. NEGATIVO  con CI=1 el cap NO aparece en ninguna de las dos: en el runner manda el paralelismo.
 #   5. mobile.sh invoca este script (no `npx jest` directo): si se revierte el cableado, rojo.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -26,6 +30,8 @@ PKG="$(cygpath -m "$T" 2>/dev/null || printf '%s' "$T")/pkg"; mkdir -p "$T/pkg" 
 cat > "$T/bin/npx" <<'NPX'
 #!/usr/bin/env bash
 n=$(( $(cat "$ESC/llamadas" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$ESC/llamadas"
+printf '%s
+' "$@" > "$ESC/args$n"
 if [ "$n" -eq 1 ]; then
   for a in "$@"; do case "$a" in --outputFile=*) cp "$ESC/resultado.json" "${a#--outputFile=}";; esac; done
   exit "$(cat "$ESC/rc1")"
@@ -69,6 +75,30 @@ E="$T/e4"; escenario "$E" passed '' passed 0 0 0
 correr "$E"; rc=$?
 [ "$rc" -eq 0 ] && [ "$(cat "$E/llamadas")" = 1 ] && ! grep -q 'Re-corro' "$E/out" && ok "4 verde -> exit 0, 1 llamada, sin aviso" \
   || fail "4 rc=$rc llamadas=$(cat "$E/llamadas" 2>/dev/null)"
+
+# 6 — el cap llega a la 1.a llamada Y al re-run (sin esto, el fix viviria en un solo call-site)
+# ⚠️ `CI=` EXPLÍCITO: heredar `CI` del entorno hacía que este caso midiera DÓNDE corre el test en vez
+# de qué hace el script — verde en la PC, rojo en Actions (donde `CI=1` y el cap está ausente CON RAZÓN).
+# Un control tiene que FIJAR la condición que dice probar, no heredarla. Lo cazó el CI, 2026-10-06.
+E="$T/e6"; escenario "$E" failed "$EPERM" - 0 1 0
+(cd "$T/pkg" && ESC="$E" CI= PATH="$T/bin:$PATH" bash "$SCRIPT") > "$E/out" 2>&1; rc=$?
+if [ "$rc" -eq 0 ] && grep -qx -- '--maxWorkers=1' "$E/args1" && grep -qx -- '--maxWorkers=1' "$E/args2"; then
+  ok "6 el cap de workers llega a la 1.ª llamada y al re-run"
+else
+  fail "6 cap ausente: args1=$(tr '
+' ' ' < "$E/args1" 2>/dev/null) args2=$(tr '
+' ' ' < "$E/args2" 2>/dev/null)"
+fi
+
+# 7 — control NEGATIVO: en CI no se acota (si este caso pasara siempre, el 6 no probaria nada)
+E="$T/e7"; escenario "$E" failed "$EPERM" - 0 1 0
+(cd "$T/pkg" && ESC="$E" CI=1 PATH="$T/bin:$PATH" bash "$SCRIPT") > "$E/out" 2>&1; rc=$?
+if ! grep -q -- '--maxWorkers' "$E/args1" && ! grep -q -- '--maxWorkers' "$E/args2"; then
+  ok "7 con CI=1 no se acotan los workers en ninguna de las dos llamadas"
+else
+  fail "7 CI=1 pero el cap se colo: args1=$(tr '
+' ' ' < "$E/args1" 2>/dev/null)"
+fi
 
 # 5
 grep -q 'scripts/ci/jest-con-reintento-eperm.sh' "$ROOT/scripts/ci/mobile.sh" && ! grep -qE '^[[:space:]]*npx jest' "$ROOT/scripts/ci/mobile.sh" \
