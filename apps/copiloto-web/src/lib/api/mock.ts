@@ -74,6 +74,11 @@ export const mockApi: CopilotApi = {
       // El emprendedor del mock NO es operador: el modo demo muestra la app que ve un usuario real,
       // no la consola interna. Para ver la Consola en desarrollo se cambia acá a mano.
       es_admin: false,
+      // El emprendedor del mock YA aceptó la versión vigente: la aceptación se registra en el alta
+      // (`auth/SignupScreen.tsx:71` → `POST /me/legal/aceptar`), así que `true` es el estado normal de
+      // alguien que ya usa la app. Un doble que dejara el campo sin mandar lo volvería `undefined`, y
+      // `undefined` se lee igual que «no aceptó»: el bug aparecería recién contra prod.
+      legal_aceptado: true,
     };
   },
 

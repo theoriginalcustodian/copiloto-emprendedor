@@ -73,6 +73,23 @@ export interface MeResponse {
    *  El backend lo manda en las dos ramas de `/me` — con `require_claims` sale del token, sin él es
    *  `False` fail-closed (`apps/copiloto/web.py:766` y `:778`). */
   es_admin: boolean;
+  /** BL-O6 · ¿este tenant aceptó la versión **vigente** del documento legal?
+   *
+   *  **Es un booleano, no la versión.** El backend lo arma como
+   *  `version_aceptada() == LEGAL_VERSION_VIGENTE` (`apps/copiloto/web.py:1073-1074` y `:1088-1089`).
+   *  `version_aceptada()` sí devuelve la versión (`Optional[str]`,
+   *  `apps/copiloto/tenant_legal_store.py:28`), pero la comparación la colapsa antes de salir del
+   *  backend. Si alguna vez hay que MOSTRAR qué versión aceptó, este campo no alcanza — hace falta
+   *  otro, y conviene saberlo antes de prometer esa pantalla.
+   *
+   *  Obligatorio, no opcional, por la misma razón que `es_admin`: con `?` un fixture desactualizado
+   *  compila como «sin definir» y la ausencia se lee igual que «no aceptó». El backend lo manda en las
+   *  DOS ramas de `/me`, así que no existe un caso legítimo de ausencia.
+   *
+   *  Verificado contra prod punta a punta por `scripts/e2e_bl_o6_legal_aceptacion.py` (PR #681),
+   *  incluido el caso cross-tenant: el tenant adversario ve `false` después de que el canónico
+   *  aceptó. **Qué HACE la app cuando es `false` es decisión del operador (parte 2), no está acá.** */
+  legal_aceptado: boolean;
 }
 
 // ---------------------------------------------------------------------------

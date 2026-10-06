@@ -41,7 +41,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('con token persistido válido -> primeraVez queda false (no es un arranque limpio)', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
@@ -57,7 +57,7 @@ describe('useSession (vía SessionProvider)', () => {
       refresh_token: 'r',
       user: {},
     });
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.primeraVez).toBe(true));
@@ -72,7 +72,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('con token persistido válido -> authed + me (chequeo de montaje)', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
@@ -88,7 +88,7 @@ describe('useSession (vía SessionProvider)', () => {
       refresh_token: 'r',
       user: {},
     });
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
@@ -141,7 +141,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('logout limpia token y vuelve a anon', async () => {
     setToken('tok-valido');
-    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false });
+    vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [], es_admin: false, legal_aceptado: true });
 
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('authed'));

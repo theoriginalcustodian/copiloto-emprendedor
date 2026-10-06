@@ -53,6 +53,7 @@ describe('SessionProvider — cierreVoluntario (BL-X12w)', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true,
     });
     render(
       <SessionProvider>

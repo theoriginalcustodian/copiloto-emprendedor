@@ -185,3 +185,27 @@ reporta ni se atribuye** antes de (1) mirar si el conjunto que falla se mueve en
 si todos los fallos comparten un umbral de timeout, y (3) comparar contra el CI del **mismo SHA**. Y no
 lances dos gates pesados en paralelo esperando medir algo: el único resultado garantizado es un rojo que no
 significa nada. Yo lo hice, y encima la segunda corrida tampoco estuvo sola.
+
+### Corrección del mismo día, horas después — la carga externa era el AMPLIFICADOR, no la causa
+
+Lo de arriba lo mandé a tres sesiones como «contención por lanzar dos gates pesados a la vez». **FE1
+corrió un gate limpio, único, y falló igual**: dos timeouts de 5000 ms en `AppShell` y `DesktopShell`,
+el mismo patrón. Mi explicación era insuficiente y la retiro.
+
+La que sobrevive a las dos corridas: **`vitest run` paraleliza la suite entre workers, así que el gate
+se hace contención a sí mismo.** Los tests de `src/shell/` montan shells completos, son los más pesados
+de la suite, y en esta PC —30 worktrees, Metro, varias sesiones— quedan al borde de los 5 s; en el
+runner del CI entran holgados. Mi `lint.sh` en paralelo empujó el conjunto de 2 a 4 archivos, pero
+quitarlo no lo lleva a 0: **la carga externa mueve el borde, no lo crea.**
+
+Lo que esto cambia en la práctica, y por qué valía corregirlo: con mi versión, el siguiente lee «no
+lances dos gates a la vez» y espera un verde local con uno solo. **No lo va a tener.** Para `src/shell/`
+en esta PC el gate local de `web` no es un instrumento utilizable, y el camino es el CI del SHA —que
+exige pushear la rama, no basta el commit local— o el archivo aislado, que es la medición que FE1 y yo
+hicimos por separado y en direcciones opuestas: el conjunto **crece** al sumar procesos y se **vacía**
+al aislar (él: 41/41 verde aislado; yo: 3/3).
+
+Y la lección de método, que es la misma de [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]]
+aplicada a mí en el mismo día en que la escribí: tenía la observación bien medida (el conjunto crece) y
+le colgué la causa más cercana (mi lint). El control que me faltaba era trivial y lo tenía otro:
+**una corrida limpia.** Antes de nombrar una causa, preguntar quién puede correr el caso sin ella.
