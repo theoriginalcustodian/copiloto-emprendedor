@@ -41,8 +41,9 @@ python3 "$ROOT/scripts/medir-indice-memoria.py"
 # Tests de los scripts de coordinación. Van en "lint" y no en "core" porque son bash puro: no
 # necesitan DB, node ni el venv del VPS, y corren en segundos. Sin este bucle, `scripts/tests/`
 # es letra muerta — un test que nadie ejecuta no es un control, es un archivo.
-for t in "$ROOT"/scripts/tests/test-*.sh; do
-  [ -e "$t" ] || continue
-  echo "▶ $(basename "$t")"
-  bash "$t"
-done
+# El bucle y su DENOMINADOR viven en `scripts/ci/tests-coordinacion.sh`, y no acá, por un motivo
+# que es el hallazgo mismo: para ejercitar el caso interesante del guard —el glob no matchea nada,
+# que es como lint salía VERDE con cero controles corridos— hay que poder CORRERLO, y acá arriba
+# están eslint, las dos paridades y el medidor del índice, que exigen npm y python. Un guard que
+# sólo se alcanza atravesando cuatro pasos de entorno es un guard sin control positivo posible.
+bash "$ROOT/scripts/ci/tests-coordinacion.sh"
