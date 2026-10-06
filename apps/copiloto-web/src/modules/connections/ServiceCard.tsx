@@ -74,11 +74,25 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
     'Si tenés activado "guardar mis facturas en Drive", tus facturas nuevas van a dejar de archivarse ahí.',
 };
 
+/**
+ * A8: lo que se promete sale de `acciones` (inventario real de `/catalog`, derivado de `TOOLS` en
+ * backend), NUNCA de `capabilities`: ese campo prometía «leer y buscar» en Gmail, que el conector no
+ * hace. Una acción sin verbo conocido se omite (no decir nada antes que inventar). Sin inventario
+ * (backend anterior) cae en la frase genérica.
+ */
+const VERBO_POR_ACCION: Record<string, string> = {
+  gmail_send: 'enviar emails',
+  sheets_append_row: 'agregar filas a tus planillas',
+  docs_create_doc: 'crear documentos',
+  docs_read_doc: 'leer tus documentos',
+};
+
 export function loQueSePierde(service: CatalogService): string {
+  const verbos = (service.acciones ?? []).map((a) => VERBO_POR_ACCION[a]).filter((v): v is string => Boolean(v));
   const base =
-    service.capabilities.length === 0
+    verbos.length === 0
       ? `El copiloto va a dejar de poder usar ${service.display_name} hasta que lo vuelvas a conectar.`
-      : `El copiloto va a dejar de poder ${service.capabilities.map((c) => c.toLowerCase()).join(', ')} hasta que vuelvas a conectar ${service.display_name}.`;
+      : `El copiloto va a dejar de poder ${verbos.join(', ')} hasta que vuelvas a conectar ${service.display_name}.`;
   const extra = CONSECUENCIA_EXTRA[service.key];
   return extra ? `${base} ${extra}` : base;
 }
