@@ -121,6 +121,14 @@ class MercadoPagoGateway:
             return False
         try:
             from mercadopago.webhook import InvalidWebhookSignatureError, WebhookSignatureValidator
+        except ImportError as exc:
+            # SDK ausente o movido = falla de despliegue, NO firma inválida. Va aparte: si el import
+            # viviera en el try de abajo, el except usaría InvalidWebhookSignatureError sin ligar
+            # (UnboundLocalError en vez de False; hallazgo de auditoría 2026-10-06).
+            from backend.agent.observabilidad import log_error_evento
+            log_error_evento(exc, workflow="mercadopago_gateway.verify_webhook", extra={"reason": "sdk_ausente"})
+            return False
+        try:
             WebhookSignatureValidator.validate(x_signature=x_signature, x_request_id=x_request_id,
                                                data_id=data_id, secret=secret, tolerance_seconds=300)
             return True

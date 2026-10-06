@@ -92,3 +92,11 @@ def test_verify_webhook_header_ausente_tambien_loguea_con_su_propia_reason(capsy
     salida = capsys.readouterr().out
     campos = json.loads(next(l for l in salida.splitlines() if l.startswith("ERROR "))[len("ERROR "):])
     assert campos["reason"] == "MalformedSignatureHeader"
+
+
+def test_verify_webhook_sdk_ausente_rechaza_sin_explotar(monkeypatch):
+    """Control positivo (hallazgo de auditoría 2026-10-06): SDK ausente o movido = falla de despliegue.
+    Debe devolver False (fail-closed), no levantar UnboundLocalError en el except."""
+    monkeypatch.setitem(sys.modules, "mercadopago.webhook", None)  # fuerza ImportError en el import
+    gw = MercadoPagoGateway(http_factory=lambda: _FakeHttp())
+    assert gw.verify_webhook("ts=1,v1=" + "0" * 64, "req-3", "123456") is False
