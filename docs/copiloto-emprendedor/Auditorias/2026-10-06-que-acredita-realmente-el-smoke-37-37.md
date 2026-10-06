@@ -16,8 +16,17 @@ sobre `origin/main` = `a659f0b2`.
    el script imprime `BETA-READY` y sale `exit 0`.**
 3. **Y nada lo corre.** El smoke de 37 checks **no está en `deploy.sh`, ni en `gate.sh`, ni en
    `scripts/ci/`, ni en los workflows** (0 hits en los cuatro, con control positivo del grep: 47 hits de
-   «smoke» en el conjunto, así que el grep mira). Se corre a mano. La última corrida es del **23/09**;
-   `_evidencia/*/BL-Q2/` no existe hoy.
+   «smoke» en el conjunto, así que el grep mira). Se corre **a mano**.
+
+   > ⚠️ **CORREGIDO 20:30 UTC — acá decía «la última corrida es del 23/09» y era FALSO.** Backend lo
+   > corrió **hoy** sobre `55b3f219` (37 PASS / 0 FAIL), porque el DoD de `DEPLOYPROD` lo exigía. Mi
+   > error de método: medí `_evidencia/*/BL-Q2/` **en mi worktree**, y `run-smoke-prod.sh:13` escribe la
+   > salida en el árbol **que lo lanzó** — otro worktree. Un artefacto ausente de mi disco no es un
+   > artefacto que no existe.
+   > **Y el hallazgo queda más filoso, no menos:** la frescura de hoy es **accidental** — la produjo un
+   > **contrato**, no un mecanismo. Sin ese contrato, la última corrida seguiría siendo del 23/09. Un
+   > instrumento cuya ejecución depende de que alguien se acuerde de pedirla no tiene frescura: **tiene
+   > suerte.**
 
 ⇒ **El titular no es falso, es más chico de lo que suena.** «37/37 BETA-READY» se lee como «los 37 están
 verdes **y por eso** está listo»; lo que el veredicto afirma es «los **5** críticos están verdes». Que
@@ -153,7 +162,7 @@ Renglón propuesto, listo para pegar:
 | **SMOKEETIQUETA8** | El check 8 dice «multi-paso → coherente» y mide `bool(reply)`. Renombrarlo (barato) o hacerlo medir el multi-paso (caro). | backend | Que el nombre y la condición digan lo mismo. Recomiendo renombrar. |
 | **SMOKEME4** | `:101` da PASS con `None == None` si el alta no trajo `cliente_id`. | backend | `and j.get("cliente_id") is not None`. Control: forzar `cliente_id=None` ⇒ el 4 sale ROJO. |
 | **SMOKENOMBRE7** | Dos cosas llamadas «smoke»: el paso [7/7] del deploy y los 37 checks. | planificación | Renombrar el paso del deploy (p. ej. `[7/7] Sanidad del servicio`) **o** que el deploy corra el smoke real. Decisión de alcance, no mecánica. |
-| **SMOKEFRESCURA** | El 37/37 vigente es del 23/09, con ~35 PRs mergeados después. | planificación | Una corrida contra prod. **Necesita ventana**: crea tenant sintético, **suspende un tenant** (check 28) e **inserta en `copiloto_traumas`** (check 30). No la tomé por eso. |
+| **SMOKEFRESCURA** | La corrida de hoy existe (backend, sobre `55b3f219`), pero la produjo un **contrato**, no un mecanismo: sin alguien que la pida, no corre. | planificación | Una corrida contra prod. **Necesita ventana**: crea tenant sintético, **suspende un tenant** (check 28) e **inserta en `copiloto_traumas`** (check 30). No la tomé por eso. |
 
 ---
 

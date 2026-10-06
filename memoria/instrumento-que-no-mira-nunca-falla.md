@@ -484,3 +484,75 @@ fechado que nada revisa.
 Relacionadas: [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] ·
 [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] ·
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
+
+---
+
+## 🔻 2026-10-06 — el instrumento MIRÓ los 37; el VEREDICTO pondera 5
+
+Éste es el escalón **de arriba** del resto de la entrada, y el más difícil de ver: el instrumento no
+falla por no mirar. **Mira bien, y el veredicto ignora casi todo lo que miró.**
+
+El smoke de prod (`deploy/copiloto/smoke_beta_e2e.py`) corre **37 checks que discriminan de verdad** —
+auditados uno por uno: 0 de 37 pasan por vacuidad, ninguno acepta dos status como éxito, trae su propio
+control negativo, y dos checks verifican el **efecto** en la tabla de auditoría después de mutar. Un
+instrumento bueno.
+
+Pero su veredicto sale de **5 nombres**:
+
+```python
+CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)",
+        "chat simple → el agente responde", "alta SIN invite-token es rechazada (C4.1)"}
+crit_fails = [s for s in fails if s in CRIT]
+sys.exit(1 if crit_fails else 0)
+```
+
+Canario sobre el bloque del veredicto **extraído literal**, con `results` fabricado (local, sin tocar
+prod). A y B son los controles positivos que hacen que C y D signifiquen algo:
+
+| escenario | total/pass/fail | VEREDICTO | exit |
+|---|---|---|---|
+| A) los 37 en PASS | 37/37/0 | `BETA-READY` | 0 ✅ |
+| B) falla UN crítico | 37/36/1 | `BLOQUEA BETA` | 1 ✅ |
+| **C) fallan los 32 no-críticos** | 37/5/**32** | **`BETA-READY`** | **0** |
+| **D) DESAPARECE un check** | **36**/36/0 | `BETA-READY` | **0** |
+
+**C es diseño declarado** (hay un comentario que lo justifica) — no es el bug. El bug es que el titular
+que circula, **«smoke 37/37 BETA-READY»**, fusiona **dos cifras de lógicas distintas**: el `37/37` sale
+de `len(results)`, y el `BETA-READY` sale de los 5 nombres. Se citan juntas como si una respaldara a la
+otra, y **el día que se midieron coincidieron**, así que la fusión nunca dio síntoma. Un lector
+razonable entiende «los 37 están verdes **y por eso** está listo»; lo afirmado es «5 están verdes».
+
+**D es el defecto puro:** el `37` **no existe en el código**. No hay `EXPECTED_TOTAL`; el total es
+`len(results)`. Un check borrado en un refactor sale `total=36 pass=36 fail=0 BETA-READY` y nadie lo
+nota — es [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] aplicado al **denominador
+del propio instrumento**.
+
+→ **Pregunta operativa, distinta de «¿sobre cuántos miró?»:**
+
+> **De los N elementos que el instrumento observó, ¿cuántos PONDERAN en su veredicto — y el número que
+> yo cito viene del veredicto o del denominador?** Si son dos cifras de lógicas distintas, el día que
+> coincidan quedan fusionadas para siempre.
+
+Y el corolario del denominador: **si el total no está aserido contra un esperado, el instrumento no
+puede reportar que le falta un check.** `EXPECTED_TOTAL` cuesta una línea; su ausencia cuesta una
+cobertura que se va vaciando sin cambiar de color.
+
+**Un nombre reutilizado hace lo mismo a otra escala:** `deploy.sh` imprime
+`==> [7/7] Smoke (evidencia real, no autoevaluación)` y **no es ese smoke** — son 6 checks de proceso
+vivo (que sí discriminan) más 3 `curl` con `|| true` que el propio comentario llama «informativos». El
+smoke de 37 checks tiene **0 hits** en `deploy.sh`, `gate.sh`, `scripts/ci/` y los workflows. Quien lee
+«el deploy pasó el smoke» entiende los 37, y nadie mintió.
+
+**Casi emití un hallazgo falso en el mismo barrido**, y el control positivo lo frenó: medí
+`grep -c '\[PASS\]'` sobre el script y dio **0**, lo que parecía probar que el wrapper
+(`grep -c '^\[PASS\]'`) **siempre** reporta `0 PASS · 0 FAIL`. Era falso — `rec` construye el prefijo en
+runtime (`f"[{'PASS' if ok else 'FAIL'}]"`). **Medí el fuente cuando la pregunta era sobre la salida:**
+un literal ausente del código no prueba nada sobre lo que el proceso imprime.
+→ [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+Relacionadas: [[el-veredicto-no-dice-cuantas-veces-lo-miraron]] ·
+[[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]] ·
+[[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] ·
+[[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]]
+
+Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-que-acredita-realmente-el-smoke-37-37.md`
