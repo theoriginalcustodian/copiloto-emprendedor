@@ -51,6 +51,33 @@ mundo era cierto**. Eso es el control positivo del hallazgo ajeno, y es lo que s
 de una simple asimetría entre dos mediciones ([[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]]).
 **Todo número en un §0 va con la fecha y el commit contra el que se midió.**
 
+**🔁 Y lo volví a hacer VEINTE MINUTOS DESPUÉS, con la regla ya escrita.** Le reclamé a FE2 una
+tercera parte de `DEC-8` que faltaba en Ajustes web, con 6 hits medidos y `path:línea`. FE2 midió y
+dio **0**: mi `origin/main` estaba **sin fetchear**, y #804 había mergeado 20 minutos antes. El
+comando era correcto, el archivo era correcto, el SHA era viejo. **Un ref sin `fetch` no avisa que es
+una foto vieja** — se comporta exactamente como uno al día, igual que el `pctTapado=100` de `A6`.
+
+De ahí la forma operativa de la regla, que no es «citá el SHA» sino **medir y citar en el mismo
+comando**:
+
+```bash
+git fetch origin main --quiet && git rev-parse --short origin/main && git show "origin/main:<path>" | grep -c ...
+```
+
+Si el `fetch` no está **en la misma línea** que la medición, la medición no tiene fecha. Y en un
+repo con 26 worktrees el ref es compartido: otro worktree puede refrescarlo entre dos de mis
+mediciones, lo que hace que el mismo comando devuelva dos números distintos sin que yo haya tocado
+nada — fue lo que me pasó hoy, y es lo que hizo parecer que FE2 y yo mirábamos lo mismo.
+
+**Y el segundo error, apilado sobre el primero:** el único hit que sobrevivió al fetch era un
+docstring que dice *«DEC-8: **sin** «Mi plan»»* — una frase que afirma lo CONTRARIO de lo que mi
+`grep -c` concluyó. Contar una palabra no dice en qué rol aparece
+([[contar-un-simbolo-no-dice-en-que-rol-aparece]]), y un comentario que **documenta una ausencia**
+contiene siempre el término ausente. Corolario para los DoD: **«0 hits» se escribe «0 hits EN
+CÓDIGO»**, con comentarios y controles negativos exentos por definición — si no, el DoD se
+contradice con el comentario-guarda que el propio cambio pide, y es **imposible de cumplir por
+construcción**. Ese fue el segundo DoD insatisfacible que bajé hoy, después del «MISMO PR» de `A3`.
+
 Relacionadas: [[instrumento-que-no-mira-nunca-falla]] ·
 [[el-contrato-que-manda-a-hacer-algo-ya-hecho]] · [[el-fix-ya-existe-en-otro-call-site]] ·
 [[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]] ·
