@@ -176,4 +176,36 @@ describe('hitlMapping', () => {
     const props = buildHitlCardProps(msg({ id: 'assistant-10' }), vi.fn());
     expect(props.disabled).toBe(false);
   });
+
+  // BL-F1 — la card resuelta lleva su Recibo: título = lo elegido, tono `exito` si fue confirmar.
+  // Control negativo: sin hitlRespondido no hay `resuelta` (la card sigue activa).
+  it('BL-F1: hitlRespondido de confirmación -> resuelta exito con el label elegido', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-11',
+        text: 'Cobro a **Juan Pérez** por $15.000.',
+        choices: CONFIRM_CANCEL,
+        hitlRespondido: { value: 'confirm_charge_1', label: 'Sí, cobrar $15.000' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Sí, cobrar $15.000', tono: 'exito' });
+  });
+
+  it('BL-F1: hitlRespondido de cancelación -> resuelta neutro', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-12',
+        choices: CONFIRM_CANCEL,
+        hitlRespondido: { value: 'cancel_charge_1', label: 'Cancelar' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Cancelar', tono: 'neutro' });
+  });
+
+  it('BL-F1: sin hitlRespondido no hay resuelta — control negativo', () => {
+    const props = buildHitlCardProps(msg({ id: 'assistant-13', choices: CONFIRM_CANCEL }), vi.fn());
+    expect(props.resuelta).toBeUndefined();
+  });
 });

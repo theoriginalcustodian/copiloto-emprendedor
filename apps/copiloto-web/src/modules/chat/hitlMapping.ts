@@ -65,6 +65,9 @@ export interface HitlCardMappedProps {
   /** H-A4-9 — `true` cuando `message.hitlRespondido` ya está presente: `<HitlCard>` debe
    * deshabilitarse (sin `onClick` activo, opacidad reducida vía `disabled` nativo del `<button>`). */
   disabled: boolean;
+  /** BL-F1 — la card ya resuelta se muestra como `Recibo`: título = lo que el usuario eligió, tono
+   * `exito` si fue una confirmación. `undefined` mientras la card está activa. */
+  resuelta?: { titulo: string; tono: 'exito' | 'neutro' };
 }
 
 /**
@@ -112,6 +115,12 @@ export function buildHitlCardProps(
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
     disabled,
+    resuelta: message.hitlRespondido
+      ? {
+          titulo: message.hitlRespondido.label,
+          tono: CONFIRM_VALUE_RE.test(message.hitlRespondido.value) ? 'exito' : 'neutro',
+        }
+      : undefined,
     onConfirm: disabled ? () => {} : () => onChoice(confirmChoice.value, confirmChoice.label, message.id),
     onCancel: disabled ? () => {} : () => onChoice(cancelChoice.value, cancelChoice.label, message.id),
   };

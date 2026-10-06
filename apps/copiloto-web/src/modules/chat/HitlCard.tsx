@@ -1,4 +1,4 @@
-import { Badge, Button, MonoLabel, Surface, type BadgeVariant } from '../../design-system';
+import { Badge, Button, MonoLabel, Recibo, Surface, type BadgeVariant } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import './chat.css';
 
@@ -33,6 +33,9 @@ export interface HitlCardProps {
    * `onClick` sin lógica extra, mismo criterio que `Button`/`primitives.css`), sin affordance de
    * click. Ausente/`false` = card activa, comportamiento de siempre. */
   disabled?: boolean;
+  /** BL-F1 — la card ya resuelta: se muestra como `Recibo` (qué eligió el usuario) en vez de los
+   * botones. Ausente = card activa. */
+  resuelta?: { titulo: string; tono: 'exito' | 'neutro' };
 }
 
 /**
@@ -57,7 +60,25 @@ export function HitlCard({
   onConfirm,
   onCancel,
   disabled,
+  resuelta,
 }: HitlCardProps) {
+  if (resuelta) {
+    // BL-F1 — mismo estado terminal que el resto de las cards del chat: `Recibo` anuncia el
+    // resultado (`role="status"`) y no deja botones que se puedan volver a tocar.
+    const lineas = [
+      { etiqueta: 'APP', valor: label },
+      ...(name ? [{ etiqueta: 'PARA', valor: name }] : []),
+      ...(amount ? [{ etiqueta: 'MONTO', valor: `$${amount}` }] : []),
+    ];
+    return (
+      <Recibo
+        testId={`hitl-card-${service || 'plain'}`}
+        tono={resuelta.tono}
+        titulo={resuelta.titulo}
+        lineas={lineas}
+      />
+    );
+  }
   return (
     <div
       className="chat-row chat-row--assistant"
