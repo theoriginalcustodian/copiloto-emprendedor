@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './client';
 import { me } from './me';
 import { mockApi } from './mock';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -37,7 +38,7 @@ describe('GET /me — el wire de `legal_aceptado` (LEGALNOOPERA parte 1)', () =>
     es_admin: false,
     cuenta_google: false,
     onboarding_completado: true,
-    legal_aceptado: true,
+    legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
   };
 
   it('🔴 `legal_aceptado` del backend llega al consumidor sin perderse en el camino', async () => {
@@ -49,7 +50,7 @@ describe('GET /me — el wire de `legal_aceptado` (LEGALNOOPERA parte 1)', () =>
   });
 
   it('🔴 y `false` viaja como `false`, no como ausente', async () => {
-    vi.spyOn(apiClient, 'get').mockResolvedValueOnce({ ...cuerpoReal, legal_aceptado: false });
+    vi.spyOn(apiClient, 'get').mockResolvedValueOnce({ ...cuerpoReal, legal_aceptado: false, legal_version_aceptada: null });
 
     const r = await me();
 

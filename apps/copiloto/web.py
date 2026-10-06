@@ -638,6 +638,30 @@ class SignupIn(BaseModel):
 _EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
+def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:
+    """Los DOS campos legales de `/me`, derivados de UNA sola lectura de la DB.
+
+    Por que un helper y no la expresion repetida en cada rama: el payload de `/me` se construye en DOS
+    composition roots (con y sin `require_claims`), y con dos campos serian CUATRO expresiones a
+    mantener en sincronia -- el molde exacto de `memoria/el-fix-ya-existe-en-otro-call-site.md`, donde
+    el fix llega a una copia y la otra sigue mintiendo segun por que composicion entro el cliente.
+    Ademas `version_aceptada()` pega a la DB: derivando el booleano de la MISMA lectura, agregar el
+    campo no agrega una segunda query por request.
+
+    `legal_aceptado` NO cambia de semantica: sigue siendo <<acepto la version VIGENTE>>, no <<acepto
+    algo>>. `legal_version_aceptada` es ADITIVO -- es el dato que el backend ya tenia
+    (`tenant_legal_store.py:28`) y colapsaba antes de salir: `None` si nunca acepto, y la version REAL
+    si acepto una distinta de la vigente, que es el unico caso que el booleano solo no distingue de
+    <<nunca acepto>>.
+
+    Para que sirve: tanto re-pedir la aceptacion (v1) como mostrarla en Mi cuenta (v2) necesitan ESTE
+    dato; exponerlo no elige entre las dos. La eleccion es del operador y este helper no la toma.
+    """
+    version = TenantLegalStore(conn_factory, cliente_id).version_aceptada()
+    return {"legal_aceptado": version == LEGAL_VERSION_VIGENTE,
+            "legal_version_aceptada": version}
+
+
 def _es_cuenta_google(claims: dict) -> bool:
     """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
     claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
@@ -1070,8 +1094,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                     "mp_connected": seller is not None, "composio_connected": composio_connected,
                     "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
                     "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
-                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
-                                       == LEGAL_VERSION_VIGENTE}
+                    **_campos_legales(conn_factory, cliente_id)}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1085,8 +1108,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
                     "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
                     "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
-                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
-                                       == LEGAL_VERSION_VIGENTE}
+                    **_campos_legales(conn_factory, cliente_id)}
 
     @app.post("/me/onboarding/completar")
     def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:

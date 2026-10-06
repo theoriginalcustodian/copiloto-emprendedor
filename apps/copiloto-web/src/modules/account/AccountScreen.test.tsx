@@ -22,6 +22,7 @@ import { getToken, setToken } from '../../auth/session';
 import { SessionProvider } from '../../auth/SessionProvider';
 import { ThemeProvider, THEMES } from '../../design-system/ThemeProvider';
 import { AccountScreen } from './AccountScreen';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 /**
  * Integración real (providers reales, solo `lib/api` mockeado — mismo criterio que
@@ -57,7 +58,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderAccountScreen();
@@ -75,7 +76,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderAccountScreen();
@@ -137,7 +138,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderAccountScreen();
@@ -156,7 +157,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderAccountScreen();
@@ -175,7 +176,7 @@ describe('AccountScreen', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
-      legal_aceptado: true,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
 
     renderAccountScreen();

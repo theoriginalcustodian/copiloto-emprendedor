@@ -209,3 +209,25 @@ Y la lección de método, que es la misma de [[una-asimetria-entre-gemelos-no-pr
 aplicada a mí en el mismo día en que la escribí: tenía la observación bien medida (el conjunto crece) y
 le colgué la causa más cercana (mi lint). El control que me faltaba era trivial y lo tenía otro:
 **una corrida limpia.** Antes de nombrar una causa, preguntar quién puede correr el caso sin ella.
+
+## Refuerzo 2026-10-06 — 13 suites rojas, UN archivo roto: el fallo masivo y SIMULTANEO tambien acusa al compartido
+
+Esta entrada nacio del fallo que **se mueve**. El mismo dia aparecio su gemelo: el fallo que **no se
+mueve y es masivo**. Un script mio inserto una linea de `import` **adentro** de un bloque
+`import type { ... }` multilinea en `src/lib/api/mock.ts`. Resultado: **13 suites FAILED**... y
+**191 tests passed**.
+
+Esa combinacion es la firma, y se lee sin abrir nada: **archivos** rojos con **tests** verdes = fallo de
+**carga**, no de asercion. Un test que falla por asercion cuenta como test rojo; uno que no puede ni
+cargarse se cuenta como suite roja sin tests. Y 13 suites de dominios sin relacion (`auth`, `shell`,
+`modules/account`, `lib/api`) no comparten una causa funcional: comparten un **import**.
+
+La correccion: **un** archivo. Los otros 7 que el mismo script toco estaban bien -- el reporte decia «13
+archivos rotos» y el defecto era uno.
+
+**Y la causa del bug vale aparte:** mi heuristica era «insertar despues de la ultima linea que empieza
+con `import `». Correcta para imports de una linea; en un `import type {` multilinea, «la ultima linea
+que empieza con import» es la **apertura del bloque**, y la insercion cae adentro. **Una heuristica de
+lineas aplicada a una estructura que no es linea-a-linea.** El reemplazo robusto es anclar al **cierre**
+(`... from '...';`), y la verificacion por efecto es contar llaves abiertas antes del punto de insercion
+-- que es lo que despues confirmo los 8 archivos de un vistazo.

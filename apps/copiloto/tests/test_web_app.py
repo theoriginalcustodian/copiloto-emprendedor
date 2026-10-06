@@ -592,7 +592,7 @@ def test_me_with_token_reports_mp_connected_true():
     assert r.status_code == 200
     assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False}
+                        "legal_aceptado": False, "legal_version_aceptada": None}
 
 
 def test_me_without_mp_connection_reports_false():
@@ -600,7 +600,7 @@ def test_me_without_mp_connection_reports_false():
     r = TestClient(app).get("/me")
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False}
+                        "legal_aceptado": False, "legal_version_aceptada": None}
 
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():
@@ -674,6 +674,69 @@ def test_BLO6_la_aceptacion_de_A_no_se_ve_ni_se_marca_desde_B():
     TestClient(app_a).post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE})
     assert TestClient(app_b).get("/me").json()["legal_aceptado"] is False
     assert db.legal == {"cid-A": (LEGAL_VERSION_VIGENTE, db.legal["cid-A"][1])}
+
+
+# --- LEGALNOOPERA (wire): `legal_version_aceptada` en el payload de /me -----------
+# El import va a nivel modulo porque el `parametrize` necesita el valor en tiempo de DEFINICION (el
+# resto del archivo lo importa dentro de cada test, que para un decorador no alcanza).
+from tenant_legal_store import LEGAL_VERSION_VIGENTE as _LEGAL_VIGENTE
+
+_CLAIMS_LEGAL = {"sub": "auth-legal", "email": "legal@x.test"}
+
+
+@pytest.mark.parametrize("con_claims", [True, False], ids=["rama-PROD-con-claims", "rama-sin-claims"])
+@pytest.mark.parametrize("version_en_db,bool_esperado", [
+    (_LEGAL_VIGENTE, True),      # (a) aceptó la vigente
+    ("2020-01-01", False),       # (b) aceptó OTRA  <- el único caso que distingue el campo nuevo
+    (None, False),               # (c) nunca aceptó
+], ids=["acepto-la-VIGENTE", "acepto-OTRA-version", "nunca-acepto"])
+def test_LEGALNOOPERA_me_expone_la_version_legal_aceptada_en_LAS_DOS_ramas(
+        con_claims, version_en_db, bool_esperado):
+    """TRES casos, no dos, y por LAS DOS ramas del payload de `/me`.
+
+    El caso del medio --aceptó OTRA versión-- es el único que distingue este campo del booleano viejo:
+    `legal_aceptado` vale False tanto si nunca aceptó como si aceptó una versión vieja, así que un test
+    de dos casos pasa igual SIN el campo nuevo y no mide nada.
+
+    Las dos ramas, porque `_build_app` deja `require_claims=None` por default: los 6 tests BL-O6 que ya
+    existían ejercitan sólo la rama `else` de `/me`, que en producción NO corre (`serve.py:303` inyecta
+    `require_claims`). Un campo probado sólo ahí queda verde mientras el camino real miente --
+    `memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md`.
+
+    Lo que este test NO hace: decidir v1 (re-pedir la aceptación) ni v2 (mostrarla). Sólo afirma que el
+    dato SALE del backend. Qué hace la app cuando la versión aceptada no es la vigente es decisión del
+    operador, y este contrato existe para no tomarla."""
+    import datetime
+    db = _FakeTenantsDB()
+    if version_en_db is not None:
+        db.legal["cid-A"] = (version_en_db, datetime.datetime.now(datetime.timezone.utc))
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db,
+                        require_claims=_require_claims_fixed(_CLAIMS_LEGAL) if con_claims else None)
+    cuerpo = TestClient(app).get("/me").json()
+    assert cuerpo["legal_version_aceptada"] == version_en_db, (
+        f"la versión aceptada no sale del payload (con_claims={con_claims})")
+    assert cuerpo["legal_aceptado"] is bool_esperado, (
+        "`legal_aceptado` cambió de semántica: tiene que seguir siendo «aceptó la VIGENTE»")
+
+
+def test_LEGALNOOPERA_el_booleano_NO_distingue_el_caso_que_el_campo_nuevo_SI():
+    """Control positivo del caso (b): prueba que el campo nuevo agrega información REAL.
+
+    Con «aceptó una versión vieja» y con «nunca aceptó», `legal_aceptado` vale False en los DOS. Si este
+    test falla, el caso (b) del paramétrico de arriba dejó de ser discriminante y el campo nuevo no
+    mediría nada que el booleano no midiera ya."""
+    import datetime
+    db_vieja = _FakeTenantsDB()
+    db_vieja.legal["cid-A"] = ("2020-01-01", datetime.datetime.now(datetime.timezone.utc))
+    app_vieja, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db_vieja)
+    app_nunca, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=_FakeTenantsDB())
+
+    con_vieja = TestClient(app_vieja).get("/me").json()
+    sin_nada = TestClient(app_nunca).get("/me").json()
+
+    assert con_vieja["legal_aceptado"] is False and sin_nada["legal_aceptado"] is False
+    assert con_vieja["legal_version_aceptada"] == "2020-01-01"
+    assert sin_nada["legal_version_aceptada"] is None
 
 
 def test_me_two_tenants_do_not_leak_mp_state():
@@ -785,7 +848,7 @@ def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
                                         "composio_connected": [], "es_admin": False, "cuenta_google": False,
-                                        "onboarding_completado": False, "legal_aceptado": False}
+                                        "onboarding_completado": False, "legal_aceptado": False, "legal_version_aceptada": None}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
                                              "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 

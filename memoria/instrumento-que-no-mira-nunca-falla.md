@@ -405,6 +405,34 @@ un id de afuera del universo publicado — no por diseño, y eso es lo que hay q
 proyectada) en vez de la *fuente*, su cobertura es la del filtro y nadie lo nota — el gate corre,
 reporta, y no miente: simplemente no mira ahí.
 
+## Refuerzo 2026-10-06 — dos formas de no mirar: el productor que ningun test EJECUTA, y el instrumento que me invente cuando el repo ya tenia escrito que era ciego
+
+**Forma 1: contar las apariciones de un simbolo delata al productor no ejercitado.** `workflow_id_for`
+(`motor/backend/agent/inbound_router.py:17`) compone el `workflow_id` de toda conversacion entrante.
+Aparecia **dos** veces en el repo entero: su definicion y su unico llamador (`:32`). **Cero** veces en un
+test. Los tres archivos que ejercitan los cuatro endpoints de ruteo monkeypatchean `route_inbound`
+**completo** con un fake que **re-implementa la formula** y despues afirman sobre lo que ese fake
+devolvio -- `test_web_app.py:326` incluso lo comenta «# cliente_id vino del token, NUNCA hardcoded»
+sobre un valor que produjo el f-string del propio archivo de test.
+
+La consulta es mecanica y vale como barrido: **para cada funcion que produzca un identificador de
+aislamiento, contar sus apariciones. `definicion + N llamadores + 0 en tests` = productor que nunca
+corrio bajo medicion.** No hace falta leer el codigo para encontrarlo.
+
+**Forma 2, y esta me toco a mi: el comando de verificacion que improvise ya estaba documentado como
+ciego.** Para chequear tipos del front corri `npx tsc --noEmit` en `apps/copiloto-web`: **rc=0, 0
+errores**. Despues le inyecte un canario -- un `import` dentro de un `import type {`, error de sintaxis
+puro -- y **siguio dando rc=0**. Causa: ese `tsconfig.json` es solution-style (`"files": []` +
+`references`), asi que `--noEmit` a secas **no compila nada**.
+
+Lo que lo hace peor que un gate roto: **el gate esta bien y el repo ya lo habia escrito.**
+`scripts/ci/web.sh:11-20` usa `npx tsc --build --force --noEmit` y documenta el control diferencial que
+lo decidio el 2026-08-07 (con 10 errores reales, `--noEmit` daba 0 y `--build --noEmit` daba 2). El
+ciego era **mi** instrumento, inventado en el momento en lugar de leer el gate.
+
+**La regla:** cuando verifiques a mano algo que un gate ya verifica, **copia el comando del gate**. Si
+improvisas uno, ese comando es un instrumento nuevo y necesita su propio canario antes de que su verde
+cuente. Un verde de un comando que nunca mire nada es indistinguible de un verde real.
 ## Refuerzo 2026-10-06 — un archivo de test que se LLAMA como la ruta da impresión de cobertura que no tiene
 
 Auditoría barrió la autorización de las rutas `/admin` y midió algo que no se ve mirando el árbol:

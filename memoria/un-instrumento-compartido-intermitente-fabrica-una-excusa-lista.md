@@ -48,3 +48,22 @@ sin verificar**; éste es el que **verifica bien pero de a ratos**, que es peor 
 veces tiene razón) · [[no-romper-no-es-arreglar]] ·
 [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]] ·
 [[pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo]]
+
+## Refuerzo 2026-10-06 — «hereda el rojo de main» supone determinismo: un flake NO se hereda, se re-tira
+
+`main` estaba rojo por un test de mobile intermitente. Verifique con `git merge-base --is-ancestor` que
+mis dos ramas descendian del commit malo y **escribi en dos cuerpos de PR y tres mensajes** que mis PR
+«heredan» ese rojo y que no se podian mergear hasta que alguien arreglara main.
+
+**Falso.** Los 6 checks de los dos PR salieron **SUCCESS**, con el job `mobile` corriendo de verdad (7
+steps, ~100 s) sobre el mismo codigo sin el fix. Un fallo intermitente **no se hereda**: cada corrida
+re-tira los dados. `--is-ancestor` prueba que el **codigo** esta, no que el **resultado** se repita.
+
+El dano no fue el retraso: fue que **le pase a tres sesiones un bloqueo que no existia**, con la
+autoridad de una medicion de git. Y el molde es el de esta entrada: el flake compartido fabrica una
+explicacion lista -- «es el rojo de main» -- que se acepta sin mirar la corrida.
+
+**La regla:** la herencia vale para lo **deterministico** (codigo, config, un test que falla siempre).
+Para un fallo intermitente, la unica evidencia es **la corrida de tu propio SHA**; antes de eso, lo
+honesto es «puede volver a salir», no «hereda». Y antes de aceptar un verde de un job historicamente
+flaky: confirmá que **corrio** (pasos y duracion), no que figure.

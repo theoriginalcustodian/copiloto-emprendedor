@@ -123,3 +123,22 @@ decidida y probada en otro consumidor. Una obligación pide cerrador; un informa
 Y el dato de método: lo cazó **la primera corrida real**, no el test. El control positivo horneado pasó
 igual, porque su fixture tenía un a-todos declarado y otro sin declarar, no un `cierre_` a-todos. Ver
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+## Refuerzo 2026-10-06 — el gate que depende de un artefacto GITIGNORED mide distinto segun la maquina
+
+`test_ratchet_endpoint_tenant_scope.py::test_A2` fallaba en mi PC y estaba **verde en el CI** (job
+`backend` de `main`: `success`). Lo medi en tres celdas -- el ratchet solo, con mis archivos nuevos, sin
+ellos -- y fallaba igual en las tres: no era de mi rama ni de `main`.
+
+La causa: la asercion rompe con `{'/{full_path:path}'}`, el catch-all del SPA (`web.py:526`), que se
+registra **solo si existe `apps/copiloto-web/dist`**. Ese directorio esta **gitignored**: el CI clona sin
+el y el ratchet pasa; una PC con un build local lo tiene, el catch-all captura la ruta sintetica del
+**propio control negativo** del ratchet, y da falso rojo.
+
+**Por que no es anecdota:** un gate que grita en el caso **normal** de una PC con build es el que ensena
+a saltearlo con `--no-verify`, y en un repo **publico** `--no-verify` apaga **gitleaks**. El falso rojo no
+cuesta un minuto de confusion: cuesta el habito que despues deja salir un secreto.
+
+**La pregunta al escribir cualquier gate:** *¿su resultado depende de algun archivo que `.gitignore`
+excluye?* Si si, el DoD del fix exige verificarlo en **las dos** condiciones -- con el artefacto y sin el
+-- porque el CI solo te muestra una.
