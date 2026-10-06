@@ -1,7 +1,7 @@
 # ADR-006 — Protección de `main`: la regla más citada del proyecto no tenía guard
 
 - **Fecha:** 2026-10-06
-- **Estado:** 🟡 **`PROPOSED`** — y **no puede pasar a `ACCEPTED` sin el test adversarial del §7**.
+- **Estado:** 🟡 **`PROPOSED`** — 🔴 **y BLOQUEADO en la activación: ver ENMIENDA 2 arriba.** `main` sigue sin protección; el permiso para crear el ruleset lo tiene el operador — y **no puede pasar a `ACCEPTED` sin el test adversarial del §7**.
   Esto es un **control de autorización**, y la regla dura del `CLAUDE.md` global es explícita:
   *«Control de autorización sin test adversarial = control no verificado»*. El control acá no es
   «el ruleset existe en la API» (eso es configuración): es **un push directo a `main` que el
@@ -9,6 +9,87 @@
 - **Decide:** planificación (es **ejecución de una regla que el operador ya escribió**, no una
   decisión nueva — ver §5 para lo que sí habría sido MAYOR y por eso **no** se hizo)
 - **Hallazgo:** sesión de auditoría, 2026-10-06, tercera pasada sobre la cadena de merge
+
+---
+
+> ## ⚠️ **ENMIENDA 2 — 2026-10-06: el guard NO se pudo activar desde esta sesión, y el motivo no es técnico**
+>
+> La precondición del §7 **se cumplió**: el `case` del `mergeStateStatus` ya está en `main`
+> (PR #854 mergeado, `d69d244a`), así que activar el ruleset ya no fabricaba un falso verde.
+> Con eso hecho, **las dos mitades del guard quedaron fuera del alcance de esta sesión**, cada
+> una por un gate distinto:
+>
+> | mitad | acción intentada | resultado |
+> |---|---|---|
+> | **servidor** | `POST /repos/:owner/:repo/rulesets` | 🔴 **denegada** por el clasificador: *«Account & Standing-Rule Changes»* |
+> | **cliente** | leer `.githooks/pre-push` para que mire el ref de destino | 🔴 **denegada** — y no se edita a ciegas un hook por el que pushean las tres sesiones |
+>
+> 🔑 **La clasificación del primero es CORRECTA, no un falso positivo que haya que rodear.**
+> Un ruleset es una **regla permanente de la cuenta del operador**: sobrevive a la sesión y aplica
+> a las tres sesiones y a cualquier clon. La autorización permanente que el operador firmó
+> (`CLAUDE.md` §3.8) nombra **merges y deploys**, no cambios de gobernanza de la cuenta. Que el
+> mismo `CLAUDE.md` diga *«si un gate mecánico te frena, es problema tuyo»* **no convierte esto en
+> un gate mecánico**: el límite coincide con el reparto de roles que el proyecto ya declara
+> — *«el humano decide lo MAYOR»*. Rodearlo sería ejecutar lo MAYOR sin el humano.
+>
+> 🛑 **LO QUE NO SE HIZO, A PROPÓSITO: el control adversarial del §7.**
+> Con **0 rulesets medidos**, un push directo a `main` **habría tenido ÉXITO**. Correr el control
+> en ese estado no mide un guard: **comete exactamente el daño que el guard existe para impedir**,
+> y deja en `main` un commit que no pasó por PR. El control adversarial **sólo tiene sentido
+> DESPUÉS** de que el ruleset exista. Se diseñó con tree idéntico (`git commit-tree` sobre el
+> árbol de `origin/main`) para que, si el ruleset falla abierto, el daño sea un commit **vacío**
+> — pero ni así se corre sin ruleset.
+>
+> **Estado real, sin maquillaje:** `main` **sigue sin protección**. El hallazgo de auditoría **no
+> está cerrado**: está *decidido, diseñado, con blast radius medido y sin aplicar*. No lo marco
+> `ACCEPTED` ni lo bajo a «hecho» — sería la aprobación-ritual que este mismo ADR denuncia.
+>
+> ### Qué falta exactamente, y quién lo tiene
+>
+> **Dueno: el operador.** Una de dos, y las dos son de un paso:
+> 1. **Darle el permiso a esta sesión** (regla de `Bash` para `gh api … /rulesets`) y lo activo yo
+>    con los tres controles en la misma corrida; o
+> 2. **Activarlo él**, con el payload ya escrito y el blast radius ya medido.
+>
+> Payload listo para pegar — `gh api repos/:owner/:repo/rulesets --method POST --input ruleset-main.json`:
+>
+> ```json
+> { "name": "main-exige-pull-request", "target": "branch", "enforcement": "active",
+>   "conditions": { "ref_name": { "include": ["refs/heads/main"], "exclude": [] } },
+>   "bypass_actors": [],
+>   "rules": [
+>     { "type": "pull_request", "parameters": {
+>         "required_approving_review_count": 0, "dismiss_stale_reviews_on_push": false,
+>         "require_code_owner_review": false, "require_last_push_approval": false,
+>         "required_review_thread_resolution": false,
+>         "allowed_merge_methods": ["merge", "squash", "rebase"] } },
+>     { "type": "non_fast_forward" },
+>     { "type": "deletion" } ] }
+> ```
+>
+> **`non_fast_forward` y `deletion` son una extensión sobre lo que el §6 declaró, y la declaro
+> acá con su medición** — no se cuelan sin registro. Blast radius **0**, con control positivo:
+> `git push` da **15** hits en `scripts/` + `.githooks/` + `.github/`; de los dos hits de
+> force/delete, uno es una **lista de denegación** que ya prohíbe force-push
+> (`autorizar-acciones.sh:59`) y el otro borra la **rama de feature** (`mergear-pr.sh:73`,
+> `$RAMA`), nunca `main`; **cero** pushes apuntan a `main`. Las dos reglas cubren los dos
+> accidentes peores de un checkout compartido con 43 worktrees: borrar `main` y force-pushearla.
+>
+> ### Los tres controles, en este orden y sin saltear el 2
+>
+> 1. **Adversarial (§7):**
+>    `sha=$(git commit-tree $(git rev-parse origin/main^{tree}) -p origin/main -m "control adversarial ADR-006")`
+>    y `git push origin $sha:refs/heads/main` → **tiene que ser RECHAZADO por el remoto**. Un
+>    ruleset que existe en la API y no rechaza es indistinguible de ninguno.
+> 2. 🔴 **Caso NORMAL, con CI CERRADO EN VERDE** (enmienda 1, sigue vigente): un PR verde tiene
+>    que seguir leyendo `CLEAN`, **no `BLOCKED`**. Si sale `BLOCKED`, el enumerado nuevo lo manda a
+>    exit 5 y **congela los merges de las tres sesiones** — en ese caso se **borra el ruleset en el
+>    acto**. Con CI en vuelo el PR está en `UNSTABLE`, que `ci-verde.sh` trata como verde: el
+>    control **pasa en los dos mundos** y no mide nada.
+> 3. **Consulta de precedencia del enum** (no bloquea `ACCEPTED`, pero su respuesta entra acá).
+>
+> ⚠️ **El orden importa en los dos sentidos.** El 1 sin ruleset comete el daño; el ruleset sin
+> el 2 medido puede frenar a todos. → [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]
 
 ---
 

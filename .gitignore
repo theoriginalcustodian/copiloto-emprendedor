@@ -108,3 +108,4 @@ scripts/evidencia/.canario-tmp/
 # paths y nombres de tenant — nunca al repo PÚBLICO. Precondición del fix antes de que el
 # archivo exista (PARTICIONAR): crearlo sin este ignore primero lo publica en el próximo push.
 .bridge/
+.ci-recibos-stub/

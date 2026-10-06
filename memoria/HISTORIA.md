@@ -441,3 +441,7 @@ lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pushe
 ## Bajadas del indice
 - [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->
 - [📜🎯 Un contrato define QUÉ DECLARAR - no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) - 4 de 4 refutadas en un día.  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->
+
+## Bajadas del índice — 2026-10-06
+- [📋🚩 CUATRO de mis SEIS filas estaban mal, y las cazó quien iba a implementar](cuatro-de-seis-filas-del-contrato-estaban-mal-y-las-cazo-quien-iba-a-implementar.md) — el §0 es HIPÓTESIS: invitá al rechazo.  
+  _Bajada del índice el 2026-10-06 por presupuesto: su instrucción ya circula en dos entradas vivas — `un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi` y `el-contrato-que-manda-a-hacer-algo-ya-hecho`. El caso queda acá; la regla sigue arriba._
