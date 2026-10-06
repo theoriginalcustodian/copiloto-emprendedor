@@ -96,3 +96,38 @@ f585fe6d90c9 · 2680 líneas   <- main @ 9911ced1 (el bueno)
 entre mergear o cerrar una rama vieja, el control que vale es medir si su contenido ya está en main
 **archivo por archivo**: la entrada de memoria que parecía rescatable tenía 206 líneas en `main` y 151
 en la rama. Un `rev-list --count` alto no distingue «trabajo nuevo» de «base vieja».
+
+---
+
+## Refuerzo 2026-10-06 — la variante que **invierte el gesto**: el disco está ATRASADO, no adelantado
+
+El mismo defecto, pero el que lo lee hace **lo contrario** de lo que debería. El checkout compartido tenía
+`apps/copiloto/web.py` **pre-#850** (`+21/−122` contra `origin/main`), `tool_catalog.py` (`+7/−23`) y
+`scripts/graph-sync.sh` (`+4/−127`, sin el fix del lock). El plan de cierre los marcaba
+`[WIP-LOCAL]: «tiene cambios sin commitear»` y el índice de memoria decía *«~100 archivos editados a mano.
+Lo escrito ahí no llega a `main`»*.
+
+**Las dos frases son verdaderas y las dos empujan al gesto equivocado.** «Hay trabajo sin commitear» se lee
+como *«commiteá para no perderlo»*; lo real era *«no commitees: revierte fixes cerrados»*. **Una alarma con
+la dirección invertida recomienda el gesto peligroso y suena prudente mientras lo hace.**
+
+### 🔴 Y el caso que nadie cuestiona: `git status` dice `??` para un archivo que `main` YA TIENE
+
+`deploy/copiloto/durabilidad-gate.sh`: `git status` lo marca **`??` (untracked)** y el plan escribió, de
+buena fe, *«(sin commitear)»*. **Medido: `main` lo tiene con 43 líneas y el disco tiene 28.**
+
+`git status` compara contra el **HEAD de la rama checkouteada**, no contra `origin/main` — y esa rama era
+vieja. Un `M` al menos invita a diffear; **`??` es el único estado que nadie cuestiona**, porque un archivo
+«nuevo» no puede ser una regresión por definición. Acá commitearlo borraba 15 líneas de `main` con el diff
+más inocente que existe: *agregar un archivo nuevo*.
+
+⇒ **La pregunta no es «¿está modificado?» sino «¿en qué dirección, contra `origin/main`?»**:
+`git diff --numstat origin/main -- <archivo>`. Si los borrados ≫ agregados, el disco está atrasado.
+Y `git status` **no responde esa pregunta**: mide contra otro denominador.
+
+### Lo que NO es
+
+**No todo el disco está atrasado**, y por eso un `checkout` masivo es igual de peligroso en el otro sentido:
+`apps/mobile/.../PantallaFacturacion.tsx` es **`+1/−0`** — un `eslint-disable` con su justificación, trabajo
+genuino que sólo vive ahí. **Los dos signos conviven en el mismo directorio**, así que la regla no es
+«atrasado» ni «adelantado»: es **medir archivo por archivo antes de cualquier gesto**.
