@@ -64,3 +64,33 @@ mundo saldría distinto?** Si la respuesta es «en otra máquina», el control n
 Relacionadas: [[verificar-la-composicion-root-no-el-default]] ·
 [[el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas]] ·
 [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
+---
+
+## Refuerzo 2026-10-06 — El esperado falso es un DETECTOR, no sólo un error: tres en un turno, y uno destapó un hallazgo
+
+Tres veces en un mismo turno un control mío dio un número distinto al que había escrito como esperado, y
+las tres veces lo correcto fue **ir a mirar las N apariciones**, no corregir el número:
+
+| control | esperado | dio | qué era |
+|---|---|---|---|
+| `«quedan 2 campos, no 3»` sobrevive al fix del mensaje | 0 | 1 | la **cita** que lo refuta, dentro de la corrección |
+| el refuerzo llegó a `main` (grep de una frase) | >0 | 0 | la frase era otra; el archivo estaba **idéntico** (diff 0, bytes iguales) |
+| `mp_connected` aparece 1 vez (sólo en el helper) | 1 | **4** | 1 docstring + 1 helper + **2 de otro endpoint** |
+
+El tercero es el que importa. Bajar el esperado de 1 a 4 habría cerrado el control con un verde y el turno
+habría seguido. Ir a ver las 4 mostró que `/catalog` calcula `mp_connected` con **otra expresión** que
+`/me` (`salud() == "conectado"` vs `first_seller_user_id() is not None`) y que **divergen en el caso de la
+conexión caída** — un hallazgo de producto que ningún test buscaba, encontrado por un control mal escrito.
+
+**La regla que suma a esta entrada:** un esperado que no coincide tiene **dos** explicaciones —el código
+está mal, o **el control está mal**— y la segunda no es una molestia administrativa: es un lugar donde tu
+modelo del archivo no coincide con el archivo. **Ese desacuerdo es el hallazgo potencial.** Así que el
+orden es siempre: *ver las N apariciones una por una* → recién entonces decidir si se corrige el código, el
+esperado, o si acabás de encontrar algo. Ajustar el número primero destruye la única pista.
+
+Y el corolario sobre los esperados en mensajes: cuando corregís una afirmación **citándola**, el grep de la
+afirmación vieja da ≥1 **para siempre**, porque la corrección la contiene. Ese control hay que escribirlo
+contra la **afirmación en su contexto original**, no contra la cadena suelta.
+
+Relacionadas: [[el-fix-ya-existe-en-otro-call-site]] · [[instrumento-que-no-mira-nunca-falla]] ·
+[[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]]
