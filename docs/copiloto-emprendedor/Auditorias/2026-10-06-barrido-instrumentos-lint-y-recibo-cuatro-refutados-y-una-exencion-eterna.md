@@ -142,3 +142,31 @@ agujero del mecanismo.)
 > por concluir que **la capacidad no existe**, listá primero **cómo más podría proveerse** y grepeá eso. Un
 > ausente *nombrado* es evidencia débil. Si la conclusión es «nadie hace X», se mide por el **efecto** —correr
 > el camino real y ver qué escanea— no por el inventario de llamadores.
+
+## 6 — La cadena del grafo: **dos candidatos más, y los dos mueren**
+
+Salieron de una señal real: mis **dos** pushes consecutivos imprimieron
+`[graph-sync] otro sync está corriendo (… pid=1648592) — salgo sin tocar el árbol` y
+`⚠️ el sync NO completó (marcador sigue en 26e5ec1cdef6, esperado d69d244a9171) — el próximo push reintenta`.
+Un warning benigno repetido sobre un estado que *podría* no resolverse solo es exactamente la forma de
+`[[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]]`, y el canon obliga a consultar el grafo
+antes de diseñar — si el grafo queda atrás, **todas** las sesiones razonan sobre un mapa viejo.
+
+| busqué | murió porque |
+|---|---|
+| el lock es **huérfano** y «el próximo push reintenta» es un reintento que nunca llega | el pid **está vivo** (`kill -0`, con control positivo contra mi propio pid) y el lock tenía **9 minutos**. Y `graph-sync.sh:240-276` ya tiene **doble techo de staleness** —`600s` para dueño muerto, `14400s` para el caso de **PID reciclado**— con el razonamiento escrito: *«con la regla vieja, la siguiente sesión le roba el lock a un sync VIVO y las dos reescriben el mismo árbol»*. Atraso real medido: **4 commits, marcador de 1 h** — el estado transitorio esperado con un sync en curso |
+| el `fail-open` de `graph-sync.sh:20` deja el grafo atrás **sin síntoma** y nadie lo vigila después | el propio sync **cierra con un control positivo automático** (`:26`, `:67` → `graphity_positive_control.py`), cuyo mensaje es literalmente *«el sync reportó éxito pero el dato no llegó. Grafo desactualizado»*. Y `:87` registra que el defecto «este script no dejaba NINGÚN rastro en disco» **ya se pagó** y tiene bitácora |
+
+Y una línea de `:113-115` que merece citarse porque es el principio de todo este barrido escrito por otra mano:
+
+> *«Recrear el [árbol] que falta destraba el push y deja al bridge ingiriendo un árbol congelado en silencio,
+> con el marcador avanzando igual — un error ruidoso convertido en un grafo desactualizado sin síntoma. Por eso
+> acá se COMPARA, no se crea: **un instrumento que lee lo que nadie escribe no falla nunca, y eso es peor que
+> fallar.**»*
+
+**Cierre del barrido: 7 candidatos, 7 refutados, 1 fila baja.** No es un barrido que falló: es la medición de que
+**la capa de instrumentos de coordinación de este repo está construida con el porqué adentro** — cada guard que
+abrí tenía, en sus propios comentarios, el incidente que lo motivó y el falso positivo que ya había pagado. El
+contraste con el hallazgo del día (`lint.sh:11`, un comentario que **inventaba** la defensa) es el dato útil: lo
+que falla acá no es el rigor de los instrumentos, es el **texto que los describe** cuando nadie lo re-mide
+contra el comando de la línea de abajo.
