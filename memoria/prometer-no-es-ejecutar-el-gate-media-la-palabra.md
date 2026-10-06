@@ -53,3 +53,16 @@ costo escala: un peer que cita tu anuncio propaga al operador una deuda que no e
 — acá auditoría relayeó «el hueco quedó como deuda suya (IDXMERGE)» y su Stop hook la frenó por
 declarar verificado algo que le habían contado. Escribió uno, leyó otro, y el que decide no es el que
 midió. [[el-pipe-se-come-el-exit-code]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]
+**Refuerzo 2026-10-06 — la forma de buzón de este mismo principio (norma que adopté de auditoría):**
+**un artefacto ejecutable dentro de un `contrato_` o un `cierre_` lo corre QUIEN LO ESCRIBE**, contra
+el **binario y la versión que fija el consumidor** — no quien lo recibe.
+
+Pagado dos veces el mismo día: (1) una receta para una regla de gitleaks usaba un *lookahead*
+`(?!\$)`, que **hace panic** en gitleaks (Go/RE2, `MustCompile`) — el emisor nunca la corrió, y sólo
+no llegó al consumidor porque su implementación independiente no usó lookahead; (2) un `contrato_`
+mandó a correr un script que, leído completo, **escribía en prod**, contra un límite de «cero
+escrituras» del mismo contrato.
+
+🔑 **Por qué la variante del binario importa:** una regex que funciona en Python o en `grep -P`
+**no dice nada** sobre RE2. «Lo probé» sin nombrar el binario es la misma promesa sin ejecución que
+mide esta entrada. → [[el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional]] · [[no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real]]
