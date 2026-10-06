@@ -1,6 +1,14 @@
 # Plan de implementación autónomo — beta Odobi, de hoy al DoD de todo
 
 **Fecha:** 2026-09-21 · **Base:** `main @ fa090362` (incluye #516, la carpeta de Martín) · **Autor:** planificación
+
+<!-- SUPERADO-POR-PLAN-DE-CIERRE -->
+> ⚠️ **SUPERADO COMO PLAN DE TRABAJO — 2026-10-06.** Las **definiciones** y los **DoD** de este documento siguen valiendo y son la referencia de cada id. Lo que ya **no** vale es su descripción del **estado**: se midió el 2026-10-06 y los cuatro barridos marcaron **DESALINEADO** en la mayoría de las filas — **56 de los 77 ids no-`V` están HECHO y en `main`**.
+>
+> 👉 **Qué falta, con DoD y dueño, está en [`2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md`](2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md).** Lo diferido, con su condición de entrada, en su §3.
+>
+> **No borres este archivo**: el plan de cierre lo cita fila por fila. Y si vas a usar una cifra de acá, medíla antes — varias envejecieron (el baseline de paridad dice 484 y hoy son **471**; `BL-V34` dice que gastos no tiene idempotencia y la tiene desde el PR #666).
+
 **Fuente única de alcance:** [`2026-09-21-backlog-beta-odobi-con-dod.md`](2026-09-21-backlog-beta-odobi-con-dod.md) (70 ítems, 193 casillas de DoD). Este plan **no repite** los DoD: los cita por ID. Si un DoD de acá y uno del backlog se contradicen, gana el backlog y planificación corrige este archivo.
 
 **Qué es:** quién hace cada ítem, en qué orden, con qué recursos compartidos, cómo se verifica y cuándo se da por terminado, para que **cuatro sesiones trabajen sin el operador** hasta cerrar todo lo que la beta necesita.
