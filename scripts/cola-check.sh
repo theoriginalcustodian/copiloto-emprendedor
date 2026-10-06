@@ -85,6 +85,12 @@ while IFS= read -r linea; do
     arrancando) arrancando="${arrancando:+$arrancando · }$id ($nombre)"; n_arrancando=$((n_arrancando+1)) ;;
     pendiente)  [ -z "$head_id" ] && { head_id="$id"; head_nombre="$nombre"; head_disp="$disp"; } ;;  # primer PENDIENTE = cabeza
     ✅*|❌*)     : ;;  # cerrado / entregado: tiene su propio seguimiento, no es cabeza de cola
+    # CONGELADO es un cuarto estado REAL, no un renglon roto: el operador congelo los
+    # instrumentos el 2026-10-05 y esos hitos no hay que arrancarlos (no son `pendiente`) ni
+    # estan hechos (no son ✅/❌). Sin esta rama, 31 renglones salian como "estado no
+    # reconocido" en CADA corrida del monitor -- un warning permanente que ensena a ignorar
+    # el warning, que es justo lo que despues tapa un enum de verdad pisado.
+    ⏸*)         : ;;  # congelado / diferido con condicion de entrada declarada
     # ⏳ = hecho pero trabado por un disparador EXTERNO a la cola (hoy: el push del grafo, que
     # sólo el operador destraba). No es `pendiente` — nadie tiene que arrancarlo— ni ✅ — no cerró.
     # Sin este caso la fila caía en `malformados` y el warning se volvía rutina: dos sesiones lo
@@ -103,7 +109,7 @@ fi
 
 if [ -n "$malformados" ]; then
   echo "⚠️  COLA: estado no reconocido en:$malformados — el último campo del renglón debe ser"
-  echo "    exactamente 'pendiente', 'arrancando', '⏳ …' o empezar con ✅/❌. Un hito así es INVISIBLE"
+  echo "    exactamente 'pendiente', 'arrancando', '⏳ …', '⏸ …' o empezar con ✅/❌. Un hito así es INVISIBLE"
   echo "    para la cola: arreglá el renglón antes de creerle al veredicto de abajo."
 fi
 
