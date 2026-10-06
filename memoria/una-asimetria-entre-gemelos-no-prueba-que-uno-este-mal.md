@@ -86,3 +86,43 @@ se siente como método; es una hipótesis, y tiene precondición.
 por otra razón: el estado **es** reproducible sin efecto externo (un UPDATE local en el tenant de
 prueba, con el seed ya escrito), así que `NO_REPRODUCIBLE_SIN_EFECTO` lo archiva en un cajón que apaga
 trabajo. Severidad más baja, id igual de perdido. El falso positivo me estaba tapando el verdadero.
+
+## Refuerzo 2026-10-06 — la asimetría acusó a la LIBRERÍA, no al test; y después me hizo declarar una deuda que la medición retiró
+
+Un solo episodio —`main` ROJO por un test de mobile— y esta memoria se cobró **las dos direcciones** en
+media hora.
+
+**Dirección 1: usé la asimetría bien, y después concluí de más.** Planificación propuso que el
+`cleanup()` a mitad del test era frágil. Medí el gemelo web: usa `cleanup()` **idéntico** (`:129` contra
+`:122` de mobile) y está **verde** en `main`. Esa asimetría es real y es informativa: descarta «el
+`cleanup()` a mitad del test es frágil» como explicación **suficiente**. Pero yo escribí «la causa no está
+en el test, está en la librería» y mandé eso a tres sesiones. **El diferencial prueba que la librería
+difiere; no prueba que el `cleanup()` de `:122` sea inocente.** Son dos afirmaciones y las junté. La
+librería sí difería —RNTL tiene una cola que aborta `waitFor`, DTL no tiene ninguna (0 hits de
+`cleanupQueue`)— y aun así el fix **era** la línea del test.
+
+**Y la medición cerró el episodio al revés de mi explicación:** 10 corridas sin el fix → **4 rojas**; 10
+con el fix → **10 verdes**. El fix funciona y **el mecanismo que inventé para justificarlo estaba
+refutado por mi propio spike**. Un *fix correcto con la explicación equivocada* es el que vuelve: el
+siguiente que «simplifique» esa línea razonando desde mi explicación reabre el flake. Por eso el fix se
+embarca diciendo **la razón es empírica**, no derivada.
+
+**Dirección 2, y es la que me costó más entender: la simetría también fabrica deuda falsa.** Declaré,
+por escrito y en tres canales, que mi gemelo web tenía «el mismo defecto en dos call-sites» y que lo iba a
+pagar. Después lo medí: en **RNTL 14.0.1** `cleanup` es `async` (`dist/cleanup.js:11`) y no esperarla es un
+bug; en **RTL 16.3.2** `cleanup` es `function cleanup()` **sin `async`** (`dist/pure.js:301`) — **no hay
+nada que esperar**. No era el mismo defecto: era la misma **línea** sobre dos APIs distintas.
+
+Pagar esa deuda habría metido un `await` sobre una función síncrona **con un comentario que miente**
+(«la API es async»). Eso es peor que no pagarla: deja una afirmación falsa anclada en el código, en el
+lugar exacto donde alguien va a buscar la verdad.
+
+**La pregunta que separa «el mismo defecto» de «la misma línea», y va ANTES de declarar la deuda
+simétrica:** *¿medí la pieza de la que depende el defecto en los dos lados, o sólo vi que el código se
+parece?* Dos call-sites con texto idéntico sobre dependencias distintas no comparten defecto. Es el
+espejo de `[[el-fix-ya-existe-en-otro-call-site]]`: propagar un fix exige verificar que la **causa**
+también esté del otro lado, no sólo la forma.
+
+Lo que sí quedó del lado web es un **comentario de dos líneas** anclando la asimetría medida, con versión
+y archivo: si algún día RTL adopta la cola de aborto, ese comentario queda **falso y detectable**, que es
+exactamente lo que un `await` silencioso no habría dado.
