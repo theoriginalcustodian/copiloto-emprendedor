@@ -138,9 +138,9 @@ if [ "$_sello_ok" != "1" ]; then
 fi
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$(git -C "$LOCAL" rev-parse HEAD)" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"; AUTH_URL="$2"
+REMOTE="$1"; AUTH_URL="$2"; SHA="$3"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -149,9 +149,12 @@ npm install --no-audit --no-fund --loglevel=error
 # `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
 # con que sync-web.sh lo haga bien.
-VITE_AUTH_URL="$AUTH_URL" npm run build
+# VITE_BUILD_SHA: sin esto el shell sale con data-build-sha="unknown" (hallazgo FE2, 2026-10-06).
+VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$SHA" npm run build
 test -f dist/index.html
-echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
+# control positivo: el shell DEBE declarar el SHA desplegado; si no, el deploy es ROJO.
+grep -q "data-build-sha=\"$SHA\"" dist/index.html || { echo "ABORT [frontend]: dist/index.html no declara data-build-sha=$SHA"; exit 1; }
+echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1)), shell declara $SHA"
 REMOTE_WEB
 
 echo "==> [2/7] auth: repoint a la GoTrue DEDICADA — SOLO si el cutover ya se completó (marker); self-healing"
