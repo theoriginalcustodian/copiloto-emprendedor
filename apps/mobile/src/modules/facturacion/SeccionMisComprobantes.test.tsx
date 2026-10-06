@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import {
   ApiError,
@@ -112,18 +112,18 @@ describe('SeccionMisComprobantes — anulación derivada del comprobante', () =>
    */
   it('recargar entre «Sí, anular» y «Confirmar» retoma en «Confirmar» (no vuelve a «Sí, anular»)', async () => {
     jest.mocked(anularComprobante).mockResolvedValue({ status: 'ok', ok: true, anulacionId: ID_ANULACION });
-    const primera = await montar();
+    montar();
     await abrirAnulacion();
     await waitFor(() => expect(screen.getByTestId(`${TESTID}-anulacion-${CLAVE}-si`)).toBeTruthy());
     fireEvent.press(screen.getByTestId(`${TESTID}-anulacion-${CLAVE}-si`));
     await waitFor(() => expect(anularComprobante).toHaveBeenCalled());
 
     // «Recarga»: el backend ya tiene la NC en curso; el estado en memoria de la pantalla se pierde.
-    // unmount() del propio render, no cleanup() global: el global barre TODO el árbol y en CI (carga)
-    // dejaba un waitFor colgado que abortaba (2026-10-06, main rojo desde #803).
-    await primera.unmount();
+    // cleanup() es async en RNTL 14 y drena su cola con await: sin await, el waitFor de abajo se registra
+    // en la cola que aún se drena y lo aborta («waitFor was aborted by cleanup»). Main rojo desde #803.
+    await cleanup();
     jest.mocked(estadoAnulacion).mockReset().mockResolvedValue(estadoEsperando);
-    await montar();
+    montar();
     await abrirAnulacion();
 
     await waitFor(() => expect(screen.getByTestId(`${TESTID}-anulacion-${CLAVE}-confirmar`)).toBeTruthy());
