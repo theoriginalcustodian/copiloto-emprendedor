@@ -211,3 +211,39 @@ por **efecto** (`grep -c` de la conclusión vieja), no el exit code — que fue 
   que aparecer: el texto nuevo suele **citar** al viejo para refutarlo, así que un `grep` de la
   frase vieja da 1 en los dos casos. Elegií una cadena que sólo exista en la versión vieja.
   → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+---
+
+## 📅 2026-10-07 — tres instancias en un día: dejó de ser un caso y es una CLASE
+
+Tres instrumentos distintos, el mismo defecto, en una sola jornada. Lo que cambia la lectura no es que
+pasó tres veces: es que **ninguna de las tres se parecía a las otras mientras la escribía**.
+
+| instrumento | qué leyó del comentario | cómo se veía el falso |
+|---|---|---|
+| `barrido-superficie-front-backend.py` | la palabra `opcionales` dentro de un `// …se leen igual, opcionales: cuando…` en el genérico de `/afip/estado` | un `DIFIERE` contra un handler **sano** |
+| caso 4 de `test-stage-backend-cubre-los-paths-de-pytest.sh` | el `--exclude='.env*'` **del comentario que explicaba el flag** | el **mutante salía VERDE**: sacar el flag del `tar` no movía el veredicto |
+| guard del caso 2 del mismo test | `deploy/copiloto/test_meclaves_check.py`, citado en los comentarios de `sync-test-backend.sh` | el guard creía que el mutante **había mutado** cuando no mutó nada |
+
+🔑 **La forma general: cuando un instrumento parsea código fuente, su universo incluye la prosa que
+describe lo que busca** — y esa prosa es el lugar donde el término aparece *más* veces y *mejor*
+escrito, porque fue puesta ahí justamente para explicarlo. El autor del comentario y el autor del
+parser son la misma persona en el mismo rato, así que el comentario usa el mismo vocabulario exacto
+que el regex. **Es el falso positivo mejor correlacionado que existe.**
+
+⚠️ **Y la variante que más engaña es la del MUTANTE**, porque invierte el signo: no acusa a un inocente,
+**absuelve al culpable**. Un mutante que no muta sale verde y se lee como «el control pasó». El caso 4
+tenía el flag, el comentario que lo explicaba, y el mutante que lo quitaba del comando — y seguía verde
+porque leía el comentario. Un control positivo que no discrimina **acredita al defecto que no mira**.
+
+**Cómo aplicarlo**
+- Todo parser de código declara su **universo** antes de buscar: el bloque del comando, el cuerpo de la
+  función, el genérico — nunca «el archivo».
+- Quitar comentarios es parte del parseo, no una higiene opcional. **Y el orden importa en los dos
+  sentidos:** limpiar *después* de colapsar los saltos borra el bloque entero (`//[^\n]*` sobre una
+  sola línea se come todo lo que sigue); limpiar *antes* es lo correcto.
+- El mutante lleva su **propio guard**: medir que mutó, contra el universo del comando y no contra el
+  archivo. Un `grep` del archivo entero para «¿mutó?» reproduce el bug dentro del control del bug.
+- Y el guard del mutante tiene que sobrevivir a que cambie la **forma** de lo que muta: el del caso 2
+  borraba líneas del allowlist por archivos nombrados y quedó mudo cuando el allowlist pasó a ser un
+  directorio. → [[un-control-positivo-con-esperado-falso-acusa-al-script]]

@@ -184,3 +184,38 @@ cantidad: 13 llamadas en un modo son **un** caso, y el eje no movido es «¿pas�
 ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) un fix que unifica una
 semántica no está hecho hasta que **grepeás el predicado duplicado en las otras capas** — «mismo valor hoy» es
 la frase que precede a la divergencia ([[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]).
+
+---
+
+## 📅 2026-10-07 — agregar un path a un runner que corre en OTRA máquina no es un cambio local
+
+El commit que agregó dos archivos de `deploy/copiloto/` a la invocación de pytest de
+`scripts/ci/backend.sh` **dejó la suite entera de backend en 0 tests corridos** en el VPS, y lo verifiqué
+así: *«desde su CWD real (`apps/copiloto`): 17 passed»*. Cierto — **en mi PC**, donde el directorio
+existe. El camino de producción de ese test es el VPS, donde el stage se arma con un `tar` que lleva
+`apps/copiloto motor deploy/worker scripts` y nada más.
+
+🔑 **El commit que lo rompió arreglaba un falso verde por «archivos ALCANZADOS vs controles
+EJERCITADOS»**, y cayó en la versión espejo del mismo error tres horas después. El patrón no es
+distracción: es que el CWD y el árbol **se ven idénticos** desde el editor, y el test corrió de verdad
+antes de pushear.
+
+⚠️ **Y el síntoma protege al defecto por tres lados a la vez:**
+1. **El árbol del CI no es el árbol del gate.** GitHub usa `actions/checkout@v4` (completo) y sale
+   **verde**; el gate propio arma un stage parcial y sale **rojo**. Atestación verde + gate rojo es el
+   escenario que el ADR-001 vino a evitar, y quien cite el verde no ve nada.
+2. **El código de salida no distingue «no existió» de «falló»**: pytest con un path ausente sale
+   **`rc=4` con `no tests ran`**, y en un gate `rc≠0` se lee como «fallaron tests».
+   → [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]
+3. **El mensaje llega dentro de un pipe de ssh**, así que `file or directory not found` invita a culpar
+   al VPS, al candado del stage o a la rama propia.
+
+**How to apply:** (1) antes de agregar un path a un script que **otra máquina** ejecuta, preguntá
+*«¿quién arma el árbol allá, y este path está en esa lista?»* — el empaquetador (`tar`, `rsync`,
+`Dockerfile`, `.dockerignore`) es parte del contrato del runner, no infraestructura aparte; (2) un
+`--exclude`/allowlist que sale del **disco** y no de git no está gobernado por `.gitignore`: lo que git
+ignora viaja igual; (3) el control que cierra la clase no verifica el caso («el directorio está en el
+tar») sino la **regla** («todo path que el runner pide viaja»), porque el próximo path está a un token
+de distancia; (4) cuando el fix se hace de a dos sesiones en paralelo, el riesgo no es el conflicto de
+texto sino que **los dos controles se contradigan**: uno verifica el mecanismo y otro la regla, y el
+primero se pone rojo cuando el mecanismo cambia de forma sin que el defecto vuelva.
