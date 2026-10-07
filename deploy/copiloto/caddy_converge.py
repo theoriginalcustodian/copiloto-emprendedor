@@ -27,7 +27,9 @@ def cuerpo_copiloto(web_port):
 
 
 def cuerpo_publico(auth_port, web_port):
-    cuerpo = []
+    # `log` = logging de Caddy a journal (sin cambio de respuestas). Es la directiva que prueba que el
+    # deploy CONVERGE: agregarla al deseado debe reflejarse en el Caddy vivo (DEPLOYNOCONVERGE, DEPLOYLAG).
+    cuerpo = ["    log"]
     for ruta in RUTAS_AUTH:
         cuerpo += [f"    handle {ruta} {{", f"        reverse_proxy 127.0.0.1:{auth_port}", "    }"]
     cuerpo += ["    handle {", f"        reverse_proxy 127.0.0.1:{web_port}", "    }"]

@@ -116,6 +116,12 @@ class Convergencia(unittest.TestCase):
         self.assertEqual(a, "~")
         self.assertNotIn("verify*", bloque(nuevo_texto, PUBLIC))
 
+    def test_directiva_log_nueva_llega_al_bloque_vivo(self):
+        """DEPLOYNOCONVERGE: una directiva nueva del deseado (`log`) tiene que aparecer en el vivo que no la tenía."""
+        nuevo, acciones = converger(VIVO_SIN_VERIFY, **ARGS)
+        self.assertIn("\n    log\n", bloque(nuevo, PUBLIC))
+        self.assertIn((PUBLIC, "~"), acciones)
+
     def test_copiloto_block_ya_igual_no_se_reescribe(self):
         _, a = aplicar_bloque(VIVO_SIN_VERIFY, f"copiloto.{BASE}", cuerpo_copiloto(8099))
         self.assertEqual(a, "=")

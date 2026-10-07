@@ -40,6 +40,8 @@ mp.178-105-191-1.sslip.io {
 #    El handle `verify*` es el de los links de mail de recuperación: sin él, el link abre la SPA y nunca
 #    verifica (éxito aparente). Ver memoria `copiloto-dominio-duckdns`.
 copilotoemprendedor.duckdns.org {
+    # `log` = logging a journal (sin cambio de respuestas). Sonda de DEPLOYNOCONVERGE: el deploy la converge.
+    log
     handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }
     handle /auth/v1/callback*  { reverse_proxy 127.0.0.1:9997 }
     # Links de mail (recovery/confirm) que GoTrue emite con COPILOTO_GOTRUE_PUBLIC_URL (…/auth/v1/verify).
