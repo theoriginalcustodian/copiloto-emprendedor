@@ -209,3 +209,45 @@ dependa de lo que viene después (`❌ descartada` vs `❌ ⏳ espera`) no es un
 el primer carácter; (3) cuando un guard grite en el caso normal, el arreglo es **ensanchar el guard**, nunca
 maquillar el dato para que calle; (4) si un barrido por id te da 0, el control positivo es grepear algo que
 **sabés** que está — y si eso también da 0, el que está roto es el barrido o el universo, no el archivo.
+---
+
+## Refuerzo 2026-10-07 — **escribí el estado de dos veredictos yo, horas después de escribir esta entrada**
+
+Esta entrada ya decía, textual: *«un glifo cuyo significado dependa de lo que viene después (`❌ descartada` vs
+`❌ ⏳ espera`) no es un enum: es prosa, y todo parser va a leer el primer carácter»*. Ese mismo día, al rescatar
+filas congeladas, escribí dos estados así:
+
+```
+CORPUSETIQUETA | … | … | ❌ ⏸ **CONGELADA 2026-10-06 — fila de INSTRUMENTO**
+INDICETRESVIAS | … | … | ❌ ⏸ **CONGELADA 2026-10-06 — fila de INSTRUMENTO**
+```
+
+Las dos filas estaban **vivas** (congeladas = estado con condición de entrada declarada), y las dos quedaron
+clasificadas como **terminales**: `cola-check.sh` hace `case "$estado" in ✅*|❌*) : ;;` ⇒ el primer carácter
+decide. Mi propio criterio de bajada las habría mandado a `PLAN-HISTORIA.md` como cerradas, que es exactamente
+el entierro que esta entrada describe.
+
+**Lo que NO funcionó: tener la lección escrita.** La escribí yo, el mismo día, y reincidí igual. Escribir la
+regla no la aplica — es la misma forma que citar el punto 4 de un DoD dos párrafos antes de violarlo.
+
+**Lo que SÍ funcionó: medir antes de actuar.** El script de bajada contaba las filas terminales e imprimía el
+número **antes** de mover nada. Esperaba 7 y dijo **9**; las dos de más eran éstas. No las vi leyendo el
+archivo —las había leído varias veces ese día—, las vio el **denominador**.
+
+**Y el segundo guard que pagó solo:** ese script aborta si un estado contiene **más de un glifo de veredicto**
+(`✅ ❌ ⏸ ⏳ 🚦`). No «si el formato es raro»: si hay **dos veredictos**, que es la condición exacta del defecto.
+Un estado ambiguo no se baja ni se adivina — se desambigua primero y recién después se mueve.
+
+**Un tercer hallazgo del mismo barrido, que no es de glifos pero vale:** el script también abortó en una fila con
+**6 campos** en vez de 4, y la fila **no estaba mal**. `cola-check.sh` lee el estado como el **último** campo, así
+que unas comillas con una barra adentro en la prosa no le molestan. El estricto era **mi** validador, no el
+formato. Cuando un control propio contradice al que ya vive en producción, el que manda es el de producción:
+copiá su regla, no inventes una más dura. (La fila igual se normalizó, porque la convención existe para los otros
+lectores.)
+
+**How to apply (se suma a lo de arriba):** (1) **un control que cuenta y dice cuántos** caza lo que la relectura
+no caza, porque el defecto no está en lo que leés, está en lo que **no volvés a leer**; (2) escribí el esperado
+**antes** de correr el barrido —«espero 7»— y si sale otro número, pará: la diferencia es el hallazgo;
+(3) un guard de «más de un veredicto en el campo de estado» es barato y dispara en el caso real, no en el
+hipotético; (4) antes de endurecer un validador propio, comparalo con el parser que ya está en producción: si
+el tuyo rechaza lo que el otro acepta, el falso rojo es tuyo.
