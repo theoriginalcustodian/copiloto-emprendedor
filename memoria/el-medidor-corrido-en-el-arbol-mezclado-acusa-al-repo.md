@@ -53,6 +53,50 @@ espeja con `--delete`. Falso desde el 2026-07-31 (`seed-memory.sh:15` es comenta
 es `rsync -a --update`, y `:96` rescata slug→repo). Era el documento que las tres sesiones leen al
 arrancar, y sembraba miedo a correr la herramienta que reconcilia.
 
+## Refuerzo 2026-10-07 — la forma general: medir ATRASO y leerlo como TRABAJO PENDIENTE
+
+El mismo día, **tres veces más**, con tres instrumentos distintos. Siempre la misma forma.
+
+**2. El clasificador de ramas.** Publiqué como hallazgo principal que *«4 ramas tienen trabajo en
+paralelo sobre el mismo archivo»* (`scripts/evidencia/contar-veredictos.py`, 51/46/45/23 líneas
+exclusivas). **No existía.** Preguntaba *«¿qué líneas tiene la rama que `main` no tenga?»*, y eso
+incluye todo lo que `main` editó **después** de que la rama saliera: la rama no lo escribió, quedó
+atrás. Al restar el merge-base: dos de esas ramas estaban **enteras** en `main`, dos no tenían **ni
+una** línea pendiente ahí, y la única real había escrito 838 líneas de las que faltan 44.
+
+El criterio exacto son dos restas, y la primera es la que falta siempre:
+
+    escrito_por_la_rama = lineas(rama:archivo)  -  lineas(merge_base:archivo)
+    falta_en_main       = escrito_por_la_rama   -  lineas(main:archivo)
+
+**Y reportá las dos cifras.** *«falta 44 de 838 escritas»* hace visible el atraso que *«44 líneas
+exclusivas»* esconde: un numerador sin su denominador parece trabajo perdido.
+
+**Lo que no alcanzó, y es la parte transferible:** yo ya había visto el síntoma y lo parchée
+**excluyendo del veredicto** los dos archivos de alta rotación (`MEMORY.md`, `HISTORIA.md`). El parche
+era **por archivo** y el defecto era **del criterio**, así que seguía vivo en cualquier archivo que
+`main` tocara — y revivió en el archivo de 2683 líneas. *Si tapás un falso positivo nombrando el
+archivo donde apareció, preguntá qué pasa en el próximo archivo que entre en esa categoría.*
+
+**3. Los `.bak` de un worktree.** Antes de borrar una rama medí su worktree: 9 archivos sin commitear,
+116 líneas que `main` no tenía. Parecía trabajo a punto de perderse. Eran versiones **viejas**: el
+`.bak` decía *«`seed-memory.sh` BORRA»* y `main` ya decía *«es SEGURO (`--update`)»* — o sea el `.bak`
+guardaba justo la afirmación que yo había refutado horas antes.
+
+**4. Y el control positivo que no cubría nada.** Para descartar esos `.bak` medí sus 138 punteros
+contra `MEMORY.md`: **5 memorias huérfanas**. Estaban las 5 en **`HISTORIA.md`**, el otro índice. Mi
+control positivo (`raiz-no-parche` ⇒ `idx=1`) vivía justo en la mitad que sí miraba, así que dio verde
+y me tranquilizó sin tocar el agujero. **El índice de este repo son DOS archivos: medir cobertura
+contra uno fabrica huérfanas falsas** — y el medidor oficial, que cuenta los dos, tenía razón
+(`379/379`) mientras yo lo contradecía. [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+**Cómo aplicarlo:** antes de reportar que algo falta, preguntá *¿esto lo escribió alguien y no llegó,
+o simplemente lo que estoy mirando quedó atrás?* Son la misma lectura con conclusiones opuestas: una
+pide rescate, la otra pide `git pull`. Y el instrumento vive versionado en
+`scripts/clasificar-ramas-wip.py`, con el canario que separa los dos casos (rama desde un `main` viejo
+que duplica una línea del archivo viejo ⇒ debe dar `LLEGÓ`); sin ese canario, «resté el merge-base» es
+una afirmación, no una medición.
+
 Relacionado: [[instrumento-que-no-mira-nunca-falla]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
 [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]] ·
 [[memoria-repo-vs-slug-drift]] · [[el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto]]
