@@ -85,3 +85,38 @@ que el sistema no almacena fallan igual: **parecen** trazabilidad. Para versión
 Emparentado: [[push-es-el-ultimo-paso-no-el-primero]] (el squash toma otro HEAD) ·
 [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]] ·
 [[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]].
+
+---
+
+## 🔻 Refuerzo 2026-10-07 — el número de línea que reporté lo fabricó el pipe, no el archivo: `grep -n` numera el stream que recibe
+
+Fui a auditar la cita `guard-deploy.sh:35-38` de una decisión ajena y la declaré equivocada contra mi
+propia medición, «:16-18». La equivocada era **la mía**, y el instrumento que la fabricó era mío:
+
+```
+git show origin/main:deploy/copiloto/guard-deploy.sh | sed -n '/guard_deploy()/,/^}/p' | grep -n 'rev-parse HEAD'   -> 16
+git show origin/main:deploy/copiloto/guard-deploy.sh |                                    grep -n 'rev-parse HEAD'   -> 33
+```
+
+Misma pregunta, mismo archivo, dos números. `grep -n` numera **lo que recibe por stdin**, y lo que
+recibía era el fragmento que `sed -n '/…/,/…/p'` ya había recortado: el `:16` es la línea 16 **de la
+función**, no del archivo. La cita ajena (`:35-38`, real `:33-36`) estaba a dos líneas; la mía, a
+diecisiete — y con la forma exactamente correcta.
+
+**Por qué es la misma clase que el resto de esta entrada:** un número de línea fabricado no se
+distingue de uno real. No hay dígito fuera de rango, no hay sintaxis rara, y la línea 16 del archivo
+existe y tiene código. El lector que va a buscar encuentra **otra cosa** y concluye que la cita
+envejeció. El agravante: lo usé para **auditar las citas de otros**, el único trabajo donde un número
+inventado se propaga firmado y con autoridad.
+
+**How to apply:**
+1. **Un número de línea sale de `grep -n` sobre el archivo completo, nunca sobre un pipe que ya
+   filtró.** Si hay que recortar, se recorta *después*: `grep -n <patrón> | sed -n '…'`, no al revés.
+2. **Si antes del `grep -n` hay un `sed -n '/a/,/b/p'`, un `head`, un `tail` o un `awk`, el número es
+   del fragmento.** El mismo grep sobre el archivo entero es el control positivo, y cuesta un comando.
+3. **Antes de reportar que la cita de otro está mal, corré tu medición de las dos formas.** Una cita
+   ajena a dos líneas es redondeo; una propia a diecisiete es un instrumento roto.
+4. Para números de línea sobre el estado mergeado: `git show origin/main:<path> | grep -n`, y nada
+   más en el medio.
+
+Emparentado: [[instrumento-que-no-mira-nunca-falla]] · [[al-juez-tambien-hay-que-darle-el-plano]].
