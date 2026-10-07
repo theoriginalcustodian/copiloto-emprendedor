@@ -152,3 +152,28 @@ trabajo que era **mío y arrancable** — el instrumento corrigió dos errores d
 ⚠️ Y el hermano del mismo día, midiendo con `awk -F' \| '`: el `|` desnudo en una ERE es **alternancia**,
 así que `awk` partió por espacios y me devolvió `"hoy)."` como último campo. Un instrumento malo que
 se veía igual que una fila rota. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]].
+
+---
+
+**Refuerzo (2026-10-06): la barra parte el renglón AUNQUE esté dentro de un code span — y un code span parece
+inocente.** Rompí dos filas del tablero escribiendo el enumerado `CLEAN` / `HAS_HOOKS` / `UNSTABLE` con barras
+entre backticks. Markdown lo renderiza perfecto, la fila **se ve bien**, y el parser —que corta por `|`— toma como
+«estado» el último pedazo, así que la fila queda **invisible para la cola**. Lo escribí **dos veces**: la segunda,
+dentro de la fila que documentaba la primera. El bloque ya tenía la leyenda avisándolo; leerla no alcanzó, porque
+el reflejo es «esto está entre backticks, es texto». **No hay excepción por backticks.** Control que sí funciona:
+un guard en el script que aborta si el campo contiene `|`, sin whitelists — me cazó a mí mismo.
+
+**Y dos formas más de fila invisible, del mismo barrido:**
+- **El id con GUION.** `STUBGH-4` y `CUENTA-REMEDIR` nunca matchearon `^[A-Z0-9]+` seguido de barra, así que
+  **ningún** barrido previo los contó — ni los míos. El patrón del id es parte del contrato de la tabla: si lo
+  escribís más estrecho que los ids reales, las filas no están «mal», están **fuera del universo medido**
+  ([[el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto]]).
+- **El id DUPLICADO.** `LEGAL` nombraba **dos asuntos sin relación** (el texto legal de BL-O6 y el ratchet de
+  versión TS↔Python). Una búsqueda por id lee **una de las dos al azar** y la otra no existe para quien pregunta;
+  peor, un «ya está cerrado» legítimo de una tapa a la otra. Renombradas `LEGALTEXTO` / `LEGALRATCHET`. El control
+  es de una línea y no estaba: contar ids y asertar que el set no tiene repetidos.
+
+**How to apply:** antes de barrer una tabla por id, corré tres controles sobre **el archivo**, no sobre tu idea de
+él: (1) ¿el patrón del id matchea **todas** las filas? (contá filas totales vs. filas que matchean); (2) ¿hay ids
+repetidos?; (3) ¿el último campo de cada fila es un estado legible? Las tres son una línea cada una y las tres
+fallaron acá.

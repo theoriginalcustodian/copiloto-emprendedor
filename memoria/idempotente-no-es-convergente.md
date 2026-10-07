@@ -71,3 +71,28 @@ después miente**. Y el que va a creerle es el que despliegue el cambio, no el q
 - [[instrumento-que-no-mira-nunca-falla]] — el silencio de algo que no miró se lee verde.
 - [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] — el fallo que se disfraza de operación normal.
 - [[cero-deuda-no-gestionada]] — el comentario documentaba la mitad de una decisión y nadie pagó la otra.
+
+---
+
+**Refuerzo (2026-10-06): la clave de idempotencia medía un SUBPRODUCTO, no el efecto buscado — y eso la vuelve
+una mentira que empeora con el reintento.** El script bajaba las filas cerradas de `PLAN.md` a `PLAN-HISTORIA.md`:
+dos escrituras, primero el historial y después el tablero. La segunda falló (un surrogate mal escrito), así que
+quedó **el historial escrito y el tablero intacto**. Mi guarda de idempotencia era *«si el id ya está en
+PLAN-HISTORIA, no hay nada que hacer»* ⇒ la corrida siguiente imprimía **«sin cambios (idempotente)»** y salía 0
+**dejando el trabajo sin hacer, para siempre**. El estado a medias era además el **más caro**: las filas
+duplicadas en los dos archivos.
+
+**La regla:** la clave tiene que medir **el efecto que el script existe para producir** («ya salió de `PLAN.md`»),
+no un artefacto intermedio que el script también genera («ya está en el historial»). Si el trabajo son N pasos, la
+clave es el **último**, no el primero — porque la única corrida que importa reintentar es justamente la que se
+cortó en el medio. Y un script con dos escrituras no es idempotente por tener un `if`: es idempotente cuando
+**converge** desde cualquier estado intermedio.
+
+**Y el patrón que salvó el archivo:** la escritura era `tmp` + `os.replace`, así que el `.tmp` quedó en **0 bytes**
+mientras `PLAN.md` seguía entero con sus 518.005 bytes. Con `open(destino, "w")` directo, el surrogate habría
+destruido el tablero de las tres sesiones ([[open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo]]).
+
+**How to apply:** (1) escribí la guarda como *«¿el efecto final ya está?»* y probala **a mano** dejando el proceso
+a medias: matá el script entre las dos escrituras y corré de nuevo — si dice «sin cambios», la clave está mal.
+(2) Si hay varios destinos, la clave mira el **último** que se escribe. (3) Nunca uses como clave algo que el
+propio script produce antes de terminar.

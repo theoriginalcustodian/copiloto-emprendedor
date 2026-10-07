@@ -556,3 +556,28 @@ Relacionadas: [[el-veredicto-no-dice-cuantas-veces-lo-miraron]] ·
 [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]]
 
 Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-que-acredita-realmente-el-smoke-37-37.md`
+
+---
+
+**Refuerzo (2026-10-06): el instrumento que no TERMINA no dice «rojo» — dice NADA, y nada se parsea como sano.**
+`cola-check.sh` es el paso 0 de los tres crones de planificación. Con `PLAN.md` en **518.005 bytes / 193 filas**
+pasó a tardar **1m35.6s**, justo en el filo de cualquier timeout que elija el llamador: la corrida con
+`timeout 110` dio **rc=124 y salida VACÍA**. Mi control (`grep -ci 'no reconocid'`) leyó **0 problemas** de un
+proceso que no había mirado **una sola fila** — y «0 problemas» es exactamente lo que imprime cuando todo está
+bien. Lo delató el **control positivo**: un segundo conteo de algo que *tiene* que estar (`grep -c 'COLA'`) dio
+**0** cuando debía dar 1. Sin esa segunda cifra, el timeout y la sanidad son el mismo output.
+
+**El vector es nuevo y vale aparte:** acá el instrumento no estaba mal escrito — **el objeto que vigila creció
+hasta desactivarlo**. Un tablero, un índice o un log que se llenan solos degradan a su propio validador sin que
+nadie toque una línea de código, así que el defecto no aparece en ningún diff. Fix de raíz: bajar lo cerrado a un
+archivo que no se lee para decidir (`coordinacion/PLAN-HISTORIA.md`, mismo mecanismo que `memoria/HISTORIA.md`).
+Medido por efecto con el mismo comando: **1m35.6s → 1.9s (50×)**, **518 KB → 162 KB**, integridad
+**193 = 10 abiertas + 183 bajadas** con 0 perdidas y 0 inventadas.
+
+**How to apply:** (1) todo control que grepee la salida de otro proceso necesita **dos** cifras — la que acusa y
+una que confirma que el proceso habló; con una sola, el silencio pasa por verde. (2) Nunca pongas un `timeout`
+sobre un gate sin medir primero cuánto tarda: un timeout por debajo del tiempo real convierte el gate en un
+sello. (3) A todo instrumento preguntale **cuántos elementos miró** y hacelo fallar si miró **cero** — un
+denominador ausente es el mismo defecto una cuarta vez (`SMOKEDENOM`, `CIVERDEDENOM`, `LINTDENOM`, y ahora éste).
+(4) Si el insumo del gate crece de forma monótona (tablero, índice, historial), la poda **es parte del gate**, no
+mantenimiento opcional.
