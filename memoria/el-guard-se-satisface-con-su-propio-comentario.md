@@ -135,6 +135,65 @@ la cuenta de la vieja a las apariciones **fuera** del contexto de cita. El costo
 es un parche mal hecho: es gastar la verificación persiguiendo un fantasma, con la mitad del riesgo de
 «arreglar» un archivo que estaba bien.
 
+---
+
+**Refuerzo (2026-10-06): el caso extremo — el comentario no exagera la defensa, la INVENTA, y está parado
+justo donde alguien iría a buscarla.** `scripts/ci/lint.sh:11` dice *«repo PÚBLICO — cero secretos en TODA la
+historia (gitleaks fijado)»* y la línea siguiente, `:13`, corre `secretos-check.sh **--arbol**`. `--arbol` y
+`--historia` son modos distintos del mismo script: uno mira el working tree, el otro recorre los commits.
+Grep sobre `.githooks/`, `scripts/ci/` y `.github/`: **`--historia` no tiene ningún llamador automático** — y
+la única línea que dice que sí, miente, con un *«Fail-closed:»* en el renglón de abajo que la hace sonar
+mecanizada. ⚠️ **La conclusión que saqué de ahí —«ningún gate mira la historia»— era demasiado fuerte, y está
+corregida al final de este refuerzo: el grep midió la BANDERA, no la CAPACIDAD.**
+
+**Por qué es peor que un hueco sin comentario:** un secreto commiteado y después borrado **sale del árbol y
+queda en la historia para siempre** — exactamente el caso que el `CLAUDE.md` nombra en su cabecera y el único
+que `--arbol` no puede ver. Y el que se pregunte *«¿quién vigila la historia?»* llega a `lint.sh:11`, lee
+«TODA la historia» y **deja de buscar**. El comentario no sólo no protege: **desactiva la búsqueda del
+próximo**, que es la misma mecánica por la que un veredicto «coherente» desactiva trabajo
+([[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]]).
+
+Tercera aparición del día del productor que declara una protección que no da. Las dos primeras las cubría el
+**consumidor** (`recibo-cubre.sh` tapando a `gate.sh:40-41`; `ci-verde.sh` tapando a `no-drift.sh`); **esta no
+la cubre nadie.** ⇒ La gradación importa al leer un comentario de guard: *¿la defensa existe acá · existe en
+otra capa · o no existe?* Las tres se escriben igual.
+
+**Y el matiz del fix, que es el que evita el reflejo:** la respuesta **no** es mecanizar lo que el comentario
+promete. Un `--historia` dentro del job `lint` que encuentre algo **preexistente** deja **rojo permanente sin
+acción posible** —un hallazgo histórico no se arregla sin reescribir la historia— y se desarma en dos días,
+arrastrando al `--arbol`, que sí sirve ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). Primero
+**que la línea diga lo que hace** y nombre dónde vive la otra mitad y quién la corre a mano; después, si se
+quiere la garantía, **fuera del camino del PR** y con la pregunta contestada antes de encenderlo: *ante un
+hallazgo histórico, ¿rewrite o rotar-y-declarar?*
+
+**How to apply:** (1) al leer un comentario que declara una garantía, **leé el comando de la línea de abajo**
+— el verbo y la **bandera**, porque el modo es donde se separan el árbol y la historia; (2) para cada
+protección declarada preguntá *¿quién la provee: este archivo, otro, o nadie?* y escribilo al lado; (3) un
+comentario honesto («esto mira el árbol; la historia se audita a mano, dueño X») vale **más** que el gate
+ausente, porque deja de apagar la próxima pregunta; (4) antes de mecanizar una garantía retroactiva, preguntá
+qué se hace con los hallazgos que ya existen: sin respuesta, el gate nace rojo y muere saltado.
+
+**Corrección del mismo día, y el error es el que estaba auditando: grepeé la BANDERA, no la CAPACIDAD.** De
+«`--historia` no tiene llamador» concluí «nadie mira la historia». Falso. El `pre-push` **sí** escanea la
+historia: `.githooks/pre-push:15` llama `secretos-check.sh --refs-stdin`, que en `:115-120` arma el rango
+(`$lsha --not --remotes` para una rama nueva) y lo pasa por **`gitleaks git --log-opts`** — el **mismo modo**
+que `--historia`, con otra bandera (`:92-95`). Lo vi en mi propio push de ese día: `1 commits scanned`. El
+hecho del hallazgo sobrevive —el comentario prometía la historia y el comando mira el árbol— pero su
+**magnitud** se degrada: lo que no existe es un llamador de la **historia COMPLETA**, no la cobertura
+([[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]). Medido: **1018 de 2394 commits
+(43%) son anteriores al hook** (lo instaló #601 el 2026-09-21), los **281** posteriores se escanearon al entrar
+pero **con las reglas de su día**, y la única pasada de la historia completa con las reglas de hoy fue **a
+mano**. Y buscando la cifra repetí el error un nivel más abajo: el pickaxe `-S'secretos-check.sh --refs-stdin'`
+dio **0 commits** porque la línea real lleva comillas en medio (`"$SCRIPT_DIR/scripts/secretos-check.sh"
+--refs-stdin`) — vacío que sólo se delató con el control positivo `-S'secretos-check.sh'` → 1
+([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
+
+**How to apply (5):** cuando un grep por un nombre te dé 0 y estés por concluir que **la capacidad no existe**,
+listá primero **cómo más podría proveerse** y grepeá eso: acá era el modo de la herramienta
+(`gitleaks git --log-opts`), no la bandera del wrapper. Un ausente **nombrado** es evidencia débil
+([[el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto]]); y si la conclusión es «nadie
+hace X», la forma de medirla es por el **efecto** —correr el camino real y ver qué escanea— no por el
+inventario de llamadores.
 **Refuerzo 2026-10-06 — la variante que más duele: el guard de IDEMPOTENCIA medido contra el ARCHIVO
 en vez de contra su TARGET.** Un script que corrige **una fila** de un tablero abrió con
 `if "REFUTADA POR MEDICI" in s:` sobre el archivo **entero**. La frase existía en **otra fila**

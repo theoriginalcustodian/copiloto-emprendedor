@@ -109,3 +109,32 @@ Al enumerar el daño de un artefacto sin dueño hay que contar todos los que lo 
 `…_contrato-sin-tomar-<contrato>.md`: 46 archivos entre 2026-08-03 y 2026-09-22. Daño vigente cero, pero
 `retirados_obsoletos=0` es indistinguible de «el glob no matchea nada». Control positivo de una línea:
 verificar que el `$urgente` recién generado matchea el patrón del retiro, y `fatal` si no.
+
+---
+
+## Refuerzo 2026-10-06 — el artefacto se trajo el **sobre** del instrumento, y el sobre viajó a un repo público
+
+`docs/copiloto-emprendedor/2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md:339` (fila `BL-F2`) tenía
+commiteado, dentro de una celda de tabla markdown, el **envoltorio JSON del transcript**:
+`"promptSource":"system","turnOrigin":"peer",…,"sessionId":"…","gitBranch":"…","slug":"…"`.
+
+**La parte que importa: el §A del mismo documento presenta el mecanismo como garantía de calidad** —
+*«filas tal como las midieron los cuatro barridos, **recuperadas del transcript por script (no
+transcritas)**»*. El «no transcritas» está ahí para decir *«nadie las reescribió a mano, así que no hay
+deriva»*. **Y es exactamente ese mecanismo el que inyectó la basura:** una transcripción a mano nunca
+habría pegado `"sessionId"`.
+
+⇒ **Lo que se cita como garantía de fidelidad puede ser la fuente de la contaminación**, y por eso la frase
+que la invoca desactiva la revisión: quien lee «recuperado por script» deja de mirar el contenido.
+
+### Por qué no dio síntoma
+
+- Markdown **no se rompe**: la fila tenía los 6 pipes de las 5 columnas, así que renderizaba. El JSON
+  quedaba dentro de la última celda, a 1130 caracteres del margen — en una tabla donde las filas largas
+  son la norma.
+- Ningún linter del repo mira el **contenido** de un `.md` de `docs/`.
+- El repo es **público** desde el 2026-08-06: no era un secreto (ni token ni credencial, verificado), pero
+  sí metadata interna de sesión publicada sin querer.
+
+**Control que lo caza, barato:** `grep -rE '"(sessionId|promptSource|turnOrigin|userType)"' docs/` — cero
+hits es el estado sano, y el control positivo es este mismo blob en la historia.

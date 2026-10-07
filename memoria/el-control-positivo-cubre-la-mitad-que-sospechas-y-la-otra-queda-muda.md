@@ -161,3 +161,122 @@ plausible. Lo cazó **descomponer** (emoji 8 + guion 15 = exactamente el «antes
 `[[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]]`. Defensa:
 construir el patrón con `chr(92)` y afirmar su longitud (`len(PAT) == 10`) **antes** de usarlo. Un
 patrón es un instrumento, y también necesita control positivo.
+
+---
+
+## 🔻 2026-10-06 — el test varió **todos** los ejes menos el que decide
+
+El escalón más barato de pasar por alto de esta entrada, porque acá **no falta el control positivo: hay
+cuatro, y los cuatro usan el mismo valor.**
+
+**Caso raíz: `scripts/tests/test-secretos-check.sh`**, el test del **único guard fail-closed** del repo
+(`secretos-check.sh`, gitleaks, y el repo es **público**). Son **174 líneas y 10 casos**, y es un test
+serio — cada caso mueve una dimensión distinta del instrumento:
+
+```
+modo:          1) historia limpia   3) rango   4) --refs-stdin   7) --arbol
+fail-closed:   5) binario inexistente -> rc=2, nunca 0
+config:        6) allowlist por fingerprint   9) exclusion de worktrees
+discrimina:    8) config rota != hallazgo (gitleaks da rc=1 por las DOS causas)
+salida:       10) -v dice DONDE sin decir QUE
+FORMA:         2) un token con forma de PAT de GitHub   <- el unico, y es constante
+```
+
+Conteo sobre ese archivo: **`ghp_` → 4 apariciones** (los 4 controles positivos) · `sk-ant` → **0** ·
+`APP_USR` → **0** · `postgresql://` → **0** · `eyJ` → **0**. *(Control del grep, mismo archivo: `rc=1` → 4,
+`arbol` → 22.)*
+
+> **Diez casos verdes ejercitan exhaustivamente los MODOS del instrumento y mantienen CONSTANTE la única
+> variable que decide si caza algo: la forma del secreto.** Un test de los **modos** del escáner se lee,
+> de buena fe, como un test **del escáner**.
+
+**Y la constante elegida era la única cubierta.** Medido con canario propio (9 formas reales de este
+stack, entropía real, en **pares de contraste**): `ghp_` se caza porque gitleaks trae regla dedicada
+`github-pat`; **`sk-ant-api03-…`, `APP_USR-…` y `postgresql://user:PASS@host` NO se cazan** — y el **mismo
+secreto, misma variable, misma entropía, suelto sin su prefijo, SÍ**. El prefijo que identifica a la
+credencial es lo que la salva: `generic-api-key` necesita una cadena contigua, y los guiones del prefijo o
+los `:/@` de la URL **parten el match**.
+
+→ **Pregunta operativa, distinta de la de arriba:**
+
+> Arriba: *¿qué afirmación del instrumento NO tiene control positivo?*
+> Acá: **¿qué variable mantuvieron CONSTANTE todos los casos que sí existen?** Un test con N casos verdes
+> prueba las N dimensiones que varió — y **la dimensión no movida es invisible precisamente porque las
+> otras N están cubiertas con rigor.** Listá los ejes del instrumento y marcá cuál no se mueve nunca.
+
+**Para un guard de patrón**, el corolario es concreto: el control positivo tiene que usar la **forma
+REAL** —con su prefijo, y dentro del contenedor donde el secreto aparece de verdad (una URL, un `.env`, un
+JSON)— y en **pares de contraste**, la misma entropía con y sin prefijo. **El par es lo que convierte «no
+lo cazó» en «lo salvó el prefijo»**, que es la diferencia entre un bug reportable y una observación.
+
+**El espejo, que casi reporté:** mi primer canario usó relleno `AAAA…` y **ni el `ghp_` se cazó** —
+gitleaks **filtra por entropía**, así que el fixture era el defecto. Iba a acusar de ciego al único guard
+que sí funciona → [[un-control-positivo-con-esperado-falso-acusa-al-script]]. Un fixture sintético es un
+instrumento: si no se parece al dato real **en la propiedad que el detector mide**, mide otra cosa.
+
+**Y el cierre que vale solo:** el `CLAUDE.md` de este repo cita una auditoría de toda la historia con
+*«`sk-ant-` 0»*, hecha con **greps a mano**. **El guard automático no cubre `sk-ant-`.** El inventario de
+riesgo que el proyecto escribió **nombra** lo que su guard no vigila, y nada lo señala: el escáner sale
+verde tanto si no hay una clave de Anthropic como si hay una →
+[[instrumento-que-no-mira-nunca-falla]] · [[medir-si-un-gate-dispara-antes-de-embarcarlo]].
+
+Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-el-escaner-de-secretos-caza-la-forma-generica-y-falla-en-la-real.md`
+
+**Segunda instancia, el mismo día, en otro instrumento — y la que vuelve al patrón reconocible.** Los
+**tres** tests que ejercitan los overrides de `gate.sh` (`test-gate-args-y-recibo.sh:28`,
+`test-recibo-cubre.sh:77`, `test-gate-hook-secretos.sh:37`) setean `GATE_CI_DIR` **siempre junto con**
+`GATE_RECIBO_DIR`, o limpian los dos con `env -u`. **Ninguno mueve una sola de las dos.** Y el caso
+interesante es el de una sola: con `GATE_CI_DIR` solo, el recibo escrito por **jobs stub** cae en el
+`.ci-recibos/` **real** —medido en repo temporal, con los dos controles positivos— justo lo que el
+comentario de `gate.sh:40-41` afirma que no puede pasar. Lo que impide el falso verde no es esa
+protección: es `recibo-cubre.sh` exigiendo los 5 jobs, **del lado del consumidor**. Una defensa **mal
+atribuida** → `[[el-guard-se-satisface-con-su-propio-comentario]]`.
+
+⇒ **Dos variables que un test mueve siempre juntas son, para ese test, una sola variable.** La
+combinación que nadie probó es la que tiene el bug, y el verde de las corridas «con ambos overrides» la
+acredita. Al listar los ejes de un instrumento, contá también **los pares**: `(A, B)` cubiertos no
+implica `A` solo ni `B` solo.
+
+Doc: `docs/copiloto-emprendedor/Auditorias/2026-10-06-la-definicion-de-verde-resiste-y-la-defensa-mal-atribuida.md`
+
+---
+
+**Refuerzo (2026-10-06): el control positivo pasó, el instrumento era inservible, y lo cazó la
+IMPLAUSIBILIDAD DEL DENOMINADOR — no un control.** Variante nueva: acá el control no quedó mudo sobre
+otra mitad. Cubrió la afirmación correcta y **respondió bien**. El instrumento igual mentía, porque
+contestaba una pregunta **más ancha** que la que hacía cada caso medido.
+
+**El caso.** Escribí un barrido de premisas **negativas** («cero hits de X», «ninguna app lee X», «X no
+existe») sobre las filas cerradas del día: grepear el símbolo citado y marcar la premisa como vencida si
+hoy tiene hits productivos en `origin/main`. Le horneé el control positivo canónico — dos premisas de
+veredicto **ya conocido**, una que sabía vencida (`legal_version_aceptada`, agregada por #829/#836) y una
+que sabía vigente (`first_seller_user_id`, retirada de producción por #850) — y **las dos salieron como
+esperaba**. Resultado del barrido: **«50 premisas verificables · 32 vencidas»**.
+
+**64% de premisas vencidas en un día es implausible, y eso fue lo único que lo delató.** Al abrir los
+casos, tres fallas de raíz, ninguna de ellas visible para el control positivo:
+
+- **Ignora el ALCANCE.** *«0 hits de `mensajeId` **en los cuatro**»* es una afirmación sobre cuatro
+  archivos; el grep la midió contra todo el repo (**148 hits**) y la declaró vencida.
+- **Ignora el SIGNO.** Marcó una frase **positiva** —*«la navegación **es** `Stack`»*— como premisa
+  negativa vencida.
+- **Pesca el símbolo INCIDENTAL.** *«ninguna aborta nada»* → tomó `await` (**1040 hits**) por sujeto.
+
+**Por qué el control positivo no podía verlo.** Mis dos anclas eran premisas de alcance **global** y de
+sujeto **explícito** — justo la forma que el instrumento sí sabe medir. El control acredita el
+**mecanismo** (¿sabe marcar una premisa vencida?), nunca el **universo** (¿los 50 casos son premisas, con
+este sujeto y este alcance?). Dos preguntas distintas, y el verde de la primera presta autoridad a la
+segunda.
+
+**La regla que queda, y vale más que el barrido:** una afirmación negativa es auditable por script **sólo
+si su alcance es mecánico**. «0 hits de X» lo es; «0 hits de X **en los cuatro**» no, porque el alcance
+vive en la prosa. Si se quiere que una premisa sea re-medible, tiene que **declarar su comando**, no su
+resultado.
+
+**How to apply:** (1) después del control positivo, mirá el **denominador y la proporción** antes de
+publicar: si la tasa de hallazgos es implausible para la vida del sistema, el instrumento está midiendo
+otra cosa — esa implausibilidad es un control gratis que ningún ancla reemplaza. (2) Antes de contar,
+verificá en **tres casos a mano** que el sujeto extraído es el sujeto de la frase y que su alcance
+coincide; si uno falla, el conteo no significa nada. (3) Y el control más barato de todos: **¿aparece tu
+propio trabajo entre los hallazgos?** El barrido marcó dos mensajes míos escritos ese mismo día — un
+instrumento que acusa a lo que acabás de escribir está clasificando por forma, no por contenido.

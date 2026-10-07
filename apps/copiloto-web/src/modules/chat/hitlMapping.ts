@@ -36,15 +36,15 @@ const AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)*)/;
 
 /**
  * Affordances de riesgo POR SERVICIO (intrínsecas al servicio, no al texto): Mercado Pago muestra el
- * monto + badge "REVISAR"; Instagram es irreversible (badge "IRREVERSIBLE" + borde de alerta). El
- * resto = tarjeta neutra (solo ícono + nombre + concepto). Servicios sin entrada acá caen a `{}`.
+ * monto + badge "REVISAR". El resto = tarjeta neutra (solo ícono + nombre + concepto). Servicios sin
+ * entrada acá caen a `{}`. Instagram NO tiene entrada: el backend ya no genera tools `instagram_*`
+ * (A9, PR 821), y un badge "IRREVERSIBLE" para un módulo inexistente era una promesa sin producto.
  */
 const SERVICE_RISK: Record<
   string,
   { badge?: { variant: BadgeVariant; text: string }; dangerBorder?: boolean; showAmount?: boolean }
 > = {
   mercadopago: { badge: { variant: 'warning', text: 'REVISAR' }, showAmount: true },
-  instagram: { badge: { variant: 'danger', text: 'IRREVERSIBLE' }, dangerBorder: true },
 };
 
 const FALLBACK_CONFIRM: ReplyChoice = { label: 'Confirmar', value: 'confirm' };

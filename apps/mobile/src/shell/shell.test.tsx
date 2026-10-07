@@ -11,7 +11,7 @@ import { Dimensions } from 'react-native';
 
 /**
  * Partial mock de `@copiloto/core` (Task 5, guard de sesion en `app/_layout.tsx`): desde que el
- * layout raiz exige `estado === 'autenticado'` para mostrar `(tabs)`, este test necesita una sesion
+ * layout raiz exige `estado === 'autenticado'` para mostrar la app, este test necesita una sesion
  * valida para llegar al chat -- si no, `renderRouter()` cae en la pantalla de login (el guard hace
  * exactamente lo que debe) y `chat-composer` nunca aparece. Mismo patron que
  * `src/modules/auth/session.test.tsx`: se reusan las clases de error reales, solo se mockean
@@ -41,8 +41,8 @@ const CLIENTE_UUID = '11111111-1111-1111-1111-111111111111';
  * El test que existe porque el bug existio (review 2026-07-12): en la PWA, cruzar los 900px por
  * zoom o al rotar la tablet remontaba el chat entero y perdia la grabacion en curso, en silencio.
  * La causa fue tener DOS arboles de componentes (uno de escritorio, uno movil) y alternar entre
- * ellos. `app/(tabs)/_layout.tsx` mantiene UN SOLO <Tabs> en toda resolucion (ahora con la barra
- * oculta, `tabBarStyle:{display:'none'}` — pantalla unica) en vez de eso — este test renderiza la app
+ * ellos. La app usa UN SOLO arbol de navegacion en toda resolucion (`app/_layout.tsx`: un `Stack`,
+ * sin barra de tabs) en vez de eso — este test renderiza la app
  * REAL (via `renderRouter`, sin mocks de navegacion) y prueba la consecuencia observable: el estado
  * local de la pantalla de Chat sobrevive el cruce del breakpoint.
  *

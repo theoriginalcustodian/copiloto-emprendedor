@@ -789,8 +789,7 @@ export function PantallaAfipSetup() {
         )}
         {guardarEnDrive && estadoGeneral?.driveConectado === false && (
           <p className="afip-setup-bloque__texto" data-testid="afip-drive-desconectado">
-            Google Drive no está conectado. Conectalo en Apps para que tus facturas se guarden —
-            mientras tanto se emiten igual, pero sin copia.
+            La copia en Drive no está disponible por ahora. Las facturas se emiten igual, sin copia.
           </p>
         )}
         {guardarEnDrive && estadoGeneral?.driveConectado == null && (
@@ -798,8 +797,8 @@ export function PantallaAfipSetup() {
             className="afip-setup-bloque__texto afip-setup-bloque__texto--tenue"
             data-testid="afip-drive-requiere-conexion"
           >
-            Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite igual
-            y te avisamos que quedó sin copia.
+            No pudimos verificar tu Google Drive. La factura se emite igual, y si no queda copia te
+            avisamos.
           </p>
         )}
       </section>

@@ -57,3 +57,29 @@ fix de un solo archivo no exime de este chequeo — el script sube el directorio
 **Mitigación futura, no implementada todavía (deuda visible):** `deploy.sh` podría abortar si detecta
 `git diff origin/main -- apps/copiloto/ motor/` no vacío, o al menos loguearlo como warning. Sin
 propietario ni fecha asignada — queda como candidato, no como TODO comprometido.
+
+---
+
+**Refuerzo (2026-10-06): y el mismo árbol atrasado envenena las CITAS, no sólo los deploys — un diff
+dice CUÁNTO difieren dos árboles y nunca CUÁL es el viejo.** Backend me refutó un hallazgo entero por
+esto, y tenía razón.
+
+**El caso.** Abrí `apps/copiloto/web.py` del checkout compartido, leí `first_seller_user_id()` en `:1045`
+y `:1055`, vi el otro criterio (`_mp_connected`) en el mismo archivo y reporté *«`/me` y `/catalog`
+responden `mp_connected` con dos criterios distintos»*. En `origin/main` hay **uno**: `_estado_mp`
+(`:641`) → `_mp_connected` (`:648`) → `/me` (`:670`) y `/catalog` (`:1203`). Las líneas que cité son el
+código **pre-#850 del disco**, y `main` incluso tiene un docstring en `:643` explicando por qué NO usar
+ese criterio. El hallazgo no describía un defecto del producto: describía un **árbol atrasado**.
+
+**Por qué no da síntoma.** El archivo abre, las líneas existen, el código es sintácticamente real y la
+contradicción que señalás es verdadera **dentro de ese archivo**. Nada avisa que estás leyendo el pasado.
+Y medir el diff no alcanza: `+21/−122` dice que difieren, no quién quedó atrás — ese mismo día la marca
+`[WIP-LOCAL]` del plan de cierre empujaba a **commitear** justo los dos archivos cuyo disco era el viejo.
+
+**How to apply:** (1) **toda cita de código en un hallazgo sale de `git show origin/main:<path>`**, nunca
+del archivo en disco — es una línea más y elimina la clase entera de error. (2) Si igual citás del disco,
+medí `git diff --numstat origin/main -- <path>` y **declará contra qué árbol** mediste. (3) Para decidir
+la dirección, no mires el conteo: verificá un **símbolo** del fix en los dos lados (`git grep -c` en
+`origin/main` vs disco) — si el símbolo nuevo está en `main` y no en el disco, el disco es el viejo. (4) El
+caso peor no es el falso hallazgo: es commitear ese archivo «para limpiar el `git status`» y revertir un
+fix mergeado.

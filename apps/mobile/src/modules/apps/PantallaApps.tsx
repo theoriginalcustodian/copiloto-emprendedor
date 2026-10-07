@@ -169,12 +169,13 @@ export function PantallaApps() {
         setErrorVinculo(`Vincular ${servicio.nombre} todavía no está disponible.`);
         return;
       }
-      // TODO(deuda gestionada, 2026-07-21 · dueño: sesión frontend · pagar en el próximo build EAS):
-      // migrar a `expo-web-browser` (`openAuthSessionAsync`), que devuelve el control a la app sola al
-      // terminar el OAuth. Se usa `Linking` porque `expo-web-browser` es un módulo NATIVO y exige
-      // rebuild del binario — el operador tiene uno instalado y rebuildear para esto lo dejaría sin app
-      // a mitad de una prueba. El costo del atajo es acotado y está cubierto: el usuario vuelve a mano
-      // y la re-consulta del `AppState` repinta el estado real.
+      // DECISIÓN REGISTRADA (2026-10-06, planificación): se usa `Linking` (navegador del sistema) y NO se
+      // migra a `expo-web-browser`/`openAuthSessionAsync`, que en Android ES Custom Tabs — el mecanismo que
+      // el operador rechazó por su nombre para el login (ver `auth/oauth.ts:3-9`, BETA-4b, 2026-08-05,
+      // quince días DESPUÉS del TODO que esto reemplaza). NO es deuda para el próximo build EAS: el
+      // único argumento a favor era ergonómico (devolver el control a la app al terminar el OAuth).
+      // Se reabre SÓLO si el operador pide Custom Tabs con ese nombre. Costo del camino actual, acotado y
+      // cubierto: el usuario vuelve a mano y la re-consulta del `AppState` repinta el estado real.
       const puede = await Linking.canOpenURL(res.url);
       if (!puede) {
         if (vivo.current) setErrorVinculo('No pudimos abrir el navegador en este teléfono.');

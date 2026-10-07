@@ -157,3 +157,74 @@ Relacionadas: [[una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-n
 [[dos-causas-suficientes-el-test-no-atribuye]] ·
 [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] ·
 [[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]]
+
+---
+
+**Refuerzo (2026-10-06): el caso más barato de este error es `git diff` — mide una diferencia y NO dice qué
+lado es el correcto.** Barrí el checkout compartido buscando trabajo en riesgo de perderse y conté: de 30
+archivos `M`, **9** eran iguales a `origin/main` (el `M` era ruido), **6** tenían su contenido respaldado por
+alguna de las 60 ramas remotas, y **15** no existían en ninguna. Llamé a esos 15 «trabajo que sólo vive en ese
+disco» y escribí la alarma. **Estaba al revés.** Los deltas eran `web.py` **+21/−122**, `HISTORIA.md` +2/−179,
+el backlog +13/−226, `graph-sync.sh` +4/−127: cuando los borrados aplastan a los agregados, el archivo está
+**ATRASADO** — esas 122 líneas «faltantes» son líneas que **main tiene y el disco no**.
+
+**Y el contenido confirmó la dirección de la peor manera:** las 21 líneas que el disco tenía de más eran
+`mp_connected: seller is not None` vía `first_seller_user_id()` — **el criterio que #850 había eliminado ese
+mismo día**. O sea, lo que yo estaba a punto de reportar como *trabajo valioso en riesgo* era **código obsoleto
+cuya única propiedad peligrosa es que commitearlo revierte un fix cerrado**
+([[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]]). Las dos lecturas piden acciones **opuestas**: una
+«commiteá antes de perderlo», la otra «no lo commitees».
+
+**Lo que separa los dos mundos son dos comandos que no son `diff`:** `git diff --numstat` (el **signo** del
+delta) y `git merge-base --is-ancestor HEAD origin/main` (si el checkout está detrás o tiene commits propios —
+acá dio *no ancestro*, con **7** commits legítimos de otra sesión, que es lo que impide tratar el árbol como
+basura). Un conteo de archivos que difieren es un **escalar sin signo**, y sobre un escalar sin signo cualquier
+narrativa calza.
+
+**How to apply:** (1) antes de nombrar un lado «correcto» o «en riesgo», medí la **dirección**, no la magnitud —
+en git es `--numstat` y `--is-ancestor`, y en general es *«¿qué pregunta responde cada lado?»*; (2) si la
+diferencia son líneas **borradas**, la hipótesis por defecto es **atraso**, no trabajo nuevo; (3) leé el
+**contenido** de las líneas en disputa antes de escribir la alarma: acá el contenido (`first_seller_user_id()`)
+fechaba el archivo solo; (4) una alarma con la dirección invertida es peor que ninguna, porque **recomienda el
+gesto exactamente equivocado** y suena urgente mientras lo hace
+([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]).
+
+---
+
+**Refuerzo (2026-10-06, A6/`BL-V29`): la pregunta no es si el FIX es portable al gemelo — es si el DEFECTO puede existir ahí.**
+La fila pedía *«a 390 px la franja libre del botón «Ahora no» es > 0 px»*. **Web** lo tenía resuelto: el sheet
+quedaba dentro de un ancestro con `isolation: isolate`, lo que acotaba su `z-index:50` a esa sub-jerarquía y
+dejaba que la tab-bar (z-index 30) pintara encima — medido con Playwright, `pctTapado:100`. El fix: portarlo a
+`document.body`.
+
+Fui a **mobile** y medí el componente gemelo. `SheetRequiereConexion.tsx:20` declara, con id de decisión
+(K-11/`BL-J8`), que **NO** es un `Modal`: es un panel anclado abajo, en contexto. Concluí:
+
+> «el fix de web no es portable a mobile ⇒ **la mitad mobile queda sin verificar** ⇒ hace falta device»
+
+y escribí el mensaje con ese titular. **Estaba mal, y la pregunta que lo cerraba era UNA:** *¿hay tab-bar en
+mobile?* **No hay.** `app/_layout.tsx:134` es `<Stack>`, no existe `app/(tabs)/`, y cero hits de `bottom-tabs`
+en todo `apps/mobile`. El defecto es *«una barra con z-index propio tapa el botón»* y **ahí no hay barra**:
+no es que esté sin verificar, es que **no puede existir**. La fila era `web`, y estaba cerrada.
+
+**La forma del error, que es la de esta entrada:** ante una asimetría entre gemelos (uno tiene el fix, el otro
+no) pregunté por **el mecanismo del fix** y leí la respuesta como **el estado del defecto**. Son cosas
+distintas, y la segunda se mide **antes**: un fix no portable en un gemelo que **no tiene la precondición del
+defecto** no es una costura abierta — es una fila que nunca fue de los dos. Es el mismo molde que
+[[un-instrumento-que-no-mira-nunca-falla]] visto del otro lado: no pregunté *¿cuántos elementos mira?* sino
+*¿existe el elemento?*
+
+**Y el costo real fue de credibilidad, no de tiempo:** el mensaje ya estaba escrito y en el buzón, con un título
+que afirmaba *«la fila que queda justifica su urgencia con el caso que no resolvió»*. Lo **reescribí** en vez de
+appendear la corrección, porque un titular refutado circula igual que uno correcto
+([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]) — y appendear habría dejado el falso al
+frente. Retirar un mensaje propio de 6 minutos, sin circular, es barato; dejarlo con una nota al pie, no.
+
+**How to apply:** ante un defecto arreglado en una plataforma y pendiente en su gemela, el **primer** comando no
+es «¿cómo porto el fix?» sino **«¿existe acá la precondición del defecto?»** — la barra, el contenedor, el
+stacking context, el campo, el endpoint. (1) Nombrá la precondición en una frase («hay una barra con z-index
+propio sobre el botón») y medila con un grep estructural: si no está, la fila **no es `ambas`** y no cae en la
+tanda diferida. (2) Desconfiá del razonamiento *«el fix no aplica acá ⇒ falta verificar acá»*: es un **no
+sequitur** que convierte una fila cerrada en trabajo de device, y el error cae del lado caro (difiere algo que
+se cerraba hoy). (3) Cuando el gemelo declara una decisión de diseño con id (acá K-11/`BL-J8`, «NO un Modal»),
+eso contesta **«por qué el fix no se porta»** y **no** contesta «si el defecto está» — leelo como lo primero.

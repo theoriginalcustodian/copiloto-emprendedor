@@ -155,9 +155,9 @@ def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
     connected_set = set(composio_connected or ())
     caidos = set(composio_caidos or ())
     acciones = acciones_por_toolkit or {}
-    if mp_status is not None:
-        mp_connected = mp_status == "conectado"
-    services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected), status=mp_status)]
+    # `mp_connected` decide `connected` (una sola decisión: web.py `_mp_connected`). `mp_status` sólo
+    # describe el campo `status`; no lo re-deriva (MPCATALOGDESCARTA, auditoría 2026-10-06).
+    services =[_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected), status=mp_status)]
     for toolkit in sorted(valid_toolkits or ()):
         conectado = toolkit in connected_set
         entrada = _entry(toolkit, kind="composio", connected=conectado,

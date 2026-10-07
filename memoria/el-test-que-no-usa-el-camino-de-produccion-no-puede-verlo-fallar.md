@@ -142,3 +142,45 @@ verde mientras el camino real seguia sin medirse.
 mas de una vez segun una dependencia inyectada, **que valor de esa dependencia usa el default de mi
 harness, y es el mismo que usa el composition root de prod?*** Si difiere, parametrizá por las dos ramas:
 acá eso convirtió 3 casos en 6 y costó una línea de `parametrize`.
+
+---
+
+**Refuerzo (2026-10-06): los 13 tests ejercitaban la rama que producción nunca toma — porque el argumento que
+pasan se SOBREESCRIBE en el camino real.** El PR #850 unificó la semántica de «MP conectado»: un solo
+predicado `_mp_connected()` (`web.py:650`) para `/me` y `/catalog`. Pero la capa pura
+`build_catalog` (`catalog.py:158-159`) hace:
+
+```python
+if mp_status is not None:
+    mp_connected = mp_status == "conectado"      # descarta lo que el caller calculo
+```
+
+y el único call-site de producción le pasa **los dos** (`mp_connected=_mp_connected(mp_status)` **y**
+`mp_status=mp_status`), con `mp_status` **nunca** `None` ⇒ **la línea 159 dispara siempre** y el predicado
+unificado **no decide nada** en `/catalog`. Ejecutado —la capa es pura, corre en la PC— con el par
+contradictorio que ningún test hace: `mp_connected=False, mp_status="conectado"` → **`connected=True`**.
+
+**Y el conteo es la lección:** `build_catalog` tiene **13 llamadas en tests + 1 en producción**. Las 13 pasan
+`mp_connected` **sin** `mp_status` ⇒ en todas ellas la línea 159 **no dispara**. En producción **siempre**
+dispara. **Los 13 tests "prueban" que `mp_connected` controla el campo por el único camino en que ese
+argumento todavía manda.** Es la forma más engañosa de
+[[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]: no falta el camino de prod —el test
+adversarial por HTTP existe y es bueno—, sino que **la firma permite dos modos y los tests viven en el que
+prod no usa**, así que el verde es abundante y ciego a la vez.
+
+**Lo que lo vuelve invisible es que los dos predicados son el MISMO TEXTO.** El defecto original —dos
+criterios— se encontró **porque se veían distintos** (`salud()` vs `first_seller_user_id()`). Ahora ambos son
+`== "conectado"`, así que nada los delata hasta que uno cambie, y el test que compara `/me` contra `/catalog`
+sale verde por **dos causas suficientes**: que compartan la fuente, o que coincidan por casualidad
+([[dos-causas-suficientes-el-test-no-atribuye]]). Un fix que **duplica el texto** en vez de unificar la
+decisión compra la coincidencia de hoy y pierde la propiedad que lo motivaba.
+
+**How to apply:** (1) cuando una función recibe **el valor derivado y la fuente de la que se deriva**
+(`mp_connected` **y** `mp_status`), eso es una señal: preguntá **cuál gana** y leé el cuerpo, no la firma;
+(2) para un parámetro que puede ser ignorado, el control que atribuye es el **par contradictorio** —pasar
+valor y fuente en desacuerdo y ver qué sale—, y suele traer **control rojo gratis** contra el código actual;
+(3) al contar cobertura de una función, separá las llamadas **por combinación de argumentos presentes**, no por
+cantidad: 13 llamadas en un modo son **un** caso, y el eje no movido es «¿pasé los dos juntos?»
+([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) un fix que unifica una
+semántica no está hecho hasta que **grepeás el predicado duplicado en las otras capas** — «mismo valor hoy» es
+la frase que precede a la divergencia ([[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]).
