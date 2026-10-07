@@ -498,6 +498,29 @@ NO_SON_MEDICION = {
         "medicion duplicaria los veredictos de `esc` y `factura`, 2 de los 5 ids en disputa. Su "
         "aporte propio —el tercer eje `camino` para `card`— no tiene cajon en este dict: VOCABAJENO "
         "en PLAN.md.",
+    # 2026-10-07 — TERCERA instancia de VOCABAJENO, y la que mejor muestra por que la clase importa:
+    # el documento MIDE de verdad (Playwright, viewport 390x844, `unregister` del service worker antes
+    # de medir, SHA del bundle servido declarado —`9e344bdf`, no el `main` del dia— y una captura por
+    # fila). Lo que no mide es ESTE criterio: su eje es BL-Q3 «las 9 diferencias del 22/09 vs el PWA
+    # servido», y su vocabulario propio es COHERENTE / DIFERENCIA / NO_REPRODUCIBLE, con su propio
+    # conteo (4 / 4 / 1).
+    #
+    # 🔴 De esos tres tokens, SOLO `COHERENTE` pertenece al vocabulario del criterio 3. Por eso este
+    # lector lo ve: engancha la palabra compartida y no las otras dos. Sumarlo como medicion metria 4
+    # COHERENTE de OTRO eje en el total del criterio —inflarlo con trabajo real pero ajeno, que es la
+    # forma mas dificil de auditar: no hay nada falso que encontrar, el error esta en el denominador.
+    # Y descartarlo sin motivo escrito perderia que el documento se corrige a si mismo dos veces (su
+    # cifra del 22/09 —«dije 8 DIFERENCIA, son 9»— y el SHA que describe).
+    #
+    # La asimetria con el caso de arriba es la leccion: ese se descarta porque CITA veredictos ajenos
+    # (sumarlo DUPLICA); este se descarta porque mide veredictos PROPIOS de otro eje (sumarlo INFLA).
+    # Dos motivos opuestos, el mismo cajon — y por eso el motivo no puede quedar implicito.
+    "2026-10-07_cierre_frontend2-a-planificacion_BL-Q3-PWA-reverificadas-9-diferencias":
+        "MIDE, pero OTRO EJE: re-verifica en el PWA servido las 9 diferencias del `dato_` del 22/09 "
+        "(COHERENTE 4 · DIFERENCIA 4 · NO_REPRODUCIBLE 1, conteo propio). De sus tres tokens solo "
+        "`COHERENTE` esta en el vocabulario del criterio 3, y es el unico por el que este lector lo "
+        "engancha: `DIFERENCIA` y `NO_REPRODUCIBLE` no existen aca. Clasificarlo como medicion "
+        "sumaria 4 COHERENTE de un eje distinto al total del criterio. VOCABAJENO en PLAN.md.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
