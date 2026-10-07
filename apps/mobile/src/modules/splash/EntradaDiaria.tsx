@@ -56,7 +56,6 @@ function Trazo({
   useEffect(() => {
     if (reducido) return;
     dashoffset.value = withDelay(delay, withTiming(0, { duration: duracion, easing: EASE_ENTRADA }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: dashoffset.value }));
   return (
@@ -92,7 +91,6 @@ function Onda({
   useEffect(() => {
     if (reducido) return;
     opacidad.value = withDelay(delay, withTiming(1, { duration: duracion, easing: EASE_ENTRADA }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
   const animatedProps = useAnimatedProps(() => ({ opacity: opacidad.value }));
   return (

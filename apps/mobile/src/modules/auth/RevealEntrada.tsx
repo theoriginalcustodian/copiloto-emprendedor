@@ -28,7 +28,6 @@ function OAsentada({ reducido, children }: { reducido: boolean; children: React.
     if (reducido) return;
     opacidad.value = withDelay(T_O, withTiming(1, { duration: SETTLE, easing: EASE_SETTLE }));
     escala.value = withDelay(T_O, withTiming(1, { duration: SETTLE, easing: EASE_SETTLE }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
 
   const estilo = useAnimatedStyle(() => ({
@@ -51,7 +50,6 @@ function LetraWordmark({ letra, indice, reducido, estilo }: { letra: string; ind
     // hasta el 100% -- se separan en dos `withTiming` porque Reanimated no tiene keyframes intermedios.
     opacidad.value = withDelay(delay, withTiming(1, { duration: Math.round(LETTER * 0.4) }));
     traslado.value = withDelay(delay, withTiming(0, { duration: LETTER, easing: EASE_BOUNCE }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
 
   const estiloAnim = useAnimatedStyle(() => ({

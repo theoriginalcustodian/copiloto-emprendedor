@@ -313,7 +313,6 @@ export function PantallaAfipSetup() {
       await precargarPerfil(cacheado);
       void refrescarEstadoGeneral(cacheado);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo debe correr una vez al montar.
   }, []);
 
   // -------------------------------------------------------------------------------------------

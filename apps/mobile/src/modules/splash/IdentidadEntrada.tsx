@@ -88,7 +88,6 @@ function Forma({
     if (ultima) {
       colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: COLAPSO, easing: EASE_FIN }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
 
   const estilo = useAnimatedStyle(() => {

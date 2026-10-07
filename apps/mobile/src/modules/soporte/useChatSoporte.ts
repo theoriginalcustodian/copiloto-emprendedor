@@ -200,7 +200,6 @@ export function useChatSoporte(clienteId: string, funcion: FuncionSoporte): UseC
       actualizarEstado(hidratarEstado(sessionId, persistidos));
       void poll();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite a propósito, mismo
     // criterio documentado en `modules/chat/useChat.ts`.
   }, [clienteId, funcion]);
 
