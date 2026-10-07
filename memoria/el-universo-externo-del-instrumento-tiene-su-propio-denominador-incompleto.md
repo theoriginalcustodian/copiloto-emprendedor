@@ -86,3 +86,52 @@ fuente) en vez de **enumerarse a mano**, y el script **falla** cuando encuentra 
 Emparentado: [[el-instrumento-fabrica-una-referencia-que-no-existe]] ·
 [[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]] ·
 [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].
+
+---
+
+## 🔻 Refuerzo 2026-10-07 — el denominador incompleto era el **MÍO**, y mi tabla de veredictos se leía como cobertura
+
+El enunciado de arriba mira el universo **externo**. El caso de hoy es el espejo interno y pega más
+fuerte: el instrumento era mío, el universo lo armé yo, y **salió al 11 % sin que nada fallara**.
+
+Barrí la superficie declarada de la API comparando, para cada par `tipoTS|path`, las claves del
+`return` del handler contra los campos del tipo. Entregué una tabla de veredictos prolija. Lo que la
+tabla **no decía** es cuántos pares había llegado a comparar:
+
+```
+tipos TS   : leí 27  ->  el universo real es 195 (core, en 51 archivos) + 40 (capa propia del web)
+rutas      : leí 32  ->  el universo real es 110, en 11 archivos (web.py era UNO)
+comparados : 7 de 51 pares  (tras arreglar el extractor: 19 de 51)
+```
+
+**Mi control positivo pasó en los dos casos.** Validé el extractor de tipos con `MeResponse` = 9 campos
+y `ChatResponse` = 2: ambos correctos. Un control de **presencia** sobre dos ítems conocidos no dice
+**nada** de los 168 tipos y las 78 rutas que no estaban en mi universo. Y el defecto de fondo era una
+suposición que nunca enuncié: que el archivo canónico era **el** archivo (`types.ts` era 1 de 51,
+`web.py` 1 de 11).
+
+**Por qué no dio síntoma:** una tabla con 10 filas y veredicto en cada una **se lee como la superficie
+entera**. Nadie pregunta por el denominador de una tabla que parece completa; el formato no lo pide.
+
+### Y la forma hermana, que me pasó cinco veces en la misma tanda
+
+El número correcto sosteniendo una afirmación **sobre otra población**:
+
+| medí | afirmé | por qué no se sigue |
+|---|---|---|
+| 0 `.otf` en `ls-tree` del árbol | «`filter-repo` no borraría ninguna» | `filter-repo` opera sobre la **historia**: `rev-list --objects` da **10** |
+| el reset de una ref a `null` | «ventana sin defensa ⇒ duplica plata» | la derivación vive **en el punto de uso**: tras el reset vuelve a derivar la MISMA clave |
+| hits de un símbolo en una app | «la app lo usa» | 9 hits de `legal_aceptado` en mobile, los 4 archivos son `.test.tsx` ⇒ **0** productivos |
+| claves del `return` de UN handler | «el tipo del endpoint difiere» | el path tenía **dos** handlers (GET y POST) y mi clave era el path, sin el verbo |
+| campos de un tipo del front | «el backend manda de más» | era un tipo **raw de parseo** (`unknown`), no el contrato de respuesta |
+
+**How to apply:**
+1. **Toda tabla de veredictos se entrega con su denominador POR CATEGORÍA** (comparados / sin tipo /
+   sin handler / sin localizar). Sin eso, una tabla prolija afirma cobertura que nadie midió.
+2. El control de **presencia** y el de **denominador** son dos preguntas distintas: *«¿aparece el ítem
+   que conozco?»* no responde *«¿cuántos de los N miré?»*. Escribí los dos.
+3. Un universo se **cuenta** (`git grep -l` de la declaración, y contá archivos), no se asume: la
+   trampa es creer que el archivo canónico es el único. Preguntá *¿en cuántos archivos puede vivir esto?*
+4. Antes de concluir: **¿qué población mide mi número y sobre qué población es mi afirmación?** Si no
+   son la misma, el número es correcto y la conclusión es falsa — que es la forma más difícil de cazar,
+   porque la evidencia resiste la revisión y la inferencia no.
