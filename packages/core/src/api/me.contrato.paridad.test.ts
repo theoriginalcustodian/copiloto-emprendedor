@@ -12,6 +12,12 @@ import { CLAVES_DECLARADAS } from './me.contrato';
 
 const RUTA_PY = fileURLToPath(new URL('../../../../apps/copiloto/me_contrato.py', import.meta.url));
 
+// `core.autocrlf=true` en Windows deja el .py con CRLF: sin normalizar, los `replace` de los controles
+// buscan `\n`, no mutan nada, y el control pasa en vacío. Por eso se normaliza al leer, siempre.
+function leerPython(): string {
+  return readFileSync(RUTA_PY, 'utf8').replace(/\r\n/g, '\n');
+}
+
 function clavesPython(fuente: string): string[] {
   const bloque = /CLAVES_ME\s*=\s*frozenset\(\{([\s\S]*?)\}\)/.exec(fuente);
   if (!bloque) throw new Error('no encontré `CLAVES_ME = frozenset({...})` en apps/copiloto/me_contrato.py');
@@ -35,7 +41,7 @@ function mensajeDivergencia(d: ReturnType<typeof divergencias>): string {
 }
 
 const TS = Object.keys(CLAVES_DECLARADAS);
-const PY_REAL = clavesPython(readFileSync(RUTA_PY, 'utf8'));
+const PY_REAL = clavesPython(leerPython());
 
 describe('paridad GET /me: CLAVES_DECLARADAS (TS) ↔ CLAVES_ME (Python)', () => {
   it('ambos lados declaran el mismo set de claves', () => {
@@ -51,17 +57,19 @@ describe('paridad GET /me: CLAVES_DECLARADAS (TS) ↔ CLAVES_ME (Python)', () =>
   });
 
   it('control: una clave de mentira en el lado Python se detecta y se nombra', () => {
-    const fuenteMentira = readFileSync(RUTA_PY, 'utf8').replace(
-      '"cliente_id",',
-      '"cliente_id",\n    "clave_de_mentira_py",',
-    );
+    const original = leerPython();
+    const fuenteMentira = original.replace('"cliente_id",', '"cliente_id",\n    "clave_de_mentira_py",');
+    // Un control que no muta la fuente no prueba nada: que falle aquí, no que pase en silencio.
+    expect(fuenteMentira, 'el mutante no cambió la fuente: el control no mira').not.toBe(original);
     const d = divergencias(TS, clavesPython(fuenteMentira));
     expect(d.soloPy).toEqual(['clave_de_mentira_py']);
     expect(mensajeDivergencia(d)).toContain('"clave_de_mentira_py" está en CLAVES_ME');
   });
 
   it('control: una clave quitada del lado Python se detecta (falta en Python)', () => {
-    const fuenteSinUna = readFileSync(RUTA_PY, 'utf8').replace('    "legal_version_aceptada",\n', '');
+    const original = leerPython();
+    const fuenteSinUna = original.replace('    "legal_version_aceptada",\n', '');
+    expect(fuenteSinUna, 'el mutante no quitó la clave: el control no mira').not.toBe(original);
     const d = divergencias(TS, clavesPython(fuenteSinUna));
     expect(d.soloTs).toEqual(['legal_version_aceptada']);
   });
