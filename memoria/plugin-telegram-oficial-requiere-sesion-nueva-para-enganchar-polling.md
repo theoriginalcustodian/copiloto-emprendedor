@@ -41,7 +41,7 @@ El fix esperado es simplemente **abrir una sesión nueva de Claude Code con el p
 habilitado** — el arranque normal del harness debería enganchar el MCP con stdin real desde el
 principio, a diferencia de un `claude mcp get` puntual o un lanzamiento manual del script.
 
-**Relacionado:** `telegram-composio-canal-operador` (solo en la memoria local del slug) (el mecanismo alternativo vía Composio SÍ
+**Relacionado:** `telegram-composio-canal-operador` (sólo en el slug; el mecanismo alternativo vía Composio SÍ
 es fire-and-forget por tool call, no depende de un proceso long-polling propio — no tiene este
 problema). `access.json` del plugin oficial ya quedó correcto en
 `~/.claude/channels/telegram/access.json` con `chat_id` del operador (valor fuera del repo) en `allowFrom` — el gap es
