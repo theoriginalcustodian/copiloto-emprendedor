@@ -179,3 +179,14 @@ algo que vive en la historia. (3) Si para reproducir un defecto hay que **escrib
 preguntá si el defecto sigue existiendo **en el código**, que es gratis y no muta nada
 ([[desplegado-no-significa-con-clientes]]). (4) «No es reproducible» es una conclusión con dos causas
 —no existe, o **ya se arregló**— y el diff del fix las separa en una línea.
+
+**REFUERZO 2026-10-07 — tres veces en un turno, y la causa no es «no medí»: es DÓNDE medí respecto de cuándo despaché.** Tres veces le asigné a una sesión algo ya hecho: una fila que backend cerró **mientras** yo escribía el reparto, una que FE2 había rechazado en un `avance_` que no había leído, y un ítem de medición que FE2 cerró **dos minutos antes** de que yo lo pidiera. El último tiene las tres horas al lado: su `cierre_` **01:44:53**, mi archivo **01:46:52**, y mi listado del buzón era de las **01:31**.
+
+**El mecanismo, que no es descuido:** mido → **escribo 15 minutos** → despacho. La medición que decide el despacho envejece **durante la redacción**, y cuanto más cuidado pongo en el texto, más vieja está cuando sale. Con tres sesiones en paralelo aparece un `cierre_` cada pocos minutos, así que **la ventana de redacción es exactamente la ventana del error**.
+
+## How to apply
+
+- **Re-listar el buzón ES el último paso antes de despachar, no el primero.** Un `ls -t` de dos segundos sobre `abierto/` + `cerrado/<hoy>/` inmediatamente antes de escribir el archivo final — o antes del `SendMessage`, si el archivo ya estaba escrito.
+- **No se re-mide «el estado»: se re-mide CADA ítem que estoy por asignar.** Tres ítems, tres chequeos, y el barato es por nombre: ¿hay algún archivo de hoy que mencione este id?
+- **Si el despacho ya salió, la corrección va ARRIBA del archivo y por el mismo canal por el que salió.** Appendear deja el pedido equivocado al frente ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+- **El costo no es cosmético:** la sesión que recibe el pedido duplicado gasta el turno en demostrar que ya lo hizo — o peor, lo hace dos veces.
