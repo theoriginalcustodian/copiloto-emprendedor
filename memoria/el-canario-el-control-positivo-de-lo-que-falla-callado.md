@@ -149,3 +149,36 @@ Y si un mutante tumba **todo**, el control positivo todavia no te dijo nada sobr
 
 El revert va en `trap EXIT` con el backup **en disco**: con el cambio sin commitear,
 `git checkout -- <path>` no devuelve el original, **borra el trabajo**.
+
+## Refuerzo 2026-10-07 — un mutante que **nunca se ejecutó** no es un control: es el PLAN de un control
+
+El refuerzo de arriba discute **cuántos** mutantes hacen falta. Éste es anterior a esa pregunta: el
+mutante tiene que **correr**.
+
+Cerré una fila del tablero (`AVISODUPLICADO`) citando como evidencia el PR **#888**, un mutante hecho a
+propósito (borra el `export` que debería poner rojas dos suites), y escribí en la anotación que era
+*«exactamente lo contrario de confiar en el verde»*. Sonaba a rigor. **El PR nunca tuvo un run de CI** —
+su push se había atascado en un hook— así que produjo **cero** información. Lo cazó la sesión dueña, que
+corrigió su propia afirmación anterior; yo había cerrado la fila sin preguntar si alguien lo había
+ejercitado.
+
+**Why:** porque un artefacto con nombre de control —una rama `…-mutante`, un PR rotulado
+`CONTROL (no mergear)`, un script `test-…`— **se lee como evidencia sin aportarla**. Existe, tiene el
+nombre correcto, y nadie vuelve a preguntar por su salida. Es la forma social de
+[[instrumento-que-no-mira-nunca-falla]]: el instrumento no es que no mire — es que **nunca se encendió**,
+y su nombre tapa el hueco. Peor que no tenerlo, porque desactiva la sospecha
+([[nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo]]).
+
+**Y el blocker que lo mantenía apagado era falso.** El mutante no necesitaba el PR: por ADR-001 la suite
+de este repo **no se define en GitHub** (`scripts/ci/{core,web,mobile,lint}.sh` corren **locales**; sólo
+`backend` necesita el VPS). O sea: borrar el `export`, correr dos scripts, listo — sin push, sin CI y sin
+el hook que había trabado todo. **El instrumento era el test, no el PR**, y confundirlos convirtió un hook
+caído en precondición de una medición que no lo necesitaba.
+
+**How to apply:** (1) antes de citar un control en un cierre, preguntá **quién lo corrió y con qué exit
+code** — si la respuesta es «está en la rama X», no está medido; (2) el DoD de cada ítem declara **su
+instrumento y quién puede ejercitarlo**, así la pregunta es greppeable y no depende de que alguien se
+acuerde; (3) cuando un control parezca bloqueado por infraestructura (CI, hook, push), separá
+**instrumento** de **vehículo**: casi siempre el instrumento corre local y el vehículo es opcional;
+(4) un resultado **inesperado** del mutante vale más que el cierre — si la suite sale **verde** con el
+mutante puesto, ése es el hallazgo real.
