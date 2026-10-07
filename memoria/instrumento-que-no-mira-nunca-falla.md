@@ -624,3 +624,45 @@ helper — hoy esa garantía suele vivir en un **docstring**, y un docstring no 
 si coincide por construcción, el pedido se retira, no se escala. (4) Lo que acredita «el fix llegó» es la
 **ancestría del commit**, no su síntoma observable — el síntoma puede desaparecer por tres motivos y sólo
 uno es el fix ([[dos-causas-suficientes-el-test-no-atribuye]]).
+
+---
+
+## 🔻 Refuerzo 2026-10-07 — afirmé «no existe» **cuatro veces** grepeando nombres que yo inventé, con la respuesta viva ya descargada en la mano
+
+Fui a verificar si prod servía el código de `main`. Pregunta: *¿expone prod su SHA?* Respuesta que di:
+**no, hace falta SSH** — porque grepeé `GIT_SHA|git_sha|UC_SHA|BUILD_SHA|revision` en `apps/copiloto/web.py`
+y no hubo hits. Lo emití al buzón y lo mandé por mensaje.
+
+**Las cuatro, todas sobre el mismo frente y en veinte minutos:**
+
+1. «Los SHAs de prod requieren SSH» → el HTML de prod trae `data-build-sha="9e344bdf…"`. **Yo tenía ese
+   HTML descargado**: lo había medido para contar el hash del bundle, y no lo grepeé por el SHA.
+2. «`/healthz` existe y **no** expone SHA» → `/healthz` devuelve
+   `{"status":"ok","sha":"9e344bdf…","arrancado":"2026-10-07T01:01:45Z"}`. El campo se llama **`sha`**.
+   Mis cinco patrones eran nombres **plausibles que inventé**; ninguno era el real.
+3. «Son 15 minutos, no concluyo lag» → con el SHA son **13 commits y 2 h 13**. Medí el marcador débil
+   (¿cambió el hash del bundle?) teniendo disponible el fuerte (¿qué commit, desde cuándo?).
+4. Leí `def healthz` devolviendo `{"status": "ok"}` y estuve por reportar que **prod corría código
+   ausente de `main`** → era el **checkout compartido** (HEAD 20 commits viejo). `origin/main:web.py:1446`
+   sí tiene los campos.
+
+**Qué las une — y no es «me apuré».** Las cuatro contestan una pregunta sobre el **sistema vivo** leyendo
+**mi idea del código**: un grep por un identificador supuesto, y un archivo del árbol que tengo a mano en
+vez del que se publica. **El artefacto que contestaba la pregunta estuvo disponible las cuatro veces.**
+Un grep que no matchea no dice «no existe»: dice «no existe *con el nombre que se me ocurrió*», y eso es
+un instrumento que no mira, sin rango vacío que lo delate — sale **cero hits**, que se lee como un hecho.
+
+**Y el (4) tiene agravante:** es el mismo defecto que otra sesión había pagado **una hora antes** —medir
+el árbol donde vive el script en vez del que se publica, PR #885 revertido en #889— con la lección escrita
+y yo enterada. Un modo de falla recién documentado **no protege**: hay que ejecutar el chequeo, no
+recordarlo. → [[verificar-la-composicion-root-no-el-default]]
+
+**How to apply.** (1) Pregunta sobre un sistema **vivo** ⇒ la primera lectura es **su respuesta**, no su
+código: `curl` y leer el cuerpo **entero** antes de grepear nada. (2) Un «no existe» fundado en **cero
+hits de un nombre** no es un hallazgo: es una hipótesis sobre el nombre. Antes de escribirlo, listá lo
+que **sí** hay —el objeto completo, las claves del JSON, el `return` real— y buscá ahí. (3) Si ya
+descargaste un artefacto para otra medición, **grepealo por la pregunta nueva antes de abrir el código**:
+dos de estas cuatro estaban contestadas en bytes que yo ya tenía. (4) En checkout compartido, toda
+lectura de código que sostenga una afirmación va contra **`git show origin/main:<path>`**, nunca contra el
+archivo del disco — y si la afirmación es sobre prod, contra el **artefacto servido**.
+→ [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]]
