@@ -25,19 +25,25 @@ Medido: **84 llamadas en 37 archivos del front** contra **108 rutas en 129 archi
 > habría sido un número cumplido sobre una población que no es la que importa
 > ([[una-fila-por-valor-de-una-variable-no-es-una-fila]]).
 
+El instrumento sigue la indirección en **dos pasos** (un helper del mismo archivo, y el método de un
+store en otro archivo), que es lo que destapó la mitad de los `HANDLER_OPACO`: los handlers de plata
+—`/gastos/resumen`, `/ingresos/resumen`, `/afip/comprobantes/impagos`— hacen
+`return await asyncio.to_thread(store(cid).metodo, ...)` y sin seguir el **método** quedaban mudos.
+
 ## 1. Resultado
 
 | veredicto | n | qué significa |
 |---|---|---|
-| **OK** | **59** | el front no espera ninguna clave que el handler no mande |
-| **DIFIERE** | 1 | → **falso, explicado en §3**. Divergencias reales: **0** |
+| **OK** | **61** | el front no espera ninguna clave que el handler no mande |
+| **DIFIERE** | **0** | y es **0 por construcción**, no por inspección: ver §3.bis |
 | **SIN_HANDLER** | 3 | 🔴 **hallazgo, §2** |
-| HANDLER_OPACO | 12 | el backend devuelve por indirección que el extractor no sigue ⇒ **no medido** |
+| NO_CONCLUYENTE | 2 | la lista leída del handler es **parcial** ⇒ el instrumento se niega a acusar |
+| HANDLER_OPACO | 9 | el backend devuelve por indirección que el extractor no sigue ⇒ **no medido** |
 | SIN_FORMA | 9 | `<unknown>`: 3 descartan la respuesta, 6 delegan a un normalizador |
 
-**Con veredicto: 63 de 84 (75%)** — 59 OK + 1 DIFIERE resuelto + 3 hallazgo.
+**Con veredicto: 64 de 84 (76%)** — 61 OK + 3 hallazgo.
 **Fuera de población con fundamento: 3** (el front descarta la respuesta: nada que comparar).
-**Sin medir: 18**, con la causa nombrada por clase, no como resto.
+**Sin medir: 20**, con la causa nombrada por clase, no como resto.
 
 🐤 **Control positivo embebido, tres casos de veredicto conocido** (si no reproducen, la corrida no
 vale): `/feedback` → `['items']` y `/afip/facturas` → `['factura_id','ok']` (claves literales), y
@@ -102,6 +108,29 @@ Y dos de método, fuera de la tabla:
 - **Un `replace` que no matchea no falla.** Parcheé el script dos veces con un `str.replace` y
   reporté «ok» sin verificar: el bloque nunca se insertó. La tercera vez lo puse con `assert` y
   **falló ruidosamente**, que es lo que tenía que hacer desde el principio.
+
+## 3.bis El arreglo de raíz: **una lista parcial no habilita una acusación**
+
+Los dos últimos `DIFIERE` tenían la **misma** causa, y no se arreglaban caso por caso: mi extractor
+leía las claves siguiendo **un** camino de retorno, y la respuesta se compone en **otro**.
+
+- `/ingresos/resumen` «esperaba» `mes_anterior` → **`cobro_store.py:387` sí lo escribe.**
+- `/inteligencia/graficos/facturacion` «esperaba» `periodo` → **`inteligencia_web.py:66,79,97` sí lo
+  manda**, en la forma agregada; el front distingue las dos formas a propósito.
+
+Arreglarlos a mano habría dejado la causa viva para el próximo handler. El arreglo es que el
+extractor **declare si su lista es completa**, y que una lista parcial **sólo pueda confirmar un OK,
+nunca emitir una acusación** — clase `NO_CONCLUYENTE`. Dos criterios de completitud:
+
+1. las claves salieron por **indirección** ⇒ parcial (el store tiene varios métodos);
+2. el handler tiene **algún `return` que no es un dict literal** ⇒ parcial (la respuesta puede
+   componerse afuera). Este segundo es el que atrapó el caso de `/inteligencia`, que había escapado
+   al primero porque sus claves sí salían de un `return {` literal.
+
+⇒ **`DIFIERE` pasó a 0 por construcción.** La diferencia con «0 tras revisar a mano» es que ahora el
+instrumento **no puede** producir ese falso de nuevo. Y el control positivo de los tres casos sigue
+reproduciendo, que es lo que prueba que la regla nueva no apagó la capacidad de ver
+([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
 
 ## 4. Lo que queda sin medir, nombrado por clase (no como resto)
 

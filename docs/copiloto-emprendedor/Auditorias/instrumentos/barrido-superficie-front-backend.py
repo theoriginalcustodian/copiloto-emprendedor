@@ -198,11 +198,21 @@ def _claves_de_dicts(cuerpo):
 INDIR = re.compile(r"\breturn\s+(?:await\s+)?(?:asyncio\.to_thread\(\s*)?([A-Za-z_][A-Za-z0-9_.]*)\s*\(")
 
 
-def claves_handler(txt, desde, prof=1):
+# `return await asyncio.to_thread(gasto_store_factory(cliente_id).resumen, periodo)`
+# Lo que importa es el METODO del final, y vive en OTRO archivo (el store). Sin este patron los
+# handlers de plata (/gastos/resumen, /ingresos/resumen, /afip/comprobantes/impagos) quedan opacos:
+# el 12 de HANDLER_OPACO era mayormente esto.
+METODO = re.compile(r"\breturn\s+(?:await\s+)?(?:asyncio\.to_thread\(\s*)?"
+                    r"[A-Za-z_]\w*\([^)]*\)\.([A-Za-z_]\w*)")
+
+
+def claves_handler(txt, desde, prof=1, otros=None):
     """claves que devuelve el handler que arranca en `desde`.
 
-    Sigue UN nivel de indireccion: un `return helper(...)` no es un handler sin claves, y tratar
-    el vacio como "no manda nada" fabrica un DIFIERE falso contra el front.
+    Sigue la indireccion en dos pasos: un `return helper(...)` del mismo archivo, y un
+    `return store(...).metodo` cuyo metodo vive en otro archivo del backend. Un `return` que
+    delega no es un handler sin claves, y tratar el vacio como "no manda nada" fabrica un
+    DIFIERE falso contra el front.
     Devuelve (claves, opaco): `opaco=True` cuando no se pudo leer ninguna forma.
     """
     fin = len(txt)
@@ -212,7 +222,13 @@ def claves_handler(txt, desde, prof=1):
     cuerpo = txt[desde:fin]
     ks = _claves_de_dicts(cuerpo)
     if ks:
-        return sorted(ks), False
+        # La lista es COMPLETA solo si TODOS los `return` del handler son dicts literales. Si alguno
+        # delega, la respuesta puede componerse afuera y lo leido es parcial — medido: asi escapo el
+        # falso DIFIERE de /inteligencia/graficos/facturacion, cuyo `periodo` lo manda un helper
+        # (inteligencia_web.py:66,79,97) fuera del rango del handler.
+        total = len(re.findall(r"\breturn\b", cuerpo))
+        dicts = len(re.findall(r"\breturn\s*\{", cuerpo))
+        return sorted(ks), False, total == dicts
     if prof > 0:
         for im in INDIR.finditer(cuerpo):
             nombre = im.group(1).split(".")[-1]
@@ -220,8 +236,22 @@ def claves_handler(txt, desde, prof=1):
             if dm:
                 ks |= _claves_de_dicts(_cuerpo_def(txt, dm))
         if ks:
-            return sorted(ks), False
-    return [], True
+            return sorted(ks), False, False
+        for mm in METODO.finditer(cuerpo):
+            metodo = mm.group(1)
+            for otro in (otros or {}).values():
+                dm = re.search(r"^([ \t]*)(?:async\s+)?def\s+" + re.escape(metodo) + r"\s*\(",
+                               otro, re.M)
+                if dm:
+                    ks |= _claves_de_dicts(_cuerpo_def(otro, dm))
+        if ks:
+            # Por INDIRECCION la lista es PARCIAL por construccion: el store tiene varios metodos
+            # y la respuesta se compone en uno que puede no ser el que matcheo. Medido: asi salieron
+            # DOS falsos DIFIERE (`mes_anterior`, que cobro_store.py:387 SI escribe; y `periodo`,
+            # que inteligencia_web.py:66 SI manda). De una lista parcial no se puede emitir una
+            # acusacion: solo confirmar un OK.
+            return sorted(ks), False, False
+    return [], True, False
 
 
 def _cuerpo_def(txt, dm):
@@ -251,15 +281,16 @@ def main():
     back = [l for l in git("ls-tree", "-r", "--name-only", REF, "--", "apps/copiloto").splitlines()
             if l.endswith(".py") and "/tests/" not in l]
 
+    blobs = {bf: blob(bf) for bf in back}
     handlers = {}
     for bf in back:
-        t = blob(bf)
+        t = blobs[bf]
         for m in DEC.finditer(t):
             key = (m.group(1).upper(), norm_ruta(m.group(2)))
-            ks, opaco = claves_handler(t, m.start())
+            ks, opaco, completa = claves_handler(t, m.start(), otros=blobs)
             handlers.setdefault(key, []).append(
                 {"archivo": bf, "linea": t[:m.start()].count("\n") + 1,
-                 "claves": ks, "opaco": opaco})
+                 "claves": ks, "opaco": opaco, "completa": completa})
 
     # indice de alias de tipo de TODO el front, no solo de los archivos que llaman al backend:
     # `CatalogResponse`/`MeResponse` viven en archivos de tipos que no importan apiClient, asi que
@@ -331,6 +362,11 @@ def main():
             continue
         sobra = sorted(set(declara) - hk)
         if sobra and not spread:
+            if not hs[0]["completa"]:
+                # lista parcial (por indireccion): no habilita una acusacion, solo un OK
+                cont["NO_CONCLUYENTE"] += 1
+                det["NO_CONCLUYENTE"].append((c, fuente, sobra, sorted(hk), hs[0]))
+                continue
             cont["DIFIERE"] += 1
             det["DIFIERE"].append((c, fuente, sobra, sorted(hk)))
             continue
@@ -338,8 +374,8 @@ def main():
         det["OK"].append((c, fuente))
 
     print("### VEREDICTOS")
-    for k in ("OK", "DIFIERE", "SIN_FORMA", "HANDLER_OPACO", "SIN_HANDLER"):
-        print("   %-14s %d" % (k, cont[k]))
+    for k in ("OK", "DIFIERE", "NO_CONCLUYENTE", "SIN_FORMA", "HANDLER_OPACO", "SIN_HANDLER"):
+        print("   %-16s %d" % (k, cont[k]))
     comp = cont["OK"] + cont["DIFIERE"]
     print("\n   COMPARADAS (veredicto real): %d de %d llamadas = %d%%"
           % (comp, len(todas), 100 * comp // max(len(todas), 1)))
@@ -358,6 +394,11 @@ def main():
     for c in det["SIN_FORMA"]:
         print("   %-6s %-34s %s:%d  generico=%s"
               % (c["verbo"], c["ruta"], c["archivo"], c["linea"], c["generico"][:40]))
+
+    print("\n### NO_CONCLUYENTE (la lista del handler es PARCIAL: habilita OK, no acusacion):")
+    for c, f, sobra, hk, h in det["NO_CONCLUYENTE"]:
+        print("   %-6s %-34s [%s] el front espera=%s" % (c["verbo"], c["ruta"], f, sobra))
+        print("          %s:%d | lei del handler (parcial)=%s" % (h["archivo"], h["linea"], hk))
 
     print("\n### HANDLER_OPACO (el backend no expone forma legible: NO acusa al front):")
     for c, h in det["HANDLER_OPACO"]:
