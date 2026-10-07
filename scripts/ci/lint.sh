@@ -68,3 +68,19 @@ python3 "$ROOT/scripts/medir-indice-memoria.py"
 # están eslint, las dos paridades y el medidor del índice, que exigen npm y python. Un guard que
 # sólo se alcanza atravesando cuatro pasos de entorno es un guard sin control positivo posible.
 bash "$ROOT/scripts/ci/tests-coordinacion.sh"
+
+# CONTROLES DE DEPLOY (2026-10-07, fila `CONTROLESDEPLOYSINGATE`, hallazgo de auditoría). Los 6
+# controles locales de `deploy/copiloto/` —el import del smoke (`SMOKESTDIN`), el guard de /healthz
+# post-restart (`CANARIOPOSTRESTART`), el build que no borra el dist vivo (`REDEPLOYMISMOSHA`), la
+# rama de falla del gate de durabilidad (`DURABGATE`), el lector del set declarado
+# (`MECLAVESRUNTIME`) y la convergencia de Caddy (`DEPLOYNOCONVERGE`)— tenían CERO invocadores en
+# todo el árbol: seis cierres de este sprint apoyados en controles que ningún gate disparaba. Van
+# acá y no en `backend` porque son bash+python puros (0 hits de ssh/scp: medido), corren en segundos
+# y no necesitan DB ni venv del VPS. `fetch-depth: 0` del job ya está (lo exige
+# `test_redeploy_mismo_sha.sh`, que compara contra `bf406abe` con `git show`).
+#   ⚠️ Los dos controles `.py` NO entran acá y el motivo lo midió CI: `test_meclaves_check.py` es
+#   estilo pytest y `test_caddy_converge.py` es `unittest` — los dos necesitan un runner que este job
+#   no tiene (ni debe: `lint` es bash + python STDLIB). Van en la suite de `scripts/ci/backend.sh`,
+#   donde pytest los ejecuta de verdad. Correr el primero como `python archivo.py` daba VERDE sin
+#   ejecutar una sola aserción, que es peor que no correrlo.
+bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh' 'de deploy'
