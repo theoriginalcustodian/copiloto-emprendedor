@@ -415,9 +415,9 @@ else
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
@@ -432,13 +432,17 @@ if grep -q '^UC_BUILD_SHA=' "$ENVF"; then sed -i "s/^UC_BUILD_SHA=.*/UC_BUILD_SH
 # está activo -> un redeploy siempre carga el código sincronizado. (Breve downtime por reinicio; OK para deploy.)
 systemctl restart "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT"
 # control positivo: /healthz DEBE devolver el SHA recién desplegado; si no, el deploy es ROJO (no declarado).
+# canario CANARIOPOSTRESTART: UC_CANARIO_FALLA_TRAS_RESTART=1 corrompe el SHA ESPERADO por el guard (no el
+# healthz). El guard tiene que disparar de verdad: [5.5/7] no corre y el symlink dist no se mueve.
+SHA_GUARDA="$SHA"
+[ -n "$CANARIO_FALLA" ] && SHA_GUARDA="0000000000000000000000000000000000000000"
 got=""
 for _ in $(seq 1 15); do
   got=$(curl -sf "http://127.0.0.1:$PORT/healthz" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sha",""))' 2>/dev/null || true)
-  [ "$got" = "$SHA" ] && break
+  [ "$got" = "$SHA_GUARDA" ] && break
   sleep 2
 done
-[ "$got" = "$SHA" ] || { echo "ABORT [5/7]: /healthz sha='$got' != desplegado '$SHA' (UC_BUILD_SHA no llegó al proceso)"; exit 1; }
+[ "$got" = "$SHA_GUARDA" ] || { echo "ABORT [5/7]: /healthz sha='$got' != desplegado '$SHA_GUARDA' (UC_BUILD_SHA no llegó al proceso)"; exit 1; }
 echo "--- /healthz sha == desplegado ($SHA) ---"
 echo "--- systemctl is-active (post restart) ---"
 systemctl is-active "$WEB_UNIT"
