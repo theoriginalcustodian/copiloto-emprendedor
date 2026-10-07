@@ -152,3 +152,60 @@ trabajo que era **mío y arrancable** — el instrumento corrigió dos errores d
 ⚠️ Y el hermano del mismo día, midiendo con `awk -F' \| '`: el `|` desnudo en una ERE es **alternancia**,
 así que `awk` partió por espacios y me devolvió `"hoy)."` como último campo. Un instrumento malo que
 se veía igual que una fila rota. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]].
+
+---
+
+**Refuerzo (2026-10-06): la barra parte el renglón AUNQUE esté dentro de un code span — y un code span parece
+inocente.** Rompí dos filas del tablero escribiendo el enumerado `CLEAN` / `HAS_HOOKS` / `UNSTABLE` con barras
+entre backticks. Markdown lo renderiza perfecto, la fila **se ve bien**, y el parser —que corta por `|`— toma como
+«estado» el último pedazo, así que la fila queda **invisible para la cola**. Lo escribí **dos veces**: la segunda,
+dentro de la fila que documentaba la primera. El bloque ya tenía la leyenda avisándolo; leerla no alcanzó, porque
+el reflejo es «esto está entre backticks, es texto». **No hay excepción por backticks.** Control que sí funciona:
+un guard en el script que aborta si el campo contiene `|`, sin whitelists — me cazó a mí mismo.
+
+**Y dos formas más de fila invisible, del mismo barrido:**
+- **El id con GUION.** `STUBGH-4` y `CUENTA-REMEDIR` nunca matchearon `^[A-Z0-9]+` seguido de barra, así que
+  **ningún** barrido previo los contó — ni los míos. El patrón del id es parte del contrato de la tabla: si lo
+  escribís más estrecho que los ids reales, las filas no están «mal», están **fuera del universo medido**
+  ([[el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto]]).
+- **El id DUPLICADO.** `LEGAL` nombraba **dos asuntos sin relación** (el texto legal de BL-O6 y el ratchet de
+  versión TS↔Python). Una búsqueda por id lee **una de las dos al azar** y la otra no existe para quien pregunta;
+  peor, un «ya está cerrado» legítimo de una tapa a la otra. Renombradas `LEGALTEXTO` / `LEGALRATCHET`. El control
+  es de una línea y no estaba: contar ids y asertar que el set no tiene repetidos.
+
+**How to apply:** antes de barrer una tabla por id, corré tres controles sobre **el archivo**, no sobre tu idea de
+él: (1) ¿el patrón del id matchea **todas** las filas? (contá filas totales vs. filas que matchean); (2) ¿hay ids
+repetidos?; (3) ¿el último campo de cada fila es un estado legible? Las tres son una línea cada una y las tres
+fallaron acá.
+
+---
+
+## Refuerzo 2026-10-06 — el glifo SOBRECARGADO: calmar el warning del guard fue lo que enterró la fila
+
+Cuarto vector, y el más caro de los cuatro porque el renglón estaba **perfectamente formado**. `cola-check.sh`
+documenta su vocabulario así: *«el último campo debe ser exactamente `pendiente`, `arrancando` … o empezar con
+✅/❌»*. Tres filas cuyo estado real era **`⏳` (trabada por un disparador externo: sólo el operador la mueve)**
+salían como «estado no reconocido» en cada corrida del monitor, así que las *arreglé* prefijándoles `❌`. El
+warning se calló. **Y con él se calló la fila:** `❌` ya significaba «descartada», o sea *terminal*, así que el
+siguiente lector —mi propio script de bajada al historial— las trató como cerradas y las mandó al archivo que
+nadie abre. Dos de las tres eran **decisiones del operador**: una fila que lo espera y no circula es una decisión
+que nadie se la va a presentar ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+
+**El filo exacto, que no es «escribí mal un enum»:** el vocabulario del instrumento **no tenía token** para
+«viva pero intomable por ninguna sesión», así que ese estado tuvo que pedirle prestado el glifo de otro. Un
+glifo con dos significados no se detecta leyendo el renglón —es válido— ni corriendo el guard —queda verde—.
+Y el camino que lleva al error es el que *parece* prudente: ver un warning repetido y hacerlo callar. El guard
+que grita en el caso normal se desarma solo ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]), pero la
+forma de desarmarlo que elegí **destruyó el dato**, no sólo el ruido.
+
+**Lo cazó un `0` ajeno, no un diff.** Otra sesión grepeó una fila por id, obtuvo cero hits, y en vez de explicar
+el cero corrió un control positivo (grepear una fila que ella misma había citado hacía horas: también 0). Sin ese
+control, el cero se lee como «esa fila no existe» y el entierro queda permanente. Ningún diff contenía el defecto:
+el renglón que se movió era idéntico al que se había escrito.
+
+**How to apply:** (1) antes de agregar un estado nuevo a una tabla, preguntá si el vocabulario **ya tiene** un
+token para él — si no lo tiene, el token se **agrega**, no se le presta el de otro; (2) un glifo cuyo significado
+dependa de lo que viene después (`❌ descartada` vs `❌ ⏳ espera`) no es un enum: es prosa, y todo parser va a leer
+el primer carácter; (3) cuando un guard grite en el caso normal, el arreglo es **ensanchar el guard**, nunca
+maquillar el dato para que calle; (4) si un barrido por id te da 0, el control positivo es grepear algo que
+**sabés** que está — y si eso también da 0, el que está roto es el barrido o el universo, no el archivo.
