@@ -64,7 +64,19 @@ fallados=0
 for t in "${archivos[@]}"; do
   echo "▶ $(basename "$t")"
   case "$t" in
-    *.py) python3 "$t" || fallados=$((fallados+1)) ;;
+    *.py)
+      # FAIL-CLOSED (2026-10-07, defecto propio cazado por CI): un `.py` estilo pytest —funciones
+      # `test_*` y NINGÚN bloque `__main__`— corrido como `python archivo.py` importa, define las
+      # funciones y **sale 0 sin ejecutar una sola aserción**. Es un falso verde idéntico a un pase,
+      # y la extensión del archivo no dice con qué runner se corre. Acá se niega y nombra dónde va.
+      if grep -q '^if __name__ ==' "$t"; then
+        python3 "$t" || fallados=$((fallados+1))
+      else
+        echo "❌ $(basename "$t") es un test de pytest (sin bloque __main__): como script saldría VERDE sin ejecutar nada." >&2
+        echo "   Va en la suite de pytest (scripts/ci/backend.sh), no en este bucle." >&2
+        fallados=$((fallados+1))
+      fi
+      ;;
     *)    bash    "$t" || fallados=$((fallados+1)) ;;
   esac
   corridos=$((corridos+1))

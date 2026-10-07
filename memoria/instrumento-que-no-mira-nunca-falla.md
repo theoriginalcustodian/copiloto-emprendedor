@@ -666,3 +666,45 @@ dos de estas cuatro estaban contestadas en bytes que yo ya tenía. (4) En checko
 lectura de código que sostenga una afirmación va contra **`git show origin/main:<path>`**, nunca contra el
 archivo del disco — y si la afirmación es sobre prod, contra el **artefacto servido**.
 → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]]
+
+---
+
+## 🔻 Refuerzo 2026-10-07 — el instrumento que no mira puede ser el **runner**, y la extensión del archivo no dice con qué se corre
+
+Caso propio, en el mismo turno en que cablée seis controles que ningún gate disparaba. Mi corredor
+despachaba por extensión: `.py` → `python3 archivo.py`, `.sh` → `bash archivo.sh`. Parece obvio y es
+falso para una familia entera: **un archivo estilo pytest** —funciones `test_*`, `import pytest`,
+**ningún bloque `__main__`**— corrido como script **importa, define las funciones y sale 0**.
+
+```
+python  deploy/copiloto/test_meclaves_check.py    -> exit 0   · 0 de 5 aserciones ejecutadas
+python -m pytest  (los dos .py de deploy/)        -> 17 passed · las 17 ejecutadas
+```
+
+**`exit 0` sin ejecutar nada es idéntico a `exit 0` habiendo pasado.** Mi corrida local lo reportó
+como control verde y yo lo cité como evidencia: «6/6 en verde». Seis era el denominador de archivos
+**alcanzados**, no de controles **ejercitados** — el mismo salto que esta entrada denuncia, cometido
+por mí a dos pantallas de haberlo escrito.
+
+**Lo que lo cazó no fui yo: fue CI**, y por un accidente — el runner de `lint` no tiene `pytest`
+instalado, así que el `import pytest` revienta con `ModuleNotFoundError`. **Si el runner hubiera
+tenido pytest en el PATH, el falso verde se mergeaba.** Un defecto cuya detección depende de que al
+entorno le FALTE algo no está detectado: está indultado.
+
+**El fix es el guard, no el fix puntual:** el corredor ahora se **niega** a correr un `.py` sin bloque
+`__main__`, lo nombra y dice dónde va (`❌ … es un test de pytest (sin bloque __main__): como script
+saldría VERDE sin ejecutar nada`), y eso tiene su propio mutante en
+`scripts/tests/test-lint-controles-deploy-cableados.sh` caso 5 — un fixture pytest que **sin el guard
+saldría verde**. Los dos `.py` pasaron a la suite de `scripts/ci/backend.sh`, donde pytest los
+ejecuta de verdad.
+
+**How to apply.**
+1. Un control que «pasa» tiene que decir **cuántas aserciones corrió**. Si su salida no trae un
+   número, el verde no acredita nada → [[instrumento-que-no-mira-nunca-falla]] es sobre esto mismo.
+2. Antes de agregar un archivo a un bucle de tests, preguntá **con qué runner se ejecuta**, no con qué
+   extensión. `pytest`, `unittest` con `__main__`, script suelto y módulo importable se ven iguales
+   desde el glob.
+3. **Contá el denominador correcto:** «6 archivos corridos» ≠ «6 controles ejercitados». El primero lo
+   cuenta el bucle; el segundo sólo lo sabe el runner.
+4. Si lo que destapó tu defecto fue que a un entorno le **faltaba** una dependencia, el defecto sigue
+   vivo en todo entorno que la tenga. Convertilo en guard antes de cerrar.

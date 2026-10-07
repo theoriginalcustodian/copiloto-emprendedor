@@ -78,4 +78,9 @@ bash "$ROOT/scripts/ci/tests-coordinacion.sh"
 # acá y no en `backend` porque son bash+python puros (0 hits de ssh/scp: medido), corren en segundos
 # y no necesitan DB ni venv del VPS. `fetch-depth: 0` del job ya está (lo exige
 # `test_redeploy_mismo_sha.sh`, que compara contra `bf406abe` con `git show`).
-bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh test_*.py' 'de deploy'
+#   ⚠️ Los dos controles `.py` NO entran acá y el motivo lo midió CI: `test_meclaves_check.py` es
+#   estilo pytest y `test_caddy_converge.py` es `unittest` — los dos necesitan un runner que este job
+#   no tiene (ni debe: `lint` es bash + python STDLIB). Van en la suite de `scripts/ci/backend.sh`,
+#   donde pytest los ejecuta de verdad. Correr el primero como `python archivo.py` daba VERDE sin
+#   ejecutar una sola aserción, que es peor que no correrlo.
+bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh' 'de deploy'

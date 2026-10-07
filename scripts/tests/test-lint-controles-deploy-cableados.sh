@@ -37,7 +37,11 @@ grep -v -E 'tests-coordinacion\.sh" +"\$ROOT/deploy/copiloto"' "$LINT" > "$T/lin
 # --- Caso 3: DENOMINADOR — ningún test[-_]* de deploy/copiloto queda fuera sin exención ----------
 # Exentos POR MEDICIÓN, no por conveniencia: son harness de DB/GoTrue que invoca gate.sh y
 # sync-test-backend.sh, no controles sueltos. Cada uno debe probar que tiene invocador.
-EXENTOS="test-db.sh test-gotrue.sh"
+# `test-db.sh`/`test-gotrue.sh`: harness de DB/GoTrue que invocan gate.sh y sync-test-backend.sh.
+# Los dos `.py`: necesitan pytest (uno estilo pytest, el otro unittest) y van en la suite de
+# `scripts/ci/backend.sh` — `lint` corre python stdlib. La exención se verifica igual: cada uno
+# tiene que PROBAR que alguien lo invoca.
+EXENTOS="test-db.sh test-gotrue.sh test_meclaves_check.py test_caddy_converge.py"
 GLOBS="$(printf '%s' "$LINEA" | grep -oE "'[^']*'" | head -1 | tr -d "'")"
 [ -n "$GLOBS" ] || GLOBS='test_*.sh test_*.py'
 # La lógica va en una función para poder correrla sobre un DIRECTORIO FIXTURE: el caso 3 es una
@@ -71,5 +75,23 @@ mkdir -p "$T/fix"; printf '#!/usr/bin/env bash
 exit 0
 ' > "$T/fix/test-huerfano.sh"
 [ -n "$(sin_cubrir_en "$T/fix")" ] && ok "4 MUTANTE: un test[-_]* fuera de los globs y sin exención SÍ se detecta"                                    || mal "4 el caso 3 no detectó un huérfano inyectado: su verde no vale"
+
+# --- Caso 5: MUTANTE del fail-closed — un pytest sin __main__ DEBE salir rojo, no verde ----------
+# Reproduce el defecto exacto que CI cazó el 2026-10-07: `python archivo.py` sobre un test de pytest
+# importa, define las funciones y sale 0 SIN EJECUTAR NADA. Sin el guard, este caso saldría verde.
+mkdir -p "$T/pyt"
+printf 'import pytest
+
+
+def test_siempre_falla():
+    assert False
+' > "$T/pyt/test_falso_verde.py"
+out="$T/o5"; bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$T/pyt" 'test_*.py' 'fixture' >"$out" 2>&1; rc=$?
+if [ "$rc" -ne 0 ] && grep -q 'sin bloque __main__' "$out"; then
+  ok "5 MUTANTE: un .py estilo pytest corrido como script sale ROJO y nombra por qué (no falso verde)"
+else
+  mal "5 el pytest sin __main__ dio rc=$rc: $(tr '
+' '|' <"$out" | cut -c1-160)"
+fi
 
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
