@@ -91,8 +91,8 @@ describe('hitlMapping', () => {
   });
 
   // Riesgo de Instagram = el de core (`SERVICE_RISK`, `hitl.ts`). Mensaje viejo `service:'instagram'`
-  // sigue siendo una advertencia real (planificación, SERVICERISKDOBLE). Control positivo por efecto:
-  // mutar hitlMapping para ignorar core (riesgo = {}) pone este test en ROJO.
+  // sigue siendo una advertencia real (planificación, SERVICERISKDOBLE). Control positivo medido el
+  // 2026-10-06 (PR 872): mutante «web ignora core» (riesgo = {}) → 4 rojos en este archivo, incluido este test.
   it('Instagram (mensaje viejo): badge IRREVERSIBLE + borde de peligro, lo decide core', () => {
     const props = buildHitlCardProps(
       msg({ text: 'Voy a publicar el posteo. ¿Confirmás?', card: { service: 'instagram', label: 'Instagram' } }),
