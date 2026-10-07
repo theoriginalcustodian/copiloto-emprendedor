@@ -75,7 +75,6 @@ describe('equivalencia core <-> web (D8)', () => {
       await vi.advanceTimersByTimeAsync(0); // deja resolver el poll de montaje
     });
     for (const text of textos) {
-      // eslint-disable-next-line no-await-in-loop -- secuencial a propósito, igual que un usuario tipeando.
       await act(async () => {
         await result.current.send(text);
       });

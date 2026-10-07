@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), no un módulo real; no hay @types/node en el proyecto así que evitamos fs/path
 // (mismo patrón que los tests `*NoHexLiterals.test.ts` del repo).
 import themesCss from './themes.css?raw';

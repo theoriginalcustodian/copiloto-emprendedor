@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-/* eslint-disable import/no-unresolved -- `?raw` es una convención de Vite (import de texto
-   crudo), no un módulo real (mismo patrón que modules/account/accountNoHexLiterals.test.ts). */
 import adminCss from './admin.css?raw';
 import adminScreenSource from './AdminScreen.tsx?raw';
 

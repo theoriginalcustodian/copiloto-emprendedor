@@ -600,7 +600,6 @@ describe('useChat', () => {
 
       const total = MAX_MENSAJES_HISTORIAL + 25;
       for (let i = 1; i <= total; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- secuencial a propósito: cada send espera su
         // propio poll inmediato antes del siguiente, igual que lo haría un usuario tipeando.
         await act(async () => {
           await result.current.send(`mensaje ${i}`);

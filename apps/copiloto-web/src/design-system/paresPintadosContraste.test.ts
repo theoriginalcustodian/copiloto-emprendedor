@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite.
 import themesCss from './themes.css?raw';
 
 /**
