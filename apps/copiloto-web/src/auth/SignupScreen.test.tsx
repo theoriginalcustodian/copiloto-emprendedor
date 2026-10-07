@@ -73,8 +73,10 @@ describe('SignupScreen', () => {
       access_token: 'tok',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
     vi.mocked(api.me).mockResolvedValueOnce({
       cliente_id: 'c-nuevo',
@@ -112,8 +114,10 @@ describe('SignupScreen', () => {
       access_token: 'tok',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
     vi.mocked(api.me).mockResolvedValueOnce({
       cliente_id: 'c-nuevo',
@@ -146,8 +150,10 @@ describe('SignupScreen', () => {
       access_token: 'tok',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
     vi.mocked(api.me).mockResolvedValueOnce({
       cliente_id: 'c-nuevo',
@@ -184,8 +190,10 @@ describe('SignupScreen', () => {
       access_token: 'tok',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
     vi.mocked(api.me).mockResolvedValue({
       cliente_id: 'c-nuevo',
