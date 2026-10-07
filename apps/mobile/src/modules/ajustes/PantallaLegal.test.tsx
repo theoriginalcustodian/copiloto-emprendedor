@@ -5,7 +5,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
-import { LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
+import { LEGAL_AVISO_PLANTILLA, LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaLegal } from './PantallaLegal';
@@ -35,7 +35,7 @@ describe('PantallaLegal — port mobile de LegalScreen (BL-O6 parte A)', () => {
   it('siempre marca el texto como plantilla', async () => {
     await montar('tos');
     expect(screen.getByTestId('legal-screen-placeholder-notice')).toHaveTextContent(
-      /Plantilla estándar genérica/,
+      LEGAL_AVISO_PLANTILLA,
     );
   });
 
