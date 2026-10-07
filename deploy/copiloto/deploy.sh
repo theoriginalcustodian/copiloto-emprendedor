@@ -143,10 +143,16 @@ if [ "$_sello_ok" != "1" ]; then
   echo "       (exit≠0) al final para que esto no quede mudo, aunque el resto del deploy ya se aplicó." >&2
 fi
 
-echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$(git -C "$LOCAL" rev-parse HEAD)" <<'REMOTE_WEB'
+# REDEPLOYMISMOSHA: el build va a un directorio de staging ÚNICO por corrida, nunca a `dist-<SHA>`.
+# Antes `rm -rf "dist-$SHA"` + `--emptyOutDir` sobre el nombre que el symlink `dist` ya sirve: re-correr
+# el deploy desde el SHA publicado dejaba prod sin shell durante todo el build (y roto si el build fallaba).
+# Un nombre con RUN_ID nunca existe antes, así que el `rm -rf` sobre el publicado desaparece.
+SHA_BUILD="$(git -C "$LOCAL" rev-parse HEAD)"
+STG="dist-${SHA_BUILD}-$(date +%s)$$"
+echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> staging $STG, promovido en [5.5/7]"
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$SHA_BUILD" "$STG" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"; AUTH_URL="$2"; SHA="$3"
+REMOTE="$1"; AUTH_URL="$2"; SHA="$3"; STG="$4"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -156,18 +162,17 @@ npm install --no-audit --no-fund --loglevel=error
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
 # con que sync-web.sh lo haga bien.
 # VITE_BUILD_SHA: sin esto el shell sale con data-build-sha="unknown" (hallazgo FE2, 2026-10-06).
-# BUILD a STAGING (dist-<SHA>), NO al dist servido. El publish (symlink `dist`) va DESPUÉS del restart
+# BUILD a STAGING ($STG, único por corrida), NO al dist servido. El publish (symlink `dist`) va DESPUÉS del restart
 # OK de [5/7]: un abort entre medio deja prod con el shell viejo, coherente con el API viejo.
 # Decisión PIPELINEORDEN (planificación, 2026-10-06). `npm run build` = `tsc -b && vite build`; se
 # llaman por separado porque `--outDir` no debe llegar a tsc.
-rm -rf "dist-$SHA"
 export VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$SHA"
 npx tsc -b
-npx vite build --outDir "dist-$SHA" --emptyOutDir
-test -f "dist-$SHA/index.html"
+npx vite build --outDir "$STG" --emptyOutDir
+test -f "$STG/index.html"
 # control positivo: el shell DEBE declarar el SHA desplegado; si no, el deploy es ROJO.
-grep -q "data-build-sha=\"$SHA\"" "dist-$SHA/index.html" || { echo "ABORT [frontend]: dist-$SHA/index.html no declara data-build-sha=$SHA"; exit 1; }
-echo "frontend build OK en staging -> $REMOTE/apps/copiloto-web/dist-$SHA, shell declara $SHA (aún NO publicado)"
+grep -q "data-build-sha=\"$SHA\"" "$STG/index.html" || { echo "ABORT [frontend]: $STG/index.html no declara data-build-sha=$SHA"; exit 1; }
+echo "frontend build OK en staging -> $REMOTE/apps/copiloto-web/$STG, shell declara $SHA (aún NO publicado)"
 REMOTE_WEB
 # canario de PIPELINEORDEN: UC_CANARIO_ABORT_TRAS_BUILD=1 aborta acá (build hecho, restart NO hecho,
 # publish NO hecho). Prod debe quedar con el SHA VIEJO en /healthz y en data-build-sha.
@@ -444,21 +449,21 @@ REMOTE_UNITS
 # [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de
 # [5/7] (PIPELINEORDEN). `mv -T` sobre un symlink es un rename(2): el swap es atómico para el servidor.
 echo "==> [5.5/7] publish del shell (dist -> dist-<SHA>, SOLO tras el restart OK de [5/7])"
-ssh "$HOST" bash -s -- "$REMOTE" "$(git -C "$LOCAL" rev-parse HEAD)" <<'REMOTE_PUBLISH'
+ssh "$HOST" bash -s -- "$REMOTE" "$SHA_BUILD" "$STG" <<'REMOTE_PUBLISH'
 set -euo pipefail
-REMOTE="$1"; SHA="$2"
+REMOTE="$1"; SHA="$2"; STG="$3"
 cd "$REMOTE/apps/copiloto-web"
-test -f "dist-$SHA/index.html"
+test -f "$STG/index.html"
 # migración única: un `dist` que quedó como directorio real (deploys anteriores) se aparta para que el
 # symlink pueda tomar su nombre. Idempotente: en el segundo deploy ya es symlink y no se toca.
 if [ -d dist ] && [ ! -L dist ]; then mv dist "dist-legacy-$(date +%s)"; fi
-ln -sfn "dist-$SHA" dist.tmp
+ln -sfn "$STG" dist.tmp
 mv -T dist.tmp dist
 # control positivo: el shell SERVIDO (no el staging) DEBE declarar el SHA publicado.
 grep -q "data-build-sha=\"$SHA\"" dist/index.html || { echo "ABORT [5.5/7]: el shell publicado no declara $SHA"; exit 1; }
 # retención: conservar el publicado y el anterior; los demás builds se borran (no se acumulan en el VPS).
 for d in $(ls -1td dist-[0-9a-f]*/ 2>/dev/null | tail -n +3); do rm -rf "$d"; done
-echo "shell publicado: dist -> dist-$SHA (shell declara $SHA)"
+echo "shell publicado: dist -> $STG (shell declara $SHA)"
 REMOTE_PUBLISH
 
 # CONVERGENTE (DEPLOYNOCONVERGE): caddy_converge.py REEMPLAZA cada bloque gestionado si difiere del
