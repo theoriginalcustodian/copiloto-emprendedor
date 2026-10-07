@@ -16,6 +16,7 @@ Hace 2 chats con LLM real (COGS ~centavos). Correr antes de abrir la app a teste
 """
 import os, re, sys, time, uuid
 import httpx
+from meclaves_check import cargar_claves_declaradas, comparar_claves
 
 BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8099")
 EMAIL = f"smoke-{uuid.uuid4().hex[:8]}@beta.local"
@@ -31,6 +32,15 @@ if not INVITE_TOKEN:
     # El fail-closed del server es correcto; el instrumento tiene que decir POR QUÉ.
     sys.exit("COPILOTO_INVITE_TOKEN no está en el entorno: sourceá /etc/unreal-copilot/copiloto.env "
              "antes de correr el smoke (el alta está detrás del invite-gate desde C4.1).")
+
+# MECLAVESRUNTIME: el set declarado de /me se lee UNA vez de apps/copiloto/me_contrato.py (MECLAVESCORE).
+# Si el lector no encuentra el set, el smoke falla acá con el motivo, no compara contra la nada.
+try:
+    CLAVES_DECLARADAS = cargar_claves_declaradas()
+    if not CLAVES_DECLARADAS:
+        raise ValueError("CLAVES_ME vacío")
+except Exception as e:
+    sys.exit(f"MECLAVESRUNTIME: no pude cargar CLAVES_ME de apps/copiloto/me_contrato.py: {e!r}")
 
 client = httpx.Client(base_url=BASE, timeout=30.0)
 results = []
@@ -99,6 +109,13 @@ try:
     r = client.get("/me", headers=H)
     j = r.json() if r.status_code == 200 else {}
     rec("/me (identidad de tenant)", r.status_code == 200 and j.get("cliente_id") == cliente_id, f"status={r.status_code} me={j}")
+    # MECLAVESRUNTIME: sobra = clave no declarada en el payload real; falta = declarada que no llegó.
+    if r.status_code == 200:
+        sobra, falta = comparar_claves(j.keys(), CLAVES_DECLARADAS)
+        rec("/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)", False, f"sin payload: status={r.status_code}")
 except Exception as e:
     rec("/me (identidad de tenant)", False, repr(e))
 
