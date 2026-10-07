@@ -204,3 +204,9 @@ Dos cosas que agrega este caso:
 
 **La pregunta:** *¿este código de salida lo puede producir algo que no sea el defecto que busco?* Si
 sí, el veredicto sale del mensaje, y el rc sólo decide si hubo que leerlo.
+
+**REFUERZO 2026-10-07 — la forma más difícil de cazar: los únicos caminos que pueden reventar son los de ERROR, así que el instrumento está verde exactamente mientras no tiene nada que decir.** `scripts/ci/fetch-depth-check.py` imprime no-ASCII en `:93`, `:99`, `:107` (los tres «NO PUDE MEDIR») y `:123` (el hallazgo), y su **camino de ÉXITO (`:130`) es ASCII puro**. En Windows (cp1252, sin `reconfigure`) eso significa: pasa siempre que todo esté bien, y **crashea justo el día que encuentra algo** — con `exit 1`, que en ese script significa «encontré el defecto». El hallazgo real y el script muerto salen por la misma puerta, y los tres «no pude medir» salen por esa puerta también.
+
+**La pregunta que lo caza en cualquier instrumento:** *¿qué líneas corren sólo cuando hay un hallazgo?* Esas son las que **nunca** se ejercitaron, porque el instrumento vivió en verde. No alcanza con correrlo: hay que **inyectar el caso** y ver el mensaje ([[el-canario-el-control-positivo-de-lo-que-falla-callado]]).
+
+**Agravante medido en el mismo barrido:** ese checker **no está cableado a nada** — el único hit fuera de su propio archivo es un **comentario** en `tests.yml:142`. Un instrumento no invocado nunca ejercita sus ramas de error, así que el defecto puede vivir ahí para siempre: la falta de cableado **conserva** el defecto en vez de exponerlo ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).

@@ -163,3 +163,9 @@ frecuencia, el unico lugar donde vive un guard.
 Y el sesgo que lo hace peligroso: yo venia de **cerrar** una duplicacion real: tenia el fix fresco, el
 patron en la cabeza y ganas de propagarlo. El momento de maxima confianza en un patron es el momento de
 menor atencion a los casos que no encajan.
+
+**REFUERZO 2026-10-07 — el fix se mergeó hace tres horas y el script que escribí después nació sin él.** #897 le puso `sys.stdout.reconfigure(encoding="utf-8")` a `dup-indice-check.py` porque en Windows el `print` de un glífico mata al script con `UnicodeEncodeError: 'charmap' codec can't encode`. Esa misma noche escribí otro script, con `✅` en el `print` del resultado, y murió exactamente igual — **antes** de escribir el archivo, así que no perdí nada, pero el patrón es el del tronco: el fix vivía en un call-site y los demás seguían sin él.
+
+**Lo que mide el alcance real, y es la parte que no se ve sin barrer:** de los **27** `scripts/**/*.py` de `main`, **5 imprimen no-ASCII y no tienen el `reconfigure`** (10 prints en total). Uno está en `scripts/ci/`. Y el grep ingenuo «el archivo tiene no-ASCII» da **8** — **sobre-reporta**, porque cuenta comentarios y docstrings, que no imprimen nada: hay que grepear las líneas que tienen `print(` **y** el byte no-ASCII.
+
+**Por qué parchear de a uno es el error, y no una solución parcial:** cada script nuevo nace sin la línea. El sexto ya está garantizado. El fix de raíz es un bootstrap compartido que los scripts importen, o `PYTHONUTF8=1` exportado por `gate.sh` — que cubre los 27 **y** a los que nazcan mañana. Un fix que hay que recordar aplicar es una deuda con cara de solución ([[cero-deuda-no-gestionada]]). Fila `ENCODINGWINPRINT`.
