@@ -294,3 +294,26 @@ Medí tres cosas distintas y las tres veces el instrumento encontró algo, pasó
 **La regla:** un control positivo responde *«¿el instrumento puede encontrar algo?»*. No responde *«¿lo que cuenta es lo que yo digo que cuenta?»*. Y el verde de ese control **se siente** como respuesta a las dos, que es por lo que las tres veces seguí adelante.
 
 **How to apply:** (1) cuando la pregunta es **«¿esto está en pantalla?»**, el control no es otro grep — **es leer lo que se renderiza**. Un patrón que falla por adyacencia, acento o separador es indistinguible de un hecho ausente. (2) Antes de citar una cifra, **nombrá su unidad y medila dos veces por caminos que deban coincidir** (bytes vs chars, crudo vs normalizado, archivo vs blob de git): si discrepan, el sospechoso es la **unidad**, no el objeto. Una cifra sin unidad se deja citar para cualquier pregunta → [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]. (3) Si tu medición está por **refutar una corrección ajena**, leé primero qué corrigió: si corrigió tu misma unidad, el error es tuyo hasta que pruebes lo contrario. (4) Y si el hallazgo **acusa a otra sesión**, repetí la lectura tres veces antes de escribirlo: un instrumento inestable fabrica conducta ajena.
+
+---
+
+## Refuerzo 2026-10-07 — el control acreditó que el ARCHIVO existe cuando la afirmación era que FALTA LA LÍNEA
+
+Un medidor reportó *«5 entradas sin línea en `MEMORY.md` ni `HISTORIA.md`»*. Para no cerrar sobre el
+checkout sucio hice el control que me pareció el riguroso: `git cat-file -e origin/main:memoria/<slug>.md`
+por cada una — **las cinco existen en `main`**, así que el defecto le llega a cualquiera que clone. Lo
+escribí en el cuerpo del PR con esa frase y el PR salió 6/6 verde.
+
+La afirmación era **«no tiene línea de índice»**. Lo que verifiqué fue **«el archivo existe»**. Las dos
+proposiciones eran verdaderas y sólo una contestaba la pregunta: medido después en un worktree limpio de
+`main`, las cinco **ya tenían una línea cada una** y la cobertura de `main` ya era **377/377**. El PR metió
+5 duplicados.
+
+**Lo que hace a este caso distinto del de arriba:** el control no fue flojo, fue **sobre el otro sujeto**.
+Mi sospecha era *«¿estoy mirando un árbol que nadie publica?»* y la contesté bien — contra `origin/main`,
+no contra el disco. La mitad muda era la otra: *«¿la línea falta de verdad?»*, que nunca pregunté porque
+el instrumento ya la había afirmado.
+
+**How to apply:** escribí la afirmación del hallazgo en **una oración** y subrayá su sujeto y su
+predicado. El control tiene que negar **ese predicado sobre ese sujeto**. «El archivo existe» y «la línea
+falta» comparten el archivo y no comparten nada más. Ver [[el-medidor-mide-el-arbol-donde-vive-no-el-que-publicas]].
