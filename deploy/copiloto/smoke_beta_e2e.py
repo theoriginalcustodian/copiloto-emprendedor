@@ -16,7 +16,7 @@ Hace 2 chats con LLM real (COGS ~centavos). Correr antes de abrir la app a teste
 """
 import os, re, sys, time, uuid
 import httpx
-from meclaves_check import cargar_claves_declaradas, comparar_claves
+from meclaves_check import cargar_claves_declaradas, cargar_claves_login_declaradas, comparar_claves
 
 BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8099")
 EMAIL = f"smoke-{uuid.uuid4().hex[:8]}@beta.local"
@@ -41,6 +41,14 @@ try:
         raise ValueError("CLAVES_ME vacío")
 except Exception as e:
     sys.exit(f"MECLAVESRUNTIME: no pude cargar CLAVES_ME de apps/copiloto/me_contrato.py: {e!r}")
+
+# MECLAVESRESTO: idem para /auth/login, desde apps/copiloto/auth_login_contrato.py (CLAVES_LOGIN).
+try:
+    CLAVES_LOGIN_DECLARADAS = cargar_claves_login_declaradas()
+    if not CLAVES_LOGIN_DECLARADAS:
+        raise ValueError("CLAVES_LOGIN vacío")
+except Exception as e:
+    sys.exit(f"MECLAVESRESTO: no pude cargar CLAVES_LOGIN de apps/copiloto/auth_login_contrato.py: {e!r}")
 
 client = httpx.Client(base_url=BASE, timeout=30.0)
 results = []
@@ -97,11 +105,22 @@ except Exception as e:
 token = refresh = None
 try:
     r = client.post("/auth/login", json={"email": EMAIL, "password": PASSWORD})
+    j = r.json() if r.status_code == 200 else {}
     if r.status_code == 200:
-        token = r.json().get("access_token"); refresh = r.json().get("refresh_token")
+        token = j.get("access_token"); refresh = j.get("refresh_token")
     rec("login (/auth/login)", bool(token), f"status={r.status_code} token_len={len(token or '')}")
+    # MECLAVESRESTO: sobra = clave no declarada en el payload real; falta = declarada que no llegó.
+    # /auth/login reenvía gotrue.password_grant(...) tal cual (sin dict literal en el handler), así
+    # que el set real sólo se puede medir contra prod — este es el primer punto que lo hace.
+    if r.status_code == 200:
+        sobra, falta = comparar_claves(j.keys(), CLAVES_LOGIN_DECLARADAS)
+        rec("login: set de claves = CLAVES_LOGIN (MECLAVESRESTO)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("login: set de claves = CLAVES_LOGIN (MECLAVESRESTO)", False, f"sin payload: status={r.status_code}")
 except Exception as e:
     rec("login (/auth/login)", False, repr(e))
+    rec("login: set de claves = CLAVES_LOGIN (MECLAVESRESTO)", False, "sin payload: excepción en login")
 H = {"Authorization": f"Bearer {token}"} if token else {}
 
 # 3) /me
@@ -475,14 +494,17 @@ CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)
         # MECLAVESRUNTIME: el contrato pide que el smoke FALLE si /me trae una clave no declarada o le
         # falta una declarada. Un check no-crítico rojo no cambia el exit: por eso es crítico.
         "/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)",
+        # MECLAVESRESTO: mismo criterio para /auth/login — es el único de los 5 endpoints que no se
+        # puede derivar del repo (proxy puro de GoTrue), así que este es el único control real.
+        "login: set de claves = CLAVES_LOGIN (MECLAVESRESTO)",
         # Crítico y no informativo: si el alta abierta vuelve, es una vulnerabilidad en un repo
         # público, no un check amarillo. Que tumbe el smoke es el punto.
         "alta SIN invite-token es rechazada (C4.1)"}
-# Denominador: 38 = ruta completa (token admin, trauma fabricado, bundle, redirect, set de /me). Medido
-# con un httpx de mentira que recorre todo el script (ver scripts/test-smoke-veredicto.py). Si un rec()
-# se borra o una rama deja de emitir, el total cambia y el veredicto sale ROJO: un check que desaparece
-# no puede pasar como verde.
-EXPECTED_TOTAL = 38
+# Denominador: 39 = ruta completa (token admin, trauma fabricado, bundle, redirect, set de /me, set
+# de /auth/login). Medido con un httpx de mentira que recorre todo el script (ver
+# scripts/test-smoke-veredicto.py). Si un rec() se borra o una rama deja de emitir, el total cambia y
+# el veredicto sale ROJO: un check que desaparece no puede pasar como verde.
+EXPECTED_TOTAL = 39
 
 def veredicto(results, crit, expected_total):
     """(líneas, exit_code). Dice SIEMPRE los dos números: críticos y no-críticos.
