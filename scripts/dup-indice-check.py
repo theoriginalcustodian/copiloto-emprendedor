@@ -51,6 +51,14 @@ import subprocess
 import sys
 from collections import Counter
 
+# cp1252 en Windows: este script imprime `→` y flechas en el veredicto, y sin esto revienta con
+# UnicodeEncodeError en el PRIMER print -- antes de decir nada. Peor: el crash sale con exit 1, el
+# MISMO código que "encontré un duplicado", así que un rojo del gate sería ambiguo entre hallazgo y
+# script roto. Mismo patrón que el hermano `medir-indice-memoria.py`, que ya lo tenía.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # Un destino de índice: link markdown a un .md local, o wikilink. Los dos, porque mirar uno solo da
 # falsos: el propio medir-indice-memoria.py pagó eso («reportó 25 huérfanas donde había 24»).
 DESTINO = re.compile(r"\]\((?!https?:)([A-Za-z0-9._-]+\.md)\)|\[\[([A-Za-z0-9._-]+)\]\]")

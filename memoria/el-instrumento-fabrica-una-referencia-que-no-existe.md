@@ -118,5 +118,15 @@ inventado se propaga firmado y con autoridad.
    ajena a dos líneas es redondeo; una propia a diecisiete es un instrumento roto.
 4. Para números de línea sobre el estado mergeado: `git show origin/main:<path> | grep -n`, y nada
    más en el medio.
+5. **Y el `basename` del reporte borra el directorio.** Media hora después del punto 4 reincidí en la
+   otra mitad: barrí `git ls-tree -r --name-only origin/main -- scripts`, que **incluye
+   subdirectorios**, imprimí la lista con `basename`, y reporté 15 rutas `scripts/<x>.py` de las que
+   dos **no existen** — viven en `scripts/ci/` y `scripts/evidencia/`. Lo cazó el `git show` que falló
+   (`fatal: path ... does not exist`), no yo. **Un instrumento que acorta la ruta para que el reporte
+   quepa fabrica rutas; imprimí el path tal como lo devolvió la búsqueda.**
+6. **Y `git grep -l <nombre>` cuenta los comentarios.** En el mismo barrido declaré un script
+   «cableado en `lint.sh`» porque el nombre aparecía ahí: las dos líneas eran un comentario que
+   explica, textualmente, que ese script **NO puede entrar** al CI. Un grep por nombre no distingue
+   «lo invoca» de «explica por qué no lo invoca» — [[el-guard-se-satisface-con-su-propio-comentario]].
 
 Emparentado: [[instrumento-que-no-mira-nunca-falla]] · [[al-juez-tambien-hay-que-darle-el-plano]].
