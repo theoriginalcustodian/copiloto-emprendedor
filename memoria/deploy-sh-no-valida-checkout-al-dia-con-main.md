@@ -83,3 +83,37 @@ la dirección, no mires el conteo: verificá un **símbolo** del fix en los dos 
 `origin/main` vs disco) — si el símbolo nuevo está en `main` y no en el disco, el disco es el viejo. (4) El
 caso peor no es el falso hallazgo: es commitear ese archivo «para limpiar el `git status`» y revertir un
 fix mergeado.
+
+---
+
+**Refuerzo 2026-10-06 (auditoría) — el medidor del presupuesto mide el `MEMORY.md` **de la rama desde la que lo corrés**, y el techo se aplica a `main`.**
+
+`scripts/medir-indice-memoria.py` resuelve su raíz con `RAIZ = Path(__file__).resolve().parents[1]` (`:35`),
+así que mide el índice **del worktree que lo invoca**. Corrido desde `wt-aud-a3web`, parado en
+`e4cbed6a` (una rama ya mergeada que el worktree no avanzó), reportó **23.985 / 24.000 · margen 15**. En
+`origin/main` el mismo archivo pesa **23.943** → **margen 57**. El sesgo es de **42 bytes: casi tres veces el
+margen que el propio medidor informa.**
+
+**Y descarté la explicación fácil antes de escribir esto**, porque era la primera que se me ocurrió y era
+falsa: en Windows el archivo está en CRLF y `wc -c` da 24.165, 180 bytes más — pero `Path.read_text()` abre en
+modo texto y **normaliza los finales de línea**, así que el script no arrastra ese sesgo. El disco normalizado
+a LF da 23.985 exactos, que es el número del blob de **su propia rama**. La causa es la **rama**, no el
+formato: misma familia que esta entrada, otro mecanismo.
+
+**Y el control que lo prueba sin interpretar nada — el mismo script, el mismo techo, dos worktrees:**
+
+```
+desde wt-aud-a3web      (rama e4cbed6a):  23985 / 24000
+desde wt-aud-criterio3  (al día con main): 23943 / 24000
+```
+
+Es un **diferencial**: una sola corrida no distingue «el índice pesa 23.985» de «este worktree pesa 23.985»,
+porque las dos salidas son idénticas. Dos corridas desde refs distintos lo separan en una línea.
+
+**How to apply:** un medidor de un presupuesto que se aplica al **repo** tiene que medir el blob del ref, no
+el árbol de trabajo: `git show origin/main:<path> | wc -c`. Si lo corrés desde un worktree, el número vale
+para **esa rama** y hay que decirlo al citarlo. Y la regla de decisión: **si el sesgo posible es mayor que el
+margen, el número no sirve para decidir** —acá el veredicto («no entra otra línea») coincidió igual, pero por
+casualidad, porque el sesgo empujaba hacia el lado conservador. Un sesgo del otro signo habría autorizado una
+línea que rompe el techo y trunca la cola del índice para todas las sesiones
+([[el-indice-truncado-fabrica-duplicados]]).
