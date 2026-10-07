@@ -67,3 +67,27 @@ escrituras» del mismo contrato.
 🔑 **Por qué la variante del binario importa:** una regex que funciona en Python o en `grep -P`
 **no dice nada** sobre RE2. «Lo probé» sin nombrar el binario es la misma promesa sin ejecución que
 mide esta entrada. → [[el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional]] · [[no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real]]
+
+---
+
+## Variante 2026-10-07: el **rótulo escrito antes de la medición**, y el parche que no se aplicó
+
+Encadené, en una sola corrida: un script de parche que abortó (`ABORT: ancla aparece 0 veces`), y
+enseguida un `echo "=== autotest CON el canario adentro ==="` seguido de la corrida del script. Salió
+**verde**. Leído de arriba abajo decía *«el canario está adentro y pasa»*. La verdad era
+*«el canario no se aplicó, y corrí el archivo sin modificar»*.
+
+**Por qué no se nota:** el rótulo es una **afirmación de estado** escrita antes de que el estado exista,
+y el verde de abajo la confirma — pero mide **otro archivo** (el original). Un parche que no se aplica
+no deja síntoma: el archivo sigue funcionando, porque sigue siendo el de antes.
+
+**La causa mecánica, específica de este harness:** dentro de un heredoc `<<'PY'`, `\` **colapsa a `\`**.
+Un ancla de `str.replace` que contenga `\n` llega al Python como un **newline real**, mientras el archivo
+tiene los dos caracteres `\` + `n` ⇒ **0 coincidencias**. Lo que me salvó fue el
+`if s.count(ancla) != 1: sys.exit(...)`: un `replace()` pelado habría escrito el archivo **idéntico** y
+el rótulo habría sido la única evidencia.
+
+**How to apply:** (1) todo script de parche aborta si el ancla no aparece **exactamente una vez** — nunca
+`replace()` a ciegas; (2) el paso siguiente no es correr el programa, es **verificar en el archivo** que
+el cambio está (`grep -c <símbolo nuevo>` + `ast.parse`), y recién después medir; (3) para anclar texto
+con backslashes, no uses el literal: operá **por líneas** y buscá un substring sin escapes.
