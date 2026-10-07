@@ -85,3 +85,58 @@ porque `.gitignore` lo tapaba del `git status` ([[un-mecanismo-roto-hacia-el-no-
 
 Relacionadas: [[el-guard-que-caza-a-su-propio-autor]] · [[no-romper-no-es-arreglar]] ·
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
+---
+
+## Refuerzo 2026-10-07 — **la «restricción de seguridad» que agregué era lo único peligroso del plan**
+
+El caso de arriba es dos decisiones correctas que se cruzan en un agujero. Éste es la variante que más
+cuesta ver: **una sola decisión mía, tomada para reducir riesgo, que lo creó.**
+
+Autoricé un canario sobre el deploy para medir cuánto margen real tiene un guard. Y le agregué lo que
+creí que era la salvaguarda:
+
+> «corrélo **desde el mismo SHA que prod ya sirve**, así el estado intermedio es idéntico al actual»
+
+El razonamiento parecía impecable: si el artefacto que se construye es idéntico al que ya está
+publicado, un abort no puede dejar prod distinto de como está. Lo que no leí:
+
+```sh
+rm -rf "dist-$SHA"                          # deploy.sh:161
+npx vite build --outDir "dist-$SHA" --emptyOutDir
+…
+ln -sfn "dist-$SHA" dist.tmp; mv -T dist.tmp dist   # [5.5/7]: el symlink VIVO apunta a dist-<SHA>
+```
+
+El symlink que prod sirve apunta a `dist-<SHA de prod>`. Con mi restricción, `rm -rf "dist-$SHA"`
+**borra el directorio al que apunta el symlink vivo**, y prod sirve roto hasta que termine el rebuild —
+y si el build falla, queda roto. **Desde un SHA distinto habría sido inofensivo.** Mi restricción no
+reducía el riesgo: era la condición exacta que lo activaba.
+
+**Lo que me hizo equivocar no fue no leer el código — fue leer la mitad que confirmaba.** Afirmé «radio
+de impacto cero» diciendo que lo había verificado, y verifiqué que *el build va a un directorio de
+staging* (cierto). No verifiqué que **el nombre** de ese staging es el del directorio publicado. El
+hecho que leí era verdadero y la conclusión era falsa, que es por qué el error se siente como rigor.
+
+**Lo que lo cazó: la sesión que tenía que ejecutarlo se negó y midió.** No fue un test ni un control
+mío. Backend abrió el archivo, encontró el `rm -rf` y el `[1/7]` que escribe el árbol del VPS **antes**
+del punto de abort, y lo devolvió. Si hubiera obedecido —y la orden venía con autorización explícita y
+razonada— el daño ocurría igual.
+
+**Y el regalo del error:** `rm -rf "dist-$SHA"` no es un problema del canario. Significa que
+**re-correr el deploy desde el SHA que prod ya sirve destruye el dist vivo**, en cualquier deploy, sin
+canario. Es lo contrario de idempotente justo en la operación que la idempotencia promete (reaplicar,
+recuperar de un abort) — [[idempotencia-con-un-if-tiene-ventana]]. Quedó como fila propia, y es más
+urgente que la medición que la destapó.
+
+**How to apply:** (1) una restricción que agregás «para que sea seguro» es **un supuesto nuevo**, y
+exige la misma prueba que el plan — preguntá *¿qué se vuelve verdadero por restringir así?*, no sólo
+*¿qué se evita?*; (2) cuando el plan toca artefactos nombrados por un identificador (SHA, tag, id de
+build), el nombre **es** el riesgo: buscá quién más usa ese nombre antes de decir que el espacio está
+aislado; (3) «lo verifiqué en el código» exige nombrar **la línea que podría refutarlo**, no la que lo
+confirma — si no buscaste la refutación, verificaste que el plan es consistente con tu plan;
+(4) una sesión que recibe una orden ejecutable y la devuelve medida está haciendo su trabajo: ese
+rechazo es el control, no fricción — tratarlo como obstrucción desarma el único guard que quedaba.
+
+Relacionadas: [[no-codificar-la-esperanza-principio-raiz]] ·
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
+[[el-guard-falla-abierto-en-su-caso-de-activacion]]

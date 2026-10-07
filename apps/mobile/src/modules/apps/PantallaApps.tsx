@@ -7,7 +7,13 @@ import { ActivityIndicator, AppState, Linking, StyleSheet, Text, View } from 're
 // hacia abajo"*.
 import { ScrollView } from 'react-native-gesture-handler';
 
-import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from '@copiloto/core';
+import {
+  desconectarServicio,
+  listarCatalogo,
+  pedirLinkDeVinculacion,
+  type ServicioCatalogo,
+  verbosDeAcciones,
+} from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
@@ -68,18 +74,19 @@ const ICONO_POR_DEFECTO: NombreIconoGlass = 'appsConectadas';
 type EstadoCatalogo = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
 /**
- * Qué pierde el usuario al desconectar, dicho con las capacidades REALES que declara el backend
- * (`capabilities` del catálogo) en vez de un "¿estás seguro?" que no informa nada.
+ * Qué pierde el usuario al desconectar, dicho con las acciones REALES del conector (`acciones` de
+ * `/catalog`, inventario derivado de `TOOLS` en backend) en vez de un "¿estás seguro?" que no informa
+ * nada. NUNCA desde `capacidades`: dice «leer y buscar» en Gmail, que el conector no hace (A8).
  *
- * Un servicio sin capacidades declaradas cae en una frase genérica — nunca en una lista vacía que
+ * Un servicio sin acciones con verbo conocido cae en una frase genérica — nunca en una lista vacía que
  * insinúe que no se pierde nada.
  */
 function loQueSePierde(s: ServicioCatalogo): string {
-  if (s.capacidades.length === 0) {
+  const verbos = verbosDeAcciones(s.acciones);
+  if (verbos.length === 0) {
     return `El copiloto va a dejar de poder usar ${s.nombre} hasta que lo vuelvas a conectar.`;
   }
-  const lista = s.capacidades.map((c) => c.toLowerCase()).join(', ');
-  return `El copiloto va a dejar de poder ${lista} hasta que vuelvas a conectar ${s.nombre}.`;
+  return `El copiloto va a dejar de poder ${verbos.join(', ')} hasta que vuelvas a conectar ${s.nombre}.`;
 }
 
 /**
@@ -162,12 +169,13 @@ export function PantallaApps() {
         setErrorVinculo(`Vincular ${servicio.nombre} todavía no está disponible.`);
         return;
       }
-      // TODO(deuda gestionada, 2026-07-21 · dueño: sesión frontend · pagar en el próximo build EAS):
-      // migrar a `expo-web-browser` (`openAuthSessionAsync`), que devuelve el control a la app sola al
-      // terminar el OAuth. Se usa `Linking` porque `expo-web-browser` es un módulo NATIVO y exige
-      // rebuild del binario — el operador tiene uno instalado y rebuildear para esto lo dejaría sin app
-      // a mitad de una prueba. El costo del atajo es acotado y está cubierto: el usuario vuelve a mano
-      // y la re-consulta del `AppState` repinta el estado real.
+      // DECISIÓN REGISTRADA (2026-10-06, planificación): se usa `Linking` (navegador del sistema) y NO se
+      // migra a `expo-web-browser`/`openAuthSessionAsync`, que en Android ES Custom Tabs — el mecanismo que
+      // el operador rechazó por su nombre para el login (ver `auth/oauth.ts:3-9`, BETA-4b, 2026-08-05,
+      // quince días DESPUÉS del TODO que esto reemplaza). NO es deuda para el próximo build EAS: el
+      // único argumento a favor era ergonómico (devolver el control a la app al terminar el OAuth).
+      // Se reabre SÓLO si el operador pide Custom Tabs con ese nombre. Costo del camino actual, acotado y
+      // cubierto: el usuario vuelve a mano y la re-consulta del `AppState` repinta el estado real.
       const puede = await Linking.canOpenURL(res.url);
       if (!puede) {
         if (vivo.current) setErrorVinculo('No pudimos abrir el navegador en este teléfono.');

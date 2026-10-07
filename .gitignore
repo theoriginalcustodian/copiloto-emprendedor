@@ -103,3 +103,9 @@ memoria/telegram-composio-canal-operador.md
 # temporal del control positivo del brazo pageerror (scripts/evidencia/correr-canario.sh):
 # el runner se GENERA desde el archivo canonico en cada corrida, no se versiona.
 scripts/evidencia/.canario-tmp/
+
+# LOGEFIMERO (2026-10-05): detalle por-chunk del sync al grafo (scripts/graph-sync.sh). Trae
+# paths y nombres de tenant — nunca al repo PÚBLICO. Precondición del fix antes de que el
+# archivo exista (PARTICIONAR): crearlo sin este ignore primero lo publica en el próximo push.
+.bridge/
+.ci-recibos-stub/

@@ -46,13 +46,15 @@ import { SessionProvider } from './SessionProvider';
 import { useSession } from './useSession';
 
 // Mismas formas que `session.test.tsx` — `MeResponse` es `{cliente_id, email}` y nada más.
-const ME = { cliente_id: 'cli-1', email: 'e2e-device@copiloto.test' };
+const ME = { cliente_id: 'cli-1', email: 'e2e-device@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null };
 const LOGIN_OK = {
   access_token: 'tok',
   token_type: 'bearer',
   expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
   refresh_token: 'rt',
   user: {},
+  weak_password: null,
 };
 
 async function montar() {

@@ -13,6 +13,7 @@ import type {
   SignupResponse,
   WarmResponse,
 } from './types';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 /**
  * Implementaciones mock — MISMAS firmas que el transporte real (`CopilotApi`), para dev local sin
@@ -50,8 +51,10 @@ export const mockApi: CopilotApi = {
       access_token: 'mock-access-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'mock-refresh-token',
       user: { email },
+      weak_password: null,
     };
   },
 
@@ -74,6 +77,11 @@ export const mockApi: CopilotApi = {
       // El emprendedor del mock NO es operador: el modo demo muestra la app que ve un usuario real,
       // no la consola interna. Para ver la Consola en desarrollo se cambia acá a mano.
       es_admin: false,
+      // El emprendedor del mock YA aceptó la versión vigente: la aceptación se registra en el alta
+      // (`auth/SignupScreen.tsx:71` → `POST /me/legal/aceptar`), así que `true` es el estado normal de
+      // alguien que ya usa la app. Un doble que dejara el campo sin mandar lo volvería `undefined`, y
+      // `undefined` se lee igual que «no aceptó»: el bug aparecería recién contra prod.
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     };
   },
 
@@ -89,11 +97,12 @@ export const mockApi: CopilotApi = {
         {
           key: 'gmail',
           display_name: 'Gmail',
-          work_label: 'Enviar y leer emails',
+          work_label: 'Enviar emails',
           category: 'comunicacion',
           kind: 'composio',
           description: 'Conectá tu Gmail para que el copiloto redacte y envíe emails por vos.',
-          capabilities: ['send_email', 'read_email'],
+          capabilities: ['send_email'],
+          acciones: ['gmail_send'],
           connected: true,
           connect_path: '/connect/gmail',
         },

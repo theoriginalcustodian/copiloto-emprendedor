@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { verbosDeAcciones } from '@copiloto/core';
+
 import { Badge, Button, MonoLabel, Surface } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import type { CatalogService } from '../../lib/api';
@@ -74,11 +76,18 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
     'Si tenés activado "guardar mis facturas en Drive", tus facturas nuevas van a dejar de archivarse ahí.',
 };
 
+/**
+ * A8: lo que se promete sale de `acciones` (inventario real de `/catalog`), NUNCA de `capabilities`:
+ * ese campo prometía «leer y buscar» en Gmail, que el conector no hace. El mapeo acción → verbo vive
+ * en `@copiloto/core` (`verbosDeAcciones`), para que web y mobile digan lo mismo. Sin inventario
+ * (backend anterior) cae en la frase genérica.
+ */
 export function loQueSePierde(service: CatalogService): string {
+  const verbos = verbosDeAcciones(service.acciones ?? []);
   const base =
-    service.capabilities.length === 0
+    verbos.length === 0
       ? `El copiloto va a dejar de poder usar ${service.display_name} hasta que lo vuelvas a conectar.`
-      : `El copiloto va a dejar de poder ${service.capabilities.map((c) => c.toLowerCase()).join(', ')} hasta que vuelvas a conectar ${service.display_name}.`;
+      : `El copiloto va a dejar de poder ${verbos.join(', ')} hasta que vuelvas a conectar ${service.display_name}.`;
   const extra = CONSECUENCIA_EXTRA[service.key];
   return extra ? `${base} ${extra}` : base;
 }

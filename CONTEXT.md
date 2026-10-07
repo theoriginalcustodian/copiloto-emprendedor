@@ -174,6 +174,21 @@ La capa de fondo: el grid de las funciones del copiloto. Se revela deslizando la
 abajo.
 _Avoid_: home, dashboard, menú.
 
+⚠️ **`escritorio` nombra DOS cosas distintas, y confundirlas ya otorgó una exención mal fundada.**
+Medido el 2026-10-05 sobre 2168 `.md` del repo — 655 apariciones de `escritorio|desktop` en 222
+archivos:
+- **la CAPA** (~311 apariciones) — esto: la capa de fondo, el `#escritorio` que se revela al
+  arrastrar la conversación. Existe en móvil **y** en web, y en cualquier ancho de pantalla.
+- **el VIEWPORT grande** (~297) — 1440 px, el rail lateral, `DesktopShell`. Es una **medida de
+  pantalla**, no una capa; su opuesto es 390 px, no «la conversación».
+
+**Gana la CAPA:** `escritorio` a secas es la capa. Para el ancho se dice **desktop** o el número
+(390 / 1440), nunca «escritorio».
+_Por qué no es estética_: el barrido encontró **4 casos de SALTO** —probar algo sobre uno y concluir
+sobre el otro— y **12 ambiguos**, y los 12 son del mismo día y de la misma cadena de exención: se
+midió el viewport y se citó como prueba sobre la capa. Son dos hilos legítimos del mismo repo, no un
+error de tipeo; lo que falla es la palabra que los tapa.
+
 **Función**:
 Cada uno de los módulos de negocio del escritorio (Facturación, Ingresos, Gastos, Presupuestos,
 Clientes, Mi Día, Inteligencia, Contabilidad, Ajustes). Su orden es por frecuencia de uso esperada.

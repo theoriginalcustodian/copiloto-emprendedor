@@ -120,8 +120,10 @@ def test_catalog_with_token_returns_services_list():
     assert "services" in body
     keys = {s["key"] for s in body["services"]}
     assert "mercadopago" in keys
-    assert "gmail" in keys           # uno de los 5 toolkits derivados de la policy real
-    assert len(keys) == 6            # mercadopago + 5 toolkits (poda del hito 2: eran 7)
+    assert "gmail" in keys           # uno de los toolkits con acciones (connectable_policy)
+    # A7: el catálogo ofrece sólo lo conectable (módulos con TOOLS). Drive no aparece: no tiene acciones.
+    assert "googledrive" not in keys
+    assert keys == {"mercadopago"} | set(web_module._composio_valid_toolkits())
 
 
 def test_catalog_reflects_mp_connected_true():
@@ -168,3 +170,45 @@ def test_catalog_two_tenants_do_not_leak_state():
     assert services_a["gmail"]["connected"] is True
     assert services_b["mercadopago"]["connected"] is False
     assert services_b["gmail"]["connected"] is False
+
+
+# --- A8: /catalog declara las acciones reales de cada conector, DERIVADAS de TOOLS -----------------
+# Contrato de planificación (A8): la UI no puede prometer lo que el conector no hace. El inventario sale
+# de `TOOLS` (no de una constante), así que estos tests mutan `TOOLS` en runtime: si el catálogo tuviera
+# una copia a mano, no se movería y el test lo caza.
+
+def _por_key(body: dict) -> dict:
+    return {s["key"]: s for s in body["services"]}
+
+
+def test_A8_catalog_declara_las_acciones_reales_de_cada_conector():
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    by = _por_key(TestClient(app).get("/catalog").json())
+    assert by["gmail"]["acciones"] == ["gmail_send"]               # Gmail manda y NO lee
+    assert by["googlesheets"]["acciones"] == ["sheets_append_row"]  # Sheets agrega y NO lee
+    assert by["googledocs"]["acciones"] == ["docs_create_doc", "docs_read_doc"]
+    assert "acciones" not in by["mercadopago"]                     # MP no es Composio: no declara acciones
+
+
+def test_A8_toolkit_que_gana_una_accion_la_declara_sin_tocar_el_catalogo(monkeypatch):
+    from services import gmail as gmail_mod
+    monkeypatch.setitem(gmail_mod.TOOLS, "gmail_read", "read")
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    by = _por_key(TestClient(app).get("/catalog").json())
+    assert by["gmail"]["acciones"] == ["gmail_read", "gmail_send"]
+
+
+def test_A8_toolkit_que_pierde_una_accion_la_declara_menos(monkeypatch):
+    from services import docs as docs_mod
+    monkeypatch.delitem(docs_mod.TOOLS, "docs_read_doc")
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    by = _por_key(TestClient(app).get("/catalog").json())
+    assert by["googledocs"]["acciones"] == ["docs_create_doc"]
+
+
+def test_A8_toolkit_que_pierde_todas_sus_acciones_sale_del_catalogo(monkeypatch):
+    from services import gmail as gmail_mod
+    monkeypatch.setattr(gmail_mod, "TOOLS", {})
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    keys = set(_por_key(TestClient(app).get("/catalog").json()))
+    assert "gmail" not in keys  # conectable con cero acciones = el defecto de A7: no se ofrece

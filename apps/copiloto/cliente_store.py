@@ -12,6 +12,7 @@ import re
 import unicodedata
 from typing import Callable
 
+from afip_comprobante_store import ESTADO_ANULADA
 from afip_rules import NOTAS_CREDITO
 from gasto_store import ZONA_DEL_NEGOCIO, hoy_del_negocio
 
@@ -30,6 +31,16 @@ DOC_CONSUMIDOR_FINAL = 99
 
 _COLS = ("id", "nombre", "nombre_normalizado", "doc_tipo", "doc_nro", "condicion_iva",
          "domicilio", "email", "telefono", "notas", "origen", "created_at")
+
+# Conteo de comprobantes por cliente (BL-V18, sólo en el LISTADO). Un comprobante es del cliente por el
+# DOCUMENTO del receptor (`doc_tipo`, `doc_nro`): `afip_comprobantes.cuit` es el EMISOR y no sirve para
+# esto. Las anuladas no cuentan (mismo criterio que `total_periodo` y `impagos`). Sin documento = 0:
+# un `doc_nro` vacío no puede matchear comprobantes de consumidor final sin identificar.
+_COMPROBANTES_DEL_CLIENTE = (
+    f"(SELECT count(*) FROM {_SCHEMA}.afip_comprobantes a "
+    f"WHERE a.cliente_id = c.cliente_id AND c.doc_nro <> '' "
+    f"AND a.doc_tipo = c.doc_tipo AND a.doc_nro = c.doc_nro AND a.estado <> '{ESTADO_ANULADA}')")
+_COLS_CON_CONTEO = ", ".join(f"c.{col}" for col in _COLS) + f", {_COMPROBANTES_DEL_CLIENTE} AS comprobantes_cantidad"
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -245,13 +256,15 @@ class ClienteStore:
         patron = f"%{normalizar_nombre(q)}%" if q else None
         with self._conn_factory() as conn, conn.cursor() as cur:
             if patron:
-                cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} WHERE cliente_id = %s "
-                            f"AND nombre_normalizado LIKE %s ORDER BY nombre_normalizado LIMIT %s",
+                cur.execute(f"SELECT {_COLS_CON_CONTEO} FROM {_TABLE} c WHERE c.cliente_id = %s "
+                            f"AND c.nombre_normalizado LIKE %s ORDER BY c.nombre_normalizado LIMIT %s",
                             (self._cliente_id, patron, limit))
             else:
-                cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} WHERE cliente_id = %s "
-                            f"ORDER BY nombre_normalizado LIMIT %s", (self._cliente_id, limit))
-            filas = [self._fila(r) for r in cur.fetchall()]
+                cur.execute(f"SELECT {_COLS_CON_CONTEO} FROM {_TABLE} c WHERE c.cliente_id = %s "
+                            f"ORDER BY c.nombre_normalizado LIMIT %s", (self._cliente_id, limit))
+            # `comprobantes_cantidad` va sólo en el listado: en detalle/alta/edición no se calcula, y un
+            # `0` allí mentiría. Por eso se agrega acá y no dentro de `_fila` (que lo comparten).
+            filas = [{**self._fila(r[:-1]), "comprobantes_cantidad": int(r[-1])} for r in cur.fetchall()]
             cur.execute(f"SELECT count(*) FROM {_TABLE} WHERE cliente_id = %s", (self._cliente_id,))
             return filas, int(cur.fetchone()[0])
 

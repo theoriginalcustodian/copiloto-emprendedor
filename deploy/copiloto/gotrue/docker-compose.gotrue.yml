@@ -53,7 +53,11 @@ services:
       # (vhost host-level). Default = loopback (backward-compat, Google OFF); al activar Google,
       # COPILOTO_API_EXTERNAL_URL se setea al vhost público. NO afecta el `iss` del token (fijado por
       # GOTRUE_JWT_ISSUER), así que el iss-enforcement del copiloto sigue intacto.
-      API_EXTERNAL_URL: ${COPILOTO_API_EXTERNAL_URL:-${COPILOTO_SUPABASE_URL:?}}
+      # COPILOTO_GOTRUE_PUBLIC_URL (opcional): URL con la que GoTrue arma los links de mail
+      # (recovery/confirm → `<API_EXTERNAL_URL>/verify`). Debe incluir /auth/v1: GoTrue sirve
+      # /auth/v1/verify, no /verify. Sin esta var queda el comportamiento de antes. Cambia SÓLO el
+      # API_EXTERNAL_URL de GoTrue: ni COPILOTO_API_EXTERNAL_URL ni el redirect de Google (explícito).
+      API_EXTERNAL_URL: ${COPILOTO_GOTRUE_PUBLIC_URL:-${COPILOTO_API_EXTERNAL_URL:-${COPILOTO_SUPABASE_URL:?}}}
       GOTRUE_SITE_URL: ${GOTRUE_SITE_URL:?}
       GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST:-}
       GOTRUE_JWT_SECRET: ${COPILOTO_JWT_SECRET:?set in copiloto-gotrue.env}

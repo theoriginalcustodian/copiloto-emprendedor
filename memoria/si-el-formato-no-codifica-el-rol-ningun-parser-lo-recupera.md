@@ -48,6 +48,26 @@ Esta misma lección se aprendió el 28/09 y **se perdió**, porque quedó escrit
 documenta en el **docstring del script**, que sí se versiona, además de en `COORDINACION.md`. Una regla
 que vive sólo en el buzón no sobrevive al clon.
 
+---
+
+## 🔻 2026-10-06 — el documento que ENSEÑA el mecanismo no puede usarlo con valores REALES
+
+Bajé un contrato pidiéndole a frontend1 que declarara 4 ids con el veredicto canónico, y para
+enseñarle el formato escribí la tabla de ejemplo **con los ids reales y el token real**. El lector
+levantó mi contrato del buzón, encontró veredictos del criterio, no estaba en ninguna de sus dos
+listas → `rc=8`. Efecto: **el paso 2 de frontend1 quedó bloqueado por mi contrato, no por su
+medición**, y me lo reportó así.
+
+El propio instrumento documenta la clase en su `NO_SON_MEDICION` (~línea 259) y yo la había leído una
+hora antes. Ya la habíamos pagado por **sintaxis** —el ejemplo interno lleva delimitador ficticio,
+nunca el real— y ésta es la versión **semántica**: valores reales en un ejemplo son datos para
+cualquier lector de formas.
+
+→ **Fix:** el esquema va con valores ficticios (`ID-REAL-n`, `TOKEN-CANONICO`) y las sustituciones se
+nombran **aparte, en prosa** — nunca el token junto a un id del padrón en una celda bajo cabecera
+`veredicto`. Es el mismo agujero de ROL que esta entrada nombra: el formato no distingue ejemplo de
+dato, y no es falta de ingenio del parser.
+
 Emparentado: [[el-nombre-es-una-hipotesis-sobre-el-contenido]] (el nombre no dice el contenido),
 [[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]] (el mismo problema de roles, del lado
 de quien escribe), [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].

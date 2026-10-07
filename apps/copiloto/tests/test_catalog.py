@@ -40,6 +40,19 @@ def test_mercadopago_connected_cruza_mp_connected():
     assert on["connect_path"] == "/mp/connect"
 
 
+def test_mp_connected_decide_connected_aunque_mp_status_diga_otra_cosa():
+    # Control que atribuye: el par contradictorio. Antes de MPCATALOGDESCARTA esto daba connected=True
+    # (catalog.py sobreescribía el parámetro con mp_status). Debe mandar mp_connected.
+    s = _by_key(build_catalog(valid_toolkits=(), mp_connected=False, composio_connected=[],
+                              mp_status="conectado"), "mercadopago")
+    assert s["connected"] is False
+    assert s["status"] == "conectado"
+    t = _by_key(build_catalog(valid_toolkits=(), mp_connected=True, composio_connected=[],
+                              mp_status="caido"), "mercadopago")
+    assert t["connected"] is True
+    assert t["status"] == "caido"
+
+
 def test_composio_connected_cruza_por_slug_no_por_posicion():
     services = build_catalog(valid_toolkits={"gmail", "googledocs"}, mp_connected=False,
                              composio_connected=["googledocs"])

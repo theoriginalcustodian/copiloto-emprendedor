@@ -9,6 +9,7 @@ import {
   listarCatalogo,
   pedirLinkDeVinculacion,
   type ServicioCatalogo,
+  verbosDeAcciones,
 } from './catalogo';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
@@ -77,10 +78,34 @@ describe('catalogo.ts', () => {
         kind: 'composio',
         descripcion: 'Creá y buscá archivos en tu Google Drive.',
         capacidades: ['Crear archivo', 'Buscar archivo'],
+        acciones: [],
         conectado: true,
         estado: 'conectado',
         connectPath: '/composio/connect?service=googledrive',
       });
+    });
+
+    /**
+     * A8: `acciones` es el inventario REAL del conector (`/catalog`, derivado de `TOOLS`). El cliente
+     * lo normaliza tal cual; no lo deriva de `capabilities`, que dice «leer y buscar» en Gmail.
+     */
+    it('normaliza acciones del backend, distintas de capabilities', async () => {
+      responder = () =>
+        respuesta(200, {
+          services: [servicioCrudo({ key: 'gmail', capabilities: ['Leer y buscar'], acciones: ['gmail_send'] })],
+        });
+
+      const ok = (await listarCatalogo()) as Extract<Awaited<ReturnType<typeof listarCatalogo>>, { status: 'ok' }>;
+      expect(ok.servicios[0]!.acciones).toEqual(['gmail_send']);
+      expect(ok.servicios[0]!.capacidades).toEqual(['Leer y buscar']);
+    });
+
+    /** Un backend viejo que no manda `acciones` no revienta: lista vacía, y la UI cae en la frase genérica. */
+    it('sin acciones en la respuesta, normaliza a lista vacía', async () => {
+      responder = () => respuesta(200, { services: [servicioCrudo()] });
+
+      const ok = (await listarCatalogo()) as Extract<Awaited<ReturnType<typeof listarCatalogo>>, { status: 'ok' }>;
+      expect(ok.servicios[0]!.acciones).toEqual([]);
     });
 
     /**
@@ -147,6 +172,7 @@ describe('catalogo.ts', () => {
         kind: 'composio',
         descripcion: '…',
         capacidades: [],
+        acciones: [],
         conectado: true,
         connectPath: '/composio/connect?service=googledrive',
         ...over,
@@ -233,6 +259,22 @@ describe('catalogo.ts', () => {
 
       await expect(desconectarServicio(servicio())).rejects.toThrow();
     });
+  });
+});
+
+describe('verbosDeAcciones (A8: acción real → verbo que promete)', () => {
+  it('traduce cada acción conocida a su verbo, en el orden del inventario', () => {
+    expect(verbosDeAcciones(['gmail_send', 'sheets_append_row'])).toEqual([
+      'enviar emails',
+      'agregar filas a tus planillas',
+    ]);
+  });
+
+  /** Una acción sin verbo conocido se omite: mejor no decir nada que inventar un verbo. */
+  it('omite las acciones sin verbo conocido y devuelve [] si no queda ninguna', () => {
+    expect(verbosDeAcciones(['accion_desconocida', 'gmail_send'])).toEqual(['enviar emails']);
+    expect(verbosDeAcciones(['accion_desconocida'])).toEqual([]);
+    expect(verbosDeAcciones([])).toEqual([]);
   });
 });
 

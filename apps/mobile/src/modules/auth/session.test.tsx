@@ -53,13 +53,13 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('con token persistido válido -> autenticado (chequeo de montaje vía /me) y expone la identidad', async () => {
     await almacenTokens.guardarToken('tok-valido');
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
     const { result } = await renderHook(() => useSession(), { wrapper });
 
     await waitFor(() => expect(result.current.estado).toBe('autenticado'));
     expect(api.me).toHaveBeenCalled();
-    expect(result.current.me).toEqual({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    expect(result.current.me).toEqual({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
   });
 
   it('login exitoso -> autenticado', async () => {
@@ -67,10 +67,12 @@ describe('useSession (vía SessionProvider)', () => {
       access_token: 'nuevo-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
     const { result } = await renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.estado).toBe('anon'));
@@ -109,8 +111,10 @@ describe('useSession (vía SessionProvider)', () => {
       access_token: 'tok',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'r',
       user: {},
+      weak_password: null,
     });
     jest.mocked(api.me).mockRejectedValueOnce(new ForbiddenError('sin tenant'));
 
@@ -143,7 +147,7 @@ describe('useSession (vía SessionProvider)', () => {
 
   it('logout limpia token, identidad y vuelve a anon', async () => {
     await almacenTokens.guardarToken('tok-valido');
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
     const { result } = await renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.estado).toBe('autenticado'));

@@ -1,6 +1,14 @@
 # Backlog beta Odobi — todo lo que falta para la beta, con su definición de terminado
 
 **Fecha:** 2026-09-21 · **Base verificada:** `main @ e6544f3b` (= `origin/main`, 0 PR abiertos) · **Autor:** planificación
+
+<!-- SUPERADO-POR-PLAN-DE-CIERRE -->
+> ⚠️ **SUPERADO COMO PLAN DE TRABAJO — 2026-10-06.** Las **definiciones** y los **DoD** de este documento siguen valiendo y son la referencia de cada id. Lo que ya **no** vale es su descripción del **estado**: se midió el 2026-10-06 y los cuatro barridos marcaron **DESALINEADO** en la mayoría de las filas — **56 de los 77 ids no-`V` están HECHO y en `main`**.
+>
+> 👉 **Qué falta, con DoD y dueño, está en [`2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md`](2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md).** Lo diferido, con su condición de entrada, en su §3.
+>
+> **No borres este archivo**: el plan de cierre lo cita fila por fila. Y si vas a usar una cifra de acá, medíla antes — varias envejecieron (el baseline de paridad dice 484 y hoy son **471**; `BL-V34` dice que gastos no tiene idempotencia y la tiene desde el PR #666).
+
 **Qué es:** el inventario **completo** de lo que falta para que la beta de Odobi funcione de punta a punta, en web, mobile, backend y operación. **Qué no es:** el plan. Acá no hay orden de ejecución ni fechas; hay ítems con evidencia, dependencias y DoD, para que el plan se arme encima sin volver a investigar.
 
 ## ⚠️ ESTE DOCUMENTO NO ES FUENTE CONFIABLE DE «QUÉ ESTÁ ABIERTO» — medido el 2026-09-23

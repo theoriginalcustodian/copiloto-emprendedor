@@ -34,11 +34,21 @@ SHA="$(git -C "$ROOT" rev-parse HEAD)"
 # o un archivo nuevo entra a la corrida sin estar en ningún árbol. `sucio` lo deja escrito en el recibo.
 ARBOL="$(git -C "$ROOT" rev-parse 'HEAD^{tree}')"
 SUCIO_AL_INICIO="$(git -C "$ROOT" status --porcelain | grep -v '^?? \.ci-recibos/' || true)"
-RECIBO_DIR="${GATE_RECIBO_DIR:-$ROOT/.ci-recibos}"
+# 🔴 GATE_CI_DIR TIENE que desviar tambien el recibo, no solo los jobs. Medido el 2026-10-06:
+# con `GATE_CI_DIR` a secas (stubs `exit 0`) el recibo por SHA caia en el `.ci-recibos/` REAL, y
+# `recibo-cubre.sh:32-33` busca justamente en el `.ci-recibos/` de TODOS los worktrees -> un stub
+# quedaba cubriendo un SHA que nadie probo. `GATE_RECIBO_DIR` sigue teniendo precedencia.
+if [ -n "${GATE_RECIBO_DIR:-}" ]; then RECIBO_DIR="$GATE_RECIBO_DIR"
+elif [ -n "${GATE_CI_DIR:-}" ]; then RECIBO_DIR="$ROOT/.ci-recibos-stub"
+else RECIBO_DIR="$ROOT/.ci-recibos"; fi
 # Copia durable en el git common dir: `.ci-recibos/` muere con el worktree, y los de verificación
 # (`_ctl/verify-<sha>`) se borran — el recibo 5/5 de 107fdf61 se perdió así (2026-09-22).
-# Una corrida con overrides es un TEST (jobs stub): su recibo jamás va a la copia real, o un stub
-# `exit 0` quedaría cubriendo un SHA que nadie probó.
+# Una corrida con overrides es un TEST (jobs stub) y su recibo no puede cubrir nada. Eso se sostiene
+# en DOS lugares, y hasta el 2026-10-06 este comentario afirmaba una proteccion que ninguno daba:
+#   (a) ACA: la copia durable y el recibo por SHA se desvian (ver el bloque de RECIBO_DIR arriba).
+#   (b) EN EL CONSUMIDOR: el recibo se estampa `stub:true` y `recibo-cubre.sh` lo DESCARTA, igual
+#       que descarta `sucio`. Hace falta (b) ademas de (a) porque alguien puede apuntar
+#       `GATE_RECIBO_DIR` al dir real: el desvio es un default, el estampado es el guard.
 if [ -n "${GATE_RECIBO_COMUN:-}" ]; then RECIBO_COMUN="$GATE_RECIBO_COMUN"
 elif [ -n "${GATE_RECIBO_DIR:-}${GATE_CI_DIR:-}" ]; then RECIBO_COMUN="$RECIBO_DIR/comun"
 else RECIBO_COMUN="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)/ci-recibos"; fi
@@ -221,6 +231,10 @@ DURACION=$(( $(date +%s) - INICIO_TOTAL ))
 # sucia de ayer no puede quedar tapada por el `sucio:false` de la corrida limpia de hoy de otro job.
 SUCIO_AL_FIN="$(git -C "$ROOT" status --porcelain | grep -v '^?? \.ci-recibos/' || true)"
 SUCIO=false; [ -n "$SUCIO_AL_INICIO$SUCIO_AL_FIN" ] && SUCIO=true
+# Estampa de corrida-con-overrides: los tres son overrides DE TEST (ver cabecera), asi que cualquiera
+# de ellos invalida el recibo como evidencia. `recibo-cubre.sh` lo descarta por este campo.
+STUB=false; [ -n "${GATE_CI_DIR:-}${GATE_RECIBO_DIR:-}${GATE_RECIBO_COMUN:-}" ] && STUB=true
+[ "$STUB" = true ] && echo "==> ⚠️  corrida con overrides de TEST: el recibo sale estampado stub=true y no cubre ningun SHA" >&2
 [ "$SUCIO" = true ] && echo "==> ⚠️  árbol SUCIO durante la corrida: estos jobs no cubren ningún SHA (recibo-cubre.sh los descarta)" >&2
 RECIBO="$RECIBO_DIR/$SHA.json"
 PREVIO='{}'
@@ -233,7 +247,7 @@ for job in "${!RESULTADO[@]}"; do
       | .jobs[$j] = $r
       | .detalle[$j] = ($c + {historial: (((.detalle[$j].historial) // []) + [$c])})')"
 done
-printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg arbol "$ARBOL" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION"   '. + {sha:$sha, arbol:$arbol, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur} | .sucio = ([.detalle[]? | .sucio == true] | any)' > "$RECIBO.tmp.$$" && mv "$RECIBO.tmp.$$" "$RECIBO"
+printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg arbol "$ARBOL" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION" --argjson stub "$STUB"   '. + {sha:$sha, arbol:$arbol, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur, stub:$stub} | .sucio = ([.detalle[]? | .sucio == true] | any)' > "$RECIBO.tmp.$$" && mv "$RECIBO.tmp.$$" "$RECIBO"
 mkdir -p "$RECIBO_COMUN" && cp "$RECIBO" "$RECIBO_COMUN/$SHA.json.tmp.$$" && mv "$RECIBO_COMUN/$SHA.json.tmp.$$" "$RECIBO_COMUN/$SHA.json" \
   || echo "==> ⚠️  no pude copiar el recibo a $RECIBO_COMUN: si borrás este worktree, se pierde" >&2
 echo "==> recibo: $RECIBO (copia durable: $RECIBO_COMUN/$SHA.json)"

@@ -30,6 +30,31 @@ function claveDe(c: Comprobante): string {
 }
 
 /**
+ * Id de la anulacion de un comprobante, derivado en la UI. Es la MISMA formula con la que el backend
+ * nombra el workflow (`apps/copiloto/web.py:447`): dos «anular» sobre la misma factura caen en la MISMA
+ * anulacion (`USE_EXISTING`, `:452`). Derivarlo evita guardar en el navegador una verdad que el backend
+ * ya contesta en `GET /afip/anulaciones/{id}`.
+ */
+function anulacionIdDe(cuit: string, c: Comprobante): string {
+  return `${cuit}-${c.tipoCbte}-${c.puntoVenta}-${c.nro}`;
+}
+
+/**
+ * La anulacion en curso de este comprobante, o `null` si no hay ninguna. El 404 es la respuesta NORMAL
+ * de «no hay anulacion» (`afip_web.py::estado_anulacion`), no un error: pintarlo como fallo pondria un
+ * error en el camino feliz. Cualquier otro fallo tambien cae en `null` — «Si, anular» se puede
+ * reintentar sin riesgo, porque el backend engancha la misma anulacion en vez de emitir otra nota de
+ * credito.
+ */
+async function anulacionEnCursoDe(cuit: string, c: Comprobante): Promise<EstadoAnulacion | null> {
+  try {
+    return (await estadoAnulacion(anulacionIdDe(cuit, c))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * "Impaga · N días" (CLAUDE.md §5, mockup `.estado.pend`) -- SÓLO si el comprobante reclama algo.
  * `null` si el backend no trajo `dias` para esta fila: "0 días" fabricado sería peor que omitirlo
  * (mismo criterio que `antiguedad()` en `SeccionMeDeben`).
@@ -89,6 +114,9 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   // detenido al llegar a `esperando_confirmacion` y necesita retomar hasta el próximo terminal).
   const [pollTick, setPollTick] = useState(0);
   const vivo = useRef(true);
+  // Clave del comprobante cuyo flujo de anulacion esta abierto. Sirve para descartar la respuesta de la
+  // consulta de «anulacion en curso» si el usuario ya cerro o cambio de flujo mientras esperaba.
+  const pedidoRef = useRef<string | null>(null);
   useEffect(() => {
     vivo.current = true;
     return () => { vivo.current = false; };
@@ -163,13 +191,23 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
     };
   }, [anulacionId, pollTick]);
 
-  function pedirAnulacion(c: Comprobante) {
+  async function pedirAnulacion(c: Comprobante) {
+    const clave = claveDe(c);
+    pedidoRef.current = clave;
     setObjetivoAnulacion(c);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
+    // Antes de ofrecer «Si, anular», preguntar si ESTE comprobante ya tiene una anulacion en curso: la
+    // pestana pudo recargarse entre «Si, anular» y «Confirmar». Si la hay, el flujo retoma donde quedo.
+    // Una sola consulta, al abrir el flujo de UN comprobante -- nunca una por fila del listado.
+    const enCurso = await anulacionEnCursoDe(cuit, c);
+    if (!vivo.current || pedidoRef.current !== clave || !enCurso) return;
+    setAnulacionId(anulacionIdDe(cuit, c));
+    setEstadoAnulacionActual(enCurso);
   }
 
   function cancelarPedido() {
+    pedidoRef.current = null;
     setObjetivoAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
@@ -203,6 +241,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   }
 
   function cerrarYRefrescar() {
+    pedidoRef.current = null;
     setObjetivoAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
@@ -289,7 +328,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
                 {esAnulable(c) && !esteEsElObjetivo && (
                   <Button
                     variant="danger"
-                    onClick={() => pedirAnulacion(c)}
+                    onClick={() => void pedirAnulacion(c)}
                     data-testid={`${testID}-anular-${clave}`}
                   >
                     Anular

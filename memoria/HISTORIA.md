@@ -406,3 +406,46 @@ La unión de un merge lee «quitado en mi lado» como «presente en el otro», a
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) - acá es `coordinacion/PLAN.md`.  (es un puntero a coordinacion/PLAN.md, redundante con Estado vivo)
 - [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) - 3 en una noche; barrelos al cerrar.  (situacional)
 - [🐤📅 El canario tiene que ser tan NUEVO como lo que buscás](el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas.md) - verde + hallazgo falso: ¿en qué mundo saldría ROJO?  (lo cubre [[el-canario-el-control-positivo-de-lo-que-falla-callado]])
+
+## Rescatada del checkout compartido el 2026-10-05 — nunca estuvo en ninguna rama
+
+La escribió backend el 2026-09-29 y quedó **sólo en el disco** del checkout compartido: 1990 bytes
+que `git log --all --diff-filter=A` no encuentra en ninguna rama. La iba a borrar el `rm` de los
+untracked con que se completa el fast-forward de ese checkout, y no estaba en la lista de «contenido
+real a preservar» de nadie — ni en la tabla de backend (16 archivos) ni en el hallazgo de frontend2
+(17): las dos midieron **dirección de diff**, y un archivo que no existe en ninguna rama no tiene
+dirección que medir. Entra acá y no al índice porque el índice está a 555 bytes de su techo, y su
+lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pusheado]].
+
+- [🧮🕳️ «0 commits sin pushear» puede ser una rama que NUNCA se pusheó](wc-l-de-un-git-log-que-erroro-da-cero-no-nada-que-ver.md) - `git log origin/<rama>..HEAD | wc -l` da 0 también cuando el ref no existe: el stderr se pierde en el pipe. Preguntale al REMOTO con `ls-remote`. Caso raíz: 7 de 13 ramas backend nunca pusheadas, una con un test de aislamiento cross-tenant que vivía sólo en disco.
+
+## Movidos del índice el 2026-10-05 (margen de 555 B: la próxima entrada no entraba)
+
+> Por qué estas tres y no otras: son **hechos de herramienta de uso puntual** y un caso cuya
+> lección ya tiene tronco en el índice. Lo que NO se bajó, a propósito, es lo que se cobró en
+> esta misma sesión — pipear por `tail`, el instrumento que difiere por rama, la sesión en
+> worktree invisible al monitor. Siguen vigentes y arriba.
+
+- [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) - el cierre envejece en silencio.
+- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
+- [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.
+
+## Bajadas del índice el 2026-10-06 — frente de MEDICIÓN DE CORPUS (congelado 2026-10-05)
+> El operador congeló los instrumentos de medición; estos ganchos siguen siendo buenos, pero el
+> techo del índice lo necesita el producto. Buscables acá, no cargados.
+
+- 🟢🙈 [Nadie audita un COHERENTE - desactiva trabajo sin rastro](nadie-audita-un-coherente-y-es-el-veredicto-que-desactiva-trabajo.md) · [el formato no codifica el ROL](si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera.md)
+- [🔁📤 Medir obliga a REPORTAR, y el reporte entra al corpus medido](medir-obliga-a-reportar-y-el-reporte-entra-al-corpus-medido.md) — clasificar es una TASA por reporte, no una deuda que se paga.
+- 🌍🕳️ [El universo EXTERNO trae su denominador incompleto](el-universo-externo-del-instrumento-tiene-su-propio-denominador-incompleto.md) · [calibrado a TU valor no ve al ajeno](un-control-calibrado-a-tu-propio-valor-no-ve-al-productor-ajeno.md)
+
+## Bajadas del indice
+- [🎯⚖️ Coincidir con la fuente independiente puede ser COMPENSACIÓN](una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion.md) - descomponé, no compares totales  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->
+- [📜🎯 Un contrato define QUÉ DECLARAR - no asigna anclas que no midió](un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi.md) - 4 de 4 refutadas en un día.  <!-- bajada 2026-10-06: frente de medicion congelado el 05/10 -->
+
+## Bajadas del índice — 2026-10-06
+- [📋🚩 CUATRO de mis SEIS filas estaban mal, y las cazó quien iba a implementar](cuatro-de-seis-filas-del-contrato-estaban-mal-y-las-cazo-quien-iba-a-implementar.md) — el §0 es HIPÓTESIS: invitá al rechazo.  
+  _Bajada del índice el 2026-10-06 por presupuesto: su instrucción ya circula en dos entradas vivas — `un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi` y `el-contrato-que-manda-a-hacer-algo-ya-hecho`. El caso queda acá; la regla sigue arriba._
+- [🔬🎯 Una simulación calibrada a la línea base no valida la capa que NO modela](una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela.md) — dijo «0 regresiones»; el instrumento encontró 9.  
+  _Bajada del índice el 2026-10-06 por presupuesto (24.000 bytes). Su forma general ya circula arriba en `un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia` y `el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas`: el caso concreto queda acá, buscable._
+- [🌳🧮 El medidor mide el ÁRBOL donde vive, no el que publicás](el-medidor-mide-el-arbol-donde-vive-no-el-que-publicas.md) — corrido en el checkout sucio dijo «5 huérfanas»; en `main` ya eran 377/377 y el PR metió 5 duplicados. El control verificó que los archivos existían, no que faltara la línea.
+- [🗺️🚫 PLANIFICACIÓN no implementa: baja contratos y destraba](planificacion-no-implementa-baja-contratos.md) — implementar desde acá pisa a la sesión dueña. — **bajada del índice 2026-10-07**: la norma de rol ya viaja en los 3 prompts de cron y en COORDINACION.md, así que ocupaba presupuesto para repetir algo que toda sesión ya carga.

@@ -133,3 +133,78 @@ y (b) dar su veredicto con `ls-remote` **después**, no con el exit del push.
 **Y la trampa de lectura:** la notificación del harness dijo «exit code 0» porque yo había appendeado
 `echo rc=$?` al log — el 0 era del **shell envolvente**, no del script. El `rc=4` real sólo estaba en
 el archivo. La notificación del wrapper no es el veredicto del programa.
+
+---
+
+## Refuerzo (2026-09-30): un commit puede salir «merged» y verde con el árbol byte-idéntico al padre
+
+Misma familia —el control es el **efecto**, no el registro— en git y no en la red.
+
+Un PR se mergeó con el título `docs(A5REG): bajar al repo el veredicto del Cierre A y los dos
+hallazgos verificados contra el código (#760)`. Medido:
+
+```
+tree 7dc32747 : d4364390e3f3045150bb02022c97933522911e77
+tree 5330e060 : d4364390e3f3045150bb02022c97933522911e77   (su unico padre)
+=> IDENTICOS: el commit no cambia NI UN BYTE
+```
+
+**Nada en la vista normal lo distingue de un commit que aportó:** `git log --oneline` lo lista igual,
+el PR dice *merged*, el CI salió verde (no hay nada que pueda romper), y `git diff-tree --numstat`
+devuelve vacío — que se lee como «no pude leerlo», no como «no cambió nada». El título queda como
+única fuente, afirmando un contenido que el árbol no tiene.
+
+El control es de una línea y hay que pedirlo: **`git rev-parse HEAD^{tree}` vs `HEAD^1^{tree}`**. Y
+necesita control positivo, porque un método que dijera «vacío» de todo daría el mismo resultado: acá
+el mismo chequeo dio 2 archivos para el PR de al lado y 26 para otro commit del mismo prefijo, así que
+el vacío significaba algo.
+
+**Y la segunda mitad, que es la que evita la alarma falsa:** vacío admite dos causas —*perdió* el
+contenido, o era *redundante*— y son opuestas en gravedad. Se separan con `git log -- <archivo>` +
+`git merge-base --is-ancestor`: acá el contenido había entrado nueve horas antes por otro commit, que
+es ancestro del vacío. Redundante, nada perdido, nadie bloqueado. Publicar antes de dirimirlo habría
+mandado a otra sesión a rehacer trabajo que estaba hecho.
+
+**Why:** porque el costo no se paga al mergear, se paga cuando alguien cita ese commit como el lugar
+donde entró algo. El título sobrevive; el árbol vacío no se ve.
+
+**How to apply:** (1) si un commit importa como puntero («acá bajó X»), verificá el árbol antes de
+citarlo; (2) `--numstat` vacío no es lectura fallida ni «sin cambios» — comparalo con `^{tree}` para
+saber cuál de las dos; (3) todo veredicto de «aporte cero» se cierra con el tree hash, no con la
+lectura del diff; (4) antes de avisar, separá *perdió* de *redundante* — la primera manda a alguien a
+rehacer, la segunda sólo corrige un puntero.
+
+## Hermana medida aparte (2026-09-29, rescatada el 2026-10-05)
+
+El gemelo exacto del lado de la LECTURA: [[wc-l-de-un-git-log-que-erroro-da-cero-no-nada-que-ver]].
+Acá el push sale 0 sin haber pusheado; allá el conteo de ``commits sin pushear`` sale 0 porque el ref
+remoto nunca existió y el stderr se perdió en el pipe. Los dos colapsan ``no pude medir`` y ``medí cero``
+en la misma salida, y el control es el mismo: ``git ls-remote origin refs/heads/<rama>`` — preguntarle al
+servidor, nunca al ref local.
+
+
+## Refuerzo 2026-10-06 — con muchos worktrees, `gh pr merge --delete-branch` SIEMPRE sale exit 1 y el merge igual se hizo
+
+```
+VERDE — se puede mergear (6/6 jobs del rollup)
+failed to run git: fatal: 'main' is already used by worktree at 'C:/gfw-src/wt-a4reg'
+[merge exit=1]
+```
+
+**El merge se hizo.** `gh pr view 823` → `state=MERGED`, `mergedAt=16:07:43Z`, commit `5e038559`, y el
+cambio verificado en `git show origin/main:…`. Lo que falló fue el paso **local** de `--delete-branch`:
+`gh` intenta cambiarse de rama y no puede porque `main` está tomado por **otro worktree**. En este repo
+hay ~30 worktrees activos, así que esto no es un accidente: **todo merge que corra con
+`--delete-branch` desde un worktree va a reportar exit 1 con el merge ya hecho.**
+
+**Por qué muerde más que el caso inverso:** un exit 0 sin pushear se descubre al mirar el remoto. Un
+exit 1 con el merge hecho empuja a **reintentar** — y el reintento falla con un mensaje distinto («no
+está abierto»), que se lee como que algo está roto. Dos mediciones falsas seguidas sobre un trabajo que
+ya terminó bien.
+
+**Control, siempre el EFECTO y nunca el código de salida:** `gh pr view <n> --json state,mergeCommit`
+y `git show origin/main:<archivo>` por el contenido que tenía que entrar. Si `state=MERGED`, terminó:
+la rama sin borrar es cosmética. Y para evitarlo de entrada, mergeá **sin** `--delete-branch` desde un
+worktree, o borrala después con `git push origin --delete <rama>`, que no necesita checkout.
+
+Relacionadas: [[el-pipe-se-come-el-exit-code]] · [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]

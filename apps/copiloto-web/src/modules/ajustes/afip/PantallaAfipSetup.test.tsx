@@ -89,3 +89,111 @@ describe('PantallaAfipSetup — CUIT vinculado queda bloqueado sin salida (BL-V2
     expect(screen.queryByTestId('afip-perfil-cuit')).toBeNull();
   });
 });
+
+/**
+ * DRIVECERO (#812, confirmado por planificación 2026-10-06): un tenant nuevo no puede conectar Drive,
+ * así que las ramas del bloque 4 no pueden mandarlo a «conectar en Apps». Control NEGATIVO: si alguien
+ * reintroduce el texto viejo, la aserción de ausencia se pone roja.
+ */
+describe('PantallaAfipSetup — copia en Drive sin salida hacia Apps (DRIVECERO)', () => {
+  const TEXTO_VIEJO = /Conectalo en Apps|conectado en Apps/;
+
+  function montarConEstado(driveConectado: 'true' | 'false' | 'ausente') {
+    const http: HttpPort = {
+      async enviar(p) {
+        if (p.metodo === 'GET' && p.path.startsWith('/afip/estado')) {
+          const drive =
+            driveConectado === 'ausente' ? {} : { drive_conectado: driveConectado === 'true' };
+          return respuesta(200, { cuit: CUIT, conectado: false, ...drive });
+        }
+        if (p.metodo === 'POST' && p.path === '/afip/ajustes') {
+          return respuesta(200, { ok: true, guardar_en_drive: true });
+        }
+        return respuesta(404, {});
+      },
+    };
+    configurarApi({ http, tokens });
+  }
+
+  // DRIVETOGGLE: sin Drive conectado el toggle no es interactivo. Antes de esta regla el usuario
+  // podía activar una copia que la beta no puede escribir.
+  it('drive desconectado: el toggle queda apagado y no interactivo, sin mandar a conectar en Apps', async () => {
+    montarConEstado('false');
+    render(<PantallaAfipSetup />);
+
+    const toggle = await screen.findByTestId('afip-drive-toggle');
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveValue('no');
+    expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
+  });
+
+  it('drive sin verificar (null): el toggle tampoco se puede activar', async () => {
+    montarConEstado('ausente');
+    render(<PantallaAfipSetup />);
+
+    expect(await screen.findByTestId('afip-drive-toggle')).toBeDisabled();
+    expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
+  });
+
+  // Control positivo: con Drive conectado el mismo toggle SÍ se habilita. Sin este caso, un toggle
+  // deshabilitado en todos los estados pasaría el test anterior.
+  it('drive conectado: el toggle queda habilitado (control positivo)', async () => {
+    montarConEstado('true');
+    render(<PantallaAfipSetup />);
+
+    expect(await screen.findByTestId('afip-drive-toggle')).toBeEnabled();
+  });
+});
+
+/**
+ * DRIVETEXTOCOBERTURA (deuda de DRIVETOGGLE): caso MIXTO. La preferencia está guardada en `true`
+ * (`GET /afip/perfil` → `guardar_en_drive: true`) y el tenant NO tiene capacidad de Drive. El toggle ya
+ * queda disabled por otra razón, así que el único que le avisa al usuario es el texto. El control positivo
+ * (con capacidad, el texto AUSENTE) hace falta: un texto que se renderiza siempre pasaría igual.
+ * No verificado contra el bundle servido: queda escrito como límite, no como evidencia de prod.
+ */
+describe('PantallaAfipSetup — preferencia guardada sin capacidad de Drive avisa (DRIVETEXTOCOBERTURA)', () => {
+  const TEXTO_NO_DISPONIBLE = /La copia en Drive no está disponible por ahora/;
+
+  function montarMixto(driveConectado: boolean) {
+    const http: HttpPort = {
+      async enviar(p) {
+        if (p.metodo === 'GET' && p.path.startsWith('/afip/estado')) {
+          return respuesta(200, { cuit: CUIT, conectado: false, drive_conectado: driveConectado });
+        }
+        if (p.metodo === 'GET' && p.path.startsWith('/afip/perfil')) {
+          return respuesta(200, {
+            perfil: {
+              cuit: CUIT,
+              razon_social: 'Razón social de prueba',
+              domicilio_comercial: 'Calle 1',
+              condicion_iva: 'monotributo',
+              ingresos_brutos: '123',
+              inicio_actividades: '2020-01-01',
+              punto_venta: 1,
+              guardar_en_drive: true,
+            },
+          });
+        }
+        return respuesta(404, {});
+      },
+    };
+    configurarApi({ http, tokens });
+  }
+
+  it('preferencia en true + drive SIN capacidad: el texto «no disponible» aparece', async () => {
+    montarMixto(false);
+    render(<PantallaAfipSetup />);
+
+    expect(await screen.findByTestId('afip-drive-desconectado')).toHaveTextContent(TEXTO_NO_DISPONIBLE);
+  });
+
+  // Control positivo: con capacidad, la misma preferencia en true NO muestra el aviso de «no disponible».
+  it('control positivo: preferencia en true + drive CON capacidad: el texto «no disponible» NO aparece', async () => {
+    montarMixto(true);
+    render(<PantallaAfipSetup />);
+
+    expect(await screen.findByTestId('afip-drive-conectado')).toBeInTheDocument();
+    expect(screen.queryByText(TEXTO_NO_DISPONIBLE)).toBeNull();
+  });
+});

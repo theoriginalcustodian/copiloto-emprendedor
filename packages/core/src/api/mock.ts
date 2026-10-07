@@ -53,8 +53,10 @@ export const mockApi: CopilotApi = {
       access_token: 'mock-access-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'mock-refresh-token',
       user: { email },
+      weak_password: null,
     };
   },
 
@@ -64,8 +66,10 @@ export const mockApi: CopilotApi = {
       access_token: 'mock-access-token-google',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'mock-refresh-token-google',
       user: { email: 'demo-google@copiloto.test' },
+      weak_password: null,
     };
   },
 
@@ -74,7 +78,15 @@ export const mockApi: CopilotApi = {
     return { cliente_id: 'mock-cliente-1' };
   },
 
-  me: async (): Promise<MeResponse> => ({ cliente_id: 'cli-mock-0001', email: 'demo@copiloto.test' }),
+  me: async (): Promise<MeResponse> => ({
+    cliente_id: 'cli-mock-0001',
+    email: 'demo@copiloto.test',
+    es_admin: false,
+    mp_connected: false,
+    composio_connected: [],
+    legal_aceptado: false,
+    legal_version_aceptada: null,
+  }),
 
   async sendChat(payload: ChatRequest): Promise<ChatResponse> {
     const wfId = `mock-wf-${Date.now()}`;

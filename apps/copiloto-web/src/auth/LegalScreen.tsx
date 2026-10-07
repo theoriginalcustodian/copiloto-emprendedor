@@ -1,4 +1,11 @@
-import { LEGAL_DESCARGO, LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
+import {
+  LEGAL_AVISO_PLANTILLA,
+  LEGAL_DESCARGO,
+  LEGAL_TITULOS,
+  LEGAL_VERSION,
+  parrafosDe,
+  type LegalKind,
+} from '@copiloto/core';
 import { Button, Surface } from '../design-system';
 import './login.css';
 
@@ -37,7 +44,7 @@ export function LegalScreen({ kind, onVolver }: LegalScreenProps) {
             className="login-screen__alert login-screen__alert--warning"
             data-testid="legal-screen-placeholder-notice"
           >
-            Plantilla estándar genérica — no es una revisión legal específica de este negocio.
+            {LEGAL_AVISO_PLANTILLA}
           </p>
           <p className="login-screen__alert" role="note" data-testid="legal-screen-descargo">
             {LEGAL_DESCARGO}

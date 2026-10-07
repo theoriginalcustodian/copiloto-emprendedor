@@ -37,3 +37,34 @@ Es la verificación #2 de las 6 del `CLAUDE.md` global (*REUTILIZAR*) movida al 
 no sólo al de proponer. Hermana de [[cero-deuda-no-gestionada]] (cada mecanismo nuevo es superficie que
 alguien mantiene) y de [[consultar-documed-siempre-antes-de-implementar]] (misma regla, aplicada al repo
 canónico de UI: *portar adaptando, no reinventar*).
+
+---
+
+## Refuerzo (2026-10-05, auditoría): el inventario va antes de **citar**, no sólo antes de diseñar — y lo primero a inventariar es **lo que ya publicó tu propio rol**
+
+Esta entrada dice que todo diseño abre con inventario. **Citar también**, y el día que lo cobré fueron
+cuatro casos seguidos, todos con la misma forma: *el dato que necesitaba ya existía, publicado por mí
+o para mí, y no lo busqué.*
+
+1. **Corregí un puntero citando el tablero de otra sesión, y la refutación vivía en la carpeta que
+   estaba editando** — mi propio re-veredicto, de seis días antes, medía lo contrario. Mergeé la
+   corrección mal atribuida y necesité un PR más para retirarla.
+2. **Iba a entregar una fila que mi propio rol ya había reportado Y CERRADO ese mismo día.** La cacé
+   con un `find` por `*cierre_auditoria*` antes de escribir el cierre — el inventario, literal. Si no
+   lo hubiera corrido, entregaba trabajo duplicado con mi firma.
+3. **Y la fila tenía además la causa falsa:** citaba una línea del índice de memoria que ya no existía
+   en disco (ver [[memoria-repo-vs-slug-drift]]). Dos defectos en una fila que el inventario de 1
+   línea destapaba.
+4. **El espejo, desde otra sesión:** un aviso me daba un SHA para repushear (`ae850b3c`) que **no
+   existía en ningún lado** del repo — ni objeto, ni ref, ni reflog, ni `fsck`. Quien lo escribió
+   tampoco inventarió lo que citaba.
+
+**El control, de una línea, antes de escribir cualquier fila:**
+`find coordinacion -name "*<tema>*"` y `grep -rl "<el id o la cifra>" docs/ memoria/`. Si el tema ya
+tiene un `cierre_`, tu fila no es un hallazgo: es un duplicado que inflará el tablero y mandará a
+trabajar sobre algo hecho ([[el-contrato-que-manda-a-hacer-algo-ya-hecho]]).
+
+**Y el matiz que aportó la sesión dueña del tablero, que es más general que mi conclusión:** en el
+caso 1 el error de fondo no fue mi atribución — fue que **la cifra no llevaba unidad**. Una cifra sin
+unidad se deja citar para cualquier pregunta, así que alguien la va a citar para la equivocada. Las
+dos cosas son verdad a la vez: publicá la cifra con su unidad, **y** inventariá antes de citarla.

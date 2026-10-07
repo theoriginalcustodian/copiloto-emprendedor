@@ -110,11 +110,10 @@ describe('ListaMensajes', () => {
     expect(onChoice).toHaveBeenCalledWith('cancel', { displayText: 'Cancelar', hitlMessageId: 'assistant-1' });
   });
 
-  // H-A4-9 — control positivo + negativo: una card HITL YA respondida (`hitlRespondido` en el
-  // mensaje) queda deshabilitada — `disabled` nativo de `Pressable` bloquea el toque, y
-  // `fireEvent.press` no dispara ningún callback. Sin el fix, la card seguiría activa y el press
-  // reenviaría confirm/cancel aunque el turno ya esté resuelto.
-  it('H-A4-9: card HITL con hitlRespondido queda deshabilitada — press no dispara onChoice', async () => {
+  // A5 (BL-F1) + H-A4-9 — control positivo + negativo: una card HITL YA respondida (`hitlRespondido`
+  // en el mensaje) se resuelve como `Recibo` — sin botones, así que no hay nada que reenviar. Sin
+  // este cambio la card seguiría mostrando Confirmar/Cancelar atenuados.
+  it('A5: card HITL con hitlRespondido se resuelve como Recibo — sin botones', async () => {
     const mensajes: ChatMessage[] = [
       {
         id: 'assistant-1',
@@ -129,20 +128,33 @@ describe('ListaMensajes', () => {
     ];
     const { onChoice } = await envolver(mensajes);
 
-    const botonConfirmar = screen.getByTestId('tarjeta-confirmacion-confirmar');
-    const botonCancelar = screen.getByTestId('tarjeta-confirmacion-cancelar');
-
-    // `Pressable` NO reenvía `disabled`/`onPress` tal cual al host node: los consume y los traduce a
-    // `accessibilityState.disabled` (ver `Pressable.js` de RN) — por eso se lee ahí, no en `.props.disabled`.
-    // Y el control funcional (abajo) es la prueba real: aunque algo leyera mal el accessibilityState,
-    // el press no debe disparar `onChoice`.
-    expect(botonConfirmar.props.accessibilityState?.disabled).toBe(true);
-    expect(botonCancelar.props.accessibilityState?.disabled).toBe(true);
-
-    await fireEvent.press(botonConfirmar);
-    await fireEvent.press(botonCancelar);
-
+    // Cancelar ya respondido → título de Recibo «No lo hicimos» (tono tenue).
+    expect(screen.getByTestId('tarjeta-confirmacion')).toBeTruthy();
+    expect(screen.getByText('No lo hicimos')).toBeTruthy();
+    // Sin botones: no hay forma de reenviar confirm/cancel sobre un turno ya resuelto.
+    expect(screen.queryByTestId('tarjeta-confirmacion-confirmar')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-confirmacion-cancelar')).toBeNull();
     expect(onChoice).not.toHaveBeenCalled();
+  });
+
+  it('A5: confirmar ya respondido → Recibo «Confirmado», no «No lo hicimos»', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrar $500 por MercadoPago. ¿Confirmás?',
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+        hitlRespondido: { value: 'confirm', label: 'Cobrar' },
+      },
+    ];
+    await envolver(mensajes);
+
+    expect(screen.getByText('Confirmado')).toBeTruthy();
+    expect(screen.queryByText('No lo hicimos')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-confirmacion-confirmar')).toBeNull();
   });
 
   it('sin hitlRespondido (control negativo): la card sigue activa, press dispara onChoice', async () => {

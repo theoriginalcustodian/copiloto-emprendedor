@@ -1,3 +1,4 @@
+import { mapearGate } from '@copiloto/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ReplyChoice } from '../../lib/api';
@@ -89,7 +90,10 @@ describe('hitlMapping', () => {
     expect(props.amount).not.toBe('80000');
   });
 
-  it('Instagram: badge IRREVERSIBLE + dangerBorder', () => {
+  // Riesgo de Instagram = el de core (`SERVICE_RISK`, `hitl.ts`). Mensaje viejo `service:'instagram'`
+  // sigue siendo una advertencia real (planificación, SERVICERISKDOBLE). Control positivo medido el
+  // 2026-10-06 (PR 872): mutante «web ignora core» (riesgo = {}) → 4 rojos en este archivo, incluido este test.
+  it('Instagram (mensaje viejo): badge IRREVERSIBLE + borde de peligro, lo decide core', () => {
     const props = buildHitlCardProps(
       msg({ text: 'Voy a publicar el posteo. ¿Confirmás?', card: { service: 'instagram', label: 'Instagram' } }),
       vi.fn(),
@@ -97,6 +101,22 @@ describe('hitlMapping', () => {
     expect(props.badge).toEqual({ variant: 'danger', text: 'IRREVERSIBLE' });
     expect(props.dangerBorder).toBe(true);
   });
+
+  // Paridad por construcción: para cada servicio, web muestra exactamente el riesgo que core declara
+  // (`mapearGate(...).riesgo`). Si alguien vuelve a declarar una tabla local en web, o la desvía, este
+  // test se pone rojo para el servicio desviado.
+  it.each(['mercadopago', 'instagram', 'googledocs', 'gmail'])(
+    'paridad con core: el badge de %s es el que declara mapearGate',
+    (service) => {
+      const props = buildHitlCardProps(
+        msg({ text: 'Acción de prueba. ¿Confirmás?', card: { service, label: service } }),
+        vi.fn(),
+      );
+      const riesgo = mapearGate(msg({ text: 'Acción de prueba.', card: { service, label: service } }))?.riesgo;
+      expect(props.badge?.text).toBe(riesgo?.badge);
+      expect(Boolean(props.dangerBorder)).toBe(Boolean(riesgo?.irreversible));
+    },
+  );
 
   it('sin `card` (legacy): tarjeta neutra "Confirmación", NUNCA "AGENDA", sin badge', () => {
     const props = buildHitlCardProps(msg({ text: 'Todo listo, confirmá.', card: undefined }), vi.fn());
@@ -175,5 +195,54 @@ describe('hitlMapping', () => {
   it('sin hitlRespondido: disabled=false — control negativo del test anterior', () => {
     const props = buildHitlCardProps(msg({ id: 'assistant-10' }), vi.fn());
     expect(props.disabled).toBe(false);
+  });
+
+  // BL-F1 — la card resuelta lleva su Recibo: título = lo elegido, tono `exito` si fue confirmar.
+  // Control negativo: sin hitlRespondido no hay `resuelta` (la card sigue activa).
+  it('BL-F1: hitlRespondido de confirmación -> resuelta exito con el label elegido', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-11',
+        text: 'Cobro a **Juan Pérez** por $15.000.',
+        choices: CONFIRM_CANCEL,
+        hitlRespondido: { value: 'confirm_charge_1', label: 'Sí, cobrar $15.000' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Sí, cobrar $15.000', tono: 'exito' });
+  });
+
+  it('BL-F1: hitlRespondido de cancelación -> resuelta neutro', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-12',
+        choices: CONFIRM_CANCEL,
+        hitlRespondido: { value: 'cancel_charge_1', label: 'Cancelar' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Cancelar', tono: 'neutro' });
+  });
+
+  // Adversarial: una CANCELACIÓN cuyo value contiene «confirm» no puede mostrarse como éxito. Con el
+  // regex viejo (`CONFIRM_VALUE_RE` sobre el value) este caso daba `exito`.
+  it('BL-F1 adversarial: cancelación con «confirm» en el value -> neutro, nunca exito', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-14',
+        choices: [
+          { label: 'Sí, cobrar', value: 'confirm_charge_1' },
+          { label: 'Cancelar', value: 'cancel_confirm_1' },
+        ],
+        hitlRespondido: { value: 'cancel_confirm_1', label: 'Cancelar' },
+      }),
+      vi.fn(),
+    );
+    expect(props.resuelta).toEqual({ titulo: 'Cancelar', tono: 'neutro' });
+  });
+
+  it('BL-F1: sin hitlRespondido no hay resuelta — control negativo', () => {
+    const props = buildHitlCardProps(msg({ id: 'assistant-13', choices: CONFIRM_CANCEL }), vi.fn());
+    expect(props.resuelta).toBeUndefined();
   });
 });

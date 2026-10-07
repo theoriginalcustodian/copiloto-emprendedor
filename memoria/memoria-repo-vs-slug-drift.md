@@ -139,3 +139,42 @@ falta no es poda editorial: la mayoría de lo que queda es doctrina viva y tramp
 una trampa que todavía muerde es peor que el truncamiento. Las salidas reales son **comprimir las
 líneas** (muchas pasan de 300 chars cuando el techo por línea son 160) o **subir el presupuesto** —
 las dos son decisión, no limpieza.
+
+---
+
+## Refuerzo 2026-10-05 · el índice que el harness CARGA puede ser el viejo — y entonces el estado refutado se inyecta en TODAS las sesiones
+
+El `MEMORY.md` del **repo** ya tenía eliminada una línea de estado refutada (commit
+`5c0c0d32 docs(etapas): corregir la cifra del criterio 3 — es web 49/54, y (home) ya estaba medida`).
+El `MEMORY.md` del **slug** —el que el harness inyecta en el arranque de cada sesión— **seguía
+teniéndola**, 5 días después. La corrección se había hecho **del lado que no se lee**.
+
+Lo que eso costó, el mismo día: dos sesiones distintas afirmaron que un id «nunca se midió» —una
+asignando trabajo ya hecho, la otra publicándolo en un entregable— y **ninguna de las dos midió**:
+las dos citaron ese renglón. Es el canal con más autoridad del sistema (se lee antes que cualquier
+otra cosa, con la forma de un estado curado) y es justo el que `seed-memory.sh` **no** reconcilia solo:
+las entradas de `memoria/` sí van bidireccional, pero el **índice** se marca `divergente` y queda a
+mano.
+
+**La asimetría que importa:** mientras el merge del índice sea manual, el drift del índice no es una
+molestia de sincronización — es **un inyector de estado falso con alcance a todas las sesiones**. Una
+entrada divergente afecta a quien la abra; un índice divergente afecta a todos los arranques.
+
+**La maniobra segura cuando hay que tocarlo** (y es la única que no pisa a las otras sesiones):
+`sed` quirúrgico de **la línea exacta**, nunca reescribir el índice; controles obligatorios —1 línea
+eliminada y **0 agregadas** comparando sin CR, fin de línea sin cambios, bytes antes/después, backup
+al lado. Y se **elimina** en vez de reformular cuando el repo ya decidió eliminarla: el índice tiene
+techo (`SIN MARGEN`) y una reformulación gasta chars que [[el-indice-truncado-fabrica-duplicados]]
+cobra después.
+
+**El control que faltaba:** cuando una cifra o un estado del índice sostiene una decisión, **medirla
+contra el sistema antes de citarla**. Que esté en el índice prueba que alguien la escribió, no que
+siga siendo cierta — ver [[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]].
+
+## Refuerzo (2026-10-05, auditoría): hay un TERCER lado, y es el que se cita
+
+Esta entrada compara **dos** lados: el índice del repo y el del slug. Hay un tercero: **la copia que el harness inyecta en el contexto de cada sesión al arrancar.** Esa es una **foto**, y es la que una sesión viva realmente lee cuando «consulta la memoria».
+
+**Medido hoy:** cité como hallazgo la línea «Criterio 3: 53 de 54 — falta `(home)`, nunca medida» y la iba a entregar a planificación. Esa línea tenía **0 ocurrencias** en los dos archivos de disco (repo 25 575 B, slug 25 112 B) y **1** en mi contexto. Ya había sido corregida — y el error que fabricó ya estaba reportado y cerrado **ese mismo día**, en dos sesiones antes de la mía.
+
+**La consecuencia operativa:** `seed-memory.sh` reconcilia repo ↔ slug, pero **no puede alcanzar al tercer lado**: una sesión ya abierta se queda con la foto hasta que termine. Por eso, **antes de reportar una divergencia contra el índice, hay que releer el archivo en disco** — `grep` sobre `memoria/MEMORY.md`, no el bloque del `system-reminder`. Y lo que lo hace traicionero: la línea vieja suele **coincidir** con lo que estás por concluir, así que entra como corroboración en vez de como dato a verificar.

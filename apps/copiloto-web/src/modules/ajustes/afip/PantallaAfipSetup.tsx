@@ -204,7 +204,6 @@ export function PantallaAfipSetup() {
       const res = await refrescarEstadoGeneral();
       if (res.estado?.cuit) await precargarPerfil(res.estado.cuit);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo debe correr una vez al montar.
   }, []);
 
   // -------------------------------------------------------------------------------------------
@@ -749,7 +748,10 @@ export function PantallaAfipSetup() {
           <span className="afip-setup-bloque__etiqueta">Guardar mis facturas en Drive</span>
           <select
             data-testid="afip-drive-toggle"
-            value={guardarEnDrive ? 'si' : 'no'}
+            // DRIVETOGGLE: sin Drive conectado (DRIVECERO) el toggle queda apagado y no interactivo.
+            // Se muestra «no» aunque el perfil guarde `true`: si no, quedaría un «sí» que no se puede apagar.
+            value={guardarEnDrive && estadoGeneral?.driveConectado === true ? 'si' : 'no'}
+            disabled={estadoGeneral?.driveConectado !== true}
             onChange={(e) => void cambiarGuardadoEnDrive(e.target.value === 'si')}
           >
             {OPCIONES_DRIVE.map((o) => (
@@ -789,8 +791,7 @@ export function PantallaAfipSetup() {
         )}
         {guardarEnDrive && estadoGeneral?.driveConectado === false && (
           <p className="afip-setup-bloque__texto" data-testid="afip-drive-desconectado">
-            Google Drive no está conectado. Conectalo en Apps para que tus facturas se guarden —
-            mientras tanto se emiten igual, pero sin copia.
+            La copia en Drive no está disponible por ahora. Las facturas se emiten igual, sin copia.
           </p>
         )}
         {guardarEnDrive && estadoGeneral?.driveConectado == null && (
@@ -798,8 +799,8 @@ export function PantallaAfipSetup() {
             className="afip-setup-bloque__texto afip-setup-bloque__texto--tenue"
             data-testid="afip-drive-requiere-conexion"
           >
-            Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite igual
-            y te avisamos que quedó sin copia.
+            No pudimos verificar tu Google Drive. La factura se emite igual, y si no queda copia te
+            avisamos.
           </p>
         )}
       </section>

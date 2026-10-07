@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (ver themesContrast.test.ts)
 import fontsCss from './fonts.css?raw';
-// eslint-disable-next-line import/no-unresolved -- idem
 import fontsWebCss from './fonts-web.css?raw';
-// eslint-disable-next-line import/no-unresolved -- idem
 import script from '../../../../deploy/copiloto/fetch-fonts.sh?raw';
 
 /**

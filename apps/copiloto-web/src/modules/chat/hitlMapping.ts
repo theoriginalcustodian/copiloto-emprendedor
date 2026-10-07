@@ -1,4 +1,4 @@
-import { esParConfirmarCancelar, formatearImporte, type TipoMensaje, clasificarChoices } from '@copiloto/core';
+import { esParConfirmarCancelar, mapearGate, type TipoMensaje, clasificarChoices } from '@copiloto/core';
 import type { BadgeVariant } from '../../design-system';
 import type { ReplyChoice } from '../../lib/api';
 import type { ChatMessage } from './useChat';
@@ -30,22 +30,24 @@ const CANCEL_VALUE_RE = /cancel|^no[_-]|reject/i;
 
 /** Nombre en **negrita** (destinatario) — opcional, aplica a cualquier servicio. */
 const BOLD_NAME_RE = /\*\*(.+?)\*\*/;
-// Empieza y termina en dígito (grupos de miles/decimales internos) — evita capturar puntuación de la
-// oración ("$15.000, confirmá" no debe incluir la coma final).
-const AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)*)/;
 
 /**
- * Affordances de riesgo POR SERVICIO (intrínsecas al servicio, no al texto): Mercado Pago muestra el
- * monto + badge "REVISAR"; Instagram es irreversible (badge "IRREVERSIBLE" + borde de alerta). El
- * resto = tarjeta neutra (solo ícono + nombre + concepto). Servicios sin entrada acá caen a `{}`.
+ * Affordances de riesgo POR SERVICIO: NO hay tabla acá. La decide `mapearGate` de `@copiloto/core`
+ * (`hitl.ts`, `SERVICE_RISK`), la misma que lee mobile — una sola tabla, por construcción. Decisión
+ * de planificación `SERVICERISKDOBLE`: la copia de web se había desviado y una decisión de riesgo
+ * llegaba a una sola superficie. Servicios sin entrada en core = tarjeta neutra.
  */
-const SERVICE_RISK: Record<
-  string,
-  { badge?: { variant: BadgeVariant; text: string }; dangerBorder?: boolean; showAmount?: boolean }
-> = {
-  mercadopago: { badge: { variant: 'warning', text: 'REVISAR' }, showAmount: true },
-  instagram: { badge: { variant: 'danger', text: 'IRREVERSIBLE' }, dangerBorder: true },
-};
+function riesgoDeGate(gate: ReturnType<typeof mapearGate>): {
+  badge?: { variant: BadgeVariant; text: string };
+  dangerBorder?: boolean;
+} {
+  const riesgo = gate?.riesgo;
+  if (!riesgo) return {};
+  return {
+    badge: { variant: riesgo.tono, text: riesgo.badge },
+    dangerBorder: riesgo.irreversible,
+  };
+}
 
 const FALLBACK_CONFIRM: ReplyChoice = { label: 'Confirmar', value: 'confirm' };
 const FALLBACK_CANCEL: ReplyChoice = { label: 'Cancelar', value: 'cancel' };
@@ -65,6 +67,9 @@ export interface HitlCardMappedProps {
   /** H-A4-9 — `true` cuando `message.hitlRespondido` ya está presente: `<HitlCard>` debe
    * deshabilitarse (sin `onClick` activo, opacidad reducida vía `disabled` nativo del `<button>`). */
   disabled: boolean;
+  /** BL-F1 — la card ya resuelta se muestra como `Recibo`: título = lo que el usuario eligió, tono
+   * `exito` si fue una confirmación. `undefined` mientras la card está activa. */
+  resuelta?: { titulo: string; tono: 'exito' | 'neutro' };
 }
 
 /**
@@ -92,26 +97,31 @@ export function buildHitlCardProps(
   const service = (message.card?.service ?? '').toLowerCase();
   // Sin `card` (reply legacy o un par confirmar/cancelar sin servicio): tarjeta neutra, NUNCA "AGENDA".
   const label = message.card?.label || 'Confirmación';
-  const risk = SERVICE_RISK[service] ?? {};
+  // Riesgo y monto (ya formateado, H-A4-12: el backend manda el monto crudo) salen de core.
+  const gate = mapearGate(message);
+  const risk = riesgoDeGate(gate);
   const boldMatch = message.text.match(BOLD_NAME_RE);
-  // El backend manda el monto CRUDO en el texto (`f"...por ${amount}..."`, sin separador de miles —
-  // ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar `$` (el
-  // consumidor `<HitlCard>` ya pone su propio signo). H-A4-12.
-  const amountMatch = risk.showAmount ? message.text.match(AMOUNT_RE) : null;
-  const amountRaw = amountMatch?.[1];
   const disabled = Boolean(message.hitlRespondido);
 
   return {
     service,
     label,
     name: boldMatch?.[1],
-    amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
+    amount: gate?.amount,
     concept: message.text,
     badge: risk.badge,
     dangerBorder: risk.dangerBorder,
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
     disabled,
+    // Éxito = la elección guardada ES la opción de confirmar que muestran los botones (igualdad, no
+    // regex: un value de cancelación que contenga «confirm» no puede presentarse como confirmado).
+    resuelta: message.hitlRespondido
+      ? {
+          titulo: message.hitlRespondido.label,
+          tono: message.hitlRespondido.value === confirmChoice.value ? 'exito' : 'neutro',
+        }
+      : undefined,
     onConfirm: disabled ? () => {} : () => onChoice(confirmChoice.value, confirmChoice.label, message.id),
     onCancel: disabled ? () => {} : () => onChoice(cancelChoice.value, cancelChoice.label, message.id),
   };

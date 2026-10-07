@@ -20,6 +20,7 @@ import { api } from '../lib/api';
 import { setToken } from './session';
 import { SessionProvider } from './SessionProvider';
 import { useSession } from './useSession';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 /**
  * BL-X12w — `cierreVoluntario`, gemelo del de mobile (`modules/auth/SessionProvider.tsx`).
@@ -53,6 +54,7 @@ describe('SessionProvider — cierreVoluntario (BL-X12w)', () => {
       mp_connected: false,
       composio_connected: [],
       es_admin: false,
+      legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION,
     });
     render(
       <SessionProvider>

@@ -73,3 +73,114 @@ probá que tu reproducción reproduce.
 herramienta real. Instalarla en el runner parece más fiel pero acopla una prueba de lógica bash a un
 gestor de paquetes Python que no participa; y dejar ganar a la de la máquina mantiene el defecto de
 fondo, que no es el rojo: es que **el test medía cosas distintas en cada máquina**.
+
+---
+
+## Refuerzo 2026-10-05 · el stub COMODÍN: contesta lo mismo a toda invocación, y el fallo aparece del lado del script
+
+`scripts/tests/test-ci-verde-gh-presente.sh` fabrica un `gh` falso que imprime **el mismo** array de 6
+jobs ante *cualquier* subcomando. Mientras `ci-verde.sh` preguntaba una sola cosa (el rollup), alcanzaba.
+`plan/ci-verde-mide-mergeable` le agregó una pregunta —`gh pr view --json mergeable,mergeStateStatus`—
+y el comodín le devolvió el array de jobs: el script no pudo leer `mergeable`, repreguntó, siguió sin
+poder y salió `exit 2` fail-closed. El CI quedó rojo **con el script correcto**.
+
+**Dos cosas que esto agrega a la entrada:**
+
+1. **Un doble que no despacha por entrada es un comodín, y el comodín envejece sin avisar.** No falla
+   cuando se escribe: falla cuando el sujeto aprende a preguntar algo nuevo, y entonces acusa al
+   sujeto. La pregunta de diseño es *¿este stub distingue las invocaciones que el script hace, o
+   contesta una sola cosa?* — si contesta una sola, es una bomba de tiempo apuntada al próximo cambio.
+2. **El camino nuevo puede ser INALCANZABLE para el fixture, y entonces sólo lo prueba la realidad.**
+   El `exit 4` de ese PR (CI verde + PR `CONFLICTING`) no se puede ejercitar con el stub, porque el
+   stub no sabe fabricar un conflicto de merge. Se verificó corriendo el script contra un PR realmente
+   conflictivo (#776: 6/6 `pass`, `CONFLICTING`) → `exit 4` con el mensaje correcto. Un caso cuyo
+   control positivo vive **fuera** del CI depende de que alguien lo corra a mano, y eso no sobrevive a
+   una semana: hay que darle al fixture la capacidad de fabricarlo, o el caso queda sin gate.
+
+**Cómo se usó acá, que es lo transferible:** el rojo se podía reportar en un minuto como «tu PR rompe
+el caso verde». Medir **a quién** acusar costó dos comandos —leer el stub, y correr el script real
+contra tres PR con esperados distintos— y cambió el destinatario del trabajo. Ver
+[[un-control-positivo-con-esperado-falso-acusa-al-script]], que es el mismo error con el esperado en vez
+del doble.
+
+**REFUERZO 2026-10-05 — 14 casos verdes que eran estructuralmente incapaces de ver el bug.** El gate
+`ci-verde.sh` tenía 3 archivos de test y 14 casos sobre el veredicto. Ninguno podía cazar que el
+rollup trae cada job duplicado por run, porque **el `stub_gh` recibe el rollup *ya filtrado*** — así
+se llama su propio parámetro — y lo devuelve tal cual. Los tests entraban **por debajo del `jq`** del
+script, y el defecto vivía **en** el `jq`.
+
+El stub emulaba la *salida* de la transformación en vez de su *entrada*, y así la transformación
+nunca se ejercitó. Es la misma clase que el composition root, en miniatura: lo que el test salta es
+exactamente lo que nadie prueba.
+
+**El arreglo mantiene el stub viejo y no toca los 14 casos:** la expresión pasó a una variable
+(`ROLLUP_JQ=`) y el test nuevo hace `eval` de esa línea del script, así que ejercita **la misma
+expresión que corre en producción**, no una imitación. Fail-closed: si la variable desaparece o queda
+vacía, el test se pone rojo en vez de pasar en silencio.
+
+**Y el caso decisivo no es el que arregla el bug — es el que descarta el fail-open:** `FAILURE` nuevo
+sobre `SUCCESS` viejo tiene que dar **FAILURE**. Sin él, un dedupe que tomara «cualquiera de los dos»
+pasaría igual, porque en la corrida real los dos duplicados eran `SUCCESS`: la medición que motivó el
+fix no distinguía «tomé el más reciente» de «tomé uno».
+
+## Refuerzo 2026-10-06 — el DEFAULT del harness elige la rama, y eligio la que produccion no usa
+
+`/me` se define **dos veces** en `web.py`, en dos ramas del composition root: `if require_claims is not
+None:` y su `else`. Las dos arman el payload del tenant.
+
+`serve.py:303` inyecta `require_claims` ⇒ **produccion corre la primera**. El harness de los tests
+(`_build_app` en `test_web_app.py:251`) declara `require_claims=None` **por default** ⇒ los **6** tests
+BL-O6 que cubrian `legal_aceptado` corrian **todos** por el `else`: la rama que en prod **no se
+ejecuta**. Nadie lo oculto; es el valor por defecto de un parametro.
+
+Por que no da sintoma: los 6 tests son correctos, pasan, y nombran bien lo que prueban. El campo existe
+en las dos ramas, asi que la cobertura **se ve** completa. Lo que no se ve es que la mitad que corre en
+prod no tenia ningun test propio -- y cuando agregue el campo nuevo, probarlo solo ahi lo habria dejado
+verde mientras el camino real seguia sin medirse.
+
+**La pregunta, y es distinta de «el test usa el camino de produccion?»:** *cuando una funcion se define
+mas de una vez segun una dependencia inyectada, **que valor de esa dependencia usa el default de mi
+harness, y es el mismo que usa el composition root de prod?*** Si difiere, parametrizá por las dos ramas:
+acá eso convirtió 3 casos en 6 y costó una línea de `parametrize`.
+
+---
+
+**Refuerzo (2026-10-06): los 13 tests ejercitaban la rama que producción nunca toma — porque el argumento que
+pasan se SOBREESCRIBE en el camino real.** El PR #850 unificó la semántica de «MP conectado»: un solo
+predicado `_mp_connected()` (`web.py:650`) para `/me` y `/catalog`. Pero la capa pura
+`build_catalog` (`catalog.py:158-159`) hace:
+
+```python
+if mp_status is not None:
+    mp_connected = mp_status == "conectado"      # descarta lo que el caller calculo
+```
+
+y el único call-site de producción le pasa **los dos** (`mp_connected=_mp_connected(mp_status)` **y**
+`mp_status=mp_status`), con `mp_status` **nunca** `None` ⇒ **la línea 159 dispara siempre** y el predicado
+unificado **no decide nada** en `/catalog`. Ejecutado —la capa es pura, corre en la PC— con el par
+contradictorio que ningún test hace: `mp_connected=False, mp_status="conectado"` → **`connected=True`**.
+
+**Y el conteo es la lección:** `build_catalog` tiene **13 llamadas en tests + 1 en producción**. Las 13 pasan
+`mp_connected` **sin** `mp_status` ⇒ en todas ellas la línea 159 **no dispara**. En producción **siempre**
+dispara. **Los 13 tests "prueban" que `mp_connected` controla el campo por el único camino en que ese
+argumento todavía manda.** Es la forma más engañosa de
+[[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]: no falta el camino de prod —el test
+adversarial por HTTP existe y es bueno—, sino que **la firma permite dos modos y los tests viven en el que
+prod no usa**, así que el verde es abundante y ciego a la vez.
+
+**Lo que lo vuelve invisible es que los dos predicados son el MISMO TEXTO.** El defecto original —dos
+criterios— se encontró **porque se veían distintos** (`salud()` vs `first_seller_user_id()`). Ahora ambos son
+`== "conectado"`, así que nada los delata hasta que uno cambie, y el test que compara `/me` contra `/catalog`
+sale verde por **dos causas suficientes**: que compartan la fuente, o que coincidan por casualidad
+([[dos-causas-suficientes-el-test-no-atribuye]]). Un fix que **duplica el texto** en vez de unificar la
+decisión compra la coincidencia de hoy y pierde la propiedad que lo motivaba.
+
+**How to apply:** (1) cuando una función recibe **el valor derivado y la fuente de la que se deriva**
+(`mp_connected` **y** `mp_status`), eso es una señal: preguntá **cuál gana** y leé el cuerpo, no la firma;
+(2) para un parámetro que puede ser ignorado, el control que atribuye es el **par contradictorio** —pasar
+valor y fuente en desacuerdo y ver qué sale—, y suele traer **control rojo gratis** contra el código actual;
+(3) al contar cobertura de una función, separá las llamadas **por combinación de argumentos presentes**, no por
+cantidad: 13 llamadas en un modo son **un** caso, y el eje no movido es «¿pasé los dos juntos?»
+([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) un fix que unifica una
+semántica no está hecho hasta que **grepeás el predicado duplicado en las otras capas** — «mismo valor hoy» es
+la frase que precede a la divergencia ([[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]).

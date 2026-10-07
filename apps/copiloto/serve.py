@@ -152,6 +152,7 @@ async def _serve() -> None:
         cred_store_factory=lambda cid: MpCredentialStore(conn_factory, cid, crypto),
         payment_store_factory=lambda cid: MpPaymentStore(conn_factory, cid),
         start_refresh=make_start_refresh(client),
+        cobro_store_factory=lambda cid: CobroStore(conn_factory, cid),
     )
     # AFIP (Ajustes): perfil fiscal + alta ARCA. El alta arranca el workflow durable y el estado se lee
     # por query — la pantalla muestra progreso real durante los minutos que tarda el RPA de AfipSDK.

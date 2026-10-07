@@ -478,10 +478,17 @@ def make_signal_anulacion(temporal_client) -> Callable:
 
 
 def _composio_valid_toolkits() -> frozenset[str]:
-    """Toolkits Composio soportados por ESTE Copiloto, DERIVADOS de la policy real (misma unión que
-    `worker_b.py` arma para el `ComposioGateway`: `{**CALENDAR_POLICY, **services.merged_policy()}`)
-    — no una lista literal aparte que pueda driftear. Sumar un servicio nuevo en `services/*.py`
-    (discovery por archivo, ver `services/__init__.py`) lo agrega acá sin tocar este módulo."""
+    """Toolkits Composio que el usuario puede CONECTAR, DERIVADOS de la policy real: `CALENDAR_POLICY` más los
+    módulos de `services/` con acciones (`services.connectable_policy()`). Sin lista literal que pueda driftear.
+    Un servicio sin `TOOLS` (Drive, tras la poda del hito 2) no aparece ni acepta `/composio/connect`.
+    El worker sigue usando `services.merged_policy()` completo para no romper el archivado de facturas."""
+    return frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
+
+
+def _composio_known_toolkits() -> frozenset[str]:
+    """Toolkits que el sistema CONOCE, conectables o no: la unión completa de policies. Sólo para REVOCAR.
+    Un tenant puede tener hoy una conexión de un servicio que ya no se ofrece (Drive, poda A7); tiene que
+    poder desconectarla, o quedaría atada a una conexión que no puede soltar."""
     return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 
@@ -629,6 +636,64 @@ class SignupIn(BaseModel):
 
 
 _EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def _estado_mp(conn_factory: Callable, cliente_id: str, crypto) -> str:
+    """Estado de la conexión MP de ESTE tenant: `salud()` (K-09), la ÚNICA fuente de `/me` y `/catalog`.
+    Por qué no `first_seller_user_id()`: responde «hay fila», y una fila con la credencial caída
+    (`reauth_desde` o vencida) le decía al emprendedor que podía cobrar cuando tenía que reconectar."""
+    return MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+
+
+def _mp_connected(estado: str) -> bool:
+    """El ÚNICO predicado de «puede cobrar»: `conectado` y nada más. Lo usan `/me` y `/catalog`."""
+    return estado == "conectado"
+
+
+def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, crypto) -> dict:
+    """Los campos de `/me` que NO dependen de los claims del token: salen iguales en las DOS ramas
+    del composition root, asi que viven en un solo lugar.
+
+    Por que existe este helper y por que NO incluye todo: los 6 campos restantes de `/me` se partian
+    en dos grupos que el conteo de apariciones NO distingue -- los dos aparecian «2 veces», uno por
+    rama. Medido expresion por expresion: `mp_connected`, `composio_connected` y
+    `onboarding_completado` eran IDENTICOS (duplicacion real), mientras `es_admin`, `cuenta_google` y
+    `email` DIFIEREN a proposito segun haya token o no. Colapsar esos tres habria borrado el
+    fail-closed documentado abajo, con un refactor que se ve impecable y deja los tests verdes.
+
+    `composio_gateway` y `crypto` entran por parametro y no por import: son las dependencias que el
+    composition root inyecta, y este helper no elige implementacion.
+    """
+    estado_mp = _estado_mp(conn_factory, cliente_id, crypto)
+    composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                          if (c["status"] or "").upper() == "ACTIVE"]
+    return {"mp_connected": _mp_connected(estado_mp),
+            "composio_connected": composio_connected,
+            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+
+
+def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:
+    """Los DOS campos legales de `/me`, derivados de UNA sola lectura de la DB.
+
+    Por que un helper y no la expresion repetida en cada rama: el payload de `/me` se construye en DOS
+    composition roots (con y sin `require_claims`), y con dos campos serian CUATRO expresiones a
+    mantener en sincronia -- el molde exacto de `memoria/el-fix-ya-existe-en-otro-call-site.md`, donde
+    el fix llega a una copia y la otra sigue mintiendo segun por que composicion entro el cliente.
+    Ademas `version_aceptada()` pega a la DB: derivando el booleano de la MISMA lectura, agregar el
+    campo no agrega una segunda query por request.
+
+    `legal_aceptado` NO cambia de semantica: sigue siendo <<acepto la version VIGENTE>>, no <<acepto
+    algo>>. `legal_version_aceptada` es ADITIVO -- es el dato que el backend ya tenia
+    (`tenant_legal_store.py:28`) y colapsaba antes de salir: `None` si nunca acepto, y la version REAL
+    si acepto una distinta de la vigente, que es el unico caso que el booleano solo no distingue de
+    <<nunca acepto>>.
+
+    Para que sirve: tanto re-pedir la aceptacion (v1) como mostrarla en Mi cuenta (v2) necesitan ESTE
+    dato; exponerlo no elige entre las dos. La eleccion es del operador y este helper no la toma.
+    """
+    version = TenantLegalStore(conn_factory, cliente_id).version_aceptada()
+    return {"legal_aceptado": version == LEGAL_VERSION_VIGENTE,
+            "legal_version_aceptada": version}
 
 
 def _es_cuenta_google(claims: dict) -> bool:
@@ -1056,30 +1121,22 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # `email` sale del claim del MISMO token ya validado por require_tenant -- no una
             # segunda fuente que pueda divergir. `None` si el token no lo trae (login por
             # teléfono/anónimo, o un proveedor que no lo expone): ausente, no inventado.
-            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
-                                  if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
-                    "mp_connected": seller is not None, "composio_connected": composio_connected,
                     "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
-                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
-                                       == LEGAL_VERSION_VIGENTE}
+                    **_campos_tenant(conn_factory, cliente_id, composio_gateway, crypto),
+                    **_campos_legales(conn_factory, cliente_id)}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
-            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
-                                  if (c["status"] or "").upper() == "ACTIVE"]
             # Sin `require_claims` no hay token que leer: `es_admin=False` es fail-closed y
             # deliberado, no un bug -- sin claims no se puede AFIRMAR que sea admin, y esconder la
             # puerta de la consola nunca es un agujero de seguridad (el guard real es
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
-            return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
-                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
-                                       == LEGAL_VERSION_VIGENTE}
+            # NO mover estos dos al helper `_campos_tenant`: difieren de la otra rama A PROPÓSITO, y
+            # el test `test_ASIMETRIA_es_admin...` existe para que ese colapso salga rojo.
+            return {"cliente_id": cliente_id, "es_admin": False, "cuenta_google": False,
+                    **_campos_tenant(conn_factory, cliente_id, composio_gateway, crypto),
+                    **_campos_legales(conn_factory, cliente_id)}
 
     @app.post("/me/onboarding/completar")
     def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1138,15 +1195,16 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
         SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
         literal que pueda driftear de `/composio/connect`."""
-        mp_status = MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+        mp_status = _estado_mp(conn_factory, cliente_id, crypto)
         conexiones = composio_gateway.list_connections(cliente_id)
         composio_connected = [c["toolkit"] for c in conexiones
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
-                                          mp_connected=mp_status == "conectado",
+                                          mp_connected=_mp_connected(mp_status),
                                           composio_connected=composio_connected,
                                           mp_status=mp_status,
-                                          composio_caidos=composio_caidos(conexiones))}
+                                          composio_caidos=composio_caidos(conexiones),
+                                          acciones_por_toolkit=services.acciones_por_toolkit())}
 
     @app.get("/capacidades")
     def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1210,7 +1268,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
 
         404 cuando el tenant no tiene ese toolkit: sin eso, "desconectar" algo que nunca estuvo
         conectado respondería `desconectado: true` sobre un no-op silencioso."""
-        if service not in _composio_valid_toolkits():
+        if service not in _composio_known_toolkits():
             raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
         mias = [c for c in composio_gateway.list_connections(cliente_id)
                 if (c["toolkit"] or "").lower() == service.lower()]

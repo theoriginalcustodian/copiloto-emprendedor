@@ -35,6 +35,7 @@ import { adminSalud, adminUso } from '../lib/api/admin';
 import { AppShell } from './AppShell';
 import { DesktopShell } from './DesktopShell';
 import { ModeProvider } from './modeStore';
+import { LEGAL_VERSION } from '@copiloto/core';
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -53,7 +54,7 @@ const ME_BASE = { cliente_id: 'cliente-123', mp_connected: false, composio_conne
 
 function darSesion(esAdmin: boolean) {
   setToken('tok-valido');
-  vi.mocked(api.me).mockResolvedValue({ ...ME_BASE, es_admin: esAdmin });
+  vi.mocked(api.me).mockResolvedValue({ ...ME_BASE, es_admin: esAdmin, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION });
 }
 
 function renderShell(cual: 'mobile' | 'desktop') {

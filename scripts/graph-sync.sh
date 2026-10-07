@@ -144,6 +144,29 @@ if [ -z "$BRIDGE_PATH" ]; then
   MOTIVO="repo-ausente-en-repos-toml"
   echo "[graph-sync] ❌ no encuentro el repo '$REPO_NAME' en '$BRIDGE/config/repos.toml'." >&2
   echo "[graph-sync]    Sin esa entrada el bridge no sabe qué ingerir. Abortando antes de sincronizar." >&2
+  # 2026-10-05: este rechazo es PERMANENTE, no transitorio — reintentar no lo arregla, y el de al
+  # lado (`drift-de-config`) ya daba su fix exacto mientras el más severo sólo decía «abortando».
+  # Un guard que bloquea TODO push sin decir cómo salir empuja al `--no-verify`, que en un repo
+  # PÚBLICO con gitleaks es justo lo que no podemos permitirnos.
+  #
+  # Y la causa medida ese día NO fue config perdida: el `repos.toml` versionado del bridge tiene las
+  # 7 entradas: lo que pasó es que su working tree estaba en OTRA RAMA (`backend/checkpoint-identity-fix`,
+  # 12 commits detrás de master, anterior al commit que agregó este repo). Por eso el mensaje pregunta
+  # por la rama antes que por el contenido: diagnosticar «se perdió la entrada» lleva a reescribir el
+  # archivo a mano, y eso PISA lo versionado — el bloque del copiloto trae un `min_support = 3`
+  # calibrado y confirmado el 2026-09-30 (786 aristas) que una reescritura de memoria baja a 2 sin
+  # que nadie lo note. El fix es un checkout, no un append.
+  RAMA_BRIDGE="$(git -C "$BRIDGE" branch --show-current 2>/dev/null || echo desconocida)"
+  echo "[graph-sync]" >&2
+  echo "[graph-sync]    ⚠️  NO se arregla reintentando ni esperando." >&2
+  echo "[graph-sync]    El bridge está en la rama: '$RAMA_BRIDGE'" >&2
+  echo "[graph-sync]    PRIMERO mirá si la entrada existe VERSIONADA en otra rama de ese repo:" >&2
+  echo "[graph-sync]      git -C \"$BRIDGE\" show master:config/repos.toml | grep -c '^\[\[repo\]\]'" >&2
+  echo "[graph-sync]    Si ahí está, el fix es devolver el bridge a master (su dueño es quien lo" >&2
+  echo "[graph-sync]    dejó en esa rama) — NO reescribas repos.toml a mano: pisarías valores" >&2
+  echo "[graph-sync]    calibrados (min_support, source_dirs, workdir) que no se deducen." >&2
+  echo "[graph-sync]    Y NO uses 'git push --no-verify': el mismo hook corre gitleaks y el repo" >&2
+  echo "[graph-sync]    es público." >&2
   exit 1
 fi
 if [ "$(norm_path "$BRIDGE_PATH")" != "$(norm_path "$WT")" ]; then
@@ -333,6 +356,16 @@ fi
 # ReconcileError (umbral de borrado superado).
 _ERROR_GREP='GraphityError|Traceback \(most recent call last\)|^abortado:|reconcile abortado:'
 
+# LOGEFIMERO (2026-10-05): el detalle por-chunk de pipeline.py (`partición … chunk N ingerida`)
+# vivía SOLO en $OUT, que cleanup_exit borra en el trap EXIT — 6 corridas motivo=ok y cero
+# evidencia de que el chunking corrió. Se persiste ACÁ, en ESTE repo (no en graphify-graphity-
+# bridge/.bridge/, que es BRIDGEPUSH en vuelo), gitignored (.bridge/) porque trae paths/tenant
+# y el repo es público. Archivo NUEVO y aparte de $BITACORA: esa es por-corrida (pid/rc/motivo,
+# otro lector, otro idioma); este es por-chunk (memoria/el-registro-vivia-en-tres-idiomas...md).
+DETAIL_LOG="$REPO/.bridge/graph-sync-detalle.log"
+mkdir -p "$(dirname "$DETAIL_LOG")"
+DETAIL_LOG_MAX_BYTES="${UC_GRAPH_DETAIL_LOG_MAX_BYTES:-5242880}"
+
 OUT="$(mktemp)"
 
 (
@@ -348,6 +381,19 @@ OUT="$(mktemp)"
   fi
 ) 2>&1 | tee "$OUT"
 sync_status="${PIPESTATUS[0]}"
+
+# Se persiste SIEMPRE (éxito o fallo, con o sin chunks) — una corrida sin particiones también
+# tiene que dejar rastro, para distinguir "no hubo chunks" de "no se midió". No se toca el pipe
+# de arriba: esto lee $OUT ya cerrado, después de capturar $sync_status, cero riesgo sobre
+# PIPESTATUS (memoria/el-pipe-se-come-el-exit-code.md).
+if [ -f "$DETAIL_LOG" ] && [ "$(stat -c %s "$DETAIL_LOG" 2>/dev/null || echo 0)" -gt "$DETAIL_LOG_MAX_BYTES" ]; then
+  tail -n 2000 "$DETAIL_LOG" > "${DETAIL_LOG}.rot" && mv "${DETAIL_LOG}.rot" "$DETAIL_LOG"
+fi
+{
+  printf '=== %s repo=%s since=%s sha=%s status=%s ===\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$REPO_NAME" "${SINCE:-<full>}" "${SHA:0:12}" "$sync_status"
+  cat "$OUT"
+} >> "$DETAIL_LOG"
 
 if [ "$sync_status" -ne 0 ]; then
   echo "[graph-sync] ❌ el sync salió con status ${sync_status}." >&2

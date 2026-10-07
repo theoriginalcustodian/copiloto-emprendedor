@@ -1,0 +1,10 @@
+{
+  "_leeme": "Excepciones de serviceRisk.contrato.paridad.test.ts (RIESGOPROMESAWEB). La clave es el `service` tal cual aparece en SERVICE_RISK (hitl.ts). Una entrada acá declara que ESE servicio queda en SERVICE_RISK aunque no tenga tool viva hoy -- no es drift invisible, es deuda visible con dueño. TRINQUETE: si algún día se agrega una tool real para ese servicio, la excepción sobra y hay que sacarla (el test de paridad lo re-agrega al universo real y la excepción queda redundante, no incorrecta -- un chequeo manual al tocar ese servicio alcanza).",
+  "excepciones": {
+    "instagram": {
+      "fecha": "2026-10-07",
+      "motivo": "Mensaje histórico real: `card.service==='instagram'` existió en producción antes de que se podara la tool (fila IGHUBSPOTFANTASMA). SERVICE_RISK la mantiene para que un historial rehidratado siga mostrando la advertencia IRREVERSIBLE que ya era cierta en ese momento -- borrarla de SERVICE_RISK sin borrar los mensajes viejos pintaría una card neutra sobre una acción que de hecho fue irreversible. No implica que haya tool viva: `service_risk_contrato.py` confirma que no la hay.",
+      "dueno": "planificación (fila IGHUBSPOTFANTASMA)"
+    }
+  }
+}

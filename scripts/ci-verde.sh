@@ -21,7 +21,19 @@
 #   bash scripts/ci-verde.sh 311 "core lint"          # sólo dos, para un PR docs-only
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
-# SALIDA: exit 0 = verde (mergeable) · exit 1 = ROJO medido (falta alguno o alguno falló) ·
+# SALIDA: exit 0 = verde Y mergeable · exit 1 = ROJO medido (falta alguno o alguno falló) ·
+#         exit 4 = el CI está VERDE pero el PR tiene CONFLICTOS (desde 2026-09-30: antes
+#         esto salía por exit 0 con el texto «se puede mergear», que era falso — medido
+#         por auditoría con dos PR el mismo minuto, #765 MERGEABLE y #760 CONFLICTING,
+#         misma frase en los dos) ·
+#         exit 5 = el CI está VERDE y el PR NO tiene conflictos, pero el REMOTO todavía no lo
+#         deja mergear: BLOCKED (falta revisión o check requerido), BEHIND (la rama quedó atrás),
+#         DIRTY o DRAFT. Antes esto salía por exit 0 con «se puede mergear» — el comodín
+#         `MERGEABLE/*` ignoraba el `mergeStateStatus` entero (medido por auditoría el 2026-10-06
+#         con `gh` stubeado, 4 controles positivos). Hoy no era alcanzable; lo vuelve alcanzable
+#         activar la protección de `main`, porque BLOCKED es justo lo que GitHub devuelve cuando un
+#         ruleset exige PR. Ése es el cruce: cerrar el hueco de gobernanza sin tocar este `case`
+#         convertía un guard AUSENTE en un FALSO VERDE ·
 #         exit 2 = NO SE PUDO MEDIR (mismo molde que `command -v uv` en graph-sync.sh: sin
 #         esta guarda, `gh` ausente da un error de "comando no encontrado" indistinguible de
 #         un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE real).
@@ -46,6 +58,23 @@ set -uo pipefail
 
 command -v gh >/dev/null 2>&1 || { echo "ROJO — no pude medir: gh no está en el PATH"; exit 2; }
 
+# Devuelve «<mergeable>/<mergeStateStatus>» del PR. Repregunta UNA vez si vuelve UNKNOWN: GitHub
+# calcula el merge commit de forma asíncrona y la primera consulta sobre un PR recién abierto (o
+# recién actualizado) suele contestar UNKNOWN sin que haya nada malo. Una sola repregunta, sin
+# sleep ni loop: si a la segunda tampoco informa, el veredicto es «no pude medir» y no un rojo.
+estado_de_merge() {
+  local pr="$1" r
+  r="$(gh pr view "$pr" --json mergeable,mergeStateStatus \
+        --jq '(.mergeable // "UNKNOWN")+"/"+(.mergeStateStatus // "UNKNOWN")' 2>/dev/null)"
+  case "$r" in
+    UNKNOWN/*|"")
+      r="$(gh pr view "$pr" --json mergeable,mergeStateStatus \
+            --jq '(.mergeable // "UNKNOWN")+"/"+(.mergeStateStatus // "UNKNOWN")' 2>/dev/null)"
+      ;;
+  esac
+  printf '%s' "${r:-UNKNOWN/UNKNOWN}"
+}
+
 # Falta de argumento es "no pude medir" (exit 2), NO "el PR esta rojo" (exit 1). El `${1:?}`
 # que habia aca salia por 1 y era indistinguible de un CI fallado -- el MISMO defecto que el
 # guard de `gh` de arriba vino a cerrar, vivo dos lineas mas abajo.
@@ -56,6 +85,18 @@ if [ "$#" -lt 1 ]; then
 fi
 PR="$1"
 ESPERADOS="${2:-backend core web mobile lint drift}"
+# 🔴 DENOMINADOR VACÍO = NO PUDE MEDIR, no «todo presente». `${2:-default}` sólo cubre $2 AUSENTE:
+# un `$2` presente-pero-en-blanco (`ci-verde.sh 123 " "`) pasa el default de largo y deja la lista
+# vacía, y entonces el bucle de abajo no itera **ni una vez** y el script llega al veredicto con
+# «0 esperados» ⇒ VERDE. Medido por auditoría el 2026-10-06: `ESPERADOS=' '` daba rc=0 con «6/0
+# jobs». Hoy no es alcanzable (el único call-site real, `mergear-pr.sh:46`, no pasa $2), y se tapa
+# igual porque es la TERCERA aparición del mismo defecto en un día — `SMOKEDENOM` en el smoke de la
+# beta y el bucle de tests de `scripts/ci/lint.sh` son las otras dos. Un instrumento que no mira
+# nunca falla, y el que mira contra un denominador de cero tampoco.
+if [ -z "$(echo "$ESPERADOS" | tr -d '[:space:]')" ]; then
+  echo "ROJO — no pude medir: la lista de jobs esperados está vacía. Sin esperados, 'todos presentes' es vacuo."
+  exit 2
+fi
 
 # exit 2, NO 1: esto es «no pude MEDIR», y el docstring (:24-27) ya le reservaba el 2 a eso. Con
 # `exit 1` un número de PR equivocado era INDISTINGUIBLE de un CI en rojo — medido por auditoría:
@@ -76,7 +117,41 @@ ESPERADOS="${2:-backend core web mobile lint drift}"
 #     argumenta como fail-LOUD) y está fijado por un test
 #     (`scripts/tests/test-deuda-disparador-cumplido.sh:209` afirma exit 1 para ese mensaje), así
 #     que cambiarlo es un cambio de contrato, no un fix. Queda como fila con dueño, no se toca acá.
-json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{name,conclusion,status}]') || {
+# ── El rollup trae cada job UNA VEZ POR RUN, y el gate leia los duplicados como un valor ──────
+#
+# 🔴 MEDIDO el 2026-10-05 sobre el PR #778 con dos pushes: `statusCheckRollup` devolvia **12**
+# entradas para **6** jobs (backend x2, core x2, ... cada una con su `startedAt`), porque el rollup
+# trae un check-run por RUN mientras hay mas de un run del HEAD en vuelo.
+# 🔻 CORRECCION 2026-10-06 (auditoria, 3a pasada): la OBSERVACION es real y se reprodujo (12
+# entradas para 6 jobs, 05/10), pero esta causa —«acumula los de TODOS los runs, no los del
+# ultimo»— NO se reproduce: el duplicado es TRANSITORIO, no acumulado para siempre. El rollup
+# viene anclado al HEAD (medido: el `head_sha` de cada run citado == `headRefOid` en 4 PRs, uno con
+# 9 commits). El `group_by/max_by` de abajo SIGUE SIENDO NECESARIO; lo que envejecio es la
+# explicacion, y quien la lea para decidir si el filtro hace falta puede concluir que no. Con duplicados,
+# `jq '.[]|select(.name==$n)|.conclusion'` imprime DOS lineas y la comparacion `[ "$c" = "SUCCESS" ]`
+# recibe `"SUCCESS\nSUCCESS"` -> falso. Resultado: `❌ backend: SUCCESS` (condena un job que paso) y
+# el control `12 presentes / 6 esperados` cerraba en ROJO.
+#
+# Lo peligroso no es el rojo, es lo que ENSEÑA: un gate que se pone rojo en el caso NORMAL —dos
+# pushes a un PR es lo normal— es un gate que se saltea con `--admin`
+# ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). Y fallaba hacia el NO, que parece
+# prudencia ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
+#
+# 🔴 Y EL FIX YA EXISTIA 30 LINEAS MAS ABAJO: la rama de `/check-runs` (el fallback) ya desempata el
+# mismo nombre repetido tomando el `started_at` maximo, con su comentario explicando por que. El
+# defecto vivia en el otro call-site, que nadie habia tocado
+# ([[el-fix-ya-existe-en-otro-call-site]] · [[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).
+# `max_by` sobre ISO-8601 ordena cronologicamente; una entrada sin `startedAt` (un StatusContext, no
+# un CheckRun) cae a "" y pierde contra cualquiera fechada, y si esta sola se queda igual.
+#
+# ⚠️ ESTA EN UNA VARIABLE A PROPOSITO, no inline: los stubs de los tests de este gate reciben el
+# rollup **ya filtrado** y por eso entran POR DEBAJO de este `jq` — 14 casos verdes que no podian
+# ver este bug ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]). Con la
+# expresion en una variable, un test puede `eval` esta linea y ejercitar LA MISMA expresion que
+# produccion: `scripts/tests/test-ci-verde-rollup-duplicado.sh`.
+ROLLUP_JQ='[.statusCheckRollup[]|{name,conclusion,status,startedAt}] | group_by(.name) | map(max_by(.startedAt // ""))'
+
+json=$(gh pr view "$PR" --json statusCheckRollup --jq "$ROLLUP_JQ") || {
   echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
 
 # ── FALLBACK: el rollup VACÍO no es el único lugar donde viven los check-runs ──────────────────
@@ -174,8 +249,99 @@ fuente="rollup del PR"
 echo "--- CONTROL: $presentes jobs presentes en el $fuente, $esperados_n esperados ---"
 
 if [ "$falta" -eq 0 ]; then
-  echo "VERDE — se puede mergear"
-  exit 0
+  # ── EL CI VERDE NO ES «SE PUEDE MERGEAR»: SON DOS PREGUNTAS ──────────────────────────────────
+  #
+  # POR QUÉ (2026-09-30, medido por auditoría con DOS PR el mismo minuto). Este script decía
+  # «VERDE — se puede mergear» mirando SÓLO los jobs del CI, y esa frase salió idéntica sobre:
+  #   · PR #765 → `mergeable: MERGEABLE` → se podía mergear de verdad (mergeado 4ca432f8)
+  #   · PR #760 → `mergeable: CONFLICTING` / `DIRTY` → NO se podía: 5 archivos en conflicto
+  # La frase era la misma y sólo una de las dos veces era verdad. El instrumento no medía mal:
+  # contestaba OTRA pregunta con las palabras de ésta. Lo que frenó el merge fue que auditoría
+  # consultó `mergeable` por su cuenta — o sea, el instrumento le había dado luz verde con la
+  # palabra exacta que necesitaba oír. Es fail-open en el TEXTO: benigno mientras GitHub rechace
+  # el merge por su lado, y NO benigno con `--admin`, que es justo lo que alguien prueba cuando
+  # un merge "verde" no entra.
+  #
+  # El veredicto sigue siendo el EXIT CODE, y las causas NO se funden en un solo código: un
+  # CONFLICTING no es «mirá tu código» (exit 1) ni «no pude medir» (exit 2) — es «resolvé el
+  # merge», y merece el suyo. Fundirlos es la forma de que el falso rojo enseñe a saltear el gate.
+  ms="$(estado_de_merge "$PR")"
+  case "$ms" in
+    # ⚠️ ENUMERADO, NO COMODÍN. Hasta hoy esta rama era `MERGEABLE/*)`, y el comodín **ignoraba el
+    # `mergeStateStatus` entero**: medido por auditoría con `gh` stubeado sobre este script (los 4
+    # controles positivos dieron 0/1/4/2 como se esperaba, así que la tabla mide al script y no al
+    # arnés), `MERGEABLE/BLOCKED`, `MERGEABLE/BEHIND` y `MERGEABLE/DIRTY` salían por **exit 0 con
+    # «VERDE — se puede mergear»**.
+    #
+    # 🔴 Y el filo no es que hoy mienta — hoy NO es alcanzable: sin protección de rama, `BLOCKED` y
+    # `BEHIND` no ocurren, y `DRAFT` tampoco (0 drafts sobre 100 PRs leídos, control positivo).
+    # El filo es que **`BLOCKED` es exactamente lo que GitHub devuelve cuando un ruleset exige PR**:
+    # activar la protección de `main` SIN tocar este `case` convierte un guard ausente en un FALSO
+    # VERDE, y peor que antes, porque `mergear-pr.sh:46` **delega** en este gate y no reimplementa
+    # la decisión. El defecto no vivía en ninguna de las dos decisiones: vivía en el CRUCE. Por eso
+    # el enumerado y la protección entran en el MISMO commit.
+    #
+    # Los que SIGUEN pasando son los tres que son mergeables de verdad: `CLEAN`, `HAS_HOOKS` y
+    # `UNSTABLE`. `UNSTABLE` es el caso NORMAL cuando falla un check no requerido, y un guard que
+    # grita en el caso normal se desarma solo — el CI ya se midió arriba, job por job, contra los
+    # esperados: si un job requerido falló, nunca se llega hasta acá.
+    MERGEABLE/CLEAN|MERGEABLE/HAS_HOOKS|MERGEABLE/UNSTABLE)
+      # ⚠️ EL VEREDICTO DECLARA LO QUE MIDIO, y no es cosmetica: hasta hoy esta linea decia
+      # solo «VERDE — se puede mergear», que es **palabra por palabra** la salida del
+      # fail-open que #772 vino a matar (un `echo VERDE; exit 0` que no consultaba
+      # `mergeable`). O sea que el recibo que se pega en un PR era indistinguible entre «medi
+      # el merge y da MERGEABLE» y «no mire». El exit code no los separa: los dos son 0, y el
+      # unico que los separa es el TEXTO — la misma leccion que el `guard NO evaluado` del
+      # freeze nativo. Ahora el recibo trae el valor y el denominador.
+      echo "VERDE — se puede mergear (merge=$ms · $presentes/$esperados_n jobs del $fuente)"
+      exit 0
+      ;;
+    MERGEABLE/BLOCKED|MERGEABLE/BEHIND|MERGEABLE/DIRTY|MERGEABLE/DRAFT)
+      # El CI pasó y el PR no tiene conflictos, pero el REMOTO no lo deja mergear todavía: falta una
+      # revisión o un check requerido (BLOCKED), la rama quedó atrás de `main` con la cola exigiendo
+      # estar al día (BEHIND), el árbol está sucio del lado del remoto (DIRTY) o el PR es DRAFT.
+      #
+      # Exit 5 PROPIO, por la misma razón por la que `CONFLICTING` tiene el 4: las causas no son la
+      # misma decisión. «Mirá tu código» (1), «no hay medición» (2), «resolvé el merge» (4) y
+      # «el remoto no te deja todavía» (5) mandan a lugares distintos. Fundirlos es lo que fabrica
+      # el falso rojo, y el falso rojo es el que enseña a saltear el gate.
+      #
+      # ⚠️ Dice «el CI pasó» y NO la palabra VERDE: el invariante {VERDE, ROJO} es sobre el TEXTO,
+      # no sobre la intención — `grep -cw VERDE` cuenta igual una frase descriptiva. Mismo peaje que
+      # ya pagó la rama de CONFLICTING abajo.
+      echo "ROJO — no mergear: el CI pasó, pero el REMOTO todavía no deja mergear este PR ($ms) — no busques un bug en tu código"
+      exit 5
+      ;;
+    CONFLICTING/*)
+      # Dice ROJO (no un tercer token) para no romper el invariante {VERDE, ROJO} que el test
+      # test-ci-verde-veredicto-monotono.sh fija: toda salida imprime exactamente UNO, y ninguno
+      # es substring del otro. Un consumidor que lea el texto mal sigue fallando CERRADO.
+      #
+      # ⚠️ Y NO ALCANZA CON NO USAR «VERDE» COMO VEREDICTO: tampoco puede aparecer la PALABRA en
+      # una salida roja. La primera versión de esta línea decía «el CI está VERDE pero el PR tiene
+      # CONFLICTOS» — descriptivamente perfecto, y el test la marcó «imprimió LOS DOS veredictos»,
+      # porque `grep -cw VERDE` la cuenta igual. La escribí en la línea siguiente al comentario que
+      # advierte justo eso: el invariante es sobre el TEXTO, no sobre la intención. Por eso acá se
+      # dice «el CI pasó».
+      echo "ROJO — no mergear: el CI pasó, pero el PR tiene CONFLICTOS ($ms) — resolvé el merge, no busques un bug"
+      exit 4
+      ;;
+    MERGEABLE/*)
+      # Un `mergeStateStatus` que este script NO conoce. **No se declara verde.** GitHub puede
+      # agregar estados (es un enum de su API, no nuestro), y el comodín que acabamos de sacar era
+      # exactamente eso: «lo que no reconozco, pasa». Vacío = pregunta, no permiso.
+      echo "ROJO — SIN MEDIR: el CI pasó, pero no reconozco el estado de merge que informa GitHub ($ms) — agregalo al case de ci-verde.sh antes de mergear a mano"
+      exit 2
+      ;;
+    *)
+      # UNKNOWN o vacío. GitHub calcula `mergeable` de forma ASÍNCRONA, así que UNKNOWN es un
+      # estado NORMAL en los primeros segundos de un PR — tratarlo como conflicto sería un guard
+      # que grita en el caso normal, y ésos se desarman solos. `estado_de_merge` ya repreguntó una
+      # vez. Si sigue sin informar, esto es «no pude medir» (exit 2), no un rojo.
+      echo "ROJO — SIN MEDIR: el CI pasó, pero GitHub no informa si el PR es mergeable ($ms) — volvé a correrlo"
+      exit 2
+      ;;
+  esac
 fi
 # 🔴 Dice ROJO y NO "NO VERDE" a proposito, y no es cosmetica: el veredicto positivo era
 # SUBSTRING del negativo, asi que un consumidor que grepeara "VERDE" en la salida (en vez de

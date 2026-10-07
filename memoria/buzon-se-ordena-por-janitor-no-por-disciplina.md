@@ -27,3 +27,24 @@ papeleo consumido va a `cerrado/` (retrievable, no perdido). Detalle: COORDINACI
 **El patrón general:** un estado que hay que acordarse de actualizar se desincroniza y miente. Si el
 mantenimiento de un instrumento de coordinación depende de disciplina humana, tarde o temprano falla
 bajo presión — movelo a un barrido automático del dueño del estado. [[frentes-abiertos-tablero]]
+
+
+## Refuerzo (2026-10-05) — el janitor no estaba roto: viajaba de pasajero en un cron apagado
+
+Medido: `abierto/` tenía **75 archivos**, **55 informativos**, **39 de ellos del 30/09** — cinco días
+en pie. Corrí `archivar-buzon.sh` a mano: **75 → 22** (20 obligaciones + 2 frescos), `rc=0`, 53
+archivados. El janitor funcionaba perfecto. **Nadie lo estaba corriendo:** vive en el paso 4 del cron
+del vigía, y `CronList` daba **cero jobs** porque los crones están apagados por orden del operador.
+
+🔴 **La clase nueva, que esta entrada no cubría:** una tarea de **housekeeping que viaja de pasajera en
+un monitor se apaga junto con él — y el apagón se decide mirando el monitor, así que nadie evalúa al
+pasajero.** Apagar los crones era correcto para lo que se evaluó (vigilancia); el efecto colateral no
+estaba en la decisión.
+
+Y el daño no es cosmético: el hook de reanudar de las cuatro sesiones lista `abierto/`, así que 53
+informativos vencidos son el ruido donde se ahoga una obligación real. Durante días el síntoma se leyó
+como **falta de disciplina para barrer** — que es justo la conclusión que esta entrada advierte, ahora
+por una causa distinta: no es que la disciplina falle, es que el mecanismo no tenía disparador.
+
+**Pregunta portable:** por cada cosa que se apaga, *¿qué más viajaba ahí adentro?* Pariente de
+[[el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el]].

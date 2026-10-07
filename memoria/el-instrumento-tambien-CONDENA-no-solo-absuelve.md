@@ -156,3 +156,75 @@ falso positivo no se ve como bug: se ve como un documento que se contradice cons
 que nombra **varios** ids no es una medición de uno — adjudicar al primero es peor que ignorar, porque
 produce un dato con la forma correcta. Ver [[contar-un-simbolo-no-dice-en-que-rol-aparece]] y
 [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+---
+
+## Refuerzo (2026-10-05): el falso rojo que casi se convierte en **fila para otra sesión**
+
+Corrí `contar-veredictos.py` desde mi worktree y dio `rc=8` con **7 documentos sin clasificar**, donde la
+corrida de la mañana había dado `rc=0`. Estaba por reportarlo como hallazgo —«`main` detecta más»— con dueño
+planificación. No existía: el archivo en el disco de mi worktree era el blob `408c7753` (107 499 B),
+**anterior** a los commits que crecieron el instrumento a 173 KB, porque mi rama estaba **3 commits detrás**
+de `main`. Corrido desde su carpeta, `main` da `rc=0` en `--json` y en texto.
+
+**Dos trampas encadenadas, las dos mudas:**
+1. **Un worktree atrasado corre una versión caducada del instrumento sin avisar.** `python scripts/x.py` no
+   dice «soy de hace 3 commits», y el resultado tiene la forma correcta.
+2. **Un script movido de carpeta resuelve mal sus insumos.** Copiarlo al scratchpad para «comparar versiones»
+   le cambia el repo root (`Path(__file__)`) y aborta por *otra* causa (`rc=2`, universo no encontrado), que
+   se lee como si fuera del dato.
+
+**Cómo aplicarlo:** antes de atribuir una divergencia entre dos versiones de un instrumento, verificá que
+corriste **las dos desde su ubicación real** (`git hash-object <archivo>` contra `git rev-parse <ref>:<archivo>`)
+y hacé la matriz completa de condiciones, no dos puntas. Y antes de convertir una anomalía en fila para otra
+sesión, preguntate *¿qué parte de esto es mi apuntado?* — el falso rojo se siente como diligencia y le cuesta
+tiempo a quien lo recibe.
+
+Emparentado: [[verificar-la-composicion-root-no-el-default]] ·
+[[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] ·
+[[el-instrumento-fabrica-una-referencia-que-no-existe]].
+
+## Refuerzo 2026-10-06 — el grep que mide la FORMA de una aserción condena a todo lo que la logra con otra forma
+
+Dos veces en un turno salí a buscar un hueco de cobertura, y las dos veces el falso rojo lo produjo
+**mi patrón de búsqueda**, no el código. Ninguna de las dos llegó a reportarse, pero las dos estaban a
+un mensaje de distancia.
+
+**Caso 1 — medí la forma de la aserción.** Los seis clientes de `packages/core/src/api/*.ts` mandan
+`idem_key` al backend, y la mitad que suele faltar en un test de wire es la de **ausencia**: que cuando
+no se pasa `idemKey`, la clave **no viaje** (un `idem_key: null` sería idempotencia muerta sin dar
+síntoma). Busqué esa mitad así:
+
+```bash
+grep -E "not\.toHaveProperty\('idem_key'|'idem_key' in " …    # 3 de 6 -> "sin cobertura"
+```
+
+Iba a reportar «`clientes`, `cobros` e `ingresos` no cubren la ausencia». Los tres estaban cubiertos:
+
+```ts
+expect(peticiones[1]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez' });   // clientes.test.ts:291
+expect(peticiones[0].cuerpoJson).toEqual({ monto: '85000' });          // ingresos.test.ts:117
+```
+
+Un `toEqual` del objeto **completo** cubre la ausencia de *toda* clave de una vez, y lo hace **más
+fuerte** que un `not.toHaveProperty` dirigido. Mi patrón no podía verlo porque buscaba una sintaxis, y
+la propiedad que me importaba —*¿este test falla si el wire manda `idem_key` de más?*— no está escrita
+en ninguna sintaxis en particular.
+
+**Caso 2 — ni siquiera había caso.** En la misma pasada marqué `cobros` como gap. Su firma es
+`idemKey: string` (`cobros.ts:67`) y el wire lo pone **siempre** (`:168`): no existe el caso de ausencia
+que yo buscaba. El 0 de mi medición era correcto y mi lectura del 0 era falsa — *vacío = pregunta*,
+no veredicto.
+
+**La pregunta que separa las dos cosas, y va antes de correr el grep:** *¿estoy buscando la PROPIEDAD
+que me importa, o una de las formas de escribirla?* Si lo segundo, el resultado es un techo, no una
+medición: encuentra los que usan mi forma y condena a todos los demás. La forma más fuerte de una
+aserción casi nunca es la más específica, así que **un patrón específico sesga sistemáticamente contra
+el código mejor escrito** — exactamente al revés de lo que busca una auditoría.
+
+**Y la asimetría de costos, que es la razón para frenar antes de mandar el hallazgo:** un falso verde se
+paga cuando el defecto aparece; un falso rojo se paga **ya**, y lo paga otro — alguien escribe un test
+que ya existe, o «arregla» código correcto. Por eso un hallazgo que se desinfla al verificarlo es un
+buen resultado, y ninguno de los dos llegó al buzón. Ver también
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] — ahí el instrumento no
+mira una mitad; acá mira la mitad correcta con una lente que sólo reconoce un dialecto.

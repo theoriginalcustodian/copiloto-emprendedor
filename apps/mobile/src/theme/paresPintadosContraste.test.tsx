@@ -439,6 +439,7 @@ function servicioFixture(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo
     kind: 'composio',
     descripcion: 'Creá y buscá archivos en tu Google Drive.',
     capacidades: ['Crear archivo'],
+    acciones: [],
     conectado: false,
     estado: 'nunca_conectado',
     connectPath: '/composio/connect?service=googledrive',
@@ -1023,7 +1024,7 @@ describe('control negativo -- corrido, no razonado', () => {
     const parMalo = pares.find((p) => p.color === '#242424');
     expect(parMalo).toBeDefined();
     const ratio = contraste(parMalo!.color, parMalo!.bg);
-    // eslint-disable-next-line no-console -- el DoD pide la salida REAL, no una afirmación ciega.
+    // el DoD pide la salida REAL, no una afirmación ciega.
     console.log(`[control negativo] ${parMalo!.color} sobre ${parMalo!.bg} = ${ratio.toFixed(4)}:1`);
     expect(ratio).toBeLessThan(4.5);
     // Y NO está en ningún mapa de excepción -- si alguien lo agregara por accidente, este assert lo dice.

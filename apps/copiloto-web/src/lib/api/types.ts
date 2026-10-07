@@ -15,12 +15,30 @@ export interface LoginRequest {
 /** El shape exacto de `user` no está confirmado más allá de existir — no inventar campos. */
 export type LoginUser = Record<string, unknown>;
 
+/** Diagnóstico de política de contraseña de GoTrue. Aparece SIEMPRE en el response (confirmado con
+ * password débil y fuerte, no es condicional) — pero su shape interno no está wire-verificado más
+ * allá de existir, así que no se tipa más fino que esto (mismo criterio que `LoginUser`). */
+export type WeakPasswordDiagnostico = Record<string, unknown> | null;
+
+/**
+ * `expires_at` y `weak_password` son metadata del PRODUCTOR (GoTrue), no de este front: decisión A
+ * (declarar, no podar) tomada 2026-10-07 contra el dato medido por auditoría — 0 lectores hoy en los
+ * tres árboles (`packages/core`, `apps/copiloto-web`, `apps/mobile`), tests incluidos. Se declaran
+ * para que el comparador de paridad siga siendo honesto con un tercero cuyo payload no controlamos
+ * (`web.py:login` reenvía `gotrue.password_grant(...)` tal cual) — no porque lleguen a la UI. El día
+ * que alguno gane un lector real, borrar esta nota en ese mismo PR.
+ */
 export interface LoginResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  /** MECLAVESRESTO (2026-10-07): GoTrue lo agrega al response real aunque no esté en el docstring
+   * de `onboarding.py` — epoch seconds de vencimiento absoluto (campo estándar OAuth2). */
+  expires_at: number;
   refresh_token: string;
   user: LoginUser;
+  /** MECLAVESRESTO (2026-10-07): ver `WeakPasswordDiagnostico`. */
+  weak_password: WeakPasswordDiagnostico;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,35 +63,9 @@ export interface SignupResponse {
 // GET /me
 // ---------------------------------------------------------------------------
 
-export interface MeResponse {
-  cliente_id: string;
-  /** `apps/copiloto/web.py:625-636` -- sale del claim del token ya validado, no de una segunda
-   *  fuente. `null`/ausente si el token no lo trae (login por teléfono/anónimo, o si
-   *  `require_claims` no está activo) -- ausente, no inventado. */
-  email?: string | null;
-  /** K-12: la cuenta entra con Google (sin contraseña propia). Ausente en un backend anterior → se trata como `false`. */
-  cuenta_google?: boolean;
-  /** K-14: ver `packages/core/src/api/types.ts`. Ausente → no se muestra el hilo de bienvenida. */
-  onboarding_completado?: boolean;
-  mp_connected: boolean;
-  composio_connected: string[];
-  /** ¿Este usuario ve la Consola de operador? Sale del MISMO predicado que el guard real
-   *  (`apps/copiloto/auth.py:171` `es_admin`, que `require_admin` también llama) — a propósito: dos
-   *  lecturas del claim divergen en silencio el día que el claim se mueva.
-   *
-   *  **Esto NO es control de acceso.** `require_admin` sigue siendo el único guard; acá sólo se
-   *  decide si se muestra la puerta. Un usuario que forzara `es_admin` en el cliente vería la
-   *  pantalla pedir datos y recibir 403 de todos modos.
-   *
-   *  Obligatorio, no opcional: `es_admin?: boolean` dejaría que un fixture desactualizado se
-   *  compilara como "sin definir" y la ausencia se leería igual que `false`, tapando el día que el
-   *  backend deje de mandarlo. Sin el campo, no compila. Va SÓLO acá y no en `packages/core`: la
-   *  consola es de la web, y ese paquete lo comparte mobile (contrato `es_admin en /me`, 2026-08-07).
-   *
-   *  El backend lo manda en las dos ramas de `/me` — con `require_claims` sale del token, sin él es
-   *  `False` fail-closed (`apps/copiloto/web.py:766` y `:778`). */
-  es_admin: boolean;
-}
+import type { MeResponse } from '@copiloto/core';
+
+export type { MeResponse };
 
 // ---------------------------------------------------------------------------
 // POST /me/legal/aceptar
@@ -104,6 +96,9 @@ export interface CatalogService {
   kind: string;
   description: string;
   capabilities: string[];
+  /** A8: acciones REALES del conector (slugs, p.ej. `gmail_send`), derivadas de `TOOLS` en backend.
+   * Opcional (backend anterior): sin él la UI no afirma qué sabe hacer el servicio. */
+  acciones?: string[];
   connected: boolean;
   /** K-09: salud de la conexión. Opcional (backend anterior): sin él se usa `connected`. */
   status?: 'conectado' | 'nunca_conectado' | 'caido';

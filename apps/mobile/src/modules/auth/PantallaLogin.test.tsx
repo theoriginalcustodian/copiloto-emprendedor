@@ -70,7 +70,7 @@ describe('PantallaLogin', () => {
       ok: true,
       json: async () => ({ access_token: 'tok-google', refresh_token: 'refresh-google' }),
     });
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
     await montar();
     await fireEvent.press(screen.getByTestId('login-google'));
@@ -106,7 +106,7 @@ describe('PantallaLogin', () => {
     // cubre (ver el fix en `SessionProvider.loginConGoogle`).
     jest.mocked(api.me)
       .mockRejectedValueOnce(new (jest.requireActual('@copiloto/core').ForbiddenError)('sin tenant'))
-      .mockResolvedValueOnce({ cliente_id: 'cli-nuevo', email: 'nuevo@gmail.com' });
+      .mockResolvedValueOnce({ cliente_id: 'cli-nuevo', email: 'nuevo@gmail.com', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
     jest.mocked(api.ensureOauthTenant).mockResolvedValueOnce({ cliente_id: 'cli-nuevo' });
 
     await montar();
@@ -122,10 +122,12 @@ describe('PantallaLogin', () => {
       access_token: 'nuevo-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'nuevo-refresh',
       user: {},
+      weak_password: null,
     });
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
     await montar();
 

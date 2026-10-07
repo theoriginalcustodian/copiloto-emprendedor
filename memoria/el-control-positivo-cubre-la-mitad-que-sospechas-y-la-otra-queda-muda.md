@@ -119,3 +119,249 @@ tipo de `packages/core` rompió **7 fixtures hand-built** de `core`/`mobile`/`we
 solo paquete salió verde y recién CI mostró `TS2741`. Tres instancias en un día del `a-todos` inmortal
 «el recibo local no garantiza CI verde» — y por primera vez con una causa **mecanizable**: no es «el
 entorno», es *qué corrió*. Fila `TIPOCOMP` del PLAN.
+
+## Refuerzo 2026-10-06 — con DOS piezas, un solo mutante no distingue QUÉ acredita cada test; y el que da MÁS rojo suele acreditar al BASELINE
+
+Dos controles positivos del mismo día, mismo patrón: el cambio tenía **dos piezas** (una fórmula y su
+uso; un nombre de campo y su condicionalidad) y **un único mutante da el ROJO igual** sin decir cuál de
+las dos quedó cubierta. La regla que sale: **un mutante por pieza afirmada, no uno por cambio.**
+
+**Caso A — A3-web, `SeccionMisComprobantes` (PR #806).** M1 apagó la consulta de estado: 3 de 4 tests
+rojos. Leído solo, eso dice «los 4 cubren la derivación del id». M2 rompió **sólo la fórmula** del id
+(`cuit-tipoCbte-puntoVenta-nro`): **1** test rojo. Los dos tests de retome **pasan con un id aleatorio**,
+porque el mock de `estadoAnulacion` contesta sin mirar el argumento. La **derivación** la acredita un
+único test; los otros dos acreditan **el flujo**. Son dos cosas, y el conteo de verdes no las separa.
+
+**Caso B — el wire de `idemKey` en `packages/core/src/api/ingresos.ts:205`.** Tres mutantes, y los dos
+resultados contraintuitivos son los que enseñan:
+
+| mutante | resultado | qué acredita de verdad |
+|---|---|---|
+| M1 renombra `idem_key` → `idem_key_x` | 🔴 **2** rojos, y los **2 son míos** | el **nombre** del campo: esto es lo único que mis tests nuevos acreditan **en exclusiva** |
+| M2 lo manda **siempre**, `undefined` cuando no vino | 🟢 **verde** | **nada, y está bien**: `JSON.stringify` **omite** las claves `undefined`, así que el wire observable es idéntico — es un **mutante equivalente** |
+| M3 lo manda **siempre**, `null` cuando no vino | 🔴 **6** rojos, **4 del baseline** | la condicionalidad **ya estaba cubierta** antes de mi test (`toEqual({ monto })` del caso mínimo) |
+
+**Las dos lecturas que invierten la intuición:**
+
+1. **Un mutante verde no siempre acusa al test.** Si el mutante no cambia **lo que el test puede
+   observar**, su verde es *correcto* y no mide nada — contarlo como hueco es acusar en falso al test
+   propio, que es `[[el-instrumento-tambien-CONDENA-no-solo-absuelve]]` aplicado al control positivo. La
+   pregunta que separa un hueco real de un mutante equivalente: **¿este mutante cambia el valor que el
+   test observa?** Para M2 la respuesta es no, y se sabe antes de correrlo.
+2. **El mutante que da MÁS rojo es el que menos te acredita.** M3 tumbó 6 y sólo 2 eran míos: cuanto más
+   amplio el rojo, más probable es que lo cace algo que **ya existía**. El conteo de rojos **no
+   atribuye** — hay que mirar **cuáles** tests caen y cuántos son los nuevos. Hermana de
+   `[[dos-causas-suficientes-el-test-no-atribuye]]`.
+
+**Y el control del control, que casi me come:** la primera corrida midió «antes 23 / después 23» y se
+leía como «no había nada que convertir». El patrón de búsqueda tenía un `\\` escrito a mano que **no
+sobrevivió las capas** (JSON del tool → heredoc → Python llegó con **un** backslash), así que dejó de
+ser el escape literal y pasó a ser el **carácter real**: contó otra población y el total pareció
+plausible. Lo cazó **descomponer** (emoji 8 + guion 15 = exactamente el «antes»), no comparar totales —
+`[[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]]`. Defensa:
+construir el patrón con `chr(92)` y afirmar su longitud (`len(PAT) == 10`) **antes** de usarlo. Un
+patrón es un instrumento, y también necesita control positivo.
+
+---
+
+## 🔻 2026-10-06 — el test varió **todos** los ejes menos el que decide
+
+El escalón más barato de pasar por alto de esta entrada, porque acá **no falta el control positivo: hay
+cuatro, y los cuatro usan el mismo valor.**
+
+**Caso raíz: `scripts/tests/test-secretos-check.sh`**, el test del **único guard fail-closed** del repo
+(`secretos-check.sh`, gitleaks, y el repo es **público**). Son **174 líneas y 10 casos**, y es un test
+serio — cada caso mueve una dimensión distinta del instrumento:
+
+```
+modo:          1) historia limpia   3) rango   4) --refs-stdin   7) --arbol
+fail-closed:   5) binario inexistente -> rc=2, nunca 0
+config:        6) allowlist por fingerprint   9) exclusion de worktrees
+discrimina:    8) config rota != hallazgo (gitleaks da rc=1 por las DOS causas)
+salida:       10) -v dice DONDE sin decir QUE
+FORMA:         2) un token con forma de PAT de GitHub   <- el unico, y es constante
+```
+
+Conteo sobre ese archivo: **`ghp_` → 4 apariciones** (los 4 controles positivos) · `sk-ant` → **0** ·
+`APP_USR` → **0** · `postgresql://` → **0** · `eyJ` → **0**. *(Control del grep, mismo archivo: `rc=1` → 4,
+`arbol` → 22.)*
+
+> **Diez casos verdes ejercitan exhaustivamente los MODOS del instrumento y mantienen CONSTANTE la única
+> variable que decide si caza algo: la forma del secreto.** Un test de los **modos** del escáner se lee,
+> de buena fe, como un test **del escáner**.
+
+**Y la constante elegida era la única cubierta.** Medido con canario propio (9 formas reales de este
+stack, entropía real, en **pares de contraste**): `ghp_` se caza porque gitleaks trae regla dedicada
+`github-pat`; **`sk-ant-api03-…`, `APP_USR-…` y `postgresql://user:PASS@host` NO se cazan** — y el **mismo
+secreto, misma variable, misma entropía, suelto sin su prefijo, SÍ**. El prefijo que identifica a la
+credencial es lo que la salva: `generic-api-key` necesita una cadena contigua, y los guiones del prefijo o
+los `:/@` de la URL **parten el match**.
+
+→ **Pregunta operativa, distinta de la de arriba:**
+
+> Arriba: *¿qué afirmación del instrumento NO tiene control positivo?*
+> Acá: **¿qué variable mantuvieron CONSTANTE todos los casos que sí existen?** Un test con N casos verdes
+> prueba las N dimensiones que varió — y **la dimensión no movida es invisible precisamente porque las
+> otras N están cubiertas con rigor.** Listá los ejes del instrumento y marcá cuál no se mueve nunca.
+
+**Para un guard de patrón**, el corolario es concreto: el control positivo tiene que usar la **forma
+REAL** —con su prefijo, y dentro del contenedor donde el secreto aparece de verdad (una URL, un `.env`, un
+JSON)— y en **pares de contraste**, la misma entropía con y sin prefijo. **El par es lo que convierte «no
+lo cazó» en «lo salvó el prefijo»**, que es la diferencia entre un bug reportable y una observación.
+
+**El espejo, que casi reporté:** mi primer canario usó relleno `AAAA…` y **ni el `ghp_` se cazó** —
+gitleaks **filtra por entropía**, así que el fixture era el defecto. Iba a acusar de ciego al único guard
+que sí funciona → [[un-control-positivo-con-esperado-falso-acusa-al-script]]. Un fixture sintético es un
+instrumento: si no se parece al dato real **en la propiedad que el detector mide**, mide otra cosa.
+
+**Y el cierre que vale solo:** el `CLAUDE.md` de este repo cita una auditoría de toda la historia con
+*«`sk-ant-` 0»*, hecha con **greps a mano**. **El guard automático no cubre `sk-ant-`.** El inventario de
+riesgo que el proyecto escribió **nombra** lo que su guard no vigila, y nada lo señala: el escáner sale
+verde tanto si no hay una clave de Anthropic como si hay una →
+[[instrumento-que-no-mira-nunca-falla]] · [[medir-si-un-gate-dispara-antes-de-embarcarlo]].
+
+Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-el-escaner-de-secretos-caza-la-forma-generica-y-falla-en-la-real.md`
+
+**Segunda instancia, el mismo día, en otro instrumento — y la que vuelve al patrón reconocible.** Los
+**tres** tests que ejercitan los overrides de `gate.sh` (`test-gate-args-y-recibo.sh:28`,
+`test-recibo-cubre.sh:77`, `test-gate-hook-secretos.sh:37`) setean `GATE_CI_DIR` **siempre junto con**
+`GATE_RECIBO_DIR`, o limpian los dos con `env -u`. **Ninguno mueve una sola de las dos.** Y el caso
+interesante es el de una sola: con `GATE_CI_DIR` solo, el recibo escrito por **jobs stub** cae en el
+`.ci-recibos/` **real** —medido en repo temporal, con los dos controles positivos— justo lo que el
+comentario de `gate.sh:40-41` afirma que no puede pasar. Lo que impide el falso verde no es esa
+protección: es `recibo-cubre.sh` exigiendo los 5 jobs, **del lado del consumidor**. Una defensa **mal
+atribuida** → `[[el-guard-se-satisface-con-su-propio-comentario]]`.
+
+⇒ **Dos variables que un test mueve siempre juntas son, para ese test, una sola variable.** La
+combinación que nadie probó es la que tiene el bug, y el verde de las corridas «con ambos overrides» la
+acredita. Al listar los ejes de un instrumento, contá también **los pares**: `(A, B)` cubiertos no
+implica `A` solo ni `B` solo.
+
+Doc: `docs/copiloto-emprendedor/Auditorias/2026-10-06-la-definicion-de-verde-resiste-y-la-defensa-mal-atribuida.md`
+
+---
+
+**Refuerzo (2026-10-06): el control positivo pasó, el instrumento era inservible, y lo cazó la
+IMPLAUSIBILIDAD DEL DENOMINADOR — no un control.** Variante nueva: acá el control no quedó mudo sobre
+otra mitad. Cubrió la afirmación correcta y **respondió bien**. El instrumento igual mentía, porque
+contestaba una pregunta **más ancha** que la que hacía cada caso medido.
+
+**El caso.** Escribí un barrido de premisas **negativas** («cero hits de X», «ninguna app lee X», «X no
+existe») sobre las filas cerradas del día: grepear el símbolo citado y marcar la premisa como vencida si
+hoy tiene hits productivos en `origin/main`. Le horneé el control positivo canónico — dos premisas de
+veredicto **ya conocido**, una que sabía vencida (`legal_version_aceptada`, agregada por #829/#836) y una
+que sabía vigente (`first_seller_user_id`, retirada de producción por #850) — y **las dos salieron como
+esperaba**. Resultado del barrido: **«50 premisas verificables · 32 vencidas»**.
+
+**64% de premisas vencidas en un día es implausible, y eso fue lo único que lo delató.** Al abrir los
+casos, tres fallas de raíz, ninguna de ellas visible para el control positivo:
+
+- **Ignora el ALCANCE.** *«0 hits de `mensajeId` **en los cuatro**»* es una afirmación sobre cuatro
+  archivos; el grep la midió contra todo el repo (**148 hits**) y la declaró vencida.
+- **Ignora el SIGNO.** Marcó una frase **positiva** —*«la navegación **es** `Stack`»*— como premisa
+  negativa vencida.
+- **Pesca el símbolo INCIDENTAL.** *«ninguna aborta nada»* → tomó `await` (**1040 hits**) por sujeto.
+
+**Por qué el control positivo no podía verlo.** Mis dos anclas eran premisas de alcance **global** y de
+sujeto **explícito** — justo la forma que el instrumento sí sabe medir. El control acredita el
+**mecanismo** (¿sabe marcar una premisa vencida?), nunca el **universo** (¿los 50 casos son premisas, con
+este sujeto y este alcance?). Dos preguntas distintas, y el verde de la primera presta autoridad a la
+segunda.
+
+**La regla que queda, y vale más que el barrido:** una afirmación negativa es auditable por script **sólo
+si su alcance es mecánico**. «0 hits de X» lo es; «0 hits de X **en los cuatro**» no, porque el alcance
+vive en la prosa. Si se quiere que una premisa sea re-medible, tiene que **declarar su comando**, no su
+resultado.
+
+**How to apply:** (1) después del control positivo, mirá el **denominador y la proporción** antes de
+publicar: si la tasa de hallazgos es implausible para la vida del sistema, el instrumento está midiendo
+otra cosa — esa implausibilidad es un control gratis que ningún ancla reemplaza. (2) Antes de contar,
+verificá en **tres casos a mano** que el sujeto extraído es el sujeto de la frase y que su alcance
+coincide; si uno falla, el conteo no significa nada. (3) Y el control más barato de todos: **¿aparece tu
+propio trabajo entre los hallazgos?** El barrido marcó dos mensajes míos escritos ese mismo día — un
+instrumento que acusa a lo que acabás de escribir está clasificando por forma, no por contenido.
+
+---
+
+**Refuerzo (2026-10-07): el control positivo acredita el ALCANCE del instrumento, nunca su UNIDAD — tres casi-hallazgos falsos en un día, los tres con el control positivo en verde.**
+
+Medí tres cosas distintas y las tres veces el instrumento encontró algo, pasó su control positivo, y estaba midiendo en otra unidad que la que yo le atribuía:
+
+1. **Adyacencia.** Pregunté «¿el aviso de plantilla está en pantalla?» con `git grep -niE 'plantilla gen'` → **1 hit, un comentario**. Estaba a un paso de reportar que la lista corta del operador citaba algo inexistente. El texto real dice «Plantilla **estándar** genérica»: mi patrón exigía las palabras pegadas. Control positivo que corrí: `carácter orientativo` → 1 hit. Probó que el grep **encuentra**, no que **mi patrón** fuera el correcto. Medición del fallo: `plantilla gen` → **0**, `Plantilla estándar genér` → **4**.
+2. **Bytes disfrazados de chars.** Para re-medir el margen del índice usé `git show <ref> | python -c "len(sys.stdin.read())"` → 23.943, y lo leí como chars. En Windows `sys.stdin` decodifica con la locale (cp1252), así que cada byte de continuación UTF-8 cuenta como un char: **era el conteo de bytes**. Con eso iba a refutar una fila `✅ CERRADA` cuya corrección explícita era justamente *«venía citando bytes; comparar bytes contra un techo en chars sobreestima ~4%»*. Medido bien: 23.943 bytes = **22.972 chars**, 971 de diferencia = 4,2%. **La fila tenía razón y reproduje el defecto que ella misma había corregido, un día después, con otra herramienta.**
+3. **CRLF.** Dos lecturas del mismo archivo en disco dieron 23.885 y 24.077 chars, y concluí que **otra sesión lo estaba escribiendo en vivo**. No: `open(..., encoding='utf-8')` normaliza CRLF→LF y `read_bytes().decode()` no — el archivo tiene 192 finales de línea. Tres lecturas seguidas dieron 23.885 idéntico. **Ese casi-hallazgo acusaba a un peer de una conducta que no tuvo.**
+
+**La regla:** un control positivo responde *«¿el instrumento puede encontrar algo?»*. No responde *«¿lo que cuenta es lo que yo digo que cuenta?»*. Y el verde de ese control **se siente** como respuesta a las dos, que es por lo que las tres veces seguí adelante.
+
+**How to apply:** (1) cuando la pregunta es **«¿esto está en pantalla?»**, el control no es otro grep — **es leer lo que se renderiza**. Un patrón que falla por adyacencia, acento o separador es indistinguible de un hecho ausente. (2) Antes de citar una cifra, **nombrá su unidad y medila dos veces por caminos que deban coincidir** (bytes vs chars, crudo vs normalizado, archivo vs blob de git): si discrepan, el sospechoso es la **unidad**, no el objeto. Una cifra sin unidad se deja citar para cualquier pregunta → [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]. (3) Si tu medición está por **refutar una corrección ajena**, leé primero qué corrigió: si corrigió tu misma unidad, el error es tuyo hasta que pruebes lo contrario. (4) Y si el hallazgo **acusa a otra sesión**, repetí la lectura tres veces antes de escribirlo: un instrumento inestable fabrica conducta ajena.
+
+---
+
+## Refuerzo 2026-10-07 — el control acreditó que el ARCHIVO existe cuando la afirmación era que FALTA LA LÍNEA
+
+Un medidor reportó *«5 entradas sin línea en `MEMORY.md` ni `HISTORIA.md`»*. Para no cerrar sobre el
+checkout sucio hice el control que me pareció el riguroso: `git cat-file -e origin/main:memoria/<slug>.md`
+por cada una — **las cinco existen en `main`**, así que el defecto le llega a cualquiera que clone. Lo
+escribí en el cuerpo del PR con esa frase y el PR salió 6/6 verde.
+
+La afirmación era **«no tiene línea de índice»**. Lo que verifiqué fue **«el archivo existe»**. Las dos
+proposiciones eran verdaderas y sólo una contestaba la pregunta: medido después en un worktree limpio de
+`main`, las cinco **ya tenían una línea cada una** y la cobertura de `main` ya era **377/377**. El PR metió
+5 duplicados.
+
+**Lo que hace a este caso distinto del de arriba:** el control no fue flojo, fue **sobre el otro sujeto**.
+Mi sospecha era *«¿estoy mirando un árbol que nadie publica?»* y la contesté bien — contra `origin/main`,
+no contra el disco. La mitad muda era la otra: *«¿la línea falta de verdad?»*, que nunca pregunté porque
+el instrumento ya la había afirmado.
+
+**How to apply:** escribí la afirmación del hallazgo en **una oración** y subrayá su sujeto y su
+predicado. El control tiene que negar **ese predicado sobre ese sujeto**. «El archivo existe» y «la línea
+falta» comparten el archivo y no comparten nada más. Ver [[el-medidor-mide-el-arbol-donde-vive-no-el-que-publicas]].
+
+---
+
+## Variante 2026-10-07: el **autotest del instrumento pasaba verde mientras su entrypoint real estaba muerto**
+
+`scripts/dup-indice-check.py` se mergeó en #893 con un `--autotest` de **cinco controles históricos**
+(el positivo de #885 + cuatro negativos) que daba `control de dos lados: PASA`. Y la invocación real
+estaba **rota en el único entorno donde el script va a vivir**:
+
+```
+python scripts/dup-indice-check.py --base 87c57cb1^ --rev 87c57cb1
+  UnicodeEncodeError: 'charmap' codec can't encode character '\u2192'   (dup-indice-check.py:139)
+python scripts/dup-indice-check.py --autotest
+  exit 0 — «control de dos lados: PASA»
+```
+
+**Las dos cosas a la vez, y no es contradicción: el `--autotest` cortocircuita en `main()` antes del
+`print` de la cabecera**, que es el único que emite el `→`. El control recorría el **criterio**; el
+defecto estaba en el **camino de entrada**. Nada en el autotest pasaba por ahí, así que no podía verlo
+fallar — y su verde se leía como «el instrumento funciona», que es la afirmación que nadie había medido.
+
+Dos agravantes que lo vuelven una clase y no un typo:
+
+1. **El fix ya existía en el hermano.** `medir-indice-memoria.py:31-33` tiene
+   `sys.stdout.reconfigure(encoding="utf-8")`; la copia no se lo llevó
+   ([[el-fix-ya-existe-en-otro-call-site]]).
+2. **El crash salía con exit 1 — el mismo código que «encontré duplicados».** Cableado así, el primer
+   rojo del gate habría sido ambiguo entre «hay un duplicado» y «el script no arranca», y el falso rojo
+   es el que empuja al `--no-verify`
+   ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). El script ya tenía
+   `2` reservado para *NO MEDIDO*: la colisión era que una excepción no ruteada **no usa** ese 2.
+
+**How to apply:** cuando un instrumento tiene autotest, preguntá **por qué línea entra el autotest** y
+comparala con la del uso real. Si el autotest llama a una función interna y el uso real entra por
+`main()`/`argv`, el autotest **no acredita el uso real**: acredita el criterio. El control que cierra la
+brecha va **adentro** del autotest y pasa por el entrypoint — acá es `canario_del_ruteo_de_errores()`,
+que inyecta una excepción interna y exige `exit 2`; medido en las dos direcciones (con el ruteo → 2; con
+un mutante que devuelve 1 → el autotest sale **NO PASA**). Ver
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]] y
+[[medir-si-un-gate-dispara-antes-de-embarcarlo]].
+
+**Coda del mismo día, y es la parte que más se repite:** dos sesiones arreglaron este archivo en
+paralelo. #897 puso el `reconfigure` y su comentario **nombra** la colisión del exit code —
+*«peor: el crash sale con exit 1, el MISMO código que "encontré un duplicado"»*— y **no la arregla**.
+Quedó cerrada la causa conocida de crash y abierta la clase: cualquier **otra** excepción seguía
+saliendo por el 1. Un comentario que describe un defecto se lee como que el defecto fue atendido, y es
+el próximo lector el que paga ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
+El ruteo a `exit 2` y el canario llegaron en un PR aparte, sobre `main` ya con #897.

@@ -13,19 +13,18 @@ async function envolver(onAjuste?: (key: AjusteKey) => void) {
   );
 }
 
-/** Las 6 entradas EXPLÍCITAS y en orden, no `TILES_AJUSTES.length`: sacar o agregar una obliga a
- *  nombrarla acá. Quedaron 6 tras absorber los andamiajes duplicados (2026-07-22). */
+/** Las 5 entradas EXPLÍCITAS y en orden, no `TILES_AJUSTES.length`: sacar o agregar una obliga a
+ *  nombrarla acá. Quedaron 5 tras sacar «Mi plan» (DEC-8: plan y límites no entran en la beta). */
 const TILE_KEYS: AjusteKey[] = [
   'perfilNegocio',
   'facturacionAfip',
   'apps',
-  'miPlan',
   'cuenta',
   'apariencia',
 ];
 
 describe('PantallaAjustes (grilla de iconos)', () => {
-  it('renderiza las 6 entradas del grid', async () => {
+  it('renderiza las 5 entradas del grid', async () => {
     await envolver();
     for (const key of TILE_KEYS) {
       expect(screen.getByTestId(`ajuste-tile-${key}`)).toBeTruthy();
@@ -43,14 +42,21 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     expect(onAjuste).toHaveBeenCalledWith('cuenta');
   });
 
-  it('las 6 etiquetas visibles son las esperadas — en castellano y sin pares que se pisen', async () => {
+  it('las 5 etiquetas visibles son las esperadas — en castellano y sin pares que se pisen', async () => {
     await envolver();
     expect(screen.getByText('Mi negocio')).toBeTruthy();
     expect(screen.getByText('Facturación ARCA')).toBeTruthy();
     expect(screen.getByText('Apps conectadas')).toBeTruthy();
-    expect(screen.getByText('Mi plan')).toBeTruthy();
     expect(screen.getByText('Mi cuenta')).toBeTruthy();
     expect(screen.getByText('Apariencia')).toBeTruthy();
+  });
+
+  it('🔴 CONTROL NEGATIVO: no hay tile «Mi plan» — DEC-8, el plan no entra en la beta', async () => {
+    // Un test de presencia no se pone rojo si la fila vuelve: el próximo port del prototipo la
+    // reintroduce con la suite verde. Por eso se afirma la AUSENCIA, por key y por etiqueta.
+    await envolver();
+    expect(screen.queryByTestId('ajuste-tile-miPlan')).toBeNull();
+    expect(screen.queryByText('Mi plan')).toBeNull();
   });
 
   it('🔴 los pares que se pisaban ya no están', async () => {
@@ -80,7 +86,7 @@ describe('PantallaAjustes (grilla de iconos)', () => {
 
   it('sin onAjuste, tocar un tile no crashea (prop opcional)', async () => {
     await envolver();
-    await fireEvent.press(screen.getByTestId('ajuste-tile-miPlan'));
+    await fireEvent.press(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
   });
 });

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
+import { LEGAL_AVISO_PLANTILLA, LEGAL_DESCARGO, LEGAL_VERSION } from '@copiloto/core';
 
 import '../design-system/themes.css';
 import { THEMES } from '../design-system/ThemeProvider';
@@ -23,7 +23,7 @@ describe('LegalScreen', () => {
   it('siempre marca el texto como plantilla — nunca se confunde con revisión legal específica', () => {
     render(<LegalScreen kind="tos" onVolver={vi.fn()} />);
     expect(screen.getByTestId('legal-screen-placeholder-notice')).toHaveTextContent(
-      'Plantilla estándar genérica',
+      LEGAL_AVISO_PLANTILLA,
     );
   });
 

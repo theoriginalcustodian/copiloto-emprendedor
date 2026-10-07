@@ -76,6 +76,7 @@ class _FakeTenantsDB:
     def __init__(self) -> None:
         self.tenants: dict[str, dict] = {}     # auth_user_id -> {cliente_id, email, composio_user_id}
         self.mp_sellers: dict[str, str] = {}   # cliente_id -> seller_user_id (más reciente)
+        self.mp_caidos: set[str] = set()       # cliente_id con la fila marcada `reauth_desde` (caido)
         self.onboarding: dict[str, bool] = {}  # cliente_id -> onboarding_completado (K-14)
         self.legal: dict[str, tuple] = {}      # cliente_id -> (legal_version, legal_aceptado_en) (BL-O6)
         self.replies: list[dict] = []          # [{id, cliente_id, session_id, reply_text, choices}]
@@ -122,6 +123,15 @@ class _FakeCursor:
         elif s.startswith("UPDATE UC_FACTORY.TENANTS SET LEGAL_VERSION"):
             version, en, cliente_id = params
             self._db.legal[cliente_id] = (version, en)
+        elif s.startswith("SELECT REAUTH_DESDE, EXPIRES_AT FROM UC_FACTORY.MP_CREDENTIALS"):
+            # `salud()` (K-09): fila con `reauth_desde` => "caido"; fila sana (vence en 2100) => "conectado".
+            (cliente_id,) = params
+            if cliente_id in self._db.mp_caidos:
+                self._result = ("2026-01-01T00:00:00Z", None)
+            elif cliente_id in self._db.mp_sellers:
+                self._result = (None, 4102444800)
+            else:
+                self._result = None
         elif s.startswith("SELECT SELLER_USER_ID FROM UC_FACTORY.MP_CREDENTIALS"):
             (cliente_id,) = params
             seller = self._db.mp_sellers.get(cliente_id)
@@ -592,7 +602,7 @@ def test_me_with_token_reports_mp_connected_true():
     assert r.status_code == 200
     assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False}
+                        "legal_aceptado": False, "legal_version_aceptada": None}
 
 
 def test_me_without_mp_connection_reports_false():
@@ -600,7 +610,20 @@ def test_me_without_mp_connection_reports_false():
     r = TestClient(app).get("/me")
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False}
+                        "legal_aceptado": False, "legal_version_aceptada": None}
+
+
+def test_me_con_fila_pero_reauth_marcado_reporta_mp_connected_false():
+    """CONTROL ADVERSARIAL (mp_connected unificado): hay FILA de MP, pero la conexión pide reconectar
+    (`reauth_desde` marcado). `first_seller_user_id` decía `true` aquí; `salud()` dice `caido` => false.
+    Sin este caso el fix es indistinguible de no hacerlo: con conexión sana los dos ya dan igual."""
+    db = _FakeTenantsDB()
+    db.mp_sellers["cid-A"] = "seller-146"
+    db.mp_caidos.add("cid-A")
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    r = TestClient(app).get("/me")
+    assert r.status_code == 200
+    assert r.json()["mp_connected"] is False
 
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():
@@ -674,6 +697,69 @@ def test_BLO6_la_aceptacion_de_A_no_se_ve_ni_se_marca_desde_B():
     TestClient(app_a).post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE})
     assert TestClient(app_b).get("/me").json()["legal_aceptado"] is False
     assert db.legal == {"cid-A": (LEGAL_VERSION_VIGENTE, db.legal["cid-A"][1])}
+
+
+# --- LEGALNOOPERA (wire): `legal_version_aceptada` en el payload de /me -----------
+# El import va a nivel modulo porque el `parametrize` necesita el valor en tiempo de DEFINICION (el
+# resto del archivo lo importa dentro de cada test, que para un decorador no alcanza).
+from tenant_legal_store import LEGAL_VERSION_VIGENTE as _LEGAL_VIGENTE
+
+_CLAIMS_LEGAL = {"sub": "auth-legal", "email": "legal@x.test"}
+
+
+@pytest.mark.parametrize("con_claims", [True, False], ids=["rama-PROD-con-claims", "rama-sin-claims"])
+@pytest.mark.parametrize("version_en_db,bool_esperado", [
+    (_LEGAL_VIGENTE, True),      # (a) aceptó la vigente
+    ("2020-01-01", False),       # (b) aceptó OTRA  <- el único caso que distingue el campo nuevo
+    (None, False),               # (c) nunca aceptó
+], ids=["acepto-la-VIGENTE", "acepto-OTRA-version", "nunca-acepto"])
+def test_LEGALNOOPERA_me_expone_la_version_legal_aceptada_en_LAS_DOS_ramas(
+        con_claims, version_en_db, bool_esperado):
+    """TRES casos, no dos, y por LAS DOS ramas del payload de `/me`.
+
+    El caso del medio --aceptó OTRA versión-- es el único que distingue este campo del booleano viejo:
+    `legal_aceptado` vale False tanto si nunca aceptó como si aceptó una versión vieja, así que un test
+    de dos casos pasa igual SIN el campo nuevo y no mide nada.
+
+    Las dos ramas, porque `_build_app` deja `require_claims=None` por default: los 6 tests BL-O6 que ya
+    existían ejercitan sólo la rama `else` de `/me`, que en producción NO corre (`serve.py:303` inyecta
+    `require_claims`). Un campo probado sólo ahí queda verde mientras el camino real miente --
+    `memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md`.
+
+    Lo que este test NO hace: decidir v1 (re-pedir la aceptación) ni v2 (mostrarla). Sólo afirma que el
+    dato SALE del backend. Qué hace la app cuando la versión aceptada no es la vigente es decisión del
+    operador, y este contrato existe para no tomarla."""
+    import datetime
+    db = _FakeTenantsDB()
+    if version_en_db is not None:
+        db.legal["cid-A"] = (version_en_db, datetime.datetime.now(datetime.timezone.utc))
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db,
+                        require_claims=_require_claims_fixed(_CLAIMS_LEGAL) if con_claims else None)
+    cuerpo = TestClient(app).get("/me").json()
+    assert cuerpo["legal_version_aceptada"] == version_en_db, (
+        f"la versión aceptada no sale del payload (con_claims={con_claims})")
+    assert cuerpo["legal_aceptado"] is bool_esperado, (
+        "`legal_aceptado` cambió de semántica: tiene que seguir siendo «aceptó la VIGENTE»")
+
+
+def test_LEGALNOOPERA_el_booleano_NO_distingue_el_caso_que_el_campo_nuevo_SI():
+    """Control positivo del caso (b): prueba que el campo nuevo agrega información REAL.
+
+    Con «aceptó una versión vieja» y con «nunca aceptó», `legal_aceptado` vale False en los DOS. Si este
+    test falla, el caso (b) del paramétrico de arriba dejó de ser discriminante y el campo nuevo no
+    mediría nada que el booleano no midiera ya."""
+    import datetime
+    db_vieja = _FakeTenantsDB()
+    db_vieja.legal["cid-A"] = ("2020-01-01", datetime.datetime.now(datetime.timezone.utc))
+    app_vieja, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db_vieja)
+    app_nunca, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=_FakeTenantsDB())
+
+    con_vieja = TestClient(app_vieja).get("/me").json()
+    sin_nada = TestClient(app_nunca).get("/me").json()
+
+    assert con_vieja["legal_aceptado"] is False and sin_nada["legal_aceptado"] is False
+    assert con_vieja["legal_version_aceptada"] == "2020-01-01"
+    assert sin_nada["legal_version_aceptada"] is None
 
 
 def test_me_two_tenants_do_not_leak_mp_state():
@@ -785,7 +871,7 @@ def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
                                         "composio_connected": [], "es_admin": False, "cuenta_google": False,
-                                        "onboarding_completado": False, "legal_aceptado": False}
+                                        "onboarding_completado": False, "legal_aceptado": False, "legal_version_aceptada": None}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
                                              "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 
@@ -1028,3 +1114,109 @@ def test_soporte_ticket_propio_404_si_es_de_otro_tenant():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
     r = TestClient(app).get("/soporte/tickets/1")
     assert r.status_code == 404
+# --- /me: los campos que NO dependen del token viven en UN helper, y los que SI no se tocan -------
+# Contexto, porque el numero enganaba: despues de colapsar los campos legales conte apariciones de los
+# demas campos de `/me` y `mp_connected`, `composio_connected`, `onboarding_completado`, `es_admin` y
+# `cuenta_google` daban «2 veces» cada uno -- una por rama. «2» es el MISMO numero para «duplicado» y
+# para «deliberadamente distinto por rama». Leyendo las dos ramas expresion por expresion:
+#   IDENTICOS (duplicacion real, ya colapsados en `_campos_tenant`):
+#       mp_connected · composio_connected · onboarding_completado
+#   DISTINTOS A PROPOSITO (NO se colapsan):
+#       es_admin      -> `es_admin(claims)` con token · `False` sin token  (fail-closed, web.py:1104)
+#       cuenta_google -> idem
+#       email         -> presente con token · AUSENTE sin token
+# Colapsar los tres de abajo habria borrado un fail-closed de autorizacion con un refactor que se ve
+# impecable y deja todos los tests de legal verdes. Ver
+# `memoria/el-fix-ya-existe-en-otro-call-site.md` (refuerzo del 06/10).
+
+
+class _ComposioConUnaConexion:
+    """Composio con UNA conexion ACTIVE y una que no, para que `composio_connected` no sea `[]`.
+
+    Importa que NO sea vacio: si los 3 campos salieran en su valor por defecto, comparar las dos ramas
+    no mediria nada -- dos vacios son iguales por construccion, no por el helper."""
+    def list_connections(self, user_id):
+        return [{"toolkit": "GMAIL", "status": "ACTIVE"},
+                {"toolkit": "DRIVE", "status": "INITIATED"}]
+
+    def authorize(self, user_id, toolkit):
+        return "https://composio.example/connect"
+
+
+_CAMPOS_DEL_HELPER = ("mp_connected", "composio_connected", "onboarding_completado")
+
+
+def _me_de_las_dos_ramas(claims: dict):
+    """El MISMO estado servido por las dos ramas del composition root. Devuelve (con_token, sin_token).
+
+    Un solo `_FakeTenantsDB` para las dos: si cada rama tuviera su propio estado, una diferencia en el
+    payload no distinguiria «las ramas calculan distinto» de «les di datos distintos»."""
+    db = _FakeTenantsDB()
+    db.mp_sellers["cid-A"] = "seller-777"      # mp_connected -> True (no el default)
+    db.onboarding["cid-A"] = True              # onboarding_completado -> True (no el default)
+    comun = dict(db=db, composio_gateway=_ComposioConUnaConexion(),
+                 require_tenant=_require_tenant_fixed("cid-A"))
+    app_con, _ = _build_app(require_claims=_require_claims_fixed(claims), **comun)
+    app_sin, _ = _build_app(require_claims=None, **comun)
+    return TestClient(app_con).get("/me").json(), TestClient(app_sin).get("/me").json()
+
+
+def test_los_3_campos_que_NO_dependen_del_TOKEN_salen_IGUALES_en_las_dos_ramas():
+    """`_campos_tenant` es un solo lugar para las dos ramas: el payload tiene que coincidir.
+
+    Se COMPARAN las dos respuestas entre si en vez de afirmar valores escritos a mano: un esperado
+    equivocado acusa al codigo cuando el error es del test
+    (`memoria/un-control-positivo-con-esperado-falso-acusa-al-script.md`)."""
+    con, sin = _me_de_las_dos_ramas({"sub": "auth-x", "email": "x@x.test"})
+    for campo in _CAMPOS_DEL_HELPER:
+        assert campo in con and campo in sin, f"`{campo}` falta en alguna rama de /me"
+        assert con[campo] == sin[campo], (
+            f"`{campo}` difiere entre las dos ramas de /me ({con[campo]!r} vs {sin[campo]!r}): "
+            "o no pasa por `_campos_tenant`, o alguien lo volvio a escribir dos veces")
+
+
+def test_el_FIXTURE_deja_los_3_campos_en_un_valor_DISTINGUIBLE_del_default():
+    """Control del test de arriba, y vive SEPARADO a proposito.
+
+    Si los 3 campos salieran en su valor por defecto (`False`, `[]`, `False`), compararlos entre las dos
+    ramas no mediria nada: dos defaults coinciden por construccion, no por el helper. Este test afirma
+    que el fixture los dejo en valores distinguibles.
+
+    Por que es un test aparte y no dos asserts mas alla arriba: lo medi con un mutante. Con los dos
+    controles en el MISMO test, invertir el valor dentro del helper pone rojo ese test unico, y el rojo
+    no dice CUAL de las dos cosas se rompio -- «el helper no unifica» y «el fixture no distingue» son
+    defectos distintos con arreglos distintos. Separados, el conjunto de tests rojos atribuye.
+    `memoria/dos-causas-suficientes-el-test-no-atribuye.md`."""
+    con, _ = _me_de_las_dos_ramas({"sub": "auth-x", "email": "x@x.test"})
+    assert con["mp_connected"] is True, "el fixture no dejo mp_connected en un valor distinguible"
+    assert con["composio_connected"] == ["GMAIL"], "solo las ACTIVE cuentan, y no puede ser []"
+    assert con["onboarding_completado"] is True, "el fixture no dejo onboarding en un valor distinguible"
+
+
+def test_ASIMETRIA_es_admin_y_cuenta_google_valen_False_sin_token_aunque_los_claims_digan_admin():
+    """EL CANARIO del fail-closed de `web.py:1104`, que hasta hoy vivia solo en un comentario.
+
+    La rama sin `require_claims` no tiene token que leer, asi que `es_admin`/`cuenta_google` son `False`
+    por decision, no por falta de datos. Si alguien mueve esos dos campos a `_campos_tenant` -- que es
+    exactamente lo que sugiere contar apariciones -- el refactor se ve limpio, los demas tests siguen
+    verdes, y el guard desaparece sin sintoma. **Este test se pone rojo.**
+
+    `email` entra en la misma asimetria: existe solo en la rama con token."""
+    from auth import es_admin as _es_admin_real
+    claims_admin = {"sub": "auth-adm", "email": "adm@x.test",
+                    "app_metadata": {"copiloto_admin": True}}
+    # Control positivo del fixture: estos claims SI son admin para la unica implementacion de la
+    # pregunta. Sin esto, un claim mal armado haria pasar el test por la razon equivocada.
+    assert _es_admin_real(claims_admin) is True, "el fixture de claims admin no es admin de verdad"
+
+    con, sin = _me_de_las_dos_ramas(claims_admin)
+
+    assert con["es_admin"] is True, "con token y claim de admin, /me tiene que decir True"
+    assert sin["es_admin"] is False, (
+        "FAIL-CLOSED ROTO: sin `require_claims` no hay token que leer, asi que `es_admin` DEBE ser "
+        "False. Si esto falla, alguien colapso `es_admin` en `_campos_tenant` -- no lo unifiques: "
+        "las dos ramas difieren A PROPOSITO (web.py:1104)")
+    assert con["cuenta_google"] is False and sin["cuenta_google"] is False, (
+        "`cuenta_google` sale de los claims; estos no son de Google en ninguna de las dos ramas")
+    assert "email" in con and "email" not in sin, (
+        "`email` es la tercera asimetria deliberada: solo existe en la rama con token")

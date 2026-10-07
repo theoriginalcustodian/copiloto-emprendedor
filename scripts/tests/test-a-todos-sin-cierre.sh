@@ -103,22 +103,66 @@ check "los 3 informativos no entran, la obligacion si" "si" "$(printf '%s' "$out
 check "examino los 4 igual (el filtro no lo vuelve ciego)" "si" "$(printf '%s' "$out" | grep -q 'de 4 archivos examinados' && echo si || echo no)"
 rm -rf "$bz"
 
-echo "== 8. el corpus REAL: si existe corre y no mueve nada; si NO existe, el veredicto honesto es 2"
+echo "== 8. el corpus REAL: el rc es la medicion; si NO existe, el veredicto honesto es 2"
+# ⚠️ ESTE CASO TENÍA DOS CEGUERAS, y la segunda se cobró el 2026-10-05.
+#
 # `coordinacion/` está GITIGNOREADA y vive UNA sola vez, en el checkout principal. En el runner de CI
 # no existe, y ahí el `exit 2` («no pude medir») ES la respuesta correcta — no una falla del script.
 # Exigir 0 fijo fabricaba un rojo de CI que no era un hallazgo, el mismo filo que `lint.sh:36-39` ya
-# nombra para `contar-veredictos.py`. Así que se asserta el veredicto QUE CORRESPONDE AL ENTORNO, y
-# en los dos casos se ejercita la misma función: acá no hay rama sin control.
-antes="$(bash "$SCRIPT" --quiet 2>&1)"; rc=$?
+# nombra para `contar-veredictos.py`. Eso ya estaba previsto acá, y sigue.
+#
+# 🔴 Lo que NO estaba previsto: el corpus PRESENTE y MUTANDO. Este caso comparaba **dos corridas
+# consecutivas sobre el buzón VIVO**, que cuatro sesiones escriben en paralelo. Un archivo que nace
+# entre las dos lecturas da `85` y `84`, y el test lo denuncia como «no es idempotente» — acusando al
+# CÓDIGO de lo que hizo el CORPUS. Pasó con un `pedido_` mío (mtime 10:58:43) y puso en rojo el
+# pre-push de un repo PÚBLICO, que es justo donde un falso rojo enseña el `--no-verify`, con gitleaks
+# colgando del mismo hook. Diseñar con cuidado contra el riesgo temido (corpus ausente) dejó ciego el
+# caso normal: el corpus está, y cambia mientras lo medís.
+#
+# El arreglo es separar las dos preguntas, porque son de naturaleza distinta: el `rc` sobre el corpus
+# real es un dato de ESTADO —y es estable ante archivos nuevos, porque el script los reporta en vez
+# de fallar—, mientras la IDEMPOTENCIA es una propiedad del CÓDIGO y se prueba sobre corpus
+# congelado. Eso es el caso 8.bis.
+real="$(bash "$SCRIPT" --quiet 2>&1)"; rc=$?
 if [ "$rc" = "2" ]; then
-  check "sin corpus real -> 2 y lo DICE (no un 0 tranquilizador)" "si" "$(printf '%s' "$antes" | grep -q 'NO PUDE MEDIR' && echo si || echo no)"
-  echo "  nota  corpus real ausente (el caso de CI): se midió el «no pude medir», no la idempotencia"
+  check "sin corpus real -> 2 y lo DICE (no un 0 tranquilizador)" "si" "$(printf '%s' "$real" | grep -q 'NO PUDE MEDIR' && echo si || echo no)"
+  echo "  nota  corpus real ausente (el caso de CI): se midió el «no pude medir»"
 else
   check "rc sobre el buzon real" "0" "$rc"
-  despues="$(bash "$SCRIPT" --quiet 2>&1)"
-  check "idempotente (dos corridas, misma cuenta)" "$antes" "$despues"
+  check "el corpus real no lo deja mudo" "si" "$(printf '%s' "$real" | grep -q 'archivos examinados' && echo si || echo no)"
 fi
 
+echo "== 8.bis la IDEMPOTENCIA, sobre corpus CONGELADO (con el control que prueba que la comparacion ve)"
+# Corpus sintético: obligaciones `a-todos` con y sin cerrador, informativos, y dirigidos a una sola
+# sesión — nombres variados para que el orden de recorrido tenga de qué variar. Nada se copia del
+# buzón real: `nuevo_buzon` lo fabrica en un temp, así que nadie puede escribirlo mientras se mide.
+# Eso es lo único que hace válida la comparación de dos lecturas.
+bz="$(nuevo_buzon)"
+for n in hallazgo pedido contrato urgente; do
+  : > "$bz/abierto/2000-01-01_${n}_planificacion-a-todos_congelado-${n}.md"
+done
+CONCIERRE="2000-01-01_pedido_planificacion-a-todos_congelado-con-cerrador.md"
+: > "$bz/abierto/$CONCIERRE"
+printf '**CIERRA:** `%s`\n' "$CONCIERRE" > "$bz/cerrado/2000-01-01/2000-01-01_cierre_backend-a-todos_cierra-el-de-arriba.md"
+for n in cierre dato avance; do
+  : > "$bz/abierto/2000-01-01_${n}_planificacion-a-todos_informa-${n}.md"
+done
+for s in backend frontend1 frontend2 auditoria; do
+  : > "$bz/abierto/2000-01-01_pedido_planificacion-a-${s}_no-es-a-todos.md"
+done
+a="$(BUZON_DIR="$bz" bash "$SCRIPT" --quiet 2>&1)"
+b="$(BUZON_DIR="$bz" bash "$SCRIPT" --quiet 2>&1)"
+check "idempotente sobre corpus congelado" "$a" "$b"
+check "y mirO los 12 (no es igual por no haber mirado nada)" "si" "$(printf '%s' "$a" | grep -q 'de 12 archivos examinados' && echo si || echo no)"
+# CONTROL POSITIVO de la comparación: si un archivo nace entre dos lecturas, la salida CAMBIA. Es la
+# causa exacta del falso rojo, ejercitada a propósito — y es lo que vuelve informativo al «iguales»
+# de arriba. Sin este control, un script que imprimiera siempre lo mismo pasaría el caso 8.bis.
+: > "$bz/abierto/2000-01-01_pedido_planificacion-a-todos_llego-mientras-media.md"
+c="$(BUZON_DIR="$bz" bash "$SCRIPT" --quiet 2>&1)"
+check "CONTROL: un archivo nuevo SI cambia la salida (por eso el buzon vivo no se compara)" "no" "$([ "$a" = "$c" ] && echo si || echo no)"
+rm -rf "$bz"
+
 echo
-if [ "$fallos" -eq 0 ]; then echo "TODOS OK (9 casos)"; exit 0
+echo
+if [ "$fallos" -eq 0 ]; then echo "TODOS OK (10 casos)"; exit 0
 else echo "$fallos FALLA(S)"; exit 1; fi

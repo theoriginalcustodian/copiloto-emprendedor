@@ -28,6 +28,7 @@ const servicio = (over: Partial<ServicioCatalogo> = {}): ServicioCatalogo => ({
   kind: 'composio',
   descripcion: '',
   capacidades: [],
+  acciones: [],
   conectado: false,
   estado: 'nunca_conectado',
   connectPath: '/composio/connect?service=gmail',

@@ -169,10 +169,9 @@ class _SttFake:
         return TEXTO_STT_FAKE
 
 
-def test_transcribe_voice_no_expone_texto_crudo_por_default(capsys, monkeypatch):
-    """Control negativo del gate PII (B1, lote higiene): sin `COPILOTO_LOG_STT_TEXT`, `STT_TRANSCRIPT`
-    NO lleva el texto transcripto -- puede traer lo que el cliente dijo. Sólo `chars` (longitud)."""
-    monkeypatch.delenv("COPILOTO_LOG_STT_TEXT", raising=False)
+def test_transcribe_voice_no_expone_texto_crudo(capsys):
+    """Control negativo del gate PII (A11): `STT_TRANSCRIPT` NO lleva el texto transcripto -- puede traer
+    lo que el cliente dijo. Sólo metadata (`chars` = longitud)."""
     reset_registry()
     register_channel("tg", _CanalFake())
     register_stt_provider(_SttFake())
@@ -183,13 +182,13 @@ def test_transcribe_voice_no_expone_texto_crudo_por_default(capsys, monkeypatch)
     assert f'"chars": {len(TEXTO_STT_FAKE)}' in salida
 
 
-def test_transcribe_voice_expone_texto_con_env_explicita(capsys, monkeypatch):
-    """Con `COPILOTO_LOG_STT_TEXT=1` (opt-in explícito), el texto SÍ viaja -- caso de debug puntual,
-    no el default de producción."""
+def test_transcribe_voice_ignora_la_env_vieja_de_debug(capsys, monkeypatch):
+    """Control adversarial (A11): el opt-in `COPILOTO_LOG_STT_TEXT` fue retirado. Con esa env en `1` el
+    texto TAMPOCO debe viajar: si el flag reapareciera, este test lo caza (fail-open)."""
     monkeypatch.setenv("COPILOTO_LOG_STT_TEXT", "1")
     reset_registry()
     register_channel("tg", _CanalFake())
     register_stt_provider(_SttFake())
     asyncio.run(A.transcribe_voice({"channel": "tg", "file_id": "f-1"}))
     salida = capsys.readouterr().out
-    assert "cancelar mi pedido" in salida
+    assert "cancelar mi pedido" not in salida

@@ -89,6 +89,13 @@ export interface FormularioClienteProps {
    */
   onAbrirCliente: (cliente: Cliente) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` de la card de voz que envuelve este formulario (IDEMINGCLI). Si viene,
+   * la clave del ALTA se DERIVA de él: sobrevive a un remount de la card mientras el POST sigue en
+   * vuelo (el guard de `TarjetaClientePropuesto` todavía no se escribió). Sin él (alta manual desde
+   * `PantallaClientes`) la clave nace por gesto, como antes.
+   */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -99,6 +106,7 @@ export function FormularioCliente({
   onDuplicado,
   onAbrirCliente,
   onCancelar,
+  mensajeId,
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
   const tema = useTema();
@@ -191,7 +199,9 @@ export function FormularioCliente({
       } else {
         // Se asigna una sola vez por gesto de alta: si ya hay una clave en vuelo (este es un
         // reintento, o el paso "forzar" tras el 409), se reusa la misma.
-        if (claveAlta.current === null) claveAlta.current = generarId();
+        // La derivación va en la línea del uso (no en el inicializador): tras un 409 la clave se tira y
+        // el siguiente intento vuelve a derivarse del card, no cae a `generarId()`.
+        if (claveAlta.current === null) claveAlta.current = mensajeId != null ? `cliente:${mensajeId}` : generarId();
         res = await crearCliente(datos, { ...(forzar ? { forzar: true } : {}), idemKey: claveAlta.current });
       }
 

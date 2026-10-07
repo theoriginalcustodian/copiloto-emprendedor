@@ -510,9 +510,6 @@ def _artifact_for(name: str, res: dict, arguments: dict) -> "Artifact | None":
     if name.startswith("drive_"):
         url = data.get("webViewLink") or data.get("webContentLink")
         return Artifact(kind="file", data={"url": url}) if url else None
-    if name.startswith("instagram_"):
-        url = data.get("permalink") or data.get("media_url")
-        return Artifact(kind="file", data={"url": url}) if url else None
     if name == "calendar_book":
         return Artifact(kind="calendar_event", data={"url": data.get("htmlLink"),
                                                      "fields": {"title": arguments.get("title")}})

@@ -57,3 +57,76 @@ completitud del mobile.** Lo que no se puede hacer es seguir usándolo con el no
 Emparentado: [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[instrumento-que-no-mira-nunca-falla]] ·
 [[un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo]] (el instrumento contesta «no hay» cuando
 lo cierto es «no veo»).
+
+---
+
+## Refuerzo (2026-10-05): la referencia fabricada puede ser **la cita de versión de tu propio informe**
+
+Dos formas del mismo defecto, medidas el mismo día sobre `contar-veredictos.py`:
+
+- **El sello del instrumento.** El reporte publica `instrumento.git_blob` para que cualquiera verifique qué
+  versión corrió. Se computa a propósito con `hashlib` sobre `Path(__file__).read_bytes()` —decisión
+  documentada en el código, para poder sellarse sin git en el PATH— y en Windows el checkout es **CRLF**
+  mientras git almacena **LF**: el valor publicado (`cfb210f6…`) da `fatal: could not get object info`, y el
+  mismo contenido en LF da `06c700a3…`, que sí resuelve. Un campo llamado `git_blob` que **nunca** resuelve
+  con git. Alcance medido: **0 de 2876** archivos lo publican todavía — el riesgo es del primero que lo cite.
+- **Mi propia cita.** Mi informe decía «instrumento @ `527e5408`». Ese commit existía en mi checkout y **no en
+  la historia de `main`**: era la rama de #770, squasheada a `515d50f6` y borrada. `git show` lo encuentra acá
+  y **falla en un clon nuevo**. Era la cita que más parecía verificable del documento.
+
+**La prueba, en una línea:** `git merge-base --is-ancestor <sha> origin/main` y `git cat-file -t <hash>`. Si
+no resuelven, la referencia es verificable sólo para quien la escribió.
+
+**Cómo aplicarlo:** antes de publicar un identificador —SHA, blob, id de corrida, ruta— preguntá *¿esto
+resuelve desde un clon limpio, en la máquina de otro?* Un SHA de rama borrada y un hash computado sobre bytes
+que el sistema no almacena fallan igual: **parecen** trazabilidad. Para versión de código citá el commit de
+`main` que la contiene (el squash), nunca el commit en que la escribiste.
+
+Emparentado: [[push-es-el-ultimo-paso-no-el-primero]] (el squash toma otro HEAD) ·
+[[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]] ·
+[[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]].
+
+---
+
+## 🔻 Refuerzo 2026-10-07 — el número de línea que reporté lo fabricó el pipe, no el archivo: `grep -n` numera el stream que recibe
+
+Fui a auditar la cita `guard-deploy.sh:35-38` de una decisión ajena y la declaré equivocada contra mi
+propia medición, «:16-18». La equivocada era **la mía**, y el instrumento que la fabricó era mío:
+
+```
+git show origin/main:deploy/copiloto/guard-deploy.sh | sed -n '/guard_deploy()/,/^}/p' | grep -n 'rev-parse HEAD'   -> 16
+git show origin/main:deploy/copiloto/guard-deploy.sh |                                    grep -n 'rev-parse HEAD'   -> 33
+```
+
+Misma pregunta, mismo archivo, dos números. `grep -n` numera **lo que recibe por stdin**, y lo que
+recibía era el fragmento que `sed -n '/…/,/…/p'` ya había recortado: el `:16` es la línea 16 **de la
+función**, no del archivo. La cita ajena (`:35-38`, real `:33-36`) estaba a dos líneas; la mía, a
+diecisiete — y con la forma exactamente correcta.
+
+**Por qué es la misma clase que el resto de esta entrada:** un número de línea fabricado no se
+distingue de uno real. No hay dígito fuera de rango, no hay sintaxis rara, y la línea 16 del archivo
+existe y tiene código. El lector que va a buscar encuentra **otra cosa** y concluye que la cita
+envejeció. El agravante: lo usé para **auditar las citas de otros**, el único trabajo donde un número
+inventado se propaga firmado y con autoridad.
+
+**How to apply:**
+1. **Un número de línea sale de `grep -n` sobre el archivo completo, nunca sobre un pipe que ya
+   filtró.** Si hay que recortar, se recorta *después*: `grep -n <patrón> | sed -n '…'`, no al revés.
+2. **Si antes del `grep -n` hay un `sed -n '/a/,/b/p'`, un `head`, un `tail` o un `awk`, el número es
+   del fragmento.** El mismo grep sobre el archivo entero es el control positivo, y cuesta un comando.
+3. **Antes de reportar que la cita de otro está mal, corré tu medición de las dos formas.** Una cita
+   ajena a dos líneas es redondeo; una propia a diecisiete es un instrumento roto.
+4. Para números de línea sobre el estado mergeado: `git show origin/main:<path> | grep -n`, y nada
+   más en el medio.
+5. **Y el `basename` del reporte borra el directorio.** Media hora después del punto 4 reincidí en la
+   otra mitad: barrí `git ls-tree -r --name-only origin/main -- scripts`, que **incluye
+   subdirectorios**, imprimí la lista con `basename`, y reporté 15 rutas `scripts/<x>.py` de las que
+   dos **no existen** — viven en `scripts/ci/` y `scripts/evidencia/`. Lo cazó el `git show` que falló
+   (`fatal: path ... does not exist`), no yo. **Un instrumento que acorta la ruta para que el reporte
+   quepa fabrica rutas; imprimí el path tal como lo devolvió la búsqueda.**
+6. **Y `git grep -l <nombre>` cuenta los comentarios.** En el mismo barrido declaré un script
+   «cableado en `lint.sh`» porque el nombre aparecía ahí: las dos líneas eran un comentario que
+   explica, textualmente, que ese script **NO puede entrar** al CI. Un grep por nombre no distingue
+   «lo invoca» de «explica por qué no lo invoca» — [[el-guard-se-satisface-con-su-propio-comentario]].
+
+Emparentado: [[instrumento-que-no-mira-nunca-falla]] · [[al-juez-tambien-hay-que-darle-el-plano]].

@@ -57,6 +57,10 @@ El `54 de 54 (100%)` que el PLAN y el contrato citan sale de `scripts/evidencia/
 sobre sus 1480 líneas devuelve **4 hits, todos** nombres de archivo del corpus o comentarios en prosa —
 **cero uso estructural**. Un id con veredicto en web y nada en mobile cuenta como cubierto.
 
+> ⚠️ **CADUCÓ el 2026-10-05, medido por el mismo rol que lo escribió.** El párrafo de arriba era correcto el 30/09 y hoy **ya no**: `contar-veredictos.py` **sí** distingue plataforma desde **`515d50f6`** (el squash de #770, del 2026-10-05), que agregó el campo `agregado_por_plataforma`. La señal del cambio está en el propio tamaño del archivo: acá se midió sobre **1480 líneas** y el de `main` tiene **2591**.
+>
+> **El veredicto ❌ del criterio 3 NO cambia — cambia la causa.** Con el campo ya publicado, la cifra por plataforma es **web 50 de 54 (92%)** y **mobile 13 de 54 (24%)**, y la que el acta pide —web **y** mobile— es **9 de 54**, u **8 de 54** exigiendo comparación real en ambas. Lo que falta hoy no es que el lector distinga: es que **mobile no tiene cierre** (`mobile_*` aparece 0 veces en el script contra 10 de `web_*`: sin techo, sin faltantes nombrados, sin acción). Detalle y controles → `2026-10-05-la-cifra-que-declara-cerrado-el-criterio-3-es-la-que-el-instrumento-rotula-no-es-la-cifra-del-criterio.md`.
+
 **Y la dimensión mobile no se puede contar con el corpus de hoy.** Lo intenté dos veces y **las dos
 veces el control positivo salió rojo**, así que no publico ninguna cifra:
 

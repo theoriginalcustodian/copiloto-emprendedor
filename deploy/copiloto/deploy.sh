@@ -24,8 +24,9 @@
 #   UC_SKIP_DURABILIDAD   =1 saltea la prueba de durabilidad (BL-B1/E3: arma una conversación Y un
 #                         HITL ANTES del restart de [5/7] y los verifica al final,
 #                         scripts/e2e_g6_durabilidad_worker_restart.py, decisión en
-#                         deploy/copiloto/durabilidad-gate.sh) (default: sin setear = CORRE; un
-#                         --armar fallido NO aborta el deploy, queda NO_MEDIBLE en [8/8])
+#                         deploy/copiloto/durabilidad-gate.sh) (default: sin setear = CORRE y es
+#                         BLOQUEANTE: un --armar fallido o sin .env.e2e aborta con exit 3 ANTES del
+#                         restart; el opt-out imprime un aviso ruidoso)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -76,6 +77,8 @@ BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
 COPILOTO_SUBDOMAIN="${UC_COPILOTO_SUBDOMAIN:-copiloto}"
 MP_SUBDOMAIN="${UC_MP_SUBDOMAIN:-mp}"
 AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # `-` (no `:-`): permite UC_AUTH_URL="" explícito. Mismo default que sync-web.sh:38.
+PUBLIC_HOST="${UC_PUBLIC_HOST:-copilotoemprendedor.duckdns.org}"    # vhost público del front-door; sus /auth/v1/{authorize,callback,verify} van a GoTrue.
+GOTRUE_PORT="${UC_GOTRUE_PORT:-9997}"                               # GoTrue dedicada (copiloto-auth) en 127.0.0.1.
 MOTOR="motor"                                     # motor VENDORIZADO en el repo (Fase 2 graduación; antes: deploy/skeleton_kit/.../reference)
 WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
@@ -93,7 +96,7 @@ tar -C "$LOCAL" \
     --exclude='apps/copiloto-web/node_modules' --exclude='apps/copiloto-web/dist' --exclude='apps/copiloto-web/.vite' \
     --exclude='packages/core/node_modules' \
     -czf - apps/copiloto apps/copiloto-web packages/core "$MOTOR" "$WORKER" deploy/copiloto \
-  | ssh "$HOST" "mkdir -p '$REMOTE' '$REMOTE/packages' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor '$REMOTE'/packages/core && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+  | ssh "$HOST" "mkdir -p '$REMOTE' '$REMOTE/packages' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor '$REMOTE'/packages/core && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name 'dist*' -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
 
 # ---------------------------------------------------------------------------------------------
 # Sello de PROCEDENCIA (2026-07-31). El deploy es `tar | ssh`: en el VPS NO hay git, así que sin
@@ -104,32 +107,52 @@ tar -C "$LOCAL" \
 #
 # Honesto por diseño: el gate de drift de arriba sólo verifica `apps/copiloto` y `motor` contra
 # origin/main. Los otros 3 paths del tar van sin verificar, y el manifiesto lo dice en vez de
-# sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
-# "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
-# un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
-echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
+# sugerir que todo el árbol está anclado.
+#
+# NDJSON append-only (MANIFBIDIR, 2026-10-05, corrige el fix del 28/09 que resolvía sólo media
+# falla): con `cat >` cada deploy BORRABA el sello del anterior (dirección 1, auditoría). Pero
+# un `>>` que a veces NO SE EJECUTA es peor: medido en prod el 2026-10-05 -- el árbol se sincronizó
+# el 30/09 11:38 (mtime de apps/copiloto/web.py) y el servicio arrancó con ese código el 30/09
+# 11:55 y de nuevo el 02/10 06:26 (restart sin deploy), pero el manifiesto quedó congelado en el
+# registro del 28/09 -- el paso de abajo corrió (el script ya tenía este bloque desde 0eea89e0,
+# 2026-07-31) pero el `ssh ... cat >` falló y el aviso se perdió en stderr efímero (dirección 2).
+# Un historial que a veces no crece es MÁS creíble que un archivo con mtime viejo -- por eso el
+# fix no es sólo `>>`: es verificar POR EFECTO (tail -1 remoto == lo que mandé, no el exit code
+# del pipe, que miente en los dos sentidos) y, si no coincide, fallar RUIDOSO al final del script
+# (abajo, `_sello_ok`) sin abortar el resto del deploy ya aplicado.
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json (NDJSON append-only)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
-_manifiesto="$(cat <<JSON
-{
-  "desplegado_en": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "origin_main_sha": "${_sha}",
-  "gate_de_drift": "${_gate}",
-  "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
-  "paths_NO_verificados": ["apps/copiloto-web", "packages/core", "deploy/worker", "deploy/copiloto"],
-  "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
-  "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
-}
-JSON
-)"
-printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
-  || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
+_nonce="$(date +%s%N)-$$"
+# smoke_beta: el smoke de la beta NO lo corre el deploy (muta prod). Nace PENDIENTE; sólo
+# scripts/run-smoke-prod.sh agrega, en verde, una línea de evento `smoke_beta` OK (append-only: el
+# estado es la última línea de ese sha). Un deploy sin smoke se lee como PENDIENTE, no como verificado.
+_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"smoke_beta":"PENDIENTE %s","nonce":"%s"}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_sha}" "${_nonce}")"
+_sello_ok=0
+if printf '%s\n' "$_linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'"; then
+  _verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
+  if [ "$_verif" = "$_linea" ]; then
+    _sello_ok=1
+  fi
+fi
+if [ "$_sello_ok" != "1" ]; then
+  echo "    🔴 SELLO DE PROCEDENCIA NO CONFIRMADO (nonce ${_nonce}) -- el deploy sigue, pero el manifiesto" >&2
+  echo "       del VPS puede haber quedado SIN la entrada de esta corrida. El script va a fallar" >&2
+  echo "       (exit≠0) al final para que esto no quede mudo, aunque el resto del deploy ya se aplicó." >&2
+fi
 
-echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
+# REDEPLOYMISMOSHA: el build va a un directorio de staging ÚNICO por corrida, nunca a `dist-<SHA>`.
+# Antes `rm -rf "dist-$SHA"` + `--emptyOutDir` sobre el nombre que el symlink `dist` ya sirve: re-correr
+# el deploy desde el SHA publicado dejaba prod sin shell durante todo el build (y roto si el build fallaba).
+# Un nombre con RUN_ID nunca existe antes, así que el `rm -rf` sobre el publicado desaparece.
+SHA_BUILD="$(git -C "$LOCAL" rev-parse HEAD)"
+STG="dist-${SHA_BUILD}-$(date +%s)$$"
+echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> staging $STG, promovido en [5.5/7]"
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$SHA_BUILD" "$STG" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"; AUTH_URL="$2"
+REMOTE="$1"; AUTH_URL="$2"; SHA="$3"; STG="$4"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -138,10 +161,22 @@ npm install --no-audit --no-fund --loglevel=error
 # `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
 # con que sync-web.sh lo haga bien.
-VITE_AUTH_URL="$AUTH_URL" npm run build
-test -f dist/index.html
-echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
+# VITE_BUILD_SHA: sin esto el shell sale con data-build-sha="unknown" (hallazgo FE2, 2026-10-06).
+# BUILD a STAGING ($STG, único por corrida), NO al dist servido. El publish (symlink `dist`) va DESPUÉS del restart
+# OK de [5/7]: un abort entre medio deja prod con el shell viejo, coherente con el API viejo.
+# Decisión PIPELINEORDEN (planificación, 2026-10-06). `npm run build` = `tsc -b && vite build`; se
+# llaman por separado porque `--outDir` no debe llegar a tsc.
+export VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$SHA"
+npx tsc -b
+npx vite build --outDir "$STG" --emptyOutDir
+test -f "$STG/index.html"
+# control positivo: el shell DEBE declarar el SHA desplegado; si no, el deploy es ROJO.
+grep -q "data-build-sha=\"$SHA\"" "$STG/index.html" || { echo "ABORT [frontend]: $STG/index.html no declara data-build-sha=$SHA"; exit 1; }
+echo "frontend build OK en staging -> $REMOTE/apps/copiloto-web/$STG, shell declara $SHA (aún NO publicado)"
 REMOTE_WEB
+# canario de PIPELINEORDEN: UC_CANARIO_ABORT_TRAS_BUILD=1 aborta acá (build hecho, restart NO hecho,
+# publish NO hecho). Prod debe quedar con el SHA VIEJO en /healthz y en data-build-sha.
+if [ -n "${UC_CANARIO_ABORT_TRAS_BUILD:-}" ]; then echo "CANARIO: abort inyectado tras el build (exit 9)"; exit 9; fi
 
 echo "==> [2/7] auth: repoint a la GoTrue DEDICADA — SOLO si el cutover ya se completó (marker); self-healing"
 # Gate de seguridad (review A2): repointear apenas existe copiloto-gotrue.env puede apuntar el copiloto
@@ -358,106 +393,96 @@ for m in serve worker_b worker_soporte; do
 done
 REMOTE_IMPORT_GATE
 
-UC_DURABILIDAD_ARMADO_OK=0
 if uc_durabilidad_activa; then
-  echo "==> [4.95/7] armando conversación + HITL ANTES del restart de [5/7] (BL-B1/E3; opt-out con UC_SKIP_DURABILIDAD=1)"
+  echo "==> [4.95/7] armando conversación + HITL ANTES del restart de [5/7] (BL-B1/E3, BLOQUEANTE; opt-out ruidoso con UC_SKIP_DURABILIDAD=1)"
   # Tiene que correr ACÁ, no antes: el turno 1 y el gate HITL quedan "en vuelo" justo antes del
   # restart real de [5/7], que es lo que la prueba necesita ejercitar (BL-B1/E3, spec §0 -- el
   # moat es que Temporal sobrevive un restart real del worker, no uno simulado).
-  UC_DURABILIDAD_ARMADO_OK="$(uc_durabilidad_armar python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar)"
-  if [ "$UC_DURABILIDAD_ARMADO_OK" = "0" ]; then
-    echo "==> [4.95/7] ⚠️  NO_MEDIBLE: --armar falló -- el deploy CONTINÚA (Parte B: no bloqueante)."
-    echo "    [8/8] no va a poder verificar durabilidad esta corrida. Artefacto que levanta el"
-    echo "    NO_MEDIBLE: diagnosticar por qué --armar falló (login/servicio caído antes del"
-    echo "    deploy, etc.) y archivarlo como pedido_ en coordinacion/ -- no hallazgo_/dato_."
+  # Bloqueante (contrato POSTDEPLOY B): sin credencial o con --armar fallido, NO hay restart.
+  # Exit 3 distingue este aborto de un fallo general del deploy.
+  if ! ENV_E2E="$(uc_durabilidad_env_e2e "$LOCAL")"; then
+    echo "ABORT [4.95/7]: falta .env.e2e (no está en el worktree ni en el checkout común; es gitignored)." >&2
+    echo "   Sin credencial no hay prueba de durabilidad: el deploy NO reinicia servicios. Ver durabilidad-gate.sh." >&2
+    exit 3
+  fi
+  export UC_ENV_E2E_PATH="$ENV_E2E"
+  if ! python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --armar; then
+    echo "ABORT [4.95/7]: --armar falló. Los servicios viejos siguen arriba: el deploy NO reinicia." >&2
+    exit 3
   fi
 else
-  echo "==> [4.95/7] UC_SKIP_DURABILIDAD=1: prueba de durabilidad salteada explícitamente"
+  uc_durabilidad_aviso_opt_out
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
 systemctl daemon-reload
 systemctl enable "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT"
+# UC_BUILD_SHA lo escribe el deploy (antes era un valor fijado a mano en copiloto.env que envejecía sin
+# síntoma: /healthz reportó 1c92e25 con 55b3f219 desplegado; auditoría 2026-10-06). Va ANTES del restart.
+ENVF=/etc/unreal-copilot/copiloto.env
+if grep -q '^UC_BUILD_SHA=' "$ENVF"; then sed -i "s/^UC_BUILD_SHA=.*/UC_BUILD_SHA=$SHA/" "$ENVF"; else echo "UC_BUILD_SHA=$SHA" >> "$ENVF"; fi
 # restart (NO solo enable --now): en un REDEPLOY los servicios YA corren, y `enable --now` no reinicia
 # un servicio activo -> el código nuevo NO se cargaría. `restart` arranca si está parado y reinicia si
 # está activo -> un redeploy siempre carga el código sincronizado. (Breve downtime por reinicio; OK para deploy.)
 systemctl restart "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT"
+# control positivo: /healthz DEBE devolver el SHA recién desplegado; si no, el deploy es ROJO (no declarado).
+# canario CANARIOPOSTRESTART: UC_CANARIO_FALLA_TRAS_RESTART=1 corrompe el SHA ESPERADO por el guard (no el
+# healthz). El guard tiene que disparar de verdad: [5.5/7] no corre y el symlink dist no se mueve.
+SHA_GUARDA="$SHA"
+[ -n "$CANARIO_FALLA" ] && SHA_GUARDA="0000000000000000000000000000000000000000"
+got=""
+for _ in $(seq 1 15); do
+  got=$(curl -sf "http://127.0.0.1:$PORT/healthz" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sha",""))' 2>/dev/null || true)
+  [ "$got" = "$SHA_GUARDA" ] && break
+  sleep 2
+done
+[ "$got" = "$SHA_GUARDA" ] || { echo "ABORT [5/7]: /healthz sha='$got' != desplegado '$SHA_GUARDA' (UC_BUILD_SHA no llegó al proceso)"; exit 1; }
+echo "--- /healthz sha == desplegado ($SHA) ---"
 echo "--- systemctl is-active (post restart) ---"
 systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
 systemctl is-active "$WORKER_SOPORTE_UNIT"
 REMOTE_UNITS
 
-echo "==> [6/7] Caddy: agregar vhost ${COPILOTO_SUBDOMAIN}.* + rewrite /callback en ${MP_SUBDOMAIN}.* (idempotente; valida ANTES de reload; aborta sin tocar si no valida)"
-ssh "$HOST" python3 - "$BASE_DOMAIN" "$COPILOTO_SUBDOMAIN" "$MP_SUBDOMAIN" "$WEB_PORT" <<'REMOTE_CADDY'
-import re
-import shutil
-import subprocess
-import sys
+# [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de
+# [5/7] (PIPELINEORDEN). `mv -T` sobre un symlink es un rename(2): el swap es atómico para el servidor.
+echo "==> [5.5/7] publish del shell (dist -> dist-<SHA>, SOLO tras el restart OK de [5/7])"
+ssh "$HOST" bash -s -- "$REMOTE" "$SHA_BUILD" "$STG" <<'REMOTE_PUBLISH'
+set -euo pipefail
+REMOTE="$1"; SHA="$2"; STG="$3"
+cd "$REMOTE/apps/copiloto-web"
+test -f "$STG/index.html"
+# migración única: un `dist` que quedó como directorio real (deploys anteriores) se aparta para que el
+# symlink pueda tomar su nombre. Idempotente: en el segundo deploy ya es symlink y no se toca.
+if [ -d dist ] && [ ! -L dist ]; then mv dist "dist-legacy-$(date +%s)"; fi
+ln -sfn "$STG" dist.tmp
+mv -T dist.tmp dist
+# control positivo: el shell SERVIDO (no el staging) DEBE declarar el SHA publicado.
+grep -q "data-build-sha=\"$SHA\"" dist/index.html || { echo "ABORT [5.5/7]: el shell publicado no declara $SHA"; exit 1; }
+# retención: conservar el publicado y el anterior; los demás builds se borran (no se acumulan en el VPS).
+for d in $(ls -1td dist-[0-9a-f]*/ 2>/dev/null | tail -n +3); do rm -rf "$d"; done
+echo "shell publicado: dist -> $STG (shell declara $SHA)"
+REMOTE_PUBLISH
 
-base_domain, copiloto_sub, mp_sub, web_port = sys.argv[1:5]
-path = "/etc/caddy/Caddyfile"
-with open(path, encoding="utf-8") as f:
-    content = f.read()
+# CONVERGENTE (DEPLOYNOCONVERGE): caddy_converge.py REEMPLAZA cada bloque gestionado si difiere del
+# deseado; antes `if host in content: no-op` dejaba cualquier directiva nueva fuera de prod.
+# Fuente única compartida con caddy-sync.sh (no duplicar la lógica acá). Valida con `caddy validate`
+# ANTES de tocar el archivo; si no valida, sale != 0 y `set -e` corta antes del reload.
+echo "==> [6/7] Caddy: converger bloques ${COPILOTO_SUBDOMAIN}.*, ${PUBLIC_HOST} (4 handles /auth/v1) y rewrite en ${MP_SUBDOMAIN}.* (convergente; valida ANTES de reload)"
+ssh "$HOST" python3 - "$BASE_DOMAIN" "$COPILOTO_SUBDOMAIN" "$MP_SUBDOMAIN" "$WEB_PORT" "$PUBLIC_HOST" "$GOTRUE_PORT" \
+  < "$LOCAL/deploy/copiloto/caddy_converge.py"
 
-copiloto_host = f"{copiloto_sub}.{base_domain}"
-mp_host = f"{mp_sub}.{base_domain}"
-changed = False
-
-if copiloto_host in content:
-    print(f"= bloque {copiloto_host} ya existe (no-op)")
-else:
-    content = content.rstrip("\n") + f"\n\n{copiloto_host} {{\n    reverse_proxy 127.0.0.1:{web_port}\n}}\n"
-    changed = True
-    print(f"+ agregado bloque {copiloto_host} -> 127.0.0.1:{web_port}")
-
-pattern = re.compile(r"(" + re.escape(mp_host) + r"\s*\{)(.*?)(\n\})", re.DOTALL)
-m = pattern.search(content)
-if not m:
-    print(f"ERROR: no encontre el bloque {mp_host} en {path}", file=sys.stderr)
-    sys.exit(1)
-
-if "rewrite /callback /mp/callback" in m.group(2):
-    print(f"= rewrite /callback ya presente en {mp_host} (no-op)")
-else:
-    new_body = "\n    rewrite /callback /mp/callback" + m.group(2)
-    content = content[: m.start()] + m.group(1) + new_body + m.group(3) + content[m.end():]
-    changed = True
-    print(f"+ agregado 'rewrite /callback /mp/callback' en {mp_host}")
-
-if not changed:
-    print("Caddyfile sin cambios (ya aplicado previamente) -- no-op idempotente, sin reload")
-    sys.exit(0)
-
-tmp = path + ".new"
-with open(tmp, "w", encoding="utf-8") as f:
-    f.write(content)
-
-result = subprocess.run(["caddy", "validate", "--config", tmp], capture_output=True, text=True)
-if result.returncode != 0:
-    print("CADDY VALIDATE FALLO -- abortando SIN aplicar (Caddyfile original intacto)", file=sys.stderr)
-    print(result.stdout, file=sys.stderr)
-    print(result.stderr, file=sys.stderr)
-    sys.exit(1)
-
-shutil.copy(path, path + ".bak")
-shutil.move(tmp, path)
-print("Caddyfile actualizado + validado OK (backup en Caddyfile.bak)")
-REMOTE_CADDY
-
-# El script python de arriba solo escribe/valida; el reload es un paso separado y explícito para
-# que quede claro en el log qué exit code correspondió a qué (si el python abortó con exit!=0,
-# `set -e` corta ANTES de llegar a este reload).
+# El reload es un paso separado y explícito para que el log muestre qué exit code correspondió a qué.
 ssh "$HOST" systemctl reload caddy
 echo "Caddy recargado."
 
-echo "==> [7/7] Smoke (evidencia real, no autoevaluación)"
+echo "==> [7/7] Sanidad del proceso vivo (NO es el smoke de la beta)"
 ssh "$HOST" bash -s -- "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$WEB_PORT" "$BASE_DOMAIN" <<'REMOTE_SMOKE'
 set -euo pipefail
 WEB_UNIT="$1"; WORKER_UNIT="$2"; WORKER_SOPORTE_UNIT="$3"; WEB_PORT="$4"; BASE_DOMAIN="$5"
@@ -471,19 +496,25 @@ echo "--- curl / (SPA index servido mismo-origen por _mount_spa) ---"
 curl -sf "http://127.0.0.1:${WEB_PORT}/" | head -c 200; echo
 echo "--- caddy validate (post-reload sanity) ---"
 caddy validate --config /etc/caddy/Caddyfile
-echo "--- vhosts preexistentes siguen respondiendo (status code informativo, hermes/temporal usan basic_auth -> 401 esperado) ---"
-curl -s -o /dev/null -w 'root: %{http_code}\n' "https://${BASE_DOMAIN}/" || true
-curl -s -o /dev/null -w 'hermes: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
-curl -s -o /dev/null -w 'temporal: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
+echo "--- vhosts preexistentes (INFORMATIVO: no cuenta como check; hermes/temporal usan basic_auth -> 401 esperado) ---"
+curl -s -o /dev/null -w 'root [informativo]: %{http_code}\n' "https://${BASE_DOMAIN}/" || true
+curl -s -o /dev/null -w 'hermes [informativo]: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
+curl -s -o /dev/null -w 'temporal [informativo]: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
 REMOTE_SMOKE
+echo "    Smoke de la beta (37 checks, muta prod) = scripts/run-smoke-prod.sh — NO corrido por este deploy."
 
 if uc_durabilidad_activa; then
-  if [ "$UC_DURABILIDAD_ARMADO_OK" = "1" ]; then
-    echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
-    python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
-  else
-    echo "==> [8/8] NO_MEDIBLE: --armar no corrió/falló antes del restart -- no hay estado que verificar (no es VERDE ni ROJO)."
-  fi
+  echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
+  python "$LOCAL/scripts/e2e_g6_durabilidad_worker_restart.py" --verificar
+else
+  echo "⚠️⚠️ [8/8] durabilidad NO verificada (UC_SKIP_DURABILIDAD=1). El deploy no lo acredita."
 fi
 
+if [ "${_sello_ok:-0}" != "1" ]; then
+  echo "🔴 DEPLOY COMPLETO, PERO EL SELLO DE PROCEDENCIA NO SE PUDO CONFIRMAR (ver [1.bis] arriba)."
+  echo "   DEPLOY-MANIFEST.json en el VPS puede estar desactualizado -- auditoría/autosanación/grafo"
+  echo "   leerían un sha viejo. Repetir el deploy, o escribir la línea a mano (ver [1.bis] para el"
+  echo "   formato NDJSON), antes de confiar en ese archivo."
+  exit 1
+fi
 echo "==> Deploy completo."

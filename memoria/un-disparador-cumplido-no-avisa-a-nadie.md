@@ -105,3 +105,35 @@ sobre el pasado disfrazada de estado presente.
 ⚠️ Y el corolario para los `a-todos`: el hallazgo de ACTID sobrevivió **dos días** a su propio fix porque
 un broadcast **no tiene quién lo mueva**. Ver [[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] y la
 convención `CIERRA:`, que existe justo para eso.
+
+---
+
+**Refuerzo 2026-10-06 (auditoría) — el disparador se cumplió, el margen que liberaba **ya lo había consumido otro**, y la deuda que custodiaba estaba pagada hace horas.**
+
+Un cron me dejó una deuda gestionada con disparador nombrado, escrito con todo el cuidado del caso: «el
+archivo de memoria y su línea de índice son **atómicos**; no entran porque `MEMORY.md` mide 23.985/24.000
+(margen 15 = 0 líneas). **Disparador: #805 mergeado** → ahí el margen pasa a ~322 y entran juntos». Medí las
+tres afirmaciones:
+
+1. **#805 mergeó e hizo exactamente lo prometido**: `4f675376` bajó entradas a `HISTORIA.md` y dejó el índice
+   en **23.678** = margen 322. El disparador no falló.
+2. **El margen ya no estaba.** Entre ese merge y mi turno, **siete commits** tocaron `MEMORY.md` y lo llevaron
+   a **23.943** = margen 57: otra vez cero líneas.
+3. **Y la deuda estaba pagada.** El archivo entró a `main` en `0d9bee8d` (#811), **atómico con su línea de
+   índice** (verificado: `MEMORY=1`). El custodio seguía describiéndola como pendiente.
+
+**Why:** un disparador sobre un **evento** espera a que ocurra, y ocurre una vez. Un disparador sobre un
+**recurso compartido y consumible** —bytes de un presupuesto, un slot, una cuota, un lock— no es un evento:
+es una **ventana que terceros cierran**, y se cumple y caduca sin que nada cambie de estado. El texto queda
+diciendo «ya se puede» justo cuando ya no se puede, que es peor que decir «bloqueado»: el bloqueo invita a
+medir, el permiso invita a ejecutar. Y el segundo filo es independiente del primero: **el documento que
+custodia una deuda no se entera de que la deuda se pagó por otro camino**, así que hereda la forma de
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]].
+
+**How to apply:** (1) si el disparador es «cuando X libere Y», el disparador real es **medir Y**, no ver X:
+dejá escrito el **comando** (acá `python scripts/medir-indice-memoria.py`) y nunca la cifra que esperás, que
+envejece sola. (2) Cuando el recurso es compartido entre sesiones que escriben en paralelo, asumí que **el que
+llega último no tiene margen**; la salida no es esperar otra ventana sino la vía que **no consume el recurso**
+—acá, un refuerzo adentro de una entrada existente, que cuesta 0 líneas de índice
+([[el-refuerzo-va-adentro-no-pide-linea]]). (3) Antes de ejecutar lo que un custodio manda, medí si **ya está
+hecho**: cuesta un `git ls-tree` y es la mitad de las veces.

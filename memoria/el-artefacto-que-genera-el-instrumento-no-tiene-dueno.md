@@ -109,3 +109,85 @@ Al enumerar el daño de un artefacto sin dueño hay que contar todos los que lo 
 `…_contrato-sin-tomar-<contrato>.md`: 46 archivos entre 2026-08-03 y 2026-09-22. Daño vigente cero, pero
 `retirados_obsoletos=0` es indistinguible de «el glob no matchea nada». Control positivo de una línea:
 verificar que el `$urgente` recién generado matchea el patrón del retiro, y `fatal` si no.
+
+---
+
+## Refuerzo 2026-10-06 — el artefacto se trajo el **sobre** del instrumento, y el sobre viajó a un repo público
+
+`docs/copiloto-emprendedor/2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md:339` (fila `BL-F2`) tenía
+commiteado, dentro de una celda de tabla markdown, el **envoltorio JSON del transcript**:
+`"promptSource":"system","turnOrigin":"peer",…,"sessionId":"…","gitBranch":"…","slug":"…"`.
+
+**La parte que importa: el §A del mismo documento presenta el mecanismo como garantía de calidad** —
+*«filas tal como las midieron los cuatro barridos, **recuperadas del transcript por script (no
+transcritas)**»*. El «no transcritas» está ahí para decir *«nadie las reescribió a mano, así que no hay
+deriva»*. **Y es exactamente ese mecanismo el que inyectó la basura:** una transcripción a mano nunca
+habría pegado `"sessionId"`.
+
+⇒ **Lo que se cita como garantía de fidelidad puede ser la fuente de la contaminación**, y por eso la frase
+que la invoca desactiva la revisión: quien lee «recuperado por script» deja de mirar el contenido.
+
+### Por qué no dio síntoma
+
+- Markdown **no se rompe**: la fila tenía los 6 pipes de las 5 columnas, así que renderizaba. El JSON
+  quedaba dentro de la última celda, a 1130 caracteres del margen — en una tabla donde las filas largas
+  son la norma.
+- Ningún linter del repo mira el **contenido** de un `.md` de `docs/`.
+- El repo es **público** desde el 2026-08-06: no era un secreto (ni token ni credencial, verificado), pero
+  sí metadata interna de sesión publicada sin querer.
+
+**Control que lo caza, barato — corregido el mismo día, porque la primera versión no servía:**
+
+```bash
+# VERDE = 0 archivos. Árbol ENTERO contra main, y sólo campos IDENTIFICADORES.
+git grep -nE '"(sessionId|gitBranch|slug|userType)":"[^…".]' origin/main
+```
+
+Medido en sus tres estados antes de embarcarlo: `origin/main` → **0** (verde) · el commit que publicó el
+blob, `b313627a`, usado como canario → **1** (rojo) · la cita elidida de 7 líneas más arriba → **0**, no se
+marca a sí misma.
+
+## Refuerzo 2026-10-06 (auditoría) — el control que escribí para cazarlo fallaba en tres ejes a la vez, y los tres se miden en un minuto
+
+La primera versión decía `grep -rE '"(sessionId|promptSource|turnOrigin|userType)"' docs/` — «cero hits es
+el estado sano». Corrido tal cual contra el repo: **cero hits**. Y el veredicto era falso por tres motivos
+independientes, ninguno visible desde el resultado.
+
+**1 · El alcance era la carpeta del caso, no el alcance del productor.** `docs/` es donde apareció el blob,
+pero el mecanismo que lo inyecta —recuperar texto de un transcript y pegarlo— no está acotado a `docs/`:
+escribe donde se le pida, y de hecho el string vive hoy en `memoria/`. Un control calibrado a la carpeta
+del incidente conocido no puede cazar al próximo productor, y su cero **no distingue «no hay» de «no miré ahí»**.
+
+**2 · Buscaba el NOMBRE del campo, y el nombre lo tiene también la documentación correcta.** Ampliar el
+alcance al árbol entero no arregla nada: marca esta misma entrada, que cita el sobre para documentarlo.
+Lo que separa fuga de documentación es el **valor**. Y ahí el filo fino, que me costó dos pasadas: no es
+«elidido vs. real» sino **identificador vs. enum**. La cita de arriba elide `sessionId`, `gitBranch` y
+`slug` —los que identifican— y deja literales `"promptSource":"system"` y `"turnOrigin":"peer"`, que son
+enums de tres valores y no identifican nada. Un patrón que exige valor-no-elidido sobre los seis campos
+marca la documentación bien hecha; restringido a los cuatro identificadores, da 0 y sigue viendo el canario.
+
+**3 · El control mide el ÁRBOL, y en un repo público lo publicado es la HISTORIA.** `#867` removió el blob
+de `main`, y eso es lo que el grep ve. Pero `b313627a` **es ancestro de `main`**: un `git show` lo devuelve
+con los valores intactos —un identificador de sesión de 36 caracteres y un slug de 21— a cualquiera que
+clone. Dos commits lo publican. «Lo saqué de main» no es un cierre cuando el repo es público; es un cambio
+en la punta, con el commit alcanzable detrás.
+
+**Severidad real, para no inflar la alarma:** lo publicado es metadata de sesión, **cero credenciales**
+(verificado campo por campo). Nada que rotar, y no justifica reescribir historia. Lo que importa es que
+**éste es el control que va a correr la próxima vez**, cuando el sobre quizá traiga otra cosa.
+
+**Why:** un control de fuga hereda tres parámetros que nadie declara al escribirlo —qué carpetas, qué
+cadena, qué versión del repo— y los tres se llenan solos con los del caso que uno acaba de arreglar. El
+resultado es un verde que sólo acredita que el incidente ya cerrado no volvió, presentado como si acreditara
+que no hay ninguno. Es la familia del denominador incompleto, con el agravante de que acá el objeto es
+*publicación*: el eje tiempo no se cierra retirando el archivo.
+
+**How to apply:** (1) el alcance sale del **productor**, no del lugar donde apareció: si el mecanismo puede
+escribir en cualquier archivo versionado, el control corre sobre el árbol entero (`git grep … origin/main`,
+no `grep -r` sobre el disco, que mide tu checkout). (2) Buscá el **valor**, y antes de elegir el patrón
+separá los campos que identifican de los que son enum — si el control marca la documentación del incidente,
+el sujeto está mal elegido, no el alcance. (3) En repo público, agregá la pregunta que el grep del árbol no
+hace: *¿el commit que lo introdujo sigue siendo ancestro?* (`git merge-base --is-ancestor <sha> origin/main`).
+(4) Y usá el commit culpable como **canario**: es gratis, ya existe, y prueba que el patrón marca —sin él,
+los tres fallos de arriba son indistinguibles de un repo limpio ([[instrumento-que-no-mira-nunca-falla]],
+[[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]]).

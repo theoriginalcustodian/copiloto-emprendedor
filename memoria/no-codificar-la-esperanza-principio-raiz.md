@@ -76,3 +76,29 @@ Corolario medido el mismo día, del lado del prototipo: un archivo puede **docum
 comentario nuevo y dejar el viejo intacto**, y los dos conviven — el lector encuentra el que busca
 primero. Ver `[[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]]`.
 
+
+
+## Refuerzo (2026-10-05) — una conclusión derivada de la ESTRUCTURA no es una medición del EFECTO
+
+Tres fallas en una hora, todas con la misma forma, y ninguna por falta de datos:
+
+1. Auditoría midió que 10 de 12 conflictos de veredicto traen su `COHERENTE` del **mismo** documento, y
+   concluyó que una línea marcándolo como superado **retira 10**. La primera mitad era cierta.
+2. Yo le prometí a frontend1 «el contraste baja de 12 a 2» citando esa conclusión, sin medirla.
+3. Ya con el dato nuevo, le pedí marcar **7 documentos**. Medido después: cierran **2**.
+
+El efecto real: la marca de frontend1 retiró sus 10 veredictos —control positivo: su documento aporta
+**0** al cruce, contra 10 antes— y **el contraste siguió en 12**, porque esos `COHERENTE` también viven
+en otros documentos. La de frontend2, con **2** ids, cerró 2 conflictos: **12 → 10**. Mismo mecanismo,
+mismo esfuerzo de dos líneas, rendimiento opuesto — su documento era la **única** fuente de ese
+veredicto.
+
+🔴 **Por qué la estructura engaña y no se siente como esperanza:** «10 vienen del mismo documento» es un
+hecho medido, verificable, y suena a causa. Pero describe de **dónde salen** los veredictos, no **qué
+queda en pie** si se retira uno. La conclusión necesita la otra pregunta, y es otra medición.
+
+**Pregunta portable antes de prometer un número:** *¿medí el EFECTO de la intervención, o deduje el
+efecto de la forma del dato?* Si es lo segundo, simulá la intervención contra el dato real primero —
+tarda minutos y acá habría evitado dos pedidos equivocados. Relacionada:
+[[un-orden-de-magnitud-que-coincide-no-confirma-la-causa]] ·
+[[medir-obliga-a-reportar-y-el-reporte-entra-al-corpus-medido]]
