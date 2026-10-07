@@ -280,3 +280,17 @@ verificá en **tres casos a mano** que el sujeto extraído es el sujeto de la fr
 coincide; si uno falla, el conteo no significa nada. (3) Y el control más barato de todos: **¿aparece tu
 propio trabajo entre los hallazgos?** El barrido marcó dos mensajes míos escritos ese mismo día — un
 instrumento que acusa a lo que acabás de escribir está clasificando por forma, no por contenido.
+
+---
+
+**Refuerzo (2026-10-07): el control positivo acredita el ALCANCE del instrumento, nunca su UNIDAD — tres casi-hallazgos falsos en un día, los tres con el control positivo en verde.**
+
+Medí tres cosas distintas y las tres veces el instrumento encontró algo, pasó su control positivo, y estaba midiendo en otra unidad que la que yo le atribuía:
+
+1. **Adyacencia.** Pregunté «¿el aviso de plantilla está en pantalla?» con `git grep -niE 'plantilla gen'` → **1 hit, un comentario**. Estaba a un paso de reportar que la lista corta del operador citaba algo inexistente. El texto real dice «Plantilla **estándar** genérica»: mi patrón exigía las palabras pegadas. Control positivo que corrí: `carácter orientativo` → 1 hit. Probó que el grep **encuentra**, no que **mi patrón** fuera el correcto. Medición del fallo: `plantilla gen` → **0**, `Plantilla estándar genér` → **4**.
+2. **Bytes disfrazados de chars.** Para re-medir el margen del índice usé `git show <ref> | python -c "len(sys.stdin.read())"` → 23.943, y lo leí como chars. En Windows `sys.stdin` decodifica con la locale (cp1252), así que cada byte de continuación UTF-8 cuenta como un char: **era el conteo de bytes**. Con eso iba a refutar una fila `✅ CERRADA` cuya corrección explícita era justamente *«venía citando bytes; comparar bytes contra un techo en chars sobreestima ~4%»*. Medido bien: 23.943 bytes = **22.972 chars**, 971 de diferencia = 4,2%. **La fila tenía razón y reproduje el defecto que ella misma había corregido, un día después, con otra herramienta.**
+3. **CRLF.** Dos lecturas del mismo archivo en disco dieron 23.885 y 24.077 chars, y concluí que **otra sesión lo estaba escribiendo en vivo**. No: `open(..., encoding='utf-8')` normaliza CRLF→LF y `read_bytes().decode()` no — el archivo tiene 192 finales de línea. Tres lecturas seguidas dieron 23.885 idéntico. **Ese casi-hallazgo acusaba a un peer de una conducta que no tuvo.**
+
+**La regla:** un control positivo responde *«¿el instrumento puede encontrar algo?»*. No responde *«¿lo que cuenta es lo que yo digo que cuenta?»*. Y el verde de ese control **se siente** como respuesta a las dos, que es por lo que las tres veces seguí adelante.
+
+**How to apply:** (1) cuando la pregunta es **«¿esto está en pantalla?»**, el control no es otro grep — **es leer lo que se renderiza**. Un patrón que falla por adyacencia, acento o separador es indistinguible de un hecho ausente. (2) Antes de citar una cifra, **nombrá su unidad y medila dos veces por caminos que deban coincidir** (bytes vs chars, crudo vs normalizado, archivo vs blob de git): si discrepan, el sospechoso es la **unidad**, no el objeto. Una cifra sin unidad se deja citar para cualquier pregunta → [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]. (3) Si tu medición está por **refutar una corrección ajena**, leé primero qué corrigió: si corrigió tu misma unidad, el error es tuyo hasta que pruebes lo contrario. (4) Y si el hallazgo **acusa a otra sesión**, repetí la lectura tres veces antes de escribirlo: un instrumento inestable fabrica conducta ajena.
