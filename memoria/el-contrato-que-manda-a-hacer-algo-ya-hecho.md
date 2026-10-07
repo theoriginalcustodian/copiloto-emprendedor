@@ -127,3 +127,55 @@ mergeados, con el archivo de producción idéntico. El diff de un PR así se ve 
 sin pushear?» sino **«¿el CONTENIDO de los archivos que nombra ya está en el destino, y en qué
 dirección?»** — two-dot por path, más la fecha de merge de los PR que lo cubrirían.
 Ver [[un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola]].
+
+---
+
+## Refuerzo 2026-10-07 — el DoD citó el DEFECTO, no su ESTADO: el `cierre_` que lo respondía estaba en la MISMA carpeta `abierto/`, nombrando las ramas exactas
+
+Un DoD de deploy pedía verificar en el navegador contra prod que *«el setup de AFIP no manda a conectar
+Drive en Apps»*. **Tres sesiones lo intentaron y ninguna pudo**: frontend grepeó
+`PantallaAfipSetup.tsx` y encontró sólo «Copia en Drive», se negó —correctamente— a darlo por
+confirmado, y lo marcó `[ASSUMED_PENDING_VERIFY]`; backend lo dejó *«no medido, requiere navegador»*;
+planificación me pidió el texto exacto para *«confirmarlo o descartarlo»*. La conclusión que se estaba
+formando era **«no es reproducible, se retira del DoD»**.
+
+**Era reproducible. Ya estaba arreglado.** El texto existió, en el archivo que todos miraron
+(`apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx`), en el commit **padre del fix**
+(`4150cfda`):
+
+- `:792` — `Google Drive no está conectado. Conectalo en Apps para que tus facturas se guarden —`
+- `:801` — `Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite igual`
+
+Lo removió `b5e4146b` — `fix(web): el setup AFIP deja de mandar a «conectar Drive en Apps» (DRIVECERO)
+(#863)`, **ancestro del SHA vivo**. Y el `cierre_` que lo declaraba estaba **en la misma carpeta
+`abierto/` que el DoD**, nombrando las dos ramas exactas:
+`DRIVECERO-web-setup-AFIP-sin-salida-hacia-Apps-PR863-mergeado.md:7` → *«en las ramas
+`driveConectado === false` y `== null` del bloque 4, el texto «Conectalo en Apps» / «conectado en Apps»
+salió»*.
+
+**Lo que casi costó, y es la diferencia con los casos anteriores de esta entrada:** acá el trabajo
+redundante no era benigno. Ver el setup exige un tenant **sin AFIP configurada**, y el canónico la tiene
+⇒ las dos sesiones concluyeron que había que **desconfigurar AFIP en producción**. Un criterio ya
+cumplido estaba a punto de justificar una **escritura en prod** — exactamente lo que el canon prohíbe
+producir para alcanzar un estado de prueba.
+
+**La raíz es de redacción, y es fina:** el DoD listaba *«los tres defectos que motivan el deploy»* y
+después pedía verificar su ausencia. Citar el defecto es correcto; lo que faltaba era **su estado y el
+commit que lo cerró**. Un defecto nombrado sin fecha ni dueño se lee como vigente, y cada lector lo
+vuelve a buscar en el presente, donde por definición ya no está.
+
+**El control del cero, que acá es obligatorio:** «0 hits» tiene tres causas —el fix, el path equivocado
+y el archivo ausente— y las tres se ven igual. El que discrimina es el **mismo patrón sobre el mismo
+path en el commit padre**: 2 hits en `4150cfda`, 0 en prod, con el archivo presente (806 líneas) y
+`Drive` todavía en 18 hits. Sin esa segunda cifra, mi 0 era indistinguible del 0 de frontend, que vino
+de buscar un texto que ya no existía.
+
+**How to apply:** (1) Antes de medir la ausencia de un defecto en prod, grepeá **el buzón entero con las
+palabras del propio defecto** (`grep -rniE` sobre `coordinacion/`, cerrados incluidos): el `cierre_` que
+lo respondió puede estar en `abierto/`, y un `cierre_` dirigido a otro no te llega por ningún canal
+([[un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola]]). (2) Un defecto citado en un
+DoD lleva **su commit de fix o un «vigente al \<SHA\>»**; sin eso, el DoD manda a buscar en el presente
+algo que vive en la historia. (3) Si para reproducir un defecto hay que **escribir en prod**, pará: antes
+preguntá si el defecto sigue existiendo **en el código**, que es gratis y no muta nada
+([[desplegado-no-significa-con-clientes]]). (4) «No es reproducible» es una conclusión con dos causas
+—no existe, o **ya se arregló**— y el diff del fix las separa en una línea.

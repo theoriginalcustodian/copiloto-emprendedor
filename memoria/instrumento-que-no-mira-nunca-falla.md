@@ -581,3 +581,46 @@ sello. (3) A todo instrumento preguntale **cuántos elementos miró** y hacelo f
 denominador ausente es el mismo defecto una cuarta vez (`SMOKEDENOM`, `CIVERDEDENOM`, `LINTDENOM`, y ahora éste).
 (4) Si el insumo del gate crece de forma monótona (tablero, índice, historial), la poda **es parte del gate**, no
 mantenimiento opcional.
+
+---
+
+**Refuerzo (2026-10-07): el criterio que no puede salir ROJO — y lo caro no es el falso verde, es el RECURSO que pide para cerrarlo.**
+Verificando un DoD de 4 puntos encontré el vector hermano del «denominador cero»: no un instrumento que
+mira poco, sino **un criterio cuyo verde es estructuralmente inevitable**. El punto decía *«`/me.mp_connected`
+y `/catalog.mercadopago.connected` coinciden»*, y se midió por HTTP contra el tenant canónico: `False` /
+`False` ⇒ ✅. Pero en el SHA vivo hay **una sola** definición del estado (`web.py:641 _estado_mp`, cuyo
+docstring dice *«la ÚNICA fuente de `/me` y `/catalog`»*), **una sola** del predicado (`:648 _mp_connected`)
+y **exactamente dos** call sites (`:667` y `:1198`). Los dos lados leen la misma fila por la misma función:
+**«coinciden» no es una propiedad medible, es una identidad.** Un tenant sano daría `True`/`True` **por la
+misma razón**, y el criterio saldría verde incluso si la función estuviera mal, porque los dos lados se
+equivocarían juntos.
+
+**Por qué el criterio existía y por qué dejó de informar:** antes del fix, `/catalog` usaba
+`first_seller_user_id()` («hay fila») y `/me` usaba `salud()`; discrepaban, y la coincidencia **era** la
+prueba de que el fix llegó. Una vez unificados en un helper, lo que acredita el fix es **la ancestría del
+commit** (verificable en una línea), no la coincidencia. **El criterio sobrevivió a su propio mecanismo:
+sigue escrito, sigue dando verde, y ya no mide nada.**
+
+**El costo real, que es lo nuevo:** de ese punto nació un pedido al **operador** — *«necesito un tenant con
+MP conectado para el control positivo»*. Medido: ese tenant **no cerraría el punto** (coincidiría por
+construcción), y lo único que sí probaría —que el predicado no está clavado en `False`— ya estaba congelado
+sin prod ni tenant en `test_catalog_route.py:129` (`..._true`), `:136` (`..._false`) y `:159` (no-leak entre
+tenants). **Un criterio que no puede fallar no sólo acredita de más: fabrica pedidos sobre el recurso más
+escaso, y el pedido se ve prudente** porque está redactado como «control positivo».
+
+**Y pasó dos veces el mismo día, en dos sesiones distintas.** Planificación escribió *«post-deploy instagram
+= 0 ocurrencias»* sobre una entrada que una decisión previa había resuelto **CONSERVAR** porque mobile la
+usa: la medición era cierta y no podía dar 0 nunca. Misma forma, otro origen — el verde garantizado por una
+decisión de diseño, no por el estado del sistema.
+
+**How to apply:** (1) A cada criterio de DoD, antes de medirlo, hacele la pregunta que lo falsea: **«¿qué
+tendría que pasar para que esto salga ROJO?»** Si la respuesta es «nada», o «algo que una decisión ya
+descartó», no es criterio — es decoración, y hay que reemplazarlo o borrarlo. (2) Cuando dos lados *deben*
+coincidir, contá **definiciones y call sites**: una definición con N call sites hace la coincidencia
+tautológica, y lo que falta entonces es un **guard de deriva** que falle si alguno deja de pasar por el
+helper — hoy esa garantía suele vivir en un **docstring**, y un docstring no falla
+([[el-guard-se-satisface-con-su-propio-comentario]]). (3) Si un criterio genera un **pedido de recurso**
+(un tenant, un device, una aprobación del operador), medí **primero** que el recurso cierre el criterio:
+si coincide por construcción, el pedido se retira, no se escala. (4) Lo que acredita «el fix llegó» es la
+**ancestría del commit**, no su síntoma observable — el síntoma puede desaparecer por tres motivos y sólo
+uno es el fix ([[dos-causas-suficientes-el-test-no-atribuye]]).
