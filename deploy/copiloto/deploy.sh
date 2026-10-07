@@ -77,6 +77,8 @@ BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
 COPILOTO_SUBDOMAIN="${UC_COPILOTO_SUBDOMAIN:-copiloto}"
 MP_SUBDOMAIN="${UC_MP_SUBDOMAIN:-mp}"
 AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # `-` (no `:-`): permite UC_AUTH_URL="" explícito. Mismo default que sync-web.sh:38.
+PUBLIC_HOST="${UC_PUBLIC_HOST:-copilotoemprendedor.duckdns.org}"    # vhost público del front-door; sus /auth/v1/{authorize,callback,verify} van a GoTrue.
+GOTRUE_PORT="${UC_GOTRUE_PORT:-9997}"                               # GoTrue dedicada (copiloto-auth) en 127.0.0.1.
 MOTOR="motor"                                     # motor VENDORIZADO en el repo (Fase 2 graduación; antes: deploy/skeleton_kit/.../reference)
 WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
@@ -459,66 +461,15 @@ for d in $(ls -1td dist-[0-9a-f]*/ 2>/dev/null | tail -n +3); do rm -rf "$d"; do
 echo "shell publicado: dist -> dist-$SHA (shell declara $SHA)"
 REMOTE_PUBLISH
 
-echo "==> [6/7] Caddy: agregar vhost ${COPILOTO_SUBDOMAIN}.* + rewrite /callback en ${MP_SUBDOMAIN}.* (idempotente; valida ANTES de reload; aborta sin tocar si no valida)"
-ssh "$HOST" python3 - "$BASE_DOMAIN" "$COPILOTO_SUBDOMAIN" "$MP_SUBDOMAIN" "$WEB_PORT" <<'REMOTE_CADDY'
-import re
-import shutil
-import subprocess
-import sys
+# CONVERGENTE (DEPLOYNOCONVERGE): caddy_converge.py REEMPLAZA cada bloque gestionado si difiere del
+# deseado; antes `if host in content: no-op` dejaba cualquier directiva nueva fuera de prod.
+# Fuente única compartida con caddy-sync.sh (no duplicar la lógica acá). Valida con `caddy validate`
+# ANTES de tocar el archivo; si no valida, sale != 0 y `set -e` corta antes del reload.
+echo "==> [6/7] Caddy: converger bloques ${COPILOTO_SUBDOMAIN}.*, ${PUBLIC_HOST} (4 handles /auth/v1) y rewrite en ${MP_SUBDOMAIN}.* (convergente; valida ANTES de reload)"
+ssh "$HOST" python3 - "$BASE_DOMAIN" "$COPILOTO_SUBDOMAIN" "$MP_SUBDOMAIN" "$WEB_PORT" "$PUBLIC_HOST" "$GOTRUE_PORT" \
+  < "$LOCAL/deploy/copiloto/caddy_converge.py"
 
-base_domain, copiloto_sub, mp_sub, web_port = sys.argv[1:5]
-path = "/etc/caddy/Caddyfile"
-with open(path, encoding="utf-8") as f:
-    content = f.read()
-
-copiloto_host = f"{copiloto_sub}.{base_domain}"
-mp_host = f"{mp_sub}.{base_domain}"
-changed = False
-
-if copiloto_host in content:
-    print(f"= bloque {copiloto_host} ya existe (no-op)")
-else:
-    content = content.rstrip("\n") + f"\n\n{copiloto_host} {{\n    reverse_proxy 127.0.0.1:{web_port}\n}}\n"
-    changed = True
-    print(f"+ agregado bloque {copiloto_host} -> 127.0.0.1:{web_port}")
-
-pattern = re.compile(r"(" + re.escape(mp_host) + r"\s*\{)(.*?)(\n\})", re.DOTALL)
-m = pattern.search(content)
-if not m:
-    print(f"ERROR: no encontre el bloque {mp_host} en {path}", file=sys.stderr)
-    sys.exit(1)
-
-if "rewrite /callback /mp/callback" in m.group(2):
-    print(f"= rewrite /callback ya presente en {mp_host} (no-op)")
-else:
-    new_body = "\n    rewrite /callback /mp/callback" + m.group(2)
-    content = content[: m.start()] + m.group(1) + new_body + m.group(3) + content[m.end():]
-    changed = True
-    print(f"+ agregado 'rewrite /callback /mp/callback' en {mp_host}")
-
-if not changed:
-    print("Caddyfile sin cambios (ya aplicado previamente) -- no-op idempotente, sin reload")
-    sys.exit(0)
-
-tmp = path + ".new"
-with open(tmp, "w", encoding="utf-8") as f:
-    f.write(content)
-
-result = subprocess.run(["caddy", "validate", "--config", tmp], capture_output=True, text=True)
-if result.returncode != 0:
-    print("CADDY VALIDATE FALLO -- abortando SIN aplicar (Caddyfile original intacto)", file=sys.stderr)
-    print(result.stdout, file=sys.stderr)
-    print(result.stderr, file=sys.stderr)
-    sys.exit(1)
-
-shutil.copy(path, path + ".bak")
-shutil.move(tmp, path)
-print("Caddyfile actualizado + validado OK (backup en Caddyfile.bak)")
-REMOTE_CADDY
-
-# El script python de arriba solo escribe/valida; el reload es un paso separado y explícito para
-# que quede claro en el log qué exit code correspondió a qué (si el python abortó con exit!=0,
-# `set -e` corta ANTES de llegar a este reload).
+# El reload es un paso separado y explícito para que el log muestre qué exit code correspondió a qué.
 ssh "$HOST" systemctl reload caddy
 echo "Caddy recargado."
 

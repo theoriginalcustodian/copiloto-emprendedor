@@ -1,8 +1,12 @@
-# deploy/copiloto/Caddyfile.snippet — referencia de lo que `deploy.sh` aplica ADITIVAMENTE e
-# IDEMPOTENTE sobre /etc/caddy/Caddyfile (paso [6/7]). NO se copia/pega a mano: `deploy.sh` edita el
-# Caddyfile real vía un script Python idempotente + `caddy validate` OBLIGATORIO antes de cualquier
-# `systemctl reload caddy` (si no valida, aborta SIN tocar el archivo — hermes/temporal/mp siguen
-# intactos). Este archivo documenta el resultado esperado para que un humano pueda auditar el diff.
+# deploy/copiloto/Caddyfile.snippet — referencia de los bloques que el repo gestiona sobre
+# /etc/caddy/Caddyfile. Cada bloque dice QUIÉN lo escribe (la línea `escribe:`), para que nadie lea el
+# repo y deduzca un vhost que en prod no existe (SNIPPETMIENTE).
+#   escribe: deploy.sh [6/7] vía caddy_converge.py  → CONVERGENTE: reemplaza el bloque si difiere
+#   escribe: caddy-sync.sh                          → mismo script de convergencia, sin deploy de app
+#   escribe: gotrue/activate-google-oauth.sh        → NO aparece acá (su bloque es `auth.<base>`)
+#   escribe: NADIE del repo                         → existe sólo en el VPS (ver final del archivo)
+# El Caddyfile real lo edita `caddy_converge.py`: valida con `caddy validate` ANTES de tocar el archivo
+# y sólo después hace `systemctl reload caddy`. Si no valida, aborta SIN tocar nada.
 #
 # Dominio/puerto/subdominios son PARAMETRIZABLES en deploy.sh (UC_BASE_DOMAIN, UC_COPILOTO_SUBDOMAIN,
 # UC_MP_SUBDOMAIN, COPILOTO_WEB_PORT) — acá se muestran los valores resueltos en el VPS actual
@@ -31,10 +35,10 @@ mp.178-105-191-1.sslip.io {
 #    de arriba SIGUEN VIGENTES (no romper callbacks MP ni URLs ya registradas) — todo es aditivo.
 #    A diferencia del sslip, /auth/v1/authorize* y /auth/v1/callback* van DIRECTO a la GoTrue dedicada
 #    (9997): este dominio es el `GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI` del login con Google.
-#    ⚠️ DEUDA GESTIONADA (Fase 2 · owner: graduación a repo propio): hoy este bloque se aplicó A MANO
-#    al /etc/caddy/Caddyfile; falta cablearlo en deploy.sh (nuevo param UC_EXTRA_DOMAIN) al redefinir
-#    el deploy del repo graduado. Lección: tras editar el Caddyfile, `chmod 644` (queda 600 root si se
-#    mueve un mktemp) y `caddy validate --adapter caddyfile`. Ver memoria `copiloto-dominio-duckdns`.
+#    escribe: deploy.sh [6/7] y caddy-sync.sh (vía caddy_converge.py, PUBLIC_HOST/GOTRUE_PORT). Hasta
+#    SMTPVERIFYRUTA este bloque se aplicó A MANO y el deploy lo daba por «ya existe»; ahora converge.
+#    El handle `verify*` es el de los links de mail de recuperación: sin él, el link abre la SPA y nunca
+#    verifica (éxito aparente). Ver memoria `copiloto-dominio-duckdns`.
 copilotoemprendedor.duckdns.org {
     handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }
     handle /auth/v1/callback*  { reverse_proxy 127.0.0.1:9997 }
@@ -43,5 +47,13 @@ copilotoemprendedor.duckdns.org {
     handle                     { reverse_proxy 127.0.0.1:8099 }
 }
 
-# Bloques preexistentes que deploy.sh NUNCA toca (178-105-191-1.sslip.io->8088, hermes.*->9119
-# basic_auth, temporal.*->8080 basic_auth): fuera de scope, verificados intactos por el smoke [7/7].
+# ── Bloques VIVOS en prod que el repo NO escribe (medido 2026-10-07 contra /etc/caddy/Caddyfile) ──
+# Son la respuesta a «¿el vivo tiene directivas que el repo no menciona?»: sí. Escribe: NADIE del repo.
+#   escribe: gotrue/activate-google-oauth.sh → auth.<base> (handles authorize/callback + 404). Ese script
+#            no escribe `verify`; el bloque no está en este snippet porque lo escribe otro script.
+#   escribe: NADIE del repo → voz.<base>, voz-web.copilotoemprendedor.duckdns.org, documed.copilotoemprendedor
+#            .duckdns.org, rothoblaas.<base> (SPA estática). Ningún script de deploy/ ni scripts/ los escribe.
+#   escribe: NADIE del repo (fuera de scope de deploy.sh, verificados intactos por el smoke [7/7]):
+#            178-105-191-1.sslip.io→8088, hermes.*→9119 basic_auth, temporal.*→8080 basic_auth.
+# Deuda visible: un vhost sin dueño en el repo no se regenera si el VPS se reprovisiona. Cerrarla es un
+# ítem propio, no de este PR.
