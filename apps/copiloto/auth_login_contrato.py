@@ -14,6 +14,13 @@ de test, `test_auth_login_gotrue_real.py`, backend): el payload trae **7** clave
 de prueba). Mismo criterio que `MECLAVESCORE`/`CLAVES_ME`: el contrato declara lo que el productor
 real manda, no lo que un docstring interno predice.
 
+`expires_at` y `weak_password` son metadata del PRODUCTOR (GoTrue), no nuestra: auditoría midió **0
+lectores** en los tres árboles de front (`packages/core`, `apps/copiloto-web`, `apps/mobile`, tests
+incluidos) el mismo día que se agregaron estas dos claves. Se declaran (decisión A) para que el
+comparador de paridad siga siendo honesto con un tercero cuyo payload no controlamos — `web.py:login`
+reenvía `gotrue.password_grant(...)` tal cual — **no** porque lleguen a la UI. Si alguna gana un
+lector real, actualizar esta nota en el mismo PR.
+
 Formato: una clave por línea, entre comillas dobles. No armar el set en tiempo de ejecución: el lector
 es un regex sobre el texto del archivo.
 """
