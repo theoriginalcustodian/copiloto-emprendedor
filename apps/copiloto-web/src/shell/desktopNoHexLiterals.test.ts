@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), mismo patrón que `shellNoHexLiterals.test.ts`.
 import appsModalSource from './AppsModal.tsx?raw';
 import desktopShellSource from './DesktopShell.tsx?raw';

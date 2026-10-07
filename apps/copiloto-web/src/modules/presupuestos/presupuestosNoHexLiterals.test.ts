@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), no un módulo real (mismo patrón que modules/connections/connectionsNoHexLiterals.test.ts).
 import presupuestosCss from './presupuestos.css?raw';
 import detallePresupuestoSource from './DetallePresupuesto.tsx?raw';
