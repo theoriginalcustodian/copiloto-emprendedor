@@ -18,7 +18,6 @@ export const LEGAL_VERSION = '2026-09-22';
  * retirarlo es decisión del operador, y debe ser UNA edición. Si se borra de una app y no de la otra,
  * sólo una suite queda roja. Este export no decide nada: el aviso sigue vigente.
  */
-export const LEGAL_AVISO_PLANTILLA = 'Plantilla estándar genérica — no es una revisión legal específica de este negocio.';
 
 /**
  * PROVISORIO — pendiente de revisión legal, dueño: operador (BL-O6, firmado 2026-09-28).
