@@ -88,6 +88,13 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # la PC no le sirven a nadie en el VPS.
 # `scripts/` viaja desde el 2026-07-31: sin él, `test_censo_except_guard.py` se **SKIPPEA** en local
 # ("no está …/scripts/censo-except.py — checkout parcial") y corre sólo en el CI. Un guard que se
+# `--exclude='.env*'` NO es cosmética y no se puede deducir del `.gitignore`: este tar sale del
+# **disco**, no de git, así que un `.env` ignorado por git viaja igual. Y `deploy/copiloto/` es
+# exactamente donde la convención los pone (ahí vive `gotrue/.env.gotrue.template`, o sea que el real
+# sería `gotrue/.env.gotrue`). Medido el 2026-10-07: hoy no hay ninguno en los 36 worktrees, así que
+# esto cierra una exposición FUTURA, no una fuga actual — y el stage no necesita ningún `.env` para
+# correr la suite. El caso 4 de `test-stage-backend-cubre-los-paths-de-pytest.sh` lo verifica por
+# EFECTO (tarea un `.env` de fixture y comprueba que no sale), no leyendo este flag.
 # Y los CUATRO archivos de `deploy/copiloto/` viajan desde el 2026-10-07, porque `scripts/ci/backend.sh`
 # (ce66aa79) pasa los dos `test_*.py` a pytest: sin ellos en el STAGE, pytest sale **rc=4 con `no tests
 # ran`** y la suite ENTERA de backend queda en 0 ejecutados — no fallan los dos nuevos, no corre ninguno.
@@ -97,7 +104,7 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # listarlo: `meclaves_check` lo resuelve como `__file__/../../apps/copiloto/`, que ya viaja.
 # salta en el bucle rápido es un guard que se descubre 8 minutos tarde: exactamente lo que este
 # runner vino a evitar. Pasó de verdad — el CI cazó un `except` mudo que la corrida local no vio.
-tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='.env*' \
   -czf - apps/copiloto "$MOTOR" deploy/worker scripts \
   deploy/copiloto/meclaves_check.py deploy/copiloto/test_meclaves_check.py \
   deploy/copiloto/caddy_converge.py deploy/copiloto/test_caddy_converge.py \

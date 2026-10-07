@@ -105,10 +105,46 @@ else
   fail "con 0 pedidos leídos el verificador devolvió rc=$rc3 (debía ser 2)"
 fi
 
+echo "[4] el tar NO sube ningún .env al stage — medido por EFECTO, no leyendo el flag"
+# Este tar sale del DISCO, no de git: un `.env` que git ignora viaja igual. Y `deploy/copiloto/` es
+# donde la convención los pone (ahí vive `gotrue/.env.gotrue.template`). Medido el 2026-10-07: hoy no
+# hay ninguno en ningún worktree, así que esto protege contra la exposición FUTURA — que es justo la
+# que no da síntoma, porque el stage funciona igual con el secreto adentro.
+FIX="$TMP/fixture"; mkdir -p "$FIX/deploy/copiloto/gotrue"
+printf 'SECRETO_DE_FIXTURE=no-es-real\n' > "$FIX/deploy/copiloto/.env"
+printf 'SECRETO_DE_FIXTURE=no-es-real\n' > "$FIX/deploy/copiloto/gotrue/.env.gotrue"
+printf '# fixture\n' > "$FIX/deploy/copiloto/meclaves_check.py"
+# los --exclude REALES del script, parseados SÓLO del comando `tar` y no de todo el archivo. Dos
+# causas, las dos medidas acá:
+#   · un sed con `\(--exclude=.*\)` es greedy y se quedaba con UNO solo, el último ⇒ `grep -o`;
+#   · grepear el archivo entero recogía el `--exclude='.env*'` **del comentario que lo explica**, así
+#     que el mutante (sacar el flag del tar) seguía dando VERDE: el caso se satisfacía con la prosa
+#     que lo describe ([[el-guard-se-satisface-con-su-propio-comentario]]). Por eso el universo es el
+#     bloque del comando, de `^tar -C` a `| ssh`, con las líneas de comentario descartadas.
+EXC="$(sed -n '/^tar -C/,/| ssh/p' "$SYNC" | grep -v '^[[:space:]]*#' \
+       | grep -oE "\-\-exclude='[^']*'" | tr '\n' ' ')"
+# `eval` y no `tar $EXC`: el script escribe `--exclude='.env*'` y las comillas las procesa BASH. Sin
+# eval, tar recibe el apóstrofe COMO PARTE del patrón, no excluye nada, y el caso 4 acusa al fix por
+# un defecto del test — medido: con comillas literales los 2 `.env` viajaban; con eval, ninguno.
+salida="$(cd "$FIX" && eval "tar $EXC -cf - deploy/copiloto" 2>/dev/null | tar -tf - 2>/dev/null)"
+envs="$(printf '%s\n' "$salida" | grep -c '\.env')"
+pys="$(printf '%s\n' "$salida" | grep -c '\.py$')"
+printf '     excludes parseados: %s\n' "${EXC:-<NINGUNO>}"
+printf '     en el tar: %s con .env · %s con .py\n' "$envs" "$pys"
+if [ -z "$EXC" ]; then
+  fail "no pude parsear ningún --exclude del script: el caso 4 no probó nada"
+elif [ "$pys" -eq 0 ]; then
+  fail "el control POSITIVO falló: el tar tampoco llevó el .py, así que el 0 de .env no prueba nada"
+elif [ "$envs" -gt 0 ]; then
+  fail "$envs archivo(s) .env viajarían al stage del VPS"
+else
+  ok "los .env quedan afuera y el .py sí viaja (el 0 discrimina)"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ 3/3 — el stage del VPS cubre todo lo que la suite de backend pide"
+  echo "✅ 4/4 — el stage cubre todo lo que la suite pide, y ningún .env viaja"
   exit 0
 fi
-echo "❌ $fallos/3 fallaron"
+echo "❌ $fallos/4 fallaron"
 exit 1
