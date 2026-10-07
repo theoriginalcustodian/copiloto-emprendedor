@@ -105,7 +105,6 @@ export function TarjetaFacturaPropuesta({
         if (vivo.current) setComprobante(res);
       })
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo corre una vez, al montar ya
     // resuelta; `resuelto`/`propuesta.facturaId` no cambian entre renders de la MISMA card.
   }, []);
 

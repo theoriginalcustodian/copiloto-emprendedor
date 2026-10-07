@@ -276,7 +276,6 @@ export function useChat(clienteId: string): UseChatResult {
       actualizarEstado(hidratarEstado(sessionId, sanitizarHitlRespondido(persistidos)));
       void poll();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite: recrearlo en cada
     // render de `clienteId` reiniciaría el timer de espera en curso, y no cambia entre renders de la
     // MISMA sesión (sólo cuando cambia `clienteId`, que sí está en las deps).
   }, [clienteId]);

@@ -204,7 +204,6 @@ export function PantallaAfipSetup() {
       const res = await refrescarEstadoGeneral();
       if (res.estado?.cuit) await precargarPerfil(res.estado.cuit);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo debe correr una vez al montar.
   }, []);
 
   // -------------------------------------------------------------------------------------------
