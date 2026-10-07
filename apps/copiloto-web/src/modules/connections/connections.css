@@ -174,6 +174,9 @@
 
 .service-card__footer {
   margin-top: auto;
+  /* Estado «reconectar»: badge + botón no caben en el ancho de la card (medido en PWA: 183 px de
+     contenido vs 140 px disponibles). Sin wrap, el botón se sale del borde. */
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
 }
