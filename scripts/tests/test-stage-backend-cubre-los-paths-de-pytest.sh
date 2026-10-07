@@ -41,6 +41,9 @@ trap 'rm -rf "$TMP"' EXIT
 fallos=0
 ok()   { printf '  ✅ %s\n' "$1"; }
 fail() { printf '  ❌ %s\n' "$1"; fallos=$((fallos + 1)); }
+# sólo el caso 5 lo necesita, y se omite si no está: los casos 1-4 son bash puro y tienen que correr
+# en `lint`, que NO garantiza pytest (es justo lo que destapó este frente).
+PYBIN="$(command -v python || command -v python3 || true)"
 
 # ── el verificador. Imprime los pedidos NO cubiertos; rc=0 sólo si todos lo están.
 # rc=2 reservado al lector vacío: si no se leyó ni un pedido, el test no midió nada y eso es un
@@ -83,8 +86,15 @@ else
 fi
 
 echo "[2] MUTANTE del tar — saco deploy/copiloto del empaquetado: tiene que dar ROJO"
-sed 's|^  deploy/copiloto/.*\\$|  \\|' "$SYNC" > "$TMP/sync-mutante.sh"
-if grep -q 'deploy/copiloto/test_' "$TMP/sync-mutante.sh"; then
+# El mutante borra CUALQUIER token `deploy/copiloto…` de la lista del tar, sea el directorio o los
+# archivos nombrados: así el caso 2 no depende de la FORMA del allowlist, que es justo lo que el
+# control promete ser agnóstico (#920 lo puso como directorio, mi versión previa por nombre).
+sed '/-czf - /,/| ssh/ s|deploy/copiloto[^ ]*||g' "$SYNC" > "$TMP/sync-mutante.sh"
+# El guard mide la REGIÓN DEL COMANDO sin comentarios, no el archivo entero: los comentarios de
+# `sync-test-backend.sh` nombran `deploy/copiloto/test_meclaves_check.py` para explicar por qué viaja,
+# y grepear todo hacía creer que el mutante no mutó. Tercera vez hoy que un instrumento se mide contra
+# la prosa que lo describe ([[el-guard-se-satisface-con-su-propio-comentario]]).
+if sed -n '/-czf - /,/| ssh/p' "$TMP/sync-mutante.sh" | grep -v '^[[:space:]]*#' | grep -q 'deploy/copiloto'; then
   fail "el mutante no mutó (el sed no matcheó): el caso 2 no prueba nada"
 elif verificar "$BACKEND" "$TMP/sync-mutante.sh" >"$TMP/out2" 2>&1; then
   sed 's/^/     /' "$TMP/out2"
@@ -141,10 +151,41 @@ else
   ok "los .env quedan afuera y el .py sí viaja (el 0 discrimina)"
 fi
 
+echo "[5] pytest distingue «la suite NO EXISTIÓ» (rc=4) de «la suite FALLÓ» (rc=1)"
+# Lo que hizo invisible el defecto no fue sólo que GitHub corre con el árbol completo: es que en el
+# gate `rc≠0` se lee como «fallaron tests», y acá el rc venía de que la invocación **no llegó a
+# correr ninguno**. Dos causas con distinto código y el mensaje elige una
+# ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). Dejar el 4 anclado
+# acá hace que el próximo caso se nombre solo, en vez de depender de que alguien lea el texto del log.
+# Si una versión de pytest cambiara ese contrato, este caso avisa antes de que un gate lo interprete mal.
+if [ -z "$PYBIN" ]; then
+  ok "sin python en el PATH: caso 5 omitido (no se puede medir el contrato de pytest)"
+elif ! "$PYBIN" -m pytest --version >/dev/null 2>&1; then
+  ok "pytest no instalado acá: caso 5 omitido (el contrato se mide donde pytest existe)"
+else
+  mkdir -p "$TMP/rc"
+  printf 'def test_pasa():\n    assert True\n' > "$TMP/rc/test_pasa.py"
+  printf 'def test_falla():\n    assert False\n' > "$TMP/rc/test_falla.py"
+  ( cd "$TMP/rc" && "$PYBIN" -m pytest test_pasa.py no_existe.py -q >/dev/null 2>&1 ); rc_ausente=$?
+  ( cd "$TMP/rc" && "$PYBIN" -m pytest test_falla.py -q >/dev/null 2>&1 );              rc_falla=$?
+  ( cd "$TMP/rc" && "$PYBIN" -m pytest test_pasa.py -q >/dev/null 2>&1 );               rc_ok=$?
+  printf '     path ausente: rc=%s · test que falla: rc=%s · todo verde: rc=%s\n' \
+         "$rc_ausente" "$rc_falla" "$rc_ok"
+  if [ "$rc_ok" -ne 0 ]; then
+    fail "el control positivo falló (una suite verde dio rc=$rc_ok): los otros dos rc no son legibles"
+  elif [ "$rc_ausente" -eq "$rc_falla" ]; then
+    fail "«no existió» y «falló» comparten rc=$rc_ausente: el gate no puede distinguirlos por código"
+  elif [ "$rc_ausente" -ne 4 ]; then
+    fail "un path ausente dio rc=$rc_ausente, no 4: el contrato de pytest cambió y el log miente"
+  else
+    ok "rc=4 (no existió) ≠ rc=$rc_falla (falló) ≠ rc=0: el código distingue las dos causas"
+  fi
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ 4/4 — el stage cubre todo lo que la suite pide, y ningún .env viaja"
+  echo "✅ 5/5 — el stage cubre lo que la suite pide, ningún .env viaja, y el rc distingue las causas"
   exit 0
 fi
-echo "❌ $fallos/4 fallaron"
+echo "❌ $fallos/5 fallaron"
 exit 1
