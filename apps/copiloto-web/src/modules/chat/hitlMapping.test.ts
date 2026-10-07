@@ -1,3 +1,4 @@
+import { mapearGate } from '@copiloto/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ReplyChoice } from '../../lib/api';
@@ -89,16 +90,33 @@ describe('hitlMapping', () => {
     expect(props.amount).not.toBe('80000');
   });
 
-  // Control negativo (A9): Instagram NO tiene affordance de riesgo. Si alguien reinserta la entrada
-  // en SERVICE_RISK, este test se pone rojo: un test de presencia no lo detectaría.
-  it('Instagram (sin módulo): tarjeta neutra, SIN badge IRREVERSIBLE ni borde de peligro', () => {
+  // Riesgo de Instagram = el de core (`SERVICE_RISK`, `hitl.ts`). Mensaje viejo `service:'instagram'`
+  // sigue siendo una advertencia real (planificación, SERVICERISKDOBLE). Control positivo por efecto:
+  // mutar hitlMapping para ignorar core (riesgo = {}) pone este test en ROJO.
+  it('Instagram (mensaje viejo): badge IRREVERSIBLE + borde de peligro, lo decide core', () => {
     const props = buildHitlCardProps(
       msg({ text: 'Voy a publicar el posteo. ¿Confirmás?', card: { service: 'instagram', label: 'Instagram' } }),
       vi.fn(),
     );
-    expect(props.badge).toBeUndefined();
-    expect(props.dangerBorder).toBeFalsy();
+    expect(props.badge).toEqual({ variant: 'danger', text: 'IRREVERSIBLE' });
+    expect(props.dangerBorder).toBe(true);
   });
+
+  // Paridad por construcción: para cada servicio, web muestra exactamente el riesgo que core declara
+  // (`mapearGate(...).riesgo`). Si alguien vuelve a declarar una tabla local en web, o la desvía, este
+  // test se pone rojo para el servicio desviado.
+  it.each(['mercadopago', 'instagram', 'googledocs', 'gmail'])(
+    'paridad con core: el badge de %s es el que declara mapearGate',
+    (service) => {
+      const props = buildHitlCardProps(
+        msg({ text: 'Acción de prueba. ¿Confirmás?', card: { service, label: service } }),
+        vi.fn(),
+      );
+      const riesgo = mapearGate(msg({ text: 'Acción de prueba.', card: { service, label: service } }))?.riesgo;
+      expect(props.badge?.text).toBe(riesgo?.badge);
+      expect(Boolean(props.dangerBorder)).toBe(Boolean(riesgo?.irreversible));
+    },
+  );
 
   it('sin `card` (legacy): tarjeta neutra "Confirmación", NUNCA "AGENDA", sin badge', () => {
     const props = buildHitlCardProps(msg({ text: 'Todo listo, confirmá.', card: undefined }), vi.fn());
