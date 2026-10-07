@@ -42,10 +42,14 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Estos dos plugins NO se declaran por sus reglas: se declaran porque el repo ya tiene comentarios
-    // `eslint-disable import/no-unresolved` y `react-hooks/exhaustive-deps` de una config anterior, y
-    // ESLint 9 marca como ERROR toda directiva que apunte a una regla desconocida. Sin registrarlos,
-    // el linter reportaba 11 hallazgos que no eran errores de código, sino referencias huérfanas.
+    // Estos dos plugins NO se declaran por sus reglas: se declaran porque el repo tiene comentarios
+    // `eslint-disable import/no-unresolved` de una config anterior, y ESLint 9 marca como ERROR toda
+    // directiva que apunte a una regla desconocida. Sin registrarlos, el linter reportaba 11 hallazgos
+    // que no eran errores de código, sino referencias huérfanas.
+    // `react-hooks/exhaustive-deps` queda registrada pero APAGADA a propósito: medida el 2026-10-06
+    // (11 violaciones en 9 archivos, repartidas) y decidida como «no activar ahora» (PLAN.md, fila
+    // LINTEXHAUSTIVEDEPS). Registrarla deja activarla el día que el costo baje, sin tocar esta sección.
+    // Sus directivas `eslint-disable` se borraron en #875.
     files: ['**/*.{ts,tsx}'],
     plugins: { import: importPlugin, 'react-hooks': reactHooks },
     rules: {
