@@ -505,6 +505,15 @@ NO_SON_MEDICION = {
     # servido», y su vocabulario propio es COHERENTE / DIFERENCIA / NO_REPRODUCIBLE, con su propio
     # conteo (4 / 4 / 1).
     #
+    # 🔬 MEDIDO POR AUDITORIA Y RE-MEDIDO POR MI: el discriminante NO es «usa vocabulario propio»,
+    # es **«no cubre ningun sujeto del universo»** — 0 de los 14 canonicos de `criterio3-matriz.mjs`,
+    # con control positivo que discrimina (el `dato_` del 22/09 trae 4 de 14 en la misma corrida).
+    # El vocabulario falla en las DOS direcciones y este repo ya pago una: el `cierre_` de los 4 ids
+    # de voz medía sujetos canonicos con dos instrumentos por id y lo excluia el TOKEN — vocabulario
+    # ajeno con sujetos propios. Al revés, un documento puede escribir `COHERENTE` midiendo cualquier
+    # otra cosa y entraria. La cobertura de sujetos es un numero: auditable con un grep por cualquiera,
+    # no opinable. El motivo de abajo cita ese numero; lo del vocabulario queda como señal secundaria,
+    # que es lo unico que es.
     # 🔴 De esos tres tokens, SOLO `COHERENTE` pertenece al vocabulario del criterio 3. Por eso este
     # lector lo ve: engancha la palabra compartida y no las otras dos. Sumarlo como medicion metria 4
     # COHERENTE de OTRO eje en el total del criterio —inflarlo con trabajo real pero ajeno, que es la
@@ -516,11 +525,13 @@ NO_SON_MEDICION = {
     # (sumarlo DUPLICA); este se descarta porque mide veredictos PROPIOS de otro eje (sumarlo INFLA).
     # Dos motivos opuestos, el mismo cajon — y por eso el motivo no puede quedar implicito.
     "2026-10-07_cierre_frontend2-a-planificacion_BL-Q3-PWA-reverificadas-9-diferencias":
-        "MIDE, pero OTRO EJE: re-verifica en el PWA servido las 9 diferencias del `dato_` del 22/09 "
-        "(COHERENTE 4 · DIFERENCIA 4 · NO_REPRODUCIBLE 1, conteo propio). De sus tres tokens solo "
-        "`COHERENTE` esta en el vocabulario del criterio 3, y es el unico por el que este lector lo "
-        "engancha: `DIFERENCIA` y `NO_REPRODUCIBLE` no existen aca. Clasificarlo como medicion "
-        "sumaria 4 COHERENTE de un eje distinto al total del criterio. VOCABAJENO en PLAN.md.",
+        "MIDE, pero OTRO EJE, y el discriminante es un NUMERO: cubre **0 de los 14 sujetos "
+        "canonicos** de `criterio3-matriz.mjs` (`bi-refresh`, los cuatro `tile-*`, los siete "
+        "`*-cargando`, `inteligencia-actualizar`, `midia-ver-agenda`). Control positivo del grep en la "
+        "misma corrida: `2026-09-22_dato_frontend2-..._matriz-web-re-medida.md` trae 4 de 14, asi que "
+        "no es ciego. Re-verifica en el PWA servido las 9 diferencias del `dato_` del 22/09 (su propio "
+        "conteo: COHERENTE 4 · DIFERENCIA 4 · NO_REPRODUCIBLE 1); sumarlo metia 4 COHERENTE de otro "
+        "eje en el total. VOCABAJENO en PLAN.md.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
