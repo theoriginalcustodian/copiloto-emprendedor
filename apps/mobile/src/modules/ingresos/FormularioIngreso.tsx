@@ -115,9 +115,12 @@ export function FormularioIngreso({
    * descartada sólo cuando el ingreso entró. Sin esto, un corte de red después de que el backend
    * guardó deja dos ingresos — y un ingreso de más infla la caja sin verse.
    * Con `mensajeId` la clave se deriva de la card: un remount no cambia el gesto (ver el docstring
-   * de la prop).
+   * de la prop). La derivación vive en el PUNTO DE USO (`guardar`), no acá — mismo patrón que la
+   * card de Ingreso en web y que `FormularioCliente` (mobile/web): si la ref se resetea a `null`
+   * tras un `ok` (abajo), un guardado posterior en la misma instancia tiene que poder volver a mirar
+   * `mensajeId`, no caer a una clave aleatoria porque el init ya no se vuelve a evaluar.
    */
-  const claveGesto = useRef<string | null>(mensajeId != null ? `ingreso:${mensajeId}` : null);
+  const claveGesto = useRef<string | null>(null);
 
   async function guardar(confirmarDuplicado = false) {
     if (enviando) return;
@@ -131,7 +134,7 @@ export function FormularioIngreso({
     const importe = normalizarDecimal(crudo);
     setEnviando(true);
     setError(null);
-    const clave = claveGesto.current ?? generarId();
+    const clave = claveGesto.current ?? (mensajeId != null ? `ingreso:${mensajeId}` : generarId());
     claveGesto.current = clave;
     try {
       const res = await registrarIngreso({
