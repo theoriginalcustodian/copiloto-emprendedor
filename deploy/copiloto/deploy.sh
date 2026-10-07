@@ -121,15 +121,27 @@ tar -C "$LOCAL" \
 # del pipe, que miente en los dos sentidos) y, si no coincide, fallar RUIDOSO al final del script
 # (abajo, `_sello_ok`) sin abortar el resto del deploy ya aplicado.
 echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json (NDJSON append-only)"
+# SHA_BUILD (el que REALMENTE se despliega) se computa ACÁ, antes del sello -- antes vivía más abajo,
+# junto al staging dir, y el manifiesto nunca lo veía. MANIFBYPASS (hallazgo de auditoría, 2026-10-07):
+# con UC_DEPLOY_FUERA_DE_MAIN=1 (guard-deploy.sh:22-23) HEAD puede ser ≠ origin/main, y el único campo
+# que el manifiesto registraba (`origin_main_sha`) seguía afirmando que se desplegó el tip de main --
+# justo la forma del incidente `1c92e25` (/healthz reportó 1c92e25 con 55b3f219 desplegado).
+SHA_BUILD="$(git -C "$LOCAL" rev-parse HEAD)"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
 _sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
+# MANIFBYPASS: el segundo escape, el que faltaba. UC_DEPLOY_FUERA_DE_MAIN saltea HEAD==origin/main Y
+# árbol limpio (guard-deploy.sh) -- hasta ahora sólo dejaba un `⚠️` en stderr efímero, cero registro.
+# El candado mkdir de guard-deploy.sh NUNCA se saltea con esta variable; eso no cambia acá.
+if [ -n "${UC_DEPLOY_FUERA_DE_MAIN:-}" ]; then _fuera_de_main="SI (UC_DEPLOY_FUERA_DE_MAIN) -- HEAD pudo no ser origin/main"; else _fuera_de_main="NO"; fi
 _nonce="$(date +%s%N)-$$"
 # smoke_beta: el smoke de la beta NO lo corre el deploy (muta prod). Nace PENDIENTE; sólo
 # scripts/run-smoke-prod.sh agrega, en verde, una línea de evento `smoke_beta` OK (append-only: el
 # estado es la última línea de ese sha). Un deploy sin smoke se lee como PENDIENTE, no como verificado.
-_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"smoke_beta":"PENDIENTE %s","nonce":"%s"}' \
-  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${_gate}" "${_sucios:-null}" "${_sha}" "${_nonce}")"
+# `sha_desplegado` = SHA_BUILD (HEAD real) -- distinto de `origin_main_sha` precisamente cuando
+# `fuera_de_main` != "NO"; con el guard puesto, los dos coinciden POR EL GUARD, no por construcción.
+_linea="$(printf '{"desplegado_en":"%s","origin_main_sha":"%s","sha_desplegado":"%s","fuera_de_main":"%s","gate_de_drift":"%s","paths_anclados_a_origin_main":["apps/copiloto","motor"],"paths_NO_verificados":["apps/copiloto-web","packages/core","deploy/worker","deploy/copiloto"],"archivos_sucios_en_paths_no_verificados":%s,"smoke_beta":"PENDIENTE %s","nonce":"%s"}' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${_sha}" "${SHA_BUILD}" "${_fuera_de_main}" "${_gate}" "${_sucios:-null}" "${_sha}" "${_nonce}")"
 _sello_ok=0
 if printf '%s\n' "$_linea" | ssh "$HOST" "cat >> '$REMOTE/DEPLOY-MANIFEST.json'"; then
   _verif="$(ssh "$HOST" "tail -1 '$REMOTE/DEPLOY-MANIFEST.json'" 2>/dev/null || true)"
@@ -147,7 +159,7 @@ fi
 # Antes `rm -rf "dist-$SHA"` + `--emptyOutDir` sobre el nombre que el symlink `dist` ya sirve: re-correr
 # el deploy desde el SHA publicado dejaba prod sin shell durante todo el build (y roto si el build fallaba).
 # Un nombre con RUN_ID nunca existe antes, así que el `rm -rf` sobre el publicado desaparece.
-SHA_BUILD="$(git -C "$LOCAL" rev-parse HEAD)"
+# SHA_BUILD ya se computó arriba (MANIFBYPASS, junto al sello de procedencia) -- se reusa tal cual.
 STG="dist-${SHA_BUILD}-$(date +%s)$$"
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> staging $STG, promovido en [5.5/7]"
 ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$SHA_BUILD" "$STG" <<'REMOTE_WEB'

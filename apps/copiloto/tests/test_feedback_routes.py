@@ -104,12 +104,13 @@ def test_feedback_texto_guarda_y_devuelve_id():
                      "texto": "che, agreguen dark mode", "contexto": "mi-cuenta"}]
 
 
-def test_feedback_devuelve_la_FRASE_FIJA_SOP4_C7():
-    """C7: "feedback devuelve la frase fija ... y no abre hilo" -- exacta, no una aproximación."""
+def test_feedback_NO_manda_la_clave_mensaje_FEEDBACKMSJMUERTO():
+    """FEEDBACKMSJMUERTO (decisión B, planificación): el backend dejó de mandar `mensaje` -- era copy
+    de producto fuera de contrato ({id, ok}), con 0 lectores en las 3 UIs. Antes este test exigía la
+    frase fija (SOP4/C7); ahora es su control negativo: si `mensaje` reaparece, este test lo detecta."""
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
     r = TestClient(app).post("/feedback", json={"texto": "che, agreguen dark mode"})
-    assert r.json()["mensaje"] == (
-        "Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… ¡Gracias por tu aporte!")
+    assert r.json() == {"id": 1, "ok": True}
 
 
 def test_feedback_sin_contexto_es_opcional():
@@ -160,8 +161,7 @@ def test_feedback_audio_transcribe_y_guarda(monkeypatch):
     body = r.json()
     assert body["id"] == 1 and body["ok"] is True
     assert body["transcripcion"] == "el buscador de clientes tarda mucho"
-    assert body["mensaje"] == (
-        "Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… ¡Gracias por tu aporte!")
+    assert "mensaje" not in body   # FEEDBACKMSJMUERTO: ya no viaja (ver test_feedback_NO_manda_la_clave_mensaje)
     assert rows[0]["tipo"] == "voz"
     assert rows[0]["texto"] == "el buscador de clientes tarda mucho"
     assert rows[0]["contexto"] == "mi-cuenta"
