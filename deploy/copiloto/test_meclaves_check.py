@@ -43,8 +43,11 @@ def test_set_declarado_vacio_se_niega_a_comparar():
 # ── MECLAVESRESTO: mismo comparador, mismo criterio, para CLAVES_LOGIN (apps/copiloto/auth_login_contrato.py) ──
 
 def test_lector_carga_el_set_real_de_login():
+    # 7 claves desde #916 (MECLAVESRESTO): GoTrue real devuelve expires_at/weak_password además
+    # de las 5 originales -- opción A (declarar, no podar), ver auth_login_contrato.py:20-22.
     assert DECLARADAS_LOGIN == frozenset({
-        "access_token", "token_type", "expires_in", "refresh_token", "user",
+        "access_token", "token_type", "expires_in", "expires_at",
+        "refresh_token", "user", "weak_password",
     })
 
 
