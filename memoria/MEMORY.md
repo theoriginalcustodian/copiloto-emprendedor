@@ -51,16 +51,16 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
-- [🔍🎭 No era «no caza X»: era «no caza X en su FORMA real»](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el par de contraste mueve UNA variable.
-- [📝🛡️ El comentario que DECLARA una protección desactiva la búsqueda](el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md) — 4 casos; cubre UNA mitad.
-- [🎯 El control positivo cubre sólo la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) - el verde acredita al defecto que no mira.
+- [🔍🎭 No era «no caza X»: era en su FORMA real](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el contraste mueve UNA variable.
+- [📝🛡️ El comentario que DECLARA protección ciega la búsqueda](el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md) — cubre UNA mitad.
+- [🎯 El control positivo cubre la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) - el verde acredita al ciego.
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) - inyectá el caso a propósito.
 - 🖼️🎭 El instrumento INVENTA: [una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id fabricado](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) - nadie los distingue.
 - 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) - ¿qué pregunta hace cada lado?
 - [🏷️🎭 Un NOMBRE con dos referentes: se prueba A y se concluye B](un-nombre-con-dos-referentes-prueba-A-y-concluye-B.md) — y el verificador confirma: mide A.
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
-- [🧮🕳️ Un ref que NO EXISTE da vacío, y vacío se parsea como `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite Y inventa; medí el EFECTO.
+- [🧮🕳️ Un ref que NO EXISTE da vacío = `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite E INVENTA; medí el efecto.
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 
@@ -68,38 +68,38 @@
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — ¿cuántos elementos miró? · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
-- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA no es un gate](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return` de `--json`.
+- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
-- [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿el número lo midió alguien o lo escribió alguien?
-- [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión suele sobrevivir con otro porqué.
-- [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno; el control es un archivo que nadie toca.
-- [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso empuja al `--no-verify`.
+- [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿lo midió o lo escribió alguien?
+- [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión sobrevive.
+- [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
+- [🎭🚪 Dos causas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso lleva al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) - todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
-- [🩹🎭 Un degradado PRUDENTE hacia el caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda» antes de medir.
-- [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
-- [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - "es el flake conocido" lava la próxima regresión real.
-- [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: el estado va en el ÚLTIMO campo.
-- [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra la expectativa, no contra el reloj.
-- [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa a la roja. Background → archivo COMPLETO.
-- [🧟 Un script que MUTA y revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - el revert va en `finally`; backup en disco, no en memoria.
-- [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
+- [🩹🎭 Un degradado PRUDENTE al caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda».
+- [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
+- [🎲 Un instrumento INTERMITENTE fabrica una excusa](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - «es el flake» lava la próxima.
+- [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.
+- [🐕‍🦺 El watchdog ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra lo esperado.
+- [✂️ Pipear por `tail` BORRA la evidencia](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa la roja: archivo COMPLETO.
+- [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
+- [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - vive en 2 lugares y uno no se mira. Cerralo con instrumento.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) - leé la rama de ERROR.
-- [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO, no al commit](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea: verde arriba, rojo abajo.
+- [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea.
 - [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
-- [🔗🛡️ El 1er test rojo MATA la suite: el ajeno es escudo del propio](el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md) - corrieron 8 de 47.
+- [🔗🛡️ El 1er test rojo MATA la suite: el ajeno escuda](el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md) - corrieron 8 de 47.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) - el hueco vive en el par.
 
 ### Diagnóstico: leer el contrato antes de explicar
@@ -132,7 +132,7 @@
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) - sin cargar completo ⇒ duplicados.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
 - [🧠🔁 Memoria repo vs slug divergen — `seed-memory.sh` es SEGURO (`--update`)](memoria-repo-vs-slug-drift.md) — NO correrlo es lo que las diverge.
-- [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) - el contrato apunta a paths, no dice «explorá».
+- [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) - apuntá a paths, no «explorá».
 
 ### Coordinación entre sesiones
 - [🗺️🚫 PLANIFICACIÓN no implementa: baja contratos y destraba](planificacion-no-implementa-baja-contratos.md) — implementar desde acá pisa a la sesión dueña.
@@ -140,31 +140,31 @@
 - [📋🔃 El contrato que manda a hacer algo YA HECHO](el-contrato-que-manda-a-hacer-algo-ya-hecho.md) - medí estado y dueño de cada id ANTES de citarlo.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) - probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) - `dato_` NO escala; ¿querés reclamo? → `pedido_`.
-- [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - corregir appendeando deja el titular refutado al frente.
+- [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
-- [`>>` a ruta supuesta del buzón + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí K-07/08/10/11; ubicar con `find` y `mv -n`.
+- [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
 - [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) - un turno mide OCIO.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 
 
 ### Git, deploy y checkout compartido
-- [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — el write que falla deja 0 bytes: tmp + `os.replace`.
+- [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — deja 0 bytes: tmp + `os.replace`.
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
-- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — parche: temp + `os.replace`. Falla al escribir = ya truncó.
+- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — temp + `os.replace`. Falla al escribir = ya truncó.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) - pisa mudo.
 - [🚢 `deploy.sh` ancla SÓLO 2 de 6 paths a origin/main](deploy-sh-no-valida-checkout-al-dia-con-main.md) - los otros 4 los declara, no los frena.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) - primero la rama en prod.
 - [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) - `MSYS_NO_PATHCONV=1`
-- [🔀📤 El squash-merge toma el HEAD REMOTO, no tu último fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes de mergear.
+- [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
 
 ## 🏭 El producto - LEER antes de tocar
-- [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado; el fix se hace ACÁ.
+- [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.
 - [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) - **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
-- [🧠🧱 MemoryProvider - memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) - **al tocar la memoria.** warm+recall+remember, gate `config['memory']`.
+- [🧠🧱 MemoryProvider - memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) - **al tocar la memoria.** warm+recall+remember, gate `config`.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) - nunca se pregunta 2 veces; a la 2ª manda la card.
-- [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) - incluye borrado permanente. No heredarlo a agentes autónomos.
+- [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) - incluye borrado. No heredarlo a agentes autónomos.
 - [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga.
 - [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md)
 - [🧪 DESPLEGADO ≠ con clientes - los datos se fabrican](desplegado-no-significa-con-clientes.md) - cero usuarios; "prod-beta" desvía a migraciones defensivas.
@@ -174,7 +174,7 @@
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) - Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
-- [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) - 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
+- [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) - 03:30/09:30/15:30/21:30: `pre-push` 503.
 
 ## 🗄️ Historia
 → [HISTORIA.md](HISTORIA.md) - hitos cerrados y entradas bajadas del índice. **NO se carga; buscable.**
