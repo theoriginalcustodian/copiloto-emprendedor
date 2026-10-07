@@ -45,3 +45,53 @@ donde nadie mira) y de [[instrumentos-que-confirman-en-vez-de-verificar]] §10, 
 parcialmente ciego que lo permitió.
 
 [[coordinacion-tres-sesiones-buzon]] [[no-codificar-la-esperanza-principio-raiz]]
+---
+
+## Refuerzo 2026-10-07 — **appendear «al final» escribe en la sección más VIEJA del archivo**
+
+Aquella vez el mensaje nacía archivado y el vigía miraba media casa. Esta vez lo escribí **yo**, y el
+lugar lo eligió el orden del archivo, no el significado.
+
+Durante un turno entero bajé filas nuevas al tablero (`coordinacion/PLAN.md`) con scripts que insertaban
+**«después de la última fila con id del archivo»**. Sonaba seguro: respeta el formato, no pisa nada, es
+idempotente. Medido al final del turno:
+
+```
+filas-id en el archivo .......... 80
+dentro del bloque COLA-VIVA ..... 15      <- lo único que lee cola-check.sh
+afuera .......................... 65
+filas VIVAS que yo cree hoy, afuera ... 8
+```
+
+Las ocho habían aterrizado dentro de la sección **`## ✅ Cerrado` → `### COLA VIVA anterior …, todos ✅
+— archivada el 2026-09-21`**. O sea: **doblemente invisibles.** El instrumento sólo parsea entre
+`COLA-VIVA:INICIO` y `FIN`, así que reportaba **3 frentes activos** cuando había 6; y un humano que
+escanea por encabezados saltea esa sección entera porque su título afirma que está todo cerrado.
+Después del rescate, el mismo instrumento, sin tocarle una línea: **6 frentes** y la fila que ofrece
+como siguiente pasó a ser una de las mías.
+
+**Por qué el apuntador se va solo hacia el archivo, y por qué empeora con el tiempo:** la última fila
+de un documento histórico es, por construcción, la **más vieja** en significado. Cuanto más archivo
+acumulás, más seguro es que «el final del archivo» caiga adentro. No fue mala suerte: era el
+comportamiento garantizado del criterio que elegí.
+
+**Y lo que lo mantuvo mudo un turno completo: yo despachaba cada fila por buzón, a mano.** Backend y
+FE2 trabajaron lo que les asigné, en orden, sin fricción — porque el mensaje directo funcionaba. El
+tablero estaba ciego y **el trabajo fluía igual**, que es exactamente la forma de
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]: la redundancia humana tapó el canal roto. El síntoma
+sólo habría aparecido el día que una sesión preguntara «¿qué sigue?» al instrumento en vez de a mí —
+y ese día la respuesta habría sido «nada» o la fila equivocada.
+
+**Cómo se destapó, y no fue leyendo el tablero:** barriendo si cada fila viva tenía **dueño nombrado**
+—otra cosa— noté que la lista no incluía ninguna de las que acababa de crear. El hallazgo salió del
+**denominador** otra vez: no de releer, de contar y ver que el conjunto estaba incompleto
+([[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]]).
+
+**How to apply:** (1) un escritor automático no se ancla al **final del archivo**, se ancla al
+**delimitador de la sección semántica** (`COLA-VIVA:FIN`, el cierre del fence) — si el formato no tiene
+delimitador, ése es el primer arreglo; (2) después de escribir, **preguntale al lector de producción
+qué ve** (`cola-check.sh`), no al archivo: la escritura exitosa y la lectura exitosa son dos hechos
+distintos; (3) cuando un canal redundante humano existe, el canal roto **no da síntoma** — medí el
+automático a propósito, porque el trabajo que fluye no lo acredita; (4) el control que vale es el
+**delta del instrumento**: antes 3, después 6. Un «quedó bien» sin las dos cifras no distingue el
+rescate de no haber hecho nada.
