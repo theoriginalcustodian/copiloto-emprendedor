@@ -74,7 +74,15 @@ export const mockApi: CopilotApi = {
     return { cliente_id: 'mock-cliente-1' };
   },
 
-  me: async (): Promise<MeResponse> => ({ cliente_id: 'cli-mock-0001', email: 'demo@copiloto.test' }),
+  me: async (): Promise<MeResponse> => ({
+    cliente_id: 'cli-mock-0001',
+    email: 'demo@copiloto.test',
+    es_admin: false,
+    mp_connected: false,
+    composio_connected: [],
+    legal_aceptado: false,
+    legal_version_aceptada: null,
+  }),
 
   async sendChat(payload: ChatRequest): Promise<ChatResponse> {
     const wfId = `mock-wf-${Date.now()}`;

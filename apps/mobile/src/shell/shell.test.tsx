@@ -90,7 +90,7 @@ describe.skip('shell responsive: un solo arbol de componentes', () => {
   // reanimated + gesture-handler + los iconos del escritorio) y lo hace bajo contención de CPU.
   it('no remonta el contenido al cruzar el breakpoint de 900px', async () => {
     await almacenTokens.guardarToken('tok-shell-test');
-    jest.mocked(api.me).mockResolvedValue({ cliente_id: 'cli-shell-test', email: 'usuario@copiloto.test' });
+    jest.mocked(api.me).mockResolvedValue({ cliente_id: 'cli-shell-test', email: 'usuario@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
     // 🔴 Acá había un `obtenerCliente` mockeado con un "paciente activo" (fecha_nacimiento, genero):
     // vestigio de la app clínica, donde el composer se deshabilitaba sin paciente seleccionado. En el
     // copiloto no existe esa selección, y el cliente HTTP que lo servía apuntaba a un backend que en

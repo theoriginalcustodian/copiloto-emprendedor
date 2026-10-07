@@ -98,11 +98,12 @@ describe('PantallaAfipSetup — CUIT vinculado queda bloqueado sin salida (BL-V2
 describe('PantallaAfipSetup — copia en Drive sin salida hacia Apps (DRIVECERO)', () => {
   const TEXTO_VIEJO = /Conectalo en Apps|conectado en Apps/;
 
-  function montarConEstado(driveConectado: 'false' | 'ausente') {
+  function montarConEstado(driveConectado: 'true' | 'false' | 'ausente') {
     const http: HttpPort = {
       async enviar(p) {
         if (p.metodo === 'GET' && p.path.startsWith('/afip/estado')) {
-          const drive = driveConectado === 'false' ? { drive_conectado: false } : {};
+          const drive =
+            driveConectado === 'ausente' ? {} : { drive_conectado: driveConectado === 'true' };
           return respuesta(200, { cuit: CUIT, conectado: false, ...drive });
         }
         if (p.metodo === 'POST' && p.path === '/afip/ajustes') {
@@ -114,27 +115,32 @@ describe('PantallaAfipSetup — copia en Drive sin salida hacia Apps (DRIVECERO)
     configurarApi({ http, tokens });
   }
 
-  it('drive desconectado: explica que no está disponible y NO manda a conectar en Apps', async () => {
+  // DRIVETOGGLE: sin Drive conectado el toggle no es interactivo. Antes de esta regla el usuario
+  // podía activar una copia que la beta no puede escribir.
+  it('drive desconectado: el toggle queda apagado y no interactivo, sin mandar a conectar en Apps', async () => {
     montarConEstado('false');
     render(<PantallaAfipSetup />);
 
-    fireEvent.change(await screen.findByTestId('afip-drive-toggle'), { target: { value: 'si' } });
-
-    expect(await screen.findByTestId('afip-drive-desconectado')).toHaveTextContent(
-      'La copia en Drive no está disponible por ahora.',
-    );
+    const toggle = await screen.findByTestId('afip-drive-toggle');
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveValue('no');
     expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
   });
 
-  it('drive sin verificar (null): no promete una conexión en Apps', async () => {
+  it('drive sin verificar (null): el toggle tampoco se puede activar', async () => {
     montarConEstado('ausente');
     render(<PantallaAfipSetup />);
 
-    fireEvent.change(await screen.findByTestId('afip-drive-toggle'), { target: { value: 'si' } });
-
-    expect(await screen.findByTestId('afip-drive-requiere-conexion')).toHaveTextContent(
-      'No pudimos verificar tu Google Drive.',
-    );
+    expect(await screen.findByTestId('afip-drive-toggle')).toBeDisabled();
     expect(screen.queryByText(TEXTO_VIEJO)).toBeNull();
+  });
+
+  // Control positivo: con Drive conectado el mismo toggle SÍ se habilita. Sin este caso, un toggle
+  // deshabilitado en todos los estados pasaría el test anterior.
+  it('drive conectado: el toggle queda habilitado (control positivo)', async () => {
+    montarConEstado('true');
+    render(<PantallaAfipSetup />);
+
+    expect(await screen.findByTestId('afip-drive-toggle')).toBeEnabled();
   });
 });

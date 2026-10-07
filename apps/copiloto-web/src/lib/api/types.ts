@@ -45,71 +45,9 @@ export interface SignupResponse {
 // GET /me
 // ---------------------------------------------------------------------------
 
-export interface MeResponse {
-  cliente_id: string;
-  /** `apps/copiloto/web.py:625-636` -- sale del claim del token ya validado, no de una segunda
-   *  fuente. `null`/ausente si el token no lo trae (login por teléfono/anónimo, o si
-   *  `require_claims` no está activo) -- ausente, no inventado. */
-  email?: string | null;
-  /** K-12: la cuenta entra con Google (sin contraseña propia). Ausente en un backend anterior → se trata como `false`. */
-  cuenta_google?: boolean;
-  /** K-14: ver `packages/core/src/api/types.ts`. Ausente → no se muestra el hilo de bienvenida. */
-  onboarding_completado?: boolean;
-  mp_connected: boolean;
-  composio_connected: string[];
-  /** ¿Este usuario ve la Consola de operador? Sale del MISMO predicado que el guard real
-   *  (`apps/copiloto/auth.py:171` `es_admin`, que `require_admin` también llama) — a propósito: dos
-   *  lecturas del claim divergen en silencio el día que el claim se mueva.
-   *
-   *  **Esto NO es control de acceso.** `require_admin` sigue siendo el único guard; acá sólo se
-   *  decide si se muestra la puerta. Un usuario que forzara `es_admin` en el cliente vería la
-   *  pantalla pedir datos y recibir 403 de todos modos.
-   *
-   *  Obligatorio, no opcional: `es_admin?: boolean` dejaría que un fixture desactualizado se
-   *  compilara como "sin definir" y la ausencia se leería igual que `false`, tapando el día que el
-   *  backend deje de mandarlo. Sin el campo, no compila. Va SÓLO acá y no en `packages/core`: la
-   *  consola es de la web, y ese paquete lo comparte mobile (contrato `es_admin en /me`, 2026-08-07).
-   *
-   *  El backend lo manda en las dos ramas de `/me` — con `require_claims` sale del token, sin él es
-   *  `False` fail-closed (`apps/copiloto/web.py:766` y `:778`). */
-  es_admin: boolean;
-  /** BL-O6 · ¿este tenant aceptó la versión **vigente** del documento legal?
-   *
-   *  **Es un booleano, no la versión.** El backend lo arma como
-   *  `version_aceptada() == LEGAL_VERSION_VIGENTE` (`apps/copiloto/web.py:1073-1074` y `:1088-1089`).
-   *  `version_aceptada()` sí devuelve la versión (`Optional[str]`,
-   *  `apps/copiloto/tenant_legal_store.py:28`), y hasta el 2026-10-06 la comparación la colapsaba antes
-   *  de salir del backend. **Ya no:** la versión sale al lado, en `legal_version_aceptada`, derivada de
-   *  la MISMA lectura (`_campos_legales` en `apps/copiloto/web.py`). Este campo sigue respondiendo sólo
-   *  «¿aceptó la vigente?».
-   *
-   *  Obligatorio, no opcional, por la misma razón que `es_admin`: con `?` un fixture desactualizado
-   *  compila como «sin definir» y la ausencia se lee igual que «no aceptó». El backend lo manda en las
-   *  DOS ramas de `/me`, así que no existe un caso legítimo de ausencia.
-   *
-   *  Verificado contra prod punta a punta por `scripts/e2e_bl_o6_legal_aceptacion.py` (PR #681),
-   *  incluido el caso cross-tenant: el tenant adversario ve `false` después de que el canónico
-   *  aceptó. **Qué HACE la app cuando es `false` es decisión del operador (parte 2), no está acá.** */
-  legal_aceptado: boolean;
-  /** BL-O6 · la versión del documento legal que este tenant aceptó — `null` si nunca aceptó ninguna.
-   *
-   *  **Aditivo: no reemplaza a `legal_aceptado`.** Los dos salen de la MISMA lectura de la DB
-   *  (`_campos_legales` en `apps/copiloto/web.py`, un solo lugar para las DOS ramas de `/me`), así que
-   *  no pueden divergir entre sí ni cuestan una segunda query por request.
-   *
-   *  Por qué existe antes de que haya pantalla: el único caso que `legal_aceptado` NO distingue es
-   *  «aceptó una versión VIEJA» de «nunca aceptó» — en los dos vale `false`. Las dos opciones abiertas
-   *  necesitan ese dato (re-pedir la aceptación necesita saber QUÉ versión; mostrarla, cuál es), así que
-   *  exponerlo es el superconjunto de ambas y no elige ninguna.
-   *
-   *  `string | null`, no `string | undefined`: `null` es la respuesta del backend («no hay versión»), no
-   *  un campo ausente. Obligatorio por la misma razón que `es_admin` y `legal_aceptado` — el backend lo
-   *  manda en las DOS ramas, así que no existe un caso legítimo de ausencia.
-   *
-   *  **Qué HACE la app cuando la versión aceptada no es la vigente sigue siendo decisión del operador.**
-   *  Este campo sólo transporta el dato. */
-  legal_version_aceptada: string | null;
-}
+import type { MeResponse } from '@copiloto/core';
+
+export type { MeResponse };
 
 // ---------------------------------------------------------------------------
 // POST /me/legal/aceptar
