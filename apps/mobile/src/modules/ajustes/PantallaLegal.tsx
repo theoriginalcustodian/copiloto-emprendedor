@@ -1,6 +1,13 @@
 import { Text } from 'react-native';
 
-import { LEGAL_DESCARGO, LEGAL_TITULOS, LEGAL_VERSION, parrafosDe, type LegalKind } from '@copiloto/core';
+import {
+  LEGAL_AVISO_PLANTILLA,
+  LEGAL_DESCARGO,
+  LEGAL_TITULOS,
+  LEGAL_VERSION,
+  parrafosDe,
+  type LegalKind,
+} from '@copiloto/core';
 
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -34,7 +41,7 @@ export function PantallaLegal({ kind }: PantallaLegalProps) {
           testID="legal-screen-placeholder-notice"
           style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico }}
         >
-          Plantilla estándar genérica — no es una revisión legal específica de este negocio.
+          {LEGAL_AVISO_PLANTILLA}
         </Text>
 
         <Text
