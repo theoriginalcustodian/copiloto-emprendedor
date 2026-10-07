@@ -96,7 +96,15 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # pytest ABORTA la invocación completa con "file or directory not found" ANTES de correr un solo
 # test -- ni los de `tests/`, ni los del motor: todo, no sólo esos dos .py. Medido: `sync-test-
 # backend.sh` sin este path reproduce exactamente ese síntoma (collect de 2225 ok, "no tests ran").
+# `--exclude .env*` es endurecimiento PROSPECTIVO, no corrección de un hallazgo (medido por
+# auditoría: barrido recursivo de `.env`/`.env.*` no-template en `deploy/copiloto/` de los 36
+# worktrees ⇒ 0 archivos reales hoy). Este tar lee del DISCO, no de git, así que `.gitignore` no lo
+# filtra -- y `deploy/copiloto/` es justo la convención donde viven `.env` de deploy (p.ej.
+# `gotrue/.env.gotrue.template`, cuyo real sería `gotrue/.env.gotrue`). El stage no necesita ningún
+# `.env` para correr pytest, así que excluirlos no le cuesta nada al runner y cierra la exposición
+# antes de que exista.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+  --exclude='.env' --exclude='.env.*' \
   -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
