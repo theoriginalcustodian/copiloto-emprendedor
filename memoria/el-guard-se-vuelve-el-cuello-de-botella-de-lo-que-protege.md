@@ -126,3 +126,58 @@ un ajuste al paso.
 
 Corolario operativo: un guard circular necesita un **dueño y una cadencia**, no sólo un número. Si
 nadie tiene la tarea de correr el reconcile, el número sólo decide cuándo explota.
+
+---
+
+## 2026-10-07 — la variante que no mide deuda: el guard exige una **precondición que otros te mueven**
+
+Las dos variantes de arriba son del mismo sistema contra sí mismo. Ésta aparece recién con **sesiones
+paralelas**, y por eso no se ve leyendo un script solo.
+
+`deploy/copiloto/guard-deploy.sh:35-38` **aborta si `HEAD ≠ origin/main` recién traído**. Es la regla
+correcta y nació de un caso real: un deploy desde una rama revierte en prod lo que otra sesión mergeó un
+minuto antes ([[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]]). Del otro lado, backend tiene la
+regla igual de correcta: *«si el recibo de CI no es de ese SHA, no corro»*.
+
+Las dos juntas producen una **carrera que se pierde siempre**: el gate tarda, y mientras corre, las otras
+tres sesiones mergean ⇒ el recibo nace viejo, el guard rechaza el SHA gateado, y no hay deploy nunca. Es
+otra instancia de [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]], y lo que la hace invisible es
+que **esperar el recibo parece prudencia**: la sesión se queda quieta citando una regla sana, y el ocio no
+emite ningún error. Costó ~90 min de backend parado sin un solo síntoma.
+
+**Cómo se reconoce.** La magnitud que el guard exige **no crece por estar bloqueada** (eso es la variante
+circular de 2026-09-23): acá la precondición la mueve **otro agente**. La pregunta que discrimina:
+
+> *¿La condición que este guard exige depende de alguien que no soy yo, y cambia más rápido de lo que yo
+> tardo en satisfacerla?*
+
+Si sí, no es un umbral: es una carrera, y **ninguna cantidad de disciplina la gana**.
+
+**La salida NO es el escape hatch.** `UC_DEPLOY_FUERA_DE_MAIN=1` existe y saltea la regla — pero saltea
+**también** el árbol limpio, así que paga el bug original para arreglar la carrera. Tampoco es congelar
+los merges de las otras sesiones: eso traslada el ocio.
+
+**La salida es un criterio de EQUIVALENCIA sobre lo que el artefacto realmente contiene.** El deploy no
+sube el repo: `deploy.sh:97` tiene **allowlist explícita** en el `tar` (`apps/copiloto`,
+`apps/copiloto-web`, `packages/core`, `motor`, `deploy/worker`, `deploy/copiloto`). Entonces:
+
+```bash
+git diff --name-only <sha-del-recibo>..origin/main -- <esos 6 paths>   # vacío ⇒ el recibo vale
+```
+
+Medido el día que se escribió esto: el delta entre el SHA gateado y el head eran `eslint.config.mjs` y
+`scripts/dup-indice-check.py` ⇒ **0 archivos del allowlist** ⇒ artefacto **byte-idéntico**, recibo válido,
+deploy desbloqueado sin tocar ningún guard.
+
+**Why:** porque la precondición útil nunca fue «el head no se movió» — era «lo que voy a desplegar es lo
+que se gateó». El guard usaba el SHA como *proxy* de eso, y el proxy es más estricto que la propiedad.
+Cuando un guard frena por un proxy, la salida casi nunca es relajar el guard: es **medir la propiedad
+directamente**.
+
+**How to apply:** (1) ante un guard que te frena, escribí **qué propiedad** quiere garantizar y **con qué
+proxy** la aproxima — si el proxy depende de terceros, ahí está la carrera; (2) buscá el **allowlist o
+manifiesto** de lo que el artefacto contiene de verdad: casi todo deploy/build tiene uno, y es la base del
+criterio de equivalencia; (3) el criterio tiene que ser **mecánico y falsable** (un `diff` que sale vacío),
+nunca «ante la duda, es equivalente» ([[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]]);
+(4) dejá escrito qué lo **invalida** (acá: cualquier archivo en los 6 paths ⇒ re-gate), porque un criterio
+de equivalencia sin condición de ruptura es un permiso permanente.
