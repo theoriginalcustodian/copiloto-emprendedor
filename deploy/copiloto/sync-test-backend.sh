@@ -90,8 +90,14 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # ("no está …/scripts/censo-except.py — checkout parcial") y corre sólo en el CI. Un guard que se
 # salta en el bucle rápido es un guard que se descubre 8 minutos tarde: exactamente lo que este
 # runner vino a evitar. Pasó de verdad — el CI cazó un `except` mudo que la corrida local no vio.
+# `deploy/copiloto` viaja desde hoy (CONTROLESDEPLOYSINGATE, PR #913): `scripts/ci/backend.sh:33`
+# pasa `../../deploy/copiloto/test_meclaves_check.py` y `test_caddy_converge.py` como paths
+# POSICIONALES de pytest. Sin el directorio en este tar, el path no existe en el STAGE del VPS y
+# pytest ABORTA la invocación completa con "file or directory not found" ANTES de correr un solo
+# test -- ni los de `tests/`, ni los del motor: todo, no sólo esos dos .py. Medido: `sync-test-
+# backend.sh` sin este path reproduce exactamente ese síntoma (collect de 2225 ok, "no tests ran").
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
-  -czf - apps/copiloto "$MOTOR" deploy/worker scripts \
+  -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
