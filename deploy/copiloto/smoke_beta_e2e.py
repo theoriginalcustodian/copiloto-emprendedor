@@ -118,6 +118,7 @@ try:
         rec("/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)", False, f"sin payload: status={r.status_code}")
 except Exception as e:
     rec("/me (identidad de tenant)", False, repr(e))
+    rec("/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)", False, "sin payload: excepción en /me")
 
 # 4) /catalog
 try:
@@ -471,14 +472,17 @@ except Exception as e:
 
 # RESUMEN
 CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)", "chat simple → el agente responde",
+        # MECLAVESRUNTIME: el contrato pide que el smoke FALLE si /me trae una clave no declarada o le
+        # falta una declarada. Un check no-crítico rojo no cambia el exit: por eso es crítico.
+        "/me: set de claves = CLAVES_ME (MECLAVESRUNTIME)",
         # Crítico y no informativo: si el alta abierta vuelve, es una vulnerabilidad en un repo
         # público, no un check amarillo. Que tumbe el smoke es el punto.
         "alta SIN invite-token es rechazada (C4.1)"}
-# Denominador: 37 = ruta completa (token admin, trauma fabricado, bundle, redirect). Medido con un
-# httpx de mentira que recorre todo el script (ver scripts/test-smoke-veredicto.py). Si un rec() se
-# borra o una rama deja de emitir, el total cambia y el veredicto sale ROJO: un check que desaparece
+# Denominador: 38 = ruta completa (token admin, trauma fabricado, bundle, redirect, set de /me). Medido
+# con un httpx de mentira que recorre todo el script (ver scripts/test-smoke-veredicto.py). Si un rec()
+# se borra o una rama deja de emitir, el total cambia y el veredicto sale ROJO: un check que desaparece
 # no puede pasar como verde.
-EXPECTED_TOTAL = 37
+EXPECTED_TOTAL = 38
 
 def veredicto(results, crit, expected_total):
     """(líneas, exit_code). Dice SIEMPRE los dos números: críticos y no-críticos.
