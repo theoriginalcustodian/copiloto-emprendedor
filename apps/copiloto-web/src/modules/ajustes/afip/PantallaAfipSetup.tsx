@@ -748,7 +748,10 @@ export function PantallaAfipSetup() {
           <span className="afip-setup-bloque__etiqueta">Guardar mis facturas en Drive</span>
           <select
             data-testid="afip-drive-toggle"
-            value={guardarEnDrive ? 'si' : 'no'}
+            // DRIVETOGGLE: sin Drive conectado (DRIVECERO) el toggle queda apagado y no interactivo.
+            // Se muestra «no» aunque el perfil guarde `true`: si no, quedaría un «sí» que no se puede apagar.
+            value={guardarEnDrive && estadoGeneral?.driveConectado === true ? 'si' : 'no'}
+            disabled={estadoGeneral?.driveConectado !== true}
             onChange={(e) => void cambiarGuardadoEnDrive(e.target.value === 'si')}
           >
             {OPCIONES_DRIVE.map((o) => (
