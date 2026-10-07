@@ -2,10 +2,11 @@
 """Controles del veredicto del smoke de la beta (deploy/copiloto/smoke_beta_e2e.py).
 
 Tres cosas, en este orden:
-  1. `veredicto()` por AST (el script hace HTTP al importarse, no se importa): casos con los 38 reales.
+  1. `veredicto()` por AST (el script hace HTTP al importarse, no se importa): casos con los 39 reales.
   2. El denominador MEDIDO: el script completo corre contra un httpx de mentira (sin red, sin prod)
      y tiene que emitir exactamente EXPECTED_TOTAL checks en la ruta feliz. Incluye el set de /me
-     (MECLAVESRUNTIME) en las dos direcciones: clave de más y clave faltante ⇒ ROJO.
+     (MECLAVESRUNTIME) y el de /auth/login (MECLAVESRESTO) en las dos direcciones: clave de más y
+     clave faltante ⇒ ROJO.
   3. Control positivo sobre el script real: borrar UN rec() ⇒ ROJO (denominador).
 
 Uso: python scripts/test-smoke-veredicto.py
@@ -42,7 +43,7 @@ keep = [n for n in tree.body
 ns = {}
 exec(compile(ast.Module(body=keep, type_ignores=[]), SMOKE, "exec"), ns)
 veredicto, CRIT, EXPECTED = ns["veredicto"], ns["CRIT"], ns["EXPECTED_TOTAL"]
-chk("AST: CRIT tiene 6 nombres y EXPECTED_TOTAL = 38", len(CRIT) == 6 and EXPECTED == 38, f"{len(CRIT)} / {EXPECTED}")
+chk("AST: CRIT tiene 7 nombres y EXPECTED_TOTAL = 39", len(CRIT) == 7 and EXPECTED == 39, f"{len(CRIT)} / {EXPECTED}")
 
 
 def caso(mutar):
@@ -55,8 +56,8 @@ def run(res):
 
 
 lin, cod = run(caso(lambda r: r))
-chk("38 en verde ⇒ exit 0, BETA-READY, '6/6 críticos · 32/32 no-críticos'",
-    cod == 0 and "BETA-READY" in " ".join(lin) and "6/6 críticos · 32/32 no-críticos" in lin[1], f"{cod} {lin}")
+chk("39 en verde ⇒ exit 0, BETA-READY, '7/7 críticos · 32/32 no-críticos'",
+    cod == 0 and "BETA-READY" in " ".join(lin) and "7/7 críticos · 32/32 no-críticos" in lin[1], f"{cod} {lin}")
 
 lin, cod = run(caso(lambda r: [(s, ok and s != "login (/auth/login)", d) for s, ok, d in r]))
 chk("crítico login rojo ⇒ exit 1, BLOQUEA",
@@ -64,7 +65,7 @@ chk("crítico login rojo ⇒ exit 1, BLOQUEA",
 
 lin, cod = run(caso(lambda r: [(s, ok and not s.startswith("no-critico-"), d) for s, ok, d in r]))
 chk("32 no-críticos rojos ⇒ exit 0 (política), contadores lo dicen y nombra los rojos",
-    cod == 0 and "6/6 críticos · 0/32 no-críticos" in lin[1] and "no-critico-0" in " ".join(lin)
+    cod == 0 and "7/7 críticos · 0/32 no-críticos" in lin[1] and "no-critico-0" in " ".join(lin)
     and "BETA-READY" in " ".join(lin), f"{cod} {lin}")
 
 lin, cod = run(caso(lambda r: [x for x in r if x[0] != "no-critico-7"]))
@@ -80,16 +81,19 @@ chk("la última línea nunca dice que 'los 38 pasaron'", "pasaron" not in ultima
 
 
 # --- 2) denominador MEDIDO con el script completo y un httpx de mentira -----------------------
-# El set de /me sale de CLAVES_ME (la fuente, vía meclaves_check), no de una copia en este archivo.
+# Los sets de /me y /auth/login salen de sus *_contrato.py (la fuente, vía meclaves_check), no de
+# una copia en este archivo.
 _spec = importlib.util.spec_from_file_location("meclaves_check", MECLAVES)
 _mc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mc)
 CLAVES_ME = sorted(_mc.cargar_claves_declaradas())
+CLAVES_LOGIN = sorted(_mc.cargar_claves_login_declaradas())
 
 STUB = '''
 import json as _j
 import os as _os
 CLAVES = _j.loads('__CLAVES_ME__')
+CLAVES_LOGIN = _j.loads('__CLAVES_LOGIN__')
 class _R:
     def __init__(self, code=200, data=None, text=None, ctype="application/json", headers=None):
         self.status_code = code; self._d = data if data is not None else {}
@@ -119,13 +123,19 @@ class Client:
     def post(self, path, json=None, headers=None):
         if path == "/auth/signup" and not (json or {}).get("invite_token"):
             return _R(403, {"detail": "invite"})
+        if path == "/auth/login":
+            d = {k: None for k in CLAVES_LOGIN}
+            d["access_token"] = "t"; d["refresh_token"] = "r"
+            if _os.environ.get("STUB_LOGIN_MODE") == "SOBRA": d["clave_de_mentira"] = 1
+            if _os.environ.get("STUB_LOGIN_MODE") == "FALTA": d.pop("refresh_token")
+            return _R(data=d)
         return _R(data=BODY)
 def get(url, headers=None, params=None, timeout=None, follow_redirects=None):
     if "/auth/v1/authorize" in url: return _R(302, text="", headers={"location": "https://accounts.google.com/o"})
     return _R(data={"users": [{"id": "u1", "email": (params or {}).get("filter", "")}]})
 def put(url, headers=None, json=None, timeout=None): return _R()
 def request(method, url, headers=None, timeout=None): return _R()
-'''.replace("__CLAVES_ME__", json.dumps(CLAVES_ME))
+'''.replace("__CLAVES_ME__", json.dumps(CLAVES_ME)).replace("__CLAVES_LOGIN__", json.dumps(CLAVES_LOGIN))
 
 
 def correr_script(smoke_path, env_extra=None):
@@ -142,12 +152,12 @@ def correr_script(smoke_path, env_extra=None):
 
 
 rc, out = correr_script(SMOKE)
-chk("ruta feliz medida: 38 checks ejecutados y exit 0",
+chk("ruta feliz medida: 39 checks ejecutados y exit 0",
     f"checks ejecutados: {EXPECTED} de {EXPECTED}" in out and rc == 0, f"rc={rc}\n{out[-1500:]}")
 # Sólo el conteo: el stub no reproduce los 403 ni el trauma, así que los no-críticos quedan rojos a propósito
 # y nombrados. Lo que se mide acá es el DENOMINADOR, no el estado de cada check.
-chk("ruta feliz: los 6 críticos verdes en el stub y veredicto con los dos números",
-    "6/6 críticos" in out and "no-críticos ROJOS" in out and "BETA-READY" in out, out[-800:])
+chk("ruta feliz: los 7 críticos verdes en el stub y veredicto con los dos números",
+    "7/7 críticos" in out and "no-críticos ROJOS" in out and "BETA-READY" in out, out[-800:])
 
 # --- 2a) MECLAVESRUNTIME: el set real de /me contra CLAVES_ME, en las dos direcciones -------------
 rc5, out5 = correr_script(SMOKE, {"STUB_ME_MODE": "SOBRA"})  # clave de mentira en /me
@@ -157,15 +167,23 @@ rc6, out6 = correr_script(SMOKE, {"STUB_ME_MODE": "FALTA"})  # falta 'email' en 
 chk("MECLAVES control: clave declarada que no llega ⇒ exit 1, BLOQUEA y la nombra",
     rc6 == 1 and "BLOQUEA" in out6 and "'email'" in out6, f"rc={rc6}\n{out6[-800:]}")
 
-# --- 2b) recuento FIJO: una rama que falla NO cambia el denominador (38), la falla sale roja con nombre
+# --- 2a.bis) MECLAVESRESTO: el set real de /auth/login contra CLAVES_LOGIN, en las dos direcciones --
+rc7, out7 = correr_script(SMOKE, {"STUB_LOGIN_MODE": "SOBRA"})  # clave de mentira en el login
+chk("MECLAVES control: clave de más en login ⇒ exit 1, BLOQUEA y la nombra",
+    rc7 == 1 and "BLOQUEA" in out7 and "clave_de_mentira" in out7, f"rc={rc7}\n{out7[-800:]}")
+rc8, out8 = correr_script(SMOKE, {"STUB_LOGIN_MODE": "FALTA"})  # falta 'refresh_token' en el login
+chk("MECLAVES control: clave declarada que no llega en login ⇒ exit 1, BLOQUEA y la nombra",
+    rc8 == 1 and "BLOQUEA" in out8 and "'refresh_token'" in out8, f"rc={rc8}\n{out8[-800:]}")
+
+# --- 2b) recuento FIJO: una rama que falla NO cambia el denominador (39), la falla sale roja con nombre
 rc3, out3 = correr_script(SMOKE, {"SUPABASE_URL": ""})  # grant admin sin credenciales => rama de falla
-chk("grant admin falla: sigue 38 de 38 (recuento fijo), exit 0 (no-crítico)",
+chk("grant admin falla: sigue 39 de 39 (recuento fijo), exit 0 (no-crítico)",
     f"checks ejecutados: {EXPECTED} de {EXPECTED}" in out3 and rc3 == 0, f"rc={rc3}\n{out3[-600:]}")
 chk("grant admin falla: el rojo sale NOMBRADO (grant y re-login)",
     "FAIL] consola: otorgar claim admin" in out3 and "FAIL] consola: re-login post-grant" in out3, out3[-600:])
 
 rc4, out4 = correr_script(SMOKE, {"STUB_MODE": "INDEX_SIN_SCRIPT"})  # artefacto sin <script>
-chk("artefacto sin <script>: sigue 38 de 38 (no baja a 36)",
+chk("artefacto sin <script>: sigue 39 de 39 (no baja a 37)",
     f"checks ejecutados: {EXPECTED} de {EXPECTED}" in out4 and rc4 == 0, f"rc={rc4}\n{out4[-600:]}")
 chk("artefacto sin <script>: index, bundle y control negativo salen rojos con nombre",
     all(f"FAIL] {n}" in out4 for n in ("artefacto: index.html sirve un <script> de /assets",
@@ -179,18 +197,20 @@ chk("precondición: la línea a borrar existe exactamente una vez", src.count(LI
 tmpd = tempfile.mkdtemp()
 try:
     # El mutante vive en un temporal: replico la estructura que el smoke necesita (deploy/copiloto con
-    # su módulo + apps/copiloto/me_contrato.py para el set de /me). Si falta algo, el control falla por
-    # FileNotFoundError y no por el denominador: por eso el control exige "DENOMINADOR" explícito.
+    # su módulo + apps/copiloto/{me,auth_login}_contrato.py para los sets de /me y /auth/login). Si
+    # falta algo, el control falla por FileNotFoundError y no por el denominador: por eso el control
+    # exige "DENOMINADOR" explícito.
     dep_tmp = os.path.join(tmpd, "deploy", "copiloto")
     os.makedirs(dep_tmp)
     os.makedirs(os.path.join(tmpd, "apps", "copiloto"))
     shutil.copy(MECLAVES, dep_tmp)
     shutil.copy(os.path.join(ROOT, "apps", "copiloto", "me_contrato.py"), os.path.join(tmpd, "apps", "copiloto"))
+    shutil.copy(os.path.join(ROOT, "apps", "copiloto", "auth_login_contrato.py"), os.path.join(tmpd, "apps", "copiloto"))
     mutado = os.path.join(dep_tmp, "smoke_sin_rec.py")
     open(mutado, "w", encoding="utf-8").write(src.replace(LINEA + "\n", ""))
     rc2, out2 = correr_script(mutado)
     chk("control positivo: borrar un rec() del script real ⇒ exit 1 y DENOMINADOR",
-        rc2 == 1 and "DENOMINADOR" in out2 and "checks ejecutados: 37 de 38" in out2, f"rc={rc2}\n{out2[-800:]}")
+        rc2 == 1 and "DENOMINADOR" in out2 and "checks ejecutados: 38 de 39" in out2, f"rc={rc2}\n{out2[-800:]}")
 finally:
     shutil.rmtree(tmpd, ignore_errors=True)
 
