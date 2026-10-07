@@ -53,8 +53,10 @@ export const mockApi: CopilotApi = {
       access_token: 'mock-access-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'mock-refresh-token',
       user: { email },
+      weak_password: null,
     };
   },
 
@@ -64,8 +66,10 @@ export const mockApi: CopilotApi = {
       access_token: 'mock-access-token-google',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'mock-refresh-token-google',
       user: { email: 'demo-google@copiloto.test' },
+      weak_password: null,
     };
   },
 
