@@ -60,6 +60,41 @@ describe('FormularioIngreso — idemKey deriva del mensajeId (IDEMINGCLI)', () =
     expect(primera).not.toBe(segunda);
   });
 
+  /**
+   * 🔴 **Por qué este caso, y no "segundo `guardar()` real después de un `ok`" tal cual.** Medí los
+   * tres call-sites (`PantallaIngresos` alta manual, `TarjetaIngresoPropuesto` por voz) y el propio
+   * render de este componente: tras un `ok`, el bloque que expone el botón `-guardar` exige
+   * `guardado == null` (`FormularioIngreso.tsx:301`) — una vez guardado, NINGÚN botón restante
+   * (`-completar`, `-listo`) vuelve a llamar `guardar()`; sólo `completar()` (PATCH, sin `idemKey`).
+   * Confirmado con un diagnóstico empírico: tras el `ok`, `queryByTestId('ingreso-form-guardar')` es
+   * `null` en el propio render. Ningún padre conocido reutiliza la instancia para un segundo POST sin
+   * desmontar — `TarjetaIngresoPropuesto` recién desmonta `FormularioIngreso` en `onListo`, después
+   * de que ya no hay ningún `guardar()` pendiente. El camino real de "dos guardados, una instancia,
+   * sin desmontar" es el de abajo: duplicado detectado → confirmarlo.
+   */
+  it('CONFIRMAR DUPLICADO: dos llamadas reales en la MISMA instancia (sin desmontar) ⇒ MISMA idemKey', async () => {
+    registrarMock.mockResolvedValueOnce({
+      status: 'posible_duplicado',
+      mensaje: 'Parece que ya anotaste un ingreso así.',
+      candidato: null,
+    });
+    registrarMock.mockResolvedValueOnce({ status: 'ok', ingreso: INGRESO_GUARDADO });
+
+    await render(
+      <ThemeProvider>
+        <FormularioIngreso mensajeId="assistant-123" onGuardado={() => {}} onCancelar={() => {}} />
+      </ThemeProvider>,
+    );
+    await fireEvent.changeText(screen.getByTestId('ingreso-form-monto-input'), '15000');
+    await fireEvent.press(screen.getByTestId('ingreso-form-guardar'));
+    await waitFor(() => expect(screen.getByTestId('ingreso-form-confirmar-duplicado')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('ingreso-form-confirmar-duplicado'));
+    await waitFor(() => expect(registrarMock).toHaveBeenCalledTimes(2));
+
+    expect(registrarMock.mock.calls[0]?.[0]?.idemKey).toBe('ingreso:assistant-123');
+    expect(registrarMock.mock.calls[1]?.[0]?.idemKey).toBe('ingreso:assistant-123');
+  });
+
   it('sin mensajeId (alta manual, sin card): clave por gesto — comportamiento previo intacto', async () => {
     await montarCompletarGuardarYDesmontar(undefined);
     await montarCompletarGuardarYDesmontar(undefined);
