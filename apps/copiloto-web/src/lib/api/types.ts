@@ -45,7 +45,9 @@ export interface SignupResponse {
 // GET /me
 // ---------------------------------------------------------------------------
 
-export type { MeResponse } from '@copiloto/core';
+import type { MeResponse } from '@copiloto/core';
+
+export type { MeResponse };
 
 // ---------------------------------------------------------------------------
 // POST /me/legal/aceptar
