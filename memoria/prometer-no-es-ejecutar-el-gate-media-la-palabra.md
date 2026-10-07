@@ -53,6 +53,7 @@ costo escala: un peer que cita tu anuncio propaga al operador una deuda que no e
 — acá auditoría relayeó «el hueco quedó como deuda suya (IDXMERGE)» y su Stop hook la frenó por
 declarar verificado algo que le habían contado. Escribió uno, leyó otro, y el que decide no es el que
 midió. [[el-pipe-se-come-el-exit-code]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]
+
 **Refuerzo 2026-10-06 — la forma de buzón de este mismo principio (norma que adopté de auditoría):**
 **un artefacto ejecutable dentro de un `contrato_` o un `cierre_` lo corre QUIEN LO ESCRIBE**, contra
 el **binario y la versión que fija el consumidor** — no quien lo recibe.

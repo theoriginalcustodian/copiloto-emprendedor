@@ -44,3 +44,32 @@ verdadero **coexisten sin problema**; la refutación del primero no toca al segu
 
 Cuando descartes una alarma por un defecto conocido, escribí *qué otra cosa tendría que ser cierta*
 para que la alarma fuera legítima. Si no podés nombrarla, no la descartaste: la ignoraste.
+
+---
+
+**Refuerzo (2026-10-06): y la REFUTACIÓN también tiene su árbol — refutar un hallazgo contra `main` no lo
+refuta contra PRODUCCIÓN.** Variante nueva: acá el instrumento defectuoso era **mi propio fundamento**, la
+refutación ajena era **correcta**, y el hecho señalado **igual era real** — en otro árbol.
+
+**El caso.** Reporté que `/me` y `/catalog` responden `mp_connected` con dos criterios distintos. Backend
+refutó: cité `web.py` del checkout compartido, y en `origin/main` hay **un** criterio. Tenía razón, lo firmé
+sin reservas y **archivé el hallazgo**. Backend volvió sobre lo suyo horas después: *«mi refutación vale para
+`main`, NO para prod»* — prod no corre `main`. En el SHA que servía producción, `/me` seguía usando
+`first_seller_user_id()` y `/catalog` el estado ⇒ **la divergencia estaba viva donde están los usuarios**, y la
+confirmaba una medición HTTP (`/me true` + `/catalog caido`, mismo tenant).
+
+**Hay TRES árboles y cada medición citó uno.** El checkout compartido (yo), `origin/main` (la refutación) y el
+SHA que responde `/healthz` (**nadie**, hasta la autocorrección). Para un hallazgo de **comportamiento**, el
+árbol que manda es el tercero: los otros dos dicen qué se escribió, no qué corre.
+
+**Y el segundo filo, que casi cierra el caso por accidente:** cuando lo re-medí, prod ya servía **otro** SHA
+—hubo un redeploy intermedio— y la divergencia **seguía**, porque el SHA nuevo tampoco era descendiente del fix.
+Una medición de prod envejece **con cada deploy**, no con cada merge, y un deploy que mueve el SHA sin mover el
+fix produce la ilusión más limpia de todas: el número cambió, el defecto no.
+
+**How to apply:** (1) antes de archivar un hallazgo de comportamiento por una refutación, preguntá **contra qué
+árbol** se refutó, y medí el que responde `/healthz`. (2) La forma barata es ancestría, no diff:
+`git merge-base --is-ancestor <sha-del-fix> <sha-de-prod>` — binaria, y con control positivo gratis (el mismo
+test contra `origin/main` tiene que dar SÍ). (3) Si archivás algo que después resulta vivo, **reescribí el
+mensaje, no le appendees**: el titular es lo que circula. (4) Y el caso simétrico vale igual: tu propia
+refutación de un hallazgo ajeno merece la misma pregunta antes de darla por cerrada.

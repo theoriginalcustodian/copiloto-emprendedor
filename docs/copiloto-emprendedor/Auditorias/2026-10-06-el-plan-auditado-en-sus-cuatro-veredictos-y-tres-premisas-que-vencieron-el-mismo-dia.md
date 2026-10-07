@@ -62,6 +62,11 @@ Manager), el OAuth de Composio **no** — ahí la elección real es *«navegador
 no la resuelve: raciona builds EAS a 2. Queda abierto si el binario instalado ya incluye el módulo nativo
 (`expo-web-browser@~57.0.2` sigue en `package.json:29`), y eso se verifica en device.
 
+> ✅ **DECIDIDA el mismo día, despues de este barrido: «no se migra» (plan maestro, fila `BL-C5`).** Se deja
+> escrito acá para que nadie abra trabajo para decidir algo ya decidido — el modo de falla que este repo ya
+> tiene documentado. El plan también corrigió las dos citas desplazadas que motivaron la fila (hoy
+> `PantallaApps.tsx:2`, `:172-177`, `:178`).
+
 ## 4 — Cinco hipótesis propias, refutadas midiéndolas — **una por otra sesión, y con razón**
 
 El valor del turno no está sólo en lo que encontré: está en lo que **no** era.
@@ -120,6 +125,18 @@ implausible, y los casos muestran tres fallas de raíz:
 control positivo acredita que el instrumento **puede** marcar, no que su **denominador** signifique algo. Lo que
 lo cazó fue la implausibilidad de la cifra, no el control.
 
+### 5.1 Y la regla se cobró su segundo caso en el mismo turno, en dos minutos
+
+Después del barrido de premisas probé un cruce distinto: los ids `BL-*` citados por filas **no cerradas** del
+tablero contra los que el plan declara `HECHO`. Dio **20 de 47**. Por la regla de arriba no lo publiqué: **43%
+es implausible**, así que abrí **tres casos a mano** antes de contar. Los tres eran menciones de **contexto**,
+no filas que trackeen el id — `BL-B1` aparece en `OLA4` como insumo **ya verificado**, `BL-J8` como contenido
+de `OLA3`. Mismo defecto que el barrido anterior: cita ≠ trackeo, igual que símbolo ≠ sujeto.
+
+**Y el cruce ya estaba hecho, mejor:** el propio tablero lo reconcilia en una nota —`FACTURAPDF` **ya era**
+`BL-C2`, `SINPLAN` **ya era** `DEC-8`— con la explicación estructural que terminó en el §7 de este doc. Dos
+minutos de validación a mano evitaron publicar ruido **y** duplicar trabajo ajeno.
+
 ## 6 — Filas bajadas (ninguna la abro yo)
 
 | id | dueño | estado |
@@ -135,6 +152,16 @@ lo cazó fue la implausibilidad de la cifra, no el control.
 
 ## 7 — Lo que NO medí, explícito
 
+- **⚠️ Auditar los 77 no es auditar el plan entero, y el plan no es el producto entero.** Medido sobre
+  `origin/main`: el plan menciona **110 ids `BL-*`** distintos, de los cuales **77 llevan veredicto** (los de
+  este doc) y **33 son la familia `V` sin veredicto propio** — las pantallas/propuestas del prototipo ODOBI,
+  que `BL-V1` describe textual como *«PROPUESTA de Martín; no existe en ninguna capa»*. **No son deuda:**
+  contarlas como pendiente infla el faltante, que es el motivo por el que la cola no convergía.
+- **Y el alcance del plan mismo:** cubre la **beta de pantallas**, no el producto completo — integraciones y
+  monetización quedaron fuera por diseño, con cuatro frentes vivos en el tablero que **no tienen id en el
+  plan** (`COBROMP`, `DRIVECERO`, `SHEETSSOLOAPPEND`, `IGHUBSPOTFANTASMA`). La reconciliación es de
+  planificación, no mía; la cito porque **cambia cómo se lee este doc**: «las 109 citas existen y los cuatro
+  veredictos se sostienen» dice que *el plan* está sano, **no** que la beta esté cerca.
 - **Nada en runtime ni en device.** Todo es lectura de `origin/main`: tipos, código, estructura de rutas. Donde
   digo «no puede existir» (el §4, `A6`) es un argumento **estructural** (no hay barra), no una medición de
   layout; si alguien encuentra una tab-bar que no vi, ese veredicto cae.
