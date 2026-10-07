@@ -122,8 +122,10 @@ describe('PantallaLogin', () => {
       access_token: 'nuevo-token',
       token_type: 'bearer',
       expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'nuevo-refresh',
       user: {},
+      weak_password: null,
     });
     jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 

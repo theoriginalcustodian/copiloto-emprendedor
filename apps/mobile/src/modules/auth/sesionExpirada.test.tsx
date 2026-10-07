@@ -51,8 +51,10 @@ const LOGIN_OK = {
   access_token: 'tok',
   token_type: 'bearer',
   expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
   refresh_token: 'rt',
   user: {},
+  weak_password: null,
 };
 
 async function montar() {

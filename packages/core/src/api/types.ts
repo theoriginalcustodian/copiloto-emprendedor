@@ -29,12 +29,30 @@ export interface GoogleIdTokenRequest {
 /** El shape exacto de `user` no está confirmado más allá de existir — no inventar campos. */
 export type LoginUser = Record<string, unknown>;
 
+/** Diagnóstico de política de contraseña de GoTrue. Aparece SIEMPRE en el response (confirmado con
+ * password débil y fuerte, no es condicional) — pero su shape interno no está wire-verificado más
+ * allá de existir, así que no se tipa más fino que esto (mismo criterio que `LoginUser`). */
+export type WeakPasswordDiagnostico = Record<string, unknown> | null;
+
+/**
+ * `expires_at` y `weak_password` son metadata del PRODUCTOR (GoTrue), no de este front: decisión A
+ * (declarar, no podar) tomada 2026-10-07 contra el dato medido por auditoría — 0 lectores hoy en los
+ * tres árboles (`packages/core`, `apps/copiloto-web`, `apps/mobile`), tests incluidos. Se declaran
+ * para que el comparador de paridad siga siendo honesto con un tercero cuyo payload no controlamos
+ * (`web.py:login` reenvía `gotrue.password_grant(...)` tal cual) — no porque lleguen a la UI. El día
+ * que alguno gane un lector real, borrar esta nota en ese mismo PR.
+ */
 export interface LoginResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  /** MECLAVESRESTO (2026-10-07): GoTrue lo agrega al response real aunque no esté en el docstring
+   * de `onboarding.py` — epoch seconds de vencimiento absoluto (campo estándar OAuth2). */
+  expires_at: number;
   refresh_token: string;
   user: LoginUser;
+  /** MECLAVESRESTO (2026-10-07): ver `WeakPasswordDiagnostico`. */
+  weak_password: WeakPasswordDiagnostico;
 }
 
 // ---------------------------------------------------------------------------
