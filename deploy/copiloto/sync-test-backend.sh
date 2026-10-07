@@ -88,10 +88,19 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # la PC no le sirven a nadie en el VPS.
 # `scripts/` viaja desde el 2026-07-31: sin él, `test_censo_except_guard.py` se **SKIPPEA** en local
 # ("no está …/scripts/censo-except.py — checkout parcial") y corre sólo en el CI. Un guard que se
+# Y los CUATRO archivos de `deploy/copiloto/` viajan desde el 2026-10-07, porque `scripts/ci/backend.sh`
+# (ce66aa79) pasa los dos `test_*.py` a pytest: sin ellos en el STAGE, pytest sale **rc=4 con `no tests
+# ran`** y la suite ENTERA de backend queda en 0 ejecutados — no fallan los dos nuevos, no corre ninguno.
+# Van NOMBRADOS y no como directorio a propósito: este tar sale del **disco**, no de git, y
+# `deploy/copiloto/` tiene `.env` reales (gitignored) que no deben subir a un stage de test. Los dos
+# módulos bajo prueba van porque los tests los importan por nombre; `me_contrato.py` no hace falta
+# listarlo: `meclaves_check` lo resuelve como `__file__/../../apps/copiloto/`, que ya viaja.
 # salta en el bucle rápido es un guard que se descubre 8 minutos tarde: exactamente lo que este
 # runner vino a evitar. Pasó de verdad — el CI cazó un `except` mudo que la corrida local no vio.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
   -czf - apps/copiloto "$MOTOR" deploy/worker scripts \
+  deploy/copiloto/meclaves_check.py deploy/copiloto/test_meclaves_check.py \
+  deploy/copiloto/caddy_converge.py deploy/copiloto/test_caddy_converge.py \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
