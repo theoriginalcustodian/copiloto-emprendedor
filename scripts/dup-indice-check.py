@@ -111,10 +111,41 @@ def autotest() -> int:
         print(f"   {'OK ' if bien else 'MAL'} {rotulo:32s} duplicados={len(hallados):2d}  (esperado {esperado})")
         for d in hallados[:6]:
             print(f"        +1 ref a un slug YA indexado: {d}")
+    ok = canario_del_ruteo_de_errores() and ok
     print(f"\n   control de dos lados: {'PASA' if ok else 'NO PASA'}")
     return 0 if ok else 1
 
 
+
+
+def canario_del_ruteo_de_errores() -> bool:
+    """Exige que un error INTERNO salga por exit 2 y no por el 1 de «encontré duplicados».
+
+    Vive DENTRO del --autotest por una razón medida: el autotest daba `control de dos lados:
+    PASA` mientras la invocación real moría de UnicodeEncodeError en el print de la cabecera,
+    porque su camino de salida no emite el «→». Un control que no pasa por el entrypoint real no
+    acredita al entrypoint real
+    (memoria/el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md).
+    """
+    global duplicados
+    original = duplicados
+
+    def revienta(*a, **k):
+        raise RuntimeError("canario inyectado a propósito")
+
+    try:
+        duplicados = revienta
+        cod = main_protegido()
+    finally:
+        duplicados = original    # revertir SIEMPRE: un mutante que sobrevive a la corrida deja
+                                 # el instrumento mintiendo en la siguiente
+    bien = cod == 2
+    rotulo = "error interno -> exit 2 (no 1)"
+    print(f"   {'OK ' if bien else 'MAL'} {rotulo:32s} exit={cod}  (esperado 2)")
+    if not bien:
+        print("        Un crash con exit 1 es indistinguible de «hay un duplicado», y el falso")
+        print("        rojo es el que empuja al --no-verify.")
+    return bien
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--rev", default="HEAD", help="commit a medir (default HEAD)")
@@ -157,5 +188,27 @@ def main() -> int:
     return 1
 
 
+def main_protegido() -> int:
+    """Rutea cualquier excepción inesperada al exit 2 (NO MEDIDO), nunca al 1.
+
+    Por qué no alcanza con dejar que Python propague: un traceback sale con **exit 1**, que en
+    este script significa «encontré duplicados en tu commit». Cableado así, el primer rojo del
+    gate sería ambiguo entre «hay un duplicado» y «el script no arranca» — y el falso rojo es
+    justo el que empuja al `--no-verify`
+    (memoria/dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md).
+
+    El fix de encoding de #897 cerró la causa conocida de crash, y su comentario nombra esta
+    colisión — pero nombrarla no la arregla: cualquier OTRA excepción seguía saliendo por el 1.
+    """
+    try:
+        return main()
+    except Exception as e:                       # noqa: BLE001 - es el guard de salida
+        print(f"NO MEDIDO: error interno del instrumento — {type(e).__name__}: {e}",
+              file=sys.stderr)
+        print("           exit 2 = no se pudo medir. NO es «encontré duplicados» (eso es exit 1).",
+              file=sys.stderr)
+        return 2
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_protegido())

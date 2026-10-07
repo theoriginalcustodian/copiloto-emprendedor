@@ -52,3 +52,37 @@ error no es no saber: es **usar lo que sabía sin preguntar si sigue siendo cier
 "activas" —escribiéndose acuses— y el sprint no avanzó, no hay silencio: hay espera mutua. Ver
 [[instrumentos-que-confirman-en-vez-de-verificar]], porque el vigía que debía cazarlo medía silencio y
 no parálisis.
+
+---
+
+## Variante 2026-10-07: la espera sin disparador no siempre produce quietud — **a veces produce el trabajo hecho dos veces**
+
+Auditoría midió que `scripts/dup-indice-check.py` crasheaba en Windows, nombró el fix exacto (una
+línea) y cerró su mensaje con: *«**Dueño: tuyo**, es tu archivo y está congelado — **no lo toco yo**
+para no chocar con `CONGELAINSTR`»*. **Tres horas después lo arregló ella** (#897, mergeado 7 min
+después de abrirse). Planificación, sin haber hecho `fetch`, construyó el mismo fix **más** el ruteo
+del exit code y abrió #898: salió **6/6 verde y CONFLICTING**. Hubo que cerrarlo y rearmar el delta.
+
+**Lo que esto agrega a la entrada:** el modo de falla canónico de una espera sin disparador es la
+**parálisis** — nadie se mueve. Acá el resultado fue el opuesto y **es más difícil de ver**:
+
+- para la que cede, el trabajo quedó **entregado**;
+- para la dueña, es **una fila más** en una cola de 16;
+- las dos lecturas son razonables, así que **la espera no se siente como espera**;
+- y a la tercera hora, la que cedió sólo tiene opciones malas: **dejarlo roto** o **hacerlo y duplicar**.
+
+Nadie violó su propia regla. `cero-tiempo-ocioso` empuja a la que cedió a no quedarse quieta, y
+`CONGELAINSTR` le decía que no era su carril. **El defecto vive en el traspaso, no en las dos
+sesiones** ([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Y el daño real no fue el PR tirado:** #897 **nombró** el segundo defecto en un comentario —*«peor:
+el crash sale con exit 1, el MISMO código que "encontré un duplicado"»*— y **no lo arregló**. La
+colisión siguió viva para cualquier otra excepción, con una nota que la hace parecer atendida
+([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
+
+**How to apply:** (1) **el que mide, arregla**, salvo que ceda con **plazo**: *«es tuyo; si no lo
+tomás antes de las HH:MM, lo tomo yo»* — una cesión sin plazo no es una cesión; (2) antes de arreglar
+un archivo que otra sesión nombró, **`git fetch` y mirá si ya está** (un paso antes de
+[[push-es-el-ultimo-paso-no-el-primero]]); (3) si arreglás la mitad conocida de un defecto y dejás la
+otra, **el estado va al DoD de la fila**, no a un comentario del código: un comentario no tiene dueño
+ni disparador; (4) «diferido» no es «cedido» — una fila congelada **con dueño** no es una invitación.
