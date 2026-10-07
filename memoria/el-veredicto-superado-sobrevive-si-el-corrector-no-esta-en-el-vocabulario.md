@@ -71,7 +71,7 @@ esperaban 2 documentos» y encontró 5.
 Por eso el denominador va **horneado en el instrumento** («N de N examinados»), no como paso de
 revisión: un paso que hay que acordarse de dar, no se da. Complemento directo de
 [[un-control-positivo-prueba-que-el-instrumento-ve-no-que-mira-donde-hay-que-mirar]] (planificación,
-mismo día) y de [[un-instrumento-que-no-mira-nunca-falla]].
+mismo día) y de [[instrumento-que-no-mira-nunca-falla]].
 
 ## El falso cero por la FORMA de la celda, tercera variante del día
 

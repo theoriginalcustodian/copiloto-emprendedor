@@ -10,7 +10,7 @@ metadata:
 
 **Contexto:** el pedido original era "cuando una sesión larga llegue a un punto de decisión
 crítica, avisame por Telegram con botones tipo unreal-copilot y que mi respuesta la continúe".
-Se investigaron 3 caminos — ver [[telegram-composio-canal-operador]] para el primero (Composio,
+Se investigaron 3 caminos — ver `telegram-composio-canal-operador` (sólo en el slug) para el primero (Composio,
 fire-and-forget, ya operativo vía skill `avisar-telegram`).
 
 **Hallazgo clave (2026-08-18):** el mecanismo nativo **Remote Control** de Claude Code resuelve
@@ -51,7 +51,7 @@ a propósito.
 
 **Conclusión operativa:** para el caso "avisame y dejame decidir desde el teléfono", usar
 Remote Control (ya confirmado). Para "avisame aunque no pueda responder ahí" (fire-and-forget),
-usar la skill `avisar-telegram` (Composio, [[telegram-composio-canal-operador]]). Channels/Telegram
+usar la skill `avisar-telegram` (Composio, `telegram-composio-canal-operador` (sólo en el slug)). Channels/Telegram
 nativo queda documentado pero no es el camino recomendado dentro de Antigravity.
 
 **Arquitectura final decidida (2026-08-19):** combinar los dos mecanismos, no elegir uno solo —

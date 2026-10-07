@@ -148,7 +148,7 @@ Preguntá las dos, no una:
   absuelve. Este siempre condena.
 - [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] — el falso rojo no choca con nada.
 - [[al-juez-tambien-hay-que-darle-el-plano]] — el otro caso del mismo día, misma forma.
-- [[instrumento-que-no-mira-nunca-falla.md]] — "0 recolectados" es no mirar.
+- [[instrumento-que-no-mira-nunca-falla]] — "0 recolectados" es no mirar.
 
 ---
 

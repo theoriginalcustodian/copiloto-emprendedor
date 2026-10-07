@@ -41,7 +41,7 @@ git ls-remote origin refs/heads/<rama> | awk '{print $1}'
 ```
 
 Vacío o distinto ⇒ no pusheaste. Este control ya estaba en la casa para otra cosa
-([[copiloto-emprendedor]] lo usó para no desmentir un cierre correcto con un `origin/main` local
+(`copiloto-emprendedor` lo usó para no desmentir un cierre correcto con un `origin/main` local
 stale, ODOBI hito 5): es el mismo instrumento, sirve para las dos direcciones.
 
 ## Y ojo con la explicación ya canonizada

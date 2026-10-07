@@ -79,7 +79,7 @@ Antes de usarlo, escribí qué afirma literalmente ese dato y comparalo con lo q
 son distintos —«se escribió» vs «se resolvió», «se desplegó» vs «funciona», «el test pasó» vs «el camino
 de prod se ejercitó»— el proxy no es una aproximación: es otra medición. Y el veredicto correcto puede
 ser que **no hay ancla mecánica** y el cierre tiene que ser **declarado** por alguien. Ver
-[[el-nombre-es-una-hipotesis-sobre-el-contenido]] y [[un-vacio-no-es-hallazgo-correr-el-control]].
+[[el-nombre-es-una-hipotesis-sobre-el-contenido]] y [[vacio-no-es-hallazgo-correr-el-control]].
 
 ---
 

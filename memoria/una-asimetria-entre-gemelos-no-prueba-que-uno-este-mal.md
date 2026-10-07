@@ -211,7 +211,7 @@ no es que esté sin verificar, es que **no puede existir**. La fila era `web`, y
 no) pregunté por **el mecanismo del fix** y leí la respuesta como **el estado del defecto**. Son cosas
 distintas, y la segunda se mide **antes**: un fix no portable en un gemelo que **no tiene la precondición del
 defecto** no es una costura abierta — es una fila que nunca fue de los dos. Es el mismo molde que
-[[un-instrumento-que-no-mira-nunca-falla]] visto del otro lado: no pregunté *¿cuántos elementos mira?* sino
+[[instrumento-que-no-mira-nunca-falla]] visto del otro lado: no pregunté *¿cuántos elementos mira?* sino
 *¿existe el elemento?*
 
 **Y el costo real fue de credibilidad, no de tiempo:** el mensaje ya estaba escrito y en el buzón, con un título

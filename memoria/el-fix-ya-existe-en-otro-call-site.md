@@ -37,7 +37,7 @@ repo**, el CI corre **11 de 92** tests de Python y **0 de 96** de TypeScript, y 
 —el único guard mecánico del contrato de error— **no está en la lista del CI**. Es
 [[cero-deuda-no-gestionada]] en su forma más barata de pagar: el conocimiento ya está escrito, falta
 el gancho que lo obligue. Relacionado: [[la-deuda-vencida-no-siempre-se-paga-en-un-paso]] ·
-[[un-fix-de-razonamiento-no-viaja-con-el-codigo-copiado]].
+[[el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado]].
 
 ---
 
