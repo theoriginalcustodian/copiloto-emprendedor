@@ -94,7 +94,7 @@ tar -C "$LOCAL" \
     --exclude='apps/copiloto-web/node_modules' --exclude='apps/copiloto-web/dist' --exclude='apps/copiloto-web/.vite' \
     --exclude='packages/core/node_modules' \
     -czf - apps/copiloto apps/copiloto-web packages/core "$MOTOR" "$WORKER" deploy/copiloto \
-  | ssh "$HOST" "mkdir -p '$REMOTE' '$REMOTE/packages' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor '$REMOTE'/packages/core && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+  | ssh "$HOST" "mkdir -p '$REMOTE' '$REMOTE/packages' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor '$REMOTE'/packages/core && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name 'dist*' -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
 
 # ---------------------------------------------------------------------------------------------
 # Sello de PROCEDENCIA (2026-07-31). El deploy es `tar | ssh`: en el VPS NO hay git, así que sin
@@ -154,12 +154,22 @@ npm install --no-audit --no-fund --loglevel=error
 # tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
 # con que sync-web.sh lo haga bien.
 # VITE_BUILD_SHA: sin esto el shell sale con data-build-sha="unknown" (hallazgo FE2, 2026-10-06).
-VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$SHA" npm run build
-test -f dist/index.html
+# BUILD a STAGING (dist-<SHA>), NO al dist servido. El publish (symlink `dist`) va DESPUÉS del restart
+# OK de [5/7]: un abort entre medio deja prod con el shell viejo, coherente con el API viejo.
+# Decisión PIPELINEORDEN (planificación, 2026-10-06). `npm run build` = `tsc -b && vite build`; se
+# llaman por separado porque `--outDir` no debe llegar a tsc.
+rm -rf "dist-$SHA"
+export VITE_AUTH_URL="$AUTH_URL" VITE_BUILD_SHA="$SHA"
+npx tsc -b
+npx vite build --outDir "dist-$SHA" --emptyOutDir
+test -f "dist-$SHA/index.html"
 # control positivo: el shell DEBE declarar el SHA desplegado; si no, el deploy es ROJO.
-grep -q "data-build-sha=\"$SHA\"" dist/index.html || { echo "ABORT [frontend]: dist/index.html no declara data-build-sha=$SHA"; exit 1; }
-echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1)), shell declara $SHA"
+grep -q "data-build-sha=\"$SHA\"" "dist-$SHA/index.html" || { echo "ABORT [frontend]: dist-$SHA/index.html no declara data-build-sha=$SHA"; exit 1; }
+echo "frontend build OK en staging -> $REMOTE/apps/copiloto-web/dist-$SHA, shell declara $SHA (aún NO publicado)"
 REMOTE_WEB
+# canario de PIPELINEORDEN: UC_CANARIO_ABORT_TRAS_BUILD=1 aborta acá (build hecho, restart NO hecho,
+# publish NO hecho). Prod debe quedar con el SHA VIEJO en /healthz y en data-build-sha.
+if [ -n "${UC_CANARIO_ABORT_TRAS_BUILD:-}" ]; then echo "CANARIO: abort inyectado tras el build (exit 9)"; exit 9; fi
 
 echo "==> [2/7] auth: repoint a la GoTrue DEDICADA — SOLO si el cutover ya se completó (marker); self-healing"
 # Gate de seguridad (review A2): repointear apenas existe copiloto-gotrue.env puede apuntar el copiloto
@@ -428,6 +438,26 @@ systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
 systemctl is-active "$WORKER_SOPORTE_UNIT"
 REMOTE_UNITS
+
+# [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de
+# [5/7] (PIPELINEORDEN). `mv -T` sobre un symlink es un rename(2): el swap es atómico para el servidor.
+echo "==> [5.5/7] publish del shell (dist -> dist-<SHA>, SOLO tras el restart OK de [5/7])"
+ssh "$HOST" bash -s -- "$REMOTE" "$(git -C "$LOCAL" rev-parse HEAD)" <<'REMOTE_PUBLISH'
+set -euo pipefail
+REMOTE="$1"; SHA="$2"
+cd "$REMOTE/apps/copiloto-web"
+test -f "dist-$SHA/index.html"
+# migración única: un `dist` que quedó como directorio real (deploys anteriores) se aparta para que el
+# symlink pueda tomar su nombre. Idempotente: en el segundo deploy ya es symlink y no se toca.
+if [ -d dist ] && [ ! -L dist ]; then mv dist "dist-legacy-$(date +%s)"; fi
+ln -sfn "dist-$SHA" dist.tmp
+mv -T dist.tmp dist
+# control positivo: el shell SERVIDO (no el staging) DEBE declarar el SHA publicado.
+grep -q "data-build-sha=\"$SHA\"" dist/index.html || { echo "ABORT [5.5/7]: el shell publicado no declara $SHA"; exit 1; }
+# retención: conservar el publicado y el anterior; los demás builds se borran (no se acumulan en el VPS).
+for d in $(ls -1td dist-[0-9a-f]*/ 2>/dev/null | tail -n +3); do rm -rf "$d"; done
+echo "shell publicado: dist -> dist-$SHA (shell declara $SHA)"
+REMOTE_PUBLISH
 
 echo "==> [6/7] Caddy: agregar vhost ${COPILOTO_SUBDOMAIN}.* + rewrite /callback en ${MP_SUBDOMAIN}.* (idempotente; valida ANTES de reload; aborta sin tocar si no valida)"
 ssh "$HOST" python3 - "$BASE_DOMAIN" "$COPILOTO_SUBDOMAIN" "$MP_SUBDOMAIN" "$WEB_PORT" <<'REMOTE_CADDY'
