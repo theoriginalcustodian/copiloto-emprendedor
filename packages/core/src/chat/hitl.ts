@@ -67,8 +67,15 @@ const BOLD_NAME_RE = /\*\*(.+?)\*\*/;
 // Empieza y termina en dígito: no captura la puntuación de la oración ("$15.000, confirmá").
 const AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)*)/;
 
-/** Riesgo POR SERVICIO (intrínseco al servicio, no al texto). Sin entrada = tarjeta neutra. */
-const SERVICE_RISK: Record<
+/** Riesgo POR SERVICIO (intrínseco al servicio, no al texto). Sin entrada = tarjeta neutra.
+ *
+ * Exportado (RIESGOPROMESAWEB) para que `serviceRisk.contrato.paridad.test.ts` pueda verificar, sin
+ * una copia propia, que cada clave de acá tiene una tool VIVA detrás (`service_risk_contrato.py`,
+ * espejo de la regla que el backend ya se puso en `system_prompt.py:28-32`) — con `instagram` como
+ * única excepción declarada (`service-risk-excepciones.json`), no borrado: un mensaje viejo real
+ * sigue teniendo ese `card.service`, y la advertencia de riesgo sigue siendo cierta aunque hoy no
+ * exista forma de generar uno nuevo. */
+export const SERVICE_RISK: Record<
   string,
   { badge: string; tono: 'warning' | 'danger'; irreversible: boolean; showAmount?: boolean }
 > = {
