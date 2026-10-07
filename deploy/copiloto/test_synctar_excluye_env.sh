@@ -14,8 +14,10 @@ SCRIPT="${1:-$HERE/sync-test-backend.sh}"
 echo "== SYNCTAREXCLUYEENV: $SCRIPT"
 fallos=0
 
-# Extrae la línea real de las flags --exclude de la invocación del tar (no la reescribe).
+# Extrae la línea real de las flags --exclude de la invocación del tar (no la reescribe), y le
+# quita el `\` de continuación de línea final -- queda LISTA para interpolar en un comando real.
 FLAGS="$(grep -E "^\s*--exclude='\.env" "$SCRIPT" || true)"
+FLAGS="$(printf '%s' "$FLAGS" | sed -e 's/[\\]$//' -e 's/[[:space:]]*$//')"
 
 if [ -z "$FLAGS" ]; then
   echo "  ROJO: $SCRIPT no declara --exclude='.env' / '.env.*' -- la exposición prospectiva sigue abierta"
@@ -25,8 +27,14 @@ else
 fi
 
 # Control real: armamos un árbol de prueba aislado (NUNCA el repo) con un .env de mentira y uno
-# .template, tarreamos con las MISMAS flags que el script declara, y verificamos el contenido real
-# del .tar.gz -- no inferimos del texto del script, ejercitamos tar de verdad.
+# .template, tarreamos con las MISMAS flags EXTRAÍDAS arriba (no reescritas a mano), y verificamos
+# el contenido real del .tar.gz -- no inferimos del texto del script, ejercitamos tar de verdad.
+#
+# ⚠️ El `eval` NO es cosmética: $FLAGS trae las comillas simples COMO TEXTO (viene de un grep sobre
+# el script), y sin eval bash pasa el apóstrofe a tar como parte LITERAL del patrón -- tar no
+# excluye nada y el caso sale verde igual (lo probó, y lo midió, auditoría: el test original
+# hardcodeaba los flags en vez de usar los extraídos, así que un script que se queda sólo con
+# `--exclude='.env'` y pierde `--exclude='.env.*'` seguía pasando este caso sin discriminar).
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/deploy/copiloto/gotrue"
@@ -36,9 +44,8 @@ echo "real" > "$SANDBOX/deploy/copiloto/.env"
 echo "contenido inocuo" > "$SANDBOX/deploy/copiloto/no_es_env.txt"
 
 TARBALL="$SANDBOX/out.tar.gz"
-tar -C "$SANDBOX" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
-  --exclude='.env' --exclude='.env.*' \
-  -czf "$TARBALL" deploy/copiloto
+eval "tar -C '$SANDBOX' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+  $FLAGS -czf '$TARBALL' deploy/copiloto"
 
 LISTADO="$(tar -tzf "$TARBALL")"
 
