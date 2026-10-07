@@ -447,3 +447,22 @@ lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pushe
   _Bajada del índice el 2026-10-06 por presupuesto: su instrucción ya circula en dos entradas vivas — `un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi` y `el-contrato-que-manda-a-hacer-algo-ya-hecho`. El caso queda acá; la regla sigue arriba._
 - [🔬🎯 Una simulación calibrada a la línea base no valida la capa que NO modela](una-simulacion-calibrada-a-la-linea-base-no-valida-la-capa-que-no-modela.md) — dijo «0 regresiones»; el instrumento encontró 9.  
   _Bajada del índice el 2026-10-06 por presupuesto (24.000 bytes). Su forma general ya circula arriba en `un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia` y `el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas`: el caso concreto queda acá, buscable._
+
+## 🚨 2026-10-07 — escritas y NUNCA indexadas: cinco entradas invisibles para toda sesión
+
+> **Esto no es una bajada del índice.** Las de arriba estaban arriba y se bajaron por presupuesto. Estas
+> **nunca tuvieron línea en ningún índice**: existen como archivo versionado en `main` desde el 22/09 y el
+> 05/10, y ninguna sesión —ni un clon nuevo— podía encontrarlas salvo por `grep` a ciegas. Lo cazó
+> `scripts/medir-indice-memoria.py` con su chequeo de **COBERTURA**: `FALLA: 5 entradas sin línea en
+> MEMORY.md ni HISTORIA.md`. Verificado contra `origin/main` con `git cat-file -e`, no contra el checkout
+> sucio: las cinco **están** versionadas, así que el defecto le llega a cualquiera que clone.
+> **Por qué van acá y no al índice cargado:** el índice del checkout tenía **115 chars y 6 líneas** de
+> margen (medido; en `main` son 1.028 y 19). Cinco líneas no entran, y robarle lugar a una regla viva para
+> meter una que nadie extrañó en dos semanas es la decisión equivocada. Acá son buscables y el chequeo de
+> cobertura cierra; promover una a `MEMORY.md` después es mover un renglón.
+
+- [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA y el mensaje elige una](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — `gitleaks` da rc=1 tanto si encontró un secreto como si no pudo cargar su config, y `secretos-check.sh` anuncia las dos como «encontró posibles secretos»: un escáner mal configurado se lee como una detección. Fail-closed pero **mal diagnosticado**, que es como se le enseña a la gente a usar `--no-verify`.
+- [📝💥 El `open(w)` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — un script de parcheo que abre el original en modo escritura lo deja en 0 bytes si la serialización falla. El fallo al **leer** es benigno; el fallo al **escribir** ya destruyó. (Es la razón por la que todo script de este repo escribe a `.tmp` + `os.replace`.)
+- [🔗⚰️ La cita de procedencia muere en el MERGE](la-cita-de-procedencia-muere-en-el-merge.md) — un «medido @ sha» de rama deja de resolver en el instante del squash-merge, justo cuando el documento empieza a circular. Medido: **26%** de las citas de SHA del repo no sobrevive a un clon nuevo.
+- [🧮🏷️ Una cifra sin unidad se deja citar para CUALQUIER pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — tres cifras del mismo criterio circulando a la vez; ganó la más alta y la única sin calificador. Cuando el instrumento cambia de unidad, la cifra vieja **no envejece**: pasa a medir otra magnitud. (Volvió a morder el 07/10: una medición en **bytes** se leyó como **chars** y casi refuta una fila cerrada correctamente.)
+- [🎭🎤 El Playwright MCP compartido es de UNA sesión y no concede micrófono](playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono.md) — perfil persistente único: lo retiene una sola sesión y no puede dar micrófono ⇒ la evidencia de PWA va con Chromium propio.
