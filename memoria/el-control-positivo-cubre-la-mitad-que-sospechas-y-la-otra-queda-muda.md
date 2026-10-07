@@ -317,3 +317,43 @@ el instrumento ya la había afirmado.
 **How to apply:** escribí la afirmación del hallazgo en **una oración** y subrayá su sujeto y su
 predicado. El control tiene que negar **ese predicado sobre ese sujeto**. «El archivo existe» y «la línea
 falta» comparten el archivo y no comparten nada más. Ver [[el-medidor-mide-el-arbol-donde-vive-no-el-que-publicas]].
+
+---
+
+## Variante 2026-10-07: el **autotest del instrumento pasaba verde mientras su entrypoint real estaba muerto**
+
+`scripts/dup-indice-check.py` se mergeó en #893 con un `--autotest` de **cinco controles históricos**
+(el positivo de #885 + cuatro negativos) que daba `control de dos lados: PASA`. Y la invocación real
+estaba **rota en el único entorno donde el script va a vivir**:
+
+```
+python scripts/dup-indice-check.py --base 87c57cb1^ --rev 87c57cb1
+  UnicodeEncodeError: 'charmap' codec can't encode character '\u2192'   (dup-indice-check.py:139)
+python scripts/dup-indice-check.py --autotest
+  exit 0 — «control de dos lados: PASA»
+```
+
+**Las dos cosas a la vez, y no es contradicción: el `--autotest` cortocircuita en `main()` antes del
+`print` de la cabecera**, que es el único que emite el `→`. El control recorría el **criterio**; el
+defecto estaba en el **camino de entrada**. Nada en el autotest pasaba por ahí, así que no podía verlo
+fallar — y su verde se leía como «el instrumento funciona», que es la afirmación que nadie había medido.
+
+Dos agravantes que lo vuelven una clase y no un typo:
+
+1. **El fix ya existía en el hermano.** `medir-indice-memoria.py:31-33` tiene
+   `sys.stdout.reconfigure(encoding="utf-8")`; la copia no se lo llevó
+   ([[el-fix-ya-existe-en-otro-call-site]]).
+2. **El crash salía con exit 1 — el mismo código que «encontré duplicados».** Cableado así, el primer
+   rojo del gate habría sido ambiguo entre «hay un duplicado» y «el script no arranca», y el falso rojo
+   es el que empuja al `--no-verify`
+   ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). El script ya tenía
+   `2` reservado para *NO MEDIDO*: la colisión era que una excepción no ruteada **no usa** ese 2.
+
+**How to apply:** cuando un instrumento tiene autotest, preguntá **por qué línea entra el autotest** y
+comparala con la del uso real. Si el autotest llama a una función interna y el uso real entra por
+`main()`/`argv`, el autotest **no acredita el uso real**: acredita el criterio. El control que cierra la
+brecha va **adentro** del autotest y pasa por el entrypoint — acá es `canario_del_ruteo_de_errores()`,
+que inyecta una excepción interna y exige `exit 2`; medido en las dos direcciones (con el ruteo → 2; con
+un mutante que devuelve 1 → el autotest sale **NO PASA**). Ver
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]] y
+[[medir-si-un-gate-dispara-antes-de-embarcarlo]].
