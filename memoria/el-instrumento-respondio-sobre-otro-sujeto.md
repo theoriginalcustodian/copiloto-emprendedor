@@ -565,3 +565,36 @@ verificarlo justo después del merge. Lo que no vale es leer «sin diff» como �
 medir** en vez de dar un número. Un gate que ante lo inesperado contesta igual habría dejado el
 gap de DoD mal medido en silencio durante el cierre. Ver
 [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y [[el-instrumento-tambien-CONDENA-no-solo-absuelve]].
+
+
+## 2026-10-08 (e) — publiqué un `md5` como control de integridad, y era el de OTRO sujeto
+
+Copié el recibo que el cierre cita a un path versionado y escribí en su README: «`md5` del JSON =
+`4ff97e68…`, **idéntico al original**». Verdad medida, sujeto equivocado: ese es el md5 del **archivo
+en mi checkout de Windows (CRLF)**. Lo que recibe quien clona es `c4df00b6…` — `core.autocrlf=true`
+normalizó el único fin de línea a LF al commitear. Contenido idéntico (el JSON parseado compara igual
+campo por campo), **bytes distintos**.
+
+Lo que lo hace peor que un número mal copiado: **el valor correcto depende del OS del verificador.**
+Un clon en Windows reconstruye el CRLF y mide `4ff97e68…`; en Linux o en el CI se mide `c4df00b6…`.
+El control habría absuelto en la máquina del autor y **condenado como «copia corrupta»** en la del
+auditor, que es exactamente el escenario para el que lo escribí.
+
+Lo cazó el control de cierre del propio ciclo, que hasheaba `git show origin/main:<path>` en vez del
+archivo en disco, y dio distinto del esperado. Si el control hubiera leído el archivo del working
+tree —lo «natural»— habría dado verde y la afirmación falsa quedaba publicada.
+
+**La pregunta, en esta forma:** *¿el número que publico se puede volver a medir en el sujeto al que mi
+afirmación se refiere?* Si la afirmación habla del clon, el instrumento tiene que interrogar al clon.
+
+**El control que sí sirve en git: el `blob sha1`.** `git rev-parse <ref>:<path>` nombra el objeto que
+git guarda, no el archivo que cada checkout escribe: independiente de EOL y de OS, con control
+positivo y negativo triviales (`git show <ref>:<path> | git hash-object --stdin` da el mismo sha1; un
+byte agregado da otro). Un `md5` de un archivo checkouteado sólo vale si se dice **en qué checkout**.
+
+**Hallazgo al pasar:** `.gitattributes` fija `eol=lf` para `*.sh`/`*.bash`/`*.service`/`Dockerfile`/
+`*.snippet` y su encabezado promete que «no depende de la config git de cada máquina», pero **no
+cubre `.json`** — así que los bytes de un artefacto de evidencia los decide el `core.autocrlf` del que
+commitea. Anotado en la fila `H-RECIBOENWORKTREE`, no corregido: cambiar `.gitattributes` en pleno
+cierre es cambio de mecanismo. Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] y
+[[vacio-no-es-hallazgo-correr-el-control]].
