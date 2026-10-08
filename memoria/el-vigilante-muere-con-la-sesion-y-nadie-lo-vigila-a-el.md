@@ -62,3 +62,22 @@ estuvo muerta todo el intervalo: re-armar con `/monitoreo` (los prompts canónic
 `bash scripts/vigilancia-check.sh --quiet` una vez a mano** para cubrir el hueco, porque el primer
 cron recién dispara minutos después. Los recurrentes además **auto-expiran a los 7 días**. Vale para
 las cuatro sesiones, no sólo planificación.
+## Refuerzo 2026-10-08 — confirmado otra vez, y lo destapó una PREGUNTA del operador, no un instrumento
+
+Mi sesión se cerró por error y el operador preguntó si los crones seguían activados. Medido pidiéndole
+a cada sesión que corriera **`CronList` en su propia ventana** (un cron es *session-only* y `CronList`
+sólo ve los de la sesión que lo corre — no se puede medir el de otra, ni crearlo):
+
+| sesión | resultado |
+|---|---|
+| AUDITORÍA | ✅ sobrevivió al cierre por error (`89a8c885`, `17 * * * *`) |
+| FRONTEND1 · FRONTEND2 | ✅ vivos (`b498ee6d`, `81bd4cdf`, cada 3 min) |
+| **BACKEND** | 🔴 **muerto** — `CronList` sólo mostraba un wakeup puntual. Reinstalado y confirmado con un segundo `CronList` (`9e3f9459`) |
+
+**Lo que agrega:** la sesión de backend **seguía trabajando y entregando PRs** con el vigía muerto. El
+silencio del cron no se nota desde adentro, porque la sesión no deja de funcionar: deja de ser
+**despertada**. Y lo destapó la pregunta de un humano, no un control — es [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]]
+aplicado al watchdog mismo.
+
+**La regla operativa:** al reanudar **cualquier** sesión, `CronList` propio es el primer paso; y quien
+sospecha de la flota **no puede medirla**, tiene que pedir que cada una se mida y le conteste.
