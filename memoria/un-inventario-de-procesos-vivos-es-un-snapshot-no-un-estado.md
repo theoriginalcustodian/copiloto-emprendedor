@@ -117,3 +117,33 @@ sólo entonces (3) dudar del instrumento. Y en un repo con varias sesiones traba
 **qué commits contiene tu HEAD ahora**, que no es lo mismo que qué contenía cuando abriste la rama. Un
 `cierre_` que lista trabajo ajeno como pendiente envejece en **minutos**, no en días:
 [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]].
+
+## Refuerzo 2026-10-08 — un criterio de cierre medido contra un objeto MÓVIL es inalcanzable por forma
+
+El criterio del cierre del ALCANCE pedía *«las 7 filas mergeadas, con su DoD y el recibo de
+`gate.sh` citado **por su SHA**»*, y la tabla de estado lo marcaba `✅ CUMPLIDO Y VERIFICADO` **sin
+nombrar ningún SHA**. Leído sobre «el `main` del momento de declarar», ese ✅ era falso:
+`recibo-cubre.sh 50c81351` → *ningún recibo cubre*. Había recibo, y cubría — de `92fd8a06`,
+**12 commits atrás**.
+
+> **El recibo es un snapshot de un ÁRBOL. `main` no es un árbol: es un puntero móvil.** Un criterio
+> que compara un snapshot contra un puntero móvil no se puede cumplir mientras el puntero se mueva.
+
+Y la carrera es aritmética, no descuido: `gate.sh` tarda **1398 s** (~23 min). En esos 23 minutos otra
+sesión mergea, el `main` que se quería declarar ya no es el del recibo, y se vuelve al paso 1. **Hoy
+ocurrió 12 veces.** Es [[idempotencia-con-un-if-tiene-ventana]] aplicada al cierre: la ventana entre
+**medir** y **declarar** se llena de merges.
+
+**La salida no baja la vara, la precisa — y es la forma general:** cuando el criterio compara contra
+algo móvil, se declara contra un **punto congelado** más la prueba de que lo atestiguado **no cambió**.
+Acá fueron dos comandos con control positivo: `git rev-list --count <sha>..main -- <los 7 paths>`
+(**0** en los 6 archivos de código ⇒ intactos por construcción; **1** en el séptimo) y, para ese
+séptimo, verificar su DoD en **ambos** SHAs (`P1` 1 y 1 · `P3` 6 columnas y 6 columnas, con el cambio
+siendo +24/−1 en otra sección). Así el cierre **deja de envejecer** aunque `main` avance, que es lo
+único que un cierre tiene que lograr.
+
+**La pregunta que lo caza, antes de escribir cualquier criterio de cierre:** *¿contra qué objeto se
+mide, y ese objeto se mueve mientras lo mido?* Si se mueve, el criterio necesita **un ancla**, no más
+rigor. Hermana de [[el-contrato-que-manda-a-hacer-algo-ya-hecho]] (ahí caducaba la **causa** citada;
+acá caduca el **sujeto** medido) y de
+[[el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren]].
