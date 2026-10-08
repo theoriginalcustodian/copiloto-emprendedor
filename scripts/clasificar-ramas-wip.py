@@ -83,8 +83,20 @@ def blob(ref, f):
     return norm(git("show", "%s:%s" % (ref, f)))
 
 
+# Fraccion de lo escrito por debajo de la cual «lo que falta» huele a version VIEJA de algo que
+# main ya reescribio, no a trabajo pendiente. NO es un veredicto y NO descarta: enciende `WIP?`, que
+# `--borrar-llego` se niega a borrar. Medido el 2026-10-07 sobre las 10 ramas `plan/*` adjudicadas a
+# mano: las 10 eran reescritura de main, con ratios de 1/66, 2/63, 3/37 y 44/951 (4.6%, el mayor).
+# Un umbral calibrado al corpus de UN dia envejece con el, asi que este no frena nada — pide lectura.
+RATIO_REESCRITO = 0.10
+
+
 def clasificar(rama):
-    """-> (veredicto, [(archivo, falta, escrito, muestra)], archivos_tocados, merge_base)"""
+    """-> (veredicto, [(archivo, falta, escrito, lineas)], archivos_tocados, merge_base)
+
+    Veredictos: LLEGO (nada que main no tenga) · WIP (escribio algo propio) · WIP? (lo que falta es
+    una fraccion < RATIO_REESCRITO de lo escrito => probable reescritura de main; hay que LEERLO).
+    """
     mb = git("merge-base", MAIN, rama).strip()
     if not mb:
         return ("AMBIGUA", [], 0, "")
@@ -101,8 +113,13 @@ def clasificar(rama):
             continue                                  # sólo arrastra la versión vieja => atraso
         falta = escrito - blob(MAIN, f)               # y que main todavía no tiene
         if falta:
-            propios.append((f, len(falta), len(escrito), sorted(falta)[:1]))
-    return ("WIP" if propios else "LLEGO", propios, len(tocados), mb[:8])
+            propios.append((f, len(falta), len(escrito), sorted(falta)))
+    if not propios:
+        return ("LLEGO", [], len(tocados), mb[:8])
+    # `WIP?` solo si TODOS los archivos huelen a reescritura: si uno solo tiene trabajo propio de
+    # verdad, la rama es WIP y no se puede tocar. El flag nunca absuelve a la rama entera por mayoria.
+    sospecha = all(falta / float(escrito) < RATIO_REESCRITO for _f, falta, escrito, _l in propios)
+    return ("WIP?" if sospecha else "WIP", propios, len(tocados), mb[:8])
 
 
 # ---------------------------------------------------------------- canarios
@@ -169,6 +186,21 @@ def canario(nombre, base, mutar):
         git("branch", "-D", rama)
 
 
+def _traer_de_main_mas_una(wt, rel):
+    """Copia el archivo TAL COMO ESTA EN MAIN sobre una base vieja y le suma una linea inventada.
+
+    Lo que fabrica es el caso que v4 no distinguia: la rama «escribio» todo lo que main cambio desde
+    la base vieja (porque su contenido lo trae), y de todo eso main solo NO tiene la linea inventada.
+    Ratio = 1/N, muy por debajo del umbral => `WIP?`. Si saliera `WIP`, el flag no esta cableado.
+    """
+    contenido = git("show", "%s:%s" % (MAIN, rel))
+    if not contenido:
+        return None
+    with open(os.path.join(wt, rel), "w", encoding="utf-8", newline="") as fh:
+        fh.write(contenido + "\n# CANARIO F: linea propia sobre el contenido de main\n")
+    return rel
+
+
 def correr_canarios(indice):
     cod = _archivo_codigo()
     viejo = _base_vieja(cod) or _base_vieja(indice)
@@ -184,6 +216,11 @@ def correr_canarios(indice):
         ("D-indice-inventado", MAIN,
          lambda wt: _append(wt, indice, b"- [CANARIO inexistente](canario-zzz.md)\n"), "WIP"),
         ("E-viejo-duplicado", viejo, lambda wt: _dup_linea(wt, archivo_e), "LLEGO"),
+        # F es el control POSITIVO de `WIP?`, y A es su control negativo (1 linea inventada sobre
+        # main => ratio 1.0 => WIP sin flag). F reproduce el caso real que me costo el turno del
+        # 2026-10-07: una rama vieja cuyo archivo main ya reescribio, con una sola linea propia.
+        ("F-viejo-reescrito-por-main", viejo,
+         lambda wt: _traer_de_main_mas_una(wt, archivo_e), "WIP?"),
     )
     print("CANARIOS   (código: %s · base vieja de E: %s sobre %s)" % (cod, viejo, archivo_e))
     ok = True
@@ -216,6 +253,10 @@ def main():
                          "Tocá SÓLO tu prefijo: las ajenas las limpia su dueña.")
     ap.add_argument("--indice", default="memoria/MEMORY.md",
                     help="archivo de alta rotación para el canario D (default: memoria/MEMORY.md)")
+    ap.add_argument("--mostrar", type=int, default=3,
+                    help="líneas pendientes a imprimir por archivo (0 = todas). Imprimirlas es el "
+                         "punto: con una sola muestra el veredicto WIP parece una conclusión, y es "
+                         "una pregunta — hay que leer para saber si main ya reescribió eso")
     ap.add_argument("--borrar-llego", action="store_true",
                     help="borra las LLEGO y su worktree. Se NIEGA si el worktree tiene cambios sin "
                          "commitear: este script compara commits y no los ve.")
@@ -239,23 +280,37 @@ def main():
     llego, wip = [], []
     for b in ramas:
         ver, propios, n, mb = clasificar(b)
-        (llego if ver == "LLEGO" else wip).append((b, propios, n, worktree_de(b), mb))
+        if ver == "LLEGO":
+            llego.append((b, propios, n, worktree_de(b), mb))
+        else:
+            wip.append((ver, b, propios, n, worktree_de(b), mb))
 
     print("TOTAL %d ramas %s*  ->  LLEGO %d  |  WIP %d" % (len(ramas), args.prefijo, len(llego), len(wip)))
     print("\n--- LLEGO: todo lo que la rama escribió ya está en main ---")
     for b, _, n, w, mb in sorted(llego):
         print("  %-56s mb:%s %2d archivos  wt:%s" % (b, mb, n, w or "-"))
     print("\n--- WIP: líneas que la rama escribió y main NO tiene ---")
-    for b, propios, n, w, mb in sorted(wip, key=lambda x: -sum(c for _, c, _, _ in x[1])):
-        print("  %-56s mb:%s %3d líneas en %d archivos  wt:%s"
-              % (b, mb, sum(c for _, c, _, _ in propios), len(propios), w or "-"))
-        for f, falta, escrito, m in sorted(propios, key=lambda x: -x[1]):
-            print("        falta %3d de %3d escritas  %s" % (falta, escrito, f))
-            if m:
-                print("            ej: %s" % m[0][:110])
+    print("    ⚠️  `WIP?` = lo que falta es < %d%% de lo escrito: casi siempre main REESCRIBIÓ esa"
+          % int(RATIO_REESCRITO * 100))
+    print("        región y lo pendiente es la versión vieja. LEÉ las líneas antes de rescatar.")
+    print("    ⚠️  Y `WIP` TAMPOCO prueba trabajo pendiente: el 2026-10-07 adjudiqué 10 ramas `plan/*`")
+    print("        una por una y las 10 eran atraso — DOS de ellas con ratio 21% y 37%, muy por")
+    print("        encima de este umbral. El flag levanta los casos más obvios; no cubre el resto.")
+    print("        El único criterio que decidió fue por FUNCIÓN: ¿existe en main, aunque con otro")
+    print("        texto? (grep del mecanismo, no de la línea). Las 10 veces la respuesta fue sí.")
+    for ver_b, b, propios, n, w, mb in sorted(wip, key=lambda x: -sum(c for _, c, _, _ in x[2])):
+        print("  [%-4s] %-49s mb:%s %3d líneas en %d archivos  wt:%s"
+              % (ver_b, b, mb, sum(c for _, c, _, _ in propios), len(propios), w or "-"))
+        for f, falta, escrito, lns in sorted(propios, key=lambda x: -x[1]):
+            pct = 100.0 * falta / float(escrito)
+            print("        falta %3d de %4d escritas (%4.1f%%)  %s" % (falta, escrito, pct, f))
+            for l in lns[:args.mostrar] if args.mostrar else lns:
+                print("            | %s" % l.strip()[:116])
+            if args.mostrar and len(lns) > args.mostrar:
+                print("            | … %d más (subí --mostrar)" % (len(lns) - args.mostrar))
 
     compartidos = {}
-    for b, propios, _n, _w, _mb in wip:
+    for _ver, b, propios, _n, _w, _mb in wip:
         for f, c, _e, _m in propios:
             compartidos.setdefault(f, []).append((b, c))
     comunes = {f: rs for f, rs in compartidos.items() if len(rs) > 1}
