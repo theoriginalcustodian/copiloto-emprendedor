@@ -1050,6 +1050,12 @@ No bloquean la beta. Cada uno con su condición de entrada.
 
 ## 13. Criterio de cierre de la beta
 
+> 🟠 **§13 NO es el criterio de cierre del sprint del 2026-10-08 — `DEC-14`, firmado por el operador ese día.** Ese sprint cierra contra el **ALCANCE** de `ALCANCE-CIERRE-BETA.md` (7 filas sobre `92fd8a06`, con recibo que cubre). **§13 sigue vigente, intacto y ABIERTO** como criterio del cierre **siguiente**.
+>
+> **Estado medido al 2026-10-08:** punto **1** ✅ (los 13 `DEC` con acta; `DEC-11` cerró con `DEC-15`) · punto **2** residuo verificado fila por fila, **0 asignables** · punto **3** web 54/54 ✅, **mobile 13/54** · punto **4** ✅ **39 PASS · 0 FAIL** contra prod sobre `92fd8a06` · punto **5** 🔴 no existe.
+>
+> **Lo que le falta a §13 no es trabajo de ninguna sesión: es DEVICE**, diferido al sprint siguiente por orden del operador del **2026-09-22**. Por eso no se redefinió el criterio para que diera verde — se dejó abierto. **No leer este §13 como «incumplido por desprolijidad»: está esperando un recurso que una orden anterior apagó a propósito.**
+
 La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mismo SHA de `main`:
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).

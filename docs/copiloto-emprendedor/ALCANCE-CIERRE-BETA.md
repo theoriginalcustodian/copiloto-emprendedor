@@ -211,8 +211,13 @@ de la celda: es **la causa que la celda cita**.
 
 ⚠️ Los puntos 2 y 4 llegaron a este estado **el mismo día, después de que este doc los declarara 🔴**: el 4 lo cerró BACKEND con el smoke, y el residuo del 2 lo verificó AUDITORÍA fila por fila. **Un doc de cierre envejece en horas**, así que el estado se re-mide al declarar, no al planear.
 
-🔴 **La salida es del operador y es BINARIA. Ninguna sesión puede tomarla:**
-**(a)** redefinir §13 para este cierre, con los puntos 3 y 5 explícitamente movidos al sprint de device · **(b)** declarar la beta cerrada contra otro criterio y dejar §13 como criterio del cierre siguiente. Las dos son legítimas. **Lo que no cierra es declarar §13 cumplido.**
+✅ **DECIDIDO POR EL OPERADOR EL 2026-10-08 — `DEC-14`, opción (b).** La salida era binaria y era suya; está tomada y firmada en el acta:
+
+> **El sprint cierra contra el ALCANCE de este documento — las 7 filas sobre `92fd8a06` con recibo que cubre — y §13 queda explícitamente ABIERTO** como criterio del cierre **siguiente**, con sus puntos **3** y **5** esperando la tanda de **device** que el operador difirió el 2026-09-22.
+
+**Por qué (b) y no (a):** redefinir §13 habría movido la vara de cierre a mitad de camino, y lo que le falta a §13 **no es trabajo pendiente de nadie** — es device, diferido por una orden anterior del mismo operador. Dejarlo abierto **conserva el criterio intacto** para cuando el device vuelva, en vez de bajarle el piso para que dé verde hoy. Es la diferencia entre cerrar un sprint y **declarar cerrado un criterio que no se cumplió**.
+
+⚠️ **Dos cosas que esta decisión NO dice**, y conviene que queden escritas porque son justo las que un lector apurado infiere: **(1)** no dice que la beta esté cerrada — dice que el **sprint** cierra contra el alcance corto; **(2)** no retira los puntos 3 y 5 de §13: siguen siendo requisito, con su redacción original, para el cierre siguiente. **«Alcance 7/7 cerrado» y «§13 cumplido» siguen siendo afirmaciones distintas**, que es exactamente el riesgo que AUDITORÍA nombró como `H-DOSCIERRES`.
 
 Criterio de **este** documento, textual y con el conteo corregido:
 
