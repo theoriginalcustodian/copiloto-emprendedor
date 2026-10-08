@@ -22,6 +22,12 @@
 #   2  falta `gh` en el PATH → no se pudo medir nada (no es "no verde")
 #   3  se intentó el merge y el remoto NO dice MERGED → el merge no ocurrió
 #   4  mergeado, pero la rama sigue en el remoto → trabajo a medias, hay que volver
+#   5  el CI TODAVÍA está corriendo (cero jobs fallados y cero ausentes) → no se intentó
+#      mergear, y **no es «no verde»**: no hay nada que arreglar, hay que esperar. Antes esto
+#      salía por 1 con el texto «NO está verde», heredado de `ci-verde.sh`, que fundía las dos
+#      causas en su propio rc=1 — medido por auditoría el 2026-10-08 sobre el PR #948 con los 6
+#      jobs IN_PROGRESS/QUEUED. Delegar el gate hace que este script herede sus fusiones: el
+#      arreglo no valía sin propagarlo acá
 set -uo pipefail
 
 PR="${1:-}"
@@ -43,8 +49,15 @@ if [ "$(estado_de)" = "MERGED" ]; then
   echo "ℹ️  PR $PR ya estaba MERGED — no reintento el merge, sólo cierro la rama (idempotente)"
 else
   echo "── gate: ci-verde.sh $PR"
-  if ! bash "$ROOT/scripts/ci-verde.sh" "$PR"; then
-    echo "❌ PR $PR NO está verde — no se intentó mergear"; exit 1
+  # El rc se CAPTURA en vez de negarse: `if !` colapsa todos los no-cero en un solo mensaje, y
+  # el 3 del gate («todavía corriendo») no es la misma noticia que el 1 («algún job falló»).
+  bash "$ROOT/scripts/ci-verde.sh" "$PR"; rc_gate=$?
+  if [ "$rc_gate" -eq 3 ]; then
+    echo "⏳ PR $PR TODAVÍA NO terminó el CI: cero jobs fallados y cero ausentes — no se intentó mergear. No hay nada que arreglar, esperá: gh pr checks $PR --watch"
+    exit 5
+  fi
+  if [ "$rc_gate" -ne 0 ]; then
+    echo "❌ PR $PR NO está verde (gate rc=$rc_gate) — no se intentó mergear"; exit 1
   fi
   # ── Paso 2: el merge. El rc se IGNORA a propósito: no es el veredicto.
   salida_merge="$(gh pr merge "$PR" --squash 2>&1)"; rc_merge=$?

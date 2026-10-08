@@ -22,6 +22,16 @@
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
 # SALIDA: exit 0 = verde Y mergeable · exit 1 = ROJO medido (falta alguno o alguno falló) ·
+#         exit 3 = TODAVÍA CORRIENDO: ningún job fallado, ninguno ausente, y al menos uno con
+#         `status` IN_PROGRESS/QUEUED/PENDING. **No es un rojo: es un todavía-no.** Hasta el
+#         2026-10-08 esto salía por exit 1 con la última línea diciendo «hay al menos un job
+#         ausente o fallado» — medido por auditoría sobre el PR #948 con los 6 jobs
+#         IN_PROGRESS/QUEUED y CERO fallados. El detalle por job SÍ distinguía («está
+#         CORRIENDO, no pasó»); lo que no distinguía era **el veredicto y el código**, que es
+#         justo lo que se lee. Y la instancia no es rara: es **cualquier PR recén abierto**, o
+#         sea exactamente el momento en que uno pregunta. Quien automatiza no mergeaba (benigno);
+#         quien leía el TEXTO salía a cazar un bug inexistente. Para esperar: `gh pr checks
+#         --watch`, que sí distingue «corriendo» de «falló» ·
 #         exit 4 = el CI está VERDE pero el PR tiene CONFLICTOS (desde 2026-09-30: antes
 #         esto salía por exit 0 con el texto «se puede mergear», que era falso — medido
 #         por auditoría con dos PR el mismo minuto, #765 MERGEABLE y #760 CONFLICTING,
@@ -214,7 +224,13 @@ if [ "$(echo "$json" | jq 'length')" -eq 0 ]; then
   exit 2
 fi
 
-falta=0
+# `falta` dice que NO está verde; estos tres dicen POR QUÉ, y el veredicto final los necesita
+# separados. Ver el contrato del exit 3 arriba: «corriendo» y «falló» no son la misma decisión,
+# y este archivo ya lo argumenta para CONFLICTING (:265-267) — faltaba aplicarlo al caso que
+# más veces se consulta. `indeterminados` existe para NO ensanchar el exit 3: un job sin
+# conclusión **y sin status que lo explique** no se declara «corriendo», cae en el rojo
+# fail-closed. Vacío = pregunta, no permiso.
+falta=0; corriendo=0; fallados=0; ausentes=0; indeterminados=0
 for j in $ESPERADOS; do
   # Se preguntan por separado PRESENCIA y CONCLUSIÓN, y no se usa `//` para el default.
   #
@@ -226,16 +242,24 @@ for j in $ESPERADOS; do
   # tipo de error que este guard existe para no cometer. Cazado el 2026-08-07 en el PR #315.
   presente=$(echo "$json" | jq -r --arg n "$j" '[.[]|select(.name==$n)]|length')
   if [ "$presente" -eq 0 ]; then
-    echo "❌ $j: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'"; falta=1; continue
+    echo "❌ $j: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'"
+    falta=1; ausentes=$((ausentes+1)); continue
   fi
   c=$(echo "$json" | jq -r --arg n "$j" '.[]|select(.name==$n)|.conclusion')
   st=$(echo "$json" | jq -r --arg n "$j" '.[]|select(.name==$n)|.status')
   if [ "$c" = "SUCCESS" ]; then
     echo "✅ $j: SUCCESS"
   elif [ -z "$c" ] || [ "$c" = "null" ]; then
-    echo "❌ $j: sin conclusión todavía (status=$st) — está CORRIENDO, no pasó"; falta=1
+    echo "❌ $j: sin conclusión todavía (status=$st) — está CORRIENDO, no pasó"
+    falta=1
+    # El status es lo único que distingue «arrancó y sigue» de «no sé qué le pasa». Enumerado,
+    # no comodín: un estado nuevo de la API de GitHub no se declara «corriendo» solo.
+    case "$st" in
+      IN_PROGRESS|QUEUED|PENDING|WAITING|REQUESTED) corriendo=$((corriendo+1)) ;;
+      *) indeterminados=$((indeterminados+1)) ;;
+    esac
   else
-    echo "❌ $j: $c"; falta=1
+    echo "❌ $j: $c"; falta=1; fallados=$((fallados+1))
   fi
 done
 
@@ -350,5 +374,18 @@ fi
 # salio verde por suerte. La forma correcta ya la usaba este repo (smoke_afip_http.py:157,
 # e2e_facturacion_http.py:217): VERDE / ROJO, que no son prefijo uno del otro.
 # El veredicto sigue siendo EL EXIT CODE; esto solo hace que leer la salida mal no fallen abierto.
+# ⏳ TODAVÍA-NO, que NO es un rojo. Las tres condiciones se exigen JUNTAS: cero fallados, cero
+# ausentes, cero indeterminados, y al menos uno corriendo. Con un solo job fallado al lado de
+# diez corriendo, el fallado ya decide y esto sale por el exit 1 de abajo — un rojo real no se
+# ablanda porque algo siga en vuelo.
+#
+# El texto dice ROJO (no un tercer token) para no romper el invariante {VERDE, ROJO} que fija
+# test-ci-verde-veredicto-monotono.sh: ninguno es substring del otro y siempre se imprime
+# exactamente uno, así que un consumidor que lea el TEXTO sigue fallando CERRADO. Lo que cambia
+# es el CÓDIGO y el diagnóstico, que es lo que manda a buscar un bug o a esperar.
+if [ "$fallados" -eq 0 ] && [ "$ausentes" -eq 0 ] && [ "$indeterminados" -eq 0 ] && [ "$corriendo" -gt 0 ]; then
+  echo "ROJO — TODAVÍA NO: $corriendo job(s) corriendo, CERO fallados y CERO ausentes — no hay nada que arreglar, esperá: gh pr checks $PR --watch"
+  exit 3
+fi
 echo "ROJO — no mergear: hay al menos un job ausente o fallado (medido, no supuesto)"
 exit 1
