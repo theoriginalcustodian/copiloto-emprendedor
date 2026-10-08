@@ -545,10 +545,49 @@ copiada: es que **no hay nada que copiar**. `BL-O7` sobrevivió sólo porque su 
 textual a mano; `BL-O5` porque alguien la anotó. `BL-O6` no, y durante tres semanas el criterio del
 cierre lo leyó como incumplido.
 
-**La forma del agujero, medida:** en todo el acta, las filas sin número de `DEC-*` que nombran ids
-nombran exactamente **tres** — `BL-O5`, `BL-O6`, `BL-O7` —, de los cuales **dos** estaban anotados
-y **uno** no. El agujero tenía un solo ocupante invisible, y mi muestreo adversarial fue a buscar
-justo ahí: el sesgo que el contrato pedía me llevó al único ítem donde el índice mentía.
+**La forma del agujero, medida sobre las 5 actas del repo** (`2026-07-02`, `2026-07-22`,
+`2026-09-21`, `2026-09-29`, `2026-10-06`) — y son **dos clases** de invisibilidad, no una:
+
+- **Sin id alguno** (primera celda «—»): **1 sola fila** en todo el universo, y es la que nombra
+  `BL-O5`, `BL-O6`, `BL-O7`. De los tres, **dos** estaban anotados en su ítem y **uno** no. Esta es
+  la que me mordió, y mi muestreo adversarial fue a buscar justo ahí: el sesgo que el contrato
+  pedía me llevó al único ítem donde el índice mentía.
+- **Con id en otro espacio de nombres:** **18** filas `DA-1`…`DA-10` en el acta del 21/09, **6** en
+  la del 29/09 (indexadas por **número de punto del cierre**) y **1** en la del 06/10. Tienen id,
+  pero **no `DEC-*`** — así que son **igual de invisibles** a un índice que se consulte por `DEC-*`.
+  Y una de ellas **sí difiere**: el punto ~~5~~ tachado del acta del 29/09 saca del Cierre A el
+  «APK `preview` build #2 en el device + barrido `BL-Q3`». No me cambia nada (juzgué `BL-Q3` **no
+  falso**), pero quien barra el resto del backlog con este control tiene que barrer **las tres
+  formas**, no sólo la celda «—».
+
+**Y un segundo registro de `BL-O6`, anterior a mi medición:**
+`2026-10-06-lo-que-espera-tu-decision.md:21` ya lo clasificaba **`CIERREB (BL-O6)`** el 06/10. Su
+pertenencia a Cierre B estaba escrita en **dos** lugares antes de que yo midiera, y **ninguno de los
+dos era el índice que consulté**. Eso hace el diferimiento más sólido y mi error más claro.
+
+### Y una tercera corrección, esta vez sobre el instrumento — por qué el **3** es firme
+
+Lo de arriba salió de correr el **control de ceguera sobre mi propio grep**, después de publicar la
+cifra 3. Mi patrón era `^| — |`: sólo veía la celda con el guion largo **literal**. Con el patrón
+amplio —cualquier fila de tabla cuya primera celda no sea un `DEC-\d` y que nombre un `BL-*`—
+aparecen **26 filas**, no una. **La frase que publiqué sobre mi instrumento era más amplia que el
+patrón que el instrumento usaba.**
+
+Eso obliga a cambiar la **razón** por la que el 3 es firme, no el 3. Con el instrumento no ciego,
+grepeados los tres falsos contra las **5** actas: **`BL-B1`** aparece en **1** fila — el punto 4 del
+criterio del Cierre A (*«smoke verde y `BL-B1` verde sobre el último deploy»*), que es el
+**criterio**, no un diferimiento — y en **0** filas con lenguaje de diferimiento; **`BL-J9`** y
+**`BL-J11`**, en **0** filas. **Control positivo** del mismo grep sobre `BL-O6`: **2 hits**.
+
+> El 3 **no** se sostiene en «el agujero tenía un solo ocupante» — se sostiene en que **ninguna de
+> las 5 actas difiere a ninguno de los tres**, que es la afirmación que de verdad medí.
+
+**Y van tres en un día, las tres sobre el sujeto y ninguna sobre la medición:** `§7`, el universo de
+mi afirmación era **más grande** que el medido (4 filas → 53 ítems) · `§8`, el universo que medí
+incluía un ítem que la **firma ya había sacado** · y esto, donde la afirmación sobre **el
+instrumento** era más amplia que su patrón. El defecto no vive en el dato: vive en **el salto del
+dato al enunciado**, y por eso el control que lo caza no es medir otra vez — es preguntar **de qué
+conjunto estoy hablando**.
 
 ### El control que faltaba, y por qué el que corrí no podía cazarlo
 
