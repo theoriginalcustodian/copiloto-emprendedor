@@ -190,3 +190,41 @@ preguntá si el defecto sigue existiendo **en el código**, que es gratis y no m
 - **No se re-mide «el estado»: se re-mide CADA ítem que estoy por asignar.** Tres ítems, tres chequeos, y el barato es por nombre: ¿hay algún archivo de hoy que mencione este id?
 - **Si el despacho ya salió, la corrección va ARRIBA del archivo y por el mismo canal por el que salió.** Appendear deja el pedido equivocado al frente ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
 - **El costo no es cosmético:** la sesión que recibe el pedido duplicado gasta el turno en demostrar que ya lo hizo — o peor, lo hace dos veces.
+
+## Tercera ocurrencia — 2026-10-08, y esta vez costó un reimplementado completo
+
+El patrón ya no es un caso: es el más reincidente de la coordinación (29/09, y dos veces el 08/10).
+
+Bajé a frontend-1 el contrato de `A3` (BL-V31, el guard B de la quinta tarjeta) como **la única fila
+de código que faltaba** de la lista cerrada. Frontend-1 lo implementó entero y lo pusheó
+(`83bf6971`). Estaba hecho y mergeado **desde julio**, en el PR #803 (`a9bd6cae`), con su test — que
+además se había arreglado después en el #819.
+
+Cuán exacto fue el duplicado: **mismo mensaje de commit**, los **mismos cuatro `it(`**, y el blob
+del `.tsx` **idéntico** al de `main`. No fue una solución distinta al mismo problema: fue la misma.
+
+**La causa no fue el contrato, fue la medición que lo justificó.** Medí el `useEffect` de carga
+(`:135`) y escribí «nunca consulta `anulacionEnCursoDe`». Era cierto de ese hook y falso del
+componente: el guard vivía en el handler que abre el flujo (`:180`). Ver
+[[el-instrumento-respondio-sobre-otro-sujeto]] — miré el hook y afirmé sobre el componente.
+
+**El control cuesta una línea y va ANTES de escribir el contrato, no después:**
+
+```bash
+git log --oneline -3 origin/main -- <el archivo que el contrato manda a tocar>
+```
+
+Si el último commit de ese archivo ya dice lo que tu contrato pide, la fila está cerrada. En este
+caso decía textual «retomar la anulación en curso al abrir el flujo (BL-V31, mobile)», que es el
+título del contrato que yo estaba por bajar.
+
+**Y el control de segundo orden, para el que ya tiene la rama:**
+`git merge-base --is-ancestor <sha-de-la-rama> origin/main` dio **NO** — o sea «no está en main» —
+mientras `git log origin/main -- <archivo>` decía que el contenido **sí** estaba. Las dos respuestas
+son correctas y miden cosas distintas: la rama no está mergeada, el trabajo sí. **Una rama ausente
+de `main` no prueba que su trabajo falte.** Preguntar por el ARCHIVO, no por la rama.
+
+**Por qué muerde más acá que en un repo normal:** con sesiones paralelas el implementador confía
+en el contrato como fuente de alcance y **no re-mide la fila** — hace bien, para eso existe la
+división. Eso traslada todo el peso de la verificación a quien baja el contrato: si yo no mido, nadie
+mide, y el duplicado llega hasta el push.
