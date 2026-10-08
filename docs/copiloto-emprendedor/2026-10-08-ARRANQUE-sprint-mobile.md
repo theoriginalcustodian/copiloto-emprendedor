@@ -55,6 +55,32 @@ positivo** que falle si el filtro no filtra (p. ej. `--plataforma web` tiene que
 > **limpia** de `mobile` porque `mobile` es el único token del vocabulario que aparece en la celda.
 > El filtro de `M-00` tiene que **excluir** esas, y su test tiene que incluir una.
 
+
+#### Y antes de escribir el filtro: la columna `plataforma` NO está en la misma posición
+
+Medido hoy sobre las dos fuentes que `criterio3-cruce.sh` lee
+(`find`‑eadas por `*BL-Q3-v2-lote-*`, nunca por ruta supuesta):
+
+| fuente | encabezado real | `plataforma` es el campo |
+|---|---|---|
+| **lote A** (`frontend1`, 14 filas + 2 `PENDIENTE_DEVICE`) | `\| id \| veredicto \| causa \| plataforma \|` | **4** de 4 |
+| **lote B** (`frontend2`, 11 de 11) | `\| id \| camino \| estado_inicial \| referencia_prototipo \| plataforma \| superficie \| dimension \| veredicto \|` | **5** de 8 |
+
+**Un índice de columna fijo es el bug, no el atajo.** `cut -f4` da `plataforma` en el lote A y
+**`referencia_prototipo`** en el lote B — y no falla: devuelve un string, el filtro no matchea
+`mobile`, y el id **desaparece** de la población en vez de salir como hueco. Una tabla se lee por
+**posición**, y el mismo repo ya pagó esto el 08/10 con la fila `DEC-18`, que renderizó perfecto
+con los cinco campos corridos un lugar.
+
+**Por eso el filtro localiza la columna por su NOMBRE en el encabezado de cada tabla**, y su test
+incluye **una fila de cada lote** — con dos filas del mismo lote el test pasa aunque la otra fuente
+se lea torcida, que es exactamente el fallo que el control positivo de este script ya documenta en
+su propio comentario (`afip` sólo existe en A, `reveal` sólo en B).
+
+**Control de ceguera, barato:** el filtro imprime, por fuente, **cuántas filas vio y cuántas
+clasificó**. Si `vistas != clasificadas`, hay filas cayendo en el silencio — y ese es el caso en que
+«41 faltantes» podría ser «41 que no supe leer».
+
 ---
 
 ## La cola, después de `M-00`
