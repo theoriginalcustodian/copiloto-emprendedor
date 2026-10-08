@@ -251,3 +251,30 @@ no caza, porque el defecto no está en lo que leés, está en lo que **no volvé
 (3) un guard de «más de un veredicto en el campo de estado» es barato y dispara en el caso real, no en el
 hipotético; (4) antes de endurecer un validador propio, comparalo con el parser que ya está en producción: si
 el tuyo rechaza lo que el otro acepta, el falso rojo es tuyo.
+
+## Refuerzo 2026-10-08 — la variante que no borra nada: **la fila con las columnas CORRIDAS un lugar**
+
+Misma clase (una tabla se lee por **posición**), daño distinto: acá no se pierde un campo, se
+**reasignan todos**. La fila `DEC-18` del acta — **la escribí yo, el mismo día** — quedó así:
+
+```
+cabecera:  | DEC | Decisión | Dueño | Fecha | Plataformas | Destraba |
+mi fila:   | DEC-18 | 2026-10-08 | **DoD del cierre…** | **FIRMADA** por el operador… | Cierra H-… |
+```
+
+Resultado: quien consultara **el dueño** de `DEC-18` leía *«DoD del cierre: una sola regla de
+medición…»*, **la fecha** decía «FIRMADA por el operador», **Plataformas** afirmaba qué cierra,
+y «Destraba» quedaba vacía. Markdown la renderiza **perfecta**: 5 celdas prolijas en una tabla de
+6 columnas. No se ve mal — **se lee mal**, y sólo si consultás por columna.
+
+**Por qué se me pasó y cómo cazarlo:** la escribí mirando el **contenido** (¿está la decisión?
+¿la firma? ¿qué cierra?) y todo estaba. Lo que no revisé fue la **aritmética**: `| `→ cuento de
+pipes de mi fila contra la cabecera. El control es de una línea y no depende del ojo:
+
+```bash
+awk -F'|' 'NF!=8 && /^\|/ {print NR": "NF-2" campos"}' archivo.md   # 8 = 6 columnas + 2 bordes
+```
+
+Agárrate del dato que lo hace peligroso: **la fila corrida envejece bien**. Nadie la corrige porque
+cada celda, leída sola, dice algo cierto — sólo está bajo el título equivocado.
+Ver [[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]].
