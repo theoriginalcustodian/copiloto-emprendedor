@@ -22,11 +22,17 @@ tiene que reconstruirse por REPLAY, no por memoria viva), y recién DESPUÉS se 
 `confirm:<turn_ix>:<step>` (el token que expone `/reply` en `choices[].value`, ver
 `_confirm_choices()`). Si el replay no reconstruyó `self._state['react']` bien, el callback cae en
 la rama "callback SIN gate parqueado" (`_run_react_turn` línea ~409) y responde con
-`_TEXTO_CALLBACK_SIN_GATE` sin ejecutar nada -- silencioso, no una excepción. `_reply_resolvio_el_gate` discrimina por DOS
-señales, no una: que no vuelva a pedir el mismo confirm, Y que la reply no calce con la firma
-exacta de esa rama de fallo -- lo segundo lo agregó H-A3-8 (auditoría A3, 2026-09-22): la rama de
-fallo TAMBIÉN carece de choice 'confirm:', así que mirar sólo lo primero confirmaba un callback
-perdido como resuelto. `--control-negativo` reproduce ese caso y tiene que dar ROJO.
+`_TEXTO_CALLBACK_SIN_GATE` sin ejecutar nada -- silencioso, no una excepción. `_reply_resolvio_el_gate`
+discrimina por TRES señales, no dos: (1) que no vuelva a pedir el mismo confirm, (2) que la reply no
+calce con la firma exacta de esa rama de fallo -- lo agregó H-A3-8 (auditoría A3, 2026-09-22): la rama
+de fallo TAMBIÉN carece de choice 'confirm:', así que mirar sólo (1) confirmaba un callback perdido
+como resuelto -- y (3, BL-B1) que alguna reply SÍ traiga la señal POSITIVA `card.confirmed_tool`
+(`confirmed=True`, `status='ok'`, ver `conversation_workflow.py::_react_send`) -- la prueba de que
+`execute_tool` corrió DE VERDAD, no sólo la ausencia de (1)+(2). Sin (3), un reply vacío o distinto a
+cualquiera de las dos firmas de fallo conocidas (ej. un "Listo 👍" sin choices de una rama rota NUEVA,
+nunca vista) pasaba VERDE por pura ausencia -- el instrumento confirmaba en vez de verificar.
+`--control-negativo` reproduce el caso de (1)+(2) y tiene que dar ROJO (también lo da por (3): nunca
+hay confirmed_tool porque la tool nunca ejecutó).
 
 ⚠️ Este script NO dispara ningún restart. Versión anterior (pre 2026-08-13) llamaba
 `ssh ... sudo systemctl restart uc-copiloto-worker.service` por su cuenta -- el operador de este
@@ -156,22 +162,50 @@ def _token_de_confirmacion(replies: list[dict]) -> str:
 _TEXTO_CALLBACK_SIN_GATE = "Ese botón ya no sirve: se resolvió antes o llegó tarde 🙈"  # conversation_workflow.py:410, H-A4-9
 
 
+def _confirmed_tool_de(replies: list[dict]) -> dict | None:
+    """BL-B1: busca en `replies` la card con `confirmed_tool` -- la señal POSITIVA que
+    `conversation_workflow.py::_react_send` adjunta cuando `execute_tool` corrió DE VERDAD con
+    `confirmed=True` tras el reingreso del callback (ver `_run_react_turn`, rama `action == 'confirm'`).
+    Shape: `{"activity": "execute_tool", "name": <tool>, "confirmed": True, "status": <'ok'|'error'|...>}`.
+    Devuelve ese dict (para loguearlo/inspeccionarlo) o None si ninguna reply lo trae -- el caso de un
+    reply vacío o distinto al esperado, que antes de BL-B1 pasaba como VERDE por ausencia de las dos
+    señales negativas de abajo, sin que nadie hubiera verificado que la tool confirmada EJECUTÓ."""
+    for r in replies:
+        ct = (r.get("card") or {}).get("confirmed_tool")
+        if isinstance(ct, dict):
+            return ct
+    return None
+
+
 def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
-    """True sólo si el gate se resolvió DE VERDAD. Dos chequeos, no uno:
+    """True sólo si el gate se resolvió DE VERDAD. Tres chequeos, no dos:
 
     1. Ninguna reply post-callback vuelve a traer un choice 'confirm:' -- si lo trajera, el
        callback NO reingresó al gate parqueado.
     2. Ninguna reply calza con la firma EXACTA de la rama de fallo (ver `_TEXTO_CALLBACK_SIN_GATE`).
+    3. (BL-B1) Alguna reply trae la señal POSITIVA `card.confirmed_tool` con
+       `activity == 'execute_tool'`, `confirmed is True` y `status == 'ok'` -- la PRESENCIA de la
+       prueba de que la tool confirmada corrió, no sólo la ausencia de las dos fallas conocidas.
 
     H-A3-8 (auditoría A3): la versión anterior sólo miraba (1). La rama de fallo (`kind ==
     'callback' and not parked`) TAMBIÉN carece de choice 'confirm:' en su respuesta -- responde
     `_TEXTO_CALLBACK_SIN_GATE` con `choices=None` -- así que un callback que se perdió (el replay no reconstruyó
     `self._state['react']`) pasaba como resuelto: el instrumento confirmaba en vez de verificar.
-    Control negativo que reproduce exactamente este caso: `--control-negativo` (más abajo)."""
+    Control negativo que reproduce exactamente este caso: `--control-negativo` (más abajo).
+
+    BL-B1 (continuación): (1)+(2) siguen siendo necesarias (un repeat de 'confirm:' o la firma de
+    fallo SIGUEN siendo ROJO sin importar qué diga (3)) pero dejaron de ser SUFICIENTES -- un
+    `reply_text` sin choices que no calce con ninguna de las dos firmas conocidas (ej. un "Listo 👍"
+    de una rama rota nueva, nunca vista) pasaba VERDE por pura ausencia. (3) exige la prueba positiva."""
     repite_confirm = any(c.get("value", "").startswith("confirm:")
                           for r in replies for c in (r.get("choices") or []))
     cayo_en_rama_sin_gate = any((r.get("reply_text") or "") == _TEXTO_CALLBACK_SIN_GATE for r in replies)
-    return not repite_confirm and not cayo_en_rama_sin_gate
+    confirmed_tool = _confirmed_tool_de(replies)
+    ejecuto_confirmado_ok = (confirmed_tool is not None
+                             and confirmed_tool.get("activity") == "execute_tool"
+                             and confirmed_tool.get("confirmed") is True
+                             and confirmed_tool.get("status") == "ok")
+    return not repite_confirm and not cayo_en_rama_sin_gate and ejecuto_confirmado_ok
 
 
 def _guardar_estado(estado: dict) -> None:
@@ -262,13 +296,17 @@ def verificar() -> int:
     enviar_callback(token, session_id_hitl, token_confirm)
     replies_hitl_post = esperar_reply(token, session_id_hitl, after_id=after_id_hitl, segundos=90)
     resolvio = _reply_resolvio_el_gate(replies_hitl_post)
+    confirmed_tool = _confirmed_tool_de(replies_hitl_post)
     if not resolvio:
         raise AssertionError(
-            "el callback post-restart volvió a traer un choice 'confirm:...' -- el gate cross-turn "
-            "NO sobrevivió el restart (self._state['react'] no se reconstruyó por replay; cayó en "
-            f"la rama 'callback sin gate parqueado'). replies={replies_hitl_post}"
+            "el callback post-restart NO resolvió el gate de verdad -- o volvió a traer un choice "
+            "'confirm:...', o cayó en la rama 'callback sin gate parqueado', o (BL-B1) ninguna reply "
+            "trajo la señal POSITIVA `card.confirmed_tool` con confirmed=True y status='ok' (la prueba "
+            "de que `execute_tool` EJECUTÓ tras el callback, no sólo que el reply no calzó con las dos "
+            f"firmas de fallo conocidas). confirmed_tool={confirmed_tool!r} replies={replies_hitl_post}"
         )
-    log(f"   HITL OK -- {len(replies_hitl_post)} fila(s) nuevas, el gate se resolvió (no repreguntó)")
+    log(f"   HITL OK -- {len(replies_hitl_post)} fila(s) nuevas, el gate se resolvió (no repreguntó) "
+        f"-- confirmed_tool={confirmed_tool!r}")
 
     _consumir_estado()
     print("\n=== RESULTADO: VERDE -- CONVERSACIÓN Y HITL SOBREVIVIERON AL RESTART REAL DEL WORKER ===")

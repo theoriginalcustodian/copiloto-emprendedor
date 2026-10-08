@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import re
 from datetime import timedelta
 
 import pytest
@@ -303,8 +304,24 @@ async def test_confirmed_true_only_ever_produced_by_the_gate_callback():
     assert len(confirmed) == 1                                             # confirmed=True: EXACTAMENTE 1 vez
     assert confirmed[0]["name"] == "mp_charge"
 
-    # defensa estatica adicional: en TODO el motor, el literal `"confirmed": True` aparece en UN SOLO lugar
-    # del codigo-fuente -- el brazo `action == 'confirm'` del callback (linea ~355). Un 2do lugar seria una
-    # via de escape no auditada para producir un write confirmado sin pasar por el gate humano.
+    # defensa estatica adicional: de TODOS los payloads de un `execute_activity("execute_tool", ...)` en el
+    # motor, UNO SOLO lleva literal `"confirmed": True` -- el brazo `action == 'confirm'` del callback
+    # (linea ~432). Un 2do call-site asi seria una via de escape no auditada para producir un write
+    # confirmado sin pasar por el gate humano.
+    #
+    # BL-B1 (instrumento de durabilidad, 2026-10-08): el check anterior contaba el literal `"confirmed":
+    # True` en TODO el archivo -- dejo de alcanzar cuando `_run_react_turn` empezo a adjuntar, en la MISMA
+    # rama auditada y sobre el MISMO `tr` ya resuelto, un dict de REPORTE (`confirmed_tool`, viaja en
+    # `card` hacia `send_channel_message`/`/reply`, nunca hacia `execute_tool`) que linguisticamente repite
+    # el mismo literal sin abrir una via nueva de ejecucion. La regex de abajo mira SOLO los payloads que
+    # de verdad son el segundo argumento de un `execute_activity("execute_tool", ...)` -- el sink real --
+    # y descarta cualquier otro dict del archivo que mencione `confirmed` por fuera de ese sink.
     src = inspect.getsource(CW)
-    assert src.count('"confirmed": True') == 1
+    payloads_execute_tool = re.findall(r'"execute_tool",\s*\n\s*(\{[^{}]*\})', src)
+    assert len(payloads_execute_tool) >= 2, (
+        f"se esperaban >=2 call-sites de execute_tool (gate normal + confirm); encontrados: "
+        f"{len(payloads_execute_tool)}")
+    con_confirmed_true = [p for p in payloads_execute_tool if '"confirmed": True' in p]
+    assert len(con_confirmed_true) == 1, (
+        "mas de un payload de execute_tool lleva confirmed=True -- via de escape no auditada. "
+        f"payloads={payloads_execute_tool}")

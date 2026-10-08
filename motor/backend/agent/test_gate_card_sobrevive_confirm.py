@@ -104,7 +104,13 @@ async def test_CONTRATO_card_sobrevive_al_confirm_cuando_la_conexion_se_cae_en_e
     enviados = await _correr("q-gate-card-sobrevive-confirm")
     assert len(enviados) == 2                              # 1) el HITL preview, 2) el cierre con la card
     assert enviados[0]["choices"], "el primer envío debe ser el HITL con Confirmar/Cancelar"
-    assert enviados[-1]["card"] == CARD, f"card final = {enviados[-1]['card']}"
+    # BL-B1: la card final ahora también lleva `confirmed_tool` (señal POSITIVA de que `execute_tool`
+    # corrió con `confirmed=True` -- ver conversation_workflow.py::_react_send) ADEMÁS de `CARD`, no en
+    # vez de -- el merge es aditivo (`_react_send`, tras la derivación de artifact/gate_card).
+    card = enviados[-1]["card"]
+    assert {k: v for k, v in card.items() if k != "confirmed_tool"} == CARD, f"card final = {card}"
+    assert card["confirmed_tool"] == {"activity": "execute_tool", "name": "enviar_mail",
+                                      "confirmed": True, "status": "error"}, f"card final = {card}"
 
 
 @pytest.mark.asyncio
@@ -145,4 +151,9 @@ async def test_control_confirm_sin_gate_card_no_regresiona():
             await _wait_until(lambda: len(enviados) >= 2, "cierre del turno 2 (post-confirm)")
             await h.signal(ConversationWorkflow.close)
             await h.result()
-    assert enviados[-1]["card"] == {}
+    # BL-B1: sin gate_card, la card final YA NO es `{}` -- lleva `confirmed_tool`, la señal POSITIVA de
+    # que el `execute_tool` confirmado corrió (status 'ok'). Es justo el caso que el instrumento de
+    # durabilidad (`scripts/e2e_g6_durabilidad_worker_restart.py`) necesita distinguir de un reply vacío.
+    assert enviados[-1]["card"] == {"confirmed_tool": {"activity": "execute_tool", "name": "enviar_mail",
+                                                        "confirmed": True, "status": "ok"}}, \
+        f"card final = {enviados[-1]['card']}"
