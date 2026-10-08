@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 from temporalio import activity
 from temporalio.testing import WorkflowEnvironment
-from temporalio.worker import Worker
+from temporalio.worker import Replayer, Worker
 
 from backend.agent.conversation_workflow import ConversationWorkflow
 
@@ -57,7 +57,7 @@ def _activities(resultados: list, enviados: list):
     return [call_llm_tools, execute_tool, send_channel_message]
 
 
-async def _correr(resultados: list, nombre: str) -> list:
+async def _correr(resultados: list, nombre: str, *, replay: bool = False) -> list:
     enviados: list = []
     async with await WorkflowEnvironment.start_time_skipping() as env:
         async with Worker(env.client, task_queue=nombre, workflows=[ConversationWorkflow],
@@ -66,6 +66,11 @@ async def _correr(resultados: list, nombre: str) -> list:
             await h.signal(ConversationWorkflow.receive_message, {"text": "aprobá y mandalo", "kind": "text"})
             await h.signal(ConversationWorkflow.close)
             await h.result()
+            if replay:
+                # BL-J9: el `fetch_history` tiene que pasar ACÁ DENTRO -- el server de time-skipping se
+                # tira al salir del `async with env` (mismo patrón que test_react_adversarial.py :162-165).
+                hist = await env.client.get_workflow_handle(nombre).fetch_history()
+                await Replayer(workflows=[ConversationWorkflow]).replay_workflow(hist)
     return enviados
 
 
@@ -100,3 +105,20 @@ async def test_dos_cards_que_bloquean_gana_la_ultima():
                               "gate_card": conexion_2})
     enviados = await _correr([R_CONEXION, r_conexion_2], "q-precedencia-con-con")
     assert enviados[-1]["card"]["service"] == "instagram"
+
+
+@pytest.mark.asyncio
+async def test_BL_J9_replay_sobrevive_precedencia_bloquea():
+    """BL-J9: la precedencia por `bloquea` (`gate-card-precedencia-bloquea`, conversation_workflow.py
+    :657-669) no sólo tiene que dar el resultado de negocio correcto -- el Command `send_channel_message`
+    que lo expresa tiene que sobrevivir un replay completo del history sin `NondeterminismError` (mismo
+    patrón que `test_react_adversarial.py` :162-165: `Replayer(...).replay_workflow(hist)` sin
+    try/except -- si no hay no-determinismo, simplemente no lanza).
+
+    Control positivo (verificado a mano en esta sesión, no automatizado acá -- es evidencia de autoría,
+    no de regresión continua): invirtiendo la condición de `:666` a
+    `if gate_card is None or gate_card.get("bloquea") or not nuevo_gate.get("bloquea"):` (precedencia
+    rota -- deja de respetar `bloquea`) este test CAE por la aserción de negocio: la card final pasa a
+    ser `sugerencia_armar_factura` en vez de `requiere_conexion`. Restaurado el archivo, vuelve a pasar."""
+    enviados = await _correr([R_CONEXION, R_SUGERENCIA], "q-precedencia-replay", replay=True)
+    assert enviados[-1]["card"]["kind"] == "requiere_conexion", f"card final = {enviados[-1]['card']}"
