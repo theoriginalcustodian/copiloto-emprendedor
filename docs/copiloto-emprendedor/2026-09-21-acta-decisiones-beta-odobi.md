@@ -41,7 +41,7 @@ por fuera, en #511.
 **La reunión no ocurrió, y esta acta no la necesitó.** Las decisiones de Martín no se tomaron en una
 reunión: se **leyeron del código de mobile al 21/09** (encabezado, «Fuente»; auditoría §6.3) y se
 aceptaron en bloque por `DEC-10`. Lo que sigue pendiente de Martín son los **3 temas de §4**, que los
-lleva el operador — y de ésos, `DEC-11` (contrastes) está **abierto** desde la actualización del
+lleva el operador — y de ésos, `DEC-11` (contrastes) figuraba **abierto** desde la actualización del
 29/09: no es deuda de documentación, es una decisión de diseño sin tomar.
 
 > **Por qué esto estaba en el aire.** El contrato del 16/09 registraba **de su lado** que esta acta lo
@@ -127,6 +127,29 @@ La nota de `soporte` del mapa («el avatar NO es el isotipo») queda **reemplaza
 > (`tokens.ts:590`) → **claro `#6A6457`** (`:497`), **oscuro `#928777`** (`:536`).
 >
 > Fila de seguimiento: `DEC11FILL` en `coordinacion/PLAN.md`.
+
+### 🔁 El bloque de arriba quedó **VENCIDO EN SUS DOS FILAS** — re-medido 2026-10-08
+
+**No se borra: queda para que se vea cómo envejeció.** El bloque del 29/09 se titula *«`DEC-11` NO está cerrado»* y afirma *«los valores nuevos no existen todavía: el fix no se aplicó»*. **Hoy el código lo desmiente en las dos filas de su propia tabla.** Lo levantó AUDITORÍA (que además declaró **nulo** uno de sus propios controles: grepeó `ub1|ub2` en `HudGrabacion.tsx` esperando ≥1 y obtuvo 0 **porque ese path no existe en `main`** — un control sobre un archivo ausente no valida nada); re-verificado acá contra el código, no contra su reporte.
+
+| fila del 29/09 | estado medido hoy | evidencia |
+|---|---|---|
+| **Botón de grabar** (`acentoTexto` contra `glass.accent2`, **1,26:1**) | ✅ **CORREGIDO por fill**, con guard de regresión | `paresPintadosContraste.test.tsx:893` — *«`BL-Q4`: el botón de grabar no vuelve al degradado que terminaba en accent2 (1,26:1)»*, con `expect(gradiente[1]).not.toMatch(/accent2/)` |
+| **Sello de acción** (isotipo blanco sobre `acento` sólido, **3,17:1**) | 🟠 **sigue declarado como excepción**, clase `logotipo` | `paresPintadosContraste.test.tsx:836` y `:849`: `{ min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido' }` |
+
+Y apareció una **tercera** pieza que el bloque del 29/09 no podía prever, porque es posterior: **el botón de voz (la esfera) también se corrigió por fill**, con el mismo criterio del hermano `HudGrabacion` — `BotonVoz.tsx:318-331` usa el radial `glass.ub1 → glass.ub2` con el comentario que nombra `DEC-11/DEC11FILL, Pieza A`, y tiene su propio guard en `paresPintadosContraste.test.tsx:905`. **O sea la «Recomendación de planificación» del bloque de arriba —replicar el fix de fill— se ejecutó.** El `motivo` de la excepción lo dice textual: *«BotonVoz salió de este par en DEC11FILL Pieza A»*, así que la excepción ya **no** cubre al botón: cubre sólo la Marca.
+
+#### ✒️ Lo único que queda de `DEC-11` es una firma, y es del operador
+
+`DEC-11` (fila §1 de esta acta) dice textual **«se corrigen, sin excepción firmada»**. El sello **está** declarado como excepción. Las dos varas se contradicen y sólo el operador elige cuál manda:
+
+- **La norma lo permite:** WCAG 1.4.3 exime al texto que es parte de un logotipo, y el gate implementa esa exención de forma explícita — `UMBRAL_POR_CLASE` da **0** a `logotipo` (`:760`, *«`logotipo` no tiene piso de ratio (exento por norma)»*).
+- **Y el bloque del 29/09 ya había dicho** que invertir el isotipo *«es una decisión de identidad visual, que no es de una sesión»* ⇒ no tocarlo fue el diferimiento **correcto**.
+- **Pero `DEC-11` prohibió la excepción sin firma.** → **¿el operador firma la clasificación `logotipo` del sello?** Si sí, `DEC-11` cierra con una línea de acta. Si no, está incumplido **en sus propios términos**, por una excepción que nadie firmó.
+
+**A favor del gate, y vale decirlo:** la clasificación no puede colarse en silencio. Una excepción **sin** `clase` **rompe el gate por diseño, sin default** (`:786`), el propio test tiene su **control positivo** para eso (`:956`, `excepcionSinClase` con *«clase omitida a propósito»*), y `:753` advierte que si el glifo fuera texto real **ninguna** excepción puede declararlo `logotipo` para aflojarle el piso. O sea: la exención es una decisión **declarada y ejercitada**, no un agujero.
+
+**La lección del envejecimiento, que es el verdadero hallazgo:** un bloque que dice *«X NO está cerrado»* **no vence solo**. Sigue leéndose como estado actual mientras el código avanza, y cualquiera que mida `DEC-11` contra esta acta concluye que falta trabajo cuando lo que falta es una firma. El bloque de arriba ya había diagnosticado su propia versión de esto —*«una decisión trabada que se archiva como deuda de registro deja de pedir turno»*— y después le pasó lo simétrico: **una deuda resuelta que se archiva como trabada sigue pidiendo turno.**
 4. **Calma = 3 días**, confirmado por Martín en #516. Falta alinear el prototipo: `prototipo/index.html:3703` todavía dice `CALMA_TOPE = 5`.
 5. **Ajustes (`?ver=ajustes`):** el prototipo tiene una lista agrupada en 3 secciones («Tu negocio» / «La app» / «Ayuda») con la identidad del negocio arriba. Tu mobile del 18/09 (`51437353`, aceptado por DEC-10) usa en cambio una grilla de tiles con el grupo «Ayuda», y ahí «Cómo usar la app» absorbe la guía. Web va a seguir a mobile (`BL-W12`, barrido BL-Q3 web del 2026-09-22). Pedido: alinear el prototipo con tu decisión, o avisar si la lista agrupada es la versión final (en ese caso se reabre DEC-10 para Ajustes).
 
