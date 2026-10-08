@@ -261,3 +261,53 @@ absolver, o es un generador de ruido.
 Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] (eso era propagación; esto es
 caducidad) y [[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]].
 
+
+## Refuerzo 2026-10-08 (b) — el barrido de anclas mide la INTEGRIDAD DE LA CITA, no la VIGENCIA DE LA CAUSA
+
+Arriba quedó escrito el barrido barato («resolver el ancla y mirar si el archivo fue tocado después»)
+con la promesa correcta: marca **candidatas a releer**. Lo corrí hoy sobre las **18** filas del doc de
+cierre, con control de ceguera que acusa y absuelve. Y después lo afilé: un segundo barrido que no
+pregunta si el archivo cambió sino **si la coordenada sigue señalando el mismo texto**
+(`git show <commit-de-la-fila>:<path> | sed -n '<N>p'` contra `origin/main`).
+
+**Los dos números, y el segundo mató mi hipótesis:**
+
+| barrido | resultado |
+|---|---|
+| v1 · ¿el archivo fue tocado después? | **5 señales** (3 🔁releer + 2 ⚠️ancla no resuelve) de 18 filas |
+| v2 · ¿la coordenada apunta al mismo texto? | **50 coordenadas medidas · 50 intactas · 0 corridas** |
+
+Yo esperaba que v2 confirmara a v1 —«el acta se editó, así que las líneas se corrieron»— y dio
+**cero**. La hipótesis era falsa y la medición la mató en un comando.
+
+**De las 5 señales de v1, sobrevivió 1.** Las otras 4 eran ruido de mi propio instrumento:
+
+- 2 se disparaban porque el archivo tocado era **el propio doc de cierre**, que yo mismo edité 4 veces
+  hoy. ⇒ **un barrido cuyo denominador es «¿el archivo cambió?» grita más fuerte justo sobre los
+  archivos que más se editan, que son los que menos informan.**
+- 1 (`acta:22`) tenía el archivo tocado por un PR ajeno y la **coordenada intacta**.
+- 1 marcaba «ancla no resuelve» sobre `coordinacion/PLAN.md:302` — que es **gitignored a propósito**, y
+  **la propia fila ya lo explicaba** en su tercera lección. Mi instrumento acusó lo que el texto ya
+  decía.
+
+**Y acá está lo que ningún barrido de anclas puede dar, probado contra el caso que ya sabía vencido.**
+La fila del punto 4 citaba `smoke_beta_e2e.py:19` («importa `meclaves_check`, así que el import no
+resuelve»). Medido hoy: la **línea 19 es idéntica** a la del commit de la fila, el archivo no se tocó,
+el import sigue ahí — y la causa estaba **muerta desde el 07/10** (#908 arregló el pipe-por-stdin; lo
+que seguía roto era un export de env que faltaba). **Ese caso pasa los dos barridos con luz verde.**
+
+> **Son dos preguntas distintas y la barata no aproxima a la cara.** «¿La cita sigue siendo una cita
+> válida?» se contesta con git. «¿El mecanismo que la cita describe sigue produciendo el fallo?» se
+> contesta **ejercitándolo**, y nada más lo contesta. Un barrido de anclas verde entero es compatible
+> con que **todas** las causas estén vencidas.
+
+**El corolario operativo, que es lo único que cambio en cómo trabajo:** el barrido de anclas queda
+como lo que es —un chequeo de higiene de citas, barato, que corro sin ceremonia— y **deja de contar
+como re-medición de una fila**. Para declarar una fila viva hace falta re-ejercitar su mecanismo; para
+declararla muerta, también. El único hallazgo real del día en este frente no salió del barrido de
+vigencia sino de una pregunta más tonta y más útil: **«¿el path existe?»** —
+`deploy/copiloto/run-smoke-prod.sh` **no existe en `main`** (el real es `scripts/run-smoke-prod.sh`), y
+lo cita el doc de cierre en la fila que afirma que el smoke fallaba por el camino de prod.
+
+Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (la pregunta más chica contestada con
+precisión, tercera instancia del día) y [[vacio-no-es-hallazgo-correr-el-control]].
