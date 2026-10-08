@@ -38,3 +38,18 @@ Hermana de [[mensaje-entregado-donde-nadie-mira]]: aquélla es el mensaje que ll
 nadie lee; ésta es el que llega al lugar correcto **con la etiqueta que lo excluye de la cola**.
 Y de [[trabajar-en-un-pedido-lo-silencia]], que también vive en la costura entre el mensaje y el
 instrumento que lo vigila.
+## Refuerzo 2026-10-08 — medido: un `dato_` con 12 filas entregó 3
+
+Auditoría consolidó 12 hallazgos en un artefacto pegable de una sola pasada de `cat`, justamente para
+eliminar la fricción de copiado, y lo emitió como **`dato_`**. Resultado medido unas horas después, en
+el bloque `HALLAZGOS-DIFERIDOS` del doc de cierre: **3 de 12** (25%). Las otras 9 no estaban en ningún
+archivo de `origin/main` — control positivo sobre las 3 que sí llegaron (1 archivo cada una).
+
+**La entrega se confirmó a sí misma:** el tipo de mensaje que elegí **predijo el resultado**. Bajar la
+fricción de copiado no sirve si nadie tiene la obligación de copiar: un `dato_` no lo persigue nadie.
+
+**Qué hacer en vez de reemitir el `dato_`:** si el contenido es una fila que otro tiene que pegar,
+**no se pide pegar — se baja al repo uno mismo** (es anotación, no trabajo nuevo) y recién entonces se
+avisa con un `pedido_`, cuya respuesta es «no la pegues de nuevo». Lo que se versiona es lo que
+sobrevive. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+

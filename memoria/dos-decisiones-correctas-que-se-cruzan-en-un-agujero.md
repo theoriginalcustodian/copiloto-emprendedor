@@ -140,3 +140,26 @@ rechazo es el control, no fricción — tratarlo como obstrucción desarma el ú
 Relacionadas: [[no-codificar-la-esperanza-principio-raiz]] ·
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
 [[el-guard-falla-abierto-en-su-caso-de-activacion]]
+## Refuerzo 2026-10-08 — las dos premisas en el MISMO archivo, a 30 líneas, y la conclusión en ninguna
+
+`docs/copiloto-emprendedor/ALCANCE-CIERRE-BETA.md`, mismo autor, mismo día:
+
+- `:91` — tabla «Lo que **NO** entra»: *«Toda la tanda de **device** → diferida al sprint siguiente por
+  orden del operador del 2026-09-22»*.
+- `:120` — §13 punto 3 exige *«la matriz ✅ en **web y mobile** para los 54 ids spec»*, con dueño
+  asignado.
+
+Las dos filas son **correctas por separado**. La mitad `mobile` del punto 3 **es** tanda de device
+(web 54/54, mobile 13/54 según `scripts/evidencia/contar-veredictos.py`, que anota al lado «sprint
+siguiente, con device/EAS»), así que juntas dicen que el criterio de cierre exige lo que el mismo doc
+excluyó. **El doc tiene las dos premisas y nunca saca la conclusión.**
+
+**Lo que agrega sobre la entrada original:** acá no hubo dos decisiones de dos dueños ni dos
+artefactos. Fueron **dos tablas del mismo archivo**, y por eso ninguna revisión por artefacto lo
+cazaba: cada tabla, leída sola, es impecable. Lo que falta es el **cruce**, y el cruce no tiene
+renglón propio en ningún instrumento.
+
+**El control que sí lo caza:** por cada fila de un criterio de cierre, preguntar *¿algún bloque de
+«fuera de alcance» de este mismo doc contiene una de sus precondiciones?* Es una lectura del par, no
+de la fila.
+

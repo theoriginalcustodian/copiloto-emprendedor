@@ -63,3 +63,25 @@ rompe es el parseo y acá, lo que se rompe es el titular.
 
 Regla corta: **appendear sirve para agregar, nunca para desmentir.** Si lo nuevo contradice lo viejo,
 se edita el encabezado; el detalle histórico puede quedar abajo.
+## Refuerzo 2026-10-08 — tres instancias en un día, y en las tres el preciso era el más NUEVO
+
+El mismo día de cierre, el mecanismo se repitió tres veces seguidas:
+
+1. **9 de 12 hallazgos** entregados por auditoría no estaban en **ningún** archivo de `origin/main`
+   (medido id por id con `git grep -F`, control positivo sobre las 3 que sí): vivían sólo en
+   `coordinacion/`, que está gitignored a propósito. El artefacto preciso no sobrevivía ni a un clon.
+2. La conclusión **«el punto 3 de §13 no se puede cerrar este sprint»** se escribió **57 segundos
+   después** de mergear el doc de cierre (doc `0b641b2d` 10:30:19 · ENMENDADO del contrato `BL-Q5`
+   10:31:16) — y quedó en el buzón. El doc que lee el operador quedó con la versión sin la conclusión.
+3. Los veredictos de las 4 filas del «residuo» del punto 2 ya estaban en el plan vigente con
+   `path:línea` desde el 06/10 (`:348`, `:350`, `:395`, `:397`). El doc de cierre publicó en su lugar
+   la señal cruda del instrumento, que no distingue «falta el trabajo» de «el PR no citó el id».
+
+**Lo que agrega esta ronda:** no es un problema de artefactos viejos. En las tres el preciso **existía
+y era más nuevo** — 57 segundos más nuevo en el caso 2. Falla la **propagación**, no la medición.
+
+**La pregunta que lo caza, antes de citar un número:** *¿este número lo produjo este instrumento, o
+hay un artefacto más fino que ya lo respondió?* Y la variante estructural: *¿el artefacto preciso está
+en un lugar que **circula** —versionado, en `main`— o en uno que no?* Ver
+[[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] y [[mensaje-entregado-donde-nadie-mira]].
+
