@@ -147,3 +147,31 @@ mide, y ese objeto se mueve mientras lo mido?* Si se mueve, el criterio necesita
 rigor. Hermana de [[el-contrato-que-manda-a-hacer-algo-ya-hecho]] (ahí caducaba la **causa** citada;
 acá caduca el **sujeto** medido) y de
 [[el-testigo-del-deploy-se-sobreescribe-y-borra-la-prueba-justo-cuando-dos-mediciones-difieren]].
+
+
+## 2026-10-08 — la refutación de mi afirmación venía DENTRO de la base que elegí
+
+Escribí en una fila del cierre «sigue ABIERTA la otra mitad del DoD: el podador no tiene guard por
+`.ci-recibos`». Lo había medido, de verdad, contra `a9489018`. Media hora después ramé para el PR
+— y ramé desde `52b5cd18`, que **ya traía el guard** (`GUARDA 1.5 «CON EVIDENCIA»`, menciones de
+`ci-recibos`: 0 → 4). La frase era falsa **en el instante en que la escribí**, y el PR estaba por
+mergearse solo.
+
+**Lo que esto agrega al patrón del snapshot.** La versión conocida es «re-medí al AFIRMAR, no al
+planear». Acá el dato fresco no estaba en ningún lugar remoto que hubiera que ir a buscar: estaba
+**en mi propio working tree**, a un `git log` de distancia, porque yo mismo había elegido esa base.
+No perdí una carrera por segundos — **nunca interrogué al instrumento que tenía en la mano.** Elegir
+una base nueva es recibir información; tratarla como «un punto de partida» y no como «un reporte de
+estado» es el error.
+
+**El control, barato y específico:** antes de afirmar que algo sigue abierto,
+`git log <sha-que-medí>..HEAD -- <el path de eso>`. Si devuelve commits, la afirmación es anterior a
+mi propia base. Un `git log a9489018..HEAD -- scripts/podar-worktrees.sh` lo habría cazado en un
+segundo.
+
+**Y el agravante que hace falta nombrar:** el ciclo estaba en `git push` con el `graph-sync` del
+`pre-push` corriendo (15+ min, no se mata), así que no podía abortar — la corrección tuvo que ser un
+**segundo commit a la misma rama**, apoyado en que el script no mergea si los checks no están en 6/6.
+Que exista una ventana en la que «ya no puedo frenar» es justamente la razón por la que el control va
+**antes** del push, no después. Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y
+[[prometer-no-es-ejecutar-el-gate-media-la-palabra]].
