@@ -22,6 +22,7 @@
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
 # SALIDA: exit 0 = verde Y mergeable · exit 1 = ROJO medido (falta alguno o alguno falló) ·
+#         exit 6 = TERMINAL: el PR ya está MERGED o CLOSED, no hay nada que medir ·
 #         exit 3 = TODAVÍA CORRIENDO: ningún job fallado, ninguno ausente, y al menos uno con
 #         `status` IN_PROGRESS/QUEUED/PENDING. **No es un rojo: es un todavía-no.** Hasta el
 #         2026-10-08 esto salía por exit 1 con la última línea diciendo «hay al menos un job
@@ -160,6 +161,36 @@ fi
 # expresion en una variable, un test puede `eval` esta linea y ejercitar LA MISMA expresion que
 # produccion: `scripts/tests/test-ci-verde-rollup-duplicado.sh`.
 ROLLUP_JQ='[.statusCheckRollup[]|{name,conclusion,status,startedAt}] | group_by(.name) | map(max_by(.startedAt // ""))'
+
+# ── TERMINAL: un PR ya MERGED/CLOSED no se puede «volver a correr» ───────────────────
+# 🔴 `H-CIVERDEMERGED` (lo cazó AUDITORÍA el 2026-10-08, y me lo refutó cuando dije que se podía
+# cerrar). Un PR **ya mergeado** devuelve `mergeable: UNKNOWN` **y** `mergeStateStatus: UNKNOWN`
+# — medido sobre #975, #976 y #977 —, así que caía en el comodín `*)` del case de abajo y salía
+# `exit 2 — volvé a correrlo` con los **6 jobs en SUCCESS**. Y ese consejo es **inalcanzable**:
+# el estado de un PR mergeado no vuelve a cambiar nunca, así que el gate mandaba a un **bucle
+# infinito**. El comodín estaba bien escrito para lo que creía cubrir (`UNKNOWN` asíncrono de los
+# primeros segundos) — el defecto es que **`UNKNOWN` tiene dos causas opuestas**: «todavía no se
+# calculó» (esperar sirve) y «ya no aplica» (esperar es para siempre). El case no podía
+# distinguirlas porque **nunca miró `.state`**: 0 menciones de `MERGED` en 391 líneas.
+#
+# ⚠️ Dice **ROJO**, no VERDE, y es deliberado: «no hay nada que mergear» **no es permiso para
+# mergear**. Un consumidor que lea el texto sigue fallando CERRADO, y el invariante {VERDE, ROJO}
+# de `scripts/tests/test-ci-verde-veredicto-monotono.sh` exige que toda salida imprima exactamente
+# uno. Lo que cambia es el **exit code** (6, terminal) y el diagnóstico: deja de mandar a repetir
+# algo que no puede dar otro resultado.
+#
+# Va ANTES de leer el rollup a propósito: sobre un PR terminal, medir el CI es trabajo tirado.
+estado_pr="$(gh pr view "$PR" --json state --jq '.state // ""' 2>/dev/null)"
+case "$estado_pr" in
+  MERGED)
+    echo "ROJO — nada que mergear: el PR $PR ya está MERGED — no lo vuelvas a correr, su estado no va a cambiar"
+    exit 6
+    ;;
+  CLOSED)
+    echo "ROJO — nada que mergear: el PR $PR está CLOSED sin mergear — reabrilo o abrí uno nuevo; correr el gate no lo cambia"
+    exit 6
+    ;;
+esac
 
 json=$(gh pr view "$PR" --json statusCheckRollup --jq "$ROLLUP_JQ") || {
   echo "ROJO — no pude leer el rollup del PR $PR (¿número correcto? ¿gh autenticado?)"; exit 2; }
