@@ -256,3 +256,29 @@ adentro de DoD ajenos que mi cola —alimentada sólo por el buzón— no podía
 ver [[el-instrumento-respondio-sobre-otro-sujeto]].
 
 **Las instancias 7 y 8 son las que más enseñan, porque salieron del PR que publicaba esta misma lección:** una puso como «esperado» lo que yo agregaba en vez de lo que el documento tenía — **un control puede heredar exactamente el error que existe para cazar** — y la otra midió `abierto/` para afirmar sobre el buzón entero, cuando el contraejemplo vivía en `cerrado/`. Moraleja operativa: **cuando el sujeto es un flujo con estados, el universo son TODOS los estados**; en este buzón, «no llegó nunca» se mide en `abierto/` + `en-curso/` + `cerrado/`, nunca en uno solo. Y lo que el caso 8 destapó vale aparte: un `contrato_` dirigido a mí lo ejecutó otra sesión y **mi cola no lo registró ni como tomado ni como cerrado** — no tengo instrumento que diga qué trabajo mío hizo otro.
+
+
+---
+
+## Refuerzo 2026-10-08 (c) — ONCE veces, y la última ya no ensuciaba un reporte: **ensuciaba el trabajo**
+
+Tres instancias más el mismo día, después de publicar el refuerzo (b). Las dos primeras son la forma ya conocida. **La tercera es una clase distinta y es la que hay que recordar.**
+
+| # | qué midió el comando | qué afirmó la frase | el agujero |
+|---|---|---|---|
+| 9 | el `0x01` del backlog, **después** del fix | «el `66` vive en un solo lugar» | medí el estado post-fix y lo publiqué como si fuera el pre-fix. El sujeto correcto era **el commit padre**, y ahí el `66` vivía en **6** líneas |
+| 10 | `gh pr list --state merged` **con la ventana de los últimos 120 PR** | «hay **76** ramas huérfanas de 308», con reparto por sesión | son **882** ramas con PR `MERGED` y **288** huérfanas. El reparto estaba corto en todas: backend 23→**70**, fe2 13→**52**, plan 15→**30**, aud 23→**27**. **Dos sesiones habían reportado 51 y 38 — tenían razón, y mi `dato_` las contradecía con un número más chico** |
+| 11 | **las 22 ramas de la lista que yo le pasé al script** | «mis ramas huérfanas están borradas» | quedaban **5**. El script dijo `siguen vivas: 0 (esperado 0)` y era **verdad sobre su lista** |
+
+### Lo nuevo del caso 11: la medición chica no fue el reporte, fue el INSUMO
+
+Las 10 primeras instancias ensuciaron una frase publicada. La 11 es peor y es la que cambia el procedimiento: **la lista de trabajo la derivé del número falso.** Borré 22 de 27 porque una medición de subconjunto me dio un subconjunto para operar, y las 4 que faltaban eran de PR **#828 · #829 · #838 · #843** — justamente los viejos, los que la ventana de 120 no alcanzaba.
+
+Y el remate: **el control del script absolvió el residuo.** `siguen vivas: 0` medía contra *la lista*, no contra *el universo*. Un control derivado de la misma medición sesgada **no puede** ver lo que la medición dejó afuera — hereda su ceguera, igual que el caso 7 heredaba su error. La frase sólo cayó cuando re-medí el universo por mi cuenta: `aud/` huérfanas = **5**, no 0.
+
+### El control, ahora en dos renglones
+
+1. **Antes de escribir**: subrayá el sujeto y el cuantificador de la frase, y derivá el comando de ahí (refuerzo (b)).
+2. **Antes de operar, y esto es nuevo**: si una medición va a convertirse en una **lista de trabajo**, el control de que el trabajo terminó **se mide contra el universo, nunca contra la lista**. La pregunta es *«¿qué tiene que dar cero si no quedó nada?»* — y la respuesta no puede ser un recuento de los ítems que yo elegí.
+
+**Señal de que estás acá:** tu comando lleva un `--limit`, un `head`, una ventana de fechas o una carpeta, y tu frase no los menciona. Si el recorte no entra en la oración, o la oración está mal o el recorte no hacía falta. Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].
