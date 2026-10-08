@@ -101,10 +101,65 @@ acá y se sigue con el id en curso. Sólo el operador puede moverlo arriba.
 <!-- HALLAZGOS-DIFERIDOS:INICIO -->
 <!-- una línea por hallazgo: fecha | quién lo vio | qué es | path:línea -->
 2026-10-08 | planificación | el smoke de prod NO ARRANCA por el camino con que prod lo corre: `smoke_beta_e2e.py:19` importa `meclaves_check` y `run-smoke-prod.sh` lo pipea por stdin al venv del VPS, así que el import no resuelve. **BLOQUEA el punto 4 del criterio de cierre §13 del backlog** («smoke en verde contra prod»). Dueño: backend. Levantado por auditoría el 2026-10-07, sigue abierto en el buzón. NO se arregla sin firma del operador: ampliar esta lista es decisión suya. | deploy/copiloto/smoke_beta_e2e.py:19 + deploy/copiloto/run-smoke-prod.sh
-2026-10-08 | auditoría | `H-FOCORC1` 🟠 **`foco-check.sh` devuelve rc=1 con 0 DESVÍOS.** El `exit 1` cuelga de `hay=$((desvio+autoref))`, y hoy lo dispara un auto-referencial ya mergeado e inmutable (`d030c359`, #924). Corrida de prod: 7 en alcance · 1 auto-referencial · **0 desvíos** · **rc=1**. Si rc=1 es el estado permanente, el primer DESVÍO real será indistinguible del ruido — `el-guard-que-grita-en-el-caso-normal-se-desarma-solo`. El gate clasifica bien: es el umbral del `exit` el que mezcla dos clases. Dueño: planificación. | scripts/foco-check.sh:143-158
+2026-10-08 | auditoría | `H-FOCORC1` 🟠 **`foco-check.sh` devuelve rc=1 con 0 DESVÍOS.** El `exit 1` cuelga de `hay=$((desvio+autoref))`, y hoy lo dispara un auto-referencial ya mergeado e inmutable (`d030c359`, #924). Corrida de prod: 7 en alcance · 1 auto-referencial · **0 desvíos** · **rc=1**. Si rc=1 es el estado permanente, el primer DESVÍO real será indistinguible del ruido — `el-guard-que-grita-en-el-caso-normal-se-desarma-solo`. El gate clasifica bien: es el umbral del `exit` el que mezcla dos clases. 🔴 **CONFIRMADO EN LA PRÁCTICA el mismo día, 2026-10-08:** apareció el **primer DESVÍO real** que el gate detectó — `c5727e5d` (#932) toca producto sin citar un id de la lista — y **no produjo ninguna señal nueva**, porque `rc` ya era 1 por los 2 auto-referenciales. La corrida fue: 14 en alcance · 2 auto-referenciales · **1 desvío** · rc=1 — el mismo rc que con 0 desvíos. La predicción de auditoría se cumplió en horas: el umbral del `exit` mezcla dos clases y el desvío queda indistinguible del ruido de fondo. Sigue **anotado y no arreglado**: es fila de instrumento y el sprint cierra sin cablear instrumentos nuevos. Dueño: planificación. | scripts/foco-check.sh:143-158
 2026-10-08 | auditoría | `H-DRIVEDISPATCH` 🟠 **la poda de A7 vive sólo en la capa que lee `react`.** El `PROMPT_FRAGMENT` de Drive sigue anunciando `create_file` y `find` al LLM, y en el camino `dispatch` el `op` **sí** sale del LLM sin pasar por `TOOLS` (`mod.build(ent.get("op"), …)`). Hoy inerte porque prod corre `react`; vuelve a estar vivo si `COPILOTO_ENGINE_MODE` cambia. No se pudo cerrar: el valor real de esa env no está en ningún archivo versionado. `[REQUIRES_LIVE_VALIDATION]`. Dueño: backend. | apps/copiloto/services/drive.py:35-39 + apps/copiloto/dispatcher_emprendedor.py:258
 2026-10-08 | auditoría | `H-A7SINTEST` 🟠 **el control que de verdad sostiene A7 no tiene test.** `test_catalog_route.py:125` (`assert "googledrive" not in keys`) prueba que Drive no aparezca en el **catálogo de la UI** (`TestClient(app).get("/catalog")`), nunca `mod.build()`. El control real es `TOOL_INDEX` (`tool_catalog.py:413,425,1577-1580`) y **nada lo ejercita**: si mañana alguien le agrega un `TOOLS` a Drive, ningún test lo caza — `un-mecanismo-roto-hacia-el-no-no-da-sintoma`. Dueño: backend. | apps/copiloto/tool_catalog.py:413
 <!-- HALLAZGOS-DIFERIDOS:FIN -->
+
+## El criterio §13, punto por punto — medido 2026-10-08 sobre `92fd8a06`
+
+La lista cerrada de 7 filas **no es** el criterio de cierre de la beta. El criterio es §13 del
+backlog y tiene **cinco** puntos que deben ser verdad **a la vez, sobre un mismo SHA**. Esto es lo
+que mide cada uno hoy, para que la decisión de cerrar o no sea del operador con números, no con
+sensación.
+
+| # | qué pide | medido | dueño de lo que falta |
+|---|---|---|---|
+| **1** | Todos los `DEC-*` con acta | ✅ **13 DEC en la tabla, ninguno marcado abierto.** `DEC-11` está **decidido** («se corrigen, sin excepción firmada»); lo que queda de él es ejecución vía `BL-Q4`, no decisión | — |
+| **2** | Todos los `BL-*` de las familias de la beta cerrados con su DoD | ⚠️ **inmedible desde los checkboxes, medido con el instrumento.** El backlog tiene **212 checkboxes sin tildar**, y hoy quedó probado que **miente por atraso** (`A7` hecho desde julio con su fila diciendo lo contrario). `inventario-ola.sh` sobre las 4 olas da **10 filas problemáticas**, y al clasificarlas el residuo real son **4** (ver abajo) | ver la tabla del residuo |
+| **3** | La matriz de pantallas re-medida (`BL-Q5`) ✅ en web y mobile para los **54 ids spec** | 🔴 **NO HECHO.** La matriz sólo existe en su versión del **16/09** (`Auditorias/2026-09-16-mapa-de-pantallas-vs-codigo-web-y-mobile.md`), nunca republicada con veredictos nuevos. Ningún PR cita `BL-Q5` (400 títulos, con límite de palabra) | **contrato bajado el 08/10**; lo tomó FRONTEND-2 al terminar la sesión de AUDITORÍA |
+| **4** | `smoke_beta_e2e.py` en verde contra prod + durabilidad (`BL-B1`) | 🔴 **BLOQUEADO.** `smoke_beta_e2e.py:19` importa `meclaves_check` y `run-smoke-prod.sh` lo pipea por stdin ⇒ el import no resuelve. **Backend avanzó hoy** con el #932 (`UC_LOGIN_CONTRATO_PATH` no se exportaba). `BL-B1` **sí** está citado (#766, #763, #603) | **backend** |
+| **5** | Un tester **externo** completa el flujo en su propio teléfono, con video | 🔴 **no depende de ninguna sesión** | **operador** |
+
+### El residuo del punto 2 — 4 filas «citadas, pero con una mitad sin diff»
+
+`inventario-ola.sh` distingue «no citada» de «citada con una mitad sin diff», y es la segunda la que
+importa: un PR nombra el id pero un lado no tiene cambios, que es la firma de un ítem entregado a
+medias.
+
+| fila | la mitad sin diff | PR que la cita |
+|---|---|---|
+| `BL-B3` | BACKEND | #601 |
+| `BL-B5` | BACKEND | #600 |
+| `BL-Q1` | FRONTEND | #612 |
+| `BL-Q3` | BACKEND + FRONTEND | #692, #623 |
+
+De las **10** que el instrumento marca, las otras 6 están explicadas y **no son deuda**:
+`BL-O3` · `BL-O4` · `BL-O9` son **familia O, excluida de la beta por el Cierre B del acta** ·
+`BL-Q2` **es** el smoke del punto 4, ya contado ahí · `BL-C5` tiene **DoD invertido** (el código
+declara la decisión contraria, fechada) ⇒ su mitad sin diff es correcta.
+
+> 🚨 **Estas 4 filas NO se asignan sin verificarlas una por una, y esto no es cautela: es la
+> lección que este mismo doc pagó hoy.** «Una mitad sin diff» **no prueba** que el trabajo falte: el
+> instrumento cruza los PR **que citan el id**, y por orden del operador **los PR se batchean sin
+> citar ids** — el #521 cerró cuatro filas sin nombrar ninguna. El control obligatorio, antes de
+> escribir cualquier contrato sobre ellas:
+>
+> ```bash
+> git log --oneline -3 origin/main -- <el archivo de la mitad que figura sin diff>
+> ```
+>
+> Hoy omití exactamente ese control con `A3` y frontend-1 reimplementó trabajo de julio. Dos
+> señales erróneas apuntaban al mismo lado — el tablero decía «sin commit» (era falso) y mi
+> medición miró el hook equivocado — así que **ninguna contradicción me avisó**.
+> Ver `el-contrato-que-manda-a-hacer-algo-ya-hecho` y `dos-causas-suficientes-el-test-no-atribuye`.
+
+### Qué se sigue de esto, sin adornos
+
+**La beta no cierra hoy, y la razón no es código.** Dos de los cinco puntos no dependen de ninguna
+sesión (el 5 es del operador; el 4 necesita que el smoke arranque por el camino con que prod lo
+corre). El punto 3 es el único que una sesión podía cerrar hoy y ya está tomado. El punto 2 pasó
+de «inmedible» a **4 filas nombradas**, que es la primera vez que ese punto tiene un número.
 
 ## Cuándo está cerrado
 
