@@ -1060,6 +1060,24 @@ No bloquean la beta. Cada uno con su condición de entrada.
 
 ---
 
+### 12.bis Diferido a **Cierre B** — registro de lo pospuesto por acta (no es post-beta)
+
+> 🖊️ **Creada por `DEC-18` (2026-10-08) para cerrar el punto 1 de §13 sin falsear nada.** El
+> punto 1 pide que lo pospuesto tenga *«su ítem movido a §12»*, pero §12 declara *«no bloquean la
+> beta»* y estos **sí** son de la beta: están diferidos a **Cierre B**, que es su segunda ronda.
+> Moverlos a la tabla `BL-V` los habría **reclasificado como post-beta** — habría tildado el
+> criterio mintiendo sobre la clase. Esta subsección es el registro que el punto 1 pide, con la
+> clase correcta escrita. Cierra la mitad de registro de `H-DEC11ACTAVIEJA`.
+
+| ID | qué | acta que lo difirió | por qué no es post-beta |
+|---|---|---|---|
+| `BL-O1` | Lista de testers y alta por invitación | firma del **2026-09-21** | la beta con testers externos lo necesita; se repone en Cierre B |
+| `BL-O2` | Google OAuth para testers externos | firma del **2026-09-21** | ídem — es vía de alta, no extra |
+| `BL-O5` | — (ver su ítem) | `DEC-12` | diferido, no descartado |
+| `BL-O7` | — (ver su ítem) | `DEC-12` | diferido, no descartado |
+| `BL-O3` | — (ver su ítem) | **atado a EAS** | depende del batch de device |
+| `BL-O4` | Observabilidad y alertas del VPS | **`DEC-17`** (2026-10-08) | **riesgo aceptado y escrito:** hoy una caída de web/worker/Caddy/GoTrue **no alerta a nadie** |
+
 ## 13. Criterio de cierre de la beta
 
 > 🟠 **§13 NO es el criterio de cierre del sprint del 2026-10-08 — `DEC-14`, firmado por el operador ese día.** Ese sprint cierra contra el **ALCANCE** de `ALCANCE-CIERRE-BETA.md` (7 filas sobre `92fd8a06`, con recibo que cubre). **§13 sigue vigente, intacto y ABIERTO** como criterio del cierre **siguiente**.

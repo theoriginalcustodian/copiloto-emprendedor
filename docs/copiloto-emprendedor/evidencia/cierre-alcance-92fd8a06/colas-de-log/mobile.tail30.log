@@ -1,0 +1,30 @@
+PASS native src/theme/glass/campos/CampoSecreto.test.tsx
+PASS web src/adapters/almacen.test.web.ts
+PASS native src/theme/glass/MarcoGlass.test.tsx
+PASS web src/adapters/http.test.web.ts (5.21 s)
+PASS native src/shell/PanelDeslizable.test.tsx
+PASS native src/navegacion/appSoloRutas.test.ts
+PASS native src/modules/soporte/PantallaTicket.test.tsx
+PASS native src/modules/midia/PortadaNegocio.test.tsx
+PASS native src/modules/midia/AvatarCuenta.test.tsx
+PASS native src/theme/glass/primitivos.test.tsx
+PASS native src/modules/apps/LogoMarca.test.tsx
+PASS native src/modules/facturacion/etiquetasComprobante.test.ts
+PASS native src/modules/ajustes/PantallaLegal.test.tsx
+PASS native src/modules/ajustes/CambiarCredenciales.test.tsx
+PASS native src/modules/chat/SheetRequiereConexion.test.tsx
+PASS native src/modules/chat/TarjetaLinkDeCobro.test.tsx
+PASS native src/modules/inteligencia/PreguntarInteligencia.test.tsx
+PASS native src/shell/PanelFunciones.test.tsx
+PASS native src/theme/glass/EncabezadoListado.test.tsx
+PASS native src/modules/chat/Composer.test.tsx
+PASS native src/modules/splash/EntradaDiaria.test.tsx
+PASS native src/modules/ajustes/PantallaAndamiaje.test.tsx
+PASS native src/modules/chat/Recibo.test.tsx
+
+Test Suites: 1 skipped, 111 passed, 111 of 112 total
+Tests:       1 skipped, 1017 passed, 1018 total
+Snapshots:   0 total
+Time:        271.161 s
+Ran all test suites in 2 projects.
+Test results written to: ..\..\..\..\Users\Admin\AppData\Local\Temp\tmp.HAAdjlMtj9\jest-resultado.json

@@ -1,0 +1,30 @@
+▶ test_redeploy_mismo_sha.sh
+== REDEPLOYMISMOSHA: /c/gfw-src/wt-gate-cierre/deploy/copiloto/deploy.sh
+  [nueva] PASA: el dist publicado conserva su contenido durante el build
+  [vieja bf406abe (control positivo, debe ser ROJO)] ROJO: el build BORRÓ el dist publicado (dist-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/CENTINELA ya no existe)
+OK: la versión nueva conserva el dist vivo y el control positivo reproduce el bug
+▶ test_smokestdin_import.sh
+ok   regresión: stdin puro desde un CWD ajeno sigue sin resolver el import hermano (documenta el bug original)
+ok   mecanismo nuevo: import como ARCHIVO desde el tmpdir + UC_ME_CONTRATO_PATH al árbol desplegado ⇒ 9 claves
+ok   fail-closed: sin UC_ME_CONTRATO_PATH y sin árbol relativo real ⇒ falla (no inventa un número)
+ok   mecanismo nuevo (login): import como ARCHIVO desde el tmpdir + UC_LOGIN_CONTRATO_PATH al árbol desplegado ⇒ 7 claves
+ok   fail-closed (login): sin UC_LOGIN_CONTRATO_PATH y sin árbol relativo real ⇒ falla (no inventa un número)
+ok   run-smoke-prod.sh exporta UC_ME_CONTRATO_PATH
+ok   run-smoke-prod.sh exporta UC_LOGIN_CONTRATO_PATH
+==> OK: import de meclaves_check resuelve por el camino de run-smoke-prod.sh
+▶ test_synctar_excluye_env.sh
+== SYNCTAREXCLUYEENV: /c/gfw-src/wt-gate-cierre/deploy/copiloto/sync-test-backend.sh
+  ok   el script declara flags --exclude de .env:   --exclude='.env' --exclude='.env.*'
+  ok   el tar real NO incluye ningún .env / .env.* (verificado con tar -tzf, no por inferencia)
+  ok   control positivo: un archivo NO-.env del mismo directorio SÍ viaja (las flags no excluyen de más)
+  ok   control negativo: SIN las flags, el mismo árbol SÍ incluye los .env -- el canario discrimina
+
+OK: SYNCTAREXCLUYEENV — .env/.env.* no viajan al STAGE del VPS
+▶ test_synctar_incluye_deploy_copiloto.sh
+== SYNCTARDEPLOYCOPILOTO: /c/gfw-src/wt-gate-cierre/deploy/copiloto/sync-test-backend.sh
+  PASA: el tar de /c/gfw-src/wt-gate-cierre/deploy/copiloto/sync-test-backend.sh incluye deploy/copiloto -- backend.sh:33 puede resolver sus dos .py
+  (el HEAD commiteado ya tiene el fix -- no hay control positivo que correr contra él, no es un fallo del test)
+
+OK: SYNCTARDEPLOYCOPILOTO — el tar lleva deploy/copiloto al VPS
+--- CONTROL: 9 de 9 tests de deploy corridos · 0 fallado(s) ---
+✅ 9/9 tests de deploy en verde.

@@ -169,7 +169,7 @@ tocado_recientemente() {
   [ -n "$hallado" ]
 }
 
-podables=(); sucios=(); no_mergeados=(); en_gracia=(); ignorados=(); rotos=()
+podables=(); sucios=(); no_mergeados=(); en_gracia=(); ignorados=(); rotos=(); con_evidencia=()
 ANALIZADOS=0; REGISTRADOS=0
 
 while IFS= read -r wt; do
@@ -218,6 +218,31 @@ while IFS= read -r wt; do
   rama="$(git -C "$wt_real" symbolic-ref --quiet --short HEAD 2>/dev/null || echo '(detached)')"
   sha="$(git -C "$wt_real" rev-parse HEAD 2>/dev/null || echo '')"
 
+  # ── GUARDA 1.5 · ¿GUARDA EVIDENCIA DE UN CIERRE? ──────────────────────────────
+  # `.ci-recibos/` está en `.gitignore:2` POR DISEÑO, así que un recibo de `gate.sh` vive sólo en
+  # el disco del worktree que lo produjo. Y un acta puede citarlo como LA evidencia de un cierre:
+  # `DEC-14` cierra el sprint contra `92fd8a06` «con recibo que cubre», y ese recibo estaba
+  # únicamente en `wt-gate-cierre/.ci-recibos/`.
+  #
+  # POR QUÉ LAS TRES GUARDAS NORMALES NO ALCANZAN, medido el 2026-10-08 sobre ese worktree:
+  #   guarda 1 (mergeado) → aprueba borrar   guarda 2 (limpio) → aprueba borrar
+  #   guarda 3 (actividad reciente) → protegía... pero **expira por definición**.
+  # O sea: la única guarda que salvaba la evidencia del cierre era una propiedad del RELOJ, no
+  # del contenido. Al día siguiente las tres aprueban y el recibo se va sin que nada se ponga
+  # rojo. Es `un-mecanismo-roto-hacia-el-no-no-da-sintoma` aplicado al tiempo: no hay evento que
+  # avise, simplemente mañana ya no está protegido.
+  #
+  # Se informa y NO se poda. Es el mismo criterio que el pin de `_vigia-pins/`, con una
+  # diferencia que importa: el pin no contiene nada de nadie, esto SÍ contiene lo único que
+  # acredita un cierre firmado. La salida dice qué hacer para liberarlo.
+  n_recibos=0
+  if [ -d "$wt_real/.ci-recibos" ]; then
+    n_recibos="$(find "$wt_real/.ci-recibos" -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+  fi
+  if [ "${n_recibos:-0}" -gt 0 ]; then
+    con_evidencia+=("$nombre [$rama · $n_recibos recibo(s) de gate.sh sin versionar]"); continue
+  fi
+
   # Guarda 2 primero: es la más barata y la que más trabajo protege.
   if [ -n "$(git -C "$wt_real" status --porcelain 2>/dev/null)" ]; then
     sucios+=("$nombre [$rama]"); continue
@@ -265,6 +290,7 @@ fi
 if [ "$QUIET" = "0" ]; then
   listar "🧟 HUÉRFANOS — el directorio existe pero git ya no lo registra (sólo se informan)" "${huerfanos[@]}"
   listar "💥 ROTOS — registrados como worktree pero git responde por otro árbol" "${rotos[@]}"
+  listar "🧾 CON EVIDENCIA — guardan recibos de gate.sh que no están en git; copiá lo que un acta cite a docs/.../evidencia/ y recorré esto" "${con_evidencia[@]}"
   listar "🔒 SUCIOS — trabajo sin commitear, no se tocan" "${sucios[@]}"
   listar "🔒 NO MERGEADOS — tienen commits que sólo viven ahí" "${no_mergeados[@]}"
   listar "⏳ EN GRACIA — limpios y mergeados, pero alguien los tocó recién" "${en_gracia[@]}"
