@@ -156,8 +156,27 @@ alcanzar: no es falta de trabajo, es que no había definición de terminado.
 3. **⛔ CLÁUSULA DE CORTE — un `H-*` nuevo NO reabre un punto ya ✅.** Lo reabre **sólo** si
    **invalida la evidencia de ese punto**, y entonces quien lo anota **debe nombrar el punto y decir
    qué medición queda falsa**. Un `H-*` que no nombra un punto es **lista de entrada del cierre
-   siguiente**, no criterio de este. Al 08/10: de las **27** filas del bloque de arriba, **ninguna
-   nombra un punto ⇒ ninguna bloquea.** Esta cláusula es la que corta el bucle.
+   siguiente**, no criterio de este. Al 08/10, verificado fila por fila: **9 de las 28** filas de arriba **sí**
+   nombran un punto, y **ninguna invalida la evidencia de un punto ✅**.
+> ⚠️ **Me corrijo antes de que esto se use como regla.** La primera versión de esta cláusula
+> decía *«de las 27 filas, **ninguna** nombra un punto ⇒ ninguna bloquea»*. **Medido con
+> `grep -nEi 'punto [1-5]'` sobre el bloque (canario en 1, así que el grep no era ciego): son
+> **28** filas y **9 nombran un punto**.** La conclusión aguanta, **el mecanismo que escribí no**
+> — y el mecanismo es lo que otra sesión va a aplicar. Por qué ninguna reabre, una por una:
+>
+> | hallazgo | punto | por qué no reabre |
+> |---|---|---|
+> | `H-SMOKESTDIN` | **4** (✅) | **su propia fila lo declara RESUELTO**: la causa citada (import por stdin) estaba vencida desde #908 y lo cerró #932; prod vivo `92fd8a06` + smoke **39/39** |
+> | `H-13DEPENDEDEDEVICE` | **4** (✅) | **corregido por su autor**: *«el punto 4 nunca fue device y pasó a ✅ con el #932 — lo metí en el mismo bulto por el color de la celda, no por el mecanismo»* |
+> | `H-POSPUESTOSSIN12` · `H-DEC11ACTAVIEJA` | **1** | es **exactamente** lo que resuelve **§12.bis** de este PR: la cláusula era *insatisfacible como estaba escrita* (§12 se titula `BL-V`), y ahora lo pospuesto a Cierre B tiene su registro con la clase correcta |
+> | `H-DOCESINSENAL` · `H-COLAENLOSDOD` · `H-GAPINVARIANTE66` · `H-BACKLOG11CORRUPTOS` · `H-DODNOSEMIDE` · `H-PUNTO2INCUMPLIBLE` | **2** | el punto 2 **no está ✅**: está en muestreo. No se puede reabrir lo que está abierto |
+>
+> **La lección del propio error:** escribí la cláusula y en la misma frase afirmé su resultado
+> **sin correr el filtro que la cláusula define**. Un criterio nuevo necesita su primera corrida
+> igual que cualquier instrumento — y la corrida es lo que distingue «ninguna nombra un punto»
+> (falso, y habría hecho que la próxima sesión no mirara) de «9 nombran y ninguna invalida»
+> (verdadero, y deja el trabajo hecho).
+
 4. **Terminado = los 5 puntos en ✅ en esa tabla, sobre un mismo SHA.** Nada más cuenta: ni el
    conteo de PRs abiertos, ni las casillas, ni cuántos hallazgos quedan sin cerrar.
 
