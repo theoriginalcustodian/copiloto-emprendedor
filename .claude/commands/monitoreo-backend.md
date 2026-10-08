@@ -22,9 +22,21 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
 5. **Contexto de coordinación** — leé `coordinacion/COORDINACION.md` y `coordinacion/PLAN.md`
    (reglas vivas + COLA-VIVA). Son la fuente de qué te toca; sin esto arrancás adivinando.
-5.bis. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
-   cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
-   error. Si no existe en tu checkout, estás en una rama vieja — decilo.
+5.bis. **Instrumento, desde el PIN sobre `origin/main`, no el checkout compartido** — el checkout
+   compartido tiene HEAD viejo y su copia de `scripts/vigilancia-check.sh`/`cola-check.sh` miente
+   (parser sin los estados `⏳`/`⏸`, escaladores con centinela `999999min` en vez de la edad real;
+   medido 2026-10-08, caso real en `memoria/el-instrumento-respondio-sobre-otro-sujeto.md` #10). Si
+   no existe `C:/gfw-src/_backend-vigia`, crealo una vez:
+   `git -C "<cualquier-worktree-tuyo>" worktree add --detach "C:/gfw-src/_backend-vigia" origin/main`
+   Después, en cada corrida (arranque y cada tick del cron, paso 0 de abajo):
+   ```
+   git -C "C:/gfw-src/_backend-vigia" fetch -q origin main
+   git -C "C:/gfw-src/_backend-vigia" checkout -q --detach origin/main
+   bash "C:/gfw-src/_backend-vigia/scripts/vigilancia-check.sh" --quiet
+   ```
+   El pin resuelve el buzón físico real vía `git-common-dir` (no lo duplica) y no toca el checkout
+   compartido — no es CANON 9. El guard `0.bis VERSIÓN DEL INSTRUMENTO` (#944) ya corre adentro de
+   `vigilancia-check.sh` de `main` y detecta por sí solo si tu pin quedó atrás.
 6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-backend_` y `-a-todos_`, **y también**
    `coordinacion/cerrado/<hoy>/` (los `avance_`/`dato_` nacen archivados: ahí viven las señales que
    destraban, tipo «suelto el device»). Contá cuántos te interpelan sin acusar.
@@ -64,13 +76,20 @@ Vigía de coordinación (sesión BACKEND).
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero:
-   `bash scripts/vigilancia-check.sh --quiet`
+0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero, desde el PIN
+   sobre `origin/main`, NUNCA con el path relativo del checkout compartido (ese miente: parser
+   viejo sin `⏳`/`⏸`, escaladores con centinela `999999min` en vez de la edad real — medido
+   2026-10-08):
+   ```
+   git -C "C:/gfw-src/_backend-vigia" fetch -q origin main
+   git -C "C:/gfw-src/_backend-vigia" checkout -q --detach origin/main
+   bash "C:/gfw-src/_backend-vigia/scripts/vigilancia-check.sh" --quiet
+   ```
    Exit 1 = alarma global (cola arrancable, contrato_/pedido_/en-curso viejo sin acusar de
    CUALQUIER sesión, o alguna sesión muda ≥30min) — su stdout ya es el reporte, no lo reconstruyas.
    Exit 0 = nada de eso, pero **igual seguí al paso 1**: este gate sólo detecta lo VIEJO/estancado
    (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
-   propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
+   propio no hay atajo. Si el pin no existe todavía, creálo (ver paso 5.bis del arranque) y seguí.
 
 1. Listar `abierto/` y quedarte SÓLO con `-a-backend_` y `-a-todos_`. Descartar lo que empiece por
    `backend-a-` (es tuyo). Mirar también `cerrado/<hoy>/` por los `avance_` y `dato_`, que nacen
