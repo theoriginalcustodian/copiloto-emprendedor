@@ -123,6 +123,54 @@ Fix: git config core.hooksPath .githooks"
   fi
 fi
 
+# ── 0.bis) VERSIÓN DEL INSTRUMENTO: ¿estoy ejecutando el parser de `main` o uno viejo? ─────
+# Este chequeo es sobre MÍ MISMO, y es el que faltaba. `REPO_ROOT` sale de `BASH_SOURCE` (:39), así
+# que la versión de cada pieza la decide **desde qué checkout me invocan** — y los crones me invocan
+# desde el checkout compartido, que tiene el HEAD viejo. Medido el 2026-10-08: el mismo `PLAN.md`
+# leído por las dos copias de `cola-check.sh` daba 14 enums "no reconocidos" vs 0, ocultaba los
+# «4 frentes activos», nombraba OTRO frente `arrancando` y perdía los 4 bloqueados por disparador
+# externo — **las dos con rc=0**, o sea yo decía "sin novedades" con el tablero mal leído.
+# El detalle del caso y por qué se compara por CONTENIDO y no por HEAD: `lib/version-instrumento.sh`.
+#
+# PIEZAS: las que este script EJECUTA o SOURCEA, más este archivo. No es una lista decorativa —
+# `test-version-instrumento.sh` la deriva sola del fuente y falla si quedó incompleta, porque una
+# lista que hay que acordarse de actualizar se desincroniza en silencio y entonces el guard deja
+# pasar justo la pieza nueva.  → memoria: el-guard-que-caza-a-su-propio-autor
+PIEZAS_INSTRUMENTO=(
+  scripts/vigilancia-check.sh
+  scripts/cola-check.sh
+  scripts/deuda-check.sh
+  scripts/escaladores-buzon.sh
+  scripts/lint-contratos-referencias.sh
+  scripts/evidencia/auditar-corpus-vivo.sh
+  scripts/lib/buzon-roles.sh
+  scripts/lib/version-instrumento.sh
+)
+# shellcheck source=lib/version-instrumento.sh
+. "$REPO_ROOT/scripts/lib/version-instrumento.sh"
+# En modo fixture (TRANSCRIPTS_DIR seteado) se salta salvo que el test lo pida con VERIFICAR_VERSION=1:
+# un fixture mide un repo de mentira y su veredicto dependería de la máquina.
+#   → memoria: un-fixture-no-aisla-lo-que-el-script-lee-por-fuera
+if [ -z "${TRANSCRIPTS_DIR:-}" ] || [ "${VERIFICAR_VERSION:-0}" = "1" ]; then
+  _ver_out="$(instrumento_divergente "$REPO_ROOT" "${PIEZAS_INSTRUMENTO[@]}")"; _ver_rc=$?
+  if [ "$_ver_rc" = "1" ]; then
+    add "🕒 INSTRUMENTO VIEJO: estoy ejecutando piezas que NO son las de ${INSTRUMENTO_REF:-origin/main}.
+Todo lo que reporto abajo salió de esas piezas, así que el veredicto —incluido un 'sin novedades'—
+puede ser de otra versión. No es un aviso cosmético: el 2026-10-08 esta misma divergencia ocultó 4
+items bloqueados y nombró un frente activo equivocado, con rc=0.
+$(printf '%s
+' "$_ver_out" | sed 's/^/  · /')
+Fix: corréme desde un worktree sobre '${INSTRUMENTO_REF:-origin/main}' fresco — no desde el checkout
+compartido. Si la divergencia es un cambio TUYO sin mergear, mergealo o corré el test de la pieza."
+  elif [ "$_ver_rc" = "2" ]; then
+    add "🕶️ NO PUEDO VERIFICAR MI PROPIA VERSIÓN — y eso NO es un pase.
+$(printf '%s
+' "$_ver_out" | sed 's/^/  · /')
+Un vacío del propio instrumento no es un hallazgo: mientras esto no se resuelva, cualquier
+'sin novedades' de abajo es 'no miré', no 'no hay'."
+  fi
+fi
+
 # ── 1) COLA: hito arrancable sin arrancar ──────────────────────────────────────────────────────
 # SIN gate de existencia, a propósito: si no hay PLAN.md que leer, cola-check lo DICE y eso ES la
 # alarma. El `if [ -f "$BUZON/PLAN.md" ]` que había acá se salteaba entero en cualquier worktree
