@@ -208,11 +208,11 @@ distintas, el `0` confirma lo que yo ya quería creer. Dos controles concretos:
 Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
 
-## Refuerzo 2026-10-08 (b) — SEIS veces el mismo patrón en una sesión: el comando midió el subconjunto, la frase afirmó el conjunto
+## Refuerzo 2026-10-08 (b) — OCHO veces el mismo patrón en una sesión: el comando midió el subconjunto, la frase afirmó el conjunto
 
 El refuerzo de arriba ya decía «el instrumento contestó con precisión una pregunta más chica que la
-que yo iba a responder». Lo escribí a media sesión **y reincidí cinco veces después**. Eso corre el
-hallazgo de lugar: no falta la lección, falta un **control previo a publicar**. Las seis, medidas:
+que yo iba a responder». Lo escribí a media sesión **y reincidí siete veces después**. Eso corre el
+hallazgo de lugar: no falta la lección, falta un **control previo a publicar**. Las ocho, medidas:
 
 | # | El comando que corrí midió… | …y la frase que publiqué afirmó | El daño |
 |---|---|---|---|
@@ -223,13 +223,16 @@ hallazgo de lugar: no falta la lección, falta un **control previo a publicar**.
 | 5 | las filas de `BL-Q3` que había **mirado** (2) | «está partido en **dos** filas» | son **3** (`:380`, `:412`, `:440`) ⇒ el instrumento que cruza por id deja 2 mitades «sin diff», no 1 |
 | 6 | casillas de DoD que nombran auditoría, con el patrón **anclado** `^\s*-?\s*\[ \].*auditor` | «hay **1** trabajo mío escondido en los DoD» | son **3**: dos están *inline* en la misma línea del `- **DoD:**`, y una de ésas era justo el caso que había motivado la búsqueda |
 
-**Lo que las seis tienen en común:** el comando estuvo *bien*. Lo que falló es que la frase era más
+| 7 | en el **control de verificación de este mismo refuerzo**: cuántas marcas `AFINADA 08/10` / `RESUELTA 08/10` **agregaba yo** | «esperado 1 / esperado 2» | el documento ya tenía 2 y 1 de los PR anteriores del día ⇒ tres líneas del control salieron «REVISAR» sin que hubiera nada roto. El control heredó el error que iba a cazar |
+| 8 | el buzón en **`abierto/`** | «las 3 casillas de DoD, **ninguna** llegó nunca como `pedido_`» | `:1005` **sí** había llegado — `contrato_…BL-Q5…` — y estaba **cumplida** (la cerró frontend2, PR #938), en `cerrado/`, la carpeta que no miré. Publiqué la fila en `main` y la enmendé el mismo día |
+
+**Lo que las ocho tienen en común:** el comando estuvo *bien*. Lo que falló es que la frase era más
 grande que él — un cuantificador («no hay», «un solo lugar», «son cinco», «dos filas», «uno») que el
 comando nunca midió. **Un instrumento correcto no protege de una afirmación mal dimensionada**, y por
-eso ninguna de las seis dio síntoma: cada salida era verdadera sobre su propio sujeto.
+eso ninguna de las ocho dio síntoma: cada salida era verdadera sobre su propio sujeto.
 
 **El control es de orden, no de más herramienta:** escribir la afirmación **primero**, subrayarle el
-sujeto y el cuantificador, y **derivar el comando de ahí**. Las seis veces lo hice al revés — corrí el
+sujeto y el cuantificador, y **derivar el comando de ahí**. Las ocho veces lo hice al revés — corrí el
 comando que tenía a mano y le puse encima la frase que quería. La pregunta que lo caza en un renglón:
 
 > **¿el comando que corrí tiene el mismo sujeto y la misma amplitud que la frase que estoy a punto de escribir?**
@@ -251,3 +254,5 @@ ya estaba en el remoto, otro ya había viajado dentro de un PR ajeno, y tenía d
 adentro de DoD ajenos que mi cola —alimentada sólo por el buzón— no podía ver. Mi cola merece el mismo
 `git log --grep` + `git ls-remote` + grep de asignaciones que le exijo a cualquier documento ajeno —
 ver [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+**Las instancias 7 y 8 son las que más enseñan, porque salieron del PR que publicaba esta misma lección:** una puso como «esperado» lo que yo agregaba en vez de lo que el documento tenía — **un control puede heredar exactamente el error que existe para cazar** — y la otra midió `abierto/` para afirmar sobre el buzón entero, cuando el contraejemplo vivía en `cerrado/`. Moraleja operativa: **cuando el sujeto es un flujo con estados, el universo son TODOS los estados**; en este buzón, «no llegó nunca» se mide en `abierto/` + `en-curso/` + `cerrado/`, nunca en uno solo. Y lo que el caso 8 destapó vale aparte: un `contrato_` dirigido a mí lo ejecutó otra sesión y **mi cola no lo registró ni como tomado ni como cerrado** — no tengo instrumento que diga qué trabajo mío hizo otro.
