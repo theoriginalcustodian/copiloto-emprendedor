@@ -41,8 +41,42 @@ por un archivo que ya no existe.
 Los `log` de cada job, dentro del JSON, apuntan a rutas **dentro de `wt-gate-cierre`**: cuando ese
 worktree se pode, esas rutas dejan de resolver. El JSON y estas huellas son lo que queda.
 
-**Integridad de la copia:** `md5` del JSON = `4ff97e6839f90d3b3bfdc83ee1800740`, idéntico al original
-en `wt-gate-cierre` al momento de copiarlo.
+**Integridad de la copia — el control es el `blob sha1`, no un `md5`.**
+
+```
+git rev-parse origin/main:docs/copiloto-emprendedor/Auditorias/recibo-cierre-92fd8a06/92fd8a06ad3ef0eb748603aa2e88541522b82a4b.json
+# => b2b5d0cdf0c4742ffe24019f749a15962b3281c3
+```
+
+Ese sha1 se reproduce desde **cualquier** clon y **cualquier** OS, porque nombra el objeto que git
+guarda, no el archivo que cada checkout escribe. Verificable con
+`git show <ref>:<path> | git hash-object --stdin` (control positivo: da el mismo sha1; negativo: un
+byte agregado da otro).
+
+⚠️ **La primera versión de esta línea estaba mal, y vale escribir por qué.** Decía
+«`md5` del JSON = `4ff97e68…`, idéntico al original». Ese md5 es real, pero es el de **la copia de
+trabajo en una máquina Windows**, no el del contenido que recibe quien clona:
+
+| sujeto | md5 |
+|---|---|
+| el archivo en disco en este checkout (CRLF) | `4ff97e6839f90d3b3bfdc83ee1800740` |
+| el contenido tal como git lo guarda (LF) | `c4df00b66c53c80d789ad6157d412fde` |
+
+El JSON es **una sola línea** con un fin de línea al final; `core.autocrlf=true` lo normalizó a LF al
+commitearlo y lo reconstruye a CRLF al hacer checkout en Windows. Contenido idéntico (el JSON
+parseado compara igual, campo por campo), **bytes distintos** — así que un auditor en Linux o el CI
+hubiera medido `c4df00b6…`, leído `4ff97e68…` acá, y concluido que la copia estaba corrupta. **Un
+hash de control que depende del OS del que lo verifica no es un control.**
+
+Nota al margen que es un hallazgo en sí: `.gitattributes` fija `eol=lf` para `*.sh`, `*.bash`,
+`*.service`, `Dockerfile` y `*.snippet` —y su encabezado dice, con razón, «esto NO depende de la
+config git de cada máquina: viaja con el repo»— pero **no cubre `.json`**. O sea que los bytes de un
+**artefacto de evidencia** commiteado acá los decide el `core.autocrlf` de quien commitea. Para este
+archivo no importa (el control es el blob sha1), pero es la misma clase de no-determinismo que ese
+`.gitattributes` existe para matar.
+
+Los `md5` de los 5 logs de la tabla de arriba **no** tienen este problema: son los bytes en disco de
+archivos que nunca pasan por git.
 
 **Lo que esto NO resuelve.** El podador sigue sin guard por `.ci-recibos` no vacío (tiene uno para
 `_vigia-pins/` en `scripts/podar-worktrees.sh:202`), así que **el próximo recibo va a correr el mismo
