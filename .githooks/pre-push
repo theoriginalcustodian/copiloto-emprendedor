@@ -15,6 +15,20 @@ printf '%s
 ' "$REFS_STDIN" | bash "$SCRIPT_DIR/scripts/secretos-check.sh" --refs-stdin || {
   echo "[pre-push] ❌ secretos-check falló: el push se aborta (repo PÚBLICO)." >&2; exit 1; }
 
+# --- Gate de ATRIBUCIÓN (modo REPORTE) ------------------------------------------------
+# No bloquea: imprime qué fracción de los commits que se pushean cita un trabajo
+# autorizado. Existe porque había 17 gates midiendo CALIDAD y ninguno PERTINENCIA
+# (forense 2026-10-08: 64 PRs en un día, 4 del backlog, con 113 ids disponibles).
+# Pasa a bloqueante con UC_ATRIBUCION_BLOQUEA=1 cuando el operador lo decida; el umbral
+# se fija con el ratio medido, no con una intuición.
+# Un fallo del gate NO puede voltear un push en modo reporte: || true es deliberado.
+if [ -f "$SCRIPT_DIR/scripts/ci/atribucion.sh" ]; then
+  _base_atr="$(git merge-base origin/main HEAD 2>/dev/null || true)"
+  if [ -n "$_base_atr" ]; then
+    bash "$SCRIPT_DIR/scripts/ci/atribucion.sh" "$_base_atr..HEAD" || true
+  fi
+fi
+
 # -----------------------------------------------------------------------------
 # Sync del grafo de código (arco autopoiético)
 # -----------------------------------------------------------------------------
@@ -61,6 +75,7 @@ MARCADOR="$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
 ULTIMO="$(cat "$MARCADOR" 2>/dev/null || echo ninguno)"
 if [ "$MAIN_SHA" = "$ULTIMO" ]; then
   echo "[pre-push] (grafo ya sincronizado con origin/main @ ${MAIN_SHA:0:12} — nada que hacer)"
+
   exit 0
 fi
 echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sincronizando el grafo…"
