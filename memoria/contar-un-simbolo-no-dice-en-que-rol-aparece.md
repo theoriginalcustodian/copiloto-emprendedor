@@ -102,28 +102,28 @@ verla.
 
 Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[vacio-no-es-hallazgo-correr-el-control]].
 
-## Refuerzo 2026-10-08 — un conteo DEDUPLICADO no puede contar dano por ocurrencia
+## Refuerzo 2026-10-08 — un conteo DEDUPLICADO no puede contar daño por ocurrencia
 
-Mi invariante del bloque de hallazgos era `grep -oE '`H-[A-Z0-9]+`' | sort -u | wc -l` => **18 ids**.
-Anote 5 filas con un inserter que metia el texto **antes** del backtick de cierre, rompiendo el id de
-la fila (``H-DRIVEDISPATCH **[AFINADA...`). Rompi **4**. El contador bajo a **16**: acuso **2**.
+Mi invariante del bloque de hallazgos era `grep -oE '`H-[A-Z0-9]+`' | sort -u | wc -l` ⇒ **18 ids**.
+Anoté 5 filas con un inserter que metía el texto **antes** del backtick de cierre, rompiendo el id de
+la fila (``H-DRIVEDISPATCH **[AFINADA…`). Rompí **4**. El contador bajó a **16**: acusó **2**.
 
-**Por que subdetecto:** `sort -u` cuenta el **conjunto**, y 2 de los 4 ids roturados tenian **otra
-mencion** en el documento (la narrativa, otra fila que los cita) con el patron intacto. El id seguia
-«existiendo» para el conjunto mientras su **propia fila** lo tenia partido. => **un invariante
-calculado sobre un conjunto deduplicado es ciego al dano en una ocurrencia concreta, y el ciego crece
-con cuantas veces se menciona la cosa** — justo al reves de la intuicion: los ids mas citados son los
+**Por qué subdetectó:** `sort -u` cuenta el **conjunto**, y 2 de los 4 ids roturados tenían **otra
+mención** en el documento (la narrativa, otra fila que los cita) con el patrón intacto. El id seguía
+«existiendo» para el conjunto mientras su **propia fila** lo tenía partido. ⇒ **un invariante
+calculado sobre un conjunto deduplicado es ciego al daño en una ocurrencia concreta, y el ciego crece
+con cuántas veces se menciona la cosa** — justo al revés de la intuición: los ids más citados son los
 **menos** protegidos por el conteo.
 
-**El control que si mide, y es una linea:** contar **por item**, no por conjunto —
+**El control que sí mide, y es una línea:** contar **por ítem**, no por conjunto —
 
     filas=$(grep -cE '^2026-..-.. \| ' $D)
     con_id=$(grep -E '^2026-..-.. \| ' $D | grep -cE '`H-[A-Z0-9]+`')   # deben ser iguales
 
-«cada fila conserva su id en backticks» no se puede satisfacer con la mencion de otro renglon. El
-invariante viejo preguntaba *«siguen existiendo los 18 ids?»*; el que hacia falta es *«sigue cada fila
-teniendo el suyo?»*.
+«cada fila conserva su id en backticks» no se puede satisfacer con la mención de otro renglón. El
+invariante viejo preguntaba *«¿siguen existiendo los 18 ids?»*; el que hacía falta es *«¿sigue cada
+fila teniendo el suyo?»*.
 
-Pariente de [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] (ahi el grano era el archivo
-vs lo de adentro; aca el conjunto vs la ocurrencia) y de
+Pariente de [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] (ahí el grano era el archivo
+vs lo de adentro; acá el conjunto vs la ocurrencia) y de
 [[el-veredicto-no-dice-cuantas-veces-lo-miraron]].
