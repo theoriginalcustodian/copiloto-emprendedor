@@ -228,3 +228,30 @@ que ya existe, o «arregla» código correcto. Por eso un hallazgo que se desinf
 buen resultado, y ninguno de los dos llegó al buzón. Ver también
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] — ahí el instrumento no
 mira una mitad; acá mira la mitad correcta con una lente que sólo reconoce un dialecto.
+
+## Refuerzo — el «ROJO» que en realidad era «YA ESTÁ HECHO» (2026-10-08)
+
+Mismo mecanismo, caso nuevo y con número. Dejé un loop de merge esperando que `ci-verde.sh 934`
+diera verde. Las **10 vueltas** imprimieron:
+
+```
+[1..10] ROJO — SIN MEDIR: el CI pasó, pero GitHub no informa si el PR es mergeable (UNKNOWN/UNKNOWN)
+AGOTADO
+```
+
+**El #934 estaba MERGED desde 20 minutos antes** (`gh pr view 934 --json state` → `MERGED`,
+`mergedAt 13:30:19Z`). GitHub devuelve `mergeable=UNKNOWN` para un PR **ya mergeado** — no hay nada
+que mergear, así que la pregunta no tiene respuesta. El script la hace igual y traduce el silencio a
+`ROJO`.
+
+**Lo que hace esto peor que un falso rojo común:** el veredicto es `ROJO — SIN MEDIR … volvé a
+correrlo`, o sea **manda a reintentar lo que ya está terminado**. Un falso rojo sobre código te hace
+revisar código bueno; éste te hace **esperar un evento que ya pasó**, y la espera no tiene fin propio
+—el loop se agota solo y el resultado se lee como fracaso. Es el mismo defecto de clase que
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] visto del otro lado: el instrumento no distingue
+**«todavía no se puede medir»** de **«ya está hecho»**, y colapsa las dos en la peor de las dos.
+
+**El control, y es una línea:** antes de preguntar `mergeable`, preguntar `state`. `MERGED` y `CLOSED`
+no son estados en los que `mergeable` signifique algo — `gh pr view N --json state,mergeable` trae las
+dos en la misma llamada, así que no cuesta nada. La pregunta que lo caza: **¿mi instrumento tiene una
+respuesta para «la tarea ya está hecha», o sólo para «sí» y «no»?**
