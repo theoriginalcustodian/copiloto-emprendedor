@@ -668,6 +668,68 @@ if [ "$medicion_fallida" -gt 0 ]; then
   echo "   -> el silencio de este reporte NO es dato: esos archivos quedaron sin mirar."
 fi
 
+# ── GC DE SIDECARS HUÉRFANOS ───────────────────────────────────────────────────────────────────
+# El sidecar vive y muere CON su mensaje (`test-escalador-retira-urgente-obsoleto.sh:20`: «se va
+# con el archivo → si la causa vuelve, edad nueva»). Pero sólo se migra o se borra cuando el
+# escalador TODAVÍA VE el mensaje: el que se archivó se lleva el mensaje y deja el sidecar. Medido
+# el 2026-10-08 en el buzón real: **150 archivos de estado, 60 de ellos con la forma legacy** (sin
+# el sufijo `.first-seen`), y el mensaje de 58 ya no existe en ninguna parte.
+#
+# POR QUÉ NO ES BASURA INOCUA: el nombre del sidecar es el del mensaje, así que **un nombre reusado
+# HEREDA la sombra**. La rama de migración (`:224`) lo adopta con su timestamp viejo ⇒ el mensaje
+# nuevo **nace ya escalado**, con una edad de hasta dos meses que nadie escribió. Y la forma legacy
+# además colisiona por nombre con el mensaje: ése es exactamente el accidente que costó 33 líneas
+# de una corrección de alcance del `pedido_` BL-Q4 (ver :68-74) — un `>>` a la ruta equivocada no
+# da ningún error.
+#
+# ⚠️ LA DISCRIMINACIÓN QUE IMPORTA, y el primer diseño la tenía mal: un conjunto vivo **vacío** es
+# un estado LEGÍTIMO (todo archivado) y entonces purgar todo es CORRECTO. Lo que hay que distinguir
+# no es «vacío» de «no vacío», es **«no pude mirar» de «miré y no hay»** — y eso se contesta por la
+# EXISTENCIA de los directorios, no por el conteo. Si falta alguno, el GC se omite y lo dice.
+gc_examinados=0; gc_purgados=0; gc_omitido=""
+if [ -d "$SIDECAR_DIR" ]; then
+  if [ -d "$ABIERTO" ] && [ -d "$ENCURSO" ]; then
+    _gc_vivos="$SIDECAR_DIR/.gc-vivos.$$"
+    _gc_lista="$SIDECAR_DIR/.gc-lista.$$"
+    find "$ABIERTO" "$ENCURSO" -maxdepth 1 -type f -name '*.md' 2>/dev/null \
+      | while IFS= read -r _m; do basename "$_m"; done | sort -u > "$_gc_vivos" 2>/dev/null || : > "$_gc_vivos"
+    # `-maxdepth 1` y el filtro por nombre dejan afuera los propios temporales del GC.
+    find "$SIDECAR_DIR" -maxdepth 1 -type f ! -name '.gc-*' 2>/dev/null > "$_gc_lista" || : > "$_gc_lista"
+    # El `while` lee por REDIRECCIÓN, no por pipe: en un pipe el cuerpo corre en un subshell y los
+    # contadores se pierden al volver — el mismo defecto que este archivo ya documenta en otra parte.
+    while IFS= read -r _s; do
+      [ -n "$_s" ] || continue
+      gc_examinados=$(( gc_examinados + 1 ))
+      _b="$(basename "$_s")"
+      case "$_b" in *"$SIDECAR_SUF") _b="${_b%$SIDECAR_SUF}" ;; esac
+      if grep -qxF "$_b" "$_gc_vivos" 2>/dev/null; then continue; fi
+      if [ "$DRY_RUN" != "0" ]; then
+        gc_purgados=$(( gc_purgados + 1 )); continue
+      fi
+      rm -f "$_s" 2>/dev/null && gc_purgados=$(( gc_purgados + 1 ))
+    done < "$_gc_lista"
+    rm -f "$_gc_vivos" "$_gc_lista" 2>/dev/null || true
+  else
+    gc_omitido="no existe $ABIERTO o $ENCURSO: no pude saber que mensajes siguen vivos"
+  fi
+fi
+# Se imprime SIEMPRE que haya algo que examinar, incluso con 0 purgados: el denominador es lo que
+# distingue "mire 150 y ninguno estaba huerfano" de "no mire nada". Un instrumento que no mira
+# nunca falla.
+if [ -n "$gc_omitido" ]; then
+  echo "GC de sidecars OMITIDO (no es un cero): $gc_omitido"
+elif [ "$gc_examinados" -gt 0 ]; then
+  if [ "$DRY_RUN" != "0" ]; then
+    echo "GC de sidecars (DRY-RUN): $gc_examinados examinado(s), PURGARIA $gc_purgados huerfano(s)."
+  else
+    echo "GC de sidecars: $gc_examinados examinado(s), $gc_purgados huerfano(s) purgado(s)."
+  fi
+  if [ "$gc_purgados" -gt 0 ]; then
+    echo "   -> no es alarma: su mensaje ya no existe. Se borran para que un nombre REUSADO no"
+    echo "      herede la edad vieja y nazca escalado."
+  fi
+fi
+
 if [ "${retirados_obsoletos:-0}" -gt 0 ] 2>/dev/null; then
   echo "LIMPIEZA: ${retirados_obsoletos} urgente_ obsoleto(s) del propio escalador. No es alarma:"
   echo "   su causa ya no existe, y mientras seguian en abierto/ mantenian el gate en rojo."

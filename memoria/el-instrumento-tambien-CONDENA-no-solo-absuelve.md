@@ -294,3 +294,50 @@ reproduje yo esta tarde sobre `#943` ya mergeado —`state=MERGED`, `mergeable=U
 `SUCCESS`, veredicto «ROJO — SIN MEDIR … volvé a correrlo»— y era **verdadera**. Dos candidatos a
 falso rojo en una hora, uno real y uno mío: la diferencia no la dio el olfato, la dio **correr el
 mecanismo** en los dos casos.
+
+---
+
+## 🔁 Refuerzo 2026-10-08 — el archivo **enunciaba el principio** y lo violaba en el caso más frecuente
+
+`ci-verde.sh` daba `rc=1` con los jobs **corriendo**, y su última línea decía *«hay al menos un job
+ausente o fallado»*. Lo cazó AUDITORÍA sobre el PR #948: los 6 jobs `IN_PROGRESS`/`QUEUED`, **cero
+fallados**. Un falso rojo, de la misma familia que esta entrada ya nombra.
+
+**Lo nuevo, y es lo que vale guardar:** el archivo **ya tenía escrito el principio que violaba**.
+En `ci-verde.sh:265-267`, a propósito de otro caso:
+
+> *«las causas NO se funden en un solo código … un CONFLICTING no es "mirá tu código" (exit 1) ni
+> "no pude medir" (exit 2) … Fundirlos es la forma de que el falso rojo enseñe a saltear el gate.»*
+
+Y no lo había aplicado **al caso más frecuente de todos**: cualquier PR recién abierto. Igual
+`mergear-pr.sh`, cuyo docstring `:18` dice *«cada causa con el suyo»* y que, por **delegar** el
+gate, heredaba la fusión y la repetía un nivel más arriba.
+
+### Por qué la enunciación ESCONDE en vez de proteger
+
+Un archivo que argumenta su propio principio **se lee como cumplido**. El lector —incluido el que
+lo escribió— ve el párrafo, reconoce el criterio, y no audita las ramas contra él. La regla
+presente es evidencia de que **alguien pensó el problema una vez**, no de que todas las salidas lo
+obedezcan. ⇒ **Cuando un archivo declara una regla, grepeá sus PROPIAS ramas contra esa regla.** El
+párrafo es el lugar donde empezar a dudar, no donde dejar de hacerlo.
+
+### Y el segundo filo: un detalle CORRECTO enmascara un veredicto FUSIONADO
+
+La fusión sobrevivió meses porque **la línea por job sí distinguía** — `:236` imprime «está
+CORRIENDO, no pasó». Quien leía la salida completa veía la palabra correcta y asumía que el
+veredicto la conocía. Lo que no distinguía era **la última línea y el exit code**, que es lo que
+se lee cuando hay apuro y lo único que lee un script.
+
+> **Pregunta que lo caza:** *¿el resumen dice lo mismo que el detalle?* Si el detalle tiene tres
+> estados y el veredicto tiene dos, hay una fusión, y vive justo donde nadie mira dos veces.
+
+**El arreglo** (PR #954): `exit 3` para el todavía-no, **estrecho a propósito** —cero fallados,
+cero ausentes, cero indeterminados y al menos uno corriendo—, status **enumerados** y no comodín, y
+propagado a `mergear-pr.sh` con su propio `exit 5`. El texto sigue diciendo ROJO para no romper el
+invariante `{VERDE, ROJO}`: lo que cambia es el código y el diagnóstico, no el fail-closed.
+
+**Un defecto propio, en el mismo arreglo, que sólo cazó el test:** el `if` quedó partido por un
+`\n` **literal** donde iba una continuación de línea ⇒ bash lee `[ … ] n && …`, tira *too many
+arguments*, y **el `if` es siempre falso, en silencio**. El arreglo no se activaba y **nada daba
+síntoma** salvo el caso que lo ejercitaba. Un guard introducido con un error de sintaxis que no
+aborta es indistinguible de un guard ausente — [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
