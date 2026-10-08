@@ -1065,7 +1065,10 @@ No bloquean la beta. Cada uno con su condición de entrada.
 La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mismo SHA de `main`:
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).
-2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD, y los `BL-X` cuya decisión los mantuvo en la beta.
+2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD **o explícitamente diferidos por acta** — misma cláusula que el punto 1 ya admite para los `DEC-*` —, y los `BL-X` cuya decisión los mantuvo en la beta.
+   > 🖊️ **`DEC-16` (2026-10-08).** **Un ítem con decisión de diferimiento firmada no cuenta como incumplido: cuenta como FUERA de este cierre**, y se mide en el cierre al que el acta lo movió. Sin esta cláusula el punto exigía cerrar lo que `DEC-12` (21/09) ya había diferido — **incumplible por firma, no por trabajo pendiente**.
+   > **Medido en `main` el 2026-10-08, los que salen por esto:** `BL-O1` · `BL-O2` · `BL-O5` · `BL-O7` (los cuatro **DIFERIDO a Cierre B** por `DEC-12`) y `BL-O3` (**ATADO a EAS**). Quedan dentro `BL-O4`, `BL-O6` y `BL-O8`, que no tienen diferimiento firmado.
+   > **El punto 1 no se enmendó**: ya tenía la cláusula y está ✅ — de ahí salió esta redacción. El defecto no era «gemelo»: era **el punto 2 al que le faltó copiarla**.
 3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5` — la lista es [`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`](2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md) §2, **54 ids** —, contra el prototipo final de Martín (`BL-P2`).
 4. `smoke_beta_e2e.py` en verde contra prod (`BL-Q2`) y durabilidad demostrada (`BL-B1`).
 5. Un tester que no es del equipo completa, sin ayuda y en su propio teléfono: alta → conectar una app → dictar un gasto → emitir una factura en homologación → pedir soporte. Con video.
