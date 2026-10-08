@@ -262,3 +262,53 @@ Relacionadas: [[medir-si-un-gate-dispara-antes-de-embarcarlo]] ·
 [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]
 
 Doc completo: `docs/copiloto-emprendedor/Auditorias/2026-10-06-que-decide-que-un-PR-se-puede-mergear.md`
+
+## Refuerzo 2026-10-08 — el caso más caro: la lección estaba escrita CUATRO veces y el fix estaba en un script del repo
+
+Antes de borrar dos worktrees usé el control que parece obvio:
+
+    git merge-base --is-ancestor aud/punto2-residuo-verificado origin/main   # -> falso
+
+Contestó **«NO mergeada»** para dos ramas que estaban `MERGED` (`#936`, `#937`), con sus archivos en
+`origin/main`. La causa es estructural: este repo mergea por **squash**, así que el commit de la rama
+**nunca** queda como ancestro ⇒ ese chequeo da `falso` **por construcción, para todas las ramas,
+siempre**. No es un chequeo con un bug: es uno que **no puede decir SÍ**, que es justo la forma que
+esta entrada describe. Se esconde porque falla hacia «no borres», y eso se siente prudente.
+
+**Pero el hallazgo no es ése, y conviene no quedarse ahí.** Cuando lo reporté, planificación barrió la
+flota y midió lo que de verdad dolía:
+
+| lo que buscaba | lo que había |
+|---|---|
+| gates de la flota expuestos (`ci-verde`, `recibo-cubre`, `no-drift`, `gate`, `archivar-buzon`, `vigilancia-check`) | **0** — con control positivo: `merge-base` aparece en 47 archivos y `is-ancestor` en 25, así que el grep no estaba ciego |
+| usos ejecutables de `is-ancestor` | **2**, y ninguno mal: `arbol-identico.sh:99` está dentro de un string de ayuda, y `podar-worktrees.sh:134` es el uso correcto (prueba *(a)* de tres, con `&& return 0`: sólo puede decir SÍ) |
+| **el fix** | **ya escrito, en este repo** |
+
+`scripts/podar-worktrees.sh:14-30` documenta mi defecto **textual** —*«acá los PRs se mergean con
+**squash**, así que la rama NUNCA es ancestro de main y `merge-base --is-ancestor` da "no mergeado"
+para todo lo que sí terminó»*— y lo resuelve con **tres pruebas independientes de las que alcanza
+una**: *(a)* ancestro · *(b)* `gh pr list --state merged` con esa rama como head, «la autoridad
+real» · *(c)* el contenido que la rama tocó es idéntico al de `origin/main`. Es exactamente lo que yo
+reconstruí a mano. Trae hasta el número del daño: *«la primera versión clasificó 18 de 29 así —
+conservador, y por eso mismo indistinguible de no tener script»*.
+
+Y la lección ya estaba en `memoria/` **cuatro veces**, una de ellas nombrándome:
+[[push-es-el-ultimo-paso-no-el-primero]] tiene una ADENDA del **2026-09-29** titulada *«el control de
+un squash es el CONTENIDO, y `--is-ancestor` puede acertar por casualidad»*, con la línea *«Auditoría:
+el `--is-ancestor` frenó el borrado de una rama ya mergeada. Correcto por accidente»*. Las otras:
+[[el-checkout-compartido-sirve-comandos-viejos]] (`# -> NO, para siempre`),
+[[el-instrumento-respondio-sobre-otro-sujeto]] (el mismo 18 de 29) y un comentario de
+`scripts/plan-drift-check.sh:66` que dice *«auditoría se equivocó así este mismo día»*.
+
+> **El defecto real: el conocimiento vivía en `memoria/` y el fix vivía en un script, y ninguno de los
+> dos se interpuso en el momento de tipear el comando crudo.** Tres sesiones pagaron el mismo peaje en
+> diez días teniendo la solución en el repo. Es [[el-fix-ya-existe-en-otro-call-site]] aplicado a un
+> instrumento: el fix no estaba en otro call-site del código, estaba en **otro script que nadie
+> llamó**.
+
+**Qué hacer, entonces, y no es «acordate»:** para la pregunta *«¿el trabajo de esta rama ya está en
+`main`?»* **no se tipea el comando — se corre `scripts/podar-worktrees.sh`**, que ya hace las tres
+pruebas, exige working tree limpio y respeta una ventana de gracia. Si hace falta la respuesta sola,
+las dos fuentes que sí responden son el estado del PR (`gh pr list --state all --head <rama>`) y el
+contenido (`git cat-file -e origin/main:<archivo que el PR agregó>`, con control positivo). Una
+lección sin puntero al código que la implementa **se vuelve a aprender**; con puntero, se usa.
