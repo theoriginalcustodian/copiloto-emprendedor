@@ -9,6 +9,8 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 ME_CONTRATO_REAL="$REPO_ROOT/apps/copiloto/me_contrato.py"
+LOGIN_CONTRATO_REAL="$REPO_ROOT/apps/copiloto/auth_login_contrato.py"
+RUN_SMOKE_PROD="$REPO_ROOT/scripts/run-smoke-prod.sh"
 PY="${PYTHON:-python3}"
 fallos=0
 
@@ -17,6 +19,7 @@ chk() {  # chk <nombre> <cond 0/1> [detalle]
 }
 
 [ -f "$ME_CONTRATO_REAL" ] || { echo "FAIL no encuentro $ME_CONTRATO_REAL — ¿cambió el path?"; exit 1; }
+[ -f "$LOGIN_CONTRATO_REAL" ] || { echo "FAIL no encuentro $LOGIN_CONTRATO_REAL — ¿cambió el path?"; exit 1; }
 
 # 1) REGRESIÓN: el patrón viejo de run-smoke-prod.sh (stdin puro, CWD ajeno) seguía roto si alguien
 #    lo reintroduce. Si esto alguna vez imprime un número en vez de ModuleNotFoundError, significa
@@ -52,6 +55,33 @@ out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u UC_ME_CONTRATO_PATH "$PY" -c \
 rc=$?
 chk "fail-closed: sin UC_ME_CONTRATO_PATH y sin árbol relativo real ⇒ falla (no inventa un número)" \
   "$([ $rc -ne 0 ] && echo 1 || echo 0)" "rc=$rc out=$out"
+
+# 4) MISMO MECANISMO, para el hermano que MECLAVESRESTO agregó (UC_LOGIN_CONTRATO_PATH /
+#    cargar_claves_login_declaradas). Hallazgo 2026-10-08: el smoke real falló contra prod
+#    (FileNotFoundError de auth_login_contrato.py) porque run-smoke-prod.sh exportaba
+#    UC_ME_CONTRATO_PATH pero nadie agregó el override hermano al wirear /auth/login — el mismo
+#    bug de SMOKESTDIN, reintroducido por no propagar el patrón al segundo contrato.
+cp "$LOGIN_CONTRATO_REAL" "$TMP_DEPLOYED/apps/copiloto/auth_login_contrato.py"
+
+out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH UC_LOGIN_CONTRATO_PATH="$TMP_DEPLOYED/apps/copiloto/auth_login_contrato.py" "$PY" -c \
+  'from meclaves_check import cargar_claves_login_declaradas; print(len(cargar_claves_login_declaradas()))' 2>&1)"
+rc=$?
+chk "mecanismo nuevo (login): import como ARCHIVO desde el tmpdir + UC_LOGIN_CONTRATO_PATH al árbol desplegado ⇒ 7 claves" \
+  "$([ $rc -eq 0 ] && [ "$out" = "7" ] && echo 1 || echo 0)" "rc=$rc out=$out"
+
+out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u UC_LOGIN_CONTRATO_PATH "$PY" -c \
+  'from meclaves_check import cargar_claves_login_declaradas; print(len(cargar_claves_login_declaradas()))' 2>&1)"
+rc=$?
+chk "fail-closed (login): sin UC_LOGIN_CONTRATO_PATH y sin árbol relativo real ⇒ falla (no inventa un número)" \
+  "$([ $rc -ne 0 ] && echo 1 || echo 0)" "rc=$rc out=$out"
+
+# 5) EL CANARIO QUE FALTABA: que el RUNNER REAL exporte los DOS overrides, no sólo el de /me.
+#    Sin este chequeo, los tests 2-4 pasan en aislamiento aunque run-smoke-prod.sh se olvide de
+#    exportar una de las dos variables — que es exactamente lo que pasó.
+chk "run-smoke-prod.sh exporta UC_ME_CONTRATO_PATH" \
+  "$(grep -q "export UC_ME_CONTRATO_PATH=" "$RUN_SMOKE_PROD" && echo 1 || echo 0)" "revisar $RUN_SMOKE_PROD"
+chk "run-smoke-prod.sh exporta UC_LOGIN_CONTRATO_PATH" \
+  "$(grep -q "export UC_LOGIN_CONTRATO_PATH=" "$RUN_SMOKE_PROD" && echo 1 || echo 0)" "revisar $RUN_SMOKE_PROD"
 
 rm -rf "$CWD_AJENO" "$TMP_SMOKE" "$TMP_DEPLOYED"
 if [ "$fallos" -eq 0 ]; then echo "==> OK: import de meclaves_check resuelve por el camino de run-smoke-prod.sh"; exit 0; fi
