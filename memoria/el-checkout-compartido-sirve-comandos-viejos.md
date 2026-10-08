@@ -123,3 +123,62 @@ que `main` es el que está adelante.
 por pertenencia de commits — y antes de mandársela a otra sesión, con la dirección del diff escrita. Ver
 [[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]] y
 [[push-es-el-ultimo-paso-no-el-primero]].
+
+---
+
+## Refuerzo 2026-10-08 — el instrumento que **ejecuta** el checkout hereda su versión, y no lo sabe
+
+Hasta hoy esta entrada era sobre *afirmar* desde un checkout viejo. Lo nuevo es que el **instrumento
+mismo** puede ser el viejo, y entonces el error no está en la afirmación: está en la medición que la
+respalda.
+
+BACKEND levantó 14 filas del tablero con «estado no reconocido» y lo diagnosticó como *«la lista de
+enums válidos quedó vieja»*. Era falso: `cola-check.sh` en `main` ya reconocía `⏸*` (`:140`) y
+`⏳*` (`:154`). **Lo viejo era el archivo que se ejecutaba.** Test diferencial, mismo `PLAN.md`:
+
+| | checkout compartido (`4a9f4f7c`) | `origin/main` |
+|---|---|---|
+| enums «no reconocidos» | **14** | **0** |
+| frentes activos | *no los reporta* | **4 en paralelo** |
+| `arrancando` | `SMTPLINKPROD` | `SNIPPETMIENTE` |
+| bloqueados `⏳` | *ninguno* | 4 filas |
+| **exit code** | **0** | **0** |
+
+Atribución: `git diff HEAD origin/main -- scripts/cola-check.sh` = **+119/-12**. Control positivo: un
+canario con el enum roto a propósito **sí** lo caza la versión de `main`, así que el 0 es un cero real.
+
+**Las dos corridas salen `rc=0`.** O sea el vigilante decía «sin novedades» mientras ocultaba 4 items
+bloqueados y nombraba otro frente activo. `vigilancia-check.sh:39` resuelve `REPO_ROOT` desde
+`BASH_SOURCE`: **la versión de cada pieza la decide desde qué checkout lo invocás**, y los crones lo
+invocan desde el compartido.
+
+### DOS CLASES DE MEDICIÓN, y se trataban como una
+
+- **Lee `<ref>:<path>`** (`git show origin/main:x`, `git grep <ref>`, `git log <ref>`) → **inmune** al
+  checkout: contesta sobre el objeto del ref.
+- **Ejecuta un script del working tree** → **hereda** su versión.
+
+La pregunta que separa las dos: *¿mi veredicto salió de un objeto de git o de un archivo del disco?*
+
+### Y el defecto del guard que escribimos para esto, que es la mejor parte
+
+`git diff <ref> -- <path>` **absuelve en falso a una pieza untracked**: sólo mira archivos trackeados,
+así que para un script nuevo sin commitear dice **«sin diferencia»**. El guard recién hecho no listaba
+**su propia librería** por eso. Es un guard que falla hacia el «no hay nada» — el que no da síntoma.
+
+```bash
+git diff --quiet <ref> -- <path>      # untracked -> rc 0, "sin diferencia". MIENTE.
+git cat-file -e <ref>:<path>          # la pregunta por el OBJETO. rc!=0 -> no está en el ref.
+```
+
+Y antes de eso, el **test de completitud** cazó al autor en la primera corrida: la lista de piezas
+vigiladas no incluía la librería del guard. Una lista que hay que acordarse de actualizar se
+desincroniza y deja pasar justo la pieza nueva — se deriva del fuente y se compara, no se mantiene a
+mano. Ver [[el-guard-que-caza-a-su-propio-autor]],
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]], [[el-instrumento-respondio-sobre-otro-sujeto]] y
+[[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]].
+
+**Fix de raíz, no disciplina:** `scripts/lib/version-instrumento.sh` + bloque `0.bis` de
+`vigilancia-check.sh`, que compara por **contenido** (no por HEAD: por HEAD gritaría en cada latido y
+se desarmaría solo) las 8 piezas que ejecuta, incluido él mismo, y da `rc=2` —no un pase— cuando no
+puede verificar.
