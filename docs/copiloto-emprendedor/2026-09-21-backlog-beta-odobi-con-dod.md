@@ -1071,8 +1071,10 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 **No es criterio de la beta** (§13 mide el producto, y está bajo una decisión binaria abierta): es un paso **obligatorio del cierre de sprint**, cualquiera sea el veredicto de §13.
 
 ```
-bash scripts/podar-worktrees.sh          # primero en DRY-RUN, mirá qué propone
-bash scripts/podar-worktrees.sh --aplicar
+# ⚠️ LOS DOS FLAGS IMPORTAN. Sin `--base` el podador mira **1 de 54** y dice
+# «1 podable», que se lee como «ya está limpio». Con `--base` mira 48 y encuentra 21.
+bash scripts/podar-worktrees.sh --base /c/gfw-src            # DRY-RUN (default)
+bash scripts/podar-worktrees.sh --base /c/gfw-src --podar    # y recien ahi borra
 ```
 
 ⚠️ **Y el veredicto NO es que el script termine bien** — ahí está la trampa, medida el 2026-10-08:
@@ -1080,8 +1082,8 @@ bash scripts/podar-worktrees.sh --aplicar
 | medición | 2026-10-08 |
 |---|---|
 | worktrees **registrados** (`git worktree list`) | **52** |
-| directorios **en disco** (`ls -d C:/gfw-src/wt-*`) | **117** |
-| **huérfanos invisibles** al podador | **65** |
+| directorios **en disco** (`ls -d C:/gfw-src/*/`) | **140** (medido 2026-10-08, cierre) |
+| **huérfanos invisibles** al podador | **86** |
 
 La causa (hallazgo de auditoría, confirmada): en Windows `git worktree remove` **falla sobre el junction de `node_modules` y desregistra igual**. El directorio queda en disco y **fuera de `git worktree list`** ⇒ el podador, que itera esa lista, **no puede verlo nunca más**: cada poda parcial fabrica un huérfano que ninguna poda posterior alcanza. Por eso el cierre se verifica contando **las dos cosas**:
 
@@ -1091,7 +1093,22 @@ echo "registrados: $(git worktree list | wc -l)  en disco: $(ls -d C:/gfw-src/wt
 
 Si los dos números no convergen, la poda **no terminó**: quedan directorios con archivos que nadie va a mirar. Antes de borrar un huérfano, medir si tiene WIP **por contenido** (`git hash-object` + `cat-file --batch-check` contra el repo), **nunca por `mtime`**: un worktree limpio recién creado dio **1859** archivos «tocados» por fecha — su propio control positivo mató esa métrica.
 
-Y **los pines de `_vigia-pins/` no se podan**: pasan las tres guardas del podador (detached en `main`, limpios, contenidos en `main`), así que se borrarían en cada corrida y el monitoreo caería a DEGRADADO. La exclusión ya está en `scripts/podar-worktrees.sh`.
+Y **los pines de `_vigia-pins/` no se podan**: pasan las tres guardas del podador (detached en `main`, limpios, contenidos en `main`), así que se borrarían en cada corrida y el monitoreo caería a DEGRADADO. La exclusión ya está en `scripts/podar-worktrees.sh:202`.
+
+> 🚨 **Dos correcciones a ESTA MISMA sección, medidas una hora después de escribirla — y la segunda es la peligrosa.**
+>
+> **(1) `--aplicar` NO EXISTE.** El flag de borrado es **`--podar`** (`podar-worktrees.sh:69`); `--aplicar` tiene **0 ocurrencias** en el script. Esta sección mandaba un flag inexistente. **Gravedad baja**, porque un flag desconocido cae en el `*)` del parser y sale con `exit 2` y *«opción desconocida»*: **falla ruidoso, no engaña.**
+>
+> **(2) Faltaba `--base /c/gfw-src`, y ESE sí engaña.** El default del podador es `.claude/worktrees/`, no `C:/gfw-src/` — donde viven **todos** los worktrees de las cuatro sesiones. Medido el 2026-10-08, el mismo comando con y sin el flag:
+>
+> | corrida | analizados | podables | el resto |
+> |---|---|---|---|
+> | `podar-worktrees.sh` (como decía esta sección) | **1 de 54** | **1** | 53 *«fuera de las bases declaradas»* |
+> | `podar-worktrees.sh --base /c/gfw-src` | **48 de 54** | **21** | 4 sucios · 2 no mergeados · 21 en gracia · 7 huérfanos |
+>
+> **El patrón: una orden correcta con el comando incompleto produce un éxito falso.** El script no falla, informa «1 podable», y quien la ejecute concluye que el repo ya estaba limpio — con 21 worktrees podables intactos. **Lo cazó la propia línea de control del podador** (*«1 de 54 worktrees entraron al analisis — un conteo de podables NO se lee sin esta linea»*), que existe exactamente para esto: **un instrumento que no dice cuántos elementos miró no se puede leer.** Sin esa línea, «1 podable» y «todo limpio» son indistinguibles.
+>
+> ⚠️ **Y una ceguera que queda declarada, no resuelta:** con `--base /c/gfw-src` el guard de `_vigia-pins/` **no se ejercita**, porque los pines viven en `C:/Proyectos/Claude/Claude code/_vigia-pins/` — otra ruta, así que quedan fuera de base y nunca llegan al `case` del guard. Un control que cuente «pines ignorados = 0» da **0 tanto si el guard funciona como si nunca se alcanzó**: es un control ciego. Para ejercitarlo de verdad hay que pasar **las dos bases** (`--base` es repetible) y recién ahí el «0 podable» de los pines significa algo.
 
 ---
 

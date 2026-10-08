@@ -449,3 +449,10 @@ lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pushe
   _Bajada del índice el 2026-10-06 por presupuesto (24.000 bytes). Su forma general ya circula arriba en `un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia` y `el-canario-tiene-que-ser-tan-nuevo-como-lo-que-buscas`: el caso concreto queda acá, buscable._
 - [🌳🧮 El medidor mide el ÁRBOL donde vive, no el que publicás](el-medidor-mide-el-arbol-donde-vive-no-el-que-publicas.md) — corrido en el checkout sucio dijo «5 huérfanas»; en `main` ya eran 377/377 y el PR metió 5 duplicados. El control verificó que los archivos existían, no que faltara la línea.
 - [🗺️🚫 PLANIFICACIÓN no implementa: baja contratos y destraba](planificacion-no-implementa-baja-contratos.md) — implementar desde acá pisa a la sesión dueña. — **bajada del índice 2026-10-07**: la norma de rol ya viaja en los 3 prompts de cron y en COORDINACION.md, así que ocupaba presupuesto para repetir algo que toda sesión ya carga.
+
+## Bajadas del índice — 2026-10-08 (cierre del sprint)
+
+Bajadas por **techo de chars**, no por obsolescencia: el índice estaba a **23.924/24.000** y había que hacer lugar para las dos lecciones del cierre. Las dos siguen vigentes y buscables; se eligieron por ser las más **específicas de un episodio ya cerrado** (el árbol mezclado de octubre y el barrido de 10 ramas), no por ser menos verdaderas.
+
+- [📏🌳 El medidor corrido en el ÁRBOL MEZCLADO acusa al repo](el-medidor-corrido-en-el-arbol-mezclado-acusa-al-repo.md) — y el disco estaba 11.713 líneas ATRASADO: commitearlo borraba.
+- [🔄 El merge-base restado no ve que main lo REESCRIBIÓ](restar-el-merge-base-no-distingue-que-main-lo-reescribio-mejor.md) — 10/10 ramas: atraso. Decidí por FUNCIÓN.

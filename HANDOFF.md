@@ -252,7 +252,7 @@ for u in json.load(sys.stdin).get(\"users\",[]):
 
 ### 5.6 Al CERRAR el sprint: podar worktrees (obligatorio)
 
-`bash scripts/podar-worktrees.sh` (DRY-RUN) y después `--aplicar`. **El veredicto no es que el script termine bien:** en Windows el `remove` falla sobre el junction de `node_modules` y **desregistra igual**, así que cada poda parcial deja un huérfano que ninguna poda posterior ve. Medido el 2026-10-08: **52 registrados contra 117 en disco ⇒ 65 invisibles.** Se verifica contando las dos cosas, y un huérfano se juzga por **contenido**, no por `mtime`. Detalle y procedimiento: §13.bis del backlog de la beta.
+`bash scripts/podar-worktrees.sh --base /c/gfw-src` (DRY-RUN) y después el mismo comando con **`--podar`**. ⚠️ **Los dos flags importan y hasta el 2026-10-08 esta línea los tenía mal los dos:** `--aplicar` **no existe** (el flag es `--podar`, y el inexistente sale con `exit 2`, así que al menos falla ruidoso) y **sin `--base /c/gfw-src` el podador mira 1 de 54 y dice «1 podable»** — con el flag mira 48 y encuentra **21**. Ese es el error que engaña: produce un éxito falso en vez de un error. **El veredicto no es que el script termine bien:** en Windows el `remove` falla sobre el junction de `node_modules` y **desregistra igual**, así que cada poda parcial deja un huérfano que ninguna poda posterior ve. Medido el 2026-10-08 al cierre: **54 registrados contra 140 en disco ⇒ 86 invisibles** (a la mañana eran 52/117/65 — **el número crece con cada worktree del día, así que se mide al podar, no se cita de memoria**). Se verifica contando las dos cosas, y un huérfano se juzga por **contenido**, no por `mtime`. Detalle y procedimiento: §13.bis del backlog de la beta.
 
 ## 6. El motor (fork duro desde 2026-07-07)
 
