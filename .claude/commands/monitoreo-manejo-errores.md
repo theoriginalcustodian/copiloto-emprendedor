@@ -22,7 +22,7 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
 5. **Contexto de coordinación** — leé `coordinacion/COORDINACION.md` y `coordinacion/PLAN.md`
    (reglas vivas + COLA-VIVA). Son la fuente de qué te toca; sin esto arrancás adivinando.
-5.bis. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
+5.bis. **Instrumento** — `bash scripts/vigia.sh vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
    cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
    error. Si no existe en tu checkout, estás en una rama vieja — decilo.
 6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-manejo-de-errores_` y `-a-todos_`, **y
@@ -35,6 +35,8 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    `apps/copiloto/` SOLO `interceptor_errores.py`, `handler_errores_web.py`, `taxonomia_errores.py`,
    `trauma_store.py`, `deposito_traumas.py`, `fingerprint.py`, `autosanacion_*.py` + `docs/Errores/**`
    + sus tests. El resto de `apps/copiloto/` es de BACKEND — no lo toques.
+
+> 🔧 **Por qué `vigia.sh` y no `scripts/<instrumento>` directo** (medido el 2026-10-08): el path relativo resuelve contra tu **cwd**, que es el checkout COMPARTIDO, cuyo HEAD está viejo. Esa versión **miente**: reportó 15 ids con «estado no reconocido» (el parser viejo no entiende `⏳`/`⏸`) y `999999min` en 4 escaladores en vez de la antigüedad real (2897/2045/2036/2067). `vigia.sh` corre el instrumento desde un **pin de `origin/main`**, y si no puede refrescarlo **grita en stderr** en vez de caer callado al árbol viejo. Un instrumento que EJECUTA un script del working tree hereda la versión de ese checkout y no lo sabe.
 
 **REPORTE de arranque — una línea por ítem, binario, sin prosa:**
 
@@ -70,7 +72,7 @@ Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
 0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero:
-   `bash scripts/vigilancia-check.sh --quiet`
+   `bash scripts/vigia.sh vigilancia-check.sh --quiet`
    Exit 1 = alarma global (cola arrancable, contrato_/pedido_/en-curso viejo sin acusar de
    CUALQUIER sesión, o alguna sesión muda ≥30min) — su stdout ya es el reporte, no lo reconstruyas.
    Exit 0 = nada de eso, pero **igual seguí al paso 1**: este gate sólo detecta lo VIEJO/estancado

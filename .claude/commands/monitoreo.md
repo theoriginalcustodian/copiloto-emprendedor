@@ -13,7 +13,7 @@ averiguarlo.
    se tocan.
 2. **`CronCreate`** — creá SÓLO los que falten, con el schedule y prompt EXACTOS de abajo.
 3. **`CronList` de nuevo y CONFIRMÁ los tres.** Sin verlos, no están instalados.
-4. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Tiene que correr **sin error**: es la
+4. **Instrumento** — `bash scripts/vigia.sh vigilancia-check.sh --quiet`. Tiene que correr **sin error**: es la
    base de todos los ciclos (compone `cola-check.sh` + `escaladores-buzon.sh` + mtime de transcripts).
    Si no existe en tu checkout, estás en una rama vieja — `git log origin/main -1` y decilo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
@@ -23,6 +23,8 @@ averiguarlo.
    por `planificacion-a-` (es tuyo): `find abierto en-curso -name '*planificacion_*' ! -name '*_planificacion-a-*'`.
    Un filtro `-a-planificacion_` NO ve `-a-backend-y-planificacion_` (K-07-B quedó 20+ min sin leer, 21/09).
    Mirá también `cerrado/<hoy>/` por los `avance_`, que nacen archivados.
+
+> 🔧 **Por qué `vigia.sh` y no `scripts/<instrumento>` directo** (medido el 2026-10-08): el path relativo resuelve contra tu **cwd**, que es el checkout COMPARTIDO, cuyo HEAD está viejo. Esa versión **miente**: reportó 15 ids con «estado no reconocido» (el parser viejo no entiende `⏳`/`⏸`) y `999999min` en 4 escaladores en vez de la antigüedad real (2897/2045/2036/2067). `vigia.sh` corre el instrumento desde un **pin de `origin/main`**, y si no puede refrescarlo **grita en stderr** en vez de caer callado al árbol viejo. Un instrumento que EJECUTA un script del working tree hereda la versión de ese checkout y no lo sabe.
 
 **REPORTE de arranque — binario, una línea por ítem:**
 
@@ -59,7 +61,7 @@ NO es el vigía de 20 min: éste no busca silencio, busca **espera mutua** — d
 esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 90 min NO ve.
 
 0. 🔴 GATE DETERMINISTA — corré PRIMERO, antes de razonar nada:
-   `bash scripts/vigilancia-check.sh --quiet`
+   `bash scripts/vigia.sh vigilancia-check.sh --quiet`
    **Exit 0 = sin novedades. Cerrá el turno en UNA línea y NO sigas** — no releas no-ocio-check.sh
    ni cola-check.sh a mano, `vigilancia-check.sh` ya los corre a los dos y decide.
    **Exit 1 = alarma. Su stdout ES el reporte** — partí de ahí, no reconstruyas la medición vos.
@@ -119,7 +121,7 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
    declare otro — ese gana. Reportar sólo los que lo pasaron, con el frente y los minutos.
    NO escribas líneas de acuse sobre un `avance_`: su `mtime` ES la medición.
 
-4. ARCHIVO — `bash scripts/archivar-buzon.sh`. NO archives a mano ni razones caso por caso: el
+4. ARCHIVO — `bash scripts/vigia.sh archivar-buzon.sh`. NO archives a mano ni razones caso por caso: el
    script ya es el janitor determinista e idempotente (obligaciones `contrato_`/`pedido_`/`urgente_`
    nunca se tocan — son el ancla; el resto con `mtime` > TTL 90min va a `cerrado/<fecha>/`).
    Archivar a mano fue la regla que se escribió en 2026-07-22 y **empeoró** (`abierto/` 32→136,
@@ -146,10 +148,10 @@ escapó al umbral de 25 min.
 
 Buzón (ruta absoluta): C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-0. 🔴 GATE DETERMINISTA — corré PRIMERO: `bash scripts/vigilancia-check.sh --quiet`
+0. 🔴 GATE DETERMINISTA — corré PRIMERO: `bash scripts/vigia.sh vigilancia-check.sh --quiet`
    **Exit 0 = sin novedades, cerrá en UNA línea y NO sigas.** Exit 1 = alarma, su stdout ES el
    reporte (ya trae PRODUCCIÓN vs VIDA de ambas sesiones + escaladores de buzón + cola). Si no
-   existe en tu checkout, caé al modo manual: `bash scripts/no-ocio-check.sh` — PRODUCCIÓN =
+   existe en tu checkout, caé al modo manual: `bash scripts/vigia.sh no-ocio-check.sh` — PRODUCCIÓN =
    minutos desde el último `Write`/`Edit` (dice si TRABAJA); VIDA = mtime del transcript, que el
    CRON también renueva (2026-07-24: sesión ociosa con 42 disparos vs 5 de la que implementaba) →
    VIDA fresca + PRODUCCIÓN vieja = `🌀 GIRA EN VACÍO`, ocio, no dead-man. **PROHIBIDO afirmar
