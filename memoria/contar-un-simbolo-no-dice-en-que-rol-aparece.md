@@ -101,3 +101,29 @@ reutilización**. La línea que no era una invocación era la solución. Contar 
 verla.
 
 Ver [[el-nombre-es-una-hipotesis-sobre-el-contenido]] · [[vacio-no-es-hallazgo-correr-el-control]].
+
+## Refuerzo 2026-10-08 — un conteo DEDUPLICADO no puede contar dano por ocurrencia
+
+Mi invariante del bloque de hallazgos era `grep -oE '`H-[A-Z0-9]+`' | sort -u | wc -l` => **18 ids**.
+Anote 5 filas con un inserter que metia el texto **antes** del backtick de cierre, rompiendo el id de
+la fila (``H-DRIVEDISPATCH **[AFINADA...`). Rompi **4**. El contador bajo a **16**: acuso **2**.
+
+**Por que subdetecto:** `sort -u` cuenta el **conjunto**, y 2 de los 4 ids roturados tenian **otra
+mencion** en el documento (la narrativa, otra fila que los cita) con el patron intacto. El id seguia
+«existiendo» para el conjunto mientras su **propia fila** lo tenia partido. => **un invariante
+calculado sobre un conjunto deduplicado es ciego al dano en una ocurrencia concreta, y el ciego crece
+con cuantas veces se menciona la cosa** — justo al reves de la intuicion: los ids mas citados son los
+**menos** protegidos por el conteo.
+
+**El control que si mide, y es una linea:** contar **por item**, no por conjunto —
+
+    filas=$(grep -cE '^2026-..-.. \| ' $D)
+    con_id=$(grep -E '^2026-..-.. \| ' $D | grep -cE '`H-[A-Z0-9]+`')   # deben ser iguales
+
+«cada fila conserva su id en backticks» no se puede satisfacer con la mencion de otro renglon. El
+invariante viejo preguntaba *«siguen existiendo los 18 ids?»*; el que hacia falta es *«sigue cada fila
+teniendo el suyo?»*.
+
+Pariente de [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] (ahi el grano era el archivo
+vs lo de adentro; aca el conjunto vs la ocurrencia) y de
+[[el-veredicto-no-dice-cuantas-veces-lo-miraron]].

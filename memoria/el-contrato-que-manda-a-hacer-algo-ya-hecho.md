@@ -311,3 +311,41 @@ lo cita el doc de cierre en la fila que afirma que el smoke fallaba por el camin
 
 Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (la pregunta más chica contestada con
 precisión, tercera instancia del día) y [[vacio-no-es-hallazgo-correr-el-control]].
+
+## Refuerzo 2026-10-08 (c) — la HERRAMIENTA de anotar ancló al principio del renglón, y la verdad estaba appendeada al final
+
+Anoté la fila del punto 4 con *«el punto 4 no está FALLANDO: está SIN MEDIR, le falta una corrida
+contra prod»*. **Falso, y peor que falso: contradecía la resolución que esa misma fila ya traía**, unos
+200 caracteres a la derecha de donde pegué la nota:
+
+> «⇒ **RESUELTO el 2026-10-08**: la causa citada acá (import por stdin) estaba vencida desde el #908;
+> lo que faltaba era el export de `UC_LOGIN_CONTRATO_PATH` y lo cerró el #932. Prod vivo `92fd8a06`
+> contiene `c5727e5d` + smoke 39/39. Ver la fila **4** de §13.»
+
+Y la fila **4** de §13, en el mismo archivo que estaba editando, tenía la corrida: `rc=0 · 39 PASS ·
+0 FAIL`, `smoke_beta` estampado, durabilidad post-restart 8/8.
+
+**La causa no es que no leí: es DÓNDE me hizo leer la herramienta.** Mi `anotar()` busca el ancla —el
+id, o el titular— que vive al **principio** del renglón, e inserta justo ahí. Esa es la ventana que
+tuve enfrente. Pero una fila que se actualizó **appendeando** tiene su verdad al **final**, y el
+anclador nunca llega. ⇒ **el instrumento que escribe también encuadra lo que leés, y lo encuadra en el
+extremo equivocado del renglón.** El titular de una fila es su versión **más vieja**; la cola es la
+más nueva.
+
+**El control, y pasó su control positivo:** antes de anotar, mirar el **tramo posterior** al punto de
+inserción buscando marcas de resolución —
+
+    POST=${FILA#*<punto de insercion>}
+    echo "$POST" | grep -ioE 'RESUELTO|CORREGIDO|CERRAD[AO]|pasó a ✅|VENCIDA'
+
+Corrido sobre mis 5 anotaciones: acusó **sólo** la del punto 4 (las otras cuatro limpias, y el
+«vencida» de una era parte de mi propio *«causa VIVA, no vencida»*). Un detector que acusa a una de
+cinco es un detector; uno que acusa a las cinco es ruido.
+
+**Tercera vez en el día que verifiqué un MECANISMO y afirmé un ESTADO** (las otras dos:
+[[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]] y la puerta de Drive).
+Acá el mecanismo —los dos `export` están en el runner— era verdadero; el estado —«sin medir»— era
+falso, y el dato que lo refutaba estaba **en el mismo archivo abierto**, escrito por mí.
+
+Ver [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]]: misma geometría al revés — ahí el que
+appendea destruye el final; acá el final tenía la respuesta y el que ancla no llegó.
