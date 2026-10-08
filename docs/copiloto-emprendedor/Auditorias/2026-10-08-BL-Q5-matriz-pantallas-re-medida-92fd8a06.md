@@ -75,7 +75,7 @@ Columna **mobile**: **sólo** los 13 ids que el instrumento ya cuenta como cubie
 | `volver` | ✅ | — pendiente device | BL-X10 web |
 | `ingresar` | ✅ | — pendiente device | uno de los 13 ids con veredictos incompatibles sin triar del 30/09 (`COHERENTE`·`DESVÍO`); re-medido hoy ✅ |
 | `ingresar-error` | ✅ | — pendiente device | |
-| `tablero` | ✅ | ✅ cubierto | corpus tenía `DESVÍO` 28/09; re-medido hoy ✅ |
+| `tablero` | ✅ | ✅ cubierto | corpus tenía `DESVÍO` 28/09, **conflicto NO declarado en `CONFLICTOS_CONOCIDOS`** (hallazgo de hoy, ver §4.bis); re-medido hoy ✅ |
 | `agenda` | ✅ | — pendiente device | BL-J13 |
 | `detalle` | ✅ | — pendiente device | corpus tenía `DESVÍO` 28/09; re-medido hoy ✅ |
 | `grabando` | ✅ | — pendiente device | sin comparación en el corpus (no bloquea: hay referencia de escritorio, re-medida hoy) |
@@ -91,7 +91,7 @@ Columna **mobile**: **sólo** los 13 ids que el instrumento ya cuenta como cubie
 | `onb-promesa` | ✅ | ✅ cubierto | BL-X8/DEC-7 — `Onboarding.tsx:106` + `PantallaOnboarding.tsx:121`, commits `f46ba0ae`/`2bebe393` |
 | `onb-cumplida` | ✅ | ✅ cubierto | BL-X8/DEC-7 — `Onboarding.tsx:190` + `PantallaOnboarding.tsx:197`, mismos commits; sin comparación de escritorio en el corpus |
 | `consent` | ✅ | — pendiente device | BL-J8 |
-| `caida` | ✅ | — pendiente device | BL-J4; corpus tenía `DESVÍO`/`NO_MEDIBLE` 29/09 |
+| `caida` | ✅ | — pendiente device | BL-J4; corpus tenía `DESVÍO`/`NO_MEDIBLE` 29/09, **conflicto NO declarado en `CONFLICTOS_CONOCIDOS`** (hallazgo de hoy, ver §4.bis); re-medido hoy ✅ |
 | `preg` | ✅ | — pendiente device | BL-X3; uno de los 13 ids con veredictos incompatibles sin triar del 30/09 (`COHERENTE`·`DESVÍO`·`INCOMPLETO`); re-medido hoy ✅ |
 | `fact-cae` | ✅ | — pendiente device | BL-C2; gap mobile cerrado por commit `c5cad182`, re-medido hoy ✅ |
 | `pres-voz` | ✅ | ✅ cubierto | sin comparación en ninguna de las dos plataformas (dictado dentro de un flujo, no pantalla de escritorio) |
@@ -159,13 +159,31 @@ indeterminada 4 de 54
 
 Verificado por re-medición, no por inspección visual del diff (CANON 1).
 
-**Pendiente, explícitamente NO bloqueante para este cierre:** las 18 mediciones en heading/bullet sin
-columna posible, repartidas en varios documentos del corpus de 09-22 a 09-30 (`card`, `card-cobro`,
-`card-presu`, `card-cliente`, `chat`, `feedback`, `hablar`, `factura`, `presupuesto-item-0-precio` y
-otros, declarados como `indeterminada·único` en varios lotes). Es trabajo real y mío, no de nadie más
-— pero son ~10 documentos distintos y no cambia ninguno de los números de este cierre (esos ids ya
-tienen veredicto legible en OTRO documento, por eso la cifra de cobertura ya es 54/54 y 13/54 sin
-este fix). Queda anotado para la próxima pasada sobre el buzón, no para bloquear `BL-Q5`.
+**También hecho** (delegado a un sub-agente de sólo lectura+edición de metadata en `coordinacion/`,
+nunca en código): las 18 mediciones en heading/bullet sin columna posible, en 7 documentos del
+corpus de 09-22 a 10-05 (`card`, `card-cobro`, `card-presu`, `card-cliente`, `chat`, `feedback`,
+`hablar`, `factura`, `vozchat`, `cobro-voz`). Las 18 eran `plataforma: web` (medición contra el
+prototipo/escritorio, nunca mobile — inferido del contexto de cada bloque, nunca inventado). Re-medido
+tras el cambio: **0** quedan sin columna. Ninguno cambia un número de este cierre (esos ids ya
+tenían veredicto legible vía otro documento), pero destraba que el instrumento corra de punta a
+punta sobre el corpus sin huecos con nombre.
+
+## 4.bis · Hallazgo nuevo (no mío de resolver): `caida`/`tablero` sin triar en `CONFLICTOS_CONOCIDOS`
+
+Al correr el instrumento completo tras el fix de §4, salió `CONTRASTE: CONFLICTO NUEVO — ['caida',
+'tablero']`: estos 2 ids tienen veredictos `DESVÍO` (28-29/09) y `COHERENTE` (hoy, en esta misma
+medición) sin que ningún documento declare cuál es el vigente — el mismo patrón que el documento del
+30/09 ya había resuelto para otros 13 ids, pero `caida`/`tablero` no estaban en esa lista y quedaron
+sin triar. **No lo dirimo yo:** es una decisión de contenido entre mediciones de distintas sesiones,
+y el propio `2026-09-30-criterio3-...md §4` dice que triar cuál medición es vigente "es otra fila y
+otro dueño". Lo que sí puedo afirmar con evidencia propia: re-medí ambos hoy contra `92fd8a06` y
+los dos dan `COHERENTE` (✅, tabla de §2) — así que la fila de esta matriz no depende de cómo se
+resuelva ese triage, pero `CONFLICTOS_CONOCIDOS` sigue sin la entrada. Dueña: planificación.
+
+Hallazgo aparte, de la misma corrida: la rama de trabajo donde se detectó esto
+(`fe2/bl-o6-legal-parte-a-y-parte-b-web`, checkout compartido) tiene
+`scripts/evidencia/criterio3-matriz.mjs` desactualizado respecto a `origin/main` (ya no define
+`PROTO_VISTA`/`MEDIBILIDAD`). No lo toqué — es de quien sea dueño de esa rama.
 
 ## 5. Cierre — §13 punto 3
 
