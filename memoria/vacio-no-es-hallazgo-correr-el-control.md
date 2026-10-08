@@ -161,3 +161,49 @@ no era la nueva.
 gate sobre `origin/main` y sobre la rama. `main` daba **verde** y el fix lo puso **rojo** (dos
 documentos sin clasificar). Ese rojo era el progreso: el verde de antes era verde **por ceguera**.
 Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]].
+
+---
+
+## Refuerzo 2026-10-08 — el control que corrí no era el que mi afirmación necesitaba
+
+Afirmé que los 11 encabezados comidos por `0x01` en el backlog **no tenían fuente en git** —
+«`480d2cc0` nació corrupto, no hay versión previa de la que copiarlos» — y sobre esa base
+**reconstruí los 11 títulos** del cuerpo de cada ítem, marcándolos. **Era falso: los 11 están
+exactos en `1c011840`,** y el diff de `480d2cc0` los **borra** (11 líneas `-### … BL-…`).
+
+| corrí | qué mide de verdad | qué afirmé con eso |
+|---|---|---|
+| `git show 480d2cc0 -- F \| grep -c '^-.*'` → **0** | líneas borradas **que contienen el byte corrupto** | «no hay fuente» |
+| lo que hacía falta: `grep -cE '^-#{2,4} .*BL-'` → **11** | líneas **de encabezado** borradas | — |
+
+El `0` era **correcto**: ninguna línea borrada contenía `0x01`, porque las borradas estaban
+**limpias**. Un encabezado que se pierde al ser *sustituido* por basura desaparece como
+`-<línea buena>` / `+<basura>`: **buscar la basura entre los `-` es buscarla donde por definición
+no está.** Mi control medía la ausencia del síntoma en el lado equivocado del diff, y como el
+vacío coincidía con lo que ya creía, no lo leí como «no medí».
+
+**El segundo error, encadenado y peor:** busqué la fuente **por número de línea**. Miré la línea
+144 de `1c011840`, encontré otro ítem (`BL-D3`) y concluí «el contenido es otro» — cuando dos
+comandos antes yo mismo había medido que el documento **pasó de 879 a 1140 líneas** y se
+reorganizó. Con el contenedor corrido, la posición no identifica nada; el **`id`** sí. Mi propio
+script llevaba escrito *«anclar por contenido, nunca por número de línea»* — y busqué la fuente
+por número de línea.
+
+**Lo que se rompe, y por qué ningún test lo caza:** los títulos que escribí **degradaban** el
+documento en silencio. `BL-B4` real es `` `gate.sh` que corra en **macOS** (bash 3.2) `` y el mío
+decía «Gate corriendo en bash 3.2» — borré «macOS», que es la razón entera del ítem. `BL-P1` real
+es «Respuesta **del operador** a §6.1» y el mío se lo atribuía **a Martín**: reasigna un pendiente a
+otra persona. Queda escrito, plausible y mal.
+
+**La pregunta que lo caza** no es *«¿qué dice mi control?»* sino **«¿de qué afirmación es control
+esto?»**. Un `0` responde la pregunta que el comando hace, no la que tengo en la cabeza; cuando son
+distintas, el `0` confirma lo que yo ya quería creer. Dos controles concretos:
+
+1. **Para «no existe»: buscá el objeto por su identificador, no por su posición.** Si el contenedor
+   cambió de tamaño, la posición ya no lo nombra.
+2. **Antes de *reconstruir* algo, control positivo de que la fuente no existe — con la forma del
+   objeto buscado (`^### <id>`), no con la forma del daño (`0x01`).** Reconstruir es caro y
+   silencioso: produce texto que después nadie puede distinguir del original.
+
+Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
