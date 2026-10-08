@@ -190,6 +190,16 @@ while IFS= read -r wt; do
   [ "$en_base" = "1" ] || { ignorados+=("$nombre (fuera de las bases declaradas)"); continue; }
   # Ni el worktree desde el que corre este script.
   [ "$wt_real" = "$AQUI" ] && { ignorados+=("$nombre (es el worktree actual)"); continue; }
+  # Ni los PINES DE INSTRUMENTOS (`_vigia-pins/<checkout>`), que `scripts/vigia.sh` crea para
+  # correr el vigilante desde `origin/main` en vez de desde el working tree del invocante.
+  # POR QUÉ UNA GUARDA Y NO DEJAR QUE LAS TRES NORMALES DECIDAN: un pin es detached en
+  # `origin/main` y limpio, así que las pasa TODAS y sería podado en cada corrida — y en
+  # Windows el `worktree remove` falla parcial sobre un junction de `node_modules` y
+  # **desregistra igual**, que es justo la fábrica de huérfanos invisibles que este script
+  # reportó el 2026-10-08 (67 directorios sin registro). O sea: poda → huérfano → el pin
+  # roto → el monitoreo cae a DEGRADADO. El pin no contiene trabajo de nadie: no hay nada que
+  # proteger en él, y sí hay un bucle que evitar.
+  case "$wt_real/" in */_vigia-pins/*) ignorados+=("$nombre (pin de instrumentos de vigia.sh)"); continue ;; esac
   ANALIZADOS=$((ANALIZADOS+1))
 
   # ── GUARDA 0 · ¿es un worktree DE VERDAD? ──────────────────────────────────────────────────

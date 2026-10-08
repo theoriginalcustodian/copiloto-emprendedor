@@ -137,6 +137,7 @@ fi
 # lista que hay que acordarse de actualizar se desincroniza en silencio y entonces el guard deja
 # pasar justo la pieza nueva.  → memoria: el-guard-que-caza-a-su-propio-autor
 PIEZAS_INSTRUMENTO=(
+  scripts/vigia.sh
   scripts/vigilancia-check.sh
   scripts/cola-check.sh
   scripts/deuda-check.sh

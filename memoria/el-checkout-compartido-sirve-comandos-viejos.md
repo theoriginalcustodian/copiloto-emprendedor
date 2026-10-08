@@ -182,3 +182,45 @@ mano. Ver [[el-guard-que-caza-a-su-propio-autor]],
 `vigilancia-check.sh`, que compara por **contenido** (no por HEAD: por HEAD gritaría en cada latido y
 se desarmaría solo) las 8 piezas que ejecuta, incluido él mismo, y da `rc=2` —no un pase— cuando no
 puede verificar.
+
+## Refuerzo 2026-10-08 (2) — el guard **no puede llegar al checkout que fue construido para cazar**
+
+El guard de versión se mergeó (#944, `9a3b55e5`) y **el checkout compartido no lo tiene ni en HEAD
+ni en disco** (`PIEZAS_INSTRUMENTO: 0`). Un guard instalado sólo donde el problema no ocurre.
+
+**Es un agujero de ARRANQUE, y tiene forma general:** *el arreglo de un artefacto viejo no puede
+vivir dentro de ese artefacto* — una copia vieja del guard no se ejecuta nunca, así que no se
+entera de que debería gritar. El fix tiene que entrar por una capa que el árbol viejo no controle.
+Acá fueron dos: el **texto del cron** (vive fuera del repo) y `scripts/vigia.sh`, un lanzador cuya
+propiedad de diseño es **ser tan chico y estable que su propia vejez no importa**: no decide nada,
+ubica el pin de `origin/main` y delega. Toda la lógica que evoluciona vive en el instrumento, que
+se lee del pin. Si alguna vez hay que agregarle una decisión, va en el instrumento, no en él.
+
+**El diferencial que lo probó** (misma orden, minutos de diferencia):
+
+| | desde el pin de `main` | desde el compartido (`4a9f4f7c`) |
+|---|---|---|
+| COLA | ⏳ 4 hitos bloqueados por disparador EXTERNO | ⚠️ **15 ids «estado no reconocido»** (falso) |
+| escaladores | 2897 · 2045 · 2036 · 2067 min | **`999999min` en 4 de 6** |
+
+El `999999` **no** es un mtime ilegible: es un centinela deliberado de la versión vieja («de un día
+anterior, por encima de cualquier umbral, sin más cálculo»). Pierde la antigüedad verdadera y deja
+todo igual de urgente — un valor sustituto que hace ciego al control sin romper nada.
+
+## Y la regla que unifica las TRES instancias del mismo día
+
+**La pregunta por la DIFERENCIA absuelve; la pregunta por el OBJETO no.** Tres instrumentos
+distintos, el mismo fallo hacia el «no hay», en una sola jornada:
+
+| instrumento | la pregunta floja | lo que no ve | la pregunta por el objeto |
+|---|---|---|---|
+| `git diff --quiet <ref> -- <path>` | ¿difiere? | una pieza **untracked**: rc 0, «sin diferencia» | `git cat-file -e <ref>:<path>` |
+| `git diff --quiet` (podador) | ¿sucio? | archivos **untracked** (rc 0 con uno nuevo) | `status --porcelain` **y** `diff`, en conjunción |
+| `find -newermt` (WIP) | ¿se tocó? | nada: **un checkout renueva el `mtime`** | `hash-object` + `cat-file --batch-check` |
+
+El tercero casi me hace reportar 1.484 archivos de WIP inexistente; lo mató el control positivo —el
+mismo conteo sobre un worktree creado ese día desde `main`, sin trabajo propio, dio **1.859**—.
+**El `mtime` mide cuándo se materializó el archivo en disco, no si su contenido está guardado.**
+
+Merece entrada propia cuando el índice tenga lugar: el 2026-10-08 estaba a 23.924 de 24.000 chars y
+una línea nueva truncaba la cola ([[el-indice-truncado-fabrica-duplicados]]).
