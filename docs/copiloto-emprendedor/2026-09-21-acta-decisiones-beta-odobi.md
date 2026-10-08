@@ -18,9 +18,11 @@
 | DEC-8 | Plan y límites **no** entran en la beta. | Operador | 21/09 | — | `BL-X9` → `BL-V2`; `plan` y `limite` son VISIÓN en `BL-P5` |
 | DEC-9 | El CUIT se puede cambiar; el backend acepta sólo un CUIT vinculado a la clave fiscal del tenant y la UI muestra el rechazo. | Operador | 21/09 | backend + web + mobile | `BL-C6` |
 | DEC-10 | Se aceptan todas las decisiones de Martín ya aplicadas en mobile (§2). | Operador | 21/09 | web (mobile ya las tiene) | `BL-W5`, `BL-W10`, `BL-X11` |
-| DEC-11 | Los dos contrastes que fallan (sello de acción, botón de grabar) **se corrigen**, sin excepción firmada. | Operador | 21/09 | web + mobile | `BL-Q4` |
+| DEC-11 | Los dos contrastes que fallan (sello de acción, botón de grabar) **se corrigen**, sin excepción firmada. | Operador | 21/09 | web + mobile | `BL-Q4` — ✅ **CERRADO el 08/10**: las dos piezas por fill + el sello por la excepción firmada en `DEC-15`. Ver §5. |
 | DEC-12 | Google OAuth y lista de testers: más adelante (Cierre B). | Operador | 21/09 | ops | `BL-O1`, `BL-O2` |
 | DEC-13 | Sin iOS en la beta. | Operador | 21/09 | mobile | `BL-O3` sólo Android |
+| **DEC-14** | **El sprint cierra contra el ALCANCE anclado, NO contra §13.** Las **7** filas de la lista cerrada (`A3`·`A5`·`A7`·`A8`·`P1`·`P3`·`C1`) mergeadas y verificadas sobre `92fd8a06`, con el recibo que **cubre** ese SHA. **§13 queda explícitamente ABIERTO** como criterio del cierre **siguiente**: sus puntos 3 y 5 esperan la tanda de **device**, que el propio operador difirió el 22/09. | Operador | **08/10** | — | `ALCANCE-CIERRE-BETA.md` · backlog §13 |
+| **DEC-15** | **Firmada la excepción de clase `logotipo` para el sello de acción** (isotipo blanco sobre `acento` sólido, 3,17:1), por **WCAG 1.4.3**. Puntual: no afloja ningún otro par. ⇒ **cierra `DEC-11`**. | Operador | **08/10** | web + mobile | cierra `DEC-11` / `BL-Q4` · §5 de esta acta |
 | — | No se enciende todavía: backups, legal propio, horario de soporte. Hasta que exista un SLA, los textos de soporte no prometen un número de horas. | Operador | 21/09 | ops | `BL-O5`, `BL-O6`, `BL-O7` → Cierre B |
 
 ## 1.bis Qué libera esta acta, y la reunión que no hubo
@@ -41,7 +43,7 @@ por fuera, en #511.
 **La reunión no ocurrió, y esta acta no la necesitó.** Las decisiones de Martín no se tomaron en una
 reunión: se **leyeron del código de mobile al 21/09** (encabezado, «Fuente»; auditoría §6.3) y se
 aceptaron en bloque por `DEC-10`. Lo que sigue pendiente de Martín son los **3 temas de §4**, que los
-lleva el operador — y de ésos, `DEC-11` (contrastes) figuraba **abierto** desde la actualización del
+lleva el operador — y de ésos, `DEC-11` (contrastes) figuró **abierto** entre el 29/09 y el 08/10, y **cerró** con `DEC-15`; estuvo abierto desde la actualización del
 29/09: no es deuda de documentación, es una decisión de diseño sin tomar.
 
 > **Por qué esto estaba en el aire.** El contrato del 16/09 registraba **de su lado** que esta acta lo
@@ -93,7 +95,22 @@ La nota de `soporte` del mapa («el avatar NO es el isotipo») queda **reemplaza
 
 1. **`fact-sinarca` (`BL-P6`):** el hilo muestra facturar con un comando de voz y CAE inmediato. El producto **no emite sin confirmación** (`apps/copiloto/tool_catalog.py:267-269`; `kb-usuario/chat.md:96-98`). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. Pedido: ajustarlo o retirarlo del prototipo.
 2. **Fuente:** Neue Einstellung salió del repo (DEC-5), incluido `assets/fonts/NeueEinstellung-Bold.otf` del prototipo; el prototipo cae a su fuente de respaldo. En próximas entregas, nada de `.otf` / `.woff*` con licencia paga. La app usa Plus Jakarta Sans + Inter.
-3. **Contrastes (DEC-11):** el sello de acción y el botón de grabar van a cambiar de token para pasar WCAG. Cuando FRONTEND-1 cierre `BL-Q4`, esta acta se actualiza con los valores nuevos, en hex y con su ratio computado, para que los lleves al prototipo.
+3. **Contrastes (DEC-11):** el sello de acción y el botón de grabar van a cambiar de token para pasar WCAG. Cuando FRONTEND-1 cierre `BL-Q4`, esta acta se actualiza con los valores nuevos, en hex. ✅ **`DEC-11` cerró el 2026-10-08** con `DEC-15`. Ver el detalle y su cierre en §5 — ahí vive toda su historia, incluido el bloque del 29/09 que antes partía esta lista y con su ratio computado, para que los lleves al prototipo.
+
+4. **Calma = 3 días**, confirmado por Martín en #516. Falta alinear el prototipo: `prototipo/index.html:3703` todavía dice `CALMA_TOPE = 5`.
+5. **Ajustes (`?ver=ajustes`):** el prototipo tiene una lista agrupada en 3 secciones («Tu negocio» / «La app» / «Ayuda») con la identidad del negocio arriba. Tu mobile del 18/09 (`51437353`, aceptado por DEC-10) usa en cambio una grilla de tiles con el grupo «Ayuda», y ahí «Cómo usar la app» absorbe la guía. Web va a seguir a mobile (`BL-W12`, barrido BL-Q3 web del 2026-09-22). Pedido: alinear el prototipo con tu decisión, o avisar si la lista agrupada es la versión final (en ese caso se reabre DEC-10 para Ajustes).
+
+6. **Affordance de voz (patrón, no bug):** el prototipo pone un **composer al pie** de la pantalla; la app pone un **micrófono suelto junto al label**. Auditoría lo encontró **sistemático**: pasa en `ingresos` **y** en `presu`, o sea que no es un descuido de una pantalla sino **dos criterios de entrada por voz conviviendo**. Pedido: decidir cuál es el patrón y que valga para las dos. Mientras no se decida, cada pantalla nueva elige uno y la divergencia crece.
+
+7. **`agenda` — 5 diferencias de header no declaradas** (auditoría, Bloque A, 2026-09-23). Severidad baja, pero conviene mirarlas juntas porque son del mismo encabezado. Nota: esa fila **todavía no es del todo medible** — Google Calendar está desconectado en el tenant de prueba y el cuerpo de la pantalla queda vacío; reconectarlo pide un consentimiento OAuth que sólo puede dar el operador.
+
+---
+
+## 5. `DEC-11` — cómo envejeció y cómo cerró
+
+> ⚠️ **Este bloque estuvo mal ubicado hasta el 2026-10-08**: se insertó **entre los ítems 3 y 4** de la lista de §4, partiéndola en dos listas. Lo movió acá su propio autor. La lección es del mismo tipo que la que el bloque documenta: **un texto correcto insertado en el lugar equivocado degrada el documento sin que ningún control lo note**, porque ningún gate mide estructura de Markdown.
+
+> 📌 **Lo mismo le pasaba a este blockquote del 29/09, y es ANTERIOR**: vivía entre los ítems 3 y 4 de §4 desde que se escribió, así que la lista estuvo partida **nueve días** sin que nadie lo notara. Mi propio bloque la partió una segunda vez, y al mover sólo el mío **el control que escribí para probarlo siguió en rojo** — por eso está acá también. **El hallazgo real es del instrumento:** un control que mide *«¿la lista es 1..7 consecutiva?»* encuentra el defecto **ajeno y viejo** que nadie buscaba; uno que midiera *«¿moví mi bloque?»* habría dado verde con la lista igual de partida.
 
 > ### ⚠️ ACTUALIZACIÓN 2026-09-29 — **`DEC-11` NO está cerrado, y no es deuda de documentación**
 >
@@ -139,20 +156,16 @@ La nota de `soporte` del mapa («el avatar NO es el isotipo») queda **reemplaza
 
 Y apareció una **tercera** pieza que el bloque del 29/09 no podía prever, porque es posterior: **el botón de voz (la esfera) también se corrigió por fill**, con el mismo criterio del hermano `HudGrabacion` — `BotonVoz.tsx:318-331` usa el radial `glass.ub1 → glass.ub2` con el comentario que nombra `DEC-11/DEC11FILL, Pieza A`, y tiene su propio guard en `paresPintadosContraste.test.tsx:905`. **O sea la «Recomendación de planificación» del bloque de arriba —replicar el fix de fill— se ejecutó.** El `motivo` de la excepción lo dice textual: *«BotonVoz salió de este par en DEC11FILL Pieza A»*, así que la excepción ya **no** cubre al botón: cubre sólo la Marca.
 
-#### ✒️ Lo único que queda de `DEC-11` es una firma, y es del operador
+#### ✅ `DEC-11` **CERRADO** — el operador firmó la excepción el 2026-10-08 (`DEC-15`)
 
 `DEC-11` (fila §1 de esta acta) dice textual **«se corrigen, sin excepción firmada»**. El sello **está** declarado como excepción. Las dos varas se contradicen y sólo el operador elige cuál manda:
 
 - **La norma lo permite:** WCAG 1.4.3 exime al texto que es parte de un logotipo, y el gate implementa esa exención de forma explícita — `UMBRAL_POR_CLASE` da **0** a `logotipo` (`:760`, *«`logotipo` no tiene piso de ratio (exento por norma)»*).
 - **Y el bloque del 29/09 ya había dicho** que invertir el isotipo *«es una decisión de identidad visual, que no es de una sesión»* ⇒ no tocarlo fue el diferimiento **correcto**.
-- **Pero `DEC-11` prohibió la excepción sin firma.** → **¿el operador firma la clasificación `logotipo` del sello?** Si sí, `DEC-11` cierra con una línea de acta. Si no, está incumplido **en sus propios términos**, por una excepción que nadie firmó.
+- **`DEC-11` prohibió la excepción sin firma — y el 2026-10-08 el operador la firmó.** → **`DEC-15`: la clasificación `logotipo` del sello de acción queda FIRMADA.** Con eso `DEC-11` se cumple en sus **tres** piezas y no por indulto: botón de grabar ✅ corregido por fill, botón de voz ✅ corregido por fill, sello ✅ **excepción firmada** — que es exactamente la salida que la propia letra de `DEC-11` preveía: *«sin excepción **firmada**»* nunca prohibió la excepción, prohibió la **no firmada**.
+
+> 🗿 **La firma, textual:** el operador firma la clase `logotipo` para el sello de acción (isotipo blanco sobre `acento` sólido, **3,17:1**), apoyado en **WCAG 1.4.3**, que exime al texto que es parte de un logotipo. **No** habilita bajar el piso de ningún otro par: `:753` ya advierte que si el glifo fuera texto real ninguna excepción puede declararlo `logotipo`, y una excepción **sin** `clase` sigue rompiendo el gate por diseño (`:786`, con su control positivo en `:956`). **La exención es puntual, declarada y ejercitada por un test — no es un agujero abierto.**
 
 **A favor del gate, y vale decirlo:** la clasificación no puede colarse en silencio. Una excepción **sin** `clase` **rompe el gate por diseño, sin default** (`:786`), el propio test tiene su **control positivo** para eso (`:956`, `excepcionSinClase` con *«clase omitida a propósito»*), y `:753` advierte que si el glifo fuera texto real **ninguna** excepción puede declararlo `logotipo` para aflojarle el piso. O sea: la exención es una decisión **declarada y ejercitada**, no un agujero.
 
 **La lección del envejecimiento, que es el verdadero hallazgo:** un bloque que dice *«X NO está cerrado»* **no vence solo**. Sigue leéndose como estado actual mientras el código avanza, y cualquiera que mida `DEC-11` contra esta acta concluye que falta trabajo cuando lo que falta es una firma. El bloque de arriba ya había diagnosticado su propia versión de esto —*«una decisión trabada que se archiva como deuda de registro deja de pedir turno»*— y después le pasó lo simétrico: **una deuda resuelta que se archiva como trabada sigue pidiendo turno.**
-4. **Calma = 3 días**, confirmado por Martín en #516. Falta alinear el prototipo: `prototipo/index.html:3703` todavía dice `CALMA_TOPE = 5`.
-5. **Ajustes (`?ver=ajustes`):** el prototipo tiene una lista agrupada en 3 secciones («Tu negocio» / «La app» / «Ayuda») con la identidad del negocio arriba. Tu mobile del 18/09 (`51437353`, aceptado por DEC-10) usa en cambio una grilla de tiles con el grupo «Ayuda», y ahí «Cómo usar la app» absorbe la guía. Web va a seguir a mobile (`BL-W12`, barrido BL-Q3 web del 2026-09-22). Pedido: alinear el prototipo con tu decisión, o avisar si la lista agrupada es la versión final (en ese caso se reabre DEC-10 para Ajustes).
-
-6. **Affordance de voz (patrón, no bug):** el prototipo pone un **composer al pie** de la pantalla; la app pone un **micrófono suelto junto al label**. Auditoría lo encontró **sistemático**: pasa en `ingresos` **y** en `presu`, o sea que no es un descuido de una pantalla sino **dos criterios de entrada por voz conviviendo**. Pedido: decidir cuál es el patrón y que valga para las dos. Mientras no se decida, cada pantalla nueva elige uno y la divergencia crece.
-
-7. **`agenda` — 5 diferencias de header no declaradas** (auditoría, Bloque A, 2026-09-23). Severidad baja, pero conviene mirarlas juntas porque son del mismo encabezado. Nota: esa fila **todavía no es del todo medible** — Google Calendar está desconectado en el tenant de prueba y el cuerpo de la pantalla queda vacío; reconectarlo pide un consentimiento OAuth que sólo puede dar el operador.
