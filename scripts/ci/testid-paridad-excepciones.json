@@ -4737,6 +4737,16 @@
       "id": "account-legal-privacidad",
       "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
       "pantalla": "modules/account"
+    },
+    "modules/account::account-screen-salir-grupo": {
+      "en": [
+        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-08",
+      "id": "account-screen-salir-grupo",
+      "motivo": "BL-J11: web necesita un wrapper <div data-testid> propio para agrupar 'Cerrar sesion' porque sus filas son <div>/<button> planos dentro de un unico tile generico sin limite de componente. Mobile ya cumple el MISMO criterio (fila en su propio grupo, separada por estructura) con un componente propio, FilaBotones (testID cuenta-salir-botones, PantallaCuenta.tsx:101-110) que ya actua como el contenedor -- no hace falta un wrapper adicional con este id especifico. No es drift: cada plataforma resuelve la misma casilla con su propio mecanismo de agrupacion.",
+      "pantalla": "modules/account"
     }
   }
 }

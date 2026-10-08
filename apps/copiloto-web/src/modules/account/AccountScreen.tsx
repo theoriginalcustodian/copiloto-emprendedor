@@ -217,6 +217,12 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
           <span className="account-screen__row-label">Privacidad del historial</span>
           <ChevronIcon />
         </div>
+      </div>
+
+      {/* `BL-J11` — Cerrar sesión en su propio grupo, no como fila más del tile de arriba (igual
+          criterio que mobile `PantallaCuenta.tsx` `FilaBotones`: separado por estructura, no sólo
+          por color). Mismo `account-screen__list` para no inventar un tile nuevo. */}
+      <div className="account-screen__list" data-testid="account-screen-salir-grupo">
         {!confirmandoSalida ? (
           <button
             type="button"
