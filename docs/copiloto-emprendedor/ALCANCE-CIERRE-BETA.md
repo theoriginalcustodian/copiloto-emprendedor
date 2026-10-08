@@ -193,12 +193,31 @@ alcanzar: no es falta de trabajo, es que no había definición de terminado.
 | punto | qué falta | **clase** | dueño | disparador |
 |---|---|---|---|---|
 | **1** | — | ✅ **cumplido 08/10** | — | `§12.bis` del backlog en `main`: `BL-O1`·`BL-O2` con su firma |
-| **2** | **muestreo HECHO — veredicto `NO CIERRA`:** **3 falsos ✅ de 10** (`BL-J9` sin test de replay · `BL-B1` verde por ausencia, control negativo nunca corrido · `BL-J11` web sin agrupar) | **trabajo, acotado** | backend (×2) · frontend2 (×1) | `contrato_` bajado a cada sesión el **08/10**, con el inventario ya medido |
+| **2** | ✅ **CERRADO — los 3 falsos corregidos y en `main`** (#981 `BL-J9` · #984 `BL-J11` · #985 `BL-B1`), **evidencia verificada por planificación, no autoevaluación del ejecutor**: #981 ejercitó control positivo invirtiendo la condición en `conversation_workflow.py:666` (el test cae) + recibo 5/5 · #985 corrió el `--control-negativo` en ROJO y el «Listo 👍» contra la función real (73 passed) · #984 re-leído en `main` por mí: `account-screen-salir-grupo` (`:225`) con **una** fila y el único botón en `:234`. ⚠️ **Mi contrato de `BL-J11` decía «10 filas planas en UN solo `account-screen__list`» y eso era falso**: `main` tenía **tres** tiles (`:131`, `:161`, `:190`). Propagué la medición de #978 sin re-medirla y el ejecutor la corrigió contra la realidad **sin nombrar la discrepancia** — así que durante unas horas el contrato y el PR decían números incompatibles (10 vs 3) sin que ninguno estuviera marcado como el equivocado. El fix cumple la casilla igual. — ~~muestreo `NO CIERRA`:~~ **3 falsos ✅ de 10** (`BL-J9` sin test de replay · `BL-B1` verde por ausencia, control negativo nunca corrido · `BL-J11` web sin agrupar) | **trabajo, acotado** | backend (×2) · frontend2 (×1) | `contrato_` bajado a cada sesión el **08/10**, con el inventario ya medido |
 | ~~**3**~~ | ~~mobile **13/54** (web ya **54/54 ✅**)~~ | ⚫ **FUERA del cierre — `DEC-19` (08/10)** | sprint MOBILE | — |
-| **4** | — | ✅ **cumplido** | — | `39 PASS · 0 FAIL` sobre `92fd8a06` |
+| **4** | — | ✅ **cumplido sobre el SHA del cierre** | — | `39 PASS · 0 FAIL` sobre `4ca28551f` (prod re-desplegado). **Hubo que re-correrlo:** el `39 PASS` anterior era sobre `92fd8a06`, y después entraron dos cambios de **runtime** — `motor/backend/agent/conversation_workflow.py` (+43/-18, #985) y `AccountScreen.tsx` (#984) — así que el ✅ viejo **no valía para este SHA**; medido: prod servía `data-build-sha=92fd8a06…` hasta este deploy. *«Sobre un mismo SHA» no es una formalidad: es lo que distingue verificado de verificado-antes.* |
 | ~~**5**~~ | ~~tester externo con video~~ | ⚫ **FUERA del cierre — `DEC-19` (08/10)** | sprint MOBILE | — |
 
-**Leído así, al cierre le queda UNA cosa: el punto 2.** Y ya no es «un criterio sin dónde
+> 🏁 **ESTADO AL CIERRE DEL 2026-10-08, medido — `4ca28551f` (<!-- cierre-verificado-sobre-4ca28551f -->)**
+>
+> Con `DEC-19` fuera los puntos 3 y 5, el criterio vivo son **tres**: 1, 2 y 4. Y **los tres puntos vivos del criterio quedan ✅ sobre `4ca28551f`**.
+>
+> | punto | estado | evidencia |
+> |---|---|---|
+> | **1** | ✅ | `§12.bis` del backlog en `main` — `BL-O1`·`BL-O2` con su firma |
+> | **2** | ✅ | #981 · #984 · #985 mergeados, DoD re-verificado por planificación |
+> | **4** | ✅ | `39 PASS · 0 FAIL` sobre `4ca28551f`, con prod desplegado en ese SHA |
+> | ~~3~~ · ~~5~~ | ⚫ | fuera por `DEC-19` → sprint MOBILE |
+>
+> **Por qué este ✅ no envejece con el próximo merge.** Lo desplegado y medido es `4ca28551f`, confirmado por **dos instrumentos independientes**: el `data-build-sha` del HTML servido y el `sha` de `/healthz` del backend. Los commits que entran después **no tocan runtime** — `memoria/*.md` y un `echo` de `deploy/copiloto/deploy.sh`, que es el orquestador que corre desde la PC, no código del servicio — así que `main` puede avanzar sin invalidar esta fila. **El día que un commit toque `apps/`, `motor/` o `packages/`, esta medición vence** y hay que re-desplegar antes de volver a citarla: es exactamente lo que pasó con el `39 PASS` sobre `92fd8a06`.
+>
+> **Lo que esto es y lo que no es.** Es el criterio de `§13` satisfecho y medido, con el
+> SHA escrito. **No es** la declaración de «beta cerrada»: esa firma es del operador, igual
+> que `DEC-14` cerró el alcance. Lo que queda para esa firma no es trabajo — es su decisión.
+
+⏪ **PÁRRAFO SUPERADO el 08/10 — lo dejo porque es el registro de CÓMO se llegó, no del estado.** El punto 2 **cerró** (los tres falsos corregidos y en `main`); el estado vigente es el bloque 🏁 de arriba, que gana si algo de acá lo contradice. Lo de abajo describe el momento en que el muestreo adversarial recién había salido `NO CIERRA`.
+
+> ~~**Leído así, al cierre le queda UNA cosa: el punto 2.**~~ Y ya no es «un criterio sin dónde
 medirse»: `DEC-18` le dio el lugar y **la medición se corrió**. Auditoría hizo el muestreo
 adversarial el 08/10 — veredicto **`NO CIERRA`**, con **3 falsos ✅ de 10**: `BL-J9` (el test
 de replay no existe), `BL-B1` (el verde de durabilidad confirma **por ausencia** y su control

@@ -100,3 +100,39 @@ diciendo la misma frase que su gancho. Acortar los nombres de archivo (con los `
 actualizados mecánicamente, y el control «links a archivos inexistentes: 0» ya horneado en el
 medidor) libera ~4.000 bytes sin sacrificar una sola lección. Es IDXFORMATO, y toca el activo que
 toda sesión carga al arrancar: lo decide el operador, no yo.
+
+
+## Refuerzo 2026-10-08 — consolidar se hace por LECCIÓN, no por archivo
+
+Pagando la deuda que esta entrada predijo, encontré **tres** entradas para la clase
+«`open(path,"w")` trunca al abrir»: la del índice (06/10, + un caso del 08/10), una del 05/10 y una
+del 30/09. Confirmación directa del mecanismo: **lo que el índice no carga no existe al escribir**,
+así que la segunda y la tercera mordida de la misma clase se escriben como si fueran nuevas.
+
+**Y acá está lo que casi hago mal.** El movimiento obvio —tres archivos de la misma clase ⇒ fusionar
+en uno y borrar dos— **habría borrado una lección viva**. La entrada del 30/09 *se llama* como las
+otras dos y abre con el mismo párrafo de `open('w')`, pero el 80% de su cuerpo son **seis refuerzos
+sobre otra cosa**: el heredoc sin comillas que ejecuta los backticks y deja el texto «gramatical y
+vacío», los escapes que no sobreviven heredoc→Python→archivo, el delimitador literal que cierra el
+continente que lo lleva, y la regla que cierra la serie — *dos fallos idénticos del canal no son un
+bug a depurar, son la señal de cambiar de canal*. Nada de eso vive en ningún otro lado.
+
+**El nombre es una hipótesis sobre el contenido** ([[el-nombre-es-una-hipotesis-sobre-el-contenido]])
+y acá la hipótesis era falsa en una de las tres: el archivo creció hacia otro tema sin que su título
+lo siguiera. Un deduplicador que compara títulos —o un agente apurado que compara los primeros dos
+párrafos— **mide el continente, no la lección**.
+
+**Cómo se hizo, y es el patrón:** se consolidó *hacia la entrada que el índice carga* (es la única
+que se lee sin buscarla), absorbiendo de las otras dos sólo **lo que no estaba**: la asimetría
+CRLF-benigno vs encode-destructivo, el respaldo deliberado para artefactos no versionados, y el
+residuo `.tmp` que engaña al próximo glob. Las dos hermanas **quedan** con un encabezado-puntero que
+dice qué está consolidado y qué vive sólo ahí. Cero líneas nuevas en el índice (está al 99,4% de su
+techo en bytes), cero `[[links]]` roto.
+
+**How to apply:** (1) al deduplicar memoria, **leé los tres cuerpos completos antes de decidir**, y
+preguntá *¿qué dice este archivo que ninguno de los otros dice?* — si la respuesta no es «nada», no
+es duplicado, es un archivo mal titulado; (2) consolidá **hacia** el que está en el índice, no hacia
+el más largo ni el más nuevo; (3) la hermana no se borra: se le pone el puntero, porque su nombre es
+una entrada de búsqueda legítima y borrarla rompe los `[[links]]` de `HISTORIA.md`; (4) el ahorro de
+bytes del índice **no** es el objetivo de consolidar — si querés bytes, eso es IDXFORMATO y lo decide
+el operador.

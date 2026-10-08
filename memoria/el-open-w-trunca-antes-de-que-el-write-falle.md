@@ -5,6 +5,12 @@ metadata:
   type: feedback
 ---
 
+> **🔗 CONSOLIDADA el 2026-10-08.** La leccion canonica de esta clase —y la que el indice
+> carga— es [[open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo]]; la
+> asimetria CRLF y el respaldo deliberado de abajo ya estan absorbidos alla. Esta entrada se
+> conserva por el **caso medido** (el `PLAN.md` de 363 KB y los ~3707 bytes perdidos), no
+> porque la regla viva aca.
+
 `io.open(P, "w")` **trunca el archivo en el momento de abrirlo**, no cuando se escribe. Si la
 serialización falla después, no hay rollback: el original ya no existe.
 

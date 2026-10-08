@@ -427,7 +427,7 @@ lección ya viaja co-localizada en [[git-push-puede-salir-exit-0-sin-haber-pushe
 > worktree invisible al monitor. Siguen vigentes y arriba.
 
 - [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) - el cierre envejece en silencio.
-- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — si el encode falla, quedan 0 bytes.
+- [💾 `open(…,"w")` trunca al abrir](open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original.md) — **truncado consolidado en la del indice el 08/10**; lo propio de esta es el CANAL (heredoc/escapes).
 - [🕐 El mtime del `.db` miente en WAL](el-mtime-del-db-de-sqlite-en-modo-wal-se-queda-viejo-mientras-el-wal-avanza.md) — se escribe al `-wal`; mirá el trío.
 
 ## Bajadas del índice el 2026-10-06 — frente de MEDICIÓN DE CORPUS (congelado 2026-10-05)
@@ -461,5 +461,5 @@ Bajadas por **techo de chars**, no por obsolescencia: el índice estaba a **23.9
 
 Bajadas por **techo**, no por obsolescencia: el índice del repo estaba en **24.040 bytes con techo 24.000** — ya pasado — y había que hacer lugar para la lección del cierre. Las dos siguen vigentes y buscables; se eligieron por ser **punteros técnicos puntuales** que se consultan cuando hacen falta, no criterios que convenga tener cargados siempre.
 
-- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — temp + `os.replace`. Falla al escribir = ya truncó.
+- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — **consolidadas en la del indice el 08/10**; queda por el caso del `PLAN.md` de 363 KB.
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) - 03:30/09:30/15:30/21:30: `pre-push` 503.

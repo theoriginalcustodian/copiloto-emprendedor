@@ -60,3 +60,45 @@ PYTHONIOENCODING=utf-8 python -I   # ❌ -I implica -E: la ignora en silencio
 **Generalización:** un flag que **apaga un canal de configuración entero** (`-E`, `--no-rc`,
 `--isolated`, `env -i`) convierte cualquier arreglo por env var en un no-op **mudo**. Cuando una
 variable «no hace nada», antes de dudar del valor revisá si algo apagó el canal.
+
+## Consolidado el 2026-10-08 — esta clase vivia en TRES entradas
+
+El indice cargaba **una** (esta) y habia otras dos con la misma leccion raiz, escritas sin
+verla: `el-open-w-trunca-antes-de-que-el-write-falle` (05/10) y
+`open-en-modo-w-trunca-antes-de-escribir-y-un-error-de-encode-destruye-el-original` (30/09).
+El mecanismo es [[el-indice-truncado-fabrica-duplicados]] en vivo: **lo que no se carga no
+existe al escribir**, asi que la tercera mordida de la misma clase se escribe como si fuera
+nueva. Las dos quedan, pero apuntando aca; lo que no estaba en esta entrada es lo de abajo.
+
+**1. La ASIMETRIA que hace que esta clase no se vea venir** (del caso del 05/10). El mismo
+dia, los finales de linea produjeron **cuatro** fallos de parcheo y los cuatro fueron
+BENIGNOS: un patron con `\n` contra un archivo CRLF da 0 matches, el script aborta sin
+escribir, y el sintoma es «NO ENCONTRE EL ANCLA». Un error al **leer** o al **buscar** aborta
+antes de tocar el disco: barato, ruidoso, autocorregible. Un error al **serializar** ocurre
+con el destino ya truncado: silencioso y destructivo. **La diferencia no es la causa, es
+DONDE falla** — y la pregunta correcta no es «puede fallar?» sino **«falla antes o despues de
+abrir el destino?»**, que `tmp` + `os.replace` vuelve irrelevante.
+
+**2. Un artefacto no versionado necesita un respaldo DELIBERADO.** El caso del 05/10 destruyo
+`coordinacion/PLAN.md` (363 KB, el tablero de las cuatro sesiones), que esta gitignored **a
+proposito**: no hay `git show` que lo traiga. El unico respaldo que existia era **el corpus
+congelado que otra sesion hacia para otra cosa**. Perdida medida: ~3707 bytes, una fila entera
+reconstruida y marcada como reconstruida. Antes de editar algo de una carpeta no versionada,
+preguntate de donde saldria la copia si el script falla: si la respuesta es «de mi contexto»,
+ya estas apostando.
+
+**3. El patron seguro deja un RESIDUO que engana al proximo control** (del caso del 30/09). El
+`with` crea el temporal **antes** de que el write falle, asi que el fallo deja un huerfano de
+0 bytes **cuyo nombre empieza igual que el archivo bueno**. Una verificacion con
+`glob(patron)[0]` tomo el `.tmp`, midio 0 lineas, y estuvo a un paso de concluir que el mensaje
+propio habia salido vacio: el mensaje estaba perfecto, **el instrumento midio otro objeto**
+([[el-instrumento-respondio-sobre-otro-sujeto]]). De ahi dos reglas: el temporal va **fuera**
+del directorio que otros escanean o con un prefijo que ningun glob del dominio matchee (este
+script usa `.wip`, no `.tmp`); y **todo glob de verificacion imprime CUANTOS objetos matcheo**,
+nunca solo el `[0]`.
+
+**Lo que NO se consolido, porque es otra leccion:** los seis refuerzos del 30/09 sobre el
+**canal** (heredoc que ejecuta backticks, escapes que no sobreviven heredoc->Python->archivo,
+el delimitador que cierra su propio continente, y la regla «dos fallos identicos del canal no
+son un bug a depurar: son la senal de cambiar de canal»). Viven en su entrada y se buscan por
+ahi.
