@@ -28,10 +28,14 @@ import { LEGAL_VERSION } from '@copiloto/core';
  * `AccountScreen.test.tsx`/`useSession.test.ts`.
  */
 function Sonda() {
-  const { status, cierreVoluntario, logout } = useSession();
+  const { status, me, cierreVoluntario, logout } = useSession();
   return (
     <div>
       <span data-testid="sonda-status">{status}</span>
+      {/* BL-X12w (X12WESPERA): expone `me.email` para que el test pueda esperar el sujeto que
+          realmente lee en :69 (`cierreVoluntario`, derivado de `me` vía ref) — no un proxy (`status`)
+          que puede committear un render antes. */}
+      <span data-testid="sonda-email">{me?.email ?? ''}</span>
       <span data-testid="sonda-cierre">{cierreVoluntario ? cierreVoluntario.email : 'null'}</span>
       <button type="button" data-testid="sonda-logout" onClick={logout}>
         salir
@@ -61,7 +65,13 @@ describe('SessionProvider — cierreVoluntario (BL-X12w)', () => {
         <Sonda />
       </SessionProvider>,
     );
-    await waitFor(() => expect(screen.getByTestId('sonda-status')).toHaveTextContent('authed'));
+    // X12WESPERA: esperar `status` solo no alcanza — `:69` lee `cierreVoluntario`, derivado de `me`
+    // vía ref durante el render. Si `me` y `status` no commitean en el mismo render, el click llega
+    // un render antes de tiempo y el logout guarda `{ email: null }`. Se espera el sujeto que se lee.
+    await waitFor(() => {
+      expect(screen.getByTestId('sonda-status')).toHaveTextContent('authed');
+      expect(screen.getByTestId('sonda-email')).toHaveTextContent('ana@x.com');
+    });
 
     act(() => screen.getByTestId('sonda-logout').click());
 
