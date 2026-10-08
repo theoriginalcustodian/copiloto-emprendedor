@@ -27,7 +27,8 @@ discrimina por TRES señales, no dos: (1) que no vuelva a pedir el mismo confirm
 calce con la firma exacta de esa rama de fallo -- lo agregó H-A3-8 (auditoría A3, 2026-09-22): la rama
 de fallo TAMBIÉN carece de choice 'confirm:', así que mirar sólo (1) confirmaba un callback perdido
 como resuelto -- y (3, BL-B1) que alguna reply SÍ traiga la señal POSITIVA `card.confirmed_tool`
-(`confirmed=True`, `status='ok'`, ver `conversation_workflow.py::_react_send`) -- la prueba de que
+(`confirmed=True` y `status` TERMINAL: `'ok'` **o** `'error'` -- ver `_STATUS_TERMINALES` y
+`conversation_workflow.py::_react_send`) -- la prueba de que
 `execute_tool` corrió DE VERDAD, no sólo la ausencia de (1)+(2). Sin (3), un reply vacío o distinto a
 cualquiera de las dos firmas de fallo conocidas (ej. un "Listo 👍" sin choices de una rama rota NUEVA,
 nunca vista) pasaba VERDE por pura ausencia -- el instrumento confirmaba en vez de verificar.
@@ -162,6 +163,16 @@ def _token_de_confirmacion(replies: list[dict]) -> str:
 _TEXTO_CALLBACK_SIN_GATE = "Ese botón ya no sirve: se resolvió antes o llegó tarde 🙈"  # conversation_workflow.py:410, H-A4-9
 
 
+# Estados TERMINALES de una tool confirmada: prueban que `execute_tool` CORRIÓ y respondió.
+# `error` cuenta como ejecución, y eso es el punto. Caso medido el 2026-10-08, primer deploy tras
+# `BL-B1`: el gate salió ROJO con la durabilidad INTACTA (callback post-restart reingresó al gate,
+# `confirmed=True`, `activity='execute_tool'`) sólo porque `calendar_book` devolvió
+# `status='error'` -- Google Calendar sin conectar en el tenant e2e, `card.kind='requiere_conexion'`.
+# Exigir `status == 'ok'` ataba el veredicto de DURABILIDAD al éxito de una integración externa que
+# este E2E no provisiona. Ver el chequeo (3) de `_reply_resolvio_el_gate`.
+_STATUS_TERMINALES = ("ok", "error")
+
+
 def _confirmed_tool_de(replies: list[dict]) -> dict | None:
     """BL-B1: busca en `replies` la card con `confirmed_tool` -- la señal POSITIVA que
     `conversation_workflow.py::_react_send` adjunta cuando `execute_tool` corrió DE VERDAD con
@@ -184,8 +195,18 @@ def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
        callback NO reingresó al gate parqueado.
     2. Ninguna reply calza con la firma EXACTA de la rama de fallo (ver `_TEXTO_CALLBACK_SIN_GATE`).
     3. (BL-B1) Alguna reply trae la señal POSITIVA `card.confirmed_tool` con
-       `activity == 'execute_tool'`, `confirmed is True` y `status == 'ok'` -- la PRESENCIA de la
-       prueba de que la tool confirmada corrió, no sólo la ausencia de las dos fallas conocidas.
+       `activity == 'execute_tool'`, `confirmed is True` y `status` TERMINAL (`_STATUS_TERMINALES`:
+       `'ok'` **o** `'error'`) -- la PRESENCIA de la prueba de que la tool confirmada corrió, no
+       sólo la ausencia de las dos fallas conocidas.
+
+       ⚠️ Corregido el 2026-10-08, el mismo día: la primera versión exigía `status == 'ok'` y eso
+       está MAL, aunque suene más estricto. Lo que (3) tiene que probar es que `execute_tool`
+       **EJECUTÓ**; si la tool corrió y devolvió un error de negocio, la durabilidad quedó
+       demostrada igual. Exigir `'ok'` ataba este gate al éxito de una integración externa que el
+       E2E no provisiona -- y así salió ROJO en el primer deploy tras BL-B1, con la durabilidad
+       intacta, porque el tenant e2e no tiene Google Calendar conectado. Nótese que el docstring de
+       `_confirmed_tool_de` ya declaraba el shape como `status: <'ok'|'error'|...>`: la
+       sobreespecificación se contradecía con la documentación del PR que la introdujo.
 
     H-A3-8 (auditoría A3): la versión anterior sólo miraba (1). La rama de fallo (`kind ==
     'callback' and not parked`) TAMBIÉN carece de choice 'confirm:' en su respuesta -- responde
@@ -201,11 +222,25 @@ def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
                           for r in replies for c in (r.get("choices") or []))
     cayo_en_rama_sin_gate = any((r.get("reply_text") or "") == _TEXTO_CALLBACK_SIN_GATE for r in replies)
     confirmed_tool = _confirmed_tool_de(replies)
-    ejecuto_confirmado_ok = (confirmed_tool is not None
-                             and confirmed_tool.get("activity") == "execute_tool"
-                             and confirmed_tool.get("confirmed") is True
-                             and confirmed_tool.get("status") == "ok")
-    return not repite_confirm and not cayo_en_rama_sin_gate and ejecuto_confirmado_ok
+    ejecuto_confirmado = (confirmed_tool is not None
+                          and confirmed_tool.get("activity") == "execute_tool"
+                          and confirmed_tool.get("confirmed") is True
+                          and confirmed_tool.get("status") in _STATUS_TERMINALES)
+    # El log distingue los DOS casos de «status != ok», porque significan lo contrario entre sí y
+    # un solo mensaje para ambos sería un instrumento que confirma: la primera versión de esto
+    # imprimía «NO invalida la durabilidad» también para `status=None`/`pending`, donde SÍ la
+    # invalida. Lo destapó el log de su propio test, no una revisión.
+    _st = confirmed_tool.get("status") if confirmed_tool is not None else None
+    if confirmed_tool is not None and _st in _STATUS_TERMINALES and _st != "ok":
+        print(f"[e2e-g6-durabilidad]    ℹ la tool confirmada EJECUTÓ y devolvió "
+              f"status={_st!r} (name={confirmed_tool.get('name')!r}) — eso NO invalida la "
+              f"durabilidad: prueba que execute_tool corrió tras el callback. Si querés el camino "
+              f"feliz completo, conectá la integración en el tenant e2e.")
+    elif confirmed_tool is not None and _st not in _STATUS_TERMINALES:
+        print(f"[e2e-g6-durabilidad]    ⚠ confirmed_tool con status NO terminal ({_st!r}, "
+              f"name={confirmed_tool.get('name')!r}): no se puede afirmar que execute_tool "
+              f"terminó ⇒ esto SÍ cuenta como gate no resuelto.")
+    return not repite_confirm and not cayo_en_rama_sin_gate and ejecuto_confirmado
 
 
 def _guardar_estado(estado: dict) -> None:
@@ -301,7 +336,9 @@ def verificar() -> int:
         raise AssertionError(
             "el callback post-restart NO resolvió el gate de verdad -- o volvió a traer un choice "
             "'confirm:...', o cayó en la rama 'callback sin gate parqueado', o (BL-B1) ninguna reply "
-            "trajo la señal POSITIVA `card.confirmed_tool` con confirmed=True y status='ok' (la prueba "
+            "trajo la señal POSITIVA `card.confirmed_tool` con confirmed=True y status TERMINAL "
+            "('ok' o 'error' -- un error de la tool NO invalida la durabilidad; lo que la invalida "
+            "es que no haya ejecutado) (la prueba "
             "de que `execute_tool` EJECUTÓ tras el callback, no sólo que el reply no calzó con las dos "
             f"firmas de fallo conocidas). confirmed_tool={confirmed_tool!r} replies={replies_hitl_post}"
         )
