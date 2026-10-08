@@ -240,3 +240,64 @@ devuelve vacío y se parsea como `0`.
   vuelve visible y contable (acá: «no medida: 0» es parte del reporte).
 - **El denominador por elemento, no sólo por archivo:** la v1 contaba suites; la v2 contó **dobles**, y
   ahí apareció que una sola suite tenía 4. Un archivo con N instancias del defecto cuenta como N.
+
+## Refuerzo 2026-10-08 — `A..B` excluye A; y la causa que le colgué con eso era FALSA
+
+Dos cosas separadas, y la segunda vale más que la primera.
+
+**1 · El mecanismo, verificado.** `A..B` es «lo alcanzable desde B menos lo alcanzable desde A», y **A
+queda afuera**. Medido sobre una ventana que yo había declarado en el doc del operador
+(`e6144ab7..2cd29750`):
+
+| control | resultado |
+|---|---|
+| commits en `e6144ab7..2cd29750` | **1** |
+| commits en `e6144ab7~1..2cd29750` | **2** |
+| `git log --grep=H-A7SINTEST e6144ab7..2cd29750` | **0** |
+| `git log --grep=H-A7SINTEST e6144ab7~1..2cd29750` | **1** |
+
+Lo que vuelve esto una trampa es **cómo se elige A**: uno pone como base *el commit más reciente que ya
+conocía* —el del handoff, el que cerró la ronda anterior— y ese es justo el más probable candidato a
+contener el trabajo recién hecho. La forma de elegir la base concentra el punto ciego donde está la
+novedad. El control es de una línea: correr `A~1..B` **al lado** y comparar el conteo; con un id en
+juego, grepearlo **sin rango** primero. Un hit global que desaparece al acotar es el defecto del rango,
+no la ausencia del trabajo.
+
+**2 · Y ahora la parte que importa: con ese mecanismo verdadero fabriqué una causa falsa.**
+
+Estaba a un commit de publicar que la fila `H-A7SINTEST` había seguido abierta **porque mi ventana
+excluía el commit del fix**. Encajaba perfecto: el fix era `e6144ab7`, que es **literalmente** el
+extremo inferior de una ventana mía, y el grep lo probaba (0 vs 1). Lo medí, lo escribí en el doc del
+operador y lo commiteé.
+
+**Era falso, y lo mató el orden del reloj:**
+
+| hecho | medido |
+|---|---|
+| la fila `H-A7SINTEST` entró en el doc | `92fd8a06`, **10:06** |
+| el fix llegó | `e6144ab7` (#940), **11:11** |
+| ¿`H-A7SINTEST` está entre los 11 ids que esa ventana medía? | **0 hits — no está** |
+
+La ventana `e6144ab7..2cd29750` se declaró para los **11 ids de otra fila** (`H-MISFILASPERDIDAS`), y
+re-medidos los 11 con el extremo corregido: **ninguno cambia** (`miven=0` y `corr.=0` en los once). La
+fila siguió abierta por la razón más aburrida del mundo: **el fix llegó una hora y cinco después de que
+la fila se escribiera, y nadie volvió a la fila.** Drift de una hora, no un defecto de instrumento.
+
+> **Verifiqué que el mecanismo PODÍA producir el efecto, y lo confundí con haberlo producido.** El
+> control positivo del mecanismo (0 vs 1) es impecable y **no dice nada sobre este sujeto**: lo que
+> faltaba era preguntar *«¿este mecanismo se aplicó a ESTA fila?»* — dos comandos, el orden temporal y
+> «¿está entre los ids que la ventana medía?», los dos con respuesta clara y los dos contra mí.
+
+**Por qué es tan fácil de cometer, y la señal para la próxima.** La materia prima fue una
+**coincidencia de SHA**: el mismo hash en dos roles distintos —extremo de una ventana mía, y commit de
+un fix ajeno— con un mecanismo verdadero a mano para unirlos. Un mecanismo real al lado de una
+coincidencia se siente como una explicación, no como una hipótesis. ⇒ **cuando un hallazgo me atribuye
+a mí el defecto y encaja a la primera, es cuando más control necesita, no menos** — el sesgo de que
+«asumir la culpa» parece rigor lo blinda contra la revisión. Hermana directa de
+[[clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo]]: ahí el hecho era cierto y la
+clasificación falsa; acá el mecanismo es cierto y la **atribución** falsa.
+
+Y el costo real estuvo en **cero** sólo porque el PR no estaba abierto todavía: la corrección entró
+como commit nuevo encima, no como un `--amend` sobre algo ya pusheado. Ver
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] y
+[[el-veredicto-no-dice-cuantas-veces-lo-miraron]].
