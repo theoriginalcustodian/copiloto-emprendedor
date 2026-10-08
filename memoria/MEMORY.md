@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **✅ Criterio 3 web: 50 de 50 ALCANZABLES** (50/54 del padrón; los 4 de voz no tienen referencia de escritorio). `coordinacion/PLAN.md`.
+- **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; mobile va al sprint siguiente con device/EAS). Cifra sin unidad = inutilizable.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **Prod-beta vivo**, RLS `FORCE` · smoke **37/37 (06/10)**: `BETA-READY` afirma sólo **5 críticos** y ningún gate lo corre. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
