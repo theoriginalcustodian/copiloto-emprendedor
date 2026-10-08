@@ -115,3 +115,28 @@ medir / otro tiene el lock / timeout» comparte salida con «está todo bien», 
 el log lo cuente. (5) Antes de escalar un bloqueo a alguien, **re-medilo** — un bloqueo que
 depende de un recurso compartido se mueve, y declararlo permanente le pasa a otro una deuda que
 no existe.
+
+## Refuerzo 2026-10-08 — **el REMEDIO que el hallazgo proponía tenía el mismo fail-open que el defecto**
+
+`H-CIVERDEMERGED`: `ci-verde.sh` mandaba a reintentar **para siempre** sobre un PR ya `MERGED`
+(~11 corridas gastadas). La fila del hallazgo traía su propio **Control**, escrito así:
+
+> *«si `state=MERGED`, el veredicto es **VERDE-YA-HECHO** y no hay nada que correr»*
+
+Lo implementé al revés a propósito — **ROJO / `exit 6`** — y la mutación de control me dijo por
+qué eso importó: copié `scripts/` a un temp, borré las 11 líneas de la guarda y corrí el test.
+Sin guarda, un PR `MERGED` con el rollup sano sale **`VERDE — se puede mergear`, `rc=0`**. O sea
+que **el veredicto que el remedio pedía es el que el defecto YA daba** en cuanto `mergeable`
+dejara de ser `UNKNOWN`: de haber seguido el control propuesto, el fix habría cambiado el **texto**
+y no el **veredicto**, y el patrón de uso del repo — `ci-verde.sh N && gh pr merge N` — habría
+seguido leyendo `exit 0` como **autorización**.
+
+**La generalización, que es lo que hay que llevarse:** un hallazgo bien diagnosticado puede traer
+un remedio mal orientado, y el remedio **hereda la credibilidad del diagnóstico**. Acá el
+diagnóstico era impecable («`UNKNOWN` tiene dos causas opuestas») y eso hizo que su «Control:»
+pasara sin examen — yo mismo lo iba a copiar. **Al implementar un control que otro escribió,
+preguntale lo mismo que al código: ¿hacia qué lado falla?** «No hay nada que mergear» **no es
+permiso para mergear**, y la diferencia entre decirlo en VERDE o en ROJO es toda la diferencia.
+
+Ver también [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]: el espejo de esto es el falso
+rojo. Acá el riesgo era el falso **verde**, que es el que nadie cuestiona porque deja seguir.

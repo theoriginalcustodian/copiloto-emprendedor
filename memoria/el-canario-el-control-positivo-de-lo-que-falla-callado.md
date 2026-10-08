@@ -182,3 +182,25 @@ acuerde; (3) cuando un control parezca bloqueado por infraestructura (CI, hook, 
 **instrumento** de **vehículo**: casi siempre el instrumento corre local y el vehículo es opcional;
 (4) un resultado **inesperado** del mutante vale más que el cierre — si la suite sale **verde** con el
 mutante puesto, ése es el hallazgo real.
+
+## Refuerzo 2026-10-08 — el mutante no sólo validó el test: **midió que el defecto era PEOR que su síntoma**
+
+Escribí `test-ci-verde-pr-terminal.sh` y dio **14/14 verde a la primera**, que es justo cuando no
+hay que creerle. Mutación: copia de `scripts/` a un temp, `sed -i '183,193d'` sobre la guarda
+(controles de la mutación: 0 menciones de `json state`, el rollup intacto, `bash -n` OK) y el
+**mismo** archivo de test contra esa copia ⇒ **11 de 14 aserciones cayeron**. Dos cosas salieron
+de ahí que la corrida verde no podía dar:
+
+1. **El síntoma que yo venía contando era el más suave.** Yo repetía que un PR `MERGED` salía por
+   `exit 2 «volvé a correrlo»`. El mutante mostró que eso pasaba **sólo porque el `mergeable`
+   real de un PR mergeado es `UNKNOWN`**: con el rollup y el merge sanos, el mismo hueco imprime
+   **`VERDE — se puede mergear`**. El defecto no era «manda a reintentar», era «**autoriza a
+   mergear lo ya mergeado**». Un síntoma observado es **una** salida del defecto, no su alcance.
+2. **2 de mis 14 aserciones no discriminan.** «No manda a reintentar» pasó **igual sin la guarda**,
+   porque la salida VERDE tampoco contiene esa frase. Pasaban por la razón equivocada. Quedaron
+   escritas — fijan la redacción del fix — pero **anotadas como no-cobertura en el header**: un
+   conteo de «N aserciones» sin la mutación no dice cuántas **acreditan** algo.
+
+Esto refuerza el refuerzo del 2026-10-06 (N mutantes acreditan cada test) con un matiz nuevo: el
+mutante también **re-mide el defecto**. Correlo antes de escribir el relato del fix, porque el
+relato se congela y después se cita.

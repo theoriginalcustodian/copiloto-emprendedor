@@ -257,3 +257,24 @@ paths que no estaban en la lista. Un veredicto envejece porque cambió lo que mi
 **quién está adentro de lo que mide**; la segunda no se ve mirando el código. Ver
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] y
 [[el-instrumento-respondio-sobre-otro-sujeto]].
+
+## Refuerzo 2026-10-08 (mismo día, el cuarto idioma) — «se mide en UNA sola tabla», dentro de un archivo que tenía **TRES**
+
+`DEC-18` zanjó el bucle del cierre con una regla que parecía inatacable: *«el cierre se mide
+**SÓLO** en la tabla de 5 puntos de `ALCANCE-CIERRE-BETA.md`»*. Medido después: ese archivo tiene
+**tres** tablas de los cinco puntos — `:185` (la operativa), `:208` («El criterio §13, punto por
+punto») y `:277` («Saldo de §13 al cierre») — y **no decían lo mismo**: el punto 1 estaba ✅ en
+una y 🟠 en otra, el punto 2 tenía tres redacciones de su falla.
+
+**La regla no cerró la ambigüedad: la movió**, y la movió al peor lugar — «una sola tabla»
+**suena resuelto**, así que nadie va a buscar ahí. Antes el problema era visible («el criterio no
+tiene dónde medirse»); después quedó escondido detrás de una decisión firmada.
+
+Arreglo: la tabla operativa lleva ahora, **escrito en ella**, que es la que mide, con el nombre de
+las otras dos y la regla de desempate («si alguna contradice a ésta, gana ésta»); las otras dos
+abren con «**Tabla derivada, no es la que mide**».
+
+**El control que me faltaba, y es de una línea:** al firmar un criterio que dice «se mide en X»,
+**contar los X**. `grep -c` del encabezado de la tabla, no una ojeada. Un singular en una decisión
+(«la tabla», «el doc», «el índice») es una **afirmación de unicidad** — y la unicidad es
+exactamente lo que este archivo documenta que no se cumple casi nunca.
