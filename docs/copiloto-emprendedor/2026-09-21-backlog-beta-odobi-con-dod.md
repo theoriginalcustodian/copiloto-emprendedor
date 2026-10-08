@@ -160,7 +160,9 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P2 · La carpeta `odobi-ui/` de Martín (17–18/09) entra al repo
 - **Qué:** su versión del prototipo y `mobile-coherencia.md` (Parte 2 = las formas propuestas de los pedidos a backend) no están en el repo. Sin ella, la referencia de «prototipo final» es la del 07/09.
-- **DoD:** [ ] PR con la carpeta, sin `.otf` nuevos ni credenciales (revisión de `git status` y grep de formas de credencial antes del commit); [ ] auditoría re-mide las filas que cambian contra la versión nueva.
+- **DoD:** [ ] PR con la carpeta, sin `.otf` nuevos ni credenciales (revisión de `git status` y grep de formas de credencial antes del commit); [ ] **(dueño: AUDITORÍA)** re-medir las filas que cambian contra la versión nueva — **se enruta como `pedido_`, no se espera que la lea acá.**
+  > 📏 **Medido el 2026-10-08: la carpeta YA está en `main`** — **313 archivos** bajo `Prototipo frontend/odobi-ui/`; el primer tilde está materialmente cumplido y nunca se tildó. Falta sólo el segundo.
+  > ⚠️ **Por qué el dueño va escrito:** un DoD que nombra a otra sesión es un **canal de asignación que nadie enruta** — la cola de cada sesión la define el buzón (`-a-<sesión>_`), así que el ítem espera a alguien que no sabe que le toca. Hallazgo de auditoría, `H-COLAENLOSDOD`.
 
 ### BL-P3 · Acta de decisiones ya aplicadas
 
@@ -337,6 +339,8 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Captura de una propuesta por voz y una por foto en device.
 
 ### BL-C5 · Login de apps en `expo-web-browser` (mobile)
+
+> 📏 **Medido el 2026-10-08 (auditoría, sobre `c5f30798`): IMPLEMENTADO con test.** `expo-web-browser ~57.0.2` en `apps/mobile/package.json:29`, usado en `apps/mobile/src/modules/auth/oauth.ts` + `oauth.test.ts` + `PantallaApps.tsx`. **La casilla sigue sin tildar a propósito** — tildar por conteo es la aprobación ritual que este backlog prohíbe (`:14-17`); lo que se anota es la **evidencia**, para que el extractor no lo lea como huérfano.
 
 > **🖊️ Decisión firmada 2026-09-21:** **ATADO a EAS.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-4: builds EAS a cargo de BACKEND, máximo 2 — y el operador mandó device/EAS al sprint siguiente. Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Plataforma:** mobile (nativo) · **Tamaño:** S + build · **Origen:** trabajo 5, H-45
@@ -884,6 +888,8 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Si DEC-13 dice iOS: perfil y build iOS instalados en un iPhone real.
 
 ### BL-O4 · Observabilidad y alertas
+
+> 🖊️ **Decisión firmada 2026-10-08 — `DEC-17`: DIFERIDO a Cierre B**, junto a los otros `BL-O`. **El motivo, no una omisión:** esto es observabilidad **para testers externos**, y `BL-O1` (lista de testers), `BL-O2` (OAuth externo) y `BL-O3` (distribución mobile) están los tres diferidos por `DEC-12` — la alerta cubriría usuarios que esa misma firma todavía no habilitó. **Riesgo aceptado explícitamente:** si hoy se cae el web, el worker, Caddy o GoTrue, **nadie se entera** hasta que alguien lo nota a mano. Lo levantó auditoría como el único huérfano real de los 12 `SIN-SEÑAL`. Si hay que revertirlo, se revierte **con otra acta**, no editando acá.
 - **Evidencia:** en el VPS no hay unidades de Prometheus / Grafana / Alertmanager / `obs-*` / node_exporter; `/opt/uc-repos/alerting-monitor` es el esqueleto sin unidad systemd. Gap ya anotado en `2026-07-06-production-readiness-assessment.md` §3.6.
 - **Depende de:** `fleet-platform` (fuente de verdad de `obs-*`; se vendorea con `sync-fleet-platform.sh`, nunca se edita `platform/`).
 - **DoD:**
@@ -1065,7 +1071,10 @@ No bloquean la beta. Cada uno con su condición de entrada.
 La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mismo SHA de `main`:
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).
-2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD, y los `BL-X` cuya decisión los mantuvo en la beta.
+2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD **o explícitamente diferidos por acta** — misma cláusula que el punto 1 ya admite para los `DEC-*` —, y los `BL-X` cuya decisión los mantuvo en la beta.
+   > 🖊️ **`DEC-16` (2026-10-08).** **Un ítem con decisión de diferimiento firmada no cuenta como incumplido: cuenta como FUERA de este cierre**, y se mide en el cierre al que el acta lo movió. Sin esta cláusula el punto exigía cerrar lo que `DEC-12` (21/09) ya había diferido — **incumplible por firma, no por trabajo pendiente**.
+   > **Medido en `main` el 2026-10-08, los que salen por esto:** `BL-O1` · `BL-O2` · `BL-O5` · `BL-O7` (los cuatro **DIFERIDO a Cierre B** por `DEC-12`) y `BL-O3` (**ATADO a EAS**). Quedan dentro `BL-O4`, `BL-O6` y `BL-O8`, que no tienen diferimiento firmado.
+   > **El punto 1 no se enmendó**: ya tenía la cláusula y está ✅ — de ahí salió esta redacción. El defecto no era «gemelo»: era **el punto 2 al que le faltó copiarla**.
 3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5` — la lista es [`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`](2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md) §2, **54 ids** —, contra el prototipo final de Martín (`BL-P2`).
 4. `smoke_beta_e2e.py` en verde contra prod (`BL-Q2`) y durabilidad demostrada (`BL-B1`).
 5. Un tester que no es del equipo completa, sin ayuda y en su propio teléfono: alta → conectar una app → dictar un gasto → emitir una factura en homologación → pedir soporte. Con video.
