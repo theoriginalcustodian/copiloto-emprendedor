@@ -512,3 +512,23 @@ que las cazó fue que el número final no cerraba: un commit de *74 líneas agre
 reportar *471 insertions y 398 deletions*. **La aritmética que no cierra es el detector más barato que
 hay, y es el último que uno mira** — ver la señal de «dos mediciones distintas que dan el mismo
 número exacto», más arriba: misma familia, signo opuesto.
+
+### Caso — el HOOK no es el COMPONENTE (2026-10-08, A3)
+
+Para decidir si un componente de React consultaba el backend antes de ofrecer una acción destructiva,
+leí su `useEffect` de carga y no encontré la consulta. Concluí «el componente nunca la hace».
+
+El componente **sí** la hacía, en el handler que abre el flujo, 45 líneas más abajo. Mi grep había
+preguntado por el **hook**; mi afirmación fue sobre el **componente**. Sujeto distinto, respuesta
+correcta, conclusión falsa — y sobre ella bajé un contrato que hizo reimplementar trabajo de julio
+([[el-contrato-que-manda-a-hacer-algo-ya-hecho]]).
+
+**Lo que lo habría cazado y es más barato que el grep que usé:** en vez de buscar dónde se llama,
+contar las llamadas en TODO el archivo — `grep -n <funcion> <archivo>` sin filtrar por hook. La
+definición aparece una vez y cada uso aparece; si hay un uso que no explicaste, no terminó la
+medición. Yo había recortado la salida al tramo del `useEffect`.
+
+**Y el control gratis que tenía a mano sin saberlo:** el gemelo web del mismo componente. Al diffear
+los dos tramos equivalentes, la única diferencia eran **acentos y comentarios**. Dos gemelos
+idénticos donde uno «no tenía el fix» es una contradicción, no una asimetría — y la contradicción
+acusa a la medición, no al código. Compará contra el gemelo antes de declarar que a uno le falta algo.
