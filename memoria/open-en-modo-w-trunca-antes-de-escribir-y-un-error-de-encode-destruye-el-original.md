@@ -5,6 +5,16 @@ metadata:
   type: feedback
 ---
 
+> **🔗 PARCIALMENTE CONSOLIDADA el 2026-10-08.** El primer tramo —`open(path,"w")` trunca al
+> abrir— esta consolidado en
+> [[open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo]], que es la entrada
+> que el indice carga. **Lo que vive SOLO aca, y es el motivo de no fusionarla, son los seis
+> refuerzos sobre el CANAL:** el heredoc sin comillas ejecuta los backticks y deja el texto
+> *gramatical y vacio* · los escapes no sobreviven heredoc→Python→archivo · el delimitador
+> literal cierra el continente que lo lleva · y la regla que cierra la serie — **dos fallos
+> identicos del canal no son un bug a depurar, son la senal de cambiar de canal**. Si llegaste
+> buscando truncado, la de arriba; si llegaste porque un heredoc te mutilo un documento, es esta.
+
 **2026-09-30, agregando un párrafo a un `pedido_` del buzón.** El script era el mismo que ya había usado
 seis veces ese día: leer, `str.replace`, escribir.
 

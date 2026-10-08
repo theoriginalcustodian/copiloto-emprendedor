@@ -513,7 +513,10 @@ curl -s -o /dev/null -w 'root [informativo]: %{http_code}\n' "https://${BASE_DOM
 curl -s -o /dev/null -w 'hermes [informativo]: %{http_code}\n' "https://hermes.${BASE_DOMAIN}/" || true
 curl -s -o /dev/null -w 'temporal [informativo]: %{http_code}\n' "https://temporal.${BASE_DOMAIN}/" || true
 REMOTE_SMOKE
-echo "    Smoke de la beta (37 checks, muta prod) = scripts/run-smoke-prod.sh — NO corrido por este deploy."
+# El conteo de checks NO se escribe a mano: decia "37" y la corrida real del 2026-10-08 dio 39 PASS.
+# Un numero hardcodeado en un `echo` no tiene quien lo re-mida, asi que envejece callado; el script
+# imprime su propio total al final.
+echo "    Smoke de la beta (muta prod; imprime su propio total de checks) = scripts/run-smoke-prod.sh — NO corrido por este deploy."
 
 if uc_durabilidad_activa; then
   echo "==> [8/8] verificando que la conversación y el gate HITL sobrevivieron el restart real"
