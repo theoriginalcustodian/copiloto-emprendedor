@@ -172,3 +172,41 @@ rastro, y el sidecar no tiene valor sin su mensaje. (2) Después del `rm`, corr�
 (48 líneas de markdown dentro de un sidecar): **todo sidecar tiene exactamente 1 línea** y es un epoch; medilo
 sobre el directorio entero (124 sidecars al 2026-10-06, todos de 1 línea) en vez de confiar en que el último
 `>>` fue al archivo correcto.
+
+## Refuerzo 2026-10-08 — la variante «sombra de estado»: `find` por asunto devuelve DOS archivos
+
+Esta vez no inventé la ruta: la **busqué**, que es el remedio que esta misma entrada prescribe. Y
+falló igual.
+
+```
+find coordinacion -name '*pedido…tres-worktrees*'
+  -> coordinacion/.escalador-estado/<mismo nombre>.md.first-seen     <- el primer match
+     coordinacion/abierto/<mismo nombre>.md                          <- el que buscaba
+```
+
+Le appendeé 37 líneas de prosa al `.first-seen` —un archivo de **1 línea** con un epoch— y lo **moví
+a `cerrado/`**. Dos daños distintos: un archivo de estado con un ensayo adentro, y el escalador
+**sin su marcador de antigüedad**, lo que le habría reiniciado el contador de ese pedido a cero.
+
+> **La causa es estructural: `coordinacion/` guarda DOS archivos por mensaje** —el mensaje y su sombra
+> de estado— **con el mismo nombre base**. Cualquier `find -name` por patrón del asunto devuelve dos,
+> y el orden no lo elige quien busca.
+
+**Y el daño de mover la sombra no da síntoma**, que es lo que lo hace peligroso: no rompe nada
+visible, sólo pone a cero un contador que después nadie entiende por qué bajó — el escalador deja de
+escalar un pedido viejo porque cree que acaba de nacer. Hermano de
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
+
+**El control, dos líneas y ninguna es «buscá mejor»:**
+
+1. **Anclar el directorio**, no el árbol: `coordinacion/abierto/<nombre>`, nunca `find coordinacion`.
+2. **Verificar la FORMA antes de escribir.** Un mensaje del buzón arranca con `#`; un `.first-seen` es
+   un epoch de 10 dígitos. Un `[ "$(head -c1 "$P")" = "#" ] || exit 1` antes del `>>` corta esto en
+   seco — y es el mismo control de forma que ya pagamos en
+   [[contar-un-simbolo-no-dice-en-que-rol-aparece]]: **preguntar por la forma, no por el nombre**.
+
+**La reparación, para que conste que se puede:** `sed -n '1p'` recuperó el epoch (`1791471414`), lo
+reescribí como única línea, devolví el archivo a `.escalador-estado/` con `mv -n`, y verifiqué tres
+cosas — contenido idéntico al original, formato igual al de sus hermanos (`^[0-9]{10}$`), y **0**
+residuo en `cerrado/`. Lo que **no** se puede recuperar si no te das cuenta es el contador: nadie
+audita un epoch.
