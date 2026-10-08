@@ -4,8 +4,15 @@
 > firmó el 2026-10-08: **no se tildan 53 casillas, se muestrean 10 ítems de forma adversarial.**
 > Contrato: `contrato_planificacion-a-auditoria_el-punto-2-cierra-por-MUESTREO-ADVERSARIAL-de-10-items-no-tildando-53-casillas`.
 > **Sujeto medido:** `origin/main` @ **`00a14413`**. **Medido por:** sesión AUDITORÍA, 2026-10-08.
-> **Veredicto binario: el punto 2 NO cierra — 4 de los 10 ítems muestreados tienen residuo real,
+> **Veredicto binario: el punto 2 NO cierra — 3 de los 10 ítems muestreados tienen residuo real,
 > asignable hoy, que el cierre trata como no-asignable.**
+>
+> **🔻 Corregido el 2026-10-08, **12 minutos** después de mergear este doc: eran 4, son 3.** `BL-O6`
+> salió del punto 2 por un diferimiento que el operador firmó el **21/09** y que mi filtro de
+> exclusión no vio, porque esa fila del acta **no tiene número de `DEC-*`** (`§8`). Sus dos
+> defectos **siguen vivos** y sus dos filas `H-*` siguen en pie — lo que cambia es que **el punto 2
+> no los mide**. El veredicto binario **no se mueve**: 3 de 10 refutan el «0 asignables» igual, y
+> el 🔴 más grave (`BL-B1`, el instrumento que acredita el moat) nunca fue `BL-O6`.
 
 **Control de vigencia del sujeto, corrido antes de publicar** (la regla que esta misma sesión pagó
 hoy: la refutación de una afirmación puede vivir dentro de la base elegida). Medí en un worktree a
@@ -53,6 +60,11 @@ nada, el resultado vale; si buscás donde es fácil, no mide nada.»* El criteri
 4. **Excluidos con firma, no por conveniencia:** los 6 `BL-O` de `§12.bis` (`DEC-12`, `DEC-17`) y los
    3 falsos positivos **ya medidos y anotados** en `main` (`BL-C5`, `BL-P2`, `BL-J1`) — volver a
    medirlos sería contar dos veces un hallazgo que ya tiene dueño.
+   > **🔻 Acá está el defecto de mi propio criterio, corregido el 08/10 (`§8`).** Corrí este
+   > filtro contra **`§12.bis`** del backlog y contra el cuerpo del punto 2, que **indexan por
+   > `DEC-*`**. El acta del 21/09 difiere `BL-O6` en una fila cuya **columna de decisión es «—»**:
+   > sin id, no entra en ningún índice que se consulte por id, y su propio ítem no la citaba.
+   > **El filtro de alcance se corre contra el acta, no contra el índice derivado del acta.**
 
 **Y una elección deliberada contra mi propio sesgo:** metí `BL-P7`, que es el **único** de los 10 con
 las casillas **tildadas**. Los otros nueve están sin tildar, así que para ellos «falso ✅» es una
@@ -71,7 +83,7 @@ que sólo mira lo no-tildado no puede cazar una casilla mentirosa.
 | 6 | `BL-J9` | J | **6** | 588 | **máximo de casillas del backlog**; incluye precedencia y adversarial |
 | 7 | `BL-J11` | J | **6** | **554** | el otro máximo, con el PR más viejo de los dos; toca auth |
 | 8 | `BL-B1` | B | 4 | 603 | su DoD **afirma evidencia** — la clase más auditable y la que más miente |
-| 9 | `BL-O6` | O | 3 | 678 | el único `BL-O` con señal **no** excluido por firma |
+| 9 | `BL-O6` | O | 3 | 678 | ~~el único `BL-O` con señal **no** excluido por firma~~ → **era falso: sí estaba excluido** (acta 21/09, fila sin `DEC-*`). Medido igual, y los defectos existen — pero **el punto 2 no los mide** (`§8`) |
 | 10 | `BL-Q3` | Q | 3 | 623 | es un ítem que **audita a otros**: si él es falso, arrastra los que acredita |
 
 ### El control positivo, elegido por un criterio DISTINTO — y por qué eso importa
@@ -119,7 +131,7 @@ discusión no es de auditoría, es de firma. **Eso ya tiene fila y no la vuelvo 
 `H-PUNTO2INCUMPLIBLE`**, una de las 6 que `#977` enumera como «nombran el punto 2». Lo que agrego
 acá es que el veredicto **no se apoya** en esa lectura (ver `§4`).
 
-**Nota de severidad del veredicto:** los 4 falsos de abajo **no dependen de esa lectura**. Ninguno
+**Nota de severidad del veredicto:** los 3 falsos de abajo **no dependen de esa lectura**. Ninguno
 es una casilla de device: son tres de código/test y uno de texto publicado. El veredicto «no cierra»
 se sostiene con el alcance **más permisivo** de los dos.
 
@@ -207,7 +219,7 @@ Matiz que sí es real y no condena: la **API es asimétrica** — web tipa `line
 los recibe por `children` (`TarjetaFacturaPropuesta.tsx:142-146` mete `DatosComprobante` y
 `AccionesComprobante`). A nivel render la acción existe; a nivel contrato del componente, no.
 
-### 3.6 `BL-J9` — **FALSO ✅ (1 de 4)** · falta la mitad «el replay intacto» de la casilla 4
+### 3.6 `BL-J9` — **FALSO ✅ (1 de 3)** · falta la mitad «el replay intacto» de la casilla 4
 
 La casilla 4 pide *«test de regresión en el motor con ambos órdenes **y el replay intacto**»*.
 
@@ -228,7 +240,7 @@ bajo #570). **Residuo: un test de `Replayer` en el motor. No necesita device ni 
 > **0** y casi reporté «el archivo no tiene tests». El ancla `^` no matchea `async def`. Lo cazó el
 > control positivo (26 en otro test del motor). Está en `§6`.
 
-### 3.7 `BL-J11` — **FALSO ✅ (2 de 4)** · casilla 4: en web «Cerrar sesión» no está en su propio grupo
+### 3.7 `BL-J11` — **FALSO ✅ (2 de 3)** · casilla 4: en web «Cerrar sesión» no está en su propio grupo
 
 La casilla dice, sin ambigüedad: *«Cerrar sesión queda en su propio grupo.»*
 
@@ -259,7 +271,7 @@ La casilla 1 («cambiar mail») está **diferida por firma**: `[DIFERIDO_CIERRE_
 `CambiarCredenciales.tsx:93` (web) y `:68` (mobile), *«falta SMTP real + ruta `/auth/v1/verify` en
 Caddy. Dueño: operador»*. Deliberado y nombrado ⇒ por `§2` no condena.
 
-### 3.8 `BL-B1` — **FALSO ✅ (3 de 4)** · casilla 4: el instrumento confirma por AUSENCIA, no por la activity
+### 3.8 `BL-B1` — **FALSO ✅ (3 de 3)** · casilla 4: el instrumento confirma por AUSENCIA, no por la activity
 
 La casilla (A3, `H-A3-8`) pide que el VERDE **discrimine por la activity ejecutada**
 (`execute_tool` con `confirmed:true` después del restart). Lo que hay, en
@@ -287,7 +299,22 @@ bloqueante, con opt-out (`deploy.sh:24-33, 408-426, 518`).
 **Residuo: hacer que el verde exija la firma positiva de la activity, y correr el control negativo
 que ya existe. VPS, sin device.**
 
-### 3.9 `BL-O6` — **FALSO ✅ (4 de 4), por dos vías distintas**
+### 3.9 `BL-O6` — **FUERA del punto 2 por acta firmada** · dos defectos VIVOS que el punto 2 no mide
+
+> **🔻 Reclasificado el 08/10, después de mergear este doc.** Lo publiqué como **falso ✅ (4 de
+> 4)** y **no lo es**, por alcance y no por medición: la fila final del `§1` del acta del **21/09**
+> difiere `BL-O6` a Cierre B *(«**no se enciende todavía**: backups, **legal propio**, horario de
+> soporte»)* y **lo nombra por id** en su columna de ítems, junto a `BL-O5` y `BL-O7`. Verificado
+> por mí en la fuente, no aceptado de una cita: `2026-09-21-acta-decisiones-beta-odobi.md:29`, y
+> repetido en `2026-09-21-plan-implementacion-beta-odobi-autonomo.md:49`. Con `DEC-16` firmado hoy
+> (*«un ítem con diferimiento firmado cuenta como FUERA de este cierre»*) y mi propio `§2`
+> (*«no es falso ✅ lo diferido por firma nombrada»*), **las dos vías de abajo salen de la cuenta
+> del punto 2.**
+>
+> **Lo que NO cambia:** las dos mediciones siguen siendo correctas y los dos defectos siguen
+> **vivos en el producto**. `H-O6CLAVEFISCAL` y `H-O6MOBILEACEPTA` quedan en `§5.1` con dueño.
+> Un diferimiento mueve **dónde se mide un ítem**; no borra un texto legal publicado que afirma un
+> tratamiento de datos que no ocurre. Por eso esto se reclasifica, no se tacha.
 
 **(a) Casilla 1 — el texto legal publicado afirma un tratamiento de datos que el código no hace.**
 `packages/core/src/legal.ts:109-111` («5. Tu clave fiscal.») dice:
@@ -336,19 +363,23 @@ sano. Si la casilla exige encabezado es cuestión de forma, y la decido **no fal
 
 > ## El punto 2 de `§13` **NO CIERRA**.
 >
-> **4 de los 10 ítems muestreados** tienen residuo real, asignable hoy, que el cierre trata como
+> **3 de los 10 ítems muestreados** tienen residuo real, asignable hoy, que el cierre trata como
 > no-asignable: **`BL-J9`** (casilla 4, la mitad del replay) · **`BL-J11`** (casilla 4, el grupo de
 > «Cerrar sesión» en web) · **`BL-B1`** (casilla 4, el verde por ausencia en el instrumento de
-> durabilidad) · **`BL-O6`** (casilla 1, el texto legal contradice al código; y casilla 2, mobile no
-> registra la aceptación).
+> durabilidad).
 >
-> Ninguno de los cuatro es una casilla de device, así que el veredicto **no depende** de cómo se lea
+> **Un cuarto, `BL-O6`, lo publiqué como falso y lo retiré de la cuenta el mismo día** (`§3.9`,
+> `§8`): sus dos defectos están medidos y **vivos**, pero el acta del 21/09 lo difirió a Cierre B
+> y **el punto 2 no lo mide**. Se mantiene fuera de la cuenta **aunque sea el más vistoso de los
+> cuatro** — texto legal publicado — porque el alcance lo decide la firma, no la gravedad.
+>
+> Ninguno de los tres es una casilla de device, así que el veredicto **no depende** de cómo se lea
 > `§0.4`.5 (ver `§2`). El control positivo **`BL-Q1` salió verde**, así que los rojos no son un
 > artefacto del método.
 
 **Lo que esto refuta, textualmente:** el punto 2 afirma *«residuo verificado fila por fila, 0
-asignables»*. Con sesgo adversarial, **4 de 10** tienen residuo asignable — y uno de ellos es texto
-legal publicado que afirma algo falso sobre el manejo de un secreto del usuario. La tasa no se
+asignables»*. Con sesgo adversarial, **3 de 10** tienen residuo asignable — y el peor es el
+instrumento que **acredita la durabilidad**, o sea el moat. La tasa no se
 extrapola (la muestra está sesgada a propósito hacia donde es difícil), y **no hace falta
 extrapolarla**: el punto afirma **0**, y encontrar **1** ya lo refuta.
 
@@ -382,8 +413,8 @@ ninguno de los ítems medidos.
 | `H-J9REPLAY` | test de `Replayer` para `gate-card-precedencia-bloquea` en el motor (la mitad que falta de `BL-J9` c4) | backend/motor | no |
 | `H-J11GRUPO` | «Cerrar sesión» en su propio grupo en web (hoy es la última fila del tile plano; mobile ya lo agrupa) | frontend web | no |
 | `H-B1FIRMA` | el VERDE de durabilidad debe exigir la firma positiva de la activity (`execute_tool confirmed:true`), y correr el `--control-negativo` que **ya existe** | backend | no |
-| `H-O6CLAVEFISCAL` | `legal.ts` §5 afirma que la clave fiscal se guarda cifrada; el código la **descarta** (`afip_credential_store.py:13`). Separar los dos secretos en el texto | fe2 (rama viva de legal) + operador (es copy legal) | no |
-| `H-O6MOBILEACEPTA` | mobile no registra la aceptación legal (0 hits de `aceptarLegal`); incumple paridad `§0.4`.6 | mobile | no |
+| `H-O6CLAVEFISCAL` | **(fuera del punto 2 — `BL-O6` diferido por acta; el defecto sigue vivo)** `legal.ts` §5 afirma que la clave fiscal se guarda cifrada; el código la **descarta** (`afip_credential_store.py:13`). Separar los dos secretos en el texto | fe2 (rama viva de legal) + operador (es copy legal) | no |
+| `H-O6MOBILEACEPTA` | **(fuera del punto 2 — `BL-O6` diferido por acta; el defecto sigue vivo)** mobile no registra la aceptación legal (0 hits de `aceptarLegal`); incumple paridad `§0.4`.6 | mobile | no |
 | `H-C6ALTAEXENTA` | el guard de CUIT exime el alta inicial y el adversarial sólo cubre la rama guardada; el comentario justifica UX, no autorización ⇒ `[UNVERIFIED]` por la regla dura del repo | backend | no |
 | `H-COLORSOLO` | la distinción destructiva/éxito se comunica **sólo por color** en tres lugares medidos (los dos `Recibo` y la fila «Cerrar sesión» web) — WCAG 1.4.1 | frontend ambas | no |
 | `H-F1CHECKAMBIGUO` | zanjar si `BL-F1` c1 pide una **marca visual** o el **`aria-live`**: hoy el check visual es 0 en las dos plataformas, el `aria-live` está en las dos | planificación (redacción) | no |
@@ -478,3 +509,79 @@ decía.
 ---
 
 **Medido en `origin/main` @ `00a14413`** · sesión AUDITORÍA · 2026-10-08 · método firmado en `DEC-18`.
+
+---
+
+## 8. Corrijo mi propia cuenta el mismo día que la publiqué: eran 4 falsos, son 3
+
+**Qué pasó, en orden y con hora.** Este doc se mergeó a `main` en `dd7a0de9` (**21:02Z**). A las
+**21:03Z** entró `#979` (`88bc6f9a`), que entre otras cosas anotó en el ítem `BL-O6` un
+diferimiento **firmado el 21/09**. Lo encontré corriendo el control de vigencia **sobre el main
+posterior a mi propio merge** — leyendo qué había cambiado, no esperando que alguien me avisara.
+
+**Pero la causa no es `#979`, es mía y es anterior.** El diferimiento no nació ayer: está en la
+fila final del `§1` del acta del **21/09**, que nombra **`BL-O5`, `BL-O6` y `BL-O7` → Cierre B**.
+Verificado por mí en la fuente y no aceptado de la cita de `#979`:
+`2026-09-21-acta-decisiones-beta-odobi.md:29`, repetido en
+`2026-09-21-plan-implementacion-beta-odobi-autonomo.md:49`. Es decir: cuando armé el muestreo,
+`BL-O6` **ya estaba fuera del cierre por firma del operador, nombrado por id, desde hacía tres
+semanas**. Mi `§1`.4 dice *«excluidos con firma»*, y escribí en la tabla de los 10 que `BL-O6` era
+*«el único `BL-O` con señal **no** excluido por firma»*. Esa celda era falsa.
+
+### Por qué el filtro no lo vio — y la forma del agujero
+
+El alcance del punto 2 vive en **tres capas**, y yo consulté las dos derivadas:
+
+| capa | qué es | indexa por | ¿tenía `BL-O6`? |
+|---|---|---|---|
+| el **acta** del 21/09 | la firma del operador | ítems, en la última columna | **sí**, con `BL-O5` y `BL-O7` |
+| `§12.bis` del backlog | el índice de lo diferido | **`DEC-*`** | **no** |
+| el cuerpo del punto 2 | el criterio que se lee al cerrar | **`DEC-*`** | **no** (decía lo contrario) |
+
+La fila del acta que difiere `BL-O6` tiene la **columna de decisión en «—»**: es una decisión
+firmada **sin número**. Y las dos capas que yo consulté se indexan por número. **Una decisión
+firmada sin id no entra en ningún índice que se consulte por id**, y entonces no es que esté mal
+copiada: es que **no hay nada que copiar**. `BL-O7` sobrevivió sólo porque su ítem cita esa fila
+textual a mano; `BL-O5` porque alguien la anotó. `BL-O6` no, y durante tres semanas el criterio del
+cierre lo leyó como incumplido.
+
+**La forma del agujero, medida:** en todo el acta, las filas sin número de `DEC-*` que nombran ids
+nombran exactamente **tres** — `BL-O5`, `BL-O6`, `BL-O7` —, de los cuales **dos** estaban anotados
+y **uno** no. El agujero tenía un solo ocupante invisible, y mi muestreo adversarial fue a buscar
+justo ahí: el sesgo que el contrato pedía me llevó al único ítem donde el índice mentía.
+
+### El control que faltaba, y por qué el que corrí no podía cazarlo
+
+Corrí un control de vigencia **antes** de publicar, y está en la cabecera: `git log <base>..<main>`
+sobre **los 6 paths de los falsos**. Ese control vigila los paths de la **evidencia** — el código y
+los tests que miden el residuo. No podía ver esto, porque lo que cambió no fue la evidencia: **fue
+el alcance**, que vive en el acta y en el backlog, dos paths que nunca puse en la lista.
+
+> **Control nuevo, y corrido ahora para los 10:** antes de meter un ítem en un muestreo del punto 2,
+> grepear **su id en el acta**, no en `§12.bis`. Resultado: el acta nombra 3 de mis 10 — `BL-C6`
+> (con `DEC-9`, que es decisión **activa**, no diferimiento), `BL-Q3` (en prosa de contexto, sin
+> decisión) y `BL-O6` (diferido). **Los tres falsos que quedan dan 0 hits en el acta**, con control
+> positivo del mismo grep: el acta nombra **33 ids** distintos. Por eso el 3 es firme y no estoy
+> corrigiendo una cifra para volver a corregirla mañana.
+>
+> **Y el control de vigencia se amplía:** la lista de paths vigilados incluye desde ahora el acta y
+> el backlog, no sólo los paths del código medido. Un veredicto puede envejecer porque cambió lo
+> que mide **o** porque cambió **qué está dentro de lo que mide**.
+
+### Lo que no hago: tachar
+
+`BL-O6` sale de la **cuenta del punto 2**. Sus dos defectos siguen medidos y **vivos en el
+producto**: el texto legal publicado sigue diciendo que la clave fiscal «se guarda cifrada» cuando
+el código la descarta, y mobile sigue sin registrar la aceptación. `H-O6CLAVEFISCAL` y
+`H-O6MOBILEACEPTA` se quedan en `§5.1` con dueño. **Un diferimiento mueve dónde se mide un ítem; no
+desaparece un defecto.** Y se mantiene fuera de la cuenta **aunque sea el más vistoso de los
+cuatro** — copy legal de cara al usuario —, porque el alcance lo decide la firma y no la gravedad:
+inflar el conteo con un ítem diferido es el mismo error que tildar casillas, con mejor prensa.
+
+### El patrón, que es el de `§7` otra vez y ya van dos en un día
+
+`§7` retiró un veredicto mío porque **el universo que medí no era el universo del que hablaba** (4
+filas → 53 ítems). Esto es la misma falla por el otro lado: **el universo del que hablaba incluía un
+ítem que la firma ya había sacado**. Las dos veces la medición estaba bien y el **sujeto** estaba
+mal. La pregunta que cierra las dos no es *¿medí bien?* sino **¿de qué conjunto estoy hablando, y
+quién decide quién está adentro?** — y para el punto 2 eso lo decide un acta, no un índice.
