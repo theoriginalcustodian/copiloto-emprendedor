@@ -228,3 +228,36 @@ de `main` no prueba que su trabajo falte.** Preguntar por el ARCHIVO, no por la 
 en el contrato como fuente de alcance y **no re-mide la fila** — hace bien, para eso existe la
 división. Eso traslada todo el peso de la verificación a quien baja el contrato: si yo no mido, nadie
 mide, y el duplicado llega hasta el push.
+
+## Refuerzo 2026-10-08 — el defecto no estaba en el VEREDICTO, estaba en la CAUSA que el veredicto citaba
+
+Dos filas del criterio de cierre §13 pasaron de 🔴 a ✅ **el mismo día** en que el doc las declaraba
+rojas (el punto 2 lo cerró auditoría con el #937, el punto 4 backend con el #932). Hasta ahí es el
+drift conocido. Lo nuevo es **por qué nadie las releyó**:
+
+> **Las dos filas citaban un mecanismo que ya estaba muerto, y una fila con causa vencida sigue
+> leyéndose perfectamente coherente.**
+
+La del punto 4 decía: *«`smoke_beta_e2e.py:19` importa `meclaves_check` y `run-smoke-prod.sh` lo pipea
+por stdin, así que el import no resuelve»*. Ese bug se había arreglado el **07/10** (#908). Lo que
+seguía roto era otra cosa (un export de env que faltaba, `UC_LOGIN_CONTRATO_PATH`). La fila describía
+con precisión técnica un problema **inexistente**, y por eso aguantó: no tenía ninguna de las marcas
+de una fila podrida —no era vaga, no era vieja, no estaba sin ancla— tenía `path:línea` y nombraba un
+import real.
+
+**La asimetría con la entrada original.** Arriba, el contrato mandaba a hacer algo ya hecho y el
+control era medir el id antes de escribirlo. Acá el id estaba bien medido **cuando se escribió**: lo
+que caducó fue el *mecanismo*. ⇒ **releer el color de la celda no alcanza; hay que releer la causa que
+la celda cita.** Un veredicto se puede verificar; una causa citada hay que **re-ejercitarla**.
+
+**El barrido que lo caza, y que corrí sobre mis propias 13 filas diferidas:** por cada fila, resolver
+su ancla `path:línea` contra `origin/main` y mirar **si el archivo fue tocado después de la fecha de
+la fila**. No prueba que la causa esté muerta — marca **candidatas a releer**, que es todo lo que un
+barrido barato debe prometer. Resultado: 13/13 anclas resuelven, y **una fila más** con el conteo
+vencido (`H-DOSCIERRES`, «puntos 3, 4 y 5 NO cumplidos»). Una tercera (`H-FOCORC1`) tenía el archivo
+tocado ese mismo día, la re-medí, y **la causa seguía viva** — el barrido también tiene que poder
+absolver, o es un generador de ruido.
+
+Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] (eso era propagación; esto es
+caducidad) y [[un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado]].
+
