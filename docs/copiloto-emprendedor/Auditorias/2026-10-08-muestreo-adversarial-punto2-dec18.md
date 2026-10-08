@@ -469,6 +469,19 @@ cazó un control positivo. Se escriben porque la próxima medición los va a vol
    `00a14413` mientras medía, y la rama viva de fe2 toca `legal.ts`. `git log <sha-medido>..<main> --
    <path>` y el diff contra la rama viva son lo que separa «hallazgo» de «noticia vieja». Hoy
    salieron en verde; el día que salgan en rojo, el hallazgo era de antes de mi propia base.
+5. **El control de vigencia que corrí vigilaba los paths de la EVIDENCIA, y lo que cambió fue el
+   ALCANCE.** Los 6 paths del punto 4 son código y tests — lo que mide el residuo. **El acta y el
+   backlog no estaban en la lista**, y ahí vive quién está adentro del punto 2. Salió verde y aun
+   así publiqué un ítem **diferido por firma desde el 21/09** (`§8`). Un veredicto envejece porque
+   cambió **lo que mide** o porque cambió **quién está adentro de lo que mide**; el punto 4 sólo ve
+   la primera.
+6. **Una afirmación sobre el instrumento puede ser más amplia que el patrón del instrumento.**
+   Publiqué *«en todo el acta, las filas sin `DEC-*` que nombran ids nombran exactamente tres»*
+   midiendo con `^| — |`, que sólo ve el guion largo **literal**. Con el patrón amplio son **26
+   filas** en 5 actas, en **dos clases** (`§8`). La cifra que dependía de eso **no se movió**, pero
+   su razón sí. **Los tres primeros casos de esta lista son del instrumento; estos dos son del
+   enunciado**, y no los caza medir otra vez — los caza preguntar **de qué conjunto estoy
+   hablando** antes de publicar.
 
 ---
 

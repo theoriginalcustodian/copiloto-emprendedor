@@ -598,3 +598,43 @@ cubre `.json`** — así que los bytes de un artefacto de evidencia los decide e
 commitea. Anotado en la fila `H-RECIBOENWORKTREE`, no corregido: cambiar `.gitattributes` en pleno
 cierre es cambio de mecanismo. Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] y
 [[vacio-no-es-hallazgo-correr-el-control]].
+
+## 2026-10-08 (f) — tres veces el SUJETO en un día, y ninguna fue la medición
+
+El muestreo adversarial del punto 2 (#978, #980) me dio tres correcciones del mismo tipo en una
+sesión. **Ninguna fue un error de medir**: las tres mediciones eran correctas y las tres **frases que
+las reportaban hablaban de otro conjunto**.
+
+1. **El universo de la afirmación era más grande que el medido.** Medí **4 filas** del doc de alcance
+   y publiqué *«punto 2 · ✅ en sustancia, 0 asignables»* — y el punto 2 son **53 ítems**. Está
+   retirado en el `§7` del doc.
+2. **El universo medido incluía lo que la firma ya había sacado.** Publiqué **4 falsos ✅** y son
+   **3**: `BL-O6` estaba diferido a Cierre B desde el **21/09**, nombrado por id en una fila del acta
+   **sin número de `DEC-*`**, y mi filtro corría contra dos índices que se consultan **por `DEC-*`**.
+   `§8`. Ver [[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]].
+3. **La afirmación sobre el INSTRUMENTO era más amplia que su patrón.** Escribí *«en todo el acta,
+   las filas sin `DEC-*` que nombran ids nombran exactamente tres»*. Mi grep era `^| — |`: sólo veía
+   el guion largo **literal**. Con el patrón amplio aparecen **26 filas** en las 5 actas, en **dos
+   clases** (sin id alguno: 1 · con id en otro espacio de nombres — `DA-*`, números de punto: 25).
+   **La cifra 3 no se movió, pero su razón sí**: no se apoya en «el agujero tenía un ocupante», se
+   apoya en que **ninguna de las 5 actas difiere a ninguno de los tres**, que es lo que de verdad
+   medí (control positivo: 2 hits sobre `BL-O6`).
+
+**Lo que las une, y es distinto de los casos de arriba.** Arriba el instrumento miraba el objeto
+equivocado. Acá el instrumento miró bien y **el enunciado se ensanchó al salir**: de 4 filas a 53
+ítems, de «los no diferidos» a «todos», de «las filas con guion largo» a «las filas sin `DEC-*`». El
+defecto vive en **el salto del dato al enunciado**, y por eso **medir otra vez no lo caza** — sale
+igual. Lo caza una sola pregunta, antes de publicar: **¿de qué conjunto estoy hablando, y quién
+decide quién está adentro?** Para un criterio de cierre eso lo decide **un acta**, no un índice; para
+una afirmación sobre un instrumento, lo decide **el patrón que el instrumento usa**, no lo que yo
+creo que busca.
+
+**El corolario operativo, que ya apliqué:** el control de vigencia tiene que vigilar los paths del
+**ALCANCE** (el acta, el backlog), no sólo los de la **evidencia** (código y tests). El que corrí
+antes de publicar miró 6 paths de código y salió limpio — y lo que había cambiado era **quién estaba
+adentro**. Un veredicto envejece por las dos vías, y la segunda no se ve mirando el código.
+
+**Y el detalle que lo hace reincidencia y no novedad:** las tres las cacé yo, pero **las tres después
+de publicar**. La primera a horas, la segunda a 12 minutos, la tercera a minutos del merge. Mejoró la
+latencia, no el gate. El gate que falta es la pregunta de arriba, **antes** del push — no un cuarto
+control después. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
