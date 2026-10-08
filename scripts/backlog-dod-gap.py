@@ -5,10 +5,10 @@ propio backlog decidió no llenar.
 Origen: `H-A4b-3` (A4-bis) + contrato `planificacion-a-frontend1_DODTILDE` (2026-09-30).
 Tercera dirección del mecanismo de `scripts/plan-drift-check.sh` (dir.1: fila `pendiente` ya
 hecha; dir.2: fila `✅` cuya evidencia no aparece en main), sobre otro sujeto: el backlog de
-66 ítems `BL-*` tiene DOS señales de "terminado" que conviven sin lector común —
+ítems `BL-*` tiene DOS señales de "terminado" que conviven sin lector común —
 
-  1. `📌 Evidencia medida` — PR citado, derivable contra `origin/main` (57/66 ítems).
-  2. la casilla de DoD (`[x]`/`[ ]`) — verificada a mano, deliberadamente escasa (3/66):
+  1. `📌 Evidencia medida` — PR citado, derivable contra `origin/main`.
+  2. la casilla de DoD (`[x]`/`[ ]`) — verificada a mano, deliberadamente escasa:
      tildar por conteo es la aprobación ritual que el propio backlog prohíbe (`:14-17`).
 
 El criterio 2 del Cierre A sólo lee la señal (2), así que un ítem con PR real mergeado y
@@ -141,7 +141,7 @@ def parse_dod(body: str):
     ver BL-D1, BL-B1). Las dos conviven en el backlog real."""
     m = DOD_MARK_RE.search(body)
     if not m:
-        return None  # el ítem no tiene línea de DoD — no debería pasar en los 66 (DoD base :92)
+        return None  # el ítem no tiene línea de DoD — no debería pasar en ninguno (DoD base :92)
     nl = body.find("\n", m.end())
     if nl == -1:
         resto = [body[m.end():]]
@@ -253,9 +253,14 @@ def main() -> None:
         fatal("control NEGATIVO falló: un PR inventado (#999999) dio PRESENTE en el log.")
 
     items = parse_items(backlog_text)
-    if len(items) != 66:
+    # El numero es LITERAL a proposito: este guard existe para cazar que el parser deje de
+    # reconocer el backlog. Derivarlo de len(items) lo haria pasar SIEMPRE -- un guard que
+    # se compara consigo mismo falla abierto justo en su caso de activacion. Al cambiar la
+    # forma del backlog se actualiza A MANO, citando el PR que la cambio.
+    if len(items) != 77:
         fatal(
-            f"esperaba 66 ítems `### BL-*` (invariante medido del backlog), encontré {len(items)}. "
+            f"esperaba 77 ítems `### BL-*` (invariante medido del backlog: 66 + los 11 "
+            f"encabezados repuestos en #962, 2026-10-08), encontré {len(items)}. "
             "El backlog cambió de forma o el parser dejó de reconocerlo — no sigo sin re-medir."
         )
 
