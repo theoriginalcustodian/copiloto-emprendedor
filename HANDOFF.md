@@ -250,6 +250,10 @@ for u in json.load(sys.stdin).get(\"users\",[]):
 
 ---
 
+### 5.6 Al CERRAR el sprint: podar worktrees (obligatorio)
+
+`bash scripts/podar-worktrees.sh` (DRY-RUN) y después `--aplicar`. **El veredicto no es que el script termine bien:** en Windows el `remove` falla sobre el junction de `node_modules` y **desregistra igual**, así que cada poda parcial deja un huérfano que ninguna poda posterior ve. Medido el 2026-10-08: **52 registrados contra 117 en disco ⇒ 65 invisibles.** Se verifica contando las dos cosas, y un huérfano se juzga por **contenido**, no por `mtime`. Detalle y procedimiento: §13.bis del backlog de la beta.
+
 ## 6. El motor (fork duro desde 2026-07-07)
 
 `motor/` **nació** como copia vendorizada del arquetipo `conversational_agent/reference/` de la fábrica

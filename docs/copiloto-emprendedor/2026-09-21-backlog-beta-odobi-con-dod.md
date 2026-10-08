@@ -1060,6 +1060,35 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 
 ---
 
+## 13.bis Higiene al cerrar el sprint — **poda de worktrees** (orden del operador, 2026-10-08)
+
+**No es criterio de la beta** (§13 mide el producto, y está bajo una decisión binaria abierta): es un paso **obligatorio del cierre de sprint**, cualquiera sea el veredicto de §13.
+
+```
+bash scripts/podar-worktrees.sh          # primero en DRY-RUN, mirá qué propone
+bash scripts/podar-worktrees.sh --aplicar
+```
+
+⚠️ **Y el veredicto NO es que el script termine bien** — ahí está la trampa, medida el 2026-10-08:
+
+| medición | 2026-10-08 |
+|---|---|
+| worktrees **registrados** (`git worktree list`) | **52** |
+| directorios **en disco** (`ls -d C:/gfw-src/wt-*`) | **117** |
+| **huérfanos invisibles** al podador | **65** |
+
+La causa (hallazgo de auditoría, confirmada): en Windows `git worktree remove` **falla sobre el junction de `node_modules` y desregistra igual**. El directorio queda en disco y **fuera de `git worktree list`** ⇒ el podador, que itera esa lista, **no puede verlo nunca más**: cada poda parcial fabrica un huérfano que ninguna poda posterior alcanza. Por eso el cierre se verifica contando **las dos cosas**:
+
+```
+echo "registrados: $(git worktree list | wc -l)  en disco: $(ls -d C:/gfw-src/wt-* | wc -l)"
+```
+
+Si los dos números no convergen, la poda **no terminó**: quedan directorios con archivos que nadie va a mirar. Antes de borrar un huérfano, medir si tiene WIP **por contenido** (`git hash-object` + `cat-file --batch-check` contra el repo), **nunca por `mtime`**: un worktree limpio recién creado dio **1859** archivos «tocados» por fecha — su propio control positivo mató esa métrica.
+
+Y **los pines de `_vigia-pins/` no se podan**: pasan las tres guardas del podador (detached en `main`, limpios, contenidos en `main`), así que se borrarían en cada corrida y el monitoreo caería a DEGRADADO. La exclusión ya está en `scripts/podar-worktrees.sh`.
+
+---
+
 ## 14. Trazabilidad — cada hallazgo de la auditoría y su ítem
 
 | Hallazgo | Ítem(s) | | Hallazgo | Ítem(s) |
