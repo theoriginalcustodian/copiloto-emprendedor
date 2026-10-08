@@ -88,6 +88,7 @@ acá y se sigue con el id en curso. Sólo el operador puede moverlo arriba.
 
 <!-- HALLAZGOS-DIFERIDOS:INICIO -->
 <!-- una línea por hallazgo: fecha | quién lo vio | qué es | path:línea -->
+2026-10-08 | planificación | el smoke de prod NO ARRANCA por el camino con que prod lo corre: `smoke_beta_e2e.py:19` importa `meclaves_check` y `run-smoke-prod.sh` lo pipea por stdin al venv del VPS, así que el import no resuelve. **BLOQUEA el punto 4 del criterio de cierre §13 del backlog** («smoke en verde contra prod»). Dueño: backend. Levantado por auditoría el 2026-10-07, sigue abierto en el buzón. NO se arregla sin firma del operador: ampliar esta lista es decisión suya. | deploy/copiloto/smoke_beta_e2e.py:19 + deploy/copiloto/run-smoke-prod.sh
 <!-- HALLAZGOS-DIFERIDOS:FIN -->
 
 ## Cuándo está cerrado
