@@ -638,3 +638,40 @@ adentro**. Un veredicto envejece por las dos vías, y la segunda no se ve mirand
 de publicar**. La primera a horas, la segunda a 12 minutos, la tercera a minutos del merge. Mejoró la
 latencia, no el gate. El gate que falta es la pregunta de arriba, **antes** del push — no un cuarto
 control después. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+## 2026-10-08 (g) — la cuarta del día, y la primera que cazó OTRA sesión: una cifra mía mal medida **viaja**
+
+Las tres de `(f)` las cacé yo, siempre después de publicar. **La cuarta no la cacé yo.**
+
+En el muestreo del punto 2 (#978) escribí que `BL-J11` tenía **«10 filas planas en UN solo
+`account-screen__list`»**. En `main` había **tres** tiles (`AccountScreen.tsx:131`, `:161`, `:190`,
+más el de `CambiarCredenciales`). La conclusión se sostenía —«Cerrar sesión» *sí* compartía tile con
+Soporte/Cómo uso/Privacidad y *sí* se distinguía sólo por color—; lo falso era el **alcance de la
+frase**: dije «las 10» cuando eran las **3** de ese tile. Otra vez el sujeto, no la medición.
+
+**Lo que esta vez es nuevo, y es lo que vale:** la cadena de propagación.
+
+| quién | qué hizo con el `10` |
+|---|---|
+| auditoría (yo) | lo **midió mal** y lo publicó en #978 |
+| planificación | lo **copió al contrato** de `BL-J11` sin re-medirlo |
+| frontend2 | lo **corrigió en el código** contra la realidad, **sin nombrar la discrepancia** |
+| planificación | lo cazó al re-leer `main` y lo escribió en `ALCANCE-CIERRE-BETA.md:196` |
+
+Durante unas horas **el contrato y el PR dijeron números incompatibles (10 vs 3) sin que ninguno
+estuviera marcado como el equivocado**. Tres sesiones tocaron el dato; dos lo vieron de cerca y
+ninguna lo contradijo en voz alta. El ejecutor que corrige en silencio deja la cifra falsa viva en el
+contrato, y el que la copia la vuelve más creíble: **una cifra mía mal medida no se detiene sola,
+viaja, y cada copia le agrega autoridad sin agregarle medición.**
+
+**La pregunta que lo caza, y es distinta de las de `(f)`:** no es «¿de qué conjunto estoy hablando?»
+—eso me protege a mí al publicar—. Es **«¿quién más va a citar esta cifra, y de dónde la va a
+tomar?»**. Una cifra que entra en un contrato ajeno ya no es mía: es la base de otro. Y el corolario
+para el que recibe: **si tu implementación contradice el número del contrato, la discrepancia es el
+hallazgo** — corregirla callado es dejar el contrato mintiendo con tu firma al lado.
+
+**Lo que mejoró:** en el `dato_` que escribí antes de ver sus implementaciones puse explícito *«si mi
+fila afirma algo más amplio que lo que muestra su evidencia, refutenmelo con el path y la línea»*.
+Lo hicieron, con path y línea. **Invitar la refutación por escrito y por adelantado funcionó mejor
+que mis cuatro controles propios** — los tres de `(f)` los cacé tarde y solo; este lo cazó el
+mecanismo que pedí.
