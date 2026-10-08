@@ -88,7 +88,7 @@ borrada invalidaría los commits que la citan.
 |---|---|
 | Los 7 `FALTA` de familia `O` | **Cierre B por acta** (`2026-09-21-acta-decisiones-beta-odobi.md:22-24`): testers, consent de OAuth, APK instalado, observabilidad, backups, SLA |
 | `BL-O8` rotar token + `DATABASE_URL` | diferido a pre-prod por decisión del operador |
-| Toda la tanda de **device** | diferida al sprint siguiente por orden del operador del 2026-09-22 |
+| Toda la tanda de **device** | diferida al sprint siguiente por orden del operador del 2026-09-22. 🔴 **Y esto decide el punto 3 de §13: la mitad `mobile` del punto 3 de §13 CAE ACÁ DENTRO** ⇒ ese punto **no puede dar CUMPLE este sprint**, haga FRONTEND-2 el trabajo o no. Hasta el 08/10 el doc tenía las **dos premisas** —esta fila y la del punto 3— a 30 líneas una de otra, **y nunca sacaba la conclusión**; la conclusión vivía sólo en `coordinacion/`, que está **gitignored**, así que de los dos artefactos **circulaba el menos preciso** (`de-dos-artefactos-con-distinta-precision-gana-el-que-circula`). Lo vio AUDITORÍA, con control de ceguera: `device|EAS|2026-09-22` aparece en esta fila y en nada que la conecte con el punto 3 |
 | `BL-X10` audio «o-DO-bi» · `BL-X6` los `.otf` en la historia · `BL-P6` prototipo de Martín | **son del operador**, no del agente |
 | `BL-C5` migrar a `expo-web-browser` | **DoD invertido**: el código ya declara la decisión contraria, fechada, en `apps/mobile/src/modules/apps/PantallaApps.tsx:172-173` |
 | `BL-O7` SLA en horas | **DoD invertido**: dos tests prohíben prometer horas (`SoporteScreen.test.tsx:27-29`, `PantallaSoporte.test.tsx:294-300`) |
@@ -124,10 +124,10 @@ sensación.
 
 | # | qué pide | medido | dueño de lo que falta |
 |---|---|---|---|
-| **1** | Todos los `DEC-*` con acta | ✅ **13 DEC en la tabla, ninguno marcado abierto.** `DEC-11` está **decidido** («se corrigen, sin excepción firmada»); lo que queda de él es ejecución vía `BL-Q4`, no decisión | — |
-| **2** | Todos los `BL-*` de las familias de la beta cerrados con su DoD | ⚠️ **inmedible desde los checkboxes, medido con el instrumento.** El backlog tiene **212 checkboxes sin tildar**, y hoy quedó probado que **miente por atraso** (`A7` hecho desde julio con su fila diciendo lo contrario). `inventario-ola.sh` sobre las 4 olas da **10 filas problemáticas**, y al clasificarlas el residuo real son **4** (ver abajo) | ver la tabla del residuo |
-| **3** | La matriz de pantallas re-medida (`BL-Q5`) ✅ en web y mobile para los **54 ids spec** | 🔴 **NO HECHO.** La matriz sólo existe en su versión del **16/09** (`Auditorias/2026-09-16-mapa-de-pantallas-vs-codigo-web-y-mobile.md`), nunca republicada con veredictos nuevos. Ningún PR cita `BL-Q5` (400 títulos, con límite de palabra) | **contrato bajado el 08/10**; lo tomó FRONTEND-2 al terminar la sesión de AUDITORÍA |
-| **4** | `smoke_beta_e2e.py` en verde contra prod + durabilidad (`BL-B1`) | 🔴 **BLOQUEADO.** `smoke_beta_e2e.py:19` importa `meclaves_check` y `run-smoke-prod.sh` lo pipea por stdin ⇒ el import no resuelve. **Backend avanzó hoy** con el #932 (`UC_LOGIN_CONTRATO_PATH` no se exportaba). `BL-B1` **sí** está citado (#766, #763, #603) | **backend** |
+| **1** | Todos los `DEC-*` con acta (resueltos **o** pospuestos **con su ítem movido a §12**) | ⚠️ **pide DOS cosas y cumple una.** Re-medido por AUDITORÍA, más fino que mi ✅ anterior. **Primera mitad ✅, con denominador:** universo unificado de los tres docs = **13 `DEC-n` distintos** (`DEC-1`…`DEC-13`) y **los 13 tienen entrada en el acta**; los siete que aparecen **una sola vez** (`DEC-4,6,7,8,9,12,13`) están en la tabla §1 de decisiones MAYORES (`acta:14-23`) con dueño, fecha y plataformas — **rol de entrada resuelta, no mención de pasada**, verificado uno por uno porque contar un símbolo no dice en qué ROL aparece. **Segunda mitad 🔴:** §12 existe (`backlog:1005`, titulada textual *«Post-beta — listado para que no se pierda»*) y sólo lista `BL-V1..V3`; `DEC-12` posterga `BL-O1` y `BL-O2` a Cierre B (`acta:22`) y **ninguno de los dos está en §12**, la sección que existe literalmente para que no se pierdan. Control positivo del grep: `BL-Q5` en §12 → **0** (discrimina, no dice sí a todo). `BL-O3` queda **NO_CONCLUYENTE a propósito**: `DEC-13` lo **mantiene** con alcance reducido («sólo Android») en vez de posponerlo | **operador** — es su cláusula · `H-POSPUESTOSSIN12` |
+| **2** | Todos los `BL-*` de las familias de la beta **cerrados con su DoD** | 🔴 **NO CUMPLE — y la causa no es el código: es que el criterio no tiene dónde medirse.** Mi medición previa («4 filas de residuo», abajo) sigue valiendo como **inventario de trabajo**, pero AUDITORÍA mostró algo más duro: **«cerrado con su DoD» no existe como cifra en ningún artefacto.** El **backlog** —la fuente que §13 le asigna— mide DoD tildado: **6 de 66 ids** cerrados, y se autodeclara inválido sobre estado (`:6`; `:14` se titula textual *«ESTE DOCUMENTO NO ES FUENTE CONFIABLE DE «QUÉ ESTÁ ABIERTO»»*). El **plan vigente** (`2026-10-06-plan-y-backlog-de-cierre-lo-que-falta.md`), que §13 **no nombra**, mide algo **distinto y más laxo** —*«código entregado y en `main`»*—: **56 de 77** (`:52`), 77 filas en su Apéndice A, 0 ids sin dueño, y pone al lado: *«lo que falta en casi todos no es código: es la captura en device/PWA»* (**39 filas** mencionan device o PWA). Forzado a binario: **NO CUMPLIDO**, con ~15 ids. Y el artefacto tiene un **defecto físico**: **11 de 77 encabezados reducidos a un único byte `0x01`** (verificado con `cat -A`), entre ellos `P1`, `P3`, `C5`, `X9`, `B4`, `O1`, `O2`, `O3`, `O5`, `O7` ⇒ todo instrumento que cuente `^### BL-` obtiene **66** y lo toma por el total, cuando el denominador es **77** (66+11=77, que es el «77 ids no-`V`» que el doc declara en `:6`) | **operador**: §13 tiene que apuntar a la fuente vigente · `H-DODNOSEMIDE` + `H-BACKLOG11CORRUPTOS` |
+| **3** | La matriz de pantallas re-medida (`BL-Q5`) ✅ en web y mobile para los **54 ids spec** | 🔴 **NO CUMPLE, y no por falta de trabajo.** Medido en caliente sobre el SHA de cierre con `scripts/evidencia/contar-veredictos.py`, en la unidad que el propio instrumento imprime —«ids únicos de los 54 con veredicto del vocabulario cerrado, **POR PLATAFORMA**»: **web 54 de 54 (100%, techo alcanzable) ✅** · **mobile 13 de 54** · indeterminada 4. El instrumento anota él mismo que la mitad de mobile es *«sprint siguiente, con device/EAS»* ⇒ **este punto contiene algo que el operador difirió por orden propia el 2026-09-22.** Lo que falta además y SÍ es accionable sin device: el artefacto (matriz republicada con el SHA estampado) no existe — sólo hay la versión del **16/09**, y ningún PR cita `BL-Q5` (400 títulos, con límite de palabra) 🔴 **CLÁUSULA (AUDITORÍA, 08/10): este punto NO PUEDE dar ✅ este sprint**, porque su mitad `mobile` cae dentro del diferimiento de device de la tabla «Lo que NO entra» — el trabajo sin device SÍ se ejecuta y está tomado, pero el **veredicto** del punto queda abierto por construcción. | **contrato bajado y ENMENDADO** el 08/10 — el DoD original («✅ en ambas») era inalcanzable y lo corregí; lo tomó FRONTEND-2 |
+| **4** | `smoke_beta_e2e.py` en verde contra prod + durabilidad (`BL-B1`) | ✅ **CUMPLIDO, y sobre el MISMO SHA que el recibo.** Lo cerró BACKEND el 2026-10-08 y estaba declarado 🔴 en este doc hasta ahora. Evidencia, no autoevaluación: PR #932 mergeado (`c5727e5d`) → deploy con `RC=0` explícito → `/healthz` devolviendo `{"sha":"92fd8a06…"}` → `scripts/run-smoke-prod.sh` contra ese prod: **`rc=0 · 39 PASS · 0 FAIL`** (cero `[FAIL]` por grep del archivo completo, no por el encabezado), con `smoke_beta` estampado en el `DEPLOY-MANIFEST.json` de ese SHA e incluyendo **durabilidad post-restart 8/8** (HITL + continuidad de sesión sobrevivieron a un restart real). ⚠️ **La causa raíz no era la que este doc decía:** el bug original de `SMOKESTDIN` (import por stdin) estaba arreglado desde el 07/10 (#908); lo que fallaba hoy era `MECLAVESRESTO` — el #926 agregó un segundo contrato por env (`UC_LOGIN_CONTRATO_PATH`) y **nadie propagó el export hermano al runner real**, el mismo defecto estructural reintroducido por no generalizar el patrón. El #932 agregó además el **canario que faltaba**: grepea el runner REAL por los dos `export UC_*_CONTRATO_PATH=` literales, porque sin él los tests pasan en aislamiento aunque el runner se olvide de exportar una — que es exactamente lo que pasó | — |
 | **5** | Un tester **externo** completa el flujo en su propio teléfono, con video | 🔴 **no depende de ninguna sesión** | **operador** |
 
 ### El residuo del punto 2 — 4 filas «citadas, pero con una mitad sin diff»
@@ -167,11 +167,56 @@ declara la decisión contraria, fechada) ⇒ su mitad sin diff es correcta.
 
 **La beta no cierra hoy, y la razón no es código.** Dos de los cinco puntos no dependen de ninguna
 sesión (el 5 es del operador; el 4 necesita que el smoke arranque por el camino con que prod lo
-corre). El punto 3 es el único que una sesión podía cerrar hoy y ya está tomado. El punto 2 pasó
+corre). Del punto 3 **una sesión puede ejecutar hoy el trabajo sin device**, y ya está tomado — pero **el punto no queda ✅ por eso** (ver su cláusula). La redacción anterior («el único que una sesión podía cerrar hoy») admitía **dos lecturas y la falsa es la que fuerzan** las columnas de la tabla; lo desambiguó AUDITORÍA. El punto 2 pasó
 de «inmedible» a **4 filas nombradas**, que es la primera vez que ese punto tiene un número.
 
 ## Cuándo está cerrado
 
-Las 6 filas de arriba mergeadas, con su DoD cumplido y el recibo de `scripts/gate.sh` citado por su
-SHA. **Un PR por sesión, no uno por fila**: el costo dominante de la noche del 06/10 no fue escribir
-el código, fue pagar el gate ocho veces y desviarse entre corridas.
+🛑 **Acá se cierra el ALCANCE, no la BETA.** Son **DOS criterios distintos** que se llaman igual, y el corto se puede declarar como el largo — `H-DOSCIERRES`, levantado por AUDITORÍA el 2026-10-08:
+
+| | dónde se define | qué pide | estado |
+|---|---|---|---|
+| **cierre del ALCANCE** ← *este documento* | el párrafo de abajo | las filas de la lista cerrada mergeadas, con su DoD y el recibo de `gate.sh` | ✅ **CUMPLIDO Y VERIFICADO** |
+| **cierre de la BETA** | `2026-09-21-backlog-beta-odobi-con-dod.md:1051-1058`, §13 | **5 puntos, verdad a la vez sobre un mismo SHA de `main`** | 🔴 **NO cumplido — pero el saldo cambió de clase el 2026-10-08** (ver abajo) |
+
+**«Beta cerrada» no se sigue de esta página.** Lo que se sigue es «alcance de cierre **7/7** mergeado y verificado», que es verdadero y está respaldado. La diferencia **no es de matices**: los puntos 3, 4 y 5 de §13 no están, y **2 de los 3 son incompatibles con la orden del operador del 2026-09-22** — device y EAS al sprint siguiente. O sea §13 **no es alcanzable este sprint por una decisión ya tomada**, no por falta de trabajo.
+
+**Saldo de §13 al cierre del 2026-10-08, punto por punto** — y lo que importa no es el conteo, es **de qué clase** es cada cosa que falta:
+
+| punto | estado | clase de lo que falta |
+|---|---|---|
+| **1** DEC con acta | 🟠 los 13 tienen acta, pero `BL-O1`/`BL-O2` se posponen sin moverlos a §12, y el acta se contradice sobre `DEC-11` | **registro + una firma** |
+| **2** BL cerrados con su DoD | 🔴 el criterio **no tiene dónde medirse**; verificado el residuo de 4 filas: **0 asignables** | **defecto del criterio** |
+| **3** matriz en web y mobile | 🔴 web **54/54 ✅**, mobile **13/54** | **device** (orden del operador) |
+| **4** smoke contra prod + durabilidad | ✅ **39 PASS · 0 FAIL** sobre `92fd8a06` | — |
+| **5** tester externo con video | 🔴 no existe | **device** (orden del operador) |
+
+🎯 **Nada de lo que falta en §13 es código de producto.** Es device —diferido por tu propia orden del 2026-09-22— o un defecto en **cómo está escrito el criterio**. Esa es la diferencia entre «falta trabajo» y «falta una decisión», y por eso lo de abajo no lo puede resolver ninguna sesión trabajando más.
+
+⚠️ Los puntos 2 y 4 llegaron a este estado **el mismo día, después de que este doc los declarara 🔴**: el 4 lo cerró BACKEND con el smoke, y el residuo del 2 lo verificó AUDITORÍA fila por fila. **Un doc de cierre envejece en horas**, así que el estado se re-mide al declarar, no al planear.
+
+🔴 **La salida es del operador y es BINARIA. Ninguna sesión puede tomarla:**
+**(a)** redefinir §13 para este cierre, con los puntos 3 y 5 explícitamente movidos al sprint de device · **(b)** declarar la beta cerrada contra otro criterio y dejar §13 como criterio del cierre siguiente. Las dos son legítimas. **Lo que no cierra es declarar §13 cumplido.**
+
+Criterio de **este** documento, textual y con el conteo corregido:
+
+Las **7** filas de arriba mergeadas — `A3` · `A5` · `A7` · `A8` · `P1` · `P3` · `C1`, contadas una por una — con su DoD cumplido y el recibo de `scripts/gate.sh` citado por su SHA.
+
+> ⚠️ Hasta el 2026-10-08 este renglón decía **«las 6 filas de arriba»** y el bloque cerrado tiene **7 ids**. Lo vio AUDITORÍA. Es una palabra, pero es **el renglón que define «cerrado»**: quien verifique contando 6 deja uno sin verificar **y no se entera** — el error no da síntoma. Por eso van los 7 ids escritos, no el número.
+
+> ✅ **RECIBO LIMPIO Y COMPLETO — `92fd8a06`, el SHA en que la lista llegó a 7/7.**
+> `.ci-recibos/92fd8a06ad3ef0eb748603aa2e88541522b82a4b.json` · sesión `plan` · 2026-10-08T13:30:57Z ·
+> **5/5 jobs `ok`** (core 99s · web 205s · mobile 326s · lint 607s · backend 96s con **2302 tests
+> passed, 27 skipped**) · `sucio: false` · árbol `03083d3c` · 1398 s en total. Copia durable en el
+> git common dir, que sobrevive a `git worktree remove`.
+>
+> **Verificado con el instrumento, no con el exit code:** `scripts/recibo-cubre.sh 92fd8a06…` →
+> `✅ CUBRE`. Eso importa porque el control positivo del mismo script **reprueba** al recibo que sí
+> existía para `096d8d08`: *«mismo árbol, NO cubre — core/web/mobile/lint/backend corrieron con el
+> árbol SUCIO, lint=failed»*. Un recibo que **existe** no es un recibo que **cubre**, y hasta hoy
+> **ningún SHA de `main` tenía uno que cubriera**.
+>
+> ⚠️ `main` avanzó después (`0b641b2d` #934 · `57663e51` #935): el recibo cubre `92fd8a06`, **no**
+> «lo último». Esa es la unidad y se cita así, no de memoria.
+
+**Un PR por sesión, no uno por fila**: el costo dominante de la noche del 06/10 no fue escribir el código, fue pagar el gate ocho veces y desviarse entre corridas.
