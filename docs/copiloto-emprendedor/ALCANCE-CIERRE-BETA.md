@@ -39,6 +39,37 @@ P3 | BL-P3 | planificacion | la tabla §2 del acta necesita dueno, fecha y plata
 C1 | CONTROLFOCO | planificacion | el mecanismo de control de foco que el operador ordeno el 2026-10-08 («armalo e implementa») — se registra para que el gate no grite por su propia instalacion, no para auto-absolverse | scripts/foco-check.sh + scripts/tests/test-foco-check.sh
 <!-- ALCANCE-CERRADO:FIN -->
 
+## Estado medido de esas filas — 2026-10-08
+
+Medido contra `origin/main` `d030c359`, no contra el plan del 06/10. **Tres de las ocho filas ya
+estaban resueltas cuando se escribió la lista**, y una de ellas lo estaba desde julio. Esto se
+registra acá y no borrando la fila, porque el gate lee los ids del bloque de arriba: una fila
+borrada invalidaría los commits que la citan.
+
+| id | veredicto | evidencia |
+|---|---|---|
+| `A3` | 🔴 **FALTA** — es lo único de código que queda | `SeccionMisComprobantes.tsx:50` ya tiene `anulacionEnCursoDe()`, que **es** el guard B (id derivado `anulacionIdDe`, misma fórmula que `web.py::make_iniciar_anulacion`; 404 = «no hay»). Pero el `useEffect` de carga (`:135`) sólo llama `cargar()` y **nunca lo consulta**: al recargar, `objetivoAnulacion` vuelve a `null`, `esAnulable(c) && !esteEsElObjetivo` da `true` y **«Anular» reaparece** sobre una anulación en curso. El fix **reutiliza** esa función; no se diseña nada. |
+| `A5` | ✅ **HECHO** | Commit `36e3d906` (06/10, #801) «la card HITL resuelta se muestra como Recibo (BL-F1, mobile)». Mobile: `ListaMensajes.tsx:28` importa `Recibo` y lo renderiza en `:107`; `:331` cita «(A5)». Web: `HitlCard.tsx`. **Las dos apps cableadas.** |
+| `A7` | ✅ **HECHO, y el código lo nombra** | `web.py:486` dice literalmente «Drive, **poda A7**». El catálogo lo excluye **por derivación** de la policy real (`_composio_valid_toolkits()`, `web.py:474-480`: «un servicio sin `TOOLS` no aparece ni acepta `/composio/connect`»), sin lista literal que pueda driftear, y `test_catalog_route.py:125` tiene el `assert "googledrive" not in keys` — **el test que lo prohíbe**, que es lo que pedía el DoD. La poda es de `800a56a0` (**2026-07-22**, #41). `_composio_known_toolkits()` lo mantiene revocable a propósito, para que un tenant ya conectado pueda desconectarse. |
+| `A8` | ✅ **HECHO por la primera salida de su DoD** («o se amplía») | En el camino de producción Sheets tiene **tres** ops, no una: `sheets.py:77` `append_row` → `Proposal`, `:88` `update_range` → `Proposal`, `:101` `read_range` → `Read`, y `POLICY.write = {APPEND, UPDATE}`. No hay que declarar ningún límite en la UI porque el límite no existe. |
+| `P1` `P3` | ✅ **HECHO** | PR #929: el acta trae §1.bis (qué libera la Parte 2 + la reunión no ocurrió) y su tabla §2 pasó a 6 columnas. |
+| `C1` | ✅ **HECHO** | #927 (mecanismo) + #928 (lee la lista de `origin/main`). |
+
+> ### ⚠️ Por qué el plan del 06/10 contaba como deuda cosas resueltas
+>
+> `A7` y `A8` se midieron por el **catálogo `TOOLS`**, que es real pero **no es el camino que atiende
+> el chat**. Producción corre `worker_b.py` (`uc-copiloto-worker.service:14`), que consume
+> `PROMPT_FRAGMENT` y rutea por `dispatcher_emprendedor.py:253-255` → `mod.build(op, …)`. Por ese
+> camino Drive tiene `create_file` y `find`, y Sheets tiene las tres ops. `TOOLS = {}` en
+> `drive.py:75` **no es un olvido: es la poda deliberada del hito 2**, y es justamente el mecanismo
+> por el que la UI dejó de ofrecer Drive.
+>
+> Los dos mecanismos conviven y miden cosas distintas. Medir el que no corre en prod da un número
+> correcto sobre el sujeto equivocado — la misma familia que
+> `el-instrumento-respondio-sobre-otro-sujeto` y `el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar`.
+> **Antes de abrir trabajo sobre un servicio, preguntar cuál de los dos caminos lo expone.**
+
+
 ## Lo que NO entra — y por qué, para no re-litigarlo cada vez
 
 | bloque | por qué está fuera |
