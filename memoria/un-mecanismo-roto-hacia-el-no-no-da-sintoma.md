@@ -312,3 +312,20 @@ pruebas, exige working tree limpio y respeta una ventana de gracia. Si hace falt
 las dos fuentes que sí responden son el estado del PR (`gh pr list --state all --head <rama>`) y el
 contenido (`git cat-file -e origin/main:<archivo que el PR agregó>`, con control positivo). Una
 lección sin puntero al código que la implementa **se vuelve a aprender**; con puntero, se usa.
+
+
+## Variante 2026-10-08 — la única guarda que protegió era una propiedad del RELOJ
+
+El recibo que un acta citaba como **la** evidencia de un cierre vivía sólo en `.ci-recibos/` de un
+worktree (ignorado por git a propósito). De las tres guardas del podador, medidas sobre ese
+worktree: «mergeado» **aprobaba borrar**, «limpio» **aprobaba borrar**, y la única que lo protegía
+era «**actividad reciente**».
+
+«Reciente» no es una propiedad del contenido: es una propiedad del **reloj**. Al día siguiente las
+tres aprueban, el recibo se va, y **no hay evento, no hay rojo, no hay nada que avise** —
+simplemente mañana ya no estaba protegido. Un recurso protegido sólo por su frescura no está
+protegido: está en **cuenta regresiva**.
+
+**La pregunta que lo detecta:** *¿esta protección depende de algo que cambia solo con el paso del
+tiempo?* Si sí, no es una guarda: es un **plazo**. La guarda definitiva se escribió sobre el
+**contenido** («¿hay recibos sin versionar?») y protegió 15 worktrees, uno con **30** recibos.

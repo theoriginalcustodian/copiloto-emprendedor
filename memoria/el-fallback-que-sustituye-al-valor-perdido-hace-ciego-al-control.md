@@ -50,3 +50,21 @@ defecto de encabezados vivía en dos parsers y el fix estaba escrito en uno) ·
 
 **Dónde está la evidencia:**
 `docs/copiloto-emprendedor/Auditorias/2026-09-28-canario-del-contador-de-veredictos-el-brazo-nombrado-para-el-caso-es-el-que-lo-pierde.md`.
+
+
+## Caso 2026-10-08 — el fallback de jq no cubría el string vacío, y el bucle de espera salió al primer intento
+
+Para esperar el CI medí los checks con un `// "RUNNING"` sobre `.conclusion`. El bucle salió **al
+primer intento** declarando «0 pendientes», y acto seguido el filtro de no-verdes contaba **5**.
+Dos lecturas del mismo sujeto, contradictorias, **en el mismo comando**.
+
+La causa: un check en curso trae `conclusion: ""` — **string vacío, no `null`**. El operador `//`
+de jq sustituye `null` y `false`, así que `""` pasó tal cual y **no era igual a `"RUNNING"`**: mi
+conteo de pendientes dio 0 porque buscaba una etiqueta que el fallback nunca llegó a aplicar.
+
+El campo correcto existía todo el tiempo: `.status`, con `QUEUED` / `IN_PROGRESS` / `COMPLETED`.
+Con él el bucle esperó las tres rondas que hacían falta y recién entonces mergeo.
+
+**Regla:** un fallback sólo cubre el valor exacto que nombra. Antes de confiar en uno, preguntá
+*¿cómo se ve este campo cuando el dato todavía no existe?* — `null`, el string vacío, el cero y la
+clave ausente son **cuatro casos distintos**, y el mismo fallback los trata distinto.
