@@ -163,3 +163,38 @@ renglón propio en ningún instrumento.
 «fuera de alcance» de este mismo doc contiene una de sus precondiciones?* Es una lectura del par, no
 de la fila.
 
+
+## Refuerzo 2026-10-08 — dos INSTRUMENTOS correctos y la costura es la UNIDAD DE MEDIDA
+
+Tercera forma del mismo agujero, y la más difícil de ver: no fueron dos decisiones, ni dos tablas
+del mismo doc — fueron **dos instrumentos que funcionan perfecto**.
+
+Preparando el arranque del sprint MOBILE hacía falta responder *«¿cuáles de los 54 ids no tienen
+veredicto en `mobile`?»*. Hay dos medidores y **ninguno falla**:
+
+- `scripts/evidencia/criterio3-cruce.sh` emite **las cuatro poblaciones con sus ids por nombre**…
+  contando «con veredicto por cualquier vía». Su único flag es `--tsv` (`:17`): **no mira plataforma.**
+- `scripts/evidencia/contar-veredictos.py` **sí** sabe de plataforma
+  (`VOCABULARIO_PLATAFORMA`, `:1292`) y da `web 54/54` · `mobile 13/54`… pero emite **la cifra, no
+  la lista**.
+
+Así que la pregunta que el criterio hace **no tiene instrumento**, y el síntoma es el peor posible:
+**los dos scripts salen verdes y ninguno está mal.** Simplemente contestan preguntas distintas de la
+que se está haciendo. No hay rojo que mirar, no hay excepción en ningún log, y el número
+«13/54» **se cita como si fuera una cola de trabajo** cuando es un escalar: nadie puede tomarlo.
+
+**Lo que agrega sobre las dos capas anteriores.** La primera era dos dueños; la segunda, dos tablas
+del mismo archivo. Acá el par son **instrumento × unidad de medida**, y por eso ninguna revisión de
+código lo caza: revisar `criterio3-cruce.sh` no destapa nada — es correcto — y revisar
+`contar-veredictos.py` tampoco. **El defecto no vive en ninguno de los dos archivos: vive en que la
+unidad en la que uno responde no es la unidad en la que el criterio pregunta.**
+
+**El control, y es una pregunta de una línea:** por cada cifra que un criterio de cierre cita,
+preguntar *¿qué comando convierte esta cifra en una lista de trabajo?* Si la respuesta es «ninguno»
+o «hay que cruzar dos salidas a mano», el próximo sprint arranca sin cola, y lo va a descubrir la
+sesión que lo tome — cara, y mirando archivos en vez de midiendo.
+
+**Y el corolario de planificación:** ese «tapar la costura» es el **ítem cero** del sprint, antes
+que cualquier pantalla. Si se deja para el final, cada medición intermedia se hace contra una lista
+reconstruida a mano — que es exactamente
+[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
