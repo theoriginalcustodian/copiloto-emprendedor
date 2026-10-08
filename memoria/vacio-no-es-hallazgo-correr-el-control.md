@@ -282,3 +282,30 @@ Y el remate: **el control del script absolvió el residuo.** `siguen vivas: 0` m
 2. **Antes de operar, y esto es nuevo**: si una medición va a convertirse en una **lista de trabajo**, el control de que el trabajo terminó **se mide contra el universo, nunca contra la lista**. La pregunta es *«¿qué tiene que dar cero si no quedó nada?»* — y la respuesta no puede ser un recuento de los ítems que yo elegí.
 
 **Señal de que estás acá:** tu comando lleva un `--limit`, un `head`, una ventana de fechas o una carpeta, y tu frase no los menciona. Si el recorte no entra en la oración, o la oración está mal o el recorte no hacía falta. Ver [[el-instrumento-respondio-sobre-otro-sujeto]] y [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].
+
+## Refuerzo 2026-10-08 (d) — el CONTROL compartía el defecto del instrumento, así que lo ABSOLVIÓ
+
+Mecanismo nuevo y barato de reconocer: **el control positivo que puse al lado del instrumento estaba
+construido con el MISMO constructo defectuoso**, así que no cazó nada — confirmó.
+
+**El caso.** Publiqué en la fila 26 del doc de cierre que `.ci-recibos/` «no está en `.gitignore`».
+Es falso: está en `.gitignore:2`. Lo corregí, y para verificar que la corrección había llegado a
+`main` grepeé `no est[aá] en .gitignore` → **0**, y al lado puse como control positivo
+`no\*\* est[aá] en` → **0 también**. Dos ceros coincidentes se leen como «limpio».
+
+**Por qué los dos daban 0:** una clase `[aá]` matchea **UN byte**, y `á` en UTF-8 son **DOS**
+(`0xC3 0xA1`). El patrón no podía matchear nunca — ni en el archivo correcto ni en el equivocado.
+El «control» llevaba el mismo acento ⇒ **heredó la ceguera en vez de cazarla**. Lo mismo con `.`
+para `ñ`: `due.o: planificaci` dio **0** sobre 26 filas donde **9** dicen «Dueño: planificación».
+
+**Lo que sí lo cazó:** comparar los **árboles** del archivo (`git rev-parse HEAD:<path>` vs
+`git rev-parse origin/main:<path>`) y leer el `git diff`. Un **constructo distinto**, no el mismo
+grep con otro string.
+
+**La regla.** Un control positivo prueba algo sólo si **no comparte el constructo** con el
+instrumento que controla. Si el instrumento es un grep con acentos, el control no puede ser otro grep
+con acentos: tiene que ser un `diff`, un hash de árbol, o un patrón sin multibyte.
+
+**Y el costo, que es lo que lo vuelve regla:** con esos dos ceros escribí «main está limpio»
+mientras `main` publicaba la frase falsa. El control no decoraba el reporte: era lo único entre el
+error y el operador.

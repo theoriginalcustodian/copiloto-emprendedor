@@ -121,3 +121,30 @@ la salida de un comando que puede fallar por varias causas se lleva justo el dat
 
 Regla: cuando `MSYS_NO_PATHCONV=1` haga falta, **acotala a un subshell con un solo comando adentro**,
 y que los paths lleguen por `cd`, no como argumento.
+
+## 2026-10-08 — exportada, la variable del remedio ROMPE el `secretos-check` del `pre-push`
+
+El remedio de 2026-09-23 (aplicar `MSYS_NO_PATHCONV=1` al comando) tiene un escalón más:
+**exportarla al shell rompe binarios nativos de hooks que no escribiste.**
+
+**Medido.** Exporté `MSYS_NO_PATHCONV=1` en un script para poder leer `git show origin/main:<path>`.
+El `git push` del mismo script abortó:
+
+```
+[secretos] escaneando df033b77 --not --remotes
+FTL unable to load gitleaks config, err: open /c/gfw-src/wt-aud-misfilas/.gitleaks.toml: The system cannot find the path specified.
+[secretos] ❌ gitleaks NO pudo cargar su configuración: el escaneo NUNCA CORRIÓ (ver el FTL arriba).
+[pre-push] ❌ secretos-check falló: el push se aborta (repo PÚBLICO).
+```
+
+**Por qué:** `gitleaks` es un binario **nativo de Windows**; sin la conversión recibe
+`/c/gfw-src/…` en formato MSYS y no encuentra su config.
+
+**La regla:** `MSYS_NO_PATHCONV=1` va **inline por comando** (`MSYS_NO_PATHCONV=1 git show ref:path`),
+**nunca exportada** — el scope de un `export` alcanza hooks y binarios nativos que no conocés, y el
+síntoma aparece lejos de la causa (falló el *push*, no la lectura).
+
+**Lo que hizo bien el guard, y es el estándar a copiar:** es **fail-closed** — un escaneo que no
+corre **no** es un escaneo limpio — y su mensaje **nombra la variable culpable**, así que el
+diagnóstico costó cero. Un guard que se hubiera limitado a «0 hallazgos» habría pusheado a un repo
+público sin escanear.
