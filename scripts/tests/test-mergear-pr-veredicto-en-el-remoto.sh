@@ -98,6 +98,27 @@ if [ "$rc" -eq 1 ] && testigo_vacio; then
   ok "exit 1 sin invocar el merge: el gate frena"
 else mal "rc=$rc testigo=$(wc -c < "$T/testigo-merge")B; iba a mergear con un job en FAILURE"; fi
 
+echo "-- Caso 2.bis: el CI TODAVÍA CORRIENDO no es «no verde»"
+# Este script DELEGA el gate, así que hereda las fusiones de `ci-verde.sh`. Con los 6 jobs
+# IN_PROGRESS/QUEUED y CERO fallados (el estado real del PR #948, medido por auditoría el
+# 2026-10-08) el gate da rc=3 y esto tiene que salir por 5, no por el 1 del Caso 2: el mensaje
+# de «no está verde» manda a mirar código que no tiene nada. El testigo sigue vacío en los dos
+# casos — lo que cambia no es si frena, es QUÉ noticia da.
+rollup_corriendo() {
+  printf '[{"name":"backend","conclusion":"","status":"IN_PROGRESS"},'
+  printf '{"name":"core","conclusion":"","status":"IN_PROGRESS"},'
+  printf '{"name":"web","conclusion":"","status":"QUEUED"},'
+  printf '{"name":"mobile","conclusion":"","status":"QUEUED"},'
+  printf '{"name":"lint","conclusion":"","status":"IN_PROGRESS"},'
+  printf '{"name":"drift","conclusion":"","status":"IN_PROGRESS"}]'
+}
+ROLLUP="$(rollup_corriendo)"
+correr GH_STUB_STATE=OPEN
+if [ "$rc" -eq 5 ] && testigo_vacio; then
+  ok "exit 5 sin invocar el merge: «corriendo» no se confunde con «falló»"
+else mal "rc=$rc (esperaba 5) testigo=$(wc -c < "$T/testigo-merge")B; con rc=1 el mensaje manda a cazar un bug inexistente"; fi
+case "$out" in *"NO está verde"*) mal "2.bis dijo «NO está verde» con cero jobs fallados" ;; esac
+
 echo "-- Caso 3: gh rc=1 y el remoto dice MERGED (el caso real)"
 ROLLUP="$(rollup_con SUCCESS)"
 correr GH_STUB_STATE=MERGED GH_STUB_MERGE_RC=1

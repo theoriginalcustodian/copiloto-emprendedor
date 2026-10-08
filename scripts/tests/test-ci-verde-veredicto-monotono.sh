@@ -23,6 +23,10 @@
 #   2. sin argumento (ruta muda histórica) → ROJO presente, VERDE ausente, exit 2 (no 1: falta de
 #      argumento es «no pude medir», no «el PR está rojo»)
 #   3. rollup con un job FAILURE → ROJO presente, VERDE ausente, exit 1
+#  16. los 6 jobs CORRIENDO, cero fallados      → ROJO,  exit 3   ← «todavía no», NO un rojo
+#  17. un FAILURE entre cinco corriendo         → ROJO,  exit 1   ← CONTROL POSITIVO del 16
+#  18. cinco corriendo y uno AUSENTE            → ROJO,  exit 1   ← el exit 3 queda ESTRECHO
+#  19. sin conclusión y status que no lo explica → ROJO,  exit 1   ← vacío = pregunta
 #   4. rollup 6/6 SUCCESS → VERDE presente, ROJO ausente, exit 0
 #
 # Los casos 6-11 (rollup vacío) y 12-14 (mergeable) están documentados en su propio bloque, más
@@ -325,6 +329,51 @@ stub_gh "$ROLLUP_OK" '{"check_runs":[]}' 'MERGEABLE/UNSTABLE'
 out15="$T/15.txt"
 PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 760 > "$out15" 2>&1
 verificar "15 CI verde + MERGEABLE/UNSTABLE (estado real del #760)" VERDE 0 "$?" "$out15"
+
+# --- Casos 16-19: «TODAVÍA CORRIENDO» ≠ «FALLÓ» (exit 3) --------------------------------------
+# Medido por auditoría el 2026-10-08 sobre el PR #948: los 6 jobs IN_PROGRESS/QUEUED, CERO
+# fallados, y el veredicto salía por exit 1 con la última línea diciendo «hay al menos un job
+# ausente o fallado». El detalle POR JOB sí distinguía («está CORRIENDO, no pasó»); lo que no
+# distinguía era el veredicto y el código — que es justo lo que se lee. Y la instancia no es rara:
+# es CUALQUIER PR recién abierto, o sea el momento exacto en que uno pregunta.
+#
+# El caso 17 es lo que hace que el 16 signifique algo: sin él, un `exit 3` incondicional en esa
+# rama aprobaría el 16 igual. Los casos 18 y 19 son la otra mitad: el exit 3 tiene que quedar
+# ESTRECHO, porque «ausente» e «indeterminado» no son «esperá».
+ROLLUP_CORRIENDO='[{"name":"backend","conclusion":"","status":"IN_PROGRESS"},{"name":"core","conclusion":"","status":"IN_PROGRESS"},{"name":"web","conclusion":"","status":"QUEUED"},{"name":"mobile","conclusion":"","status":"QUEUED"},{"name":"lint","conclusion":"","status":"IN_PROGRESS"},{"name":"drift","conclusion":"","status":"IN_PROGRESS"}]'
+
+stub_gh "$ROLLUP_CORRIENDO" '{"check_runs":[]}'
+out16="$T/16.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 948 > "$out16" 2>&1
+verificar "16 los 6 jobs corriendo, cero fallados" ROJO 3 "$?" "$out16"
+grep -q "TODAVÍA NO" "$out16" || mal "16 no dijo «todavía no» en el texto que alguien va a leer"
+grep -q "al menos un job ausente o fallado" "$out16" && \
+  mal "16 acusó «ausente o fallado» con CERO fallados y CERO ausentes — manda a cazar un bug inexistente"
+
+# Caso 17 — CONTROL POSITIVO del 16: un rojo real NO se ablanda porque algo siga en vuelo.
+ROLLUP_MIXTO='[{"name":"backend","conclusion":"FAILURE","status":"COMPLETED"},{"name":"core","conclusion":"","status":"IN_PROGRESS"},{"name":"web","conclusion":"","status":"IN_PROGRESS"},{"name":"mobile","conclusion":"","status":"QUEUED"},{"name":"lint","conclusion":"","status":"IN_PROGRESS"},{"name":"drift","conclusion":"","status":"IN_PROGRESS"}]'
+stub_gh "$ROLLUP_MIXTO" '{"check_runs":[]}'
+out17="$T/17.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 948 > "$out17" 2>&1
+verificar "17 un FAILURE entre cinco corriendo (control positivo del 16)" ROJO 1 "$?" "$out17"
+grep -q "al menos un job ausente o fallado" "$out17" || \
+  mal "17 no acusó el fallado: el job en rojo quedó tapado por los que siguen corriendo"
+
+# Caso 18 — AUSENTE no es «esperá»: un job que no se encoló puede no encolarse NUNCA. Fail-closed.
+ROLLUP_FALTA_UNO='[{"name":"backend","conclusion":"","status":"IN_PROGRESS"},{"name":"core","conclusion":"","status":"IN_PROGRESS"},{"name":"web","conclusion":"","status":"QUEUED"},{"name":"mobile","conclusion":"","status":"QUEUED"},{"name":"lint","conclusion":"","status":"IN_PROGRESS"}]'
+stub_gh "$ROLLUP_FALTA_UNO" '{"check_runs":[]}'
+out18="$T/18.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 948 > "$out18" 2>&1
+verificar "18 cinco corriendo y uno AUSENTE" ROJO 1 "$?" "$out18"
+
+# Caso 19 — sin conclusión Y con un status que NO explica por qué. Eso es «no sé», no «esperá»:
+# vacío = pregunta, no permiso. Si esta rama cayera en el exit 3, el código nuevo absolvería
+# estados futuros de la API de GitHub que nadie midió.
+ROLLUP_RARO='[{"name":"backend","conclusion":"","status":"COMPLETED"},{"name":"core","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"web","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"mobile","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"lint","conclusion":"SUCCESS","status":"COMPLETED"},{"name":"drift","conclusion":"SUCCESS","status":"COMPLETED"}]'
+stub_gh "$ROLLUP_RARO" '{"check_runs":[]}'
+out19="$T/19.txt"
+PATH="$T/bin:$PATH" bash "$ROOT/scripts/ci-verde.sh" 948 > "$out19" 2>&1
+verificar "19 sin conclusión y con status que no lo explica (fail-closed)" ROJO 1 "$?" "$out19"
 
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
 
