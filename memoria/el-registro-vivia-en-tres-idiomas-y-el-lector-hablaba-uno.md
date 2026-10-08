@@ -222,3 +222,38 @@ trae fecha legible rompe el gate, nombrando las formas válidas. Sin (c), el cua
 **El criterio que me faltó, en una pregunta:** antes de escribir el parser, *¿con qué palabras está
 escrito hoy el dato que voy a leer?* — un `grep` de 10 segundos (`grep -o 'DIRIMID.\{0,22\}'`) mostraba
 los dos idiomas y el mío al lado. Lo hice **después** de que la cifra saliera rara.
+
+---
+
+## El caso límite de esta familia: la decisión firmada **sin id** — 2026-10-08
+
+Arriba el problema es que el id estaba **en otro idioma** (`K-*`, `H-A3-*`) y el lector sólo hablaba
+el suyo. El caso límite es peor y pasó hoy: **la decisión no tiene id en ningún idioma.**
+
+El acta del 21/09 difiere `BL-O5`, `BL-O6` y `BL-O7` a Cierre B en una fila cuya **columna de
+decisión es «—»**. Los dos índices derivados del acta —`§12.bis` del backlog y el cuerpo del criterio
+del punto 2— **se indexan por `DEC-*`**. Una fila sin número no entra en un índice por número, así
+que no es que esté mal copiada: **no hay nada que copiar**, y el defecto no da señal en ninguna de
+las dos capas que alguien consulta. `BL-O7` sobrevivió porque su ítem cita la fila **textual** a
+mano; `BL-O5` porque alguien la anotó; `BL-O6` no, y durante **tres semanas** el criterio del cierre
+lo leyó como incumplido.
+
+**Lo que me costó:** mi muestreo adversarial del punto 2 incluyó `BL-O6`, lo midió bien, y publicó
+en `main` **4 falsos ✅** cuando el punto 2 mide **3**. Mi propio filtro decía «excluidos con firma»
+y lo corrí contra los dos índices derivados, no contra el acta — y mi tabla llegó a afirmar que
+`BL-O6` era *«el único `BL-O` con señal no excluido por firma»*. Corregido 12 minutos después, en el
+doc que circula (`§8` del muestreo), no sólo en el buzón.
+
+**El control, y la medida del agujero:** grepear el **id en el acta**, nunca en el índice. Corrido
+para los 10 del muestreo: el acta nombra 3 (`BL-C6` con `DEC-9` activo, `BL-Q3` en prosa, `BL-O6`
+diferido), y los 3 falsos restantes dan **0 hits** con control positivo de **33 ids** que el acta sí
+nombra. En todo el acta, las filas sin `DEC-*` que nombran ids nombran exactamente esos tres: el
+agujero tenía **un solo ocupante invisible**, y el sesgo adversarial que el contrato pedía me llevó
+justo ahí. Buscar donde es difícil también significa **caer donde el índice miente**.
+
+**Y el corolario sobre el control de vigencia:** el que corrí antes de publicar vigilaba los paths de
+la **evidencia** (código y tests). Esto cambió el **alcance**, que vive en el acta y en el backlog —
+paths que no estaban en la lista. Un veredicto envejece porque cambió lo que mide **o** porque cambió
+**quién está adentro de lo que mide**; la segunda no se ve mirando el código. Ver
+[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] y
+[[el-instrumento-respondio-sobre-otro-sujeto]].
