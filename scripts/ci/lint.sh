@@ -84,3 +84,11 @@ bash "$ROOT/scripts/ci/tests-coordinacion.sh"
 #   donde pytest los ejecuta de verdad. Correr el primero como `python archivo.py` daba VERDE sin
 #   ejecutar una sola aserción, que es peor que no correrlo.
 bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh' 'de deploy'
+
+# DURABGATE (2026-10-08): `scripts/test-durabilidad-gate.sh` prueba las funciones bash de
+# `deploy/copiloto/durabilidad-gate.sh` (activación, opt-out, resolución de `.env.e2e`) y tenía
+# CERO invocadores -- vive SUELTO en `scripts/`, no en `scripts/tests/` (línea 70) ni en
+# `deploy/copiloto/` (línea 86), así que ninguno de los dos bucles de arriba lo alcanza. Es el
+# control que el DoD de `DURABGATE` pedía wireado al gate (sin esto, el fail-open del armado de
+# durabilidad podía volver sin que ningún CI lo viera). Bash puro, sin red/ssh, corre en segundos.
+bash "$ROOT/scripts/test-durabilidad-gate.sh"
