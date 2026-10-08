@@ -37,17 +37,30 @@ QUIET=0; [ "${1:-}" = "--quiet" ] && QUIET=1
 # arreglándose a sí mismo en vez de tocar producto).
 AUTOREF='^(scripts/|memoria/|docs/|coordinacion/|\.ci-recibos/|\.claude/)'
 
-[ -f "$ALCANCE" ] || { echo "foco-check: falta $ALCANCE — sin lista cerrada no hay foco que medir"; exit 2; }
+# DE DÓNDE sale la lista cerrada. Cazado al mergear el propio mecanismo: el script leía "$ALCANCE"
+# del working tree donde corre, y hay 24 worktrees con versiones distintas del doc. El checkout
+# compartido no tenía la fila C1, así que el gate reportó «6 ids» y clasificó el commit del propio
+# mecanismo como fuera de alcance. Un instrumento que lee su definición de alcance de un disco
+# cualquiera no mide de menos: mide OTRO SUJETO. La lista vive en origin/main y nada más.
+ALC_SRC="origin/main"
+LISTA=$(mktemp); trap 'rm -f "$LISTA" "$LISTA.e"' EXIT
+if git show "origin/main:$ALCANCE" > "$LISTA" 2>/dev/null && [ -s "$LISTA" ]; then
+  :
+elif [ -f "$ALCANCE" ]; then
+  cp "$ALCANCE" "$LISTA"; ALC_SRC="DISCO (aún no está en origin/main)"
+else
+  echo "foco-check: no encuentro $ALCANCE ni en origin/main ni en disco — sin lista no hay foco"; exit 2
+fi
 
-BASE=$(grep -oE 'SHA base del cierre:\*\* `[0-9a-f]{7,40}`' "$ALCANCE" | grep -oE '[0-9a-f]{7,40}' | head -1)
+BASE=$(grep -oE 'SHA base del cierre:\*\* `[0-9a-f]{7,40}`' "$LISTA" | grep -oE '[0-9a-f]{7,40}' | head -1)
 [ -n "$BASE" ] || { echo "foco-check: no encuentro el SHA base en $ALCANCE"; exit 2; }
 git cat-file -e "$BASE^{commit}" 2>/dev/null || { echo "foco-check: el SHA base $BASE no existe en este repo"; exit 2; }
 
-DESDE=$(grep -oE 'INICIO DEL CIERRE:\*\* `[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}`' "$ALCANCE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}' | head -1)
+DESDE=$(grep -oE 'INICIO DEL CIERRE:\*\* `[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}`' "$LISTA" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}' | head -1)
 [ -n "$DESDE" ] || { echo "foco-check: no encuentro el INICIO DEL CIERRE en $ALCANCE"; exit 2; }
 
 # --- la lista cerrada: ids cortos (col 1) + ids de backlog (col 2) ---
-mapfile -t FILAS < <(sed -n '/ALCANCE-CERRADO:INICIO/,/ALCANCE-CERRADO:FIN/p' "$ALCANCE" | grep -E '^[A-Za-z0-9]+ \|')
+mapfile -t FILAS < <(sed -n '/ALCANCE-CERRADO:INICIO/,/ALCANCE-CERRADO:FIN/p' "$LISTA" | grep -E '^[A-Za-z0-9]+ \|')
 [ "${#FILAS[@]}" -gt 0 ] || { echo "foco-check: la lista cerrada está VACÍA — eso no es luz verde, es un instrumento sin sujeto"; exit 2; }
 IDS=()
 for f in "${FILAS[@]}"; do
@@ -131,7 +144,7 @@ hay=$((desvio+autoref))
 
 if [ "$QUIET" = "1" ] && [ "$hay" -eq 0 ]; then exit 0; fi
 
-echo "FOCO — alcance cerrado de $ALCANCE  (base $BASE, desde $DESDE)"
+echo "FOCO — alcance cerrado de $ALCANCE @ $ALC_SRC  (base $BASE, desde $DESDE)"
 echo "  ids en la lista: ${#FILAS[@]}   refs medidas: ${#REFS[@]}   commits desde la base: $total"
 echo "  ✅ EN ALCANCE (citan un id):        $dentro"
 echo "  🟠 AUTO-REFERENCIAL (sólo instrumento/doc, sin id): $autoref"

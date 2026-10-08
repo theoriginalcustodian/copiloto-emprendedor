@@ -55,6 +55,11 @@ git checkout -q "$BASE" -- . 2>/dev/null || true
 q=$(bash scripts/foco-check.sh --quiet 2>&1)
 [ -n "$q" ] && ok "--quiet habla cuando hay desvío" || malo "--quiet calló habiendo desvío (el cron no se enteraría)"
 
+# caso 4.bis -- el reporte DECLARA de dónde leyó la lista. Sin esto, el defecto que invalidó la v1
+# (leer el doc del disco donde corre, con 24 worktrees que tienen versiones distintas) es invisible:
+# el gate reporta un número de ids y nadie sabe de qué archivo salió.
+echo "$salida" | grep -qE 'alcance cerrado de .* @ ' && ok "el reporte declara la FUENTE de la lista" || malo "el reporte no dice de dónde leyó la lista"
+
 # caso 5 -- fail-closed: lista vacía NO es luz verde
 sed -i '/^A3 |/d; /^A7 |/d' docs/copiloto-emprendedor/ALCANCE-CIERRE-BETA.md
 bash scripts/foco-check.sh >/dev/null 2>&1; ex=$?
