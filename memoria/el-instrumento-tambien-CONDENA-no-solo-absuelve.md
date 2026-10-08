@@ -255,3 +255,42 @@ revisar código bueno; éste te hace **esperar un evento que ya pasó**, y la es
 no son estados en los que `mergeable` signifique algo — `gh pr view N --json state,mergeable` trae las
 dos en la misma llamada, así que no cuesta nada. La pregunta que lo caza: **¿mi instrumento tiene una
 respuesta para «la tarea ya está hecha», o sólo para «sí» y «no»?**
+
+## Refuerzo 2026-10-08 — el falso ROJO salió de buscar el NOMBRE cuando la inclusión es por GLOB
+
+Estuve a un commit de publicarle al operador una fila que decía **«6 de los 12 controles de
+`deploy/` no están cableados a ningún gate»**. Era falsa, y la medición que la produjo parecía
+impecable: `git grep -l -F "$basename" origin/main -- scripts/ .github/` por cada archivo, con
+control positivo (los dos `.py` que sí están daban 4 y 5 hits) y control negativo (un nombre
+inventado daba 0). El instrumento funcionaba. La **pregunta** estaba mal.
+
+> **`scripts/ci/lint.sh:86` no los cablea por nombre: los cablea por patrón** —
+> `bash tests-coordinacion.sh "$ROOT/deploy/copiloto" 'test_*.sh' 'de deploy'`. Un glob **no contiene
+> el nombre de ningún archivo**, así que un grep por nombre literal no puede encontrar la inclusión
+> que existe. Mis seis «sin gate» eran seis cubiertos.
+
+Corriendo el mecanismo real: **9 de 9 controles de `deploy/` corridos, 0 fallados**, incluido el que
+yo iba a denunciar. Y el repo ya tenía el guard que yo creía faltante —
+`scripts/tests/test-lint-controles-deploy-cableados.sh`, 5/5 — cuyo **caso 3 deriva los globs de la
+línea declarada en `lint.sh`** en vez de copiarlos, justamente para que un control nuevo no nazca
+invisible. El guard que yo iba a pedir ya estaba escrito, y además mejor de lo que lo habría pedido.
+
+**Por qué este falso rojo iba a pasar el filtro.** Se sentía como rigor doble: medí por archivo, no
+por asunto; hornée los dos controles; el resultado era *negativo*, y un hallazgo negativo contra uno
+mismo huele a honestidad. Nada de eso toca el defecto, que no estaba en la ejecución sino en la
+traducción de la pregunta: **«¿alguien lo nombra?» no es «¿alguien lo corre?»**.
+
+**El control que lo caza, y es el único que no se puede falsear: correr el gate.** Ante un «esto no
+está cableado», no buscar más referencias — **ejecutar el gate y mirar si el archivo aparece en su
+salida**. Un glob se delata corriendo, nunca grepeando. Generalización barata: antes de afirmar que
+algo no está incluido, preguntarse **por qué mecanismo se incluiría si lo estuviera** (nombre, glob,
+autodescubrimiento, registro, convención de nombre) y medir **ese** mecanismo. Hermana de
+[[instrumento-que-no-mira-nunca-falla]] (ahí el instrumento no miraba; acá miraba el lugar
+equivocado) y de [[contar-un-simbolo-no-dice-en-que-rol-aparece]] (ahí el símbolo aparecía en otro
+rol; acá no aparece en ninguno **y aun así está incluido**).
+
+**Y el revés del mismo día, que es la razón de anotarlo:** la fila de arriba sobre `ci-verde.sh` la
+reproduje yo esta tarde sobre `#943` ya mergeado —`state=MERGED`, `mergeable=UNKNOWN`, los 6 jobs en
+`SUCCESS`, veredicto «ROJO — SIN MEDIR … volvé a correrlo»— y era **verdadera**. Dos candidatos a
+falso rojo en una hora, uno real y uno mío: la diferencia no la dio el olfato, la dio **correr el
+mecanismo** en los dos casos.
