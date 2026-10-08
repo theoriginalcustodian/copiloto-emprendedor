@@ -85,3 +85,31 @@ hay un artefacto más fino que ya lo respondió?* Y la variante estructural: *¿
 en un lugar que **circula** —versionado, en `main`— o en uno que no?* Ver
 [[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] y [[mensaje-entregado-donde-nadie-mira]].
 
+
+### (d) 2026-10-08, más tarde — la cuarta instancia es MÍA, y el artefacto impreciso ya estaba ARCHIVADO COMO CERRADO
+
+El caso 3 de arriba vuelve, con el agravante dado la vuelta. Ese `cierre_` de las 4 filas del
+«residuo» no sólo publicó la señal cruda: en su recómputo de `§13` escribió **«punto 2 · ✅ en
+sustancia, 0 asignables»**. Horas después, el muestreo adversarial que `DEC-18` firmó midió **10 de
+los 53 ítems** del punto 2 y encontró **4 falsos ✅** — tres de código/test y uno de texto legal
+publicado.
+
+**Las 4 filas estaban bien medidas. La frase que las reportaba, no.** Dos de ellas reaparecen en el
+muestreo confirmando (`BL-Q1` es el **control positivo** y sale verde; `BL-Q3` vuelve a salir no
+falso). El defecto no estuvo en medir: estuvo en que **la afirmación cubría un universo más grande
+que el medido** — 4 filas marcadas con 🚨 en el doc de alcance, generalizadas a los 53 ítems del
+punto.
+
+**Lo nuevo respecto de las tres instancias de arriba:** ahí el artefacto preciso existía en otro
+lugar y no circulaba. Acá **el impreciso era el mío y ya estaba en `cerrado/`**, es decir en el lugar
+que se lee como «esto ya se resolvió». Un veredicto optimista archivado como cerrado no compite con
+el nuevo: lo precede, y quien no lea los dos se queda con el primero. Por eso el retiro va **dentro
+del doc que circula** (`§7` del muestreo) y no sólo en el `cierre_`: el buzón se archiva, `docs/` se
+clona.
+
+**La pregunta, que es distinta de la de arriba:** la de arriba pregunta *¿hay un artefacto más fino
+que ya respondió este número?*. Esta pregunta es **sobre el sujeto, no sobre el número**: *¿el
+universo que medí es el universo del que estoy hablando?* Cuatro filas y cincuenta y tres ítems no
+son el mismo sujeto, y la frase no lo decía. Ver
+[[el-instrumento-respondio-sobre-otro-sujeto]] — mismo error de sujeto, pero del lado del **alcance
+de la afirmación** en vez del lado del objeto medido.

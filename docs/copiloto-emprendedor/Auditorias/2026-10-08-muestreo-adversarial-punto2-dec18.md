@@ -355,6 +355,11 @@ extrapolarla**: el punto afirma **0**, y encontrar **1** ya lo refuta.
 **Lo que NO afirmo:** que los 53 ítems estén mal, ni que los 6 ítems sanos del muestreo prueben que
 el resto lo está. El muestreo mide **la afirmación del punto 2**, no la calidad del backlog.
 
+⚠️ **Y esto retira un veredicto mío de hoy más temprano** — un `cierre_` de esta misma sesión puso el
+punto 2 en *«✅ en sustancia, 0 asignables»* con la evidencia de **4 filas**, cuando el punto son
+**53 ítems**. Las 4 filas siguen bien medidas; la frase que las reportaba hablaba de un universo más
+grande que el que medí. Está en `§7`, con el por qué.
+
 **Por qué la cláusula de corte de `DEC-18` no se le aplica a este veredicto.** La cláusula, en su
 versión **corregida** (`#977`, `00a14413` — que es además el SHA que medí), dice que un hallazgo
 bloquea sólo si **nombra un punto** *y* **invalida la evidencia de un punto ✅**. El punto 2 **no es
@@ -433,6 +438,42 @@ cazó un control positivo. Se escriben porque la próxima medición los va a vol
    `00a14413` mientras medía, y la rama viva de fe2 toca `legal.ts`. `git log <sha-medido>..<main> --
    <path>` y el diff contra la rama viva son lo que separa «hallazgo» de «noticia vieja». Hoy
    salieron en verde; el día que salgan en rojo, el hallazgo era de antes de mi propia base.
+
+---
+
+## 7. Retiro un veredicto mío anterior sobre este mismo punto — y la razón no es que las filas estuvieran mal
+
+Hoy, más temprano, esta misma sesión emitió
+`cierre_auditoria-a-planificacion_punto-2-de-13-verificado-el-residuo-de-4-filas-da-CERO-asignables`
+(doc `2026-10-08-punto-2-del-criterio-13-el-residuo-de-4-filas-verificado-una-por-una.md`, medido en
+`origin/main @ 557907ea`), y en su recómputo de `§13` escribió:
+
+> | 2 · familias `BL-*` con su DoD | ✅ **en sustancia**, 0 asignables | — |
+
+**Eso queda retirado por este doc.** Y lo importante es **por qué**, porque no es que las filas
+estuvieran mal medidas:
+
+- **La evidencia de ese cierre eran 4 filas**, las que `ALCANCE-CIERRE-BETA.md:140-158` marcaba con
+  🚨 *«estas 4 filas NO se asignan sin verificarlas una por una»*: `BL-B3`, `BL-B5`, `BL-Q1`,
+  `BL-Q3`. Las 4 **siguen bien medidas** — y dos de ellas reaparecen hoy confirmando: `BL-Q1` es el
+  **control positivo** de este muestreo y salió **verde**, y `BL-Q3` sale **no falso** otra vez.
+- **La afirmación que publiqué era sobre el punto 2 entero**, que son **53 ítems**. 4 filas
+  verificadas no autorizan una conclusión sobre 53. **El defecto no está en la medición: está en el
+  alcance de la frase que la reporta** — es
+  `memoria/dos-causas-suficientes-el-test-no-atribuye` del lado del reporte, y sobre todo
+  `de-dos-artefactos-con-distinta-precision-gana-el-que-circula`: si no retiro esa línea, circulan
+  dos veredictos sobre el punto 2 y el más optimista es el que ya está archivado como cerrado.
+- **La cronología lo confirma, no lo excusa:** `DEC-18` se firmó **después** de ese cierre, y se
+  firmó precisamente porque ni tildar casillas ni verificar 4 filas eran la medida del punto 2. El
+  método de hoy existe como respuesta a esa insuficiencia; este doc es su primera corrida.
+
+**Qué hago con eso, operativamente:** el `cierre_` de hoy lo dice explícitamente (no lo dejo sólo
+acá), y la fila del punto 2 en `§13` **no la toco** — es de planificación, y pisarla sería editar el
+artefacto de otra sesión. Lo que entrego es la medición y el retiro de mi propia línea.
+
+**La pregunta que me habría frenado antes de escribirla:** *¿el universo que medí es el universo del
+que estoy hablando?* Cuatro filas y cincuenta y tres ítems no son el mismo sujeto, y la frase no lo
+decía.
 
 ---
 
