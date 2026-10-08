@@ -456,3 +456,10 @@ Bajadas por **techo de chars**, no por obsolescencia: el índice estaba a **23.9
 
 - [📏🌳 El medidor corrido en el ÁRBOL MEZCLADO acusa al repo](el-medidor-corrido-en-el-arbol-mezclado-acusa-al-repo.md) — y el disco estaba 11.713 líneas ATRASADO: commitearlo borraba.
 - [🔄 El merge-base restado no ve que main lo REESCRIBIÓ](restar-el-merge-base-no-distingue-que-main-lo-reescribio-mejor.md) — 10/10 ramas: atraso. Decidí por FUNCIÓN.
+
+## Bajadas del índice — 2026-10-08 (al fijar el DoD del cierre, `DEC-18`)
+
+Bajadas por **techo**, no por obsolescencia: el índice del repo estaba en **24.040 bytes con techo 24.000** — ya pasado — y había que hacer lugar para la lección del cierre. Las dos siguen vigentes y buscables; se eligieron por ser **punteros técnicos puntuales** que se consultan cuando hacen falta, no criterios que convenga tener cargados siempre.
+
+- [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — temp + `os.replace`. Falla al escribir = ya truncó.
+- [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) - 03:30/09:30/15:30/21:30: `pre-push` 503.

@@ -708,3 +708,23 @@ ejecuta de verdad.
    cuenta el bucle; el segundo sólo lo sabe el runner.
 4. Si lo que destapó tu defecto fue que a un entorno le **faltaba** una dependencia, el defecto sigue
    vivo en todo entorno que la tenga. Convertilo en guard antes de cerrar.
+
+
+## Caso 2026-10-08 — el barrido de secretos buscaba el literal de su propio cuantificador
+
+Antes de commitear a un repo **público** corrí un barrido de credenciales de 6 patrones: **0 hits
+en todos**. El canario —una línea con un token falso, inyectada a propósito— también dio **0**:
+el instrumento no veía **nada**.
+
+La causa es de un carácter: `grep -E` usa ERE, donde los cuantificadores de llaves van **sin**
+backslash. Escribí el patrón en la forma de BRE, con backslash, así que buscaba la **cadena
+literal** del cuantificador, que nunca aparece. **Las dos sintaxis son válidas**, y una de ellas
+en el dialecto equivocado **falla en silencio hacia el «no hay»**.
+
+Lo que salvó el push no fue mi barrido: fue **gitleaks en el `pre-push`** (*scanned ~2512 bytes ·
+no leaks found*). Dos instrumentos, uno ciego y uno real, y **el ciego era el que yo estaba leyendo
+para decidir**.
+
+**Regla:** todo barrido de credenciales lleva su canario **en la misma corrida**, y el canario se
+**mide**, no se asume. Un barrido sin canario y un barrido roto producen la misma salida
+tranquilizadora.

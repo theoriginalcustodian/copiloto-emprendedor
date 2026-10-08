@@ -62,3 +62,19 @@ da **0 tanto si el guard funciona como si nunca se alcanzó** — control ciego,
 [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]. Se escribió en el doc como ceguera conocida en vez
 de dejar el 0 pasando por verde. Ver también
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+
+## Caso 2026-10-08 — los backticks de un mensaje se **ejecutaron** como comando
+
+Agregué una guarda a `podar-worktrees.sh` y en su título puse el nombre de un script entre
+backticks, por costumbre de markdown, dentro de una cadena **doble-citada** de bash. Al correrlo la
+salida decía *«guardan recibos de **(nada)** que no están en git»*: bash trató los backticks como
+**command substitution** e intentó **ejecutar** el script nombrado.
+
+No es cosmético: el mismo mecanismo con otro nombre **ejecuta lo que haya en el PATH**. Y sólo
+apareció al **correr** el script — `bash -n` lo valida sin chistar, porque sintácticamente es
+correcto.
+
+Misma familia que esta memoria: el markdown que uno escribe por hábito dentro de un string de shell
+**no es texto**. **Regla:** en mensajes de shell, backticks → comillas simples o nada; y todo cambio
+de **texto** de un script se verifica **corriendo el script**, no leyendo el diff.
