@@ -145,7 +145,12 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 > **🖊️ Decisión firmada 2026-09-21:** **CERRADO por el acta.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — su encabezado dice literalmente «Cierra: `BL-P1` y `BL-P3`». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Qué:** saber si la reunión con Martín ocurrió y qué se decidió; responder DEC-1, DEC-2 y el estado de la Parte 2 del contrato del 16/09 (en mobile se aplicó igual).
-- **DoD:** [ ] `dato_` o acta en el buzón con la respuesta a DEC-1 y DEC-2 y la lista de lo que la Parte 2 deja liberado.
+- **DoD:** [x] `dato_` o acta en el buzón con la respuesta a DEC-1 y DEC-2 y la lista de lo que la Parte 2 deja liberado.
+- **Respaldo 2026-10-08:** el acta ya lo dice en su cuerpo — §1.bis «Qué libera esta acta, y la reunión
+  que no hubo»: `DEC-2`/`DEC-3` levantan el congelamiento, los 6 trabajos pasaron a `BL-C1`–`BL-C6` con su
+  reparto, y la reunión **no ocurrió** (las decisiones de Martín se leyeron del código de mobile al 21/09).
+  Hasta hoy este ítem se declaraba cerrado citando el **encabezado** del acta («Cierra: `BL-P1` y `BL-P3`»),
+  que afirmaba el cierre sin que el contenido existiera.
 
 ### BL-P2 · La carpeta `odobi-ui/` de Martín (17–18/09) entra al repo
 - **Qué:** su versión del prototipo y `mobile-coherencia.md` (Parte 2 = las formas propuestas de los pedidos a backend) no están en el repo. Sin ella, la referencia de «prototipo final» es la del 07/09.
@@ -155,7 +160,10 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 > **🖊️ Decisión firmada 2026-09-21:** **CERRADO por el acta.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — su encabezado dice literalmente «Cierra: `BL-P1` y `BL-P3`». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Qué:** registrar como cerradas, con alcance por plataforma, las decisiones que mobile ya aplicó y el prototipo ya dibuja (DA-1, DA-2, DA-3, DA-4 en tokens, DA-5 en mobile, DA-11) y las de DEC-10.
-- **DoD:** [ ] un documento de acta en `docs/copiloto-emprendedor/` con cada DA: estado, dueño, fecha, plataformas, ítems que destraba.
+- **DoD:** [x] un documento de acta en `docs/copiloto-emprendedor/` con cada DA: estado, dueño, fecha, plataformas, ítems que destraba.
+- **Respaldo 2026-10-08:** la tabla §2 del acta pasó de 3 a 6 columnas — `| DA | Estado | Dueño | Fecha |
+  Plataformas | Alcance |` para las 11 DA, con nota de procedencia de cada columna nueva. Mismo caso que
+  `BL-P1`: estaba firmado como cerrado contra el encabezado, y la tabla tenía 3 de las 5 columnas pedidas.
 
 ### BL-P4 · Re-emitir el contrato del 16/09 con el estado real
 - **Qué:** el contrato sigue en `abierto/` sin acuse ni avance; el trabajo 2 se hizo en mobile por fuera. Hay que cerrarlo y emitir uno nuevo con `BL-C1`–`BL-C6` y su estado de hoy.

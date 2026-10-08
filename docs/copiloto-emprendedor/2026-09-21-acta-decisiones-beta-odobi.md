@@ -23,21 +23,57 @@
 | DEC-13 | Sin iOS en la beta. | Operador | 21/09 | mobile | `BL-O3` sólo Android |
 | — | No se enciende todavía: backups, legal propio, horario de soporte. Hasta que exista un SLA, los textos de soporte no prometen un número de horas. | Operador | 21/09 | ops | `BL-O5`, `BL-O6`, `BL-O7` → Cierre B |
 
+## 1.bis Qué libera esta acta, y la reunión que no hubo
+
+**Levanta el congelamiento de la «Parte 2».** El contrato del 16/09 de planificación a frontend
+—`2026-09-16_contrato_planificacion-a-frontend_seis-trabajos-sin-bloqueo-y-lo-que-NO-se-toca-hasta-la-reunion`,
+que vive en el buzón `coordinacion/` y **no está versionado**— reservaba una **Parte 2, «lo que NO se
+toca»**, hasta que hubiera reunión. **`DEC-2` y `DEC-3` la liberan:** web sigue a mobile en capas,
+6 funciones, 2 temas, ARCA y bloque negro (`DEC-2`), y el splash queda con Reanimated (`DEC-3`). No
+queda nada de esa Parte 2 esperando una reunión.
+
+Sus **6 trabajos no se perdieron:** pasaron a `BL-C1`–`BL-C6` del
+[backlog](2026-09-21-backlog-beta-odobi-con-dod.md) por `BL-P4`, con reparto **C1/C4/C5/C6 →
+FRONTEND-2**, **C2/C3 → FRONTEND-1**, y la mitad backend de `C6` por el contrato `K-02`. El contrato
+del 16/09 quedó marcado **REEMPLAZADO** en su primera línea; su trabajo 2 ya se había hecho en mobile
+por fuera, en #511.
+
+**La reunión no ocurrió, y esta acta no la necesitó.** Las decisiones de Martín no se tomaron en una
+reunión: se **leyeron del código de mobile al 21/09** (encabezado, «Fuente»; auditoría §6.3) y se
+aceptaron en bloque por `DEC-10`. Lo que sigue pendiente de Martín son los **3 temas de §4**, que los
+lleva el operador — y de ésos, `DEC-11` (contrastes) está **abierto** desde la actualización del
+29/09: no es deuda de documentación, es una decisión de diseño sin tomar.
+
+> **Por qué esto estaba en el aire.** El contrato del 16/09 registraba **de su lado** que esta acta lo
+> liberaba; el acta no lo decía **del suyo**. Una liberación escrita en un solo extremo —y encima en
+> `coordinacion/`, que no se versiona y no sobrevive a un clon— desaparece con el buzón, y entonces
+> nadie puede responder «¿se puede tocar la Parte 2?» sin reconstruir el hilo. `BL-P1`.
+
 ## 2. Registro DA-1 a DA-11
 
-| DA | Estado | Alcance |
-|---|---|---|
-| DA-1 Armazón en capas | **Cerrada**: capas | Mobile hecho (#512); web en `BL-X1` |
-| DA-2 Fusión Contabilidad + Inteligencia | **Cerrada**: 6 funciones | Mobile hecho; web en `BL-X2` |
-| DA-3 Bloque negro vs glass | **Cerrada**: bloque negro para la cifra única, glass para el resto | Registra la convergencia que ya ocurrió en mobile |
-| DA-4 Tokens, acento, contraste, tipografía | **Cerrada**: tokens de #511, Plus Jakarta Sans + Inter, contrastes corregidos | `BL-X6`, `BL-Q4` |
-| DA-5 Temas | **Cerrada**: 2 temas con muestras + «Como el teléfono» | `BL-X4` |
-| DA-6 Onboarding | **Cerrada**: entra | `BL-X8` |
-| DA-7 Plan y límites | **Cerrada**: post-beta | `BL-V2` |
-| DA-8 Splash | **Cerrada**: Reanimated | `BL-X10` |
-| DA-9 «Cómo hablarle» | **Cerrada**: editor de tono con ejemplo; Mi negocio conserva una fila-resumen | `BL-X7` |
-| DA-10 CUIT | **Cerrada**: con salida, validada por backend | `BL-C6` |
-| DA-11 AFIP → ARCA | **Cerrada**: aplicar en web y en textos del agente | `BL-X5` |
+| DA | Estado | Dueño | Fecha | Plataformas | Alcance |
+|---|---|---|---|---|---|
+| DA-1 Armazón en capas | **Cerrada**: capas | Operador | 21/09 | mobile + web | Mobile hecho (#512); web en `BL-X1` |
+| DA-2 Fusión Contabilidad + Inteligencia | **Cerrada**: 6 funciones | Operador | 21/09 | mobile + web | Mobile hecho; web en `BL-X2` |
+| DA-3 Bloque negro vs glass | **Cerrada**: bloque negro para la cifra única, glass para el resto | Operador | 21/09 | mobile + web (`DEC-2`) | Registra la convergencia que ya ocurrió en mobile |
+| DA-4 Tokens, acento, contraste, tipografía | **Cerrada**: tokens de #511, Plus Jakarta Sans + Inter, contrastes corregidos | Operador | 21/09 · contrastes reabiertos 29/09 (`DEC-11`) | mobile + web | `BL-X6`, `BL-Q4` |
+| DA-5 Temas | **Cerrada**: 2 temas con muestras + «Como el teléfono» | Operador | 21/09 | mobile + web | `BL-X4` |
+| DA-6 Onboarding | **Cerrada**: entra | Operador | 21/09 | mobile + web | `BL-X8` |
+| DA-7 Plan y límites | **Cerrada**: post-beta | Operador | 21/09 | ninguna en la beta (post-beta) | `BL-V2` |
+| DA-8 Splash | **Cerrada**: Reanimated | Operador | 21/09 | mobile + web (`DEC-3`) | `BL-X10` |
+| DA-9 «Cómo hablarle» | **Cerrada**: editor de tono con ejemplo; Mi negocio conserva una fila-resumen | Operador | 21/09 | mobile + web | `BL-X7` |
+| DA-10 CUIT | **Cerrada**: con salida, validada por backend | Operador | 21/09 | mobile + web + backend | `BL-C6` |
+| DA-11 AFIP → ARCA | **Cerrada**: aplicar en web y en textos del agente | Operador | 21/09 | web + textos del agente | `BL-X5` |
+
+> **De dónde salen las tres columnas nuevas** (`BL-P3`), para que no se lean como estimación.
+> **Dueño** = el decisor, que es el Operador en las 11: `DEC-1` dice que Martín diseña y no commitea,
+> y `DEC-10` acepta en bloque lo que Martín ya había aplicado en mobile. Quién *ejecuta* lo que falta
+> sigue estando en Alcance — los `BL-X*` son web y, por `DEC-2`, los decide FRONTEND-2.
+> **Fecha** = 21/09, el día de esta acta, que es cuando las 11 quedaron **Cerradas**; la única
+> excepción está marcada en su fila. **Plataformas** = derivadas del propio Alcance más `DEC-2`/`DEC-3`:
+> donde el Alcance dice «mobile hecho» hay mobile, y donde cita un `BL-X*` falta web. **No** salen de
+> una lectura del código: si una fila se contradice con el código, gana el código y esta tabla se
+> corrige.
 
 ## 3. Decisiones de Martín posteriores al 07/09, aceptadas (DEC-10)
 
