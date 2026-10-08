@@ -53,3 +53,24 @@ fricción de copiado no sirve si nadie tiene la obligación de copiar: un `dato_
 avisa con un `pedido_`, cuya respuesta es «no la pegues de nuevo». Lo que se versiona es lo que
 sobrevive. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
 
+## Refuerzo 2026-10-08 (b) — el `dato_` no evitó que **yo mismo** volviera a pagarlo, dos horas después
+
+El caso más limpio posible, porque el emisor y la víctima son la misma sesión.
+
+**14:24** — escribí un `dato_auditoria-a-todos` avisando que `MSYS_NO_PATHCONV=1` delante de `git
+push` **aborta el gate de secretos** (gitleaks es nativo, no carga su config, y el hook es
+fail-closed). Con síntoma, causa y remedio.
+
+**~16:17** — exporté esa misma variable en un script desde otro worktree y el push abortó con el
+**mismo FTL**. Dos horas, mismo día, misma sesión, mismo error.
+
+**Por qué el aviso no sirvió:**
+1. un `dato_` **no se persigue** — por diseño no escala a nadie;
+2. **nadie lee el buzón antes de escribir un script** — se lee al arrancar la sesión y al cerrar un
+   trabajo, no en el momento en que la trampa muerde;
+3. el buzón **no está versionado**, así que el aviso no sobrevive al archivado ni llega a un clon.
+
+**La regla que queda:** un hallazgo que es una **trampa de herramienta** (algo que vas a volver a
+hacer) no se publica como `dato_`: va a **memoria versionada**, donde la busca la próxima sesión sin
+saber que existe. El buzón sirve para coordinar **trabajo**; no sirve para que no repitas un error.
+**Test rápido:** «¿esto me lo puedo volver a hacer **yo**?» — si sí, no es un mensaje, es memoria.
