@@ -113,3 +113,39 @@ veredicto no dependa de un solo canal.
 
 Pariente de [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] y de
 [[git-push-puede-salir-exit-0-sin-haber-pusheado]].
+
+## Refuerzo 2026-10-08 — el pipe se comió el exit code DEL GATE, y lo que el gate decidía era un merge
+
+Esta entrada ya existía, la había escrito yo, y reincidí **en el único lugar donde el exit code no es
+informativo sino constitucional**: el gate de CI que decide si un PR se mergea.
+
+    bash scripts/ci-verde.sh "$N" 2>&1 | tail -9; rc=$?
+    if [ "$rc" -eq 0 ]; then gh pr merge "$N" --squash; fi
+
+`rc` valió **0** porque es el exit de `tail`. El gate había impreso, en ese mismo log,
+«ROJO — SIN MEDIR: no hay ninguna medición del PR 952», y el PR se mergeó igual. Reproducción, dos
+líneas: `bash -c 'exit 7' | tail -1` ⇒ `0`; `bash -c 'exit 7' > /dev/null` ⇒ `7`.
+
+**Por qué entró el pipe, que es lo que hay que recordar:** no lo puse para filtrar nada — lo puse para
+que el log fuera **legible**, para ver las últimas 9 líneas en vez de la corrida entera. La decisión
+era cosmética; el efecto fue sacarle el voto al juez. ⇒ **un filtro agregado por legibilidad cambia,
+callado, quién es el juez.** Es peor que un filtro puesto a propósito, porque nadie revisa una
+decisión de formato buscando un cambio de semántica.
+
+**Cómo salió benigno, y por qué no cuenta como que salió bien:** el run del PR apareció 20 s después
+del merge y dio `success`, igual que el `push` de `main`. El contenido estaba verde. Pero **verde
+medido después no es lo mismo que gateado**: la medición no participó en la decisión. Si el contenido
+hubiera estado rojo, el resultado habría sido idéntico — merge — y eso es la definición de un gate que
+no gatea.
+
+**La forma que uso desde ahora, en una línea:** sacar el veredicto del pipe, nunca el pipe del
+veredicto.
+
+    bash scripts/ci-verde.sh "$N" > "$G" 2>&1; rc=$?; tail -9 "$G"
+
+Primero el `$?` crudo, después la legibilidad. (`PIPESTATUS[0]` también sirve, pero obliga a recordar
+que existe; redirigir a archivo no obliga a recordar nada.)
+
+Hermana nueva: [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] — acá el instrumento **condenaba**
+correctamente y el pipe le tapó la boca; y el hallazgo `H-WATCHSINCHECKS`, que explica por qué el
+gate condenaba (el `--watch` no esperó porque el CI aún no se había registrado).
