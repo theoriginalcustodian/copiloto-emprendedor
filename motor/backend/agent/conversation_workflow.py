@@ -453,10 +453,20 @@ class ConversationWorkflow:
                 messages.append(tr_msg)
                 self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
                 self._react_transcript.append(tr_msg)
+                # BL-B1 (instrumento de durabilidad, continuación de H-A3-8): señal POSITIVA de que
+                # `execute_tool` corrió DE VERDAD con `confirmed=True` -- hasta acá el único veredicto
+                # disponible por HTTP (`/reply`) era por AUSENCIA (ni repite 'confirm:' ni cae en la
+                # rama "sin gate"), lo que deja pasar un reply vacío/distinto como falso verde. Viaja en
+                # `card` (mismo mecanismo que `gate_card`/K-11: el motor re-empaqueta datos que YA
+                # existen; mismo Command `send_channel_message`, sin `workflow.patched()` -- es
+                # visibilidad de algo que ya pasó, no una decisión determinista nueva).
+                confirmed_tool = {"activity": "execute_tool", "name": pend["tool_call"]["name"],
+                                  "confirmed": True, "status": tr.get("status")}
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"),
                                               initial_gate_card=initial_gate_card,
+                                              confirmed_tool=confirmed_tool,
                                               # sembrado: esta tool YA ejecutó (confirmed=True, arriba) ANTES de
                                               # entrar al loop -- sin esto el marcador del cierre "olvida" el
                                               # tool_call que resolvió el gate de confirmación.
@@ -545,7 +555,8 @@ class ConversationWorkflow:
     async def _react_loop(self, config: dict, domain: str, conv: dict, channel: str, channel_ref: str,
                           cliente_id: str, messages: list, *, start_turn_ix: int, start_step: int,
                           last_artifact, tool_trace: list | None = None,
-                          initial_gate_card: dict | None = None) -> bool:
+                          initial_gate_card: dict | None = None,
+                          confirmed_tool: dict | None = None) -> bool:
         step = start_step
         last_sig = None                                          # detección de no-progreso (major #7)
         # tools YA ejecutadas de este turno (fix narra-sin-hacer): sembrado con lo que ejecutó el reingreso de
@@ -615,14 +626,14 @@ class ConversationWorkflow:
                     content = resp.get("content") or content
                 if not tool_calls:
                     await self._react_finish(channel, channel_ref, cliente_id, content, last_artifact,
-                                             tool_trace=trace, card=gate_card)
+                                             tool_trace=trace, card=gate_card, confirmed_tool=confirmed_tool)
                     return False
             tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
             sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
             if sig == last_sig:
                 await self._react_finish(channel, channel_ref, cliente_id,
                                          "Me quedé trabado repitiendo lo mismo, ¿lo intentamos de otra forma?", None,
-                                         tool_trace=trace)
+                                         tool_trace=trace, confirmed_tool=confirmed_tool)
                 return False
             last_sig = sig
             tr = await workflow.execute_activity(
@@ -689,11 +700,12 @@ class ConversationWorkflow:
         # tope de pasos: cerrar con texto de fallo (guardrail, jamás loop silencioso)
         await self._react_finish(channel, channel_ref, cliente_id,
                                  "Se me hizo largo esto, ¿lo intentamos de nuevo por partes?", None,
-                                 tool_trace=trace)
+                                 tool_trace=trace, confirmed_tool=confirmed_tool)
         return False
 
     async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact,
-                            tool_trace: list | None = None, card: dict | None = None) -> None:
+                            tool_trace: list | None = None, card: dict | None = None,
+                            confirmed_tool: dict | None = None) -> None:
         """Cierre TERMINAL del turno (texto final, no la card del gate): apendea a self._history para memoria/CAN
         (major #4) y despacha por el canal con el artifact clicable.
 
@@ -709,7 +721,15 @@ class ConversationWorkflow:
         `call_llm_tools` (comment :22-27, de-riskeado además con Replayer.replay_workflow contra CAN real, ver
         avance_backend_de-risk-narra-sin-hacer). Se usa igual por contrato: versiona explícitamente el momento
         en que una sesión EN VUELO empieza a narrar con evidencia, y deja un `TemporalChangeVersion` auditable
-        para buscar sesiones viejas vs nuevas sin tener que leer el history a mano."""
+        para buscar sesiones viejas vs nuevas sin tener que leer el history a mano.
+
+        `confirmed_tool` (BL-B1, instrumento de durabilidad): sembrado por el reingreso de confirmación
+        (`_run_react_turn`, rama `action == 'confirm'`) con `{activity, name, confirmed: True, status}` de
+        la `execute_tool` que el usuario acaba de confirmar. Viaja por TODAS las salidas de `_react_loop`
+        de este mismo turno (cierre normal, no-progreso, tope de pasos) porque el hecho ya ocurrió antes de
+        entrar al loop, sin importar cuántos pasos más corra. Se mergea en `card` -- igual que `gate_card`
+        (K-11) es el motor re-empaquetando algo que ya pasó, por eso no requiere `workflow.patched()` nuevo
+        (mismo Command `send_channel_message`, sin decisión determinista nueva)."""
         content = text
         if tool_trace and workflow.patched("history-tool-trace-marker"):
             content = f"{text}\n{_tool_trace_marker(tool_trace)}"
@@ -719,15 +739,22 @@ class ConversationWorkflow:
         # así que un turno futuro ve la secuencia completa (pidió X -> tool_call -> tool_result -> texto), no solo
         # el texto suelto que el marcador de PR#85 intentaba compensar sin éxito.
         self._react_transcript.append({"role": "assistant", "content": text})
-        await self._react_send(channel, channel_ref, cliente_id, text, artifact, card=card)
+        await self._react_send(channel, channel_ref, cliente_id, text, artifact, card=card,
+                               confirmed_tool=confirmed_tool)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
-                          choices=None, card=None) -> None:
+                          choices=None, card=None, confirmed_tool: dict | None = None) -> None:
         # `card` explícito (FIX HIGH gate needs_confirmation) tiene prioridad; sin él, se deriva del artifact
         # como antes (cierre terminal con artifact real, ej payment_link/email_draft — 'pending' se filtra:
         # nunca es una card presentable, solo el marcador interno del executor).
         if card is None:
             card = dict(artifact) if artifact and artifact.get("kind") != "pending" else {}
+        # BL-B1: el merge va ACÁ (después de la derivación por artifact arriba), no antes -- mergear en
+        # `_react_finish` pisaba la rama `card is None` de arriba y una card real derivada del artifact
+        # (ej. payment_link, email_draft) se perdía detrás de `{"confirmed_tool": ...}` cada vez que el
+        # turno venía de un confirm. La señal se suma SIN tocar lo que ya había.
+        if confirmed_tool:
+            card = {**card, "confirmed_tool": confirmed_tool}
         await workflow.execute_activity(
             "send_channel_message",
             {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
