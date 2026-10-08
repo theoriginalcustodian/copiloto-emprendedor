@@ -22,22 +22,27 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
 5. **Contexto de coordinación** — leé `coordinacion/COORDINACION.md` y `coordinacion/PLAN.md`
    (reglas vivas + COLA-VIVA). Son la fuente de qué te toca; sin esto arrancás adivinando.
-5.bis. **Instrumento — NUNCA contra el checkout compartido.** El compartido tiene HEAD viejo
-   (mezclado con WIP de otra sesión) y un script que EJECUTA del working tree hereda esa versión
-   sin avisar — medido por planificación 2026-10-08: el parser viejo reporta 15 ids con «estado no
-   reconocido» que no existen en `main`, y centinelas `999999min` donde la antigüedad real es
-   calculable. Creá tu pin una vez (fuera del checkout compartido, no toca CANON 9):
-   `git worktree add --detach "C:/gfw-src/_frontend1-vigia" origin/main`
-   y corré siempre desde ahí (el paso 0 del cron ya lo hace):
-   `V=C:/gfw-src/_frontend1-vigia; git -C "$V" fetch -q origin main && git -C "$V" checkout -q --detach origin/main && SESION_ACTUAL=frontend1 bash "$V/scripts/vigilancia-check.sh" --quiet`
-   Si `$V` no existe todavía, créalo con el comando de arriba. `vigilancia-check.sh` resuelve el
-   buzón físico por *git common dir*, así que desde el pin encuentra la `coordinacion/` real sin
-   duplicarla.
+5.bis. **Instrumento, desde un pin de `origin/main` — nunca desde el checkout compartido.**
+   `SESION_ACTUAL=frontend1 bash scripts/vigia.sh vigilancia-check.sh --quiet`
+   El lanzador **ubica (y si falta, crea) el pin detached de `origin/main`** y corre el instrumento
+   desde ahí, así que la receta de `fetch` + `checkout --detach` a mano **ya no hace falta**:
+   vive adentro de `vigia.sh`, tiene 22 casos de test, y el pin está excluido del podador
+   para que no se borre a sí mismo en cada corrida.
+   **Por qué importa** (medido 2026-10-08): el checkout compartido tiene HEAD viejo y un script
+   que EJECUTA del working tree **hereda esa versión sin avisar** — su parser reporta **15 ids
+   con «estado no reconocido» que no existen en `main`**, y centinelas `999999min` donde la edad
+   real es calculable (`memoria/el-instrumento-respondio-sobre-otro-sujeto.md`,
+   `memoria/el-checkout-compartido-sirve-comandos-viejos.md`). No toca el checkout compartido,
+   así que **no es CANON 9**. Tu pin propio `C:/gfw-src/_frontend1-vigia` sigue sirviendo si preferís
+   seguir usandolo a mano; el guard `0.bis VERSIÓN DEL INSTRUMENTO` (#944) corre adentro de
+   `vigilancia-check.sh` y detecta por sí solo si el árbol que lo ejecuta quedó atrás.
 6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-frontend1_`, `-a-frontend_` (broadcast a las dos) y `-a-todos_`, **y también**
    `coordinacion/cerrado/<hoy>/` (los `avance_`/`dato_` nacen archivados: ahí viven las señales que
    destraban, tipo «suelto el device»). Contá cuántos te interpelan sin acusar.
 7. **Checkout** — `git branch --show-current` y `git status --short | head`. Es checkout COMPARTIDO:
    `git add` con rutas explícitas, y NUNCA `-A`/`--amend`/rebase/reset/checkout/pull/stash/clean.
+
+> 🔧 **Por qué `vigia.sh` y no `scripts/<instrumento>` directo** (medido el 2026-10-08): el path relativo resuelve contra tu **cwd**, que es el checkout COMPARTIDO, cuyo HEAD está viejo. Esa versión **miente**: reportó 15 ids con «estado no reconocido» (el parser viejo no entiende `⏳`/`⏸`) y `999999min` en 4 escaladores en vez de la antigüedad real (2897/2045/2036/2067). `vigia.sh` corre el instrumento desde un **pin de `origin/main`**, y si no puede refrescarlo **grita en stderr** en vez de caer callado al árbol viejo. Un instrumento que EJECUTA un script del working tree hereda la versión de ese checkout y no lo sabe.
 
 **REPORTE de arranque — una línea por ítem, binario, sin prosa:**
 
@@ -72,16 +77,11 @@ Vigía de coordinación (sesión FRONTEND1).
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero desde tu PIN sobre
-   `main`, NUNCA desde el checkout compartido (tiene HEAD viejo y el script hereda esa versión sin
-   avisar — medido 2026-10-08: parser viejo, centinelas `999999min`):
-   ```
-   V=C:/gfw-src/_frontend1-vigia
-   git -C "$V" fetch -q origin main && git -C "$V" checkout -q --detach origin/main
-   SESION_ACTUAL=frontend1 bash "$V/scripts/vigilancia-check.sh" --quiet
-   ```
-   Si `$V` no existe, creálo una vez (desde cualquier checkout, no toca el compartido):
-   `git worktree add --detach "$V" origin/main`
+0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero, **siempre vía el
+   lanzador**, NUNCA con el path relativo del checkout compartido (ese miente: parser viejo sin
+   `⏳`/`⏸`, centinelas `999999min` en vez de la edad real — medido 2026-10-08):
+   `SESION_ACTUAL=frontend1 bash scripts/vigia.sh vigilancia-check.sh --quiet`
+   `vigia.sh` hace el `fetch` y el `checkout --detach` del pin por su cuenta: una línea, no cinco.
    Exit 1 = alarma global (cola arrancable, contrato_/pedido_/en-curso viejo sin acusar de
    CUALQUIER sesión, o alguna sesión muda ≥30min) — su stdout ya es el reporte, no lo reconstruyas.
    Exit 0 = nada de eso, pero **igual seguí al paso 1**: este gate sólo detecta lo VIEJO/estancado
