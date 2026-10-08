@@ -532,3 +532,36 @@ medición. Yo había recortado la salida al tramo del `useEffect`.
 los dos tramos equivalentes, la única diferencia eran **acentos y comentarios**. Dos gemelos
 idénticos donde uno «no tenía el fix» es una contradicción, no una asimetría — y la contradicción
 acusa a la medición, no al código. Compará contra el gemelo antes de declarar que a uno le falta algo.
+
+---
+
+## Refuerzo 2026-10-08 (b) — un instrumento que mide `origin/main` es CIEGO a tu cambio hasta que mergeas
+
+Reparé un documento y quise saber si rompía al único instrumento que lo lee
+(`scripts/backlog-dod-gap.py`). Lo corrí **antes y después** de editar: `rc=0` las dos veces, **79
+líneas de salida idénticas, sin diff**. Concluí «no lo afecta». Al mergear, el instrumento abortó:
+
+```
+🛑 NO PUDE MEDIR: esperaba 66 ítems `### BL-*` (invariante medido del backlog), encontré 77.
+```
+
+**El antes/después local no era control de nada.** El instrumento declara su sujeto en su primera
+línea de salida — `sujeto: origin/main` — y yo había editado el **working tree**. Las dos corridas
+midieron el mismo archivo remoto sin mi cambio: por eso eran idénticas, y la identidad se leía como
+«no hay impacto» cuando significaba «no miró tu cambio».
+
+**La trampa es peor que un sujeto equivocado cualquiera, porque el instrumento acierta.** Mide
+exactamente lo que dice medir, y su respuesta es correcta; lo que está mal es **mi pregunta**: yo
+preguntaba «¿rompo algo?» y el comando contesta «¿está roto en main?». Mientras el cambio no esté
+en el sujeto, la respuesta no puede cambiar — y un control cuya salida **no puede** cambiar con lo
+que estoy probando es un control muerto, aunque corra y devuelva `rc=0`.
+
+**El control, en una pregunta:** *¿el sujeto que mide este instrumento incluye mi cambio?* Si mide
+una ref remota, hay tres salidas honestas: correrlo con el sujeto apuntado a tu rama (si acepta
+parámetro), pushear la rama y medir contra ella, o **declarar que el impacto no se midió** y
+verificarlo justo después del merge. Lo que no vale es leer «sin diff» como «sin impacto».
+
+**Lo bueno de este caso:** el instrumento es *fail-closed* — con el invariante vencido **se niega a
+medir** en vez de dar un número. Un gate que ante lo inesperado contesta igual habría dejado el
+gap de DoD mal medido en silencio durante el cierre. Ver
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y [[el-instrumento-tambien-CONDENA-no-solo-absuelve]].
