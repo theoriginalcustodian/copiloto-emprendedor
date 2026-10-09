@@ -760,3 +760,34 @@ contexto real** — acá, el `[atribucion]` impreso por el `pre-push` de su prop
 reportar «0% de los PRs tienen id de contrato» como hallazgo. Lo cazó su control positivo, que
 exigía acertar tres casos conocidos antes de creerle una sola cifra.
 Ver [[el-canario-el-control-positivo-de-lo-que-falla-callado]].
+
+---
+
+## Refuerzo 2026-10-09 — una resta entre dos cosas que nacen juntas siempre da 0, y yo leí ese 0 como "terminó"
+
+Para saber si un workflow seguía vivo me inventé dos métricas y las dos eran ciegas:
+
+1. **`ls *.meta.json | wc -l` = «agentes cerrados».** Falso: el `meta.json` se crea al **spawn**,
+   no al cierre. Conté 11 y declaré «11 lectores cerrados» al operador. El journal decía **1**.
+2. **`jsonl − meta` = «agentes en vuelo».** Peor: los dos archivos **nacen juntos**, así que la resta
+   da **0 siempre**. Un instrumento cuyo resultado no puede variar no está midiendo — y su 0 lo leí
+   como «no hay nada corriendo», que era la conclusión opuesta a la realidad.
+
+Con esas dos lecturas concluí que la corrida había muerto con la interrupción, y **pedí reanudarla**.
+Lo que me corrigió no fue un razonamiento: fue el harness rechazando el resume con *«is still
+running»*. Estuve a un `TaskStop` de matar una corrida sana con 10 agentes trabajando.
+
+**La señal que sí era señal:** el journal, que registra un `result` por agente **al cerrar**
+(`grep -c '"type":"result"'`). Y por encima de ella, la autoridad del harness. Lo que el disco
+muestra son **artefactos del proceso**, no su estado; el tamaño de un transcript creciendo
+(1,8 MB y subiendo) decía «está trabajando», y lo leí como «dejó basura al morir».
+
+**El chequeo, antes de inventar una métrica:** *¿puede este número dar un valor distinto si el estado
+fuera el contrario?* Si no puede, no es una medición — es una constante con nombre de medición.
+Hermano de [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]] y de
+[[el-veredicto-no-dice-cuantas-veces-lo-miraron]].
+
+**Y el corolario de rescate:** el extractor que escribí para recuperar la salida del disco funcionó
+—encontró el único payload real y lo confirmó contra el journal—, pero su «SIN PAYLOAD: 10» no
+significaba «se perdieron»: significaba **«todavía no lo escribieron»**. El mismo vacío, dos causas
+opuestas, y elegí la pesimista sin control positivo.
