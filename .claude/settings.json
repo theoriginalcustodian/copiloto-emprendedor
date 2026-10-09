@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/goal_activo.mjs\""
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/goal_activo.mjs\""
           }
         ]
       }

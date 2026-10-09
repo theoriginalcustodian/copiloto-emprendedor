@@ -71,7 +71,7 @@ Ver [[la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado]].
 
 ---
 
-## Refuerzo 2026-10-09 — el recordatorio no frena; frena comparar contra UNA orden declarada
+## Refuerzo 2026-10-08 — el recordatorio no frena; frena comparar contra UNA orden declarada
 
 El operador propuso cerrar el desvío con **un cron que me obligue a leer el plan**. Se descartó con
 medición, no con opinión: **el día del desvío los crones estaban PRENDIDOS** inyectando turnos

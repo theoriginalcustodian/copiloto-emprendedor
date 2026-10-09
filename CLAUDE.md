@@ -187,10 +187,18 @@ del `pre-push` marca **`FUERA-GOAL`** todo commit que cite **otro** id, aunque e
 cambiar de orden es un comando, no un hecho consumado. Con goal activo el umbral de desvío no se
 intuye: es 0, y por eso recién ahí es seguro poner `UC_ATRIBUCION_BLOQUEA=1`.
 
+**Quién está en qué, con tres sesiones:** `.goal` vive en el worktree de cada sesión, así que
+`scripts/goal-barrido.sh` barre todos los worktrees y dice quién declaró qué orden. Se adosa al
+reporte de `scripts/vigilancia-check.sh` **sólo cuando ya hay alarma** (cero ruido en el caso
+normal). Hoy "sesión viva sin orden declarada" **no** es alarma por sí sola: se calibra con la
+adopción medida, porque un guard que grita en el caso normal se desarma solo. La bajada operativa
+para las tres sesiones está en `coordinacion/COORDINACION.md §0.quinquies` — **esa carpeta no está
+versionada**, así que la norma canónica es ésta, no aquélla.
+
 **Por qué no es un cron que me obligue a leer el plan:** el día del desvío medido (forense 2026-10-08:
 64 PRs, 4 del backlog firmado) los crones **estaban prendidos** y los ids se citaban de pasada. El
 problema no era la falta de recordatorio sino la falta de **un sujeto único** contra el que comparar.
-Detalle en `memoria/cero-tiempo-ocioso-tres-estados.md` §Refuerzo 2026-10-09.
+Detalle en `memoria/cero-tiempo-ocioso-tres-estados.md` §Refuerzo 2026-10-08.
 
 ---
 
