@@ -19,17 +19,24 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const raizGit = (d) => {
   for (let p = resolve(d); ; p = dirname(p)) {
-    if (existsSync(join(p, ".git"))) return p;
+    if (existsSync(join(p, ".git"))) return p;   // en un worktree `.git` es un ARCHIVO, no un dir
     if (dirname(p) === p) return null;
   }
 };
 
+// La raíz se busca desde la ubicación de ESTE archivo primero, y sólo después desde el cwd.
+// Medido: con el cwd en otro lado el hook salía MUDO — y un hook mudo no da síntoma, que es
+// exactamente la clase de defecto que este mecanismo existe para evitar.
+const raizDesde = [dirname(fileURLToPath(import.meta.url)), process.cwd()]
+  .map(raizGit).find(Boolean);
+
 let salida = "";
 try {
-  const raiz = raizGit(process.cwd());
+  const raiz = raizDesde;
   const f = raiz && join(raiz, ".goal");
   if (f && existsSync(f)) {
     const kv = Object.fromEntries(
