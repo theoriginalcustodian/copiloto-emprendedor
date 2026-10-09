@@ -214,6 +214,37 @@ alcanzar: no es falta de trabajo, es que no había definición de terminado.
 > **Lo que esto es y lo que no es.** Es el criterio de `§13` satisfecho y medido, con el
 > SHA escrito. **No es** la declaración de «beta cerrada»: esa firma es del operador, igual
 > que `DEC-14` cerró el alcance. Lo que queda para esa firma no es trabajo — es su decisión.
+> **→ Firmada el 2026-10-08: `DEC-20`, abajo.**
+
+---
+
+## ✍️ `DEC-20` — BETA CERRADA (firmada por el operador, 2026-10-08)
+
+> **«oka… damos por cerrado el sprint… lo firmo»** — operador, 2026-10-08.
+
+**La beta queda CERRADA** sobre `4ca28551f96b914d520f75f72c6773eae69f8090`. Con esta firma el bloque
+🏁 de arriba pasa de *medido* a *cerrado*, y el criterio de `§13` **no se reabre**: `DEC-18` ya fijó
+que un hallazgo nuevo no reabre un punto cerrado, y `DEC-19` dejó los puntos **3** y **5** en el
+sprint **MOBILE** — cambiaron de sprint, no de alcance.
+
+| punto de `§13` | estado al firmar |
+|---|---|
+| **1** · `§12.bis` del backlog en `main` | ✅ `BL-O1`·`BL-O2` con su firma |
+| **2** · los tres PRs con DoD re-verificado | ✅ #981 · #984 · #985 |
+| **4** · smoke sobre el SHA desplegado | ✅ `39 PASS · 0 FAIL` sobre `4ca28551f` |
+| ~~3~~ · ~~5~~ | ⚫ fuera por `DEC-19` → sprint MOBILE |
+
+**Qué NO declara esta firma.** No declara la app probada en device: `DEC-19` sacó eso del criterio a
+propósito y vive en [`2026-10-08-ARRANQUE-sprint-mobile.md`](2026-10-08-ARRANQUE-sprint-mobile.md),
+cuyo ítem cero (`M-00`) es **instrumental**, no una pantalla. Tampoco declara prod con usuarios: hay
+cero clientes y los datos se fabrican (`memoria/desplegado-no-significa-con-clientes.md`).
+
+**Deuda viva que la firma NO cancela:** `BL-O8` — rotar el token `39decb95` y `DATABASE_URL`,
+diferido a pre-prod por decisión del operador.
+
+**La medición sigue venciendo igual.** El día que un commit toque `apps/`, `motor/` o `packages/`,
+el `39 PASS` sobre `4ca28551f` deja de acreditar lo desplegado y hay que re-medir antes de citarlo.
+Firmar cierra el **sprint**, no congela el runtime.
 
 ⏪ **PÁRRAFO SUPERADO el 08/10 — lo dejo porque es el registro de CÓMO se llegó, no del estado.** El punto 2 **cerró** (los tres falsos corregidos y en `main`); el estado vigente es el bloque 🏁 de arriba, que gana si algo de acá lo contradice. Lo de abajo describe el momento en que el muestreo adversarial recién había salido `NO CIERRA`.
 
