@@ -34,3 +34,33 @@ turnos) y recién abrir/mergear PR(s) cuando el operador cierre el tema o lo pid
 mergealo" es la señal, no "terminé de escribir este archivo". Si son cambios de dominios distintos
 sin relación (código vs. hooks globales vs. memoria), pueden ir en PRs separados **pero igual
 diferidos**, no uno inmediatamente después del otro.
+
+---
+
+## Refuerzo 2026-10-09 — reincidencia #2, y la fricción que faltaba ya existe: el `.goal`
+
+Hoy, en plena apertura del sprint mobile, iba a abrir un PR por **dos archivos de memoria**. El
+operador cortó: *«no hagas prs todo el tiempo… tenemos que esperar una barbaridad de tiempo para que
+se mergeen y el trabajo se retrasa muchísimo»*. Es la **segunda** vez sobre esta misma entrada, que ya
+decía «default a NO mergear en el momento» y que *«terminé de escribir este archivo» no es la señal*.
+
+**Lo que la entrada ya había diagnosticado y seguía sin resolver:** *«no hay fricción técnica que lo
+frene, así que nada compite con el hábito»*. Una nota más enfática no agrega fricción. El mecanismo
+que faltaba **ya existe desde ayer** y no lo había conectado a esto:
+
+> **Un PR se abre cuando se cierra el `.goal` activo — no cuando se termina un archivo.**
+
+`scripts/goal.sh show` dice si hay una orden abierta, y el gate de atribución ya marca `FUERA-GOAL`
+todo commit que cite otro id. Un PR cuyo contenido no es el DoD del goal vigente es exactamente ese
+desvío, una capa más arriba: en vez de un commit fuera de la orden, un **ciclo de PR entero** fuera de
+la orden. El costo no es simbólico — cada PR cuesta la espera del CI, y esa espera **la paga el
+sprint**, no yo. Ver [[autorizacion-permanente-merges-y-deploys]]: la autorización permanente elimina
+la espera de *aprobación*, no la del CI.
+
+**Lo chico no abre PR propio.** Memoria, docs, refuerzos y fixes mecánicos se **commitean local y
+esperan** al próximo lote sustantivo. Lo único que sale solo es lo que **desbloquea a otra sesión**, y
+eso se dice explícito al abrirlo. Caso de hoy: los dos refuerzos quedaron commiteados en
+`plan/refuerzos-modelo-por-tarea-y-anclas` **sin pushear**, esperando el lote del sprint mobile.
+
+**El chequeo de un segundo, antes de tipear `gh pr create`:** *¿esto es el DoD del goal activo, o
+desbloquea a alguien hoy?* Si ninguna de las dos, el commit se queda local.

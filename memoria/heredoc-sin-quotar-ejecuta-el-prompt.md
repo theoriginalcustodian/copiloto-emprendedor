@@ -66,3 +66,24 @@ peor que el ruidoso, y que sólo lo agarrás si comparás bytes.
 **Y el reemplazo barato de cada backslash, cuando igual querés bash:** `grep -qE 'patrón' <<< "$var"`
 en vez de `printf '%s\n' "$var" | grep -qE`, que además evita el pipe. Es el cambio que quedó en
 `gate.sh`, y no fue estético: fue quitar el único lugar donde el transporte podía deformar el código.
+
+---
+
+## Refuerzo 2026-10-09 — reincidí, y el detector barato no fue comparar bytes: fue un `assert` por ancla
+
+Volví a mandar un patch por heredoc **quotado** (`<<'PY'`), creyendo que quotarlo alcanzaba. No
+alcanza para los **backslashes dobles**: el ancla llegó al Python con **newlines reales** donde el
+archivo tenía el texto literal de dos caracteres, y `find()` devolvió `-1`. Medido con `repr()`: el
+archivo decía `'\\n\\n'` (backslash + n) y mi ancla `'\n\n'` (newline real). El heredoc me colapsó un
+nivel de escape.
+
+**Lo que cambia respecto del caso de arriba:** esta vez **no hubo que comparar bytes**. El patcher
+traía un `assert` por ancla y falló fuerte **antes de escribir nada** — el archivo quedó intacto
+porque el write iba al final, con `os.replace`. Un `replace` sin match es un no-op silencioso; un
+`assert` lo convierte en un rojo inmediato. Es el control positivo del "NO" aplicado a un patch, y
+cuesta una línea.
+
+**La regla, afinada:** quotar el heredoc protege del *shell que ejecuta* el contenido, no del
+*transporte que lo deforma*. Backslashes ⇒ herramienta de archivos (no pasa por el shell), y los
+escapes de la capa de destino se **construyen** (`chr(92)`) en vez de viajar. Y todo patch scripteado
+abre con `assert` de su ancla, incluso —sobre todo— cuando "es obvio que está ahí".
