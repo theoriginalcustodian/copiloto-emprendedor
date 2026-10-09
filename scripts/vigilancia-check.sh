@@ -142,6 +142,7 @@ PIEZAS_INSTRUMENTO=(
   scripts/cola-check.sh
   scripts/deuda-check.sh
   scripts/escaladores-buzon.sh
+  scripts/goal-barrido.sh
   scripts/lint-contratos-referencias.sh
   scripts/evidencia/auditar-corpus-vivo.sh
   scripts/lib/buzon-roles.sh
