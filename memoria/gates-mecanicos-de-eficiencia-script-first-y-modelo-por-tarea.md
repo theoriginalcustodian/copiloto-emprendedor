@@ -111,3 +111,28 @@ Por eso vive en capas, del mecanismo a la doctrina, y las cuatro se actualizan j
 
 Un cambio futuro a cualquiera de los tres gates debe tocar **1 y 2 juntos** (mecanismo + su detalle);
 si cambia la doctrina (severidad, cuándo aplica la excepción) también **3**.
+
+---
+
+## Refuerzo 2026-10-09 — el `Workflow` ROUTEA ALREDEDOR del gate: `agent()` sin `model` hereda el caro
+
+El gate de modelo-por-tarea valida **el tool `Agent`** (`~/.claude/hooks/pretooluse_validate_agent.mjs`).
+Un workflow no usa ese tool: usa `agent()` dentro de su propio script, y ahí `model` es **opcional** —
+omitido, el agente hereda el modelo del main loop. Hoy lancé 15 agentes de lectura y barrido para el
+review del sprint mobile sin pasar `model`: salieron **todos en opus**. Nada avisó. El gate no falló;
+**no fue consultado**.
+
+Lo cazó el operador, no el harness: *«recuerdas que te pedí que usaras sub agentes haiku y sonet para
+tareas de investigación?»*. Corté con `TaskStop`, asigné modelo por agente y relancé: **15 sonnet**
+(lectores de docs, medición, grafo, buzón), **5 haiku** (barridos de grep y conteo — que en la primera
+versión **no existían**, porque la parte mecánica me la había quedado yo) y **1 opus** para la
+síntesis, el único juicio que no se delega hacia abajo.
+
+**Por qué importa más que el costo:** un gate que el mecanismo nuevo no atraviesa se degrada a
+costumbre, y una costumbre no es un gate. Mismo patrón que
+[[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]]: el alcance del control dependía
+del camino, no de la acción.
+
+**La regla operativa:** en un workflow, `model` va **explícito en cada `agent()`**; el default no es
+neutro, es el modelo más caro de la sesión. Y un workflow **sin ningún agente en haiku** es la señal
+de que te quedaste la parte mecánica: buscá los greps y los conteos que hay para delegar.
