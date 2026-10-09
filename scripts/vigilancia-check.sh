@@ -498,6 +498,18 @@ Nadie de ese rol estuvo vivo para leerlos — no es 'va lento', es que no hay ve
 $(printf '%s\n' "${huerfanos[@]}" | sed 's/^/  · /')"
 done
 
+# ── Órdenes de trabajo por sesión ────────────────────────────────────────────────────────────
+# Se adosa al reporte SÓLO si ya hay alarma: cero ruido nuevo en el caso normal. Cuando el
+# vigía despierta por otra razón, lo primero que necesita saber es quién declaró qué orden —
+# una sesión viva sin orden declarada es la condición exacta del desvío que midió el forense
+# del 2026-10-08. Todavía NO es alarma por sí sola: ninguna sesión usa /goal aún y un guard
+# que grita en el caso normal se desarma solo. Se calibra con la adopción medida.
+if [ "$alarma" = "1" ] && [ -x "$REPO_ROOT/scripts/goal-barrido.sh" ]; then
+  _goals="$(bash "$REPO_ROOT/scripts/goal-barrido.sh" 2>/dev/null || true)"
+  [ -n "$_goals" ] && add "ÓRDENES DE TRABAJO declaradas (scripts/goal-barrido.sh):
+$_goals"
+fi
+
 # ── Veredicto ────────────────────────────────────────────────────────────────────────────────
 if [ "$alarma" = "1" ]; then
   printf '%s\n' "${reporte[@]}"
