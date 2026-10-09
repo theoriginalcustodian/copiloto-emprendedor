@@ -28,30 +28,26 @@ RANGO="${1:-origin/main..HEAD}"
 BLOQUEA="${UC_ATRIBUCION_BLOQUEA:-0}"
 RAIZ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
-# Los padrones de ids autorizados NO se hardcodean: se descubren por glob sobre lo versionado.
-# Si el glob no encuentra nada, el gate lo DICE en vez de aprobar por vacío (un instrumento
-# ciego contesta "no hay" cuando la verdad es "no veo" — memoria/un-instrumento-ciego-*).
-padrón_ids() {
-  local f
-  for f in "$RAIZ"/docs/copiloto-emprendedor/*backlog*.md \
-           "$RAIZ"/docs/copiloto-emprendedor/*acta*.md \
-           "$RAIZ"/docs/copiloto-emprendedor/*ARRANQUE*.md; do
-    [ -f "$f" ] && cat "$f"
-  done
-}
+# El padrón y el patrón de id viven en UNA sola definición, compartida con goal.sh.
+# La lib se busca al lado de ESTE script, no en el repo medido: el gate puede correr sobre
+# un repo ajeno (así lo ejercita su propio test) y ahí `$RAIZ/scripts/` no existe. Resolverla
+# por $RAIZ hacía que el padrón saliera vacío y el caso "padrón vacío" del test pasara a verde
+# por la causa equivocada — dos causas distintas comparten el código de salida.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-padron.sh"
 
-# UNA sola definición del patrón de id. Vivía dos veces (padrón y commit) y el primer fix
-# llegó a una sola mitad: `BL-[A-Z]?[0-9]+` no reconocía `BL-ZZ999`, así que una cita
-# inexistente se reportaba como "no citó nada" en vez de "citó un id que no existe".
-# memoria/dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md
-RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+)\b'
+# GOAL activo (opcional): si existe, el gate deja de medir contra los ~150 ids del padrón y
+# mide contra UNO. Eso es lo que lo vuelve seguro de poner bloqueante: con una orden de
+# trabajo declarada, un commit que cite OTRO id autorizado también es desvío — cambiar de
+# orden es un comando (`goal.sh set <otro>`), no un hecho consumado en el commit.
+GOAL_ID=""
+[ -f "$RAIZ/.goal" ] && GOAL_ID="$(grep -E '^id=' "$RAIZ/.goal" | head -1 | cut -d= -f2-)"
 
-PADRON="$(padrón_ids | grep -ohE "$RE_ID" | sort -u)"
+PADRON="$(padron_ids "$RAIZ")"
 N_PADRON="$(printf '%s' "$PADRON" | grep -c . || true)"
 
 if [ "$N_PADRON" -eq 0 ]; then
   echo "[atribucion] ⚠️  el padrón de ids autorizados salió VACÍO — no apruebo por vacío."
-  echo "             (revisá los globs de padrón_ids: sin padrón, este gate no mide nada)"
+  echo "             (revisá los globs de padron_ids en lib-padron.sh: sin padrón, este gate no mide nada)"
   [ "$BLOQUEA" = "1" ] && exit 1
   exit 0
 fi
@@ -63,7 +59,7 @@ if [ "$N" -eq 0 ]; then
   exit 0
 fi
 
-n_ok=0; n_libre=0; n_sin=0; n_fantasma=0
+n_ok=0; n_libre=0; n_sin=0; n_fantasma=0; n_fuera=0
 detalle=""
 while IFS= read -r sha; do
   [ -z "$sha" ] && continue
@@ -86,7 +82,17 @@ while IFS= read -r sha; do
       printf '%s\n' "$PADRON" | grep -qx "$id" && vivos="$vivos $id"
     done <<< "$ids"
     if [ -n "$vivos" ]; then
-      n_ok=$((n_ok + 1)); detalle="$detalle\n  OK       $corto  <-$vivos"
+      # Con GOAL activo, citar otro id autorizado TAMBIÉN es desvío: es trabajo legítimo y
+      # ajeno a la orden declarada, que es exactamente lo que el forense midió (64 PRs / 4
+      # del backlog). Cambiar de orden es un comando, no un hecho consumado en el commit.
+      if [ -n "$GOAL_ID" ] && ! printf '%s' " $vivos " | grep -q " $GOAL_ID "; then
+        n_fuera=$((n_fuera + 1))
+        detalle="$detalle
+  FUERA-GOAL $corto  <-$vivos (el goal es $GOAL_ID)"
+      else
+        n_ok=$((n_ok + 1)); detalle="$detalle
+  OK       $corto  <-$vivos"
+      fi
     else
       n_fantasma=$((n_fantasma + 1))
       detalle="$detalle\n  FANTASMA  $corto  <- $(printf '%s' "$ids" | tr '\n' ' ')(no está en el padrón)"
@@ -98,17 +104,22 @@ while IFS= read -r sha; do
   fi
 done <<< "$COMMITS"
 
-no_atribuidos=$((n_sin + n_fantasma))
+no_atribuidos=$((n_sin + n_fantasma + n_fuera))
 pct=$(( no_atribuidos * 100 / N ))
 
-echo "[atribucion] $N commits en $RANGO · padrón: $N_PADRON ids autorizados"
+echo "[atribucion] $N commits en $RANGO · padrón: $N_PADRON ids autorizados${GOAL_ID:+ · 🎯 GOAL=$GOAL_ID}"
 printf '%b\n' "${detalle# }"
-echo "[atribucion] autorizados=$n_ok · libre-declarado=$n_libre · SIN-ID=$n_sin · FANTASMA=$n_fantasma"
+echo "[atribucion] autorizados=$n_ok · libre-declarado=$n_libre · SIN-ID=$n_sin · FANTASMA=$n_fantasma · FUERA-GOAL=$n_fuera"
 echo "[atribucion] no atribuido: ${pct}% ($no_atribuidos de $N)"
 
 if [ "$BLOQUEA" = "1" ] && [ "$no_atribuidos" -gt 0 ]; then
   echo "[atribucion] ⛔ RECHAZADO: $no_atribuidos commit(s) sin id autorizado."
-  echo "             Citá un BL-*/DEC-*/M-*/contrato_ del padrón, o declaralo explícito"
+  if [ -n "$GOAL_ID" ]; then
+    echo "             El goal activo es $GOAL_ID. Citalo en el asunto, cambiá de goal con"
+    echo "             'scripts/goal.sh set <OTRO>', o declaralo explícito"
+  else
+    echo "             Citá un BL-*/DEC-*/M-*/contrato_ del padrón, o declaralo explícito"
+  fi
   echo "             con una línea  'ATRIBUCION: libre — <motivo>'  en el cuerpo del commit."
   exit 1
 fi
