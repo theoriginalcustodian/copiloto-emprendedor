@@ -194,26 +194,159 @@ def _claves_de_dicts(cuerpo):
     return ks
 
 
-# `return _solapas(x)` / `return await asyncio.to_thread(f, ...)` / `return await f(...)`
-INDIR = re.compile(r"\breturn\s+(?:await\s+)?(?:asyncio\.to_thread\(\s*)?([A-Za-z_][A-Za-z0-9_.]*)\s*\(")
+# Un nombre LLAMADO dentro de la expresion devuelta (`_solapas(x)`, `self._fila(row)`), y un metodo
+# invocado sobre el resultado de una llamada (`store(cid).resumen`), del que se captura TAMBIEN el
+# dueno (`store`), porque sin el no se puede desambiguar un metodo homonimo. Deliberadamente SIN
+# anclar al `return`: lo que se mira lo decide _expr_devueltas.
+LLAMADA = re.compile(r"([A-Za-z_][A-Za-z0-9_.]*)\s*\(")
+MIEMBRO = re.compile(r"([A-Za-z_]\w*)\s*\([^()]*\)\s*\.\s*([A-Za-z_]\w*)\s*[(,)]")
+# `return <var>` a secas: la delegacion esta en la ASIGNACION de <var>, no en el return.
+RET_VAR = re.compile(r"\breturn\s+([A-Za-z_]\w*)\s*$", re.M)
+RET = re.compile(r"\breturn\s+(?!$)")
 
 
-# `return await asyncio.to_thread(gasto_store_factory(cliente_id).resumen, periodo)`
-# Lo que importa es el METODO del final, y vive en OTRO archivo (el store). Sin este patron los
-# handlers de plata (/gastos/resumen, /ingresos/resumen, /afip/comprobantes/impagos) quedan opacos:
-# el 12 de HANDLER_OPACO era mayormente esto.
-METODO = re.compile(r"\breturn\s+(?:await\s+)?(?:asyncio\.to_thread\(\s*)?"
-                    r"[A-Za-z_]\w*\([^)]*\)\.([A-Za-z_]\w*)")
+def _sentencia(txt, i):
+    """el texto desde `i` hasta cerrar los parentesis abiertos (minimo, hasta fin de linea)."""
+    fin = txt.find("\n", i)
+    if fin < 0:
+        fin = len(txt)
+    frag = txt[i:fin]
+    while frag.count("(") > frag.count(")") and fin < len(txt):
+        nf = txt.find("\n", fin + 1)
+        if nf < 0:
+            nf = len(txt)
+        frag, fin = txt[i:nf], nf
+    return frag
 
 
-def claves_handler(txt, desde, prof=1, otros=None):
+def _expr_devueltas(cuerpo):
+    """las expresiones que el cuerpo devuelve: el RHS de cada `return`, MAS el RHS de las
+    asignaciones cuya variable se retorna.
+
+    Dos huecos sintacticos medidos, los dos con la misma cara de "handler ilegible":
+      1. el patron canonico de "uno por id" NO delega en el `return`: delega en una ASIGNACION,
+         porque entre las dos esta el guard del 404 --
+             gasto = await asyncio.to_thread(gasto_store_factory(cid).detalle, gasto_id)
+             if gasto is None: raise HTTPException(status_code=404, ...)
+             return gasto
+         (gastos_web.py:149-152, afip_web.py:558-561);
+      2. la delegacion puede no estar pegada al nombre: `to_thread(lambda: _cobros(cid).listar(...))`
+         (afip_web.py:419) mete un `lambda` en medio del patron.
+    Un extractor que exige la delegacion pegada al `return` no ve NINGUNO de los dos, y los reporta
+    con la misma cara que un passthrough de un productor externo, que si es ilegible de verdad.
+    """
+    out = []
+    for m in RET.finditer(cuerpo):
+        out.append(_sentencia(cuerpo, m.end()))
+    for vm in RET_VAR.finditer(cuerpo):
+        var = vm.group(1)
+        for am in re.finditer(r"^[ \t]*" + re.escape(var) + r"(?:\s*:[^=\n]+)?\s*=\s*",
+                              cuerpo, re.M):
+            out.append(_sentencia(cuerpo, am.end()))
+    return out
+
+
+def _nombres_referidos(cuerpo):
+    """los nombres a los que el cuerpo delega lo que devuelve, como pares `(dueno, nombre)`.
+
+    `dueno` es el identificador llamado antes del punto (`gasto_store_factory(cid).detalle` -> dueno
+    `gasto_store_factory`), o None para una llamada suelta. Se usa para desambiguar homonimos.
+    Solo producen efecto los nombres con un `def` en el backend, asi que los de biblioteca
+    (`asyncio.to_thread`, `HTTPException`) se filtran solos en _defs_de.
+    """
+    vistos, out = [], []
+    for expr in _expr_devueltas(cuerpo):
+        for m in MIEMBRO.finditer(expr):
+            par = (m.group(1), m.group(2))
+            if par not in vistos:
+                vistos.append(par)
+                out.append(par)
+        for m in LLAMADA.finditer(expr):
+            par = (None, m.group(1).split(".")[-1])
+            if par not in vistos:
+                vistos.append(par)
+                out.append(par)
+    return out
+
+
+def _defs_de(nombre, dueno, txt, otros):
+    """los cuerpos de `def <nombre>` que PUEDEN ser el que compone la respuesta, resueltos en tres
+    pasos, y FAIL-CLOSED cuando no se puede decidir. -> (candidatos, ambiguo).
+
+    Por que hace falta resolver y no juntar: `def detalle` y `def _fila` existen cada uno en ~8
+    modulos de `apps/copiloto`. Juntar las claves de todos no da una lista "parcial", da una lista
+    CONTAMINADA con claves de otro productor: medido, `/gastos/{}` devolvia 43 claves (`telefono`,
+    `condicion_iva`, `presupuesto_ref`...) y le faltaban las dos que el front si pide (`proveedor`,
+    `monto_sugerido`). Y el riesgo no es solo un NO_CONCLUYENTE ruidoso: una clave ajena que coincide
+    con la que el front espera produce un **OK falso**, que es el veredicto que nadie audita.
+
+    Los tres pasos:
+      1. definicion LOCAL al archivo que estamos leyendo: en Python gana, y es la resolucion
+         correcta de un helper propio (`self._fila` dentro de `gasto_store.py`);
+      2. un unico candidato en todo el backend: no hay nada que desambiguar;
+      3. el dueno nombra su modulo: `gasto_store_factory` contiene el stem `gasto_store`. Es una
+         heuristica de NOMBRE, no una resolucion real -- el factory es un parametro inyectado
+         (`gastos_web.py:101`) y su wiring vive en el composition root (`serve.py`), que este
+         extractor no sigue. Por eso su resultado se valida contra lectura a mano, y por eso la
+         lista sigue saliendo `completa=False`.
+    Si ninguno decide, se devuelve VACIO: "no medi" es honesto, "medi con claves de otro" no.
+    """
+    pat = re.compile(r"^([ \t]*)(?:async\s+)?def\s+" + re.escape(nombre) + r"\s*\(", re.M)
+    dm = pat.search(txt)
+    if dm:
+        return [("<propio>", txt, _cuerpo_def(txt, dm))], False
+    cands = []
+    for nom, otro in (otros or {}).items():
+        if otro is txt:
+            continue
+        dm = pat.search(otro)
+        if dm:
+            cands.append((nom, otro, _cuerpo_def(otro, dm)))
+    if len(cands) <= 1:
+        return cands, False
+    if dueno:
+        elegidos = [c for c in cands
+                    if re.sub(r"\.py$", "", c[0].rsplit("/", 1)[-1]) in dueno]
+        if len(elegidos) == 1:
+            return elegidos, False
+    return [], True
+
+
+def _seguir(cuerpo, txt, otros, prof, vistos):
+    """claves alcanzables siguiendo la delegacion, hasta `prof` saltos. -> (claves, ambiguo).
+
+    Recursivo a proposito: los 9 `HANDLER_OPACO` medidos no eran handlers ilegibles, eran handlers
+    a DOS o mas saltos (handler -> store.metodo -> self._fila -> dict). Con un solo salto el
+    extractor devolvia vacio, y vacio se lee igual que "no manda nada".
+    `vistos` corta ciclos y trabajo repetido; sin el, un store que se llama a si mismo cuelga.
+    """
+    ks, ambiguo = set(), False
+    if prof <= 0:
+        return ks, ambiguo
+    for dueno, nombre in _nombres_referidos(cuerpo):
+        cands, amb = _defs_de(nombre, dueno, txt, otros)
+        ambiguo = ambiguo or amb
+        for etq, src, cuer in cands:
+            if (etq, nombre) in vistos:
+                continue
+            vistos.add((etq, nombre))
+            propias = _claves_de_dicts(cuer)
+            if propias:
+                ks |= propias
+            else:
+                sub, amb2 = _seguir(cuer, src, otros, prof - 1, vistos)
+                ks |= sub
+                ambiguo = ambiguo or amb2
+    return ks, ambiguo
+
+
+def claves_handler(txt, desde, prof=4, otros=None):
     """claves que devuelve el handler que arranca en `desde`.
 
-    Sigue la indireccion en dos pasos: un `return helper(...)` del mismo archivo, y un
-    `return store(...).metodo` cuyo metodo vive en otro archivo del backend. Un `return` que
-    delega no es un handler sin claves, y tratar el vacio como "no manda nada" fabrica un
-    DIFIERE falso contra el front.
-    Devuelve (claves, opaco): `opaco=True` cuando no se pudo leer ninguna forma.
+    -> (claves, opaco, completa, ambiguo). `opaco=True` cuando no se pudo leer NINGUNA forma.
+    La regla que no se toca: una lista obtenida por indireccion sale `completa=False`, y una lista
+    parcial solo puede confirmar un OK, nunca emitir una acusacion (clase NO_CONCLUYENTE). Por eso
+    subir la profundidad amplia lo que el instrumento puede VER sin ampliar lo que puede ACUSAR.
     """
     fin = len(txt)
     m = OTRO_DEC.search(txt, desde + 10)
@@ -223,35 +356,72 @@ def claves_handler(txt, desde, prof=1, otros=None):
     ks = _claves_de_dicts(cuerpo)
     if ks:
         # La lista es COMPLETA solo si TODOS los `return` del handler son dicts literales. Si alguno
-        # delega, la respuesta puede componerse afuera y lo leido es parcial — medido: asi escapo el
+        # delega, la respuesta puede componerse afuera y lo leido es parcial -- medido: asi escapo el
         # falso DIFIERE de /inteligencia/graficos/facturacion, cuyo `periodo` lo manda un helper
         # (inteligencia_web.py:66,79,97) fuera del rango del handler.
         total = len(re.findall(r"\breturn\b", cuerpo))
         dicts = len(re.findall(r"\breturn\s*\{", cuerpo))
-        return sorted(ks), False, total == dicts
-    if prof > 0:
-        for im in INDIR.finditer(cuerpo):
-            nombre = im.group(1).split(".")[-1]
-            dm = re.search(r"^([ \t]*)(?:async\s+)?def\s+" + re.escape(nombre) + r"\s*\(", txt, re.M)
-            if dm:
-                ks |= _claves_de_dicts(_cuerpo_def(txt, dm))
-        if ks:
-            return sorted(ks), False, False
-        for mm in METODO.finditer(cuerpo):
-            metodo = mm.group(1)
-            for otro in (otros or {}).values():
-                dm = re.search(r"^([ \t]*)(?:async\s+)?def\s+" + re.escape(metodo) + r"\s*\(",
-                               otro, re.M)
-                if dm:
-                    ks |= _claves_de_dicts(_cuerpo_def(otro, dm))
-        if ks:
-            # Por INDIRECCION la lista es PARCIAL por construccion: el store tiene varios metodos
-            # y la respuesta se compone en uno que puede no ser el que matcheo. Medido: asi salieron
-            # DOS falsos DIFIERE (`mes_anterior`, que cobro_store.py:387 SI escribe; y `periodo`,
-            # que inteligencia_web.py:66 SI manda). De una lista parcial no se puede emitir una
-            # acusacion: solo confirmar un OK.
-            return sorted(ks), False, False
-    return [], True, False
+        return sorted(ks), False, total == dicts, False
+    ks, ambiguo = _seguir(cuerpo, txt, otros, prof, set())
+    if ks:
+        # Por INDIRECCION la lista es PARCIAL por construccion: el store tiene varios metodos y la
+        # respuesta se compone en uno que puede no ser el que matcheo. Medido: asi salieron DOS falsos
+        # DIFIERE (`mes_anterior`, que cobro_store.py:387 SI escribe; y `periodo`, que
+        # inteligencia_web.py:66 SI manda).
+        return sorted(ks), False, False, ambiguo
+    # el `ambiguo` se propaga TAMBIEN cuando no hubo claves: opaco-por-homonimo-no-desambiguado
+    # y opaco-por-productor-externo son dos causas distintas con el mismo veredicto, y solo la
+    # primera se arregla desde este repo. Descartarlo aca fue un defecto que cazo el canario 4.
+    return [], True, False, ambiguo
+
+
+def _canario_primitivas():
+    """control positivo de las PRIMITIVAS del extractor, antes de medir nada.
+
+    Existe por dos defectos medidos, ninguno visible en el control de 3 rutas end-to-end:
+
+    1. **la completitud siempre-verdadera.** Al escribir este script, un `\\b` del regex de
+       completitud se convirtio en el caracter BACKSPACE (0x08): `\\b` es un escape valido de Python,
+       asi que la conversion fue CALLADA, mientras el `\\s` del renglon siguiente, invalido, aviso con
+       un SyntaxWarning y sobrevivio intacto. Con el regex roto, `total == dicts == 0` para todo
+       handler => `completa=True` SIEMPRE => el instrumento recupero la capacidad de ACUSAR en falso y
+       resucito el DIFIERE de /inteligencia/graficos/facturacion que §3.bis habia matado por
+       construccion. Las 3 rutas de control son OK, y un OK sale igual con la completitud rota.
+
+    2. **el homonimo que contamina.** Si un metodo existe en varios modulos y se juntan las claves de
+       todos, la lista no queda parcial: queda con claves de OTRO productor, y una que coincida con la
+       que el front espera produce un OK falso. El fail-closed de _defs_de es lo que lo impide, y sin
+       canario nadie mide que siga activo.
+    """
+    lit = '@app.get("/canario")\nasync def h():\n    return {"a": 1, "b": 2}\n'
+    ks, opaco, comp, _amb = claves_handler(lit, 0)
+    assert ks == ["a", "b"] and not opaco and comp, \
+        "canario 1: dict literal -> %r opaco=%s completa=%s" % (ks, opaco, comp)
+
+    mix = ('@app.get("/canario")\nasync def h():\n    x = g()\n    if x:\n        return x\n'
+           '    return {"a": 1}\n')
+    ks, opaco, comp, _amb = claves_handler(mix, 0)
+    assert ks == ["a"] and not opaco and not comp, \
+        "canario 2: un return que delega deja la lista PARCIAL -> %r completa=%s" % (ks, comp)
+
+    vacio = '@app.get("/canario")\nasync def h():\n    return await nada_que_exista(1)\n'
+    ks, opaco, comp, _amb = claves_handler(vacio, 0, otros={})
+    assert ks == [] and opaco and not comp, \
+        "canario 3: sin forma legible -> opaco. %r opaco=%s" % (ks, opaco)
+
+    # el fail-closed: `detalle` en dos modulos, dueno que no nombra a ninguno => no se usa NINGUNO.
+    hand = ('@app.get("/canario")\nasync def h():\n'
+            '    f = await asyncio.to_thread(sin_pista(cid).detalle, 1)\n    return f\n')
+    dos = {"a/uno_store.py": 'class A:\n    def detalle(self, i):\n        return {"propia": 1}\n',
+           "a/dos_store.py": 'class B:\n    def detalle(self, i):\n        return {"ajena": 2}\n'}
+    ks, opaco, comp, amb = claves_handler(hand, 0, otros=dos)
+    assert ks == [] and opaco and amb, \
+        "canario 4: homonimo sin desambiguar tiene que salir VACIO y ambiguo -> %r amb=%s" % (ks, amb)
+    # y con el dueno nombrando su modulo, resuelve a UNO solo (y no mezcla la ajena)
+    hand2 = hand.replace("sin_pista", "uno_store_factory")
+    ks, opaco, comp, amb = claves_handler(hand2, 0, otros=dos)
+    assert ks == ["propia"] and not opaco and not comp, \
+        "canario 5: el dueno desambigua y la lista queda PARCIAL -> %r completa=%s" % (ks, comp)
 
 
 def _cuerpo_def(txt, dm):
@@ -273,6 +443,7 @@ def _cuerpo_def(txt, dm):
 
 # --------------------------- 3. corrida ---------------------------
 def main():
+    _canario_primitivas()
     crudo = git("grep", "-I", "-l", "-E", r"apiClient\.(get|post|put|patch|del|delete)",
                 REF, "--", "packages/core/src", "apps/copiloto-web/src", "apps/mobile/src")
     front = [l.split(":", 1)[1] for l in crudo.splitlines() if ":" in l]
@@ -287,10 +458,11 @@ def main():
         t = blobs[bf]
         for m in DEC.finditer(t):
             key = (m.group(1).upper(), norm_ruta(m.group(2)))
-            ks, opaco, completa = claves_handler(t, m.start(), otros=blobs)
+            ks, opaco, completa, ambiguo = claves_handler(t, m.start(), otros=blobs)
             handlers.setdefault(key, []).append(
                 {"archivo": bf, "linea": t[:m.start()].count("\n") + 1,
-                 "claves": ks, "opaco": opaco, "completa": completa})
+                 "claves": ks, "opaco": opaco, "completa": completa,
+                 "ambiguo": ambiguo})
 
     # indice de alias de tipo de TODO el front, no solo de los archivos que llaman al backend:
     # `CatalogResponse`/`MeResponse` viven en archivos de tipos que no importan apiClient, asi que
