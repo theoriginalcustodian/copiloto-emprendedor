@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Barrido SUPERFICIEOFFLINE v6 - AUTOCONTENIDO.
+"""Barrido SUPERFICIEOFFLINE v7 - AUTOCONTENIDO.
 
 No depende de ningun archivo previo ni de ningun arbol materializado: lee TODO de `origin/main`
 via `git show`, asi que corre desde cualquier worktree del repo y otra sesion lo reproduce.
