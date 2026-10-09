@@ -175,6 +175,23 @@ y 23 sólo en el repo, justamente por el miedo que sembraba esta línea. El úni
 es el del índice `MEMORY.md` (lo marca `divergente` y lo deja a mano). Ver
 `memoria/memoria-repo-vs-slug-drift.md`.
 
+## 3.quinquies La ORDEN DE TRABAJO activa: `/goal`
+
+Un trabajo largo arranca con **`/goal <ID>`** y no con una charla. `scripts/goal.sh set <ID>`
+resuelve el id contra el padrón (los docs versionados de backlog / acta / ARRANQUE, working tree
+**y** `origin/main`), guarda su **DoD tal como está en el doc** en `.goal` (gitignored, por
+worktree) y **rechaza** un id que no exista: un goal que el agente se inventa no es una orden.
+
+Desde ahí, `scripts/hooks/goal_activo.mjs` lo inyecta en cada turno y el gate `scripts/ci/atribucion.sh`
+del `pre-push` marca **`FUERA-GOAL`** todo commit que cite **otro** id, aunque esté autorizado —
+cambiar de orden es un comando, no un hecho consumado. Con goal activo el umbral de desvío no se
+intuye: es 0, y por eso recién ahí es seguro poner `UC_ATRIBUCION_BLOQUEA=1`.
+
+**Por qué no es un cron que me obligue a leer el plan:** el día del desvío medido (forense 2026-10-08:
+64 PRs, 4 del backlog firmado) los crones **estaban prendidos** y los ids se citaban de pasada. El
+problema no era la falta de recordatorio sino la falta de **un sujeto único** contra el que comparar.
+Detalle en `memoria/cero-tiempo-ocioso-tres-estados.md` §Refuerzo 2026-10-09.
+
 ---
 
 ## 4. Deploy y cutover (Fase 2.5)

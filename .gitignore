@@ -109,3 +109,7 @@ scripts/evidencia/.canario-tmp/
 # archivo exista (PARTICIONAR): crearlo sin este ignore primero lo publica en el próximo push.
 .bridge/
 .ci-recibos-stub/
+
+# Orden de trabajo activa de la sesión (scripts/goal.sh) — por worktree, nunca versionada:
+# si se versionara, un worktree pisaría el goal del otro y las tres sesiones compartirían orden.
+.goal

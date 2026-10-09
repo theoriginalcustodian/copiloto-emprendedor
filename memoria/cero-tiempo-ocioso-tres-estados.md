@@ -68,3 +68,42 @@ es el estado válido y NO es fallar**. Fabricar trabajo para no cerrar en report
 Si la respuesta es «ninguno, pero conviene», eso **se declara** (`ATRIBUCION: libre — <motivo>`),
 no se hace callado. El gate `scripts/ci/atribucion.sh` lo mide en cada push.
 Ver [[la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado]].
+
+---
+
+## Refuerzo 2026-10-09 — el recordatorio no frena; frena comparar contra UNA orden declarada
+
+El operador propuso cerrar el desvío con **un cron que me obligue a leer el plan**. Se descartó con
+medición, no con opinión: **el día del desvío los crones estaban PRENDIDOS** inyectando turnos
+(`promptSource:"sdk"` en el transcript), y los 113 ids del backlog no me faltaban — los commits los
+citaban de pasada. El fallo no fue ignorancia de la cola.
+
+Lo que faltaba era **un sujeto único contra el que comparar**. El gate de atribución aprobaba contra
+~150 ids: con ese padrón, casi cualquier trabajo "autorizado" pasa. La simplificación que sí muerde es
+que el gate mida contra **UNO**:
+
+- `scripts/goal.sh set <ID>` escribe `.goal` (gitignored, por worktree) y **rechaza** un id ausente
+  del padrón — un goal que el agente se inventa no es una orden de trabajo (fail-closed).
+- El **DoD sale del doc** (`path:línea`), no de mi resumen. El criterio de cierre no lo escribo yo:
+  ahí estaba la fuga del auto-compact, que me devolvía *mi* scope.
+- `scripts/ci/atribucion.sh` suma la clase **`FUERA-GOAL`**: citar **otro id autorizado** también es
+  desvío. Cambiar de orden es un comando, no un hecho consumado en el commit.
+- Eso es lo que lo vuelve seguro de poner **bloqueante**: con una orden declarada el umbral no se
+  intuye — es 0.
+
+Y dos defectos que cazaron los tests mientras se construía, los dos de la misma familia:
+
+1. El padrón se leía del **working tree** solamente. En un worktree parado en rama vieja perdía **13
+   ids**, entre ellos `M-00…M-04` (todo el sprint mobile) y `DEC-14…DEC-19`: `/goal M-00` habría sido
+   rechazado como id inventado. El padrón es un hecho del **repo**, no del branch donde estás parado
+   → se lee del working tree **y** de `origin/main`.
+2. Mi parche al gate **no entró**: un `str.replace` sin match es un **no-op silencioso**, y dejó un
+   `elif true` sin la comparación. El gate imprimía `🎯 GOAL=BL-J9` en el encabezado —parecía
+   cableado— y clasificaba el desvío como `OK`. Lo cazó el caso 4 del test, no una lectura. Desde
+   entonces todo parche por script va con `assert` del ancla antes de escribir.
+
+Y el caso 8 del test viejo **pasaba a verde por la causa equivocada**: la lib se resolvía contra el
+repo medido, salía vacía, y "padrón vacío" se cumplía por el motivo falso. Dos causas distintas
+comparten el código de salida ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]).
+
+Ver `.claude/commands/goal.md` y [[prometer-no-es-ejecutar-el-gate-media-la-palabra]].
