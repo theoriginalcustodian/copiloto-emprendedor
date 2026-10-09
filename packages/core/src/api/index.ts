@@ -70,14 +70,6 @@ export type { CodigoConflicto } from './errors';
 // Contratos de request/response.
 export * from './types';
 
-// `/nota/formatos` — el catálogo de tipos de nota. Superficie aparte, sin equivalente en
-// `CopilotApi`/`mockApi`.
-export { obtenerFormatosNota } from './formatos';
-
-// La enmienda. `listarEntradasCorregibles` trae SÓLO la punta de cada cadena (lo filtra el
-// backend); `previewEnmienda` dice qué se va a INVALIDAR antes de firmar, sin escribir nada.
-export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
-
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
 export { cambiarContrasena, cambiarEmail } from './auth';
