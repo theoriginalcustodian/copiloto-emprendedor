@@ -728,3 +728,35 @@ para decidir**.
 **Regla:** todo barrido de credenciales lleva su canario **en la misma corrida**, y el canario se
 **mide**, no se asume. Un barrido sin canario y un barrido roto producen la misma salida
 tranquilizadora.
+
+
+## Refuerzo 2026-10-08 — tres formas de instalar un instrumento MUDO, en un solo día
+
+Construyendo el gate de atribución (`scripts/ci/atribucion.sh`) aparecieron **tres** maneras de
+tener un instrumento que existe, corre y **no mide nada**. Las tres en la misma tarde.
+
+**1. El gate que se absuelve con una MENCIÓN.** Leía el **cuerpo completo** del mensaje de commit
+buscando ids autorizados, y daba **8% no atribuido** contra **62,5% real**. Causa: mis mensajes
+*mencionan* ids de pasada — un commit cuyo trabajo era «mi propio grep» citaba **7 `BL-*`** en su
+prosa, y el gate lo aprobó. **Mencionar un id no es trabajar en ese id.** Endurecido a *asunto + línea
+`ATRIBUCION:` dedicada*, el mismo tráfico da **75%**. El síntoma que lo delató no fue un rojo: fue
+el **contraste entre dos instrumentos** que medían lo mismo y no coincidían.
+
+**2. Wireado después de un `exit 0`.** Appendeé el bloque al final del `pre-push`… y ese archivo
+tenía un `exit 0` con **código muerto debajo** (conservado «un ciclo por si hay que volver atrás»).
+Instalado, versionado, invisible.
+
+**3. Wireado DENTRO de un `if`.** Al moverlo «antes del `exit 0`», el primer `exit 0` del archivo
+era uno **indentado dentro de un `if`**, así que el gate quedó en una sola rama: sólo corría cuando
+el grafo ya estaba sincronizado.
+
+**El control correcto no es la vecindad de un `exit`: es la PROFUNDIDAD DE ANIDAMIENTO.** Contar
+`if/for/while` menos `fi/done` hasta la posición del bloque, y exigir **0** para el flujo principal.
+Y el control positivo definitivo no es estructural: es **ver la salida del instrumento en su
+contexto real** — acá, el `[atribucion]` impreso por el `pre-push` de su propio push.
+
+**Y un cuarto, del día:** el clasificador que midió los 64 PRs salió **ciego** porque un heredoc
+`<<'EOF'` **no expande nada**, así que `\b` llegó literal y la regex buscaba un backslash. Iba a
+reportar «0% de los PRs tienen id de contrato» como hallazgo. Lo cazó su control positivo, que
+exigía acertar tres casos conocidos antes de creerle una sola cifra.
+Ver [[el-canario-el-control-positivo-de-lo-que-falla-callado]].
