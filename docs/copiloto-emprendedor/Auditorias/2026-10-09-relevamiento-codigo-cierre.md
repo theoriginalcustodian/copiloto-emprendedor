@@ -104,7 +104,9 @@ está escrita y probada—; las **🔬** no se arreglan tocando el producto, se 
 **instrumento**; y las **📐** son código que probablemente funciona y que nadie puede afirmar. Tres
 costos distintos, tres dueños distintos, y un id de backlog con un solo estado los colapsa.
 
-➡️ **Y antes de planificar con esta tabla, leer [§N+2](#n2--de-51-filas-a-10-frentes-el-mapa-causasíntoma): las 51 filas no son 51 decisiones.** Diez grupos cubren **37** de ellas, con el orden interno forzado donde lo hay (la 13 antes que la 14 · la 50 antes que 11/12/36 · la 6 antes que la 5), y **26 filas** resultan ser instrumento, cableado o propagación — no «escribir la feature».
+➡️ **Y antes de planificar con esta tabla, leer [§N+2](#n2--de-51-filas-a-10-frentes-el-mapa-causasíntoma): las 60 filas no son 60 decisiones.** Diez grupos cubren **37** de ellas, con el orden interno forzado donde lo hay (la 13 antes que la 14 · la 50 antes que 11/12/36 · la 6 antes que la 5), y **33 filas** resultan ser instrumento, cableado o propagación — no «escribir la feature».
+
+⚠️ **El mapa de §N+2 se construyó sobre las primeras 51 filas**; las nueve de §N.2/L01 (52-60) **no están agrupadas** ahí. Repartidas por clase de trabajo suman 3 de instrumento (54, 55, 56), 1 de evidencia (53), 3 de propagación —y las tres tienen el fix escrito en otro call-site: 57, 58, 60— y 2 de código a escribir (52, 59). De ahí el salto de 26 a 33. Agruparlas con las otras 37 es trabajo de la planificación, no de este relevamiento: el mapa dice qué causas comparten síntoma, y eso se mide cruzando filas, no agregándolas al final.
 
 ⚠️ **Nota de método, porque este índice ya falló una vez.** Hasta esta pasada la tabla estaba
 numerada `1,2,3,4,20,21,22,5…19`: appendeé las filas de L05 en la posición correcta **por clase** y
@@ -3629,6 +3631,8 @@ misma apariencia que los medidos, y las dos veces lo cazó una suma de treinta s
 backlog: toda cifra agregada de este documento debe venir con los sumandos a la vista, como esta.)*
 
 ## §N+2 · De 51 filas a 10 frentes: el mapa causa→síntoma
+
+> **Alcance medido:** este mapa cruza las **primeras 51** filas del índice. Las nueve de §N.2/L01 (52-60) llegaron después y **no están agrupadas**; su reparto por clase de trabajo está en el puntero bajo §I. Un mapa que dijera «60» sin haberlas cruzado sería la cifra sin unidad que este documento persigue.
 
 Esta sección es el puente al backlog, y es lo único del documento que **no** sale de un lote: sale de
 cruzar las 51 filas entre sí. La pregunta que contesta no es *«qué está roto»* —eso es §I— sino
