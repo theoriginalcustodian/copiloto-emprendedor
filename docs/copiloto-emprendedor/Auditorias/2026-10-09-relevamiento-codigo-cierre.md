@@ -85,11 +85,20 @@ va a priorizar al revés.
 | 49 | gate / recibo | `scripts/ci/backend.sh:33` corre `pytest -q` **sin contar los skips**, así que un recibo verde acredita que Postgres se aprovisionó, no que cada test PG haya corrido — y la línea base del árbol tiene **386 salteados** que el recibo no distingue de 386 verdes | 🔬 **instrumento ciego** | §N.2/L09 |
 | 50 | conexiones / catálogo | `listarCatalogo` está **mockeado en los nueve consumidores**; el único que lo ejercita tiene **un** fixture y **un** test de error, y el test de paridad de contrato compara **una sola clave** leída como texto (`apps/copiloto-web/src/lib/api/catalog.contrato.paridad.test.ts:46-52`) — la costura backend→core de `/catalog` no tiene instrumento | 🔬 **instrumento ciego** | §N.2/L09 |
 | 51 | multitenant / tests | un caso hostil con **un solo actor** no distingue «toma la identidad del token» de «tiene el tenant hardcodeado»: medido, los mutantes con el literal `"cid-A"` sobreviven en las **3** rutas de un actor y mueren en las **4** de dos actores — y uno de los ciegos **se llama** *«borra filtrando por el `cliente_id` del token»* (`apps/copiloto/tests/test_connect_endpoints.py:393`) | 🔬 **instrumento ciego** | §N.2/L09 |
+| 52 | facturación / Ajustes | `puede_facturar` es `bool(creds) and bool(perfil)` (`apps/copiloto/afip_web.py:635`): **dos presencias, no una capacidad**. La condición IVA se pide, se valida y se persiste (`:92`, `:195`, `:222`) y `GET /afip/estado` **no la devuelve ni la mira** (`:628-642`) — así que un Responsable Inscripto lee «ya podés facturar» y el motor le levanta `NotImplementedError` al emitir (`apps/copiloto/afip_rules.py:302-306`, Factura A/B `NO_EXISTE`). Ningún test puede caerse: la propiedad no está escrita en ninguna parte | 🔥 **código roto en producción** | §N.2/L01 |
+| 53 | certificado / vencimiento | el test del store inyecta un **cursor falso** (`apps/copiloto/tests/test_certificado_por_vencer.py:138-139`), así que ejercita el decodificado del PEM y **el SQL no lo corre Postgres** — y lo no ejercitado es justo el contrato: el filtro por `activo` que el docstring declara como «el único con el que se factura» (`apps/copiloto/afip_credential_store.py:161-164`). El veredicto decía `EXISTE_Y_COMPLETO` con «sin test que los ejecute» **en su propia celda de evidencia** | 📐 **evidencia que no toca producción** | §N.2/L01 |
+| 54 | ingresos / aislamiento | los hostiles de ingresos abren con `pytestmark = pytest.mark.skipif(not DATABASE_URL, …)` (`apps/copiloto/tests/test_contabilidad_integracion.py:30`) y el recibo corre `pytest -q` sin contar salteados (`scripts/ci/backend.sh:33`): **un verde no distingue «corrieron» de «se saltearon»**. Y cuando corren, `conn_de_tenant` pasa a la vez por el `WHERE cliente_id` y por la policy RLS (`apps/copiloto/conftest.py:78-100`), así que **el verde no atribuye** cuál barrera frenó la fuga | 🔬 **instrumento ciego** — cierra la costura con la fila 49 | §N.2/L01 |
+| 55 | presupuestos / facturación | el docstring promete que un cambio de formato «rompe acá, ruidosamente» y nombra a `test_presupuesto_facturado.py` (`apps/copiloto/presupuesto_store.py:114-116`) — **ese archivo no existe**. El control **sí** existe, con otro nombre (`apps/copiloto/tests/test_presupuesto_derivados.py:31`), así que lo roto es **la cita, no el guard**; y `apps/copiloto/tool_catalog.py:1299` ubica la función en `:82-99` cuando está en `:121` | 🔬 **instrumento ciego** | §N.2/L01 |
+| 56 | trabajos / id de factura | `apps/copiloto/tests/test_trabajo_store.py:58` afirma una **cadena de código fuente** (`assert 'f"factura-{self._cid}-{fila[0]}"' in fuente` sobre `inspect.getsource`): **una línea comentada la satisface igual**, y un renombre de variable la pone roja sin que nada se haya roto. El test hermano de al lado (`:60`) compara el **valor**, que es la forma que sí mide | 🔬 **instrumento ciego** | §N.2/L01 |
+| 57 | ambiente dev/prod | el default del ambiente vive en **cuatro** lugares y uno es la constante que existe para ser el único: `AMBIENTE_DEFAULT = "dev"` (`apps/copiloto/afip_web.py:101`) frente a tres literales propios (`apps/copiloto/worker_b.py:297`, `:306`, `apps/copiloto/afip_credential_store.py:108`). Es **el default que decide si una factura es real** (`production=(ambiente == "prod")`): cambiar la constante no propaga | ♊ **duplicación divergente** | §N.2/L01 |
+| 58 | anulación / nota de crédito | la factura **reserva** el número antes de emitir (`apps/copiloto/afip_factura_workflow.py:287-297`) y su comentario explica que sin reserva una autorización perdida hace que el reintento emita **otro** comprobante (`:277-282`); `AnulacionWorkflow` llama a `emitir_comprobante` **sin reserva** (`apps/copiloto/afip_anulacion_workflow.py:116-120`) y cae en `ultimo_comprobante + 1` (`apps/copiloto/afip_factura_activities.py:146-147`) — el camino que un test **llama «la doble emisión» y deja verde a propósito** (`apps/copiloto/tests/test_afip_doble_emision.py:102-115`). El test de la NC pasa `nro_reservado=7` (`apps/copiloto/tests/test_afip_anulacion_workflow.py:245`), **un argumento que el workflow nunca envía**. La protección ya existe en el otro call-site | 🔥 **código roto en producción** | §N.2/L01-b |
+| 59 | contabilidad / «lo facturado» | **cuatro predicados distintos** para la misma cifra, más una quinta consulta que cuenta las mismas filas con un sexto criterio: `total_periodo` resta las NC (`apps/copiloto/afip_comprobante_store.py:186-190`) · inteligencia las **suma en positivo** (`apps/copiloto/inteligencia_queries.py:118-126`) · `resumen_operaciones` filtra por CAE sin estado (`apps/copiloto/cliente_store.py:579-586`) · la web filtra `estado === 'emitida'` sobre la **primera página** (`apps/copiloto-web/src/modules/facturacion/ResumenFacturacion.tsx:72,82-83`) · e `impagos` trae las filas de NC como deuda **sin el tipo** (`apps/copiloto/cobro_store.py:125-139`, `:144-149`), consumido por cuatro superficies. **El mismo mes da números distintos en cuatro pantallas** | 🔥 **código roto en producción** | §N.2/L01-b |
+| 60 | core / HTTP | `enviarAutenticado` (`packages/core/src/api/afip.ts:504-510`) llama `http.enviar` directo y se saltea la renovación del bearer, el 408 por corte de tiempo y el **refresh ante 401** (`packages/core/src/api/client.ts:68,166`, `:146-153,176`, `:182-189`) en `guardarPerfil` y `conectarArca`; las otras **17** llamadas del módulo van por `apiClient`. Su docstring se justifica con un problema que `packages/core/src/api/errors.ts:5-20` dice **ya arreglado** («se expuso `body` para que nadie más pague ese precio») y cita como precedente a `actualizarCliente`, que `packages/core/src/api/client.ts:219` dice que **ya no existe** | 🚫 **protección o camino ausente** | §N.2/L01-b |
 
-**Cómo se reparten las 51** (sumandos a la vista, como toda cifra de este documento):
-**15** código roto en producción · **6** protección o camino ausente · **8** capacidad completa que nadie alcanza · **14** instrumento ciego · **6** evidencia que no toca producción · **2** duplicación divergente. Contados sobre la columna de clase de la tabla, no de memoria.
+**Cómo se reparten las 60** (sumandos a la vista, como toda cifra de este documento):
+**18** código roto en producción · **7** protección o camino ausente · **8** capacidad completa que nadie alcanza · **17** instrumento ciego · **7** evidencia que no toca producción · **3** duplicación divergente. Contados sobre la columna de clase de la tabla, no de memoria.
 
-**Y el dato de forma, que es la pregunta que §N+1 deja abierta:** de los 51, **ninguno** se retiró
+**Y el dato de forma, que es la pregunta que §N+1 deja abierta:** de los 60, **ninguno** se retiró
 por código ausente. Las **🕳️** son trabajo de **cableado**, no de implementación —la capacidad ya
 está escrita y probada—; las **🔬** no se arreglan tocando el producto, se arreglan tocando el
 **instrumento**; y las **📐** son código que probablemente funciona y que nadie puede afirmar. Tres
@@ -693,14 +702,14 @@ le reprocha a los instrumentos ajenos; la diferencia es que acá el falso no era
 
 | | medido |
 |---|---|
-| citas `archivo:línea` en el documento | **702** |
+| citas `archivo:línea` en el documento | **766** |
 | `NO_SUCH_FILE` · `OUT_OF_RANGE` · `ILEGIBLE` · `MARCA_FALSA` | **0 · 0 · 0 · 0** |
 | basename ambiguo, **resuelto por el número de línea** | 37 |
 | basename ambiguo **irresoluble** | **0** |
 | citas rotas que el `AMBIGUO` estaba tapando | **0** |
 | citas **exhibidas**, excluidas y listadas | 13 |
 
-⚠️ Esta tabla mide **esta** versión del documento —la de 702 citas—: se re-corre al incorporar los
+⚠️ Esta tabla mide **esta** versión del documento —la de 766 citas—: se re-corre al incorporar los
 lotes que falten, porque cada bloque nuevo trae citas nuevas — el barrido es parte del cierre,
 no un trámite de una vez.
 
@@ -3461,6 +3470,85 @@ test que lo mataba **sólo se pone rojo con la máquina cargada** (autocorrecci�
 veces y sobrevivió. Es la clase *un instrumento intermitente fabrica una excusa lista*, cazada por el
 propio lote antes de publicar.
 
+#### L01 — facturación AFIP: de **5**, sobreviven **2** (refutación hecha a mano, no por el lote)
+
+El lote de facturación es el más grande del relevamiento (**181** elementos: backend 47, web 39, mobile 23,
+core 72) y el único cuya refutación **medí yo**, no el lote. Eso no es rigor extra: es que la espera no se
+podía acotar y la refutación salió del camino crítico. El reporte del lote se recuperó de su traza y se usó
+como **corroboración independiente**, en el sentido correcto — primero medí, después leí lo que había
+concluido.
+
+Los cinco veredictos `EXISTE_Y_COMPLETO` del lote son C04 (cambio de ambiente), C06 (estado de la conexión
+ARCA), C07 (vencimiento del certificado), C16 (ingresos — rutas) y C18 (facturar desde un presupuesto).
+Los otros quince quedaron `EXISTE_PARCIAL` y C21 (Factura A/B) `NO_EXISTE`, así que no hay nada que
+refutar ahí: un parcial ya declara su hueco.
+
+| cap | el lote afirma | la refutación, medida contra el código |
+|---|---|---|
+| **C04** cambio de ambiente | `EXISTE_Y_COMPLETO` · ruta + store + core `TEST_EJERCITA_PROD` | **EN PIE en los dos ejes.** Los hostiles **a nivel ruta** existen y los leí: `client.post("/afip/ambiente")` con el ambiente no vinculado → 409 (`apps/copiloto/tests/test_afip_ambiente.py:148`) y el toggle entre ambientes vinculados (`:156`), más el store hostil (`apps/copiloto/tests/test_afip_stores_integracion.py:315`). Una nota anterior del propio lote decía *«no hay hostil a nivel ruta»*; **es falsa**, y conviene dejarlo escrito: el borrador se corrigió solo contra el archivo. **Reserva nombrada:** los tres casos usan **un solo actor**, así que no distinguen «toma el tenant del token» de «lo tiene fijo» — la clase que L09 midió en el hallazgo 51 |
+| **C06** estado de la conexión ARCA | `EXISTE_Y_COMPLETO` · `TEST_EJERCITA_PROD` | **CAE — y no cae el código del handler, cae lo que el campo SIGNIFICA.** `puede_facturar` es `bool(creds) and bool(perfil)` (`apps/copiloto/afip_web.py:635`): dos presencias. La **condición IVA** la pide el alta, la valida y la persiste (`apps/copiloto/afip_web.py:92`, `:195`, `:222`), y `GET /afip/estado` **no la devuelve** (el dict completo está en `:628-642`) ni la mira. Con C21 `NO_EXISTE` —el motor sólo emite Factura C, `NotImplementedError` en `apps/copiloto/afip_rules.py:302-306`— y con las dos UIs ofreciendo Responsable Inscripto, la cadena cierra: el emprendedor se declara RI, el backend lo guarda, Ajustes lee **`puede_facturar: true`**, y el motor le levanta `NotImplementedError` al emitir. El handler hace exactamente lo que su test dice; el test no puede ver el defecto porque el defecto **no está en el handler, está en el predicado** |
+| **C07** vencimiento del certificado | `EXISTE_Y_COMPLETO` · *«`TEST_EJERCITA_PROD` para la función; SQL del store y detector sin test que los ejecute»* | **CAE el eje evidencia — y lo dice su propia nota de veredicto.** `_store(filas)` construye `AfipCredentialStore(lambda: _Conn(filas), …)` (`apps/copiloto/tests/test_certificado_por_vencer.py:138-139`): un **cursor falso** que devuelve las filas tal cual. Lo que el test ejercita es el **decodificado** del PEM (ilegible / días); el **SQL nunca lo corre Postgres**. Y lo no ejercitado es justo el contrato: el filtro por `activo` que el docstring declara como *«el único con el que se factura»* (`apps/copiloto/afip_credential_store.py:161-164`). Un veredicto `EXISTE_Y_COMPLETO` cuya propia celda de evidencia dice «sin test que los ejecute» **no es completo**: es `EXISTE_PARCIAL` con la reserva ya escrita y no leída |
+| **C16** ingresos (rutas) | `EXISTE_Y_COMPLETO` · `TEST_EJERCITA_PROD` | **CAE a parcial en el eje evidencia, por una costura entre dos lotes.** Las rutas se ejercitan con dobles; el **aislamiento** vive en los tests contra Postgres, y ésos abren con `pytestmark = pytest.mark.skipif(not DATABASE_URL, …)` (`apps/copiloto/tests/test_contabilidad_integracion.py:30`). El recibo del gate corre `pytest -q` **sin contar salteados** (`scripts/ci/backend.sh:33`, hallazgo 49 de L09): un recibo verde **no puede distinguir** «los hostiles corrieron» de «los hostiles se saltearon». Encima `conn_de_tenant` pasa a la vez por el `WHERE cliente_id` de la app y por la policy RLS (`apps/copiloto/conftest.py:78-100`), así que **cuando corre, el verde no atribuye** cuál de las dos barreras frenó la fuga. Dos lotes independientes llegaron a la misma pieza desde lados opuestos |
+| **C18** facturar desde un presupuesto | `EXISTE_Y_COMPLETO` · `TEST_EJERCITA_PROD` | **EN PIE en los dos ejes — y la refutación se dio vuelta a mitad de camino.** El docstring de `presupuesto_store.py:114-116` promete que un cambio de formato en `web._wf_id_factura` *«rompe acá, ruidosamente»*, y nombra a `test_presupuesto_facturado.py` como el guard. **Ese archivo no existe** (sus únicas apariciones son el propio docstring y este documento). La conclusión fácil era «la paridad no está vigilada»; **es falsa**: el test existe con **otro nombre** y hace exactamente lo prometido — `assert workflow_id_de_factura("cid-A","abc123") == web_module._wf_id_factura("cid-A","abc123")` (`apps/copiloto/tests/test_presupuesto_derivados.py:31`), más la concatenación del SQL (`:39`) y la del `TrabajoStore` (`apps/copiloto/tests/test_trabajo_store.py:49-50`). Lo que cae no es el control: es **la cita** |
+
+**Pregunta de mutación, por capacidad.** *Si quito X, ¿qué test se pone rojo?*
+
+- **C04** — cambio el literal del ambiente: rojo en `test_afip_ambiente.py:148,156`. Reemplazo el `cliente_id` del token por `"cid-A"` fijo: **sobrevive** (un actor no lo ve). Mutante **no equivalente** — la ruta es per-tenant y el fallo sería real.
+- **C06** — agrego la condición IVA a `puede_facturar`: **ningún test se pone rojo**, porque ninguno afirma el predicado; los tests afirman las dos presencias. El mutante que *arregla* el defecto es indistinguible del código actual para la suite. Es el caso límite: **no hay test que pueda caerse, porque la propiedad no está escrita en ninguna parte.**
+- **C07** — borro el `WHERE activo` del SQL: **nada se pone rojo**, y acá el mutante **no** es equivalente bajo el gate (a diferencia de los cuatro de L09): con un `prod` inactivo y vencido en la base, el aviso saldría y el docstring dice en su propio texto que un aviso que grita en el caso normal se termina ignorando. El mutante es observable **en producción** y mudo en la suite.
+- **C16** — borro un `WHERE cliente_id` de una ruta de ingresos: rojo **sólo si `DATABASE_URL` está puesta**. Mismo mutante, dos resultados, según una variable de entorno que el recibo no registra.
+- **C18** — cambio el formato en `web._wf_id_factura`: rojo en `test_presupuesto_derivados.py:31`. Cambio `workflow_id_de_factura`: rojo en `:31`, `:41` y `test_trabajo_store.py:50`. **Tres tests, tres capas.** La paridad está genuinamente vigilada.
+
+**Auditoría de mis propios controles positivos.** El control que usé para «el archivo no existe» fue un `grep`
+del nombre en todo el árbol, con control positivo sobre un nombre que sí existe. Eso prueba *«no hay un archivo
+con ese nombre»* — y **no** prueba *«no hay un test que haga eso»*, que es la pregunta que importaba. Las dos
+mitades no son la misma, y por un momento tomé la primera por la segunda: la segunda se contesta buscando el
+**efecto** (`_wf_id_factura` citado desde un test), no el nombre. Es exactamente la asimetría que el índice ya
+lleva como clase, cazada acá sobre mi propia medición.
+
+##### L01-b · tres hallazgos del lote que el índice no tenía
+
+De los 24 hallazgos del reporte recuperado, **21 ya estaban** en el índice o en §5.1 desde la primera ronda
+(medido por firma: `nota_credito`, `cbte_asoc_nro`, `purgar_secretos_vencidos`, `listar_comprobantes`,
+Responsable Inscripto, `usuario`, `fecha_min`, `rechazo_afip`, `InvalidOperation`, …). **Tres no**, y los tres
+son de consecuencia alta. Los verifiqué contra el archivo antes de darles fila.
+
+1. **La nota de crédito se emite por el camino sin número reservado** — el mayor del relevamiento. La factura
+   **reserva** el número antes de emitir (`apps/copiloto/afip_factura_workflow.py:287-297`) y su comentario
+   explica el porqué: sin reserva, si AFIP autoriza y la respuesta se pierde, el reintento pregunta por el
+   número siguiente, *«no existe»*, y **emite otro** (`:277-282`). `AnulacionWorkflow` llama a
+   `emitir_comprobante` con cinco argumentos, **sin reserva**
+   (`apps/copiloto/afip_anulacion_workflow.py:116-120`), así que la activity cae en `ultimo_comprobante + 1`
+   (`apps/copiloto/afip_factura_activities.py:146-147`) — el camino que un test **llama «la doble emisión» y
+   deja verde a propósito** (`apps/copiloto/tests/test_afip_doble_emision.py:102-115`). Y el remate: el test de
+   la activity con una NC le pasa `nro_reservado=7`
+   (`apps/copiloto/tests/test_afip_anulacion_workflow.py:245`), **un argumento que el workflow de anulación
+   nunca envía** — el instrumento prueba una configuración que producción no usa. La protección **ya existe en
+   el otro call-site**: no hay que diseñarla, hay que propagarla.
+2. **«Lo facturado» se calcula con cuatro predicados distintos**, y una quinta consulta (lo impago) cuenta el
+   mismo conjunto de filas con un sexto criterio: `total_periodo` excluye `'anulada'`, no filtra CAE y **resta**
+   las NC (`apps/copiloto/afip_comprobante_store.py:186-190`) · inteligencia pide
+   `estado <> 'anulada' AND cae IS NOT NULL` y las NC **suman en positivo**
+   (`apps/copiloto/inteligencia_queries.py:118-126`) · `ClienteStore.resumen_operaciones` filtra por CAE **sin**
+   estado y las NC restan (`apps/copiloto/cliente_store.py:579-586`) · la web filtra `estado === 'emitida'`
+   sobre la **primera página** (`apps/copiloto-web/src/modules/facturacion/ResumenFacturacion.tsx:72,82-83`) ·
+   y `CobroStore.impagos` incluye las filas de NC como deuda **sin traer el tipo**
+   (`apps/copiloto/cobro_store.py:125-139`, `:144-149`), consumido por cuatro superficies
+   (`apps/copiloto/afip_web.py:379`, `apps/copiloto/inteligencia_queries.py:181`,
+   `apps/copiloto/mi_dia_detector.py:308`, `apps/copiloto/tool_catalog.py:1189`). Para una factura anulada con
+   su NC por el total en el mismo mes, **el mismo período da números distintos en cuatro pantallas**, y la
+   anulada puede aparecer como plata por cobrar.
+3. **Dos caminos HTTP autenticados dentro del core, y el motivo del segundo ya no describe al primero.**
+   `enviarAutenticado` (`packages/core/src/api/afip.ts:504-510`) lee el token y llama `http.enviar` directo,
+   saltándose la renovación del bearer (`packages/core/src/api/client.ts:68,166`), la traducción del corte por
+   tiempo a `ApiError` 408 (`:146-153,176`) y el **refresh ante 401** (`:182-189`). Lo usan sólo `guardarPerfil`
+   (`afip.ts:570`) y `conectarArca` (`:614`); las otras **17** llamadas del módulo van por `apiClient`. Su
+   docstring se justifica porque `mapearError` no preservaría `detail` cuando viene como array
+   (`afip.ts:499-503`) — y `errors.ts:5-20` dice que eso **ya se arregló**, que bajar a `http.enviar` crudo
+   costó el refresh-on-401 y que se expuso `body` *«para que nadie más pague ese precio»*. Cita además a
+   `actualizarCliente` como precedente: `packages/core/src/api/client.ts:219` dice que **ya no existe**. Una exención viva sostenida
+   por una autoridad derogada.
+
 ### N.3 · Cuánto queda en pie, hasta acá
 
 | lote | `EXISTE_Y_COMPLETO` declarados | sobreviven la refutación |
@@ -3475,7 +3563,7 @@ propio lote antes de publicar.
 | L07 ingresos/presupuestos/MP | 9 (CAP-05, 08, 16, 19, 22-25, 27) | **1** (CAP-27, y con `REQUIERE_DEVICE`) — el eje **código** cae en 2, el de **evidencia** en 7. Y separó los dos ejes como criterio |
 | L08 gastos/clientes | 4 (G1, C5, A1, N1w) | **1** (C5-a) — G1 y A1 caen · C5 se **parte en 4** · N1w conserva código y pierde evidencia |
 | L09 conexiones/apps/ajustes | 10 (CAP-01, 03-07, 11, 12, 15, 17) | **2** (CAP-07 · CAP-11, y éste `[LEÍDO]`) — caen **4** y **4** quedan con reserva nombrada, y las cuatro caídas son **de evidencia, ninguna de código**. **113** experimentos de mutación (81 muertos, 32 sobrevivientes), de los cuales **4 son equivalentes bajo el gate**: el lote distinguió «no hay test» de «no hay diferencia observable» y con eso **retiró dos hallazgos propios** |
-| L01 facturación-AFIP | 5 (C04, C06, C07, C16, C18) | refutación **pedida** — de 21 capacidades sólo 5 se declararon completas y **1 no existe** (Factura A/B), así que el lote ya nació autocrítico. Las 5 afirmaciones de mayor consecuencia las verifiqué yo: **las 5 se sostuvieron** |
+| L01 facturación-AFIP | 5 (C04, C06, C07, C16, C18) | **2** (C04 · C18) — **refutación hecha a mano, no por el lote**, y corrige a este mismo documento: la pasada anterior decía «las 5 se sostuvieron» y la medición profunda tira **tres**. C06 cae por el **significado** de `puede_facturar`, no por su handler; C07 y C16 caen **sólo en evidencia** (cursor falso · hostiles gateados por `DATABASE_URL`). C18 se dio vuelta a mitad de camino: el guard que el código cita por un nombre inexistente **existe con otro nombre**. Más **3** hallazgos que el índice no tenía, rescatados de la traza del lote (§N.2/L01-b) |
 
 **Lectura para la planificación, y es el punto de todo esto:** la mortandad no se reparte al azar.
 Cae lo que se probó **una capa adentro** del lugar donde el usuario lo usa — la función pura sin su
@@ -3528,9 +3616,8 @@ alcanzar**. Un solo estado los habría colapsado y escondido.
 La pregunta abierta es si un id del backlog hereda los dos estados o si se parten en dos ids. **No la
 contesta este relevamiento** — es decisión de planificación. Pero el dato está:
 **115 `EXISTE_Y_COMPLETO`** declarados por los **once** lotes (9+14+5+25+10+16+8+4+9+10+5 —
-contados, no estimados), de los cuales **110 pasaron la refutación** (9+5+14+25+16+8+10+4+9+10 — los
-diez primeros, completo; faltan **sólo los 5 de L01**).
-**56 quedan en pie** en el eje código (3+2+13+7+9+1+3+1+7+10 — L09 aporta los diez enteros: **ningún veredicto de código se movió**, sus cuatro caídas son todas de evidencia, y su único matiz funcional, CAP-01b, ya es la fila 11 del índice), con la mayoría retirada o en
+contados, no estimados), de los cuales **115 pasaron la refutación** (9+5+14+25+16+8+10+4+9+10+5 — **los once lotes, completo**).
+**60 quedan en pie** en el eje código (3+2+13+7+9+1+3+1+7+10+4 — L09 aporta los diez enteros: **ningún veredicto de código se movió**, sus cuatro caídas son todas de evidencia, y su único matiz funcional, CAP-01b, ya es la fila 11 del índice), con la mayoría retirada o en
 reserva. El caso que mejor muestra por qué el eje importa es N1w de L08: el código queda `EXISTE_Y_COMPLETO` y la evidencia cae a `SIN_TEST` en el mismo movimiento. Y lo que decide la forma del backlog: **ningún retiro fue por código
 ausente.** Todos fueron por evidencia que no toca producción. Un backlog con un solo estado por id no
 puede expresar eso: colapsaría «funciona y no lo probamos» con «no existe», que son trabajos
