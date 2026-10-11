@@ -38,3 +38,38 @@ máquina o build EAS que tarda horas) → se pregunta, NO se asume ni se dispara
 proponer cualquier camino de device: verificar el `package.json` de `apps/mobile` Y preguntar el flujo si
 hay duda — no adivinar. `build-local-por-usb-es-la-metodologia-nunca-la-nube-para-iterar` quedó RETIRADA
 (decía `expo run:android`, era falso).
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 — «ya está instalado» es un ESTADO con fecha de vencimiento, no una propiedad
+
+El punto 1 dice *«el dev-client YA está instalado»*. **Medido hoy: NO lo está.** Teléfono `RF8T318RN9T`
+conectado y autorizado, y `adb shell pm path app.copiloto.emprendedor` → **vacío**; 0 coincidencias de
+`copiloto|odobi|expo` en las 4 variantes de `pm list packages` (control positivo: `samsung` → 141, total
+358 paquetes, y `pm path` sobre un paquete del sistema sí devuelve su APK). Ni app, ni dev-client, ni
+Expo Go.
+
+**La causa NO es que alguien lo desinstaló: es un mecanismo que esta entrada no nombraba.** La plataforma
+EAS tiene **retención de 14 días** sobre los artefactos. Hay **14 builds** del proyecto, **12 FINISHED con
+APK**, y **0 vigentes**: la expiración más nueva es 2026-09-21, y los tres artefactos que se pidieron con
+HEAD dan **HTTP 404**. El último dev-client útil fue el del **2026-09-07** (`f8428b9e`, perfil
+`development`) y su APK ya no se puede bajar. Un estado que caduca solo, sin que nadie actúe, no se puede
+afirmar de memoria: **se mide con `pm path` al abrir cada sesión de device.**
+
+**Y la cifra de costo de esta entrada está mal.** Dice *«cola de HORAS (un build previo tardó 4h 36min)»*.
+Ninguno de los 14 builds del proyecto reproduce eso: `createdAt → completedAt` de los 12 FINISHED da
+**min 27 · mediana 82 · máx 136 minutos**, y los dos `development` más recientes tardaron **41 y 49 min**.
+La cifra citada venía de **un** caso y se volvió la regla — [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]].
+Consecuencia práctica: un build EAS `development` cuesta **~45–90 min**, no «horas», y eso **sí** entra en
+una sesión. Rebuildear sigue siendo MAYOR por decisión, no por costo prohibitivo.
+
+**How to apply (refuerzo):**
+1. Antes de prometer iteración por Metro, correr `adb shell pm path app.copiloto.emprendedor`. Ruta ⇒ hay
+   binario. Vacío ⇒ **no hay nada que recargar**, y lo que sigue es un build, no un `expo start`.
+2. Cuando se produzca un dev-client nuevo: **bajar el APK y archivarlo fuera de expo.dev**. La plataforma
+   borra a los 14 días — ya se perdieron 12 artefactos así.
+3. Anotar el `gitCommitHash` del build en el documento: `appBuildVersion` es `1` en los 14 y
+   `runtimeVersion` es `null`, así que **el teléfono no puede decir qué build tiene**.
+
+[[desplegado-no-significa-con-clientes]] [[un-disparador-cumplido-no-avisa-a-nadie]]
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]

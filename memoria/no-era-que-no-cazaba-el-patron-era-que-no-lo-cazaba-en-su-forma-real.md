@@ -37,3 +37,35 @@ arriba.
 - Y un allowlist contra `match` **no puede ver más allá del match**: mi regex terminaba en `@`, así
   que `@(localhost|127\.0\.0\.1)` no podía disparar nunca. `regexTarget = "line"` lo arregló.
   → [[instrumento-que-no-mira-nunca-falla]]
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 — el falso 0 tenía la cara EXACTA del hallazgo que el instrumento buscaba
+
+No es sólo cosa de escáneres de secretos. **Medido hoy** sobre el relevamiento mobile: escribí un
+instrumento que, por cada ruta de Expo, busca quién la navega, para detectar la clase 🕳️ *«capacidad
+completa que nadie alcanza»*. Mi patrón exigía la comilla de cierre **pegada** al literal de la ruta:
+`['"`]/legal['"`]`. Reportó que `/legal` era la **única** pantalla con **cero** call-sites.
+
+**Era falso.** El call-site real es `router.push('/legal?kind=tos')` — `PantallaCuenta.tsx:61` y `:66`.
+La ruta estaba citada, pero con **query string**: la comilla no venía pegada. El patrón cazaba la
+ruta, no su forma real. Corregido (`(?:[?#][^'"`]*)?` antes del cierre), `/legal` da **2**.
+
+🔑 **Lo que lo hace peor que un bug cualquiera: el error se disfrazaba de resultado.** El instrumento
+existía para encontrar pantallas inalcanzables, y su defecto **fabricó una**. Un falso cero no se
+siente como una falla: se siente como el hallazgo que fuiste a buscar, con su sección en el documento
+ya escrita. → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+**Y el mismo instrumento, en la misma corrida, falló en el sentido opuesto:** para la raíz `/`, el
+literal `['"`]/['"`]` matcheaba cualquier `"/"` del código y daba **136** call-sites. Un cero
+inventado y un número inflado, en el mismo script, el mismo día. No era mala suerte: el patrón
+genérico es laxo en el caso degenerado y estricto en el caso con parámetros, y ninguno de los dos
+extremos avisa.
+
+**Cómo aplicarlo:** un instrumento que busca **ausencias** lleva control positivo **antes** de
+publicar un solo cero — una lista de casos que se sabe presentes, verificados a mano con grep, que
+él **debe** encontrar. Si alguno da 0, aborta y no publica la columna. Y la lista tiene que incluir
+el caso **con la decoración real** (el `?query`, el prefijo, el envoltorio), no sólo el caso limpio;
+más un **techo** para el caso degenerado, que es donde sobre-matchea.
+→ [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+→ [[un-control-positivo-con-esperado-falso-acusa-al-script]]
