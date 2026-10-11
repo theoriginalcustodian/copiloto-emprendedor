@@ -675,3 +675,39 @@ fila afirma algo más amplio que lo que muestra su evidencia, refutenmelo con el
 Lo hicieron, con path y línea. **Invitar la refutación por escrito y por adelantado funcionó mejor
 que mis cuatro controles propios** — los tres de `(f)` los cacé tarde y solo; este lo cazó el
 mecanismo que pedí.
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 · el sujeto correcto, una CAPA más arriba: leer el manifest del PAQUETE no acredita el resultado del MERGE
+
+La variante más barata de equivocar el sujeto no es mirar otro archivo: es mirar **el archivo
+correcto en la capa equivocada**, y cuesta reconocerla porque el dato que devuelve es verdadero.
+
+El cierre del relevamiento mobile afirmó, sobre un nativo importado sin plugin declarado, que *«aun
+sin plugin, los permisos llegan por **merge de manifiestos** del autolinking, leído en el
+`AndroidManifest.xml` de cada paquete»*. Y es cierto que `expo-image-picker` declara `CAMERA` en
+**su** manifest. Pero la pregunta era qué permisos tiene **la app**, y eso no vive ahí: el manifest
+que escribe `expo prebuild` es el de la aplicación, y el merge con los manifests de las librerías lo
+hace **Gradle al compilar** — una capa más abajo, que sólo el APK muestra. Medido al correr el
+prebuild: **0 hits de `CAMERA`** en el manifest generado, con control positivo verde (9
+`uses-permission` sí encontrados).
+
+🔑 **Y la agravante que lo hace memorable: el propio documento ya declaraba no haberlo medido.** Su
+sección de límites decía, textual, *«El `AndroidManifest.xml` resultante. No se corrió `prebuild`»*.
+O sea que la afirmación y su desmentido convivían en el mismo archivo: una sección afirmaba el
+efecto, la otra admitía no haber mirado la capa donde el efecto ocurre. **Reincidí en el mismo
+razonamiento ese mismo día**, antes de correr el prebuild, usando ese párrafo como respaldo — un
+negativo verificado que no verificaba nada.
+
+**El cierre honesto, que es la otra mitad:** tampoco pude probar lo contrario. El merge de Gradle
+podría traer el permiso, y eso sólo lo dice `dumpsys package` sobre el APK instalado. Así que la
+conclusión no se invirtió, se **degradó a indecidible antes del binario**, y el permiso se declaró
+explícito en la config para que la pregunta deje de depender de una capa no medible.
+
+**La pregunta de una línea:** *¿el artefacto que estoy leyendo es el que el sistema realmente
+consume, o uno de sus insumos?* Un insumo nunca acredita el resultado de un merge, una compilación,
+una cascada de CSS, un `extends` ni un override — porque en todos esos casos existe un paso
+posterior cuyo trabajo es, precisamente, cambiar lo que leíste.
+→ [[verificar-la-composicion-root-no-el-default]] ·
+[[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]
