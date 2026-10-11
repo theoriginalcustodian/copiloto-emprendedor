@@ -69,3 +69,42 @@ el caso **con la decoración real** (el `?query`, el prefijo, el envoltorio), no
 más un **techo** para el caso degenerado, que es donde sobre-matchea.
 → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
 → [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+---
+
+## ⚠️🔥 REFUERZO 2026-10-11 (2) — el instrumento contó la AFIRMACIÓN como su propia PRUEBA
+
+Tercera trampa del **mismo** instrumento, el mismo día, y la peor: **no distinguía código de
+comentario**. En este repo los comentarios citan rutas todo el tiempo para explicar mecánica, así que
+produjo **10 call-sites fantasma** — verificados abriendo las diez líneas una por una, las diez
+comentarios.
+
+🔑 **El que muerde es `/midia`.** Su **único** «call-site» era `PantallaMiDia.tsx:267`, un docstring
+que dice: *«La ruta `/midia` sigue viva porque las tarjetas de actividad y los enlaces internos la
+usan»*. O sea que el instrumento **contó la afirmación de alcanzabilidad como la prueba de la
+alcanzabilidad**, y convirtió en **1** el único **0** verdadero del mapa. `/midia` es una pantalla de
+751 líneas que **nadie alcanza** (lo confirman tres instrumentos independientes y el switch completo
+de `destinoActividad.ts:62-79`, sin caso `/midia`), y el código **afirma lo contrario** en dos
+docstrings. Publiqué «20 de 21, cero candidatas a 🕳️». Era **19 de 21**.
+
+🔑 **Y acá está la asimetría que importa, porque decide cuál de los dos errores te vas a comer.** El
+mismo instrumento primero **fabricó** un hallazgo (`/legal`, refuerzo anterior) y después **tapó**
+uno real. El falso positivo es **mucho más difícil de notar**, y no por ser más sutil: **un 0 te
+obliga a mirar; un 1 te autoriza a seguir.** El falso 1 no se lee como un error — se lee como la
+redundancia que uno *quiere* encontrar (*«tranquilo, hay dos caminos»*). Por eso el falso cero se
+caza y el falso uno sobrevive hasta el documento.
+
+**Cómo aplicarlo**
+- Un instrumento que grepea **código** enmascara comentarios **antes** de contar. Y no con un regex:
+  `'https://x'` y `// ver /gastos` se parecen demasiado, así que hay que recorrer con estado de
+  comilla — equivocarse hacia el otro lado reintroduce el falso cero del refuerzo anterior.
+- **El control positivo NO alcanza acá, y es el punto fino:** los call-sites reales se encuentran
+  igual con la máscara **apagada**, así que el verde de los positivos **absuelve** a una máscara
+  inactiva. Hace falta un **control NEGATIVO**: las líneas-comentario verificadas a mano, que el
+  instrumento **no puede** reportar. Sin él, «la máscara funciona» y «la máscara no está» son
+  indistinguibles. → [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
+- Y la regla general del día: **ningún gate lee comentarios, y ningún lector los trata como
+  medición.** Cinco hallazgos distintos de ese relevamiento resultaron ser la misma falla — el
+  comentario usado como fuente, envejecido, sin nada que lo mida.
+  → [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]
+  → [[el-guard-se-satisface-con-su-propio-comentario]]
