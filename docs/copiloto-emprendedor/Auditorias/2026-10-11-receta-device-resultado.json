@@ -1,0 +1,28 @@
+{
+  "/clientes": {
+    "eje_a": "NO_ATRIBUIBLE_ESCRITORIO_CERRADO"
+  },
+  "/facturacion": {
+    "eje_a": "LLEGA"
+  },
+  "/gastos": {
+    "eje_a": "NO_LLEGA"
+  },
+  "/ingresos": {
+    "eje_a": "NO_LLEGA"
+  },
+  "/inteligencia": {
+    "eje_a": "NO_ATRIBUIBLE_ESCRITORIO_CERRADO"
+  },
+  "/presupuestos": {
+    "eje_a": "NO_ATRIBUIBLE_ESCRITORIO_CERRADO"
+  },
+  "__escritorio__": {
+    "abre_con_toque": false,
+    "abrio": true,
+    "via": "arrastre"
+  },
+  "__toque_pestana__": {
+    "abrio": false
+  }
+}

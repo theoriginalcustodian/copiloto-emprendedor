@@ -402,16 +402,30 @@ try:
             print('  toque quieto en la pestana: %s'
                   % ('ABRE' if abrio_toque else 'NO ABRE (el escritorio sigue cerrado)'))
             abrio, via = abrio_toque, 'toque-quieto'
+            pantalla = re.search(r'bounds="\[0,0\]\[\d+,(\d+)\]"', xml)
+            recorrido = (int(pantalla.group(1)) if pantalla else 1465) - 44
+            dist = int(recorrido * 0.85)
             if not abrio:
-                # el recorrido es el alto de la CAPA menos la pestana (ALTO_PESTANA = 44), no una
-                # constante: con otro alto de pantalla, 600px volveria a ser menos de la mitad.
-                pantalla = re.search(r'bounds="\[0,0\]\[\d+,(\d+)\]"', xml)
-                recorrido = (int(pantalla.group(1)) if pantalla else 1465) - 44
-                dist = int(recorrido * 0.85)
                 print('  -> pruebo ARRASTRE de %d px (85%% del recorrido %d; por debajo de %d el '
                       'snap lo devuelve a cerrado POR DISENO)' % (dist, recorrido, recorrido // 2))
-                arrastre(cx, cy, cy + dist, pasos=20)
-                abrio, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=8)
+                # DOS gestos, no uno. El PRIMER gesto tras montar la pantalla no hace efecto:
+                # medido 3 de 3 ciclos (reset -> swipe1 no abre -> swipe2 ABRE). Un instrumento
+                # que hace un solo arrastre siempre ejercita el que se pierde, y reporta
+                # "inalcanzable" sobre un escritorio que si abre. Candidata del codigo:
+                # `onEnd` arranca con `if (max <= 0) return` y `max` es `alto.value`, que fija
+                # `onLayout`. Se usa `input swipe` con duracion DECLARADA: 20 `motionevent` son 20
+                # comandos adb con jitter, y RNGH deriva `velocityY` de esos timestamps -- gesto
+                # no reproducible (1 de 3). Con duracion fija, la velocidad deja de ser emergente.
+                abrio = False
+                for intento in (1, 2):
+                    adb('shell', 'input', 'swipe', str(cx), str(cy), str(cx), str(cy + dist),
+                        '800')
+                    abrio, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=8)
+                    if abrio:
+                        print('  el escritorio abrio en el gesto %d de 2' % intento)
+                        break
+                    if intento == 1:
+                        print('  gesto 1 sin efecto (esperado: ver H-63) -> repito')
                 via = 'arrastre'
             resultados['__escritorio__'] = {'abrio': abrio, 'via': via if abrio else None,
                                             'abre_con_toque': abrio_toque}
@@ -421,12 +435,37 @@ try:
             else:
                 print('  el escritorio ABRIO via %s' % via)
                 capturar('01-escritorio-abierto')
+                def reabrir(xactual):
+                    """Deja el escritorio ABIERTO y devuelve el arbol, o None.
+
+                    Tras un KEYCODE_BACK el escritorio queda CERRADO. La v1 lo daba por abierto y
+                    los tiles 2..6 salian 'tile no encontrado' / 'NO LLEGA' -- rojos del
+                    instrumento con cara de rutas rotas, y encima en la direccion que confirmaba
+                    lo que yo ya creia. El estado se RESTABLECE antes de cada medicion, no se
+                    hereda de la anterior."""
+                    if ve(xactual or '', 'tile-facturacion'):
+                        return xactual
+                    for _ in range(3):
+                        adb('shell', 'input', 'swipe', str(cx), str(cy), str(cx), str(cy + dist),
+                            '800')
+                        hay, xr = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
+                        if hay:
+                            return xr
+                    return None
+
                 for ruta in TILES:
                     tids = dict(PANTALLAS)[ruta]
+                    xa = reabrir(xa)
+                    if xa is None:
+                        resultados.setdefault(ruta, {})['eje_a'] = 'NO_ATRIBUIBLE_ESCRITORIO_CERRADO'
+                        print('    %-18s eje A: NO ATRIBUIBLE (no logre reabrir el escritorio; '
+                              'no es un veredicto sobre la ruta)' % ruta)
+                        continue
                     tile = centro(xa, 'tile-%s' % ruta.strip('/'))
                     if not tile:
                         resultados.setdefault(ruta, {})['eje_a'] = 'TILE_NO_ENCONTRADO'
-                        print('    %-18s eje A: tile no encontrado' % ruta)
+                        print('    %-18s eje A: tile no encontrado (con el escritorio ABIERTO '
+                              'verificado)' % ruta)
                         continue
                     toca_pt(tile[0], tile[1])
                     lleg, _ = esperar(lambda x, t=tids: ve_alguno(x, t) is not None, intentos=8)

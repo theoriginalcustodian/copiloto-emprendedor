@@ -463,3 +463,5 @@ Bajadas por **techo**, no por obsolescencia: el índice del repo estaba en **24.
 
 - [💥📝 `open(...,"w")` TRUNCA antes de que el write falle](el-open-w-trunca-antes-de-que-el-write-falle.md) — **consolidadas en la del indice el 08/10**; queda por el caso del `PLAN.md` de 363 KB.
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) - 03:30/09:30/15:30/21:30: `pre-push` 503.
+
+- **Sprint cerrado 2026-10-08 (bajado del indice el 2026-10-11).** **✅ SPRINT CERRADO 08/10 — `DEC-14`: cierra contra el ALCANCE (7/7 sobre `92fd8a06`), **§13 queda ABIERTO** (device). `DEC-15` cerró `DEC-11`.

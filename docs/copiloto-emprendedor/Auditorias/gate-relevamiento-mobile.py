@@ -288,25 +288,67 @@ def c5_citas(t, reg):
                % (len(crudas), len(crudas) - len(deps), len(deps)))
 
 
+def c0_fuente_legible():
+    """El gate revisa SU PROPIO fuente por bytes de control invisibles, antes de medir nada.
+
+    Por que existe: C6 rechazo un documento que SI cumplia. La causa no estaba en el documento sino
+    aca -- donde el fuente parecia decir `\\b120\\b` habia un **\\x08 literal** (backspace), porque el
+    `\\b` que escribi viajo por una capa que lo interpreto como escape antes de llegar al disco. El
+    regex quedo imposible de satisfacer y el gate acuso al sujeto correcto de un defecto propio.
+
+    Lo que lo hace peligroso no es el byte: es que `grep`, `sed` y cualquier visor muestran la linea
+    **perfecta**, porque un \\x08 no se dibuja. El instrumento de lectura borra el defecto de la
+    pantalla. Un falso ROJO se lee igual que prudencia, y mas si uno ya sospechaba del documento.
+
+    Control positivo disponible: meter un \\x08 a mano en este archivo tiene que volver esto rojo.
+    """
+    crudo = io.open(os.path.abspath(__file__), 'rb').read()
+    malos = sorted({b for b in crudo if b < 0x20 and b not in (0x09, 0x0a, 0x0d)})
+    if malos:
+        print('  ROJO   C0  el fuente DE ESTE GATE tiene %d byte(s) de control invisibles (%s): '
+              'un regex con \\x08 no lo satisface ningun texto, y el visor no lo muestra'
+              % (sum(1 for b in crudo if b in malos), ', '.join('\\x%02x' % b for b in malos)))
+        raise SystemExit(2)
+    print('  OK     C0  el fuente del gate no tiene bytes de control invisibles')
+
+
 def c6_nativas(t, reg):
     """34 deps + 8 plugins clasificados. BLOQUEADO para la mitad 'contra el APK': no hay APK."""
     ok_doc = ('**%d**' % DEPS_MEDIDAS) in t and ('**%d**' % PLUGINS) in t
     if not ok_doc:
         return reg(6, False, 'el doc no declara las %d deps y los %d plugins' % (DEPS_MEDIDAS, PLUGINS))
-    bloqueados.append((6, 'la mitad "contra el APK" del criterio: no hay binario que inspeccionar '
-                          '(se clasifico contra node_modules y los config plugins, y el doc lo dice en §Z)'))
-    return reg(6, True, '%d deps y %d plugins clasificados en el doc (vs node_modules, NO vs APK)'
-               % (DEPS_MEDIDAS, PLUGINS))
+    # DESBLOQUEADO 2026-10-11: la mitad "contra el APK" estaba bloqueada porque no habia binario.
+    # Hoy existe y esta archivado, asi que el criterio se MIDE en vez de declararse imposible: el
+    # doc tiene que citar lo que el APK trae de verdad (sus .so y sus ABIs), no solo lo que
+    # node_modules promete. Un bloqueo que sobrevive a su causa es un criterio que se aprueba solo.
+    if not re.search(r'\b120\b[^.]{0,80}\.so|\.so[^.]{0,80}\b120\b', t):
+        return reg(6, False, 'el doc no cita las 120 .so medidas DENTRO del APK (la mitad '
+                             '"contra el binario" del criterio ya no esta bloqueada: hay APK)')
+    if 'arm64-v8a' not in t:
+        return reg(6, False, 'el doc no nombra las ABIs que el APK realmente empaqueta')
+    return reg(6, True, '%d deps y %d plugins en el doc, y las 120 .so / 4 ABIs medidas DENTRO '
+                        'del APK' % (DEPS_MEDIDAS, PLUGINS))
 
 
 def c9_device_declarado(t, reg):
-    """Toda pantalla sin veredicto_device lleva BLOQUEADO_POR_BUILD + el modulo nombrado."""
-    if 'BLOQUEADO_POR_BUILD' not in t:
-        return reg(9, False, 'no declara BLOQUEADO_POR_BUILD')
-    if not re.search(r'retenci[oó]n', t):
-        return reg(9, False, 'no nombra el mecanismo que dejo el device sin binario')
-    bloqueados.append((9, 'B7 no se puede recalcular post-B′: B′ (build e instalacion) no ocurrio'))
-    return reg(9, True, 'las 21 con BLOQUEADO_POR_BUILD y el mecanismo (retencion 14 dias) nombrado')
+    """Las 21 pantallas tienen veredicto DE DEVICE, y lo no medido se declara como no medido.
+
+    REESCRITO 2026-10-11 (B' ocurrio). La v1 pedia que toda pantalla sin veredicto llevara
+    `BLOQUEADO_POR_BUILD`: era el criterio correcto MIENTRAS no hubiera binario. Dejarlo asi
+    despues del build lo volvia un criterio que premia la ausencia de medicion -- se cumplia mejor
+    cuanto menos se midiera. Hoy exige lo contrario: las 21 filas con veredicto de eje B, y que el
+    eje A diga cuales quedaron SIN atribuir en vez de contarlas como rojas.
+    """
+    filas = re.findall(r'^\|\s*`(/\S*)`\s*\|[^|]*\|\s*(MONTA|\*\*NO MONTA\*\*)\s*\|',
+                       t, re.M)
+    if len(filas) != PANTALLAS:
+        return reg(9, False, 'la tabla de device tiene %d filas con veredicto, no %d'
+                             % (len(filas), PANTALLAS))
+    if 'NO_ATRIBUIBLE' not in t and 'no atribuible' not in t:
+        return reg(9, False, 'el eje A no declara ninguna casilla sin atribuir: o se midieron '
+                             'todas (decilo) o se estan contando como rojas')
+    return reg(9, True, 'las %d con veredicto de device medido, y el eje A declara lo no atribuible'
+                        % PANTALLAS)
 
 
 CHECKS_DOC = [c1_pantallas, c2_particion, c3_refutacion, c4_indice, c5_citas, c6_nativas,
@@ -628,6 +670,7 @@ print('  alcance     : %s' % ('CODIGO + PLATAFORMA (declarado por flag; build/de
 print()
 
 texto = io.open(ruta_doc(), encoding='utf-8').read()
+c0_fuente_legible()
 print('  --- criterios sobre el documento ---')
 res_doc = correr_doc(texto)
 
