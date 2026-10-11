@@ -1,0 +1,576 @@
+{
+ "sujeto": "apps/mobile @ 6278836a (wt-relev)",
+ "version_instrumento": 3,
+ "denominadores": {
+  "rutas": 22,
+  "componentes_tsx": 115,
+  "tests": 112,
+  "modulos": 21,
+  "otros_ts_en_src": 52,
+  "total_ts_tsx": 301
+ },
+ "modulos": [
+  "actividad",
+  "afip",
+  "ajustes",
+  "apps",
+  "auth",
+  "captura",
+  "chat",
+  "clientes",
+  "escritorio",
+  "facturacion",
+  "feedback",
+  "gastos",
+  "ingresos",
+  "inteligencia",
+  "midia",
+  "onboarding",
+  "presupuestos",
+  "recientes",
+  "soporte",
+  "splash",
+  "voz"
+ ],
+ "rutas": [
+  {
+   "archivo": "apps/mobile/app/_layout.tsx",
+   "ruta": "/_layout",
+   "tipo": "layout",
+   "call_sites": []
+  },
+  {
+   "archivo": "apps/mobile/app/agenda.tsx",
+   "ruta": "/agenda",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:186"
+   ],
+   "call_sites_en_tests": []
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-afip.tsx",
+   "ruta": "/ajustes-afip",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:30",
+    "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx:702"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:52",
+    "apps/mobile/src/modules/facturacion/PantallaFacturacion.test.tsx:277",
+    "apps/mobile/src/modules/facturacion/PantallaFacturacion.test.tsx:305"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-como-usar.tsx",
+   "ruta": "/ajustes-como-usar",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:35"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:57"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-cuenta.tsx",
+   "ruta": "/ajustes-cuenta",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:33"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:54"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-feedback.tsx",
+   "ruta": "/ajustes-feedback",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:39"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:59"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-negocio.tsx",
+   "ruta": "/ajustes-negocio",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:29"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:51"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-skins.tsx",
+   "ruta": "/ajustes-skins",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:34"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:55"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes-soporte.tsx",
+   "ruta": "/ajustes-soporte",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:38",
+    "apps/mobile/src/modules/feedback/PantallaFeedback.tsx:165"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:58"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/ajustes.tsx",
+   "ruta": "/ajustes",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:185"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:129"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/apps.tsx",
+   "ruta": "/apps",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/ajustes.tsx:32"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx:53"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/clientes.tsx",
+   "ruta": "/clientes",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/modules/actividad/destinoActividad.ts:68",
+    "apps/mobile/src/modules/chat/TarjetaClientePropuesto.tsx:77",
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:48"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:26",
+    "apps/mobile/src/modules/chat/TarjetaClientePropuesto.test.tsx:202",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:81",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:115",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:168"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/facturacion.tsx",
+   "ruta": "/facturacion",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/app/presupuestos.tsx:39",
+    "apps/mobile/src/modules/actividad/destinoActividad.ts:74",
+    "apps/mobile/src/modules/chat/ChipArmarFactura.tsx:32",
+    "apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.tsx:171",
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:44"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:35",
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:39",
+    "apps/mobile/src/modules/chat/ChipArmarFactura.test.tsx:38",
+    "apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.test.tsx:252",
+    "apps/mobile/src/modules/facturacion/PantallaFacturacion.test.tsx:296",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:77"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/gastos.tsx",
+   "ruta": "/gastos",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/modules/actividad/destinoActividad.ts:64",
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:46"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:20",
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:61",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:79"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/index.tsx",
+   "ruta": "/",
+   "tipo": "pantalla",
+   "call_sites": [],
+   "call_sites_en_tests": []
+  },
+  {
+   "archivo": "apps/mobile/app/ingresos.tsx",
+   "ruta": "/ingresos",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:45"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:78"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/inteligencia.tsx",
+   "ruta": "/inteligencia",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:49"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:82",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:169"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/legal.tsx",
+   "ruta": "/legal",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx:61",
+    "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx:66"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/ajustes/PantallaCuenta.test.tsx:83",
+    "apps/mobile/src/modules/ajustes/PantallaCuenta.test.tsx:84"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/midia.tsx",
+   "ruta": "/midia",
+   "tipo": "pantalla",
+   "call_sites": [],
+   "call_sites_en_tests": []
+  },
+  {
+   "archivo": "apps/mobile/app/presupuestos.tsx",
+   "ruta": "/presupuestos",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/modules/actividad/destinoActividad.ts:66",
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:47"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:22",
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:80"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/recientes.tsx",
+   "ruta": "/recientes",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/shell/PantallaPrincipal.tsx:179"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/shell/PantallaPrincipal.test.tsx:151"
+   ]
+  },
+  {
+   "archivo": "apps/mobile/app/soporte-ticket.tsx",
+   "ruta": "/soporte-ticket",
+   "tipo": "pantalla",
+   "call_sites": [
+    "apps/mobile/src/modules/actividad/destinoActividad.ts:56"
+   ],
+   "call_sites_en_tests": [
+    "apps/mobile/src/modules/actividad/destinoActividad.test.ts:71"
+   ]
+  }
+ ],
+ "componentes": [
+  "apps/mobile/src/modules/actividad/BuscadorActividad.tsx",
+  "apps/mobile/src/modules/actividad/FilaActividad.tsx",
+  "apps/mobile/src/modules/actividad/ListaActividad.tsx",
+  "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaAjustes.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaAndamiaje.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaLegal.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaSkins.tsx",
+  "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/SeccionCatalogo.tsx",
+  "apps/mobile/src/modules/apps/LogoMarca.tsx",
+  "apps/mobile/src/modules/apps/PantallaApps.tsx",
+  "apps/mobile/src/modules/auth/EntradaSesion.tsx",
+  "apps/mobile/src/modules/auth/PantallaLogin.tsx",
+  "apps/mobile/src/modules/auth/RevealEntrada.tsx",
+  "apps/mobile/src/modules/auth/SessionProvider.tsx",
+  "apps/mobile/src/modules/captura/HudGrabacion.tsx",
+  "apps/mobile/src/modules/captura/Onda.tsx",
+  "apps/mobile/src/modules/chat/AvisoCancelar.tsx",
+  "apps/mobile/src/modules/chat/BotonVoz.tsx",
+  "apps/mobile/src/modules/chat/Burbuja.tsx",
+  "apps/mobile/src/modules/chat/ChatView.tsx",
+  "apps/mobile/src/modules/chat/ChipArmarFactura.tsx",
+  "apps/mobile/src/modules/chat/Composer.tsx",
+  "apps/mobile/src/modules/chat/ControlesFlotantes.tsx",
+  "apps/mobile/src/modules/chat/IndicadorModoCeremonia.tsx",
+  "apps/mobile/src/modules/chat/ListaMensajes.tsx",
+  "apps/mobile/src/modules/chat/Recibo.tsx",
+  "apps/mobile/src/modules/chat/RodilloEjemplos.tsx",
+  "apps/mobile/src/modules/chat/SheetRequiereConexion.tsx",
+  "apps/mobile/src/modules/chat/TarjetaClientePropuesto.tsx",
+  "apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.tsx",
+  "apps/mobile/src/modules/chat/TarjetaGastoPropuesto.tsx",
+  "apps/mobile/src/modules/chat/TarjetaIngresoPropuesto.tsx",
+  "apps/mobile/src/modules/chat/TarjetaLinkDeCobro.tsx",
+  "apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx",
+  "apps/mobile/src/modules/chat/TarjetaPropuestaShell.tsx",
+  "apps/mobile/src/modules/clientes/FichaCliente.tsx",
+  "apps/mobile/src/modules/clientes/FormularioCliente.tsx",
+  "apps/mobile/src/modules/clientes/PantallaClientes.tsx",
+  "apps/mobile/src/modules/clientes/TarjetaCliente.tsx",
+  "apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx",
+  "apps/mobile/src/modules/facturacion/DetalleComprobante.tsx",
+  "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx",
+  "apps/mobile/src/modules/facturacion/PasoCliente.tsx",
+  "apps/mobile/src/modules/facturacion/PasoDatosVenta.tsx",
+  "apps/mobile/src/modules/facturacion/PasoItems.tsx",
+  "apps/mobile/src/modules/facturacion/PasoResumen.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionCobro.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionMeDeben.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionMisComprobantes.tsx",
+  "apps/mobile/src/modules/facturacion/TarjetaComprobante.tsx",
+  "apps/mobile/src/modules/facturacion/comprobante.tsx",
+  "apps/mobile/src/modules/feedback/LoPedisteVos.tsx",
+  "apps/mobile/src/modules/feedback/PantallaFeedback.tsx",
+  "apps/mobile/src/modules/gastos/DetalleGasto.tsx",
+  "apps/mobile/src/modules/gastos/FormularioGasto.tsx",
+  "apps/mobile/src/modules/gastos/FotoFuncion.tsx",
+  "apps/mobile/src/modules/gastos/PantallaGastos.tsx",
+  "apps/mobile/src/modules/gastos/ResumenMes.tsx",
+  "apps/mobile/src/modules/gastos/TarjetaGasto.tsx",
+  "apps/mobile/src/modules/ingresos/FormularioIngreso.tsx",
+  "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx",
+  "apps/mobile/src/modules/ingresos/ResumenIngresos.tsx",
+  "apps/mobile/src/modules/inteligencia/AcumuladoAnual.tsx",
+  "apps/mobile/src/modules/inteligencia/PantallaInteligencia.tsx",
+  "apps/mobile/src/modules/inteligencia/PreguntarInteligencia.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficoBarras.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficoTorta.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx",
+  "apps/mobile/src/modules/midia/AvatarCuenta.tsx",
+  "apps/mobile/src/modules/midia/PantallaAgenda.tsx",
+  "apps/mobile/src/modules/midia/PantallaMiDia.tsx",
+  "apps/mobile/src/modules/midia/PortadaNegocio.tsx",
+  "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx",
+  "apps/mobile/src/modules/presupuestos/DetallePresupuesto.tsx",
+  "apps/mobile/src/modules/presupuestos/FormularioPresupuesto.tsx",
+  "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx",
+  "apps/mobile/src/modules/presupuestos/TarjetaPresupuesto.tsx",
+  "apps/mobile/src/modules/recientes/PantallaRecientes.tsx",
+  "apps/mobile/src/modules/soporte/PantallaSoporte.tsx",
+  "apps/mobile/src/modules/soporte/PantallaTicket.tsx",
+  "apps/mobile/src/modules/splash/EntradaDiaria.tsx",
+  "apps/mobile/src/modules/splash/IdentidadEntrada.tsx",
+  "apps/mobile/src/modules/voz/MicFuncion.tsx",
+  "apps/mobile/src/shell/LimiteDeError.tsx",
+  "apps/mobile/src/shell/PanelDeslizable.tsx",
+  "apps/mobile/src/shell/PanelFunciones.tsx",
+  "apps/mobile/src/shell/PantallaPrincipal.tsx",
+  "apps/mobile/src/theme/BloqueCifra.tsx",
+  "apps/mobile/src/theme/EstadoVacio.tsx",
+  "apps/mobile/src/theme/IconosTab.tsx",
+  "apps/mobile/src/theme/Marca.tsx",
+  "apps/mobile/src/theme/ThemeProvider.tsx",
+  "apps/mobile/src/theme/glass/CristalVidrio.tsx",
+  "apps/mobile/src/theme/glass/EncabezadoListado.tsx",
+  "apps/mobile/src/theme/glass/FondoIluminado.tsx",
+  "apps/mobile/src/theme/glass/GlassIcon.tsx",
+  "apps/mobile/src/theme/glass/MarcoGlass.tsx",
+  "apps/mobile/src/theme/glass/Orbe.tsx",
+  "apps/mobile/src/theme/glass/Row.tsx",
+  "apps/mobile/src/theme/glass/Tile.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoFecha.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoNumero.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoSecreto.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoSelect.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoTexto.tsx",
+  "apps/mobile/src/theme/glass/campos/EnvolturaCampo.tsx",
+  "apps/mobile/src/theme/glass/campos/FilaBotones.tsx",
+  "apps/mobile/src/theme/glass/campos/IconoOjo.tsx",
+  "apps/mobile/src/theme/glass/campos/ScrollFormulario.tsx"
+ ],
+ "tests": [
+  "apps/mobile/src/adapters/almacen.test.web.ts",
+  "apps/mobile/src/adapters/http.test.ts",
+  "apps/mobile/src/adapters/http.test.web.ts",
+  "apps/mobile/src/modules/actividad/BuscadorActividad.test.tsx",
+  "apps/mobile/src/modules/actividad/ListaActividad.test.tsx",
+  "apps/mobile/src/modules/actividad/destinoActividad.test.ts",
+  "apps/mobile/src/modules/ajustes/CambiarCredenciales.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaAjustes.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaAndamiaje.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaCuenta.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaLegal.test.tsx",
+  "apps/mobile/src/modules/ajustes/PantallaSkins.test.tsx",
+  "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.test.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.test.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/PantallaTono.test.tsx",
+  "apps/mobile/src/modules/ajustes/negocio/SeccionCatalogo.test.tsx",
+  "apps/mobile/src/modules/ajustes/rutaAjustes.test.tsx",
+  "apps/mobile/src/modules/apps/LogoMarca.test.tsx",
+  "apps/mobile/src/modules/apps/PantallaApps.test.tsx",
+  "apps/mobile/src/modules/auth/EntradaSesion.test.tsx",
+  "apps/mobile/src/modules/auth/PantallaLogin.test.tsx",
+  "apps/mobile/src/modules/auth/RevealEntrada.test.tsx",
+  "apps/mobile/src/modules/auth/oauth.test.ts",
+  "apps/mobile/src/modules/auth/sesionExpirada.test.tsx",
+  "apps/mobile/src/modules/auth/session.test.tsx",
+  "apps/mobile/src/modules/captura/Onda.test.tsx",
+  "apps/mobile/src/modules/chat/BotonVoz.test.tsx",
+  "apps/mobile/src/modules/chat/ChatView.test.tsx",
+  "apps/mobile/src/modules/chat/ChipArmarFactura.test.tsx",
+  "apps/mobile/src/modules/chat/Composer.test.tsx",
+  "apps/mobile/src/modules/chat/ControlesFlotantes.test.tsx",
+  "apps/mobile/src/modules/chat/IndicadorModoCeremonia.test.tsx",
+  "apps/mobile/src/modules/chat/ListaMensajes.idemKey.test.tsx",
+  "apps/mobile/src/modules/chat/ListaMensajes.test.tsx",
+  "apps/mobile/src/modules/chat/Recibo.test.tsx",
+  "apps/mobile/src/modules/chat/RodilloEjemplos.test.tsx",
+  "apps/mobile/src/modules/chat/SheetRequiereConexion.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaClientePropuesto.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaGastoPropuesto.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaIngresoPropuesto.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaLinkDeCobro.test.tsx",
+  "apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.test.tsx",
+  "apps/mobile/src/modules/chat/useCapturaFoto.test.ts",
+  "apps/mobile/src/modules/chat/useChat.test.ts",
+  "apps/mobile/src/modules/chat/useConexionRequerida.test.ts",
+  "apps/mobile/src/modules/chat/useVozComando.test.ts",
+  "apps/mobile/src/modules/clientes/FormularioCliente.idemKey.test.tsx",
+  "apps/mobile/src/modules/clientes/PantallaClientes.test.tsx",
+  "apps/mobile/src/modules/escritorio/EscritorioFunciones.test.tsx",
+  "apps/mobile/src/modules/facturacion/DetalleComprobante.test.tsx",
+  "apps/mobile/src/modules/facturacion/PantallaFacturacion.test.tsx",
+  "apps/mobile/src/modules/facturacion/PasoCliente.test.tsx",
+  "apps/mobile/src/modules/facturacion/PasoResumen.test.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionCobro.test.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionMeDeben.test.tsx",
+  "apps/mobile/src/modules/facturacion/SeccionMisComprobantes.test.tsx",
+  "apps/mobile/src/modules/facturacion/TarjetaComprobante.test.tsx",
+  "apps/mobile/src/modules/facturacion/etiquetasComprobante.test.ts",
+  "apps/mobile/src/modules/facturacion/maquinaEstado.test.ts",
+  "apps/mobile/src/modules/feedback/LoPedisteVos.test.tsx",
+  "apps/mobile/src/modules/feedback/PantallaFeedback.test.tsx",
+  "apps/mobile/src/modules/gastos/FormularioGasto.test.tsx",
+  "apps/mobile/src/modules/gastos/PantallaGastos.test.tsx",
+  "apps/mobile/src/modules/ingresos/FormularioIngreso.idemKey.test.tsx",
+  "apps/mobile/src/modules/ingresos/PantallaIngresos.test.tsx",
+  "apps/mobile/src/modules/inteligencia/PantallaInteligencia.test.tsx",
+  "apps/mobile/src/modules/inteligencia/PreguntarInteligencia.test.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficoBarras.test.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficoTorta.test.tsx",
+  "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.test.tsx",
+  "apps/mobile/src/modules/midia/AvatarCuenta.test.tsx",
+  "apps/mobile/src/modules/midia/PantallaAgenda.test.tsx",
+  "apps/mobile/src/modules/midia/PantallaMiDia.test.tsx",
+  "apps/mobile/src/modules/midia/PortadaNegocio.test.tsx",
+  "apps/mobile/src/modules/onboarding/PantallaOnboarding.test.tsx",
+  "apps/mobile/src/modules/presupuestos/DetallePresupuesto.test.tsx",
+  "apps/mobile/src/modules/presupuestos/FormularioPresupuesto.test.tsx",
+  "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.test.tsx",
+  "apps/mobile/src/modules/recientes/PantallaRecientes.test.tsx",
+  "apps/mobile/src/modules/soporte/PantallaSoporte.test.tsx",
+  "apps/mobile/src/modules/soporte/PantallaTicket.test.tsx",
+  "apps/mobile/src/modules/soporte/useChatSoporte.test.ts",
+  "apps/mobile/src/modules/splash/EntradaDiaria.test.tsx",
+  "apps/mobile/src/modules/splash/IdentidadEntrada.test.tsx",
+  "apps/mobile/src/modules/voz/MicFuncion.test.tsx",
+  "apps/mobile/src/navegacion/Guard.test.tsx",
+  "apps/mobile/src/navegacion/appSoloRutas.test.ts",
+  "apps/mobile/src/navegacion/inerteAlPerderFoco.test.tsx",
+  "apps/mobile/src/shell/LimiteDeError.test.tsx",
+  "apps/mobile/src/shell/PanelDeslizable.test.tsx",
+  "apps/mobile/src/shell/PanelFunciones.test.tsx",
+  "apps/mobile/src/shell/PantallaPrincipal.backHandler.test.tsx",
+  "apps/mobile/src/shell/PantallaPrincipal.test.tsx",
+  "apps/mobile/src/shell/shell.test.tsx",
+  "apps/mobile/src/theme/BloqueCifra.test.tsx",
+  "apps/mobile/src/theme/EstadoVacio.test.tsx",
+  "apps/mobile/src/theme/Marca.test.tsx",
+  "apps/mobile/src/theme/glass/EncabezadoListado.test.tsx",
+  "apps/mobile/src/theme/glass/GlassIcon.test.tsx",
+  "apps/mobile/src/theme/glass/MarcoGlass.test.tsx",
+  "apps/mobile/src/theme/glass/campos/CampoSecreto.test.tsx",
+  "apps/mobile/src/theme/glass/campos/campos.test.tsx",
+  "apps/mobile/src/theme/glass/campos/revelarCampo.test.ts",
+  "apps/mobile/src/theme/glass/nombresAccesibles.test.tsx",
+  "apps/mobile/src/theme/glass/presion.test.tsx",
+  "apps/mobile/src/theme/glass/primitivos.test.tsx",
+  "apps/mobile/src/theme/movimientoReducido.test.tsx",
+  "apps/mobile/src/theme/paresPintadosContraste.test.tsx",
+  "apps/mobile/src/theme/temaSinHex.test.ts",
+  "apps/mobile/src/util/abrirYCompartir.test.ts"
+ ],
+ "otros": [
+  "apps/mobile/src/adapters/almacen.ts",
+  "apps/mobile/src/adapters/audio/index.ts",
+  "apps/mobile/src/adapters/http.native.ts",
+  "apps/mobile/src/adapters/http.web.ts",
+  "apps/mobile/src/adapters/plataforma.ts",
+  "apps/mobile/src/modules/actividad/destinoActividad.ts",
+  "apps/mobile/src/modules/afip/cuitCache.ts",
+  "apps/mobile/src/modules/ajustes/index.ts",
+  "apps/mobile/src/modules/ajustes/skinsCatalogo.ts",
+  "apps/mobile/src/modules/apps/index.ts",
+  "apps/mobile/src/modules/apps/logosMarca.ts",
+  "apps/mobile/src/modules/auth/index.ts",
+  "apps/mobile/src/modules/auth/oauth.ts",
+  "apps/mobile/src/modules/auth/useSession.ts",
+  "apps/mobile/src/modules/captura/useCronometro.ts",
+  "apps/mobile/src/modules/chat/index.ts",
+  "apps/mobile/src/modules/chat/mensajePendiente.ts",
+  "apps/mobile/src/modules/chat/useCapturaFoto.ts",
+  "apps/mobile/src/modules/chat/useChat.ts",
+  "apps/mobile/src/modules/chat/useConexionRequerida.ts",
+  "apps/mobile/src/modules/chat/useVozComando.ts",
+  "apps/mobile/src/modules/facturacion/catalogos.ts",
+  "apps/mobile/src/modules/facturacion/etiquetasComprobante.ts",
+  "apps/mobile/src/modules/facturacion/index.ts",
+  "apps/mobile/src/modules/facturacion/maquinaEstado.ts",
+  "apps/mobile/src/modules/feedback/index.ts",
+  "apps/mobile/src/modules/ingresos/index.ts",
+  "apps/mobile/src/modules/inteligencia/index.ts",
+  "apps/mobile/src/modules/midia/index.ts",
+  "apps/mobile/src/modules/onboarding/index.ts",
+  "apps/mobile/src/modules/recientes/index.ts",
+  "apps/mobile/src/modules/soporte/index.ts",
+  "apps/mobile/src/modules/soporte/useChatSoporte.ts",
+  "apps/mobile/src/modules/splash/scallopPath.ts",
+  "apps/mobile/src/modules/voz/index.ts",
+  "apps/mobile/src/navegacion/empujarUnaVez.ts",
+  "apps/mobile/src/navegacion/inerteAlPerderFoco.ts",
+  "apps/mobile/src/theme/glass/campos/index.ts",
+  "apps/mobile/src/theme/glass/campos/revelarCampo.ts",
+  "apps/mobile/src/theme/glass/canonGlass.ts",
+  "apps/mobile/src/theme/glass/ecualizadorPalette.ts",
+  "apps/mobile/src/theme/glass/icons.ts",
+  "apps/mobile/src/theme/glass/mapaIconos.ts",
+  "apps/mobile/src/theme/glass/ondaPalette.ts",
+  "apps/mobile/src/theme/glass/phosphor.ts",
+  "apps/mobile/src/theme/glass/presion.ts",
+  "apps/mobile/src/theme/glass/relieve.ts",
+  "apps/mobile/src/theme/identidadPalette.ts",
+  "apps/mobile/src/theme/movimientoReducido.ts",
+  "apps/mobile/src/theme/tokens.ts",
+  "apps/mobile/src/util/abrirYCompartir.ts",
+  "apps/mobile/src/util/id.ts"
+ ]
+}

@@ -8,20 +8,40 @@ A3 necesita, por ruta, el path:linea de QUIEN la alcanza. No se puede inferir le
 hay que buscar el call-site del navegador. Una ruta con 0 call-sites es la firma de "UI escrita que
 nadie alcanza", una clase de hallazgo que ya aparecio en el relevamiento previo.
 
-=== LA TRAMPA QUE ESTE SCRIPT YA PAGO (v1 -> v2) ===
-La v1 buscaba la comilla de cierre pegada al literal de la ruta:  ['"`]/legal['"`]
-y reporto `/legal` como la UNICA pantalla con CERO call-sites. Era FALSO: se alcanza desde
-`PantallaCuenta.tsx:61` y `:66` con `router.push('/legal?kind=tos')` -- el call-site real lleva
-**query string**, asi que la comilla no viene pegada. El patron cazaba la ruta, pero no en su
-FORMA REAL. Un falso 0 es peor que no medir: tiene exactamente la cara de un hallazgo
-("capacidad completa que nadie alcanza") y se habria publicado como tal.
-La v1 tambien sobre-contaba la raiz `/`: el literal ['"`]/['"`] matchea cualquier "/" citado en
-el codigo y daba 136. Un numero inflado y un cero falso, el mismo dia, en el mismo instrumento.
+=== LAS TRES TRAMPAS QUE ESTE SCRIPT YA PAGO ===
 
-Por eso la v2 trae CONTROLES, y aborta si no pasan:
+(1) v1 -> v2, FALSO CERO. La v1 buscaba la comilla de cierre pegada al literal de la ruta:
+    ['"`]/legal['"`]  y reporto `/legal` como la UNICA pantalla con CERO call-sites. Era FALSO: se
+    alcanza desde `PantallaCuenta.tsx:61` y `:66` con `router.push('/legal?kind=tos')` -- el
+    call-site real lleva **query string**, asi que la comilla no viene pegada. El patron cazaba la
+    ruta, pero no en su FORMA REAL. Un falso 0 es peor que no medir: tiene exactamente la cara de un
+    hallazgo ("capacidad completa que nadie alcanza") y se habria publicado como tal.
+
+(2) v1 -> v2, SOBRE-MATCH. El literal ['"`]/['"`] matchea cualquier "/" citado en el codigo y daba
+    136 call-sites para la raiz. Un numero inflado y un cero falso, el mismo dia, en el mismo
+    instrumento: el patron generico es laxo en el caso degenerado y estricto en el caso con
+    parametros, y ninguno de los dos extremos avisa.
+
+(3) v2 -> v3, COMENTARIOS CONTADOS COMO CODIGO.  <-- la peor, y la cazaron tres lotes a la vez.
+    La v2 no distinguia codigo de comentario, y en ESTE repo los comentarios citan rutas todo el
+    tiempo para explicar mecanica. Resultado: 10 call-sites fantasma. El que muerde es `/midia`:
+    su UNICO "call-site" era `PantallaMiDia.tsx:267`, un docstring que dice *"La ruta `/midia` sigue
+    viva porque las tarjetas de actividad y los enlaces internos la usan"*.
+    O sea: el instrumento conto **la afirmacion de alcanzabilidad como su propia prueba**, y
+    convirtio en 1 el unico 0 verdadero del mapa. La v2 publico "20 de 21 alcanzables, cero
+    candidatas a capacidad-que-nadie-alcanza"; medido de nuevo, son 19 de 21 y `/midia` es el
+    hallazgo que el instrumento tapo.
+    Simetria con (1): el mismo instrumento primero FABRICO un hallazgo que no existia y despues
+    TAPO uno que si existia. Y el falso positivo es el mas dificil de notar, porque no se lee como
+    un error: se lee como la redundancia que uno quiere encontrar ("tranquilo, hay dos caminos").
+
+Por eso la v3 trae CONTROLES EN LOS DOS SENTIDOS, y aborta si no pasan:
   POSITIVO  -- rutas que SE SABE navegadas (verificadas a mano con grep) deben dar >=1.
   CON PARAM -- `/legal` debe encontrarse PESE al `?kind=`: es el caso que rompio la v1.
   TECHO     -- la raiz `/` exige verbo de navegacion delante; un literal "/" suelto no cuenta.
+  NEGATIVO  -- lineas verificadas A MANO como comentario NO pueden aparecer. Sin este control la
+               mascara podria no estar haciendo nada y el verde de los positivos la absolveria:
+               los call-sites reales se encuentran igual con la mascara apagada.
 
 Y los dos sentidos siguen valiendo para interpretar la columna:
   - 0 call-sites NO prueba inalcanzable (tab, redireccion, index) -> es CANDIDATO, lo confirma el lote.
@@ -77,9 +97,67 @@ CONTROL_POSITIVO = {
 }
 TECHO_RAIZ = 30          # la v1 daba 136 para "/" por sobre-match; >30 acusa al patron
 
+# Lineas ABIERTAS A MANO y confirmadas como comentario/docstring. Si la mascara no funciona,
+# alguna reaparece. Es el control que la v2 no tenia, y por eso publico 10 fantasmas.
+CONTROL_NEGATIVO = [
+    ('apps/mobile/src/modules/midia/PantallaMiDia.tsx', 267,
+     'docstring que AFIRMA que /midia esta viva -- era su unico "call-site"'),
+    ('apps/mobile/src/modules/midia/PantallaMiDia.tsx', 329, 'comentario // sobre /inteligencia'),
+    ('apps/mobile/src/modules/ajustes/PantallaCuenta.tsx', 79,
+     'bloque {/* */} que cita /ajustes-feedback y /ajustes-soporte'),
+    ('apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx', 22, 'docstring con /recientes'),
+    ('apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx', 195, 'comentario con /recientes'),
+    ('apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx', 256, 'JSX comment con /recientes'),
+    ('apps/mobile/src/modules/actividad/BuscadorActividad.tsx', 22, 'docstring que cita /gastos'),
+]
+
 
 def rel(p):
     return os.path.relpath(p, REPO).replace(BARRA, '/')
+
+
+def enmascarar(src):
+    """Reemplaza por espacios el contenido de los comentarios, preservando el conteo de lineas.
+
+    Recorre caracter por caracter llevando estado de comilla (' " `) para no cortar en el `//` de
+    una URL dentro de un string. Un regex no alcanza: `'https://x'` y `// ver /gastos` se parecen
+    demasiado, y equivocarse hacia el otro lado reintroduce la trampa (1).
+    """
+    salida = []
+    i, n = 0, len(src)
+    comilla = None
+    while i < n:
+        c = src[i]
+        if comilla:
+            salida.append(c)
+            if c == BARRA and i + 1 < n:                  # escape dentro del string
+                salida.append(src[i + 1])
+                i += 2
+                continue
+            if c == comilla:
+                comilla = None
+            i += 1
+            continue
+        if c in '\'"`':
+            comilla = c
+            salida.append(c)
+            i += 1
+            continue
+        if c == '/' and i + 1 < n and src[i + 1] == '*':  # bloque /* ... */
+            j = src.find('*/', i + 2)
+            j = n if j < 0 else j + 2
+            salida.append(''.join('\n' if ch == '\n' else ' ' for ch in src[i:j]))
+            i = j
+            continue
+        if c == '/' and i + 1 < n and src[i + 1] == '/':  # linea // ...
+            j = src.find('\n', i)
+            j = n if j < 0 else j
+            salida.append(' ' * (j - i))
+            i = j
+            continue
+        salida.append(c)
+        i += 1
+    return ''.join(salida)
 
 
 def recorrer(base, exts=('.ts', '.tsx')):
@@ -146,9 +224,10 @@ def patron(nr):
 fuentes = {}
 for p in recorrer(RAIZ):
     try:
-        fuentes[rel(p)] = io.open(p, encoding='utf-8', errors='replace').read().splitlines()
+        texto = io.open(p, encoding='utf-8', errors='replace').read()
     except Exception:                                                  # noqa: BLE001
-        fuentes[rel(p)] = []
+        texto = ''
+    fuentes[rel(p)] = enmascarar(texto).splitlines()                   # v3: sin comentarios
 
 filas = []
 for r in sorted(rutas):
@@ -168,34 +247,47 @@ for r in sorted(rutas):
                   'call_sites': cs, 'call_sites_en_tests': cs_test})
 
 por_ruta = {f['ruta']: f for f in filas}
+todos_cs = {cs for f in filas for cs in (f.get('call_sites') or [])}
 
 # --- CONTROLES: antes de imprimir un solo cero -------------------------------
 print()
 print('=' * 78)
-print('CONTROLES DEL INSTRUMENTO DE NAVEGACION')
+print('CONTROLES DEL INSTRUMENTO DE NAVEGACION (v3: positivos Y negativos)')
 print('=' * 78)
 ciego = []
 for ruta, donde in CONTROL_POSITIVO.items():
     n = len((por_ruta.get(ruta) or {}).get('call_sites') or [])
-    print('  %-18s %s  (esperado >=1 por %s)' % (ruta, 'OK  n=%d' % n if n else 'CIEGO n=0', donde))
+    print('  POS %-16s %s  (esperado >=1 por %s)'
+          % (ruta, 'OK  n=%d' % n if n else 'CIEGO n=0', donde))
     if not n:
         ciego.append(ruta)
 nraiz = len((por_ruta.get('/') or {}).get('call_sites') or [])
-print('  %-18s %s  (techo %d; la v1 daba 136 por sobre-match)'
+print('  TOP %-16s %s  (techo %d; la v1 daba 136 por sobre-match)'
       % ('/ (raiz)', 'OK  n=%d' % nraiz if nraiz <= TECHO_RAIZ else 'SOBRE-MATCH n=%d' % nraiz,
          TECHO_RAIZ))
 if nraiz > TECHO_RAIZ:
     ciego.append('/ (sobre-match)')
+
+for arch, linea, por in CONTROL_NEGATIVO:                 # la mascara TIENE que estar haciendo algo
+    clave = '%s:%d' % (arch, linea)
+    corto = clave[len('apps/mobile/src/modules/'):] if clave.startswith(
+        'apps/mobile/src/modules/') else clave
+    contado = clave in todos_cs
+    print('  NEG %-46s %s' % (corto, 'FUGA (mascara inactiva)' if contado else 'OK  no contado'))
+    if contado:
+        ciego.append('%s [comentario contado: %s]' % (clave, por))
+
 if ciego:
     raise SystemExit('\nINSTRUMENTO CIEGO en %s. No publico la columna de alcanzabilidad: un 0 '
-                     'falso tiene cara de hallazgo.' % ', '.join(ciego))
+                     'falso tiene cara de hallazgo, y un 1 falso TAPA uno real.'
+                     % ', '.join(ciego))
 
 pantallas = [f for f in filas if f['tipo'] == 'pantalla']
 sin_cs = [f for f in pantallas if not f['call_sites']]
 solo_test = [f for f in sin_cs if f.get('call_sites_en_tests')]
 print()
 print('=' * 78)
-print('MATERIAL CRUDO DE A3 — quien navega a cada ruta (PRIMER salto)')
+print('MATERIAL CRUDO DE A3 — quien navega a cada ruta (PRIMER salto, sin comentarios)')
 print('=' * 78)
 print('  pantallas (sin layouts)                    : %3d' % len(pantallas))
 print('  con >=1 call-site de produccion            : %3d' % (len(pantallas) - len(sin_cs)))
@@ -214,7 +306,7 @@ print()
 print('  layouts (no son pantallas): %s' % ', '.join(
     f['archivo'][len('apps/mobile/app/'):] for f in filas if f['tipo'] == 'layout'))
 
-datos = {'sujeto': 'apps/mobile @ 6278836a (wt-relev)',
+datos = {'sujeto': 'apps/mobile @ 6278836a (wt-relev)', 'version_instrumento': 3,
          'denominadores': {'rutas': len(rutas), 'componentes_tsx': len(comps),
                            'tests': len(tests), 'modulos': len(modulos),
                            'otros_ts_en_src': len(otros), 'total_ts_tsx': total},

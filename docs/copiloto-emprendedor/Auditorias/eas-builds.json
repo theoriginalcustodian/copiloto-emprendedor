@@ -1,0 +1,332 @@
+{
+ "id": "05317fbe-ca0e-4f46-a63e-6f47a1cb118a",
+ "fullName": "@341lin/copiloto-emprendedor",
+ "slug": "copiloto-emprendedor",
+ "builds": [
+  {
+   "id": "13397737-2911-4b8d-a512-f80935bf3d99",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-09-07T14:22:26.111Z",
+   "completedAt": "2026-09-07T15:11:48.767Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "f8428b9e522f538f5f245e16ce6ca1a264dc60cb",
+   "expirationDate": "2026-09-21T14:22:26.135Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/stjPDX_99AXrOT7xc88DxIqQZh2tEY7T2IzJ1GeewBA.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/stjPDX_99AXrOT7xc88DxIqQZh2tEY7T2IzJ1GeewBA.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "49d478d3-f575-4fd3-8ad9-31c11314ae1e",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-10T22:24:07.438Z",
+   "completedAt": "2026-08-10T23:05:18.254Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "6033bd3f8630ac561c00bfb25c75a3acd5b623e1",
+   "expirationDate": "2026-08-24T22:24:07.477Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/psMLgWklmDBuyy9VJ_8PoYHDy68Fkz46gg00oYOP3uU.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/psMLgWklmDBuyy9VJ_8PoYHDy68Fkz46gg00oYOP3uU.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "db0747d3-3a17-494e-9630-343128f71cc7",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-07T18:47:24.101Z",
+   "completedAt": "2026-08-07T19:39:13.528Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "preview",
+   "gitCommitHash": "c583f0ec9adf651c7782d499c90d2a39ecf39778",
+   "expirationDate": "2026-08-21T18:47:24.131Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/kZEnnPm-YyLBQRiYarAsrxp4sQAXYUm6ioXmidmwm4c.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/kZEnnPm-YyLBQRiYarAsrxp4sQAXYUm6ioXmidmwm4c.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "a13134d9-5bfc-4b77-be8f-dafa36f39853",
+   "status": "CANCELED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-07T18:26:41.603Z",
+   "completedAt": "2026-08-07T18:30:17.045Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "preview",
+   "gitCommitHash": "fb741cad84d4c2813f863b0832b53e5250ace9a4",
+   "expirationDate": "2026-08-21T18:26:41.631Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": null,
+    "applicationArchiveUrl": null
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "f5b6b4a8-5490-491b-8c2d-42223d039a10",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-07T15:49:08.200Z",
+   "completedAt": "2026-08-07T17:11:24.311Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "preview",
+   "gitCommitHash": "f3b0f79fe179414afd0ac1760adb2212fc2bb16e",
+   "expirationDate": "2026-08-21T15:49:08.247Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/YNSCVKew6bj4gqkqL2cKOK6_FhoLziqXQmxYv207Xfg.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/YNSCVKew6bj4gqkqL2cKOK6_FhoLziqXQmxYv207Xfg.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "983d2991-7472-4126-8941-f24bf59b089d",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-07T13:24:29.093Z",
+   "completedAt": "2026-08-07T14:53:11.520Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "preview",
+   "gitCommitHash": "a14df887d720a7016cedc695b8a5aea8d5bd59cc",
+   "expirationDate": "2026-08-21T13:24:29.140Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/Ja2w2VcS4w5TJqD0A7qUrYuMJnCU_aTnwcmXtp0FH-o.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/Ja2w2VcS4w5TJqD0A7qUrYuMJnCU_aTnwcmXtp0FH-o.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "83c622dd-40a0-4113-afb8-7442ab4639ca",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-06T11:42:45.954Z",
+   "completedAt": "2026-08-06T12:09:22.071Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "d5c1b257a3d3920fc11f8d0fdd5456a47e6c4d06",
+   "expirationDate": "2026-08-20T11:42:45.975Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/6DTd1n1q16BXVgKA2ziEmcVEEBFRbEjH4jS6HyM4UtI.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/6DTd1n1q16BXVgKA2ziEmcVEEBFRbEjH4jS6HyM4UtI.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "4b408a77-dcfb-43a9-9a1b-04870216eb6b",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-05T12:26:31.503Z",
+   "completedAt": "2026-08-05T14:11:44.449Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "22a7899207738e76ca1f88b63aee5a8c3c013c8c",
+   "expirationDate": "2026-08-19T12:26:31.561Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/jfCNBNo7ydG9tcNE5eFyak2Vkt7gCdr7UNl8m1teb6o.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/jfCNBNo7ydG9tcNE5eFyak2Vkt7gCdr7UNl8m1teb6o.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "d8110bf9-87e4-4b82-a5e5-a98cd391f9fe",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-04T21:11:20.462Z",
+   "completedAt": "2026-08-04T23:27:32.435Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "978ade4dc26766ca95ae5c9d09b3e3e458a03359",
+   "expirationDate": "2026-08-18T21:11:20.488Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/IuM8Jf09qVJm9RXNdr0_26OrHY-NBDxTjuSF6PaSgYM.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/IuM8Jf09qVJm9RXNdr0_26OrHY-NBDxTjuSF6PaSgYM.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "12db9a74-b423-4a56-aa9a-b5f368a9381d",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-08-03T20:53:00.830Z",
+   "completedAt": "2026-08-03T22:53:06.892Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "a9b8736ad5acfad762e81fab849c42e2745b8d73",
+   "expirationDate": "2026-08-17T20:53:00.881Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/tmqOhr3Z2-lcVifxw_vVcPb6_g7Aa7ynpvEruCfPsx4.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/tmqOhr3Z2-lcVifxw_vVcPb6_g7Aa7ynpvEruCfPsx4.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "dbfc4115-e155-4761-830e-6dae4bfcaef8",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-07-23T14:35:07.101Z",
+   "completedAt": "2026-07-23T16:49:34.745Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "preview",
+   "gitCommitHash": "5e09690aca8bf7d284f7eb1b32407058786ec660",
+   "expirationDate": "2026-08-06T14:35:07.151Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/DVu_2bXSL4YrZZxU98I4vhkwlF6YjY2iDIWCke5LaOA.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/DVu_2bXSL4YrZZxU98I4vhkwlF6YjY2iDIWCke5LaOA.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "fb299289-64fb-4ffe-964f-ae13dfb4f39e",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-07-20T16:25:12.471Z",
+   "completedAt": "2026-07-20T17:46:29.197Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "3292fa9e5a9f459690f678f031672e3392db6f5a",
+   "expirationDate": "2026-08-03T16:25:12.501Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/YrZaqVDFH84lvrbzfWAP_YFAz7c8skidWHf0S-ScHvI.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/YrZaqVDFH84lvrbzfWAP_YFAz7c8skidWHf0S-ScHvI.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "241ff044-3d9c-4be0-bc3a-2a9257c71611",
+   "status": "FINISHED",
+   "platform": "ANDROID",
+   "createdAt": "2026-07-20T14:59:15.323Z",
+   "completedAt": "2026-07-20T16:15:12.647Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "feb11f377e0c97100460c26b462f8d1f1fea6174",
+   "expirationDate": "2026-08-03T14:59:15.375Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/u8tOfKBZC_bcUY6jX0HDt2pWQ0bysVCpsAMnvr6ylgI.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/u8tOfKBZC_bcUY6jX0HDt2pWQ0bysVCpsAMnvr6ylgI.apk"
+   },
+   "error": null,
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  },
+  {
+   "id": "ca42e7e9-719d-47f1-a011-1d56510a7fbb",
+   "status": "ERRORED",
+   "platform": "ANDROID",
+   "createdAt": "2026-07-20T14:15:27.782Z",
+   "completedAt": "2026-07-20T14:55:22.859Z",
+   "appVersion": "0.1.0",
+   "appBuildVersion": "1",
+   "runtimeVersion": null,
+   "buildProfile": "development",
+   "gitCommitHash": "18c69270c949cc5d04095540872581eca9321cd9",
+   "expirationDate": "2026-08-03T14:15:27.811Z",
+   "isForIosSimulator": false,
+   "artifacts": {
+    "buildUrl": null,
+    "applicationArchiveUrl": null
+   },
+   "error": {
+    "errorCode": "UNKNOWN_ERROR",
+    "message": "Unknown error. See logs of the Prebuild build phase for more information."
+   },
+   "initiatingActor": {
+    "__typename": "User",
+    "username": "341lin"
+   }
+  }
+ ]
+}
