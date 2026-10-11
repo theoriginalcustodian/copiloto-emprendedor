@@ -110,3 +110,41 @@ sobre la familia.
 **nombra** un documento, contar cuántos archivos matchean ese nombre y **declarar el número**. Si es
 >1, el nombre no es el sujeto: el sujeto es el archivo, y hay que medirlos todos. Mismo test que
 [[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]] — contá definiciones, no usos.
+
+---
+
+## Refuerzo 2026-10-11 · el check de presencia GLOBAL: una mención en otra parte ABSUELVE a la tabla rota
+
+Mismo patrón, un nivel arriba, y esta vez lo cazó un **mutante** y no yo. El gate de cierre del
+relevamiento mobile verificaba la partición así: *¿aparece `**301**` en el documento?* — **en
+cualquier parte**. Pasaba.
+
+Después escribí, en la sección que describe el gate, la frase *«el gate asevera la partición real de
+**301**»*. A partir de ahí, el mutante que **rompe la tabla** (`**301**` → `**299**` en la fila del
+total) **salió VERDE**: mi mención suelta, en otra sección y a propósito de otra cosa, **absolvió a
+la tabla rota**. El check nunca había medido la propiedad — medía que el número *estuviera escrito
+en algún lado*, y mientras hubo un solo lugar donde estaba, las dos cosas parecían la misma.
+
+🔑 **La forma general: un check de presencia global degrada a medida que el documento crece.** El día
+que se escribe una segunda mención —una cita, un resumen, un ejemplo, una sección que habla del
+instrumento— el check deja de poder distinguir «la tabla dice 301» de «alguien escribió 301». Y no
+avisa: el verde es idéntico antes y después. La propiedad vive **en la tabla**, así que ahí hay que
+medirla. Es el mismo *«el stub sano absolvió al enfermo del mismo archivo»*, con el documento entero
+como archivo.
+
+**Dos cosas que este caso deja probadas, y son el argumento para pagar el costo del bloque de mutantes:**
+
+1. **Sin el mutante, el agujero se publicaba con cara de verde.** Ningún control positivo lo habría
+   encontrado: el documento *real* cumple, así que todo control sobre el documento real sale bien.
+   Sólo una **mutación que rompe la propiedad a propósito** distingue un check que mide de uno que
+   mira para otro lado. → [[el-canario-el-control-positivo-de-lo-que-falla-callado]]
+2. **El gate se degradó por una edición MÍA, no por un cambio del sujeto.** El instrumento y el
+   documento que mide se escriben juntos, así que cada vez que agrego prosa puedo estar aflojando un
+   check sin tocarlo. Después de editar el documento, el gate se **vuelve a correr**: su verde tiene
+   fecha.
+
+**Cómo aplicarlo:** todo check que pregunta *«¿aparece X?»* lleva **el alcance en la pregunta**:
+*¿aparece X **en la tabla / en la función / en el bloque** donde X es la propiedad?* Si el alcance es
+«el archivo» o «el documento», escribí al lado qué segunda mención lo volvería ciego — y si podés
+nombrarla, ya está ciego.
+→ [[instrumento-que-no-mira-nunca-falla]] · [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
