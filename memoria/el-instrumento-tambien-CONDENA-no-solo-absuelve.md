@@ -341,3 +341,41 @@ invariante `{VERDE, ROJO}`: lo que cambia es el código y el diagnóstico, no el
 arguments*, y **el `if` es siempre falso, en silencio**. El arreglo no se activaba y **nada daba
 síntoma** salvo el caso que lo ejercitaba. Un guard introducido con un error de sintaxis que no
 aborta es indistinguible de un guard ausente — [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 · el instrumento ENSUCIÓ el sujeto, y el falso rojo salió con cara de **dato malo**
+
+Variante peor que el falso rojo "que se siente como rigor": el falso rojo que **señala a un tercero
+inocente y plausible**. Automatizando el login del device, `adb shell input text` escribe en el campo
+enfocado — y **appendea**: el campo no se vacía solo. Dos pasadas dejaron el email y la contraseña
+**concatenados en el mismo campo**, y el login falló. El síntoma no decía "tu instrumento ensucia el
+formulario": decía *credencial rechazada*. El sospechoso natural pasa a ser el dato (¿caducó la
+clave?, ¿es el usuario correcto?) y la investigación arranca mirando el lugar equivocado.
+
+Tres causas apiladas, todas del instrumento, ninguna de la app:
+
+1. **Escribir sin vaciar.** Fix: vaciar, **verificar que quedó vacío**, y si no se logró **no
+   escribir**. Escribir sobre residuo no es un intento fallido: es fabricar el próximo diagnóstico
+   falso.
+2. **Coordenadas de un árbol viejo.** Al escribir el primer campo se abre el teclado y el layout se
+   desplaza, así que el centro de `login-password` leído del dump anterior caía en el de email. Cada
+   toque re-lee el árbol. Hermana exacta de [[el-fallo-que-se-mueve-acusa-al-recurso-compartido]]:
+   el blanco se movió, el instrumento no.
+3. **La precondición nunca verificada.** El bundle que servía Metro no tenía `EXPO_PUBLIC_API_BASE`,
+   así que la app **no hablaba con el backend** y ninguna credencial podía entrar. Un rojo del
+   ENTORNO con la cara exacta de uno de la app.
+
+🔑 **La regla que queda, y es barata:** cuando un instrumento **escribe** en el sujeto, verificá el
+dato en la **capa más barata** antes de ejercitar la cara. Acá: `POST /auth/login` → **200 con
+`access_token`** en un comando, sin teléfono. Con eso verde, cualquier rojo en pantalla **es de la
+UI** y no de la clave — la variable queda aislada *antes*, no deducida después. Y al revés: si el
+HTTP hubiera dado 401, tocar el device habría sido tiempo tirado midiendo una pregunta ya contestada.
+
+**Lo cazó el operador, no el instrumento** — *«estás llenando el campo con basura… revisa primero los
+usuarios registrados»*. Mi instrumento no tenía forma de notarlo: medía el resultado del login, no su
+propia huella sobre el formulario. Un instrumento que muta el sujeto necesita un control sobre **lo
+que él mismo dejó**, no sólo sobre lo que quería medir.
+→ [[un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante]] ·
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
+[[el-instrumento-respondio-sobre-otro-sujeto]]
