@@ -545,6 +545,77 @@ def c10bis_plataforma():
     return True
 
 
+STOP_ES = set('''para pero porque cuando donde desde hasta sobre entre sin con que cual quien
+como todo toda todos todas este esta estos estas aquel otro otra otros otras mismo misma ya hay
+son estan tiene tienen puede pueden debe deben hace hacen dice dicen cada solo sola nada algo
+ningun ninguna alguna algun mas menos muy bien entonces tambien segun unos unas ver sigue siguen
+queda quedan deja dejan pone ponen vive viven salen sale acaba acabo'''.split())
+
+
+def _sin_tildes(s):
+    import unicodedata
+    s = unicodedata.normalize('NFD', s.lower())
+    return ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+
+
+def _palabras(s):
+    return {w for w in re.findall(r'[a-z]{5,}', _sin_tildes(s)) if w not in STOP_ES}
+
+
+def informe_referentes(t):
+    """INFORMATIVO, NO decide el exit code. Mide si una cita `H-NN` en prosa corresponde al
+    hallazgo que la frase describe.
+
+    === EL AGUJERO QUE LO MOTIVA ===
+    C4 valida que los ids 1..59 EXISTAN sin huecos y que las clases cuadren. Pasaba igual mientras
+    §9 citaba `H-43` para los cinco assets de build time (son **H-49**) y `H-46` para la poda de
+    nativos (que no tiene fila). Los dos ids existen, asi que C4 no podia verlo: un check de
+    EXISTENCIA nunca verifica el REFERENTE. Misma degradacion que ya pago C2 -- la propiedad vive
+    en la correspondencia, no en la existencia.
+
+    === POR QUE NO ES UN CRITERIO BINARIO, Y ESTO SE MIDIO ANTES DE EMBARCARLO ===
+    Sobre el corpus real: **41 citas en prosa**. La regla "cero coincidencias con la fila citada +
+    existe otra fila con >=3" produce **5 senales, de las cuales 2 son los errores reales**. Una
+    precision de ~40% convierte el guard en ruido, y un guard que grita en el caso normal se
+    desarma solo: el camino de menor resistencia pasa a ser ignorarlo. Ademas el umbral (>=3) esta
+    calibrado contra el corpus de HOY y envejece con el.
+    Asi que se embarca como lo que es: un REPORTE para revision humana. Declararlo criterio de
+    aprobacion seria pretender una precision que la medicion no respalda.
+    """
+    filas = {m.group(1): m.group(2)
+             for m in re.finditer(r'^\| (H-\d+) \|([^\n]*)$', t, re.M)}
+    if not filas:
+        print('       (sin filas de indice: nada que contrastar)')
+        return
+    examinadas, inexistentes, sospechosas = 0, [], []
+    for linea in t.split('\n'):
+        s = linea.strip()
+        if s.startswith('|') or s.startswith('#'):
+            continue                       # fila de tabla o encabezado: no es prosa citante
+        for m in re.finditer(r'\bH-(\d+)\b', linea):
+            hid = 'H-%s' % m.group(1)
+            examinadas += 1
+            if hid not in filas:
+                inexistentes.append(hid)
+                continue
+            pv = _palabras(linea[max(0, m.start() - 160):m.start()])
+            if pv & _palabras(filas[hid]):
+                continue
+            mejor_n, mejor_id = max((len(pv & _palabras(v)), k) for k, v in filas.items())
+            if mejor_n >= 3 and mejor_id != hid:
+                sospechosas.append((hid, mejor_id, mejor_n, s[:70]))
+    # piso de ceguera: si el instrumento examino casi nada, su silencio no acredita nada
+    print('       %d citas en prosa examinadas contra %d filas' % (examinadas, len(filas)))
+    if examinadas < 20:
+        print('       ⚠️ menos de 20 citas examinadas: el informe esta casi ciego, no lo leas como verde')
+    for hid in sorted(set(inexistentes)):
+        print('       ⚠️ %s citado en prosa y NO existe en el indice (esto si lo caza C4 por otro lado)' % hid)
+    if not sospechosas:
+        print('       sin citas sospechosas bajo la regla declarada (no es prueba de correccion)')
+    for hid, mejor, n, ctx in sospechosas:
+        print('       ⚠️ %s podria ser %s (%d palabras en comun) — %s' % (hid, mejor, n, ctx))
+
+
 # ---------------------------------------------------------------------------- main
 print('=' * 86)
 print('GATE DE CIERRE — RELEVAMIENTO MOBILE   (DoD §6, 11 criterios)')
@@ -559,6 +630,10 @@ print()
 texto = io.open(ruta_doc(), encoding='utf-8').read()
 print('  --- criterios sobre el documento ---')
 res_doc = correr_doc(texto)
+
+print()
+print('  --- informe de referentes (NO decide el exit code; ver su docstring) ---')
+informe_referentes(texto)
 
 c7 = c7_device()
 print()
@@ -609,7 +684,25 @@ if ALCANCE_PARCIAL:
     print('           plataforma esta cerrado; el de DEVICE no empezo y no se declara cerrado.')
     raise SystemExit(0)
 
-print('VEREDICTO: el cierre COMPLETO exige los 11, y 7/8 son imposibles hoy (no hay binario).')
+# === LA RAMA QUE NUNCA SE PUDO EJERCITAR, Y POR ESO ESTABA MAL ===
+# La v1 terminaba aqui con `SystemExit(2)` SIEMPRE que no hubiera flag: daba por sentado que 7 y 8
+# eran imposibles para siempre, asi que el camino "los 11 verdes" era CODIGO INALCANZABLE -- la
+# clase 🕳️ que este mismo relevamiento cuenta 9 veces, dentro de su propio acreditador. El dia que
+# el binario existio, el gate habria salido != 0 con TODO en verde, y el rojo habria sido suyo.
+# Un mecanismo roto hacia el SI no da sintoma mientras el SI no se puede alcanzar.
+TODOS = sorted(cerrables | {7, 8})
+fallas_todas = {c for c, _ in fallas}
+if not fallas_todas and c7 and c8 and not bloqueados:
+    print('VEREDICTO: VERDE en los 11 criterios — con binario y device medidos, sin bloqueos.')
+    raise SystemExit(0)
+if not fallas_todas and c7 and c8 and bloqueados:
+    print('VEREDICTO: los 11 criterios EVALUADOS estan verdes, pero quedan bloqueos declarados:')
+    print('           %s' % ', '.join('C%d' % c for c, _ in sorted(set(bloqueados))))
+    print('           No se aprueba por omision: un bloqueo declarado no es un criterio cumplido.')
+    raise SystemExit(1)
+faltan = [c for c, ok in ((7, c7), (8, c8)) if not ok]
+print('VEREDICTO: el cierre COMPLETO exige los %d criterios, y faltan %s (binario/device).'
+      % (len(TODOS), ', '.join('C%d' % c for c in faltan) or 'ninguno'))
 print('           El relevamiento de codigo+plataforma se acredita con `--alcance=codigo-plataforma`.')
 print('           Sin ese flag este gate sale != 0 a proposito: aprobar por omision seria el fail-open.')
 raise SystemExit(2 if not fallas_cerrables else 1)
