@@ -57,3 +57,35 @@ duda** — hay que preguntarle al sistema, no al log.
 **completo**, con `[inicio $(date)]` y `[exit=$?]` alrededor, y la verificación por efecto en la misma
 llamada. El `[exit=…]` cuesta nada y es justo lo que faltó: su ausencia en el archivo habría dicho
 «murió» en lugar de no decir nada.
+
+---
+
+## REFUERZO 2026-10-11 — reincidencia, y el segundo mecanismo que produce el MISMO vacío
+
+Lo volví a hacer: `| tail -30` sobre una corrida de device de ~25 min que murió por `timeout`
+(exit **124**). El archivo quedó con **una línea**: `=== exit: 124`. Veinticinco minutos de teléfono
+y cero medición — el veredicto que la corrida iba a dar (si H-60 sobrevive con las animaciones
+normales) no se obtuvo.
+
+**El filo nuevo: el `tail` no fue el único mecanismo.** Había **dos**, y los dos dan vacío:
+
+| mecanismo | qué hace |
+|---|---|
+| `\| tail -N` | descarta lo viejo: si el proceso muere, lo único que sobrevive es la cola — y la cola de un proceso matado es el mensaje del matador, no del proceso |
+| **stdout con buffer** (Python sin `-u` a un pipe) | **no emite nada hasta terminar**: si nunca termina bien, el pipe nunca recibe. El `tail` no tiene qué descartar porque no llegó nada |
+
+Juntos explican por qué el «mirá el log parcial» no funcionó mientras corría: no era que el
+proceso no hablara, es que **el canal estaba cerrado en dos lugares a la vez**. Y por eso el `wc -l`
+del log sirve de latido **solo con `-u`**; sin `-u`, 0 líneas es la ausencia de estado de la que ya
+habla esta entrada, no una señal.
+
+**La forma correcta, en una línea:** `python -I -u <script> ... > archivo 2>&1` — nunca por pipe,
+`-u` siempre, y el `echo exit` **dentro del mismo comando**.
+
+**Y la causa de la muerte fue mía, no del teléfono:** el modo nuevo que le agregué al instrumento
+(`--animaciones=normales`) hacía `intentos = max(intentos, 12)` para **todas** las llamadas al árbol
+de la UI, incluido un **polling** que llama con `intentos=2` a propósito y corre hasta 80 veces. Fundí
+**esperar** con **insistir**, y eso convirtió una espera razonable en minutos de pausas: la corrida se
+comió su propio timeout antes de medir. **Un modo nuevo de un instrumento necesita su COSTO medido
+antes de embarcarlo**, no sólo su corrección — la variante barata (pausa corta, intentos los decide
+quien llama) hace exactamente lo mismo.

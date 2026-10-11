@@ -45,6 +45,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -61,6 +62,10 @@ REPO = os.path.abspath(os.path.join(SAL, '..', '..', '..'))
 ARGS = sys.argv[1:]
 SOLO_PREFLIGHT = '--solo-preflight' in ARGS
 EJE = next((a.split('=', 1)[1] for a in ARGS if a.startswith('--eje=')), 'ambos')
+# Las escalas en 0 son lo que deja ver el arbol, pero tambien ponen a Reanimated en *reduced
+# motion* (lo dice su propio aviso en el bundle). Con este flag no se tocan: el gesto se mide
+# en la condicion del usuario, al precio de que `uiautomator` tarda mas en conseguir idle.
+ANIM_NORMALES = '--animaciones=normales' in ARGS
 ENV_E2E = next((a.split('=', 1)[1] for a in ARGS if a.startswith('--env-e2e=')),
                r'C:\Proyectos\Claude\Claude code\copiloto-emprendedor\.env.e2e')
 
@@ -127,6 +132,12 @@ def arbol(intentos=6):
         _, out, _ = adb('exec-out', 'uiautomator', 'dump', '/dev/tty')
         if '<hierarchy' in out:
             return out
+        if ANIM_NORMALES:
+            # Con animacion viva hay que ESPERARLA; eso no es lo mismo que insistir mas veces.
+            # Fundir las dos cosas (12 intentos forzados) volvio el polling de `hasta_principal`
+            # -- que llama con intentos=2 a proposito, hasta 80 veces -- en minutos de pausas, y la
+            # corrida se comio su timeout sin llegar a medir nada.
+            time.sleep(0.3)
     return ''
 
 
@@ -338,10 +349,14 @@ try:
     adb('shell', 'svc', 'power', 'stayon', 'usb', t=60)
     adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP', t=60)
     adb('shell', 'wm', 'dismiss-keyguard', t=60)
-    for s in ESCALAS:
-        adb('shell', 'settings', 'put', 'global', s, '0', t=60)
-    print('  animaciones del sistema en 0 (se restauran al salir) -- sin esto `uiautomator` no '
-          'consigue idle y devuelve vacio, que se lee como "la pantalla no tiene nada"')
+    if ANIM_NORMALES:
+        print('  animaciones del sistema SIN TOCAR (--animaciones=normales): se mide el gesto en la '
+              'condicion del usuario, no con Reanimated en reduced motion')
+    else:
+        for s in ESCALAS:
+            adb('shell', 'settings', 'put', 'global', s, '0', t=60)
+        print('  animaciones del sistema en 0 (se restauran al salir) -- sin esto `uiautomator` no '
+              'consigue idle y devuelve vacio, que se lee como "la pantalla no tiene nada"')
 
     print()
     print('  --- arranque y controles del instrumento ---')
@@ -396,9 +411,17 @@ try:
             # que volver a cerrado era el comportamiento CORRECTO. Un instrumento que arrastra
             # menos de la mitad mide su propio gesto corto y lo imputa a la app.
             # Medido 2026-10-11 en RF8T318RN9T: 42% no abre · 85% ABRE (capa 83 -> 1465 px).
-            toca_pt(cx, cy)
-            abrio_toque, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
-            resultados['__toque_pestana__'] = {'abrio': abrio_toque}
+            # TRES toques, no uno. H-62 (el primer gesto tras montar se pierde) hace que un
+            # solo "no abre" no separe "el tap es inalcanzable" (H-60) de "se perdio el gesto".
+            abrio_toque, xa = False, ''
+            for i_tap in (1, 2, 3):
+                toca_pt(cx, cy)
+                abrio_toque, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
+                if abrio_toque:
+                    print('  el escritorio abrio con el TOQUE numero %d de 3' % i_tap)
+                    break
+            resultados['__toque_pestana__'] = {'abrio': abrio_toque, 'intentos': 3,
+                                               'animaciones': 1 if ANIM_NORMALES else 0}
             print('  toque quieto en la pestana: %s'
                   % ('ABRE' if abrio_toque else 'NO ABRE (el escritorio sigue cerrado)'))
             abrio, via = abrio_toque, 'toque-quieto'

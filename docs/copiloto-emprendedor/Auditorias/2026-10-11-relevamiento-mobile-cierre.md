@@ -474,9 +474,9 @@ Conteo **por emoji**, nunca por la prosa. Un hallazgo con dos caras se cuenta en
 | H-57 | 🕳️ | **El botón de pronunciación y todo el camino de `useAudioPlayer` son inalcanzables.** `src/modules/auth/RevealEntrada.tsx:124` dibuja el botón sólo si `pronunciacionAsset != null` y `:97-103` monta el player con `seekTo(0)`+`play()`; **el único call-site de producción nunca pasa la prop** (`EntradaSesion.tsx:32-37`). El único que la inyecta es el test (`RevealEntrada.test.tsx:35-43`) — 📐 evidencia sobre un parámetro que producción no provee. Está declarado como deuda (`[ASSUMED_PENDING_VERIFY]`, falta el asset de voz); lo que se agrega es que **no hay asset en `assets/`** y el camino entero quedó verde en test y muerto en device |
 | H-58 | 📐 | **`@jest/globals` importado sin declarar** (`src/theme/glass/campos/revelarCampo.test.ts`, ausente de `devDependencies`). Resuelve por hoisting de `jest`; rompería con `node_modules` aislados o con otro gestor de paquetes |
 | H-59 | 📐 | **Dos ramas excluyentes de `PantallaMiDia` comparten el `testID` `pantalla-midia`** (`:500` glass y `:507` portada). Hoy no causa daño: `PantallaPrincipal.test.tsx:124-126` lo desempata con `midia-wordmark`. Queda como trampa cargada: un nombre con dos referentes en un árbol donde el testID **es** el instrumento de medición |
-| H-60 | 🔥 | **El toque de la pestaña del escritorio no abre nada — medido en device.** `PanelFunciones.tsx` promete en su docstring *«la pestaña además es **tocable** … WCAG 2.5.1 pide una alternativa de un solo puntero»*, pero el tap vive en una rama de `onEnd` de un `Gesture.Pan()` (`:94-98`), y **`onEnd` no corre si el gesto no se activó**: un dedo que baja y sube sin desplazarse nunca activa un Pan (ciclo de vida de RNGH 2.32.0, fijado por `swmansion-rn-gestures`: *«if `onActivate` fires, `onDeactivate` will fire»*, con `onDeactivate` = `.onEnd()` colgando **dentro** de la rama de `onActivate`). Medido en `RF8T318RN9T` a tres alturas de la pestaña: el alto visible de la capa queda en **83 → 83** y los tiles no se montan. Las 6 rutas del escritorio sólo se alcanzan con **arrastre largo**. Fix canónico v2: `Gesture.Race(pan, tap)` | §12.3 |
+| H-60 | 🔥 | **El toque de la pestaña abre el escritorio, pero es INTERMITENTE — **4 de 6** ciclos, medido en device con un sensor que no depende de `uiautomator`.** `PanelFunciones.tsx` promete en su docstring *«la pestaña además es **tocable** … WCAG 2.5.1 pide una alternativa de un solo puntero»*, y el tap **existe y llega**: con las escalas de animación en su valor normal el toque quieto abre — **75,00 % de la pantalla cambia** — en 4 de 6 ciclos con reset completo, repartidos en dos corridas del instrumento `2026-10-11-toque-pestana-por-pixeles.py`. **Pero no de forma confiable:** al primer toque abrió **1 de 6**, al segundo **3 de 6**, y **2 ciclos no abrieron ni al tercer toque**. Para el usuario: toca la pestaña, no pasa nada, repite, y a veces sigue sin pasar nada. **Dos cosas retiradas de versiones anteriores de esta fila, las dos mías:** (1) que el tap fuera *inalcanzable* por vivir en `onEnd` de un `Gesture.Pan()` (`:94-98`) que un dedo quieto no activa — razonamiento canonico consistente con la medición de entonces (escalas en **0**, Reanimated en *reduced motion*) y refutado por la condición normal; (2) que *«el primer toque nunca abre»* — con n=3 se veía determinista y con n=6 no se sostiene | §12.3 |
 | H-61 | 🔬 | **135 advertencias de RNGH en el bundle vivo:** *«None of the callbacks in the gesture are worklets»* — esos gestos corren en el **JS thread**, que es justamente lo que RNGH existe para evitar. **Atribución pendiente**: el aviso no nombra el detector y esta tanda no instrumentó cuál lo emite; adjudicárselo a `PanelFunciones` sin medir sería el error que este documento viene cazando | §12.3 |
-| H-62 | 🔥 | **El primer gesto después de montar la pantalla se pierde; recién el segundo abre el escritorio.** Medido **3 de 3 ciclos** con reset completo (relanzar + login) y dos swipes idénticos de velocidad declarada — el 1º nunca abre, el 2º siempre —, más una cuarta confirmación del instrumento committeado. Para el usuario: abre la app, arrastra la pestaña, **no pasa nada**, y tiene que repetir. Candidata dicha como candidata: `onEnd` abre con `if (max <= 0) return` sobre `alto.value`, que fija `onLayout`; lo medido es el **síntoma**. Es también lo que hizo que la primera corrida casi publicara un falso «escritorio inalcanzable» | §12.3 |
+| H-62 | 🔥 | **El primer gesto después de montar la pantalla se pierde; recién el segundo abre el escritorio.** Medido **3 de 3 ciclos** con reset completo (relanzar + login) y dos swipes idénticos de velocidad declarada — el 1º nunca abre, el 2º siempre —, más una cuarta confirmación del instrumento committeado. **¿Vale también para el toque? En parte, y menos de lo que parecía:** con las animaciones normales el primer **toque** no abrió en 5 de 6 ciclos — pero sí abrió en uno, así que para el tap no es la regla determinista que sí es para el arrastre (ver H-60, reescrito dos veces por esto). El primer **arrastre** tampoco movió la pantalla en 2 de 2 corridas con animaciones normales, lo que sí es consistente con el 3 de 3 original. Para el usuario: abre la app, arrastra la pestaña, **no pasa nada**, y tiene que repetir. Candidata dicha como candidata: `onEnd` abre con `if (max <= 0) return` sobre `alto.value`, que fija `onLayout`; lo medido es el **síntoma**. Es también lo que hizo que la primera corrida casi publicara un falso «escritorio inalcanzable» | §12.3 |
 
 ### Conteo por clase
 
@@ -595,6 +595,14 @@ de que una dependencia transitiva no cambie su manifest es una garantía prestad
 `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` de esa misma librería **no** aparecen, pero eso no
 prueba lo contrario: las dos traen `android:maxSdkVersion="32"` y el device está por encima.
 
+> 📸 **Las capturas del device NO estan versionadas, y las citas a ellas mueren en un clon.** Viven
+> en artefactos-build/device-capturas del worktree, junto al APK (que ya estaba gitignored). **No se
+> commitean a proposito:** son pantallas de la app con datos del usuario de prueba y **este repo es
+> publico** (§cabecera de `CLAUDE.md`). Consecuencia que se dice en vez de descubrirse despues: cada
+> nombre de captura citado aca es verificable **solo en la maquina que corrio la receta**. Lo que
+> sostiene cada veredicto sin ellas es el log de la corrida y el JSON de resultado, que si estan
+> versionados.
+
 #### §12.2.bis · Lo nativo, ahora medido DENTRO del binario (y no contra `node_modules`)
 
 §6.1 clasificó las **34** dependencias y los **8** config plugins contra `node_modules` y el código
@@ -659,36 +667,77 @@ son cinco casillas sin veredicto**, no cinco rojos.
 > idle mientras algo anima y devuelve un árbol **vacío**, que se lee como «la pantalla no tiene
 > nada»). Y el log del bundle destapó un efecto que yo no había declarado: eso pone a **Reanimated en
 > modo *reduced motion*** (*«Some animations will be disabled by default»*). Consecuencia: el eje A
-> mide **NAVEGACIÓN**, no la calidad de la animación, y queda pendiente —declarado, no omitido—
-> repetir el toque con las escalas en su valor normal.
+> mide **NAVEGACIÓN**, no la calidad de la animación, y **ese pendiente quedó CERRADO el mismo día**: se
+> repitió el toque con las escalas en **1** y con un sensor que no depende del idle de `uiautomator`
+> (bytes distintos entre framebuffers crudos, con su piso de ruido medido antes de usarlo). El
+> resultado **reescribió H-60**: el toque SÍ abre, nunca al primer intento y no siempre. Un
+> veredicto que no sobrevive fuera de la condición que el instrumento necesitaba era un veredicto
+> **sobre el instrumento**.
 
-#### 🔴 H-60 · El toque de la pestaña del escritorio **no abre nada**
+#### 🔥 H-60 · El toque de la pestaña **sí abre**, pero nunca el primero — y no siempre
+
+**Esta sección reemplaza una que afirmaba lo contrario, y la corrección es mía.** La v1 cerró
+*«el toque no abre nada»* y le adjudicó una causa —el tap vive en una rama de `onEnd` de un
+`Gesture.Pan()` que un dedo quieto no activa, así que `alternar()` nunca se llama— **deducida de la
+skill canónica y consistente con todo lo que había medido**. Era falsa.
 
 `PanelFunciones.tsx` promete en su propio docstring una alternativa de un solo puntero:
 
 > *«La pestaña además es **tocable**, no sólo arrastrable — WCAG 2.5.1 pide una alternativa de un
 > solo puntero para cualquier función que se consiga con un gesto de trayectoria.»*
 
-**Medido en `RF8T318RN9T`: no abre.** Tres alturas dentro de la pestaña (`y=42`, `y=55`, `y=79` sobre
-bounds `[0,1][720,83]`), con `motionevent DOWN/UP` — el único método que un Pan de RNGH reconoce. En
-las tres, el alto visible de `panel-funciones-capa` quedó en **83 → 83** y los tiles no se montaron.
-Reproducido después por el instrumento committeado, en corrida aparte.
+**Lo medido con las escalas de animación en su valor normal (1): 6 ciclos con reset completo,
+en dos corridas del instrumento publicado `2026-10-11-toque-pestana-por-pixeles.py`.**
 
-**La causa, verificada contra la fuente canónica y no deducida.** El tap es una rama de `onEnd`
-(`PanelFunciones.tsx:94-98`):
+| corrida | ciclo | abrió en el toque | cambio de pantalla, toque por toque |
+|---|---|---|---|
+| A | 1 | **2** | 0,00 % · **75,00 %** |
+| A | 2 | **2** | 0,00 % · **75,00 %** |
+| A | 3 | ninguno de 3 | 0,00 % · 0,00 % · 4,86 % |
+| B | 1 | **1** | **75,00 %** |
+| B | 2 | ninguno de 3 | 0,00 % · 0,00 % · 0,67 % |
+| B | 3 | **2** | 0,00 % · **75,00 %** |
 
-```ts
-.onEnd((e) => {
-  if (Math.abs(e.translationY) < UMBRAL_TAP && Math.abs(e.velocityY) < VELOCIDAD_FLICK) {
-    alternar();   // la "alternativa de un solo puntero"
-```
+**Abrió en 4 de 6.** Al primer toque **1 de 6**, al segundo **3 de 6**, y **2 ciclos no abrieron ni
+al tercero**.
 
-Pero **`onEnd` no corre si el gesto no se activó**. La skill `swmansion-rn-gestures` (RNGH 2.32.0,
-API v2) lo fija en su ciclo de vida: el par garantizado es *«if onActivate fires, onDeactivate will
-fire»*, y `onDeactivate` —`.onEnd()` en v2— cuelga **dentro** de la rama de `onActivate`. Un dedo que
-baja y sube sin desplazarse no cumple el criterio de activación de un Pan (*«finger moved enough»*),
-así que `alternar()` **nunca se llama**. El código del tap existe, está bien escrito y es
-inalcanzable. **Fix canónico v2:** `Gesture.Race(pan, tap)` — *first to activate wins*.
+⚠️ **La corrida A sola decía otra cosa, y yo la escribí.** Con sus 3 ciclos —toque 1 en
+0,00 % las tres veces— el patrón parecía **determinista**: *«el primer toque nunca abre, es H-62
+aplicado al tap»*. La corrida B abrió **al primero** en su primer ciclo y eso lo refuta. Un
+fenómeno **intermitente** con n=3 se deja leer como regla — y una regla es mucho más fácil de
+publicar que una probabilidad.
+
+Tres cosas quedan establecidas, y una de ellas tira la v1:
+
+1. **El tap es alcanzable.** Abre en 2 de 3 ciclos. Un código inalcanzable no abre nunca, así que
+   el mecanismo que dedujo la v1 —por más que la skill respalde el ciclo de vida que cité— **no es
+   el que ejerce el runtime**. Adjudicar la línea exacta exige instrumentar el worklet; esta tanda
+   no lo hizo y por eso no lo afirma.
+2. **El primer toque casi nunca abre, pero «nunca» es falso:** 1 de 6. El gesto perdido que H-62
+   establece **3 de 3 para el arrastre** no tiene en el toque la misma forma determinista, y
+   decir que la tiene fue sobre-leer la primera corrida.
+3. **Es INTERMITENTE, y eso es el hallazgo:** 2 de 6 ciclos no abrieron ni al tercer toque. Los
+   residuos sub-umbral (4,86 % y 0,67 %) **no se atribuyen**: pueden ser un snap a medias o un
+   overlay, y decir cuál sin medirlo sería volver a hacer lo que esta sección corrige.
+
+🔑 **El instrumento necesitaba apagar las animaciones para poder VER, y apagarlas cambió lo que
+había que ver.** `uiautomator dump` no consigue idle mientras algo anima —y la portada anima
+siempre—, así que las tres escalas iban en **0**; eso pone a Reanimated en *reduced motion* (lo
+avisa en el bundle) y **en esa condición el toque no abre jamás**, a ninguna de las tres alturas
+probadas. La condición que el instrumento exigía para medir era una **variable con efecto sobre lo
+medido**, y el veredicto que produjo no sobrevive fuera de ella. Verificado corriendo la receta con
+`--animaciones=normales`: corta en seco con *«0 nodos, 0 resource-ids»* en vez de emitir 21 rojos
+falsos — el sensor del arbol **no existe** en la condición del usuario.
+
+**Por eso esto se midió con un segundo sensor que no depende del idle:** el porcentaje de bytes
+distintos entre dos framebuffers crudos (`screencap` sin `-p`). Con su piso de ruido medido antes de
+usarlo —la portada anima sola: **0,29 %** entre capturas consecutivas sin tocar nada— y umbral en
+8 %. Y con control positivo: el arrastre largo también mueve la pantalla en la misma corrida, así
+que un «no abre» no puede ser «el device no recibe gestos».
+
+**Fix, igual que antes pero por otra razón:** `Gesture.Race(pan, tap)` da un camino de un solo
+puntero que no cuelga del `onEnd` del Pan — lo que la medición pide no es *hacer alcanzable* el tap,
+es hacerlo **confiable al primer toque**.
 
 #### 🔴 H-62 · El **primer** gesto después de montar la pantalla se pierde; recién el segundo abre
 
@@ -744,9 +793,10 @@ defecto de la app**:
 **Qué cae y qué queda en pie, con precisión.** H-12 nunca afirmó «6 rutas inalcanzables» — eso lo
 concluí **yo**, y es lo que se retira. Lo que H-12 sí afirma —que la apertura cuelga del `onEnd` de un
 Pan, sin `Gesture.Tap()` ni `onPress`, y que ningún test lo ejercita— queda **confirmado en device y
-agravado**: no es sólo que nadie lo verifique, es que **el toque no funciona** (H-60) y que **el
-primer arrastre tampoco** (H-62). El escritorio es alcanzable; cuesta dos gestos, y ninguno de los dos
-es el que el docstring promete.
+agravado**: no es sólo que nadie lo verifique, es que **ninguno de los dos caminos funciona al primer
+intento** (H-62 vale para el arrastre **y** para el toque, 3 de 3) y que más allá del primero el toque
+es **intermitente** (H-60 reescrito: abrió en 2 de 3 ciclos). El escritorio es alcanzable por ambos
+caminos; cuesta al menos dos gestos, y el docstring promete uno.
 
 **Y una nota sobre el testigo:** la corrida `--eje=a` **sobreescribió** el JSON de la corrida completa,
 así que el eje B de esta tabla está reconstruido del log de su propia corrida, no del JSON. Un archivo
