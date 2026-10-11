@@ -18,7 +18,7 @@ No desinstala nada. Usa `adb install -r` (reinstala preservando datos). Desinsta
 sesion del usuario de prueba canonico, y el device **escribe en la base**: dos agentes tocandolo
 fabrican evidencia falsa. Un solo dueno por vez.
 
-Uso:  python -I 2026-10-11-instalar-y-medir-apk.py [--solo-medir]
+Uso:  python -I 2026-10-11-instalar-y-medir-apk.py [--solo-medir] [--proyecto=<ruta a apps/mobile>]
 """
 import io
 import json
@@ -36,6 +36,13 @@ SAL = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(SAL, '..', '..', '..'))
 ARCHIVO = os.path.join(REPO, 'artefactos-build')
 SOLO_MEDIR = '--solo-medir' in sys.argv[1:]
+# DESDE DONDE se le habla a la plataforma. El CLI de EAS resuelve la config del proyecto con los
+# node_modules del checkout, asi que corrido desde un worktree sin instalar falla con 'Failed to
+# resolve plugin for module expo-router' -- un rojo del ENTORNO con la misma cara que uno de la
+# plataforma. Se separa de donde se ARCHIVA a proposito: los instrumentos y el documento viven en
+# el worktree de la auditoria, y las dependencias en el del build.
+PROYECTO = next((a.split('=', 1)[1] for a in sys.argv[1:] if a.startswith('--proyecto=')),
+                os.path.join(REPO, 'apps', 'mobile'))
 
 fallas = []
 
@@ -68,11 +75,18 @@ def consultar_build():
     if not tok:
         print('  sin credencial (ni EXPO_TOKEN ni sesion del CLI): no se puede consultar la plataforma')
         return None
+    # Preflight que nombra la causa REAL antes de que el CLI la disfrace. Corrido desde un worktree
+    # sin instalar, `eas build:list` muere con "Failed to resolve plugin for module expo-router":
+    # un rojo del ENTORNO con la misma cara que uno de la plataforma.
+    if not any(os.path.isdir(os.path.join(PROYECTO, *p))
+               for p in (('node_modules',), ('..', '..', 'node_modules'))):
+        print('  OJO: %s no tiene node_modules alcanzables; el CLI de EAS va a fallar al resolver '
+              'la config del proyecto. Pasar --proyecto=<checkout con deps>.' % PROYECTO)
     # el CLI resuelve projectId, cola y permisos solo: reusarlo es mas barato que replicar su GraphQL
     r = subprocess.run(['npx', '-y', 'eas-cli@24.7.0', 'build:list', '--platform', 'android',
                         '--limit', '1', '--json'],
                        capture_output=True, text=True, timeout=600,
-                       cwd=os.path.join(REPO, 'apps', 'mobile'), errors='replace', shell=True)
+                       cwd=PROYECTO, errors='replace', shell=True)
     try:
         return (json.loads(r.stdout) or [None])[0]
     except ValueError:
