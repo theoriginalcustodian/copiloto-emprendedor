@@ -364,7 +364,7 @@ Un relevamiento que sólo publica lo que acusa está sesgado. Estos los persegu�
 | **♊** `src/adapters/http.native.ts` (80 líneas) y `http.web.ts` (68) | «el mismo cliente vive dos veces y el fix llega a uno» | **REFUTADO.** Split por plataforma deliberado: `src/adapters/plataforma.ts:7` importa `./http` y Metro resuelve a `.native`/`.web`. Ambos exportan por **default** para que el import no dependa de la plataforma (`http.web.ts:66`); la diferencia real está acotada al multipart (`http.web.ts:8`). Los dos tienen test |
 | **🔬** los tests `.test.web.ts` | «hay tests `.web` que ningún proyecto jest ejecuta» | **REFUTADO.** `jest.config.js:168` define `testMatch: ['<rootDir>/src/**/*.test.web.ts']` para el proyecto `web`. **Son 2** (`adapters/almacen.test.web.ts`, `adapters/http.test.web.ts`) y los 2 matchean. ⚠️ **El lote reportó «3» y la medición da 2** — la cifra del lote no se publica sin re-medir |
 | **🔬** el congelamiento nativo | «bloquea en teoría y nunca evaluó» | **REFUTADO hoy** — corre y decide. El antecedente es real y queda escrito (§9) |
-| **🚫** `expo-file-system` / `expo-image-picker` sin plugin declarado | «nativo importado al que no se le aplica su config plugin» | **REFUTADO** por dos caminos: `legacyExpoPlugins` los auto-aplica (`withDefaultPlugins.js:185`) y el merge de manifiestos del autolinking ya trae sus permisos (§6.2) |
+| **🚫** `expo-file-system` / `expo-image-picker` sin plugin declarado | «nativo importado al que no se le aplica su config plugin» | **REFUTADO** por dos caminos: `legacyExpoPlugins` los auto-aplica (`@expo/prebuild-config/build/plugins/withDefaultPlugins.js:185`) y el merge de manifiestos del autolinking ya trae sus permisos (§6.2) |
 | **🚫** identidad/tenant saliendo de env o constante en `/ajustes-cuenta` | «el tenant se hardcodea en algún lado» | **REFUTADO.** `me` sale de `useSession()` → `api.me()` por request con bearer del almacén. Control positivo: el grep de `cliente_id` da 39 ocurrencias (el patrón caza) y ninguna no-test es constante ni env; el **único** `process.env` en no-test es `EXPO_PUBLIC_API_BASE` — base URL, no tenant |
 | **🚫** el cruce de las 20 rutas del Stack contra `app/` | «sobra un nombre muerto o falta una ruta» | **REFUTADO.** `FALTAN = []`, `SOBRAN = []`: 20 + `index` = 21 = las 21 pantallas. El hallazgo que queda es el **gate ausente**, no una desalineación actual (H-34, H-16) |
 | **🔬** mezcla de los dos sentidos de «actividad» | «el feed SQL de negocio y la memoria conversacional se cruzan» | **REFUTADO.** El shell usa `listarActividad` (`PantallaPrincipal.tsx:27,79`) y nada en `src/shell`/`src/modules/chat` toca la memoria conversacional |
@@ -481,6 +481,46 @@ Conteo **por emoji**, nunca por la prosa. Un hallazgo con dos caras se cuenta en
 **La forma de la distribución es el resultado de más alto nivel, y no es accidental.** Las dos clases más grandes son **🔬 (17)** y **🚫 (11)**: el problema dominante de `apps/mobile` hoy no es código que no existe — es **código que existe y nada lo mide**, más **protecciones que el código declara en un comentario y el composition root no implementa** (H-29, H-54), más **guards sin un solo test** (H-28). Cinco de los 17 🔬 son **instrumentos míos de este relevamiento** (H-03 a H-08), lo cual es la confirmación del método: si auditar mis propios instrumentos no hubiera producido hallazgos, no los estaría auditando.
 
 **Y el mapa causa→síntoma tiene un solo nudo central.** Cinco hallazgos distintos —H-10 (`/midia` inalcanzable), H-46 (comentarios que mienten sobre el conteo), H-55 (premisa vencida del APK), H-39 (exhaustividad falsa) y los dos comentarios refutados de `_layout.tsx:160` y `PantallaMiDia.tsx:267`— son **la misma falla**: en este repo el comentario se usa como fuente, los comentarios envejecen y nada los mide. Mi propio H-08 es su caso extremo: un instrumento que leyó un comentario como evidencia y tapó el hallazgo que el comentario negaba. Si hubiera que arreglar **una** cosa de este relevamiento antes que las otras, es que **ningún gate lea comentarios y ningún lector los trate como medición**.
+
+---
+
+## §11 · El gate que acredita este cierre (y lo que rechazó)
+
+«Cerrado» no es una afirmación mía: la mide `gate-relevamiento-mobile.py`, publicado al lado, con los 11 criterios del DoD. Corrido desde esta carpeta y también desde otro directorio (criterio 11):
+
+```
+OK  C1   21 pantallas x 4 ejes, 0 celdas vacias
+OK  C2   301 = 22 + 115 + 112 + 52
+OK  C3   0 marcas pendientes, 0 secciones en curso, se declara CERRADO
+OK  C4   59 filas, ids 1..59 sin huecos, 6 clases cuadran una por una
+OK  C5   129 citas: 127 verificadas contra el disco (0 rotas / 0 ambiguas) + 2 a node_modules
+OK  C6   34 deps y 8 plugins clasificados (vs node_modules, NO vs APK)   [parcialmente BLOQUEADO]
+OK  C9   las 21 con BLOQUEADO_POR_BUILD y el mecanismo nombrado          [parcialmente BLOQUEADO]
+OK  C10  8/8 mutantes cazados (alcance C1-C5) + plataforma: real -> 341lin, mutilada -> me:null
+OK  C11  corre desde la carpeta publicada
+ROJO C7  `pm path app.copiloto.emprendedor` -> VACIO, con control positivo y negativo verdes
+ROJO C8  0 APK atribuible a este proyecto en disco local
+VEREDICTO: VERDE en el alcance declarado CODIGO+PLATAFORMA     (exit 0)
+           SIN el flag de alcance: exit 2 — aprobar por omision seria el fail-open
+```
+
+**El alcance se declara, nunca se infiere del exit code.** Sin `--alcance=codigo-plataforma` el gate sale **exit 2** a propósito: los criterios 7 y 8 son imposibles hoy y un gate que los omitiera para poder cerrar sería exactamente el fail-open que este relevamiento documenta diecisiete veces. **El relevamiento de código y plataforma está cerrado; el de device no empezó y no se declara cerrado.**
+
+### Lo que el gate me rechazó a mí, antes de aprobar nada
+
+Escribirlo tiene más valor que el verde, porque es la prueba de que el instrumento puede decir no:
+
+| rechazo | qué era |
+|---|---|
+| **C8 salió VERDE en falso** — el peor | Buscaba cualquier `*.apk` bajo el repo, `~/Downloads` y esta carpeta, y aprobó con un APK de 248 MB del 13 de julio **ajeno al proyecto**. Un gate que acredita «hay binario» con un binario cualquiera **dice menos que no haber corrido**. El criterio tiene dos mitades y miraba media: el APK debe ser el del build **y** su `gitCommitHash` estar escrito acá. Corregido: hoy exige atribución y sale **ROJO**, que es el estado real |
+| **C5 fabricó 44 citas fantasma de 174** | Un segundo patrón de «nombre pelado» cuyo lookbehind no excluía `.` ni `-`, así que cazaba el **sufijo** de una cita ya contada: de `jest.config.js:168` extraía además el trozo *config·js* con la misma línea, y de `app/ajustes-feedback.tsx:6` el trozo *feedback·tsx*. Esos sufijos no existen como archivos, así que los reportaba como citas rotas del documento. Es **el mismo defecto de forma** que pagó el inventario (H-06, H-08): el patrón cazaba algo que *se parecía*. Medido con el lookbehind corregido, ese patrón aportaba **cero** citas legítimas — el documento siempre entrecomilla — así que se eliminó. (Los ejemplos van con `·` en lugar del punto **a propósito**: escribir la forma fantasma tal cual la volvería una cita rota de verdad, y haría tropezar al próximo lector con herramienta) |
+| **C3 gritó en el caso sano** | Buscaba `TODO:` en minúscula sobre el texto en minúscula. En un documento **en español** eso matchea prosa normal (*«…y todo: …»*). Un guard que da rojo en el caso normal se desarma solo, porque el camino de menor resistencia pasa a ser ignorarlo. Corregido a case-sensitive con frontera de palabra: es un literal de código, no una palabra |
+| **El control de plataforma no concluía** | Mi `urlopen` pelado dejaba cualquier no-2xx en «NO EJERCITADO», perdiendo la lección que el instrumento hermano ya tenía escrita (*«Nunca levanta: el error es un valor a reportar»*). **El fix existía en otro call-site y no viajó porque reescribí la llamada en vez de reusarla.** Corregido: hoy el control se ejercita y da `real → 341lin`, `mutilada → me:null` |
+| **El reporte repetía un bloqueo 9 veces** | Los checks de documento corren 1 vez de verdad + 1 por mutante, y cada corrida appendeaba. Un reporte que hay que leer en diagonal es un reporte que no se lee |
+| **🔥 Un mutante salió VERDE — y destapó un agujero de origen en C2** | `C2` verificaba cada cifra de la partición **en cualquier parte del documento**. Al escribir esta misma sección agregué la frase «la partición real de **301**», y esa **mención suelta absolvió una tabla de partición rota**: el mutante que cambia 301 por 299 pasó. El check no medía la propiedad — medía que el número estuviera escrito en algún lado. Corregido: hoy se mide **dentro de la tabla de §5.1**, que es donde la propiedad vive. Sin el bloque de mutantes, este agujero se publicaba con cara de verde |
+| **C3 le prohibía al documento hablar de sí mismo** | Al describir el marcador en esta tabla, el documento **contiene** el marcador, y el guard lo leyó como trabajo sin terminar. **La mención no es la cosa** — es la **tercera** vez que esta familia muerde en el día, después del docstring que afirmaba que `/midia` estaba viva (H-08) y del patrón que cazaba un sufijo parecido (C5, arriba). Corregido: los marcadores se buscan fuera de los code spans |
+
+**Y una corrección a dos criterios del DoD, no al documento.** El DoD pedía «22 rutas + 115 componentes == denominador»: esa suma deja **52 archivos `.ts` afuera**, así que el gate asevera la partición real de **301**. Y pedía «27/27 nativas» cuando las `dependencies` medidas son **34**. El gate afirma la **medición**, no la cifra que el DoD escribió antes de medir — un criterio que contradice la medición se corrige, no se cumple de mentira.
 
 ---
 
