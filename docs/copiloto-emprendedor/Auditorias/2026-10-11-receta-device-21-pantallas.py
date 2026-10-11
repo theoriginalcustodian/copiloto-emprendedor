@@ -377,23 +377,47 @@ try:
             mal('no encontre la pestana del escritorio: el eje A no se puede medir (y eso NO es lo '
                 'mismo que "el gesto no abre")')
         else:
-            cx, cy = pest[0], pest[1]
-            print('  pestana en [%d,%d][%d,%d] -> (%d,%d)' % (pest[2], pest[3], pest[4], pest[5],
-                                                              cx, cy))
-            # Primero el TOQUE QUIETO, que es la rama de tap del `onEnd`: H-12 dice que no hay
-            # `Gesture.Tap()` ni `onPress`, asi que esto mide si el Pan lo trata como toque.
+            # El punto NO es el centro de la pestana. Con bounds [0,1][720,83] el centro cae en
+            # y=42, DENTRO de la barra de estado del sistema: Android se queda con el toque, y un
+            # arrastre hacia abajo desde ahi es el gesto de la CORTINA DE NOTIFICACIONES -- que
+            # ademas tapa la app, asi que las pantallas de despues salen NO_MONTA y el rojo parece
+            # de ellas. Medido 2026-10-11: desde y=42 no abre; desde y=79 (4px sobre el borde de
+            # abajo) ABRE con el mismo arrastre. Se toca donde toca el usuario: la parte de la
+            # pestana que el sistema no reclama.
+            cx, cy = pest[0], pest[5] - 4
+            print('  pestana en [%d,%d][%d,%d] -> toco (%d,%d), 4px sobre el borde inferior '
+                  '(el centro y=%d cae en la barra de estado)'
+                  % (pest[2], pest[3], pest[4], pest[5], cx, cy, pest[1]))
+            adb('shell', 'cmd', 'statusbar', 'collapse')
+            # El TOQUE QUIETO y el ARRASTRE son DOS veredictos, no un fallback. Fundirlos fue lo
+            # que fabrico el falso "H-12 confirmado": el toque no abre (defecto real) y el
+            # arrastre de 600px tampoco, pero por una razon legitima -- `onEnd` hace snap por
+            # MITAD (`PanelFunciones.tsx:99-108`), y 600 de los ~1421 de recorrido es el 42%, asi
+            # que volver a cerrado era el comportamiento CORRECTO. Un instrumento que arrastra
+            # menos de la mitad mide su propio gesto corto y lo imputa a la app.
+            # Medido 2026-10-11 en RF8T318RN9T: 42% no abre · 85% ABRE (capa 83 -> 1465 px).
             toca_pt(cx, cy)
-            abrio, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
-            via = 'toque-quieto'
+            abrio_toque, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
+            resultados['__toque_pestana__'] = {'abrio': abrio_toque}
+            print('  toque quieto en la pestana: %s'
+                  % ('ABRE' if abrio_toque else 'NO ABRE (el escritorio sigue cerrado)'))
+            abrio, via = abrio_toque, 'toque-quieto'
             if not abrio:
-                print('  el toque quieto no abrio -> pruebo ARRASTRE hacia abajo')
-                arrastre(cx, max(cy, pest[3] + 2), cy + 600)
-                abrio, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=6)
+                # el recorrido es el alto de la CAPA menos la pestana (ALTO_PESTANA = 44), no una
+                # constante: con otro alto de pantalla, 600px volveria a ser menos de la mitad.
+                pantalla = re.search(r'bounds="\[0,0\]\[\d+,(\d+)\]"', xml)
+                recorrido = (int(pantalla.group(1)) if pantalla else 1465) - 44
+                dist = int(recorrido * 0.85)
+                print('  -> pruebo ARRASTRE de %d px (85%% del recorrido %d; por debajo de %d el '
+                      'snap lo devuelve a cerrado POR DISENO)' % (dist, recorrido, recorrido // 2))
+                arrastre(cx, cy, cy + dist, pasos=20)
+                abrio, xa = esperar(lambda x: ve(x, 'tile-facturacion'), intentos=8)
                 via = 'arrastre'
-            resultados['__escritorio__'] = {'abrio': abrio, 'via': via if abrio else None}
+            resultados['__escritorio__'] = {'abrio': abrio, 'via': via if abrio else None,
+                                            'abre_con_toque': abrio_toque}
             if not abrio:
-                mal('el escritorio NO abrio ni con toque quieto ni con arrastre: las 6 rutas del '
-                    'escritorio quedan inalcanzables desde el arranque (H-12 confirmado en device)')
+                mal('el escritorio NO abrio ni con toque quieto ni con arrastre LARGO: las 6 rutas '
+                    'del escritorio quedan inalcanzables desde el arranque (H-12 confirmado)')
             else:
                 print('  el escritorio ABRIO via %s' % via)
                 capturar('01-escritorio-abierto')
@@ -419,6 +443,9 @@ try:
         print()
         print('  --- EJE B: RENDER por deep link (NO acredita alcanzabilidad: ver H-10) ---')
         for ruta, tids in PANTALLAS:
+            # si algo dejo la cortina del sistema abierta, uiautomator ve la cortina y no la app:
+            # todas las rutas saldrian NO_MONTA por una causa que no es de ninguna de ellas.
+            adb('shell', 'cmd', 'statusbar', 'collapse')
             # PAR DE CONTRASTE (razon 2 del docstring): el arbol APILA, asi que "aparece" no es
             # evidencia si ya estaba. Se vuelve atras hasta que no este; si no se logra, se declara
             # NO_ATRIBUIBLE en vez de cantar un verde prestado.

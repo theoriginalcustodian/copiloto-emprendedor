@@ -474,6 +474,9 @@ Conteo **por emoji**, nunca por la prosa. Un hallazgo con dos caras se cuenta en
 | H-57 | 🕳️ | **El botón de pronunciación y todo el camino de `useAudioPlayer` son inalcanzables.** `src/modules/auth/RevealEntrada.tsx:124` dibuja el botón sólo si `pronunciacionAsset != null` y `:97-103` monta el player con `seekTo(0)`+`play()`; **el único call-site de producción nunca pasa la prop** (`EntradaSesion.tsx:32-37`). El único que la inyecta es el test (`RevealEntrada.test.tsx:35-43`) — 📐 evidencia sobre un parámetro que producción no provee. Está declarado como deuda (`[ASSUMED_PENDING_VERIFY]`, falta el asset de voz); lo que se agrega es que **no hay asset en `assets/`** y el camino entero quedó verde en test y muerto en device |
 | H-58 | 📐 | **`@jest/globals` importado sin declarar** (`src/theme/glass/campos/revelarCampo.test.ts`, ausente de `devDependencies`). Resuelve por hoisting de `jest`; rompería con `node_modules` aislados o con otro gestor de paquetes |
 | H-59 | 📐 | **Dos ramas excluyentes de `PantallaMiDia` comparten el `testID` `pantalla-midia`** (`:500` glass y `:507` portada). Hoy no causa daño: `PantallaPrincipal.test.tsx:124-126` lo desempata con `midia-wordmark`. Queda como trampa cargada: un nombre con dos referentes en un árbol donde el testID **es** el instrumento de medición |
+| H-60 | 🔥 | **El toque de la pestaña del escritorio no abre nada — medido en device.** `PanelFunciones.tsx` promete en su docstring *«la pestaña además es **tocable** … WCAG 2.5.1 pide una alternativa de un solo puntero»*, pero el tap vive en una rama de `onEnd` de un `Gesture.Pan()` (`:94-98`), y **`onEnd` no corre si el gesto no se activó**: un dedo que baja y sube sin desplazarse nunca activa un Pan (ciclo de vida de RNGH 2.32.0, fijado por `swmansion-rn-gestures`: *«if `onActivate` fires, `onDeactivate` will fire»*, con `onDeactivate` = `.onEnd()` colgando **dentro** de la rama de `onActivate`). Medido en `RF8T318RN9T` a tres alturas de la pestaña: el alto visible de la capa queda en **83 → 83** y los tiles no se montan. Las 6 rutas del escritorio sólo se alcanzan con **arrastre largo**. Fix canónico v2: `Gesture.Race(pan, tap)` | §12.3 |
+| H-61 | 🔬 | **135 advertencias de RNGH en el bundle vivo:** *«None of the callbacks in the gesture are worklets»* — esos gestos corren en el **JS thread**, que es justamente lo que RNGH existe para evitar. **Atribución pendiente**: el aviso no nombra el detector y esta tanda no instrumentó cuál lo emite; adjudicárselo a `PanelFunciones` sin medir sería el error que este documento viene cazando | §12.3 |
+| H-62 | 🔹 | El rótulo **«Presupuestos»** del tile del escritorio corta como `Presupuesto` / `s`, con la `s` huérfana en la segunda línea (captura `03-abrio-arrastre-1207.png`). Cosmético; se registra por estar en la primera pantalla funcional | §12.3 |
 
 ### Conteo por clase
 
@@ -535,9 +538,68 @@ Escribirlo tiene más valor que el verde, porque es la prueba de que el instrume
 
 ---
 
+## §12 · El binario, el device y lo que sólo el APK podía contestar
+
+**Estado:** H-01 cerrado. Las 21 pantallas dejan de ser `BLOQUEADO_POR_BUILD`.
+
+### §12.1 · El build, y su atribución
+
+| qué | valor | cómo se midió |
+|---|---|---|
+| build | `a0c8c8b7-cd19-4945-9bd7-72a9f4e789c7`, perfil `development`, `FINISHED` | `eas build:list --json` |
+| commit | **`5e19949f`** | el mismo campo `gitCommitHash` |
+| artefacto | `artefactos-build/copiloto-dev-client-5e19949f.apk`, 325,4 MB | archivado **antes** de instalar |
+| `versionCode` / `versionName` | `1` / `0.1.0` | `dumpsys package` del APK instalado |
+| instalación | `package:/data/app/~~bHVMdrjW3rQkFtBgnbPGqw==/app.copiloto.emprendedor-Wy59w-VlXX` | `pm path`, con control positivo y negativo |
+| device | `RF8T318RN9T`, dueño único verificado | `adb devices` |
+
+**La atribución no es un supuesto.** `5e19949f` sale de `6278836a` —el SHA que §0 declara como sujeto
+de este relevamiento— y su **único** diff en `apps/mobile` es `app.json` (`1 insertion, 17 deletions`
+contra `origin/main`, medido con `git diff --stat`). Es decir: el JS que corre en el teléfono es el
+código relevado, no una base vecina. El `app.json` sólo afecta la capa nativa, ya horneada.
+
+El artefacto se archivó **con el SHA en el nombre y antes de instalar**, porque la retención de EAS
+es de 14 días y ya borró 12 builds de este proyecto (los 3 muestreados dan 404). Un binario que vive
+sólo en `expo.dev` tiene fecha de desaparición, y con él se va la única forma de volver a inspeccionar
+lo que se instaló.
+
+### §12.2 · Lo que el APK contestó y el prebuild no podía
+
+Los **11** permisos que el APK pide de verdad (`dumpsys package`, acotado a la sección
+`requested permissions:` — el dump entero sobre-reporta 137 de ruido sobre `com.android.settings`):
+
+```
+ACCESS_NETWORK_STATE   CAMERA*   CHANGE_WIFI_MULTICAST_STATE   FOREGROUND_SERVICE*
+FOREGROUND_SERVICE_MEDIA_PLAYBACK*   INTERNET   MODIFY_AUDIO_SETTINGS*   RECORD_AUDIO*
+SYSTEM_ALERT_WINDOW   VIBRATE   WAKE_LOCK
+```
+`*` = los 5 declarados en `app.json`. **Los otros 6 nunca se escribieron en ningún lado del repo.**
+
+🔑 **Y esto resuelve la pregunta que §6.2 dejó abierta.** El texto original afirmaba que los permisos
+llegan por el **merge de manifiestos**; la corrección del mediodía lo degradó a *no demostrado*,
+porque el manifest que genera `expo prebuild` tenía **0** hits de `CAMERA` y el merge de Gradle es
+invisible antes del binario. Con el APK en la mano hay un caso positivo **con nombre y path**:
+
+> `CHANGE_WIFI_MULTICAST_STATE` lo declara `expo-dev-launcher/android/src/debug/AndroidManifest.xml`,
+> no está en `app.json` ni lo escribe ningún plugin de config — **y está en el APK**.
+
+Es decir: **el merge de Gradle sí incorpora los `uses-permission` de los manifests de las librerías**,
+que era exactamente el mecanismo que §6.2 afirmaba. Como `expo-image-picker/android/src/main/AndroidManifest.xml:4`
+declara `CAMERA` **sin `maxSdkVersion`**, la inferencia —dos premisas medidas, no una conjetura— es que
+`CAMERA` habría llegado igual sin declararla. Declararla explícitamente es, a lo sumo, redundante; y
+sigue siendo lo correcto, porque el código la usa (`useCapturaFoto.ts:64,69`) y un permiso que depende
+de que una dependencia transitiva no cambie su manifest es una garantía prestada.
+
+**Lo que NO queda demostrado, y se dice:** que `CAMERA` específicamente llegue por esa vía no se midió
+—haría falta un segundo build sin declararla—. Lo medido es el **mecanismo**, con un caso positivo.
+`READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` de esa misma librería **no** aparecen, pero eso no
+prueba lo contrario: las dos traen `android:maxSdkVersion="32"` y el device está por encima.
+
+---
+
 ## §Z · Lo que este documento NO afirma
 
-- **Nada sobre el comportamiento en el teléfono.** No hay binario: cualquier afirmación de device sería inventada. Las 21 pantallas quedan `BLOQUEADO_POR_BUILD`, y eso incluye todo lo táctil, geométrico y animado: los 14 px de H-44, el primer tap de los `Row` de H-42, el teclado sobre los campos, el scroll dentro del vidrio, el `AudioRecorder.stop()`, y si el tap corto activa el `Gesture.Pan()` de H-12 (receta medida: `adb input motionevent` DOWN/UP sin MOVE — `input tap` **no** ejercita un Pan).
+- **~~Nada sobre el comportamiento en el teléfono.~~ SUPERADO el 2026-10-11 por §12:** hay binario instalado (`5e19949f`) y las 21 pantallas dejaron de estar `BLOQUEADO_POR_BUILD`. Lo que **sigue** sin medirse es todo lo táctil fino, geométrico y animado — la tanda corrió con las animaciones del sistema en 0, que además pone a Reanimated en modo reducido (§12.3). Siguen sin medir: los 14 px de H-44, el primer tap de los `Row` de H-42, el teclado sobre los campos, el scroll dentro del vidrio, el `AudioRecorder.stop()`, y si el tap corto activa el `Gesture.Pan()` de H-12 (receta medida: `adb input motionevent` DOWN/UP sin MOVE — `input tap` **no** ejercita un Pan).
 - **Que los tests pasen.** Ningún lote corrió `jest` (encargo read-only; además `apps/mobile/node_modules` no existe en el worktree). Todo `veredicto_evidencia` y toda §7 son **lectura del código del test**: qué ejercita y qué mockea, no su resultado. Por lo mismo, la ausencia de salteados vale **en estático**: un `beforeAll` que tire y saltee en silencio no se vería. Las preguntas de mutación son **razonadas sobre el código, no ejecutadas**: donde dice «se pondría rojo» es inferencia de que `getByTestId` lanza cuando el nodo no existe. Y `jest.config.js` documenta un flake bimodal abierto en `ChatView.test.tsx` y `PantallaSoporte.test.tsx` que no se evaluó.
 - **Que el proyecto `web` de jest sea el único que levanta esos 2 archivos.** `node_modules` ausente ⇒ no se pudo leer el preset `jest-expo` para confirmar el `testMatch` por defecto del proyecto `native`. Si también los matcheara, los 2 tests web correrían dos veces, uno de ellos bajo el preset equivocado. **Queda abierto, medible en un comando el día que haya `node_modules`.**
 - **La frontera A/B de §7 como un hecho.** Es juicio declarado en los casos de datos inyectados por prop: **53/52** con el criterio usado, **51/54** con el estricto. Igual para `appSoloRutas.test.ts` en A: asevera nombres de archivo, pero eso **es** la propiedad de producción del `require.context` de expo-router.
