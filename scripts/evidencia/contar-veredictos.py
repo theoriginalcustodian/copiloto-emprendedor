@@ -1006,6 +1006,10 @@ def descubrir_documentos(ids):
     return candidatos, descartados, cobertura
 
 
+# Lo llena `declarar_lo_que_no_miro()` y lo publica el JSON en `corpus.fuera_del_alcance`.
+ALCANCE_FUERA = {}
+
+
 def declarar_lo_que_no_miro(ids):
     """Imprime los documentos CON veredictos que este corpus no barre. No es gate.
 
@@ -1026,16 +1030,25 @@ def declarar_lo_que_no_miro(ids):
     porque ahi circulan los mensajes, y la regla del operador (2026-08-06) manda TODA auditoria
     a `Auditorias/`. El agujero vive en el PAR, no en ninguna de las dos.
 
+    🔴 VA A STDERR, NO A STDOUT. La primera version imprimia en stdout y rompio `--json`: el
+    JSON sale por stdout y este aviso lo contaminaba, asi que `json.loads` fallaba en el primer
+    caracter. Lo cazo `test-contar-veredictos-padron.sh` (8 casos rojos) y NO lo vi leyendo el
+    log, porque ese test imprime ✅ en sus primeros casos y el rojo quedo en medio de 1104
+    lineas -- el runner contaba el fallo sin nombrarlo. Un diagnostico nunca comparte canal con
+    los datos: el dato equivalente viaja en el JSON, campo `corpus.fuera_del_alcance`.
+
     NO cambia ninguna cifra ni reabre el criterio 3 (`DEC-18`: un hallazgo no reabre un ✅).
     Ensanchar el glob a `Auditorias/` es una decision MAYOR -- moveria el denominador de un
     criterio ya cerrado y dejaria ~19 candidatos sin clasificar, o sea `exit 8` para todos.
     Esta funcion solo hace que el alcance se LEA en cada corrida.
     """
     import re as _re
+    global ALCANCE_FUERA
     aud = RAIZ / "docs" / "copiloto-emprendedor" / "Auditorias"
     if not aud.is_dir():
         print("ALCANCE: no veo %s, asi que no puedo declarar que me pierdo. Vacio = PREGUNTA."
-              % aud)
+              % aud, file=sys.stderr)
+        ALCANCE_FUERA = {"ruta": str(aud), "estado": "no_pude_mirar"}
         return
     vocab = _re.compile(r"COHERENTE|DESV[ÍI]O|NO_MEDIBLE|FUERA-DE-REFERENCIA")
     docs, tocados = [], set()
@@ -1054,16 +1067,27 @@ def declarar_lo_que_no_miro(ids):
     if not docs:
         # Vacio = PREGUNTA, no «nada que declarar»: o cambio el vocabulario, o movieron la carpeta.
         print("ALCANCE: 0 docs con veredictos en Auditorias/. Si eso sorprende, el barrido dejo "
-              "de mirar: el vocabulario o la ruta cambiaron.")
+              "de mirar: el vocabulario o la ruta cambiaron.", file=sys.stderr)
+        ALCANCE_FUERA = {"ruta": str(aud), "estado": "cero_candidatos",
+                         "ojo": "vacio = PREGUNTA, no «nada que declarar»"}
         return
     print("ALCANCE DECLARADO -- lo que este corpus NO barre: %d doc(s) en Auditorias/ con "
           "vocabulario de veredicto, que tocan %d de %d ids del padron." % (
-              len(docs), len(tocados), len(ids)))
+              len(docs), len(tocados), len(ids)), file=sys.stderr)
     for n, nombre in sorted(docs, reverse=True)[:3]:
-        print("   %3d ids  %s" % (n, nombre[:76]))
+        print("   %3d ids  %s" % (n, nombre[:76]), file=sys.stderr)
     print("   El corpus es el BUZON (C3-15). Estos NO son mediciones perdidas -- muchos CITAN, "
           "no miden, y el formato no codifica el rol. Pero un `conflictos_nuevos: []` NO los "
-          "tuvo en cuenta: no es acuerdo, es ausencia.")
+          "tuvo en cuenta: no es acuerdo, es ausencia.", file=sys.stderr)
+    ALCANCE_FUERA = {
+        "ruta": "docs/copiloto-emprendedor/Auditorias",
+        "docs_con_vocabulario_de_veredicto": len(docs),
+        "ids_del_padron_que_tocan": len(tocados),
+        "los_3_mas_grandes": [{"ids": n, "doc": nombre} for n, nombre in
+                              sorted(docs, reverse=True)[:3]],
+        "ojo": ("NO son mediciones perdidas: muchos CITAN en vez de medir y el formato no "
+                "codifica el rol. Pero `conflictos_nuevos: []` no los tuvo en cuenta."),
+    }
 
 
 def docs_control(candidatos):
@@ -2269,6 +2293,10 @@ def main():
                "documentos_medidos": len(docs),
                "documentos_descartados": descartados,
                "como_se_descubren": "glob sobre el buzon + clasificacion declarada (C3-15)",
+               # Lo que el glob NO barre, declarado: un `[]` de un comparador no dice
+               # «coinciden», dice «no encontre par». Quien consuma este JSON tiene que poder
+               # ver si los dos terminos entraron al rango.
+               "fuera_del_alcance": ALCANCE_FUERA,
            },
            "lotes": {}}
     textos = {}

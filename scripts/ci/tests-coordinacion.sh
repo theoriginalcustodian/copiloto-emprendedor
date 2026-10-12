@@ -61,6 +61,10 @@ fi
 
 corridos=0
 fallados=0
+# Contar SIN nombrar obliga a releer el log entero para saber quien fallo: 1104 lineas en la
+# corrida del 2026-10-12, y el culpable no imprime nada distinguible porque cada test tiene su
+# propio formato de salida. Contar es el denominador; NOMBRAR es lo que hace accionable el rojo.
+nombres_fallados=()
 for t in "${archivos[@]}"; do
   echo "▶ $(basename "$t")"
   case "$t" in
@@ -70,14 +74,14 @@ for t in "${archivos[@]}"; do
       # funciones y **sale 0 sin ejecutar una sola aserción**. Es un falso verde idéntico a un pase,
       # y la extensión del archivo no dice con qué runner se corre. Acá se niega y nombra dónde va.
       if grep -q '^if __name__ ==' "$t"; then
-        python3 "$t" || fallados=$((fallados+1))
+        python3 "$t" || { fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t")"); }
       else
         echo "❌ $(basename "$t") es un test de pytest (sin bloque __main__): como script saldría VERDE sin ejecutar nada." >&2
         echo "   Va en la suite de pytest (scripts/ci/backend.sh), no en este bucle." >&2
-        fallados=$((fallados+1))
+        fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t") [pytest mal ubicado]")
       fi
       ;;
-    *)    bash    "$t" || fallados=$((fallados+1)) ;;
+    *)    bash    "$t" || { fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t")"); } ;;
   esac
   corridos=$((corridos+1))
 done
@@ -88,5 +92,10 @@ if [ "$corridos" -ne "$encontrados" ]; then
   echo "❌ corrieron $corridos de $encontrados: el bucle se saltó alguno." >&2
   exit 1
 fi
-[ "$fallados" -eq 0 ] || { echo "❌ $fallados test(s) $LABEL fallaron." >&2; exit 1; }
+if [ "$fallados" -ne 0 ]; then
+  echo "❌ $fallados test(s) $LABEL fallaron:" >&2
+  for n in "${nombres_fallados[@]}"; do echo "   ✗ $n" >&2; done
+  echo "   Corrélo solo: bash $DIR/<nombre>" >&2
+  exit 1
+fi
 echo "✅ $corridos/$encontrados tests $LABEL en verde."
