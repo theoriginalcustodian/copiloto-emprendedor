@@ -1,0 +1,21 @@
+# CONTROL POSITIVO del mapeo prototipo -> nativo. 5 filas resueltas A MANO el 2026-10-12,
+# ANTES de construir el instrumento. El instrumento tiene que REPRODUCIR estas 5 o su
+# corrida no se acepta. Elegidas para cubrir clases distintas de dificultad, no las faciles:
+#   esc         = id ruidoso (98 hits de substring) y con divergencia estructural conocida
+#   ingresos    = id directo; se eligio por una divergencia de voz que resultó FALSA (ver abajo)
+#   agenda      = id directo con pantalla propia, sin divergencia conocida
+#   card-presu  = FALSO NEGATIVO conocido del grep: existe con OTRO nombre
+#   vacio-visto = sin coincidencia literal Y sin veredicto; el mas probable de estar ausente
+#
+# Columnas: id / proto_path_linea / nativo_path_linea / divergencia
+# CORRECCION 2026-10-12, posterior a la escritura: la fila `ingresos` afirmaba una
+# divergencia que NO EXISTE. Se corrigio por EVIDENCIA (MicFuncion importa los mismos
+# BotonVoz/useVozComando que ChatView; PR #614 mergeado), no para que el control pase: la
+# columna que el verificador compara es `nativo`, y esa no cambio. Se deja constancia porque
+# un control positivo que se edita sin decir por que deja de ser un control.
+id	proto	nativo	divergencia
+esc	Prototipo frontend/odobi-ui/prototipo/index.html:1637	apps/mobile/src/shell/PanelFunciones.tsx + apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx	ASOMO=62 ausente en nativo (Mi dia no asoma) + rotulos de asidero + PanelFunciones no tiene canal para cerrarse desde afuera (props = escritorio/children/testID)
+ingresos	Prototipo frontend/odobi-ui/prototipo/index.html:2242	apps/mobile/src/modules/ingresos/PantallaIngresos.tsx:177-178	ninguna medida. CORREGIDO 2026-10-12: la lectura inicial acusaba a MicFuncion de ser la columna DESCARTADA del mockup 11 y era FALSA. Lo descartado fue «un segundo control de voz compitiendo con el que ya existe, y dos gramaticas para lo mismo»; MicFuncion.tsx:10,12 importa BotonVoz y useVozComando de ../chat/ — los MISMOS que ChatView.tsx:9,19 — y su docstring :42 dice «mismo gesto/maquina que ChatView, sin reescribirlos». Es el composer reutilizado en contexto de formulario. Enmienda: PR #614 MERGED 2026-09-22. Ratificado por CLAUDE.md:741 («lo que NO cambia es el mecanismo: dictar dentro de una funcion sigue sin abrir el chat»)
+agenda	Prototipo frontend/odobi-ui/prototipo/index.html:2502	apps/mobile/src/modules/midia/PantallaAgenda.tsx	ninguna medida aun; el cuerpo solo es comparable con Google Calendar conectado (matriz.mjs:314)
+card-presu	Prototipo frontend/odobi-ui/prototipo/index.html:3664	apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx	ninguna medida aun. EXISTE: el id card-presu no aparece literal en nativo, la pantalla si. Prueba por que el grep por nombre no sirve para decidir ausencia
+vacio-visto	Prototipo frontend/odobi-ui/prototipo/index.html:3675-3683, 3717-3723	apps/mobile/src/theme/EstadoVacio.tsx:37-39	NO EXISTE el estado veterano en nativo. La constante DIAS_PARA_RETIRAR_EXPLICACION se REEXPORTA (BL-W5, una sola N web+mobile) pero tiene CERO consumidores en apps/mobile: solo aparece en EstadoVacio.tsx y en su propio test. El prototipo si lo implementa (oculta la explicacion con dias.length >= CALMA_TOPE)
