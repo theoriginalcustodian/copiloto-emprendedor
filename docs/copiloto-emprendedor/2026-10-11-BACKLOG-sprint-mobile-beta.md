@@ -66,7 +66,7 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
 
 *Dueño: **backend**. Arranca **hoy**: no depende de ninguna decisión del operador ni del alta.*
 
-### B-1 · `#1014` — Un pago de MercadoPago se cuenta dos veces en «Entró» · ✅ FIX ESCRITO
+### B-1 · `#1014` — Un pago de MercadoPago se cuenta dos veces en «Entró» · ✅ MERGEADO (12/10)
 
 - **Medido:** `apps/copiloto/mp_web.py:53-71` escribe en **las dos** tablas que el `UNION ALL` de
   `apps/copiloto/inteligencia_queries.py:43-49` une. Presente desde el 06/10.
@@ -75,13 +75,14 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
   *Lección:* grepeá quién **escribe** el campo, no quién lo lee ni quién lo comenta.
 - **DoD:** un pago MP insertado aparece **una** vez en «Entró» y **una** en Ingresos, con test que lo
   **cuente** (no que verifique «aparece»: aparecer dos veces también es aparecer).
-- **Estado:** ✅ **fix escrito y verificado** — **2297 passed / 0 failed** en el VPS, más control
-  positivo: revertido el fix caen 2 tests con los números del defecto. Rama
-  `backend/entro-cuenta-el-pago-mp-dos-veces`, commit `ba1f8cbd`.
-- **Lo que falta:** **mergear.** Mientras no se mergee, el defecto sigue en `main` aunque el issue
-  parezca atendido. Gate: `scripts/gate.sh` → recibo del SHA → `ci-verde.sh <PR>`.
+- **Evidencia:** **2297 passed / 0 failed** en el VPS, más control positivo: revertido el fix caen
+  2 tests con los números del defecto. Medido sobre la rama de entonces; **la procedencia citable
+  hoy es el merge commit** `6d3b3579` (PR #1023), porque esa rama ya no existe.
+- ✅ **CERRADO:** mergeado en `main` en `6d3b3579` (PR #1023); issue cerrado el 12/10. La rama
+  `backend/entro-cuenta-el-pago-mp-dos-veces` ya no existe ⇒ **citá el merge commit**, no
+  `ba1f8cbd`, que no se resuelve en un clon.
 
-### B-2 · `#1015` — Ninguna fila valía `nota_credito`, y la app ofrecía anular una nota de crédito · ✅ FIX ESCRITO
+### B-2 · `#1015` — Ninguna fila valía `nota_credito`, y la app ofrecía anular una nota de crédito · ✅ MERGEADO (12/10)
 
 - **Medido:** el store escribía `estado` con un default único; **ninguna** fila podía valer
   `nota_credito`, así que una NC quedaba indistinguible de una factura y los fronts le ofrecían
@@ -89,9 +90,10 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
 - **DoD:** una NC se guarda como `nota_credito` y ningún front le ofrece «Anular». Un `estado`
   explícito pasado por el llamador **sigue ganando** a la derivación (si no, el fix rompe a quien ya
   lo pasaba).
-- **Estado:** ✅ **fix escrito y verificado** — 17/17 en el VPS + control positivo fallando con
-  `'emitida' != 'nota_credito'`. `apps/copiloto/afip_comprobante_store.py`, commit `fca3abae`.
-- **Lo que falta:** **mergear**, igual que B-1.
+- **Evidencia:** 17/17 en el VPS + control positivo fallando con `'emitida' != 'nota_credito'`, en
+  `apps/copiloto/afip_comprobante_store.py`. Procedencia citable: `6d3b3579` (PR #1023).
+- ✅ **CERRADO:** mergeado en `6d3b3579` (PR #1023) junto con B-1; issue cerrado el 12/10. Mismo criterio de
+  procedencia: el merge commit, no `fca3abae`.
 
 ### B-3 · `#1003` — «Lo facturado» se calcula con cuatro predicados distintos
 
@@ -390,7 +392,7 @@ lo primero de la cola.
 
 | | |
 |---|---|
-| ⚠️ **B-1 y B-2 están escritos, verificados y SIN MERGEAR** | el defecto sigue en `main` aunque el issue parezca atendido |
+| ✅ **RESUELTO — B-1 y B-2 están MERGEADOS** | `6d3b3579` (PR #1023), issues #1014/#1015 cerrados el 12/10. Ya no es un riesgo: el fix está en `main`, verificado por contenido (`cobro_store.py` · `afip_comprobante_store.py` · `inteligencia_queries.py` + sus tests) |
 | ⚠️ **`PantallaFacturacion.tsx` del checkout compartido está ATRASADO** | commitearlo tal como está revierte **+102 líneas** de la rama en vuelo. Medir el **signo** por archivo, contra `main`. Los 4 rojos y 8 errores de `tsc` de la suite mobile (986/991) caen todos ahí y **no son defecto de `main`** |
 | ✅ **REFUTADO: `/actividad?q=` NO da 400** | medido el 11/10 contra el handler: `apps/copiloto/actividad_web.py:99` declara `q: str = ""`, `:112` dice «`q` YA está implementada: ILIKE sobre título+detalle», `:120` la pasa al store. Lo del 400 lo afirmaba un **comentario** de mobile, ya corregido. **Tercer caso del día** de un comentario que declara un estado, sobrevive al cambio y el próximo lector le cree (los otros dos: B-1 y `#1001`). **No hay nada que esperar de backend acá** |
 | 🆕 **Asimetría de búsqueda web↔mobile** | medido: web busca **global** (`ActividadScreen.tsx:84`), mobile sólo **por función** (`BuscadorActividad.tsx:77`). Las dos pasan `q` y `q` funciona ⇒ no es un defecto, es una **decisión de UX sin dueño**: el docstring de mobile argumenta su lado y nadie comparó. Clasificar antes de cerrar la paridad |

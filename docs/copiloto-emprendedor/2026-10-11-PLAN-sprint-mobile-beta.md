@@ -129,7 +129,7 @@ que en web no se puede ni probar. Es un ítem de **decisión**, no de implementa
       └──────────┬──────────────────┘
                  ↓
   ┌──── B · el dinero (latente HOY, no mañana) ────┐
-  │  #1014 ✅ fix escrito  ·  #1015 ✅ fix escrito  │
+  │  #1014 ✅ MERGEADO     ·  #1015 ✅ MERGEADO     │
   │  #1003 predicado único de «lo facturado»       │
   │  #1004 NC sin número reservado                 │
   └──────────┬─────────────────────────────────────┘
@@ -191,8 +191,8 @@ de escribir otro.
 
 | issue | trabajo | DoD binario | estado |
 |---|---|---|---|
-| **#1014** | Un pago de MercadoPago se contaba **dos veces** en «Entró» desde el 06/10 | Un pago MP insertado aparece **una** vez en «Entró» y **una** en Ingresos, con test que lo cuente | ✅ **fix escrito y verificado** — 2297 passed / 0 failed en el VPS + control positivo con los números del defecto. Falta mergear |
-| **#1015** | Ninguna fila valía `estado='nota_credito'` ⇒ la app ofrecía **anular una nota de crédito** | Una NC se guarda como `nota_credito` y los fronts no le ofrecen «Anular»; un `estado` explícito sigue ganando a la derivación | ✅ **fix escrito y verificado** — 17/17 + control positivo. Falta mergear |
+| **#1014** | Un pago de MercadoPago se contaba **dos veces** en «Entró» desde el 06/10 | Un pago MP insertado aparece **una** vez en «Entró» y **una** en Ingresos, con test que lo cuente | ✅ **MERGEADO en `main`** — `6d3b3579` (PR #1023); 2297 passed / 0 failed en el VPS + control positivo con los números del defecto |
+| **#1015** | Ninguna fila valía `estado='nota_credito'` ⇒ la app ofrecía **anular una nota de crédito** | Una NC se guarda como `nota_credito` y los fronts no le ofrecen «Anular»; un `estado` explícito sigue ganando a la derivación | ✅ **MERGEADO en `main`** — `6d3b3579` (PR #1023); 17/17 + control positivo |
 | **#1003** | «Lo facturado» se calcula con **cuatro predicados distintos** según quién pregunte | **Un** predicado, en un solo lugar, y los cuatro llamadores lo usan. Test que compare las cuatro respuestas para el mismo mes | abierto |
 | **#1004** | La NC se emite **sin número reservado** — el fix ya existe en el otro call-site | La NC reserva número por el mismo mecanismo que la factura. Propagar el fix existente, no diseñar uno nuevo | abierto |
 
@@ -285,8 +285,12 @@ bloquean**: el criterio 1, y sólo el 1.
 
 ## 8. Deudas y riesgos declarados (no se descubren después)
 
-- **Dos fixes de dinero están escritos, verificados y SIN MERGEAR** (#1014, #1015). Mientras no se
-  mergeen, el defecto sigue en `main` aunque el issue parezca atendido.
+- ✅ **RESUELTO — los dos fixes de dinero están MERGEADOS** (#1014, #1015) en `6d3b3579` (PR #1023), y los
+  dos issues quedaron cerrados el 12/10. Medido por contenido, no por el título del PR: el merge
+  toca `cobro_store.py` (doble conteo del pago MP) y `afip_comprobante_store.py` +
+  `inteligencia_queries.py` (`nota_credito`), con tests en `test_contabilidad_integracion.py` y
+  `test_inteligencia_queries.py`. **La cita de procedencia es el merge commit**, no la rama: las
+  dos ramas ya no existen, así que «commit `ba1f8cbd`/`fca3abae`» no se puede resolver en un clon.
 - **`PantallaFacturacion.tsx` del checkout compartido está atrasado** respecto de la rama en vuelo.
   Commitearlo tal como está revierte +102 líneas ajenas. Medir el signo por archivo.
 - **El eje A no tiene instrumento válido todavía** (#1012). Hasta que lo tenga, cualquier cifra de
