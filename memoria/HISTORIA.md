@@ -467,3 +467,21 @@ Bajadas por **techo**, no por obsolescencia: el índice del repo estaba en **24.
 - **Sprint cerrado 2026-10-08 (bajado del indice el 2026-10-11).** **✅ SPRINT CERRADO 08/10 — `DEC-14`: cierra contra el ALCANCE (7/7 sobre `92fd8a06`), **§13 queda ABIERTO** (device). `DEC-15` cerró `DEC-11`.
 
 - **Bajado del índice el 2026-10-11** (techo de bytes; los crones están apagados por orden del operador, así que la línea no dirigía ninguna decisión). [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) - un turno mide OCIO.
+
+## Bajadas del indice 2026-10-12 — la regla ya la inyecta el hook CANON en cada turno
+
+El indice se habia pasado del techo (24.108 de 24.000 bytes en disco) y estaba truncando su
+cola en silencio. Estas ocho entradas se bajaron con un criterio que no pierde nada: el hook
+CANON llega con **cada** mensaje y dice la regla textualmente, asi que la linea de indice se
+pagaba dos veces. El caso y el porque siguen en su archivo, y el propio CANON declara que los
+slugs son «buscables en memoria/, NO leer por reflejo».
+
+- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) - si el operador puede preguntar "¿cómo seguimos?", fallaste.  _(regla en CANON 8a)_
+- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) - reordená por impacto÷costo, despachá YA.  _(regla en CANON 8b)_
+- [🚫💤 CERO ocio - tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) - único válido: terminó todo y reportó.  _(regla en CANON 8)_
+- [No codificar la esperanza - el TRONCO](no-codificar-la-esperanza-principio-raiz.md) - la prueba vale, la aserción no.  _(regla en CANON 1)_
+- [Raíz, no parche](raiz-no-parche.md) - hook `root_cause_suggester`  _(regla en CANON 6)_
+- [♻️🔒 Reutilizar es REGLA - inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) - todo `contrato_` abre con §0.  _(regla en CANON 3)_
+- [🔒⚡ 3 gates que FRENAN - script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) - nivel 1.  _(regla en CANON 4)_
+- [🕸️🔍 GRAFO primero, código después - para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) - MCP `graphity-code`.  _(regla en CANON 2)_
+
