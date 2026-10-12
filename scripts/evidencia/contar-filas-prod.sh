@@ -12,8 +12,22 @@
 #   - La lista de tablas es fija y vive acá (`TABLAS`), no se toma de la línea de comandos.
 #   - El único SQL que emite es `select count(*)` y, cuando se pide, `count(*) where <predicado fijo>`.
 #     No hay interpolación de nada que venga de afuera.
-#   - No acepta argumentos libres: sólo `--dry-run` y `--host <h>`. Cualquier otro ⇒ exit 2.
+#   - El HOST es fijo en el fuente. No hay flag ni env var para cambiarlo (ver abajo).
+#   - No acepta argumentos libres: sólo `--dry-run`. Cualquier otro ⇒ exit 2.
 #   - No imprime nunca la `DATABASE_URL` (la lee del environ del proceso y la pasa a psql sin echo).
+#
+# POR QUÉ EL HOST ES FIJO — la v1 se contradecía, y lo cazó una revisión de seguridad
+# ------------------------------------------------------------------------------------
+# La v1 aceptaba `--host <h>`, y eso anulaba la razón de existir del script. El patrón del permiso es
+# `Bash(bash scripts/evidencia/contar-filas-prod.sh:*)`, y el `:*` cubre CUALQUIER argumento: un
+# `--host` libre convertía «contar filas en nuestra instancia» en «SSH a cualquier destino». Peor
+# todavía: `ssh -o… "$HOST"` sin `--` delante hace que un valor que empieza con `-` lo lea ssh como
+# flag, y `-oProxyCommand=…` ejecuta un comando arbitrario en ESTA máquina.
+#
+# La lección es la del propio script aplicada a sí mismo: **un sujeto de permiso cuyo alcance depende
+# de un argumento no es un sujeto acotado.** Acoté el SQL y dejé abierto el destino, que es la mitad
+# que no estaba mirando. Si algún día hay que apuntar a otro host se edita la constante y queda en el
+# diff — igual que la lista de tablas.
 #
 # ES READ-ONLY POR CONSTRUCCIÓN, y eso se verifica: el guard de abajo rechaza la corrida si el SQL
 # armado contiene cualquier verbo de escritura. No es decoración — es el control que hace que este
@@ -21,22 +35,30 @@
 #
 # Uso:
 #   bash scripts/evidencia/contar-filas-prod.sh --dry-run     # imprime el SQL y NO se conecta
-#   bash scripts/evidencia/contar-filas-prod.sh               # cuenta contra el host por defecto
+#   bash scripts/evidencia/contar-filas-prod.sh               # cuenta contra el host fijo
 set -euo pipefail
 
-HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
-UNIT="uc-copiloto-web.service"
+# Fijos, a propósito: son el alcance del permiso, no parámetros.
+readonly HOST='unreal-copilot'
+readonly UNIT='uc-copiloto-web.service'
 DRY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1; shift ;;
-    --host) HOST="${2:?--host necesita un valor}"; shift 2 ;;
     *) echo "argumento no reconocido: $1" >&2
-       echo "sólo acepta --dry-run y --host <h>; la lista de tablas es fija y vive en el script" >&2
+       echo "sólo acepta --dry-run. El host y la lista de tablas son fijos y viven en el script:" >&2
+       echo "son el alcance del permiso, y un alcance que se pasa por argumento no es un alcance." >&2
        exit 2 ;;
   esac
 done
+
+# Cinturón además de tirantes: aunque HOST sea una constante, el destino nunca puede empezar con `-`
+# ni traer metacaracteres. Si esta constante se edita mal en el futuro, corta acá y no en ssh.
+case "$HOST" in
+  -*|*[!A-Za-z0-9.-]*|'')
+    echo "ABORTA: host inválido o con forma de flag: '$HOST'" >&2; exit 2 ;;
+esac
 
 # Cada entrada: etiqueta | tabla | predicado (vacío = todas las filas).
 # Para agregar una fila, se edita ACÁ — es la única superficie de cambio, y queda en el diff.
@@ -77,7 +99,7 @@ if [ "$DRY" = "1" ]; then
 fi
 
 # La URL se lee del environ del proceso vivo y NUNCA se imprime: va por stdin del psql remoto.
-ssh -o ConnectTimeout=15 -o BatchMode=yes "$HOST" \
+ssh -o ConnectTimeout=15 -o BatchMode=yes -- "$HOST" \
   "P=\$(systemctl show -p MainPID --value ${UNIT}); \
    DB=\$(tr '\\0' '\\n' < /proc/\$P/environ | grep '^DATABASE_URL=' | cut -d= -f2-); \
    if [ -z \"\$DB\" ]; then echo 'SIN DATABASE_URL en el proceso' >&2; exit 4; fi; \

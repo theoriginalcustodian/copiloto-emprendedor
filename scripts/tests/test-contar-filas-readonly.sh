@@ -59,9 +59,44 @@ codigo=$?
 set -e
 [ "$codigo" = "2" ] && ok "argumento desconocido ⇒ exit 2" || malo "argumento desconocido dio exit=$codigo"
 
+echo "== 4. el destino NO se puede pasar por argumento (regresión de seguridad) =="
+# La v1 aceptaba `--host`, y con el patrón de permiso `...contar-filas-prod.sh:*` eso convertía
+# «contar filas en nuestra instancia» en «SSH a cualquier destino». Si alguien lo reintroduce, acá
+# se cae. Dos formas de pedirlo, las dos tienen que ser rechazadas.
+for intento in "--host" "--host=otro-host"; do
+  set +e
+  bash "$ORIGINAL" "$intento" otro-host >/dev/null 2>&1
+  codigo=$?
+  set -e
+  [ "$codigo" = "2" ] && ok "'$intento' rechazado (exit 2)" \
+    || malo "'$intento' dio exit=$codigo: el destino volvió a ser parametrizable"
+done
+
+echo "== 5. CONTROL POSITIVO del guard de host: una constante con forma de flag tiene que cortar =="
+# `ssh -o… -- "$HOST"` ya neutraliza esto, pero el guard existe para cortar ANTES y con un mensaje
+# propio si alguien edita mal la constante. Un guard que nunca se vio disparar no se sabe si existe.
+python -I - "$ORIGINAL" "$TMP/host-malo.sh" <<'PY'
+import io, sys
+orig, dest = sys.argv[1], sys.argv[2]
+s = io.open(orig, encoding='utf-8').read()
+ancla = "readonly HOST='unreal-copilot'"
+assert ancla in s, 'el ancla del host no existe: el test quedo rancio respecto del script'
+s = s.replace(ancla, "readonly HOST='-oProxyCommand=touch /tmp/pwned'", 1)
+io.open(dest, 'w', encoding='utf-8', newline='\n').write(s)
+PY
+set +e
+salida="$(bash "$TMP/host-malo.sh" 2>&1)"
+codigo=$?
+set -e
+if [ "$codigo" = "2" ] && echo "$salida" | grep -q "host inválido"; then
+  ok "el guard de host disparó (exit 2) antes de llamar a ssh"
+else
+  malo "el guard de host NO disparó: exit=$codigo. Salida: ${salida:0:200}"
+fi
+
 echo
 if [ "$fallos" = "0" ]; then
-  echo "VERDE: 3/3 — y el control positivo se ejercitó, no se asumió."
+  echo "VERDE: 6/6 — los tres guards se vieron disparar, no se asumieron."
   exit 0
 fi
 echo "ROJO: $fallos control(es) fallaron."
