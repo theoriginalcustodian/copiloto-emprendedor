@@ -50,3 +50,40 @@ es [[el-artefacto-que-genera-el-instrumento-no-tiene-dueno]] con el artefacto ad
 Hermana de [[un-control-positivo-con-esperado-falso-acusa-al-script]] —ahí se corrompe el criterio, acá
 el **sistema medido**— y de [[pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo]], que es el
 mismo descuido sobre la evidencia en vez de sobre el disco.
+
+---
+
+## 🔁 Refuerzo (2026-10-11): tenía las DOS defensas puestas y el mutante sobrevivió igual
+
+Control positivo de `esAnulable` en los dos fronts (F1.3 / issue #1015). Hice exactamente lo que
+prescribe esta entrada: revert en `trap ... EXIT INT TERM` (el `finally` de bash) **y** backup en un
+archivo, no en una variable. **En mobile el mutante quedó vivo en el working tree de todas formas.**
+
+Dos causas, y ninguna estaba en la lista de arriba:
+
+1. **El `trap` guardó una ruta RELATIVA y el `cwd` cambió entre armarlo y dispararlo.** Armé el trap
+   con `F=apps/mobile/src/.../X.tsx`, después hice `cd apps/mobile` para correr jest. Al salir, el
+   `mv` resolvió `apps/mobile/apps/mobile/src/...` — que no existe. El `trap` **sí corrió**; lo que
+   falló fue a dónde apuntaba. ⇒ **en un `trap`, las rutas van absolutas**, porque el `cwd` del
+   momento de disparo no es el de armado.
+2. **El mensaje de éxito no estaba condicionado al efecto.** El trap era
+   `mv -f "$F.backup" "$F" 2>/dev/null; echo "[trap] original restaurado"`. El `;` hace que el `echo`
+   corra **siempre**, y el `2>/dev/null` se comió la queja del `mv`. El instrumento imprimió
+   «original restaurado» mientras el disco tenía el mutante — exactamente
+   [[prometer-no-es-ejecutar-el-gate-media-la-palabra]], pero dentro del limpiador.
+   ⇒ `mv ... && echo OK || echo "FALLO EL REVERT"`, nunca `;`.
+
+**Y la asimetría es la prueba:** el mismo patrón, dos corridas. **Web quedó limpio y mobile no**, y la
+única diferencia fue un `cd` en medio. Una corrida limpia no acredita a la siguiente cuando el
+instrumento depende del `cwd` ([[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]] — acá sí
+decía cuál estaba mal, pero sólo porque medí las dos).
+
+**Lo que lo cazó fue el control de cierre que esta entrada ya pedía** —`grep -c MUTANTE` + `git status`
+sobre el disco— y lo cacé **porque lo corrí como paso aparte, después del trap**. Si lo hubiera puesto
+*dentro* del trap, habría heredado el mismo `cwd` roto y me habría dicho que estaba todo bien.
+⇒ el control del disco va **fuera** del limpiador, en un paso que no comparte su estado.
+
+**Y el daño que no ocurrió lo evitó CANON 9:** el commit se armó con `git add <rutas explícitas>` de
+los dos `.test.tsx`, así que el `.tsx` mutado **quedó afuera**. Con `git add -A` el mutante se iba a la
+rama del PR. La regla de las rutas explícitas no es sólo contra el checkout compartido: también es la
+red que ataja a este modo de falla.
