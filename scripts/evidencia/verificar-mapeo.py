@@ -163,6 +163,18 @@ def elemento_ausente(fila):
                 and re.search(r"no existe", fila[I_DIVERG], re.I))
 
 
+# Filas que una decision AJENA bloquea, con quien la desbloquea. La cabecera del mapeo
+# declaraba «las filas van marcadas [ASSUMED_PENDING_VERIFY]» y NINGUNA lo estaba: un
+# comentario que declara una proteccion apaga la busqueda del proximo que lea. Este control
+# mide la marca en los DOS sentidos, porque cada direccion falla distinto: una fila bloqueada
+# SIN marca se implementa a ciegas; una marca sin entrada aca es huerfana y nadie sabe que
+# respuesta la libera, asi que nunca se levanta.
+BLOQUEADAS = {
+    "esc": "estado de reposo de las 3 capas (pedido_ al operador, 2026-10-12)",
+}
+MARCA = "[ASSUMED_PENDING_VERIFY]"
+
+
 def corrida(filas, univ, ctl):
     """Devuelve (lista de fallos, dict de metricas). No imprime: asi `--canario` la
     reusa sin ensuciar la salida."""
@@ -206,6 +218,18 @@ def corrida(filas, univ, ctl):
                       "mapeo volvio a medir el nombre." % (len(reaparecen),
                                                            ", ".join(reaparecen)))
 
+    sin_marca = [i for i in BLOQUEADAS if i in filas and MARCA not in filas[i][I_DIVERG]]
+    if sin_marca:
+        fallos.append("CONTROL 5 (marca): %d fila(s) que una decision ajena bloquea NO llevan "
+                      "%s en su divergencia: %s. Se implementan a ciegas."
+                      % (len(sin_marca), MARCA, ", ".join(sorted(sin_marca))))
+    marca_huerfana = sorted(i for i, c in filas.items()
+                            if MARCA in c[I_DIVERG] and i not in BLOQUEADAS)
+    if marca_huerfana:
+        fallos.append("CONTROL 5 (marca): %d fila(s) marcada(s) %s sin entrada en BLOQUEADAS: "
+                      "%s. Nadie sabe que respuesta las libera, asi que no se levantan nunca."
+                      % (len(marca_huerfana), MARCA, ", ".join(marca_huerfana)))
+
     met = {
         "filas": len(filas),
         "padron": len(univ),
@@ -215,6 +239,9 @@ def corrida(filas, univ, ctl):
         "control_positivo_filas": len(ctl),
         "control_positivo_no_reproducidas": no_repro,
         "falsos_negativos_reaparecidos": reaparecen,
+        "bloqueadas_sin_marca": sorted(sin_marca),
+        "marca_huerfana": marca_huerfana,
+        "bloqueadas_declaradas": sorted(BLOQUEADAS),
         "pantalla_ausente": sorted(i for i, c in filas.items()
                                    if pantalla_ausente(c)),
         "elemento_ausente": sorted(i for i, c in filas.items()
@@ -264,6 +291,19 @@ def main():
             f5[kf] = (f5[kf][I_PROTO], "NO EXISTE: busque en todos lados",
                       f5[kf][I_DIVERG])
         pruebas.append(("4 negativo (declaro ausente un falso negativo)", f5, univ, ctl, kf))
+        # Dos sabotajes, uno por direccion: el control 5 tiene dos ramas y un solo canario
+        # acreditaria la mitad.
+        f6 = dict(filas)
+        kb = next((k for k in sorted(BLOQUEADAS) if k in f6), None)
+        if kb:
+            f6[kb] = (f6[kb][I_PROTO], f6[kb][I_NATIVO],
+                      f6[kb][I_DIVERG].replace(MARCA, ""))
+        pruebas.append(("5a marca (le saco la marca a una bloqueada)", f6, univ, ctl, kb))
+        f7 = dict(filas)
+        kh = next((k for k in sorted(f7) if k not in BLOQUEADAS), None)
+        if kh:
+            f7[kh] = (f7[kh][I_PROTO], f7[kh][I_NATIVO], MARCA + " " + f7[kh][I_DIVERG])
+        pruebas.append(("5b marca (marco una fila que nadie bloquea)", f7, univ, ctl, kh))
 
         print("=== CANARIO: cada control roto de a uno debe FALLAR ===")
         malos = inyectables = 0
@@ -309,6 +349,10 @@ def main():
           % (met["control_positivo_filas"], len(met["control_positivo_no_reproducidas"])))
     print("CONTROL NEGATIVO: falsos negativos que reaparecen como NO EXISTE: %d de %d"
           % (len(met["falsos_negativos_reaparecidos"]), len(FALSOS_NEGATIVOS)))
+    print("CONTROL MARCA: %d fila(s) bloqueada(s) declarada(s) · sin marca: %d · "
+          "marca huerfana: %d"
+          % (len(met["bloqueadas_declaradas"]), len(met["bloqueadas_sin_marca"]),
+             len(met["marca_huerfana"])))
     print("--- del mapeo, para leer (NO son fallos) ---")
     print("  PANTALLA ausente, sin contraparte nativa (pantalla nueva): %d  %s"
           % (len(met["pantalla_ausente"]), ", ".join(met["pantalla_ausente"])))
@@ -322,7 +366,7 @@ def main():
             print("ROJO: %s" % f)
         print("VEREDICTO: el mapeo NO se acepta (%d control(es) fallando)." % len(fallos))
         return 1
-    print("VEREDICTO: los 4 controles pasan. El mapeo se acepta.")
+    print("VEREDICTO: los 5 controles pasan. El mapeo se acepta.")
     return 0
 
 

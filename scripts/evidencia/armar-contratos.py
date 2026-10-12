@@ -92,6 +92,14 @@ def clasificar(i, fila):
 def dod(i, fila):
     """DoD binario, construido citando lo medido en la propia fila. No se inventa."""
     div = fila[V.I_DIVERG]
+    # La marca va en el RENGLON, no solo en la cabecera. Un bloqueo declarado arriba y
+    # ausente de la fila que circula no frena a nadie: el que toma trabajo lee su renglon.
+    # `V.BLOQUEADAS` es la misma tabla que el control 5 del verificador — una sola
+    # definicion, o el doc dice una cosa y el gate mide otra.
+    if i in V.BLOQUEADAS:
+        return ("**[ASSUMED_PENDING_VERIFY] NO SE IMPLEMENTA.** Bloqueada por: %s. El DoD lo "
+                "fija la respuesta; hasta entonces no se toca, ni la opcion recomendada."
+                % V.BLOQUEADAS[i])
     if V.pantalla_ausente(fila):
         return ("La pantalla EXISTE y se llega a ella navegando; el id `%s` del prototipo "
                 "tiene contraparte con `path:linea`. Escrita-e-inalcanzable NO cuenta." % i)
