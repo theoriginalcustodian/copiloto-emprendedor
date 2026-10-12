@@ -89,3 +89,26 @@ de la UI, incluido un **polling** que llama con `intentos=2` a propósito y corr
 comió su propio timeout antes de medir. **Un modo nuevo de un instrumento necesita su COSTO medido
 antes de embarcarlo**, no sólo su corrección — la variante barata (pausa corta, intentos los decide
 quien llama) hace exactamente lo mismo.
+
+---
+
+## Refuerzo 2026-10-12 — REINCIDÍ, y el agravante es la conclusión que el silencio me hizo inventar
+
+Lancé `bash scripts/ci/tests-coordinacion.sh 2>&1 | tail -6` en background. A los 9 minutos el
+archivo de salida tenía **0 líneas**, y de ahí concluí —en voz alta— *«no es lentitud, es que no
+arrancó»*. Falso: `tail` **no emite nada hasta que el proceso termina**, así que el vacío no era
+evidencia de nada. Mi propio pipe fabricó el síntoma y después le puse una causa.
+
+**Esto es peor que perder el log**, que es lo que esta entrada ya decía: el buffer de `tail` no sólo
+esconde la evidencia, **produce un estado que se parece a una falla distinta** (proceso colgado /
+no arrancado). El error siguiente no es «no sé qué pasó», es diagnosticar lo que no pasó.
+
+**How to apply:**
+
+6. Un proceso en background se redirige a un **archivo completo** (`> log 2>&1`) y se mira con
+   `tail` **al leerlo**, nunca dentro del comando que corre.
+7. **0 líneas de salida no es un dato** si hay un `tail`/`head`/`sort` en la tubería: antes de
+   explicar el vacío, preguntá si tu propio comando podía producirlo
+   ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
+8. La clase se repite **en el mismo turno en que la nombrás**: hoy escribí el refuerzo del vacío
+   mal leído y minutos después leí un vacío mal.
