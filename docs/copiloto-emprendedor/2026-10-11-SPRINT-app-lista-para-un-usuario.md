@@ -115,9 +115,19 @@ Medido por lectura del código siguiendo el import real, no por nombre de archiv
 Orden por dependencia, no por severidad. **Los ids `F*` son nuevos; los `M*` ya existían en el
 ARRANQUE del 08/10 y se reusan sin renumerar.**
 
-### 🔴 F0 · Hoy un usuario no puede entrar — bloqueante absoluto
+### 🔴 F0 · Hoy un usuario no puede entrar
 
-Sin esto, los otros siete criterios son inverificables con un usuario real.
+⚠️ **Corrijo lo que decía la primera versión de esta sección** («sin esto los otros siete criterios
+son inverificables»): **es falso**. `_email_en_allowlist` (`web.py:581`) gobierna el **alta**, no el
+login de una cuenta que ya existe — por eso el usuario canónico `e2e-device@copiloto.test` entra sin
+figurar entre los 4 emails de la allowlist. **`F0` bloquea sólo el criterio 1.** Los criterios 2 a 7
+se pueden medir **hoy**, con el usuario canónico, sin esperar ninguna decisión del operador.
+
+**Y de ahí el orden del sprint, que es contraintuitivo:** `F1` va **antes** que `F0`. Hoy no hay
+tráfico real (el relevamiento de código lo declara en la sección de la fila 1, y es lo que ya sabía
+el repo: *desplegado ≠ con clientes*), así que el dinero mal contado es **latente**, no un incendio.
+Abrir el alta primero invierte eso: el primer usuario real pasa a ser **quien descubre el doble
+conteo**. Se arregla el dinero, después se deja entrar a alguien.
 
 | id | trabajo | dueño | DoD binario |
 |---|---|---|---|
