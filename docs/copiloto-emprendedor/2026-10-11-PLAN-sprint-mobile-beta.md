@@ -224,7 +224,7 @@ de escribir otro.
 |---|---|---|
 | **#1005** | Un Responsable Inscripto lee «ya podés facturar» y la emisión **explota** con `NotImplementedError` | O la emisión funciona para ese caso, o la promesa no se muestra. Nunca las dos |
 | **#1006** | El catálogo de apps **anuncia herramientas que fueron podadas** | Lo anunciado y lo cableado coinciden, ítem por ítem |
-| **#1020** | **Cinco capacidades del backend** cableadas que ninguna app llama (3 con la función del core escrita y sin consumidor). ✅ **DECIDIDO (2026-10-12): se CABLEAN las cinco** | Las **cuatro** no bloqueadas, alcanzables desde la UI en **las dos** plataformas, cada una con su renglón y dueño. **Orden forzado:** `imputacion` **antes** de `margen` — el margen se calcula sobre gastos imputados, así que sin imputación todos los márgenes salen incompletos. **DoD de UI:** ninguna pantalla muestra margen sin `gastos_imputados` al lado (`gastos_web.py:183`). `cambiar-email` 🔴 **bloqueada** por #1002: sin SMTP no hay cómo verificar la dirección nueva |
+| **#1020** | **Cinco capacidades del backend** cableadas que ninguna app llama (3 con la función del core escrita y sin consumidor). ✅ **DECIDIDO (2026-10-12): se cablean CUATRO y se RETIRA `POST /inteligencia/chat`** | Las **tres** no bloqueadas, alcanzables desde la UI en **las dos** plataformas, cada una con su renglón y dueño. **Orden forzado:** `imputacion` **antes** de `margen` — el margen se calcula sobre gastos imputados, así que sin imputación todos los márgenes salen incompletos. **DoD de UI:** ninguna pantalla muestra margen sin `gastos_imputados` al lado (`gastos_web.py:183`). `cambiar-email` 🔴 **bloqueada** por #1002: sin SMTP no hay cómo verificar la dirección nueva |
 
 ### Bloque F · Evidencia en device *(dueño: frontend, dueño único del device)*
 
@@ -294,8 +294,9 @@ arranque del sprint). Ya no bloquean nada: lo que sigue es ejecución con dueño
    —fuerte, porque la declara el propio código en dos lugares (`AppShell.tsx:116-121`,
    `DesktopShell.tsx:89-91`)— pero el issue la marca `NO_PUDE_DETERMINAR`, y borrar sobre una lectura
    estática es la forma barata de romper algo que sí tenía un caller.
-5. ~~**#1020 — cinco capacidades sin consumidor**~~ — **DECIDIDO: se CABLEAN las cinco. Ninguna se
-   retira.** Esto **agrega alcance**, y se declara acá para que no aparezca como sorpresa a mitad del
+5. ~~**#1020 — cinco capacidades sin consumidor**~~ — **DECIDIDO: se cablean CUATRO; `POST /inteligencia/chat` se RETIRA.** La decisión original fue
+   «las cinco», y se corrigió el mismo día con evidencia: ese endpoint no es una capacidad que falta,
+   es una que el producto **reemplazó a propósito** por el chat durable, que es el moat. Esto **agrega alcance**, y se declara acá para que no aparezca como sorpresa a mitad del
    sprint; el detalle, los dos hallazgos que lo reordenan y la colisión con la decisión 3 están en la
    ficha **E-3**.
 

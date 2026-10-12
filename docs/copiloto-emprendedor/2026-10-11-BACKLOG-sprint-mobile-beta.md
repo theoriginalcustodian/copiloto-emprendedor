@@ -336,8 +336,12 @@ no el arranque del sprint.***
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
   (endpoint + función del core). **Ninguna queda en el medio** — una capacidad a medias es la que el
   próximo relevamiento vuelve a contar como hueco.
-- ✅ **DECIDIDO (2026-10-12) — se CABLEAN las cinco. Ninguna se retira.** Lo que sigue no discute la
-  decisión: declara lo que cuesta y los dos hallazgos que cambian el **orden**, medidos al registrarla.
+- ✅ **DECIDIDO (2026-10-12) — se cablean CUATRO; `POST /inteligencia/chat` se RETIRA.**
+- 🔄 **La decisión se corrigió el mismo día, y vale registrar por qué:** el operador dijo primero «las
+  cinco, ninguna se retira». Al medir cómo ejecutarlo apareció que  **no es una
+  capacidad que falta: es una que el producto reemplazó a propósito.** Con esa evidencia el operador
+  decidió retirarla. Lo que cambió no fue el criterio, fue el sujeto — la lista decía «capacidades sin
+  consumidor» y una de las cinco era **el camino viejo de una capacidad que sí funciona**.
 
 **Hallazgo 1 — no son cinco ítems, son cuatro más una cadena.** `PUT /gastos/{id}/imputacion` y
 `GET /trabajos/{eslabon}/{ref}/margen` **son un solo flujo**: el margen se calcula sobre gastos
