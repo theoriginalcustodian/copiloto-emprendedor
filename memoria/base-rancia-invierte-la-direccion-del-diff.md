@@ -60,3 +60,29 @@ Relacionado: [[restar-el-merge-base-no-distingue-que-main-lo-reescribio-mejor]] 
 [[el-medidor-corrido-en-el-arbol-mezclado-acusa-al-repo]] ·
 [[un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado]] ·
 [[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]]
+
+## Refuerzo 2026-10-12 — en un checkout compartido la base rancia NO se arregla, se EVITA al crear el worktree
+
+La entrada enseña a **detectar** la base rancia. Falta el movimiento de salida, porque el obvio está
+prohibido: con checkout compartido, `pull` / `checkout` / `reset` están vetados por CANON 9 — pisan
+el trabajo de otra sesión. Así que el que detecta que su base está vieja queda sin herramienta y
+termina midiendo contra ella «porque es lo que hay».
+
+**El movimiento correcto es anterior: la rama se crea desde el ref remoto, en un worktree nuevo.**
+
+```bash
+git worktree add -b <rama-nueva> /c/gfw-src/wt-<slug> origin/main
+# → "branch '<rama-nueva>' set up to track 'origin/main'"
+# → HEAD queda en el commit de origin/main, no en el de tu checkout
+```
+
+Eso no toca ningún checkout existente y la base nace fresca, así que no hay nada que diagnosticar
+después. Medido el 2026-10-12: dos worktrees míos (`wt-mapeo`, `wt-ceguera`) habían quedado sobre
+ramas **ya mergeadas**; corregir un doc desde cualquiera de los dos habría medido el diff contra una
+base de dos merges atrás, que es exactamente la inversión que describe esta entrada. Crear
+`wt-mapfix` desde `origin/main` costó un comando.
+
+**Y el corolario que vale aparte:** un worktree sobre una rama ya mergeada **no es reutilizable** —
+es una base rancia esperando ser usada. Cuando su PR se mergea, el worktree deja de ser un lugar
+donde trabajar y pasa a ser sólo un lugar donde leer. Para el próximo trabajo, uno nuevo desde
+`origin/main`; no le busques la vuelta al que ya tenés abierto.
