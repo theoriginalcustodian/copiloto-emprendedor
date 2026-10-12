@@ -882,6 +882,12 @@ def descubrir_documentos(ids):
     # PR y mandaba a buscar renombres inexistentes. Un control de ceguera que corre DESPUES del
     # guard que la ceguera dispara no protege nada: el mensaje elige la causa equivocada.
     # Sale por exit 2, que en todo este script ya significa «no puedo medir», no por exit 8.
+    #
+    # 🔴 LA CEGUERA SE DECLARA ANTES DEL GUARD, A PROPOSITO. Un control de ceguera puesto
+    # despues del `sys.exit` de abajo no se imprime justamente en el caso que mas lo
+    # necesita (buzon ausente: CI, clon limpio). No es gate: no rompe nada ni mueve
+    # ninguna cifra -- solo convierte un verde POR AUSENCIA en un alcance DECLARADO.
+    declarar_lo_que_no_miro(ids)
     if not (COORD / "abierto").exists() and not (COORD / "cerrado").exists():
         print(f"ABORTA: no veo el buzon en {COORD}. `coordinacion/` no esta versionada, asi que en"
               f" CI o en un clon limpio este corpus no existe -- y un 0 de aca seria del"
@@ -998,6 +1004,66 @@ def descubrir_documentos(ids):
         sys.exit(11)
 
     return candidatos, descartados, cobertura
+
+
+def declarar_lo_que_no_miro(ids):
+    """Imprime los documentos CON veredictos que este corpus no barre. No es gate.
+
+    POR QUE EXISTE: el descubrimiento es glob sobre el BUZON (C3-15). Un documento que mide
+    el criterio y vive en `docs/copiloto-emprendedor/Auditorias/` nunca es candidato, asi que
+    nunca rompe el ratchet de «sin clasificar» y nunca entra al corpus. No da sintoma: ni rojo
+    ni aviso. `docs_control` prueba que el glob ENCUENTRA lo que debe; nada probaba que
+    declarara lo que NO mira, y un instrumento que no mira nunca falla.
+
+    CASO RAIZ (2026-10-12): frontend2 reporto `caida`/`tablero` en conflicto nuevo. Medido
+    desde `main`, `conflictos_nuevos` da `[]` y eso se leyo como refutacion. No lo era: el
+    `COHERENTE` de su re-medicion vive en
+    `Auditorias/2026-10-08-BL-Q5-matriz-pantallas-re-medida-92fd8a06.md` (53 ids, en
+    `origin/main`) y este corpus tiene CERO menciones de ese documento. El no-conflicto era
+    por AUSENCIA del dato, no por acuerdo entre mediciones.
+
+    Y las dos decisiones que se cruzan son correctas por separado: el corpus es el buzon
+    porque ahi circulan los mensajes, y la regla del operador (2026-08-06) manda TODA auditoria
+    a `Auditorias/`. El agujero vive en el PAR, no en ninguna de las dos.
+
+    NO cambia ninguna cifra ni reabre el criterio 3 (`DEC-18`: un hallazgo no reabre un ✅).
+    Ensanchar el glob a `Auditorias/` es una decision MAYOR -- moveria el denominador de un
+    criterio ya cerrado y dejaria ~19 candidatos sin clasificar, o sea `exit 8` para todos.
+    Esta funcion solo hace que el alcance se LEA en cada corrida.
+    """
+    import re as _re
+    aud = RAIZ / "docs" / "copiloto-emprendedor" / "Auditorias"
+    if not aud.is_dir():
+        print("ALCANCE: no veo %s, asi que no puedo declarar que me pierdo. Vacio = PREGUNTA."
+              % aud)
+        return
+    vocab = _re.compile(r"COHERENTE|DESV[ÍI]O|NO_MEDIBLE|FUERA-DE-REFERENCIA")
+    docs, tocados = [], set()
+    for f in sorted(aud.rglob("*.md")):
+        try:
+            txt = f.read_text("utf-8", errors="replace")
+        except OSError:
+            continue
+        if not vocab.search(txt):
+            continue
+        pres = {i for i in ids if _re.search(r"`%s`" % _re.escape(i), txt)}
+        if not pres:
+            continue
+        docs.append((len(pres), f.name))
+        tocados |= pres
+    if not docs:
+        # Vacio = PREGUNTA, no «nada que declarar»: o cambio el vocabulario, o movieron la carpeta.
+        print("ALCANCE: 0 docs con veredictos en Auditorias/. Si eso sorprende, el barrido dejo "
+              "de mirar: el vocabulario o la ruta cambiaron.")
+        return
+    print("ALCANCE DECLARADO -- lo que este corpus NO barre: %d doc(s) en Auditorias/ con "
+          "vocabulario de veredicto, que tocan %d de %d ids del padron." % (
+              len(docs), len(tocados), len(ids)))
+    for n, nombre in sorted(docs, reverse=True)[:3]:
+        print("   %3d ids  %s" % (n, nombre[:76]))
+    print("   El corpus es el BUZON (C3-15). Estos NO son mediciones perdidas -- muchos CITAN, "
+          "no miden, y el formato no codifica el rol. Pero un `conflictos_nuevos: []` NO los "
+          "tuvo en cuenta: no es acuerdo, es ausencia.")
 
 
 def docs_control(candidatos):
