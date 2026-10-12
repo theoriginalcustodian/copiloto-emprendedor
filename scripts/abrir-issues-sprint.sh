@@ -71,7 +71,7 @@ email no se puede completar desde la web ni con la allowlist resuelta.
 **DoD:** alta por email completada de punta a punta desde la web, con la respuesta del endpoint
 adjunta.")
 
-ITEMS+=("F0.3 · Mobile no tiene pantalla de aceptacion legal (la web si) ⟂ bug,sprint-app-lista ⟂
+ITEMS+=("F0.3 · Mobile no cablea la ACEPTACION legal (la pantalla de lectura ya existe) y la aceptacion no condiciona nada en ninguna plataforma ⟂ bug,sprint-app-lista ⟂
 **Medido:** en mobile el campo viaja pero el verbo no existe — \`aceptarLegal\` da **0 archivos** en
 \`apps/mobile\` contra 7 en web; \`legal_aceptado\` aparece en 4 archivos de mobile y **ninguno
 productivo** (todos fixtures). Control negativo \`aceptarLegalZZZ\` → 0, asi que el grep discrimina.
@@ -157,7 +157,7 @@ falla, el usuario no se entera. Queda creyendo que anulo.
 **DoD:** un fallo de anulacion se ve en pantalla, con el motivo. Ejercitado en device con el backend
 devolviendo error.")
 
-ITEMS+=("F3.4 · Abrir el escritorio cuesta dos gestos en vez de uno ⟂ bug,mobile,sprint-app-lista ⟂
+ITEMS+=("F3.4 · El toque de la pestaña del escritorio es INTERMITENTE: abre 4 de 6 ciclos, y al primer toque 1 de 6 ⟂ bug,mobile,sprint-app-lista ⟂
 \`PanelFunciones.tsx:85-105,126,132-140\`: el panel exige dos gestos para abrirse.
 
 **Antes de tocar nada:** \`swmansion-rn-gestures\` (composicion Pan/scroll) y el equivalente de
@@ -181,7 +181,7 @@ evidencia falsa) y el usuario de prueba es **uno solo, canonico**.
 
 **DoD:** las 6 cadenas con evidencia de corrida en device, una por una.")
 
-ITEMS+=("F4.2 · 15 pantallas del relevamiento mobile nunca se midieron (eje A) ⟂ test,mobile,sprint-app-lista ⟂
+ITEMS+=("F4.2 · El eje A tiene 1 pantalla verificada de 21, no 6: el retiro de H-60 invalido las que se midieron con las animaciones apagadas ⟂ test,mobile,sprint-app-lista ⟂
 El relevamiento mobile dejo **15 pantallas sin medir** y 5 casillas \`NO_ATRIBUIBLE\` en el eje A. Una
 pantalla no medida no es una pantalla que funciona.
 
@@ -240,6 +240,167 @@ facturado. Medido, **no** lo es.
 positivo: con el fix revertido cae con \`assert 'emitida' == 'nota_credito'\`.
 
 **DoD:** el fix en \`main\` y desplegado.")
+
+# ── Items del barrido de paridad web-vs-mobile (2026-10-11) ───────────────────────────────────
+ITEMS+=("F5.1 · Mobile no tiene alta de cuenta: un usuario que baja la app no puede crearse un usuario desde el telefono ⟂ bug,sprint-app-lista,mobile ⟂
+**Medido el 2026-10-11** por dos barridos independientes (pantallas y endpoints), que
+coinciden.
+
+\`POST /auth/signup\` (\`apps/copiloto/web.py:1294\`) lo llama **solo web**, desde
+\`apps/copiloto-web/src/auth/SignupScreen.tsx:90\` (via \`apps/copiloto-web/src/lib/api/auth.ts:14\`).
+En mobile no existe ni la pantalla ni la llamada, y el codigo lo dice literal:
+\`apps/mobile/src/modules/ajustes/PantallaCuenta.tsx:58\` — «\`PantallaLogin\` es login-only (no hay
+\`SignupScreen\` en esta plataforma, solo en web)».
+
+Busquedas que lo sostienen (no es «no lo encontre»):
+- \`grep -rni \"signup|crear cuenta|registr\" apps/mobile/src apps/mobile/app\` -> 4 hits, **todos
+  comentarios**; ninguna pantalla ni llamada.
+- \`grep -rn \"aceptarLegal|legal/aceptar\" apps/mobile/src\` -> **0** (la aceptacion legal tampoco, ver
+  #1001: en web vive DENTRO del signup).
+
+**Por que es el bloqueante mas caro de la beta:** la beta se entrega como app. Un emprendedor que la
+instala tiene que poder crear su cuenta ahi, sin que nadie toque una env var ni la base. Hoy el unico
+camino de alta es la web, y encima incompleto (#1000).
+
+**Depende de #999** (la allowlist es fail-closed) y **de #1000** (el alta por email de web pide un
+\`invite_token\` que el cliente no manda): construir el alta en mobile contra un backend cuyo contrato
+de alta todavia no cierra es codificar la esperanza. Primero el contrato, despues las dos pantallas.
+
+**DoD:** un email nuevo completa el alta **desde el telefono**, acepta el legal, y entra — sin que
+nadie edite una env var ni la DB. Con test del camino real, no del happy-path mockeado.")
+
+ITEMS+=("F5.2 · El chat de mobile no tiene renderer de artefactos ni desambiguacion multi-opcion ⟂ bug,sprint-app-lista,mobile ⟂
+**Medido el 2026-10-11.** Las dos ausencias las declara el propio codigo de mobile, no las
+dedujo nadie:
+
+- \`apps/mobile/src/modules/chat/Burbuja.tsx:23\` — «No porta el renderer de artefacto».
+- \`apps/mobile/src/modules/chat/ChatView.tsx:55\` — «Artefactos post-confirmacion …».
+- \`apps/mobile/src/modules/chat/ListaMensajes.tsx:356\` — «Un \`choices\` que NO sea el par
+  confirmar/cancelar (desambiguacion multi-opcion) **no tiene UI**».
+
+En web los dos existen: \`apps/copiloto-web/src/modules/chat/ArtifactView.tsx:19\` (montado en
+\`Bubble.tsx:73\`) y \`apps/copiloto-web/src/modules/chat/DisambiguationChips.tsx:17\` (montada en
+\`MessageList.tsx:311\`).
+
+El gate HITL **si** esta en mobile (\`ListaMensajes.tsx:329-339\`): lo que falta es el renderer del
+artefacto que queda despues de confirmar, y la UI para cuando el copiloto ofrece **mas de dos**
+opciones.
+
+**Toca el criterio «conversa»** del DoD de la beta: si el copiloto necesita desambiguar entre tres
+clientes parecidos, en mobile el usuario no ve las opciones. No es un hueco estetico — es una rama
+del dialogo sin salida.
+
+**DoD:** un \`choices\` de 3+ opciones se renderiza y es elegible en mobile, y un artefacto
+post-confirmacion se muestra. Medido en device, con el usuario canonico.")
+
+ITEMS+=("F5.3 · Mobile no tiene los bloques de AGREGADO que web si: «facturado del mes» y el resumen de presupuestos ⟂ bug,sprint-app-lista,mobile,dinero ⟂
+**Medido el 2026-10-11**, comparando las dos apps pantalla por pantalla.
+
+| bloque | en web | en mobile |
+|---|---|---|
+| «facturado del mes» | \`apps/copiloto-web/src/modules/facturacion/ResumenFacturacion.tsx:61\`, montado en \`PantallaFacturacion.tsx:518\` | **NO EXISTE** — no hay \`ResumenFacturacion.tsx\` en \`apps/mobile/src/modules/facturacion/\` |
+| resumen «Esperando respuesta» (total + comparacion) | \`apps/copiloto-web/src/modules/presupuestos/PresupuestosScreen.tsx:264-272\` (\`presupuestos-resumen\`, \`-resumen-total\`, \`-resumen-comparacion\`) | **NO EXISTE** — los testID de \`PantallaPresupuestos.tsx\` no incluyen ningun \`-resumen\` |
+
+Busqueda que lo sostiene:
+\`grep -rniE \"facturado|listarImpagos\" apps/mobile/src/modules/facturacion/*.tsx\` -> solo
+\`SeccionMeDeben.tsx:22,62\`; ningun agregado de facturado del mes.
+
+**Por que importa para la beta y no es cosmetico:** el criterio «ve sus numeros» exige que portada y
+detalle den **la misma** cifra. Un usuario de mobile hoy **no tiene** la cifra de facturado del mes
+donde el de web la tiene, asi que no hay nada que comparar — y cuando se porte, hay que elegir **que
+predicado** usa, que es justo el problema de #1003 («lo facturado» se calcula con cuatro predicados
+distintos). Portar el bloque sin cerrar #1003 importa la ambiguedad al telefono.
+
+**DoD:** los dos bloques existen en mobile y su cifra coincide con la del detalle para el mismo mes,
+con el predicado unico que resuelva #1003. Verificado en device.")
+
+ITEMS+=("F5.4 · «Tus apps» y los modos por app estan ESCRITOS E INALCANZABLES en web, y no existen en mobile: decidir si se cablea o se retira ⟂ sprint-app-lista ⟂
+**Medido el 2026-10-11, y el hallazgo es el inverso del esperado:** no es una feature de web
+que falte portar a mobile. Es una feature **muerta en las dos**.
+
+En web existe entera —\`apps/copiloto-web/src/modules/apps/AppsScreen.tsx:61\`,
+\`modules/apps/ModeButton.tsx\`, \`shell/modeStore.tsx\`, y el chip de modo del composer en
+\`modules/chat/Composer.tsx:114-120\`— **y no se llega**: \`'apps'\` no esta en \`TABS\`
+(\`apps/copiloto-web/src/shell/TabBar.tsx:62-73\`), y los dos shells lo documentan ellos mismos:
+\`AppShell.tsx:116-121\` y \`DesktopShell.tsx:89-91\` — «\`apps\` quedo sin caller real tras la depuracion
+de la barra». Los unicos productores de \`'apps'\` son esos dos guards; \`AjustesScreen.tsx:42\` navega a
+\`'connections'\`, no a \`'apps'\`.
+
+**Corolario que nadie habia nombrado: el chip de modo del composer de web tampoco puede activarse
+hoy**, porque el unico lugar donde se elige un modo es esa pantalla.
+
+Ojo con no confundirla con la que si funciona: \`modules/connections/ConnectionsScreen.tsx:38\`
+(«Apps») es la que lista \`/catalog\`, conecta por OAuth y desconecta — y **esa** si tiene par en
+mobile (\`apps/mobile/src/modules/apps/PantallaApps.tsx:111\`). Dos pantallas distintas con el mismo
+nombre de cara al usuario.
+
+**Por que esto es un item de DECISION y no de implementacion:** «portarlo a mobile» habria sido
+construir en el telefono una capacidad que en web no se puede ni probar. Si los modos por app son
+parte del producto, hay que **cablear la entrada en web primero** (y entonces el par de mobile tiene
+contra que medirse). Si no lo son, se **retira el codigo muerto** de las dos y el chip del composer
+con el.
+
+**DoD:** decidido y ejecutado en una de las dos direcciones, sin tercera opcion: cableado y
+alcanzable en web + portado a mobile, **o** retirado de web (pantalla, \`modeStore\`, \`ModeButton\` y
+chip del composer) con el \`mode\` del \`send()\` limpiado.
+
+⚠️ \`NO_PUDE_DETERMINAR\`: la inalcanzabilidad se midio por lectura estatica (fuerte: la declara el
+propio codigo en dos lugares), **no** ejecutando la app. Antes de retirar, confirmarlo en runtime.")
+
+ITEMS+=("F5.5 · Cinco capacidades del backend estan cableadas y ninguna app las llama ⟂ sprint-app-lista ⟂
+**Medido el 2026-10-11** con un barrido de los **109** endpoints del backend contra los dos
+clientes: 109 vistas, 109 clasificadas (control de ceguera en cero).
+
+| endpoint | estado |
+|---|---|
+| \`PUT /gastos/{gasto_id}/imputacion\` (\`apps/copiloto/gastos_web.py:161\`) | nadie lo llama |
+| \`GET /trabajos/{eslabon}/{ref}/margen\` (\`apps/copiloto/gastos_web.py:183\`) | nadie lo llama |
+| \`POST /inteligencia/chat\` (\`apps/copiloto/inteligencia_web.py:129\`) | nadie lo llama — y mobile lo **removio a proposito** (\`apps/mobile/src/modules/inteligencia/PreguntarInteligencia.tsx:12\`). Funcion del cliente compartido viva y sin consumidor: \`packages/core/src/api/inteligencia.ts:206\` |
+| \`POST /mi-dia/tarjetas\` (\`apps/copiloto/mi_dia_web.py:202\`) | nadie lo llama. Funcion viva sin consumidor: \`packages/core/src/api/miDia.ts:156\` |
+| \`POST /auth/cambiar-email\` (\`apps/copiloto/web.py:1359\`) | nadie lo llama; **diferido explicito en los dos clientes** (\`copiloto-web/.../CambiarCredenciales.tsx:93\`, \`mobile/.../CambiarCredenciales.tsx:68\`). Funcion viva sin consumidor: \`packages/core/src/api/auth.ts:55\` |
+
+**No entran en la lista** los que legitimamente no los llama un cliente: \`GET /mp/callback\` y
+\`POST /mp/webhook\` (los invoca MercadoPago), \`GET /healthz\` y \`POST /salud/canario\` (infra).
+
+**Por que es un item y no trivia:** tres de las cinco tienen hasta la funcion del cliente compartido
+escrita. Eso es superficie que parece disponible al leer el core, y manda a cualquiera a «conectar lo
+que ya esta hecho» sin que nadie haya decidido si el producto la tiene. \`cambiar-email\` ademas se
+cruza con #1002: sin SMTP no se puede verificar un email nuevo, asi que su diferimiento tiene causa.
+
+**DoD:** cada una de las cinco queda clasificada explicitamente como **se cablea** (con dueño y
+pantalla) o **se retira** (endpoint + funcion del core), sin quedar ninguna en el medio. Un endpoint
+sin consumidor y sin decision es deuda invisible.")
+
+ITEMS+=("F5.6 · Tres filas de «Mi cuenta» en web prometen y no hacen nada, y estaban por portarse a mobile asi ⟂ bug,sprint-app-lista ⟂
+**Medido el 2026-10-11** leyendo la pantalla, no su docstring — y el docstring era lo que
+mandaba a portarlas.
+
+\`apps/copiloto-web/src/modules/account/AccountScreen.tsx:88-90\` declara que web tiene de mas
+«plan/idioma/notificaciones/privacidad/card de durabilidad» y que «se queda — es union, no
+reemplazo». Leidas una por una:
+
+| fila | que hace de verdad |
+|---|---|
+| «Idioma» (\`AccountScreen.tsx:132-138\`) | \`<div>\` **sin \`onClick\`** |
+| «Privacidad del historial» (\`:214-217\`) | \`<div>\` **sin \`onClick\`** |
+| toggle «Notificaciones» (\`:139-142\` + \`NotificationsToggle:61-74\`) | mueve un \`useState\` local; el propio codigo lo dice en \`:53-59\` — «SOLO visual — no hay endpoint/preferencia real» |
+
+Y dos de los «huecos» de mobile de esa lista **no son huecos**: «Soporte tecnico» y «Como uso la app»
+si son alcanzables en mobile, por otra puerta — tiles de Ajustes
+(\`apps/mobile/src/modules/ajustes/PantallaAjustes.tsx:81-82\`, rutas \`app/ajustes-soporte.tsx\` y
+\`app/ajustes-como-usar.tsx\`).
+
+⇒ **El hueco real de mobile en «Mi cuenta» es de superficie, no funcional:** las 3 filas decorativas,
+la card de durabilidad y la linea de version legal aceptada.
+
+**Por que es un item:** es el mismo defecto de #1005 y #1006 (prometer sin rama) en otra pantalla, y
+la union de las dos cosas es lo caro — un comentario que afirma capacidad mas una fila que parece
+tocable manda a portar a mobile una promesa vacia. **Un usuario de la beta que toque «Notificaciones»
+va a creer que las activo.**
+
+**DoD:** cada una de las tres o se cablea (con endpoint y preferencia persistida) o se retira de la
+UI. Ninguna queda visible prometiendo. Y el docstring de \`AccountScreen\` deja de citarlas como
+capacidad existente — el comentario que afirma una capacidad es lo que se lee antes del codigo.")
 
 # ── Helpers ────────────────────────────────────────────────────────────────────────
 trim() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }

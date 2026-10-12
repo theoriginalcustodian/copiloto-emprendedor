@@ -1,0 +1,309 @@
+# Plan de implementación — Sprint MOBILE: la app lista para usuarios reales
+
+> **Fecha:** 2026-10-11 · **Baja:** planificación · **Estado:** listo para tomar.
+> **Objetivo del operador, textual:** *«el sprint es para la app lista para funcionar con usuarios
+> reales… hasta ahora solo fueron usuarios de prueba… este sprint mobile debe implementar todo lo que
+> hicimos en web… necesitamos terminar la app mobile para que esté lista para la beta»*.
+>
+> **Para quién es este doc:** las tres sesiones que trabajan el repo (planificación, backend,
+> frontend) y el operador. Cada ítem trae su `path:línea`, su DoD binario y su issue público, para que
+> se pueda tomar sin leer nada más.
+>
+> **Repo público:** acá no van emails de la allowlist (dato personal: va la cantidad), tokens ni URLs
+> internas. Los defectos de dinero se describen como **comportamiento del código** y se marcan
+> **latentes**: al 2026-10-11 **no hay usuarios reales** — los tenants de la base son de prueba — así
+> que ninguno causó daño. Sin esa aclaración, el texto describiría un incidente que no existió.
+
+---
+
+## 1. Qué cierra este sprint, y qué no
+
+**El criterio de cierre es un DoD de 8 puntos.** No es «54/54 de paridad»: el padrón de 54 ids es el
+**alcance** (*qué* hay que terminar), y estos 8 son el **gate** (*cuándo* está listo). Las dos
+preguntas son distintas y las dos hacen falta — un sprint que cierre 54/54 puede entregar una app
+donde cada pantalla coincide con la spec **y** el dinero está mal contado.
+
+| # | Criterio | Verde cuando |
+|---|---|---|
+| 1 | **Entra** | se da de alta **desde el teléfono** y entra, sin que nadie edite una env var ni la DB |
+| 2 | **Factura** | emite una factura real y ve su CAE en «Mis comprobantes» |
+| 3 | **Anula** | emite la nota de crédito, y esa NC **no** vuelve a ofrecer «Anular» |
+| 4 | **Cobra** | registra un cobro —manual y por MercadoPago— y lo ve **una** vez, en Ingresos **y** en los números |
+| 5 | **Gasta** | registra un gasto y lo ve en la lista |
+| 6 | **Ve sus números** | portada y detalle dan **la misma** cifra para el mismo mes |
+| 7 | **Conversa** | dicta, el copiloto le propone una card, la confirma, y la card queda resuelta |
+| 8 | **Evidencia** | los 7 anteriores **en device**, con el usuario canónico, y cada hallazgo entra como fila |
+
+**Entra en el sprint** la app mobile **y** los bloqueantes de backend del alta y del dinero
+(confirmado por el operador, 2026-10-11). **No entra:** la consola de operador (`/admin/*`, 12
+endpoints + `AdminScreen.tsx:114`) — es herramienta del operador, no del emprendedor, y su ausencia en
+mobile no es un hueco de paridad. Tampoco entra re-medir `web`, que está en 54/54 y mergeado: un
+hallazgo nuevo no reabre un ✅ ya cerrado.
+
+---
+
+## 2. El estado medido hoy — con la unidad, que es lo que hace citable una cifra
+
+Todo lo de esta sección se midió el **2026-10-11**. Donde hay dos cifras para lo mismo, están las dos
+y se explica qué mide cada una: una cifra sin unidad se deja citar para cualquier pregunta.
+
+### 2.1 Paridad de pantallas: el padrón de 54 ids
+
+Instrumento nuevo de este sprint: `scripts/evidencia/falta-en-mobile.py` (ver §6).
+
+| población (mobile) | n | ids |
+|---|---|---|
+| **comparados de verdad** | **8** | `caida card card-cliente card-cobro card-presu negocio onb-promesa tablero` |
+| cubiertos **sin comparación** | 5 | `cobro-voz fact-voz onb-cumplida pres-voz vozchat` |
+| **sin ningún veredicto** | **41** | los 41 restantes |
+
+**La cifra que circulaba era «mobile 13/54». Es correcta y engañosa a la vez:** cuenta como cubiertos
+5 ids cuyos únicos veredictos son `PENDIENTE_DEVICE` o `NO_MEDIBLE` — cubiertos, **nunca comparados**.
+⇒ **faltan medir 46, no 41.** El mismo instrumento da `web` 45 + 9 = 54, que es el control positivo de
+que el filtro filtra de verdad.
+
+### 2.2 Paridad de cableado: los 109 endpoints
+
+109 rutas del backend vistas, **109 clasificadas** (control de ceguera en cero) contra los dos
+clientes. Sacando los 12 `/admin/*`, lo que **web consume y mobile no** son **tres**:
+
+| endpoint | consecuencia |
+|---|---|
+| `POST /auth/signup` (`apps/copiloto/web.py:1294`) | **mobile no tiene alta de cuenta** → #1016 |
+| `POST /me/legal/aceptar` (`web.py:1143`) | mobile no cablea la aceptación legal → #1001 |
+| `POST /warm` (`web.py:1168`) | mobile no pre-calienta el chat → primera respuesta más lenta |
+
+Y aparecieron **5 capacidades del backend que ninguna app llama** (3 con la función del cliente
+compartido ya escrita y sin consumidor) → #1020.
+
+### 2.3 Medición en device: el eje A
+
+**1 ruta verificada de 21.** No 6: el retiro de `H-60` invalidó las que se midieron con las
+animaciones del sistema apagadas, porque esa condición pone Reanimated en *reduced motion* y **afecta
+lo medido** — la condición que el instrumento exigía para poder ver era una variable sobre el
+resultado. 15 nunca se intentaron + 5 quedaron `NO_ATRIBUIBLE` → #1012.
+
+⚠️ El JSON `Auditorias/2026-10-11-receta-device-resultado.json` es un **artefacto pre-retracción**.
+No citarlo como estado.
+
+### 2.4 Lo que ya está listo y nadie había declarado
+
+- **El teléfono está listo.** Binario `app.copiloto.emprendedor 0.1.0` instalado el 11/10, device
+  físico, Metro vivo. Era la precondición diferida desde el 22/09 (`M-01` queda **cumplido**).
+- **La suite mobile corre y está verde: 986/991.** Los 4 rojos y los 8 errores de `tsc` caen todos en
+  `PantallaFacturacion.{tsx,test.tsx}` y **no son defecto de `main`**: el `.tsx` del working tree está
+  **atrasado** respecto de la rama en vuelo.
+  ⚠️ A quien tenga `fe2/bl-o6-legal-*`: commitear ese `.tsx` tal como está **revierte +102 líneas
+  propias**. Medir el signo por archivo antes de commitear.
+- **El motor corre en modo `react`** en web y en worker (medido en el proceso vivo, no deducido del
+  repo, donde el default es `dispatch`). ⇒ las cards propuestas son alcanzables y el criterio 7 **no**
+  está bloqueado por configuración.
+
+---
+
+## 3. El hallazgo que reordena el sprint
+
+**Mobile no está lejos de web en capacidad. Está lejos en EVIDENCIA.**
+
+De 109 endpoints, mobile llama todos los del emprendedor salvo tres. Pantalla por pantalla, lo que
+falta son **bloques de agregado y dos ramas del chat**, no módulos enteros. Pero de 54 ids de paridad,
+sólo **8** se compararon en el teléfono, y de 21 rutas de navegación, **1**.
+
+Eso cambia dónde está el trabajo: **la mayor parte del sprint es medir y arreglar lo que la medición
+destape, no construir pantallas nuevas.** Y por eso el orden empieza por hacer el instrumento
+confiable: hoy no puede separar «la ruta no responde» de «mi gesto se perdió».
+
+**Y un hallazgo del tipo inverso, que ahorra trabajo:** «Tus apps» y los modos por app parecían una
+feature de web para portar. Están **escritos e inalcanzables en web** —`'apps'` no está en `TABS`, y
+los dos shells lo declaran ellos mismos— así que portarlos habría sido construir en el teléfono algo
+que en web no se puede ni probar. Es un ítem de **decisión**, no de implementación → #1019.
+
+---
+
+## 4. El orden, y por qué no es negociable por conveniencia
+
+```
+      ┌─ A · instrumento confiable ─┐
+      │  #1010 gesto intermitente   │  ← sin esto, toda medición de device es ambigua
+      │  #1012 eje A sin apagar     │
+      └──────────┬──────────────────┘
+                 ↓
+  ┌──── B · el dinero (latente HOY, no mañana) ────┐
+  │  #1014 ✅ fix escrito  ·  #1015 ✅ fix escrito  │
+  │  #1003 predicado único de «lo facturado»       │
+  │  #1004 NC sin número reservado                 │
+  └──────────┬─────────────────────────────────────┘
+             ↓
+  ┌──── C · el alta (abre la puerta) ────┐      ┌──── D · paridad mobile ────┐
+  │  #999 allowlist · #1000 web          │      │  #1017 chat: artefacto +   │
+  │  #1016 alta en mobile · #1001 legal  │      │        desambiguación      │
+  │  #1002 SMTP                          │      │  #1018 bloques de agregado │
+  └──────────┬───────────────────────────┘      └──────────┬─────────────────┘
+             └──────────────┬───────────────────────────────┘
+                            ↓
+              E · medir las 6 cadenas y las 21 rutas en device
+                      #1011 · #1012 · M-02 · M-03
+                            ↓
+                     F · tester externo (M-04)
+```
+
+**Las cuatro razones del orden, cada una con su causa:**
+
+1. **El instrumento antes que la medición.** Mientras el gesto de apertura del escritorio sea
+   intermitente (abre 4 de 6 ciclos, al primer toque 1 de 6), un rojo de eje A no se puede atribuir.
+   Medir primero produciría 20 celdas que habría que volver a medir.
+2. **El dinero antes del alta, aunque el alta sea el criterio 1.** Hoy no hay tráfico real, así que el
+   dinero mal contado es **latente**. Abrir el alta primero invierte eso: el primer usuario real pasa
+   a ser **quien descubre** que su cobro se cuenta dos veces. Un bloqueante del DoD no es
+   automáticamente lo primero de la cola.
+3. **#1003 antes de #1018.** El bloque «facturado del mes» no existe en mobile; portarlo mientras «lo
+   facturado» se calcula con cuatro predicados distintos **importa la ambigüedad al teléfono**. Primero
+   un predicado, después la pantalla que lo muestra.
+4. **El alta de mobile (#1016) después del contrato del alta (#999 + #1000).** Construir la pantalla
+   contra un backend cuyo contrato de alta todavía no cierra es codificar la esperanza.
+
+**Lo que corre en paralelo sin esperar nada:** el bloque **D** (paridad mobile) no depende de **C**;
+se mide con el usuario canónico, que ya existe y ya entra. El sprint **no está parado** esperando las
+decisiones del operador: éstas bloquean el criterio 1, no los otros siete.
+
+---
+
+## 5. El backlog, con DoD binario por ítem
+
+**Cómo leer la columna DoD:** es binario y verificable por alguien que no hizo el trabajo. «Funciona»
+no es un DoD; «el test hostil pasa y se vio fallar sin el fix» sí.
+
+### Bloque A · Instrumento confiable *(dueño: frontend, dueño único del device)*
+
+| issue | trabajo | DoD binario |
+|---|---|---|
+| **#1010** | El toque de la pestaña del escritorio es **intermitente**: abre 4 de 6 ciclos, al primer toque 1 de 6. El tap vive en `onEnd` de un `Gesture.Pan()` (`PanelFunciones.tsx:94-98`) | El toque abre **al primer toque, 6 de 6 ciclos**, con animaciones en valor **normal** y sensor por píxeles. El control positivo del arrastre valida la corrida o el resultado no se acepta |
+| **#1012** | El eje A tiene **1 de 21** rutas con veredicto válido | Las 21 con veredicto válido medido con animaciones normales. Cada corrida con su control positivo: si el gesto de control no mueve la pantalla, la corrida se declara `INVÁLIDA`, no «no llega» |
+
+**Antes de escribir código acá:** skill `swmansion-rn-gestures` (composición Pan/tap) y el equivalente
+en `documed-front`, que ya resolvió esta cáscara en device. Portar adaptando, no copiar ciego. Y el
+sensor por píxeles ya existe (`Auditorias/2026-10-11-toque-pestana-por-pixeles.py`): reutilizarlo antes
+de escribir otro.
+
+### Bloque B · El dinero *(dueño: backend)*
+
+| issue | trabajo | DoD binario | estado |
+|---|---|---|---|
+| **#1014** | Un pago de MercadoPago se contaba **dos veces** en «Entró» desde el 06/10 | Un pago MP insertado aparece **una** vez en «Entró» y **una** en Ingresos, con test que lo cuente | ✅ **fix escrito y verificado** — 2297 passed / 0 failed en el VPS + control positivo con los números del defecto. Falta mergear |
+| **#1015** | Ninguna fila valía `estado='nota_credito'` ⇒ la app ofrecía **anular una nota de crédito** | Una NC se guarda como `nota_credito` y los fronts no le ofrecen «Anular»; un `estado` explícito sigue ganando a la derivación | ✅ **fix escrito y verificado** — 17/17 + control positivo. Falta mergear |
+| **#1003** | «Lo facturado» se calcula con **cuatro predicados distintos** según quién pregunte | **Un** predicado, en un solo lugar, y los cuatro llamadores lo usan. Test que compare las cuatro respuestas para el mismo mes | abierto |
+| **#1004** | La NC se emite **sin número reservado** — el fix ya existe en el otro call-site | La NC reserva número por el mismo mecanismo que la factura. Propagar el fix existente, no diseñar uno nuevo | abierto |
+
+### Bloque C · El alta *(dueño: backend + frontend + decisiones del operador)*
+
+| issue | trabajo | DoD binario |
+|---|---|---|
+| **#999** | La allowlist es **fail-closed** (`web.py:581-583`): sin esa env no entra **ningún** email, ni por Google. El proceso vivo tiene 4 entradas, todas del operador | Un email nuevo completa el alta **sin que nadie edite una env var ni la DB** |
+| **#1000** | El alta por email de **web** no se puede completar: el backend exige `invite_token` y el cliente nunca lo manda; el form sólo abre con `?signup=1` | Alta por email de punta a punta, con test del **camino real** (no del happy-path mockeado) |
+| **#1016** | **Mobile no tiene alta de cuenta.** `POST /auth/signup` es sólo-web; el código lo dice en `PantallaCuenta.tsx:58` | Un email nuevo completa el alta **desde el teléfono**, acepta el legal, y entra |
+| **#1001** | Mobile **no cablea la aceptación** legal (la pantalla de lectura ya existe, `PantallaLegal.tsx:31`, ruta `app/legal.tsx`), y la aceptación **no condiciona nada** en ninguna plataforma | Un alta nueva **no puede operar** sin aceptar, en las dos plataformas; mobile llama `POST /me/legal/aceptar` y guarda la versión. **Test del caso hostil**: una cuenta sin aceptación vigente es rechazada |
+| **#1002** | Sin SMTP no hay recuperación de contraseña ni cambio de mail | El usuario recupera su clave **sin intervención** de nadie |
+
+### Bloque D · Paridad mobile *(dueño: frontend)*
+
+| issue | trabajo | DoD binario |
+|---|---|---|
+| **#1017** | El chat de mobile **no tiene** renderer de artefactos ni desambiguación multi-opción — las dos ausencias las declara el propio código (`Burbuja.tsx:23`, `ListaMensajes.tsx:356`) | Un `choices` de **3+** opciones se renderiza y es elegible en mobile, y un artefacto post-confirmación se muestra. Medido en device |
+| **#1018** | Mobile no tiene los **bloques de agregado** que web sí: «facturado del mes» y el resumen de presupuestos | Los dos bloques existen y su cifra **coincide con la del detalle** para el mismo mes, con el predicado único de #1003 |
+| **#1019** | «Tus apps» y los modos por app están **escritos e inalcanzables en web** y no existen en mobile | Decidido y ejecutado en **una** de las dos direcciones, sin tercera: cableado y alcanzable en web + portado a mobile, **o** retirado de web (pantalla, `modeStore`, `ModeButton` y chip del composer) con el `mode` del `send()` limpiado |
+| **#1021** | Tres filas de «Mi cuenta» en web **prometen y no hacen nada** (dos `<div>` sin `onClick`, un toggle sin endpoint) y estaban por portarse a mobile así | Cada una se cablea o se retira de la UI. Ninguna queda visible prometiendo. Y el docstring de `AccountScreen` deja de citarlas como capacidad existente |
+| **#1007** | La card de confirmación (HITL) **queda activa** después de responderla | La card responde una vez y queda resuelta; un segundo toque no reenvía |
+| **#1008** | La app dice «No lo anotamos.» sobre un ingreso que **sí** quedó guardado | El mensaje refleja el resultado real de la escritura. Test del caso en que la escritura sí ocurrió |
+| **#1009** | Anular un comprobante **falla en silencio**: `try/finally` sin `catch` | El fallo se ve: el usuario recibe el error y el estado no queda a medias |
+
+### Bloque E · Promesas sin rama *(dueño: backend + ambos fronts)*
+
+| issue | trabajo | DoD binario |
+|---|---|---|
+| **#1005** | Un Responsable Inscripto lee «ya podés facturar» y la emisión **explota** con `NotImplementedError` | O la emisión funciona para ese caso, o la promesa no se muestra. Nunca las dos |
+| **#1006** | El catálogo de apps **anuncia herramientas que fueron podadas** | Lo anunciado y lo cableado coinciden, ítem por ítem |
+| **#1020** | **Cinco capacidades del backend** cableadas que ninguna app llama (3 con la función del core escrita y sin consumidor) | Cada una clasificada explícitamente: **se cablea** (con dueño y pantalla) o **se retira** (endpoint + función del core). Ninguna queda en el medio |
+
+### Bloque F · Evidencia en device *(dueño: frontend, dueño único del device)*
+
+| issue | trabajo | DoD binario |
+|---|---|---|
+| **#1011** | Las **6 cadenas de negocio** nunca se midieron de punta a punta en device | Las 6 con veredicto del vocabulario cerrado y su `medido_contra:` |
+| **M-02** | Medir en device los **46 ids** que `falta-en-mobile.py` lista, por lotes | Cada id con veredicto del vocabulario cerrado y su `medido_contra:` |
+| **M-03** | Los 5 ids `cubiertos sin comparación` (`cobro-voz fact-voz onb-cumplida pres-voz vozchat`) | Idem, y salen de esa población |
+| **#1013** | El APK de dev-client **se evapora de EAS a los 14 días** | La receta de reconstrucción existe y se ejercitó una vez |
+| **M-04** | Tester externo con video | El video existe y su hallazgo entra **como fila**, no como impresión |
+
+**Recetas que ya existen y no hay que redescubrir:** iterar en device **no compila nada** (dev-client
+instalado + Metro local por USB) · el device **no corre `main`**, corre lo que Metro sirve, y Metro
+sirve el **checkout compartido**, no tu worktree · gestos con `adb input motionevent` DOWN/MOVE/UP,
+nunca `input tap` (no ejercita un `Pan` de RNGH) · el device exige **dueño único**: dos ADB fabrican
+evidencia falsa · usuario de prueba canónico **uno solo, a fuego**.
+
+---
+
+## 6. Instrumentos: lo que había, lo que se construyó y lo que falta
+
+| instrumento | qué da | estado |
+|---|---|---|
+| `scripts/evidencia/criterio3-padron.sh` | el universo: los 54 ids, de la **spec** | existía |
+| `scripts/evidencia/criterio3-cruce.sh` | el cruce padrón × cierres, con ids por nombre | existía — **no mira plataforma** |
+| `scripts/evidencia/contar-veredictos.py` | la cifra **por plataforma** sobre 20 documentos | existía — emite cifra, **no lista** |
+| **`scripts/evidencia/falta-en-mobile.py`** | **los ids que faltan en mobile, por nombre** | **nuevo, 2026-10-11** |
+| `Auditorias/2026-10-11-toque-pestana-por-pixeles.py` | sensor de apertura que **no necesita idle** | existe — reutilizar para el eje A |
+| `scripts/abrir-issues-sprint.sh` | abre/sincroniza este backlog como issues, idempotente por título | nuevo |
+
+**`falta-en-mobile.py` no es un script nuevo: es un agregador.** La lista por plataforma ya la
+calculaba `contar-veredictos.py --json`, por lote. Re-parsear los cierres habría fabricado una
+**segunda definición** de «tiene veredicto», que puede divergir de la que cita el criterio. Prueba de
+que no divergió: da 13/54 en mobile, el mismo número que ya se citaba.
+
+**Y el diseño que había bajado el 08/10 era contra una forma imaginada.** Decía «localizar la columna
+`plataforma` por su nombre en el encabezado de cada tabla». Medido, el registro vive en **cuatro**
+formas: los 14 ids medidos del lote A **no están en ninguna tabla** (son secciones con la plataforma en
+prosa), y el lote B tiene **dos** tablas donde `plataforma` es el campo 5 de 8 en una y el **2 de 4**
+en la otra — y la segunda tiene más filas. Un filtro por encabezado habría sido ciego a la población
+más grande.
+
+---
+
+## 7. Lo que espera al operador (bloquea el **cierre** del criterio 1, no el arranque del sprint)
+
+1. **Cómo entra un usuario:** beta por invitación con UI para cargar la allowlist, **o** alta abierta.
+2. **Texto legal definitivo** — hoy el descargo está declarado **PROVISORIO** hasta revisión de un
+   abogado — o la decisión explícita de salir con el aviso de plantilla puesto.
+3. **Proveedor SMTP + DNS.**
+4. **#1019:** ¿los modos por app son parte del producto? Se cablea en web o se retira de las dos.
+5. **#1020:** las cinco capacidades sin consumidor, ítem por ítem: se cablea o se retira.
+
+Las tres primeras están abiertas desde el **2026-10-06**; lo que agrega este documento es **qué
+bloquean**: el criterio 1, y sólo el 1.
+
+---
+
+## 8. Deudas y riesgos declarados (no se descubren después)
+
+- **Dos fixes de dinero están escritos, verificados y SIN MERGEAR** (#1014, #1015). Mientras no se
+  mergeen, el defecto sigue en `main` aunque el issue parezca atendido.
+- **`PantallaFacturacion.tsx` del checkout compartido está atrasado** respecto de la rama en vuelo.
+  Commitearlo tal como está revierte +102 líneas ajenas. Medir el signo por archivo.
+- **El eje A no tiene instrumento válido todavía** (#1012). Hasta que lo tenga, cualquier cifra de
+  «rutas que no llegan» es `NO_ATRIBUIBLE`, no un rojo.
+- **`/actividad?q=` da 400** según un comentario de mobile (`PantallaRecientes.tsx:15-18`).
+  **`[SIN_VERIFICAR]`** — es un comentario, no una medición, y hoy mismo un comentario rancio ya
+  mandó a este backlog a afirmar algo falso. Verificar contra el endpoint antes de planificar trabajo.
+- **`app/recientes.tsx`:** `_layout.tsx:162-164` afirma que «queda inalcanzable», pero
+  `PantallaPrincipal.tsx:179` navega ahí. **`[CONTRADICCIÓN SIN RESOLVER]`** — el comentario parece
+  desactualizado; no se ejecutó la app para dirimirlo.
+- **Paridad de *parámetros* no medida:** un endpoint que las dos apps llaman puede estar invocándose
+  con menos capacidad de un lado, y la tabla de 109 lo marca `AMBAS` igual. Es un segundo pase si ese
+  eje importa.
+- **El padrón de 54 cuenta `web` como 54/54, de los cuales 9 sin comparación.** Es dato, no acción:
+  `DEC-18` — un hallazgo nuevo no reabre un criterio cerrado.
+
+---
+
+**Issues de este sprint:** `#999`–`#1021` (label `sprint-app-lista`). Reabrir o agregar se hace con
+`scripts/abrir-issues-sprint.sh`, que compara por título exacto contra abiertos **y** cerrados antes
+de crear. Si se corrige el título de un issue por `gh`, **hay que sincronizar el script**: su
+idempotencia se decide por ese título, y un título desactualizado fabrica duplicados.
