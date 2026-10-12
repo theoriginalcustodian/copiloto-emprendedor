@@ -269,17 +269,35 @@ más grande.
 
 ---
 
-## 7. Lo que espera al operador (bloquea el **cierre** del criterio 1, no el arranque del sprint)
+## 7. Las decisiones del operador — **LAS CINCO CERRADAS el 2026-10-12**
 
-1. ~~**Cómo entra un usuario**~~ — **DECIDIDO (2026-10-12):** altas **manuales** en beta, sólo personas cercanas; los permisos de login los otorga el operador. La allowlist se queda y su UI sale del alcance. Los **datos mínimos** del primer ingreso quedaron delegados y decididos: `que_vende` + `nombre_comercial` (ver #1016).
-2. **Texto legal definitivo** — hoy el descargo está declarado **PROVISORIO** hasta revisión de un
-   abogado — o la decisión explícita de salir con el aviso de plantilla puesto.
-3. **Proveedor SMTP + DNS.**
-4. **#1019:** ¿los modos por app son parte del producto? Se cablea en web o se retira de las dos.
-5. **#1020:** las cinco capacidades sin consumidor, ítem por ítem: se cablea o se retira.
+Estaban abiertas desde el **2026-10-06** y bloqueaban el **cierre** del criterio 1 (nunca el
+arranque del sprint). Ya no bloquean nada: lo que sigue es ejecución con dueño.
 
-Las tres primeras están abiertas desde el **2026-10-06**; lo que agrega este documento es **qué
-bloquean**: el criterio 1, y sólo el 1.
+1. ~~**Cómo entra un usuario**~~ — **DECIDIDO:** altas **manuales** en beta, sólo personas cercanas;
+   los permisos de login los otorga el operador. La allowlist se queda y su UI sale del alcance. Los
+   **datos mínimos** del primer ingreso: `que_vende` + `nombre_comercial` (ver #1016, ficha C-3).
+2. ~~**Texto legal**~~ — **DECIDIDO: se cablea YA con el texto provisorio marcado como tal.** La
+   aceptación pasa a ser **obligatoria en las dos plataformas** sin esperar al abogado. El texto
+   definitivo sigue pendiente, pero ya no bloquea: cuando llegue se reemplaza el contenido, no el
+   mecanismo. Incluye el **test del caso hostil** (una cuenta sin aceptación vigente es rechazada al
+   operar), que es lo único que distingue el control de su ausencia — el happy-path sale verde igual
+   si el guard no existe. Ver C-4.
+3. ~~**Proveedor SMTP + DNS**~~ — **DECIDIDO: diferido a pre-prod. En beta el operador resetea las
+   claves a mano.** Coherente con la decisión 1: quien otorga los accesos de ~4 personas cercanas
+   también resetea su clave. **Deuda declarada, no resuelta:** el DoD de #1002 dice «el usuario
+   recupera su clave **sin intervención de nadie**» y eso **NO se cumple**. #1002 queda **abierto**
+   con dueño (operador) y disparador (antes de abrir a usuarios que no sean cercanos). Ver C-5.
+4. ~~**#1019 — modos por app**~~ — **DECIDIDO: se RETIRAN de las dos** (rama **(b)** del DoD de D-3). Pantalla, `modeStore`,
+   `ModeButton`, el chip de modo del composer y el `mode` del `send()`. ⚠️ **Precondición antes de
+   borrar:** confirmar la inalcanzabilidad **en runtime**. Hoy está medida por lectura estática
+   —fuerte, porque la declara el propio código en dos lugares (`AppShell.tsx:116-121`,
+   `DesktopShell.tsx:89-91`)— pero el issue la marca `NO_PUDE_DETERMINAR`, y borrar sobre una lectura
+   estática es la forma barata de romper algo que sí tenía un caller.
+5. ~~**#1020 — cinco capacidades sin consumidor**~~ — **DECIDIDO: se CABLEAN las cinco. Ninguna se
+   retira.** Esto **agrega alcance**, y se declara acá para que no aparezca como sorpresa a mitad del
+   sprint; el detalle, los dos hallazgos que lo reordenan y la colisión con la decisión 3 están en la
+   ficha **E-3**.
 
 ---
 
@@ -291,6 +309,11 @@ bloquean**: el criterio 1, y sólo el 1.
   `inteligencia_queries.py` (`nota_credito`), con tests en `test_contabilidad_integracion.py` y
   `test_inteligencia_queries.py`. **La cita de procedencia es el merge commit**, no la rama: las
   dos ramas ya no existen, así que «commit `ba1f8cbd`/`fca3abae`» no se puede resolver en un clon.
+- ⚠️ **La decisión 5 agrega alcance que el plan original no tenía.** Cablear las cinco capacidades
+  de #1020 significa **una pantalla nueva** (margen por trabajo: no existe módulo `trabajos` en
+  ningún front) y **revertir una decisión previa de alguien** (mobile removió `PreguntarInteligencia`
+  a propósito). No es una decisión gratis y no cabe en los huecos del sprint: necesita renglones
+  propios en la tabla de hitos o no existe. Ver E-3.
 - **`PantallaFacturacion.tsx` del checkout compartido está atrasado** respecto de la rama en vuelo.
   Commitearlo tal como está revierte +102 líneas ajenas. Medir el signo por archivo.
 - **El eje A no tiene instrumento válido todavía** (#1012). Hasta que lo tenga, cualquier cifra de

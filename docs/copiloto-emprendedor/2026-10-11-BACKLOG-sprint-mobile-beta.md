@@ -213,14 +213,32 @@ no el arranque del sprint.***
 - **DoD:** un alta nueva **no puede operar** sin aceptar, en las dos plataformas; mobile llama el
   endpoint y guarda la versión aceptada. **Test del caso hostil:** una cuenta sin aceptación vigente
   es **rechazada** al operar — no sólo «la que aceptó puede».
-- **Depende del operador:** decisión 2 del §7 (el texto legal está declarado **PROVISORIO** hasta
-  revisión de un abogado). El **cableado** no espera ese texto; el **cierre** sí.
+- ✅ **DECIDIDO (2026-10-12) — se cablea YA con el texto provisorio marcado como tal.** La
+  aceptación pasa a ser **obligatoria en las dos plataformas**; no se espera al abogado. Cuando
+  llegue el texto definitivo se reemplaza el **contenido**, no el mecanismo — y eso es justamente lo
+  que hace que cablear ahora no sea trabajo tirado.
+- **El DoD no cambia, y su mitad hostil es la que importa:** «una cuenta sin aceptación vigente es
+  **rechazada** al operar». Sin ese test el control es indistinguible de su ausencia: el happy-path
+  («la que aceptó puede operar») sale verde igual si el guard no existe. Es la regla dura de
+  `CLAUDE.md` §Seguridad, no una preferencia de cobertura.
+- **Dueño:** frontend (botón + `POST /me/legal/aceptar` en mobile) + backend (el guard que rechaza).
+  **El marcado del texto va visible en la pantalla**, no en un comentario del código: un comentario
+  que declara un estado no lo comunica a nadie que no lea el fuente.
 
 ### C-5 · `#1002` — Sin SMTP no hay recuperación de contraseña
 
 - **Medido:** no hay proveedor configurado ⇒ ni recuperación de clave ni cambio de email.
 - **DoD:** el usuario recupera su clave **sin intervención de nadie**.
-- **Depende del operador:** decisión 3 del §7 (proveedor + DNS).
+- ✅ **DECIDIDO (2026-10-12) — DIFERIDO a pre-prod: en beta el operador resetea las claves a mano.**
+  Coherente con el alta manual: quien otorga los accesos de ~4 personas cercanas también resetea su
+  clave. Cero costo, cero DNS, y el sprint no espera a un proveedor.
+- ⚠️ **Lo que esta decisión NO hace: cumplir el DoD.** «El usuario recupera su clave **sin
+  intervención de nadie**» sigue **sin cumplirse** — se cumple su negación: depende enteramente de
+  una persona. **#1002 queda ABIERTO**, no cerrado por decisión. Dueño: operador. Disparador: antes
+  de abrir a cualquier usuario que no sea cercano. Escribirlo como «resuelto» sería exactamente el
+  tipo de cierre que el próximo lector cita sin verificar.
+- **Arrastra a `POST /auth/cambiar-email`** (ver E-3): sin proveedor no se puede verificar una
+  dirección nueva, así que su diferimiento tiene **causa**, no desprolijidad.
 
 ---
 
@@ -259,9 +277,18 @@ no el arranque del sprint.***
   **(a)** cableado y alcanzable en web + portado a mobile, **o**
   **(b)** retirado de web — pantalla, `modeStore`, `ModeButton` y el chip del composer — con el `mode`
   del `send()` limpiado.
-- **Depende del operador:** decisión 4 del §7.
-- ⚠️ **Medido estáticamente** (no está en `TABS`), no ejecutando la app. Si se elige (b), confirmar en
-  runtime antes de borrar.
+- ✅ **DECIDIDO (2026-10-12) — rama (b): se RETIRA de las dos.** Nadie puede usarla hoy ni la
+  extraña, y mantener código muerto que **parece** disponible es lo que manda al próximo a «portarlo
+  a mobile». Se va con ella el chip de modo del composer, que hoy tampoco puede activarse porque esa
+  pantalla era el único lugar donde se elige un modo.
+- 🔴 **PRECONDICIÓN, no advertencia:** confirmar la inalcanzabilidad **en runtime** antes de borrar.
+  La medición es estática y el issue la marca `NO_PUDE_DETERMINAR`. Es fuerte —la declara el propio
+  código en `AppShell.tsx:116-121` y `DesktopShell.tsx:89-91`— pero «el código dice que no tiene
+  caller» y «no tiene caller» no son la misma afirmación, y acá la diferencia se paga borrando.
+- **Dueño:** frontend. **No confundir con `ConnectionsScreen.tsx:38`** («Apps»), que sí funciona, sí
+  tiene par en mobile (`PantallaApps.tsx:111`) y **no se toca**: son dos pantallas distintas con el
+  mismo nombre de cara al usuario, y ése es exactamente el tipo de colisión que hace que un retiro
+  se lleve puesta la pantalla equivocada.
 
 ### D-4 · `#1021` — Tres filas de «Mi cuenta» en web prometen y no hacen nada
 
@@ -309,7 +336,39 @@ no el arranque del sprint.***
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
   (endpoint + función del core). **Ninguna queda en el medio** — una capacidad a medias es la que el
   próximo relevamiento vuelve a contar como hueco.
-- **Depende del operador:** decisión 5 del §7.
+- ✅ **DECIDIDO (2026-10-12) — se CABLEAN las cinco. Ninguna se retira.** Lo que sigue no discute la
+  decisión: declara lo que cuesta y los dos hallazgos que cambian el **orden**, medidos al registrarla.
+
+**Hallazgo 1 — no son cinco ítems, son cuatro más una cadena.** `PUT /gastos/{id}/imputacion` y
+`GET /trabajos/{eslabon}/{ref}/margen` **son un solo flujo**: el margen se calcula sobre gastos
+imputados, así que si nadie imputa, **todos** los márgenes salen incompletos. Cablear el margen sin la
+imputación entrega una pantalla que muestra números sistemáticamente falsos. **Orden forzado:
+imputación primero.**
+
+**Hallazgo 2 — el propio endpoint ya declara el requisito de UI, y es de honestidad, no de estilo.**
+`apps/copiloto/gastos_web.py:183` lo dice en su docstring: devuelve `gastos_imputados` **al lado del
+número, siempre**, porque *«un trabajo con 2 de 5 gastos imputados muestra un margen excelente y es
+falso: un margen incompleto se ve igual que uno bueno, y sin el conteo la pantalla no tiene con qué
+avisar»*. ⇒ **DoD de UI:** ninguna pantalla muestra margen sin el conteo al lado.
+
+**Dónde encaja cada una** — medido contra `modules/` de los dos fronts, no supuesto:
+
+| capacidad | módulo destino | costo real |
+|---|---|---|
+| `PUT /gastos/{id}/imputacion` | `gastos` — **existe en los dos** | bajo: bloque en pantalla existente |
+| `GET /trabajos/{eslabon}/{ref}/margen` | ⚠️ **no existe módulo `trabajos` en ningún front** | **el más alto: pantalla nueva, o bloque en `inteligencia`/`presupuestos` — a decidir** |
+| `POST /inteligencia/chat` | `inteligencia` — existe en los dos | medio, y **revierte una decisión previa**: mobile removió `PreguntarInteligencia` **a propósito** (`PreguntarInteligencia.tsx:12`). Leer POR QUÉ antes de rehacerlo, o se repite el motivo |
+| `POST /mi-dia/tarjetas` | `midia` — existe en los dos | bajo: la función del core ya está (`miDia.ts:156`) |
+| `POST /auth/cambiar-email` | `account`/`ajustes` | 🔴 **BLOQUEADO por la decisión 3** |
+
+- 🔴 **La colisión con la decisión 3, nombrada y no resuelta en silencio:** `cambiar-email` **no se
+  puede cablear** mientras SMTP esté diferido — no hay forma de verificar la dirección nueva, y
+  cambiar un email sin verificarlo entrega la cuenta a una dirección tipeada con un error. ⇒ queda
+  **cableada en cuanto haya SMTP**, con el mismo disparador que #1002. Las otras cuatro no dependen
+  de nada.
+- **Las cinco necesitan renglón propio en la tabla de hitos.** Ninguna queda «decidida pero sin
+  renglón»: lo que no está en la tabla no existe, y una capacidad decidida sin dueño vuelve a
+  contarse como hueco en el próximo relevamiento.
 - **Nota aparte, fuera de alcance:** `POST /warm` también es SOLO_WEB. Mobile no pre-calienta el chat
   ⇒ primera respuesta más lenta. Es rendimiento, no capacidad: no bloquea ningún criterio.
 
