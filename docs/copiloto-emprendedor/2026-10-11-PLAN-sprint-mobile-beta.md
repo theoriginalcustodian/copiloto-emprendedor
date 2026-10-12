@@ -204,7 +204,7 @@ de escribir otro.
 | **#1000** | El alta por email de **web** no se puede completar: el backend exige `invite_token` y el cliente nunca lo manda; el form sólo abre con `?signup=1` | Alta por email de punta a punta, con test del **camino real** (no del happy-path mockeado) |
 | **#1016** | ⚠️ **Decía «mobile no tiene alta» y era falso** (medido 2026-10-12): el gate del primer ingreso existe en las dos apps con predicado único — `debeMostrarOnboarding` (`packages/core/src/api/onboarding.ts:18`), web en `App.tsx`, mobile en `app/_layout.tsx:98` + `Guard`, con tests los dos. Lo que falta es **qué se le pide**: hoy el paso ofrece conexiones (MP, Google) y los datos del negocio son todos opcionales con default. **Mínimos decididos: `que_vende` + `nombre_comercial`** | El predicado vive en **un** solo lugar y las dos apps lo importan; con cualquiera de los dos vacío **ninguna** deja pasar al shell; **test adversarial por app** (uno vacío ⇒ no entra) más su control positivo |
 | **#1001** | Mobile **no cablea la aceptación** legal (la pantalla de lectura ya existe, `PantallaLegal.tsx:31`, ruta `app/legal.tsx`), y la aceptación **no condiciona nada** en ninguna plataforma | Un alta nueva **no puede operar** sin aceptar, en las dos plataformas; mobile llama `POST /me/legal/aceptar` y guarda la versión. **Test del caso hostil**: una cuenta sin aceptación vigente es rechazada |
-| **#1002** | Sin SMTP no hay recuperación de contraseña ni cambio de mail | El usuario recupera su clave **sin intervención** de nadie |
+| **#1002** | Sin SMTP no hay recuperación de contraseña ni cambio de mail. **DIFERIDO por decisión (2026-10-12):** en beta el operador resetea a mano | ⚠️ El DoD **no se cumple y no se va a cumplir en la beta**: «recupera su clave **sin intervención de nadie**» se cumple al revés — depende enteramente de una persona. Queda **abierto**, dueño operador, disparador: antes del primer usuario no cercano |
 
 ### Bloque D · Paridad mobile *(dueño: frontend)*
 
@@ -212,7 +212,7 @@ de escribir otro.
 |---|---|---|
 | **#1017** | El chat de mobile **no tiene** renderer de artefactos ni desambiguación multi-opción — las dos ausencias las declara el propio código (`Burbuja.tsx:23`, `ListaMensajes.tsx:356`) | Un `choices` de **3+** opciones se renderiza y es elegible en mobile, y un artefacto post-confirmación se muestra. Medido en device |
 | **#1018** | Mobile no tiene los **bloques de agregado** que web sí: «facturado del mes» y el resumen de presupuestos | Los dos bloques existen y su cifra **coincide con la del detalle** para el mismo mes, con el predicado único de #1003 |
-| **#1019** | «Tus apps» y los modos por app están **escritos e inalcanzables en web** y no existen en mobile | Decidido y ejecutado en **una** de las dos direcciones, sin tercera: cableado y alcanzable en web + portado a mobile, **o** retirado de web (pantalla, `modeStore`, `ModeButton` y chip del composer) con el `mode` del `send()` limpiado |
+| **#1019** | «Tus apps» y los modos por app están **escritos e inalcanzables en web** y no existen en mobile. ✅ **DECIDIDO (2026-10-12): se RETIRA de las dos** | Retirado de web —pantalla, `modeStore`, `ModeButton` y chip del composer— con el `mode` del `send()` limpiado. 🔴 **Precondición:** confirmar la inalcanzabilidad **en runtime** antes de borrar (hoy medida estáticamente, `NO_PUDE_DETERMINAR`). **No tocar** `ConnectionsScreen.tsx:38`, que es otra pantalla con el mismo nombre y sí funciona |
 | **#1021** | Tres filas de «Mi cuenta» en web **prometen y no hacen nada** (dos `<div>` sin `onClick`, un toggle sin endpoint) y estaban por portarse a mobile así | Cada una se cablea o se retira de la UI. Ninguna queda visible prometiendo. Y el docstring de `AccountScreen` deja de citarlas como capacidad existente |
 | **#1007** | La card de confirmación (HITL) **queda activa** después de responderla | La card responde una vez y queda resuelta; un segundo toque no reenvía |
 | **#1008** | La app dice «No lo anotamos.» sobre un ingreso que **sí** quedó guardado | El mensaje refleja el resultado real de la escritura. Test del caso en que la escritura sí ocurrió |
@@ -224,7 +224,7 @@ de escribir otro.
 |---|---|---|
 | **#1005** | Un Responsable Inscripto lee «ya podés facturar» y la emisión **explota** con `NotImplementedError` | O la emisión funciona para ese caso, o la promesa no se muestra. Nunca las dos |
 | **#1006** | El catálogo de apps **anuncia herramientas que fueron podadas** | Lo anunciado y lo cableado coinciden, ítem por ítem |
-| **#1020** | **Cinco capacidades del backend** cableadas que ninguna app llama (3 con la función del core escrita y sin consumidor) | Cada una clasificada explícitamente: **se cablea** (con dueño y pantalla) o **se retira** (endpoint + función del core). Ninguna queda en el medio |
+| **#1020** | **Cinco capacidades del backend** cableadas que ninguna app llama (3 con la función del core escrita y sin consumidor). ✅ **DECIDIDO (2026-10-12): se cablean CUATRO y se RETIRA `POST /inteligencia/chat`** | Las **tres** no bloqueadas, alcanzables desde la UI en **las dos** plataformas, cada una con su renglón y dueño. **Orden forzado:** `imputacion` **antes** de `margen` — el margen se calcula sobre gastos imputados, así que sin imputación todos los márgenes salen incompletos. **DoD de UI:** ninguna pantalla muestra margen sin `gastos_imputados` al lado (`gastos_web.py:183`). `cambiar-email` 🔴 **bloqueada** por #1002: sin SMTP no hay cómo verificar la dirección nueva |
 
 ### Bloque F · Evidencia en device *(dueño: frontend, dueño único del device)*
 
@@ -269,17 +269,36 @@ más grande.
 
 ---
 
-## 7. Lo que espera al operador (bloquea el **cierre** del criterio 1, no el arranque del sprint)
+## 7. Las decisiones del operador — **LAS CINCO CERRADAS el 2026-10-12**
 
-1. ~~**Cómo entra un usuario**~~ — **DECIDIDO (2026-10-12):** altas **manuales** en beta, sólo personas cercanas; los permisos de login los otorga el operador. La allowlist se queda y su UI sale del alcance. Los **datos mínimos** del primer ingreso quedaron delegados y decididos: `que_vende` + `nombre_comercial` (ver #1016).
-2. **Texto legal definitivo** — hoy el descargo está declarado **PROVISORIO** hasta revisión de un
-   abogado — o la decisión explícita de salir con el aviso de plantilla puesto.
-3. **Proveedor SMTP + DNS.**
-4. **#1019:** ¿los modos por app son parte del producto? Se cablea en web o se retira de las dos.
-5. **#1020:** las cinco capacidades sin consumidor, ítem por ítem: se cablea o se retira.
+Estaban abiertas desde el **2026-10-06** y bloqueaban el **cierre** del criterio 1 (nunca el
+arranque del sprint). Ya no bloquean nada: lo que sigue es ejecución con dueño.
 
-Las tres primeras están abiertas desde el **2026-10-06**; lo que agrega este documento es **qué
-bloquean**: el criterio 1, y sólo el 1.
+1. ~~**Cómo entra un usuario**~~ — **DECIDIDO:** altas **manuales** en beta, sólo personas cercanas;
+   los permisos de login los otorga el operador. La allowlist se queda y su UI sale del alcance. Los
+   **datos mínimos** del primer ingreso: `que_vende` + `nombre_comercial` (ver #1016, ficha C-3).
+2. ~~**Texto legal**~~ — **DECIDIDO: se cablea YA con el texto provisorio marcado como tal.** La
+   aceptación pasa a ser **obligatoria en las dos plataformas** sin esperar al abogado. El texto
+   definitivo sigue pendiente, pero ya no bloquea: cuando llegue se reemplaza el contenido, no el
+   mecanismo. Incluye el **test del caso hostil** (una cuenta sin aceptación vigente es rechazada al
+   operar), que es lo único que distingue el control de su ausencia — el happy-path sale verde igual
+   si el guard no existe. Ver C-4.
+3. ~~**Proveedor SMTP + DNS**~~ — **DECIDIDO: diferido a pre-prod. En beta el operador resetea las
+   claves a mano.** Coherente con la decisión 1: quien otorga los accesos de ~4 personas cercanas
+   también resetea su clave. **Deuda declarada, no resuelta:** el DoD de #1002 dice «el usuario
+   recupera su clave **sin intervención de nadie**» y eso **NO se cumple**. #1002 queda **abierto**
+   con dueño (operador) y disparador (antes de abrir a usuarios que no sean cercanos). Ver C-5.
+4. ~~**#1019 — modos por app**~~ — **DECIDIDO: se RETIRAN de las dos** (rama **(b)** del DoD de D-3). Pantalla, `modeStore`,
+   `ModeButton`, el chip de modo del composer y el `mode` del `send()`. ⚠️ **Precondición antes de
+   borrar:** confirmar la inalcanzabilidad **en runtime**. Hoy está medida por lectura estática
+   —fuerte, porque la declara el propio código en dos lugares (`AppShell.tsx:116-121`,
+   `DesktopShell.tsx:89-91`)— pero el issue la marca `NO_PUDE_DETERMINAR`, y borrar sobre una lectura
+   estática es la forma barata de romper algo que sí tenía un caller.
+5. ~~**#1020 — cinco capacidades sin consumidor**~~ — **DECIDIDO: se cablean CUATRO; `POST /inteligencia/chat` se RETIRA.** La decisión original fue
+   «las cinco», y se corrigió el mismo día con evidencia: ese endpoint no es una capacidad que falta,
+   es una que el producto **reemplazó a propósito** por el chat durable, que es el moat. Esto **agrega alcance**, y se declara acá para que no aparezca como sorpresa a mitad del
+   sprint; el detalle, los dos hallazgos que lo reordenan y la colisión con la decisión 3 están en la
+   ficha **E-3**.
 
 ---
 
@@ -291,6 +310,11 @@ bloquean**: el criterio 1, y sólo el 1.
   `inteligencia_queries.py` (`nota_credito`), con tests en `test_contabilidad_integracion.py` y
   `test_inteligencia_queries.py`. **La cita de procedencia es el merge commit**, no la rama: las
   dos ramas ya no existen, así que «commit `ba1f8cbd`/`fca3abae`» no se puede resolver en un clon.
+- ⚠️ **La decisión 5 agrega alcance que el plan original no tenía.** Cablear las cinco capacidades
+  de #1020 significa **una pantalla nueva** (margen por trabajo: no existe módulo `trabajos` en
+  ningún front) y **revertir una decisión previa de alguien** (mobile removió `PreguntarInteligencia`
+  a propósito). No es una decisión gratis y no cabe en los huecos del sprint: necesita renglones
+  propios en la tabla de hitos o no existe. Ver E-3.
 - **`PantallaFacturacion.tsx` del checkout compartido está atrasado** respecto de la rama en vuelo.
   Commitearlo tal como está revierte +102 líneas ajenas. Medir el signo por archivo.
 - **El eje A no tiene instrumento válido todavía** (#1012). Hasta que lo tenga, cualquier cifra de
