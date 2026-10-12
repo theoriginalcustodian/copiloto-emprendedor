@@ -49,9 +49,15 @@ IMPAGA, PARCIAL, COBRADA = "impaga", "parcial", "cobrada"
 # sistema VIO no es la misma evidencia que uno que alguien TIPEÓ. El día que la caja no cuadre con el
 # banco, esto es por dónde se empieza a mirar.
 #
-# `mercadopago` todavía no lo escribe nadie (esos pagos viven en `mp_payments`): está declarado acá
-# para que el día que se unifiquen no haya que inventar el valor, y para que la app pueda cablear la
-# distinción HOY sin esperar esa migración.
+# 🔴 `mercadopago` SÍ LO ESCRIBE el webhook desde el 2026-10-06 (`9e4a70dc`): `mp_web`
+# `_registrar_ingreso_mp` inserta acá el pago aprobado, además de persistirlo crudo en `mp_payments`.
+# Hasta el 2026-10-11 estas líneas seguían diciendo «todavía no lo escribe nadie» — el commit cambió
+# el código y no el comentario, y el comentario es lo que se lee. Costó una afirmación falsa en un
+# backlog: *grepear quién ESCRIBE, no creerle al comentario sobre quién escribe.*
+# Consecuencia que importa: `copiloto_cobros` y `mp_payments` tienen HOY la misma plata dos veces para
+# un pago MP posterior al 06/10. Por eso la definición de «Entró» excluye `origen='mercadopago'` de la
+# pata de esta tabla (ver el comentario de `_INGRESOS` en `inteligencia_queries.py`). Quien toque una
+# de las dos, lee la otra primero.
 ORIGEN_FACTURA, ORIGEN_MANUAL, ORIGEN_MP = "factura", "manual", "mercadopago"
 
 

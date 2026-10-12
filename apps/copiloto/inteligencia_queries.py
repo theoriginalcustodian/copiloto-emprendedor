@@ -35,13 +35,32 @@ _SCHEMA = "uc_factory"
 # ── LA definición de «Entró». Un solo lugar (§0). ────────────────────────────────────────────────
 # Los cobros (factura + dictados) viven en `copiloto_cobros`; los pagos de MercadoPago en
 # `mp_payments` (que TAMBIÉN lleva `cliente_id` — se filtra por él, no por `seller_user_id`, así el
-# aislamiento es el mismo que el resto). `origen='mercadopago'` en `copiloto_cobros` está declarado
-# pero **no lo escribe nadie todavía**, así que MP se suma desde su tabla; el día que se unifiquen, la
-# fila del `UNION` se saca de acá y ninguna cara se entera. `occurred_at` es timestamptz → se lleva al
+# aislamiento es el mismo que el resto). `occurred_at` es timestamptz → se lleva al
 # día del negocio con el mismo -3h fijo que `hoy_del_negocio`, para que un pago de las 22:00 de Buenos
 # Aires no caiga en el día —ni en el mes— siguiente.
+#
+# 🔴 POR QUÉ LA PATA DE `copiloto_cobros` EXCLUYE `origen='mercadopago'` — un pago se cuenta UNA vez
+# Hasta el 2026-10-06 este comentario decía que `origen='mercadopago'` «**no lo escribe nadie
+# todavía**», y por eso MP se sumaba entero desde su tabla. Ese mismo día, `9e4a70dc` (COBROMP) hizo
+# que el webhook registre el pago aprobado TAMBIÉN en `copiloto_cobros` con ese origen — y no tocó
+# esta consulta. Desde entonces un pago MP aprobado estaba en las DOS patas del `UNION ALL`: `$300`
+# entraban como `$600` en «Entró», mientras `listar_ingresos` (que lee sólo `copiloto_cobros`)
+# mostraba `$300`. Dos caras del producto, dos números para el mismo pago.
+#
+# El comentario de entonces dejaba escrita la condición de retiro («el día que se unifiquen, la fila
+# del `UNION` se saca de acá»). El día llegó y nadie lo conectó: **un disparador cumplido no avisa a
+# nadie**. Por eso ahora la regla vive en el SQL, no en una condición a futuro.
+#
+# Se excluye la pata de cobros —y NO se saca la de `mp_payments`— a propósito: `mp_payments` tiene
+# los pagos ANTERIORES al 06/10, que nunca tuvieron fila en `copiloto_cobros`; sacar la otra pata los
+# borraría de «Entró». Así suma una vez **con o sin** backfill — lo correcto cuando ese dato no está
+# medido. **Condición de retiro de la pata `mp_payments`, explicitada para que no vuelva a quedar
+# huérfana:** sólo con VERIFICACIÓN de que todo `mp_payments.status='approved'` tiene su fila en
+# `copiloto_cobros` (backfill corrido y contado). El control que lo sostiene:
+# `test_ENTRO_cuenta_UNA_vez_el_pago_que_el_webhook_escribe_en_las_DOS_tablas`.
 _INGRESOS = f"""
-    SELECT fecha AS dia, monto FROM {_SCHEMA}.copiloto_cobros WHERE cliente_id = %(cid)s
+    SELECT fecha AS dia, monto FROM {_SCHEMA}.copiloto_cobros
+     WHERE cliente_id = %(cid)s AND coalesce(origen, 'manual') <> 'mercadopago'
     UNION ALL
     SELECT (occurred_at - interval '3 hours')::date AS dia, amount
       FROM {_SCHEMA}.mp_payments
@@ -315,7 +334,17 @@ class InteligenciaQueries:
         """`lado='entro'`: filas de `_INGRESOS` con `origen` visible (factura/manual/mercadopago) —
         Ingresos ya distingue así, se reusa la misma etiqueta. `lado='salio'`: filas de `copiloto_gastos`.
         Dos queries de detalle porque las fuentes son tablas distintas con columnas distintas; el
-        AGREGADO (arriba) sigue siendo una sola definición."""
+        AGREGADO (arriba) sigue siendo una sola definición.
+
+        🔴 La exclusión `origen <> 'mercadopago'` de la pata de cobros es la MISMA regla que
+        `_INGRESOS` — ver su comentario para el por qué y la condición de retiro. Esta query **no usa**
+        ese string (necesita columnas que el agregado no trae), así que la regla vive escrita dos
+        veces: el 2026-10-06 `9e4a70dc` desincronizó las dos a la vez y el mismo pago MP salió
+        duplicado también acá, como DOS filas del detalle. El docstring decía «el AGREGADO sigue siendo
+        una sola definición» y era cierto, y aun así no alcanzó: **lo que estaba duplicado era la
+        regla, no el agregado.** Si se cambia una, se cambia la otra — y el control
+        `test_ENTRO_cuenta_UNA_vez_...` mide las dos caras justamente porque el fix de una no protege
+        a la otra."""
         if lado not in ("entro", "salio"):
             raise ValueError(f"lado inválido: {lado!r} (entro | salio)")
         ini, fin, clave = self._mes_o_actual(mes)
@@ -335,6 +364,7 @@ class InteligenciaQueries:
                     SELECT id, fecha, monto, origen, coalesce(nullif(cliente_nombre, ''), '')
                       FROM {_SCHEMA}.copiloto_cobros
                      WHERE cliente_id = %(cid)s AND fecha >= %(ini)s AND fecha < %(fin)s
+                       AND coalesce(origen, 'manual') <> 'mercadopago'
                     UNION ALL
                     SELECT id, (occurred_at - interval '3 hours')::date, amount, 'mercadopago', ''
                       FROM {_SCHEMA}.mp_payments
