@@ -114,3 +114,31 @@ tiene la suya, el doc dice una cosa y el gate mide otra. Ver también
 [[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]] — que es el mecanismo
 exacto por el que esta afirmación sobrevivió — y
 [[el-guard-se-satisface-con-su-propio-comentario]].
+
+---
+
+## 📅 2026-10-12 — la variante más tranquilizadora: el aviso es CORRECTO y el remedio que propone no lo cumple
+
+Las variantes de arriba son comentarios que **exageran o inventan** la defensa. Ésta es peor de leer,
+porque el comentario **acierta en el diagnóstico**: `.claude/commands/monitoreo.md` decía, textual,
+*«el destinatario puede ser compuesto: `-a-backend-y-planificacion_`; `-a-planificacion_` no lo ve»*.
+Es verdad, es preciso, y nombra el caso exacto.
+
+Y la línea de arriba proponía el filtro `find abierto -name '*planificacion_*' ! -name '*_planificacion-a-*'`,
+que **tampoco los ve**. Medido sobre el buzón real: **7 de 12** mensajes invisibles, uno un `urgente_`
+de cinco días. El motivo es de un carácter: `*planificacion_*` exige `planificacion` **pegada al `_`**,
+y en `-a-planificacion-y-backend_` la sigue un `-`.
+
+🔑 **Por qué desactiva la búsqueda con más fuerza que una mentira:** quien llega ahí preguntándose
+*«¿este filtro ve los compuestos?»* encuentra el aviso que dice que sí los tuvo en cuenta, y **la
+pregunta queda contestada antes de mirar el comando**. Un comentario ausente deja la duda viva; un
+comentario equivocado se puede refutar leyendo; **un comentario correcto al lado de un remedio
+insuficiente se autoacredita**. Es la forma de [[instrumentos-que-confirman-en-vez-de-verificar]]
+aplicada a la prosa: la advertencia *performa* el cuidado.
+
+**Cómo aplicarlo:** cuando un comentario advierte sobre un caso borde, **corré el caso borde contra el
+remedio de al lado** — no alcanza con que el aviso lo nombre. Un renglón:
+`comm -23 <(instrumento_bueno) <(filtro_documentado)`, y lo que salga es lo que el aviso no cubría.
+Y el fix de raíz no es mejorar el glob en cinco prompts: es que **ninguno escriba el filtro** y todos
+invoquen la misma definición (`scripts/mi-buzon.sh` → `me_interpela()`), porque una regla copiada en
+cinco lugares divergió en cinco lugares. → [[la-costura-leia-un-campo-que-nadie-escribe]]

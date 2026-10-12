@@ -18,11 +18,16 @@ averiguarlo.
    Si no existe en tu checkout, estás en una rama vieja — `git log origin/main -1` y decilo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
    nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
-6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
-   `planificacion_` en CUALQUIER posición de destinatario y `-a-todos_`, descartando lo que empiece
-   por `planificacion-a-` (es tuyo): `find abierto en-curso -name '*planificacion_*' ! -name '*_planificacion-a-*'`.
-   Un filtro `-a-planificacion_` NO ve `-a-backend-y-planificacion_` (K-07-B quedó 20+ min sin leer, 21/09).
-   Mirá también `cerrado/<hoy>/` por los `avance_`, que nacen archivados.
+6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y corré
+   `bash scripts/mi-buzon.sh planificacion --todo`, que ya mira `abierto/`, `en-curso/` y
+   `cerrado/<hoy>/` (donde los `avance_` nacen archivados).
+   **No escribas el filtro a mano.** Ni el `find '*planificacion_*'` que acá se documentaba:
+   medido el 2026-10-12 sobre el buzón real, dejaba **7 de 12** invisibles. El motivo es fino y
+   por eso el aviso de «el destinatario puede ser compuesto» que ya estaba escrito no alcanzó:
+   `*planificacion_*` exige `planificacion` **pegada al `_`**, y en `-a-planificacion-y-backend_`
+   la sigue un `-`. El aviso estaba; el filtro que proponía igual no los veía.
+   `mi-buzon.sh` delega en `me_interpela()` (`scripts/lib/buzon-roles.sh`) — la MISMA definición
+   que usa el gate de vigilancia — y ya descarta lo que vos emitiste.
 
 > 🔧 **Por qué `vigia.sh` y no `scripts/<instrumento>` directo** (medido el 2026-10-08): el path relativo resuelve contra tu **cwd**, que es el checkout COMPARTIDO, cuyo HEAD está viejo. Esa versión **miente**: reportó 15 ids con «estado no reconocido» (el parser viejo no entiende `⏳`/`⏸`) y `999999min` en 4 escaladores en vez de la antigüedad real (2897/2045/2036/2067). `vigia.sh` corre el instrumento desde un **pin de `origin/main`**, y si no puede refrescarlo **grita en stderr** en vez de caer callado al árbol viejo. Un instrumento que EJECUTA un script del working tree hereda la versión de ese checkout y no lo sabe.
 
@@ -106,11 +111,16 @@ Vigía de coordinación (sesión PLANIFICACIÓN) v3.
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-1. NOVEDADES. Listar `abierto/` y `en-curso/` y quedarte SÓLO con lo dirigido a vos:
-   `find abierto en-curso -name '*planificacion_*' ! -name '*_planificacion-a-*'` más `-a-todos_`
-   (el destinatario puede ser compuesto: `-a-backend-y-planificacion_`; `-a-planificacion_` no lo ve). Descartar todo lo que empiece por `planificacion-a-` (son
-   tuyos: notificarlos es ruido disfrazado de novedad). Mirar también `cerrado/<hoy>/` por los
-   `avance_`, que nacen archivados y no aparecen en `abierto/`.
+1. NOVEDADES — `bash scripts/mi-buzon.sh planificacion --todo`. Trae lo que te interpela de
+   `abierto/`, `en-curso/` y `cerrado/<hoy>/`, descarta lo que vos emitiste (notificarlo es
+   ruido disfrazado de novedad) y ordena lo más viejo primero — que es lo único que urge.
+   **No escribas el filtro a mano.** Ni el `find '*planificacion_*'` que acá se documentaba:
+   medido el 2026-10-12 sobre el buzón real, dejaba **7 de 12** invisibles. El motivo es fino y
+   por eso el aviso de «el destinatario puede ser compuesto» que ya estaba escrito no alcanzó:
+   `*planificacion_*` exige `planificacion` **pegada al `_`**, y en `-a-planificacion-y-backend_`
+   la sigue un `-`. El aviso estaba; el filtro que proponía igual no los veía.
+   `mi-buzon.sh` delega en `me_interpela()` (`scripts/lib/buzon-roles.sh`) — la MISMA definición
+   que usa el gate de vigilancia — y ya descarta lo que vos emitiste.
 
 2. LO QUE TE INTERPELA. Un archivo puede pedirte respuesta aunque su nombre diga otro destinatario:
    abrí los que tengan secciones nuevas al final y fijate si alguna te interroga a vos. El nombre

@@ -21,6 +21,9 @@
 #   3. CONTROL NEGATIVO — sin contrato abierto                              → silencio
 #   4. CONTROL NEGATIVO — la señal viene de un slug hermano (así corre auditoría) → silencio
 #   5. CONTROL POSITIVO — cero señal de cualquier tipo                      → alarma
+#   6. CONTROL NEGATIVO — el contrato es recén nacido (nadie pudo leerlo)    → silencio
+#   7. La señal (d) — el rol commitea en SU rama sin tocar el buzón          → silencio
+#   8. CONTROL POSITIVO — destino COMPUESTO de tres, el rol en el MEDIO      → alarma
 #
 # El caso 3 protege al watchdog de sí mismo: un vigía que grita de más se apaga solo en una semana.
 # La expectativa se deriva del buzón (`contrato_…-a-<rol>_`), nunca de una lista hardcodeada.
@@ -226,9 +229,35 @@ else
   fail "REGRESIÓN: una rama fix/… silenció la alarma de backend. Salida: $out"
 fi
 
+echo "── 8. CONTROL POSITIVO: destino COMPUESTO de tres, con el rol en el MEDIO ──"
+# La forma que se perdía. Hasta el 2026-10-12 este bloque filtraba con su propia regex inline
+# —`([a-z0-9-]*-y-)?<rol>(-y-[a-z0-9-]*)?`— que exige que lo anterior al rol termine en `-y-`. En
+# `-a-planificacion-backend-y-frontend2_` a `backend` lo precede `planificacion-`, así que NO
+# matcheaba y el contrato quedaba huérfano SIN alarma. Los 7 casos de arriba pasaban igual: ninguno
+# usaba un compuesto de tres, así que su verde no acreditaba nada sobre esta forma.
+# Hoy el destinatario lo decide me_interpela() (lib/buzon-roles.sh), la misma definición que el
+# resto de los consumidores. Si alguien vuelve a poner una regex propia acá, este caso se pone rojo.
+b="$(nuevo_buzon 8)"; r="$(nuevo_slug_root 8)"
+msg "$b/cerrado/2026-10-07_avance_backend-a-todos_housekeeping.md" 120
+msg "$b/abierto/2026-10-07_contrato_auditoria-a-planificacion-backend-y-frontend2_TRES-destinos.md" 118
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  ok "ve al rol en el MEDIO de un destino compuesto de tres"
+else
+  fail "el compuesto de tres dejó el contrato huérfano sin alarma — vuelta a la regex propia. Salida: $out"
+fi
+# OJO: `grep` sobre todo $out NO sirve: el chequeo de COLA tambien imprime el nombre del archivo,
+# asi que la asercion daba verde con la alarma AUSENTE. Se recorta la seccion de la alarma primero.
+seccion="$(printf '%s' "$out" | sed -n '/SIN DUEÑO: BACKEND/,/^$/p')"
+if printf '%s' "$seccion" | grep -q "TRES-destinos"; then
+  ok "la ALARMA (no otra seccion) nombra el contrato del destino compuesto"
+else
+  fail "la alarma no nombra el contrato compuesto. Seccion: $seccion"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-vigilancia-rol-ausente: 12/12"
+  echo "✅ test-vigilancia-rol-ausente: 14/14"
   exit 0
 fi
 echo "❌ test-vigilancia-rol-ausente: $fallos fallo(s)"
