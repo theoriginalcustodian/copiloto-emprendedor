@@ -66,7 +66,7 @@ negativo** del verificador: si alguno vuelve a figurar como ausente, el mapeo es
 | `cuenta` | Prototipo frontend/odobi-ui/prototipo/index.html:2366 | apps/mobile/src/modules/ajustes/PantallaCuenta.tsx:30 | falta "Cambiar el mail" (DIFERIDO_CIERRE_B, CambiarCredenciales.tsx:68); No molestar (:88) sin chip "Pronto" ni rotulo "Avisos" y con otro copy; sin subtitulo "desde marzo de 2021"; sin nota de cierre (nativo tiene panel de confirmacion); nativo agrega filas Terminos y Condiciones (:61) y Politica de Privacidad (BL-O6) |
 | `detalle` | Prototipo frontend/odobi-ui/prototipo/index.html:2473 (#tablero; router :3487) | apps/mobile/src/modules/midia/PantallaMiDia.tsx:603 (TarjetaMiDiaRow expandida) | la fila expandida muestra texto + `verbo` como Text inerte (sin onPress: no hay CTA accionable) + "cliente · monto · fecha"; sin tile de color, sin chip-p ("31 dias sin respuesta"), sin filas kv (Monto/Enviado) ni pildora "accion"; las acciones son swipe (avanzar/borrar); no existe tablero aparte |
 | `entrada` | Prototipo frontend/odobi-ui/prototipo/index.html:2438 (router :3446) | apps/mobile/src/modules/splash/EntradaDiaria.tsx:116 | fondo `tema.color.fondo` + acento vs blanco fijo + terracota; las ondas solo hacen fade (sin translateX/scaleX, documentado); sin animacion de salida (`.sale` .34s), `onFin` dispara a 1500ms; el loop cada 6s es solo del prototipo |
-| `esc` | Prototipo frontend/odobi-ui/prototipo/index.html:1637 | apps/mobile/src/shell/PanelFunciones.tsx + apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx | **[ASSUMED_PENDING_VERIFY]** no implementar hasta la respuesta del operador sobre el reposo de las 3 capas (`pedido_` 2026-10-12) — ASOMO=62 ausente en nativo (Mi dia no asoma) + rotulos de asidero + PanelFunciones no tiene canal para cerrarse desde afuera (props = escritorio/children/testID) |
+| `esc` | Prototipo frontend/odobi-ui/prototipo/index.html:1637 | apps/mobile/src/shell/PanelFunciones.tsx + apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx | **DECIDIDA 2026-10-12 por el operador: opcion A — reset a Mi Dia.** Al bajar el chat el escritorio se cierra; el reposo es UNICO (coherente con `specs/mobile-coherencia.md:167`). El prototipo no define la regla (`index.html:2688-2692`: las 4 funciones tocan una sola capa), asi que esto es enmienda fundada, no copia. Falta: ASOMO=62 ausente en nativo (Mi dia no asoma) + rotulos de asidero + PanelFunciones no tiene canal para cerrarse desde afuera (props = escritorio/children/testID) |
 | `fact-cae` | Prototipo frontend/odobi-ui/prototipo/index.html:3337 (HILOS) | apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.tsx:128 (Recibo "Factura emitida.") + facturacion/comprobante.tsx:50 (DatosComprobante) + :80 (AccionesComprobante; boton "Guardar" :118) | texto nativo "Tipo de comprobante X · Punto de venta · N°" + "CAE:" + "Vence el" + "Total"; botones "Guardar" (llama abrirLink, NO guarda en Drive) / "Compartir"; sin accion "Mandala por mail" ni link "PDF"; agrega aviso de 24h y polling de PDF en preparacion |
 | `fact-hitl` | Prototipo frontend/odobi-ui/prototipo/index.html:3328 (HILOS) | apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.tsx:74 (render :180) | sin encabezado HITL "Factura C" + chip "ARCA"; filas no editables; sin Cancelar; "Emitir" vs "Emitir factura"; la nota es AVISO_FACTURA_ANULACION ("Una vez emitida no se puede borrar: si hay un error, se anula con una nota de credito."), distinta redaccion |
 | `fact-voz` | Prototipo frontend/odobi-ui/prototipo/index.html:3323 (HILOS) | apps/mobile/src/modules/chat/Burbuja.tsx:37 + chat/ListaMensajes.tsx (texto del backend) | sin meta "10:12 · por voz ✓✓ recibido" (grep "recibido"/"✓✓": 0): nativo solo tiene el chip "Por voz · Ns" dentro de la burbuja; sin avatar ISO del asistente. INDETERMINADO: el texto de respuesta lo genera el backend y su redaccion exacta no se comparo |
@@ -112,10 +112,12 @@ Tres decisiones no son de este doc ni de las sesiones. Bajaron al operador en UN
 
 1. **Estado de reposo de las 3 capas** → bloquea **`esc`**, y solo esa (unica fila que toca el
    reposo/ASOMO). El prototipo tiene el mismo defecto reportado: ninguna de sus cuatro funciones
-   de capa resetea la otra (`index.html:2688-2692`). La fila va marcada
-   `[ASSUMED_PENDING_VERIFY]` y **no se toca** hasta la respuesta, ni la opcion que se recomendo.
+   de capa resetea la otra (`index.html:2688-2692`). **RESPONDIDA 2026-10-12: opcion A —
+   reset a Mi Dia.** La marca `[ASSUMED_PENDING_VERIFY]` se levanto y la fila se implementa;
+   incluye traer `ASOMO = 62`, que no existe en nativo.
 2. **Composer vs `MicFuncion`** → toca 5 filas (`bloqueado`, `card-factura`, `factura`,
-   `grabando`, `ingresos`), y **no las bloquea**.
+   `grabando`, `ingresos`), y **no las bloquea**. **RESPONDIDA 2026-10-12: el operador confirmo
+   esta lectura** — las 5 se implementan como estan.
    ⚠️ **Este doc afirmaba, hasta el 2026-10-12, que «el mockup 11 puso el control que usa la app
    en la columna *descartada*». Era FALSO y se retira**, no se matiza: `MicFuncion.tsx:10,12`
    importa `BotonVoz` y `useVozComando` **de `../chat/`** — los mismos que usa `ChatView.tsx:9,19`
@@ -128,10 +130,14 @@ Tres decisiones no son de este doc ni de las sesiones. Bajaron al operador en UN
    `DECISIONES.md:14`, del 16/08, lo declara visible) → **bloquea 0 filas**: medido sobre las 54,
    `rotulo` y `Estas en` dan **cero** hits. Ninguna fila lo espera. Si la respuesta fuera
    «visible», aparecen filas **nuevas**, y eso si movera el denominador.
+   **RESPONDIDA 2026-10-12: derogado** (gana `CLAUDE.md:741-748`) — **el denominador queda en 54.**
 
-**La marca existe en la tabla, no solo aca:** hoy la lleva **una** fila (`esc`). Declarar «las
-filas van marcadas» sin que ninguna lo estuviera fue el estado de este doc hasta el 2026-10-12 —
-un comentario que declara una proteccion y apaga la busqueda del proximo.
+**La marca existe en la tabla, no solo aca.** Hoy no la lleva **ninguna** fila: las 3 decisiones
+se respondieron el 2026-10-12 y `BLOQUEADAS` (`scripts/evidencia/verificar-mapeo.py:172`) quedo
+vacia. El mecanismo **no se retiro**: su control 5 es simetrico — una fila marcada sin entrada
+en la tabla, o una entrada sin fila marcada, hacen fallar el gate. Declarar «las filas van
+marcadas» sin que ninguna lo estuviera fue el estado de este doc hasta el 2026-10-12: un
+comentario que declara una proteccion y apaga la busqueda del proximo.
 
 Y la verificacion de comportamiento es **de device**, con dueno unico. Un verde de PWA no
 acredita nada tactil.

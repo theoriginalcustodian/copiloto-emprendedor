@@ -92,3 +92,23 @@ bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh
 # control que el DoD de `DURABGATE` pedía wireado al gate (sin esto, el fail-open del armado de
 # durabilidad podía volver sin que ningún CI lo viera). Bash puro, sin red/ssh, corre en segundos.
 bash "$ROOT/scripts/test-durabilidad-gate.sh"
+
+# MAPEOSINGATE (2026-10-12). `scripts/evidencia/verificar-mapeo.py` y `armar-contratos.py` tenian
+# CERO invocadores en todo el arbol: el mapeo del criterio 3 y sus 54 contratos podian divergir
+# —una fila sin renglon, una marca `[ASSUMED_PENDING_VERIFY]` sin entrada en `BLOQUEADAS`, el doc
+# editado a mano— y ningun gate lo veia. Son python STDLIB sin red ni DB, asi que entran en `lint`
+# igual que los controles de deploy de arriba. El generador ya acepta destino por `argv[1]`
+# (`armar-contratos.py:50`): se regenera a un temporal y se COMPARA, en vez de agregarle un
+# `--check` que seria un segundo mecanismo para la misma pregunta.
+python "$ROOT/scripts/evidencia/verificar-mapeo.py"
+_contratos="$ROOT/docs/copiloto-emprendedor/2026-10-12-contratos-del-mapeo.md"
+_tmp_contratos="$(mktemp)"
+python "$ROOT/scripts/evidencia/armar-contratos.py" "$_tmp_contratos" >/dev/null
+if ! diff -q "$_tmp_contratos" "$_contratos" >/dev/null; then
+  echo "❌ los contratos del mapeo NO estan regenerados: el doc versionado difiere de lo que"
+  echo "   produce armar-contratos.py desde el mapeo. Corré: python scripts/evidencia/armar-contratos.py"
+  diff "$_contratos" "$_tmp_contratos" | head -20
+  rm -f "$_tmp_contratos"; exit 1
+fi
+rm -f "$_tmp_contratos"
+echo "✅ mapeo del criterio 3: 5 controles OK · contratos regenerados identicos al versionado"

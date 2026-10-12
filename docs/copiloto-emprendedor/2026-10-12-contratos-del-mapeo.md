@@ -13,10 +13,8 @@
 > `path:linea`) vive en el mapeo y **no se repite aca** — se cita. Dos copias del mismo dato
 > divergen, y gana la que circula.
 >
-> ⚠️ **Lo que NO se implementa todavia:** la fila `esc` depende del estado de reposo de las
-> 3 capas, que es decision del operador (`pedido_` del 2026-10-12, sin responder). Queda
-> `[ASSUMED_PENDING_VERIFY]`: nada de esa fila se toca hasta la respuesta, ni la opcion A
-> que recomende.
+>
+> ✅ **Cero filas bloqueadas por decisiones ajenas.** Ninguna fila espera una respuesta del operador. Derivado de `V.BLOQUEADAS`, que esta vacia: no es una afirmacion escrita a mano.
 
 
 ## backend + nativa — 7 renglones
@@ -46,7 +44,7 @@ El telefono tiene **un solo dueno**. Nada de este grupo se declara listo con un 
 | `consent` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `detalle` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
 | `entrada` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
-| `esc` | frontend (device, dueno unico) | **[ASSUMED_PENDING_VERIFY] NO SE IMPLEMENTA.** Bloqueada por: estado de reposo de las 3 capas (pedido_ al operador, 2026-10-12). El DoD lo fija la respuesta; hasta entonces no se toca, ni la opcion recomendada. | lo tactil no lo acredita un test unitario |
+| `esc` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `feedback` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `grabando` | frontend (device, dueno unico) | La capacidad tiene al menos UN consumidor real en `apps/mobile/src` fuera de su propio archivo y de sus tests, y se VE en la pantalla. Hoy esta escrita y nadie la usa. | lo tactil no lo acredita un test unitario |
 | `ingresos` | frontend (device, dueno unico) | Comparada contra el prototipo: la fila dice COINCIDE o nombra la divergencia. Hoy no esta medida, y «sin comparacion» no es «coincide». | lo tactil no lo acredita un test unitario |

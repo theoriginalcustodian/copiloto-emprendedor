@@ -170,7 +170,12 @@ def elemento_ausente(fila):
 # SIN marca se implementa a ciegas; una marca sin entrada aca es huerfana y nadie sabe que
 # respuesta la libera, asi que nunca se levanta.
 BLOQUEADAS = {
-    "esc": "estado de reposo de las 3 capas (pedido_ al operador, 2026-10-12)",
+    # VACIA desde 2026-10-12: el operador respondio las 3 decisiones del `pedido_` y eligio
+    # **A — reset a Mi Dia** para el reposo de las 3 capas, que era el unico bloqueo real.
+    # Se deja la tabla (no se borra el mecanismo) porque es la fuente unica del control 5 y
+    # del aviso de la cabecera de los contratos: un mecanismo retirado no frena a la proxima
+    # fila bloqueada. El control 5 es simetrico, asi que vaciarla EXIGE que ninguna fila del
+    # mapeo lleve la marca — y al reves.
 }
 MARCA = "[ASSUMED_PENDING_VERIFY]"
 
