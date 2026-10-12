@@ -68,3 +68,49 @@ comentario dice. Y al lado del comentario mirá su `git blame`: **si el commit m
 posterior al comentario y toca el mismo tema, el comentario ya es sospechoso.** Al corregirlo, dejá
 escrito *qué commit lo volvió falso y cuándo*, no sólo el hecho nuevo: eso es lo que convierte al
 comentario en algo fechable la próxima vez.
+
+## Refuerzo 2026-10-12 — la variante peor: el doc declara una MARCA que ninguna fila lleva
+
+Hasta acá la entrada trataba del comentario que afirma un **hecho** del sistema. Hay una variante que
+engaña más, porque no afirma un hecho: **declara un mecanismo propio del documento.**
+
+El mapeo prototipo→nativo (PR #1029) decía en su cabecera: *«las filas que dependen de esas tres van
+marcadas `[ASSUMED_PENDING_VERIFY]` y no se implementan hasta que estén respondidas»*. Medido:
+
+```
+=== filas con ASSUMED_PENDING_VERIFY ===
+114:Las filas que dependen de esas tres van marcadas `[ASSUMED_PENDING_VERIFY]` y **no se
+```
+
+**Un solo hit, y es la propia línea que lo declara.** Cero filas marcadas. La frase describe una
+protección que el documento no implementa, y es **peor que un comentario viejo**: un comentario viejo
+alguna vez fue cierto, esta frase nunca lo fue. Y el que lee la cabecera queda convencido de que las
+filas sensibles están señaladas, así que **toma cualquier fila de la tabla sin mirar si tiene marca.**
+
+Por qué sobrevivió en ese doc, que es el mecanismo de esta entrada aplicado a sí mismo: la afirmación
+falsa de la misma cabecera (*«el mockup 11 puso `MicFuncion` en la columna descartada»*) **ya había
+sido refutada con evidencia y corregida** — en el control positivo y en el renglón del lote B. Quedó
+viva en la cabecera porque la corrección se escribió **en otro lado** en vez de retirar el texto
+viejo. Documentar el cambio en un lugar nuevo deja el viejo circulando.
+
+**Y dos cosas medidas al arreglarlo, que son las que hacen el arreglo barato:**
+
+1. **La marca va en un campo que NO es clave.** Primer intento: marcar el id → `| \`esc\`
+   **[ASSUMED_PENDING_VERIFY]** |`. El control del padrón cayó a **53 de 54** y acusó a `esc` de
+   ausente. El primer campo es la clave y el parser la lee literal: una marca ahí **borra la fila**.
+   Va en la columna que se lee, no en la que indexa. Lo cazó un control existente, no yo.
+2. **Un control de marca tiene DOS ramas y necesita DOS canarios.** Bloqueada **sin** marca → se
+   implementa a ciegas. Marca **huérfana**, sin entrada en la tabla de quién la desbloquea → nadie
+   sabe qué respuesta la libera, así que **no se levanta nunca**. Con un solo sabotaje se acredita la
+   mitad del control, que es el patrón de
+   [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+**Cómo aplicarlo:** cuando un documento declare que sus propias filas/secciones llevan una marca, un
+estado o una clasificación, **grepeá el token y contá los hits contra las filas que debería haber.**
+Si el único hit es la línea que lo declara, el mecanismo no existe. Y el fix de raíz no es marcar las
+filas a mano: es que el **instrumento mida la marca** (el verificador del mapeo ganó su `CONTROL 5`),
+con la tabla de bloqueos en **un solo lugar** que lean el verificador y el generador — si cada uno
+tiene la suya, el doc dice una cosa y el gate mide otra. Ver también
+[[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]] — que es el mecanismo
+exacto por el que esta afirmación sobrevivió — y
+[[el-guard-se-satisface-con-su-propio-comentario]].
