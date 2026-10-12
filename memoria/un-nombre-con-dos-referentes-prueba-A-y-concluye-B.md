@@ -65,3 +65,41 @@ Hermanas: [[el-contrato-afirma-el-mecanismo-que-no-opero]] ·
 [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]] ·
 [[un-control-positivo-con-esperado-falso-acusa-al-script]] ·
 [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 · el id EXISTÍA y apuntaba a otro hallazgo: un check de EXISTENCIA nunca verifica el REFERENTE
+
+Variante que no requiere homónimos ni dos autoras: **un solo id, perfectamente válido, citado para
+describir otra cosa.** El cierre del relevamiento mobile citaba, en §9, *«los cinco assets de build
+time sin cablear (**H-43**), y la poda de los siete nativos sin uso (**H-46**)»*. Los cinco assets
+son **H-49**; `H-43` es un 🔥 sobre `ajustes-feedback.tsx`, y `H-46` un 🕳️ de deuda de comentarios.
+La poda de nativos **no tiene fila numerada** — es la categoría (c) de §6.1. El mismo par roto
+estaba repetido en §6.3. Causa mecánica: los ids se asignaron **al final**, y la prosa quedó citando
+la numeración anterior.
+
+🔑 **Por qué el gate no podía verlo, y es el punto transferible.** Su criterio del índice validaba
+que los ids `1..59` **existieran** sin huecos y que las seis clases cuadraran una por una — y
+pasaba, porque `H-43` existe. **Un check de existencia responde «¿el destino existe?» y jamás
+«¿es el destino que esta frase describe?»**. Es la misma degradación que ya había pagado el check
+de la partición (presencia global que absolvía a la tabla rota): la propiedad vive en la
+**correspondencia**, y hay que medirla ahí.
+
+**Y el intento de medirla mecánicamente dejó su propia lección, que es la mitad útil.** Escribí el
+contraste —de las palabras de la frase citante, ¿alguna aparece en la fila citada?— y **lo medí
+antes de embarcarlo**: 41 citas en prosa, la regla «cero coincidencias + existe otra fila con ≥3»
+da **5 señales y 2 errores reales**. ~40 % de precisión no alcanza para un gate: un guard que grita
+en el caso normal se desarma solo, y el umbral está calibrado contra el corpus del día. Se embarcó
+como **informe que no decide el exit code**, diciéndolo en su docstring. Corrido, señaló los dos
+punteros reales, un falso positivo leve (una cita a una familia correcta cuya frase agregaba un
+detalle que sólo aplicaba a uno de los dos ids) y dos avisos por **uso vs. mención** en el recuadro
+que habla de los punteros.
+
+**Cómo aplicarlo:** cuando una prosa cite un id, una fila, un ADR o un ticket, el control no es
+*«¿existe?»* — es *«¿qué dice el destino?»*, y se responde **abriéndolo**. Si el que cita y el
+citado se escriben juntos y los ids se asignan al final, asumí que hay punteros viejos y medilos:
+el error no se ve releyendo, porque el id válido no tiene cara de roto.
+→ [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]] ·
+[[medir-si-un-gate-dispara-antes-de-embarcarlo]] ·
+[[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]] ·
+[[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]

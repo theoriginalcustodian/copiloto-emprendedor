@@ -675,3 +675,92 @@ fila afirma algo más amplio que lo que muestra su evidencia, refutenmelo con el
 Lo hicieron, con path y línea. **Invitar la refutación por escrito y por adelantado funcionó mejor
 que mis cuatro controles propios** — los tres de `(f)` los cacé tarde y solo; este lo cazó el
 mecanismo que pedí.
+
+---
+
+## ⚠️ REFUERZO 2026-10-11 · el sujeto correcto, una CAPA más arriba: leer el manifest del PAQUETE no acredita el resultado del MERGE
+
+La variante más barata de equivocar el sujeto no es mirar otro archivo: es mirar **el archivo
+correcto en la capa equivocada**, y cuesta reconocerla porque el dato que devuelve es verdadero.
+
+El cierre del relevamiento mobile afirmó, sobre un nativo importado sin plugin declarado, que *«aun
+sin plugin, los permisos llegan por **merge de manifiestos** del autolinking, leído en el
+`AndroidManifest.xml` de cada paquete»*. Y es cierto que `expo-image-picker` declara `CAMERA` en
+**su** manifest. Pero la pregunta era qué permisos tiene **la app**, y eso no vive ahí: el manifest
+que escribe `expo prebuild` es el de la aplicación, y el merge con los manifests de las librerías lo
+hace **Gradle al compilar** — una capa más abajo, que sólo el APK muestra. Medido al correr el
+prebuild: **0 hits de `CAMERA`** en el manifest generado, con control positivo verde (9
+`uses-permission` sí encontrados).
+
+🔑 **Y la agravante que lo hace memorable: el propio documento ya declaraba no haberlo medido.** Su
+sección de límites decía, textual, *«El `AndroidManifest.xml` resultante. No se corrió `prebuild`»*.
+O sea que la afirmación y su desmentido convivían en el mismo archivo: una sección afirmaba el
+efecto, la otra admitía no haber mirado la capa donde el efecto ocurre. **Reincidí en el mismo
+razonamiento ese mismo día**, antes de correr el prebuild, usando ese párrafo como respaldo — un
+negativo verificado que no verificaba nada.
+
+**El cierre honesto, que es la otra mitad:** tampoco pude probar lo contrario. El merge de Gradle
+podría traer el permiso, y eso sólo lo dice `dumpsys package` sobre el APK instalado. Así que la
+conclusión no se invirtió, se **degradó a indecidible antes del binario**, y el permiso se declaró
+explícito en la config para que la pregunta deje de depender de una capa no medible.
+
+**La pregunta de una línea:** *¿el artefacto que estoy leyendo es el que el sistema realmente
+consume, o uno de sus insumos?* Un insumo nunca acredita el resultado de un merge, una compilación,
+una cascada de CSS, un `extends` ni un override — porque en todos esos casos existe un paso
+posterior cuyo trabajo es, precisamente, cambiar lo que leíste.
+→ [[verificar-la-composicion-root-no-el-default]] ·
+[[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]
+
+---
+
+## 🔟 REFUERZO 2026-10-11 — el detector del escritorio lo absolvió un tile de **Ajustes**
+
+Midiendo en device si el escritorio de funciones abre, el detector era una línea:
+
+```python
+def abierto(x):
+    return 'tile-facturacion' in x        # ← subcadena, sin frontera
+```
+
+Cantó **«el escritorio YA estaba abierto»** tres veces seguidas y el spike no llegó a ejercitar ni un
+toque: salteó las tres alturas que existía para comparar. No midió nada, y el output se leía igual
+que una medición.
+
+El sujeto real era otro. La pantalla de **Ajustes** —donde el eje B había dejado la app— declara
+`ajuste-tile-facturacionAfip`, que **contiene** `tile-facturacion`. El escritorio estaba cerrado
+todo el tiempo: `panel-funciones-capa` medía 83 px de los 1465 de pantalla.
+
+**Lo que lo delató no fue el detector: fue que dos lecturas del mismo estado se contradijeron.** Un
+dump manual dijo `tile-facturacion NO ESTA` un minuto después de que el script dijera «abierto». Esa
+contradicción es la única razón por la que se buscó la causa — con un solo instrumento, el falso
+verde se iba derecho al informe.
+
+**Las dos defensas, porque una sola ya falló:**
+
+1. **Frontera de palabra.** `\btile-facturacion\b` rechaza `...facturacionAfip` por la `A` final. El
+   instrumento hermano —la receta de las 21 pantallas— ya lo hacía bien con ese mismo `\b`, y por eso
+   su eje A **no** tenía este defecto. Mismo repo, mismo día, dos detectores: uno blindado y el otro
+   no. La defensa existía; lo que faltó fue copiarla al spike.
+2. **Una señal CONTINUA al lado de la booleana.** El alto visible de `panel-funciones-capa`
+   (uiautomator recorta los bounds a lo visible: cerrado ≈83 px, abierto 1465). `83 → 1465` es un
+   número que se mueve; «presente/ausente» se satisface con cualquier homónimo. La medición buena
+   quedó legible de un vistazo: *42% del recorrido → no abre · 85% → ABRE, capa 83 → 1465*.
+
+⚠️ **Y el daño que casi causa, que es lo que lo vuelve caro:** el run anterior había cerrado
+«escritorio inalcanzable, **H-12 confirmado en device**» — un hallazgo que iba a bajar al
+relevamiento como defecto de la app. Era **falso y doble**: el arrastre no abría porque mi gesto
+recorría 600 px de los ~1421 necesarios, y `onEnd` hace snap por mitad, así que volver a cerrado era
+el comportamiento **correcto**. El instrumento midió su propio gesto corto y lo imputó a la app.
+Lo real, separado y verificado contra la fuente canónica (`swmansion-rn-gestures`): **el toque quieto
+no abre** porque el tap vive en `onEnd` de un `Gesture.Pan()`, y `onEnd` sólo corre si el gesto se
+**activó** — un dedo que baja y sube sin desplazarse nunca activa un Pan.
+
+**La pregunta de una línea:** *¿mi detector puede ser satisfecho por algo que no es mi sujeto —un
+homónimo, un prefijo, una subcadena, un ancestro en el árbol— y mi umbral puede ser incumplido por
+mi propio instrumento en vez de por la app?* Si un `in` o un `grep` alcanza para decir que sí, el
+verde no es del sujeto; y si el gesto/umbral lo elegí yo, el rojo tampoco.
+→ [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] ·
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] ·
+[[instrumento-que-no-mira-nunca-falla]] ·
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]

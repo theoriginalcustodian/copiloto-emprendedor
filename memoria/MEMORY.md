@@ -10,7 +10,7 @@
 - **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; mobile va al sprint siguiente con device/EAS). Cifra sin unidad = inutilizable.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
-- **✅ SPRINT CERRADO 08/10 — `DEC-14`: cierra contra el ALCANCE (7/7 sobre `92fd8a06`), **§13 queda ABIERTO** (device). `DEC-15` cerró `DEC-11`.
+- **✅ Sprint cerrado 08/10** (`DEC-14`, 7/7 sobre `92fd8a06`) · **§13 device sigue ABIERTO**. Detalle → HISTORIA.
 - **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -53,6 +53,8 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
+- [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra.
+- [🔭🎚️ La condición que el instrumento EXIGE para VER cambia lo medido](la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido.md) — apagué las animaciones y con eso el tap no abría.
 - [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md) — siguió rojo tras mi fix: la causa era de otro, de 9 días.
 - [🪄💥 Una orden correcta con el COMANDO INCOMPLETO da un éxito falso](una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md) — sin `--base` podó 1 de 21. Tipeá el literal del doc.
 - [🔍🎭 No era «no caza X»: era en su FORMA real](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el contraste mueve UNA variable.
@@ -147,7 +149,6 @@
 - [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
-- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) - un turno mide OCIO.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 

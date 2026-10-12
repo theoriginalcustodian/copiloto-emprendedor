@@ -329,3 +329,43 @@ protegido: está en **cuenta regresiva**.
 **La pregunta que lo detecta:** *¿esta protección depende de algo que cambia solo con el paso del
 tiempo?* Si sí, no es una guarda: es un **plazo**. La guarda definitiva se escribió sobre el
 **contenido** («¿hay recibos sin versionar?») y protegió 15 worktrees, uno con **30** recibos.
+
+---
+
+## ⚠️🔥 REFUERZO 2026-10-11 · el espejo: roto hacia el **SÍ**, y no dio síntoma porque el SÍ era INALCANZABLE
+
+Toda esta entrada trata del mecanismo que no puede decir NO. **El gemelo existe y es más difícil de
+ver: el que no puede decir SÍ.** Y la razón por la que nadie lo nota es distinta —no es que falte el
+control, es que **el camino verde no se puede ejecutar todavía**.
+
+Medido en el gate de cierre del relevamiento mobile. Sus criterios 7 y 8 exigen un APK instalado, y
+cuando se escribió **no existía binario** (12 artefactos borrados por retención). Su `main`
+terminaba así:
+
+```python
+print('VEREDICTO: el cierre COMPLETO exige los 11, y 7/8 son imposibles hoy...')
+raise SystemExit(2 if not fallas_cerrables else 1)      # <- SIEMPRE, sin el flag de alcance
+```
+
+La rama «los 11 en verde» **no existía**: no estaba mal escrita, estaba **ausente**, y nadie lo vio
+porque sin binario el `exit 2` era la respuesta correcta todos los días. El día que el APK existió,
+el gate habría salido `!= 0` **con todo verde**, y el rojo habría sido suyo: el acreditador
+bloqueando el cierre que acababa de acreditar.
+
+🔑 **La ironía que lo hace memorable: eso es exactamente la clase 🕳️ que ese mismo relevamiento
+cuenta nueve veces** —capacidad completa que nadie alcanza— **dentro de su propio instrumento de
+cierre**. El gate midió 9 agujeros ajenos y llevaba uno igual adentro.
+
+**Por qué el control positivo del gate no lo cazó:** sus 8 mutantes rompen el **documento** y
+verifican que salga ROJO. Ninguno podía ejercitar la rama de éxito, porque para eso hace falta que
+el mundo cambie (un binario que no existía). Un control positivo prueba que el NO funciona; **el
+camino del SÍ sólo se prueba alcanzándolo**.
+
+**Cómo aplicarlo:** cuando un gate tenga criterios hoy imposibles, escribí la rama de éxito **igual**
+y dejá anotado cómo se ejercita. Y la pregunta de una línea, para cualquier condicional con una
+condición que hoy no se puede cumplir: *¿este `if` ya corrió alguna vez por la rama verdadera?* Si
+la respuesta es «no, porque todavía no se puede», no está probado — está **pendiente de su primer
+día**, y ese día llega sin avisar.
+→ [[ui-escrita-e-inalcanzable-nadie-la-mide-porque-no-se-llega-navegando]] ·
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]] ·
+[[un-guard-que-acierta-por-accidente-no-da-sintoma]]

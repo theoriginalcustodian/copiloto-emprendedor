@@ -1,6 +1,6 @@
 ---
 name: un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate
-description: El abort vivía después del `return` de `--json`, así que era inerte en el único camino que alguien llama; lo cazó su propio control positivo saliendo verde.
+description: El alcance de un control no puede depender de lo que elige el llamador: el abort vivía tras el `return` de `--json` (inerte en el único camino real), y el REFUERZO es su gemelo en permisos — un sujeto cuyo destino entra por argumento no es un sujeto acotado.
 metadata:
   type: feedback
 ---
@@ -39,3 +39,36 @@ final de `main` y, subido, pisaba los conteos `a`/`b` que se imprimen como «lot
 el control positivo habría mentido su propia cifra. Ver [[la-costura-leia-un-campo-que-nadie-escribe]]
 para la familia y [[el-canario-el-control-positivo-de-lo-que-falla-callado]] para por qué el control
 tiene que existir antes: **sin él, este gate se embarcaba inerte y yo lo contaba como protección.**
+
+---
+
+## REFUERZO (2026-10-11) — la misma forma, con el ALCANCE dependiendo de un ARGUMENTO
+
+El título de arriba generaliza más de lo que yo creía cuando lo escribí: *el alcance de un control no
+puede depender de algo que elige el llamador.* Ahí era el **formato de salida**. Hoy fue un
+**argumento**, y el control era un **permiso**.
+
+Escribí `scripts/evidencia/contar-filas-prod.sh` justamente para que un permiso apuntara a algo
+acotado en vez de a `ssh <host> psql …` libre (el clasificador me había negado la lectura, con razón).
+Acoté el SQL: lista de tablas fija en el fuente, sólo `count(*)`, guard read-only con su control
+positivo. Y dejé `--host <h>` como flag. El patrón del permiso es
+`Bash(bash scripts/evidencia/contar-filas-prod.sh:*)`, y **el `:*` cubre cualquier argumento**: con ese
+flag, «contar filas en nuestra instancia» era en realidad «SSH a cualquier destino». Peor: `ssh -o… "$HOST"`
+**sin `--`** hace que un valor que empieza con `-` lo lea ssh como flag, y `-oProxyCommand=…` ejecuta un
+comando arbitrario **en esta máquina**. Un sujeto read-only convertido en ejecución local por una
+comodidad.
+
+**Por qué no lo vi:** acoté *la mitad que estaba mirando* — el SQL, porque era la que me habían negado.
+El destino era la otra mitad del mismo alcance y nunca la miré, porque nadie me la había objetado.
+**Acotar una dimensión y parametrizar la otra no reduce el permiso: lo disfraza**, y lo disfraza mejor
+cuanto más prolijo es el guard de la dimensión acotada. El test verde del guard read-only era evidencia
+real de una mitad, y funcionó como coartada de la otra —
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+**Cómo aplicarlo:** antes de pedir un permiso para un script, leé el patrón que vas a pedir y preguntá
+*¿qué es lo PEOR que hace este script con los argumentos que `:*` permite?* — no *¿qué hace cuando lo
+llamo como pienso llamarlo?*. Lo que define el alcance se pone `readonly` en el fuente y queda en el
+diff; lo que entra por argumento es alcance libre, por prolijo que se vea el resto. Si el valor fijo
+alimenta un comando que acepta flags, `--` antes del valor **y** un guard de forma (`case "$HOST" in -*|…)`)
+con su propio control positivo mutando la constante a `-oProxyCommand=touch /tmp/pwned`: así se ve
+disparar, en vez de suponerlo ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).

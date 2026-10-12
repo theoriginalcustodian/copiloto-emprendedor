@@ -137,3 +137,44 @@ llega último no tiene margen**; la salida no es esperar otra ventana sino la v�
 —acá, un refuerzo adentro de una entrada existente, que cuesta 0 líneas de índice
 ([[el-refuerzo-va-adentro-no-pide-linea]]). (3) Antes de ejecutar lo que un custodio manda, medí si **ya está
 hecho**: cuesta un `git ls-tree` y es la mitad de las veces.
+
+---
+
+## REFUERZO (2026-10-11) — el disparador puede vivir en un COMENTARIO del código, y ahí nadie lo mira
+
+Hasta acá la entrada trata disparadores en registros de deuda. **Este vivía en un comentario de
+producción, y resultó peor: nadie revisa comentarios buscando condiciones pendientes.**
+
+La definición de «Entró» sumaba MercadoPago desde su propia tabla, y el comentario decía por qué y
+hasta cuándo:
+
+> `origen='mercadopago'` en `copiloto_cobros` está declarado pero **no lo escribe nadie todavía**, así
+> que MP se suma desde su tabla; **el día que se unifiquen, la fila del `UNION` se saca de acá** y
+> ninguna cara se entera.
+
+Está todo: la condición (`que se unifiquen`), la acción (`sacar la fila del UNION`) y la consecuencia
+de no hacerlo. **El 2026-10-06 `9e4a70dc` cumplió la condición** —cableó el webhook para que el pago
+aprobado también se registre en `copiloto_cobros`— y no tocó la consulta. Durante 5 días en prod-beta
+un pago de `$300` entró como `$600` en «Entró» mientras «Ingresos» mostraba `$300`: dos caras del
+producto, dos números para el mismo pago. Y el mismo commit retiró los carteles «los cobros por
+MercadoPago todavía no entran solos», así que el número pasó a leerse como confiable.
+
+**Por qué no avisó nada:** el commit que cumple la condición no tiene por qué saber que existe. Tenía
+tests —buenos, con control positivo e idempotencia— que medían **la tabla donde escribe**, no el total
+que ve el usuario. El test que debería haberlo cazado inserta con un helper que escribe UNA tabla, o
+sea codifica el camino de producción **anterior**, y por eso seguía verde
+([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).
+
+**Cómo aplicarlo — y es distinto de lo de arriba:** un disparador escrito en prosa, en un comentario o
+en un registro, **no se puede conectar**: hay que convertirlo en algo que falle. Las dos formas que
+sirven, por orden:
+
+1. **Que la regla viva en el mecanismo, no en la condición a futuro.** En vez de «el día que se
+   unifiquen, saco la fila», el SQL excluye hoy el caso duplicado. Un `WHERE` no se olvida.
+2. **Si hay que diferirlo igual, el disparador necesita un test que lo vigile.** Al cerrar este fix
+   escribí la condición de retiro de la otra pata **junto con el test que cae si alguien la saca sin el
+   backfill**. Eso es un disparador que avisa: el que está sólo en prosa, no.
+
+Y el chequeo que lo habría cazado barato: cuando un commit **empieza a escribir** un valor que antes no
+escribía nadie, `grep` ese valor en todo el repo antes de mergear. Lo que aparezca asumiendo la ausencia
+—una consulta, un `if`, un comentario— es la lista exacta de lo que ese commit acaba de invalidar.
