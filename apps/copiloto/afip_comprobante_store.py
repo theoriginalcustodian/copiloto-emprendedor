@@ -31,7 +31,7 @@ class AfipComprobanteStore:
 
     def registrar(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int, cae: str,
                   cae_vto: date | None, fecha_emision: date | None, doc_tipo: int | None,
-                  doc_nro: str | None, total, estado: str = ESTADO_EMITIDA,
+                  doc_nro: str | None, total, estado: str | None = None,
                   receptor_nombre: str | None = None,
                   pdf_url: str | None = None, pdf_expira_at: datetime | None = None,
                   idem_key: str | None = None, workflow_id: str | None = None,
@@ -45,7 +45,27 @@ class AfipComprobanteStore:
         Devuelve el **`id` de fila** del comprobante (fresco o el que ya estaba): es lo que la app
         necesita para direccionar la factura —cargarle un cobro, abrir su detalle— y lo que la activity
         expone en su resultado para que la card de éxito ofrezca cobrar sin rebuscar por `(pv, nro)`.
+
+        🔴 `estado=None` (el default) lo DERIVA de `tipo_cbte`: una nota de crédito queda
+        `nota_credito`, el resto `emitida`. Antes el default era `emitida` fijo y, como ningún
+        llamador pasa `estado`, **ninguna fila de la tabla valía `nota_credito` jamás** — la constante
+        `ESTADO_NOTA_CREDITO` tenía UNA sola aparición en todo el repo: su propia definición.
+        Consecuencia real, medida el 2026-10-11: la NC que emite `afip_anulacion_workflow` se
+        persistía como `emitida`, y los dos fronts ofrecen «Anular» a todo lo que tenga
+        `estado==='emitida'` (`SeccionMisComprobantes.tsx:24`, mobile y web) ⇒ **la app ofrecía anular
+        una nota de crédito.**
+
+        El criterio NO se reinventa: `NOTAS_CREDITO` (afip_rules.py) es la misma tupla que ya usan
+        `total_periodo()` para restarlas del facturado y `tipo_nota_credito()`. El fix va en el default
+        y no en cada call-site porque el default es el único lugar por el que pasan todos.
+
+        ⚠️ Lo que NO hace: no reescribe filas ya guardadas — una NC registrada antes de hoy sigue
+        diciendo `emitida`. Sin migración porque la tabla no tiene tráfico real (cero usuarios al
+        2026-10-11); si lo tuviera, el backfill es `update ... set estado='nota_credito' where
+        tipo_cbte = any(NOTAS_CREDITO) and estado='emitida'`.
         """
+        if estado is None:
+            estado = ESTADO_NOTA_CREDITO if int(tipo_cbte) in NOTAS_CREDITO else ESTADO_EMITIDA
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
