@@ -289,12 +289,27 @@ bloquean**: el criterio 1, y sólo el 1.
   Commitearlo tal como está revierte +102 líneas ajenas. Medir el signo por archivo.
 - **El eje A no tiene instrumento válido todavía** (#1012). Hasta que lo tenga, cualquier cifra de
   «rutas que no llegan» es `NO_ATRIBUIBLE`, no un rojo.
-- **`/actividad?q=` da 400** según un comentario de mobile (`PantallaRecientes.tsx:15-18`).
-  **`[SIN_VERIFICAR]`** — es un comentario, no una medición, y hoy mismo un comentario rancio ya
-  mandó a este backlog a afirmar algo falso. Verificar contra el endpoint antes de planificar trabajo.
-- **`app/recientes.tsx`:** `_layout.tsx:162-164` afirma que «queda inalcanzable», pero
-  `PantallaPrincipal.tsx:179` navega ahí. **`[CONTRADICCIÓN SIN RESOLVER]`** — el comentario parece
-  desactualizado; no se ejecutó la app para dirimirlo.
+- ✅ **REFUTADO — `/actividad?q=` NO da 400.** Medido contra el handler:
+  `apps/copiloto/actividad_web.py:99` declara `q: str = ""`, su `:112` dice «`q` YA está
+  implementada: ILIKE sobre título+detalle» y `:120` la pasa al store. Lo del 400 lo afirmaba un
+  **comentario** de mobile, ya corregido. **No hay nada que esperar de backend acá.**
+  🆕 Y aparece una asimetría que nadie había comparado: **web busca global**
+  (`ActividadScreen.tsx:84`), **mobile sólo por función** (`BuscadorActividad.tsx:77`). Las dos
+  pasan `q` y `q` funciona ⇒ no es defecto, es una decisión de UX sin dueño. Clasificar antes de
+  cerrar la paridad.
+- ✅ **RESUELTO — `app/recientes.tsx` SÍ es alcanzable.** `apps/mobile/src/shell/PantallaPrincipal.tsx:179`
+  cablea `onVerRecientes={() => empujarUnaVez('/recientes')}` al encabezado **tapeable** «Actividad
+  reciente», con test verde (`PantallaPrincipal.test.tsx:146`). El comentario de `_layout.tsx` que
+  decía «queda inalcanzable» era **rancio** y ya está corregido. **Sin tile ≠ inalcanzable.**
+  ⚠️ Ese comentario invitaba a **borrar una pantalla alcanzable**; el único realmente inalcanzable de
+  esa lista es `'apps'` (`#1019`).
+
+> 🔴 **Los dos de arriba eran el MISMO mecanismo, y hoy dio CUATRO veces:** un comentario declara un
+> estado, el código cambia, nadie actualiza el comentario, y el próximo lector le cree. Los otros dos
+> fueron `cobro_store.py:52` —que me hizo afirmar «cero veces en Ingresos», falso— y el título de
+> `#1001`, que habría mandado a construir una pantalla que existe. **Ninguno de los cuatro se detectó
+> leyendo con más cuidado: los cuatro cayeron al medir contra el código que ESCRIBE o que NAVEGA.**
+> Cuando un comentario es la única fuente de un hecho, no es un hecho.
 - **Paridad de *parámetros* no medida:** un endpoint que las dos apps llaman puede estar invocándose
   con menos capacidad de un lado, y la tabla de 109 lo marca `AMBAS` igual. Es un segundo pase si ese
   eje importa.
