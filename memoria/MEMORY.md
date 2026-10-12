@@ -36,10 +36,7 @@
 ### Cadencia, cierre y ocio
 - [🎯📈 Un criterio que CRECE con cada medición no se puede alcanzar](un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar.md) — `DEC-18`: sólo UN lugar mide, y un hallazgo no reabre un ✅.
 - [🔁 EL BUCLE CANÓNICO - dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) - marco de todo sprint.
-- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) - si el operador puede preguntar "¿cómo seguimos?", fallaste.
 - [🤞🚫 PROMETER no es ejecutar - y el gate medía la PALABRA](prometer-no-es-ejecutar-el-gate-media-la-palabra.md) - hacela antes de escribirla.
-- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) - reordená por impacto÷costo, despachá YA.
-- [🚫💤 CERO ocio - tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) - único válido: terminó todo y reportó.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) - el blocker es tuyo.
 - [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) - contratado = ejecución.
 - [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) - el estado falso da quietud, no bug.
@@ -69,8 +66,8 @@
 - [🧮🕳️ Un ref que NO EXISTE da vacío = `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite E INVENTA; medí el efecto.
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
+- [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
-- [No codificar la esperanza - el TRONCO](no-codificar-la-esperanza-principio-raiz.md) - la prueba vale, la aserción no.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — ¿cuántos elementos miró? · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
@@ -110,13 +107,11 @@
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) - el hueco vive en el par.
 
 ### Diagnóstico: leer el contrato antes de explicar
-- [Raíz, no parche](raiz-no-parche.md) - hook `root_cause_suggester`
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) - corré el caso vacío primero.
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) - otra capa puede sobreescribirla.
 - 🎭 El exit code MIENTE en los dos sentidos: [el pipe se lo come](el-pipe-se-come-el-exit-code.md) · [0 sin pushear; ROJO con el merge hecho](git-push-puede-salir-exit-0-sin-haber-pusheado.md) - el control es el EFECTO.
 
 ### Diseño y arquitectura
-- [♻️🔒 Reutilizar es REGLA - inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) - todo `contrato_` abre con §0.
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) - el ACCESO elige la arquitectura.
 - [🧩🏷️ Una fila por VALOR de una variable no es una fila](una-fila-por-valor-de-una-variable-no-es-una-fila.md) - el id es plantilla: ¿qué MIDE?
 - [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
@@ -131,9 +126,7 @@
 - [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) - "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
-- [🔒⚡ 3 gates que FRENAN - script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) - nivel 1.
 - [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) - `claude -p`, misma auth.
-- [🕸️🔍 GRAFO primero, código después - para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) - MCP `graphity-code`.
 - [Orquestación de waves - parent valida + commitea](orquestacion-waves-parent-valida.md) - verificá el estado, no el reporte.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) - sin cargar completo ⇒ duplicados.
@@ -162,6 +155,7 @@
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) - primero la rama en prod.
 - [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) - `MSYS_NO_PATHCONV=1`
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
+- [🚪📤 Una orden de «no publicar» NO protege un archivo VERSIONADO](una-orden-de-no-publicar-no-protege-un-archivo-ya-versionado.md) — el PR iba por otra cosa.
 
 ## 🏭 El producto - LEER antes de tocar
 - [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.

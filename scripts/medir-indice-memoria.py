@@ -92,7 +92,11 @@ def main() -> int:
 
     indice = MEM / "MEMORY.md"
     historia = MEM / "HISTORIA.md"
-    texto_indice = indice.read_text(encoding="utf-8")
+    # read_bytes y NO read_text: `read_text` abre en modo texto y hace traducción universal de fin
+    # de línea (CRLF -> LF), o sea se come UN byte por línea antes de que el control 1 pueda verlo.
+    # El techo se mide en bytes de DISCO. Ver el control 1.ter.
+    crudo_indice = indice.read_bytes()
+    texto_indice = crudo_indice.decode("utf-8")
     texto_historia = historia.read_text(encoding="utf-8") if historia.exists() else ""
 
     refs = referencias(texto_indice) | referencias(texto_historia)
@@ -155,8 +159,34 @@ def main() -> int:
     # La unidad exacta que cuenta el harness no está documentada. De las tres candidatas, los BYTES
     # son la única que explica LOS DOS cortes observados (2026-08-01 y 2026-09-22) y es la
     # conservadora. Si alguna vez se documenta que cuenta tokens, se cambia acá y se cita la fuente.
-    peso = len(texto_indice.encode("utf-8"))
+    # --- 1.ter: el MISMO defecto, una capa más abajo -----------------------------------------
+    # Acá vivía `peso = len(texto_indice.encode("utf-8"))`. Pasó de chars a bytes (ver arriba) y
+    # siguió midiendo 183 bytes de MENOS, porque `read_text` ya le había traducido los CRLF a LF:
+    # re-encodear un texto normalizado devuelve bytes con \n, no los \r\n del disco. En Windows,
+    # que es donde vive este repo, eso es UN byte invisible POR LÍNEA.
+    #
+    # Medido 2026-10-12 sobre `main`: el archivo en disco pesa 24.108 bytes — 108 POR ENCIMA del
+    # techo de 24.000 — y este control imprimía `23925 / 24000 [⚠️ ]` con exit 0. O sea: el
+    # instrumento construido para dejar de absolver índices truncados estaba absolviendo uno,
+    # por el mismo mecanismo que su propio comentario describe, sólo que con otra unidad.
+    # La lección no es «usar bytes»: es que la unidad hay que medirla en el SUJETO REAL (el
+    # archivo en disco), no en una representación que una capa intermedia ya transformó.
+    peso = len(crudo_indice)
     lineas = texto_indice.count("\n") + 1
+    # Control positivo SOBRE EL SUJETO REAL, no sobre un canario de juguete: comparar lo que el
+    # disco dice contra lo que decía la lectura en modo texto. Si el archivo tiene CRLF y las dos
+    # cifras coinciden, alguna capa sigue normalizando y este control volvió a quedar ciego — y un
+    # control ciego da el MISMO verde que un índice sano.
+    # Dos constantes comparadas entre sí no sirven de control: no tocan el camino de medición.
+    peso_modo_texto = len(indice.read_text(encoding="utf-8").encode("utf-8"))
+    tiene_crlf = b"\r\n" in crudo_indice
+    if tiene_crlf and peso_modo_texto == peso:
+        print("CONTROL POSITIVO FALLIDO: el índice tiene CRLF y el medidor devuelve el mismo peso "
+              "que la lectura normalizada — volvió a ser ciego a 1 byte por línea")
+        return 1
+    if tiene_crlf:
+        print(f"[OK ] unidad: bytes de DISCO ({peso}) — la lectura en modo texto habría dicho "
+              f"{peso_modo_texto}, {peso - peso_modo_texto} menos (CRLF)")
     ok_peso = peso <= args.presupuesto
     borde_peso = ok_peso and peso >= args.presupuesto * args.aviso_pct
     print(f"[{'⚠️ ' if borde_peso else ('OK ' if ok_peso else 'MAL')}] presupuesto: {peso} / {args.presupuesto} bytes  ({lineas} líneas, {len(texto_indice)} chars)")

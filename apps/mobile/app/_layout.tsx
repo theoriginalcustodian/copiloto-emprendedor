@@ -157,10 +157,18 @@ export default function LayoutRaiz() {
                     // `apps` ya no es tile del escritorio —se llega desde Ajustes—, pero la pantalla
                     // es la misma y sigue siendo glass: sólo cambió desde dónde se entra.
                     'apps',
-                    // ⚠️ `recientes` NO tiene tile desde el 2026-07-22 (su lista ya vive abajo del
-                    // grid del escritorio), pero la pantalla se conserva porque aporta algo que esa
-                    // lista no tiene: PAGINADO (`cargarMas`/`onEndReached`). Hoy queda inalcanzable
-                    // y está reportado como tal — no se borró para no perder esa capacidad.
+                    // ⚠️ `recientes` NO tiene TILE desde el 2026-07-22 (su lista ya vive abajo del grid del
+                    // escritorio), pero la pantalla se conserva porque aporta algo que esa lista no tiene:
+                    // PAGINADO (`cargarMas`/`onEndReached`).
+                    // 🔴 **Hasta 2026-10-11 acá decía «hoy queda inalcanzable y está reportado como tal». Era
+                    // FALSO.** Medido: `src/shell/PantallaPrincipal.tsx:179` cablea
+                    // `onVerRecientes={() => empujarUnaVez('/recientes')}` al encabezado TAPEABLE «Actividad
+                    // reciente» (`escritorio-encabezado-recientes`), con test verde en
+                    // `PantallaPrincipal.test.tsx:146`. **Sin tile ≠ inalcanzable**: la entrada es el encabezado,
+                    // no un tile, y el comentario confundía las dos cosas.
+                    // ⚠️ Importa porque este comentario invitaba a BORRARLA por inalcanzable. No la borres: se
+                    // llega navegando. El caso realmente inalcanzable de esta lista es `'apps'` (issue #1019),
+                    // que no está en `TABS` — no lo contagies a `recientes`.
                     'recientes',
                     // Las sub-pantallas de Ajustes. Van con el MISMO tratamiento que las funciones
                     // del escritorio (transparentModal + slide desde abajo) porque son glass igual:
