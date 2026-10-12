@@ -154,6 +154,7 @@
 - [🚢 `deploy.sh` ancla SÓLO 2 de 6 paths a origin/main](deploy-sh-no-valida-checkout-al-dia-con-main.md) - los otros 4 los declara, no los frena.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) - primero la rama en prod.
 - [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) - `MSYS_NO_PATHCONV=1`
+- [🪟↩️ Anclar multilínea sin medir el SEPARADOR: los `.md` son CRLF](anclar-texto-multilinea-sin-medir-el-separador-de-linea.md) - «0 coincidencias» ≠ cambió.
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
 - [🚪📤 Una orden de «no publicar» NO protege un archivo VERSIONADO](una-orden-de-no-publicar-no-protege-un-archivo-ya-versionado.md) — el PR iba por otra cosa.
 

@@ -482,15 +482,18 @@ for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" 
   # se puede afirmar "no hay ventana"; por encima, la afirmación se sostiene.
   GRACIA_SEG="${VIGILANCIA_GRACIA_SEG:-900}"
   ahora_ts="$(date +%s)"
-  rol_re="$(rol_regex_buzon "$rol")"   # incluye el broadcast heredado (frontend1 <- frontend)
   huerfanos=()
   while IFS= read -r nombre; do
     [ -z "$nombre" ] && continue
+    # El destinatario lo decide me_interpela() (lib/buzon-roles.sh), NO una regex de aca: este
+    # bloque tenia su propia envoltura `([a-z0-9-]*-y-)?<rol>(-y-[a-z0-9-]*)?`, que no ve los
+    # destinos compuestos de tres (`-a-planificacion-backend-y-frontend2_`). Dos consumidores con
+    # dos logicas para la MISMA pregunta = el mensaje se pierde en el que quedo atras.
+    me_interpela "$rol" "$nombre" || continue
     mt_c="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
     [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
-  done < <(ls -1 "$BUZON/abierto" 2>/dev/null \
-           | grep -iE "_(contrato|urgente)_[a-z0-9-]*-a-([a-z0-9-]*-y-)?${rol_re}(-y-[a-z0-9-]*)?_")
+  done < <(ls -1 "$BUZON/abierto" 2>/dev/null | grep -iE '^[0-9-]+_(contrato|urgente)_')
   [ "${#huerfanos[@]}" -eq 0 ] && continue
   if [ "$senal" -eq 0 ]; then desde="nunca dio señal de vida (<8h)"
   else                        desde="no da señal desde las $(date -d "@$senal" '+%H:%M')"; fi

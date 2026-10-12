@@ -25,10 +25,15 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
 5.bis. **Instrumento** — `bash scripts/vigia.sh vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
    cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
    error. Si no existe en tu checkout, estás en una rama vieja — decilo.
-6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-manejo-de-errores_` y `-a-todos_`, **y
-   también** `coordinacion/cerrado/<hoy>/` (los `avance_`/`dato_` nacen archivados: ahí viven las
-   señales que destraban, tipo «el issue #204 ya tiene owner»). Contá cuántos te interpelan sin
-   acusar.
+6. **Buzón** — `bash scripts/mi-buzon.sh manejo-de-errores --todo` (mira `en-curso/` y `cerrado/<hoy>/`,
+   donde los `avance_`/`dato_` nacen archivados: ahí viven las señales que destraban).
+   Contá cuántos te interpelan sin acusar.
+   **No escribas el filtro a mano.** Los globs `-a-<rol>_` + `-a-todos_` NO ven los destinos
+   COMPUESTOS que la convención sí emite (`-a-backend-y-planificacion_`,
+   `-a-planificacion-backend-y-frontend2_`). Medido el 2026-10-12 sobre el buzón real: el filtro
+   escrito a mano dejaba **7 de 12** mensajes invisibles para planificación, uno un `urgente_` de
+   5 días. `mi-buzon.sh` delega en `me_interpela()` (`scripts/lib/buzon-roles.sh`) — la MISMA
+   definición que usa el gate de vigilancia — y ya descarta lo que vos emitiste.
 7. **Checkout** — `git branch --show-current` y `git status --short | head`. Es checkout COMPARTIDO:
    `git add` con rutas explícitas, y NUNCA `-A`/`--amend`/rebase/reset/checkout/pull/stash/clean.
 7.bis. **Scope de archivos** — recordá tu scope exacto (ver `COORDINACION.md` §0): dentro de
@@ -79,9 +84,16 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
    (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
    propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
 
-1. Listar `abierto/` y quedarte SÓLO con `-a-manejo-de-errores_` y `-a-todos_`. Descartar lo que
-   empiece por `manejo-de-errores-a-` (es tuyo). Mirar también `cerrado/<hoy>/` por los `avance_` y
-   `dato_`, que nacen archivados: ahí viven las señales que DESTRABAN trabajo.
+1. NOVEDADES — `bash scripts/mi-buzon.sh manejo-de-errores --todo`. Mira `abierto/`, `en-curso/` y
+   `cerrado/<hoy>/` (los `avance_` y `dato_` nacen archivados: ahí viven las señales que
+   DESTRABAN trabajo), descarta lo que vos emitiste, y ordena lo más viejo primero — que es
+   lo único que urge.
+   **No escribas el filtro a mano.** Los globs `-a-<rol>_` + `-a-todos_` NO ven los destinos
+   COMPUESTOS que la convención sí emite (`-a-backend-y-planificacion_`,
+   `-a-planificacion-backend-y-frontend2_`). Medido el 2026-10-12 sobre el buzón real: el filtro
+   escrito a mano dejaba **7 de 12** mensajes invisibles para planificación, uno un `urgente_` de
+   5 días. `mi-buzon.sh` delega en `me_interpela()` (`scripts/lib/buzon-roles.sh`) — la MISMA
+   definición que usa el gate de vigilancia — y ya descarta lo que vos emitiste.
 
 2. Abrir lo nuevo y ver si te interpela aunque el nombre diga otro destinatario.
 

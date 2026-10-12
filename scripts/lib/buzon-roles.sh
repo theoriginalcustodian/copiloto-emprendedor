@@ -17,6 +17,14 @@
 #
 # La regla vive acá y nada más que acá. Agregar una sesión nueva = tocar ROLES_BUZON y su fila en
 # lee_patrones(); si hace falta tocar un script consumidor, el diseño falló.
+#
+# ⚠️ Y «nada más que acá» era FALSO hasta el 2026-10-12: el bloque SIN DUEÑO de
+# `vigilancia-check.sh` envolvía la regex de esta lib en su PROPIO
+# `([a-z0-9-]*-y-)?<rol>(-y-[a-z0-9-]*)?`, que cazaba 2 de las 3 formas compuestas. La frase de
+# arriba describía la intención, no el código — y leído como estado apagó la búsqueda del próximo.
+# Hoy ese consumidor llama `me_interpela()` y la envoltura no existe; el `spike.sh` de
+# `spikes/buzon-destino-compuesto/` mide los dos consumidores contra los mismos 12 casos, así que
+# una tercera lógica vuelve a poner el spike y `test-vigilancia-rol-ausente` caso 8 en rojo.
 
 # Destinatarios válidos. `frontend` sobrevive como BROADCAST a frontend1+frontend2, igual que
 # `todos` cubre a las cuatro — no es un rol muerto, es el "para las dos" del frente de UI.
@@ -90,15 +98,64 @@ roles_declarados_en() {
 # destinatarios compuestos que el buzón ya usaba (`-a-backend-y-frontend_`, `manejo-de-errores`).
 BUZON_ROL_RE='[a-z0-9-]+'
 
-# lee_patrones <sesion> — imprime, uno por línea, cada patrón de nombre que ESA sesión debe leer.
-# Es la respuesta a "¿este archivo es para mí?" y la única definición de la herencia de broadcast.
+# DESTINATARIOS COMPUESTOS (2026-10-12). El buzon ya emitia nombres con MAS DE UN destinatario
+# -- `-a-planificacion-y-backend_`, `-a-backend-y-planificacion_`,
+# `-a-planificacion-backend-y-frontend2_` -- y la mitad LECTORA no los repartia. El agujero vivia
+# en el PAR: `destinatario_de_nombre()` los extrae bien (su comentario de arriba los nombra) y
+# `lee_patrones()` emitia solo `*-a-<rol>_*`, que no caza ninguno.
+#
+# Medido con `spikes/buzon-destino-compuesto/spike.sh`, 12 casos reales + negativos:
+#     lee_patrones + glob            5 fallos de 12  (pierde TODOS los compuestos)
+#     rol_regex + la regex inline    2 fallos de 12  (pierde el compuesto de 3, y `-a-todos_`)
+# CERO falsos positivos en los dos => el defecto era puro SILENCIO, y por eso no dio sintoma.
+# Efecto medido ese dia: 9 mensajes de `abierto/` invisibles para el filtro de planificacion, uno
+# de ellos un `urgente_`, el mas viejo de 5 dias.
+#
+# Se arregla el LECTOR, no la convencion: renombrar los compuestos ya emitidos seria MAYOR y
+# romperia las citas. El lector tolera lo que la convencion ya produce.
+#
+# EL TOKEN SE ANCLA AL SEPARADOR, no se busca como substring: `-a-frontend1_` NO es para
+# `frontend`, y solo el anclaje en `-`/`_` distingue esos dos. Un `grep frontend` los confunde.
+
+# rol_alternacion_destino <rol> -- regex del CAMPO DESTINATARIO completo que le llega a <rol>: el
+# rol solo, en cualquier posicion de un compuesto, mas los broadcast que hereda. Pensada para
+# usarse SIEMPRE anclada entre `-a-` y `_`; sin esas anclas el token deja de estar delimitado.
+rol_alternacion_destino() {
+  local s="$1" extra=""
+  case "$s" in
+    frontend1|frontend2) extra="|([a-z0-9-]*-)?frontend(-[a-z0-9-]*)?" ;;
+  esac
+  printf '(([a-z0-9-]*-)?%s(-[a-z0-9-]*)?%s|todos)' "$s" "$extra"
+}
+
+# me_interpela <rol> <ruta-o-basename> -- LA pregunta, en una sola definicion. exit 0 = es para
+# <rol>. Un nombre fuera de convencion devuelve 1 y NO se asume `todos`: ese default silencioso es
+# el defecto que pario esta lib el 2026-09-07.
+me_interpela() {
+  local rol="$1" b
+  b="$(basename -- "$2")"
+  printf '%s' "$b" | grep -qiE "^[0-9-]+_[a-z]+_[a-z0-9-]+-a-$(rol_alternacion_destino "$rol")_"
+}
+
+# lee_patrones <sesion> -- cada patron de nombre que ESA sesion debe leer, en forma de GLOB, para
+# los consumidores que usan `find -iname`. Sale de la misma tabla que rol_alternacion_destino():
+# si divergen, el mensaje se pierde en el consumidor que quedo atras -- que es justo lo que paso.
+#
+# OJO: un glob no tiene alternacion ni anclaje de token, asi que las cuatro posiciones van por
+# separado, y `find -iname` deja que `*` cruce el `_`. Esta forma es mas LAXA que me_interpela():
+# puede dar un falso positivo si el SLUG contiene `-a-<rol>_`. Preferir me_interpela() donde se
+# pueda; el glob existe para no reescribir los consumidores que ya filtran con find.
 lee_patrones() {
   local s="$1"
-  printf '%s\n' "*-a-${s}_*"
+  printf '%s
+' "*-a-${s}_*" "*-a-${s}-*_*" "*-a-*-${s}_*" "*-a-*-${s}-*_*"
   case "$s" in
-    frontend1|frontend2) printf '%s\n' '*-a-frontend_*' ;;   # el broadcast del frente de UI
+    frontend1|frontend2)                                      # el broadcast del frente de UI
+      printf '%s
+' '*-a-frontend_*' '*-a-frontend-*_*' '*-a-*-frontend_*' '*-a-*-frontend-*_*' ;;
   esac
-  printf '%s\n' '*-a-todos_*'
+  printf '%s
+' '*-a-todos_*'
 }
 
 # destinatario_de_nombre <basename> — extrae el destinatario. Devuelve '' si el nombre no sigue la
@@ -112,17 +169,6 @@ destinatario_de_nombre() {
 emisor_de_nombre() {
   local b="${1%.md}"
   printf '%s' "$b" | sed -nE "s/^[0-9-]+_[a-z]+_(${BUZON_ROL_RE})-a-${BUZON_ROL_RE}_.*/\1/p"
-}
-
-# rol_regex_buzon <rol> — alternación regex de los destinatarios que le llegan a <rol>, incluyendo
-# los broadcast que hereda. Es lee_patrones() en forma de regex, para los consumidores que grepean
-# nombres en vez de glob-matchear. Las dos vistas salen de la misma tabla: si divergen, el mensaje
-# aparece en un gate y no en el otro, que es peor que no tener gate.
-rol_regex_buzon() {
-  case "$1" in
-    frontend1|frontend2) printf '(%s|frontend)' "$1" ;;
-    *)                   printf '%s' "$1" ;;
-  esac
 }
 
 # firma_patrones <rol> — patrones de nombre que cuentan como FIRMA (señal de vida) de <rol>.
