@@ -301,3 +301,48 @@ Y el costo real estuvo en **cero** sólo porque el PR no estaba abierto todavía
 como commit nuevo encima, no como un `--amend` sobre algo ya pusheado. Ver
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] y
 [[el-veredicto-no-dice-cuantas-veces-lo-miraron]].
+
+## Refuerzo 2026-10-12 — quinto modo: el ref existe, el comando es el correcto, y el **ÁRBOL** es viejo. El falso fue un **ROJO**.
+
+Los cuatro modos de arriba son variantes de *el ref no resuelve*. Este es el que no vi venir: **el
+path existe, el comando es el que este archivo recomienda, y el árbol donde lo corrí tiene 20 días.**
+
+Reproduciendo los 21 CR que backend había medido en `apps/copiloto/me_contrato.py`:
+
+```bash
+grep -c $'
+' apps/copiloto/me_contrato.py 2>/dev/null || echo "0 o archivo ausente"
+#   → 0
+```
+
+Ese `0` no era «sin CR»: era **archivo ausente**. `grep -c` sale **rc=1 cuando cuenta 0**, así que mi
+propio `||` —puesto para que no explotara— fusionó «no hay CR» con «no existe el archivo» en la misma
+salida. El archivo nació el 07/10 en `831e588f`; el checkout estaba en una rama cuyo `merge-base` con
+main es del **22/09**, **353 commits** atrás.
+
+**Y la segunda mitad, que es la que vale:** verificando los links de un mensaje, uno dio **ROTO**.
+No estaba roto — existe en `origin/main` y faltaba en el árbol viejo. Con la misma unidad en los dos
+árboles: **308 archivos de memoria en el rancio contra 404 en main, 96 invisibles**.
+
+> **El árbol viejo falsea en los DOS sentidos.** La familia entera de arriba habla de falsos **verdes**
+> (el `0` que dice «no hay nada sin pushear»). Acá produjo un falso **rojo**, que se siente distinto:
+> parece prudencia, no descuido, y manda a arreglar algo que está sano
+> ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]). Por eso no basta preguntar *«¿este 0 puede
+> significar no medí?»* — hay que preguntar **«¿este ROJO puede significar no medí?»**, y ese reflejo
+> no existe.
+
+**Lo que lo cazó:** no fue sospechar del árbol. Fue **desambiguar el `0`** —`ls -la` del archivo al
+lado del conteo— porque el `|| echo "0 o archivo ausente"` que yo mismo escribí **nombraba las dos
+lecturas y no decía cuál había ocurrido**. El mensaje defensivo tenía la respuesta y no la daba:
+hermano de [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]], con el
+agravante de que acá las dos causas estaban escritas en el mismo `echo`.
+
+**How to apply (se suma a las cinco de arriba):** **(6)** antes de medir cualquier cosa en un working
+tree, `git rev-list --count HEAD..origin/main`. Si no da `0`, **la medición describe otro árbol** — y
+eso incluye los rojos, no sólo los ceros. Para contenido, `git show origin/main:<path>`, que no
+depende de ningún working tree. **(7)** `grep -c` devuelve **rc=1 al contar 0**: un `|| echo 0` lo
+convierte en un dato y borra la distinción entre *conté cero* y *no pude contar*. Si el fallback tiene
+que existir, que imprima **cuál** de las dos pasó (`[ -f "$f" ] || { echo SIN-MEDIR; exit 2; }`),
+nunca las dos en un texto. **(8)** y el corolario de este archivo sigue vigente en su forma más cruda:
+cometí esto **mientras cerraba el hallazgo de otro** por medir sobre un árbol anterior al fix. La
+clase se repite en el turno en que la estás nombrando.
