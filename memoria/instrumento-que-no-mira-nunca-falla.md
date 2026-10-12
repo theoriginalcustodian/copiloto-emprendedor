@@ -791,3 +791,48 @@ Hermano de [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]] y
 —encontró el único payload real y lo confirmó contra el journal—, pero su «SIN PAYLOAD: 10» no
 significaba «se perdieron»: significaba **«todavía no lo escribieron»**. El mismo vacío, dos causas
 opuestas, y elegí la pesimista sin control positivo.
+
+## Refuerzo 2026-10-12 — el control positivo del descubrimiento ABSUELVE al de ceguera
+
+`contar-veredictos.py` ya tenía `docs_control`: un control positivo que exige que el glob
+**encuentre** los dos lotes que el `docs` fijo encontraba. Está bien hecho y su docstring nombra el
+riesgo correcto («un 0 de acá es del instrumento, no del corpus»).
+
+**Y no cubría la ceguera, porque son dos preguntas distintas:**
+
+| control | pregunta |
+|---|---|
+| `docs_control` (existía) | ¿el glob encuentra lo que **debe** encontrar? |
+| el que faltaba | ¿qué queda **fuera del rango** que el glob barre? |
+
+El primero sale verde mientras el rango esté bien cubierto *por dentro*. No puede ver lo que está
+afuera: para él, lo de afuera no existe. Es el mismo reparto que
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] — y acá el verde del
+primero funcionó como **coartada** del segundo: «el descubrimiento ya tiene control positivo».
+
+**Cómo se cobró.** El corpus se descubre por glob sobre el **buzón**. Una medición que vive en
+`docs/.../Auditorias/` nunca es candidata, así que nunca rompe el ratchet de «sin clasificar» y
+nunca entra. Frontend2 reportó `caida`/`tablero` en conflicto; medí desde `main`,
+`conflictos_nuevos` dio `[]`, **y lo leí como refutación de su hallazgo**. No lo era: su
+`COHERENTE` estaba en `Auditorias/2026-10-08-BL-Q5-...-92fd8a06.md` — 53 ids, **presente en
+`origin/main`** — y el corpus tenía **cero** menciones de ese archivo. El `[]` no era acuerdo entre
+mediciones: era **ausencia de una de las dos**.
+
+> Un `[]` de un comparador no dice «coinciden». Dice «no encontré par». Antes de leerlo como
+> acuerdo: **¿los dos términos entraron al rango?** Si uno no entró, el comparador no comparó.
+
+**Por qué nadie lo vio en dos meses de instrumento muy auditado:** las dos decisiones que se cruzan
+son correctas por separado — el corpus es el buzón porque ahí circulan los mensajes, y la regla del
+operador (06/08) manda **toda** auditoría a `Auditorias/`. Ninguna es el error.
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]: el agujero vive en el **par**, y cada dueño
+revisando lo suyo lo encuentra todo en orden.
+
+**El fix no fue ensanchar el glob** (eso movería el denominador de un criterio cerrado y dejaría ~19
+candidatos sin clasificar, o sea `exit 8` para todos; `DEC-18` manda). Fue hacer que el instrumento
+**declare su alcance** en cada corrida: *«NO barro N docs en Auditorias/, que tocan 54 de 54 ids»*.
+No mueve ninguna cifra. Convierte un verde **por ausencia** en un alcance **declarado** — que es lo
+único que permite al próximo lector no concluir lo que yo concluí.
+
+⚠️ Y la declaración va **antes** del guard que aborta si falta el buzón: un control de ceguera
+ubicado después de ese `sys.exit` no se imprime justo en el caso que más lo necesita (CI, clon
+limpio). [[un-control-de-ceguera-ubicado-despues-del-guard-que-dispara]]
