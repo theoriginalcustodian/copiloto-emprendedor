@@ -836,3 +836,44 @@ No mueve ninguna cifra. Convierte un verde **por ausencia** en un alcance **decl
 ⚠️ Y la declaración va **antes** del guard que aborta si falta el buzón: un control de ceguera
 ubicado después de ese `sys.exit` no se imprime justo en el caso que más lo necesita (CI, clon
 limpio). [[un-control-de-ceguera-ubicado-despues-del-guard-que-dispara]]
+
+---
+
+## Refuerzo 2026-10-12 — el instrumento miraba el lugar equivocado, y el hallazgo que lo denunció nombró la clase equivocada
+
+`scripts/podar-worktrees.sh` acepta `--base`, pero su **censo de huérfanos** colgaba de un path fijo
+(`$principal/.claude/worktrees`) mientras la otra mitad del script sí respetaba las bases. Resultado:
+50 worktrees registrados contra **115** directorios `wt-*` en disco. Ciego por mirar el lugar
+equivocado — el mismo error que su **propio comentario ya documentaba** («0 huérfanos cuando había
+21»), repetido un nivel más arriba. Un comentario que narra el error pasado no impide el presente.
+
+**Lo nuevo, y es la parte que no estaba escrita en ninguna entrada: el hallazgo que lo denunció
+nombró la clase equivocada.** Decía «65 huérfanos invisibles». Medido: huérfanos **0**. Lo invisible
+eran **7 RESTOS** — directorios con archivos del repo cuyo `.git` ya no existe, lo que deja el
+`worktree remove` parcial de Windows sobre un junction de `node_modules`: borra el `.git` y
+**desregistra**, dejando los archivos. Dos clases distintas con un solo nombre, y arreglar «lo que el
+hallazgo pedía» habría dejado el defecto real intacto.
+
+**Y la trampa simétrica:** reportar *todo* lo no registrado dentro de una base ancha son **93 falsos
+positivos sobre 137 carpetas**, y [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]. Lo que
+separó señal de ruido no fue un umbral: fue la **forma del artefacto**, que nadie había medido.
+
+| forma del `.git` | qué es |
+|---|---|
+| ARCHIVO (`gitdir:`) y sin registro | **huérfano** |
+| DIRECTORIO | clon independiente — ajeno |
+| ausente + ≥2 dirs de 1er nivel del repo | **resto** de un `remove` parcial |
+| ausente + 1 marcador | ambiguo: se **cuenta**, no se silencia |
+
+**How to apply:**
+
+1. Antes de creer el **cero** de un censo, exigile el **denominador**: *¿cuántos elementos miró?*
+   `0 huérfanos` sobre 5 directorios y sobre 138 son la misma línea y distinta noticia.
+2. Cuando un hallazgo nombre una clase, **medí la clase antes de arreglarla**. El nombre viene de
+   quien vio el síntoma, no de quien midió la causa.
+3. Si una base ancha convierte el guard en ruido, buscá la **propiedad del artefacto** que separa
+   (acá la forma del `.git`) antes de bajar un umbral.
+4. Un umbral que descarta una clase la vuelve muda: **contala aparte**. Si no, repetís adentro del
+   fix el defecto que el fix vino a cerrar.
+5. El control que acredita el fix es correr la **versión vieja contra el mismo fixture** y exigir que
+   sea ciega. Sin eso, el verde no distingue «el fix funciona» de «el fixture estaba vacío».
