@@ -274,21 +274,66 @@ listar() {
 # worktree, y ahí `$REPO_ROOT/.claude/worktrees` no existe — la primera versión miró ahí y reportó
 # «0 huérfanos» cuando había 21. Verde por mirar el lugar equivocado, otra vez.
 # La carpeta cuelga siempre del worktree PRINCIPAL, que es la primera entrada de `worktree list`.
-huerfanos=()
-principal="$(git -C "$REPO_ROOT" worktree list --porcelain | awk '/^worktree /{print substr($0,10); exit}')"
-dir_wts="$principal/.claude/worktrees"
-if [ -d "$dir_wts" ]; then
-  nombres_registrados="$(git -C "$REPO_ROOT" worktree list --porcelain \
-                         | awk '/^worktree /{print substr($0,10)}' | sed 's#.*/worktrees/##')"
-  for d in "$dir_wts"/*/; do
+# 2026-10-12 — ESTE CENSO COLGABA DE UN PATH FIJO: el MISMO error que el parrafo de arriba
+# documenta, un nivel mas arriba. Miraba `$principal/.claude/worktrees` y NO las BASES, asi que
+# `--base /c/gfw-src` ampliaba el analisis de REGISTRADOS y dejaba el censo de huerfanos en el
+# layout historico. Medido: 50 worktrees registrados contra 115 directorios `wt-*` en disco bajo
+# `/c/gfw-src`. El path fijo volvio por la puerta de al lado.
+#
+# La comparacion por NOMBRE tampoco servia fuera de `.claude/worktrees/`: el `sed 's#.*/worktrees/##'`
+# devuelve la ruta ENTERA, que nunca iguala a un basename. Se compara por RUTA canonica.
+#
+# POR QUE SE CLASIFICA POR LA FORMA DEL `.git` EN VEZ DE REPORTAR TODO LO NO REGISTRADO: una BASE
+# ancha contiene directorios que NUNCA fueron worktrees (scratch del operador, logs, un clon
+# aparte). Reportarlos como huerfanos son 93 falsos positivos sobre 137 carpetas, y un guard que
+# grita en el caso normal se desarma solo. La forma del `.git` distingue exacto:
+#   · `.git` ARCHIVO     -> es un worktree. Si no esta registrado, es HUERFANO.
+#   · `.git` DIRECTORIO  -> clon independiente. Ajeno: se cuenta, no se lista.
+#   · sin `.git` + >=2 dirs de 1er nivel DEL REPO -> RESTO: lo que deja el `worktree remove` parcial
+#     de Windows sobre un junction de `node_modules`, que borra el `.git` y DESREGISTRA dejando los
+#     archivos. Medido hoy: huerfanos con forma de worktree 0, RESTOS 70 — la clase que nadie
+#     miraba NO era la que el hallazgo nombro, era esta.
+#   · lo demas -> ajeno.
+# Los marcadores del repo se DERIVAN de `ls-tree`, no se hardcodean.
+huerfanos=(); restos=(); CENSADOS=0; AJENOS=0; UNMARCADOR=0
+marcadores=()
+while IFS= read -r _m; do [ -n "$_m" ] && marcadores+=("$_m"); done \
+  < <(git -C "$REPO_ROOT" ls-tree --name-only -d HEAD 2>/dev/null)
+rutas_registradas="$(git -C "$REPO_ROOT" worktree list --porcelain \
+                     | awk '/^worktree /{print substr($0,10)}' \
+                     | while IFS= read -r _r; do (cd "$_r" 2>/dev/null && pwd -P); done)"
+for _b in "${BASES[@]}"; do
+  [ -d "$_b" ] || continue
+  for d in "$_b"/*/; do
     [ -d "$d" ] || continue
-    n="$(basename "$d")"
-    printf '%s\n' "$nombres_registrados" | grep -qxF "$n" || huerfanos+=("$n")
+    d_real="$(cd "$d" 2>/dev/null && pwd -P)" || continue
+    CENSADOS=$((CENSADOS+1))
+    printf '%s\n' "$rutas_registradas" | grep -qxF "$d_real" && continue
+    n="${d_real##*/worktrees/}"; [ "$n" = "$d_real" ] && n="${d_real##*/}"
+    if [ -f "$d_real/.git" ]; then
+      huerfanos+=("$n")
+    elif [ -d "$d_real/.git" ]; then
+      AJENOS=$((AJENOS+1))
+    else
+      _hits=0
+      for _m in "${marcadores[@]}"; do [ -d "$d_real/$_m" ] && _hits=$((_hits+1)); done
+      if [ "$_hits" -ge 2 ]; then
+        restos+=("$n [sin .git, $_hits dirs del repo -- posible remove parcial]")
+      elif [ "$_hits" -eq 1 ]; then
+        # Un solo marcador es ambiguo (un scratch de build tiene `apps/` + `node_modules/`), asi que
+        # NO entra como resto -- pero se CUENTA: un umbral que deja una clase muda repite el
+        # defecto que este bloque vino a arreglar.
+        UNMARCADOR=$((UNMARCADOR+1))
+      else
+        AJENOS=$((AJENOS+1))
+      fi
+    fi
   done
-fi
+done
 
 if [ "$QUIET" = "0" ]; then
   listar "🧟 HUÉRFANOS — el directorio existe pero git ya no lo registra (sólo se informan)" "${huerfanos[@]}"
+  listar "🪦 RESTOS — con archivos del repo y SIN .git: lo que deja un worktree remove parcial. NO se tocan, pueden tener trabajo" "${restos[@]}"
   listar "💥 ROTOS — registrados como worktree pero git responde por otro árbol" "${rotos[@]}"
   listar "🧾 CON EVIDENCIA — guardan recibos de gate.sh que no están en git; copiá lo que un acta cite a docs/.../evidencia/ y recorré esto" "${con_evidencia[@]}"
   listar "🔒 SUCIOS — trabajo sin commitear, no se tocan" "${sucios[@]}"
@@ -305,9 +350,10 @@ fi
 
 if [ "$PODAR" = "0" ]; then
   echo "🔎 CONTROL: $ANALIZADOS de $REGISTRADOS worktrees entraron al analisis ($((REGISTRADOS-ANALIZADOS)) fuera por base/actual). Un conteo de podables NO se lee sin esta linea."
-  printf '\n📋 dry-run · %s podable(s) · %s sucio(s) · %s no mergeado(s) · %s en gracia (%sh) · %s roto(s) · %s huérfano(s)\n' \
+  echo "🔎 CENSO: $CENSADOS directorio(s) mirados en ${#BASES[@]} base(s) · ${#huerfanos[@]} huerfano(s) · ${#restos[@]} resto(s) · $AJENOS ajeno(s) · $UNMARCADOR con UN solo dir del repo (ambiguos, ni resto ni ajeno). Un CERO de huerfanos no se lee sin saber cuantos directorios se miraron."
+  printf '\n📋 dry-run · %s podable(s) · %s sucio(s) · %s no mergeado(s) · %s en gracia (%sh) · %s roto(s) · %s huérfano(s) · %s resto(s)\n' \
     "${#podables[@]}" "${#sucios[@]}" "${#no_mergeados[@]}" "${#en_gracia[@]}" "$HORAS_GRACIA" \
-    "${#rotos[@]}" "${#huerfanos[@]}"
+    "${#rotos[@]}" "${#huerfanos[@]}" "${#restos[@]}"
   [ "${#podables[@]}" -gt 0 ] && echo "   Para borrarlos: scripts/podar-worktrees.sh --podar"
   exit 0
 fi
