@@ -145,3 +145,60 @@ describe('SeccionMisComprobantes — anulación derivada del comprobante (web)',
     expect(screen.queryByTestId(`${TESTID}-anulacion-${CLAVE}-si`)).toBeNull();
   });
 });
+
+/**
+ * 🔴 `F1.3` del sprint «app lista para usuarios reales» (issue #1015) — **el caso HOSTIL del
+ * predicado `esAnulable`**, que hasta hoy no existía en ninguna de las dos apps.
+ *
+ * El control ya estaba escrito (`esAnulable` = `estado === 'emitida'`, arriba en este módulo) pero
+ * **nada lo ejercitaba**: los tests de arriba sólo construyen comprobantes `emitida`, así que
+ * cambiar el predicado por `return true` los dejaba a TODOS verdes. Un control especificado y no
+ * ejercitado por su caso hostil es indistinguible de uno ausente — y acá el síntoma era caro:
+ * la app ofrecía **anular una nota de crédito**, que es anular la anulación.
+ *
+ * Por qué los tres estados van en la MISMA lista y no en tres tests: un test que renderiza sólo la
+ * NC pasa igual si la sección no renderizó nada (lista vacía, error de red, mock mal armado) — la
+ * ausencia del botón no prueba que el filtro filtre. Con la `emitida` al lado, su botón presente es
+ * el **control positivo interno**: si ése falta, el test acusa al arnés, no al predicado.
+ *
+ * Gemelo de mobile: `apps/mobile/src/modules/facturacion/SeccionMisComprobantes.test.tsx`. El
+ * predicado está definido DOS veces, una por app — si el fix viajara a una sola, el agujero
+ * seguiría vivo en la otra.
+ */
+describe('SeccionMisComprobantes — sólo una factura emitida se puede anular (web)', () => {
+  const EMITIDA = '11-6-8';
+  const NOTA_CREDITO = '13-6-9';
+  const ANULADA = '11-6-10';
+
+  beforeEach(() => {
+    vi.mocked(listarComprobantes)
+      .mockReset()
+      .mockResolvedValue({
+        status: 'ok',
+        comprobantes: [
+          comprobanteMock(),
+          comprobanteMock({ tipoCbte: 13, nro: 9, estado: 'nota_credito' }),
+          comprobanteMock({ nro: 10, estado: 'anulada' }),
+        ],
+      });
+    vi.mocked(anularComprobante).mockReset();
+    vi.mocked(estadoAnulacion).mockReset().mockRejectedValue(new ApiError(404, 'anulación no encontrada'));
+  });
+
+  it('una nota de crédito NO ofrece «Anular» — y la factura emitida de al lado SÍ', async () => {
+    montar();
+
+    // Control positivo interno: si esto falla, el arnés no renderizó la lista y los `queryBy` de
+    // abajo serían null por una razón que no tiene nada que ver con el predicado.
+    await waitFor(() => expect(screen.getByTestId(`${TESTID}-anular-${EMITIDA}`)).toBeTruthy());
+
+    expect(screen.queryByTestId(`${TESTID}-anular-${NOTA_CREDITO}`)).toBeNull();
+  });
+
+  it('un comprobante ya anulado tampoco ofrece «Anular»', async () => {
+    montar();
+    await waitFor(() => expect(screen.getByTestId(`${TESTID}-anular-${EMITIDA}`)).toBeTruthy());
+
+    expect(screen.queryByTestId(`${TESTID}-anular-${ANULADA}`)).toBeNull();
+  });
+});
