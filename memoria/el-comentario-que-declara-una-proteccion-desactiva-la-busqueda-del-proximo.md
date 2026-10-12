@@ -142,3 +142,51 @@ remedio de al lado** — no alcanza con que el aviso lo nombre. Un renglón:
 Y el fix de raíz no es mejorar el glob en cinco prompts: es que **ninguno escriba el filtro** y todos
 invoquen la misma definición (`scripts/mi-buzon.sh` → `me_interpela()`), porque una regla copiada en
 cinco lugares divergió en cinco lugares. → [[la-costura-leia-un-campo-que-nadie-escribe]]
+
+---
+
+## Refuerzo 2026-10-12 — el aviso escrito a mano envejece en DOS direcciones opuestas, y una de ellas no da síntoma
+
+El generador de los contratos del mapeo (`scripts/evidencia/armar-contratos.py`) tenía el aviso de
+filas bloqueadas **escrito a mano** en su cabecera, nombrando `esc`:
+
+> ⚠️ **Lo que NO se implementa todavia:** la fila `esc` depende del estado de reposo de las 3 capas,
+> que es decision del operador (`pedido_` del 2026-10-12, **sin responder**).
+
+El mismo día el operador respondió. Si no lo hubiera cambiado, el doc que circula habría seguido
+afirmando un bloqueo **inexistente** — y los contratos son justo lo que cada sesión lee para tomar
+trabajo.
+
+**Lo que esto agrega a la entrada:** un aviso de estado puede envejecer hacia los **dos** lados, y
+no son simétricos en visibilidad:
+
+| dirección | qué pasa | ¿da síntoma? |
+|---|---|---|
+| **sobrevive al desbloqueo** | afirma un bloqueo que ya no existe → frena trabajo que está libre | **sí**, alguien lo lee y pregunta |
+| **no aparece con el próximo** | una fila nueva se bloquea y el aviso no la nombra → se implementa a ciegas | **no**: el silencio es idéntico a «no hay bloqueos» |
+
+El segundo es el peligroso, y es el que la intuición no cubre: el reflejo al resolverse una decisión
+es **borrar** el párrafo. Borrarlo deja el mecanismo sin voz para la próxima vez.
+
+**El fix de raíz tiene dos mitades, y la segunda es la que casi me salto:**
+
+1. **Derivar el aviso de la fuente única.** `aviso_bloqueo()` lo arma desde `V.BLOQUEADAS` — la
+   misma tabla que usa el control 5 del verificador. Una definición, no dos.
+2. **IMPRIMIR el caso cero.** Con la tabla vacía el aviso no se calla: dice *«✅ Cero filas
+   bloqueadas por decisiones ajenas. Derivado de `V.BLOQUEADAS`, que está vacía: no es una
+   afirmación escrita a mano»*. Porque **un silencio no se distingue de "no lo miré"** — y eso ya lo
+   pagué con el umbral que dejaba muda a la clase de 1 marcador
+   (→ [[instrumento-que-no-mira-nunca-falla]]).
+
+**Y vaciar la tabla NO es retirar el mecanismo.** `BLOQUEADAS = {}` quedó con el comentario de por
+qué sigue existiendo: su control 5 es **simétrico** —una fila marcada sin entrada, o una entrada sin
+fila marcada, hacen fallar el gate—, así que la tabla es lo que obliga a que la marca y la
+declaración no divergan. Un mecanismo retirado no frena a la próxima fila bloqueada.
+
+**Cómo aplicarlo:**
+- Antes de escribir un aviso de estado en una cabecera generada, preguntá: *¿de qué variable sale?*
+  Si la respuesta es «de mi memoria al escribirlo», es un comentario que declara estado.
+- Al resolverse la condición, **no borres el bloque**: hacé que el bloque sepa decir «cero».
+- Un control positivo del derivado: inyectá una entrada falsa en la tabla y verificá que el aviso
+  **reaparece y la nombra**. Sin eso, «lo derivé» es autoevaluación.
+  → [[medir-si-un-gate-dispara-antes-de-embarcarlo]] · [[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]]
