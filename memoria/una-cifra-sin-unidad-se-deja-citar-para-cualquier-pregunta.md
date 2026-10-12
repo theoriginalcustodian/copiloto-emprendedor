@@ -34,6 +34,47 @@ honesto que su propia cita.
 no se cita en un veredicto de cierre. Y cuando un instrumento cambia de unidad, las cifras anteriores
 no se actualizan: se **marcan** con la unidad que tenían.
 
+## Refuerzo 2026-10-12 — la resta entre dos COMANDOS que parecen medir lo mismo
+
+La entrada de arriba es sobre una cifra que **envejece de magnitud**. Esta variante es peor porque
+nace mal: **dos comandos distintos, corridos el mismo día, restados entre sí.**
+
+Midiendo cuántas entradas de memoria eran invisibles en un checkout atrasado, escribí **37**:
+
+```
+ls memoria/*.md | wc -l                                    → 366   (sólo el nivel RAÍZ)
+git ls-tree -r origin/main -- memoria | grep -c '\.md$'    → 403   (RECURSIVO)
+```
+
+`memoria/` tiene dos subdirectorios (`checkpoints/`, `Ideas de implementacion/`). Con la **misma**
+unidad en los dos árboles: **308 vs 404 = 96**. Mi cifra subestimaba el efecto **2,6×**.
+
+**Por qué no salta a la vista:** las dos cifras responden a la frase «archivos `.md` de `memoria/`».
+Ninguna es falsa. Lo falso es **la resta**, y una resta no tiene unidad visible — hereda la de sus
+términos sin avisar que eran dos. La regla de arriba («unidad + fecha + instrumento») se cumplía por
+separado en cada término y **no** alcanzó: faltaba la regla del **par**.
+
+**Y el contexto que lo hace útil:** la cometí en la evidencia de un `pedido_` cuyo tema **era**
+instrumentos que miden mal. Tener el defecto en la cabeza no protege de cometerlo en la propia
+evidencia — hermano de [[el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado]] y del corolario de
+[[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]].
+
+**How to apply:** toda comparación de dos cifras se corre con **un solo comando parametrizado por el
+sujeto**, nunca con dos comandos distintos:
+
+```bash
+for ref in "$RANCIO" origin/main; do
+  printf '%s: %s
+' "$ref" "$(git ls-tree -r --name-only "$ref" -- memoria | grep -c '\.md$')"
+done
+```
+
+Si no se puede unificar el comando, la resta **no se publica**: se publican los dos números con su
+comando al lado y se dice que no son comparables. Y el control que lo caza en un segundo: **el total
+conocido**. Acá `ls` daba 391 en el árbol al día y `find` 404 — una discrepancia de 13 sobre el
+*mismo* árbol, que es la señal de que los comandos no miden lo mismo, disponible **antes** de restar
+nada.
+
 Relacionadas: [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] ·
 [[un-orden-de-magnitud-que-coincide-no-confirma-la-causa]] ·
 [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]] ·
