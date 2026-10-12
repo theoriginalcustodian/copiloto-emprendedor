@@ -379,3 +379,35 @@ que él mismo dejó**, no sólo sobre lo que quería medir.
 → [[un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante]] ·
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
 [[el-instrumento-respondio-sobre-otro-sujeto]]
+
+---
+
+## Refuerzo 2026-10-12 — el falso ROJO salió de un valor que YO congelé, y además recomendaba una acción
+
+Armé un monitor para esperar la llegada de un push, con el SHA esperado escrito como **literal**:
+`L=f106d2c1...`. Después hice un segundo commit en la misma rama. El push llevó los dos, y el monitor
+comparó el remoto nuevo contra mi literal viejo y dictó:
+
+> `PUSH-DISTINTO: el remoto tiene 75c642bb y el local f106d2c1 — repushear antes de abrir PR`
+
+Todo estaba bien: local y remoto eran **el mismo** `75c642bb`. El «local» del mensaje no era el local
+— era mi expectativa, petrificada en el momento de armar el instrumento.
+
+**Dos cosas que esta entrada no decía todavía:**
+
+1. **El falso rojo no vino de un bug ajeno: vino de que yo moví el sujeto después de calibrar el
+   instrumento.** Un monitor es código que corre en el futuro; cualquier valor que fije al armarlo
+   envejece solo si el estado sigue avanzando
+   ([[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]).
+2. **El veredicto traía una acción, y seguirla habría sido el error.** «Repushear» era inocuo acá;
+   un falso rojo que recomiende `--force`, revertir o borrar no lo es. Un instrumento que condena
+   **y además indica remedio** multiplica el costo de equivocarse.
+
+**How to apply:**
+
+· En un monitor o watcher, **releé el valor de referencia en cada iteración** (`git rev-parse HEAD`
+  dentro del loop), nunca lo congeles en una variable al armarlo.
+· Cuando un instrumento diga que algo está mal **y** te diga qué hacer, verificá el **efecto** antes
+  de ejecutar el remedio: acá bastaba `git ls-remote` contra `git rev-parse HEAD`, los dos leídos
+  **en el momento de decidir**.
+· Si el mensaje de un control nombra «local» o «esperado», preguntá **cuándo** se leyó ese valor.
