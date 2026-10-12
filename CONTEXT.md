@@ -251,3 +251,38 @@ Cuánto se pagó de un comprobante. Es **derivado**, no se guarda.
 **Origen**:
 De dónde salió un registro: `voz`, `manual`, `foto`, `derivado`, `mercadopago`, `factura`. En los
 ingresos carga además un matiz de confianza — "lo vio el sistema" pesa distinto que "lo tipeó alguien".
+
+---
+
+### Entrada a la app
+
+⚠️ **«Alta» y «onboarding» nombran cada uno más de una cosa, y la colisión ya produjo una afirmación
+falsa en los docs del sprint** (2026-10-12: el plan y el backlog declararon que «mobile no tiene
+alta», midiendo un referente y concluyendo sobre otro).
+
+**Alta** — **tres** referentes, y hay que decir cuál:
+1. **Alta de credencial** (`signup`): crear el usuario en GoTrue. `POST /auth/signup`, **sólo-web**.
+   En la beta **no interviene**: las altas las hace el operador a mano.
+2. **Provisioning del tenant**: crear la fila del cliente. `provision_oauth_tenant`, detrás de la
+   allowlist (`web.py:1433`), fail-closed **a propósito**.
+3. **Alta de ARCA**: el workflow durable que habilita a facturar (`afip_onboarding_workflow.py`).
+   Sin relación con los dos anteriores.
+
+**Onboarding** — **dos** referentes sin relación:
+- **Onboarding del usuario**: el primer ingreso. Predicado único `debeMostrarOnboarding`
+  (`packages/core/src/api/onboarding.ts:18`), gate en `App.tsx` (web) y `app/_layout.tsx:98` + `Guard`
+  (mobile), se cierra con `POST /me/onboarding/completar`. **Pide conexiones** (Mercado Pago, Google).
+- **Onboarding de ARCA**: el (3) de arriba.
+
+_Avoid_: «el alta» y «el onboarding» a secas en un contrato, un issue o un DoD. **Siempre con el
+referente**: *alta de credencial* · *provisioning del tenant* · *alta de ARCA* · *primer ingreso*.
+
+**Ingreso ≠ alta.** **Ingresar** (login) funciona hoy, Google y email incluidos. Lo cerrado es el
+**alta de alguien nuevo**. Y ojo con la otra colisión: `ingreso` también es **plata que entró**
+(ver *El ciclo del dinero*) — el del login conviene nombrarlo **login** y no «ingreso».
+
+**Perfil de negocio**:
+Los datos del negocio (`que_vende`, `a_quien`, `nombre_comercial`, `horario_atencion`, `telefono`,
+`email`, `formalidad`, `largo_respuesta`, `nombre_copiloto`, `modo_ceremonia`). Vive en **Ajustes**,
+no en el primer ingreso. **No es el onboarding**, aunque ambos se llenen "al principio".
+_Avoid_: llamarlo onboarding, o «los datos del alta».

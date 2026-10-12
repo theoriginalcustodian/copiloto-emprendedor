@@ -69,7 +69,7 @@ clientes. Sacando los 12 `/admin/*`, lo que **web consume y mobile no** son **tr
 
 | endpoint | consecuencia |
 |---|---|
-| `POST /auth/signup` (`apps/copiloto/web.py:1294`) | **mobile no tiene alta de cuenta** → #1016 |
+| `POST /auth/signup` (`apps/copiloto/web.py:1294`) | sólo-web, y **con las altas a mano no interviene**: el primer ingreso de mobile pasa por el gate de onboarding, no por este endpoint → #1016 |
 | `POST /me/legal/aceptar` (`web.py:1143`) | mobile no cablea la aceptación legal → #1001 |
 | `POST /warm` (`web.py:1168`) | mobile no pre-calienta el chat → primera respuesta más lenta |
 
@@ -136,7 +136,7 @@ que en web no se puede ni probar. Es un ítem de **decisión**, no de implementa
              ↓
   ┌──── C · el alta (abre la puerta) ────┐      ┌──── D · paridad mobile ────┐
   │  #999 allowlist · #1000 web          │      │  #1017 chat: artefacto +   │
-  │  #1016 alta en mobile · #1001 legal  │      │        desambiguación      │
+  │  #1016 datos mínimos · #1001 legal   │      │        desambiguación      │
   │  #1002 SMTP                          │      │  #1018 bloques de agregado │
   └──────────┬───────────────────────────┘      └──────────┬─────────────────┘
              └──────────────┬───────────────────────────────┘
@@ -159,8 +159,10 @@ que en web no se puede ni probar. Es un ítem de **decisión**, no de implementa
 3. **#1003 antes de #1018.** El bloque «facturado del mes» no existe en mobile; portarlo mientras «lo
    facturado» se calcula con cuatro predicados distintos **importa la ambigüedad al teléfono**. Primero
    un predicado, después la pantalla que lo muestra.
-4. **El alta de mobile (#1016) después del contrato del alta (#999 + #1000).** Construir la pantalla
-   contra un backend cuyo contrato de alta todavía no cierra es codificar la esperanza.
+4. **El predicado de los datos mínimos (#1016) en UN solo lugar, antes de cablearlo en las dos apps.**
+   Hoy mismo se pagó que `esAnulable` estuviera definido dos veces y el fix llegara a una sola mitad:
+   el verde de la mitad arreglada tapa el agujero de la otra. Ya **no** depende de #999 ni de #1000 —
+   el gate del primer ingreso existe y las altas en beta son manuales por decisión del operador.
 
 **Lo que corre en paralelo sin esperar nada:** el bloque **D** (paridad mobile) no depende de **C**;
 se mide con el usuario canónico, que ya existe y ya entra. El sprint **no está parado** esperando las
@@ -198,9 +200,9 @@ de escribir otro.
 
 | issue | trabajo | DoD binario |
 |---|---|---|
-| **#999** | La allowlist es **fail-closed** (`web.py:581-583`): sin esa env no entra **ningún** email, ni por Google. El proceso vivo tiene 4 entradas, todas del operador | Un email nuevo completa el alta **sin que nadie edite una env var ni la DB** |
+| **#999** | **CERRADO POR DECISIÓN (2026-10-12).** La allowlist es fail-closed (`web.py:1433`) y **se queda así**: en beta las altas las hace el operador a mano, sólo para personas cercanas. El **ingreso** —Google y email— funciona y está probado; lo cerrado es el **alta de alguien nuevo**, a propósito. 4 entradas, todas del operador | Ninguno de código: cierra por decisión. La UI para cargar la allowlist **sale del alcance** |
 | **#1000** | El alta por email de **web** no se puede completar: el backend exige `invite_token` y el cliente nunca lo manda; el form sólo abre con `?signup=1` | Alta por email de punta a punta, con test del **camino real** (no del happy-path mockeado) |
-| **#1016** | **Mobile no tiene alta de cuenta.** `POST /auth/signup` es sólo-web; el código lo dice en `PantallaCuenta.tsx:58` | Un email nuevo completa el alta **desde el teléfono**, acepta el legal, y entra |
+| **#1016** | ⚠️ **Decía «mobile no tiene alta» y era falso** (medido 2026-10-12): el gate del primer ingreso existe en las dos apps con predicado único — `debeMostrarOnboarding` (`packages/core/src/api/onboarding.ts:18`), web en `App.tsx`, mobile en `app/_layout.tsx:98` + `Guard`, con tests los dos. Lo que falta es **qué se le pide**: hoy el paso ofrece conexiones (MP, Google) y los datos del negocio son todos opcionales con default. **Mínimos decididos: `que_vende` + `nombre_comercial`** | El predicado vive en **un** solo lugar y las dos apps lo importan; con cualquiera de los dos vacío **ninguna** deja pasar al shell; **test adversarial por app** (uno vacío ⇒ no entra) más su control positivo |
 | **#1001** | Mobile **no cablea la aceptación** legal (la pantalla de lectura ya existe, `PantallaLegal.tsx:31`, ruta `app/legal.tsx`), y la aceptación **no condiciona nada** en ninguna plataforma | Un alta nueva **no puede operar** sin aceptar, en las dos plataformas; mobile llama `POST /me/legal/aceptar` y guarda la versión. **Test del caso hostil**: una cuenta sin aceptación vigente es rechazada |
 | **#1002** | Sin SMTP no hay recuperación de contraseña ni cambio de mail | El usuario recupera su clave **sin intervención** de nadie |
 
@@ -269,7 +271,7 @@ más grande.
 
 ## 7. Lo que espera al operador (bloquea el **cierre** del criterio 1, no el arranque del sprint)
 
-1. **Cómo entra un usuario:** beta por invitación con UI para cargar la allowlist, **o** alta abierta.
+1. ~~**Cómo entra un usuario**~~ — **DECIDIDO (2026-10-12):** altas **manuales** en beta, sólo personas cercanas; los permisos de login los otorga el operador. La allowlist se queda y su UI sale del alcance. Los **datos mínimos** del primer ingreso quedaron delegados y decididos: `que_vende` + `nombre_comercial` (ver #1016).
 2. **Texto legal definitivo** — hoy el descargo está declarado **PROVISORIO** hasta revisión de un
    abogado — o la decisión explícita de salir con el aviso de plantilla puesto.
 3. **Proveedor SMTP + DNS.**

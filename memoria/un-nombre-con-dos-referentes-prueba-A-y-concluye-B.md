@@ -103,3 +103,37 @@ el error no se ve releyendo, porque el id válido no tiene cara de roto.
 [[medir-si-un-gate-dispara-antes-de-embarcarlo]] ·
 [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]] ·
 [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]
+
+---
+
+## 🔁 Refuerzo 2026-10-12 — «alta» nombraba dos cosas, y el mapa de endpoints respondió por la otra
+
+Escribí en el plan y en el backlog del sprint que **«mobile no tiene alta de cuenta»**. La evidencia
+era real: el mapa de 109 endpoints marca `POST /auth/signup` como **sólo-web**, y el propio
+`PantallaCuenta.tsx:58` lo dice. La conclusión, falsa.
+
+**«Alta» nombra dos cosas distintas:**
+
+| referente | dónde vive | estado real |
+|---|---|---|
+| crear la credencial (signup) | `POST /auth/signup` | sólo-web — **cierto** |
+| el primer ingreso de la persona | `debeMostrarOnboarding` + `app/_layout.tsx:98` + `Guard` | **implementado en las dos apps, con tests** |
+
+Medí el primero y concluí sobre el segundo. Y cuando las altas las hace el operador a mano —que es la
+decisión para la beta— el primer referente **ni interviene**: la persona nunca pasa por `signup`.
+
+**Lo que lo hizo invisible:** el mapa de endpoints es un instrumento *correcto* y *preciso*. No falló.
+Respondió exactamente lo que se le preguntó —«¿qué cliente llama a este endpoint?»— y yo leí la
+respuesta como si contestara «¿puede una persona empezar a usar la app desde el teléfono?». Un
+instrumento que mide por **endpoint** no puede ver una capacidad que vive en un **guard de
+navegación**: no hay llamada HTTP que delate al `_layout.tsx`.
+
+**Cómo se caza:** lo destapó el operador diciendo *«estoy seguro que algo ya había implementado»* —
+o sea [[reutilizacion-es-regla-el-inventario-va-antes-del-diseno]] aplicado al revés: el inventario
+que no hice antes de declarar la brecha. La pregunta que lo habría evitado no es sobre el endpoint,
+es **«¿qué código corre cuando esta persona abre la app por primera vez?»**. Grepear el camino de
+NAVEGACIÓN, no el de la llamada — hermano de
+[[la-costura-leia-un-campo-que-nadie-escribe]].
+
+⚠️ Y el mismo nombre colisiona una tercera vez: `afip_onboarding_workflow.py` es el alta **durable de
+ARCA**, sin relación con ninguna de las dos. Va a `CONTEXT.md`.

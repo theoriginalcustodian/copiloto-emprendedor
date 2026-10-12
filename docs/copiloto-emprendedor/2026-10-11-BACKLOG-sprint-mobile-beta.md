@@ -121,14 +121,23 @@ no el arranque del sprint.***
 > canónico viene corriendo smokes y **no está** en la allowlist — si ésta gobernara el login, nunca
 > habría podido entrar. Los bloques A, B, D y F corren con ese usuario, hoy.
 
-### C-1 · `#999` — La allowlist es fail-closed: sin esa env no entra ningún email
+### C-1 · `#999` — Altas manuales en beta: la allowlist se queda, y eso es una DECISIÓN
 
-- **Medido:** `apps/copiloto/web.py:581-583`. El proceso vivo tiene **4 entradas**, todas del operador.
-  (Son 4, no 1 como decía el doc de arranque.) **No se publican las direcciones:** es dato personal,
-  va la cantidad.
-- **Consecuencia:** con la app perfecta, hoy un usuario externo **no entra**, ni por Google.
-- **DoD:** un email nuevo completa el alta **sin que nadie edite una env var ni la DB**.
-- **Depende del operador:** decisión 1 del §7 del plan (beta por invitación con UI, o alta abierta).
+- **Medido:** `apps/copiloto/web.py:1433` corta el autoprovisioning con
+  `403 "alta por invitación: email no habilitado"`, y el comentario del propio código dice por qué:
+  *«el chequeo de proveedor OAuth de arriba NO es una barrera de alta — sin esto, cualquier cuenta de
+  Google del planeta se autoprovisionaba un tenant»*. El proceso vivo tiene **4 entradas**, todas del
+  operador. **No se publican las direcciones:** es dato personal, va la cantidad.
+- **⚠️ Lo que este renglón decía antes y era un mal encuadre:** *«con la app perfecta, hoy un usuario
+  externo no entra, ni por Google»*. Es verdad como hecho y **falso como defecto**. El **ingreso**
+  funciona —Google y email— y está probado; lo cerrado es el **alta de alguien nuevo**, y está cerrado
+  **a propósito**. Confundir las dos cosas hizo que este bloque se leyera como roto.
+- **DECISIÓN DEL OPERADOR (2026-10-12):** en beta las altas se hacen **a mano**, sólo para personas
+  cercanas. Los permisos de login los otorga el operador. **La allowlist se queda tal cual** y la UI
+  para cargarla **sale del alcance** de este sprint.
+- **DoD:** ninguno de código. Este renglón cierra **por decisión**, no por implementación.
+- **Ya NO bloquea C-3.** Lo único que seguía abierto del alta era qué se le pide a la persona la
+  primera vez, y eso es C-3.
 
 ### C-2 · `#1000` — El alta por email de web no se puede completar
 
@@ -139,15 +148,57 @@ no el arranque del sprint.***
   puede verlo fallar.
 - **Bloquea:** C-3.
 
-### C-3 · `#1016` — Mobile no tiene alta de cuenta
+### C-3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
-- **Medido:** `POST /auth/signup` (`apps/copiloto/web.py:1294`) es **sólo-web** en el mapa de 109
-  endpoints; el propio código de mobile lo dice en
-  `apps/mobile/src/modules/cuenta/PantallaCuenta.tsx:58`.
-- **DoD:** un email nuevo completa el alta **desde el teléfono**, acepta el legal, y entra.
-- **Depende de:** C-1 + C-2. **Causa:** construir la pantalla contra un contrato de alta que todavía
-  no cierra es codificar la esperanza.
-- **Es el criterio 1 del DoD del sprint.**
+- **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
+  del primer ingreso está **implementado en las dos apps, con predicado único**:
+
+  | | |
+  |---|---|
+  | predicado | `packages/core/src/api/onboarding.ts:18` — `debeMostrarOnboarding`, **una** definición |
+  | web | `App.tsx` enruta por `me.onboarding_completado` · tests `App.test.tsx:181,189` |
+  | mobile | `apps/mobile/app/_layout.tsx:98` + `Guard` · tests `Guard.test.tsx:73,80` |
+  | se cierra con | `POST /me/onboarding/completar` → `TenantOnboardingStore` |
+
+  Cómo entró el error: el mapa de 109 endpoints marcó `POST /auth/signup` como sólo-web, y de ahí
+  concluí «mobile no tiene alta». El endpoint sí es sólo-web — pero el **primer ingreso** no pasa por
+  él cuando el alta la hace el operador. Un nombre, dos referentes.
+
+- **Lo que el onboarding pide hoy son CONEXIONES, no datos:** `PantallaOnboarding.tsx:24-25` ofrece
+  Mercado Pago y Google, pasos `promesa` → `recibo`. Los **datos del negocio** son otra cosa y viven
+  en Ajustes (`perfil_negocio_store.py:54`, 10 campos), **todos opcionales y con default**
+  (`_DEFAULTS:59`) — el core declara explícito que vacío *«no es un error: es el estado normal del
+  primer día»*.
+
+- **DECISIÓN (2026-10-12, delegada por el operador: «de momento algunos básicos, podés decidirlos
+  vos»).** Obligatorios para pasar del onboarding a la app: **`que_vende` y `nombre_comercial`.**
+  Dos campos de texto, una vez, ~10 segundos.
+  - **`que_vende`** — de él depende todo lo que el copiloto *hace*: la descripción de un comprobante,
+    la categorización de un gasto, el tono de una respuesta. Es el campo de mayor valor por carácter
+    tipeado.
+  - **`nombre_comercial`** — va en los comprobantes y en cómo el copiloto nombra al negocio.
+
+- **🔴 Por qué `a_quien` NO entra, aunque sea el que más querría:** cambia el tipo de comprobante
+  (A vs B) y sería el tercero natural. **Pero su default es `"ambos"`** y `upsert` *«crea la fila con
+  los DEFAULTS del resto»* (`perfil_negocio_store.py:97-99`), así que después del primer POST el campo
+  vale `"ambos"` **haya elegido o no**. Un check de «no vacío» sobre él **siempre pasa**: sería un gate
+  hueco, de la familia de *un degradado prudente hacia el caso benigno envenena la medición*. Para
+  exigirlo hace falta un **tercer estado** (columna nullable o flag `perfil_completado`), y eso es
+  diseño de schema. **Deuda nombrada, no silenciada.**
+  Los dos elegidos **no** tienen ese problema: su default es `""`, así que «no vacío» es señal real.
+
+- **DoD:**
+  1. El predicado vive en **UN** solo lugar, al lado de `debeMostrarOnboarding` en
+     `packages/core/src/api/onboarding.ts`, y las dos apps lo importan. *Causa:* hoy mismo se pagó que
+     `esAnulable` estuviera definido dos veces y el fix llegara a una sola mitad.
+  2. Con `que_vende` o `nombre_comercial` vacío, **ninguna** de las dos apps deja pasar al shell.
+  3. Test **adversarial** por app: perfil con uno de los dos vacío ⇒ no entra. Sin eso el control
+     queda `[UNVERIFIED]` — el happy-path pasa igual si el gate no existe.
+  4. Control positivo en el mismo test: con los dos llenos, entra.
+- **No hay pantalla nueva que construir** en ninguna de las dos apps: el paso existe y los campos ya
+  tienen editor en Ajustes.
+- **Ya no depende de C-1** (cerrado por decisión) ni de C-2 (es el alta por **email de web**, camino
+  distinto). **Sigue siendo el criterio 1 del DoD del sprint.**
 
 ### C-4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
@@ -308,7 +359,7 @@ cierra, aunque los otros siete estén verdes.***
 | F-1 F-2 | A-1 | ídem: habría que repetir las mediciones |
 | B-4 | B-2 | la NC tiene que ser distinguible antes de tratarla distinto |
 | D-2 | B-3 | portar el bloque antes de unificar importa la ambigüedad |
-| C-3 | C-1 C-2 | la pantalla necesita un contrato de alta cerrado |
+| C-3 | — | ya no depende de nada: C-1 cerró por decisión y C-2 es el alta por email de web, otro camino |
 | **todo B** | **nada** | **arranca hoy; y va antes de C a propósito** |
 | **todo D** | **nada de C** | se mide con el usuario canónico, que ya entra |
 
