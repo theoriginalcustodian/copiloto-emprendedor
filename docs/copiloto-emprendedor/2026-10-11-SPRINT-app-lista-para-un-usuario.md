@@ -7,6 +7,40 @@
 
 ---
 
+## 🟩 ACTUALIZACIÓN 2026-10-11 (posterior) — `F1.1` YA ESTÁ ARREGLADO, y este doc estaba mal en su defecto más caro
+
+**`F1.1` sale del sprint: hecho en `ba1f8cbd`** (rama local `backend/entro-cuenta-el-pago-mp-dos-veces`,
+worktree `C:/gfw-src/wt-mpdoble`). Suite backend **2297 passed / 0 failed** en el VPS contra Postgres
+efímero, con **control positivo**: revirtiendo el fix caen exactamente 2 tests, con los números del
+defecto (`600.00` donde debía haber `300.00`, y `2 == 1` filas en el detalle).
+
+**Y la corrección que importa más que el fix, porque es sobre cómo medí:** este doc afirmaba que el
+cobro MP se contaba *«cero veces en Ingresos y dos en «Entró»»*, y lo presentaba como el hallazgo
+estrella («una sola raíz con dos síntomas opuestos»).
+
+| lo que decía | medido |
+|---|---|
+| cero veces en Ingresos | **FALSO.** `9e4a70dc` (06/10) cableó el webhook: el pago MP **sí** entra a `copiloto_cobros` |
+| dos veces en «Entró» | **CIERTO, y peor:** `$300` entraban como `$600`, 5 días en prod-beta |
+| una raíz, dos síntomas opuestos | **NO.** Un síntoma, en **dos lugares**: el agregado y el detalle, que reimplementa la regla |
+
+**De dónde salió el error:** le creí a un comentario. `cobro_store.py:52` decía «`mercadopago`
+todavía no lo escribe nadie»; el commit del 06/10 cambió el código y no el comentario. **Grepear quién
+ESCRIBE, no creerle al comentario sobre quién escribe** — que es, textual, una entrada de la memoria de
+este repo que yo mismo cité en otro párrafo de este documento.
+
+**Lo que esto le hace al resto del doc:** nada de `F0`, `F2`, `F3` ni `F4` depende de esa afirmación,
+y los demás hallazgos de `F1` (`F1.2` el default de `estado`, `F1.5` la NC sin número reservado) se
+midieron leyendo el código que escribe, no comentarios. Pero **el modo de falla aplica a cualquier fila
+que cite un comentario como evidencia**: si alguna lo hace, se re-mide antes de bajar su contrato.
+
+🔴 **BLOQUEO, y es del operador, no mío:** el fix está commiteado **local y sin pushear**, por la
+orden del 2026-10-11 (repo público; este backlog y el fix describen defectos de dinero de prod-beta).
+Merge y deploy están autorizados de forma permanente — **lo único que falta es levantar esa orden.**
+Hasta entonces el doble conteo sigue vivo en el servicio.
+
+---
+
 ## §0 · Inventario de lo que YA existe (canon 3 — leer antes de escribir una línea)
 
 | Artefacto | Qué aporta a este sprint | Qué NO aporta |
@@ -90,7 +124,7 @@ Medido por lectura del código siguiendo el import real, no por nombre de archiv
 |---|---|---|---|
 | 1 · Emitir factura y ver CAE | `CADENA_COMPLETA` | `PantallaFacturacion.tsx:352` llama `crearFactura(cuit, clave)` y `packages/core/src/api/afip.ts:795` declara 1 arg: el 2º **se descarta** y mobile nunca manda `idem_key` (`afip_web.py:122-127`) ⇒ sin idempotencia en el reintento | Funciones → tile Facturación |
 | 2 · Anular / nota de crédito | `CADENA_COMPLETA` con defectos | `SeccionMisComprobantes.tsx:157-182` `try/finally` **sin `catch`** ⇒ si falla, **no muestra nada**; y `:26-28` ofrece «Anular» sobre una NC | Facturación → Mis comprobantes |
-| 3 · Cobrar (incl. MercadoPago) | 🔴 `CADENA_CORTADA` | `cobro_store.py:325-380` leen sólo `copiloto_cobros`; los pagos MP viven en `mp_payments` ⇒ **un cobro MP no aparece en Ingresos** | Funciones → tile Ingresos |
+| 3 · Cobrar (incl. MercadoPago) | ✅ **RESUELTO 11/10** (`ba1f8cbd`) | ⚠️ Esta fila decía «un cobro MP no aparece en Ingresos». **Era FALSO y la fuente fue un comentario rancio** (`cobro_store.py:52`, que afirmaba que nadie escribe `origen='mercadopago'`). Desde `9e4a70dc` (06/10) el webhook SÍ lo escribe: el pago aparece en Ingresos. El defecto real era el inverso — **doble conteo en «Entró»**, ya corregido | Funciones → tile Ingresos |
 | 4 · Registrar gasto | `CADENA_COMPLETA` | sin ruptura hallada (`gastos_web.py:126`) | Funciones → tile Gastos |
 | 5 · Ver mis números | `CADENA_COMPLETA` | `PortadaNegocio.tsx:49-51` muestra Entró/Salió/Por cobrar/En caja y **no Facturado** (vive un nivel adentro) | Mi día (capa base) |
 | 6 · Chat, voz y card HITL | `CADENA_COMPLETA` | `web.py:122,718`: el motor elige por `COPILOTO_ENGINE_MODE`, **default `dispatch`**, y el valor de prod no está en el repo. **Medido en el proceso vivo hoy: `react` en web y en worker** ⇒ las cards propuestas son alcanzables y el criterio 7 **no** está bloqueado por esto | gesto a `PanelDeslizable` |
@@ -140,7 +174,7 @@ conteo**. Se arregla el dinero, después se deja entrar a alguien.
 
 | id | trabajo | dueño | DoD binario |
 |---|---|---|---|
-| **F1.1** | **MercadoPago vive en la tabla equivocada.** Un mismo cobro MP se cuenta **cero veces en Ingresos** (`cobro_store.py:325-380` leen sólo `copiloto_cobros`) y **dos veces en «Entró»** (`mp_web.py:53-71` escribe en las dos tablas que el `UNION ALL` de `inteligencia_queries.py:43-49` une). **Dos síntomas opuestos, una sola raíz de modelo de datos** | backend | el mismo cobro MP aparece **una** vez en Ingresos y **una** en «Entró», con test que inserta un pago MP y cuenta |
+| **F1.1** | ✅ **HECHO 11/10 — `ba1f8cbd`** (no entra al sprint). ⚠️ **Y esta fila estaba mal en los dos sentidos; se corrige, no se borra.** **(a) «cero veces en Ingresos» era FALSO:** le creí a un comentario (`cobro_store.py:52`) que declaraba que nadie escribe `origen='mercadopago'`; `9e4a70dc` (06/10) lo volvió falso sin actualizarlo. **(b) El doble conteo era REAL y peor de lo escrito:** `$300` entraban como `$600` en «Entró» mientras Ingresos mostraba `$300` — dos caras, dos números — **y el defecto vivía DOS veces**, porque `entro_vs_salio_detalle` reimplementa la regla y duplicaba la fila del detalle. No era «una sola raíz con dos síntomas opuestos»: era **un síntoma, en dos lugares**. | auditoría (hecho) | ✅ Suite 2297 passed / 0 failed en VPS + **control positivo**: con el fix revertido caen 2 (`600.00 != 300.00` y `2 != 1`). **Falta sólo el push — ver §bloqueo** |
 | **F1.2** | **Ninguna fila vale `nota_credito`**: el alta toma `estado` default `emitida` (`afip_comprobante_store.py:24,34`) y las dos llamadas que registran una NC no lo pasan. **Es la raíz de tres síntomas** y va **primero** | backend | una NC registrada tiene `estado='nota_credito'`, con test que inserta una y lo lee |
 | **F1.3** | Consecuencia de F1.2: las dos UIs ofrecen **«Anular» sobre una nota de crédito** (fila 13) | backend + ambos fronts | la fila de una NC no ofrece Anular; test con **dos** comprobantes, uno `emitida` y uno `nota_credito` |
 | **F1.4** | Consecuencia de F1.2: **«lo facturado» da −X y +X para el mismo mes** (`afip_comprobante_store.py:186-190` resta, `inteligencia_queries.py:118-126` suma) y hay **cuatro predicados** para la misma cifra, más un quinto que trae NC como deuda sin el tipo (filas 14 y 59) | backend | **un** predicado, citado por los 4 consumidores; el mismo mes da la misma cifra en portada, detalle, BI y facturación |
@@ -208,7 +242,7 @@ sólo mide qué bloquean.
 
 ## §7 · Hallazgos nuevos de esta medición (no estaban en ninguno de los dos relevamientos)
 
-1. **El cobro MP contado 0 veces y 2 veces a la vez** (`F1.1`). El relevamiento de código tenía el
+1. **El cobro MP contado 2 veces** (`F1.1`, ✅ corregido el mismo día en `ba1f8cbd`). ⚠️ Este punto decía «0 veces y 2 veces a la vez»: la mitad del «0» era falsa — salió de un comentario rancio, no del código que escribe. Lo que sí era cierto, el doble conteo, resultó estar **en dos lugares**. El relevamiento de código tenía el
    doble conteo en «Entró»; nadie había medido que el mismo pago **no aparece** en Ingresos. Son dos
    caras de la misma raíz, y verlas juntas cambia el fix: no son dos filas, es una.
 2. **La suite mobile nunca se había ejecutado** y está en 986/991 (§3.1).
