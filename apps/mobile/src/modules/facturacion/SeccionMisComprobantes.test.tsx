@@ -131,3 +131,58 @@ describe('SeccionMisComprobantes — anulación derivada del comprobante', () =>
     expect(screen.queryByTestId(`${TESTID}-anulacion-${CLAVE}-si`)).toBeNull();
   });
 });
+
+/**
+ * 🔴 `F1.3` del sprint «app lista para usuarios reales» (issue #1015) — **el caso HOSTIL del
+ * predicado `esAnulable`**. Mitad mobile; la de web es el gemelo
+ * (`apps/copiloto-web/src/modules/facturacion/SeccionMisComprobantes.test.tsx`).
+ *
+ * El control estaba escrito (`esAnulable` = `estado === 'emitida'`) y **nada lo ejercitaba**: los
+ * tests de arriba sólo construyen comprobantes `emitida`, así que `return true` los dejaba a todos
+ * verdes. El síntoma era ofrecer **anular una nota de crédito** — anular la anulación.
+ *
+ * ⚠️ El predicado vive DOS veces, una por app: `SeccionMisComprobantes.tsx:26` acá y `:24` en web.
+ * Por eso el test va en las dos mitades y no en una — un fix que viaje a una sola deja el agujero
+ * abierto en la otra, y el verde de la que sí lo tiene lo tapa.
+ *
+ * Los tres estados van en la MISMA lista a propósito: un test que renderiza sólo la NC pasa igual
+ * si la sección no renderizó nada. El botón de la `emitida` es el control positivo interno.
+ */
+describe('SeccionMisComprobantes — sólo una factura emitida se puede anular', () => {
+  const EMITIDA = '11-6-8';
+  const NOTA_CREDITO = '13-6-9';
+  const ANULADA = '11-6-10';
+
+  beforeEach(() => {
+    jest
+      .mocked(listarComprobantes)
+      .mockReset()
+      .mockResolvedValue({
+        status: 'ok',
+        comprobantes: [
+          comprobanteMock(),
+          comprobanteMock({ tipoCbte: 13, nro: 9, estado: 'nota_credito' }),
+          comprobanteMock({ nro: 10, estado: 'anulada' }),
+        ],
+      });
+    jest.mocked(anularComprobante).mockReset();
+    jest.mocked(estadoAnulacion).mockReset().mockRejectedValue(new ApiError(404, 'anulación no encontrada'));
+  });
+
+  it('una nota de crédito NO ofrece «Anular» — y la factura emitida de al lado SÍ', async () => {
+    montar();
+
+    // Control positivo interno: sin esto, un `queryByTestId` null no distingue «el filtro filtró»
+    // de «la lista nunca se renderizó».
+    await waitFor(() => expect(screen.getByTestId(`${TESTID}-anular-${EMITIDA}`)).toBeTruthy());
+
+    expect(screen.queryByTestId(`${TESTID}-anular-${NOTA_CREDITO}`)).toBeNull();
+  });
+
+  it('un comprobante ya anulado tampoco ofrece «Anular»', async () => {
+    montar();
+    await waitFor(() => expect(screen.getByTestId(`${TESTID}-anular-${EMITIDA}`)).toBeTruthy());
+
+    expect(screen.queryByTestId(`${TESTID}-anular-${ANULADA}`)).toBeNull();
+  });
+});

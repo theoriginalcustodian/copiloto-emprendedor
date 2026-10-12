@@ -139,6 +139,93 @@ def test_ENTRO_son_los_TRES_origenes_y_el_MP_no_aprobado_no_cuenta(conn_de_tenan
     assert _ingresos_portada(InteligenciaQueries(conn_de_tenant(a), a)) == Decimal("1800.00")
 
 
+def _webhook_mp_aprobado(conn_de_tenant, cid, amount, *, pid=None, dia=None):
+    """Las DOS escrituras que hace el webhook real por un pago aprobado, con el MISMO dict de payment.
+
+    🔴 Por qué no alcanza `_mp_payment`: ese helper escribe sólo `mp_payments` y codifica el estado
+    ANTERIOR al 2026-10-06. Desde `9e4a70dc` el webhook además registra el ingreso en
+    `copiloto_cobros` (`mp_web._registrar_ingreso_mp`). Un test que no haga las dos escrituras **no
+    puede ver** el doble conteo: sale verde mientras producción suma el pago dos veces. Por eso se
+    importa la función del webhook en vez de replicar su INSERT — si mañana cambia dónde escribe, este
+    control la sigue; una copia del SQL se quedaría midiendo el camino viejo otra vez.
+    """
+    from mp_payment_store import MpPaymentStore
+    from mp_web import _registrar_ingreso_mp
+
+    pid = pid or str(uuid.uuid4())
+    payment = {"id": pid, "status": "approved", "transaction_amount": amount,
+               "date_approved": (dia or hoy_del_negocio()).isoformat()}
+    MpPaymentStore(conn_de_tenant(cid), cid).upsert_from_payment(payment, seller_user_id="seller-1")
+    _registrar_ingreso_mp(CobroStore(conn_de_tenant(cid), cid), payment)
+    return pid
+
+
+@necesita_pg
+def test_ENTRO_cuenta_UNA_vez_el_pago_que_el_webhook_escribe_en_las_DOS_tablas(conn_de_tenant, tenants):
+    """🔴 El pago MP aprobado vive en `mp_payments` Y en `copiloto_cobros` desde `9e4a70dc`
+    (2026-10-06). «Entró» une las dos tablas → `$300` se contaban como `$600`, mientras `Ingresos`
+    (que lee sólo `copiloto_cobros`) mostraba `$300`: **dos caras, dos números para el mismo pago.**
+
+    Este control no existía porque su gemelo `test_ENTRO_son_los_TRES_origenes_...` inserta con
+    `_mp_payment`, que escribe UNA tabla — el camino que ya no es el de producción. Acá se mide:
+    el agregado, el DETALLE (donde la misma regla vive escrita por segunda vez) y la COHERENCIA entre
+    las dos caras, que es lo que el emprendedor ve.
+    """
+    a, _ = tenants
+    q = InteligenciaQueries(conn_de_tenant(a), a)
+    antes = _ingresos_portada(q)
+
+    _webhook_mp_aprobado(conn_de_tenant, a, "300.00")
+
+    # 1. el AGREGADO: una vez, no dos
+    assert _ingresos_portada(q) - antes == Decimal("300.00"),         "un pago MP de 300 tiene que subir «Entró» en 300, no en 600 (está en las dos tablas)"
+
+    # y la COHERENCIA entre caras: la portada e Ingresos, para el mismo pago
+    total_ingresos = Decimal(CobroStore(conn_de_tenant(a), a).total_periodo()["total"])
+    assert _ingresos_portada(q) == total_ingresos,         "«Entró» (portada) e Ingresos tienen que dar el MISMO número para el mismo pago"
+
+
+@necesita_pg
+def test_el_DETALLE_de_ENTRO_trae_UNA_fila_por_pago_MP(conn_de_tenant, tenants):
+    """🔴 Test aparte del agregado A PROPÓSITO, y la razón vale más que el caso: la regla
+    `origen <> 'mercadopago'` vive escrita DOS veces — en `_INGRESOS` y en la query de
+    `entro_vs_salio_detalle`, que no puede reusar ese string porque necesita columnas que el agregado
+    no trae. Son dos defectos, no uno.
+
+    Estaba como tercer `assert` del test del agregado, y ahí **no se ejecutaba nunca**: con el fix
+    revertido el primer assert cortaba la función y el detalle quedaba sin medir. Un assert que no
+    corre no es un control; medido en el control positivo del 2026-10-11.
+    """
+    a, _ = tenants
+    q = InteligenciaQueries(conn_de_tenant(a), a)
+
+    _webhook_mp_aprobado(conn_de_tenant, a, "300.00")
+
+    filas = q.entro_vs_salio_detalle(hoy_del_negocio().strftime("%Y-%m"), "entro")["filas"]
+    de_mp = [f for f in filas if f["origen"] == "mercadopago"]
+    assert len(de_mp) == 1, f"el detalle de «Entró» duplica el pago MP: {de_mp}"
+    assert Decimal(de_mp[0]["monto"]) == Decimal("300.00")
+
+
+@necesita_pg
+def test_un_pago_MP_SIN_fila_en_cobros_sigue_contando_en_ENTRO(conn_de_tenant, tenants):
+    """🛡️ Guard de la decisión de diseño, no un caso de borde. El doble conteo se arregló
+    excluyendo `origen='mercadopago'` de la pata de `copiloto_cobros` — **no** sacando la pata de
+    `mp_payments`, porque los pagos ANTERIORES al 2026-10-06 nunca tuvieron fila en cobros y sacarla
+    los borraría de «Entró»: plata que el emprendedor vio, desaparecida de su caja.
+
+    Si alguien «simplifica» quitando la pata de `mp_payments` sin correr el backfill, este test cae.
+    Es el control positivo de la mitad que el otro test no mira.
+    """
+    a, _ = tenants
+    q = InteligenciaQueries(conn_de_tenant(a), a)
+    antes = _ingresos_portada(q)
+
+    _mp_payment(conn_de_tenant, a, "700.00", status="approved")   # SOLO la tabla cruda: el caso pre-06/10
+
+    assert _ingresos_portada(q) - antes == Decimal("700.00"),         "un pago MP sin fila en `copiloto_cobros` (pre-06/10) tiene que seguir contando en «Entró»"
+
+
 @necesita_pg
 def test_caja_es_entro_menos_salio_del_mes_y_rentabilidad_es_null(conn_de_tenant, tenants):
     """H-A4-3: `caja.saldo` sigue siendo flujo de caja del mes (ingresos − gastos); `mes.rentabilidad`

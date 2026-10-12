@@ -124,6 +124,49 @@ def test_facturado_resta_la_nota_de_credito(conn_de_tenant, tenant_a):
     assert r["periodo"] == "80000.00"
 
 
+def test_la_NC_se_guarda_como_nota_credito_y_la_factura_como_emitida(conn_de_tenant, tenant_a):
+    """🔴 La columna `estado` tenía que decir la verdad y no la decía NUNCA.
+
+    `registrar()` tenía default `estado='emitida'` fijo y ningún llamador pasa `estado`, así que
+    **ninguna fila valía `nota_credito` jamás**: la constante `ESTADO_NOTA_CREDITO` tenía UNA sola
+    aparición en todo el repo, su propia definición (medido 2026-10-11 con grep, control negativo
+    incluido). La NC que emite `afip_anulacion_workflow` sale por el mismo camino que una factura.
+
+    **Por qué importa y no es cosmética:** los dos fronts ofrecen «Anular» a todo lo que tenga
+    `estado==='emitida'` (`SeccionMisComprobantes.tsx:24`, mobile y web) ⇒ la app ofrecía **anular una
+    nota de crédito**. El facturado nunca se vio afectado porque `total_periodo` identifica las NC por
+    `tipo_cbte`, no por `estado` — por eso el defecto no daba síntoma en ningún número.
+    """
+    cf = conn_de_tenant(tenant_a)
+    _comprobante(cf, tenant_a, tipo_cbte=int(TipoComprobante.FACTURA_B), total="100000.00", nro=1)
+    _comprobante(cf, tenant_a, tipo_cbte=int(TipoComprobante.NOTA_CREDITO_B), total="20000.00",
+                nro=2, cbte_asoc_nro=1)
+    store = AfipComprobanteStore(cf, tenant_a)
+
+    factura = store.get(cuit="20111111112", tipo_cbte=int(TipoComprobante.FACTURA_B),
+                        punto_venta=1, nro=1)
+    nc = store.get(cuit="20111111112", tipo_cbte=int(TipoComprobante.NOTA_CREDITO_B),
+                   punto_venta=1, nro=2)
+
+    assert factura["estado"] == "emitida"
+    assert nc["estado"] == "nota_credito", (
+        "la NC se guarda como 'emitida' ⇒ los fronts le ofrecen «Anular» a una nota de crédito")
+
+
+def test_un_estado_EXPLICITO_le_gana_a_la_derivacion(conn_de_tenant, tenant_a):
+    """🛡️ La derivación es el DEFAULT, no una imposición: `marcar_anulada` y cualquier llamador
+    que pase `estado` siguen mandando. Sin este control, «derivar del tipo» podría haber pisado el
+    estado de una NC anulada y el bug sería más silencioso que el que vino a arreglar."""
+    cf = conn_de_tenant(tenant_a)
+    AfipComprobanteStore(cf, tenant_a).registrar(
+        cuit="20111111112", tipo_cbte=int(TipoComprobante.NOTA_CREDITO_B), punto_venta=1, nro=9,
+        cae="CAE9", cae_vto=None, fecha_emision=date(2026, 1, 15), doc_tipo=None, doc_nro=None,
+        total="1000.00", estado="anulada")
+    nc = AfipComprobanteStore(cf, tenant_a).get(
+        cuit="20111111112", tipo_cbte=int(TipoComprobante.NOTA_CREDITO_B), punto_venta=1, nro=9)
+    assert nc["estado"] == "anulada", "un estado explicito no puede ser pisado por la derivacion"
+
+
 def test_facturado_no_es_lo_mismo_que_caja(conn_de_tenant, tenant_a):
     """🔴 La regla que sostiene todo el hito: una factura emitida NO mueve `caja.entro`, y un cobro
     dictado NO mueve `facturado`. Si alguna de las dos se contaminara, este test lo mostraría."""
