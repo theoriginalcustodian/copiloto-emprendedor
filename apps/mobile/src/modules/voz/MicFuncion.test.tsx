@@ -111,7 +111,7 @@ describe('MicFuncion (mobile)', () => {
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
   });
 
-  it('tras un dictado exitoso muestra el chip «Por voz · Ns» con la duración (DoD FE1 #5)', async () => {
+  it('tras un dictado exitoso muestra el chip «Por voz · m:ss» con la duración (DoD FE1 #5)', async () => {
     const espiaPan = jest.spyOn(Gesture, 'Pan');
     mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
     mockTranscribir.mockResolvedValue({ transcript: 'compré cuarenta litros de nafta' });
@@ -131,7 +131,7 @@ describe('MicFuncion (mobile)', () => {
     relojEspia.mockRestore();
 
     await waitFor(() => expect(screen.getByTestId('mic-funcion-chip')).toBeTruthy());
-    expect(screen.getByTestId('mic-funcion-chip').props.children.join('')).toBe('Por voz · 3s');
+    expect(screen.getByTestId('mic-funcion-chip')).toHaveTextContent('Por voz · 0:03');
   });
 
   it('sin audio grabado (tomar devuelve null), no llama a transcribir', async () => {

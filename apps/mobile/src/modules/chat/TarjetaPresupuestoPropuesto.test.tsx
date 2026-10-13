@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 
 /** Partial mock: sólo la red. `leerPresupuestoPropuesto`, REAL. `listarConceptos` resuelve vacío —
  *  el catálogo es un acelerador aparte, no lo que se está probando acá. */
@@ -80,7 +81,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
     await montar();
 
     expect(screen.getByTestId('presupuesto-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.',
+      'Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.',
     );
   });
 
@@ -139,8 +140,63 @@ describe('TarjetaPresupuestoPropuesto', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
-    expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent('Presupuesto anotado — N° 7');
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
+    // `pres-ciclo` (mapeo 2026-10-12): el recibo trae el total y el receptor, como el `REC` del prototipo.
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$45.000,00 · Juan Pérez');
+    // Sin docLink no hay «Doc listo para mandar» ni enlace: `null` no es un error (docstring de `Presupuesto`).
+    expect(screen.queryByTestId('presupuesto-propuesto-guardado-enlace')).toBeNull();
     expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+  });
+
+  it('con Doc generado el recibo ofrece el enlace «Doc» y dice que está listo para mandar', async () => {
+    mockCrear.mockResolvedValue({
+      status: 'ok',
+      presupuesto: { ...presupuestoGuardado(7), docLink: 'https://docs.google.com/document/d/abc' },
+    });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado-enlace')).toBeTruthy());
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent('Doc listo para mandar');
+  });
+
+  it('con la sugerencia del backend el recibo ofrece «Mandalo por mail» y abre el mailto con el link del Doc', async () => {
+    const abrir = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    mockCrear.mockResolvedValue({
+      status: 'ok',
+      presupuesto: { ...presupuestoGuardado(7), docLink: 'https://docs.google.com/document/d/abc' },
+      sugerencias: { mandarPorMail: { docLink: 'https://docs.google.com/document/d/abc' } },
+    });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado-mandar-por-mail')).toBeTruthy());
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-guardado-mandar-por-mail'));
+    });
+    expect(abrir).toHaveBeenCalledTimes(1);
+    const url = String(abrir.mock.calls[0]?.[0]);
+    expect(url.startsWith('mailto:')).toBe(true);
+    expect(decodeURIComponent(url)).toContain('https://docs.google.com/document/d/abc');
+    abrir.mockRestore();
+  });
+
+  it('control negativo: sin `sugerencias.mandarPorMail` el chip NO aparece (no hay Doc que mandar)', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7), sugerencias: null });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
+    expect(screen.queryByTestId('presupuesto-propuesto-guardado-mandar-por-mail')).toBeNull();
   });
 
   it('🔴 agregar/quitar filas YA está activo en la card — sin modo acotado (decisión del operador, se queda)', async () => {

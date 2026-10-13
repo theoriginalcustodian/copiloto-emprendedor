@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarPresupuestos, obtenerPresupuesto, type Presupuesto, type SugerenciasPresupuesto } from '@copiloto/core';
+import {
+  formatearImporte,
+  listarPresupuestos,
+  obtenerPresupuesto,
+  type Presupuesto,
+  type SugerenciasPresupuesto,
+} from '@copiloto/core';
 
 import { DetallePresupuesto } from './DetallePresupuesto';
 import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { BloqueCifra } from '../../theme/BloqueCifra';
+import { centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
 import { MicFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -165,6 +173,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 
   const hayPresupuestos = presupuestos.length > 0;
 
+  const resumen = resumenEspera(presupuestos);
+
   return (
     <MarcoGlass titulo="Presupuestos" icono="presupuestos" testID="pantalla-presupuestos">
       {estado === 'cargando' && (
@@ -239,6 +249,17 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                   />
                 </View>
               </View>
+
+              {/* `presu` (mapeo 2026-10-12): el resumen que el prototipo pone arriba de la lista. Derivado
+                  del listado — ver `resumenEspera.ts`. Sin `estado` en ningún presupuesto no se pinta. */}
+              {resumen != null && (
+                <BloqueCifra
+                  testID="presupuestos-resumen"
+                  rotulo="Esperando respuesta"
+                  cifra={formatearImporte(centavosADecimal(resumen.centavosEsperando))}
+                  chip={chipResumenEspera(resumen)}
+                />
+              )}
 
               {errorMic != null && (
                 <Text testID="presupuestos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>

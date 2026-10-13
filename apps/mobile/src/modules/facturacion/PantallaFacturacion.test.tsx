@@ -58,6 +58,8 @@ jest.mock('@copiloto/core', () => {
     confirmarConTokenFresco: jest.fn(),
     cancelarFactura: jest.fn(),
     listarComprobantes: jest.fn(),
+    // `ResumenFacturado`: sin portada no hay resumen. El default no tiene que pegarle a la red.
+    leerPortada: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
     anularComprobante: jest.fn(),
     estadoAnulacion: jest.fn(),
     confirmarAnulacion: jest.fn(),

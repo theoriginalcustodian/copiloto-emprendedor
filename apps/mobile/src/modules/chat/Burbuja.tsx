@@ -3,13 +3,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { sombraNivel } from '../../theme/glass/relieve';
+import { formatearDuracion } from '../../util/formatearDuracion';
 
 export type RolBurbuja = 'user' | 'assistant';
 
 export interface BurbujaProps {
   role: RolBurbuja;
   text: string;
-  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().enviarAudio`): chip «Por voz · Ns»,
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().enviarAudio`): chip «Por voz · m:ss»,
    * mismo criterio que `MicFuncion` fuera del chat. `undefined` en mensajes escritos: sin chip. */
   porVoz?: { duracionSeg: number };
 }
@@ -68,7 +69,7 @@ export function Burbuja({ role, text, porVoz }: BurbujaProps) {
         <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{text}</Text>
         {porVoz && (
           <Text testID="chat-bubble-voz" style={[styles.chipVoz, { color: tema.color.textoTenue }]}>
-            Por voz · {porVoz.duracionSeg}s
+            {`Por voz · ${formatearDuracion(porVoz.duracionSeg)}`}
           </Text>
         )}
       </View>

@@ -195,6 +195,8 @@ describe('PantallaGastos', () => {
     await waitFor(() => expect(screen.getByTestId('gastos-resumen-cifra')).toBeTruthy());
     // El importe se muestra formateado en argentino, no crudo del backend.
     expect(screen.getByTestId('gastos-resumen-cifra')).toHaveTextContent('$15.000,50');
+    // `gastos` (mapeo 2026-10-12): el importe por categoría lleva su porcentaje, como el prototipo.
+    expect(screen.getByTestId('gastos-resumen-cat-mercaderia-importe')).toHaveTextContent('$15.000,50 · 100%');
     expect(screen.getByTestId('gasto-2-titulo')).toHaveTextContent('Distribuidora Sur');
     expect(screen.getByTestId('gasto-2-monto')).toHaveTextContent('$15.000,50');
   });

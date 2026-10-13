@@ -118,6 +118,18 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(screen.getByTestId('factura-propuesta-total')).toHaveTextContent('Total: 50000');
   });
 
+  it('`fact-hitl`: el encabezado dice el tipo de comprobante que manda el backend, no uno fijo', async () => {
+    await montar(propuesta({ tipo_comprobante: 'B' }));
+
+    expect(screen.getByTestId('factura-propuesta-tipo')).toHaveTextContent('Factura B · ARCA');
+  });
+
+  it('control negativo: sin `tipo_comprobante` no se inventa el encabezado', async () => {
+    await montar(propuesta({ tipo_comprobante: null }));
+
+    expect(screen.queryByTestId('factura-propuesta-tipo')).toBeNull();
+  });
+
   it('🔴 no permite editar ítems en el chat — no hay ningún input, sólo lectura + acción', async () => {
     await montar();
 

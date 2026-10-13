@@ -1,8 +1,18 @@
 import { useState } from 'react';
+import { Linking } from 'react-native';
 
-import type { ChatMessage, PresupuestoPropuesto } from '@copiloto/core';
+import {
+  formatearImporte,
+  mailtoMandarPresupuesto,
+  type ChatMessage,
+  type Presupuesto,
+  type PresupuestoPropuesto,
+  type SugerenciasPresupuesto,
+} from '@copiloto/core';
 
+import { FilaBotones } from '../../theme/glass/campos';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
+import { Recibo } from './Recibo';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
@@ -58,14 +68,52 @@ export function TarjetaPresupuestoPropuesto({
   // async) — sin `useEffect` de lectura ni estado `leido` que gatee el primer render.
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
   const [numero, setNumero] = useState<number | null>(resuelto?.estado === 'guardado' ? resuelto.numero : null);
+  // Sólo de sesión viva: lo persistido en el mensaje es `numero` (GUARDM). Al rehidratar un guardado el
+  // recibo queda con el título y el N°, sin las líneas de datos ni el enlace «Doc».
+  const [creado, setCreado] = useState<Presupuesto | null>(null);
+  // `sugerencias.mandarPorMail` sólo viene con un Doc ya generado (backend `presupuesto_sugerencias.py`).
+  const [sugerencias, setSugerencias] = useState<SugerenciasPresupuesto | null>(null);
 
   if (estado === 'guardado') {
+    const detalle: string[] = [];
+    if (creado != null) {
+      detalle.push(
+        [formatearImporte(creado.total), creado.receptor.nombre].filter((v) => v.trim() !== '').join(' · '),
+      );
+      if (creado.docLink != null) detalle.push('Doc listo para mandar');
+    }
+    const docLink = creado?.docLink ?? null;
+    const mandarPorMail = sugerencias?.mandarPorMail ?? null;
     return (
-      <TarjetaPropuestaTerminal
+      <Recibo
         testID={`${testID}-guardado`}
         tono="exito"
-        texto={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
-      />
+        titulo={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
+        detalle={detalle}
+        enlace={docLink != null ? { texto: 'Doc', onPress: () => void Linking.openURL(docLink) } : undefined}
+      >
+        {/* El chip `Mandalo por mail` del `pres-ciclo` del prototipo: misma acción que el detalle
+            (`DetallePresupuesto.tsx`) — abre el `mailto:` con el link del Doc; no manda nada solo. */}
+        {creado != null && mandarPorMail != null && (
+          <FilaBotones
+            testID={`${testID}-guardado-botones`}
+            botones={[
+              {
+                etiqueta: 'Mandalo por mail',
+                onPress: () =>
+                  void Linking.openURL(
+                    mailtoMandarPresupuesto(
+                      { numero: creado.numero, contacto: creado.receptor.contacto },
+                      mandarPorMail.docLink,
+                    ),
+                  ).catch(() => undefined),
+                variante: 'secundario',
+                testID: `${testID}-guardado-mandar-por-mail`,
+              },
+            ]}
+          />
+        )}
+      </Recibo>
     );
   }
 
@@ -74,7 +122,7 @@ export function TarjetaPresupuestoPropuesto({
   }
 
   return (
-    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.">
+    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.">
       <FormularioPresupuesto
         mensajeId={mensajeId}
         iniciales={{
@@ -87,8 +135,10 @@ export function TarjetaPresupuestoPropuesto({
           },
           items: propuesta.items,
         }}
-        onCreado={(p) => {
+        onCreado={(p, sug) => {
           setNumero(p.numero);
+          setCreado(p);
+          setSugerencias(sug);
           setEstado('guardado');
           onResolver?.({ estado: 'guardado', numero: p.numero });
         }}
