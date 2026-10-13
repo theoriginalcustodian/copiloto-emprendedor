@@ -325,8 +325,8 @@ describe('afip.ts', () => {
       expect('ambiente' in (peticiones[0]!.cuerpoJson as Record<string, unknown>)).toBe(false);
 
       peticiones.length = 0;
-      await conectarArca({ cuit: '1', usuario: '1', claveFiscal: 'x', ambiente: 'homologacion' });
-      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).ambiente).toBe('homologacion');
+      await conectarArca({ cuit: '1', usuario: '1', claveFiscal: 'x', ambiente: 'dev' });
+      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).ambiente).toBe('dev');
     });
 
     it('422 "CUIT inválido" (string) -> ErrorValidacionFiscal con un Faltante de campo vacío', async () => {

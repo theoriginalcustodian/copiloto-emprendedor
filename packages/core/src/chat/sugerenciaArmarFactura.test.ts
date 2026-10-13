@@ -1,22 +1,23 @@
 import { describe, expect, it } from 'vitest';
+import type { ReplyCard } from '../api/types';
 import { avisoArmarFactura, leerSugerenciaArmarFactura } from './sugerenciaArmarFactura';
 
 describe('leerSugerenciaArmarFactura', () => {
   it('lee la card completa', () => {
     expect(
-      leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7, texto: '¿Te armo la factura?' }),
+      leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7, texto: '¿Te armo la factura?' } as ReplyCard),
     ).toEqual({ presupuestoId: 7, texto: '¿Te armo la factura?' });
   });
 
   it('sin texto usa el default', () => {
-    expect(leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7 })?.texto).toBe(
+    expect(leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7 } as ReplyCard)?.texto).toBe(
       '¿Te armo la factura?',
     );
   });
 
   it('control negativo: kind desconocido / otra card / null no pintan', () => {
-    expect(leerSugerenciaArmarFactura({ kind: 'algo_nuevo', presupuesto_id: 7 })).toBeNull();
-    expect(leerSugerenciaArmarFactura({ kind: 'requiere_conexion', presupuesto_id: 7 })).toBeNull();
+    expect(leerSugerenciaArmarFactura({ kind: 'algo_nuevo', presupuesto_id: 7 } as ReplyCard)).toBeNull();
+    expect(leerSugerenciaArmarFactura({ kind: 'requiere_conexion', presupuesto_id: 7 } as ReplyCard)).toBeNull();
     expect(leerSugerenciaArmarFactura(null)).toBeNull();
     expect(leerSugerenciaArmarFactura(undefined)).toBeNull();
   });

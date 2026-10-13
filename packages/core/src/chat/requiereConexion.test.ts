@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ReplyCard } from '../api/types';
 import type { ChatMessage } from './chatMachine';
 import { conexionPendienteDelHilo, leerRequiereConexion } from './requiereConexion';
 
@@ -29,13 +30,13 @@ describe('leerRequiereConexion', () => {
     expect(leerRequiereConexion(null)).toBeNull();
     expect(leerRequiereConexion({ kind: 'confirm', service: 'gmail', label: 'Gmail' })).toBeNull();
     expect(leerRequiereConexion({ kind: 'requiere_conexion', service: 'gmail' })).toBeNull();
-    expect(leerRequiereConexion({ kind: 'requiere_conexion', connect_path: '/x' })).toBeNull();
+    expect(leerRequiereConexion({ kind: 'requiere_conexion', connect_path: '/x' } as ReplyCard)).toBeNull();
   });
 
   it('tolera alcance ausente o con basura (lista vacía, no revienta)', () => {
     const c = leerRequiereConexion({ kind: 'requiere_conexion', service: 'gmail', connect_path: '/x', alcance: [1, '', 'Buscar'] } as never);
     expect(c?.alcance).toEqual(['Buscar']);
-    expect(leerRequiereConexion({ kind: 'requiere_conexion', service: 'gmail', connect_path: '/x' })?.alcance).toEqual([]);
+    expect(leerRequiereConexion({ kind: 'requiere_conexion', service: 'gmail', connect_path: '/x' } as ReplyCard)?.alcance).toEqual([]);
   });
 });
 

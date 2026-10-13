@@ -52,7 +52,7 @@ function abortError(): Error {
 beforeEach(() => {
   peticiones = [];
   responder = () => ({ ok: true, status: 200, json: async () => ({}) });
-  configurarApi({ http: httpFake, tokens: tokensFake(), apiBase: '' });
+  configurarApi({ http: httpFake, tokens: tokensFake() });
 });
 
 afterEach(() => {
@@ -128,7 +128,6 @@ describe('postMultipart — refresh-on-401 (EL QUE IMPORTA: sin esto, un dictado
         async leerRefresh() { return 'rt-viejo'; },
         async leerToken() { return 'tok-viejo'; },
       },
-      apiBase: '',
     });
 
     const resultado = await postMultipart('/chat/audio', { session_id: 's1' }, 'archivo', {
@@ -152,7 +151,6 @@ describe('postMultipart — refresh-on-401 (EL QUE IMPORTA: sin esto, un dictado
         async leerRefresh() { return 'rt-viejo'; },
         async leerToken() { return 'tok-viejo'; },
       },
-      apiBase: '',
     });
 
     await expect(

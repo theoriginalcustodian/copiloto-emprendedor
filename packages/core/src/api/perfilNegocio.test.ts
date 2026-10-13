@@ -145,7 +145,7 @@ describe('perfilNegocio.ts', () => {
 
       // Si viajaran las 7 claves, guardar "Personalidad" pisaría lo que el usuario escribió en
       // "Negocio" — las dos secciones se guardan por separado.
-      expect(peticiones[0].cuerpoJson).toEqual({ formalidad: 'formal', nombre_copiloto: 'Asistente' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ formalidad: 'formal', nombre_copiloto: 'Asistente' });
     });
 
     it('un string vacío SÍ viaja: es como se vacía un campo a propósito', async () => {
@@ -154,7 +154,7 @@ describe('perfilNegocio.ts', () => {
       await guardarPerfilNegocio({ nombreComercial: '' });
 
       // Omitirlo lo dejaría como estaba; mandarlo vacío lo borra. La diferencia es del usuario.
-      expect(peticiones[0].cuerpoJson).toEqual({ nombre_comercial: '' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ nombre_comercial: '' });
     });
 
     it('devuelve el perfil COMPLETO ya actualizado — no hace falta re-hacer el GET', async () => {
@@ -235,7 +235,7 @@ describe('perfilNegocio.ts', () => {
 
       await guardarPerfilNegocio({ nombreComercial: 'Kiosco' });
 
-      expect(peticiones[0].cuerpoJson).toEqual({ nombre_comercial: 'Kiosco' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ nombre_comercial: 'Kiosco' });
     });
   });
 
@@ -255,8 +255,8 @@ describe('perfilNegocio.ts', () => {
       await guardarPerfilNegocio({ telefono: '341 590 6309', email: 'a@b.co' });
       await guardarPerfilNegocio({ nombreComercial: 'X' });
 
-      expect(peticiones[0].cuerpoJson).toEqual({ telefono: '341 590 6309', email: 'a@b.co' });
-      expect(peticiones[1].cuerpoJson).toEqual({ nombre_comercial: 'X' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ telefono: '341 590 6309', email: 'a@b.co' });
+      expect(peticiones[1]!.cuerpoJson).toEqual({ nombre_comercial: 'X' });
     });
 
     it('errorDeTelefono: vacío es válido, <8 dígitos no, espacios y guiones no cuentan', () => {

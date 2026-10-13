@@ -60,11 +60,11 @@ describe('leerCapacidades — el camino bueno', () => {
 
     const res = await leerCapacidades();
 
-    expect(peticiones[0].path).toBe('/capacidades');
+    expect(peticiones[0]!.path).toBe('/capacidades');
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
     expect(res.guia.capacidades.map((c) => c.rotulo)).toEqual(['Gastos', 'Ingresos']);
-    expect(res.guia.capacidades[0].ejemplos).toHaveLength(2);
+    expect(res.guia.capacidades[0]!.ejemplos).toHaveLength(2);
     expect(res.guia.fechas.entiendo).toEqual(['hoy', 'ayer']);
     expect(res.guia.fechas.siNoEsta).toContain('tocá la fecha');
   });
@@ -124,7 +124,7 @@ describe('leerCapacidades — lo que NO inventa', () => {
 
     const res = await leerCapacidades();
 
-    if (res.status === 'ok') expect(res.guia.capacidades[0].ejemplos).toEqual(['sirve']);
+    if (res.status === 'ok') expect(res.guia.capacidades[0]!.ejemplos).toEqual(['sirve']);
   });
 
   it('🔴 `fechas` ausente NO rompe la pantalla — queda vacío, no `undefined`', async () => {
@@ -161,7 +161,7 @@ describe('agruparCapacidadesPorRotulo — BL-W12: el catálogo repite rótulo, l
     ]);
 
     expect(grupos.map((g) => g.rotulo)).toEqual(['Presupuestos', 'Gastos']); // un solo "Presupuestos"
-    expect(grupos[0].ejemplos).toEqual([
+    expect(grupos[0]!.ejemplos).toEqual([
       'armame un presupuesto para Juan',
       'qué presupuestos tengo pendientes',
     ]);
