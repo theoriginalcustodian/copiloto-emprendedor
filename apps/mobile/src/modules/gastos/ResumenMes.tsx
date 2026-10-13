@@ -47,8 +47,14 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
               <Text style={{ color: tema.color.bloqueTexto, fontSize: tema.tipo.chico, flex: 1 }}>
                 {ETIQUETA_CATEGORIA[c.categoria]}
               </Text>
-              <Text style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}>
-                {formatearImporte(c.total)}
+              <Text
+                testID={`gastos-resumen-cat-${c.categoria}-importe`}
+                style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}
+              >
+                {/* `gastos` (mapeo 2026-10-12): el prototipo muestra el porcentaje junto al importe. El
+                    dato ya viene del backend (`porcentaje`); se redondea sólo para mostrarlo — la barra
+                    sigue usando el valor crudo. */}
+                {formatearImporte(c.total)} · {Math.round(c.porcentaje)}%
               </Text>
             </View>
             <View style={[styles.barraFondo, { backgroundColor: tema.color.bloqueChip }]}>
