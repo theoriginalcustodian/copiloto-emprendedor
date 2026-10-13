@@ -57,7 +57,7 @@ const FORMAS = [
   { key: 'scallop', svg: true, rot0: 8, rot1: -26 },
   { key: 'squircle', color: COLOR_FORMA_SQUIRCLE, radio: 0.34, rot0: -12, rot1: 34 },
   { key: 'super', color: COLOR_FORMA_SUPER, radio: 0.5, rot0: -6, rot1: 22 },
-  { key: 'egg', color: COLOR_FORMA_EGG, radio: 0.48, rot0: 10, rot1: -16, ultima: true },
+  { key: 'egg', color: COLOR_FORMA_EGG, radio: 0.48, rot0: 10, rot1: -16 },
 ] as const;
 
 function Forma({
@@ -66,7 +66,6 @@ function Forma({
   radio,
   rot0,
   rot1,
-  ultima,
   svg,
   reducido,
 }: {
@@ -75,7 +74,6 @@ function Forma({
   radio?: number;
   rot0: number;
   rot1: number;
-  ultima?: boolean;
   svg?: boolean;
   reducido: boolean;
 }) {
@@ -85,16 +83,19 @@ function Forma({
   useEffect(() => {
     if (reducido) return;
     progreso.value = withDelay(index * BLOB_STAGGER, withTiming(1, { duration: GROW, easing: EASE_GROW }));
-    if (ultima) {
-      colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: COLAPSO, easing: EASE_FIN }));
-    }
+    // 🔴 TODAS las formas colapsan al terminar de crecer, no sólo la última (DEVICE15 H8). Antes sólo
+    // `egg` colapsaba —y terminaba en opacidad 0,15—: las otras tres quedaban fijas a opacidad 1 y se
+    // veía un disco blanco con halo terracota pegado a la «i» del wordmark, de forma permanente. Medido
+    // en device con `screencap` a ~9 s del logout. La web lo dice en `Splash.css` (H-A4-2): la forma es
+    // un tránsito hacia la «O» real, «no queda como disco permanente — si quedara opaca tapa "dobi"».
+    colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: COLAPSO, easing: EASE_FIN }));
   }, []);
 
   const estilo = useAnimatedStyle(() => {
     const escala = 0.05 + progreso.value * 0.95 * (1 - colapso.value * 0.4);
     const rot = rot0 + (rot1 - rot0) * progreso.value;
     return {
-      opacity: progreso.value * (1 - colapso.value * 0.85),
+      opacity: progreso.value * (1 - colapso.value),
       transform: [{ scale: escala }, { rotate: `${rot}deg` }],
     };
   });
@@ -141,7 +142,6 @@ export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
               radio={'radio' in f ? f.radio : undefined}
               rot0={f.rot0}
               rot1={f.rot1}
-              ultima={'ultima' in f ? f.ultima : undefined}
               svg={'svg' in f ? f.svg : undefined}
               reducido={reducido}
             />

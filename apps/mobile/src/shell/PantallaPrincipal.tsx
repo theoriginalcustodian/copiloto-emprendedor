@@ -136,6 +136,15 @@ export function PantallaPrincipal() {
    */
   const [panelAbajo, setPanelAbajo] = useState(false);
   const [senalSubir, setSenalSubir] = useState(0);
+  /**
+   * 🔴 **Regla A del operador (2026-10-12): al bajar el chat, el escritorio se cierra.** El reposo es
+   * único —siempre Mi día—. DEVICE15 H1 lo midió incumplido: con el escritorio abierto, subir el chat y
+   * volver a bajarlo lo dejaba abierto. El escritorio no tenía canal para cerrarse desde afuera; este
+   * contador es ese canal (mismo patrón que `senalSubir`), y lo dispara `PanelDeslizable.alBajar` en el
+   * instante en que la conversación empieza a bajar, para que se cierren en paralelo.
+   */
+  const [senalCerrar, setSenalCerrar] = useState(0);
+  const alBajarChat = useCallback(() => setSenalCerrar((n) => n + 1), []);
   useEffect(() => {
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!panelAbajo) return false;
@@ -164,10 +173,12 @@ export function PantallaPrincipal() {
       testID="panel-principal"
       senalSubir={senalSubir}
       onPanelAbajoChange={setPanelAbajo}
+      alBajar={alBajarChat}
       arrancaAbajo
       hintAbajo="Escribile a Odobi"
       fondo={
         <PanelFunciones
+          senalCerrar={senalCerrar}
           escritorio={
             <EscritorioFunciones
               onFuncion={alFuncion}

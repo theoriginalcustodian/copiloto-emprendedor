@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+// 🔴 `RefreshControl` de RNGH, NO el de `react-native`: el `ScrollView` de RNGH hace `waitFor` sobre el handler
+// del refresh control (le inyecta un `ref` para eso). Con el de RN ese `waitFor` apunta a nada y los dos
+// árbitros se disputan el dedo: `onRefresh` se disparaba a los 0,3 s del DOWN, 6 s antes del UP (DEVICE15 H4).
+import { Pressable, RefreshControl } from 'react-native-gesture-handler';
 
 import {
   chipDeCaja,
