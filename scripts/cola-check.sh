@@ -31,6 +31,55 @@ PLAN="${COLA_PLAN:-$REPO_ROOT/coordinacion/PLAN.md}"
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
 
+# ── Guard: ¿soy la versión de `origin/main`, o me están ejecutando vieja? ──────────────
+# El guard EXISTÍA — pero sólo en el COMPOSITOR (`vigilancia-check.sh:159`), y a este script lo
+# invocan DIRECTO los crones, las tres sesiones y planificación: ese camino no pasaba por ningún
+# guard. Dos caminos a la misma pregunta, uno solo protegido.
+#   → memoria: dos-decisiones-correctas-que-se-cruzan-en-un-agujero
+#
+# Medido el 2026-10-13 sobre el MISMO `PLAN.md`: esta copia en el checkout compartido estaba 4
+# commits atrás (`+12/-119`, uno de ellos `4f675376` — el que ensenó los estados congelados) y
+# reportó **13 renglones con «estado no reconocido»** que en `main` son `⏸`/`⏳` legítimos… con
+# **rc=0**. Y el consejo que imprime —«arreglá el renglón»— empuja a volver `pendiente` lo que el
+# operador congeló a propósito: el falso rojo no sólo miente, invita al daño.
+#   → memoria: el-checkout-compartido-sirve-comandos-viejos · el-instrumento-tambien-CONDENA-no-solo-absuelve
+#
+# Es el MISMO caso que `lib/version-instrumento.sh` documenta del 2026-10-08 (ahí fueron 14 filas),
+# por el camino que el fix de entonces no cubrió. La función no se re-implementa: se SOURCEA.
+#
+# Va a STDERR y **se imprime también con `--quiet`**, a propósito: un gate cuyo aviso vive sólo en
+# el modo verboso no cubre el camino por el que lo llaman los crones, que es `--quiet`.
+#   → memoria: un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate
+# `VERSION_YA_VERIFICADA=1` lo apaga: lo exporta el compositor, que ya avisó él mismo. Un aviso
+# repetido enseña a ignorar el aviso.
+if [ "${VERSION_YA_VERIFICADA:-0}" != "1" ] \
+   && { [ -z "${TRANSCRIPTS_DIR:-}" ] || [ "${VERIFICAR_VERSION:-0}" = "1" ]; } \
+   && [ -r "$REPO_ROOT/scripts/lib/version-instrumento.sh" ]; then
+  # shellcheck source=lib/version-instrumento.sh
+  . "$REPO_ROOT/scripts/lib/version-instrumento.sh"
+  # El `|| true` que escribi primero hacia que `$?` fuera SIEMPRE 0: un guard que NO PUEDE
+  # disparar, y casi lo embarco en la rama que existe para que los guards disparen. Lo cazo el
+  # control positivo (este arbol tenia el archivo divergente y el guard callo), no la lectura.
+  #   -> memoria: medir-si-un-gate-dispara-antes-de-embarcarlo . el-pipe-se-come-el-exit-code
+  # `&& rc=0 || rc=$?` preserva el codigo sin que el `set -e` de la linea 24 mate el script.
+  _cc_out="$(instrumento_divergente "$REPO_ROOT" \
+               scripts/cola-check.sh scripts/lib/version-instrumento.sh)" && _cc_rc=0 || _cc_rc=$?
+  if [ "$_cc_rc" = "1" ]; then
+    {
+      echo "🕒 COLA-CHECK VIEJO: no soy la versión de ${INSTRUMENTO_REF:-origin/main}."
+      printf '%s\n' "$_cc_out" | sed 's/^/  · /'
+      echo "    Todo lo que digo abajo —incluido un rc=0 y un «sin novedades»— sale de ESTA copia."
+      echo "    El 2026-10-13 una copia 4 commits atrás inventó 13 renglones inválidos que no existían."
+      echo "    Fix: corréme desde un worktree sobre origin/main, no desde el checkout compartido."
+    } >&2
+  elif [ "$_cc_rc" = "2" ]; then
+    {
+      echo "🕶️ COLA-CHECK no puede verificar su propia versión — y eso NO es un pase."
+      printf '%s\n' "$_cc_out" | sed 's/^/  · /'
+    } >&2
+  fi
+fi
+
 # NO PUEDO VER MI SUJETO ≠ LA COLA ESTÁ EN ORDEN. Acá había un `exit 0`: este script —que existe
 # para cazar una fábrica parada en silencio— se paraba en silencio él mismo cuando no encontraba el
 # PLAN. Peor, el vigilante lo componía detrás de un `if [ -f "$BUZON/PLAN.md" ]`, así que desde

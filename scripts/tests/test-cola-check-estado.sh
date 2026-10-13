@@ -14,6 +14,19 @@
 #   4. NEGATIVO  nada arrancando + un `pendiente` -> grita arrancable-sin-arrancar con su disparador.
 #   5. NEGATIVO  `✅ cerrada …` / `❌ entregada …` -> ni cabeza de cola ni malformado.
 #   6. CONTROL   el parseo viejo (4 variables) NO ve el caso 1: prueba que el test cazaría la regresión.
+#   7. POSITIVO  pieza DIVERGENTE de su ref -> avisa «COLA-CHECK VIEJO» y lo hace **con `--quiet`**,
+#                que es el modo por el que lo llaman los crones. Sin el 7, el 8 pasaría con un
+#                guard que no puede disparar — exactamente el bug que tuvo esta implementación al
+#                nacer (`|| true` comíendose el `$?`).
+#   8. NEGATIVO  árbol FRESCO -> NO avisa. Un guard que grita en el caso normal se desarma solo.
+#   9. CONTROL   `VERSION_YA_VERIFICADA=1` -> calla aunque divergente: el compositor ya avisó él
+#                mismo y un aviso repetido enseña a ignorar el aviso.
+#
+# POR QUÉ ESTOS TRES VIVEN ACÁ (2026-10-13): el guard de versión existía sólo en el COMPOSITOR
+# (`vigilancia-check.sh`), y a `cola-check.sh` lo invocan DIRECTO los crones y las sesiones. Por ese
+# camino, una copia 4 commits atrás reportó 13 renglones «inválidos» que en `main` son estados
+# `⏸`/`⏳` legítimos, con rc=0 — y su consejo («arreglá el renglón») empujaba a volver `pendiente`
+# lo que el operador congeló. El falso rojo no sólo miente: invita al daño.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/scripts/cola-check.sh"
@@ -75,5 +88,38 @@ viejo="$(while IFS='|' read -r id nombre disp estado; do
          done <<< 'OLA3 | Ola 3 | reabierta | v1 vs v2 | arrancando')"
 [ -z "$viejo" ] && ok "6 control: el parseo viejo NO veía OLA3 (la regresión sería visible)" \
   || fail "6 el parseo viejo ya lo veía -> el test 1 no prueba nada"
+
+# ── 7/8/9 — el guard de versión DEL COMPONENTE ────────────────────────────────────
+# Repo de juguete con las dos piezas reales + un ref propio: el sujeto es el script de verdad, no
+# una reimplementación. `INSTRUMENTO_REF=refbase` evita depender de `origin/main` de la máquina.
+G="$T/g"; mkdir -p "$G/scripts/lib" "$G/coordinacion"
+cp "$SCRIPT" "$G/scripts/cola-check.sh"
+cp "$ROOT/scripts/lib/version-instrumento.sh" "$G/scripts/lib/version-instrumento.sh"
+plan "$G/coordinacion/PLAN.md" 'X1 | Uno | disp | arrancando'
+git init -q "$G"
+git -C "$G" add scripts coordinacion >/dev/null 2>&1
+git -C "$G" -c user.email=t@t -c user.name=t commit -qm base >/dev/null 2>&1
+git -C "$G" branch -f refbase >/dev/null 2>&1
+
+corre_g() {  # corre_g <env...> -- imprime SOLO stderr
+  env "$@" INSTRUMENTO_REF=refbase COLA_PLAN="$G/coordinacion/PLAN.md" \
+      bash "$G/scripts/cola-check.sh" --quiet 2>&1 >/dev/null
+}
+
+# 8 primero a propósito: si el árbol fresco YA gritara, el 7 no probaría nada.
+err="$(corre_g VERSION_YA_VERIFICADA=0)"
+[ -z "$err" ] && ok "8 árbol fresco -> el guard NO grita (no se desarma solo)" \
+  || fail "8 falso positivo con el árbol fresco: $(head -1 <<< "$err")"
+
+printf '\n# divergencia a propósito\n' >> "$G/scripts/cola-check.sh"
+
+err="$(corre_g VERSION_YA_VERIFICADA=0)"
+grep -q 'COLA-CHECK VIEJO' <<< "$err" && grep -q 'cola-check.sh' <<< "$err" \
+  && ok "7 pieza divergente -> avisa en --quiet y la nombra" \
+  || fail "7 el guard NO disparó con una pieza divergente (¿se come el \$??): ${err:-<vacío>}"
+
+err="$(corre_g VERSION_YA_VERIFICADA=1)"
+[ -z "$err" ] && ok "9 VERSION_YA_VERIFICADA=1 -> calla (el compositor no duplica el aviso)" \
+  || fail "9 avisó igual con la supresión puesta: $(head -1 <<< "$err")"
 
 [ "$fallos" -eq 0 ] && echo "  OK" || { echo "  $fallos fallo(s)"; exit 1; }

@@ -253,3 +253,50 @@ otras sesiones **corrilo desde donde ellas corren** antes de mandarlo. (3) Insta
 `[ -s "$T" ] && bash -n "$T" && cp "$T" destino` — sin la guarda, un vacío se instala callado.
 (4) Nunca pipees un instrumento cuyo `rc` es el veredicto. `MSYS_NO_PATHCONV=1` va **sólo** cuando el ref
 empieza con punto (`origin/main:.claude/…`), nunca con un path `/c/…`.
+
+---
+
+## Faz nueva (2026-10-13): el guard vivía en el COMPOSITOR, y al componente lo llaman directo
+
+**Difundí este `urgente_` a las tres sesiones por la mañana** —«la causa de TODOS los falsos positivos
+de hoy: sus crones corren instrumentos atrasados»— **y caí en él yo mismo unas horas después**, en la
+misma sesión. Corrí `bash scripts/cola-check.sh` desde el checkout compartido para medir el tablero y
+me reportó **13 renglones con «estado no reconocido»**. Casi abrí un frente para arreglar el parser.
+
+**No había nada roto.** Esa copia estaba **4 commits atrás** (`+12/-119`), y uno de ellos era
+`4f675376 — el parser reconoce el estado congelado`. Los 13 renglones son `⏸ CONGELADA` / `⏳OPERADOR`:
+estados **legítimos y sancionados** por la regla `CONGELAINSTR`. El mismo `PLAN.md` leído por el
+`cola-check.sh` de `origin/main` da **0 no reconocidos y 5 frentes activos**.
+
+**Lo nuevo no es el síntoma —`lib/version-instrumento.sh` ya lo documentaba del 2026-10-08, con 14
+filas en vez de 13—, es por qué el fix de entonces no me cubrió:** el guard `🕒 INSTRUMENTO VIEJO`
+quedó cableado **sólo en el compositor** (`vigilancia-check.sh:159`), que sí lista `cola-check.sh` en
+`PIEZAS_INSTRUMENTO`. Pero al componente lo invocan **directo** los crones, las tres sesiones y yo.
+Dos caminos a la misma pregunta, **uno solo protegido**, y el defecto vivió **5 días más** por el
+camino sin guard. → [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]
+
+**Y el falso rojo no sólo miente: invita al daño.** El aviso dice textual «arreglá el renglón antes de
+creerle al veredicto» — o sea empuja a volver `pendiente` **13 hitos que el operador congeló a
+propósito**. Un instrumento viejo que condena produce trabajo destructivo con aire de prolijidad.
+→ [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+**Lo que esto dice de una norma difundida:** la bajé a las otras sesiones y a mí no me quedó ningún
+instrumento apuntado. Una norma sin instrumento es disciplina, y la disciplina es justo lo que falla
+cuando el cwd es el compartido y el comando es de una línea. **El fix no fue acordarme: fue que el
+componente se verifique a sí mismo** (`cola-check.sh`, 2026-10-13) — a **stderr** y **también con
+`--quiet`**, porque `--quiet` es el modo por el que lo llaman los crones, y un aviso que vive sólo en
+el modo verboso no cubre el camino real.
+→ [[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]]
+
+**El bug que tuvo mi propio guard al nacer, y cómo lo cacé:** escribí
+`_out="$(instrumento_divergente … || true)"; _rc=$?`. El `|| true` hace que `$?` sea **siempre 0** ⇒ un
+guard que **no puede disparar**, y casi lo embarco en la rama que existe para que los guards disparen.
+No lo vi leyéndolo: lo vi porque corrí el **control positivo** —el archivo *estaba* divergente y el
+guard **calló**—. Un guard nuevo se mide con el caso que debe encender, no con el que debe callar.
+→ [[medir-si-un-gate-dispara-antes-de-embarcarlo]] · [[el-pipe-se-come-el-exit-code]]
+
+**How to apply:** (1) antes de creerle a un instrumento del repo que corrés desde el checkout
+compartido: `git diff --stat origin/main -- <el script>`. Vacío ⇒ creele; no vacío ⇒ el veredicto es de
+otra versión, **incluido su rc=0**. (2) Cuando cablees un guard a un compositor, preguntá **quién más
+invoca a sus piezas por separado**: si alguien las llama directo, ese camino no tiene guard. (3) Una
+norma que difundís a otros no se cumple sola en vos: dejale un instrumento, no un recordatorio.

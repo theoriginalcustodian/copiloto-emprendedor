@@ -179,7 +179,10 @@ fi
 # —el caso normal— y el ciclo reportaba calma sobre una dimensión que nunca se midió: el control
 # positivo daba verde POR AUSENCIA. Es exactamente el defecto que el bloque de DEUDA (más abajo)
 # ya había corregido, y que su comentario nombra citando a COLA. El fix existía en otro call-site.
-cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
+# VERSION_YA_VERIFICADA=1: el guard de versión de cola-check es el MISMO que ya corrió arriba
+# sobre `PIEZAS_INSTRUMENTO` (que lo incluye). Sin esto el aviso sale dos veces, y un aviso
+# repetido enseña a ignorar el aviso → memoria: el-guard-que-grita-en-el-caso-normal-se-desarma-solo
+cola_out="$(VERSION_YA_VERIFICADA=1 COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
 [ -n "$cola_out" ] && add "COLA:
 $cola_out"
 

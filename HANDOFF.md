@@ -300,7 +300,7 @@ nunca un sync ciego.
 `bash scripts/cola-check.sh`.** Esto es lo estructural, que cambia poco; si discrepan, **gana el
 tablero**.
 
-🚩 **ESTA LISTA DE ABAJO ES DEL 2026-09-23 Y ESTÁ VENCIDA EN SU PUNTO 1. Se conserva para que se vea cómo envejeció; el estado vigente está en la tabla de arriba (fila «Beta Odobi — criterio de cierre §13») y en `docs/copiloto-emprendedor/ALCANCE-CIERRE-BETA.md`.** El punto 1 decía «7 de 54 ids»: al 2026-10-08 es **web 54/54 ✅ y mergeado en `main`** · mobile 13/54 (device, sprint siguiente). **Por qué importa que esto estuviera acá sin anotar:** la corrección se aplicó en la tabla de arriba y **no** en este bloque, así que una sesión que entraba por el final del archivo arrancaba con la foto del 23/09 — el mismo defecto, dos veces en el mismo archivo.
+🚩 **ESTA LISTA DE ABAJO ES DEL 2026-09-23 Y ESTÁ VENCIDA EN SU PUNTO 1. Se conserva para que se vea cómo envejeció; el estado vigente está en la tabla de arriba (fila «Beta Odobi — criterio de cierre §13») y en `docs/copiloto-emprendedor/ALCANCE-CIERRE-BETA.md`.** El punto 1 decía «7 de 54 ids»: al 2026-10-08 es **web 54/54 ✅ y mergeado en `main`** · mobile 13/54 (device). ⚠️ **ESE SPRINT ES ESTE (13-10)** — el sprint vigente ES el de mobile y device está DENTRO. **Por qué importa que esto estuviera acá sin anotar:** la corrección se aplicó en la tabla de arriba y **no** en este bloque, así que una sesión que entraba por el final del archivo arrancaba con la foto del 23/09 — el mismo defecto, dos veces en el mismo archivo.
 
 Al **2026-09-23** el sprint vivo es la **beta Odobi**, y la bloquean dos cierres, los dos del operador:
 

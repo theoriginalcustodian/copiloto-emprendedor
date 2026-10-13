@@ -46,14 +46,21 @@ vigia() {  # vigia <buzón> -> salida en $T/out
 }
 
 # 1 — el sujeto no está: el instrumento tiene que decirlo, no devolver calma
-out="$(COLA_PLAN="$T/no-existe/PLAN.md" bash "$COLA_SH" --quiet 2>&1)"; rc=$?
+# ⚠️ VERSION_YA_VERIFICADA=1 en las dos invocaciones de cola-check: su guard de versión
+# (2026-10-13) avisa por stderr cuando el archivo divergió de origin/main — y mientras SE LO
+# DESARROLLA eso es siempre cierto, así que el caso 2 («con PLAN sano calla») se ponía rojo por un
+# aviso CORRECTO. El sujeto de ESTE test es la ceguera a un PLAN faltante, no el versionado: ese
+# tiene sus propios casos 7/8/9 en test-cola-check-estado.sh, con control positivo y mutante.
+# Suprimirlo acá no tapa nada; acoplarlo sí hubiera hecho que cualquier rama que toque
+# cola-check.sh rompa un test de otro sujeto. → memoria: el-guard-que-grita-en-el-caso-normal-se-desarma-solo
+out="$(VERSION_YA_VERIFICADA=1 COLA_PLAN="$T/no-existe/PLAN.md" bash "$COLA_SH" --quiet 2>&1)"; rc=$?
 [ "$rc" -ne 0 ] && grep -qF "no puedo ver mi sujeto" <<< "$out" \
   && ok "1 sin PLAN -> rc=$rc y lo dice (no lo tapa con un rc=0)" \
   || mal "1 rc=$rc · «no medí nada» salió indistinguible de «cola en orden»: $out"
 
 # 2 — CONTROL: sin él, el caso 1 pasaría igual si el script estuviera rojo siempre
 buzon "$T/sano" arrancando
-out="$(COLA_PLAN="$T/sano/PLAN.md" bash "$COLA_SH" --quiet 2>&1)"; rc=$?
+out="$(VERSION_YA_VERIFICADA=1 COLA_PLAN="$T/sano/PLAN.md" bash "$COLA_SH" --quiet 2>&1)"; rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] \
   && ok "2 control: con PLAN sano calla y sale 0 (el rc≠0 del 1 es atribuible)" \
   || mal "2 rc=$rc · rojo con un PLAN sano, el caso 1 no prueba nada: $out"
