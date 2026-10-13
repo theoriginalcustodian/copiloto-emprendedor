@@ -162,15 +162,42 @@ if [ "${UC_VIGIA_REEXEC:-0}" != "1" ] && [ -n "$PIN" ] && [ -f "$PIN/scripts/vig
   exec bash "$PIN/scripts/vigia.sh" "$INSTRUMENTO" "$@"
 fi
 
+# -- QUE PUEDE PASAR POR ACA, y el criterio (medido el 2026-10-13, no deducido)
+#
+# El lanzador hace `exec bash "$EJECUTA" "$@"` SIN `cd`: el ARCHIVO sale del pin (al dia) y el
+# CWD se hereda del llamador. Eso parte los instrumentos en dos clases y solo una puede entrar:
+#
+#   OK  los que NO miran el arbol de trabajo. `ci-verde.sh` es el caso puro: 12 llamadas a `gh`,
+#       CERO derivaciones de raiz (ni `BASH_SOURCE` ni `show-toplevel`) y CERO tests. Pregunta a
+#       GitHub por numero de PR, asi que de donde salga el archivo no cambia lo que mide.
+#       Entro el 2026-10-13 y el motivo es que importa MAS que los otros: el compartido tenia
+#       71 lineas contra las 422 de `main` (-351), o sea las sesiones autorizaban merges con una
+#       version anterior a TODOS sus fixes de fail-open (`exit 6` de PR terminal, `exit 3` de
+#       «todavia no», el rollup ilegible).
+#
+#   NO  los que SI miran el arbol NO PUEDEN ENTRAR, y `gate.sh` es el ejemplo a no imitar:
+#       deriva ROOT de `dirname "${BASH_SOURCE[0]}"/..` (`gate.sh:29`) y corre los tests de ese
+#       ROOT. Ejecutado desde aca, `BASH_SOURCE` es EL PIN, asi que correria la suite sobre
+#       **main** y no sobre la rama que estas por mergear: VERDE sobre codigo que no es el tuyo.
+#       Eso es peor que correrlo viejo -- un gate que mide el arbol equivocado y sale verde no
+#       se nota nunca.
+#       => NO lo agregues por simetria. Si alguna vez tiene que entrar, primero hay que hacer
+#          que derive su raiz del CWD (`git rev-parse --show-toplevel`), y ESO es el cambio,
+#          no esta lista.
+#
+# Criterio para el proximo: cambia lo que el instrumento MIDE segun de donde salga el archivo?
+# Si cambia, no entra. Grep de `BASH_SOURCE|show-toplevel|pytest|npm |jest|vitest`.
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
   escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
-  mi-buzon.sh) ;;
+  mi-buzon.sh|ci-verde.sh) ;;
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
     printf '%s\n' "              foco-check.sh escaladores-buzon.sh archivar-buzon.sh" >&2
     printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh mi-buzon.sh" >&2
+    printf '%s
+' "              ci-verde.sh" >&2
     exit 2 ;;
 esac
 

@@ -180,8 +180,15 @@ mkdir -p "$P9/scripts" "$L9/scripts"
 cp "$VIGIA" "$P9/scripts/vigia.sh"
 { echo "#!/usr/bin/env bash"; echo "echo MARCA-DEL-PIN9"; } > "$P9/scripts/mi-buzon.sh"
 # la copia VIEJA: misma base, pero sin `mi-buzon.sh` en su whitelist
-sed 's/^  mi-buzon.sh) ;;/  no-existe-xx.sh) ;;/' "$VIGIA" > "$L9/scripts/vigia.sh"
-if grep -q 'mi-buzon.sh) ;;' "$L9/scripts/vigia.sh"; then
+# 🔴 ESTE SED SE ROMPIO UNA VEZ, y el control de al lado no lo vio. Hardcodeaba
+# `^  mi-buzon.sh) ;;`; cuando `ci-verde.sh` entro a la whitelist la linea paso a ser
+# `  mi-buzon.sh|ci-verde.sh) ;;`, el sed dejo de matchear y fabrico CERO cambios -- mientras su
+# control (`grep -q "mi-buzon.sh) ;;"`) daba NO ENCONTRADO y concluia «fabricada». Un control
+# cuya condicion de exito es «el literal desaparecio» acredita por igual «lo saque yo» y «alguien
+# renombro la linea». Ahora el patron tolera la alternancia Y el control exige las DOS cosas:
+# que la copia DIFIERA del original y que el instrumento ya no este en su case.
+sed -E "s/^([[:space:]]*)mi-buzon[.]sh([|][^)]*)?[)] ;;/\1no-existe-xx.sh) ;;/" "$VIGIA" > "$L9/scripts/vigia.sh"
+if cmp -s "$L9/scripts/vigia.sh" "$VIGIA" || grep -qE '^[[:space:]]*mi-buzon[.]sh([|][^)]*)?[)] ;;' "$L9/scripts/vigia.sh"; then
   bad "CONTROL: no pude fabricar la copia vieja (el sed no saco mi-buzon.sh del case)"
 else
   ok "CONTROL: copia vieja fabricada (su whitelist NO tiene mi-buzon.sh)"
@@ -197,6 +204,40 @@ else
   else
     bad "la whitelist VIEJA decidio: rc=$rc9b salida=[$out9] -- el lanzador sigue envejeciendo"
   fi
+fi
+
+
+echo "- 10) ci-verde.sh pasa la whitelist, y gate.sh sigue RECHAZADO aunque exista en el pin"
+# POR QUE EXISTE. El 2026-10-13 el broadcast decia «todo instrumento va por el lanzador», y el
+# lanzador RECHAZABA `ci-verde.sh` -- justo el que autoriza merges, y el mas atrasado del checkout
+# compartido (71 lineas contra 422 en main). La receta era incumplible para el instrumento mas
+# consecuente. Pero la leccion NO es «agrandar la whitelist»: entra lo que NO mira el arbol,
+# porque el lanzador no hace `cd` y el CWD se hereda del llamador.
+#
+# El segundo control es el que importa, porque separa las DOS causas de un rc 2: `gate.sh` se
+# fabrica EN EL PIN y tiene que seguir rechazado. Sin esa linea, un rc 2 por «no lo encontre» es
+# indistinguible de uno por «no esta permitido», y el dia que alguien lo agregue por simetria este
+# caso seguiria verde mientras el gate mide main en vez de tu rama.
+P10="$TMP/pin10"; mkdir -p "$P10/scripts"
+cp "$VIGIA" "$P10/scripts/vigia.sh"
+{ echo "#!/usr/bin/env bash"; echo "echo MARCA-CIVERDE args=[\$*]"; } > "$P10/scripts/ci-verde.sh"
+{ echo "#!/usr/bin/env bash"; echo "echo MARCA-GATE-NO-DEBE-SALIR"; } > "$P10/scripts/gate.sh"
+out10="$(UC_VIGIA_PIN="$P10" UC_VIGIA_NO_REFRESH=1 UC_VIGIA_REF=HEAD bash "$VIGIA" ci-verde.sh 1054 2>/dev/null)"; rc10=$?
+if [ "$rc10" = "0" ] && [ "$out10" = "MARCA-CIVERDE args=[1054]" ]; then
+  ok "ci-verde.sh pasa la whitelist y recibe sus argumentos"
+else
+  bad "ci-verde.sh no paso: rc=$rc10 salida=[$out10]"
+fi
+out10b="$(UC_VIGIA_PIN="$P10" UC_VIGIA_NO_REFRESH=1 UC_VIGIA_REF=HEAD bash "$VIGIA" gate.sh 2>&1)"; rc10b=$?
+if [ "$rc10b" = "2" ] && ! printf "%s" "$out10b" | grep -q "MARCA-GATE-NO-DEBE-SALIR"; then
+  ok "CONTROL: gate.sh existe en el pin y sigue rechazado (rc 2) -- deriva su ROOT del script y mediria main"
+else
+  bad "gate.sh se ejecuto o no dio rc 2: rc=$rc10b salida=[$out10b] -- un gate que mide el arbol equivocado sale VERDE"
+fi
+if grep -q "NO lo agregues por simetria" "$VIGIA"; then
+  ok "el motivo de la exclusion de gate.sh vive en el propio case, no solo en un commit"
+else
+  bad "se perdio el comentario que explica por que gate.sh no entra -- el proximo lo agrega"
 fi
 
 printf '\n  %s corridos · %s fallados\n' "$corridos" "$fallos"
