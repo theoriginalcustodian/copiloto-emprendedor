@@ -300,7 +300,7 @@ export function PantallaInteligencia() {
           <Text style={rotulo(tema)}>MEJORES CLIENTES</Text>
           {portada.mejoresClientes.length === 0 ? (
             <Text testID="inteligencia-clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Todavía no hay clientes con ventas registradas.
+              Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
             </Text>
           ) : (
             portada.mejoresClientes.map((c) => (

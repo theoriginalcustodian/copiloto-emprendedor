@@ -160,6 +160,10 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     await montar();
 
     await waitFor(() => expect(screen.getByTestId('inteligencia-clientes-vacio')).toBeTruthy());
+    // Mapeo `bi-vacio` (index.html:1990): el vacío EXPLICA cómo se llena, no sólo dice que está vacío.
+    expect(screen.getByTestId('inteligencia-clientes-vacio').props.children).toBe(
+      'Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.',
+    );
   });
 
   it('🔴 CONTROL — el buscador encuentra un cliente presente y NO uno ausente', async () => {
