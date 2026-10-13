@@ -30,5 +30,5 @@ else
   # no en `lint` porque necesitan pytest (uno es estilo pytest, el otro `unittest`), y `lint` corre
   # python STDLIB. Corridos como script, el primero salía VERDE sin ejecutar ninguna aserción.
   "$PY" -m pytest tests --co -q
-  "$PY" -m pytest tests ../../motor/backend/agent ../../motor/clients/agent ../../deploy/copiloto/test_meclaves_check.py ../../deploy/copiloto/test_caddy_converge.py -q
+  "$PY" -m pytest tests ../../motor/backend/agent ../../motor/clients/agent ../../deploy/copiloto/test_meclaves_check.py ../../deploy/copiloto/test_caddy_converge.py ../../deploy/copiloto/test_worker_pollers_check.py -q
 fi
