@@ -1,3 +1,4 @@
+import { descripcionLegal } from '@copiloto/core';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -58,6 +59,23 @@ export function PantallaCuenta() {
             `PantallaLogin` es login-only (no hay `SignupScreen` en esta plataforma, sólo en web).
             Mismo criterio que las filas de Feedback/Soporte antes de Ola 5 (ver el bloque de abajo):
             un enlace suelto vive acá hasta que junte compañía propia. */}
+        {/* 🔴 **BL-O6 «Informar» (v2, 2026-10-12): qué versión aceptó el tenant, con los CUATRO estados.**
+            La lógica es `descripcionLegal` de core —la misma que usa web—, no una copia. El cuarto
+            (el campo no llegó) NO se colapsa en «nunca aceptó»: decir eso cuando en realidad no se
+            pudo leer es una mentira sin alarma. Sólo informa: no bloquea nada. */}
+        <Row>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+              Términos y privacidad
+            </Text>
+            <Text
+              testID="cuenta-legal-version"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+            >
+              {descripcionLegal(me)}
+            </Text>
+          </View>
+        </Row>
         <Row testID="cuenta-legal-tos" onPress={() => router.push('/legal?kind=tos')}>
           <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
             Términos y Condiciones

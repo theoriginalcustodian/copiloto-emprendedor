@@ -1111,6 +1111,16 @@
       "motivo": "BL-O6 parte A: mobile no tiene alta propia (el signup es web-only), asi que el enlace a ToS vive en Mi cuenta (unilateral por diseno). Web lo ofrece desde SignupScreen con su propio boton 'Terminos y Condiciones' (sin este testid) -- no es drift, es que cada plataforma entra al mismo contenido desde un punto distinto.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-legal-version": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-legal-version",
+      "motivo": "BL-O6 LEGALNOOPERA v2 (Informar): gemelo mobile de web account-legal-estado. Misma funcion (descripcionLegal, packages/core/src/legal.ts, una sola fuente) y los mismos 4 estados, pero cada plataforma la monta en su propio modulo (web modules/account, mobile modules/ajustes), asi que el gate por-pantalla no los puede aparear: es asimetria de bucket, no contenido faltante.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-no-molestar": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
@@ -4715,7 +4725,7 @@
       "falta_en": "mobile",
       "fecha": "2026-10-06",
       "id": "account-legal-estado",
-      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
+      "motivo": "LEGALVERMICUENTA: web lo monta en modules/account; su gemelo mobile ya existe como cuenta-legal-version en PantallaCuenta.tsx (modules/ajustes, 2026-10-13). Sigue sin aparearse por el gate porque cada plataforma lo tiene en un modulo distinto.",
       "pantalla": "modules/account"
     },
     "modules/account::account-legal-tos": {
