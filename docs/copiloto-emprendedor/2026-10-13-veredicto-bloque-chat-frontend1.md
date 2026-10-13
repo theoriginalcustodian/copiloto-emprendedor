@@ -37,7 +37,7 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 11 | `vozchat` | ✅ + 📝 | chip `m:ss` | chip dentro de la burbuja, copy del resultado |
 | 12 | `card` | 📝 + ⛓️ | — | hoja inferior, botón, extracción |
 | 13 | `card-cliente` | 📝 + ⛓️ | — | 7 campos, «Dar de alta», extracción |
-| 14 | `card-cobro` | ✅ + 📝 + ⛓️ | etiquetas ya coincidían | botón «Anotar», extracción |
+| 14 | `card-cobro` | ✅ + 📝 + ⛓️ | etiquetas ya coincidían · chips WhatsApp/mail del link (adenda) | botón «Anotar», extracción |
 | 15 | `card-presu` | 📝 | **medida**: DIVERGE | formulario completo vs 3 filas kv |
 | 16 | `onb-promesa` | ✅ + 📝 | copy de la fila Google + «desde Ajustes» | pantalla completa, un botón por permiso |
 
@@ -255,6 +255,18 @@ card (`DESTINO.presu`, `index.html:2863`) → ⛓️ **ruteo del dictado por des
 - «Anotar» (`FormularioIngreso.tsx:309`) vs «Anotar que me pagaron» → 📝 copy, archivo de
   `modules/ingresos` → `pedido_`.
 - Dictado desde la función precarga sólo `concepto` → ⛓️ extracción.
+- **Adenda de planificación (2026-10-13) — chips de la card del link de cobro: ✅ en código.**
+  `chat/TarjetaLinkDeCobro.tsx` pinta «Compartilo por WhatsApp» (`-compartir`, hoja del sistema vía
+  `compartirLink`), «Mandalo por mail» (`-mail`, `mailto:` con `mailtoLinkDeCobro`) y «Abrir»; los
+  deriva la card de `artifact.kind == "payment_link"` — `choices` no los trae
+  (`motor/backend/agent/conversation_workflow.py:746,761,766`). Tests en `TarjetaLinkDeCobro.test.tsx`.
+- 🚫 **Prohibidas y NO pintadas** (la card lleva un test que lo ejecuta): «vence en 7 días» — la
+  preference de MP no manda `expires` (`motor/clients/agent/providers/mercadopago_gateway.py:86-96`),
+  el link no vence — y «cuando pague, te aviso» — no hay push de cobro acreditado. Lo que sí dice
+  (`-nota`): «Cuando Mercado Pago apruebe el pago, lo anoto como ingreso», cierto porque
+  `apps/copiloto/mp_web.py:55-60` sólo registra el ingreso con `status == "approved"`.
+- 📝 Si el operador quiere vencimiento, baja como `contrato_` con `artifact.data.expira_at` y la card
+  lo pinta **leyendo** ese campo.
 
 ### 15 · `card-presu` — 📝  *(esta fila no tenía medida; ahora sí)*
 
