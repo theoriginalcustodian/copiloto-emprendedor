@@ -260,12 +260,15 @@ def _evaluar_conexion_caida(caidas: list[str], desde: dict[str, str] | None = No
     instante real**; para el resto está AUSENTE — no `None`, no `creada_en`: `creada_en` es cuándo corrió
     el detector, y presentarlo como «se cayó a las 9:12» es una hora fabricada indistinguible de una
     medida (D2, contrato 2026-10-13)."""
-    from catalog import _PRESENTATION
+    from catalog import _PRESENTATION, destino_conexion
     desde = desde or {}
     out = []
     for servicio in caidas:
         nombre = (_PRESENTATION.get(servicio) or {}).get("display_name") or servicio
-        datos = {"servicio": servicio, "nombre": nombre}
+        # H5b: a qué conexión puntual lleva «Reconectar». Mismo `connect_path` que el catálogo (copiado,
+        # no reconstruido). Las tarjetas YA creadas no lo tienen en `datos` (`crear_si_no_existe` es
+        # DO NOTHING): `TarjetaStore._fila_a_dict` se lo completa al leer.
+        datos = {"servicio": servicio, "nombre": nombre, "destino": destino_conexion(servicio)}
         if desde.get(servicio):
             datos["desde"] = desde[servicio]
         out.append({"regla": REGLA_CONEXION_CAIDA, "entidad_tipo": "conexion", "entidad_id": servicio,
