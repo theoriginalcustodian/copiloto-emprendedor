@@ -156,3 +156,57 @@ def test_tarjeta_conexion_caida_aparece_critica_y_se_cierra_sola_al_reconectar(c
     tab = avanzar_tablero(conn_de_tenant(a), a)
     assert not [x for x in tab["para_hoy"] + tab["haciendo"] if x["regla"] == REGLA_CONEXION_CAIDA]
     assert [x for x in tab["hecha"] if x["regla"] == REGLA_CONEXION_CAIDA]  # se cerró por el hecho
+
+
+# ── D2 (contrato 2026-10-13): `datos.desde` sólo con instante REAL; ausente — nunca fabricado ───────
+
+def test_desde_pura_viaja_solo_para_el_servicio_que_lo_registra():
+    """Sin DB: el evaluador no inventa. `desde` entra a `datos` sólo para el servicio con instante."""
+    from mi_dia_detector import _evaluar_conexion_caida
+    ts = "2026-10-13T09:12:00+00:00"
+    por_mp, por_gmail = _evaluar_conexion_caida(["mercadopago", "gmail"], {"mercadopago": ts})
+    assert por_mp["datos"]["desde"] == ts
+    assert "desde" not in por_gmail["datos"]            # AUSENTE: ni None ni cadena vacía
+    assert "desde" not in _evaluar_conexion_caida(["mercadopago"])[0]["datos"]   # sin mapa → ausente
+
+
+@necesita_pg
+def test_mp_caido_con_reauth_desde_manda_el_instante_guardado(conn_de_tenant, tenants):
+    from mi_dia_detector import detectar_todos
+    a, _ = tenants
+    mp = _mp(conn_de_tenant, a)
+    mp.save("s1", access_token="AT", refresh_token="RT", expires_at=FUTURO)
+    mp.marcar_reauth("s1")
+    guardado = mp.caido_desde()
+    assert guardado is not None                            # el instante existe en la base
+    [tarjeta] = detectar_todos(conn_de_tenant(a), a)[REGLA_CONEXION_CAIDA]
+    assert tarjeta["datos"]["desde"] == guardado           # es el MISMO, no uno calculado después
+
+
+@necesita_pg
+def test_mp_caido_por_token_vencido_sin_marca_NO_trae_desde(conn_de_tenant, tenants):
+    """El caso que tienta al fallback: `salud()=caido` por `expires_at` vencido, pero nadie marcó
+    `reauth_desde`. Hay caída y NO hay instante: `desde` tiene que estar ausente, no `creada_en`."""
+    from mi_dia_detector import detectar_todos
+    a, _ = tenants
+    mp = _mp(conn_de_tenant, a)
+    mp.save("s1", access_token="AT", refresh_token="RT", expires_at=int(time.time()) - 10)
+    assert mp.salud() == "caido" and mp.caido_desde() is None
+    [tarjeta] = detectar_todos(conn_de_tenant(a), a)[REGLA_CONEXION_CAIDA]
+    assert tarjeta["entidad_id"] == "mercadopago"
+    assert "desde" not in tarjeta["datos"]
+
+
+@necesita_pg
+def test_composio_caido_no_trae_desde_aunque_mp_si_lo_tenga_la_clave_es_por_servicio(conn_de_tenant, tenants):
+    from mi_dia_detector import detectar_todos
+    a, _ = tenants
+    mp = _mp(conn_de_tenant, a)
+    mp.save("s1", access_token="AT", refresh_token="RT", expires_at=FUTURO)
+    mp.marcar_reauth("s1")
+    caidas = detectar_todos(conn_de_tenant(a), a, composio_conexiones=lambda: [
+        {"toolkit": "gmail", "status": "EXPIRED"}])[REGLA_CONEXION_CAIDA]
+    por_servicio = {c["entidad_id"]: c["datos"] for c in caidas}
+    assert set(por_servicio) == {"mercadopago", "gmail"}
+    assert "desde" in por_servicio["mercadopago"]
+    assert "desde" not in por_servicio["gmail"]            # el instante de MP no se le presta a Gmail

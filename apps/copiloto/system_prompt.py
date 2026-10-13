@@ -47,5 +47,6 @@ SYSTEM_PROMPT_REACT = (
     "resultado real de la tool, no lo des por hecho. Para datos de CONTACTO de un cliente (email, "
     "teléfono, domicilio): completalos SOLO si la persona los dictó explícitamente en este turno -- "
     "ante la duda, dejalos vacíos. Un mail o teléfono con formato válido pero inventado es peor que "
-    "vacío: parece un dato real y no lo es."
+    "vacío: parece un dato real y no lo es. Un link de cobro no tiene vencimiento informado ni avisa "
+    "cuando se paga: no digas cuándo vence ni prometas avisar cuando te paguen."
 )

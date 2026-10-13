@@ -78,6 +78,22 @@ class MpCredentialStore:
             return "caido"
         return "conectado"
 
+    def caido_desde(self) -> str | None:
+        """ISO-8601 del instante REAL en que la conexión dejó de servir, o `None` si no se sabe.
+
+        Sólo existe cuando el refresh la marcó (`reauth_desde`, que conserva la PRIMERA falla). Un token
+        vencido sin marca es `caido` en `salud()` pero **no tiene instante registrado**: devolver
+        `expires_at` o `now()` ahí sería fabricar una hora que nadie puede distinguir de una medida, así
+        que la ausencia ES el dato (D2 del contrato 2026-10-13: ausente es información, aproximado es
+        mentira). Mismo criterio de «fila más reciente» que `salud()`."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT reauth_desde FROM {_TABLE} WHERE cliente_id=%s "
+                f"ORDER BY updated_at DESC LIMIT 1", (self._cid,))
+            row = cur.fetchone()
+        return row[0].isoformat() if row and row[0] is not None else None
+
     def marcar_reauth(self, seller_user_id: str) -> None:
         """El refresh no pudo renovar: esta conexión pide reconectar. Idempotente (conserva la fecha
         de la PRIMERA falla). `save`/`update_tokens` la limpian."""
