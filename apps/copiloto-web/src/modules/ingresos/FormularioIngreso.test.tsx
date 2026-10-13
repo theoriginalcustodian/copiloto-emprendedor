@@ -74,3 +74,11 @@ describe('FormularioIngreso — idemKey deriva del mensajeId (IDEMINGCLI)', () =
     expect(primera).not.toBe(segunda);
   });
 });
+// Rótulo del botón de guardar = copy de planificación 2026-10-13 (nombra el OBJETO, no el verbo suelto). Lo citan
+// los avisos de las cards del chat («tocá …»): si cambia, cambian los dos juntos.
+describe('FormularioIngreso — rótulo del botón', () => {
+  it('dice «Anotar que me pagaron» (el hecho que el emprendedor registra), no «Anotar» suelto', () => {
+    render(<FormularioIngreso origen="manual" onGuardado={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByTestId('ingreso-guardar')).toHaveTextContent('Anotar que me pagaron');
+  });
+});

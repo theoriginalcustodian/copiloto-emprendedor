@@ -55,7 +55,7 @@ describe('FormularioGasto — idemKey deriva del mensajeId (BL-V33, gemelo del d
     mockCrear.mockResolvedValue({ status: 'ok', gasto: GASTO_GUARDADO });
   });
 
-  /** Monta, completa lo mínimo para habilitar «Guardar», guarda y DESMONTA — como una card real. */
+  /** Monta, completa lo mínimo para habilitar «Guardar el gasto», guarda y DESMONTA — como una card real. */
   async function montarCompletarGuardarYDesmontar(mensajeId: string | undefined) {
     const { unmount } = render(
       <FormularioGasto origen="manual" mensajeId={mensajeId} onCreado={() => {}} onCancelar={() => {}} />,
@@ -98,5 +98,13 @@ describe('FormularioGasto — idemKey deriva del mensajeId (BL-V33, gemelo del d
     expect(primera).toMatch(/^[0-9a-f-]{36}$/);
     expect(segunda).toMatch(/^[0-9a-f-]{36}$/);
     expect(primera).not.toBe(segunda);
+  });
+});
+// Rótulo del botón de guardar = copy de planificación 2026-10-13 (nombra el OBJETO, no el verbo suelto). Lo citan
+// los avisos de las cards del chat («tocá …»): si cambia, cambian los dos juntos.
+describe('FormularioGasto — rótulo del botón', () => {
+  it('el alta dice «Guardar el gasto» (nombra el objeto), no «Guardar» suelto', () => {
+    render(<FormularioGasto origen="manual" onCreado={vi.fn()} onCancelar={vi.fn()} />);
+    expect(screen.getByTestId('gasto-guardar')).toHaveTextContent('Guardar el gasto');
   });
 });

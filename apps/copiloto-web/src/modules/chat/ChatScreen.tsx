@@ -87,7 +87,7 @@ export function ChatScreen({
   );
   // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx`: el instante del `pointerdown` (vía
   // `onRecordingStart`, ya expuesto por `MicButton`) mide la duración del dictado para el chip
-  // «Por voz · Ns» de la burbuja, sin duplicar el cronómetro interno de `MicButton`.
+  // «Por voz · m:ss» de la burbuja, sin duplicar el cronómetro interno de `MicButton`.
   const inicioMsRef = useRef(0);
   const handleRecordingStart = useCallback(() => {
     inicioMsRef.current = Date.now();

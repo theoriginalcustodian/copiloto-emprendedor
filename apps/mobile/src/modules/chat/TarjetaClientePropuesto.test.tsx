@@ -90,7 +90,7 @@ describe('TarjetaClientePropuesto', () => {
     await montar();
 
     expect(screen.getByTestId('cliente-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.',
+      'Esto entendí. Revisalo y tocá Guardar el cliente — todavía no lo agregué.',
     );
   });
 

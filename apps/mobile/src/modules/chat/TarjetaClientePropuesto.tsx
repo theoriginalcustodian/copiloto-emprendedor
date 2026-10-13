@@ -89,7 +89,7 @@ export function TarjetaClientePropuesto({
   // GUARDM parte 2 — guard cross-remount: siembra sincrónicamente desde `resuelto`
   // (`mensaje.clienteResuelto`, patrón B), mismo mecanismo que `TarjetaGastoPropuesto`. Sin esto, un
   // remount del mensaje (scroll, recarga del hilo, reabrir la app) devolvía una card YA resuelta a
-  // `editando`, y tocar Dar de alta ahí creaba un cliente duplicado.
+  // `editando`, y tocar Guardar el cliente ahí creaba un cliente duplicado.
   const [estado, setEstado] = useState<Estado>(
     resuelto == null
       ? { fase: 'editando' }
@@ -155,7 +155,7 @@ export function TarjetaClientePropuesto({
     // «comillas» —tiene sentido para "lo que el usuario dictó" (gasto)—, pero acá es la EXPLICACIÓN
     // del copiloto (ej. "dijiste CUIT pero el número tiene 7 dígitos"), que se lee mal entre comillas.
     // Se queda como texto propio, igual que antes de esta shell.
-    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.">
+    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo y tocá Guardar el cliente — todavía no lo agregué.">
       {texto != null && texto.trim() !== '' && (
         <Text
           testID={`${testID}-texto`}

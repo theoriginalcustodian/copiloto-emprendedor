@@ -5,3 +5,4 @@
 export * from './types';
 export * from './ports';
 export * from './nivel';
+export * from './formatearDuracion';

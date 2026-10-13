@@ -73,8 +73,8 @@ describe('Bubble', () => {
     expect(screen.queryByTestId('chat-bubble-voz')).not.toBeInTheDocument();
   });
 
-  it('BL-J7 (H-A3-7): un mensaje llegado por dictado muestra el chip «Por voz · Ns»', () => {
+  it('BL-J7 (H-A3-7): un mensaje llegado por dictado muestra el chip «Por voz · m:ss»', () => {
     render(<Bubble role="user" text="anotá un gasto de 500" porVoz={{ duracionSeg: 7 }} />);
-    expect(screen.getByTestId('chat-bubble-voz')).toHaveTextContent('Por voz · 7s');
+    expect(screen.getByTestId('chat-bubble-voz')).toHaveTextContent('Por voz · 0:07');
   });
 });

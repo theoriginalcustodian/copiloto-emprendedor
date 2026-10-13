@@ -300,13 +300,13 @@ export function FormularioIngreso({
       )}
 
       {/* Los CTA principales desaparecen una vez guardado: desde ahí la conversación es "completar o
-          listo", y dejar «Anotar» ahí invitaría a guardarlo dos veces. */}
+          listo", y dejar «Anotar que me pagaron» ahí invitaría a guardarlo dos veces. */}
       {guardado == null && duplicado == null && (
         <FilaBotones
           testID={`${testID}-botones`}
           botones={[
             {
-              etiqueta: enviando ? 'Anotando…' : 'Anotar',
+              etiqueta: enviando ? 'Anotando…' : 'Anotar que me pagaron',
               onPress: () => void guardar(),
               variante: 'primario',
               deshabilitado: enviando,

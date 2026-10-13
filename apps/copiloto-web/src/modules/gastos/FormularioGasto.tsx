@@ -198,7 +198,7 @@ export function FormularioGasto({
           Cancelar
         </Button>
         <Button type="submit" disabled={!puedeGuardar} data-testid="gasto-guardar">
-          {guardando ? 'Guardando…' : 'Guardar'}
+          {guardando ? 'Guardando…' : 'Guardar el gasto'}
         </Button>
       </div>
     </form>

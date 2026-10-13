@@ -77,3 +77,13 @@ describe('FormularioCliente — idemKey deriva del mensajeId (IDEMINGCLI)', () =
     expect(primera).not.toBe(segunda);
   });
 });
+// Rótulo del botón de guardar = copy de planificación 2026-10-13 (nombra el OBJETO, no el verbo suelto). Lo citan
+// los avisos de las cards del chat («tocá …»): si cambia, cambian los dos juntos.
+describe('FormularioCliente — rótulo del botón', () => {
+  it('el ALTA dice «Guardar el cliente»; «Dar de alta» (jerga) ya no aparece', () => {
+    render(<FormularioCliente onGuardado={() => {}} onDuplicado={() => {}} onAbrirCliente={() => {}} onCancelar={() => {}} />);
+    const boton = screen.getByTestId('cliente-guardar');
+    expect(boton).toHaveTextContent('Guardar el cliente');
+    expect(boton).not.toHaveTextContent('Dar de alta');
+  });
+});

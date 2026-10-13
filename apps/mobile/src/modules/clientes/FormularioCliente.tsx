@@ -127,7 +127,7 @@ export function FormularioCliente({
   /**
    * 🔴 **La clave de idempotencia del ALTA — se guarda entre reintentos, se tira sólo cuando entró.**
    * Mismo patrón que `SeccionCobro.tsx`: si la red se corta después de que el backend ya creó el
-   * cliente, el emprendedor ve un error y vuelve a tocar "Dar de alta". Con una clave nueva por toque
+   * cliente, el emprendedor ve un error y vuelve a tocar "Guardar el cliente". Con una clave nueva por toque
    * eso deja dos clientes idénticos; con la misma clave el backend devuelve el que ya existe. Sigue
    * siendo LA MISMA clave a través del paso "es otro, crearlo igual" (`forzar`): es el mismo gesto de
    * alta confirmado, no uno nuevo. Nunca se usa en la edición — `editarCliente` es PATCH parcial,
@@ -386,7 +386,7 @@ export function FormularioCliente({
         testID={`${testID}-botones`}
         botones={[
           {
-            etiqueta: enviando ? 'Guardando…' : edita != null ? 'Guardar cambios' : 'Dar de alta',
+            etiqueta: enviando ? 'Guardando…' : edita != null ? 'Guardar cambios' : 'Guardar el cliente',
             onPress: () => void guardar(),
             variante: 'primario',
             deshabilitado: !puedeGuardar || enviando,

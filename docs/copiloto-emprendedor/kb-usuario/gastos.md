@@ -62,7 +62,7 @@ Desde Gastos podés ver un resumen del mes: el total gastado, el desglose por ca
 
 Podés decirle al Copiloto algo como *"pagué 12 mil de mercadería"* y te va a armar una propuesta con lo que entendió: monto, categoría (si la mencionaste o la puede inferir), proveedor, medio de pago y descripción.
 
-Igual que en el resto de la app, **no se guarda directo**: te va a mostrar una tarjeta editable para que revises y ajustes cualquier dato antes de confirmar con "Guardar". Como después no vas a poder editarlo, este es el momento de corregir cualquier cosa que el Copiloto haya entendido mal.
+Igual que en el resto de la app, **no se guarda directo**: te va a mostrar una tarjeta editable para que revises y ajustes cualquier dato antes de confirmar con "Guardar el gasto". Como después no vas a poder editarlo, este es el momento de corregir cualquier cosa que el Copiloto haya entendido mal.
 
 ## Registrar un gasto sacándole una foto al ticket
 
@@ -104,7 +104,7 @@ Puede pasar por redondeo cuando hay varias categorías con montos chicos; no es 
 
 ### "Le dicté un gasto por chat y no aparece en mi lista todavía"
 
-Fijate si te quedó pendiente la tarjeta de confirmación: hasta que no la revisás y tocás "Guardar", el gasto no está anotado de verdad.
+Fijate si te quedó pendiente la tarjeta de confirmación: hasta que no la revisás y tocás "Guardar el gasto", el gasto no está anotado de verdad.
 
 ### "Saqué la foto de un ticket arrugado o borroso"
 

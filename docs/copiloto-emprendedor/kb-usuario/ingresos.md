@@ -58,7 +58,7 @@ En la sección "Te deben" vas a encontrar el listado de todas las facturas que e
 
 Podés decirle al Copiloto algo como *"me pagaron 85 mil en efectivo"* y lo va a entender: lo único que necesita es el monto, todo lo demás (de quién, cómo, por qué) es opcional y se lo podés dar en la misma frase o completar después.
 
-Igual que en el resto de la app, **el Copiloto no lo guarda directo**: te muestra una tarjeta con lo que entendió para que la revises y confirmes tocando "Anotar". Si en ese momento faltó algún dato, el chat te lo va a preguntar más adelante, y cuando se lo respondas se va a completar el mismo ingreso —no se crea uno nuevo.
+Igual que en el resto de la app, **el Copiloto no lo guarda directo**: te muestra una tarjeta con lo que entendió para que la revises y confirmes tocando "Anotar que me pagaron". Si en ese momento faltó algún dato, el chat te lo va a preguntar más adelante, y cuando se lo respondas se va a completar el mismo ingreso —no se crea uno nuevo.
 
 También podés avisarle cuando cobrás una factura puntual con una frase como *"me pagaron la factura de la panadería"* o *"cobré la 42"* — en este caso el Copiloto sí lo registra directo, sin pedirte que confirmes en una tarjeta aparte, porque identificar la factura exacta ya es una confirmación suficientemente específica.
 

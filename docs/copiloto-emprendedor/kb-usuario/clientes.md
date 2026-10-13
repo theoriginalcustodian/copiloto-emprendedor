@@ -49,7 +49,7 @@ Si le preguntás al Copiloto por chat cuánto le facturaste a un cliente que no 
 
 Podés pedirle al Copiloto que guarde un cliente nuevo con solo decirle el nombre — por ejemplo, *"anotame de cliente a Juan Pérez"*. No hace falta que le des más datos si no los tenés a mano en ese momento.
 
-Igual que con facturas y presupuestos, **el Copiloto no lo guarda directo**: te muestra una tarjeta con lo que entendió para que la revises y confirmes vos tocando "Dar de alta". Hasta que no la confirmás, el cliente no quedó agregado a tu cartera.
+Igual que con facturas y presupuestos, **el Copiloto no lo guarda directo**: te muestra una tarjeta con lo que entendió para que la revises y confirmes vos tocando "Guardar el cliente". Hasta que no la confirmás, el cliente no quedó agregado a tu cartera.
 
 Si le dictás un documento que no tiene sentido para el tipo que dijiste —por ejemplo, decís "CUIT" pero el número que diste tiene el largo de un DNI— el Copiloto no lo adivina ni lo guarda igual: te avisa de la contradicción para que lo corrijas.
 
@@ -84,7 +84,7 @@ Ya tenés un cliente cargado con ese mismo CUIT, CUIL o DNI. El Copiloto asume q
 
 ### "Cargué un cliente por voz y no aparece en mi lista"
 
-Puede ser que la tarjeta con la propuesta todavía esté esperando que la confirmes. Fijate si tenés que tocar "Dar de alta" para que quede guardado de verdad.
+Puede ser que la tarjeta con la propuesta todavía esté esperando que la confirmes. Fijate si tenés que tocar "Guardar el cliente" para que quede guardado de verdad.
 
 ### "¿Por qué no puedo elegir un cliente de mi lista al facturar?"
 

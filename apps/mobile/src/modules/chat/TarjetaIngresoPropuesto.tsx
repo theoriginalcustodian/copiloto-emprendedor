@@ -69,7 +69,7 @@ export function TarjetaIngresoPropuesto({
   return (
     <TarjetaPropuestaShell
       testID={testID}
-      aviso="Esto entendí. Revisalo y tocá Anotar — todavía no lo guardé."
+      aviso="Esto entendí. Revisalo y tocá Anotar que me pagaron — todavía no lo guardé."
       cita={propuesta.concepto}
     >
       <FormularioIngreso

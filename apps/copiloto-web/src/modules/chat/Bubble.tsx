@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { formatearDuracion } from '@copiloto/core';
+
 import { Surface } from '../../design-system';
 import type { ReplyCard } from '../../lib/api';
 import { ArtifactView } from './ArtifactView';
@@ -14,7 +16,7 @@ export interface BubbleProps {
    * debajo del texto. El gate `kind:'confirm'` lo sigue renderizando `HitlCard` (mensajes HITL no
    * pasan por `Bubble` en `MessageList` de todos modos) — este chequeo es la red de seguridad. */
   card?: ReplyCard;
-  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().sendAudio`): chip «Por voz · Ns»,
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().sendAudio`): chip «Por voz · m:ss»,
    * mismo criterio que `MicFuncion` fuera del chat. `undefined` en mensajes escritos: sin chip. */
   porVoz?: { duracionSeg: number };
 }
@@ -54,7 +56,7 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
           <p className="chat-bubble__text">{text}</p>
           {porVoz && (
             <span className="chat-bubble__voz" data-testid="chat-bubble-voz">
-              Por voz · {porVoz.duracionSeg}s
+              Por voz · {formatearDuracion(porVoz.duracionSeg)}
             </span>
           )}
         </div>

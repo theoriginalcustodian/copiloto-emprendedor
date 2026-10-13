@@ -3,7 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { deleteAsync } from 'expo-file-system/legacy';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import { avisoErrorTranscripcion, transcribir, type ArchivoSubida, type ContextoTranscripcion } from '@copiloto/core';
+import {
+  avisoErrorTranscripcion,
+  formatearDuracion,
+  transcribir,
+  type ArchivoSubida,
+  type ContextoTranscripcion,
+} from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { AvisoCancelar } from '../chat/AvisoCancelar';
@@ -11,7 +17,6 @@ import { BotonVoz } from '../chat/BotonVoz';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { useVozComando } from '../chat/useVozComando';
 import { useTema } from '../../theme/ThemeProvider';
-import { formatearDuracion } from '../../util/formatearDuracion';
 
 export interface MicFuncionProps {
   /** A dónde va el texto. Se llama UNA sola vez por dictado, ya transcripto. */

@@ -77,7 +77,7 @@ export function TarjetaGastoPropuesto({ propuesta, mensajeId }: TarjetaGastoProp
   return (
     <div className="chat-row chat-row--assistant" data-testid="gasto-propuesto">
       <Surface variant="card" blur className="propuesta-card">
-        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Guardar — todavía no lo anoté.</p>
+        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.</p>
         {dicho != null && dicho !== '' && <p className="propuesta-card__dicho">«{dicho}»</p>}
         <FormularioGasto
           origen={propuesta.origen}

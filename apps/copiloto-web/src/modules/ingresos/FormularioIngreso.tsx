@@ -268,7 +268,7 @@ export function FormularioIngreso({
             Cancelar
           </Button>
           <Button type="submit" disabled={enviando} data-testid="ingreso-guardar">
-            {enviando ? 'Anotando…' : 'Anotar'}
+            {enviando ? 'Anotando…' : 'Anotar que me pagaron'}
           </Button>
         </div>
       )}

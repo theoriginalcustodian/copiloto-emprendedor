@@ -50,6 +50,46 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     expect(screen.getByTestId('onboarding-alcance')).toHaveTextContent(/Cada permiso se corta cuando quieras/);
   });
 
+  it('el alcance manda al lugar donde de verdad se cortan los permisos: Ajustes (paridad con mobile), no Cuenta', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+    render(<Onboarding onTerminar={() => {}} />);
+    const alcance = await screen.findByTestId('onboarding-alcance');
+    expect(alcance).toHaveTextContent(/desde Ajustes\./);
+    expect(alcance).not.toHaveTextContent(/desde Cuenta/);
+  });
+
+  it('la tarjeta de Google pinta el detalle LARGO y el título del prototipo (paridad con mobile)', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+    render(<Onboarding onTerminar={() => {}} />);
+    const fila = await screen.findByTestId('onboarding-permiso-google');
+    expect(fila).toHaveTextContent('Mail · Agenda · Archivos');
+    expect(fila).toHaveTextContent('Google · Gmail, Calendar, Drive, Docs, Sheets');
+  });
+
+  it('🔴 con el detalle largo ya puesto, los errores siguen nombrando al PROVEEDOR («Google»), no la lista de servicios', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+    mockLink.mockResolvedValueOnce({ status: 'no_disponible' });
+    render(<Onboarding onTerminar={() => {}} />);
+    fireEvent.click(await screen.findByTestId('onboarding-conectar-google'));
+    const noDisponible = await screen.findByTestId('onboarding-error');
+    expect(noDisponible).toHaveTextContent('Conectar Google todavía no está disponible.');
+    expect(noDisponible).not.toHaveTextContent(/Gmail|Calendar|Drive/);
+
+    mockLink.mockRejectedValueOnce(new Error('red'));
+    fireEvent.click(screen.getByTestId('onboarding-conectar-google'));
+    await waitFor(() =>
+      expect(screen.getByTestId('onboarding-error')).toHaveTextContent('No pudimos pedir el link de Google. Probá de nuevo.'),
+    );
+    expect(screen.getByTestId('onboarding-error')).not.toHaveTextContent(/Gmail|Calendar|Drive/);
+
+    // Mercado Pago: el nombre del proveedor es el mismo que el de la tarjeta.
+    mockLink.mockRejectedValueOnce(new Error('red'));
+    fireEvent.click(screen.getByTestId('onboarding-conectar-mercadopago'));
+    await waitFor(() =>
+      expect(screen.getByTestId('onboarding-error')).toHaveTextContent('No pudimos pedir el link de Mercado Pago. Probá de nuevo.'),
+    );
+  });
+
   it('«Después» no bloquea: marca el onboarding y cierra sin conectar nada', async () => {
     mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
     const onTerminar = vi.fn();

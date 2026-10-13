@@ -79,7 +79,7 @@ export function TarjetaGastoPropuesto({
   return (
     <TarjetaPropuestaShell
       testID={testID}
-      aviso="Esto entendí. Revisalo y tocá Guardar — todavía no lo anoté."
+      aviso="Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté."
       // Lo que dictó, textual: es contra ESTO que contrasta lo que la card entendió. Sin la cita, para
       // verificar el monto habría que acordarse de lo que uno mismo dijo.
       cita={propuesta.descripcion}

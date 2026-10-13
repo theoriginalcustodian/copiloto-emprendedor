@@ -55,7 +55,7 @@ describe('TarjetaIngresoPropuesto', () => {
     await montar();
 
     expect(screen.getByTestId('ingreso-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Anotar — todavía no lo guardé.',
+      'Esto entendí. Revisalo y tocá Anotar que me pagaron — todavía no lo guardé.',
     );
   });
 

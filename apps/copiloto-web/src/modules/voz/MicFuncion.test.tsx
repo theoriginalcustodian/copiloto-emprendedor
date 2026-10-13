@@ -97,7 +97,7 @@ describe('MicFuncion (web)', () => {
     }
   });
 
-  it('tras un dictado exitoso muestra el chip «Por voz · Ns» con la duración (DoD FE1 #5)', async () => {
+  it('tras un dictado exitoso muestra el chip «Por voz · m:ss» con la duración (DoD FE1 #5)', async () => {
     const clock = mockClock();
     transcribirMock.mockResolvedValue({ transcript: 'compré cuarenta litros de nafta' });
     render(<MicFuncion onTranscripcion={vi.fn()} contexto="gasto" />);
@@ -112,7 +112,7 @@ describe('MicFuncion (web)', () => {
       fireEvent.pointerUp(document);
     });
 
-    expect(screen.getByTestId('mic-funcion-chip')).toHaveTextContent('Por voz · 3s');
+    expect(screen.getByTestId('mic-funcion-chip')).toHaveTextContent('Por voz · 0:03');
   });
 
   it('un nuevo dictado limpia el chip anterior mientras transcribe', async () => {
@@ -127,7 +127,7 @@ describe('MicFuncion (web)', () => {
     await act(async () => {
       fireEvent.pointerUp(document);
     });
-    expect(screen.getByTestId('mic-funcion-chip')).toHaveTextContent('Por voz · 1s');
+    expect(screen.getByTestId('mic-funcion-chip')).toHaveTextContent('Por voz · 0:01');
 
     await act(async () => {
       fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });

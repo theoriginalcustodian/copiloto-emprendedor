@@ -413,7 +413,7 @@ export function FormularioPresupuesto({
         testID={`${testID}-botones`}
         botones={[
           {
-            etiqueta: enviando ? 'Guardando…' : 'Guardar presupuesto',
+            etiqueta: enviando ? 'Guardando…' : 'Guardar el presupuesto',
             onPress: () => void guardar(),
             variante: 'primario',
             deshabilitado: !puedeGuardar || enviando,

@@ -88,10 +88,31 @@ Convención: `R` = resuelto en código · `E` = enmienda fundada · `C` = ya coi
 | `agenda` | «ninguna medida aún» | **Medida**: ruta alcanzable `PantallaPrincipal.tsx:186` → `app/agenda.tsx` → `PantallaAgenda` · subtítulo `agenda-intro` y estado `agenda-estado` (`PantallaAgenda.tsx:104-110`), «Nuevo evento» (`:118`) · mobile **y** web, mismos testid, test |
 | | rejilla horaria con bloques «Libre · 2 h 30», «Cobrar a Rodríguez · desde el tablero» | **E** `PantallaAgenda.tsx:100-103`: el cuerpo es una lista de sólo lectura por día (BL-J13, ADR-004); la rejilla exige duración y solapamiento que `leerAgenda` no trae, y mezclar «lo que vence» exige el tablero en el mismo contrato. Sin Calendar conectado el cuerpo no es comparable (nunca se dice «no tenés eventos») |
 
-## Pendiente de DECISIÓN (no es mío)
+## Decisiones que estaban abiertas — resueltas por planificación (2026-10-13)
 
-1. **Validación de largo mínimo en Mi negocio** — cambia el contrato de guardado (ver `negocio`).
-2. **`bi` Preguntar→chat** — retirar la pestaña depende de que el chat conteste preguntas de negocio.
+1. **Largo mínimo en Mi negocio** → **aviso no bloqueante** (heurística de calidad, no requisito del
+   backend). Ejecutado en #1053 (`avisoDeQueVende` en core; ver `negocio`).
+2. **`bi` Preguntar** → sale directo al chat (`router.back()` / `onAbrirChat()`); se borró el composer
+   intermedio. Ejecutado en #1053.
+
+## Lote 2026-10-13 — 4 copys + 2 asimetrías web (contrato `…tu-frente-son-los-4-copys…`)
+
+| qué | antes → después | dónde (mobile / web) |
+|---|---|---|
+| botón de gasto | `Guardar` → **`Guardar el gasto`** | `FormularioGasto.tsx:213` / web `:201` |
+| botón de ingreso | `Anotar` → **`Anotar que me pagaron`** | `FormularioIngreso.tsx:309` / web `:271` |
+| botón de cliente (alta) | `Dar de alta` → **`Guardar el cliente`** (la rama `Guardar cambios` no se toca) | `FormularioCliente.tsx:389` / web `:304` |
+| botón de presupuesto | `Guardar presupuesto` → **`Guardar el presupuesto`** | `FormularioPresupuesto.tsx:416` / web `:392` |
+| avisos de las 4 cards del chat | citaban el rótulo viejo («tocá Dar de alta», «tocá Guardar»…) → **el nuevo**, mobile y web | `chat/Tarjeta{Cliente,Gasto,Ingreso,Presupuesto}Propuesto.tsx` |
+| KB de usuario | citas del botón en `chat.md`, `gastos.md`, `ingresos.md`, `clientes.md` | `docs/copiloto-emprendedor/kb-usuario/` |
+| **asimetría A** — onboarding, fila Google (web) | título `Mail, agenda y archivos` / detalle `Google` → **`Mail · Agenda · Archivos`** / **`Google · Gmail, Calendar, Drive, Docs, Sheets`** | `onboarding/Onboarding.tsx` `FILAS` |
+| | 🔴 `detalle` alimentaba **dos errores** («No pudimos pedir el link de …», «Conectar … todavía no está disponible») → **campo nuevo `proveedor`** (`Google` / `Mercado Pago`) para los errores; `detalle` queda sólo para lo que se pinta | `Onboarding.tsx` |
+| | renglón del alcance: web decía «desde **Cuenta**» → **«desde Ajustes»** (mobile). Medido: en la web los permisos se cortan desde Ajustes → Apps conectadas → Conexiones (`AjustesScreen.tsx:42`); «Cuenta» era falso | `Onboarding.tsx` |
+| **asimetría B** — chip de voz | web `Por voz · 7s` → **`Por voz · 0:07`**; `formatearDuracion` **pasó a `packages/core`** (`audio/formatearDuracion.ts`, +8 tests) y mobile y web la importan: una sola definición | `chat/Bubble.tsx`, `voz/MicFuncion.tsx` (web) · `Burbuja.tsx`, `MicFuncion.tsx` (mobile) |
+
+**Mutantes (cada uno rojo por su causa):** copy de gasto vuelto a `Guardar` · copy web de presupuesto vuelto a
+`Guardar presupuesto` · el error vuelve a usar el `detalle` largo · el chip web vuelve a `Ns` · el aviso de la card
+vuelve a citar el rótulo viejo · el alcance vuelve a «desde Cuenta» · `formatearDuracion` sin `padStart`.
 
 ## Gate
 

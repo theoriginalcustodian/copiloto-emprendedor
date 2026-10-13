@@ -180,7 +180,7 @@ describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () 
     mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
     render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
-    const boton = await screen.findByRole('button', { name: /guardar presupuesto/i });
+    const boton = await screen.findByRole('button', { name: /guardar el presupuesto/i });
     fireEvent.click(boton);
     fireEvent.click(boton);
 
@@ -195,9 +195,9 @@ describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () 
     mockCrear.mockRejectedValueOnce(new Error('red')).mockResolvedValueOnce({ status: 'ok', presupuesto: presupuestoGuardado(7) });
     render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
 
     expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
@@ -219,13 +219,13 @@ describe('TarjetaPresupuestoPropuesto — idemKey deriva del mensajeId (BL-V32/K
   it('🔴 CONTROL POSITIVO: mismo mensajeId, tras DESMONTAR y volver a montar ⇒ MISMA idemKey', async () => {
     mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
     const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
     unmount();
     window.localStorage.clear(); // aísla del guard cross-reload — lo que se mide acá es la idemKey, no el guard
 
     render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
 
     const primera = mockCrear.mock.calls[0]?.[0].idemKey;
@@ -237,12 +237,12 @@ describe('TarjetaPresupuestoPropuesto — idemKey deriva del mensajeId (BL-V32/K
   it('CONTROL NEGATIVO: dos mensajeId legítimamente distintos ⇒ idemKey DISTINTAS', async () => {
     mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
     const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-123" />);
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(1));
     unmount();
 
     render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-456" />);
-    fireEvent.click(await screen.findByRole('button', { name: /guardar presupuesto/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /guardar el presupuesto/i }));
     await waitFor(() => expect(mockCrear).toHaveBeenCalledTimes(2));
 
     const primera = mockCrear.mock.calls[0]?.[0].idemKey;
