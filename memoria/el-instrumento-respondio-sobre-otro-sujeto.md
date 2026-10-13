@@ -859,8 +859,11 @@ que lo hizo visible fue **imprimir las dos cifras juntas**: si hubiera impreso s
 el rojo pasaba por hallazgo.
 
 **Por qué saber la regla no alcanzó, y qué la vuelve mecánica.** «Leé el encabezado» es una
-intención; se olvida bajo apuro ([[la-precondicion-que-se-resuelve-a-mano-se-pierde-justo-cuando-hay-apuro]]
-vive arriba, en este mismo archivo). El mecanismo que no se olvida es **derivar los índices del
+intención; se olvida bajo apuro (la sección «La precondición que se resuelve
+a mano se pierde justo cuando hay apuro» vive más arriba, en **este mismo archivo** — no es una
+entrada aparte, y escribirla como `[[link]]` fue el CUARTO caso del mismo patrón en el turno: cité
+el destino en la forma que supuse, el gate de links lo cazó, y lo cazó porque mide la EXISTENCIA
+del archivo y no la plausibilidad del slug). El mecanismo que no se olvida es **derivar los índices del
 propio sujeto**:
 
 ```python
