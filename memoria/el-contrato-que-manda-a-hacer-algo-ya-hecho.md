@@ -349,3 +349,29 @@ falso, y el dato que lo refutaba estaba **en el mismo archivo abierto**, escrito
 
 Ver [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]]: misma geometría al revés — ahí el que
 appendea destruye el final; acá el final tenía la respuesta y el que ancla no llegó.
+
+## Reincidencia 2026-10-13 — lo volví a hacer, y el disparador estaba a un comando
+
+Hoy le bajé a frontend2 un contrato para **inventariar las 15 filas de device**. Ese inventario
+(`MOBILEVIVO`) ya tenía **cuatro** `cierre_`: 10-06, dos el 10-07 y uno el 10-08. No medí el estado de la
+fila antes de asignarla.
+
+**Por qué volvió a pasar, que es distinto de la primera vez:** no fue por no leer el tablero —la fila
+`MOBILEVIVO` estaba ahí, en `pendiente`. Fue por leer **el estado** y no **la historia**. `pendiente` es el
+estado *correcto* de una medición viva que se re-mide cada vez que entra código; no significa «nadie la hizo
+todavía». El estado contesta «¿se puede trabajar?»; **no** contesta «¿esto ya se entregó N veces?». Para eso
+hay que mirar `cerrado/*/` por el id, y es un comando:
+
+```bash
+ls coordinacion/cerrado/*/ | grep -i MOBILEVIVO   # 4 cierres => NO es trabajo nuevo
+```
+
+**El arreglo fue reescribir, no appendear** — el contrato ya había salido con el trabajo duplicado adentro,
+y de dos artefactos gana el que circula ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+Reescrito: retiro explícito del duplicado, la fila de vuelta a `pendiente` y una fila **nueva** (`DEVICE15`)
+con lo que de verdad faltaba.
+
+**La regla que faltaba:** antes de citar un id en un contrato, medí **dos** cosas, no una — su **estado**
+(¿arrancable?) y su **historia de cierres** (¿ya entregado?). Un id con cierres previos y estado `pendiente`
+no es trabajo nuevo: es una medición que se repite, y asignarla como nueva le hace rehacer a otra sesión lo
+que ya entregó cuatro veces.
