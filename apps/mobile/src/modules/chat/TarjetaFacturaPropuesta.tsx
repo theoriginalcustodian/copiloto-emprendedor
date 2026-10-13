@@ -186,6 +186,17 @@ export function TarjetaFacturaPropuesta({
       }
     >
       <View style={{ gap: tema.espacio.xs }}>
+        {/* `fact-hitl` (mapeo 2026-10-12): el encabezado «Factura C · ARCA» del prototipo. El tipo es el
+            que manda el backend en la propuesta (`tipo_comprobante`) — no se escribe «C» a mano: según la
+            condición fiscal del emisor puede ser otro. Sin tipo, sin encabezado. */}
+        {propuesta.tipoComprobante != null && (
+          <Text
+            testID={`${testID}-tipo`}
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontWeight: '600' }}
+          >
+            {`Factura ${propuesta.tipoComprobante} · ARCA`}
+          </Text>
+        )}
         {nombreCliente !== '' && (
           <Row testID={`${testID}-cliente`}>
             <View style={{ gap: 2, flex: 1 }}>
