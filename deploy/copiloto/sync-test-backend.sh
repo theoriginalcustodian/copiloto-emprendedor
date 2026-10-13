@@ -103,9 +103,12 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `gotrue/.env.gotrue.template`, cuyo real sería `gotrue/.env.gotrue`). El stage no necesita ningún
 # `.env` para correr pytest, así que excluirlos no le cuesta nada al runner y cierra la exposición
 # antes de que exista.
+# `spikes/afip-emit-pdf/RESULT.md` viaja porque `tests/test_afip_payload_archivado.py` lo LEE (la respuesta
+# real de AFIP archivada, contra el contrato del gateway). Sólo ese archivo, no el spike entero: el
+# resto son PNG y un script que el runner no necesita. Si falta en el stage, el test falla (no skipea).
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
   --exclude='.env' --exclude='.env.*' \
-  -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts \
+  -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts spikes/afip-emit-pdf/RESULT.md \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"

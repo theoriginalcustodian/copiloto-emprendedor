@@ -83,6 +83,27 @@ chk "run-smoke-prod.sh exporta UC_ME_CONTRATO_PATH" \
 chk "run-smoke-prod.sh exporta UC_LOGIN_CONTRATO_PATH" \
   "$(grep -q "export UC_LOGIN_CONTRATO_PATH=" "$RUN_SMOKE_PROD" && echo 1 || echo 0)" "revisar $RUN_SMOKE_PROD"
 
+# 6) MISMO MECANISMO para los CUATRO contratos del camino del chat (MECLAVESRESTO, 2026-10-13):
+#    chat / reply / catalog / warm. Cada uno necesita su UC_<EP>_CONTRATO_PATH en el runner, y su
+#    loader tiene que resolver desde el tmpdir con el override y FALLAR sin él (no inventar un set).
+declare -A N_CLAVES=([chat]=2 [reply]=2 [catalog]=1 [warm]=1)
+for ep in chat reply catalog warm; do
+  var="UC_$(echo "$ep" | tr a-z A-Z)_CONTRATO_PATH"
+  cp "$REPO_ROOT/apps/copiloto/${ep}_contrato.py" "$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py"
+  out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u "$var" "$var=$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py" "$PY" -c \
+    "from meclaves_check import cargar_claves_de; print(len(cargar_claves_de('$ep')))" 2>&1)"
+  rc=$?
+  chk "mecanismo nuevo ($ep): override $var al árbol desplegado ⇒ ${N_CLAVES[$ep]} claves" \
+    "$([ $rc -eq 0 ] && [ "$out" = "${N_CLAVES[$ep]}" ] && echo 1 || echo 0)" "rc=$rc out=$out"
+  out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u "$var" "$PY" -c \
+    "from meclaves_check import cargar_claves_de; print(len(cargar_claves_de('$ep')))" 2>&1)"
+  rc=$?
+  chk "fail-closed ($ep): sin $var y sin árbol relativo real ⇒ falla (no inventa un número)" \
+    "$([ $rc -ne 0 ] && echo 1 || echo 0)" "rc=$rc out=$out"
+  chk "run-smoke-prod.sh exporta $var" \
+    "$(grep -q "export $var=" "$RUN_SMOKE_PROD" && echo 1 || echo 0)" "revisar $RUN_SMOKE_PROD"
+done
+
 rm -rf "$CWD_AJENO" "$TMP_SMOKE" "$TMP_DEPLOYED"
 if [ "$fallos" -eq 0 ]; then echo "==> OK: import de meclaves_check resuelve por el camino de run-smoke-prod.sh"; exit 0; fi
 echo "==> $fallos FALLO(S)"; exit 1

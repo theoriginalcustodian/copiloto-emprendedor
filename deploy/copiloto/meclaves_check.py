@@ -45,6 +45,36 @@ def cargar_claves_login_declaradas(ruta=None):
     return _cargar_frozenset_de_modulo(ruta, "auth_login_contrato", "CLAVES_LOGIN")
 
 
+# Los cuatro endpoints del camino del chat (2026-10-13, pedido 7-hallazgos ítem c): hasta acá el
+# smoke sólo comparaba /me y /auth/login; el resto declaraba su set en un `*_contrato.py` que NADIE
+# medía contra la respuesta viva — el mismo set podía derivar mudo. Una fila por endpoint, y el env de
+# override sale del nombre: `UC_<ENDPOINT>_CONTRATO_PATH` (run-smoke-prod.sh exporta los cuatro).
+_CONTRATOS_RESTO = {
+    "chat": ("chat_contrato.py", "CLAVES_CHAT"),
+    "reply": ("reply_contrato.py", "CLAVES_REPLY"),
+    "catalog": ("catalog_contrato.py", "CLAVES_CATALOG"),
+    "warm": ("warm_contrato.py", "CLAVES_WARM"),
+}
+ENDPOINTS_RESTO = tuple(_CONTRATOS_RESTO)
+
+
+def env_override_contrato(endpoint):
+    """Nombre de la variable de entorno que redirige el contrato de `endpoint` al árbol desplegado."""
+    return f"UC_{endpoint.upper()}_CONTRATO_PATH"
+
+
+def cargar_claves_de(endpoint, ruta=None):
+    """CLAVES_<ENDPOINT> de `apps/copiloto/<endpoint>_contrato.py` para chat/reply/catalog/warm.
+
+    Mismo criterio que ME/LOGIN: el set declarado sale del árbol DESPLEGADO cuando el smoke corre
+    desde un tmpdir (override por `env_override_contrato(endpoint)`), nunca del `main` local.
+    Un endpoint que no está en la tabla es un KeyError a propósito: no inventa un set vacío.
+    """
+    archivo, atributo = _CONTRATOS_RESTO[endpoint]
+    ruta = ruta or os.environ.get(env_override_contrato(endpoint)) or os.path.join(_RAIZ_APPS_COPILOTO, archivo)
+    return _cargar_frozenset_de_modulo(ruta, archivo[:-3], atributo)
+
+
 def comparar_claves(recibidas, declaradas):
     """Devuelve (sobra, falta). sobra = llegó en la respuesta y no está declarada; falta = declarada
     y no llegó. Agnóstico al endpoint: quien llama sabe de qué `*_contrato.py` vienen `declaradas`.

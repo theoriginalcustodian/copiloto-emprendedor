@@ -16,7 +16,8 @@ Hace 2 chats con LLM real (COGS ~centavos). Correr antes de abrir la app a teste
 """
 import os, re, sys, time, uuid
 import httpx
-from meclaves_check import cargar_claves_declaradas, cargar_claves_login_declaradas, comparar_claves
+from meclaves_check import (cargar_claves_declaradas, cargar_claves_login_declaradas, cargar_claves_de,
+                            comparar_claves)
 
 BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8099")
 EMAIL = f"smoke-{uuid.uuid4().hex[:8]}@beta.local"
@@ -50,6 +51,19 @@ try:
 except Exception as e:
     sys.exit(f"MECLAVESRESTO: no pude cargar CLAVES_LOGIN de apps/copiloto/auth_login_contrato.py: {e!r}")
 
+# MECLAVESRESTO (cuatro endpoints del chat): /chat, /reply, /catalog, /warm — cada set sale de su
+# apps/copiloto/<endpoint>_contrato.py. Mismo fail-fast: sin set declarado no se compara contra la nada.
+CLAVES_CHAT = CLAVES_REPLY = CLAVES_CATALOG = CLAVES_WARM = None
+try:
+    CLAVES_CHAT = cargar_claves_de("chat")
+    CLAVES_REPLY = cargar_claves_de("reply")
+    CLAVES_CATALOG = cargar_claves_de("catalog")
+    CLAVES_WARM = cargar_claves_de("warm")
+    if not (CLAVES_CHAT and CLAVES_REPLY and CLAVES_CATALOG and CLAVES_WARM):
+        raise ValueError("algún set declarado de chat/reply/catalog/warm quedó vacío")
+except Exception as e:
+    sys.exit(f"MECLAVESRESTO: no pude cargar los contratos de chat/reply/catalog/warm: {e!r}")
+
 client = httpx.Client(base_url=BASE, timeout=30.0)
 results = []
 def rec(step, ok, detail=""):
@@ -63,6 +77,10 @@ def reply_text_of(row):
             return v
     return ""
 
+# Payloads CRUDOS de /reply (MECLAVESRESTO): el primer 200 es el que se compara contra CLAVES_REPLY.
+# Se captura acá porque poll_reply devuelve sólo el texto, y el shape ya no estaría a la vista.
+REPLY_PAYLOADS = []
+
 def poll_reply(token, session_id, after_id=0, timeout=CHAT_TIMEOUT):
     deadline = time.time() + timeout
     h = {"Authorization": f"Bearer {token}"}
@@ -70,6 +88,7 @@ def poll_reply(token, session_id, after_id=0, timeout=CHAT_TIMEOUT):
         try:
             r = client.get("/reply", params={"session_id": session_id, "after_id": after_id}, headers=h)
             if r.status_code == 200:
+                REPLY_PAYLOADS.append(r.json())
                 texts = [t for t in (reply_text_of(x) for x in r.json().get("replies", [])) if t]
                 if texts:
                     return " | ".join(texts)
@@ -146,6 +165,19 @@ try:
     rec("/catalog", r.status_code == 200 and len(svcs) > 0, f"status={r.status_code} n_services={len(svcs)}")
 except Exception as e:
     rec("/catalog", False, repr(e))
+    r = None
+# MECLAVESRESTO: set REAL de /catalog contra CLAVES_CATALOG. Bloque propio (no dentro del try de arriba)
+# para que emita UN solo rec pase lo que pase: un rec dentro del try + otro en el except duplica.
+try:
+    if r is not None and r.status_code == 200:
+        sobra, falta = comparar_claves(r.json().keys(), CLAVES_CATALOG)
+        rec("/catalog: set de claves = CLAVES_CATALOG (MECLAVESRESTO)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("/catalog: set de claves = CLAVES_CATALOG (MECLAVESRESTO)", False,
+            f"sin payload: status={getattr(r, 'status_code', None)}")
+except Exception as e:
+    rec("/catalog: set de claves = CLAVES_CATALOG (MECLAVESRESTO)", False, repr(e))
 
 # 5) /warm (best-effort)
 try:
@@ -153,6 +185,19 @@ try:
     rec("/warm (memoria)", r.status_code == 200, f"status={r.status_code} {r.json() if r.status_code==200 else r.text[:80]}")
 except Exception as e:
     rec("/warm (memoria)", False, repr(e))
+    r = None
+# MECLAVESRESTO: los 3 `return` de web.py:warm comparten forma ({"warmed": ...}); es crítico porque
+# /warm responde 200 aun con la memoria caída (`warmed: False`) — un no-200 acá no es "best-effort".
+try:
+    if r is not None and r.status_code == 200:
+        sobra, falta = comparar_claves(r.json().keys(), CLAVES_WARM)
+        rec("/warm: set de claves = CLAVES_WARM (MECLAVESRESTO)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("/warm: set de claves = CLAVES_WARM (MECLAVESRESTO)", False,
+            f"sin payload: status={getattr(r, 'status_code', None)}")
+except Exception as e:
+    rec("/warm: set de claves = CLAVES_WARM (MECLAVESRESTO)", False, repr(e))
 
 # 6) CHAT simple → el agente responde E2E (CRÍTICO)
 # H-A4-13: cada /chat arranca un ConversationWorkflow (`wf_id` en la respuesta, `web.py:714`) que el
@@ -160,6 +205,7 @@ except Exception as e:
 # guardan los `wf_id` para terminarlos en el CLEANUP de más abajo.
 wf_ids_a_terminar = []
 sid = f"smoke-{uuid.uuid4().hex[:8]}"
+r = None
 try:
     r = client.post("/chat", headers=H, json={"session_id": sid, "text": "Hola, ¿qué podés hacer por mí? Respondé breve.", "kind": "text"})
     if r.status_code == 200 and r.json().get("accepted"):
@@ -171,6 +217,28 @@ try:
         rec("chat simple → el agente responde", False, f"POST /chat status={r.status_code} body={r.text[:120]}")
 except Exception as e:
     rec("chat simple → el agente responde", False, repr(e))
+# MECLAVESRESTO: set REAL de la respuesta de POST /chat (el `return` del handler, no lo que /chat
+# recibe) y del primer 200 de GET /reply que levantó poll_reply. Se miden sobre el primer chat; el
+# segundo es el mismo handler y no agrega señal. Bloques propios: un solo rec por step.
+try:
+    if r is not None and r.status_code == 200:
+        sobra, falta = comparar_claves(r.json().keys(), CLAVES_CHAT)
+        rec("/chat: set de claves = CLAVES_CHAT (MECLAVESRESTO)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("/chat: set de claves = CLAVES_CHAT (MECLAVESRESTO)", False,
+            f"sin payload: status={getattr(r, 'status_code', None)}")
+except Exception as e:
+    rec("/chat: set de claves = CLAVES_CHAT (MECLAVESRESTO)", False, repr(e))
+try:
+    if REPLY_PAYLOADS:
+        sobra, falta = comparar_claves(REPLY_PAYLOADS[0].keys(), CLAVES_REPLY)
+        rec("/reply: set de claves = CLAVES_REPLY (MECLAVESRESTO)", not sobra and not falta,
+            f"sobra_no_declaradas={sobra} faltan_declaradas={falta}")
+    else:
+        rec("/reply: set de claves = CLAVES_REPLY (MECLAVESRESTO)", False, "sin payload: poll_reply no obtuvo ningún 200")
+except Exception as e:
+    rec("/reply: set de claves = CLAVES_REPLY (MECLAVESRESTO)", False, repr(e))
 
 # 7) CHAT ReAct multi-paso
 sid2 = f"smoke-{uuid.uuid4().hex[:8]}"
@@ -497,14 +565,20 @@ CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)
         # MECLAVESRESTO: mismo criterio para /auth/login — es el único de los 5 endpoints que no se
         # puede derivar del repo (proxy puro de GoTrue), así que este es el único control real.
         "login: set de claves = CLAVES_LOGIN (MECLAVESRESTO)",
+        # MECLAVESRESTO (chat/reply/catalog/warm): los cuatro endpoints del camino del chat. Críticos por
+        # la misma razón que /me: un set que deriva mudo es el contrato roto que la app no ve hasta el device.
+        "/chat: set de claves = CLAVES_CHAT (MECLAVESRESTO)",
+        "/reply: set de claves = CLAVES_REPLY (MECLAVESRESTO)",
+        "/catalog: set de claves = CLAVES_CATALOG (MECLAVESRESTO)",
+        "/warm: set de claves = CLAVES_WARM (MECLAVESRESTO)",
         # Crítico y no informativo: si el alta abierta vuelve, es una vulnerabilidad en un repo
         # público, no un check amarillo. Que tumbe el smoke es el punto.
         "alta SIN invite-token es rechazada (C4.1)"}
-# Denominador: 39 = ruta completa (token admin, trauma fabricado, bundle, redirect, set de /me, set
-# de /auth/login). Medido con un httpx de mentira que recorre todo el script (ver
-# scripts/test-smoke-veredicto.py). Si un rec() se borra o una rama deja de emitir, el total cambia y
-# el veredicto sale ROJO: un check que desaparece no puede pasar como verde.
-EXPECTED_TOTAL = 39
+# Denominador: 43 = ruta completa (token admin, trauma fabricado, bundle, redirect, set de /me, set
+# de /auth/login, sets de /chat /reply /catalog /warm). Medido con un httpx de mentira que recorre
+# todo el script (ver scripts/test-smoke-veredicto.py). Si un rec() se borra o una rama deja de emitir,
+# el total cambia y el veredicto sale ROJO: un check que desaparece no puede pasar como verde.
+EXPECTED_TOTAL = 43
 
 def veredicto(results, crit, expected_total):
     """(líneas, exit_code). Dice SIEMPRE los dos números: críticos y no-críticos.

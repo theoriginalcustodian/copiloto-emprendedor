@@ -25,7 +25,7 @@ scp -q "$ROOT/deploy/copiloto/smoke_beta_e2e.py" "$ROOT/deploy/copiloto/meclaves
   || { echo "ABORT [run-smoke-prod]: scp de smoke_beta_e2e.py/meclaves_check.py falló." >&2; ssh "$HOST" "rm -rf '$TMPDIR_REMOTO'" 2>/dev/null; exit 1; }
 {
   echo "# smoke beta e2e · sha=$(git -C "$ROOT" rev-parse HEAD) · $(date -u +%FT%TZ) · host=$HOST · tmpdir_remoto=$TMPDIR_REMOTO"
-  ssh "$HOST" "set -a; . /etc/unreal-copilot/copiloto.env; . /etc/unreal-copilot/fusion-pg.env; . /etc/unreal-copilot/fusion-supabase.env; set +a; export UC_ME_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/me_contrato.py'; export UC_LOGIN_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/auth_login_contrato.py'; cd '$TMPDIR_REMOTO' && /opt/uc-copiloto-venv/bin/python smoke_beta_e2e.py; rc=\$?; rm -rf '$TMPDIR_REMOTO'; exit \$rc"
+  ssh "$HOST" "set -a; . /etc/unreal-copilot/copiloto.env; . /etc/unreal-copilot/fusion-pg.env; . /etc/unreal-copilot/fusion-supabase.env; set +a; export UC_ME_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/me_contrato.py'; export UC_LOGIN_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/auth_login_contrato.py'; export UC_CHAT_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/chat_contrato.py'; export UC_REPLY_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/reply_contrato.py'; export UC_CATALOG_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/catalog_contrato.py'; export UC_WARM_CONTRATO_PATH='$REMOTE_REPO/apps/copiloto/warm_contrato.py'; cd '$TMPDIR_REMOTO' && /opt/uc-copiloto-venv/bin/python smoke_beta_e2e.py; rc=\$?; rm -rf '$TMPDIR_REMOTO'; exit \$rc"
   echo "# exit=$?"
 } > "$OUT" 2>&1
 rc=$(grep -o '^# exit=[0-9]*' "$OUT" | tail -1 | cut -d= -f2)
