@@ -67,10 +67,10 @@ describe('actividad.ts', () => {
 
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
-    expect(res.items[0].id).toBe('factura:42');
-    expect(res.items[0].monto).toBe('136000.00');
-    expect(typeof res.items[0].monto).toBe('string');
-    expect(res.items[0].signo).toBe('entra');
+    expect(res.items[0]!.id).toBe('factura:42');
+    expect(res.items[0]!.monto).toBe('136000.00');
+    expect(typeof res.items[0]!.monto).toBe('string');
+    expect(res.items[0]!.signo).toBe('entra');
     expect(res.cursor).toBe('c1');
   });
 
@@ -86,33 +86,33 @@ describe('actividad.ts', () => {
 
     await listarActividad({ cursor: '2026-07-22T14:30:00Z|factura:42', limit: 20 });
 
-    expect(peticiones[0].path).toBe(
+    expect(peticiones[0]!.path).toBe(
       '/actividad?limit=20&cursor=2026-07-22T14%3A30%3A00Z%7Cfactura%3A42',
     );
   });
 
   it('no manda cursor cuando es null o vacío', async () => {
     await listarActividad({ cursor: null });
-    expect(peticiones[0].path).toBe('/actividad');
+    expect(peticiones[0]!.path).toBe('/actividad');
 
     await listarActividad({ cursor: '' });
-    expect(peticiones[1].path).toBe('/actividad');
+    expect(peticiones[1]!.path).toBe('/actividad');
   });
 
   it('acota por función: manda `funcion` en la query', async () => {
     await listarActividad({ funcion: 'gastos', limit: 20 });
-    expect(peticiones[0].path).toBe('/actividad?funcion=gastos&limit=20');
+    expect(peticiones[0]!.path).toBe('/actividad?funcion=gastos&limit=20');
   });
 
   it('busca por texto: manda `q` en la query', async () => {
     await listarActividad({ funcion: 'gastos', q: 'nafta' });
-    expect(peticiones[0].path).toBe('/actividad?funcion=gastos&q=nafta');
+    expect(peticiones[0]!.path).toBe('/actividad?funcion=gastos&q=nafta');
   });
 
   it('sin `funcion` ni `q` la URL queda idéntica a lo ya medido (no rompe el cursor)', async () => {
     // CONTROL: agregar los dos params opcionales no puede haber cambiado la forma vieja de la URL.
     await listarActividad({ limit: 20, cursor: '2026-07-22T14:30:00Z|factura:42' });
-    expect(peticiones[0].path).toBe(
+    expect(peticiones[0]!.path).toBe(
       '/actividad?limit=20&cursor=2026-07-22T14%3A30%3A00Z%7Cfactura%3A42',
     );
   });
@@ -137,7 +137,7 @@ describe('actividad.ts', () => {
 
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
-    expect(res.items[0].signo).toBe('neutro');
+    expect(res.items[0]!.signo).toBe('neutro');
   });
 
   it('un `tipo` desconocido NO se descarta — se muestra igual', async () => {
@@ -150,7 +150,7 @@ describe('actividad.ts', () => {
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
     expect(res.items).toHaveLength(1);
-    expect(res.items[0].tipo).toBe('reintegro');
+    expect(res.items[0]!.tipo).toBe('reintegro');
   });
 
   it('un 200 con el HTML del SPA es no_disponible, no una excepción de parseo', async () => {

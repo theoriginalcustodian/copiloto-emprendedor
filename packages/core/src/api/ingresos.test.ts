@@ -72,7 +72,7 @@ describe('listarIngresos', () => {
 
     const res = await listarIngresos();
 
-    if (res.status === 'ok') expect(res.ingresos[0].falta).toBeNull();
+    if (res.status === 'ok') expect(res.ingresos[0]!.falta).toBeNull();
     else throw new Error('esperaba ok');
   });
 
@@ -84,8 +84,8 @@ describe('listarIngresos', () => {
     const res = await listarIngresos();
 
     if (res.status === 'ok') {
-      expect(res.ingresos[0].medio).toBeNull();
-      expect(res.ingresos[0].concepto).toBeNull();
+      expect(res.ingresos[0]!.medio).toBeNull();
+      expect(res.ingresos[0]!.concepto).toBeNull();
     } else throw new Error('esperaba ok');
   });
 
@@ -96,7 +96,7 @@ describe('listarIngresos', () => {
 
     const res = await listarIngresos();
 
-    if (res.status === 'ok') expect(res.ingresos[0].origen).toBe('manual');
+    if (res.status === 'ok') expect(res.ingresos[0]!.origen).toBe('manual');
     else throw new Error('esperaba ok');
   });
 
@@ -114,7 +114,7 @@ describe('registrarIngreso', () => {
 
     const res = await registrarIngreso({ monto: '85000' });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ monto: '85000' });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '85000' });
     if (res.status === 'ok') expect(res.ingreso.falta).toEqual(['cliente', 'medio', 'concepto']);
     else throw new Error('esperaba ok');
   });
@@ -154,7 +154,7 @@ describe('registrarIngreso', () => {
 
     await registrarIngreso({ monto: '85000', confirmarDuplicado: true });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ monto: '85000', confirmar_duplicado: true });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '85000', confirmar_duplicado: true });
   });
 
   it('`confirmarDuplicado: false` NO viaja — sería ruido en cada alta', async () => {
@@ -162,7 +162,7 @@ describe('registrarIngreso', () => {
 
     await registrarIngreso({ monto: '1', confirmarDuplicado: false });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ monto: '1' });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '1' });
   });
 
   it('el 400 devuelve el motivo del backend, no un genérico', async () => {
@@ -178,7 +178,7 @@ describe('registrarIngreso', () => {
 
     const res = await registrarIngreso({ monto: '85000', origen: 'voz' });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
     if (res.status === 'ok') expect(res.ingreso.origen).toBe('voz');
     else throw new Error('esperaba ok');
   });
@@ -188,7 +188,7 @@ describe('registrarIngreso', () => {
 
     await registrarIngreso({ monto: '1' });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ monto: '1' });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '1' });
   });
 
   /**
@@ -201,14 +201,14 @@ describe('registrarIngreso', () => {
     responder = () => respuesta(201, { ingreso: { id: 13, monto: '85000.00', origen: 'voz', falta: [] } });
 
     await registrarIngreso({ monto: '85000', origen: 'voz', idemKey: 'ingreso:assistant-7' });
-    expect(peticiones[0].cuerpoJson).toEqual({
+    expect(peticiones[0]!.cuerpoJson).toEqual({
       monto: '85000',
       origen: 'voz',
       idem_key: 'ingreso:assistant-7',
     });
 
     await registrarIngreso({ monto: '85000', origen: 'voz' });
-    expect(peticiones[1].cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
+    expect(peticiones[1]!.cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
   });
 
   it('`idemKey` y `confirmarDuplicado` conviven — es el MISMO gesto, confirmado tras el 409', async () => {
@@ -216,7 +216,7 @@ describe('registrarIngreso', () => {
 
     await registrarIngreso({ monto: '85000', idemKey: 'ingreso:assistant-7', confirmarDuplicado: true });
 
-    expect(peticiones[0].cuerpoJson).toEqual({
+    expect(peticiones[0]!.cuerpoJson).toEqual({
       monto: '85000',
       idem_key: 'ingreso:assistant-7',
       confirmar_duplicado: true,
@@ -232,9 +232,9 @@ describe('completarIngreso', () => {
 
     await completarIngreso(9, { medio: 'efectivo' });
 
-    expect(peticiones[0].metodo).toBe('PATCH');
-    expect(peticiones[0].path).toBe('/ingresos/9');
-    expect(peticiones[0].cuerpoJson).toEqual({ medio: 'efectivo' });
+    expect(peticiones[0]!.metodo).toBe('PATCH');
+    expect(peticiones[0]!.path).toBe('/ingresos/9');
+    expect(peticiones[0]!.cuerpoJson).toEqual({ medio: 'efectivo' });
   });
 
   it('el 404 es semántico', async () => {
@@ -248,7 +248,7 @@ describe('borrarIngreso', () => {
     responder = () => respuesta(200, { borrado: 9 });
 
     expect(await borrarIngreso(9)).toEqual({ status: 'ok' });
-    expect(peticiones[0].metodo).toBe('DELETE');
+    expect(peticiones[0]!.metodo).toBe('DELETE');
   });
 
   it('el 404 cubre «no existe» y «no es borrable» — el backend usa el mismo código', async () => {

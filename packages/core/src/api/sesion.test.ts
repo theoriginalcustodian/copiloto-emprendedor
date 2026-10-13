@@ -79,7 +79,7 @@ describe('una MUERTE, un AVISO — la tormenta de 401', () => {
     // aparece en la pantalla del emprendedor, que abre tres llamadas de una.
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
-    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok', refresh: null }), apiBase: '' });
+    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok', refresh: null }) });
     responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'jwt expired' }) });
 
     await Promise.all([
@@ -99,7 +99,7 @@ describe('una MUERTE, un AVISO — la tormenta de 401', () => {
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
     const tokens = almacen({ token: 'tok', refresh: null });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'jwt expired' }) });
 
     await apiClient.get('/clientes').catch(() => undefined);
@@ -122,7 +122,7 @@ describe('una MUERTE, un AVISO — la tormenta de 401', () => {
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
     const tokens = almacen({ token: null, refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
 
     notificarSesionExpirada(); // una muerte previa dejó el candado cerrado
     expect(avisos).toBe(1);
@@ -148,7 +148,7 @@ describe('cuándo lo dispara el cliente HTTP', () => {
   it('EL QUE IMPORTA: 401 que mata la sesión → limpia tokens Y avisa', async () => {
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
-    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok', refresh: null }), apiBase: '' });
+    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok', refresh: null }) });
     responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'Not enough segments' }) });
 
     await expect(apiClient.get('/clientes')).rejects.toBeInstanceOf(UnauthorizedError);
@@ -162,7 +162,7 @@ describe('cuándo lo dispara el cliente HTTP', () => {
     // usuario que escribe mal la contraseña vería "tu sesión venció", que es mentira.
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
-    configurarApi({ http: httpFake, tokens: almacen({}), apiBase: '' });
+    configurarApi({ http: httpFake, tokens: almacen({}) });
     responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'credenciales inválidas' }) });
 
     await expect(
@@ -176,7 +176,7 @@ describe('cuándo lo dispara el cliente HTTP', () => {
   it('control: un 403 (cuenta suspendida) tampoco avisa — la credencial anda, la cuenta no opera', async () => {
     let avisos = 0;
     const baja = alExpirarSesion(() => { avisos += 1; });
-    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok' }), apiBase: '' });
+    configurarApi({ http: httpFake, tokens: almacen({ token: 'tok' }) });
     responder = () => ({ ok: false, status: 403, json: async () => ({ detail: 'cuenta suspendida' }) });
 
     await expect(apiClient.get('/clientes')).rejects.toThrow();
