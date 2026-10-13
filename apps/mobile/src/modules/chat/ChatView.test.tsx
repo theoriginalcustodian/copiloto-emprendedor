@@ -57,7 +57,7 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('./BotonVoz', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    BotonVoz: ({ onIniciar, onSoltarSinFijar, onFijar, disabled }: any) => (
+    BotonVoz: ({ onIniciar, onSoltarSinFijar, onFijar, onCancelando, onCerca, disabled }: any) => (
       <>
         <Pressable testID="boton-voz" disabled={disabled} onPress={onIniciar}>
           <Text>mic</Text>
@@ -67,6 +67,12 @@ jest.mock('./BotonVoz', () => {
         </Pressable>
         <Pressable testID="boton-voz-soltar-test" onPress={onSoltarSinFijar}>
           <Text>soltar sin fijar (mock)</Text>
+        </Pressable>
+        <Pressable testID="boton-voz-cancelando-test" onPress={() => onCancelando?.(true)}>
+          <Text>armar cancelación (mock del deslizar a la izquierda)</Text>
+        </Pressable>
+        <Pressable testID="boton-voz-cerca-test" onPress={() => onCerca?.(true)}>
+          <Text>cerca de fijar (mock del deslizar hacia arriba)</Text>
         </Pressable>
       </>
     ),
@@ -339,6 +345,65 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(screen.getByTestId('boton-voz')).toBeTruthy();
     // Sin fijar todavía: los controles flotantes no existen.
     expect(screen.queryByTestId('voz-enviar')).toBeNull();
+  });
+
+  // Filas `bloqueado`/`grabando` (TRIAJE15): el usuario no tiene que ADIVINAR el gesto.
+  it('grabando sin fijar: pistas de candado y de cancelar; en reposo no hay ninguna', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-pistas')).toBeTruthy());
+    expect(screen.getByTestId('voz-pista-cancelar')).toBeTruthy();
+    expect(screen.getByTestId('voz-pista-candado')).toBeTruthy();
+    expect(screen.queryByTestId('voz-cancelar-aviso')).toBeNull();
+  });
+
+  it('al armar la cancelación el aviso «Soltá para cancelar» REEMPLAZA a las pistas', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-pistas')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-cancelando-test'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-cancelar-aviso')).toBeTruthy());
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
+  });
+
+  it('fijar apaga las pistas del gesto: ya no hay nada que deslizar', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-pistas')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
+  });
+
+  it('en pausa: «En pausa» en TEXTO y la onda se apaga; al reanudar vuelve la onda', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+    await waitFor(() => expect(screen.getByTestId('voz-pausar')).toBeTruthy());
+    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('voz-pausar'));
+
+    await waitFor(() => expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('pausado'));
+    expect(screen.getByTestId('voz-en-pausa')).toHaveTextContent('En pausa');
+    expect(screen.queryByTestId('onda-flotante')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('voz-reanudar'));
+
+    await waitFor(() => expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('grabando'));
+    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
+    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
   });
 
   it('deslizar hacia arriba (mock: onFijar) muestra los controles flotantes y esconde el botón', async () => {

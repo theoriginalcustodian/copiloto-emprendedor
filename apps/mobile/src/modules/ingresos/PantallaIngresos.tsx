@@ -8,6 +8,7 @@ import {
   borrarIngreso,
   formatearFechaCorta,
   formatearImporte,
+  formatearMesDePeriodo,
   listarIngresos,
   obtenerResumenIngresos,
   type Ingreso,
@@ -136,7 +137,14 @@ export function PantallaIngresos() {
   }
 
   return (
-    <MarcoGlass titulo="Ingresos" icono="ingresos" testID="pantalla-ingresos">
+    // `etiqueta` = el período del resumen («Agosto»), como `.per` del prototipo. Sin resumen no hay
+    // período que decir, y no se inventa uno con la fecha del teléfono.
+    <MarcoGlass
+      titulo="Ingresos"
+      icono="ingresos"
+      etiqueta={resumen != null ? formatearMesDePeriodo(resumen.periodo) : undefined}
+      testID="pantalla-ingresos"
+    >
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="ingresos-cargando" color={tema.color.acento} />
@@ -226,7 +234,12 @@ export function PantallaIngresos() {
               {/* 🔴 Decisión C: la lista rica de ingresos (con `origen`, `borrable`) NO se toca — la
                   envuelve el buscador. Sin query, se muestra intacta; con query, pega a
                   `/actividad?funcion=ingresos&q=` y muestra el card uniforme. */}
-              <BuscadorActividad funcion="ingresos" testIDBase="ingresos-busqueda" placeholder="Buscar un ingreso">
+              <BuscadorActividad
+                funcion="ingresos"
+                testIDBase="ingresos-busqueda"
+                placeholder="Buscar un ingreso"
+                rotuloLista="Últimos"
+              >
               {ingresos.length === 0 && (
                 <Text testID="ingresos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
                   Todavía no entró nada. Cuando cobres, anotalo acá — o decíselo al copiloto hablando.

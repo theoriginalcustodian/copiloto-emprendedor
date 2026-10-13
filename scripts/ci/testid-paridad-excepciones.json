@@ -4917,6 +4917,56 @@
       "id": "recibo-ejecutado",
       "motivo": "C-D3 (recibo de la accion ejecutada, piloto Gmail): el par SI existe en web, pero no es un literal `data-testid=\"...\"`: MessageList.tsx lo declara con la prop `testId=\"recibo-ejecutado\"` del `Recibo` del design-system, que lo emite como data-testid del contenedor. testid_paridad.py solo ve literales (DINAMICO/prop no), asi que acusa un faltante que no es real. Limite del instrumento, no asimetria de producto: el test web (MessageList.test.tsx, `recibo-ejecutado`) lo ejercita. Se saca si el script aprende a leer la prop `testId` de Recibo.",
       "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pistas": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pistas",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: contenedor de las dos pistas del gesto (cancelar + candado).",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pista-cancelar": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pista-cancelar",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «Deslizá para cancelar» (prototipo `rec-hint`).",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pista-candado": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pista-candado",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: candado + flecha (prototipo `lock-col`); alternativa WCAG 2.5.1 a sostener la presión.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-en-pausa": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-en-pausa",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «En pausa» en texto (WCAG 1.4.1) — vive donde estaba la onda del gesto fijado.",
+      "pantalla": "modules/chat"
+    },
+    "src/theme::glass-etiqueta": {
+      "en": [
+        "apps/mobile/src/theme/glass/MarcoGlass.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "glass-etiqueta",
+      "motivo": "Período junto al título (prototipo `.atras .per`, index.html:2248) en el MARCO nativo `MarcoGlass`, que la web no tiene (es el vidrio del shell móvil; los glass-* hermanos tienen la misma excepción). La web pinta el mismo dato en el header de su pantalla con la clase `ingresos-screen__periodo`. Fila `ingresos` de TRIAJE15.",
+      "pantalla": "src/theme"
     }
   }
 }

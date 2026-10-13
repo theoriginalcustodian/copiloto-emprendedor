@@ -29,6 +29,11 @@ jest.mock('../chat/useVozComando', () => ({
   useVozComando: () => mockVoz,
 }));
 
+// El `ControlesFlotantes` real anima con `FadeIn.duration` de Reanimated, que el mock global no
+// exporta (mismo motivo que el override local de `ChatView.test.tsx`). Acá no se prueban los botones:
+// eso es `ControlesFlotantes.test.tsx`; se prueba qué muestra `MicFuncion` ALREDEDOR de ellos.
+jest.mock('../chat/ControlesFlotantes', () => ({ ControlesFlotantes: () => null }));
+
 const mockTranscribir = jest.fn();
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
@@ -38,6 +43,7 @@ jest.mock('@copiloto/core', () => {
 import { deleteAsync } from 'expo-file-system/legacy';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { UMBRAL_FIJAR_PX } from '../chat/BotonVoz';
 import { MicFuncion } from './MicFuncion';
 
 async function montar(props: Partial<React.ComponentProps<typeof MicFuncion>> = {}) {
@@ -169,5 +175,48 @@ describe('MicFuncion (mobile)', () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith('No se entendió el audio. Probá de nuevo.'));
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
+  });
+
+  // Filas `bloqueado`/`grabando` (TRIAJE15): el mismo composer, en contexto de formulario, tampoco deja
+  // que el usuario adivine el gesto ni que «en pausa» dependa de que la onda deje de moverse.
+  it('grabando sin fijar: pistas de cancelar y de candado (el mismo composer que el chat)', async () => {
+    mockVoz.fase = 'grabando';
+    await montar();
+
+    expect(screen.getByTestId('voz-pistas')).toBeTruthy();
+    expect(screen.getByTestId('voz-pista-candado')).toBeTruthy();
+  });
+
+  it('en reposo no hay pistas: el botón solo', async () => {
+    await montar();
+
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
+    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
+  });
+
+  it('fijado y en pausa: «En pausa» en texto, sin pistas del gesto', async () => {
+    const espiaPan = jest.spyOn(Gesture, 'Pan');
+    mockVoz.fase = 'grabando';
+    await montar();
+    const recognizer = espiaPan.mock.results[0].value as {
+      handlers: {
+        onBegin?: (e: unknown) => void;
+        onUpdate?: (e: { translationX: number; translationY: number }) => void;
+      };
+    };
+    espiaPan.mockRestore();
+    recognizer.handlers.onBegin?.({});
+    recognizer.handlers.onUpdate?.({ translationX: 0, translationY: -(UMBRAL_FIJAR_PX + 1) });
+    await waitFor(() => expect(screen.getByTestId('mic-funcion-fijado')).toBeTruthy());
+
+    mockVoz.fase = 'pausado';
+    await screen.rerender(
+      <ThemeProvider>
+        <MicFuncion onTranscripcion={jest.fn()} contexto="gasto" />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId('voz-en-pausa')).toHaveTextContent('En pausa');
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
   });
 });

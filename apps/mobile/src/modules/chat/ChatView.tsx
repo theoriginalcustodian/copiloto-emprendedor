@@ -5,10 +5,10 @@ import type { FlatList } from 'react-native-gesture-handler';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
-import { AvisoCancelar } from './AvisoCancelar';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
+import { EstadoEnPausa, PistasGestoVoz } from './PistasVoz';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
@@ -103,6 +103,7 @@ export function ChatView() {
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [cerca, setCerca] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -213,7 +214,11 @@ export function ChatView() {
     })();
   }, [foto, enviarFoto]);
 
-  const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
+  // La onda sólo corre mientras graba: en pausa la reemplaza el texto «En pausa» (WCAG 1.4.1 — el
+  // estado no puede depender sólo de que algo deje de moverse).
+  const ondaVisible = voz.fase === 'grabando';
+  const enPausa = voz.fase === 'pausado';
+  const pistasVisibles = voz.fase === 'grabando' || cancelando;
 
   return (
     /**
@@ -257,15 +262,14 @@ export function ChatView() {
               <Onda niveles={voz.niveles} />
             </View>
           )}
-          {cancelando && (
-            <AvisoCancelar />
-          )}
+          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
             onFijar={onFijarVoz}
             onCancelar={onCancelarVoz}
             onCancelando={setCancelando}
+            onCerca={setCerca}
             disabled={voz.fase !== 'inactivo'}
             scrollRef={scrollRef}
           />
@@ -282,6 +286,7 @@ export function ChatView() {
               <Onda niveles={voz.niveles} />
             </View>
           )}
+          {enPausa && <EstadoEnPausa />}
           <ControlesFlotantes
             fase={voz.fase}
             alPausar={voz.pausar}

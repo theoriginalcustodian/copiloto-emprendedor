@@ -6,7 +6,14 @@ import { Gesture, type FlatList } from 'react-native-gesture-handler';
 
 import { ECUALIZADOR_BARRAS } from '../../theme/glass/ecualizadorPalette';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { BotonVoz, DURACION_MINIMA_MS, UMBRAL_CANCELAR_PX, UMBRAL_FIJAR_PX, type BotonVozProps } from './BotonVoz';
+import {
+  BotonVoz,
+  DURACION_MINIMA_MS,
+  FRACCION_CERCA_DE_FIJAR,
+  UMBRAL_CANCELAR_PX,
+  UMBRAL_FIJAR_PX,
+  type BotonVozProps,
+} from './BotonVoz';
 
 /**
  * `GestureDetector` está mockeado GLOBALMENTE como passthrough en `jest.setup.js`, así que **el
@@ -236,6 +243,97 @@ describe('BotonVoz -- BL-D2: deslizar a la izquierda cancela, toque corto descar
     const { handlers } = await montarCapturandoElGesto({ onFijar });
     gestoCompleto(handlers, [0], { desplazamientosX: [-(UMBRAL_CANCELAR_PX + 50)] });
     expect(onFijar).not.toHaveBeenCalled();
+  });
+});
+
+// Fila `bloqueado` (TRIAJE15): `DECISIONES.md:112` — «gana el que domina el movimiento; un gesto en
+// diagonal no puede disparar cancelar y bloquear a la vez». DEVICE15 midió lo contrario: el candado
+// ganaba siempre (`diag-*`).
+describe('BotonVoz -- los dos ejes: gana el que DOMINA el movimiento', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('diagonal con más recorrido a la IZQUIERDA que hacia arriba: cancela, NO fija', async () => {
+    const onFijar = jest.fn();
+    const onCancelar = jest.fn();
+    const onCancelando = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onFijar, onCancelar, onCancelando });
+
+    // Arriba pasa el umbral de fijar (+10) pero la izquierda lo supera (+60): domina la izquierda.
+    gestoCompleto(handlers, [-(UMBRAL_FIJAR_PX + 10)], { desplazamientosX: [-(UMBRAL_FIJAR_PX + 60)] });
+
+    expect(onFijar).not.toHaveBeenCalled();
+    expect(onCancelando).toHaveBeenNthCalledWith(1, true);
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+  });
+
+  it('diagonal con más recorrido hacia ARRIBA que a la izquierda: fija, NO arma la cancelación', async () => {
+    const onFijar = jest.fn();
+    const onCancelar = jest.fn();
+    const onCancelando = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onFijar, onCancelar, onCancelando });
+
+    // Izquierda pasa el umbral de cancelar (+5) pero arriba lo supera con holgura: domina «arriba».
+    gestoCompleto(handlers, [-(UMBRAL_FIJAR_PX + 60)], { desplazamientosX: [-(UMBRAL_CANCELAR_PX + 5)] });
+
+    expect(onFijar).toHaveBeenCalledTimes(1);
+    expect(onCancelando).not.toHaveBeenCalledWith(true);
+    expect(onCancelar).not.toHaveBeenCalled();
+  });
+
+  it('cancelación armada y el dedo pasa a dominar hacia arriba: se des-arma ANTES de soltar', async () => {
+    const onCancelando = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCancelando });
+
+    gestoCompleto(handlers, [0, -(UMBRAL_CANCELAR_PX + 80)], {
+      desplazamientosX: [-(UMBRAL_CANCELAR_PX + 1), -(UMBRAL_CANCELAR_PX + 1)],
+    });
+
+    expect(onCancelando).toHaveBeenNthCalledWith(1, true);
+    expect(onCancelando).toHaveBeenNthCalledWith(2, false);
+  });
+});
+
+// Fila `bloqueado`: la devolución del candado llega ANTES de soltar (`index.html:3001`).
+describe('BotonVoz -- «cerca de fijar»: avisa antes de cruzar el umbral', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const justoCerca = Math.floor(UMBRAL_FIJAR_PX * FRACCION_CERCA_DE_FIJAR) + 1;
+
+  it('subir más de la fracción del umbral avisa «cerca» sin fijar; volver abajo lo apaga', async () => {
+    const onCerca = jest.fn();
+    const onFijar = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCerca, onFijar });
+
+    gestoCompleto(handlers, [-justoCerca, -(justoCerca - 3)]);
+
+    expect(onCerca).toHaveBeenNthCalledWith(1, true);
+    expect(onCerca).toHaveBeenNthCalledWith(2, false);
+    expect(onFijar).not.toHaveBeenCalled();
+  });
+
+  it('seguir subiendo hasta fijar apaga «cerca» (ya no hay nada cerca: está fijado)', async () => {
+    const onCerca = jest.fn();
+    const onFijar = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCerca, onFijar });
+
+    gestoCompleto(handlers, [-justoCerca, -(UMBRAL_FIJAR_PX + 1)]);
+
+    expect(onFijar).toHaveBeenCalledTimes(1);
+    expect(onCerca).toHaveBeenLastCalledWith(false);
+  });
+
+  it('soltar estando «cerca» sin fijar lo apaga: el aviso no sobrevive al gesto', async () => {
+    const onCerca = jest.fn();
+    const { handlers } = await montarCapturandoElGesto({ onCerca });
+
+    gestoCompleto(handlers, [-justoCerca]);
+
+    expect(onCerca).toHaveBeenNthCalledWith(1, true);
+    expect(onCerca).toHaveBeenLastCalledWith(false);
   });
 });
 
