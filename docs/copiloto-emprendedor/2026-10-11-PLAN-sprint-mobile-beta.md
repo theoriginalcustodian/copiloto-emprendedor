@@ -71,9 +71,9 @@ porque engancha filas de otras tablas.
 
 | bloque | n | resultado |
 |---|---|---|
-| `nativa-sin-device` | 32 | **24 resueltas en código** + **8 enmienda fundada** |
-| `nativa-con-device` | 15 | **14 DESVÍO** + 1 `NO_REPRODUCIBLE_SIN_EFECTO` — medidas **en el teléfono**, por primera vez |
-| `backend + nativa` | 7 | fuera del corpus de este medidor (su evidencia son los `cierre_` del buzón): 5 EN MAIN, 1 parcial (`cobro-voz`, D3 al operador), 1 sin veredicto (`onb-cumplida`) |
+| `nativa-sin-device` | 32 | **20 resueltas en código** + **5 enmienda fundada** + **7 PENDIENTE-DECLARADA** (⛓/⚠) |
+| `nativa-con-device` | 15 | **13 DESVÍO** + **1 COHERENTE** (`esc`) + 1 `NO_REPRODUCIBLE_SIN_EFECTO` — medidas **en el teléfono** |
+| `backend + nativa` | 7 | **2 resueltas en código** + **5 PENDIENTE-DECLARADA** — ya **dentro** del corpus: backend versionó su veredicto en `f26a906d`, así que estas filas dejaron de depender de un `cierre_` del buzón |
 
 **Las cuatro cifras, porque una sola se deja citar para cualquier pregunta:**
 
@@ -81,9 +81,9 @@ porque engancha filas de otras tablas.
 |---|---|---|
 | **cumple el DoD** | filas de contrato | **28/54 (51 %)** — el DoD admite «resuelta en código **o** enmienda fundada», pero exige que **ninguna** divergencia quede pendiente |
 | **cerrada en código** | filas de contrato | **22/54 (40 %)** — sólo lo escrito y mergeado |
-| **con veredicto medido** | filas de contrato | **49/54 (90 %)** por este corpus — ⚠️ **medida no es cumplida: incluye las 7 pendientes**; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
-| **fuera de este corpus** | filas de contrato | **5/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`); `preg` salió del grupo al versionar backend su veredicto |
-| **pendiente declarada** | filas de contrato | **7/54** — tienen una divergencia con ⛓/⚠: **NO cumplen** el DoD. Con nombre: `card` `card-cliente` `card-cobro` `card-factura` `factura` `gastos` `pres-voz` |
+| **con veredicto medido** | filas de contrato | **54/54 (100 %)** — ⚠️ **medida no es cumplida: incluye las 12 pendientes**. Llegó a 100 % cuando backend versionó el ⚠ de sus 5 filas abiertas (`f26a906d`): el hueco no era falta de dato, era falta de **clase** para escribirlo sin cobrar crédito falso |
+| **fuera de este corpus** | filas de contrato | **0/54** — la deuda `EVIDENCIABUZON` quedó cerrada en `f26a906d`; ninguna fila depende ya de un `cierre_` del buzón para tener veredicto |
+| **pendiente declarada** | filas de contrato | **12/54** — tienen una divergencia con ⛓/⚠: **NO cumplen** el DoD. Con nombre: **7 de app** (`card` `card-cliente` `card-cobro` `card-factura` `factura` `gastos` `pres-voz`) + **5 de backend** (`caida` `clientes` `cobro-voz` `fact-voz` `hitl`) |
 
 > ⚠️ **CORRECCIÓN del mismo día — 34/54 era una cifra INFLADA, y el defecto era del medidor.**
 > `clasificar()` decía `"CERRADA-EN-CODIGO" if "✅" in s else "ENMIENDA-FUNDADA"`: «enmienda
@@ -99,11 +99,21 @@ porque engancha filas de otras tablas.
 > ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
 > medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
 
-> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `4b8d5f8a`** (árbol limpio,
-> `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 49/54 con veredicto
-> · 5/54 fuera · 7/54 pendiente**. Subió desde `159f883b` porque entró el veredicto versionado
-> de las 6 filas `backend + nativa` (`preg` cierra; las otras 5 quedan **pendientes con símbolo**,
-> que es lo que el fix del clasificador hizo posible escribir sin cobrar crédito falso).
+> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `f26a906d`** (árbol
+> limpio, `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 54/54 con
+> veredicto · 0/54 fuera · 12/54 pendiente**.
+>
+> **Lo que se movió y lo que NO.** Con veredicto pasó de 49 a 54 y fuera de 5 a 0, porque backend
+> escribió el ⚠ de sus 5 filas abiertas. **Cumple el DoD y cerrada en código no se movieron un
+> solo punto** — y esa inmovilidad es el control: un símbolo de «todavía no» hace **medible** una
+> fila, no la hace **cumplida**. Si 28/54 hubiera subido al versionar símbolos de pendiente, el
+> medidor seguiría acreditando por el `else`.
+>
+> 📐 **Anterior, sobre `4b8d5f8a`** (no se borra): **28/54 cumple · 22/54 código · 49/54
+> con veredicto · 5/54 fuera · 7/54 pendiente**. Había subido desde `159f883b` al entrar el
+> veredicto versionado de las 6 filas `backend + nativa` (`preg` cierra; las otras 5 quedaron
+> **pendientes con símbolo**, que es lo que el fix del clasificador hizo posible escribir sin
+> cobrar crédito falso).
 >
 > 📐 **Medición anterior, sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
 > C:\gfw-src\wt-medir-main`), por planificación. La medición anterior de este mismo bloque —32/54 ·
@@ -112,7 +122,6 @@ porque engancha filas de otras tablas.
 > **No es un criterio que creció: es el mismo instrumento midiendo más trabajo mergeado.**
 > ⚠️ Una cifra sin su SHA al lado no es evidencia, es una fecha — y la de la worktree de una sesión
 > tampoco sirve: esta sale de un árbol en `main`.
->
 > **Qué movió el número, fila por fila:** `onb-cumplida` entró al corpus (fuera 7→6) como
 > `CERRADA-EN-CODIGO` —primera fila `backend + nativa` con su veredicto en un doc **versionado**, el
 > precedente que `EVIDENCIABUZON` necesitaba— y `esc` cuenta `COHERENTE` medida en device. El fix que
