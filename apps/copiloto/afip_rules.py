@@ -54,6 +54,36 @@ NOTAS_CREDITO = (TipoComprobante.NOTA_CREDITO_A.value,
                  TipoComprobante.NOTA_CREDITO_C.value)
 
 
+# ── El predicado ÚNICO de «lo facturado» (F1.4, issue #1003) ────────────────────────────────────────
+#
+# 🔴 La misma pregunta —«¿qué facturó este mes?»— se respondía con cuatro criterios según quién
+# preguntara, y dos se contradecían de signo: `total_periodo` RESTABA la NC, `_facturado` la SUMABA.
+# Ahora hay UNA definición y los consumidores la citan; un quinto criterio sería el que diverja.
+#
+# La definición, y por qué:
+#   · cuenta todo comprobante CON CAE (lo que AFIP aceptó), incluida la factura luego ANULADA: sigue
+#     emitida ante AFIP y la ANULA su nota de crédito, que resta en el período en que se emitió.
+#   · la NOTA DE CRÉDITO resta. Es el criterio fiscal (el neto de un período es facturas − NC) y el
+#     que ya usaba la ficha del cliente.
+#   · NO se filtra `estado <> 'anulada'`: excluir a la vez la anulada Y restar su NC resta DOS veces
+#     (−100 en vez de 0), que es exactamente lo que hacía `total_periodo`.
+# Lo que NO es «facturado»: la deuda (`impagos`, que sí excluye anuladas y NC) ni la caja.
+
+_NC_SQL = "(" + ", ".join(str(int(t)) for t in NOTAS_CREDITO) + ")"
+
+
+def facturado_filtro_sql(alias: str = "") -> str:
+    """Fragmento WHERE: el comprobante cuenta como facturado. Sin parámetros (sólo enteros del enum)."""
+    pre = f"{alias}." if alias else ""
+    return f"{pre}cae IS NOT NULL"
+
+
+def facturado_monto_sql(alias: str = "") -> str:
+    """Expresión SQL del monto firmado de un comprobante facturado: `+total`, y `-total` si es NC."""
+    pre = f"{alias}." if alias else ""
+    return f"(CASE WHEN {pre}tipo_cbte IN {_NC_SQL} THEN -{pre}total ELSE {pre}total END)"
+
+
 class TipoDoc(int, Enum):
     """Tipo de documento del RECEPTOR."""
 

@@ -13,7 +13,7 @@ import unicodedata
 from typing import Callable
 
 from afip_comprobante_store import ESTADO_ANULADA
-from afip_rules import NOTAS_CREDITO
+from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
 from gasto_store import ZONA_DEL_NEGOCIO, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
@@ -578,12 +578,11 @@ class ClienteStore:
                 cur.execute(
                     f"SELECT count(*) FILTER (WHERE tipo_cbte NOT IN %s), "
                     f"       count(*) FILTER (WHERE tipo_cbte IN %s), "
-                    f"       coalesce(sum(total) FILTER (WHERE tipo_cbte NOT IN %s), 0) "
-                    f"     - coalesce(sum(total) FILTER (WHERE tipo_cbte IN %s), 0) "
+                    f"       coalesce(sum({facturado_monto_sql()}), 0) "
                     f"  FROM {_SCHEMA}.afip_comprobantes "
-                    f" WHERE cliente_id = %s AND cae IS NOT NULL AND doc_tipo = %s "
+                    f" WHERE cliente_id = %s AND {facturado_filtro_sql()} AND doc_tipo = %s "
                     f"   AND regexp_replace(coalesce(doc_nro, ''), '\\D', '', 'g') = %s",
-                    (NOTAS_CREDITO, NOTAS_CREDITO, NOTAS_CREDITO, NOTAS_CREDITO, *comunes))
+                    (NOTAS_CREDITO, NOTAS_CREDITO, *comunes))
                 facturas, notas, neto = cur.fetchone()
                 resumen["facturas"] = int(facturas)
                 resumen["notas_credito"] = int(notas)

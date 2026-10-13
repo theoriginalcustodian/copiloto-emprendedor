@@ -25,6 +25,7 @@ import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
+from afip_rules import facturado_filtro_sql, facturado_monto_sql
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 from mp_credential_store import MpCredentialStore
@@ -135,11 +136,12 @@ class InteligenciaQueries:
         return {mes: Decimal(str(total or 0)) for mes, total in cur.fetchall() if mes is not None}
 
     def _facturado(self, cur, desde: datetime.date, hasta: datetime.date) -> Decimal:
-        """Lo FACTURADO en el rango: comprobantes con CAE, no anulados. Facturado ≠ cobrado — uno es lo
-        que se emitió, el otro lo que entró; el contrato pide los dos por separado."""
+        """Lo FACTURADO en el rango, por el predicado ÚNICO de `afip_rules` (F1.4): con CAE, la NC
+        resta. Facturado ≠ cobrado — uno es lo que se emitió, el otro lo que entró; el contrato pide
+        los dos por separado."""
         cur.execute(f"""
-            SELECT coalesce(sum(total), 0) FROM {_SCHEMA}.afip_comprobantes
-             WHERE cliente_id = %(cid)s AND estado <> 'anulada' AND cae IS NOT NULL
+            SELECT coalesce(sum({facturado_monto_sql()}), 0) FROM {_SCHEMA}.afip_comprobantes
+             WHERE cliente_id = %(cid)s AND {facturado_filtro_sql()}
                AND fecha_emision >= %(desde)s AND fecha_emision < %(hasta)s
         """, {"cid": self._cliente_id, "desde": desde, "hasta": hasta})
         return Decimal(str(cur.fetchone()[0] or 0))
@@ -286,9 +288,10 @@ class InteligenciaQueries:
         desde, hasta = self._ventana_meses(meses)
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"""
-                SELECT to_char(fecha_emision, 'YYYY-MM') AS mes, coalesce(sum(total), 0), count(*)
+                SELECT to_char(fecha_emision, 'YYYY-MM') AS mes,
+                       coalesce(sum({facturado_monto_sql()}), 0), count(*)
                   FROM {_SCHEMA}.afip_comprobantes
-                 WHERE cliente_id = %(cid)s AND estado <> 'anulada' AND cae IS NOT NULL
+                 WHERE cliente_id = %(cid)s AND {facturado_filtro_sql()}
                    AND fecha_emision >= %(desde)s AND fecha_emision < %(hasta)s
                  GROUP BY 1
             """, {"cid": self._cliente_id, "desde": desde, "hasta": hasta})
@@ -302,14 +305,16 @@ class InteligenciaQueries:
         return {"tipo": "barras", "periodo": f"{serie[0]['mes']}..{serie[-1]['mes']}", "serie": serie}
 
     def facturacion_detalle_mes(self, mes: str) -> dict:
-        """Las filas de comprobantes FACTURADOS (no anulados, con CAE) de `mes` — el desglose de una
-        barra del gráfico 1. Mismo filtro que `facturacion_por_mes`, un mes solo."""
+        """Las filas de comprobantes FACTURADOS de `mes` — el desglose de una barra del gráfico 1.
+        Mismo predicado que `facturacion_por_mes`, un mes solo; el `total` de cada fila es el monto
+        FIRMADO (una NC viene negativa), así la suma de las filas es la barra."""
         ini, fin, clave = self._mes_o_actual(mes)
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"""
-                SELECT id, punto_venta, nro, fecha_emision, coalesce(receptor_nombre, ''), total
+                SELECT id, punto_venta, nro, fecha_emision, coalesce(receptor_nombre, ''),
+                       {facturado_monto_sql()}
                   FROM {_SCHEMA}.afip_comprobantes
-                 WHERE cliente_id = %(cid)s AND estado <> 'anulada' AND cae IS NOT NULL
+                 WHERE cliente_id = %(cid)s AND {facturado_filtro_sql()}
                    AND fecha_emision >= %(ini)s AND fecha_emision < %(fin)s
                  ORDER BY fecha_emision, nro
             """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
