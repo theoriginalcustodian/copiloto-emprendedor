@@ -4,7 +4,15 @@ import type { ServicioCatalogo } from './catalogo';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { Portada } from './inteligencia';
-import { completarOnboarding, debeMostrarOnboarding, permisosCompletos, permisosDelHilo, primerInsight, textoDelInsight } from './onboarding';
+import {
+  completarOnboarding,
+  debeMostrarOnboarding,
+  PEDIDO_DETALLE_POR_COBRAR,
+  permisosCompletos,
+  permisosDelHilo,
+  primerInsight,
+  textoDelInsight,
+} from './onboarding';
 import type { AlmacenTokens } from './tokens';
 
 const tokens: AlmacenTokens = {
@@ -130,5 +138,13 @@ describe('textoDelInsight', () => {
 
   it('sin dato no nombra ninguna cifra', () => {
     expect(textoDelInsight({ tipo: 'sin_dato' })).toBe('Todavía no tenés facturas pendientes.');
+  });
+});
+
+describe('PEDIDO_DETALLE_POR_COBRAR', () => {
+  it('es autocontenido: nombra qué detalle quiere sin depender de lo que mostró el recibo', () => {
+    expect(PEDIDO_DETALLE_POR_COBRAR).toMatch(/clientes/);
+    expect(PEDIDO_DETALLE_POR_COBRAR).toMatch(/sin cobrar/);
+    expect(PEDIDO_DETALLE_POR_COBRAR).not.toMatch(/\$|\d/); // ninguna cifra: no puede quedar viejo
   });
 });

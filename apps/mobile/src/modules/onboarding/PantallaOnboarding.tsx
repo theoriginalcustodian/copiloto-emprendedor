@@ -1,8 +1,10 @@
 import {
   completarOnboarding,
+  dejarPendiente,
   leerPortada,
   listarCatalogo,
   pedirLinkDeVinculacion,
+  PEDIDO_DETALLE_POR_COBRAR,
   permisosCompletos,
   permisosDelHilo,
   primerInsight,
@@ -15,6 +17,7 @@ import { ActivityIndicator, AppState, Linking, StyleSheet, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Burbuja } from '../chat/Burbuja';
+import { Recibo } from '../chat/Recibo';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
@@ -117,7 +120,7 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
     { paddingTop: insets.top + tema.espacio.lg, paddingBottom: insets.bottom + tema.espacio.lg, paddingHorizontal: tema.espacio.lg, gap: tema.espacio.md },
   ];
 
-  if (paso === 'recibo') return <Recibo estiloContenedor={contenedor} onEntrar={() => void terminar()} />;
+  if (paso === 'recibo') return <PasoRecibo estiloContenedor={contenedor} onEntrar={() => void terminar()} />;
 
   return (
     <View testID="onboarding" style={[contenedor, { backgroundColor: tema.color.fondo }]}>
@@ -171,8 +174,14 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
   );
 }
 
-function Recibo({ estiloContenedor, onEntrar }: { estiloContenedor: object[]; onEntrar: () => void }) {
+function PasoRecibo({ estiloContenedor, onEntrar }: { estiloContenedor: object[]; onEntrar: () => void }) {
   const tema = useTema();
+  // «Armame el detalle» ENTRA al hilo con el pedido ya dicho (fila `onb-cumplida`, #5): lo deja en el
+  // buzón de `mensajePendiente` y el chat principal lo manda al tomar foco, una sola vez.
+  const pedirDetalle = useCallback(() => {
+    dejarPendiente(PEDIDO_DETALLE_POR_COBRAR);
+    onEntrar();
+  }, [onEntrar]);
   const [insight, setInsight] = useState<PrimerInsight | 'cargando'>('cargando');
   useEffect(() => {
     let vivo = true;
@@ -193,11 +202,9 @@ function Recibo({ estiloContenedor, onEntrar }: { estiloContenedor: object[]; on
 
   return (
     <View testID="onboarding-recibo" style={[estiloContenedor, { backgroundColor: tema.color.fondo }]}>
-      <View testID="onboarding-recibo-servicios" style={[styles.recibitoPill, { backgroundColor: tema.color.superficieAlta, borderColor: tema.glass.bd }]}>
-        <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base - 2, fontWeight: '700' }}>
-          Servicios conectados · Mercado Pago · Google
-        </Text>
-      </View>
+      {/* El `REC('Servicios conectados','Mercado Pago · Google','')` del prototipo: el MISMO `Recibo` del
+          chat (título + `detalle` = su `t2`), no una píldora de texto propia (fila `onb-cumplida`, #2). */}
+      <Recibo testID="onboarding-recibo-servicios" tono="exito" titulo="Servicios conectados" detalle={['Mercado Pago · Google']} />
       <Burbuja role="assistant" text="Listo, ya veo tu negocio." />
       <View testID="onboarding-insight">
         {listo ? (
@@ -208,10 +215,10 @@ function Recibo({ estiloContenedor, onEntrar }: { estiloContenedor: object[]; on
       </View>
       {pregunta && (
         <>
-          <Burbuja role="assistant" text="¿Querés que te arme el detalle?" />
+          <Burbuja role="assistant" text="¿Querés que te arme el detalle de quiénes son?" />
           <FilaBotones
             testID="onboarding-chip-detalle"
-            botones={[{ etiqueta: 'Armame el detalle', onPress: onEntrar, variante: 'secundario', testID: 'onboarding-chip-detalle-boton' }]}
+            botones={[{ etiqueta: 'Armame el detalle', onPress: pedirDetalle, variante: 'secundario', testID: 'onboarding-chip-detalle-boton' }]}
           />
         </>
       )}
@@ -226,5 +233,4 @@ function Recibo({ estiloContenedor, onEntrar }: { estiloContenedor: object[]; on
 const styles = StyleSheet.create({
   pantalla: { flex: 1, justifyContent: 'center' },
   encabezado: { flexDirection: 'row', alignItems: 'center' },
-  recibitoPill: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
 });

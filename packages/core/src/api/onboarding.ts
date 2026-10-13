@@ -89,3 +89,13 @@ export function textoDelInsight(insight: PrimerInsight): string {
   const base = `Tenés ${formatearImporte(insight.porCobrar)} facturados sin cobrar`;
   return insight.vencido != null ? `${base}, y ${formatearImporte(insight.vencido)} ya vencidos.` : `${base}.`;
 }
+
+/**
+ * Lo que el chip «Armame el detalle» del recibo le dice al chat principal (fila `onb-cumplida`,
+ * divergencia #5 del mapeo). Es **un pedido autocontenido**: el hilo al que entra el emprendedor no
+ * vio el recibo, así que el texto no puede depender de «lo de recién». Lo manda el emprendedor por el
+ * puente de `mensajePendiente` — el detalle lo arma el agente con sus herramientas, NO la portada
+ * (`porCobrar` sólo trae total + vencido, sin desglose por cliente).
+ */
+export const PEDIDO_DETALLE_POR_COBRAR =
+  'Armame el detalle de quiénes son los clientes con facturas sin cobrar y cuáles están vencidas.';

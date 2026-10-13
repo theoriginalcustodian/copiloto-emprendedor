@@ -14,6 +14,8 @@ import {
   leerPortada,
   listarCatalogo,
   pedirLinkDeVinculacion,
+  PEDIDO_DETALLE_POR_COBRAR,
+  tomarPendiente,
   type ServicioCatalogo,
 } from '@copiloto/core';
 
@@ -56,6 +58,7 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     jest.mocked(pedirLinkDeVinculacion).mockReset().mockResolvedValue({ status: 'ok', url: 'https://connect.example/lk' });
     jest.mocked(leerPortada).mockReset();
     jest.mocked(completarOnboarding).mockReset().mockResolvedValue(true);
+    tomarPendiente(); // el buzón es un módulo con estado: un test no hereda el pedido del anterior
     jest.spyOn(Linking, 'canOpenURL').mockReset().mockResolvedValue(true);
     jest.spyOn(Linking, 'openURL').mockReset().mockResolvedValue(undefined as never);
   });
@@ -123,6 +126,16 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     expect(texto).not.toHaveTextContent(/\$/);
   });
 
+  // Fila `onb-cumplida`, divergencia #2: el recibo de servicios es el `Recibo` real del chat, no una píldora.
+  it('«Servicios conectados» es el Recibo del chat: título + detalle «Mercado Pago · Google»', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('10.00'));
+    await montar();
+    await screen.findByTestId('onboarding-insight');
+    expect(screen.getByTestId('onboarding-recibo-servicios-titulo')).toHaveTextContent('Servicios conectados');
+    expect(screen.getByTestId('onboarding-recibo-servicios-detalle-0')).toHaveTextContent('Mercado Pago · Google');
+  });
+
   it('el recibo con la portada caída dice lo mismo que sin datos', async () => {
     jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
     jest.mocked(leerPortada).mockRejectedValue(new Error('red'));
@@ -156,7 +169,7 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     jest.mocked(leerPortada).mockResolvedValue(portada('147000.00'));
     await montar();
     await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/facturados sin cobrar/));
-    expect(screen.getByText('¿Querés que te arme el detalle?')).toBeTruthy();
+    expect(screen.getByText('¿Querés que te arme el detalle de quiénes son?')).toBeTruthy();
     expect(screen.getByTestId('onboarding-chip-detalle')).toBeTruthy();
   });
 
@@ -175,5 +188,26 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     fireEvent.press(await screen.findByText('Armame el detalle'));
     await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
     expect(completarOnboarding).toHaveBeenCalledTimes(1);
+  });
+
+  // Fila `onb-cumplida`, divergencia #5: el chip prometía «el detalle» y sólo cerraba el onboarding.
+  it('🔴 el chip deja el pedido del detalle en el buzón del chat principal, UNA sola vez', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('147000.00'));
+    const onTerminar = await montar();
+    fireEvent.press(await screen.findByText('Armame el detalle'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(tomarPendiente()).toBe(PEDIDO_DETALLE_POR_COBRAR);
+    expect(tomarPendiente()).toBeNull(); // tomar lo vacía: el chat no lo reenvía solo al volver a tomar foco
+  });
+
+  it('«Entrar» NO deja ningún pedido: el emprendedor entra al hilo sin que nadie hable por él', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('147000.00'));
+    const onTerminar = await montar();
+    await screen.findByTestId('onboarding-insight');
+    fireEvent.press(screen.getByTestId('onboarding-entrar'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(tomarPendiente()).toBeNull();
   });
 });
