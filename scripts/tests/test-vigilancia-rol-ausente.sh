@@ -24,6 +24,8 @@
 #   6. CONTROL NEGATIVO — el contrato es recén nacido (nadie pudo leerlo)    → silencio
 #   7. La señal (d) — el rol commitea en SU rama sin tocar el buzón          → silencio
 #   8. CONTROL POSITIVO — destino COMPUESTO de tres, el rol en el MEDIO      → alarma
+#   9. CONTROL POSITIVO — el contrato DECLARA `ROLES:` => no acusa al que no figura, si al que si
+#  10. CONTROL NEGATIVO — sin `ROLES:` (y con un typo en el) el default NO se afloja
 #
 # El caso 3 protege al watchdog de sí mismo: un vigía que grita de más se apaga solo en una semana.
 # La expectativa se deriva del buzón (`contrato_…-a-<rol>_`), nunca de una lista hardcodeada.
@@ -36,8 +38,14 @@ VIGILANCIA="$REPO_ROOT/scripts/vigilancia-check.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# El total NO se escribe a mano: se declara aca y el cierre lo COMPARA contra lo que
+# realmente corrio. Medido el 2026-10-13: el resumen decia un literal (`14/14`, y yo lo
+# subi a `17/17`) mientras la corrida imprimia 14 de 18 aserciones — un veredicto que no
+# cuenta lo que miro absuelve a un bloque entero que no se ejecuto.
+ASERCIONES_ESPERADAS=18
+oks=0
 fallos=0
-ok()   { printf '  ✅ %s\n' "$1"; }
+ok()   { printf '  ✅ %s\n' "$1"; oks=$((oks + 1)); }
 fail() { printf '  ❌ %s\n' "$1"; fallos=$((fallos + 1)); }
 
 # Un buzón de prueba SIN PLAN.md: el chequeo de COLA se saltea solo (límite ya documentado en el
@@ -255,10 +263,69 @@ else
   fail "la alarma no nombra el contrato compuesto. Seccion: $seccion"
 fi
 
+# msg_roles <ruta> <minutos> <roles...> — igual que msg(), mas una linea 'ROLES:' al principio.
+# Va ARRIBA porque roles_declarados_en() toma la PRIMERA coincidencia (`grep -m1`): si la linea
+# fuera al final, un 'ROLES:' citado en la prosa de mas arriba ganaria y el fixture mediria otra cosa.
+msg_roles() {
+  local ruta="$1" min="$2"; shift 2
+  msg "$ruta" "$min"
+  { printf 'ROLES: %s\n' "$*"; cat "$ruta"; } > "$ruta.tmp" && mv -f "$ruta.tmp" "$ruta"
+  touch -d "$(hace "$min")" "$ruta"
+}
+
+echo "── 9. CONTROL POSITIVO del padron declarado: 'ROLES:' saca al rol que NO figura ──"
+# Caso real 2026-10-13: 9 broadcasts `-a-todos_` x 2 roles sin sesion viva (auditoria,
+# manejo-de-errores) = 18 lineas de alarma PERMANENTE en cada ciclo. `roles_declarados_en()` ya
+# existia en lib/buzon-roles.sh y `escaladores-buzon.sh` ya la honraba; este bloque era el SEGUNDO
+# consumidor de la misma pregunta con su propia logica.
+b="$(nuevo_buzon 9)"; r="$(nuevo_slug_root 9)"
+msg_roles "$b/abierto/2026-10-13_urgente_planificacion-a-todos_PADRON-declarado.md" 118 backend
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: AUDITORIA"; then
+  fail "el padron declarado no se honra: acusa a AUDITORIA, que el contrato NO nombra. Salida: $out"
+else
+  ok "ROLES: backend ⇒ no acusa a AUDITORIA (que no figura en el padron)"
+fi
+# La otra mitad, y es la que hace significativa a la de arriba: el rol que SI figura sigue acusado.
+# Sin esta asercion, el fix pasaria igual si hubiera apagado la alarma COMPLETA.
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  ok "y al que SI figura lo sigue acusando (no apago la alarma entera)"
+else
+  fail "apago la alarma tambien para el rol declarado ⇒ el fix es un aflojamiento, no un filtro. Salida: $out"
+fi
+
+echo "── 10. CONTROL NEGATIVO: sin 'ROLES:', el broadcast sigue interpelando a TODO su alcance ──"
+# Escalar de menos pierde el contrato. El default no se toca: el fix solo actua cuando el contrato
+# DECLARA. Y el tercer caso cubre el typo: un 'ROLES:' sin ningun rol valido deja la lista vacia y
+# cae al default, por diseno de roles_declarados_en() -- de eso depende mi guarda `[ -n ... ]`.
+b="$(nuevo_buzon 10)"; r="$(nuevo_slug_root 10)"
+msg "$b/abierto/2026-10-13_urgente_planificacion-a-todos_SIN-padron.md" 118
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: AUDITORIA"; then
+  ok "sin ROLES: el alcance del nombre sigue mandando (no se afloja el default)"
+else
+  fail "REGRESION: un broadcast sin padron dejo de interpelar a AUDITORIA. Salida: $out"
+fi
+b="$(nuevo_buzon 10b)"; r="$(nuevo_slug_root 10b)"
+msg_roles "$b/abierto/2026-10-13_urgente_planificacion-a-todos_PADRON-con-typo.md" 118 bakend-mal-escrito
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: AUDITORIA"; then
+  ok "un ROLES: con typo cae al default (un typo no puede apagar el watchdog)"
+else
+  fail "un typo en ROLES: apago la alarma ⇒ el padron se vuelve un off-switch accidental. Salida: $out"
+fi
+
 echo
+corridas=$((oks + fallos))
+if [ "$corridas" -ne "$ASERCIONES_ESPERADAS" ]; then
+  echo "❌ test-vigilancia-rol-ausente: corrieron $corridas de $ASERCIONES_ESPERADAS aserciones."
+  echo "   Faltaron $((ASERCIONES_ESPERADAS - corridas)): un bloque que no se ejecuta NO da sintoma, y el
+   resumen literal lo absolvia. Si agregaste o saques casos, movete ASERCIONES_ESPERADAS."
+  exit 1
+fi
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-vigilancia-rol-ausente: 14/14"
+  echo "✅ test-vigilancia-rol-ausente: $oks/$ASERCIONES_ESPERADAS"
   exit 0
 fi
-echo "❌ test-vigilancia-rol-ausente: $fallos fallo(s)"
+echo "❌ test-vigilancia-rol-ausente: $fallos fallo(s) sobre $corridas corridas"
 exit 1
