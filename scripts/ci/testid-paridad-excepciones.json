@@ -4797,6 +4797,66 @@
       "id": "apps-estado",
       "motivo": "Mapeo `apps` (2026-10-13): contador «N conectadas de M» del encabezado (estado-pag, index.html:2338) en la pantalla nativa. La web lista integraciones en otro modulo y no lo muestra; paridad web diferida a frontend1/web, no es contenido faltante de mobile.",
       "pantalla": "modules/apps"
+    },
+    "modules/ajustes::cuenta-avisos-rotulo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-avisos-rotulo",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Rotulo «Avisos» sobre No molestar.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-pronto": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-pronto",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Chip «Pronto» de la fila No molestar (la accion sigue sin onPress a proposito).",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota con el porque de la demora de No molestar.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cierre-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-cierre-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota bajo Cerrar sesion: los datos quedan guardados.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes/negocio::tono-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-intro",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Subtitulo «Como te contesta Odobi…».",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes/negocio::tono-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-nota",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Nota «Esto se guarda aparte del perfil de tu negocio…».",
+      "pantalla": "modules/ajustes/negocio"
     }
   }
 }

@@ -39,7 +39,7 @@ export function PantallaCuenta() {
         <Row testID="cuenta-identidad">
           <View style={{ gap: 2 }}>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Estás usando el copiloto como
+              Con qué entrás a Odobi
             </Text>
             {/* Sin email el backend devolvió `null` — se DICE, no se inventa un placeholder que
                 parezca una dirección real. */}
@@ -103,17 +103,42 @@ export function PantallaCuenta() {
             haya decidido. Eso es MAYOR —muta estado FUERA del sandbox— y se resuelve en otra tarea.
             Un toggle que no hace nada, o que sólo cambia visualmente, sería peor que esta fila: es un
             dato inventado aplicado a una acción. */}
+        {/* Mapeo `cuenta` (index.html:2372-2384): rótulo «Avisos», fila con chip «Pronto» y el motivo
+            del prototipo como nota — «pronto» a secas es una promesa; con el porqué es una explicación. */}
+        <Text testID="cuenta-avisos-rotulo" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>
+          Avisos
+        </Text>
         <Row testID="cuenta-no-molestar" accessibilityLabel="No molestar (pendiente)">
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-              No molestar
-            </Text>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Para silenciarme tengo que tocar una configuración de tu teléfono. Todavía no lo hago
-              solo.
+          <View style={[styles.filaEntre, { gap: tema.espacio.sm }]}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+                No molestar
+              </Text>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Silenciar los avisos de Odobi
+              </Text>
+            </View>
+            <Text
+              testID="cuenta-no-molestar-pronto"
+              style={{
+                color: tema.color.textoTenue,
+                fontSize: tema.tipo.chico,
+                fontFamily: tema.fuente.uiSemibold,
+                borderColor: tema.color.borde,
+                borderWidth: 1,
+                borderRadius: tema.radio.completo,
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+              }}
+            >
+              Pronto
             </Text>
           </View>
         </Row>
+        <Text testID="cuenta-no-molestar-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          Para silenciarme tengo que tocar una configuración de tu teléfono, y no quiero que se te quede mudo por
+          accidente. Lo estamos terminando con cuidado.
+        </Text>
 
         {!confirmando ? (
           <FilaBotones
@@ -155,6 +180,11 @@ export function PantallaCuenta() {
             />
           </View>
         )}
+        {!confirmando && (
+          <Text testID="cuenta-cierre-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            Si cerrás sesión, tus datos quedan guardados: al volver a entrar está todo como lo dejaste.
+          </Text>
+        )}
       </View>
     </MarcoGlass>
   );
@@ -162,4 +192,5 @@ export function PantallaCuenta() {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
+  filaEntre: { flexDirection: 'row', alignItems: 'center' },
 });

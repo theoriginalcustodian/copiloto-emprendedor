@@ -16,14 +16,16 @@ import { CampoSelect, CampoTexto, FilaBotones, ScrollFormulario, type OpcionSele
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
 import { useTema } from '../../../theme/ThemeProvider';
 
+// Mapeo `hablar` (index.html:2413-2434): Cercano primero —es el default— y cada opción dice qué
+// cambia, con el copy del prototipo. `CampoSelect` ya pinta `descripcion`.
 export const OPCIONES_FORMALIDAD: OpcionSelect[] = [
-  { valor: 'formal', etiqueta: 'Formal' },
-  { valor: 'cercano', etiqueta: 'Cercano' },
+  { valor: 'cercano', etiqueta: 'Cercano', descripcion: 'Te habla de vos, corto y directo.' },
+  { valor: 'formal', etiqueta: 'Formal', descripcion: 'Más medido, sin modismos.' },
 ];
 
 export const OPCIONES_LARGO: OpcionSelect[] = [
-  { valor: 'breve', etiqueta: 'Breve' },
-  { valor: 'detallado', etiqueta: 'Detallado' },
+  { valor: 'breve', etiqueta: 'Breve', descripcion: 'Te contesta lo justo.' },
+  { valor: 'detallado', etiqueta: 'Detallado', descripcion: 'Te explica el porqué de cada número.' },
 ];
 
 type EstadoCarga = 'cargando' | 'ok' | 'error' | 'no_disponible';
@@ -131,6 +133,9 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
 
       {estadoCarga === 'ok' && (
         <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md }}>
+          <Text testID="tono-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+            Cómo te contesta Odobi. Se guarda aparte del perfil de tu negocio.
+          </Text>
           <CampoSelect
             testID="tono-formalidad"
             etiqueta="Tono"
@@ -166,7 +171,7 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
 
           <CampoTexto
             testID="tono-nombre"
-            etiqueta="¿Cómo querés llamarlo?"
+            etiqueta="Cómo lo llamás"
             valor={nombre}
             onChange={(v) => {
               setNombre(v);
@@ -189,6 +194,10 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
               { etiqueta: 'Volver a Mi negocio', onPress: onVolver, testID: 'tono-volver' },
             ]}
           />
+
+          <Text testID="tono-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            Esto se guarda aparte del perfil de tu negocio: cambiar el tono no te hace reescribir nada más.
+          </Text>
 
           {guardado && (
             <Text testID="tono-guardado" style={{ color: tema.color.exito, fontSize: tema.tipo.base }}>

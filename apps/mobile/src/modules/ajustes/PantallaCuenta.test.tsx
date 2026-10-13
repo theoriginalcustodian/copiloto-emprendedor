@@ -69,6 +69,20 @@ describe('PantallaCuenta', () => {
     expect(screen.getByTestId('cuenta-email')).toHaveTextContent('no tiene un email', { exact: false });
   });
 
+  it('mapeo `cuenta`: «Avisos» + No molestar con chip «Pronto» y el motivo, y la nota bajo Cerrar sesión', async () => {
+    await montar();
+    expect(screen.getByTestId('cuenta-avisos-rotulo').props.children).toBe('Avisos');
+    expect(screen.getByText('Silenciar los avisos de Odobi')).toBeTruthy();
+    expect(screen.getByTestId('cuenta-no-molestar-pronto').props.children).toBe('Pronto');
+    expect(screen.getByTestId('cuenta-no-molestar-nota')).toHaveTextContent('Lo estamos terminando con cuidado.', { exact: false });
+    expect(screen.getByTestId('cuenta-cierre-nota')).toHaveTextContent(
+      'Si cerrás sesión, tus datos quedan guardados: al volver a entrar está todo como lo dejaste.',
+    );
+    // La nota de cierre sólo está con el botón; con el panel de confirmación abierto no se duplica.
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    expect(screen.queryByTestId('cuenta-cierre-nota')).toBeNull();
+  });
+
   /** Un toque accidental en una grilla de íconos no puede echarte de la sesión. */
   it('cerrar sesión pide confirmación antes de hacerlo', async () => {
     await montar();
