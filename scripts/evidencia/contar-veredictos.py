@@ -532,6 +532,15 @@ NO_SON_MEDICION = {
         "no es ciego. Re-verifica en el PWA servido las 9 diferencias del `dato_` del 22/09 (su propio "
         "conteo: COHERENTE 4 · DIFERENCIA 4 · NO_REPRODUCIBLE 1); sumarlo metia 4 COHERENTE de otro "
         "eje en el total. VOCABAJENO en PLAN.md.",
+    # Triage de MENSAJES DEL BUZON, no del criterio 3. Clasificado el 2026-10-12 por planificacion,
+    # que es su dueña. Medido antes de clasificar: el doc tiene 7 veredictos y CERO es un id del
+    # padron de 54 -- dictaminan el ESTADO de hallazgos (`MERESPONSE`, `DUPINDICE`,
+    # `TABLEROPARTIDO`, los crones): "YA HECHO", "RESPONDIDO", "MEDIDO Y CERRADO". No mide la
+    # paridad de pantallas de ninguna fila.
+    "2026-10-12_dato_planificacion-a-todos_triage-de-los-9-hallazgos-4-estaban-YA-HECHOS":
+        "triage de mensajes del buzon: dictamina el estado de hallazgos, no mide ningun id del "
+        "criterio 3 (7 veredictos, 0 ids del padron). Sumarlo habria inflado la cifra con "
+        "veredictos de otra pregunta.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",

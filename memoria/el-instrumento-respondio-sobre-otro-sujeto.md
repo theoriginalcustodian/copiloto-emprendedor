@@ -801,3 +801,36 @@ veredictos**, y un veredicto falso contra el sujeto es peor que no medir: parece
   sujeto. → [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]]
 - Un conteo propio sin padrón externo puede cuadrar perfecto sobre el universo equivocado.
   → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[instrumento-que-no-mira-nunca-falla]]
+
+---
+
+## Refuerzo 2026-10-12 — buscar una estructura por su NOMBRE la encuentra en el COMENTARIO de la vecina, y la vecina acepta la misma forma literal
+
+Clasificando un documento del corpus en `scripts/evidencia/contar-veredictos.py` quise insertarlo en
+`NO_SON_MEDICION`. Localicé el bloque con `s.index('NO_SON_MEDICION')` y usé su última entrada como
+ancla. **La primera ocurrencia de ese nombre no era la definición: era su mención en un comentario
+que vive adentro de `MEDICIONES_DECLARADAS`** (`:173`, un comentario que explica *cómo se consulta*
+la otra lista). Así que el ancla salió del final del bloque **equivocado** y la entrada quedó en
+`MEDICIONES_DECLARADAS` — la lista que **infla** la cifra del criterio, exactamente lo que yo mismo
+había medido que no correspondía.
+
+| medición | resultado |
+|---|---|
+| `ast.parse` después de insertar | **OK** — la absolvió |
+| estructura donde cayó (medido con `ast`, `lineno`/`end_lineno`) | `MEDICIONES_DECLARADAS`, líneas 171-283, **tipo `Set`** |
+| estructura donde debía ir | `NO_SON_MEDICION`, líneas 288-542, **tipo `Dict`** |
+| lo que la cazó | **correr el instrumento**: el aviso de `SIN CLASIFICAR` siguió sonando |
+
+**Por qué la sintaxis no la cazó, y eso es lo transferible:** un `Set` literal acepta `"x",` suelto,
+que es exactamente la forma que un `Dict` rechazaría. Las dos estructuras vecinas comparten la forma
+`{...}`, así que insertar en la equivocada **no es un error de sintaxis — es un error de destino**, y
+ningún parser lo ve. El `Dict` me habría delatado al instante si el orden hubiera sido el inverso.
+
+**La defensa que funcionó:** medir la estructura con el AST y no con texto —
+`ast.parse` + `isinstance(n.value, ast.Dict)` + `n.lineno/n.end_lineno`— y anclar la inserción a la
+**línea de cierre de la definición medida**, no al último string que parezca su vecino. Y el control
+que lo detectó no fue mío: fue **el propio instrumento sin apagarse**. Si su aviso hubiera sido más
+débil, la cifra del criterio 3 habría subido en silencio con un veredicto de otra pregunta
+([[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]).
+
+→ [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-guard-se-satisface-con-su-propio-comentario]]
