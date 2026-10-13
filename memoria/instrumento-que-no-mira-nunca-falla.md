@@ -901,3 +901,33 @@ un conteo da `0`, la pregunta no es *«está vacío?»* sino **«qué categoría
 `-type f` excluye `l`, `d`, `p`, `s`. **(7)** y el corolario operativo: **no tapes el stderr del comando
 que falla**, porque el mensaje del sistema suele nombrar exactamente la categoría que tu medidor no miró
 ([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]).
+---
+
+### Refuerzo 2026-10-13 — el compilador que compila un proyecto VACÍO (y el comentario que lo jubiló de ser noticia)
+
+Medido por **frontend1 el 2026-10-13**, no por mí: `tsc --noEmit` en `apps/copiloto-web` **devuelve
+`rc=0` habiendo mirado CERO archivos** — compila un proyecto vacío. Le dio un verde falso en C-D3; lo
+cazó porque el gate lo corrió con `--build --force` y ahí sí apareció el error de tipo.
+
+Esta es la forma más cara de la entrada, por tres razones que no están en las siete de arriba:
+
+1. **El instrumento es un COMPILADOR**, o sea el último lugar donde uno sospecha ceguera: su `rc=0`
+   se lee como *«el código tipa»*, no como *«no encontré código»*. Un linter que no mira da la misma
+   señal. El predicado correcto no es el exit code sino **¿cuántos archivos miró?**
+2. **El daño es RETROACTIVO, y eso lo distingue de un falso verde cualquiera.** Un `rc=0` que no miró
+   nada no produce *un* verde falso: invalida **todos** los verdes previos de ese script, y nadie sabe
+   cuántos fueron. El falso verde puntual se corrige con el próximo rojo; este se corrige volviendo a
+   medir la historia.
+3. **Ya estaba documentado en `web.sh` — en un comentario — y eso lo EMPEORÓ.** El comentario convirtió
+   el defecto en folclore del script: seguía ahí, seguía dando verde, y había dejado de parecer
+   información ([[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]],
+   [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]). Declarar el agujero
+   **no** es taparlo: mientras el comando siga siendo `--noEmit`, el gate sigue ciego con una nota al pie.
+
+**How to apply (8):** para cualquier paso de un gate que «revisa archivos» —compilador, linter, type
+checker, test runner— el control de ceguera es **el conteo de lo mirado**, impreso por el propio script:
+*`rc=0` con 0 archivos es ROJO, no verde.* Y el control positivo es **un defecto inyectado a propósito**
+(un error de tipo, un test que debe fallar) que tiene que poner **ese** paso en rojo — sin él, arreglar
+el comando no se distingue de no haberlo arreglado ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+Y cuando aparece en UN script, se barren **los cinco**: el mismo comando copiado es el mismo agujero
+([[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).

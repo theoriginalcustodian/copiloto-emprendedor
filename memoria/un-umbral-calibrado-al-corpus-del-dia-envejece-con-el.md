@@ -51,3 +51,32 @@ medir. Lo que mutó es la frase que el lector **copia**.
 instrumento —no su fuente, cuyos propios comentarios contienen las frases prohibidas— con control de
 ceguera (la etiqueta anclada SÍ se imprime), control de árbol-fixture y **mutante** que reinyecta la frase.
 Lo levanta solo `scripts/ci/tests-coordinacion.sh` por glob.
+---
+
+### Refuerzo 2026-10-13 — lo que envejece dentro de una fila CERRADA no es la deuda: es la PREMISA
+
+Tercera variante del mismo mecanismo, y la peor, porque no caduca un umbral ni un rótulo: caduca **la
+afirmación empírica sobre la que se cerró una decisión**.
+
+Caso medido hoy — tres premisas vencidas en cadena sobre el mismo tema (el versionado legal):
+
+1. «**ninguna** app lee el campo» — verdadera a las **09:42** del 2026-10-06 y **falsa a las 16:15** del
+   mismo día (dos PR la implementaron). Esa línea **sostenía** el argumento con el que se había
+   descartado una opción de diseño, y nadie la revisó **porque la fila estaba tachada y marcada en
+   verde**.
+2. «el versionado **opera** en web» — escrita como corrección de la anterior, también falsa: lo que
+   aterrizó fue un **cartel**, no un gate. «Opera» sin definir el verbo absolvió a un display.
+3. «mobile no lo lee» — **mía**, 20 minutos de vida, falsa por el predicado de grep
+   ([[la-costura-leia-un-campo-que-nadie-escribe]]).
+
+**Por qué una fila cerrada es el peor lugar para una premisa:** una **deuda** invisible se paga tarde,
+pero una **premisa** invisible deja en pie una **decisión** que ya no se sostiene — y el tablero no
+distingue «no había deuda» de «la deuda se fue con la fila». Lo formuló auditoría sobre mi cierre; lo
+confirmé cayéndome en la tercera, el mismo día que lo leí.
+
+**How to apply:** al cerrar una fila **por diseño** (no por entrega), la pregunta no es sólo *«¿qué
+deuda sobrevive al cierre?»* sino *«¿cuál es la afirmación empírica que sostiene este cierre, y con qué
+comando se vuelve a medir?»*. Las afirmaciones **negativas** («cero hits», «no existe», «ninguna app»)
+envejecen más rápido **y son las únicas verificables por script**: se escriben con su comando al lado,
+no en prosa. Y los verbos de estado («operar», «cubrir», «soportar») se definen en la misma línea —
+«operar = puede rechazar a alguien» habría cazado la premisa 2 sin ayuda de nadie.
