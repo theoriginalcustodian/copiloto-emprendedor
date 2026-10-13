@@ -42,7 +42,9 @@ ORIGINAL = {"cuit": CUIT, "tipo_cbte": 11, "punto_venta": 1, "nro": 6, "cae": "C
 
 
 def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = None,
-                 pdfs: list | None = None, pdf_falla: bool = False):
+                 pdfs: list | None = None, pdf_falla: bool = False,
+                 reservas: list | None = None, emisiones: list | None = None,
+                 emitir_falla_primera_vez: bool = False):
     """Las activities que el workflow agenda, por nombre. `marcar` falla o no según el caso.
 
     `pdfs` (opt-in): si se pasa una lista, se registra `generar_pdf_comprobante` de verdad y cada
@@ -57,9 +59,23 @@ def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = 
                                  nro: int) -> dict | None:
         return dict(original if original is not None else ORIGINAL)
 
+    @activity.defn(name="reservar_numero_comprobante")
+    async def reservar_numero_comprobante(cliente_id: str, cuit: str, punto_venta: int,
+                                          tipo_cbte: int) -> int:
+        # F1.5: el contador de AFIP AVANZA con cada llamada, como el real (`ultimo + 1`). Si el
+        # workflow lo volviera a pedir en el reintento, recibiría otro número: el test lo detecta.
+        if reservas is not None:
+            reservas.append((punto_venta, tipo_cbte))
+        return 6 + len(reservas or [None])
+
     @activity.defn(name="emitir_comprobante")
     async def emitir_comprobante(cliente_id: str, cuit: str, payload: dict, idem_key: str,
-                                 workflow_id: str) -> dict:
+                                 workflow_id: str, receptor_nombre: str = "",
+                                 nro_reservado: int | None = None) -> dict:
+        if emisiones is not None:
+            emisiones.append(nro_reservado)
+            if emitir_falla_primera_vez and len(emisiones) == 1:
+                raise RuntimeError("se cortó la respuesta de AFIP")
         return {"ok": True, "duplicado": False, "id": 99, "cae": "CAE-NC-7", "nro": 7,
                 "tipo_cbte": 13, "punto_venta": 1, "total": "200.00", "cae_vto": "2026-08-14"}
 
@@ -71,7 +87,8 @@ def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = 
         marcados.append(nro)
         return {"ok": True}
 
-    actividades = [buscar_comprobante, emitir_comprobante, marcar_comprobante_anulado]
+    actividades = [buscar_comprobante, reservar_numero_comprobante, emitir_comprobante,
+                   marcar_comprobante_anulado]
 
     if pdfs is not None:
         @activity.defn(name="generar_pdf_comprobante")
@@ -126,6 +143,27 @@ async def test_si_falla_el_marcado_la_anulacion_TERMINA_igual_y_lo_dice():
     assert estado["resultado"]["nro"] == 7, "el usuario necesita el número de su nota de crédito"
     assert "7" in (estado["motivo"] or ""), "el motivo tiene que nombrar la NC que sí se emitió"
     assert marcados == []
+
+
+@pytest.mark.asyncio
+async def test_la_NC_reserva_su_numero_y_el_reintento_reusa_el_MISMO():
+    """F1.5 (issue #1004). Antes `AnulacionWorkflow` no reservaba: la activity recalculaba
+    `ultimo + 1` en cada intento, así que si AFIP autorizaba la NC y la respuesta se perdía, el
+    reintento emitía la SIGUIENTE — dos notas de crédito por una anulación. Este test era verde porque
+    nadie reservaba; ahora exige que (a) el workflow pida el número UNA vez, del tipo de la NC, y
+    (b) los dos intentos de emisión lleguen con ese mismo número."""
+    reservas: list = []
+    emisiones: list = []
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        estado = await _correr_hasta_el_final(env, _actividades(
+            marcar_falla=False, marcados=[], reservas=reservas, emisiones=emisiones,
+            emitir_falla_primera_vez=True))
+
+    assert estado["paso"] == "anulada"
+    assert reservas == [(1, 13)], (
+        f"el workflow tiene que reservar UNA vez, con el tipo de la NC (13): {reservas}")
+    assert emisiones == [7, 7], (
+        f"el reintento tiene que reusar el número reservado (7), no recalcular: {emisiones}")
 
 
 @pytest.mark.asyncio

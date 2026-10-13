@@ -13,7 +13,7 @@ from typing import Callable
 
 from psycopg2.extras import Json
 
-from afip_rules import NOTAS_CREDITO
+from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
 from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
 
@@ -187,11 +187,10 @@ class AfipComprobanteStore:
 
     def total_periodo(self, periodo: str | None = None) -> dict:
         """Facturado del período + acumulado de los ÚLTIMOS 12 MESES contando hacia atrás desde el
-        período consultado (no año calendario — contrato hito-C §2). Las notas de crédito RESTAN:
-        contrato master §2, "afip_comprobantes − notas de crédito" — sin esto una NC infla el
-        facturado en vez de corregirlo. `NOTAS_CREDITO` (afip_rules.py) es la MISMA tupla de
-        `tipo_cbte` que ya usa `tipo_nota_credito()`; no se reinventa el criterio de qué es una NC.
-        Las anuladas no cuentan (mismo criterio que `impagos()` en cobro_store.py)."""
+        período consultado (no año calendario — contrato hito-C §2). La definición de «facturado»
+        es el predicado ÚNICO de `afip_rules` (`facturado_filtro_sql`/`facturado_monto_sql`): con CAE,
+        la NC resta y la factura anulada NO se excluye (si no, su NC restaría dos veces). Lo comparten
+        portada, gráfico, ficha del cliente y esta pantalla — no se reescribe acá."""
         hoy = hoy_del_negocio()
         if periodo:
             anio, mes = int(periodo[:4]), int(periodo[5:7])
@@ -203,13 +202,13 @@ class AfipComprobanteStore:
         m0 = anio * 12 + (mes - 1) - 11
         desde_12 = date(m0 // 12, m0 % 12 + 1, 1)
 
-        sql = (f"SELECT sum(CASE WHEN tipo_cbte = ANY(%s) THEN -total ELSE total END) "
-              f"FROM {_TABLE} WHERE cliente_id = %s AND estado != %s "
+        sql = (f"SELECT sum({facturado_monto_sql()}) "
+              f"FROM {_TABLE} WHERE cliente_id = %s AND {facturado_filtro_sql()} "
               f"AND fecha_emision >= %s AND fecha_emision < %s")
         with self._conn_factory() as conn, conn.cursor() as cur:
-            cur.execute(sql, (list(NOTAS_CREDITO), self._cid, ESTADO_ANULADA, desde, hasta))
+            cur.execute(sql, (self._cid, desde, hasta))
             del_periodo = cur.fetchone()[0]
-            cur.execute(sql, (list(NOTAS_CREDITO), self._cid, ESTADO_ANULADA, desde_12, hasta))
+            cur.execute(sql, (self._cid, desde_12, hasta))
             doce_meses = cur.fetchone()[0]
         return {"periodo": dos_decimales(del_periodo), "doce_meses": dos_decimales(doce_meses)}
 

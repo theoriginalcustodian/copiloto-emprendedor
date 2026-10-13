@@ -30,6 +30,7 @@ import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
+from afip_rules import NOTAS_CREDITO
 from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
 
@@ -126,6 +127,10 @@ class CobroStore:
         **Las anuladas quedan afuera.** Una factura anulada con nota de crédito no es una deuda: si
         entrara, *«me deben»* mostraría plata que nadie va a pagar nunca — y ese número mal una vez
         hace que el emprendedor no vuelva a mirar la pantalla.
+
+        **Y las notas de crédito también** (F1.4, quinto camino): la NC tiene CAE, no está `anulada` y
+        nadie le registra un cobro, así que caía como «deuda» por su total — la devolución aparecía
+        como plata que te deben. Una NC no es un crédito a cobrar: es lo que cancela la factura.
         """
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"""
@@ -138,6 +143,7 @@ class CobroStore:
                  WHERE c.cliente_id = %s
                    AND c.estado <> 'anulada'
                    AND c.cae IS NOT NULL
+                   AND c.tipo_cbte NOT IN {tuple(NOTAS_CREDITO)}
                    AND coalesce((SELECT sum(k.monto) FROM {_TABLE} k
                                   WHERE k.cliente_id = c.cliente_id AND k.comprobante_id = c.id), 0)
                        < c.total

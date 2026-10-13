@@ -113,11 +113,34 @@ class AnulacionWorkflow:
         payload = armar_payload_nota_credito(self._original, hoy=hoy)
 
         try:
-            nc = await workflow.execute_activity(
-                "emitir_comprobante",
-                args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id],
-                start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
-                heartbeat_timeout=HEARTBEAT_TIMEOUT)
+            # El número de la NC lo reserva el WORKFLOW, por el mismo mecanismo que `FacturaWorkflow`
+            # (F1.5, issue #1004). Sin esto la activity recalculaba `ultimo_autorizado + 1` en cada
+            # reintento: si AFIP autorizó la NC 7 y la respuesta se perdió, el reintento preguntaba por
+            # la 8 —«no existe»— y **emitía la 8**: dos notas de crédito por una sola anulación, con el
+            # fisco acreditando el doble. Temporal guarda el número en el event history, así que el
+            # reintento interroga el MISMO que intentó y el check-before-act de `_emitir_sync` puede
+            # detectar la autorización perdida (ver su docstring).
+            #
+            # El patch cubre las DOS llamadas, no sólo la reserva: agregar el argumento a
+            # `emitir_comprobante` cambia el `ScheduleActivityTask` y rompería por no-determinismo a
+            # las anulaciones en vuelo que todavía no llegaron a emitir.
+            if workflow.patched("reservar-nro-nc-antes-de-emitir"):
+                nro_reservado = await workflow.execute_activity(
+                    "reservar_numero_comprobante",
+                    args=[cliente_id, cuit, int(payload["PtoVta"]), int(payload["CbteTipo"])],
+                    start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+                nc = await workflow.execute_activity(
+                    "emitir_comprobante",
+                    args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
+                          "", nro_reservado],
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
+                    heartbeat_timeout=HEARTBEAT_TIMEOUT)
+            else:
+                nc = await workflow.execute_activity(
+                    "emitir_comprobante",
+                    args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id],
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
+                    heartbeat_timeout=HEARTBEAT_TIMEOUT)
         except Exception as exc:  # noqa: BLE001
             self._paso = "fallida"
             self._motivo = str(exc)
