@@ -149,3 +149,49 @@ que existe; redirigir a archivo no obliga a recordar nada.)
 Hermana nueva: [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] — acá el instrumento **condenaba**
 correctamente y el pipe le tapó la boca; y el hallazgo `H-WATCHSINCHECKS`, que explica por qué el
 gate condenaba (el `--watch` no esperó porque el CI aún no se había registrado).
+
+## Refuerzo 2026-10-12 · el pipe no sólo **esconde** un fallo propio: **fabrica un defecto ajeno**, y el «fix» habría sido una regresión
+
+Tercera recurrencia de esta clase en una sola sesión, y la más cara de las tres por lo que iba a
+hacer **después** de la mala lectura.
+
+Corrí un instrumento ajeno así:
+
+```
+bash scripts/cola-check.sh 2>&1 | head -30; echo "rc=$?"
+   -> ❌ COLA: no puedo ver mi sujeto — no existe .../PLAN.md
+      Esto NO es «cola en orden»: es «no medí nada»
+      rc=0
+```
+
+Y concluí: *«el instrumento avisa bien pero sale rc=0 sin haber medido nada… lo anoto»*. Lo anoté
+como defecto de **otro** — un fail-open — y me puse a planear el arreglo.
+
+Medido sin pipe, el mismo comando:
+
+| cómo se corre | rc |
+|---|---|
+| `bash cola-check.sh >/dev/null 2>&1` | **2** |
+| `bash cola-check.sh 2>&1 \| head -3` | **0** — el rc es de `head` |
+
+**`cola-check.sh:45` hace `exit 2`.** El instrumento estaba **bien**. Y no sólo bien: su
+`cola-check.sh:34-40` ya **documenta este exactísimo defecto como arreglado el 21/09**, con el
+porqué escrito — *«acá había un `exit 0`: este script —que existe para cazar una fábrica parada en
+silencio— se paraba en silencio él mismo… Y entonces hay que enterarse, no que lo tape un rc=0»*.
+
+**Por qué esta cara es peor que la original.** Cuando el pipe se come **mi** exit code, el daño es
+que un fallo propio pasa por verde. Cuando se lo come al de **otro**, el daño se invierte: aparece un
+defecto que no existe, con todas las señales de ser real — el mensaje de error **sí** se imprimió, la
+prosa del script **sí** habla de no haber medido, y «imprime una alarma y sale 0» es un fail-open
+perfectamente plausible. Nada en lo que vi contradecía la hipótesis.
+
+Y el arreglo habría sido una **regresión**: ir a ponerle un exit distinto de 0 a una línea que ya
+tenía `exit 2`, o peor, tocar el camino de salida de un fix pagado tres semanas antes. Un falso rojo
+sobre código ajeno no cuesta una medición perdida: cuesta un commit que deshace trabajo bueno.
+
+**La regla que queda, más dura que «no pipees»:** antes de anotar un defecto en un instrumento que
+no escribiste, **re-corrélo sin pipe y lee su código en la línea del veredicto**. Acá las dos cosas
+tomaban diez segundos y las dos refutaban la hipótesis sola. Y si el script tiene un comentario largo
+justo en esa rama, **leelo**: en este caso el comentario era literalmente el acta del defecto que yo
+estaba por «descubrir».
+→ [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
