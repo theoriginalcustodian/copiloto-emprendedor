@@ -104,27 +104,35 @@ porque engancha filas de otras tablas.
 > código · 54/54 con veredicto · 0/54 fuera · 12/54 pendiente**. El brazo device:
 > **5 COHERENTE · 9 DESVÍO · 1 NO-MEDIBLE** sobre 15 filas.
 >
-> 🎯 **DESGLOSE DE LOS 9 `DESVÍO`, y es el renglón que faltaba: 8 son enmienda aceptada — no
-> incumplimiento — y 1 es dependencia declarada. Ninguno es un fix de app sin dueño.** `DESVÍO` no
-> miente; el lector sí puede, y sin este renglón nueve filas con motivo escrito se leen como nueve
-> incumplimientos. Las citas son de frontend2, no mías — sin cita sería acreditar por declaración
-> (todas en `2026-10-13-veredictos-device2-remedicion-triaje15-fe2.md` §Enmiendas):
+> 🎯 **DESGLOSE DE LOS 9 `DESVÍO`, en TRES baldes — y la distinción importa porque «tiene
+> enmienda» y «no le falta nada» no son lo mismo.** `DESVÍO` no miente; el lector sí puede, y sin
+> este renglón nueve filas con motivo escrito se leen como nueve incumplimientos — pero redondearlas
+> a «8 enmiendas» acreditaría de más, que es el error espejo. Las citas son de frontend2, no mías
+> (`2026-10-13-veredictos-device2-remedicion-triaje15-fe2.md`, §Enmiendas y §Lo que sigue pendiente):
 >
-> - **8/54 por enmienda aceptada:** `(home)` sin «Ver tablero» porque las solapas con contador ya
->   **son** el tablero (`PantallaMiDia.tsx:101-103`) · `bi-refresh` usa el `RefreshControl` de RNGH,
->   que no expone la fase «Soltá» (`PantallaInteligencia.tsx:7,196`) · `bloqueado` envía al soltar bajo
->   el umbral, que **es el diseño** (H7, mapeo fila `bloqueado`) · `chat` arranca con el grip asomando
->   (`PantallaPrincipal.tsx:178`, `PanelDeslizable.tsx:156-177`) · `ingresos` I2b+I3 (veredicto fe1) ·
->   `reveal` sin «Crear una nueva cuenta» por la **decisión #3 del 04/08** (`EntradaSesion.tsx:17-21`) ·
->   `soporte` dice «sin plazo fijo» por **acta** (`textosSoporte.ts:3-10`, BL-O7) · `tablero` dice
->   «Mi día» por glosario (`CONTEXT.md:213`).
-> - **1/54 por dependencia declarada: `detalle`** — el único de los nueve **sin** enmienda, y no es
->   deuda de la app: le falta el bloque `presentacion` de backend (`chip`, píldora accionable) y
->   además **sus filas kv estaban escritas e INALCANZABLES** — el core lee `datos.monto`/`datos.fecha`
->   y **ninguna regla los escribe** (`mi_dia_detector.py` emite `total`/`saldo`/`cae_vto`). Lo cazó la
->   medición en device (**H12**), no una lectura de código: la costura leía un campo que nadie escribe.
->   Contratado en `PROTO4DEPS` §3 + `pedido_ DETALLEKV`.
+> - **5/54 — su ÚNICO resto es una enmienda acreditada** (el teléfono confirma que el nativo hace lo
+>   que la enmienda dice): `(home)` sin «Ver tablero» porque las solapas con contador ya **son** el
+>   tablero (`PantallaMiDia.tsx:101-103`, E1) · `bi-refresh` con el `RefreshControl` de RNGH, que no
+>   expone la fase «Soltá» (`PantallaInteligencia.tsx:7,196`, E2) · `bloqueado` envía al soltar bajo
+>   el umbral, que **es el diseño** (H7, mapeo fila `bloqueado`, E3) · `chat` arranca con el grip
+>   asomando (`PantallaPrincipal.tsx:178`, `PanelDeslizable.tsx:156-177`, E4) · `ingresos` I2b+I3
+>   (veredicto fe1, E5).
+> - **3/54 — enmienda acreditada Y ADEMÁS una dependencia abierta**, así que **no** cuentan como
+>   «resueltas»: `reveal` (enmienda E6, decisión #3 del 04/08, `EntradaSesion.tsx:17-21`; **pendiente
+>   el altavoz** ⇒ asset de audio, ítem 7 del consolidado) · `soporte` (enmienda E7, «sin plazo fijo»
+>   por **acta** BL-O7, `textosSoporte.ts:3-10`; **pendientes tickets y adjuntos** ⇒ `PROTO4DEPS` §1
+>   y §4) · `tablero` (enmienda E8 «Mi día» por glosario `CONTEXT.md:213`; **pendiente el `destino` de
+>   «Reconectar»**, que no llega porque #1092 **no está desplegado** ⇒ ítem 1 del consolidado).
+> - **1/54 — sin enmienda, sólo dependencia: `detalle`.** Le falta el bloque `presentacion` de backend
+>   (`chip`, píldora accionable) y además **sus filas kv estaban escritas e INALCANZABLES**: el core lee
+>   `datos.monto`/`datos.fecha` (`packages/core/src/api/miDia.ts:141-142`) y **ninguna regla los
+>   escribe** — `mi_dia_detector.py` emite `total` (`:149`), `saldo` (`:165`) y `cae_vto` (`:248`). Lo
+>   cazó la **medición en device** (**H12**), no una lectura de código: la costura leía un campo que
+>   nadie escribe. Contratado en `PROTO4DEPS` §3 + `pedido_ DETALLEKV`.
 >
+> ✅ **Lo que el desglose sí autoriza a decir:** de los nueve, **ninguno es un fix de app sin dueño**.
+> Cinco están cerrados por enmienda y los otros cuatro esperan **disparadores con nombre**, tres de
+> ellos míos o del operador — no de la sesión que los midió.
 > ⚠️ **Y el límite de esta cifra, dicho antes de que alguien la cite de más:** 32/54 es **59 %**, no
 > «casi listo». Las **12 pendientes declaradas NO cumplen** (`caida card card-cliente card-cobro
 > card-factura clientes cobro-voz fact-voz factura gastos hitl pres-voz`), y `consent` quedó
