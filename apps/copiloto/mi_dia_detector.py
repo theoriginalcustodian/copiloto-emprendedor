@@ -125,6 +125,18 @@ REGLA_CERTIFICADO_POR_VENCER = "certificado_afip_por_vencer"
 REGLA_CONEXION_CAIDA = "conexion_caida"
 
 
+def _fecha_iso(v) -> str | None:
+    """`AAAA-MM-DD` de un `date`/`datetime`/ISO, o `None`. La FECHA, no el instante: lo que se muestra
+    y se resta es un día calendario."""
+    if v is None:
+        return None
+    if hasattr(v, "date") and callable(v.date):
+        return v.date().isoformat()
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return str(v)[:10]
+
+
 def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
     """Contrato §1: `presupuesto sin desenlace hace > 30 días y total > umbral`.
 
@@ -145,8 +157,10 @@ def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
             # es plano. Confundir los dos deja `cliente` en `None` SIEMPRE, sin error — lo cazó el E2E
             # de device contra un presupuesto real, porque ningún test unitario abre el store real
             # (pasan el dict ya armado a mano, con la forma que el autor CREYÓ que tenía).
+            # `fecha`: sin ella no hay antigüedad que decir (el detector sólo guardaba el booleano
+            # `sin_respuesta`); `mi_dia_presentacion` la usa para el chip «N días sin respuesta».
             "datos": {"numero": p.get("numero"), "cliente": (p.get("receptor") or {}).get("nombre"),
-                      "total": str(p.get("total"))},
+                      "total": str(p.get("total")), "fecha": _fecha_iso(p.get("fecha"))},
         })
     return salida
 
@@ -161,8 +175,11 @@ def _evaluar_facturas_impagas_viejas(impagos: dict) -> list[dict]:
         salida.append({
             "regla": REGLA_FACTURAS_IMPAGAS_VIEJAS, "entidad_tipo": "comprobante",
             "entidad_id": c["id"], "dias_silencio": 14,
+            # `fecha_emision`: con la fecha absoluta, `mi_dia_presentacion` calcula «hace N días» al LEER
+            # (un `dias` guardado envejece, `crear_si_no_existe` es DO NOTHING) y rotula «Emitida».
             "datos": {"nro": c.get("nro"), "cliente": c.get("receptor_nombre"),
-                      "saldo": str(c.get("saldo")), "dias": c.get("dias")},
+                      "saldo": str(c.get("saldo")), "dias": c.get("dias"),
+                      "fecha_emision": c.get("fecha_emision")},
         })
     return salida
 

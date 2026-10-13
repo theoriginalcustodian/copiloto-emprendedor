@@ -17,6 +17,7 @@ from typing import Callable
 
 from catalog import TIPO_DESTINO_CONEXION, destino_conexion
 from mi_dia_clasificacion import clasificar
+from mi_dia_presentacion import alias_datos, presentar
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_mi_dia_tarjetas"
@@ -57,6 +58,13 @@ def _datos_con_destino(entidad_tipo, entidad_id, datos):
 def _fila_a_dict(fila: tuple) -> dict:
     id_, regla, entidad_tipo, entidad_id, texto, estado, datos, creada, movida = fila
     datos = _datos_con_destino(entidad_tipo, entidad_id, datos)
+    # PROTO4DEPS §3: lo que la tarjeta SIGNIFICA en pantalla, derivado de la regla igual que
+    # `clasificar()`. `alias_datos` completa `monto`/`fecha` (que el core lee y nadie escribía, H12):
+    # lo guardado gana, y una tarjeta sin lo que la regla necesita sale sin esa fila, no con una inventada.
+    presentacion = presentar(regla, entidad_id, datos, creada)
+    alias = alias_datos(regla, entidad_id, datos, creada)
+    if alias and isinstance(datos, dict):
+        datos = {**alias, **datos}
     return {
         # `str(id_)`: el id es SERIAL (int) en la DB, pero el contrato del wire lo espera string
         # (packages/core/src/api/miDia.ts:91 descarta en silencio toda tarjeta con `id` no-string —
@@ -67,6 +75,7 @@ def _fila_a_dict(fila: tuple) -> dict:
         "movida_en": movida.isoformat() if movida else None,
         # K-06: derivados de `regla` al leer (sin columna); aditivos para el cliente viejo.
         **clasificar(regla),
+        **({"presentacion": presentacion} if presentacion else {}),
     }
 
 
