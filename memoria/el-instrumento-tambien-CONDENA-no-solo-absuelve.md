@@ -450,3 +450,30 @@ barra final, id con mayúsculas, fecha con y sin cero — hace que un comparador
 que escribe distinto, que suele ser el independiente.
 
 → [[un-control-positivo-con-esperado-falso-acusa-al-script]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
+
+**Refuerzo 2026-10-13 — el falso rojo que explica 63 worktrees acumulados.** Para podar worktrees
+cumplidos escribí el test obvio: *¿el HEAD de la rama es ancestro de `main`?*
+
+```bash
+git merge-base --is-ancestor "$h" "$M" && mg=SI || mg=NO
+```
+
+Dio **NO** para 4 de 6 — entre ellas las ramas de **#1054 y #1057, que yo mismo había mergeado ese día**.
+La causa: este repo mergea con **squash**, y el squash crea un commit **nuevo**; el HEAD de la rama
+original **nunca** queda como ancestro de `main`. Así que `is-ancestor` responde `NO` para **toda** rama
+squash-mergeada, y un podador construido sobre él **no poda nunca**. Medido ese día: **64 worktrees
+registrados**, de los que 6 estaban listos para irse.
+
+**Y por qué sobrevivió tanto:** el veredicto era *«1 commit fuera de main — no tocar»*. Un falso rojo en
+un instrumento **destructivo** se lee como **prudencia**, así que nadie lo audita: parece que el podador
+te está salvando de perder trabajo. Es el mismo esqueleto de este archivo con el incentivo invertido —
+acá no hay fricción que empuje a arreglarlo, porque la consecuencia del error es *no borrar*, y eso nunca
+duele hoy. Pariente de [[la-cita-de-procedencia-muere-en-el-merge]], que es el mismo hecho del squash
+visto desde el otro lado.
+
+**How to apply:** la pregunta *«¿esto ya está en `main`?»* **no** se contesta con la topología del grafo
+cuando el merge es squash o rebase — ahí la verdad vive en el **forge**: `gh pr list --head <rama>
+--state all --json state` → `MERGED`. Y el control de ese chequeo va en las **dos** direcciones: una rama
+con PR abierto (debe dar `OPEN`) y una rama inexistente (debe dar vacío). Regla general: antes de confiar
+en un instrumento que **prohíbe**, preguntate *«¿qué costo tiene su falso rojo, y quién lo paga?»*. Si la
+respuesta es «ninguno, hoy», ese instrumento no se va a auditar solo.

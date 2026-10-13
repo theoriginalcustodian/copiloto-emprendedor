@@ -877,3 +877,27 @@ separó señal de ruido no fue un umbral: fue la **forma del artefacto**, que na
    fix el defecto que el fix vino a cerrar.
 5. El control que acredita el fix es correr la **versión vieja contra el mismo fixture** y exigir que
    sea ciega. Sin eso, el verde no distingue «el fix funciona» de «el fixture estaba vacío».
+
+**Refuerzo 2026-10-13 — «0 archivos» no es «vacío»: `-type f` no cuenta symlinks.** Al podar worktrees,
+dos directorios sobrevivieron al `git worktree remove`. Los medí así:
+
+```bash
+echo -n "  archivos: "; find "$P" -type f | wc -l     # -> 0
+```
+
+y concluí «quedan vacíos, son cosméticos». No lo estaban: `rmdir` falló con **`Directory not empty`**, y
+el `ls -la` mostró la causa — un **symlink** `core -> …/packages/core`, de los workspaces del monorepo.
+`find -type f` selecciona archivos **regulares**; un symlink es `-type l` y **no entra en el conteo**. El
+instrumento no dijo una cifra equivocada: dijo la cifra correcta de **otra pregunta** (*«cuántos archivos
+regulares hay»*, no *«está vacío»*).
+
+Lo cazó que el `rmdir` **falló ruidosamente** y que no tapé su stderr. Si lo hubiera corrido con
+`2>/dev/null` —como lo había hecho dos intentos antes— habría visto «no se borró» sin saber **por qué**, y
+el síntoma habría quedado atribuido a un lock de Windows, que es la explicación plausible y falsa.
+
+**How to apply (se suma a las cinco de arriba):** **(6)** para *«está vacío?»* el predicado es
+`find "$P" -mindepth 1` (sin `-type`) o directamente `-empty`, nunca un conteo filtrado por tipo. Cuando
+un conteo da `0`, la pregunta no es *«está vacío?»* sino **«qué categorías excluye mi filtro?»** —
+`-type f` excluye `l`, `d`, `p`, `s`. **(7)** y el corolario operativo: **no tapes el stderr del comando
+que falla**, porque el mensaje del sistema suele nombrar exactamente la categoría que tu medidor no miró
+([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]).
