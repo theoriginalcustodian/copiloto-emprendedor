@@ -4857,6 +4857,16 @@
       "id": "tono-nota",
       "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Nota «Esto se guarda aparte del perfil de tu negocio…».",
       "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes::ajustes-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaAjustes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ajustes-intro",
+      "motivo": "Mapeo `ajustes` (2026-10-13): subtitulo del prototipo (index.html:2113) en la pantalla nativa Ajustes. La web no tiene pantalla Ajustes con grilla (su configuracion vive en modules/account y modules/connections); no es contenido faltante de mobile.",
+      "pantalla": "modules/ajustes"
     }
   }
 }
