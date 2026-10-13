@@ -24,6 +24,9 @@
 #   4. UNIVERSO           el doc declara 3 y hay 2 ids -> rc=2. No se mide con universo que no cuadra.
 #   5. DOC SIN PARSER     un `*veredicto*.md` que el parser no sabe leer -> rc=2, y lo nombra.
 #   6. POSITIVO POR BRAZO doc presente que aporta CERO ids -> rc=2 (cambió de formato).
+#  10. PENDIENTE NO CUMPLE  una fila con una divergencia atada a una dependencia (o sin cerrar)
+#                        NO cumple el DoD, ni con un OK al lado: el DoD es por fila y exige
+#                        que NINGUNA divergencia quede sin veredicto.
 #   7. CANARIO            `--canario` sobre el fixture: los 3 brazos tienen que bajar la métrica.
 set -uo pipefail
 
@@ -202,4 +205,25 @@ else
   fail "9 rc=$rc · fuera=$(campo "$out" fuera_de_este_corpus) · un id mencionado sin veredicto se conto: $(head -c 300 <<< "$out")"
 fi
 
-[ "$fallos" -eq 0 ] && echo "  OK (9/9)" || { echo "  $fallos fallo(s)"; exit 1; }
+
+# -- 10 - una divergencia PENDIENTE no cumple el DoD, ni siquiera con un OK al lado -------------
+# El DoD es POR FILA: «cada divergencia ... resuelta O enmienda fundada. NINGUNA queda sin
+# veredicto». Hasta el 2026-10-13 el clasificador era `CERRADA-EN-CODIGO if OK else
+# ENMIENDA-FUNDADA`, o sea «enmienda fundada» era el ELSE: una fila con dependencia pendiente
+# cumplia el DoD, y con un OK al lado salia incluso CERRADA-EN-CODIGO. Medido en origin/main
+# 159f883b: 7 filas asi, y `card-factura` decia TEXTUAL en su doc «NO se cumple».
+# El caso pone OK + CADENA en la MISMA fila: es la mitad que el `else` no podia ver.
+J="$TMP/pendiente"; armar "$J"
+printf '# veredicto bloque chat\n\n### 1 \xc2\xb7 `sd-uno` \xe2\x80\x94 \xe2\x9c\x85 + \xe2\x9b\x93 atada a la dependencia\n\ncuerpo\n' \
+  > "$J/docs/copiloto-emprendedor/2026-10-13-veredicto-bloque-chat-fixture.md"
+out="$(correr "$J" --json)"; rc=$?
+if [ "$rc" = "0" ] \
+   && [ "$(campo "$out" pendiente_declarada)" = "1" ] \
+   && [ "$(campo "$out" cumple_dod)" = "2" ] \
+   && [ "$(campo "$out" cerrada_en_codigo)" = "0" ] \
+   && [ "$(campo "$out" con_veredicto)" = "4" ]; then
+  ok "10 fila con divergencia PENDIENTE -> no cumple el DoD (DoD 3->2, codigo 1->0, sigue medida)"
+else
+  fail "10 rc=$rc · pend=$(campo "$out" pendiente_declarada) dod=$(campo "$out" cumple_dod) cod=$(campo "$out" cerrada_en_codigo) · una dependencia pendiente se conto como cumplida: $(head -c 300 <<< "$out")"
+fi
+[ "$fallos" -eq 0 ] && echo "  OK (10/10)" || { echo "  $fallos fallo(s)"; exit 1; }

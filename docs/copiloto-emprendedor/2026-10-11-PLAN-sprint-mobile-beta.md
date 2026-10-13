@@ -75,14 +75,29 @@ porque engancha filas de otras tablas.
 | `nativa-con-device` | 15 | **14 DESVÍO** + 1 `NO_REPRODUCIBLE_SIN_EFECTO` — medidas **en el teléfono**, por primera vez |
 | `backend + nativa` | 7 | fuera del corpus de este medidor (su evidencia son los `cierre_` del buzón): 5 EN MAIN, 1 parcial (`cobro-voz`, D3 al operador), 1 sin veredicto (`onb-cumplida`) |
 
-**Las tres cifras, porque una sola se deja citar para cualquier pregunta:**
+**Las cuatro cifras, porque una sola se deja citar para cualquier pregunta:**
 
 | cifra | unidad | valor |
 |---|---|---|
-| **cumple el DoD** | filas de contrato | **34/54 (62 %)** — el DoD admite «resuelta en código **o** enmienda fundada» |
-| **cerrada en código** | filas de contrato | **25/54 (46 %)** — sólo lo escrito y mergeado |
+| **cumple el DoD** | filas de contrato | **27/54 (50 %)** — el DoD admite «resuelta en código **o** enmienda fundada», pero exige que **ninguna** divergencia quede pendiente |
+| **cerrada en código** | filas de contrato | **21/54 (38 %)** — sólo lo escrito y mergeado |
 | **con veredicto medido** | filas de contrato | **48/54 (88 %)** por este corpus; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
 | **fuera de este corpus** | filas de contrato | **6/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`) |
+| **pendiente declarada** | filas de contrato | **7/54** — tienen una divergencia con ⛓/⚠: **NO cumplen** el DoD. Con nombre: `card` `card-cliente` `card-cobro` `card-factura` `factura` `gastos` `pres-voz` |
+
+> ⚠️ **CORRECCIÓN del mismo día — 34/54 era una cifra INFLADA, y el defecto era del medidor.**
+> `clasificar()` decía `"CERRADA-EN-CODIGO" if "✅" in s else "ENMIENDA-FUNDADA"`: «enmienda
+> fundada» era el **`else`**, no un veredicto. Así, **7 filas con una divergencia atada a una
+> dependencia (⛓) contaban como cumplidas** — y 4 de ellas (`factura`, `gastos`, `pres-voz`,
+> `card-cobro`) salían incluso como **cerradas en código**, porque el ✅ de las otras divergencias
+> de la fila le ganaba al ⛓. El caso que lo delata: el doc de `card-factura` dice **textual** «El
+> DoD de esta fila dice «el elemento ausente existe y se ve». NO se cumple», y el medidor la
+> publicaba como cumplida. Lo encontré leyendo los docs para listarle las enmiendas al operador;
+> backend lo reportó el mismo día por su lado (dejaba sus filas abiertas **sin símbolo** para no
+> cobrar el crédito falso, lo que producía huecos en vez de una clase honesta).
+> **El DoD es por fila y exige que NINGUNA divergencia quede sin veredicto**, así que ahora un
+> ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
+> medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
 
 > 📐 **RE-MEDIDO el 2026-10-13 sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
 > C:\gfw-src\wt-medir-main`), por planificación. La medición anterior de este mismo bloque —32/54 ·
