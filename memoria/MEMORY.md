@@ -68,6 +68,7 @@
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 - [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
+- [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — ¿cuántos elementos miró? · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.

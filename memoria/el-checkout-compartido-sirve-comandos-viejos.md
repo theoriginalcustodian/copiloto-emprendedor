@@ -224,3 +224,32 @@ mismo conteo sobre un worktree creado ese día desde `main`, sin trabajo propio,
 
 Merece entrada propia cuando el índice tenga lugar: el 2026-10-08 estaba a 23.924 de 24.000 chars y
 una línea nueva truncaba la cola ([[el-indice-truncado-fabrica-duplicados]]).
+
+## El lanzador que delega TAMBIEN envejece, si carga POLITICA (2026-10-13)
+
+`scripts/vigia.sh` nació justo para esto: corre el instrumento desde un pin de `origin/main` en vez del
+working tree. Su docstring afirmaba la propiedad que lo hace funcionar — *«este lanzador NO decide nada…
+una copia vieja de ESTE archivo hace lo mismo que la nueva»*. **Era falso, y la afirmación es lo que apagó
+la búsqueda** ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]): la
+**whitelist** de instrumentos permitidos vivía en el lanzador, y una whitelist es **política**.
+
+Medido: las copias de `/c/gfw-src/_*-vigia` rechazaban `mi-buzon.sh` con **rc 2** aunque el instrumento
+existiera en el pin; **5 de 6 pines atrasados**. Lo levantó FRONTEND2, no el docstring. Y mi primer fix de
+ese día fue **agrandar la whitelist** — o sea tratar el síntoma y hacer crecer la política en el lugar que
+envejece, contra el corolario que el propio archivo declaraba. El fix de raíz: el lanzador se
+**re-ejecuta** desde el `vigia.sh` del pin si difiere del suyo, **antes** de aplicar la whitelist.
+
+**Y el agravante que convierte esto en una trampa:** receté a las tres sesiones `bash scripts/vigia.sh …`
+con path **relativo**. Ese archivo **no existe** en el checkout compartido, y el comando pipeado por
+`| head` devuelve **rc=0** — la señal de «sin novedades» ([[el-pipe-se-come-el-exit-code]]). Un instrumento
+que no existe reportando éxito. Y al escribir el reemplazo metí `MSYS_NO_PATHCONV=1` delante de un
+`git -C /c/…`, que **rompe** la conversión del path: el redirect escribió un archivo **vacío** (blob
+`e69de29`), y un lanzador vacío también sale **rc=0 sin salida**. Dos formas distintas de éxito falso en el
+mismo arreglo, las dos cazadas por correr el comando y mirar el EFECTO.
+
+**How to apply:** (1) si un lanzador/wrapper declara ser inerte, buscá qué **decide**: una lista de
+permitidos, un umbral o un default ES política y envejece con la copia. (2) Un comando que vas a recetar a
+otras sesiones **corrilo desde donde ellas corren** antes de mandarlo. (3) Instalar un script copiándolo:
+`[ -s "$T" ] && bash -n "$T" && cp "$T" destino` — sin la guarda, un vacío se instala callado.
+(4) Nunca pipees un instrumento cuyo `rc` es el veredicto. `MSYS_NO_PATHCONV=1` va **sólo** cuando el ref
+empieza con punto (`origin/main:.claude/…`), nunca con un path `/c/…`.
