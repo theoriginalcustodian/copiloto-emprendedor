@@ -28,22 +28,59 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 2 | `pres-ciclo` | ✅ + 📝 | recibo con N°/total/receptor/Doc + chip «Mandalo por mail» | rehidratación; «me aprobaron» |
 | 3 | `fact-cae` | ✅ + 📝 | «Guardar» → «Abrir PDF/Drive» | «Mandala por mail» (sin contacto en el dato) |
 | 4 | `fact-hitl` | ✅ + 📝 | encabezado «Factura C · ARCA» desde el dato | filas no editables, sin Cancelar, «Emitir» |
-| 5 | `card-factura` | 📝 + ⛓️ | — | mic en Facturación → ⛓️ `mic-facturacion` |
+| 5 | `card-factura` | ✅ + 📝 + ⛓️ | «Emitir» → «Emitir la factura» | mic en Facturación → ⛓️ `mic-facturacion` |
 | 6 | `factura` | ✅ + 📝 + ⛓️ | «Facturado este mes» | chip de conteo, composer/mic → ⛓️ `mic-facturacion` |
-| 7 | `gastos` | ✅ + 📝 + ⛓️ | importe **y %** por categoría | dictado → campos extraídos |
+| 7 | `gastos` | ✅ + 📝 | importe **y %** por categoría · dictado → campos extraídos (#1065) | rótulo «Gastado en <período>» |
 | 8 | `presu` | ✅ + 📝 | resumen «Esperando respuesta» + estado por fila | «Enviado · 5 días» (sin dato) |
 | 9 | `pres-hitl` | ✅ + 📝 | nota «a tu cliente no le llega nada» | formulario completo, «Cancelar» |
-| 10 | `pres-voz` | ✅ + 📝 + ⛓️ | chip `m:ss` | hora, dictado desde la función |
+| 10 | `pres-voz` | ✅ + 📝 | chip `m:ss` · dictado desde la función → card extraída (#1065) | hora, separadores con mes |
 | 11 | `vozchat` | ✅ + 📝 | chip `m:ss` | chip dentro de la burbuja, copy del resultado |
-| 12 | `card` | 📝 + ⛓️ | — | hoja inferior, botón, extracción |
-| 13 | `card-cliente` | 📝 + ⛓️ | — | 7 campos, «Dar de alta», extracción |
-| 14 | `card-cobro` | ✅ + 📝 + ⛓️ | etiquetas ya coincidían · chips WhatsApp/mail del link (adenda) | botón «Anotar», extracción |
+| 12 | `card` | ✅ + 📝 | botón «Guardar el gasto» (#1056) · extracción (#1065) | hoja inferior |
+| 13 | `card-cliente` | ✅ + 📝 | botón «Guardar el cliente» (#1056) · extracción (#1065) | 7 campos |
+| 14 | `card-cobro` | ✅ + 📝 | etiquetas ya coincidían · botón «Anotar que me pagaron» (#1056) · extracción (#1065) · chips WhatsApp/mail del link (adenda) | — |
 | 15 | `card-presu` | 📝 | **medida**: DIVERGE | formulario completo vs 3 filas kv |
 | 16 | `onb-promesa` | ✅ + 📝 | copy de la fila Google + «desde Ajustes» | pantalla completa, un botón por permiso |
 
-**Cuenta honesta:** 16 filas con veredicto. **Ninguna** queda «sin veredicto», pero **7 no están cerradas
-del todo** (⛓️: filas 5, 6, 7, 10, 12, 13 y 14 dependen de dos contratos — ver §Dependencias). Que
-tengan veredicto no quiere decir que estén hechas.
+**Cuenta honesta:** 16 filas con veredicto. **Ninguna** queda «sin veredicto». **2 no están cerradas del
+todo** (⛓️: filas 5 y 6 dependen de `mic-facturacion` — ver §Dependencias). Hasta la re-medición de abajo
+eran 7: las filas 7, 10, 12, 13 y 14 colgaban de una dependencia (extracción por destino) y de un copy
+que **ya estaban en `main`** cuando se escribieron las pendientes. Que tengan veredicto no quiere decir
+que estén hechas.
+
+## Re-medición de cláusulas (post #1056 / #1050 / #1065) — qué estaba rancio y qué sigue vigente
+
+Medida **cláusula por cláusula**, con `path:línea` de los dos lados, sobre `origin/main` `c4a26381`. La
+causa común: las pendientes se escribieron leyendo el mapeo del 2026-10-12 (anterior a tres PRs del
+2026-10-13) y la fila quedó describiendo un defecto que ya no existe. **Una pendiente cuyo defecto ya no
+existe infla el denominador igual que una enmienda falsa lo deflaciona.**
+
+| fila | cláusula | estado | prototipo | nativo |
+|---|---|---|---|---|
+| `card` | dictar desde la función precarga sólo `{descripcion: texto}` | 🔴 RANCIA | `index.html:2864` (`DESTINO`) | `PantallaGastos.tsx:79,161-163` — `useDictadoPorFuncion('gasto')` + `inicialesDeGasto(propuesta)`; el texto crudo es sólo el degradado (`:163`). #1065 |
+| `card` | «Guardar» vs «Guardar el gasto» | 🔴 RANCIA | `index.html:2872` (`b:'Guardar el gasto'`) | `FormularioGasto.tsx:213` dice «Guardar el gasto». #1056 |
+| `card` | hoja inferior vs formulario que reemplaza la lista | 📝 VIGENTE | `index.html:2869` («la card es el formulario real precargado») | `PantallaGastos.tsx:166` (`setVista('formulario')`) |
+| `card-cliente` | el dictado vuelca todo en `nombre` | 🔴 RANCIA | `index.html:2880` | `PantallaClientes.tsx:105,196-199` — `useDictadoPorFuncion('cliente')`; `{nombre: texto}` sólo si cae. #1065 |
+| `card-cliente` | «Dar de alta» vs «Guardar el cliente» | 🔴 RANCIA | `index.html:2881` | `FormularioCliente.tsx:389` dice «Guardar el cliente». #1056 |
+| `card-cobro` | campos «Cuánto te pagaron / De quién / …» vs Monto/Cliente/Cómo te pagó | 🔴 RANCIA (**dos referentes**) | `CARDS.cobro` `index.html:2875`: Monto · Cliente · Cómo te pagó — **los mismos que la app**; los otros cuatro rótulos son del *formulario* del prototipo, no de su card | `FormularioIngreso.tsx:201-225` |
+| `card-cobro` | «Anotar» vs «Anotar que me pagaron» | 🔴 RANCIA | `index.html:2875` (`b:'Anotar que me pagaron'`) | `FormularioIngreso.tsx:309` — el formulario que **monta la card**; también `PantallaIngresos.tsx:218` (la cita `:184` era de antes del PR). #1056 |
+| `card-cobro` | el dictado precarga sólo `concepto` | 🔴 RANCIA | `index.html:2874` | `PantallaIngresos.tsx:76,132-134` — `inicialesDeIngreso(propuesta)`. #1065 |
+| `gastos` | dictar abre el formulario con la transcripción cruda | 🔴 RANCIA | `index.html:2861` | `PantallaGastos.tsx:161-163` (la cita `:149` era de antes del PR) |
+| `gastos` | importe por categoría y no el % | 🔴 RANCIA | `index.html:1903-1925` | `ResumenMes.tsx:51` — «importe · %» (ya cerrada en la fila 7) |
+| `gastos` | «Gastado en <período>» vs «Gastado este mes» | 📝 VIGENTE | `index.html:1903` | `ResumenMes.tsx:39` — el período es variable (selector) |
+| `pres-voz` | dictar desde Presupuestos abre `FormularioPresupuesto` con `concepto` crudo | 🔴 RANCIA | `index.html:2864` | `PantallaPresupuestos.tsx:85,164-167` — `inicialesDePresupuesto(propuesta)`. #1065 |
+| `pres-voz` | hora + «por voz» vs «Por voz · 7s» | 📝 VIGENTE — **decisión firmada** | `index.html:3352` (`'09:31 · por voz'`) | `Burbuja.tsx:71-73` — el chip `m:ss` lo especificó BL-J7 (H-A3-7), `chatMachine.ts:52-54`. El prototipo **choca con un ítem firmado**: no es un fix, es del operador |
+| `pres-voz` | separadores «Hoy/Ayer/lunes 20 de …» vs «Lunes 20» | 📝 VIGENTE | `index.html:3351` | `separadoresFecha.ts:30-38` — incluye el mes (sin él es ambiguo en un historial largo) |
+| `factura` | no tiene resumen mensual («Facturado este mes») | 🔴 RANCIA | `index.html:2036` | `PantallaFacturacion.tsx:46,212,645-648` — `ResumenFacturado` al tope (ya cerrada en la fila 6; #1048) |
+| `factura` | sin composer ni mic | 📝 VIGENTE | `index.html:2060` («Facturale a alguien, o hablá…») | `PantallaFacturacion.tsx`: **0** `<MicFuncion` (control positivo: `PantallaGastos.tsx` tiene 1). **Y backend lo excluyó a propósito**: `dictado_destinos.py:43-44` — «`factura` NO está, y no es casualidad: emitir es irreversible ante ARCA». ⛓️ `mic-facturacion` deja de ser «falta una forma»: es una decisión |
+| `card-factura` | «Emitir» vs «Emitir la factura» | ✅ VIGENTE → **CORREGIDA acá** | `index.html:2876` (`b:'Emitir la factura'`) | `TarjetaFacturaPropuesta.tsx:268` (mobile) y su gemelo web `:240` — rótulo y aviso (`:189`/`:179`) |
+| `card-factura` | compuerta de sólo lectura, sin Editar/Cambiar ni Cancelar | 📝 **POR DISEÑO** | `index.html:2876` | `TarjetaFacturaPropuesta.tsx:26,35` — gate + handoff; el docstring ya lo declara. Enmienda, no fix |
+| `card-factura` | muestra ítems y Total en vez de Cliente/Monto/Concepto | 📝 VIGENTE | `index.html:2876` | lo que se emite **es** el borrador del backend, con sus ítems (fila 5) |
+
+**Resultado:** de 19 cláusulas medidas, **10 estaban rancias** (6 por #1065, 3 por #1056, 1 por #1048; una
+de ellas —`card-cobro` campos— era de **dos referentes** y no de un cambio de código), **1 se corrige
+acá** y **8 siguen vigentes** (7 como enmienda con su motivo, 1 como dependencia real:
+`mic-facturacion`). El padrón **no se toca por mano**: los símbolos de las filas 5, 7, 10, 12, 13 y 14 de
+este documento son lo que lee el medidor, y es el medidor el que recalcula.
 
 ---
 
@@ -106,19 +143,23 @@ trae contacto ni mail**. Un `mailto:` saldría sin destinatario, que es lo que y
   (`TarjetaFacturaPropuesta.tsx:25-29`). Emitir es un acto fiscal irreversible y no hay camino
   `descartado` (`:64-66`); «Completar a mano» navega al wizard, donde sí se edita. ⚠️ Es una decisión de
   producto que el prototipo contradice; la dejo anotada para que el operador la pueda reabrir.
-- **«Emitir» vs «Emitir factura»:** copy.
+- **«Emitir» vs «Emitir factura»:** copy → **corregido** (ver fila 5): el rótulo pasó a «Emitir la factura».
 - **La nota** es `AVISO_FACTURA_ANULACION` («se anula con una nota de crédito») y no la del prototipo: es
   la que protege contra duplicar un comprobante fiscal real (H-23).
 
-### 5 · `card-factura` — 📝 + ⛓️
+### 5 · `card-factura` — ✅ + 📝 + ⛓️
 
 Nada nuevo en código. Divergencias y su estado:
 - Compuerta de sólo lectura, sin Editar/Cambiar ni Cancelar → 📝 (ver fila 4).
-- «Emitir» vs «Emitir la factura» → 📝 copy.
+- «Emitir» vs «Emitir la factura» → ✅ **corregido**: `TarjetaFacturaPropuesta.tsx:268` (+ aviso `:189`,
+  «tocá Emitir la factura») y el gemelo web `:240`/`:179`. Test: el rótulo exacto en mobile y web.
+  «Emitiendo…» no cambia: el prototipo no define el estado en vuelo.
 - Muestra ítems y Total en vez de Cliente/Monto/Concepto → 📝: lo que se emite **es** el borrador que el
   backend armó, con sus ítems; resumirlo en tres filas ocultaría lo que se factura.
 - **Dictar desde Facturación hacia una card no existe** (`PantallaFacturacion` no monta `MicFuncion`) →
-  ⛓️ **`mic-facturacion`** (no es la fila `fact-voz`, que planificación resolvió en `2b43e5a3`: el contrato del hito 9 manda y la card HITL de `factura_propuesta` es el camino). No lo implementé: sin contrato, el mic sólo podría precargar la transcripción
+  ⛓️ **`mic-facturacion`** — 🔴 y **backend lo dejó fuera a propósito** del dictado por destino
+  (`apps/copiloto/dictado_destinos.py:43-44`: emitir es irreversible, la transcripción cruda no precarga
+  nada), así que no falta una forma: falta una **decisión** (no es la fila `fact-voz`, que planificación resolvió en `2b43e5a3`: el contrato del hito 9 manda y la card HITL de `factura_propuesta` es el camino). No lo implementé: sin contrato, el mic sólo podría precargar la transcripción
   cruda en el wizard — lo que es **inventar la forma** del handoff (`[ASSUMED_PENDING_VERIFY]`).
 
 > ⚠️ **El DoD de esta fila dice «el elemento ausente existe y se ve». NO se cumple.** Está declarada
@@ -150,19 +191,18 @@ Nada nuevo en código. Divergencias y su estado:
 > mergee F1.4 (predicado único, NC resta) el **número cambia** sin que esta pantalla se toque — eso es lo
 > correcto, pero quien compare «antes/después» tiene que saberlo.
 
-### 7 · `gastos` — ✅ + 📝 + ⛓️
+### 7 · `gastos` — ✅ + 📝
 
 **Resuelto**
 - Importe **y porcentaje** por categoría: `gastos/ResumenMes.tsx:51` → «$15.000,50 · 100%». Test en
   `PantallaGastos.test.tsx`.
+- **Dictar desde la función abre la card con los campos extraídos** (antes ⛓️): `PantallaGastos.tsx:79`
+  (`useDictadoPorFuncion('gasto')`), `:161-163` (`inicialesDeGasto(propuesta)`; `{descripcion: texto}`
+  sólo si el camino cae, con `AvisoDictado`). Backend: `dictado_destinos.py` (#1050). App: #1065.
+  Test: `PantallaGastos.test.tsx` (dictado con propuesta / degradado).
 
 **Enmienda** — rótulo «Gastado en <período>» vs «Gastado este mes»: el período es **variable** (hay
 selector); el literal del prototipo sólo es cierto para el mes en curso.
-
-**Depende** — al dictar desde la función, `alDictarGasto` (`PantallaGastos.tsx:149`) precarga la
-**transcripción cruda** en `descripcion`; el prototipo muestra monto/categoría/proveedor ya extraídos.
-La card **del chat** sí extrae (lo hace el backend); la de la función no tiene esa vía → ⛓️ **extracción
-de campos por destino** (ver §Dependencias).
 
 ### 8 · `presu` — ✅ + 📝
 
@@ -201,23 +241,26 @@ de campos por destino** (ver §Dependencias).
   de ítems»: el copy nativo es el honesto; no se cambia.
 - Chip «Docs»: sin dato que lo respalde en la propuesta.
 
-### 10 · `pres-voz` — ✅ + 📝 + ⛓️  *(confianza declarada baja-media por planificación)*
+### 10 · `pres-voz` — ✅ + 📝  *(confianza declarada baja-media por planificación)*
 
 **Resuelto**
 - Chip `Por voz · 0:07` (m:ss) con **una sola definición**: `util/formatearDuracion.ts` usada por
   `chat/Burbuja.tsx:72` y `voz/MicFuncion.tsx:157`. Antes cada una armaba su «7s». Tests:
   `formatearDuracion.test.ts`, `ListaMensajes.test.tsx`, `MicFuncion.test.tsx`.
 
+- **Dictar desde Presupuestos abre la card con la propuesta extraída** (antes ⛓️):
+  `PantallaPresupuestos.tsx:85` (`useDictadoPorFuncion('presupuesto')`), `:164-167`
+  (`inicialesDePresupuesto(propuesta)`). #1065.
+
 **Enmienda**
-- **Hora «09:31 · por voz»:** *ninguna* burbuja del chat muestra hora (grep `toLocaleTimeString|HH:mm` en
+- **Hora «09:31 · por voz»:** 🔴 además de la consistencia, el chip `Por voz · m:ss` **lo especificó BL-J7
+  (H-A3-7)** y está en el contrato del tipo (`chatMachine.ts:52-54`): el prototipo choca con un ítem
+  firmado, y una decisión firmada no se re-decide desde un desvío. Reabrible **sólo** por el operador.
+- (antes, sin la cita firmada) la consistencia: *ninguna* burbuja del chat muestra hora (grep `toLocaleTimeString|HH:mm` en
   `chat/*.tsx` = 0). Ponerla sólo en las de voz rompe la consistencia. Los separadores de día cubren el
   «cuándo».
 - Separadores «Hoy / Ayer / lunes 20 de octubre» vs «Lunes 20»: `separadoresFecha.ts` incluye el mes,
   que sin él es ambiguo en un historial largo.
-
-**Depende** — dictar desde la función Presupuestos abre `FormularioPresupuesto` con `concepto` =
-transcripción cruda (`PantallaPresupuestos.tsx:156-159`) mientras el prototipo manda el dictado a la
-card (`DESTINO.presu`, `index.html:2863`) → ⛓️ **ruteo del dictado por destino** (§Dependencias).
 
 ### 11 · `vozchat` — ✅ + 📝
 
@@ -232,29 +275,31 @@ card (`DESTINO.presu`, `index.html:2863`) → ⛓️ **ruteo del dictado por des
 - Resultado «Gasto anotado: $X» vs «Listo, lo anoté en Gastos.»: el nativo lleva el **monto**
   (`TarjetaGastoPropuesto.tsx:70`) — más informativo.
 
-### 12 · `card` — 📝 + ⛓️
+### 12 · `card` — ✅ + 📝
 
 - Hoja inferior sobre la función vs formulario que reemplaza la lista → 📝: la card **es el formulario
   real precargado** (mismo comentario del prototipo, `index.html:2869`); una hoja nueva sería un segundo
   componente que mantener.
-- «Guardar» vs «Guardar el gasto» → 📝 copy (ver §Pedidos: el copy vive en formularios de otros módulos).
-- Dictado desde la función precarga sólo `{descripcion: texto}` → ⛓️ extracción por destino.
+- «Guardar» vs «Guardar el gasto» → ✅ **resuelto** (#1056): `gastos/FormularioGasto.tsx:213`.
+- Dictado desde la función precarga sólo `{descripcion: texto}` → ✅ **resuelto** (#1065):
+  `PantallaGastos.tsx:161-163` (ver fila 7).
 
-### 13 · `card-cliente` — 📝 + ⛓️
+### 13 · `card-cliente` — ✅ + 📝
 
 - 7 campos vs 3 → 📝: es el formulario real de alta (`clientes/FormularioCliente.tsx`); los 3 del
   prototipo son los que se **dictan**, el resto son opcionales.
-- «Dar de alta» (`FormularioCliente.tsx:389`) vs «Guardar el cliente» → 📝 copy, **archivo de
-  `modules/clientes`, fuera de mi lista** → `pedido_`.
-- El dictado vuelca todo el texto en `nombre` (`PantallaClientes.tsx:191`) → ⛓️ extracción.
+- «Dar de alta» vs «Guardar el cliente» → ✅ **resuelto** (#1056): `FormularioCliente.tsx:389`.
+- El dictado vuelca todo el texto en `nombre` → ✅ **resuelto** (#1065): `PantallaClientes.tsx:105,196-199`
+  (`useDictadoPorFuncion('cliente')`; `{nombre: texto}` sólo si el camino cae).
 
-### 14 · `card-cobro` — ✅ + 📝 + ⛓️
+### 14 · `card-cobro` — ✅ + 📝
 
 - **Las etiquetas ya coincidían** — el mapeo estaba desactualizado: `ingresos/FormularioIngreso.tsx:201-225`
   dice «Cuánto te pagaron / De quién / Cómo te pagaron / Por qué trabajo».
-- «Anotar» (`FormularioIngreso.tsx:309`) vs «Anotar que me pagaron» → 📝 copy, archivo de
-  `modules/ingresos` → `pedido_`.
-- Dictado desde la función precarga sólo `concepto` → ⛓️ extracción.
+- «Anotar» vs «Anotar que me pagaron» → ✅ **resuelto** (#1056): `FormularioIngreso.tsx:309`, el
+  formulario que monta la card (y `PantallaIngresos.tsx:218`).
+- Dictado desde la función precarga sólo `concepto` → ✅ **resuelto** (#1065):
+  `PantallaIngresos.tsx:76,132-134` (`inicialesDeIngreso(propuesta)`).
 - **Adenda de planificación (2026-10-13) — chips de la card del link de cobro: ✅ en código.**
   `chat/TarjetaLinkDeCobro.tsx` pinta «Compartilo por WhatsApp» (`-compartir`, hoja del sistema vía
   `compartirLink`), «Mandalo por mail» (`-mail`, `mailto:` con `mailtoLinkDeCobro`) y «Abrir»; los
@@ -304,15 +349,13 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 
 | contrato | filas | qué falta | dueño |
 |---|---|---|---|
-| **`mic-facturacion`** — mic/composer dentro de `PantallaFacturacion` (≠ fila `fact-voz`, ya resuelta en `2b43e5a3`) | 5, 6 | forma del handoff mic → borrador de factura | planificación + backend |
-| **Extracción de campos por destino al dictar desde una función** | 7, 10, 12, 13, 14 | hoy `precarga = transcripción cruda`; el prototipo manda el dictado a la card con campos ya extraídos. Dos caminos posibles: (a) endpoint de extracción por destino, (b) rutear el dictado al chat con un hint de destino | **decisión MAYOR** → operador |
+| **`mic-facturacion`** — mic/composer dentro de `PantallaFacturacion` (≠ fila `fact-voz`, ya resuelta en `2b43e5a3`) | 5, 6 | **una decisión, no sólo una forma**: backend excluyó `factura` del dictado por destino a propósito (`dictado_destinos.py:43-44`, emitir es irreversible). Qué hace el mic en Facturación sin precargar un borrador | planificación + backend (+ operador si reabre la exclusión) |
+| ~~**Extracción de campos por destino al dictar desde una función**~~ | ~~7, 10, 12, 13, 14~~ | **RESUELTA**: backend #1050 (`kind=dictado:<destino>`) + app #1065 (`useDictadoPorFuncion`). Es la variante «(b) rutear al chat con un hint» y el turno no toca el hilo (`useDictadoPorFuncion.ts:70-72`) | — |
 | **F1.4** — predicado único de facturado | 6 | sólo para saber que la cifra va a cambiar | backend (en curso) |
 
 ## Pedidos que salen de este bloque
 
-1. **Copy de botones** de los formularios que reusan las cards («Guardar» → «Guardar el gasto»,
-   «Anotar» → «Anotar que me pagaron», «Dar de alta» → «Guardar el cliente»): los archivos son de
-   `modules/gastos|ingresos|clientes`, fuera de mi lista; además el copy alcanza al gemelo web.
+1. ~~**Copy de botones** de los formularios que reusan las cards~~ → **hecho** (#1056).
 2. **Web gemela del onboarding** (`apps/copiloto-web/.../Onboarding.tsx:23,146`): el copy de Google
    cambió acá y la web dice otra cosa.
 3. **Formato de duración en la web:** `Por voz · Ns` vs `m:ss` — si el prototipo manda, la web también.

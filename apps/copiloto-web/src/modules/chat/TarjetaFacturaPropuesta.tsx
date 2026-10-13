@@ -176,7 +176,7 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
       <Surface variant="card" blur className="propuesta-card">
         <p className="propuesta-card__aviso">
           {lista
-            ? 'Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.'
+            ? 'Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.'
             : 'Esto entendí, pero falta completar algo antes de emitirla.'}
         </p>
 
@@ -237,7 +237,7 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
             disabled={enviando}
             data-testid="factura-propuesta-emitir"
           >
-            {enviando ? 'Emitiendo…' : 'Emitir'}
+            {enviando ? 'Emitiendo…' : 'Emitir la factura'}
           </Button>
         ) : (
           onCompletarAMano != null && (
