@@ -56,3 +56,23 @@ export function chipResumenEspera(r: ResumenEspera): string | undefined {
   if (r.aceptados > 0) partes.push(`${r.aceptados} ${r.aceptados === 1 ? 'aceptado' : 'aceptados'}`);
   return partes.length > 0 ? partes.join(' · ') : undefined;
 }
+
+/**
+ * El estado de la FILA del listado (`presu`, mapeo 2026-10-12): el prototipo dice «Aceptado», «Se
+ * enfría · 31 días», «Enviado · 5 días». Acá sólo lo que el dato respalda: `Presupuesto` no distingue
+ * «enviado» de «pendiente» ni trae los días, así que no se inventa un «Enviado · N días» — `sinRespuesta`
+ * (más de 30 días sin contestación, calculado por el backend) es lo único que dice que se enfría.
+ *
+ * `estado: null` → `null`: es «el backend no lo manda», no «pendiente» (docstring de `Presupuesto.estado`).
+ * Un reemplazado no tiene estado propio que mostrar: ya lo sustituyó otro.
+ */
+export function etiquetaEstado(p: Presupuesto): { texto: string; tono: 'exito' | 'tenue' } | null {
+  if (p.reemplazadoPor != null || p.estado == null) return null;
+  if (p.estado === 'aprobado') return { texto: 'Aceptado', tono: 'exito' };
+  if (p.estado === 'pendiente') {
+    return p.sinRespuesta === true
+      ? { texto: 'Sin respuesta hace más de un mes', tono: 'tenue' }
+      : { texto: 'Esperando respuesta', tono: 'tenue' };
+  }
+  return { texto: 'Desestimado', tono: 'tenue' };
+}

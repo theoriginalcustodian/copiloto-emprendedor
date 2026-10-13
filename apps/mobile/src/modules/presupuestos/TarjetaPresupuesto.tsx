@@ -6,6 +6,7 @@ import { formatearFechaCorta, formatearImporte, type Presupuesto } from '@copilo
 import { Row } from '../../theme/glass/Row';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+import { etiquetaEstado } from './resumenEspera';
 
 /**
  * `TarjetaPresupuesto` — una card del listado.
@@ -36,6 +37,7 @@ export function TarjetaPresupuesto({ presupuesto: p, onPress, testID }: TarjetaP
   const tema = useTema();
   const id = testID ?? `presupuesto-card-${p.id}`;
   const fecha = formatearFechaCorta(p.fecha);
+  const estado = etiquetaEstado(p);
   const itemsTexto = p.cantidadItems === 1 ? '1 ítem' : `${p.cantidadItems} ítems`;
 
   return (
@@ -74,6 +76,17 @@ export function TarjetaPresupuesto({ presupuesto: p, onPress, testID }: TarjetaP
         </Text>
 
         <View style={styles.filaBadges}>
+          {estado != null && (
+            <Text
+              testID={`${id}-estado`}
+              style={{
+                color: estado.tono === 'exito' ? tema.color.exito : tema.color.textoTenue,
+                fontSize: tema.tipo.chico,
+              }}
+            >
+              {estado.texto}
+            </Text>
+          )}
           {p.facturado && (
             <Text
               testID={`${id}-badge-facturado`}

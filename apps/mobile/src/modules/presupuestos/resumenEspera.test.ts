@@ -1,6 +1,6 @@
 import type { Presupuesto } from '@copiloto/core';
 
-import { aCentavos, centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
+import { aCentavos, centavosADecimal, chipResumenEspera, etiquetaEstado, resumenEspera } from './resumenEspera';
 
 function p(over: Partial<Presupuesto>): Presupuesto {
   return {
@@ -37,5 +37,30 @@ describe('resumenEspera (mapeo `presu`)', () => {
   it('el chip omite lo que es cero y pluraliza', () => {
     expect(chipResumenEspera({ centavosEsperando: 0, sinContestar: 0, aceptados: 0 })).toBeUndefined();
     expect(chipResumenEspera({ centavosEsperando: 0, sinContestar: 2, aceptados: 3 })).toBe('2 sin contestar · 3 aceptados');
+  });
+});
+
+describe('etiquetaEstado (mapeo `presu`: el estado de la fila)', () => {
+  it('🔴 `estado: null` no es «pendiente»: sin dato no hay etiqueta', () => {
+    expect(etiquetaEstado(p({ estado: null }))).toBeNull();
+  });
+
+  it('un reemplazado no muestra estado propio', () => {
+    expect(etiquetaEstado(p({ estado: 'pendiente', reemplazadoPor: 9 }))).toBeNull();
+  });
+
+  it('aprobado → Aceptado (tono éxito)', () => {
+    expect(etiquetaEstado(p({ estado: 'aprobado' }))).toEqual({ texto: 'Aceptado', tono: 'exito' });
+  });
+
+  it('pendiente distingue «sin respuesta hace más de un mes» de «esperando»', () => {
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: true }))?.texto).toBe('Sin respuesta hace más de un mes');
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false }))?.texto).toBe('Esperando respuesta');
+    // `sinRespuesta: null` = el backend no lo calculó → NO se afirma que se enfrió.
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: null }))?.texto).toBe('Esperando respuesta');
+  });
+
+  it('desestimado → Desestimado', () => {
+    expect(etiquetaEstado(p({ estado: 'desestimado' }))?.texto).toBe('Desestimado');
   });
 });

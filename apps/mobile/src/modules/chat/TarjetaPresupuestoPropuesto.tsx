@@ -122,7 +122,7 @@ export function TarjetaPresupuestoPropuesto({
   }
 
   return (
-    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.">
+    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.">
       <FormularioPresupuesto
         mensajeId={mensajeId}
         iniciales={{

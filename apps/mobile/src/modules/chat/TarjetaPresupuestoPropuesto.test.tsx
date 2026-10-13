@@ -81,7 +81,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
     await montar();
 
     expect(screen.getByTestId('presupuesto-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.',
+      'Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.',
     );
   });
 
