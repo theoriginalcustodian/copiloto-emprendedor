@@ -25,7 +25,7 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
 5.bis. **Instrumento** — `SESION_ACTUAL=frontend2 bash scripts/vigia.sh vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
    cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
    error. Si no existe en tu checkout, estás en una rama vieja — decilo.
-6. **Buzón** — `bash scripts/mi-buzon.sh frontend2 --todo` (ya incluye el broadcast `-a-frontend_` de las dos
+6. **Buzón** — `bash scripts/vigia.sh mi-buzon.sh frontend2 --todo` (ya incluye el broadcast `-a-frontend_` de las dos
    sesiones de UI, y mira `en-curso/` y `cerrado/<hoy>/`,
    donde los `avance_`/`dato_` nacen archivados: ahí viven las señales que destraban).
    Contá cuántos te interpelan sin acusar.
@@ -81,7 +81,7 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
    (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
    propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
 
-1. NOVEDADES — `bash scripts/mi-buzon.sh frontend2 --todo`. Mira `abierto/`, `en-curso/` y
+1. NOVEDADES — `bash scripts/vigia.sh mi-buzon.sh frontend2 --todo`. Mira `abierto/`, `en-curso/` y
    `cerrado/<hoy>/` (los `avance_` y `dato_` nacen archivados: ahí viven las señales que
    DESTRABAN trabajo), descarta lo que vos emitiste, y ordena lo más viejo primero — que es
    lo único que urge.

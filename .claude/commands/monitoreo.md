@@ -19,7 +19,7 @@ averiguarlo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
    nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
 6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y corré
-   `bash scripts/mi-buzon.sh planificacion --todo`, que ya mira `abierto/`, `en-curso/` y
+   `bash scripts/vigia.sh mi-buzon.sh planificacion --todo`, que ya mira `abierto/`, `en-curso/` y
    `cerrado/<hoy>/` (donde los `avance_` nacen archivados).
    **No escribas el filtro a mano.** Ni el `find '*planificacion_*'` que acá se documentaba:
    medido el 2026-10-12 sobre el buzón real, dejaba **7 de 12** invisibles. El motivo es fino y
@@ -111,7 +111,7 @@ Vigía de coordinación (sesión PLANIFICACIÓN) v3.
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-1. NOVEDADES — `bash scripts/mi-buzon.sh planificacion --todo`. Trae lo que te interpela de
+1. NOVEDADES — `bash scripts/vigia.sh mi-buzon.sh planificacion --todo`. Trae lo que te interpela de
    `abierto/`, `en-curso/` y `cerrado/<hoy>/`, descarta lo que vos emitiste (notificarlo es
    ruido disfrazado de novedad) y ordena lo más viejo primero — que es lo único que urge.
    **No escribas el filtro a mano.** Ni el `find '*planificacion_*'` que acá se documentaba:
