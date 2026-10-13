@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Linking } from 'react-native';
 
-import type { ChatMessage, PresupuestoPropuesto } from '@copiloto/core';
+import { formatearImporte, type ChatMessage, type Presupuesto, type PresupuestoPropuesto } from '@copiloto/core';
 
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
+import { Recibo } from './Recibo';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
@@ -58,13 +60,26 @@ export function TarjetaPresupuestoPropuesto({
   // async) — sin `useEffect` de lectura ni estado `leido` que gatee el primer render.
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
   const [numero, setNumero] = useState<number | null>(resuelto?.estado === 'guardado' ? resuelto.numero : null);
+  // Sólo de sesión viva: lo persistido en el mensaje es `numero` (GUARDM). Al rehidratar un guardado el
+  // recibo queda con el título y el N°, sin las líneas de datos ni el enlace «Doc».
+  const [creado, setCreado] = useState<Presupuesto | null>(null);
 
   if (estado === 'guardado') {
+    const detalle: string[] = [];
+    if (creado != null) {
+      detalle.push(
+        [formatearImporte(creado.total), creado.receptor.nombre].filter((v) => v.trim() !== '').join(' · '),
+      );
+      if (creado.docLink != null) detalle.push('Doc listo para mandar');
+    }
+    const docLink = creado?.docLink ?? null;
     return (
-      <TarjetaPropuestaTerminal
+      <Recibo
         testID={`${testID}-guardado`}
         tono="exito"
-        texto={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
+        titulo={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
+        detalle={detalle}
+        enlace={docLink != null ? { texto: 'Doc', onPress: () => void Linking.openURL(docLink) } : undefined}
       />
     );
   }
@@ -89,6 +104,7 @@ export function TarjetaPresupuestoPropuesto({
         }}
         onCreado={(p) => {
           setNumero(p.numero);
+          setCreado(p);
           setEstado('guardado');
           onResolver?.({ estado: 'guardado', numero: p.numero });
         }}

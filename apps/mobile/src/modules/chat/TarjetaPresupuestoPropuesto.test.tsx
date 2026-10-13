@@ -139,8 +139,27 @@ describe('TarjetaPresupuestoPropuesto', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
-    expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent('Presupuesto anotado — N° 7');
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
+    // `pres-ciclo` (mapeo 2026-10-12): el recibo trae el total y el receptor, como el `REC` del prototipo.
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$45.000,00 · Juan Pérez');
+    // Sin docLink no hay «Doc listo para mandar» ni enlace: `null` no es un error (docstring de `Presupuesto`).
+    expect(screen.queryByTestId('presupuesto-propuesto-guardado-enlace')).toBeNull();
     expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+  });
+
+  it('con Doc generado el recibo ofrece el enlace «Doc» y dice que está listo para mandar', async () => {
+    mockCrear.mockResolvedValue({
+      status: 'ok',
+      presupuesto: { ...presupuestoGuardado(7), docLink: 'https://docs.google.com/document/d/abc' },
+    });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado-enlace')).toBeTruthy());
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent('Doc listo para mandar');
   });
 
   it('🔴 agregar/quitar filas YA está activo en la card — sin modo acotado (decisión del operador, se queda)', async () => {

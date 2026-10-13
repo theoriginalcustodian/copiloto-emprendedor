@@ -115,7 +115,9 @@ export function AccionesComprobante({ estado, testID }: AccionesComprobanteProps
         testID={`${testID}-botones`}
         botones={[
           {
-            etiqueta: 'Guardar',
+            // Abre el link (PDF o Drive); NO guarda nada. «Guardar» prometía una acción que este botón
+            // no hace (mapeo `fact-cae`, 2026-10-12). El testID `-guardar` se conserva por tests/E2E.
+            etiqueta: enDrive ? 'Abrir en Drive' : 'Abrir PDF',
             onPress: () => void abrirLink(link, 'tu factura'),
             variante: 'primario',
             testID: `${testID}-guardar`,
