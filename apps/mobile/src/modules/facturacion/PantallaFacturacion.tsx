@@ -40,6 +40,7 @@ import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
 import { DetalleComprobante } from './DetalleComprobante';
+import { ResumenFacturado, type ResumenFacturadoHandle } from './ResumenFacturado';
 import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
 import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
@@ -205,6 +206,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
   const refMeDeben = useRef<SeccionMeDebenHandle>(null);
+  const refResumen = useRef<ResumenFacturadoHandle>(null);
   /** `idem_key` en vuelo -- ver docstring de `leerClaveIdemGuardada` más arriba. */
   const claveIdem = useRef<string | null>(null);
   const [refrescandoLista, setRefrescandoLista] = useState(false);
@@ -440,6 +442,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   useEffect(() => {
     if (estadoFacturaActual?.terminado !== true) return;
     void refComprobantes.current?.recargar();
+    // «Facturado este mes» cambia con el comprobante recién emitido (o anulado): misma razón.
+    void refResumen.current?.recargar();
   }, [estadoFacturaActual?.terminado, estadoFacturaActual?.estado]);
 
   /**
@@ -453,7 +457,11 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
       // Las dos secciones, no sólo el listado: el tirón es el ÚNICO camino que cubre lo que cambió
       // AFUERA de esta app, y un cobro registrado desde el chat o desde otro dispositivo cambia
       // justamente «Te deben». Refrescar una sola dejaría media pantalla vieja al lado de la fresca.
-      await Promise.all([refComprobantes.current?.recargar(), refMeDeben.current?.recargar()]);
+      await Promise.all([
+        refComprobantes.current?.recargar(),
+        refMeDeben.current?.recargar(),
+        refResumen.current?.recargar(),
+      ]);
     } finally {
       if (vivo.current) setRefrescandoLista(false);
     }
@@ -631,6 +639,9 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
 
         {cuitConocido && (
           <>
+            {/* `factura` (mapeo 2026-10-12): el resumen del mes abre la pantalla, como en el prototipo.
+                La cifra viene del backend (`portada.mes.facturado`) — ver `ResumenFacturado.tsx`. */}
+            <ResumenFacturado ref={refResumen} />
             {/* «Te deben» ANTES del listado completo: es la pregunta que se hace primero al abrir
                 Facturación. Sección de esta misma pantalla y no destino aparte — lo que se debe SON
                 las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
