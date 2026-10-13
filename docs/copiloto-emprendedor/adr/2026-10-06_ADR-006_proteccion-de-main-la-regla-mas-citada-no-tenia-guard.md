@@ -1,7 +1,7 @@
 # ADR-006 — Protección de `main`: la regla más citada del proyecto no tenía guard
 
 - **Fecha:** 2026-10-06
-- **Estado:** 🟡 **`PROPOSED`** — 🔴 **y BLOQUEADO en la activación: ver ENMIENDA 2 arriba.** `main` sigue sin protección; el permiso para crear el ruleset lo tiene el operador — y **no puede pasar a `ACCEPTED` sin el test adversarial del §7**.
+- **Estado:** 🟢 **`ACCEPTED` 2026-10-12** — ruleset **24960700** (`main-exige-pull-request`) `active`, y los dos controles bloqueantes del §7 **medidos**: el remoto rechaza un push directo (`GH013`) y un PR con CI **cerrado verde** sigue leyendo `CLEAN`. Evidencia en §8.
   Esto es un **control de autorización**, y la regla dura del `CLAUDE.md` global es explícita:
   *«Control de autorización sin test adversarial = control no verificado»*. El control acá no es
   «el ruleset existe en la API» (eso es configuración): es **un push directo a `main` que el
@@ -248,21 +248,94 @@ alguien haga hoy**, que es la definición de un guard que no grita en el caso no
 - [x] **Control positivo del canario:** contra el `ci-verde.sh` **viejo**, los casos BLOCKED/BEHIND/
       DIRTY/desconocido/denominador salen **ROJOS** y `UNSTABLE` (el caso normal) sigue verde. Sin
       esto, el canario verde no distinguiría «lo arreglé» de «no mido nada».
-- [ ] El commit del `case` **mergeado a `main` ANTES** de activar el ruleset. ⚠️ Estaba marcado `[x]` sin estarlo: el PR es **#854** y al 2026-10-06 sigue abierto. Un `[x]` adelantado en un DoD es la misma falla que el ADR denuncia, un nivel más arriba.
-- [ ] 🔴 **Test adversarial (el que decide este ADR):** `git push` directo a `main` desde un clon con
+- [x] El commit del `case` **mergeado a `main` ANTES** de activar el ruleset. ✅ **#854 MERGED 2026-10-06 22:04 UTC** (`d69d244a`), ruleset activado el 2026-10-12 — el orden se cumplió. ⚠️ Estaba marcado `[x]` sin estarlo: el PR es **#854** y al 2026-10-06 sigue abierto. Un `[x]` adelantado en un DoD es la misma falla que el ADR denuncia, un nivel más arriba.
+- [x] ✅ **MEDIDO (§8): `GH013` del remoto y `origin/main` sin moverse.** 🔴 **Test adversarial (el que decide este ADR):** `git push` directo a `main` desde un clon con
       la credencial habitual ⇒ **rechazado por el remoto**. Un ruleset que existe en la API y no
       rechaza es indistinguible de ninguno.
-- [ ] **Control 2, el del caso normal, SÓLO con el CI cerrado verde** (ver enmienda): un PR abierto
+- [x] ✅ **MEDIDO con CI CERRADO VERDE (§8): #1036, 6/6 `pass`, `MERGEABLE/CLEAN`, `ci-verde.sh` exit 0.** **Control 2, el del caso normal, SÓLO con el CI cerrado verde** (ver enmienda): un PR abierto
       después de activar el ruleset lee `MERGEABLE/CLEAN` y `ci-verde.sh` da **exit 0**. Si diera
       exit 5, el ruleset está mal configurado y **se revierte** — el guard no puede frenar el camino
       que todos usan. **Medido con CI en vuelo no vale:** `UNSTABLE` pasa en los dos mundos.
-- [ ] **Consulta de precedencia del enum:** con el ruleset puesto, qué lee un PR con el CI
+- [~] 🟡 **SIN caso observable con este ruleset (§8) — queda ABIERTA con disparador nuevo: el día que se agregue una condición que un PR pueda incumplir.** **Consulta de precedencia del enum:** con el ruleset puesto, qué lee un PR con el CI
       **corriendo**. `BLOCKED` ⇒ el bloqueo gana y el gate lo ve. `UNSTABLE` ⇒ **el bloqueo es
       invisible mientras el CI corre**, y hay que escribirlo acá y en `ci-verde.sh`, porque es la
       ventana en que el gate diría verde sobre un PR bloqueado. Esto NO bloquea el `ACCEPTED`, pero
       su respuesta sí entra al ADR: es la única parte del mecanismo que no controlamos nosotros.
-- [ ] **Línea base, registrada ANTES por auditoría** (2026-10-06, contra la que se compara):
+- [x] **Línea base, registrada ANTES por auditoría** (2026-10-06, contra la que se compara):
       `0 rulesets` · `main` → `404 Branch not protected` · #853 y #854 en `MERGEABLE/UNSTABLE` con CI
       en vuelo. Sin línea base, un `CLEAN` posterior no prueba que algo cambió.
+
+## 8. Evidencia de la activación (2026-10-12) — por qué pasa a `ACCEPTED`
+
+Ruleset **24960700**, `main-exige-pull-request`, `enforcement: active`, `target: branch`, **0 bypass
+actors**, reglas `pull_request` + `non_fast_forward` + `deletion`.
+
+### Control 1 — adversarial: el **remoto** rechaza (el que decidía este ADR)
+
+Push directo a `main` con la credencial habitual, desde un `commit-tree` de árbol idéntico:
+
+```
+remote: error: GH013: Repository rule violations found for refs/heads/main
+remote: - Changes must be made through a pull request
+ ! [remote rejected] <sha> -> main (push declined due to repository rule violations)
+```
+
+`origin/main` quedó **sin moverse** en `e49990bf`. Un ruleset que existe en la API y no rechaza es
+indistinguible de ninguno — acá rechazó, y lo dijo el **remoto**, no un hook local.
+
+⚠️ **Y cómo casi no se pudo atribuir:** la primera corrida fue `git push ... | head -12` y mostró
+sólo los hooks locales (`[secretos]`, `[atribucion]`) con `rc=1`. Un push rechazado por un hook local
+y uno rechazado por el remoto dan **el mismo `rc=1`**, y el `head` se comía justo el discriminador. La
+evidencia de arriba salió de repetirlo **sin pipe**. → `memoria/el-pipe-se-come-el-exit-code.md`
+
+### Control 2 — el caso normal, con **CI cerrado verde** (como manda la ENMIENDA 2)
+
+PR **#1036**, 6 jobs **cerrados** (`lint backend core mobile web drift`, todos `pass/SUCCESS`), con
+el ruleset ya activo:
+
+```
+mergeable=MERGEABLE · mergeStateStatus=CLEAN · head=2b15a5eb
+ci-verde.sh: VERDE — se puede mergear (merge=MERGEABLE/CLEAN · 6/6 jobs del rollup del PR)
+```
+
+**`CLEAN`, no `BLOCKED`** ⇒ el ruleset **no** frena el camino que usan las tres sesiones, así que no
+hay que revertirlo. Mergeado después sin fricción: merge commit `941baae4`.
+
+### Control 3 — la consulta de precedencia del enum: **no tiene caso observable con este ruleset**
+
+La consulta preguntaba qué lee un PR **bloqueado** mientras el CI corre: `BLOCKED` (el bloqueo gana y
+el gate lo ve) o `UNSTABLE` (el bloqueo queda **invisible** y `ci-verde.sh` diría verde sobre un PR
+bloqueado). Medidos los parámetros, la pregunta se disuelve:
+
+```
+required_approving_review_count: 0 · required_reviewers: [] · require_code_owner_review: false
+required_review_thread_resolution: false · require_last_push_approval: false
+```
+
+Este ruleset exige **que el cambio pase por un PR**, y nada más. Un PR **cumple** esa condición por
+existir ⇒ **ningún PR puede leer `BLOCKED` por el ruleset 24960700**: la ventana que la consulta
+temía **no existe hoy**.
+
+🔴 **Y por eso la consulta queda ABIERTA, no respondida — lo que cambia es su disparador.** Lo
+medido es que la pregunta **no se puede contestar con esta configuración**, no que la respuesta sea
+favorable. **El día que alguien le agregue a este ruleset una condición que un PR pueda incumplir**
+— `required_approving_review_count > 0`, checks requeridos, resolución de hilos — la ventana nace, y
+nace **muda**, porque `ci-verde.sh` trata `UNSTABLE` como verde. Ese es el disparador, y queda escrito
+acá porque el enum es de GitHub, no nuestro.
+
+⚠️ **Lo que NO prueba una medición que hice hoy, para que nadie la cite de más:** vi #1036 en
+`UNSTABLE` con el CI corriendo y el ruleset activo. Eso **no** responde la consulta — #1036 no estaba
+bloqueado por nada, así que su `UNSTABLE` sale igual en los dos mundos. Es exactamente el defecto de
+atribución que la ENMIENDA 2 le encontró a la primera versión del control 2.
+→ `memoria/dos-causas-suficientes-el-test-no-atribuye.md`
+
+### Lo que queda dicho y no tapado
+
+- El commit del `case` enumerado (**#854**) está **MERGED** desde 2026-10-06 22:04 UTC (`d69d244a`),
+  o sea **antes** de activar el ruleset — el orden que el DoD exigía.
+- `require_extra_approval_for_unattributed_changes: true` está puesto y **no lo pedimos nosotros**
+  (viene del default de GitHub). No cambia nada hoy porque no hay reviews requeridas, pero es una
+  condición que un PR **sí** podría incumplir el día que se agreguen ⇒ es el primer candidato a abrir
+  la ventana del control 3.
 
 🤖 planificación
