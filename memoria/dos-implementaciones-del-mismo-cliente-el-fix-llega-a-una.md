@@ -92,3 +92,23 @@ Son dos listas distintas y la segunda es la que manda.
 **El control:** al cerrar un fix de N call-sites, **contá los que tocaste contra los que listaste** —
 no contra los que fallaban. Un call-site que todavía no fallaba es exactamente el que va a fallar
 cuando el consumidor pida el campo siguiente.
+
+---
+
+## Refuerzo 2026-10-13 — una lib con DOS puertas: cerré una y el consumidor decidía por la otra
+
+`scripts/ci/lib-padron.sh` expone dos entradas para la misma pregunta: `padron_ids()` (la lista) y
+`padron_donde()` (dónde vive un id). Al agregarle el tablero vivo como fuente, metí la **lista cerrada**
+en `padron_ids` y en `padron_donde` dejé un `grep` sobre el **archivo entero**.
+
+**Quién decide no es quien parece:** `goal.sh:34` valida con `padron_donde`, no con `padron_ids`. Con eso
+el padrón efectivo pasó a ser *«cualquier palabra con forma de id en cualquier parte de `PLAN.md`»* —
+exactamente la inflación contra la que el propio archivo advierte dos comentarios más arriba. Lo cazó el
+caso 11 del test (`goal.sh set OTROFUERA`, una fila **fuera** del bloque `COLA-VIVA`, fue **aceptada**),
+que existía sólo porque el positivo solo no prueba nada.
+
+**How to apply:** cuando endurezcas o amplíes una regla dentro de una lib, **listá las funciones
+exportadas y preguntá por cada una cuál consumidor la usa para DECIDIR**. El fix tiene que entrar por la
+puerta que decide, no por la que da la lista más linda — y el test que lo prueba es el que pide el caso
+**rechazado**, no el aceptado.
+→ [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]

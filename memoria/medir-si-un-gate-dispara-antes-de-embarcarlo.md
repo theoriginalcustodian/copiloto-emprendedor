@@ -57,3 +57,35 @@ conocido, **el barrido está mal, no el caso**: escribí qué eje mide y qué ej
 siempre difieren en el **denominador** (archivos vs asertos, llamadores vs capacidad, forma vs efecto); (3) un
 `0` de un barrido sin ese estreno no es evidencia de ausencia — es evidencia de nada
 ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]).
+
+---
+
+## Refuerzo 2026-10-13 — la norma era INSATISFACIBLE, y la adopción cero parecía desobediencia
+
+El 2026-10-08 bajé una norma a las tres sesiones: *«nadie trabaja sin goal — la orden de trabajo se
+declara y el gate la compara»* (`scripts/goal.sh` + `.githooks/pre-push`). Cinco días después el
+barrido medía **0 de 59 worktrees con orden declarada**, y lo leí como un problema de disciplina.
+
+**Lo medido:** `goal.sh set <ID>` valida contra un padrón cuyo patrón de id es
+`RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+)\b'`, y **la cola viva nombra sus filas en MAYÚSCULA**
+(`SNIPPETMIENTE`, `DURABGATE`, `GUARDSOLOWEB`). Control en las dos direcciones: `set BL-V1` → aceptado
+con su DoD; `set SNIPPETMIENTE` → `⛔ no está en el padrón`. **Ninguno** de los ~60 ids del tablero
+entraba. La norma no se desobedecía: **no se podía cumplir.**
+
+**Por qué no dio síntoma:** el fail-closed del padrón es correcto («un goal que yo me invento no es una
+orden de trabajo») y su mensaje de rechazo **culpa al que pide**, no al padrón. Y el consumidor que
+reportaba el agregado (`atribucion.sh`) corre en modo REPORTE, así que el 0/59 se imprimía cada ciclo
+sin que nadie lo tomara por un defecto del instrumento.
+
+**Y el error de inferencia que cometí encima, porque es el mismo vicio:** al ver *84% no atribuido* en
+los últimos 25 commits de `main`, lo atribuí al mismo vocabulario. Medido después: **0 de 25 asuntos
+citan un id del tablero** (los 2 que citan algo citan `BL-O6` y `BL-X6`), así que ese 84% es real y el
+fix no lo mueve. Dos números en la misma pantalla, **uno era del instrumento y el otro de la conducta**,
+y los expliqué con la misma causa sin medir cuál era cuál.
+
+**How to apply (4):** antes de **broadcastear** una norma que un mecanismo va a hacer cumplir, corré el
+mecanismo sobre el trabajo REAL de cada rol —no sobre un ejemplo— y guardá el output. Si el padrón, el
+corpus o el vocabulario del mecanismo no contiene lo que las sesiones tienen contratado **hoy**, la
+norma nace insatisfacible y su adopción cero te va a parecer desobediencia durante días. El control es
+una línea: tomá el id de la cabeza de la cola y pedíle al mecanismo que lo acepte.
+→ [[un-criterio-de-cierre-con-algo-fuera-de-alcance-no-se-cumple-nunca]] · [[prometer-no-es-ejecutar-el-gate-media-la-palabra]]

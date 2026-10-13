@@ -70,8 +70,13 @@ while IFS= read -r sha; do
   # mis mensajes MENCIONAN ids de pasada — un commit sobre «mi propio grep» citaba 7 BL-*
   # en su prosa y el gate lo aprobaba. Mencionar un id no es trabajar en ese id: un gate que
   # se satisface con una mención se absuelve solo.
+  # `ids_citados_en` (lib-padron.sh) y no `grep -ohE "$RE_ID"`: el regex solo conoce
+  # `BL-*`/`DEC-*`/`M-*`, y la cola viva nombra sus filas en MAYUSCULA (`SNIPPETMIENTE`), que desde
+  # el 2026-10-13 ES un goal valido. Sin esto, un commit que cite su propio goal cae en SIN-ID.
+  # ⚠️ NO arregla el 84% de no atribuido de hoy: medido, 0 de 25 asuntos citan un id del tablero,
+  # asi que ese numero es conducta (no se cita id en el asunto), no ceguera del instrumento.
   ids="$( { printf '%s\n' "$msg" | head -1
-            printf '%s\n' "$msg" | grep -iE '^ATRIBUCION:' ; } | grep -ohE "$RE_ID" | sort -u)"
+            printf '%s\n' "$msg" | grep -iE '^ATRIBUCION:' ; } | ids_citados_en "$RAIZ")"
   if printf '%s' "$msg" | grep -qE '^ATRIBUCION:[[:space:]]*libre'; then
     n_libre=$((n_libre + 1)); detalle="$detalle\n  LIBRE     $corto"
   elif [ -n "$ids" ]; then
