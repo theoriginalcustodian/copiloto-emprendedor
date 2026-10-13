@@ -14,3 +14,6 @@
 *.service   text eol=lf
 Dockerfile  text eol=lf
 *.snippet   text eol=lf
+
+# patch-package aplica el .patch con `git apply`: con CRLF el parche no aplica en Linux (EAS) ni en el VPS.
+*.patch     text eol=lf
