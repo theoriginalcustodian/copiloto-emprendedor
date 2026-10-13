@@ -147,7 +147,7 @@ el `exit 2` («el instrumento, no el dato») y el `exit 8` («el dato») llegan 
 
 **La regla:** un mutante sólo ejercita el caso si **resuelve su entorno igual que el original**. Si el
 script deduce rutas de `__file__`, el mutante va en la **misma carpeta** (y se borra en un `trap EXIT`
-/ `finally`, nunca al final del happy path — [[un-script-que-revierte-al-final-deja-el-mutante]]).
+/ `finally`, nunca al final del happy path — [[un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante]]).
 Y el veredicto se lee del **mensaje**, no del rc: el propio instrumento ya separaba las dos clases con
 `exit 2` vs `exit 8`, y fui yo quien tiró esa información al mirar sólo el código de salida.
 
