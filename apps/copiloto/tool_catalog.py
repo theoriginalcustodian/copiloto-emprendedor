@@ -66,6 +66,8 @@ from afip_rules import (BorradorFactura, Concepto, CondicionIVA, DatosVenta,  # 
                         validar_factura_completa, validar_perfil)
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
+# C-D3: `card.detalle` / `card.recibo` del gate HITL (piloto Gmail). Del dominio: el motor sólo re-empaqueta.
+from hitl_card import detalle_de, recibo_de  # noqa: E402
 
 
 def _obs_service(toolkit: str) -> dict:
@@ -1707,12 +1709,19 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                           observation={"error": f"servicio no conectado: {mod.TOOLKIT}",
                                                        "needs_connect": mod.TOOLKIT,
                                                        "gate_card": requiere_conexion_card(mod.TOOLKIT, _friendly_toolkit(mod.TOOLKIT))})
+                    # C-D3: `detalle` se arma de los ARGUMENTOS de la propuesta (los mismos que se van a
+                    # ejecutar al confirmar), nunca parseando `reply_text`: el texto es redacción, no dato.
+                    detalle = detalle_de(mod.TOOLKIT, out.arguments)
                     return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
-                                      observation={"preview": out.reply_text, **_obs_service(mod.TOOLKIT)},
+                                      observation={"preview": out.reply_text, **_obs_service(mod.TOOLKIT),
+                                                   **({"detalle": detalle} if detalle else {})},
                                       artifact=Artifact(kind="pending", data={"reply_text": out.reply_text}))
                 ok, res = _execute_proposal(gateway, ctx.composio_user_id, out)   # then/resolve (B2)
+                # C-D3: el recibo sólo existe si SE EJECUTÓ: un envío que falló no «Mandó a nadie».
+                recibo = recibo_de(mod.TOOLKIT, out.arguments, now_iso_provider()) if ok else None
                 return ToolResult(tool_call_id=idem_key, is_write=True, status="ok" if ok else "error",
-                                  observation={"result": out.ok_text if ok else "no se pudo completar"},
+                                  observation={"result": out.ok_text if ok else "no se pudo completar",
+                                               **({"recibo": recibo} if recibo else {})},
                                   artifact=_artifact_for(name, res, arguments) if ok else None)
             return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "resultado inesperado"})
         except ConnectionRequired as e:
