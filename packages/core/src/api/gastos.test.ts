@@ -108,7 +108,7 @@ describe('gastos.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      const g = res.gastos[0];
+      const g = res.gastos[0]!;
       expect(g.id).toBe(2);
       // 🔴 El monto NO se convierte a número en ningún punto del camino.
       expect(g.monto).toBe('15000.50');
@@ -130,7 +130,7 @@ describe('gastos.ts', () => {
       if (res.status !== 'ok') return;
       expect(res.gastos).toHaveLength(1);
       expect(res.total).toBe(37);
-      expect(peticiones[0].path).toBe('/gastos?limit=1');
+      expect(peticiones[0]!.path).toBe('/gastos?limit=1');
     });
 
     it('un tenant sin gastos devuelve [] y eso NO es un error', async () => {
@@ -151,7 +151,7 @@ describe('gastos.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      expect(res.gastos[0].categoria).toBe('otros');
+      expect(res.gastos[0]!.categoria).toBe('otros');
     });
 
     it('un 200 con el HTML del SPA es "no disponible", no una excepción de parseo', async () => {
@@ -219,8 +219,8 @@ describe('gastos.ts', () => {
 
       await crearGasto({ monto: '15000.50', origen: 'manual' });
 
-      expect(peticiones[0].cuerpoJson).toEqual({ monto: '15000.50', origen: 'manual' });
-      expect(peticiones[0].cuerpoJson).not.toHaveProperty('fecha');
+      expect(peticiones[0]!.cuerpoJson).toEqual({ monto: '15000.50', origen: 'manual' });
+      expect(peticiones[0]!.cuerpoJson).not.toHaveProperty('fecha');
     });
 
     it('traduce a snake_case sólo las claves presentes', async () => {
@@ -234,7 +234,7 @@ describe('gastos.ts', () => {
         montoSugerido: '899.00',
       });
 
-      expect(peticiones[0].cuerpoJson).toEqual({
+      expect(peticiones[0]!.cuerpoJson).toEqual({
         monto: '900.00',
         origen: 'foto',
         categoria: 'transporte',
@@ -265,8 +265,8 @@ describe('gastos.ts', () => {
       await crearGasto({ monto: '15000.50', origen: 'manual', idemKey: 'gasto:assistant-123' });
       await crearGasto({ monto: '15000.50', origen: 'manual' });
 
-      expect(peticiones[0].cuerpoJson).toHaveProperty('idem_key', 'gasto:assistant-123');
-      expect(peticiones[1].cuerpoJson).not.toHaveProperty('idem_key');
+      expect(peticiones[0]!.cuerpoJson).toHaveProperty('idem_key', 'gasto:assistant-123');
+      expect(peticiones[1]!.cuerpoJson).not.toHaveProperty('idem_key');
     });
   });
 
@@ -289,7 +289,7 @@ describe('gastos.ts', () => {
       if (res.status !== 'ok') return;
       expect(res.resumen.total).toBe('340000.00');
       expect(typeof res.resumen.total).toBe('string');
-      expect(res.resumen.porCategoria[0].porcentaje).toBe(40);
+      expect(res.resumen.porCategoria[0]!.porcentaje).toBe(40);
       expect(res.resumen.mesAnterior).toBe('295000.00');
     });
 
@@ -345,7 +345,7 @@ describe('gastos.ts', () => {
 
       await obtenerResumenGastos('2026-06');
 
-      expect(peticiones[0].path).toBe('/gastos/resumen?periodo=2026-06');
+      expect(peticiones[0]!.path).toBe('/gastos/resumen?periodo=2026-06');
     });
   });
 });

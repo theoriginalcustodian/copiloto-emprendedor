@@ -61,7 +61,7 @@ describe('listarConceptos', () => {
 
     const res = await listarConceptos();
 
-    expect(peticiones[0].path).not.toContain('incluir_inactivos');
+    expect(peticiones[0]!.path).not.toContain('incluir_inactivos');
     expect(res.status).toBe('ok');
     if (res.status === 'ok') expect(res.conceptos.map((c) => c.activo)).toEqual([true, false]);
   });
@@ -73,7 +73,7 @@ describe('listarConceptos', () => {
 
     await listarConceptos({ incluirInactivos: true });
 
-    expect(peticiones[0].path).toContain('incluir_inactivos=true');
+    expect(peticiones[0]!.path).toContain('incluir_inactivos=true');
   });
 
   it('🔴 un concepto SIN precio queda en `null`, nunca en "0"', async () => {
@@ -82,7 +82,7 @@ describe('listarConceptos', () => {
 
     const res = await listarConceptos();
 
-    if (res.status === 'ok') expect(res.conceptos[0].precioReferencia).toBeNull();
+    if (res.status === 'ok') expect(res.conceptos[0]!.precioReferencia).toBeNull();
     else throw new Error('esperaba ok');
   });
 
@@ -91,7 +91,7 @@ describe('listarConceptos', () => {
 
     const res = await listarConceptos();
 
-    if (res.status === 'ok') expect(res.conceptos[0].precioReferencia).toBe('8000.10');
+    if (res.status === 'ok') expect(res.conceptos[0]!.precioReferencia).toBe('8000.10');
     else throw new Error('esperaba ok');
   });
 
@@ -126,7 +126,7 @@ describe('listarConceptos', () => {
 
     const res = await listarConceptos();
 
-    if (res.status === 'ok') expect(res.conceptos[0].activo).toBe(true);
+    if (res.status === 'ok') expect(res.conceptos[0]!.activo).toBe(true);
     else throw new Error('esperaba ok');
   });
 });
@@ -143,7 +143,7 @@ describe('crearConcepto', () => {
 
     // `precio_referencia` NO viaja: no ponerle precio y ponerle `null` son dos cosas distintas.
     expect(cuerpo).toEqual({ nombre: 'Corte' });
-    expect(peticiones[0].metodo).toBe('POST');
+    expect(peticiones[0]!.metodo).toBe('POST');
   });
 
   it('acepta la respuesta PELADA y la ENVUELTA — no está medido cuál manda', async () => {
@@ -198,8 +198,8 @@ describe('editarConcepto', () => {
 
     await editarConcepto(1, { precioReferencia: '9000.00' });
 
-    expect(peticiones[0].metodo).toBe('PATCH');
-    expect(peticiones[0].cuerpoJson).toEqual({ precio_referencia: '9000.00' });
+    expect(peticiones[0]!.metodo).toBe('PATCH');
+    expect(peticiones[0]!.cuerpoJson).toEqual({ precio_referencia: '9000.00' });
   });
 
   it('🔴 `null` (borrar el precio) SÍ viaja; `undefined` (no tocar) no', async () => {
@@ -207,7 +207,7 @@ describe('editarConcepto', () => {
 
     await editarConcepto(1, { precioReferencia: null });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ precio_referencia: null });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ precio_referencia: null });
   });
 
   it('reactivar es `activo: true` — no hay endpoint aparte', async () => {
@@ -215,7 +215,7 @@ describe('editarConcepto', () => {
 
     await editarConcepto(1, { activo: true });
 
-    expect(peticiones[0].cuerpoJson).toEqual({ activo: true });
+    expect(peticiones[0]!.cuerpoJson).toEqual({ activo: true });
   });
 
   it('el 404 es semántico: `no_encontrado`, no `no_disponible`', async () => {
@@ -231,7 +231,7 @@ describe('desactivarConcepto', () => {
 
     const res = await desactivarConcepto(1);
 
-    expect(peticiones[0].metodo).toBe('DELETE');
+    expect(peticiones[0]!.metodo).toBe('DELETE');
     if (res.status === 'ok') expect(res.concepto?.activo).toBe(false);
     else throw new Error('esperaba ok');
   });

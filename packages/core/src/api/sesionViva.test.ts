@@ -58,7 +58,7 @@ describe('access token AUSENTE con refresh guardado — el caso que dejó al ope
     // Revertí `bearerVigente` (leer el token y listo) y esto se pone rojo: sin Bearer el fake
     // contesta 401 y `sentBearer` false hace que ni se intente el refresh.
     const { estado, tokens } = almacen({ token: null, refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) => {
       if (p.path === '/auth/refresh') {
         return { ok: true, status: 200, json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-rotado' }) };
@@ -78,7 +78,7 @@ describe('access token AUSENTE con refresh guardado — el caso que dejó al ope
 
   it('si el refresh TAMBIÉN está muerto → UnauthorizedError y ahí sí se limpia (logout real)', async () => {
     const { estado, tokens } = almacen({ token: null, refresh: 'rt-muerto' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) =>
       p.path === '/auth/refresh'
         ? { ok: false, status: 401, json: async () => ({ detail: 'refresh vencido' }) }
@@ -92,7 +92,7 @@ describe('access token AUSENTE con refresh guardado — el caso que dejó al ope
     // Sin este control, el test de arriba pasaría igual con un `limpiar()` incondicional: borrar
     // siempre satisface "borró cuando había que borrar".
     const { estado, tokens } = almacen({ token: null, refresh: null });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'no logueado' }) });
 
     await expect(apiClient.get('/clientes')).rejects.toBeInstanceOf(UnauthorizedError);
@@ -107,7 +107,7 @@ describe('un 401 sólo destruye la sesión cuando la sesión es el problema', ()
     // del endpoint. Antes (`limpiarTokens: auth`) cualquier 401 deslogueaba, y el usuario se
     // encontraba en el login sin haber hecho nada.
     const { estado, tokens } = almacen({ token: 'tok-viejo', refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) =>
       p.path === '/auth/refresh'
         ? { ok: true, status: 200, json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-rotado' }) }
@@ -123,7 +123,7 @@ describe('un 401 sólo destruye la sesión cuando la sesión es el problema', ()
   it('control positivo del mismo mecanismo: token vencido + refresh sano → renueva, reintenta y resuelve', async () => {
     // Si el reintento se rompiera, el test de arriba pasaría igual (sigue habiendo un 401 final).
     const { estado, tokens } = almacen({ token: 'tok-viejo', refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) => {
       if (p.path === '/auth/refresh') {
         return { ok: true, status: 200, json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-rotado' }) };
@@ -144,7 +144,7 @@ describe('single-flight del refresh — el mecanismo YA existía y no tenía qui
     // token ya consumido → logout espurio y silencioso. Quitá el `refreshInFlight` de `client.ts`
     // y este test pasa a contar 3.
     const { estado, tokens } = almacen({ token: 'tok-viejo', refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) => {
       if (p.path === '/auth/refresh') {
         return { ok: true, status: 200, json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-rotado' }) };
@@ -169,7 +169,7 @@ describe('single-flight del refresh — el mecanismo YA existía y no tenía qui
     // Camino nuevo: la renovación proactiva de `bearerVigente` también tiene que compartir la
     // promesa, si no el fix de CTA7 introduciría la carrera que el guard viejo ya evitaba.
     const { tokens } = almacen({ token: null, refresh: 'rt-vivo' });
-    configurarApi({ http: httpFake, tokens, apiBase: '' });
+    configurarApi({ http: httpFake, tokens });
     responder = (p) =>
       p.path === '/auth/refresh'
         ? { ok: true, status: 200, json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-rotado' }) }

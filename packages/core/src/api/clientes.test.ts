@@ -81,7 +81,7 @@ describe('clientes.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      const c = res.clientes[0];
+      const c = res.clientes[0]!;
       expect(c.creadoEn).toBe('2026-07-22T10:00:00+00:00');
       expect(c.docTipo).toBe(80);
       expect(c.docNro).toBe('30712345678');
@@ -92,7 +92,7 @@ describe('clientes.ts', () => {
       responder = () => respuesta(200, { clientes: [{ ...clienteCrudo(), comprobantes_cantidad: 0 }], total: 1 });
       const res = await listarClientes();
       if (res.status !== 'ok') throw new Error('se esperaba ok');
-      expect(res.clientes[0].comprobantesCantidad).toBe(0);
+      expect(res.clientes[0]!.comprobantesCantidad).toBe(0);
     });
 
     it('BL-V18: sin el campo (listado viejo) queda `undefined`, nunca 0', async () => {
@@ -134,10 +134,10 @@ describe('clientes.ts', () => {
       responder = () => respuesta(200, { clientes: [], total: 0 });
 
       await listarClientes({ q: 'panaderia' });
-      expect(peticiones[0].path).toBe('/clientes?q=panaderia');
+      expect(peticiones[0]!.path).toBe('/clientes?q=panaderia');
 
       await listarClientes({ q: '' });
-      expect(peticiones[1].path).toBe('/clientes');
+      expect(peticiones[1]!.path).toBe('/clientes');
     });
 
     it('un 200 con el HTML del SPA es no_disponible, no una excepción de parseo', async () => {
@@ -181,10 +181,10 @@ describe('clientes.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      expect(res.ficha.presupuestos[0].detalle).toBe('Instalación');
-      expect(res.ficha.facturas[0].detalle).toBe('N° 14');
+      expect(res.ficha.presupuestos[0]!.detalle).toBe('Instalación');
+      expect(res.ficha.facturas[0]!.detalle).toBe('N° 14');
       // Los totales siguen siendo STRING: es plata.
-      expect(res.ficha.facturas[0].total).toBe('45000.00');
+      expect(res.ficha.facturas[0]!.total).toBe('45000.00');
     });
 
     it('un 200 sin `cliente` es no_disponible', async () => {

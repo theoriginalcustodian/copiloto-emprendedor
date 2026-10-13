@@ -157,7 +157,7 @@ describe('contabilidad', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      expect(res.resumen.gastos.porCategoria[0].categoria).toBe('otros');
+      expect(res.resumen.gastos.porCategoria[0]!.categoria).toBe('otros');
     });
 
     it('🔴 el endpoint todavía no existe: un 200 con HTML del SPA es "no disponible", no una excepción', async () => {
@@ -176,10 +176,10 @@ describe('contabilidad', () => {
       responder = () => respuesta(200, resumenCrudo());
 
       await obtenerResumenContabilidad('2026-06');
-      expect(peticiones[0].path).toBe('/contabilidad/resumen?periodo=2026-06');
+      expect(peticiones[0]!.path).toBe('/contabilidad/resumen?periodo=2026-06');
 
       await obtenerResumenContabilidad();
-      expect(peticiones[1].path).toBe('/contabilidad/resumen');
+      expect(peticiones[1]!.path).toBe('/contabilidad/resumen');
     });
   });
 });
