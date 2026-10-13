@@ -153,6 +153,22 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     expect(screen.queryByTestId('inteligencia-rentabilidad-nota')).toBeNull();
   });
 
+  it('mapeo `bi`: el saldo en caja lleva el chip «Al <fecha> · variación» y SIN dato no dibuja chip', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: { ...PORTADA, caja: { ...PORTADA.caja, fechaCorte: '2026-08-19', variacionPct: '-18.0' } },
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja-chip')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-caja-chip').props.children).toBe('Al 19 de agosto · −18% vs mes anterior');
+  });
+
+  it('mapeo `bi` (control): con `fechaCorte` y `variacionPct` nulos el chip NO se dibuja', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-caja-chip')).toBeNull();
+  });
+
   it('🔴 mejores clientes vacío muestra el aviso, no una lista rota', async () => {
     // Degrada a [] si Clientes no está (contrato §3.1): la card muestra vacío, no rompe.
     leerMock.mockResolvedValue({ status: 'ok', portada: { ...PORTADA, mejoresClientes: [] } });
