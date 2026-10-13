@@ -2849,6 +2849,23 @@ def main():
     print("   partida por dimensión emite dos veredictos. Nunca citar el número sin la unidad.")
     print("⚠️  Y el numerador que manda es el de SUJETOS: contar veredictos sólo encuentra los que")
     print("   este lector ya sabe parsear (auditoría 2026-09-28, 8 hallazgos).")
+    # 🔴 QUÉ PREGUNTA **NO** RESPONDE ESTE SCRIPT (2026-10-13).
+    # El corpus se descubre con `rglob` sobre `coordinacion/` y nada más. Los documentos de
+    # veredictos del MAPEO prototipo->nativo viven en `docs/copiloto-emprendedor/`, fuera de ese
+    # árbol: no llegan ni a candidatos, así que el ratchet «candidato sin clasificar -> exit 8»
+    # —que existe para que ningún documento se ignore en silencio— tampoco los ve. Cuatro ratchets,
+    # y la ceguera era del DIRECTORIO, no del archivo.
+    # Costó una cifra falsa al operador: «13 de 54 = 24 % implementado del sprint». 13/54 es real
+    # para EL CRITERIO 3, y el criterio 3 pregunta otra cosa. Ampliar este corpus NO es el arreglo:
+    # los dos padrones comparten los 54 ids y preguntan distinto, así que inyectar esos docs acá
+    # produciría la mentira inversa — el mismo riesgo que este archivo ya documenta para el
+    # documento normativo. Por eso el mapeo tiene su propio medidor, y esto sólo lo declara.
+    #   -> memoria: un-nombre-con-dos-referentes-prueba-A-y-concluye-B · instrumento-que-no-mira-nunca-falla
+    print("🔴 SUJETO DE ESTE SCRIPT: criterio 3 / BL-Q3-v2 — paridad prototipo<->PWA+mobile por")
+    print("   `id + camino`. **NO** mide el mapeo prototipo->nativo del 2026-10-12 («¿las")
+    print("   divergencias listadas de esta fila están resueltas o enmendadas?»): sus tres docs")
+    print("   viven en `docs/copiloto-emprendedor/` y este corpus sólo glob-ea `coordinacion/`.")
+    print("   Para esa pregunta: `scripts/evidencia/medir-mapeo-implementacion.py`.")
 
 
 if __name__ == "__main__":

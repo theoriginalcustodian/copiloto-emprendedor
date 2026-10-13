@@ -71,6 +71,6 @@ teléfono, no intercalarlas.
 - Usuario de prueba: [[usuario-de-prueba-canonico-uno-solo-a-fuego]].
 
 **Actualización 2026-09-22 (después del corte de luz):** el operador decidió que **todo lo relativo al móvil pasa
-al sprint siguiente**. Este sprint **se cierra sin device**: las filas `PENDIENTE_DEVICE` no lo bloquean, y
+al sprint siguiente**. Este sprint **se cierra sin device**: las filas `PENDIENTE_DEVICE` no lo bloquean, y ⚠️ **VENCIDO — ESE SPRINT ES ESTE (13-10, `DEC-21`).** — lo de abajo describe el sprint que cerró el 08/10; HOY device está DENTRO del alcance y esas filas SÍ se miden. Sigue leyendo el párrafo como registro, no como regla vigente:
 la puesta a punto del teléfono (que hace BACKEND) ya no es el último paso de este sprint sino el primero del
 próximo. Los crones de las sesiones se apagan **al terminar la implementación**, por mensaje directo.
