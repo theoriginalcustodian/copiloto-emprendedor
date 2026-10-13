@@ -76,7 +76,7 @@ describe('TarjetaFacturaPropuesta', () => {
   it('dice explícitamente que TODAVÍA no la mandó', () => {
     render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
-    expect(screen.getByText('Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.')).toBeInTheDocument();
+    expect(screen.getByText('Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.')).toBeInTheDocument();
   });
 
   it('🔴 avisa ANTES de emitir que se anula con nota de crédito, no se borra (H-23)', () => {
@@ -134,6 +134,7 @@ describe('TarjetaFacturaPropuesta', () => {
     render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(screen.queryByTestId('factura-propuesta-completar')).toBeNull();
+    expect(screen.getByTestId('factura-propuesta-emitir')).toHaveTextContent(/^Emitir la factura$/);
     fireEvent.click(screen.getByTestId('factura-propuesta-emitir'));
 
     expect(mockConfirmar).toHaveBeenCalledWith('presu-12');

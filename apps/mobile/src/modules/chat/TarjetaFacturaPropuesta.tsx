@@ -186,7 +186,7 @@ export function TarjetaFacturaPropuesta({
       testID={testID}
       aviso={
         lista
-          ? 'Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.'
+          ? 'Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.'
           : 'Esto entendí, pero falta completar algo antes de emitirla.'
       }
     >
@@ -265,7 +265,7 @@ export function TarjetaFacturaPropuesta({
             lista
               ? [
                   {
-                    etiqueta: enviando ? 'Emitiendo…' : 'Emitir',
+                    etiqueta: enviando ? 'Emitiendo…' : 'Emitir la factura',
                     onPress: () => void emitir(),
                     variante: 'primario',
                     deshabilitado: enviando,
