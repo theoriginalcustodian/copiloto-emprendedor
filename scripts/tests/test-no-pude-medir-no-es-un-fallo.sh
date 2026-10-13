@@ -24,7 +24,11 @@ malo() { echo "  ❌ $1"; fallos=$((fallos+1)); }
 # $1=nombre del caso  $2=dir fixture  $3=rc esperado  $4=patrón que la salida debe contener
 caso() {
   local nombre="$1" dir="$2" rc_esp="$3" patron="$4" salida rc
-  salida="$(bash "$AGREG" "$dir" 'test-*.sh' 'fixture' 2>&1)"; rc=$?
+  # CI= EXPLICITO: GitHub exporta CI=true a todo el job, y la regla que este test introduce
+  # («bajo CI un no-medido es ROJO») tenia el ambiente heredado, asi que los casos 1 y 2 salian
+  # rojos en Actions y verdes en la PC. Un caso que NO declara su entorno mide la maquina, no el
+  # commit. El caso 7 pone CI=true a mano: ahi la variable ES el sujeto.
+  salida="$(CI= bash "$AGREG" "$dir" 'test-*.sh' 'fixture' 2>&1)"; rc=$?
   if [ "$rc" -ne "$rc_esp" ]; then
     malo "$nombre: rc=$rc (esperado $rc_esp)"; printf '%s\n' "$salida" | sed 's/^/        /'; return
   fi
