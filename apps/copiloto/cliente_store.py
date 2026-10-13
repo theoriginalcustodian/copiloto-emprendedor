@@ -12,7 +12,6 @@ import re
 import unicodedata
 from typing import Callable
 
-from afip_comprobante_store import ESTADO_ANULADA
 from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
 from gasto_store import ZONA_DEL_NEGOCIO, hoy_del_negocio
 
@@ -32,15 +31,52 @@ DOC_CONSUMIDOR_FINAL = 99
 _COLS = ("id", "nombre", "nombre_normalizado", "doc_tipo", "doc_nro", "condicion_iva",
          "domicilio", "email", "telefono", "notas", "origen", "created_at")
 
-# Conteo de comprobantes por cliente (BL-V18, sólo en el LISTADO). Un comprobante es del cliente por el
-# DOCUMENTO del receptor (`doc_tipo`, `doc_nro`): `afip_comprobantes.cuit` es el EMISOR y no sirve para
-# esto. Las anuladas no cuentan (mismo criterio que `total_periodo` y `impagos`). Sin documento = 0:
-# un `doc_nro` vacío no puede matchear comprobantes de consumidor final sin identificar.
-_COMPROBANTES_DEL_CLIENTE = (
-    f"(SELECT count(*) FROM {_SCHEMA}.afip_comprobantes a "
-    f"WHERE a.cliente_id = c.cliente_id AND c.doc_nro <> '' "
-    f"AND a.doc_tipo = c.doc_tipo AND a.doc_nro = c.doc_nro AND a.estado <> '{ESTADO_ANULADA}')")
-_COLS_CON_CONTEO = ", ".join(f"c.{col}" for col in _COLS) + f", {_COMPROBANTES_DEL_CLIENTE} AS comprobantes_cantidad"
+# El documento del receptor se compara NORMALIZADO (sólo dígitos) de los dos lados. Hoy `afip_comprobantes`
+# lo guarda sólo con dígitos (medido: 24/24 filas), así que el `regexp_replace` no cambia nada — y está
+# igual, porque si un día entra un CUIT con guiones por otra puerta, sin esto el join da **cero filas y
+# ningún error**: el cliente aparecería sin facturas y nadie sabría por qué.
+_DOC_NORMALIZADO_SQL = "regexp_replace(coalesce({}, ''), '\\D', '', 'g')"
+
+
+def _facturas_del_documento_sql(alias: str, doc_tipo_expr: str, doc_expr: str) -> str:
+    """UNA definición de «este comprobante FACTURADO es de este documento» (C-D4, 2026-10-13).
+
+    La consumen el listado (`comprobantes_cantidad` Y `monto_facturado`) y `resumen_operaciones` (facturas,
+    notas, neto y últimas operaciones). Antes el listado contaba con `estado <> ANULADA` y sin mirar el CAE,
+    mientras el monto del resumen filtraba por `cae IS NOT NULL`: una factura rechazada sumaba 1
+    comprobante y $0 («$0 · 1 comprobante»). Dos predicados para el mismo concepto divergen; acá hay UNO,
+    y el «qué es facturado» sale de `afip_rules.facturado_filtro_sql` — no se redefine.
+
+    Un comprobante es del cliente por el DOCUMENTO del receptor (`doc_tipo`, `doc_nro`):
+    `afip_comprobantes.cuit` es el EMISOR y no sirve para esto. La factura ANULADA no se excluye: su NC la
+    compensa en el neto (excluirla dejaría la NC sola, restando plata que nunca se sumó).
+
+    `doc_tipo_expr` / `doc_expr` son EXPRESIONES SQL (`c.doc_tipo`, o un `%s` de parámetro): el que llama
+    pone los valores, el fragmento sólo los compara.
+    """
+    return (f"{facturado_filtro_sql(alias)} AND {alias}.doc_tipo = {doc_tipo_expr} "
+            f"AND {_DOC_NORMALIZADO_SQL.format(alias + '.doc_nro')} = {doc_expr}")
+
+
+def _es_atribuible(doc_tipo, doc_nro) -> bool:
+    """¿A este cliente se le pueden atar facturas? Sin documento (o sin tipo) NO: el cero que saldría no
+    es «no te compró nada» sino «no lo puedo saber». UNA definición: la usan el listado y
+    `resumen_operaciones` — que dos pantallas respondan distinto «¿se puede saber?» es el bug."""
+    return bool(normalizar_documento(doc_nro)) and doc_tipo is not None
+
+
+# Facturado por cliente en el LISTADO (BL-V18 + C-D1). UN scan de `afip_comprobantes` por cliente que da
+# cantidad Y monto (mismo WHERE, imposible que diverjan). Sin documento = 0 / 0.00: un `doc_nro` vacío no
+# puede matchear comprobantes de consumidor final sin identificar.
+_DOC_DEL_CLIENTE_SQL = _DOC_NORMALIZADO_SQL.format("c.doc_nro")
+_FACTURADO_DEL_CLIENTE_JOIN = (
+    f"CROSS JOIN LATERAL (SELECT count(*) AS cantidad, "
+    f"coalesce(sum({facturado_monto_sql('a')}), 0) AS monto "
+    f"FROM {_SCHEMA}.afip_comprobantes a "
+    f"WHERE a.cliente_id = c.cliente_id AND {_DOC_DEL_CLIENTE_SQL} <> '' "
+    f"AND {_facturas_del_documento_sql('a', 'c.doc_tipo', _DOC_DEL_CLIENTE_SQL)}) f")
+# Las dos últimas columnas del SELECT, en este orden: `f.cantidad`, `f.monto`.
+_COLS_CON_FACTURADO = ", ".join(f"c.{col}" for col in _COLS) + ", f.cantidad, f.monto"
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -263,15 +299,26 @@ class ClienteStore:
         patron = f"%{normalizar_nombre(q)}%" if q else None
         with self._conn_factory() as conn, conn.cursor() as cur:
             if patron:
-                cur.execute(f"SELECT {_COLS_CON_CONTEO} FROM {_TABLE} c WHERE c.cliente_id = %s "
-                            f"AND c.nombre_normalizado LIKE %s ORDER BY c.nombre_normalizado LIMIT %s",
+                cur.execute(f"SELECT {_COLS_CON_FACTURADO} FROM {_TABLE} c {_FACTURADO_DEL_CLIENTE_JOIN} "
+                            f"WHERE c.cliente_id = %s AND c.nombre_normalizado LIKE %s "
+                            f"ORDER BY c.nombre_normalizado LIMIT %s",
                             (self._cliente_id, patron, limit))
             else:
-                cur.execute(f"SELECT {_COLS_CON_CONTEO} FROM {_TABLE} c WHERE c.cliente_id = %s "
-                            f"ORDER BY c.nombre_normalizado LIMIT %s", (self._cliente_id, limit))
-            # `comprobantes_cantidad` va sólo en el listado: en detalle/alta/edición no se calcula, y un
-            # `0` allí mentiría. Por eso se agrega acá y no dentro de `_fila` (que lo comparten).
-            filas = [{**self._fila(r[:-1]), "comprobantes_cantidad": int(r[-1])} for r in cur.fetchall()]
+                cur.execute(f"SELECT {_COLS_CON_FACTURADO} FROM {_TABLE} c {_FACTURADO_DEL_CLIENTE_JOIN} "
+                            f"WHERE c.cliente_id = %s ORDER BY c.nombre_normalizado LIMIT %s",
+                            (self._cliente_id, limit))
+            # `comprobantes_cantidad`, `monto_facturado` y `facturas_atribuibles` van sólo en el listado:
+            # en detalle/alta/edición no se calculan, y un `0` allí mentiría. Por eso se agregan acá y no
+            # dentro de `_fila` (que lo comparten). `monto_facturado` es SIEMPRE un string decimal (nunca
+            # null): la UI no tiene que defenderse de dos formas. Si `facturas_atribuibles` es false, ese
+            # «0.00» significa «no se puede saber», y la UI no pinta número.
+            filas = []
+            for r in cur.fetchall():
+                fila = self._fila(r[:-2])
+                fila["comprobantes_cantidad"] = int(r[-2])
+                fila["monto_facturado"] = f"{r[-1]:.2f}"
+                fila["facturas_atribuibles"] = _es_atribuible(fila["doc_tipo"], fila["doc_nro"])
+                filas.append(fila)
             cur.execute(f"SELECT count(*) FROM {_TABLE} WHERE cliente_id = %s", (self._cliente_id,))
             return filas, int(cur.fetchone()[0])
 
@@ -554,7 +601,7 @@ class ClienteStore:
 
         doc = normalizar_documento(ficha.get("doc_nro"))
         doc_tipo = ficha.get("doc_tipo")
-        atribuible = bool(doc) and doc_tipo is not None
+        atribuible = _es_atribuible(doc_tipo, doc)
         resumen = {"cliente": ficha, "facturas_atribuibles": atribuible,
                    "facturas": 0, "notas_credito": 0, "facturado": "0.00",
                    "presupuestos": 0, "presupuestado": "0.00", "operaciones": []}
@@ -586,9 +633,8 @@ class ClienteStore:
                     f"SELECT count(*) FILTER (WHERE tipo_cbte NOT IN %s), "
                     f"       count(*) FILTER (WHERE tipo_cbte IN %s), "
                     f"       coalesce(sum({facturado_monto_sql()}), 0) "
-                    f"  FROM {_SCHEMA}.afip_comprobantes "
-                    f" WHERE cliente_id = %s AND {facturado_filtro_sql()} AND doc_tipo = %s "
-                    f"   AND regexp_replace(coalesce(doc_nro, ''), '\\D', '', 'g') = %s",
+                    f"  FROM {_SCHEMA}.afip_comprobantes a "
+                    f" WHERE a.cliente_id = %s AND {_facturas_del_documento_sql('a', '%s', '%s')}",
                     (NOTAS_CREDITO, NOTAS_CREDITO, *comunes))
                 facturas, notas, neto = cur.fetchone()
                 resumen["facturas"] = int(facturas)
@@ -597,9 +643,8 @@ class ClienteStore:
 
                 cur.execute(
                     f"SELECT fecha_emision, tipo_cbte, punto_venta, nro, total "
-                    f"  FROM {_SCHEMA}.afip_comprobantes "
-                    f" WHERE cliente_id = %s AND cae IS NOT NULL AND doc_tipo = %s "
-                    f"   AND regexp_replace(coalesce(doc_nro, ''), '\\D', '', 'g') = %s "
+                    f"  FROM {_SCHEMA}.afip_comprobantes a "
+                    f" WHERE a.cliente_id = %s AND {_facturas_del_documento_sql('a', '%s', '%s')} "
                     f" ORDER BY fecha_emision DESC, id DESC LIMIT %s", (*comunes, ultimas))
                 for fecha, tipo_cbte, pv, nro, total in cur.fetchall():
                     es_nc = int(tipo_cbte) in NOTAS_CREDITO
