@@ -101,7 +101,7 @@ porque engancha filas de otras tablas.
 
 > 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `f26a906d`** (árbol
 > limpio, `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 54/54 con
-> veredicto · 0/54 fuera · 12/54 pendiente**.
+> veredicto · 0/54 fuera · 12/54 pendiente**. ✅ **Control sobre `c0f6a674`** (main con #1092 y #1093 ya mergeados): la cifra sale **idéntica** — código mergeado sin veredicto **no** mueve el padrón, que es exactamente lo que el medidor tiene que hacer.
 >
 > **Lo que se movió y lo que NO.** Con veredicto pasó de 49 a 54 y fuera de 5 a 0, porque backend
 > escribió el ⚠ de sus 5 filas abiertas. **Cumple el DoD y cerrada en código no se movieron un

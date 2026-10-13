@@ -1,7 +1,7 @@
 # Memoria - Copiloto del Emprendedor
 > **Una línea = un gancho, no un resumen** (≤160 chars): el detalle vive en el topic file.
-> **DOS techos: 24.000 BYTES y 200 líneas.** No chars: los acentos y emoji pesan 2-4 bytes, y medirlo en chars absolvió un índice 1210 bytes truncado. Pasarse borra la cola ([[el-indice-truncado-fabrica-duplicados]]).
-> Salida ÚNICA: bajar a [HISTORIA.md](HISTORIA.md) (no se carga; buscable) - fusionar NO ahorra chars. Control: `medir-indice-memoria.py`.
+> **DOS techos: 24.000 BYTES y 200 líneas.** No chars: acentos y emoji pesan 2-4 B, y medir en chars absolvió un índice truncado. Pasarse borra la cola ([[el-indice-truncado-fabrica-duplicados]]).
+> Salida ÚNICA: bajar a [HISTORIA.md](HISTORIA.md) - fusionar NO ahorra. Control: `medir-indice-memoria.py`.
 
 ## 🚦 Estado vivo
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
@@ -177,4 +177,4 @@
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
 
 ## 🗄️ Historia
-→ [HISTORIA.md](HISTORIA.md) - hitos cerrados y entradas bajadas del índice. **NO se carga; buscable.**
+→ [HISTORIA.md](HISTORIA.md) - cerrados y bajados. NO se carga; buscable.
