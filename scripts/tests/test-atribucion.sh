@@ -22,6 +22,11 @@ git branch -q -M main; git remote add origin . 2>/dev/null || true
 BASE="$(git rev-parse HEAD)"
 
 fallos=0
+# El total del resumen NO se escribe a mano: `ok` cuenta y el cierre COMPARA. Medido el
+# 2026-10-13 en el test hermano: el resumen decia `14/14` literal mientras corrian 18
+# aserciones. Un veredicto que no cuenta lo que miro absuelve a un bloque que no se ejecuto.
+ASERCIONES_ESPERADAS=11
+oks=0
 chk() { # chk <nombre> <esperado-en-salida> <esperado-exit> <bloquea> <rango>
   local nom="$1" pat="$2" exp_rc="$3" bl="$4" rango="$5" out rc
   out="$(UC_ATRIBUCION_BLOQUEA="$bl" bash "$GATE" "$rango" 2>&1)"; rc=$?
@@ -29,7 +34,7 @@ chk() { # chk <nombre> <esperado-en-salida> <esperado-exit> <bloquea> <rango>
   printf '%s' "$out" | grep -q "$pat" || ok=0
   [ "$rc" -eq "$exp_rc" ] || ok=0
   if [ "$ok" -eq 1 ]; then
-    printf '  ✅ %-52s (rc=%s)\n' "$nom" "$rc"
+    printf '  ✅ %-52s (rc=%s)\n' "$nom" "$rc"; oks=$((oks + 1))
   else
     printf '  ❌ %-52s (rc=%s, esperaba %s y /%s/)\n' "$nom" "$rc" "$exp_rc" "$pat"
     printf '%s\n' "$out" | sed 's/^/       | /'
@@ -74,6 +79,36 @@ git reset -q --hard "$BASE"
 commitear "fix(M-99): id que no esta en el padron"
 chk "7· BLOQUEA=1 + FANTASMA -> RECHAZA" "RECHAZADO" 1 1 "$BASE..HEAD"
 
+# --- 9/10) EL TABLERO VIVO como tercera fuente (2026-10-13). Los dos casos van juntos porque el
+# positivo solo no prueba nada: `FILAVIVA` adentro del bloque COLA-VIVA tiene que entrar, y
+# `OTROFUERA` -- misma FORMA de id, pero FUERA del bloque-- tiene que seguir siendo FANTASMA. Si
+# el segundo pasara, el padron no leeria el tablero: leeria cualquier palabra en mayuscula del
+# archivo, y un padron inflado aprueba cualquier cosa.
+mkdir -p "$TMP/tab"
+printf 'blabla\nCOLA-VIVA:INICIO\nFILAVIVA | una fila del tablero vigente | pendiente\nminuscula | no tiene forma de id\nCOLA-VIVA:FIN\nOTROFUERA | fila fuera del bloque\n' > "$TMP/tab/PLAN.md"
+
+git reset -q --hard "$BASE"
+commitear "fix(FILAVIVA): trabajo sobre una fila del tablero"
+out9="$(UC_PADRON_TABLERO="$TMP/tab/PLAN.md" bash "$GATE" "$BASE..HEAD" 2>&1)"
+if printf '%s' "$out9" | grep -q 'autorizados=1'; then
+  printf '  ✅ %-52s\n' '9· id del TABLERO (FILAVIVA) cuenta como atribuido'; oks=$((oks + 1))
+else
+  printf '  ❌ %-52s\n' '9· el id del TABLERO no se leyo como atribucion'; printf '%s\n' "$out9" | sed 's/^/       | /'; fallos=$((fallos + 1))
+fi
+
+git reset -q --hard "$BASE"
+commitear "fix(OTROFUERA): cito una fila que esta FUERA del bloque COLA-VIVA"
+out10="$(UC_PADRON_TABLERO="$TMP/tab/PLAN.md" bash "$GATE" "$BASE..HEAD" 2>&1)"
+# OJO: el esperado correcto es SIN-ID, no FANTASMA, y lo aprendi al revés (puse FANTASMA y el
+# caso salio rojo acusando al codigo). `ids_citados_en` solo emite ids de la LISTA CERRADA, asi
+# que `OTROFUERA` no se extrae: el commit no cita NADA. FANTASMA es 'cito un id sin respaldo' y
+# exigiria un patron laxo que lea cualquier mayuscula -- justo lo que no queremos. Se piden las
+# dos mitades: SIN-ID=1 Y FANTASMA=0.
+if printf '%s' "$out10" | grep -q 'SIN-ID=1' && printf '%s' "$out10" | grep -q 'FANTASMA=0'; then
+  printf '  ✅ %-52s\n' '10· fuera del bloque: no se extrae (SIN-ID, FANTASMA=0)'; oks=$((oks + 1))
+else
+  printf '  ❌ %-52s\n' '10· el padron leyo una fila FUERA del bloque ⇒ se inflo'; printf '%s\n' "$out10" | sed 's/^/       | /'; fallos=$((fallos + 1))
+fi
 # --- 8) padrón vacío -> lo DICE, no aprueba por vacío
 git reset -q --hard "$BASE"
 rm -f docs/copiloto-emprendedor/*backlog*.md
@@ -82,7 +117,12 @@ chk "8· padrón vacío: avisa en vez de aprobar por vacío" "salió VACÍO" 0 0
 
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-atribucion: 9/9 — incluye el control positivo del NO (casos 5 y 7)"
+  corridas=$((oks + fallos))
+  if [ "$corridas" -ne "$ASERCIONES_ESPERADAS" ]; then
+    echo "❌ test-atribucion: corrieron $corridas de $ASERCIONES_ESPERADAS — faltaron aserciones (un caso que no se ejecuta NO da sintoma)"
+    exit 1
+  fi
+  echo "✅ test-atribucion: $oks/$ASERCIONES_ESPERADAS — incluye el control positivo del NO (casos 5 y 7) y el id del TABLERO (10, 11)"
   exit 0
 fi
 echo "❌ test-atribucion: $fallos caso(s) fallaron"
