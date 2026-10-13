@@ -55,9 +55,10 @@ function propuesta(over: Record<string, unknown> = {}) {
       factura_id: 'presu-12',
       faltantes: [],
       items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
-      cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CF' },
+      // Forma REAL del wire (`tool_catalog.py`): `.name` del enum, no la letra ni un código.
+      cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CONSUMIDOR_FINAL', del_registro: false },
       total: 50000,
-      tipo_comprobante: 'C',
+      tipo_comprobante: 'FACTURA_C',
       ...over,
     },
   });
@@ -82,6 +83,35 @@ describe('TarjetaFacturaPropuesta', () => {
     render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(screen.getByTestId('factura-propuesta-aviso-anulacion')).toHaveTextContent('nota de crédito');
+  });
+
+  describe('`cliente.del_registro` (D7): el CUIT que NO dictó la persona se marca', () => {
+    const delRegistro = {
+      razon_social: 'Panadería La Esquina',
+      cuit: '30712345678',
+      condicion_iva: 'RESPONSABLE_INSCRIPTO',
+      del_registro: true,
+    };
+
+    it('del registro: se ve la marca y la condición de IVA del registro', () => {
+      render(<TarjetaFacturaPropuesta propuesta={propuesta({ cliente: delRegistro })} mensajeId={MENSAJE_ID} />);
+
+      expect(screen.getByTestId(`factura-propuesta-cliente-registro-${MENSAJE_ID}`)).toHaveTextContent(
+        'De tu registro de clientes',
+      );
+      expect(screen.getByTestId(`factura-propuesta-cliente-condicion-${MENSAJE_ID}`)).toHaveTextContent(
+        'Responsable Inscripto',
+      );
+    });
+
+    it('control negativo: dictado por la persona NO lleva la marca', () => {
+      render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+      expect(screen.queryByTestId(`factura-propuesta-cliente-registro-${MENSAJE_ID}`)).toBeNull();
+      expect(screen.getByTestId(`factura-propuesta-cliente-condicion-${MENSAJE_ID}`)).toHaveTextContent(
+        'Consumidor Final',
+      );
+    });
   });
 
   it('muestra cliente, ítems y total', () => {

@@ -1,6 +1,6 @@
 import type { DatosCliente } from '../api/clientes';
 import type { ContextoTranscripcion } from '../api/transcribir';
-import type { ChatRequest, KindDictado, ReplyCard, ReplyResponse } from '../api/types';
+import type { ChatRequest, ChatResponse, KindDictado, ReplyCard, ReplyResponse } from '../api/types';
 import { leerClientePropuesto } from './clientePropuesto';
 import { leerGastoPropuesto, type GastoPropuesto } from './gastoPropuesto';
 import { leerIngresoPropuesto, type IngresoPropuesto } from './ingresoPropuesto';
@@ -17,42 +17,26 @@ import { leerPresupuestoPropuesto, type PresupuestoPropuesto } from './presupues
  * backend devuelve. Cualquier heurística de «sacar el monto del texto» acá sería la segunda copia del
  * defecto (ver `memoria/el-mismo-defecto-vivia-dos-veces…`).
  *
- * 🔴 **Sesión aparte, derivada en UN solo lugar (`sessionIdDictado`).** El backend sirve las replies por
- * `(cliente_id, session_id)`; si el dictado viajara con la sesión del hilo, la card caería en el mismo
- * log que lee el chat con su cursor y aparecería en la conversación — el efecto que el DoD prohíbe. Ver
- * el `dato_frontend1-a-planificacion-y-backend_dictado-por-chat…`. Si backend prefiere otra forma, se
- * cambia esta función y nada más.
+ * 🔴 **El `session_id` con el que se pollea es el que DEVUELVE `/chat`, no uno derivado acá.** El
+ * front-door namespacea el hilo del dictado (`dictado:<destino>:<sid>`, backend #1050) y ESE id es el que
+ * vuelve en la respuesta. Re-derivarlo en el cliente sería la segunda copia de una regla del backend, y
+ * la que se desactualiza en silencio. Una respuesta sin `session_id` = backend sin esta capacidad: se
+ * degrada (visible), no se adivina.
  *
- * 🔴 **La respuesta nueva se distingue por un cursor de BASE leído antes de enviar.** Sin él, una card
- * vieja del mismo log se leería como la respuesta del dictado de ahora. Límite conocido: una reply TARDÍA
- * de un dictado anterior que ya cayó a `timeout` puede llegar después de la base y leerse como propia —
- * la reply no trae un id de correlación. La pantalla serializa los dictados (no hay dos en vuelo), y la
- * card se REVISA antes de guardar (HITL), así que el costo de la colisión es una card equivocada que el
- * humano ve, no un dato guardado.
+ * 🔴 **Un id FRESCO por dictado (lo pone quien llama).** El hilo es por (destino, sesión): con un id nuevo
+ * cada dictado tiene su propio log y arranca en cursor 0, así que una card vieja —o la reply tardía de un
+ * dictado anterior que ya cayó a `timeout`— no se puede confundir con la respuesta de ahora. Sin cursor
+ * persistido ni lectura de base. Costo: un workflow por dictado, que el backend termina por idle-timeout.
  *
  * 🔴 **Nunca lanza.** Todo fallo vuelve como `sin_propuesta` con su `motivo`, para que la pantalla caiga
  * al comportamiento de antes (precarga cruda) y LO DIGA — un degradado silencioso hacia el caso benigno
  * es exactamente lo que envenena la medición.
  */
 
-/**
- * 🚩 Flag (default APAGADO). Mientras backend no confirme su mitad (`kind = "dictado:<destino>"` resuelve
- * la tool del destino, test de los 4 destinos + rechazo de uno fuera de lista), mergear el cliente no
- * debe cambiar lo que ve el usuario. Propietario: frontend-1. Cleanup: se borra el flag (y queda el
- * camino nuevo) cuando backend publique su `cierre_` — o se retira todo si planificación cambia el
- * mecanismo.
- */
-export const DICTADO_POR_CHAT_ACTIVO = false;
-
 export type DestinoDictado = ContextoTranscripcion;
 
 export function kindDictado(destino: DestinoDictado): KindDictado {
   return `dictado:${destino}`;
-}
-
-/** Sesión del dictado de funciones, aparte de la del hilo. UN solo lugar donde se deriva. */
-export function sessionIdDictado(sessionIdHilo: string): string {
-  return `${sessionIdHilo}:dictado`;
 }
 
 export type PropuestaDictado =
@@ -70,11 +54,11 @@ export type MotivoSinPropuesta =
   | 'timeout';
 
 export type ResultadoDictado =
-  | { status: 'ok'; resultado: PropuestaDictado; siguienteId: number }
-  | { status: 'sin_propuesta'; motivo: MotivoSinPropuesta; texto?: string; siguienteId: number };
+  | { status: 'ok'; resultado: PropuestaDictado }
+  | { status: 'sin_propuesta'; motivo: MotivoSinPropuesta; texto?: string };
 
 export interface PuertosDictado {
-  enviar(req: ChatRequest): Promise<unknown>;
+  enviar(req: ChatRequest): Promise<ChatResponse>;
   leer(sessionId: string, afterId: number): Promise<ReplyResponse>;
   /** Inyectable para que los tests no esperen de verdad. Default: `setTimeout`. */
   esperar?(ms: number): Promise<void>;
@@ -83,10 +67,8 @@ export interface PuertosDictado {
 export interface PedidoDictado {
   destino: DestinoDictado;
   texto: string;
-  /** Ya derivada con `sessionIdDictado`. */
+  /** Id NUEVO por dictado (ver el docstring del módulo). El backend lo namespacea y devuelve el efectivo. */
   sessionId: string;
-  /** Cursor persistido de esta sesión (0 la primera vez). */
-  desde: number;
   timeoutMs?: number;
   intervaloMs?: number;
 }
@@ -139,28 +121,28 @@ export async function dictarPorChat(pedido: PedidoDictado, puertos: PuertosDicta
   const timeoutMs = pedido.timeoutMs ?? TIMEOUT_MS;
   const intervaloMs = pedido.intervaloMs ?? INTERVALO_MS;
 
-  // Base: lo que ya había en el log ANTES de este dictado. Si no se puede leer, no se envía: sin base no
-  // hay forma de distinguir la respuesta nueva de una vieja.
-  let cursor = pedido.desde;
+  let sesionEfectiva: string;
   try {
-    cursor = (await puertos.leer(sessionId, pedido.desde)).next_id;
+    const res = await puertos.enviar({ session_id: sessionId, text: texto, kind: kindDictado(destino) });
+    // `accepted: false` = el workflow no arrancó; sin `session_id` = backend anterior al namespace.
+    // En ambos casos no hay hilo que pollear, y adivinarlo sería leer el de otro.
+    if (!res.accepted || typeof res.session_id !== 'string' || res.session_id === '') {
+      return { status: 'sin_propuesta', motivo: 'error_envio' };
+    }
+    sesionEfectiva = res.session_id;
   } catch {
-    return { status: 'sin_propuesta', motivo: 'error_envio', siguienteId: pedido.desde };
+    return { status: 'sin_propuesta', motivo: 'error_envio' };
   }
 
-  try {
-    await puertos.enviar({ session_id: sessionId, text: texto, kind: kindDictado(destino) });
-  } catch {
-    return { status: 'sin_propuesta', motivo: 'error_envio', siguienteId: cursor };
-  }
-
+  // Hilo propio y nuevo: se lee desde 0 y todo lo que aparezca es de ESTE dictado.
+  let cursor = 0;
   let transcurrido = 0;
   while (transcurrido < timeoutMs) {
     await esperar(intervaloMs);
     transcurrido += intervaloMs;
     let respuesta: ReplyResponse;
     try {
-      respuesta = await puertos.leer(sessionId, cursor);
+      respuesta = await puertos.leer(sesionEfectiva, cursor);
     } catch {
       continue; // transitorio: el próximo tick reintenta, hasta el plazo.
     }
@@ -168,12 +150,12 @@ export async function dictarPorChat(pedido: PedidoDictado, puertos: PuertosDicta
     let ultimoTexto: string | undefined;
     for (const reply of respuesta.replies) {
       const encontrada = leerCard(destino, reply.card);
-      if (encontrada !== null) return { status: 'ok', resultado: encontrada, siguienteId: cursor };
+      if (encontrada !== null) return { status: 'ok', resultado: encontrada };
       if (reply.text.trim() !== '') ultimoTexto = reply.text;
     }
     if (respuesta.replies.length > 0) {
-      return { status: 'sin_propuesta', motivo: 'respuesta_sin_card', texto: ultimoTexto, siguienteId: cursor };
+      return { status: 'sin_propuesta', motivo: 'respuesta_sin_card', texto: ultimoTexto };
     }
   }
-  return { status: 'sin_propuesta', motivo: 'timeout', siguienteId: cursor };
+  return { status: 'sin_propuesta', motivo: 'timeout' };
 }

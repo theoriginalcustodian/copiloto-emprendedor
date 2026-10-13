@@ -12,6 +12,7 @@ import {
 
 import { FilaBotones } from '../../theme/glass/campos';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
+import { inicialesDePresupuesto } from '../voz/inicialesDePropuesta';
 import { Recibo } from './Recibo';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
@@ -125,16 +126,7 @@ export function TarjetaPresupuestoPropuesto({
     <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.">
       <FormularioPresupuesto
         mensajeId={mensajeId}
-        iniciales={{
-          concepto: propuesta.concepto,
-          receptor: {
-            nombre: propuesta.receptor.nombre,
-            docTipo: propuesta.receptor.docTipo,
-            docNro: propuesta.receptor.docNro,
-            contacto: propuesta.receptor.contacto,
-          },
-          items: propuesta.items,
-        }}
+        iniciales={inicialesDePresupuesto(propuesta)}
         onCreado={(p, sug) => {
           setNumero(p.numero);
           setCreado(p);

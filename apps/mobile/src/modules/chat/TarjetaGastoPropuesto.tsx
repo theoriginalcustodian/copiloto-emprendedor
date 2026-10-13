@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { formatearImporte, type ChatMessage, type GastoPropuesto } from '@copiloto/core';
 
 import { FormularioGasto } from '../gastos/FormularioGasto';
+import { inicialesDeGasto } from '../voz/inicialesDePropuesta';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
@@ -86,21 +87,9 @@ export function TarjetaGastoPropuesto({
     >
       <FormularioGasto
         origen={propuesta.origen}
-        iniciales={{
-          monto: propuesta.monto,
-          categoria: propuesta.categoria,
-          // Se mandan sólo si vinieron: `?? undefined` y no `?? ''`, para que el formulario omita la
-          // clave en el body en vez de guardar un string vacío.
-          proveedor: propuesta.proveedor ?? undefined,
-          medioPago: propuesta.medioPago ?? undefined,
-          descripcion: propuesta.descripcion ?? undefined,
-          // Sólo viene en `origen: 'foto'` — ver el docstring de `GastoPropuesto.montoSugerido`.
-          montoSugerido: propuesta.montoSugerido ?? undefined,
-          // 🔴 La fecha SÍ viaja acá, al revés que en el alta manual: el motor ya resolvió lo que se
-          // dictó («ayer», «el lunes»). Omitirla haría que el backend ponga hoy y un gasto dictado
-          // como "lo de ayer" quede con la fecha equivocada — y los días 30 y 31, en otro MES.
-          fecha: propuesta.fecha !== '' ? propuesta.fecha : undefined,
-        }}
+        // Mapeo compartido con el dictado desde la función (`voz/inicialesDePropuesta`): una sola
+        // definición de cómo una propuesta se vuelve valores iniciales.
+        iniciales={inicialesDeGasto(propuesta)}
         onCreado={(g) => {
           setGuardado(g.monto);
           setEstado('guardado');

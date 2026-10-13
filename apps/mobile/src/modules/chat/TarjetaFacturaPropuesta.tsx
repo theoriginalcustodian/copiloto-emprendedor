@@ -5,6 +5,7 @@ import {
   AVISO_FACTURA_ANULACION,
   confirmarConTokenFresco,
   estadoFactura as consultarEstadoFactura,
+  etiquetaCondicionIva,
   type ChatMessage,
   type EstadoFacturaResp,
   type FacturaPropuesta,
@@ -175,6 +176,10 @@ export function TarjetaFacturaPropuesta({
     propuesta.cliente != null
       ? [propuesta.cliente.razonSocial, propuesta.cliente.cuit].filter((v) => (v ?? '').trim() !== '').join(' · ')
       : '';
+  // La condición de IVA y la marca «del registro» salen de lo que mandó el backend (D7), no se infieren
+  // acá: la precarga trae la condición del REGISTRO, y de ella depende la letra A/B/C del encabezado.
+  const condicionIva = etiquetaCondicionIva(propuesta.cliente?.condicionIva ?? null);
+  const delRegistro = propuesta.cliente?.delRegistro === true;
 
   return (
     <TarjetaPropuestaShell
@@ -202,6 +207,24 @@ export function TarjetaFacturaPropuesta({
             <View style={{ gap: 2, flex: 1 }}>
               <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Cliente</Text>
               <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{nombreCliente}</Text>
+              {condicionIva != null && (
+                <Text
+                  testID={`${testID}-cliente-condicion`}
+                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+                >
+                  {condicionIva}
+                </Text>
+              )}
+              {/* 🔴 Lo único que le dice a quien va a emitir que está confirmando un CUIT/condición que NO
+                  tipeó: salieron de su registro de clientes. Sin la marca, el dato ajeno parece dictado. */}
+              {delRegistro && (
+                <Text
+                  testID={`${testID}-cliente-registro`}
+                  style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontWeight: '600' }}
+                >
+                  De tu registro de clientes
+                </Text>
+              )}
             </View>
           </Row>
         )}

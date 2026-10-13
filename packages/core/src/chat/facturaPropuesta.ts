@@ -27,7 +27,41 @@ export interface ItemFacturaPropuesta {
 export interface ClienteFacturaPropuesta {
   razonSocial: string | null;
   cuit: string | null;
+  /**
+   * El `.name` del enum del backend (`RESPONSABLE_INSCRIPTO`, `CONSUMIDOR_FINAL`…), tal cual viaja. Para
+   * mostrarlo, `etiquetaCondicionIva` — nunca el nombre crudo.
+   */
   condicionIva: string | null;
+  /**
+   * `true` = el documento (y la condición de IVA) NO los dictó la persona: salieron de su registro de
+   * clientes (D7, backend). La card tiene que MARCARLO — es lo único que le dice a quien va a emitir que
+   * está confirmando un CUIT que no tipeó. Estricto `=== true`: ausente (backend anterior) = `false`.
+   */
+  delRegistro: boolean;
+}
+
+/**
+ * Etiqueta visible de `condicion_iva`. El backend manda el `.name` del enum `CondicionIVA`
+ * (`apps/copiloto/afip_rules.py`), no el código ni un texto. `null` para un nombre desconocido: mostrar
+ * `PROVEEDOR_EXTERIOR` a un monotributista es peor que no mostrar la condición.
+ */
+const ETIQUETAS_CONDICION_IVA: Readonly<Record<string, string>> = {
+  RESPONSABLE_INSCRIPTO: 'Responsable Inscripto',
+  SUJETO_EXENTO: 'Exento',
+  CONSUMIDOR_FINAL: 'Consumidor Final',
+  MONOTRIBUTO: 'Monotributo',
+  NO_CATEGORIZADO: 'No categorizado',
+  PROVEEDOR_EXTERIOR: 'Proveedor del exterior',
+  CLIENTE_EXTERIOR: 'Cliente del exterior',
+  IVA_LIBERADO: 'IVA liberado',
+  MONOTRIBUTISTA_SOCIAL: 'Monotributista social',
+  IVA_NO_ALCANZADO: 'IVA no alcanzado',
+  MONOTRIBUTO_TRABAJADOR_INDEPENDIENTE: 'Monotributo trabajador independiente',
+};
+
+export function etiquetaCondicionIva(nombre: string | null): string | null {
+  if (nombre == null) return null;
+  return ETIQUETAS_CONDICION_IVA[nombre] ?? null;
 }
 
 export interface FacturaPropuesta {
@@ -40,6 +74,7 @@ export interface FacturaPropuesta {
   items: ItemFacturaPropuesta[];
   cliente: ClienteFacturaPropuesta | null;
   total: string;
+  /** La LETRA: `'A' | 'B' | 'C'` (ver `letraDeComprobante`), o `null` si el backend no la mandó. */
   tipoComprobante: string | null;
 }
 
@@ -77,7 +112,25 @@ function cliente(v: unknown): ClienteFacturaPropuesta | null {
     razonSocial: texto(d.razon_social),
     cuit: texto(d.cuit),
     condicionIva: texto(d.condicion_iva),
+    // 🔴 Antes se descartaba: el backend lo manda desde D7 (con su test adversarial) y esta función
+    // armaba el objeto sin él, así que ninguna UI podía marcar «de tu registro».
+    delRegistro: d.del_registro === true,
   };
+}
+
+/**
+ * La letra del comprobante. El backend manda el `.name` del enum `TipoComprobante`
+ * (`tool_catalog.py`: `determinar_tipo_comprobante(...).name`) → `FACTURA_C`, no `C`. Pintarlo crudo daba
+ * «Factura FACTURA_C · ARCA»; la fixture de los tests usaba `'C'` y nada lo mostraba. Acepta también la
+ * letra suelta. Cualquier otra cosa (`NOTA_CREDITO_*`, un valor nuevo) → `null`: sin encabezado antes que
+ * un encabezado inventado.
+ */
+function letraDeComprobante(v: unknown): string | null {
+  const t = texto(v);
+  if (t == null) return null;
+  const m = /^FACTURA_([ABC])$/.exec(t);
+  if (m != null) return m[1] ?? null;
+  return /^[ABC]$/.test(t) ? t : null;
 }
 
 /**
@@ -102,6 +155,6 @@ export function leerFacturaPropuesta(card: ReplyCard | undefined): FacturaPropue
     items: itemsRaw.map(item).filter((it): it is ItemFacturaPropuesta => it !== null),
     cliente: cliente(d.cliente),
     total: numero(d.total) ?? '0',
-    tipoComprobante: texto(d.tipo_comprobante),
+    tipoComprobante: letraDeComprobante(d.tipo_comprobante),
   };
 }

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { leerFacturaPropuesta } from './facturaPropuesta';
+import { etiquetaCondicionIva, leerFacturaPropuesta } from './facturaPropuesta';
 
-/** La card TAL COMO LA DESCRIBE el contrato §2.1 — `data` confirmada. */
+/**
+ * La card TAL COMO LA EMITE el backend (`tool_catalog.py`): `tipo_comprobante` y `condicion_iva` son el
+ * `.name` del enum (`FACTURA_C`, `CONSUMIDOR_FINAL`), no la letra ni un código. La fixture anterior usaba
+ * `'C'` y `'CF'` — formas que el backend no manda — y por eso la card real mostraba «Factura FACTURA_C».
+ */
 function cardReal(over: Record<string, unknown> = {}) {
   return {
     kind: 'factura_propuesta',
@@ -10,9 +14,14 @@ function cardReal(over: Record<string, unknown> = {}) {
       factura_id: 'presu-12',
       faltantes: [],
       items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
-      cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CF' },
+      cliente: {
+        razon_social: 'Juan Pérez',
+        cuit: '20304050607',
+        condicion_iva: 'CONSUMIDOR_FINAL',
+        del_registro: false,
+      },
       total: 50000,
-      tipo_comprobante: 'C',
+      tipo_comprobante: 'FACTURA_C',
       ...over,
     },
   };
@@ -26,9 +35,84 @@ describe('leerFacturaPropuesta', () => {
       facturaId: 'presu-12',
       faltantes: [],
       items: [{ descripcion: 'Service de aire', cantidad: '1', precioUnitario: '50000' }],
-      cliente: { razonSocial: 'Juan Pérez', cuit: '20304050607', condicionIva: 'CF' },
+      cliente: {
+        razonSocial: 'Juan Pérez',
+        cuit: '20304050607',
+        condicionIva: 'CONSUMIDOR_FINAL',
+        delRegistro: false,
+      },
       total: '50000',
       tipoComprobante: 'C',
+    });
+  });
+
+  describe('`cliente.del_registro` (D7) — antes se descartaba', () => {
+    const delRegistro = {
+      razon_social: 'Panadería La Esquina',
+      cuit: '30712345678',
+      condicion_iva: 'RESPONSABLE_INSCRIPTO',
+      del_registro: true,
+    };
+
+    it('🔴 un cliente que salió del registro llega marcado, con SU condición de IVA', () => {
+      const p = leerFacturaPropuesta(cardReal({ cliente: delRegistro, tipo_comprobante: 'FACTURA_A' }));
+
+      expect(p?.cliente).toEqual({
+        razonSocial: 'Panadería La Esquina',
+        cuit: '30712345678',
+        condicionIva: 'RESPONSABLE_INSCRIPTO',
+        delRegistro: true,
+      });
+      expect(p?.tipoComprobante).toBe('A');
+    });
+
+    it('control negativo: `del_registro: false` (lo dictó la persona) NO se marca', () => {
+      const p = leerFacturaPropuesta(cardReal({ cliente: { ...delRegistro, del_registro: false } }));
+
+      expect(p?.cliente?.delRegistro).toBe(false);
+    });
+
+    it('estricto: un `del_registro` que no es `true` booleano no marca (un "false" string, un 1)', () => {
+      for (const raro of ['false', 'true', 1, null, undefined]) {
+        const p = leerFacturaPropuesta(cardReal({ cliente: { ...delRegistro, del_registro: raro } }));
+        expect(p?.cliente?.delRegistro).toBe(false);
+      }
+    });
+
+    it('un backend anterior que no manda el campo degrada a no-marcado, sin romper', () => {
+      const { del_registro: _omitido, ...sinCampo } = delRegistro;
+      void _omitido;
+      expect(leerFacturaPropuesta(cardReal({ cliente: sinCampo }))?.cliente?.delRegistro).toBe(false);
+    });
+  });
+
+  describe('`tipo_comprobante` — la LETRA', () => {
+    it.each([
+      ['FACTURA_A', 'A'],
+      ['FACTURA_B', 'B'],
+      ['FACTURA_C', 'C'],
+      ['C', 'C'],
+    ])('%s → %s', (wire, letra) => {
+      expect(leerFacturaPropuesta(cardReal({ tipo_comprobante: wire }))?.tipoComprobante).toBe(letra);
+    });
+
+    it('un valor que no es una factura A/B/C no se pinta crudo: null', () => {
+      for (const raro of ['NOTA_CREDITO_A', 'FACTURA_X', 'factura c', '', null]) {
+        expect(leerFacturaPropuesta(cardReal({ tipo_comprobante: raro }))?.tipoComprobante).toBeNull();
+      }
+    });
+  });
+
+  describe('etiquetaCondicionIva', () => {
+    it('traduce el `.name` del enum del backend', () => {
+      expect(etiquetaCondicionIva('RESPONSABLE_INSCRIPTO')).toBe('Responsable Inscripto');
+      expect(etiquetaCondicionIva('MONOTRIBUTO')).toBe('Monotributo');
+      expect(etiquetaCondicionIva('CONSUMIDOR_FINAL')).toBe('Consumidor Final');
+    });
+
+    it('un nombre desconocido o ausente es null — nunca el identificador crudo', () => {
+      expect(etiquetaCondicionIva('ALGO_NUEVO')).toBeNull();
+      expect(etiquetaCondicionIva(null)).toBeNull();
     });
   });
 

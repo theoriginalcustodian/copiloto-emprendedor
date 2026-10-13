@@ -4867,6 +4867,46 @@
       "id": "perfil-negocio-que-vende-error",
       "motivo": "No es unilateral: mobile lo emite derivado -- `CampoTexto` (theme/glass/campos/CampoTexto.tsx) pinta `${testID}-error` con testID=\"perfil-negocio-que-vende\", y el gate no resuelve templates (mismo caso que telefono-error/email-error). Verificado en el test mobile de PantallaPerfilNegocio ('«Qué vendés» corto'). Aviso no bloqueante, decision de planificacion 2026-10-13.",
       "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/clientes::clientes-dictado": {
+      "en": [
+        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "clientes-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/clientes"
+    },
+    "modules/gastos::gastos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "gastos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/gastos"
+    },
+    "modules/ingresos::ingresos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ingresos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/ingresos"
+    },
+    "modules/presupuestos::presupuestos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "presupuestos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/presupuestos"
     }
   }
 }

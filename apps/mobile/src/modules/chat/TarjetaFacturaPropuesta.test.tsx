@@ -39,9 +39,11 @@ function propuesta(over: Record<string, unknown> = {}) {
       factura_id: 'presu-12',
       faltantes: [],
       items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
-      cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CF' },
+      // La forma REAL del wire (`tool_catalog.py`): `.name` del enum, no la letra ni un código. Con la
+      // fixture vieja (`'C'`, `'CF'`) la card mostraba «Factura FACTURA_C» en producción y ningún test.
+      cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CONSUMIDOR_FINAL', del_registro: false },
       total: 50000,
-      tipo_comprobante: 'C',
+      tipo_comprobante: 'FACTURA_C',
       ...over,
     },
   });
@@ -113,15 +115,53 @@ describe('TarjetaFacturaPropuesta', () => {
   it('muestra cliente, ítems y total', async () => {
     await montar();
 
-    expect(screen.getByTestId('factura-propuesta-cliente')).toHaveTextContent('ClienteJuan Pérez · 20304050607');
+    expect(screen.getByTestId('factura-propuesta-cliente')).toHaveTextContent(/ClienteJuan Pérez · 20304050607/);
     expect(screen.getByTestId('factura-propuesta-item-0')).toHaveTextContent('Service de aire1 × 50000');
     expect(screen.getByTestId('factura-propuesta-total')).toHaveTextContent('Total: 50000');
   });
 
   it('`fact-hitl`: el encabezado dice el tipo de comprobante que manda el backend, no uno fijo', async () => {
-    await montar(propuesta({ tipo_comprobante: 'B' }));
+    await montar(propuesta({ tipo_comprobante: 'FACTURA_B' }));
 
     expect(screen.getByTestId('factura-propuesta-tipo')).toHaveTextContent('Factura B · ARCA');
+  });
+
+  it('🔴 el encabezado muestra la LETRA, nunca el nombre del enum del backend', async () => {
+    await montar();
+
+    expect(screen.getByTestId('factura-propuesta-tipo')).toHaveTextContent('Factura C · ARCA');
+    expect(screen.queryByText(/FACTURA_C/)).toBeNull();
+  });
+
+  describe('`cliente.del_registro` (D7): el CUIT que NO dictó la persona se marca', () => {
+    const delRegistro = {
+      razon_social: 'Panadería La Esquina',
+      cuit: '30712345678',
+      condicion_iva: 'RESPONSABLE_INSCRIPTO',
+      del_registro: true,
+    };
+
+    it('del registro: se ve la marca y la condición de IVA del registro', async () => {
+      await montar(propuesta({ cliente: delRegistro, tipo_comprobante: 'FACTURA_A' }));
+
+      expect(screen.getByTestId('factura-propuesta-cliente-registro')).toHaveTextContent('De tu registro de clientes');
+      expect(screen.getByTestId('factura-propuesta-cliente-condicion')).toHaveTextContent('Responsable Inscripto');
+      expect(screen.getByTestId('factura-propuesta-tipo')).toHaveTextContent('Factura A · ARCA');
+    });
+
+    it('control negativo: dictado por la persona (`del_registro: false`) NO lleva la marca', async () => {
+      await montar();
+
+      expect(screen.queryByTestId('factura-propuesta-cliente-registro')).toBeNull();
+      expect(screen.getByTestId('factura-propuesta-cliente-condicion')).toHaveTextContent('Consumidor Final');
+    });
+
+    it('una condición de IVA que la app no conoce no se pinta cruda (ni se inventa)', async () => {
+      await montar(propuesta({ cliente: { ...delRegistro, condicion_iva: 'ALGO_NUEVO' } }));
+
+      expect(screen.queryByTestId('factura-propuesta-cliente-condicion')).toBeNull();
+      expect(screen.queryByText(/ALGO_NUEVO/)).toBeNull();
+    });
   });
 
   it('control negativo: sin `tipo_comprobante` no se inventa el encabezado', async () => {
