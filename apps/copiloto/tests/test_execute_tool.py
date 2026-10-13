@@ -226,6 +226,8 @@ def test_mp_charge_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
     assert tr.observation["needs_connect"] == "mercadopago"
     card = tr.observation["gate_card"]
     assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago" and card["label"] == "Mercado Pago"
+    # PROTO4DEPS §2: el gate de cobro lleva lo que el usuario pedía, sacado de los argumentos del cobro.
+    assert card["pendiente"] == {"texto": "armar el link de cobro de $5.000"}
     assert gw.calls == 0                                # no llamó create_payment_link
 
 
@@ -282,6 +284,9 @@ def test_mp_charge_401_a_mitad_de_sesion_marca_reauth_y_devuelve_card():
     assert tr.observation["needs_connect"] == "mercadopago"
     card = tr.observation["gate_card"]
     assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago"
+    # PROTO4DEPS §2: el segundo sitio que arma el gate de MP (token vencido a mitad de sesión) lleva
+    # también lo que el usuario pedía -- el mismo `pendiente` que el guard preventivo.
+    assert card["pendiente"] == {"texto": "armar el link de cobro de $5.000"}
     assert cred.reauth_calls == ["seller1"]     # self-healing: el guard preventivo la atrapa la próxima vez
 
 
@@ -347,6 +352,9 @@ def test_K11_connection_required_deja_gate_card_con_alcance_del_catalogo():
     card = tr.observation["gate_card"]
     assert card["kind"] == "requiere_conexion" and card["service"] == "gmail" and card["label"] == "Gmail"
     assert card["connect_path"] == "/composio/connect?service=gmail" and card["alcance"]
+    # PROTO4DEPS §2: un gate cuyo turno no se resume en una frase NO lleva `pendiente` (clave ausente).
+    assert "pendiente" not in card
+    assert {i["condicion"] for i in card["alcance_items"]} <= {"solo_lectura", "requiere_ok", "ninguna"}
 
 
 def test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():

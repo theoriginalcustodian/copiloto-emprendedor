@@ -37,7 +37,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
-from catalog import requiere_conexion_card, sugerencia_armar_factura_card  # noqa: E402
+from catalog import pendiente_de_cobro, requiere_conexion_card, sugerencia_armar_factura_card  # noqa: E402
 from deposito_traumas import depositar as depositar_trauma  # noqa: E402
 from fingerprint import fingerprint_de_error  # noqa: E402
 # La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
@@ -655,7 +655,9 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
         # `inteligencia_queries.py` para esta distinción -- reutilizada, no reinventada.
         return ToolResult(tool_call_id=idem_key, status="error",
                           observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
-                                       "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
+                                       "gate_card": requiere_conexion_card(
+                                           "mercadopago", _friendly_toolkit("mercadopago"),
+                                           pendiente=pendiente_de_cobro(arguments))})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
                           observation={"preview": f"generar link de cobro por ${amount} ({concept})",
@@ -1796,7 +1798,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                     ctx.mp_cred_store.marcar_reauth(ctx.mp_seller_user_id)  # self-healing: el guard preventivo la atrapa la próxima vez
                 return ToolResult(tool_call_id=idem_key, status="error",
                                   observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
-                                               "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
+                                               "gate_card": requiere_conexion_card(
+                                                   "mercadopago", _friendly_toolkit("mercadopago"),
+                                                   pendiente=pendiente_de_cobro(arguments))})
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "no pude generar el cobro ahora; probá de nuevo en un rato"})
         except Exception as exc:

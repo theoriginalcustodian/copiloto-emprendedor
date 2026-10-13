@@ -20,6 +20,19 @@ from __future__ import annotations
 
 MERCADOPAGO_KEY = "mercadopago"
 
+# PROTO4DEPS §2 (contrato 2026-10-13): qué límite lleva cada capacidad que la hoja «Conectar X» le
+# promete al usuario. ENUM CERRADO -- agregar un valor exige enmendar el contrato (la app trata uno
+# desconocido como `ninguna`, así que un valor nuevo sin declarar se vuelve invisible). El backend
+# emite SEMÁNTICA; la etiqueta («Solo lectura», «Nunca sin tu OK») la pinta la app.
+CONDICION_SOLO_LECTURA = "solo_lectura"   # la capacidad sólo lee: no cambia nada del lado del servicio
+CONDICION_REQUIERE_OK = "requiere_ok"     # escribe, y NUNCA sin que el usuario confirme (confirm-gate)
+CONDICION_NINGUNA = "ninguna"             # sin calificador que mostrar
+CONDICIONES = (CONDICION_SOLO_LECTURA, CONDICION_REQUIERE_OK, CONDICION_NINGUNA)
+
+
+def _cap(texto: str, condicion: str) -> dict:
+    return {"texto": texto, "condicion": condicion}
+
 # Metadata de presentación es-AR por servicio (clave = slug real: el mismo que emite `/composio/connect?service=`
 # o, para MP, la clave literal 'mercadopago'). NO es la fuente de verdad de "qué servicios existen" -- eso lo
 # decide `valid_toolkits` (derivado de la policy real); este mapa SOLO mejora el copy de los que ya existen.
@@ -29,42 +42,50 @@ _PRESENTATION: dict[str, dict] = {
         "work_label": "Cobrar",
         "category": "Pagos",
         "description": "Generá links de cobro y cobrá desde el chat.",
-        "capabilities": ["Generar link de cobro"],
+        # «movimientos» NO: lo que Copiloto lee de MP son los PAGOS que entran (webhook ->
+        # `mp_payments`), no el extracto de la cuenta. Prometer «movimientos» sería decir de más.
+        "alcance": [_cap("Leer tus cobros", CONDICION_SOLO_LECTURA),
+                    _cap("Armar links de cobro cuando vos confirmás", CONDICION_REQUIERE_OK)],
     },
     "gmail": {
         "display_name": "Gmail",
         "work_label": "Mail",
         "category": "Comunicación",
         "description": "Enviá y buscá mails desde el chat.",
-        "capabilities": ["Leer mails", "Enviar mails", "Buscar"],
+        "alcance": [_cap("Leer mails", CONDICION_SOLO_LECTURA),
+                    _cap("Enviar mails", CONDICION_REQUIERE_OK),
+                    _cap("Buscar", CONDICION_SOLO_LECTURA)],
     },
     "googlecalendar": {
         "display_name": "Google Calendar",
         "work_label": "Agenda",
         "category": "Agenda",
         "description": "Agendá reuniones y turnos en tu Google Calendar.",
-        "capabilities": ["Agendar reuniones", "Buscar turnos"],
+        "alcance": [_cap("Agendar reuniones", CONDICION_REQUIERE_OK),
+                    _cap("Buscar turnos", CONDICION_SOLO_LECTURA)],
     },
     "googledrive": {
         "display_name": "Google Drive",
         "work_label": "Archivos",
         "category": "Archivos",
         "description": "Creá y buscá archivos en tu Google Drive.",
-        "capabilities": ["Crear archivo", "Buscar archivo"],
+        "alcance": [_cap("Crear archivo", CONDICION_REQUIERE_OK),
+                    _cap("Buscar archivo", CONDICION_SOLO_LECTURA)],
     },
     "googledocs": {
         "display_name": "Google Docs",
         "work_label": "Archivos",
         "category": "Archivos",
         "description": "Creá y leé documentos en Google Docs.",
-        "capabilities": ["Crear documento", "Leer documento"],
+        "alcance": [_cap("Crear documento", CONDICION_REQUIERE_OK),
+                    _cap("Leer documento", CONDICION_SOLO_LECTURA)],
     },
     "googlesheets": {
         "display_name": "Google Sheets",
         "work_label": "Archivos",
         "category": "Archivos",
         "description": "Agregá filas a tus planillas de Google Sheets.",
-        "capabilities": ["Agregar fila"],
+        "alcance": [_cap("Agregar fila", CONDICION_REQUIERE_OK)],
     },
 }
 
@@ -81,7 +102,7 @@ def _default_presentation(toolkit: str) -> dict:
         "work_label": display_name,
         "category": _DEFAULT_CATEGORY,
         "description": _DEFAULT_DESCRIPTION,
-        "capabilities": [],
+        "alcance": [],
     }
 
 
@@ -100,7 +121,12 @@ def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -
         "category": presentation["category"],
         "kind": kind,
         "description": presentation["description"],
-        "capabilities": list(presentation["capabilities"]),
+        # `capabilities` (list[str]) se CONSERVA tal cual: la web lo tipa como `string[]` y renderiza cada
+        # elemento como hijo de React; un objeto ahí rompería el sheet sin avisar. Sale de la MISMA lista
+        # que `alcance_items`, así que no pueden driftear. Baja de `capabilities` cuando web y mobile lean
+        # `alcance_items` (fecha a fijar por planificación).
+        "capabilities": [c["texto"] for c in presentation["alcance"]],
+        "alcance_items": [dict(c) for c in presentation["alcance"]],
         # K-09: `status` distingue «caido» (hubo conexión y ya no sirve) de «nunca_conectado».
         # `connected` se conserva para clientes viejos y es siempre `status == "conectado"`.
         "connected": connected,
@@ -113,7 +139,25 @@ def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -
 KIND_REQUIERE_CONEXION = "requiere_conexion"
 
 
-def requiere_conexion_card(service: str, label: str) -> dict:
+def pendiente_de_cobro(arguments: dict | None) -> str | None:
+    """`pendiente.texto` del gate de MercadoPago: lo que el usuario estaba pidiendo cuando se disparó la
+    card, sacado de los ARGUMENTOS de `mp_charge` (el mismo dato que se va a ejecutar al conectar), nunca
+    redactado por un LLM ni inferido del texto del turno. Con monto válido lo dice; sin él, igual es
+    verdad («armar el link de cobro»)."""
+    monto = (arguments or {}).get("amount")
+    try:
+        monto = float(monto)
+    except (TypeError, ValueError):
+        # Degradar acá es correcto, no un tragado: un monto no numérico deja al `pendiente` sin cifra,
+        # y «armar el link de cobro» sigue siendo verdad. Esta card sólo describe; no valida el cobro.
+        return "armar el link de cobro"
+    if not monto > 0 or monto != monto or monto == float("inf"):
+        return "armar el link de cobro"
+    entero = f"{monto:,.0f}" if monto == int(monto) else f"{monto:,.2f}"
+    return f"armar el link de cobro de ${entero}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def requiere_conexion_card(service: str, label: str, *, pendiente: str | None = None) -> dict:
     """`card` del reply cuando un turno cae en `ConnectionRequired` (K-11, BL-J8): el sheet «conectá X»
     que la app pinta en contexto. `alcance` y `connect_path` salen de `_entry`, la MISMA fuente que
     `GET /catalog` (cero copy duplicado: una segunda lista de permisos driftearía). `label` lo pone quien
@@ -124,8 +168,15 @@ def requiere_conexion_card(service: str, label: str) -> dict:
     `kind` (contrato K-07-B §2). Ver `conversation_workflow._react_loop`."""
     key = (service or "").lower()
     entry = _entry(key, kind="payments" if key == MERCADOPAGO_KEY else "composio", connected=False)
-    return {"kind": KIND_REQUIERE_CONEXION, "service": key, "label": label, "bloquea": True,
-            "alcance": entry["capabilities"], "connect_path": entry["connect_path"]}
+    card = {"kind": KIND_REQUIERE_CONEXION, "service": key, "label": label, "bloquea": True,
+            "alcance": entry["capabilities"], "alcance_items": entry["alcance_items"],
+            "connect_path": entry["connect_path"]}
+    # `pendiente` va en la CARD (es del turno, no del servicio) y es OPCIONAL: un gate disparado por algo
+    # que no se puede resumir en una frase es el caso normal, y entonces la clave está AUSENTE -- nunca
+    # `null` ni un texto de relleno (la app tiene que verse bien sin él).
+    if pendiente and pendiente.strip():
+        card["pendiente"] = {"texto": pendiente.strip()}
+    return card
 
 
 # H5b (contrato 2026-10-13): el `tipo` del `destino` de una tarjeta. ENUM CERRADO: hoy un solo valor, y
