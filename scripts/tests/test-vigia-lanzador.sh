@@ -127,10 +127,32 @@ if [ -d "$R/.git" ]; then
   if [ ! -s "$TMP/e7a" ]; then ok "CONTROL: pin real y sano ⇒ sin banner"
   else bad "CONTROL: el pin sano ya emite banner ⇒ el caso de abajo no prueba nada: [$(cat "$TMP/e7a")]"; fi
   # ahora lo rompo como lo rompe una poda parcial: le saco el archivo .git
+  #
+  # 🔴 ESTA ASERCION CAMBIO EL 2026-10-13, y el motivo importa: antes exigia el BANNER
+  # (`grep DEGRADADO`), que es exactamente lo que el DEFECTO producia. `vigia.sh` traia un
+  # `\n` LITERAL en la rama de recuperacion (PR #953), asi que le pasaba un argumento de
+  # mas a `git worktree add` y la recuperacion fallaba SIEMPRE -> banner siempre -> este caso
+  # verde. Un test que afirma el sintoma del bug no puede cazar el bug.
+  # La propiedad correcta es la RECUPERACION: pin roto => se recrea y el instrumento sale
+  # DEL PIN. (Medido: `worktree add` plano y `--force` fallan sobre un dir existente; lo unico
+  # que recupera es sacar la carcasa del camino.)
   rm -f "$TMP/pinreal/.git"
-  UC_VIGIA_PIN="$TMP/pinreal" UC_VIGIA_REF=HEAD bash "$R/scripts/vigia.sh" cola-check.sh >/dev/null 2>"$TMP/e7b"
-  if grep -q 'DEGRADADO' "$TMP/e7b"; then ok "pin roto ⇒ DEGRADADO (no lo usa a ciegas)"
-  else bad "pin roto y NO avisó: usaría un árbol que contesta por OTRO sujeto"; fi
+  UC_VIGIA_PIN="$TMP/pinreal" UC_VIGIA_REF=HEAD bash "$R/scripts/vigia.sh" cola-check.sh >"$TMP/o7b" 2>"$TMP/e7b"
+  if [ -e "$TMP/pinreal/.git" ] && grep -q 'DEL-PIN-REAL' "$TMP/o7b"; then
+    ok "pin roto ⇒ RECUPERADO y corriendo del pin"
+  else
+    bad "pin roto y NO recuperado (.git=$([ -e "$TMP/pinreal/.git" ] && echo si || echo no), salida=[$(head -c 60 "$TMP/o7b")]) — quedaria degradado para siempre"
+  fi
+
+  # 7c) la OTRA mitad: cuando la recuperacion es IMPOSIBLE, el banner sigue siendo obligatorio.
+  # Carcasa CON `.git` (ilegible) y toplevel que no coincide: la guarda se niega a borrarla, asi
+  # que no hay forma de recrear el worktree y lo unico correcto es avisar. Sin este caso, el fix
+  # de arriba podria haber matado el banner por completo y nadie se enteraria.
+  mkdir -p "$TMP/pinfalso" && printf 'gitdir: /ruta/que/no/existe
+' > "$TMP/pinfalso/.git"
+  UC_VIGIA_PIN="$TMP/pinfalso" UC_VIGIA_REF=HEAD bash "$R/scripts/vigia.sh" cola-check.sh >/dev/null 2>"$TMP/e7c"
+  if grep -q 'DEGRADADO' "$TMP/e7c"; then ok "pin irrecuperable ⇒ DEGRADADO (el banner no se perdio)"
+  else bad "pin irrecuperable y NO aviso: el fix de la recuperacion se llevo el banner"; fi
 else
   bad "no pude armar el repo temporal del caso 7 (git init falló)"
 fi
@@ -144,6 +166,37 @@ if [ -f "$POD" ]; then
   else bad "CEGUERA: el podador parece vacío"; fi
 else
   bad "no encontré podar-worktrees.sh"
+fi
+
+echo "— 9) COPIA VIEJA del lanzador: su whitelist NO decide (re-exec desde el pin)"
+# Por que existe: el docstring de vigia.sh afirmaba que "una copia vieja de ESTE archivo hace lo
+# mismo que la nueva". Era FALSO y lo levanto FRONTEND2 el 2026-10-13: la whitelist es POLITICA y
+# vivia en el lanzador, asi que las copias de /c/gfw-src/_*-vigia rechazaban `mi-buzon.sh` con
+# rc 2 aunque el instrumento existiera en el pin. Medido ese dia: 5 de 6 pines atrasados y solo
+# 1 con el instrumento. El fix no es agrandar la whitelist (eso fue el parche de la manana): es
+# que el lanzador delegue en el del pin ANTES de decidir nada.
+P9="$TMP/pin9"; L9="$TMP/local9"
+mkdir -p "$P9/scripts" "$L9/scripts"
+cp "$VIGIA" "$P9/scripts/vigia.sh"
+{ echo "#!/usr/bin/env bash"; echo "echo MARCA-DEL-PIN9"; } > "$P9/scripts/mi-buzon.sh"
+# la copia VIEJA: misma base, pero sin `mi-buzon.sh` en su whitelist
+sed 's/^  mi-buzon.sh) ;;/  no-existe-xx.sh) ;;/' "$VIGIA" > "$L9/scripts/vigia.sh"
+if grep -q 'mi-buzon.sh) ;;' "$L9/scripts/vigia.sh"; then
+  bad "CONTROL: no pude fabricar la copia vieja (el sed no saco mi-buzon.sh del case)"
+else
+  ok "CONTROL: copia vieja fabricada (su whitelist NO tiene mi-buzon.sh)"
+  # CONTROL NEGATIVO primero: sin pin, la copia vieja TIENE que rechazar con rc 2. Sin esto, el
+  # caso de abajo pasaria igual si el rechazo nunca existiera.
+  UC_VIGIA_PIN="$TMP/nada-aqui" UC_VIGIA_NO_REFRESH=1 UC_VIGIA_REF=HEAD bash "$L9/scripts/vigia.sh" mi-buzon.sh >/dev/null 2>&1; rc9a=$?
+  if [ "$rc9a" = "2" ]; then ok "CONTROL NEGATIVO: sin pin, la copia vieja rechaza (rc 2)"
+  else bad "CONTROL NEGATIVO roto: sin pin dio rc $rc9a (esperaba 2)"; fi
+  # y con el pin al dia, la whitelist vieja NO decide: corre el instrumento del pin.
+  out9="$(UC_VIGIA_PIN="$P9" UC_VIGIA_NO_REFRESH=1 UC_VIGIA_REF=HEAD bash "$L9/scripts/vigia.sh" mi-buzon.sh 2>/dev/null)"; rc9b=$?
+  if [ "$rc9b" = "0" ] && [ "$out9" = "MARCA-DEL-PIN9" ]; then
+    ok "copia vieja + pin al dia => corre el instrumento del PIN (su whitelist no decidio)"
+  else
+    bad "la whitelist VIEJA decidio: rc=$rc9b salida=[$out9] -- el lanzador sigue envejeciendo"
+  fi
 fi
 
 printf '\n  %s corridos · %s fallados\n' "$corridos" "$fallos"
