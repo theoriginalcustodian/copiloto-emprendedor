@@ -99,9 +99,9 @@ porque engancha filas de otras tablas.
 > ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
 > medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
 
-> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `f26a906d`** (árbol
+> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `65ab488e`** (árbol
 > limpio, `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 54/54 con
-> veredicto · 0/54 fuera · 12/54 pendiente**. ✅ **Control sobre `c0f6a674`** (main con #1092 y #1093 ya mergeados): la cifra sale **idéntica** — código mergeado sin veredicto **no** mueve el padrón, que es exactamente lo que el medidor tiene que hacer.
+> veredicto · 0/54 fuera · 12/54 pendiente**. ✅ **Control, y es el más fuerte que tuvo este bloque: seis PRs de código entraron y la cifra NO se movió un punto.** Entre `f26a906d` y `65ab488e` main recibió `6e10b57d` (#1084), `5a53cc68` (#1090), `440339c5` (#1093), `a1e6e942` (#1095), `318e8b47` (#1096) y `40e2fe62` (#1101) — todo el código de TRIAJE15 — y las cinco cifras salen **idénticas**, con **13 de las 15 filas `nativa-con-device` todavía en DESVÍO** (1 COHERENTE, 1 NO-MEDIBLE). **Eso no es el medidor fallando: es el DoD funcionando.** Estas filas no las cierra un merge, las cierra una medición en el teléfono; si el merge las hubiera movido, el medidor estaría acreditando por declaración. Medición anterior sobre `c0f6a674`: también idéntica.
 >
 > **Lo que se movió y lo que NO.** Con veredicto pasó de 49 a 54 y fuera de 5 a 0, porque backend
 > escribió el ⚠ de sus 5 filas abiertas. **Cumple el DoD y cerrada en código no se movieron un
