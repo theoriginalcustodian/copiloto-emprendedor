@@ -184,11 +184,19 @@ export type {
 // 2026-07-22 (sonda propia: `POST /clientes` → 401 con token ausente, y una ruta inexistente → 405).
 // La respuesta viene PELADA y el 409 trae la FICHA ENTERA del dueño bajo `cliente` — no un id, que
 // era lo que yo había supuesto leyendo §3.4. Ver el detalle en `clientes.ts`.
-export { listarClientes, obtenerCliente, crearCliente, editarCliente, cambiosDeCliente } from './clientes';
+export {
+  listarClientes,
+  obtenerCliente,
+  crearCliente,
+  editarCliente,
+  cambiosDeCliente,
+  facturacionDeCliente,
+} from './clientes';
 export type {
   Cliente,
   DatosCliente,
   DuplicadoCliente,
+  FacturacionCliente,
   FichaCliente,
   ListarClientesParams,
   MotivoDuplicadoCliente,
