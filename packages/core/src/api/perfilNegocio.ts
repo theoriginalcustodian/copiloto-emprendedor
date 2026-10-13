@@ -256,6 +256,27 @@ export function errorDeEmail(valor: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Falta el @ o el dominio (ej.: contacto@tunegocio.com.ar)';
 }
 
+/** Largo mínimo de «Qué vendés» para que el copiloto entienda el negocio (prototipo `index.html`,
+ *  `data-regla="min:10"` en el campo «Qué vendés»). */
+export const MIN_QUE_VENDE = 10;
+
+/**
+ * Aviso de «Qué vendés» corto. 🔴 **Es un AVISO, no un error: nunca bloquea Guardar.** El backend no
+ * exige el largo (`_validar_perfil` sólo topea el máximo) y la regla es una heurística de CALIDAD
+ * para el LLM — bloquear sobre ella volvería inguardable un perfil que el propio sistema ya guardó
+ * (decisión de planificación, 2026-10-13). Disparador para convertirlo en bloqueo: que el backend
+ * declare «Qué vendés» requisito de alguna capacidad.
+ *
+ * A diferencia de `errorDeTelefono`/`errorDeEmail`, **vacío NO es válido**: es la regla del prototipo
+ * (`valida()`: `v.trim().length >= 10`, y vacío cae en «corto»), y el mensaje, tal cual lo escribió el
+ * diseño, ya explica el porqué. Devuelve el mensaje o `null`.
+ */
+export function avisoDeQueVende(valor: string): string | null {
+  return valor.trim().length >= MIN_QUE_VENDE
+    ? null
+    : 'Escribí al menos 10 caracteres para que Odobi entienda tu negocio';
+}
+
 /**
  * Guarda una parte del perfil. Devuelve el perfil **completo** ya actualizado — no hace falta
  * re-hacer el GET.

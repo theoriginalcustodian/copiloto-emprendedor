@@ -55,8 +55,8 @@
 }
 
 /* ---------- Solapas Resumen/Preguntar — NO son del mockup fuente (ese diseño ya sacó "Preguntar"
- * de Inteligencia, ver el hallazgo escalado a planificación); la solapa se mantiene funcional por
- * contrato, sólo con radio de token en vez del `999px` suelto que traía. */
+ * de Inteligencia). «Resumen» es esta pantalla (activa, sin acción) y «Preguntar» sale al chat; se
+ * conservan por contrato de ids, con radio de token en vez del `999px` suelto que traía. */
 .inteligencia-screen__solapas {
   display: flex;
   gap: 8px;
@@ -484,86 +484,6 @@
 
 .grafico-torta__leyenda-total {
   color: var(--label);
-}
-
-/* ---------- PreguntarInteligencia ---------- */
-.chat-inteligencia {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chat-inteligencia__lista {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 4px 2px;
-}
-
-.chat-inteligencia__vacio {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--label);
-  text-align: center;
-  padding: 24px 16px;
-  margin: 0;
-}
-
-.chat-inteligencia__composer {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.chat-inteligencia__input {
-  flex: 1;
-  resize: none;
-  border-radius: 14px;
-  border: var(--input-border);
-  background: var(--input-bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 14px;
-  padding: 10px 12px;
-  outline: none;
-  max-height: 120px;
-}
-
-.chat-inteligencia__input:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.chat-inteligencia__enviar {
-  border: none;
-  border-radius: var(--r-pill);
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.chat-inteligencia__enviar:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.inteligencia-screen__refresco {
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: var(--label);
-  min-height: 1.2em;
 }
 
 /* ---------- Acumulado del año (BL-X2, ex-Contabilidad) ---------- */

@@ -4,7 +4,7 @@ import { configurarApi } from './config';
 import { ApiError } from './errors';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
-import { errorDeEmail, errorDeTelefono, guardarPerfilNegocio, leerPerfilNegocio } from './perfilNegocio';
+import { avisoDeQueVende, errorDeEmail, errorDeTelefono, guardarPerfilNegocio, leerPerfilNegocio } from './perfilNegocio';
 
 function respuesta(status: number, body: unknown): RespuestaHttp {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
@@ -271,6 +271,20 @@ describe('perfilNegocio.ts', () => {
       expect(errorDeEmail('contacto@elgalpon.com.ar')).toBeNull();
       expect(errorDeEmail('contacto.elgalpon.com')).not.toBeNull();
       expect(errorDeEmail('contacto@elgalpon')).not.toBeNull();
+    });
+  });
+
+  describe('«Qué vendés» corto — aviso, no error', () => {
+    it('avisoDeQueVende: menos de 10 caracteres (con trim) avisa; 10 o más no', () => {
+      expect(avisoDeQueVende('Pan')).toBe('Escribí al menos 10 caracteres para que Odobi entienda tu negocio');
+      expect(avisoDeQueVende('   123456789   ')).not.toBeNull(); // 9 reales: los espacios no cuentan
+      expect(avisoDeQueVende('1234567890')).toBeNull();
+      expect(avisoDeQueVende('Instalaciones eléctricas domiciliarias')).toBeNull();
+    });
+
+    it('🔴 vacío AVISA (regla del prototipo), a diferencia de teléfono/email donde vacío es válido', () => {
+      expect(avisoDeQueVende('')).not.toBeNull();
+      expect(errorDeTelefono('')).toBeNull();
     });
   });
 });

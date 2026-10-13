@@ -4,6 +4,7 @@ import {
   ApiError,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,
+  avisoDeQueVende,
   errorDeEmail,
   errorDeTelefono,
   guardarPerfilNegocio,
@@ -101,6 +102,9 @@ export function PantallaPerfilNegocio({ onAbrirTono }: { onAbrirTono?: () => voi
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  // AVISO (no error): «Qué vendés» corto. Se evalúa al salir del campo y NUNCA entra en `guardar()` —
+  // la regla es una heurística de calidad, no un requisito del backend. Ver `avisoDeQueVende`.
+  const [avisoQueVende, setAvisoQueVende] = useState<string | null>(null);
   const [erroresContacto, setErroresContacto] = useState<{ telefono: string | null; email: string | null }>({
     telefono: null,
     email: null,
@@ -245,10 +249,21 @@ export function PantallaPerfilNegocio({ onAbrirTono }: { onAbrirTono?: () => voi
               <textarea
                 data-testid="perfil-negocio-que-vende"
                 value={campos.queVende}
-                onChange={(e) => actualizar('queVende', e.target.value)}
+                onChange={(e) => {
+                  actualizar('queVende', e.target.value);
+                  // Al escribir sólo se LIMPIA el aviso: nunca se marca uno nuevo a mitad de camino.
+                  setAvisoQueVende(null);
+                }}
+                onBlur={() => setAvisoQueVende(avisoDeQueVende(campos.queVende))}
                 placeholder="ej.: Instalaciones eléctricas domiciliarias y pequeñas obras"
                 maxLength={LIMITE_QUE_VENDE}
+                aria-invalid={avisoQueVende != null}
               />
+              {avisoQueVende != null && (
+                <span className="perfil-negocio-seccion__error" role="status" data-testid="perfil-negocio-que-vende-error">
+                  {avisoQueVende}
+                </span>
+              )}
             </label>
             <label className="perfil-negocio-seccion__campo">
               <span className="perfil-negocio-seccion__etiqueta">¿A quién le vendés?</span>

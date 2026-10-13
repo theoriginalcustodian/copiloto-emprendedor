@@ -26,7 +26,7 @@ Convención: `R` = resuelto en código · `E` = enmienda fundada · `C` = ya coi
 | fila | divergencia | veredicto |
 |---|---|---|
 | `bi` | chip «Al 19 de agosto» ausente (comentario viejo decía que faltaba el dato) | **R** `PantallaInteligencia.tsx:209` `chip={chipDeCaja(portada.caja)}` — `fechaCorte` existe en core (`api/inteligencia.ts:41`) · 2 tests (con dato / sin dato no dibuja) |
-| | pestañas Resumen/Preguntar que el prototipo quitó (DESTINO inteligencia→chat) | **E** la pestaña «Preguntar» es la superficie de preguntas de negocio hoy; quitarla antes de que el chat las responda deja al usuario sin la capacidad. Se revisa cuando `bi→chat` esté contratado |
+| | pestañas Resumen/Preguntar que el prototipo quitó (DESTINO inteligencia→chat) | **R** (decisión TÁCTICA de planificación, 2026-10-13) «Preguntar» es una **salida al chat**, sin pantalla intermedia ni endpoint: mobile `PantallaInteligencia.tsx:57,83` (`router.back()`), web `InteligenciaScreen.tsx:150` (`onAbrirChat`). Se borró `PreguntarInteligencia` (mobile+web) con su composer y sus testids; «Resumen» es la pantalla actual, sin acción · 2 tests por plataforma (navega / el control no navega) |
 | | «Por cobrar» es Row y no bloque grande con sub-línea «vencidos · Rodríguez, hace 22 días» | **E** el sub-texto necesita **cliente y antigüedad del vencido más viejo**, que `Portada.porCobrar` no trae (sólo `vencido` importe): no se fabrica |
 | | agrega 4 gráficos y «Acumulado del año» | **E** son capacidad real de la beta que el prototipo no modela; se conservan |
 | `bi-vacio` | texto corto, pierde «el ranking se arma solo» | **R** `PantallaInteligencia.tsx:305` — copy textual del prototipo (mobile **y** web, mismo texto) · test |
@@ -74,7 +74,7 @@ Convención: `R` = resuelto en código · `E` = enmienda fundada · `C` = ya coi
 | `negocio` | rótulos distintos («¿Qué vendés o qué servicio ofrecés?») | **R** `PantallaPerfilNegocio.tsx:361` — «Qué vendés», «A quién le vendés», placeholders «Contá qué hacés» / «Con el que te conocen»; «Cómo te habla» / «Tono y forma» |
 | | falta el chip «Te pide confirmación antes de ejecutar» (elemento ausente) | **R** `PantallaPerfilNegocio.tsx:348` `perfil-negocio-estado-modo`, desde `modoCeremonia` (no texto fijo) · test en los dos modos |
 | | «A quién le vendés» es select de 3 vs texto libre | **E** el backend lo guarda como enum; texto libre rompe el contrato |
-| | sin validación inline de largo mínimo | **E** **MAYOR, se pide a planificación**: el backend no la exige y bloquear Guardar sobre perfiles ya guardados cambia el contrato de guardado. Quedó escrito en `PantallaPerfilNegocio.tsx` junto a los rótulos |
+| | sin validación inline de largo mínimo | **R** como **aviso no bloqueante** (decisión de planificación, 2026-10-13): misma regla `min:10` y mismo mensaje del prototipo (`index.html:2282`), evaluado en blur — `avisoDeQueVende` en core `api/perfilNegocio.ts:274`, usado en mobile `PantallaPerfilNegocio.tsx:370` y web `PantallaPerfilNegocio.tsx:257`, testid `perfil-negocio-que-vende-error` en las dos. Guardar NO se toca: el backend no exige el largo y bloquear volvería inguardable un perfil ya guardado. Disparador para bloquear: que el backend declare «Qué vendés» requisito de alguna capacidad · tests que muerden (mutante rojo) |
 | | Guardar explícito por sección; agrega «Cómo trabaja tu copiloto» y Catálogo | **E** capacidades reales de la beta (modo de ceremonia, catálogo) |
 
 ## Apps (1) y Agenda (1)

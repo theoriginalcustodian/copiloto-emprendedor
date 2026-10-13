@@ -7,7 +7,6 @@ vi.mock('@copiloto/core', async (orig) => ({
   ...(await orig<typeof import('@copiloto/core')>()),
   leerPortada,
 }));
-vi.mock('./PreguntarInteligencia', () => ({ PreguntarInteligencia: () => null }));
 vi.mock('./AcumuladoAnual', () => ({ AcumuladoAnual: () => <div data-testid="acumulado-mock" /> }));
 vi.mock('./graficos/GraficosInteligencia', () => ({ GraficosInteligencia: () => null }));
 
@@ -58,5 +57,37 @@ describe('InteligenciaScreen — acumulado del año fusionado (BL-X2)', () => {
     leerPortada.mockResolvedValue({ status: 'ok', portada: PORTADA });
     render(<InteligenciaScreen onAbrirChat={() => {}} />);
     expect(await screen.findByTestId('acumulado-mock')).toBeInTheDocument();
+  });
+});
+
+describe('InteligenciaScreen — «Preguntar» es una SALIDA al chat (decisión táctica 2026-10-13)', () => {
+  beforeEach(() => {
+    leerPortada.mockReset();
+    leerPortada.mockResolvedValue({ status: 'ok', portada: PORTADA });
+  });
+
+  it('tocar «Preguntar» abre el chat y NO cambia de cuerpo: la portada sigue ahí', async () => {
+    const onAbrirChat = vi.fn();
+    render(<InteligenciaScreen onAbrirChat={onAbrirChat} />);
+    await screen.findByTestId('inteligencia-caja');
+
+    fireEvent.click(screen.getByTestId('inteligencia-solapa-preguntar'));
+
+    expect(onAbrirChat).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('inteligencia-caja')).toBeInTheDocument();
+    expect(screen.queryByTestId('preguntar-inteligencia-input')).toBeNull();
+  });
+
+  it('🔴 CONTROL — «Resumen» (la pantalla actual) no es un botón y no navega', async () => {
+    const onAbrirChat = vi.fn();
+    render(<InteligenciaScreen onAbrirChat={onAbrirChat} />);
+    await screen.findByTestId('inteligencia-caja');
+
+    const resumen = screen.getByTestId('inteligencia-solapa-resumen');
+    fireEvent.click(resumen);
+
+    expect(resumen).toHaveAttribute('aria-current', 'page');
+    expect(resumen.tagName).not.toBe('BUTTON');
+    expect(onAbrirChat).not.toHaveBeenCalled();
   });
 });
