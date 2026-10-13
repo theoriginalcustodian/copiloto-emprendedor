@@ -76,3 +76,40 @@ squash. Lo mismo vale para «este archivo se agregó sin tocar nada más»: el s
 los 3 archivos de la rama, no el 1 del commit.
 
 → [[un-control-positivo-con-esperado-falso-acusa-al-script]] · [[push-es-el-ultimo-paso-no-el-primero]]
+---
+
+### Refuerzo 2026-10-13 — cuatro predicados de «¿ya está en `main`?» dieron 43, 22, 20 y 20
+
+El squash no sólo mata la **procedencia**: también deja sin predicado barato la pregunta
+*«¿esta rama ya aterrizó?»*. Medido hoy sobre las **332 ramas remotas** del repo, con el mismo corpus
+y cuatro instrumentos distintos:
+
+| predicado | dio | por qué está mal |
+|---|---|---|
+| `git merge-base --is-ancestor rama main` | **43** mergeadas | el squash crea un commit NUEVO: el de la rama nunca queda ancestro. Subestima 7×. |
+| `git cherry main rama` (patch-id) | 20 ausentes | caza el squash **1:1** y nada más: con 2+ commits el squash une los patches y ningún patch-id individual coincide. |
+| `git diff main rama` (árbol completo) | **22 de 22** difieren | compara los árboles enteros: una rama vieja difiere en 900 archivos **por estar atrasada**, no por aportar ([[base-rancia-invierte-la-direccion-del-diff]]). |
+| `git diff main rama -- <sólo los archivos que tocó desde su merge-base>` | 20, y **pasa los controles** | es el único que pregunta *«¿mi aporte está?»* en vez de *«¿los árboles son iguales?»*. |
+
+**Los tres primeros fallaron contra el MISMO control positivo:** una rama que yo mismo había mergeado
+media hora antes (PR #1066, merge commit conocido). El 1º la cuenta como no-mergeada, el 2º le encuentra
+«2 pendientes», el 3º «22 líneas de diferencia»; el 4º da `0/11`. Sin ese control los cuatro números
+son igual de citables — y el que se cita es el que salió primero.
+
+Y el predicado autorizado para «¿aterrizó?» no es de git sino de la **forja**:
+`gh pr list --state merged --head <rama>`. Dio **309 de 332** con PR mergeado y 23 sin ninguno — contra
+una cifra de «89» que yo arrastraba en una lista corta al operador y que no salía de ninguna medición
+reproducible ([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]).
+
+**Y un último giro, que es el que importa antes de borrar algo:** de las 20 ramas con contenido
+*ausente del árbol*, la muestra de 4 que verifiqué **por símbolo** (¿vive el fix en `main`, aunque no
+viva el patch?) dio **4 de 4 ya aterrizadas por otro camino** — `sanitizeLegacyHitlTokens`, el gate de
+la card stale, los tokens `--r-pill`, y `BL-V23`, cuyo PR #713 fue **CLOSED** y reemplazado por #719
+«reconstruido limpio». O sea: **«el patch no está» y «el trabajo no está» son preguntas distintas**, y
+la segunda no la contesta ningún comando de ramas: se contesta grepeando el **símbolo** en `main`.
+
+**How to apply:** para «¿esta rama se puede borrar?», dos preguntas en este orden — (1) *¿tiene PR
+mergeado?* → `gh pr list --state merged --head`, que es el único registro que el squash no destruye;
+(2) si no lo tiene, *¿vive el fix en `main`?* → grep del símbolo distintivo, **no** diff de ramas. Y
+cualquier conteo de «ramas mergeadas» se acompaña del predicado con el que se midió: sin eso, cuatro
+números contradictorios son todos «la cifra».
