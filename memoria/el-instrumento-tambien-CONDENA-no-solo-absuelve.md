@@ -411,3 +411,42 @@ Todo estaba bien: local y remoto eran **el mismo** `75c642bb`. El «local» del 
   de ejecutar el remedio: acá bastaba `git ls-remote` contra `git rev-parse HEAD`, los dos leídos
   **en el momento de decidir**.
 · Si el mensaje de un control nombra «local» o «esperado», preguntá **cuándo** se leyó ese valor.
+
+---
+
+## Refuerzo 2026-10-12 — el control comparaba la FORMA del path, no el archivo
+
+Un control positivo **ciego** (5 filas resueltas por un resolvedor que no había visto el mapeo)
+volvió con `no reproducidas: 2`. Parecía que el resolvedor había fallado dos de cinco. No:
+
+```
+card-cobro:  literal -> VACIA   ·  basename -> ['PantallaIngresos.tsx']
+preg:        literal -> VACIA   ·  basename -> ['ListaMensajes.tsx', 'PreguntarInteligencia.tsx']
+```
+
+Había acertado **las cinco**. El control extraía los paths citados y comparaba los **strings**
+(`esp & got`), y el documento auditado cita el mismo archivo de hasta **tres formas distintas en la
+misma tabla** — medido: **23 basenames con más de una forma** (`PantallaMiDia.tsx`,
+`midia/PantallaMiDia.tsx`, `apps/mobile/src/modules/midia/PantallaMiDia.tsx`).
+
+**Lo que vuelve el caso instructivo, y no una curiosidad:** el fixture *viejo* pasaba. No por ser
+correcto, sino porque sus 5 filas caían en celdas que **abrevian el path igual que él**. Un
+resolvedor ciego escribe el path completo que ve en el filesystem; el fixture escrito con el
+documento a la vista copia su convención de abreviación. Es decir: **el falso rojo sólo aparece
+contra un resolvedor independiente, y la coincidencia de estilo del fixture viejo era en sí misma la
+señal de que no fue escrito a ciegas.** El control condenaba exactamente al único insumo que podía
+acreditarlo.
+
+**El fix y por qué no es "ajustar el instrumento para que pase":** comparar por **sufijo de
+segmentos**, no por basename — así `chat/Burbuja.tsx` sigue sin colapsar con
+`otra/carpeta/Burbuja.tsx`. Y cuatro controles, no uno: el fixture ciego pasa (el caso), el fixture
+original **sigue** pasando (no se debilitó), el canario sigue disparando los 5 sabotajes, y un caso
+negativo prueba que el homónimo en otra carpeta no coincide. Un fix de comparador sin el control 2
+y el 4 es indistinguible de aflojar el umbral.
+
+**La pregunta que lo caza antes:** *¿el control compara el **referente** o la **manera de
+escribirlo**?* Cualquier identificador con más de una forma válida — path abreviado, URL con y sin
+barra final, id con mayúsculas, fecha con y sin cero — hace que un comparador de cadenas condene al
+que escribe distinto, que suele ser el independiente.
+
+→ [[un-control-positivo-con-esperado-falso-acusa-al-script]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
