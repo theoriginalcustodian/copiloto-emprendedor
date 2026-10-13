@@ -138,6 +138,35 @@ def archivos_citados(celda):
     return set(re.findall(r"[\w./-]+\.(?:tsx|ts|html|md)", celda))
 
 
+def _segmentos(p):
+    return tuple(x for x in p.replace("\\", "/").split("/") if x)
+
+
+def mismo_archivo(a, b):
+    """True si dos paths citados nombran el MISMO archivo, aunque uno este abreviado.
+
+    POR QUE NO SE COMPARAN LAS CADENAS: el mapeo cita el mismo archivo de hasta TRES formas
+    distintas en la misma tabla -- medido el 2026-10-12: 23 basenames con mas de una forma
+    (`PantallaMiDia.tsx`, `midia/PantallaMiDia.tsx`,
+    `apps/mobile/src/modules/midia/PantallaMiDia.tsx`). Comparar literales daba FALSO ROJO
+    contra cualquier resolvedor que escriba el path completo que ve en el filesystem, que es
+    justo lo que hace un resolvedor ciego. El control positivo original pasaba porque sus 5
+    filas cayeron en celdas que abrevian igual que el fixture: suerte de muestra, no robustez.
+
+    POR QUE SUFIJO Y NO BASENAME: basename colapsaria `chat/Burbuja.tsx` con cualquier otro
+    `Burbuja.tsx` de otra carpeta, y eso debilita el control en vez de arreglarlo. El sufijo
+    de segmentos acepta la abreviacion y sigue distinguiendo carpetas.
+    """
+    sa, sb = _segmentos(a), _segmentos(b)
+    n = min(len(sa), len(sb))
+    return n > 0 and sa[-n:] == sb[-n:]
+
+
+def algun_archivo_comun(esp, got):
+    """Si alguno de los paths esperados nombra el mismo archivo que alguno de los del mapeo."""
+    return any(mismo_archivo(a, b) for a in esp for b in got)
+
+
 # Las filas son (proto, nativo, divergencia). Estos dos indices existen con nombre porque
 # la v1 comparaba el control positivo contra DIVERGENCIA en vez de NATIVO y daba falso
 # rojo en las 5 filas correctas: un control que grita en el caso normal se desarma solo.
@@ -207,7 +236,7 @@ def corrida(filas, univ, ctl):
             continue
         esp = archivos_citados(esperado)
         got = archivos_citados(filas[i][I_NATIVO])
-        if esp and not (esp & got):
+        if esp and not algun_archivo_comun(esp, got):
             no_repro.append("%s (esperaba alguno de %s, el mapeo dice %s)"
                             % (i, sorted(esp), sorted(got) or ["nada"]))
     if no_repro:

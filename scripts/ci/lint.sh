@@ -101,6 +101,18 @@ bash "$ROOT/scripts/test-durabilidad-gate.sh"
 # (`armar-contratos.py:50`): se regenera a un temporal y se COMPARA, en vez de agregarle un
 # `--check` que seria un segundo mecanismo para la misma pregunta.
 python "$ROOT/scripts/evidencia/verificar-mapeo.py"
+# CONTROLCIEGO (2026-10-12). El gate corre el verificador DOS veces, una por fixture, porque los
+# dos controles positivos responden preguntas DISTINTAS y el segundo no tiene otro invocador: sin
+# esta linea el fixture ciego seria un artefacto sin dueno. El original acredita las 5 filas
+# historicas; el ciego acredita 5 filas resueltas por quien NO habia visto el mapeo, commiteadas en
+# su propio commit ANTES de la primera corrida (8606def6) — el orden que el original no puede
+# exhibir, porque ahi fixture e instrumento nacieron juntos (1fb170cd).
+_ciego="$ROOT/scripts/evidencia/fixtures/mapeo-control-positivo-ciego.tsv"
+if ! COPILOTO_CONTROL_POSITIVO="$_ciego" python "$ROOT/scripts/evidencia/verificar-mapeo.py" >/dev/null; then
+  echo "❌ el control positivo CIEGO falla. Salida completa:"
+  COPILOTO_CONTROL_POSITIVO="$_ciego" python "$ROOT/scripts/evidencia/verificar-mapeo.py" || true
+  exit 1
+fi
 _contratos="$ROOT/docs/copiloto-emprendedor/2026-10-12-contratos-del-mapeo.md"
 _tmp_contratos="$(mktemp)"
 python "$ROOT/scripts/evidencia/armar-contratos.py" "$_tmp_contratos" >/dev/null
@@ -127,4 +139,4 @@ if ! diff -q "$_tmp_contratos" "$_contratos" >/dev/null; then
   echo "    No es rojo: el generador emite LF y el checkout puede traer CRLF."
 fi
 rm -f "$_tmp_contratos"
-echo "✅ mapeo del criterio 3: 5 controles OK · contratos regenerados identicos al versionado"
+echo "✅ mapeo del criterio 3: 5 controles OK sobre LOS DOS fixtures (original + ciego) · contratos regenerados identicos al versionado"
