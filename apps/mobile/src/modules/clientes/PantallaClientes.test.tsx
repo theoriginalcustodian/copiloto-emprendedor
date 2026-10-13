@@ -14,6 +14,23 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+// Dictado por chat (contrato 2026-10-13): el hook tiene su propio test (`voz/useDictadoPorFuncion.test`).
+// Acá se reemplaza para ejercitar lo que la PANTALLA hace con su resultado. Sin override devuelve `null`
+// (texto crudo, como antes del contrato) para no pegar a la red desde un test que no la mockeó.
+const mockUseDictado = jest.fn();
+jest.mock('../voz/useDictadoPorFuncion', () => {
+  const actual = jest.requireActual('../voz/useDictadoPorFuncion');
+  return {
+    ...actual,
+    useDictadoPorFuncion: (...args: unknown[]) => {
+      const sobreescrito = mockUseDictado(...args);
+      // Sin override, el dictado «no responde» (`null` = texto crudo, como antes de este contrato): el
+      // hook real pegaría a la red desde un test que no la mockeó.
+      return sobreescrito !== undefined ? sobreescrito : { ocupado: false, aviso: null, dictar: async () => null };
+    },
+  };
+});
+
 // BL-J7/K-10 — mismo arnés que `modules/voz/MicFuncion.test.tsx`: `MicFuncion` (mobile) envuelve
 // `BotonVoz`/`useVozComando`, no `MediaRecorder` como en web.
 jest.mock('expo-file-system/legacy', () => ({
@@ -699,5 +716,77 @@ describe('PantallaClientes — BL-J7/K-10 (mic en la fila del rótulo)', () => {
     await waitFor(() => expect(screen.getByTestId('formulario-cliente-nombre-input')).toBeTruthy());
     expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBeFalsy();
     expect(mockTranscribir).not.toHaveBeenCalled();
+  });
+});
+
+describe('PantallaClientes — dictado por chat (contrato 2026-10-13)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+  const mockDictar = jest.fn();
+  function hook(over: { ocupado?: boolean; aviso?: string | null } = {}) {
+    mockUseDictado.mockReturnValue({ ocupado: false, aviso: null, dictar: mockDictar, ...over });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: null });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'nuevo cliente Panadería La Esquina, CUIT 30712345678' });
+    mockDictar.mockReset();
+    hook();
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    mockUseDictado.mockReset();
+    espiaPan.mockRestore();
+  });
+
+  it('los datos que el motor entendió abren el alta con nombre y documento YA cargados, sin guardar', async () => {
+    mockDictar.mockResolvedValue({ nombre: 'Panadería La Esquina', docTipo: 80, docNro: '30712345678', origen: 'voz' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('formulario-cliente-nombre-input')).toBeTruthy());
+    expect(mockUseDictado).toHaveBeenCalledWith('cliente');
+    expect(mockDictar).toHaveBeenCalledWith('nuevo cliente Panadería La Esquina, CUIT 30712345678');
+    expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBe('Panadería La Esquina');
+    expect(screen.getByTestId('formulario-cliente-doc-nro-input').props.value).toBe('30712345678');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('🔴 si el motor no devuelve la card, cae al texto crudo en `nombre` Y LO DICE', async () => {
+    mockDictar.mockResolvedValue(null);
+    hook({ aviso: 'Tardó demasiado en responder. Te dejé lo que dijiste para que lo completes a mano.' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('formulario-cliente-nombre-input')).toBeTruthy());
+    expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBe(
+      'nuevo cliente Panadería La Esquina, CUIT 30712345678',
+    );
+    expect(screen.getByTestId('clientes-dictado-aviso')).toHaveTextContent(/Tardó demasiado en responder/);
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('mientras espera la card se ve «Entendiendo…» y el alta no abre todavía', async () => {
+    mockDictar.mockReturnValue(new Promise(() => {}));
+    hook({ ocupado: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('clientes-dictado-ocupado')).toBeTruthy());
+    expect(screen.queryByTestId('formulario-cliente-nombre-input')).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import {
   obtenerGasto,
   obtenerResumenGastos,
   type Gasto,
+  type OrigenGasto,
   type ResumenGastos,
 } from '@copiloto/core';
 
@@ -15,7 +16,7 @@ import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { MicFuncion } from '../voz';
+import { AvisoDictado, inicialesDeGasto, MicFuncion, useDictadoPorFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -69,7 +70,10 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   const [errorMic, setErrorMic] = useState<string | null>(null);
   // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
   // `/gastos/leer-foto` devolvió 200, nunca por defecto.
-  const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
+  // `'voz'` sólo cuando el dictado por chat devolvió una propuesta del motor (la misma `origen` que trae
+  // la card del chat); el texto crudo sigue siendo `'manual'`, como antes.
+  const [origenAlta, setOrigenAlta] = useState<OrigenGasto>('manual');
+  const dictado = useDictadoPorFuncion('gasto');
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
@@ -146,10 +150,15 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
     setVista('formulario');
   }
 
-  function alDictarGasto(texto: string) {
+  // El dictado va por el chat (`useDictadoPorFuncion`): si el motor devuelve la propuesta, el formulario
+  // abre con monto/categoría/proveedor ya extraídos; si el camino está apagado o falla, cae al texto
+  // crudo en `descripcion` (el comportamiento de antes) y el hook deja el `aviso` que lo dice.
+  async function alDictarGasto(texto: string) {
     setErrorMic(null);
-    setInicialesDictado({ descripcion: texto });
-    setOrigenAlta('manual');
+    const propuesta = await dictado.dictar(texto);
+    if (!vivo.current) return;
+    setInicialesDictado(propuesta !== null ? inicialesDeGasto(propuesta) : { descripcion: texto });
+    setOrigenAlta(propuesta !== null ? propuesta.origen : 'manual');
     setErrorFoto(null);
     setVista('formulario');
   }
@@ -223,6 +232,15 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             </Text>
           )}
 
+          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué. Fuera del ternario por el
+              mismo motivo que `errorFoto`. El aviso sólo vive mientras el formulario abierto es el que
+              nació del dictado (`inicialesDictado` se limpia al salir). */}
+          <AvisoDictado
+            testID="gastos-dictado"
+            ocupado={dictado.ocupado}
+            aviso={vista === 'formulario' && inicialesDictado !== undefined ? dictado.aviso : null}
+          />
+
           {vista === 'formulario' ? (
             <FormularioGasto
               origen={origenAlta}
@@ -240,7 +258,12 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
                   `FlatList` de RNGH. */}
               <View style={styles.filaConMic}>
                 <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
-                <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
+                <MicFuncion
+                  contexto="gasto"
+                  onTranscripcion={(t) => void alDictarGasto(t)}
+                  onError={setErrorMic}
+                  disabled={dictado.ocupado}
+                />
                 <View style={styles.botonesFlex}>
                   <FilaBotones
                     testID="gastos-acciones"

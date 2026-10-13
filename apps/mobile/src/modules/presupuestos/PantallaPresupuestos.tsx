@@ -15,7 +15,7 @@ import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
-import { MicFuncion } from '../voz';
+import { AvisoDictado, inicialesDePresupuesto, MicFuncion, useDictadoPorFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -79,6 +79,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   // llena `concepto` (nunca es una corrección, por eso no toca `corrigiendo`).
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | undefined>(undefined);
   const [errorMic, setErrorMic] = useState<string | null>(null);
+  const dictado = useDictadoPorFuncion('presupuesto');
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -153,10 +154,14 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
     setVista('formulario');
   }
 
-  function alDictarPresupuesto(texto: string) {
+  // Ver `alDictarGasto` en `PantallaGastos.tsx`: propuesta del motor (concepto, receptor e ítems) si hay,
+  // texto crudo en `concepto` (el comportamiento de antes) si el camino está apagado o falló.
+  async function alDictarPresupuesto(texto: string) {
     setErrorMic(null);
+    const propuesta = await dictado.dictar(texto);
+    if (!vivo.current) return;
     setCorrigiendo(null);
-    setInicialesDictado({ concepto: texto });
+    setInicialesDictado(propuesta !== null ? inicialesDePresupuesto(propuesta) : { concepto: texto });
     setVista('formulario');
   }
 
@@ -217,6 +222,13 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
             />
           }
         >
+          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué (ver `PantallaGastos.tsx`). */}
+          <AvisoDictado
+            testID="presupuestos-dictado"
+            ocupado={dictado.ocupado}
+            aviso={vista === 'formulario' && inicialesDictado !== undefined ? dictado.aviso : null}
+          />
+
           {vista === 'formulario' ? (
             <FormularioPresupuesto
               corrige={corrigiendo}
@@ -234,7 +246,12 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                   formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat),
                   nunca una corrección. */}
               <View style={styles.filaConMic}>
-                <MicFuncion contexto="presupuesto" onTranscripcion={alDictarPresupuesto} onError={setErrorMic} />
+                <MicFuncion
+                  contexto="presupuesto"
+                  onTranscripcion={(t) => void alDictarPresupuesto(t)}
+                  onError={setErrorMic}
+                  disabled={dictado.ocupado}
+                />
                 <View style={styles.botonesFlex}>
                   <FilaBotones
                     testID="presupuestos-acciones"

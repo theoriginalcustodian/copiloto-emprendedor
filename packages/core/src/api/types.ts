@@ -9,6 +9,7 @@
  */
 
 import type { ModoCopiloto } from '../chat/modo';
+import type { ContextoTranscripcion } from './transcribir';
 
 import type { ArchivoSubida } from './http';
 
@@ -137,6 +138,17 @@ export interface MeResponse {
 export type ChatMessageKind = 'text' | 'callback';
 
 /**
+ * Hint de destino del dictado que nace en una FUNCIÓN (Gastos/Ingresos/Presupuestos/Clientes), no en
+ * el chat. El backend lo lee y resuelve la tool del destino sin preguntar «¿qué querés hacer?»
+ * (`contrato_..._el-dictado-desde-una-funcion-va-por-el-chat`). El destino sale de
+ * `ContextoTranscripcion` — la MISMA whitelist que `/transcribir` — para que no haya dos listas.
+ *
+ * Aparte de `ChatMessageKind` a propósito: ése lo consumen `switch` exhaustivos del hilo, y un kind de
+ * dictado nunca es un mensaje del hilo.
+ */
+export type KindDictado = `dictado:${ContextoTranscripcion}`;
+
+/**
  * Contenido de negocio FIRMADO por el emprendedor en el GATE 1 (patrón heredado del origen: "el
  * copiloto decide, no transporta") — viaja en `ChatRequest.contenido`, un campo de PRIMER NIVEL del
  * body: el front-door lo lee de la raíz y lo mueve al `context`, el carril que el LLM conversacional
@@ -172,7 +184,7 @@ export interface ChatContenido {
 export interface ChatRequest {
   session_id: string;
   text: string;
-  kind: ChatMessageKind;
+  kind: ChatMessageKind | KindDictado;
   mode?: string | null;
   /** El confirm de un gate de negocio (GATE 2, el informe editable): `{markdown}` — el motor
    * (`conversation_workflow.py::_run_react_turn`, rama `confirm`) lo mergea sobre los `arguments`
@@ -327,6 +339,12 @@ export interface PreviewEnmienda {
 export interface ChatResponse {
   wf_id: string;
   accepted: boolean;
+  /**
+   * El `session_id` EFECTIVO del turno. Para un chat normal es el mismo que se mandó; para
+   * `kind: 'dictado:<destino>'` el backend lo namespacea (`dictado:<destino>:<sid>`, #1050) y éste es el
+   * que hay que pollear en `/reply`. Opcional: un backend anterior no lo devuelve.
+   */
+  session_id?: string;
 }
 
 // ---------------------------------------------------------------------------

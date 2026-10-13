@@ -4,6 +4,7 @@ import {
   AVISO_FACTURA_ANULACION,
   confirmarConTokenFresco,
   estadoFactura,
+  etiquetaCondicionIva,
   type EstadoFacturaResp,
   type FacturaPropuesta,
 } from '@copiloto/core';
@@ -165,6 +166,10 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
     propuesta.cliente != null
       ? [propuesta.cliente.razonSocial, propuesta.cliente.cuit].filter((v) => (v ?? '').trim() !== '').join(' · ')
       : '';
+  // Gemelo de la card mobile: la condición de IVA y la marca «del registro» salen de lo que manda el backend
+  // (D7). La marca es lo único que avisa que el CUIT/condición no los tipeó quien va a emitir.
+  const condicionIva = etiquetaCondicionIva(propuesta.cliente?.condicionIva ?? null);
+  const delRegistro = propuesta.cliente?.delRegistro === true;
 
   return (
     <div className="chat-row chat-row--assistant" data-testid="factura-propuesta">
@@ -178,7 +183,25 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
         {nombreCliente !== '' && (
           <div className="propuesta-card__factura-row" data-testid={`factura-propuesta-cliente-${mensajeId}`}>
             <span className="propuesta-card__factura-label">Cliente</span>
-            <span className="propuesta-card__factura-valor">{nombreCliente}</span>
+            <div className="propuesta-card__factura-cliente">
+              <span className="propuesta-card__factura-valor">{nombreCliente}</span>
+              {condicionIva != null && (
+                <span
+                  className="propuesta-card__factura-label"
+                  data-testid={`factura-propuesta-cliente-condicion-${mensajeId}`}
+                >
+                  {condicionIva}
+                </span>
+              )}
+              {delRegistro && (
+                <span
+                  className="propuesta-card__factura-label"
+                  data-testid={`factura-propuesta-cliente-registro-${mensajeId}`}
+                >
+                  De tu registro de clientes
+                </span>
+              )}
+            </div>
           </div>
         )}
 

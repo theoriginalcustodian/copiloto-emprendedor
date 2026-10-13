@@ -20,6 +20,23 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+// Dictado por chat (contrato 2026-10-13): el hook tiene su propio test (`voz/useDictadoPorFuncion.test`).
+// Acá se reemplaza para ejercitar lo que la PANTALLA hace con su resultado. Sin override devuelve `null`
+// (texto crudo, como antes del contrato) para no pegar a la red desde un test que no la mockeó.
+const mockUseDictado = jest.fn();
+jest.mock('../voz/useDictadoPorFuncion', () => {
+  const actual = jest.requireActual('../voz/useDictadoPorFuncion');
+  return {
+    ...actual,
+    useDictadoPorFuncion: (...args: unknown[]) => {
+      const sobreescrito = mockUseDictado(...args);
+      // Sin override, el dictado «no responde» (`null` = texto crudo, como antes de este contrato): el
+      // hook real pegaría a la red desde un test que no la mockeó.
+      return sobreescrito !== undefined ? sobreescrito : { ocupado: false, aviso: null, dictar: async () => null };
+    },
+  };
+});
+
 // BL-J7 3er ítem del DoD — `FotoFuncion` (mobile) envuelve `useCapturaFoto` (Gastos Fase 2, YA
 // existe en `chat/useCapturaFoto.ts`): se mockea acá para controlar qué "elige" el picker sin tocar
 // `expo-image-picker` real.
@@ -418,6 +435,131 @@ describe('PantallaGastos — BL-J7/K-10 (mic en la fila del rótulo)', () => {
     await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
     expect(screen.getByTestId('gasto-descripcion-input').props.value).toBeFalsy();
     expect(mockTranscribir).not.toHaveBeenCalled();
+  });
+});
+
+describe('PantallaGastos — dictado por chat (contrato 2026-10-13)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+
+  const PROPUESTA = {
+    monto: '15000.00',
+    montoSugerido: null,
+    fecha: '2026-07-21',
+    categoria: 'mercaderia' as const,
+    proveedor: 'Distribuidora Sur',
+    medioPago: null,
+    descripcion: 'pagué 15 mil de mercadería',
+    origen: 'voz' as const,
+  };
+
+  const mockDictar = jest.fn();
+  function hook(over: { ocupado?: boolean; aviso?: string | null } = {}) {
+    mockUseDictado.mockReturnValue({ ocupado: false, aviso: null, dictar: mockDictar, ...over });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDictar.mockReset();
+    hook();
+    mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
+    mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen({ total: '0.00', porCategoria: [] }) });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'pagué 15 mil de mercadería' });
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    mockUseDictado.mockReset();
+    espiaPan.mockRestore();
+  });
+
+  it('la propuesta del motor abre el alta con monto/categoría/proveedor YA extraídos, origen «voz», sin guardar', async () => {
+    mockDictar.mockResolvedValue(PROPUESTA);
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('15000.00');
+    expect(screen.getByTestId('gasto-proveedor-input').props.value).toBe('Distribuidora Sur');
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo dictaste');
+    // El destino y el texto que viajan son los del dictado, no otra cosa.
+    expect(mockUseDictado).toHaveBeenCalledWith('gasto');
+    expect(mockDictar).toHaveBeenCalledTimes(1);
+    expect(mockDictar).toHaveBeenCalledWith('pagué 15 mil de mercadería');
+    // La card se REVISA: dictar no guarda.
+    expect(mockCrear).not.toHaveBeenCalled();
+    // Y no hay aviso de degradado: el camino nuevo funcionó.
+    expect(screen.queryByTestId('gastos-dictado-aviso')).toBeNull();
+  });
+
+  it('🔴 si el motor no devuelve la card, cae al texto crudo Y LO DICE (no degrada en silencio)', async () => {
+    mockDictar.mockResolvedValue(null);
+    hook({ aviso: 'Tardó demasiado en responder. Te dejé lo que dijiste para que lo completes a mano.' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBe('pagué 15 mil de mercadería');
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBeFalsy();
+    expect(screen.getByTestId('gastos-dictado-aviso')).toHaveTextContent(/Tardó demasiado en responder/);
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo cargaste a mano');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('mientras espera la card se ve «Entendiendo…» y el mic queda bloqueado', async () => {
+    let resolver: (v: unknown) => void = () => {};
+    mockDictar.mockReturnValue(
+      new Promise((r) => {
+        resolver = r;
+      }),
+    );
+    hook({ ocupado: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gastos-dictado-ocupado')).toBeTruthy());
+    // Sigue en el listado: el formulario sólo abre cuando hay resultado.
+    expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+
+    await act(async () => {
+      resolver(PROPUESTA);
+    });
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+  });
+
+  it('«Anotar un gasto» después de un dictado degradado abre en BLANCO y sin el aviso viejo', async () => {
+    mockDictar.mockResolvedValue(null);
+    hook({ aviso: 'No pude consultar al asistente. Te dejé lo que dijiste para que lo completes a mano.' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+    await waitFor(() => expect(screen.getByTestId('gastos-dictado-aviso')).toBeTruthy());
+
+    // Cancelar el formulario y volver a abrir a mano.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-cancelar'));
+    });
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gastos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBeFalsy();
+    expect(screen.queryByTestId('gastos-dictado-aviso')).toBeNull();
   });
 });
 

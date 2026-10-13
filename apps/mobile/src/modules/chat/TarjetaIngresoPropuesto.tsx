@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { formatearImporte, type ChatMessage, type IngresoPropuesto } from '@copiloto/core';
 
 import { FormularioIngreso } from '../ingresos/FormularioIngreso';
+import { inicialesDeIngreso } from '../voz/inicialesDePropuesta';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
@@ -75,13 +76,7 @@ export function TarjetaIngresoPropuesto({
       <FormularioIngreso
         origen="voz"
         mensajeId={mensajeId}
-        iniciales={{
-          monto: propuesta.monto,
-          cliente: propuesta.clienteNombre ?? undefined,
-          medio: propuesta.medio ?? undefined,
-          concepto: propuesta.concepto ?? undefined,
-          fecha: propuesta.fecha !== '' ? propuesta.fecha : undefined,
-        }}
+        iniciales={inicialesDeIngreso(propuesta)}
         onGuardado={(ingreso) => {
           /* Sigue montado: FormularioIngreso muestra su propia confirmación (con "falta"/"completo")
              mientras se puede completar. Sólo se guarda el monto para el Tile que `onListo` arma —
