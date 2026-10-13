@@ -17,10 +17,22 @@ import { Bubble } from '../chat/Bubble';
 import '../chat/chat.css';
 import './onboarding.css';
 
-/** Cómo se llama cada permiso ante el usuario: dos permisos, no seis servicios (el alcance se dice ANTES). */
-const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; boton: string }> = {
-  mercadopago: { titulo: 'Cobrar', detalle: 'Mercado Pago', boton: 'Conectar Mercado Pago' },
-  google: { titulo: 'Mail, agenda y archivos', detalle: 'Google', boton: 'Conectar Google' },
+/**
+ * Cómo se llama cada permiso ante el usuario: dos permisos, no seis servicios (el alcance se dice ANTES).
+ *
+ * 🔴 `detalle` y `proveedor` son DOS campos a propósito. `detalle` es lo que se PINTA en la tarjeta (el
+ * prototipo y mobile lo dicen largo: «Google · Gmail, Calendar, Drive, Docs, Sheets»); `proveedor` es el
+ * NOMBRE que va dentro de los mensajes de error («No pudimos pedir el link de Google»). Cuando eran un
+ * solo campo, alargar la tarjeta habría escrito «el link de Google · Gmail, Calendar, Drive…» en el error.
+ */
+const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; proveedor: string; boton: string }> = {
+  mercadopago: { titulo: 'Cobrar', detalle: 'Mercado Pago', proveedor: 'Mercado Pago', boton: 'Conectar Mercado Pago' },
+  google: {
+    titulo: 'Mail · Agenda · Archivos',
+    detalle: 'Google · Gmail, Calendar, Drive, Docs, Sheets',
+    proveedor: 'Google',
+    boton: 'Conectar Google',
+  },
 };
 
 type Paso = 'promesa' | 'recibo';
@@ -87,12 +99,12 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
       const res = await pedirLinkDeVinculacion(permiso.servicio.connectPath);
       if (!vivo.current) return;
       if (res.status === 'no_disponible') {
-        setError(`Conectar ${FILAS[permiso.id].detalle} todavía no está disponible.`);
+        setError(`Conectar ${FILAS[permiso.id].proveedor} todavía no está disponible.`);
         return;
       }
       window.location.assign(res.url);
     } catch {
-      if (vivo.current) setError(`No pudimos pedir el link de ${FILAS[permiso.id].detalle}. Probá de nuevo.`);
+      if (vivo.current) setError(`No pudimos pedir el link de ${FILAS[permiso.id].proveedor}. Probá de nuevo.`);
     } finally {
       if (vivo.current) setPidiendo(null);
     }
@@ -143,7 +155,7 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
             </div>
           ))}
           <p className="hitl-card__concept" data-testid="onboarding-alcance">
-            Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Cuenta.
+            Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Ajustes.
           </p>
           {error != null && (
             <p role="alert" className="hitl-card__concept" data-testid="onboarding-error">

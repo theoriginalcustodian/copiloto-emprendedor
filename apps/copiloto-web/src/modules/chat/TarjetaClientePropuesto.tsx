@@ -150,7 +150,7 @@ export function TarjetaClientePropuesto({
   return (
     <div className="chat-row chat-row--assistant" data-testid="cliente-propuesto">
       <Surface variant="card" blur className="propuesta-card">
-        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.</p>
+        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Guardar el cliente — todavía no lo agregué.</p>
         {dicho != null && dicho !== '' && <p className="propuesta-card__aviso">{dicho}</p>}
         <FormularioCliente
           iniciales={propuesta}

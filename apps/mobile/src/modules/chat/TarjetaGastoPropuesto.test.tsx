@@ -58,7 +58,7 @@ describe('TarjetaGastoPropuesto', () => {
     // pierde creyendo los dos que estaba hecho.
     await montar();
 
-    expect(screen.getByTestId('gasto-propuesto-aviso')).toHaveTextContent('Esto entendí. Revisalo y tocá Guardar — todavía no lo anoté.');
+    expect(screen.getByTestId('gasto-propuesto-aviso')).toHaveTextContent('Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.');
   });
 
   it('muestra lo que se dictó, textual, para poder contrastarlo', async () => {

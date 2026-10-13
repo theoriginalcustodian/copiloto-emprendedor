@@ -158,7 +158,7 @@ describe('FormularioPresupuesto — idemKey deriva del mensajeId (BL-V32)', () =
     crearMock.mockResolvedValue({ status: 'ok', presupuesto: PRESUPUESTO_GUARDADO, sugerencias: null });
   });
 
-  /** Monta, completa lo mínimo para habilitar "Guardar", guarda, y DESMONTA — como una card real. */
+  /** Monta, completa lo mínimo para habilitar "Guardar el presupuesto", guarda, y DESMONTA — como una card real. */
   async function montarCompletarGuardarYDesmontar(mensajeId: string | undefined) {
     const r = await render(
       <ThemeProvider>
@@ -207,5 +207,15 @@ describe('FormularioPresupuesto — idemKey deriva del mensajeId (BL-V32)', () =
     expect(primera).toMatch(/^[0-9a-f-]{36}$/);
     expect(segunda).toMatch(/^[0-9a-f-]{36}$/);
     expect(primera).not.toBe(segunda);
+  });
+});
+// Rótulo del botón de guardar = copy de planificación 2026-10-13 (nombra el OBJETO, no el verbo suelto). Lo citan
+// los avisos de las cards del chat («tocá …»): si cambia, cambian los dos juntos.
+describe('FormularioPresupuesto — rótulo del botón', () => {
+  it('dice «Guardar el presupuesto» (con el artículo), no «Guardar presupuesto»', async () => {
+    await montar();
+    const boton = screen.getByTestId('formulario-presupuesto-guardar');
+    expect(boton).toHaveTextContent('Guardar el presupuesto');
+    expect(boton).not.toHaveTextContent(/^Guardar presupuesto$/);
   });
 });

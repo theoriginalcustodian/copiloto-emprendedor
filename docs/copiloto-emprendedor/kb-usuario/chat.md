@@ -69,7 +69,7 @@ preguntar o te va a dejar una tarjeta editable para completarlo (ver la próxima
 Cuando le pedís algo que implica cargar o cambiar información de tu negocio (un gasto, un cliente, un
 ingreso, un presupuesto o una factura), el Copiloto **nunca lo guarda solo**. Arma una propuesta con
 los datos que entendió y te la muestra como una tarjeta debajo del mensaje, para que la revises,
-corrijas si hace falta, y confirmes tocando "Guardar". Esto es así a propósito: si dictás un monto mal
+corrijas si hace falta, y confirmes tocando el botón de la tarjeta («Guardar el gasto», «Anotar que me pagaron», «Guardar el presupuesto»…). Esto es así a propósito: si dictás un monto mal
 o el Copiloto entiende algo distinto a lo que quisiste decir, tenés la oportunidad de corregirlo antes
 de que quede cargado.
 
@@ -111,7 +111,7 @@ mejor lo dividan en partes más chicas — es preferible a que se trabe o entien
 
 **"Le pedí que cargue un gasto y no pasó nada, sólo me mostró una tarjeta"**
 Es el comportamiento esperado: el Copiloto arma la propuesta pero no la guarda hasta que vos tocás
-"Guardar" en la tarjeta. Si cerrás la tarjeta sin confirmar, el gasto no queda cargado.
+"Guardar el gasto" en la tarjeta. Si cerrás la tarjeta sin confirmar, el gasto no queda cargado.
 
 **"Le dije que facture y no se generó ninguna factura"**
 El Copiloto arma el borrador de la factura, pero la emisión final necesita tu confirmación explícita

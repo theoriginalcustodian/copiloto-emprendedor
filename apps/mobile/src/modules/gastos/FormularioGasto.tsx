@@ -210,7 +210,7 @@ export function FormularioGasto({
         botones={[
           { etiqueta: 'Cancelar', onPress: onCancelar, testID: 'gasto-cancelar' },
           {
-            etiqueta: guardando ? 'Guardando…' : 'Guardar',
+            etiqueta: guardando ? 'Guardando…' : 'Guardar el gasto',
             onPress: () => void guardar(),
             variante: 'primario',
             deshabilitado: !puedeGuardar,

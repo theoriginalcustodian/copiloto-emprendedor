@@ -101,7 +101,7 @@ export function TarjetaIngresoPropuesto({ propuesta, mensajeId }: TarjetaIngreso
   return (
     <div className="chat-row chat-row--assistant" data-testid="ingreso-propuesto">
       <Surface variant="card" blur className="propuesta-card">
-        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Anotar — todavía no lo guardé.</p>
+        <p className="propuesta-card__aviso">Esto entendí. Revisalo y tocá Anotar que me pagaron — todavía no lo guardé.</p>
         <FormularioIngreso
           origen="voz"
           mensajeId={mensajeId}

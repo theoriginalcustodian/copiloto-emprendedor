@@ -1,9 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { formatearDuracion } from '@copiloto/core';
+
 import { useTema } from '../../theme/ThemeProvider';
 import { sombraNivel } from '../../theme/glass/relieve';
-import { formatearDuracion } from '../../util/formatearDuracion';
 
 export type RolBurbuja = 'user' | 'assistant';
 

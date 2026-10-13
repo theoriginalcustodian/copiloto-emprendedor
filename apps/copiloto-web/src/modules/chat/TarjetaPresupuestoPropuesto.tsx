@@ -26,7 +26,7 @@ import './chat.css';
  *
  * **Guard cross-reload (contrato `planificacion-a-frontend_guard-cross-reload-de-cards-propuesto`,
  * 2026-08-12):** `estado`/`numero` vivían sólo en memoria de React — un reload de página remonta la
- * MISMA card histórica ya guardada de vuelta en `'editando'`, y un click en "Guardar" ahí generaba un
+ * MISMA card histórica ya guardada de vuelta en `'editando'`, y un click en "Guardar el presupuesto" ahí generaba un
  * presupuesto duplicado en prod. Inventario primero (mobile, misma fecha): `TarjetaPresupuestoPropuesto`
  * de `apps/mobile` tiene el MISMO gap (mismo `useState` sin persistencia) — no es exclusivo de web, es
  * deuda compartida; queda anotada para mobile, no se toca acá (fuera del dueño de este contrato).
@@ -93,7 +93,7 @@ export function TarjetaPresupuestoPropuesto({ propuesta, mensajeId }: TarjetaPre
     <div className="chat-row chat-row--assistant" data-testid="presupuesto-propuesto">
       <Surface variant="card" blur className="propuesta-card">
         <p className="propuesta-card__aviso">
-          Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.
+          Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté.
         </p>
         <FormularioPresupuesto
           mensajeId={mensajeId}

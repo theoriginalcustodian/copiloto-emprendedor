@@ -51,7 +51,7 @@ export interface ChatMessage {
    * en el historial persistido antes de BL-C3 o si el reply no trajo `created_at`. */
   creadoEn?: number;
   /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useVozComando`/`MicButton`): alimenta el chip
-   * «Por voz · Ns» de la burbuja del usuario en ambas plataformas. Ausente en mensajes escritos. */
+   * «Por voz · m:ss» de la burbuja del usuario en ambas plataformas. Ausente en mensajes escritos. */
   porVoz?: { duracionSeg: number };
   /** H-A4-9 — si ESTA card HITL (mensaje `assistant` cuyos `choices` clasifican `'hitl'`, ver
    * `hitl.ts`) ya fue respondida, y con qué. Ausente = todavía activa/clickeable. Se setea ATÓMICO

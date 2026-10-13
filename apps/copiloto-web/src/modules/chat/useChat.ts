@@ -196,7 +196,7 @@ export interface ChatMessage {
   card?: ReplyCard;
   /** Instante del mensaje (ms epoch) — separadores de día (BL-C3). Ausente en historial viejo. */
   creadoEn?: number;
-  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`sendAudio`): alimenta el chip «Por voz · Ns»
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`sendAudio`): alimenta el chip «Por voz · m:ss»
    * en `Bubble`. Ausente en mensajes escritos o en historial viejo (no se persiste todavía). */
   porVoz?: { duracionSeg: number };
   /** H-A4-9 — si ESTA card HITL (mensaje `assistant` con `choices` clasificados `'hitl'`) ya fue
@@ -234,7 +234,7 @@ export interface UseChatResult {
   sendStatus: SendStatus;
   send: (text: string, opts?: SendOptions) => Promise<void>;
   /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función.
-   * `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns» en la burbuja del usuario. */
+   * `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · m:ss» en la burbuja del usuario. */
   sendAudio: (blob: Blob, duracionSeg: number) => Promise<void>;
   /** `session_id` activo (para mostrar un fragmento en el header de escritorio, ej. `sess_9f2a`). */
   sessionId: string;

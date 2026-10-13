@@ -1,6 +1,12 @@
 import { useRef, useState } from 'react';
 
-import { avisoErrorTranscripcion, transcribir, type ArchivoSubida, type ContextoTranscripcion } from '@copiloto/core';
+import {
+  avisoErrorTranscripcion,
+  formatearDuracion,
+  transcribir,
+  type ArchivoSubida,
+  type ContextoTranscripcion,
+} from '@copiloto/core';
 
 import { MicButton } from '../chat/MicButton';
 import './MicFuncion.css';
@@ -40,7 +46,7 @@ function nombreParaMime(mime: string): string {
  */
 export function MicFuncion({ onTranscripcion, contexto, disabled, onError }: MicFuncionProps) {
   const [transcribiendo, setTranscribiendo] = useState(false);
-  // Duración del último dictado transcripto con éxito — alimenta el chip «Por voz · Ns» (DoD FE1 #5).
+  // Duración del último dictado transcripto con éxito — alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   // `null` mientras no hubo ningún dictado todavía, o mientras uno nuevo está en curso.
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
   // Guarda contra un `onSendAudio` que dispare dos veces por el mismo dictado (no debería, pero
@@ -88,7 +94,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError }: Mic
       />
       {ultimaDuracionSeg !== null && (
         <span className="mic-funcion__chip" data-testid="mic-funcion-chip">
-          Por voz · {ultimaDuracionSeg}s
+          Por voz · {formatearDuracion(ultimaDuracionSeg)}
         </span>
       )}
     </div>

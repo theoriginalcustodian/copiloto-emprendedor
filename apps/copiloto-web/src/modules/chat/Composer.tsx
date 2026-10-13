@@ -18,7 +18,7 @@ export interface ComposerProps {
   /** Blob grabado por `MicButton` (Task 19) — el caller lo reenvía a `useChat().sendAudio(blob)`. */
   onSendAudio: (blob: Blob) => void;
   /** BL-J7 (H-A3-7) — pasthrough del `onRecordingStart` de `MicButton`: el caller (`ChatScreen`)
-   * lo usa para arrancar el cronómetro y calcular la duración del chip «Por voz · Ns». */
+   * lo usa para arrancar el cronómetro y calcular la duración del chip «Por voz · m:ss». */
   onRecordingStart?: () => void;
 }
 

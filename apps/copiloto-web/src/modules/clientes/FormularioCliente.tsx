@@ -301,7 +301,7 @@ export function FormularioCliente({
           Cancelar
         </Button>
         <Button type="submit" disabled={!puedeGuardar} data-testid="cliente-guardar">
-          {guardando ? 'Guardando…' : edita != null ? 'Guardar cambios' : 'Dar de alta'}
+          {guardando ? 'Guardando…' : edita != null ? 'Guardar cambios' : 'Guardar el cliente'}
         </Button>
       </div>
     </form>
