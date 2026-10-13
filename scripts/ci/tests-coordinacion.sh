@@ -126,6 +126,19 @@ if [ "$no_medidos" -eq "$corridos" ]; then
   echo "❌ NINGUNO de los $corridos controles pudo medir: el verde no acreditaria nada." >&2
   exit 1
 fi
+# Bajo CI, «no pude medir» es ROJO. Mismo criterio que `.github/workflows/tests.yml` ya declara
+# para la profundidad del clone —«bajo CI, historia ausente es regresion, no entorno»— y es lo que
+# impide que este cambio abra un punto ciego: en la PC una dependencia ausente es el entorno, pero
+# en el UNICO lugar donde la medicion acredita algo, un control que no corrio es cobertura perdida
+# que saldria verde. Hoy no deberia dispararse nunca (`scripts/ci/lint.sh:8` instala antes de
+# llamar a este bucle), y eso es exactamente la condicion que vigila: si alguien le saca el
+# `npm install`, el gate lo dice en vez de pasar a verde con el control de tipos apagado.
+if [ -n "${CI:-}" ] && [ "$no_medidos" -ne 0 ]; then
+  echo "❌ bajo CI un control que NO pudo medir es una REGRESION del entorno del job, no un" >&2
+  echo "   detalle local: lo que no se midio NO esta verde. Revisa que el job instale su" >&2
+  echo "   dependencia (npm install en scripts/ci/lint.sh) antes de este bucle." >&2
+  exit 1
+fi
 
 if [ "$corridos" -ne "$encontrados" ]; then
   echo "❌ corrieron $corridos de $encontrados: el bucle se saltó alguno." >&2

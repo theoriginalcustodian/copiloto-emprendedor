@@ -81,5 +81,16 @@ else
   malo "6b no imprime «ARBOL MEDIDO: $D6» — una cifra sin árbol se cita para cualquier árbol"
 fi
 
+echo "== 7. bajo CI un no-medido es ROJO (si no, este cambio apagaria un control sin decirlo) =="
+# El mismo fixture del caso 1 (que sale VERDE sin CI) con CI=true tiene que salir ROJO: eso prueba
+# que lo que cambia el veredicto es el entorno declarado y NO otra diferencia del fixture.
+salida="$(CI=true bash "$AGREG" "$D1" 'test-*.sh' 'fixture' 2>&1)"; rc=$?
+if [ "$rc" -eq 1 ] && printf '%s' "$salida" | grep -qF 'REGRESION del entorno del job'; then
+  ok "7 CI=true + 1 no medido -> rojo (el mismo fixture que en el caso 1 salia verde)"
+else
+  malo "7 CI=true no puso rojo al no-medido (rc=$rc)"; printf '%s
+' "$salida" | sed 's/^/        /'
+fi
+
 if [ "$fallos" -ne 0 ]; then echo "❌ $fallos control(es) fallaron"; exit 1; fi
-echo "✅ OK (7/7): «no pude medir» y «falló» ya no comparten el código de salida"
+echo "✅ OK (8/8): «no pude medir» y «falló» ya no comparten el código de salida"
