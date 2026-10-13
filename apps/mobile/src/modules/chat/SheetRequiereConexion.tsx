@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { RequiereConexion } from '@copiloto/core';
+import { etiquetaCondicion, type RequiereConexion } from '@copiloto/core';
 
 import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
@@ -42,11 +42,38 @@ export function SheetRequiereConexion({ conexion, onConectar, onAhoraNo, ocupado
 
           {conexion.alcance.length > 0 && (
             <View testID="sheet-requiere-conexion-alcance" style={{ gap: tema.espacio.xs }}>
-              {conexion.alcance.map((a) => (
-                <Text key={a} style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-                  • {a}
-                </Text>
-              ))}
+              {conexion.alcance.map((a, i) => {
+                // El backend manda la semántica (`solo_lectura`/`requiere_ok`); la etiqueta la pinta la app.
+                // Es lo que dice el LÍMITE del permiso: sin ella la hoja pide acceso sin decir hasta dónde.
+                const insignia = etiquetaCondicion(a.condicion);
+                return (
+                  <View key={`${i}-${a.texto}`}>
+                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>• {a.texto}</Text>
+                    {insignia != null && (
+                      <Text
+                        testID={`sheet-requiere-conexion-condicion-${i}`}
+                        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingLeft: tema.espacio.md }}
+                      >
+                        {insignia}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* `.cs-pend` del prototipo: lo que el usuario estaba pidiendo y queda esperando. Opcional — sin él
+              la hoja es la de siempre. */}
+          {conexion.pendiente != null && (
+            <View
+              testID="sheet-requiere-conexion-pendiente"
+              style={[styles.pendiente, { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md, padding: tema.espacio.md }]}
+            >
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: Math.round(tema.tipo.chico * 1.5) }}>
+                Apenas conectes sigo con lo tuyo:{' '}
+                <Text style={{ fontFamily: tema.fuente.uiSemibold, color: tema.color.texto }}>{conexion.pendiente}</Text>.
+              </Text>
             </View>
           )}
 
@@ -74,4 +101,5 @@ const styles = StyleSheet.create({
   ancla: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   titulos: { flex: 1, gap: 2 },
+  pendiente: { alignSelf: 'stretch' },
 });

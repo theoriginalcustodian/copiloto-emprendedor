@@ -986,6 +986,19 @@ a.artifact:focus-visible {
   gap: 4px;
 }
 
+.sheet-conexion__condicion {
+  display: block;
+  font-size: 12px;
+  color: var(--label);
+}
+
+.sheet-conexion__pendiente {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
 .sheet-conexion__error {
   font-family: var(--font-body);
   font-size: 13px;

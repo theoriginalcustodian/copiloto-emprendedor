@@ -35,7 +35,7 @@ import {
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
-import { rutaDeDestino } from './destinoTarjeta';
+import { rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -552,6 +552,10 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onCone
                     onPress={() => setExpandida((prev) => (prev === t.id ? null : t.id))}
                     onAvanzar={() => void avanzar(t)}
                     onBorrar={() => void borrar(t)}
+                    // §C: la acción de `presentacion` rutea por `rutaDeDestino` TAL CUAL. Sin handler (o con
+                    // un `tipo` que esta versión no conoce) queda como rótulo — nunca cae a Ajustes por su
+                    // cuenta: acá no hay una pantalla «por defecto» que no sea adivinar.
+                    onAccion={onConexion != null ? (ruta) => onConexion(ruta.servicio) : undefined}
                   />
                 ))}
                 {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo. */}
@@ -679,6 +683,7 @@ function TarjetaMiDiaRow({
   onPress,
   onAvanzar,
   onBorrar,
+  onAccion,
 }: {
   tarjeta: TarjetaMiDia;
   expandida: boolean;
@@ -687,17 +692,33 @@ function TarjetaMiDiaRow({
   onPress: () => void;
   onAvanzar: () => void;
   onBorrar: () => void;
+  /** A dónde lleva la acción de `presentacion`, ya resuelta por `rutaDeDestino`. Sin ella, rótulo. */
+  onAccion?: (ruta: RutaDestino) => void;
 }) {
   const tema = useTema();
   const swipeableRef = useRef<SwipeableMethods>(null);
   // Filas clave/valor como los `.kv` del prototipo (`index.html:1692`: «Enviado · 18 de julio», «Monto · $180.000»).
   // El rótulo de la fecha es genérico a propósito: el prototipo lo cambia por regla («Enviado», «Emitida»,
   // «Vence»…) y esa tabla regla→rótulo no la define el contrato — hay `pedido_` al backend (DEVICE15 `detalle`).
-  const detalle: { clave: string; valor: string }[] = [
+  // PROTO4DEPS §C: si el backend mandó `presentacion`, MANDA — el rótulo lo decide la regla y la app no
+  // adivina el campo (las kv de abajo leen `datos.monto`/`datos.fecha`, que ninguna regla escribe: H12).
+  // Sin `presentacion` (producción hoy) todo es exactamente como antes.
+  const presentacion = tarjeta.presentacion ?? null;
+  const detalleLegado: { clave: string; valor: string }[] = [
     { clave: 'Cliente', valor: tarjeta.cliente ?? '' },
     { clave: 'Monto', valor: tarjeta.monto != null ? formatearImporte(tarjeta.monto) : '' },
     { clave: 'Fecha', valor: tarjeta.fecha ?? '' },
   ].filter((f) => f.valor !== '');
+  const detalle =
+    presentacion != null && presentacion.kv.length > 0
+      ? presentacion.kv.map((f) => ({ clave: f.k, valor: f.v }))
+      : detalleLegado;
+  const accion = presentacion?.accion ?? null;
+  const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
+  const chip = presentacion?.chip ?? null;
+  // `tono` reusa la escala de `criticidad`. Uno desconocido NO tiene color propio: se pinta neutro.
+  const colorChip =
+    chip?.tono === 'critico' ? tema.color.peligro : chip?.tono === 'pronto' ? tema.color.acentoTinta : tema.color.textoTenue;
 
   // `opacity: progress` — Reanimated acepta un `SharedValue` directo en el style de `Animated.View`
   // (no hace falta `useAnimatedStyle` para un caso de un solo campo). Mismo patrón que la referencia
@@ -762,7 +783,34 @@ function TarjetaMiDiaRow({
           >
             {tarjeta.texto}
           </Text>
-          {expandida && tarjeta.verbo != null && (
+          {expandida && chip != null && (
+            <View
+              testID={`midia-tarjeta-${tarjeta.id}-chip`}
+              style={[styles.chipPresentacion, { borderColor: colorChip, borderRadius: tema.radio.completo }]}
+            >
+              <Text style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>{chip.texto}</Text>
+            </View>
+          )}
+          {expandida && accion != null && (
+            <Pressable
+              testID={`midia-tarjeta-${tarjeta.id}-accion`}
+              accessibilityRole="button"
+              accessibilityLabel={accion.texto}
+              // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
+              // que no hace nada es peor que un rótulo (DEVICE15 H5).
+              disabled={rutaAccion == null || onAccion == null}
+              onPress={() => {
+                if (rutaAccion != null) onAccion?.(rutaAccion);
+              }}
+              hitSlop={10}
+              style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
+            >
+              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                {accion.texto}
+              </Text>
+            </Pressable>
+          )}
+          {expandida && accion == null && tarjeta.verbo != null && (
             <Text
               testID={`midia-tarjeta-${tarjeta.id}-verbo`}
               style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
@@ -823,6 +871,8 @@ const styles = StyleSheet.create({
   lista: { gap: 8, padding: 16, paddingBottom: 120 },
   tarjeta: { flex: 1, gap: 4 },
   detalleKv: { gap: 4, paddingTop: 4 },
+  chipPresentacion: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
+  accionFila: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
   filaKv: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   accionesSwipe: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
   botonSwipe: {

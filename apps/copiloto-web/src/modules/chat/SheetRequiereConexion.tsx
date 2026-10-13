@@ -1,7 +1,7 @@
 import { BottomSheet, Button } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 
-import type { RequiereConexion } from '@copiloto/core';
+import { etiquetaCondicion, type RequiereConexion } from '@copiloto/core';
 
 export interface SheetRequiereConexionProps {
   /** `null` = cerrado. */
@@ -33,10 +33,26 @@ export function SheetRequiereConexion({ conexion, onConectar, onAhoraNo, ocupado
           </div>
           {conexion.alcance.length > 0 && (
             <ul className="sheet-conexion__alcance" data-testid="sheet-requiere-conexion-alcance">
-              {conexion.alcance.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
+              {conexion.alcance.map((a, i) => {
+                // El backend manda la semántica; la etiqueta la pinta la app (mismo texto que mobile).
+                const insignia = etiquetaCondicion(a.condicion);
+                return (
+                  <li key={`${i}-${a.texto}`}>
+                    {a.texto}
+                    {insignia != null && (
+                      <span className="sheet-conexion__condicion" data-testid={`sheet-requiere-conexion-condicion-${i}`}>
+                        {insignia}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+          )}
+          {conexion.pendiente != null && (
+            <p className="sheet-conexion__pendiente" data-testid="sheet-requiere-conexion-pendiente">
+              Apenas conectes sigo con lo tuyo: <strong>{conexion.pendiente}</strong>.
+            </p>
           )}
           {error != null && (
             <p className="sheet-conexion__error" role="alert" data-testid="sheet-requiere-conexion-error">

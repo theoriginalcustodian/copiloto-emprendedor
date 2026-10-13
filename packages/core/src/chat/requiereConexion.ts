@@ -13,12 +13,66 @@ import type { ChatMessage } from './chatMachine';
 export interface RequiereConexion {
   service: string;
   label: string;
-  alcance: string[];
+  alcance: AlcanceItem[];
+  /**
+   * Lo que el usuario estaba pidiendo cuando se activó el gate («cuánto entró esta semana»): es del TURNO,
+   * no del servicio, por eso viaja en la card y no en el catálogo. `null` = el backend no lo resumió (o es
+   * previo al campo): la hoja se ve exactamente como antes.
+   */
+  pendiente: string | null;
   connectPath: string;
+}
+
+/**
+ * El límite de cada permiso del `alcance`. Enum CERRADO del contrato (agregar un valor exige enmendarlo):
+ * el backend manda semántica y la APP pinta la etiqueta. Un valor que esta versión no conoce llega como
+ * `ninguna` — sin insignia, nunca un error.
+ */
+export const CONDICIONES_ALCANCE = ['solo_lectura', 'requiere_ok', 'ninguna'] as const;
+export type CondicionAlcance = (typeof CONDICIONES_ALCANCE)[number];
+
+export interface AlcanceItem {
+  texto: string;
+  condicion: CondicionAlcance;
+}
+
+const ETIQUETA_CONDICION: Record<CondicionAlcance, string | null> = {
+  solo_lectura: 'Solo lectura',
+  requiere_ok: 'Nunca sin tu OK',
+  ninguna: null,
+};
+
+/** La insignia del permiso (`Solo lectura`, `Nunca sin tu OK`), o `null` si no lleva ninguna. */
+export function etiquetaCondicion(condicion: CondicionAlcance): string | null {
+  return ETIQUETA_CONDICION[condicion];
 }
 
 function texto(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+}
+
+function condicionDe(v: unknown): CondicionAlcance {
+  return (CONDICIONES_ALCANCE as readonly unknown[]).includes(v) ? (v as CondicionAlcance) : 'ninguna';
+}
+
+/**
+ * Un ítem del `alcance` en CUALQUIERA de sus dos formas: el `string` plano (lo que emite producción hoy) o
+ * el objeto `{texto, condicion}` del contrato nuevo. Leer sólo una dejaría la hoja de consentimiento sin
+ * filas y SIN error en cuanto el backend cambie — o antes, si la app sale primero.
+ */
+function itemDeAlcance(v: unknown): AlcanceItem | null {
+  const plano = texto(v);
+  if (plano != null) return { texto: plano, condicion: 'ninguna' };
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  const t = texto(r.texto);
+  return t == null ? null : { texto: t, condicion: condicionDe(r.condicion) };
+}
+
+/** `pendiente: {texto}` → el texto, o `null` si falta o viene sin texto (opcional por diseño). */
+function pendienteDe(v: unknown): string | null {
+  if (typeof v !== 'object' || v === null) return null;
+  return texto((v as Record<string, unknown>).texto);
 }
 
 /** La card leída, o `null` si no es un `requiere_conexion` completo. */
@@ -28,8 +82,8 @@ export function leerRequiereConexion(card: ReplyCard | null | undefined): Requie
   const service = texto(raw.service);
   const connectPath = texto(raw.connect_path);
   if (service == null || connectPath == null) return null;
-  const alcance = Array.isArray(raw.alcance) ? raw.alcance.map(texto).filter((a): a is string => a != null) : [];
-  return { service, label: texto(raw.label) ?? service, alcance, connectPath };
+  const alcance = Array.isArray(raw.alcance) ? raw.alcance.map(itemDeAlcance).filter((a): a is AlcanceItem => a != null) : [];
+  return { service, label: texto(raw.label) ?? service, alcance, pendiente: pendienteDe(raw.pendiente), connectPath };
 }
 
 export interface ConexionPendiente {

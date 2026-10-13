@@ -325,6 +325,7 @@ export type {
   DestinoTarjeta,
   EventoCalendario,
   IdSolapa,
+  PresentacionTarjeta,
   SolapaMiDia,
   TableroMiDia,
   TarjetaMiDia,

@@ -183,6 +183,12 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     expect(screen.queryByTestId('voz-enviar')).toBeNull();
   });
 
+  // O1: el campo de Soporte invita a contar un problema, no a anotar un movimiento.
+  it('el composer dice «Contame qué pasó…», no el texto del chat de negocio', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.placeholder).toBe('Contame qué pasó…'));
+  });
+
   // PISTAFIJARSOPORTE: el gesto de fijar necesita su cartel (WCAG 2.5.1) también acá.
   it('grabando sin fijar: aparece la pista del candado; en reposo no hay ninguna', async () => {
     await renderPantallaSoporte();
