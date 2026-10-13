@@ -73,6 +73,34 @@ contador del backend, no por la pantalla.
   una ventana de reversa. Eso no es estética: es la diferencia entre un error recuperable y uno que
   no. **Entra como el ítem con prioridad de esta lista.**
 
+### Medido después de escribir esto: **no es un descarte, es un `DELETE FROM`**
+
+Cuando escribí «es la diferencia entre un error recuperable y uno que no», lo estaba **afirmando sin
+medirlo** — podía ser un descarte local de la lista. Medido ahora, la cadena completa:
+
+| capa | qué hace | dónde |
+|---|---|---|
+| app | `onBorrar()` → `borrar(t)` sin confirmación ni ventana | `PantallaMiDia.tsx:554`, `:422-429` |
+| core | `DELETE /mi-dia/tarjetas/{id}` | `packages/core/src/api/miDia.ts:235-246` |
+| backend | handler sin estado intermedio: `_store(cliente_id).borrar(id)` | `apps/copiloto/mi_dia_web.py:223-228` |
+| **DB** | **`DELETE FROM … WHERE cliente_id = %s AND id = %s`** — borrado duro, **sin columna de soft-delete** | `apps/copiloto/mi_dia_tarjeta_store.py:139-143` |
+
+🔴 **No hay camino de vuelta en ninguna capa**: ni `deshacer` en la app, ni endpoint de restore, ni
+fila que sobreviva en la tabla. Un solo tap sobre «Borrar» destruye el dato. El prototipo diseñó la
+ventana de reversa (`#snack` → «Aviso descartado · **Deshacer**», `index.html:2644`) y la app
+implementó el gesto **sin** ella.
+
+**El mecanismo más barato que lo arregla no necesita backend nuevo:** **borrado diferido** — sacar la
+tarjeta de la lista en el cliente, mostrar el snack, y disparar el `DELETE` sólo cuando la ventana
+expira o la pantalla se desmonta. Un endpoint de restore obligaría a cambiar el schema (soft-delete)
+y a mantener filas fantasma que `listar_tablero` tendría que excluir — exactamente el booleano que
+ese mismo archivo declara **no** querer mantener (`mi_dia_tarjeta_store.py:148-151`).
+
+⚠️ **Pero sumar esto al sprint vigente es decisión de SCOPE, no táctica**, y el padrón está
+congelado en 54 con **DEC-18** firmado. Por eso **no bajo contrato por mi cuenta**: va al pedido
+consolidado al operador con esta medición y una recomendación. Lo que sí queda cerrado acá es que
+**la entrada ya no es una sospecha**: tiene las cuatro capas con `path:línea`.
+
 ---
 
 ## Regla de esta lista
