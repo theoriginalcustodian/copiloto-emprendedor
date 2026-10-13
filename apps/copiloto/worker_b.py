@@ -73,6 +73,7 @@ from grafo_sync_activities import set_grafo_sync_deps, sincronizar_grafo_negocio
 from grafo_sync_workflow import GrafoSyncWorkflow
 from mi_dia_tarjeta_store import TarjetaStore
 from cobro_store import CobroStore
+from inteligencia_queries import InteligenciaQueries
 from presupuesto_store import PresupuestoStore
 from afip_onboarding_activities import (
     dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
@@ -237,6 +238,11 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     def _afip_perfil_store_factory(cliente_id: str):
         return AfipPerfilStore(conn_factory, cliente_id)
 
+    # preg-datos (C-D5): los números del negocio como card, per-tenant (regla 7: el `cliente_id` sale
+    # del `ctx` de cada request, nunca de env).
+    def _inteligencia_queries_factory(cliente_id: str):
+        return InteligenciaQueries(conn_factory, cliente_id)
+
     abrir_borrador_dictado = make_abrir_borrador_de_presupuesto(client) if client is not None else None
     consultar_factura_dictado = make_consultar_factura(client) if client is not None else None
     signal_factura_dictado = make_signal_factura(client) if client is not None else None
@@ -264,7 +270,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         consultar_factura_dictado=consultar_factura_dictado,
         signal_factura_dictado=signal_factura_dictado,
         buscar_borrador_dictado=buscar_borrador_dictado,
-        trauma_store_factory=fabrica_desde(conn_factory))
+        trauma_store_factory=fabrica_desde(conn_factory),
+        inteligencia_queries_factory=_inteligencia_queries_factory)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm,
                                                mp_dedup_factory=_mp_dedup_factory),  # C1: mismo dedup que

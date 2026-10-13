@@ -68,6 +68,11 @@ from afip_rules import (BorradorFactura, Concepto, CondicionIVA, DatosVenta,  # 
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 # C-D3: `card.detalle` / `card.recibo` del gate HITL (piloto Gmail). Del dominio: el motor sólo re-empaqueta.
 from hitl_card import detalle_de, recibo_de  # noqa: E402
+# preg-datos (C-D5): la card `datos_negocio`. `plata` vive ahí y se re-exporta como `_plata` (lo usan
+# `consultar_cliente` y los tests): una sola definición de cómo se escribe la plata acá.
+from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOCIO,  # noqa: E402
+                        cuando_usar as _cuando_usar_negocio, datos_de, plata as _plata,
+                        texto_para_el_llm)
 
 
 def _obs_service(toolkit: str) -> dict:
@@ -180,6 +185,25 @@ CONSULTAR_CLIENTE_SCHEMA = {"type": "function", "function": {
         "nombre": {"type": "string", "description": "el nombre o parte del nombre, como lo dijo el "
                                                     "emprendedor ('la panadería', 'Pérez')"}},
         "required": ["nombre"]}}}
+
+# preg-datos (C-D5, contrato 2026-10-13): «¿cuánto entró este mes?» vuelve al chat como CARD de datos.
+# Re-enchufa la consulta que la poda del hito 2 sacó, pero sólo la de NÚMEROS DEL NEGOCIO (la fuente es
+# `InteligenciaQueries`, la misma de las pantallas): `consultar_actividad`/`consultar_cliente` siguen podadas.
+# El enum y el «cuándo usarla» salen de la MISMA tabla (`datos_card._CONSULTAS`): no pueden divergir.
+CONSULTAR_NEGOCIO_SCHEMA = {"type": "function", "function": {
+    "name": "consultar_negocio",
+    "description": "Responde preguntas sobre los NÚMEROS del negocio (plata que entró, salió, quedó, se "
+                   "facturó, le deben, mejores clientes, gastos por categoría) y se los muestra en una "
+                   "tarjeta. Es de SOLO LECTURA (no requiere confirmación). Elegí `consulta` según la "
+                   "pregunta: " + _cuando_usar_negocio() + ". NO inventes ni calcules números: decí los "
+                   "que muestra la tarjeta. No sirve para preguntas de causa ni de atribución "
+                   "(«cuántos volvieron a comprar»): eso no se puede saber con estos datos.",
+    "parameters": {"type": "object", "properties": {
+        "consulta": {"type": "string", "enum": list(CONSULTAS_NEGOCIO),
+                     "description": "cuál de los números del negocio mostrar"},
+        "mes": {"type": "string", "description": "sólo para `torta_categorias`: el mes como YYYY-MM "
+                                                  "(opcional; sin él, el mes actual)"}},
+        "required": ["consulta"]}}}
 
 REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
     "name": "registrar_ingreso",
@@ -370,6 +394,7 @@ _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 # retiró: dejarla sería prometer una fila muerta que el filtro esconde pero el próximo lector cree viva.
 _CAPACIDADES = (
     ("registrar_gasto", "Gastos", ("pagué 15 mil de mercadería", "gasté 3.000 en nafta ayer")),
+    ("consultar_negocio", "Números", ("¿cuánto entró este mes?", "¿quién me debe plata?")),
     ("registrar_ingreso", "Ingresos", ("me pagaron 85 mil",
                                        "cobré 40 mil de la panadería en efectivo")),
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
@@ -449,7 +474,9 @@ def build_tool_catalog() -> list[dict]:
     # gastaba una tool del presupuesto de routing para llegar peor a un dato que ya está a un toque.
     # Los `_run_consultar_*` y sus schemas quedan definidos: no cuesta nada y el día que Inteligencia
     # de Negocio necesite responder por chat, se re-enchufan acá sin reescribirlos.
-    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA,
+    # preg-datos (C-D5): `consultar_negocio` es la excepción a esa poda —sólo NÚMEROS del negocio, desde
+    # `InteligenciaQueries`, devueltos como card—, y entra por decisión de planificación (2026-10-13).
+    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_NEGOCIO_SCHEMA,
                REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
@@ -468,6 +495,8 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # Ninguna de las dos va en WRITE_TOOLS: `registrar_cliente` PROPONE (el POST lo dispara
               # el emprendedor al tocar Guardar) y `consultar_cliente` es read puro.
               "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",),
+              # `consultar_negocio`: read puro (card de datos), tampoco va en WRITE_TOOLS.
+              "consultar_negocio": ("negocio",),
               # De las cuatro del hito 3, sólo `marcar_factura_cobrada`/`marcar_presupuesto` PERSISTEN
               # directo (transiciones de estado, no formularios). `registrar_ingreso` pasó a PROPONER
               # (hito 8 §1, revierte el guarda-primero de §2.bis — relocalizado al modo automático,
@@ -912,15 +941,6 @@ def _run_registrar_presupuesto(arguments, ctx, idem_key):
                           data={"concepto": concepto, "receptor": receptor, "items": items}))
 
 
-def _plata(monto: str) -> str:
-    """`"123456.00"` → `"$123.456,00"`. Miles con punto y decimales con coma, que es como se escribe
-    la plata acá — y como el LLM la va a leer en voz alta."""
-    entero, _, decimales = str(monto).partition(".")
-    negativo = entero.startswith("-")
-    miles = f"{int(entero.lstrip('-') or 0):,}".replace(",", ".")
-    return f"{'-' if negativo else ''}${miles},{(decimales or '00')[:2]:0<2}"
-
-
 def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
     """«¿Cuánto me compró la panadería?» — READ puro, sin gate. **Es la tool que justifica la función.**
 
@@ -981,6 +1001,32 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
         tool_call_id=idem_key, is_write=False, status="ok",
         observation={"result": f"«{ficha['nombre']}»: {'; '.join(partes)}. Últimas: {ultimas}.",
                      "cliente": ficha, "resumen": resumen})
+
+
+def _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factory):
+    """«¿Cuánto entró este mes?» — READ puro, sin gate. La card `datos_negocio` es el artifact.
+
+    **El tenant sale de `ctx`, nunca de los `arguments`**: el modelo no puede pedir los números de otro
+    emprendedor ni aunque lo intente (regla 7). Los números salen de `InteligenciaQueries` tal cual.
+    **Sin datos no hay card**: una tarjeta vacía parece una respuesta; el modelo recibe el vacío y lo dice.
+    """
+    if inteligencia_queries_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar los números del negocio ahora mismo"})
+    consulta = str(arguments.get("consulta") or "").strip()
+    if consulta not in CONSULTAS_NEGOCIO:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": f"consulta desconocida: «{consulta}». Las que sé hacer: "
+                                                f"{', '.join(CONSULTAS_NEGOCIO)}."})
+    card = datos_de(consulta, inteligencia_queries_factory(ctx.cliente_id), arguments)
+    if not card["cifras"]:
+        return ToolResult(
+            tool_call_id=idem_key, is_write=False, status="ok",
+            observation={"result": f"{card['titulo']}: todavía no hay nada registrado para esto. Decíselo "
+                                   f"así; NO inventes un número ni digas que es cero."})
+    return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                      observation={"result": texto_para_el_llm(card)},
+                      artifact=Artifact(kind=KIND_DATOS_NEGOCIO, data=card))
 
 
 # ── hito 3: las cuatro tools que hacen que la plata se registre HABLANDO ─────────────────────────
@@ -1618,7 +1664,7 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                        afip_cred_store_factory=None, afip_perfil_store_factory=None,
                        abrir_borrador_dictado=None, consultar_factura_dictado=None,
                        signal_factura_dictado=None, buscar_borrador_dictado=None,
-                       trauma_store_factory=None):
+                       trauma_store_factory=None, inteligencia_queries_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad.
@@ -1661,6 +1707,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                 return _run_registrar_cliente(arguments, ctx, idem_key)
             if kind == "cliente_consulta":
                 return _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory)
+            # ── 1ra clase: preg-datos — los números del negocio como card (READ puro → sin gate) ──
+            if kind == "negocio":
+                return _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factory)
             # ── 1ra clase: hito 3 — la plata se registra hablando (persisten; sin gate, ver TOOL_INDEX) ─
             if kind == "ingreso":
                 return _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider,
