@@ -43,22 +43,22 @@ como `NO_MEDIBLE`/`NO_REPRODUCIBLE_SIN_EFECTO` con motivo, no como `COHERENTE`.
 |---|---|---|---|---|
 | 1 | `(home)` | DESVÍO | DESVÍO | agenda «Ahora» inline → `NO_REPRODUCIBLE_SIN_EFECTO` |
 | 2 | `bi-refresh` | DESVÍO | DESVÍO | el refresh se dispara **antes** del UP |
-| 3 | `bloqueado` | DESVÍO | DESVÍO | botones «Pausar»/«Enviar» partidos en 2 líneas |
+| 3 | `bloqueado` | DESVÍO | DESVÍO | «Pausar»/«Enviar» partidos en 2 líneas: **corregido (H6)**; el DESVÍO de la fila persiste por la columna de candado |
 | 4 | `chat` | DESVÍO | DESVÍO | |
 | 5 | `consent` | `NO_REPRODUCIBLE_SIN_EFECTO` | `NO_REPRODUCIBLE_SIN_EFECTO` | el sheet no se alcanza sin un efecto externo |
 | 6 | `detalle` | DESVÍO | DESVÍO | monto/fecha bajo el pliegue: `NO_MEDIBLE` en esa parte |
 | 7 | `entrada` | DESVÍO | `NO_MEDIBLE` | fondo medido; la animación no se resuelve con screencap |
-| 8 | `esc` | `FUERA-DE-REFERENCIA` | DESVÍO | **incumple la decisión A del operador** (reset a Mi día) |
+| 8 | `esc` | `FUERA-DE-REFERENCIA` | COHERENTE | era: **incumple la decisión A** (reset a Mi día). **Corregido y re-medido 2026-10-13 (TRIAJE15 A)** — ver «TRIAJE15 (A)» |
 | 9 | `feedback` | DESVÍO | DESVÍO | |
 | 10 | `grabando` | DESVÍO | DESVÍO | sin reloj visible |
 | 11 | `ingresos` | DESVÍO | COHERENTE | el mapeo decía «ninguna medida»; en device hay 3 diferencias de contenido |
 | 12 | `reveal` | DESVÍO | DESVÍO | forma residual sobre el wordmark |
 | 13 | `soporte` | DESVÍO | DESVÍO | card de ticket → `NO_REPRODUCIBLE_SIN_EFECTO` |
 | 14 | `splash` | DESVÍO | DESVÍO | sin tagline |
-| 15 | `tablero` | DESVÍO | DESVÍO | píldora «Reconectar» inerte |
+| 15 | `tablero` | DESVÍO | DESVÍO | píldora «Reconectar» inerte: **corregida (H5)**; el DESVÍO de la fila persiste por el viewport de ≈120 dp y el destino fino |
 
 **Cuadratura:** 15 filas / 15 con veredicto del vocabulario cerrado / 0 `PENDIENTE_DEVICE` / 0 `INCOMPLETO`.
-Por dimensión COMP: DESVÍO 12 · COHERENTE 1 · `NO_MEDIBLE` 1 · `NO_REPRODUCIBLE_SIN_EFECTO` 1 (=15).
+Por dimensión COMP: DESVÍO 11 · COHERENTE 2 · `NO_MEDIBLE` 1 · `NO_REPRODUCIBLE_SIN_EFECTO` 1 (=15). *(Antes de TRIAJE15 (A): DESVÍO 12 · COHERENTE 1; la fila 8 pasó por una re-medición en device, no por edición del veredicto.)*
 
 ---
 
@@ -107,7 +107,7 @@ cronómetro. Sin candado/caret. Sin «desliza para cancelar».** En diagonal, **
 | dim | veredicto | porqué |
 |---|---|---|
 | CONT | **DESVÍO** | botones de texto «Pausar/Enviar/Eliminar» vs tacho + onda + «En pausa» + mic-como-enviar del prototipo (`index.html:2924`) |
-| COMP | **DESVÍO** | texto cortado en los botones (defecto visual, no de copy); sin pista de columna de candado; con 130 px (69 dp) **no** fija: al soltar, **envía** |
+| COMP | **DESVÍO** | texto cortado en los botones (defecto visual, no de copy) **→ corregido, ver H6 en «TRIAJE15 (A)»**; sin pista de columna de candado (persiste); con 130 px (69 dp) **no** fija: al soltar, **envía** (es el diseño, H7 → enmienda) |
 
 ### 4. `chat` — el panel de chat vacío
 
@@ -178,7 +178,7 @@ y≥70 para no abrir la cortina de notificaciones); subir el chat (`DOWN` en `pa
 
 | dim | veredicto | porqué |
 |---|---|---|
-| COMP | **DESVÍO** | **contra la decisión A, no sólo contra el prototipo**: el escritorio no se cierra al bajar el chat. Es un incumplimiento de una decisión firmada, no una divergencia de estilo |
+| COMP | **COHERENTE** *(re-medido 2026-10-13, TRIAJE15 A; antes **DESVÍO**)* | era: **contra la decisión A, no sólo contra el prototipo**: el escritorio no se cerraba al bajar el chat. Ahora se cierra (medición en «TRIAJE15 (A)») y su pestaña «VOLVER A TU DÍA» queda sobre la tira del chat, visible |
 | CONT | **`FUERA-DE-REFERENCIA`** | la fila es de comportamiento y el prototipo no define la regla (`index.html:2688-2692`: las 4 funciones tocan una sola capa). Observación menor: la etiqueta «Presupuestos» se parte en «Presupuesto/s» dentro del tile |
 
 ### 9. `feedback`
@@ -275,7 +275,7 @@ contador**; viewport de `midia-lista` ≈120 dp con 2 avisos activos.
 | dim | veredicto | porqué |
 |---|---|---|
 | CONT | **DESVÍO** | «Mi día» vs «Tu día»; solapas sin contador; falta la nota «Las que detecta Odobi se cierran solas…» |
-| COMP | **DESVÍO** | la píldora «Reconectar» no hace nada; con los avisos, el viewport útil de la lista queda ≈120 dp |
+| COMP | **DESVÍO** | la píldora «Reconectar» no hace nada **→ corregido, ver H5 en «TRIAJE15 (A)»**; con los avisos, el viewport útil de la lista queda ≈120 dp (persiste) |
 
 ---
 
@@ -295,8 +295,43 @@ contador**; viewport de `midia-lista` ≈120 dp con 2 avisos activos.
 | H11 | En el arranque en frío los primeros cuadros son **gris oscuro** antes de la pantalla crema | filas 12, 14 | baja (no atribuido) |
 | H10 | El mapeo decía «ninguna medida» para `ingresos`; hay 3 diferencias de contenido | fila 11 | baja |
 
-**Lo que este documento no acredita:** no implementa ningún fix. Los DESVÍO reales se reportan a planificación
-para decidir cuáles se baja a código y cuáles son enmienda (el prototipo es una hoja de estados, no un spec).
+**Lo que este documento no acredita:** no implementa ningún fix **por sí mismo** (los de H1/H5/H6 viven en el código y
+se re-midieron en «TRIAJE15 (A)»). Los DESVÍO reales se reportan a planificación para decidir cuáles se baja a código y
+cuáles son enmienda (el prototipo es una hoja de estados, no un spec).
+
+## TRIAJE15 (A) — re-medición en device de H1 · H5 · H6 (2026-10-13)
+
+**Qué se midió:** el **árbol de trabajo** de la rama `fe2/triaje15-a-esc-reconectar-pausar-enviar` (base `a9a87761`),
+servido por Metro local sobre el dev-client ya instalado — **sin rebuild** (no autorizado). Cambios:
+`PanelDeslizable.tsx` (`alBajar` al *empezar* a bajar), `PanelFunciones.tsx` (`senalCerrar` + capa sobre la tira del
+chat), `PantallaPrincipal.tsx` (cableado), `ControlesFlotantes.tsx` (ancho), `PantallaMiDia.tsx` (píldora pulsable).
+Mismo device `RF8T318RN9T`, usuario canónico, gestos `adb input motionevent` `DOWN/MOVE/UP`, animaciones del sistema
+en 0 para `uiautomator dump`. Capturas: `h1-0`, `h1-1-escritorio`, `h1-2-chat-arriba`, `h1-3-tras-bajar`,
+`h5-mi-dia`, `h5-tras-tap`, `h6-bloqueado`, `h6-pausado`.
+
+| # | hallazgo | antes | después (medido) | instrumento | veredicto |
+|---|---|---|---|---|---|
+| **H1** | `esc`: el escritorio no se cierra al bajar el chat | con el chat bajado el escritorio seguía abierto y «VOLVER A TU DÍA» quedaba **tapada** | secuencia idéntica a `esc-0…esc-10`: (1) escritorio abierto arrastrando `panel-funciones-pestana` desde y=75 → `panel-funciones-capa` `[0,0][720,1450]`, pestaña «Cerrar funciones» `[0,1368][720,1450]`; (2) chat arriba (`panel-handle` `[0,47][720,152]`); (3) chat bajado → `panel-funciones-capa` `[0,0][720,83]`, pestaña «Ver funciones» `[0,1][720,83]`, `pantalla-midia` visible. **Escritorio cerrado, reposo = Mi día.** Con escritorio abierto y chat abajo (`h1-1-escritorio`) se ven a la vez «VOLVER A TU DÍA» y el asidero «ESCRIBILE A ODOBI». Reabrir y cerrar con su pestaña funciona (sin estado trabado) | `uiautomator dump` con idle + `screencap` | **COHERENTE** |
+| **H5a** | «Reconectar» inerte (`clickable=false`) | píldora sin acción | `midia-alerta-111-accion` (`content-desc` «Reconectar», `[60,1161][246,1217]`); `motionevent` DOWN/UP en su centro (153,1189) → **abre Ajustes** (`h5-tras-tap`: «Tu negocio / La app / Ayuda», entre ellas «Apps conectadas») | `uiautomator dump` + `screencap` | **COHERENTE** |
+| **H5b** | la acción lleva a la **pantalla fina** (Apps conectadas / ARCA) | — | **No.** Lleva a Ajustes (lo único que `PantallaMiDia` ya sabe abrir). Un destino por `regla` exige que la tarjeta traiga `destino` (`TarjetaMiDia` no lo tiene, `packages/core/src/api/miDia.ts`) y hoy no hay tabla `regla → ruta` en el contrato | — | **DESVÍO declarado** → `pedido_`; no se inventa la tabla |
+| **H6** | «Pausar»/«Enviar» partidos en dos líneas | «Paus/ar», «Env/ar» | grabación fijada con **240 px** (`h6-bloqueado`) y en pausa (`h6-pausado`): «Pausar»/«Reanudar» y «Enviar» **en una línea**, botones repartidos a ancho completo; «Eliminar» aparte | **`screencap`** (no `dump`: la onda animada impide el idle de `uiautomator`, sin árbol en todos los intentos) | **COHERENTE** |
+
+**Causa de raíz de H6** (no «se achicó la fuente»): `overlayVoz` centra (`alignItems:'center'`) y los botones llevan
+`flex:1`; sin un contenedor que estire, el ancho colapsa a *min-content* y el texto parte. Arreglo: el contenedor de
+`ControlesFlotantes` pasa a `alignSelf:'stretch'`.
+
+**Qué NO acredita esta sección:**
+- **Rótulos de asidero / `ASOMO=62`** (parte de la fila 8 que no era la decisión A): no se tocaron ni se re-midieron;
+  siguen como estaban.
+- **H5 no es «la fila 15 COHERENTE»:** el viewport de ≈120 dp con dos avisos y «Mi día» vs «Tu día» persisten.
+- **H6 no es «la fila 3 COHERENTE»:** persisten la columna de candado ausente, el reloj y los botones de texto vs
+  tacho + onda del prototipo (CONT).
+- El historial del usuario canónico contiene notas «Por voz» de pasadas anteriores de esta ventana: el gesto de
+  130 px **envía** por diseño (H7). Por eso esta medición usó 240 px y terminó con «Eliminar» (cero envíos nuevos).
+- jest `apps/mobile` (shell, midia, chat, theme): 468/470 con **1 rojo ajeno** (`TarjetaPresupuestoPropuesto` ›
+  «al guardar, llama a `onResolver`…»: `render function has not been called`, a los 20 s bajo carga paralela);
+  **aislado pasa 45/45** junto con `PantallaMiDia`. Es un timeout de suite completa, no del cambio. `tsc` rc=0,
+  `eslint` rc=0, paridad de testID rc=0.
 
 ## H2 — CRASHFRIO: reproducción, stack y atribución (2026-10-13, tarde)
 

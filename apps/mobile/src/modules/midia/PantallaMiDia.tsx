@@ -222,7 +222,7 @@ function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
  * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
  * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
  */
-function BannerCritico({ tablero }: { tablero: TableroMiDia | null }) {
+function BannerCritico({ tablero, onAccion }: { tablero: TableroMiDia | null; onAccion?: () => void }) {
   const tema = useTema();
   const criticas = tarjetasCriticas(tablero);
   if (criticas.length === 0) return null;
@@ -238,11 +238,24 @@ function BannerCritico({ tablero }: { tablero: TableroMiDia | null }) {
             {t.texto}
           </Text>
           {t.verbo != null && (
-            <View style={[styles.alertaAccion, { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo }]}>
+            <Pressable
+              testID={`midia-alerta-${t.id}-accion`}
+              accessibilityRole="button"
+              accessibilityLabel={t.verbo}
+              // Sin `onAccion` (quien monta no sabe a dónde llevar) la píldora queda como rótulo: un botón
+              // que no hace nada es peor que un rótulo — DEVICE15 H5 lo midió `clickable=false`.
+              disabled={onAccion == null}
+              onPress={onAccion}
+              hitSlop={10}
+              style={[
+                styles.alertaAccion,
+                { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo },
+              ]}
+            >
               <Text style={{ color: tema.color.bloqueApoyo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                 {t.verbo}
               </Text>
-            </View>
+            </Pressable>
           )}
         </View>
       ))}
@@ -420,7 +433,11 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
 
         <ContadorTablero tablero={tablero} />
 
-        <BannerCritico tablero={tablero} />
+        {/* 🔴 La píldora del banner lleva a Ajustes: es donde se resuelven las dos reglas críticas
+            («Reconectala en Ajustes → Apps» · «Renovarlo» en ARCA) y lo único que `PantallaMiDia` ya
+            sabe abrir sin inventar una tabla regla→ruta que el contrato no define. Un destino más fino
+            necesita que el backend mande `destino` en la tarjeta (ver el `pedido_` de DEVICE15 H5). */}
+        <BannerCritico tablero={tablero} onAccion={onAjustes} />
 
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
 

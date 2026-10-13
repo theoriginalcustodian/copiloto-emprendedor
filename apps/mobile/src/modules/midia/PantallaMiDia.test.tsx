@@ -50,6 +50,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   return { __esModule: true, default: PassthroughSwipeable };
 });
 
+import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import {
@@ -117,10 +118,10 @@ const TABLERO = {
   ],
 };
 
-async function montar() {
+async function montar(props: ComponentProps<typeof PantallaMiDia> = {}) {
   return render(
     <ThemeProvider>
-      <PantallaMiDia />
+      <PantallaMiDia {...props} />
     </ThemeProvider>,
   );
 }
@@ -234,6 +235,22 @@ describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)'
     expect(screen.queryByTestId('midia-alerta-p')).toBeNull();
     expect(screen.getByText('Renovarlo')).toBeTruthy();
     expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
+  });
+
+  it('🔴 DEVICE15 H5: la píldora del banner es un botón y lleva a Ajustes (antes era un rótulo inerte)', async () => {
+    const onAjustes = jest.fn();
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail' }),
+      ]),
+    });
+    await montar({ onAjustes });
+
+    await waitFor(() => expect(screen.getByTestId('midia-alerta-c-accion')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-alerta-c-accion'));
+
+    expect(onAjustes).toHaveBeenCalledTimes(1);
   });
 
   it('sin tarjeta crítica no hay banner', async () => {

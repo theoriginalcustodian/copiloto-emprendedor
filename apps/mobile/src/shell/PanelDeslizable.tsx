@@ -44,7 +44,7 @@ import { FondoIluminado } from '../theme/glass/FondoIluminado';
  *  debe ser delgada, del tamaño de una card del historial — NO se le hornea el inset de la status bar
  *  (eso engrosaba la tira de abajo con espacio muerto). La clearance de la status bar la da un
  *  spacer superior FIJO, y el recorrido se acorta en esa misma cantidad (ver `estiloSpacer`). */
-const ALTO_HANDLE = 56;
+export const ALTO_HANDLE = 56;
 /**
  * 🔴 **El alto se MIDE, no se pregunta.** Antes esto era
  * `const { height: ALTO_PANTALLA } = Dimensions.get('window')`, y estaba mal por dos motivos que se
@@ -128,6 +128,18 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    */
   onPanelAbajoChange?: (abajo: boolean) => void;
   /**
+   * Avisa en el instante en que la conversación **EMPIEZA a bajar** (al soltar, no al terminar de
+   * asentarse): quien sostenga una capa que no deba sobrevivir al chat bajado —el escritorio de
+   * funciones, regla A del operador 2026-10-12: «al bajar el chat el escritorio se cierra, el reposo es
+   * único: siempre Mi día»— se cierra EN PARALELO con la bajada, en vez de mostrarse abierto durante
+   * 420 ms y recién después cerrarse.
+   *
+   * 🔴 Es un evento, no un estado: `onPanelAbajoChange` ya reporta el estado asentado. Si se usara ese,
+   * la capa se vería abierta mientras el chat termina de bajar y se cerraría DESPUÉS — el defecto que
+   * esto evita.
+   */
+  alBajar?: () => void;
+  /**
    * Arrancar con el panel ABAJO, o sea con la base a la vista y la conversación asomando por el
    * borde inferior.
    *
@@ -161,6 +173,7 @@ export function PanelDeslizable({
   children,
   senalSubir,
   onPanelAbajoChange,
+  alBajar,
   arrancaAbajo = false,
   hintAbajo = 'Subir conversación',
   testID,
@@ -199,6 +212,15 @@ export function PanelDeslizable({
   const setPanelAbajoConAviso = useCallback((abajo: boolean) => {
     setPanelAbajo(abajo);
     onPanelAbajoChangeRef.current?.(abajo);
+  }, []);
+  /** Mismo patrón que `onPanelAbajoChangeRef`: el gesto se construye UNA vez y no puede depender de un
+   *  callback inline de quien nos monta. */
+  const alBajarRef = useRef(alBajar);
+  useEffect(() => {
+    alBajarRef.current = alBajar;
+  }, [alBajar]);
+  const avisarBajada = useCallback(() => {
+    alBajarRef.current?.();
   }, []);
 
   /**
@@ -254,6 +276,7 @@ export function PanelDeslizable({
       // salta arriba por un cuadro. `finished` es false si otra animación interrumpió a esta: ahí el
       // estado lo fija quien interrumpió, y pisarlo dejaría el hint mintiendo sobre dónde está el
       // panel.
+      if (destino === max) runOnJS(avisarBajada)();
       panelY.value = withTiming(destino, CONFIG_SNAP, (finished) => {
         if (finished) runOnJS(setPanelAbajoConAviso)(destino === max);
       });
@@ -294,6 +317,7 @@ export function PanelDeslizable({
             : panelY.value > max / 2
               ? max
               : 0;
+        if (destino === max) runOnJS(avisarBajada)();
         panelY.value = withSpring(
           destino,
           { ...CONFIG_SNAP_GESTO, velocity: e.velocityY },
@@ -302,7 +326,7 @@ export function PanelDeslizable({
           }
         );
       });
-  }, [panelY, inicio, recorrido, setPanelAbajoConAviso]);
+  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada]);
 
   const estiloPanel = useAnimatedStyle(() => ({ transform: [{ translateY: panelY.value }] }));
 

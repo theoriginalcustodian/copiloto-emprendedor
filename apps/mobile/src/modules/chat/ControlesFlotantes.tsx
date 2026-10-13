@@ -44,6 +44,12 @@ export function ControlesFlotantes({ fase, alPausar, alReanudar, alEnviar, alEli
 }
 
 const styles = StyleSheet.create({
-  contenedor: { gap: 12, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' },
+  // 🔴 `alignSelf: 'stretch'` NO es adorno: el padre (`overlayVoz` de `ChatView`) centra con
+  // `alignItems: 'center'`, así que sin esto este contenedor toma el ancho de su CONTENIDO, y como los
+  // botones de la fila son `flex: 1` (`botonBase`), el ancho del contenido depende del contenedor: la
+  // referencia circular los colapsa a su mínimo y el texto se parte letra a letra — «Paus/ar»,
+  // «Env/ar» (DEVICE15 H6, medido en device). Es el mismo mecanismo que `ondaFlotante` ya cubre con
+  // `width: '100%'` y que `HudGrabacion.ondaEscalada` documenta para la onda.
+  contenedor: { alignSelf: 'stretch', gap: 12, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' },
   fila: { ...filaControles, alignSelf: 'stretch' },
 });
