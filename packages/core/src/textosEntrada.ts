@@ -19,3 +19,10 @@ export const TEXTOS_REVEAL = {
 } as const;
 
 export const PRONUNCIACION_MARCA = 'se dice o-DO-bi';
+
+/**
+ * El descriptor que acompaña al wordmark (`#splash .tagline`, prototipo `index.html:2463`). Brand Book
+ * l.69/72: acompaña, no compite en jerarquía con el nombre, y nunca va solo. La fila `splash` de DEVICE15
+ * lo midió ausente en todos los cuadros.
+ */
+export const TAGLINE_MARCA = 'Tu copiloto emprendedor';

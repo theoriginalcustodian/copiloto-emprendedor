@@ -121,10 +121,16 @@ export function EntradaDiaria({ onFin }: { onFin: () => void }) {
     return () => clearTimeout(t);
   }, [reducido, onFin]);
 
+  // `#entrada{background:var(--blanco)}` (prototipo `index.html:1154`, `2438`): blanco PURO, no el crema
+  // del lienzo. `glass.on` ES `--odobi-blanco` (`tokens.ts`, «blanco puro, no el crema»). El prototipo
+  // sólo tiene piel clara: en las oscuras un blanco fijo sería un fogonazo de 1,5 s, así que ahí manda
+  // el lienzo del tema. DEVICE15 midió el crema como DESVÍO en la piel clara.
+  const fondo = tema.glass.esLight ? tema.glass.on : tema.color.fondo;
+
   return (
     <View
       testID="entrada-diaria"
-      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tema.color.fondo }}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: fondo }}
     >
       <Svg width={SIGNO} height={SIGNO} viewBox="0 0 24 24">
         {ARCOS.map((a, i) => (

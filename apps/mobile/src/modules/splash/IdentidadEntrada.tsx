@@ -8,9 +8,16 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
-import { COLOR_FORMA_EGG, COLOR_FORMA_SCALLOP, COLOR_FORMA_SQUIRCLE, COLOR_FORMA_SUPER } from '../../theme/identidadPalette';
+import {
+  COLOR_FORMA_EGG,
+  COLOR_FORMA_SCALLOP,
+  COLOR_FORMA_SQUIRCLE,
+  COLOR_FORMA_SQUIRCLE_CLARO,
+  COLOR_FORMA_SUPER,
+} from '../../theme/identidadPalette';
+import { bordeElipticoPath, gradienteCss } from './formasPath';
 import { scallopPath } from './scallopPath';
 
 const TAMANO = 132;
@@ -48,33 +55,54 @@ export const EASE_BOUNCE = Easing.bezier(0.24, 1.62, 0.4, 1);
 /**
  * Colores FIJOS de marca (no salen de `tema.color`, mismo criterio que `--identidad-word` en web
  * `Splash.css` — logotipo, exento de tema por decisión Martín, `splash-port-reanimated.md §8`).
- * Aproximación deliberada de las formas del prototipo (`v2-inmersivo.html`): React Native no
- * soporta radios de borde elípticos asimétricos (h/v por esquina) como CSS -- se usan radios
- * uniformes por esquina y color sólido en vez de degradé. Fidelidad de forma a refinar en la
- * verificación visual de device (fuera de este sprint).
+ *
+ * Las formas replican las del prototipo (`index.html:1202-1204` y `2452-2456`): radios elípticos
+ * asimétricos y degradé. React Native no los dibuja con estilos, así que cada forma es un `Path` SVG
+ * (`formasPath.ts`). Antes eran radios uniformes + color sólido; la fila `splash` de DEVICE15 lo midió
+ * como DESVÍO.
  */
-const FORMAS = [
-  { key: 'scallop', svg: true, rot0: 8, rot1: -26 },
-  { key: 'squircle', color: COLOR_FORMA_SQUIRCLE, radio: 0.34, rot0: -12, rot1: 34 },
-  { key: 'super', color: COLOR_FORMA_SUPER, radio: 0.5, rot0: -6, rot1: 22 },
-  { key: 'egg', color: COLOR_FORMA_EGG, radio: 0.48, rot0: 10, rot1: -16 },
-] as const;
+type Relleno =
+  | { tipo: 'solido'; color: string }
+  | { tipo: 'degradado'; anguloDeg: number; desde: string; hasta: string };
+
+const FORMAS: ReadonlyArray<{ key: string; d: string; relleno: Relleno; rot0: number; rot1: number }> = [
+  { key: 'scallop', d: scallopPath(), relleno: { tipo: 'solido', color: COLOR_FORMA_SCALLOP }, rot0: 8, rot1: -26 },
+  {
+    key: 'squircle',
+    d: bordeElipticoPath([0.34, 0.34, 0.34, 0.34], [0.34, 0.34, 0.34, 0.34]),
+    relleno: { tipo: 'degradado', anguloDeg: 160, desde: COLOR_FORMA_SQUIRCLE_CLARO, hasta: COLOR_FORMA_SQUIRCLE },
+    rot0: -12,
+    rot1: 34,
+  },
+  {
+    key: 'super',
+    d: bordeElipticoPath([0.58, 0.42, 0.47, 0.53], [0.47, 0.55, 0.45, 0.53]),
+    relleno: { tipo: 'solido', color: COLOR_FORMA_SUPER },
+    rot0: -6,
+    rot1: 22,
+  },
+  {
+    key: 'egg',
+    d: bordeElipticoPath([0.46, 0.54, 0.52, 0.48], [0.53, 0.46, 0.54, 0.47]),
+    relleno: { tipo: 'degradado', anguloDeg: 155, desde: COLOR_FORMA_SQUIRCLE, hasta: COLOR_FORMA_EGG },
+    rot0: 10,
+    rot1: -16,
+  },
+];
 
 function Forma({
   index,
-  color,
-  radio,
+  d,
+  relleno,
   rot0,
   rot1,
-  svg,
   reducido,
 }: {
   index: number;
-  color?: string;
-  radio?: number;
+  d: string;
+  relleno: Relleno;
   rot0: number;
   rot1: number;
-  svg?: boolean;
   reducido: boolean;
 }) {
   const progreso = useSharedValue(reducido ? 1 : 0);
@@ -101,21 +129,28 @@ function Forma({
   });
 
   const tamanoForma = TAMANO * 0.62;
+  const idGradiente = `identidad-entrada-grad-${index + 1}`;
+  const g = relleno.tipo === 'degradado' ? gradienteCss(relleno.anguloDeg) : null;
   return (
     <Animated.View
       testID={`identidad-entrada-forma-${index + 1}`}
       style={[
         styles.forma,
         { width: tamanoForma, height: tamanoForma, marginLeft: -tamanoForma / 2, marginTop: -tamanoForma / 2 },
-        !svg && { backgroundColor: color, borderRadius: tamanoForma * (radio ?? 0.5) },
         estilo,
       ]}
     >
-      {svg && (
-        <Svg width="100%" height="100%" viewBox="0 0 1 1">
-          <Path d={scallopPath()} fill={COLOR_FORMA_SCALLOP} />
-        </Svg>
-      )}
+      <Svg width="100%" height="100%" viewBox="0 0 1 1">
+        {relleno.tipo === 'degradado' && g != null && (
+          <Defs>
+            <LinearGradient id={idGradiente} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2}>
+              <Stop offset="0" stopColor={relleno.desde} />
+              <Stop offset="1" stopColor={relleno.hasta} />
+            </LinearGradient>
+          </Defs>
+        )}
+        <Path d={d} fill={relleno.tipo === 'degradado' ? `url(#${idGradiente})` : relleno.color} />
+      </Svg>
     </Animated.View>
   );
 }
@@ -138,11 +173,10 @@ export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
             <Forma
               key={f.key}
               index={i}
-              color={'color' in f ? f.color : undefined}
-              radio={'radio' in f ? f.radio : undefined}
+              d={f.d}
+              relleno={f.relleno}
               rot0={f.rot0}
               rot1={f.rot1}
-              svg={'svg' in f ? f.svg : undefined}
               reducido={reducido}
             />
           ))}

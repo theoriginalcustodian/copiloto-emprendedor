@@ -20,8 +20,9 @@ import { useTema } from './ThemeProvider';
  * identifica de qué producto es el chat sin pedir el permiso de color que pide el acento.
  */
 interface PropsMarca {
+  /** Lado de la caja. En `desnudo` es el del isotipo mismo (no hay badge que lo contenga). */
   size?: number;
-  tono?: 'acento' | 'superficie' | 'tinta';
+  tono?: 'acento' | 'superficie' | 'tinta' | 'desnudo';
 }
 
 const ISOTIPO_VIEWBOX = 24;
@@ -47,12 +48,20 @@ const ISOTIPO_RATIO = 34 / 80;
 
 export function Marca({ size = 64, tono = 'acento' }: PropsMarca) {
   const tema = useTema();
-  const fondo =
-    tono === 'acento' ? tema.color.acento : tono === 'tinta' ? tema.color.bloque : tema.color.superficieAlta;
+  const desnudo = tono === 'desnudo';
+  const fondo = desnudo
+    ? 'transparent'
+    : tono === 'acento'
+      ? tema.color.acento
+      : tono === 'tinta'
+        ? tema.color.bloque
+        : tema.color.superficieAlta;
   const trazo =
     tono === 'acento' ? tema.color.acentoTexto : tono === 'tinta' ? tema.color.bloqueTexto : tema.color.acento;
 
-  const isotipoTamano = size * ISOTIPO_RATIO;
+  // `desnudo` = el isotipo SIN badge, como el estado vacío del chat del prototipo (`index.html:1876`,
+  // `<svg width="96">` con `stroke:var(--terracota)`): el `size` es el del signo, no el de un tile.
+  const isotipoTamano = desnudo ? size : size * ISOTIPO_RATIO;
   const escala = isotipoTamano / ISOTIPO_VIEWBOX;
   const strokeWidth = ISOTIPO_STROKE_BASE / escala;
   const offset = (size - isotipoTamano) / 2;

@@ -3,21 +3,37 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-import { PRONUNCIACION_MARCA } from '@copiloto/core';
+import { PRONUNCIACION_MARCA, TAGLINE_MARCA } from '@copiloto/core';
 
 import { pressableStyle } from '../../theme/glass/presion';
+import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
-import { EASE_BOUNCE, EASE_SETTLE, IdentidadEntrada, LETTER, LETTER_STAGGER, SETTLE, T_O, T_WORDMARK } from '../splash/IdentidadEntrada';
+import {
+  EASE_BOUNCE,
+  EASE_SETTLE,
+  IdentidadEntrada,
+  LETTER,
+  LETTER_STAGGER,
+  SETTLE,
+  T_BOUNCE_END,
+  T_O,
+  T_WORDMARK,
+} from '../splash/IdentidadEntrada';
 
 const LOCKUP_SIMBOLO = 54;
 const ALTO_BOTON = 54;
+/** `.rv-word{font-size:46px}` del prototipo (`index.html:469`); antes 40, medido DESVÍO en DEVICE15. */
+const FONT_WORDMARK = 46;
+/** `.tagline`: fade-up de 680 ms, 320 ms después de que el lockup queda en su lugar (`index.html:1232`). */
+const TAGLINE_RETRASO = 320;
+const TAGLINE_DURACION = 680;
 
 /** "O" ya cubierta por `Marca` (`app/_layout.tsx:113` — el monograma ES el glifo real de la O): el
  * wordmark sólo necesita animar el resto, igual que web separa `__o` de `__rest` (H-A4-2). */
 const LETRAS_WORDMARK = ['d', 'o', 'b', 'i'];
-/** 0.4em del `fontSize` del wordmark (40) — mismo offset que `translateY(0.4em)` de `Splash.css`. */
-const OFFSET_LETRA = 16;
+/** 0.4em del `fontSize` del wordmark (46) — mismo offset que `translateY(0.4em)` de `Splash.css`. */
+const OFFSET_LETRA = Math.round(FONT_WORDMARK * 0.4);
 
 /** Settle de la "O" (`Marca`): mismo fade+scale(1.06→1) que `.identidad-splash__o` en web. */
 function OAsentada({ reducido, children }: { reducido: boolean; children: React.ReactNode }) {
@@ -60,6 +76,38 @@ function LetraWordmark({ letra, indice, reducido, estilo }: { letra: string; ind
   return <Animated.Text style={[estilo, estiloAnim]}>{letra}</Animated.Text>;
 }
 
+/** El descriptor «Tu copiloto emprendedor»: aparece con fade-up cuando el wordmark ya terminó de entrar. */
+function Tagline({ reducido, testID }: { reducido: boolean; testID: string }) {
+  const tema = useTema();
+  const opacidad = useSharedValue(reducido ? 1 : 0);
+  const traslado = useSharedValue(reducido ? 0 : 10);
+
+  useEffect(() => {
+    if (reducido) return;
+    const delay = T_BOUNCE_END + TAGLINE_RETRASO;
+    opacidad.value = withDelay(delay, withTiming(1, { duration: TAGLINE_DURACION, easing: EASE_SETTLE }));
+    traslado.value = withDelay(delay, withTiming(0, { duration: TAGLINE_DURACION, easing: EASE_SETTLE }));
+  }, []);
+
+  const estiloAnim = useAnimatedStyle(() => ({
+    opacity: opacidad.value,
+    transform: [{ translateY: traslado.value }],
+  }));
+
+  return (
+    <Animated.Text
+      testID={testID}
+      style={[
+        // `.tagline{font-size:16px;font-weight:500;letter-spacing:.02em;color:var(--sec)}` (`index.html:1230`).
+        { color: tema.color.textoTenue, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, letterSpacing: 0.32 },
+        estiloAnim,
+      ]}
+    >
+      {TAGLINE_MARCA}
+    </Animated.Text>
+  );
+}
+
 export interface RevealEntradaProps {
   /** Etiquetas de las dos puertas (`TEXTOS_REVEAL`): el mismo reveal aterriza distinto según la sesión. */
   primario: string;
@@ -95,7 +143,15 @@ export function RevealEntrada({
   const tema = useTema();
   const reducido = useReducedMotion();
   const reproductor = useAudioPlayer(pronunciacionAsset ?? null);
-  const estiloLetra = { color: tema.color.acentoTinta, fontSize: 40, fontFamily: tema.fuente.display, fontWeight: '800' as const, letterSpacing: -0.5 };
+  // Color de MARCA fijo (`.rv-word{color:var(--terracota)}`), no `acentoTinta`: el wordmark es el logotipo
+  // y su gemelo web usa `--identidad-word`. `letterSpacing:-.02em` del prototipo (46 × .02 ≈ 0,92).
+  const estiloLetra = {
+    color: COLOR_PALABRA_MARCA,
+    fontSize: FONT_WORDMARK,
+    fontFamily: tema.fuente.display,
+    fontWeight: '800' as const,
+    letterSpacing: -0.02 * FONT_WORDMARK,
+  };
 
   function pronunciar() {
     reproductor.seekTo(0);
@@ -117,6 +173,7 @@ export function RevealEntrada({
             </View>
           </View>
         </IdentidadEntrada>
+        <Tagline reducido={reducido} testID={`${testID}-tagline`} />
         <View style={styles.pronunciacion}>
           <Text testID={`${testID}-pronunciacion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
             {PRONUNCIACION_MARCA}

@@ -65,6 +65,20 @@ describe('Marca -- isotipo Odobi (reemplaza el placeholder de "onda de voz" here
     expect(trazoAcento).not.toBe(trazoSuperficie);
   });
 
+  it('tono="desnudo": sin badge, el signo mide `size` (prototipo `index.html:1876`, svg 96) y es del color de acento', async () => {
+    const desnudo = await montar({ size: 96, tono: 'desnudo' });
+    const acento = await montar({ size: 96, tono: 'acento' });
+
+    expect(desnudo.getByTestId('marca').props.style.backgroundColor).toBe('transparent');
+    // El trazo es el acento (terracota), igual que el badge de tono="acento".
+    expect(desnudo.getByTestId('marca-isotipo-trazo-1').props.stroke).toBe(
+      acento.getByTestId('marca').props.style.backgroundColor,
+    );
+    // Signo a `size` ⇒ escala 96/24 = 4 ⇒ trazo 1.3/4. Con badge el signo sería 96·34/80 y el trazo mayor.
+    expect(desnudo.getByTestId('marca-isotipo-trazo-1').props.strokeWidth).toBeCloseTo(1.3 / 4, 5);
+    expect(acento.getByTestId('marca-isotipo-trazo-1').props.strokeWidth).toBeGreaterThan(1.3 / 4);
+  });
+
   it('badge redondeado: tamaño y radio siguen derivando de `size` (30% -- sin cambios de layout)', async () => {
     await montar({ size: 76 });
     const badge = screen.getByTestId('marca');

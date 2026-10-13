@@ -1,9 +1,8 @@
 /**
  * `CampoTexto` — el primitivo base de formulario: etiqueta + `EnvolturaCampo` + `TextInput` + error.
  *
- * La etiqueta usa el mismo tratamiento que el `hint` del handle de `PanelDeslizable` (mono 10px,
- * mayúsculas, `letterSpacing:1.2`, `color.textoTenue`) -- es el patrón que la app ya usa para toda
- * meta-información chica sobre un control, no un estilo inventado para facturación.
+ * La etiqueta es mono 10px, mayúsculas, `letterSpacing:1.2`, `color.textoTenue` -- el patrón que la
+ * app usa para la meta-información chica sobre un control, no un estilo inventado para facturación.
  *
  * `secureTextEntry`/`autoCorrect`/`textContentType` existen acá (y no en un componente aparte) porque
  * `CampoSecreto` es literalmente "este mismo campo con esas tres props fijas" -- separar el dibujo del
@@ -19,6 +18,9 @@ import { useRevelarCampo } from './ScrollFormulario';
 
 export interface CampoTextoProps {
   etiqueta: string;
+  /** No dibuja el rótulo visible: la `etiqueta` sigue siendo el nombre accesible del campo. Para cuando
+   *  la pantalla ya lo nombra con otra cosa (p. ej. la pregunta de «Contanos qué tal»). */
+  etiquetaOculta?: boolean;
   valor: string;
   onChange: (texto: string) => void;
   /** Al perder el foco: para validaciones que se evalúan «al terminar de escribir», no a cada tecla. */
@@ -42,6 +44,7 @@ export interface CampoTextoProps {
 
 export function CampoTexto({
   etiqueta,
+  etiquetaOculta = false,
   valor,
   onChange,
   onBlur,
@@ -71,9 +74,11 @@ export function CampoTexto({
     // `collapsable={false}`: sin esto Android colapsa esta `View` fuera del árbol nativo y el ref no
     // tiene nada que medir — el revelado se volvería un no-op silencioso. Ver `ScrollFormulario`.
     <View ref={refContenedor} collapsable={false} style={styles.contenedor} testID={testID}>
-      <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-        {etiqueta}
-      </Text>
+      {!etiquetaOculta && (
+        <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
+          {etiqueta}
+        </Text>
+      )}
       <EnvolturaCampo error={hayError} testID={`${testID}-vidrio`} style={styles.vidrio}>
         <TextInput
           testID={`${testID}-input`}

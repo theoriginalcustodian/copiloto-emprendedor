@@ -35,6 +35,7 @@ import {
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
+import { rutaDeDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -96,7 +97,20 @@ const OPCIONES_SOLAPA: readonly { valor: IdSolapa; etiqueta: string }[] = [
   { valor: 'hecha', etiqueta: 'Hechas' },
 ];
 
-function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSolapa) => void }) {
+/**
+ * Las solapas con su contador pegado al rótulo («Para hoy 3» · «Haciendo 1» · «Hechas»), como el
+ * `.segb` del prototipo (`index.html:2490`). «Hechas» no lleva número —es historia, no pendiente— y un
+ * contador en 0 no se dibuja: «Haciendo 0» no informa nada que el vacío de la solapa no diga.
+ */
+function Solapas({
+  activa,
+  onCambiar,
+  conteos = {},
+}: {
+  activa: IdSolapa;
+  onCambiar: (id: IdSolapa) => void;
+  conteos?: Partial<Record<IdSolapa, number>>;
+}) {
   const tema = useTema();
   return (
     <View style={styles.solapas} testID="midia-solapas">
@@ -119,7 +133,7 @@ function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSo
                   fontSize: tema.tipo.base,
                 }}
               >
-                {o.etiqueta}
+                {o.valor !== 'hecha' && (conteos[o.valor] ?? 0) > 0 ? `${o.etiqueta} ${conteos[o.valor]}` : o.etiqueta}
               </Text>
             </View>
           </Pressable>
@@ -222,7 +236,14 @@ function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
  * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
  * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
  */
-function BannerCritico({ tablero, onAccion }: { tablero: TableroMiDia | null; onAccion?: () => void }) {
+function BannerCritico({
+  tablero,
+  onAccion,
+}: {
+  tablero: TableroMiDia | null;
+  /** Recibe la tarjeta: a dónde lleva lo decide su `destino` (H5b), no el banner. */
+  onAccion?: (tarjeta: TarjetaMiDia) => void;
+}) {
   const tema = useTema();
   const criticas = tarjetasCriticas(tablero);
   if (criticas.length === 0) return null;
@@ -245,7 +266,7 @@ function BannerCritico({ tablero, onAccion }: { tablero: TableroMiDia | null; on
               // Sin `onAccion` (quien monta no sabe a dónde llevar) la píldora queda como rótulo: un botón
               // que no hace nada es peor que un rótulo — DEVICE15 H5 lo midió `clickable=false`.
               disabled={onAccion == null}
-              onPress={onAccion}
+              onPress={() => onAccion?.(t)}
               hitSlop={10}
               style={[
                 styles.alertaAccion,
@@ -286,9 +307,14 @@ export interface PantallaMiDiaProps {
   onAjustes?: () => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
   onAgenda?: () => void;
+  /**
+   * H5b — abre la pantalla de ESA conexión (`destino.tipo === 'conexion'`, `servicio` = `destino.id`). La
+   * cablea el shell. Sin él, o con un `destino` ausente/desconocido, la acción crítica cae a `onAjustes`.
+   */
+  onConexion?: (servicio: string) => void;
 }
 
-export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: PantallaMiDiaProps = {}) {
+export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onConexion }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
@@ -437,9 +463,29 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
             («Reconectala en Ajustes → Apps» · «Renovarlo» en ARCA) y lo único que `PantallaMiDia` ya
             sabe abrir sin inventar una tabla regla→ruta que el contrato no define. Un destino más fino
             necesita que el backend mande `destino` en la tarjeta (ver el `pedido_` de DEVICE15 H5). */}
-        <BannerCritico tablero={tablero} onAccion={onAjustes} />
+        <BannerCritico
+          tablero={tablero}
+          // H5b: lleva a la conexión que dice `destino`; sin destino conocido, a Ajustes (lo de antes). Sin
+          // ninguno de los dos callbacks la píldora queda como rótulo (ver `BannerCritico`).
+          onAccion={
+            onAjustes != null || onConexion != null
+              ? (t) => {
+                  const ruta = rutaDeDestino(t.destino);
+                  if (ruta?.tipo === 'conexion' && onConexion != null) onConexion(ruta.servicio);
+                  else onAjustes?.();
+                }
+              : undefined
+          }
+        />
 
-        <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
+        <Solapas
+          activa={solapaActiva}
+          onCambiar={setSolapaActiva}
+          conteos={{
+            para_hoy: tablero?.solapas.find((s) => s.id === 'para_hoy')?.tarjetas.length ?? 0,
+            haciendo: tablero?.solapas.find((s) => s.id === 'haciendo')?.tarjetas.length ?? 0,
+          }}
+        />
 
         <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
 
@@ -505,6 +551,10 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
                     onBorrar={() => void borrar(t)}
                   />
                 ))}
+                {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo. */}
+                <Text testID="midia-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingTop: 4 }}>
+                  Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.
+                </Text>
               </ScrollView>
             )}
           </>
@@ -637,9 +687,14 @@ function TarjetaMiDiaRow({
 }) {
   const tema = useTema();
   const swipeableRef = useRef<SwipeableMethods>(null);
-  const detalle = [tarjeta.cliente, tarjeta.monto != null ? formatearImporte(tarjeta.monto) : null, tarjeta.fecha]
-    .filter((x): x is string => x != null && x !== '')
-    .join(' · ');
+  // Filas clave/valor como los `.kv` del prototipo (`index.html:1692`: «Enviado · 18 de julio», «Monto · $180.000»).
+  // El rótulo de la fecha es genérico a propósito: el prototipo lo cambia por regla («Enviado», «Emitida»,
+  // «Vence»…) y esa tabla regla→rótulo no la define el contrato — hay `pedido_` al backend (DEVICE15 `detalle`).
+  const detalle: { clave: string; valor: string }[] = [
+    { clave: 'Cliente', valor: tarjeta.cliente ?? '' },
+    { clave: 'Monto', valor: tarjeta.monto != null ? formatearImporte(tarjeta.monto) : '' },
+    { clave: 'Fecha', valor: tarjeta.fecha ?? '' },
+  ].filter((f) => f.valor !== '');
 
   // `opacity: progress` — Reanimated acepta un `SharedValue` directo en el style de `Animated.View`
   // (no hace falta `useAnimatedStyle` para un caso de un solo campo). Mismo patrón que la referencia
@@ -712,10 +767,17 @@ function TarjetaMiDiaRow({
               {tarjeta.verbo}
             </Text>
           )}
-          {expandida && detalle !== '' && (
-            <Text testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              {detalle}
-            </Text>
+          {expandida && detalle.length > 0 && (
+            <View testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={styles.detalleKv}>
+              {detalle.map((f) => (
+                <View key={f.clave} style={styles.filaKv}>
+                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{f.clave}</Text>
+                  <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico, flexShrink: 1, textAlign: 'right' }}>
+                    {f.valor}
+                  </Text>
+                </View>
+              ))}
+            </View>
           )}
         </View>
       </Row>
@@ -756,6 +818,8 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   lista: { gap: 8, padding: 16, paddingBottom: 120 },
   tarjeta: { flex: 1, gap: 4 },
+  detalleKv: { gap: 4, paddingTop: 4 },
+  filaKv: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   accionesSwipe: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
   botonSwipe: {
     height: '100%',

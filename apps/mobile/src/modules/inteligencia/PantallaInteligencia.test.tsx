@@ -237,10 +237,16 @@ describe('PantallaInteligencia — la solapa "Preguntar" es una SALIDA al chat (
 });
 
 describe('PantallaInteligencia — estados textuales del refresco (BL-W6)', () => {
-  it('reposo: «Tirá para actualizar»; arrastre pasado el umbral: «Soltá»; al soltar: «Actualizando…» y luego «Al día · recién»', async () => {
+  it('reposo: sin indicador; arrastre corto: «Tirá»; pasado el umbral: «Soltá»; al soltar: «Actualizando…» y luego «Al día · recién»', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-portada')).toBeTruthy());
     const texto = () => screen.getByTestId('inteligencia-refresco-estado').props.children as string;
+    // En reposo el indicador mide 0 (prototipo `index.html:3526`): no hay línea permanente.
+    expect(screen.queryByTestId('inteligencia-refresco-estado')).toBeNull();
+
+    await fireEvent.scroll(screen.getByTestId('inteligencia-portada'), {
+      nativeEvent: { contentOffset: { y: -20 } },
+    });
     expect(texto()).toBe('Tirá para actualizar');
 
     // iOS: arrastrar más allá del tope da contentOffset.y negativo.

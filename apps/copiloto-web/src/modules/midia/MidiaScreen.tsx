@@ -299,6 +299,11 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
                   onBorrar={() => void borrar(t)}
                 />
               ))}
+              {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo.
+                  Mismo texto y testID que mobile (`PantallaMiDia.tsx`, `midia-nota`). */}
+              <p className="midia-screen__nota" data-testid="midia-nota">
+                Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.
+              </p>
             </div>
           )}
         </>

@@ -71,6 +71,38 @@ export interface TarjetaMiDia {
   criticidad: string | null;
   /** BL-J5: la acción resolutoria de la regla («Renovarlo»…), o `null` si no tiene. */
   verbo: string | null;
+  /**
+   * H5b — a dónde lleva la acción de la tarjeta, **semántica, no una pantalla**: el backend emite el tipo
+   * y la app es dueña del ruteo (contrato `H5B-destino-en-la-tarjeta-critica`, opción B). `null`/ausente =
+   * la tarjeta no trae destino (backend previo, o una regla que no lo emite): la app cae a Ajustes.
+   */
+  destino?: DestinoTarjeta | null;
+}
+
+/**
+ * Los valores de `destino.tipo` que este contrato define. Enum **cerrado**: agregar uno exige enmendar el
+ * contrato. El normalizador NO filtra por él —un tipo nuevo del backend llega como string y el que
+ * decide qué hacer es quien rutea— porque descartarlo acá escondería que apareció algo desconocido.
+ */
+export const TIPOS_DESTINO = ['conexion'] as const;
+export type TipoDestino = (typeof TIPOS_DESTINO)[number];
+
+export interface DestinoTarjeta {
+  /** Crudo del backend: puede no estar en `TIPOS_DESTINO` (app instalada más vieja que el backend). */
+  tipo: string;
+  /** El servicio al que apunta (`conexion` → mismo valor que `entidad_id`). */
+  id: string | null;
+  /** Verbatim del catálogo — **nunca** se arma desde la `key` (`catalogo.test.ts`: MercadoPago ≠ Composio). */
+  connectPath: string | null;
+}
+
+/** `datos.destino` → `DestinoTarjeta`, o `null` si no es un objeto con `tipo` string no vacío. */
+function destinoDe(v: unknown): DestinoTarjeta | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  const tipo = texto(r.tipo);
+  if (tipo == null) return null;
+  return { tipo, id: texto(r.id), connectPath: texto(r.connect_path) };
 }
 
 export interface SolapaMiDia {
@@ -111,6 +143,7 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     categoria: texto(r.categoria),
     criticidad: texto(r.criticidad),
     verbo: texto(r.verbo),
+    destino: destinoDe(datos.destino),
   };
 }
 
