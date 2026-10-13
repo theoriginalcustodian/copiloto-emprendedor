@@ -26,6 +26,9 @@ describe('ListaMensajes', () => {
 
     expect(screen.getByTestId('chat-vacio')).toBeTruthy();
     expect(screen.getByText('¿En qué te ayudo?')).toBeTruthy();
+    // El isotipo del vacío es el SIGNO de 96 sin badge (`index.html:1876`), no un tile de 64.
+    expect(screen.getByTestId('marca-isotipo').props.width).toBe(96);
+    expect(screen.getByTestId('marca').props.style.backgroundColor).toBe('transparent');
   });
 
   it('un mensaje de usuario se renderiza como burbuja simple', async () => {

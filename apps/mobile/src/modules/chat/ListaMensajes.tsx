@@ -523,7 +523,9 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
         windowSize={10}
         ListEmptyComponent={
           <View testID="chat-vacio" style={styles.vacio}>
-            <Marca size={64} tono="superficie" />
+            {/* El isotipo del vacío del prototipo (`index.html:1876`): el SIGNO de 96, terracota, sin badge.
+                Era un tile de 64 con el signo en 27: la fila `chat` de DEVICE15 lo midió DESVÍO. */}
+            <Marca size={96} tono="desnudo" />
             <Text
               style={{
                 color: tema.color.texto,

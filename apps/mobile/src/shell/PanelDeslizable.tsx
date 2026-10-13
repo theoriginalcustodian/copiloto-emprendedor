@@ -440,7 +440,7 @@ export function PanelDeslizable({
                 testID="panel-hint"
                 style={[styles.hint, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
               >
-                {panelAbajo ? hintAbajo : 'Deslizá para ver tu día'}
+                {panelAbajo ? hintAbajo : 'Bajá para volver a Mi día'}
               </Text>
             </View>
           </GestureDetector>
@@ -462,5 +462,6 @@ const styles = StyleSheet.create({
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center', gap: 7 },
   // barra del handle (diseño: 44×5, radio 3).
   barraHandle: { width: 44, height: 5, borderRadius: 3 },
-  hint: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.65 },
+  // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
+  hint: { fontSize: 11, letterSpacing: 0.2 },
 });

@@ -322,11 +322,13 @@ export {
 } from './miDia';
 export type {
   CalendarioMiDia,
+  DestinoTarjeta,
   EventoCalendario,
   IdSolapa,
   SolapaMiDia,
   TableroMiDia,
   TarjetaMiDia,
+  TipoDestino,
 } from './miDia';
 /**
  * `GET /mi-dia/calendario?desde&hasta` (BL-J13, K-13) — agenda de varios días: 4 grupos fijos, rango

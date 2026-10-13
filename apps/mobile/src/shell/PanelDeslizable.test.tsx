@@ -28,9 +28,9 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     expect(screen.getByTestId('panel-handle')).toBeTruthy();
   });
 
-  it('el hint invita a deslizar por defecto — el panel nace arriba y abajo está la base', async () => {
+  it('el hint con el chat arriba es el del prototipo (`index.html:1873`) — el panel nace arriba y abajo está la base', async () => {
     await envolver();
-    expect(screen.getByTestId('panel-hint').props.children).toBe('Deslizá para ver tu día');
+    expect(screen.getByTestId('panel-hint').props.children).toBe('Bajá para volver a Mi día');
   });
 
   it('🔴 con `arrancaAbajo` el hint es el del borde inferior: la app abre en la base, no en el chat', async () => {

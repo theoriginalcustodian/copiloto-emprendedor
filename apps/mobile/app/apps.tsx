@@ -1,3 +1,5 @@
+import { useLocalSearchParams } from 'expo-router';
+
 import { PantallaApps } from '../src/modules/apps/PantallaApps';
 
 /**
@@ -10,7 +12,11 @@ import { PantallaApps } from '../src/modules/apps/PantallaApps';
  * esa capa se comía los toques del vidrio en device — ver el handoff
  * `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`. `app/` es el árbol de RUTAS de
  * expo-router (`require.context`) — sólo van rutas acá, ningún test ni helper (ver `app/index.tsx`).
+ *
+ * H5b: `?servicio=<key>` es la conexión a la que lleva «Reconectar» de la tarjeta crítica de Mi día.
+ * Sin param (el tile del escritorio) la pantalla es la de siempre.
  */
 export default function PantallaAppsRoute() {
-  return <PantallaApps />;
+  const { servicio } = useLocalSearchParams<{ servicio?: string }>();
+  return <PantallaApps servicioDestacado={typeof servicio === 'string' && servicio !== '' ? servicio : null} />;
 }

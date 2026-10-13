@@ -113,11 +113,19 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
 const SERVICIOS_DE_FONDO = new Set(['googledrive']);
 
 /** Los dos grupos del prototipo, sin el que quede vacío (no se pinta un rótulo sin filas). */
-function gruposDe(servicios: ServicioCatalogo[]) {
-  return [
-    { id: 'chat', rotulo: 'Para pedirle por chat', items: servicios.filter((s) => !SERVICIOS_DE_FONDO.has(s.key)) },
-    { id: 'fondo', rotulo: 'Trabaja sola, de fondo', items: servicios.filter((s) => SERVICIOS_DE_FONDO.has(s.key)) },
+function gruposDe(servicios: ServicioCatalogo[], destacado: string | null = null) {
+  // H5b: si llegamos desde «Reconectar» de Mi día, esa conexión va PRIMERA de su grupo y su grupo primero
+  // del todo — es a lo que vino el usuario. Un `destacado` que no está en el catálogo no reordena nada
+  // (lista tal cual): nunca rompe ni esconde filas.
+  const primero = (items: ServicioCatalogo[]) =>
+    destacado == null ? items : [...items.filter((s) => s.key === destacado), ...items.filter((s) => s.key !== destacado)];
+  const grupos = [
+    { id: 'chat', rotulo: 'Para pedirle por chat', items: primero(servicios.filter((s) => !SERVICIOS_DE_FONDO.has(s.key))) },
+    { id: 'fondo', rotulo: 'Trabaja sola, de fondo', items: primero(servicios.filter((s) => SERVICIOS_DE_FONDO.has(s.key))) },
   ].filter((g) => g.items.length > 0);
+  if (destacado == null) return grupos;
+  const conDestacado = grupos.filter((g) => g.items.some((s) => s.key === destacado));
+  return [...conDestacado, ...grupos.filter((g) => !conDestacado.includes(g))];
 }
 
 /** «4 conectadas de 6» — el contador del encabezado (estado-pag del prototipo). */
@@ -126,7 +134,7 @@ function textoConectadas(servicios: ServicioCatalogo[]): string {
   return `${n} ${n === 1 ? 'conectada' : 'conectadas'} de ${servicios.length}`;
 }
 
-export function PantallaApps() {
+export function PantallaApps({ servicioDestacado = null }: { servicioDestacado?: string | null } = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoCatalogo>('cargando');
   const [servicios, setServicios] = useState<ServicioCatalogo[]>([]);
@@ -279,7 +287,7 @@ export function PantallaApps() {
         )}
 
         {estado === 'ok' &&
-          gruposDe(servicios).map((g) => (
+          gruposDe(servicios, servicioDestacado).map((g) => (
             <View key={g.id} style={{ gap: tema.espacio.sm }}>
               <Text
                 testID={`apps-grupo-${g.id}`}

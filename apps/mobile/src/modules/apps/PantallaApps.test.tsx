@@ -322,6 +322,37 @@ describe('PantallaApps', () => {
    * `MarcoGlass`, así que el título tiene que aparecer — pero UNA sola vez, nunca duplicado por el
    * contenido propio.
    */
+  describe('H5b — servicio destacado (llegada desde «Reconectar» de Mi día)', () => {
+    const CATALOGO = [
+      servicioMock({ key: 'googledrive', nombre: 'Google Drive' }),
+      servicioMock({ key: 'gmail', nombre: 'Gmail', estado: 'caido' }),
+      servicioMock({ key: 'mercadopago', nombre: 'MercadoPago' }),
+    ];
+    const orden = () => screen.getAllByTestId(/^app-[a-z]+$/).map((n) => n.props.testID as string);
+
+    it('el servicio destacado va primero de su grupo; el resto conserva el orden', async () => {
+      jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: CATALOGO });
+      render(
+        <ThemeProvider>
+          <PantallaApps servicioDestacado="mercadopago" />
+        </ThemeProvider>,
+      );
+      await waitFor(() => expect(screen.getByTestId('app-mercadopago')).toBeTruthy());
+      expect(orden()).toEqual(['app-mercadopago', 'app-gmail', 'app-googledrive']);
+    });
+
+    it('un destacado que NO está en el catálogo no rompe ni esconde filas', async () => {
+      jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: CATALOGO });
+      render(
+        <ThemeProvider>
+          <PantallaApps servicioDestacado="lo-que-sea" />
+        </ThemeProvider>,
+      );
+      await waitFor(() => expect(screen.getByTestId('app-gmail')).toBeTruthy());
+      expect(orden()).toEqual(['app-gmail', 'app-mercadopago', 'app-googledrive']);
+    });
+  });
+
   it('el título "Apps conectadas" lo aporta el MarcoGlass propio, una sola vez', async () => {
     await envolver();
     expect(screen.getByTestId('glass-titulo').props.children).toBe('Apps conectadas');

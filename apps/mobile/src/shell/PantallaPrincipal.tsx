@@ -195,6 +195,8 @@ export function PantallaPrincipal() {
             comoPortada
             onAjustes={() => empujarUnaVez('/ajustes')}
             onAgenda={() => empujarUnaVez('/agenda')}
+            // H5b: «Reconectar» de la tarjeta crítica abre Apps parado en ESA conexión (`servicio`).
+            onConexion={(servicio) => empujarUnaVez({ pathname: '/apps', params: { servicio } })}
           />
         </PanelFunciones>
       }>

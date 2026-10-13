@@ -170,6 +170,10 @@ export function PantallaInteligencia() {
 
       {estado === 'ok' && portada != null && (
         <>
+        {/* El indicador sólo existe DURANTE el gesto o la confirmación: en reposo mide 0 (prototipo,
+            `index.html:3526` — `#bi-refresh` crece 0→64 con el arrastre y cierra a los 700 ms). Antes era
+            una línea permanente «Tirá para actualizar» sobre el scroll (DEVICE15, fila `bi-refresh`). */}
+        {(refrescando || alDia || -arrastrePx > 0) && (
         <Text
           testID="inteligencia-refresco-estado"
           accessibilityRole="text"
@@ -183,6 +187,7 @@ export function PantallaInteligencia() {
         >
           {TEXTO_REFRESCO[faseRefresco({ actualizando: refrescando, alDia, arrastrePx: -arrastrePx })]}
         </Text>
+        )}
         <ScrollFormulario
           onOffsetY={setArrastrePx}
           testID="inteligencia-portada"

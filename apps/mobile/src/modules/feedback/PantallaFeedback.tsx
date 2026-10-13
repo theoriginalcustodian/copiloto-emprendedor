@@ -100,11 +100,18 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
   const grabando = voz.fase === 'grabando';
 
   return (
-    <MarcoGlass titulo="Feedback" icono="feedback" testID="pantalla-feedback">
+    // «Contanos qué tal»: el título del prototipo (`index.html:2192`) y el rótulo de la fila en Ajustes
+    // (`PantallaAjustes.tsx:86`) y de la pantalla web — antes la pantalla se titulaba «Feedback».
+    <MarcoGlass titulo="Contanos qué tal" icono="feedback" testID="pantalla-feedback">
       <ScrollFormulario
         testID="feedback-scroll"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
       >
+        {/* La bajada del título (`.titulo-pag p` del prototipo): dice a quién le llega y que NO se contesta. */}
+        <Text testID="feedback-bajada" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+          Lo lee el equipo que construye Odobi. No lleva respuesta: sirve para saber qué mejorar.
+        </Text>
+
         {/* «¿Qué le cambiarías?» — la pregunta del prototipo, y no es cosmética: una caja vacía con
             la etiqueta «Tu feedback» pide una evaluación general, que es lo más difícil de contestar
             y lo menos accionable de recibir. Una pregunta concreta devuelve respuestas concretas. */}
@@ -114,16 +121,16 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
         >
           ¿Qué le cambiarías?
         </Text>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Contanos qué te gustaría que mejoremos, o grabá un audio si preferís hablarlo.
-        </Text>
 
         <View style={{ gap: tema.espacio.sm }}>
           <CampoTexto
             etiqueta="Tu feedback"
+            // La pregunta de arriba ya nombra el campo: el rótulo visible «TU FEEDBACK» no está en el
+            // prototipo (`.redactar`, `index.html:2194-2203`). Sigue siendo su nombre accesible.
+            etiquetaOculta
             valor={texto}
             onChange={setTexto}
-            placeholder="Qué funcionó, qué no, qué te gustaría que exista…"
+            placeholder="Lo que se te ocurra. No hace falta que sea prolijo ni corto — se entiende igual."
             multiline
             maxLength={LIMITE_TEXTO}
             testID="feedback-texto"
@@ -141,73 +148,53 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
             </Text>
           )}
 
-          <FilaBotones
-            testID="feedback-texto-acciones"
-            botones={[
-              {
-                etiqueta: envioTexto === 'enviando' ? 'Enviando…' : 'Enviar',
-                onPress: () => void enviarTexto(),
-                variante: 'primario',
-                deshabilitado: !puedeEnviarTexto,
-                testID: 'feedback-texto-enviar',
-              },
-            ]}
-          />
+          {/* El pie del `.redactar` (`index.html:2199-2202`): «Dictarlo» a la izquierda, «Mandar» a la derecha. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: tema.espacio.sm }}>
+            <Pressable
+              testID="feedback-mic"
+              accessibilityRole="button"
+              accessibilityLabel={
+                grabando ? 'Detener grabación y enviar' : 'Grabar feedback por voz'
+              }
+              onPress={() => void alTocarMic()}
+              disabled={envioAudio === 'enviando'}
+              style={pressableStyle({ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }, PRESS_FADE)}
+              hitSlop={8}
+            >
+              <GlassIcon name="grabar" size={18} />
+              <Text
+                style={{
+                  color: grabando ? tema.color.peligro : tema.color.acentoTinta,
+                  fontFamily: tema.fuente.uiSemibold,
+                  fontSize: tema.tipo.base,
+                }}
+              >
+                {grabando ? 'Detener' : 'Dictarlo'}
+              </Text>
+            </Pressable>
+
+            <FilaBotones
+              compacto
+              testID="feedback-texto-acciones"
+              botones={[
+                {
+                  etiqueta: envioTexto === 'enviando' ? 'Enviando…' : 'Mandar',
+                  onPress: () => void enviarTexto(),
+                  variante: 'primario',
+                  deshabilitado: !puedeEnviarTexto,
+                  testID: 'feedback-texto-enviar',
+                },
+              ]}
+            />
+          </View>
         </View>
 
-        {/* 🔴 **La derivación a Soporte, que es lo importante de esta pantalla** (Ola 5). Sin ella,
-            un problema real —algo que no anda— cae en la caja de sugerencias, que por diseño nadie
-            contesta: el emprendedor queda esperando una respuesta que no va a llegar y concluye que
-            avisar no sirve. Acá se dice de frente cuál es cada camino y se ofrece el otro. */}
-        <Row
-          testID="feedback-a-soporte"
-          accessibilityLabel="Ir a Soporte técnico"
-          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
-              ¿Algo no funciona?
-            </Text>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Contalo en Soporte técnico: ahí te contestamos y, si hace falta, abrimos un ticket. Esto
-              de acá lo leemos, pero no lo respondemos.
-            </Text>
-          </View>
-        </Row>
-
         <View style={{ gap: tema.espacio.sm, alignItems: 'center' }}>
-          <Pressable
-            testID="feedback-mic"
-            accessibilityRole="button"
-            accessibilityLabel={
-              grabando ? 'Detener grabación y enviar' : 'Grabar feedback por voz'
-            }
-            onPress={() => void alTocarMic()}
-            disabled={envioAudio === 'enviando'}
-            style={pressableStyle(undefined, PRESS_FADE)}
-            hitSlop={8}
-          >
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: tema.radio.completo,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: grabando ? tema.color.peligro : tema.color.acento,
-              }}
-            >
-              <GlassIcon name="grabar" size={30} />
-            </View>
-          </Pressable>
-
-          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {grabando
-              ? `Grabando… ${voz.segundos}s — tocá de nuevo para enviar`
-              : envioAudio === 'enviando'
-                ? 'Enviando…'
-                : 'Tocá para grabar'}
-          </Text>
+          {(grabando || envioAudio === 'enviando') && (
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              {grabando ? `Grabando… ${voz.segundos}s — tocá de nuevo para enviar` : 'Enviando…'}
+            </Text>
+          )}
 
           {envioAudio === 'error' && errorAudio != null && (
             <Text testID="feedback-audio-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
@@ -225,6 +212,24 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
           )}
         </View>
         <LoPedisteVos version={versionLista} />
+
+        {/* 🔴 **La derivación a Soporte, que es lo importante de esta pantalla** (Ola 5). Sin ella,
+            un problema real —algo que no anda— cae en la caja de sugerencias, que por diseño nadie
+            contesta: el emprendedor queda esperando una respuesta que no va a llegar y concluye que
+            avisar no sirve. Va DESPUÉS de «Lo pediste vos», como la `.nota-sub` del prototipo
+            (`index.html:2210`), y no como card antes del formulario; sigue siendo tocable. */}
+        <Row
+          testID="feedback-a-soporte"
+          accessibilityLabel="Ir a Soporte técnico"
+          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
+        >
+          <Text style={{ flex: 1, color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold }}>
+              Si algo no funciona, mandalo por Soporte técnico
+            </Text>
+            {' — eso sí se contesta, y queda con número de ticket.'}
+          </Text>
+        </Row>
       </ScrollFormulario>
     </MarcoGlass>
   );

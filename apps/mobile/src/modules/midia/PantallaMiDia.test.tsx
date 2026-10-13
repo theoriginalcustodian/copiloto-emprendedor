@@ -253,6 +253,53 @@ describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)'
     expect(onAjustes).toHaveBeenCalledTimes(1);
   });
 
+  describe('H5b — «Reconectar» rutea por `destino.tipo` (contrato H5B-destino-en-la-tarjeta-critica)', () => {
+    async function montarBannerCon(destino: unknown, props: ComponentProps<typeof PantallaMiDia> = {}) {
+      leerMock.mockResolvedValue({
+        status: 'ok',
+        tablero: tableroCon([
+          tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail', destino }),
+        ]),
+      });
+      await montar(props);
+      await waitFor(() => expect(screen.getByTestId('midia-alerta-c-accion')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('midia-alerta-c-accion'));
+    }
+
+    it('destino conexion con id → abre ESA conexión (y no Ajustes)', async () => {
+      const onAjustes = jest.fn();
+      const onConexion = jest.fn();
+      await montarBannerCon({ tipo: 'conexion', id: 'gmail', connectPath: '/composio/connect?service=gmail' }, { onAjustes, onConexion });
+      expect(onConexion).toHaveBeenCalledWith('gmail');
+      expect(onAjustes).not.toHaveBeenCalled();
+    });
+
+    it('🔴 tipo DESCONOCIDO (valor inventado) → cae a Ajustes, sin crash ni pantalla en blanco', async () => {
+      const onAjustes = jest.fn();
+      const onConexion = jest.fn();
+      await montarBannerCon({ tipo: 'lo-que-sea', id: 'gmail', connectPath: null }, { onAjustes, onConexion });
+      expect(onConexion).not.toHaveBeenCalled();
+      expect(onAjustes).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
+    });
+
+    it('destino ausente (backend previo) → Ajustes', async () => {
+      const onAjustes = jest.fn();
+      const onConexion = jest.fn();
+      await montarBannerCon(undefined, { onAjustes, onConexion });
+      expect(onConexion).not.toHaveBeenCalled();
+      expect(onAjustes).toHaveBeenCalledTimes(1);
+    });
+
+    it('conexion SIN id → Ajustes (no hay a qué conexión ir)', async () => {
+      const onAjustes = jest.fn();
+      const onConexion = jest.fn();
+      await montarBannerCon({ tipo: 'conexion', id: null, connectPath: null }, { onAjustes, onConexion });
+      expect(onConexion).not.toHaveBeenCalled();
+      expect(onAjustes).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('sin tarjeta crítica no hay banner', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());

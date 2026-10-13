@@ -183,7 +183,7 @@ export function PanelFunciones({
             >
               <View style={[styles.barra, { backgroundColor: tema.glass.pill }]} />
               <Text style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-                {abierto ? 'Volver a tu día' : 'Funciones'}
+                {abierto ? 'Subí para volver a Mi día' : 'Bajá para tus funciones'}
               </Text>
             </View>
           </GestureDetector>
@@ -205,5 +205,6 @@ const styles = StyleSheet.create({
   // pantalla. Su alto es `ALTO_PESTANA` exacto, que es el mismo número que se le resta al recorrido.
   pestana: { height: ALTO_PESTANA, alignItems: 'center', justifyContent: 'center', gap: 6 },
   barra: { width: 44, height: 5, borderRadius: 3 },
-  rotulo: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.65 },
+  // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
+  rotulo: { fontSize: 11, letterSpacing: 0.2 },
 });

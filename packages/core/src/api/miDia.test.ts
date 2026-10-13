@@ -83,6 +83,43 @@ describe('leerTablero — el camino bueno', () => {
   });
 });
 
+describe('leerTablero — H5b (`datos.destino`, enum cerrado, aditivo)', () => {
+  async function tarjetaConDatos(datos: unknown) {
+    const cruda = { ...TARJETA_CRUDA, criticidad: 'critico', verbo: 'Reconectar', datos };
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
+    const res = await leerTablero();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    return res.tablero.solapas[0]!.tarjetas[0]!;
+  }
+
+  it('lee el shape congelado del contrato: tipo, id y connect_path verbatim (MercadoPago ≠ Composio)', async () => {
+    const t = await tarjetaConDatos({
+      servicio: 'mercadopago',
+      destino: { tipo: 'conexion', id: 'mercadopago', connect_path: '/mp/connect' },
+    });
+    expect(t.destino).toEqual({ tipo: 'conexion', id: 'mercadopago', connectPath: '/mp/connect' });
+  });
+
+  it('un servicio Composio conserva su connect_path tal cual, sin reconstruirlo desde la key', async () => {
+    const t = await tarjetaConDatos({
+      destino: { tipo: 'conexion', id: 'gmail', connect_path: '/composio/connect?service=gmail' },
+    });
+    expect(t.destino?.connectPath).toBe('/composio/connect?service=gmail');
+  });
+
+  it('🔴 un tipo que el contrato no define LLEGA como string (no se descarta): decide quien rutea', async () => {
+    const t = await tarjetaConDatos({ destino: { tipo: 'lo-que-sea', id: 'x' } });
+    expect(t.destino).toEqual({ tipo: 'lo-que-sea', id: 'x', connectPath: null });
+  });
+
+  it('🔴 sin `destino` (backend previo) o con uno malformado → null, nunca inventado', async () => {
+    expect((await tarjetaConDatos({ servicio: 'mercadopago' })).destino).toBeNull();
+    expect((await tarjetaConDatos({ destino: 'conexion' })).destino).toBeNull();
+    expect((await tarjetaConDatos({ destino: { id: 'mercadopago' } })).destino).toBeNull();
+    expect((await tarjetaConDatos({ destino: { tipo: '  ' } })).destino).toBeNull();
+  });
+});
+
 describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () => {
   it('lee los tres campos que manda el backend', async () => {
     const cruda = { ...TARJETA_CRUDA, categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo' };

@@ -24,7 +24,11 @@ jest.mock('react-native-reanimated', () => {
 });
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
+import { TAGLINE_MARCA } from '@copiloto/core';
+
+import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { RevealEntrada } from './RevealEntrada';
 
@@ -83,5 +87,29 @@ describe('RevealEntrada — wordmark "dobi" letra a letra (BL-X10, port fiel)', 
     expect(screen.getByText('o')).toBeTruthy();
     expect(screen.getByText('b')).toBeTruthy();
     expect(screen.getByText('i')).toBeTruthy();
+  });
+});
+
+describe('RevealEntrada — lockup del prototipo (TRIAJE15, fila `reveal`/`splash`)', () => {
+  it('el wordmark mide 46 dp y es del color de marca, no `acentoTinta` (`.rv-word`, index.html:469)', async () => {
+    await montar(undefined);
+    const estilo = StyleSheet.flatten(screen.getByText('d').props.style);
+    expect(estilo.fontSize).toBe(46);
+    expect(estilo.color).toBe(COLOR_PALABRA_MARCA);
+  });
+
+  it('dibuja el descriptor «Tu copiloto emprendedor» junto al wordmark, más chico que él', async () => {
+    await montar(undefined);
+    const tagline = screen.getByTestId('reveal-entrada-tagline');
+    expect(tagline.props.children).toBe(TAGLINE_MARCA);
+    expect(TAGLINE_MARCA).toBe('Tu copiloto emprendedor');
+    // «Acompaña, no compite en jerarquía» (Brand Book l.69/72): nunca del tamaño del nombre.
+    expect(StyleSheet.flatten(tagline.props.style).fontSize).toBeLessThan(46);
+  });
+
+  it('con movimiento reducido el descriptor también queda visible', async () => {
+    mockReducedMotion = true;
+    await montar(undefined);
+    expect(screen.getByTestId('reveal-entrada-tagline')).toBeTruthy();
   });
 });

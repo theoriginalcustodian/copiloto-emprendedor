@@ -159,7 +159,7 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
       <h1 className="feedback-screen__title" data-testid="feedback-titulo">
         Contanos qué tal
       </h1>
-      <p className="feedback-screen__title-intro">
+      <p className="feedback-screen__title-intro" data-testid="feedback-bajada">
         Lo lee el equipo que construye Odobi. No lleva respuesta: sirve para saber qué mejorar.
       </p>
 
