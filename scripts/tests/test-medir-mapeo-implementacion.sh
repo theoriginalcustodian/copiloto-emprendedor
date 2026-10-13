@@ -168,4 +168,38 @@ else
   fail "7 rc=$rc · hay un brazo cuya rotura no mueve nada, o sea sin control: $(head -c 300 <<< "$out")"
 fi
 
-[ "$fallos" -eq 0 ] && echo "  OK (7/7)" || { echo "  $fallos fallo(s)"; exit 1; }
+# ── 8 · `backend + nativa` CON veredicto versionado ENTRA ─────────────────────────────────────
+# El par importa entero y el caso 1 ya es el NEGATIVO (los dos `bk-*` sin doc -> fuera=2), asi que
+# aca falta el POSITIVO. Sin este caso, «fuera» era indistinguible de «fuera por pertenecer al
+# grupo» — que es como estuvo escrito hasta el 2026-10-13, y entonces el DoD que planificacion le
+# bajo a frontend1 («el medidor mueve `onb-cumplida` a medida») no se cumplia con NINGUN documento.
+# Lo cazo ella midiendo, no este test: por eso existe ahora.
+H="$TMP/bkconveredicto"; armar "$H"
+printf '# veredicto bloque chat\n\n### 1 \xc2\xb7 `sd-uno` \xe2\x80\x94 \xe2\x9c\x85\n\n### 2 \xc2\xb7 `bk-uno` \xe2\x80\x94 \xe2\x9c\x85 + \xf0\x9f\x93\x9d\n\ncuerpo\n' \
+  > "$H/docs/copiloto-emprendedor/2026-10-13-veredicto-bloque-chat-fixture.md"
+out="$(correr "$H" --json)"; rc=$?
+if [ "$rc" = "0" ] \
+   && [ "$(campo "$out" fuera_de_este_corpus)" = "1" ] \
+   && [ "$(campo "$out" con_veredicto)" = "5" ] \
+   && [ "$(campo "$out" cerrada_en_codigo)" = "2" ] \
+   && [ "$(campo "$out" cumple_dod)" = "4" ]; then
+  ok "8 backend+nativa CON veredicto versionado -> entra (fuera 2->1, medidas 4->5, codigo 1->2)"
+else
+  fail "8 rc=$rc · una fila backend+nativa con doc versionado no entro, o entro sin contarse: $(head -c 300 <<< "$out")"
+fi
+
+# ── 9 · …y una MENCIONADA SIN simbolos no entra por la puerta de atras ────────────────────────
+# El riesgo del fix: si el guard mira solo «¿hay entrada?» y no «¿tiene simbolos?», un doc que
+# menciona el id sin veredicto cae al `else` y sale ENMIENDA-FUNDADA por AUSENCIA de evidencia —
+# el degradado prudente que envenena la medicion. Tiene que quedar FUERA, no cumplir el DoD.
+I="$TMP/bkmudo"; armar "$I"
+printf '# veredicto bloque chat\n\n### 1 \xc2\xb7 `sd-uno` \xe2\x80\x94 \xe2\x9c\x85\n\n### 2 \xc2\xb7 `bk-uno` \xe2\x80\x94 sin veredicto todavia\n' \
+  > "$I/docs/copiloto-emprendedor/2026-10-13-veredicto-bloque-chat-fixture.md"
+out="$(correr "$I" --json)"; rc=$?
+if [ "$rc" = "0" ] && [ "$(campo "$out" fuera_de_este_corpus)" = "2" ]; then
+  ok "9 backend+nativa mencionada SIN simbolos -> sigue fuera (no cumple el DoD por ausencia)"
+else
+  fail "9 rc=$rc · fuera=$(campo "$out" fuera_de_este_corpus) · un id mencionado sin veredicto se conto: $(head -c 300 <<< "$out")"
+fi
+
+[ "$fallos" -eq 0 ] && echo "  OK (9/9)" || { echo "  $fallos fallo(s)"; exit 1; }
