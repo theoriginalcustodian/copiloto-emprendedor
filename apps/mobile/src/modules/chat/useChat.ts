@@ -143,7 +143,7 @@ export interface UseChatResult {
   estado: EstadoChat | null;
   send: (text: string, opts?: SendOptions) => Promise<void>;
   /** Sube un dictado corto (`useVozComando`) para transcribir y despachar -- ver el docstring de
-   * `enviarAudio` más abajo. `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns». */
+   * `enviarAudio` más abajo. `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · m:ss». */
   enviarAudio: (audio: ArchivoSubida, duracionSeg: number) => Promise<void>;
   /** Sube una foto de ticket (`useCapturaFoto`) para OCR y despachar -- ver el docstring de
    * `enviarFoto` más abajo. */

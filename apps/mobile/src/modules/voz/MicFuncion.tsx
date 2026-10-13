@@ -11,6 +11,7 @@ import { BotonVoz } from '../chat/BotonVoz';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { useVozComando } from '../chat/useVozComando';
 import { useTema } from '../../theme/ThemeProvider';
+import { formatearDuracion } from '../../util/formatearDuracion';
 
 export interface MicFuncionProps {
   /** A dónde va el texto. Se llama UNA sola vez por dictado, ya transcripto. */
@@ -53,7 +54,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
   const voz = useVozComando();
   const [fijado, setFijado] = useState(false);
   const [cancelando, setCancelando] = useState(false);
-  // Duración del último dictado transcripto con éxito — alimenta el chip «Por voz · Ns» (DoD FE1 #5).
+  // Duración del último dictado transcripto con éxito — alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   // `null` mientras no hubo ningún dictado todavía, o mientras uno nuevo está en curso.
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
   // Instante en que arrancó el gesto (mismo criterio que `MicFuncion` web): medido acá en vez de
@@ -148,12 +149,12 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
         </View>
       )}
 
-      {/* Chip «Por voz · Ns» (DoD FE1 #5, BL-J7 H-17) — confirma la duración del dictado que acaba
+      {/* Chip «Por voz · m:ss» (DoD FE1 #5, BL-J7 H-17) — confirma la duración del dictado que acaba
           de rellenar el campo. Sólo aparece con el gesto en reposo: mientras graba/fijado, la Onda
           y los controles ya ocupan ese lugar. */}
       {ultimaDuracionSeg !== null && !fijado && voz.fase === 'inactivo' && (
         <Text testID="mic-funcion-chip" style={[estilos.chip, { color: tema.color.textoTenue }]}>
-          Por voz · {ultimaDuracionSeg}s
+          {`Por voz · ${formatearDuracion(ultimaDuracionSeg)}`}
         </Text>
       )}
     </View>
