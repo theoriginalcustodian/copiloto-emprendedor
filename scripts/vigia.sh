@@ -19,9 +19,18 @@
 # LA PROPIEDAD DE DISEÑO QUE LO HACE FUNCIONAR, y es la única razón de que este archivo sea tan
 # chico: el arranque no puede arreglarse con código que viva en el árbol viejo —una copia vieja del
 # guard no se ejecuta nunca—. Así que este lanzador NO decide nada: ubica el pin de `main` y
-# delega. Su semántica no cambia, así que **una copia vieja de ESTE archivo hace lo mismo que la
-# nueva**. Toda la lógica que sí evoluciona vive en el instrumento, que se lee del pin.
-# Corolario: si alguna vez hay que agregarle una decisión, va en el instrumento, no acá.
+# delega. Toda la lógica que sí evoluciona vive en el instrumento, que se lee del pin.
+#
+# 🔴 CORRECCION 2026-10-13. Acá decía que «una copia vieja de ESTE archivo hace lo mismo que la
+# nueva», y era FALSO: la whitelist —que es POLITICA, y la política evoluciona— vivía en este
+# archivo. Medido: las copias de /c/gfw-src/_*-vigia rechazaban `mi-buzon.sh` con rc 2 aunque el
+# instrumento existía en el pin; 5 de 6 pines estaban atrasados. Lo levantó FRONTEND2, no este
+# comentario — que es el problema: un comentario que DECLARA una propiedad apaga la búsqueda del
+# próximo que la mire. La afirmación ahora es verdadera por CONSTRUCCION, no por promesa: antes de
+# aplicar la whitelist, el lanzador se RE-EJECUTA desde el `vigia.sh` del pin si difiere del suyo
+# (converge en un salto; `UC_VIGIA_REEXEC` es el backstop). Lo prueba el caso 9 del test, con su
+# control negativo y su mutante.
+# Corolario que SIGUE valiendo: si hay que agregarle una decisión, va en el instrumento, no acá.
 #
 # USO
 #   scripts/vigia.sh <instrumento.sh|.py> [args...]
@@ -47,7 +56,9 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REF="${UC_VIGIA_REF:-origin/main}"
 
-# ── whitelist. Se aisla por NOMBRE PERMITIDO, no por dirname: un `..` en el argumento convierte
+# ── el nombre pedido. La whitelist que lo valida NO esta aca: vive mas abajo, DESPUES de
+# refrescar el pin, porque es POLITICA y la politica evoluciona.
+# (whitelist historica, movida el 2026-10-13 — ver el bloque de abajo.) Se aisla por NOMBRE PERMITIDO, no por dirname: un `..` en el argumento convierte
 # cualquier dirname en el directorio que el atacante quiera.
 #    → memoria: aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname
 INSTRUMENTO="${1:-}"; shift || true
@@ -55,17 +66,6 @@ INSTRUMENTO="${1:-}"; shift || true
 # NO existe en el checkout compartido, asi que ese paso caia al filtro `find` a mano, que medido
 # el 2026-10-12 dejaba 7 de 12 mensajes invisibles. Es un LECTOR del buzon (read-only) y comparte
 # `me_interpela()` con el gate: leerlo del pin es lo que lo hace COINCIDIR con el gate, no divergir.
-case "$INSTRUMENTO" in
-  vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
-  escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
-  mi-buzon.sh) ;;
-  *)
-    printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
-    printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
-    printf '%s\n' "              foco-check.sh escaladores-buzon.sh archivar-buzon.sh" >&2
-    printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh mi-buzon.sh" >&2
-    exit 2 ;;
-esac
 
 # ── dónde vive el pin. Derivado, no hardcodeado: hermano del checkout principal, uno por checkout
 # que invoca, para que cinco crones no se peleen el mismo índice.
@@ -124,8 +124,20 @@ if [ -n "$PIN" ] && [ "$REFRESCAR" = "1" ]; then
     _topr="$(cd "$_top" 2>/dev/null && pwd -P || true)"
     _pinr="$(cd "$PIN" 2>/dev/null && pwd -P || true)"
     if [ -z "$_topr" ] || [ "$_topr" != "$_pinr" ]; then
+      # MEDIDO el 2026-10-13: `worktree add` se niega sobre un directorio que YA EXISTE, y
+      # `--force` NO ayuda (mismo `fatal: ... already exists`). Lo UNICO que recupera es sacar
+      # la carcasa del camino primero. Sin esto la rama entera era INALCANZABLE: reportaba
+      # DEGRADADO para siempre y el pin nunca volvia. Y el caso 7 del test pasaba IGUAL,
+      # porque afirmaba el BANNER y no la RECUPERACION -- y el banner es justo lo que el
+      # fallo produce. Guarda: la carcasa solo se toca si NO tiene `.git`; con `.git` presente
+      # y toplevel distinto no se borra nada, se degrada. `UC_VIGIA_PIN` viene del entorno y
+      # un borrado sobre un path de entorno no se hace a ciegas.
+      if [ ! -e "$PIN/.git" ]; then
+        rm -rf "$PIN" 2>/dev/null || mv "$PIN" "$PIN.roto-$$" 2>/dev/null || true
+      fi
       git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
-      git -C "$REPO_ROOT" worktree add --detach "$PIN" "$REF" >/dev/null 2>&1 \n        || degradado="el pin existe como carpeta pero NO es un worktree (¿poda parcial?) y no pude recrearlo"
+      git -C "$REPO_ROOT" worktree add --detach "$PIN" "$REF" >/dev/null 2>&1 \
+        || degradado="el pin existe como carpeta pero NO es un worktree (¿poda parcial?) y no pude recrearlo"
     fi
   fi
   if [ -d "$PIN" ] && [ -z "$degradado" ]; then
@@ -135,6 +147,32 @@ if [ -n "$PIN" ] && [ "$REFRESCAR" = "1" ]; then
       || degradado="${degradado:-no pude fijar el pin a $REF}"
   fi
 fi
+
+# ── RE-EXEC desde el pin. El docstring de arriba afirmaba que "una copia vieja de ESTE archivo
+# hace lo mismo que la nueva", y era FALSO: la whitelist —que es POLITICA— vivia en el lanzador,
+# asi que una copia vieja la aplicaba vieja. Medido el 2026-10-13: las copias de
+# /c/gfw-src/_*-vigia rechazan `mi-buzon.sh` con rc 2 (no esta en SU whitelist) mientras el
+# instrumento SI existe en el pin; 5 de 6 pines estaban atrasados. Lo levanto FRONTEND2.
+# El arreglo no es agrandar la whitelist —eso fue el parche del 2026-10-13 por la manana— sino que
+# el lanzador delegue en el del pin ANTES de decidir nada. Converge en UN salto: el hijo deriva
+# el MISMO pin (su REPO_ROOT pasa a ser el pin y la derivacion da el mismo path), asi que su
+# `cmp` sale identico y no vuelve a saltar. UC_VIGIA_REEXEC es el backstop duro del lazo.
+if [ "${UC_VIGIA_REEXEC:-0}" != "1" ] && [ -n "$PIN" ] && [ -f "$PIN/scripts/vigia.sh" ]    && ! cmp -s "$PIN/scripts/vigia.sh" "${BASH_SOURCE[0]}"; then
+  export UC_VIGIA_REEXEC=1
+  exec bash "$PIN/scripts/vigia.sh" "$INSTRUMENTO" "$@"
+fi
+
+case "$INSTRUMENTO" in
+  vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
+  escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
+  mi-buzon.sh) ;;
+  *)
+    printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
+    printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
+    printf '%s\n' "              foco-check.sh escaladores-buzon.sh archivar-buzon.sh" >&2
+    printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh mi-buzon.sh" >&2
+    exit 2 ;;
+esac
 
 # ── elegir qué se ejecuta, y decirlo cuando no es lo pedido
 EJECUTA=""
