@@ -11,6 +11,7 @@
 > o fixtures (`gphy_test`), y los `eyJ…` de dos fixtures **no decodifican como JWT**. Cada pasada con
 > control positivo. Nada que rotar. **Antes de commitear algo nuevo con forma de credencial, asumí que
 > lo estás publicando.**
+> ➕ **La auditoría de secretos buscaba CREDENCIALES, y eso es lo único que su «0» acredita.** Medido el 2026-10-12: la historia también tiene **10 cortes de la fuente comercial Neue Einstellung** (Hanken Design Co., 0,7 MB, alta en `b7fae2e2`) — cero en el árbol y cero alcanzables desde `main`, pero descargables de la historia. **No es un secreto** (nada que rotar, ningún acceso que revocar); es **licencia de terceros en un repo público**, otra pregunta con otro barrido. **Decisión del operador: dejarlo** — `filter-repo` no cerraría el agujero porque GitHub sigue sirviendo los blobs por los **1006** `refs/pull/*` hasta que haga GC, y la reescritura sí costaría cierto: invalida todas las citas `medido @ <sha>` de los docs y los 51 worktrees activos. Medición completa y disparador para reabrir → `docs/copiloto-emprendedor/Auditorias/2026-10-12-fonts-comerciales-en-la-historia-publica-decision-A-dejarlo.md`.
 > ⚠️ **Esa atestación tiene FECHA y ya fue superada: el 2026-08-19 entró un token real** (PR#464,
 > `Prototipo frontend/odobi-ui/.mcp.json`, `Authorization: Bearer` de **60fps.design**), estuvo **24
 > días** expuesto en repo público y se sacó de HEAD el 2026-09-08 (#505). **El blob sigue siendo
