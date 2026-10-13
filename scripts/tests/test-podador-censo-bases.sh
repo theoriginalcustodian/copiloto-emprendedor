@@ -58,17 +58,28 @@ echo "── 4. NO BORRA: el fixture sigue entero tras el dry-run ──"
 n="$(find "$BASE" -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')"
 [ "$n" = "5" ] && ok "las 5 carpetas siguen en disco (dry-run no toca nada)" || mal "el dry-run cambio el disco: quedan $n de 5"
 
-echo "── 5. CONTROL POSITIVO: la version de origin/main NO ve nada de esto ──"
-if git -C "$REPO" show origin/main:scripts/podar-worktrees.sh > "$CTL" 2>/dev/null; then
+# ANCLA FIJA, y el motivo es el fallo que este test tuvo en CI el 2026-10-12: el control positivo
+# citaba `origin/main` como "la version vieja". Mientras el fix estaba en una rama eso era cierto y
+# el test daba 10/10 en local; al mergearse el PR #1035, `origin/main` paso a TENER el fix y el
+# control se volvio imposible de satisfacer -- el test se autodestruyo al entrar a main, y el rojo
+# aparecio en el PR siguiente, no en el suyo.
+#   Un control positivo no puede anclarse a un ref MOVIL: mide "antes del merge", y despues miente.
+# `52b5cd18` es el ultimo commit SIN el fix (`git log -2 origin/main -- scripts/podar-worktrees.sh`
+# el 2026-10-12) y es historia inmutable. Mismo patron que `test_redeploy_mismo_sha.sh`, que compara
+# contra `bf406abe` fijo; el job `lint` ya trae `fetch-depth: 0`, que es lo que ambos necesitan.
+REF_PREFIX="${REF_PREFIX:-52b5cd18}"
+
+echo "── 5. CONTROL POSITIVO: la version PRE-FIX ($REF_PREFIX) NO ve nada de esto ──"
+if git -C "$REPO" show "$REF_PREFIX:scripts/podar-worktrees.sh" > "$CTL" 2>/dev/null; then
   vieja="$(bash "$CTL" --base "$BASE" 2>&1)"
   printf '%s\n' "$vieja" | grep -q '🔎 CENSO:' \
-    && mal "la version vieja ya tenia la linea CENSO: el control no esta midiendo el fix" \
+    && mal "la version PRE-FIX ya tenia la linea CENSO: el ancla $REF_PREFIX no es pre-fix, re-medi con git log -2" \
     || ok "la vieja no tiene linea CENSO (no dice cuantos miro)"
   printf '%s\n' "$vieja" | grep -qE 'wt-huerfano|wt-resto' \
     && mal "la version vieja SI vio el fixture: el defecto no se reproduce, revisar la premisa" \
     || ok "la vieja es CIEGA al fixture — defecto reproducido, el fix es lo que cambia"
 else
-  mal "no pude traer origin/main:scripts/podar-worktrees.sh (sin control positivo, el verde no acredita)"
+  mal "no pude traer $REF_PREFIX:scripts/podar-worktrees.sh (sin control positivo, el verde no acredita). Si el objeto no esta en el clon, el job necesita fetch-depth: 0"
 fi
 
 echo
