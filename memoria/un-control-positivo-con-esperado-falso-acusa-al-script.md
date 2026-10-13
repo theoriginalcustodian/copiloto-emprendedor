@@ -125,3 +125,30 @@ retira es la **causa citada**, no la observación. Ver
 **Lo cazó backend, no yo** — midió el marcador que le di en vez de cumplirlo, y reportó «el
 criterio del contrato no se puede cumplir tal como está escrito». Un dueño que verifica el criterio
 que recibe es el último control que queda cuando el que lo escribió no le hizo ninguno.
+
+---
+
+## Refuerzo 2026-10-12 — el mutante REUBICADO falla por «no pude medir», y comparte el código de salida con el caso que quería ejercitar
+
+Para probar que el aviso del corpus distingue, saqué la clave recién clasificada y corrí el
+instrumento mutante vía `CONTADOR_PY=<scratchpad>/mutante.py`. Dio **rc=1**, el mismo que esperaba, y
+casi lo firmé como control positivo. No lo era:
+
+| corrida | rc | lo que dijo de verdad |
+|---|---|---|
+| A — real, con la clasificación | 0 | `CORPUS: sin novedades — todo documento clasificado` |
+| B — mutante en el **scratchpad** | 1 | **`exit 2`: NO SE PUDO MEDIR** — «no encontré `…/docs/…`» |
+| B2 — mutante **dentro del repo** | 1 | `exit 8`: SIN CLASIFICAR, **nombrando el doc** |
+
+**La causa:** el contador deriva las rutas del repo desde la ubicación de su propio archivo. Movido al
+scratchpad, buscó `docs/copiloto-emprendedor/...` **bajo el scratchpad** y abortó antes de mirar un
+solo veredicto. O sea: el mutante no midió mal — **no midió**. Y como el wrapper colapsa todo a `1`,
+el `exit 2` («el instrumento, no el dato») y el `exit 8` («el dato») llegan indistinguibles.
+
+**La regla:** un mutante sólo ejercita el caso si **resuelve su entorno igual que el original**. Si el
+script deduce rutas de `__file__`, el mutante va en la **misma carpeta** (y se borra en un `trap EXIT`
+/ `finally`, nunca al final del happy path — [[un-script-que-revierte-al-final-deja-el-mutante]]).
+Y el veredicto se lee del **mensaje**, no del rc: el propio instrumento ya separaba las dos clases con
+`exit 2` vs `exit 8`, y fui yo quien tiró esa información al mirar sólo el código de salida.
+
+→ [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] · [[el-instrumento-versionado-difiere-por-rama]]
