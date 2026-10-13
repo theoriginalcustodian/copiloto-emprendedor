@@ -432,7 +432,10 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onCone
   const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
   const cuerpo = (
-      <View style={styles.raiz}>
+      // 🔴 UN solo scroll para TODA la pantalla (DEVICE15 `tablero`, «viewport útil ≈120 dp»): antes el
+      // encabezado (portada + aviso + resumen + banner + solapas) era fijo y sólo la lista scrolleaba, y con un
+      // aviso crítico quedaban ~1,5 tarjetas a la vista. Ahora el encabezado se va con el dedo.
+      <ScrollView style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
         {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
             dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
             sería peor que la ausencia. */}
@@ -539,7 +542,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onCone
             )}
 
             {tarjetas.length > 0 && (
-              <ScrollView contentContainerStyle={styles.lista} testID="midia-lista">
+              <View style={styles.lista} testID="midia-lista">
                 {tarjetas.map((t) => (
                   <TarjetaMiDiaRow
                     key={t.id}
@@ -555,11 +558,11 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onCone
                 <Text testID="midia-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingTop: 4 }}>
                   Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.
                 </Text>
-              </ScrollView>
+              </View>
             )}
           </>
         )}
-      </View>
+      </ScrollView>
   );
 
   if (!comoPortada) {
@@ -797,6 +800,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   raiz: { flex: 1 },
+  raizContenido: { flexGrow: 1 },
   calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
   verAgenda: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },

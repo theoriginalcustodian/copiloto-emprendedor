@@ -463,6 +463,39 @@ a planificación como escalada (`pedido_`). La verificación «después» queda 
 `SAMPLER=1`, N ≥ 60 sobre el binario nuevo**; con una tasa de ≈5,6 % la probabilidad de 0 crashes por azar en 60
 arranques es ≈3 %, así que 0/60 sería evidencia, y N=12 no lo es.
 
+## H2 — CRASHFRIO: medición «después» sobre el binario con el parche (2026-10-13, noche)
+
+**Decisión (planificación, opción B):** parchear `react-native-screens@4.25.2` con el diff de #4413 vía `patch-package`
+y reconstruir el dev-client. Repo: `apps/mobile/package.json:59` (`postinstall`), `apps/mobile/package.json:49`
+(`patch-package` 8.0.1), `apps/mobile/patches/react-native-screens+4.25.2.patch` y la deuda de retiro `PATCHSCREENS`
+(`coordinacion/PLAN.md:324`: quitarlo al subir de Expo SDK). PR #1085 (`159f883b`).
+
+**Control del ARTEFACTO (el control es el binario, no el disco).** Build EAS `ad2ce5e4-fd31-49af-9004-5ebd43962749`.
+El APK **instalado en el device** y el del build son el mismo archivo (sha256 `f2e5cf8bcf1b55ce…`, 325 391 635 B);
+el APK «antes» es otro (`0630fd38965ccfef…`). `lib/arm64-v8a/librnscreens.so` **difiere**: antes 347 448 B
+(`752d3e05b1250558…`), después 352 344 B (`b1ad415060a8504e…`); el `.so` extraído del build es idéntico bit a bit al del
+APK instalado. Lo que se mide es, por lo tanto, el binario con el parche — no un `node_modules` parcheado en disco.
+
+**Serie «después».** Mismo device `RF8T318RN9T`, misma receta
+([`2026-10-13-receta-crashfrio.py`](2026-10-13-receta-crashfrio.py)), `SAMPLER=1` (la condición del hallazgo),
+logged-out, animaciones normales, ventana de 50 s por arranque en frío, logcat `-b all` a archivo completo.
+
+| serie | condición | crash / N |
+|---|---|---|
+| antes (A+B+C) | binario sin parche | **2 / 36 (≈5,6 %)** |
+| después | binario con parche, `SAMPLER=1` | **0 / 60** |
+| control + (después) | `kill -11` a los 17 s sobre el binario nuevo | **1 / 1** detectado: `code 0 (SI_USER from pid 26521, uid 10249)` |
+
+Verificado con script sobre `serie.log`: 60 corridas, `crash:true` = 0, `vivo_al_final:false` = 0, hits de
+`Fatal signal|SIGSEGV` = 0. Una corrida (la 8) no llegó a identificar la pantalla (`pantalla: ninguna`) pero la app
+siguió viva sin hits: cuenta como arranque válido (el crash del hallazgo es del montaje, no de una pantalla).
+
+**Lectura.** Con la tasa previa de ≈5,6 %, la probabilidad de 0 en 60 arranques por azar es ≈3 %
+(`0,944^60`). **0/60 es evidencia a favor del parche, no una prueba**: la muestra no distingue una tasa residual < ≈4 %.
+El control positivo muestra que el instrumento ve un SIGSEGV en el binario nuevo. **No se midió release** (no hay binario
+release en el device; los terceros sólo lo vieron en debug). Veredicto H2: `CORREGIDO EN EL BINARIO DE DEBUG (0/60)`;
+queda abierta la verificación en release cuando exista el binario.
+
 ## Efectos colaterales de la medición (declarados)
 
 El device **escribe en la base** del usuario canónico. Quedó registrado en su tenant:
