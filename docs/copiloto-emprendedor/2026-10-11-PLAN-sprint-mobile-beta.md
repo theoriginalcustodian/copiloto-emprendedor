@@ -79,12 +79,28 @@ porque engancha filas de otras tablas.
 
 | cifra | unidad | valor |
 |---|---|---|
-| **cumple el DoD** | filas de contrato | **32/54 (59 %)** — el DoD admite «resuelta en código **o** enmienda fundada» |
-| **cerrada en código** | filas de contrato | **24/54 (44 %)** — sólo lo escrito y mergeado |
-| **con veredicto medido** | filas de contrato | **47/54 (87 %)** por este corpus; **53/54** sumando los `cierre_` de backend |
+| **cumple el DoD** | filas de contrato | **34/54 (62 %)** — el DoD admite «resuelta en código **o** enmienda fundada» |
+| **cerrada en código** | filas de contrato | **25/54 (46 %)** — sólo lo escrito y mergeado |
+| **con veredicto medido** | filas de contrato | **48/54 (88 %)** por este corpus; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
+| **fuera de este corpus** | filas de contrato | **6/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`) |
 
-Contra el 11/10 (8 comparados de verdad, 46 por medir) el movimiento del día es **de 8 a 47 filas
-medidas**, con 37 acreditadas contra su DoD sumando backend.
+> 📐 **RE-MEDIDO el 2026-10-13 sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
+> C:\gfw-src\wt-medir-main`), por planificación. La medición anterior de este mismo bloque —32/54 ·
+> 24/54 · 47/54, con **7** fuera— es de unas horas antes, sobre un `main` que todavía no tenía el
+> veredicto versionado de `onb-cumplida` (#1083) ni los dos fixes del medidor (#1081, #1082).
+> **No es un criterio que creció: es el mismo instrumento midiendo más trabajo mergeado.**
+> ⚠️ Una cifra sin su SHA al lado no es evidencia, es una fecha — y la de la worktree de una sesión
+> tampoco sirve: esta sale de un árbol en `main`.
+>
+> **Qué movió el número, fila por fila:** `onb-cumplida` entró al corpus (fuera 7→6) como
+> `CERRADA-EN-CODIGO` —primera fila `backend + nativa` con su veredicto en un doc **versionado**, el
+> precedente que `EVIDENCIABUZON` necesitaba— y `esc` cuenta `COHERENTE` medida en device. El fix que
+> lo habilitó: `clasificar()` daba `FUERA-DE-ESTE-CORPUS` a **todo** el grupo `backend + nativa`, con
+> o sin veredicto, así que esas 7 filas eran **incerrables por construcción** — lo midió frontend1
+> contra el código en vez de intentar cumplir un DoD inejecutable.
+
+Contra el 11/10 (8 comparados de verdad, 46 por medir) el movimiento del día es **de 8 a 48 filas
+medidas**, con 39 acreditadas contra su DoD sumando backend.
 
 > 🔴 **Por qué el 13/54 mintió, y no fue el dato.** `contar-veredictos.py` descubre su corpus con
 > `rglob` sobre **`coordinacion/`**. Los tres docs de veredictos de este sprint viven en
