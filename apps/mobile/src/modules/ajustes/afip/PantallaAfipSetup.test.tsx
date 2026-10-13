@@ -211,6 +211,29 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
+  it('mapeo `afip`: con vínculo dice «ARCA vinculada · CUIT …» y sin vínculo NO lo afirma; label «Condición frente al IVA»', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('afip-estado-vinculo')).toBeTruthy());
+    expect(screen.getByTestId('afip-estado-vinculo')).toHaveTextContent(`ARCA vinculada · CUIT ${CUIT_FORMATEADO}`);
+    expect(screen.getByText('Condición frente al IVA')).toBeTruthy();
+  });
+
+  it('mapeo `afip` (control): sin credencial vinculada el encabezado de vínculo NO se dibuja', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: false }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-cuit-fijo')).toBeTruthy());
+    expect(screen.queryByTestId('afip-estado-vinculo')).toBeNull();
+  });
+
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
     await montar();
 

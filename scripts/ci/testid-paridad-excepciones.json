@@ -4867,6 +4867,16 @@
       "id": "ajustes-intro",
       "motivo": "Mapeo `ajustes` (2026-10-13): subtitulo del prototipo (index.html:2113) en la pantalla nativa Ajustes. La web no tiene pantalla Ajustes con grilla (su configuracion vive en modules/account y modules/connections); no es contenido faltante de mobile.",
       "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes/afip::afip-estado-vinculo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "afip-estado-vinculo",
+      "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/afip"
     }
   }
 }

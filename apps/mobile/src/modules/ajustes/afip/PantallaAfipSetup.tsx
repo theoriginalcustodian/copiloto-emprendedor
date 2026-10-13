@@ -524,6 +524,22 @@ export function PantallaAfipSetup() {
         testID="afip-setup-scroll"
         contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.xl }]}
       >
+        {/* Mapeo `afip` (index.html:2310): «ARCA vinculada · CUIT …» arriba, el estado del vínculo antes
+            de los campos. Sale de `conectado` (existe la credencial) y del CUIT compartido — sin
+            ninguno de los dos no se afirma nada. ENMIENDAS FUNDADAS (2026-10-13): NO hay link
+            «Necesito cambiarlo ›» en el CUIT bloqueado (BL-V27: decisión del operador, cero control que
+            sugiera cambiarlo; el test lo fija) · el guardado es UN botón explícito y no un «Guardado»
+            por campo · los bloques «2. Alta ARCA» y «3. Ambiente» son funciones reales de la beta que
+            el prototipo no modela. */}
+        {conectado && cuit !== '' && (
+          <Text
+            testID="afip-estado-vinculo"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+          >
+            ARCA vinculada · CUIT {formatearCuit(cuit)}
+          </Text>
+        )}
+
         {/* ---------------------------- Bloque 1 -- Perfil fiscal ---------------------------- */}
         <Seccion titulo="1. Perfil fiscal" testID="afip-bloque-perfil">
           <View style={{ gap: tema.espacio.md }}>
@@ -592,7 +608,7 @@ export function PantallaAfipSetup() {
             />
             <CampoSelect
               testID="afip-perfil-condicion-iva"
-              etiqueta="Condición IVA"
+              etiqueta="Condición frente al IVA"
               opciones={OPCIONES_CONDICION_IVA}
               valor={camposPerfil.condicionIva}
               onChange={(v) => actualizarCampoPerfil('condicionIva', v as CondicionIvaEmisor)}
