@@ -62,7 +62,7 @@ STUB
   {
     echo 'set -euo pipefail'
     echo 'HOST="stub-host"; REMOTE="/stub"; SHA_BUILD="cccccccccccccccccccccccccccccccccccccccc"; STG="dist-cccc-run"'
-    echo 'WEB_PORT=8099; WEB_UNIT="x"; WORKER_UNIT="y"; WORKER_SOPORTE_UNIT="z"; VENV="/stub-venv"'
+    echo 'WEB_PORT=8099; WEB_UNIT="x"; WORKER_UNIT="y"; WORKER_SOPORTE_UNIT="z"; VENV="/stub-venv"; _nonce="nonce-de-prueba"'
     echo "LOCAL=\"$sandbox\"; UC_CANARIO_FALLA_TRAS_RESTART=\"\""
     printf '%s\n' "$bloque"
   } > "$script"

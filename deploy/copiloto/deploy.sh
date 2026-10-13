@@ -427,9 +427,9 @@ else
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" "$VENV" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" "$VENV" "$_nonce" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"; VENV="$8"
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"; VENV="$8"; DEPLOY_NONCE="$9"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
@@ -479,13 +479,32 @@ rc_poller=0
 "$VENV/bin/python" "$REMOTE/deploy/copiloto/worker_pollers_check.py" --timeout "${UC_POLLER_TIMEOUT:-60}" \
   "$WORKER_UNIT:AGENT_B_TASK_QUEUE:agent-emprendedor" \
   "$WORKER_SOPORTE_UNIT:SOPORTE_TASK_QUEUE:agent-soporte" || rc_poller=$?
+estado_poller="verificado"
 case "$rc_poller" in
   0) ;;
-  2) echo "WARN [5/7] WORKERPOLLER NO VERIFICADO: Temporal no contestó DescribeTaskQueue (rc=2). El deploy SIGUE; que los workers pollean NO está comprobado: sólo is-active. Si esto se repite, es el instrumento -- no el worker." >&2 ;;
+  2) estado_poller="NO_VERIFICADO"
+     echo "WARN [5/7] WORKERPOLLER NO VERIFICADO: Temporal no contestó DescribeTaskQueue (rc=2). El deploy SIGUE; que los workers pollean NO está comprobado: sólo is-active. Si esto se repite, es el instrumento -- no el worker." >&2 ;;
   1) echo "ABORT [5/7]: un worker está active pero NO pollea su task queue (WORKERPOLLER, rc=1)"; exit 1 ;;
   3) echo "ABORT [5/7]: no pude preguntarle a Temporal (WORKERPOLLER, rc=3: inalcanzable). Sin Temporal el worker tampoco puede pollear."; exit 1 ;;
   *) echo "ABORT [5/7]: el check de pollers terminó con rc=$rc_poller (no es un resultado declarado)"; exit 1 ;;
 esac
+# RASTRO del check en el artefacto que SOBREVIVE al deploy (DEPLOY-MANIFEST.json, NDJSON append-only).
+# Con rc=2 el deploy sigue y el aviso de stdout es efímero: sin esta línea, «verificó» y «no pudo
+# verificar» son INDISTINGUIBLES dos horas después -- el modo de falla que esta fila existe para cerrar.
+# Se registran las dos mitades (verificado / NO_VERIFICADO): la ausencia de línea queda reservada a «el
+# deploy no corrió este código o abortó antes». `deploy_nonce` ata el evento a SU línea de [1.bis]
+# (un redeploy del mismo SHA no puede confundirse con el anterior). Verificado POR EFECTO (tail -1 ==
+# lo que mandé, no el exit del append) y, si no queda confirmado, ABORTA: un deploy que no verificó Y
+# no puede dejar constancia de ello es justo el caso silencioso. Misma forma que el evento
+# `smoke_beta` de scripts/run-smoke-prod.sh (claves `evento`/`sha`).
+linea_poller="$(printf '{"evento":"workerpoller","sha":"%s","deploy_nonce":"%s","workerpoller":"%s","rc":%s,"registrado_en":"%s"}' \
+  "$SHA" "$DEPLOY_NONCE" "$estado_poller" "$rc_poller" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")"
+printf '%s\n' "$linea_poller" >> "$REMOTE/DEPLOY-MANIFEST.json" || true
+if [ "$(tail -n 1 "$REMOTE/DEPLOY-MANIFEST.json" 2>/dev/null || true)" != "$linea_poller" ]; then
+  echo "ABORT [5/7]: WORKERPOLLER ($estado_poller) no quedó confirmado en $REMOTE/DEPLOY-MANIFEST.json -- un deploy sin rastro de si verificó no se acredita"
+  exit 1
+fi
+echo "--- WORKERPOLLER registrado en DEPLOY-MANIFEST.json: $estado_poller (rc=$rc_poller) ---"
 REMOTE_UNITS
 
 # [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de

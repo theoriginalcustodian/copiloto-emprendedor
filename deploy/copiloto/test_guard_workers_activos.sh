@@ -42,11 +42,16 @@ extraer_cabecera() {
 #   y = worker principal, z = worker de soporte.
 #   rc_poller (WORKERPOLLER): si viene, corre el bloque COMPLETO con `$VENV/bin/python` stubeado que
 #   sale con ese rc -- los tres units quedan `active`, así que SÓLO el check de pollers puede abortar.
-#   En ese modo imprime además `ARGS: <argv que recibió el check>` y `AVISO: si|no` (¿dijo «NO VERIFICADO»?).
+#   En ese modo imprime además `ARGS: <argv que recibió el check>`, `AVISO: si|no` (¿dijo «NO VERIFICADO»?)
+#   y `MANIFIESTO: <última línea de DEPLOY-MANIFEST.json>` (el rastro que sobrevive al deploy).
+#   manifiesto_dir=dir: el manifiesto es un DIRECTORIO, así que el append no puede confirmarse (ni como
+#   root: no depende de chmod) -- el caso «no pude dejar constancia».
 correr_caso() {
-  local nombre="$1" unit_caido="$2" rc_poller="${3:-}"
-  local sandbox bin bloque cabecera script rc
-  sandbox="$(mktemp -d)"; bin="$sandbox/bin"; mkdir -p "$bin"
+  local nombre="$1" unit_caido="$2" rc_poller="${3:-}" manifiesto_dir="${4:-}"
+  local sandbox bin bloque cabecera script rc manif
+  sandbox="$(mktemp -d)"; bin="$sandbox/bin"; mkdir -p "$bin" "$sandbox/remote"
+  manif="$sandbox/remote/DEPLOY-MANIFEST.json"
+  if [ -n "$manifiesto_dir" ]; then mkdir -p "$manif"; else echo '{"desplegado_en":"2026-10-13T00:00:00Z","linea":"semilla-del-deploy"}' > "$manif"; fi
 
   cat > "$bin/curl" <<STUB
 #!/usr/bin/env bash
@@ -88,7 +93,7 @@ STUB
   script="$sandbox/bloque.sh"
   {
     printf '%s\n' "$cabecera"
-    echo "SHA=\"$SHA\"; PORT=8099; WEB_UNIT=\"x\"; WORKER_UNIT=\"y\"; WORKER_SOPORTE_UNIT=\"z\"; CANARIO_FALLA=\"\"; REMOTE=\"/stub\"; VENV=\"$sandbox/venv\""
+    echo "SHA=\"$SHA\"; PORT=8099; WEB_UNIT=\"x\"; WORKER_UNIT=\"y\"; WORKER_SOPORTE_UNIT=\"z\"; CANARIO_FALLA=\"\"; REMOTE=\"$sandbox/remote\"; VENV=\"$sandbox/venv\"; DEPLOY_NONCE=\"nonce-de-prueba\""
     printf '%s\n' "$bloque"
     echo 'echo "LLEGO_AL_FINAL_DEL_BLOQUE"'
   } > "$script"
@@ -98,9 +103,10 @@ STUB
   echo "$out" | grep -q "LLEGO_AL_FINAL_DEL_BLOQUE" && llego="si" || llego="no"
   echo "$out" | grep -q "NO VERIFICADO" && aviso="si" || aviso="no"
   args=""; [ -f "$sandbox/py-args" ] && args="$(cat "$sandbox/py-args")"
+  ultima=""; [ -f "$manif" ] && ultima="$(tail -n 1 "$manif")"
   rm -rf "$sandbox"
   echo "$llego"
-  if [ -n "$rc_poller" ]; then echo "ARGS: $args"; echo "AVISO: $aviso"; fi
+  if [ -n "$rc_poller" ]; then echo "ARGS: $args"; echo "AVISO: $aviso"; echo "MANIFIESTO: $ultima"; fi
   return 0
 }
 
@@ -181,6 +187,52 @@ for par in "3:inalcanzable (sin Temporal el worker tampoco pollea)" "137:el chec
     fallos=$((fallos+1))
   fi
 done
+
+# RASTRO (condición de planificación sobre #1078): con rc=2 el deploy SIGUE y el aviso de stdout es
+# efímero. Lo que queda dos horas después es el DEPLOY-MANIFEST.json: «verificó» y «no pudo verificar»
+# tienen que ser DISTINGUIBLES ahí, y atables a su deploy (sha + nonce). Se mide contra el ARCHIVO.
+manif_de() { echo "$1" | sed -n 's/^MANIFIESTO: //p'; }
+
+echo "-- caso 7: rc=2 (sin_api) deja RASTRO «NO_VERIFICADO» en el manifiesto, atado a sha+nonce"
+m5="$(manif_de "$res5")"
+if echo "$m5" | grep -q -F '"evento":"workerpoller"' \
+   && echo "$m5" | grep -q -F '"workerpoller":"NO_VERIFICADO"' \
+   && echo "$m5" | grep -q -F '"rc":2' \
+   && echo "$m5" | grep -q -F "\"sha\":\"$SHA\"" \
+   && echo "$m5" | grep -q -F '"deploy_nonce":"nonce-de-prueba"'; then
+  echo "  PASA: el deploy que no pudo verificar lo dice en el artefacto que sobrevive"
+else
+  echo "  ROJO: rc=2 siguió pero el manifiesto no lo registra (última línea: '$m5') -- indistinguible de un deploy verificado"
+  fallos=$((fallos+1))
+fi
+
+echo "-- caso 8: rc=0 (verificado) deja el rastro DISTINTO -- si fuera igual, el registro no discrimina"
+m3="$(manif_de "$res3")"
+if echo "$m3" | grep -q -F '"workerpoller":"verificado"' && echo "$m3" | grep -q -F '"rc":0' \
+   && ! echo "$m3" | grep -q -F 'NO_VERIFICADO'; then
+  echo "  PASA: verificado y NO_VERIFICADO quedan distinguibles en el manifiesto"
+else
+  echo "  ROJO: rc=0 no dejó un rastro «verificado» distinto del de rc=2 (última línea: '$m3')"
+  fallos=$((fallos+1))
+fi
+
+echo "-- caso 9: un aborto (rc=1) NO escribe rastro de «verificado» (la última línea sigue siendo la del deploy)"
+m4="$(manif_de "$res4")"
+if echo "$m4" | grep -q -F 'semilla-del-deploy'; then
+  echo "  PASA: el deploy abortado no deja un evento workerpoller"
+else
+  echo "  ROJO: un deploy que abortó dejó un evento workerpoller (última línea: '$m4')"
+  fallos=$((fallos+1))
+fi
+
+echo "-- caso 10: el rastro NO se puede confirmar (manifiesto no escribible) -> DEBE abortar, no seguir mudo"
+res10="$(correr_caso "poller-sin-rastro" "" 2 dir)"
+if [ "$(echo "$res10" | head -n1)" = "no" ]; then
+  echo "  PASA: un deploy sin verificar que tampoco puede dejar constancia no se acredita"
+else
+  echo "  ROJO: sin poder escribir el rastro el deploy siguió -- el «NO VERIFICADO» vuelve a ser sólo stdout"
+  fallos=$((fallos+1))
+fi
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "OK: GUARDSOLOWEB — is-active de los workers discrimina y puede abortar el deploy"; exit 0; fi
