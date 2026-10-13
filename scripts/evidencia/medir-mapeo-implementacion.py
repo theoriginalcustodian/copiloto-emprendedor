@@ -24,6 +24,7 @@ por eso este script imprime SIEMPRE tres cifras con su unidad, no una:
    · cumple-DoD        (resuelta en codigo + enmienda fundada)
    · cerrada-en-codigo (solo lo que se escribio y mergeo)
    · con-veredicto     (medida por su dueno, sea cual sea el resultado)
+   · pendiente-declarada (una divergencia ⛓/⚠ -> NO cumple el DoD, y se nombra)
 Una sola de las tres se deja citar para cualquier pregunta; las tres juntas, no.
   -> memoria: una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta
 
@@ -240,7 +241,28 @@ def clasificar(ids, est):
             clase = "DESVIO" if "DESV" in v else ("COHERENTE" if "COHERENTE" in v else "NO-MEDIBLE")
         else:
             s = e["simbolos"]
-            clase = "CERRADA-EN-CODIGO" if "✅" in s else "ENMIENDA-FUNDADA"
+            # PRECEDENCIA: una divergencia PENDIENTE (⛓ atada a una dependencia, ⚠ sin cerrar)
+            # manda sobre el ✅ de las otras divergencias de la misma fila. El DoD es POR FILA y
+            # dice, literal: «cada divergencia listada en la fila queda resuelta en el codigo, O
+            # declarada enmienda fundada con su motivo escrito. NINGUNA queda sin veredicto». Si
+            # una quedo pendiente, la fila NO lo cumple, aunque las demas esten cerradas.
+            #
+            # Hasta el 2026-10-13 esto era `"CERRADA-EN-CODIGO" if "✅" in s else "ENMIENDA-FUNDADA"`,
+            # o sea «enmienda fundada» era el ELSE, no un veredicto. Efecto medido sobre origin/main
+            # 159f883b: 7 filas con ⛓ contaban como cumplidas, y 4 de ellas (`factura`, `gastos`,
+            # `pres-voz`, `card-cobro`) incluso como CERRADA-EN-CODIGO porque el ✅ ganaba. La fila
+            # `card-factura` decia TEXTUAL en su propio doc «El DoD de esta fila ... NO se cumple» y
+            # el medidor la publicaba como cumplida. Lo encontre leyendo los docs para listarle las
+            # enmiendas al operador, y backend lo reporto el mismo dia por su lado: dejaba sus 5
+            # filas abiertas SIN simbolo para no cobrar el credito falso, lo que producia HUECOS
+            # (exit 3) en vez de una clase honesta. Ahora ⛓/⚠ se pueden escribir y se cuentan.
+            #   -> memoria: un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion
+            if s & {"⛓", "⚠"}:
+                clase = "PENDIENTE-DECLARADA"
+            elif "✅" in s:
+                clase = "CERRADA-EN-CODIGO"
+            else:
+                clase = "ENMIENDA-FUNDADA"
         filas[i] = (g, clase, e.get("origen"))
     return filas, huecos
 
@@ -297,6 +319,7 @@ def main():
     codigo = sum(1 for _i, (_g, c, _o) in filas.items() if c == "CERRADA-EN-CODIGO")
     medidas = cubiertas(filas)
     fuera = sum(1 for _i, (_g, c, _o) in filas.items() if c == "FUERA-DE-ESTE-CORPUS")
+    pend = [i for i, (_g, c, _o) in sorted(filas.items()) if c == "PENDIENTE-DECLARADA"]
 
     if "--json" in sys.argv:
         print(json.dumps({"arbol": str(RAIZ),
@@ -304,6 +327,7 @@ def main():
                           "padron": n, "declarado_por_el_doc": declarado,
                           "cumple_dod": cumple, "cerrada_en_codigo": codigo,
                           "con_veredicto": medidas, "fuera_de_este_corpus": fuera,
+                          "pendiente_declarada": len(pend), "pendientes": pend,
                           "huecos": ["%s/%s" % (g, i) for g, i in huecos],
                           "por_bloque": {g: dict(c) for g, c in por_bloque.items()}},
                          ensure_ascii=False, indent=2))
@@ -326,6 +350,10 @@ def main():
         print("CON VEREDICTO MEDIDO : %d/%d filas (%d%%)" % (medidas, n, medidas * 100 // n))
         print("FUERA DE ESTE CORPUS : %d/%d filas  [backend+nativa: su evidencia son los cierres del buzon]"
               % (fuera, n))
+        print("PENDIENTE DECLARADA  : %d/%d filas  [una divergencia con ⛓/⚠: NO cumplen el DoD]"
+              % (len(pend), n))
+        if pend:
+            print("    " + " ".join(pend))
         if huecos:
             print("\nHUECOS (%d) - ids del padron sin veredicto, con nombre:" % len(huecos))
             for g, i in huecos:

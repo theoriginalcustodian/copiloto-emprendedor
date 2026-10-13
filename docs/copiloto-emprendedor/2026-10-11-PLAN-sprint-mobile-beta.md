@@ -75,16 +75,47 @@ porque engancha filas de otras tablas.
 | `nativa-con-device` | 15 | **14 DESVÍO** + 1 `NO_REPRODUCIBLE_SIN_EFECTO` — medidas **en el teléfono**, por primera vez |
 | `backend + nativa` | 7 | fuera del corpus de este medidor (su evidencia son los `cierre_` del buzón): 5 EN MAIN, 1 parcial (`cobro-voz`, D3 al operador), 1 sin veredicto (`onb-cumplida`) |
 
-**Las tres cifras, porque una sola se deja citar para cualquier pregunta:**
+**Las cuatro cifras, porque una sola se deja citar para cualquier pregunta:**
 
 | cifra | unidad | valor |
 |---|---|---|
-| **cumple el DoD** | filas de contrato | **32/54 (59 %)** — el DoD admite «resuelta en código **o** enmienda fundada» |
-| **cerrada en código** | filas de contrato | **24/54 (44 %)** — sólo lo escrito y mergeado |
-| **con veredicto medido** | filas de contrato | **47/54 (87 %)** por este corpus; **53/54** sumando los `cierre_` de backend |
+| **cumple el DoD** | filas de contrato | **27/54 (50 %)** — el DoD admite «resuelta en código **o** enmienda fundada», pero exige que **ninguna** divergencia quede pendiente |
+| **cerrada en código** | filas de contrato | **21/54 (38 %)** — sólo lo escrito y mergeado |
+| **con veredicto medido** | filas de contrato | **48/54 (88 %)** por este corpus; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
+| **fuera de este corpus** | filas de contrato | **6/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`) |
+| **pendiente declarada** | filas de contrato | **7/54** — tienen una divergencia con ⛓/⚠: **NO cumplen** el DoD. Con nombre: `card` `card-cliente` `card-cobro` `card-factura` `factura` `gastos` `pres-voz` |
 
-Contra el 11/10 (8 comparados de verdad, 46 por medir) el movimiento del día es **de 8 a 47 filas
-medidas**, con 37 acreditadas contra su DoD sumando backend.
+> ⚠️ **CORRECCIÓN del mismo día — 34/54 era una cifra INFLADA, y el defecto era del medidor.**
+> `clasificar()` decía `"CERRADA-EN-CODIGO" if "✅" in s else "ENMIENDA-FUNDADA"`: «enmienda
+> fundada» era el **`else`**, no un veredicto. Así, **7 filas con una divergencia atada a una
+> dependencia (⛓) contaban como cumplidas** — y 4 de ellas (`factura`, `gastos`, `pres-voz`,
+> `card-cobro`) salían incluso como **cerradas en código**, porque el ✅ de las otras divergencias
+> de la fila le ganaba al ⛓. El caso que lo delata: el doc de `card-factura` dice **textual** «El
+> DoD de esta fila dice «el elemento ausente existe y se ve». NO se cumple», y el medidor la
+> publicaba como cumplida. Lo encontré leyendo los docs para listarle las enmiendas al operador;
+> backend lo reportó el mismo día por su lado (dejaba sus filas abiertas **sin símbolo** para no
+> cobrar el crédito falso, lo que producía huecos en vez de una clase honesta).
+> **El DoD es por fila y exige que NINGUNA divergencia quede sin veredicto**, así que ahora un
+> ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
+> medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
+
+> 📐 **RE-MEDIDO el 2026-10-13 sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
+> C:\gfw-src\wt-medir-main`), por planificación. La medición anterior de este mismo bloque —32/54 ·
+> 24/54 · 47/54, con **7** fuera— es de unas horas antes, sobre un `main` que todavía no tenía el
+> veredicto versionado de `onb-cumplida` (#1083) ni los dos fixes del medidor (#1081, #1082).
+> **No es un criterio que creció: es el mismo instrumento midiendo más trabajo mergeado.**
+> ⚠️ Una cifra sin su SHA al lado no es evidencia, es una fecha — y la de la worktree de una sesión
+> tampoco sirve: esta sale de un árbol en `main`.
+>
+> **Qué movió el número, fila por fila:** `onb-cumplida` entró al corpus (fuera 7→6) como
+> `CERRADA-EN-CODIGO` —primera fila `backend + nativa` con su veredicto en un doc **versionado**, el
+> precedente que `EVIDENCIABUZON` necesitaba— y `esc` cuenta `COHERENTE` medida en device. El fix que
+> lo habilitó: `clasificar()` daba `FUERA-DE-ESTE-CORPUS` a **todo** el grupo `backend + nativa`, con
+> o sin veredicto, así que esas 7 filas eran **incerrables por construcción** — lo midió frontend1
+> contra el código en vez de intentar cumplir un DoD inejecutable.
+
+Contra el 11/10 (8 comparados de verdad, 46 por medir) el movimiento del día es **de 8 a 48 filas
+medidas**, con 39 acreditadas contra su DoD sumando backend.
 
 > 🔴 **Por qué el 13/54 mintió, y no fue el dato.** `contar-veredictos.py` descubre su corpus con
 > `rglob` sobre **`coordinacion/`**. Los tres docs de veredictos de este sprint viven en
