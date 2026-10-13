@@ -148,3 +148,44 @@ como archivo.
 «el archivo» o «el documento», escribí al lado qué segunda mención lo volvería ciego — y si podés
 nombrarla, ya está ciego.
 → [[instrumento-que-no-mira-nunca-falla]] · [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
+
+---
+
+## Refuerzo 2026-10-13 · el VEREDICTO de grano grueso: una celda con varias cláusulas se absuelve entera
+
+El mismo patrón, pero en el **juez** y no en el check. Una celda del corpus del mapeo (fila
+`ajustes`) acumulaba cuatro cláusulas de divergencia. El veredicto que le pusieron fue **uno**:
+`C` — «el mapeo quedó viejo» — con dos citas.
+
+Medido después, cláusula por cláusula: **una estaba mal y la otra estaba bien.**
+
+- «"Mi plan" es `PantallaAndamiaje` (placeholder)» → **falso**, y el corpus era el equivocado: no es
+  un placeholder, **no existe**, salió por decisión firmada y hay **control negativo** que lo fija
+  (`PantallaAjustes.test.tsx:54-59`).
+- «"Cómo hablarle" fusionado» → **era correcta**. El `C` la absolvió **midiendo otro referente**: lo
+  medido fue *«¿existe una pantalla con ese nombre?»* (sí, `PantallaTono.tsx`) y lo afirmado era
+  *«¿es una ENTRADA de primer nivel?»* (no: se llega desde Mi negocio). Dos preguntas, un veredicto.
+
+🔑 **La forma general: el veredicto hereda el grano de la celda, no el de la afirmación.** Cuando una
+celda dice tres cosas y el juez escribe un símbolo, el símbolo **saca la celda entera del
+escrutinio** — y lo saca con cara de trabajo hecho, porque *hubo* medición y *hubo* citas. La mitad
+no medida queda indistinguible de la medida, igual que en el caso del `301`: ahí una mención suelta
+absolvió a la tabla; acá una cláusula verdadera absuelve a sus vecinas.
+
+**Y el agravante propio de este caso:** la absolución era de **otra sesión**. Nadie reabre un
+veredicto ajeno por reflejo —hacerlo sería el ruido que la coordinación evita—, así que el grano
+grueso de un juez externo es **más** duradero que el propio. Un `C` ajeno vive hasta que alguien
+mida la celda por su cuenta, y la regla de no reabrir ✅ (que es correcta) lo protege.
+
+**Cómo aplicarlo:**
+1. **Un veredicto por cláusula, no por celda.** Si la celda tiene `;` o `/` separando afirmaciones,
+   tiene tantos veredictos como afirmaciones. Una celda multi-cláusula con un solo símbolo es un
+   pedido de re-medición, no un resultado.
+2. **Al emitir el veredicto, citá la cláusula que estás midiendo**, con sus palabras. La cita obliga
+   a notar que quedan otras: es el mismo mecanismo que escribir el alcance dentro de la pregunta.
+3. **Al leer un veredicto ajeno, contá las cláusulas de la celda y compará con las citas.** Más
+   cláusulas que citas ⇒ hay mitades mudas, y cuál es cada una se decide midiendo, no deduciendo.
+4. **Corregir el grano NO es reabrir la fila.** La enmienda se anota con su evidencia y la decisión
+   que quede abierta se rutea a quien decide; el padrón no se mueve. Mezclar las dos cosas convierte
+   una corrección de instrumento en un criterio que crece.
+→ [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]
