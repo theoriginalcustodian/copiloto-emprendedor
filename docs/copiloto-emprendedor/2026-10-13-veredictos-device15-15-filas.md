@@ -283,20 +283,20 @@ contador**; viewport de `midia-lista` ≈120 dp con 2 avisos activos.
 
 | # | hallazgo | dónde | gravedad |
 |---|---|---|---|
-| H1 | **`esc` incumple la decisión A del operador**: el escritorio no se cierra al bajar el chat, y su pestaña de vuelta queda tapada | fila 8 | alta (decisión firmada) |
+| H1 | **`esc` incumple la decisión A del operador**: el escritorio no se cierra al bajar el chat, y su pestaña de vuelta queda tapada → **corregido y COHERENTE 2026-10-13, «TRIAJE15 (A)»** | fila 8 | alta (decisión firmada) |
 | H2 | **Crash nativo en arranque en frío logged-out**: `SIGSEGV` en `libreactnative` (`MountingCoordinator::pullTransaction`, hilo `mqt_v_js`) entre ~20 y ~36 s; **1 de 2** en la medición original → **reproducido 2 de 24 con `screencap` concurrente, 0 de 12 sin él** (sección «H2 — CRASHFRIO» abajo). Causa **del binario, no del JS**: stack idéntico al de react-native-screens#4654, fix upstream en `react-native-screens` ≥ 4.28.0 (#4413), **no verificado en nuestro binario** | arranque | alta (binario: requiere rebuild EAS → escalada a planificación) |
-| H3 | El chat arranca **arriba** con hint «ESCRIBILE A ODOBI» pese a `arrancaAbajo` (3/3 en la ventana previa) | filas 1, 4 | media |
-| H4 | El refresh de Inteligencia **se dispara durante el arrastre**, antes del UP | fila 2 | media |
-| H5 | «Reconectar» del banner es una píldora **inerte** (`clickable=false`) | fila 15 | media |
-| H6 | «Pausar»/«Enviar» **partidos en dos líneas** («Paus/ar», «Env/ar») en la grabación fijada | fila 3 | media |
-| H7 | Una grabación de 130 px (69 dp, **bajo** el umbral) al soltar **envía** en vez de descartar | fila 3 | baja (es el diseño: soltar sin fijar envía) |
-| H8 | Forma residual (anillo/mancha) en reposo sobre el wordmark del reveal | filas 12, 14 | media |
-| H9 | El teclado no se cierra al bajar el chat | observación | baja |
-| H11 | En el arranque en frío los primeros cuadros son **gris oscuro** antes de la pantalla crema | filas 12, 14 | baja (no atribuido) |
-| H10 | El mapeo decía «ninguna medida» para `ingresos`; hay 3 diferencias de contenido | fila 11 | baja |
+| H3 | El chat arranca **arriba** con hint «ESCRIBILE A ODOBI» pese a `arrancaAbajo` (3/3 en la ventana previa) → **corregido y COHERENTE 2026-10-13, «TRIAJE15 (B)»** | filas 1, 4 | media |
+| H4 | El refresh de Inteligencia **se dispara durante el arrastre**, antes del UP → **corregido y COHERENTE 2026-10-13 (6 pantallas), «TRIAJE15 (B)»** | fila 2 | media |
+| H5 | «Reconectar» del banner es una píldora **inerte** (`clickable=false`) → **H5a corregido; H5b (destino fino) DESVÍO declarado, «TRIAJE15 (A)»** | fila 15 | media |
+| H6 | «Pausar»/«Enviar» **partidos en dos líneas** («Paus/ar», «Env/ar») en la grabación fijada → **corregido y COHERENTE 2026-10-13, «TRIAJE15 (A)»** | fila 3 | media |
+| H7 | Una grabación de 130 px (69 dp, **bajo** el umbral) al soltar **envía** en vez de descartar → **enmienda (C) 2026-10-13: es el diseño; asentado en el mapeo** | fila 3 | baja (es el diseño: soltar sin fijar envía) |
+| H8 | Forma residual (anillo/mancha) en reposo sobre el wordmark del reveal → **corregido y COHERENTE 2026-10-13, «TRIAJE15 (B)»** (las filas 12 y 14 siguen DESVÍO por otras causas) | filas 12, 14 | media |
+| H9 | El teclado no se cierra al bajar el chat → **declarado (C) 2026-10-13, sin fix; con disparador** | observación | baja |
+| H11 | En el arranque en frío los primeros cuadros son **gris oscuro** antes de la pantalla crema → **declarado (C) 2026-10-13, sin fix; con disparador** | filas 12, 14 | baja (no atribuido) |
+| H10 | El mapeo decía «ninguna medida» para `ingresos`; hay 3 diferencias de contenido → **enmienda (C) 2026-10-13: el mapeo ya lo registra** | fila 11 | baja |
 
-**Lo que este documento no acredita:** no implementa ningún fix **por sí mismo** (los de H1/H5/H6 viven en el código y
-se re-midieron en «TRIAJE15 (A)»). Los DESVÍO reales se reportan a planificación para decidir cuáles se baja a código y
+**Lo que este documento no acredita:** no implementa ningún fix **por sí mismo** (los de H1/H3/H4/H5/H6/H8 viven en el
+código y se re-midieron en «TRIAJE15 (A)» y «TRIAJE15 (B)»). Los DESVÍO reales se reportan a planificación para decidir cuáles se baja a código y
 cuáles son enmienda (el prototipo es una hoja de estados, no un spec).
 
 ## TRIAJE15 (A) — re-medición en device de H1 · H5 · H6 (2026-10-13)
@@ -332,6 +332,58 @@ en 0 para `uiautomator dump`. Capturas: `h1-0`, `h1-1-escritorio`, `h1-2-chat-ar
   «al guardar, llama a `onResolver`…»: `render function has not been called`, a los 20 s bajo carga paralela);
   **aislado pasa 45/45** junto con `PantallaMiDia`. Es un timeout de suite completa, no del cambio. `tsc` rc=0,
   `eslint` rc=0, paridad de testID rc=0.
+
+## TRIAJE15 (B) — re-medición en device de H3 · H4 · H8 (2026-10-13)
+
+**Qué se midió:** el árbol de trabajo de `fe2/triaje15-a-esc-reconectar-pausar-enviar` servido por Metro local sobre
+el dev-client ya instalado — **sin rebuild** (no autorizado). Mismo device `RF8T318RN9T`, usuario canónico, gestos
+`adb input motionevent` `DOWN/MOVE/UP`. **Techo declarado:** los tres cierran con la medición en device; ninguno cierra
+por «se ve bien». Skill `swmansion-rn-gestures` consultada **antes** del tercer intento de H4 (regla de dos fallos).
+
+| # | hallazgo | antes | después (medido) | instrumento | veredicto |
+|---|---|---|---|---|---|
+| **H3** | el chat arranca arriba pese a `arrancaAbajo` | 3/3 arranques en frío con el panel **arriba** y el hint «ESCRIBILE A ODOBI» (ventana previa). Con un `console.log` en `onLayout`: un único layout, `h=853 insetsTop=24 recorrido=0` — el `if (recorrido.value > 0)` **nunca entraba** | 3/3 arranques en frío: tras el único layout, `panelY 0 → 773,33` (abajo) y Mi día visible (`h3-arranque-en-frio.png`, volcados `h3-dump-r2/r3`) | `logcat` de `ReactNativeJS` con marcadores + `uiautomator dump` con idle | **COHERENTE** |
+| **H4** | el refresh se dispara durante el arrastre | Gastos, 4 corridas `DOWN` → 10 `MOVE` → 6 s sostenido → `UP`: **0/4 correctas** — 1 disparó `onRefresh` **0,3 s después del DOWN** (con el dedo apoyado); 3 **nunca** dispararon (ni tras el UP) | Gastos **3/3** (+1 corrida de control): `onRefresh` a **≈0,2 s después del UP** (UP 38,618 → 38,821 · 52,033 → 52,238 · 05,423 → 05,632). Inteligencia, Clientes, Ingresos, Presupuestos y Facturación: 1/1 cada una | marcadores `log -t H4MARK` (`h4-gesto.sh`) + `logcat`; `h4-durante-hold.png` / `h4-fix-durante-hold.png` | **COHERENTE** (6 pantallas) |
+| **H8** | forma residual sobre el wordmark | `screencap` ≥ 9 s tras «Sí, cerrar sesión» (`h8-antes-6.png`, sha1 `9b88d075…`): disco blanco con anillo beige y halo terracota **pegado a la «i»**, estable | misma secuencia (`h8-d4-2.png` muestra las formas **en vuelo**, colapsando; `h8-d4-final.png`, sha1 `17b5f7b9…`): sólo isotipo + «dobi» + «se dice o-DO-bi»; los cuadros 4-8 son estables | `screencap` crudo cada 1,2 s con **animaciones ON**, mismo disparador (logout) | **COHERENTE** |
+
+**Causa de raíz**
+- **H3:** leer un shared value en el hilo JS **inmediatamente después de escribirlo** devuelve el valor viejo (la
+  escritura viaja al hilo de UI). El fix usa el valor medido en una variable local. No es un problema de
+  `arrancaAbajo`: era el `if` que lo aplicaba.
+- **H4:** el `ScrollView` de RNGH hace `waitFor` sobre el **`RefreshControl` de RNGH**; con el de `react-native` el
+  árbitro no lo conoce y `onRefresh` salía a mitad del arrastre (o no salía). Las 6 pantallas con tirar-para-refrescar
+  pasan al de `react-native-gesture-handler` (`ListaActividad` no: es `FlatList` RN + `RefreshControl` RN, par coherente).
+- **H8:** sólo la última forma (`egg`) colapsaba, y terminaba en opacidad 0,15; las otras tres quedaban fijas a
+  opacidad 1. Ahora las cuatro colapsan al terminar de crecer, a opacidad final 0 — lo que `Splash.css` ya
+  declara para la web (H-A4-2: «no queda como disco permanente»).
+
+**Qué NO acredita esta sección**
+- **«Antes» de H4 sólo medido en Gastos** (4 corridas) e Inteligencia. Clientes, Ingresos, Presupuestos y Facturación
+  tienen el **mismo par estructural** (`RefreshControl` RN dentro de scroll RNGH), pero su «antes» **no se midió**:
+  sólo el «después» (1/1 cada una). Es una inferencia por estructura, declarada como tal.
+- **H8 no es «filas 12 y 14 COHERENTES»:** la fila 12 sigue DESVÍO por el botón «pronunciar» ausente, y la 14 por el
+  tagline; no se tocaron.
+- **H4 no es «fila 2 COHERENTE»:** persisten el indicador del sistema vs el propio del prototipo y `MS_AL_DIA=3000`
+  vs 700 ms.
+- **H3 no es «fila 4 COHERENTE»:** persiste el isotipo del vacío (120 px vs 96 px).
+- **Sin guarda jest para H8:** el mock de Reanimated de `IdentidadEntrada.test.tsx` devuelve `useAnimatedStyle: () => ({})`
+  y no ejecuta estilos animados; la guarda de esta corrección es la captura en device, no un test. jest
+  `src/modules/splash` + `src/modules/auth` 40/40, `eslint` rc=0.
+- **Una primera tanda de «después» de H8 se descartó** (`h8-despues-*`, `h8-d3-*`): apagar la escala de animación
+  **después** de arrancar la app deja `useReducedMotion` en `true` y el reveal no monta las formas — esa tanda
+  «pasaba» sin ejercitar el fix. La medición válida arranca el proceso con la escala en 1 y no la toca (control
+  positivo: formas en vuelo en `h8-d4-2.png`).
+
+## TRIAJE15 (C) — enmiendas, no código (2026-10-13)
+
+Decisión de planificación (no se reabre): estos cuatro no se bajan a código.
+
+| # | enmienda | dónde quedó asentada | disparador de reapertura |
+|---|---|---|---|
+| **H7** | soltar el dedo **sin** haber llegado al umbral de fijado **envía**; es el diseño del gesto, no un defecto | `2026-10-12-mapeo-prototipo-vs-nativo.md`, fila `bloqueado` («ACLARADO 2026-10-13») | que el operador declare que soltar-sin-fijar debe descartar |
+| **H10** | el «ninguna medida» de `ingresos` era incompleto: el composer coincide, pero hay 3 diferencias de contenido (período, «BUSCAR» + buscador, nota de MercadoPago) | mapeo, fila `ingresos` («MEDIDA 2026-10-13»); detalle en la fila 11 de este doc | decidir cuáles de las 3 son deliberadas y cuáles se bajan |
+| **H9** | el teclado no se cierra al bajar el chat. **Observación única**, ninguna fila del padrón la mide; sin fix | este documento | una fila del padrón que mida el cierre del teclado, o un reporte en uso real |
+| **H11** | primeros cuadros **gris oscuro** en arranque en frío. **No atribuido**: no se separó si es la pantalla de carga del dev-client o la app. Hipótesis, **no medida**: sería la del dev-client (en `h8-estado2.png` la pantalla gris sólo trae el engranaje «Tools» del dev-client, sin árbol de la app) | este documento | el rebuild EAS ya autorizado (CRASHFRIO opción B): se re-mide en el binario nuevo; si persiste ahí, deja de ser del dev-client |
 
 ## H2 — CRASHFRIO: reproducción, stack y atribución (2026-10-13, tarde)
 
