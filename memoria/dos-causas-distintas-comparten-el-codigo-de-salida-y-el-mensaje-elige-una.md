@@ -181,7 +181,8 @@ una. Si no, se pagan de a una, y cada pago parece el último.
 Medí qué PR abiertos conflictúan contra `main` con `git merge-tree --write-tree`, decidiendo por el
 código de salida. Veredicto: **6 de 7 en CONFLICTO**. Falso, los 7 mergeaban limpio.
 
-`gh` y `jq` en Windows emiten **CRLF**, así que el `` viajaba **dentro del sha** leído por
+`gh` y `jq` en Windows emiten **CRLF**, así que el `
+` viajaba **dentro del sha** leído por
 `while IFS=$'	' read`. `merge-tree` con un argumento que no resuelve contesta:
 
 ```
@@ -197,7 +198,8 @@ Dos cosas que agrega este caso:
 1. **El falso ROJO se disfraza de prudencia.** Un instrumento que inventa conflictos no se siente como
    un bug: se siente como rigor. Si lo hubiera publicado, cuatro sesiones rebasean ramas sanas — y el
    trabajo extra habría *confirmado* el instrumento, porque después del rebase el conflicto «ya no está».
-2. **El fix de raíz es doble, y el cómodo es sólo la mitad.** `tr -d ''` en la fuente arregla hoy;
+2. **El fix de raíz es doble, y el cómodo es sólo la mitad.** `tr -d '
+'` en la fuente arregla hoy;
    lo que arregla mañana es **decidir el veredicto por el mensaje** y agregar la rama que faltaba:
    `SIN-OBJETO` para el sha que no tengo local. Un instrumento necesita un estado para «no pude
    medir este elemento» tanto como para «medí y está mal».
@@ -210,3 +212,70 @@ sí, el veredicto sale del mensaje, y el rc sólo decide si hubo que leerlo.
 **La pregunta que lo caza en cualquier instrumento:** *¿qué líneas corren sólo cuando hay un hallazgo?* Esas son las que **nunca** se ejercitaron, porque el instrumento vivió en verde. No alcanza con correrlo: hay que **inyectar el caso** y ver el mensaje ([[el-canario-el-control-positivo-de-lo-que-falla-callado]]).
 
 **Agravante medido en el mismo barrido:** ese checker **no está cableado a nada** — el único hit fuera de su propio archivo es un **comentario** en `tests.yml:142`. Un instrumento no invocado nunca ejercita sus ramas de error, así que el defecto puede vivir ahí para siempre: la falta de cableado **conserva** el defecto en vez de exponerlo ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).
+
+## Refuerzo 2026-10-12 · la CUARTA causa: **el fin de línea**, y el mensaje mandaba a regenerar un doc ya regenerado
+
+Un gate propio (`MAPEOSINGATE` en `scripts/ci/lint.sh`) regenera un doc derivado a un temporal y lo
+compara con el versionado. Salió **rojo en CI** diciendo:
+
+> ❌ los contratos del mapeo NO estan regenerados
+
+Lo medido, con los dos archivos al lado:
+
+| archivo | bytes | CR |
+|---|---|---|
+| blob versionado (`git show HEAD:`) | 14905 | **0** (LF) |
+| salida del generador | 15012 | **107** (CRLF) |
+
+`diff` crudo: **214 líneas distintas**. `diff --strip-trailing-cr`: **idénticos**. Los 107 CR son
+exactamente los 107 bytes de diferencia. **Cero divergencia de contenido.**
+
+Las dos causas que compartían el `rc=1`:
+
+1. el doc no está regenerado (el defecto que el gate existe para cazar), y
+2. el doc está regenerado y sólo difiere la **codificación del fin de línea**.
+
+Y el mensaje eligió la 1 — mandando a *«Corré armar-contratos.py»*, que es justo lo que no cambiaba
+nada, porque el generador era **la fuente** del CRLF (forzaba `newline="
+"` sin motivo, mientras
+`.gitattributes` no cubre `*.md` y git normaliza el blob a LF al commitear). Un bucle: la acción que
+el error recomienda reproduce el error.
+
+**Lo que lo hace una causa aparte y no un caso de las otras tres:** el fin de línea **no es estable
+entre plataformas y es legítimo que difiera** — un checkout en Windows con `core.autocrlf=true` deja
+CRLF en el working tree por diseño. No hay nada que arreglar en el sujeto. Un gate que lo cuenta como
+divergencia acusa al sujeto por un defecto del instrumento, en la única plataforma donde el defecto
+no existe (CI, Linux) — y pasa inadvertido en la plataforma donde sí se edita.
+
+**El arreglo son dos piezas, no una** (arreglar sólo el generador dejaba el gate frágil ante el
+próximo checkout CRLF):
+
+- el veredicto se toma con `--strip-trailing-cr`: la pregunta del gate es *¿el CONTENIDO está
+  regenerado?*, no *¿coinciden los bytes de fin de línea?*;
+- la diferencia de fin de línea se **informa** con los CR de cada lado — no se calla (un silencio no
+  se distingue de «no lo miré») y no es roja.
+
+**Dos daños colaterales del mismo episodio, los dos de instrumentos que mienten sobre lo que miden:**
+
+- el `diff | head -20` del propio gate **se comió justo la evidencia** que hacía falta: en el log se
+  veían 19 líneas `<` y ninguna `>`, lo que sugiere «el temporal salió vacío» — una hipótesis falsa
+  fabricada por el truncamiento. Un gate que trunca su propia evidencia obliga a reproducir a mano lo
+  que ya había medido.
+- el generador imprimía `len(doc)` como «bytes»: **cuenta CARACTERES**, y los acentos pesan 2 —
+  reportaba 14873 para un archivo de 15012 bytes, y esa cifra se usó para comparar tamaños. Ahora
+  `os.path.getsize` del archivo ya escrito.
+
+**El control que cierra esto** — tres estados, el tercero es el que mide el fix:
+
+| estado | esperado | medido |
+|---|---|---|
+| árbol real | rc=0, sin aviso | rc=0 |
+| un campo mutado a mano | rc=1 «difiere EN CONTENIDO» | rc=1 |
+| **mismo contenido con 107 CR** | rc=0 + aviso | rc=0 + «versionado 107 CR · generado 0 CR» |
+
+Sin el tercer caso el fix no se compara contra nada: es **exactamente** el falso rojo de CI.
+
+**Cómo aplicar:** ante un gate que compara dos archivos y sale rojo, antes de tocar el sujeto corré
+`diff --strip-trailing-cr` y contá los CR de cada lado. Si el contenido es idéntico, el defecto es
+del comparador. Y en todo gate que compare texto generado contra texto versionado, declará **qué
+pregunta hace**: contenido o bytes. Las dos son válidas; mezclarlas es lo que no.
