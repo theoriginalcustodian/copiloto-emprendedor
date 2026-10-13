@@ -20,13 +20,13 @@
 
 1. **Cruce de ids.** Los 85 `id="…"` del prototipo contra los 54 del padrón (quitando el prefijo
    `s-`): **60 sin fila**. Publicar «60 huecos» sería una cifra sin unidad — el padrón mide
-   **pantallas y estados**, no nodos del DOM. Clasificados por su clase: de los 60, **uno solo es
-   `class="subp"`** (una pantalla): `s-plan`. El resto son botones, rótulos, contenedores de scroll
+   **pantallas y estados**, no nodos del DOM. **Clasificados los 60, no una muestra** — y la primera pasada fue de 18, que es exactamente el error que este doc denuncia: **de los 60, uno solo es `class="subp"`** (una pantalla): `s-plan`. El resto son botones, rótulos, contenedores de scroll
    y paths de SVG (`cerrar-aj`, `total-gastos`, `scallopPathProto`…), o capas de pantallas que ya
    tienen fila (`midia` → `tablero`, `escritorio` → `apps`, `hilo` → `chat`, `calma` → `vacio`,
    que cita `index.html:1713-1857`).
 2. **Cobertura por línea.** Para lo que no tiene id propio: qué rangos de `index.html` citan las 54
    filas, y qué quedó entre dos citas.
+3. **El desglose de los 60, para que se pueda auditar sin repetir el barrido** (clase y línea de cada uno, medidos): **14** controles de cierre/cancelación (`cerrar-aj`, `cerrar-bi`, `cerrar-fn`, `cerrar-cli`, `cerrar-fact`, `cerrar-ing`, `cerrar-presu`, `volver-tablero`, `no-consent`, `cancelar-card`, `cancelar-hitl`, `cancelar-voz-chat`, `fuera-card`, `fuera-consent`) · **5** botones de confirmación (`guardar`, `confirmar`, `confirmar-voz`, `ir-hablarle`, `volver-ayuda` — este último **ya medido** en la fila `comousar`, que declara «grep 0») · **9** contenedores de pantallas que **sí tienen fila** (`midia`→`tablero`, `escritorio`→`apps`, `hilo`→`chat`, `hilo-sop`→`soporte`, `bi-scroll`/`bi-clientes`→`bi`, `p-parcial`/`peek-chat`/`grip-chat`→`chat`) · **4** de la ilustración del vacío (`calma`, `calma-expl`, `color`, `exp`), que la fila `vacio` cita como `index.html:1713-1857` · **6** del SVG decorativo (`scallop-proto`, `scallopPathProto`, `e-ext`, `e-int`, `e-o1`, `e-o2`) · **20** rótulos y contenidos de pantallas con fila (`total-gastos`, `lista-gastos`, `mic-gastos`, `card-tit`, `card-campos`, `encaja-lbl`, `bi-refresh-txt`, `sec-hoy`, `sp-rest`, `grip-arriba`, `prog`, `prog-txt`, `cargando`, `salio`, `app`, `funcion`, `inteligencia`, `aviso-lucia`, `accion-lucia`, `cerrar-aj`…) · y **2 que SÍ son inquilinos**: `s-plan` (R2-1) y `snack`+`deshacer` (R2-2). **Ningún tercero.** Los dos inquilinos estaban entre los «SIN-CLASE» y los `subp`, o sea que **la clase sola no alcanzaba para descartar**: hubo que abrir los 60.
 
 🔴 **El punto ciego, declarado porque sin él esta lista parecería completa:** el cruce de ids
 encuentra **nodos**, no **mecanismos**. El segundo inquilino de abajo se encontró leyendo los
