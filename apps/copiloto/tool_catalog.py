@@ -1376,6 +1376,8 @@ def _borrador_desde_dictado(arguments: dict, now_iso_provider, cliente_registro:
         try:
             condicion = CondicionIVA(int(cliente_registro.get("condicion_iva")))
         except (TypeError, ValueError):
+            # None o un código que no es del enum: no es un error que haya que reportar, es «el registro
+            # no sabe esto». Consumidor Final es exactamente lo que ya pasaba antes de D7.
             condicion = CondicionIVA.CONSUMIDOR_FINAL
         receptor = Receptor(condicion_iva=condicion,
                             tipo_doc=TipoDoc.CUIT if cliente_registro["doc_tipo"] == DOC_CUIT else TipoDoc.DNI,
