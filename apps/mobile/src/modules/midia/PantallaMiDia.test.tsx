@@ -51,7 +51,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 });
 
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react-native';
 
 import {
   borrarTarjetaMiDia,
@@ -298,6 +298,23 @@ describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)'
       expect(onConexion).not.toHaveBeenCalled();
       expect(onAjustes).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('🔴 `tablero`: encabezado, banner, solapas y lista viven en UN solo scroll (no queda una lista de ~1,5 tarjetas)', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail' }),
+        tarjetaDe('p'),
+      ]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-scroll')).toBeTruthy());
+    const scroll = within(screen.getByTestId('midia-scroll'));
+    expect(scroll.getByTestId('midia-contador')).toBeTruthy();
+    expect(scroll.getByTestId('midia-alerta')).toBeTruthy();
+    expect(scroll.getByTestId('midia-solapas')).toBeTruthy();
+    expect(scroll.getByTestId('midia-lista')).toBeTruthy();
   });
 
   it('sin tarjeta crítica no hay banner', async () => {
