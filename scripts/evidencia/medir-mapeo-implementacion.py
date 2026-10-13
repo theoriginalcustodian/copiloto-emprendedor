@@ -23,7 +23,7 @@ su motivo escrito. Ninguna queda sin veredicto.» Por eso una ENMIENDA fundada *
 por eso este script imprime SIEMPRE tres cifras con su unidad, no una:
    · cumple-DoD        (resuelta en codigo + enmienda fundada)
    · cerrada-en-codigo (solo lo que se escribio y mergeo)
-   · con-veredicto     (medida por su dueno, sea cual sea el resultado)
+   · con-veredicto     (medida por su dueno, sea cual sea el resultado: INCLUYE las pendientes)
    · pendiente-declarada (una divergencia ⛓/⚠ -> NO cumple el DoD, y se nombra)
 Una sola de las tres se deja citar para cualquier pregunta; las tres juntas, no.
   -> memoria: una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta
@@ -347,7 +347,12 @@ def main():
               % (cumple, n, cumple * 100 // n))
         print("CERRADA EN CODIGO    : %d/%d filas (%d%%)  [solo lo escrito y mergeado]"
               % (codigo, n, codigo * 100 // n))
-        print("CON VEREDICTO MEDIDO : %d/%d filas (%d%%)" % (medidas, n, medidas * 100 // n))
+        # Esta cifra NO es un cierre: cuenta filas MEDIDAS, pendientes incluidas. Lo pidio
+        # backend el 2026-10-13 al ver que con 54/54 «con veredicto» y 12 pendientes, la
+        # linea leida sola suena a 100% hecho. Una cifra que no declara su sujeto se deja
+        # citar para la pregunta ajena, asi que la declaracion va PEGADA al numero.
+        print("CON VEREDICTO MEDIDO : %d/%d filas (%d%%)  [MEDIDA no es CUMPLIDA: incluye las %d pendientes]"
+              % (medidas, n, medidas * 100 // n, len(pend)))
         print("FUERA DE ESTE CORPUS : %d/%d filas  [backend+nativa: su evidencia son los cierres del buzon]"
               % (fuera, n))
         print("PENDIENTE DECLARADA  : %d/%d filas  [una divergencia con ⛓/⚠: NO cumplen el DoD]"
