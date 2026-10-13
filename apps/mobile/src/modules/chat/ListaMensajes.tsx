@@ -9,12 +9,14 @@ import {
   leerFacturaPropuesta,
   leerLinkDeCobro,
   leerGastoPropuesto,
+  leerRecibo,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
   leerSugerenciaArmarFactura,
   mapearGate,
   separadoresDeDia,
   type ChatMessage,
+  type DetalleGate,
   type Gate,
 } from '@copiloto/core';
 
@@ -75,6 +77,61 @@ export interface ListaMensajesProps {
       >
     >,
   ) => void;
+}
+
+/**
+ * El detalle ESTRUCTURADO del gate (`card.detalle`, C-D3): título, filas, cuerpo citado y nota. Sale de
+ * los `arguments` que se van a ejecutar, así que es lo que quien confirma está aprobando — por eso la
+ * `cita` va ENTERA (un mail truncado no es lo que se manda). Reemplaza al nombre/monto/markdown sueltos.
+ */
+function DetalleConfirmacion({ detalle }: { detalle: DetalleGate }) {
+  const tema = useTema();
+  return (
+    <View testID="confirmacion-detalle" style={{ gap: tema.espacio.sm }}>
+      <Text
+        testID="confirmacion-detalle-titulo"
+        style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700' }}
+      >
+        {detalle.titulo}
+      </Text>
+      {detalle.filas.map((fila, i) => (
+        <View key={`${i}-${fila.clave}`} testID="confirmacion-detalle-fila" style={{ gap: 2 }}>
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{fila.clave}</Text>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '600' }}>
+            {fila.valor}
+          </Text>
+          {fila.sub != null && (
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{fila.sub}</Text>
+          )}
+        </View>
+      ))}
+      {detalle.cita != null && (
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: tema.color.acento,
+            paddingLeft: tema.espacio.sm,
+          }}
+        >
+          <Text
+            testID="confirmacion-detalle-cita"
+            style={{
+              color: tema.color.texto,
+              fontSize: tema.tipo.base,
+              lineHeight: Math.round(tema.tipo.base * 1.4),
+            }}
+          >
+            {detalle.cita}
+          </Text>
+        </View>
+      )}
+      {detalle.nota != null && (
+        <Text testID="confirmacion-detalle-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          {detalle.nota}
+        </Text>
+      )}
+    </View>
+  );
 }
 
 interface TarjetaConfirmacionProps {
@@ -156,19 +213,27 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
             </Text>
           )}
         </View>
-        {gate.name && (
-          <Text testID="tarjeta-confirmacion-para" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-            Para: <Text style={{ fontWeight: '700' }}>{gate.name}</Text>
-          </Text>
+        {gate.detalle ? (
+          // Con `detalle` (C-D3) el backend ya dijo QUÉ se aprueba, estructurado: las filas traen el
+          // «Para» y el «Importe», así que el nombre/monto/markdown sueltos de abajo no se repiten.
+          <DetalleConfirmacion detalle={gate.detalle} />
+        ) : (
+          <>
+            {gate.name && (
+              <Text testID="tarjeta-confirmacion-para" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+                Para: <Text style={{ fontWeight: '700' }}>{gate.name}</Text>
+              </Text>
+            )}
+            {gate.amount && (
+              <Text testID="tarjeta-confirmacion-monto" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+                Monto: <Text style={{ fontWeight: '700' }}>{`$${gate.amount}`}</Text>
+              </Text>
+            )}
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: Math.round(tema.tipo.base * 1.4) }}>
+              {gate.markdown}
+            </Text>
+          </>
         )}
-        {gate.amount && (
-          <Text testID="tarjeta-confirmacion-monto" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-            Monto: <Text style={{ fontWeight: '700' }}>{`$${gate.amount}`}</Text>
-          </Text>
-        )}
-        <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: Math.round(tema.tipo.base * 1.4) }}>
-          {gate.markdown}
-        </Text>
         {gate.riesgo?.irreversible && (
           <Text
             testID="tarjeta-confirmacion-irreversible"
@@ -335,6 +400,24 @@ const FilaMensaje = memo(function FilaMensaje({
       <View style={{ gap: 8 }}>
         <Burbuja role="assistant" text={mensaje.text} />
         <ChipArmarFactura sugerencia={sugerenciaFactura} />
+      </View>
+    );
+  }
+
+  // `recibo` (C-D3, piloto Gmail) — la acción confirmada se EJECUTÓ bien. La card final no lleva `kind`
+  // ni `choices`, así que `mapearGate` la ignora: va ANTES de él. 🔴 La señal es la presencia de
+  // `card.recibo`, no `confirmed_tool.status === 'ok'` ni el texto: sin `recibo` no se pinta «Mandado a…».
+  const recibo = leerRecibo(mensaje.card);
+  if (recibo) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <Recibo
+          testID="recibo-ejecutado"
+          tono="exito"
+          titulo={recibo.titulo}
+          detalle={recibo.meta != null ? [recibo.meta] : undefined}
+        />
       </View>
     );
   }

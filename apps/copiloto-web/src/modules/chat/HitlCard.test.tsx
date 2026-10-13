@@ -142,4 +142,61 @@ describe('HitlCard', () => {
     });
     expect(screen.getByTestId('hitl-card-mercadopago')).toBeInTheDocument();
   });
+
+  // C-D3 — el gate con `detalle` pinta lo que se va a ejecutar (título, filas, cita ENTERA, nota).
+  describe('C-D3 — `detalle`', () => {
+    const CUERPO = ['Hola Lucía,', '', 'Te recuerdo la reunión del lunes. '.repeat(30), '', 'Saludos'].join('\n');
+    const detalle = {
+      titulo: 'Mail a lucia@x.com',
+      filas: [
+        { clave: 'Para', valor: 'lucia@x.com', sub: null, editable: false },
+        { clave: 'Asunto', valor: 'Recordatorio', sub: null, editable: false },
+      ],
+      cita: CUERPO,
+      nota: 'Se manda desde tu Gmail.',
+    };
+
+    it('🔴 pinta título, filas, cita entera y nota — y no repite el concepto suelto', () => {
+      renderCard({ service: 'gmail', label: 'Gmail', detalle, concept: 'Voy a mandar un mail a Lucía.' });
+
+      expect(screen.getByTestId('confirmacion-detalle-titulo')).toHaveTextContent('Mail a lucia@x.com');
+      expect(screen.getAllByTestId('confirmacion-detalle-fila')).toHaveLength(2);
+      expect(screen.getByText('lucia@x.com')).toBeInTheDocument();
+      // La cita ENTERA y con sus saltos de línea (white-space: pre-wrap en el CSS).
+      expect(screen.getByTestId('confirmacion-detalle-cita').textContent).toBe(CUERPO);
+      expect(screen.getByTestId('confirmacion-detalle-nota')).toHaveTextContent('Se manda desde tu Gmail.');
+      expect(screen.queryByText('Voy a mandar un mail a Lucía.')).toBeNull();
+    });
+
+    it('con `detalle` los botones siguen confirmando y cancelando', () => {
+      const { onConfirm, onCancel } = renderCard({ service: 'gmail', label: 'Gmail', detalle });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('control negativo: sin `detalle` pinta el concepto de siempre', () => {
+      renderCard({ service: 'gmail', label: 'Gmail', concept: 'Voy a mandar un mail a Lucía.' });
+
+      expect(screen.queryByTestId('confirmacion-detalle')).toBeNull();
+      expect(screen.getByText('Voy a mandar un mail a Lucía.')).toBeInTheDocument();
+    });
+
+    it('resuelta con `detalle`: el recibo conserva las filas y la cita (rastro de lo aprobado)', () => {
+      renderCard({
+        service: 'gmail',
+        label: 'Gmail',
+        detalle,
+        resuelta: { titulo: 'Enviar', tono: 'exito' },
+      });
+
+      const recibo = screen.getByTestId('hitl-card-gmail');
+      expect(recibo).toHaveTextContent('lucia@x.com');
+      expect(recibo).toHaveTextContent('Recordatorio');
+      expect(recibo).toHaveTextContent('Te recuerdo la reunión del lunes.');
+    });
+  });
 });

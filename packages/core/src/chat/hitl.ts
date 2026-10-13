@@ -1,6 +1,7 @@
 import { formatearImporte } from '../dinero/formatoDinero';
 import type { ReplyChoice } from '../api/types';
 import type { ChatMessage } from './chatMachine';
+import { CLAVE_IMPORTE, CLAVE_PARA, leerDetalleGate, type DetalleGate } from './detalleGate';
 
 /**
  * Detección del gate de negocio (confirmar/cancelar) — adaptado del `hitlMapping.ts` de origen.
@@ -56,6 +57,13 @@ export interface Gate {
    * consumidor lo agrega aparte con su propio token (ver `HitlCard`/`TarjetaConfirmacion`). Sólo
    * servicios que lo muestran, hoy Mercado Pago. */
   amount?: string;
+  /**
+   * C-D3 — el detalle estructurado del gate (`card.detalle`), armado por el backend desde los
+   * `arguments` que se van a ejecutar. Si está, la UI pinta de acá `titulo`/`filas`/`cita` en vez del
+   * `markdown`, y `name`/`amount` salen de sus filas (ver `mapearGate`). Ausente = servicio sin detalle
+   * (todos menos Gmail hoy) o un payload ilegible: se muestra el `markdown` de siempre.
+   */
+  detalle?: DetalleGate;
   /** Riesgo intrínseco del servicio: etiqueta del badge y si no se puede deshacer. */
   riesgo?: { badge: string; tono: 'warning' | 'danger'; irreversible: boolean };
   /** H-A4-9 — si esta card ya fue respondida (`mensaje.hitlRespondido`). Presente => la vista debe
@@ -104,16 +112,24 @@ export function mapearGate(mensaje: ChatMessage): Gate | null {
   const service = (mensaje.card?.service ?? '').toLowerCase();
   const risk = SERVICE_RISK[service];
   const markdown = mensaje.card?.markdown ?? mensaje.text;
+  // C-D3: con `detalle`, la fuente de verdad es lo que se va a ejecutar (sus filas), no una regex del
+  // texto. Gana sobre `AMOUNT_RE` y sobre la negrita; ésas quedan como fallback para mensajes SIN
+  // `detalle` (historial viejo rehidratado, y todo servicio que el backend no migró).
+  const detalle = leerDetalleGate(mensaje.card) ?? undefined;
+  const filaImporte = detalle?.filas.find((f) => f.clave === CLAVE_IMPORTE)?.valor;
+  const filaPara = detalle?.filas.find((f) => f.clave === CLAVE_PARA)?.valor;
   // El backend manda el monto CRUDO dentro del texto (`f"...por ${amount}..."`, sin separador de
   // miles — ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar el
   // signo `$` (ya lo pone el consumidor). H-A4-12.
-  const amountRaw = risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined;
+  const amountRaw =
+    (risk?.showAmount ? (filaImporte ?? markdown.match(AMOUNT_RE)?.[1]) : undefined);
 
   return {
     service,
     label: mensaje.card?.label || 'Confirmación',
-    name: markdown.match(BOLD_NAME_RE)?.[1],
+    name: filaPara ?? markdown.match(BOLD_NAME_RE)?.[1],
     amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
+    detalle,
     riesgo: risk && { badge: risk.badge, tono: risk.tono, irreversible: risk.irreversible },
     markdown,
     confirmLabel: confirmChoice.label,
