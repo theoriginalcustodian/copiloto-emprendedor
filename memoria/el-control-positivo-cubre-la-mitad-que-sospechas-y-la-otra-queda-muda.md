@@ -365,3 +365,31 @@ Quedó cerrada la causa conocida de crash y abierta la clase: cualquier **otra**
 saliendo por el 1. Un comentario que describe un defecto se lee como que el defecto fue atendido, y es
 el próximo lector el que paga ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
 El ruteo a `exit 2` y el canario llegaron en un PR aparte, sobre `main` ya con #897.
+
+**Refuerzo 2026-10-13 — el control cuya condición de éxito la cumple TAMBIÉN el cambio ajeno.** El caso 9
+de `test-vigia-lanzador.sh` fabrica una copia VIEJA del lanzador para probar que el re-exec desde el pin
+la corrige. Fabricaba así:
+
+```bash
+sed "s/mi-buzon.sh) ;;/no-existe-xx.sh) ;;/" "$VIGIA" > "$L9/scripts/vigia.sh"
+```
+
+Ese día **yo** cambié esa línea a `mi-buzon.sh|ci-verde.sh) ;;` para meter otro instrumento a la
+whitelist. El `sed` dejó de matchear, así que la «copia vieja» salió **idéntica al original** y el caso 9
+ya no ejercitaba nada. Y su control —`grep -q 'mi-buzon[.]sh) ;;'` sobre la copia, *«si el literal
+sigue ahí, no pude fabricarla»*— **salió verde**: el literal ya no estaba… porque yo lo había renombrado.
+
+**Una sola condición acreditaba dos causas incompatibles:** «el `sed` reemplazó la línea» y «alguien
+renombró la línea». Es el mismo esqueleto que el resto de este archivo, con una vuelta: acá la mitad muda
+no es una propiedad que nadie miró, es **la ambigüedad de la condición que sí se miró**. Hermano de
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] y de
+[[el-guard-se-satisface-con-su-propio-comentario]].
+
+**How to apply:** un control de *«fabriqué el mutante»* **nunca** se escribe como «el literal
+desapareció», porque desaparecer es lo que hace cualquier edición de esa línea. Se escribe como
+**conjunción de dos hechos independientes**: (a) el artefacto **difiere** del original (`cmp -s` → debe
+fallar) **y** (b) el patrón objetivo ya no está. Con las dos, un renombre ajeno pone el test en rojo en vez
+de acreditarlo. Y el patrón del fabricador se vuelve tolerante a la forma real de la línea —acá
+`sed -E 's/^([[:space:]]*)mi-buzon[.]sh([|][^)]*)?[)] ;;/…/'`— para que un alias nuevo no lo deje mudo otra
+vez. Medido: con el `sed` viejo restaurado, la suite ahora dice **«no pude fabricar la copia vieja»**;
+antes de este fix, verde.
