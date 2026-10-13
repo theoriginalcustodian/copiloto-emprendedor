@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -77,6 +78,7 @@ export function Recibo({ testID, tono, titulo, detalle, enlace, nota, children }
               accessibilityRole="link"
               onPress={enlace.onPress}
               hitSlop={8}
+              style={pressableStyle(undefined, PRESS_FADE)}
             >
               <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontWeight: '600' }}>
                 {enlace.texto}
