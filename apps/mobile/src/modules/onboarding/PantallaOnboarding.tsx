@@ -22,7 +22,11 @@ import { useTema } from '../../theme/ThemeProvider';
 /** Dos permisos ante el usuario, no seis servicios: el alcance se dice ANTES de pedir. */
 const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; boton: string }> = {
   mercadopago: { titulo: 'Cobrar', detalle: 'Mercado Pago', boton: 'Conectar Mercado Pago' },
-  google: { titulo: 'Mail, agenda y archivos', detalle: 'Google', boton: 'Conectar Google' },
+  google: {
+    titulo: 'Mail · Agenda · Archivos',
+    detalle: 'Google · Gmail, Calendar, Drive, Docs, Sheets',
+    boton: 'Conectar Google',
+  },
 };
 
 type Paso = 'promesa' | 'recibo';
@@ -152,7 +156,7 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
               </View>
             ))}
             <Text testID="onboarding-alcance" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-              Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Cuenta.
+              Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Ajustes.
             </Text>
             {error != null && (
               <Text accessibilityRole="alert" testID="onboarding-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>

@@ -174,6 +174,31 @@ describe('PantallaPresupuestos', () => {
     expect(screen.getByTestId('presupuesto-card-12-detalle')).toHaveTextContent('2 ítems', { exact: false });
   });
 
+  it('`presu`: el resumen «Esperando respuesta» suma los pendientes y cuenta sin contestar / aceptados', async () => {
+    mockListar.mockResolvedValue({
+      status: 'ok',
+      presupuestos: [
+        presupuesto({ id: 1, estado: 'pendiente', total: '200000.00', sinRespuesta: true }),
+        presupuesto({ id: 2, estado: 'pendiente', total: '125000.00', sinRespuesta: false }),
+        presupuesto({ id: 3, estado: 'aprobado', total: '45000.00' }),
+      ],
+    });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('presupuestos-resumen')).toBeTruthy());
+    expect(screen.getByTestId('presupuestos-resumen-rotulo')).toHaveTextContent('Esperando respuesta');
+    expect(screen.getByTestId('presupuestos-resumen-cifra')).toHaveTextContent('$325.000,00');
+    expect(screen.getByTestId('presupuestos-resumen-chip')).toHaveTextContent('1 sin contestar · 1 aceptado');
+  });
+
+  it('🔴 `presu`: si el backend no manda `estado` NO hay resumen (no se afirma «$0 esperando»)', async () => {
+    mockListar.mockResolvedValue({ status: 'ok', presupuestos: [presupuesto({ id: 1 })] });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-card-1')).toBeTruthy());
+    expect(screen.queryByTestId('presupuestos-resumen')).toBeNull();
+  });
+
   it('una lista vacía no es un error: invita a crear uno', async () => {
     mockListar.mockResolvedValue({ status: 'ok', presupuestos: [] });
 
