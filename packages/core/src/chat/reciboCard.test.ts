@@ -2,12 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { leerRecibo } from './reciboCard';
 
+// `confirmed_tool` viaja en el wire pero `ReplyCard` no lo tipa (la app no lo lee): va por spread, que no
+// pasa por el chequeo de propiedades sobrantes — y refleja la forma REAL de la card final.
+const TOOL_OK = {
+  confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+};
+
 describe('leerRecibo', () => {
   it('lee la forma real que emite el backend', () => {
     expect(
       leerRecibo({
         recibo: { titulo: 'Mandado a lucia@x.com', meta: '15:41', accion: null },
-        confirmed_tool: { name: 'gmail_send', confirmed: true, status: 'ok' },
+        ...TOOL_OK,
       }),
     ).toEqual({ titulo: 'Mandado a lucia@x.com', meta: '15:41' });
   });
@@ -22,9 +28,7 @@ describe('leerRecibo', () => {
   // 🔴 La presencia de `card.recibo` es LA señal. El control negativo es el caso que el contrato nombra:
   // `confirmed_tool` dice `ok`, pero no hay `recibo` → no se pinta «Mandado a…».
   it('🔴 `confirmed_tool.status === "ok"` SIN `recibo` no produce recibo', () => {
-    expect(
-      leerRecibo({ confirmed_tool: { name: 'gmail_send', confirmed: true, status: 'ok' } }),
-    ).toBeNull();
+    expect(leerRecibo({ service: 'gmail', label: 'Gmail', ...TOOL_OK })).toBeNull();
   });
 
   it('un recibo sin título legible es null (no dice qué pasó)', () => {
