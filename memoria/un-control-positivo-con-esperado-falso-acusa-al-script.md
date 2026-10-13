@@ -152,3 +152,37 @@ Y el veredicto se lee del **mensaje**, no del rc: el propio instrumento ya separ
 `exit 2` vs `exit 8`, y fui yo quien tiró esa información al mirar sólo el código de salida.
 
 → [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] · [[el-instrumento-versionado-difiere-por-rama]]
+
+---
+
+## Refuerzo 2026-10-12 — el resolvedor del control positivo tiene que ser CIEGO, y leer el mapeo lo quema
+
+Un gate me rechazó el cierre tres veces con la misma objeción: el fixture del control positivo
+*afirma* en su encabezado «5 filas resueltas A MANO **antes** de construir el instrumento», y esa
+afirmación es del propio autor. Fixture e instrumento nacieron en el **mismo commit** (`1fb170cd`,
+13:56), así que la historia no muestra el orden.
+
+Mi plan para destrabarlo parecía impecable: **resuelvo 5 filas nuevas a mano AHORA**, contra un
+verificador ya congelado en `main`, que no puedo haber adaptado. Al ir a ejecutarlo, el plan estaba
+muerto antes de empezar: **para probar la condición 1 había impreso la tabla completa de 54 filas en
+el transcript — con su columna `nativo`.** Ya vi las respuestas. Mi «resolución a mano» sería
+transcripción, y un control positivo resuelto por quien ya leyó el esperado no acredita nada:
+reproduce, por construcción.
+
+**La regla:** un control positivo tiene **dos** requisitos, y sólo uno se suele cuidar.
+1. Que el instrumento **discrimine** — eso sí se prueba, y se prueba con el canario: romper cada
+   control de a uno y exigir que **cada** uno falle (`control 3 positivo (desvio una fila) FALLA (bien)`).
+2. Que el **resolvedor sea ciego** al esperado. Esto no es una propiedad del script: es del *humano
+   o agente* que llenó el fixture, y **se destruye en cuanto lee el artefacto que el control audita**.
+   No es recuperable: no hay forma de des-ver.
+
+**Lo que sí acredita, cuando el orden ya no es demostrable:** que el esperado **no se re-ajustó**.
+El instrumento cambió dos veces después del fixture (`c6163254` 15:04, `941baae4` 21:41) y el
+fixture **nunca** volvió a tocarse. Si lo hubiera tuneado para hacer pasar, tendría un commit
+posterior al último del instrumento. Es evidencia más débil que el orden, y hay que decirlo así.
+
+**Consecuencia operativa:** el control positivo se escribe **primero y en su propio commit**, antes
+de existir el artefacto, y lo llena quien todavía no lo leyó. Si ya se leyó, el dueño del control
+**pasa a ser otra sesión** — no es una formalidad que uno pueda cubrir solo.
+
+→ [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
