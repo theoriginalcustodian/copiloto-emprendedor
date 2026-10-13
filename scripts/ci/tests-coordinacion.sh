@@ -61,6 +61,26 @@ fi
 
 corridos=0
 fallados=0
+# «NO PUDE MEDIR» (rc=2 + la marca) NO es un defecto del codigo bajo prueba: es una dependencia
+# ausente en ESTE arbol (p.ej. `node_modules` para el control de tipos). Contarlo como fallo hacia
+# que un arbol sin `npm install` tuviera la pata `lint` roja para siempre, y un rojo que aparece
+# siempre deja de leerse: se saltea. Pero tampoco se ignora en silencio — se CUENTA y se NOMBRA en
+# la linea de CONTROL, porque un control que no midio es cobertura perdida, no cobertura verde.
+MARCA_NO_MEDIDO='NO PUDE MEDIR'
+no_medidos=0
+nombres_no_medidos=()
+clasificar_rc() {   # $1=rc  $2=ruta del test  $3=archivo con su salida
+  local rc="$1" t="$2" out="$3"
+  if [ "$rc" -eq 0 ]; then return 0; fi
+  if [ "$rc" -eq 2 ] && grep -qF "$MARCA_NO_MEDIDO" "$out"; then
+    no_medidos=$((no_medidos+1)); nombres_no_medidos+=("$(basename "$t")"); return 0
+  fi
+  if [ "$rc" -eq 2 ]; then
+    echo "   ↑ $(basename "$t") salio 2 pero NO imprimio «$MARCA_NO_MEDIDO»: se cuenta como FALLO." >&2
+  fi
+  fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t")")
+  return 0
+}
 # Contar SIN nombrar obliga a releer el log entero para saber quien fallo: 1104 lineas en la
 # corrida del 2026-10-12, y el culpable no imprime nada distinguible porque cada test tiene su
 # propio formato de salida. Contar es el denominador; NOMBRAR es lo que hace accionable el rojo.
@@ -74,19 +94,38 @@ for t in "${archivos[@]}"; do
       # funciones y **sale 0 sin ejecutar una sola aserción**. Es un falso verde idéntico a un pase,
       # y la extensión del archivo no dice con qué runner se corre. Acá se niega y nombra dónde va.
       if grep -q '^if __name__ ==' "$t"; then
-        python3 "$t" || { fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t")"); }
+        salida_tmp="$(mktemp)"
+        python3 "$t" 2>&1 | tee "$salida_tmp"
+        clasificar_rc "${PIPESTATUS[0]}" "$t" "$salida_tmp"
+        rm -f "$salida_tmp"
       else
         echo "❌ $(basename "$t") es un test de pytest (sin bloque __main__): como script saldría VERDE sin ejecutar nada." >&2
         echo "   Va en la suite de pytest (scripts/ci/backend.sh), no en este bucle." >&2
         fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t") [pytest mal ubicado]")
       fi
       ;;
-    *)    bash    "$t" || { fallados=$((fallados+1)); nombres_fallados+=("$(basename "$t")"); } ;;
+    *)
+      # `tee` + PIPESTATUS[0] y no una captura muda: la salida se sigue viendo en vivo (pipear un
+      # proceso largo por `tail` borra la evidencia del fallo) y el rc medido es el del TEST, no el
+      # del pipe — el pipe se come el exit code.
+      salida_tmp="$(mktemp)"
+      bash "$t" 2>&1 | tee "$salida_tmp"
+      clasificar_rc "${PIPESTATUS[0]}" "$t" "$salida_tmp"
+      rm -f "$salida_tmp"
+      ;;
   esac
   corridos=$((corridos+1))
 done
 
-echo "--- CONTROL: $corridos de $encontrados tests $LABEL corridos · $fallados fallado(s) ---"
+echo "--- CONTROL: $corridos de $encontrados tests $LABEL corridos · $fallados fallado(s) · $no_medidos no medido(s) ---"
+if [ "$no_medidos" -ne 0 ]; then
+  echo "⚠️ $no_medidos control(es) NO pudieron medir en este arbol (dependencia ausente, no un defecto):" >&2
+  for n in "${nombres_no_medidos[@]}"; do echo "   ⚠️ $n" >&2; done
+fi
+if [ "$no_medidos" -eq "$corridos" ]; then
+  echo "❌ NINGUNO de los $corridos controles pudo medir: el verde no acreditaria nada." >&2
+  exit 1
+fi
 
 if [ "$corridos" -ne "$encontrados" ]; then
   echo "❌ corrieron $corridos de $encontrados: el bucle se saltó alguno." >&2
