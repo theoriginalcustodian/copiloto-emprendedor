@@ -189,6 +189,14 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.placeholder).toBe('Contame qué pasó…'));
   });
 
+  // D3 (contrato 2026-10-13): el vacío de Soporte NO hereda los ejemplos de gasto/facturación/cobro.
+  it('el estado vacío no monta el rodillo de ejemplos del chat de negocio', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(screen.getByTestId('chat-vacio')).toBeTruthy();
+    expect(screen.queryByTestId('chat-vacio-rodillo', { includeHiddenElements: true })).toBeNull();
+  });
+
   // PISTAFIJARSOPORTE: el gesto de fijar necesita su cartel (WCAG 2.5.1) también acá.
   it('grabando sin fijar: aparece la pista del candado; en reposo no hay ninguna', async () => {
     await renderPantallaSoporte();

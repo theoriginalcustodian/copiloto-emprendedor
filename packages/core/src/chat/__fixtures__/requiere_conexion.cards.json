@@ -1,0 +1,48 @@
+[
+  {
+    "kind": "requiere_conexion",
+    "service": "mercadopago",
+    "label": "MercadoPago",
+    "bloquea": true,
+    "alcance": [
+      {
+        "texto": "Leer tus cobros",
+        "condicion": "solo_lectura"
+      },
+      {
+        "texto": "Armar links de cobro cuando vos confirmás",
+        "condicion": "requiere_ok"
+      }
+    ],
+    "connect_path": "/mp/connect"
+  },
+  {
+    "kind": "requiere_conexion",
+    "service": "gmail",
+    "label": "Gmail",
+    "bloquea": true,
+    "alcance": [
+      {
+        "texto": "Leer mails",
+        "condicion": "solo_lectura"
+      },
+      {
+        "texto": "Enviar mails",
+        "condicion": "requiere_ok"
+      },
+      {
+        "texto": "Buscar",
+        "condicion": "solo_lectura"
+      }
+    ],
+    "connect_path": "/composio/connect?service=gmail"
+  },
+  {
+    "kind": "requiere_conexion",
+    "service": "servicio_sin_ficha",
+    "label": "Servicio sin ficha",
+    "bloquea": true,
+    "alcance": [],
+    "connect_path": "/composio/connect?service=servicio_sin_ficha"
+  }
+]

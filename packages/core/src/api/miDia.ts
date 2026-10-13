@@ -190,8 +190,9 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     criticidad: texto(r.criticidad),
     verbo: texto(r.verbo),
     destino: destinoDe(datos.destino),
-    // El contrato no fija si `presentacion` cuelga de la tarjeta o de `datos` (`destino` vive en `datos`;
-    // `verbo`/`criticidad`, arriba): se acepta cualquiera de las dos hasta que backend lo declare.
+    // D2 (contrato 2026-10-13): `presentacion` cuelga de la TARJETA, hermana de `datos`. El `?? datos.presentacion`
+    // es sólo tolerancia con un emisor viejo, NO una alternativa válida: `datos` no tiene forma cerrada y un
+    // campo de contrato dentro de esa bolsa hereda el modo de falla de H12 (leído y nunca escrito).
     presentacion: presentacionDe(r.presentacion ?? datos.presentacion),
   };
 }

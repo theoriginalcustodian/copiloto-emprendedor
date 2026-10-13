@@ -24,6 +24,10 @@ import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChatSoporte } from './useChatSoporte';
 
+/** Soporte no tiene ejemplos propios (el prototipo arranca el hilo con mensajes y sólo invita con el campo
+ *  «Contame qué pasó…»): `[]` = el vacío no monta el rodillo, en vez de heredar los de gasto/cobro. */
+const SIN_EJEMPLOS: readonly string[] = [];
+
 const TITULO: Record<FuncionSoporte, string> = {
   soporte_tecnico: 'Soporte técnico',
   como_uso_la_app: 'Cómo uso la app',
@@ -184,7 +188,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
       }
     >
       <KeyboardAvoidingView testID="soporte-view" behavior="padding" style={styles.contenedor}>
-        <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+        <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} ejemplos={SIN_EJEMPLOS} />
 
         {!fijado && (
           <View

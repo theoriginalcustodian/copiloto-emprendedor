@@ -49,6 +49,12 @@ const TEXTO_VACIO = 'Antes de ejecutar algo importante, te lo muestro para que l
 
 export interface ListaMensajesProps {
   messages: ChatMessage[];
+  /**
+   * Ejemplos del rodillo del estado vacío. Ausente = los del chat (`EJEMPLOS_CHAT`, sin cambio para
+   * `ChatView`/`MicFuncion`); `[]` = no se monta el rodillo. Soporte pasa `[]`: no tiene ejemplos propios
+   * y el prototipo tampoco los define, así que no hereda los de gasto/facturación/cobro.
+   */
+  ejemplos?: readonly string[];
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
    * gate de este sprint lo usa todavía.
@@ -472,7 +478,7 @@ const FilaMensaje = memo(function FilaMensaje({
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice, onResolverTarjeta }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -537,9 +543,8 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
             >
               ¿En qué te ayudo?
             </Text>
-            <View style={{ alignSelf: 'stretch', marginTop: tema.espacio.md }}>
-              <RodilloEjemplos testID="chat-vacio-rodillo" />
-            </View>
+            {/* Con `ejemplos=[]` el rodillo no se pinta y, al ir el margen en su propio estilo, no deja hueco. */}
+            <RodilloEjemplos testID="chat-vacio-rodillo" ejemplos={ejemplos} style={{ marginTop: tema.espacio.md }} />
             <Text
               style={{
                 color: tema.color.textoTenue,
