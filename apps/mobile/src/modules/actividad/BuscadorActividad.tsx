@@ -41,6 +41,12 @@ export interface BuscadorActividadProps {
   /** La lista RICA del glass — se muestra cuando NO hay query. */
   children: ReactNode;
   placeholder?: string;
+  /**
+   * Rótulo de la lista RICA («Últimos», `prototipo/index.html:2255` `.lista-lbl`). Se dibuja sólo
+   * cuando NO hay query: con query la lista rica no se muestra y el rótulo describiría otra cosa.
+   * Ausente = sin rótulo (el comportamiento de antes para Gastos/Presupuestos/Facturación).
+   */
+  rotuloLista?: string;
   /** Tocar un resultado. Ausente = las filas no son tocables (ver `FilaActividad`). */
   onAbrirItem?: (item: ActividadItem) => void;
 }
@@ -53,6 +59,7 @@ export function BuscadorActividad({
   testIDBase,
   children,
   placeholder = 'Buscar en tus operaciones',
+  rotuloLista,
   onAbrirItem,
 }: BuscadorActividadProps) {
   const tema = useTema();
@@ -108,6 +115,15 @@ export function BuscadorActividad({
         testID={testIDBase}
       />
 
+      {!buscando && rotuloLista != null && (
+        <Text
+          testID={`${testIDBase}-rotulo`}
+          style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold }]}
+        >
+          {rotuloLista}
+        </Text>
+      )}
+
       {!buscando && children}
 
       {buscando && estado === 'buscando' && (
@@ -152,4 +168,6 @@ export function BuscadorActividad({
 
 const styles = StyleSheet.create({
   contenedor: { gap: 12 },
+  // Mismo patrón de rótulo que `CampoTexto.etiqueta` (el «BUSCAR» de arriba): una sola gramática.
+  rotulo: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
 });

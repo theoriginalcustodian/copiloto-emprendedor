@@ -464,3 +464,34 @@ describe('PantallaIngresos — dictado por chat (contrato 2026-10-13)', () => {
     expect(screen.queryByTestId('ingreso-form-monto-input')).toBeNull();
   });
 });
+
+// Fila `ingresos` (TRIAJE15, H10): el prototipo pone el período junto al título (`.atras .per`,
+// `index.html:2248`) y rotula la lista «Últimos» (`.lista-lbl`, `:2255`). DEVICE15 midió ninguno de los dos.
+describe('PantallaIngresos — período junto al título y rótulo «Últimos»', () => {
+  it('el período del resumen aparece junto al título, como nombre de mes', async () => {
+    resumenMock.mockResolvedValue({
+      status: 'ok',
+      resumen: { periodo: '2026-08', total: '95000.00', mesAnterior: '112000.00' },
+    });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('glass-etiqueta')).toBeTruthy());
+    expect(screen.getByTestId('glass-etiqueta')).toHaveTextContent('Agosto');
+    expect(screen.getByTestId('glass-titulo')).toHaveTextContent('Ingresos');
+  });
+
+  it('sin resumen no hay período: no se inventa uno con la fecha del teléfono', async () => {
+    resumenMock.mockResolvedValue({ status: 'no_disponible' } as Awaited<ReturnType<typeof obtenerResumenIngresos>>);
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('ingresos-lista')).toBeTruthy());
+    expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
+  });
+
+  it('la lista lleva el rótulo «Últimos» mientras no hay búsqueda', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('ingresos-busqueda-rotulo')).toBeTruthy());
+    expect(screen.getByTestId('ingresos-busqueda-rotulo')).toHaveTextContent('Últimos');
+  });
+});

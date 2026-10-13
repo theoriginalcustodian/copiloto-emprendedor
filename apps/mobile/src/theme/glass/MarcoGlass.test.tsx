@@ -60,3 +60,29 @@ describe('MarcoGlass -- la zona de arrastre creció (handle+identidad), "Volver"
     expect(screen.getByText('contenido')).toBeTruthy();
   });
 });
+
+describe('MarcoGlass -- etiqueta junto al título (el período de la función)', () => {
+  async function montarConEtiqueta(etiqueta?: string) {
+    return render(
+      <ThemeProvider>
+        <MarcoGlass titulo="Ingresos" icono="ingresos" etiqueta={etiqueta} testID="marco-test">
+          <Text>contenido</Text>
+        </MarcoGlass>
+      </ThemeProvider>,
+    );
+  }
+
+  it('con etiqueta, se dibuja junto al título y dentro de la zona de arrastre', async () => {
+    await montarConEtiqueta('Agosto');
+
+    expect(screen.getByTestId('glass-etiqueta')).toHaveTextContent('Agosto');
+    expect(screen.getByTestId('glass-titulo')).toHaveTextContent('Ingresos');
+  });
+
+  it.each([[undefined], ['']])('sin etiqueta (%p) no se dibuja nada: las otras pantallas no cambian', async (valor) => {
+    await montarConEtiqueta(valor);
+
+    expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
+    expect(screen.getByTestId('glass-volver')).toBeTruthy();
+  });
+});

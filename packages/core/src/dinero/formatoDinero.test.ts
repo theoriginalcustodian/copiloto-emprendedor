@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatearFechaCorta, formatearFechaLarga, formatearImporte } from './formatoDinero';
+import { formatearFechaCorta, formatearFechaLarga, formatearImporte, formatearMesDePeriodo } from './formatoDinero';
 
 describe('formatearImporte', () => {
   it('agrupa miles y usa coma decimal', () => {
@@ -94,5 +94,18 @@ describe('formatearFecha', () => {
   it('período SIN día (Resumen.periodo, "YYYY-MM"): no revienta ni corre de mes', () => {
     expect(formatearFechaCorta('2026-08')).toBe('1 ago');
     expect(formatearFechaLarga('2026-08')).toBe('1 ago 2026');
+  });
+
+  it('formatearMesDePeriodo: el nombre del mes del período, sin inventar un día', () => {
+    expect(formatearMesDePeriodo('2026-08')).toBe('Agosto');
+    // Una fecha con día cae en SU mes, y el último día no corre al siguiente por huso.
+    expect(formatearMesDePeriodo('2026-08-31')).toBe('Agosto');
+    expect(formatearMesDePeriodo('2026-12')).toBe('Diciembre');
+  });
+
+  it('formatearMesDePeriodo: lo que no es fecha ni período da vacío', () => {
+    expect(formatearMesDePeriodo('')).toBe('');
+    expect(formatearMesDePeriodo('agosto')).toBe('');
+    expect(formatearMesDePeriodo('no-es-fecha')).toBe('');
   });
 });

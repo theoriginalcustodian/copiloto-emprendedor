@@ -149,3 +149,21 @@ export function formatearFechaLarga(iso: string): string {
   if (p === null) return '';
   return `${p.dia} ${MESES_CORTOS[p.mes]} ${p.anio}`;
 }
+
+const MESES_LARGOS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/**
+ * `"2026-08"` (el `periodo` de `Resumen*`, sin día) → `"Agosto"`. Para el período junto al título de
+ * una función (`prototipo/index.html:2248`, `.atras .per`), donde un `"1 ago"` —lo que daría
+ * `formatearFechaCorta` sobre un período sin día— inventa un día que nadie eligió. Vacío si no es una
+ * fecha o un período: el que lo pinta decide no mostrar nada, no mostrar basura.
+ */
+export function formatearMesDePeriodo(iso: string): string {
+  if (iso === '') return '';
+  const p = partesDeFechaOPeriodo(iso);
+  if (p === null) return '';
+  return MESES_LARGOS[p.mes] ?? '';
+}
