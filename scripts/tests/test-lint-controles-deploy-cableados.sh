@@ -38,10 +38,11 @@ grep -v -E 'tests-coordinacion\.sh" +"\$ROOT/deploy/copiloto"' "$LINT" > "$T/lin
 # Exentos POR MEDICIÓN, no por conveniencia: son harness de DB/GoTrue que invoca gate.sh y
 # sync-test-backend.sh, no controles sueltos. Cada uno debe probar que tiene invocador.
 # `test-db.sh`/`test-gotrue.sh`: harness de DB/GoTrue que invocan gate.sh y sync-test-backend.sh.
-# Los dos `.py`: necesitan pytest (uno estilo pytest, el otro unittest) y van en la suite de
+# Los `.py` (WORKERPOLLER sumó `test_worker_pollers_check.py`: pytest + Temporal local): necesitan pytest
+# (o unittest) y van en la suite de
 # `scripts/ci/backend.sh` — `lint` corre python stdlib. La exención se verifica igual: cada uno
 # tiene que PROBAR que alguien lo invoca.
-EXENTOS="test-db.sh test-gotrue.sh test_meclaves_check.py test_caddy_converge.py"
+EXENTOS="test-db.sh test-gotrue.sh test_meclaves_check.py test_caddy_converge.py test_worker_pollers_check.py"
 GLOBS="$(printf '%s' "$LINEA" | grep -oE "'[^']*'" | head -1 | tr -d "'")"
 [ -n "$GLOBS" ] || GLOBS='test_*.sh test_*.py'
 # La lógica va en una función para poder correrla sobre un DIRECTORIO FIXTURE: el caso 3 es una
