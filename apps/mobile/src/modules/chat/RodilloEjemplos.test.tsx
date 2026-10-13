@@ -35,6 +35,28 @@ describe('RodilloEjemplos — el tambor del chat vacío', () => {
     });
   });
 
+  // D3: `ejemplos?` es aditiva. Default = los del chat (los tests de arriba); propios o vacío:
+  it('con `ejemplos` propios rota ésos y no los del chat', async () => {
+    await render(
+      <ThemeProvider>
+        <RodilloEjemplos testID="rodillo" ejemplos={['solo uno', 'solo dos']} />
+      </ThemeProvider>,
+    );
+    expect(ver('rodillo-0')).toHaveTextContent('solo uno');
+    expect(ver('rodillo-1')).toHaveTextContent('solo dos');
+    expect(screen.queryByTestId('rodillo-2', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('con `ejemplos=[]` no pinta nada: ni frases ni botón de pausa', async () => {
+    await render(
+      <ThemeProvider>
+        <RodilloEjemplos testID="rodillo" ejemplos={[]} />
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('rodillo', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId('rodillo-pausa')).toBeNull();
+  });
+
   it('sólo la frase activa queda expuesta al lector de pantalla', async () => {
     await montar();
     expect(ver('rodillo-0').props.accessibilityElementsHidden).toBe(false);

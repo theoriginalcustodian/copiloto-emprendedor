@@ -21,7 +21,7 @@
  * pausa. Decisión táctica anotada en el PR; si Martin la objeta, se vuelve a la excepción.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { pressableStyle } from '../../theme/glass/presion';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -43,36 +43,45 @@ const CURVA = Easing.bezier(0.45, 0.05, 0.35, 1);
 
 export interface RodilloEjemplosProps {
   testID?: string;
+  /**
+   * Las frases que rotan. Default = `EJEMPLOS_CHAT` (el chat, sin cambio). Lista vacía = el rodillo no se
+   * pinta: una pantalla sin ejemplos propios no hereda los del chat (Soporte no habla de gastos).
+   */
+  ejemplos?: readonly string[];
+  /** Estilo del contenedor (el margen del vacío viaja acá: sin rodillo no queda un hueco vacío). */
+  style?: StyleProp<ViewStyle>;
 }
 
-export function RodilloEjemplos({ testID }: RodilloEjemplosProps) {
+export function RodilloEjemplos({ testID, ejemplos = EJEMPLOS, style }: RodilloEjemplosProps) {
   const tema = useTema();
   const [indice, setIndice] = useState(0);
   const alto = Math.round(tema.tipo.base * 1.6);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const reducido = useMovimientoReducido();
   const [pausado, setPausado] = useState(false);
-  const corre = !pausado && !reducido;
+  const corre = !pausado && !reducido && ejemplos.length > 1;
 
   useEffect(() => {
     if (!corre) return;
-    timer.current = setInterval(() => setIndice((i) => (i + 1) % EJEMPLOS.length), MS_POR_EJEMPLO);
+    timer.current = setInterval(() => setIndice((i) => (i + 1) % ejemplos.length), MS_POR_EJEMPLO);
     return () => {
       if (timer.current != null) clearInterval(timer.current);
     };
-  }, [corre]);
+  }, [corre, ejemplos.length]);
+
+  if (ejemplos.length === 0) return null;
 
   return (
-    <View testID={testID} style={styles.raiz}>
+    <View testID={testID} style={[styles.raiz, style]}>
       <View style={[styles.ventana, { height: alto }]}>
-      {EJEMPLOS.map((frase, i) => (
+      {ejemplos.map((frase, i) => (
         <Frase
           key={frase}
           frase={frase}
           alto={alto}
           // Cada frase sabe SOLO dónde está respecto de la activa: abajo esperando, en el centro, o
           // saliendo por arriba. Sin índice global no hay rebobinado que disimular.
-          posicion={i === indice ? 0 : i === (indice - 1 + EJEMPLOS.length) % EJEMPLOS.length ? -1 : 1}
+          posicion={i === indice ? 0 : i === (indice - 1 + ejemplos.length) % ejemplos.length ? -1 : 1}
           color={tema.color.textoTenue}
           tamano={tema.tipo.base}
           testID={testID ? `${testID}-${i}` : undefined}
