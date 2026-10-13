@@ -97,6 +97,22 @@ export function PantallaAgenda() {
         testID="agenda-contenido"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
       >
+        {/* Mapeo `agenda` (index.html:2502): subtítulo y estado de la conexión. ENMIENDA FUNDADA
+            (2026-10-13): el cuerpo es una LISTA de sólo lectura por día (BL-J13, ADR-004) y no la
+            rejilla horaria con bloques «Libre · 2 h 30» del prototipo: dibujarla exige duración y
+            solapamiento de eventos, que el contrato de `leerAgenda` no trae. */}
+        <Text testID="agenda-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+          Tus eventos y lo que vence, en la misma línea.
+        </Text>
+        {estado === 'ok' && agenda != null && agenda.conectado && (
+          <Text
+            testID="agenda-estado"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+          >
+            Google Calendar conectada
+          </Text>
+        )}
+
         <FilaBotones
           testID="agenda-acciones"
           botones={[{ etiqueta: 'Nuevo evento', onPress: nuevoEvento, variante: 'primario', testID: 'agenda-nuevo-evento' }]}
