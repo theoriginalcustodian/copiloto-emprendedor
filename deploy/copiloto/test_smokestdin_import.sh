@@ -86,15 +86,24 @@ chk "run-smoke-prod.sh exporta UC_LOGIN_CONTRATO_PATH" \
 # 6) MISMO MECANISMO para los CUATRO contratos del camino del chat (MECLAVESRESTO, 2026-10-13):
 #    chat / reply / catalog / warm. Cada uno necesita su UC_<EP>_CONTRATO_PATH en el runner, y su
 #    loader tiene que resolver desde el tmpdir con el override y FALLAR sin él (no inventar un set).
-declare -A N_CLAVES=([chat]=2 [reply]=2 [catalog]=1 [warm]=1)
+# El conteo esperado se DERIVA del propio contrato (awk sobre el bloque `frozenset({...})`, independiente del
+# loader Python que se prueba). Con un literal por endpoint, sumar `session_id` a CLAVES_CHAT (2026-10-13) dejó
+# este test rojo en CI aunque el MECANISMO (override + fail-closed) seguía intacto: mide cómo se carga el set,
+# no cuál es.
+n_claves_de() {
+  awk '/frozenset\(\{/{d=1;next} /^\}\)/{d=0} d && /^[[:space:]]*"[a-z_]+",?[[:space:]]*$/{n++} END{print n+0}' "$1"
+}
 for ep in chat reply catalog warm; do
   var="UC_$(echo "$ep" | tr a-z A-Z)_CONTRATO_PATH"
   cp "$REPO_ROOT/apps/copiloto/${ep}_contrato.py" "$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py"
+  esperado="$(n_claves_de "$REPO_ROOT/apps/copiloto/${ep}_contrato.py")"
+  chk "precondición ($ep): el contrato declara al menos una clave (un 0 haría pasar el conteo en vacío)" \
+    "$([ "$esperado" -gt 0 ] && echo 1 || echo 0)" "esperado=$esperado"
   out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u "$var" "$var=$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py" "$PY" -c \
     "from meclaves_check import cargar_claves_de; print(len(cargar_claves_de('$ep')))" 2>&1)"
   rc=$?
-  chk "mecanismo nuevo ($ep): override $var al árbol desplegado ⇒ ${N_CLAVES[$ep]} claves" \
-    "$([ $rc -eq 0 ] && [ "$out" = "${N_CLAVES[$ep]}" ] && echo 1 || echo 0)" "rc=$rc out=$out"
+  chk "mecanismo nuevo ($ep): override $var al árbol desplegado ⇒ $esperado claves" \
+    "$([ $rc -eq 0 ] && [ "$out" = "$esperado" ] && echo 1 || echo 0)" "rc=$rc out=$out"
   out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u "$var" "$PY" -c \
     "from meclaves_check import cargar_claves_de; print(len(cargar_claves_de('$ep')))" 2>&1)"
   rc=$?

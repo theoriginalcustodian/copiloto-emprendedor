@@ -71,7 +71,7 @@ def test_login_clave_declarada_que_no_llega_es_roja_y_se_nombra():
 # ── MECLAVESRESTO (chat/reply/catalog/warm): mismo comparador, set leído de cada `<endpoint>_contrato.py` ──
 
 SETS_RESTO = {
-    "chat": frozenset({"wf_id", "accepted"}),
+    "chat": frozenset({"wf_id", "accepted", "session_id"}),
     "reply": frozenset({"replies", "next_id"}),
     "catalog": frozenset({"services"}),
     "warm": frozenset({"warmed"}),
