@@ -42,6 +42,7 @@ import tool_catalog
 from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from deposito_traumas import fabrica_desde
+from dictado_destinos import scope_de_sesion
 from interceptor_errores import CapturaDeErroresInterceptor
 from metering_store import MeteringStore
 from perfil_negocio_prompt import bloque_de_contexto
@@ -282,7 +283,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                     # Metering (BETA-1b): un evento por turno LLM y por tool ejecutada, a
                     # copiloto_metering. Boundary best-effort igual que perfil_provider -- si la DB
                     # falla, el turno sigue (`_registrar_metering` en el motor absorbe la excepción).
-                    metering_sink=_metering_provider(conn_factory))
+                    metering_sink=_metering_provider(conn_factory),
+                    # Dictado desde una función (contrato 2026-10-13): `dictado:<destino>:<sid>` angosta
+                    # el turno a la tool del destino. La tabla es `dictado_destinos` (única).
+                    session_scope=scope_de_sesion)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))

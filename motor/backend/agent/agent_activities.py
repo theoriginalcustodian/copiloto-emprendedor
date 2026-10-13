@@ -182,9 +182,30 @@ async def call_llm_tools(payload: dict) -> dict:
     if extra:
         system = system + "\n\n" + extra
     tools = dom.get("tool_schemas") or []
+    tool_choice = payload.get("tool_choice", "auto")
+    messages = payload.get("messages") or []
+    scope_fn = dom.get("session_scope")
+    scope = scope_fn(payload.get("session_id")) if scope_fn is not None else None
+    if scope is not None:
+        nombres = set(scope.get("tool_names") or ())
+        tools = [t for t in tools if (t.get("function") or {}).get("name") in nombres]
+        if not tools:
+            # Fail-closed: el scope no resuelve ninguna tool real (destino fuera de lista, o una tool
+            # renombrada). Ni se llama al LLM ni se cae al catálogo completo: «caer en el flujo genérico
+            # calladamente» es exactamente lo que el scope existe para impedir.
+            log_evento("LLM_SCOPE_SIN_TOOLS", {"domain": payload["domain"], "cliente_id": cliente_id,
+                                               "session_id": payload.get("session_id", "")})
+            return {"tool_calls": [], "model": "", "failed_over": False, "usage": {},
+                    "finish_reason": "stop",
+                    "content": "No pude resolver a qué pantalla corresponde ese dictado. ¿Lo cargás a mano?"}
+        if scope.get("system_extra"):
+            system = system + "\n\n" + scope["system_extra"]
+        # Primer paso del turno (el último mensaje es del usuario) -> la tool es obligatoria. Tras su
+        # resultado (último = 'tool') -> sólo texto: `required` de nuevo repetiría la tool hasta el
+        # detector de no-progreso y el turno cerraría con «me quedé trabado».
+        tool_choice = "none" if (messages and messages[-1].get("role") == "tool") else "required"
     result = await asyncio.to_thread(
-        provider.complete_tools, system, payload.get("messages") or [], tools,
-        tool_choice=payload.get("tool_choice", "auto"))
+        provider.complete_tools, system, messages, tools, tool_choice=tool_choice)
     # Observabilidad de `finish_reason` (pedido planificación 2026-08-09): viaja en el dict de
     # `complete_tools` pero nadie lo miraba -- si el LLM corta por max_tokens ("length"), `content`
     # es una respuesta a mitad de frase y el loop la trataba como cierre normal. Métrica de cada

@@ -70,6 +70,7 @@ from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
 from soporte_store import TicketStore
 
+import dictado_destinos
 import services
 from calendar_policy import CALENDAR_POLICY
 
@@ -93,8 +94,9 @@ MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 # tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
 # real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
 MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
-# K-10: formularios que pueden dictar (etiqueta de telemetría de `POST /transcribir`).
-CONTEXTOS_TRANSCRIBIR = frozenset({"gasto", "ingreso", "presupuesto", "cliente"})
+# K-10: formularios que pueden dictar. UNA sola definición (`dictado_destinos`): la lee `POST /transcribir`
+# (contexto) y el parser de `kind="dictado:<destino>"` de `POST /chat`; reexportada acá por compatibilidad.
+CONTEXTOS_TRANSCRIBIR = dictado_destinos.CONTEXTOS_TRANSCRIBIR
 
 # Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
 # 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
@@ -807,15 +809,45 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
 
     @app.post("/chat")
     async def chat(msg: ChatIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door del chat. `kind="dictado:<destino>"` (contrato 2026-10-13): el dictado de una FUNCIÓN
+        (Gastos, Ingresos, Presupuestos, Clientes) va por el mismo flujo, pero el backend resuelve DIRECTO la
+        tool del destino —sin «¿qué querés hacer?»— y la card `*_propuesto` vuelve por `/reply`.
+
+        Mecanismo: el `channel_ref` se namespacea `dictado:<destino>:<session_id>` y ESE es el `session_id`
+        efectivo que vuelve en la respuesta (igual que `/soporte/chat`): la pantalla pollea `/reply` con él.
+        Un hilo propio por (destino, sesión) garantiza por construcción que el dictado nunca aparece en el
+        hilo del chat. La función NO necesita un `session_id` de chat: cualquier id nuevo sirve.
+
+        Un destino fuera de `dictado_destinos` es 422: no se resuelve como válido ni cae calladamente en el
+        flujo genérico (que es lo que hacía el adapter con cualquier `kind` desconocido)."""
+        try:
+            destino = dictado_destinos.destino_de_kind(msg.kind)
+        except dictado_destinos.DestinoDictadoInvalido as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"destino de dictado inválido: {str(exc)[:40]!r} "
+                       f"(válidos: {sorted(dictado_destinos.CONTEXTOS_TRANSCRIBIR)})") from exc
+        extra_config = {"memory": False,  # hito 5 §2: apagada — el copiloto recibe órdenes y las ejecuta,
+                        #   no accede al grafo ni acumula contexto. Vuelve con Inteligencia de Negocio.
+                        "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S,
+                        "engine_mode": COPILOTO_ENGINE_MODE}
+        session_id, kind = msg.session_id, msg.kind
+        if destino is not None:
+            # Un session_id ya namespaceado de OTRO destino no se re-etiqueta: es un cliente confundido.
+            if (dictado_destinos.es_session_reservada(session_id)
+                    and not session_id.startswith(f"{dictado_destinos.SESSION_PREFIJO}{destino}:")):
+                raise HTTPException(status_code=422, detail="session_id de dictado de otro destino")
+            session_id = dictado_destinos.session_de_dictado(destino, session_id)
+            kind = "text"       # el workflow no conoce `dictado:*`; el destino viaja en el channel_ref
+            extra_config["idle_timeout_seconds"] = dictado_destinos.IDLE_TIMEOUT_DICTADO_S
+        elif dictado_destinos.es_session_reservada(session_id):
+            # El namespace angosta las tools del turno: sólo lo abre `kind="dictado:*"`, nunca un chat.
+            raise HTTPException(status_code=422, detail="session_id reservado para dictado")
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
-            task_queue=AGENT_B_TASK_QUEUE,
-            extra_config={"memory": False,  # hito 5 §2: apagada — el copiloto recibe órdenes y las ejecuta,
-                          #   no accede al grafo ni acumula contexto. Vuelve con Inteligencia de Negocio.
-                          "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S,
-                          "engine_mode": COPILOTO_ENGINE_MODE},
-            raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
-        return {"wf_id": wf_id, "accepted": wf_id is not None}
+            task_queue=AGENT_B_TASK_QUEUE, extra_config=extra_config,
+            raw_update={"session_id": session_id, "text": msg.text, "kind": kind})
+        return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": session_id}
 
     async def _transcribir_audio(audio: UploadFile) -> str:
         """Tramo COMÚN de voz de `/chat/audio` y `/transcribir` (K-10): tope de tamaño, magic bytes,
@@ -873,6 +905,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
         para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
         rutas `def`)."""
+        if dictado_destinos.es_session_reservada(session_id):
+            raise HTTPException(status_code=422, detail="session_id reservado para dictado")
         transcript = await _transcribir_audio(audio)
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
