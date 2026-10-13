@@ -400,9 +400,21 @@ export function PanelDeslizable({
         // espera): con `recorrido.value > 0` el panel arrancaba ARRIBA en 3/3 arranques en frío con el hint
         // diciendo «Escribile a Odobi» (DEVICE15 H3). Medido con un `console.log` en este mismo `onLayout`:
         // `h=853 insetsTop=24 recorrido=0` — un único layout, y el `if` nunca entraba.
+        //
+        // 🔴 **La escritura va en el frame SIGUIENTE (`requestAnimationFrame`), no en el `onLayout`.** En
+        // el camino «cerrar sesión → Entrar con otra cuenta → login» (mismo proceso, `PanelDeslizable`
+        // nuevo) el valor llegaba al modelo —`panelY` 0 → 773,33 en el hilo de UI, `recorrido` 773,33,
+        // sin escrituras posteriores— pero la VISTA nativa quedaba en `translateY` 0: chat arriba con el
+        // hint «Escribile a Odobi» y el gesto del asidero «no bajaba» porque operaba sobre un modelo que
+        // ya creía estar abajo. La escritura hecha dentro del `onLayout` se pierde; diferida un frame
+        // aplica. Medido en device (3/3 re-logins con la escritura diferida; antes, 2/2 arriba) y el
+        // arranque en frío sigue abajo. Causa de fondo no aislada (update de estilo animado que no llega
+        // a la vista durante el montaje): por eso queda el comentario y no un «arreglo definitivo».
         if (arrancaAbajo && !inicialAplicada.current && medido > 0) {
           inicialAplicada.current = true;
-          panelY.value = medido;
+          requestAnimationFrame(() => {
+            panelY.value = medido;
+          });
         }
       }}
     >
