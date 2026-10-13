@@ -3,7 +3,14 @@
 **Fecha:** 2026-10-13 · **Contrato:** `2026-10-13_contrato_planificacion-a-frontend1-y-frontend2_TRIAJE15-se-parte-por-CAPA-las-3-filas-del-composer-son-codigo-de-frontend1-y-el-device-sigue-con-duena-unica` ·
 **Mapeo de origen:** [`2026-10-12-mapeo-prototipo-vs-nativo.md`](2026-10-12-mapeo-prototipo-vs-nativo.md) (filas `bloqueado` l.54, `grabando` l.76, `ingresos` l.81) ·
 **Medición de device de origen:** [`2026-10-13-veredictos-device15-15-filas.md`](2026-10-13-veredictos-device15-15-filas.md) (filas 3, 10 y 11; hallazgos H6, H7, H10) ·
-**Rama:** `frontend1/triaje15-composer-voz`
+**Rama:** `frontend1/triaje15-composer-voz` (revisión 1) · `frontend1/triaje15-prototipo-gana-g2-b5-g3` (revisión 2)
+
+> **Revisión 2 (2026-10-13, tarde).** Planificación bajó el contrato
+> `contrato_planificacion-a-frontend1_el-prototipo-GANA-por-palabra-del-operador-de-HOY…`: el operador
+> dijo hoy que `prototipo/index.html` «es la que contiene el modelo ui/ux que hay que implementar». Eso
+> **refuta mi recomendación A** (mantener el spec del 23/07) y pasa `B5`, `G2` y `G3` de 📝 a código. La
+> decisión no es mía ni de planificación: el operador **volvió a decidir, después** de los dos artefactos
+> que yo comparaba. Las secciones B5/G2 de abajo están reescritas; `G3` salió en su propio PR (ver §G3).
 
 > Documento hermano de [`2026-10-13-veredicto-onb-cumplida-chat-frontend1.md`](2026-10-13-veredicto-onb-cumplida-chat-frontend1.md):
 > mismos estados, mismo criterio. El nombre lleva `chat` porque el medidor asigna cada doc a un brazo
@@ -30,19 +37,18 @@ los handlers del `Gesture.Pan` capturado, no un dedo. Lo que sólo se vería en 
 | `bloqueado` | B2 | sin pista de candado ni «deslizá para cancelar» antes de soltar | ✅ | `PistasGestoVoz` + aviso «cerca» |
 | `bloqueado` | B3 | «en pausa» sólo se distingue porque la onda deja de moverse | ✅ | `EstadoEnPausa`: texto «En pausa» |
 | `bloqueado` | B4 | «Pausar/Enviar» partidos en dos líneas | ✅ | ya en `main` (H6): `alignSelf:'stretch'` |
-| `bloqueado` | B5 | botones de texto «Pausar/Enviar/Eliminar» vs tacho + mic-como-enviar | 📝 | spec del operador 23/07, controles de texto |
+| `bloqueado` | B5 | botones de texto «Pausar/Enviar/Eliminar» vs tacho + mic-como-enviar | ✅ | `ControlesFlotantes`: tacho · reloj · pausa/play · enviar |
 | `bloqueado` | B6 | 130 px (69 dp) no fija: al soltar, envía | 📝 | H7: es el diseño (umbral 80 dp) |
 | `grabando` | G1 | falta «deslizá para cancelar» antes de armar la cancelación | ✅ | mismas pistas que B2 |
-| `grabando` | G2 | falta el reloj `0:07` | 📝 | spec del operador 23/07: «Sin contador» — **contrapunto abierto** |
-| `grabando` | G3 | el prototipo transforma la barra del composer; el nativo es overlay | 📝 | spec del operador 23/07: waves flotantes, sin glass — **contrapunto abierto** |
+| `grabando` | G2 | falta el reloj `0:07` | ✅ | `voz.segundos` en las pistas y en los controles |
+| `grabando` | G3 | el prototipo transforma la barra del composer; el nativo es overlay | ✅ | la barra de grabación ocupa el lugar del composer (`ChatView.tsx:284,299`) |
 | `ingresos` | I1 | sin período junto al título («Agosto») | ✅ | `MarcoGlass.etiqueta` + `formatearMesDePeriodo` |
 | `ingresos` | I2a | rótulo «Últimos» reemplazado por «BUSCAR» | ✅ | `BuscadorActividad.rotuloLista` |
-| `ingresos` | I2b | buscador «Buscar un ingreso» que el prototipo no tiene | 📝 | decisión C de planificación (22/07) — **autoridad a confirmar** |
+| `ingresos` | I2b | buscador «Buscar un ingreso» que el prototipo no tiene | 📝 | decisión C de planificación (22/07), **confirmada** por el contrato del 13/10 |
 | `ingresos` | I3 | sin la nota «Los cobros por MercadoPago todavía no entran solos…» | 📝 | COBROMP: ahora entra solo; el cartel sería falso |
 
-**Cuenta honesta:** 13 divergencias, **13 con veredicto** (7 en código, 6 enmiendas). Que cumplan el DoD
-no quiere decir que se hayan visto en un teléfono: ver §Lo que NO está verificado. Tres de las seis
-enmiendas (G2, G3, I2b) dejan una **decisión abierta** que no es mía cerrar: ver §Contrapunto.
+**Cuenta honesta:** 13 divergencias, **13 con veredicto** (10 en código, 3 enmiendas: B6, I2b, I3). Que cumplan el DoD no quiere decir que se hayan visto en un teléfono: ver §Lo que NO
+está verificado. Ya no queda ninguna decisión abierta del operador: ver §Contrapunto.
 
 > Esta tabla es el veredicto de **estas tres filas**. No es una cifra de avance del sprint: la cifra
 > vigente la mide `medir-mapeo-implementacion.py` y se cita siempre con su línea `ARBOL MEDIDO` y su SHA.
@@ -109,18 +115,23 @@ DEVICE15 lo midió y lo bajó como **H6**; la corrección ya está en `main`:
 en el comentario). Se lista acá para que la fila `bloqueado` no quede con un defecto «sin dueño» a la
 vista; **no lo toco en este PR.**
 
-#### B5 · controles de texto «Pausar/Enviar/Eliminar» vs tacho + mic-como-enviar — 📝 ENMIENDA-FUNDADA
+#### B5 · controles de texto «Pausar/Enviar/Eliminar» vs tacho + mic-como-enviar — ✅ CERRADA-EN-CODIGO
 
-**Qué es hoy.** Fijado, los controles son tres botones **de texto**: Pausar/Reanudar · Enviar · Eliminar
-(`ControlesFlotantes.tsx`). El prototipo dibuja un tacho, un punto y el mic como «enviar»
-(`index.html:2924`).
+**Qué había.** Fijado, tres botones **de texto**. El prototipo dibuja un **tacho** (eliminar), **pausa/play**
+y el botón de la voz convertido en **enviar** (`index.html:2943-2949`, `ICO_VOZ`).
 
-**Por qué se mantiene — autoridad.** El contrato del 2026-07-23
-(`coordinacion/cerrado/2026-08-03/2026-07-23_contrato_planificacion-a-frontend_dictado-por-voz-sin-glass-hold-graba-soltar-envia-deslizar-fija.md`,
-**no versionado**: se cita acá la letra) es una *«Decisión MAYOR de UX tomada por el operador, con spec
-confirmado punto por punto»* (l.4) y su §1 fija que al fijar *«aparecen los controles flotantes (no glass):
-**Pausar/Reanudar · Enviar · Eliminar**»* (l.38). Cambiarlos por íconos no es un detalle de la fila:
-revierte una decisión del operador. **Reabrible por él**, ver §Contrapunto.
+**Qué hay ahora.** `ControlesFlotantes` dibuja los íconos del prototipo, 1:1 (Phosphor, `viewBox` 256, en
+`modules/chat/IconosVoz.tsx`): tacho de 44 dp con el tinte de peligro, pausa/play de 44 dp, y **enviar**
+como el círculo de 52 dp del botón de la voz. Sin texto visible: cada control se nombra por su
+`accessibilityLabel` («Eliminar», «Pausar», «Reanudar», «Enviar»); los `testID` son los de siempre.
+
+| código | test |
+|---|---|
+| `modules/chat/ControlesFlotantes.tsx`, `modules/chat/IconosVoz.tsx` | `ControlesFlotantes.test.tsx` «íconos con nombre accesible» (3): etiquetas, Pausar→Reanudar, y que **no queden** los botones de texto |
+
+**Autoridad.** El contrato `…el-prototipo-GANA-por-palabra-del-operador-de-HOY…` (planificación, 13/10),
+que cita la frase del operador de hoy. Revierte la línea «controles de texto» del contrato del 23/07; el
+«sin glass» y «flotantes» de ese contrato siguen en pie. *[sin ver en device]*
 
 #### B6 · 130 px (69 dp) no fija, al soltar envía — 📝 ENMIENDA-FUNDADA
 
@@ -129,7 +140,7 @@ hallazgos y «TRIAJE15 (A)»): 130 px en ese aparato son 69 dp, **por debajo** d
 contrato (`UMBRAL_FIJAR_PX = 80`; l.38 del contrato 23/07: «> umbral, ~80px»). Que no fije es el diseño, no
 un defecto; el comportamiento correcto al soltar sin fijar es enviar (§1 del contrato). Se mantiene.
 
-### 2 · `grabando` — ✅ + 📝
+### 2 · `grabando` — ✅
 
 #### G1 · falta «deslizá para cancelar» antes de armar la cancelación — ✅ CERRADA-EN-CODIGO
 
@@ -138,34 +149,72 @@ primer instante y el aviso «Soltá para cancelar» la **reemplaza** al armar (n
 Código y tests: ver B2 (`ChatView.test.tsx:364` «al armar la cancelación el aviso REEMPLAZA a las pistas»).
 *[sin ver en device]*
 
-#### G2 · falta el reloj `0:07` — 📝 ENMIENDA-FUNDADA (**contrapunto abierto**)
+#### G2 · falta el reloj `0:07` — ✅ CERRADA-EN-CODIGO
 
-**Qué es hoy.** Grabando no hay contador. Es **a propósito y está especificado**: el contrato 23/07 §1
-dice *«**Sin glass. Sin contador.** El único feedback es la onda flotante»* (l.31), §3 manda *eliminar* el
-cronómetro del HUD (l.129) y el DoD §4 lo verifica: *«Waves flotantes … sin contador»* (l.149). Quien
-tomó la decisión fue el operador, después de probar el botón en device.
+**Qué había.** Grabando no había contador (el contrato del 23/07 decía «Sin contador»).
 
-**Por qué no lo implementé aunque el prototipo lo dibuje.** El prototipo del 24/08 sí tiene reloj; pero
-ese reloj **no está argumentado** en `DECISIONES.md` (ver §Contrapunto), y agregarlo es **revertir una
-línea explícita de una decisión MAYOR del operador** con un dibujo de mockup. No es una divergencia que
-una fila de mapeo pueda cerrar por su cuenta.
+**Qué hay ahora.** El reloj en **los dos estados**: mantenido (junto a la pista, con el punto rojo de
+`.rec-dot`) y fijado (entre el tacho y la pausa). Formato `m:ss` — `formatearDuracion` de `@copiloto/core`,
+el mismo del chip «Por voz · m:ss» —, `tabular-nums` para que no tiemble, tenue en pausa.
 
-**Costo si el operador dice «sí, reloj»:** bajo. `useCronometroGrabacion` (`useCronometro.ts`) sigue
-existiendo con **0 consumidores** y el estado `fase` ya está en `ChatView`. Es un cambio de un PR.
+**De dónde sale el dato — y por qué no usé el hook que el veredicto anterior nombraba.**
+`useCronometroGrabacion` (0 consumidores) cuenta por reloj de pared; `useVozComando().segundos` **ya existe,
+ya se expone** y sale del reloj del propio grabador (`durationMillis`), así que la pausa **no cuenta** y lo
+que se ve es lo que va a medir el audio. Un segundo contador en paralelo eran dos relojes que pueden
+discrepar. El hook sigue sin consumidores (ver §Declarado).
 
-#### G3 · el prototipo transforma la barra del composer; el nativo es un overlay — 📝 ENMIENDA-FUNDADA (**contrapunto abierto**)
+| código | test |
+|---|---|
+| `PistasVoz.tsx` (`segundos`); `ControlesFlotantes.tsx` (`voz-reloj`); `ChatView.tsx`, `MicFuncion.tsx`, `PantallaSoporte.tsx` pasan `voz.segundos` | `PistasVoz.test.tsx` «el reloj `0:07`…»; `ControlesFlotantes.test.tsx` «el reloj» (m:ss, pausa, listo); `ChatView.test.tsx` «el reloj de las pistas es el tiempo que dice el grabador» y «fijado: los controles reciben los MISMOS segundos» |
 
-**Qué es hoy.** Durante la grabación el nativo muestra un **overlay flotante** (onda + pistas) sobre el
-chat; el prototipo transforma la propia barra (punto rec + reloj + `lock-col`).
+**Autoridad.** La misma que B5. *[sin ver en device]*
 
-**Por qué se mantiene.** Mismo contrato, §3 (l.136-137): *«cómo se muestra (waves flotantes + controles flotantes, no glass)»* y
-*«`Onda` — las waves, ahora **flotantes** sobre el chat (único feedback visual)»*. Además, la mitad de esto **sí** se
-cerró: el gesto y las pistas son los del prototipo (B1-B3).
+#### G3 · el prototipo transforma la barra del composer; el nativo es un overlay — ✅ CERRADA-EN-CODIGO
 
-**Lo que esta enmienda NO cubre — dicho sin maquillaje.** La respuesta del operador del 2026-10-12
-(«Composer vs `MicFuncion`», mapeo l.118-129) confirma que **`MicFuncion` es el mismo composer
-reutilizado** y que las 5 filas «se implementan como están». **No** dice que la barra no se transforme:
-no la cito como autoridad para G3. La autoridad es el spec del 23/07.
+**Qué había.** Durante la grabación el nativo dejaba el `Composer` (campo de texto) quieto y le flotaba
+encima una onda + pistas; el prototipo **transforma la propia barra** (`.inputbar` → `.rec` mantenido,
+`.lk` fijado, `index.html:2939-2949`).
+
+**Autoridad.** La misma que B5/G2: el operador dijo hoy que `prototipo/index.html` «es la que contiene el
+modelo ui/ux que hay que implementar» (contrato `…el-prototipo-GANA…`). El «waves flotantes» del 23/07 ya
+no manda; el «sin glass» sí sigue (el prototipo tampoco lo tiene).
+
+**Qué hace ahora.**
+
+| estado | qué ocupa el lugar del composer | código |
+|---|---|---|
+| mantenido (grabando, sin fijar) | `BarraSostenida`: punto + reloj `m:ss` a la izquierda y «‹ Deslizá para cancelar» a la derecha; al armar la cancelación la pista cede a «Soltá para cancelar» **en la misma barra** | `PistasVoz.tsx:93` (`BarraSostenida`); `ChatView.tsx:284` |
+| fijado | `ControlesFlotantes`: tacho · **onda** (o «En pausa» en texto) · reloj · pausa/play · enviar. La onda y «En pausa» ya no flotan aparte: viven en el centro de la barra | `ControlesFlotantes.tsx:91-99`; `ChatView.tsx:285-294` |
+| captura terminada | el `Composer` vuelve | `ChatView.tsx:299` |
+
+El `Composer` **sigue montado** y sólo se oculta (`display:'none'`), no se desmonta: quien venía
+escribiendo y eligió dictar no pierde el borrador. El candado (`lock-col`) sigue asomando sobre el botón
+(`PistasVoz.tsx:45`). Mismo comportamiento en `MicFuncion.tsx:145` (que no tiene composer: la barra va
+debajo del botón) y `PantallaSoporte.tsx:208,221`.
+
+| código | test |
+|---|---|
+| `BarraSostenida` + `PistasGestoVoz` reducida al candado | `PistasVoz.test.tsx` «BarraSostenida…» (reloj + pista · timer · cancelando reemplaza la pista y conserva el reloj) |
+| centro de la barra fijada | `ControlesFlotantes.test.tsx` «el centro de la barra…» (grabando = onda, sin «En pausa» · pausado = «En pausa», sin onda) |
+| el composer cede su lugar y vuelve | `ChatView.test.tsx` «G3: mientras graba, la BARRA…» y «G3: al terminar la captura el composer vuelve…» |
+| la barra fijada recibe los niveles | `ChatView.test.tsx` y `PantallaSoporte.test.tsx` «…muestra los controles flotantes» (`controles-flotantes-niveles`) |
+
+**Lo que NO es igual al prototipo — declarado.**
+
+- **El botón (esfera de 80 px) no vive dentro de la barra**: el prototipo pone el mic de 52 px dentro de
+  `.inputbar` y lo transforma en «enviar» al fijar. Acá la esfera es un overlay con su propio gesto
+  (`BotonVoz`, RNGH) y al fijar desaparece; «enviar» es un botón nuevo de la barra. Moverla dentro exige
+  reestructurar `BotonVoz` y el hit-testing del `Pan`: es otro PR, y se mide en device antes.
+- **La barra no «sigue al dedo» al cancelar** (el prototipo la desplaza con el dedo hasta el umbral y se va
+  por la izquierda, `fuga`): sin un `translateX` compartido entre `BotonVoz` y la barra. Hoy cambia a
+  «Soltá para cancelar».
+- **La onda flota sobre la esfera en el estado mantenido** (el prototipo no tiene onda ahí). Es un agregado
+  que conservé porque es el feedback de «el micrófono te escucha»; si el operador quiere el prototipo
+  literal, se saca (una línea).
+- El punto del reloj no late (ver §Declarado).
+
+**Estado.** *[sin ver en device]* — la acreditación es de frontend-2. No hizo falta rebuild: es JS sobre el
+dev-client instalado (Metro).
 
 ### 3 · `ingresos` — ✅ + 📝
 
@@ -196,7 +245,7 @@ query la lista rica no se muestra y el rótulo describiría otra cosa).
 
 La prop es opcional: Gastos, Presupuestos, Facturación y Recientes no cambian.
 
-#### I2b · el buscador «Buscar un ingreso» — 📝 ENMIENDA-FUNDADA (**autoridad a confirmar**)
+#### I2b · el buscador «Buscar un ingreso» — 📝 ENMIENDA-FUNDADA (**autoridad confirmada**)
 
 **Qué es hoy.** Un campo «BUSCAR» sobre la lista. **El prototipo no tiene buscador** en ninguna función
 (0 hits de «Buscar»/«buscador» en `index.html`).
@@ -206,11 +255,11 @@ La prop es opcional: Gastos, Presupuestos, Facturación y Recientes no cambian.
 implementada igual en Gastos/Presupuestos/Facturación/Ingresos/Recientes; el backend lo sirve
 (`/actividad?funcion=&q=`). Quitarlo de Ingresos solo lo haría asimétrico con las otras cuatro funciones.
 
-**Lo que esta enmienda NO tiene — dicho sin maquillaje.** La autoridad es una decisión **de planificación**
-citada en un commit y en el docstring de `BuscadorActividad.tsx`; **no encontré el acta del operador** que
-la firme. El DoD pide «acta, decisión del operador o spec»: lo dejo declarado para que planificación
-confirme si alcanza o si el buscador necesita su acta. Hasta entonces la fila lo cuenta como enmienda
-**con esta salvedad escrita**, no como cerrada.
+**Autoridad: confirmada por planificación (contrato del 13/10).** Mi salvedad era que la decisión C es de
+planificación y no encontré acta del operador. El contrato la resuelve con `COORDINACION §0.quater`: un
+veredicto es del **rol**, no de la sesión, y quien ocupa el puesto hoy puede confirmarlo — lo confirma.
+Y aclara por qué no choca con «el prototipo gana»: el buscador es un **agregado**, no una contradicción;
+«el prototipo no lo dibuja» no es «el prototipo lo prohíbe».
 
 #### I3 · sin la nota de MercadoPago — 📝 ENMIENDA-FUNDADA
 
@@ -234,7 +283,10 @@ Lo que cito es el contrato del código y los tests de backend de ese commit (Pos
 
 ---
 
-## Contrapunto — la decisión que NO me corresponde cerrar
+## Contrapunto — RESUELTO el 2026-10-13 (el operador decidió, después)
+
+> **Lo que sigue es la discusión original, conservada porque explica por qué la recomendación A estaba
+> bien razonada y aun así quedó refutada.**
 
 Hay **dos artefactos con peso de operador que no coinciden** sobre el composer de voz:
 
@@ -243,15 +295,16 @@ Hay **dos artefactos con peso de operador que no coinciden** sobre el composer d
 | contrato `dictado-por-voz-sin-glass` | 2026-07-23 | *«Decisión MAYOR de UX tomada por el operador»*: **sin contador**, controles flotantes **de texto**, onda flotante, sin glass | sí: nace de que el operador probó el botón y «no funciona» (l.5) |
 | prototipo ODOBI (`index.html`) | 2026-08-24 | composer que se transforma en la barra, **reloj**, íconos (tacho / mic-como-enviar) | **no**: figura como decisión de carril «de Martin y David» y `DECISIONES.md:85-113` no argumenta el reloj ni los íconos |
 
-El denominador del sprint es «dejar la app tal cual define `index.html`», así que por esa regla G2, G3 y
-B5 serían divergencias a cerrar. Por la otra, el contrato 23/07 las manda mantener. **El prototipo es
-posterior pero no refuta la decisión anterior con un argumento**, y revertir una decisión MAYOR del
-operador no es una táctica de implementación.
+Yo recomendé **A: mantener el spec del 23/07**, porque revertir una decisión MAYOR del operador por un
+dibujo de mockup es lo que la regla de oro 4 prohíbe. **Esa regla no cambió; cambió el hecho:** el operador
+dijo, el 13/10 y **después** de los dos artefactos, que `prototipo/index.html` «es la que contiene el
+modelo ui/ux que hay que implementar» y preguntó «¿por qué la app todavía refleja otra cosa??».
+Quien revierte el 23/07 es él, no el mockup. La respuesta existía cuando escribí el `pedido_`; no estaba
+en ningún archivo que yo pudiera leer (la demora la declaró planificación en el contrato).
 
-**Mi recomendación:** mantener el spec del 23/07 (las 3 enmiendas de arriba) hasta que el operador diga
-expresamente «reloj / íconos / barra transformada». Si dice que sí, B5/G2/G3 pasan de 📝 a trabajo de
-código y el costo es bajo (ver G2). **Es una decisión, no un hallazgo de esta fila** — se la llevo a
-planificación como `pedido_` no bloqueante.
+**Lo que aprendo para el criterio:** «el artefacto posterior no argumenta» era un buen motivo para
+**preguntar**, no para **mantener** mientras tanto. Aun así, preguntar fue lo correcto: no tenía cómo
+saberlo, y implementar sin pregunta habría sido revertir una decisión del operador por mi cuenta.
 
 ## Lo que NO está verificado
 
@@ -278,6 +331,15 @@ Cada comportamiento nuevo se rompió a propósito y el test correspondiente tuvo
 | `PantallaIngresos` sin período / sin «Últimos» | rojo en `PantallaIngresos.test.tsx` (2) |
 | el rótulo «Últimos» también con query | rojo en `BuscadorActividad.test.tsx` |
 | `MarcoGlass` no dibuja la etiqueta | rojo en `MarcoGlass.test.tsx` |
+| `ChatView` pasa `segundos={0}` a los controles | rojo en `ChatView.test.tsx` |
+| `ChatView` pasa `segundos={0}` a las pistas | rojo en `ChatView.test.tsx` |
+| `ControlesFlotantes` pinta siempre `0:00` | rojo en `ControlesFlotantes.test.tsx` |
+| el tacho sin `accessibilityLabel` | rojo en `ControlesFlotantes.test.tsx` |
+| G3: el `Composer` no se oculta durante la captura | rojo en `ChatView.test.tsx` |
+| G3: `ChatView` no monta la `BarraSostenida` | rojo en `ChatView.test.tsx` |
+| G3: «En pausa» nunca aparece en el centro de la barra fijada | rojo en `ControlesFlotantes.test.tsx` |
+| G3: `ChatView` no pasa `niveles` a la barra fijada | rojo en `ChatView.test.tsx` |
+| G3: al cancelar la pista no cede a «Soltá para cancelar» | rojo en `PistasVoz.test.tsx` |
 
 ## Declarado, no tocado
 
@@ -285,10 +347,20 @@ Cada comportamiento nuevo se rompió a propósito y el test correspondiente tuvo
   `Gastado en ${formatearFechaCorta(resumen.periodo)}` → «Gastado en 1 ago», y la web
   `copiloto-web/…/IngresosScreen.tsx:131` pinta «1 sep» junto al título. Mismo defecto que I1 resolvió en
   Ingresos nativo; `formatearMesDePeriodo` ya existe para quien tome esas filas.
-- **`useCronometroGrabacion`** sigue con 0 consumidores (ver G2): no lo borro, porque borrarlo encarece la
-  decisión abierta.
+- **`useCronometroGrabacion`** sigue con 0 consumidores: G2 usa `voz.segundos` (ver allí). Queda como código
+  muerto declarado; borrarlo es una limpieza aparte, no de esta fila.
+- **`PantallaSoporte`** recibe la barra transformada (G3) porque comparte `ControlesFlotantes`; no recibe
+  la pista del candado (`PistasGestoVoz` pide el estado `cerca` que esa pantalla no cablea) y no lo probé en
+  pantalla.
+- **El punto del reloj no late** (el prototipo lo hace latir, `lat`): con el reloj corriendo al lado ya dice
+  que esto corre, y sumar un `Animated.loop` más al composer mientras la onda ya cuesta jank medido
+  (D-ONDA-JANK, `Onda.tsx`) no lo justifica. Si el operador lo quiere, es un PR chico.
 - **Web:** no tiene composer de voz gestual (`MicButton` por toque): las pistas del gesto son del táctil
-  nativo. Los 5 ids nuevos están en `scripts/ci/testid-paridad-excepciones.json` con ese motivo.
+  nativo. Los 5 ids de la revisión 1, los 3 de la revisión 2 (`voz-eliminar`, `voz-enviar`, `voz-reloj`) y los
+  2 de G3 (`voz-barra-sostenida`, `chat-composer-contenedor`; se retiran `overlay-voz-fijado` y
+  `overlay-voz-soporte-fijado`, que ya no existen) están en
+  `scripts/ci/testid-paridad-excepciones.json`, cada uno con su motivo (los dos primeros ya existían y sólo se
+  hicieron visibles al gate al pasar de prop `id=` a `testID=` literal).
 
 ## Rollback
 

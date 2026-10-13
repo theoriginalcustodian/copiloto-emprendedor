@@ -118,6 +118,22 @@ describe('PantallaAfipSetup', () => {
       await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
     }
 
+    /** Lo que el lector de pantalla y el toque ven de una opción del toggle. */
+    function opcion(valor: 'si' | 'no') {
+      const el = screen.getByTestId(`afip-drive-toggle-opcion-${valor}`);
+      return {
+        deshabilitada: el.props.accessibilityState?.disabled === true,
+        seleccionada: el.props.accessibilityState?.selected === true,
+      };
+    }
+
+    /** Monta con Drive CONECTADO y espera a que el estado llegue y habilite el toggle. */
+    async function montarConDrive(guardarEnDrive: boolean) {
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ driveConectado: true }));
+      await montarConPerfil(guardarEnDrive);
+      await waitFor(() => expect(opcion('si').deshabilitada).toBe(false));
+    }
+
     it('refleja el valor que vino en el perfil', async () => {
       await montarConPerfil(true);
       expect(screen.getByTestId('afip-drive-toggle')).toBeTruthy();
@@ -126,7 +142,7 @@ describe('PantallaAfipSetup', () => {
     });
 
     it('prenderlo manda el ajuste con el CUIT del perfil', async () => {
-      await montarConPerfil(false);
+      await montarConDrive(false);
 
       await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
 
@@ -140,7 +156,7 @@ describe('PantallaAfipSetup', () => {
      * archivándose. El 409 vuelve como VALOR justamente para poder distinguirlo.
      */
     it('el 409 no prende el toggle: explica que falta el perfil', async () => {
-      await montarConPerfil(false);
+      await montarConDrive(false);
       jest.mocked(guardarAjustesAfip).mockResolvedValueOnce({
         ok: false, sinPerfil: true, mensaje: 'todavía no cargaste tus datos fiscales para ese CUIT',
       });
@@ -153,7 +169,7 @@ describe('PantallaAfipSetup', () => {
     });
 
     it('un error de red se dice, no se traga', async () => {
-      await montarConPerfil(false);
+      await montarConDrive(false);
       jest.mocked(guardarAjustesAfip).mockRejectedValueOnce(new Error('red'));
 
       await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
@@ -186,6 +202,85 @@ describe('PantallaAfipSetup', () => {
       for (const otro of ['afip-drive-conectado', 'afip-drive-desconectado', 'afip-drive-requiere-conexion']) {
         if (otro !== testIdEsperado) expect(screen.queryByTestId(otro)).toBeNull();
       }
+    });
+  });
+
+  // -----------------------------------------------------------------------------------------
+  // DRIVETOGGLEMOBILE — sin Drive conectado el toggle queda apagado y NO interactivo (misma regla
+  // que la web, `DRIVETOGGLE`). Antes el test PRESIONABA el toggle sin capacidad y pasaba: ejercitaba
+  // un camino que no debería existir.
+  // -----------------------------------------------------------------------------------------
+  describe('DRIVETOGGLEMOBILE — la UI no ofrece una capacidad que el tenant no tiene', () => {
+    async function montarSinCapacidad(driveConectado: boolean | null | undefined, guardarEnDrive = false) {
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ driveConectado }));
+      jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+      jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock({ guardarEnDrive }) });
+      await montar();
+      await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+      await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
+    }
+
+    const estado = (valor: 'si' | 'no') => {
+      const el = screen.getByTestId(`afip-drive-toggle-opcion-${valor}`);
+      return { deshabilitada: el.props.accessibilityState?.disabled === true, seleccionada: el.props.accessibilityState?.selected === true };
+    };
+
+    it.each([
+      ['false (desconectado)', false],
+      ['null (no se pudo verificar)', null],
+      ['undefined (backend viejo)', undefined],
+    ])('drive_conectado %s: las dos opciones quedan deshabilitadas y «No» seleccionada', async (_caso, valor) => {
+      await montarSinCapacidad(valor);
+      // Espera a que el estado ya haya llegado a la pantalla (el texto condicional sólo aparece con el perfil).
+      await waitFor(() => expect(screen.getByTestId('afip-drive-toggle')).toBeTruthy());
+
+      expect(estado('si').deshabilitada).toBe(true);
+      expect(estado('no').deshabilitada).toBe(true);
+      expect(estado('no').seleccionada).toBe(true);
+      expect(estado('si').seleccionada).toBe(false);
+    });
+
+    it('presionar el toggle sin capacidad NO manda ningún ajuste', async () => {
+      await montarSinCapacidad(false);
+
+      await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
+
+      expect(guardarAjustesAfip).not.toHaveBeenCalled();
+    });
+
+    // Control positivo: con Drive conectado el MISMO toggle sí se habilita. Sin este caso, un
+    // `disabled` siempre puesto pasaría los de arriba.
+    it('control positivo — drive_conectado true: el toggle se habilita y presionarlo guarda', async () => {
+      await montarSinCapacidad(true);
+      await waitFor(() => expect(estado('si').deshabilitada).toBe(false));
+      expect(estado('no').deshabilitada).toBe(false);
+
+      await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
+
+      await waitFor(() => expect(guardarAjustesAfip).toHaveBeenCalledWith(CUIT, true));
+    });
+
+    // Caso MIXTO (DRIVETEXTOCOBERTURA en la web): la preferencia guardada es `true` y el tenant NO
+    // tiene capacidad. El toggle ya está deshabilitado por otra razón, así que el único que le avisa
+    // al usuario es el texto — y NO lo manda a «Apps» a conectar algo que hoy no puede escribir.
+    it('preferencia guardada en true + sin capacidad: se pinta «No», avisa, y no manda a Apps', async () => {
+      await montarSinCapacidad(false, true);
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-desconectado')).toBeTruthy());
+      expect(screen.getByTestId('afip-drive-desconectado')).toHaveTextContent(
+        /La copia en Drive no está disponible por ahora/,
+      );
+      expect(screen.queryByText(/Conectalo en Apps|conectado en Apps/)).toBeNull();
+      expect(estado('no').seleccionada).toBe(true);
+      expect(estado('si').seleccionada).toBe(false);
+    });
+
+    it('control positivo del texto — preferencia true + CON capacidad: «Sí» seleccionada y sin aviso de «no disponible»', async () => {
+      await montarSinCapacidad(true, true);
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-conectado')).toBeTruthy());
+      expect(estado('si').seleccionada).toBe(true);
+      expect(screen.queryByText(/La copia en Drive no está disponible por ahora/)).toBeNull();
     });
   });
 

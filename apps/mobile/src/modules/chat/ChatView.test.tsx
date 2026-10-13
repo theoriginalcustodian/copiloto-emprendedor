@@ -81,9 +81,11 @@ jest.mock('./BotonVoz', () => {
 jest.mock('./ControlesFlotantes', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    ControlesFlotantes: ({ fase, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
+    ControlesFlotantes: ({ fase, segundos, niveles, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
       <>
         <Text testID="controles-flotantes-fase">{fase}</Text>
+        <Text testID="controles-flotantes-niveles">{Array.isArray(niveles) ? 'ok' : 'falta'}</Text>
+        <Text testID="controles-flotantes-segundos">{String(segundos)}</Text>
         <Pressable testID="voz-pausar" onPress={alPausar}>
           <Text>Pausar</Text>
         </Pressable>
@@ -361,6 +363,38 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(screen.queryByTestId('voz-cancelar-aviso')).toBeNull();
   });
 
+  // Fila `grabando`, G2 (contrato «el prototipo GANA», 2026-10-13): el reloj `0:07` del prototipo. El dato
+  // es `voz.segundos` (el reloj del propio grabador, que no cuenta la pausa), no un contador paralelo.
+  it('grabando sin fijar: el reloj de las pistas es el tiempo que dice el grabador', async () => {
+    mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 7500, metering: -60 }));
+    try {
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+      await fireEvent.press(screen.getByTestId('boton-voz'));
+
+      await waitFor(() => expect(screen.getByTestId('voz-reloj')).toHaveTextContent('0:07'));
+    } finally {
+      mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 0, metering: -60 }));
+    }
+  });
+
+  it('fijado: los controles reciben los MISMOS segundos que el grabador (no arrancan de cero)', async () => {
+    mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 7500, metering: -60 }));
+    try {
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+      await fireEvent.press(screen.getByTestId('boton-voz'));
+      await waitFor(() => expect(screen.getByTestId('voz-reloj')).toHaveTextContent('0:07'));
+
+      await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+
+      await waitFor(() => expect(screen.getByTestId('controles-flotantes-segundos')).toHaveTextContent('7'));
+    } finally {
+      mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 0, metering: -60 }));
+    }
+  });
+
   it('al armar la cancelación el aviso «Soltá para cancelar» REEMPLAZA a las pistas', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -385,25 +419,21 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(screen.queryByTestId('voz-pistas')).toBeNull();
   });
 
-  it('en pausa: «En pausa» en TEXTO y la onda se apaga; al reanudar vuelve la onda', async () => {
+  it('en pausa: la fase «pausado» le llega a la barra fijada (ella pinta «En pausa»); al reanudar vuelve «grabando»', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
     await fireEvent.press(screen.getByTestId('boton-voz'));
     await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
     await waitFor(() => expect(screen.getByTestId('voz-pausar')).toBeTruthy());
-    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('voz-pausar'));
 
+    // «En pausa» en texto y la onda que se apaga son del componente real: `ControlesFlotantes.test.tsx`.
     await waitFor(() => expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('pausado'));
-    expect(screen.getByTestId('voz-en-pausa')).toHaveTextContent('En pausa');
-    expect(screen.queryByTestId('onda-flotante')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('voz-reanudar'));
 
     await waitFor(() => expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('grabando'));
-    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
-    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
   });
 
   it('deslizar hacia arriba (mock: onFijar) muestra los controles flotantes y esconde el botón', async () => {
@@ -424,10 +454,38 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     // `ControlesFlotantes.tsx:37` y su propio test) y el usuario se queda sin pausar.
     expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('grabando');
     expect(screen.getByTestId('voz-pausar')).toBeTruthy();
-    // La onda sigue -- es el ÚNICO feedback, contrato §1: "sin contador, la onda flotante".
-    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
+    // G3: la onda ya no flota aparte, vive en el centro de la barra -- el componente tiene que
+    // recibir los niveles para dibujarla.
+    expect(screen.getByTestId('controles-flotantes-niveles')).toHaveTextContent('ok');
+    expect(screen.queryByTestId('overlay-voz-fijado')).toBeNull();
     // El botón de mantener-apretado ya no está: los controles flotantes tomaron el mando.
     expect(screen.queryByTestId('boton-voz')).toBeNull();
+  });
+
+  it('G3: mientras graba, la BARRA de grabación ocupa el lugar del composer (que sigue montado, oculto)', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
+    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-barra-sostenida')).toBeTruthy());
+    expect(screen.getByTestId('chat-composer', { includeHiddenElements: true })).toBeTruthy(); // montado: el borrador no se pierde
+    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).toHaveStyle({ display: 'none' });
+  });
+
+  it('G3: al terminar la captura el composer vuelve y la barra se va', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-barra-sostenida')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
+
+    await waitFor(() => expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull());
+    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
   });
 
   it('🔴 fijado: soltar el dedo (mock: onSoltarSinFijar) NO hace nada -- se termina por Enviar/Eliminar', async () => {

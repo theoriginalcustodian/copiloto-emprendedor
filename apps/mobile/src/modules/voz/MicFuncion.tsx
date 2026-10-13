@@ -14,7 +14,7 @@ import {
 import { Onda } from '../captura/Onda';
 import { BotonVoz } from '../chat/BotonVoz';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
-import { EstadoEnPausa, PistasGestoVoz } from '../chat/PistasVoz';
+import { BarraSostenida, PistasGestoVoz } from '../chat/PistasVoz';
 import { useVozComando } from '../chat/useVozComando';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -116,7 +116,6 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
 
   // Igual que `ChatView`: la onda corre sólo grabando; en pausa va el texto «En pausa» (WCAG 1.4.1).
   const ondaVisible = voz.fase === 'grabando';
-  const enPausa = voz.fase === 'pausado';
   const pistasVisibles = voz.fase === 'grabando' || cancelando;
 
   return (
@@ -142,16 +141,15 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
         </View>
       )}
 
+      {/* G3: punto + reloj + «deslizá para cancelar» en una barra propia, no flotando junto al botón. */}
+      {!fijado && pistasVisibles && <BarraSostenida segundos={voz.segundos} cancelando={cancelando} />}
+
       {fijado && (
         <View testID="mic-funcion-fijado" style={estilos.overlayVoz}>
-          {ondaVisible && (
-            <View style={estilos.ondaFlotante} pointerEvents="none">
-              <Onda niveles={voz.niveles} />
-            </View>
-          )}
-          {enPausa && <EstadoEnPausa />}
           <ControlesFlotantes
             fase={voz.fase}
+            segundos={voz.segundos}
+            niveles={voz.niveles}
             alPausar={voz.pausar}
             alReanudar={voz.reanudar}
             alEnviar={() => void alTranscribir()}

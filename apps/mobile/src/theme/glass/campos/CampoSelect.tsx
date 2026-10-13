@@ -32,9 +32,20 @@ export interface CampoSelectProps {
   onChange: (valor: string) => void;
   error?: string;
   testID?: string;
+  /** Las opciones se ven pero NO se pueden elegir: para una capacidad que el tenant no tiene. Distinto
+   *  de ocultar el campo — el usuario ve QUÉ existe y qué valor tiene. */
+  disabled?: boolean;
 }
 
-export function CampoSelect({ etiqueta, opciones, valor, onChange, error, testID = 'campo-select' }: CampoSelectProps) {
+export function CampoSelect({
+  etiqueta,
+  opciones,
+  valor,
+  onChange,
+  error,
+  testID = 'campo-select',
+  disabled = false,
+}: CampoSelectProps) {
   const tema = useTema();
   const hayError = error != null && error !== '';
   return (
@@ -42,7 +53,7 @@ export function CampoSelect({ etiqueta, opciones, valor, onChange, error, testID
       <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
         {etiqueta}
       </Text>
-      <View style={styles.chips}>
+      <View style={[styles.chips, disabled && styles.chipsDeshabilitados]}>
         {opciones.map((opcion) => {
           const seleccionado = opcion.valor === valor;
           const idOpcion = `${testID}-opcion-${opcion.valor}`;
@@ -51,7 +62,8 @@ export function CampoSelect({ etiqueta, opciones, valor, onChange, error, testID
               key={opcion.valor}
               testID={idOpcion}
               accessibilityRole="button"
-              accessibilityState={{ selected: seleccionado }}
+              accessibilityState={{ selected: seleccionado, disabled }}
+              disabled={disabled}
               onPress={() => onChange(opcion.valor)}
               style={pressableStyle(styles.chipPresionable)}
             >
@@ -98,6 +110,7 @@ const styles = StyleSheet.create({
   contenedor: { gap: 6 },
   etiqueta: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipsDeshabilitados: { opacity: 0.5 },
   chipPresionable: { flexGrow: 0 },
   chip: { minHeight: 0, paddingVertical: 10, paddingHorizontal: 14, justifyContent: 'center', gap: 2 },
   error: { fontSize: 11, letterSpacing: 0.2 },
