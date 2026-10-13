@@ -103,7 +103,12 @@ CALENDAR_BOOK_SCHEMA = {"type": "function", "function": {
 
 MP_CHARGE_SCHEMA = {"type": "function", "function": {
     "name": "mp_charge",
-    "description": "Genera un link de cobro de MercadoPago. Devuelve el link (init_point) para compartir/pagar.",
+    # D3 (2026-10-13): el link NO tiene vencimiento configurado ni hay aviso al pagarse -- el LLM redacta el
+    # texto libre y sin esta línea prometía «vence en 7 días» / «te aviso cuando pague», mecanismos que no
+    # existen. Se prohíbe afirmar lo que no hay; si el mecanismo aparece, se cambia ACÁ y en el test.
+    "description": "Genera un link de cobro de MercadoPago. Devuelve el link (init_point) para compartir/pagar. "
+                   "No afirmes cuándo vence el link ni prometas avisar cuando se pague: no hay ningún "
+                   "mecanismo que lo haga. Decí sólo que el link está listo.",
     "parameters": {"type": "object", "properties": {
         "amount": {"type": "number", "description": "monto en pesos"},
         "concept": {"type": "string", "description": "qué se cobra"}},
