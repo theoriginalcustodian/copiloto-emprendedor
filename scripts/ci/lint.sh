@@ -139,4 +139,4 @@ if ! diff -q "$_tmp_contratos" "$_contratos" >/dev/null; then
   echo "    No es rojo: el generador emite LF y el checkout puede traer CRLF."
 fi
 rm -f "$_tmp_contratos"
-echo "✅ mapeo del criterio 3: 5 controles OK sobre LOS DOS fixtures (original + ciego) · contratos regenerados identicos al versionado"
+echo "✅ mapeo del criterio 3: 6 controles OK sobre LOS DOS fixtures (original + ciego) · contratos regenerados identicos al versionado"

@@ -833,4 +833,76 @@ que lo detectó no fue mío: fue **el propio instrumento sin apagarse**. Si su a
 débil, la cifra del criterio 3 habría subido en silencio con un veredicto de otra pregunta
 ([[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]).
 
+## 🔁 Refuerzo 2026-10-13 — REINCIDÍ en el refuerzo de ayer, tres veces en un turno, y la regla ya estaba escrita
+
+El refuerzo de arriba («escribí un verificador ad-hoc teniendo el canónico en el repo») lo escribí
+**el mismo día**, horas antes, y cierra con esta línea: *«Un instrumento nuevo arranca midiendo el
+formato real del sujeto (10 líneas de `cat`), no su formato supuesto»*. Al verificar las 7
+condiciones del cierre volví a hacer exactamente eso, **tres veces seguidas sobre el mismo
+documento**:
+
+| # | mi instrumento ad-hoc | veredicto FALSO | la forma real |
+|---|---|---|---|
+| 1 | regex de «¿el DoD es binario?» | `43 de 54 sin sujeto declarado` | el DoD más corto tenía **132 chars**; mi regex enumeraba los arranques de frase que yo conocía (`el `, `la `, `existe`…) y no `Medido:` ni `Cada divergencia…` |
+| 2 | segunda regex, ya avisado | `11 sin criterio contestable` | enumeraba 3 de las **6** plantillas de DoD que existen |
+| 3 | parser de la tabla del mapeo | `54 filas sin path:línea` **y** `0 filas NO EXISTE` | asumí 5 columnas; el doc tiene **4** (`id · prototipo · nativo · divergencia`), así que leí la columna `prototipo` como si fuera la nativa — y `index.html:1637` no matchea `.tsx:NN` |
+
+Los dos primeros son la misma falla que el caso 6 de 2026-08-13 (el lint que enumeraba extensiones).
+El tercero es peor, porque **el rojo era total** —las 54 filas— y un rojo total es más creíble que
+uno parcial: parece un hallazgo estructural, no un bug del instrumento.
+
+**Lo que lo cazó fue una contradicción interna, no el conteo:** la misma corrida decía
+`54 sin path:línea` **y** `0 NO EXISTE`, cuando yo sabía que `preg` era `NO EXISTE`. Dos salidas del
+mismo instrumento que no pueden ser ciertas a la vez ⇒ el defecto es del instrumento. Es el mismo
+detector que el refuerzo de ayer ([[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]]), y lo
+que lo hizo visible fue **imprimir las dos cifras juntas**: si hubiera impreso sólo la que buscaba,
+el rojo pasaba por hallazgo.
+
+**Por qué saber la regla no alcanzó, y qué la vuelve mecánica.** «Leé el encabezado» es una
+intención; se olvida bajo apuro ([[la-precondicion-que-se-resuelve-a-mano-se-pierde-justo-cuando-hay-apuro]]
+vive arriba, en este mismo archivo). El mecanismo que no se olvida es **derivar los índices del
+propio sujeto**:
+
+```python
+hdr  = [i for i, l in enumerate(L) if l.strip().startswith("| id |")][0]
+cols = [c.strip() for c in L[hdr].strip().strip("|").split("|")]   # ['id','prototipo','nativo','divergencia']
+print("encabezado LEIDO del doc (no asumido):", cols, "->", len(cols), "columnas")
+```
+
+Imprimir el esquema leído **es** el control: si imprime 4 y tu código indexa 5, lo ves antes del
+veredicto. El canónico `verificar-mapeo.py` no se equivoca en esto porque exige que la primera celda
+sea un id entre backticks (`^`([^`]+)`$`) y nombra sus índices (`I_PROTO, I_NATIVO, I_DIVERG`): el
+esquema está *declarado*, no supuesto.
+
+**Y el corolario que vale más que los tres casos:** cuando el universo de valores distintos es
+chico, **enumeralo e imprimilo** en vez de regexearlo. Los 54 DoD eran **6 plantillas**. Imprimir 6
+strings y leerlos a ojo es un control perfecto; regexear 54 filas fabricó dos falsos rojos
+seguidos. El regex sirve cuando el universo es grande o abierto — exactamente lo contrario de acá.
+
+### Lo que esta reincidencia sí produjo: un gap REAL del instrumento canónico
+
+El tercer falso rojo, al corregirlo, destapó un hueco verdadero: **3 filas** (`agenda`,
+`card-presu`, `esc`) citaban el archivo nativo **sin número de línea**, y pasaban los **cinco**
+controles del verificador canónico. Porque los cinco miran *presencia* (celda no vacía, control
+positivo reproducido, falso negativo que no reaparece, simetría de la marca) y ninguno mira **la
+forma de la cita**. Una celda que dice `PantallaAgenda.tsx` no está vacía.
+→ [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]]
+
+Fix de raíz: **CONTROL 6 (forma de la cita)** en `verificar-mapeo.py` — toda fila que no declare
+ausencia debe citar `\.(?:tsx|ts|py):\d+`; exenta sólo la que dice `NO EXISTE`, que ya tiene su
+propia exigencia (los lugares donde se buscó). Con su canario (`6 forma (le saco el :linea a una
+cita valida)` → `FALLA (bien)`) y medido **antes** de embarcarlo: sobre el doc corregido acusa `0`,
+sobre el doc anterior acusaba `3`
+([[medir-si-un-gate-dispara-antes-de-embarcarlo]]).
+
+**Cómo aplicarlo:**
+- Un parser de tabla/CSV/TSV **imprime el encabezado que leyó** antes de su primer veredicto. Si no
+  lo imprime, no sabés sobre qué columna opinó.
+- Antes de escribir un regex de clasificación: `sort | uniq -c` del campo. Si hay ≤10 valores
+  distintos, el instrumento es la lista, no el patrón.
+- Un rojo que acusa **al 100%** del corpus es sospechoso antes que informativo: el 100% suele ser la
+  firma de un instrumento desalineado, no de un corpus roto.
+- Si un control mide «presencia», preguntá qué **forma** acepta sin mirar. Ahí vive el próximo gap.
+
+
 → [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-guard-se-satisface-con-su-propio-comentario]]

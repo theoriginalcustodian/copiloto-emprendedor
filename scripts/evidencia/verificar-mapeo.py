@@ -172,6 +172,10 @@ def algun_archivo_comun(esp, got):
 # rojo en las 5 filas correctas: un control que grita en el caso normal se desarma solo.
 I_PROTO, I_NATIVO, I_DIVERG = 0, 1, 2
 
+# `path:linea` aceptable: un fuente con numero de linea (o rango). Acepta .tsx/.ts/.py y
+# `:12-40`, porque el mapeo cita rangos cuando el elemento vive en un bloque.
+RE_UBICACION = re.compile(r"\.(?:tsx|ts|py):\d+")
+
 
 def pantalla_ausente(fila):
     """No hay NINGUNA contraparte nativa: la columna NATIVO declara la ausencia.
@@ -264,6 +268,23 @@ def corrida(filas, univ, ctl):
                       "%s. Nadie sabe que respuesta las libera, asi que no se levantan nunca."
                       % (len(marca_huerfana), MARCA, ", ".join(marca_huerfana)))
 
+    # CONTROL 6: la FORMA de la cita, no su presencia. Los controles 1-5 miran que la celda
+    # no este vacia y que el control positivo se reproduzca; una celda que dice
+    # `PantallaAgenda.tsx` sin numero de linea pasa los cinco — no esta vacia y nadie le
+    # pide el formato. Asi vivieron 3 filas (`agenda`, `card-presu`, `esc`) citando el
+    # archivo pero no el lugar, que es justo lo que el mapeo promete. Un control a nivel
+    # «celda llena» no ve la divergencia ADENTRO de la celda.
+    # Exenta SOLO la fila que declara ausencia: ahi no hay linea que citar, y el texto de
+    # «NO EXISTE» ya tiene su propia exigencia (los lugares donde se busco).
+    sin_ubicacion = sorted(
+        i for i, c in filas.items()
+        if not pantalla_ausente(c) and not RE_UBICACION.search(c[I_NATIVO]))
+    if sin_ubicacion:
+        fallos.append("CONTROL 6 (forma de la cita): %d fila(s) citan el archivo nativo SIN "
+                      "`:linea`: %s. El mapeo promete `path:linea` o `NO EXISTE`; un archivo "
+                      "suelto no ubica nada y pasa los otros 5 controles porque la celda no "
+                      "esta vacia." % (len(sin_ubicacion), ", ".join(sin_ubicacion[:12])))
+
     met = {
         "filas": len(filas),
         "padron": len(univ),
@@ -275,6 +296,7 @@ def corrida(filas, univ, ctl):
         "falsos_negativos_reaparecidos": reaparecen,
         "bloqueadas_sin_marca": sorted(sin_marca),
         "marca_huerfana": marca_huerfana,
+        "sin_ubicacion": sin_ubicacion,
         "bloqueadas_declaradas": sorted(BLOQUEADAS),
         "pantalla_ausente": sorted(i for i, c in filas.items()
                                    if pantalla_ausente(c)),
@@ -339,6 +361,17 @@ def main():
             f7[kh] = (f7[kh][I_PROTO], f7[kh][I_NATIVO], MARCA + " " + f7[kh][I_DIVERG])
         pruebas.append(("5b marca (marco una fila que nadie bloquea)", f7, univ, ctl, kh))
 
+        # El sabotaje del 6 le saca el `:NN` a una fila que SI lo tiene, dejando el archivo.
+        # Si el control fuera «celda no vacia», esto saldria verde — que es exactamente como
+        # las 3 filas sin linea sobrevivieron a los otros cinco.
+        f8 = dict(filas)
+        ku = next((k for k in sorted(f8)
+                   if not pantalla_ausente(f8[k]) and RE_UBICACION.search(f8[k][I_NATIVO])), None)
+        if ku:
+            f8[ku] = (f8[ku][I_PROTO], re.sub(r":\d+(-\d+)?", "", f8[ku][I_NATIVO]),
+                      f8[ku][I_DIVERG])
+        pruebas.append(("6 forma (le saco el :linea a una cita valida)", f8, univ, ctl, ku))
+
         print("=== CANARIO: cada control roto de a uno debe FALLAR ===")
         malos = inyectables = 0
         for nombre, ff, uu, cc, pudo in pruebas:
@@ -383,6 +416,8 @@ def main():
           % (met["control_positivo_filas"], len(met["control_positivo_no_reproducidas"])))
     print("CONTROL NEGATIVO: falsos negativos que reaparecen como NO EXISTE: %d de %d"
           % (len(met["falsos_negativos_reaparecidos"]), len(FALSOS_NEGATIVOS)))
+    print("CONTROL FORMA: %d fila(s) citan el archivo nativo sin `:linea`"
+          % len(met["sin_ubicacion"]))
     print("CONTROL MARCA: %d fila(s) bloqueada(s) declarada(s) · sin marca: %d · "
           "marca huerfana: %d"
           % (len(met["bloqueadas_declaradas"]), len(met["bloqueadas_sin_marca"]),
@@ -400,7 +435,7 @@ def main():
             print("ROJO: %s" % f)
         print("VEREDICTO: el mapeo NO se acepta (%d control(es) fallando)." % len(fallos))
         return 1
-    print("VEREDICTO: los 5 controles pasan. El mapeo se acepta.")
+    print("VEREDICTO: los 6 controles pasan. El mapeo se acepta.")
     return 0
 
 
