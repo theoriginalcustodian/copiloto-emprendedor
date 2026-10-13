@@ -62,6 +62,59 @@ Instrumento nuevo de este sprint: `scripts/evidencia/falta-en-mobile.py` (ver §
 ⇒ **faltan medir 46, no 41.** El mismo instrumento da `web` 45 + 9 = 54, que es el control positivo de
 que el filtro filtra de verdad.
 
+### 2.1.bis La re-medición del **2026-10-13** — y por qué «13/54» ya no se puede citar para este sprint
+
+Medido con `scripts/evidencia/medir-mapeo-implementacion.py` (nuevo, §6), **cobertura 54/54, cero
+huecos**, canario de los 3 brazos en verde. Padrón validado contra lo que el propio doc de contratos
+declara en sus encabezados (**7 + 15 + 32 = 54**), no contra un conteo a ojo — un grep ingenuo da 59
+porque engancha filas de otras tablas.
+
+| bloque | n | resultado |
+|---|---|---|
+| `nativa-sin-device` | 32 | **24 resueltas en código** + **8 enmienda fundada** |
+| `nativa-con-device` | 15 | **14 DESVÍO** + 1 `NO_REPRODUCIBLE_SIN_EFECTO` — medidas **en el teléfono**, por primera vez |
+| `backend + nativa` | 7 | fuera del corpus de este medidor (su evidencia son los `cierre_` del buzón): 5 EN MAIN, 1 parcial (`cobro-voz`, D3 al operador), 1 sin veredicto (`onb-cumplida`) |
+
+**Las tres cifras, porque una sola se deja citar para cualquier pregunta:**
+
+| cifra | unidad | valor |
+|---|---|---|
+| **cumple el DoD** | filas de contrato | **32/54 (59 %)** — el DoD admite «resuelta en código **o** enmienda fundada» |
+| **cerrada en código** | filas de contrato | **24/54 (44 %)** — sólo lo escrito y mergeado |
+| **con veredicto medido** | filas de contrato | **47/54 (87 %)** por este corpus; **53/54** sumando los `cierre_` de backend |
+
+Contra el 11/10 (8 comparados de verdad, 46 por medir) el movimiento del día es **de 8 a 47 filas
+medidas**, con 37 acreditadas contra su DoD sumando backend.
+
+> 🔴 **Por qué el 13/54 mintió, y no fue el dato.** `contar-veredictos.py` descubre su corpus con
+> `rglob` sobre **`coordinacion/`**. Los tres docs de veredictos de este sprint viven en
+> `docs/copiloto-emprendedor/`: **fuera de ese árbol no llegan ni a candidatos**, así que su ratchet
+> de «candidato sin clasificar → exit 8» —que existe para que ningún documento se ignore en
+> silencio— tampoco los veía. Cuatro ratchets, y la ceguera era del **DIRECTORIO**, no del archivo.
+> Ampliar ese corpus **no** era el arreglo: los dos padrones comparten los mismos 54 ids y preguntan
+> cosas distintas, así que inyectarlos ahí habría producido la mentira inversa. El script ahora
+> **declara su sujeto y apunta acá** en su propia salida.
+
+### 2.1.ter `DEC-21` (planificación, 2026-10-13) — un solo lugar mide este sprint
+
+Mismo remedio que `DEC-18` aplicó al cierre de la beta, y por la misma razón: hoy circularon **tres**
+cifras para la misma pregunta (13/54, 33/54, 39/54) y las tres eran defendibles en su unidad. Eso no
+es un error de cuentas: es la falta de un medidor único.
+
+1. **La unidad del sprint MOBILE es la fila de contrato del mapeo**, padrón 54, y el único lugar que
+   la mide es `medir-mapeo-implementacion.py`. Toda cifra de avance del sprint se cita con su salida
+   y con **las tres** columnas, nunca una sola.
+2. **`13/54` queda retirada como cifra de este sprint.** Sigue siendo válida para el criterio 3, que
+   es otra pregunta. El tachado de `ALCANCE-CIERRE-BETA.md:197` la derivaba «al sprint MOBILE»: esta
+   sección es esa derivación, cumplida.
+3. Alcance de esta acta: es **táctica y de planificación** — define cómo se mide, no qué entra al
+   sprint. Lo que **no** firma planificación es el alcance: eso es del operador.
+
+> 📱 **Y el encuadre, que es del operador y es textual (2026-10-13):** *«basta decir que el sprint
+> mobile es el siguiente, es este el sprint mobile»*. **El sprint vigente ES mobile y el device está
+> DENTRO.** Toda etiqueta «al sprint siguiente» sobre móvil o device **venció**: el siguiente era
+> éste. No es una decisión de planificación, es un hecho declarado — acá sólo queda registrado.
+
 ### 2.2 Paridad de cableado: los 109 endpoints
 
 109 rutas del backend vistas, **109 clasificadas** (control de ceguera en cero) contra los dos

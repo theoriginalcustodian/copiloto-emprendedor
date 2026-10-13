@@ -142,3 +142,36 @@ cuesta un minuto de confusion: cuesta el habito que despues deja salir un secret
 **La pregunta al escribir cualquier gate:** *¿su resultado depende de algun archivo que `.gitignore`
 excluye?* Si si, el DoD del fix exige verificarlo en **las dos** condiciones -- con el artefacto y sin el
 -- porque el CI solo te muestra una.
+
+---
+
+## Faz nueva (2026-10-13): el guard transversal grita en los tests de OTROS sujetos, y la salida fácil es debilitarlos
+
+Le cablée a `scripts/cola-check.sh` el guard de versión (avisa cuando el archivo divergió de
+`origin/main`). Correcto y necesario: ese mismo día una copia 4 commits atrás me inventó 13 renglones
+inválidos. Pero el barrido de coordinación se puso en **1 de 74 rojo**, y el test que cayó
+—`test-cola-check-ciego.sh`, caso 2— **no tiene nada que ver con versiones**: su sujeto es que
+`cola-check.sh` no se quede mudo ante un PLAN faltante, y para que el rojo del caso 1 sea atribuible
+el caso 2 exige que **con un PLAN sano calle** (`[ -z "$out" ]`, capturando `2>&1`).
+
+El guard hablaba porque **tenía razón**: mientras se desarrolla `cola-check.sh`, el archivo ESTÁ
+divergente de `origin/main`. O sea el aviso era verdadero y el test, correcto, y aun así se tocaban.
+
+**Las dos salidas malas, y por qué lo son.** (1) **Debilitar el caso 2** a «no exige silencio, sólo
+`rc=0`»: mata el control que hace atribuible al caso 1 — el test completo pasaría con un script roto
+que imprime basura. Debilitar un test para que pase tu cambio es la forma más barata de perder un
+control y la más difícil de notar después. (2) **Quitar el guard**: devuelve el defecto que acababa de
+costar 13 renglones falsos.
+
+**La salida correcta: desacoplar por SUJETO, no por conveniencia.** El test declara
+`VERSION_YA_VERIFICADA=1` en sus dos invocaciones, con el motivo escrito arriba. No tapa nada, porque
+el versionado tiene **sus propios** casos 7/8/9 en `test-cola-check-estado.sh` —con control positivo
+(árbol limpio ⇒ silencio) y mutante matado—. Si en cambio lo dejaba acoplado, **cualquier rama que
+toque `cola-check.sh` rompería un test de otro sujeto**, y el equipo aprendería a ignorar ese rojo:
+exactamente el mecanismo de esta entrada, con el falso positivo del lado del CI en vez del humano.
+
+**La regla que queda:** un guard transversal que se cablea a un componente compartido necesita, el
+mismo día, **un modo de supresión nombrado** (acá `VERSION_YA_VERIFICADA=1`) y la respuesta escrita a
+*¿qué tests de OTROS sujetos capturan su salida?* Si no la tenés medida, el guard no está terminado:
+lo vas a descubrir cuando el rojo ajeno le llegue a alguien que no sabe que es tuyo
+(`el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio`).

@@ -10,7 +10,7 @@
 - **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; device habilitado 13-10: las 15 filas se miden ahora). Cifra sin unidad = inutilizable.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
-- **✅ Sprint cerrado 08/10** (`DEC-14`, 7/7 sobre `92fd8a06`) · **§13 device sigue ABIERTO**. Detalle → HISTORIA.
+- **📱 SPRINT VIGENTE = MOBILE, y device está DENTRO** (13-10). El de la beta cerró 08/10 (`DEC-14` 7/7 @`92fd8a06`): «al sprint siguiente» YA VENCIÓ — el siguiente es ESTE.
 - **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -128,7 +128,6 @@
 
 ### Delegación, contexto y herramientas
 - [🖥️🚫 Sub-agentes: CERO — agotan la RAM del operador](subagentes-van-headless-no-inline-en-la-terminal.md) — 13/10 revocó headless. Script-first.
-- [Orquestación de waves - parent valida + commitea](orquestacion-waves-parent-valida.md) - verificá el estado, no el reporte.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) - sin cargar completo ⇒ duplicados.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
@@ -171,6 +170,8 @@
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) - keys que pasaron por chat. grep-first + restart al rotar.
 
 ### Frontend móvil
+- [📱🔀 El device NO corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — el binario va ADELANTE de main.
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) - Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.

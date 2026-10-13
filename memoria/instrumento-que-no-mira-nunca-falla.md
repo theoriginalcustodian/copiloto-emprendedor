@@ -931,3 +931,44 @@ checker, test runner— el control de ceguera es **el conteo de lo mirado**, imp
 el comando no se distingue de no haberlo arreglado ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
 Y cuando aparece en UN script, se barren **los cinco**: el mismo comando copiado es el mismo agujero
 ([[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).
+
+## 🔻 Refuerzo 2026-10-13 — el ratchet contra «el documento callado» es ciego al MISMO árbol que su glob: la ceguera era del DIRECTORIO, no del archivo
+
+El operador preguntó cuánto se había implementado del sprint y se le contestó **«13 de 54, 24 %»**
+después de un día entero de trabajo. La cifra real contra el DoD era **32/54 (59 %)**, con 47 filas
+medidas ese mismo día. No fue un error de cuentas: fue el instrumento.
+
+`contar-veredictos.py` es, en su clase, un instrumento **bien hecho** — tiene cuatro ratchets, un
+canario por brazo, universo externo al parser, y un docstring que explica cada control. Uno de esos
+ratchets existe exactamente para esto: *«un candidato sin clasificar ROMPE el gate (exit 8) en vez de
+sumarse o descartarse en silencio. El instrumento no puede volver a ignorar un documento callado.»*
+
+Y aun así ignoró tres documentos callados. Porque el descubrimiento es
+`for p in (COORD / base).rglob("*.md")` — **un solo árbol, `coordinacion/`** — y los tres docs de
+veredictos del sprint se publicaron en `docs/copiloto-emprendedor/`. Fuera de ese árbol **no llegan ni
+a candidatos**, y un ratchet que exige clasificar *a los candidatos* no puede disparar por algo que
+nunca fue candidato. El guard y su glob comparten el punto ciego, así que el guard **no puede verlo**.
+
+**La regla:** un ratchet protege contra el archivo callado **dentro de lo que su glob alcanza**. La
+pregunta que falta no es *¿qué archivos no clasifiqué?* sino **¿qué CARPETAS no entran a mi glob, y
+puede nacer ahí un documento de mi sujeto?* Y esa pregunta no la contesta ningún control del script:
+se contesta mirando dónde publica la gente, que cambia sin avisar a nadie.
+
+**Lo que NO era el arreglo, y es la mitad interesante.** El reflejo fue «ampliá el corpus a `docs/`».
+Habría producido la mentira inversa: los dos padrones tienen los **mismos 54 ids** y preguntan cosas
+distintas —criterio 3 pregunta *¿la pantalla existe y coincide?*, el mapeo pregunta *¿las divergencias
+listadas de esta fila están resueltas o enmendadas?*—, así que inyectar esos docs ahí habría dado
+veredictos de un sujeto como si fueran del otro. El propio archivo ya documentaba ese riesgo para su
+documento normativo («clasificado como medición inyectaría 28 señales falsas») y yo casi lo repito en
+la dirección contraria ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+
+El arreglo fue **un medidor propio para el sujeto nuevo** (`medir-mapeo-implementacion.py`, con
+cobertura 54/54, huecos con nombre, canario de 3 brazos y 7 casos de test con mutante verificado) y,
+en el viejo, **que declare en su salida qué pregunta NO responde** y apunte al otro. Un instrumento
+que nombra su sujeto es lo único que impide que su cifra correcta se cite para la pregunta ajena
+([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]).
+
+**Y el daño que ya estaba escrito:** arreglar el instrumento no retira la afirmación que su ceguera
+produjo. El «13/54» vivía tachado en `ALCANCE-CIERRE-BETA.md:197` *derivado al sprint mobile* —o sea
+esperando esta medición— y en el índice de memoria como estado vivo. Hubo que ir a buscarlo
+([[el-fix-ya-existe-en-otro-call-site]], y el refuerzo del 2026-10-05 de este mismo archivo).

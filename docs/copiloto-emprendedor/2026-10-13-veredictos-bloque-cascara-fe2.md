@@ -4,7 +4,7 @@
 · **Fuente de las filas:** `2026-10-12-mapeo-prototipo-vs-nativo.md` · **DoD por fila:** cada divergencia
 queda **resuelta en código** (con `path:línea` y test) o **enmienda fundada con motivo escrito**.
 
-⚠️ Acredita **código + jest**, no el teléfono: la verificación de device es del sprint siguiente (orden
+⚠️ Acredita **código + jest**, no el teléfono: la verificación de device ⚠️ **ESE SPRINT ES ESTE (13-10)** — el diferimiento apuntaba al sprint que cerró el 08/10, así que estas filas se miden AHORA, no después (orden
 del operador, 2026-09-22). Cada «RESUELTO» cita su test; cada «ENMIENDA» cita el porqué.
 
 Convención: `R` = resuelto en código · `E` = enmienda fundada · `C` = ya coincidía (medido, no supuesto).
