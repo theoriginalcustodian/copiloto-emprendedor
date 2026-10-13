@@ -4907,6 +4907,16 @@
       "id": "presupuestos-dictado",
       "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
       "pantalla": "modules/presupuestos"
+    },
+    "modules/chat::recibo-ejecutado": {
+      "en": [
+        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "recibo-ejecutado",
+      "motivo": "C-D3 (recibo de la accion ejecutada, piloto Gmail): el par SI existe en web, pero no es un literal `data-testid=\"...\"`: MessageList.tsx lo declara con la prop `testId=\"recibo-ejecutado\"` del `Recibo` del design-system, que lo emite como data-testid del contenedor. testid_paridad.py solo ve literales (DINAMICO/prop no), asi que acusa un faltante que no es real. Limite del instrumento, no asimetria de producto: el test web (MessageList.test.tsx, `recibo-ejecutado`) lo ejercita. Se saca si el script aprende a leer la prop `testId` de Recibo.",
+      "pantalla": "modules/chat"
     }
   }
 }

@@ -508,6 +508,17 @@ export interface ReplyCard {
    * daría una garantía que nadie verificó.
    */
   data?: unknown;
+  /**
+   * Sólo en el GATE de un servicio con detalle estructurado (C-D3; hoy Gmail): el detalle de lo que se va
+   * a ejecutar, armado por el backend desde los `arguments`. `unknown` y no un tipo cerrado: lo valida
+   * `leerDetalleGate` (`chat/detalleGate.ts`), el único que sabe qué hacer con un campo sucio.
+   */
+  detalle?: unknown;
+  /**
+   * Sólo en el cierre de una acción CONFIRMADA y EJECUTADA OK (C-D3; hoy Gmail). Su presencia es la
+   * señal de que la acción corrió; la valida `leerRecibo` (`chat/reciboCard.ts`).
+   */
+  recibo?: unknown;
   /** Sólo `kind==='start_recording'` con `accion==='nota'`: categoría que el copiloto ya infirió
    * al llamar la tool correspondiente — puramente informativo en el front, NUNCA contenido de
    * negocio. */

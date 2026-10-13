@@ -200,6 +200,50 @@ describe('MessageList', () => {
   });
 });
 
+describe('MessageList — C-D3: `card.recibo` en la card final', () => {
+  // `confirmed_tool` viaja en el wire pero `ReplyCard` no lo tipa: va por spread.
+  const TOOL_OK = {
+    confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+  };
+
+  it('🔴 con `recibo` pinta «Mandado a…» con su hora debajo de la burbuja', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'assistant-gmail-1',
+        role: 'assistant',
+        text: 'Listo, mandé el mail a Lucía.',
+        card: {
+          service: 'gmail',
+          label: 'Gmail',
+          ...TOOL_OK,
+          recibo: { titulo: 'Mandado a lucia@x.com', meta: '15:41', accion: null },
+        },
+      },
+    ];
+    render(<MessageList messages={messages} onChoice={vi.fn()} />);
+
+    expect(screen.getByText('Listo, mandé el mail a Lucía.')).toBeInTheDocument();
+    expect(screen.getByTestId('recibo-ejecutado-titulo')).toHaveTextContent('Mandado a lucia@x.com');
+    expect(screen.getByTestId('recibo-ejecutado')).toHaveTextContent('15:41');
+  });
+
+  // El control que importa: `confirmed_tool.status === 'ok'` SIN `recibo` NO produce «Mandado a…».
+  it('🔴 `confirmed_tool` en ok SIN `recibo` NO pinta recibo (sólo la burbuja)', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'assistant-gmail-2',
+        role: 'assistant',
+        text: 'Listo, mandé el mail a Lucía.',
+        card: { service: 'gmail', label: 'Gmail', ...TOOL_OK },
+      },
+    ];
+    render(<MessageList messages={messages} onChoice={vi.fn()} />);
+
+    expect(screen.queryByTestId('recibo-ejecutado')).toBeNull();
+    expect(screen.getByText('Listo, mandé el mail a Lucía.')).toBeInTheDocument();
+  });
+});
+
 /**
  * Blindaje del hide-on-scroll (regresión 2026-07-04, la 3ª sobre el mismo mecanismo). El chrome
  * (tab-bar + composer) se ocultaba solo apenas se mostraba: mostrarlo anima el `padding-bottom` del

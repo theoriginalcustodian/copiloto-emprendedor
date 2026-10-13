@@ -245,4 +245,67 @@ describe('hitlMapping', () => {
     const props = buildHitlCardProps(msg({ id: 'assistant-13', choices: CONFIRM_CANCEL }), vi.fn());
     expect(props.resuelta).toBeUndefined();
   });
+
+  // C-D3 — `card.detalle` (piloto Gmail). Forma real de `apps/copiloto/hitl_card.py`.
+  it('C-D3: el `detalle` viaja a la card y `name` sale de la fila «Para» (el email), no de la negrita', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-gmail',
+        text: 'Voy a mandar un mail a **Lucía**. ¿Confirmás?',
+        card: {
+          kind: 'confirm',
+          service: 'gmail',
+          label: 'Gmail',
+          detalle: {
+            titulo: 'Mail a lucia@x.com',
+            filas: [{ k: 'Para', v: 'lucia@x.com', sub: null, editable: false }],
+            cita: 'Te recuerdo la reunión del lunes.',
+            nota: null,
+          },
+        },
+      }),
+      vi.fn(),
+    );
+
+    expect(props.detalle?.titulo).toBe('Mail a lucia@x.com');
+    expect(props.detalle?.cita).toBe('Te recuerdo la reunión del lunes.');
+    expect(props.name).toBe('lucia@x.com');
+  });
+
+  it('C-D3 control negativo: sin `detalle`, `detalle` es undefined y `name` sigue saliendo de la negrita', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-gmail-2',
+        text: 'Voy a mandar un mail a **Lucía**. ¿Confirmás?',
+        card: { kind: 'confirm', service: 'gmail', label: 'Gmail' },
+      }),
+      vi.fn(),
+    );
+
+    expect(props.detalle).toBeUndefined();
+    expect(props.name).toBe('Lucía');
+  });
+
+  it('C-D3: el `detalle` GANA sobre la regex del texto para el monto (mecanismo, MP sintético)', () => {
+    const props = buildHitlCardProps(
+      msg({
+        id: 'assistant-mp',
+        text: 'Voy a generar un link de cobro de MercadoPago por $999. ¿Confirmás?',
+        card: {
+          kind: 'confirm',
+          service: 'mercadopago',
+          label: 'Mercado Pago',
+          detalle: {
+            titulo: 'Link de cobro',
+            filas: [{ k: 'Importe', v: '200000.00', sub: null, editable: false }],
+            cita: null,
+            nota: null,
+          },
+        },
+      }),
+      vi.fn(),
+    );
+
+    expect(props.amount).toBe('200.000,00');
+  });
 });

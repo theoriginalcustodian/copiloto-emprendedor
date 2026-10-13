@@ -571,6 +571,115 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('Algo que la app no conoce.')).toBeTruthy();
   });
 
+  // C-D3 (piloto Gmail): payloads con la forma que emite `apps/copiloto/hitl_card.py` (cierre_ de backend,
+  // 2026-10-13), no armados a mano. `Para` es el EMAIL; `cita` es el cuerpo ENTERO.
+  describe('C-D3 — `card.detalle` en el gate y `card.recibo` en la card final', () => {
+    // `confirmed_tool` viaja en el wire pero `ReplyCard` no lo tipa (la app no lo lee): va por spread.
+    const TOOL_OK = {
+      confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+    };
+    const CUERPO = `Hola Lucía,\n\n${'Te recuerdo la reunión del lunes. '.repeat(30)}\n\nSaludos`;
+    const gateGmail = (extra: Partial<ChatMessage> = {}): ChatMessage => ({
+      id: 'assistant-gmail-1',
+      role: 'assistant',
+      text: 'Voy a mandar un mail a **Lucía**. ¿Confirmás?',
+      choices: [
+        { label: 'Enviar', value: 'confirm' },
+        { label: 'Cancelar', value: 'cancel' },
+      ],
+      card: {
+        kind: 'confirm',
+        service: 'gmail',
+        label: 'Gmail',
+        detalle: {
+          titulo: 'Mail a lucia@x.com',
+          filas: [
+            { k: 'Para', v: 'lucia@x.com', sub: null, editable: false },
+            { k: 'Asunto', v: 'Recordatorio', sub: null, editable: false },
+          ],
+          cita: CUERPO,
+          nota: 'Se manda desde tu Gmail.',
+        },
+      },
+      ...extra,
+    });
+
+    it('🔴 el gate con `detalle` pinta título, filas, cita ENTERA y nota — no el markdown suelto', async () => {
+      await envolver([gateGmail()]);
+
+      expect(screen.getByTestId('confirmacion-detalle-titulo')).toHaveTextContent('Mail a lucia@x.com');
+      expect(screen.getAllByTestId('confirmacion-detalle-fila')).toHaveLength(2);
+      expect(screen.getByText('lucia@x.com')).toBeTruthy();
+      expect(screen.getByText('Recordatorio')).toBeTruthy();
+      // La cita entera: ni recortada ni sin sus saltos de línea.
+      expect(screen.getByTestId('confirmacion-detalle-cita').props.children).toBe(CUERPO);
+      expect(screen.getByTestId('confirmacion-detalle-nota')).toHaveTextContent('Se manda desde tu Gmail.');
+      // El nombre/monto/markdown sueltos NO se repiten encima del detalle.
+      expect(screen.queryByTestId('tarjeta-confirmacion-para')).toBeNull();
+      expect(screen.queryByText(/Voy a mandar un mail a/)).toBeNull();
+    });
+
+    it('con `detalle` los botones siguen mandando confirmar/cancelar con el hitlMessageId', async () => {
+      const { onChoice } = await envolver([gateGmail()]);
+
+      fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+
+      expect(onChoice).toHaveBeenCalledWith('confirm', {
+        displayText: 'Enviar',
+        hitlMessageId: 'assistant-gmail-1',
+      });
+    });
+
+    it('control negativo: sin `detalle` el gate pinta el markdown de siempre (fallback)', async () => {
+      const sinDetalle = gateGmail();
+      await envolver([{ ...sinDetalle, card: { kind: 'confirm', service: 'gmail', label: 'Gmail' } }]);
+
+      expect(screen.queryByTestId('confirmacion-detalle')).toBeNull();
+      expect(screen.getByText(/Voy a mandar un mail a/)).toBeTruthy();
+      expect(screen.getByTestId('tarjeta-confirmacion-para')).toBeTruthy();
+    });
+
+    it('🔴 la card final con `recibo` pinta el recibo «Mandado a…» con su hora', async () => {
+      await envolver([
+        {
+          id: 'assistant-gmail-2',
+          role: 'assistant',
+          text: 'Listo, mandé el mail a Lucía.',
+          card: {
+            service: 'gmail',
+            label: 'Gmail',
+            ...TOOL_OK,
+            recibo: { titulo: 'Mandado a lucia@x.com', meta: '15:41', accion: null },
+          },
+        },
+      ]);
+
+      expect(screen.getByText('Listo, mandé el mail a Lucía.')).toBeTruthy();
+      expect(screen.getByTestId('recibo-ejecutado-titulo')).toHaveTextContent('Mandado a lucia@x.com');
+      expect(screen.getByTestId('recibo-ejecutado-detalle-0')).toHaveTextContent('15:41');
+    });
+
+    // El control que importa: `confirmed_tool.status === 'ok'` SIN `recibo` NO produce «Mandado a…». La
+    // presencia de `card.recibo` es la señal de que la acción se ejecutó, no el status ni el texto.
+    it('🔴 `confirmed_tool` en ok SIN `recibo` NO pinta recibo (sólo la burbuja)', async () => {
+      await envolver([
+        {
+          id: 'assistant-gmail-3',
+          role: 'assistant',
+          text: 'Listo, mandé el mail a Lucía.',
+          card: {
+            service: 'gmail',
+            label: 'Gmail',
+            ...TOOL_OK,
+          },
+        },
+      ]);
+
+      expect(screen.queryByTestId('recibo-ejecutado')).toBeNull();
+      expect(screen.getByText('Listo, mandé el mail a Lucía.')).toBeTruthy();
+    });
+  });
+
   /**
    * GUARDM parte 2 — la parte que ningún test a nivel card puede ver: que `ListaMensajes` derive
    * `resuelto` de CADA campo correcto del mensaje (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/

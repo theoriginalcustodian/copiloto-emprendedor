@@ -513,6 +513,42 @@ a.artifact:focus-visible {
   margin: 0;
 }
 
+.hitl-card__detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hitl-card__detalle-titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--name-fg);
+  margin: 0;
+}
+
+.hitl-card__valor {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--name-fg);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* El cuerpo ENTERO de lo que se va a mandar: sin recortar y respetando sus saltos de línea. */
+.hitl-card__cita {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--concept);
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--label);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .hitl-card__preview {
   border-radius: 14px;
   padding: 16px;

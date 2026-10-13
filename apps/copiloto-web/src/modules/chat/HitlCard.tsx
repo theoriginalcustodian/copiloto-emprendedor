@@ -1,3 +1,5 @@
+import type { DetalleGate } from '@copiloto/core';
+
 import { Badge, Button, MonoLabel, Recibo, Surface, type BadgeVariant } from '../../design-system';
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import './chat.css';
@@ -19,6 +21,10 @@ export interface HitlCardProps {
   amount?: string;
   /** Cuerpo descriptivo: el texto del reply (qué se va a hacer). */
   concept: string;
+  /** C-D3 — detalle estructurado del gate (`card.detalle`): título, filas, cuerpo citado ENTERO y nota.
+   * Es lo que se va a ejecutar (sale de los `arguments`), así que cuando está reemplaza a
+   * `name`/`amount`/`concept` — que quedan como fallback para el gate sin `detalle`. */
+  detalle?: DetalleGate;
   /** Badge de riesgo opcional (REVISAR para cobros, IRREVERSIBLE para publicar). */
   badge?: { variant: BadgeVariant; text: string };
   /** Borde de alerta + advertencia (acciones irreversibles, ej publicar en Instagram). */
@@ -52,6 +58,7 @@ export function HitlCard({
   name,
   amount,
   concept,
+  detalle,
   badge,
   dangerBorder,
   preview,
@@ -67,8 +74,12 @@ export function HitlCard({
     // resultado (`role="status"`) y no deja botones que se puedan volver a tocar.
     const lineas = [
       { etiqueta: 'APP', valor: label },
-      ...(name ? [{ etiqueta: 'PARA', valor: name }] : []),
-      ...(amount ? [{ etiqueta: 'MONTO', valor: `$${amount}` }] : []),
+      ...(detalle
+        ? detalle.filas.map((f) => ({ etiqueta: f.clave.toUpperCase(), valor: f.valor }))
+        : [
+            ...(name ? [{ etiqueta: 'PARA', valor: name }] : []),
+            ...(amount ? [{ etiqueta: 'MONTO', valor: `$${amount}` }] : []),
+          ]),
     ];
     // El texto de lo que se pidió aprobar se conserva como `nota`: el recibo es el rastro de qué se
     // confirmó o canceló, no sólo de la elección.
@@ -78,7 +89,7 @@ export function HitlCard({
         tono={resuelta.tono}
         titulo={resuelta.titulo}
         lineas={lineas}
-        nota={{ texto: concept }}
+        nota={{ texto: detalle?.cita ?? concept }}
       />
     );
   }
@@ -104,24 +115,51 @@ export function HitlCard({
           {badge && <Badge variant={badge.variant}>{badge.text}</Badge>}
         </div>
 
-        {name && (
-          <div className="hitl-card__field">
-            <MonoLabel>PARA</MonoLabel>
-            <p className="hitl-card__name">{name}</p>
-          </div>
-        )}
-
-        {amount && (
-          <div className="hitl-card__field">
-            <MonoLabel>MONTO</MonoLabel>
-            <p className="hitl-card__amount">
-              <span className="hitl-card__amount-sign">$</span>
-              {amount}
+        {detalle ? (
+          <div className="hitl-card__detalle" data-testid="confirmacion-detalle">
+            <p className="hitl-card__detalle-titulo" data-testid="confirmacion-detalle-titulo">
+              {detalle.titulo}
             </p>
+            {detalle.filas.map((fila, i) => (
+              <div className="hitl-card__field" key={`${i}-${fila.clave}`} data-testid="confirmacion-detalle-fila">
+                <MonoLabel>{fila.clave.toUpperCase()}</MonoLabel>
+                <p className="hitl-card__valor">{fila.valor}</p>
+                {fila.sub != null && <p className="hitl-card__note">{fila.sub}</p>}
+              </div>
+            ))}
+            {detalle.cita != null && (
+              <blockquote className="hitl-card__cita" data-testid="confirmacion-detalle-cita">
+                {detalle.cita}
+              </blockquote>
+            )}
+            {detalle.nota != null && (
+              <p className="hitl-card__note" data-testid="confirmacion-detalle-nota">
+                {detalle.nota}
+              </p>
+            )}
           </div>
-        )}
+        ) : (
+          <>
+            {name && (
+              <div className="hitl-card__field">
+                <MonoLabel>PARA</MonoLabel>
+                <p className="hitl-card__name">{name}</p>
+              </div>
+            )}
 
-        <p className="hitl-card__concept">{concept}</p>
+            {amount && (
+              <div className="hitl-card__field">
+                <MonoLabel>MONTO</MonoLabel>
+                <p className="hitl-card__amount">
+                  <span className="hitl-card__amount-sign">$</span>
+                  {amount}
+                </p>
+              </div>
+            )}
+
+            <p className="hitl-card__concept">{concept}</p>
+          </>
+        )}
 
         {preview && (
           <div className="hitl-card__preview" data-testid="hitl-preview">
