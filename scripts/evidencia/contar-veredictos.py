@@ -279,6 +279,31 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-13 - MIDE, con path:linea @ `bf8eb87e`, y NO es citador: lectura de primera mano.
+    # Pero mide EL EMISOR (que campos manda el backend), y el criterio 3 mide LA PANTALLA
+    # (que pinta la app contra el prototipo). Un `DIVERGE` de aca significa «el backend no manda
+    # el campo», que NO es «la pantalla no lo pinta»: el cliente puede derivar el titulo de
+    # `datos.nombre` y el chip de `datos.servicio` sin que el backend agregue nada. Sumar sus 3
+    # veredictos marcaria `caida`, `cobro-voz` y `fact-voz` como medidas habiendo medido otro
+    # sujeto -- y la casilla no distingue quien respondio.
+    #
+    # 🔴 Este es, exactamente, el tercer cubo que este archivo ya tiene declarado mas abajo:
+    # «la realidad tiene TRES -mide-el-criterio, mide-OTRA-cosa, cita- porque el parser
+    # clasifica por FORMA y la forma no codifica el ROL» (fila VOCABAJENO de `coordinacion/PLAN.md`).
+    # No lo descarto por no medir: lo descarto por medir OTRA COSA, y lo dejo escrito con esas
+    # palabras para que el dia que exista el tercer cubo esta entrada se pueda mover sin releerla.
+    #
+    # ⚠️ Lo que el descarte NO absuelve: sus dos hallazgos valen y ya estan asignados -- «Te aviso
+    # apenas vuelva» promete un push que no existe (0 hits de `push|expo|webpush`) y la hora real
+    # de la caida existe sin mandarse (`mp_credential_store.py:71-87`). Descartar el documento del
+    # CONTEO no retira sus mediciones: eso iria en otra direccion y seria el error.
+    "2026-10-13_dato_backend-a-planificacion_medicion-de-caida-cobro-voz-y-fact-voz":
+        "MIDE EL EMISOR, no la pantalla. Lee el backend contra el prototipo con path:linea "
+        "(@ bf8eb87e) y emite COINCIDE/DIVERGE sobre `caida`, `cobro-voz` y `fact-voz`, pero el "
+        "sujeto es que campos manda el servidor -- no que pinta la app, que es lo que mide el "
+        "criterio 3. Varios de sus DIVERGE son derivables en el cliente sin tocar el backend, asi "
+        "que contarlos como casillas del criterio afirmaria sobre un sujeto que nadie midio. Es el "
+        "cubo `mide-OTRA-cosa` (fila VOCABAJENO), no `cita`.",
     # 2026-09-30 — DICTAMEN SOBRE EL INSTRUMENTO, no sobre pantallas. Re-mide el radio de un defecto
     # del brazo `tabla` sobre 2103 documentos (confirma el radio 0) y CITA las filas que encuentra,
     # incluida la de un contrato mio. Lo que produce veredictos del criterio son esas citas.
