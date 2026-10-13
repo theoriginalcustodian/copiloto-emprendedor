@@ -390,12 +390,19 @@ export function PanelDeslizable({
         // clampeado a [0,0], o sea muerto): medido en device, NO ocurre — `recorrido` se fija en 819
         // al montar y no vuelve a cambiar. La causa del "panel bloqueado" era otra, ver
         // `PantallaPrincipal.alFuncion`. Queda escrito para que nadie vuelva a sospechar de acá.
-        recorrido.value = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
+        const medido = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
+        recorrido.value = medido;
         // La posición inicial necesita el recorrido medido: antes de esta primera medida, "abajo" no
         // es ningún número. Sin animación — el panel no se "desliza" al abrir la app, ya nace ahí.
-        if (arrancaAbajo && !inicialAplicada.current && recorrido.value > 0) {
+        //
+        // 🔴 **Se usa `medido`, NO `recorrido.value`.** Leer el shared value en el hilo JS inmediatamente
+        // después de escribirlo devuelve el valor VIEJO (la escritura viaja al hilo de UI y la lectura no
+        // espera): con `recorrido.value > 0` el panel arrancaba ARRIBA en 3/3 arranques en frío con el hint
+        // diciendo «Escribile a Odobi» (DEVICE15 H3). Medido con un `console.log` en este mismo `onLayout`:
+        // `h=853 insetsTop=24 recorrido=0` — un único layout, y el `if` nunca entraba.
+        if (arrancaAbajo && !inicialAplicada.current && medido > 0) {
           inicialAplicada.current = true;
-          panelY.value = recorrido.value;
+          panelY.value = medido;
         }
       }}
     >

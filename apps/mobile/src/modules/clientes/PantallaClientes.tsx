@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+// 🔴 `RefreshControl` de RNGH, no el de `react-native`: el scroll de RNGH espera a ESE handler
+// (`waitFor`). Con el de RN, `onRefresh` se disparaba a mitad del arrastre (DEVICE15 H4).
+import { RefreshControl } from 'react-native-gesture-handler';
 
 import {
   listarClientes,
