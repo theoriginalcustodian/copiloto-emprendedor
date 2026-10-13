@@ -183,7 +183,26 @@ fi
 # sobre `PIEZAS_INSTRUMENTO` (que lo incluye). Sin esto el aviso sale dos veces, y un aviso
 # repetido enseña a ignorar el aviso → memoria: el-guard-que-grita-en-el-caso-normal-se-desarma-solo
 cola_out="$(VERSION_YA_VERIFICADA=1 COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
-[ -n "$cola_out" ] && add "COLA:
+# `cola-check.sh --quiet` imprime DOS clases de texto y su exit code NO las separa (sale 0 en todas
+# las de contenido, incluida la alarma del freno de 4 h — los exit 2 son «no pude medir»). Así que
+# acá no se puede decidir por el codigo de salida, y decidir por PRESENCIA DE TEXTO era peor:
+# convertia en alarma el aviso de ids «⏳ bloqueados por disparador externo», que el propio
+# cola-check cierra diciendo «NO son cabeza de cola ni cierres: no los re-asignes ni los cuentes
+# como pendientes». Medido el 2026-10-13: con 3 ids bloqueados cuyo disparador es del operador
+# (MAINSINGUARD CIERREB BLO4OUT) este gate salia rc=1 PERMANENTE, y los TRES crones que lo usan
+# como señal binaria —«exit 0 ⇒ cerrá el turno en UNA línea y NO sigas»— nunca podian cerrar corto:
+# razonaban cada 3 minutos sobre un stdout sin una sola alarma accionable. Un rojo que esta siempre
+# encendido enseña a ignorar el rojo → memoria: el-guard-que-grita-en-el-caso-normal-se-desarma-solo
+#
+# FAIL-CLOSED a proposito: no se listan los patrones que SI alarman, se descuenta el unico bloque
+# declarado inocuo (sus 3 lineas) y cualquier otra cosa alarma. Si cola-check gana mañana un aviso
+# nuevo, entra como alarma sin que nadie se acuerde de agregarlo acá — al reves habria quedado
+# ciego en silencio, que es la mitad que no se nota.
+cola_accionable="$(printf '%s\n' "$cola_out" \
+  | sed '/^⏳ COLA: bloqueados por disparador externo/,+2d' | grep -E '[^[:space:]]' || true)"
+# Cuando SI hay algo accionable se adosa el texto COMPLETO (el bloque ⏳ incluido): es contexto
+# que el vigia necesita para no re-asignar lo que nadie puede mover.
+[ -n "$cola_accionable" ] && add "COLA:
 $cola_out"
 
 # ── 2) ESCALADORES DE EDAD (Gancho 3): contrato_/pedido_/en-curso viejos ───────────────────────
