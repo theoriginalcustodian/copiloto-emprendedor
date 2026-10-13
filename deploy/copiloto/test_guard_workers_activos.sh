@@ -23,6 +23,12 @@ extraer_bloque() {
   sed -n '/^SHA_GUARDA="\$SHA"$/,/^systemctl is-active "\$WORKER_SOPORTE_UNIT"$/p' "$1"
 }
 
+# Bloque COMPLETO de [5/7]: del guard hasta el cierre del heredoc (incluye el check WORKERPOLLER, que va
+# DESPUÉS de los is-active). Se descarta la línea terminadora `REMOTE_UNITS`.
+extraer_bloque_completo() {
+  sed -n '/^SHA_GUARDA="\$SHA"$/,/^REMOTE_UNITS$/p' "$1" | sed '$d'
+}
+
 # Cabecera REAL del heredoc remoto de [5/7]: la línea que sigue a `<<'REMOTE_UNITS'`. Hoy es
 # `set -euo pipefail`, y es lo ÚNICO que hace que un `systemctl is-active` fallido ABORTE el ssh (sin
 # él, el rc del ssh es el del último comando: un worker principal caído con el de soporte activo
@@ -32,9 +38,13 @@ extraer_cabecera() {
   awk '/<<.REMOTE_UNITS.[[:space:]]*$/{getline; print; exit}' "$1" | tr -d '\r'
 }
 
-# correr_caso <nombre> <unit_caido: "" | y | z>   (y = worker principal, z = worker de soporte)
+# correr_caso <nombre> <unit_caido: "" | y | z> [rc_poller]
+#   y = worker principal, z = worker de soporte.
+#   rc_poller (WORKERPOLLER): si viene, corre el bloque COMPLETO con `$VENV/bin/python` stubeado que
+#   sale con ese rc -- los tres units quedan `active`, así que SÓLO el check de pollers puede abortar.
+#   En ese modo imprime una 2ª línea `ARGS: <argv que recibió el check>`.
 correr_caso() {
-  local nombre="$1" unit_caido="$2"
+  local nombre="$1" unit_caido="$2" rc_poller="${3:-}"
   local sandbox bin bloque cabecera script rc
   sandbox="$(mktemp -d)"; bin="$sandbox/bin"; mkdir -p "$bin"
 
@@ -57,7 +67,18 @@ exit 0
 STUB
   chmod +x "$bin/systemctl"
 
-  bloque="$(extraer_bloque "$DEPLOY")"
+  if [ -n "$rc_poller" ]; then
+    bloque="$(extraer_bloque_completo "$DEPLOY")"
+    mkdir -p "$sandbox/venv/bin"
+    cat > "$sandbox/venv/bin/python" <<STUB
+#!/usr/bin/env bash
+echo "\$@" > "$sandbox/py-args"
+exit $rc_poller
+STUB
+    chmod +x "$sandbox/venv/bin/python"
+  else
+    bloque="$(extraer_bloque "$DEPLOY")"
+  fi
   if [ -z "$bloque" ]; then echo "  [$nombre] ERROR: no encontré el bloque del guard+is-active en $DEPLOY"; rm -rf "$sandbox"; return 2; fi
   cabecera="$(extraer_cabecera "$DEPLOY")"
   if [ -z "$cabecera" ]; then echo "  [$nombre] ERROR: no encontré el heredoc REMOTE_UNITS en $DEPLOY"; rm -rf "$sandbox"; return 2; fi
@@ -67,7 +88,7 @@ STUB
   script="$sandbox/bloque.sh"
   {
     printf '%s\n' "$cabecera"
-    echo "SHA=\"$SHA\"; PORT=8099; WEB_UNIT=\"x\"; WORKER_UNIT=\"y\"; WORKER_SOPORTE_UNIT=\"z\"; CANARIO_FALLA=\"\""
+    echo "SHA=\"$SHA\"; PORT=8099; WEB_UNIT=\"x\"; WORKER_UNIT=\"y\"; WORKER_SOPORTE_UNIT=\"z\"; CANARIO_FALLA=\"\"; REMOTE=\"/stub\"; VENV=\"$sandbox/venv\""
     printf '%s\n' "$bloque"
     echo 'echo "LLEGO_AL_FINAL_DEL_BLOQUE"'
   } > "$script"
@@ -75,8 +96,10 @@ STUB
   rc=0
   out="$(export PATH="$bin:$PATH"; bash "$script" 2>&1)" || rc=$?
   echo "$out" | grep -q "LLEGO_AL_FINAL_DEL_BLOQUE" && llego="si" || llego="no"
+  args=""; [ -f "$sandbox/py-args" ] && args="$(cat "$sandbox/py-args")"
   rm -rf "$sandbox"
   echo "$llego"
+  [ -n "$rc_poller" ] && echo "ARGS: $args"
   return 0
 }
 
@@ -105,6 +128,35 @@ for par in "worker principal:y" "worker de soporte:z"; do
     fallos=$((fallos+1))
   fi
 done
+
+# WORKERPOLLER: `is-active` prueba PROCESO. Con los tres units `active` y /healthz sano, un worker que
+# no pollea su task queue (rc≠0 del check) TIENE que abortar; con el check sano, tiene que dejar pasar.
+echo "-- caso 3 (control positivo): units activos + check de pollers sano -> llega al final"
+res3="$(correr_caso "poller-sano" "" 0)"
+if [ "$(echo "$res3" | head -n1)" = "si" ]; then
+  echo "  ok   el check sano deja pasar"
+else
+  echo "  ROJO: el check de pollers salió 0 y el bloque abortó igual -- falso positivo"
+  fallos=$((fallos+1))
+fi
+args3="$(echo "$res3" | sed -n 's/^ARGS: //p')"
+for esperado in "worker_pollers_check.py" "y:AGENT_B_TASK_QUEUE:agent-emprendedor" "z:SOPORTE_TASK_QUEUE:agent-soporte"; do
+  if echo "$args3" | grep -q -F -- "$esperado"; then
+    echo "  ok   el check recibió $esperado"
+  else
+    echo "  ROJO: el check no recibió '$esperado' (argv: $args3)"
+    fallos=$((fallos+1))
+  fi
+done
+
+echo "-- caso 4 (el que importa): units ACTIVOS pero el worker NO pollea (check rc=1) -> DEBE abortar"
+res4="$(correr_caso "poller-falta" "" 1)"
+if [ "$(echo "$res4" | head -n1)" = "no" ]; then
+  echo "  PASA: WORKERPOLLER — active-pero-sin-pollear aborta el deploy"
+else
+  echo "  ROJO: el worker no pollea y el bloque llegó al final igual -- is-active verde bastaba (el bug que esto cierra)"
+  fallos=$((fallos+1))
+fi
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "OK: GUARDSOLOWEB — is-active de los workers discrimina y puede abortar el deploy"; exit 0; fi

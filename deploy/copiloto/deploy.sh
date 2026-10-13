@@ -427,9 +427,9 @@ else
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" "$VENV" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"; VENV="$8"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
@@ -460,6 +460,15 @@ echo "--- systemctl is-active (post restart) ---"
 systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
 systemctl is-active "$WORKER_SOPORTE_UNIT"
+# WORKERPOLLER: `is-active` prueba PROCESO, no SUSCRIPCIÓN. Un worker `active` que no pollea su task
+# queue es el moat muerto con el deploy en ✅. Temporal sabe quién pollea: el check exige que el MainPID
+# ACTUAL de cada unit figure entre los pollers de su cola (cola/target se leen del /proc del worker, no
+# de una copia). Tiene que ABORTAR antes del publish de [5.5/7]; el plazo cubre el arranque del worker.
+echo "--- WORKERPOLLER: el MainPID de cada worker pollea su task queue ---"
+"$VENV/bin/python" "$REMOTE/deploy/copiloto/worker_pollers_check.py" --timeout "${UC_POLLER_TIMEOUT:-60}" \
+  "$WORKER_UNIT:AGENT_B_TASK_QUEUE:agent-emprendedor" \
+  "$WORKER_SOPORTE_UNIT:SOPORTE_TASK_QUEUE:agent-soporte" \
+  || { echo "ABORT [5/7]: un worker está active pero NO pollea su task queue (WORKERPOLLER)"; exit 1; }
 REMOTE_UNITS
 
 # [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de
