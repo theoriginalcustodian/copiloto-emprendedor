@@ -228,10 +228,19 @@ def main():
     doc = "\n".join(out) + "\n"
     # tmp + replace: `open(..,"w")` TRUNCA al abrir, y una excepcion en el write deja 0 bytes.
     tmp = DEST.with_suffix(DEST.suffix + ".tmp")
-    with io.open(str(tmp), "w", encoding="utf-8", newline="\r\n") as fh:
+    # LF, NO CRLF. Hasta 2026-10-12 esto forzaba CRLF sin motivo, y el gate MAPEOSINGATE de
+    # `scripts/ci/lint.sh` salia ROJO en CI acusando "el doc NO esta regenerado": el blob
+    # versionado vive con LF (`.gitattributes` no cubre `*.md`, asi que git normaliza al
+    # commitear) y el generado nacia con CRLF -> 107 CR de diferencia, 214 lineas "distintas",
+    # CERO divergencia de contenido. Un gate que compara DOS CODIFICACIONES del mismo texto
+    # acusa al sujeto por un defecto del instrumento.
+    with io.open(str(tmp), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(doc)
     os.replace(str(tmp), str(DEST))
-    print("escrito: %s (%d bytes)" % (DEST, len(doc)))
+    # bytes REALES en disco: `len(doc)` cuenta CARACTERES y los acentos pesan 2 — reportaba
+    # 14873 para un archivo de 15012 bytes, y esa cifra se uso para comparar tamanos.
+    print("escrito: %s (%d bytes en disco, %d caracteres)"
+          % (DEST, os.path.getsize(str(DEST)), len(doc)))
     return 0
 
 
