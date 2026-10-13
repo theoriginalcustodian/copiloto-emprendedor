@@ -13,6 +13,8 @@ vi.mock('@copiloto/core', async (importOriginal) => ({
   completarOnboarding: (...a: unknown[]) => mockCompletar(...a),
 }));
 
+import { PEDIDO_DETALLE_POR_COBRAR, tomarPendiente } from '@copiloto/core';
+
 import { Onboarding } from './Onboarding';
 
 const servicio = (over: Record<string, unknown>) => ({
@@ -40,6 +42,7 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     mockLink.mockReset();
     mockPortada.mockReset();
     mockCompletar.mockReset().mockResolvedValue(true);
+    tomarPendiente(); // el buzón es un módulo con estado: un test no hereda el pedido del anterior
   });
 
   it('muestra la promesa con los DOS permisos y el alcance dicho antes', async () => {
@@ -185,7 +188,7 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     mockPortada.mockResolvedValue(portada('147000.00'));
     render(<Onboarding onTerminar={() => {}} />);
     await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/facturados sin cobrar/));
-    expect(screen.getByText('¿Querés que te arme el detalle?')).toBeInTheDocument();
+    expect(screen.getByText('¿Querés que te arme el detalle de quiénes son?')).toBeInTheDocument();
     expect(screen.getByTestId('onboarding-chip-detalle')).toBeInTheDocument();
   });
 
@@ -197,6 +200,16 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     expect(screen.queryByTestId('onboarding-chip-detalle')).not.toBeInTheDocument();
   });
 
+  // Fila `onb-cumplida`, divergencia #2: el recibo de servicios es el `Recibo` real del chat, no una burbuja.
+  it('«Servicios conectados» es el Recibo del chat: título + detalle «Mercado Pago · Google»', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('10.00'));
+    render(<Onboarding onTerminar={() => {}} />);
+    await screen.findByTestId('onboarding-insight');
+    expect(screen.getByTestId('onboarding-recibo-servicios-card-titulo')).toHaveTextContent('Servicios conectados');
+    expect(screen.getByTestId('onboarding-recibo-servicios-detalle-0')).toHaveTextContent('Mercado Pago · Google');
+  });
+
   it('el chip «Armame el detalle» entra al hilo real y marca el onboarding UNA sola vez (idempotente)', async () => {
     mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
     mockPortada.mockResolvedValue(portada('147000.00'));
@@ -205,5 +218,28 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     fireEvent.click(await screen.findByText('Armame el detalle'));
     await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
     expect(mockCompletar).toHaveBeenCalledTimes(1);
+  });
+
+  // Fila `onb-cumplida`, divergencia #5: el chip prometía «el detalle» y sólo cerraba el onboarding.
+  it('🔴 el chip deja el pedido del detalle en el buzón del chat principal, UNA sola vez', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('147000.00'));
+    const onTerminar = vi.fn();
+    render(<Onboarding onTerminar={onTerminar} />);
+    fireEvent.click(await screen.findByText('Armame el detalle'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(tomarPendiente()).toBe(PEDIDO_DETALLE_POR_COBRAR);
+    expect(tomarPendiente()).toBeNull(); // tomar lo vacía: el chat no lo reenvía solo al volver a montar
+  });
+
+  it('«Entrar» NO deja ningún pedido: el emprendedor entra al hilo sin que nadie hable por él', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('147000.00'));
+    const onTerminar = vi.fn();
+    render(<Onboarding onTerminar={onTerminar} />);
+    await screen.findByTestId('onboarding-insight');
+    fireEvent.click(screen.getByTestId('onboarding-entrar'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(tomarPendiente()).toBeNull();
   });
 });

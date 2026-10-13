@@ -136,12 +136,20 @@ export function ChatView() {
    *
    * `tomarPendiente` vacía el buzón al leerlo — sin eso, cada cierre de cualquier glass reenviaría el
    * mismo mensaje.
+   *
+   * 🔴 **Sólo con el estado hidratado.** `useChat` arranca con `estado === null` (la hidratación lee
+   * AsyncStorage) y `send` DESCARTA en silencio mientras sea `null`. Con el chat ya montado debajo de
+   * un glass eso no importa; pero el onboarding se renderiza EN LUGAR del chat, y al cerrarse éste se
+   * monta de cero: tomar el buzón en ese primer foco lo vaciaba y el pedido se perdía sin rastro.
+   * `hidratado` está en las deps, así que el efecto corre de nuevo cuando el estado llega.
    */
+  const hidratado = estado !== null;
   useFocusEffect(
     useCallback(() => {
+      if (!hidratado) return;
       const texto = tomarPendiente();
       if (texto != null) void send(texto, { kind: 'text' });
-    }, [send]),
+    }, [send, hidratado]),
   );
 
   // El confirm/cancel del gate (`ListaMensajes`/`mapearGate`) reenvía acá como `kind:'callback'` —

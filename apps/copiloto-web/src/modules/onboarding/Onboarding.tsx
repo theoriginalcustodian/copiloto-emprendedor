@@ -1,8 +1,10 @@
 import {
   completarOnboarding,
+  dejarPendiente,
   leerPortada,
   listarCatalogo,
   pedirLinkDeVinculacion,
+  PEDIDO_DETALLE_POR_COBRAR,
   permisosCompletos,
   permisosDelHilo,
   primerInsight,
@@ -12,7 +14,7 @@ import {
 } from '@copiloto/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Badge, Button, Chip, MonoLabel, Surface } from '../../design-system';
+import { Badge, Button, Chip, MonoLabel, Recibo, Surface } from '../../design-system';
 import { Bubble } from '../chat/Bubble';
 import '../chat/chat.css';
 import './onboarding.css';
@@ -110,7 +112,7 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
     }
   }
 
-  if (paso === 'recibo') return <Recibo onEntrar={() => void terminar()} />;
+  if (paso === 'recibo') return <PasoRecibo onEntrar={() => void terminar()} />;
 
   return (
     <main className="onboarding-hilo" data-testid="onboarding">
@@ -173,7 +175,13 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   );
 }
 
-function Recibo({ onEntrar }: { onEntrar: () => void }) {
+function PasoRecibo({ onEntrar }: { onEntrar: () => void }) {
+  // «Armame el detalle» ENTRA al hilo con el pedido ya dicho (fila `onb-cumplida`, #5): lo deja en el
+  // buzón de `mensajePendiente` y `ChatScreen` lo manda al montar, una sola vez.
+  const pedirDetalle = useCallback(() => {
+    dejarPendiente(PEDIDO_DETALLE_POR_COBRAR);
+    onEntrar();
+  }, [onEntrar]);
   const [insight, setInsight] = useState<PrimerInsight | 'cargando'>('cargando');
   useEffect(() => {
     let vivo = true;
@@ -194,10 +202,15 @@ function Recibo({ onEntrar }: { onEntrar: () => void }) {
 
   return (
     <main className="onboarding-hilo" data-testid="onboarding-recibo">
-      <div className="chat-row chat-row--assistant" data-testid="onboarding-recibo-servicios">
-        <Surface variant="bubble" blur className="propuesta-card--terminal propuesta-card--exito">
-          Servicios conectados · Mercado Pago · Google
-        </Surface>
+      {/* El `REC('Servicios conectados','Mercado Pago · Google','')` del prototipo: el MISMO `Recibo` del
+          chat (título + `nota` = su `t2`), no una burbuja con las clases de la card terminal (`onb-cumplida`, #2). */}
+      <div data-testid="onboarding-recibo-servicios">
+        <Recibo
+          testId="onboarding-recibo-servicios-card"
+          tono="exito"
+          titulo="Servicios conectados"
+          nota={{ texto: 'Mercado Pago · Google', testId: 'onboarding-recibo-servicios-detalle-0' }}
+        />
       </div>
       <Bubble role="assistant" text="Listo, ya veo tu negocio." />
       <div data-testid="onboarding-insight" aria-live="polite">
@@ -205,9 +218,9 @@ function Recibo({ onEntrar }: { onEntrar: () => void }) {
       </div>
       {pregunta && (
         <>
-          <Bubble role="assistant" text="¿Querés que te arme el detalle?" />
+          <Bubble role="assistant" text="¿Querés que te arme el detalle de quiénes son?" />
           <div className="disambiguation-chips" role="group" aria-label="Elegí una opción" data-testid="onboarding-chip-detalle">
-            <Chip onClick={onEntrar}>Armame el detalle</Chip>
+            <Chip onClick={pedirDetalle}>Armame el detalle</Chip>
           </div>
         </>
       )}

@@ -160,7 +160,7 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { apiReal as api } from '@copiloto/core';
+import { apiReal as api, dejarPendiente, tomarPendiente } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ChatView } from './ChatView';
@@ -230,6 +230,24 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
     expect(llamada).not.toHaveProperty('cliente_id');
     expect(llamada).not.toHaveProperty('alcance');
     expect(llamada).not.toHaveProperty('modo');
+  });
+
+  // Fila `onb-cumplida` #5: el onboarding se renderiza EN LUGAR del chat; al cerrarse, el chat se monta de
+  // cero con el pedido YA en el buzón. `useChat` arranca con `estado === null` y `send` descarta en
+  // silencio: sin esperar la hidratación, `tomarPendiente()` vaciaba el buzón y el pedido se perdía.
+  it('🔴 un pedido que ya estaba en el buzón al MONTAR se manda UNA vez, tras hidratar (no se pierde)', async () => {
+    tomarPendiente();
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-p', accepted: true });
+    dejarPendiente('Armame el detalle de quiénes son los clientes con facturas sin cobrar.');
+
+    await renderChatView();
+
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(api.sendChat).mock.calls[0]?.[0]).toMatchObject({
+      text: 'Armame el detalle de quiénes son los clientes con facturas sin cobrar.',
+      kind: 'text',
+    });
+    expect(tomarPendiente()).toBeNull();
   });
 
   it('una card con kind desconocido en la respuesta del agente no rompe la pantalla', async () => {

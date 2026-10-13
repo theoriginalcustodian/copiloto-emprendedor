@@ -78,6 +78,7 @@ export {
   completarOnboarding,
   debeMostrarOnboarding,
   permisosCompletos,
+  PEDIDO_DETALLE_POR_COBRAR,
   permisosDelHilo,
   primerInsight,
   textoDelInsight,
