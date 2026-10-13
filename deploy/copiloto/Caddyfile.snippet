@@ -1,7 +1,8 @@
 # deploy/copiloto/Caddyfile.snippet — referencia de los bloques que el repo gestiona sobre
 # /etc/caddy/Caddyfile. Cada bloque dice QUIÉN lo escribe (la línea `escribe:`), para que nadie lea el
 # repo y deduzca un vhost que en prod no existe (SNIPPETMIENTE).
-#   escribe: deploy.sh [6/7] vía caddy_converge.py  → CONVERGENTE: reemplaza el bloque si difiere
+#   escribe: deploy.sh [6/7] vía caddy_converge.py  → CONVERGENTE (bloques 1 y 3): reemplaza el bloque si
+#                                                     difiere. El 2 (`mp.*`) sólo recibe la línea `rewrite`.
 #   escribe: caddy-sync.sh                          → mismo script de convergencia, sin deploy de app
 #   escribe: gotrue/activate-google-oauth.sh        → NO aparece acá (su bloque es `auth.<base>`)
 #   escribe: NADIE del repo                         → existe sólo en el VPS (ver final del archivo)
@@ -16,6 +17,8 @@
 #    solo proceso `uc-copiloto-web` sirve /chat,/reply,/me,/auth/signup,/healthz Y /mp/* — create_web_app
 #    monta ambos en la misma app, ver apps/copiloto/web.py). `mp.*` queda vigente para no romper las
 #    URLs YA registradas en MercadoPago (MP_WEBHOOK_BASE/MP_REDIRECT_URI apuntan a mp.*).
+#    escribe: deploy.sh [6/7] y caddy-sync.sh (vía caddy_converge.py) → CONVERGENTE: lo crea si falta y
+#             reemplaza el bloque ENTERO si difiere.
 copiloto.178-105-191-1.sslip.io {
     reverse_proxy 127.0.0.1:8099
 }
@@ -24,6 +27,10 @@ copiloto.178-105-191-1.sslip.io {
 #    está ya) para reconciliar sin cambiar MP_REDIRECT_URI ni re-registrar la app en MercadoPago:
 #    MP_REDIRECT_URI quedó registrado como ".../callback" pero `create_mp_app` (mp_web.py) sirve
 #    `/mp/callback`. El rewrite hace que ambos coincidan sin tocar el contrato externo.
+#    escribe: deploy.sh [6/7] y caddy-sync.sh → SÓLO la línea `rewrite` (aditivo: la agrega si falta, no
+#             reemplaza nada). El resto del bloque (`reverse_proxy`) es PREEXISTENTE: ningún script de
+#             deploy/ lo crea ni lo converge, y si el bloque no existe en el Caddyfile vivo
+#             `caddy_converge.py` ABORTA (no lo crea). Lo que se ve abajo es el vivo, no lo aplicado.
 mp.178-105-191-1.sslip.io {
     rewrite /callback /mp/callback
     reverse_proxy 127.0.0.1:8099
@@ -49,13 +56,19 @@ copilotoemprendedor.duckdns.org {
     handle                     { reverse_proxy 127.0.0.1:8099 }
 }
 
-# ── Bloques VIVOS en prod que el repo NO escribe (medido 2026-10-07 contra /etc/caddy/Caddyfile) ──
+# ── Bloques VIVOS en prod que el repo NO escribe (medido 2026-10-13 contra /etc/caddy/Caddyfile) ──
 # Son la respuesta a «¿el vivo tiene directivas que el repo no menciona?»: sí. Escribe: NADIE del repo.
+# Cada host vivo tiene que figurar ACÁ por su nombre: `caddy-vivo-vs-snippet.sh` (SNIPPETMIENTE) cruza
+# los hosts del Caddyfile vivo contra este archivo y marca los que ningún comentario nombra.
 #   escribe: gotrue/activate-google-oauth.sh → auth.<base> (handles authorize/callback + 404). Ese script
 #            no escribe `verify`; el bloque no está en este snippet porque lo escribe otro script.
-#   escribe: NADIE del repo → voz.<base>, voz-web.copilotoemprendedor.duckdns.org, documed.copilotoemprendedor
-#            .duckdns.org, rothoblaas.<base> (SPA estática). Ningún script de deploy/ ni scripts/ los escribe.
+#   escribe: NADIE del repo → voz.<base>, voz-web.copilotoemprendedor.duckdns.org,
+#            documed.copilotoemprendedor.duckdns.org, rothoblaas.<base> (SPA estática).
+#            Ningún script de deploy/ ni scripts/ los escribe.
+#   escribe: NADIE del repo → www.svivertical.com.ar (SPA estática, root /srv/svi/dist) y su redirect
+#            `svivertical.com.ar, svivertical.duckdns.org` → www. Sitio ajeno al copiloto: el repo no
+#            lo menciona en ningún otro lado (hallazgo del 2026-10-13: figuraba vivo y sin anotar).
 #   escribe: NADIE del repo (fuera de scope de deploy.sh, verificados intactos por el smoke [7/7]):
-#            178-105-191-1.sslip.io→8088, hermes.*→9119 basic_auth, temporal.*→8080 basic_auth.
+#            178-105-191-1.sslip.io→8088, hermes.<base>→9119 basic_auth, temporal.<base>→8080 basic_auth.
 # Deuda visible: un vhost sin dueño en el repo no se regenera si el VPS se reprovisiona. Cerrarla es un
 # ítem propio, no de este PR.
