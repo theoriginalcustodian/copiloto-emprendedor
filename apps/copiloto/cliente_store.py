@@ -164,6 +164,13 @@ def es_consumidor_final(doc_tipo) -> bool:
 _NO_SON_NOMBRE = frozenset({"consumidor final", "sin identificar", "s d", "n n"})
 
 
+def es_nombre_real(nombre: str) -> bool:
+    """`False` para el vacío y para los placeholders del propio sistema («Consumidor Final»…): no
+    nombran a nadie, así que buscarlos en la cartera sólo puede devolver ruido."""
+    normalizado = normalizar_nombre(nombre)
+    return bool(normalizado) and normalizado not in _NO_SON_NOMBRE
+
+
 def nombre_derivado(nombre: str, doc_tipo, doc_nro) -> str | None:
     """Con qué nombre entra a la cartera algo que ya se emitió — o `None` si **no genera cliente**.
 

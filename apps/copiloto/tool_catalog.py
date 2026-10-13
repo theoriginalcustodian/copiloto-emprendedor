@@ -56,8 +56,8 @@ from presupuesto_sugerencias import sugerencia_de_aprobacion  # noqa: E402
 from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E402
                                TransicionInvalida)
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
-                          documento_incoherente, es_consumidor_final, inferir_doc_tipo,
-                          normalizar_documento)
+                          documento_incoherente, es_consumidor_final, es_nombre_real,
+                          inferir_doc_tipo, normalizar_documento)
 # Hito 9 — facturar por voz. El gate de "completa" es la MISMA función pura que usa el workflow para
 # `estado().faltantes` (afip_factura_workflow.py:99): una verdad, un solo lugar (respuesta de
 # planificación al fork del turno-1, 2026-07-24). Nada de esto toca red/DB — son dataclasses + reglas.
@@ -1307,7 +1307,37 @@ def factura_id_del_dictado(idem_key: str) -> str:
     return f"dictado-{idem_key}"
 
 
-def _borrador_desde_dictado(arguments: dict, now_iso_provider) -> BorradorFactura:
+def _cliente_del_registro(arguments: dict, ctx, cliente_store_factory) -> dict | None:
+    """D7 (2026-10-13): «facturale a Juan» sin documento dictado → el cliente del registro DEL TENANT, o None.
+
+    Devuelve la ficha sólo con **un** match que tenga documento. **Dos o más ⇒ None**: no adivina, la
+    card pide el dato (mismo criterio que `_run_consultar_cliente`: el cliente equivocado se parece
+    exactamente al correcto, y acá además es un CUIT en un comprobante fiscal). Cero ⇒ None, como antes.
+
+    El lookup va contra `cliente_store_factory(ctx.cliente_id)` — el store del tenant del request, nunca
+    uno global. Y si el store falla, se degrada a «sin precarga» (el comportamiento de siempre), logueado.
+    """
+    if cliente_store_factory is None or str(arguments.get("cliente_documento") or "").strip():
+        return None                                    # sin store, o la persona ya dictó el documento
+    nombre = str(arguments.get("cliente_nombre") or "").strip()
+    if not es_nombre_real(nombre):
+        return None
+    try:
+        # limit=2: alcanza para distinguir «uno» de «varios»; no hace falta traer la cartera.
+        candidatos, _ = cliente_store_factory(ctx.cliente_id).listar(q=nombre, limit=2)
+    except Exception:  # noqa: BLE001 — la precarga es una comodidad: su caída no puede frenar la factura
+        _log.warning("lookup de cliente por nombre falló; se factura sin precarga", exc_info=True)
+        return None
+    if len(candidatos) != 1:
+        return None
+    c = candidatos[0]
+    if not c.get("doc_nro") or c.get("doc_tipo") not in (DOC_CUIT, DOC_DNI):
+        return None
+    return c
+
+
+def _borrador_desde_dictado(arguments: dict, now_iso_provider, cliente_registro: dict | None = None
+                            ) -> BorradorFactura:
     """Arma el `BorradorFactura` (dataclasses PURAS de `afip_rules`) con lo que dictó la voz, para
     correr `validar_factura_completa` — la MISMA función que usa el workflow. Nada de esto persiste.
 
@@ -1336,6 +1366,20 @@ def _borrador_desde_dictado(arguments: dict, now_iso_provider) -> BorradorFactur
     elif doc and tipo_doc_dicho == "DNI":
         receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL, tipo_doc=TipoDoc.DNI,
                             nro_doc=doc, nombre=nombre or "Consumidor Final")
+    elif cliente_registro is not None:
+        # D7: el documento NO lo dictó la persona, salió del registro del tenant — y viaja CON la
+        # condición de IVA que el registro tiene para ese cliente. Sin ella un CUIT quedaba como
+        # «Consumidor Final» y `validar_receptor` lo frenaba siempre («Cargaste un CUIT pero la
+        # condición es Consumidor Final»): la precarga no serviría para ningún cliente con CUIT. Sin
+        # condición cargada (o con un código que no es del enum) cae a Consumidor Final, igual que un
+        # CUIT dictado: la tool lo señala en vez de inventarla. La card MARCA todo `del_registro`.
+        try:
+            condicion = CondicionIVA(int(cliente_registro.get("condicion_iva")))
+        except (TypeError, ValueError):
+            condicion = CondicionIVA.CONSUMIDOR_FINAL
+        receptor = Receptor(condicion_iva=condicion,
+                            tipo_doc=TipoDoc.CUIT if cliente_registro["doc_tipo"] == DOC_CUIT else TipoDoc.DNI,
+                            nro_doc=cliente_registro["doc_nro"], nombre=cliente_registro["nombre"])
     else:
         # Sin documento identificable: consumidor final. `validar_receptor` sólo lo bloquea por encima
         # del tope (`TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR`) — la mayoría de las facturas dictadas caen
@@ -1348,7 +1392,7 @@ def _borrador_desde_dictado(arguments: dict, now_iso_provider) -> BorradorFactur
 def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                         afip_cred_store_factory, afip_perfil_store_factory,
                         abrir_borrador_dictado, consultar_factura_dictado, signal_factura_dictado,
-                        buscar_borrador_dictado):
+                        buscar_borrador_dictado, cliente_store_factory=None):
     """*«Facturale 50 mil a Juan»* → arma el borrador AFIP y lo propone en una card — NO emite. Mismo
     patrón que `registrar_gasto`/`registrar_ingreso`: emitir es un acto fiscal irreversible, así que la
     acción la dispara el usuario desde la card (Emitir con token fresco, o Completar a mano).
@@ -1380,7 +1424,8 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                           observation={"result": errores_perfil[0].mensaje})
 
     hoy = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
-    borrador = _borrador_desde_dictado(arguments, now_iso_provider)
+    cliente_registro = _cliente_del_registro(arguments, ctx, cliente_store_factory)
+    borrador = _borrador_desde_dictado(arguments, now_iso_provider, cliente_registro)
     errores_dictado = validar_factura_completa(perfil, borrador, hoy=hoy)
 
     async def _flujo():
@@ -1449,8 +1494,15 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
     tipo_comprobante = determinar_tipo_comprobante(perfil, borrador.receptor).name if perfil else None
     total = estado.get("total") or "0.00"
     completa = not faltantes_codigos
-    texto_card = (f"Te armé la factura por ${total}, revisala y confirmala cuando quieras." if completa
-                 else f"Esto entendí de la factura (${total}). Faltan datos — revisala y completala a mano.")
+    # D7: si el documento salió del registro, la frase lo DICE — es la marca visible que la persona ve
+    # antes de confirmar un CUIT que ella no dictó. El flag `del_registro` viaja en el artifact para la
+    # app; esta frase es lo que funciona aunque la app todavía no lo pinte.
+    del_registro = (f" para {borrador.receptor.nombre} ({borrador.receptor.tipo_doc.name} "
+                    f"{borrador.receptor.nro_doc}, de tu registro de clientes)" if cliente_registro else "")
+    texto_card = (f"Te armé la factura por ${total}{del_registro}, revisala y confirmala cuando quieras."
+                  if completa
+                  else f"Esto entendí de la factura (${total}){del_registro}. Faltan datos — revisala y "
+                       f"completala a mano.")
     return ToolResult(
         tool_call_id=idem_key, is_write=False, status="ok",
         observation={"result": f"Armé la factura (${total}) y se la muestro en una tarjeta para que "
@@ -1463,7 +1515,8 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
             "cliente": {"razon_social": borrador.receptor.nombre,
                        "cuit": (borrador.receptor.nro_doc
                                if borrador.receptor.tipo_doc != TipoDoc.CONSUMIDOR_FINAL else None),
-                       "condicion_iva": borrador.receptor.condicion_iva.name},
+                       "condicion_iva": borrador.receptor.condicion_iva.name,
+                       "del_registro": cliente_registro is not None},
             "total": total, "tipo_comprobante": tipo_comprobante}))
 
 
@@ -1623,7 +1676,8 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                 return _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                                            afip_cred_store_factory, afip_perfil_store_factory,
                                            abrir_borrador_dictado, consultar_factura_dictado,
-                                           signal_factura_dictado, buscar_borrador_dictado)
+                                           signal_factura_dictado, buscar_borrador_dictado,
+                                           cliente_store_factory)
             # ── 1ra clase: hito 7 — el Kanban "Mi día" por voz (persisten; sin gate, ver TOOL_INDEX) ─
             if kind == "mi_dia_crear":
                 return _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)
