@@ -1,4 +1,4 @@
-import type { Cliente } from '@copiloto/core';
+import { facturacionDeCliente, type Cliente, type FacturacionCliente } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
@@ -30,11 +30,13 @@ const ETIQUETA_CONDICION_IVA: Record<number, string> = {
  * al primer dato de contacto disponible, para no perder info del "cliente de mostrador" que sólo
  * tiene nombre y teléfono.
  *
- * El slot del monto muestra la cantidad de comprobantes del cliente (BL-V18, A12) cuando el listado
- * la trae (`comprobantesCantidad`, sólo en `GET /clientes`). Si no viene, cae a "—": nunca un "$0" ni
- * un cero inventado. El monto facturado en pesos sigue sin existir en la API. El chip de estado usa el
- * único dato real disponible (`origen`) — `derivado` es "Se agregó solo" (mockup: `.estado.auto`); el
- * resto, "Todavía sin comprar".
+ * El slot del monto sigue la regla única de C-D1 (`facturacionDeCliente`, en el core): con el par
+ * `monto_facturado` + `facturas_atribuibles` del listado pinta «$importe · N comprobantes»; con
+ * `facturas_atribuibles: false` pinta «—» (NUNCA un número: el "0.00" ahí es «no se puede saber»). Si
+ * el backend no declaró el par (versión anterior), cae a la cantidad de comprobantes (BL-V18) y, sin
+ * ella, a «—»: nunca un cero inventado. El chip de estado dice lo MEDIDO — «Sin CUIT cargado» /
+ * «Todavía sin comprar» — y sólo sin esa señal cae a `origen` (`derivado` → «Se agregó solo»,
+ * mockup `.estado.auto`).
  */
 /**
  * BL-V18 (A12): cantidad de comprobantes en el slot del monto. `undefined` (el listado no lo trajo)
@@ -44,6 +46,36 @@ const ETIQUETA_CONDICION_IVA: Record<number, string> = {
 export function textoComprobantes(n: number | undefined): string {
   if (n == null) return '—';
   return n === 1 ? '1 comprobante' : `${n} comprobantes`;
+}
+
+/** Texto del slot del monto. Ver el docstring de arriba: la regla vive en `facturacionDeCliente`. */
+export function textoMontoCliente(cliente: Cliente): string {
+  const f = facturacionDeCliente(cliente);
+  switch (f.tipo) {
+    case 'sin_documento':
+      return '—';
+    case 'sin_compras':
+    case 'con_monto':
+      return cliente.comprobantesCantidad != null
+        ? `${f.importe} · ${textoComprobantes(cliente.comprobantesCantidad)}`
+        : f.importe;
+    case 'desconocida':
+      return textoComprobantes(cliente.comprobantesCantidad);
+  }
+}
+
+/** Chip de estado, o `null` si no hay nada que afirmar (cliente con compras cargado a mano). */
+function estadoCliente(f: FacturacionCliente, esAuto: boolean): { texto: string; auto: boolean } | null {
+  switch (f.tipo) {
+    case 'sin_documento':
+      return { texto: 'Sin CUIT cargado', auto: false };
+    case 'sin_compras':
+      return { texto: 'Todavía sin comprar', auto: false };
+    case 'con_monto':
+      return esAuto ? { texto: 'Se agregó solo', auto: true } : null;
+    case 'desconocida':
+      return esAuto ? { texto: 'Se agregó solo', auto: true } : { texto: 'Todavía sin comprar', auto: false };
+  }
 }
 
 export interface TarjetaClienteProps {
@@ -68,7 +100,7 @@ export function TarjetaCliente({ cliente, onSelect }: TarjetaClienteProps) {
           .map((x) => (x != null && x.trim() !== '' ? x.trim() : null))
           .find((x) => x != null) ?? null);
 
-  const esAuto = cliente.origen === 'derivado';
+  const estado = estadoCliente(facturacionDeCliente(cliente), cliente.origen === 'derivado');
 
   return (
     <Surface
@@ -103,14 +135,16 @@ export function TarjetaCliente({ cliente, onSelect }: TarjetaClienteProps) {
       </div>
       <div className="tarjeta-cliente__derecha">
         <span className="tarjeta-cliente__monto" data-testid={`cliente-${cliente.id}-monto`}>
-          {textoComprobantes(cliente.comprobantesCantidad)}
+          {textoMontoCliente(cliente)}
         </span>
-        <span
-          className={`tarjeta-cliente__estado${esAuto ? ' tarjeta-cliente__estado--auto' : ''}`}
-          data-testid={`cliente-${cliente.id}-estado`}
-        >
-          {esAuto ? 'Se agregó solo' : 'Todavía sin comprar'}
-        </span>
+        {estado != null && (
+          <span
+            className={`tarjeta-cliente__estado${estado.auto ? ' tarjeta-cliente__estado--auto' : ''}`}
+            data-testid={`cliente-${cliente.id}-estado`}
+          >
+            {estado.texto}
+          </span>
+        )}
       </div>
     </Surface>
   );
