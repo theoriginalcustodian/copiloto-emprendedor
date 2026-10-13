@@ -42,6 +42,7 @@ CANALES_VALIDOS = (SOPORTE_TECNICO, COMO_USO_LA_APP)
 ABIERTO = "abierto"
 RESPONDIDO = "respondido"
 CERRADO = "cerrado"
+ESTADOS_VALIDOS = (ABIERTO, RESPONDIDO, CERRADO)
 
 
 class TicketStore:
@@ -137,12 +138,31 @@ class TicketStore:
         finally:
             conn.close()
 
+    def contar_tickets(self, *, estado: str | None = None) -> int:
+        """Cuántos tickets tiene ESTE tenant (opcionalmente de un `estado`), SIN tope de `limite`.
+        Es el `total` de `GET /soporte/tickets`: `len(items)` miente en cuanto hay más de un
+        `limite`, y la app no puede paginar ni rotular «N tickets» con eso."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                if estado:
+                    cur.execute(
+                        f"SELECT count(*) FROM {TABLA_TICKETS} WHERE cliente_id = %s AND estado = %s",
+                        (self._cid, estado))
+                else:
+                    cur.execute(f"SELECT count(*) FROM {TABLA_TICKETS} WHERE cliente_id = %s",
+                                (self._cid,))
+                (total,) = cur.fetchone()
+                return int(total)
+        finally:
+            conn.close()
+
     def cambiar_estado(self, *, ticket_id: int, nuevo_estado: str) -> str | None:
         """El verbo que faltaba (SOP6 §0): `abierto → respondido → cerrado`, vocabulario cerrado.
         Devuelve el estado ANTERIOR (para la auditoría del caller) o `None` si `ticket_id` no
         existe EN ESTE TENANT -- el `WHERE cliente_id = %s` es lo que hace que "no existe" y "es de
         otro tenant" se vean exactamente igual, que es la propiedad que RLS/multi-tenant necesita."""
-        if nuevo_estado not in (ABIERTO, RESPONDIDO, CERRADO):
+        if nuevo_estado not in ESTADOS_VALIDOS:
             raise ValueError(f"estado inválido: {nuevo_estado!r} (válidos: abierto/respondido/cerrado)")
         conn = self._conn_factory()
         try:

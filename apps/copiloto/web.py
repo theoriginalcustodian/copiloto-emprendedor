@@ -31,7 +31,7 @@ from typing import Callable
 from _paths import ensure_paths
 ensure_paths()
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -68,6 +68,7 @@ from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tena
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
+from soporte_store import ESTADOS_VALIDOS as SOPORTE_ESTADOS_VALIDOS
 from soporte_store import TicketStore
 
 import dictado_destinos
@@ -994,6 +995,27 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": channel_ref, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref,
                 "transcript": transcript}
+
+    @app.get("/soporte/tickets")
+    def soporte_tickets_propios(estado: str | None = Query(None),
+                                limite: int = Query(50, ge=1, le=100),
+                                cliente_id: str = Depends(require_tenant)) -> dict:
+        """Listado de los tickets de SOPORTE del propio tenant (contrato de las 4 dependencias del
+        prototipo, §1). El mismo `TicketStore` que el detalle: el `WHERE cliente_id = %s` es el
+        aislamiento, y `cliente_id` sale del token, nunca del query.
+
+        `total` es el conteo del tenant bajo el MISMO filtro de `estado`, sin el tope de `limite`
+        (no `len(items)`). `respuesta_estimada` va SIEMPRE `null`: el «4 h hábiles» es decisión del
+        operador, y emitirlo sin esa decisión sería inventar una promesa -- la clave existe para
+        que la app no tenga que adivinar su forma cuando se decida."""
+        if estado is not None and estado not in SOPORTE_ESTADOS_VALIDOS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"estado inválido (válidos: {', '.join(SOPORTE_ESTADOS_VALIDOS)})")
+        store = TicketStore(conn_factory, cliente_id)
+        return {"items": store.listar_tickets(estado=estado, limite=limite),
+                "total": store.contar_tickets(estado=estado),
+                "respuesta_estimada": None}
 
     @app.get("/soporte/tickets/{ticket_id}")
     def soporte_ticket_propio(ticket_id: int, cliente_id: str = Depends(require_tenant)) -> dict:

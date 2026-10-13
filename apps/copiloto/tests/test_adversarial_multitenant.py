@@ -697,3 +697,77 @@ def test_adversarial_http_feedback_a_cannot_read_b_feedback(two_tenants, crypto,
                         (a.cliente_id, b.cliente_id))
         conn.commit()
         conn.close()
+
+
+# --- PROTO4DEPS §1: GET /soporte/tickets (listado propio) ---------------------------
+
+def test_adversarial_http_soporte_tickets_a_lista_lo_suyo_y_no_ve_lo_de_b(
+        two_tenants, crypto, conn_de_tenant):
+    """El listado nuevo lee `cliente_id` del token (`require_tenant`), no del query. El test de store
+    prueba el `WHERE cliente_id = %s` con el id YA resuelto; no pasa por la pieza que decide de quién
+    es el request. Acá: token real contra la ruta real, con (1) control positivo -- B ve SU ticket,
+    no una lista vacía por accidente --, (2) `total` que cuenta TODO lo del tenant aunque `limite`
+    recorte los `items`, (3) un `?cliente_id=` ajeno en el query que no debe mover nada y (4) el
+    detalle del ticket de B pedido con el token de A, que es el MISMO 404 que uno inexistente."""
+    from soporte_store import CERRADO, SOPORTE_TECNICO, TicketStore
+    a, b = two_tenants
+    try:
+        st_a = TicketStore(conn_de_tenant(a.cliente_id), a.cliente_id)
+        st_b = TicketStore(conn_de_tenant(b.cliente_id), b.cliente_id)
+        st_a.crear_ticket(canal=SOPORTE_TECNICO, asunto="secreto de A 1", primer_mensaje="a1")
+        t_a2 = st_a.crear_ticket(canal=SOPORTE_TECNICO, asunto="secreto de A 2", primer_mensaje="a2")
+        st_a.cambiar_estado(ticket_id=t_a2["id"], nuevo_estado=CERRADO)
+        t_b = st_b.crear_ticket(canal=SOPORTE_TECNICO, asunto="secreto de B", primer_mensaje="b1")
+
+        client = TestClient(_build_http_app(two_tenants, crypto))
+        h_a = {"Authorization": f"Bearer {a.token}"}
+        h_b = {"Authorization": f"Bearer {b.token}"}
+
+        r_a = client.get("/soporte/tickets", headers=h_a)
+        assert r_a.status_code == 200
+        cuerpo_a = r_a.json()
+        assert sorted(i["asunto"] for i in cuerpo_a["items"]) == ["secreto de A 1", "secreto de A 2"]
+        assert cuerpo_a["total"] == 2
+        assert "respuesta_estimada" in cuerpo_a and cuerpo_a["respuesta_estimada"] is None
+        assert set(cuerpo_a["items"][0]) == {"id", "codigo", "canal", "estado", "asunto",
+                                             "created_at", "updated_at"}
+
+        # control positivo: misma app, token distinto -> B ve SU ticket, jamás los de A.
+        r_b = client.get("/soporte/tickets", headers=h_b)
+        assert r_b.status_code == 200
+        assert [i["asunto"] for i in r_b.json()["items"]] == ["secreto de B"]
+        assert r_b.json()["total"] == 1
+
+        # `total` no es len(items): limite=1 recorta los items y el total sigue siendo 2.
+        r_lim = client.get("/soporte/tickets", params={"limite": 1}, headers=h_a)
+        assert len(r_lim.json()["items"]) == 1 and r_lim.json()["total"] == 2
+        # el filtro por estado afecta items Y total, y sigue acotado al tenant.
+        r_cer = client.get("/soporte/tickets", params={"estado": "cerrado"}, headers=h_a)
+        assert [i["asunto"] for i in r_cer.json()["items"]] == ["secreto de A 2"]
+        assert r_cer.json()["total"] == 1
+
+        # un `cliente_id` ajeno en el query no mueve el aislamiento.
+        r_inj = client.get("/soporte/tickets", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert sorted(i["asunto"] for i in r_inj.json()["items"]) == ["secreto de A 1", "secreto de A 2"]
+
+        # vocabulario cerrado: un estado fuera del enum es 422, no una lista vacía engañosa.
+        assert client.get("/soporte/tickets", params={"estado": "pendiente"},
+                          headers=h_a).status_code == 422
+
+        # detalle: A pide el ticket de B -> 404, idéntico al de un id inexistente; B sí lo ve.
+        r_cross = client.get(f"/soporte/tickets/{t_b['id']}", headers=h_a)
+        r_inex = client.get("/soporte/tickets/999999999", headers=h_a)
+        assert r_cross.status_code == 404 and r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+        assert client.get(f"/soporte/tickets/{t_b['id']}", headers=h_b).status_code == 200
+        declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B
+    finally:
+        for cid in (a.cliente_id, b.cliente_id):
+            conn = conn_de_tenant(cid)()
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM uc_factory.copiloto_mensajes WHERE cliente_id = %s", (cid,))
+                cur.execute("DELETE FROM uc_factory.copiloto_tickets WHERE cliente_id = %s", (cid,))
+                cur.execute("DELETE FROM uc_factory.copiloto_ticket_secuencia WHERE cliente_id = %s",
+                            (cid,))
+            conn.commit()
+            conn.close()
