@@ -501,7 +501,10 @@ linea_poller="$(printf '{"evento":"workerpoller","sha":"%s","deploy_nonce":"%s",
   "$SHA" "$DEPLOY_NONCE" "$estado_poller" "$rc_poller" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")"
 printf '%s\n' "$linea_poller" >> "$REMOTE/DEPLOY-MANIFEST.json" || true
 if [ "$(tail -n 1 "$REMOTE/DEPLOY-MANIFEST.json" 2>/dev/null || true)" != "$linea_poller" ]; then
-  echo "ABORT [5/7]: WORKERPOLLER ($estado_poller) no quedó confirmado en $REMOTE/DEPLOY-MANIFEST.json -- un deploy sin rastro de si verificó no se acredita"
+  # Ojo con el síntoma: si el manifiesto no es escribible (disco lleno, permisos) este abort corta un deploy
+  # SANO, después del restart y antes del publish de [5.5/7] => API nueva + shell viejo (la mezcla que
+  # PIPELINEORDEN declara tolerable). Parece «el deploy se rompió»; la causa es el registro. Se nombra acá.
+  echo "ABORT [5/7]: WORKERPOLLER ($estado_poller) no quedó confirmado en $REMOTE/DEPLOY-MANIFEST.json -- la causa NO es el worker ni el check: lo que falló es el REGISTRO (revisar disco/permisos del manifiesto). Un deploy sin rastro de si verificó no se acredita. Quedó API nueva + shell viejo (sin publicar): repetir el deploy tras arreglar el manifiesto."
   exit 1
 fi
 echo "--- WORKERPOLLER registrado en DEPLOY-MANIFEST.json: $estado_poller (rc=$rc_poller) ---"
