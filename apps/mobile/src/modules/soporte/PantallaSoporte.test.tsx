@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -47,8 +47,14 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('../chat/BotonVoz', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    BotonVoz: ({ onIniciar, onSoltarSinFijar, onFijar, disabled }: any) => (
+    BotonVoz: ({ onIniciar, onSoltarSinFijar, onFijar, onCancelando, onCerca, disabled }: any) => (
       <>
+        <Pressable testID="boton-voz-cerca-test" onPress={() => onCerca?.(true)}>
+          <Text>cerca de fijar (mock)</Text>
+        </Pressable>
+        <Pressable testID="boton-voz-cancelando-test" onPress={() => onCancelando?.(true)}>
+          <Text>cancelando (mock)</Text>
+        </Pressable>
         <Pressable testID="boton-voz" disabled={disabled} onPress={onIniciar}>
           <Text>mic</Text>
         </Pressable>
@@ -175,6 +181,56 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
     // Sin fijar todavía: los controles flotantes no existen.
     expect(screen.queryByTestId('voz-enviar')).toBeNull();
+  });
+
+  // PISTAFIJARSOPORTE: el gesto de fijar necesita su cartel (WCAG 2.5.1) también acá.
+  it('grabando sin fijar: aparece la pista del candado; en reposo no hay ninguna', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(screen.queryByTestId('voz-pistas')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-pista-candado')).toBeTruthy());
+  });
+
+  it('«cerca» tiñe el candado: el cableado `onCerca` de BotonVoz llega a la pista', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-pista-candado')).toBeTruthy());
+    const reposo = StyleSheet.flatten(screen.getByTestId('voz-pista-candado').props.style).backgroundColor;
+
+    await fireEvent.press(screen.getByTestId('boton-voz-cerca-test'));
+
+    await waitFor(() => {
+      const cerca = StyleSheet.flatten(screen.getByTestId('voz-pista-candado').props.style).backgroundColor;
+      expect(cerca).not.toBe(reposo);
+    });
+  });
+
+  it('cancelando: el candado se va y el aviso queda en la barra', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-pista-candado')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-cancelando-test'));
+
+    await waitFor(() => expect(screen.queryByTestId('voz-pista-candado')).toBeNull());
+    expect(screen.getByTestId('voz-cancelar-aviso')).toBeTruthy();
+  });
+
+  it('fijar apaga la pista del candado: ya no hay nada que deslizar', async () => {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('voz-pista-candado')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+
+    await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
+    expect(screen.queryByTestId('voz-pista-candado')).toBeNull();
   });
 
   it('deslizar hacia arriba (mock: onFijar) muestra los controles flotantes y esconde el botón', async () => {

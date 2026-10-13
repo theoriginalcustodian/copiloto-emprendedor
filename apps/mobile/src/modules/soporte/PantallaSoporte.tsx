@@ -12,7 +12,7 @@ import {
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
-import { BarraSostenida } from '../chat/PistasVoz';
+import { BarraSostenida, PistasGestoVoz } from '../chat/PistasVoz';
 import { BotonVoz } from '../chat/BotonVoz';
 import { Composer } from '../chat/Composer';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
@@ -79,6 +79,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [cerca, setCerca] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -137,6 +138,9 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
+  // PISTAFIJARSOPORTE: la pista del candado es la ALTERNATIVA que exige WCAG 2.5.1 al mantener apretado;
+  // sin ella el gesto de fijar no tiene cartel (mismo cableado que `ChatView`/`MicFuncion`).
+  const pistasVisibles = voz.fase === 'grabando' || cancelando;
   // G3: la barra del composer cede su lugar a la de grabación (misma transformación que `ChatView`).
   const enCaptura = voz.fase !== 'inactivo';
 
@@ -193,12 +197,14 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
                 <Onda niveles={voz.niveles} />
               </View>
             )}
+            {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
             <BotonVoz
               onIniciar={alIniciarVoz}
               onSoltarSinFijar={onSoltarSinFijarVoz}
               onFijar={onFijarVoz}
               onCancelar={onCancelarVoz}
               onCancelando={setCancelando}
+              onCerca={setCerca}
               disabled={voz.fase !== 'inactivo'}
               scrollRef={scrollRef}
             />
