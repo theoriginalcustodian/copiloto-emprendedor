@@ -3,10 +3,21 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import type { RequiereConexion } from '@copiloto/core';
+
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
 
-const CONEXION = { service: 'gmail', label: 'Gmail', alcance: ['Leer mails', 'Enviar mails'], connectPath: '/composio/connect?service=gmail' };
+const CONEXION: RequiereConexion = {
+  service: 'gmail',
+  label: 'Gmail',
+  alcance: [
+    { texto: 'Leer mails', condicion: 'ninguna' },
+    { texto: 'Enviar mails', condicion: 'ninguna' },
+  ],
+  pendiente: null,
+  connectPath: '/composio/connect?service=gmail',
+};
 
 async function montar(props: Partial<Parameters<typeof SheetRequiereConexion>[0]> = {}) {
   const onConectar = jest.fn();
@@ -39,6 +50,46 @@ describe('SheetRequiereConexion', () => {
   it('sin conexión (null) no renderiza nada', async () => {
     await montar({ conexion: null });
     expect(screen.queryByTestId('sheet-requiere-conexion')).toBeNull();
+  });
+
+  // PROTO4DEPS §A — el límite de cada permiso. El caso SIN condicion primero: es el de producción hoy.
+  it('🔴 sin condicion (producción hoy): ninguna insignia y el texto igual que antes', async () => {
+    await montar();
+    expect(screen.queryByTestId('sheet-requiere-conexion-condicion-0')).toBeNull();
+    expect(screen.queryByText('Solo lectura')).toBeNull();
+    expect(screen.getByText('• Leer mails')).toBeTruthy();
+  });
+
+  it('pinta la insignia de cada permiso con condicion: «Solo lectura» y «Nunca sin tu OK»', async () => {
+    await montar({
+      conexion: {
+        ...CONEXION,
+        service: 'mercadopago',
+        label: 'Mercado Pago',
+        alcance: [
+          { texto: 'Leer tus cobros y movimientos', condicion: 'solo_lectura' },
+          { texto: 'Armar links de cobro cuando vos confirmás', condicion: 'requiere_ok' },
+          { texto: 'Ver tu perfil', condicion: 'ninguna' },
+        ],
+      },
+    });
+    expect(screen.getByTestId('sheet-requiere-conexion-condicion-0')).toHaveTextContent('Solo lectura');
+    expect(screen.getByTestId('sheet-requiere-conexion-condicion-1')).toHaveTextContent('Nunca sin tu OK');
+    expect(screen.queryByTestId('sheet-requiere-conexion-condicion-2')).toBeNull();
+  });
+
+  // PROTO4DEPS §B — el bloque pendiente es del turno y opcional.
+  it('🔴 sin pendiente: no se pinta nada (la hoja es la de siempre)', async () => {
+    await montar();
+    expect(screen.queryByTestId('sheet-requiere-conexion-pendiente')).toBeNull();
+    expect(screen.queryByText(/Apenas conectes/)).toBeNull();
+  });
+
+  it('con pendiente: «Apenas conectes sigo con lo tuyo: <lo pedido>.»', async () => {
+    await montar({ conexion: { ...CONEXION, pendiente: 'cuánto entró esta semana' } });
+    expect(screen.getByTestId('sheet-requiere-conexion-pendiente')).toHaveTextContent(
+      'Apenas conectes sigo con lo tuyo: cuánto entró esta semana.',
+    );
   });
 
   it('muestra el error de «Conectar» si lo hay', async () => {

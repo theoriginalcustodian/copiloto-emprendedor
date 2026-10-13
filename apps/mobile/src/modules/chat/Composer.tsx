@@ -72,7 +72,15 @@ export interface ComposerProps {
   /** Gastos Fase 2 (foto de ticket). Ausente == sin botón de cámara -- ver el docstring del
    * componente sobre por qué ésta SÍ vive acá adentro, a diferencia de las demás acciones. */
   onFoto?: () => void;
+  /**
+   * El texto de invitación del campo. Opcional: el chat general conserva el suyo («Escribí, o hablá…», que
+   * invita a anotar un movimiento); Soporte pasa el de contar un problema. Un literal único le mentía a
+   * quien venía a pedir ayuda (O1).
+   */
+  placeholder?: string;
 }
+
+const PLACEHOLDER_CHAT = 'Escribí, o hablá…';
 
 /**
  * `sendStatus` (+ el motivo, si falló) -> el copy del indicador.
@@ -116,7 +124,7 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
  * tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
  * resuelve o cancela, no una máquina de fases.
  */
-export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false, onFoto }: ComposerProps) {
+export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false, onFoto, placeholder = PLACEHOLDER_CHAT }: ComposerProps) {
   const tema = useTema();
   const [borrador, setBorrador] = useState('');
   const puedeEnviar = !disabled && borrador.trim() !== '' && sendStatus !== 'sending';
@@ -183,7 +191,7 @@ export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = fa
           <TextInput
             testID="chat-composer"
             style={[styles.input, { color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.ui }]}
-            placeholder="Escribí, o hablá…"
+            placeholder={placeholder}
             placeholderTextColor={tema.color.textoTenue}
             value={borrador}
             onChangeText={setBorrador}

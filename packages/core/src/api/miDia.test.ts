@@ -361,3 +361,63 @@ describe('horaDeEvento — sólo muestra lo que reconoce con certeza', () => {
     expect(horaDeEvento(42)).toBeNull();
   });
 });
+
+describe('leerTablero — PROTO4DEPS §C (`presentacion`, fail-soft, aditiva)', () => {
+  async function tarjetaCon(extra: Record<string, unknown>) {
+    const cruda = { ...TARJETA_CRUDA, ...extra };
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
+    const res = await leerTablero();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    return res.tablero.solapas[0]!.tarjetas[0]!;
+  }
+
+  const PRESENTACION = {
+    chip: { texto: '31 días sin respuesta', tono: 'pronto' },
+    kv: [
+      { k: 'Monto', v: '$84.000' },
+      { k: 'Enviado', v: '12/09' },
+    ],
+    accion: { texto: 'Reclamar el pago', destino: { tipo: 'presupuesto', id: '412' } },
+  };
+
+  it('🔴 el caso VACÍO primero — es el de producción hoy: sin `presentacion` → null, la tarjeta se lee como siempre', async () => {
+    const t = await tarjetaCon({});
+    expect(t.presentacion).toBeNull();
+    expect(t.texto).toContain('¿Te lo pagaron?');
+  });
+
+  it('lee las tres piezas; `accion.destino` conserva tipo e id para que lo rutee la app', async () => {
+    const t = await tarjetaCon({ presentacion: PRESENTACION });
+    expect(t.presentacion).toEqual({
+      chip: { texto: '31 días sin respuesta', tono: 'pronto' },
+      kv: [
+        { k: 'Monto', v: '$84.000' },
+        { k: 'Enviado', v: '12/09' },
+      ],
+      accion: { texto: 'Reclamar el pago', destino: { tipo: 'presupuesto', id: '412', connectPath: null } },
+    });
+  });
+
+  it('acepta `presentacion` colgando de `datos` (el contrato no fija el lugar)', async () => {
+    const t = await tarjetaCon({ datos: { presentacion: PRESENTACION } });
+    expect(t.presentacion?.chip?.texto).toBe('31 días sin respuesta');
+  });
+
+  it('un `tono` desconocido NO descarta el chip (sólo la app decide qué hacer con él)', async () => {
+    const t = await tarjetaCon({ presentacion: { chip: { texto: 'Nuevo', tono: 'urgentisimo' } } });
+    expect(t.presentacion?.chip).toEqual({ texto: 'Nuevo', tono: 'urgentisimo' });
+  });
+
+  it('cada pieza es independiente: una `kv` rota no se lleva el chip; una acción sin texto no existe', async () => {
+    const t = await tarjetaCon({
+      presentacion: { chip: { texto: 'Vence en 3 días', tono: 'critico' }, kv: [{ k: 'Monto' }, 'x', { k: 'Vence', v: '15/10' }], accion: { destino: { tipo: 'conexion', id: 'gmail' } } },
+    });
+    expect(t.presentacion).toEqual({ chip: { texto: 'Vence en 3 días', tono: 'critico' }, kv: [{ k: 'Vence', v: '15/10' }], accion: null });
+  });
+
+  it('basura o vacía → null, nunca un objeto a medias', async () => {
+    for (const presentacion of ['x', 42, [], {}, { chip: {}, kv: [], accion: {} }]) {
+      expect((await tarjetaCon({ presentacion })).presentacion).toBeNull();
+    }
+  });
+});

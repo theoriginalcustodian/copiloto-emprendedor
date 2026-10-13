@@ -563,3 +563,78 @@ describe('PantallaMiDia — entrada a la agenda (BL-J13)', () => {
     expect(screen.getByTestId('midia-ver-agenda')).toBeTruthy();
   });
 });
+
+// PROTO4DEPS §C — `presentacion`: chip, filas clave/valor y acción derivados por el backend. Fail-soft:
+// sin ella (producción hoy) la tarjeta se pinta como siempre. El caso VACÍO va primero.
+describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida)', () => {
+  const PRESENTACION = {
+    chip: { texto: '31 días sin respuesta', tono: 'pronto' },
+    kv: [
+      { k: 'Monto', v: '$84.000' },
+      { k: 'Enviado', v: '12/09' },
+    ],
+    accion: { texto: 'Reclamar el pago', destino: { tipo: 'conexion', id: 'mercadopago', connectPath: null } },
+  };
+
+  async function expandir(over: Record<string, unknown>, props: ComponentProps<typeof PantallaMiDia> = {}) {
+    leerMock.mockResolvedValue({ status: 'ok', tablero: tableroCon([tarjetaDe('p', { verbo: 'Reclamar', ...over })]) });
+    await montar(props);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p'));
+  }
+
+  it('🔴 SIN presentacion: nada nuevo — el verbo inerte de siempre, sin chip ni píldora', async () => {
+    await expandir({});
+    expect(screen.getByTestId('midia-tarjeta-p-verbo')).toHaveTextContent('Reclamar');
+    expect(screen.queryByTestId('midia-tarjeta-p-chip')).toBeNull();
+    expect(screen.queryByTestId('midia-tarjeta-p-accion')).toBeNull();
+  });
+
+  it('con presentacion: chip, filas del backend (con SU rótulo) y la píldora en lugar del verbo inerte', async () => {
+    await expandir({ presentacion: PRESENTACION, cliente: 'Panadería', monto: '1.00' });
+    expect(screen.getByTestId('midia-tarjeta-p-chip')).toHaveTextContent('31 días sin respuesta');
+    const detalle = screen.getByTestId('midia-tarjeta-p-detalle');
+    expect(detalle).toHaveTextContent(/Monto/);
+    expect(detalle).toHaveTextContent(/\$84\.000/);
+    expect(detalle).toHaveTextContent(/Enviado/);
+    expect(detalle).toHaveTextContent(/12\/09/);
+    // Mandan las del backend: las filas legadas (Cliente) no se mezclan.
+    expect(detalle).not.toHaveTextContent(/Panadería/);
+    expect(screen.getByTestId('midia-tarjeta-p-accion')).toHaveTextContent('Reclamar el pago');
+    expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
+  });
+
+  it('la píldora rutea por `rutaDeDestino` TAL CUAL: conexion con id → abre ESA conexión', async () => {
+    const onConexion = jest.fn();
+    await expandir({ presentacion: PRESENTACION }, { onConexion });
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-accion'));
+    expect(onConexion).toHaveBeenCalledWith('mercadopago');
+  });
+
+  it('🔴 un `tipo` que esta app no conoce deja la píldora como RÓTULO: no navega ni cae a Ajustes', async () => {
+    const onConexion = jest.fn();
+    const onAjustes = jest.fn();
+    await expandir(
+      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'presupuesto', id: '412', connectPath: null } } } },
+      { onConexion, onAjustes },
+    );
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    expect(pildora).toHaveTextContent('Reclamar el pago');
+    await fireEvent.press(pildora);
+    expect(onConexion).not.toHaveBeenCalled();
+    expect(onAjustes).not.toHaveBeenCalled();
+    expect(pildora.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('un `tono` desconocido pinta el chip igual (sin color propio) y no rompe', async () => {
+    await expandir({ presentacion: { chip: { texto: 'Nuevo', tono: 'urgentisimo' }, kv: [], accion: null } });
+    expect(screen.getByTestId('midia-tarjeta-p-chip')).toHaveTextContent('Nuevo');
+  });
+
+  it('presentacion sin kv: las filas legadas siguen (no se pierde el detalle que ya había)', async () => {
+    await expandir({ presentacion: { chip: { texto: 'x', tono: null }, kv: [], accion: null }, cliente: 'Panadería' });
+    expect(screen.getByTestId('midia-tarjeta-p-detalle')).toHaveTextContent(/Panadería/);
+    // Sin `accion` de presentacion, el verbo inerte sigue.
+    expect(screen.getByTestId('midia-tarjeta-p-verbo')).toBeTruthy();
+  });
+});
