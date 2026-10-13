@@ -1,11 +1,18 @@
-import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+import { formatearDuracion } from '@copiloto/core';
+
+import { pressableStyle } from '../../theme/glass/presion';
+import { useTema } from '../../theme/ThemeProvider';
+import { IconoEnviarVoz, IconoPausaVoz, IconoPlayVoz, IconoTachoVoz } from './IconosVoz';
 import type { FaseVoz } from './useVozComando';
-import { BotonDescartar, BotonGhost, BotonPrimario, filaControles } from '../captura/HudGrabacion';
 
 export interface ControlesFlotantesProps {
   fase: FaseVoz;
+  /** Segundos capturados (`useVozComando().segundos`: el reloj del grabador, la pausa NO cuenta). */
+  segundos: number;
   alPausar: () => void;
   alReanudar: () => void;
   /** Corta (si todavía graba) y envía, en un solo toque. Ver `alEnviarVoz` en `ChatView`. */
@@ -13,12 +20,25 @@ export interface ControlesFlotantesProps {
   alEliminar: () => void;
 }
 
+/** Lado de los botones secundarios (tacho, pausa) y del primario (enviar), en dp. El prototipo usa
+ *  44 para `.lk-btn` (`index.html:224`) — es también el mínimo táctil — y el mic de 52 hace de «enviar». */
+const LADO_SECUNDARIO = 44;
+const LADO_ENVIAR = 52;
+
 /**
- * Los controles de la grabación FIJADA: `Pausar`/`Reanudar` · `Enviar` · `Eliminar`, **flotantes,
- * sin glass** — contrato `dictado-por-voz-sin-glass...` §1/§3. Reemplaza a `GlassGrabacionCopiloto`
- * (eliminado): mismos botones (`BotonGhost`/`BotonPrimario`/`BotonDescartar`, de
- * `modules/captura/HudGrabacion.tsx` — no se reinventan), pero SIN el `MarcoGlass`/`HudGrabacion` que
- * los envolvía, y SIN cronómetro (el contrato lo saca explícitamente: el único feedback es la onda).
+ * Los controles de la grabación FIJADA, como los dibuja el prototipo ODOBI (`index.html:2943-2949`):
+ * **tacho** (eliminar) · **reloj** `0:07` · **pausa/play** · **enviar** (el botón de la voz, que al fijar
+ * pasa a ser «enviar»). Flotantes, sin glass.
+ *
+ * 🔴 **Revierte dos líneas del contrato `dictado-por-voz-sin-glass` (2026-07-23): «sin contador» y los
+ * controles de TEXTO.** No es una divergencia que esta pieza decida: el operador volvió a decidir, DESPUÉS,
+ * que `prototipo/index.html` «es la que contiene el modelo ui/ux que hay que implementar»
+ * (`2026-10-13_contrato_planificacion-a-frontend1_el-prototipo-GANA…`). El «sin glass» y «flotantes» del
+ * contrato viejo SIGUEN: el prototipo tampoco tiene glass.
+ *
+ * Los `testID` (`voz-pausar`/`voz-reanudar`/`voz-enviar`/`voz-eliminar`) son los de siempre: los controles
+ * son los mismos tres, sólo cambia cómo se dibujan. Sin texto visible, así que cada uno lleva su
+ * `accessibilityLabel` — es lo único que lo nombra.
  *
  * Se monta sólo cuando la grabación está `fijado` (deslizada hacia arriba) — `ChatView` es quien
  * decide cuándo, este componente es presentación pura sobre `fase`.
@@ -27,29 +47,103 @@ export interface ControlesFlotantesProps {
  * ocurre un instante mientras `alEnviarVoz` corta y manda) — no hay nada que pausar, sólo Enviar o
  * Eliminar, igual que el HUD que reemplaza.
  */
-export function ControlesFlotantes({ fase, alPausar, alReanudar, alEnviar, alEliminar }: ControlesFlotantesProps) {
+export function ControlesFlotantes({ fase, segundos, alPausar, alReanudar, alEnviar, alEliminar }: ControlesFlotantesProps) {
+  const tema = useTema();
   const grabando = fase === 'grabando';
   const pausado = fase === 'pausado';
 
   return (
     <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={styles.contenedor}>
-      <View style={styles.fila}>
-        {grabando && <BotonGhost id="voz-pausar" texto="Pausar" onPress={alPausar} />}
-        {pausado && <BotonGhost id="voz-reanudar" texto="Reanudar" onPress={alReanudar} />}
-        <BotonPrimario id="voz-enviar" texto="Enviar" icono onPress={alEnviar} />
-      </View>
-      <BotonDescartar id="voz-eliminar" texto="Eliminar" onPress={alEliminar} />
+      <Pressable
+        testID="voz-eliminar"
+        accessibilityRole="button"
+        accessibilityLabel="Eliminar"
+        onPress={alEliminar}
+        style={pressableStyle([
+          styles.circulo,
+          {
+            width: LADO_SECUNDARIO,
+            height: LADO_SECUNDARIO,
+            backgroundColor: tema.color.peligroFondo,
+            borderColor: tema.color.peligroBorde,
+            borderWidth: 1,
+          },
+        ])}
+      >
+        <IconoTachoVoz color={tema.color.peligro} />
+      </Pressable>
+
+      {/* `tabular-nums`: sin esto el reloj cambia de ancho a cada segundo y lo que tiene al lado tiembla
+          (`index.html:194`). En pausa baja a tenue — el reloj congelado es la otra pista de que no corre. */}
+      <Text
+        testID="voz-reloj"
+        accessibilityRole="timer"
+        style={[
+          styles.reloj,
+          {
+            color: pausado ? tema.color.textoTenue : tema.color.texto,
+            fontFamily: tema.fuente.uiMedium,
+            fontSize: tema.tipo.grande,
+          },
+        ]}
+      >
+        {formatearDuracion(segundos)}
+      </Text>
+
+      {(grabando || pausado) && (
+        <Pressable
+          testID={pausado ? 'voz-reanudar' : 'voz-pausar'}
+          accessibilityRole="button"
+          accessibilityLabel={pausado ? 'Reanudar' : 'Pausar'}
+          onPress={pausado ? alReanudar : alPausar}
+          style={pressableStyle([
+            styles.circulo,
+            {
+              width: LADO_SECUNDARIO,
+              height: LADO_SECUNDARIO,
+              backgroundColor: tema.color.superficieAlta,
+              borderColor: tema.color.borde,
+              borderWidth: 1,
+            },
+          ])}
+        >
+          {pausado ? <IconoPlayVoz color={tema.color.texto} /> : <IconoPausaVoz color={tema.color.texto} />}
+        </Pressable>
+      )}
+
+      <Pressable
+        testID="voz-enviar"
+        accessibilityRole="button"
+        accessibilityLabel="Enviar"
+        onPress={alEnviar}
+        style={pressableStyle([styles.circulo, { width: LADO_ENVIAR, height: LADO_ENVIAR }])}
+      >
+        <LinearGradient
+          colors={[tema.glass.ub1, tema.glass.ub2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: LADO_ENVIAR / 2 }]}
+        />
+        <IconoEnviarVoz color={tema.color.acentoTexto} />
+      </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   // 🔴 `alignSelf: 'stretch'` NO es adorno: el padre (`overlayVoz` de `ChatView`) centra con
-  // `alignItems: 'center'`, así que sin esto este contenedor toma el ancho de su CONTENIDO, y como los
-  // botones de la fila son `flex: 1` (`botonBase`), el ancho del contenido depende del contenedor: la
-  // referencia circular los colapsa a su mínimo y el texto se parte letra a letra — «Paus/ar»,
-  // «Env/ar» (DEVICE15 H6, medido en device). Es el mismo mecanismo que `ondaFlotante` ya cubre con
-  // `width: '100%'` y que `HudGrabacion.ondaEscalada` documenta para la onda.
-  contenedor: { alignSelf: 'stretch', gap: 12, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' },
-  fila: { ...filaControles, alignSelf: 'stretch' },
+  // `alignItems: 'center'`, así que sin esto este contenedor toma el ancho de su CONTENIDO, y el `flex: 1`
+  // del reloj (que reparte el espacio entre los botones) depende del ancho del contenedor: la referencia
+  // circular lo colapsa y el reloj queda pegado a un borde. Es el mismo mecanismo que `ondaFlotante` ya
+  // cubre con `width: '100%'` (DEVICE15 H6, medido en device: los botones de texto se partían letra a letra).
+  contenedor: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  circulo: { borderRadius: 999, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  reloj: { flex: 1, textAlign: 'center', fontVariant: ['tabular-nums'] },
 });

@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { formatearDuracion } from '@copiloto/core';
+
 import { useTema } from '../../theme/ThemeProvider';
 import { AvisoCancelar } from './AvisoCancelar';
 
@@ -31,19 +33,37 @@ export interface PistasGestoVozProps {
   cancelando: boolean;
   /** El dedo ya está cerca de fijar: el candado se tiñe antes de soltar (`BotonVoz.onCerca`). */
   cerca: boolean;
+  /** Segundos capturados (`useVozComando().segundos`). El reloj `0:07` del prototipo (`.rec-t`,
+   *  `index.html:2940`): sin él, quien mantiene apretado no tiene cómo saber cuánto lleva. */
+  segundos: number;
 }
 
 /**
- * Mientras se graba SIN fijar: «‹ Deslizá para cancelar» + la pista del candado. Al armar la
- * cancelación las reemplaza el `AvisoCancelar` (mismo lugar, misma fila).
+ * Mientras se graba SIN fijar: punto + reloj, «‹ Deslizá para cancelar» y la pista del candado. Al armar
+ * la cancelación las reemplaza el `AvisoCancelar` (mismo lugar, misma fila).
  */
-export function PistasGestoVoz({ cancelando, cerca }: PistasGestoVozProps) {
+export function PistasGestoVoz({ cancelando, cerca, segundos }: PistasGestoVozProps) {
   const tema = useTema();
   if (cancelando) return <AvisoCancelar />;
 
   const colorIcono = cerca ? tema.color.acentoTexto : tema.color.texto;
   return (
     <View testID="voz-pistas" style={estilos.fila} pointerEvents="none">
+      {/* El punto es el rojo de «esto reclama atención» (`.rec-dot`, `index.html:191`). No late: con el
+          reloj corriendo al lado ya dice que esto está corriendo. */}
+      <View testID="voz-reloj" accessibilityRole="timer" style={estilos.grupo}>
+        <View style={[estilos.punto, { backgroundColor: tema.color.peligro }]} />
+        <Text
+          style={{
+            color: tema.color.texto,
+            fontFamily: tema.fuente.uiMedium,
+            fontSize: tema.tipo.base,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {formatearDuracion(segundos)}
+        </Text>
+      </View>
       <View testID="voz-pista-cancelar" style={estilos.grupo}>
         <Svg width={13} height={13} viewBox="0 0 256 256" accessibilityElementsHidden>
           <Path d={TRAZO_CHEVRON_IZQ} fill={tema.color.textoTenue} />
@@ -91,7 +111,10 @@ export function EstadoEnPausa() {
 }
 
 const estilos = StyleSheet.create({
-  fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  // `flexWrap`: reloj + «Deslizá para cancelar» + candado suman ~330 dp, y en un teléfono de 360 dp con
+  // márgenes no entran en una línea. Que baje a una segunda fila, no que se corte.
+  fila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 16, rowGap: 8 },
+  punto: { width: 11, height: 11, borderRadius: 6 },
   grupo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   candado: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8 },
 });
