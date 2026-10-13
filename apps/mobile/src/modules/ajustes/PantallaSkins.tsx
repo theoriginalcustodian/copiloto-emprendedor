@@ -4,7 +4,7 @@ import type { PreferenciaTema } from '@copiloto/core';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
-import { SKINS, type Tokens } from '../../theme/tokens';
+import { SKINS, type NombreSkin, type Tokens } from '../../theme/tokens';
 import { usePreferenciaTema, useTema } from '../../theme/ThemeProvider';
 import { ETIQUETA_OPCION, ORDEN_PREFERENCIAS } from './skinsCatalogo';
 
@@ -19,7 +19,9 @@ function muestrasDe(paleta: Tokens): string[] {
 }
 
 interface SkinCardProps {
-  nombre: PreferenciaTema;
+  /** Sólo las pieles con paleta propia: «Como el teléfono» no es una piel, es una regla — va en su
+   * propia fila (`FilaSistema`), como en el prototipo (`.lista-fila`, index.html:2406). */
+  nombre: NombreSkin;
   activo: boolean;
   onPress: () => void;
   /** El tema ACTIVO (no el de esta card) -- sólo para geometría/tipografía compartida del shell
@@ -33,13 +35,8 @@ interface SkinCardProps {
  * card usara el tema activo, las 5 cards se verían idénticas salvo la que ya está elegida.
  */
 function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
-  // «Como el teléfono» no tiene paleta propia: se pinta con la piel que hoy resuelve el sistema (la del
-  // tema activo) y sus muestras muestran las dos pieles, porque cuál se ve depende del sistema.
-  const esSistema = nombre === 'sistema';
-  const paleta = esSistema ? temaActivo : SKINS[nombre];
-  const muestras = esSistema
-    ? [...muestrasDe(SKINS.claro).slice(2), ...muestrasDe(SKINS.oscuro).slice(2)]
-    : muestrasDe(paleta);
+  const paleta = SKINS[nombre];
+  const muestras = muestrasDe(paleta);
 
   return (
     <Pressable
@@ -97,12 +94,59 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
 }
 
 /**
- * Pantalla Skins -- los 5 temas viven en su propia pantalla, una card por skin CON LA MUESTRA DE SUS
- * COLORES REALES (no un nombre en una lista). Se llega desde el tile "Skins" del grid de Ajustes
- * (`PantallaAjustes.tsx`).
+ * «Como el teléfono»: no es una piel sino una REGLA (seguir al sistema), así que no lleva muestra de
+ * color propia — es una fila con título y bajada, como `.lista-fila` del prototipo (index.html:2406).
+ */
+function FilaSistema({ activo, onPress, temaActivo }: Omit<SkinCardProps, 'nombre'>) {
+  return (
+    <Pressable
+      testID="skin-card-sistema"
+      accessibilityRole="button"
+      accessibilityState={{ selected: activo }}
+      accessibilityLabel={ETIQUETA_OPCION.sistema}
+      onPress={onPress}
+      style={pressableStyle([
+        styles.filaSistema,
+        {
+          backgroundColor: temaActivo.color.superficie,
+          borderColor: activo ? temaActivo.color.acento : temaActivo.color.borde,
+          borderWidth: activo ? 2 : 1,
+          borderRadius: temaActivo.radio.lg,
+          padding: temaActivo.espacio.md,
+        },
+      ])}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: temaActivo.color.texto, fontSize: temaActivo.tipo.base, fontFamily: temaActivo.fuente.uiSemibold }}>
+          {ETIQUETA_OPCION.sistema}
+        </Text>
+        <Text style={{ color: temaActivo.color.textoTenue, fontSize: temaActivo.tipo.chico }}>
+          Cambia solo según tu sistema
+        </Text>
+      </View>
+      {activo && (
+        <Text
+          testID="skin-card-sistema-activo"
+          style={{ color: temaActivo.color.acentoTinta, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
+        >
+          ✓ Activo
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * Pantalla Apariencia (`apar`, index.html:2395) -- DOS pieles con la MUESTRA DE SUS COLORES REALES
+ * (no un nombre en una lista) lado a lado, y «Como el teléfono» en su propia fila debajo. Se llega
+ * desde el tile "Apariencia" del grid de Ajustes (`PantallaAjustes.tsx`).
  *
- * La selección/persistencia/aplicación instantánea sale de `useSkin()` (`ThemeProvider.tsx`) -- este
- * componente sólo es la VISTA, no la lógica.
+ * La selección/persistencia/aplicación instantánea sale de `usePreferenciaTema()`
+ * (`ThemeProvider.tsx`) -- este componente sólo es la VISTA, no la lógica.
+ *
+ * ENMIENDA FUNDADA (mapeo `apar`, 2026-10-13): la muestra lleva 4 chips (fondo, superficie, acento,
+ * acento2) y no los 2 puntos del prototipo (texto + terracota): el skin se elige mirando cómo
+ * queda el lienzo, y `PantallaSkins.test` fija esos 4 como contrato de «ver antes de elegir».
  */
 export function PantallaSkins() {
   const tema = useTema();
@@ -110,8 +154,8 @@ export function PantallaSkins() {
 
   return (
     // Mismo ícono que el tile de entrada en el grid de Ajustes ('apariencia') -- entrar por un ícono
-    // y llegar a otro desorienta.
-    <MarcoGlass titulo="Skins" icono="apariencia" testID="pantalla-skins">
+    // y llegar a otro desorienta. Título = «Apariencia», como el tile y el prototipo (antes «Skins»).
+    <MarcoGlass titulo="Apariencia" icono="apariencia" testID="pantalla-skins">
       <ScrollView
       // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
       // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
@@ -121,17 +165,34 @@ export function PantallaSkins() {
         contentContainerStyle={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}
       >
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Elegí el skin de la app, o dejá que siga al teléfono. Se aplica al instante y queda guardado para la próxima sesión.
+          Dos temas. Cambia el fondo y el texto; la marca, la tipografía y los componentes son los mismos.
         </Text>
-        {ORDEN_PREFERENCIAS.map((nombre) => (
-          <SkinCard
-            key={nombre}
-            nombre={nombre}
-            activo={nombre === preferencia}
-            onPress={() => setPreferencia(nombre)}
-            temaActivo={tema}
-          />
-        ))}
+        <Text
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+        >
+          Elegí el tema
+        </Text>
+        <View style={[styles.cardsFila, { gap: tema.espacio.md }]}>
+          {ORDEN_PREFERENCIAS.filter((n): n is NombreSkin => n !== 'sistema').map((nombre) => (
+            <View key={nombre} style={styles.cardColumna}>
+              <SkinCard
+                nombre={nombre}
+                activo={nombre === preferencia}
+                onPress={() => setPreferencia(nombre)}
+                temaActivo={tema}
+              />
+            </View>
+          ))}
+        </View>
+        <FilaSistema
+          activo={preferencia === 'sistema'}
+          onPress={() => setPreferencia('sistema')}
+          temaActivo={tema}
+        />
+        <Text testID="skins-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          El tema cambia el fondo y el texto. La terracota, la tipografía y los componentes son los mismos
+          en los dos. Se aplica al instante y queda guardado para la próxima sesión.
+        </Text>
       </ScrollView>
     </MarcoGlass>
   );
@@ -141,6 +202,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   contenedor: { gap: 16 },
   card: { borderWidth: 1 },
+  cardsFila: { flexDirection: 'row' },
+  cardColumna: { flex: 1 },
+  filaSistema: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   encabezadoCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   muestras: { flexDirection: 'row' },
   chip: { width: 32, height: 32, borderRadius: 8, borderWidth: 1 },
