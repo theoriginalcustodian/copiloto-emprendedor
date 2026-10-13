@@ -81,9 +81,10 @@ jest.mock('./BotonVoz', () => {
 jest.mock('./ControlesFlotantes', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    ControlesFlotantes: ({ fase, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
+    ControlesFlotantes: ({ fase, segundos, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
       <>
         <Text testID="controles-flotantes-fase">{fase}</Text>
+        <Text testID="controles-flotantes-segundos">{String(segundos)}</Text>
         <Pressable testID="voz-pausar" onPress={alPausar}>
           <Text>Pausar</Text>
         </Pressable>
@@ -359,6 +360,38 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(screen.getByTestId('voz-pista-cancelar')).toBeTruthy();
     expect(screen.getByTestId('voz-pista-candado')).toBeTruthy();
     expect(screen.queryByTestId('voz-cancelar-aviso')).toBeNull();
+  });
+
+  // Fila `grabando`, G2 (contrato «el prototipo GANA», 2026-10-13): el reloj `0:07` del prototipo. El dato
+  // es `voz.segundos` (el reloj del propio grabador, que no cuenta la pausa), no un contador paralelo.
+  it('grabando sin fijar: el reloj de las pistas es el tiempo que dice el grabador', async () => {
+    mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 7500, metering: -60 }));
+    try {
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+      await fireEvent.press(screen.getByTestId('boton-voz'));
+
+      await waitFor(() => expect(screen.getByTestId('voz-reloj')).toHaveTextContent('0:07'));
+    } finally {
+      mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 0, metering: -60 }));
+    }
+  });
+
+  it('fijado: los controles reciben los MISMOS segundos que el grabador (no arrancan de cero)', async () => {
+    mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 7500, metering: -60 }));
+    try {
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+      await fireEvent.press(screen.getByTestId('boton-voz'));
+      await waitFor(() => expect(screen.getByTestId('voz-reloj')).toHaveTextContent('0:07'));
+
+      await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+
+      await waitFor(() => expect(screen.getByTestId('controles-flotantes-segundos')).toHaveTextContent('7'));
+    } finally {
+      mockGrabadorVoz.getStatus.mockImplementation(() => ({ durationMillis: 0, metering: -60 }));
+    }
   });
 
   it('al armar la cancelación el aviso «Soltá para cancelar» REEMPLAZA a las pistas', async () => {

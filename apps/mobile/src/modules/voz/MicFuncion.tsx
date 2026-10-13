@@ -128,7 +128,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
               <Onda niveles={voz.niveles} />
             </View>
           )}
-          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
+          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} segundos={voz.segundos} />}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
@@ -152,6 +152,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
           {enPausa && <EstadoEnPausa />}
           <ControlesFlotantes
             fase={voz.fase}
+            segundos={voz.segundos}
             alPausar={voz.pausar}
             alReanudar={voz.reanudar}
             alEnviar={() => void alTranscribir()}

@@ -4978,6 +4978,37 @@
       "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «En pausa» en texto (WCAG 1.4.1) — vive donde estaba la onda del gesto fijado.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::voz-eliminar": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-eliminar",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonDescartar`, invisible a este gate (sólo ve `testID=` literales); al dibujarse como ícono pasó a literal y aparece. La PWA (`RecordingOverlay`) cancela con su propio control sin `data-testid`: es otra superficie de la misma acción, no un par ausente por diseño.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-enviar": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-enviar",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonPrimario`, invisible a este gate; al dibujarse como ícono (mic-como-enviar) pasó a literal y aparece. La PWA envía con un botón de `aria-label=\"Enviar audio\"` sin `data-testid`: misma acción, otra superficie.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-reloj": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx",
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-reloj",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). El reloj `0:07` (`.rec-t`, `:2940`) que el operador mandó implementar el 2026-10-13 (contrato «el prototipo GANA»). La PWA no lo dibuja todavía: es una divergencia de la capa web declarada, NO una decisión de que no deba existir — la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
+    },
     "src/theme::glass-etiqueta": {
       "en": [
         "apps/mobile/src/theme/glass/MarcoGlass.tsx"

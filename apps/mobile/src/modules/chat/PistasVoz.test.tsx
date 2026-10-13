@@ -12,7 +12,7 @@ async function montar(ui: React.ReactElement) {
 
 describe('PistasGestoVoz -- el usuario no tiene que adivinar el gesto (WCAG 2.5.1)', () => {
   it('sin cancelar: «Deslizá para cancelar» + la pista del candado, y NO el aviso de cancelación', async () => {
-    await montar(<PistasGestoVoz cancelando={false} cerca={false} />);
+    await montar(<PistasGestoVoz cancelando={false} cerca={false} segundos={0} />);
 
     expect(screen.getByTestId('voz-pista-cancelar')).toBeTruthy();
     expect(screen.getByText('Deslizá para cancelar')).toBeTruthy();
@@ -21,15 +21,21 @@ describe('PistasGestoVoz -- el usuario no tiene que adivinar el gesto (WCAG 2.5.
   });
 
   it('la pista del candado se nombra para el lector de pantalla (no es un dibujo mudo)', async () => {
-    await montar(<PistasGestoVoz cancelando={false} cerca={false} />);
+    await montar(<PistasGestoVoz cancelando={false} cerca={false} segundos={0} />);
 
     expect(screen.getByTestId('voz-pista-candado').props.accessibilityLabel).toBe(
       'Deslizá hacia arriba para fijar la grabación',
     );
   });
 
+  it('el reloj `0:07` del prototipo va junto a la pista: quien mantiene apretado ve cuánto lleva', async () => {
+    await montar(<PistasGestoVoz cancelando={false} cerca={false} segundos={7} />);
+
+    expect(screen.getByTestId('voz-reloj')).toHaveTextContent('0:07');
+  });
+
   it('cancelando: el aviso «Soltá para cancelar» REEMPLAZA a las pistas', async () => {
-    await montar(<PistasGestoVoz cancelando cerca={false} />);
+    await montar(<PistasGestoVoz cancelando cerca={false} segundos={0} />);
 
     expect(screen.getByTestId('voz-cancelar-aviso')).toBeTruthy();
     expect(screen.queryByTestId('voz-pistas')).toBeNull();
@@ -37,11 +43,11 @@ describe('PistasGestoVoz -- el usuario no tiene que adivinar el gesto (WCAG 2.5.
   });
 
   it('«cerca» tiñe el candado: cambia el fondo respecto del reposo', async () => {
-    await montar(<PistasGestoVoz cancelando={false} cerca={false} />);
+    await montar(<PistasGestoVoz cancelando={false} cerca={false} segundos={0} />);
     const reposo = StyleSheet.flatten(screen.getByTestId('voz-pista-candado').props.style).backgroundColor;
     await screen.unmount();
 
-    await montar(<PistasGestoVoz cancelando={false} cerca />);
+    await montar(<PistasGestoVoz cancelando={false} cerca segundos={0} />);
     const cerca = StyleSheet.flatten(screen.getByTestId('voz-pista-candado').props.style).backgroundColor;
 
     expect(reposo).toBeTruthy();

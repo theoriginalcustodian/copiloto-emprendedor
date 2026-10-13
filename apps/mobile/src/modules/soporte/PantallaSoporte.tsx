@@ -213,6 +213,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
             )}
             <ControlesFlotantes
               fase={voz.fase}
+              segundos={voz.segundos}
               alPausar={voz.pausar}
               alReanudar={voz.reanudar}
               alEnviar={() => void alEnviarVoz()}
