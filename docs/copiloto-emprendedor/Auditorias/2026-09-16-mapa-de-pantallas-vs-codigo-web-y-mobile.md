@@ -9,6 +9,24 @@
 > vigente** — el código pudo haber cambiado desde el 16/09 sin que este documento lo refleje. La
 > re-verificación sistemática de las 48 pantallas es competencia del **criterio 3** (que auditoría está
 > republicando sobre el SHA actual), no de este documento — no se duplica ese trabajo acá.
+>
+> 🔴 **Y LA REFERENCIA TAMBIÉN SE MOVIÓ — el aviso de arriba sólo cubre la mitad.** Este documento
+> mide contra `Prototipo frontend/odobi-ui/**mapa-pantallas**/index.html`, que **no es** el archivo que
+> el operador declaró autoridad de UI/UX (`odobi-ui/**prototipo**/index.html`, 305 KB, 81 ids). Medido
+> con `git log` —no con `mtime`, que en Windows es del checkout—: `mapa-pantallas/index.html` **cambió el
+> 2026-09-21** (`54fac3ea`, «traer odobi-ui al día y cerrar las tres decisiones del 18/09»), **cinco días
+> DESPUÉS** de esta medición; y el prototipo autoritativo cambió el **2026-09-29** (`6f969fbe`).
+>
+> **Consecuencia práctica:** las 62 filas envejecieron por **dos** caminos independientes —el código se
+> movió **y** la referencia se movió— y el aviso original sólo declara el primero. Una fila que diga
+> «divergencia» puede estar citando un prototipo que ya no dice eso.
+>
+> 👉 **Para ALCANCE, el documento vigente es otro:**
+> [`2026-10-12-mapeo-prototipo-vs-nativo.md`](../2026-10-12-mapeo-prototipo-vs-nativo.md) — 54 filas
+> medidas contra `odobi-ui/prototipo/index.html`, con veredicto por fila y su propio verificador en el
+> gate de lint. **Este mapa queda como registro histórico: no se cita para decidir qué implementar.**
+> Anotado el 2026-10-13 por planificación (fila `REGOBSOLETO`): un registro obsoleto no es ruido, es una
+> fila fantasma en el criterio de cierre.
 
 Lectura pura, sin cambios de código. Actualiza y **amplía** los diffs del 08/09 (`2026-09-08-diff-pantalla-por-pantalla-prototipo-vs-app{,-mobile}.md`), que comparaban 14 mockups; este compara las **48 pantallas del mapa**. Desde el 08/09 el único cambio de frontend en `main` fue #507 (quita el scrim de grabación en web).
 
