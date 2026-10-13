@@ -86,7 +86,7 @@ Convención: `R` = resuelto en código · `E` = enmienda fundada · `C` = ya coi
 | | sin grupos «Para pedirle por chat» / «Trabaja sola, de fondo» (Drive) | **R** `PantallaApps.tsx:116` `gruposDe` — no pinta el rótulo de un grupo vacío (control) |
 | | agrega Desconectar + confirmación y «Reconectar» | **E** K-09: una conexión caída se dice, no se disfraza de «nunca»; desconectar nombra lo que se pierde |
 | `agenda` | «ninguna medida aún» | **Medida**: ruta alcanzable `PantallaPrincipal.tsx:186` → `app/agenda.tsx` → `PantallaAgenda` · subtítulo `agenda-intro` y estado `agenda-estado` (`PantallaAgenda.tsx:104-110`), «Nuevo evento» (`:118`) · mobile **y** web, mismos testid, test |
-| | rejilla horaria con bloques «Libre · 2 h 30», «Cobrar a Rodríguez · desde el tablero» | **E** `PantallaAgenda.tsx:99-103`: el cuerpo es una lista de sólo lectura por día (BL-J13, ADR-004); la rejilla exige duración y solapamiento que `leerAgenda` no trae, y mezclar «lo que vence» exige el tablero en el mismo contrato. Sin Calendar conectado el cuerpo no es comparable (nunca se dice «no tenés eventos») |
+| | rejilla horaria con bloques «Libre · 2 h 30», «Cobrar a Rodríguez · desde el tablero» | **E** `PantallaAgenda.tsx:100-103`: el cuerpo es una lista de sólo lectura por día (BL-J13, ADR-004); la rejilla exige duración y solapamiento que `leerAgenda` no trae, y mezclar «lo que vence» exige el tablero en el mismo contrato. Sin Calendar conectado el cuerpo no es comparable (nunca se dice «no tenés eventos») |
 
 ## Pendiente de DECISIÓN (no es mío)
 
