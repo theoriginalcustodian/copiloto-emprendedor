@@ -490,6 +490,18 @@ for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" 
     # destinos compuestos de tres (`-a-planificacion-backend-y-frontend2_`). Dos consumidores con
     # dos logicas para la MISMA pregunta = el mensaje se pierde en el que quedo atras.
     me_interpela "$rol" "$nombre" || continue
+    # Y si el contrato DECLARA su padron con una linea `ROLES:`, ese padron GANA sobre el alcance
+    # del nombre. Reutiliza roles_declarados_en() (lib/buzon-roles.sh), que ya existia y que
+    # `escaladores-buzon.sh` ya honraba: este bloque era el segundo consumidor de la MISMA pregunta
+    # con su propia logica -- justo el defecto que el comentario de arriba advierte, cometido una
+    # linea mas abajo. Medido el 2026-10-13: 9 broadcasts `-a-todos_` x 2 roles sin sesion viva
+    # (`auditoria`, `manejo-de-errores`) = 18 lineas de alarma PERMANENTE en cada ciclo del gate, y
+    # una alarma que suena siempre ensena a saltear el gate entero. El `ROLES:` no afloja nada: el
+    # contrato que NO lo declara sigue interpelando a todo su alcance (escalar de menos pierde el
+    # contrato; un typo deja la lista vacia y cae al default, por diseno de esa funcion).
+    declarados_c="$(roles_declarados_en "$BUZON/abierto/$nombre")"
+    if [ -n "$declarados_c" ] && ! printf '%s
+' "$declarados_c" | grep -qxF "$rol"; then continue; fi
     mt_c="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
     [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
