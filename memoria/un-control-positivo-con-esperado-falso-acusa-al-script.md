@@ -186,3 +186,21 @@ de existir el artefacto, y lo llena quien todavía no lo leyó. Si ya se leyó, 
 **pasa a ser otra sesión** — no es una formalidad que uno pueda cubrir solo.
 
 → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+### Corrección al refuerzo de arriba (mismo día, una hora después)
+
+Arriba escribí que, perdida la ceguera, *«el dueño del control pasa a ser otra sesión — no es una
+formalidad que uno pueda cubrir solo»*. **La primera mitad es cierta; la segunda era una excusa.**
+Lo que no se puede es *resolver* uno mismo lo que ya leyó. La ceguera, en cambio, **es delegable**:
+un sub-agente fresco nunca vio el artefacto. Se le dan los ids y la lista de archivos prohibidos, y
+devuelve una resolución genuinamente independiente — con la obligación de declarar qué leyó, que es
+lo que hace auditable la ceguera en vez de prometida.
+
+Funcionó en el acto, y además **encontró un defecto del instrumento** que el fixture escrito con el
+documento a la vista no podía encontrar: el control comparaba la forma del path y no el archivo
+([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]). Un resolvedor independiente no sólo acredita
+el artefacto: audita el control.
+
+**La trampa a nombrar:** «no puedo probarlo porque perdí el insumo» suena a rigor y se parece mucho
+a rigor. Antes de aceptarla hay que preguntar *¿el insumo lo tengo que tener YO?*. Acá no: lo
+necesitaba **alguien**, y había alguien disponible a un tool call de distancia.

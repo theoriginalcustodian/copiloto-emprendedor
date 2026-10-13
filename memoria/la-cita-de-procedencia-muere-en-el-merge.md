@@ -46,3 +46,33 @@ ref inexistente, del lado del instrumento) ·
 [[un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real]] (un sello que parece referencia y
 no lo es) · [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]] (por qué el gate no puede
 distinguir ilustrar de citar) · [[un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia]].
+
+---
+
+## Refuerzo 2026-10-12 — el squash borró la SEPARACIÓN DE COMMITS que era la evidencia
+
+Para acreditar que un esperado se había escrito **antes** del instrumento, armé la prueba en la
+forma que git puede atestiguar: el fixture en **su propio commit** (`8606def6`, 23:18:44), tocando
+**un solo archivo**, y recién después la corrida (23:18:57) y el fix (`655c370d`). El orden no era
+una afirmación: era historia.
+
+El squash-merge lo fusionó todo en `43b77379`. Medido después:
+
+```
+commits en main que tocan el fixture ciego: 1
+el sha 8606def6 (fixture solo) existe en main? NO — lo absorbio el squash
+sigue existiendo localmente? SI (solo local, la rama remota se borro)
+```
+
+En `main`, fixture e instrumento comparten commit — **exactamente la objeción que la separación
+venía a resolver, reintroducida por el merge**. Y al borrar la rama remota, el único lugar donde
+vivía la secuencia quedó siendo mi checkout local y el transcript.
+
+**La regla:** cuando el **orden entre dos commits** es la evidencia —no su contenido—, el squash la
+destruye, porque colapsa N commits en uno y descarta sus fechas. Si la prueba es temporal, no puede
+viajar en la estructura de commits de una rama que se va a squashear: hay que **escribirla en el
+contenido** (encabezado del artefacto, cuerpo del PR, el propio transcript) o pedir merge sin
+squash. Lo mismo vale para «este archivo se agregó sin tocar nada más»: el stat del squash muestra
+los 3 archivos de la rama, no el 1 del commit.
+
+→ [[un-control-positivo-con-esperado-falso-acusa-al-script]] · [[push-es-el-ultimo-paso-no-el-primero]]
