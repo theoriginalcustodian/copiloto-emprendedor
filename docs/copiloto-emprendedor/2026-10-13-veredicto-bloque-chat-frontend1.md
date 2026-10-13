@@ -28,8 +28,8 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 2 | `pres-ciclo` | ✅ + 📝 | recibo con N°/total/receptor/Doc + chip «Mandalo por mail» | rehidratación; «me aprobaron» |
 | 3 | `fact-cae` | ✅ + 📝 | «Guardar» → «Abrir PDF/Drive» | «Mandala por mail» (sin contacto en el dato) |
 | 4 | `fact-hitl` | ✅ + 📝 | encabezado «Factura C · ARCA» desde el dato | filas no editables, sin Cancelar, «Emitir» |
-| 5 | `card-factura` | 📝 + ⛓️ | — | mic en Facturación → `fact-voz` |
-| 6 | `factura` | ✅ + 📝 + ⛓️ | «Facturado este mes» | chip de conteo, composer/mic → `fact-voz` |
+| 5 | `card-factura` | 📝 + ⛓️ | — | mic en Facturación → ⛓️ `mic-facturacion` |
+| 6 | `factura` | ✅ + 📝 + ⛓️ | «Facturado este mes» | chip de conteo, composer/mic → ⛓️ `mic-facturacion` |
 | 7 | `gastos` | ✅ + 📝 + ⛓️ | importe **y %** por categoría | dictado → campos extraídos |
 | 8 | `presu` | ✅ + 📝 | resumen «Esperando respuesta» + estado por fila | «Enviado · 5 días» (sin dato) |
 | 9 | `pres-hitl` | ✅ + 📝 | nota «a tu cliente no le llega nada» | formulario completo, «Cancelar» |
@@ -118,7 +118,7 @@ Nada nuevo en código. Divergencias y su estado:
 - Muestra ítems y Total en vez de Cliente/Monto/Concepto → 📝: lo que se emite **es** el borrador que el
   backend armó, con sus ítems; resumirlo en tres filas ocultaría lo que se factura.
 - **Dictar desde Facturación hacia una card no existe** (`PantallaFacturacion` no monta `MicFuncion`) →
-  ⛓️ **`fact-voz`**. No lo implementé: sin contrato, el mic sólo podría precargar la transcripción
+  ⛓️ **`mic-facturacion`** (no es la fila `fact-voz`, que planificación resolvió en `2b43e5a3`: el contrato del hito 9 manda y la card HITL de `factura_propuesta` es el camino). No lo implementé: sin contrato, el mic sólo podría precargar la transcripción
   cruda en el wizard — lo que es **inventar la forma** del handoff (`[ASSUMED_PENDING_VERIFY]`).
 
 > ⚠️ **El DoD de esta fila dice «el elemento ausente existe y se ve». NO se cumple.** Está declarada
@@ -144,7 +144,7 @@ Nada nuevo en código. Divergencias y su estado:
 - **Wizard tras el pill «Nueva factura»** (`PantallaFacturacion.tsx`, fila fija) en vez del composer: es
   el único camino de alta que existe y está verificado.
 
-**Depende** — composer «Facturale a alguien, o hablá…» y mic → ⛓️ **`fact-voz`** (fila 5).
+**Depende** — composer «Facturale a alguien, o hablá…» y mic → ⛓️ **`mic-facturacion`** (fila 5).
 
 > ⚠️ **Dependencia con F1.** La cifra mostrada hoy usa el predicado que tenga `main`. Cuando backend
 > mergee F1.4 (predicado único, NC resta) el **número cambia** sin que esta pantalla se toque — eso es lo
@@ -304,7 +304,7 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 
 | contrato | filas | qué falta | dueño |
 |---|---|---|---|
-| **`fact-voz`** — dictar desde Facturación | 5, 6 | forma del handoff mic → borrador de factura | planificación + backend |
+| **`mic-facturacion`** — mic/composer dentro de `PantallaFacturacion` (≠ fila `fact-voz`, ya resuelta en `2b43e5a3`) | 5, 6 | forma del handoff mic → borrador de factura | planificación + backend |
 | **Extracción de campos por destino al dictar desde una función** | 7, 10, 12, 13, 14 | hoy `precarga = transcripción cruda`; el prototipo manda el dictado a la card con campos ya extraídos. Dos caminos posibles: (a) endpoint de extracción por destino, (b) rutear el dictado al chat con un hint de destino | **decisión MAYOR** → operador |
 | **F1.4** — predicado único de facturado | 6 | sólo para saber que la cifra va a cambiar | backend (en curso) |
 
