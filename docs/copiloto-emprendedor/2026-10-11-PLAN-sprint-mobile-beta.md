@@ -79,10 +79,10 @@ porque engancha filas de otras tablas.
 
 | cifra | unidad | valor |
 |---|---|---|
-| **cumple el DoD** | filas de contrato | **27/54 (50 %)** — el DoD admite «resuelta en código **o** enmienda fundada», pero exige que **ninguna** divergencia quede pendiente |
-| **cerrada en código** | filas de contrato | **21/54 (38 %)** — sólo lo escrito y mergeado |
-| **con veredicto medido** | filas de contrato | **48/54 (88 %)** por este corpus; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
-| **fuera de este corpus** | filas de contrato | **6/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`) |
+| **cumple el DoD** | filas de contrato | **28/54 (51 %)** — el DoD admite «resuelta en código **o** enmienda fundada», pero exige que **ninguna** divergencia quede pendiente |
+| **cerrada en código** | filas de contrato | **22/54 (40 %)** — sólo lo escrito y mergeado |
+| **con veredicto medido** | filas de contrato | **49/54 (90 %)** por este corpus — ⚠️ **medida no es cumplida: incluye las 7 pendientes**; **54/54** sumando los `cierre_` de backend — el único renglón que no tenía veredicto de **nadie** era `onb-cumplida`, y ya está medido |
+| **fuera de este corpus** | filas de contrato | **5/54** — `backend + nativa` sin veredicto versionado (deuda `EVIDENCIABUZON`); `preg` salió del grupo al versionar backend su veredicto |
 | **pendiente declarada** | filas de contrato | **7/54** — tienen una divergencia con ⛓/⚠: **NO cumplen** el DoD. Con nombre: `card` `card-cliente` `card-cobro` `card-factura` `factura` `gastos` `pres-voz` |
 
 > ⚠️ **CORRECCIÓN del mismo día — 34/54 era una cifra INFLADA, y el defecto era del medidor.**
@@ -99,7 +99,13 @@ porque engancha filas de otras tablas.
 > ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
 > medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
 
-> 📐 **RE-MEDIDO el 2026-10-13 sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
+> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `4b8d5f8a`** (árbol limpio,
+> `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 49/54 con veredicto
+> · 5/54 fuera · 7/54 pendiente**. Subió desde `159f883b` porque entró el veredicto versionado
+> de las 6 filas `backend + nativa` (`preg` cierra; las otras 5 quedan **pendientes con símbolo**,
+> que es lo que el fix del clasificador hizo posible escribir sin cobrar crédito falso).
+>
+> 📐 **Medición anterior, sobre `origin/main` `159f883b`**, árbol limpio (`ARBOL MEDIDO:
 > C:\gfw-src\wt-medir-main`), por planificación. La medición anterior de este mismo bloque —32/54 ·
 > 24/54 · 47/54, con **7** fuera— es de unas horas antes, sobre un `main` que todavía no tenía el
 > veredicto versionado de `onb-cumplida` (#1083) ni los dos fixes del medidor (#1081, #1082).
