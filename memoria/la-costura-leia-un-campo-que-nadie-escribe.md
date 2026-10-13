@@ -137,3 +137,28 @@ call-site **usa** el valor: cero usos puede significar «no hay valor», que es 
 (3) todo detector de una condición que invalida una medición tiene que emitir por el mismo canal que
 las demás invalidaciones — si el proyecto ya tiene un «no medible», el detector nuevo entra ahí, no a
 `console.log`; (4) contá cuántas veces está el patrón antes de arreglar uno.
+---
+
+### Refuerzo 2026-10-13 — el lector no menciona lo leído: iba por la función COMPARTIDA
+
+Hoy concluí **«mobile no lee `legal_version_aceptada`»** porque grepeé el **nombre del campo** en
+`apps/mobile/**` y dio **0 en fuente**. Era falso: lo lee
+`apps/mobile/src/modules/ajustes/PantallaLegal.tsx`, pero **a través de `descripcionLegal()`**
+(`packages/core/src/legal.ts:147`), que es la función compartida que encapsula los dos campos de `/me`.
+El consumidor **nunca escribe el nombre de lo que consume**.
+
+Es esta entrada **del otro lado y una vuelta más**: acá el campo SÍ tenía escritor y SÍ tenía lector,
+y lo que falló fue el **predicado de búsqueda**. Dos agravantes medidos el mismo día:
+
+- **Los fixtures de test hacen que el grep parezca positivo.** `git grep -l '<campo>' -- 'apps/mobile/**'`
+  devolvió **5 archivos**, todos `*.test.tsx`: el campo viaja en los mocks de `/me` porque el **tipo** es
+  compartido. Un `grep -l` sin `grep -v '\.test\.'` lee «mobile lo usa» donde el dato correcto es
+  «mobile lo **mockea**». Las dos respuestas opuestas (0 en fuente / 5 archivos) salen del mismo corpus.
+- **Y una capa compartida bien diseñada GARANTIZA el falso negativo**: si el fix vive en un solo lugar
+  —que es lo que uno quiere— entonces **ningún** consumidor nombra el campo, y el grep por campo da
+  cero **justo cuando la arquitectura es la correcta**.
+
+**How to apply:** para *«¿alguien consume X?»* el predicado es **en dos pasos**: (1) qué **símbolo**
+encapsula X (la función/hook/selector del paquete compartido), (2) grep **de ese símbolo**, excluyendo
+tests. Grepear el campo contesta otra pregunta —*¿quién lo nombra?*— y en una capa compartida la
+respuesta correcta a esa es **nadie**.
