@@ -17,6 +17,15 @@ from datetime import date, datetime
 from typing import Any, Protocol
 
 
+# Claves que `emitir` LEE de la respuesta de `createNextVoucher`. Son el contrato con el WS: el test
+# `test_afip_payload_archivado.py` las compara contra la respuesta REAL archivada del spike
+# (`spikes/afip-emit-pdf/RESULT.md`), no contra un dict escrito a mano que concordaría consigo mismo.
+CLAVE_EMISION_NUMERO = "voucherNumber"
+CLAVE_EMISION_CAE = "CAE"
+CLAVE_EMISION_CAE_VTO = "CAEFchVto"
+CLAVES_EMISION_WS = frozenset({CLAVE_EMISION_NUMERO, CLAVE_EMISION_CAE, CLAVE_EMISION_CAE_VTO})
+
+
 class ErrorAfip(RuntimeError):
     """Falla técnica hablando con AFIP/AfipSDK. Es reintentable."""
 
@@ -228,9 +237,9 @@ class AfipGateway:
 
         # [VERIFICADO 2026-07-21] la clave es `voucherNumber` en camelCase. La doc la llama
         # `voucher_number`; leerle el shape a la doc en vez de al servicio ya costó una corrida perdida.
-        numero = res.get("voucherNumber") or res.get("voucher_number")
-        cae = res.get("CAE") or res.get("cae")
-        cae_vto = res.get("CAEFchVto") or res.get("cae_vto")
+        numero = res.get(CLAVE_EMISION_NUMERO) or res.get("voucher_number")
+        cae = res.get(CLAVE_EMISION_CAE) or res.get("cae")
+        cae_vto = res.get(CLAVE_EMISION_CAE_VTO) or res.get("cae_vto")
         if not (cae and numero and cae_vto):
             raise ErrorAfip(f"respuesta de emisión incompleta: {res!r}")
 

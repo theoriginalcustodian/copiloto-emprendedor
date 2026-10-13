@@ -236,6 +236,18 @@ SUCIO=false; [ -n "$SUCIO_AL_INICIO$SUCIO_AL_FIN" ] && SUCIO=true
 STUB=false; [ -n "${GATE_CI_DIR:-}${GATE_RECIBO_DIR:-}${GATE_RECIBO_COMUN:-}" ] && STUB=true
 [ "$STUB" = true ] && echo "==> ⚠️  corrida con overrides de TEST: el recibo sale estampado stub=true y no cubre ningun SHA" >&2
 [ "$SUCIO" = true ] && echo "==> ⚠️  árbol SUCIO durante la corrida: estos jobs no cubren ningún SHA (recibo-cubre.sh los descarta)" >&2
+# `atraso`: cuántos commits de `origin/main` NO están en este HEAD (pedido de planificación 2026-10-12:
+# el recibo se protegía del árbol SUCIO y no del árbol VIEJO — dos defectos con el mismo efecto: el
+# recibo dice menos de lo que el lector cree). NO frena nada: una rama vieja en revisión tiene derecho
+# a su recibo; el campo hace que el recibo LO DIGA. Es de la ÚLTIMA corrida (como `fecha`), no del acumulado.
+# `-1` = no se pudo medir (sin `origin/main`, o salida no numérica) y NO es `0`: un `0` por defecto
+# convertiría «no medí» en «al día». `atraso_ref` es el SHA de `origin/main` contra el que se midió: el
+# gate no hace `fetch`, así que el ref local puede estar él mismo rancio, y sin ese SHA un `0` no dice
+# contra QUÉ main es cero.
+ATRASO="$(git -C "$ROOT" rev-list --count HEAD..origin/main 2>/dev/null)" || ATRASO=-1
+case "$ATRASO" in ''|*[!0-9]*) ATRASO=-1 ;; esac
+ATRASO_REF="$(git -C "$ROOT" rev-parse --verify -q origin/main 2>/dev/null)" || ATRASO_REF=""
+[ "$ATRASO" -gt 0 ] && echo "==> ⚠️  árbol ATRASADO: faltan $ATRASO commit(s) de origin/main en este HEAD (el recibo lo anota; no frena)" >&2
 RECIBO="$RECIBO_DIR/$SHA.json"
 PREVIO='{}'
 if [ -f "$RECIBO" ]; then PREVIO="$(cat "$RECIBO")"
@@ -247,7 +259,7 @@ for job in "${!RESULTADO[@]}"; do
       | .jobs[$j] = $r
       | .detalle[$j] = ($c + {historial: (((.detalle[$j].historial) // []) + [$c])})')"
 done
-printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg arbol "$ARBOL" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION" --argjson stub "$STUB"   '. + {sha:$sha, arbol:$arbol, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur, stub:$stub} | .sucio = ([.detalle[]? | .sucio == true] | any)' > "$RECIBO.tmp.$$" && mv "$RECIBO.tmp.$$" "$RECIBO"
+printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg arbol "$ARBOL" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION" --argjson stub "$STUB" --argjson atraso "$ATRASO" --arg atraso_ref "$ATRASO_REF"   '. + {sha:$sha, arbol:$arbol, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur, stub:$stub, atraso:$atraso, atraso_ref:$atraso_ref} | .sucio = ([.detalle[]? | .sucio == true] | any)' > "$RECIBO.tmp.$$" && mv "$RECIBO.tmp.$$" "$RECIBO"
 mkdir -p "$RECIBO_COMUN" && cp "$RECIBO" "$RECIBO_COMUN/$SHA.json.tmp.$$" && mv "$RECIBO_COMUN/$SHA.json.tmp.$$" "$RECIBO_COMUN/$SHA.json" \
   || echo "==> ⚠️  no pude copiar el recibo a $RECIBO_COMUN: si borrás este worktree, se pierde" >&2
 echo "==> recibo: $RECIBO (copia durable: $RECIBO_COMUN/$SHA.json)"
