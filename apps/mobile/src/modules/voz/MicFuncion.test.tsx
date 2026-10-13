@@ -194,7 +194,7 @@ describe('MicFuncion (mobile)', () => {
     expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
   });
 
-  it('fijado y en pausa: «En pausa» en texto, sin pistas del gesto', async () => {
+  it('fijado y en pausa: sin pistas ni barra sostenida del gesto (los controles tomaron el mando)', async () => {
     const espiaPan = jest.spyOn(Gesture, 'Pan');
     mockVoz.fase = 'grabando';
     await montar();
@@ -216,7 +216,9 @@ describe('MicFuncion (mobile)', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId('voz-en-pausa')).toHaveTextContent('En pausa');
+    // «En pausa» en texto lo pinta `ControlesFlotantes` (su propio test); acá, que MicFuncion no
+    // deje la barra del gesto ni el candado encima de los controles.
     expect(screen.queryByTestId('voz-pistas')).toBeNull();
+    expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
   });
 });

@@ -25,7 +25,7 @@ async function montar(props: Partial<ControlesFlotantesProps> & Pick<ControlesFl
   const callbacks = { alPausar: jest.fn(), alReanudar: jest.fn(), alEnviar: jest.fn(), alEliminar: jest.fn() };
   await render(
     <ThemeProvider>
-      <ControlesFlotantes segundos={0} {...callbacks} {...props} />
+      <ControlesFlotantes segundos={0} niveles={[]} {...callbacks} {...props} />
     </ThemeProvider>,
   );
   return callbacks;
@@ -116,5 +116,20 @@ describe('ControlesFlotantes -- íconos con nombre accesible (B5): sin texto vis
     expect(screen.queryByText('Pausar')).toBeNull();
     expect(screen.queryByText('Enviar')).toBeNull();
     expect(screen.queryByText('Eliminar')).toBeNull();
+  });
+});
+
+describe('ControlesFlotantes -- el centro de la barra: onda mientras graba, «En pausa» en texto si no (G3)', () => {
+  it('grabando: la onda ocupa el centro y NO dice «En pausa»', async () => {
+    await montar({ fase: 'grabando' });
+    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
+    expect(screen.getByTestId('onda')).toBeTruthy();
+    expect(screen.queryByTestId('voz-en-pausa')).toBeNull();
+  });
+
+  it('pausado: «En pausa» en TEXTO reemplaza a la onda (no depende de que algo deje de moverse)', async () => {
+    await montar({ fase: 'pausado' });
+    expect(screen.getByTestId('voz-en-pausa')).toHaveTextContent('En pausa');
+    expect(screen.queryByTestId('onda-flotante')).toBeNull();
   });
 });

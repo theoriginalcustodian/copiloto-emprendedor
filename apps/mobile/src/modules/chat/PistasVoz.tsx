@@ -7,14 +7,17 @@ import { useTema } from '../../theme/ThemeProvider';
 import { AvisoCancelar } from './AvisoCancelar';
 
 /**
- * Las pistas del gesto de voz — lo que el prototipo ODOBI llama `rec-hint` («deslizá para cancelar ‹») y
- * `lock-col` (candado + flecha), `Prototipo frontend/odobi-ui/prototipo/index.html:2939-2950`, y que el
- * nativo no dibujaba: el usuario tenía que ADIVINAR que deslizando hacia arriba se fija y hacia la
+ * Las pistas del gesto de voz — lo que el prototipo ODOBI llama `rec` (punto + reloj + «deslizá para
+ * cancelar ‹») y `lock-col` (candado + flecha), `Prototipo frontend/odobi-ui/prototipo/index.html:2939-2950`,
+ * y que el nativo no dibujaba: el usuario tenía que ADIVINAR que deslizando hacia arriba se fija y hacia la
  * izquierda se cancela (filas `bloqueado` y `grabando`, DEVICE15 / TRIAJE15).
  *
  * No es decoración: el deslizar-para-fijar es **la alternativa que exige WCAG 2.5.1** para un gesto que
  * obliga a sostener presión (`mockups/03-home-conversacional/DECISIONES.md:110`), y una alternativa que
  * nadie sabe que existe no cumple el criterio.
+ *
+ * Son DOS piezas porque el prototipo las pone en DOS lugares: la `.rec` vive DENTRO de la barra del
+ * composer (que se transforma, fila `grabando` G3) y la `.lock-col` asoma por ENCIMA del botón.
  *
  * Presentacional puro: lo comparten `ChatView` y `MicFuncion` (el mismo composer en contexto de
  * formulario), que son quienes saben `cancelando`/`cerca` por `BotonVoz`.
@@ -29,47 +32,23 @@ const TRAZO_CHEVRON_IZQ =
   'M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z';
 
 export interface PistasGestoVozProps {
-  /** El dedo ya pasó el umbral a la izquierda: en vez de las pistas, el aviso «Soltá para cancelar». */
+  /** El dedo ya pasó el umbral a la izquierda: el candado deja de tener sentido (la barra dice «Soltá para cancelar»). */
   cancelando: boolean;
   /** El dedo ya está cerca de fijar: el candado se tiñe antes de soltar (`BotonVoz.onCerca`). */
   cerca: boolean;
-  /** Segundos capturados (`useVozComando().segundos`). El reloj `0:07` del prototipo (`.rec-t`,
-   *  `index.html:2940`): sin él, quien mantiene apretado no tiene cómo saber cuánto lleva. */
-  segundos: number;
 }
 
 /**
- * Mientras se graba SIN fijar: punto + reloj, «‹ Deslizá para cancelar» y la pista del candado. Al armar
- * la cancelación las reemplaza el `AvisoCancelar` (mismo lugar, misma fila).
+ * La pista del CANDADO, por encima del botón mientras se graba SIN fijar (`lock-col`). Con la
+ * cancelación armada desaparece: el gesto ya eligió el otro eje y un candado sería ruido.
  */
-export function PistasGestoVoz({ cancelando, cerca, segundos }: PistasGestoVozProps) {
+export function PistasGestoVoz({ cancelando, cerca }: PistasGestoVozProps) {
   const tema = useTema();
-  if (cancelando) return <AvisoCancelar />;
+  if (cancelando) return null;
 
   const colorIcono = cerca ? tema.color.acentoTexto : tema.color.texto;
   return (
     <View testID="voz-pistas" style={estilos.fila} pointerEvents="none">
-      {/* El punto es el rojo de «esto reclama atención» (`.rec-dot`, `index.html:191`). No late: con el
-          reloj corriendo al lado ya dice que esto está corriendo. */}
-      <View testID="voz-reloj" accessibilityRole="timer" style={estilos.grupo}>
-        <View style={[estilos.punto, { backgroundColor: tema.color.peligro }]} />
-        <Text
-          style={{
-            color: tema.color.texto,
-            fontFamily: tema.fuente.uiMedium,
-            fontSize: tema.tipo.base,
-            fontVariant: ['tabular-nums'],
-          }}
-        >
-          {formatearDuracion(segundos)}
-        </Text>
-      </View>
-      <View testID="voz-pista-cancelar" style={estilos.grupo}>
-        <Svg width={13} height={13} viewBox="0 0 256 256" accessibilityElementsHidden>
-          <Path d={TRAZO_CHEVRON_IZQ} fill={tema.color.textoTenue} />
-        </Svg>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base - 2 }}>Deslizá para cancelar</Text>
-      </View>
       <View
         testID="voz-pista-candado"
         accessible
@@ -93,6 +72,57 @@ export function PistasGestoVoz({ cancelando, cerca, segundos }: PistasGestoVozPr
   );
 }
 
+export interface BarraSostenidaProps {
+  /** Segundos capturados (`useVozComando().segundos`). El reloj `0:07` del prototipo (`.rec-t`,
+   *  `index.html:2940`): sin él, quien mantiene apretado no tiene cómo saber cuánto lleva. */
+  segundos: number;
+  /** El dedo ya pasó el umbral a la izquierda: en vez de la pista, el aviso «Soltá para cancelar». */
+  cancelando: boolean;
+}
+
+/**
+ * La barra del composer MIENTRAS SE MANTIENE APRETADO (`.rec`, `index.html:182-201`): punto + reloj a la
+ * izquierda y «‹ Deslizá para cancelar» a la derecha. Reemplaza al campo de texto en SU lugar — no flota
+ * (fila `grabando`, G3: «el prototipo transforma la barra del composer; el nativo era un overlay»).
+ *
+ * El punto es el rojo de «esto reclama atención» (`.rec-dot`, `:191`). No late: con el reloj corriendo al
+ * lado ya dice que esto está corriendo.
+ *
+ * Al armar la cancelación la pista la reemplaza el `AvisoCancelar` (mismo lugar, misma fila).
+ */
+export function BarraSostenida({ segundos, cancelando }: BarraSostenidaProps) {
+  const tema = useTema();
+  return (
+    <View testID="voz-barra-sostenida" style={estilos.barra}>
+      <View testID="voz-reloj" accessibilityRole="timer" style={estilos.grupo}>
+        <View style={[estilos.punto, { backgroundColor: tema.color.peligro }]} />
+        <Text
+          style={{
+            color: tema.color.texto,
+            fontFamily: tema.fuente.uiMedium,
+            fontSize: tema.tipo.grande,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {formatearDuracion(segundos)}
+        </Text>
+      </View>
+      <View style={estilos.pista}>
+        {cancelando ? (
+          <AvisoCancelar />
+        ) : (
+          <View testID="voz-pista-cancelar" style={estilos.grupo}>
+            <Svg width={13} height={13} viewBox="0 0 256 256" accessibilityElementsHidden>
+              <Path d={TRAZO_CHEVRON_IZQ} fill={tema.color.textoTenue} />
+            </Svg>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base - 2 }}>Deslizá para cancelar</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 /**
  * «En pausa» en TEXTO, no sólo la onda quieta: el estado no puede depender únicamente de que algo
  * deje de moverse (WCAG 1.4.1) — `DECISIONES.md:109`, `index.html:2946`. Ocupa el lugar de la onda.
@@ -111,10 +141,20 @@ export function EstadoEnPausa() {
 }
 
 const estilos = StyleSheet.create({
-  // `flexWrap`: reloj + «Deslizá para cancelar» + candado suman ~330 dp, y en un teléfono de 360 dp con
-  // márgenes no entran en una línea. Que baje a una segunda fila, no que se corte.
-  fila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 16, rowGap: 8 },
-  punto: { width: 11, height: 11, borderRadius: 6 },
+  fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   grupo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   candado: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8 },
+  punto: { width: 11, height: 11, borderRadius: 6 },
+  // 52 = el alto del círculo de «enviar» de `ControlesFlotantes`: la barra NO cambia de alto al fijar.
+  // `alignSelf: 'stretch'` por la misma razón que ahí (el padre puede centrar y colapsar a su contenido).
+  barra: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  pista: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
 });

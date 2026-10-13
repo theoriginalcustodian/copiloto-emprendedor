@@ -8,7 +8,7 @@ import { useSession } from '../auth/useSession';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
-import { EstadoEnPausa, PistasGestoVoz } from './PistasVoz';
+import { BarraSostenida, PistasGestoVoz } from './PistasVoz';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
@@ -217,8 +217,10 @@ export function ChatView() {
   // La onda sólo corre mientras graba: en pausa la reemplaza el texto «En pausa» (WCAG 1.4.1 — el
   // estado no puede depender sólo de que algo deje de moverse).
   const ondaVisible = voz.fase === 'grabando';
-  const enPausa = voz.fase === 'pausado';
   const pistasVisibles = voz.fase === 'grabando' || cancelando;
+  // G3 (TRIAJE15): la barra del composer SE TRANSFORMA mientras hay captura — el campo de texto cede su
+  // lugar a la barra de grabación (`index.html:2939-2949`), no queda debajo con algo flotando encima.
+  const enCaptura = voz.fase !== 'inactivo';
 
   return (
     /**
@@ -262,7 +264,7 @@ export function ChatView() {
               <Onda niveles={voz.niveles} />
             </View>
           )}
-          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} segundos={voz.segundos} />}
+          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
@@ -276,35 +278,33 @@ export function ChatView() {
         </View>
       )}
 
-      {/* Fijado: la onda sigue flotando arriba de los controles (contrato §1, "sin contador, la onda
-          es el único feedback"), y los controles reemplazan al botón — se termina por Enviar o
-          Eliminar (o Pausar/Reanudar), nunca soltando el dedo (ya no hay dedo que sostener). */}
+      {/* La barra de grabación ocupa el lugar del composer (G3). Mantenido: punto + reloj + «deslizá
+          para cancelar». Fijado: tacho · onda · reloj · pausa/play · enviar — se termina por Enviar o
+          Eliminar, nunca soltando el dedo (ya no hay dedo que sostener). */}
+      {enCaptura && !fijado && <BarraSostenida segundos={voz.segundos} cancelando={cancelando} />}
       {fijado && (
-        <View testID="overlay-voz-fijado" style={styles.overlayVoz}>
-          {ondaVisible && (
-            <View testID="onda-flotante" style={styles.ondaFlotante} pointerEvents="none">
-              <Onda niveles={voz.niveles} />
-            </View>
-          )}
-          {enPausa && <EstadoEnPausa />}
-          <ControlesFlotantes
-            fase={voz.fase}
-            segundos={voz.segundos}
-            alPausar={voz.pausar}
-            alReanudar={voz.reanudar}
-            alEnviar={() => void alEnviarVoz()}
-            alEliminar={() => void voz.descartar()}
-          />
-        </View>
+        <ControlesFlotantes
+          fase={voz.fase}
+          segundos={voz.segundos}
+          niveles={voz.niveles}
+          alPausar={voz.pausar}
+          alReanudar={voz.reanudar}
+          alEnviar={() => void alEnviarVoz()}
+          alEliminar={() => void voz.descartar()}
+        />
       )}
 
-      <Composer
-        motivoFallo={estado?.motivoFallo ?? null}
-        sendStatus={estado?.sendStatus ?? 'idle'}
-        onSend={manejarEnvio}
-        disabled={estado === null}
-        onFoto={alElegirFoto}
-      />
+      {/* Siempre montado: oculto (no desmontado) para no perder el borrador que alguien venía
+          escribiendo cuando eligió dictar. */}
+      <View testID="chat-composer-contenedor" style={enCaptura ? styles.oculto : undefined}>
+        <Composer
+          motivoFallo={estado?.motivoFallo ?? null}
+          sendStatus={estado?.sendStatus ?? 'idle'}
+          onSend={manejarEnvio}
+          disabled={estado === null}
+          onFoto={alElegirFoto}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
