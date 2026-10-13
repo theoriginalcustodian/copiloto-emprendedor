@@ -341,6 +341,17 @@ export function PantallaPerfilNegocio() {
 
       {estadoCarga === 'ok' && (
         <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg }}>
+          {/* Mapeo `negocio` (index.html:2280): el estado del modo arriba, como el `estado-pag` del
+              prototipo — «Te pide confirmación antes de ejecutar». Sale de `campos.modoCeremonia`, el
+              mismo dato que el bloque «Cómo trabaja tu copiloto» de abajo; nunca un texto fijo. */}
+          <Text
+            testID="perfil-negocio-estado-modo"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+          >
+            {campos.modoCeremonia === 'automatico'
+              ? 'Anota lo que le dictás y te avisa después'
+              : 'Te pide confirmación antes de ejecutar'}
+          </Text>
           <Seccion titulo="Mi negocio" testID="perfil-negocio-seccion-negocio">
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Con esto el copiloto entiende de qué se trata tu trabajo y puede responderte mejor.

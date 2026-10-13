@@ -4877,6 +4877,16 @@
       "id": "afip-estado-vinculo",
       "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
       "pantalla": "modules/ajustes/afip"
+    },
+    "modules/ajustes/negocio::perfil-negocio-estado-modo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "perfil-negocio-estado-modo",
+      "motivo": "Mapeo `negocio` (2026-10-13): estado-pag del prototipo (index.html:2280) «Te pide confirmacion antes de ejecutar» en la pantalla nativa Mi negocio. La web (modules/negocio) muestra el modo en su propio bloque; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/negocio"
     }
   }
 }
