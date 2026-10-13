@@ -5,6 +5,7 @@ import type { ListRenderItemInfo } from 'react-native';
 
 import {
   leerClientePropuesto,
+  leerDatosNegocio,
   leerFacturaPropuesta,
   leerLinkDeCobro,
   leerGastoPropuesto,
@@ -28,6 +29,7 @@ import { ChipArmarFactura } from './ChipArmarFactura';
 import { Recibo } from './Recibo';
 import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
+import { TarjetaDatosNegocio } from './TarjetaDatosNegocio';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
@@ -311,6 +313,19 @@ const FilaMensaje = memo(function FilaMensaje({
   const linkDeCobro = leerLinkDeCobro(mensaje.card);
   if (linkDeCobro) {
     return <TarjetaLinkDeCobro link={linkDeCobro} />;
+  }
+
+  // `datos_negocio` — la respuesta de lectura a «¿cuánto entró este mes?» (preg-datos, C-D5). Burbuja con
+  // el texto del agente + la card con las cifras debajo (igual que el prototipo y que la web). Sin
+  // `titulo` o sin ninguna cifra legible el parser devuelve `null` y cae a la `Burbuja` de siempre.
+  const datosNegocio = leerDatosNegocio(mensaje.card);
+  if (datosNegocio) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <TarjetaDatosNegocio datos={datosNegocio} />
+      </View>
+    );
   }
 
   // BL-J9 — `sugerencia_armar_factura`: burbuja con el texto + chip que abre el gate de factura.

@@ -20,6 +20,8 @@ export * from './presupuestoPropuesto';
 export * from './facturaPropuesta';
 // `payment_link` — el link de cobro de MercadoPago (BL-F2). Ver el docstring del módulo.
 export * from './linkDeCobro';
+// `datos_negocio` — la card de LECTURA con las cifras del negocio (preg-datos, C-D5). Ver el docstring.
+export * from './datosNegocio';
 // El buzón de un solo mensaje pantalla → chat principal (BL-W9; antes sólo mobile).
 export * from './mensajePendiente';
 export * from './avisosCard';

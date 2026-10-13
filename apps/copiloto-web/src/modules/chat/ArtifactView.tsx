@@ -1,4 +1,6 @@
-import { Button } from '../../design-system';
+import { leerDatosNegocio } from '@copiloto/core';
+
+import { Button, Surface } from '../../design-system';
 import type { ReplyCard } from '../../lib/api';
 import './chat.css';
 
@@ -19,6 +21,41 @@ export interface ArtifactViewProps {
 export function ArtifactView({ card }: ArtifactViewProps) {
   const data = card.data ?? {};
   const url = typeof data.url === 'string' ? data.url : undefined;
+
+  // `datos_negocio` (preg-datos, C-D5) — la respuesta de LECTURA a «¿cuánto entró este mes?». Gemela de
+  // `TarjetaDatosNegocio` (mobile): una fila por cifra, `chip` y `nota` sólo si vienen. `valor` llega ya
+  // formateado por el backend y se pinta TAL CUAL. Sin titulo/cifras legibles el parser da `null` y cae a
+  // «no renderiza nada» (queda el texto del bubble), igual que cualquier kind desconocido.
+  const datosNegocio = leerDatosNegocio(card);
+  if (datosNegocio) {
+    return (
+      <Surface variant="card" blur className="datos-negocio" data-testid="datos-negocio">
+        <div className="datos-negocio__cabecera">
+          <h3 className="datos-negocio__titulo" data-testid="datos-negocio-titulo">
+            {datosNegocio.titulo}
+          </h3>
+          {datosNegocio.chip != null && (
+            <span className="datos-negocio__chip" data-testid="datos-negocio-chip">
+              {datosNegocio.chip}
+            </span>
+          )}
+        </div>
+        <dl className="datos-negocio__cifras">
+          {datosNegocio.cifras.map((cifra, i) => (
+            <div key={`${i}-${cifra.clave}`} className="datos-negocio__fila" data-testid={`datos-negocio-cifra-${i}`}>
+              <dt className="datos-negocio__clave">{cifra.clave}</dt>
+              <dd className="datos-negocio__valor">{cifra.valor}</dd>
+            </div>
+          ))}
+        </dl>
+        {datosNegocio.nota != null && (
+          <p className="datos-negocio__nota" data-testid="datos-negocio-nota">
+            {datosNegocio.nota}
+          </p>
+        )}
+      </Surface>
+    );
+  }
 
   if (card.kind === 'payment_link' && url) {
     const share = () => {

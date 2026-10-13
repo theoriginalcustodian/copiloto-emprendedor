@@ -513,6 +513,64 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('No pude armar el link.')).toBeTruthy();
   });
 
+  // preg-datos (C-D5): la card `datos_negocio` va DEBAJO del texto del agente. Los payloads son los que
+  // emite `apps/copiloto/datos_card.py` (medidos en vivo el 2026-10-13), no armados a mano.
+  it('preg-datos: una card datos_negocio pinta el texto del agente Y la card con sus cifras', async () => {
+    await envolver([
+      {
+        id: 'assistant-11',
+        role: 'assistant',
+        text: 'Te deben un total de $205.000,00; de eso, $120.000,00 están vencidos.',
+        card: {
+          kind: 'datos_negocio',
+          data: {
+            titulo: 'Lo que te deben',
+            cifras: [
+              { k: 'Total', v: '$205.000,00' },
+              { k: 'Vencido', v: '$120.000,00' },
+            ],
+            chip: null,
+            nota: '«Vencido» es lo emitido hace más de 30 días y todavía impago.',
+          },
+        },
+      },
+    ]);
+
+    expect(screen.getByText(/Te deben un total/)).toBeTruthy();
+    expect(screen.getByTestId('datos-negocio-titulo')).toHaveTextContent('Lo que te deben');
+    expect(screen.getByTestId('datos-negocio-cifra-1')).toHaveTextContent(/Vencido.*\$120\.000,00/);
+    expect(screen.getByTestId('datos-negocio-nota')).toBeTruthy();
+    expect(screen.queryByTestId('datos-negocio-chip')).toBeNull();
+  });
+
+  it('preg-datos: una card datos_negocio sin cifras legibles cae a la burbuja de texto', async () => {
+    await envolver([
+      {
+        id: 'assistant-12',
+        role: 'assistant',
+        text: 'Todavía no hay nada registrado en tus gastos de este mes.',
+        card: { kind: 'datos_negocio', data: { titulo: 'En qué gastaste', cifras: [], chip: null, nota: null } },
+      },
+    ]);
+
+    expect(screen.queryByTestId('datos-negocio')).toBeNull();
+    expect(screen.getByText('Todavía no hay nada registrado en tus gastos de este mes.')).toBeTruthy();
+  });
+
+  it('preg-datos: un kind desconocido sigue cayendo a la burbuja (control negativo del despacho)', async () => {
+    await envolver([
+      {
+        id: 'assistant-13',
+        role: 'assistant',
+        text: 'Algo que la app no conoce.',
+        card: { kind: 'kind_que_no_existe', data: { titulo: 'X', cifras: [{ k: 'a', v: 'b' }] } },
+      },
+    ]);
+
+    expect(screen.queryByTestId('datos-negocio')).toBeNull();
+    expect(screen.getByText('Algo que la app no conoce.')).toBeTruthy();
+  });
+
   /**
    * GUARDM parte 2 — la parte que ningún test a nivel card puede ver: que `ListaMensajes` derive
    * `resuelto` de CADA campo correcto del mensaje (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/
