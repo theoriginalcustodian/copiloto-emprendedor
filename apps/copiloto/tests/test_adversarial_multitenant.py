@@ -771,3 +771,117 @@ def test_adversarial_http_soporte_tickets_a_lista_lo_suyo_y_no_ve_lo_de_b(
                             (cid,))
             conn.commit()
             conn.close()
+
+
+# --- PROTO4DEPS §4: POST /soporte/tickets/{ticket_id}/adjuntos ----------------------
+
+_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+_JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
+
+
+def _limpiar_soporte(conn_de_tenant, *cids):
+    for cid in cids:
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            # adjuntos y mensajes ANTES que tickets: las dos tienen FK compuesta a copiloto_tickets.
+            cur.execute("DELETE FROM uc_factory.copiloto_ticket_adjuntos WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_mensajes WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_tickets WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_ticket_secuencia WHERE cliente_id = %s", (cid,))
+        conn.commit()
+        conn.close()
+
+
+def test_adversarial_http_soporte_adjuntos_a_no_adjunta_al_ticket_de_b(
+        two_tenants, crypto, conn_de_tenant):
+    """A adjunta al ticket de B => 404, idéntico al de un ticket inexistente, y NO queda ninguna fila:
+    ni en el detalle de B ni en la tabla. Con control positivo (B adjunta a SU ticket => 201 y lo ve)
+    y la FK compuesta ejercitada en la base (el endpoint no es la única defensa)."""
+    from soporte_store import SOPORTE_TECNICO, TicketStore
+    a, b = two_tenants
+    try:
+        st_a = TicketStore(conn_de_tenant(a.cliente_id), a.cliente_id)
+        st_b = TicketStore(conn_de_tenant(b.cliente_id), b.cliente_id)
+        t_a = st_a.crear_ticket(canal=SOPORTE_TECNICO, asunto="de A", primer_mensaje="a")
+        t_b = st_b.crear_ticket(canal=SOPORTE_TECNICO, asunto="de B", primer_mensaje="b")
+        client = TestClient(_build_http_app(two_tenants, crypto))
+        h_a = {"Authorization": f"Bearer {a.token}"}
+        h_b = {"Authorization": f"Bearer {b.token}"}
+        archivo = {"adjunto": ("captura.png", _PNG, "image/png")}
+
+        # el ataque: token de A, ticket de B.
+        r_cross = client.post(f"/soporte/tickets/{t_b['id']}/adjuntos", files=archivo, headers=h_a)
+        r_inex = client.post("/soporte/tickets/999999999/adjuntos", files=archivo, headers=h_a)
+        assert r_cross.status_code == 404 and r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # control positivo: el MISMO request con el token del dueño entra.
+        r_b = client.post(f"/soporte/tickets/{t_b['id']}/adjuntos", files=archivo, headers=h_b)
+        assert r_b.status_code == 201
+        assert set(r_b.json()) == {"id", "nombre", "tipo", "bytes"}
+        assert r_b.json()["bytes"] == len(_PNG)
+
+        # y el ataque no dejó rastro: lo único que tiene el ticket de B es lo que B subió.
+        det_b = client.get(f"/soporte/tickets/{t_b['id']}", headers=h_b).json()
+        assert [x["id"] for x in det_b["adjuntos"]] == [r_b.json()["id"]]
+        # A no ve el adjunto de B en NINGÚN detalle (su ticket no lo tiene).
+        assert client.get(f"/soporte/tickets/{t_a['id']}", headers=h_a).json()["adjuntos"] == []
+
+        # la base lo rechaza aunque el endpoint se olvidara del 404: B escribe con SU cliente_id y el
+        # ticket de A -> la FK compuesta (cliente_id, ticket_id) no encuentra ese par.
+        import psycopg2
+        with pytest.raises(psycopg2.errors.ForeignKeyViolation):
+            st_b.agregar_adjunto(ticket_id=t_a["id"], nombre="x.png", tipo="image/png", contenido=_PNG)
+        declarar_tenant(None)
+    finally:
+        _limpiar_soporte(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_http_soporte_adjuntos_rechaza_formato_tamano_y_exceso_con_el_codigo_del_contrato(
+        two_tenants, crypto, conn_de_tenant, monkeypatch):
+    """415 si los bytes no son lo que el `content_type` declara (o no hay firma conocida), 413 si pasa
+    el techo y 413 si el ticket llegó al tope; el nombre del cliente no escapa de su carpeta. Cada
+    rechazo se mide contra el control positivo del mismo ticket (un PNG válido entra)."""
+    from soporte_store import MAX_ADJUNTOS_POR_TICKET, SOPORTE_TECNICO, TicketStore
+    a, _ = two_tenants
+    try:
+        st_a = TicketStore(conn_de_tenant(a.cliente_id), a.cliente_id)
+        t = st_a.crear_ticket(canal=SOPORTE_TECNICO, asunto="adjuntos", primer_mensaje="a")
+        ruta = f"/soporte/tickets/{t['id']}/adjuntos"
+        client = TestClient(_build_http_app(two_tenants, crypto))
+        h = {"Authorization": f"Bearer {a.token}"}
+
+        # 415: JPEG real declarado como PNG (el content_type es un dato del cliente, no se confía).
+        r = client.post(ruta, files={"adjunto": ("a.png", _JPEG, "image/png")}, headers=h)
+        assert r.status_code == 415
+        # 415: tipo sin firma conocida (fail-closed) aunque los bytes sean un PNG perfecto.
+        r = client.post(ruta, files={"adjunto": ("a.txt", _PNG, "text/plain")}, headers=h)
+        assert r.status_code == 415
+        # 415: archivo vacío.
+        r = client.post(ruta, files={"adjunto": ("a.png", b"", "image/png")}, headers=h)
+        assert r.status_code == 415
+
+        # 413: un byte más que el techo (se baja a 1 KiB para no mover 5 MB en el test).
+        monkeypatch.setattr(web_module, "MAX_ADJUNTO_BYTES", 1024)
+        grande = b"\x89PNG\r\n\x1a\n" + b"\x00" * 1024
+        r = client.post(ruta, files={"adjunto": ("g.png", grande, "image/png")}, headers=h)
+        assert r.status_code == 413 and "máx" in r.json()["detail"]
+        # control positivo: bajo el techo, el mismo ticket acepta. El nombre trae un path del cliente.
+        r_ok = client.post(ruta, files={"adjunto": ("..\\..\\etc/captura.png", _PNG, "image/png")}, headers=h)
+        assert r_ok.status_code == 201, r_ok.text
+        assert r_ok.json()["nombre"] == "captura.png"
+        assert r_ok.json()["tipo"] == "image/png"
+
+        # 413 por cantidad: se llena el ticket y el siguiente se rechaza con el mismo código.
+        for _ in range(MAX_ADJUNTOS_POR_TICKET - 1):
+            assert st_a.agregar_adjunto(ticket_id=t["id"], nombre="n.png", tipo="image/png",
+                                        contenido=_PNG) is not None
+        r = client.post(ruta, files={"adjunto": ("otro.png", _PNG, "image/png")}, headers=h)
+        assert r.status_code == 413 and "máximo" in r.json()["detail"]
+        # el rechazado NO quedó guardado, y el listado no devuelve el blob.
+        adj = client.get(f"/soporte/tickets/{t['id']}", headers=h).json()["adjuntos"]
+        assert len(adj) == MAX_ADJUNTOS_POR_TICKET
+        assert all(set(x) == {"id", "nombre", "tipo", "bytes"} for x in adj)
+        declarar_tenant(None)
+    finally:
+        _limpiar_soporte(conn_de_tenant, a.cliente_id, two_tenants[1].cliente_id)

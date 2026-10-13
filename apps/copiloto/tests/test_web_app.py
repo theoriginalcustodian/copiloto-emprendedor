@@ -163,6 +163,10 @@ class _FakeCursor:
             cliente_id, ticket_id = params
             self._rows = [(m["id"], m["autor"], m["texto"], m["created_at"]) for m in self._db.mensajes
                          if m["cliente_id"] == cliente_id and m["ticket_id"] == ticket_id]
+        elif s.startswith("SELECT ID, NOMBRE, TIPO, BYTES FROM UC_FACTORY.COPILOTO_TICKET_ADJUNTOS"):
+            # El detalle del ticket lista sus adjuntos (PROTO4DEPS §4). Este fake no siembra ninguno: el
+            # camino con adjuntos reales se ejercita contra Postgres en `test_adversarial_multitenant.py`.
+            self._rows = []
         else:
             raise NotImplementedError(f"SQL no soportado por el fake: {sql}")
 
@@ -1098,6 +1102,7 @@ def test_soporte_ticket_propio_200_con_el_hilo_completo():
     assert body["ticket"]["estado"] == "abierto"
     assert len(body["mensajes"]) == 1
     assert body["mensajes"][0]["texto"] == "AFIP me tira un error raro"
+    assert body["adjuntos"] == []   # clave SIEMPRE presente: la app no distingue «no hay» de «no sabe»
 
 
 def test_soporte_ticket_propio_404_si_no_existe():

@@ -56,7 +56,7 @@ _IDENT_RE = re.compile(r"[a-z_][a-z0-9_]*")
 # tipos SQL base permitidos (sin el modificador de precisión, que se valida aparte)
 _TYPES = {"text", "varchar", "char", "integer", "int", "bigint", "smallint", "boolean", "bool",
           "numeric", "decimal", "real", "double", "timestamptz", "timestamp", "date", "time",
-          "uuid", "jsonb", "json"}
+          "uuid", "jsonb", "json", "bytea"}
 # El valor de un DEFAULT es la ÚNICA parte libre del manifiesto -> allowlist ESTRICTA y cerrada (review adversarial
 # CRITICAL: un regex laxo permitía `DEFAULT 'x')--` (paren-breakout + comment-out del CREATE TABLE) y
 # `DEFAULT pg_sleep(0)`/`current_setting(...)`/`(SELECT ...)` (stored-expression injection ejecutándose con

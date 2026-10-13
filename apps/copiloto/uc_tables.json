@@ -259,5 +259,13 @@
     "autor text NOT NULL",
     "texto text NOT NULL",
     "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_ticket_adjuntos": [
+    "ticket_id bigint NOT NULL",
+    "nombre text NOT NULL",
+    "tipo text NOT NULL",
+    "bytes integer NOT NULL",
+    "contenido bytea NOT NULL",
+    "created_at timestamptz DEFAULT now()"
   ]
 }

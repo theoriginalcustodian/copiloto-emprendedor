@@ -154,6 +154,8 @@ def _fernet_key_env(monkeypatch):
 # 65 -> 64 (PROTO4DEPS §1, 2026-10-13): `GET /soporte/tickets` nace CON su caso hostil HTTP y, de
 # paso, ese mismo test pide el detalle `/soporte/tickets/{ticket_id}` (A pide el de B -> 404), que
 # estaba en la deuda: la ruta nueva no suma y la existente sale.
+# 64 = 64 (PROTO4DEPS §4, 2026-10-13): `POST /soporte/tickets/{ticket_id}/adjuntos` nace CON su caso
+# hostil (A adjunta al ticket de B -> 404): la ruta nueva no suma a la deuda y tampoco baja ninguna.
 _DEUDA_TENANT_SCOPED_SIN_TEST = 64
 
 
@@ -465,7 +467,7 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
         "/mi-dia/calendario", "/reply", "/me", "/catalog", "/mp/connection",
         "/me/onboarding/completar", "/me/legal/aceptar", "/feedback",
         "/afip/facturas", "/afip/facturas/{factura_id}", "/afip/comprobantes/anular",
-        "/soporte/tickets", "/soporte/tickets/{ticket_id}",
+        "/soporte/tickets", "/soporte/tickets/{ticket_id}", "/soporte/tickets/{ticket_id}/adjuntos",
     }
 
 
