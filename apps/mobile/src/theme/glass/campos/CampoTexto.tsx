@@ -21,6 +21,8 @@ export interface CampoTextoProps {
   etiqueta: string;
   valor: string;
   onChange: (texto: string) => void;
+  /** Al perder el foco: para validaciones que se evalúan «al terminar de escribir», no a cada tecla. */
+  onBlur?: () => void;
   /** Mensaje de error a mostrar. El campo se pinta de `color.peligro` con o sin texto -- alcanza con
    *  que `error` sea una string no vacía. */
   error?: string;
@@ -42,6 +44,7 @@ export function CampoTexto({
   etiqueta,
   valor,
   onChange,
+  onBlur,
   error,
   placeholder,
   multiline = false,
@@ -94,6 +97,7 @@ export function CampoTexto({
           value={valor}
           onChangeText={onChange}
           onFocus={() => revelarCampo(refContenedor.current)}
+          onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={tema.color.textoTenue}
           multiline={multiline}

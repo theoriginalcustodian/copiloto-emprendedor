@@ -140,6 +140,39 @@ describe('PantallaPerfilNegocio', () => {
     expect(mockGuardar).not.toHaveBeenCalled();
   });
 
+  it('«Qué vendés» corto: al salir del campo AVISA, y Guardar sigue funcionando (aviso, no bloqueo)', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull();
+
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-que-vende-input'), 'Pan');
+    // A mitad de camino NO marca nada: se evalúa al salir del campo.
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull();
+    await fireEvent(screen.getByTestId('perfil-negocio-que-vende-input'), 'blur');
+
+    expect(screen.getByTestId('perfil-negocio-que-vende-error')).toBeTruthy();
+    expect(screen.getByText('Escribí al menos 10 caracteres para que Odobi entienda tu negocio')).toBeTruthy();
+
+    // 🔴 No bloquea: el contrato de guardado no se toca y el corto viaja tal cual.
+    await fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
+    await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
+    expect(mockGuardar.mock.calls[0][0]).toMatchObject({ queVende: 'Pan' });
+  });
+
+  it('«Qué vendés»: volver a escribir limpia el aviso, y un perfil guardado con largo suficiente no avisa', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await fireEvent(screen.getByTestId('perfil-negocio-que-vende-input'), 'blur');
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull(); // PERFIL.queVende ya tiene >= 10
+
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-que-vende-input'), 'Pan');
+    await fireEvent(screen.getByTestId('perfil-negocio-que-vende-input'), 'blur');
+    expect(screen.getByTestId('perfil-negocio-que-vende-error')).toBeTruthy();
+
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-que-vende-input'), 'Panadería artesanal');
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull();
+  });
+
   it('muestra el detail del 400 en vez de un error genérico', async () => {
     // "No se pudo guardar" deja al usuario adivinando cuál de los siete campos toca corregir.
     mockGuardar.mockRejectedValue(new ApiError(400, 'que_vende supera los 500 caracteres', 'que_vende supera los 500 caracteres'));

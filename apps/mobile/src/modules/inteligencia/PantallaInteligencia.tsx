@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
@@ -13,7 +14,6 @@ import {
 } from '@copiloto/core';
 
 import { AcumuladoAnual } from './AcumuladoAnual';
-import { PreguntarInteligencia } from './PreguntarInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -39,51 +39,56 @@ import { useTema } from '../../theme/ThemeProvider';
  * no había contrato; ahora que la forma existe, la pantalla se construye de verdad y el único estado
  * que falta es el connect.
  *
- * 🔴 **La decisión de placement (`dato_planificacion-a-frontend_IN-vacio-...`) — una sola pantalla,
- * dos solapas.** Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo
- * scroll — leen de un vistazo, no multiplican rutas para algo chico. La solapa «Preguntar» (`PreguntarInteligencia`) NO
- * entra al mismo scroll: es un `flex:1` con su propio teclado/scroll interno, anidarlo abajo de los
- * gráficos lo dejaría compitiendo por alto con contenido que no es suyo. Por eso "Preguntar" es una
- * solapa aparte, no una sección más — mismo `MarcoGlass`, dos cuerpos que se turnan.
+ * 🔴 **La decisión de placement (`dato_planificacion-a-frontend_IN-vacio-...`) — una sola pantalla.**
+ * Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo scroll — leen
+ * de un vistazo, no multiplican rutas para algo chico.
+ *
+ * 🔴 **«Preguntar» es una SALIDA al chat, no un cuerpo de esta pantalla** (decisión TÁCTICA de
+ * planificación, 2026-10-13: «Preguntar → chat, sin pantalla intermedia ni endpoint»). El prototipo
+ * sacó esa solapa por ser la duplicación del chat; el selector se conserva por contrato de ids y
+ * tocarla cierra el glass y vuelve al chat principal (`router.back()`, el mismo gesto que `MarcoGlass`
+ * hace al cerrar). No deja mensaje pendiente: la pregunta se escribe en el chat, que ya tiene su
+ * composer, su historial y su hilo durable.
  */
 
 type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
-type Vista = 'resumen' | 'preguntar';
 
-const OPCIONES_VISTA: readonly { valor: Vista; etiqueta: string }[] = [
-  { valor: 'resumen', etiqueta: 'Resumen' },
-  { valor: 'preguntar', etiqueta: 'Preguntar' },
-];
+/** Vuelve al chat principal: la pregunta se hace ahí (ver la cabecera). */
+function irAlChat() {
+  router.back();
+}
 
-function Solapas({ vista, onChange }: { vista: Vista; onChange: (v: Vista) => void }) {
+function Solapas() {
   const tema = useTema();
   return (
     <View style={styles.solapas} testID="inteligencia-solapas">
-      {OPCIONES_VISTA.map((o) => {
-        const activa = o.valor === vista;
-        return (
-          <Pressable
-            key={o.valor}
-            testID={`inteligencia-solapa-${o.valor}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: activa }}
-            onPress={() => onChange(o.valor)}
-            style={pressableStyle(styles.solapaPresionable)}
-          >
-            <View style={[styles.solapa, { borderColor: activa ? tema.color.acento : tema.color.borde }]}>
-              <Text
-                style={{
-                  color: activa ? tema.color.acento : tema.color.textoTenue,
-                  fontFamily: tema.fuente.uiMedium,
-                  fontSize: tema.tipo.base,
-                }}
-              >
-                {o.etiqueta}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+      {/* «Resumen» es ESTA pantalla: siempre activa, sin acción. */}
+      <View
+        testID="inteligencia-solapa-resumen"
+        accessible
+        accessibilityRole="button"
+        accessibilityState={{ selected: true }}
+        style={styles.solapaPresionable}
+      >
+        <View style={[styles.solapa, { borderColor: tema.color.acento }]}>
+          <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+            Resumen
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        testID="inteligencia-solapa-preguntar"
+        accessibilityRole="button"
+        accessibilityState={{ selected: false }}
+        onPress={irAlChat}
+        style={pressableStyle(styles.solapaPresionable)}
+      >
+        <View style={[styles.solapa, { borderColor: tema.color.borde }]}>
+          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+            Preguntar
+          </Text>
+        </View>
+      </Pressable>
     </View>
   );
 }
@@ -96,7 +101,6 @@ export function PantallaInteligencia() {
   const [alDia, setAlDia] = useState(false);
   const [arrastrePx, setArrastrePx] = useState(0);
   const timerAlDia = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [vista, setVista] = useState<Vista>('resumen');
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -142,28 +146,24 @@ export function PantallaInteligencia() {
   return (
     <MarcoGlass titulo="Inteligencia de Negocio" icono="inteligencia" testID="pantalla-inteligencia">
       <View style={styles.raiz}>
-        <Solapas vista={vista} onChange={setVista} />
+        <Solapas />
 
-        {vista === 'preguntar' ? (
-          <PreguntarInteligencia />
-        ) : (
-          <>
-            {estado === 'cargando' && (
-              <View style={styles.centro}>
-                <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
-              </View>
-            )}
+          {estado === 'cargando' && (
+            <View style={styles.centro}>
+              <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
+            </View>
+          )}
 
-            {estado === 'no_disponible' && (
-              <View style={styles.centro}>
-                <Text
-                  testID="inteligencia-no-disponible"
-                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
-                >
-                  El resumen de tu negocio todavía no está disponible en tu copiloto.
-                </Text>
-              </View>
-            )}
+          {estado === 'no_disponible' && (
+            <View style={styles.centro}>
+              <Text
+                testID="inteligencia-no-disponible"
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
+              >
+                El resumen de tu negocio todavía no está disponible en tu copiloto.
+              </Text>
+            </View>
+          )}
 
       {estado === 'ok' && portada != null && (
         <>
@@ -324,8 +324,6 @@ export function PantallaInteligencia() {
         </ScrollFormulario>
         </>
             )}
-          </>
-        )}
       </View>
     </MarcoGlass>
   );

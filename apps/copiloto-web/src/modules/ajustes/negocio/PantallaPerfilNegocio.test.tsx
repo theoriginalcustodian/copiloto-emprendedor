@@ -89,6 +89,38 @@ describe('PantallaPerfilNegocio — BL-J10 (teléfono y email)', () => {
     expect(screen.queryByTestId('perfil-negocio-telefono-error')).not.toBeInTheDocument();
   });
 
+  it('«Qué vendés» corto: al salir del campo AVISA, y Guardar sigue funcionando (aviso, no bloqueo)', async () => {
+    await montar();
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('perfil-negocio-que-vende'), { target: { value: 'Pan' } });
+    // A mitad de camino NO marca nada: se evalúa al salir del campo.
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).not.toBeInTheDocument();
+    fireEvent.blur(screen.getByTestId('perfil-negocio-que-vende'));
+
+    expect(screen.getByTestId('perfil-negocio-que-vende-error')).toHaveTextContent(
+      'Escribí al menos 10 caracteres para que Odobi entienda tu negocio',
+    );
+
+    // 🔴 No bloquea: el contrato de guardado no se toca y el corto viaja tal cual.
+    fireEvent.click(screen.getByTestId('perfil-negocio-guardar-negocio'));
+    await waitFor(() => expect(mockGuardar).toHaveBeenCalledTimes(1));
+    expect(mockGuardar.mock.calls[0][0]).toMatchObject({ queVende: 'Pan' });
+  });
+
+  it('«Qué vendés»: volver a escribir limpia el aviso, y un perfil guardado con largo suficiente no avisa', async () => {
+    await montar();
+    fireEvent.blur(screen.getByTestId('perfil-negocio-que-vende'));
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).not.toBeInTheDocument(); // PERFIL.queVende ya tiene >= 10
+
+    fireEvent.change(screen.getByTestId('perfil-negocio-que-vende'), { target: { value: 'Pan' } });
+    fireEvent.blur(screen.getByTestId('perfil-negocio-que-vende'));
+    expect(screen.getByTestId('perfil-negocio-que-vende-error')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('perfil-negocio-que-vende'), { target: { value: 'Panadería artesanal' } });
+    expect(screen.queryByTestId('perfil-negocio-que-vende-error')).not.toBeInTheDocument();
+  });
+
   it('vaciar teléfono y email es válido (perfil a medio llenar) y viaja como string vacío', async () => {
     await montar();
     fireEvent.change(screen.getByTestId('perfil-negocio-telefono'), { target: { value: '' } });

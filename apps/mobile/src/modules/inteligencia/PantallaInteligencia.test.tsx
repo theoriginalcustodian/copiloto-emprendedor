@@ -19,6 +19,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+import { router } from 'expo-router';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 import {
@@ -190,26 +191,33 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
   });
 });
 
-describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement)', () => {
-  it('arranca en "Resumen"; tocar "Preguntar" monta el chat y oculta la portada', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
-
-    expect(screen.getByTestId('preguntar-inteligencia')).toBeTruthy();
-    expect(screen.queryByTestId('inteligencia-portada')).toBeNull();
+describe('PantallaInteligencia — la solapa "Preguntar" es una SALIDA al chat (decisión táctica 2026-10-13)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it('volver a "Resumen" restaura la portada ', async () => {
+  it('tocar "Preguntar" vuelve al chat (router.back) y NO monta ninguna pantalla intermedia', async () => {
+    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
 
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
+
+    expect(back).toHaveBeenCalledTimes(1);
+    // Sin composer propio: la pregunta se escribe en el chat, que ya tiene el suyo.
+    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
+    // Y la portada sigue ahí — tocarla no cambió de cuerpo.
+    expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
+  });
+
+  it('🔴 CONTROL — tocar "Resumen" (la pantalla actual) NO navega: el spy distingue las dos solapas', async () => {
+    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
 
-    expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
-    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
+    expect(back).not.toHaveBeenCalled();
   });
 
   it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {

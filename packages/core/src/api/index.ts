@@ -99,6 +99,7 @@ export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 // `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`
 // NO es un error: es el estado normal del primer día. Ver el docstring de `perfilNegocio.ts`.
 export {
+  avisoDeQueVende,
   errorDeEmail,
   errorDeTelefono,
   guardarPerfilNegocio,

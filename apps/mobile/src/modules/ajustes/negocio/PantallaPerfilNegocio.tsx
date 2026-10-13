@@ -5,6 +5,7 @@ import {
   ApiError,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,
+  avisoDeQueVende,
   errorDeEmail,
   errorDeTelefono,
   guardarPerfilNegocio,
@@ -181,12 +182,17 @@ export function PantallaPerfilNegocio() {
     telefono: null,
     email: null,
   });
+  // AVISO (no error): «Qué vendés» corto. Se evalúa al salir del campo y NUNCA entra en `guardar()` —
+  // la regla es una heurística de calidad, no un requisito del backend. Ver `avisoDeQueVende`.
+  const [avisoQueVende, setAvisoQueVende] = useState<string | null>(null);
 
   function actualizar<K extends keyof Campos>(campo: K, valor: Campos[K]) {
     setCampos((prev) => ({ ...prev, [campo]: valor }));
     if (campo === 'telefono' || campo === 'email') {
       setErroresContacto((prev) => ({ ...prev, [campo]: null }));
     }
+    // Al escribir sólo se LIMPIA el aviso: nunca se marca uno nuevo a mitad de camino.
+    if (campo === 'queVende') setAvisoQueVende(null);
     // Un cambio invalida el "Guardado" anterior: dejarlo en pantalla mientras el usuario edita diría
     // que lo que está viendo ya está a salvo, y no lo está.
     setEstadoGuardado('idle');
@@ -361,9 +367,11 @@ export function PantallaPerfilNegocio() {
               etiqueta="Qué vendés"
               valor={campos.queVende}
               onChange={(v) => actualizar('queVende', v)}
+              onBlur={() => setAvisoQueVende(avisoDeQueVende(campos.queVende))}
               placeholder="Contá qué hacés"
               multiline
               maxLength={LIMITE_QUE_VENDE}
+              error={avisoQueVende ?? undefined}
             />
             <CampoSelect
               testID="perfil-negocio-a-quien"

@@ -4,20 +4,12 @@ import { formatearImporte, leerPortada, MS_AL_DIA, TEXTO_REFRESCO, type Portada 
 
 import { Button, Skeleton, Surface } from '../../design-system';
 import { AcumuladoAnual } from './AcumuladoAnual';
-import { PreguntarInteligencia } from './PreguntarInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import './inteligencia.css';
 
 const SKELETON_ROWS = 3;
 
 type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
-type Vista = 'resumen' | 'preguntar';
-
-const OPCIONES_VISTA: readonly { valor: Vista; etiqueta: string }[] = [
-  { valor: 'resumen', etiqueta: 'Resumen' },
-  { valor: 'preguntar', etiqueta: 'Preguntar' },
-];
-
 /**
  * "Mes actual" en español, capitalizado — mismo criterio que `PresupuestosScreen.mesActual()`:
  * "usá el período real si existe el dato; si no, mes actual". A diferencia de `ResumenGastos`,
@@ -53,16 +45,14 @@ function alHoy(): string {
  * `null` no es `0`: un KPI que no vino se muestra como «—», nunca como «$0» — el helper `kpi()`
  * centraliza esa regla.
  *
- * La solapa "Preguntar" (`PreguntarInteligencia`, BL-X3: deja la pregunta pendiente y abre el chat principal) NO es del mockup fuente — ese diseño ya la sacó
- * (`Prototipo frontend/odobi-ui/CLAUDE.md` ~L554: "sería la duplicación que ya sacamos con
- * 'Preguntar' de Inteligencia"), decisión de navegación fuera del alcance de este repintado
- * ("no se toca el modelo de capas"). Se mantiene tal cual funciona hoy — escalado a planificación
- * en `coordinacion/abierto/2026-09-07_hallazgo_frontend1-inteligencia-a-planificacion_solapa-preguntar-ya-deprecada-en-el-diseno.md`.
+ * «Preguntar» NO es del mockup fuente — ese diseño ya la sacó (`Prototipo frontend/odobi-ui/CLAUDE.md`
+ * ~L554: "sería la duplicación que ya sacamos con 'Preguntar' de Inteligencia"). Decisión TÁCTICA de
+ * planificación (2026-10-13): es una SALIDA al chat — `onAbrirChat()` directo, sin pantalla
+ * intermedia ni endpoint. El selector se conserva por contrato de ids; ya no hay un cuerpo «Preguntar».
  */
 export function InteligenciaScreen({ onAbrirChat }: { onAbrirChat: () => void }) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [portada, setPortada] = useState<Portada | null>(null);
-  const [vista, setVista] = useState<Vista>('resumen');
   const [actualizando, setActualizando] = useState(false);
   const [alDia, setAlDia] = useState(false);
   const timerAlDia = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,7 +112,7 @@ export function InteligenciaScreen({ onAbrirChat }: { onAbrirChat: () => void })
       <header className="inteligencia-screen__stack">
         <span className="inteligencia-screen__nombre-fila">
           <span className="inteligencia-screen__nombre">Inteligencia de Negocio</span>
-          {vista === 'resumen' && estado === 'ok' && (
+          {estado === 'ok' && (
             <Button
               variant="ghost"
               onClick={() => void actualizar()}
@@ -144,172 +134,169 @@ export function InteligenciaScreen({ onAbrirChat }: { onAbrirChat: () => void })
       </header>
 
       <div className="inteligencia-screen__solapas" data-testid="inteligencia-solapas">
-        {OPCIONES_VISTA.map((o) => (
-          <button
-            key={o.valor}
-            type="button"
-            data-testid={`inteligencia-solapa-${o.valor}`}
-            aria-pressed={o.valor === vista}
-            className={
-              o.valor === vista
-                ? 'inteligencia-screen__solapa inteligencia-screen__solapa--activa'
-                : 'inteligencia-screen__solapa'
-            }
-            onClick={() => setVista(o.valor)}
-          >
-            {o.etiqueta}
-          </button>
-        ))}
+        {/* «Resumen» es ESTA pantalla: siempre activa, sin acción (no es un botón). */}
+        <span
+          data-testid="inteligencia-solapa-resumen"
+          aria-current="page"
+          className="inteligencia-screen__solapa inteligencia-screen__solapa--activa"
+        >
+          Resumen
+        </span>
+        {/* «Preguntar» es una SALIDA al chat (decisión táctica de planificación, 2026-10-13). */}
+        <button
+          type="button"
+          data-testid="inteligencia-solapa-preguntar"
+          className="inteligencia-screen__solapa"
+          onClick={onAbrirChat}
+        >
+          Preguntar
+        </button>
       </div>
 
-      {vista === 'preguntar' ? (
-        <PreguntarInteligencia onAbrirChat={onAbrirChat} />
-      ) : (
-        <div className="inteligencia-screen__body">
-          {estado === 'cargando' && (
-            <div className="inteligencia-screen__loading" data-testid="inteligencia-cargando">
-              {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                <Skeleton key={i} height={64} radius={16} />
-              ))}
-            </div>
-          )}
+      <div className="inteligencia-screen__body">
+        {estado === 'cargando' && (
+          <div className="inteligencia-screen__loading" data-testid="inteligencia-cargando">
+            {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+              <Skeleton key={i} height={64} radius={16} />
+            ))}
+          </div>
+        )}
 
-          {estado === 'error' && (
-            <div className="inteligencia-screen__empty" data-testid="inteligencia-error">
-              <p>No pudimos cargar el resumen de tu negocio.</p>
-              <Button variant="cancel" onClick={() => void cargar()}>
-                Reintentar
-              </Button>
-            </div>
-          )}
+        {estado === 'error' && (
+          <div className="inteligencia-screen__empty" data-testid="inteligencia-error">
+            <p>No pudimos cargar el resumen de tu negocio.</p>
+            <Button variant="cancel" onClick={() => void cargar()}>
+              Reintentar
+            </Button>
+          </div>
+        )}
 
-          {estado === 'no_disponible' && (
-            <p className="inteligencia-screen__empty" data-testid="inteligencia-no-disponible">
-              El resumen de tu negocio todavía no está disponible en tu copiloto.
-            </p>
-          )}
+        {estado === 'no_disponible' && (
+          <p className="inteligencia-screen__empty" data-testid="inteligencia-no-disponible">
+            El resumen de tu negocio todavía no está disponible en tu copiloto.
+          </p>
+        )}
 
-          {estado === 'ok' && portada != null && (
-            <div className="inteligencia-screen__contenido" data-testid="inteligencia-portada">
-              {/* "BLOQUE" DE CIFRA — Saldo en caja, LA cifra accionable de esta función (CLAUDE.md
-                  §5). Mockup: `.bi-port` — mismo tratamiento que `.resumen` (gastos/facturación),
-                  con el agregado del mini-grid Entró/Salió (mockup: `.bi-grid`). Caja y Facturado
-                  NUNCA se suman (regla dura del repo: una factura emitida no es caja hasta que se
-                  cobra) — por eso el grid reusa `mes.ingresos`/`mes.gastos`, no `mes.facturado`. */}
-              <Surface variant="bloque" className="inteligencia-screen__bloque" data-testid="inteligencia-caja">
-                <p className="inteligencia-screen__bloque-etiqueta">Saldo en caja</p>
-                <p className="inteligencia-screen__bloque-valor">{kpi(portada.caja.saldo)}</p>
-                {portada.caja.saldo != null && (
-                  <span className="inteligencia-screen__bloque-chip">{alHoy()}</span>
-                )}
-                <div className="inteligencia-screen__bloque-grid">
-                  <div data-testid="inteligencia-caja-entro">
-                    <span>Entró</span>
-                    <b>{kpi(portada.mes.ingresos)}</b>
-                  </div>
-                  <div data-testid="inteligencia-caja-salio">
-                    <span>Salió</span>
-                    <b>{kpi(portada.mes.gastos)}</b>
-                  </div>
+        {estado === 'ok' && portada != null && (
+          <div className="inteligencia-screen__contenido" data-testid="inteligencia-portada">
+            {/* "BLOQUE" DE CIFRA — Saldo en caja, LA cifra accionable de esta función (CLAUDE.md
+                §5). Mockup: `.bi-port` — mismo tratamiento que `.resumen` (gastos/facturación),
+                con el agregado del mini-grid Entró/Salió (mockup: `.bi-grid`). Caja y Facturado
+                NUNCA se suman (regla dura del repo: una factura emitida no es caja hasta que se
+                cobra) — por eso el grid reusa `mes.ingresos`/`mes.gastos`, no `mes.facturado`. */}
+            <Surface variant="bloque" className="inteligencia-screen__bloque" data-testid="inteligencia-caja">
+              <p className="inteligencia-screen__bloque-etiqueta">Saldo en caja</p>
+              <p className="inteligencia-screen__bloque-valor">{kpi(portada.caja.saldo)}</p>
+              {portada.caja.saldo != null && (
+                <span className="inteligencia-screen__bloque-chip">{alHoy()}</span>
+              )}
+              <div className="inteligencia-screen__bloque-grid">
+                <div data-testid="inteligencia-caja-entro">
+                  <span>Entró</span>
+                  <b>{kpi(portada.mes.ingresos)}</b>
                 </div>
-              </Surface>
+                <div data-testid="inteligencia-caja-salio">
+                  <span>Salió</span>
+                  <b>{kpi(portada.mes.gastos)}</b>
+                </div>
+              </div>
+            </Surface>
 
-              {/* ESTE MES — cuatro KPIs en grilla de 2 columnas (mockup: `.cinco`) + Rentabilidad
-                  en fila completa con su explicación cuando falta el dato (mockup: `.kpi.sindato`,
-                  "no es cero: es que todavía no se puede calcular" — nunca `$0`). */}
-              <p className="inteligencia-screen__rotulo">Este mes</p>
-              <div className="inteligencia-screen__grilla-kpis">
-                {(
-                  [
-                    ['Ingresos', portada.mes.ingresos],
-                    ['Gastos', portada.mes.gastos],
-                    ['Facturado', portada.mes.facturado],
-                    ['Cobrado', portada.mes.cobrado],
-                  ] as const
-                ).map(([etiqueta, valor]) => (
-                  <Surface
-                    key={etiqueta}
-                    variant="tile"
-                    className="inteligencia-screen__kpi-celda"
-                    data-testid={`inteligencia-mes-${etiqueta.toLowerCase()}`}
-                  >
-                    <span className="inteligencia-screen__kpi-etiqueta">{etiqueta}</span>
-                    <span className="inteligencia-screen__kpi-valor">{kpi(valor)}</span>
-                  </Surface>
-                ))}
+            {/* ESTE MES — cuatro KPIs en grilla de 2 columnas (mockup: `.cinco`) + Rentabilidad
+                en fila completa con su explicación cuando falta el dato (mockup: `.kpi.sindato`,
+                "no es cero: es que todavía no se puede calcular" — nunca `$0`). */}
+            <p className="inteligencia-screen__rotulo">Este mes</p>
+            <div className="inteligencia-screen__grilla-kpis">
+              {(
+                [
+                  ['Ingresos', portada.mes.ingresos],
+                  ['Gastos', portada.mes.gastos],
+                  ['Facturado', portada.mes.facturado],
+                  ['Cobrado', portada.mes.cobrado],
+                ] as const
+              ).map(([etiqueta, valor]) => (
                 <Surface
+                  key={etiqueta}
                   variant="tile"
-                  className={
-                    portada.mes.rentabilidad == null
-                      ? 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha inteligencia-screen__kpi-celda--sindato'
-                      : 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha'
-                  }
-                  data-testid="inteligencia-mes-rentabilidad"
+                  className="inteligencia-screen__kpi-celda"
+                  data-testid={`inteligencia-mes-${etiqueta.toLowerCase()}`}
                 >
-                  <span className="inteligencia-screen__kpi-etiqueta">Rentabilidad</span>
-                  <span className="inteligencia-screen__kpi-valor">{kpi(portada.mes.rentabilidad)}</span>
-                  {portada.mes.rentabilidad == null && (
-                    <small className="inteligencia-screen__kpi-nota" data-testid="inteligencia-rentabilidad-nota">
-                      Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
-                    </small>
-                  )}
+                  <span className="inteligencia-screen__kpi-etiqueta">{etiqueta}</span>
+                  <span className="inteligencia-screen__kpi-valor">{kpi(valor)}</span>
                 </Surface>
-              </div>
-
-              {/* ACUMULADO DEL AÑO (BL-X2) — ex-Contabilidad; fail-soft: si su endpoint falla no se dibuja. */}
-              <AcumuladoAnual />
-
-              {/* POR COBRAR — mockup: `.bloque` con cifra "grande" + vencido resaltado (acento de
-                  marca, no un rojo semántico aparte). */}
-              <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-por-cobrar">
-                <p className="inteligencia-screen__card-titulo">Por cobrar</p>
-                <p className="inteligencia-screen__card-cifra">{kpi(portada.porCobrar.total)}</p>
-                {portada.porCobrar.vencido != null && (
-                  <p className="inteligencia-screen__card-sub" data-testid="inteligencia-vencido">
-                    <span className="inteligencia-screen__vencido">
-                      {formatearImporte(portada.porCobrar.vencido)} vencidos
-                    </span>
-                  </p>
+              ))}
+              <Surface
+                variant="tile"
+                className={
+                  portada.mes.rentabilidad == null
+                    ? 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha inteligencia-screen__kpi-celda--sindato'
+                    : 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha'
+                }
+                data-testid="inteligencia-mes-rentabilidad"
+              >
+                <span className="inteligencia-screen__kpi-etiqueta">Rentabilidad</span>
+                <span className="inteligencia-screen__kpi-valor">{kpi(portada.mes.rentabilidad)}</span>
+                {portada.mes.rentabilidad == null && (
+                  <small className="inteligencia-screen__kpi-nota" data-testid="inteligencia-rentabilidad-nota">
+                    Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
+                  </small>
                 )}
               </Surface>
-
-              {/* MEJORES CLIENTES — mockup: `.bloque#bi-clientes` con ranking; degrada a vacío si
-                  Clientes no está. */}
-              <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-clientes">
-                <p className="inteligencia-screen__card-titulo">Mejores clientes</p>
-                {portada.mejoresClientes.length === 0 ? (
-                  <p className="inteligencia-screen__vacio-chico" data-testid="inteligencia-clientes-vacio">
-                    Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
-                  </p>
-                ) : (
-                  portada.mejoresClientes.map((c) => (
-                    <div
-                      key={c.cliente}
-                      className="inteligencia-screen__fila-entre"
-                      data-testid={`inteligencia-cliente-${c.cliente}`}
-                    >
-                      <span className="inteligencia-screen__fila-entre-label">{c.cliente}</span>
-                      <span className="inteligencia-screen__fila-entre-valor inteligencia-screen__fila-entre-valor--acento">
-                        {kpi(c.total)}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </Surface>
-
-              {/* LOS GRÁFICOS — cada uno con su propia carga, endpoints independientes de la
-                  portada (facturación, entró vs salió, en qué se te va la plata, margen por
-                  trabajo). "Facturado en los últimos 12 meses" (medidor de tope de monotributo,
-                  mockup: `.bloque` con `.medidor.sem-*`) queda afuera de esta pasada: ni el dato
-                  agregado ni los tokens semánticos de semáforo existen hoy — ver el hallazgo en
-                  `coordinacion/abierto/`. */}
-              <div className="inteligencia-screen__graficos" data-testid="inteligencia-graficos-seccion">
-                <GraficosInteligencia />
-              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* ACUMULADO DEL AÑO (BL-X2) — ex-Contabilidad; fail-soft: si su endpoint falla no se dibuja. */}
+            <AcumuladoAnual />
+
+            {/* POR COBRAR — mockup: `.bloque` con cifra "grande" + vencido resaltado (acento de
+                marca, no un rojo semántico aparte). */}
+            <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-por-cobrar">
+              <p className="inteligencia-screen__card-titulo">Por cobrar</p>
+              <p className="inteligencia-screen__card-cifra">{kpi(portada.porCobrar.total)}</p>
+              {portada.porCobrar.vencido != null && (
+                <p className="inteligencia-screen__card-sub" data-testid="inteligencia-vencido">
+                  <span className="inteligencia-screen__vencido">
+                    {formatearImporte(portada.porCobrar.vencido)} vencidos
+                  </span>
+                </p>
+              )}
+            </Surface>
+
+            {/* MEJORES CLIENTES — mockup: `.bloque#bi-clientes` con ranking; degrada a vacío si
+                Clientes no está. */}
+            <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-clientes">
+              <p className="inteligencia-screen__card-titulo">Mejores clientes</p>
+              {portada.mejoresClientes.length === 0 ? (
+                <p className="inteligencia-screen__vacio-chico" data-testid="inteligencia-clientes-vacio">
+                  Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
+                </p>
+              ) : (
+                portada.mejoresClientes.map((c) => (
+                  <div
+                    key={c.cliente}
+                    className="inteligencia-screen__fila-entre"
+                    data-testid={`inteligencia-cliente-${c.cliente}`}
+                  >
+                    <span className="inteligencia-screen__fila-entre-label">{c.cliente}</span>
+                    <span className="inteligencia-screen__fila-entre-valor inteligencia-screen__fila-entre-valor--acento">
+                      {kpi(c.total)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </Surface>
+
+            {/* LOS GRÁFICOS — cada uno con su propia carga, endpoints independientes de la
+                portada (facturación, entró vs salió, en qué se te va la plata, margen por
+                trabajo). "Facturado en los últimos 12 meses" (medidor de tope de monotributo,
+                mockup: `.bloque` con `.medidor.sem-*`) queda afuera de esta pasada: ni el dato
+                agregado ni los tokens semánticos de semáforo existen hoy — ver el hallazgo en
+                `coordinacion/abierto/`. */}
+            <div className="inteligencia-screen__graficos" data-testid="inteligencia-graficos-seccion">
+              <GraficosInteligencia />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
