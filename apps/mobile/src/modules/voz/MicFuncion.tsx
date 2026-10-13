@@ -12,9 +12,9 @@ import {
 } from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
-import { AvisoCancelar } from '../chat/AvisoCancelar';
 import { BotonVoz } from '../chat/BotonVoz';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
+import { EstadoEnPausa, PistasGestoVoz } from '../chat/PistasVoz';
 import { useVozComando } from '../chat/useVozComando';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -59,6 +59,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
   const voz = useVozComando();
   const [fijado, setFijado] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [cerca, setCerca] = useState(false);
   // Duración del último dictado transcripto con éxito — alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   // `null` mientras no hubo ningún dictado todavía, o mientras uno nuevo está en curso.
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
@@ -113,7 +114,10 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
   const onFijarVoz = () => setFijado(true);
   const onCancelarVoz = () => void voz.descartar();
 
-  const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
+  // Igual que `ChatView`: la onda corre sólo grabando; en pausa va el texto «En pausa» (WCAG 1.4.1).
+  const ondaVisible = voz.fase === 'grabando';
+  const enPausa = voz.fase === 'pausado';
+  const pistasVisibles = voz.fase === 'grabando' || cancelando;
 
   return (
     <View testID="mic-funcion" style={estilos.contenedor}>
@@ -124,13 +128,14 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
               <Onda niveles={voz.niveles} />
             </View>
           )}
-          {cancelando && <AvisoCancelar />}
+          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
             onFijar={onFijarVoz}
             onCancelar={onCancelarVoz}
             onCancelando={setCancelando}
+            onCerca={setCerca}
             disabled={disabled || voz.fase !== 'inactivo'}
             scrollRef={scrollRef}
           />
@@ -144,6 +149,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
               <Onda niveles={voz.niveles} />
             </View>
           )}
+          {enPausa && <EstadoEnPausa />}
           <ControlesFlotantes
             fase={voz.fase}
             alPausar={voz.pausar}
