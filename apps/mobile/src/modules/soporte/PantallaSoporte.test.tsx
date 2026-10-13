@@ -65,9 +65,10 @@ jest.mock('../chat/BotonVoz', () => {
 jest.mock('../chat/ControlesFlotantes', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    ControlesFlotantes: ({ fase, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
+    ControlesFlotantes: ({ fase, niveles, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
       <>
         <Text testID="controles-flotantes-fase">{fase}</Text>
+        <Text testID="controles-flotantes-niveles">{Array.isArray(niveles) ? 'ok' : 'falta'}</Text>
         <Pressable testID="voz-pausar" onPress={alPausar}>
           <Text>Pausar</Text>
         </Pressable>
@@ -187,7 +188,8 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
     expect(screen.getByTestId('voz-pausar')).toBeTruthy();
     expect(screen.getByTestId('voz-eliminar')).toBeTruthy();
-    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
+    // G3: la onda vive en el centro de la barra fijada -- el componente tiene que recibir los niveles.
+    expect(screen.getByTestId('controles-flotantes-niveles')).toHaveTextContent('ok');
     expect(screen.queryByTestId('boton-voz')).toBeNull();
   });
 
