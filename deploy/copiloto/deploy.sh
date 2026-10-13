@@ -464,11 +464,28 @@ systemctl is-active "$WORKER_SOPORTE_UNIT"
 # queue es el moat muerto con el deploy en ✅. Temporal sabe quién pollea: el check exige que el MainPID
 # ACTUAL de cada unit figure entre los pollers de su cola (cola/target se leen del /proc del worker, no
 # de una copia). Tiene que ABORTAR antes del publish de [5.5/7]; el plazo cubre el arranque del worker.
+# CUATRO salidas, no dos (el motivo de cada decisión vive en worker_pollers_check.py):
+#   0 ok            -> sigue
+#   1 falta         -> ABORTA: Temporal contestó y el worker no está (el caso que esta fila existe para cazar)
+#   2 sin_api       -> AVISA Y SIGUE: Temporal está arriba pero no contestó ESTA pregunta (API ausente, versión
+#                      nueva, bug del instrumento). Abortar acá castigaría a un deploy sano por una falla del
+#                      instrumento, con prod ya reiniciada y el shell sin publicar. Degrada al estado anterior
+#                      a esta fila (sólo is-active) y lo dice en voz alta: NO VERIFICADO.
+#   3 inalcanzable  -> ABORTA: sin Temporal el worker tampoco puede pollear; dejarlo pasar es dar verde
+#                      justo en el caso de activación del guard.
+#   cualquier otro  -> ABORTA (el intérprete no corrió, lo mataron): no es un «no pude preguntar» declarado.
 echo "--- WORKERPOLLER: el MainPID de cada worker pollea su task queue ---"
+rc_poller=0
 "$VENV/bin/python" "$REMOTE/deploy/copiloto/worker_pollers_check.py" --timeout "${UC_POLLER_TIMEOUT:-60}" \
   "$WORKER_UNIT:AGENT_B_TASK_QUEUE:agent-emprendedor" \
-  "$WORKER_SOPORTE_UNIT:SOPORTE_TASK_QUEUE:agent-soporte" \
-  || { echo "ABORT [5/7]: un worker está active pero NO pollea su task queue (WORKERPOLLER)"; exit 1; }
+  "$WORKER_SOPORTE_UNIT:SOPORTE_TASK_QUEUE:agent-soporte" || rc_poller=$?
+case "$rc_poller" in
+  0) ;;
+  2) echo "WARN [5/7] WORKERPOLLER NO VERIFICADO: Temporal no contestó DescribeTaskQueue (rc=2). El deploy SIGUE; que los workers pollean NO está comprobado: sólo is-active. Si esto se repite, es el instrumento -- no el worker." >&2 ;;
+  1) echo "ABORT [5/7]: un worker está active pero NO pollea su task queue (WORKERPOLLER, rc=1)"; exit 1 ;;
+  3) echo "ABORT [5/7]: no pude preguntarle a Temporal (WORKERPOLLER, rc=3: inalcanzable). Sin Temporal el worker tampoco puede pollear."; exit 1 ;;
+  *) echo "ABORT [5/7]: el check de pollers terminó con rc=$rc_poller (no es un resultado declarado)"; exit 1 ;;
+esac
 REMOTE_UNITS
 
 # [5.5/7] PUBLISH del shell: swap del symlink `dist` -> `dist-<SHA>`. Va SOLO después del restart OK de

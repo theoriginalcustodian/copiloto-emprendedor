@@ -42,7 +42,7 @@ extraer_cabecera() {
 #   y = worker principal, z = worker de soporte.
 #   rc_poller (WORKERPOLLER): si viene, corre el bloque COMPLETO con `$VENV/bin/python` stubeado que
 #   sale con ese rc -- los tres units quedan `active`, así que SÓLO el check de pollers puede abortar.
-#   En ese modo imprime una 2ª línea `ARGS: <argv que recibió el check>`.
+#   En ese modo imprime además `ARGS: <argv que recibió el check>` y `AVISO: si|no` (¿dijo «NO VERIFICADO»?).
 correr_caso() {
   local nombre="$1" unit_caido="$2" rc_poller="${3:-}"
   local sandbox bin bloque cabecera script rc
@@ -96,10 +96,11 @@ STUB
   rc=0
   out="$(export PATH="$bin:$PATH"; bash "$script" 2>&1)" || rc=$?
   echo "$out" | grep -q "LLEGO_AL_FINAL_DEL_BLOQUE" && llego="si" || llego="no"
+  echo "$out" | grep -q "NO VERIFICADO" && aviso="si" || aviso="no"
   args=""; [ -f "$sandbox/py-args" ] && args="$(cat "$sandbox/py-args")"
   rm -rf "$sandbox"
   echo "$llego"
-  [ -n "$rc_poller" ] && echo "ARGS: $args"
+  if [ -n "$rc_poller" ]; then echo "ARGS: $args"; echo "AVISO: $aviso"; fi
   return 0
 }
 
@@ -157,6 +158,29 @@ else
   echo "  ROJO: el worker no pollea y el bloque llegó al final igual -- is-active verde bastaba (el bug que esto cierra)"
   fallos=$((fallos+1))
 fi
+
+# Los estados del check que NO son un hallazgo del worker (ver worker_pollers_check.py). Un vacío del
+# instrumento no es un hallazgo -- pero tampoco es un pase, y las dos mitades se prueban:
+echo "-- caso 5: Temporal está arriba pero NO contestó la pregunta (rc=2, sin_api) -> SIGUE, EN VOZ ALTA"
+res5="$(correr_caso "poller-sin-api" "" 2)"
+if [ "$(echo "$res5" | head -n1)" = "si" ] && [ "$(echo "$res5" | sed -n 's/^AVISO: //p')" = "si" ]; then
+  echo "  PASA: sin_api no aborta un deploy sano Y dice NO VERIFICADO"
+else
+  echo "  ROJO: rc=2 debía seguir con aviso «NO VERIFICADO» (llegó=$(echo "$res5" | head -n1), aviso=$(echo "$res5" | sed -n 's/^AVISO: //p'))"
+  fallos=$((fallos+1))
+fi
+
+for par in "3:inalcanzable (sin Temporal el worker tampoco pollea)" "137:el check murió por señal (no es un resultado declarado)"; do
+  rc_p="${par%%:*}"; que="${par#*:}"
+  echo "-- caso 6: $que (rc=$rc_p) -> DEBE abortar"
+  res6="$(correr_caso "poller-rc$rc_p" "" "$rc_p")"
+  if [ "$(echo "$res6" | head -n1)" = "no" ]; then
+    echo "  PASA: rc=$rc_p aborta el deploy"
+  else
+    echo "  ROJO: rc=$rc_p no abortó -- falla ABIERTO justo en el caso de activación del guard"
+    fallos=$((fallos+1))
+  fi
+done
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "OK: GUARDSOLOWEB — is-active de los workers discrimina y puede abortar el deploy"; exit 0; fi
