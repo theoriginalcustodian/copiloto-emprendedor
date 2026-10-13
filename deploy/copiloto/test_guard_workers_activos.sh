@@ -23,10 +23,19 @@ extraer_bloque() {
   sed -n '/^SHA_GUARDA="\$SHA"$/,/^systemctl is-active "\$WORKER_SOPORTE_UNIT"$/p' "$1"
 }
 
-# correr_caso <nombre> <worker_caido:0|1>
+# Cabecera REAL del heredoc remoto de [5/7]: la línea que sigue a `<<'REMOTE_UNITS'`. Hoy es
+# `set -euo pipefail`, y es lo ÚNICO que hace que un `systemctl is-active` fallido ABORTE el ssh (sin
+# él, el rc del ssh es el del último comando: un worker principal caído con el de soporte activo
+# daría 0). El test la copia tal cual en vez de inyectar su propio `set -e`: antes el wrapper lo ponía
+# él mismo, así que borrar el `set -e` del heredoc real no ponía nada en rojo (mutante G3, 2026-10-13).
+extraer_cabecera() {
+  awk '/<<.REMOTE_UNITS.[[:space:]]*$/{getline; print; exit}' "$1" | tr -d '\r'
+}
+
+# correr_caso <nombre> <unit_caido: "" | y | z>   (y = worker principal, z = worker de soporte)
 correr_caso() {
-  local nombre="$1" worker_caido="$2"
-  local sandbox bin bloque script rc
+  local nombre="$1" unit_caido="$2"
+  local sandbox bin bloque cabecera script rc
   sandbox="$(mktemp -d)"; bin="$sandbox/bin"; mkdir -p "$bin"
 
   cat > "$bin/curl" <<STUB
@@ -41,7 +50,7 @@ STUB
 #!/usr/bin/env bash
 if [ "\$1" = "is-active" ]; then
   unit="\$2"
-  if [ "$worker_caido" = "1" ] && [ "\$unit" = "y" ]; then echo "failed"; exit 3; fi
+  if [ -n "$unit_caido" ] && [ "\$unit" = "$unit_caido" ]; then echo "failed"; exit 3; fi
   echo "active"; exit 0
 fi
 exit 0
@@ -50,12 +59,14 @@ STUB
 
   bloque="$(extraer_bloque "$DEPLOY")"
   if [ -z "$bloque" ]; then echo "  [$nombre] ERROR: no encontré el bloque del guard+is-active en $DEPLOY"; rm -rf "$sandbox"; return 2; fi
+  cabecera="$(extraer_cabecera "$DEPLOY")"
+  if [ -z "$cabecera" ]; then echo "  [$nombre] ERROR: no encontré el heredoc REMOTE_UNITS en $DEPLOY"; rm -rf "$sandbox"; return 2; fi
 
   # Mismo motivo que PIPELINEORDEN: correr como SCRIPT (bash <archivo>), no `eval` de una variable
   # con heredocs/loops embebidos -- eval no propaga el exit code de forma confiable ahí.
   script="$sandbox/bloque.sh"
   {
-    echo 'set -euo pipefail'
+    printf '%s\n' "$cabecera"
     echo "SHA=\"$SHA\"; PORT=8099; WEB_UNIT=\"x\"; WORKER_UNIT=\"y\"; WORKER_SOPORTE_UNIT=\"z\"; CANARIO_FALLA=\"\""
     printf '%s\n' "$bloque"
     echo 'echo "LLEGO_AL_FINAL_DEL_BLOQUE"'
@@ -73,7 +84,7 @@ echo "== GUARDSOLOWEB: $DEPLOY"
 fallos=0
 
 echo "-- caso 1 (control positivo): los tres units activos -> el bloque llega al final"
-llego1="$(correr_caso "sano" "0")"
+llego1="$(correr_caso "sano" "")"
 if [ "$llego1" = "si" ]; then
   echo "  ok   caso sano: el guard deja pasar"
 else
@@ -81,14 +92,19 @@ else
   fallos=$((fallos+1))
 fi
 
-echo "-- caso 2 (el que importa): worker_soporte CAÍDO, /healthz sano -> el guard DEBE abortar"
-llego2="$(correr_caso "worker-caido" "1")"
-if [ "$llego2" = "no" ]; then
-  echo "  PASA: GUARDSOLOWEB — un worker caído aborta el deploy aunque /healthz esté sano"
-else
-  echo "  ROJO: el worker cayó y el bloque llegó al final igual -- el gate es cosmético (el bug que esto cierra)"
-  fallos=$((fallos+1))
-fi
+# Los DOS workers, cada uno solo: el principal NO es el último comando del bloque, así que sólo aborta
+# si el `set -e` de la cabecera real está; el de soporte sí es el último (su rc llega al ssh igual).
+for par in "worker principal:y" "worker de soporte:z"; do
+  etiqueta="${par%%:*}"; unit="${par##*:}"
+  echo "-- caso 2 (el que importa): $etiqueta CAÍDO, /healthz sano -> el guard DEBE abortar"
+  llego2="$(correr_caso "caido-$unit" "$unit")"
+  if [ "$llego2" = "no" ]; then
+    echo "  PASA: GUARDSOLOWEB — $etiqueta caído aborta el deploy aunque /healthz esté sano"
+  else
+    echo "  ROJO: $etiqueta cayó y el bloque llegó al final igual -- el gate es cosmético (el bug que esto cierra)"
+    fallos=$((fallos+1))
+  fi
+done
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "OK: GUARDSOLOWEB — is-active de los workers discrimina y puede abortar el deploy"; exit 0; fi

@@ -56,5 +56,11 @@ else
   echo "FAIL worktree sin .env.e2e: dio '$got'"; fallos=$((fallos+1))
 fi
 
+# Explícito e inexistente CON un fallback que SÍ existiría (el de arriba, mismo $TMP/wt): tampoco cae a
+# él. El caso de la sección anterior usa `sin-env`, sin fallback alguno, y daba rc=1 igual aunque se
+# borrara el `return 1` de la rama (mutante D5, 2026-10-13): no probaba "sin fallback silencioso".
+chk "UC_ENV_E2E_PATH inexistente con .env.e2e disponible en el checkout común: rc=1 (no cae al fallback)" 1 \
+  env UC_ENV_E2E_PATH="$TMP/no-existe.env" bash -c "source '$G'; uc_durabilidad_env_e2e '$TMP/wt'"
+
 rm -rf "$TMP"; rm -f "$OUT"
 [ "$fallos" -eq 0 ] && echo "==> ✅ durabilidad-gate: todos los controles OK" || { echo "==> ❌ $fallos fallo(s)"; exit 1; }
