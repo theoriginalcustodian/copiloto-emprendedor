@@ -128,7 +128,6 @@
 
 ### Delegación, contexto y herramientas
 - [🖥️🚫 Sub-agentes: CERO — agotan la RAM del operador](subagentes-van-headless-no-inline-en-la-terminal.md) — 13/10 revocó headless. Script-first.
-- [Orquestación de waves - parent valida + commitea](orquestacion-waves-parent-valida.md) - verificá el estado, no el reporte.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) - sin cargar completo ⇒ duplicados.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
