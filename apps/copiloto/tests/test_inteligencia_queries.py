@@ -71,15 +71,15 @@ def _dia_del_negocio(dias_atras: int = 0) -> datetime.date:
 
 
 def _comprobante(conn_de_tenant, cid, total, *, nro=1, estado="emitida", dias_atras=0,
-                 receptor="Cliente Uno"):
+                 receptor="Cliente Uno", tipo_cbte=6):
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
         cur.execute("""INSERT INTO uc_factory.afip_comprobantes
                        (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae,
                         fecha_emision, total, estado, receptor_nombre)
-                       VALUES (%s,'30712345678',6,1,%s,'CAE-TEST',
+                       VALUES (%s,'30712345678',%s,1,%s,'CAE-TEST',
                                %s, %s, %s, %s) RETURNING id""",
-                    (cid, nro, _dia_del_negocio(dias_atras), total, estado, receptor))
+                    (cid, tipo_cbte, nro, _dia_del_negocio(dias_atras), total, estado, receptor))
         return cur.fetchone()[0]
 
 
@@ -373,17 +373,23 @@ def test_aislamiento_A_no_ve_los_ingresos_de_B(conn_de_tenant, tenants):
 # ── gráfico 1: facturación por mes ────────────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_facturacion_por_mes_suma_y_cuenta_solo_lo_no_anulado_con_cae(conn_de_tenant, tenants):
+def test_facturacion_por_mes_neta_la_anulada_con_su_nota_de_credito(conn_de_tenant, tenants):
+    """F1.4: «facturado» es el predicado único de `afip_rules` — con CAE, la NC resta y la factura
+    anulada NO se excluye (su NC la compensa). Este test decía «la anulada no cuenta»: con la NC que en
+    producción siempre acompaña a una anulada, excluir la factura Y restar la NC restaba dos veces.
+    Acá el par anulada 5000 + NC 5000 netea 0 y el mes da 3000; `cantidad` cuenta las FILAS que el
+    detalle lista (4), para que tocar la barra muestre tantas filas como dice."""
     a, _ = tenants
     _comprobante(conn_de_tenant, a, "1000.00", nro=1)
     _comprobante(conn_de_tenant, a, "2000.00", nro=2)
-    _comprobante(conn_de_tenant, a, "5000.00", nro=3, estado="anulada")   # no cuenta
+    _comprobante(conn_de_tenant, a, "5000.00", nro=3, estado="anulada")
+    _comprobante(conn_de_tenant, a, "5000.00", nro=4, estado="nota_credito", tipo_cbte=8)
     g = InteligenciaQueries(conn_de_tenant(a), a).facturacion_por_mes()
     assert len(g["serie"]) == 6
     assert g["tipo"] == "barras"
     ultimo = g["serie"][-1]
     assert Decimal(ultimo["total"]) == Decimal("3000.00")
-    assert ultimo["cantidad"] == 2
+    assert ultimo["cantidad"] == 4
 
 
 @necesita_pg

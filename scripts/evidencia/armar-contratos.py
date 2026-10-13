@@ -59,11 +59,25 @@ NECESITA_BACKEND = {
     "clientes": "el tipo de cable `Cliente` (`api/clientes.ts:31`) no trae monto vendido "
                 "ni cantidad de comprobantes: la columna derecha del proto no se puede "
                 "pintar con lo que hoy manda el backend",
-    "cobro-voz": "falta saber si los chips WhatsApp/mail llegan por `choices`; y «vence en "
-                 "7 dias» el backend no lo manda",
+    # 2026-10-13: la 1a mitad quedo REFUTADA por medicion del backend, no "falta saber" --
+    # dejarla como pregunta abierta al lado de su respuesta es el defecto de documentar el
+    # cambio sin matar el enunciado viejo. Los chips NO llegan por `choices` (lleva solo
+    # tokens de confirmacion, conversation_workflow.py:766, y el cierre con artifact va
+    # choices=None); y el link NO vence (preference sin expires, mercadopago_gateway.py:86-96).
+    "cobro-voz": "RESUELTO 2026-10-13 -- los chips los deriva el CLIENTE de "
+                 "`artifact.kind == \"payment_link\"`: por `choices` no llegan nunca. Y "
+                 "«vence en 7 dias» queda PROHIBIDO: la preference se arma sin `expires`, "
+                 "asi que seria FALSO. Si el operador decide que venza, baja contrato con "
+                 "`artifact.data.expira_at`",
     "caida": "el texto de la tarjeta lo genera `mi_dia_detector.py:253` (regla "
-             "`conexion_caida`), no la UI",
-    "fact-voz": "el texto de la respuesta lo redacta el backend",
+             "`conexion_caida`), no la UI -- y el copy ya esta DECIDIDO (2026-10-13): gana "
+             "«Reconectala y sigo»; «Te aviso apenas vuelva» promete un push que se mide "
+             "en 0. El kv de hora entra como `datos.desde` opcional, y es PROHIBIDO "
+             "rellenarlo con `creada_en`",
+    "fact-voz": "el texto de la respuesta lo redacta el backend -- y el prototipo quedo "
+                "SUBORDINADO al contrato del hito 9 (2026-10-13): no se pregunta el tipo de "
+                "comprobante (lo resuelve `determinar_tipo_comprobante`) ni se preguntan dos "
+                "campos juntos en el chat; los faltantes viven en la card HITL",
     "onb-cumplida": "el insight sale de `textoDelInsight` (`core api/onboarding.ts:87`), "
                     "no de la pantalla",
     "hitl": "el puente tarjeta->chat necesita que el backend mande la card de accion con "

@@ -51,14 +51,19 @@ REF="${UC_VIGIA_REF:-origin/main}"
 # cualquier dirname en el directorio que el atacante quiera.
 #    → memoria: aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname
 INSTRUMENTO="${1:-}"; shift || true
+# mi-buzon.sh entra el 2026-10-13: el paso 1 del vigia lo invoca con path RELATIVO y el archivo
+# NO existe en el checkout compartido, asi que ese paso caia al filtro `find` a mano, que medido
+# el 2026-10-12 dejaba 7 de 12 mensajes invisibles. Es un LECTOR del buzon (read-only) y comparte
+# `me_interpela()` con el gate: leerlo del pin es lo que lo hace COINCIDIR con el gate, no divergir.
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
-  escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh) ;;
+  escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
+  mi-buzon.sh) ;;
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
     printf '%s\n' "              foco-check.sh escaladores-buzon.sh archivar-buzon.sh" >&2
-    printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh" >&2
+    printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh mi-buzon.sh" >&2
     exit 2 ;;
 esac
 

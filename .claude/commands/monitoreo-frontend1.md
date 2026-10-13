@@ -36,7 +36,7 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    así que **no es CANON 9**. Tu pin propio `C:/gfw-src/_frontend1-vigia` sigue sirviendo si preferís
    seguir usandolo a mano; el guard `0.bis VERSIÓN DEL INSTRUMENTO` (#944) corre adentro de
    `vigilancia-check.sh` y detecta por sí solo si el árbol que lo ejecuta quedó atrás.
-6. **Buzón** — `bash scripts/mi-buzon.sh frontend1 --todo` (ya incluye el broadcast `-a-frontend_` de las dos
+6. **Buzón** — `bash scripts/vigia.sh mi-buzon.sh frontend1 --todo` (ya incluye el broadcast `-a-frontend_` de las dos
    sesiones de UI, y mira `en-curso/` y `cerrado/<hoy>/`,
    donde los `avance_`/`dato_` nacen archivados: ahí viven las señales que destraban).
    Contá cuántos te interpelan sin acusar.
@@ -95,7 +95,7 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
    (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
    propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
 
-1. NOVEDADES — `bash scripts/mi-buzon.sh frontend1 --todo`. Mira `abierto/`, `en-curso/` y
+1. NOVEDADES — `bash scripts/vigia.sh mi-buzon.sh frontend1 --todo`. Mira `abierto/`, `en-curso/` y
    `cerrado/<hoy>/` (los `avance_` y `dato_` nacen archivados: ahí viven las señales que
    DESTRABAN trabajo), descarta lo que vos emitiste, y ordena lo más viejo primero — que es
    lo único que urge.

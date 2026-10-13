@@ -69,3 +69,40 @@ los repositorios»*) — detalle completo en [[gates-mecanicos-de-eficiencia-scr
 excepción documentada — interactividad mid-flight, `Workflow` tool, o calibrar un prompt nuevo) ·
 `ejecutar-con-eficiencia.md` Pilar 0 (no Pilar 2 — es el canal que reemplaza a 1-5, no uno más de la
 lista).
+
+
+---
+
+## 🔁 Refuerzo 2026-10-13 — la orden se REVOCÓ: ahora es CERO sub-agentes, y el freno es la RAM LOCAL
+
+**Textual del operador, el 2026-10-13:** *«no uses sub agentes headless porque agotan la memoria y se
+cuelga vs code»*. Media hora antes había dicho *«no mandes 15 sub agentes...maximo 4 por favor»*.
+**Vale la última: cero.** Ni `claude -p`, ni el `Agent` tool.
+
+**Qué cambió respecto de todo lo de arriba.** Esta entrada resolvía *dónde* corre el sub-agente
+(headless, fuera de la terminal) y descartaba el freno equivocado (la tarifa API, que no existe bajo
+OAuth). Las dos cosas siguen siendo verdad — y **ninguna de las dos era el límite real**. El límite
+es la **RAM de la máquina del operador**: 15 procesos `claude -p` en paralelo le cuelgan el VS Code
+en el que viven las cuatro sesiones. Sacar al sub-agente de la terminal lo volvió invisible, no
+gratis: lo que molestaba se mudó del renglón de la terminal al administrador de memoria, y por eso
+la solución de julio parecía haber cerrado el tema.
+
+**La forma del error, que es lo reutilizable:** medí el costo en el eje que la entrada ya nombraba
+(tokens, tarifa, ruido visual) y declaré «sin freno conocido para este caso». El freno vivía en un
+eje que nunca medí — y era el del hardware del operador, no el de la cuenta. Un recurso **local y
+compartido** (RAM, disco, el device, el checkout) no aparece en ninguna factura y no tiene quien lo
+reporte: el proceso que lo agota no falla, cuelga a los demás. Antes de escalar N procesos
+paralelos, preguntá *«¿qué recurso local comparten, y quién avisa cuando se acaba?»* — si la
+respuesta es «nadie», el límite no es el presupuesto, es el hardware, y hay que fijarlo a mano.
+
+**Qué se hace en su lugar** — es lo que CANON 4 pone PRIMERO, antes de delegar:
+- **Un script idempotente > N agentes.** Un barrido de lectura mecánica (recorrer una tabla, abrir
+  cada `path:línea`, emitir un reporte por fila) es UN proceso, reproducible, y es **mejor
+  evidencia** que el reporte de un agente, que es autoevaluación (CANON 7).
+- Después, secuencial, agrupando por archivo para no releer el mismo módulo dos veces.
+
+**Costo pagado:** tres contratos del buzón y un `dato_` de padrón salieron con la instrucción de
+despachar headless; una sesión alcanzó a lanzar 15 procesos antes de la contraorden. Corregidos con
+un reemplazo idempotente de la sección (`🤖 Despachá sub-agentes HEADLESS` → `🚫 CERO SUB-AGENTES`)
+y control que distingue la **instrucción** de la **prohibición** — grepear `claude -p` daba falso
+rojo porque la prohibición también lo nombra. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
