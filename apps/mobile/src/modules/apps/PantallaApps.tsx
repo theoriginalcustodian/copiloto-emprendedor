@@ -108,6 +108,24 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
   mercadopago: 'Vas a dejar de poder generar links de cobro desde el chat.',
 };
 
+/** Servicios que NO se piden por chat: trabajan solos de fondo (index.html:2334, «Trabaja sola, de
+ *  fondo»). Hoy sólo Drive — archiva las facturas y «no se usa por chat». */
+const SERVICIOS_DE_FONDO = new Set(['googledrive']);
+
+/** Los dos grupos del prototipo, sin el que quede vacío (no se pinta un rótulo sin filas). */
+function gruposDe(servicios: ServicioCatalogo[]) {
+  return [
+    { id: 'chat', rotulo: 'Para pedirle por chat', items: servicios.filter((s) => !SERVICIOS_DE_FONDO.has(s.key)) },
+    { id: 'fondo', rotulo: 'Trabaja sola, de fondo', items: servicios.filter((s) => SERVICIOS_DE_FONDO.has(s.key)) },
+  ].filter((g) => g.items.length > 0);
+}
+
+/** «4 conectadas de 6» — el contador del encabezado (estado-pag del prototipo). */
+function textoConectadas(servicios: ServicioCatalogo[]): string {
+  const n = servicios.filter((s) => s.conectado).length;
+  return `${n} ${n === 1 ? 'conectada' : 'conectadas'} de ${servicios.length}`;
+}
+
 export function PantallaApps() {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoCatalogo>('cargando');
@@ -216,7 +234,7 @@ export function PantallaApps() {
   return (
     // Mismo ícono que el tile de entrada en `EscritorioFunciones` ('folder') — ver docstring de
     // `MarcoGlass`: entrar por un ícono y llegar a otro desorienta.
-    <MarcoGlass titulo="Apps" icono="appsConectadas" testID="pantalla-apps">
+    <MarcoGlass titulo="Apps conectadas" icono="appsConectadas" testID="pantalla-apps">
       <ScrollView
         // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
         // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
@@ -230,9 +248,15 @@ export function PantallaApps() {
           testID="apps-descripcion"
           style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, marginBottom: tema.espacio.sm }}
         >
-          Lo que el copiloto puede hacer por vos. Conectá las que uses y se lo pedís en el chat, en
-          lenguaje natural.
+          Cada app que conectás le da a Odobi una capacidad concreta. Se la pedís por chat, sin
+          nombrarla.
         </Text>
+
+        {estado === 'ok' && (
+          <Text testID="apps-estado" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>
+            {textoConectadas(servicios)}
+          </Text>
+        )}
 
         {estado === 'cargando' && <ActivityIndicator testID="apps-cargando" color={tema.color.acento} />}
 
@@ -255,7 +279,15 @@ export function PantallaApps() {
         )}
 
         {estado === 'ok' &&
-          servicios.map((s) => (
+          gruposDe(servicios).map((g) => (
+            <View key={g.id} style={{ gap: tema.espacio.sm }}>
+              <Text
+                testID={`apps-grupo-${g.id}`}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold, marginTop: tema.espacio.sm }}
+              >
+                {g.rotulo}
+              </Text>
+              {g.items.map((s) => (
             <Row key={s.key} testID={`app-${s.key}`}>
               <View style={{ gap: tema.espacio.sm }}>
                 <View style={[styles.fila, { gap: tema.espacio.sm }]}>
@@ -372,6 +404,8 @@ export function PantallaApps() {
                 )}
               </View>
             </Row>
+              ))}
+            </View>
           ))}
 
         {estado === 'ok' && (

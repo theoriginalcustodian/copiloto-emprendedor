@@ -4757,6 +4757,46 @@
       "id": "account-screen-salir-grupo",
       "motivo": "BL-J11: web necesita un wrapper <div data-testid> propio para agrupar 'Cerrar sesion' porque sus filas son <div>/<button> planos dentro de un unico tile generico sin limite de componente. Mobile ya cumple el MISMO criterio (fila en su propio grupo, separada por estructura) con un componente propio, FilaBotones (testID cuenta-salir-botones, PantallaCuenta.tsx:101-110) que ya actua como el contenedor -- no hace falta un wrapper adicional con este id especifico. No es drift: cada plataforma resuelve la misma casilla con su propio mecanismo de agrupacion.",
       "pantalla": "modules/account"
+    },
+    "modules/ajustes::skin-card-sistema": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). El id ya existia como skin-card-${nombre}; al ser fila propia se escribe literal y el regex del gate lo ve.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skin-card-sistema-activo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema-activo",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Marca ✓ Activo de la fila; mismo id de antes, ahora literal.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skins-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skins-nota",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Nota al pie del prototipo (index.html:2410): el tema cambia fondo y texto, no la marca.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/apps::apps-estado": {
+      "en": [
+        "apps/mobile/src/modules/apps/PantallaApps.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "apps-estado",
+      "motivo": "Mapeo `apps` (2026-10-13): contador «N conectadas de M» del encabezado (estado-pag, index.html:2338) en la pantalla nativa. La web lista integraciones en otro modulo y no lo muestra; paridad web diferida a frontend1/web, no es contenido faltante de mobile.",
+      "pantalla": "modules/apps"
     }
   }
 }

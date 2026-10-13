@@ -104,6 +104,47 @@ describe('PantallaApps', () => {
     expect(screen.queryByTestId('app-googledrive-conectada')).toBeNull();
   });
 
+  it('mapeo `apps`: contador «N conectadas de M» y dos grupos, con Drive en «Trabaja sola, de fondo»', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({
+      status: 'ok',
+      servicios: [
+        servicioMock({ key: 'gmail', nombre: 'Gmail', conectado: true }),
+        servicioMock({ key: 'googlesheets', nombre: 'Google Sheets', conectado: false }),
+        servicioMock({ key: 'googledrive', conectado: true }),
+      ],
+    });
+
+    await envolver();
+
+    await waitFor(() => expect(screen.getByTestId('apps-estado')).toBeTruthy());
+    expect(screen.getByTestId('apps-estado').props.children).toBe('2 conectadas de 3');
+    expect(screen.getByTestId('apps-grupo-chat').props.children).toBe('Para pedirle por chat');
+    expect(screen.getByTestId('apps-grupo-fondo').props.children).toBe('Trabaja sola, de fondo');
+    // Orden de pantalla: el grupo de fondo (Drive) va DESPUÉS de las apps de chat.
+    const ids: string[] = [];
+    const visitar = (n: any): void => {
+      if (!n || typeof n === 'string') return;
+      if (Array.isArray(n)) return n.forEach(visitar);
+      if (n.props?.testID) ids.push(n.props.testID);
+      visitar(n.children);
+    };
+    visitar(screen.toJSON());
+    expect(ids.indexOf('app-gmail')).toBeLessThan(ids.indexOf('apps-grupo-fondo'));
+    expect(ids.indexOf('apps-grupo-fondo')).toBeLessThan(ids.indexOf('app-googledrive'));
+  });
+
+  it('mapeo `apps` (control): sin ninguna app de fondo NO se pinta el rótulo del grupo vacío', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({
+      status: 'ok',
+      servicios: [servicioMock({ key: 'gmail', nombre: 'Gmail', conectado: true })],
+    });
+
+    await envolver();
+
+    await waitFor(() => expect(screen.getByTestId('apps-estado').props.children).toBe('1 conectada de 1'));
+    expect(screen.queryByTestId('apps-grupo-fondo')).toBeNull();
+  });
+
   /**
    * 🔴 El `connectPath` se usa TAL CUAL como lo mandó el backend. Reconstruirlo en el cliente
    * ("`/composio/connect?service=` + key") duplicaría una regla que ya tiene dueño — y se rompería
@@ -281,9 +322,9 @@ describe('PantallaApps', () => {
    * `MarcoGlass`, así que el título tiene que aparecer — pero UNA sola vez, nunca duplicado por el
    * contenido propio.
    */
-  it('el título "Apps" lo aporta el MarcoGlass propio, una sola vez', async () => {
+  it('el título "Apps conectadas" lo aporta el MarcoGlass propio, una sola vez', async () => {
     await envolver();
-    expect(screen.getByTestId('glass-titulo').props.children).toBe('Apps');
-    expect(screen.getAllByText('Apps')).toHaveLength(1);
+    expect(screen.getByTestId('glass-titulo').props.children).toBe('Apps conectadas');
+    expect(screen.getAllByText('Apps conectadas')).toHaveLength(1);
   });
 });
