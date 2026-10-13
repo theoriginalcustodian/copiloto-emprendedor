@@ -92,3 +92,39 @@ bash "$ROOT/scripts/ci/tests-coordinacion.sh" "$ROOT/deploy/copiloto" 'test_*.sh
 # control que el DoD de `DURABGATE` pedía wireado al gate (sin esto, el fail-open del armado de
 # durabilidad podía volver sin que ningún CI lo viera). Bash puro, sin red/ssh, corre en segundos.
 bash "$ROOT/scripts/test-durabilidad-gate.sh"
+
+# MAPEOSINGATE (2026-10-12). `scripts/evidencia/verificar-mapeo.py` y `armar-contratos.py` tenian
+# CERO invocadores en todo el arbol: el mapeo del criterio 3 y sus 54 contratos podian divergir
+# —una fila sin renglon, una marca `[ASSUMED_PENDING_VERIFY]` sin entrada en `BLOQUEADAS`, el doc
+# editado a mano— y ningun gate lo veia. Son python STDLIB sin red ni DB, asi que entran en `lint`
+# igual que los controles de deploy de arriba. El generador ya acepta destino por `argv[1]`
+# (`armar-contratos.py:50`): se regenera a un temporal y se COMPARA, en vez de agregarle un
+# `--check` que seria un segundo mecanismo para la misma pregunta.
+python "$ROOT/scripts/evidencia/verificar-mapeo.py"
+_contratos="$ROOT/docs/copiloto-emprendedor/2026-10-12-contratos-del-mapeo.md"
+_tmp_contratos="$(mktemp)"
+python "$ROOT/scripts/evidencia/armar-contratos.py" "$_tmp_contratos" >/dev/null
+# El veredicto se toma con --strip-trailing-cr: la pregunta del gate es "¿el CONTENIDO esta
+# regenerado?", no "¿coinciden los bytes de fin de linea?". Y el fin de linea NO es estable entre
+# plataformas: `.gitattributes` no cubre `*.md`, asi que el blob vive con LF y un checkout en
+# Windows con core.autocrlf=true lo deja con CRLF en el working tree. La primera version comparaba
+# crudo y el 2026-10-12 salio ROJO en CI (run 38326870125) por 107 CR, con CERO divergencia de
+# contenido: dos causas compartian un exit code y el mensaje elegia la que mandaba a regenerar un
+# doc que ya estaba regenerado. La diferencia de fin de linea se INFORMA, no se calla.
+if ! diff --strip-trailing-cr -q "$_tmp_contratos" "$_contratos" >/dev/null; then
+  echo "❌ los contratos del mapeo NO estan regenerados: el doc versionado difiere EN CONTENIDO de"
+  echo "   lo que produce armar-contratos.py desde el mapeo. Corré: python scripts/evidencia/armar-contratos.py"
+  echo "   (< = versionado · > = generado desde el mapeo)"
+  diff --strip-trailing-cr "$_contratos" "$_tmp_contratos" | head -60
+  rm -f "$_tmp_contratos"; exit 1
+fi
+if ! diff -q "$_tmp_contratos" "$_contratos" >/dev/null; then
+  # `tr -dc '\015'` y no "\r": al generar estas lineas desde python el escape atraveso una
+  # capa extra y quedo un CR REAL (0x0D) incrustado en el fuente del script — invisible al leerlo,
+  # y lo borra cualquier normalizacion de fin de linea. El octal es ASCII puro.
+  echo "ℹ️  contratos del mapeo: contenido IDENTICO, difiere sólo el fin de línea"
+  echo "    (versionado $(tr -dc '\015' < "$_contratos" | wc -c) CR · generado $(tr -dc '\015' < "$_tmp_contratos" | wc -c) CR)."
+  echo "    No es rojo: el generador emite LF y el checkout puede traer CRLF."
+fi
+rm -f "$_tmp_contratos"
+echo "✅ mapeo del criterio 3: 5 controles OK · contratos regenerados identicos al versionado"

@@ -764,3 +764,40 @@ verde no es del sujeto; y si el gesto/umbral lo elegí yo, el rojo tampoco.
 [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] ·
 [[instrumento-que-no-mira-nunca-falla]] ·
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+---
+
+## Refuerzo 2026-10-12 — escribí un verificador ad-hoc teniendo el canónico en el repo, y acusó al sujeto TRES veces
+
+Para acreditar las 54 filas del mapeo del criterio 3 escribí un verificador bash desde cero. Tres
+corridas, tres veredictos contra el documento, **los tres falsos**:
+
+| versión | veredicto | causa real |
+|---|---|---|
+| v1 | `32 verificadas · 22 con problema` | el doc abrevia el path tras darlo completo en la misma celda (`apps/mobile/src/modules/midia/PantallaMiDia.tsx:278 + midia/PortadaNegocio.tsx:29`); leí el sufijo como path entero |
+| v2 | `44 OK · 10 con problema` | resolví por sufijo exigiendo candidato **único**, y cada componente existe **dos veces** (`apps/copiloto-web/` y `apps/mobile/`) |
+| v3 | `54 OK · 0 con problema` | desambiguar con el prefijo que **la propia celda** ya declaró |
+
+Lo que destapó el engaño no fue el conteo: fue una **contradicción entre dos controles**. `vozchat`
+pasaba el control negativo (tiene path, no sale como NO EXISTE) y **fallaba** mi barrido. Dos
+instrumentos sobre el mismo sujeto con veredictos opuestos ⇒ el defecto es de un instrumento, no del
+sujeto.
+
+**Y el costo evitable:** el repo ya tenía `scripts/evidencia/verificar-mapeo.py`, y es **mejor** que
+el mío — compara contra el padrón de `criterio3.json` (54 ids), tiene control positivo de las 5
+filas a mano, control negativo de los 8 falsos negativos conocidos y un control de simetría de la
+marca. Mi script no medía el padrón: podía dar 54/54 sobre 54 filas equivocadas.
+
+**La regla que me faltaba:** CANON 3 (reutilizar antes de crear) **también aplica a los
+instrumentos**, y ahí muerde más fuerte — un instrumento ad-hoc no sólo duplica trabajo, **emite
+veredictos**, y un veredicto falso contra el sujeto es peor que no medir: parece hallazgo.
+
+**Cómo aplicarlo:**
+- Antes de escribir un verificador, `ls scripts/evidencia/` + `grep -rl` por el nombre del sujeto.
+  Si existe uno del repo, corrélo **primero**; el propio sirve como segunda opinión, no como fuente.
+- Un instrumento nuevo arranca midiendo **el formato real** del sujeto (10 líneas de `cat`), no su
+  formato supuesto.
+- Dos controles con veredictos opuestos sobre el mismo item: pará y auditá el instrumento, no el
+  sujeto. → [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]]
+- Un conteo propio sin padrón externo puede cuadrar perfecto sobre el universo equivocado.
+  → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[instrumento-que-no-mira-nunca-falla]]

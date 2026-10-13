@@ -121,6 +121,23 @@ def dod(i, fila):
             "enmienda fundada con su motivo escrito. Ninguna queda sin veredicto.")
 
 
+def aviso_bloqueo():
+    """El aviso de filas bloqueadas, DERIVADO de V.BLOQUEADAS (fuente unica: la misma
+    tabla que usa el control 5 del verificador). Antes estaba escrito a mano y nombraba
+    `esc`; al responderse la decision habria quedado afirmando un bloqueo inexistente, y al
+    aparecer otra fila bloqueada no habria vuelto solo. El caso CERO se IMPRIME en vez de
+    callarse: un silencio no se distingue de "no lo mire"."""
+    if not V.BLOQUEADAS:
+        return (u">\n> \u2705 **Cero filas bloqueadas por decisiones ajenas.** Ninguna fila"
+                u" espera una respuesta del operador. Derivado de `V.BLOQUEADAS`, que esta"
+                u" vacia: no es una afirmacion escrita a mano.")
+    cuerpo = u"\n".join(u"> - `%s` \u2014 bloqueada por: %s" % (k, V.BLOQUEADAS[k])
+                       for k in sorted(V.BLOQUEADAS))
+    return (u">\n> \u26a0\ufe0f **Lo que NO se implementa todavia** (%d fila(s), marcadas"
+            u" `[ASSUMED_PENDING_VERIFY]`): nada de estas filas se toca hasta la respuesta,"
+            u" ni la opcion recomendada.\n%s" % (len(V.BLOQUEADAS), cuerpo))
+
+
 CABECERA = u"""# Contratos del mapeo prototipo -> nativo — un renglon por fila
 
 > **Generado** por `scripts/evidencia/armar-contratos.py` desde
@@ -136,10 +153,7 @@ CABECERA = u"""# Contratos del mapeo prototipo -> nativo — un renglon por fila
 > `path:linea`) vive en el mapeo y **no se repite aca** — se cita. Dos copias del mismo dato
 > divergen, y gana la que circula.
 >
-> ⚠️ **Lo que NO se implementa todavia:** la fila `esc` depende del estado de reposo de las
-> 3 capas, que es decision del operador (`pedido_` del 2026-10-12, sin responder). Queda
-> `[ASSUMED_PENDING_VERIFY]`: nada de esa fila se toca hasta la respuesta, ni la opcion A
-> que recomende.
+{aviso_bloqueo}
 """
 
 PIE = u"""
@@ -184,7 +198,7 @@ def main():
     if not cuadra:
         return 1
 
-    out = [CABECERA]
+    out = [CABECERA.format(aviso_bloqueo=aviso_bloqueo())]
     nota = {
         "backend + nativa": "**Contrato primero**: endpoint, request, response y codigos "
                             "ANTES de que ningun lado implemente. Si para avanzar hay que "
@@ -214,10 +228,19 @@ def main():
     doc = "\n".join(out) + "\n"
     # tmp + replace: `open(..,"w")` TRUNCA al abrir, y una excepcion en el write deja 0 bytes.
     tmp = DEST.with_suffix(DEST.suffix + ".tmp")
-    with io.open(str(tmp), "w", encoding="utf-8", newline="\r\n") as fh:
+    # LF, NO CRLF. Hasta 2026-10-12 esto forzaba CRLF sin motivo, y el gate MAPEOSINGATE de
+    # `scripts/ci/lint.sh` salia ROJO en CI acusando "el doc NO esta regenerado": el blob
+    # versionado vive con LF (`.gitattributes` no cubre `*.md`, asi que git normaliza al
+    # commitear) y el generado nacia con CRLF -> 107 CR de diferencia, 214 lineas "distintas",
+    # CERO divergencia de contenido. Un gate que compara DOS CODIFICACIONES del mismo texto
+    # acusa al sujeto por un defecto del instrumento.
+    with io.open(str(tmp), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(doc)
     os.replace(str(tmp), str(DEST))
-    print("escrito: %s (%d bytes)" % (DEST, len(doc)))
+    # bytes REALES en disco: `len(doc)` cuenta CARACTERES y los acentos pesan 2 — reportaba
+    # 14873 para un archivo de 15012 bytes, y esa cifra se uso para comparar tamanos.
+    print("escrito: %s (%d bytes en disco, %d caracteres)"
+          % (DEST, os.path.getsize(str(DEST)), len(doc)))
     return 0
 
 

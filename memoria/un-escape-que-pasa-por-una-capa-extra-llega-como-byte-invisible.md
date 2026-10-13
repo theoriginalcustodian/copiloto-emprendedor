@@ -57,3 +57,37 @@ medición ([[un-control-positivo-con-esperado-falso-acusa-al-script]]).
 byte no está se declara **INVÁLIDO** en vez de absolver al guard. Un canario que no llegó a inyectar
 y un guard que funciona dan **el mismo verde** — es el caso exacto de
 [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
+
+## Refuerzo 2026-10-12 · la capa extra puede ser **el código que escribe el código**
+
+Hasta acá el caso era un byte de control que llegaba **de afuera** (un `` en un dato). Hoy me lo
+infligió mi propia herramienta de edición: generando líneas de un script bash **desde un script
+python**, escribí `tr -dc "\r"` esperando que quedara el literal de dos caracteres. Quedó un **CR
+real (0x0D) incrustado en el fuente del `.sh`**.
+
+Cómo se ve el defecto:
+
+```
+$ grep -n "tr -dc" scripts/ci/lint.sh
+123:  echo "    (versionado $(tr -dc "" < "$_contratos" | wc -c) CR ...
+                            ^^^^^^^^^^  el argumento se ve VACÍO
+$ sed -n '123p' scripts/ci/lint.sh | od -c
+0000040       "     "       <       "   $   _   c   o   n   t   r   a
+```
+
+Lo que lo hace peor que el caso original: **funcionaba**. `tr -dc "<CR>"` cuenta CR igual que
+`tr -dc '\015'`. Un test lo habría dado verde. El daño es que el fuente queda **ilegible** (`grep`
+muestra un argumento vacío, y un revisor lee «alguien se olvidó el patrón») y **frágil**: cualquier
+normalización de fin de línea — un `.gitattributes`, un `dos2unix`, el propio `core.autocrlf` — se
+come ese byte y cambia la semántica sin que nada falle. Un defecto que no da síntoma hasta que otra
+herramienta toca el archivo.
+
+**La defensa, más fuerte que contar capas:** cuando generes código que contiene escapes, **no
+escribas el backslash: construílo**. `B = chr(92)` y después `"'%s015'" % B`. Un `chr(92)` no lo puede
+colapsar ninguna capa intermedia. Y preferí el **octal ASCII** (`\015`) sobre `\r` en los scripts
+generados: es inmune a la normalización de fin de línea y legible en cualquier visor.
+
+**Y el control, que es de una línea:** después de generar, `od -c` o `cat -A` sobre las líneas
+escritas — nunca `cat` ni el visor, que es justo lo que borra la evidencia. Acá el `grep` mostró
+`tr -dc ""` y lo leí como «quedó vacío»; el `od -c` mostró el ``. Dos lecturas del mismo byte, y
+sólo una dice la verdad.
