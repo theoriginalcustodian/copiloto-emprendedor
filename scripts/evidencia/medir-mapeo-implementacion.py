@@ -210,14 +210,27 @@ def clasificar(ids, est):
     filas, huecos = {}, []
     for i, g in ids.items():
         e = est.get(i)
-        if g == "backend + nativa":
+        if g == "backend + nativa" and not (e and e["simbolos"]):
             # Su evidencia son los cierres del buzon (no versionado), no estos docs. Este script no
             # inventa un veredicto que no puede leer: lo declara fuera de SU corpus, con nombre.
+            #
+            # Pero FUERA no es una propiedad del GRUPO: es la consecuencia de que no haya evidencia
+            # versionada que leer. Si alguien versiona el veredicto de una de estas 7 filas, ENTRA y
+            # se mide como cualquier otra. Hasta el 2026-10-13 el `continue` estaba ANTES de mirar
+            # `e`, asi que el grupo quedaba fuera con doc o sin doc — y entonces el DoD que le baje
+            # a frontend1 («el medidor mueve `onb-cumplida` a medida») era INEJECUTABLE con
+            # cualquier documento: un criterio de cierre que depende de algo fuera de alcance no se
+            # cumple nunca. Lo midio ella contra `db318772`, con su doc presente y parseado, y el
+            # instrumento igual la dejaba afuera. Codificar la deuda `EVIDENCIABUZON` como regla
+            # permanente del padron habria vuelto incerrables esas 7 filas para siempre.
             filas[i] = (g, "FUERA-DE-ESTE-CORPUS", None)
             continue
         falta = (not e
                  or (g == "nativa-con-device" and "device" not in e)
-                 or (g == "nativa-sin-device" and not e["simbolos"]))
+                 # `backend + nativa` se evalua con la misma regla que `nativa-sin-device` (simbolos).
+                 # Nombrarlo acá, en vez de confiar en el guard de arriba, es lo que evita que un doc
+                 # sin simbolos caiga al `else` y salga ENMIENDA-FUNDADA por AUSENCIA de evidencia.
+                 or (g in ("nativa-sin-device", "backend + nativa") and not e["simbolos"]))
         if falta:
             huecos.append((g, i))
             filas[i] = (g, "SIN VEREDICTO", None)
