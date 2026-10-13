@@ -279,3 +279,30 @@ Sin el tercer caso el fix no se compara contra nada: es **exactamente** el falso
 `diff --strip-trailing-cr` y contá los CR de cada lado. Si el contenido es idéntico, el defecto es
 del comparador. Y en todo gate que compare texto generado contra texto versionado, declará **qué
 pregunta hace**: contenido o bytes. Las dos son válidas; mezclarlas es lo que no.
+
+## Refuerzo 2026-10-13 — la variante que no elige mensaje: una de las dos causas es MUDA
+
+Acá el caso era «dos causas, un exit code, y el mensaje elige una». La variante de hoy es peor: una de las
+dos causas **no imprime nada**.
+
+`scripts/no-ocio-check.sh` resolvía el padrón de sesiones con un `ls -d` sobre un glob de slugs, dentro de
+`$(...)`, con `2>/dev/null`, bajo `set -euo pipefail`. Si el glob no matchea, `ls` sale con **2**, el
+`2>/dev/null` se come el único texto que había, y el script **aborta en esa línea sin una sola línea de
+salida**. Y `2` es exactamente el código de la rama fail-closed del mismo script, que **sí** imprime.
+
+Resultado: el mismo `rc=2` significaba «rechacé por política» (con explicación) o «morí en la línea 37» (en
+silencio). El lector que ve `rc=2` y cero salida no concluye «murió»: concluye **«no tenía nada que decir»**
+— o sea, lo contrario. Es [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] con disfraz de prudencia.
+
+**Qué lo destapó:** corrí el instrumento como mandaba **mi propio broadcast** —desde el pin de `vigia.sh`,
+donde el `basename` del repo no es el del slug— y no dio nada. Un `bash -x` mostró la muerte en el `ls`.
+
+**El fix de raíz, no el `|| true` solo:** `|| true` evita el abort pero deja el silencio. Va `|| true`
+**más** una rama ruidosa con **código de salida propio** (acá `exit 4`) y el motivo en stderr.
+
+**Controles en las dos direcciones:** desde un pin imprime 4 líneas y sale **4**; con el basename real el
+glob matchea **8 slugs** y sigue su curso. Un código por causa ⇒ el lector no tiene que adivinar.
+
+**Deuda declarada:** el criterio de whitelist de `vigia.sh` pregunta «¿cambia lo que el instrumento MIDE
+según de dónde salga el archivo?», pero su grep (`BASH_SOURCE|show-toplevel|pytest|npm |jest|vitest`) **no
+puede ver** un `basename`+glob-de-slug. Este instrumento pasó un criterio incapaz de detectar su propia falla.

@@ -909,3 +909,26 @@ sobre el doc anterior acusaba `3`
 
 
 → [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-guard-se-satisface-con-su-propio-comentario]]
+
+## Refuerzo 2026-10-13 — medí la historia de `main` y la leí como la historia del BINARIO
+
+Pregunta: **¿hace falta rebuild del dev-client para probar el sprint mobile?** La traduje a: ¿hay commits que
+toquen superficie nativa **después** de que se instaló el binario? Medí sobre `main`: 8 commits a
+`apps/mobile`/`packages/core` posteriores al binario, **0** tocan superficie nativa; `app.json`,
+`package.json` y `eas.json` con último cambio el 2026-09-17, anterior al binario. Con controles: 3 de 6 paths
+no existen (es CNG) y los 3 reales tienen 5, 9 y 1 commits de historia, así que el «0» es medición y no silencio.
+
+**El sujeto estaba mal.** Frontend2 midió el otro lado: el binario **no salió de `main`**. Salió de
+`5e19949f` (11/10 17:22, 40 min antes de la instalación), que toca `apps/mobile/app.json`, **no está en main**
+y no tenía rama en `origin`. Mi «último cambio 2026-09-17» era cierto **de main** y falso del binario, que
+trae íconos adaptativos, splash con imagen y `android.permission.CAMERA` que main **no tiene**.
+
+**Lo peor es que el error no se ve en la conclusión.** «No hace falta rebuild» **sobrevive** —el binario tiene
+*más* superficie nativa que main, no menos— y por eso la medición mal apuntada se siente confirmada. Lo que se
+invierte es **el riesgo**: yo lo narré como «el binario está al día con main», y lo real es que **un build
+desde `main` hoy PIERDE** los 5 assets y el permiso de cámara.
+
+**La pregunta que lo hubiera cazado, y es una sola:** *«¿de qué commit salió el artefacto que estoy
+midiendo?»* — no «¿qué pasó en main desde entonces?». Para un binario eso es medible y barato: su
+`firstInstall` (11/10 17:53:50) acota la ventana, y el commit que toca config nativa **40 minutos antes** es el
+candidato obvio. Yo tomé `main` como sujeto porque es el default de todo lo demás que mido.

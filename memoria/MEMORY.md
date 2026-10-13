@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; mobile va al sprint siguiente con device/EAS). Cifra sin unidad = inutilizable.
+- **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; device habilitado 13-10: las 15 filas se miden ahora). Cifra sin unidad = inutilizable.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **✅ Sprint cerrado 08/10** (`DEC-14`, 7/7 sobre `92fd8a06`) · **§13 device sigue ABIERTO**. Detalle → HISTORIA.
@@ -17,7 +17,7 @@
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras - se cumplen, no se evalúan)
-- [Móvil/device pasa al SPRINT SIGUIENTE; este cierra sin device](device-tests-al-final-telefono-limpio.md) - 22-09; BACKEND prepara el device; crones off.
+- [🔓 LEVANTADA 13-10: device HABILITADO y con dev-client](device-tests-al-final-telefono-limpio.md) — cero rebuild; el binario va ADELANTE de main.
 
 - [Autorización PERMANENTE de merges/deploys - y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) - no repreguntes; sólo escalá lo MAYOR.
 - [Autónomo = ejecutar, no esperar un "dale"](ejecutar-autonomo-no-esperar-si-dale.md) - disparador cumplido ⇒ se ejecuta. Costó ~400 min de ocio.
