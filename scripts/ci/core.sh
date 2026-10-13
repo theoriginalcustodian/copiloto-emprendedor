@@ -8,5 +8,8 @@ cd "$ROOT"
 npm install --no-audit --no-fund
 
 cd "$ROOT/packages/core"
+# Este `tsc` TIPA los tests (`*.test.ts`): el tsconfig dejó de excluirlos el 2026-10-13 tras medir 154
+# errores de tipos ocultos (vitest transpila con esbuild y no tipa). Que siga mirándolos lo controla
+# `scripts/tests/test-tsc-mira-los-tests.sh` (denominador + error inyectado). No re-agregar un `exclude`.
 npx tsc --noEmit
 npx vitest run

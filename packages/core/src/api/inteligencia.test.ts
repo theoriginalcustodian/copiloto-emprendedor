@@ -90,7 +90,7 @@ describe('leerPortada — el camino bueno', () => {
     expect(res.portada.caja.variacionPct).toBeNull();
     expect(res.portada.mes.rentabilidad).toBe('64000.00');
     expect(res.portada.serieMensual.map((p) => p.mes)).toEqual(['2026-03', '2026-04']);
-    expect(res.portada.mejoresClientes[0].cliente).toBe('Panadería Los Tilos');
+    expect(res.portada.mejoresClientes[0]!.cliente).toBe('Panadería Los Tilos');
     expect(res.portada.porCobrar.vencido).toBe('12000.00');
     // La plata NUNCA sale como número: el float pierde precisión.
     expect(typeof res.portada.mes.ingresos).toBe('string');
@@ -248,7 +248,7 @@ describe('leerGraficoFacturacion — gráfico 1 (VIVO desde PR #69)', () => {
     expect(res.status).toBe('ok');
     if (res.status !== 'ok' || res.modo !== 'detalle') return;
     expect(res.mes).toBe('2026-07');
-    expect(res.filas[0].numero).toBe('0001-00000012');
+    expect(res.filas[0]!.numero).toBe('0001-00000012');
   });
 
   it('una fila del detalle SIN `id` se descarta — no hay a dónde navegar', async () => {
@@ -280,7 +280,7 @@ describe('leerGraficoEntroVsSalio — gráfico 2 (VIVO desde PR #69)', () => {
     const res = await leerGraficoEntroVsSalio();
     if (res.status !== 'ok' || res.modo !== 'serie') throw new Error('esperaba modo serie');
     expect(res.tipo).toBe('barras_enfrentadas');
-    expect(res.serie[0].entro).toBe('95000.00');
+    expect(res.serie[0]!.entro).toBe('95000.00');
   });
 
   it('`?detalle=<mes>:entro` distingue por `origen` — no por el string que se mandó', async () => {
@@ -296,7 +296,7 @@ describe('leerGraficoEntroVsSalio — gráfico 2 (VIVO desde PR #69)', () => {
     const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:entro' });
     expect(capturada!.path).toBe('/inteligencia/graficos/entro-vs-salio?detalle=2026-07%3Aentro');
     if (res.status !== 'ok' || res.modo !== 'detalle_entro') throw new Error('esperaba modo detalle_entro');
-    expect(res.filas[0].origen).toBe('mercadopago');
+    expect(res.filas[0]!.origen).toBe('mercadopago');
   });
 
   it('`?detalle=<mes>:salio` trae filas con `categoria`, no `origen`', async () => {
@@ -305,13 +305,13 @@ describe('leerGraficoEntroVsSalio — gráfico 2 (VIVO desde PR #69)', () => {
 
     const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:salio' });
     if (res.status !== 'ok' || res.modo !== 'detalle_salio') throw new Error('esperaba modo detalle_salio');
-    expect(res.filas[0].categoria).toBe('transporte');
+    expect(res.filas[0]!.categoria).toBe('transporte');
   });
 
   it('un `origen` desconocido queda en `null`, nunca se inventa uno de los tres válidos', async () => {
     responder = () => respuesta(200, { mes: '2026-07', filas: [{ id: 1, origen: 'otro-nuevo' }] });
     const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:entro' });
-    if (res.status === 'ok' && res.modo === 'detalle_entro') expect(res.filas[0].origen).toBeNull();
+    if (res.status === 'ok' && res.modo === 'detalle_entro') expect(res.filas[0]!.origen).toBeNull();
   });
 
   it('si la red explota degrada a `no_disponible`', async () => {
@@ -328,7 +328,7 @@ describe('leerGraficoCategorias — gráfico 3 (VIVO desde PR #69)', () => {
     const res = await leerGraficoCategorias();
     if (res.status !== 'ok' || res.modo !== 'serie') throw new Error('esperaba modo serie');
     expect(res.tipo).toBe('torta');
-    expect(res.serie[0].categoria).toBe('mercaderia');
+    expect(res.serie[0]!.categoria).toBe('mercaderia');
   });
 
   it('`?mes=` cambia el período; `?detalle=<categoria>` trae las filas de esa categoría', async () => {
@@ -342,7 +342,7 @@ describe('leerGraficoCategorias — gráfico 3 (VIVO desde PR #69)', () => {
     expect(capturada!.path).toBe('/inteligencia/graficos/categorias?mes=2026-06&detalle=transporte');
     if (res.status !== 'ok' || res.modo !== 'detalle') throw new Error('esperaba modo detalle');
     expect(res.categoria).toBe('transporte');
-    expect(res.filas[0].detalle).toBe('Nafta');
+    expect(res.filas[0]!.detalle).toBe('Nafta');
   });
 
   it('una categoría SIN nombre se descarta — un string abierto sigue necesitando una etiqueta', async () => {

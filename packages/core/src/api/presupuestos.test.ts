@@ -100,7 +100,7 @@ describe('presupuestos.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      const p = res.presupuestos[0];
+      const p = res.presupuestos[0]!;
       expect(p.id).toBe(12);
       expect(typeof p.id).toBe('number');
       // 🔴 El total NO se convierte a número en ningún punto del camino.
@@ -115,19 +115,19 @@ describe('presupuestos.ts', () => {
     it('no manda parámetros cuando no se piden', async () => {
       responder = () => respuesta(200, { presupuestos: [] });
       await listarPresupuestos();
-      expect(peticiones[0].path).toBe('/presupuestos');
+      expect(peticiones[0]!.path).toBe('/presupuestos');
     });
 
     it('pide el historial sólo cuando se piden los reemplazados', async () => {
       responder = () => respuesta(200, { presupuestos: [] });
       await listarPresupuestos({ limit: 20, incluirReemplazados: true });
-      expect(peticiones[0].path).toBe('/presupuestos?limit=20&incluir_reemplazados=true');
+      expect(peticiones[0]!.path).toBe('/presupuestos?limit=20&incluir_reemplazados=true');
     });
 
     it('omite incluir_reemplazados cuando es false — el default del backend es "sólo vigentes"', async () => {
       responder = () => respuesta(200, { presupuestos: [] });
       await listarPresupuestos({ incluirReemplazados: false });
-      expect(peticiones[0].path).toBe('/presupuestos');
+      expect(peticiones[0]!.path).toBe('/presupuestos');
     });
 
     it('una lista vacía es ok, NO un error ni un "no disponible"', async () => {
@@ -145,7 +145,7 @@ describe('presupuestos.ts', () => {
 
       expect(res.status).toBe('ok');
       // Sin esto toda card diría "0 ítems": el listado omite `items` por tamaño de respuesta.
-      if (res.status === 'ok') expect(res.presupuestos[0].cantidadItems).toBe(3);
+      if (res.status === 'ok') expect(res.presupuestos[0]!.cantidadItems).toBe(3);
     });
 
     it('🔴 un 200 con el HTML del SPA es "no desplegado", no una excepción de parseo', async () => {
@@ -182,8 +182,8 @@ describe('presupuestos.ts', () => {
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
       expect(res.presupuesto.items).toHaveLength(2);
-      expect(res.presupuesto.items[0].precioUnitario).toBe('30000.00');
-      expect(peticiones[0].path).toBe('/presupuestos/12');
+      expect(res.presupuesto.items[0]!.precioUnitario).toBe('30000.00');
+      expect(peticiones[0]!.path).toBe('/presupuestos/12');
     });
 
     it('🔴 el 404 es SEMÁNTICO ("no existe para este tenant"), no "no desplegado"', async () => {
@@ -211,7 +211,7 @@ describe('presupuestos.ts', () => {
         items: [{ descripcion: 'Mano de obra', cantidad: '1', precioUnitario: '30000' }],
       });
 
-      const body = peticiones[0].cuerpoJson as Record<string, unknown>;
+      const body = peticiones[0]!.cuerpoJson as Record<string, unknown>;
       expect(body.concepto).toBe('Instalación eléctrica');
       expect(body).not.toHaveProperty('total');
       expect(body.receptor).toEqual({ nombre: 'Juan Pérez', doc_tipo: 96, doc_nro: '20123456' });
@@ -228,7 +228,7 @@ describe('presupuestos.ts', () => {
         reemplazaA: 11,
       });
 
-      expect((peticiones[0].cuerpoJson as Record<string, unknown>).reemplaza_a).toBe(11);
+      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).reemplaza_a).toBe(11);
     });
 
     it('K-01: manda idem_key cuando se la da, y no la manda si no (cliente viejo = comportamiento de antes)', async () => {
@@ -238,8 +238,8 @@ describe('presupuestos.ts', () => {
       await crearPresupuesto({ ...base, idemKey: 'c3f1e2a0-0000-4000-8000-000000000001' });
       await crearPresupuesto(base);
 
-      expect((peticiones[0].cuerpoJson as Record<string, unknown>).idem_key).toBe('c3f1e2a0-0000-4000-8000-000000000001');
-      expect(peticiones[1].cuerpoJson as Record<string, unknown>).not.toHaveProperty('idem_key');
+      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).idem_key).toBe('c3f1e2a0-0000-4000-8000-000000000001');
+      expect(peticiones[1]!.cuerpoJson as Record<string, unknown>).not.toHaveProperty('idem_key');
     });
 
     it('K-07: expone `sugerencias.mandarPorMail` cuando el backend trae el Doc', async () => {
@@ -314,8 +314,8 @@ describe('presupuestos.ts', () => {
       const res = await facturarPresupuesto(12);
 
       expect(res).toEqual({ status: 'ok', facturaId: 'presu-12', borradorNuevo: true });
-      expect(peticiones[0].path).toBe('/presupuestos/12/facturar');
-      expect(peticiones[0].metodo).toBe('POST');
+      expect(peticiones[0]!.path).toBe('/presupuestos/12/facturar');
+      expect(peticiones[0]!.metodo).toBe('POST');
     });
 
     it('🔴 el segundo toque devuelve EL MISMO id con borradorNuevo:false — facturar es idempotente', async () => {

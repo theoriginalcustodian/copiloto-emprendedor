@@ -7,10 +7,12 @@ import {
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  leerRecibo,
   leerSugerenciaArmarFactura,
   separadoresDeDia,
 } from '@copiloto/core';
 
+import { Recibo } from '../../design-system';
 import { Marca } from '../../design-system/Marca';
 import { Bubble } from './Bubble';
 import { ChipArmarFactura } from './ChipArmarFactura';
@@ -304,9 +306,22 @@ function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMens
     return <HitlCard {...hitlProps} />;
   }
 
+  // C-D3 — `recibo`: la acción confirmada se EJECUTÓ bien. La card final no lleva `kind` ni `choices`, así
+  // que ni el gate ni `ArtifactView` la ven. 🔴 La señal es la presencia de `card.recibo` — no
+  // `confirmed_tool.status === 'ok'` ni el texto: sin `recibo` no se pinta «Mandado a…».
+  const recibo = leerRecibo(message.card);
+
   return (
     <div className="chat-message-group">
       <Bubble role="assistant" text={message.text} card={message.card} />
+      {recibo && (
+        <Recibo
+          testId="recibo-ejecutado"
+          tono="exito"
+          titulo={recibo.titulo}
+          lineas={recibo.meta != null ? [{ etiqueta: 'HORA', valor: recibo.meta }] : undefined}
+        />
+      )}
       {kind === 'choices' && message.choices && (
         <DisambiguationChips choices={message.choices} onSelect={onChoice} />
       )}

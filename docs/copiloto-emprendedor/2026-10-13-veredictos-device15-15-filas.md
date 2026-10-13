@@ -284,7 +284,7 @@ contador**; viewport de `midia-lista` ≈120 dp con 2 avisos activos.
 | # | hallazgo | dónde | gravedad |
 |---|---|---|---|
 | H1 | **`esc` incumple la decisión A del operador**: el escritorio no se cierra al bajar el chat, y su pestaña de vuelta queda tapada | fila 8 | alta (decisión firmada) |
-| H2 | **Crash nativo en arranque en frío logged-out**: `SIGSEGV` en `libreactnative` (`MountingCoordinator::pullTransaction`, hilo `mqt_v_js`) a los ~20 s; **1 de 2** corridas, no reprodujo en la segunda | arranque | alta (no atribuido) |
+| H2 | **Crash nativo en arranque en frío logged-out**: `SIGSEGV` en `libreactnative` (`MountingCoordinator::pullTransaction`, hilo `mqt_v_js`) entre ~20 y ~36 s; **1 de 2** en la medición original → **reproducido 2 de 24 con `screencap` concurrente, 0 de 12 sin él** (sección «H2 — CRASHFRIO» abajo). Causa **del binario, no del JS**: stack idéntico al de react-native-screens#4654, fix upstream en `react-native-screens` ≥ 4.28.0 (#4413), **no verificado en nuestro binario** | arranque | alta (binario: requiere rebuild EAS → escalada a planificación) |
 | H3 | El chat arranca **arriba** con hint «ESCRIBILE A ODOBI» pese a `arrancaAbajo` (3/3 en la ventana previa) | filas 1, 4 | media |
 | H4 | El refresh de Inteligencia **se dispara durante el arrastre**, antes del UP | fila 2 | media |
 | H5 | «Reconectar» del banner es una píldora **inerte** (`clickable=false`) | fila 15 | media |
@@ -297,6 +297,78 @@ contador**; viewport de `midia-lista` ≈120 dp con 2 avisos activos.
 
 **Lo que este documento no acredita:** no implementa ningún fix. Los DESVÍO reales se reportan a planificación
 para decidir cuáles se baja a código y cuáles son enmienda (el prototipo es una hoja de estados, no un spec).
+
+## H2 — CRASHFRIO: reproducción, stack y atribución (2026-10-13, tarde)
+
+**Qué se midió.** Mismo device (`RF8T318RN9T`), JS servido por Metro del SHA `2610bb6b` (el worktree `48d26a59`
+tiene `apps/` idéntico: `git diff --stat 2610bb6b HEAD -- apps` vacío), Metro con `EXPO_PUBLIC_API_BASE` y `--clear`,
+app **logged-out** tras cierre voluntario (reveal «volver»), animaciones del sistema normales. Cada arranque:
+`logcat -c` → `am force-stop` → `am start` del deep link del dev-client → ventana de 50 s → `logcat -d -b all` a
+**archivo completo** (nunca por `tail`) + `dumpsys activity exit-info`. Receta versionada:
+[`2026-10-13-receta-crashfrio.py`](2026-10-13-receta-crashfrio.py). Los archivos crudos por corrida **no** se versionan
+(≈600 KB cada uno); viven en el scratchpad de la sesión.
+
+| serie | condición | crash / N |
+|---|---|---|
+| A | sin `screencap` concurrente | **0 / 12** |
+| B | con `screencap` concurrente (la condición del hallazgo original) | **1 / 12** (corrida 7) |
+| C | idem B, segunda serie | **1 / 12** (corrida 2) |
+| control + | `kill -11` sobre el proceso vivo (desaparece a los 17,4 s del arranque) | **1 / 1** detectado: `code 0 (SI_USER from pid 8000, uid 10249)` |
+
+Con `screencap`: **2 de 24 (≈8 %)**; sin él: 0 de 12. **No se puede afirmar que el `screencap` cause nada**: 0/12 vs 2/24
+no es distinguible (Fisher exacto ≈ 0,5). Combinadas las tres series dan **2 de 36 (≈5,6 %)**. La corrida verde de la
+serie A **no refuta**: es la tasa. El control positivo descarta que el instrumento esté ciego (distingue el `SI_USER`
+del control del `SEGV_MAPERR/ACCERR` real). Sin fix: no hay medición «después» todavía (ver «Qué falta»).
+
+**Stack citado** (corrida 7, `logcat`, `Process uptime: 20s`; `BuildId: 884bb48b4aec8d62f7f2bbbc4a4211097536d038`):
+
+```
+Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x370a3d3e5a1cac in tid 11504 (mqt_v_js), pid 11406 (oto.emprendedor)
+backtrace:
+  #00 pc 00000000011a4c70  libreactnative.so (facebook::react::MountingCoordinator::pullTransaction(bool) const+520)
+  #01 pc 0000000000cc6c1c  libreactnative.so (facebook::react::FabricUIManagerBinding::schedulerDidFinishTransaction(...)+72)
+  #02 pc 000000000122da84  libreactnative.so (facebook::react::Scheduler::uiManagerDidFinishTransaction(...)+100)
+  #03 pc 0000000001286bb0  libreactnative.so (facebook::react::UIManager::shadowTreeDidFinishTransaction(...) const+116)
+  #04 pc 00000000011ad47c  libreactnative.so (facebook::react::ShadowTree::mount(facebook::react::ShadowTreeRevision, bool) const+144)
+  #05 pc 00000000011ade34  libreactnative.so (facebook::react::ShadowTree::tryCommit(...) const+1556)
+  #06 pc 00000000011ad784  libreactnative.so (facebook::react::ShadowTree::commit(...) const+228)
+  ...
+  #14 pc 00000000011bd878  libreactnative.so (facebook::react::ShadowTreeRegistry::visit(int, ...) const+180)
+  #15 pc 00000000012849cc  libreactnative.so (facebook::react::UIManager::completeSurface(int, ...)
+  ...
+  #21..#27 libhermesvm.so  →  #28 facebook::jsi::Function::call  →  #30 facebook::react::Task::execute
+```
+
+Corrida 2 de la serie C (`Process uptime: 36s`, mismo `BuildId`): `Fatal signal 11 (SIGSEGV), code 2 (SEGV_ACCERR),
+fault addr 0x7c7a1a26e8 in tid 15093 (mqt_v_js)`; `#00 pc 0000000003a816e8 [anon:libc_malloc]` (**salto al heap**) y
+`#01 …MountingCoordinator::pullTransaction(bool) const+524`, con la misma cadena `schedulerDidFinishTransaction` →
+`ShadowTree::commit` → `UIManager::completeSurface`.
+
+**Lectura (de lo medido, sin interpretar más).** Los dos crashes caen en el hilo JS (`mqt_v_js`) dentro de
+`MountingCoordinator::pullTransaction` (+520 / +524), llamado desde un `completeSurface` que dispara el JS; el fault es
+una dirección basura (`0x370a3d3e5a1cac`) o un salto a heap. Es **código nativo de React Native/Fabric** operando
+sobre un objeto inválido: **ninguna línea de TSX aparece en el stack**.
+
+**Atribución externa (NO verificada en nuestro binario).** El stack coincide con
+[react-native-screens#4654](https://github.com/software-mansion/react-native-screens/issues/4654) (mismo frame
+`pullTransaction+524`, `[anon:scudo:primary]` «jumped into the heap», RN 0.85.3/0.86.0, screens **4.25.2** — la versión
+fijada acá: `apps/mobile/package.json:37` y lockfile) y con
+[reanimated#10734](https://github.com/software-mansion/react-native-reanimated/issues/10734). La causa que dan los
+mantenedores: `ScreensModule` registra su delegate dos veces en paralelo y el listener «is created lazily without a
+lock, so the two calls can race» (carrera en el arranque en frío). Fix: **react-native-screens#4413, incluido desde
+4.28.0**; verificado por terceros con «0 crashes en 115 lanzamientos» (parche local, tasa previa 1/60) y «no crashes en
+400 cold launches» (4.28.0). Reportan además que sólo lo vieron en **debug** (0/225 en release): **no medimos release**,
+porque no hay binario release en el device. Expo SDK 57 fija `react-native-screens` por debajo de 4.28.0.
+
+**Veredicto H2:** `REPRODUCIDO (≈5,6 % por arranque en frío, 2 de 36)`; **causa en el binario nativo, no en el JS**;
+atribución a la carrera de `react-native-screens` = hipótesis fuerte por stack idéntico y versión idéntica, **sin
+verificación propia**. La observación **no se retira**. Un fix de TSX sería a ciegas: **no se hizo**.
+
+**Qué falta (y de quién es).** Cambia de dueño y de costo: subir `react-native-screens` a ≥ 4.28.0 (o aplicar #4413
+como parche) **exige rebuild EAS** del dev-client (y, para producción, del binario release). Eso no es de esta fila: vuelve
+a planificación como escalada (`pedido_`). La verificación «después» queda definida: **mismo device, misma receta,
+`SAMPLER=1`, N ≥ 60 sobre el binario nuevo**; con una tasa de ≈5,6 % la probabilidad de 0 crashes por azar en 60
+arranques es ≈3 %, así que 0/60 sería evidencia, y N=12 no lo es.
 
 ## Efectos colaterales de la medición (declarados)
 

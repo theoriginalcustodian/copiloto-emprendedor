@@ -28,4 +28,6 @@ export * from './avisosCard';
 export * from './requiereConexion';
 export * from './sugerenciaArmarFactura';
 // El dictado que nace en una función viaja por /chat con hint de destino (contrato del 2026-10-13).
+export * from './detalleGate';
+export * from './reciboCard';
 export * from './dictadoPorChat';

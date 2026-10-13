@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
+import { formatearImporte } from '../dinero/formatoDinero';
 
 /**
  * `/clientes` — la cartera. **Se DERIVA de lo que ya se emitió**, no es una agenda que arranca vacía.
@@ -68,6 +69,20 @@ export interface Cliente {
    * mentiría — la tarjeta muestra «—» en ese caso.
    */
   comprobantesCantidad?: number;
+  /**
+   * C-D1 (2026-10-13). Neto facturado del cliente (facturas − notas de crédito), **string decimal**
+   * tal como viaja (`"320.50"`, `"0.00"`; **puede ser negativo**). Sólo lo trae el **listado**:
+   * `undefined` en detalle/alta/edición y contra un backend anterior — nunca `0`, que mentiría.
+   * 🔴 **No se interpreta sin `facturasAtribuibles`**: ver `facturacionDeCliente`, que es la ÚNICA
+   * lectura permitida de este par.
+   */
+  montoFacturado?: string;
+  /**
+   * C-D1. «¿Se puede atribuir facturación a este cliente?» — `false` cuando le falta documento o tipo
+   * (`bool(doc) and doc_tipo is not None`, la MISMA definición que `resumen_operaciones`). Con `false`
+   * el `"0.00"` de `montoFacturado` significa «no se puede saber», **no** «no compró».
+   */
+  facturasAtribuibles?: boolean;
 }
 
 interface ClienteCrudo {
@@ -94,7 +109,12 @@ interface ClienteCrudo {
   origen?: string;
   creado_en?: string;
   comprobantes_cantidad?: number;
+  monto_facturado?: string;
+  facturas_atribuibles?: boolean;
 }
+
+/** Decimal del wire: sin separador de miles, `.` decimal, signo opcional. Nada más es un monto. */
+const DECIMAL_WIRE_RE = /^-?\d+(\.\d+)?$/;
 
 function normalizar(c: ClienteCrudo): Cliente {
   const origen = c.origen;
@@ -111,7 +131,44 @@ function normalizar(c: ClienteCrudo): Cliente {
     origen: origen === 'manual' || origen === 'voz' ? origen : 'derivado',
     creadoEn: c.creado_en ?? '',
     ...(typeof c.comprobantes_cantidad === 'number' ? { comprobantesCantidad: c.comprobantes_cantidad } : {}),
+    // C-D1: este objeto se arma A MANO, así que una clave que no se lee acá se pierde sin error (ya pasó
+    // con `monto_facturado`). Estrictos: un string que no es decimal o un no-booleano NO se acepta.
+    ...(typeof c.monto_facturado === 'string' && DECIMAL_WIRE_RE.test(c.monto_facturado.trim())
+      ? { montoFacturado: c.monto_facturado.trim() }
+      : {}),
+    ...(typeof c.facturas_atribuibles === 'boolean' ? { facturasAtribuibles: c.facturas_atribuibles } : {}),
   };
+}
+
+/**
+ * Lo que la fila de un cliente puede decir de su facturación. Es la regla de C-D1 **binaria y
+ * testeable**, en UN lugar para que mobile y web no la reimplementen:
+ *
+ * - `sin_documento` — `facturasAtribuibles === false`: **nunca un número**. El `"0.00"` es «no se puede
+ *   saber», y pintarlo como «Todavía sin comprar» sería afirmar lo que no se midió.
+ * - `sin_compras` — `facturasAtribuibles === true` y el neto es cero («Todavía sin comprar»). Ojo: puede
+ *   tener comprobantes (una factura anulada + su NC dan neto 0 con 2 comprobantes).
+ * - `con_monto` — hay neto distinto de cero (puede ser negativo); `importe` ya viene formateado.
+ * - `desconocida` — el backend no declaró el par (versión anterior, o fila de detalle/alta/edición):
+ *   la UI cae a lo que mostraba antes. **No** se deduce nada.
+ */
+export type FacturacionCliente =
+  | { tipo: 'sin_documento' }
+  | { tipo: 'sin_compras'; importe: string }
+  | { tipo: 'con_monto'; importe: string }
+  | { tipo: 'desconocida' };
+
+const CERO_WIRE_RE = /^-?0+(\.0+)?$/;
+
+export function facturacionDeCliente(
+  c: Pick<Cliente, 'montoFacturado' | 'facturasAtribuibles'>,
+): FacturacionCliente {
+  if (c.facturasAtribuibles === false) return { tipo: 'sin_documento' };
+  if (c.facturasAtribuibles !== true || c.montoFacturado === undefined) return { tipo: 'desconocida' };
+  const importe = formatearImporte(c.montoFacturado);
+  return CERO_WIRE_RE.test(c.montoFacturado)
+    ? { tipo: 'sin_compras', importe }
+    : { tipo: 'con_monto', importe };
 }
 
 /**

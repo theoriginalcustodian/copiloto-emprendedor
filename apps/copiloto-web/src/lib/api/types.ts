@@ -198,6 +198,13 @@ export interface ReplyCard {
   service?: string;
   /** Nombre humano de la app ("Google Docs", "Mercado Pago", …). */
   label?: string;
+  /** C-D3 — detalle estructurado del gate (`{titulo, filas, cita, nota}`), leído de los `arguments` que
+   * se van a ejecutar. `unknown` a propósito: no se lee acá sino con `leerDetalleGate` de
+   * `@copiloto/core` (único lugar que sabe qué hacer con un payload sucio). */
+  detalle?: unknown;
+  /** C-D3 — recibo de la acción confirmada y EJECUTADA OK (`{titulo, meta, accion}`). Su presencia es
+   * la señal; se lee con `leerRecibo` de `@copiloto/core`. */
+  recibo?: unknown;
 }
 
 /**

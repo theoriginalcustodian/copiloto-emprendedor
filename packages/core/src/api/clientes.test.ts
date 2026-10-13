@@ -7,6 +7,7 @@ import {
   cambiosDeCliente,
   crearCliente,
   editarCliente,
+  facturacionDeCliente,
   listarClientes,
   obtenerCliente,
 } from './clientes';
@@ -81,7 +82,7 @@ describe('clientes.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      const c = res.clientes[0];
+      const c = res.clientes[0]!;
       expect(c.creadoEn).toBe('2026-07-22T10:00:00+00:00');
       expect(c.docTipo).toBe(80);
       expect(c.docNro).toBe('30712345678');
@@ -92,7 +93,7 @@ describe('clientes.ts', () => {
       responder = () => respuesta(200, { clientes: [{ ...clienteCrudo(), comprobantes_cantidad: 0 }], total: 1 });
       const res = await listarClientes();
       if (res.status !== 'ok') throw new Error('se esperaba ok');
-      expect(res.clientes[0].comprobantesCantidad).toBe(0);
+      expect(res.clientes[0]!.comprobantesCantidad).toBe(0);
     });
 
     it('BL-V18: sin el campo (listado viejo) queda `undefined`, nunca 0', async () => {
@@ -100,6 +101,72 @@ describe('clientes.ts', () => {
       const res = await listarClientes();
       if (res.status !== 'ok') throw new Error('se esperaba ok');
       expect(res.clientes[0]).not.toHaveProperty('comprobantesCantidad');
+    });
+
+    // 🔴 C-D1: el normalizador arma el objeto A MANO, y una clave que no lee se pierde sin error — ya
+    // pasó con `monto_facturado`. Estos tests son el control: la clave llega del wire a la pantalla.
+    it('C-D1: el listado conserva `monto_facturado` (string) y `facturas_atribuibles` (bool)', async () => {
+      responder = () =>
+        respuesta(200, {
+          clientes: [
+            { ...clienteCrudo(), comprobantes_cantidad: 12, monto_facturado: '320000.00', facturas_atribuibles: true },
+          ],
+          total: 1,
+        });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+
+      expect(res.clientes[0]!.montoFacturado).toBe('320000.00');
+      expect(res.clientes[0]!.facturasAtribuibles).toBe(true);
+      expect(res.clientes[0]!.comprobantesCantidad).toBe(12);
+    });
+
+    it('C-D1: un monto NEGATIVO (NC > facturas) se conserva con su signo', async () => {
+      responder = () =>
+        respuesta(200, {
+          clientes: [{ ...clienteCrudo(), monto_facturado: '-100.00', facturas_atribuibles: true }],
+          total: 1,
+        });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      expect(res.clientes[0]!.montoFacturado).toBe('-100.00');
+    });
+
+    it('C-D1: `facturas_atribuibles: false` también se conserva (no se confunde con ausente)', async () => {
+      responder = () =>
+        respuesta(200, {
+          clientes: [{ ...clienteCrudo(), monto_facturado: '0.00', facturas_atribuibles: false }],
+          total: 1,
+        });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      expect(res.clientes[0]!.facturasAtribuibles).toBe(false);
+      expect(res.clientes[0]).toHaveProperty('facturasAtribuibles');
+    });
+
+    it('C-D1: backend anterior (sin las claves) → `undefined`, nunca "0.00" ni `false` inventados', async () => {
+      responder = () => respuesta(200, { clientes: [clienteCrudo()], total: 1 });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      expect(res.clientes[0]).not.toHaveProperty('montoFacturado');
+      expect(res.clientes[0]).not.toHaveProperty('facturasAtribuibles');
+    });
+
+    it('C-D1: estrictos — un monto que no es decimal o un atribuible que no es bool NO se aceptan', async () => {
+      responder = () =>
+        respuesta(200, {
+          clientes: [
+            { ...clienteCrudo(), monto_facturado: 'mucho', facturas_atribuibles: 'true' },
+            { ...clienteCrudo({ id: 2 }), monto_facturado: 320, facturas_atribuibles: 1 },
+          ],
+          total: 2,
+        });
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('se esperaba ok');
+      for (const c of res.clientes) {
+        expect(c).not.toHaveProperty('montoFacturado');
+        expect(c).not.toHaveProperty('facturasAtribuibles');
+      }
     });
 
     it('una cartera vacía es `ok` con [], no un error — es el estado del primer día', async () => {
@@ -134,10 +201,10 @@ describe('clientes.ts', () => {
       responder = () => respuesta(200, { clientes: [], total: 0 });
 
       await listarClientes({ q: 'panaderia' });
-      expect(peticiones[0].path).toBe('/clientes?q=panaderia');
+      expect(peticiones[0]!.path).toBe('/clientes?q=panaderia');
 
       await listarClientes({ q: '' });
-      expect(peticiones[1].path).toBe('/clientes');
+      expect(peticiones[1]!.path).toBe('/clientes');
     });
 
     it('un 200 con el HTML del SPA es no_disponible, no una excepción de parseo', async () => {
@@ -181,10 +248,10 @@ describe('clientes.ts', () => {
 
       expect(res.status).toBe('ok');
       if (res.status !== 'ok') return;
-      expect(res.ficha.presupuestos[0].detalle).toBe('Instalación');
-      expect(res.ficha.facturas[0].detalle).toBe('N° 14');
+      expect(res.ficha.presupuestos[0]!.detalle).toBe('Instalación');
+      expect(res.ficha.facturas[0]!.detalle).toBe('N° 14');
       // Los totales siguen siendo STRING: es plata.
-      expect(res.ficha.facturas[0].total).toBe('45000.00');
+      expect(res.ficha.facturas[0]!.total).toBe('45000.00');
     });
 
     it('un 200 sin `cliente` es no_disponible', async () => {
@@ -461,5 +528,48 @@ describe('clientes.ts', () => {
 
       expect(cambiosDeCliente(original, { domicilio: null })).toEqual({ domicilio: null });
     });
+  });
+});
+
+describe('facturacionDeCliente — la regla de UI de C-D1 (binaria y testeable)', () => {
+  it('`facturas_atribuibles: false` → sin_documento, y NUNCA un número aunque el monto sea "0.00"', () => {
+    expect(facturacionDeCliente({ facturasAtribuibles: false, montoFacturado: '0.00' })).toEqual({
+      tipo: 'sin_documento',
+    });
+    // Aunque el backend mandara plata con false (no debería), no se pinta: «no se puede saber» manda.
+    expect(facturacionDeCliente({ facturasAtribuibles: false, montoFacturado: '500.00' })).toEqual({
+      tipo: 'sin_documento',
+    });
+  });
+
+  it('atribuible + "0.00" → sin_compras («Todavía sin comprar»)', () => {
+    expect(facturacionDeCliente({ facturasAtribuibles: true, montoFacturado: '0.00' })).toEqual({
+      tipo: 'sin_compras',
+      importe: '$0,00',
+    });
+  });
+
+  it('atribuible + monto → con_monto, formateado con la convención del repo', () => {
+    expect(facturacionDeCliente({ facturasAtribuibles: true, montoFacturado: '320000.00' })).toEqual({
+      tipo: 'con_monto',
+      importe: '$320.000,00',
+    });
+  });
+
+  it('un neto NEGATIVO es con_monto con su signo (no se aplana a cero)', () => {
+    expect(facturacionDeCliente({ facturasAtribuibles: true, montoFacturado: '-100.00' })).toEqual({
+      tipo: 'con_monto',
+      importe: '-$100,00',
+    });
+  });
+
+  it('"-0.00" es cero: sin_compras', () => {
+    expect(facturacionDeCliente({ facturasAtribuibles: true, montoFacturado: '-0.00' }).tipo).toBe('sin_compras');
+  });
+
+  it('control negativo: sin el par declarado → desconocida (no se deduce «sin compras»)', () => {
+    expect(facturacionDeCliente({})).toEqual({ tipo: 'desconocida' });
+    expect(facturacionDeCliente({ montoFacturado: '0.00' })).toEqual({ tipo: 'desconocida' });
+    expect(facturacionDeCliente({ facturasAtribuibles: true })).toEqual({ tipo: 'desconocida' });
   });
 });

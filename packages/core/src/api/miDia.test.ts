@@ -72,7 +72,7 @@ describe('leerTablero — el camino bueno', () => {
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
     expect(res.tablero.solapas.map((s) => s.id)).toEqual(['para_hoy', 'haciendo', 'hecha']);
-    const t = res.tablero.solapas[0].tarjetas[0];
+    const t = res.tablero.solapas[0]!.tarjetas[0]!;
     expect(t.id).toBe('t1');
     expect(t.texto).toContain('¿Te lo pagaron?');
     expect(t.regla).toBe('trabajo_con_gastos_y_sin_ingreso');
@@ -91,7 +91,7 @@ describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () 
     const res = await leerTablero();
 
     if (res.status !== 'ok') throw new Error('esperaba ok');
-    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({
+    expect(res.tablero.solapas[0]!.tarjetas[0]).toMatchObject({
       categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo',
     });
   });
@@ -102,7 +102,7 @@ describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () 
     const res = await leerTablero();
 
     if (res.status !== 'ok') throw new Error('esperaba ok');
-    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({ categoria: null, criticidad: null, verbo: null });
+    expect(res.tablero.solapas[0]!.tarjetas[0]).toMatchObject({ categoria: null, criticidad: null, verbo: null });
   });
 
   it('un valor vacío no se inventa: verbo "" → null', async () => {
@@ -112,7 +112,7 @@ describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () 
     const res = await leerTablero();
 
     if (res.status !== 'ok') throw new Error('esperaba ok');
-    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({ categoria: null, verbo: null });
+    expect(res.tablero.solapas[0]!.tarjetas[0]).toMatchObject({ categoria: null, verbo: null });
   });
 });
 
@@ -126,7 +126,7 @@ describe('leerTablero — lo que NO inventa', () => {
     responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [] }] });
     const res = await leerTablero();
     expect(res.status).toBe('ok');
-    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas).toEqual([]);
+    if (res.status === 'ok') expect(res.tablero.solapas[0]!.tarjetas).toEqual([]);
   });
 
   it('🔴 una tarjeta SIN `texto` redactado se descarta — un id sin frase no es una tarjeta', async () => {
@@ -141,7 +141,7 @@ describe('leerTablero — lo que NO inventa', () => {
         ],
       });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas.map((t) => t.id)).toEqual(['ok']);
+    if (res.status === 'ok') expect(res.tablero.solapas[0]!.tarjetas.map((t) => t.id)).toEqual(['ok']);
   });
 
   it('🔴 una tarjeta SIN id se descarta — sin identidad no se puede seguir', async () => {
@@ -150,7 +150,7 @@ describe('leerTablero — lo que NO inventa', () => {
         solapas: [{ id: 'para_hoy', titulo: 'P', tarjetas: [{ texto: 'sin id' }, { id: 'ok', texto: 'con id' }] }],
       });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas.map((t) => t.id)).toEqual(['ok']);
+    if (res.status === 'ok') expect(res.tablero.solapas[0]!.tarjetas.map((t) => t.id)).toEqual(['ok']);
   });
 
   it('🔴 una solapa con id fuera del conjunto cerrado se descarta', async () => {
@@ -165,8 +165,8 @@ describe('leerTablero — lo que NO inventa', () => {
       respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'P', tarjetas: [{ id: 'a', texto: 'm', datos: { otro_campo: 'x' } }] }] });
     const res = await leerTablero();
     if (res.status === 'ok') {
-      expect(res.tablero.solapas[0].tarjetas[0].monto).toBeNull();
-      expect(res.tablero.solapas[0].tarjetas[0].id).toBe('a');
+      expect(res.tablero.solapas[0]!.tarjetas[0]!.monto).toBeNull();
+      expect(res.tablero.solapas[0]!.tarjetas[0]!.id).toBe('a');
     }
   });
 
@@ -275,7 +275,7 @@ describe('leerCalendario', () => {
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
     expect(res.calendario.conectado).toBe(true);
-    const ev = res.calendario.eventos[0];
+    const ev = res.calendario.eventos[0]!;
     expect(ev.id).toBe('ev1');
     expect(ev.titulo).toBe('Reunión con proveedor');
     expect(ev.inicioCrudo).toEqual({ dateTime: '2026-08-12T15:00:00-03:00' });

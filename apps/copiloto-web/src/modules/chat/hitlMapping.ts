@@ -1,4 +1,10 @@
-import { esParConfirmarCancelar, mapearGate, type TipoMensaje, clasificarChoices } from '@copiloto/core';
+import {
+  esParConfirmarCancelar,
+  mapearGate,
+  type DetalleGate,
+  type TipoMensaje,
+  clasificarChoices,
+} from '@copiloto/core';
 import type { BadgeVariant } from '../../design-system';
 import type { ReplyChoice } from '../../lib/api';
 import type { ChatMessage } from './useChat';
@@ -58,6 +64,9 @@ export interface HitlCardMappedProps {
   name?: string;
   amount?: string;
   concept: string;
+  /** C-D3 — el detalle ESTRUCTURADO del gate (`card.detalle`): lo que se va a ejecutar, leído de los
+   * `arguments`. Cuando está, `<HitlCard>` lo pinta en lugar de nombre/monto/concepto sueltos. */
+  detalle?: DetalleGate;
   badge?: { variant: BadgeVariant; text: string };
   dangerBorder?: boolean;
   confirmLabel: string;
@@ -106,9 +115,11 @@ export function buildHitlCardProps(
   return {
     service,
     label,
-    name: boldMatch?.[1],
+    // `gate.name` ya prefiere la fila «Para» del `detalle` (el email que se usa) y cae a la negrita.
+    name: gate?.name ?? boldMatch?.[1],
     amount: gate?.amount,
     concept: message.text,
+    detalle: gate?.detalle,
     badge: risk.badge,
     dangerBorder: risk.dangerBorder,
     confirmLabel: confirmChoice.label,

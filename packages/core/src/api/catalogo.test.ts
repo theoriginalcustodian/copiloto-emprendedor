@@ -174,6 +174,7 @@ describe('catalogo.ts', () => {
         capacidades: [],
         acciones: [],
         conectado: true,
+        estado: 'conectado',
         connectPath: '/composio/connect?service=googledrive',
         ...over,
       };

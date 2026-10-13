@@ -83,13 +83,13 @@ describe('soporteTicket.ts', () => {
     if (res.status !== 'ok') return;
     expect(res.ticket.codigo).toBe('SOP-0007');
     expect(res.mensajes).toHaveLength(2);
-    expect(res.mensajes[1].autor).toBe('operador');
+    expect(res.mensajes[1]!.autor).toBe('operador');
   });
 
   it('pega contra la ruta con el id, no contra un listado', async () => {
     await obtenerMiTicket(42);
-    expect(peticiones[0].path).toBe('/soporte/tickets/42');
-    expect(peticiones[0].metodo).toBe('GET');
+    expect(peticiones[0]!.path).toBe('/soporte/tickets/42');
+    expect(peticiones[0]!.metodo).toBe('GET');
   });
 
   it('un 404 real (endpoint vivo, ticket ajeno o inexistente) es `no_encontrado`, no un error', async () => {
