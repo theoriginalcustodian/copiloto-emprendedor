@@ -7,10 +7,13 @@ DEBE agregar el handle. Negativo / anti-no-op: correrlo otra vez NO duplica y NO
 caso que mata al `if host in content: no-op` original: cambiar un valor (puerto de GoTrue) DEBE
 reemplazar el bloque vivo, no dejarlo.
 """
+import os
 import re
+import tempfile
 import unittest
 
 from caddy_converge import aplicar_bloque, converger, cuerpo_copiloto, cuerpo_publico
+from caddy_snippet_check import bloques_sin_escribe, comparar, hosts_declarados, main as check_main
 
 BASE = "178-105-191-1.sslip.io"
 PUBLIC = "copilotoemprendedor.duckdns.org"
@@ -140,6 +143,112 @@ class Robustez(unittest.TestCase):
         sin_mp = VIVO_SIN_VERIFY.replace("mp.178-105-191-1.sslip.io", "otro.host")
         with self.assertRaises(ValueError):
             converger(sin_mp, **ARGS)
+
+
+class MpSoloRecibeElRewrite(unittest.TestCase):
+    """SNIPPETMIENTE: el snippet declara que de `mp.*` el deploy escribe SÓLO la línea `rewrite`. Eso es una
+    afirmación sobre el mecanismo; acá se mide, no se cree: el resto del bloque vivo NO se converge."""
+
+    def test_el_reverse_proxy_del_bloque_mp_no_se_reemplaza(self):
+        distinto = VIVO_SIN_VERIFY.replace(
+            "    rewrite /callback /mp/callback\n    reverse_proxy 127.0.0.1:8099\n",
+            "    reverse_proxy 127.0.0.1:1111\n")
+        nuevo, acciones = converger(distinto, **ARGS)
+        b = bloque(nuevo, "mp." + BASE)
+        self.assertIn("reverse_proxy 127.0.0.1:1111", b)     # NO lo llevó al deseado (8099)
+        self.assertNotIn("127.0.0.1:8099", b)
+        self.assertIn("rewrite /callback /mp/callback", b)    # lo único que sí escribió
+        self.assertIn((f"mp.{BASE} rewrite", "+"), acciones)
+
+
+SNIPPET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Caddyfile.snippet")
+
+# Cabeceras de bloque del Caddyfile VIVO (sólo `host {`, sin directivas ni credenciales), leídas por ssh
+# con `caddy-vivo-vs-snippet.sh` el 2026-10-13. Es el denominador de las dos direcciones del check.
+VIVO_CABECERAS = """178-105-191-1.sslip.io {
+hermes.178-105-191-1.sslip.io {
+temporal.178-105-191-1.sslip.io {
+mp.178-105-191-1.sslip.io {
+copiloto.178-105-191-1.sslip.io {
+auth.178-105-191-1.sslip.io {
+copilotoemprendedor.duckdns.org {
+voz.178-105-191-1.sslip.io {
+voz-web.copilotoemprendedor.duckdns.org {
+documed.copilotoemprendedor.duckdns.org {
+rothoblaas.178-105-191-1.sslip.io {
+www.svivertical.com.ar {
+svivertical.com.ar, svivertical.duckdns.org {
+"""
+
+
+def _snippet():
+    with open(SNIPPET, encoding="utf-8") as f:
+        return f.read()
+
+
+class SnippetDeclaraQuienEscribe(unittest.TestCase):
+    def setUp(self):
+        self.texto = _snippet()
+
+    def test_todo_bloque_del_snippet_dice_quien_lo_escribe(self):
+        self.assertEqual(bloques_sin_escribe(self.texto), [])
+
+    def test_el_comprobador_ve_el_bloque_al_que_le_falta_la_linea(self):
+        """Control negativo: sin éste, un comprobador que no mira nada daría el verde de arriba."""
+        self.assertGreaterEqual(len(hosts_declarados(self.texto)), 3, "el snippet no tiene bloques que medir")
+        sin = self.texto.replace("escribe: deploy.sh [6/7] y caddy-sync.sh (vía caddy_converge.py) → CONVERGENTE",
+                                 "SIN LA LINEA (vía caddy_converge.py) → CONVERGENTE")
+        self.assertNotEqual(sin, self.texto, "el reemplazo no cambió nada: el control no mira")
+        self.assertEqual(bloques_sin_escribe(sin), ["copiloto.178-105-191-1.sslip.io"])
+
+    def test_los_hosts_que_el_snippet_dice_converger_son_los_que_el_converger_toca(self):
+        """El snippet afirma que `caddy_converge.py` escribe estos hosts: tienen que ser los que `converger`
+        devuelve en sus acciones (si alguien saca uno del converger, el snippet deja de decir verdad)."""
+        _, acciones = converger(VIVO_SIN_VERIFY, **ARGS)
+        tocados = {h.split(" ")[0] for h, _ in acciones}
+        self.assertEqual(set(hosts_declarados(self.texto)), tocados)
+
+
+class SnippetVsVivo(unittest.TestCase):
+    """SNIPPETMIENTE, las dos direcciones: A = el snippet afirma y el vivo no tiene · B = el vivo tiene y el
+    snippet no nombra. Cada dirección trae su control: sin él un diff que no mira daría vacío igual."""
+
+    def setUp(self):
+        self.texto = _snippet()
+
+    def test_contra_el_vivo_medido_las_dos_direcciones_dan_vacio(self):
+        a, b, vivos = comparar(self.texto, VIVO_CABECERAS)
+        self.assertEqual(len(vivos), 14, "denominador: 13 bloques, uno con 2 hosts")
+        self.assertEqual((a, b), ([], []))
+
+    def test_B_caza_un_host_vivo_que_el_snippet_no_nombra(self):
+        """Es exactamente lo que pasó: `svivertical` vivía en prod y ningún archivo del repo lo decía."""
+        sin = self.texto.replace("svivertical", "xxxxxxxxxxx")
+        self.assertNotEqual(sin, self.texto)
+        _, b, _ = comparar(sin, VIVO_CABECERAS)
+        self.assertEqual(sorted(b), ["svivertical.com.ar", "svivertical.duckdns.org", "www.svivertical.com.ar"])
+
+    def test_A_caza_un_bloque_afirmado_que_el_vivo_no_tiene(self):
+        sin = VIVO_CABECERAS.replace("copiloto.178-105-191-1.sslip.io {\n", "")
+        a, _, _ = comparar(self.texto, sin)
+        self.assertEqual(a, ["copiloto.178-105-191-1.sslip.io"])
+
+    def test_la_raiz_no_se_da_por_mencionada_por_ser_sufijo_de_otro_host(self):
+        """`mp.178-...sslip.io` CONTIENE la raíz como substring: sin el borde de token, quitar la mención de la
+        raíz no se notaría jamás."""
+        sin = self.texto.replace("178-105-191-1.sslip.io→8088", "(raíz sin mencionar)")
+        self.assertNotEqual(sin, self.texto)
+        _, b, _ = comparar(sin, VIVO_CABECERAS)
+        self.assertEqual(b, ["178-105-191-1.sslip.io"])
+
+    def test_un_listado_vivo_vacio_no_es_un_verde(self):
+        """Si el ssh falla y no llega nada, comparar contra la nada daría A=B=[]: tiene que ser rc=2."""
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            vacio = f.name
+        try:
+            self.assertEqual(check_main(["x", SNIPPET, vacio]), 2)
+        finally:
+            os.unlink(vacio)
 
 
 if __name__ == "__main__":
