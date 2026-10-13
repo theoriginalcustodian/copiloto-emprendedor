@@ -26,7 +26,7 @@ símbolo exacto que falta y quién lo tiene. Sólo una cierra.
 |---|---|
 | ✅ **CERRADA-EN-CODIGO** | la divergencia existe resuelta en el código con `path:línea` y un test que la ejercita |
 | 📝 **ENMIENDA-FUNDADA** | la divergencia se **mantiene a propósito**, con el motivo escrito. Reabrible por el operador |
-| ABIERTA | al menos una divergencia **sin código y sin enmienda con motivo**. El encabezado de la fila **no lleva** símbolo de estado a propósito: el medidor la sigue contando fuera, que es lo cierto |
+| ⚠ **ABIERTA** | al menos una divergencia **sin código y sin enmienda con motivo**. El encabezado de la fila lleva `⚠`: el medidor (desde #1086) la cuenta como `PENDIENTE-DECLARADA`, fuera del DoD y con su id nombrado |
 
 **Nivel de verificación de TODO lo de abajo:** presencia de los símbolos en `origin/main` @ `159f883b` + los tests que los ejercitan
 **existen** y viajaron en PR con CI verde (procedencia en cada `cierre_`). **No corrí jest ni la suite acá**, y **nada fue visto en un
@@ -44,9 +44,10 @@ teléfono**. Lo que sólo se vería en device queda anotado *«[sin ver en devic
 | 5 | `fact-voz` | ABIERTA | backend + marca `del_registro` en ambas apps; **meta «✓✓ recibido» (mobile 0) y avatar ISO sin veredicto de nadie** | frontend1 / planificación |
 | 6 | `hitl` | ABIERTA | (b) `detalle` + `recibo` en main, piloto Gmail; **(a) el puente tarjeta→chat no existe** (0 hits) | frontend (Opción A, 0 backend) |
 
-**Cuenta honesta:** 6 filas · **1 cierra en código** (`preg`) · 5 abiertas, todas con la mitad backend ya en main. El medidor pasa de
-`FUERA 6/54` a `FUERA 5/54` y de `CUMPLE EL DoD 34/54` a `35/54`. **Es un movimiento chico y es el verdadero**: cualquier cifra más
-alta saldría de contar la mitad de backend como la fila entera.
+**Cuenta honesta:** 6 filas · **1 cierra en código** (`preg`) · 5 abiertas, todas con la mitad backend ya en main. Medido con el
+medidor de #1086 (`aea3a81f`) sobre `439c1c4c` + este doc: `CUMPLE EL DoD 28/54`, las 5 abiertas en `PENDIENTE DECLARADA` con su id
+nombrado y `preg` en `CERRADA-EN-CODIGO`. **Es un movimiento chico y es el verdadero**: cualquier cifra más alta saldría de contar la
+mitad de backend como la fila entera (el medidor anterior, sobre el mismo árbol, daba `40/54`: contaba las 5 como cumplidas).
 
 ---
 
@@ -83,7 +84,7 @@ misma búsqueda con `[Pp]resupuesto` → **287**.
 
 ---
 
-### 2 · `caida` — ABIERTA (la mitad backend cerrada; la app no lee el campo)
+### 2 · `caida` — ⚠ ABIERTA (la mitad backend cerrada; la app no lee el campo)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
@@ -100,7 +101,7 @@ de `PortadaNegocio`. **Nada de esto es de backend.** El contrato del dato ya est
 
 ---
 
-### 3 · `clientes` — ABIERTA (backend, core y web pintan el monto; mobile no)
+### 3 · `clientes` — ⚠ ABIERTA (backend, core y web pintan el monto; mobile no)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.
 Ninguna queda sin veredicto.»* El mapeo apunta a **mobile** (`PantallaClientes.tsx:299`, `TarjetaCliente.tsx:38`).
@@ -124,7 +125,7 @@ la enmienda con su motivo; y un veredicto de las divergencias 2-5.
 
 ---
 
-### 4 · `cobro-voz` — ABIERTA, casi (falta UN veredicto)
+### 4 · `cobro-voz` — ⚠ ABIERTA, casi (falta UN veredicto)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.»*
 Archivo de la fila: `apps/mobile/src/modules/chat/TarjetaLinkDeCobro.tsx:28`.
@@ -150,7 +151,7 @@ tengo evidencia de por qué se hizo así. Con esa línea, la fila cierra.
 
 ---
 
-### 5 · `fact-voz` — ABIERTA (dos divergencias originales sin veredicto de nadie)
+### 5 · `fact-voz` — ⚠ ABIERTA (dos divergencias originales sin veredicto de nadie)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
@@ -171,7 +172,7 @@ entonces la fila no cierra**, aunque lo que sí estaba decidido (a-c) esté en m
 
 ---
 
-### 6 · `hitl` — ABIERTA (la card con detalle y recibo está; el puente no)
+### 6 · `hitl` — ⚠ ABIERTA (la card con detalle y recibo está; el puente no)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»* El mapeo (l.78) declara
 **ausente** el puente tarjeta→chat.
@@ -193,10 +194,12 @@ DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya exi
 
 1. **Un `cierre_` de backend no cierra una fila `backend + nativa`.** 5 de 6 tienen «EN MAIN y DESPLEGADO» de backend y la pantalla sin
    cerrar. Las acreditaciones del buzón eran ciertas **de su mitad**; leerlas como la fila entera es lo que sobre-contaba.
-2. **El medidor cuenta `⛓` y `⚠` como `ENMIENDA-FUNDADA`** (`medir-mapeo-implementacion.py`, `clasificar()`: `"✅" in s` ⇒ CERRADA,
-   cualquier otro símbolo ⇒ ENMIENDA). Una fila con `⚠` («pendiente») **cumple el DoD** para el medidor. Por eso las 5 abiertas de acá
-   **no llevan ningún símbolo**: ponerles `⚠` las habría hecho «cumplir». Es una debilidad del instrumento, no de este doc; va a
-   planificación como hallazgo.
+2. **El medidor contaba `⛓` y `⚠` como `ENMIENDA-FUNDADA`** (`medir-mapeo-implementacion.py`, `clasificar()`: `"✅" in s` ⇒ CERRADA,
+   cualquier otro símbolo ⇒ ENMIENDA; y un `✅` ganaba sobre el `⛓` de otra divergencia de la misma fila). Una fila con `⚠`
+   («pendiente») cumplía el DoD para el medidor. Por eso, al medir sobre `439c1c4c`, estas 5 se dejaron **sin símbolo**: ponerles
+   `⚠` las habría hecho «cumplir». Era una debilidad del instrumento, no de este doc; la corrigió planificación en #1086
+   (clase `PENDIENTE-DECLARADA`: un `⛓`/`⚠` manda sobre el `✅` de las demás, no suma al DoD y nombra el id). Desde ahí las 5
+   llevan `⚠`. **Sin #1086 en el medidor, ese `⚠` cuenta como cumplida.**
 3. **`fact-voz` perdió dos divergencias en una reformulación**: el mapeo cambió de tres a otras tres sin dar veredicto a las dos
    originales. Un renglón reescrito puede borrar divergencias sin que ningún gate lo vea.
 
@@ -205,7 +208,8 @@ DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya exi
 ```bash
 # desde un árbol con este doc (CWD = raíz medida; la salida imprime ARBOL MEDIDO)
 python scripts/evidencia/medir-mapeo-implementacion.py
-# esperado tras este doc: FUERA DE ESTE CORPUS 5/54 · CUMPLE EL DoD 35/54 · el bloque `backend + nativa` con 2 CERRADA-EN-CODIGO
+# esperado (medidor con la clase PENDIENTE-DECLARADA, #1086): las 5 abiertas en PENDIENTE DECLARADA; `preg` y `onb-cumplida` en
+# CERRADA-EN-CODIGO. La cifra global se cita SIEMPRE con su ARBOL MEDIDO y su SHA, nunca sola: cambia con cada doc que entra.
 python scripts/evidencia/medir-mapeo-implementacion.py --canario   # cada brazo roto mueve la métrica
 ```
 

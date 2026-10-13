@@ -15,6 +15,7 @@ import json
 import os
 from typing import Callable
 
+from catalog import TIPO_DESTINO_CONEXION, destino_conexion
 from mi_dia_clasificacion import clasificar
 
 _SCHEMA = "uc_factory"
@@ -39,8 +40,23 @@ def _js(valor):
     return None if valor is None else json.dumps(valor, ensure_ascii=False, default=str)
 
 
+def _datos_con_destino(entidad_tipo, entidad_id, datos):
+    """H5b: una tarjeta de CONEXIÓN lleva `datos.destino` aunque se haya creado antes del campo.
+
+    `crear_si_no_existe` es DO NOTHING: una `conexion_caida` abierta no se re-escribe mientras la conexión
+    siga caída, o sea que el detector solo nunca le pondría el campo a las tarjetas que existen hoy. Se
+    deriva al leer (mismo patrón que `clasificar(regla)`: sin columna, sin backfill). Si la fila ya lo
+    trae, gana lo guardado. Para cualquier otra tarjeta, `datos` pasa intacto."""
+    if entidad_tipo != TIPO_DESTINO_CONEXION or not entidad_id:
+        return datos
+    if isinstance(datos, dict) and datos.get("destino"):
+        return datos
+    return {**(datos if isinstance(datos, dict) else {}), "destino": destino_conexion(str(entidad_id))}
+
+
 def _fila_a_dict(fila: tuple) -> dict:
     id_, regla, entidad_tipo, entidad_id, texto, estado, datos, creada, movida = fila
+    datos = _datos_con_destino(entidad_tipo, entidad_id, datos)
     return {
         # `str(id_)`: el id es SERIAL (int) en la DB, pero el contrato del wire lo espera string
         # (packages/core/src/api/miDia.ts:91 descarta en silencio toda tarjeta con `id` no-string —

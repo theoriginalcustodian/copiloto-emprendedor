@@ -97,10 +97,16 @@ export interface MarcoGlassProps extends PropsWithChildren {
   desnudo?: boolean;
   /** Contenido extra fijo bajo el encabezado, fuera del área de scroll del hijo. */
   encabezadoExtra?: ReactNode;
+  /**
+   * Texto corto y tenue junto al título — el período de la función («Agosto», `index.html:2248`
+   * `.atras .per`). Es contenido NO interactivo: vive en la zona de arrastre de la identidad y no le
+   * compite el toque a nada. Ausente o vacío = no se dibuja.
+   */
+  etiqueta?: string;
   testID?: string;
 }
 
-export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, children }: MarcoGlassProps) {
+export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, testID, children }: MarcoGlassProps) {
   const tema = useTema();
   const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
@@ -273,6 +279,15 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
                       >
                         {titulo}
                       </Text>
+                      {etiqueta != null && etiqueta !== '' && (
+                        <Text
+                          testID="glass-etiqueta"
+                          numberOfLines={1}
+                          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, flexShrink: 1 }}
+                        >
+                          {etiqueta}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </GestureDetector>

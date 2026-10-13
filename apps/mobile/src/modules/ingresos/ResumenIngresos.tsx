@@ -11,9 +11,10 @@
  * `mesAnterior` es `null`, no `'0.00'`: «no hay datos de ese mes» y «ese mes entró cero» son cosas
  * distintas. Cuando es `null` el chip no se dibuja.
  *
- * ⚠️ **El aviso de Mercado Pago va con el resumen, no en el pie.** Es la advertencia de que este
- * número puede estar incompleto, así que tiene que leerse junto al número. El texto es el mismo del
- * prototipo y de la app web, palabra por palabra.
+ * ℹ️ **Ya no hay aviso «los cobros por MercadoPago todavía no entran solos».** Lo retiró COBROMP
+ * (`9e4a70dc`): un pago aprobado se vuelve Ingreso (`origen: 'mercadopago'`), así que el cartel del
+ * prototipo (`index.html:2263`) afirmaría algo falso. Lo fija `PantallaIngresos.test.tsx`
+ * («ya no hay cartel…»).
  */
 import { formatearImporte, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 import { StyleSheet, View } from 'react-native';

@@ -97,6 +97,36 @@ describe('BuscadorActividad', () => {
   });
 });
 
+describe('BuscadorActividad -- rótulo de la lista rica (`rotuloLista`)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockBuscar.mockResolvedValue({ status: 'ok', items: [item()], cursor: null });
+  });
+
+  it('sin la prop no hay rótulo: Gastos/Presupuestos/Facturación quedan como estaban', async () => {
+    await montar();
+
+    expect(screen.queryByTestId('busq-rotulo')).toBeNull();
+    expect(screen.getByTestId('lista-rica')).toBeTruthy();
+  });
+
+  it('con la prop, el rótulo va ARRIBA de la lista rica mientras no hay query', async () => {
+    await montar({ rotuloLista: 'Últimos' });
+
+    expect(screen.getByTestId('busq-rotulo')).toHaveTextContent('Últimos');
+    expect(screen.getByTestId('lista-rica')).toBeTruthy();
+  });
+
+  it('🔴 con query el rótulo desaparece con la lista rica: «Últimos» sobre resultados de búsqueda mentiría', async () => {
+    await montar({ rotuloLista: 'Últimos' });
+
+    await tipearYEsperar('nafta', 'actividad-gasto:8-titulo');
+
+    expect(screen.queryByTestId('busq-rotulo')).toBeNull();
+    expect(screen.queryByTestId('lista-rica')).toBeNull();
+  });
+});
+
 /** Tipear + esperar (a través del debounce de 350 ms + el fetch) a que aparezca un testID. */
 async function tipearYEsperar(texto: string, testIDEsperado: string) {
   await tipear(texto);

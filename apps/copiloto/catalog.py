@@ -128,6 +128,25 @@ def requiere_conexion_card(service: str, label: str) -> dict:
             "alcance": entry["capabilities"], "connect_path": entry["connect_path"]}
 
 
+# H5b (contrato 2026-10-13): el `tipo` del `destino` de una tarjeta. ENUM CERRADO: hoy un solo valor, y
+# agregar otro exige enmendar el contrato (la app trata un `tipo` desconocido como «ir a Ajustes»).
+# Coincide a propósito con el `entidad_tipo` de la tarjeta `conexion_caida`.
+TIPO_DESTINO_CONEXION = "conexion"
+
+
+def destino_conexion(service: str) -> dict:
+    """`destino` de la tarjeta crítica `conexion_caida` (H5b): a qué conexión puntual lleva «Reconectar».
+
+    El backend emite SEMÁNTICA (`tipo` + `id`); el ruteo a una pantalla es de la app. El `connect_path`
+    sale de `_entry`, la MISMA fuente que `GET /catalog` y `requiere_conexion_card`, y se copia TAL CUAL:
+    MercadoPago va por `/mp/connect` y Composio por `/composio/connect?service=<key>`; armarlo desde la
+    `key` en otro lado se rompe justo en el servicio que cobra (`catalogo.test.ts:111-114` lo declara).
+    `id` es el `service` recibido, o sea el mismo valor que el `entidad_id` de la tarjeta."""
+    key = (service or "").lower()
+    entry = _entry(key, kind="payments" if key == MERCADOPAGO_KEY else "composio", connected=False)
+    return {"tipo": TIPO_DESTINO_CONEXION, "id": service, "connect_path": entry["connect_path"]}
+
+
 KIND_SUGERENCIA_ARMAR_FACTURA = "sugerencia_armar_factura"
 
 

@@ -18,14 +18,42 @@
 #      volver a agregar el `exclude` dejaría el gate verde sobre un árbol sin tipar.
 set -uo pipefail
 
-RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# La raiz sale del CWD, NO del archivo. Este control corre `npx tsc` DENTRO del arbol, asi que
+# necesita los `node_modules` de ese arbol: derivada de `BASH_SOURCE`, la copia pinneada que corre
+# `scripts/vigia.sh` mediria el arbol del PIN y no el que se quiere verificar — el mismo defecto que
+# `vigia.sh` documenta para `gate.sh`. Por eso la salida IMPRIME la raiz medida: una cifra sin arbol
+# se deja citar para cualquier arbol.
+if [ -n "${TSC_RAIZ:-}" ]; then                   # costura de test
+  RAIZ="$TSC_RAIZ"
+elif RAIZ="$(git rev-parse --show-toplevel 2>/dev/null)" && [ -n "$RAIZ" ]; then
+  :
+else
+  RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+echo "ARBOL MEDIDO: $RAIZ"
 fallos=0
 ok()   { echo "  ✅ $1"; }
 malo() { echo "  ❌ $1"; fallos=$((fallos+1)); }
 
 if [ ! -d "$RAIZ/node_modules" ]; then
-  echo "❌ sin node_modules en $RAIZ: este control necesita el tsc del repo (npm install)." >&2
-  exit 1
+  # rc=2, NO 1. Con `exit 1` esto era indistinguible de «un control fallo»: el agregador
+  # (`scripts/ci/tests-coordinacion.sh`) cuenta cualquier rc!=0 como fallo.
+  #
+  # ALCANCE MEDIDO, y la primera version de este comentario lo exageraba: decia que la pata `lint`
+  # de `gate.sh` quedaba roja en toda PC. FALSO - `scripts/ci/lint.sh:8` corre `npm install` ANTES
+  # de llamar al agregador (:70), asi que por ese camino los `node_modules` siempre estan. El
+  # defecto real es el CAMINO DIRECTO: correr este test suelto, o el agregador con sus argumentos,
+  # sin pasar por `lint.sh` - que es exactamente lo que hace una sesion verificando una fila, y lo
+  # que haria `scripts/vigia.sh`. Ahi el rc=1 acusaba a este control de un defecto inexistente.
+  # Dejar escrito el alcance exagerado habria sido peor que no comentar: un comentario que declara
+  # un dano (o una proteccion) ciega la busqueda del proximo lector.
+  # Dos causas distintas no pueden compartir el codigo de salida: el mensaje elige una, y el falso
+  # rojo es el que ensena a saltear el gate.
+  # La marca textual es parte del contrato: el agregador exige rc=2 *y* esta frase, y un rc=2 sin
+  # ella se cuenta como FALLO (fail-closed), para que un script que se rompe y casualmente sale 2
+  # no se cuele por la puerta del caso benigno.
+  echo "⚠️ NO PUDE MEDIR: sin node_modules en $RAIZ — este control necesita el tsc del repo (npm install)." >&2
+  exit 2
 fi
 
 echo "== 1. DENOMINADOR: los tests que tsc lista == los que hay en disco =="

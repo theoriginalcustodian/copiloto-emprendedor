@@ -31,10 +31,20 @@ const ISOTIPO_STROKE_WIDTH = 1.3 / ISOTIPO_ESCALA;
  *  sosteniendo el teléfono no fija por accidente, pero un deslizamiento franco sí. */
 export const UMBRAL_FIJAR_PX = 80;
 
-/** Cuánto hay que deslizar hacia la IZQUIERDA (px) para armar la cancelación (BL-D2) — mismo valor
- *  que el eje vertical: un temblor no cancela, un deslizamiento franco sí. Spec:
- *  `Prototipo frontend/odobi-ui/mockups/03-home-conversacional/DECISIONES.md:95,108`. */
-export const UMBRAL_CANCELAR_PX = 80;
+/** Cuánto hay que deslizar hacia la IZQUIERDA (px) para armar la cancelación (BL-D2). Spec:
+ *  `Prototipo frontend/odobi-ui/mockups/03-home-conversacional/DECISIONES.md:95,108`.
+ *
+ *  70, no 80: es el `UMBRAL_CANCEL` del prototipo (`index.html:2844`), una constante propia, separada de
+ *  `UMBRAL_LOCK = 80`; el prototipo sólo explica por qué SUBIÓ el de fijar (56→80, `:2841`) y no iguala
+ *  el de cancelar. Acá estaba igualado a 80 por la razón de este archivo («mismo valor que el eje
+ *  vertical»), no por el spec. Armar la cancelación no pierde nada: sigue haciendo falta SOLTAR, y el
+ *  aviso «Soltá para cancelar» aparece antes (fila `bloqueado`, TRIAJE15). */
+export const UMBRAL_CANCELAR_PX = 70;
+
+/** Fracción del umbral de fijado desde la que la pista del candado avisa «cerca» (prototipo
+ *  `index.html:3001`, `UMBRAL_LOCK * 0.6`): la devolución llega ANTES de soltar, que es cuando todavía
+ *  se puede corregir el gesto. */
+export const FRACCION_CERCA_DE_FIJAR = 0.6;
 
 /** Un toque más corto que esto (ms) es un toque accidental, no un dictado: se descarta sin enviar.
  *  Mismo valor que la PWA (`MicButton.tsx`, descarte de toques <350 ms). */
@@ -54,6 +64,9 @@ export interface BotonVozProps {
   /** Avisa apenas el dedo cruza (o deja de cruzar) el umbral de cancelación, ANTES de soltar, para
    *  que el padre muestre el feedback visual. */
   onCancelando?: (cancelando: boolean) => void;
+  /** Avisa que el dedo va subiendo y ya está CERCA de fijar (`FRACCION_CERCA_DE_FIJAR` del umbral), o
+   *  que dejó de estarlo, para que el padre tiña la pista del candado antes de soltar. */
+  onCerca?: (cerca: boolean) => void;
   /** Se apaga mientras ya hay una captura en curso (grabando/pausada/lista) — un segundo `onIniciar`
    *  no puede reiniciar `useVozComando` a mitad de una captura. */
   disabled?: boolean;
@@ -98,6 +111,7 @@ export function BotonVoz({
   onFijar,
   onCancelar,
   onCancelando,
+  onCerca,
   disabled = false,
   scrollRef,
 }: BotonVozProps) {
@@ -115,6 +129,7 @@ export function BotonVoz({
   // por toque corto. Refs, no estado: los lee `soltar()` y no deben re-renderizar el botón en pleno
   // gesto (ver el docstring de `gesto`).
   const cancelandoRef = useRef(false);
+  const cercaRef = useRef(false);
   const inicioRef = useRef(0);
 
   // Espejo síncrono de `disabled` — ver el docstring de `gesto` más abajo (hallazgo de device
@@ -152,6 +167,7 @@ export function BotonVoz({
     if (disabledRef.current) return;
     fijadoRef.current = false;
     cancelandoRef.current = false;
+    cercaRef.current = false;
     inicioRef.current = Date.now();
     onIniciar();
   }, [onIniciar]);
@@ -165,6 +181,15 @@ export function BotonVoz({
     [onCancelando],
   );
 
+  const marcarCerca = useCallback(
+    (cerca: boolean) => {
+      if (fijadoRef.current || cercaRef.current === cerca) return;
+      cercaRef.current = cerca;
+      onCerca?.(cerca);
+    },
+    [onCerca],
+  );
+
   const fijar = useCallback(() => {
     if (fijadoRef.current) return; // idempotente: no reavisa dos veces por el mismo cruce de umbral
     fijadoRef.current = true;
@@ -172,8 +197,12 @@ export function BotonVoz({
       cancelandoRef.current = false;
       onCancelando?.(false);
     }
+    if (cercaRef.current) {
+      cercaRef.current = false;
+      onCerca?.(false);
+    }
     onFijar();
-  }, [onFijar, onCancelando]);
+  }, [onFijar, onCancelando, onCerca]);
 
   const soltar = useCallback(() => {
     if (fijadoRef.current) return; // fijado: soltar el dedo YA NO detiene (contrato §1, fila 4)
@@ -183,9 +212,37 @@ export function BotonVoz({
       cancelandoRef.current = false;
       onCancelando?.(false);
     }
+    if (cercaRef.current) {
+      cercaRef.current = false;
+      onCerca?.(false);
+    }
     if (cancelar) onCancelar();
     else onSoltarSinFijar();
-  }, [onSoltarSinFijar, onCancelar, onCancelando]);
+  }, [onSoltarSinFijar, onCancelar, onCancelando, onCerca]);
+
+  /**
+   * La decisión del eje, en el hilo de JS (una sola llamada por frame, como antes). **Gana el eje en que
+   * el dedo se movió MÁS** — `DECISIONES.md:112` («un gesto en diagonal no puede disparar cancelar **y**
+   * bloquear a la vez») y `index.html:3000` (`-dy > |dx|`). Antes ganaba siempre «arriba» apenas pasaba
+   * el umbral, aunque el dedo estuviera más hacia la izquierda que hacia arriba: una diagonal fijaba en
+   * vez de cancelar (DEVICE15, fila 3, sonda `diag-*`: «el candado gana, no hay eje dominante»).
+   *
+   * `translationY`/`translationX` negativos = el dedo subió / fue a la izquierda.
+   */
+  const mover = useCallback(
+    (translationX: number, translationY: number) => {
+      const arriba = -translationY;
+      if (arriba > Math.abs(translationX)) {
+        marcarCancelando(false);
+        if (arriba > UMBRAL_FIJAR_PX) fijar();
+        else marcarCerca(arriba > UMBRAL_FIJAR_PX * FRACCION_CERCA_DE_FIJAR);
+      } else {
+        marcarCerca(false);
+        marcarCancelando(-translationX > UMBRAL_CANCELAR_PX);
+      }
+    },
+    [fijar, marcarCancelando, marcarCerca],
+  );
 
   /**
    * 🔴 **BUG real de device (backend, ODOBI8 §C, 2026-08-11): el micrófono quedaba grabando para
@@ -258,19 +315,12 @@ export function BotonVoz({
         scheduleOnRN(comenzar);
       })
       .onUpdate((e) => {
-        // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
-        if (-e.translationY > UMBRAL_FIJAR_PX) {
-          scheduleOnRN(fijar);
-        } else {
-          // Eje horizontal (BL-D2): `translationX` negativo = el dedo fue a la izquierda. Fijar (arriba)
-          // gana sobre cancelar (izquierda) si el dedo hizo las dos cosas.
-          scheduleOnRN(marcarCancelando, -e.translationX > UMBRAL_CANCELAR_PX);
-        }
+        scheduleOnRN(mover, e.translationX, e.translationY);
       })
       .onFinalize(() => {
         scheduleOnRN(soltar);
       });
-  }, [scrollRef, comenzar, fijar, soltar, marcarCancelando]);
+  }, [scrollRef, comenzar, mover, soltar]);
 
   const etiqueta = disabled
     ? 'Grabando — ya hay una captura en curso'
