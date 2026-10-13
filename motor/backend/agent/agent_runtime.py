@@ -23,7 +23,7 @@ _STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del do
 def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None,
                     memory_provider=None, engine_mode: str = "dispatch",
                     tool_schemas=None, tool_executor=None, perfil_provider=None,
-                    metering_sink=None) -> None:
+                    metering_sink=None, session_scope=None) -> None:
     """`memory_provider` (opcional): boundary de memoria de largo plazo (recall/remember/warm). None = el
     dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él.
 
@@ -37,6 +37,14 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
     boundary igual que `perfil_provider` — el motor no sabe a qué tabla va, sólo que existe un sumidero
     de eventos de uso. `None` (default) = no se registra nada (comportamiento actual, sin cambios).
 
+    `session_scope` (opcional): `(session_id) -> dict | None`, boundary igual que `perfil_provider`. Le
+    dice a `call_llm_tools` que ESTA sesión (el `channel_ref` del hilo) sólo puede usar un subconjunto de
+    las tools: `{'tool_names': [...], 'system_extra': str}`. `None` (default, o el hook devuelve None) = el
+    turno corre EXACTAMENTE como siempre. El motor no sabe qué significa el scope; sólo lo aplica: en el
+    primer paso del turno fuerza la tool (tool_choice='required') y tras su resultado cierra con texto
+    (tool_choice='none'). Vive en la activity y no en el workflow: no agrega Commands a la historia, así que
+    es replay-safe para las sesiones permanentes en vuelo.
+
     `engine_mode`: 'dispatch' (default, intent->1 accion, byte-identical) | 'react' (loop tool-calling).
     En 'react' el dominio DEBE pasar `tool_schemas` (catalogo OpenAI function-calling) y `tool_executor`
     (name, arguments, ctx, *, confirmed, idem_key) -> ToolResult. En 'dispatch' se ignoran (None)."""
@@ -44,7 +52,8 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
                       "dispatcher": dispatcher, "context_factory": context_factory,
                       "memory_provider": memory_provider, "engine_mode": engine_mode,
                       "tool_schemas": tool_schemas, "tool_executor": tool_executor,
-                      "perfil_provider": perfil_provider, "metering_sink": metering_sink}
+                      "perfil_provider": perfil_provider, "metering_sink": metering_sink,
+                      "session_scope": session_scope}
 
 
 def get_domain(name: str) -> dict:
