@@ -354,7 +354,7 @@ def test_K11_connection_required_deja_gate_card_con_alcance_del_catalogo():
     assert card["connect_path"] == "/composio/connect?service=gmail" and card["alcance"]
     # PROTO4DEPS §2: un gate cuyo turno no se resume en una frase NO lleva `pendiente` (clave ausente).
     assert "pendiente" not in card
-    assert {i["condicion"] for i in card["alcance_items"]} <= {"solo_lectura", "requiere_ok", "ninguna"}
+    assert {i["condicion"] for i in card["alcance"]} <= {"solo_lectura", "requiere_ok", "ninguna"}
 
 
 def test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():

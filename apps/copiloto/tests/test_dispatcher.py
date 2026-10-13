@@ -95,8 +95,7 @@ def test_K11_conexion_faltante_arma_card_requiere_conexion_con_alcance_del_catal
     entrada = next(s for s in build_catalog(valid_toolkits=["gmail"], mp_connected=False, composio_connected=[])
                    if s["key"] == "gmail")
     assert r.card == {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail", "bloquea": True,
-                      "alcance": entrada["capabilities"], "alcance_items": entrada["alcance_items"],
-                      "connect_path": entrada["connect_path"]}
+                      "alcance": entrada["alcance_items"], "connect_path": entrada["connect_path"]}
     assert r.card["connect_path"] == "/composio/connect?service=gmail"
     # compatibilidad: un cliente que ignora `card` sigue viendo el mismo texto útil de siempre
     assert "Gmail" in r.reply_text and "conect" in r.reply_text.lower() and r.done is False

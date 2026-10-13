@@ -35,7 +35,7 @@ def test_toda_condicion_del_catalogo_y_de_la_card_sale_del_enum():
         assert _fuera_del_enum(entrada["alcance_items"]) == [], entrada["key"]
     for key in ("mercadopago", *_TOOLKITS):
         card = requiere_conexion_card(key, key)
-        assert _fuera_del_enum(card["alcance_items"]) == [], key
+        assert _fuera_del_enum(card["alcance"]) == [], key
 
 
 def test_CONTROL_el_chequeo_de_enum_SI_caza_una_condicion_inventada():
@@ -69,16 +69,22 @@ def test_mercadopago_declara_sus_DOS_capacidades_con_su_calificador():
 def test_las_dos_superficies_salen_de_la_MISMA_lista_y_no_driftean():
     for entrada in _catalogo():
         card = requiere_conexion_card(entrada["key"], entrada["display_name"])
-        assert card["alcance_items"] == entrada["alcance_items"]
-        assert card["alcance"] == entrada["capabilities"] == [i["texto"] for i in entrada["alcance_items"]]
+        assert card["alcance"] == entrada["alcance_items"]
+        assert entrada["capabilities"] == [i["texto"] for i in entrada["alcance_items"]]
 
 
-def test_compat_las_claves_viejas_siguen_siendo_list_de_str():
-    """La web renderiza `alcance`/`capabilities` como strings: un objeto ahí rompe el sheet sin avisar."""
+def test_la_card_manda_alcance_con_objetos_y_NO_duplica_la_lista_en_otra_clave():
+    """D1 (planificación): el core ya lee `card.alcance` en las dos formas y pinta la insignia; una clave
+    paralela (`alcance_items`) en la card quedaría sin lector, y la insignia moriría muda."""
+    card = requiere_conexion_card("mercadopago", "Mercado Pago")
+    assert all(isinstance(i, dict) and set(i) == {"texto", "condicion"} for i in card["alcance"])
+    assert "alcance_items" not in card
+
+
+def test_el_catalogo_conserva_capabilities_como_list_de_str():
+    """La web tipa `capabilities` como `string[]` (`types.ts`): un objeto ahí rompe esa pantalla sin avisar."""
     for entrada in _catalogo():
         assert all(isinstance(c, str) for c in entrada["capabilities"])
-    card = requiere_conexion_card("gmail", "Gmail")
-    assert all(isinstance(c, str) for c in card["alcance"])
 
 
 def test_un_toolkit_sin_copy_dedicado_aparece_con_alcance_vacio_y_valido():

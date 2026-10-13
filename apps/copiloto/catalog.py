@@ -121,10 +121,11 @@ def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -
         "category": presentation["category"],
         "kind": kind,
         "description": presentation["description"],
-        # `capabilities` (list[str]) se CONSERVA tal cual: la web lo tipa como `string[]` y renderiza cada
-        # elemento como hijo de React; un objeto ahí rompería el sheet sin avisar. Sale de la MISMA lista
-        # que `alcance_items`, así que no pueden driftear. Baja de `capabilities` cuando web y mobile lean
-        # `alcance_items` (fecha a fijar por planificación).
+        # `capabilities` (list[str]) se CONSERVA tal cual en `GET /catalog`: la web lo tipa como `string[]`
+        # (`apps/copiloto-web/src/lib/api/types.ts`) y un objeto ahí rompería esa pantalla sin avisar.
+        # `alcance_items` es la forma con calificador, aditiva, desde la MISMA lista (no pueden driftear).
+        # La CARD de conexión, en cambio, manda `alcance` con objetos: su consumidor (el core) lee las dos
+        # formas y ya pinta la insignia (PROTO4DEPS, decisión D1 de planificación).
         "capabilities": [c["texto"] for c in presentation["alcance"]],
         "alcance_items": [dict(c) for c in presentation["alcance"]],
         # K-09: `status` distingue «caido» (hubo conexión y ya no sirve) de «nunca_conectado».
@@ -169,8 +170,7 @@ def requiere_conexion_card(service: str, label: str, *, pendiente: str | None = 
     key = (service or "").lower()
     entry = _entry(key, kind="payments" if key == MERCADOPAGO_KEY else "composio", connected=False)
     card = {"kind": KIND_REQUIERE_CONEXION, "service": key, "label": label, "bloquea": True,
-            "alcance": entry["capabilities"], "alcance_items": entry["alcance_items"],
-            "connect_path": entry["connect_path"]}
+            "alcance": entry["alcance_items"], "connect_path": entry["connect_path"]}
     # `pendiente` va en la CARD (es del turno, no del servicio) y es OPCIONAL: un gate disparado por algo
     # que no se puede resumir en una frase es el caso normal, y entonces la clave está AUSENTE -- nunca
     # `null` ni un texto de relleno (la app tiene que verse bien sin él).
