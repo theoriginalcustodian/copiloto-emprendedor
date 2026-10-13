@@ -184,6 +184,39 @@ describe('PantallaLogin', () => {
     expect(StyleSheet.flatten(screen.getByTestId('login-google').props.style)?.borderWidth ?? 0).toBe(0);
   });
 
+  /** Orden de los testID en el árbol renderizado (recorrido en profundidad = orden de pantalla). */
+  function ordenDeTestIds(): string[] {
+    const ids: string[] = [];
+    const visitar = (n: any): void => {
+      if (!n || typeof n === 'string') return;
+      if (Array.isArray(n)) return n.forEach(visitar);
+      if (n.props?.testID) ids.push(n.props.testID);
+      visitar(n.children);
+    };
+    visitar(screen.toJSON());
+    return ids;
+  }
+
+  it('mapeo `ingresar`/`ingresar-error`: label «Mail», sin divisor «o», y el error va ENTRE los campos y los botones', async () => {
+    jest.mocked(api.login).mockRejectedValueOnce(new UnauthorizedError('x'));
+    await montar();
+    expect(screen.getByText('Mail')).toBeTruthy();
+    expect(screen.queryByText('Email')).toBeNull();
+    expect(screen.queryByText('o')).toBeNull();
+
+    await fireEvent.changeText(screen.getByTestId('login-email'), 'emprendedor@copiloto.test');
+    await fireEvent.changeText(screen.getByTestId('login-password'), 'mala');
+    await fireEvent.press(screen.getByTestId('login-submit'));
+    await waitFor(() => expect(screen.getByTestId('login-alert')).toBeTruthy());
+
+    const orden = ordenDeTestIds();
+    const i = (id: string) => orden.indexOf(id);
+    expect(i('login-password')).toBeGreaterThanOrEqual(0);
+    expect(i('login-alert')).toBeGreaterThan(i('login-password'));
+    expect(i('login-submit')).toBeGreaterThan(i('login-alert'));
+    expect(i('login-google')).toBeGreaterThan(i('login-submit'));
+  });
+
   it('BL-X12m: `emailInicial` precarga el mail (el reveal «Entrar» ya sabe quién era)', async () => {
     await render(
       <ThemeProvider>

@@ -156,7 +156,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
 
         <View style={{ gap: tema.espacio.md }}>
           <View style={{ gap: tema.espacio.xs }}>
-            <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>Email</Text>
+            <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>Mail</Text>
             <TextInput
               testID="login-email"
               autoCapitalize="none"
@@ -191,10 +191,31 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               // de abrir y el layout se reasiente.
               onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
               placeholderTextColor={tema.color.textoTenue}
-              // Error de credenciales: el borde del campo de contraseña pasa a terracota (`.ig-campo.err`).
-              style={[styles.input, estiloCampo, estadoEfectivo === 'error-credenciales' && { borderColor: tema.color.acento }]}
+              // Error de credenciales: el borde del campo de contraseña pasa a terracota PROFUNDA
+              // (`.ig-campo.err` → `--terracota-prof`, index.html:542) = `acentoTinta` (#B04A2E en claro).
+              style={[styles.input, estiloCampo, estadoEfectivo === 'error-credenciales' && { borderColor: tema.color.acentoTinta }]}
             />
           </View>
+
+          {/* `ingresar-error` (BL mapeo 2026-10-13): el error va ENTRE los campos y los botones, como
+              `.ig-error` (index.html:2590, antes de `.ig-act` :2592) — quien falló mira el campo, no el
+              pie. Color = `--terracota-prof` (:539) = `acentoTinta`, no el rojo `peligro`: equivocarse
+              de contraseña no es un peligro, y el prototipo lo dice con la terracota de la marca. */}
+          {estadoEfectivo === 'error-credenciales' && (
+            <Text testID="login-alert" style={[styles.alerta, styles.alertaError, { color: tema.color.acentoTinta, fontSize: tema.tipo.chico }]}>
+              {TEXTO_CREDENCIALES_INCORRECTAS}
+            </Text>
+          )}
+          {estadoEfectivo === 'no-habilitada' && (
+            <Text testID="login-alert" style={[styles.alerta, styles.alertaError, { color: tema.color.acentoTinta, fontSize: tema.tipo.chico }]}>
+              Tu cuenta todavía no está habilitada. Escribinos para activarla.
+            </Text>
+          )}
+          {estadoEfectivo === 'error-red' && (
+            <Text testID="login-alert" style={[styles.alerta, styles.alertaError, { color: tema.color.acentoTinta, fontSize: tema.tipo.chico }]}>
+              No pudimos conectarnos. Probá de nuevo en un toque.
+            </Text>
+          )}
 
           <Pressable
             testID="login-submit"
@@ -224,12 +245,6 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
             )}
           </Pressable>
 
-          <View style={[styles.divisor, { gap: tema.espacio.sm }]}>
-            <View style={[styles.divisorLinea, { backgroundColor: tema.color.borde }]} />
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>o</Text>
-            <View style={[styles.divisorLinea, { backgroundColor: tema.color.borde }]} />
-          </View>
-
           <Pressable
             testID="login-google"
             disabled={procesandoGoogle}
@@ -256,28 +271,18 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
 
           {/* CTA5 — la sesión se cayó sola. Sólo mientras el formulario no tenga nada propio que
               decir: en cuanto el usuario reintenta, lo que importa es el resultado de ESE intento.
-              `textoTenue` y no `peligro`: expirar es lo normal, no una falla del emprendedor. */}
+              `textoTenue` y no `peligro`: expirar es lo normal, no una falla del emprendedor.
+
+              ENMIENDA FUNDADA (mapeo `ingresar`, 2026-10-13): el prototipo pinta `.ig-aviso` siempre
+              (index.html:2597) porque es una HOJA DE ESTADOS que muestra todos a la vez; en la app real
+              decir «tu sesión se cerró» a quien abre la app por primera vez es una afirmación falsa.
+              Por eso se pinta sólo si hubo cierre por seguridad (`avisoSesion`) y el form está en reposo. */}
           {avisoSesion !== undefined && estadoEfectivo === 'idle' && (
             <Text
               testID="login-aviso-sesion"
               style={[styles.alerta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}
             >
               {avisoSesion}
-            </Text>
-          )}
-          {estadoEfectivo === 'error-credenciales' && (
-            <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
-              {TEXTO_CREDENCIALES_INCORRECTAS}
-            </Text>
-          )}
-          {estadoEfectivo === 'no-habilitada' && (
-            <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
-              Tu cuenta todavía no está habilitada. Escribinos para activarla.
-            </Text>
-          )}
-          {estadoEfectivo === 'error-red' && (
-            <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
-              No pudimos conectarnos. Probá de nuevo en un toque.
             </Text>
           )}
           <Text testID="login-pie" style={[styles.alerta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>
@@ -302,7 +307,7 @@ const styles = StyleSheet.create({
   etiqueta: { fontWeight: '600' },
   input: { borderWidth: 1 },
   boton: { alignItems: 'center', justifyContent: 'center' },
-  divisor: { flexDirection: 'row', alignItems: 'center' },
-  divisorLinea: { flex: 1, height: 1 },
   alerta: { textAlign: 'center' },
+  // `.ig-error{font-weight:500}` (index.html:539-540).
+  alertaError: { fontWeight: '500' },
 });
