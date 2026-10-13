@@ -346,3 +346,31 @@ que existir, que imprima **cuál** de las dos pasó (`[ -f "$f" ] || { echo SIN-
 nunca las dos en un texto. **(8)** y el corolario de este archivo sigue vigente en su forma más cruda:
 cometí esto **mientras cerraba el hallazgo de otro** por medir sobre un árbol anterior al fix. La
 clase se repite en el turno en que la estás nombrando.
+
+**Refuerzo 2026-10-13 — el MISMO defecto con el byte invertido, y por eso el reflejo de arriba no
+alcanza.** Este archivo dice *«un ref que no existe da vacío, y vacío se parsea como `0`»*. Hoy pagué la
+cara opuesta: **no siempre da vacío.** Midiendo si 48 archivos del índice existían en el upstream, escribí
+
+```bash
+bu="$(git -C "$R" rev-parse "$U:$f" 2>/dev/null)"
+if [ -z "$bu" ]; then noup=$((noup+1)); ...     # ← esta rama NO PUEDE dispararse nunca
+```
+
+`git rev-parse <ref>:<path-inexistente>` **no devuelve vacío: imprime el argumento literal**
+(`5aca2562…:no/existe/xx.md`) y manda el error a stderr, que el `2>/dev/null` se come. Así que `bu`
+**nunca** está vacío, el contador salió `0` y reporté «0 archivos fuera del upstream» como si lo hubiera
+medido. Nadie lo midió: era un artefacto del comparador.
+
+Lo que lo cazó fue el **control positivo que yo mismo había puesto al final** —`rev-parse` de un path
+inventado, «debe dar vacío»— y que imprimió el literal entre corchetes: `[5aca2562…:no/existe/xx.md]`.
+El control estaba bien pensado y su *esperado* estaba mal; ver
+[[un-control-positivo-con-esperado-falso-acusa-al-script]]. La conclusión sobrevivió por otra vía (los 48
+venían de un `git diff --name-only`, así que estaban todos), pero **sobrevivió por suerte, no por el
+control**, y eso es exactamente lo que este archivo existe para no dejar pasar.
+
+**How to apply — (9):** para *«existe este path en este ref?»* el instrumento es `git cat-file -e
+"<ref>:<path>"` y su **rc**, no el stdout de `rev-parse`. Y el control positivo de un chequeo de
+existencia se escribe **en las dos direcciones**: un path que existe (rc 0) y uno inventado (rc≠0),
+imprimiendo las dos. Regla general: todo comando cuyo modo de falla es *escribir otra cosa* en vez de
+*no escribir nada* rompe cualquier guarda basada en `-z`. Hermana de
+[[el-fallback-que-sustituye-al-valor-perdido-hace-ciego-al-control]].
