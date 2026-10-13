@@ -67,8 +67,22 @@ esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 
 
 0. 🔴 GATE DETERMINISTA — corré PRIMERO, antes de razonar nada:
    `bash scripts/vigia.sh vigilancia-check.sh --quiet`
-   **Exit 0 = sin novedades. Cerrá el turno en UNA línea y NO sigas** — no releas no-ocio-check.sh
-   ni cola-check.sh a mano, `vigilancia-check.sh` ya los corre a los dos y decide.
+   **Exit 0 = sin novedades. Cerrá el turno en UNA línea y NO sigas** — no releas `cola-check.sh`
+   a mano: `vigilancia-check.sh` ya lo corre y decide.
+   ⚠️ **CORREGIDO 2026-10-13: acá decía «no releas no-ocio-check.sh ni cola-check.sh, ya los corre a
+   los dos». Era FALSO para `no-ocio-check.sh`** — `vigilancia-check.sh:21` lo declara **PROHIBIDO**
+   para juzgar si una sesión trabaja (su heurística falló 6 veces) y reusa a propósito sólo la mitad
+   del mtime. O sea que este prompt mandaba a NO correr un instrumento afirmando que otro lo corría,
+   y dos líneas más abajo el mismo prompt listaba la composición real **sin** él: el doc se
+   contradecía a sí mismo y ganaba la frase que apagaba la búsqueda.
+   🔴 **Y si lo corrés igual, hoy falla MUDO:** `bash scripts/vigia.sh no-ocio-check.sh` da **rc=2 y
+   cero bytes** en stdout y stderr (medido 2026-10-13). Causa: el lanzador ejecuta el instrumento
+   **desde el pin**, y `no-ocio-check.sh` deriva el slug de la sesión del `basename` de su propia
+   raíz ⇒ glob `~/.claude/projects/*_plan-vigia*` vacío ⇒ sale 2 sin decir nada. El criterio de la
+   whitelist de `vigia.sh:189` es justamente *«cambia lo que el instrumento MIDE según de dónde
+   salga el archivo?»*, y su grep (`BASH_SOURCE|show-toplevel|pytest|npm |jest|vitest`) **no puede
+   ver este descalificador**, que es un `basename` + glob del slug. Está anotado para arreglarse de
+   raíz; hasta entonces, para producción real usá `scripts/ultimas-acciones.sh` + juicio.
    **Exit 1 = alarma. Su stdout ES el reporte** — partí de ahí, no reconstruyas la medición vos.
    Este script compone `cola-check.sh` (hito arrancable) + `escaladores-buzon.sh` (contrato/pedido
    viejo) + mtime de transcripts (VIDA vs PRODUCCIÓN — VIDA fresca NO prueba trabajo, el cron

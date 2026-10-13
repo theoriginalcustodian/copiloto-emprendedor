@@ -103,7 +103,27 @@ fe="$(ult_actividad frontend)"; min_fe="$(min_desde "$fe")"
 # Medido: frontend reportada "DEAD-MAN muda 96min" mientras mergeaba el #316 y abría el #320 verde.
 # Es `[[una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd]]` mordiendo a este
 # script. El `*` de cierre incluye los slugs de worktree; se escanean TODOS, no el primero.
-PROJS="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")"* 2>/dev/null)"
+# 🔴 RAÍZ 2026-10-13 (quinto fallo del mismo sensor, y el más caro de diagnosticar): esta línea
+# mataba el script MUDO. `ls -d` sale **2** cuando el glob no matchea nada, `2>/dev/null` se come el
+# mensaje, y con `set -e` (línea 31) la asignación aborta ahí mismo ⇒ **rc=2 y CERO bytes** en stdout
+# y stderr. Peor: es el MISMO código 2 que el fail-closed de arriba, que sí imprime — dos causas
+# distintas compartiendo el código de salida, y la que NO habla es la frecuente.
+# Cuándo pasa: siempre que se lo corra desde un directorio cuyo basename no tenga slug, que es
+# exactamente lo que hace `vigia.sh` — el lanzador ejecuta el instrumento **desde el pin**
+# (`_plan-vigia`), así que el glob busca `*_plan-vigia*` y no existe. O sea que seguir el broadcast
+# «todo instrumento va por el lanzador» dejaba este sensor callado, y un rc que no es 0 ni 1 no
+# figura en el prompt de ningún cron. Medido: `bash vigia.sh no-ocio-check.sh` → rc=2, 0 bytes.
+# El `|| true` desarma el aborto; el `-z` de abajo convierte el silencio en un mensaje con salida.
+PROJS="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")"* 2>/dev/null || true)"
+if [ -z "$PROJS" ]; then
+  # Fail-CLOSED y RUIDOSO, con código PROPIO (4): un sensor que no encuentra a su sujeto no puede
+  # devolver lo mismo que uno que no encuentra el buzón, ni lo mismo que «sin novedades».
+  echo "❌ NO-OCIO: ningún slug de sesión para '$(basename "$REPO_ROOT")' en $HOME/.claude/projects/" >&2
+  echo "    No es «no hay sesiones»: es «no miré». El slug sale del BASENAME de la raíz del script," >&2
+  echo "    así que corrido desde un pin o un worktree de nombre ajeno el sensor es ciego." >&2
+  echo "    NO lo corras por 'vigia.sh' (ejecuta desde el pin): corrélo desde el checkout principal." >&2
+  exit 4
+fi
 etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identidad ASIGNADA, no inferida
   # 🔴 Señal primaria: el PROMPT DEL CRON que la sesión RECIBE ("Vigía de coordinación (sesión X)").
   # Cada ventana recibe únicamente el heartbeat de su propio rol, así que el rótulo no depende ni de

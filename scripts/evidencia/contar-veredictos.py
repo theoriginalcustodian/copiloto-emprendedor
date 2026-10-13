@@ -2731,7 +2731,11 @@ def main():
     # clave que no distinguia plataforma, asi que un id con veredicto WEB y nada en mobile contaba
     # como cubierto: un solo numero para DOS poblaciones. `cerrada` sigue impresa abajo como
     # agregado -no se descarta informacion- pero la cifra que se cita es la de la plataforma, y el
-    # criterio 3 de este sprint esta acotado a WEB por decision del operador.
+    # criterio 3 quedo acotado a WEB por DEC-14, firmada el 2026-10-08, y ESE SPRINT CERRO.
+    # Ninguna de estas dos etiquetas vuelve a decir "este sprint" ni "sprint siguiente": la v1
+    # decia las dos cosas, el sprint que nombraban cerro, y el 2026-10-13 el operador pregunto
+    # por el avance de MOBILE y se le cito "web, la que se cita este sprint" como si siguiera
+    # vigente. Va la DECISION con su fecha, que no envejece.
     agg = res["agregado_por_plataforma"]
     web, mob, indet = (agg.get(k, []) for k in ("web", "mobile", "indeterminada"))
     solo_nc = cruzar_no_comparacion(res["lotes"].values())
@@ -2748,8 +2752,8 @@ def main():
         return (f"  ⚠️ de los cuales {len(n)} SIN comparación ({', '.join(n[:5])}"
                 f"{'…' if len(n) > 5 else ''})") if n else ""
     techo = agg["web_techo_alcanzable"]
-    print(f"      web  {len(web)} de {len(ids)}   ({100 * len(web) // len(ids)}%)  <- la que se cita "
-          f"este sprint (criterio 3 acotado a web) · TECHO ALCANZABLE {techo}"
+    print(f"      web  {len(web)} de {len(ids)}   ({100 * len(web) // len(ids)}%)  <- acotada "
+          f"por DEC-14 del 2026-10-08 (criterio 3 acotado a web, sprint CERRADO) · TECHO ALCANZABLE {techo}"
           f"{' ✅ COMPLETO' if len(web) >= techo else ''}{_nc('web')}")
     # Los faltantes van NOMBRADOS y partidos en dos: el que lee tiene que poder cerrar los
     # accionables y NO volver a preguntar por los otros. Un conteo sin sujetos no permite ninguna
@@ -2772,7 +2776,13 @@ def main():
                   f"veredicto canonico `FUERA-DE-REFERENCIA` (ya en el vocabulario, usado en 8 "
                   f"lotes). NO lo declara este lector: asignar un veredicto que no medi es peor "
                   f"que dejar el pendiente a la vista.")
-    print(f"      mobile  {len(mob)} de {len(ids)}   (sprint siguiente, con device/EAS)"
+    # NUNCA nombrar un sprint en esta etiqueta. La v1 decia "(sprint siguiente, con
+    # device/EAS)": se escribio cuando la orden del 2026-09-22 difirio mobile, el sprint que
+    # nombraba cerro el 2026-10-08 (DEC-14) y la etiqueta siguio diciendo "siguiente" --
+    # o sea que el operador pregunto por el sprint mobile y se le cito esta linea como si
+    # mobile todavia no hubiera empezado. Una etiqueta que nombra un sprint no tiene
+    # vencimiento: va el DISPARADOR, que no envejece.
+    print(f"      mobile  {len(mob)} de {len(ids)}   (pendiente de device/EAS)"
           f"{_nc('mobile')}")
     print(f"      indeterminada  {len(indet)} de {len(ids)}  <- NO es una plataforma: es lo que el "
           f"lector no pudo leer")
