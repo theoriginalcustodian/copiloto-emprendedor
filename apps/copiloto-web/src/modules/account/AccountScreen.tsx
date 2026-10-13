@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { descripcionLegal } from '@copiloto/core';
+
 import type { FuncionSoporte } from '../../lib/api';
 import { Button, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
@@ -19,24 +21,6 @@ function accountLabel(me: { cliente_id?: string; email?: string | null } | undef
 
 function initial(clienteId: string | undefined): string {
   return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
-}
-
-/**
- * BL-O6 (LEGALVERMICUENTA): qué versión legal aceptó este tenant, según los dos campos de `/me`.
- * Tres estados reales más un caso que NO es ninguno de ellos: si el campo no llega (backend viejo,
- * respuesta sin el campo) se dice que no se pudo verificar. Colapsarlo en «nunca aceptó» mostraría
- * una mentira sin ninguna alarma (degradado prudente hacia el caso benigno).
- */
-function descripcionLegal(
-  me: { legal_aceptado?: boolean; legal_version_aceptada?: string | null } | undefined,
-): string {
-  if (!me) return 'Cargando tu versión aceptada…';
-  if (typeof me.legal_aceptado !== 'boolean' || me.legal_version_aceptada === undefined) {
-    return 'No pudimos verificar qué versión aceptaste.';
-  }
-  if (me.legal_version_aceptada === null) return 'Todavía no aceptaste ninguna versión.';
-  if (me.legal_aceptado) return `Aceptaste la versión vigente (${me.legal_version_aceptada}).`;
-  return `Aceptaste la versión ${me.legal_version_aceptada}, que ya no es la vigente.`;
 }
 
 /** Chevron de fila (mismo patrón que `modules/apps/AppsScreen.tsx` `ChevronIcon`, verbatim

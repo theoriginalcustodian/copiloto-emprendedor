@@ -341,22 +341,33 @@ export function PantallaPerfilNegocio() {
 
       {estadoCarga === 'ok' && (
         <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg }}>
+          {/* Mapeo `negocio` (index.html:2280): el estado del modo arriba, como el `estado-pag` del
+              prototipo — «Te pide confirmación antes de ejecutar». Sale de `campos.modoCeremonia`, el
+              mismo dato que el bloque «Cómo trabaja tu copiloto» de abajo; nunca un texto fijo. */}
+          <Text
+            testID="perfil-negocio-estado-modo"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+          >
+            {campos.modoCeremonia === 'automatico'
+              ? 'Anota lo que le dictás y te avisa después'
+              : 'Te pide confirmación antes de ejecutar'}
+          </Text>
           <Seccion titulo="Mi negocio" testID="perfil-negocio-seccion-negocio">
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Con esto el copiloto entiende de qué se trata tu trabajo y puede responderte mejor.
             </Text>
             <CampoTexto
               testID="perfil-negocio-que-vende"
-              etiqueta="¿Qué vendés o qué servicio ofrecés?"
+              etiqueta="Qué vendés"
               valor={campos.queVende}
               onChange={(v) => actualizar('queVende', v)}
-              placeholder="ej.: Instalaciones eléctricas domiciliarias y pequeñas obras"
+              placeholder="Contá qué hacés"
               multiline
               maxLength={LIMITE_QUE_VENDE}
             />
             <CampoSelect
               testID="perfil-negocio-a-quien"
-              etiqueta="¿A quién le vendés?"
+              etiqueta="A quién le vendés"
               opciones={OPCIONES_A_QUIEN}
               valor={campos.aQuien}
               onChange={(v) => actualizar('aQuien', v as AQuienVende)}
@@ -366,7 +377,7 @@ export function PantallaPerfilNegocio() {
               etiqueta="Nombre comercial"
               valor={campos.nombreComercial}
               onChange={(v) => actualizar('nombreComercial', v)}
-              placeholder="ej.: Electricidad Pérez"
+              placeholder="Con el que te conocen"
               maxLength={LIMITE_CAMPO_CORTO}
             />
             <CampoTexto
@@ -453,9 +464,15 @@ export function PantallaPerfilNegocio() {
             )}
           </Seccion>
 
-          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono); acá sólo el resumen. */}
-          <Seccion titulo="Cómo te habla el copiloto" testID="perfil-negocio-seccion-personalidad">
-            <Row testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Cómo te habla el copiloto">
+          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono); acá sólo el resumen.
+              Mapeo `negocio` (2026-10-13): rótulos y placeholders del prototipo (index.html:2276-2300).
+              ENMIENDAS FUNDADAS: (1) «A quién le vendés» es un select de 3 valores porque el backend lo
+              guarda como enum — texto libre rompería el contrato; (2) la validación de largo mínimo del
+              prototipo («Escribí al menos 10 caracteres…») NO se porta: el backend no la exige y
+              bloquear Guardar sobre perfiles ya guardados es un cambio de contrato (MAYOR), que se
+              pide a planificación; (3) Guardar es explícito por sección y no edición inline. */}
+          <Seccion titulo="Cómo te habla" testID="perfil-negocio-seccion-personalidad">
+            <Row testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
               <Text testID="perfil-negocio-tono-resumen" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
                 {resumenDeTono(campos)} ›
               </Text>

@@ -149,6 +149,9 @@ describe('AgendaScreen — desempate de conexión caída (BL-V23)', () => {
 
     await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeInTheDocument());
     expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent('Reunión con Ana');
+    // Mapeo `agenda`: subtítulo del prototipo y estado de la conexión.
+    expect(screen.getByTestId('agenda-intro')).toHaveTextContent('Tus eventos y lo que vence, en la misma línea.');
+    expect(screen.getByTestId('agenda-estado')).toHaveTextContent('Google Calendar conectada');
     expect(screen.queryByTestId('agenda-no-conectado')).not.toBeInTheDocument();
     expect(screen.queryByTestId('agenda-calendario-caida')).not.toBeInTheDocument();
   });

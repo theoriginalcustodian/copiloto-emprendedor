@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
@@ -111,7 +112,28 @@ function agruparEnFilas(
   return filas;
 }
 
-const FILAS_TILES_AJUSTES = agruparEnFilas(TILES_AJUSTES);
+/**
+ * Los tres grupos del prototipo (index.html:2108-2138): «Tu negocio» / «La app» / «Ayuda». Cada grupo
+ * lleva su rótulo y arma sus PROPIAS filas de `COLUMNAS` (el último hueco se rellena, ver
+ * `agruparEnFilas`). «Mi plan» —4º de «Tu negocio» en el prototipo— salió de la beta (DEC-8).
+ *
+ * ENMIENDAS FUNDADAS (mapeo `ajustes`, 2026-10-13), no divergencia sin dueño:
+ *  - la entrada sigue siendo un TILE (ícono + etiqueta) y no una fila con subtítulo («Qué vendés, a
+ *    quién y tu horario»): la grilla de vidrio es la decisión de diseño de esta pantalla, y en 3
+ *    columnas no entra una segunda línea sin recortarla;
+ *  - el encabezado «El Galpón · Martín Cairo» necesita el nombre comercial (`perfilNegocio`, una
+ *    lectura aparte) y el nombre de la PERSONA, que `/me` no trae: no se fabrica.
+ */
+const GRUPOS_AJUSTES: readonly { id: string; rotulo: string; keys: readonly AjusteKey[] }[] = [
+  { id: 'negocio', rotulo: 'Tu negocio', keys: ['perfilNegocio', 'facturacionAfip', 'apps'] },
+  { id: 'app', rotulo: 'La app', keys: ['cuenta', 'apariencia'] },
+  { id: 'ayuda', rotulo: 'Ayuda', keys: ['comoUsar', 'soporte', 'feedback'] },
+];
+
+const FILAS_POR_GRUPO = GRUPOS_AJUSTES.map((g) => ({
+  ...g,
+  filas: agruparEnFilas(TILES_AJUSTES.filter((t) => g.keys.includes(t.key))),
+}));
 
 export interface PantallaAjustesProps {
   /** Un handler único para las entradas del grid -- el tile tocado se identifica por `key`; el
@@ -128,9 +150,22 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
 
   return (
     <MarcoGlass titulo="Ajustes" icono="ajustes" testID="pantalla-ajustes">
-      <View style={[styles.contenedor, { padding: tema.espacio.md }]}>
+      {/* `flex:1` en el ScrollView MISMO (ver PantallaApps): con los rótulos de grupo la pantalla ya no
+          entra en un teléfono chico y sin scroll lo que sobra se recorta sin aviso. */}
+      <ScrollView style={styles.contenedor} contentContainerStyle={{ padding: tema.espacio.md }}>
+        <Text testID="ajustes-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, marginBottom: tema.espacio.sm }}>
+          Los datos de tu negocio, tus apps y cómo se comporta Odobi.
+        </Text>
         <View style={styles.grid}>
-          {FILAS_TILES_AJUSTES.map((fila, iFila) => (
+          {FILAS_POR_GRUPO.map((g) => (
+            <View key={g.id} style={styles.grupo}>
+              <Text
+                testID={`ajustes-grupo-${g.id}`}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+              >
+                {g.rotulo}
+              </Text>
+              {g.filas.map((fila, iFila) => (
             <View key={iFila} style={styles.filaGrid}>
               {fila.map((t, iCol) =>
                 // Hueco de relleno de la última fila: ocupa la columna para que los tiles reales
@@ -162,9 +197,11 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
                 ),
               )}
             </View>
+              ))}
+            </View>
           ))}
         </View>
-      </View>
+      </ScrollView>
     </MarcoGlass>
   );
 }
@@ -181,7 +218,8 @@ const ALTO_LABEL = 30;
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  grid: { gap: 12 },
+  grid: { gap: 16 },
+  grupo: { gap: 8 },
   filaGrid: { flexDirection: 'row', gap: 12 },
   tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   // `lineHeight` explícito para que 2 líneas entren exactas en `ALTO_LABEL` en vez de depender del

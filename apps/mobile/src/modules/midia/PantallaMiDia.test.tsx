@@ -323,6 +323,11 @@ describe('PantallaMiDia — lo que NO inventa', () => {
 
     await waitFor(() => expect(screen.getByTestId('midia-vacio')).toBeTruthy());
     expect(screen.queryByTestId('midia-no-disponible')).toBeNull();
+    // Mapeo `vacio` (index.html:1853-1854): título con punto y el cuerpo del prototipo.
+    expect(screen.getByTestId('midia-vacio-titulo').props.children).toBe('Nada urgente por hoy.');
+    expect(screen.getByTestId('midia-vacio-cuerpo').props.children).toBe(
+      'Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.',
+    );
   });
 
   it('🔴 CONTROL — encuentra una tarjeta presente y NO una ausente', async () => {

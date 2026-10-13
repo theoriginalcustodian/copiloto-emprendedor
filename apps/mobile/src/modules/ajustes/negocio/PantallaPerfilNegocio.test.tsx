@@ -193,6 +193,8 @@ describe('PantallaPerfilNegocio', () => {
       await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo')).toBeTruthy());
       expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Pedir confirmación');
       expect(screen.queryByText(/Automático/)).toBeNull();
+      // Mapeo `negocio`: el estado del modo también va arriba, como el estado-pag del prototipo.
+      expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Te pide confirmación antes de ejecutar');
     });
 
     it('🔴 en confirmación NO hay forma de ENCENDER el automático — eso lo ofrece el copiloto', async () => {
@@ -212,6 +214,7 @@ describe('PantallaPerfilNegocio', () => {
       await montar();
 
       await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Automático'));
+      expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Anota lo que le dictás y te avisa después');
       // Y la explicación NO promete que deja de preguntar todo: el piso sigue confirmando siempre.
       expect(screen.getByText(/te lo sigue preguntando siempre/)).toBeTruthy();
     });

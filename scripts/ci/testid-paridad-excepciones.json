@@ -1111,6 +1111,16 @@
       "motivo": "BL-O6 parte A: mobile no tiene alta propia (el signup es web-only), asi que el enlace a ToS vive en Mi cuenta (unilateral por diseno). Web lo ofrece desde SignupScreen con su propio boton 'Terminos y Condiciones' (sin este testid) -- no es drift, es que cada plataforma entra al mismo contenido desde un punto distinto.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-legal-version": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-legal-version",
+      "motivo": "BL-O6 LEGALNOOPERA v2 (Informar): gemelo mobile de web account-legal-estado. Misma funcion (descripcionLegal, packages/core/src/legal.ts, una sola fuente) y los mismos 4 estados, pero cada plataforma la monta en su propio modulo (web modules/account, mobile modules/ajustes), asi que el gate por-pantalla no los puede aparear: es asimetria de bucket, no contenido faltante.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-no-molestar": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
@@ -4705,7 +4715,7 @@
       "falta_en": "mobile",
       "fecha": "2026-10-06",
       "id": "account-legal-estado",
-      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
+      "motivo": "LEGALVERMICUENTA: web lo monta en modules/account; su gemelo mobile ya existe como cuenta-legal-version en PantallaCuenta.tsx (modules/ajustes, 2026-10-13). Sigue sin aparearse por el gate porque cada plataforma lo tiene en un modulo distinto.",
       "pantalla": "modules/account"
     },
     "modules/account::account-legal-tos": {
@@ -4737,6 +4747,136 @@
       "id": "account-screen-salir-grupo",
       "motivo": "BL-J11: web necesita un wrapper <div data-testid> propio para agrupar 'Cerrar sesion' porque sus filas son <div>/<button> planos dentro de un unico tile generico sin limite de componente. Mobile ya cumple el MISMO criterio (fila en su propio grupo, separada por estructura) con un componente propio, FilaBotones (testID cuenta-salir-botones, PantallaCuenta.tsx:101-110) que ya actua como el contenedor -- no hace falta un wrapper adicional con este id especifico. No es drift: cada plataforma resuelve la misma casilla con su propio mecanismo de agrupacion.",
       "pantalla": "modules/account"
+    },
+    "modules/ajustes::skin-card-sistema": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). El id ya existia como skin-card-${nombre}; al ser fila propia se escribe literal y el regex del gate lo ve.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skin-card-sistema-activo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema-activo",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Marca ✓ Activo de la fila; mismo id de antes, ahora literal.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skins-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skins-nota",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Nota al pie del prototipo (index.html:2410): el tema cambia fondo y texto, no la marca.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/apps::apps-estado": {
+      "en": [
+        "apps/mobile/src/modules/apps/PantallaApps.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "apps-estado",
+      "motivo": "Mapeo `apps` (2026-10-13): contador «N conectadas de M» del encabezado (estado-pag, index.html:2338) en la pantalla nativa. La web lista integraciones en otro modulo y no lo muestra; paridad web diferida a frontend1/web, no es contenido faltante de mobile.",
+      "pantalla": "modules/apps"
+    },
+    "modules/ajustes::cuenta-avisos-rotulo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-avisos-rotulo",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Rotulo «Avisos» sobre No molestar.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-pronto": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-pronto",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Chip «Pronto» de la fila No molestar (la accion sigue sin onPress a proposito).",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota con el porque de la demora de No molestar.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cierre-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-cierre-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota bajo Cerrar sesion: los datos quedan guardados.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes/negocio::tono-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-intro",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Subtitulo «Como te contesta Odobi…».",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes/negocio::tono-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-nota",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Nota «Esto se guarda aparte del perfil de tu negocio…».",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes::ajustes-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaAjustes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ajustes-intro",
+      "motivo": "Mapeo `ajustes` (2026-10-13): subtitulo del prototipo (index.html:2113) en la pantalla nativa Ajustes. La web no tiene pantalla Ajustes con grilla (su configuracion vive en modules/account y modules/connections); no es contenido faltante de mobile.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes/afip::afip-estado-vinculo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "afip-estado-vinculo",
+      "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/afip"
+    },
+    "modules/ajustes/negocio::perfil-negocio-estado-modo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "perfil-negocio-estado-modo",
+      "motivo": "Mapeo `negocio` (2026-10-13): estado-pag del prototipo (index.html:2280) «Te pide confirmacion antes de ejecutar» en la pantalla nativa Mi negocio. La web (modules/negocio) muestra el modo en su propio bloque; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/negocio"
     }
   }
 }

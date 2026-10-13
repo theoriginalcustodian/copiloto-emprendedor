@@ -147,4 +147,10 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
     expect(tomarPendiente()).toBe(TEXTO_NUEVO_EVENTO);
   });
+
+  it('mapeo `agenda`: subtítulo del prototipo y «Google Calendar conectada» sólo con Calendar conectado', async () => {
+    await montar();
+    expect(screen.getByTestId('agenda-intro').props.children).toBe('Tus eventos y lo que vence, en la misma línea.');
+    await waitFor(() => expect(screen.getByTestId('agenda-estado').props.children).toBe('Google Calendar conectada'));
+  });
 });

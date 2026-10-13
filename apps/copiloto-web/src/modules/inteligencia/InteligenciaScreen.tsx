@@ -279,7 +279,7 @@ export function InteligenciaScreen({ onAbrirChat }: { onAbrirChat: () => void })
                 <p className="inteligencia-screen__card-titulo">Mejores clientes</p>
                 {portada.mejoresClientes.length === 0 ? (
                   <p className="inteligencia-screen__vacio-chico" data-testid="inteligencia-clientes-vacio">
-                    Todavía no hay clientes con ventas registradas.
+                    Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
                   </p>
                 ) : (
                   portada.mejoresClientes.map((c) => (

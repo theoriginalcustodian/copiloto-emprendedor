@@ -69,6 +69,20 @@ describe('PantallaCuenta', () => {
     expect(screen.getByTestId('cuenta-email')).toHaveTextContent('no tiene un email', { exact: false });
   });
 
+  it('mapeo `cuenta`: «Avisos» + No molestar con chip «Pronto» y el motivo, y la nota bajo Cerrar sesión', async () => {
+    await montar();
+    expect(screen.getByTestId('cuenta-avisos-rotulo').props.children).toBe('Avisos');
+    expect(screen.getByText('Silenciar los avisos de Odobi')).toBeTruthy();
+    expect(screen.getByTestId('cuenta-no-molestar-pronto').props.children).toBe('Pronto');
+    expect(screen.getByTestId('cuenta-no-molestar-nota')).toHaveTextContent('Lo estamos terminando con cuidado.', { exact: false });
+    expect(screen.getByTestId('cuenta-cierre-nota')).toHaveTextContent(
+      'Si cerrás sesión, tus datos quedan guardados: al volver a entrar está todo como lo dejaste.',
+    );
+    // La nota de cierre sólo está con el botón; con el panel de confirmación abierto no se duplica.
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    expect(screen.queryByTestId('cuenta-cierre-nota')).toBeNull();
+  });
+
   /** Un toque accidental en una grilla de íconos no puede echarte de la sesión. */
   it('cerrar sesión pide confirmación antes de hacerlo', async () => {
     await montar();
@@ -86,6 +100,41 @@ describe('PantallaCuenta', () => {
     await montar();
     await fireEvent.press(screen.getByTestId(testId));
     expect(router.push).toHaveBeenCalledWith(ruta);
+  });
+
+  /**
+   * BL-O6 «Informar» (v2): los CUATRO estados de la versión legal aceptada. El cuarto (campo ausente)
+   * es el único que no se detecta mirando la pantalla, y NO puede leerse como «nunca aceptó».
+   */
+  describe('versión legal aceptada (LEGALVERMICUENTA)', () => {
+    const base = { cliente_id: 'c-1', email: 'ana@negocio.test' };
+    const estado = () => screen.getByTestId('cuenta-legal-version');
+
+    it('estado 1: aceptó la vigente → muestra su número', async () => {
+      mockSesion.me = { ...base, legal_aceptado: true, legal_version_aceptada: '2026-09-22' } as never;
+      await montar();
+      expect(estado()).toHaveTextContent('Aceptaste la versión vigente (2026-09-22).');
+    });
+
+    it('estado 2: aceptó una versión VIEJA → dice CUÁL y que ya no es la vigente', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: '2026-06-01' } as never;
+      await montar();
+      expect(estado()).toHaveTextContent('Aceptaste la versión 2026-06-01, que ya no es la vigente.');
+    });
+
+    it('estado 3: nunca aceptó (null) → lo dice y NO muestra una versión', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: null } as never;
+      await montar();
+      expect(estado()).toHaveTextContent('Todavía no aceptaste ninguna versión.');
+      expect(estado()).not.toHaveTextContent('Aceptaste');
+    });
+
+    it('🐤 estado 4: campo AUSENTE (backend viejo) NO se confunde con «nunca aceptó»', async () => {
+      mockSesion.me = { ...base, legal_aceptado: true } as never;
+      await montar();
+      expect(estado()).toHaveTextContent('No pudimos verificar qué versión aceptaste.');
+      expect(estado()).not.toHaveTextContent('Todavía no aceptaste');
+    });
   });
 
   it('confirmar cierra la sesión; decir que no, no', async () => {

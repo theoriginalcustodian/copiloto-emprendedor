@@ -466,8 +466,8 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
                   <EstadoVacio
                     testID="midia-vacio"
                     ilustracion
-                    titulo="Nada urgente por hoy"
-                    cuerpo="Cuando el copiloto detecte algo, aparece acá."
+                    titulo="Nada urgente por hoy."
+                    cuerpo="Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame."
                   />
                 ) : (
                   <EstadoVacio testID="midia-vacio" titulo="No hay tarjetas acá todavía." />

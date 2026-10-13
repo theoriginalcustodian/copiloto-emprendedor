@@ -3,6 +3,7 @@ import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react
 import { Pressable } from 'react-native-gesture-handler';
 
 import {
+  chipDeCaja,
   faseRefresco,
   formatearImporte,
   leerPortada,
@@ -201,10 +202,11 @@ export function PantallaInteligencia() {
             testID="inteligencia-caja"
             rotulo="Saldo en caja"
             cifra={kpi(portada.caja.saldo)}
-            // ⚠️ FALTA EL CHIP «Al 19 de agosto» del prototipo: `CajaPortada` sólo trae `saldo` y
-            // `moneda`, sin fecha de corte. No se inventa una fecha — un saldo con una fecha
-            // fabricada es peor que un saldo sin fecha. Pedido a backend: ver `mobile-coherencia.md`
-            // Parte 2 · B-10.
+            // El chip «Al 19 de agosto · −18% vs mes anterior» del prototipo (index.html:1934): sale del
+            // mismo `chipDeCaja` del core que usa la portada de Mi día, así web y mobile dicen lo mismo.
+            // `CajaPortada` trae `fechaCorte`/`variacionPct`/`incompleta` (core api/inteligencia.ts:41);
+            // sin dato el chip no se dibuja — nunca una fecha fabricada.
+            chip={chipDeCaja(portada.caja) ?? undefined}
           >
             <View style={styles.filaEntre}>
               {(
@@ -300,7 +302,7 @@ export function PantallaInteligencia() {
           <Text style={rotulo(tema)}>MEJORES CLIENTES</Text>
           {portada.mejoresClientes.length === 0 ? (
             <Text testID="inteligencia-clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Todavía no hay clientes con ventas registradas.
+              Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
             </Text>
           ) : (
             portada.mejoresClientes.map((c) => (

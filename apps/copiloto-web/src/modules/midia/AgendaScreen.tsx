@@ -103,6 +103,16 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
         </Button>
       </header>
 
+      {/* Mapeo `agenda` (index.html:2502): subtítulo y estado de la conexión, mismos testid que mobile. */}
+      <p className="midia-screen__calendario-invitacion" data-testid="agenda-intro">
+        Tus eventos y lo que vence, en la misma línea.
+      </p>
+      {estado === 'ok' && agenda != null && agenda.conectado && (
+        <p className="midia-screen__calendario-invitacion" data-testid="agenda-estado">
+          Google Calendar conectada
+        </p>
+      )}
+
       {estado === 'cargando' && <Skeleton height={64} />}
 
       {estado === 'no_disponible' && (

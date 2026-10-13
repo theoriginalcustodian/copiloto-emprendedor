@@ -278,8 +278,8 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
               <EstadoVacio
                 testId="midia-vacio"
                 ilustracion
-                titulo="Nada urgente por hoy"
-                cuerpo="Cuando el copiloto detecte algo, aparece acá."
+                titulo="Nada urgente por hoy."
+                cuerpo="Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame."
               />
             ) : (
               <EstadoVacio testId="midia-vacio" titulo="No hay tarjetas acá todavía." />

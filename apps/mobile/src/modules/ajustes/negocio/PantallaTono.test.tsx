@@ -59,6 +59,30 @@ describe('PantallaTono — «Cómo hablarle» (K-15 / BL-X7)', () => {
     expect(screen.queryByTestId('tono-ejemplo')).toBeNull();
   });
 
+  it('mapeo `hablar`: Cercano primero con su descripcion, label «Cómo lo llamás» y la nota «se guarda aparte»', async () => {
+    await montar();
+    await screen.findByTestId('tono-guardar');
+    expect(screen.getByText('Te habla de vos, corto y directo.')).toBeTruthy();
+    expect(screen.getByText('Más medido, sin modismos.')).toBeTruthy();
+    expect(screen.getByText('Te explica el porqué de cada número.')).toBeTruthy();
+    expect(screen.getByText('Cómo lo llamás')).toBeTruthy();
+    expect(screen.getByTestId('tono-nota').props.children).toBe(
+      'Esto se guarda aparte del perfil de tu negocio: cambiar el tono no te hace reescribir nada más.',
+    );
+    // Orden de pantalla: Cercano antes que Formal.
+    const ids: string[] = [];
+    const visitar = (n: any): void => {
+      if (!n || typeof n === 'string') return;
+      if (Array.isArray(n)) return n.forEach(visitar);
+      if (typeof n.props?.testID === 'string') ids.push(n.props.testID);
+      visitar(n.children);
+    };
+    visitar(screen.toJSON());
+    const i = (re: RegExp) => ids.findIndex((x) => re.test(x));
+    expect(i(/cercano/i)).toBeGreaterThanOrEqual(0);
+    expect(i(/cercano/i)).toBeLessThan(i(/formal(?!idad)/i));
+  });
+
   it('Guardar manda sólo las tres claves de tono (parcial)', async () => {
     await montar();
     await screen.findByTestId('tono-guardar');

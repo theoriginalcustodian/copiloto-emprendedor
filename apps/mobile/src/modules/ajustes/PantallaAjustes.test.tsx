@@ -84,6 +84,32 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     expect(screen.getByTestId('ajuste-tile-facturacionAfip')).toBeTruthy();
   });
 
+  it('mapeo `ajustes`: tres grupos con su rótulo y cada tile bajo el suyo', async () => {
+    await envolver();
+    const ids: string[] = [];
+    const visitar = (n: any): void => {
+      if (!n || typeof n === 'string') return;
+      if (Array.isArray(n)) return n.forEach(visitar);
+      if (typeof n.props?.testID === 'string') ids.push(n.props.testID);
+      visitar(n.children);
+    };
+    visitar(screen.toJSON());
+    const i = (id: string) => ids.indexOf(id);
+    expect(screen.getByTestId('ajustes-grupo-negocio').props.children).toBe('Tu negocio');
+    expect(screen.getByTestId('ajustes-grupo-app').props.children).toBe('La app');
+    expect(screen.getByTestId('ajustes-grupo-ayuda').props.children).toBe('Ayuda');
+    // Orden de pantalla: rótulo del grupo → sus tiles → rótulo del siguiente.
+    expect(i('ajustes-grupo-negocio')).toBeLessThan(i('ajuste-tile-perfilNegocio'));
+    expect(i('ajuste-tile-apps')).toBeLessThan(i('ajustes-grupo-app'));
+    expect(i('ajustes-grupo-app')).toBeLessThan(i('ajuste-tile-cuenta'));
+    expect(i('ajuste-tile-apariencia')).toBeLessThan(i('ajustes-grupo-ayuda'));
+    expect(i('ajustes-grupo-ayuda')).toBeLessThan(i('ajuste-tile-comoUsar'));
+    // Los 8 tiles siguen presentes: agrupar no hace desaparecer ninguno.
+    for (const k of ['perfilNegocio','facturacionAfip','apps','cuenta','apariencia','comoUsar','soporte','feedback']) {
+      expect(screen.getByTestId(`ajuste-tile-${k}`)).toBeTruthy();
+    }
+  });
+
   it('sin onAjuste, tocar un tile no crashea (prop opcional)', async () => {
     await envolver();
     await fireEvent.press(screen.getByTestId('ajuste-tile-cuenta'));

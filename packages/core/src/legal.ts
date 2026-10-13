@@ -129,3 +129,28 @@ export const PRIVACIDAD_PARRAFOS: readonly LegalParrafo[] = [
 export function parrafosDe(kind: LegalKind): readonly LegalParrafo[] {
   return kind === 'tos' ? TOS_PARRAFOS : PRIVACIDAD_PARRAFOS;
 }
+
+/** Forma mínima de `/me` que necesita `descripcionLegal`: opcionales a propósito, porque el cuarto
+ * estado ES «el campo no llegó» y el tipo tiene que poder representarlo. */
+export interface MeLegalCampos {
+  legal_aceptado?: boolean;
+  legal_version_aceptada?: string | null;
+}
+
+/**
+ * BL-O6 (LEGALVERMICUENTA · «Informar», v2): qué versión legal aceptó este tenant, según los dos
+ * campos de `/me`. Vive acá —no en cada app— para que el próximo fix llegue a web y a mobile.
+ *
+ * Tres estados reales más un caso que NO es ninguno de ellos: si el campo no llega (backend viejo,
+ * respuesta sin el campo) se dice que no se pudo verificar. Colapsarlo en «nunca aceptó» mostraría
+ * una mentira sin ninguna alarma (degradado prudente hacia el caso benigno).
+ */
+export function descripcionLegal(me: MeLegalCampos | null | undefined): string {
+  if (!me) return 'Cargando tu versión aceptada…';
+  if (typeof me.legal_aceptado !== 'boolean' || me.legal_version_aceptada === undefined) {
+    return 'No pudimos verificar qué versión aceptaste.';
+  }
+  if (me.legal_version_aceptada === null) return 'Todavía no aceptaste ninguna versión.';
+  if (me.legal_aceptado) return `Aceptaste la versión vigente (${me.legal_version_aceptada}).`;
+  return `Aceptaste la versión ${me.legal_version_aceptada}, que ya no es la vigente.`;
+}
