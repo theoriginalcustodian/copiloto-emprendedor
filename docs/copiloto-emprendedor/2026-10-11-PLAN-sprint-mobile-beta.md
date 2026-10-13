@@ -99,15 +99,45 @@ porque engancha filas de otras tablas.
 > ⛓/⚠ manda sobre el ✅ de las demás. Fix + caso 10 del test con control diferencial contra el
 > medidor viejo (ahí el caso falla, que es lo que lo hace prueba).
 
-> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `65ab488e`** (árbol
-> limpio, `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **28/54 cumple · 22/54 código · 54/54 con
-> veredicto · 0/54 fuera · 12/54 pendiente**. ✅ **Control, y es el más fuerte que tuvo este bloque: seis PRs de código entraron y la cifra NO se movió un punto.** Entre `f26a906d` y `65ab488e` main recibió `6e10b57d` (#1084), `5a53cc68` (#1090), `440339c5` (#1093), `a1e6e942` (#1095), `318e8b47` (#1096) y `40e2fe62` (#1101) — todo el código de TRIAJE15 — y las cinco cifras salen **idénticas**, con **13 de las 15 filas `nativa-con-device` todavía en DESVÍO** (1 COHERENTE, 1 NO-MEDIBLE). **Eso no es el medidor fallando: es el DoD funcionando.** Estas filas no las cierra un merge, las cierra una medición en el teléfono; si el merge las hubiera movido, el medidor estaría acreditando por declaración. Medición anterior sobre `c0f6a674`: también idéntica.
+> 📌 **VIGENTE — re-medido el 2026-10-13 sobre `origin/main` `53786937`** (árbol
+> limpio, worktree detached, `ARBOL MEDIDO: C:\gfw-src\wt-medir-main`): **32/54 cumple · 22/54
+> código · 54/54 con veredicto · 0/54 fuera · 12/54 pendiente**. El brazo device:
+> **5 COHERENTE · 9 DESVÍO · 1 NO-MEDIBLE** sobre 15 filas.
 >
-> **Lo que se movió y lo que NO.** Con veredicto pasó de 49 a 54 y fuera de 5 a 0, porque backend
-> escribió el ⚠ de sus 5 filas abiertas. **Cumple el DoD y cerrada en código no se movieron un
-> solo punto** — y esa inmovilidad es el control: un símbolo de «todavía no» hace **medible** una
-> fila, no la hace **cumplida**. Si 28/54 hubiera subido al versionar símbolos de pendiente, el
-> medidor seguiría acreditando por el `else`.
+> 🎯 **DESGLOSE DE LOS 9 `DESVÍO`, y es el renglón que faltaba: 8 son enmienda aceptada — no
+> incumplimiento — y 1 es dependencia declarada. Ninguno es un fix de app sin dueño.** `DESVÍO` no
+> miente; el lector sí puede, y sin este renglón nueve filas con motivo escrito se leen como nueve
+> incumplimientos. Las citas son de frontend2, no mías — sin cita sería acreditar por declaración
+> (todas en `2026-10-13-veredictos-device2-remedicion-triaje15-fe2.md` §Enmiendas):
+>
+> - **8/54 por enmienda aceptada:** `(home)` sin «Ver tablero» porque las solapas con contador ya
+>   **son** el tablero (`PantallaMiDia.tsx:101-103`) · `bi-refresh` usa el `RefreshControl` de RNGH,
+>   que no expone la fase «Soltá» (`PantallaInteligencia.tsx:7,196`) · `bloqueado` envía al soltar bajo
+>   el umbral, que **es el diseño** (H7, mapeo fila `bloqueado`) · `chat` arranca con el grip asomando
+>   (`PantallaPrincipal.tsx:178`, `PanelDeslizable.tsx:156-177`) · `ingresos` I2b+I3 (veredicto fe1) ·
+>   `reveal` sin «Crear una nueva cuenta» por la **decisión #3 del 04/08** (`EntradaSesion.tsx:17-21`) ·
+>   `soporte` dice «sin plazo fijo» por **acta** (`textosSoporte.ts:3-10`, BL-O7) · `tablero` dice
+>   «Mi día» por glosario (`CONTEXT.md:213`).
+> - **1/54 por dependencia declarada: `detalle`** — el único de los nueve **sin** enmienda, y no es
+>   deuda de la app: le falta el bloque `presentacion` de backend (`chip`, píldora accionable) y
+>   además **sus filas kv estaban escritas e INALCANZABLES** — el core lee `datos.monto`/`datos.fecha`
+>   y **ninguna regla los escribe** (`mi_dia_detector.py` emite `total`/`saldo`/`cae_vto`). Lo cazó la
+>   medición en device (**H12**), no una lectura de código: la costura leía un campo que nadie escribe.
+>   Contratado en `PROTO4DEPS` §3 + `pedido_ DETALLEKV`.
+>
+> ⚠️ **Y el límite de esta cifra, dicho antes de que alguien la cite de más:** 32/54 es **59 %**, no
+> «casi listo». Las **12 pendientes declaradas NO cumplen** (`caida card card-cliente card-cobro
+> card-factura clientes cobro-voz fact-voz factura gastos hitl pres-voz`), y `consent` quedó
+> **NO-MEDIBLE** — o sea **no verificada**, que no es lo mismo que verificada y correcta.
+>
+> 📐 **Anterior, sobre `65ab488e`** (no se borra): **28/54 · 22/54 · 54/54 · 0/54 fuera · 12/54
+> pendiente**. ✅ **Y su control sigue siendo el más fuerte que tuvo este bloque: entre `f26a906d` y
+> `65ab488e` entraron SEIS PRs con todo el código de TRIAJE15** — `6e10b57d` (#1084), `5a53cc68`
+> (#1090), `440339c5` (#1093), `a1e6e942` (#1095), `318e8b47` (#1096), `40e2fe62` (#1101) — **y las
+> cinco cifras salieron idénticas**, con 13 de las 15 filas de device todavía en DESVÍO. La subida a
+> 32/54 llegó **después**, y llegó con la **medición en el teléfono** (#1104), no con el merge del
+> código. Eso es el DoD funcionando: si el merge hubiera movido la cifra, el medidor estaría
+> acreditando por declaración.
 >
 > 📐 **Anterior, sobre `4b8d5f8a`** (no se borra): **28/54 cumple · 22/54 código · 49/54
 > con veredicto · 5/54 fuera · 7/54 pendiente**. Había subido desde `159f883b` al entrar el
