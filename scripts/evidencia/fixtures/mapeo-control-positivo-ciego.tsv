@@ -1,0 +1,37 @@
+# CONTROL POSITIVO CIEGO — 5 filas NUEVAS resueltas A MANO el 2026-10-12 por un resolvedor
+# que NO habia visto el mapeo, y ANTES de correr el verificador. Este archivo se commitea SOLO,
+# en su propio commit; la corrida del verificador viene DESPUES. Ese orden es la evidencia que el
+# fixture original no puede exhibir: ahi fixture e instrumento nacieron en el mismo commit
+# (1fb170cd), y "resueltas antes" era una afirmacion del propio autor.
+#
+# POR QUE OTRO FIXTURE Y NO EL ORIGINAL: quien dirige esta sesion imprimio las 54 filas del mapeo
+# CON su columna `nativo` para acreditar otra condicion. Perdio la ceguera, y un control positivo
+# llenado por quien ya leyo el esperado reproduce por construccion. La ceguera es el insumo, no
+# una formalidad: se delego a un resolvedor fresco.
+#
+# LOS 5 IDS SE ELIGIERON POR CLASE DIFICIL, no al azar, y ninguno esta en el fixture original
+# (esc / ingresos / agenda / card-presu / vacio-visto):
+#   card-cobro, onb-promesa, pres-voz, vozchat -> 4 de los 8 falsos negativos conocidos del grep
+#                                                 por nombre (el nombre nativo no coincide con el id)
+#   preg                                       -> clase "probablemente ausente en nativo"
+#
+# PROHIBIDO al resolvedor, y declarado por el no leido: los dos docs de mapeo/contratos del
+# 2026-10-12, mapeo-control-positivo.tsv, verificar-mapeo.py, docs/.../Auditorias/, memoria/,
+# coordinacion/. Declaro aparte, porque corresponde: el harness le inyecto automaticamente el
+# CLAUDE.md del repo y el indice de auto-memoria del slug. No los pidio ni los leyo por tool call,
+# y ninguno menciona estos 5 ids ni el mapeo prototipo-nativo.
+#
+# LO QUE EL VERIFICADOR COMPARA (verificar-mapeo.py:203-212): la interseccion de los ARCHIVOS
+# citados en la columna `nativo`, no el numero de linea. Una celda sin paths citados pasaria gratis
+# (`if esp and not (esp & got)`), por eso la fila NO EXISTE tambien cita los archivos revisados.
+#
+# CONFIANZA DECLARADA POR EL RESOLVEDOR (se deja escrita: una discrepancia honesta es resultado
+# util, puede acusar al mapeo y no a la resolucion):
+#   card-cobro alta · onb-promesa alta · vozchat media-alta · preg media · pres-voz baja-media
+#
+id	proto_path_linea	nativo_path_linea	divergencia
+card-cobro	Prototipo frontend/odobi-ui/prototipo/index.html:2874-2876	apps/mobile/src/modules/ingresos/FormularioIngreso.tsx:92 + apps/mobile/src/modules/ingresos/PantallaIngresos.tsx:159	El prototipo muestra los 3 campos YA parseados (Monto/Cliente/Como te pago) en un sheet modal sobre la funcion; en nativo el dictado solo prellena `concepto` con el transcript crudo (PantallaIngresos.tsx:148-153) y el formulario es inline en el scroll, con 4 campos y el monto como unico obligatorio.
+onb-promesa	Prototipo frontend/odobi-ui/prototipo/index.html:3202-3209	apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:118-167	Copia verbatim, pero el prototipo pinta 2 filas FIJAS (Mercado Pago ya Conectado) con un unico boton Conectar Google + Despues; el nativo deriva las filas del catalogo vivo (listarCatalogo/permisosDelHilo) con un boton por permiso no conectado, y el aviso de alcance dice desde Cuenta en vez de desde Ajustes.
+pres-voz	Prototipo frontend/odobi-ui/prototipo/index.html:3351-3354	apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx:227 + apps/mobile/src/modules/chat/ChatView.tsx:255 + apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx:50	En nativo NO existe el turno de repregunta (Dale. Que le cotizas? Decime los items con su precio): el mic de la funcion transcribe y abre el formulario con `concepto` prellenado sin conversacion (/transcribir, sin sesion de chat), y el camino del chat salta del dictado directo a la card de presupuesto propuesto.
+vozchat	Prototipo frontend/odobi-ui/prototipo/index.html:2898-2922	apps/mobile/src/modules/chat/ChatView.tsx:241-265 + apps/mobile/src/modules/chat/useChat.ts:416-427 + apps/mobile/src/modules/chat/Burbuja.tsx:69-73 + apps/mobile/src/modules/chat/TarjetaGastoPropuesto.tsx:79-116	El nativo cubre solo la mitad desde el chat: Mi dia no tiene mic (MicFuncion solo en gastos/ingresos/presupuestos/clientes, BotonVoz solo en ChatView y Soporte), asi que dictar desde Mi dia y aterrizar en el chat no existe; ademas el chip es Por voz - Ns (segundos) y no Por voz - 0:07, y el aviso de la card dice toca Guardar - todavia no lo anote en vez de Revisalo y confirma.
+preg	Prototipo frontend/odobi-ui/prototipo/index.html:3224-3231	NO EXISTE: busque en apps/mobile/src/modules/chat/ListaMensajes.tsx, apps/mobile/src/modules/chat/Burbuja.tsx, apps/mobile/src/modules/chat/Recibo.tsx, apps/mobile/src/modules/chat/ChatView.tsx, apps/mobile/src/modules/inteligencia/PantallaInteligencia.tsx, apps/mobile/src/modules/inteligencia/PreguntarInteligencia.tsx, apps/mobile/src/modules/midia/PantallaMiDia.tsx	No hay concepto de promo/campana en ningun lado (grep promo|campa|respondieron|enviados|recordatorio|difusi = 0 hits en apps/mobile/src y packages/core/src) ni card de informe con resultados en el chat: los unicos card.kind que ListaMensajes pinta son los 5 propuestos + payment_link + sugerencia_armar_factura + confirm + requiere_conexion.
