@@ -250,16 +250,26 @@ def _evaluar_cae_por_vencer(comprobantes: list[dict]) -> list[dict]:
     return salida
 
 
-def _evaluar_conexion_caida(caidas: list[str]) -> list[dict]:
+def _evaluar_conexion_caida(caidas: list[str], desde: dict[str, str] | None = None) -> list[dict]:
     """K-09: una tarjeta por servicio caído (`mercadopago`, o el toolkit Composio). `dias_silencio=1`:
     si se reconecta y vuelve a caer, el aviso puede volver al día siguiente; mientras siga caída la
-    tarjeta ya existe (`crear_si_no_existe`) y no se duplica."""
+    tarjeta ya existe (`crear_si_no_existe`) y no se duplica.
+
+    `desde` = `{servicio: ISO}` con el instante REAL de la caída, sólo para los servicios que lo tienen
+    registrado (hoy, MercadoPago vía `reauth_desde`). **La clave `datos["desde"]` viaja únicamente si hay
+    instante real**; para el resto está AUSENTE — no `None`, no `creada_en`: `creada_en` es cuándo corrió
+    el detector, y presentarlo como «se cayó a las 9:12» es una hora fabricada indistinguible de una
+    medida (D2, contrato 2026-10-13)."""
     from catalog import _PRESENTATION
+    desde = desde or {}
     out = []
     for servicio in caidas:
         nombre = (_PRESENTATION.get(servicio) or {}).get("display_name") or servicio
+        datos = {"servicio": servicio, "nombre": nombre}
+        if desde.get(servicio):
+            datos["desde"] = desde[servicio]
         out.append({"regla": REGLA_CONEXION_CAIDA, "entidad_tipo": "conexion", "entidad_id": servicio,
-                    "dias_silencio": 1, "datos": {"servicio": servicio, "nombre": nombre}})
+                    "dias_silencio": 1, "datos": datos})
     return out
 
 
@@ -350,6 +360,16 @@ def _candidatos_conexion_caida(conn_factory: Callable, cliente_id: str,
     return conexiones_caidas(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones)
 
 
+def _instantes_de_caida(conn_factory: Callable, cliente_id: str, caidas: list[str]) -> dict[str, str]:
+    """`{servicio: ISO}` del instante real de caída de los servicios que lo registran. Hoy sólo
+    MercadoPago (`reauth_desde`); Composio devuelve claves sin instante (`conexiones_salud.py`), así que
+    sus tarjetas NO llevan `desde`. Sin MP caído no toca la base."""
+    if "mercadopago" not in caidas:
+        return {}
+    desde = MpCredentialStore(conn_factory, cliente_id, None).caido_desde()
+    return {"mercadopago": desde} if desde else {}
+
+
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
 
 def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
@@ -367,6 +387,7 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
     (texto con tono del negocio) y ENTREGAR (Kanban + portada) son pasos aparte, fuera de este módulo.
     """
     margen_por_trabajo = _candidatos_margen_por_trabajo(conn_factory, cliente_id)
+    caidas = _candidatos_conexion_caida(conn_factory, cliente_id, composio_conexiones)
     return {
         REGLA_PRESUPUESTOS_ENFRIANDOSE:
             _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id)),
@@ -384,8 +405,7 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
             _evaluar_certificado_por_vencer(
                 _candidatos_certificado_por_vencer(conn_factory, cliente_id, crypto)),
         REGLA_CONEXION_CAIDA:
-            _evaluar_conexion_caida(
-                _candidatos_conexion_caida(conn_factory, cliente_id, composio_conexiones)),
+            _evaluar_conexion_caida(caidas, _instantes_de_caida(conn_factory, cliente_id, caidas)),
     }
 
 
