@@ -171,3 +171,49 @@ Las filas estaban **cerradas en código con test verde** — el fixture jest tra
 que producción no tiene. Lo destapó la re-medición en device (tarjeta real expandida: sólo «Cliente»). **Cómo se ve
 antes:** al cerrar una fila que *lee* un campo del backend, grepear quién lo **escribe** (`"monto"` en el emisor) y
 probar contra un `datos` real, no uno armado a mano. Pedido: `DETALLEKV` (la app no arma tabla regla→campo).
+
+---
+
+## 3ª ocurrencia (2026-10-13, costura app↔backend): la **CLAVE** que nadie escribe — y los DOS lados en verde
+
+Mismo mecanismo, una capa arriba: no un **campo** sin escritor, una **clave** sin lector. Y esta vez
+con las dos mitades **probadas y mergeadas**.
+
+Bajé un contrato que pedía cambiarle el tipo a `alcance` (de `string[]` a `[{texto, condicion}]`).
+Las dos sesiones trabajaron bien y en paralelo:
+
+- **La app** implementó el parser tolerante a las dos formas, leyendo **`raw.alcance`**. Test verde:
+  le alimenta objetos **en `alcance`**.
+- **El backend** midió —correctamente, y en el **consumidor**, que es el orden correcto— que un
+  objeto ahí rompía otra app, así que **no cambió `alcance`: agregó `alcance_items`**. Test verde:
+  emite `alcance_items`.
+
+**Cruzado: cero lecturas de `alcance_items` en todo el cliente.** Al desplegar, `alcance` llega como
+`string[]`, cada ítem cae al default `'ninguna'`, la etiqueta de `'ninguna'` es `null` ⇒ **ninguna
+insignia, nunca.**
+
+🔑 **Dos agravantes que lo hacen peor que las ocurrencias anteriores:**
+
+1. **El modo de falla no es un error: es una AUSENCIA.** El campo faltante dejaba filas vacías; acá
+   no falta una fila — falta una **insignia** que nunca estuvo. Nadie reporta como bug que algo no
+   aparezca si no sabía que tenía que aparecer. Y el `null` prudente del default —correcto como
+   defensa— es justo lo que convierte la clave muerta en silencio.
+2. **Ningún test miente, y la costura muere igual.** Cada test alimenta a su propio lado con la
+   forma que ese lado espera: los dos verdes son verdaderos **sobre sí mismos**. **Dos verdes no se
+   suman** — la unión de dos mitades verificadas no es una costura verificada.
+
+**Y el matiz sobre el proceso, no sobre el código:** la premisa del backend era **cierta cuando
+midió** y quedó **obsoleta dentro del mismo `main`**, porque la app arregló al otro consumidor en el
+mismo tramo. En trabajo paralelo una medición correcta **caduca en minutos**: quien fija la forma
+tiene que re-medir el consumidor **al fijarla**, no al proponerla.
+
+**Cómo aplicarlo:**
+1. **Contrato que cambia una forma ⇒ el DoD incluye un test de PAR**, alimentado con el **payload
+   literal del emisor** (copiado de su test o de una respuesta real), nunca con un objeto escrito a
+   mano con la forma que el parser espera — eso prueba el parser contra sí mismo.
+2. **Ese test lleva control de ceguera:** debe **fallar** si el emisor vuelve a la forma vieja.
+3. **Nadie cierra su lado citando el verde del otro.**
+4. **Si una desviación medida propone una clave NUEVA en vez de cambiar la vieja, preguntá qué la va
+   a borrar.** Una clave vieja que igual funciona no se borra nunca: la baja necesita disparador
+   binario y dueño, o la deuda es permanente.
+→ [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] · [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] · [[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]] · [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]

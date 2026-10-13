@@ -5,6 +5,7 @@
 > **Es el denominador unico** de «dejar la app tal cual define `index.html`».
 >
 > **El padron se congela en 54.** Un id que aparezca despues va a una lista de ronda 2 y **no
+> ↳ **Esa lista existe desde el 2026-10-13 y es un archivo**, no una frase: [`2026-10-13-ronda-2-lo-que-aparecio-despues-del-congelamiento-en-54.md`](2026-10-13-ronda-2-lo-que-aparecio-despues-del-congelamiento-en-54.md). Hasta ese día el destino de desborde **no existía**, y un destino que no existe no avisa que está vacío: lo que se encontrara después de congelar desaparecía, y la desaparición se ve igual que «no había nada». Entra con **2 inquilinos medidos** (`plan` · `descarte`).
 > reabre** ninguna fila cerrada. Un criterio que crece con cada medicion no se puede alcanzar.
 >
 > **Verificador:** `python scripts/evidencia/verificar-mapeo.py` (y `--canario`, que rompe cada
