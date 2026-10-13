@@ -90,13 +90,15 @@ chk "run-smoke-prod.sh exporta UC_LOGIN_CONTRATO_PATH" \
 # loader Python que se prueba). Con un literal por endpoint, sumar `session_id` a CLAVES_CHAT (2026-10-13) dejó
 # este test rojo en CI aunque el MECANISMO (override + fail-closed) seguía intacto: mide cómo se carga el set,
 # no cuál es.
-n_claves_de() {
-  awk '/frozenset\(\{/{d=1;next} /^\}\)/{d=0} d && /^[[:space:]]*"[a-z_]+",?[[:space:]]*$/{n++} END{print n+0}' "$1"
+# `chat_contrato.py` declara VARIOS sets (CONTRATO4: audio/foto/soporte): se cuenta SÓLO el bloque del
+# atributo que el loader lee (`CLAVES_<EP>`), si no el esperado sumaría los de los endpoints hermanos.
+n_claves_de() {  # n_claves_de <archivo> <ATRIBUTO>
+  awk -v attr="$2" 'index($0, attr " = frozenset({") == 1{d=1;next} /^\}\)/{d=0} d && /^[[:space:]]*"[a-z_]+",?[[:space:]]*$/{n++} END{print n+0}' "$1"
 }
 for ep in chat reply catalog warm; do
   var="UC_$(echo "$ep" | tr a-z A-Z)_CONTRATO_PATH"
   cp "$REPO_ROOT/apps/copiloto/${ep}_contrato.py" "$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py"
-  esperado="$(n_claves_de "$REPO_ROOT/apps/copiloto/${ep}_contrato.py")"
+  esperado="$(n_claves_de "$REPO_ROOT/apps/copiloto/${ep}_contrato.py" "CLAVES_$(echo "$ep" | tr a-z A-Z)")"
   chk "precondición ($ep): el contrato declara al menos una clave (un 0 haría pasar el conteo en vacío)" \
     "$([ "$esperado" -gt 0 ] && echo 1 || echo 0)" "esperado=$esperado"
   out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH -u "$var" "$var=$TMP_DEPLOYED/apps/copiloto/${ep}_contrato.py" "$PY" -c \
