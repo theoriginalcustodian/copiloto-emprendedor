@@ -448,6 +448,13 @@ class ConversationWorkflow:
                     if isinstance(observation.get("gate_card"), dict):
                         observation = dict(observation)
                         initial_gate_card = observation.pop("gate_card")
+                # C-D3: `recibo` es para la CARD (qué se mandó y cuándo), no para el modelo: se saca de lo
+                # que ve el LLM, como `gate_card`. Sólo existe si la tool ejecutó OK; un historial viejo en
+                # vuelo nunca lo tiene, así que el camino de replay no cambia.
+                recibo = None
+                if isinstance(observation.get("recibo"), dict):
+                    observation = dict(observation)
+                    recibo = observation.pop("recibo")
                 tr_msg = _tool_result_msg(pend["tool_call"]["id"], observation)
                 messages.append(tc_msg)
                 messages.append(tr_msg)
@@ -462,6 +469,8 @@ class ConversationWorkflow:
                 # visibilidad de algo que ya pasó, no una decisión determinista nueva).
                 confirmed_tool = {"activity": "execute_tool", "name": pend["tool_call"]["name"],
                                   "confirmed": True, "status": tr.get("status")}
+                if recibo is not None:
+                    confirmed_tool["recibo"] = recibo       # `_react_send` lo sube a `card.recibo`
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"),
@@ -652,6 +661,11 @@ class ConversationWorkflow:
                 # nombres de toolkit: solo re-empaqueta lo que el executor de dominio ya puso en `observation`
                 # (mismo patrón que `DispatchResult.card` en el modo dispatch, cero conocimiento nuevo acá).
                 card = {"kind": "confirm", "service": obs.get("service", ""), "label": obs.get("label", "")}
+                # C-D3: el dominio puede dejar un `detalle` estructurado (destinatario, asunto, cita...). El
+                # motor NO lo interpreta: lo copia tal cual, igual que `service`/`label`. Sólo agrega una
+                # clave a la card del MISMO Command `send_channel_message` — sin Command nuevo ni `patched`.
+                if isinstance(obs.get("detalle"), dict):
+                    card["detalle"] = obs["detalle"]
                 await self._react_send(channel, channel_ref, cliente_id, preview, tr.get("artifact"),
                                        choices=_confirm_choices(start_turn_ix, step),  # token por gate (HIGH)
                                        card=card)
@@ -754,7 +768,11 @@ class ConversationWorkflow:
         # (ej. payment_link, email_draft) se perdía detrás de `{"confirmed_tool": ...}` cada vez que el
         # turno venía de un confirm. La señal se suma SIN tocar lo que ya había.
         if confirmed_tool:
-            card = {**card, "confirmed_tool": confirmed_tool}
+            executed = dict(confirmed_tool)
+            recibo = executed.pop("recibo", None)           # C-D3: dato de la acción, no parte de la executed
+            card = {**card, "confirmed_tool": executed}
+            if isinstance(recibo, dict):
+                card["recibo"] = recibo
         await workflow.execute_activity(
             "send_channel_message",
             {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
