@@ -946,7 +946,11 @@ export function PantallaAfipSetup() {
               testID="afip-drive-toggle"
               etiqueta="Guardar mis facturas en Drive"
               opciones={OPCIONES_DRIVE}
-              valor={guardarEnDrive ? 'si' : 'no'}
+              // DRIVETOGGLEMOBILE: sin Drive conectado el toggle queda APAGADO y NO interactivo — misma
+              // regla que la web (`DRIVETOGGLE`): la UI no ofrece una capacidad que el tenant no tiene.
+              // Se pinta «no» aunque el perfil guarde `true`: si no, quedaría un «sí» que no se puede apagar.
+              valor={guardarEnDrive && estadoGeneral?.driveConectado === true ? 'si' : 'no'}
+              disabled={estadoGeneral?.driveConectado !== true}
               onChange={(v) => void cambiarGuardadoEnDrive(v === 'si')}
             />
 
@@ -969,15 +973,18 @@ export function PantallaAfipSetup() {
               </Text>
             )}
 
-            {/* 🔴 **Avisa, NO bloquea — y desde el 2026-07-21 dice el HECHO, no una sospecha.**
+            {/* 🔴 **Dice el HECHO, y sólo con Drive conectado se puede activar** (DRIVETOGGLEMOBILE).
                 `drive_conectado` (`GET /afip/estado`) tiene TRES valores y el `null` no se colapsa a
                 `false`: significa "el backend no pudo averiguarlo" (Composio no respondió). Tratarlo
-                como desconectado le diría "conectá tu Drive" a alguien que lo tiene hace meses —
-                la misma forma del bug del alta fallida, un rastro pisando el hecho. Con `null` (o
-                con un backend viejo que no manda el campo) se mantiene el condicional genérico.
+                como desconectado le afirmaría algo sobre Drive que no sabemos — un rastro pisando el
+                hecho. Por eso los textos de `false` y de `null` son DISTINTOS.
 
-                Nunca deshabilita el toggle: el archivado no rompe la emisión, la factura sale igual
-                y el comprobante avisa con evidencia (`drive.motivo`) si quedó sin copia. */}
+                Hasta el 2026-10-13 esto decía «Nunca deshabilita el toggle», y el test lo presionaba
+                sin capacidad: ejercitaba un camino que no debería existir y pasaba. La web ya tenía
+                la regla (`DRIVETOGGLE`): sin `drive_conectado === true` el toggle queda apagado y no
+                interactivo, y NO manda a «Apps» a conectar algo que hoy no puede escribir
+                (`DRIVECERO`). La emisión no se rompe: la factura sale igual y el comprobante avisa
+                con evidencia (`drive.motivo`) si quedó sin copia. */}
             {guardarEnDrive && estadoGeneral?.driveConectado === true && (
               <Text testID="afip-drive-conectado" style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}>
                 Google Drive está conectado. Cada factura nueva va a quedar guardada ahí.
@@ -985,14 +992,13 @@ export function PantallaAfipSetup() {
             )}
             {guardarEnDrive && estadoGeneral?.driveConectado === false && (
               <Text testID="afip-drive-desconectado" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
-                Google Drive no está conectado. Conectalo en Apps para que tus facturas se guarden —
-                mientras tanto se emiten igual, pero sin copia.
+                La copia en Drive no está disponible por ahora. Las facturas se emiten igual, sin copia.
               </Text>
             )}
             {guardarEnDrive && estadoGeneral?.driveConectado == null && (
               <Text testID="afip-drive-requiere-conexion" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite
-                igual y te avisamos que quedó sin copia.
+                No pudimos verificar tu Google Drive. La factura se emite igual, y si no queda copia
+                te avisamos.
               </Text>
             )}
           </View>
