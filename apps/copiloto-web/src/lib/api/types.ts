@@ -141,6 +141,12 @@ export interface ChatRequest {
 export interface ChatResponse {
   wf_id: string;
   accepted: boolean;
+  /**
+   * El `session_id` EFECTIVO del turno. Para un chat normal es el mismo que se mandó; para
+   * `kind: 'dictado:<destino>'` el backend lo namespacea (`dictado:<destino>:<sid>`, #1050) y éste es el
+   * que hay que pollear en `/reply`. Opcional: un backend anterior no lo devuelve.
+   */
+  session_id?: string;
 }
 
 // ---------------------------------------------------------------------------
