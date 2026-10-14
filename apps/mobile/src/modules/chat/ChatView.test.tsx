@@ -716,7 +716,9 @@ describe('ChatView -- hitl (a): el aviso de una tarjeta de Mi día entra sembrad
     );
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
     expect(screen.queryByTestId('chat-contexto-aviso')).toBeNull();
-    sin.unmount();
+    // RNTL 14: `unmount()` devuelve una Promise. Sin `await` el desmontaje queda a medias y contamina al bloque
+    // que corre después (fact-voz (d): «Unable to find an element with testID: chat-composer»).
+    await sin.unmount();
 
     await render(
       <ThemeProvider>
