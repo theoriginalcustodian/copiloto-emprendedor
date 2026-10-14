@@ -356,7 +356,6 @@ export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda
  */
 export {
   leerPortada,
-  preguntarInteligencia,
   leerGraficoFacturacion,
   leerGraficoEntroVsSalio,
   leerGraficoCategorias,
@@ -364,13 +363,11 @@ export {
 } from './inteligencia';
 export type {
   CajaPortada,
-  FuenteInteligencia,
   MejorCliente,
   MesPortada,
   Portada,
   PorCobrarPortada,
   PuntoSerie,
-  RespuestaInteligencia,
   PuntoFacturacion,
   FilaFacturacionMes,
   ResultadoGraficoFacturacion,
