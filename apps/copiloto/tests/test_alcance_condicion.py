@@ -3,7 +3,9 @@
 La hoja «Conectar X» le dice al usuario qué va a poder hacer Copiloto y con qué límite («Solo lectura»,
 «Nunca sin tu OK»). El backend emite la SEMÁNTICA en un enum cerrado; la etiqueta la pinta la app.
 Lógica pura (sin Postgres ni Temporal)."""
+import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -124,3 +126,32 @@ def test_pendiente_presente_viaja_como_objeto_con_texto():
 ])
 def test_pendiente_de_cobro_sale_de_los_argumentos_y_nunca_inventa(args, esperado):
     assert pendiente_de_cobro(args) == esperado
+
+
+# --- COSTURA `alcance`: la card que emite el backend == el fixture que ejercita el parser del core --------
+# Los dos lados estuvieron verdes con la costura MUERTA: el core leía `alcance` con objetos (test con
+# objetos a mano) y el backend emitía los objetos en `alcance_items` (test contra su propia clave). El lado
+# app (`packages/core/src/chat/requiereConexion.par.test.ts`) ejercita el parser contra ESTE fixture; acá se
+# ata el fixture a la emisión real. Si cualquiera de los dos se mueve sin el otro, uno de los dos tests rompe.
+# Regenerar el fixture: ver el comando en el docstring de `requiereConexion.par.test.ts`.
+_FIXTURE = (Path(__file__).resolve().parents[3] / "packages" / "core" / "src" / "chat" / "__fixtures__"
+            / "requiere_conexion.cards.json")
+_SERVICIOS_DEL_FIXTURE = [("mercadopago", "MercadoPago"), ("gmail", "Gmail"),
+                          ("servicio_sin_ficha", "Servicio sin ficha")]
+
+
+def test_la_card_requiere_conexion_es_IGUAL_al_fixture_que_lee_el_core():
+    # Sin `skip` si falta: un fixture ausente es el par desatado, no un entorno sin ganas.
+    assert _FIXTURE.is_file(), f"falta el fixture del par: {_FIXTURE}"
+    emitidas = [requiere_conexion_card(s, l) for s, l in _SERVICIOS_DEL_FIXTURE]
+    assert emitidas == json.loads(_FIXTURE.read_text(encoding="utf-8"))
+
+
+def test_el_par_no_es_vacio_el_fixture_trae_objetos_con_condicion_en_alcance():
+    # Control de ceguera: la igualdad de arriba pasaría igual entre dos `[]`. El denominador se imprime.
+    cards = json.loads(_FIXTURE.read_text(encoding="utf-8"))
+    items = [i for c in cards for i in c["alcance"]]
+    print(f"PAR alcance (backend): {len(cards)} cards, {len(items)} ítems con condicion")
+    assert len(cards) >= 3 and len(items) >= 4
+    assert not _fuera_del_enum(items), "el fixture trae ítems fuera del contrato {texto, condicion}"
+    assert all("alcance_items" not in c for c in cards), "los objetos van en `alcance`, no en `alcance_items`"
