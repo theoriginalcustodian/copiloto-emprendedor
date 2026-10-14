@@ -36,7 +36,7 @@ from clients.agent.providers.composio_gateway import ComposioExecutionError, Con
 from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa: E402
 
 from activity_summary import summarize_activity  # noqa: E402
-from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+from calendar_policy import CALENDAR_POLICY, CREATE_EVENT_SLUG  # noqa: E402
 from catalog import pendiente_de_cobro, requiere_conexion_card, sugerencia_armar_factura_card  # noqa: E402
 from deposito_traumas import depositar as depositar_trauma  # noqa: E402
 from fingerprint import fingerprint_de_error  # noqa: E402
@@ -522,6 +522,17 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # nada hasta que el usuario toca Emitir desde la card (gate de dominio: token_confirmacion).
               "emitir_factura": ("factura_dictado",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
+
+
+def acciones_por_toolkit() -> dict:
+    """{toolkit_slug: (acciones…)} de TODO conector Composio con tools cableadas, para `GET /catalog`.
+
+    `services.acciones_por_toolkit()` sólo ve los módulos de `services/`; Calendar NO es uno de ellos (su
+    tool vive acá, en `TOOL_INDEX`, y su policy en `CALENDAR_POLICY`), así que por esa vía el catálogo
+    declaraba `acciones: []` para un conector que SÍ agenda: la UI lo leía como «no hace nada». La
+    unión se deriva de las mismas dos fuentes que ya usa `_composio_valid_toolkits` — sin lista a mano."""
+    calendar = tuple(sorted(n for n, kind in TOOL_INDEX.items() if kind == ("calendar",)))
+    return {**services.acciones_por_toolkit(), **{tk: calendar for tk in CALENDAR_POLICY if calendar}}
 
 
 # artifact por tool-name → {kind, data.url} (§5.4). Cada kind con código real (major #10). El shape EXACTO del

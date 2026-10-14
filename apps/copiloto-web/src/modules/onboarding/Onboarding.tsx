@@ -335,7 +335,7 @@ function PasoPerfil({
             </p>
           )}
           <div className="hitl-card__actions" data-testid="onboarding-perfil-guardar-botones">
-            <Button onClick={() => void guardar()} disabled={enviando} data-testid={ID_GUARDAR}>
+            <Button onClick={() => void guardar()} disabled={enviando} data-testid="onboarding-perfil-guardar">
               {enviando ? 'Guardando…' : 'Guardar y entrar'}
             </Button>
           </div>
