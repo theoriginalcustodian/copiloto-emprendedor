@@ -51,3 +51,41 @@ el `\r` vive al final—, así que la herramienta parece sana hasta que el bloqu
 líneas (`SIN DUEÃO`). El `assert` de salida lo cazó antes de escribir, pero la lección es la misma:
 **una capa de escape extra sobre bytes ya correctos los destruye.** El control que lo caza es barato
 y va en el script: `assert "Ã" not in salida`.
+
+---
+
+## ⚠️ REFUERZO 2026-10-14 — el atajo para **DETECTAR** el CRLF miente en Git Bash
+
+Esta entrada manda medir el separador antes de anclar. **Hoy lo medí con el atajo obvio y me dio el
+valor equivocado:** `grep -c $'\r' archivo` → **0** sobre un archivo que es **100 % CRLF**.
+
+Lo que sí lo midió, por **efecto** y no por relato:
+
+| control | resultado |
+|---|---|
+| bytes en disco | **205 049** |
+| bytes del mismo blob por `git show` (LF) | **202 100** |
+| delta | **2 949 = exactamente la cantidad de líneas** ⇒ 1 byte extra por línea ⇒ CRLF |
+| `diff <(tr -d '\r' disco) <(git show …)` | **idéntico** ⇒ la única diferencia es el `\r` |
+
+🔑 **Por qué el falso 0 es caro acá y no en otro lado:** si le creés, concluís «es LF» y escribís con
+`
+` — que es exactamente el daño que esta entrada describe en el punto 2: el archivo aparece
+**entero** en el diff y pisa trabajo ajeno. El atajo falla hacia el lado que produce el reemplazo
+**exitoso** y destructivo, no hacia el fallo visible.
+
+**Cómo aplicarlo:** el separador se mide **contando bytes** (`python -c` de esta entrada), o por el
+delta contra `git show <ref>:<path>` que siempre entrega LF. `grep`/`wc` en Git Bash pueden tratar la
+entrada como texto y normalizar el `\r` antes de que tu patrón lo vea: son el instrumento equivocado
+para preguntar por el byte que el modo texto borra.
+→ [[instrumento-que-no-mira-nunca-falla]] · [[la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo]]
+
+
+🔑 **Y el cierre del dia, medido sobre este mismo archivo:** los bytes que rompen esto no vienen
+solo de otros; **la CAPA del heredoc me los inyecto a mi**. Escribiendo este refuerzo, mis \\r y
+\\b llegaron al disco como **CR real** (4) y **backspace 0x08** (2): la capa colapsa \\x en \\x
+antes de que Python los vea, y el visor no muestra ninguno de los dos. El control que los caza es el
+mismo y cuesta una linea: contar bytes de control sobre lo ESCRITO, no revisar lo que quisiste
+escribir · `sum(1 for c in b if c < 9 or 13 < c < 32)` debe dar **0**, y el backslash literal se
+construye por codigo (`bytes([0x5c])`), no por escape.
+→ [[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]]
