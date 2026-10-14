@@ -35,30 +35,6 @@ function ChevronIcon({ color = 'var(--label)' }: { color?: string }) {
 }
 
 /**
- * Toggle visual de "Notificaciones" (Task 21). SOLO visual — no hay endpoint/preferencia real en
- * el backend hoy (ninguna ruta de `/me` o afín expone ni acepta esta config, ver lib/api/types.ts).
- * Queda en estado local (`useState`, default "activadas") documentado como deuda de-facto: cuando
- * el backend sume una preferencia real, este componente pasa a leerla/escribirla en vez de estado
- * local (candidato natural: un campo en `/me` + un endpoint `PATCH /me/preferences`, fuera de mi
- * ownership hoy).
- */
-function NotificationsToggle() {
-  const [enabled, setEnabled] = useState(true);
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      aria-label="Notificaciones"
-      className={['account-switch', enabled ? 'account-switch--on' : ''].filter(Boolean).join(' ')}
-      onClick={() => setEnabled((value) => !value)}
-    >
-      <span className="account-switch__knob" aria-hidden="true" />
-    </button>
-  );
-}
-
-/**
  * Módulo Cuenta (Task 21, EXTRACT §2.9/§3.4) — perfil + card de durabilidad + preferencias +
  * logout. Reemplaza el placeholder de Task 9.
  *
@@ -71,8 +47,14 @@ function NotificationsToggle() {
  * no dos superficies separadas. Lo que sumó esta fusión: email REAL (antes derivado de
  * `cliente_id`), la fila "No molestar" (inerte, misma razón que mobile: es un ajuste GLOBAL del
  * sistema operativo, requiere restaurador ante crash, se implementa en otra tarea) y la
- * confirmación antes de cerrar sesión. Lo que YA tenía web y mobile no (plan/idioma/
- * notificaciones/privacidad/card de durabilidad) se queda — es unión, no reemplazo.
+ * confirmación antes de cerrar sesión. La card de durabilidad se queda — es unión, no reemplazo.
+ *
+ * 🔴 **SM-D4 (2026-10-14, issue 1019): retiradas las filas «Idioma», «Notificaciones» (toggle) y
+ * «Privacidad del historial».** Ninguna tenía sustrato — «Idioma» era un valor estático con
+ * chevron, «Notificaciones» un `useState` local que no escribía nada, «Privacidad del historial»
+ * una fila sin destino — y mobile (`PantallaCuenta`) nunca las tuvo. Una fila que promete una
+ * preferencia que no se guarda es peor que su ausencia. Si el backend suma la preferencia real,
+ * vuelve la fila CON su endpoint, no antes.
  *
  * 🔴 **El selector de tema SALIÓ de acá (2026-08-06, pedido directo del operador).** Vivía en una
  * sección propia ("Elegí el tema") duplicando el selector del Rail de escritorio -- ahí quedaba
@@ -114,17 +96,6 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
 
       <div className="account-screen__list">
         {/* DEC-8: sin fila «Plan» — no hay sustrato de planes en beta (ver AccountScreen.test). */}
-        <div className="account-screen__row">
-          <span className="account-screen__row-label">Idioma</span>
-          <span className="account-screen__row-value">
-            Español (AR)
-            <ChevronIcon />
-          </span>
-        </div>
-        <div className="account-screen__row">
-          <span className="account-screen__row-label">Notificaciones</span>
-          <NotificationsToggle />
-        </div>
         {/* "No molestar" muta un ajuste GLOBAL del sistema operativo -- necesita un restaurador
             ante crash (si el copiloto lo prende y la app se cae antes de apagarlo, el teléfono
             queda en silencio sin que nadie lo haya decidido). Eso es MAYOR y se resuelve en otra
@@ -197,10 +168,6 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
           <span className="account-screen__row-label">Cómo uso la app</span>
           <ChevronIcon />
         </button>
-        <div className="account-screen__row">
-          <span className="account-screen__row-label">Privacidad del historial</span>
-          <ChevronIcon />
-        </div>
       </div>
 
       {/* `BL-J11` — Cerrar sesión en su propio grupo, no como fila más del tile de arriba (igual

@@ -202,47 +202,6 @@ button.account-screen__row:focus-visible {
   flex-wrap: wrap;
 }
 
-/* ---------- Toggle "Notificaciones" (visual, sin backend — ver docstring del componente) ---------- */
-.account-switch {
-  position: relative;
-  width: 44px;
-  height: 26px;
-  padding: 0;
-  border-radius: 14px;
-  border: var(--cancel-border);
-  background: var(--cancel-bg);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s ease;
-}
-
-.account-switch:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.account-switch__knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  /* Excepción documentada (mismo criterio que `chat.css` `.hitl-card__preview-title/caption` —
-     keyword `white`, no hex, para pasar el gate "cero color literal"): el knob es blanco fijo en
-     el mock (`Copiloto App.dc.html:433`), no varía por tema. */
-  background: white;
-  transition: transform 0.15s ease;
-}
-
-.account-switch--on {
-  background: var(--send-bg);
-  border-color: transparent;
-}
-
-.account-switch--on .account-switch__knob {
-  transform: translateX(18px);
-}
 
 /* K-12: formularios inline de «Cambiar contraseña» / «Cambiar email». */
 .account-screen__credencial {
