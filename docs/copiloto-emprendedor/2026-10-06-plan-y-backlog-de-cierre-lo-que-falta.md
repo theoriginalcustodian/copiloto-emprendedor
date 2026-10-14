@@ -75,7 +75,40 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
 
 ### 2.A — Código, entra ahora
 
-#### A1 · `COBROMP` — el cobro de Mercado Pago nunca se vuelve un Ingreso 🥇
+> ## 🔴 RE-MEDICIÓN 2026-10-14 — **11 de los 12 ítems de esta sección están HECHOS. La sección ya no «entra ahora».**
+>
+> Medido por planificación contra `origin/main` @ `22bd0e78`, ítem por ítem y por **contenido** (no por
+> procedencia: `git cherry` y `git diff ...` con tres puntos mienten por el squash). El encabezado de cada
+> ítem lleva ahora su marca; el cuerpo de abajo **no se editó** y describe el estado del 06/10.
+>
+> | id | estado | la prueba |
+> |---|---|---|
+> | `A1 COBROMP` | ✅ | `ORIGEN_MP` 2 hits en `cobro_store.py`, 2 en `mp_web.py`, 2 en `tests/test_mp_cobro_ingreso.py`; los dos carteles retirados (`ResumenIngresos.tsx:14` lo declara, `PantallaIngresos.test.tsx:159` lo fija) |
+> | `A2 BL-V34` | ✅ | `FormularioGasto.test.tsx:38-66` — `idemKey` deriva del `mensajeId`, **con** control positivo (desmontar/remontar ⇒ misma clave) |
+> | `A3 BL-V31` | ✅ | `SeccionMisComprobantes.tsx:35` — id de anulación derivado con la MISMA fórmula del backend (guard B, nada en el dispositivo) |
+> | `A4 BL-O6` mobile | ✅ | **CERRADO 13/10** y la decisión es **v2 «Informar»**, no registrar: `descripcionLegal()` (`packages/core/src/legal.ts:148`) consumida por `PantallaCuenta.tsx` **y** `AccountScreen.tsx` — 4 estados, sin colapsar «el campo no llegó» |
+> | `A5 BL-F1` | ✅ | web `HitlCard.tsx`; mobile `ListaMensajes.tsx:191-196` pinta `Recibo` en el estado terminal |
+> | `A6 BL-V29 (2)` | 🔴 **VIVO** | **el único.** No se mide por grep (es layout a 390 px) y su evidencia es **captura en device** ⇒ no es cabeza de cola hasta que haya device |
+> | `A7 DRIVECERO` | ✅ | **CERRADO 06/10, PR #812:** `services/__init__.py:62` → `connectable_policy()` filtra por `TOOLS` no vacío, compuesta en `web.py:483-489`; test literal `test_catalog_route.py:125` (`assert "googledrive" not in keys`) + `test_connect_endpoints.py:219-224` fija que `merged_policy()` sigue con drive para `archivar_factura_en_drive` |
+> | `A8 SHEETSSOLOAPPEND` | ⏳ | **no re-medido hoy** — decisión de alcance pendiente, la propone backend y la cierra planificación |
+> | `A9 IGHUBSPOTFANTASMA` | ✅ | `catalog.py:39-91` (`_PRESENTATION`) declara sólo `gmail`, `googlecalendar`, `googledrive`, `googledocs`, `googlesheets` y `mercadopago`: **no hay instagram ni hubspot**. Residuo: el `SERVICE_RISK` de Instagram que core guarda para mensajes viejos (`hitlMapping.test.ts:93-98`) |
+> | `A10 DEC-8` | ✅ | cero hits de la fila «Plan» en `AccountScreen.tsx` y `PantallaCuenta.tsx` |
+> | `A11` print de PII | ✅ | cero `print(` en `agent_activities.py` |
+> | `A12 BL-V18` | ✅ | `cliente_store.py:44,68` expone `comprobantes_cantidad`; mobile pinta «$importe · N comprobantes» (`TarjetaCliente.tsx:36-39`, desde el 13/10) |
+>
+> ⚠️ **Dos de estos los re-descubrí como «vivos» y bajé contratos por ellos** (`A7` a backend, `A4` a
+> frontend2): los dos estaban cerrados y los retracté en minutos. Causa: medí un símbolo cuyo **nombre** se
+> parece al sujeto — `_PRESENTATION` no es la lista de conectables, y el consumidor legal de mobile no nombra
+> el campo. **La ausencia se mide por el símbolo que ENCAPSULA**, y la decisión del operador vive en la fila
+> del tablero, no en el código. Retractaciones y lección completa en `coordinacion/cerrado/2026-10-14/` +
+> `memoria/el-contrato-que-manda-a-hacer-algo-ya-hecho.md`.
+>
+> 🎯 **Consecuencia para el plan: lo que falta para cerrar ya no es código de las sesiones.** Es `A6` (device)
+> + los 8 ítems de la familia `BL-O` (testers, OAuth propio, distribución, observabilidad, backups, soporte,
+> texto legal definitivo, interruptores del operador) — todos con disparador en manos del operador.
+
+
+#### ✅ A1 · `COBROMP` — el cobro de Mercado Pago nunca se vuelve un Ingreso 🥇
 - **Dueño:** backend. **Contrato ya bajado** con inventario §0 medido:
   `coordinacion/abierto/2026-10-05_contrato_planificacion-a-backend_COBROMP-*.md`.
 - **Por qué primero:** es la única fila de la cola que rompe la promesa central del producto
@@ -88,7 +121,7 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
   los dos carteles «los cobros todavía no entran solos» (`IngresosScreen.tsx:216`,
   `ResumenIngresos.tsx:43`) borrados **en el mismo PR** · recibo del gate citado.
 
-#### A2 · `BL-V34` (gastos) — anotar un gasto dos veces crea dos gastos
+#### ✅ A2 · `BL-V34` (gastos) — anotar un gasto dos veces crea dos gastos
 - **Dueño:** FE1 + FE2. **Mitad hecha:** el backend **ya es idempotente** desde el PR #666
   (`gasto_store.py:118-131`, índice único parcial `(cliente_id, idem_key)`).
 - **Lo que falta es una sola cosa:** el front de gastos **no manda la clave**.
@@ -102,7 +135,7 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
   montar→guardar→**desmontar**→montar ⇒ no inserta la segunda vez · **control positivo obligatorio:
   sin el fix, ese test tiene que dar ROJO**.
 
-#### A3 · `BL-V31` (resto) — la quinta tarjeta de mobile sin guard
+#### ✅ A3 · `BL-V31` (resto) — la quinta tarjeta de mobile sin guard
 - **Dueño:** FE1. **4 de 5 cerradas:** `TarjetaPresupuestoPropuesto.tsx:25-46` ·
   `TarjetaFacturaPropuesta.tsx:81-84` · `TarjetaGastoPropuesto.tsx:28-40` ·
   `useConexionRequerida.ts:51-53` — todas con el **guard B** (la marca vive dentro del mensaje
@@ -112,7 +145,7 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
 - **DoD:** recargar entre «Sí, anular» y «Confirmar» ⇒ **no reaparece «Anular»** · guard B, no A ·
   control positivo rojo sin el fix.
 
-#### A4 · `BL-O6` (mobile) — la aceptación legal no se registra en mobile
+#### ✅ A4 · `BL-O6` (mobile) — la aceptación legal no se registra en mobile
 - **Dueño:** FE1 + backend (el endpoint ya existe). **Web cerrada:** `SignupScreen.tsx:71` →
   `POST /me/legal/aceptar` (`web.py:1091`) + `tenant_legal_store.py` + E2E
   `scripts/e2e_bl_o6_legal_aceptacion.py`.
@@ -121,29 +154,29 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
 - **DoD:** alta desde mobile ⇒ fila en `tenant_legal_store` · el E2E existente cubre también el camino
   mobile, o uno gemelo · adversarial: el POST de A no marca a B.
 
-#### A5 · `BL-F1` — el HITL genérico no usa `Recibo`
+#### ✅ A5 · `BL-F1` — el HITL genérico no usa `Recibo`
 - **Dueño:** FE1 + FE2. **DoD:** la tarjeta HITL resuelta muestra `Recibo` en **las dos** apps (hoy web
   no lo importa y mobile deja la card con `opacity`) · test por app.
 
-#### A6 · `BL-V29` parte (2) — a 390 px la tab-bar tapa «Ahora no» entero
+#### 🔴 A6 · `BL-V29` parte (2) — a 390 px la tab-bar tapa «Ahora no» entero
 - **Dueño:** FE2. **La parte (1) ya cerró:** `conexionDescartada` se persiste de verdad en las dos apps
   (`useConexionRequerida.ts:53`, web `useChat.ts:473`).
 - **DoD:** a 390 px la franja libre del botón es **> 0 px** (hoy `pctTapado=100`) · **la captura es
   device** ⇒ el código entra ahora, la evidencia visual cae en la tanda diferida.
 
-#### A7 · `DRIVECERO` — Drive se conecta y no tiene ni una acción
+#### ✅ A7 · `DRIVECERO` — Drive se conecta y no tiene ni una acción
 - **Dueño:** backend. **Medido:** `apps/copiloto/services/drive.py:75` → `TOOLS: dict[str, str] = {}`,
   contra `gmail.py:68` (`gmail_send`), `sheets.py:114` (`sheets_append_row`), `docs.py:54` (dos tools).
 - **DoD binario, con dos salidas válidas:** o **al menos una acción de Drive ejecutable end-to-end**
   desde el chat, o **la UI deja de ofrecer Drive** como app conectable. Lo que no puede quedar es la
   tercera: conectable y sin acciones.
 
-#### A8 · `SHEETSSOLOAPPEND` — Sheets sólo sabe agregar una fila
+#### ⏳ A8 · `SHEETSSOLOAPPEND` — Sheets sólo sabe agregar una fila
 - **Dueño:** backend. **DoD:** o se amplía (leer / actualizar), o **el límite se declara en la UI** para
   que el usuario no pida lo que no existe. Decisión de alcance: la propone backend, la cierra
   planificación.
 
-#### A9 · `IGHUBSPOTFANTASMA` — la UI ofrece Instagram y HubSpot sin módulo detrás
+#### ✅ A9 · `IGHUBSPOTFANTASMA` — la UI ofrece Instagram y HubSpot sin módulo detrás
 - **Dueño:** backend + front. **Medido:** `apps/copiloto/services/` sólo tiene
   `base.py docs.py drive.py gmail.py sheets.py` — **no hay HubSpot ni Instagram** (de Instagram sólo
   queda un ejemplo en un docstring, `base.py:21`). Y `hitlMapping.ts` **ya le pinta a Instagram** un
@@ -151,7 +184,7 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
 - **DoD:** o módulo real, o **la UI no los ofrece** (y el `SERVICE_RISK` de Instagram se retira con
   ella). Cero estados intermedios.
 
-#### A10 · Propagar `DEC-8` — plan y límites NO entran en la beta
+#### ✅ A10 · Propagar `DEC-8` — plan y límites NO entran en la beta
 - **Dueño:** FE1 + FE2. **La decisión está tomada desde el 21/09** y yo la reporté como abierta: el
   acta dice textual *«Plan y límites **no** entran en la beta»* (`DEC-8`, `BL-X9` → `BL-V2`).
 - **Barato y sin backend:** no hay sustrato de planes (`admin_web.py:4`: *«7c queda fuera de v1, sin
@@ -160,13 +193,13 @@ binario no se declara cerrado (canon 7: la autoevaluación no cuenta).
   `app/ajustes-mi-plan.tsx:13-21` sale o queda explícitamente fuera de navegación · la frase del kb
   queda consistente (hoy **ya niega** que haya topes — es correcta, no tocarla por error).
 
-#### A11 · `print` de datos personales en los logs
+#### ✅ A11 · `print` de datos personales en los logs
 - **Dueño:** backend. Origen: `BL-V6`, el único de ese paquete que el propio documento marca «conviene
   revisarlo antes si hay testers reales». `agent_activities.py:114`.
 - **DoD:** cero PII en logs de ese camino · test que lo verifique · **repo público** ⇒ no entra PII a
   ningún log que pueda viajar.
 
-#### A12 · `BL-V18` — cantidad de comprobantes por cliente
+#### ✅ A12 · `BL-V18` — cantidad de comprobantes por cliente
 - **Dueño:** backend (expone) + FE2 (muestra). **DoD:** la API de clientes devuelve el conteo ·
   `TarjetaCliente.tsx:48-59` lo muestra · el CUIT/DNI sigue mostrándose cuando existe.
 
