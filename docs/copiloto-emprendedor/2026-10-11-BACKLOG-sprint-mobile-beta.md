@@ -52,7 +52,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
 | **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) … |
-| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10: la aceptacion INFORMA, no bloquea (LEGALNOOPERA 13-10) y su canario invertido ya esta en main (#1183 c8cbc21b). Falta SOLO evidencia de device del boton + version guardada; NADA de guard |
+| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en … |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
@@ -272,7 +272,7 @@ no el arranque del sprint.***
 ### SM-C4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD NO se verifico punto por punto: que la aceptacion CONDICIONE algo, y la evidencia de device. Lo acredita frontend2 con su cierre_
+- **Falta:** DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en los dos lados— YA esta en main (#1183 c8cbc21b). Falta SOLO evidencia de device del boton de aceptar + la version guardada; NADA de guard, NADA de backend. Lo acredita frontend2 con su cierre_
 - **Medido, en dos mitades distintas:**
   1. La **pantalla de lectura de mobile ya existe** — `apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`,
      montada en `apps/mobile/app/legal.tsx:17`. ⚠️ Este issue decía antes «mobile no tiene pantalla de
