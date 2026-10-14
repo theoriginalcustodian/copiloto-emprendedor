@@ -1,4 +1,4 @@
-import { hrefDeRuta, rutaDeDestino } from './destinoTarjeta';
+import { hrefDeRuta, llevaAlChat, rutaDeDestino } from './destinoTarjeta';
 
 describe('rutaDeDestino (H5b)', () => {
   it('conexion con id → la ruta de esa conexión', () => {
@@ -40,8 +40,17 @@ describe('rutaDeDestino (H5b)', () => {
   });
 
   describe('huecos declarados: el backend los emite y esta app todavía no tiene dónde abrirlos', () => {
-    it('🔴 presupuesto → null (espera `avisoAlChat` de frontend1; cuando llegue, este test cambia)', () => {
+    it('🔴 presupuesto → null como RUTA (no es una pantalla): lo que lo lleva al chat es `llevaAlChat`', () => {
       expect(rutaDeDestino({ tipo: 'presupuesto', id: '412', connectPath: null })).toBeNull();
+      expect(llevaAlChat({ tipo: 'presupuesto', id: '412', connectPath: null })).toBe(true);
+    });
+
+    it('🔴 `llevaAlChat` es SÓLO presupuesto: los demás tipos y los destinos ausentes/desconocidos no abren el chat', () => {
+      for (const tipo of ['conexion', 'comprobante', 'certificado', 'trabajo', 'lo-que-sea'] as const) {
+        expect(llevaAlChat({ tipo, id: '1', connectPath: null } as never)).toBe(false);
+      }
+      expect(llevaAlChat(null)).toBe(false);
+      expect(llevaAlChat(undefined)).toBe(false);
     });
 
     it('🔴 trabajo → null: no hay pantalla de detalle de un trabajo (`eslabon:ref`)', () => {

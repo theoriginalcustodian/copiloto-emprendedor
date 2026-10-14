@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { avisoAlChat, ROTULO_DESDE_TU_AVISO, type TarjetaParaChat } from './avisoAlChat';
 
 const tarjeta = (over: Partial<TarjetaParaChat> = {}): TarjetaParaChat => ({
+  id: 'tarjeta-7',
   texto: 'Hace 12 días que le mandaste el presupuesto a Lucía y no te respondió.',
   regla: 'presupuestos_enfriandose',
   verbo: 'Mandarle un recordatorio',
@@ -18,6 +19,10 @@ describe('avisoAlChat — el puente tarjeta → chat (hitl a, C-D5 Opción A)', 
     expect(a!.texto).toContain('Hace 12 días que le mandaste el presupuesto a Lucía');
     expect(a!.texto).toContain('Mandarle un recordatorio');
     expect(a!.contexto).toBe('Desde tu aviso · Presupuestos · Lucía');
+  });
+
+  it('el aviso lleva el `tarjetaId` de la tarjeta de origen (a.1b: lo que `onVolver` necesita para cerrar el ciclo)', () => {
+    expect(avisoAlChat(tarjeta({ id: 'abc-123' }))!.tarjetaId).toBe('abc-123');
   });
 
   it('🔴 la tarjeta MANUAL no tiene puente: su verbo («Borrar») es sobre la tarjeta, no un pedido al agente', () => {

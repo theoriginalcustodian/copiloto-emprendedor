@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import { ROTULO_VOLVER_AL_TABLERO, type AvisoAlChat } from '@copiloto/core';
+import { ROTULO_VOLVER_AL_TABLERO, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
@@ -53,8 +53,12 @@ export interface ChatViewProps {
    * y el chat son la MISMA pantalla — no hay navegación ni buzón de módulo de por medio.
    */
   avisoEntrante?: { aviso: AvisoAlChat; id: number } | null;
-  /** La salida del chip: baja la conversación y devuelve al tablero. Sin ella el chip no la ofrece. */
-  onVolverAlTablero?: () => void;
+  /**
+   * La salida del chip: baja la conversación y devuelve al tablero. Sin ella el chip no la ofrece.
+   * El chip la llama SIN argumento (salir de la charla no resuelve la tarjeta); con un `CierreAviso`
+   * `hecha` el shell además cierra la tarjeta de origen (a.5 — lo invoca el recibo, a.4, de frontend1).
+   */
+  onVolverAlTablero?: (cierre?: CierreAviso) => void;
 }
 
 /**
@@ -275,7 +279,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
               testID="chat-contexto-aviso-volver"
               accessibilityRole="button"
               accessibilityLabel={ROTULO_VOLVER_AL_TABLERO}
-              onPress={onVolverAlTablero}
+              onPress={() => onVolverAlTablero?.()}
               hitSlop={10}
               style={pressableStyle(undefined, PRESS_FADE)}
             >

@@ -24,7 +24,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
-import { listarActividad, type ActividadItem, type AvisoAlChat } from '@copiloto/core';
+import { listarActividad, type ActividadItem, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
 
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
@@ -161,7 +161,14 @@ export function PantallaPrincipal() {
   // El contexto se cierra acá, explícito, y no sólo «porque el panel avisó que bajó»: la salida es del
   // emprendedor, y que el chip siga diciendo «Desde tu aviso» sobre una conversación que ya dejó no depende
   // de que la animación del panel se haya completado.
-  const alVolverAlTablero = useCallback(() => {
+  const [cierreDeAviso, setCierreDeAviso] = useState<{ tarjetaId: string; n: number } | null>(null);
+  const cierreSeq = useRef(0);
+  // a.5: SÓLO un cierre `hecha` explícito toca la tarjeta. Volver sin argumento (el chip) o `sin_resolver` no.
+  const alVolverAlTablero = useCallback((cierre?: CierreAviso) => {
+    if (cierre?.resultado === 'hecha') {
+      cierreSeq.current += 1;
+      setCierreDeAviso({ tarjetaId: cierre.tarjetaId, n: cierreSeq.current });
+    }
     setAvisoEntrante(null);
     setSenalBajar((n) => n + 1);
   }, []);
@@ -227,6 +234,7 @@ export function PantallaPrincipal() {
             onDestino={(ruta) => empujarUnaVez(hrefDeRuta(ruta))}
             // hitl (a): el verbo de una tarjeta detectada lleva su aviso al chat, sembrado en el composer.
             onAvisoAlChat={alAvisoAlChat}
+            cierreDeAviso={cierreDeAviso}
           />
         </PanelFunciones>
       }>

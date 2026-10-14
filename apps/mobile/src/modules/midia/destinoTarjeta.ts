@@ -9,12 +9,13 @@ import type { DestinoTarjeta } from '@copiloto/core';
  * `null` = «no sé a dónde llevarte». Eso cubre cuatro casos con el MISMO resultado (y a propósito):
  * `destino` ausente (backend previo), un `tipo` que esta versión de la app no conoce (backend más nuevo
  * que la app instalada), un tipo conocido al que le falta lo que necesita (`conexion` sin `id`,
- * `comprobante` con un id que no es numérico) y un tipo del backend que ESTA app todavía no tiene
- * pantalla donde abrir (`presupuesto`, `trabajo`: ver más abajo). El efecto no es el mismo en los dos
- * lugares que la usan, y es a propósito: la acción crítica del banner (`BannerCritico`) cae a Ajustes; la
- * acción de `presentacion` queda como rótulo, porque ahí no hay una pantalla «por defecto» que no sea
- * adivinar. Nunca lanza ni devuelve algo a medias: un valor nuevo del backend no puede romper una app ya
- * instalada.
+ * `comprobante` con un id que no es numérico) y un tipo del backend que no es una PANTALLA donde abrir
+ * (`presupuesto` lleva al chat — ver `llevaAlChat` —, `trabajo` no tiene pantalla: ver más abajo). El
+ * efecto no es el mismo en los dos lugares que la usan, y es a propósito: en la acción crítica del
+ * banner (`BannerCritico`) un `null` cae a Ajustes (el call-site de `PantallaMiDia`: `onDestino` si hay
+ * ruta, si no `onAjustes`); en la acción de `presentacion` queda como rótulo, porque ahí no hay una
+ * pantalla «por defecto» que no sea adivinar. Nunca lanza ni devuelve algo a medias: un valor nuevo del
+ * backend no puede romper una app ya instalada.
  *
  * Los cinco `tipo` que emite el backend (`TIPOS_DESTINO_ACCION`, `mi_dia_presentacion.py`) y qué hace
  * esta app con cada uno:
@@ -25,8 +26,10 @@ import type { DestinoTarjeta } from '@copiloto/core';
  *   `app/facturacion.tsx`.
  * - `certificado` → la pantalla de AFIP (`/ajustes-afip`), donde se carga/renueva el certificado. Es una
  *   hoja sin parámetros: `destino.id` (`cuit:ambiente`) no lo necesita y no se manda.
- * - `presupuesto` → **hueco declarado**: va a abrir el chat sembrado con la tarjeta (`avisoAlChat`, de
- *   frontend1) y esa función todavía no está en `main`. Hasta entonces `null` (rótulo).
+ * - `presupuesto` → **el chat, no una pantalla**: `null` acá y `true` en `llevaAlChat`. Un `RutaDestino`
+ *   que `hrefDeRuta` no pudiera resolver obligaría a un `switch` parcial en el banner y en el shell;
+ *   el chat es del puente (`avisoAlChat`), no del router. Lo emite UNA sola regla
+ *   (`presupuestos_enfriandose`), así que el `tipo` basta: no se lee el verbo.
  * - `trabajo` → **sin pantalla**: un trabajo es una cadena `eslabon:ref` (CONTEXT.md «Trabajo»), y la app
  *   no tiene ninguna pantalla de detalle de trabajo — `Inteligencia` sólo avisa que faltan gastos por
  *   asignar. `null` (rótulo) hasta que exista una; llevar a Inteligencia sería «una pantalla que no
@@ -36,6 +39,14 @@ export type RutaDestino =
   | { tipo: 'conexion'; servicio: string }
   | { tipo: 'comprobante'; comprobanteId: string }
   | { tipo: 'certificado' };
+
+/**
+ * `true` si la acción de esta tarjeta lleva al CHAT con la tarjeta sembrada (`avisoAlChat`) en vez de a
+ * una pantalla. Hoy sólo `presupuesto`. Va aparte de `rutaDeDestino` a propósito: ver su docstring.
+ */
+export function llevaAlChat(destino: DestinoTarjeta | null | undefined): boolean {
+  return destino?.tipo === 'presupuesto';
+}
 
 /** Un id de fila de Postgres. `app/facturacion.tsx` aplica la misma guarda: un valor que no sea entero
  *  abriría «borrador nuevo» en vez de un error, que es peor que no navegar. */
