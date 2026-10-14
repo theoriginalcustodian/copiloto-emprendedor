@@ -155,3 +155,40 @@ una corrida. **Con su control positivo**, que acá es obligatorio: imprimir cuá
 `TERCEROSINOBSERVADOS` mi propio grep de «red o credenciales» dio **1 hit** y lo fui a ver: era una
 línea del **docstring** que enumera lo que el test *no* cubre, no código — el control que **cita** el
 riesgo se parece al riesgo ([[el-guard-se-satisface-con-su-propio-comentario]]).
+
+---
+
+## Refuerzo 2026-10-14 — `TABLERORANCIO` **al revés**: el cierre vivía en el TABLERO y el hallazgo seguía abierto en el BUZÓN
+
+La fila `TABLERORANCIO` nombró la falla en una dirección: *«el `cierre_` vive en el BUZÓN y el estado vive
+en el TABLERO, y nadie mueve uno al otro»* — con el daño medido: una fila `pendiente` rancia **fabrica cola
+ajena**. Hoy pagué **la dirección opuesta**, y no la había nombrado nadie.
+
+Encontré 4 `hallazgo_` de auditoría dirigidos a mí en `abierto/`, de 7 días, **sin una sola marca de
+acuse**. Leí eso como «cola propia sin resolver» y me puse a cerrarlos uno por uno, midiendo todo de nuevo.
+Dos de ellos —`A4/LEGAL` y los `39 casts`— **ya estaban resueltos en `COLA-VIVA`**: `LEGALNOOPERA` ✅
+cerrada el 13/10 (y con una medición mejor que la mía: `eas.json` no tiene perfil de distribución real, así
+que no puede haber víctima), `MECLAVESRESTO`/`SMOKESTDIN`/`MECLAVESRUNTIME`/`MECLAVESCORE` ✅ cerradas.
+
+**Y el daño no fue sólo el trabajo repetido:** `LEGALNOOPERA` había decidido, textual, que lo que quedaba
+va *«dentro del ítem 9 sin inflarle la lista»* al operador. Yo le agregué un **ítem 11** al pedido — el
+ítem que esa fila resolvió **no** abrir. Lo retiré 10 minutos después, pero si el operador lo lee antes,
+el costo es suyo: contestar una binaria ya contestada.
+
+**La asimetría que lo hace invisible:** cerrar una fila del tablero es un acto **local** —el renglón, el
+enum, el estado— y no deja nada en el buzón. El `hallazgo_` que la originó no tiene quién lo cierre: su
+emisor ya reportó, y el que cerró la fila no es su destinatario. Así que **la ausencia de acuse en el
+buzón no es señal de nada**: no distingue «nadie lo atendió» de «lo atendió el tablero».
+
+**La regla, que es la de esta entrada con un sujeto más:** antes de tomar un `hallazgo_`/`pedido_` viejo,
+medí su estado **en el tablero**, no sólo en el buzón — `awk -F'|' '/^<ID> \|/ {n=split($0,a,"|"); print a[n]}' PLAN.md`
+sobre el id, y un grep del id en `COLA-VIVA` si el hallazgo no nombra uno. Vale igual que *«medí estado y
+dueño de cada id ANTES de citarlo»*: el registro que hay que mirar es **el que cierra**, y no siempre es
+donde llegó el pedido.
+
+**Lo que sí rescató el ciclo, para no leerlo como puro desperdicio:** los 4 estaban efectivamente sin
+acuse, y los dos que no tenían fila —`WIPCOMPART` (resuelto, nunca archivado porque el janitor **no toca
+obligaciones por diseño**) y el de ARCA— sólo salieron de `abierto/` porque alguien los miró. El trabajo
+correcto por la razón imprecisa sigue siendo trabajo correcto; lo que hay que arreglar es la razón.
+
+→ [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[lo-que-no-esta-en-la-tabla-de-hitos-no-existe]]

@@ -101,3 +101,34 @@ mientras el SHA que lo acotaba queda enterrado adentro.
 uno ajeno que contradice tu medición, el primer chequeo no es «quién se equivocó» sino **¿contra qué
 ref midió cada uno?** — ver [[el-instrumento-respondio-sobre-otro-sujeto]]. Dos verdades sobre
 sujetos distintos no se refutan: se fechan.
+
+---
+
+## Refuerzo 2026-10-14 — una LISTA sin el estado de cada ítem se lee entera en el estado más alarmante
+
+La entrada trata de una **cifra** sin unidad. La misma falla aplica a una **lista**, y es peor porque cada
+renglón parece un dato completo.
+
+Corrí `mi-buzon.sh planificacion --todo` —como el cron prescribe, para no perder los `avance_` que nacen
+archivados— y leí sus **24 renglones** como «lo que tengo sin resolver». Sólo **5** estaban en `abierto/`:
+los otros 19 vivían en `cerrado/2026-10-14/`. El flag lo dice en el propio docstring del script
+(`mi-buzon.sh:12`: *«`--todo` incluye `en-curso/` y `cerrado/<hoy>/`»*) y aun así lo leí mal, porque la
+**salida no marca la ubicación de cada ítem**: 24 nombres de archivo, todos con la misma forma.
+
+**Cómo me enteré, y es la parte útil:** archivé 4 de esos hallazgos y volví a correr el instrumento — **los
+4 seguían listados**. Ahí el modelo se rompió. Sin ese control accidental, habría cerrado el ciclo
+afirmando «quedan 7 hallazgos+urgentes dirigidos a mí» cuando eran 2. El control correcto, que debí correr
+primero, es trivial: por cada nombre de la salida, `dirname` del `find` — y eso **se puede pedir al
+instrumento**, no reconstruir a mano.
+
+**La regla:** cuando un instrumento devuelve una lista de ítems que pueden estar en **estados distintos**,
+el estado va **en cada renglón** o la lista no es medición. Un listado homogéneo de cosas heterogéneas
+induce el estado por el **contexto de la pregunta** —yo pregunté «¿qué me queda?» y leí 24 pendientes— y
+el sesgo siempre empuja al estado más alarmante, porque ése es el que justifica el trabajo que uno ya
+quería hacer.
+
+**Corolario sobre el flag:** `--todo` es el flag correcto para ese cron (sin él se pierden los `avance_`),
+así que el arreglo **no** es dejar de usarlo. Es que la salida distinga. Un flag que amplía el universo sin
+etiquetar lo que agrega convierte una mejora de cobertura en una pérdida de precisión.
+
+→ [[el-instrumento-respondio-sobre-otro-sujeto]] · [[una-fila-por-valor-de-una-variable-no-es-una-fila]] · [[instrumento-que-no-mira-nunca-falla]]
