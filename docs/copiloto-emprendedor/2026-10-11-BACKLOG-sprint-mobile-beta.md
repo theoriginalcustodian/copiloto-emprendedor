@@ -57,7 +57,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
-| **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
+| **SM-D4** | `#1021` | 🟨 EN-CURSO | frontend2 |
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
@@ -361,7 +361,8 @@ no el arranque del sprint.***
 
 ### SM-D4 · `#1021` — Tres filas de «Mi cuenta» en web prometen y no hacen nada
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend2
 - **Medido:** dos `<div>` **sin `onClick`** y un toggle **sin endpoint**. Estaban por portarse a mobile
   **así como están**.
 - **DoD:** cada una **se cablea o se retira de la UI**. Ninguna queda visible prometiendo. Y el

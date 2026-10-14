@@ -92,12 +92,6 @@ describe('AccountScreen', () => {
     expect(screen.getByText('Tu copiloto sigue activo')).toBeInTheDocument();
   });
 
-  it('muestra la fila "Idioma" (fiel al diseño, valor estático hasta que /me lo exponga)', () => {
-    renderAccountScreen();
-    expect(screen.getByText('Idioma')).toBeInTheDocument();
-    expect(screen.getByText('Español (AR)')).toBeInTheDocument();
-  });
-
   // DEC-8 (web): NO hay sustrato de planes (`admin_web.py:4`: «7c queda fuera de v1, sin sustrato»).
   // La fila «Plan: Profesional» afirmaba un plan contratado que no existe. Control negativo: si la
   // fila vuelve, ESTE test se pone rojo (un test de presencia no lo detecta).
@@ -107,19 +101,18 @@ describe('AccountScreen', () => {
     expect(screen.queryByText('Profesional')).toBeNull();
   });
 
-  it('"Privacidad del historial" es una fila simple (sin hint "Próximamente") y no hay fila de recuperar contraseña', () => {
+  // SM-D4 (issue 1019): tres filas prometían una preferencia que NO se guardaba (valor estático,
+  // `useState` local sin endpoint, fila sin destino) y mobile nunca las tuvo. Control negativo: si
+  // alguna vuelve sin su sustrato, ESTE test se pone rojo — un test de presencia no lo detecta.
+  it('SM-D4: NO muestra «Idioma», «Notificaciones» ni «Privacidad del historial» (sin sustrato)', () => {
     renderAccountScreen();
-    expect(screen.getByText('Privacidad del historial')).toBeInTheDocument();
-    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument();
-    expect(screen.queryByText('¿Olvidaste tu contraseña?')).not.toBeInTheDocument();
-  });
-
-  it('el toggle de notificaciones cambia de estado (visual, sin backend)', () => {
-    renderAccountScreen();
-    const toggle = screen.getByRole('switch', { name: 'Notificaciones' });
-    expect(toggle).toHaveAttribute('aria-checked', 'true');
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.queryByText('Idioma')).toBeNull();
+    expect(screen.queryByText('Español (AR)')).toBeNull();
+    expect(screen.queryByText('Notificaciones')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByText('Privacidad del historial')).toBeNull();
+    expect(screen.queryByText('Próximamente')).toBeNull();
+    expect(screen.queryByText('¿Olvidaste tu contraseña?')).toBeNull();
   });
 
   it('la fila "No molestar" está presente, inerte (sin onClick)', () => {
