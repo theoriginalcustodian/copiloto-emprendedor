@@ -175,6 +175,30 @@ def test_conexion_caida_reusa_el_destino_del_catalogo_con_su_connect_path():
         assert p["prosa"] == f"Se cortó la conexión con {nombre}."
 
 
+def test_conexion_caida_con_instante_real_agrega_la_fila_Se_cayo_en_hora_local():
+    """Rama CON `desde`: 12:12 UTC = 09:12 en Buenos Aires (zona declarada, no implícita)."""
+    hoy_utc = datetime.datetime(2026, 10, 13, 12, 12, tzinfo=UTC)
+    base = {"servicio": "mercadopago", "nombre": "Mercado Pago"}
+    p = presentar("conexion_caida", "mercadopago", {**base, "desde": hoy_utc.isoformat()}, _ts(0), HOY)
+    assert p["kv"] == [{"k": "Servicio", "v": "Mercado Pago"}, {"k": "Se cayó", "v": "Hoy, 09:12"}]
+    # El sufijo `Z` también es un instante; «ayer» y «otro día» usan el mismo formato que «Anotado».
+    p = presentar("conexion_caida", "mercadopago", {**base, "desde": "2026-10-12T22:20:00Z"}, _ts(0), HOY)
+    assert p["kv"][1] == {"k": "Se cayó", "v": "Ayer, 19:20"}
+    p = presentar("conexion_caida", "mercadopago", {**base, "desde": "2026-09-12T15:00:00+00:00"}, _ts(0), HOY)
+    assert p["kv"][1] == {"k": "Se cayó", "v": "12 de septiembre, 12:00"}
+
+
+def test_conexion_caida_SIN_instante_real_no_agrega_fila_y_nunca_usa_creada():
+    """Rama SIN `desde` (Composio): el kv sigue siendo sólo «Servicio». `creada` es cuándo corrió el
+    detector: presentarla como «se cayó» sería una hora fabricada indistinguible de una medida."""
+    base = {"servicio": "gmail", "nombre": "Gmail"}
+    for desde in (None, "", "2026-10-13", "no-es-fecha"):   # ausente, vacío, fecha SOLA, ilegible
+        datos = dict(base) if desde is None else {**base, "desde": desde}
+        p = presentar("conexion_caida", "gmail", datos, _ts(0), HOY)
+        assert p["kv"] == [{"k": "Servicio", "v": "Gmail"}], desde
+        assert "Se cayó" not in str(p), desde
+
+
 # ── la tarjeta anotada a mano (`regla is None`) ──────────────────────────────────────────────────
 
 def test_anotada_a_mano_dice_lo_anotaste_vos_y_UNA_fila_con_el_momento_en_hora_local():
