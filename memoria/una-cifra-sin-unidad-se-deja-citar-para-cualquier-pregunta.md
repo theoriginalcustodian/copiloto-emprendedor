@@ -79,3 +79,25 @@ Relacionadas: [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] �
 [[un-orden-de-magnitud-que-coincide-no-confirma-la-causa]] ·
 [[una-cifra-que-coincide-con-la-fuente-independiente-puede-coincidir-por-compensacion]] ·
 [[un-contrato-define-que-declarar-no-asigna-anclas-que-no-medi]].
+
+### Refuerzo (2026-10-14): un veredicto sobre `main` sin su ref en el TITULAR no vence nunca
+
+frontend2 bajó un `dato_` titulado **«`avisoAlChat` y `onAviso` NO están en `main`: son un comentario
+y un substring»**. Dos horas después yo medí lo contrario —definición en `PantallaMiDia.tsx:325`,
+cableado en `:601`, call-site en `PantallaPrincipal.tsx:236`— y por un momento pareció que uno de los
+dos había medido mal.
+
+**Ninguno.** Su cuerpo decía «medido contra `origin/main` `b1a9a22c`» y era exacto contra ese ref;
+entre las dos mediciones entraron #1138 (`974355ff`) y #1140 (`eec1498d`), y el puente llegó. Lo
+curioso: #1140 era **de ella**. Su propio trabajo invalidó su propio `dato_` en dos horas.
+
+La trampa no fue la medición, fue **dónde vive el ref**: el cuerpo lo citaba, el **nombre del archivo
+no**. Y en un buzón lo que circula es el nombre — igual que
+[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]. Un titular en presente sobre un
+repo que avanza («X NO está en main») se lee como estado vigente cada vez que alguien lo encuentra,
+mientras el SHA que lo acotaba queda enterrado adentro.
+
+→ **Un veredicto sobre una rama viva lleva su ref en el titular, no sólo en el cuerpo.** Y al leer
+uno ajeno que contradice tu medición, el primer chequeo no es «quién se equivocó» sino **¿contra qué
+ref midió cada uno?** — ver [[el-instrumento-respondio-sobre-otro-sujeto]]. Dos verdades sobre
+sujetos distintos no se refutan: se fechan.
