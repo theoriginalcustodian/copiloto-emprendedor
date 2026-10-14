@@ -84,20 +84,19 @@ misma búsqueda con `[Pp]resupuesto` → **287**.
 
 ---
 
-### 2 · `caida` — ⚠ ABIERTA (la mitad backend cerrada; la app no lee el campo)
+### 2 · `caida` — ✅ CERRADA-EN-CODIGO en `main` `11ce79ae` (la #2 la cerró el presentador de backend; **sin desplegar**: prod = `47c09040`; #3-#5 tienen veredicto de frontend2, pendiente de pasarlo a la tabla)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
 | # | divergencia (mapeo l.55) | estado | evidencia |
 |---|---|---|---|
 | 1 | cierre de la tarjeta: «Te aviso apenas vuelva» vs «Reconectala y sigo» | 📝 enmienda (gana el backend; se corrige el prototipo) | `apps/copiloto/mi_dia_orquestador.py:61`. «Te aviso» promete un push que se mide en **0**: `ExponentPushToken\|expo_push\|webpush\|send_push\|notificacion_push` sobre `motor/` + `apps/` → **0** (control: `create_payment_link` aparece en 7 archivos, así que el instrumento miraba donde debía). La tarjeta se cierra sola por el HECHO |
-| 2 | kv «Se cayó · hora» | **ABIERTA** | backend ✅: `apps/copiloto/mi_dia_detector.py:270` (`datos["desde"]` sólo con instante real), instantes en `mp_credential_store.py:84-92`, tests de las DOS ramas `apps/copiloto/tests/test_conexion_caida.py:174` (MP ⇒ presente) y `:169-170,189-197` (Composio / sin instante ⇒ **ausente**, no `None`). App ✗: **0 lecturas de `datos.desde`** en `apps/mobile` + `apps/copiloto-web` + `packages/core` (el único hit de `\.desde\b` es `core/api/agenda.ts:95`, un rango de agenda, ajeno); control positivo: `datos.nombre\|servicio` → **4** lecturas. Prohibido rellenarlo con `creada_en` |
+| 2 | kv «Se cayó · hora» | ✅ **CERRADA-EN-CODIGO** (`11ce79ae`, PR #1124; **no desplegada**) | **La cerró el presentador de backend, no la app** (corrige «dueño de Mi día» de la versión anterior de esta celda): `apps/copiloto/mi_dia_presentacion.py:283-290` (`se_cayo = _momento_texto(desde, hoy) if desde else None` → `_kv(("Servicio", nombre), ("Se cayó", se_cayo))`); la app ya pinta `presentacion.kv` genéricamente (`apps/mobile/src/modules/midia/PantallaMiDia.tsx:707`), así que **no se tocó** y así es correcto (H12/DETALLEKV: la app no arma la tabla regla→campo). El instante sigue viniendo de `apps/copiloto/mi_dia_detector.py:290` (`datos["desde"]` sólo con instante real; hoy sólo MercadoPago, ausente en Composio ⇒ **sin fila**, nunca `creada`). Tests de las DOS ramas: `apps/copiloto/tests/test_mi_dia_presentacion.py` (`…con_instante_real…` y `…SIN_instante_real…`) con control positivo (2 mutantes, 1 y 2 rojos). **Lo que NO está medido:** device ni deploy — `/healthz` = `47c09040`, anterior al merge |
 | 3 | rótulo «En caja» vs «Entró esta semana» | **sin veredicto** | `PortadaNegocio.tsx:37-45`; ningún doc ni el mapeo lo resuelve |
 | 4 | copy del aviso de la portada distinto | **sin veredicto** | ídem |
 | 5 | el chip pierde la variación y conserva la fecha de corte | **sin veredicto** | ídem |
 
-**Qué falta, con dueño:** (2) pintar `datos.desde` cuando exista — adenda C-D2 al **dueño de Mi día**; (3)(4)(5) un veredicto del dueño
-de `PortadaNegocio`. **Nada de esto es de backend.** El contrato del dato ya está cumplido y probado en ambas ramas.
+**Qué falta, con dueño:** (2) **desplegar** (comparte el bloqueo del deploy; dueño: operador/regla Bash) y medir en device (frontend2); (3)(4)(5) pasar a la tabla los veredictos que frontend2 ya escribió en `2026-10-13-veredicto-caida-cascara-portada-fe2.md` (dueño: frontend2). Lo de backend está en `main` y probado en ambas ramas.
 
 > **Actualización 2026-10-13 (frontend2):** (3)(4)(5) ya tienen veredicto — #5 ✅ resuelta en código, #4 🔁 duplicada, #3 📝 enmienda E10 — en `2026-10-13-veredicto-caida-cascara-portada-fe2.md`. La fila `caida` sigue abierta **sólo** por (2): le falta al presentador de backend emitir el kv «Se cayó» (la app ya renderiza cualquier `presentacion.kv`).
 
