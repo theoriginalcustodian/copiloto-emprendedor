@@ -140,3 +140,31 @@ if ! diff -q "$_tmp_contratos" "$_contratos" >/dev/null; then
 fi
 rm -f "$_tmp_contratos"
 echo "✅ mapeo del criterio 3: 6 controles OK sobre LOS DOS fixtures (original + ciego) · contratos regenerados identicos al versionado"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Registro UNICO del sprint: coherencia + tabla regenerada (2026-10-14)
+#
+# POR QUE ES UN GATE Y NO UNA COSTUMBRE: medido el 14-10, 18 de las 26 fichas del backlog
+# nunca fueron nombradas por ninguna sesion en 460 `cierre_`. El estado del sprint se leia en
+# tres registros incompatibles porque nada RECHAZABA la incoherencia. Este gate rechaza:
+#   · un TERMINADO sin `Cierre:` o cuyo sha no es ancestro de origin/main,
+#   · un DOD-PARCIAL sin `Falta:` (que es un TERMINADO disfrazado),
+#   · una ficha sin `Estado:`,
+#   · y una tabla-indice desincronizada del cuerpo del doc.
+# El criterio de TERMINADO es el DoD COMPLETO (orden del operador 14-10), no el merge commit.
+echo "── registro del sprint (scripts/sprint-estado.py) ──"
+if ! python -I -X utf8 scripts/sprint-estado.py --check; then
+  echo "❌ el registro del sprint es incoherente (ver arriba)."
+  exit 1
+fi
+_bk="docs/copiloto-emprendedor/2026-10-11-BACKLOG-sprint-mobile-beta.md"
+_bk_antes="$(mktemp)"; cp "$_bk" "$_bk_antes"
+python -I -X utf8 scripts/sprint-estado.py --tabla >/dev/null
+if ! diff -q "$_bk_antes" "$_bk" >/dev/null; then
+  echo "❌ la tabla-indice del backlog NO esta regenerada: el cuerpo del doc y la tabla divergen."
+  echo "   Corré: python -I -X utf8 scripts/sprint-estado.py --tabla"
+  diff "$_bk_antes" "$_bk" | head -30
+  cp "$_bk_antes" "$_bk"; rm -f "$_bk_antes"; exit 1
+fi
+rm -f "$_bk_antes"
+echo "✅ registro del sprint: coherente e idempotente (26 fichas, tabla al dia)"

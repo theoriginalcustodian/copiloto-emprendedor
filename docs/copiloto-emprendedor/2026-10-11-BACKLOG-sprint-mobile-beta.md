@@ -26,12 +26,59 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
 
 ---
 
+## Estado de las 26 fichas — ESTE es el registro de verdad
+
+**No se marca a mano.** La sesión que termina pone la evidencia en su `cierre_` (`FICHA:` · `SHA:` ·
+`DOD:` una línea por punto); el estado lo **escribe el script**:
+
+```
+python -I -X utf8 scripts/sprint-estado.py --marcar SM-B3 --estado TERMINADO --cierre "merge <sha> - DoD(1) … - DoD(2) …"
+python -I -X utf8 scripts/sprint-estado.py --check    # el gate; corre en scripts/ci/lint.sh
+```
+
+`TERMINADO` **exige el DoD completo**, no el merge commit: el sha es una de las evidencias. Si hay
+código en main pero el DoD no está cerrado, el estado es `DOD-PARCIAL` **con `Falta:`**. La norma
+completa y el por qué están en `CLAUDE.md §3.quater.bis`.
+<!-- TABLA-ESTADO:INICIO (generada por scripts/sprint-estado.py --tabla - NO editar a mano) -->
+
+| Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
+|---|---|---|---|
+| **SM-A1** | `#1010` | ⬜ PENDIENTE | — |
+| **SM-A2** | `#1012` | ⬜ PENDIENTE | — |
+| **SM-B1** | `#1014` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS (gh pr view 1023) - DoD: el pago MercadoPago deja de contarse dos v… |
+| **SM-B2** | `#1015` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS - DoD: la fila vale nota_credito y la app ya no ofrece anular una NC |
+| **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
+| **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
+| **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
+| **SM-C2** | `#1000` | ⬜ PENDIENTE | — |
+| **SM-C3** | `#1016` | ⬜ PENDIENTE | medido 14-10: la DECISION esta (7de6d9dc) pero el codigo NO - no existe el predicado unico junto a debeMostrarOnboard… |
+| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
+| **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
+| **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
+| **SM-D2** | `#1018` | ⬜ PENDIENTE | — |
+| **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
+| **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
+| **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
+| **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
+| **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
+| **SM-E1** | `#1005` | ⬜ PENDIENTE | — |
+| **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | el DoD manda RETIRAR POST /inteligencia/chat y sigue vivo en apps/copiloto/inteligencia_web.py:129 (medido 14-10); la… |
+| **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
+| **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
+| **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
+| **SM-F4** | `#1013` | ⬜ PENDIENTE | — |
+| **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
+
+<!-- TABLA-ESTADO:FIN -->
+
 # Bloque A · Instrumento confiable
 
 *Dueño: **frontend** (dueño único del device). Nada de este bloque depende del operador.*
 
-### A-1 · `#1010` — El toque de la pestaña del escritorio es intermitente
+### SM-A1 · `#1010` — El toque de la pestaña del escritorio es intermitente
 
+- **Estado:** PENDIENTE
 - **Medido (2026-10-11):** abre **4 de 6** ciclos; **al primer toque, 1 de 6**. El tap vive en el
   `onEnd` de un `Gesture.Pan()` — `apps/mobile/src/modules/escritorio/PanelFunciones.tsx:94-98`.
 - **Historia que importa:** el issue nació diciendo «hacen falta dos gestos». **Eso fue retirado**
@@ -47,17 +94,18 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
   se activa cambia qué callbacks corren) + el archivo equivalente de `documed-front`, que ya resolvió
   esta cáscara en device. Y **reutilizar** el sensor existente
   (`Auditorias/2026-10-11-toque-pestana-por-pixeles.py`) antes de escribir otro.
-- **Bloquea:** A-2, F-1, F-2, F-3.
+- **Bloquea:** SM-A2, SM-F1, SM-F2, SM-F3.
 
-### A-2 · `#1012` — El eje A tiene 1 ruta verificada de 21
+### SM-A2 · `#1012` — El eje A tiene 1 ruta verificada de 21
 
+- **Estado:** PENDIENTE
 - **Medido:** **1 válida de 21.** 15 nunca se intentaron; 5 quedaron `NO_ATRIBUIBLE` al retirar `H-60`.
 - **DoD:** las **21** con veredicto del vocabulario cerrado, medidas con animaciones en valor normal.
 - **Evidencia:** por corrida, su control positivo. Un rojo sin control positivo válido es
   `NO_ATRIBUIBLE`, no un hallazgo.
 - ⚠️ **`Auditorias/2026-10-11-receta-device-resultado.json` es un artefacto pre-retracción.** Sus
   celdas `NO_LLEGA` para `/gastos` e `/ingresos` están invalidadas. No citarlo como estado.
-- **Depende de:** A-1. **Causa:** hasta que el gesto de apertura sea confiable, el instrumento no
+- **Depende de:** SM-A1. **Causa:** hasta que el gesto de apertura sea confiable, el instrumento no
   separa «la ruta no responde» de «mi gesto se perdió», y los 21 veredictos habría que repetirlos.
 
 ---
@@ -66,8 +114,10 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
 
 *Dueño: **backend**. Arranca **hoy**: no depende de ninguna decisión del operador ni del alta.*
 
-### B-1 · `#1014` — Un pago de MercadoPago se cuenta dos veces en «Entró» · ✅ MERGEADO (12/10)
+### SM-B1 · `#1014` — Un pago de MercadoPago se cuenta dos veces en «Entró» · ✅ MERGEADO (12/10)
 
+- **Estado:** TERMINADO
+- **Cierre:** merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS (gh pr view 1023) - DoD: el pago MercadoPago deja de contarse dos veces
 - **Medido:** `apps/copiloto/mp_web.py:53-71` escribe en **las dos** tablas que el `UNION ALL` de
   `apps/copiloto/inteligencia_queries.py:43-49` une. Presente desde el 06/10.
 - **Y la mitad que estaba mal:** este ítem también afirmaba «cero veces en Ingresos». **Era falso** —
@@ -82,8 +132,10 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
   `backend/entro-cuenta-el-pago-mp-dos-veces` ya no existe ⇒ **citá el merge commit**, no
   `ba1f8cbd`, que no se resuelve en un clon.
 
-### B-2 · `#1015` — Ninguna fila valía `nota_credito`, y la app ofrecía anular una nota de crédito · ✅ MERGEADO (12/10)
+### SM-B2 · `#1015` — Ninguna fila valía `nota_credito`, y la app ofrecía anular una nota de crédito · ✅ MERGEADO (12/10)
 
+- **Estado:** TERMINADO
+- **Cierre:** merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS - DoD: la fila vale nota_credito y la app ya no ofrece anular una NC
 - **Medido:** el store escribía `estado` con un default único; **ninguna** fila podía valer
   `nota_credito`, así que una NC quedaba indistinguible de una factura y los fronts le ofrecían
   «Anular». Era la **raíz** de tres síntomas, no tres defectos.
@@ -92,24 +144,28 @@ uno ve lo suyo» sale igual si el aislamiento no existe.
   lo pasaba).
 - **Evidencia:** 17/17 en el VPS + control positivo fallando con `'emitida' != 'nota_credito'`, en
   `apps/copiloto/afip_comprobante_store.py`. Procedencia citable: `6d3b3579` (PR #1023).
-- ✅ **CERRADO:** mergeado en `6d3b3579` (PR #1023) junto con B-1; issue cerrado el 12/10. Mismo criterio de
+- ✅ **CERRADO:** mergeado en `6d3b3579` (PR #1023) junto con SM-B1; issue cerrado el 12/10. Mismo criterio de
   procedencia: el merge commit, no `fca3abae`.
 
-### B-3 · `#1003` — «Lo facturado» se calcula con cuatro predicados distintos
+### SM-B3 · `#1003` — «Lo facturado» se calcula con cuatro predicados distintos
 
+- **Estado:** TERMINADO
+- **Cierre:** merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado_predicado_unico.py pide el MISMO mes a las 4 superficies y exige la MISMA cifra (caso discriminante: factura anulada + NC)
 - **Medido:** cuatro lugares responden «qué facturó este mes» con **cuatro** criterios diferentes
   según quién pregunte.
 - **DoD:** **un** predicado, en un solo lugar, y los cuatro llamadores lo usan. Test que compare las
   cuatro respuestas **para el mismo mes** y exija igualdad.
-- **Bloquea:** D-2. **Causa:** portar el bloque «facturado del mes» a mobile antes de unificar
+- **Bloquea:** SM-D2. **Causa:** portar el bloque «facturado del mes» a mobile antes de unificar
   importa la ambigüedad al teléfono, y después hay que arreglarla en dos lugares.
 
-### B-4 · `#1004` — La nota de crédito se emite sin número reservado
+### SM-B4 · `#1004` — La nota de crédito se emite sin número reservado
 
+- **Estado:** TERMINADO
+- **Cierre:** merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_afip_anulacion_workflow.py +44)
 - **Medido:** la NC no reserva número; la factura sí. **El fix ya existe en el otro call-site.**
 - **DoD:** la NC reserva por el **mismo** mecanismo que la factura. **Propagar el fix existente, no
   diseñar uno nuevo** — y grepear el patrón del fix para ver si hay un tercer call-site.
-- **Depende de:** B-2 (la NC tiene que ser distinguible antes de tratarla distinto).
+- **Depende de:** SM-B2 (la NC tiene que ser distinguible antes de tratarla distinto).
 
 ---
 
@@ -123,8 +179,10 @@ no el arranque del sprint.***
 > canónico viene corriendo smokes y **no está** en la allowlist — si ésta gobernara el login, nunca
 > habría podido entrar. Los bloques A, B, D y F corren con ese usuario, hoy.
 
-### C-1 · `#999` — Altas manuales en beta: la allowlist se queda, y eso es una DECISIÓN
+### SM-C1 · `#999` — Altas manuales en beta: la allowlist se queda, y eso es una DECISIÓN
 
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'ninguno de codigo'
 - **Medido:** `apps/copiloto/web.py:1433` corta el autoprovisioning con
   `403 "alta por invitación: email no habilitado"`, y el comentario del propio código dice por qué:
   *«el chequeo de proveedor OAuth de arriba NO es una barrera de alta — sin esto, cualquier cuenta de
@@ -138,20 +196,23 @@ no el arranque del sprint.***
   cercanas. Los permisos de login los otorga el operador. **La allowlist se queda tal cual** y la UI
   para cargarla **sale del alcance** de este sprint.
 - **DoD:** ninguno de código. Este renglón cierra **por decisión**, no por implementación.
-- **Ya NO bloquea C-3.** Lo único que seguía abierto del alta era qué se le pide a la persona la
-  primera vez, y eso es C-3.
+- **Ya NO bloquea SM-C3.** Lo único que seguía abierto del alta era qué se le pide a la persona la
+  primera vez, y eso es SM-C3.
 
-### C-2 · `#1000` — El alta por email de web no se puede completar
+### SM-C2 · `#1000` — El alta por email de web no se puede completar
 
+- **Estado:** PENDIENTE
 - **Medido:** el backend exige `invite_token` y el cliente **nunca lo manda**; además el formulario
   sólo se abre con `?signup=1` en la URL.
 - **DoD:** alta por email de punta a punta, con test del **camino real** — el de producción, por el
   composition root, no un happy-path mockeado. *Causa:* un test que no usa el camino de producción no
   puede verlo fallar.
-- **Bloquea:** C-3.
+- **Bloquea:** SM-C3.
 
-### C-3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
+### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
+- **Estado:** PENDIENTE
+- **Falta:** medido 14-10: la DECISION esta (7de6d9dc) pero el codigo NO - no existe el predicado unico junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts:17) ni el test adversarial por app
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
@@ -199,11 +260,13 @@ no el arranque del sprint.***
   4. Control positivo en el mismo test: con los dos llenos, entra.
 - **No hay pantalla nueva que construir** en ninguna de las dos apps: el paso existe y los campos ya
   tienen editor en Ajustes.
-- **Ya no depende de C-1** (cerrado por decisión) ni de C-2 (es el alta por **email de web**, camino
+- **Ya no depende de SM-C1** (cerrado por decisión) ni de SM-C2 (es el alta por **email de web**, camino
   distinto). **Sigue siendo el criterio 1 del DoD del sprint.**
 
-### C-4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
+### SM-C4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
+- **Estado:** DOD-PARCIAL
+- **Falta:** hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD NO se verifico punto por punto: que la aceptacion CONDICIONE algo, y la evidencia de device. Lo acredita frontend2 con su cierre_
 - **Medido, en dos mitades distintas:**
   1. La **pantalla de lectura de mobile ya existe** — `apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`,
      montada en `apps/mobile/app/legal.tsx:17`. ⚠️ Este issue decía antes «mobile no tiene pantalla de
@@ -225,8 +288,10 @@ no el arranque del sprint.***
   **El marcado del texto va visible en la pantalla**, no en un comentario del código: un comentario
   que declara un estado no lo comunica a nadie que no lea el fuente.
 
-### C-5 · `#1002` — Sin SMTP no hay recuperación de contraseña
+### SM-C5 · `#1002` — Sin SMTP no hay recuperación de contraseña
 
+- **Estado:** PENDIENTE
+- **Falta:** bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario recupera su clave sin intervencion de nadie' sigue sin cumplirse
 - **Medido:** no hay proveedor configurado ⇒ ni recuperación de clave ni cambio de email.
 - **DoD:** el usuario recupera su clave **sin intervención de nadie**.
 - ✅ **DECIDIDO (2026-10-12) — DIFERIDO a pre-prod: en beta el operador resetea las claves a mano.**
@@ -237,7 +302,7 @@ no el arranque del sprint.***
   una persona. **#1002 queda ABIERTO**, no cerrado por decisión. Dueño: operador. Disparador: antes
   de abrir a cualquier usuario que no sea cercano. Escribirlo como «resuelto» sería exactamente el
   tipo de cierre que el próximo lector cita sin verificar.
-- **Arrastra a `POST /auth/cambiar-email`** (ver E-3): sin proveedor no se puede verificar una
+- **Arrastra a `POST /auth/cambiar-email`** (ver SM-E3): sin proveedor no se puede verificar una
   dirección nueva, así que su diferimiento tiene **causa**, no desprolijidad.
 
 ---
@@ -246,8 +311,9 @@ no el arranque del sprint.***
 
 *Dueño: **frontend**. **No depende del bloque C**: se mide con el usuario canónico, que ya entra.*
 
-### D-1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
+### SM-D1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
 
+- **Estado:** PENDIENTE
 - **Medido, y lo declara el propio código:** `apps/mobile/src/modules/chat/Burbuja.tsx:23` y
   `apps/mobile/src/modules/chat/ListaMensajes.tsx:356`.
 - **Consecuencia:** una respuesta con **3+ opciones** no se puede elegir en el teléfono, y un artefacto
@@ -260,14 +326,16 @@ no el arranque del sprint.***
   *Lección:* una propiedad que decide un criterio y vive sólo en el ambiente **no se deduce del
   código**; se mide con un comando sobre el proceso.
 
-### D-2 · `#1018` — Mobile no tiene los bloques de agregado que web sí
+### SM-D2 · `#1018` — Mobile no tiene los bloques de agregado que web sí
 
+- **Estado:** PENDIENTE
 - **Medido:** faltan «facturado del mes» y el resumen de presupuestos.
 - **DoD:** los dos bloques existen **y su cifra coincide con la del detalle** para el mismo mes.
-- **Depende de:** B-3 (el predicado único). **Es el criterio 6 del DoD del sprint.**
+- **Depende de:** SM-B3 (el predicado único). **Es el criterio 6 del DoD del sprint.**
 
-### D-3 · `#1019` — «Tus apps» y los modos están escritos e inalcanzables en web
+### SM-D3 · `#1019` — «Tus apps» y los modos están escritos e inalcanzables en web
 
+- **Estado:** PENDIENTE
 - **Medido:** `'apps'` **no está** en `TABS`; los dos shells de web lo declaran ellos mismos. No
   existe en mobile.
 - **Por qué es el ítem que ahorra trabajo:** parecía una feature de web **para portar**. Portarla
@@ -290,28 +358,32 @@ no el arranque del sprint.***
   mismo nombre de cara al usuario, y ése es exactamente el tipo de colisión que hace que un retiro
   se lleve puesta la pantalla equivocada.
 
-### D-4 · `#1021` — Tres filas de «Mi cuenta» en web prometen y no hacen nada
+### SM-D4 · `#1021` — Tres filas de «Mi cuenta» en web prometen y no hacen nada
 
+- **Estado:** PENDIENTE
 - **Medido:** dos `<div>` **sin `onClick`** y un toggle **sin endpoint**. Estaban por portarse a mobile
   **así como están**.
 - **DoD:** cada una **se cablea o se retira de la UI**. Ninguna queda visible prometiendo. Y el
   docstring de `AccountScreen` deja de citarlas como capacidad existente — *si el comentario sigue
   afirmándolas, el próximo las vuelve a portar.*
 
-### D-5 · `#1007` — La card de confirmación queda activa después de responderla
+### SM-D5 · `#1007` — La card de confirmación queda activa después de responderla
 
+- **Estado:** PENDIENTE
 - **DoD:** la card responde **una vez** y queda resuelta; un segundo toque **no reenvía**.
 - **Criterio 7 del DoD del sprint.** El mecanismo canónico de las cards por voz dice que nunca se
   pregunta dos veces: una card que sigue activa lo viola de hecho.
 
-### D-6 · `#1008` — La app dice «No lo anotamos.» sobre un ingreso que sí quedó guardado
+### SM-D6 · `#1008` — La app dice «No lo anotamos.» sobre un ingreso que sí quedó guardado
 
+- **Estado:** PENDIENTE
 - **DoD:** el mensaje refleja el resultado **real** de la escritura. Test del caso en que la escritura
   **sí** ocurrió — es la mitad que el happy-path no cubre: hoy el camino feliz y el fallido muestran
   el mismo texto.
 
-### D-7 · `#1009` — Anular un comprobante falla en silencio
+### SM-D7 · `#1009` — Anular un comprobante falla en silencio
 
+- **Estado:** PENDIENTE
 - **Medido:** `try/finally` **sin `catch`** ⇒ la excepción se pierde y el usuario no ve nada.
 - **DoD:** el fallo **se ve** (el usuario recibe el error) y el estado no queda a medias.
 - **Criterio 3 del DoD del sprint.**
@@ -320,17 +392,21 @@ no el arranque del sprint.***
 
 # Bloque E · Promesas sin rama
 
-### E-1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
+### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
+- **Estado:** PENDIENTE
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
-### E-2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
+### SM-E2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
 
+- **Estado:** PENDIENTE
 - **DoD:** lo anunciado y lo cableado coinciden, **ítem por ítem** (no «en general»).
 
-### E-3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
+### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
+- **Estado:** DOD-PARCIAL
+- **Falta:** el DoD manda RETIRAR POST /inteligencia/chat y sigue vivo en apps/copiloto/inteligencia_web.py:129 (medido 14-10); las 4 capacidades cableadas sin verificar. Lo acredita backend
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
@@ -383,13 +459,15 @@ avisar»*. ⇒ **DoD de UI:** ninguna pantalla muestra margen sin el conteo al l
 *Dueño: **frontend**, dueño **único** del device. **Es el criterio 8: sin este bloque el sprint no
 cierra, aunque los otros siete estén verdes.***
 
-### F-1 · `#1011` — Las 6 cadenas de negocio nunca se midieron de punta a punta en device
+### SM-F1 · `#1011` — Las 6 cadenas de negocio nunca se midieron de punta a punta en device
 
+- **Estado:** PENDIENTE
 - **DoD:** las 6 con veredicto del vocabulario cerrado y su `medido_contra:`.
-- **Depende de:** A-1.
+- **Depende de:** SM-A1.
 
-### F-2 · `M-02` — Medir en device los 46 ids que faltan
+### SM-F2 · `M-02` — Medir en device los 46 ids que faltan
 
+- **Estado:** PENDIENTE
 - **Medido:** `scripts/evidencia/falta-en-mobile.py` los lista por nombre. Mobile: **8** comparados de
   verdad · **5** cubiertos sin comparación · **41** sin nada ⇒ **46 a medir**.
 - **Por qué 46 y no 41:** la cifra que circulaba, «mobile 13/54», cuenta como cubiertos 5 ids cuyos
@@ -397,20 +475,23 @@ cierra, aunque los otros siete estén verdes.***
   correcta y engañosa a la vez.
 - **DoD:** cada id con veredicto del vocabulario cerrado y su `medido_contra:`. Por lotes, con un
   `avance_` por lote.
-- **Depende de:** A-1.
+- **Depende de:** SM-A1.
 
-### F-3 · `M-03` — Los 5 ids cubiertos sin comparación
+### SM-F3 · `M-03` — Los 5 ids cubiertos sin comparación
 
+- **Estado:** PENDIENTE
 - `cobro-voz` · `fact-voz` · `onb-cumplida` · `pres-voz` · `vozchat`.
 - **DoD:** veredicto real y **salen de esa población** (que `falta-en-mobile.py` los deje de listar).
 
-### F-4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
+### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
+- **Estado:** PENDIENTE
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 
-### F-5 · `M-04` — Tester externo con video
+### SM-F5 · `M-04` — Tester externo con video
 
+- **Estado:** PENDIENTE
 - **DoD:** el video existe y **cada hallazgo entra como fila** del registro, con id y veredicto — no
   como impresión en prosa. Una impresión no se puede volver a medir.
 
@@ -420,11 +501,11 @@ cierra, aunque los otros siete estén verdes.***
 
 | ítem | depende de | causa de la dependencia |
 |---|---|---|
-| A-2 | A-1 | sin gesto confiable, un rojo no se puede atribuir |
-| F-1 F-2 | A-1 | ídem: habría que repetir las mediciones |
-| B-4 | B-2 | la NC tiene que ser distinguible antes de tratarla distinto |
-| D-2 | B-3 | portar el bloque antes de unificar importa la ambigüedad |
-| C-3 | — | ya no depende de nada: C-1 cerró por decisión y C-2 es el alta por email de web, otro camino |
+| SM-A2 | SM-A1 | sin gesto confiable, un rojo no se puede atribuir |
+| SM-F1 SM-F2 | SM-A1 | ídem: habría que repetir las mediciones |
+| SM-B4 | SM-B2 | la NC tiene que ser distinguible antes de tratarla distinto |
+| SM-D2 | SM-B3 | portar el bloque antes de unificar importa la ambigüedad |
+| SM-C3 | — | ya no depende de nada: SM-C1 cerró por decisión y SM-C2 es el alta por email de web, otro camino |
 | **todo B** | **nada** | **arranca hoy; y va antes de C a propósito** |
 | **todo D** | **nada de C** | se mide con el usuario canónico, que ya entra |
 
@@ -455,9 +536,9 @@ lo primero de la cola.
 
 | | |
 |---|---|
-| ✅ **RESUELTO — B-1 y B-2 están MERGEADOS** | `6d3b3579` (PR #1023), issues #1014/#1015 cerrados el 12/10. Ya no es un riesgo: el fix está en `main`, verificado por contenido (`cobro_store.py` · `afip_comprobante_store.py` · `inteligencia_queries.py` + sus tests) |
+| ✅ **RESUELTO — SM-B1 y SM-B2 están MERGEADOS** | `6d3b3579` (PR #1023), issues #1014/#1015 cerrados el 12/10. Ya no es un riesgo: el fix está en `main`, verificado por contenido (`cobro_store.py` · `afip_comprobante_store.py` · `inteligencia_queries.py` + sus tests) |
 | ⚠️ **`PantallaFacturacion.tsx` del checkout compartido está ATRASADO** | commitearlo tal como está revierte **+102 líneas** de la rama en vuelo. Medir el **signo** por archivo, contra `main`. Los 4 rojos y 8 errores de `tsc` de la suite mobile (986/991) caen todos ahí y **no son defecto de `main`** |
-| ✅ **REFUTADO: `/actividad?q=` NO da 400** | medido el 11/10 contra el handler: `apps/copiloto/actividad_web.py:99` declara `q: str = ""`, `:112` dice «`q` YA está implementada: ILIKE sobre título+detalle», `:120` la pasa al store. Lo del 400 lo afirmaba un **comentario** de mobile, ya corregido. **Tercer caso del día** de un comentario que declara un estado, sobrevive al cambio y el próximo lector le cree (los otros dos: B-1 y `#1001`). **No hay nada que esperar de backend acá** |
+| ✅ **REFUTADO: `/actividad?q=` NO da 400** | medido el 11/10 contra el handler: `apps/copiloto/actividad_web.py:99` declara `q: str = ""`, `:112` dice «`q` YA está implementada: ILIKE sobre título+detalle», `:120` la pasa al store. Lo del 400 lo afirmaba un **comentario** de mobile, ya corregido. **Tercer caso del día** de un comentario que declara un estado, sobrevive al cambio y el próximo lector le cree (los otros dos: SM-B1 y `#1001`). **No hay nada que esperar de backend acá** |
 | 🆕 **Asimetría de búsqueda web↔mobile** | medido: web busca **global** (`ActividadScreen.tsx:84`), mobile sólo **por función** (`BuscadorActividad.tsx:77`). Las dos pasan `q` y `q` funciona ⇒ no es un defecto, es una **decisión de UX sin dueño**: el docstring de mobile argumenta su lado y nadie comparó. Clasificar antes de cerrar la paridad |
 | ✅ **RESUELTO: `app/recientes.tsx` SÍ es alcanzable** | medido el 11/10: `apps/mobile/src/shell/PantallaPrincipal.tsx:179` cablea `onVerRecientes={() => empujarUnaVez('/recientes')}` al encabezado **tapeable** «Actividad reciente», con test verde (`PantallaPrincipal.test.tsx:146`). El `_layout.tsx` decía «queda inalcanzable» — **rancio, ya corregido**. **Sin tile ≠ inalcanzable.** ⚠️ Ese comentario invitaba a **borrar una pantalla alcanzable**; el único caso realmente inalcanzable de esa lista es `'apps'` (`#1019`). **Cuarto caso del día** del mismo mecanismo. (Y mi fila anterior citaba `PantallaPrincipal.tsx:179` sin su directorio: el archivo vive en `src/shell/`, no en `modules/principal/`) |
 | Paridad de **parámetros** no medida | un endpoint que las dos apps llaman puede invocarse con menos capacidad de un lado, y la tabla de 109 lo marca `AMBAS` igual. Segundo pase si ese eje importa |
