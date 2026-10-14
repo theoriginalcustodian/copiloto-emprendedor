@@ -306,3 +306,41 @@ describe('PantallaFacturacion (web) — idem_key en "Nueva factura" (FACTID)', (
     expect(mockCrearFactura.mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
   });
 });
+
+describe('PantallaFacturacion (web) — SM-E1: puedeFacturar:false por condición IVA NO es «configurá»', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('Responsable Inscripto con perfil cargado: explica que A/B no está disponible y NO ofrece configurar', async () => {
+    mockEstadoAfip.mockResolvedValue(
+      estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: 'condicion_iva_no_soportada' }),
+    );
+    render(<PantallaFacturacion onConfigurar={() => {}} />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-no-puede-facturar')).toBeInTheDocument());
+    expect(screen.getByTestId('facturacion-no-puede-facturar')).toHaveTextContent(/Responsables Inscriptos/);
+    expect(screen.queryByTestId('facturacion-cta-configurar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Todavía no configuraste/)).not.toBeInTheDocument();
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+  });
+
+  it('control del par: SIN motivo (falta configurar) sí muestra el CTA y no el aviso', async () => {
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: null }));
+    render(<PantallaFacturacion onConfigurar={() => {}} />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeInTheDocument());
+    expect(screen.getByText(/Todavía no configuraste/)).toBeInTheDocument();
+    expect(screen.queryByTestId('facturacion-no-puede-facturar')).not.toBeInTheDocument();
+  });
+
+  it('un motivo que la app no conoce NO cae en «configurá» (sería el mismo lazo)', async () => {
+    mockEstadoAfip.mockResolvedValue(
+      estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: 'desconocido' }),
+    );
+    render(<PantallaFacturacion onConfigurar={() => {}} />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-no-puede-facturar')).toBeInTheDocument());
+    expect(screen.queryByTestId('facturacion-cta-configurar')).not.toBeInTheDocument();
+  });
+});

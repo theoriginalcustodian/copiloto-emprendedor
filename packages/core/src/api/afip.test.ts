@@ -469,6 +469,31 @@ describe('afip.ts', () => {
       const ok = result as Extract<typeof result, { status: 'ok' }>;
       expect(ok.driveConectado).toBe(esperado);
     });
+
+    /**
+     * SM-E1 — `puede_facturar:false` dejó de tener UNA causa (backend `b705a403`). El motivo viaja
+     * aparte y la app NO puede colapsarlo: un código desconocido es `'desconocido'` (no «sin
+     * configurar», que pediría configurar de nuevo algo ya configurado), y ausente/`null` es «sin motivo».
+     */
+    it.each([
+      ['condicion_iva_no_soportada', 'condicion_iva_no_soportada'],
+      ['un código nuevo del backend', 'desconocido'],
+      [null, null],
+      [undefined, undefined],
+      ['', null],
+    ])('motivo_no_puede_facturar %s -> %s', async (crudo, esperado) => {
+      responder = () =>
+        respuesta(200, {
+          conectado: true, ws_autorizados: ['wsfe'], perfil_completo: true, puede_facturar: false,
+          onboarding: null, motivo_no_puede_facturar: crudo === 'un código nuevo del backend' ? 'otro_motivo_2027' : crudo,
+        });
+
+      const result = await estadoAfip('1');
+
+      const ok = result as Extract<typeof result, { status: 'ok' }>;
+      expect(ok.puedeFacturar).toBe(false);
+      expect(ok.motivoNoPuedeFacturar).toBe(esperado);
+    });
   });
 
   describe('crearFactura — POST /afip/facturas', () => {

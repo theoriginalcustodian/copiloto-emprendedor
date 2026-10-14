@@ -6,6 +6,9 @@ import {
   confirmarConTokenFresco,
   crearFactura,
   estadoAfip,
+  TEXTO_FACTURACION_CONDICION_NO_SOPORTADA,
+  TEXTO_FACTURACION_MOTIVO_DESCONOCIDO,
+  type MotivoNoPuedeFacturar,
   esperarEcoDelSignal,
   esperarEstadoEstable,
   estadoFactura as consultarEstadoFactura,
@@ -102,7 +105,8 @@ type EstadoGate =
   | { tipo: 'sin_cuit' }
   | { tipo: 'no_disponible' }
   | { tipo: 'error' }
-  | { tipo: 'bloqueado'; cuit: string }
+  /** `motivo` null = falta configurar (CTA «Configurar»); con valor = SM-E1: no es por configurar. */
+  | { tipo: 'bloqueado'; cuit: string; motivo: MotivoNoPuedeFacturar | null }
   /**
    * 🔴 `ambiente` viaja hasta acá a propósito. Es el dato que decide si el botón del resumen dice
    * "Confirmar y emitir" o **"Emitir factura real"**. `null` = el backend no lo informó; la pantalla lo
@@ -218,7 +222,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
         setGate(
           res.puedeFacturar
             ? { tipo: 'listo', cuit, ambiente: res.ambiente ?? null }
-            : { tipo: 'bloqueado', cuit },
+            : { tipo: 'bloqueado', cuit, motivo: res.motivoNoPuedeFacturar ?? null },
         );
       })
       .catch(() => {
@@ -457,6 +461,8 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
           <Skeleton height={64} radius={16} />
           <Skeleton height={64} radius={16} />
         </div>
+      ) : gate.tipo === 'bloqueado' && gate.motivo != null ? (
+        <BloqueNoPuedeFacturar motivo={gate.motivo} />
       ) : gate.tipo === 'sin_cuit' || gate.tipo === 'bloqueado' ? (
         <BloqueConfigurar onConfigurar={onConfigurar} />
       ) : gate.tipo === 'no_disponible' ? (
@@ -559,9 +565,21 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
   );
 }
 
-/** El CTA que ofrece TODO camino a "todavía no configuraste tu facturación": sin CUIT, `puedeFacturar:
- *  false`, y el rechazo-red-de-seguridad de `maquinaEstado.ts`. Mismo componente, mismo copy, en los
- *  tres casos -- para el usuario es la misma situación.
+/** SM-E1 — `puedeFacturar:false` con un motivo que NO es «falta configurar»: se explica y NO se ofrece
+ *  configurar (sería pedirle rehacer lo ya configurado). */
+function BloqueNoPuedeFacturar({ motivo }: { motivo: MotivoNoPuedeFacturar }) {
+  return (
+    <p className="facturacion-screen__empty" data-testid="facturacion-no-puede-facturar">
+      {motivo === 'condicion_iva_no_soportada'
+        ? TEXTO_FACTURACION_CONDICION_NO_SOPORTADA
+        : TEXTO_FACTURACION_MOTIVO_DESCONOCIDO}
+    </p>
+  );
+}
+
+/** El CTA de «todavía no configuraste tu facturación»: sin CUIT (`sin_cuit`), `puedeFacturar:false` SIN
+ *  motivo, y el rechazo-red-de-seguridad de `maquinaEstado.ts` (certificado revocado). Un
+ *  `puedeFacturar:false` CON motivo NO pasa por acá: ver `BloqueNoPuedeFacturar`.
  *
  *  El botón de mobile navega a `/ajustes-afip` vía `empujarUnaVez`. En web navega al tab Ajustes
  *  (`onConfigurar`, wireado por el shell) -- el menú de Ajustes tiene el tile "Facturación AFIP",

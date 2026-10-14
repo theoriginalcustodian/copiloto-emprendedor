@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi, type AlmacenTokens, type HttpPort, type RespuestaHttp } from '@copiloto/core';
 
-import { PantallaAfipSetup } from './PantallaAfipSetup';
+import { opcionesCondicionIva, PantallaAfipSetup } from './PantallaAfipSetup';
 
 /**
  * BL-C6 (K-02), mitad web. Se ejercita el camino REAL: `HttpPort` fake -> `guardarPerfil` de core (que
@@ -195,5 +195,30 @@ describe('PantallaAfipSetup — preferencia guardada sin capacidad de Drive avis
 
     expect(await screen.findByTestId('afip-drive-conectado')).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_NO_DISPONIBLE)).toBeNull();
+  });
+});
+
+describe('PantallaAfipSetup — SM-E1: el selector no ofrece lo que el backend rechaza con 422', () => {
+  beforeEach(() => {
+    const http: HttpPort = { async enviar() { return respuesta(404, {}); } };
+    configurarApi({ http, tokens });
+  });
+
+  it('no ofrece «Responsable inscripto» y dice por qué; sí ofrece Monotributo y Exento (control)', async () => {
+    render(<PantallaAfipSetup />);
+
+    const select = await screen.findByTestId('afip-perfil-condicion-iva');
+    const valores = Array.from(select.querySelectorAll('option')).map((o) => o.getAttribute('value'));
+    expect(valores).toEqual(['monotributo', 'exento']);
+    expect(screen.getByTestId('afip-perfil-condicion-iva-aviso')).toHaveTextContent(/Responsable inscripto todavía no está disponible/);
+  });
+
+  it('opcionesCondicionIva: un perfil ya guardado como RI la conserva (el select no miente sobre el estado)', () => {
+    expect(opcionesCondicionIva('monotributo').map((o) => o.valor)).toEqual(['monotributo', 'exento']);
+    expect(opcionesCondicionIva('responsable_inscripto').map((o) => o.valor)).toEqual([
+      'monotributo',
+      'responsable_inscripto',
+      'exento',
+    ]);
   });
 });

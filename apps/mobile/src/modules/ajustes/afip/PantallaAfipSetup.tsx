@@ -5,8 +5,10 @@ import { Pressable } from 'react-native-gesture-handler';
 import {
   ErrorValidacionFiscal,
   cambiarAmbiente,
+  CONDICIONES_IVA_NO_DISPONIBLES,
   conectarArca,
   estadoAfip,
+  TEXTO_CONDICION_IVA_NO_DISPONIBLE,
   guardarAjustesAfip,
   guardarPerfil,
   leerPerfil,
@@ -69,11 +71,20 @@ const INTERVALO_POLL_MS = 3000;
  *  nunca infinito. Pasado esto, se avisa y se ofrece reintentar en vez de girar para siempre. */
 const TOPE_ESPERA_MS = 10 * 60 * 1000;
 
-const OPCIONES_CONDICION_IVA: OpcionSelect[] = [
+const TODAS_LAS_CONDICIONES_IVA: OpcionSelect[] = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
   { valor: 'responsable_inscripto', etiqueta: 'Responsable inscripto' },
   { valor: 'exento', etiqueta: 'Exento' },
 ];
+
+/** SM-E1 — el selector NO ofrece lo que el backend rechaza con 422 (`CONDICIONES_IVA_NO_DISPONIBLES`).
+ *  Excepción: un perfil ya guardado con esa condición la conserva, para que el select no muestre otra
+ *  distinta de la que el estado realmente tiene (y que guardar mande una que el usuario no eligió). */
+export function opcionesCondicionIva(actual: string): OpcionSelect[] {
+  return TODAS_LAS_CONDICIONES_IVA.filter(
+    (o) => !CONDICIONES_IVA_NO_DISPONIBLES.includes(o.valor as CondicionIvaEmisor) || o.valor === actual,
+  );
+}
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
   iniciado: 'Iniciando la vinculación con ARCA…',
@@ -609,11 +620,17 @@ export function PantallaAfipSetup() {
             <CampoSelect
               testID="afip-perfil-condicion-iva"
               etiqueta="Condición frente al IVA"
-              opciones={OPCIONES_CONDICION_IVA}
+              opciones={opcionesCondicionIva(camposPerfil.condicionIva)}
               valor={camposPerfil.condicionIva}
               onChange={(v) => actualizarCampoPerfil('condicionIva', v as CondicionIvaEmisor)}
               error={erroresPerfil.condicion_iva}
             />
+            <Text
+              testID="afip-perfil-condicion-iva-aviso"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+            >
+              {TEXTO_CONDICION_IVA_NO_DISPONIBLE}
+            </Text>
             <CampoNumero
               testID="afip-perfil-ingresos-brutos"
               etiqueta="Ingresos brutos"

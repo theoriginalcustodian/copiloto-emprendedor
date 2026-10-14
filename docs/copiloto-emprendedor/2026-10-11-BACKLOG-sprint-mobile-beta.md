@@ -61,7 +61,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
-| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
+| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
@@ -397,8 +397,7 @@ no el arranque del sprint.***
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
 - **Estado:** DOD-PARCIAL
-- **Dueno-activo:** backend
-- **Falta:** Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado() no explota; VPS 2446 verdes, mutante 5 rojos). Falta, de frontend: exponer motivoNoPuedeFacturar en packages/core afip.ts, copy de las dos PantallaFacturacion (hoy el CTA 'todavia no configuraste' hace lazo para un RI) y la opcion Responsable inscripto de las dos PantallaAfipSetup (ahora 422).
+- **Falta:** medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Configurar»; y el selector de condición IVA no ofrece RI. Código y tests (par con/sin motivo, web y mobile, 2 mutantes muertos) en el PR; backend en b705a403.
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
