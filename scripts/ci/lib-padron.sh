@@ -12,7 +12,7 @@
 #      checkout, así que todos los ids M-* se habrían reportado como FANTASMA.
 # El padrón es un hecho compartido del repo, no del branch donde estás parado.
 
-RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+)\b'
+RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+|SM-[A-F][0-9]+)\b'
 
 # Patrón de nombre de los docs-padrón. `-acta-` va anclado con guiones a propósito:
 # `*acta*` matcheaba «comp-ACTA-cion» (2026-07-22-compactacion-a-umbral-investigacion.md),
@@ -25,12 +25,12 @@ padron_texto() {
   # (1) working tree
   while IFS= read -r f; do [ -f "$f" ] && cat "$f"; done < <(
     find "$raiz/docs/copiloto-emprendedor" -maxdepth 1 -name '*.md' 2>/dev/null \
-      | grep -E "$RE_DOC_PADRON" || true)
+      | grep -Ei "$RE_DOC_PADRON" || true)
   # (2) origin/main (tolerante: si el ref no existe, no pasa nada)
   while IFS= read -r f; do
     [ -n "$f" ] && git -C "$raiz" show "origin/main:$f" 2>/dev/null
   done < <(git -C "$raiz" ls-tree -r --name-only origin/main -- docs/copiloto-emprendedor 2>/dev/null \
-      | grep -E "$RE_DOC_PADRON" || true)
+      | grep -Ei "$RE_DOC_PADRON" || true)
 }
 
 
@@ -129,7 +129,7 @@ padron_donde() {
       printf '%s:%s|%s\n' "${f#$raiz/}" "${hit%%:*}" "$(printf '%s' "${hit#*:}" | sed 's/^[[:space:]]*//')"
       return 0
     fi
-  done < <(find "$raiz/docs/copiloto-emprendedor" -maxdepth 1 -name '*.md' 2>/dev/null | grep -E "$RE_DOC_PADRON" || true)
+  done < <(find "$raiz/docs/copiloto-emprendedor" -maxdepth 1 -name '*.md' 2>/dev/null | grep -Ei "$RE_DOC_PADRON" || true)
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     hit="$(git -C "$raiz" show "origin/main:$f" 2>/dev/null | grep -nE "(^|[^A-Z0-9-])$id([^A-Z0-9-]|$)" | grep -E ':[[:space:]]*\|' | head -1)"
@@ -137,7 +137,7 @@ padron_donde() {
       printf 'origin/main:%s:%s|%s\n' "$f" "${hit%%:*}" "$(printf '%s' "${hit#*:}" | sed 's/^[[:space:]]*//')"
       return 0
     fi
-  done < <(git -C "$raiz" ls-tree -r --name-only origin/main -- docs/copiloto-emprendedor 2>/dev/null | grep -E "$RE_DOC_PADRON" || true)
+  done < <(git -C "$raiz" ls-tree -r --name-only origin/main -- docs/copiloto-emprendedor 2>/dev/null | grep -Ei "$RE_DOC_PADRON" || true)
   # (3) el tablero vivo. Va ultimo a proposito: si un id esta en los dos, gana el doc versionado,
   # que es el que tiene DoD escrito.
   # 🔴 El id tiene que estar en la LISTA CERRADA antes de buscar la linea. La primera version de
