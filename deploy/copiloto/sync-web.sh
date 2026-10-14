@@ -76,9 +76,15 @@ echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si y
 ssh "$HOST" "bash '$REMOTE/deploy/copiloto/fetch-fonts.sh'"
 
 echo "==> [3/3] npm install (NO ci -- sin lockfile pre-generado asumido) + build (VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>})"
-ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" "$AUTH_URL" "$_build_sha" <<'REMOTE_BUILD'
+# ARGVSSHVACIO: `ssh` NO preserva campos VACÍOS en el argv -- un argumento vacío desaparece y corre los
+# índices de todos los posteriores (medido 2026-10-14, mismo defecto que deploy.sh [REMOTE_WEB]).
+# `UC_AUTH_URL=""` es un uso DOCUMENTADO (botón Google oculto): sin sentinel el remoto recibía 2 args y
+# `BUILD_SHA` quedaba unbound (o, peor, AUTH_URL = el sha). Se pasa un sentinel, no una cadena vacía.
+ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" "${AUTH_URL:-__UC_VACIO__}" "$_build_sha" <<'REMOTE_BUILD'
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_BUILD]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores. Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 WEB_DIR="$1"; AUTH_URL="$2"; BUILD_SHA="$3"
+if [ "$AUTH_URL" = __UC_VACIO__ ]; then AUTH_URL=""; fi  # ARGVSSHVACIO: el sentinel evita el campo vacio en el argv de ssh
 cd "$WEB_DIR"
 npm install
 # Vite hornea las VITE_* del entorno al bundle. VITE_AUTH_URL habilita el botón "Entrar con Google"
