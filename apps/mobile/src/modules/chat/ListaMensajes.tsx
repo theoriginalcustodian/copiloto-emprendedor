@@ -14,6 +14,7 @@ import {
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
   leerSugerenciaArmarFactura,
+  ROTULO_VOLVER_AL_TABLERO,
   formatearHoraDeMensaje,
   idMensajeSinConfirmar,
   mapearGate,
@@ -53,6 +54,20 @@ const TEXTO_VACIO = 'Antes de ejecutar algo importante, te lo muestro para que l
 
 export interface ListaMensajesProps {
   messages: ChatMessage[];
+  /**
+   * `hitl (a.4)` — «Volver al tablero →» DENTRO del recibo (prototipo `index.html:2774`): cierra el ciclo
+   * de un aviso (la tarjeta queda `hecha`, ver `CierreAviso`). Ausente = los recibos no llevan salida
+   * (el chat sin aviso de origen, Soporte). Lo pasa `ChatView` sólo cuando hay un aviso entrante.
+   * Tiene que ser ESTABLE (`useCallback`): `FilaMensaje` es `memo` y lo recibe por fila.
+   */
+  onVolverDelRecibo?: () => void;
+  /**
+   * Cuántos mensajes tenía la conversación cuando el aviso entró. Sólo los recibos de los mensajes
+   * POSTERIORES (índice >= este número) llevan la salida: un recibo viejo de otra tarea que vive en el
+   * historial no es el resultado de ESTE aviso, y cerrar la tarjeta desde él sería inventar un resultado.
+   * Sin este número, ningún recibo lleva la salida aunque `onVolverDelRecibo` exista.
+   */
+  volverDesdeIndice?: number;
   /**
    * Ejemplos del rodillo del estado vacío. Ausente = los del chat (`EJEMPLOS_CHAT`, sin cambio para
    * `ChatView`/`MicFuncion`); `[]` = no se monta el rodillo. Soporte pasa `[]`: no tiene ejemplos propios
@@ -310,6 +325,8 @@ interface FilaMensajeProps {
   onResolverTarjeta: ListaMensajesProps['onResolverTarjeta'];
   /** fact-voz (d) — este mensaje es el propio sin confirmar (envío en vuelo o fallido): sin «recibido». */
   sinConfirmar?: boolean;
+  /** hitl (a.4) — sólo si ESTE recibo es resultado del aviso en curso (lo decide la lista). */
+  onVolverDelRecibo?: () => void;
 }
 
 /**
@@ -325,6 +342,7 @@ const FilaMensaje = memo(function FilaMensaje({
   onChoice,
   onResolverTarjeta = () => {},
   sinConfirmar = false,
+  onVolverDelRecibo,
 }: FilaMensajeProps) {
   if (mensaje.role === 'user') {
     // El dictado del emprendedor SIEMPRE llega acá, antes de toda rama de card: lo que una card reemplaza es
@@ -471,6 +489,15 @@ const FilaMensaje = memo(function FilaMensaje({
           tono="exito"
           titulo={recibo.titulo}
           detalle={recibo.meta != null ? [recibo.meta] : undefined}
+          enlace={
+            onVolverDelRecibo != null
+              ? {
+                  texto: `${ROTULO_VOLVER_AL_TABLERO} →`,
+                  onPress: onVolverDelRecibo,
+                  testID: 'recibo-ejecutado-volver',
+                }
+              : undefined
+          }
         />
       </View>
     );
@@ -526,7 +553,10 @@ const FilaMensaje = memo(function FilaMensaje({
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, sendStatus }, refExterno) {
+  function ListaMensajes(
+    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, sendStatus, onVolverDelRecibo, volverDesdeIndice },
+    refExterno,
+  ) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -540,6 +570,16 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
 
     // fact-voz (d): cuál mensaje propio no se puede dar por recibido todavía (ver `idMensajeSinConfirmar`).
     const idSinConfirmar = useMemo(() => idMensajeSinConfirmar(messages, sendStatus), [messages, sendStatus]);
+
+    // hitl (a.4): ids de los mensajes que llegaron DESPUÉS de que entró el aviso — los únicos cuyo recibo
+    // puede cerrar su tarjeta. `null` = nadie (sin salida o sin aviso de origen).
+    const idsConSalida = useMemo(
+      () =>
+        onVolverDelRecibo != null && volverDesdeIndice != null
+          ? new Set(messages.slice(volverDesdeIndice).map((m) => m.id))
+          : null,
+      [messages, onVolverDelRecibo, volverDesdeIndice],
+    );
 
     const renderItem = useCallback(
       ({ item }: ListRenderItemInfo<ChatMessage>) => (
@@ -564,10 +604,11 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
             onChoice={onChoice}
             onResolverTarjeta={onResolverTarjeta}
             sinConfirmar={item.id === idSinConfirmar}
+            onVolverDelRecibo={idsConSalida?.has(item.id) ? onVolverDelRecibo : undefined}
           />
         </View>
       ),
-      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar],
+      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar, idsConSalida, onVolverDelRecibo],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 

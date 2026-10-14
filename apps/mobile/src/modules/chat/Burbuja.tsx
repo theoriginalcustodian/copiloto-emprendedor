@@ -5,8 +5,12 @@ import { formatearDuracion } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { sombraNivel } from '../../theme/glass/relieve';
+import { Marca } from '../../theme/Marca';
 
 export type RolBurbuja = 'user' | 'assistant';
+
+/** El mismo disco que el avatar de la cuenta en el encabezado (`AvatarCuenta`, 36): una sola geometría de avatar. */
+const AVATAR_ASISTENTE = 36;
 
 export interface BurbujaProps {
   role: RolBurbuja;
@@ -40,6 +44,12 @@ export interface BurbujaProps {
  * no recorta), y `backgroundColor` translúcido (`s2`) le da a Android el outline que necesita para
  * dibujarla sin volver la burbuja opaca. Cero-hex: todo sale de `useTema()`.
  *
+ * 🔴 **AVATARASIST — el isotipo del asistente en TODO mensaje suyo** (`index.html:3191`, helper `O`: `msg-row` +
+ * `quien` + `msg`, alineado al borde inferior de la burbuja). Es la `Marca` del design system en `tinta` (el
+ * mismo círculo del avatar de Soporte): acá no hay un isotipo propio ni un asset. Es de la burbuja y no de
+ * quien la monta porque el prototipo lo pinta en cada mensaje, no sólo en los de un módulo. La burbuja del
+ * emprendedor NO lo lleva: en su lugar va la meta «✓✓ recibido».
+ *
  * Relieve (ODOBI §2.4): la burbuja del ASISTENTE usa el nivel 1 neutro ("superficie en reposo");
  * la del USUARIO usa la sombra auxiliar del acento (`glass.relieve.burbujaUsuario` — DoD "sombras
  * auxiliares del acento", el mismo tono que UB2 a .4, distinta del nivel 1 neutro) porque es una
@@ -50,8 +60,7 @@ export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: B
   const g = tema.glass;
   const esUsuario = role === 'user';
 
-  return (
-    <View style={[styles.fila, esUsuario ? styles.filaUsuario : styles.filaAsistente]}>
+  const cuerpo = (
       <View
         style={[
           styles.burbuja,
@@ -83,7 +92,23 @@ export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: B
           </Text>
         )}
       </View>
-      {esUsuario && recibido && (
+  );
+
+  if (!esUsuario) {
+    return (
+      <View style={[styles.fila, styles.filaAsistente, styles.filaConAvatar]}>
+        <View testID="chat-bubble-avatar">
+          <Marca size={AVATAR_ASISTENTE} tono="tinta" />
+        </View>
+        <View style={styles.cuerpoAsistente}>{cuerpo}</View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.fila, styles.filaUsuario]}>
+      {cuerpo}
+      {recibido && (
         <Text testID="chat-bubble-recibido" style={[styles.meta, { color: tema.color.exito }]}>
           {hora != null ? `${hora} ✓✓ recibido` : '✓✓ recibido'}
         </Text>
@@ -96,6 +121,10 @@ const styles = StyleSheet.create({
   fila: { maxWidth: '85%', gap: 4 },
   filaUsuario: { alignSelf: 'flex-end' },
   filaAsistente: { alignSelf: 'flex-start' },
+  // AVATARASIST: el isotipo a la izquierda, pegado al borde INFERIOR de la burbuja (como `.msg-row` del prototipo).
+  filaConAvatar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  // `flexShrink` para que el texto largo ceda el ancho al avatar y no lo empuje fuera de la fila.
+  cuerpoAsistente: { flexShrink: 1 },
   burbuja: {
     borderWidth: 1,
     overflow: 'hidden',

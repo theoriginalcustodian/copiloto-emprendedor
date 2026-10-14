@@ -151,6 +151,22 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
   // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
   const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio, descartarConexion);
 
+  // hitl (a.4) — «Volver al tablero →» dentro del recibo. Sólo hay salida si esta conversación nació de un
+  // aviso Y el shell dejó volver. Cuenta desde cuántos mensajes había cuando ESE aviso entró (por `id`, no
+  // por objeto): el recibo de una tarea vieja del historial no es el resultado de este aviso. El ref se
+  // fija una vez por aviso durante el render (idempotente: re-renderizar no lo mueve).
+  // 🔴 Sólo con `estado` hidratado: antes de eso `messages` es `[]` y fijar la base en 0 volvería «posteriores»
+  // a TODOS los recibos del historial cuando éste termine de cargar.
+  const mensajesAlEntrarElAviso = useRef<{ id: number; n: number } | null>(null);
+  if (avisoEntrante == null) mensajesAlEntrarElAviso.current = null;
+  else if (estado != null && mensajesAlEntrarElAviso.current?.id !== avisoEntrante.id) {
+    mensajesAlEntrarElAviso.current = { id: avisoEntrante.id, n: estado.messages.length };
+  }
+  const tarjetaDelAviso = avisoEntrante?.aviso.tarjetaId ?? null;
+  const alVolverDelRecibo = useCallback(() => {
+    if (tarjetaDelAviso != null) onVolverAlTablero?.({ tarjetaId: tarjetaDelAviso, resultado: 'hecha' });
+  }, [onVolverAlTablero, tarjetaDelAviso]);
+
   /**
    * 🔴 **El puente de la Decisión C**: lo que otra pantalla dejó pendiente entra ACÁ, en el chat
    * principal, no en una conversación aparte. Hoy lo usa «Cómo usar la app»: tocás un tema, se cierra
@@ -297,6 +313,8 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
         sendStatus={estado?.sendStatus}
         onChoice={manejarEleccion}
         onResolverTarjeta={marcarCardResuelta}
+        onVolverDelRecibo={tarjetaDelAviso != null && onVolverAlTablero != null ? alVolverDelRecibo : undefined}
+        volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
       />
 
       <SheetRequiereConexion

@@ -972,3 +972,67 @@ describe('ListaMensajes — cobro-voz #5: la card payment_link reemplaza al text
     expect(screen.queryByText('Listo, ahí tenés el link.')).toBeNull();
   });
 });
+
+describe('ListaMensajes — hitl (a.4): «Volver al tablero →» dentro del recibo', () => {
+  const RECIBO = (id: string, titulo: string): ChatMessage => ({
+    id,
+    role: 'assistant',
+    text: 'Listo, mandé el mail.',
+    card: {
+      service: 'gmail',
+      label: 'Gmail',
+      confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+      recibo: { titulo, meta: '15:41', accion: null },
+    },
+  });
+  const USUARIO = (id: string): ChatMessage => ({ id, role: 'user', text: 'hola' });
+
+  async function montar(
+    messages: ChatMessage[],
+    props: { onVolverDelRecibo?: () => void; volverDesdeIndice?: number },
+  ) {
+    await render(
+      <ThemeProvider>
+        <ListaMensajes messages={messages} onChoice={jest.fn()} {...props} />
+      </ThemeProvider>,
+    );
+  }
+
+  it('🔴 el recibo POSTERIOR al aviso lleva la salida, y tocarla la dispara una vez', async () => {
+    const onVolver = jest.fn();
+    await montar([USUARIO('u-1'), RECIBO('r-1', 'Mandado a lucia@x.com')], {
+      onVolverDelRecibo: onVolver,
+      volverDesdeIndice: 0,
+    });
+
+    // Control de ceguera: el recibo se MIRÓ (si no hubiera ninguno, el assert de abajo sería vacío).
+    expect(screen.getAllByTestId('recibo-ejecutado')).toHaveLength(1);
+    expect(screen.getByTestId('recibo-ejecutado-volver')).toHaveTextContent('Volver al tablero →');
+    await fireEvent.press(screen.getByTestId('recibo-ejecutado-volver'));
+    expect(onVolver).toHaveBeenCalledTimes(1);
+  });
+
+  it('🔴 el recibo ANTERIOR al aviso (historial de otra tarea) NO la lleva — y el posterior, en la misma lista, sí', async () => {
+    await montar([RECIBO('r-viejo', 'Mandado a otro@x.com'), USUARIO('u-1'), RECIBO('r-nuevo', 'Mandado a lucia@x.com')], {
+      onVolverDelRecibo: jest.fn(),
+      volverDesdeIndice: 1,
+    });
+
+    // Dos recibos mirados, UNA salida: la del que llegó después de que entró el aviso.
+    expect(screen.getAllByTestId('recibo-ejecutado')).toHaveLength(2);
+    expect(screen.getAllByTestId('recibo-ejecutado-volver')).toHaveLength(1);
+    expect(screen.getAllByTestId('recibo-ejecutado-titulo')[1]).toHaveTextContent('Mandado a lucia@x.com');
+  });
+
+  it('sin salida (chat sin aviso de origen, o Soporte) el recibo no lleva ningún botón', async () => {
+    await montar([RECIBO('r-1', 'Mandado a lucia@x.com')], { volverDesdeIndice: 0 });
+    expect(screen.getAllByTestId('recibo-ejecutado')).toHaveLength(1);
+    expect(screen.queryByTestId('recibo-ejecutado-volver')).toBeNull();
+  });
+
+  it('con salida pero SIN índice de aviso ningún recibo la lleva (no se adivina qué es «posterior»)', async () => {
+    await montar([RECIBO('r-1', 'Mandado a lucia@x.com')], { onVolverDelRecibo: jest.fn() });
+    expect(screen.getAllByTestId('recibo-ejecutado')).toHaveLength(1);
+    expect(screen.queryByTestId('recibo-ejecutado-volver')).toBeNull();
+  });
+});
