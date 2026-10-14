@@ -279,36 +279,42 @@ Agárrate del dato que lo hace peligroso: **la fila corrida envejece bien**. Nad
 cada celda, leída sola, dice algo cierto — sólo está bajo el título equivocado.
 Ver [[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]].
 
-## Refuerzo 2026-10-14 — la misma clase, en el **argv** de un proceso remoto: `ssh` NO transporta el campo vacío
+## Refuerzo 2026-10-14 — esta vez no lo borró un append: lo borró UN EMOJI DECORATIVO, delante
 
-Hasta acá la clase era «una tabla se lee por posición». El transporte tiene la misma forma y nadie lo
-piensa como tabla: **`ssh host script a "" c` llega al otro lado como `a c`**. No llega un string
-vacío: el campo **desaparece**, y con él se corren los índices de todo lo que venía después. `$2`
-pasa a valer lo que el llamador puso en `$3`.
+`vigilancia-check.sh` reportó: *«COLA: estado no reconocido en: EXHAUSTIVEDEPSON — un hito así es
+INVISIBLE para la cola»*. El renglón estaba **completo y correcto**: medición del 14-10 por frontend2,
+las dos cifras, el umbral pre-comprometido, el porqué de no medir desde el checkout compartido. Y su
+último campo **sí** empezaba con el enum… precedido de un `📏`:
 
-Lo pagó `deploy/copiloto/sync-web.sh:79`, que pasa argumentos opcionales por posición. Con el 3.º
-vacío, el remoto leía el 4.º como 3.º — y el valor seguía siendo **sintácticamente válido** para su
-puesto, así que ninguna validación disparó: idéntico a la fila de `DEC-18`, donde cada celda, leída
-sola, decía algo cierto bajo el título equivocado. La diferencia es que acá **no hay archivo que
-releer**: el argv desaparece con el proceso, así que el único lugar donde el defecto es visible es un
-`echo` de los argumentos recibidos **en el remoto**.
+```
+EXHAUSTIVEDEPSON  => ULTIMO=[ 📏✅ **MEDIDA 2026-10-14 por frontend2 — … APAGADA con cifra…** ]
+DIRECTIVASIMPORT  => ULTIMO=[ ✅ CERRADA ]                          ← válido
+ENCODINGWINPRINT  => ULTIMO=[ ❌ CONGELADA — regla `CONGELAINSTR` ]  ← válido
+```
 
-**Por qué no lo caza el reflejo de siempre:** uno escribe `"$VAR"` con comillas justamente para que un
-valor vacío cuente como un argumento. Y **del lado local funciona**: `bash -c 'echo $#' x "" y` dice 3.
-El campo se pierde en el salto, porque `ssh` concatena los argumentos en **una sola línea de comando**
-que el shell remoto vuelve a partir por espacios — las comillas locales ya se consumieron. Es un
-borrado de campo por **capa extra**, hermano de
-[[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]].
+El parser exige que el campo **empiece** con `✅`/`❌` (o sea uno de los enums). `📏✅` no empieza con
+`✅`: empieza con `📏`. **Dos caracteres de adorno, y el hito desapareció de la cola.** Fix: mover el
+emoji detrás (`✅ 📏 **MEDIDA…**`). Control positivo inmediato: el instrumento dejó de reportarlo.
 
-**La raíz, no el parche:** no se arregla citando más (`'"'"'`… tampoco sobrevive al re-split), se arregla
-**no dejando que el campo pueda ser vacío**: un sentinel explícito (`__UC_VACIO__`) que el remoto
-traduce a cadena vacía, más un **guard de aridad** que aborta si `$#` no es el número exacto que el
-contrato declara. El guard es el que convierte un corrimiento silencioso en un rojo inmediato, y es
-la misma receta del refuerzo de arriba: contar los campos, no leerlos.
+**Qué agrega al caso original.** Ahí el enum lo sepultó alguien que **appendeó** y el renglón quedó
+mal armado. Acá nadie appendeó nada y el renglón estaba bien pensado — **el enum estaba en su lugar,
+al final, con su contenido correcto**. Lo rompió un prefijo decorativo puesto por quien **sabía** el
+formato y creyó que «empieza con ✅» significaba «contiene un ✅ al principio». No es descuido: es que
+`📏✅` **se ve** como un estado válido con un ícono, y a ojo humano lo es.
 
-**How to apply:** (1) ningún argumento posicional cruza `ssh` pudiendo estar vacío — sentinel o
-`--flag=valor`, que no se corre porque no depende de la posición; (2) el script remoto **abre** con
-`[ $# -eq N ] || { echo "ARIDAD: esperaba N, llegaron $#" >&2; exit 2; }`; (3) el control positivo es
-mandar el caso vacío a propósito y ver el rojo — sin eso, el verde acredita sólo el camino lleno
-([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) si tenés que
-diagnosticar uno ya roto, el instrumento es `printf '[%s]' "$@"` en el **remoto**: local no reproduce.
+**La forma general:** un gate que valida por **prefijo exacto** convierte cualquier adorno delante en
+un fallo total y silencioso, y el adorno es justo lo que nadie audita porque no es contenido. El
+hermano del append que corre las celdas — mismo daño, puerta opuesta: uno agrega al **final**, el otro
+al **principio**.
+
+**El control, y es distinto del de pipes:** el `awk` de arriba cuenta campos y a este caso **lo deja
+pasar** (los campos están bien). Lo que hay que mirar es el **primer carácter** del último campo:
+
+```bash
+awk -F'|' '/^[A-Z]/ {f=$NF; sub(/^ +/,"",f); printf "%.18s => [%.3s]
+", $1, f}' coordinacion/PLAN.md
+```
+
+Si el enum no es **lo primero** que imprime, el renglón es invisible. Y como siempre con esta clase:
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] — el hito no da error, **deja de existir** para la cola,
+que es [[lo-que-no-esta-en-la-tabla-de-hitos-no-existe]] por la puerta de atrás.
