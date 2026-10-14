@@ -10,7 +10,7 @@ import sheetsLogo from './logos/sheets.svg';
 /**
  * Íconos de MARCA de los servicios — SVG **verbatim del diseño** (`Copiloto App.dc.html`, grid de
  * Conexiones líneas 335-365 + sheet de Apps líneas 237-257). Compartido por `modules/connections`
- * (grid 38×38 r:11) y `modules/apps` (filas 42×42 r:12). Reemplaza las marcas-letra ("M"/"G") por
+ * (grid 38×38 r:11). Reemplaza las marcas-letra ("M"/"G") por
  * el ícono real de cada marca.
  *
  * Vive en `design-system/` A PROPÓSITO: los colores de marca son hex fijos (fieles a cada marca, no

@@ -10,9 +10,8 @@ import type { TabKey } from './TabBar';
  * Compartido: lo consume el `TabBar` mobile y (a futuro) el `Rail` desktop — un solo set, cero
  * duplicación.
  *
- * `AppsIcon`/`EscritorioIcon` NO tienen equivalente en el set de 21 (son íconos de NAVEGACIÓN --
- * "grid de funciones"/"launcher" -- no de función): quedan con su glifo propio, sólo alineado al
- * mismo trazo 1.7 del resto.
+ * `EscritorioIcon` NO tiene equivalente en el set de 21 (es un ícono de NAVEGACIÓN --
+ * "launcher" -- no de función): queda con su glifo propio, sólo alineado al mismo trazo 1.7 del resto.
  */
 const svgProps = {
   width: 24,
@@ -45,18 +44,6 @@ export function ChatIcon(): ReactNode {
       <path d="M10 8a4 4 0 1 0 0 8" {...strokeProps} />
       <path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6" {...acentoProps} />
       <path d="M18.4 7a8 8 0 0 1 0 10" {...acentoProps} />
-    </svg>
-  );
-}
-
-/** Sin equivalente en el set de 21 -- es navegación ("grid de funciones"), no una función. */
-export function AppsIcon(): ReactNode {
-  return (
-    <svg {...svgProps}>
-      <rect x="3" y="3" width="7" height="7" rx="1.6" {...strokeProps} />
-      <rect x="14" y="3" width="7" height="7" rx="1.6" {...strokeProps} />
-      <rect x="3" y="14" width="7" height="7" rx="1.6" {...strokeProps} />
-      <rect x="14" y="14" width="7" height="7" rx="1.6" {...strokeProps} />
     </svg>
   );
 }
@@ -231,7 +218,7 @@ export function FacturacionIcon(): ReactNode {
 }
 
 /**
- * Consola de operador -- monitor con pulso (acento). Como `AppsIcon`/`EscritorioIcon`, NO sale del
+ * Consola de operador -- monitor con pulso (acento). Como `EscritorioIcon`, NO sale del
  * set de 21: es un ícono de navegación a una herramienta interna, no de una función del negocio del
  * emprendedor. Mismo trazo 1.7 y misma regla de acento que el resto: la señal es `var(--core)`, sin
  * hex propio.
@@ -250,7 +237,6 @@ export function AdminIcon(): ReactNode {
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
-  apps: AppsIcon,
   connections: ConnectionsIcon,
   gastos: GastosIcon,
   clientes: ClientesIcon,

@@ -52,8 +52,8 @@ function deriveState(service: CatalogService): ServiceCardState {
 
 /**
  * Tarjeta de servicio del grid de Conexiones (Task 20, EXTRACT §2.8/§3.3 — fiel al diseño
- * `Copiloto App.dc.html` líneas 334-368): ícono de MARCA (`ServiceIcon`, compartido con
- * `modules/apps`; degrada a marca-letra si la key no tiene ícono mapeado) + `display_name` (el
+ * `Copiloto App.dc.html` líneas 334-368): ícono de MARCA (`ServiceIcon`;
+ * degrada a marca-letra si la key no tiene ícono mapeado) + `display_name` (el
  * nombre REAL del servicio, ej. "Mercado Pago" / "Google Docs" — pedido operador 2026-07-04: solo el
  * nombre real, sin el `work_label` amigable ("Cobrar"/"Archivos") ni subtítulo) + indicador de estado
  * al pie. SIN descripción — el diseño la deja afuera, la card es compacta. 3 estados posibles (ver

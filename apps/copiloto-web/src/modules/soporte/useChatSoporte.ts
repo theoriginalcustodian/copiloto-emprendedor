@@ -19,7 +19,7 @@ import { generarId } from '../../util/id';
  * tipo ajeno a través de `MessageList` sería la misma trampa que CTA7 pagó un nivel más abajo.
  *
  * Lo que SÍ se deja afuera a propósito, a diferencia del chat de negocio:
- *  - `mode` (`useMode()`) — es un concepto de negocio ("Modo Mail"), sin sentido en soporte.
+ *  - `mode` — era un concepto de negocio (el «Modo Mail», retirado en SM-D3), sin sentido en soporte.
  *  - `warmMemory` — precalienta la memoria de Graphity del EMPRENDEDOR, que el agente de soporte
  *    no consulta.
  *
