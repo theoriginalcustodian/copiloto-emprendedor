@@ -176,6 +176,86 @@ y 23 sólo en el repo, justamente por el miedo que sembraba esta línea. El úni
 es el del índice `MEMORY.md` (lo marca `divergente` y lo deja a mano). Ver
 `memoria/memoria-repo-vs-slug-drift.md`.
 
+## 3.quater.bis Marcar lo TERMINADO — el registro único y los cuatro estados
+
+**Un solo registro de verdad: el backlog del sprint**, con su tabla-índice al principio generada
+por `scripts/sprint-estado.py`. `PLAN.md` (la cola viva) y los issues de GitHub son **vistas**: no
+se citan como estado. Si las tres fuentes discrepan, manda el backlog.
+
+**Por qué existe esta sección.** Medido el 2026-10-14 sobre el buzón completo (460 `cierre_`,
+control negativo 0): **18 de las 26 fichas nunca fueron nombradas por ninguna sesión**. No era
+descuido al marcar — era que el id de la ficha **no circulaba**: las sesiones citaban ids propios
+(`KVCAIDASALE`, `EXHAUSTIVEDEPSON`, `DRIVECERO`, `A7`), así que la casilla del backlog nunca entraba
+al circuito de cierre y el mismo sprint se leía con tres porcentajes incompatibles. El reclamo del
+operador (*«¿para qué carajo tenemos un backlog?»*) tenía esta causa, no una de disciplina.
+
+**Los ids son `SM-<letra><nº>`** (`SM-B3`), nunca `B-3`. Dos razones medidas: `A-1` como token da 14
+falsos positivos de grep (matchea cualquier prosa), y el padrón del mapeo **ya usa** `D2`/`D3`/`D7`
+para otras cosas — el commit `45a57eb5` los cita y **no** son las fichas `D-2`/`D-3`/`D-7`. Un nombre
+con dos referentes hace que se pruebe A y se concluya B.
+
+### Los cuatro estados
+
+| Estado | Qué significa | Qué EXIGE para ser válido |
+|---|---|---|
+| `PENDIENTE` | nadie la tomó | — |
+| `EN-CURSO` | tomada | `Dueno-activo:` (una ficha tomada sin dueño es una ficha parada que nadie reclama) |
+| `DOD-PARCIAL` | **código en main, DoD incompleto** | `Falta:` nombrando lo que falta |
+| `TERMINADO` | **DoD completo, punto por punto** | `Cierre:` con ≥1 sha **ancestro de `origin/main`** + la evidencia de cada punto; o `sin-codigo` + motivo |
+
+**El criterio de TERMINADO es el DoD COMPLETO, no el merge commit** (orden del operador,
+2026-10-14: *«las tareas se marcan como terminadas cuando el dod está hecho completo»*). El merge
+commit es **una** de las evidencias. `DOD-PARCIAL` existe precisamente para el caso que este repo ya
+pagó: código mergeado y declarado listo sin la evidencia de device. Un `DOD-PARCIAL` sin `Falta:` es
+un `TERMINADO` disfrazado, y el gate lo rechaza.
+
+### Quién marca: nadie a mano
+
+1. **La sesión que termina aporta la EVIDENCIA** en su `cierre_`, con tres campos fijos al principio
+   del cuerpo: `FICHA: SM-XX` · `SHA: <merge commit en main>` · `DOD:` una línea por punto del DoD
+   con su evidencia (test y dónde corrió, `path:línea`, corrida en device con usuario y fecha). Un
+   `cierre_` sin esos tres campos no acredita nada: planificación lo devuelve.
+2. **El commit o el PR cita el id** (`SM-B3`) en el cuerpo. Sin eso el trabajo vuelve a ser
+   inatribuible y estamos donde estábamos.
+3. **El estado lo escribe el script, no una persona:**
+   `python -I -X utf8 scripts/sprint-estado.py --marcar SM-B3 --estado TERMINADO --cierre "…"`.
+   El script **rechaza** el marcado que no cumple su propia regla y **no escribe** en ese caso
+   (verificado el 14-10 con control positivo: `"listo, funciona"` y un sha de rama → ambos rechazados).
+4. **Nadie edita la tabla-índice a mano.** Es generada; el gate la regenera y compara.
+
+**Por qué el script y no cada sesión:** con el checkout compartido y 80+ worktrees, tres sesiones
+editando la misma tabla es edit-race garantizada; y ordenar a mano ya fracasó en este repo —el buzón
+pasó de 32 a 136 archivos abiertos hasta que lo tomó un janitor
+(`memoria/buzon-se-ordena-por-janitor-no-por-disciplina.md`). Lo que una sesión aporta es **evidencia**;
+derivar y escribir el estado es mecánico, y lo mecánico no se delega a la disciplina.
+
+### El conflicto de merge en la tabla: se regenera, no se elige un lado
+
+Cada sesión corre `--marcar` en **su** worktree: quien tiene la evidencia escribe el estado, sin
+cuello de botella en planificación. El costo es que dos ramas pueden tocar la **tabla generada** y
+dar conflicto. **No se resuelve tomando un lado** (`--ours`/`--theirs` descarta la mitad del otro y
+nunca converge): la tabla es una **función del cuerpo del doc**, así que se resuelve
+
+```bash
+git checkout --ours docs/copiloto-emprendedor/2026-10-11-BACKLOG-sprint-mobile-beta.md   # o --theirs, da igual
+# traé a mano los bullets Estado/Cierre/Falta de la OTRA rama (son bloques distintos del doc)
+python -I -X utf8 scripts/sprint-estado.py --tabla    # la tabla se deriva de nuevo
+python -I -X utf8 scripts/sprint-estado.py --check
+```
+
+Lo que **no** da igual es el cuerpo: los bullets de cada ficha viven en bloques separados, así que un
+conflicto ahí se resuelve conservando **los dos** (cada ficha tiene un solo dueño; si dos sesiones
+marcaron la misma, eso es el hallazgo, no el conflicto).
+### El gate
+
+`scripts/ci/lint.sh` corre `sprint-estado.py --check` y verifica que la tabla esté regenerada. Rechaza
+un `TERMINADO` sin `Cierre:`, un sha que no sea ancestro de `origin/main`, un `DOD-PARCIAL` sin
+`Falta:`, una ficha sin `Estado:` y una tabla desincronizada. Su corpus es **el doc versionado**: un
+gate que leyera `coordinacion/` mediría al equipo y no al commit, y en CI daría vacío.
+
+**Lo que el gate NO puede verificar es lo táctil** (device). Ahí no hay automatización posible: lo que
+hace es obligar a que la evidencia esté **escrita** y el sha **exista**, para que lo no mecanizable
+quede visible en `Falta:` en vez de implícito en un ✅.
 ## 3.quinquies La ORDEN DE TRABAJO activa: `/goal`
 
 Un trabajo largo arranca con **`/goal <ID>`** y no con una charla. `scripts/goal.sh set <ID>`
