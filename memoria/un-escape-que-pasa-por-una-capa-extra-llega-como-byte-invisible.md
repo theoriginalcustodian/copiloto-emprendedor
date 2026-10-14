@@ -91,3 +91,10 @@ generados: es inmune a la normalización de fin de línea y legible en cualquier
 escritas — nunca `cat` ni el visor, que es justo lo que borra la evidencia. Acá el `grep` mostró
 `tr -dc ""` y lo leí como «quedó vacío»; el `od -c` mostró el ``. Dos lecturas del mismo byte, y
 sólo una dice la verdad.
+
+**Reincidencia 2026-10-13 (H12, PR #1110): el byte cae en un TEST que afirma una AUSENCIA.** Un script Python
+con `\b` en un string no-raw escribió un `0x08` dentro de `/tarjeta\.(monto|fecha)\b/` en dos tests de
+«control de ceguera» (`not.toMatch`): la regex no puede matchear, así que pasaban verdes **vacíos** — y el
+arreglo, escrito otra vez con `"\b"` en un string no-raw, volvió a meter el byte. Lo cazó `no-control-regex`
+de eslint en CI, no mi suite. Reglas: `rb"\b"`; y un test `not.toMatch` exige **control positivo**
+(`toMatch` sobre un token que SÍ está) y un **mutante** que lo ponga en rojo — también al re-escribirlo.
