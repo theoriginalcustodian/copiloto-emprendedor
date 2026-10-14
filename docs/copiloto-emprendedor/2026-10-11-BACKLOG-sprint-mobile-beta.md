@@ -54,14 +54,14 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) … |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en … |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
-| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | ENMENDADO 14-10 — el sustrato de 3+ choices NO EXISTE en produccion (unico productor: _CONFIRM_CHOICES, dispatcher_em… |
+| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ✅ TERMINADO | merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chi… |
 | **SM-D4** | `#1021` | ✅ TERMINADO | merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cu… |
 | **SM-D5** | `#1007` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
 | **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
 | **SM-D7** | `#1009` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
-| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | ENMENDADO 14-10 — un tenant RI NO ES FABRICABLE por el camino real (CONDICIONES_EMISOR_SOPORTADAS = {MONOTRIBUTO, EXE… |
+| **SM-E1** | `#1005` | ✅ TERMINADO | merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positiv… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO, FALTA DEVICE (+1 punto bloqueado por el operador). Las 5 capacidades quedaron clasificadas, ninguna … |
 | **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
@@ -348,7 +348,7 @@ no el arranque del sprint.***
 ### SM-D1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** ENMENDADO 14-10 — el sustrato de 3+ choices NO EXISTE en produccion (unico productor: _CONFIRM_CHOICES, dispatcher_emprendedor.py:33, exactamente 2). Se parte en: device con las 2 reales + artefacto post-confirmacion; test de COMPONENTE para 3+; y canario invertido de que ningun productor emita 3. Dueno frontend1
+- **Falta:** device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su enlace (componente 3+ y canario ya en main, 39818828)
 - **Medido, y lo declara el propio código:** `apps/mobile/src/modules/chat/Burbuja.tsx:23` y
   `apps/mobile/src/modules/chat/ListaMensajes.tsx:356`.
 - **Consecuencia:** una respuesta con **3+ opciones** no se puede elegir en el teléfono, y un artefacto
@@ -448,8 +448,8 @@ no el arranque del sprint.***
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** ENMENDADO 14-10 — un tenant RI NO ES FABRICABLE por el camino real (CONDICIONES_EMISOR_SOPORTADAS = {MONOTRIBUTO, EXENTO}, afip_rules.py:124 => 422). La mitad frontend NO necesita device ni tenant RI: test de componente sobre el CONTRATO de /afip/estado + retirar RI del selector. Dueno frontend1
+- **Estado:** TERMINADO
+- **Cierre:** merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positivo motivo ausente; selector sin RI; core expone motivoNoPuedeFacturar (afip.ts:298,698); RI no fabricable, no medido en device
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 - **Como se MIDE la mitad frontend (ENMENDADO 2026-10-14):** el DoD decia «medido en device con una
