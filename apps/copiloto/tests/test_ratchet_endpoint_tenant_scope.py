@@ -156,7 +156,10 @@ def _fernet_key_env(monkeypatch):
 # estaba en la deuda: la ruta nueva no suma y la existente sale.
 # 64 = 64 (PROTO4DEPS §4, 2026-10-13): `POST /soporte/tickets/{ticket_id}/adjuntos` nace CON su caso
 # hostil (A adjunta al ticket de B -> 404): la ruta nueva no suma a la deuda y tampoco baja ninguna.
-_DEUDA_TENANT_SCOPED_SIN_TEST = 64
+# 64 -> 63 (SM-E3, 2026-10-14): se RETIRA `POST /inteligencia/chat` (sin caso hostil: estaba en la
+# deuda). Baja porque la ruta dejó de existir, NO porque alguien la cubriera: la cobertura real no
+# cambió.
+_DEUDA_TENANT_SCOPED_SIN_TEST = 63
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------

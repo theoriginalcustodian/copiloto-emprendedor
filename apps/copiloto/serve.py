@@ -73,9 +73,6 @@ from clientes_web import create_clientes_app
 from contabilidad_web import create_contabilidad_app
 from actividad_web import create_actividad_app
 from admin_web import create_admin_app
-from clients.agent.providers.llm import LlmProvider
-from graphity_structured_client import GraphityStructuredClient
-from inteligencia_chat import InteligenciaChat, group_id_negocio
 from inteligencia_web import create_inteligencia_app
 from inteligencia_queries import InteligenciaQueries
 from mi_dia_orquestador import avanzar_tablero
@@ -253,29 +250,9 @@ async def _serve() -> None:
         # de la app; cero conexión nueva.
         conn_factory=conn_factory)
 
-    # Chat de IN (§3): best-effort, igual que `memory_provider` — sin OPENAI_API_KEY o sin
-    # GRAPHITY_GRAFO_* el endpoint sigue vivo (devuelve "No tengo ese dato.", nunca 500). El LLM es
-    # el MISMO del motor (`gpt-4o-mini`, decisión backend-a-planificacion 2026-07-23 02:04): cero
-    # dependencia nueva, mismo patrón de failover ya probado.
-    _chat_llm = (LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
-                             api_key_env="OPENAI_API_KEY",
-                             url="https://api.openai.com/v1/chat/completions", quantizations=())
-                if os.environ.get("OPENAI_API_KEY") else None)
-    _grafo_client = (GraphityStructuredClient.from_env()
-                     if os.environ.get("GRAPHITY_GRAFO_BASE_URL") and os.environ.get("GRAPHITY_GRAFO_API_KEY")
-                     else None)
-    chat_factory = (
-        (lambda cid: InteligenciaChat(queries=InteligenciaQueries(conn_factory, cid), llm=_chat_llm,
-                                      grafo_client=_grafo_client, graph_id=group_id_negocio(cid),
-                                      cliente_id=cid))
-        if _chat_llm is not None and _grafo_client is not None else None)
-    print("copiloto chat IN: " + ("ON" if chat_factory is not None else "OFF (falta LLM o Graphity)"),
-          flush=True)
-
     inteligencia_app = create_inteligencia_app(
         require_tenant=require_tenant,
         queries_factory=lambda cid: InteligenciaQueries(conn_factory, cid),
-        chat_factory=chat_factory,
     )
 
     mi_dia_app = create_mi_dia_app(
