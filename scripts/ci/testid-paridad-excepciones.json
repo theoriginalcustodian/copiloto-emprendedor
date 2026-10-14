@@ -5039,56 +5039,6 @@
       "motivo": "SM-D3 (issue 1019): web retiro modules/apps (AppsScreen/ModeButton, «Tus apps» inalcanzable, decision 2026-10-12 rama b), el par web de este id desaparecio. Mobile conserva PantallaApps (Ajustes > Apps conectadas, alcanzable), que es la pantalla real de conexiones; el equivalente web es ConnectionsScreen (modules/connections), con sus propios ids. No es un gap de UX: la pantalla web que tenia este par ya no existe. Dueno: frontend2.",
       "pantalla": "modules/apps"
     },
-    "modules/onboarding::onboarding-perfil": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-perfil",
-      "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-perfil-error": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-perfil-error",
-      "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-perfil-guardar-botones": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-perfil-guardar-botones",
-      "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-perfil-nombre-comercial": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-perfil-nombre-comercial",
-      "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-perfil-que-vende": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-perfil-que-vende",
-      "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
-      "pantalla": "modules/onboarding"
-    },
     "modules/gastos::detalle-gasto-imputar": {
       "en": [
         "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
