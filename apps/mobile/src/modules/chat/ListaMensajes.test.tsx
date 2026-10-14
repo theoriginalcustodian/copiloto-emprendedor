@@ -17,10 +17,17 @@ async function envolver(
   onChoice = jest.fn(),
   onResolverTarjeta = jest.fn(),
   ejemplos?: readonly string[],
+  vacio?: 'completo' | 'ninguno',
 ) {
   await render(
     <ThemeProvider>
-      <ListaMensajes messages={messages} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} ejemplos={ejemplos} />
+      <ListaMensajes
+        messages={messages}
+        onChoice={onChoice}
+        onResolverTarjeta={onResolverTarjeta}
+        ejemplos={ejemplos}
+        vacio={vacio}
+      />
     </ThemeProvider>,
   );
   return { onChoice, onResolverTarjeta };
@@ -50,6 +57,37 @@ describe('ListaMensajes', () => {
     await envolver([], jest.fn(), jest.fn(), ['uno propio', 'otro propio']);
     expect(screen.getByTestId('chat-vacio-rodillo-0', { includeHiddenElements: true })).toHaveTextContent('uno propio');
     expect(screen.queryByText(EJEMPLOS_CHAT[0] ?? '', { includeHiddenElements: true })).toBeNull();
+  });
+
+  // VACIOSOPORTE: `vacio` es aditivo. Sin él (ChatView, MicFuncion) el vacío es el completo de siempre.
+  it('vacío SIN `vacio`: pinta el vacío completo (marca de 96, «¿En qué te ayudo?», rodillo y promesa)', async () => {
+    await envolver([]);
+    expect(screen.getByTestId('chat-vacio')).toBeTruthy();
+    expect(screen.getByTestId('marca-isotipo').props.width).toBe(96);
+    expect(screen.getByText('¿En qué te ayudo?')).toBeTruthy();
+    expect(screen.getByTestId('chat-vacio-rodillo')).toBeTruthy();
+    expect(screen.getByText(/Antes de ejecutar algo importante/)).toBeTruthy();
+  });
+
+  it("vacío con `vacio='completo'` explícito: es el mismo que el default", async () => {
+    await envolver([], jest.fn(), jest.fn(), undefined, 'completo');
+    expect(screen.getByTestId('chat-vacio')).toBeTruthy();
+    expect(screen.getByText('¿En qué te ayudo?')).toBeTruthy();
+  });
+
+  it("vacío con `vacio='ninguno'`: no pinta nada del vacío del chat", async () => {
+    await envolver([], jest.fn(), jest.fn(), undefined, 'ninguno');
+    expect(screen.getByTestId('lista-mensajes')).toBeTruthy();
+    expect(screen.queryByTestId('chat-vacio')).toBeNull();
+    expect(screen.queryByText('¿En qué te ayudo?')).toBeNull();
+    expect(screen.queryByText(/Antes de ejecutar algo importante/)).toBeNull();
+    expect(screen.queryByTestId('chat-vacio-rodillo', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it("`vacio='ninguno'` NO afecta a la lista con mensajes (sólo al estado vacío)", async () => {
+    await envolver([{ id: 'm1', role: 'user', text: 'hola' } as ChatMessage], jest.fn(), jest.fn(), undefined, 'ninguno');
+    expect(screen.getByTestId('lista-mensajes')).toBeTruthy();
+    expect(screen.getByText('hola')).toBeTruthy();
   });
 
   it('vacío con `ejemplos=[]`: no monta el rodillo, y el resto del vacío sigue', async () => {

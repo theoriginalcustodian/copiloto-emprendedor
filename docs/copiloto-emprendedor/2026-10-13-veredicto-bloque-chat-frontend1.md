@@ -82,6 +82,24 @@ acá** y **8 siguen vigentes** (7 como enmienda con su motivo, 1 como dependenci
 `mic-facturacion`). El padrón **no se toca por mano**: los símbolos de las filas 5, 7, 10, 12, 13 y 14 de
 este documento son lo que lee el medidor, y es el medidor el que recalcula.
 
+### Qué rama describe cada cláusula del dictado (`card` · `card-cliente` · `gastos`)
+
+El camino nuevo del dictado tiene **dos ramas** y un verde sobre una no absuelve a la otra: la
+**extraída** (el motor devuelve la card y el formulario abre con los campos ya cargados) y la **cruda**
+(el camino está apagado o falló: abre con el texto en un campo y el hook deja un `aviso` que lo dice).
+Una cláusula está **rancia** si describe la rama cruda como el **único** comportamiento; está
+**vigente** sólo si describe el degradado. Medido en el código y en los tests de **ambas** ramas:
+
+| fila | cláusula | rama que describe | veredicto | código | test de la rama extraída · de la cruda |
+|---|---|---|---|---|---|
+| `card` | «dictar precarga sólo `{descripcion: texto}`» | **cruda, como única** | 🔴 rancia | `PantallaGastos.tsx:158-167` (`propuesta !== null ? inicialesDeGasto(propuesta) : { descripcion: texto }`) | `PantallaGastos.test.tsx:482` · `:503` (la cruda **avisa**: `gastos-dictado-aviso`) |
+| `gastos` | «dictar abre el formulario con la transcripción cruda» | **cruda, como única** | 🔴 rancia | ídem | ídem |
+| `card-cliente` | «el dictado vuelca todo el texto en `nombre`» | **cruda, como única** | 🔴 rancia | `PantallaClientes.tsx:192-199` (`propuesta !== null ? propuesta : { nombre: texto }`) | `PantallaClientes.test.tsx:750` · `:765` (la cruda **avisa**: `clientes-dictado-aviso`) |
+
+Ninguna de las tres describe el degradado, así que ninguna sobrevive como enmienda. Lo que sí queda
+fuera de la fila y **vigente** es que el degradado **existe y se declara** (no es silencioso): eso lo
+sostienen los dos tests `🔴 si el motor no devuelve la card, cae al texto crudo … Y LO DICE`.
+
 ---
 
 ## Fila por fila
