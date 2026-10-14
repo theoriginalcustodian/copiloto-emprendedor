@@ -151,10 +151,21 @@ def test_trabajo_con_margen_negativo_va_con_kv_VACIO_y_solo_prosa():
     neg = presentar("trabajo_con_margen_negativo", *CASOS["trabajo_con_margen_negativo"], _ts(0), HOY)
     assert "kv" not in neg
     assert neg["prosa"] == "«Reforma»: cobraste $100.000 y gastaste $130.000, te queda en -$30.000."
-    assert neg["accion"]["destino"] == {"tipo": "trabajo", "id": "presupuesto:9"}
+    assert "accion" not in neg
     sin_etiqueta = presentar("trabajo_con_margen_negativo", "presupuesto:9",
                              {"cobrado": "1", "gastado": "2", "margen": "-1"}, _ts(0), HOY)
     assert sin_etiqueta["prosa"].startswith("Este trabajo: cobraste $1")
+
+
+def test_las_dos_reglas_de_trabajo_NO_emiten_accion_aunque_tengan_verbo_y_entidad():
+    """Contrato 2026-10-14: el prototipo no tiene tarjeta de trabajo ⇒ ninguna superficie cumple el verbo.
+    El control es doble: el `verbo` de la clasificación SÍ existe y la entidad SÍ viene, que es justo
+    lo que antes bastaba para emitir `accion`; sin el `None` del presentador este test se pone rojo."""
+    for regla in ("trabajo_con_margen_negativo", "trabajo_con_gastos_y_sin_ingreso"):
+        entidad_id, datos = CASOS[regla]
+        assert clasificar(regla)["verbo"] and entidad_id
+        p = presentar(regla, entidad_id, datos, _ts(0), HOY)
+        assert p and "accion" not in p and "trabajo" not in str(p.get("accion", ""))
 
 
 def test_trabajo_sin_ingreso_dice_el_gasto_y_los_dias_en_la_prosa():

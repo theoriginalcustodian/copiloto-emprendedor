@@ -28,7 +28,10 @@ en vez de salir muda, y `REGLAS_CONOCIDAS` (de `mi_dia_clasificacion`) sigue sie
 * `tono` reusa `criticidad` (`critico|pronto|sin_plazo`): no hay una tercera escala.
 * `accion.destino.tipo` es un ENUM CERRADO (`TIPOS_DESTINO_ACCION`), extensión del `destino` de H5b. La app
   trata un `tipo` desconocido como «rótulo sin acción»; por eso agregar uno exige enmendar el contrato.
-* Regla sin verbo (`gasto_del_mes_alto`) NO lleva `accion`. Una regla DESCONOCIDA no lleva `presentacion`
+* Regla sin verbo (`gasto_del_mes_alto`) NO lleva `accion`; tampoco las dos de **trabajo**: el prototipo no
+  tiene tarjeta de trabajo, así que ninguna superficie puede cumplir un verbo (contrato del 2026-10-14: un
+  verbo sin pantalla es la píldora muerta, y la raíz es prometerlo acá, no el `case` que falta en la app).
+  Una regla DESCONOCIDA no lleva `presentacion`
   (`None`); la tarjeta anotada a mano (`regla is None`) sí: «Lo anotaste vos» + la fila «Anotado».
 * Nada se fabrica: una fila, un chip o una frase sólo existe si el dato que lo sostiene está en `datos`. Una
   tarjeta vieja sin fecha sale sin esa fila, no con una fecha inventada.
@@ -53,7 +56,7 @@ from mi_dia_clasificacion import clasificar
 
 TIPO_DESTINO_COMPROBANTE = "comprobante"
 TIPO_DESTINO_PRESUPUESTO = "presupuesto"
-TIPO_DESTINO_TRABAJO = "trabajo"
+TIPO_DESTINO_TRABAJO = "trabajo"   # sigue en el enum (cambiarlo es contrato); hoy ninguna regla lo emite
 TIPO_DESTINO_CERTIFICADO = "certificado"
 
 #: ENUM CERRADO de `accion.destino.tipo`. Un valor nuevo exige enmendar el contrato (ver docstring).
@@ -297,8 +300,8 @@ _PRESENTADORES = {
     "presupuestos_enfriandose":         (TIPO_DESTINO_PRESUPUESTO, _presupuestos_enfriandose),
     "cae_por_vencer":                   (TIPO_DESTINO_COMPROBANTE, _cae_por_vencer),
     "certificado_afip_por_vencer":      (TIPO_DESTINO_CERTIFICADO, _certificado_afip_por_vencer),
-    "trabajo_con_margen_negativo":      (TIPO_DESTINO_TRABAJO, _trabajo_con_margen_negativo),
-    "trabajo_con_gastos_y_sin_ingreso": (TIPO_DESTINO_TRABAJO, _trabajo_con_gastos_y_sin_ingreso),
+    "trabajo_con_margen_negativo":      (None, _trabajo_con_margen_negativo),
+    "trabajo_con_gastos_y_sin_ingreso": (None, _trabajo_con_gastos_y_sin_ingreso),
     "gasto_del_mes_alto":               (None, _gasto_del_mes_alto),
     "conexion_caida":                   (TIPO_DESTINO_CONEXION, _conexion_caida),
 }
