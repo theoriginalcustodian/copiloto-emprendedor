@@ -89,7 +89,13 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   }, [cargarCatalogo]);
 
   async function terminar() {
-    await completarOnboarding(); // false = no se pudo marcar: se cierra igual y se reintenta al próximo arranque
+    // El resultado se DESCARTA, y con el gate del 409 (SM-C3) eso dejo de ser inocuo: si el
+    // backend rechazo por perfil incompleto, cerrar el hilo manda a la persona a un shell donde
+    // el server no la deja entrar, sin decirle que le falta. completarOnboarding() ya devuelve
+    // {ok, perfilIncompleto, faltantes} (core, SM-C3 DoD 1); pintar el paso con los dos campos
+    // es trabajo de ESTA pantalla y sigue PENDIENTE -- SM-C3 DoD 2-4, sin dueno al 2026-10-14.
+    // Mientras el retorno siga descartado, el gate server-side es la unica red.
+    await completarOnboarding();
     if (vivo.current) onTerminar();
   }
 

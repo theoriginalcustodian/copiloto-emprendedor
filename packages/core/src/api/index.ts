@@ -77,12 +77,18 @@ export type { ResultadoCambioCredencial } from './auth';
 export {
   completarOnboarding,
   debeMostrarOnboarding,
+  faltantesDelPerfilMinimo,
+  perfilMinimoCompleto,
+  CAMPOS_PERFIL_MINIMO,
+  CAMPO_PERFIL_MINIMO_BACKEND,
   permisosCompletos,
   PEDIDO_DETALLE_POR_COBRAR,
   permisosDelHilo,
   primerInsight,
   textoDelInsight,
   type PermisoDelHilo,
+  type CampoPerfilMinimo,
+  type ResultadoCompletarOnboarding,
   type PermisoOnboarding,
   type PrimerInsight,
 } from './onboarding';
@@ -356,7 +362,6 @@ export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda
  */
 export {
   leerPortada,
-  preguntarInteligencia,
   leerGraficoFacturacion,
   leerGraficoEntroVsSalio,
   leerGraficoCategorias,
@@ -364,13 +369,11 @@ export {
 } from './inteligencia';
 export type {
   CajaPortada,
-  FuenteInteligencia,
   MejorCliente,
   MesPortada,
   Portada,
   PorCobrarPortada,
   PuntoSerie,
-  RespuestaInteligencia,
   PuntoFacturacion,
   FilaFacturacionMes,
   ResultadoGraficoFacturacion,

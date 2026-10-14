@@ -6,6 +6,8 @@ import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { Portada } from './inteligencia';
 import {
   completarOnboarding,
+  faltantesDelPerfilMinimo,
+  perfilMinimoCompleto,
   debeMostrarOnboarding,
   PEDIDO_DETALLE_POR_COBRAR,
   permisosCompletos,
@@ -71,15 +73,93 @@ describe('completarOnboarding', () => {
   });
 
   it('POST sin body a /me/onboarding/completar', async () => {
-    expect(await completarOnboarding()).toBe(true);
+    expect(await completarOnboarding()).toEqual({ ok: true });
     expect(peticiones[0]?.metodo).toBe('POST');
     expect(peticiones[0]?.path).toBe('/me/onboarding/completar');
     expect(peticiones[0]?.cuerpoJson).toBeUndefined();
   });
 
-  it('un fallo devuelve false y no lanza (el hilo se cierra igual)', async () => {
+
+  it('un fallo que NO es el gate: el hilo se cierra igual y se reintenta al proximo arranque', async () => {
     responder = () => ({ ok: false, status: 500, json: async () => ({}) });
-    expect(await completarOnboarding()).toBe(false);
+    expect(await completarOnboarding()).toEqual({ ok: false, perfilIncompleto: false });
+  });
+
+  it('🔴 el 409 del perfil minimo NO se disfraza de fallo cualquiera, y dice QUE falta', async () => {
+    // El defecto que esto cierra: con `catch { return false }` el 409 llegaba como «no se pudo
+    // marcar», el hilo se cerraba igual y la persona quedaba contra un gate que no explica nada.
+    responder = () => ({
+      ok: false,
+      status: 409,
+      json: async () => ({ detail: { codigo: 'perfil_minimo_incompleto', faltantes: ['que_vende'] } }),
+    });
+    expect(await completarOnboarding()).toEqual({
+      ok: false,
+      perfilIncompleto: true,
+      faltantes: ['queVende'],
+    });
+  });
+
+  it('un 409 SIN `faltantes` pide los dos: no saber cual falta no habilita a adivinar uno', async () => {
+    responder = () => ({
+      ok: false,
+      status: 409,
+      json: async () => ({ detail: { codigo: 'perfil_minimo_incompleto' } }),
+    });
+    expect(await completarOnboarding()).toEqual({
+      ok: false,
+      perfilIncompleto: true,
+      faltantes: ['queVende', 'nombreComercial'],
+    });
+  });
+
+  it('🔴 CONTROL -- un 409 de OTRO codigo no se confunde con el del perfil minimo', async () => {
+    // El par del anterior: si ramificara por STATUS y no por CODIGO, este caso devolveria
+    // `perfilIncompleto:true` y la pantalla pediria campos que no tienen nada que ver.
+    responder = () => ({
+      ok: false,
+      status: 409,
+      json: async () => ({ detail: { codigo: 'presupuesto_ya_facturado' } }),
+    });
+    expect(await completarOnboarding()).toEqual({ ok: false, perfilIncompleto: false });
+  });
+});
+
+describe('perfilMinimoCompleto / faltantesDelPerfilMinimo — el predicado único de SM-C3', () => {
+  const lleno = { queVende: 'Instalaciones eléctricas', nombreComercial: 'Electricidad Pérez' };
+
+  it('con los dos campos llenos, entra (control positivo)', () => {
+    expect(perfilMinimoCompleto(lleno)).toBe(true);
+    expect(faltantesDelPerfilMinimo(lleno)).toEqual([]);
+  });
+
+  it('🔴 con uno de los dos vacío NO entra, y nombra el que falta', () => {
+    expect(perfilMinimoCompleto({ ...lleno, queVende: '' })).toBe(false);
+    expect(faltantesDelPerfilMinimo({ ...lleno, queVende: '' })).toEqual(['queVende']);
+    expect(perfilMinimoCompleto({ ...lleno, nombreComercial: '' })).toBe(false);
+    expect(faltantesDelPerfilMinimo({ ...lleno, nombreComercial: '' })).toEqual(['nombreComercial']);
+  });
+
+  it('sólo espacios cuenta como vacío — igual que el `.strip()` del backend', () => {
+    // Si los dos lados no coinciden, la app deja pasar algo que el server rechaza con 409 y el
+    // usuario ve un error que la pantalla podía evitar.
+    expect(perfilMinimoCompleto({ ...lleno, queVende: '   ' })).toBe(false);
+    // Tab + newline + espacio construidos SIN escapes: el literal backslash-t, pasando por una
+    // capa mas de interpretacion, llega como TAB REAL y parte la cadena (pagado aca mismo).
+    expect(perfilMinimoCompleto({ ...lleno, nombreComercial: String.fromCharCode(9, 10, 32) })).toBe(false);
+  });
+
+  it('🔴 un perfil ausente NO cuenta como completo: fail-closed, devuelve los dos', () => {
+    // El degradado hacia el caso benigno («no pude leerlo, lo dejo pasar») es lo que convierte un
+    // gate en decoración.
+    expect(perfilMinimoCompleto(null)).toBe(false);
+    expect(perfilMinimoCompleto(undefined)).toBe(false);
+    expect(faltantesDelPerfilMinimo(null)).toEqual(['queVende', 'nombreComercial']);
+  });
+
+  it('`aQuien` NO participa del gate aunque venga lleno: su default lo haría hueco', () => {
+    // Documentado en el DoD: el default `"ambos"` hace que «no vacío» siempre pase.
+    expect(perfilMinimoCompleto({ ...lleno, queVende: '' })).toBe(false);
   });
 });
 
