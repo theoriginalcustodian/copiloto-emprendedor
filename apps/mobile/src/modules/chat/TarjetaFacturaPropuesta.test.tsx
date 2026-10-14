@@ -102,7 +102,7 @@ describe('TarjetaFacturaPropuesta', () => {
     await montar();
 
     expect(screen.getByTestId('factura-propuesta-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.',
+      'Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.',
     );
   });
 
@@ -182,6 +182,8 @@ describe('TarjetaFacturaPropuesta', () => {
     await montar();
 
     expect(screen.queryByTestId('factura-propuesta-completar')).toBeNull();
+    // El rótulo es el del prototipo (`CARDS.factura.b`, index.html:2876) y el aviso lo nombra igual.
+    expect(screen.getByTestId('factura-propuesta-emitir')).toHaveTextContent(/^Emitir la factura$/);
     await act(async () => {
       fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
     });

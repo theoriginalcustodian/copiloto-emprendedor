@@ -19,3 +19,10 @@ export const SOPORTE_TIEMPO_RESPUESTA =
 
 export const SOPORTE_QUE_VIAJA =
   'Si abro un ticket, el equipo recibe el asunto y un resumen de lo que me contaste, junto con tu cuenta. Nada más.';
+
+/**
+ * El placeholder del composer de Soporte. El del chat general invita a anotar un movimiento («Escribí, o
+ * hablá…»); acá la persona viene a contar un problema, y el prototipo (`index.html:2181`, `.barra-sop`) lo
+ * dice así.
+ */
+export const SOPORTE_PLACEHOLDER = 'Contame qué pasó…';

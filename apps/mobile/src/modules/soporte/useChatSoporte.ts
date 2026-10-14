@@ -35,7 +35,8 @@ import { generarId } from '../../util/id';
  * `/chat/audio`), borra el archivo local SIEMPRE (CERO retención, D6) y adopta el `session_id`
  * efectivo que devuelve el servidor antes de pollear -- mismo cuidado que `send()` más abajo. La
  * voz estaba deliberadamente fuera de alcance en SOP5 v1 ("si al probarlo resulta que se necesita,
- * es un hito aparte") -- este es ese hito. Sigue SIN `enviarFoto`: nadie pidió foto en soporte.
+ * es un hito aparte") -- este es ese hito. Sigue SIN `enviarFoto`: falta el endpoint de adjuntos
+ * (`POST /soporte/tickets/{id}/adjuntos`, backend — contrato PROTO4DEPS §E); el prototipo SÍ tiene el clip.
  *
  * 🔴 **`funcion` es FIJA por instancia del hook, no por `send()`** — corregido 2026-08-10 junto con
  * el shape (`respuesta_planificacion-a-backend_SOP5-va-la-B`). Una conversación entera pertenece a

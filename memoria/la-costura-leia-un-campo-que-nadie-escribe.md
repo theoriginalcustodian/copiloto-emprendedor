@@ -162,3 +162,12 @@ y lo que falló fue el **predicado de búsqueda**. Dos agravantes medidos el mis
 encapsula X (la función/hook/selector del paquete compartido), (2) grep **de ese símbolo**, excluyendo
 tests. Grepear el campo contesta otra pregunta —*¿quién lo nombra?*— y en una capa compartida la
 respuesta correcta a esa es **nadie**.
+
+## 2ª ocurrencia (2026-10-13, app): `datos.monto` / `datos.fecha` — y esta vez el lector era el nuestro
+
+El core (`packages/core/src/api/miDia.ts:141-142`) leía `datos.monto` y `datos.fecha` para las filas kv del detalle de
+la tarjeta de Mi día; ninguna regla del backend las escribe (`mi_dia_detector.py` emite `total`, `saldo`, `cae_vto`).
+Las filas estaban **cerradas en código con test verde** — el fixture jest traía `monto`, o sea fabricaba el escritor
+que producción no tiene. Lo destapó la re-medición en device (tarjeta real expandida: sólo «Cliente»). **Cómo se ve
+antes:** al cerrar una fila que *lee* un campo del backend, grepear quién lo **escribe** (`"monto"` en el emisor) y
+probar contra un `datos` real, no uno armado a mano. Pedido: `DETALLEKV` (la app no arma tabla regla→campo).

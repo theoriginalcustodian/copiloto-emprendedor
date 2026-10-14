@@ -1,20 +1,26 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
 /** `TarjetaClientePropuesto` importa `empujarUnaVez`, que toca `expo-router`. */
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
-import type { ChatMessage } from '@copiloto/core';
+import { EJEMPLOS_CHAT, type ChatMessage } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ListaMensajes } from './ListaMensajes';
 
 // `render` de esta versión de @testing-library/react-native es `async` -- hay que awaitearlo.
-async function envolver(messages: ChatMessage[], onChoice = jest.fn(), onResolverTarjeta = jest.fn()) {
+async function envolver(
+  messages: ChatMessage[],
+  onChoice = jest.fn(),
+  onResolverTarjeta = jest.fn(),
+  ejemplos?: readonly string[],
+) {
   await render(
     <ThemeProvider>
-      <ListaMensajes messages={messages} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
+      <ListaMensajes messages={messages} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} ejemplos={ejemplos} />
     </ThemeProvider>,
   );
   return { onChoice, onResolverTarjeta };
@@ -29,6 +35,27 @@ describe('ListaMensajes', () => {
     // El isotipo del vacío es el SIGNO de 96 sin badge (`index.html:1876`), no un tile de 64.
     expect(screen.getByTestId('marca-isotipo').props.width).toBe(96);
     expect(screen.getByTestId('marca').props.style.backgroundColor).toBe('transparent');
+  });
+
+  // D3: la prop `ejemplos` es aditiva — sin ella el vacío es el de siempre (ChatView, MicFuncion).
+  it('vacío SIN `ejemplos`: monta el rodillo con los ejemplos del chat (default intacto)', async () => {
+    await envolver([]);
+    expect(screen.getByTestId('chat-vacio-rodillo')).toBeTruthy();
+    // El margen del rodillo respecto del título viaja en su propio estilo (sin rodillo no deja hueco).
+    expect(StyleSheet.flatten(screen.getByTestId('chat-vacio-rodillo').props.style).marginTop).toBeGreaterThan(0);
+    expect(screen.getByTestId('chat-vacio-rodillo-0', { includeHiddenElements: true })).toHaveTextContent(EJEMPLOS_CHAT[0] ?? '');
+  });
+
+  it('vacío con `ejemplos` propios: el rodillo rota ésos, no los del chat', async () => {
+    await envolver([], jest.fn(), jest.fn(), ['uno propio', 'otro propio']);
+    expect(screen.getByTestId('chat-vacio-rodillo-0', { includeHiddenElements: true })).toHaveTextContent('uno propio');
+    expect(screen.queryByText(EJEMPLOS_CHAT[0] ?? '', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('vacío con `ejemplos=[]`: no monta el rodillo, y el resto del vacío sigue', async () => {
+    await envolver([], jest.fn(), jest.fn(), []);
+    expect(screen.queryByTestId('chat-vacio-rodillo')).toBeNull();
+    expect(screen.getByText('¿En qué te ayudo?')).toBeTruthy();
   });
 
   it('un mensaje de usuario se renderiza como burbuja simple', async () => {

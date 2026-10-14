@@ -13,6 +13,20 @@ function renderComposer(props: Partial<React.ComponentProps<typeof Composer>> = 
   );
 }
 
+describe('Composer -- placeholder (O1: Soporte no es el chat de negocio)', () => {
+  it('sin `placeholder`, el del chat general no cambia', async () => {
+    await renderComposer();
+    await waitFor(() => expect(screen.getByTestId('chat-composer')).toBeTruthy());
+    expect(screen.getByTestId('chat-composer').props.placeholder).toBe('Escribí, o hablá…');
+  });
+
+  it('con `placeholder`, el campo muestra el que le pasan', async () => {
+    await renderComposer({ placeholder: 'Contame qué pasó…' });
+    await waitFor(() => expect(screen.getByTestId('chat-composer')).toBeTruthy());
+    expect(screen.getByTestId('chat-composer').props.placeholder).toBe('Contame qué pasó…');
+  });
+});
+
 describe('Composer -- botón de foto (Gastos Fase 2, la única excepción a "sin botones propios")', () => {
   it('sin `onFoto`, el botón de cámara NO existe -- default es el composer sin excepciones', async () => {
     await renderComposer();

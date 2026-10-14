@@ -3,6 +3,7 @@ import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'r
 import type { FlatList } from 'react-native-gesture-handler';
 
 import {
+  SOPORTE_PLACEHOLDER,
   SOPORTE_PRESENTACION,
   SOPORTE_QUE_VIAJA,
   SOPORTE_QUIEN,
@@ -22,6 +23,10 @@ import { Marca } from '../../theme/Marca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChatSoporte } from './useChatSoporte';
+
+/** Soporte no tiene ejemplos propios (el prototipo arranca el hilo con mensajes y sólo invita con el campo
+ *  «Contame qué pasó…»): `[]` = el vacío no monta el rodillo, en vez de heredar los de gasto/cobro. */
+const SIN_EJEMPLOS: readonly string[] = [];
 
 const TITULO: Record<FuncionSoporte, string> = {
   soporte_tecnico: 'Soporte técnico',
@@ -62,8 +67,7 @@ export interface PantallaSoporteProps {
  * `modules/chat/ChatView.tsx` (hold-graba/soltar-envía/deslizar-fija, `scrollRef` compuesto contra
  * el scroll de `ListaMensajes`, `Onda` como único feedback visual mientras graba). Reusa esos
  * componentes/hooks TAL CUAL — son genéricos del gesto, no saben de negocio ni de soporte; lo único
- * propio es `useChatSoporte().enviarAudio`, que namespacea por `funcion` (ver su docstring). Sin
- * foto: nadie pidió captura de ticket en soporte.
+ * propio es `useChatSoporte().enviarAudio`, que namespacea por `funcion` (ver su docstring).
  *
  * ⚠️ **Deuda declarada (DoD §F4, dueño frontend):** el DoD pide una ventana DISCRETA ("al estilo de
  * las apps del rubro", no una pantalla completa) — esta pantalla hoy es una ruta dedicada de
@@ -184,7 +188,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
       }
     >
       <KeyboardAvoidingView testID="soporte-view" behavior="padding" style={styles.contenedor}>
-        <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+        <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} ejemplos={SIN_EJEMPLOS} />
 
         {!fijado && (
           <View
@@ -230,6 +234,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
             sendStatus={estado?.sendStatus ?? 'idle'}
             onSend={manejarEnvio}
             disabled={estado === null}
+            placeholder={SOPORTE_PLACEHOLDER}
           />
         </View>
       </KeyboardAvoidingView>

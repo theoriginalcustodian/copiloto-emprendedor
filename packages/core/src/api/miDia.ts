@@ -77,6 +77,21 @@ export interface TarjetaMiDia {
    * la tarjeta no trae destino (backend previo, o una regla que no lo emite): la app cae a Ajustes.
    */
   destino?: DestinoTarjeta | null;
+  /**
+   * PROTO4DEPS §C — cómo se PINTA el detalle (chip de antigüedad, filas clave/valor y la acción), derivado
+   * por el backend de la regla en un solo lugar. `null`/ausente = backend previo, o una regla que no la
+   * emite: la tarjeta se pinta como siempre. La app NO arma una tabla regla→pantalla para suplirla.
+   */
+  presentacion?: PresentacionTarjeta | null;
+}
+
+export interface PresentacionTarjeta {
+  /** `tono` crudo: `critico|pronto|sin_plazo` (la escala de `criticidad`); uno desconocido NO se descarta. */
+  chip: { texto: string; tono: string | null } | null;
+  /** El rótulo lo decide la regla («Enviado», «Vence»), no el campo: por eso `k` viaja con el dato. */
+  kv: { k: string; v: string }[];
+  /** `destino` con el MISMO shape que `datos.destino`: quien rutea es la app (`rutaDeDestino`). */
+  accion: { texto: string; destino: DestinoTarjeta | null } | null;
 }
 
 /**
@@ -103,6 +118,37 @@ function destinoDe(v: unknown): DestinoTarjeta | null {
   const tipo = texto(r.tipo);
   if (tipo == null) return null;
   return { tipo, id: texto(r.id), connectPath: texto(r.connect_path) };
+}
+
+/**
+ * `presentacion` → `PresentacionTarjeta`, o `null` si no hay nada pintable. Cada pieza es opcional e
+ * independiente: una `kv` rota no se lleva puesto el chip. `accion` sin `texto` no existe (una píldora sin
+ * rótulo no dice qué hace).
+ */
+function presentacionDe(v: unknown): PresentacionTarjeta | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+
+  const chipRaw = typeof r.chip === 'object' && r.chip !== null ? (r.chip as Record<string, unknown>) : null;
+  const chipTexto = chipRaw != null ? texto(chipRaw.texto) : null;
+  const chip = chipTexto != null ? { texto: chipTexto, tono: texto(chipRaw?.tono) } : null;
+
+  const kv: { k: string; v: string }[] = [];
+  if (Array.isArray(r.kv)) {
+    for (const par of r.kv) {
+      if (typeof par !== 'object' || par === null) continue;
+      const k = texto((par as Record<string, unknown>).k);
+      const val = texto((par as Record<string, unknown>).v);
+      if (k != null && val != null) kv.push({ k, v: val });
+    }
+  }
+
+  const accionRaw = typeof r.accion === 'object' && r.accion !== null ? (r.accion as Record<string, unknown>) : null;
+  const accionTexto = accionRaw != null ? texto(accionRaw.texto) : null;
+  const accion = accionTexto != null ? { texto: accionTexto, destino: destinoDe(accionRaw?.destino) } : null;
+
+  if (chip == null && kv.length === 0 && accion == null) return null;
+  return { chip, kv, accion };
 }
 
 export interface SolapaMiDia {
@@ -144,6 +190,10 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     criticidad: texto(r.criticidad),
     verbo: texto(r.verbo),
     destino: destinoDe(datos.destino),
+    // D2 (contrato 2026-10-13): `presentacion` cuelga de la TARJETA, hermana de `datos`. El `?? datos.presentacion`
+    // es sólo tolerancia con un emisor viejo, NO una alternativa válida: `datos` no tiene forma cerrada y un
+    // campo de contrato dentro de esa bolsa hereda el modo de falla de H12 (leído y nunca escrito).
+    presentacion: presentacionDe(r.presentacion ?? datos.presentacion),
   };
 }
 
