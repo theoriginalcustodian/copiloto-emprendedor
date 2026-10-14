@@ -60,7 +60,6 @@ const ETIQUETA_CAMPO: Record<CampoPerfilMinimo, string> = {
  */
 const ID_QUE_VENDE = 'onboarding-perfil-que-vende';
 const ID_NOMBRE = 'onboarding-perfil-nombre-comercial';
-const ID_GUARDAR = 'onboarding-perfil-guardar';
 
 const nombrarFaltantes = (campos: readonly CampoPerfilMinimo[]): string =>
   campos.map((c) => ETIQUETA_CAMPO[c]).join(' y ');
