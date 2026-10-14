@@ -12,6 +12,31 @@ describe('Bubble', () => {
     expect(screen.getByText('✓✓ recibido')).toBeInTheDocument();
   });
 
+  it('AVATARASIST: el mensaje del asistente lleva el isotipo y el del emprendedor NO (par por rol)', () => {
+    const { container: asistente } = render(<Bubble role="assistant" text="Listo, ya lo hago." />);
+    expect(asistente.querySelectorAll('[data-testid="marca"]')).toHaveLength(1);
+    // El isotipo es la FILA del mensaje, no un adorno suelto: va junto a la burbuja del asistente.
+    const fila = asistente.querySelector('.chat-asistente');
+    expect(fila?.querySelector('[data-testid="marca"]')).not.toBeNull();
+    expect(fila?.querySelector('.chat-bubble--assistant')).not.toBeNull();
+
+    const { container: usuario } = render(<Bubble role="user" text="Cobrale 15 lucas a Juan" />);
+    expect(usuario.querySelectorAll('[data-testid="marca"]')).toHaveLength(0);
+    // …y el emprendedor conserva la otra mitad del par: la meta «✓✓ recibido».
+    expect(screen.getAllByText('✓✓ recibido')).toHaveLength(1);
+  });
+
+  it('AVATARASIST: un mensaje del asistente con card (artifact) lleva UN solo isotipo, no uno por pieza', () => {
+    const { container } = render(
+      <Bubble
+        role="assistant"
+        text="Listo, generé el link de cobro."
+        card={{ kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 5000 } }}
+      />,
+    );
+    expect(container.querySelectorAll('[data-testid="marca"]')).toHaveLength(1);
+  });
+
   it('renderiza burbuja de asistente sin el recibido', () => {
     render(<Bubble role="assistant" text="Listo, ya lo hago." />);
     expect(screen.getByText('Listo, ya lo hago.')).toBeInTheDocument();
