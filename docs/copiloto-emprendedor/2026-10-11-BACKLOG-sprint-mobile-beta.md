@@ -50,8 +50,8 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
-| **SM-C2** | `#1000` | ⬜ PENDIENTE | — |
-| **SM-C3** | `#1016` | 🟨 EN-CURSO | backend |
+| **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | frontend: predicado unico en packages/core/src/api/onboarding.ts junto a debeMostrarOnboarding, test adversarial por … |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
@@ -62,7 +62,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
-| **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
+| **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
@@ -201,7 +201,8 @@ no el arranque del sprint.***
 
 ### SM-C2 · `#1000` — El alta por email de web no se puede completar
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por camino real GoTrue+Postgres (PR #1162): signup->login->/me verde, adversarial sin invite no crea user ni tenant
 - **Medido:** el backend exige `invite_token` y el cliente **nunca lo manda**; además el formulario
   sólo se abre con `?signup=1` en la URL.
 - **DoD:** alta por email de punta a punta, con test del **camino real** — el de producción, por el
@@ -211,8 +212,8 @@ no el arranque del sprint.***
 
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** backend
+- **Estado:** DOD-PARCIAL
+- **Falta:** frontend: predicado unico en packages/core/src/api/onboarding.ts junto a debeMostrarOnboarding, test adversarial por app, y donde la persona carga los dos campos ANTES del shell (Ajustes esta dentro del shell). Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza 409 perfil_minimo_incompleto
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
@@ -403,7 +404,8 @@ no el arranque del sprint.***
 
 ### SM-E2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 716e63da4460cf02abaa7b6ee825124e697e8c43
 - **DoD:** lo anunciado y lo cableado coinciden, **ítem por ítem** (no «en general»).
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
