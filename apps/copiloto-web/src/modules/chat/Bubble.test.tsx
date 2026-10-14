@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import '../../design-system/themes.css';
 import { THEMES } from '../../design-system/ThemeProvider';
 import { Bubble } from './Bubble';
+import chatCss from './chat.css?raw';
 
 describe('Bubble', () => {
   it('renderiza burbuja de usuario con el recibido ✓✓', () => {
@@ -32,8 +33,7 @@ describe('Bubble', () => {
   it('AVATARASIST: el disco del avatar lee el set `--avatar-*` y NO declara colores propios', () => {
     // Una sola definición del disco: si el CSS del mensaje trajera sus propios literales, el próximo
     // ajuste del avatar del header llegaría a uno solo. Se lee el CSS real, no un mock.
-    const css: string = require('fs').readFileSync(require('path').join(__dirname, 'chat.css'), 'utf8');
-    const regla = css.match(/\.chat-asistente__avatar\s*\{([^}]*)\}/)?.[1] ?? '';
+    const regla = chatCss.match(/\.chat-asistente__avatar\s*\{([^}]*)\}/)?.[1] ?? '';
     expect(regla).toMatch(/var\(--avatar-bg\)/);
     expect(regla).toMatch(/var\(--avatar-border\)/);
     expect(regla).toMatch(/var\(--avatar-shadow\)/);
