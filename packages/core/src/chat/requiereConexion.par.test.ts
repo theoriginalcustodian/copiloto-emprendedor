@@ -37,7 +37,8 @@ function insignias(card: ReplyCard): (string | null)[] | null {
 
 const ESPERADAS: Record<string, (string | null)[]> = {
   mercadopago: ['Solo lectura', 'Nunca sin tu OK'],
-  gmail: ['Solo lectura', 'Nunca sin tu OK', 'Solo lectura'],
+  // SM-E2: Gmail sólo anuncia lo que cablea (`gmail_send`); «Leer mails» y «Buscar» se podaron.
+  gmail: ['Nunca sin tu OK'],
   servicio_sin_ficha: [],
 };
 
@@ -51,7 +52,11 @@ describe('costura alcance: payload que emite el backend → parser del core → 
     const total = cards.flatMap((c) => insignias(c) ?? []).filter((i) => i != null).length;
     console.log(`PAR alcance: ${cards.length} cards, ${total} insignias pintadas`);
     expect(cards.length).toBeGreaterThanOrEqual(3);
-    expect(total).toBeGreaterThanOrEqual(4);
+    // El piso se deriva de ESPERADAS (no un literal que envejece con cada poda del catálogo): si el
+    // fixture pierde insignias sin que ESPERADAS lo diga, o al revés, este conteo se pone rojo.
+    const esperadas = Object.values(ESPERADAS).flat().filter((i) => i != null).length;
+    expect(esperadas).toBeGreaterThanOrEqual(3);
+    expect(total).toBe(esperadas);
   });
 
   it('cada card del backend produce las insignias de su alcance', () => {
