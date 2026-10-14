@@ -974,6 +974,9 @@ describe('ListaMensajes — cobro-voz #5: la card payment_link reemplaza al text
 });
 
 describe('ListaMensajes — hitl (a.4): «Volver al tablero →» dentro del recibo', () => {
+  const TOOL_OK = {
+    confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+  };
   const RECIBO = (id: string, titulo: string): ChatMessage => ({
     id,
     role: 'assistant',
@@ -981,7 +984,7 @@ describe('ListaMensajes — hitl (a.4): «Volver al tablero →» dentro del rec
     card: {
       service: 'gmail',
       label: 'Gmail',
-      confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+      ...TOOL_OK,
       recibo: { titulo, meta: '15:41', accion: null },
     },
   });
