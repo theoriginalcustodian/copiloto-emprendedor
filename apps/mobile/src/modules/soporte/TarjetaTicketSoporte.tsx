@@ -9,6 +9,7 @@ import {
   type TicketPropio,
 } from '@copiloto/core';
 
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { ETIQUETA_ESTADO_TICKET } from './etiquetasTicket';
 
@@ -56,7 +57,10 @@ export function TarjetaTicketSoporte({
           accessibilityRole="button"
           accessibilityLabel={`Abrir el ticket ${vigente.codigo}`}
           onPress={() => onAbrirTicket(vigente.id)}
-          style={[styles.card, { backgroundColor: tema.color.superficie, borderColor: tema.color.borde }]}
+          style={pressableStyle(
+            [styles.card, { backgroundColor: tema.color.superficie, borderColor: tema.color.borde }],
+            PRESS_FADE,
+          )}
         >
           <View style={styles.fila}>
             <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
@@ -113,6 +117,7 @@ export function TarjetaTicketSoporte({
           accessibilityRole="button"
           accessibilityState={{ expanded: desplegado }}
           onPress={() => setDesplegado((d) => !d)}
+          style={pressableStyle(undefined, PRESS_FADE)}
         >
           <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
             {soporteVerTicketsAnteriores(cantidadAnteriores)} {desplegado ? '⌃' : '›'}
@@ -128,7 +133,7 @@ export function TarjetaTicketSoporte({
             accessibilityRole="button"
             accessibilityLabel={`Abrir el ticket ${t.codigo}`}
             onPress={() => onAbrirTicket(t.id)}
-            style={[styles.anterior, { borderColor: tema.color.borde }]}
+            style={pressableStyle([styles.anterior, { borderColor: tema.color.borde }], PRESS_FADE)}
           >
             <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
               {t.codigo} · {ETIQUETA_ESTADO_TICKET[t.estado]}
