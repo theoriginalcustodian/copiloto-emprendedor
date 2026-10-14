@@ -63,7 +63,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
 | **SM-E1** | `#1005` | 🟨 EN-CURSO | backend |
 | **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
-| **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). (1) retira… |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
@@ -407,8 +407,8 @@ no el arranque del sprint.***
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** backend
+- **Estado:** DOD-PARCIAL
+- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). (1) retirar preguntarInteligencia de packages/core: HECHO por planificacion (funcion + FuenteInteligencia + fuenteInteligencia + RespuestaInteligencia + RespuestaInteligenciaRaw + 3 exports de index.ts + el describe del test; cero consumidores en apps/ medido antes de tocar; gate core/web/mobile 0). FALTA, de frontend con pantalla y dueno: (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas -- el margen NO tiene modulo en ningun front, es pantalla nueva y eso es decision MAYOR escalada al operador; (3) cambiar-email bloqueado por SMTP (SM-C5), difiere el operador.
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
