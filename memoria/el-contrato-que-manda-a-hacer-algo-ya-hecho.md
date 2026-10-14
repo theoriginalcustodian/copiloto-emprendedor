@@ -116,3 +116,42 @@ que decís ausente y escribí el `path:línea` de su ausencia: si no podés escr
 + una línea en la lista consolidada), porque un pedido muerto en `abierto/` sigue cobrando atención;
 (7) si tu `pedido_` incluye la acción que vas a tomar al recibir respuesta, escribí también **qué harías
 si la respuesta la prohíbe** — y leé la respuesta entera antes de ejecutar esa frase.
+
+## Refuerzo 3 (2026-10-13) — **lo medí: 4 de 11 filas del tablero estaban rancias**, y un estado rancio FABRICA cola ajena
+
+Los refuerzos de arriba tratan el caso de **una** fila. Hoy barrí el tablero entero por primera vez y
+la proporción es el hallazgo: de **11** filas no cerradas de `PLAN.md` (COLA-VIVA), **4** tenían el
+trabajo **hecho**:
+
+| fila | estado que decía | lo que medí |
+|---|---|---|
+| `CRASHFRIO` | `pendiente` | frontend2 la cerró con DoD **4/4** y evidencia de device (0 de 60 en frío, con control positivo de la receta) |
+| `TERCEROSINOBSERVADOS` | `pendiente` | backend la cerró el **10-07** y lo reportó en un `dato_` que nadie recogió |
+| `PROTO4DEPS` | `pendiente` | el commit se llama literalmente `feat(proto4deps): …` y está en `main` |
+| `DETALLEKV` | `pendiente` | los **dos** lados mergeados; falta sólo el deploy |
+
+**El daño no es cosmético, y es la causa raíz de esta entrada:** una fila `pendiente` con dueño es lo
+que `cola-check.sh`, el escalador del buzón y cualquier barrido «¿qué le queda a X?» leen como
+**trabajo vivo**. Así es como bajé contratos de trabajo ya hecho. Y al revés: backend declaró **ocio**
+el mismo día teniendo 3 filas suyas en el tablero — dos rancias y la tercera un deploy sin correr. El
+tablero rancio miente **en los dos sentidos a la vez**: inventa trabajo que no existe y tapa el que sí.
+
+**La causa es estructural, no desprolijidad.** El `cierre_` vive en el **buzón** y el estado vive en el
+**tablero**. El que cierra no es dueño del tablero (nadie edita el archivo de otra sesión) y el dueño
+del tablero no mira 2.947 archivos del buzón. Nadie es dueño de **mover uno al otro**, y eso no se
+arregla con disciplina: se arregla con un instrumento. Misma forma que
+[[un-disparador-cumplido-no-avisa-a-nadie]] y que
+[[el-artefacto-que-genera-el-instrumento-no-tiene-dueno]].
+
+**El barrido que los cazó**, por si hay que repetirlo a mano (está anotado como `TABLERORANCIO` en
+`PLAN.md`, congelado por `CONGELAINSTR`): por cada fila con id en MAYÚSCULAS cuyo estado no empiece en
+✅/❌, buscar `*_cierre_*<ID>*` y `*_avance_*<ID>*` en `abierto/`+`en-curso/`+`cerrado/`. Cazó los 4 en
+una corrida. **Con su control positivo**, que acá es obligatorio: imprimir cuántos archivos barrió
+(2.947) — si da 0, el `walk` está ciego y «ninguna fila rancia» es exactamente lo que se ve
+([[instrumento-que-no-mira-nunca-falla]]).
+
+**Y el cierre ajeno se verifica por efecto, no se cita.** Para las 4 fui a `origin/main`:
+`git cat-file -e` del archivo, `merge-base --is-ancestor` del commit, y el símbolo grepeado. En
+`TERCEROSINOBSERVADOS` mi propio grep de «red o credenciales» dio **1 hit** y lo fui a ver: era una
+línea del **docstring** que enumera lo que el test *no* cubre, no código — el control que **cita** el
+riesgo se parece al riesgo ([[el-guard-se-satisface-con-su-propio-comentario]]).
