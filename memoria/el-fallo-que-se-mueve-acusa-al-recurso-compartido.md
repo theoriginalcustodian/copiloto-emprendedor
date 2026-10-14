@@ -231,3 +231,39 @@ que empieza con import» es la **apertura del bloque**, y la insercion cae adent
 lineas aplicada a una estructura que no es linea-a-linea.** El reemplazo robusto es anclar al **cierre**
 (`... from '...';`), y la verificacion por efecto es contar llaves abiertas antes del punto de insercion
 -- que es lo que despues confirmo los 8 archivos de un vistazo.
+## Refuerzo 2026-10-14 - la regla de arriba la lei como LISTA DE PARES y no como propiedad del recurso: el `node_modules` del worktree
+
+Esta entrada ya decia «no lances dos gates pesados en paralelo». **Lo hice igual**, y la forma en que
+me lo permiti vale mas que el incidente: en `CLAUDE.md` la conteccion estaba anotada como un **par**
+concreto -- «no correr `web.sh` junto a `lint.sh`» -- asi que lance dos jobs *cuidando ese par*
+(job A = `core`+`mobile`, job B = `lint`+`web`, cada uno en serie internamente) y me quede tranquila.
+**Separe el par prohibido y rompi igual, porque lo prohibido no era el par: era compartir el recurso.**
+Una regla escrita como lista de pares se satisface moviendo las fichas; escrita como propiedad del
+recurso, no.
+
+Y el mecanismo es **otro** que el de los refuerzos de arriba, asi que la firma tambien:
+
+| | Refuerzo 10-06 | Este (10-14) |
+|---|---|---|
+| Recurso | CPU / workers de `vitest` | **`node_modules/` del worktree** |
+| Firma | `Test timed out in 5000ms`, el mismo umbral en todos | `npm error ENOTEMPTY rmdir`, `TAR_ENTRY_ERROR ENOENT`, un modulo que «no existe» (`fs-extra`) |
+| Quien habla | el test runner | el **gestor de paquetes** |
+| Que midio el gate | midio, y tarde | **no midio nada**: `exit 127` / `exit 1` antes del primer test |
+
+Cada `scripts/ci/*.sh` hace **su propio `npm install`** en la raiz del worktree. Dos a la vez sobre el
+mismo arbol se borran paquetes el uno al otro mientras el otro los lee. El resultado no es un test
+lento: es un gate que **nunca corrio**.
+
+**Como se distingue en una linea, sin reproducir:** si el error lo emite `npm` y no el runner, el gate
+no es rojo -- es **nulo**. `exit 127` (comando inexistente, porque el binario quedo a medio instalar) y
+`ENOTEMPTY` son la firma. Un rojo real cita un archivo de test o un error de tipos.
+
+Lo que sobrevivio de la corrida contaminada, y por que importa no tirarlo todo: `web.sh` y `mobile.sh`
+**si** alcanzaron su `tsc` (`added 454 packages` / `added 1204 packages` antes del typecheck) y
+devolvieron **7 errores de tipo que eran reales y mios**. O sea: en una corrida contaminada hay que
+**separar por capa** -- el veredicto global es basura, pero lo que el compilador ya alcanzo a decir
+sigue valiendo. Tirar los 7 por «fue contencion» habria sido el error simetrico al de arriba.
+
+**Regla:** un solo job, los gates **en serie**, por worktree. No «evitando el par que figura en la
+doc»: en serie. Y al anotar una conteccion en un `CLAUDE.md`, nombrar **el recurso** (este worktree,
+su `node_modules`), nunca los dos scripts que la destaparon.

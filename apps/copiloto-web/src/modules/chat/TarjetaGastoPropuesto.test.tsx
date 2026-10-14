@@ -48,6 +48,7 @@ function gastoGuardado(monto: string): Gasto {
     descripcion: 'quince mil de insumos en la ferretería',
     origen: 'voz',
     creadoEn: '2026-08-12T12:00:00.000000+00:00',
+    imputacion: null,
   };
 }
 
