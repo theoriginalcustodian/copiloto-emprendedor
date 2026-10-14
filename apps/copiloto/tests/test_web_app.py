@@ -480,18 +480,18 @@ def test_healthz_con_UC_BUILD_SHA_lo_reporta_y_arrancado_es_string(monkeypatch):
 
 
 # --- /auth/signup ------------------------------------------------------------------
-# C4.1: el alta quedó FAIL-CLOSED. Los tests de camino feliz piden explícitamente `alta_habilitada`
-# en vez de que una fixture autouse les setee el env por debajo: si el gate se rompiera, quiero que
-# fallen los tests del camino feliz, no que un autouse los mantenga verdes tapando el agujero.
+# SM-C2 / Ítem 11 (decisión del operador 2026-10-14): `POST /auth/signup` ya NO exige `invite_token`
+# (alta self-service). Los tests que antes afirmaban el 403 fueron INVERTIDOS, no borrados: un test
+# borrado no deja rastro de por qué se retiró el control. Si vuelve un gate, esos casos fallan.
+# `alta_habilitada` sólo habilita la allow-list del first-login OAuth (otra puerta, intacta).
 
 INVITE_TOKEN_TEST = "token-de-prueba-c41"
 
 
 @pytest.fixture
 def alta_habilitada(monkeypatch):
-    """Habilita el alta para el camino feliz. Sin esto NADIE se registra (fail-closed), y ése es el
-    comportamiento correcto — los tests adversariales de más abajo se apoyan justo en su ausencia."""
-    monkeypatch.setenv(web_module.INVITE_TOKEN_ENV, INVITE_TOKEN_TEST)
+    """Habilita la allow-list del first-login OAuth (esa puerta SIGUE fail-closed). Devuelve el
+    `invite_token` que un cliente viejo todavía puede mandar: el servidor lo IGNORA."""
     monkeypatch.setenv(web_module.SIGNUP_ALLOWLIST_ENV,
                        "a@test.com, b@test.com, x@test.com, new@gmail.com, dup@gmail.com")
     return INVITE_TOKEN_TEST
@@ -525,48 +525,45 @@ def test_signup_idempotent_same_email_returns_same_cliente_id(alta_habilitada):
 # NO VERIFICADO. El happy-path verde de arriba pasa igual si el gate no existe — sólo estos casos
 # distinguen "el gate está" de "el gate se especificó".
 
-def test_signup_sin_invite_token_rechaza(alta_habilitada):
-    """El caso que motivó C4.1: cualquiera con `curl` creaba un tenant facturable."""
-    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+def test_signup_sin_invite_token_crea_el_tenant(alta_habilitada):
+    """INVERTIDO (antes: 403 «cualquiera con `curl` creaba un tenant facturable», C4.1). Desde la
+    decisión del operador del 2026-10-14 (SM-C2 / Ítem 11) el alta por email es self-service: sin
+    `invite_token` se crea el tenant. Si este test se pone rojo, alguien volvió a poner el gate."""
+    gotrue = _FakeGoTrue({"nuevo@test.com": "auth-user-N"})
     app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
-    r = TestClient(app).post("/auth/signup", json={"email": "intruso@test.com", "password": "pw"})
-    assert r.status_code == 403
-    assert db.tenants == {}, "no se debe haber creado ninguna fila de tenant"
+    r = TestClient(app).post("/auth/signup", json={"email": "nuevo@test.com", "password": "pw"})
+    assert r.status_code == 200, r.text
+    assert r.json()["cliente_id"]
+    assert len(db.tenants) == 1, "el alta debe haber creado la fila de tenant"
 
 
-def test_signup_con_invite_token_equivocado_rechaza(alta_habilitada):
-    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+def test_signup_con_invite_token_equivocado_se_registra_igual_el_campo_se_ignora(alta_habilitada):
+    """INVERTIDO (antes: 403). El campo sigue aceptado por compat con clientes viejos pero ya no
+    significa nada: uno equivocado NO es un motivo de rechazo."""
+    gotrue = _FakeGoTrue({"nuevo@test.com": "auth-user-N"})
     app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
-    r = TestClient(app).post("/auth/signup", json={"email": "intruso@test.com", "password": "pw",
+    r = TestClient(app).post("/auth/signup", json={"email": "nuevo@test.com", "password": "pw",
                                                   "invite_token": "no-es-el-token"})
-    assert r.status_code == 403
-    assert db.tenants == {}
+    assert r.status_code == 200, r.text
+    assert len(db.tenants) == 1
 
 
-def test_signup_con_env_ausente_rechaza_incluso_con_token(monkeypatch):
-    """FAIL-CLOSED, el caso que de verdad importa: si el deploy se olvida la env, el endpoint
-    RECHAZA. Un default permisivo acá reintroduce el agujero entero y falla ABIERTO — o sea, sin
-    que nadie se entere hasta que aparezca un tenant desconocido."""
-    monkeypatch.delenv(web_module.INVITE_TOKEN_ENV, raising=False)
-    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+def test_signup_no_depende_de_ninguna_env_de_invitacion(monkeypatch):
+    """INVERTIDO (antes: «FAIL-CLOSED, env ausente ⇒ 403»; y su gemelo «env vacía ⇒ 403»). Con la env
+    `COPILOTO_INVITE_TOKEN` ausente, vacía o con basura, el alta funciona igual: ya no hay gate que
+    pueda fallar cerrado ni abierto. La env del invite quedó sin lector."""
+    gotrue = _FakeGoTrue({"a@test.com": "auth-user-1", "b@test.com": "auth-user-2",
+                          "c@test.com": "auth-user-3"})
     app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
-    for cuerpo in ({"email": "intruso@test.com", "password": "pw"},
-                   {"email": "intruso@test.com", "password": "pw", "invite_token": ""},
-                   {"email": "intruso@test.com", "password": "pw", "invite_token": INVITE_TOKEN_TEST}):
-        assert TestClient(app).post("/auth/signup", json=cuerpo).status_code == 403
-    assert db.tenants == {}
-
-
-def test_signup_con_env_vacia_rechaza(monkeypatch):
-    """Una env seteada pero VACÍA es el mismo agujero con otra cara: `COPILOTO_INVITE_TOKEN=` en un
-    `.env` mal editado no puede volver el gate permisivo, ni matchear un `invite_token` vacío."""
-    monkeypatch.setenv(web_module.INVITE_TOKEN_ENV, "   ")
-    app, db = _build_app(require_tenant=_require_tenant_401(),
-                         gotrue=_FakeGoTrue({"intruso@test.com": "auth-user-I"}))
-    assert TestClient(app).post("/auth/signup",
-                                json={"email": "intruso@test.com", "password": "pw",
-                                      "invite_token": ""}).status_code == 403
-    assert db.tenants == {}
+    cliente = TestClient(app)
+    monkeypatch.delenv("COPILOTO_INVITE_TOKEN", raising=False)
+    assert cliente.post("/auth/signup", json={"email": "a@test.com", "password": "pw"}).status_code == 200
+    monkeypatch.setenv("COPILOTO_INVITE_TOKEN", "   ")
+    assert cliente.post("/auth/signup", json={"email": "b@test.com", "password": "pw"}).status_code == 200
+    monkeypatch.setenv("COPILOTO_INVITE_TOKEN", "otro-secreto-cualquiera")
+    assert cliente.post("/auth/signup", json={"email": "c@test.com", "password": "pw",
+                                              "invite_token": ""}).status_code == 200
+    assert len(db.tenants) == 3
 
 
 # --- /actividad: aislamiento estructural -------------------------------------------
