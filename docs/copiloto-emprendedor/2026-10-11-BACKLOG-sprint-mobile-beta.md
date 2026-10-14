@@ -386,7 +386,8 @@ no el arranque del sprint.***
 
 ### SM-D7 · `#1009` — Anular un comprobante falla en silencio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (el codigo y los tests jest/vitest estan; el DoD del sprint es criterio 3)
 - **Medido:** `try/finally` **sin `catch`** ⇒ la excepción se pierde y el usuario no ve nada.
 - **DoD:** el fallo **se ve** (el usuario recibe el error) y el estado no queda a medias.
 - **Criterio 3 del DoD del sprint.**
