@@ -192,3 +192,64 @@ obligaciones por diseño**) y el de ARCA— sólo salieron de `abierto/` porque 
 correcto por la razón imprecisa sigue siendo trabajo correcto; lo que hay que arreglar es la razón.
 
 → [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[lo-que-no-esta-en-la-tabla-de-hitos-no-existe]]
+---
+
+## 🔁 REFUERZO 2026-10-14 (b) — **dos** contratos rancios en diez minutos, con el tablero BIEN y la respuesta en mi propio `cierre_` de ese día
+
+El refuerzo del 13/10 cerró con «para afirmar que algo falta, el único control es el CÓDIGO; el tablero
+sirve para dueño y estado, nunca para afirmar ausencia». Hoy pagué el **caso simétrico**, y por eso la
+regla necesita las dos mitades: **medí el código, no leí el tablero, y el tablero tenía razón.**
+
+| contrato bajado | lo que medí | lo que el tablero decía |
+|---|---|---|
+| `A7 DRIVECERO` → backend | `catalog.py:67` (`_PRESENTATION["googledrive"]`) + `connect_path` (`:112`) ⇒ «la UI ofrece Drive sin acciones» | `PLAN.md` L301: **✅ CERRADA 2026-10-07**, PR #812, con el test citado |
+| `A4 BL-O6 mobile` → frontend2 | `git grep aceptarLegal\|legal_aceptado` en `apps/mobile/**` ⇒ sólo mocks ⇒ «nadie registra la aceptación» | `PLAN.md` L310: **✅ CERRADA 2026-10-13**, y la decisión del operador es **v2 «Informar»**, no registrar |
+
+Los dos salieron en el mismo turno; los dos los retracté en minutos, uno ya tomado a `en-curso/`.
+
+## La causa única: medí un símbolo cuyo NOMBRE se parece al sujeto
+
+No fue descuido de lectura: en los dos casos **el grep dio un resultado real** y el resultado era de
+**otro sujeto**.
+
+- `_PRESENTATION` dice cómo se **pinta** un servicio *cuando aparece*. Quién aparece lo decide
+  `services.connectable_policy()` (`services/__init__.py:62`: sólo módulos con `TOOLS` no vacío),
+  compuesta en `web.py:483-489`. El test que lo fija es literal: `test_catalog_route.py:125` →
+  `assert "googledrive" not in keys`.
+- El consumidor del estado legal en mobile no nombra el campo: va por `descripcionLegal()`
+  (`packages/core/src/legal.ts:148`), consumida por `PantallaCuenta.tsx` **y** `AccountScreen.tsx`.
+
+⇒ **La ausencia se mide por el SÍMBOLO QUE ENCAPSULA, no por el nombre del campo ni por el dict que se
+le parece.** Y el agravante: la fila L310 **ya tenía escrita esa lección**, y la premisa vencida que
+cita como ejemplo **es mía, del 06/10**. La repetí ocho días después sobre la misma fila.
+
+## Lo peor no fue duplicar trabajo: fue pedir la rama que el operador había descartado
+
+`A4` no estaba sólo hecho: mi contrato pedía **v1** (registrar/forzar aceptación) cuando la decisión
+explícita del operador es **v2 «Informar»** («no se bloquea el uso de la app con
+`legal_aceptado=false`: se informa el estado»), y el propio docstring del código lo declara. Un
+contrato que duplica trabajo cuesta un turno; **uno que contradice una decisión MAYOR hace que una
+sesión obediente implemente contra el operador** — y el PR saldría verde, porque los tests no saben
+qué decidió el humano.
+
+## Y la respuesta ya existía, escrita por mí, ese mismo día
+
+En `cerrado/2026-10-14/` estaba mi propio `cierre_planificacion-a-auditoria_A4-LEGAL-…`, con una
+rectificación al frente: *«la fila `LEGALNOOPERA` está ✅ CERRADA desde el 13/10 y ya contestó la
+binaria: la beta cierra con "Informar"»*. Horas después bajé el contrato que la contradecía. Es
+[[sesion-parada-la-respuesta-existe-pero-enterrada]] **con el autor y el lector en la misma sesión**:
+el enterramiento no necesita dos sesiones, le alcanza un día largo y un buzón grande.
+
+**Why:** «medir el código» y «leer el tablero» no son dos niveles de rigor donde el primero vuelva
+opcional al segundo: **miden cosas distintas.** El código dice qué existe **hoy**; la fila dice qué se
+**decidió** y quién lo cerró — y una decisión del operador no está en el código, está en la fila. Saltear
+la fila por confiar en el grep deja afuera exactamente la clase de información que ningún grep tiene.
+
+**How to apply (completa las de arriba):** (8) **ningún contrato sale sin leer la fila de su id
+completa** —el último campo, donde vive el estado— *además* de medir el código: si los dos coinciden,
+bajá; si difieren, **el que manda es el código para la ausencia y la fila para la decisión**, y el
+contrato tiene que nombrar la diferencia; (9) antes de bajar un id, `grep` tu propio `cierre_`/`dato_`
+**del día** por ese id: el emisor rancio puede ser vos hace tres horas; (10) cuando el grep del nombre
+da «0 en fuente, sólo tests», **no concluyas ausencia**: buscá la función/el helper que lo encapsula
+(`descripcionLegal`, `connectable_policy`) — el patrón se repitió en dos dominios distintos el mismo
+día, así que no es casualidad de un archivo.
