@@ -236,10 +236,25 @@ function noDesplegadoEntidad(err: unknown): boolean {
   return err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503);
 }
 
-/** `POST /mi-dia/tarjetas` — alta manual (contrato §2.4: crear a mano o por voz). */
+/**
+ * `POST /mi-dia/tarjetas` — alta manual (contrato §2.4: crear a mano o por voz).
+ *
+ * 🔴 El 400 es un ESTADO, no una excepción. El endpoint rechaza el texto vacío
+ * (`mi_dia_web.py:204`) y esta función lo relanzaba: la pantalla reventaba en el caso más fácil de
+ * todos — el emprendedor toca «Agregar» con el campo en blanco. Mismo criterio que
+ * `cambiarEstadoTarjetaMiDia`, que ya convierte su 400 en estado con el `detail` del backend: el
+ * motivo que explica el servidor es la única fuente que le sirve al emprendedor, no se reescribe.
+ *
+ * Y el `trim()` de la UI NO reemplaza esto: sólo cubre lo que la UI sabe. Un texto que para el
+ * backend es vacío y para la UI no (otro criterio de blancos) sigue llegando como 400.
+ */
 export async function crearTarjetaMiDia(
   texto: string,
-): Promise<{ status: 'ok'; tarjeta: TarjetaMiDia } | { status: 'no_disponible' }> {
+): Promise<
+  | { status: 'ok'; tarjeta: TarjetaMiDia }
+  | { status: 'no_disponible' }
+  | { status: 'texto_vacio'; motivo: string }
+> {
   try {
     const raw = await apiClient.post<{ tarjeta?: unknown }>('/mi-dia/tarjetas', { texto });
     const t = tarjeta(raw?.tarjeta);
@@ -247,6 +262,9 @@ export async function crearTarjetaMiDia(
     return { status: 'ok', tarjeta: t };
   } catch (err) {
     if (noDesplegadoColeccion(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 400) {
+      return { status: 'texto_vacio', motivo: err.detail ?? 'Escribí qué tenés que hacer.' };
+    }
     throw err;
   }
 }

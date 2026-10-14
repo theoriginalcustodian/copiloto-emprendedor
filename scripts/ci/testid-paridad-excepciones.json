@@ -5088,6 +5088,18 @@
       "id": "onboarding-perfil-que-vende",
       "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
       "pantalla": "modules/onboarding"
+    },
+    "modules/midia::midia-alta-enviar": {
+      "en": [
+        "apps/copiloto-web/src/modules/midia/MidiaScreen.tsx"
+      ],
+      "falta_en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "fecha": "2026-10-14",
+      "id": "midia-alta-enviar",
+      "motivo": "PUNTO CIEGO DEL GATE, no falta de paridad: el boton mobile EXISTE y lleva este testID, pero sale del config-object de FilaBotones (botones=[{..., testID}], FilaBotones.tsx:65,71) y testid_paridad.py solo caza el literal testID=\"...\". RETIRAR junto a las 4 de detalle-gasto-* cuando el gate aprenda a leer los config-objects de FilaBotones.",
+      "pantalla": "modules/midia"
     }
   }
 }

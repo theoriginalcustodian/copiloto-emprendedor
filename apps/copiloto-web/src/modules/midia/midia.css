@@ -352,3 +352,50 @@
   color: var(--heading);
   margin: 0;
 }
+
+/* SM-E3: el alta a mano de una tarjeta. Sin color propio -- los mismos tokens del campo que ya
+   usa el formulario de gastos (`gastos.css:291`), para que un input sea un input en toda la app. */
+.midia-screen__alta {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.midia-screen__alta-campo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.midia-screen__alta-etiqueta {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.midia-screen__alta-campo input {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.midia-screen__alta-campo input::placeholder {
+  color: var(--input-fg);
+}
+
+.midia-screen__alta-campo input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.midia-screen__alta-acciones {
+  display: flex;
+  gap: 8px;
+}

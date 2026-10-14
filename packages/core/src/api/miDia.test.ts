@@ -266,6 +266,34 @@ describe('crearTarjetaMiDia', () => {
     responder = () => respuesta(404, { detail: 'not found' });
     expect((await crearTarjetaMiDia('x')).status).toBe('no_disponible');
   });
+
+  // 🔴 El caso que la función RELANZABA: el emprendedor toca «Agregar» con el campo en blanco y
+  // el backend contesta 400 (`mi_dia_web.py:204`). Una excepción acá revienta la pantalla en el caso
+  // más fácil de todos; el 400 de este endpoint es un estado, no una falla del cliente.
+  it('texto vacío es un ESTADO con el motivo del backend, no una excepción', async () => {
+    responder = () => respuesta(400, { detail: 'texto vacío' });
+
+    const res = await crearTarjetaMiDia('   ');
+
+    expect(res.status).toBe('texto_vacio');
+    if (res.status === 'texto_vacio') expect(res.motivo).toBe('texto vacío');
+  });
+
+  it('si el 400 no trae `detail`, el motivo es el texto propio y nunca queda vacío', async () => {
+    responder = () => respuesta(400, {});
+
+    const res = await crearTarjetaMiDia('');
+
+    expect(res.status).toBe('texto_vacio');
+    if (res.status === 'texto_vacio') expect(res.motivo).toBe('Escribí qué tenés que hacer.');
+  });
+
+  // Un 500 NO es un estado del alta: sigue siendo una falla, y taparla como «texto vacío» le
+  // mentiría al emprendedor sobre qué tiene que corregir.
+  it('un 500 sigue relanzando: no se disfraza de texto vacío', async () => {
+    responder = () => respuesta(500, { detail: 'boom' });
+    await expect(crearTarjetaMiDia('algo')).rejects.toThrow();
+  });
 });
 
 describe('cambiarEstadoTarjetaMiDia', () => {
