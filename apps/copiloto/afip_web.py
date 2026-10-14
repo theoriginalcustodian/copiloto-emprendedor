@@ -18,7 +18,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from afip_credential_store import ClaveFiscal
-from afip_rules import (CondicionEmisor, PerfilFiscal, rango_fechas_permitido,
+from afip_rules import (CODIGO_CONDICION_NO_SOPORTADA, CondicionEmisor, PerfilFiscal,
+                        condicion_emisor_soportada, rango_fechas_permitido,
                         validar_cuit, validar_perfil)
 from gasto_store import hoy_del_negocio
 from errores_web import (AMBIENTE_NO_VINCULADO, CUIT_NO_VINCULADO, CONFIRMACION_NO_TOMADA, INGRESO_DUPLICADO_PROBABLE,
@@ -616,7 +617,8 @@ def create_afip_app(
             # cualquier campo nuevo hay que acordarse de ponerlo en los dos.
             return {"cuit": None, "conectado": False, "ws_autorizados": [], "ambiente": None,
                     "ambientes_vinculados": [], "perfil_completo": False, "puede_facturar": False,
-                    "onboarding": None, "drive_conectado": await _drive_conectado(cliente_id)}
+                    "onboarding": None, "drive_conectado": await _drive_conectado(cliente_id),
+                    "motivo_no_puede_facturar": None}
 
         creds = await asyncio.to_thread(cred_store.get, cuit)
         vinculados = await asyncio.to_thread(cred_store.ambientes_vinculados, cuit)
@@ -625,6 +627,11 @@ def create_afip_app(
         if consultar_onboarding is not None:
             progreso = await _maybe_async(consultar_onboarding, cliente_id, cuit)
 
+        # SM-E1: «puede facturar» no es sólo «tiene certificado y perfil»: es que la emisión de SU
+        # condición exista. Un Responsable Inscripto tiene las dos cosas y la emisión (A/B) no está
+        # implementada: prometerle «ya podés facturar» era el defecto. El motivo viaja aparte para que
+        # la app explique en vez de mostrar un perfil «completo» que no deja facturar.
+        condicion_soportada = (not perfil) or condicion_emisor_soportada(perfil.get("condicion_iva"))
         return {
             "cuit": cuit,
             "conectado": bool(creds),
@@ -632,7 +639,8 @@ def create_afip_app(
             "ambiente": (creds or {}).get("ambiente"),
             "ambientes_vinculados": vinculados,
             "perfil_completo": bool(perfil),
-            "puede_facturar": bool(creds) and bool(perfil),
+            "puede_facturar": bool(creds) and bool(perfil) and condicion_soportada,
+            "motivo_no_puede_facturar": None if condicion_soportada else CODIGO_CONDICION_NO_SOPORTADA,
             "onboarding": progreso,
             # TRES estados, no dos: True / False / None. `None` es "no pude averiguarlo" (Composio no
             # respondió o no está cableado) y NO es lo mismo que "no está conectado". Colapsarlos

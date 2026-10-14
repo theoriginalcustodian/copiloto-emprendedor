@@ -61,7 +61,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
-| **SM-E1** | `#1005` | ⬜ PENDIENTE | — |
+| **SM-E1** | `#1005` | 🟨 EN-CURSO | backend |
 | **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
 | **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
@@ -395,7 +395,8 @@ no el arranque del sprint.***
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** backend
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
