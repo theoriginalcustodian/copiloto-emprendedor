@@ -517,6 +517,18 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 ### BL-F2 · Tarjeta del link de cobro en mobile (`cobro-voz`)
 
 > **📌 Evidencia medida 2026-09-23:** PR #535 mergeado(s). **No es un cierre declarado**: las casillas de abajo siguen sin verificar una por una. Ver `docs/copiloto-emprendedor/Auditorias/` y el `dato_` del 2026-09-23.
+> **⚠️ Dos citas de este ítem están RANCIAS — medido 2026-10-13 sobre `origin/main` @ `e88ee139`:**
+> **(1)** `index.html:3134-3139` **no** es el spec del cobro por voz: esas líneas son el gesto de swipe de los avisos
+> (`aviso.style.transform`, `pointerup`/`pointercancel`). El prototipo **no modela** esta tarjeta en el hilo del chat —
+> 0 hits de `Compartir`/`Abrir`/`artefacto`/`payment`, con **control positivo** en `cobrar` (`:839`, `:1007`); Mercado Pago
+> aparece sólo como app conectada (`:2342`) y en la advertencia de que los cobros no entran solos (`:2263`).
+> **(2)** «grep de `payment_link`/`init_point` en `apps/mobile/src` vacío» es **falso**: `git grep -l` da **3** archivos
+> (`modules/chat/TarjetaLinkDeCobro.tsx`, `ListaMensajes.tsx`, `ListaMensajes.test.tsx`), control positivo `Burbuja` → 6.
+> **Consecuencia:** los dos primeros puntos del DoD de abajo **están implementados** (componente + render + test); queda
+> el de **device**. La divergencia «la card reemplaza la burbuja» se dirimió como **ENMIENDA FUNDADA**: el dictado del
+> emprendedor nunca desaparece (`apps/mobile/src/modules/chat/ListaMensajes.tsx:317-318` renderiza `role === 'user'`
+> antes de toda rama de card), así que lo que la card reemplaza es el texto **del copiloto**; el motivo va escrito como
+> comentario junto a la rama `payment_link` (`ListaMensajes.tsx:398`), no sólo en el buzón.
 - **Plataforma:** mobile · **Tamaño:** S · **Origen:** hilo `cobro-voz` (fuera del mapa; el prototipo lo marca spec, `index.html:3134-3139`)
 - **Evidencia:** backend listo (`apps/copiloto/tool_catalog.py:102-108,588-630`, `mp_charge` genera el link y no cobra) · web lo pinta (`apps/copiloto-web/src/modules/chat/ArtifactView.tsx:23`, tests `ArtifactView.test.tsx:20-65`) · mobile **no porta el renderer de artefactos** (`apps/mobile/src/modules/chat/Burbuja.tsx:20-22`); grep de `payment_link`/`init_point` en `apps/mobile/src` vacío, con control positivo en web.
 - **DoD:**
