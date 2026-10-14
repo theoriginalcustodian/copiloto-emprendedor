@@ -63,3 +63,40 @@ midiendo contenido, estás midiendo terminadores.
 leer los dos en Python en modo texto. Y para un techo de bytes, **el instrumento oficial y nada más**:
 `medir-indice-memoria.py` cuenta LF (23604) y mi `wc -c` contaba 23784. La regla de
 [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] aplica igual acá: **un solo lugar mide**.
+
+---
+
+## Refuerzo 2026-10-13 · esta vez el instrumento tenía razón y la cifra que publiqué era mía, en la unidad equivocada
+
+Reincidí, pero **al revés** que en el caso original: no fue `wc -c` contra el medidor — fue **yo citando
+una cifra que el medidor no dio**.
+
+Commiteé `memoria/MEMORY.md` declarando **«23931 de 24000 bytes, 69 de margen»** y lo puse en el mensaje
+del commit. Horas después, el mismo medidor sobre el mismo contenido:
+
+```
+[OK ] unidad: bytes de DISCO (24111) — la lectura en modo texto habría dicho 23931, 180 menos (CRLF)
+[MAL] presupuesto: 24111 / 24000 bytes
+FALLA: el índice se pasa 111 bytes
+```
+
+**El índice estaba 111 bytes PASADO el techo** —truncándose en cada sesión— y yo había firmado que tenía
+margen. Las dos cifras son del mismo archivo: 23931 es el **blob** (LF) y 24111 es el **archivo en
+disco** de cualquier checkout Windows, donde `core.autocrlf=true` suma 1 byte por línea. El techo existe
+porque la sesión carga el archivo **de disco**: la unidad correcta nunca fue discutible.
+
+**Por qué el verde fue creíble:** corrí el medidor sobre el archivo **que yo acababa de escribir** con
+`newline=""` — LF, todavía sin pasar por git. Un archivo recién escrito por mí **no es** el archivo que
+la próxima sesión va a leer. El instrumento midió bien lo que le di; lo que le di no era el sujeto.
+→ [[el-instrumento-respondio-sobre-otro-sujeto]]
+
+**Y una línea de este archivo quedó rancia:** más arriba dice *«`medir-indice-memoria.py` cuenta LF»*.
+Hoy **no**: imprime los bytes de DISCO y además nombra la alternativa en modo texto, justo para que
+nadie confunda las dos. La prescripción («el instrumento oficial y nada más») era correcta y fue lo que
+desobedecí: cité **mi** cifra, no la suya. → [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]
+
+**Cómo se cerró, de raíz y no con una poda:** `.gitattributes` ahora lleva `memoria/*.md text eol=lf`,
+al lado de las reglas que ya existían para `*.sh`. Con eso el archivo en disco **es** el blob en todas
+las máquinas, el peaje de 180 bytes desaparece y la cifra del medidor deja de depender del checkout.
+Verificado por mecanismo (`git check-attr eol -- memoria/MEMORY.md` → `lf`) y por efecto (23777 de
+24000, rc 0). Podar 111 bytes habría dejado la causa viva y el próximo puntero la vuelve a pagar.

@@ -108,3 +108,37 @@ caza y el falso uno sobrevive hasta el documento.
   comentario usado como fuente, envejecido, sin nada que lo mida.
   → [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]
   → [[el-guard-se-satisface-con-su-propio-comentario]]
+
+---
+
+## Refuerzo 2026-10-13 · tres veces en un día, y una de ellas salió del repo como «no lo implementes»
+
+Midiendo el prototipo contra la app, el mismo modo de fallar apareció **tres veces en una sesión**, y
+siempre con el control positivo **en verde**:
+
+| lo que busqué | lo que el prototipo escribe | consecuencia si cerraba ahí |
+|---|---|---|
+| `avatar` | `class="quien"` + `ISO26` (`index.html:3191`) | **ya había salido**: declaré «el prototipo tampoco tiene avatar del asistente», veredicto FUERA-DE-REFERENCIA y **«no lo implementes»** en un `contrato_` que frontend1 tomó |
+| `Buscar` | **`Buscá`** un cliente, o hablá… (`:2241`) | un segundo FUERA-DE-REFERENCIA falso: la divergencia desaparecía del tablero con mi firma |
+| `Compartir`/`Abrir` | nada — ése sí era 0 real | el veredicto correcto, y por eso los otros dos parecían del mismo tipo |
+
+**Lo nuevo, y es el punto fino:** mis controles positivos estaban **vivos** en los tres casos — 65 hits
+de `input|placeholder`, 30 de `cliente`, 12 de `avatar`. No sirvieron, y no por mala suerte: **un control
+positivo mide que mi patrón encuentra cosas; no puede revelar que el sujeto se llama de otra manera.**
+Es la mitad ciega descrita en [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]],
+pero con una forma propia: ahí el riesgo es un instrumento que no mira; acá el instrumento mira perfecto
+y **el sujeto tiene otro nombre**. `avatar` tenía 12 hits: el control positivo me dijo «el patrón
+funciona» y **tenía razón** — lo que no existía era la relación entre ese patrón y el elemento.
+
+**Cómo aplicarlo** — para una afirmación del tipo *«la referencia no tiene X»*:
+- **Buscá el ROL, no el nombre.** El avatar del asistente no se busca por `avatar`: se busca
+  **el generador del mensaje del asistente** y se lee qué pinta. En el prototipo eso fue encontrar
+  `const O = t => ...` — un helper canónico, no una clase. El rol tiene un solo dueño; el nombre, N.
+- **Variá la forma antes de concluir el vacío.** En es-AR, el imperativo vosea: `Buscá`/`Buscar`,
+  `Mirá`/`Mirar`, `Hablá`/`Hablar`. Un `0` sobre un verbo en infinitivo no es un `0`.
+- **Un `0` que CIERRA una fila necesita más que control positivo**: necesita que alguien nombre
+  explícitamente *qué forma tendría el elemento si existiera*. Si no podés escribir esa forma, no
+  podés afirmar el vacío. → [[supuesto-cuya-falla-parece-un-estado-legitimo]]
+- Y el costo asimétrico: un falso **0** aquí no deja deuda visible — **borra** una divergencia real
+  del tablero y la firma una sesión con autoridad para decidirlo.
+  → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]

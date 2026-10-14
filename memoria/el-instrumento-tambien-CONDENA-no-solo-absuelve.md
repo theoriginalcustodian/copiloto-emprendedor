@@ -477,3 +477,56 @@ cuando el merge es squash o rebase — ahí la verdad vive en el **forge**: `gh 
 con PR abierto (debe dar `OPEN`) y una rama inexistente (debe dar vacío). Regla general: antes de confiar
 en un instrumento que **prohíbe**, preguntate *«¿qué costo tiene su falso rojo, y quién lo paga?»*. Si la
 respuesta es «ninguno, hoy», ese instrumento no se va a auditar solo.
+
+---
+
+## Refuerzo 2026-10-13 · una LISTA DE DIVERGENCIAS también condena, y la mía acusaba al código correcto
+
+El instrumento acá no es un script: es la **lista de divergencias** de una fila del mapeo
+prototipo→nativo. Es un instrumento igual —produce veredictos que bloquean un cierre— y produjo un
+**falso rojo** que vivió semanas sin que nadie lo auditara.
+
+La fila `caida`, divergencia #5: *«el chip pierde la variación y conserva la fecha de corte»*, marcada
+`sin veredicto`, trabando el cierre. Medido:
+
+```ts
+// packages/core/src/midia/caja.ts:54-55
+// K-09: con una conexión caída la comparación contra el mes anterior sería falsa — no se dibuja.
+const variacion = caja.incompleta === true ? null : formatearVariacion(caja.variacionPct);
+```
+```ts
+// packages/core/src/midia/caja.test.ts:59  → devuelve 'Al 19 de agosto'
+chipDeCaja({ fechaCorte: '2026-08-19', variacionPct: '-18.0', incompleta: true })
+```
+
+**La divergencia describe, palabra por palabra, el comportamiento implementado, probado y con su motivo
+escrito** — y el prototipo manda exactamente lo mismo, con la misma razón escrita en su propio código
+(`index.html:3647-3648`: *«el delta compara contra el mes pasado; con el dato incompleto esa comparación
+sería falsa»*). No era una falta: era una **coincidencia** que nadie había leído.
+
+**Por qué nadie lo auditó**, y es el esqueleto de este archivo con otra piel: un ítem «sin veredicto» no
+se lee como un posible error del instrumento — se lee como **trabajo pendiente**, que es el estado más
+inocente que existe en un tablero. El falso rojo de un script destructivo parece prudencia; el falso rojo
+de una lista de pendientes parece **diligencia**. Ninguno de los dos duele hoy.
+
+**La causa raíz estaba escrita en el propio doc** (`:220`): *«las divergencias 3-5 de `caida` y 2-5 de
+`clientes` las leí por su símbolo en el árbol; **no re-derivé qué dice el prototipo**»*. El autor declaró
+el límite y el límite se perdió: siete filas quedaron «sin veredicto» porque **el símbolo viajó sin la
+derivación**. → [[el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado]]
+
+**Y el hallazgo gemelo:** al derivar la referencia, **cuatro** divergencias de `caida` (2, 3, 4 y 5)
+resultaron ser **cuatro síntomas de UN mecanismo** — el estado de caída de la portada, que en el prototipo
+hace tres cosas juntas en la misma rama (`index.html:3642-3650`). Pedidas de a una eran irresolubles y
+parecían cuatro deudas; vistas como una, dos ya estaban resueltas, una era duplicada y una sola quedó
+abierta.
+
+**How to apply:**
+- Antes de pedir N veredictos de una fila, **derivá la referencia una vez**. Si las N divergencias
+  apuntan al mismo bloque de la referencia, no son N: contarlas por separado infla la deuda y bloquea
+  el cierre con trabajo ya hecho. → [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]
+- Para cada divergencia preguntate lo que no se pregunta: **«¿y si el código actual fuera el correcto?»**
+  El chequeo es barato — grepear el mecanismo **y su test**, no el docstring que lo declara.
+  → [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]
+- Un doc que declara *«no re-derivé X»* está marcando un **falso rojo probable**, no una nota al pie.
+  Esa frase es el disparador de una re-medición, y quien la escribe no es quien la va a leer.
+  → [[instrumento-que-no-mira-nunca-falla]]
