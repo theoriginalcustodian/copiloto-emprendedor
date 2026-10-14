@@ -86,7 +86,7 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
   return (
     <div className="chat-row chat-row--assistant">
       <div className="chat-asistente">
-        <span className="chat-asistente__avatar" aria-hidden="true">
+        <span className="chat-asistente__avatar" data-testid="chat-bubble-avatar" aria-hidden="true">
           <Marca size={AVATAR_ASISTENTE} />
         </span>
         <Surface variant="bubble" blur className="chat-bubble chat-bubble--assistant">

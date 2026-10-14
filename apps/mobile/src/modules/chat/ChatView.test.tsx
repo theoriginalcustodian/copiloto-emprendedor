@@ -170,6 +170,8 @@ jest.mock('expo-audio', () => ({
 
 import { apiReal as api, dejarPendiente, tomarPendiente } from '@copiloto/core';
 
+import { almacenClave } from '../../adapters/almacen';
+
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ChatView } from './ChatView';
 
@@ -766,5 +768,102 @@ describe('ChatView — fact-voz (d): «✓✓ recibido» sólo cuando el servido
     await enviar('hola copiloto');
     await waitFor(() => expect(screen.getByTestId('composer-status')).not.toHaveTextContent('Trabajando…'));
     expect(screen.queryByTestId('chat-bubble-recibido')).toBeNull();
+  });
+});
+
+// hitl (a.4) — la COSTURA: `ChatView` decide quién lleva la salida (`tarjetaId` del aviso, `resultado: 'hecha'`,
+// sólo recibos posteriores al aviso). Un test de `ListaMensajes` con el índice armado a mano no ve un cableado
+// roto acá (el índice sale de cuántos mensajes había al entrar el aviso).
+describe('ChatView -- hitl (a.4): «Volver al tablero →» dentro del recibo cierra la tarjeta del aviso', () => {
+  const AVISO = {
+    aviso: { tarjetaId: 'lucia', texto: 'Sobre este aviso de Mi día: «…». Acción: Mandarle un recordatorio', contexto: 'Desde tu aviso · Lucía' },
+    id: 1,
+  };
+  const RECIBO_REPLY = {
+    id: 1,
+    text: 'Listo, mandé el mail a Lucía.',
+    card: {
+      service: 'gmail',
+      label: 'Gmail',
+      confirmed_tool: { activity: 'gmail', name: 'GMAIL_SEND_EMAIL', confirmed: true, status: 'ok' },
+      recibo: { titulo: 'Mandado a lucia@x.com', meta: '15:41', accion: null },
+    },
+  };
+
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+  });
+
+  it('🔴 el recibo que llega tras el aviso cierra la tarjeta como `hecha`; el chip, en cambio, vuelve SIN cerrarla', async () => {
+    let enviado = false;
+    jest.mocked(api.sendChat).mockImplementation(async () => {
+      enviado = true;
+      return { wf_id: 'wf-a4', accepted: true };
+    });
+    jest.mocked(api.getReply).mockImplementation(async () =>
+      enviado ? { replies: [RECIBO_REPLY], next_id: 1 } : { replies: [], next_id: 0 },
+    );
+    const onVolver = jest.fn();
+
+    await render(
+      <ThemeProvider>
+        <ChatView avisoEntrante={AVISO} onVolverAlTablero={onVolver} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe(AVISO.aviso.texto));
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    const volver = await screen.findByTestId('recibo-ejecutado-volver', undefined, { timeout: 8000 });
+    await fireEvent.press(volver);
+    expect(onVolver).toHaveBeenCalledTimes(1);
+    expect(onVolver).toHaveBeenCalledWith({ tarjetaId: 'lucia', resultado: 'hecha' });
+
+    // El chip sigue siendo «salir de la charla»: SIN argumento, la tarjeta no se toca.
+    await fireEvent.press(screen.getByTestId('chat-contexto-aviso-volver'));
+    expect(onVolver).toHaveBeenLastCalledWith();
+  });
+
+  // 🔴 El control que cuida la hidratación: antes de que `useChat` cargue el historial `messages` es `[]`, y si la
+  // base del aviso se fijara ahí (en 0) TODO recibo viejo ya persistido pasaría a ser «posterior» al aviso.
+  it('🔴 el recibo de una tarea vieja que ya estaba en el historial NO lleva la salida aunque el aviso entre antes de hidratar', async () => {
+    const viejo = {
+      id: 'assistant-viejo',
+      role: 'assistant',
+      text: 'Listo, mandé el mail a otro.',
+      card: RECIBO_REPLY.card,
+    };
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) =>
+      clave.includes('mensajes') || clave.includes('messages') || clave.includes('msgs')
+        ? JSON.stringify([viejo])
+        : 'sess-a4',
+    );
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    try {
+      await render(
+        <ThemeProvider>
+          <ChatView avisoEntrante={AVISO} onVolverAlTablero={jest.fn()} />
+        </ThemeProvider>,
+      );
+      // El recibo viejo se hidrató y se MIRÓ (si no, el assert de abajo sería vacío)…
+      expect(await screen.findByTestId('recibo-ejecutado')).toBeTruthy();
+      expect(screen.getByText('Listo, mandé el mail a otro.')).toBeTruthy();
+      // …y no lleva la salida: no es el resultado de este aviso.
+      expect(screen.queryByTestId('recibo-ejecutado-volver')).toBeNull();
+    } finally {
+      jest.mocked(almacenClave.leer).mockReset();
+      jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    }
+  });
+
+  it('un recibo del chat SIN aviso de origen no lleva salida (no hay tarjeta que cerrar)', async () => {
+    jest.mocked(api.getReply).mockResolvedValueOnce({ replies: [RECIBO_REPLY], next_id: 1 });
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 1 });
+
+    await renderChatView();
+
+    expect(await screen.findByTestId('recibo-ejecutado')).toBeTruthy();
+    expect(screen.queryByTestId('recibo-ejecutado-volver')).toBeNull();
   });
 });

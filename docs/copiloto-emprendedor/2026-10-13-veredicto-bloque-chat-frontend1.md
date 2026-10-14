@@ -40,7 +40,7 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 14 | `card-cobro` | ✅ + 📝 | etiquetas ya coincidían · botón «Anotar que me pagaron» (#1056) · extracción (#1065) · chips WhatsApp/mail del link (adenda) | — |
 | 15 | `card-presu` | 📝 | **medida**: DIVERGE | formulario completo vs 3 filas kv |
 | 16 | `onb-promesa` | ✅ + 📝 | copy de la fila Google + «desde Ajustes» | pantalla completa, un botón por permiso |
-| 17 | `hitl` | ✅ + 📝 | puente tarjeta → chat: verbo pulsable, texto sembrado, chip «Desde tu aviso», «Volver al tablero» | «Volver al tablero →» dentro del recibo, «Editar» (no medido) |
+| 17 | `hitl` | ✅ + 📝 | puente tarjeta → chat: verbo pulsable, texto sembrado, chip «Desde tu aviso», «Volver al tablero» | «Editar» (no medido: ítem `EDITARMUERTO`). **«Volver al tablero →» dentro del recibo: ✅ a.4, 2026-10-14** |
 | 18 | `clientes` | ✅ + 📝 | monto · «N comprobantes» · «Sin CUIT cargado» / «Todavía sin comprar» · condición IVA en el subtítulo | «Con movimiento», «Se agregó solo», pill vs botón, inputbar vs «Buscar» |
 | 19 | `caida` | ✅ + 📝 | kv «Se cayó · Hoy, 9:12» desde `datos.desde` (sólo con instante real) | rótulo «En caja», copy del aviso, fecha de corte |
 | 20 | `cobro-voz` | 📝 | divergencia #5: el motivo escrito, en el doc y en el código | — |
@@ -400,9 +400,14 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 - 📝 **No es `dejarPendiente`.** El buzón de `mensajePendiente` *manda* el texto; acá se siembra. Motivo arriba.
 - 📝 **La tarjeta manual (sin `regla`) no tiene puente.** Su verbo es «Borrar»: una acción sobre la propia
   tarjeta, no un pedido al agente.
-- 📝 **«Volver al tablero →» no está dentro del recibo** (prototipo `index.html:2774`): la salida vive en el
-  chip, visible desde que entra el aviso, así que no depende de que haya un recibo para poder volver. Es
-  reabrible si el operador quiere el link también al pie del recibo.
+- ✅ **«Volver al tablero →» dentro del recibo — a.4, 2026-10-14** (prototipo `index.html:2774`). Antes esta
+  línea era una enmienda («la salida vive en el chip»); el contrato `a.4` la reabrió y se implementó: el
+  `Recibo` de `ListaMensajes.tsx` lleva su `enlace` y tocarlo llama `onVolverAlTablero({ tarjetaId, resultado:
+  'hecha' })` — que es lo que `a.5` ya sabía cerrar. 🔴 **Sólo el recibo POSTERIOR al aviso** (cuenta desde
+  cuántos mensajes había cuando ESE aviso entró, con el estado hidratado): el recibo de una tarea vieja del
+  historial no es el resultado de este aviso. El chip sigue volviendo SIN cerrar la tarjeta. **Acotación
+  honesta:** cualquier recibo posterior al aviso la cierra, no sólo el del verbo exacto de la tarjeta — el
+  backend no ata el recibo a la tarjeta, así que no hay forma de distinguirlos sin un campo nuevo.
 - 📝 **La ruta glass `/midia` queda sin puente a propósito**: sin `onAvisoAlChat` el verbo sigue siendo
   rótulo, y hay un test que lo fija.
 
