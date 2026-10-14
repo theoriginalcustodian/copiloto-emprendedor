@@ -51,7 +51,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
-| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 H… |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | mitad web (frontend2, apps/copiloto-web/.../Onboarding.tsx: mismo paso) y medicion en device del paso mobile (409 rea… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
@@ -213,7 +213,7 @@ no el arranque del sprint.***
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 HECHO por planificacion en el PR #1166: predicado unico faltantesDelPerfilMinimo + perfilMinimoCompleto + CAMPOS_PERFIL_MINIMO junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts), y completarOnboarding dejo de tragar el 409 -- devuelve {ok,perfilIncompleto,faltantes} (21/21 verdes, mutante 2 rojos/19 verdes). FALTA, de frontend con pantalla y dueno (contrato bajado 14-10, mobile=frontend1 / web=frontend2): (2) el paso del hilo de onboarding que pide los DOS campos -- hoy los dos call-sites DESCARTAN el retorno (apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:97, apps/copiloto-web/src/modules/onboarding/Onboarding.tsx:98), asi que con el gate vivo la persona entra al shell y el server no la deja hacer nada sin decirle que le falta; (3)(4) test adversarial por app: uno de los dos campos vacio no entra, control positivo con los dos llenos, y solo-espacios cuenta como vacio. La decision (a) un paso en el hilo, NO (b) Ajustes dentro del gate: resuelta, no contradice el DoD porque el hilo ya existe y ya tiene pasos.
+- **Falta:** mitad web (frontend2, apps/copiloto-web/.../Onboarding.tsx: mismo paso) y medicion en device del paso mobile (409 real -> paso -> entra)
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 

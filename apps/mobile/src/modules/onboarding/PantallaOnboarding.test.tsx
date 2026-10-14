@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AppState, Linking } from 'react-native';
 
 jest.mock('@copiloto/core', () => ({
   ...jest.requireActual('@copiloto/core'),
@@ -7,15 +7,20 @@ jest.mock('@copiloto/core', () => ({
   pedirLinkDeVinculacion: jest.fn(),
   leerPortada: jest.fn(),
   completarOnboarding: jest.fn(),
+  leerPerfilNegocio: jest.fn(),
+  guardarPerfilNegocio: jest.fn(),
 }));
 
 import {
   completarOnboarding,
+  guardarPerfilNegocio,
+  leerPerfilNegocio,
   leerPortada,
   listarCatalogo,
   pedirLinkDeVinculacion,
   PEDIDO_DETALLE_POR_COBRAR,
   tomarPendiente,
+  ApiError,
   type ServicioCatalogo,
 } from '@copiloto/core';
 
@@ -209,5 +214,147 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     fireEvent.press(screen.getByTestId('onboarding-entrar'));
     await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
     expect(tomarPendiente()).toBeNull();
+  });
+});
+
+// SM-C3 DoD 2-4 — el paso del perfil mínimo. El control de acceso (`queVende` y `nombreComercial`
+// obligatorios) exige el caso HOSTIL, no sólo el feliz: con uno vacío NO se entra. El happy-path pasa
+// igual si el gate no existe; sólo estos tests lo distinguen.
+describe('PantallaOnboarding — SM-C3: el paso del perfil mínimo', () => {
+  const PERFIL_INCOMPLETO = { ok: false, perfilIncompleto: true, faltantes: ['queVende', 'nombreComercial'] } as const;
+
+  beforeEach(() => {
+    jest.mocked(listarCatalogo).mockReset().mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio()] });
+    jest.mocked(leerPortada).mockReset();
+    jest.mocked(completarOnboarding).mockReset().mockResolvedValue(PERFIL_INCOMPLETO);
+    jest.mocked(leerPerfilNegocio).mockReset().mockResolvedValue({ status: 'ok', perfil: null });
+    jest.mocked(guardarPerfilNegocio).mockReset().mockResolvedValue({ status: 'ok', perfil: {} as never });
+    tomarPendiente();
+  });
+
+  // `fireEvent` de RNTL es ASÍNCRONO: sin `await` el press/changeText sigue corriendo cuando el test termina
+  // y deja los `act` solapados para el que sigue (un test verde pasaba y el siguiente no encontraba nada).
+  async function presionar(nodo: ReturnType<typeof screen.getByTestId>) {
+    await fireEvent.press(nodo); // RNTL async: espera el `act` y lo que el press dispara
+  }
+
+  const vaciarMicrotareas = () => act(async () => { await Promise.resolve(); });
+
+  async function irAlPaso(onTerminar = jest.fn()) {
+    await montar(onTerminar);
+    await presionar(await screen.findByTestId('onboarding-despues'));
+    await screen.findByTestId('onboarding-perfil');
+    await vaciarMicrotareas(); // el pre-llenado (`leerPerfilNegocio`) resuelve acá, no en el test que sigue
+    return onTerminar;
+  }
+
+  const escribir = async (id: string, texto: string) => {
+    await fireEvent.changeText(screen.getByTestId(`onboarding-perfil-${id}-input`), texto);
+  };
+
+  it('🔴 el backend rechaza por perfil incompleto: el hilo NO se cierra y aparecen los dos campos', async () => {
+    const onTerminar = await irAlPaso();
+    expect(screen.getByTestId('onboarding-perfil-que-vende')).toBeTruthy();
+    expect(screen.getByTestId('onboarding-perfil-nombre-comercial')).toBeTruthy();
+    expect(onTerminar).not.toHaveBeenCalled();
+  });
+
+  it('🔴 adversarial: con UNO de los dos vacío no entra, no llama al server y dice cuál falta', async () => {
+    const onTerminar = await irAlPaso();
+    await escribir('nombre-comercial', 'Panadería La Esquina');
+
+    await presionar(screen.getByTestId('onboarding-perfil-guardar'));
+
+    expect(await screen.findByTestId('onboarding-perfil-que-vende-error')).toHaveTextContent('Falta qué vendés');
+    expect(screen.queryByTestId('onboarding-perfil-nombre-comercial-error')).toBeNull();
+    expect(guardarPerfilNegocio).not.toHaveBeenCalled();
+    expect(completarOnboarding).toHaveBeenCalledTimes(1); // sólo el que abrió el paso
+    expect(onTerminar).not.toHaveBeenCalled();
+  });
+
+  it('🔴 adversarial: «sólo espacios» cuenta como vacío (igual que el backend)', async () => {
+    const onTerminar = await irAlPaso();
+    await escribir('que-vende', '   ');
+    await escribir('nombre-comercial', '  ');
+
+    await presionar(screen.getByTestId('onboarding-perfil-guardar'));
+
+    expect(await screen.findByTestId('onboarding-perfil-que-vende-error')).toBeTruthy();
+    expect(screen.getByTestId('onboarding-perfil-nombre-comercial-error')).toBeTruthy();
+    expect(guardarPerfilNegocio).not.toHaveBeenCalled();
+    expect(onTerminar).not.toHaveBeenCalled();
+  });
+
+  it('control positivo: con los dos llenos guarda (sin espacios de más), completa y entra', async () => {
+    jest.mocked(completarOnboarding).mockResolvedValueOnce(PERFIL_INCOMPLETO).mockResolvedValueOnce({ ok: true });
+    const onTerminar = await irAlPaso();
+    await escribir('que-vende', '  Pan y facturas  ');
+    await escribir('nombre-comercial', 'Panadería La Esquina');
+
+    await presionar(screen.getByTestId('onboarding-perfil-guardar'));
+
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(guardarPerfilNegocio).toHaveBeenCalledWith({ queVende: 'Pan y facturas', nombreComercial: 'Panadería La Esquina' });
+    expect(completarOnboarding).toHaveBeenCalledTimes(2);
+  });
+
+  it('🔴 si el backend rechaza OTRA vez, el hilo sigue abierto y nombra lo que falta (no un error genérico)', async () => {
+    jest
+      .mocked(completarOnboarding)
+      .mockResolvedValueOnce(PERFIL_INCOMPLETO)
+      .mockResolvedValueOnce({ ok: false, perfilIncompleto: true, faltantes: ['nombreComercial'] });
+    const onTerminar = await irAlPaso();
+    await escribir('que-vende', 'Pan');
+    await escribir('nombre-comercial', 'La Esquina');
+
+    await presionar(screen.getByTestId('onboarding-perfil-guardar'));
+
+    expect(await screen.findByTestId('onboarding-perfil-error')).toHaveTextContent('Todavía falta el nombre comercial.');
+    expect(onTerminar).not.toHaveBeenCalled();
+  });
+
+  it('si guardar el perfil falla (400/red) se ve el motivo y no se cierra', async () => {
+    jest.mocked(guardarPerfilNegocio).mockRejectedValue(new ApiError(400, 'bad', 'El nombre es demasiado largo'));
+    const onTerminar = await irAlPaso();
+    await escribir('que-vende', 'Pan');
+    await escribir('nombre-comercial', 'La Esquina');
+
+    await presionar(screen.getByTestId('onboarding-perfil-guardar'));
+
+    expect(await screen.findByTestId('onboarding-perfil-error')).toHaveTextContent('El nombre es demasiado largo');
+    expect(onTerminar).not.toHaveBeenCalled();
+    expect(completarOnboarding).toHaveBeenCalledTimes(1);
+  });
+
+  it('pre-llena con lo que el perfil ya tiene (alguien que cargó uno de los dos)', async () => {
+    jest.mocked(leerPerfilNegocio).mockResolvedValue({ status: 'ok', perfil: { queVende: 'Pan', nombreComercial: '' } as never });
+    await irAlPaso();
+    await waitFor(() => expect(screen.getByTestId('onboarding-perfil-que-vende-input').props.value).toBe('Pan'));
+    expect(screen.getByTestId('onboarding-perfil-nombre-comercial-input').props.value).toBe('');
+  });
+
+  it('volver del navegador (AppState active) con el paso abierto NO lo devuelve al recibo', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('10.00'));
+    let alCambiar: ((s: string) => void) | undefined;
+    const espia = jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, cb: (s: string) => void) => {
+      alCambiar = cb;
+      return { remove: jest.fn() };
+    }) as never);
+    await montar();
+    await presionar(await screen.findByTestId('onboarding-entrar'));
+    await screen.findByTestId('onboarding-perfil');
+    await vaciarMicrotareas();
+
+    // Dentro de `act` y esperando que la relectura RESUELVA: el `setPaso` ocurre después del `await` de
+    // `listarCatalogo`, no cuando se lo llama (un `waitFor` sobre las llamadas pasaba antes de que pisara).
+    await act(async () => {
+      alCambiar?.('active');
+    });
+    expect(listarCatalogo).toHaveBeenCalledTimes(2);
+
+    expect(screen.getByTestId('onboarding-perfil')).toBeTruthy();
+    expect(screen.queryByTestId('onboarding-recibo')).toBeNull();
+    espia.mockRestore();
   });
 });
