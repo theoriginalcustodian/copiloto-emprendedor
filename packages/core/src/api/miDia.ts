@@ -100,7 +100,7 @@ export interface PresentacionTarjeta {
  * contrato. El normalizador NO filtra por él —un tipo nuevo del backend llega como string y el que
  * decide qué hacer es quien rutea— porque descartarlo acá escondería que apareció algo desconocido.
  */
-export const TIPOS_DESTINO = ['conexion'] as const;
+export const TIPOS_DESTINO = ['conexion', 'comprobante', 'presupuesto', 'trabajo', 'certificado'] as const;
 export type TipoDestino = (typeof TIPOS_DESTINO)[number];
 
 export interface DestinoTarjeta {

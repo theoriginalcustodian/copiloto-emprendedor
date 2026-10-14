@@ -29,6 +29,7 @@ import { listarActividad, type ActividadItem } from '@copiloto/core';
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
+import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
 import { PanelDeslizable } from './PanelDeslizable';
@@ -195,8 +196,8 @@ export function PantallaPrincipal() {
             comoPortada
             onAjustes={() => empujarUnaVez('/ajustes')}
             onAgenda={() => empujarUnaVez('/agenda')}
-            // H5b: «Reconectar» de la tarjeta crítica abre Apps parado en ESA conexión (`servicio`).
-            onConexion={(servicio) => empujarUnaVez({ pathname: '/apps', params: { servicio } })}
+            // H5b: la acción de la tarjeta abre la pantalla de su `destino` (conexión, comprobante, AFIP).
+            onDestino={(ruta) => empujarUnaVez(hrefDeRuta(ruta))}
           />
         </PanelFunciones>
       }>
