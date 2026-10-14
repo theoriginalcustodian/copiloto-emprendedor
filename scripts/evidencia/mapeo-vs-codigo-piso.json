@@ -1,0 +1,8 @@
+{
+  "rancias_aceptadas": [],
+  "medido_contra": "4c405783",
+  "fecha": "2026-10-14",
+  "filas": 54,
+  "regla": "El piso BAJA, nunca sube. Una fila rancia fuera de esta lista pone rojo el lint y se nombra. Si hay que subirlo: agregar el id Y escribir abajo por que (queda en el diff).",
+  "motivo_de_la_ultima_subida": null
+}

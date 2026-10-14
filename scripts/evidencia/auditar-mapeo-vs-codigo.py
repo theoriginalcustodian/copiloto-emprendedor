@@ -35,8 +35,32 @@ que CADA una salga como hallazgo; ademas se exige que un mapeo SIN ensuciar no m
 cuatro sobre la fila elegida. Un barrido que devuelve «0 rancias» sin este control es indistinguible
 de uno que no mira nada.
 
+HALLAZGO METODOLOGICO (por que el control corre ANTES de confiar en el cero): la v1 de este barrido
+devolvia «0 rancias» sobre `ingresar` mientras la fila ERA rancia: «Email» «vivia» como `setEmail` y como
+`autoComplete="email"`, y la busqueda de subcadena lo daba por presente. Un barrido que devuelve «0 rancias»
+es indistinguible de uno que no mira nada; lo que lo cazo fue el control positivo, no la revision. Por eso
+`esta()` exige limite de palabra (y, para UNA sola palabra, que vaya pegada a comilla/backtick/borde JSX), y
+por eso `main` corre `canario()` antes de aceptar su propio resultado — y aborta si el canario falla.
+
+LIMITE DECLARADO — la clase de fila que este barrido NO ve: las afirmaciones POSICIONALES / ESTRUCTURALES.
+`ingresar-error` decia que la alerta iba «despues de los botones»; el literal «login-alert» existe y por
+eso nada marca. Hubo que medirlo en device (y=940, ENTRE la contrasena y=830 y Entrar y=1060). Lo mismo
+para un orden, una jerarquia, un «a la derecha de», o un ancla `:NNN` que se corrio pero sigue cayendo
+dentro del archivo. Eso es juicio de quien mide en device; este script no lo reemplaza. Una fila con
+afirmacion posicional que el barrido da por sana NO esta verificada, esta no-refutada.
+
+RATCHET (decision de planificacion 2026-10-14, en vez de un gate binario): un guard que se pone rojo en el
+caso NORMAL se desarma solo (`--no-verify`) y deja sensacion de cobertura. `--ratchet` compara contra el
+PISO versionado (`mapeo-vs-codigo-piso.json`, hoy 0 filas rancias de 54):
+  · una fila con hallazgo que NO esta en el piso  -> rojo, y la nombra (el numero SUBIO);
+  · una fila del piso que ya no tiene hallazgo    -> rojo: bajar el piso en el mismo PR (si no, queda
+    holgura y esa fila puede volver a romperse en silencio);
+  · el piso nunca se sube sin escribir POR QUE en el campo `motivo_de_la_ultima_subida`: queda en el diff,
+    visible y discutible; un `--no-verify` no.
+
 Salida: tasa (filas / filas con hallazgo / hallazgos), lista con motivo. `--json` para maquina.
-Exit: 0 sin rancias · 1 hay rancias (o el canario fallo) · 2 no puedo medir (falta fuente / corpus 0).
+Exit: 0 sin rancias (o, con --ratchet, sin regresion) · 1 hay rancias / el numero subio / el canario fallo ·
+2 no puedo medir (falta fuente / corpus 0 / piso ilegible).
 """
 import json
 import os
@@ -49,6 +73,8 @@ RAIZ = Path(os.environ.get("COPILOTO_RAIZ", Path(__file__).resolve().parents[2])
 MAPEO = RAIZ / "docs" / "copiloto-emprendedor" / "2026-10-12-mapeo-prototipo-vs-nativo.md"
 PROTO = RAIZ / "Prototipo frontend" / "odobi-ui" / "prototipo" / "index.html"
 CODIGO_DIRS = [RAIZ / "apps" / "mobile" / "src", RAIZ / "apps" / "mobile" / "app", RAIZ / "packages" / "core" / "src"]
+
+PISO = Path(__file__).resolve().parent / "mapeo-vs-codigo-piso.json"
 
 AUSENCIA = re.compile(
     r"grep (?:de )?[\"`]?[^;.)]{0,40}?0\b|cero (?:hits|consumidores|usos)|nunca se dibuja|no (?:existe|tiene|hay|esta)\b"
@@ -285,6 +311,23 @@ def auditar(filas, idx, proto_n: str, proto_lineas=None):
     return res
 
 
+def evaluar_piso(con_hallazgo: set, piso: set):
+    """(suben, bajaron). `suben`: filas con hallazgo que el piso NO acepta. `bajaron`: filas aceptadas que
+    ya no tienen hallazgo (el piso tiene holgura y hay que bajarlo). Pura: no toca disco."""
+    return sorted(con_hallazgo - piso), sorted(piso - con_hallazgo)
+
+
+def leer_piso() -> set:
+    try:
+        d = json.loads(PISO.read_text(encoding="utf-8"))
+        ids = d["rancias_aceptadas"]
+        if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+            raise ValueError("rancias_aceptadas debe ser lista de ids")
+        return set(ids)
+    except (OSError, ValueError, KeyError) as e:
+        morir(f"piso ilegible ({PISO}): {e}")
+
+
 def canario(filas, idx, proto_n, proto_lineas=None) -> list[str]:
     """Devuelve la lista de controles que FALLARON (vacia = el barrido mira)."""
     fallos = []
@@ -304,6 +347,13 @@ def canario(filas, idx, proto_n, proto_lineas=None) -> list[str]:
         h = [t for t, _ in auditar([fila], idx, proto_n, proto_lineas)[0]["hallazgos"]]
         if tipo not in h:
             fallos.append(f"el canario {tipo} NO fue detectado (hallazgos: {h or 'ninguno'})")
+    # control positivo del RATCHET: sube -> acusa; baja -> acusa; igual -> calla
+    if evaluar_piso({"zz"}, set()) != (["zz"], []):
+        fallos.append("ratchet: una fila rancia fuera del piso NO se acuso como regresion")
+    if evaluar_piso(set(), {"zz"}) != ([], ["zz"]):
+        fallos.append("ratchet: una fila del piso ya sana NO se acuso como holgura")
+    if evaluar_piso({"zz"}, {"zz"}) != ([], []):
+        fallos.append("ratchet: una fila rancia ya aceptada marca rojo (grita en el caso normal)")
     # control negativo: la fila base sin ensuciar no puede marcar los tipos que inyectamos
     espurios = [t for t, _ in limpia if t in ("RUTA", "LINEA", "AUSENCIA")]
     if espurios:
@@ -348,6 +398,21 @@ def main(argv):
             for tipo, motivo in r["hallazgos"]:
                 print(f"  [{tipo}] {r['id']}: {motivo}")
         print("control positivo: OK (RUTA/LINEA/LITERAL/AUSENCIA detectan sobre fila ensuciada)")
+    if "--ratchet" in argv:
+        suben, bajaron = evaluar_piso({r["id"] for r in con}, leer_piso())
+        for i in suben:
+            for tipo, motivo in next(r for r in con if r["id"] == i)["hallazgos"]:
+                print(f"  ❌ [{tipo}] {i}: {motivo}")
+        for i in bajaron:
+            print(f"  ❌ `{i}` esta en el piso pero ya no tiene hallazgo: bajalo de rancias_aceptadas en {PISO.name}")
+        if suben:
+            print(f"RATCHET ❌ el numero SUBIO: {len(suben)} fila(s) rancia(s) nueva(s) {suben}. "
+                  f"Corregi la fila (con su sha de verificacion) — subir el piso exige escribir por que.")
+        if bajaron and not suben:
+            print("RATCHET ❌ el piso tiene holgura: bajalo en este mismo PR.")
+        if not suben and not bajaron:
+            print(f"RATCHET ✅ {len(con)} filas rancias de {len(res)} (piso {len(leer_piso())}): no empeoro")
+        return 1 if (suben or bajaron) else 0
     return 1 if con else 0
 
 

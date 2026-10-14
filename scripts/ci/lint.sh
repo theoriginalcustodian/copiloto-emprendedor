@@ -141,6 +141,15 @@ fi
 rm -f "$_tmp_contratos"
 echo "✅ mapeo del criterio 3: 6 controles OK sobre LOS DOS fixtures (original + ciego) · contratos regenerados identicos al versionado"
 
+# MAPEO-vs-CODIGO, RATCHET (2026-10-14). `verificar-mapeo.py` mira la FORMA del doc; nada miraba si lo que
+# cada fila AFIRMA (un literal, un archivo, una ausencia) sigue siendo cierto en el codigo vivo: medido el
+# 14-10, 17 de las 54 filas (31%) estaban rancias. Es un RATCHET y no un gate binario por decision de
+# planificacion: un guard rojo en el caso normal se desarma con `--no-verify`. Falla SOLO si una fila nueva
+# se vuelve rancia (la nombra) o si el piso quedo con holgura; el piso vive en
+# `scripts/evidencia/mapeo-vs-codigo-piso.json` (hoy 0 de 54). Corre su propio control positivo antes de
+# aceptar su cero. LIMITE declarado en el docstring: no ve afirmaciones posicionales (device).
+python3 -I -X utf8 "$ROOT/scripts/evidencia/auditar-mapeo-vs-codigo.py" --ratchet
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Registro UNICO del sprint: coherencia + tabla regenerada (2026-10-14)
 #
