@@ -108,3 +108,95 @@ caza y el falso uno sobrevive hasta el documento.
   comentario usado como fuente, envejecido, sin nada que lo mida.
   → [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]
   → [[el-guard-se-satisface-con-su-propio-comentario]]
+
+---
+
+## Refuerzo 2026-10-13 · tres veces en un día, y una de ellas salió del repo como «no lo implementes»
+
+Midiendo el prototipo contra la app, el mismo modo de fallar apareció **tres veces en una sesión**, y
+siempre con el control positivo **en verde**:
+
+| lo que busqué | lo que el prototipo escribe | consecuencia si cerraba ahí |
+|---|---|---|
+| `avatar` | `class="quien"` + `ISO26` (`index.html:3191`) | **ya había salido**: declaré «el prototipo tampoco tiene avatar del asistente», veredicto FUERA-DE-REFERENCIA y **«no lo implementes»** en un `contrato_` que frontend1 tomó |
+| `Buscar` | **`Buscá`** un cliente, o hablá… (`:2241`) | un segundo FUERA-DE-REFERENCIA falso: la divergencia desaparecía del tablero con mi firma |
+| `Compartir`/`Abrir` | nada — ése sí era 0 real | el veredicto correcto, y por eso los otros dos parecían del mismo tipo |
+
+**Lo nuevo, y es el punto fino:** mis controles positivos estaban **vivos** en los tres casos — 65 hits
+de `input|placeholder`, 30 de `cliente`, 12 de `avatar`. No sirvieron, y no por mala suerte: **un control
+positivo mide que mi patrón encuentra cosas; no puede revelar que el sujeto se llama de otra manera.**
+Es la mitad ciega descrita en [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]],
+pero con una forma propia: ahí el riesgo es un instrumento que no mira; acá el instrumento mira perfecto
+y **el sujeto tiene otro nombre**. `avatar` tenía 12 hits: el control positivo me dijo «el patrón
+funciona» y **tenía razón** — lo que no existía era la relación entre ese patrón y el elemento.
+
+**Cómo aplicarlo** — para una afirmación del tipo *«la referencia no tiene X»*:
+- **Buscá el ROL, no el nombre.** El avatar del asistente no se busca por `avatar`: se busca
+  **el generador del mensaje del asistente** y se lee qué pinta. En el prototipo eso fue encontrar
+  `const O = t => ...` — un helper canónico, no una clase. El rol tiene un solo dueño; el nombre, N.
+- **Variá la forma antes de concluir el vacío.** En es-AR, el imperativo vosea: `Buscá`/`Buscar`,
+  `Mirá`/`Mirar`, `Hablá`/`Hablar`. Un `0` sobre un verbo en infinitivo no es un `0`.
+- **Un `0` que CIERRA una fila necesita más que control positivo**: necesita que alguien nombre
+  explícitamente *qué forma tendría el elemento si existiera*. Si no podés escribir esa forma, no
+  podés afirmar el vacío. → [[supuesto-cuya-falla-parece-un-estado-legitimo]]
+- Y el costo asimétrico: un falso **0** aquí no deja deuda visible — **borra** una divergencia real
+  del tablero y la firma una sesión con autoridad para decidirlo.
+  → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+---
+
+## Refuerzo 2026-10-13 — el caso límite: **medí el nombre que yo mismo había inventado**
+
+Diseñé una pieza (`origenPuente`, para llevar la identidad de la tarjeta al chat), busqué
+`origenPuente` en `apps/` + `packages/`, dio **0 hits**, puse control positivo (vivo), y bajé un
+contrato pidiendo construirla. **El `0` era una tautología:** nadie escribe un nombre que acabo de
+acuñar yo. El portador del rol existía y se llamaba `AvisoAlChat = {texto, contexto}` — sólo le
+faltaba un campo. Lo encontró otra sesión, no mi búsqueda.
+
+Por qué este caso es peor que el de `Buscar`/`Buscá`: ahí el falso `0` **borraba** una divergencia
+real. Acá el falso `0` **manda a construir lo que ya existe**, que es el fallo que CANON 3 (reutilizar)
+está escrito para evitar — y encima el control positivo **no puede delatarlo**: prueba que mi patrón
+caza algo, no que el sujeto tenga otro nombre.
+
+**Cómo aplicarlo, en una línea:** un `0 hits` sobre un identificador **que yo propuse** no es
+evidencia de nada — es un espejo. Antes de pedir que se construya una pieza, buscá el **rol**
+(*«¿qué lleva hoy el dato del punto A al punto B?»*), no el nombre de tu solución. Y si el rol no
+aparece, nombrá qué forma tendría si existiera **antes** de firmar el vacío.
+→ [[el-fix-ya-existe-en-otro-call-site]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+---
+
+## Refuerzo 2026-10-14 — el **ESPEJO** del voseo: el identificador **era una palabra común del español**
+
+El refuerzo del 13/10 cierra en que el idioma hace que el patrón **no cace** (`Buscar` vs `Buscá`).
+Hoy el mismo idioma lo hizo cazar **de más**, y por eso casi refuto en falso un contrato que estaba
+bien. Auditando la vigencia de un `contrato_` que declaraba **0** en dos anclas, mis greps dieron
+**3 y 3** — y las seis eran basura:
+
+| ancla | mi patrón | lo que cazó |
+|---|---|---|
+| `datos.desde` → 0 | `\.desde\b` | `relleno.desde` · `rango.desde` · `d.desde` — otros objetos |
+| `datos.desde` → 0 | `datos.*desde` | **prosa**: «Editar **desde** acá» · «verlo **desde** la app» |
+| `recibido` en mobile → 0 | `recibido\|✓✓` | **prosa de tests ajenos**: «respeta el `size` **recibido**» |
+
+**El contrato tenía razón en las dos.** Si hubiera publicado mis números, el efecto no era un
+hallazgo: era declarar **caída** un ancla vigente y mandar a re-medir trabajo que estaba bien
+descrito. Es el costo inverso al del falso `0` —que borra una divergencia— y llega con la misma cara
+de rigor (*«lo re-medí contra main, hoy da 3»*).
+
+🔑 **La causa es estructural, no un descuido:** este repo escribe **código en inglés y comentarios en
+español**, y varios identificadores del dominio son **palabras funcionales del idioma de los
+comentarios** — `desde`, `hasta`, `estado`, `cuenta`, `origen`, `recibido`. Para esos, el nombre no
+distingue código de prosa: cualquier patrón que no ancle el **receptor** mide las dos cosas.
+
+**Cómo aplicarlo**
+- Si el identificador es también una palabra común del español, el patrón se ancla al **receptor
+  completo** (`datos\.desde\b`, no `\.desde`) y, mejor, al **call-site** (`datos\.desde` dentro del
+  módulo que lo consume).
+- **Cuando N es chico, el conteo no alcanza: abrí los N.** `-c` dio «3» y los 3 eran falsos; `-n`
+  los mostró en una línea. Un número sin sus líneas no distingue hit de prosa, y es lo único que
+  separa «el ancla cayó» de «mi patrón es laxo».
+- Y la asimetría a tener presente: contra un artefacto **ajeno**, un falso positivo lo declara
+  rancio. Antes de refutar una medición que no es tuya, mirá los hits uno por uno.
+  → [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+

@@ -113,3 +113,20 @@ universo que medí es el universo del que estoy hablando?* Cuatro filas y cincue
 son el mismo sujeto, y la frase no lo decía. Ver
 [[el-instrumento-respondio-sobre-otro-sujeto]] — mismo error de sujeto, pero del lado del **alcance
 de la afirmación** en vez del lado del objeto medido.
+
+## Refuerzo 2026-10-13 — la actualización apendeada dejó una fila contando PENDIENTE con el trabajo hecho
+
+Caso limpio y con costo medible. La fila `caida` del padrón del sprint tiene 5 divergencias. Tres estaban `sin veredicto` en la
+**tabla**, y sus veredictos existían —con `path:línea`— en una *«Actualización 2026-10-13 (frontend2)»* **apendeada 1 línea debajo
+de la tabla** (`2026-10-13-veredicto-bloque-chat-backend.md:102`). La cuarta (`#2`) decía `ABIERTA · ninguna app lee datos.desde`
+y estaba cerrada en `main` desde el PR #1124 — además **por otra vía** que la que la celda pedía (la resolvió el presentador del
+backend, `mi_dia_presentacion.py:285-289`, y la app no tuvo que tocar nada: así lo manda H12/DETALLEKV).
+
+**El medidor lee la tabla.** Resultado: `39/54 (72%)` con `caida` entre las `PENDIENTE-DECLARADA`, cuando el trabajo estaba hecho.
+Una celda de tabla cuesta 1 línea y vale **+1 fila del sprint**.
+
+**Lo nuevo:** el apéndice no compite sólo con el titular por la atención de un lector humano —compite por la de un **instrumento**,
+que no tiene atención: parsea una estructura y el apéndice no está en ella. Cuando el artefacto refutado es el que un script lee,
+«apendear» no es una versión menos buena de corregir: **es no corregir**.
+**Cómo aplicarlo:** antes de appendear una corrección, preguntá *¿algún script parsea esto?* Si la respuesta es sí, el único lugar
+válido es la celda/el campo que el script lee. Y si no sos el dueño del doc, el pedido se escribe **nombrando la celda**, no el doc.

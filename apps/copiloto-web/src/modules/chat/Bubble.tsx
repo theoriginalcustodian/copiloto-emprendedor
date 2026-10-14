@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { formatearDuracion } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
+import { Marca } from '../../design-system/Marca';
 import type { ReplyCard } from '../../lib/api';
 import { ArtifactView } from './ArtifactView';
 import './chat.css';
@@ -28,6 +29,9 @@ export interface BubbleProps {
 // con regex globales reusadas).
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 
+/** `.msg-row .quien` del prototipo: 38px. */
+const AVATAR_ASISTENTE = 38;
+
 function linkifyText(text: string): ReactNode {
   const parts = text.split(URL_RE);
   if (parts.length === 1) return text;
@@ -47,6 +51,12 @@ function linkifyText(text: string): ReactNode {
  * recibido" en `--ok-fg`. Asistente: `Surface variant="bubble" blur` (tokens `--bubble-*`, blur
  * real del mock), radio `20 20 20 6`. NO incluye el sub-header "SESIÓN ACTIVA · HOY" (decisión
  * congelada del plan — el diseño más reciente lo eliminó, ver prompt del Task 12).
+ *
+ * AVATARASIST — el par por rol del prototipo (`index.html:3191`, helper `O`): la burbuja del asistente
+ * lleva el isotipo a su izquierda (`.msg-row` + `.quien`, alineado al borde inferior) y la del
+ * emprendedor lleva en cambio la meta «✓✓ recibido». Es el `Marca` del design system (el mismo del
+ * vacío del chat y del login): acá NO hay un isotipo propio ni un asset. El tamaño y el hueco son los
+ * del prototipo (`.quien` 38px, `gap: var(--s1)`).
  */
 export function Bubble({ role, text, card, porVoz }: BubbleProps) {
   if (role === 'user') {
@@ -71,9 +81,12 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
 
   return (
     <div className="chat-row chat-row--assistant">
-      <Surface variant="bubble" blur className="chat-bubble chat-bubble--assistant">
-        <p className="chat-bubble__text">{linkifyText(text)}</p>
-      </Surface>
+      <div className="chat-asistente">
+        <Marca size={AVATAR_ASISTENTE} />
+        <Surface variant="bubble" blur className="chat-bubble chat-bubble--assistant">
+          <p className="chat-bubble__text">{linkifyText(text)}</p>
+        </Surface>
+      </div>
       {artifactCard && <ArtifactView card={artifactCard} />}
     </div>
   );

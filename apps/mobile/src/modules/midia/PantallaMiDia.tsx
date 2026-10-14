@@ -310,10 +310,12 @@ export interface PantallaMiDiaProps {
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
   onAgenda?: () => void;
   /**
-   * H5b — abre la pantalla de ESA conexión (`destino.tipo === 'conexion'`, `servicio` = `destino.id`). La
-   * cablea el shell. Sin él, o con un `destino` ausente/desconocido, la acción crítica cae a `onAjustes`.
+   * H5b — abre la pantalla a la que apunta `destino` (la conexión, el comprobante, AFIP: ver
+   * `rutaDeDestino`). Recibe la ruta YA resuelta; a qué pantalla de la app corresponde lo decide el
+   * shell (`hrefDeRuta` + `empujarUnaVez`). Sin él, o con un `destino` ausente/desconocido, la acción
+   * crítica cae a `onAjustes` y la de `presentacion` queda como rótulo.
    */
-  onConexion?: (servicio: string) => void;
+  onDestino?: (ruta: RutaDestino) => void;
   /**
    * `hitl (a)` — el puente tarjeta → chat (C-D5 Opción A). Tocar el verbo de una tarjeta detectada lleva su
    * aviso al chat principal, **sembrado en el composer**. Lo cablea el shell, porque el chat vive en la
@@ -327,7 +329,7 @@ export function PantallaMiDia({
   comoPortada = false,
   onAjustes,
   onAgenda,
-  onConexion,
+  onDestino,
   onAvisoAlChat,
 }: PantallaMiDiaProps = {}) {
   const tema = useTema();
@@ -483,13 +485,13 @@ export function PantallaMiDia({
             necesita que el backend mande `destino` en la tarjeta (ver el `pedido_` de DEVICE15 H5). */}
         <BannerCritico
           tablero={tablero}
-          // H5b: lleva a la conexión que dice `destino`; sin destino conocido, a Ajustes (lo de antes). Sin
+          // H5b: lleva a donde dice `destino`; sin destino conocido, a Ajustes (lo de antes). Sin
           // ninguno de los dos callbacks la píldora queda como rótulo (ver `BannerCritico`).
           onAccion={
-            onAjustes != null || onConexion != null
+            onAjustes != null || onDestino != null
               ? (t) => {
                   const ruta = rutaDeDestino(t.destino);
-                  if (ruta?.tipo === 'conexion' && onConexion != null) onConexion(ruta.servicio);
+                  if (ruta != null && onDestino != null) onDestino(ruta);
                   else onAjustes?.();
                 }
               : undefined
@@ -570,7 +572,7 @@ export function PantallaMiDia({
                     // §C: la acción de `presentacion` rutea por `rutaDeDestino` TAL CUAL. Sin handler (o con
                     // un `tipo` que esta versión no conoce) queda como rótulo — nunca cae a Ajustes por su
                     // cuenta: acá no hay una pantalla «por defecto» que no sea adivinar.
-                    onAccion={onConexion != null ? (ruta) => onConexion(ruta.servicio) : undefined}
+                    onAccion={onDestino}
                     onAviso={onAvisoAlChat}
                   />
                 ))}

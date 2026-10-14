@@ -95,3 +95,21 @@ distintos; (3) cuando un canal redundante humano existe, el canal roto **no da s
 automático a propósito, porque el trabajo que fluye no lo acredita; (4) el control que vale es el
 **delta del instrumento**: antes 3, después 6. Un «quedó bien» sin las dos cifras no distingue el
 rescate de no haber hecho nada.
+
+## Refuerzo 2026-10-13 — un archivo **editado** no es un archivo nuevo: el watcher sólo empuja los nuevos
+
+Corregí un `contrato_` **en el titular** (lo correcto) y casi lo dejo ahí. El archivo ya estaba en `en-curso/`: lo habían
+**tomado**. Y el push de buzón del harness (`buzon_watcher`) avisa de **mensajes nuevos**; un archivo cuyo contenido cambia no
+emite nada. O sea: la corrección quedó escrita en el único lugar que el destinatario **ya leyó y no va a volver a abrir**.
+
+**El par de reglas, que es lo que faltaba escrito:**
+
+| situación | dónde va la corrección | qué más hace falta |
+|---|---|---|
+| el archivo sigue en `abierto/` | en el titular, y alcanza | nada: cuando lo tomen, leerán la versión corregida |
+| el archivo está en `en-curso/` o `cerrado/` | **igual en el titular** (no apendeada) | **+ un `dato_` nuevo** que nombre qué decía mal y qué cambia en la práctica |
+
+Lo segundo no es redundancia: el titular corregido es el **registro** (lo que lee quien llegue mañana, y lo que lee un medidor),
+y el `dato_` nuevo es la **entrega** (lo único que dispara el watcher). Son dos funciones distintas y ninguna reemplaza a la otra
+— exactamente la distinción que esta entrada ya hacía entre «escribí» y «lo leyeron», ahora del lado de la **edición**.
+Relacionado: [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] (por qué el titular y no un apéndice).

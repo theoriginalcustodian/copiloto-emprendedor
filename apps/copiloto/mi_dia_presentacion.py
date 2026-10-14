@@ -28,7 +28,10 @@ en vez de salir muda, y `REGLAS_CONOCIDAS` (de `mi_dia_clasificacion`) sigue sie
 * `tono` reusa `criticidad` (`critico|pronto|sin_plazo`): no hay una tercera escala.
 * `accion.destino.tipo` es un ENUM CERRADO (`TIPOS_DESTINO_ACCION`), extensión del `destino` de H5b. La app
   trata un `tipo` desconocido como «rótulo sin acción»; por eso agregar uno exige enmendar el contrato.
-* Regla sin verbo (`gasto_del_mes_alto`) NO lleva `accion`. Una regla DESCONOCIDA no lleva `presentacion`
+* Regla sin verbo (`gasto_del_mes_alto`) NO lleva `accion`; tampoco las dos de **trabajo**: el prototipo no
+  tiene tarjeta de trabajo, así que ninguna superficie puede cumplir un verbo (contrato del 2026-10-14: un
+  verbo sin pantalla es la píldora muerta, y la raíz es prometerlo acá, no el `case` que falta en la app).
+  Una regla DESCONOCIDA no lleva `presentacion`
   (`None`); la tarjeta anotada a mano (`regla is None`) sí: «Lo anotaste vos» + la fila «Anotado».
 * Nada se fabrica: una fila, un chip o una frase sólo existe si el dato que lo sostiene está en `datos`. Una
   tarjeta vieja sin fecha sale sin esa fila, no con una fecha inventada.
@@ -53,7 +56,7 @@ from mi_dia_clasificacion import clasificar
 
 TIPO_DESTINO_COMPROBANTE = "comprobante"
 TIPO_DESTINO_PRESUPUESTO = "presupuesto"
-TIPO_DESTINO_TRABAJO = "trabajo"
+TIPO_DESTINO_TRABAJO = "trabajo"   # sigue en el enum (cambiarlo es contrato); hoy ninguna regla lo emite
 TIPO_DESTINO_CERTIFICADO = "certificado"
 
 #: ENUM CERRADO de `accion.destino.tipo`. Un valor nuevo exige enmendar el contrato (ver docstring).
@@ -265,9 +268,29 @@ def _gasto_del_mes_alto(datos, entidad_id, creada, hoy):
     return None, _kv(("Este mes", actual), ("Mes anterior", anterior)), prosa
 
 
+def _instante(v) -> datetime.datetime | None:
+    """El INSTANTE (fecha + hora) de un ISO, o `None`. Una fecha sola (`2026-09-12`) NO es un instante: dar
+    «Hoy, 0:00» sería una hora fabricada, así que se degrada a «sin instante» y la fila se omite."""
+    if isinstance(v, datetime.datetime):
+        return v
+    if isinstance(v, str) and len(v.strip()) > 10:
+        try:
+            return datetime.datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+        except ValueError:
+            # Instante ilegible: degradar a «sin instante» es lo correcto -- el presentador OMITE la fila
+            # «Se cayó», no inventa una hora (ni la sustituye por `creada`, que es cuándo corrió el detector).
+            return None
+    return None
+
+
 def _conexion_caida(datos, entidad_id, creada, hoy):
     nombre = datos.get("nombre")
-    return None, _kv(("Servicio", nombre)), f"Se cortó la conexión con {nombre}." if nombre else None
+    # «Se cayó» sólo si el detector trajo el instante REAL de la caída (`datos["desde"]`, hoy sólo MercadoPago).
+    # Ausente ⇒ sin fila: NUNCA `creada` como sustituto — es cuándo corrió el detector, no cuándo se cayó.
+    desde = _instante(datos.get("desde"))
+    se_cayo = _momento_texto(desde, hoy) if desde else None
+    return (None, _kv(("Servicio", nombre), ("Se cayó", se_cayo)),
+            f"Se cortó la conexión con {nombre}." if nombre else None)
 
 
 #: regla → (tipo del `accion.destino` o `None` si la regla no lleva acción, presentador).
@@ -277,8 +300,8 @@ _PRESENTADORES = {
     "presupuestos_enfriandose":         (TIPO_DESTINO_PRESUPUESTO, _presupuestos_enfriandose),
     "cae_por_vencer":                   (TIPO_DESTINO_COMPROBANTE, _cae_por_vencer),
     "certificado_afip_por_vencer":      (TIPO_DESTINO_CERTIFICADO, _certificado_afip_por_vencer),
-    "trabajo_con_margen_negativo":      (TIPO_DESTINO_TRABAJO, _trabajo_con_margen_negativo),
-    "trabajo_con_gastos_y_sin_ingreso": (TIPO_DESTINO_TRABAJO, _trabajo_con_gastos_y_sin_ingreso),
+    "trabajo_con_margen_negativo":      (None, _trabajo_con_margen_negativo),
+    "trabajo_con_gastos_y_sin_ingreso": (None, _trabajo_con_gastos_y_sin_ingreso),
     "gasto_del_mes_alto":               (None, _gasto_del_mes_alto),
     "conexion_caida":                   (TIPO_DESTINO_CONEXION, _conexion_caida),
 }
@@ -290,21 +313,25 @@ def _destino(tipo: str, entidad_id) -> dict:
     return {"tipo": tipo, "id": str(entidad_id)}
 
 
+def _momento_texto(instante: datetime.datetime, hoy: datetime.date) -> str:
+    """`Hoy, 19:20` · `Ayer, 19:20` · `12 de septiembre, 19:20`, en la zona del producto (`DEFAULT_TZ`).
+    Un solo formato para «Anotado» y «Se cayó»: dos copias del mismo texto se desincronizan."""
+    local = _en_local(instante)
+    dias = (hoy - local.date()).days
+    hora = local.strftime("%H:%M")
+    if dias == 0:
+        return f"Hoy, {hora}"
+    if dias == 1:
+        return f"Ayer, {hora}"
+    return f"{_fecha_texto(local.date(), hoy)}, {hora}"
+
+
 def _anotada_a_mano(creada, hoy: datetime.date) -> dict | None:
     """Tarjeta sin regla: «Lo anotaste vos» + UNA fila «Anotado» con el momento (`Ayer, 19:20`). Sin
     `creada_en` no hay momento que decir, y entonces tampoco hay nada que presentar."""
     if not isinstance(creada, datetime.datetime):
         return None
-    local = _en_local(creada)
-    dias = (hoy - local.date()).days
-    hora = local.strftime("%H:%M")
-    if dias == 0:
-        cuando = f"Hoy, {hora}"
-    elif dias == 1:
-        cuando = f"Ayer, {hora}"
-    else:
-        cuando = f"{_fecha_texto(local.date(), hoy)}, {hora}"
-    return {"prosa": PROSA_ANOTADA_A_MANO, "kv": [{"k": "Anotado", "v": cuando}]}
+    return {"prosa": PROSA_ANOTADA_A_MANO, "kv": [{"k": "Anotado", "v": _momento_texto(creada, hoy)}]}
 
 
 def presentar(regla: str | None, entidad_id, datos, creada=None, hoy: datetime.date | None = None) -> dict | None:
