@@ -48,6 +48,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const identidad = await api.me();
       setMeData(identidad);
+      // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
+      // cae la sesión sola, no es «volver» ni «primera vez»). Va en el MISMO batch que `autenticado`
+      // y NO en un effect sobre `[estado]`: ese effect queda pendiente tras el commit y, si el logout
+      // cae en esa ventana, React lo vacía DESPUÉS del `setCierreVoluntario({ email })` del logout y lo
+      // pisa con `undefined` (medido con reproductor determinista: `cierreVoluntario.ventana.test.tsx`;
+      // gemelo del fix web #1152). `primeraVez` no tiene escritor posterior al montaje, pero comparte
+      // sitio para no dejar dos mecanismos de limpieza.
+      setCierreVoluntario(undefined);
+      setPrimeraVez(false);
       setEstado('autenticado');
       // Sesión viva confirmada ⇒ rearmar el aviso, o la SEGUNDA muerte saldría muda (CTA5). Va acá y
       // no en `login` porque los tres caminos de entrada —email, Google, y el probe del arranque—
@@ -156,15 +165,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (segundoIntento === 'ok') return { ok: true };
     return { ok: false, error: 'no-habilitada' };
   }, [validarSesion]);
-
-  // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
-  // cae la sesión sola, no es «volver» ni «primera vez»).
-  useEffect(() => {
-    if (estado === 'autenticado') {
-      setCierreVoluntario(undefined);
-      setPrimeraVez(false);
-    }
-  }, [estado]);
 
   const emailRef = useRef<string | null>(null);
   emailRef.current = meData?.email ?? null;
