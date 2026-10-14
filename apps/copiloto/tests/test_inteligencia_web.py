@@ -192,38 +192,21 @@ def test_margen_trabajo_detalle_inexistente_es_404():
 
 # --- el chat (§3) ---
 
-def test_chat_sin_chat_factory_es_200_no_tengo_ese_dato():
-    """Punto de encuentro: sin LLM/Graphity configurados (best-effort, como `memory_provider`), el
-    endpoint sigue vivo — nunca 500."""
-    r = _app().post("/inteligencia/chat", json={"texto": "¿cuánto me queda?"})
-    assert r.status_code == 200
-    assert r.json() == {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
+def test_chat_retirado_la_ruta_no_existe_SME3():
+    """SM-E3: `POST /inteligencia/chat` ya no se expone. CON control positivo en la MISMA app: si la
+    app estuviera rota (o el cliente mal armado), la ruta hermana también daría != 200 y el 404 no
+    probaría nada sobre el chat."""
+    c = _app()
+    assert c.get("/inteligencia/portada").status_code == 200          # control positivo: la app vive
+    for body in ({"texto": "¿cuánto me queda?"}, {}):
+        r = c.post("/inteligencia/chat", json=body)
+        assert r.status_code in (404, 405), r.text                    # ni 200 ni 422: no hay handler
 
 
-def test_chat_pasa_el_texto_y_el_cliente_id_a_la_factory():
-    vistos = []
-
-    class _Chat:
-        def __init__(self, cid):
-            vistos.append(cid)
-
-        def responder(self, texto):
-            vistos.append(texto)
-            return {"respuesta": "ok", "fuente": "sql"}
-
-    r = _app(require_tenant=_tenant_fijo("cid-XYZ"),
-            chat_factory=lambda cid: _Chat(cid)).post(
-        "/inteligencia/chat", json={"texto": "¿cuánto facturé?"})
-    assert r.status_code == 200
-    assert r.json() == {"respuesta": "ok", "fuente": "sql"}
-    assert vistos == ["cid-XYZ", "¿cuánto facturé?"]
+def test_chat_retirado_tampoco_por_GET_SME3():
+    assert _app().get("/inteligencia/chat").status_code == 404
 
 
-def test_chat_sin_texto_es_422_body_invalido():
-    r = _app().post("/inteligencia/chat", json={})
-    assert r.status_code == 422
-
-
-def test_chat_sin_token_es_401():
-    r = _app(require_tenant=_tenant_401()).post("/inteligencia/chat", json={"texto": "hola"})
-    assert r.status_code == 401
+def test_create_inteligencia_app_ya_no_acepta_chat_factory_SME3():
+    with pytest.raises(TypeError):
+        create_inteligencia_app(require_tenant=_tenant_fijo(), chat_factory=lambda cid: None)

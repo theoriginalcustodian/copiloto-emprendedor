@@ -63,7 +63,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
 | **SM-E1** | `#1005` | ⬜ PENDIENTE | — |
 | **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | el DoD manda RETIRAR POST /inteligencia/chat y sigue vivo en apps/copiloto/inteligencia_web.py:129 (medido 14-10); la… |
+| **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
@@ -405,8 +405,8 @@ no el arranque del sprint.***
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** el DoD manda RETIRAR POST /inteligencia/chat y sigue vivo en apps/copiloto/inteligencia_web.py:129 (medido 14-10); las 4 capacidades cableadas sin verificar. Lo acredita backend
+- **Estado:** EN-CURSO
+- **Dueno-activo:** backend
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira

@@ -208,7 +208,7 @@ class GraphityStructuredClient:
         """`GET /graph/edge/graph/{group_id}` — TODAS las aristas del graph (paginado por `limit`), con
         `invalid_at` en la raíz (no bajo `attributes` — mismo shape que `get_edge`). Sirve de sustituto
         de `traverse`: sin navegación por uuid, se trae el listado y se resuelve la relación en memoria
-        (el dataset de negocio es chico; ver el límite conocido en `inteligencia_chat.py`).
+        (el dataset de negocio es chico).
 
         🔴 `limit` tope real del server: **100** (`le=100` en el schema de query, verificado 2026-08-04
         contra el server vivo — un `limit=500` da 422, no trunca). Paginar de a 100 si el graph crece."""

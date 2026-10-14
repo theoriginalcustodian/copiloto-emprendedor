@@ -10,8 +10,10 @@ portada respondió" de "la ruta no existe y el front-door devolvió el HTML del 
 `dato_..._IN-capa-de-queries-forma-final`): los 4 gráficos. Cada uno acepta `?detalle=<segmento>` —
 MISMA query, agregado o desglosado, sin segundo camino al mismo número (§0). `entro-vs-salio` reusa
 `_serie_mensual` de la portada tal cual, sólo renombra las claves; `margen-trabajo` reusa
-`TrabajoStore.margen()` (la ficha del presupuesto), agregado por raíz de cadena. El chat (§3) viene en
-un módulo aparte, todavía no expuesto acá.
+`TrabajoStore.margen()` (la ficha del presupuesto), agregado por raíz de cadena.
+
+`POST /inteligencia/chat` fue RETIRADO (SM-E3, 2026-10-14): ninguna pantalla lo llamaba y el chat
+conversacional ya es el del motor. No volver a exponerlo sin una pantalla que lo consuma.
 
 Mismo patrón que el resto de los `*_web.py`: deps inyectadas, se testea entero sin DB ni Temporal; el
 `cliente_id` sale SIEMPRE de `Depends(require_tenant)`.
@@ -22,24 +24,16 @@ import asyncio
 from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel
 
 from gasto_store import hoy_del_negocio
 from trabajo_store import TrabajoInexistente
 
 
-class ChatIn(BaseModel):
-    texto: str
-    session_id: str = ""
-
-
 def create_inteligencia_app(*, require_tenant: Callable,
-                            queries_factory: Callable | None = None,
-                            chat_factory: Callable | None = None) -> FastAPI:
-    """`queries_factory(cliente_id) -> InteligenciaQueries`. `chat_factory(cliente_id) ->
-    InteligenciaChat`. Ambos opcionales a propósito: sin ellos (los tests del front-door que no arman
-    DB/LLM) el endpoint devuelve la forma final con datos en cero, y la app no se entera del cambio —
-    la misma forma en los dos casos, como `actividad_web`."""
+                            queries_factory: Callable | None = None) -> FastAPI:
+    """`queries_factory(cliente_id) -> InteligenciaQueries`. Opcional a propósito: sin él (los tests
+    del front-door que no arman DB) el endpoint devuelve la forma final con datos en cero, y la app no
+    se entera del cambio — la misma forma en los dos casos, como `actividad_web`."""
     app = FastAPI(title="Copiloto Inteligencia")
 
     @app.get("/inteligencia/portada")
@@ -125,12 +119,5 @@ def create_inteligencia_app(*, require_tenant: Callable,
             except TrabajoInexistente as e:
                 raise HTTPException(status_code=404, detail="trabajo inexistente") from e
         return await asyncio.to_thread(q.margen_por_trabajo)
-
-    @app.post("/inteligencia/chat")
-    async def chat(payload: ChatIn, cliente_id: str = Depends(require_tenant)) -> dict:
-        if chat_factory is None:
-            return {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
-        c = chat_factory(cliente_id)
-        return await asyncio.to_thread(lambda: c.responder(payload.texto))
 
     return app
