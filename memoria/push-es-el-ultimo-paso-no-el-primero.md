@@ -210,3 +210,28 @@ borra la procedencia que yo cité, acá borra la que yo busco.
 **Y el costo real no es el aviso errado: es el inflado.** El mismo control me dio «20 worktrees con 57
 commits sin respaldo». Si cada rama ya mergeada aporta falsos, el número grande deja de significar algo
 y el próximo aviso verdadero llega mezclado con ruido — [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].
+
+### Enmienda del mismo día: `git cherry` tampoco alcanza — falla con el squash de N→1
+
+El refuerzo de arriba dice que `git cherry` es la herramienta correcta. **Es mejor que `ls-remote`,
+pero no es suficiente**, y lo medí media hora después de escribirlo.
+
+`wt-mpdoble` (`backend/entro-cuenta-el-pago-mp-dos-veces`) daba `cherry+=3`, o sea tres commits «no
+upstream» — y su PR **#1023 estaba `MERGED`** desde el 12/10 (`6d3b3579`, «un pago MercadoPago se
+contaba dos veces»). Las anclas estaban en `main`: `esAnulable` 4 archivos, `nota_credito` 28.
+
+La razón es aritmética: **un squash de 3 commits en 1 produce un `patch-id` combinado que no coincide
+con el de ninguno de los tres.** `git cherry` compara commit a commit, así que los marca `+` a los
+tres. Acierta cuando el squash fue 1→1 (el caso de `092937f7`) y falla cuando fue N→1.
+
+→ **El único control que no se rompe es el estado final: `git diff origin/main <rama>` archivo por
+archivo, y el PR de la rama.** Con una trampa que hay que anticipar: si la rama está vieja, ese diff
+viene dominado por lo que `main` avanzó (acá: 479 archivos y −40426 líneas, de los cuales su aporte
+real era 0). Hay que mirar **sólo los archivos que la rama tocó** —
+`git diff --name-only origin/main...HEAD` — y preguntar de cada uno si difiere; ver
+[[base-rancia-invierte-la-direccion-del-diff]].
+
+**La forma del error se repite en tres niveles:** `ls-remote` mide la rama, `cherry` mide el commit,
+y el respaldo vive en el contenido. Cada instrumento nuevo acercó el sujeto medido al real sin
+alcanzarlo, y las dos veces el que lo creyó suficiente fui yo. Antes de confiar en el próximo:
+¿cuál es el caso en que este control diría «falta» sobre algo que ya está?
