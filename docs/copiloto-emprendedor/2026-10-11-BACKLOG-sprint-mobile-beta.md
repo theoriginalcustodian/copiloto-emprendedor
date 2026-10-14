@@ -58,9 +58,9 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ✅ TERMINADO | merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chi… |
 | **SM-D4** | `#1021` | ✅ TERMINADO | merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cu… |
-| **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
+| **SM-D5** | `#1007` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
 | **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
-| **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
+| **SM-D7** | `#1009` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | ENMENDADO 14-10 — un tenant RI NO ES FABRICABLE por el camino real (CONDICIONES_EMISOR_SOPORTADAS = {MONOTRIBUTO, EXE… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO, FALTA DEVICE (+1 punto bloqueado por el operador). Las 5 capacidades quedaron clasificadas, ninguna … |
@@ -420,8 +420,8 @@ no el arranque del sprint.***
 
 ### SM-D5 · `#1007` — La card de confirmación queda activa después de responderla
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se reemplaza por un Recibo sin botones al responderla (ListaMensajes) y useChat.send descarta un segundo callback sobre una card ya marcada hitlRespondido (dos toques en el mismo frame); test con mutante muerto
+- **Estado:** TERMINADO
+- **Cierre:** merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon
 - **DoD:** la card responde **una vez** y queda resuelta; un segundo toque **no reenvía**.
 - **Criterio 7 del DoD del sprint.** El mecanismo canónico de las cards por voz dice que nunca se
   pregunta dos veces: una card que sigue activa lo viola de hecho.
@@ -436,8 +436,8 @@ no el arranque del sprint.***
 
 ### SM-D7 · `#1009` — Anular un comprobante falla en silencio
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest en main: las 3 vías de silencio cerradas en mobile y web)
+- **Estado:** TERMINADO
+- **Cierre:** merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon
 - **Medido:** `try/finally` **sin `catch`** ⇒ la excepción se pierde y el usuario no ve nada.
 - **DoD:** el fallo **se ve** (el usuario recibe el error) y el estado no queda a medias.
 - **Criterio 3 del DoD del sprint.**

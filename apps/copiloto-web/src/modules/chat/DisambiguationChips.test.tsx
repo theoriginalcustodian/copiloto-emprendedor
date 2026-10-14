@@ -24,4 +24,17 @@ describe('DisambiguationChips', () => {
     expect(onSelect).toHaveBeenCalledWith('juan_gomez', 'Juan Gómez');
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
+
+  // SM-D1 (2026-10-14): hoy ningún productor del backend emite más de 2 choices (canario invertido
+  // `test_choices_a_lo_sumo_dos_canario.py`), así que el «3+» sólo se ejercita acá, inyectando N sin backend.
+  it('SM-D1: con 5 choices pinta 5 chips y cada uno devuelve SU value (ninguno se recorta ni se pisa)', () => {
+    const cinco: ReplyChoice[] = [1, 2, 3, 4, 5].map((n) => ({ label: `Ana ${n}`, value: `cliente:${n}` }));
+    const onSelect = vi.fn();
+    render(<DisambiguationChips choices={cinco} onSelect={onSelect} />);
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: 'Ana 5' }));
+    expect(onSelect).toHaveBeenCalledWith('cliente:5', 'Ana 5');
+    fireEvent.click(screen.getByRole('button', { name: 'Ana 3' }));
+    expect(onSelect).toHaveBeenLastCalledWith('cliente:3', 'Ana 3');
+  });
 });
