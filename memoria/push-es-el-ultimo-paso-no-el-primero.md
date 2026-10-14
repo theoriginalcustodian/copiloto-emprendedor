@@ -188,3 +188,25 @@ midiendo otra cosa, y el segundo pareció confirmar al primero por casualidad in
 → **Antes de afirmar conflicto o limpieza: leer `headRefOid` del PR y compararlo con lo que tenés
 local.** `CONFLICTING` es hipótesis hasta la segunda lectura, y `UNSTABLE` **no es rojo** — son checks
 en vuelo.
+---
+
+## Refuerzo (2026-10-14): un control de respaldo que mide la RAMA acusa a todo commit squash-mergeado
+
+Bajé un `dato_` avisando que backend tenía «1 commit SIN RESPALDO de hace 3 h». La sesión lo refutó, y
+tenía razón: `git diff --stat 092937f7 4a1fc4ea` sale **vacío** y los `patch-id` coinciden
+(`fc3b7838017a`). `4a1fc4ea` es el `#1133` ya mergeado en `main`. El trabajo estaba respaldado.
+
+Mi instrumento comparaba `git ls-remote --heads origin <rama>` contra el `HEAD` local, y eso es
+correcto para detectar un push que no salió — pero **un squash-merge deja el SHA local huérfano con su
+contenido ya en `main`**. `merge-base --is-ancestor` tampoco lo ve: también da `rc=1`. El control medía
+la **rama**; el respaldo es del **contenido**.
+
+→ **Antes de llamar «sin respaldo» a un commit local, probá el contenido, no el ancestro:**
+`git diff --stat <commit> origin/main` por archivo tocado, o `git patch-id --stable` contra los asuntos
+recientes de `main`. Un asunto idéntico en `main` es la pista barata; el `patch-id` es la prueba.
+Es la misma falla que [[la-cita-de-procedencia-muere-en-el-merge]] desde el otro lado: ahí el squash
+borra la procedencia que yo cité, acá borra la que yo busco.
+
+**Y el costo real no es el aviso errado: es el inflado.** El mismo control me dio «20 worktrees con 57
+commits sin respaldo». Si cada rama ya mergeada aporta falsos, el número grande deja de significar algo
+y el próximo aviso verdadero llega mezclado con ruido — [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].
