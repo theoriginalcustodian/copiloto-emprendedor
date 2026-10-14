@@ -213,6 +213,20 @@
   border-radius: 20px 20px 20px 6px;
 }
 
+/* AVATARASIST — `.msg-row` del prototipo: el isotipo y la burbuja del asistente en una fila, alineados al
+   borde inferior; el 88% pasa a la FILA (en el prototipo el avatar cuenta adentro del 88%, no se suma). */
+.chat-asistente {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 88%;
+}
+
+.chat-asistente > .chat-bubble--assistant {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .chat-bubble__receipt {
   margin-top: 4px;
   font-family: var(--font-mono);
