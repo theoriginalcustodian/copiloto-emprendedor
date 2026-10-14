@@ -52,6 +52,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const meResponse = await api.me();
       setMe(meResponse);
+      // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
+      // cae la sesión sola, no es «volver» ni «primera vez»). Va en el MISMO batch que `authed` y NO
+      // en un effect sobre `[status]`: ese effect queda pendiente tras el commit y, si el logout cae en
+      // esa ventana, React lo vacía DESPUÉS del `setCierreVoluntario({ email })` del logout y lo pisa
+      // con `undefined` (medido con reproductor determinista, ver `SessionProvider.test.tsx`).
+      setCierreVoluntario(undefined);
+      setPrimeraVez(false);
       setStatus('authed');
       // Sesión viva confirmada ⇒ rearmar el aviso, o la SEGUNDA muerte saldría muda (CTA5). Va acá y
       // no en `login` porque los tres caminos de entrada —email, el callback OAuth y el probe del
@@ -151,15 +158,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     [fetchMe],
   );
-
-  // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
-  // cae la sesión sola, no es «volver» ni «primera vez»).
-  useEffect(() => {
-    if (status === 'authed') {
-      setCierreVoluntario(undefined);
-      setPrimeraVez(false);
-    }
-  }, [status]);
 
   const emailRef = useRef<string | null>(null);
   emailRef.current = me?.email ?? null;

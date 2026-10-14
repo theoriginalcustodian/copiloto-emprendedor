@@ -1,4 +1,5 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
+import { useEffect, useLayoutEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/api', async (importOriginal) => {
@@ -76,6 +77,69 @@ describe('SessionProvider — cierreVoluntario (BL-X12w)', () => {
     act(() => screen.getByTestId('sonda-logout').click());
 
     expect(screen.getByTestId('sonda-status')).toHaveTextContent('anon');
+    expect(screen.getByTestId('sonda-cierre')).toHaveTextContent('ana@x.com');
+  });
+
+  // Reproductor DETERMINISTA del flaky de #1149 (run 38553332206, `Received: null` en :79). El
+  // mecanismo NO es que el click lea la ref vacía (`emailRef` se asigna en el render, antes de que el
+  // click sea posible): es que el passive effect de `[status]` que corría `setCierreVoluntario(undefined)`
+  // queda PENDIENTE tras el commit de `authed`, y si el logout cae en esa ventana React lo vacía antes de
+  // procesar el click → su update queda DESPUÉS del `{ email }` del logout y lo pisa. En producción: un
+  // logout dentro de la ventana entre el commit de `authed` y su passive effect perdía el cierre.
+  //
+  // Sin azar ni temporizadores: el click se dispara desde un LAYOUT effect, que React corre dentro del
+  // commit de `authed` y SIEMPRE antes que cualquier passive effect de ese mismo commit. Es la ventana,
+  // abierta por construcción. (El primer intento la abría con un render lento + MutationObserver y
+  // dependía del scheduler: abría en la corrida aislada y se cerraba dentro del archivo completo.)
+  it('logout dentro de la ventana commit(authed) → passive effect NO pierde el cierre voluntario', async () => {
+    const pasivosAuthedAlClick: boolean[] = [];
+    const pasivos: string[] = [];
+    let clicks = 0;
+    function SondaEnVentana() {
+      const { status, me, cierreVoluntario, logout } = useSession();
+      useEffect(() => {
+        pasivos.push(status);
+      }, [status]);
+      useLayoutEffect(() => {
+        if (status !== 'authed' || clicks > 0) return;
+        clicks += 1;
+        pasivosAuthedAlClick.push(pasivos.includes('authed'));
+        screen.getByTestId('sonda-logout').click();
+      }, [status]);
+      return (
+        <div>
+          <span data-testid="sonda-status">{status}</span>
+          <span data-testid="sonda-email">{me?.email ?? ''}</span>
+          <span data-testid="sonda-cierre">{cierreVoluntario ? cierreVoluntario.email : 'null'}</span>
+          <button type="button" data-testid="sonda-logout" onClick={logout}>
+            salir
+          </button>
+        </div>
+      );
+    }
+
+    setToken('tok-valido');
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'c1',
+      email: 'ana@x.com',
+      mp_connected: false,
+      composio_connected: [],
+      es_admin: false,
+      legal_aceptado: true,
+      legal_version_aceptada: LEGAL_VERSION,
+    });
+    render(
+      <SessionProvider>
+        <SondaEnVentana />
+      </SessionProvider>,
+    );
+    await waitFor(() => expect(clicks).toBe(1));
+
+    // Control de ceguera: el click cayó en la ventana (el passive effect de `authed` aún no había
+    // corrido). Si no, el test pasaría por ausencia de la condición que dice probar.
+    expect(pasivosAuthedAlClick).toEqual([false]);
+    expect(screen.getByTestId('sonda-status')).toHaveTextContent('anon');
+    // `toHaveTextContent('ana@x.com')` falla si el sujeto está vacío o es la cadena 'null'.
     expect(screen.getByTestId('sonda-cierre')).toHaveTextContent('ana@x.com');
   });
 
