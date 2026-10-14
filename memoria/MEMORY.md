@@ -33,6 +33,7 @@
 ## 🧭 Cómo trabajo
 ### Cadencia, cierre y ocio
 - [🎯📈 Un criterio que CRECE con cada medición no se puede alcanzar](un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar.md) — `DEC-18`: sólo UN lugar mide, y un hallazgo no reabre un ✅.
+- [🗂️🏷️ El registro no se marca si su id NO CIRCULA](el-registro-no-se-marcaba-porque-su-id-no-circulaba.md) — 18/26 fichas jamás nombradas en 460 cierres.
 - [🔁 EL BUCLE CANÓNICO - dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) - marco de todo sprint.
 - [🤞🚫 PROMETER no es ejecutar - y el gate medía la PALABRA](prometer-no-es-ejecutar-el-gate-media-la-palabra.md) - hacela antes de escribirla.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) - el blocker es tuyo.
