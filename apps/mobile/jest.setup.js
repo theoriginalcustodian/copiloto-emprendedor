@@ -26,7 +26,13 @@ jest.mock('react-native-reanimated', () => {
     // hilo de UI), así que basta con no reventar al invocarse: como los demás worklets de este mock,
     // la semántica animada real se valida en el device.
     useAnimatedScrollHandler: () => () => {},
-    withTiming: (destino) => destino,
+    // El callback de fin SE INVOCA (con `finished = true`): sin el, todo lo que el producto hace «al
+    // terminar la animacion» (`runOnJS(marcar)(...)`, el estado `abierto` de `PanelFunciones`) era
+    // INOBSERVABLE bajo test y el gesto de la pestana quedaba sin cobertura (SM-A1, issue 1010).
+    withTiming: (destino, _config, alTerminar) => {
+      if (typeof alTerminar === 'function') alTerminar(true);
+      return destino;
+    },
     withSpring: (destino) => destino,
     // BL-X10 (EntradaDiaria): `withDelay` sólo envuelve la animación real -- bajo test no hay hilo
     // UI que cruzar, así que se ignora el delay y se resuelve directo al valor final, mismo criterio

@@ -120,7 +120,23 @@ export function PanelFunciones({
       });
     };
 
-    return Gesture.Pan()
+    // 🔴 **SM-A1 (issue 1010) — el toque NO puede vivir en el `onEnd` de un Pan.** Un `Pan` sólo se
+    // ACTIVA al moverse más que el slop (`PanGestureHandler.kt`: `ACTION_UP → if (state == ACTIVE)
+    // end() else fail()`). Un toque quieto lo deja en BEGAN → FAILED y su `onEnd` **nunca corre**: la
+    // rama «`|Δy| < UMBRAL_TAP` ⇒ alternar» de abajo sólo se alcanzaba si el dedo se corría de costado
+    // más que el slop pero casi nada en vertical — o sea, al azar del temblor del dedo. Eso es la
+    // «intermitencia» medida (abre 1 de 6 al primer toque, 2026-10-11). Un `adb input motionevent`
+    // con DOWN y UP en la MISMA coordenada no tiene temblor: el toque quieto no abre NUNCA.
+    // El toque es un `Gesture.Tap()` propio, en `Race` con el Pan: gana el que reconoce primero —
+    // soltar rápido sin moverse es del Tap, moverse más que el slop es del Pan.
+    const toque = Gesture.Tap()
+      .withTestId(`${testID}-toque`)
+      .maxDuration(500)
+      .onEnd((_e, success) => {
+        if (success) alternar();
+      });
+
+    const arrastre = Gesture.Pan()
       .onBegin(() => {
         inicio.value = y.value;
       })
@@ -148,7 +164,9 @@ export function PanelFunciones({
           if (finished) runOnJS(marcar)(destino === 0);
         });
       });
-  }, [y, inicio, alto, marcar]);
+
+    return Gesture.Race(arrastre, toque);
+  }, [y, inicio, alto, marcar, testID]);
 
   const estilo = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
