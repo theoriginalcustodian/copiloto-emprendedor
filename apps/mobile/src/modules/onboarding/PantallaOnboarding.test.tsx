@@ -57,7 +57,7 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     jest.mocked(listarCatalogo).mockReset().mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio()] });
     jest.mocked(pedirLinkDeVinculacion).mockReset().mockResolvedValue({ status: 'ok', url: 'https://connect.example/lk' });
     jest.mocked(leerPortada).mockReset();
-    jest.mocked(completarOnboarding).mockReset().mockResolvedValue(true);
+    jest.mocked(completarOnboarding).mockReset().mockResolvedValue({ ok: true });
     tomarPendiente(); // el buzón es un módulo con estado: un test no hereda el pedido del anterior
     jest.spyOn(Linking, 'canOpenURL').mockReset().mockResolvedValue(true);
     jest.spyOn(Linking, 'openURL').mockReset().mockResolvedValue(undefined as never);
@@ -79,7 +79,7 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
   });
 
   it('«Después» cierra aunque no se pueda marcar (fail-soft)', async () => {
-    jest.mocked(completarOnboarding).mockResolvedValue(false);
+    jest.mocked(completarOnboarding).mockResolvedValue({ ok: false, perfilIncompleto: false });
     const onTerminar = await montar();
     fireEvent.press(await screen.findByTestId('onboarding-despues'));
     await waitFor(() => expect(onTerminar).toHaveBeenCalled());

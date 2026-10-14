@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 // texto crudo), mismo patrón que `shellNoHexLiterals.test.ts`.
-import appsModalSource from './AppsModal.tsx?raw';
 import desktopShellSource from './DesktopShell.tsx?raw';
 import desktopCss from './desktop.css?raw';
 import railSource from './Rail.tsx?raw';
@@ -19,7 +18,6 @@ import fontsWebCss from '../design-system/fonts-web.css?raw';
 const HEX_COLOR_RE = /#[0-9a-fA-F]{3,8}\b/g;
 
 const SOURCES: Record<string, string> = {
-  'AppsModal.tsx': appsModalSource,
   'DesktopShell.tsx': desktopShellSource,
   'Rail.tsx': railSource,
   'ResponsiveShell.tsx': responsiveShellSource,

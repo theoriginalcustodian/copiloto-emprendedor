@@ -278,3 +278,37 @@ awk -F'|' 'NF!=8 && /^\|/ {print NR": "NF-2" campos"}' archivo.md   # 8 = 6 colu
 Agárrate del dato que lo hace peligroso: **la fila corrida envejece bien**. Nadie la corrige porque
 cada celda, leída sola, dice algo cierto — sólo está bajo el título equivocado.
 Ver [[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]].
+
+## Refuerzo 2026-10-14 — la misma clase, en el **argv** de un proceso remoto: `ssh` NO transporta el campo vacío
+
+Hasta acá la clase era «una tabla se lee por posición». El transporte tiene la misma forma y nadie lo
+piensa como tabla: **`ssh host script a "" c` llega al otro lado como `a c`**. No llega un string
+vacío: el campo **desaparece**, y con él se corren los índices de todo lo que venía después. `$2`
+pasa a valer lo que el llamador puso en `$3`.
+
+Lo pagó `deploy/copiloto/sync-web.sh:79`, que pasa argumentos opcionales por posición. Con el 3.º
+vacío, el remoto leía el 4.º como 3.º — y el valor seguía siendo **sintácticamente válido** para su
+puesto, así que ninguna validación disparó: idéntico a la fila de `DEC-18`, donde cada celda, leída
+sola, decía algo cierto bajo el título equivocado. La diferencia es que acá **no hay archivo que
+releer**: el argv desaparece con el proceso, así que el único lugar donde el defecto es visible es un
+`echo` de los argumentos recibidos **en el remoto**.
+
+**Por qué no lo caza el reflejo de siempre:** uno escribe `"$VAR"` con comillas justamente para que un
+valor vacío cuente como un argumento. Y **del lado local funciona**: `bash -c 'echo $#' x "" y` dice 3.
+El campo se pierde en el salto, porque `ssh` concatena los argumentos en **una sola línea de comando**
+que el shell remoto vuelve a partir por espacios — las comillas locales ya se consumieron. Es un
+borrado de campo por **capa extra**, hermano de
+[[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]].
+
+**La raíz, no el parche:** no se arregla citando más (`'"'"'`… tampoco sobrevive al re-split), se arregla
+**no dejando que el campo pueda ser vacío**: un sentinel explícito (`__UC_VACIO__`) que el remoto
+traduce a cadena vacía, más un **guard de aridad** que aborta si `$#` no es el número exacto que el
+contrato declara. El guard es el que convierte un corrimiento silencioso en un rojo inmediato, y es
+la misma receta del refuerzo de arriba: contar los campos, no leerlos.
+
+**How to apply:** (1) ningún argumento posicional cruza `ssh` pudiendo estar vacío — sentinel o
+`--flag=valor`, que no se corre porque no depende de la posición; (2) el script remoto **abre** con
+`[ $# -eq N ] || { echo "ARIDAD: esperaba N, llegaron $#" >&2; exit 2; }`; (3) el control positivo es
+mandar el caso vacío a propósito y ver el rojo — sin eso, el verde acredita sólo el camino lleno
+([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) si tenés que
+diagnosticar uno ya roto, el instrumento es `printf '[%s]' "$@"` en el **remoto**: local no reproduce.

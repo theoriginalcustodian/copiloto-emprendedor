@@ -1,4 +1,4 @@
-import { leerDatosNegocio } from '@copiloto/core';
+import { leerArtefactoEnlace, leerDatosNegocio } from '@copiloto/core';
 
 import { Button, Surface } from '../../design-system';
 import type { ReplyCard } from '../../lib/api';
@@ -74,30 +74,26 @@ export function ArtifactView({ card }: ArtifactViewProps) {
     );
   }
 
-  if (card.kind === 'calendar_event') {
-    const fields = (data.fields as Record<string, unknown>) ?? {};
+  // `calendar_event` y doc/sheet/file/email_draft: el MISMO parser que la tarjeta mobile (SM-D1), así el
+  // contrato de los artefactos con enlace vive en un solo lugar.
+  const enlace = leerArtefactoEnlace(card);
+  if (enlace?.kind === 'calendar_event') {
     return (
       <div className="artifact artifact--calendar">
-        <span>{String(fields.title ?? 'Evento')}</span>
-        {url && (
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            Ver en Calendar
+        <span>{enlace.titulo}</span>
+        {enlace.url != null && (
+          <a href={enlace.url} target="_blank" rel="noopener noreferrer">
+            {enlace.etiqueta}
           </a>
         )}
       </div>
     );
   }
 
-  if (url && card.kind && ['doc', 'sheet', 'file', 'email_draft'].includes(card.kind)) {
-    const labels: Record<string, string> = {
-      doc: 'Abrir documento',
-      sheet: 'Abrir planilla',
-      file: 'Abrir archivo',
-      email_draft: 'Ver borrador',
-    };
+  if (enlace?.url != null) {
     return (
-      <a className="artifact" href={url} target="_blank" rel="noopener noreferrer">
-        {labels[card.kind]}
+      <a className="artifact" href={enlace.url} target="_blank" rel="noopener noreferrer">
+        {enlace.etiqueta}
       </a>
     );
   }

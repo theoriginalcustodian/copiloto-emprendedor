@@ -18,7 +18,6 @@ import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { DesktopShell } from './DesktopShell';
-import { ModeProvider } from './modeStore';
 
 const mockListarActividad = vi.mocked(listarActividad);
 const mockObtenerCliente = vi.mocked(obtenerCliente);
@@ -59,9 +58,7 @@ function renderDesktopShell(initialTab?: 'chat' | 'connections' | 'account') {
   return render(
     <ThemeProvider>
       <SessionProvider>
-        <ModeProvider>
-          <DesktopShell initialTab={initialTab} />
-        </ModeProvider>
+        <DesktopShell initialTab={initialTab} />
       </SessionProvider>
     </ThemeProvider>,
   );

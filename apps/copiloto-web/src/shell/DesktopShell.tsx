@@ -4,7 +4,6 @@ import { useSession } from '../auth/useSession';
 import { Toast } from '../design-system';
 import { AdminScreen } from '../modules/admin';
 import { ChatScreen } from '../modules/chat';
-import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
@@ -20,7 +19,6 @@ import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
 import { MiTicketScreen, SoporteScreen } from '../modules/soporte';
-import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { Rail } from './Rail';
 import { type TabKey } from './TabBar';
@@ -40,11 +38,7 @@ const DEFAULT_TAB: TabKey = 'midia';
  * (`fonts-web.css` lo lee para resolver `--font-display`/`--font-body` a Space Grotesk/Manrope) —
  * el resto del design-system (temas, escala, `--font-mono`) es 100% compartido con mobile.
  *
- * "Apps" (gap estructural #1 del audit desktop) NO es una pantalla de tab: el diseño
- * (`Copiloto Web.dc.html:363-402`) la presenta como un MODAL centrado, overlay sobre lo que sea que
- * esté activo detrás (`AppsModal`, hermano de `<main>`, no un reemplazo de su contenido). Por eso
- * `activeTab` nunca vale `'apps'` — el ítem "Apps" del Rail abre `appsModalOpen` en vez de navegar,
- * y `chat`/`connections`/`account` siguen montados debajo sin interrupción.
+ * La pantalla «Tus apps» (modal) y sus modos se RETIRARON (SM-D3, issue 1019): ver `AppShell.tsx`.
  */
 export interface DesktopShellProps {
   /** BETA-4b: mismo criterio que `AppShell.initialTab` — ver su docstring. */
@@ -59,11 +53,6 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   // un `undefined` que cualquier `&&` de abajo leería como "no", pero un `!` leería como "sí".
   const { me } = useSession();
   const esAdmin = me?.es_admin === true;
-  const [appsModalOpen, setAppsModalOpen] = useState(false);
-  // `AppsModal` queda SIEMPRE montado (necesario para animar el cierre) — sin este gate,
-  // `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del shell
-  // aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no resetea.
-  const [appsEverOpened, setAppsEverOpened] = useState(false);
   // Ver docstring equivalente en AppShell.tsx.
   const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
   const avisarNoDisponible = useCallback(() => {
@@ -86,15 +75,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     activeTab === 'escritorio',
   );
 
-  // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
-  // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
-  // grande, fuera de este contrato).
   const handleTabChange = useCallback((key: TabKey) => {
-    if (key === 'apps') {
-      setAppsModalOpen(true);
-      setAppsEverOpened(true);
-      return;
-    }
     // Ver el mismo comentario en `AppShell.tsx`: cambiar de tab con un ticket abierto lo cierra.
     setTicketIdAbierto(null);
     // D14 — ver el mismo comentario en `AppShell.tsx`.
@@ -128,13 +109,6 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const abrirSoporte = useCallback((funcion: FuncionSoporte) => {
     setFuncionSoporte(funcion);
     setActiveTab('soporte');
-  }, []);
-
-  const closeAppsModal = useCallback(() => setAppsModalOpen(false), []);
-
-  const goToConnectionsFromApps = useCallback(() => {
-    setAppsModalOpen(false);
-    setActiveTab('connections');
   }, []);
 
   return (
@@ -205,9 +179,6 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
           </>
         )}
       </main>
-      <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
-        {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
-      </AppsModal>
       {avisoPendiente != null && (
         <Toast message={avisoPendiente} onDismiss={() => setAvisoPendiente(null)} />
       )}

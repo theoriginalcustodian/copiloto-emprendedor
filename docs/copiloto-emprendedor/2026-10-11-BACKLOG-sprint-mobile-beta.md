@@ -51,23 +51,23 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
-| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | frontend: predicado unico en packages/core/src/api/onboarding.ts junto a debeMostrarOnboarding, test adversarial por … |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 H… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
-| **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
+| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
-| **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
+| **SM-D3** | `#1019` | 🟨 EN-CURSO | frontend2 |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
-| **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
-| **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
-| **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
+| **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
+| **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
+| **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | 🟧 DOD-PARCIAL | receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado… |
+| **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -213,7 +213,7 @@ no el arranque del sprint.***
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** frontend: predicado unico en packages/core/src/api/onboarding.ts junto a debeMostrarOnboarding, test adversarial por app, y donde la persona carga los dos campos ANTES del shell (Ajustes esta dentro del shell). Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza 409 perfil_minimo_incompleto
+- **Falta:** Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 HECHO por planificacion en el PR #1166: predicado unico faltantesDelPerfilMinimo + perfilMinimoCompleto + CAMPOS_PERFIL_MINIMO junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts), y completarOnboarding dejo de tragar el 409 -- devuelve {ok,perfilIncompleto,faltantes} (21/21 verdes, mutante 2 rojos/19 verdes). FALTA, de frontend con pantalla y dueno (contrato bajado 14-10, mobile=frontend1 / web=frontend2): (2) el paso del hilo de onboarding que pide los DOS campos -- hoy los dos call-sites DESCARTAN el retorno (apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:97, apps/copiloto-web/src/modules/onboarding/Onboarding.tsx:98), asi que con el gate vivo la persona entra al shell y el server no la deja hacer nada sin decirle que le falta; (3)(4) test adversarial por app: uno de los dos campos vacio no entra, control positivo con los dos llenos, y solo-espacios cuenta como vacio. La decision (a) un paso en el hilo, NO (b) Ajustes dentro del gate: resuelta, no contradice el DoD porque el hilo ya existe y ya tiene pasos.
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
@@ -314,7 +314,8 @@ no el arranque del sprint.***
 
 ### SM-D1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento/doc/planilla/archivo/borrador) se muestra con su enlace. Código y tests (13 jest + parser core + web ArtifactView) en main; el DoD pide device.
 - **Medido, y lo declara el propio código:** `apps/mobile/src/modules/chat/Burbuja.tsx:23` y
   `apps/mobile/src/modules/chat/ListaMensajes.tsx:356`.
 - **Consecuencia:** una respuesta con **3+ opciones** no se puede elegir en el teléfono, y un artefacto
@@ -337,7 +338,8 @@ no el arranque del sprint.***
 
 ### SM-D3 · `#1019` — «Tus apps» y los modos están escritos e inalcanzables en web
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend2
 - **Medido:** `'apps'` **no está** en `TABS`; los dos shells de web lo declaran ellos mismos. No
   existe en mobile.
 - **Por qué es el ítem que ahorra trabajo:** parecía una feature de web **para portar**. Portarla
@@ -371,21 +373,24 @@ no el arranque del sprint.***
 
 ### SM-D5 · `#1007` — La card de confirmación queda activa después de responderla
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se reemplaza por un Recibo sin botones al responderla (ListaMensajes) y useChat.send descarta un segundo callback sobre una card ya marcada hitlRespondido (dos toques en el mismo frame); test con mutante muerto
 - **DoD:** la card responde **una vez** y queda resuelta; un segundo toque **no reenvía**.
 - **Criterio 7 del DoD del sprint.** El mecanismo canónico de las cards por voz dice que nunca se
   pregunta dos veces: una card que sigue activa lo viola de hecho.
 
 ### SM-D6 · `#1008` — La app dice «No lo anotamos.» sobre un ingreso que sí quedó guardado
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.tsx (6 tests ingreso+gasto: rechazado/caido/no_disponible/reintento exitoso) - DoD(2) test del caso en que la escritura si ocurrio: el reintento tras un fallo termina en Gasto anotado/formulario-completo; mutante catch-llama-onCancelar muerto
 - **DoD:** el mensaje refleja el resultado **real** de la escritura. Test del caso en que la escritura
   **sí** ocurrió — es la mitad que el happy-path no cubre: hoy el camino feliz y el fallido muestran
   el mismo texto.
 
 ### SM-D7 · `#1009` — Anular un comprobante falla en silencio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest en main: las 3 vías de silencio cerradas en mobile y web)
 - **Medido:** `try/finally` **sin `catch`** ⇒ la excepción se pierde y el usuario no ve nada.
 - **DoD:** el fallo **se ve** (el usuario recibe el error) y el estado no queda a medias.
 - **Criterio 3 del DoD del sprint.**
@@ -397,7 +402,7 @@ no el arranque del sprint.***
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Configurar»; y el selector de condición IVA no ofrece RI. Código y tests (par con/sin motivo, web y mobile, 2 mutantes muertos) en el PR; backend en b705a403.
+- **Falta:** medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Configurar»; y el selector de condición IVA no ofrece RI. Backend HECHO en b705a403; frontend (core motivo, PantallaFacturacion y PantallaAfipSetup web+mobile, par con/sin motivo, 2 mutantes muertos) en este PR.
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
@@ -494,8 +499,8 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado con git=93d792d2, expira 2026-10-28. Falta que pase a FINISHED con apk -- una receta se acredita cuando el artefacto existe, no cuando el CLI sale con exit 0. Doc: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md
+- **Estado:** TERMINADO
+- **Cierre:** merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md en origin/main desde aeeb3eab, con las 4 trampas que cobro al ejercitarla. DoD(2) ejercitada una vez y el ARTEFACTO EXISTE: build d6cecf02 FINISHED con apk (expo.dev/artifacts/eas/TeAkIfKPu5wY88WZuXHt9-fhFEHZGR53jO7KNarb9q4.apk), procedencia git=93d792d2 (sha de main), expira 2026-10-28; medido 2026-10-14 12:07 con el disparador literal del doc (npx --yes eas-cli@24.13.0 build:list --platform android --json), no con autoevaluacion -- el bloque RESULTADO-EJERCICIO quedo remedido a FINISHED en el PR #1166.
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 - **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.

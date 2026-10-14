@@ -126,7 +126,7 @@ describe('useConexionRequerida (K-11 / BL-J8)', () => {
     const send = vi.fn();
     renderHook(() => useConexionRequerida([], send, vi.fn()));
 
-    await waitFor(() => expect(send).toHaveBeenCalledWith('mandale un mail a Juan', { mode: null }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith('mandale un mail a Juan'));
     // un segundo evento de foco no reenvía (se limpió antes de enviar)
     document.dispatchEvent(new Event('visibilitychange'));
     await new Promise((r) => setTimeout(r, 20));

@@ -67,7 +67,7 @@ export interface ConexionRequerida {
 
 export function useConexionRequerida(
   messages: readonly ChatMessage[],
-  send: (texto: string, opts: { mode: string | null }) => unknown,
+  send: (texto: string) => unknown,
   irA: (url: string) => void = (url) => window.location.assign(url),
   marcarConexionDescartada: (mensajeId: string) => void = () => {},
 ): ConexionRequerida {
@@ -89,7 +89,7 @@ export function useConexionRequerida(
     if (r == null) return;
     if (!(await conexionEstablecida(r.service))) return;
     guardar(null); // primero limpiar: un segundo evento de foco no puede reenviar dos veces
-    void sendRef.current(r.texto, { mode: null });
+    void sendRef.current(r.texto);
   }, []);
 
   useEffect(() => {

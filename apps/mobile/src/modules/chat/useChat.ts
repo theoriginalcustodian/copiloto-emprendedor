@@ -320,6 +320,16 @@ export function useChat(clienteId: string): UseChatResult {
       const actual = estadoRef.current;
       if (!trimmed || !actual) return;
 
+      // SM-D5 (#1007) — una card HITL se responde UNA vez. La marca `hitlRespondido` se aplica en la
+      // misma transición que agrega la burbuja y `estadoRef` se actualiza en el acto, así que un segundo
+      // toque en el mismo frame (antes de que React repinte la card como `Recibo`) llega acá YA con la
+      // card marcada: se descarta. Sin esto el segundo callback se mandaba tal cual — un `confirm` repetido
+      // sobre un turno ya resuelto. La guarda vive en el estado y no en el botón: vale para cualquier vía.
+      if (opts?.hitlMessageId) {
+        const card = actual.messages.find((m) => m.id === opts.hitlMessageId);
+        if (card?.hitlRespondido) return;
+      }
+
       detenerPolling();
 
       // BL-D4: `opts.displayText` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta

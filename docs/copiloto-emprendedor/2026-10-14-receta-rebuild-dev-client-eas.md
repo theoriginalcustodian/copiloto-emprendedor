@@ -20,7 +20,7 @@ npx --yes eas-cli@24.13.0 build:list --platform android --limit 6 --json --non-i
 Mirá `expirationDate` del último `FINISHED` con perfil `development`. **EAS borra los artefactos a los
 14 días** del build, no de la última descarga.
 
-⚠️ **Dos trampas de este comando, ya pagadas:**
+⚠️ **TRES trampas de este comando, ya pagadas:**
 
 1. **Corrido desde un worktree sin `node_modules` falla con exit code 0.** Imprime `Failed to resolve
    plugin for module "expo-router" … Do you have node modules installed?` y devuelve **0**. Si lo
@@ -29,6 +29,17 @@ Mirá `expirationDate` del último `FINISHED` con perfil `development`. **EAS bo
 2. **`apps/mobile/node_modules` existe y está VACÍO** en todos los checkouts: es un monorepo con npm
    workspaces y los paquetes están **hoisteados a la raíz**. «La carpeta existe» no significa
    instalado — contá archivos.
+3. 🔴 **Corrido desde la RAÍZ del worktree, el error te manda a romper el proyecto.** No dice
+   «estás en el directorio equivocado»: dice `EAS project not configured. … Run eas init --account
+   341lin --non-interactive`. **No corras eso.** El `projectId` está versionado en
+   `apps/mobile/app.json:55` (`05317fbe-ca0e-4f46-a63e-6f47a1cb118a`) y EAS lo busca en el **cwd**;
+   `eas init` crearía un proyecto NUEVO y los builds existentes dejarían de aparecer en
+   `build:list`, que es precisamente lo que viniste a medir. El `cd apps/mobile` del bloque de
+   arriba no es decorativo.
+   ⚠️ Y fijate la asimetría, porque es la que me hizo caer: **el `npm install` del paso 2 va en la
+   RAÍZ y este comando va en `apps/mobile`.** Dos pasos de la misma receta con cwd **opuesto** —
+   «ya sé que en este repo se instala desde la raíz» es exactamente el razonamiento que lo rompe.
+   Tipeá el literal de cada bloque (pagado el 2026-10-14 por el autor de esta receta).
 
 ---
 
@@ -127,25 +138,35 @@ termina, con la salida de `build:list` — no con mi palabra.
 ### Resultado medido (salida de `build:list`, no mi palabra)
 
 ```
-d6cecf02 IN_QUEUE   development  git= 93d792d2 | creado 2026-10-14T14:21:56 | expira 2026-10-28T14:21:56 | apk no
-ad2ce5e4 FINISHED   development  git= ca5e3fe6 | creado 2026-10-13T20:07:11 | expira 2026-10-27T20:07:11 | apk SI
+d6cecf02 FINISHED development  git= 93d792d2 | apk SI   <- remedido 2026-10-14 12:07 (fue IN_QUEUE -> IN_PROGRESS -> FINISHED)
+ad2ce5e4 FINISHED development  git= ca5e3fe6 | apk SI
+a0c8c8b7 FINISHED development  git= 5e19949f | apk SI
 ```
 
-Los pasos 1 a 3 corrieron tal como están escritos arriba: worktree nuevo detached en `origin/main`,
-`npm install` desde cero en la raíz (1206 paquetes, `expo-router` presente — verificado contando
-archivos, no confiando en que la carpeta exista) y `eas build` que subió 71,1 MB y devolvió el id.
-El build quedó **con el sha de `main` como procedencia** (`git= 93d792d2`), que es el punto.
+APK de `d6cecf02`: `https://expo.dev/artifacts/eas/TeAkIfKPu5wY88WZuXHt9-fhFEHZGR53jO7KNarb9q4.apk`
 
-🟨 **Por eso `SM-F4` queda `DOD-PARCIAL` y no `TERMINADO`:** `d6cecf02` está `IN_QUEUE`. Una receta
-se acredita cuando el artefacto **existe**, no cuando el comando salió sin error — si el build
-fallara en la nube, la receta estaría mal y el `EXIT=0` del CLI no lo diría. El disparador para
-cerrarla es una sola línea:
+Los pasos 1 a 3 corrieron tal como estan escritos arriba: worktree nuevo detached en `origin/main`,
+`npm install` desde cero en la raiz (1206 paquetes, `expo-router` presente -- verificado contando
+archivos, no confiando en que la carpeta exista) y `eas build` que subio 71,1 MB y devolvio el id.
+El build quedo **con el sha de `main` como procedencia** (`git= 93d792d2`), que es el punto.
+
+✅ **`SM-F4` cierra aca, y recien aca.** El criterio que el doc se fijo a si mismo era que el
+**artefacto exista**, no que el CLI saliera con `exit 0` -- si el build fallaba en la nube, la receta
+estaria mal y el `EXIT=0` del comando no lo diria. El disparador se cumplio con la misma linea que el
+doc dejo escrita:
 
 ```bash
 cd apps/mobile && npx --yes eas-cli@24.13.0 build:list --platform android --limit 2 --json --non-interactive
-# d6cecf02 -> FINISHED con `apk SI`  ⇒  SM-F4 TERMINADO
+# d6cecf02 -> FINISHED con `apk SI`  =>  SM-F4 TERMINADO   (medido 2026-10-14 12:07)
 ```
 
-Mientras tanto el teléfono **no corre riesgo**: `ad2ce5e4` sigue vivo hasta el 27-10 y el dev-client
-instalado no se toca. Reconstruir y guardar no necesita el device; instalar, sí.
+⚠️ **El propio disparador se cobro la 4a trampa:** lo tipee de memoria como `npx eas build:list` y
+`npx` murio con *«could not determine executable to run»* -- no hay `eas-cli` instalado en ningun
+worktree, la receta corre siempre con `npx --yes eas-cli@24.13.0`, **pinneado**. Un comando casi igual
+al del doc no es el del doc: ver `memoria/una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md`.
+Si el fallo hubiera sido silencioso en vez de ruidoso, habria concluido «el build no existe».
+
+Expira **2026-10-28T14:21:56**. Mientras tanto el telefono no corre riesgo: `ad2ce5e4` sigue vivo
+hasta el 27-10 y el dev-client instalado no se toca. Reconstruir y guardar no necesita el device;
+instalar, si.
 <!-- RESULTADO-EJERCICIO:FIN -->

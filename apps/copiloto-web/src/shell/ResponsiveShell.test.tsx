@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { ThemeProvider } from '../design-system/ThemeProvider';
-import { ModeProvider } from './modeStore';
 import { ResponsiveShell } from './ResponsiveShell';
 
 /** Mockea `matchMedia` para que la media query desktop (`(min-width: 900px)`) matchee o no —
@@ -26,9 +25,7 @@ function renderResponsiveShell(initialTab?: 'chat' | 'connections' | 'account') 
   return render(
     <ThemeProvider>
       <SessionProvider>
-        <ModeProvider>
-          <ResponsiveShell initialTab={initialTab} />
-        </ModeProvider>
+        <ResponsiveShell initialTab={initialTab} />
       </SessionProvider>
     </ThemeProvider>,
   );
