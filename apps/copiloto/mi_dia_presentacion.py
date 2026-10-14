@@ -265,9 +265,27 @@ def _gasto_del_mes_alto(datos, entidad_id, creada, hoy):
     return None, _kv(("Este mes", actual), ("Mes anterior", anterior)), prosa
 
 
+def _instante(v) -> datetime.datetime | None:
+    """El INSTANTE (fecha + hora) de un ISO, o `None`. Una fecha sola (`2026-09-12`) NO es un instante: dar
+    «Hoy, 0:00» sería una hora fabricada, así que se degrada a «sin instante» y la fila se omite."""
+    if isinstance(v, datetime.datetime):
+        return v
+    if isinstance(v, str) and len(v.strip()) > 10:
+        try:
+            return datetime.datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
 def _conexion_caida(datos, entidad_id, creada, hoy):
     nombre = datos.get("nombre")
-    return None, _kv(("Servicio", nombre)), f"Se cortó la conexión con {nombre}." if nombre else None
+    # «Se cayó» sólo si el detector trajo el instante REAL de la caída (`datos["desde"]`, hoy sólo MercadoPago).
+    # Ausente ⇒ sin fila: NUNCA `creada` como sustituto — es cuándo corrió el detector, no cuándo se cayó.
+    desde = _instante(datos.get("desde"))
+    se_cayo = _momento_texto(desde, hoy) if desde else None
+    return (None, _kv(("Servicio", nombre), ("Se cayó", se_cayo)),
+            f"Se cortó la conexión con {nombre}." if nombre else None)
 
 
 #: regla → (tipo del `accion.destino` o `None` si la regla no lleva acción, presentador).
@@ -290,21 +308,25 @@ def _destino(tipo: str, entidad_id) -> dict:
     return {"tipo": tipo, "id": str(entidad_id)}
 
 
+def _momento_texto(instante: datetime.datetime, hoy: datetime.date) -> str:
+    """`Hoy, 19:20` · `Ayer, 19:20` · `12 de septiembre, 19:20`, en la zona del producto (`DEFAULT_TZ`).
+    Un solo formato para «Anotado» y «Se cayó»: dos copias del mismo texto se desincronizan."""
+    local = _en_local(instante)
+    dias = (hoy - local.date()).days
+    hora = local.strftime("%H:%M")
+    if dias == 0:
+        return f"Hoy, {hora}"
+    if dias == 1:
+        return f"Ayer, {hora}"
+    return f"{_fecha_texto(local.date(), hoy)}, {hora}"
+
+
 def _anotada_a_mano(creada, hoy: datetime.date) -> dict | None:
     """Tarjeta sin regla: «Lo anotaste vos» + UNA fila «Anotado» con el momento (`Ayer, 19:20`). Sin
     `creada_en` no hay momento que decir, y entonces tampoco hay nada que presentar."""
     if not isinstance(creada, datetime.datetime):
         return None
-    local = _en_local(creada)
-    dias = (hoy - local.date()).days
-    hora = local.strftime("%H:%M")
-    if dias == 0:
-        cuando = f"Hoy, {hora}"
-    elif dias == 1:
-        cuando = f"Ayer, {hora}"
-    else:
-        cuando = f"{_fecha_texto(local.date(), hoy)}, {hora}"
-    return {"prosa": PROSA_ANOTADA_A_MANO, "kv": [{"k": "Anotado", "v": cuando}]}
+    return {"prosa": PROSA_ANOTADA_A_MANO, "kv": [{"k": "Anotado", "v": _momento_texto(creada, hoy)}]}
 
 
 def presentar(regla: str | None, entidad_id, datos, creada=None, hoy: datetime.date | None = None) -> dict | None:
