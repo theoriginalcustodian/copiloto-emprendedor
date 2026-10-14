@@ -229,6 +229,23 @@ pasó de 32 a 136 archivos abiertos hasta que lo tomó un janitor
 (`memoria/buzon-se-ordena-por-janitor-no-por-disciplina.md`). Lo que una sesión aporta es **evidencia**;
 derivar y escribir el estado es mecánico, y lo mecánico no se delega a la disciplina.
 
+### El conflicto de merge en la tabla: se regenera, no se elige un lado
+
+Cada sesión corre `--marcar` en **su** worktree: quien tiene la evidencia escribe el estado, sin
+cuello de botella en planificación. El costo es que dos ramas pueden tocar la **tabla generada** y
+dar conflicto. **No se resuelve tomando un lado** (`--ours`/`--theirs` descarta la mitad del otro y
+nunca converge): la tabla es una **función del cuerpo del doc**, así que se resuelve
+
+```bash
+git checkout --ours docs/copiloto-emprendedor/2026-10-11-BACKLOG-sprint-mobile-beta.md   # o --theirs, da igual
+# traé a mano los bullets Estado/Cierre/Falta de la OTRA rama (son bloques distintos del doc)
+python -I -X utf8 scripts/sprint-estado.py --tabla    # la tabla se deriva de nuevo
+python -I -X utf8 scripts/sprint-estado.py --check
+```
+
+Lo que **no** da igual es el cuerpo: los bullets de cada ficha viven en bloques separados, así que un
+conflicto ahí se resuelve conservando **los dos** (cada ficha tiene un solo dueño; si dos sesiones
+marcaron la misma, eso es el hallazgo, no el conflicto).
 ### El gate
 
 `scripts/ci/lint.sh` corre `sprint-estado.py --check` y verifica que la tabla esté regenerada. Rechaza
