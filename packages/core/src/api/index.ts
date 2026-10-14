@@ -373,6 +373,7 @@ export {
   leerGraficoEntroVsSalio,
   leerGraficoCategorias,
   leerGraficoMargenTrabajo,
+  imputacionDeTrabajos,
 } from './inteligencia';
 export type {
   CajaPortada,
@@ -397,6 +398,7 @@ export type {
   TrabajoSinIngreso,
   DetalleMargenTrabajo,
   ResultadoGraficoMargenTrabajo,
+  ImputacionDeTrabajos,
 } from './inteligencia';
 /**
  * `/capacidades` — lo que el copiloto sabe hacer HOY, para la pantalla de «cómo hablarle». Es una

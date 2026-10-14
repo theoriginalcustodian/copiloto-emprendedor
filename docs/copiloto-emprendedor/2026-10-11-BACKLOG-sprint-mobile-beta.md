@@ -63,7 +63,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154). (1) retirar preguntarInteligencia: HECHO, no pendiente -- 0 ocurrencias en … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
@@ -416,8 +416,7 @@ no el arranque del sprint.***
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
 - **Estado:** DOD-PARCIAL
-- **Dueno-activo:** backend
-- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de frontend: (1) retirar preguntarInteligencia de packages/core (inteligencia.ts:193-210, index.ts:359, inteligencia.test.ts); (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas con pantalla y dueno; (3) cambiar-email bloqueado por SMTP (SM-C5). Pedido en buzon: 2026-10-14_pedido_backend-a-planificacion_SM-E3-y-SM-E1.
+- **Falta:** Backend HECHO (merge e7601bc6, PR #1154). (1) retirar preguntarInteligencia: HECHO, no pendiente -- 0 ocurrencias en packages/apps/motor de origin/main (git grep, 14-10); entro en 9e536c38 (PR #1166) y este Falta lo seguia pidiendo: estaba rancio. (2) el DoD de UI 'ninguna pantalla muestra margen sin el conteo al lado': HECHO en este PR -- imputacionDeTrabajos en packages/core/src/api/inteligencia.ts (8 casos, mutante 6 rojos/31 verdes) y las DOS tarjetas gemelas lo pintan siempre que haya una barra (web GraficosInteligencia.tsx:151 + mobile :163); la de web no tenia NINGUN test y ahora tiene 4. FALTA, mismo punto (2) y sin dueno: el otro extremo de la cadena del hallazgo 1 -- PUT /gastos/{id}/imputacion (gastos_web.py:161) no tiene funcion en core ni bloque en la pantalla de gastos de ningun front, asi que nadie puede imputar todavia; y POST /mi-dia/tarjetas tiene crearTarjetaMiDia en core (miDia.ts:240) sin consumidor. (3) cambiar-email: bloqueado por SMTP (SM-C5, operador). La fila 'pantalla nueva' de la tabla del cuerpo quedo remedida en este PR: el modulo existe en los dos fronts.
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
@@ -452,6 +451,23 @@ avisar»*. ⇒ **DoD de UI:** ninguna pantalla muestra margen sin el conteo al l
 | `POST /mi-dia/tarjetas` | `midia` — existe en los dos | bajo: la función del core ya está (`miDia.ts:156`) |
 | `POST /auth/cambiar-email` | `account`/`ajustes` | 🔴 **BLOQUEADO por la decisión 3** |
 
+- 🔄 **Remedido el 2026-10-14 — la fila del margen de esta tabla estaba RANCIA, y mi propia escalación
+  con ella.** Decía «no existe módulo `trabajos` en ningún front ⇒ **el más alto: pantalla nueva**», y
+  sobre eso escalé «el margen no tiene módulo en ningún front, es MAYOR». Medido con `git grep` contra
+  `origin/main` el 14-10: **`TarjetaMargenTrabajo` existe en los DOS fronts** —
+  `apps/copiloto-web/src/modules/inteligencia/graficos/GraficosInteligencia.tsx:151` y
+  `apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx:163`, las dos montadas por
+  `GraficosInteligencia`. O sea: la opción «bloque en `inteligencia`» que la tabla dejaba *a decidir*
+  **ya se había tomado de hecho**, y lo que faltaba no era una pantalla sino **pintar el conteo**. El
+  `margen` del nombre engaña al grep: en los dos fronts `margen` es además el token de *spacing* del
+  tema (`apps/mobile/src/theme/tokens.ts`), así que contar archivos que lo mencionan da falsos
+  positivos — el control que sirve es quién llama al endpoint (`/margen`) o a `leerGraficoMargenTrabajo`.
+- ⚠️ **Y la cadena del hallazgo 1 sigue abierta por el OTRO extremo:** `PUT /gastos/{id}/imputacion`
+  (`apps/copiloto/gastos_web.py:161`) **no tiene función en `packages/core`** (0 ocurrencias de
+  `imputar`/`imputacion` fuera de un comentario) ni bloque en la pantalla de gastos de ningún front ⇒
+  **hoy nadie puede imputar**, y por eso el conteo recién cableado va a decir «sin ningún gasto
+  imputado» siempre. Eso no lo invalida: es exactamente lo que el DoD quería que la pantalla
+  **confiese** en vez de mostrar un margen falso que se ve bien.
 - 🔴 **La colisión con la decisión 3, nombrada y no resuelta en silencio:** `cambiar-email` **no se
   puede cablear** mientras SMTP esté diferido — no hay forma de verificar la dirección nueva, y
   cambiar un email sin verificarlo entrega la cuenta a una dirección tipeada con un error. ⇒ queda
