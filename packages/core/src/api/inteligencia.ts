@@ -601,3 +601,62 @@ export async function leerGraficoMargenTrabajo(
     throw err;
   }
 }
+
+/**
+ * El conteo de gastos imputados que acompana OBLIGATORIAMENTE a todo margen que se muestre.
+ *
+ * No es estilo: lo exige el propio endpoint en su docstring (`apps/copiloto/gastos_web.py:188`) --
+ * *«un trabajo con 2 de 5 gastos imputados muestra un margen excelente y es falso: un margen
+ * incompleto se ve igual que uno bueno, y sin el conteo la pantalla no tiene con que avisar»*. Un
+ * margen calculado sobre CERO gastos imputados no es un margen: es el cobrado entero.
+ *
+ * Vive en core y no en cada tarjeta porque el defecto que cierra vivia DOS veces: web y mobile
+ * tienen tarjetas gemelas (`modules/inteligencia/graficos/GraficosInteligencia.tsx` en las dos) y un
+ * texto duplicado se arregla en una sola -- `memoria/dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md`.
+ * SM-E3 DoD de UI, 2026-10-14.
+ */
+export interface ImputacionDeTrabajos {
+  /** Trabajos que el grafico promedia (los que tienen ingreso registrado). */
+  total: number;
+  /** De esos, cuantos no tienen NINGUN gasto imputado: su margen es el cobrado entero. */
+  sinNingunGasto: number;
+  /** Gastos imputados sumados sobre los trabajos mostrados. */
+  gastosImputados: number;
+  /** El texto que va al lado del margen. `''` SOLO cuando no hay margen que mostrar. */
+  texto: string;
+}
+
+function textoDeImputacion(total: number, sinNingunGasto: number, gastosImputados: number): string {
+  // Sin trabajos no hay margen en pantalla, y entonces no hay nada que calificar.
+  if (total === 0) return '';
+  if (sinNingunGasto === total) {
+    return total === 1
+      ? 'Sin ningun gasto imputado: este margen es el cobrado entero, no el margen real.'
+      : 'Sin ningun gasto imputado: estos margenes son el cobrado entero, no el margen real.';
+  }
+  const gastos = `${gastosImputados} ${gastosImputados === 1 ? 'gasto imputado' : 'gastos imputados'}`;
+  if (sinNingunGasto === 0) {
+    return `${gastos} en ${total === 1 ? 'el trabajo' : `los ${total} trabajos`}.`;
+  }
+  return `${gastos}, y ${sinNingunGasto} de ${total} trabajos sin ninguno: ese margen se ve mejor de lo que es.`;
+}
+
+/**
+ * Resume la imputacion de los trabajos que el grafico de margen va a mostrar.
+ *
+ * `gastosImputados` negativo o ausente cuenta como **cero** (el parser del wire ya lo normaliza a 0,
+ * pero un negativo pasaria): un trabajo con un conteo imposible no puede acreditar imputacion.
+ */
+export function imputacionDeTrabajos(
+  trabajos: readonly Pick<TrabajoConMargen, 'gastosImputados'>[],
+): ImputacionDeTrabajos {
+  const total = trabajos.length;
+  const sinNingunGasto = trabajos.filter((t) => !(t.gastosImputados > 0)).length;
+  const gastosImputados = trabajos.reduce((acc, t) => acc + (t.gastosImputados > 0 ? t.gastosImputados : 0), 0);
+  return {
+    total,
+    sinNingunGasto,
+    gastosImputados,
+    texto: textoDeImputacion(total, sinNingunGasto, gastosImputados),
+  };
+}

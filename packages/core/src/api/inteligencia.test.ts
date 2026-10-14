@@ -4,6 +4,7 @@ import {
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
+  imputacionDeTrabajos,
   leerGraficoMargenTrabajo,
   leerPortada,
 } from './inteligencia';
@@ -364,5 +365,59 @@ describe('leerGraficoMargenTrabajo — gráfico 4 (VIVO desde PR #70)', () => {
   it('si la red explota degrada a `no_disponible`', async () => {
     responder = () => { throw new Error('red caída'); };
     expect((await leerGraficoMargenTrabajo()).status).toBe('no_disponible');
+  });
+});
+
+/**
+ * `imputacionDeTrabajos` -- el conteo que el DoD de SM-E3 exige al lado de TODO margen.
+ *
+ * Lo que se fija aca no es el texto bonito: es que la pantalla **nunca** pueda mostrar un margen sin
+ * decir sobre cuantos gastos imputados se calculo. El caso que mas muerde es el silencioso: cero
+ * gastos imputados da un margen igual al cobrado, se ve excelente, y es falso.
+ */
+describe('imputacionDeTrabajos -- un margen sin el conteo es un margen que miente', () => {
+  it('sin trabajos devuelve texto vacio: no hay margen en pantalla que calificar', () => {
+    expect(imputacionDeTrabajos([])).toEqual({ total: 0, sinNingunGasto: 0, gastosImputados: 0, texto: '' });
+  });
+
+  it('🔴 CERO gastos imputados en todos: avisa que el margen es el cobrado entero', () => {
+    const r = imputacionDeTrabajos([{ gastosImputados: 0 }, { gastosImputados: 0 }]);
+    expect(r.sinNingunGasto).toBe(2);
+    expect(r.gastosImputados).toBe(0);
+    expect(r.texto).toContain('cobrado entero');
+    expect(r.texto).not.toBe('');
+  });
+
+  it('un solo trabajo sin imputar lo dice en singular', () => {
+    expect(imputacionDeTrabajos([{ gastosImputados: 0 }]).texto)
+      .toBe('Sin ningun gasto imputado: este margen es el cobrado entero, no el margen real.');
+  });
+
+  it('todos imputados: informa el conteo y NO acusa a ninguno', () => {
+    const r = imputacionDeTrabajos([{ gastosImputados: 2 }, { gastosImputados: 3 }]);
+    expect(r).toEqual({ total: 2, sinNingunGasto: 0, gastosImputados: 5, texto: '5 gastos imputados en los 2 trabajos.' });
+  });
+
+  it('un unico gasto imputado va en singular', () => {
+    expect(imputacionDeTrabajos([{ gastosImputados: 1 }]).texto).toBe('1 gasto imputado en el trabajo.');
+  });
+
+  it('🔴 mezcla: nombra a los que no tienen ninguno -- el promedio los incluye y se ve mejor de lo que es', () => {
+    const r = imputacionDeTrabajos([{ gastosImputados: 4 }, { gastosImputados: 0 }, { gastosImputados: 0 }]);
+    expect(r.total).toBe(3);
+    expect(r.sinNingunGasto).toBe(2);
+    expect(r.texto).toBe('4 gastos imputados, y 2 de 3 trabajos sin ninguno: ese margen se ve mejor de lo que es.');
+  });
+
+  it('🔴 un conteo NEGATIVO no acredita imputacion: cuenta como cero', () => {
+    const r = imputacionDeTrabajos([{ gastosImputados: -3 }]);
+    expect(r.sinNingunGasto).toBe(1);
+    expect(r.gastosImputados).toBe(0);
+    expect(r.texto).toContain('cobrado entero');
+  });
+
+  it('acepta las filas reales del grafico sin recortarlas a mano', () => {
+    const res = { trabajos: [{ eslabon: 'cobro' as const, ref: 9, etiqueta: 'Cobro #9', cobrado: '1000.00', gastado: null, margen: '1000.00', gastosImputados: 0 }] };
+    expect(imputacionDeTrabajos(res.trabajos).sinNingunGasto).toBe(1);
   });
 });
