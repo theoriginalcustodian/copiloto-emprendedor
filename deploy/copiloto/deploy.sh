@@ -162,9 +162,11 @@ fi
 # SHA_BUILD ya se computó arriba (MANIFBYPASS, junto al sello de procedencia) -- se reusa tal cual.
 STG="dist-${SHA_BUILD}-$(date +%s)$$"
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> staging $STG, promovido en [5.5/7]"
-ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" "$SHA_BUILD" "$STG" <<'REMOTE_WEB'
+ssh "$HOST" bash -s -- "$REMOTE" "${AUTH_URL:-__UC_VACIO__}" "$SHA_BUILD" "$STG" <<'REMOTE_WEB'
 set -euo pipefail
+[ "$#" -eq 4 ] || { echo "ABORT [REMOTE_WEB]: llegaron $# de 4 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; AUTH_URL="$2"; SHA="$3"; STG="$4"
+if [ "$AUTH_URL" = __UC_VACIO__ ]; then AUTH_URL=""; fi  # ARGVSSHVACIO: el sentinel evita el campo vacio en el argv de ssh
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
@@ -198,6 +200,7 @@ echo "==> [2/7] auth: repoint a la GoTrue DEDICADA — SOLO si el cutover ya se 
 # El repoint en sí lo hace repoint-env.sh (FUENTE ÚNICA, compartida con migrate-and-cutover.sh → sin drift).
 ssh "$HOST" bash -s -- "$ENVDIR" "$REMOTE" <<'REMOTE_AUTH'
 set -euo pipefail
+[ "$#" -eq 2 ] || { echo "ABORT [REMOTE_AUTH]: llegaron $# de 2 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 ENVDIR="$1"; REMOTE="$2"
 if [ ! -f "$ENVDIR/.gotrue-cutover-done" ]; then
   echo "AVISO [2/7]: falta $ENVDIR/.gotrue-cutover-done -> cutover a GoTrue dedicada NO completado; NO se repointea auth."
@@ -219,6 +222,7 @@ echo "==> [3.5/7] GROQ_API_KEY server-side (clinic-agent.env -> copiloto.env), i
 # rotar en clinic-agent.env y re-correr este deploy la propaga, sin duplicar el secreto a mano.
 ssh "$HOST" bash -s -- "$ENVDIR" <<'REMOTE_GROQ'
 set -euo pipefail
+[ "$#" -eq 1 ] || { echo "ABORT [REMOTE_GROQ]: llegaron $# de 1 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 ENVDIR="$1"
 SRC="$ENVDIR/clinic-agent.env"
 DST="$ENVDIR/copiloto.env"
@@ -257,6 +261,7 @@ echo "==> [3.6/7] alta por invitación (C4.1): COPILOTO_INVITE_TOKEN + COPILOTO_
 # Verificado en SessionProvider.tsx de ambos clientes antes de encender el gate.
 ssh "$HOST" bash -s -- "$ENVDIR" <<'REMOTE_INVITE'
 set -euo pipefail
+[ "$#" -eq 1 ] || { echo "ABORT [REMOTE_INVITE]: llegaron $# de 1 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 ENVDIR="$1"
 DST="$ENVDIR/copiloto.env"
 [ -f "$DST" ] || { echo "FALTA $DST" >&2; exit 1; }
@@ -304,6 +309,7 @@ echo "==> [4/7] provision.py (idempotente: CREATE ... IF NOT EXISTS / DROP+CREAT
 # entonces, desplegar sin el flag es un downgrade silencioso para cualquier tabla nueva.
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_PROVISION'
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_PROVISION]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
 set -a
 . "$ENVDIR/fusion-pg.env"
@@ -315,6 +321,7 @@ REMOTE_PROVISION
 echo "==> [4.5/7] ensure_mi_dia_schedules.py (idempotente: ScheduleAlreadyRunningError -> ya existía, no duplica)"
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_MI_DIA_SCHEDULES'
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_MI_DIA_SCHEDULES]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
 set -a
 . "$ENVDIR/fusion-pg.env"
@@ -332,6 +339,7 @@ echo "==> [4.6/7] ensure_autosanacion_schedules.py (Fase 3 — nace PAUSADO si e
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_AUTOSANACION_SCHEDULES' || \
   echo "    (aviso: no se pudo asegurar el Schedule de autosanación; el deploy sigue)" >&2
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_AUTOSANACION_SCHEDULES]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
 set -a
 . "$ENVDIR/fusion-pg.env"
@@ -363,6 +371,7 @@ echo "==> [4.7/7] ensure_grafo_sync_schedules.py (BETA-G0 — idempotente, fail-
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_GRAFO_SYNC_SCHEDULES' || \
   echo "    (aviso: no se pudo asegurar el Schedule de sync del grafo; el deploy sigue)" >&2
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_GRAFO_SYNC_SCHEDULES]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
 set -a
 . "$ENVDIR/fusion-pg.env"
@@ -384,6 +393,7 @@ echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reinic
 # que nada arranca al importarlos (verificado antes de escribir esto, no asumido).
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_IMPORT_GATE'
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_IMPORT_GATE]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
 cd "$REMOTE/apps/copiloto"
 export PYTHONPATH="$REMOTE/motor:$REMOTE/deploy/worker"
@@ -427,9 +437,11 @@ else
 fi
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-}" "$VENV" "$_nonce" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$(git -C "$LOCAL" rev-parse HEAD)" "$WEB_PORT" "${UC_CANARIO_FALLA_TRAS_RESTART:-__UC_VACIO__}" "$VENV" "$_nonce" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="${7:-}"; VENV="$8"; DEPLOY_NONCE="$9"
+[ "$#" -eq 9 ] || { echo "ABORT [REMOTE_UNITS]: llegaron $# de 9 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"; SHA="$5"; PORT="$6"; CANARIO_FALLA="$7"; VENV="$8"; DEPLOY_NONCE="$9"
+if [ "$CANARIO_FALLA" = __UC_VACIO__ ]; then CANARIO_FALLA=""; fi  # ARGVSSHVACIO: el sentinel evita el campo vacio en el argv de ssh
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
@@ -515,6 +527,7 @@ REMOTE_UNITS
 echo "==> [5.5/7] publish del shell (dist -> dist-<SHA>, SOLO tras el restart OK de [5/7])"
 ssh "$HOST" bash -s -- "$REMOTE" "$SHA_BUILD" "$STG" <<'REMOTE_PUBLISH'
 set -euo pipefail
+[ "$#" -eq 3 ] || { echo "ABORT [REMOTE_PUBLISH]: llegaron $# de 3 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 REMOTE="$1"; SHA="$2"; STG="$3"
 cd "$REMOTE/apps/copiloto-web"
 test -f "$STG/index.html"
@@ -545,6 +558,7 @@ echo "Caddy recargado."
 echo "==> [7/7] Sanidad del proceso vivo (NO es el smoke de la beta)"
 ssh "$HOST" bash -s -- "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$WEB_PORT" "$BASE_DOMAIN" <<'REMOTE_SMOKE'
 set -euo pipefail
+[ "$#" -eq 5 ] || { echo "ABORT [REMOTE_SMOKE]: llegaron $# de 5 argumentos. ARGVSSHVACIO: ssh NO preserva campos VACIOS en el argv -- un argumento vacio desaparece y corre los indices de todos los posteriores (medido 2026-10-14). Pasa un sentinel, no una cadena vacia." >&2; exit 1; }
 WEB_UNIT="$1"; WORKER_UNIT="$2"; WORKER_SOPORTE_UNIT="$3"; WEB_PORT="$4"; BASE_DOMAIN="$5"
 echo "--- systemctl is-active ---"
 systemctl is-active "$WEB_UNIT"
