@@ -55,19 +55,19 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
-| **SM-D2** | `#1018` | ⬜ PENDIENTE | — |
+| **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
-| **SM-E1** | `#1005` | ⬜ PENDIENTE | — |
+| **SM-E1** | `#1005` | 🟨 EN-CURSO | backend |
 | **SM-E2** | `#1006` | 🟨 EN-CURSO | backend |
 | **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | 🟨 EN-CURSO | planificacion |
+| **SM-F4** | `#1013` | 🟧 DOD-PARCIAL | receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -328,7 +328,8 @@ no el arranque del sprint.***
 
 ### SM-D2 · `#1018` — Mobile no tiene los bloques de agregado que web sí
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el e2e sale 3 (no discrimina); barra==detalle SI verificado en 2026-08 y 2026-09; la igualdad entre las 4 superficies para el mismo mes la prueba backend test_facturado_predicado_unico.py (B-3, Postgres del VPS). (2) device: los dos bloques medidos en el telefono. (3) hallazgo abierto: el resumen Esperando respuesta se deriva de GET /presupuestos con limit=50 por defecto (presupuestos_web.py:41), con mas de 50 vigentes subcuenta sin avisar
 - **Medido:** faltan «facturado del mes» y el resumen de presupuestos.
 - **DoD:** los dos bloques existen **y su cifra coincide con la del detalle** para el mismo mes.
 - **Depende de:** SM-B3 (el predicado único). **Es el criterio 6 del DoD del sprint.**
@@ -394,7 +395,8 @@ no el arranque del sprint.***
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** backend
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
@@ -490,8 +492,8 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** planificacion
+- **Estado:** DOD-PARCIAL
+- **Falta:** receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado con git=93d792d2, expira 2026-10-28. Falta que pase a FINISHED con apk -- una receta se acredita cuando el artefacto existe, no cuando el CLI sale con exit 0. Doc: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 - **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.

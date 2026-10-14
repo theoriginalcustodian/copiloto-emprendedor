@@ -117,6 +117,20 @@ class CondicionEmisor(str, Enum):
     EXENTO = "exento"
 
 
+# SM-E1: condiciones del EMISOR cuya emisión está IMPLEMENTADA de punta a punta. Un Responsable
+# Inscripto emite A/B y `calcular_totales` levanta `NotImplementedError` (falta el desglose de IVA):
+# aceptarle el perfil y decirle «ya podés facturar» era prometer una emisión que explota. La promesa y
+# la emisión salen de ESTA misma constante: o se implementa A/B y se agrega acá, o no se promete.
+CONDICIONES_EMISOR_SOPORTADAS = frozenset({CondicionEmisor.MONOTRIBUTO, CondicionEmisor.EXENTO})
+CODIGO_CONDICION_NO_SOPORTADA = "condicion_iva_no_soportada"
+
+
+def condicion_emisor_soportada(condicion) -> bool:
+    """`condicion` es el enum o su valor str (la fila SQL guarda el str). Desconocida ⇒ no soportada."""
+    valor = getattr(condicion, "value", condicion)
+    return valor in {c.value for c in CONDICIONES_EMISOR_SOPORTADAS}
+
+
 class Concepto(int, Enum):
     PRODUCTOS = 1
     SERVICIOS = 2
@@ -430,6 +444,15 @@ def validar_perfil(perfil: PerfilFiscal | None) -> list[ErrorValidacion]:
     if perfil.punto_venta < 1:
         errores.append(
             ErrorValidacion("punto_venta_invalido", "punto_venta", "El punto de venta debe ser ≥ 1.")
+        )
+    if not condicion_emisor_soportada(perfil.condicion_iva):
+        errores.append(
+            ErrorValidacion(
+                CODIGO_CONDICION_NO_SOPORTADA,
+                "condicion_iva",
+                "Todavía no podemos emitir facturas A/B (Responsable Inscripto): hoy facturamos "
+                "para monotributo y exentos.",
+            )
         )
     return errores
 

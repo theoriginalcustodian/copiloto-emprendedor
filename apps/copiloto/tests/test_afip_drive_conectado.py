@@ -30,7 +30,7 @@ class CredsFake:
 
 class PerfilFake:
     def get(self, cuit):
-        return {"cuit": CUIT, "razon_social": "X"}
+        return {"cuit": CUIT, "razon_social": "X", "condicion_iva": "monotributo"}
 
 
 class GatewayConectado:
