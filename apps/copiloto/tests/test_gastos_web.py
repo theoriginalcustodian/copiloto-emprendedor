@@ -57,7 +57,9 @@ class _FakeGastoStore:
              "proveedor": proveedor or None, "medio_pago": medio_pago or None,
              "descripcion": descripcion or None, "origen": origen,
              "monto_sugerido": f"{Decimal(str(monto_sugerido)):.2f}" if monto_sugerido else None,
-             "creado_en": "2026-07-21T22:00:00+00:00"}
+             "creado_en": "2026-07-21T22:00:00+00:00",
+             "imputacion": {"gasto_id": self._b["_seq"], "presupuesto_ref": None,
+                            "comprobante_ref": None, "cobro_ref": None}}
         if idem_key:
             g["_idem_key"] = idem_key
         mios[g["id"]] = g
@@ -165,7 +167,8 @@ def test_crear_devuelve_201_y_el_objeto_COMPLETO():
     assert r.status_code == 201
     g = r.json()
     assert set(g) == {"id", "monto", "fecha", "categoria", "proveedor", "medio_pago",
-                      "descripcion", "origen", "monto_sugerido", "creado_en", "repetido"}
+                      "descripcion", "origen", "monto_sugerido", "creado_en", "imputacion",
+                      "repetido"}
     assert g["repetido"] is False, "alta nueva sin idem_key: nunca es un repetido"
     assert g["proveedor"] is None and g["medio_pago"] is None
     assert g["categoria"] == "otros", "sin categoría cae en otros, no falla"

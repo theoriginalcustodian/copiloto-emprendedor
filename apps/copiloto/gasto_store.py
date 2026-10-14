@@ -52,7 +52,22 @@ LIMITES = {"proveedor": 120, "medio_pago": 40, "descripcion": 500}
 ZONA_DEL_NEGOCIO = datetime.timezone(datetime.timedelta(hours=-3))
 
 _COLS = ("id", "monto", "fecha", "categoria", "proveedor", "medio_pago", "descripcion",
-         "origen", "monto_sugerido", "created_at")
+         "origen", "monto_sugerido", "created_at",
+         # SM-E3: la imputación VIAJA con el gasto. Sin estas tres la UI no puede distinguir «sin
+         # imputar» de «imputado» (el PUT las escribía y NADA las leía).
+         "presupuesto_ref", "comprobante_ref", "cobro_ref")
+
+
+def imputacion_de(gasto_id: int, presupuesto_ref: int | None, comprobante_ref: int | None,
+                  cobro_ref: int | None) -> dict:
+    """La ÚNICA forma de «a qué trabajo está imputado este gasto».
+
+    La devuelve `PUT /gastos/{id}/imputacion` (`{"imputacion": …}`) y la trae `GET /gastos` /
+    `GET /gastos/{id}` en la clave `imputacion` de cada gasto: un solo parser del lado del cliente.
+    Las tres referencias viajan SIEMPRE; a lo sumo UNA es no nula (invariante de `imputar()`, que
+    escribe las tres columnas en el mismo UPDATE). Sin imputar = las tres en `null`."""
+    return {"gasto_id": gasto_id, "presupuesto_ref": presupuesto_ref,
+            "comprobante_ref": comprobante_ref, "cobro_ref": cobro_ref}
 
 
 def hoy_del_negocio(ahora: datetime.datetime | None = None) -> datetime.date:
@@ -110,6 +125,8 @@ class GastoStore:
             "monto_sugerido": dos_decimales(g["monto_sugerido"]) if g["monto_sugerido"] is not None
                               else None,
             "creado_en": g["created_at"].isoformat() if g["created_at"] else None,
+            "imputacion": imputacion_de(g["id"], g["presupuesto_ref"], g["comprobante_ref"],
+                                        g["cobro_ref"]),
         }
 
     def crear(self, *, monto: Decimal, fecha: datetime.date | None = None,
