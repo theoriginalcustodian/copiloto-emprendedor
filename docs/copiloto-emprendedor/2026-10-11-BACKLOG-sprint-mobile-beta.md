@@ -59,9 +59,9 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D3** | `#1019` | 🟨 EN-CURSO | frontend2 |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
 | **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
-| **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
+| **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
 | **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
-| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
+| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
@@ -381,7 +381,8 @@ no el arranque del sprint.***
 
 ### SM-D6 · `#1008` — La app dice «No lo anotamos.» sobre un ingreso que sí quedó guardado
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.tsx (6 tests ingreso+gasto: rechazado/caido/no_disponible/reintento exitoso) - DoD(2) test del caso en que la escritura si ocurrio: el reintento tras un fallo termina en Gasto anotado/formulario-completo; mutante catch-llama-onCancelar muerto
 - **DoD:** el mensaje refleja el resultado **real** de la escritura. Test del caso en que la escritura
   **sí** ocurrió — es la mitad que el happy-path no cubre: hoy el camino feliz y el fallido muestran
   el mismo texto.
@@ -401,8 +402,7 @@ no el arranque del sprint.***
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
 - **Estado:** DOD-PARCIAL
-- **Dueno-activo:** backend
-- **Falta:** Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado() no explota; VPS 2446 verdes, mutante 5 rojos). Falta, de frontend: exponer motivoNoPuedeFacturar en packages/core afip.ts, copy de las dos PantallaFacturacion (hoy el CTA 'todavia no configuraste' hace lazo para un RI) y la opcion Responsable inscripto de las dos PantallaAfipSetup (ahora 422).
+- **Falta:** medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Configurar»; y el selector de condición IVA no ofrece RI. Backend HECHO en b705a403; frontend (core motivo, PantallaFacturacion y PantallaAfipSetup web+mobile, par con/sin motivo, 2 mutantes muertos) en este PR.
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 

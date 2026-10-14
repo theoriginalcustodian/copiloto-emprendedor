@@ -255,6 +255,47 @@ describe('PantallaFacturacion', () => {
     expect(crearFactura).not.toHaveBeenCalled();
   });
 
+  /** SM-E1 — `puedeFacturar:false` ya no tiene UNA causa. Un Responsable Inscripto con el perfil cargado
+   *  NO tiene que leer «Todavía no configuraste» (le pide rehacer lo ya hecho: un lazo). El par: el motivo
+   *  de «sin configurar» (`null`) sigue mostrando el CTA — sin esa mitad, un verde no distingue el fix de
+   *  haber borrado el CTA. */
+  it('SM-E1: RI con perfil cargado -- explica que A/B no está disponible y NO ofrece configurar', async () => {
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: 'condicion_iva_no_soportada' }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-no-puede-facturar')).toBeTruthy());
+    expect(screen.getByTestId('facturacion-no-puede-facturar')).toHaveTextContent(/Responsables Inscriptos/);
+    expect(screen.queryByTestId('facturacion-cta-configurar')).toBeNull();
+    expect(screen.queryByText(/Todavía no configuraste/)).toBeNull();
+    expect(crearFactura).not.toHaveBeenCalled();
+  });
+
+  it('SM-E1 control del par: SIN motivo (falta configurar) sí muestra el CTA y no el aviso', async () => {
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: null }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+    expect(screen.getByText(/Todavía no configuraste/)).toBeTruthy();
+    expect(screen.queryByTestId('facturacion-no-puede-facturar')).toBeNull();
+  });
+
+  it('SM-E1: un motivo que la app no conoce NO cae en «configurá» (sería el mismo lazo)', async () => {
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: 'desconocido' }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-no-puede-facturar')).toBeTruthy());
+    expect(screen.queryByTestId('facturacion-cta-configurar')).toBeNull();
+  });
+
   it('lee el CUIT de la MISMA clave que usa cuitCache.ts (contrato compartido con F5)', async () => {
     await montar();
 

@@ -44,7 +44,7 @@ import {
 
 import { almacenClave } from '../../../adapters/almacen';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
-import { PantallaAfipSetup } from './PantallaAfipSetup';
+import { opcionesCondicionIva, PantallaAfipSetup } from './PantallaAfipSetup';
 
 const CUIT = '20123456786';
 const CUIT_FORMATEADO = '20-12345678-6';
@@ -327,6 +327,26 @@ describe('PantallaAfipSetup', () => {
 
     await waitFor(() => expect(screen.getByTestId('afip-perfil-cuit-fijo')).toBeTruthy());
     expect(screen.queryByTestId('afip-estado-vinculo')).toBeNull();
+  });
+
+  it('SM-E1: el selector de condición NO ofrece «Responsable inscripto» (daría 422) y dice por qué', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-condicion-iva-aviso')).toBeTruthy());
+    expect(screen.getByTestId('afip-perfil-condicion-iva-aviso')).toHaveTextContent(
+      /Responsable inscripto todavía no está disponible/,
+    );
+    // Control del par: lo que SÍ se puede elegir sigue ahí, y un perfil guardado como RI la conserva.
+    expect(opcionesCondicionIva('monotributo').map((o) => o.valor)).toEqual(['monotributo', 'exento']);
+    expect(opcionesCondicionIva('responsable_inscripto').map((o) => o.valor)).toEqual([
+      'monotributo',
+      'responsable_inscripto',
+      'exento',
+    ]);
   });
 
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
