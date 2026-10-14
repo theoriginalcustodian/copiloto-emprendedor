@@ -86,8 +86,6 @@ const TABLERO = {
           entidadId: 'trab-1',
           estado: 'pendiente',
           cliente: 'Panadería del barrio',
-          monto: '-8000.00',
-          fecha: '2026-07-22',
           categoria: null,
           criticidad: 'pronto',
           verbo: 'Revisar el trabajo',
@@ -107,8 +105,6 @@ const TABLERO = {
           entidadId: null,
           estado: 'hecha',
           cliente: null,
-          monto: null,
-          fecha: null,
           categoria: null,
           criticidad: 'sin_plazo',
           verbo: 'Borrar',
@@ -166,7 +162,7 @@ describe('PantallaMiDia — las 3 solapas', () => {
 });
 
 describe('PantallaMiDia — expandir', () => {
-  it('🔴 tocar la tarjeta muestra el detalle (cliente/monto/fecha); tocar de nuevo lo contrae', async () => {
+  it('🔴 tocar la tarjeta muestra el detalle (cliente); tocar de nuevo lo contrae', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
 
@@ -184,7 +180,7 @@ describe('PantallaMiDia — expandir', () => {
 function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
   return {
     id, texto: `Tarjeta ${id}`, regla: 'x', entidadTipo: null, entidadId: null, estado: 'pendiente',
-    cliente: null, monto: null, fecha: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
+    cliente: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
   };
 }
 function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
@@ -591,17 +587,42 @@ describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida
   });
 
   it('con presentacion: chip, filas del backend (con SU rótulo) y la píldora en lugar del verbo inerte', async () => {
-    await expandir({ presentacion: PRESENTACION, cliente: 'Panadería', monto: '1.00' });
+    await expandir({ presentacion: PRESENTACION, cliente: 'Panadería' });
     expect(screen.getByTestId('midia-tarjeta-p-chip')).toHaveTextContent('31 días sin respuesta');
     const detalle = screen.getByTestId('midia-tarjeta-p-detalle');
     expect(detalle).toHaveTextContent(/Monto/);
     expect(detalle).toHaveTextContent(/\$84\.000/);
     expect(detalle).toHaveTextContent(/Enviado/);
     expect(detalle).toHaveTextContent(/12\/09/);
-    // Mandan las del backend: las filas legadas (Cliente) no se mezclan.
-    expect(detalle).not.toHaveTextContent(/Panadería/);
+    // H12 §5: «Cliente» se queda mientras `texto` no nombre la entidad — el nombre no desaparece al llegar la `presentacion`.
+    expect(detalle).toHaveTextContent(/Panadería/);
     expect(screen.getByTestId('midia-tarjeta-p-accion')).toHaveTextContent('Reclamar el pago');
     expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
+  });
+
+  it('🔴 H12: la PROSA se pinta (ahí vive el importe de la factura) junto a las kv, y sin `presentacion` no hay prosa', async () => {
+    await expandir({
+      presentacion: {
+        prosa: 'Emitida hace 22 días. Son $120.000 que ya facturaste y todavía no entraron.',
+        kv: [{ k: 'Factura', v: 'A-0034' }, { k: 'Emitida', v: '22 de septiembre' }],
+      },
+    });
+    expect(screen.getByTestId('midia-tarjeta-p-prosa')).toHaveTextContent(/Son \$120\.000 que ya facturaste/);
+    expect(screen.getByTestId('midia-tarjeta-p-detalle')).toHaveTextContent(/A-0034/);
+  });
+
+  it('🔴 H12: una tarjeta de SÓLO prosa (regla «trabajo», kv vacía) pinta la prosa y ninguna fila', async () => {
+    await expandir({ presentacion: { prosa: 'Pusiste $20.000 y no registraste que te pagaran.', kv: [] } });
+    expect(screen.getByTestId('midia-tarjeta-p-prosa')).toHaveTextContent(/no registraste que te pagaran/);
+    expect(screen.queryByTestId('midia-tarjeta-p-detalle')).toBeNull();
+  });
+
+  it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', () => {
+    // Si la tabla fija Monto/Fecha vuelve en un merge, esas filas quedan escritas e inalcanzables y nadie lo
+    // ve (ya pasó). El campo tampoco existe en `TarjetaMiDia`, así que el tipo también lo frena.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fuente: string = require('fs').readFileSync(require('path').join(__dirname, 'PantallaMiDia.tsx'), 'utf8');
+    expect(fuente).not.toMatch(/tarjeta\.(monto|fecha)/);
   });
 
   it('la píldora rutea por `rutaDeDestino` TAL CUAL: conexion con id → abre ESA conexión', async () => {

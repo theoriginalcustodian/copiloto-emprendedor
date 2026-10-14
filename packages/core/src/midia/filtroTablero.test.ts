@@ -6,7 +6,7 @@ import { filtrarPorCategoria, hayCategorias, tarjetasCriticas } from './filtroTa
 function t(id: string, over: Partial<TarjetaMiDia> = {}): TarjetaMiDia {
   return {
     id, texto: `t${id}`, regla: null, entidadTipo: null, entidadId: null, estado: 'para_hoy',
-    cliente: null, monto: null, fecha: null, categoria: null, criticidad: null, verbo: null, ...over,
+    cliente: null, categoria: null, criticidad: null, verbo: null, ...over,
   };
 }
 const tablero = (para: TarjetaMiDia[], hechas: TarjetaMiDia[] = []): TableroMiDia => ({
