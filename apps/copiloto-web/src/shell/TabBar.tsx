@@ -3,7 +3,6 @@ import './shell.css';
 
 export type TabKey =
   | 'chat'
-  | 'apps'
   | 'connections'
   | 'gastos'
   | 'clientes'
@@ -33,11 +32,12 @@ export interface TabDefinition {
  * TabBar y AppShell son data-driven de acá, cero refactor. El ícono sale de `NAV_ICONS[key]` (SVG
  * verbatim del diseño), no de un glyph emoji.
  *
- * **Depuración 2026-08-06** (pedido del operador, *"sólo las funciones de la app"*): `apps`,
- * `connections`, `recientes` y `account` salieron de este array — sus pantallas siguen existiendo
- * y son alcanzables por otro camino (`apps`/`account` vía `TILES_AJUSTES` en Ajustes, `recientes`
+ * **Depuración 2026-08-06** (pedido del operador, *"sólo las funciones de la app"*): `connections`,
+ * `recientes` y `account` salieron de este array — sus pantallas siguen existiendo y son
+ * alcanzables por otro camino (`connections`/`account` vía `TILES_AJUSTES` en Ajustes, `recientes`
  * vía "ver recientes" de Escritorio), así que sus valores de `TabKey` NO se tocan, sólo se retiran
- * de la barra visible.
+ * de la barra visible. (`apps` —«Tus apps» y sus modos— no tenía camino alguno y se retiró del todo
+ * en SM-D3, issue 1019: ya no es un `TabKey`.)
  *
  * **`ajustes` salió el 2026-08-07**, completando aquel pedido. Antes se había quedado porque su
  * reemplazo no existía; ahora hay DOS puertas verificadas, una por shell — el tile "Ajustes" del

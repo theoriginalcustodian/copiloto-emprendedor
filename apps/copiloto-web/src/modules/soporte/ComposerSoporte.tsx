@@ -13,7 +13,7 @@ export interface ComposerSoporteProps {
 
 /**
  * Composer del chat de SOPORTE — NO reusa `modules/chat/Composer.tsx` a propósito: ese componente
- * llama `useMode()` internamente (el chip "Modo Mail…" de negocio), un acoplamiento que no aplica
+ * es el del chat de negocio, con un acoplamiento que no aplica
  * acá y que forzar con una prop opcional convertiría el componente compartido en un `if` de dos
  * dominios (la misma trampa que el propio contrato SOP5 evita del lado del servidor). `MicButton`
  * en cambio SÍ se reusa tal cual (ODOBI8 §C3, opción (a) del contrato): es genérico del gesto, no

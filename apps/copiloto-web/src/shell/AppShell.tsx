@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react';
 
 import { useSession } from '../auth/useSession';
-import { BottomSheet, Toast } from '../design-system';
+import { Toast } from '../design-system';
 import { AdminScreen } from '../modules/admin';
 import { ChatScreen } from '../modules/chat';
-import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
@@ -43,16 +42,10 @@ const DEFAULT_TAB: TabKey = 'midia';
  * falta pasarle nada acá; cuando Cuenta (Task 21) tenga su propio "Cerrar sesión", ese botón se
  * retira de `ChatHeader` (nota ya dejada en ChatHeader.tsx, no se toca en este task).
  *
- * "Apps" (gap estructural #1/#17 del audit mobile, `Copiloto App.dc.html:218-270`) NO es una
- * pantalla de tab: es un BOTTOM-SHEET que se desliza sobre lo que sea que esté activo detrás (por
- * default, Chat). `activeTab` nunca vale `'apps'` — tocar el tab abre `appsSheetOpen` en vez de
- * navegar, así que Chat/Conexiones/Cuenta siguen montados debajo sin interrumpirse. Cierra por
- * click en el scrim, tecla Escape, o arrastrando el handle (`BottomSheet`, sin botón X — el mock
- * mobile no lo tiene, a diferencia del modal de escritorio).
- *
- * `AppsScreen` no conoce el estado de tabs — su botón "+" solo pide `onGoToConnections`, que acá
- * cierra el sheet y cambia `activeTab` (mismo mecanismo de navegación por estado local que el
- * resto del shell, cero acoplamiento nuevo).
+ * La pantalla «Tus apps» y sus modos se RETIRARON (SM-D3, issue 1019, decisión 2026-10-12): estaban
+ * escritas y eran inalcanzables — `apps` no está en `TABS` y ningún camino del shell la abría
+ * (medido en runtime: 0 montajes tras pulsar todo lo alcanzable). Las apps conectadas viven en
+ * `ConnectionsScreen` (Ajustes › Apps conectadas), que es otra pantalla y sigue.
  */
 export interface AppShellProps {
   /** BETA-4b: aterrizar en un tab distinto de Chat la PRIMERA vez (ej. 'connections' recién
@@ -71,12 +64,6 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // barra sola y forzaba un doble-tap para abrir Apps (ver useChromeAutoHide). `hidden` baja a la
   // TabBar (translateY) y al content (padding-bottom -> 0, ver shell.css). Cambiar de tab la re-muestra.
   const { hidden: tabHidden, setHidden: setTabHidden, toggle: toggleChrome } = useChromeAutoHide();
-  const [appsSheetOpen, setAppsSheetOpen] = useState(false);
-  // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin
-  // este gate, `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del
-  // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
-  // resetea, así el cierre sigue animando con el contenido ya cargado.
-  const [appsEverOpened, setAppsEverOpened] = useState(false);
   // Funciones sin tab propio en la web (ninguna hoy con los 9 tiles de Escritorio wireados, ver
   // `funcionTabMap.ts` — se conserva por si un futuro tile llega sin tab todavía).
   const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
@@ -113,18 +100,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     activeTab === 'escritorio',
   );
 
-  // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
-  // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
-  // `connections`/`account`/`recientes`, que `AjustesScreen`/`EscritorioScreen` siguen pidiendo).
-  // Se deja la rama viva a propósito: `AppsScreen`/`BottomSheet` tienen otros usos fuera de este
-  // shell (Composer, AccountScreen) y retirar el sheet entero es una decisión más grande que
-  // "depurar la barra" -- fuera de este contrato.
   const changeTab = useCallback((key: TabKey) => {
-    if (key === 'apps') {
-      setAppsSheetOpen(true);
-      setAppsEverOpened(true);
-      return;
-    }
     setTabHidden(false);
     // S6-11: cambiar de tab con un ticket abierto tiene que CERRARLO — si no, `ticketIdAbierto`
     // sigue ganándole al `activeTab` nuevo y el usuario ve el mismo ticket detrás de la barra.
@@ -171,22 +147,10 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     [changeTab],
   );
 
-  const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
-
-  const goToConnectionsFromApps = useCallback(() => {
-    setAppsSheetOpen(false);
-    setTabHidden(false);
-    setActiveTab('connections');
-  }, [setTabHidden]);
-
-  // Botón "atrás" del navegador/OS (2026-07-04): pelar los overlays abiertos (sheet primero, luego
-  // el ticket de S6-11, luego un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas
-  // capas hay abiertas.
+  // Botón "atrás" del navegador/OS (2026-07-04): pelar los overlays abiertos (primero el ticket de
+  // S6-11, luego un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas capas hay
+  // abiertas.
   const handleBack = useCallback(() => {
-    if (appsSheetOpen) {
-      setAppsSheetOpen(false);
-      return;
-    }
     if (ticketIdAbierto != null) {
       setTicketIdAbierto(null);
       return;
@@ -194,9 +158,8 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     if (activeTab !== DEFAULT_TAB) {
       setActiveTab(DEFAULT_TAB);
     }
-  }, [appsSheetOpen, ticketIdAbierto, activeTab]);
-  const backDepth =
-    (appsSheetOpen ? 1 : 0) + (ticketIdAbierto != null ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
+  }, [ticketIdAbierto, activeTab]);
+  const backDepth = (ticketIdAbierto != null ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
   useBackGuard(backDepth, handleBack);
 
   // El auto-hide del chrome (barra + composer al borde) es SÓLO del Chat: en Conexiones/Cuenta no hay
@@ -282,9 +245,6 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         )}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} esAdmin={esAdmin} />
-      <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
-        {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
-      </BottomSheet>
       {avisoPendiente != null && (
         <Toast message={avisoPendiente} onDismiss={() => setAvisoPendiente(null)} />
       )}

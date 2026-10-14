@@ -9,7 +9,6 @@ import { useSession } from './auth/useSession';
 import { Onboarding } from './modules/onboarding';
 import { EntradaDiaria, Splash } from './modules/splash';
 import { ResponsiveShell } from './shell/ResponsiveShell';
-import { ModeProvider } from './shell/modeStore';
 
 /** BETA-4b: `SignupScreen` es reachable SOLO por `?signup=1` — sin link público desde
  * `LoginScreen`. La decisión operador #3 (modo de alta) YA está resuelta desde 2026-08-04
@@ -94,12 +93,7 @@ export function App() {
   return (
     <ThemeProvider>
       <SessionProvider>
-        {/* ModeProvider (Feature addendum 2026-07-03, "modos por app"): estado GLOBAL compartido
-            entre `AppsScreen` (setea el modo) y `Composer` (lo lee) — vive acá, un nivel arriba
-            de `AppShell`, mismo criterio que `SessionProvider`. */}
-        <ModeProvider>
-          <AppRouter />
-        </ModeProvider>
+        <AppRouter />
       </SessionProvider>
     </ThemeProvider>
   );

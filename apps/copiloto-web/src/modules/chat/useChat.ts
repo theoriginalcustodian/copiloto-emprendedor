@@ -215,7 +215,6 @@ export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
 
 export interface SendOptions {
   kind?: ChatMessageKind;
-  mode?: string | null;
   /** BL-D4 — texto a mostrar en la burbuja optimista del usuario cuando difiere del `text` que se
    * manda al backend. Lo usa el HITL (`kind:'callback'`): el backend espera el `value` crudo del
    * choice elegido (`confirm:<turn>:<step>`), pero el usuario nunca escribió eso — eligió un botón
@@ -396,7 +395,6 @@ export function useChat(): UseChatResult {
           session_id: sessionIdRef.current,
           text: trimmed,
           kind: opts?.kind ?? 'text',
-          mode: opts?.mode ?? null,
         });
       } catch {
         setSendStatus('error');
