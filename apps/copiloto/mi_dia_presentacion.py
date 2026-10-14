@@ -274,6 +274,8 @@ def _instante(v) -> datetime.datetime | None:
         try:
             return datetime.datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
         except ValueError:
+            # Instante ilegible: degradar a «sin instante» es lo correcto -- el presentador OMITE la fila
+            # «Se cayó», no inventa una hora (ni la sustituye por `creada`, que es cuándo corrió el detector).
             return None
     return None
 
