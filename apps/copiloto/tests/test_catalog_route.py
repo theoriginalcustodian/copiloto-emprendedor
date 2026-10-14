@@ -187,7 +187,20 @@ def test_A8_catalog_declara_las_acciones_reales_de_cada_conector():
     assert by["gmail"]["acciones"] == ["gmail_send"]               # Gmail manda y NO lee
     assert by["googlesheets"]["acciones"] == ["sheets_append_row"]  # Sheets agrega y NO lee
     assert by["googledocs"]["acciones"] == ["docs_create_doc", "docs_read_doc"]
+    # Calendar no es un módulo de `services/` (su tool vive en `TOOL_INDEX`): antes salía `[]` y la UI
+    # lo leía como «no hace nada». Un `[]` acá es el regreso de ese hueco.
+    assert by["googlecalendar"]["acciones"] == ["calendar_book"]
     assert "acciones" not in by["mercadopago"]                     # MP no es Composio: no declara acciones
+
+
+def test_A8_calendar_declara_sus_acciones_DERIVADAS_de_TOOL_INDEX_no_de_una_copia(monkeypatch):
+    """Control del control: si `/catalog` tuviera una lista a mano para Calendar, una tool nueva de tipo
+    `calendar` no aparecería. Mutar `TOOL_INDEX` en runtime lo distingue de un `["calendar_book"]` fijo."""
+    import tool_catalog
+    monkeypatch.setitem(tool_catalog.TOOL_INDEX, "calendar_find", ("calendar",))
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    by = _por_key(TestClient(app).get("/catalog").json())
+    assert by["googlecalendar"]["acciones"] == ["calendar_book", "calendar_find"]
 
 
 def test_A8_toolkit_que_gana_una_accion_la_declara_sin_tocar_el_catalogo(monkeypatch):
