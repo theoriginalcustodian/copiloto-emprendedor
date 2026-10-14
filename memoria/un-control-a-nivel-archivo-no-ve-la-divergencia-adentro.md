@@ -188,4 +188,25 @@ mida la celda por su cuenta, y la regla de no reabrir ✅ (que es correcta) lo p
 4. **Corregir el grano NO es reabrir la fila.** La enmienda se anota con su evidencia y la decisión
    que quede abierta se rutea a quien decide; el padrón no se mueve. Mezclar las dos cosas convierte
    una corrección de instrumento en un criterio que crece.
-→ [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]
+→ [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] · [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]]**Refuerzo 2026-10-14 — el mismo mecanismo un nivel mas abajo: la FUNCION no ve la rama muerta
+adentro.** Para el DoD de SM-E3 («ninguna capacidad queda en el medio») barri las funciones de red de
+`packages/core` contra sus consumidores en `apps/`: **71 funciones, 0 sin consumidor**, con control
+positivo (`leerTablero` → 6) y negativo (nombre inventado → 0). Lei ese verde como «el DoD global
+esta verificado». Lo que acreditaba era otra cosa: **ninguna funcion quedo huerfana**.
+
+Horas despues, mirando a mano, `GET /trabajos/{eslabon}/{ref}/margen`: cableado en core como
+`?detalle=<eslabon>:<ref>` de `leerGraficoMargenTrabajo`, con tipo y test propios — y **ninguna
+pantalla lo pide** (`GraficosInteligencia.tsx:153` llama sin params; 0 ocurrencias de
+`DetalleMargenTrabajo` / `modo === 'detalle'` en todo `apps/`). La funcion SI tiene consumidor, asi
+que mi barrido la conto como sana. La **rama** `modo: 'detalle'` de su retorno estaba muerta.
+
+**Why:** la granularidad del instrumento es el techo de lo que su verde acredita, y ese techo no
+aparece en la salida — el `0 sin consumidor` se lee igual de tranquilizador cuente archivos,
+funciones o ramas. Un hueco mas fino que la unidad que contas es invisible por construccion, no por
+error.
+
+**How to apply:** cuando el retorno es una **union discriminada** (`modo: 'lista' | 'detalle'`,
+`status: 'ok' | ...`), contar consumidores **por variante**, no por funcion: una variante con 0
+consumidores es el mismo hueco que una funcion con 0 consumidores. Y al reportar un barrido, escribir
+la UNIDAD que conto —«0 funciones huerfanas», no «0 huecos»— porque la cifra sin unidad se deja citar
+para cualquier pregunta ([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]).

@@ -106,4 +106,23 @@ cat "$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"   # vs: git rev-parse
 
 **Y el corolario operativo, que es lo que más cuesta:** CANON 2 dice que el grafo *sólo conoce lo
 pusheado*. Hay que agregarle **y sólo lo sincronizado**: preguntarle al grafo por código de los últimos
-dos merges puede dar vacío sin que eso signifique que no existe — [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]].
+dos merges puede dar vacío sin que eso signifique que no existe — [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]].**Refuerzo 2026-10-14 — la variante INVERSA, y es la peor: el instrumento intermitente hacia el
+VERDE.** El `pre-push` sincroniza el grafo y es fail-closed por su `set -euo pipefail` (linea 4), no
+por una rama explicita: `graph-sync.sh` saliendo 1 mata el hook antes del `exit 0` del final — leer
+el final del archivo hace creer lo contrario. Ese dia el reconcile abortaba (210 borrados, tope 200)
+y mi push murio. Seis minutos antes, otra sesion habia mergeado sin problema. **La diferencia no era
+el codigo: era el LOCK** — `graph-sync.sh:155-156`, si otro push lo tiene, el script sale **exit 0
+sin sincronizar** y el push pasa de largo. Mi push tuvo el lock 45 minutos, llego al reconcile de
+verdad, y ahi murio.
+
+**Why la inversa es peor:** un rojo intermitente al menos se investiga; un **verde** intermitente no
+se mira nunca. Durante horas, cada push que pasaba se leyo como «el grafo esta bien», cuando el
+instrumento real —el marcador `.bridge/last-synced-<repo>.sha`— seguia clavado en un sha viejo y el
+grafo ignoraba todo lo mergeado despues. Y eso envenena al CANON 2: consultar «que ya existe» a un
+grafo congelado devuelve un vacio que se lee como «no existe».
+
+**How to apply:** ante un gate que a veces pasa, no preguntar «paso?» sino **cual de sus caminos
+tomo**: grepear en el script las salidas tempranas (`exit 0` por lock, por contencion, por «nada que
+hacer») y medir el marcador de estado que el gate escribe al final, no su exit code. Si hay un
+recurso compartido —lock, puerto, device, dev-server— el resultado es una funcion de quien mas estaba
+corriendo, y ese dato no esta en tu salida.
