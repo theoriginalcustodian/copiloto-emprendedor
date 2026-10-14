@@ -51,6 +51,35 @@ import type { PeticionHttp } from './http';
  * cualquier otro valor, así que la unión se tipa CERRADA (a diferencia de las de estado, ver arriba). */
 export type CondicionIvaEmisor = 'monotributo' | 'responsable_inscripto' | 'exento';
 
+/** SM-E1 — condiciones que el backend NO sabe emitir todavía (`CONDICIONES_EMISOR_SOPORTADAS` en
+ * `afip_rules.py`): `POST /afip/perfil` con una de éstas da 422 `condicion_iva_no_soportada`. Los
+ * selectores de condición no las ofrecen. Mantenerlo igual al catálogo backend; si el backend suma la
+ * emisión A/B, esta lista se vacía. */
+export const CONDICIONES_IVA_NO_DISPONIBLES: readonly CondicionIvaEmisor[] = ['responsable_inscripto'];
+
+/** SM-E1 — por qué `GET /afip/estado` dice `puede_facturar:false` CUANDO NO ES por falta de configurar.
+ * Una sola causa conocida hoy. `'desconocido'` es lo que se lee de un código nuevo del backend: no se
+ * inventa un significado, y la pantalla NO lo trata como «sin configurar» (le pediría configurar de
+ * nuevo algo que ya está configurado). `null` = sin motivo explícito = la causa de siempre: falta
+ * configurar. */
+export type MotivoNoPuedeFacturar = 'condicion_iva_no_soportada' | 'desconocido';
+
+/** Lee `motivo_no_puede_facturar` del backend. Pura. Ausente → `undefined` (backend anterior al campo:
+ * «no sé», igual que `ambiente`); `null`/vacío → `null` (sin motivo explícito). */
+export function leerMotivoNoPuedeFacturar(raw: unknown): MotivoNoPuedeFacturar | null | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || raw === '') return null;
+  return raw === 'condicion_iva_no_soportada' ? raw : 'desconocido';
+}
+
+/** Copy compartido web + mobile del bloque «no puede facturar y NO es por configurar». */
+export const TEXTO_FACTURACION_CONDICION_NO_SOPORTADA =
+  'Tu cuenta ARCA ya está configurada, pero la emisión de facturas para Responsables Inscriptos (A y B) todavía no está disponible en la app. No tenés que configurar nada.';
+export const TEXTO_FACTURACION_MOTIVO_DESCONOCIDO =
+  'Por ahora no podemos emitir facturas con esta cuenta. No hace falta que la configures de nuevo.';
+export const TEXTO_CONDICION_IVA_NO_DISPONIBLE =
+  'Responsable inscripto todavía no está disponible: la emisión de facturas A y B no está implementada.';
+
 type EstadoFacturaConocido =
   | 'borrador'
   | 'datos_venta_ok'
@@ -261,6 +290,12 @@ export interface EstadoAfip {
   wsAutorizados: string[];
   perfilCompleto: boolean;
   puedeFacturar: boolean;
+  /**
+   * SM-E1 — el motivo cuando `puedeFacturar` es `false` y NO es por falta de configuración. `null` =
+   * sin motivo explícito (hoy: tenant que no configuró). Opcional por la misma razón que `ambiente`:
+   * un backend anterior a `b705a403` no lo manda y eso es «sin motivo», no un error.
+   */
+  motivoNoPuedeFacturar?: MotivoNoPuedeFacturar | null;
   onboarding: OnboardingProgreso | null;
   /** ⚠️ Opcional hasta que el backend lo mande (pedido §3). El ambiente de la credencial vigente. */
   ambiente?: AmbienteAfip;
@@ -639,6 +674,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       ws_autorizados: string[];
       perfil_completo: boolean;
       puede_facturar: boolean;
+      motivo_no_puede_facturar?: string | null;
       onboarding: { paso: string; motivo: string | null; ws_autorizados: string[]; terminado: boolean; ok: boolean } | null;
       // ⚠️ Los tres de abajo todavía NO los manda el backend (pedidos §2 y §3, verificado contra el
       // servicio vivo el 2026-07-21). Se leen igual, opcionales: cuando los suba, esta función los
@@ -659,6 +695,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       wsAutorizados: raw.ws_autorizados,
       perfilCompleto: raw.perfil_completo,
       puedeFacturar: raw.puede_facturar,
+      motivoNoPuedeFacturar: leerMotivoNoPuedeFacturar(raw.motivo_no_puede_facturar),
       ambiente: raw.ambiente,
       ambientesVinculados: raw.ambientes_vinculados,
       driveConectado: raw.drive_conectado,

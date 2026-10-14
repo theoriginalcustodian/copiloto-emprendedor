@@ -3,8 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ErrorValidacionFiscal,
   cambiarAmbiente,
+  CONDICIONES_IVA_NO_DISPONIBLES,
   conectarArca,
   estadoAfip,
+  TEXTO_CONDICION_IVA_NO_DISPONIBLE,
   guardarAjustesAfip,
   guardarPerfil,
   leerPerfil,
@@ -32,11 +34,20 @@ import '../ajustes.css';
 const INTERVALO_POLL_MS = 3000;
 const TOPE_ESPERA_MS = 10 * 60 * 1000;
 
-const OPCIONES_CONDICION_IVA: ReadonlyArray<{ valor: CondicionIvaEmisor; etiqueta: string }> = [
+const TODAS_LAS_CONDICIONES_IVA: ReadonlyArray<{ valor: CondicionIvaEmisor; etiqueta: string }> = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
   { valor: 'responsable_inscripto', etiqueta: 'Responsable inscripto' },
   { valor: 'exento', etiqueta: 'Exento' },
 ];
+
+/** SM-E1 — el selector NO ofrece lo que el backend rechaza con 422 (`CONDICIONES_IVA_NO_DISPONIBLES`).
+ *  Excepción: un perfil ya guardado con esa condición la conserva, para que el select no muestre otra
+ *  distinta de la que el estado realmente tiene (y que guardar mande una que el usuario no eligió). */
+export function opcionesCondicionIva(actual: string): ReadonlyArray<{ valor: CondicionIvaEmisor; etiqueta: string }> {
+  return TODAS_LAS_CONDICIONES_IVA.filter(
+    (o) => !CONDICIONES_IVA_NO_DISPONIBLES.includes(o.valor) || o.valor === actual,
+  );
+}
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
   iniciado: 'Iniciando la vinculación con ARCA…',
@@ -431,10 +442,13 @@ export function PantallaAfipSetup() {
             value={camposPerfil.condicionIva}
             onChange={(e) => actualizarCampoPerfil('condicionIva', e.target.value as CondicionIvaEmisor)}
           >
-            {OPCIONES_CONDICION_IVA.map((o) => (
+            {opcionesCondicionIva(camposPerfil.condicionIva).map((o) => (
               <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
             ))}
           </select>
+          <p className="afip-setup-bloque__ayuda" data-testid="afip-perfil-condicion-iva-aviso">
+            {TEXTO_CONDICION_IVA_NO_DISPONIBLE}
+          </p>
           {erroresPerfil.condicion_iva && <p className="afip-setup-bloque__error">{erroresPerfil.condicion_iva}</p>}
         </label>
 
