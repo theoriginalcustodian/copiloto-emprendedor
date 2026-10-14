@@ -36,6 +36,7 @@ with workflow.unsafe.imports_passed_through():
         armar_params_pdf,
         armar_payload_wsfe,
         calcular_totales,
+        condicion_emisor_soportada,
         determinar_tipo_comprobante,
         perfil_desde_dict,
         puede_emitir,
@@ -388,6 +389,11 @@ class FacturaWorkflow:
 
     def _total(self) -> Decimal:
         if not (self._borrador.items and self._perfil and self._borrador.receptor):
+            return Decimal("0.00")
+        if not condicion_emisor_soportada(self._perfil.condicion_iva):
+            # SM-E1: el perfil RI no pasa `validar_perfil` y el estado nunca llega a confirmar; pero
+            # `estado()` (query) llama esto igual, y `calcular_totales` levantaría `NotImplementedError`
+            # tumbando la consulta de la pantalla. El total de lo que no se puede emitir es 0.
             return Decimal("0.00")
         tipo = determinar_tipo_comprobante(self._perfil, self._borrador.receptor)
         return calcular_totales(self._borrador.items, tipo=tipo).total

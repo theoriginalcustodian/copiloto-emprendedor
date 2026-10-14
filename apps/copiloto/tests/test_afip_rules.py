@@ -33,6 +33,7 @@ from afip_rules import (
     receptor_desde_payload,
     armar_payload_wsfe,
     calcular_totales,
+    condicion_emisor_soportada,
     determinar_tipo_comprobante,
     fecha_valida_para_afip,
     normalizar_condicion_iva_receptor,
@@ -740,3 +741,43 @@ def test_armar_params_pdf_nota_credito_sin_params_pdf_json_levanta_value_error()
         armar_params_pdf_nota_credito(
             original_viejo, numero=901, cae="CAE-NC",
             cae_vto=date(2026, 8, 14), fecha_emision=date(2026, 8, 4))
+
+
+# ---------------------------------------------------------------------------
+# SM-E1 — la promesa «ya podés facturar» y la emisión salen de la MISMA fuente
+# ---------------------------------------------------------------------------
+
+
+def test_SME1_perfil_responsable_inscripto_no_pasa_validar_perfil():
+    """La emisión A/B no está implementada: el perfil RI no puede quedar «completo»."""
+    errores = validar_perfil(perfil_monotributo(condicion_iva=CondicionEmisor.RESPONSABLE_INSCRIPTO))
+    assert [e.codigo for e in errores] == ["condicion_iva_no_soportada"]
+
+
+@pytest.mark.parametrize("cond", [CondicionEmisor.MONOTRIBUTO, CondicionEmisor.EXENTO])
+def test_SME1_control_positivo_monotributo_y_exento_siguen_validos(cond):
+    assert validar_perfil(perfil_monotributo(condicion_iva=cond)) == []
+
+
+def test_SME1_condicion_desconocida_no_es_soportada():
+    assert condicion_emisor_soportada("inventada") is False
+    assert condicion_emisor_soportada(None) is False
+
+
+@pytest.mark.parametrize("cond", list(CondicionEmisor))
+def test_SME1_nunca_las_dos_lo_prometido_es_exactamente_lo_que_se_emite(cond):
+    """DoD de SM-E1: «o la emisión funciona o la promesa no se muestra. Nunca las dos».
+    Se mide la EMISIÓN real (calcular_totales por la letra que le toca) contra la promesa: si mañana
+    alguien implementa A/B y no la agrega a CONDICIONES_EMISOR_SOPORTADAS (o al revés, la agrega sin
+    implementarla), este test cae."""
+    perfil = perfil_monotributo(condicion_iva=cond)
+    receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL)
+    tipo = determinar_tipo_comprobante(perfil, receptor)
+    items = [Item(descripcion="x", cantidad=Decimal("1"), precio_unitario=Decimal("100"))]
+    try:
+        calcular_totales(items, tipo=tipo)
+        emite = True
+    except NotImplementedError:
+        emite = False
+    prometido = not any(e.codigo == "condicion_iva_no_soportada" for e in validar_perfil(perfil))
+    assert prometido == emite, f"{cond}: promesa={prometido} emisión={emite}"

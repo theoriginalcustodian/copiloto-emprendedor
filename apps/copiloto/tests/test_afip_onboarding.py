@@ -487,3 +487,38 @@ def test_K02_alta_original_sin_ninguna_credencial_sigue_pasando(cliente):
     """El primer alta guarda el perfil ANTES de `/afip/conectar`: el chequeo no puede bloquearla."""
     client, _ = cliente
     assert client.post("/afip/perfil", json={**_PERFIL_K02, "cuit": CUIT}).status_code == 200
+
+
+# --- SM-E1: un Responsable Inscripto no lee «ya podés facturar» sobre una emisión que explota ------
+
+def test_SME1_estado_responsable_inscripto_no_puede_facturar_y_dice_por_que(cliente, piezas):
+    _, perfil, cred, _ = piezas
+    client, _ = cliente
+    cred.save(CUIT, cert="c", key="k", ws_autorizados=["wsfe"])
+    perfil.save(CUIT, razon_social="X", domicilio_comercial="Y", condicion_iva="responsable_inscripto",
+                ingresos_brutos="1", inicio_actividades=date(2020, 1, 1), punto_venta=1)
+    estado = client.get(f"/afip/estado?cuit={CUIT}").json()
+    assert estado["perfil_completo"] is True          # el perfil existe: lo que falta es la emisión
+    assert estado["puede_facturar"] is False
+    assert estado["motivo_no_puede_facturar"] == "condicion_iva_no_soportada"
+
+
+def test_SME1_control_positivo_monotributo_con_certificado_y_perfil_puede_facturar(cliente, piezas):
+    _, perfil, cred, _ = piezas
+    client, _ = cliente
+    cred.save(CUIT, cert="c", key="k", ws_autorizados=["wsfe"])
+    perfil.save(CUIT, razon_social="X", domicilio_comercial="Y", condicion_iva="monotributo",
+                ingresos_brutos="1", inicio_actividades=date(2020, 1, 1), punto_venta=1)
+    estado = client.get(f"/afip/estado?cuit={CUIT}").json()
+    assert estado["puede_facturar"] is True
+    assert estado["motivo_no_puede_facturar"] is None
+
+
+def test_SME1_guardar_perfil_responsable_inscripto_es_422_con_codigo(cliente):
+    client, _ = cliente
+    r = client.post("/afip/perfil", json={
+        "cuit": CUIT, "razon_social": "X", "domicilio_comercial": "Y",
+        "condicion_iva": "responsable_inscripto", "ingresos_brutos": "1",
+        "inicio_actividades": "2020-01-01", "punto_venta": 1})
+    assert r.status_code == 422
+    assert any(d["codigo"] == "condicion_iva_no_soportada" for d in r.json()["detail"])
