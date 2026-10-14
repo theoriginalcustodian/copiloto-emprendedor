@@ -54,13 +54,13 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 H… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
-| **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
+| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | 🟨 EN-CURSO | frontend2 |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
-| **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
+| **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
-| **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
+| **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
@@ -314,7 +314,8 @@ no el arranque del sprint.***
 
 ### SM-D1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento/doc/planilla/archivo/borrador) se muestra con su enlace. Código y tests (13 jest + parser core + web ArtifactView) en main; el DoD pide device.
 - **Medido, y lo declara el propio código:** `apps/mobile/src/modules/chat/Burbuja.tsx:23` y
   `apps/mobile/src/modules/chat/ListaMensajes.tsx:356`.
 - **Consecuencia:** una respuesta con **3+ opciones** no se puede elegir en el teléfono, y un artefacto
@@ -372,7 +373,8 @@ no el arranque del sprint.***
 
 ### SM-D5 · `#1007` — La card de confirmación queda activa después de responderla
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se reemplaza por un Recibo sin botones al responderla (ListaMensajes) y useChat.send descarta un segundo callback sobre una card ya marcada hitlRespondido (dos toques en el mismo frame); test con mutante muerto
 - **DoD:** la card responde **una vez** y queda resuelta; un segundo toque **no reenvía**.
 - **Criterio 7 del DoD del sprint.** El mecanismo canónico de las cards por voz dice que nunca se
   pregunta dos veces: una card que sigue activa lo viola de hecho.
@@ -386,7 +388,8 @@ no el arranque del sprint.***
 
 ### SM-D7 · `#1009` — Anular un comprobante falla en silencio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest en main: las 3 vías de silencio cerradas en mobile y web)
 - **Medido:** `try/finally` **sin `catch`** ⇒ la excepción se pierde y el usuario no ve nada.
 - **DoD:** el fallo **se ve** (el usuario recibe el error) y el estado no queda a medias.
 - **Criterio 3 del DoD del sprint.**

@@ -9,6 +9,8 @@ import {
   listarComprobantes,
   listarImpagos,
   type Comprobante,
+  TEXTO_ANULACION_NO_DISPONIBLE,
+  textoDeFalloDeAnulacion,
   type EstadoAnulacion,
 } from '@copiloto/core';
 
@@ -109,6 +111,8 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   const [anulacionId, setAnulacionId] = useState<string | null>(null);
   const [estadoAnulacionActual, setEstadoAnulacionActual] = useState<EstadoAnulacion | null>(null);
   const [enviandoAnulacion, setEnviandoAnulacion] = useState(false);
+  // SM-D7: por qué falló anular / confirmar la nota de crédito (`null` = sin fallo que mostrar).
+  const [errorAnulacion, setErrorAnulacion] = useState<string | null>(null);
   // Sube en cada intento de polling que hay que REARRANCAR sin que `anulacionId` haya cambiado (el
   // caso de `confirmarNotaCredito`: la anulación sigue siendo la misma, pero el poll ya se había
   // detenido al llegar a `esperando_confirmacion` y necesita retomar hasta el próximo terminal).
@@ -195,6 +199,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
     const clave = claveDe(c);
     pedidoRef.current = clave;
     setObjetivoAnulacion(c);
+    setErrorAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
     // Antes de ofrecer «Si, anular», preguntar si ESTE comprobante ya tiene una anulacion en curso: la
@@ -209,13 +214,19 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   function cancelarPedido() {
     pedidoRef.current = null;
     setObjetivoAnulacion(null);
+    setErrorAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
   }
 
+  // SM-D7 (#1009): antes `try/finally` SIN `catch` y sin `else` — un 4xx/5xx, un `no_disponible` o un 409
+  // de confirmar se perdían: el botón volvía a «Sí, anular» como si nada y la persona creía que anuló una
+  // factura fiscal que seguía vigente. Ahora cada vía de fallo deja un texto visible y el flujo en el paso
+  // donde estaba (puede reintentar); nada queda a medias.
   async function confirmarPedido() {
     if (!objetivoAnulacion) return;
     setEnviandoAnulacion(true);
+    setErrorAnulacion(null);
     try {
       const res = await anularComprobante({
         cuit,
@@ -223,7 +234,11 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
         puntoVenta: objetivoAnulacion.puntoVenta,
         nro: objetivoAnulacion.nro,
       });
-      if (res.status === 'ok' && vivo.current) setAnulacionId(res.anulacionId);
+      if (!vivo.current) return;
+      if (res.status === 'ok') setAnulacionId(res.anulacionId);
+      else setErrorAnulacion(TEXTO_ANULACION_NO_DISPONIBLE);
+    } catch (err) {
+      if (vivo.current) setErrorAnulacion(textoDeFalloDeAnulacion(err));
     } finally {
       if (vivo.current) setEnviandoAnulacion(false);
     }
@@ -232,9 +247,12 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   async function confirmarNotaCredito() {
     if (!anulacionId) return;
     setEnviandoAnulacion(true);
+    setErrorAnulacion(null);
     try {
       await confirmarAnulacion(anulacionId);
       if (vivo.current) setPollTick((t) => t + 1);
+    } catch (err) {
+      if (vivo.current) setErrorAnulacion(textoDeFalloDeAnulacion(err));
     } finally {
       if (vivo.current) setEnviandoAnulacion(false);
     }
@@ -243,6 +261,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   function cerrarYRefrescar() {
     pedidoRef.current = null;
     setObjetivoAnulacion(null);
+    setErrorAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
     void cargar(true);
@@ -382,6 +401,16 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
                         </Button>
                       </div>
                     </>
+                  )}
+
+                  {errorAnulacion != null && (
+                    <p
+                      className="mis-comprobantes__aviso--error"
+                      role="alert"
+                      data-testid={`${testID}-anulacion-${clave}-error`}
+                    >
+                      {errorAnulacion}
+                    </p>
                   )}
 
                   {anulacionId != null && estadoAnulacionActual?.terminado === true && (
