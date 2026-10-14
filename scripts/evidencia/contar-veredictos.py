@@ -273,34 +273,38 @@ MEDICIONES_DECLARADAS = {
     # Este documento estaba en el buzon ANTES de que el fix existiera; lo que lo hizo aparecer no
     # fue trabajo nuevo, fue el instrumento dejando de ser ciego.
     "2026-09-30_cierre_frontend2-a-planificacion_C3-home-medida-DESVIO-mi-dia-vs-tablero.md",
+    # 2026-10-13 - el que estuvo en `NO_SON_MEDICION` por VOCABAJENO y volvio re-emitido. Mide las 6
+    # filas `backend + nativa` con `archivo:linea` y columna `plataforma` = `mobile`. Verificado por
+    # mi (planificacion) contra `origin/main`, no citado: `clientes` -> `montoFacturado|
+    # facturacionDeCliente` 0 archivos en `apps/mobile` y 2 en `apps/copiloto-web`
+    # (`TarjetaCliente.tsx` + su test), con el dato ya expuesto en `packages/core/src/api/clientes.ts`
+    # -- la asimetria es real. `hitl` -> el puente «Escribirle / Desde tu aviso / Volver al tablero»
+    # 0 archivos en mobile Y 0 en web, control positivo `Volver` 23 en mobile.
+    #
+    # 🔴 Su propia seccion «Para el gate de corpus» pide lo CONTRARIO de esto: dice que es
+    # `NO_SON_MEDICION` «motivo CITA» porque «el glob `*veredicto*.md` ya cuenta» al doc versionado y
+    # sumarlo contaria dos veces la misma fila. Eso es FALSO para ESTE script y lo medi: este corpus
+    # glob-ea SOLO `coordinacion/` (`COORD / base` en `:740` y `:818`; 0 ocurrencias de
+    # `docs/copiloto-emprendedor` en todo el archivo), asi que el doc versionado en `docs/` NUNCA
+    # entra aca y no hay doble conteo posible. El glob `*veredicto*.md` es de
+    # `medir-mapeo-implementacion.py`, que es el OTRO medidor y contesta OTRA pregunta. Es el mismo
+    # defecto que ya tiene nombre: dos medidores, dos preguntas, los mismos 54 ids -- razonar con el
+    # glob de uno y concluir sobre el otro. Su `pedido_` posterior se corrige a si mismo; el `cierre_`
+    # se queda con la afirmacion rancia, y es el que va a archivarse y quedar grepeable.
+    "2026-10-13_cierre_backend-a-planificacion_EVIDENCIABUZON-6-filas-backend-nativa-con-veredicto-versionado-en-main-439c1c4c-1-cierra-5-quedan.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
-    # 2026-10-13 - VOCABAJENO, y la instancia mas cara hasta hoy: este documento SI MIDE LA PANTALLA
-    # -- tabla por fila con `archivo:linea` sobre `origin/main` @ `159f883b`, cada «0 hits» con su
-    # control positivo, resultado versionado en `docs/.../2026-10-13-veredicto-bloque-chat-backend.md`
-    # -- y encima REFUTO lo que venia a cerrar (esperaba cerrar 5 acreditaciones, cierra 1: `preg`).
-    # Lo que lo deja afuera NO es el rol: es el IDIOMA. Su columna de veredicto dice `✅ + 📝 CIERRA`
-    # y `abierta`, y el `VOCABULARIO` cerrado (`:608`) no tiene esos tokens, asi que el parser lee
-    # «1 id con algo en rol de veredicto, 0 interpretable».
-    #
-    # 🔴 Por que NO va a `MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA`: esa lista pregunta «el
-    # documento NO MIDE o NO SE LEE», y su propio comentario prohibe usarla cuando la respuesta es
-    # «no se lee» -- eso seria firmar un hueco de lectura como decision de clasificacion. Aca la
-    # respuesta es NO SE LEE.
-    #
-    # ⚠️ El descarte NO retira sus 6 veredictos: quedan PENDIENTES DE RE-EMISION por backend en el
-    # vocabulario del criterio (COHERENTE / DESVIO / NO_MEDIBLE / PENDIENTE_DEVICE / REQUIERE_TRIAGE
-    # / INCOMPLETO). Mientras no se re-emitan, la cifra NO cuenta `preg` como cerrada aunque el
-    # documento lo demuestre -- y eso es correcto: el padron se mueve con veredictos legibles, no con
-    # prosa que un humano sabe interpretar y el contador no.
-    "2026-10-13_cierre_backend-a-planificacion_EVIDENCIABUZON-6-filas":
-        "VOCABAJENO: mide la pantalla con path:linea pero su columna usa vocabulario propio "
-        "(`✅ CIERRA` / `abierta`) fuera del VOCABULARIO cerrado; sus 6 veredictos quedan pendientes "
-        "de re-emision por backend, no retirados",
+    # 2026-10-13 - VOCABAJENO: RESUELTO, no vigente. El cierre de backend estuvo aca porque su
+    # columna de veredicto decia `✅ + 📝 CIERRA` / `abierta` -- tokens fuera del `VOCABULARIO`
+    # cerrado -- aunque el documento SI midiera la pantalla con `archivo:linea`. Backend RE-EMITIO
+    # esa columna en el vocabulario del criterio y agrego la columna `plataforma` (`mobile`), asi que
+    # el motivo del descarte dejo de existir y la entrada se MOVIO a `MEDICIONES_DECLARADAS`.
+    # Se reescribe este comentario en vez de apendear el desenlace abajo: un comentario que declara
+    # un estado ya superado sigue leyendose como vigente, y el lector no tiene como saber cual gana.
     # 2026-10-13 - CONTRATO MIO (planificacion). Dictamina ESTADO DE COLA y asigna trabajo: cuales de
     # las 7 pendientes de app tienen clausula rancia y quien traba las otras cinco. Las cifras que usa
     # («el padron declara 12 pendientes que NO cumplen») son CITA de este mismo medidor: contarlas
@@ -2264,6 +2268,29 @@ CONFLICTOS_CONOCIDOS = {
     "factura": HIPOTESIS_MATRIZ_2209,
     "ingresar": HIPOTESIS_MATRIZ_2209,
     "preg": HIPOTESIS_MATRIZ_2209,
+    # 2026-10-13 - DOS ids con la MISMA forma, y la forma importa: el contraste agrupa por `id`
+    # SOLO (`contraste_de_veredictos`: `por_id.setdefault(i, ...)`), no por `(id, plataforma)`. Con
+    # la columna `plataforma` ya existiendo en los documentos, un id COHERENTE en web y DESVIO en
+    # mobile va a disparar falso conflicto SIEMPRE. El comentario de esa funcion ya lo nombra («dos
+    # veredictos distintos pueden ser de dos superficies distintas y los dos vigentes») y manda a
+    # declararlo aca, asi que esto USA el mecanismo previsto; NO es arreglar el instrumento
+    # (`CONGELAINSTR` sigue vigente). La ceguera estructural queda anotada en `PLAN.md`.
+    "clientes": "[DIRIMIDO 2026-10-13 - SUJETOS DISTINTOS, no contradiccion] COHERENTE web 28/09 "
+                "(BL-Q3-v2 lote A: el SUBTITULO del listado, `pantalla-clientes`) vs DESVIO mobile "
+                "13/10 (el MONTO FACTURADO, elemento que el 28/09 no existia). Medido por "
+                "planificacion contra `origin/main`, no citado: `montoFacturado|"
+                "facturacionDeCliente` -> 0 archivos en `apps/mobile`, 2 en `apps/copiloto-web` "
+                "(`TarjetaCliente.tsx` + test); el dato ya esta expuesto en "
+                "`packages/core/src/api/clientes.ts`, asi que mobile no lo pinta por falta de UI, no "
+                "de dato. Los dos veredictos son vigentes a la vez.",
+    "hitl": "[DIRIMIDO 2026-10-13 - SUJETOS DISTINTOS, no contradiccion] COHERENTE web 22/09 y 29/09 "
+            "(FE1 `matriz-web-re-medida`, `B1`: la TARJETA DE PROPUESTA con Confirmar/Cancelar) vs "
+            "DESVIO mobile 13/10 (el PUENTE tarjeta->chat «Escribirle / Desde tu aviso / Volver al "
+            "tablero»). Medido contra `origin/main`: el puente da 0 archivos en mobile Y 0 en web "
+            "(control positivo `Volver` 23 en mobile) -- que no exista en NINGUNA plataforma es "
+            "justamente la prueba de que el COHERENTE de web del 22/09 media OTRO elemento, no este. "
+            "Si midieran lo mismo, el COHERENTE de web seria un falso positivo y habria que "
+            "retirarlo; no lo es.",
     "bi": "[DIRIMIDO 2026-09-29] COHERENTE (matriz-web-re-medida, FE1 22/09, «recapturado con espera real a datos») vs "
           "DESVIO (lote A, 28/09). Auditoria ya resolvio que su DESVIO era FALSO POSITIVO del rail, "
           "y lo retiro el 2026-09-29 — el conflicto ya esta dirimido y a favor del COHERENTE. "
