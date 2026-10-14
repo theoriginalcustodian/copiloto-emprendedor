@@ -14,11 +14,14 @@ import {
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
   leerSugerenciaArmarFactura,
+  formatearHoraDeMensaje,
+  idMensajeSinConfirmar,
   mapearGate,
   separadoresDeDia,
   type ChatMessage,
   type DetalleGate,
   type Gate,
+  type SendStatus,
 } from '@copiloto/core';
 
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
@@ -70,6 +73,12 @@ export interface ListaMensajesProps {
    * no una variante. Ausente = nada (el chat general no pasa nada, sin cambio).
    */
   pie?: ReactElement;
+  /**
+   * El estado del ÚLTIMO envío (`useChat().estado.sendStatus`). Decide si el último mensaje propio ya se
+   * puede rotular «✓✓ recibido» (fact-voz d): en `sending`/`error` el servidor no lo aceptó. Ausente = se
+   * asume que nada está en vuelo (los tests y pantallas que no tienen envío no cambian).
+   */
+  sendStatus?: SendStatus;
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
    * gate de este sprint lo usa todavía.
@@ -299,6 +308,8 @@ interface FilaMensajeProps {
   mensaje: ChatMessage;
   onChoice: ListaMensajesProps['onChoice'];
   onResolverTarjeta: ListaMensajesProps['onResolverTarjeta'];
+  /** fact-voz (d) — este mensaje es el propio sin confirmar (envío en vuelo o fallido): sin «recibido». */
+  sinConfirmar?: boolean;
 }
 
 /**
@@ -313,9 +324,20 @@ const FilaMensaje = memo(function FilaMensaje({
   mensaje,
   onChoice,
   onResolverTarjeta = () => {},
+  sinConfirmar = false,
 }: FilaMensajeProps) {
   if (mensaje.role === 'user') {
-    return <Burbuja role="user" text={mensaje.text} porVoz={mensaje.porVoz} />;
+    // El dictado del emprendedor SIEMPRE llega acá, antes de toda rama de card: lo que una card reemplaza es
+    // el render del mensaje del ASISTENTE, nunca el del usuario.
+    return (
+      <Burbuja
+        role="user"
+        text={mensaje.text}
+        porVoz={mensaje.porVoz}
+        recibido={!sinConfirmar}
+        hora={formatearHoraDeMensaje(mensaje.creadoEn)}
+      />
+    );
   }
 
   // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que
@@ -396,6 +418,17 @@ const FilaMensaje = memo(function FilaMensaje({
   }
 
   // `payment_link` — el link que `mp_charge` ya generó (BL-F2). Sin `url` no hay card y cae a `Burbuja`.
+  //
+  // 🔴 Acá la card va SOLA, sin la burbuja del asistente (a diferencia de `datos_negocio`, abajo), y es a
+  // propósito — `cobro-voz` #5 del veredicto del chat, ENMIENDA FUNDADA:
+  //  · el `kind` `payment_link` ES el contenido: la card trae monto, concepto y Compartir/Abrir, que es el DoD
+  //    de BL-F2. Un «acá está el link» arriba del link sería redundante.
+  //  · el prototipo no modela esta tarjeta en el hilo (0 hits de `Compartir`/`Abrir`/`artefacto`/`init_point`
+  //    en `index.html`, con control positivo en `cobrar`); `datos_negocio` sí lleva burbuja + card porque ahí
+  //    hay referencia de prototipo y su comentario la cita.
+  //  · el dictado del emprendedor no se pierde: la rama `role === 'user'` de arriba lo pinta antes de
+  //    cualquier card. Lo que esta rama reemplaza es el texto del COPILOTO.
+  // Si alguien ve dos ramas vecinas con tratamiento distinto: es esto, no un descuido.
   const linkDeCobro = leerLinkDeCobro(mensaje.card);
   if (linkDeCobro) {
     return <TarjetaLinkDeCobro link={linkDeCobro} />;
@@ -493,7 +526,7 @@ const FilaMensaje = memo(function FilaMensaje({
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, sendStatus }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -504,6 +537,9 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
 
     // BL-C3: un divisor por cambio de día (hora de Buenos Aires) sobre el primer mensaje del día.
     const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
+
+    // fact-voz (d): cuál mensaje propio no se puede dar por recibido todavía (ver `idMensajeSinConfirmar`).
+    const idSinConfirmar = useMemo(() => idMensajeSinConfirmar(messages, sendStatus), [messages, sendStatus]);
 
     const renderItem = useCallback(
       ({ item }: ListRenderItemInfo<ChatMessage>) => (
@@ -523,10 +559,15 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
               {separadores.get(item.id)}
             </Text>
           )}
-          <FilaMensaje mensaje={item} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
+          <FilaMensaje
+            mensaje={item}
+            onChoice={onChoice}
+            onResolverTarjeta={onResolverTarjeta}
+            sinConfirmar={item.id === idSinConfirmar}
+          />
         </View>
       ),
-      [onChoice, onResolverTarjeta, separadores, tema],
+      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 

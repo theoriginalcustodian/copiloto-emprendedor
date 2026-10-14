@@ -52,3 +52,49 @@ describe('Composer -- botón de foto (Gastos Fase 2, la única excepción a "sin
     expect(screen.getByTestId('chat-foto').props.accessibilityState?.disabled).toBe(true);
   });
 });
+
+describe('Composer -- semilla (hitl a: el aviso de una tarjeta de Mi día)', () => {
+  it('siembra el texto en el campo y NO lo manda: lo envía quien lo lee', async () => {
+    const onSend = jest.fn();
+    await renderComposer({ onSend, semilla: { texto: 'Sobre este aviso de Mi día: «X». Acción: Reclamar', id: 1 } });
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('Sobre este aviso de Mi día: «X». Acción: Reclamar'));
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('🔴 no pisa un borrador a medias: la semilla va arriba y lo que había queda debajo', async () => {
+    const view = await renderComposer();
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'le quiero decir que');
+    await view.rerender(
+      <ThemeProvider>
+        <Composer sendStatus="idle" onSend={jest.fn()} semilla={{ texto: 'AVISO', id: 1 }} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('AVISO\n\nle quiero decir que'));
+  });
+
+  it('el mismo aviso dos veces (otro `id`) vuelve a sembrar; el mismo `id` no re-siembra en cada render', async () => {
+    const view = await renderComposer({ semilla: { texto: 'AVISO', id: 1 } });
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('AVISO'));
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), '');
+
+    // Mismo `id`, objeto nuevo: NO vuelve a escribir el aviso sobre lo que el usuario ya borró/editó.
+    await view.rerender(
+      <ThemeProvider>
+        <Composer sendStatus="idle" onSend={jest.fn()} semilla={{ texto: 'AVISO', id: 1 }} />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
+    await view.rerender(
+      <ThemeProvider>
+        <Composer sendStatus="idle" onSend={jest.fn()} semilla={{ texto: 'AVISO', id: 2 }} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('AVISO'));
+  });
+
+  it('sin semilla el campo arranca vacío (nada cambia para el chat de siempre)', async () => {
+    await renderComposer();
+    await waitFor(() => expect(screen.getByTestId('chat-composer')).toBeTruthy());
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
+  });
+});

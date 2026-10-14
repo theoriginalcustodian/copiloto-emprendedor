@@ -1,7 +1,9 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
+
+import { ROTULO_VOLVER_AL_TABLERO, type AvisoAlChat } from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
@@ -14,6 +16,8 @@ import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { useCapturaFoto } from './useCapturaFoto';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
+import { useTema } from '../../theme/ThemeProvider';
 import { useChat } from './useChat';
 import { useConexionRequerida } from './useConexionRequerida';
 import { useVozComando } from './useVozComando';
@@ -39,6 +43,18 @@ function useTecladoVisible(): boolean {
     };
   }, []);
   return visible;
+}
+
+export interface ChatViewProps {
+  /**
+   * `hitl (a)` — el aviso de una tarjeta de Mi día que el emprendedor llevó al chat. Entra **sembrado en
+   * el composer** (lo manda él) y trae el chip «Desde tu aviso · …». `id` crece con cada aviso: el mismo
+   * aviso dos veces vuelve a sembrar. Lo dueña quien monta el chat (`PantallaPrincipal`), porque Mi día
+   * y el chat son la MISMA pantalla — no hay navegación ni buzón de módulo de por medio.
+   */
+  avisoEntrante?: { aviso: AvisoAlChat; id: number } | null;
+  /** La salida del chip: baja la conversación y devuelve al tablero. Sin ella el chip no la ofrece. */
+  onVolverAlTablero?: () => void;
 }
 
 /**
@@ -88,7 +104,8 @@ function useTecladoVisible(): boolean {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView() {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewProps = {}) {
+  const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
@@ -122,6 +139,10 @@ export function ChatView() {
   }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
+  const semilla = useMemo(
+    () => (avisoEntrante != null ? { texto: avisoEntrante.aviso.texto, id: avisoEntrante.id } : null),
+    [avisoEntrante],
+  );
 
   // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
   const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio, descartarConexion);
@@ -235,9 +256,41 @@ export function ChatView() {
         <IndicadorModoCeremonia />
       </View>
 
+      {/* `.ctx-chip` del prototipo (`index.html:2750`): de dónde viene lo que está por decirse. SÓLO UI —
+          el texto que viaja es el del composer. La salida es la del recibo del prototipo (`:2774`). */}
+      {avisoEntrante != null && (
+        <View
+          testID="chat-contexto-aviso"
+          style={[styles.contextoAviso, { borderColor: tema.color.borde, backgroundColor: tema.glass.chip }]}
+        >
+          <Text
+            testID="chat-contexto-aviso-texto"
+            numberOfLines={1}
+            style={{ flexShrink: 1, color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiMedium }}
+          >
+            {avisoEntrante.aviso.contexto}
+          </Text>
+          {onVolverAlTablero != null && (
+            <Pressable
+              testID="chat-contexto-aviso-volver"
+              accessibilityRole="button"
+              accessibilityLabel={ROTULO_VOLVER_AL_TABLERO}
+              onPress={onVolverAlTablero}
+              hitSlop={10}
+              style={pressableStyle(undefined, PRESS_FADE)}
+            >
+              <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>
+                {ROTULO_VOLVER_AL_TABLERO}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
       <ListaMensajes
         ref={scrollRef}
         messages={estado?.messages ?? []}
+        sendStatus={estado?.sendStatus}
         onChoice={manejarEleccion}
         onResolverTarjeta={marcarCardResuelta}
       />
@@ -303,6 +356,7 @@ export function ChatView() {
           onSend={manejarEnvio}
           disabled={estado === null}
           onFoto={alElegirFoto}
+          semilla={semilla}
         />
       </View>
     </KeyboardAvoidingView>
@@ -313,6 +367,18 @@ const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
   indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
+  contextoAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+  },
   overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
   ondaFlotante: { width: '100%', paddingHorizontal: 24 },
   // `display:'none'` y no `opacity:0`: con opacity el botón seguiría ocupando su lugar y el composer

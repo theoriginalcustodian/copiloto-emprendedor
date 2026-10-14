@@ -78,6 +78,15 @@ export interface ComposerProps {
    * quien venía a pedir ayuda (O1).
    */
   placeholder?: string;
+  /**
+   * Un texto que otra parte de la app le deja al campo (`hitl a`: el aviso de una tarjeta de Mi día).
+   * Se SIEMBRA, no se manda: lo envía quien lo lee. `id` distingue una siembra de la anterior aunque
+   * el texto sea el mismo (dos veces el mismo aviso = dos pedidos de volver a verlo).
+   *
+   * 🔴 **No pisa lo que ya había escrito**: un borrador a medias es trabajo del usuario. La semilla va
+   * arriba y lo anterior queda debajo, a la vista.
+   */
+  semilla?: { texto: string; id: number } | null;
 }
 
 const PLACEHOLDER_CHAT = 'Escribí, o hablá…';
@@ -124,9 +133,26 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
  * tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
  * resuelve o cancela, no una máquina de fases.
  */
-export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false, onFoto, placeholder = PLACEHOLDER_CHAT }: ComposerProps) {
+export function Composer({
+  sendStatus,
+  motivoFallo = null,
+  onSend,
+  disabled = false,
+  onFoto,
+  placeholder = PLACEHOLDER_CHAT,
+  semilla = null,
+}: ComposerProps) {
   const tema = useTema();
   const [borrador, setBorrador] = useState('');
+  // Sembrar es una función del `id`, no del objeto ni del texto: un re-render que rearma `{texto, id}` con
+  // el mismo `id` no re-siembra (volvería a escribir el aviso sobre lo que el usuario ya editó), y el mismo
+  // texto con otro `id` sí.
+  const ultimaSemilla = useRef<number | null>(null);
+  useEffect(() => {
+    if (semilla == null || semilla.id === ultimaSemilla.current) return;
+    ultimaSemilla.current = semilla.id;
+    setBorrador((previo) => (previo.trim() === '' ? semilla.texto : `${semilla.texto}\n\n${previo}`));
+  }, [semilla]);
   const puedeEnviar = !disabled && borrador.trim() !== '' && sendStatus !== 'sending';
   const hint = textoEstado(sendStatus, motivoFallo);
 

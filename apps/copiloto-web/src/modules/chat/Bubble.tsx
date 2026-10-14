@@ -70,7 +70,9 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
             </span>
           )}
         </div>
-        <span className="chat-bubble__receipt">✓✓ recibido</span>
+        <span className="chat-bubble__receipt" data-testid="chat-bubble-recibido">
+          ✓✓ recibido
+        </span>
       </div>
     );
   }
