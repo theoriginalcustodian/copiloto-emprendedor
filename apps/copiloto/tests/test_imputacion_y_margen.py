@@ -357,3 +357,79 @@ def test_corregir_el_monto_de_un_ingreso_RECALCULA_el_margen(conn_de_tenant, ten
     despues = trabajos.margen("comprobante", comprobante)
     assert despues["cobrado"] == "60000.00", "el cobrado no siguio al monto corregido"
     assert despues["margen"] == "30000.00", "el margen quedo viejo: se esta cacheando en algun lado"
+
+
+# ── SM-E3: la imputación se LEE (antes el PUT la escribía y nada la devolvía) ────────────────────
+
+def _no_nulas(imputacion: dict) -> list[str]:
+    return [k for k in ("presupuesto_ref", "comprobante_ref", "cobro_ref") if imputacion[k] is not None]
+
+
+@necesita_pg
+def test_SME3_la_imputacion_viaja_en_el_detalle_y_en_el_listado_con_la_forma_del_PUT(conn_de_tenant, tenants):
+    """DoD: `GET /gastos` y `GET /gastos/{id}` devuelven la imputación, con la MISMA forma que el PUT
+    (un solo parser en core). Sin imputar: las tres referencias en null, nunca clave ausente."""
+    a, _ = tenants
+    presupuesto, _ = _trabajo_completo(conn_de_tenant, a, nro=807)
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    g = gastos.crear(monto="4000", categoria="otros")
+
+    assert g["imputacion"] == {"gasto_id": g["id"], "presupuesto_ref": None,
+                               "comprobante_ref": None, "cobro_ref": None}
+    assert gastos.detalle(g["id"])["imputacion"] == g["imputacion"]
+
+    del_put = trabajos.imputar(g["id"], "presupuesto", presupuesto)
+    assert gastos.detalle(g["id"])["imputacion"] == del_put            # idéntico al retorno del PUT
+    assert del_put["presupuesto_ref"] == presupuesto
+    en_listado = {x["id"]: x for x in gastos.listar()[0]}
+    assert en_listado[g["id"]]["imputacion"] == del_put
+
+
+@necesita_pg
+def test_SME3_ADVERSARIAL_A_no_ve_imputado_el_gasto_de_B_ni_logra_imputarlo(conn_de_tenant, tenants):
+    """Un gasto de B imputado a un trabajo de B no aparece —ni imputado ni a secas— al pedirlo como A,
+    y A no puede imputarlo aunque apunte a un trabajo propio. CONTROL POSITIVO: B sí lo ve imputado."""
+    a, b = tenants
+    presupuesto_de_b, _ = _trabajo_completo(conn_de_tenant, b, nro=808)
+    propio_de_a, _ = _trabajo_completo(conn_de_tenant, a, nro=809)
+    gastos_a, gastos_b = GastoStore(conn_de_tenant(a), a), GastoStore(conn_de_tenant(b), b)
+    trabajos_a, trabajos_b = TrabajoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(b), b)
+    gasto_de_b = gastos_b.crear(monto="2500", categoria="otros")
+    trabajos_b.imputar(gasto_de_b["id"], "presupuesto", presupuesto_de_b)
+
+    # LECTURA: A no lo ve por ninguna de las dos vías
+    assert gastos_a.detalle(gasto_de_b["id"]) is None
+    assert gasto_de_b["id"] not in {x["id"] for x in gastos_a.listar()[0]}
+    # ESCRITURA: A no lo imputa a un trabajo PROPIO (no hay fila de B que tocar) …
+    assert trabajos_a.imputar(gasto_de_b["id"], "presupuesto", propio_de_a) is None
+    # … y la imputación de B quedó intacta
+    assert gastos_b.detalle(gasto_de_b["id"])["imputacion"]["presupuesto_ref"] == presupuesto_de_b
+
+    # CONTROL POSITIVO: la lectura de B ve su imputación (si fallara para todos, lo de arriba no probaría nada)
+    assert gasto_de_b["id"] in {x["id"] for x in gastos_b.listar()[0]}
+    # y A ve lo SUYO imputado
+    suyo = gastos_a.crear(monto="100", categoria="otros")
+    trabajos_a.imputar(suyo["id"], "presupuesto", propio_de_a)
+    assert gastos_a.detalle(suyo["id"])["imputacion"]["presupuesto_ref"] == propio_de_a
+
+
+@necesita_pg
+def test_SME3_canario_reimputar_deja_UNA_sola_columna_no_nula_leida_por_la_lectura(conn_de_tenant, tenants):
+    """Invariante de `imputar()`, medida por el camino que la UI va a usar: tras mover el gasto por los
+    tres eslabones y desimputarlo, a lo sumo UNA de las tres referencias es no nula. Complementa
+    `test_reimputar_LIMPIA_la_referencia_anterior` (que mira sólo el retorno del PUT y sólo 2 eslabones)."""
+    a, _ = tenants
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=810)
+    cobro = CobroStore(conn_de_tenant(a), a).registrar_suelto(
+        monto="1000", medio="efectivo", presupuesto_ref=presupuesto)["id"]
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    g = gastos.crear(monto="7000", categoria="otros")
+
+    for eslabon, ref, columna in (("presupuesto", presupuesto, "presupuesto_ref"),
+                                  ("comprobante", comprobante, "comprobante_ref"),
+                                  ("cobro", cobro, "cobro_ref"),
+                                  ("presupuesto", presupuesto, "presupuesto_ref")):
+        trabajos.imputar(g["id"], eslabon, ref)
+        assert _no_nulas(gastos.detalle(g["id"])["imputacion"]) == [columna]
+    trabajos.imputar(g["id"], None, None)
+    assert _no_nulas(gastos.detalle(g["id"])["imputacion"]) == []

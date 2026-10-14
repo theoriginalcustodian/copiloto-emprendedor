@@ -33,7 +33,7 @@ from decimal import Decimal
 from typing import Callable
 
 from evento_store import registrar_evento
-from gasto_store import dos_decimales
+from gasto_store import dos_decimales, imputacion_de
 
 _SCHEMA = "uc_factory"
 _GASTOS = f"{_SCHEMA}.copiloto_gastos"
@@ -220,5 +220,4 @@ class TrabajoStore:
                              evento=("imputado" if eslabon is not None else "desimputado"),
                              campo="imputacion",
                              valor_a=({"eslabon": eslabon, "ref": ref} if eslabon is not None else None))
-        return {"gasto_id": gasto_id, "presupuesto_ref": fila[0],
-                "comprobante_ref": fila[1], "cobro_ref": fila[2]}
+        return imputacion_de(gasto_id, fila[0], fila[1], fila[2])
