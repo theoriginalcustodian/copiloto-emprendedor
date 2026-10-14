@@ -8,7 +8,7 @@ export type FuncionSoporte = 'soporte_tecnico' | 'como_uso_la_app';
 
 /**
  * Body de `/soporte/chat` (SOP5) — ANGOSTO a propósito, mismo criterio que `packages/core/src/api/
- * soporte.ts`: `ChatRequest` (`chat.ts`) carga `mode` (el "Modo Mail" de `useMode()`), que no
+ * soporte.ts`: `ChatRequest` (`chat.ts`) carga `mode` (campo del chat de negocio), que no
  * significa nada para soporte. Un tipo propio evita que ese campo se filtre acá "porque ya estaba
  * en el shape ancho".
  *

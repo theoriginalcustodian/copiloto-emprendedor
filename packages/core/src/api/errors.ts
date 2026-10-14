@@ -69,6 +69,10 @@ export type CodigoConflicto =
   | 'ambiente_no_vinculado'
   /** K-02 / BL-C6: `POST /afip/perfil` con un CUIT que no está entre los vinculados a la clave fiscal del tenant. */
   | 'cuit_no_vinculado'
+  /** SM-C3: `POST /me/onboarding/completar` con `que_vende` o `nombre_comercial` vacios. El
+   * `faltantes` del detail dice cuales -- el gate del primer ingreso lo necesita para pedir
+   * SOLO lo que falta en vez de volver a pedir todo. */
+  | 'perfil_minimo_incompleto'
   | 'sin_perfil_fiscal'
   | 'modo_automatico_no_disponible'
   /** El gate HITL no tomó la confirmación (factura o anulación). El porqué puntual viaja aparte, en

@@ -347,7 +347,7 @@
 
 /* ---------- Anchos de columna por pantalla (EXTRACT §3.2) ----------
  * Ajuste responsive MÍNIMO: centra/acota el ancho desde el descendiente del shell, SIN tocar el
- * CSS propio de cada módulo (chat.css/connections.css/account.css/apps.css quedan intactos —
+ * CSS propio de cada módulo (chat.css/connections.css/account.css quedan intactos —
  * mobile no se toca). */
 .desktop-shell__content .chat-messages {
   width: 100%;
@@ -389,10 +389,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* ---------- Overrides puntuales de fidelidad (audit gap-desktop.md) ----------
- * `AppsScreen` queda FUERA de este bloque a propósito: vive dentro de `AppsModal` (montado fuera
- * de `.desktop-shell__content`, ver `AppsModal.tsx`/`DesktopShell.tsx`), así que usa su CSS base
- * (~440px) sin el override de columna de 900/640px de arriba. */
+/* ---------- Overrides puntuales de fidelidad (audit gap-desktop.md) ---------- */
 
 /* #17 — el `StatusBar` de teléfono (reloj+batería) no existe en el diseño desktop. `ChatScreen`
    con `variant="desktop"` ya lo omite en el markup (ver ChatScreen.tsx) — esta regla es defensa en
@@ -447,84 +444,4 @@
    oculta SOLO en desktop — mismo patrón que los overrides de arriba. */
 .desktop-shell__content .connections-screen__avatar {
   display: none;
-}
-
-/* ---------- Modal "Tus apps" (desktop-only, `Copiloto Web.dc.html:363-402` verbatim) ----------
- * Envuelve `AppsScreen` (montado por `AppsModal.tsx`) sin duplicar su header — el título/subtítulo
- * ya los renderiza `AppsScreen`, acá solo se agrega scrim + panel + botón X. Mismo patrón "root
- * fijo + scrim + panel" que `.uc-sheet-root` de `design-system/primitives.css` (BottomSheet
- * mobile), pero centrado (`scale`+`translate(-50%,-50%)`) en vez de `translateY` desde abajo —
- * la animación es distinta, por eso es un componente propio y no una reutilización directa. */
-.apps-modal-root {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-}
-
-.apps-modal-root--open {
-  pointer-events: auto;
-}
-
-.apps-modal-scrim {
-  position: absolute;
-  inset: 0;
-  /* Excepción documentada (mismo criterio que `.uc-sheet-scrim` en primitives.css): scrim fijo,
-     no theme-aware, constante entre las 3 pieles en el mock. Sin blur (ODOBI hito 2, "sin glass"). */
-  background: rgba(3, 4, 10, 0.55);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.apps-modal-root--open .apps-modal-scrim {
-  opacity: 1;
-}
-
-.apps-modal-panel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 440px;
-  max-width: calc(100% - 48px);
-  max-height: 82%;
-  transform: translate(-50%, -50%) scale(0.96);
-  opacity: 0;
-  transition:
-    transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.3s ease;
-  border-radius: var(--r-xl);
-  background: var(--card-bg);
-  border: var(--card-border);
-  /* Nivel 4 · Flotante (§2.4: "shell, modal, bottom sheet" — este panel ES un modal). Reemplaza el
-     rgba(0,0,0,.7) fijo que tenía antes (no theme-aware) por el token, ya cálido en claro. */
-  box-shadow: var(--shadow-nivel4);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.apps-modal-root--open .apps-modal-panel {
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
-}
-
-.apps-modal-close {
-  position: absolute;
-  top: 22px;
-  right: 24px;
-  width: 32px;
-  height: 32px;
-  border: var(--cancel-border);
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.apps-modal-close:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
 }

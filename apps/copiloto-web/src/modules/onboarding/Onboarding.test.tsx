@@ -41,7 +41,7 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     mockCatalogo.mockReset();
     mockLink.mockReset();
     mockPortada.mockReset();
-    mockCompletar.mockReset().mockResolvedValue(true);
+    mockCompletar.mockReset().mockResolvedValue({ ok: true });
     tomarPendiente(); // el buzón es un módulo con estado: un test no hereda el pedido del anterior
   });
 
@@ -105,7 +105,7 @@ describe('Onboarding (K-14 / BL-X8)', () => {
 
   it('«Después» cierra aunque no se pueda marcar (fail-soft)', async () => {
     mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
-    mockCompletar.mockResolvedValue(false);
+    mockCompletar.mockResolvedValue({ ok: false, perfilIncompleto: false });
     const onTerminar = vi.fn();
     render(<Onboarding onTerminar={onTerminar} />);
     fireEvent.click(await screen.findByTestId('onboarding-despues'));

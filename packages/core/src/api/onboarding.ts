@@ -1,6 +1,8 @@
 import { formatearImporte } from '../dinero/formatoDinero';
 import { apiClient } from './client';
+import { ApiError, codigoDeConflicto } from './errors';
 import type { ServicioCatalogo } from './catalogo';
+import type { PerfilNegocio } from './perfilNegocio';
 import type { Portada } from './inteligencia';
 import type { MeResponse } from './types';
 
@@ -19,16 +21,103 @@ export function debeMostrarOnboarding(me: Pick<MeResponse, 'onboarding_completad
 }
 
 /**
- * `POST /me/onboarding/completar` — sin body (el tenant sale del token), idempotente. Devuelve `false`
- * si no se pudo marcar: el hilo se cierra igual (el usuario ya lo vio) y se vuelve a intentar en el
- * próximo arranque en vez de trabarlo acá.
+ * 🔴 **El perfil mínimo del primer ingreso (SM-C3) — UNA definición para las dos apps.**
+ *
+ * El backend es el que manda: `POST /me/onboarding/completar` devuelve **409**
+ * `perfil_minimo_incompleto` con `faltantes` si alguno está vacío (`46cd8cc0`). Esto no
+ * re-decide la regla — la refleja del lado del cliente para que el paso del onboarding sepa qué
+ * pedir **antes** de llamar, en vez de descubrirlo por un error.
+ *
+ * Vive pegado a `debeMostrarOnboarding` y con **una sola** definición a propósito (DoD 1): el día
+ * que `esAnulable` se definió dos veces, el fix llegó a una sola mitad.
+ *
+ * ⚠️ **`aQuien` NO entra, aunque sería el tercero natural** (decide A vs B): su default es
+ * `"ambos"` y el `upsert` crea la fila con los defaults, así que un check de «no vacío» sobre él
+ * **siempre pasa** — un gate hueco. Exigirlo necesita un tercer estado en el schema. Deuda
+ * nombrada, no silenciada.
  */
-export async function completarOnboarding(): Promise<boolean> {
+export const CAMPOS_PERFIL_MINIMO = ['queVende', 'nombreComercial'] as const;
+
+export type CampoPerfilMinimo = (typeof CAMPOS_PERFIL_MINIMO)[number];
+
+/** Cómo viaja cada campo en el `faltantes` del 409 (el backend habla snake_case). */
+export const CAMPO_PERFIL_MINIMO_BACKEND: Record<CampoPerfilMinimo, string> = {
+  queVende: 'que_vende',
+  nombreComercial: 'nombre_comercial',
+};
+
+type PerfilMinimo = Partial<Pick<PerfilNegocio, CampoPerfilMinimo>>;
+
+/**
+ * Qué falta del perfil mínimo. **Vacío o sólo espacios cuenta como vacío**, igual que el backend
+ * (`.strip()` allá, `.trim()` acá: si los dos lados no coinciden, la app deja pasar algo que el
+ * server rechaza y el usuario ve un 409 que la pantalla ya podía evitar).
+ *
+ * Un perfil ausente (`null`/`undefined`) devuelve **los dos**: fail-closed. No haber podido leer el
+ * perfil no es «está completo» — ese degradado hacia el caso benigno es exactamente el que
+ * convierte un gate en decoración.
+ */
+export function faltantesDelPerfilMinimo(
+  perfil: PerfilMinimo | null | undefined,
+): readonly CampoPerfilMinimo[] {
+  return CAMPOS_PERFIL_MINIMO.filter((campo) => (perfil?.[campo] ?? '').trim() === '');
+}
+
+/** `true` sólo si los dos campos tienen contenido real. Lo que las dos apps consultan. */
+export function perfilMinimoCompleto(perfil: PerfilMinimo | null | undefined): boolean {
+  return faltantesDelPerfilMinimo(perfil).length === 0;
+}
+
+/**
+ * Qué pasó al cerrar el hilo. **Reemplaza el `boolean`**, que colapsaba dos cosas distintas:
+ * «no se pudo marcar, se reintenta solo» y «el backend RECHAZÓ porque falta el perfil mínimo».
+ * Con el 409 de SM-C3 esa diferencia dejó de ser cosmética: en el primer caso cerrar el hilo es
+ * correcto, en el segundo cerrarlo manda a la persona a un shell al que el server no la va a
+ * dejar entrar, **sin decirle qué le falta**.
+ */
+export type ResultadoCompletarOnboarding =
+  | { ok: true }
+  /** 409 `perfil_minimo_incompleto`: el hilo NO se cierra, se pide lo que falta. */
+  | { ok: false; perfilIncompleto: true; faltantes: readonly CampoPerfilMinimo[] }
+  /** Cualquier otro fallo (red, 500, token): el hilo se cierra igual y se reintenta al próximo arranque. */
+  | { ok: false; perfilIncompleto: false };
+
+/**
+ * Lee `faltantes` del 409. Si no viene, o no se reconoce ninguno, devuelve **los dos**: no saber
+ * cuál falta no habilita a adivinar que falta uno solo — pedir los dos cuesta dos campos, dejar
+ * pasar al que faltaba cuesta el deadlock que esta ficha vino a cerrar.
+ */
+function faltantesDelBody(body: unknown): readonly CampoPerfilMinimo[] {
+  const detalle = typeof body === 'object' && body !== null ? (body as { detail?: unknown }).detail : undefined;
+  const nivel = typeof detalle === 'object' && detalle !== null ? (detalle as Record<string, unknown>) : (body as Record<string, unknown> | undefined);
+  const crudos = nivel?.faltantes;
+  if (!Array.isArray(crudos)) return CAMPOS_PERFIL_MINIMO;
+  const reconocidos = CAMPOS_PERFIL_MINIMO.filter((campo) => crudos.includes(CAMPO_PERFIL_MINIMO_BACKEND[campo]));
+  return reconocidos.length > 0 ? reconocidos : CAMPOS_PERFIL_MINIMO;
+}
+
+/**
+ * `POST /me/onboarding/completar` — sin body (el tenant sale del token), idempotente.
+ *
+ * 🔴 **Antes devolvía `boolean` y los dos call-sites lo descartaban** con el comentario «false = no
+ * se pudo marcar: se cierra igual y se reintenta al próximo arranque». Eso era cierto mientras el
+ * endpoint no pudiera RECHAZAR. Desde `46cd8cc0` puede: devuelve **409**
+ * `perfil_minimo_incompleto`, y tragárselo dejaba el peor de los dos mundos — el hilo se cerraba
+ * «bien», la app no sabía por qué, y la persona quedaba contra un gate que no explica nada.
+ *
+ * El código se lee con `codigoDeConflicto(err.body)`, **no** por el texto del `detail`: discriminar
+ * por redacción es atarse a algo que el backend cambia sin avisar (lo dice el docstring de
+ * `ApiError.body`, que existe justamente para esto).
+ */
+export async function completarOnboarding(): Promise<ResultadoCompletarOnboarding> {
   try {
     await apiClient.post<unknown>('/me/onboarding/completar');
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && codigoDeConflicto(err.body) === 'perfil_minimo_incompleto') {
+      return { ok: false, perfilIncompleto: true, faltantes: faltantesDelBody(err.body) };
+    }
+    return { ok: false, perfilIncompleto: false };
   }
 }
 

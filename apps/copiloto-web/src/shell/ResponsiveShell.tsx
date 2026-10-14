@@ -14,8 +14,8 @@ export interface ResponsiveShellProps {
  * -> `DesktopShell` (rail). Ambos consumen las MISMAS pantallas de módulo (`modules/{chat,apps,
  * connections,account}`), cero lógica de negocio duplicada.
  *
- * `ThemeProvider`/`SessionProvider`/`ModeProvider` viven un nivel arriba (App.tsx) — este
- * componente es SOLO el switch de layout, ambos shells comparten la misma sesión/tema/modo sin
+ * `ThemeProvider`/`SessionProvider` viven un nivel arriba (App.tsx) — este
+ * componente es SOLO el switch de layout, ambos shells comparten la misma sesión/tema sin
  * remontarlos al cruzar el breakpoint.
  */
 export function ResponsiveShell({ initialTab }: ResponsiveShellProps = {}) {

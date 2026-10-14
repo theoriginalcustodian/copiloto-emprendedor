@@ -6,7 +6,6 @@ import {
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   leerPortada,
-  preguntarInteligencia,
 } from './inteligencia';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
@@ -164,55 +163,6 @@ describe('leerPortada — lo que NO inventa', () => {
   });
 });
 
-describe('preguntarInteligencia — el chat de IN (VIVO desde PR #73)', () => {
-  it('manda `{texto}` por POST a /inteligencia/chat y devuelve respuesta + fuente', async () => {
-    let capturada: PeticionHttp | null = null;
-    responder = (p) => {
-      capturada = p;
-      return respuesta(200, { respuesta: 'Gastaste $12.000 en nafta este mes.', fuente: 'sql' });
-    };
-
-    const res = await preguntarInteligencia('¿cuánto gasté en nafta este mes?');
-
-    expect(capturada!.metodo).toBe('POST');
-    expect(capturada!.path).toBe('/inteligencia/chat');
-    expect(capturada!.cuerpoJson).toEqual({ texto: '¿cuánto gasté en nafta este mes?' });
-    expect(res.status).toBe('ok');
-    if (res.status !== 'ok') return;
-    expect(res.respuesta.respuesta).toBe('Gastaste $12.000 en nafta este mes.');
-    expect(res.respuesta.fuente).toBe('sql');
-  });
-
-  it('🔴 405 (la ruta no está montada) → `no_disponible`, no un chat roto', async () => {
-    responder = () => respuesta(405, { detail: 'Method Not Allowed' });
-    expect((await preguntarInteligencia('x')).status).toBe('no_disponible');
-  });
-
-  it('🔴 CONTROL — un 500 (desplegado pero fallando) se PROPAGA, no se disfraza de ausencia', async () => {
-    // El par del anterior: «la función todavía no existe» y «la función existe y se rompió» son cosas
-    // distintas. Colapsarlas escondería un backend caído detrás de «todavía no está disponible».
-    responder = () => respuesta(500, { detail: 'boom' });
-    await expect(preguntarInteligencia('x')).rejects.toThrow();
-  });
-
-  it('🔴 un `fuente` desconocido nunca inventa uno de los tres válidos -- degrada a "no-se"', async () => {
-    responder = () => respuesta(200, { respuesta: 'ok', fuente: 'algo-nuevo' });
-    const res = await preguntarInteligencia('x');
-    if (res.status !== 'ok') return;
-    expect(res.respuesta.fuente).toBe('no-se');
-  });
-
-  it('una respuesta sin texto queda en "", no en null — la burbuja siempre muestra algo', async () => {
-    responder = () => respuesta(200, { fuente: 'sql' });
-    const res = await preguntarInteligencia('x');
-    if (res.status === 'ok') expect(res.respuesta.respuesta).toBe('');
-  });
-
-  it('si la red explota (no ApiError) degrada a `no_disponible`', async () => {
-    responder = () => { throw new Error('red caída'); };
-    expect((await preguntarInteligencia('x')).status).toBe('no_disponible');
-  });
-});
 
 describe('leerGraficoFacturacion — gráfico 1 (VIVO desde PR #69)', () => {
   it('trae la serie agregada por mes', async () => {

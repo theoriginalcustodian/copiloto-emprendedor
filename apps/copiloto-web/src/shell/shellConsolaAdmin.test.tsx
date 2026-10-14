@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // `lib/api` mockeado para poder devolver un `/me` CON y SIN el claim; el resto (SessionProvider,
-// ThemeProvider, ModeProvider, Rail, TabBar) es real a propósito — lo que se prueba acá es
+// ThemeProvider, Rail, TabBar) es real a propósito — lo que se prueba acá es
 // justamente el CABLEADO entre esas piezas, y mockear los shells lo daría por supuesto.
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>();
@@ -34,7 +34,6 @@ import { api } from '../lib/api';
 import { adminSalud, adminUso } from '../lib/api/admin';
 import { AppShell } from './AppShell';
 import { DesktopShell } from './DesktopShell';
-import { ModeProvider } from './modeStore';
 import { LEGAL_VERSION } from '@copiloto/core';
 
 function mockMatchMedia() {
@@ -62,9 +61,7 @@ function renderShell(cual: 'mobile' | 'desktop') {
   return render(
     <ThemeProvider>
       <SessionProvider>
-        <ModeProvider>
-          <Shell />
-        </ModeProvider>
+        <Shell />
       </SessionProvider>
     </ThemeProvider>,
   );

@@ -23,7 +23,7 @@ function initial(clienteId: string | undefined): string {
   return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
 }
 
-/** Chevron de fila (mismo patrón que `modules/apps/AppsScreen.tsx` `ChevronIcon`, verbatim
+/** Chevron de fila (verbatim
  * diseño `Copiloto App.dc.html:425` etc. — `path d="M9 6l6 6-6 6"`). Color por defecto `--label`,
  * override a `--danger-fg` en la fila de "Cerrar sesión" (diseño línea 444). */
 function ChevronIcon({ color = 'var(--label)' }: { color?: string }) {
