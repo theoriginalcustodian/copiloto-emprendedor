@@ -67,7 +67,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | 🟨 EN-CURSO | planificacion |
+| **SM-F4** | `#1013` | 🟧 DOD-PARCIAL | receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -489,8 +489,8 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** planificacion
+- **Estado:** DOD-PARCIAL
+- **Falta:** receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado con git=93d792d2, expira 2026-10-28. Falta que pase a FINISHED con apk -- una receta se acredita cuando el artefacto existe, no cuando el CLI sale con exit 0. Doc: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 - **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.
