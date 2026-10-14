@@ -69,112 +69,37 @@ checkout compartido — donde el archivo no estaba, y donde el registro tampoco 
 fallback a `git show origin/main:<path>`, que además es la autoridad correcta). Verde en el banco de
 pruebas no es verde en producción.
 
+## 🔁 REFUERZO 2026-10-13 — la decisión vivía en el canal que el MEDIDOR NO LEE, y eso no es olvido: es estructura
+
+Dos de las 7 filas pendientes del sprint (`factura`, `card-factura`) estaban pendientes por **una
+sola** dependencia, `mic-facturacion`, **cuya enmienda yo ya había concedido** — con la cita del
+código y todo (`dictado_destinos.py:43-44`: «`factura` NO está, y no es casualidad: emitir es
+irreversible ante ARCA»). La concedí en un `contrato_` del buzón. El doc de veredicto, que es **lo que
+el medidor lee**, siguió diciendo ⛓️. Resultado: el medidor contaba dos filas como «no cumplen» cuando
+ya cumplían por la vía de la enmienda, que el DoD admite igual que el código. **La cifra del sprint
+decía 68% y era 72%.**
+
+Lo que esto agrega a la lección de arriba: ahí el disparador cumplido no avisaba porque **vivía en dos
+lugares y uno no se miraba**. Acá es peor y más barato de reincidir: el buzón **no está versionado** y
+el medidor del sprint hace glob sobre `docs/`. O sea **ninguna decisión del buzón puede llegar nunca a
+la cifra**, por diseño, por fuerte que esté fundada. No es que nadie la miró: es que el canal donde la
+escribí **no es un input del instrumento**.
+
+Y el mismo día, la cara simétrica: un doc de veredicto de FE2 sí estaba en `docs/`, pero su nombre no
+tenía el brazo (`chat`/`cascara`/`device`) y el parser asigna el brazo por substring del nombre
+(`medir-mapeo-implementacion.py:138`) ⇒ `morir()`, exit 2, **cifra del sprint entera bloqueada por un
+nombre de archivo**. Dos filas invisibles por el canal, un sprint sin cifra por el nombre.
+
+**Cómo aplicarlo:**
+- Cuando concedas una enmienda o tomes una decisión que cambia el estado de una fila, el acto no
+  termina con el contrato: **nombrá el artefacto que el medidor lee y quién lo anota ahí.** Si no
+  podés nombrarlo, la decisión no va a existir para la cifra.
+- Antes de reportar un porcentaje, preguntá **qué corpus glob-ea ese medidor** y si lo que decidiste
+  hoy cae dentro. «Lo escribí» y «lo puede leer» son dos cosas.
+- Un instrumento que se **niega** a medir (exit≠0 por un documento ilegible) está haciendo lo
+  correcto: no inventa 0% ni 100%. La respuesta no es saltearlo, es hacer legible el documento — y si
+  el documento es de otro, **pedírselo**, porque renombrarle o reformatearle su veredicto borra la
+  procedencia.
+
 Ver también: [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] — misma familia, la
 señal que no existe se cuela por el camino feliz.
-
----
-
-## Refuerzo 2026-09-30 — CINCO en un día, y el sesgo que explica por qué nadie los corrige
-
-En una sola jornada encontré **cinco** ítems declarados pendientes cuyo trabajo ya estaba en `main`:
-
-| ítem | decía | estaba |
-|---|---|---|
-| CONDIVA | «push abortado por GRAFO, decisión pendiente» | `afip_rules.py:245` en `main` |
-| CONSMP (2ª guarda) | «pregunta de producto pendiente» | `tool_catalog.py:602` en `main` |
-| `factura` | «BLOQUEADO, no es mío resolverlo» | desbloqueado por #702, **2 días** antes |
-| ACTID | «los 4 shells TIRAN el id» + «DIFERIDO» | cableado completo, PR #690, **el mismo día** del hallazgo |
-| CIERRE A #2 y #6 | «0 ocurrencias» · «dueño FE2, pendiente» | descargo en `main` con tests · PR #694 mergeado |
-
-Cinco veces el mismo defecto, y ninguna era del trabajo: **lo que faltaba era el camino de vuelta al
-tablero.**
-
-**El sesgo, que es la parte que no había nombrado:** un tablero desactualizado **no miente al azar —
-miente en la dirección que frena el cierre**. Un falso «✅ cerrado» molesta a alguien enseguida (el que
-va a usar la cosa y no está), así que se corrige solo. Un falso «⏳ pendiente» **no molesta a nadie**: el
-que lo hizo cree que terminó, el que lee el tablero cree que hay trabajo, y los dos tienen razón desde
-donde están. Por eso los falsos pendientes se acumulan y los falsos cerrados no. No es entropía
-simétrica: es un sesgo con una sola dirección, y la dirección es «no cerrar».
-
-**Consecuencia práctica, y es lo que voy a hacer distinto:** al leer una fila que dice «pendiente» **sin
-fecha de medición al lado**, el primer paso no es planificar el trabajo — es medir si el trabajo existe.
-Costó un `ls` en un caso y un `git grep` en los otros cuatro. Y al revés, cuando yo declaro algo
-pendiente: la fila lleva **la fecha de la medición**, porque «pendiente» sin fecha es una afirmación
-sobre el pasado disfrazada de estado presente.
-
-⚠️ Y el corolario para los `a-todos`: el hallazgo de ACTID sobrevivió **dos días** a su propio fix porque
-un broadcast **no tiene quién lo mueva**. Ver [[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]] y la
-convención `CIERRA:`, que existe justo para eso.
-
----
-
-**Refuerzo 2026-10-06 (auditoría) — el disparador se cumplió, el margen que liberaba **ya lo había consumido otro**, y la deuda que custodiaba estaba pagada hace horas.**
-
-Un cron me dejó una deuda gestionada con disparador nombrado, escrito con todo el cuidado del caso: «el
-archivo de memoria y su línea de índice son **atómicos**; no entran porque `MEMORY.md` mide 23.985/24.000
-(margen 15 = 0 líneas). **Disparador: #805 mergeado** → ahí el margen pasa a ~322 y entran juntos». Medí las
-tres afirmaciones:
-
-1. **#805 mergeó e hizo exactamente lo prometido**: `4f675376` bajó entradas a `HISTORIA.md` y dejó el índice
-   en **23.678** = margen 322. El disparador no falló.
-2. **El margen ya no estaba.** Entre ese merge y mi turno, **siete commits** tocaron `MEMORY.md` y lo llevaron
-   a **23.943** = margen 57: otra vez cero líneas.
-3. **Y la deuda estaba pagada.** El archivo entró a `main` en `0d9bee8d` (#811), **atómico con su línea de
-   índice** (verificado: `MEMORY=1`). El custodio seguía describiéndola como pendiente.
-
-**Why:** un disparador sobre un **evento** espera a que ocurra, y ocurre una vez. Un disparador sobre un
-**recurso compartido y consumible** —bytes de un presupuesto, un slot, una cuota, un lock— no es un evento:
-es una **ventana que terceros cierran**, y se cumple y caduca sin que nada cambie de estado. El texto queda
-diciendo «ya se puede» justo cuando ya no se puede, que es peor que decir «bloqueado»: el bloqueo invita a
-medir, el permiso invita a ejecutar. Y el segundo filo es independiente del primero: **el documento que
-custodia una deuda no se entera de que la deuda se pagó por otro camino**, así que hereda la forma de
-[[el-contrato-que-manda-a-hacer-algo-ya-hecho]].
-
-**How to apply:** (1) si el disparador es «cuando X libere Y», el disparador real es **medir Y**, no ver X:
-dejá escrito el **comando** (acá `python scripts/medir-indice-memoria.py`) y nunca la cifra que esperás, que
-envejece sola. (2) Cuando el recurso es compartido entre sesiones que escriben en paralelo, asumí que **el que
-llega último no tiene margen**; la salida no es esperar otra ventana sino la vía que **no consume el recurso**
-—acá, un refuerzo adentro de una entrada existente, que cuesta 0 líneas de índice
-([[el-refuerzo-va-adentro-no-pide-linea]]). (3) Antes de ejecutar lo que un custodio manda, medí si **ya está
-hecho**: cuesta un `git ls-tree` y es la mitad de las veces.
-
----
-
-## REFUERZO (2026-10-11) — el disparador puede vivir en un COMENTARIO del código, y ahí nadie lo mira
-
-Hasta acá la entrada trata disparadores en registros de deuda. **Este vivía en un comentario de
-producción, y resultó peor: nadie revisa comentarios buscando condiciones pendientes.**
-
-La definición de «Entró» sumaba MercadoPago desde su propia tabla, y el comentario decía por qué y
-hasta cuándo:
-
-> `origen='mercadopago'` en `copiloto_cobros` está declarado pero **no lo escribe nadie todavía**, así
-> que MP se suma desde su tabla; **el día que se unifiquen, la fila del `UNION` se saca de acá** y
-> ninguna cara se entera.
-
-Está todo: la condición (`que se unifiquen`), la acción (`sacar la fila del UNION`) y la consecuencia
-de no hacerlo. **El 2026-10-06 `9e4a70dc` cumplió la condición** —cableó el webhook para que el pago
-aprobado también se registre en `copiloto_cobros`— y no tocó la consulta. Durante 5 días en prod-beta
-un pago de `$300` entró como `$600` en «Entró» mientras «Ingresos» mostraba `$300`: dos caras del
-producto, dos números para el mismo pago. Y el mismo commit retiró los carteles «los cobros por
-MercadoPago todavía no entran solos», así que el número pasó a leerse como confiable.
-
-**Por qué no avisó nada:** el commit que cumple la condición no tiene por qué saber que existe. Tenía
-tests —buenos, con control positivo e idempotencia— que medían **la tabla donde escribe**, no el total
-que ve el usuario. El test que debería haberlo cazado inserta con un helper que escribe UNA tabla, o
-sea codifica el camino de producción **anterior**, y por eso seguía verde
-([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).
-
-**Cómo aplicarlo — y es distinto de lo de arriba:** un disparador escrito en prosa, en un comentario o
-en un registro, **no se puede conectar**: hay que convertirlo en algo que falle. Las dos formas que
-sirven, por orden:
-
-1. **Que la regla viva en el mecanismo, no en la condición a futuro.** En vez de «el día que se
-   unifiquen, saco la fila», el SQL excluye hoy el caso duplicado. Un `WHERE` no se olvida.
-2. **Si hay que diferirlo igual, el disparador necesita un test que lo vigile.** Al cerrar este fix
-   escribí la condición de retiro de la otra pata **junto con el test que cae si alguien la saca sin el
-   backfill**. Eso es un disparador que avisa: el que está sólo en prosa, no.
-
-Y el chequeo que lo habría cazado barato: cuando un commit **empieza a escribir** un valor que antes no
-escribía nadie, `grep` ese valor en todo el repo antes de mergear. Lo que aparezca asumiendo la ausencia
-—una consulta, un `if`, un comentario— es la lista exacta de lo que ese commit acaba de invalidar.
