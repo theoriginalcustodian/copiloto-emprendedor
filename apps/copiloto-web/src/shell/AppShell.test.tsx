@@ -20,7 +20,6 @@ import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { AppShell } from './AppShell';
-import { ModeProvider } from './modeStore';
 import type { TabKey } from './TabBar';
 
 const mockListarActividad = vi.mocked(listarActividad);
@@ -59,12 +58,7 @@ function renderAppShell(initialTab?: TabKey) {
   return render(
     <ThemeProvider>
       <SessionProvider>
-        {/* ModeProvider (Feature addendum 2026-07-03): `ChatScreen` -> `Composer` y `AppsScreen`
-            leen `useMode()` — sin este wrapper el render tira "useMode debe usarse dentro de
-            <ModeProvider>" (mismo criterio que `SessionProvider` acá arriba). */}
-        <ModeProvider>
-          <AppShell initialTab={initialTab} />
-        </ModeProvider>
+        <AppShell initialTab={initialTab} />
       </SessionProvider>
     </ThemeProvider>,
   );

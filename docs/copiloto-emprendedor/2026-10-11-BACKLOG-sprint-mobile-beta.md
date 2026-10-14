@@ -56,7 +56,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
-| **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
+| **SM-D3** | `#1019` | 🟨 EN-CURSO | frontend2 |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
@@ -337,7 +337,8 @@ no el arranque del sprint.***
 
 ### SM-D3 · `#1019` — «Tus apps» y los modos están escritos e inalcanzables en web
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend2
 - **Medido:** `'apps'` **no está** en `TABS`; los dos shells de web lo declaran ellos mismos. No
   existe en mobile.
 - **Por qué es el ítem que ahorra trabajo:** parecía una feature de web **para portar**. Portarla

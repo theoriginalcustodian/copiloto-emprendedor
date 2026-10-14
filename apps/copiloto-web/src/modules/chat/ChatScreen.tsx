@@ -24,8 +24,7 @@ const WELCOME_TEXT = 'Antes de ejecutar algo importante, te lo muestro para que 
  * arranca sin header (pedido operador 2026-07-04): solo el chat, sin la barra de sesión ni el botón
  * "Nueva conversación".
  *
- * `handleSend` reenvía la `key` del modo activo (leída por `Composer` desde `useMode()`) a
- * `useChat().send(text, { mode })`. `handleSendAudio` reenvía el blob grabado por `Composer`/
+ * `handleSend` reenvía el texto a `useChat().send(text)`. `handleSendAudio` reenvía el blob grabado por `Composer`/
  * `MicButton` a `useChat().sendAudio(blob)` — es la única instancia de `useChat()` (el estado
  * de mensajes/polling vive acá).
  */
@@ -68,13 +67,10 @@ export function ChatScreen({
   // (`tomarPendiente` vacía el buzón, así que no se reenvía sola al volver a esta pantalla).
   useEffect(() => {
     const pendiente = tomarPendiente();
-    if (pendiente != null) void send(pendiente, { mode: null });
+    if (pendiente != null) void send(pendiente);
   }, [send]);
 
-  const handleSend = useCallback(
-    (text: string, mode: string | null) => void send(text, { mode }),
-    [send],
-  );
+  const handleSend = useCallback((text: string) => void send(text), [send]);
   // BL-D4: `label` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta en su burbuja
   // optimista. `value` es el token técnico que espera el backend (`cancel:<turn>:<step>`) y sigue
   // siendo lo que se manda en el POST; nunca se muestra.
