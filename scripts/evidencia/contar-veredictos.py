@@ -620,6 +620,20 @@ NO_SON_MEDICION = {
         "triage de mensajes del buzon: dictamina el estado de hallazgos, no mide ningun id del "
         "criterio 3 (7 veredictos, 0 ids del padron). Sumarlo habria inflado la cifra con "
         "veredictos de otra pregunta.",
+    # 2026-10-14 - CONTRATO MIO (planificacion), mismo caso que el `triage` de arriba y que la fila
+    # de los «12 ids en rol de FILA DE TRABAJO»: lo que lo caza es la CABECERA `| contrato |
+    # veredicto |` (`:41`), no una medicion. Medido ANTES de clasificar: CERO tokens del
+    # `VOCABULARIO` en todo el archivo, cero `veredicto:` de campo y cero bullets de id -- esa
+    # columna dictamina VIGENCIA DE CLAUSULAS de los 4 contratos sin tomar de frontend1 («mitad
+    # HECHA por #1112», «VIGENTE e intacto», «ancla corrida :63->:73»). La trampa es el NOMBRE:
+    # `fact-voz`, `cobro-voz` y `clientes` son ids del padron Y titulos de esos contratos, asi que
+    # la columna 1 se lee como un id medido cuando es el titulo del contrato. Sumarlo habria
+    # contado la auditoria de mi propia cola como paridad de pantalla.
+    "2026-10-14_dato_planificacion-a-frontend1_fact-voz-ancla-corrida-a-73":
+        "auditoria de VIGENCIA de contratos: la columna `veredicto` dictamina si la clausula sigue "
+        "viva (ancla corrida, mitad ya hecha en main), no mide la paridad de ninguna pantalla. 0 "
+        "tokens del VOCABULARIO, 0 ids del padron en rol de fila medida: los nombres de la columna "
+        "1 son titulos de contrato, aunque colisionen con `fact-voz`/`cobro-voz`/`clientes`.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
