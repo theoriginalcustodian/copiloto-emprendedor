@@ -195,3 +195,57 @@ tomaban diez segundos y las dos refutaban la hipótesis sola. Y si el script tie
 justo en esa rama, **leelo**: en este caso el comentario era literalmente el acta del defecto que yo
 estaba por «descubrir».
 → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+## Refuerzo 2026-10-13 · cuarta recurrencia, y esta vez **acusé al instrumento** — que estaba bien
+
+Mergeé el PR #1119 con el CI **indeterminado**. El chequeo había impreso `NO VERDE — no mergear` y yo
+leí el `exit code 0` que me llegó en la **notificación del harness**.
+
+**Lo nuevo no es el pipe: es la vía.** El refuerzo del 10-08 ya dejó escrita la forma correcta —
+`bash scripts/ci-verde.sh "$N" > "$G" 2>&1; rc=$?; tail -9 "$G"` — y funciona en *foreground*. Yo lo
+corrí con `run_in_background`, donde **no hay `$?` que escribir**: el harness entrega el exit code en
+la notificación, y lo entrega del **pipe**, rotulado como si fuera del comando («completed (exit code
+0)»). El pipe sigue estando por lo mismo que siempre, legibilidad (`| tail -12`). O sea: el fix del
+10-08 corrigió la *escritura* del comando, y el background lo esquiva por un canal donde no hay nada
+que escribir. ⇒ **con `run_in_background`, el único veredicto válido es abrir el archivo de output.**
+La notificación no es una versión resumida del resultado: es el status de otro proceso.
+
+### Y el error más caro del día: anoté un defecto en `ci-verde.sh` sin medirlo
+
+Escribí —en el buzón y en esta misma memoria— que *«`ci-verde.sh` imprime `NO VERDE` y sale 0, así que
+cualquiera que lo juzgue por `$?` mergea»*, y lo anoté como deuda de instrumento. **Es falso.**
+`ci-verde.sh:70-71`:
+
+    echo "NO VERDE — no mergear"
+    exit 1
+
+El instrumento condena **correctamente** y por el canal correcto. El 0 era del `tail`, otra vez.
+
+Esto es exactamente lo que el refuerzo del 2026-10-12 de esta entrada prohíbe —*«antes de anotar un
+defecto en un instrumento que no escribiste, re-corrélo sin pipe y leé su código en la línea del
+veredicto»*— y lo repetí **sobre el mismo instrumento del refuerzo del 10-08**. Diez segundos de
+`grep -n "exit " scripts/ci-verde.sh` lo refutaban.
+
+### Por qué reincidí teniendo los dos refuerzos escritos: **leí esta entrada TRUNCADA**
+
+La abrí desde el checkout compartido, que tenía una versión de **27 líneas**. En `main` tiene **197**,
+con cinco refuerzos — incluidos los dos que me habrían frenado. Y el truncamiento **no da síntoma**:
+frontmatter correcto, título correcto, y el cuerpo cierra con una regla general sensata (*«para un
+comando de fondo, el veredicto es el output, no el status»*) que **parece** el final del documento.
+Consulté la memoria, me dio la sensación de haber consultado, y no estaba.
+
+Peor: la versión corta nombra el defecto **como el pipe**, así que concluí lo que esa causa invita a
+concluir — «no hay pipe en el camino crítico ⇒ el status sirve» — y de ahí a acusar al script hay un
+paso. Un mecanismo nombrado con precisión hace creer que es el único:
+[[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]].
+
+Detalle que casi costó 167 líneas de `main`: appendeé el refuerzo sobre esa versión corta. Commitearlo
+habría **borrado los cinco refuerzos anteriores** con un diff que dice `+36 −167` y un mensaje que dice
+«agrega refuerzo». Lo cacé midiendo `git diff origin/main --numstat` **antes** de commitear, no
+leyendo el archivo. Ver [[el-checkout-compartido-sirve-comandos-viejos]] §memoria truncada.
+
+**Cómo aplicarlo:** (1) con `run_in_background`, el veredicto es el archivo de output — la
+notificación nunca; (2) «todavía corriendo» no es ni rojo ni verde: es *no sé*, y con *no sé* no se
+mergea; (3) antes de anotar un defecto ajeno, `grep -n "exit " <script>`; (4) antes de appendear a una
+memoria, `git diff origin/main --numstat` del archivo: si borra líneas, lo que estás leyendo no es la
+entrada.
