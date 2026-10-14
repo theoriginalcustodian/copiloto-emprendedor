@@ -55,6 +55,14 @@ export interface ListaMensajesProps {
    * y el prototipo tampoco los define, así que no hereda los de gasto/facturación/cobro.
    */
   ejemplos?: readonly string[];
+  /**
+   * Qué se pinta cuando no hay mensajes. `completo` (default) = el vacío del chat: isotipo de 96,
+   * «¿En qué te ayudo?», rodillo y la promesa de confirmación. `ninguno` = nada: la pantalla ya dice
+   * quién es por otro lado (Soporte lo pone en `encabezadoExtra`), y repetirlo pinta dos isotipos y la
+   * identidad del chat general en una pantalla que no es el chat. Es una variante y no tres strings
+   * sueltos a propósito: cada pantalla que se monte sobre esta lista elegiría copy nuevo sin revisión.
+   */
+  vacio?: 'completo' | 'ninguno';
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
    * gate de este sprint lo usa todavía.
@@ -478,7 +486,7 @@ const FilaMensaje = memo(function FilaMensaje({
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo' }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -528,35 +536,37 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
         maxToRenderPerBatch={10}
         windowSize={10}
         ListEmptyComponent={
-          <View testID="chat-vacio" style={styles.vacio}>
-            {/* El isotipo del vacío del prototipo (`index.html:1876`): el SIGNO de 96, terracota, sin badge.
-                Era un tile de 64 con el signo en 27: la fila `chat` de DEVICE15 lo midió DESVÍO. */}
-            <Marca size={96} tono="desnudo" />
-            <Text
-              style={{
-                color: tema.color.texto,
-                fontSize: tema.tipo.titulo,
-                fontWeight: '700',
-                textAlign: 'center',
-                marginTop: tema.espacio.md,
-              }}
-            >
-              ¿En qué te ayudo?
-            </Text>
-            {/* Con `ejemplos=[]` el rodillo no se pinta y, al ir el margen en su propio estilo, no deja hueco. */}
-            <RodilloEjemplos testID="chat-vacio-rodillo" ejemplos={ejemplos} style={{ marginTop: tema.espacio.md }} />
-            <Text
-              style={{
-                color: tema.color.textoTenue,
-                fontSize: tema.tipo.chico,
-                lineHeight: Math.round(tema.tipo.chico * 1.5),
-                textAlign: 'center',
-                marginTop: tema.espacio.md,
-              }}
-            >
-              {TEXTO_VACIO}
-            </Text>
-          </View>
+          vacio === 'ninguno' ? null : (
+            <View testID="chat-vacio" style={styles.vacio}>
+              {/* El isotipo del vacío del prototipo (`index.html:1876`): el SIGNO de 96, terracota, sin badge.
+                  Era un tile de 64 con el signo en 27: la fila `chat` de DEVICE15 lo midió DESVÍO. */}
+              <Marca size={96} tono="desnudo" />
+              <Text
+                style={{
+                  color: tema.color.texto,
+                  fontSize: tema.tipo.titulo,
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  marginTop: tema.espacio.md,
+                }}
+              >
+                ¿En qué te ayudo?
+              </Text>
+              {/* Con `ejemplos=[]` el rodillo no se pinta y, al ir el margen en su propio estilo, no deja hueco. */}
+              <RodilloEjemplos testID="chat-vacio-rodillo" ejemplos={ejemplos} style={{ marginTop: tema.espacio.md }} />
+              <Text
+                style={{
+                  color: tema.color.textoTenue,
+                  fontSize: tema.tipo.chico,
+                  lineHeight: Math.round(tema.tipo.chico * 1.5),
+                  textAlign: 'center',
+                  marginTop: tema.espacio.md,
+                }}
+              >
+                {TEXTO_VACIO}
+              </Text>
+            </View>
+          )
         }
       />
     );

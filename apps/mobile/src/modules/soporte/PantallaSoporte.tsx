@@ -188,7 +188,13 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
       }
     >
       <KeyboardAvoidingView testID="soporte-view" behavior="padding" style={styles.contenedor}>
-        <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} ejemplos={SIN_EJEMPLOS} />
+        <ListaMensajes
+          ref={scrollRef}
+          messages={estado?.messages ?? []}
+          onChoice={manejarEleccion}
+          ejemplos={SIN_EJEMPLOS}
+          vacio="ninguno"
+        />
 
         {!fijado && (
           <View
