@@ -23,16 +23,8 @@
     "bloquea": true,
     "alcance": [
       {
-        "texto": "Leer mails",
-        "condicion": "solo_lectura"
-      },
-      {
         "texto": "Enviar mails",
         "condicion": "requiere_ok"
-      },
-      {
-        "texto": "Buscar",
-        "condicion": "solo_lectura"
       }
     ],
     "connect_path": "/composio/connect?service=gmail"

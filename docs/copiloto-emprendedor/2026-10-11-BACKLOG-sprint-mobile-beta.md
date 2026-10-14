@@ -50,8 +50,8 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
-| **SM-C2** | `#1000` | ⬜ PENDIENTE | — |
-| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend HECHO (merge 46cd8cc0, PR #1161: 409 perfil_minimo_incompleto con faltantes, adversarial por front-door + Pos… |
+| **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 H… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
@@ -61,13 +61,13 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
-| **SM-E1** | `#1005` | 🟨 EN-CURSO | backend |
-| **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). (1) retira… |
+| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
+| **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-e… |
+| **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -201,7 +201,8 @@ no el arranque del sprint.***
 
 ### SM-C2 · `#1000` — El alta por email de web no se puede completar
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por camino real GoTrue+Postgres (PR #1162): signup->login->/me verde, adversarial sin invite no crea user ni tenant
 - **Medido:** el backend exige `invite_token` y el cliente **nunca lo manda**; además el formulario
   sólo se abre con `?signup=1` en la URL.
 - **DoD:** alta por email de punta a punta, con test del **camino real** — el de producción, por el
@@ -212,7 +213,7 @@ no el arranque del sprint.***
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Backend HECHO (merge 46cd8cc0, PR #1161: 409 perfil_minimo_incompleto con faltantes, adversarial por front-door + Postgres con RLS, mutante 8 rojos/1 verde). DoD 1 HECHO por planificacion 14-10: predicado unico faltantesDelPerfilMinimo + perfilMinimoCompleto + CAMPOS_PERFIL_MINIMO junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts), y completarOnboarding dejo de tragar el 409: devuelve {ok,perfilIncompleto,faltantes} (21/21 verdes, mutante 2 rojos/19 verdes). FALTA, de frontend con pantalla y dueno: (2) el paso del hilo de onboarding que pide los DOS campos -- hoy los dos call-sites DESCARTAN el retorno (apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:97, apps/copiloto-web/src/modules/onboarding/Onboarding.tsx:98), asi que con el 409 la persona queda fuera del shell sin saber por que; (3)(4) test adversarial por app: uno de los dos campos vacio no entra, control positivo con los dos llenos.
+- **Falta:** Backend EN MAIN 46cd8cc0: POST /me/onboarding/completar rechaza con 409 perfil_minimo_incompleto + faltantes. DoD 1 HECHO por planificacion en el PR #1166: predicado unico faltantesDelPerfilMinimo + perfilMinimoCompleto + CAMPOS_PERFIL_MINIMO junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts), y completarOnboarding dejo de tragar el 409 -- devuelve {ok,perfilIncompleto,faltantes} (21/21 verdes, mutante 2 rojos/19 verdes). FALTA, de frontend con pantalla y dueno (contrato bajado 14-10, mobile=frontend1 / web=frontend2): (2) el paso del hilo de onboarding que pide los DOS campos -- hoy los dos call-sites DESCARTAN el retorno (apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:97, apps/copiloto-web/src/modules/onboarding/Onboarding.tsx:98), asi que con el gate vivo la persona entra al shell y el server no la deja hacer nada sin decirle que le falta; (3)(4) test adversarial por app: uno de los dos campos vacio no entra, control positivo con los dos llenos, y solo-espacios cuenta como vacio. La decision (a) un paso en el hilo, NO (b) Ajustes dentro del gate: resuelta, no contradice el DoD porque el hilo ya existe y ya tiene pasos.
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
@@ -395,20 +396,23 @@ no el arranque del sprint.***
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** backend
+- **Falta:** Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado() no explota; VPS 2446 verdes, mutante 5 rojos). Falta, de frontend: exponer motivoNoPuedeFacturar en packages/core afip.ts, copy de las dos PantallaFacturacion (hoy el CTA 'todavia no configuraste' hace lazo para un RI) y la opcion Responsable inscripto de las dos PantallaAfipSetup (ahora 422).
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
 ### SM-E2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 716e63da4460cf02abaa7b6ee825124e697e8c43
 - **DoD:** lo anunciado y lo cableado coinciden, **ítem por ítem** (no «en general»).
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). (1) retirar preguntarInteligencia de packages/core: HECHO por planificacion (funcion + FuenteInteligencia + fuenteInteligencia + RespuestaInteligencia + RespuestaInteligenciaRaw + 3 exports de index.ts + el describe del test; cero consumidores en apps/ medido antes de tocar; gate core/web/mobile 0). FALTA, de frontend con pantalla y dueno: (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas -- el margen NO tiene modulo en ningun front, es pantalla nueva y eso es decision MAYOR escalada al operador; (3) cambiar-email bloqueado por SMTP (SM-C5), difiere el operador.
+- **Dueno-activo:** backend
+- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de frontend: (1) retirar preguntarInteligencia de packages/core (inteligencia.ts:193-210, index.ts:359, inteligencia.test.ts); (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas con pantalla y dueno; (3) cambiar-email bloqueado por SMTP (SM-C5). Pedido en buzon: 2026-10-14_pedido_backend-a-planificacion_SM-E3-y-SM-E1.
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
@@ -492,7 +496,7 @@ cierra, aunque los otros siete estén verdes.***
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
 - **Estado:** TERMINADO
-- **Cierre:** merge aeeb3eab (PR #1157) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md, en origin/main desde aeeb3eab, con las 4 trampas que cobro al ejercitarla. DoD(2) se ejercitio una vez y el ARTEFACTO EXISTE: build d6cecf02 FINISHED con apk (expo.dev/artifacts/eas/TeAkIfKPu5wY88WZuXHt9-fhFEHZGR53jO7KNarb9q4.apk), procedencia git=93d792d2 (sha de main), expira 2026-10-28; medido 2026-10-14 12:07 con el disparador literal del doc (npx --yes eas-cli@24.13.0 build:list --platform android --json), no con autoevaluacion. El bloque RESULTADO-EJERCICIO del doc quedo remedido a FINISHED en este mismo PR.
+- **Cierre:** merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md en origin/main desde aeeb3eab, con las 4 trampas que cobro al ejercitarla. DoD(2) ejercitada una vez y el ARTEFACTO EXISTE: build d6cecf02 FINISHED con apk (expo.dev/artifacts/eas/TeAkIfKPu5wY88WZuXHt9-fhFEHZGR53jO7KNarb9q4.apk), procedencia git=93d792d2 (sha de main), expira 2026-10-28; medido 2026-10-14 12:07 con el disparador literal del doc (npx --yes eas-cli@24.13.0 build:list --platform android --json), no con autoevaluacion -- el bloque RESULTADO-EJERCICIO quedo remedido a FINISHED en el PR #1166.
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 - **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.

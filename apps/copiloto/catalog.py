@@ -30,8 +30,24 @@ CONDICION_NINGUNA = "ninguna"             # sin calificador que mostrar
 CONDICIONES = (CONDICION_SOLO_LECTURA, CONDICION_REQUIERE_OK, CONDICION_NINGUNA)
 
 
-def _cap(texto: str, condicion: str) -> dict:
-    return {"texto": texto, "condicion": condicion}
+# Promesas cuya acción NO es una tool del executor sino un camino cableado aparte. Cada una nombra DÓNDE
+# vive; `test_catalogo_anunciado_es_cableado` exige que toda `accion` sea una tool real o figure acá
+# (sumar una promesa sin tool tiene que pasar por esta lista, a la vista del review).
+ACCION_WEBHOOK_MP = "webhook:mp_payments"        # `/mp/webhook` -> `mp_payments` (mp_web.py)
+ACCION_ARCHIVADO_DRIVE = "activity:archivar_factura_en_drive"   # worker, `afip_factura_activities.py`
+ACCIONES_SIN_TOOL = frozenset({ACCION_WEBHOOK_MP, ACCION_ARCHIVADO_DRIVE})
+
+
+def _cap(texto: str, condicion: str, accion: str) -> dict:
+    """Un ítem de `alcance` = una promesa a la persona. `accion` es la tool/activity REAL que la cumple
+    (SM-E2): lo anunciado y lo cableado coinciden ítem por ítem, y `test_catalogo_anunciado_es_cableado`
+    lo mide contra `TOOLS`/`TOOL_INDEX`. NO viaja en la respuesta (`_entry` emite sólo texto+condicion:
+    el enum de la card es cerrado)."""
+    return {"texto": texto, "condicion": condicion, "accion": accion}
+
+
+def _publico(c: dict) -> dict:
+    return {"texto": c["texto"], "condicion": c["condicion"]}
 
 # Metadata de presentación es-AR por servicio (clave = slug real: el mismo que emite `/composio/connect?service=`
 # o, para MP, la clave literal 'mercadopago'). NO es la fuente de verdad de "qué servicios existen" -- eso lo
@@ -44,48 +60,51 @@ _PRESENTATION: dict[str, dict] = {
         "description": "Generá links de cobro y cobrá desde el chat.",
         # «movimientos» NO: lo que Copiloto lee de MP son los PAGOS que entran (webhook ->
         # `mp_payments`), no el extracto de la cuenta. Prometer «movimientos» sería decir de más.
-        "alcance": [_cap("Leer tus cobros", CONDICION_SOLO_LECTURA),
-                    _cap("Armar links de cobro cuando vos confirmás", CONDICION_REQUIERE_OK)],
+        "alcance": [_cap("Leer tus cobros", CONDICION_SOLO_LECTURA, ACCION_WEBHOOK_MP),
+                    _cap("Armar links de cobro cuando vos confirmás", CONDICION_REQUIERE_OK,
+                         "mp_charge")],
     },
     "gmail": {
         "display_name": "Gmail",
         "work_label": "Mail",
         "category": "Comunicación",
-        "description": "Enviá y buscá mails desde el chat.",
-        "alcance": [_cap("Leer mails", CONDICION_SOLO_LECTURA),
-                    _cap("Enviar mails", CONDICION_REQUIERE_OK),
-                    _cap("Buscar", CONDICION_SOLO_LECTURA)],
+        # SM-E2: «Leer mails» y «Buscar» se anunciaban y `services/gmail.py` sólo cablea `gmail_send`
+        # (A8: «Gmail manda y NO lee»). Se anuncia lo que se hace.
+        "description": "Enviá mails desde el chat.",
+        "alcance": [_cap("Enviar mails", CONDICION_REQUIERE_OK, "gmail_send")],
     },
     "googlecalendar": {
         "display_name": "Google Calendar",
         "work_label": "Agenda",
         "category": "Agenda",
-        "description": "Agendá reuniones y turnos en tu Google Calendar.",
-        "alcance": [_cap("Agendar reuniones", CONDICION_REQUIERE_OK),
-                    _cap("Buscar turnos", CONDICION_SOLO_LECTURA)],
+        # SM-E2: «Buscar turnos» no tiene tool (la única acción de Calendar es `calendar_book`).
+        "description": "Agendá reuniones en tu Google Calendar.",
+        "alcance": [_cap("Agendar reuniones", CONDICION_REQUIERE_OK, "calendar_book")],
     },
     "googledrive": {
         "display_name": "Google Drive",
         "work_label": "Archivos",
         "category": "Archivos",
-        "description": "Creá y buscá archivos en tu Google Drive.",
-        "alcance": [_cap("Crear archivo", CONDICION_REQUIERE_OK),
-                    _cap("Buscar archivo", CONDICION_SOLO_LECTURA)],
+        # SM-E2: `services/drive.py` podó TODAS sus tools (`TOOLS = {}`); lo único que Drive hace es
+        # el archivado automático de facturas del worker (`archivar_factura_en_drive`, ajuste del
+        # usuario). Ya no se anuncia crear/buscar archivos desde el chat.
+        "description": "Guardá tus facturas en tu Google Drive.",
+        "alcance": [_cap("Guardar tus facturas", CONDICION_NINGUNA, ACCION_ARCHIVADO_DRIVE)],
     },
     "googledocs": {
         "display_name": "Google Docs",
         "work_label": "Archivos",
         "category": "Archivos",
         "description": "Creá y leé documentos en Google Docs.",
-        "alcance": [_cap("Crear documento", CONDICION_REQUIERE_OK),
-                    _cap("Leer documento", CONDICION_SOLO_LECTURA)],
+        "alcance": [_cap("Crear documento", CONDICION_REQUIERE_OK, "docs_create_doc"),
+                    _cap("Leer documento", CONDICION_SOLO_LECTURA, "docs_read_doc")],
     },
     "googlesheets": {
         "display_name": "Google Sheets",
         "work_label": "Archivos",
         "category": "Archivos",
         "description": "Agregá filas a tus planillas de Google Sheets.",
-        "alcance": [_cap("Agregar fila", CONDICION_REQUIERE_OK)],
+        "alcance": [_cap("Agregar fila", CONDICION_REQUIERE_OK, "sheets_append_row")],
     },
 }
 
@@ -127,7 +146,7 @@ def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -
         # La CARD de conexión, en cambio, manda `alcance` con objetos: su consumidor (el core) lee las dos
         # formas y ya pinta la insignia (PROTO4DEPS, decisión D1 de planificación).
         "capabilities": [c["texto"] for c in presentation["alcance"]],
-        "alcance_items": [dict(c) for c in presentation["alcance"]],
+        "alcance_items": [_publico(c) for c in presentation["alcance"]],
         # K-09: `status` distingue «caido» (hubo conexión y ya no sirve) de «nunca_conectado».
         # `connected` se conserva para clientes viejos y es siempre `status == "conectado"`.
         "connected": connected,

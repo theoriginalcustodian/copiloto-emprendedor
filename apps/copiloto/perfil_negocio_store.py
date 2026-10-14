@@ -51,6 +51,11 @@ def modo_de(perfil: dict | None) -> str:
 LIMITES = {"que_vende": 500, "nombre_comercial": 120, "horario_atencion": 120, "nombre_copiloto": 120,
            "telefono": 40, "email": 254}
 
+# SM-C3 (decisión del operador 2026-10-12): lo mínimo para pasar del onboarding a la app. `a_quien`
+# NO entra: su default es `"ambos"` y `upsert` crea la fila con los defaults del resto, así que
+# «no vacío» sobre él pasa SIEMPRE y el gate sería hueco. Los dos de acá defaultean a `""`: vacío es señal real.
+CAMPOS_OBLIGATORIOS = ("que_vende", "nombre_comercial")
+
 CAMPOS = ("que_vende", "a_quien", "nombre_comercial", "horario_atencion", "telefono", "email",
           "formalidad", "largo_respuesta", "nombre_copiloto", "modo_ceremonia")
 
@@ -59,6 +64,17 @@ CAMPOS = ("que_vende", "a_quien", "nombre_comercial", "horario_atencion", "telef
 _DEFAULTS = {"que_vende": "", "a_quien": "ambos", "nombre_comercial": "", "horario_atencion": "",
              "telefono": "", "email": "", "formalidad": "cercano", "largo_respuesta": "breve", "nombre_copiloto": "",
              "modo_ceremonia": CONFIRMACION}
+
+
+def faltantes_perfil_minimo(perfil: dict | None) -> list[str]:
+    """Los campos obligatorios que NO tienen contenido. `[]` = el perfil mínimo está completo.
+
+    Fail-closed: sin perfil (`None`, nunca configuró nada) faltan los dos. Un campo de sólo espacios
+    cuenta como vacío: es lo que se tipea para «saltear» un campo obligatorio.
+    """
+    if not isinstance(perfil, dict):
+        return list(CAMPOS_OBLIGATORIOS)
+    return [c for c in CAMPOS_OBLIGATORIOS if not str(perfil.get(c) or "").strip()]
 
 
 class PerfilNegocioStore:
