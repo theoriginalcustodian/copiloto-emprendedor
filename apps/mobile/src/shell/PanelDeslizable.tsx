@@ -121,6 +121,16 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    */
   senalSubir?: number;
   /**
+   * La gemela de `senalSubir`: cada vez que este número cambia, la conversación BAJA y deja la base a la
+   * vista. Lo usa «Volver al tablero» (`hitl a`): el emprendedor llegó al chat desde una tarjeta de Mi día
+   * y la salida es la que muestra el prototipo (`index.html:2774`, `bajarChat`).
+   *
+   * Es el MISMO tipo de dueño que `senalSubir` —un evento externo, sin estado propio—, no un writer
+   * nuevo atado a foco o layout. Avisa la bajada igual que el gesto (`alBajar`), así que la regla A
+   * (el escritorio se cierra al bajar el chat) se cumple por la misma puerta.
+   */
+  senalBajar?: number;
+  /**
    * Avisa hacia afuera cada vez que el panel TERMINA de asentarse arriba o abajo — espejo de lectura
    * del `panelAbajo` interno, para que quien sostenga `senalSubir` (`PantallaPrincipal`, el BACK de
    * Android) sepa si hoy tocaría hacer algo. No es un tercer dueño de `panelY`: sólo REPORTA el mismo
@@ -172,6 +182,7 @@ export function PanelDeslizable({
   fondo,
   children,
   senalSubir,
+  senalBajar,
   onPanelAbajoChange,
   alBajar,
   arrancaAbajo = false,
@@ -231,7 +242,8 @@ export function PanelDeslizable({
    * volver" que decía arreglar no existía: `PanelDeslizable` NO se desmonta cuando se abre un glass
    * (el glass se monta encima), así que `panelY` conserva su valor y el panel queda donde se dejó.
    *
-   * 🔴 **Invariante: `panelY` tiene exactamente dos dueños — el gesto y `senalSubir`.** Cualquier
+   * 🔴 **Invariante: `panelY` tiene exactamente dos dueños — el gesto y las señales externas
+   * (`senalSubir`, y su gemela `senalBajar`: el mismo canal, la otra dirección).** Cualquier
    * tercer writer (foco, layout, un efecto de sincronización) reintroduce la carrera. Si vuelve a
    * aparecer un desajuste real al navegar, se instrumenta y se busca la causa; NO se agrega otro
    * writer sobre este shared value.
@@ -249,6 +261,22 @@ export function PanelDeslizable({
       if (finished) runOnJS(setPanelAbajoConAviso)(false);
     });
   }, [senalSubir, panelY, setPanelAbajoConAviso]);
+
+  // Baja el panel cuando llega la señal. Mismo criterio que la de subir: el primer render no cuenta y el
+  // estado se asienta cuando la animación TERMINA. Sin recorrido medido no se inventa un destino (igual
+  // que `alternar`). La bajada se AVISA antes de animar, como en el gesto, para que el escritorio se cierre
+  // en paralelo y no después.
+  const senalBajarPrevia = useRef(senalBajar);
+  useEffect(() => {
+    if (senalBajar === undefined || senalBajar === senalBajarPrevia.current) return;
+    senalBajarPrevia.current = senalBajar;
+    const max = recorrido.value;
+    if (max <= 0) return;
+    avisarBajada();
+    panelY.value = withTiming(max, CONFIG_SNAP, (finished) => {
+      if (finished) runOnJS(setPanelAbajoConAviso)(true);
+    });
+  }, [senalBajar, panelY, recorrido, avisarBajada, setPanelAbajoConAviso]);
 
   // 🔴 **El `useMemo` no es una optimización: Gesture Handler v2 lo exige.** Sin él se construye un
   // objeto de gesto NUEVO en cada render y `GestureDetector` re-adjunta el recognizer, que pierde su

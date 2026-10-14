@@ -40,8 +40,13 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 14 | `card-cobro` | ✅ + 📝 | etiquetas ya coincidían · botón «Anotar que me pagaron» (#1056) · extracción (#1065) · chips WhatsApp/mail del link (adenda) | — |
 | 15 | `card-presu` | 📝 | **medida**: DIVERGE | formulario completo vs 3 filas kv |
 | 16 | `onb-promesa` | ✅ + 📝 | copy de la fila Google + «desde Ajustes» | pantalla completa, un botón por permiso |
+| 17 | `hitl` | ✅ + 📝 | puente tarjeta → chat: verbo pulsable, texto sembrado, chip «Desde tu aviso», «Volver al tablero» | «Volver al tablero →» dentro del recibo, «Editar» (no medido) |
+| 18 | `clientes` | ✅ + 📝 | monto · «N comprobantes» · «Sin CUIT cargado» / «Todavía sin comprar» · condición IVA en el subtítulo | «Con movimiento», «Se agregó solo», pill vs botón, inputbar vs «Buscar» |
+| 19 | `caida` | ✅ + 📝 | kv «Se cayó · Hoy, 9:12» desde `datos.desde` (sólo con instante real) | rótulo «En caja», copy del aviso, fecha de corte |
+| 20 | `cobro-voz` | 📝 | divergencia #5: el motivo escrito, en el doc y en el código | — |
+| 21 | `fact-voz` | ✅ + 📝 | meta «hora ✓✓ recibido» bajo la burbuja propia | avatar del asistente: FUERA-DE-REFERENCIA |
 
-**Cuenta honesta:** 16 filas con veredicto. **Ninguna** queda «sin veredicto». **Ninguna** queda con una
+**Cuenta honesta:** 21 filas con veredicto (las 16 del bloque + las 5 pendientes de `backend + nativa`: BLOQUENATIVO5). **Ninguna** queda «sin veredicto». **Ninguna** queda con una
 dependencia abierta (las filas 5 y 6 llevaban ⛓️ por `mic-facturacion` y pasaron a 📝 por enmienda fundada,
 MICFACTENM, 2026-10-13 — ver §Dependencias). Hasta la re-medición de abajo
 eran 7: las filas 7, 10, 12, 13 y 14 colgaban de una dependencia (extracción por destino) y de un copy
@@ -369,6 +374,193 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 - **Un botón por permiso** vs «Conectar Google» único: Mercado Pago y Google son OAuth independientes.
 - **Sin catálogo (`permisos: null`) las filas no se dibujan** (`:129`): fail-closed, no inventa permisos.
 
+### 17 · `hitl` — ✅ + 📝
+
+*(BLOQUENATIVO5 §1. Las divergencias de la fila: el puente tarjeta → chat, el chip de contexto, la card
+«Recordatorio a Lucía», el recibo «Mandado a Lucía» y la salida «Volver al tablero».)*
+
+**Resuelto**
+- **El puente existe** (C-D5 Opción A: texto sembrado, 0 backend). El `verbo` del detalle expandido ya no es un
+  `Text` inerte: es un botón cuando la tarjeta la detectó una regla y hay a dónde llevarlo
+  (`PantallaMiDia.tsx:748`, regla en `packages/core/src/chat/avisoAlChat.ts`). Lleva el aviso al chat
+  **sembrado en el composer, sin mandarlo** (`Composer.tsx:89,152`): lo manda quien lo lee, que es el último
+  punto donde puede corregir un mail a un tercero.
+- **Chip «Desde tu aviso · Presupuestos · Lucía»** + **«Volver al tablero»** (`ChatView.tsx`,
+  testIDs `chat-contexto-aviso*`). El chip nombra sólo lo que la tarjeta sabe: sin categoría o sin cliente esa
+  parte no aparece (nunca «Cliente» inventado).
+- **El contexto se cierra** al volver al tablero y al bajar el chat por gesto (`PantallaPrincipal.tsx:163-167`
+  + `PanelDeslizable.tsx` `senalBajar`).
+- **La card «Recordatorio a Lucía» (b) y el recibo «Mandado a Lucía · 9:41»** ya estaban resueltos por C-D3
+  para el piloto Gmail (fila 1 `recibo`). **Aceptado por planificación, no se reabre.**
+
+**Enmienda**
+- 📝 **El chip es sólo UI; el contexto viaja en el texto.** `POST /chat` no tiene campo de contexto
+  (`ChatIn {session_id, text, kind}`). Si alguna vez se hace la Opción B (`ChatIn.contexto`), el contexto de
+  tarjeta y el hint de destino del dictado (`kind = "dictado:<destino>"`) tienen que entrar por UN mecanismo.
+- 📝 **No es `dejarPendiente`.** El buzón de `mensajePendiente` *manda* el texto; acá se siembra. Motivo arriba.
+- 📝 **La tarjeta manual (sin `regla`) no tiene puente.** Su verbo es «Borrar»: una acción sobre la propia
+  tarjeta, no un pedido al agente.
+- 📝 **«Volver al tablero →» no está dentro del recibo** (prototipo `index.html:2774`): la salida vive en el
+  chip, visible desde que entra el aviso, así que no depende de que haya un recibo para poder volver. Es
+  reabrible si el operador quiere el link también al pie del recibo.
+- 📝 **La ruta glass `/midia` queda sin puente a propósito**: sin `onAvisoAlChat` el verbo sigue siendo
+  rótulo, y hay un test que lo fija.
+
+**Probado** — `avisoAlChat.test.ts` (6), `PantallaMiDia.test.tsx`, `Composer.test.tsx`, `ChatView.test.tsx`,
+`PanelDeslizable.test.tsx`, `PantallaPrincipal.avisoAlChat.test.tsx` (costura de punta a punta en el shell
+real) y `PantallaPrincipal.avisoBajarGesto.test.tsx`. **12 mutantes, 12 muertos** (M5/M5b por cuelgue: un
+mutante que manda el aviso solo genera un bucle de envío y jest no termina; cuenta como muerto, y lo digo).
+
+**[sin ver en device]** El movimiento real del panel (`senalSubir`/`senalBajar`: reanimated está stubbeado en
+jest), el aspecto del chip y que el verbo se pueda tocar sin querer abrir/cerrar la tarjeta. Un mutante que
+rompa «el chat sube al tocar el verbo» **no es detectable en jest**: es DoD de device.
+
+**No medido por nadie:** el «Editar» de la card HITL (backend lo declara así). Si se lo cruza, se reporta.
+
+### 18 · `clientes` — ✅ + 📝
+
+*(BLOQUENATIVO5 §2. Divergencias 1-5 de la fila.)*
+
+**Resuelto**
+- **#1 · El monto (C-D1).** Mobile pinta la columna derecha con la **misma regla del core que la web**
+  (`facturacionDeCliente` → `textoMontoCliente` + `estadoFacturacionCliente`, `TarjetaCliente.tsx:63-70`):
+  «$importe · N comprobantes», «—» + «Sin CUIT cargado» (nunca un número aunque el wire traiga `"0.00"`),
+  «Todavía sin comprar» si el neto es cero, y sin el par declarado (backend previo) cae al conteo o a «—».
+  Las reglas de texto ahora viven en `packages/core/src/api/clientes.ts` y la web las consume de ahí: había
+  **dos copias** y la de mobile no existía (0 hits de `montoFacturado|facturacionDeCliente` en mobile, con la
+  web en 5).
+- **#3 · La condición IVA en el subtítulo** (`subtituloDeCliente`, core): «CUIT 30712345678 · Resp.
+  Inscripto». Sin documento cae al primer dato que identifique.
+- **Corrección de cita (#1079).** El `cierre_` de C-D1/C-D4 decía que mobile no pintaba el monto por «una
+  decisión documentada en su docstring». **No lo estaba**: el docstring hablaba del documento, del subtítulo
+  y del `origen`, no del slot. Ahora el monto está pintado **y** la decisión sobre cada chip está escrita en
+  el docstring (`TarjetaCliente.tsx`).
+
+**Enmienda**
+- 📝 **#2 · «Con movimiento» no se pinta.** El rótulo afirma que lo de abajo tuvo movimiento; la lista es la
+  **cartera entera, alfabética** (`clientesOrdenados`). C-D1 decidió que el servidor NO ordena ni filtra por
+  movimiento (deuda `CLIENTMOV`), y el prototipo trae un único rótulo sin sección «sin movimiento» — o sea
+  espera una lista *ordenada por movimiento*, que hoy nadie puede darle. Pintar el rótulo sobre una lista
+  alfabética sería decir algo que no se midió. Se retoma con `CLIENTMOV`.
+  ⚠️ **La web SÍ pinta «Con movimiento»** (`ClientesScreen.tsx:290`) sobre `ordenarAlfabetico`. Es el mismo
+  defecto y no lo toco desde acá: queda como pedido (§Pedidos).
+- 📝 **«Se agregó solo» no se pinta en mobile** (`.estado.auto` del prototipo). El derivado es el *default* de
+  la cartera: etiquetar el caso mayoritario es ruido, y ese conteo ya lo da el BloqueCifra («N se agregaron
+  solos este mes»). Se descarta el chip `auto` y sólo sobreviven los estados MEDIDOS. Reabrible.
+- 📝 **#4 · «Nuevo cliente» es botón primario, no pill** (`PantallaClientes.tsx:339-340`). El pill del
+  prototipo (`.nuevo`) comparte fila con el rótulo «Con movimiento» (#2): sin rótulo no tiene fila donde vivir.
+  El botón primario es el patrón de las funciones hermanas (`PantallaGastos.tsx:277`) y es el alta que
+  ofrece también la cartera vacía. Mismo `testID` (`clientes-nuevo`) que la web.
+- 📝 **#5 · «Buscar» es un campo visible con etiqueta, no el inputbar «Buscá un cliente, o hablá…»**
+  (`PantallaClientes.tsx:381`). En el prototipo el inputbar es la barra compartida buscar/dictar; acá el
+  dictado vive en `MicFuncion` (fila de arriba) y la búsqueda es un `CampoTexto` cuya etiqueta no desaparece
+  al tipear, con búsqueda en backend con debounce de 350 ms. La web hace lo mismo (`ClientesScreen.tsx`,
+  label «Buscar») — es una decisión de la app, no de mobile.
+
+**Probado** — `TarjetaCliente.test.tsx` (7, nuevo), `PantallaClientes.test.tsx` (el subtítulo cambió a
+propósito), `clientes.test.ts` (reglas de texto y subtítulo) y los tests web de `TarjetaCliente`. Mutantes:
+K1-K6 muertos, 6/6.
+
+**[sin ver en device]** El layout de la columna derecha en pantalla angosta (nombre largo + «$ importe ·
+N comprobantes» en una línea) y el truncado con `numberOfLines`.
+
+### 19 · `caida` — ✅ + 📝
+
+*(BLOQUENATIVO5 §3. El dato ya estaba cumplido y probado en backend, en las dos ramas.)*
+
+**Resuelto**
+- **El kv «Se cayó · hora»** (`index.html:3658`, `<div class="kv"><span>Se cayó</span><b>Hoy, 9:12</b></div>`).
+  Lee `datos.desde` (`packages/core/src/api/miDia.ts`: `instanteDe`, sólo un ISO parseable) y lo formatea con
+  `formatearInstanteDeCaida` («Hoy, 9:12» · «Ayer, 21:40» · «9 de octubre, 8:00»). Se agrega al detalle sólo
+  para `regla === 'conexion_caida'`, y sólo si la tarjeta no trae ya un kv «Se cayó»
+  (`PantallaMiDia.tsx:740-743`).
+- 🔴 **Sin `datos.desde` no hay fila, y nunca se rellena con `creada_en`**: es cuándo corrió el detector, no
+  cuándo cayó la conexión. Composio no guarda el instante (`conexiones_salud.py:33`) → campo **ausente**, y
+  eso es lo que el test de core fija.
+
+**Enmienda**
+- 📝 **#3 · El rótulo queda «En caja»** (el prototipo lo cambia a «Entró esta semana»,
+  `index.html:3645`). La cifra de abajo es `portada.caja.saldo` (`PortadaNegocio.tsx:37`): un **saldo**, no
+  lo que entró en una ventana. Rotularla «Entró esta semana» afirmaría un período que el número no mide. Lo
+  que declara que está incompleta es el aviso de debajo (`AVISO_CAJA_INCOMPLETA`, K-09).
+- 📝 **#4 · El copy del aviso es distinto, el hecho es el mismo.** Prototipo (`index.html:1651`): «faltan los
+  cobros de hoy — Mercado Pago está caído». Nativo (`core/midia/caja.ts`): «Se cayó la conexión con Mercado
+  Pago: faltan los cobros de hoy, así que estos números pueden estar incompletos». Mismos dos datos (qué
+  falta, cuál conexión); el nativo agrega la consecuencia, que es la regla dura del repo (el dato que falta
+  se DICE, no se disfraza). Está en el core: web y mobile dicen lo mismo.
+- 📝 **#5 · El chip pierde la variación y conserva la fecha de corte.** Coincide en lo que el prototipo
+  oculta: `.p-delta` es «−18% vs julio» (`index.html:1648`) y con la portada incompleta lo esconde
+  (`:3648`); `chipDeCaja` también la omite (`incompleta === true`, test `caja.test.ts:59`). Lo que el nativo
+  conserva, «Al 19 de agosto», **no está en el prototipo**: es el K-03 y dice hasta cuándo es bueno el
+  saldo, justo lo que importa cuando falta una conexión.
+
+**Probado** — `instanteCaida.test.ts` (4), `miDia.test.ts` («`datos.desde`», 3), `PantallaMiDia.test.tsx`
+(«caida», 4). Mutantes C1-C5 muertos, 5/5.
+
+**[sin ver en device]** Que «Hoy, 9:12» use la hora del reloj del teléfono como la lee el emprendedor, y el
+aspecto del kv dentro del detalle.
+
+### 20 · `cobro-voz` — 📝
+
+*(BLOQUENATIVO5 §4 + el contrato de seguimiento de planificación, que aportó el motivo medido. Era la
+**única** divergencia abierta de la fila: la #5.)*
+
+**#5 · La card reemplaza la burbuja, el texto no se pinta → ENMIENDA FUNDADA.**
+
+1. **El dictado del emprendedor no se pierde.** `ListaMensajes.tsx:329` renderiza `role === 'user'` como
+   burbuja *antes* de toda rama de card. Lo que la card reemplaza es el texto del **copiloto**, no el dictado.
+   La frase «la card reemplaza la burbuja» es cierta, pero apunta a otro sujeto del que uno asume al leerla.
+2. **El prototipo no modela esta tarjeta en el hilo.** `index.html`: `Compartir`/`Abrir`/`artefacto`/
+   `init_point`/`payment` → 0 hits, con control positivo en `cobrar`. Mercado Pago aparece sólo como app
+   conectada (`:2342`).
+3. **El `kind` `payment_link` ES el contenido.** La card trae monto, concepto y Compartir/Abrir, que es el DoD
+   de `BL-F2`; una burbuja arriba («acá está el link») sería redundante.
+4. **Por eso la asimetría con `datos_negocio` es legítima:** esa rama sí lleva burbuja + card porque ahí hay
+   referencia de prototipo y su propio comentario la cita (`ListaMensajes.tsx:440`).
+
+El motivo quedó **también escrito en el código**, junto a la rama (`ListaMensajes.tsx` sobre
+`leerLinkDeCobro`): el razonamiento no viaja con el código copiado.
+
+**Probado** — `ListaMensajes.test.tsx` («cobro-voz #5»): el mensaje del usuario sigue siendo burbuja, la card
+está, y el texto del asistente no. Mutante F10 (la rama vuelve a llevar burbuja) muerto.
+
+⚠️ **Hallazgo ajeno, no corregido:** la cita de `BL-F2` al prototipo (`index.html:3134-3139`) es **rancia** —
+ahora apunta al gesto de swipe de los avisos. Es de planificación/Martín, no mía. Y la evidencia de `BL-F2`
+(«mobile no porta el renderer de artefactos … grep vacío») también está rancia: hoy `payment_link|init_point`
+aparece en 3 archivos de `apps/mobile`.
+
+### 21 · `fact-voz` — ✅ + 📝
+
+*(BLOQUENATIVO5 §5. Las divergencias (a)-(c) ya las resolvió backend: gana el contrato del hito 9, no el
+prototipo. Quedaban (d) y (e), sin dueño; las decidió planificación.)*
+
+**(d) Resuelta — la meta «10:12 ✓✓ recibido» bajo la burbuja PROPIA.** Es paridad real: el prototipo la pinta
+(`index.html:2164,2167,2170`, `:3192`) y la web la tiene (`Bubble.tsx:63`).
+- `Burbuja.tsx:87` (`chat-bubble-recibido`, tono `exito`, alineada a la derecha, fuera de la burbuja), con la
+  hora del dispositivo (`formatearHoraDeMensaje`); sin `creadoEn` queda «✓✓ recibido» a secas, sin inventar
+  una hora.
+- 🔴 **«Recibido» es una afirmación sobre el servidor, y la web no la condiciona (`Bubble.tsx:63`, siempre).**
+  Mobile sí: el mensaje del usuario es optimista (`useChat`), así que mientras `POST /chat` está en vuelo
+  (`sending`) o falló (`error`, con reintento) el **último** mensaje propio NO se rotula recibido
+  (`idMensajeSinConfirmar`, core). Con `waiting`/`timeout` el envío ya lo aceptó el servidor.
+- Cableado en el chat y en Soporte (el prototipo la muestra también en `#s-soporte`).
+
+**(e) Enmienda — FUERA-DE-REFERENCIA, con la cita de planificación.** «Sin avatar ISO del asistente» declara
+ausente algo que el prototipo **tampoco tiene**: la clase `avatar` existe sólo en el `header` (`index.html:1616`
+y `:1643`) y es la **M del usuario** con su punto de notificación (el acceso a Mi cuenta). Las burbujas
+(`mio` / `suyo`) no llevan avatar. Verificado de nuevo acá, con control positivo (los dos `header`). No se
+implementa; un avatar del asistente sería diseño nuevo y va al backlog.
+
+**Probado** — `horaMensaje.test.ts` (6), `ListaMensajes.test.tsx` (6 de «recibido», incluido el re-render en el
+que **sólo** cambia `sendStatus`), `ChatView.test.tsx` (3, la costura con el `useChat` real) y
+`PantallaSoporte.test.tsx` (1). Mutantes F1-F9 muertos, 9/9; F5 (la fila no depende de `sendStatus`) lo
+dejaba pasar un `onChoice` nuevo por render y se corrigió el test.
+**Sobrevive F11** («el usuario deja de ser burbuja si trae card»): es **equivalente** — un mensaje del usuario
+no lleva `card` por contrato, así que no hay entrada que lo distinga.
+
+**[sin ver en device]** El tamaño y el color de la meta contra el glass, y que no choque con el chip «Por voz».
+
+
 ---
 
 ## Dependencias (⛓️) — lo que NO cierra frontend
@@ -385,6 +577,10 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 2. **Web gemela del onboarding** (`apps/copiloto-web/.../Onboarding.tsx:23,146`): el copy de Google
    cambió acá y la web dice otra cosa.
 3. **Formato de duración en la web:** `Por voz · Ns` vs `m:ss` — si el prototipo manda, la web también.
+4. **«Con movimiento» en la web** (`ClientesScreen.tsx:290`): rotula una lista alfabética con una afirmación
+   que nadie midió. O se retira hasta `CLIENTMOV`, o se ordena por movimiento. (`clientes` #2.)
+5. **«✓✓ recibido» sin condición en la web** (`Bubble.tsx:63`): lo pinta aun con el envío fallido. La regla ya
+   está en el core (`idMensajeSinConfirmar`); la web puede consumirla. (`fact-voz` d.)
 
 ## Qué NO verifiqué (explícito)
 
@@ -394,6 +590,11 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
   pantalla contra el backend.
 - **El chip «Mandalo por mail» con un Doc real:** el test prueba que abre un `mailto:` con el link; no
   que el cliente de mail del teléfono lo reciba bien.
+- **Las filas 17-21 (BLOQUENATIVO5), nada en teléfono.** El movimiento real del panel al sembrar el aviso,
+  la columna derecha de `TarjetaCliente` en pantalla angosta, la hora del kv «Se cayó» y la meta «recibido»
+  contra el glass son `[sin ver en device]`. El device tiene dueño único y no es esta sesión.
+- **`hitl`: el «Editar» de la card** — no lo midió nadie. Y el alcance de (b) es **un servicio piloto (Gmail)**,
+  aceptado por C-D3.
 - **`tsc` de todo el paquete:** el junction a `@copiloto/core` del worktree está desactualizado y da
   errores en archivos que no toqué (`acciones`, `alertaDobleEmision`, `idemKey`). Filtrado a mis
   archivos no hay errores nuevos; la verificación formal es `scripts/gate.sh`.

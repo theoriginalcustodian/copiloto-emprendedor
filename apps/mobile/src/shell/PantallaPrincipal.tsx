@@ -24,7 +24,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
-import { listarActividad, type ActividadItem } from '@copiloto/core';
+import { listarActividad, type ActividadItem, type AvisoAlChat } from '@copiloto/core';
 
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
@@ -144,7 +144,33 @@ export function PantallaPrincipal() {
    * instante en que la conversación empieza a bajar, para que se cierren en paralelo.
    */
   const [senalCerrar, setSenalCerrar] = useState(0);
-  const alBajarChat = useCallback(() => setSenalCerrar((n) => n + 1), []);
+  /**
+   * `hitl (a)` — el puente tarjeta → chat (C-D5 Opción A). Mi día y el chat son la MISMA pantalla: el
+   * aviso no navega ni pasa por un buzón de módulo, baja por props. `id` crece con cada aviso, así el
+   * mismo aviso dos veces siembra dos veces.
+   */
+  const [avisoEntrante, setAvisoEntrante] = useState<{ aviso: AvisoAlChat; id: number } | null>(null);
+  const avisoSeq = useRef(0);
+  const [senalBajar, setSenalBajar] = useState(0);
+  const alAvisoAlChat = useCallback((aviso: AvisoAlChat) => {
+    avisoSeq.current += 1;
+    setAvisoEntrante({ aviso, id: avisoSeq.current });
+    setSenalSubir((n) => n + 1);
+  }, []);
+  // El contexto se cierra acá, explícito, y no sólo «porque el panel avisó que bajó»: la salida es del
+  // emprendedor, y que el chip siga diciendo «Desde tu aviso» sobre una conversación que ya dejó no depende
+  // de que la animación del panel se haya completado.
+  const alVolverAlTablero = useCallback(() => {
+    setAvisoEntrante(null);
+    setSenalBajar((n) => n + 1);
+  }, []);
+  const alBajarChat = useCallback(() => {
+    setSenalCerrar((n) => n + 1);
+    // El contexto de un aviso vive mientras la conversación está arriba por ese aviso: bajarla (con el
+    // gesto o con «Volver al tablero») lo termina. Sin esto el chip seguiría diciendo «Desde tu aviso»
+    // sobre una charla que ya no es de ese aviso.
+    setAvisoEntrante(null);
+  }, []);
   useEffect(() => {
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!panelAbajo) return false;
@@ -172,6 +198,7 @@ export function PantallaPrincipal() {
     <PanelDeslizable
       testID="panel-principal"
       senalSubir={senalSubir}
+      senalBajar={senalBajar}
       onPanelAbajoChange={setPanelAbajo}
       alBajar={alBajarChat}
       arrancaAbajo
@@ -197,10 +224,12 @@ export function PantallaPrincipal() {
             onAgenda={() => empujarUnaVez('/agenda')}
             // H5b: «Reconectar» de la tarjeta crítica abre Apps parado en ESA conexión (`servicio`).
             onConexion={(servicio) => empujarUnaVez({ pathname: '/apps', params: { servicio } })}
+            // hitl (a): el verbo de una tarjeta detectada lleva su aviso al chat, sembrado en el composer.
+            onAvisoAlChat={alAvisoAlChat}
           />
         </PanelFunciones>
       }>
-      <ChatView />
+      <ChatView avisoEntrante={avisoEntrante} onVolverAlTablero={alVolverAlTablero} />
     </PanelDeslizable>
   );
 }

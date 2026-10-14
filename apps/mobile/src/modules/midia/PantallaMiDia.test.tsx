@@ -658,3 +658,124 @@ describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida
     expect(screen.getByTestId('midia-tarjeta-p-verbo')).toBeTruthy();
   });
 });
+
+// hitl (a) — el puente tarjeta → chat (C-D5 Opción A, texto sembrado). El caso SIN puente va primero:
+// el verbo inerte de siempre es lo que ve quien monta la pantalla sin handler (la ruta `/midia` glass).
+describe('PantallaMiDia — hitl (a): el verbo lleva el aviso al chat', () => {
+  async function expandirVerbo(over: Record<string, unknown>, props: ComponentProps<typeof PantallaMiDia> = {}) {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('p', {
+          texto: 'Hace 12 días que le mandaste el presupuesto a Lucía y no te respondió.',
+          regla: 'presupuestos_enfriandose',
+          verbo: 'Mandarle un recordatorio',
+          categoria: 'presupuestos',
+          cliente: 'Lucía',
+          ...over,
+        }),
+      ]),
+    });
+    await montar(props);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p'));
+  }
+
+  it('🔴 SIN `onAvisoAlChat` el verbo sigue siendo rótulo: no es un botón que no lleva a ningún lado', async () => {
+    await expandirVerbo({});
+    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
+    expect(verbo).toHaveTextContent('Mandarle un recordatorio');
+    expect(verbo.props.accessibilityRole).not.toBe('button');
+  });
+
+  it('con `onAvisoAlChat` el verbo es un botón, y tocarlo entrega el aviso sembrado + el chip del prototipo', async () => {
+    const onAvisoAlChat = jest.fn();
+    await expandirVerbo({}, { onAvisoAlChat });
+
+    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
+    expect(verbo.props.accessibilityRole).toBe('button');
+    await fireEvent.press(verbo);
+
+    expect(onAvisoAlChat).toHaveBeenCalledTimes(1);
+    const aviso = onAvisoAlChat.mock.calls[0][0];
+    expect(aviso.contexto).toBe('Desde tu aviso · Presupuestos · Lucía');
+    expect(aviso.texto).toContain('Hace 12 días que le mandaste el presupuesto a Lucía');
+    expect(aviso.texto).toContain('Mandarle un recordatorio');
+  });
+
+  it('🔴 la tarjeta MANUAL no tiene puente aunque haya handler: su verbo («Borrar») no es un pedido al agente', async () => {
+    const onAvisoAlChat = jest.fn();
+    await expandirVerbo({ regla: null, verbo: 'Borrar', categoria: 'tuyas', cliente: null }, { onAvisoAlChat });
+
+    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
+    expect(verbo.props.accessibilityRole).not.toBe('button');
+    await fireEvent.press(verbo);
+    expect(onAvisoAlChat).not.toHaveBeenCalled();
+  });
+
+  it('si la tarjeta trae `accion` (con su destino) manda la píldora: el verbo no se duplica como segundo botón', async () => {
+    const onAvisoAlChat = jest.fn();
+    await expandirVerbo(
+      { presentacion: { chip: null, kv: [], accion: { texto: 'Reclamar el pago', destino: { tipo: 'conexion', id: 'gmail', connectPath: null } } } },
+      { onAvisoAlChat },
+    );
+    expect(screen.getByTestId('midia-tarjeta-p-accion')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
+  });
+
+  it('el chip no inventa cliente ni categoría: sin ellos queda «Desde tu aviso»', async () => {
+    const onAvisoAlChat = jest.fn();
+    await expandirVerbo({ categoria: null, cliente: null }, { onAvisoAlChat });
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-verbo'));
+    expect(onAvisoAlChat.mock.calls[0][0].contexto).toBe('Desde tu aviso');
+  });
+});
+
+// caida — `datos.desde`: el kv «Se cayó · hora» del prototipo (`index.html:3658`). El caso SIN instante va
+// primero: es el normal de Composio (el backend no guarda cuándo cayó) y no puede pintar nada inventado.
+describe('PantallaMiDia — caida: «Se cayó» sale de `datos.desde` y de nada más', () => {
+  const hoyA = (h: number, m: number) => {
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+
+  async function expandirCaida(over: Record<string, unknown>) {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { regla: 'conexion_caida', texto: 'Mercado Pago está caído', verbo: 'Reconectar', ...over }),
+      ]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-c')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-c'));
+    return screen.getByTestId('midia-tarjeta-c-detalle');
+  }
+
+  it('🔴 sin `desde` (Composio no guarda instante) no hay fila «Se cayó» — ni una hora inventada', async () => {
+    const detalle = await expandirCaida({ desde: null, cliente: 'Mercado Pago' });
+    expect(detalle).not.toHaveTextContent(/Se cayó/);
+    expect(detalle).not.toHaveTextContent(/Hoy,/);
+  });
+
+  it('con `desde` pinta «Se cayó» con la hora del instante real', async () => {
+    const detalle = await expandirCaida({ desde: hoyA(9, 12) });
+    expect(detalle).toHaveTextContent(/Se cayó/);
+    expect(detalle).toHaveTextContent(/Hoy, 9:12/);
+  });
+
+  it('la fila es de `conexion_caida`: un `desde` en otra regla no se pinta', async () => {
+    const detalle = await expandirCaida({ regla: 'facturas_impagas_viejas', desde: hoyA(9, 12), cliente: 'Lucía' });
+    expect(detalle).not.toHaveTextContent(/Se cayó/);
+  });
+
+  it('si el backend ya mandó la kv «Se cayó» en `presentacion`, no se duplica', async () => {
+    const detalle = await expandirCaida({
+      desde: hoyA(9, 12),
+      presentacion: { chip: null, kv: [{ k: 'Se cayó', v: 'Hoy, 9:12' }], accion: null },
+    });
+    expect(detalle).toHaveTextContent(/Hoy, 9:12/);
+    expect(screen.getAllByText('Se cayó')).toHaveLength(1);
+  });
+});

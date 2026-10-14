@@ -1,22 +1,18 @@
-import { facturacionDeCliente, type Cliente, type FacturacionCliente } from '@copiloto/core';
+import {
+  estadoFacturacionCliente,
+  facturacionDeCliente,
+  subtituloDeCliente,
+  textoComprobantes,
+  textoMontoCliente,
+  type Cliente,
+} from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
-const ETIQUETA_DOC: Record<number, string> = { 80: 'CUIT', 96: 'DNI' };
-
-/**
- * Etiquetas abreviadas para el subtítulo de una fila angosta — mismo criterio que `ETIQUETA_DOC`
- * de acá arriba: un mapa LOCAL de presentación, no el catálogo completo de
- * `modules/facturacion/catalogos.ts` (`OPCIONES_CONDICION_IVA_RECEPTOR`, con etiquetas largas
- * para un `<select>`). Los códigos son los mismos (`CondicionIVA` de AFIP) — acá sólo se lee un
- * dato que ya llegó, no se valida ni se envía nada.
- */
-const ETIQUETA_CONDICION_IVA: Record<number, string> = {
-  1: 'Resp. Inscripto',
-  4: 'Exento',
-  5: 'Consumidor Final',
-  6: 'Monotributo',
-};
+// Las tres reglas de TEXTO del slot de facturación viven en el core (`textoMontoCliente`,
+// `estadoFacturacionCliente`, `textoComprobantes`) para que web y mobile digan lo mismo. Se re-exporta
+// `textoComprobantes` porque el test de esta tarjeta y otros consumidores la importan desde acá.
+export { textoComprobantes };
 
 /**
  * Port directo de `apps/mobile/src/modules/clientes/TarjetaCliente.tsx` — MISMA regla de
@@ -38,69 +34,15 @@ const ETIQUETA_CONDICION_IVA: Record<number, string> = {
  * «Todavía sin comprar» — y sólo sin esa señal cae a `origen` (`derivado` → «Se agregó solo»,
  * mockup `.estado.auto`).
  */
-/**
- * BL-V18 (A12): cantidad de comprobantes en el slot del monto. `undefined` (el listado no lo trajo)
- * cae a «—»: un cero que el backend no declaró sería mentira. El backend declara `0` cuando el cliente
- * no tiene comprobantes, y ahí sí se muestra.
- */
-export function textoComprobantes(n: number | undefined): string {
-  if (n == null) return '—';
-  return n === 1 ? '1 comprobante' : `${n} comprobantes`;
-}
-
-/** Texto del slot del monto. Ver el docstring de arriba: la regla vive en `facturacionDeCliente`. */
-export function textoMontoCliente(cliente: Cliente): string {
-  const f = facturacionDeCliente(cliente);
-  switch (f.tipo) {
-    case 'sin_documento':
-      return '—';
-    case 'sin_compras':
-    case 'con_monto':
-      return cliente.comprobantesCantidad != null
-        ? `${f.importe} · ${textoComprobantes(cliente.comprobantesCantidad)}`
-        : f.importe;
-    case 'desconocida':
-      return textoComprobantes(cliente.comprobantesCantidad);
-  }
-}
-
-/** Chip de estado, o `null` si no hay nada que afirmar (cliente con compras cargado a mano). */
-function estadoCliente(f: FacturacionCliente, esAuto: boolean): { texto: string; auto: boolean } | null {
-  switch (f.tipo) {
-    case 'sin_documento':
-      return { texto: 'Sin CUIT cargado', auto: false };
-    case 'sin_compras':
-      return { texto: 'Todavía sin comprar', auto: false };
-    case 'con_monto':
-      return esAuto ? { texto: 'Se agregó solo', auto: true } : null;
-    case 'desconocida':
-      return esAuto ? { texto: 'Se agregó solo', auto: true } : { texto: 'Todavía sin comprar', auto: false };
-  }
-}
-
 export interface TarjetaClienteProps {
   cliente: Cliente;
   onSelect?: (cliente: Cliente) => void;
 }
 
 export function TarjetaCliente({ cliente, onSelect }: TarjetaClienteProps) {
-  const doc =
-    cliente.docNro != null && cliente.docNro !== ''
-      ? `${ETIQUETA_DOC[cliente.docTipo ?? 0] ?? 'Doc'} ${cliente.docNro}`
-      : null;
+  const subtitulo = subtituloDeCliente(cliente);
 
-  const subtitulo =
-    doc != null
-      ? `${doc} · ${
-          cliente.condicionIva != null
-            ? (ETIQUETA_CONDICION_IVA[cliente.condicionIva] ?? 'Condición no identificada')
-            : 'sin condición cargada'
-        }`
-      : ([cliente.telefono, cliente.email, cliente.domicilio, cliente.notas]
-          .map((x) => (x != null && x.trim() !== '' ? x.trim() : null))
-          .find((x) => x != null) ?? null);
-
-  const estado = estadoCliente(facturacionDeCliente(cliente), cliente.origen === 'derivado');
+  const estado = estadoFacturacionCliente(facturacionDeCliente(cliente), cliente.origen === 'derivado');
 
   return (
     <Surface

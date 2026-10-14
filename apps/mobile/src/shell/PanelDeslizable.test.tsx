@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import type React from 'react';
+import { useRef } from 'react';
 import { Text } from 'react-native';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
@@ -39,6 +40,57 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     // en vez de lo que se consigue.
     await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
     expect(screen.getByTestId('panel-hint').props.children).toBe('Escribile a Odobi');
+  });
+});
+
+// `senalBajar` — la gemela de `senalSubir` (hitl a: «Volver al tablero»). Jest mockea `withTiming` (no
+// invoca su callback de fin y no mueve nada), así que lo que se ejercita es el WIRING: que la señal
+// dispare la bajada y la AVISE por la misma puerta que el gesto (`alBajar`, regla A: el escritorio se
+// cierra al bajar el chat). Que el panel BAJE de verdad es DoD de device, como el resto del gesto.
+describe('PanelDeslizable — senalBajar', () => {
+  // El stub global de `useSharedValue` (`jest.setup.js`) devuelve un objeto NUEVO por render: `recorrido`
+  // volvería a «sin medir» en cada re-render y el test no vería nunca un panel ya medido. Acá se le da la
+  // estabilidad que el hook real tiene (un `ref`), sólo para este bloque.
+  beforeEach(() => {
+    const Reanimated = require('react-native-reanimated');
+    jest.spyOn(Reanimated, 'useSharedValue').mockImplementation((inicial: unknown) => useRef({ value: inicial }).current);
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const MEDIDA = { nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } } };
+
+  function arbol(props: Partial<React.ComponentProps<typeof PanelDeslizable>>) {
+    return (
+      <ThemeProvider>
+        <PanelDeslizable testID="panel" fondo={<Text>escritorio-fondo</Text>} {...props}>
+          <Text>conversacion-frente</Text>
+        </PanelDeslizable>
+      </ThemeProvider>
+    );
+  }
+
+  it('un cambio de la señal avisa la bajada UNA vez; el primer render no cuenta', async () => {
+    const alBajar = jest.fn();
+    const vista = await render(arbol({ alBajar, senalBajar: 0 }));
+    await fireEvent(screen.getByTestId('panel'), 'layout', MEDIDA);
+    expect(alBajar).not.toHaveBeenCalled();
+
+    await vista.rerender(arbol({ alBajar, senalBajar: 1 }));
+    expect(alBajar).toHaveBeenCalledTimes(1);
+
+    // Mismo valor en otro render: ya fue atendida, no vuelve a bajar.
+    await vista.rerender(arbol({ alBajar, senalBajar: 1 }));
+    expect(alBajar).toHaveBeenCalledTimes(1);
+  });
+
+  it('🔴 sin recorrido medido no inventa un destino: no baja ni avisa', async () => {
+    const alBajar = jest.fn();
+    const vista = await render(arbol({ alBajar, senalBajar: 0 }));
+    // sin `layout`: `recorrido` sigue en «todavía no medí».
+    await vista.rerender(arbol({ alBajar, senalBajar: 1 }));
+    expect(alBajar).not.toHaveBeenCalled();
   });
 });
 

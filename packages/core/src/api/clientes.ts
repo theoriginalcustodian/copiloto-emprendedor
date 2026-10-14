@@ -172,6 +172,104 @@ export function facturacionDeCliente(
 }
 
 /**
+ * BL-V18 (A12): cantidad de comprobantes en el slot del monto. `undefined` (el listado no lo trajo)
+ * cae a «—»: un cero que el backend no declaró sería mentira. El backend declara `0` cuando el cliente
+ * no tiene comprobantes, y ahí sí se muestra.
+ */
+export function textoComprobantes(n: number | undefined): string {
+  if (n == null) return '—';
+  return n === 1 ? '1 comprobante' : `${n} comprobantes`;
+}
+
+/**
+ * Texto del slot del monto de una fila de cliente — **un solo lugar para web y mobile** (la regla vive en
+ * `facturacionDeCliente`; esto es lo que dice cada caso):
+ *
+ * - `sin_documento` → «—» (NUNCA un número: el `"0.00"` ahí es «no se puede saber»).
+ * - `sin_compras` / `con_monto` → «$importe · N comprobantes» (sólo `$importe` si el conteo no vino).
+ * - `desconocida` → la cantidad de comprobantes (BL-V18) y, sin ella, «—»: nunca un cero inventado.
+ */
+export function textoMontoCliente(
+  c: Pick<Cliente, 'montoFacturado' | 'facturasAtribuibles' | 'comprobantesCantidad'>,
+): string {
+  const f = facturacionDeCliente(c);
+  switch (f.tipo) {
+    case 'sin_documento':
+      return '—';
+    case 'sin_compras':
+    case 'con_monto':
+      return c.comprobantesCantidad != null
+        ? `${f.importe} · ${textoComprobantes(c.comprobantesCantidad)}`
+        : f.importe;
+    case 'desconocida':
+      return textoComprobantes(c.comprobantesCantidad);
+  }
+}
+
+/**
+ * El chip de estado de la fila, o `null` si no hay nada que afirmar (cliente con compras cargado a mano).
+ * Dice lo MEDIDO — «Sin CUIT cargado» / «Todavía sin comprar» — y sólo sin esa señal cae a `origen`
+ * (`derivado` → «Se agregó solo», el `.estado.auto` del prototipo). `esAuto` = `origen === 'derivado'`.
+ */
+export function estadoFacturacionCliente(
+  f: FacturacionCliente,
+  esAuto: boolean,
+): { texto: string; auto: boolean } | null {
+  switch (f.tipo) {
+    case 'sin_documento':
+      return { texto: 'Sin CUIT cargado', auto: false };
+    case 'sin_compras':
+      return { texto: 'Todavía sin comprar', auto: false };
+    case 'con_monto':
+      return esAuto ? { texto: 'Se agregó solo', auto: true } : null;
+    case 'desconocida':
+      return esAuto ? { texto: 'Se agregó solo', auto: true } : { texto: 'Todavía sin comprar', auto: false };
+  }
+}
+
+const ETIQUETA_DOC_CLIENTE: Record<number, string> = { 80: 'CUIT', 96: 'DNI' };
+
+/**
+ * Etiquetas abreviadas de la condición IVA para una fila angosta — un mapa de PRESENTACIÓN, no el catálogo
+ * completo de `<select>` de Facturación. Los códigos son los de AFIP; acá sólo se lee un dato que ya llegó.
+ */
+const ETIQUETA_CONDICION_IVA_CLIENTE: Record<number, string> = {
+  1: 'Resp. Inscripto',
+  4: 'Exento',
+  5: 'Consumidor Final',
+  6: 'Monotributo',
+};
+
+/**
+ * El subtítulo de la fila de un cliente — **una sola regla para web y mobile**.
+ *
+ * - **Con documento**: «CUIT 20-12345678-9 · Resp. Inscripto» (el formato del prototipo, `index.html:2213`).
+ *   Una condición ausente se DICE («sin condición cargada»), y una que no está en el mapa también
+ *   («Condición no identificada»): ninguna se omite en silencio.
+ * - **Sin documento** — el caso NORMAL de una cartera derivada de presupuestos—: el PRIMER dato que
+ *   identifique (teléfono, mail, domicilio, notas). No es adorno: desde `forzar` (el alta de un homónimo
+ *   legítimo) la cartera puede tener dos clientes con el mismo nombre y, sin esto, quedan dos filas idénticas.
+ * - `null` si no hay ninguno: la fila queda con el nombre solo, que es honesto.
+ */
+export function subtituloDeCliente(
+  c: Pick<Cliente, 'docTipo' | 'docNro' | 'condicionIva' | 'telefono' | 'email' | 'domicilio' | 'notas'>,
+): string | null {
+  if (c.docNro != null && c.docNro !== '') {
+    const doc = `${ETIQUETA_DOC_CLIENTE[c.docTipo ?? 0] ?? 'Doc'} ${c.docNro}`;
+    const condicion =
+      c.condicionIva != null
+        ? (ETIQUETA_CONDICION_IVA_CLIENTE[c.condicionIva] ?? 'Condición no identificada')
+        : 'sin condición cargada';
+    return `${doc} · ${condicion}`;
+  }
+  return (
+    [c.telefono, c.email, c.domicilio, c.notas]
+      .map((x) => (x != null && x.trim() !== '' ? x.trim() : null))
+      .find((x) => x != null) ?? null
+  );
+}
+
+/**
  * "Esta capacidad no está en este deploy" — **el 404 NO entra acá**: en `/clientes/{cliente}` es
  * semántico ("no existe para este tenant", que incluye el id ajeno; el backend no confirma recursos
  * de otros y tiene test adversarial de eso).

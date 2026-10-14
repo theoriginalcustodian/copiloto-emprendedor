@@ -38,16 +38,23 @@ teléfono**. Lo que sólo se vería en device queda anotado *«[sin ver en devic
 | # | fila | veredicto | lo que cierra / lo que falta | de quién es lo que falta |
 |---|---|---|---|---|
 | 1 | `preg` | ✅ + 📝 **CIERRA** | card `datos_negocio` pintada en mobile y web; la promo masiva es enmienda (BACKLOG/MAYOR) | — |
-| 2 | `caida` | ABIERTA | backend en main (`datos.desde`); **ninguna app lee `datos.desde`** (kv «Se cayó · hora») + 3 divergencias de `PortadaNegocio` sin veredicto | dueño de Mi día (adenda C-D2) |
-| 3 | `clientes` | ABIERTA | backend + core + **web** pintan el monto; **mobile no** (0 hits) y 4 divergencias sin veredicto | frontend1 (mobile) |
-| 4 | `cobro-voz` | ABIERTA — casi | 6 de 7 divergencias con veredicto; falta **una**: la card reemplaza a la burbuja y no hay motivo escrito | frontend1 (`card-cobro`) |
-| 5 | `fact-voz` | ABIERTA | backend + marca `del_registro` en ambas apps; **meta «✓✓ recibido» (mobile 0) y avatar ISO sin veredicto de nadie** | frontend1 / planificación |
-| 6 | `hitl` | ABIERTA | (b) `detalle` + `recibo` en main, piloto Gmail; **(a) el puente tarjeta→chat no existe** (0 hits) | frontend (Opción A, 0 backend) |
+| 2 | `caida` | ✅ / 📝 **CIERRA** (BLOQUENATIVO5, fila 19 de frontend1) | backend en main (`datos.desde`); **ninguna app lee `datos.desde`** (kv «Se cayó · hora») + 3 divergencias de `PortadaNegocio` sin veredicto | dueño de Mi día (adenda C-D2) |
+| 3 | `clientes` | ✅ / 📝 **CIERRA** (BLOQUENATIVO5, fila 18 de frontend1) | backend + core + **web** pintan el monto; **mobile no** (0 hits) y 4 divergencias sin veredicto | frontend1 (mobile) |
+| 4 | `cobro-voz` | ✅ / 📝 **CIERRA** (BLOQUENATIVO5, fila 20 de frontend1) | 6 de 7 divergencias con veredicto; falta **una**: la card reemplaza a la burbuja y no hay motivo escrito | frontend1 (`card-cobro`) |
+| 5 | `fact-voz` | ✅ / 📝 **CIERRA** (BLOQUENATIVO5, fila 21 de frontend1) | backend + marca `del_registro` en ambas apps; **meta «✓✓ recibido» (mobile 0) y avatar ISO sin veredicto de nadie** | frontend1 / planificación |
+| 6 | `hitl` | ✅ / 📝 **CIERRA** (BLOQUENATIVO5, fila 17 de frontend1) | (b) `detalle` + `recibo` en main, piloto Gmail; **(a) el puente tarjeta→chat no existe** (0 hits) | frontend (Opción A, 0 backend) |
 
 **Cuenta honesta:** 6 filas · **1 cierra en código** (`preg`) · 5 abiertas, todas con la mitad backend ya en main. Medido con el
 medidor de #1086 (`aea3a81f`) sobre `439c1c4c` + este doc: `CUMPLE EL DoD 28/54`, las 5 abiertas en `PENDIENTE DECLARADA` con su id
 nombrado y `preg` en `CERRADA-EN-CODIGO`. **Es un movimiento chico y es el verdadero**: cualquier cifra más alta saldría de contar la
 mitad de backend como la fila entera (el medidor anterior, sobre el mismo árbol, daba `40/54`: contaba las 5 como cumplidas).
+
+> **Actualización 2026-10-13 (BLOQUENATIVO5, frontend1).** Las 5 filas abiertas de arriba eran abiertas **por la mitad
+> app**, y esa mitad cerró: puente de `hitl`, monto de `clientes` en mobile, `datos.desde` de `caida`, meta «✓✓ recibido»
+> de `fact-voz` y el motivo de `cobro-voz` #5. Los veredictos con `path:línea` están en [`2026-10-13-veredicto-bloque-chat-frontend1.md`](2026-10-13-veredicto-bloque-chat-frontend1.md) (filas 17-21). El cuerpo de
+> cada fila de abajo **se conserva tal como se midió el 2026-10-13 @ `159f883b`** (es la historia de qué faltaba); lo que
+> cambió son los **encabezados** y esta columna, que son lo que el medidor lee. El medidor une los símbolos de todos los
+> docs del brazo, así que mientras acá quedara un `⚠` la fila seguía `PENDIENTE-DECLARADA` aunque el otro doc la resolviera.
 
 ---
 
@@ -84,7 +91,7 @@ misma búsqueda con `[Pp]resupuesto` → **287**.
 
 ---
 
-### 2 · `caida` — ⚠ ABIERTA (la mitad backend cerrada; la app no lee el campo)
+### 2 · `caida` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: la app lee `datos.desde`; ver fila 19 del doc de frontend1)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
@@ -101,7 +108,7 @@ de `PortadaNegocio`. **Nada de esto es de backend.** El contrato del dato ya est
 
 ---
 
-### 3 · `clientes` — ⚠ ABIERTA (backend, core y web pintan el monto; mobile no)
+### 3 · `clientes` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: mobile pinta el monto; ver fila 18 del doc de frontend1)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.
 Ninguna queda sin veredicto.»* El mapeo apunta a **mobile** (`PantallaClientes.tsx:299`, `TarjetaCliente.tsx:38`).
@@ -125,7 +132,7 @@ la enmienda con su motivo; y un veredicto de las divergencias 2-5.
 
 ---
 
-### 4 · `cobro-voz` — ⚠ ABIERTA, casi (falta UN veredicto)
+### 4 · `cobro-voz` — 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: la #5 es enmienda fundada; ver fila 20 del doc de frontend1)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.»*
 Archivo de la fila: `apps/mobile/src/modules/chat/TarjetaLinkDeCobro.tsx:28`.
@@ -151,7 +158,7 @@ tengo evidencia de por qué se hizo así. Con esa línea, la fila cierra.
 
 ---
 
-### 5 · `fact-voz` — ⚠ ABIERTA (dos divergencias originales sin veredicto de nadie)
+### 5 · `fact-voz` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: (d) implementada, (e) fuera de referencia; ver fila 21 del doc de frontend1)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
@@ -172,7 +179,7 @@ entonces la fila no cierra**, aunque lo que sí estaba decidido (a-c) esté en m
 
 ---
 
-### 6 · `hitl` — ⚠ ABIERTA (la card con detalle y recibo está; el puente no)
+### 6 · `hitl` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: el puente tarjeta → chat existe; ver fila 17 del doc de frontend1)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»* El mapeo (l.78) declara
 **ausente** el puente tarjeta→chat.

@@ -14,6 +14,15 @@ export interface BurbujaProps {
   /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().enviarAudio`): chip «Por voz · m:ss»,
    * mismo criterio que `MicFuncion` fuera del chat. `undefined` en mensajes escritos: sin chip. */
   porVoz?: { duracionSeg: number };
+  /**
+   * fact-voz (d) — la meta del prototipo bajo la burbuja PROPIA: «10:12 ✓✓ recibido» (`index.html:2164`).
+   * `true` sólo cuando el servidor aceptó el envío (`idMensajeSinConfirmar` del core decide cuál no);
+   * ausente/`false` y no se pinta nada: un «recibido» sobre un envío que falló sería mentirle.
+   * Sólo aplica a `role === 'user'`.
+   */
+  recibido?: boolean;
+  /** La hora de la meta («9:12»). `null`/ausente = historial sin `creadoEn`: queda «✓✓ recibido» a secas. */
+  hora?: string | null;
 }
 
 /**
@@ -36,7 +45,7 @@ export interface BurbujaProps {
  * auxiliares del acento", el mismo tono que UB2 a .4, distinta del nivel 1 neutro) porque es una
  * superficie de acento, no una card neutra. Ver `relieve.ts`.
  */
-export function Burbuja({ role, text, porVoz }: BurbujaProps) {
+export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: BurbujaProps) {
   const tema = useTema();
   const g = tema.glass;
   const esUsuario = role === 'user';
@@ -74,6 +83,11 @@ export function Burbuja({ role, text, porVoz }: BurbujaProps) {
           </Text>
         )}
       </View>
+      {esUsuario && recibido && (
+        <Text testID="chat-bubble-recibido" style={[styles.meta, { color: tema.color.exito }]}>
+          {hora != null ? `${hora} ✓✓ recibido` : '✓✓ recibido'}
+        </Text>
+      )}
     </View>
   );
 }
@@ -89,4 +103,6 @@ const styles = StyleSheet.create({
   },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
   chipVoz: { fontSize: 12, marginTop: 4 },
+  // Fuera de la burbuja, pegada a su borde derecho: es una línea de estado, no parte del mensaje.
+  meta: { fontSize: 11, alignSelf: 'flex-end' },
 });

@@ -123,7 +123,7 @@ describe('PantallaClientes', () => {
 
     await waitFor(() => expect(screen.getByTestId('cliente-12-nombre')).toBeTruthy());
     expect(screen.getByTestId('cliente-12-nombre')).toHaveTextContent('Panadería Los Tilos');
-    expect(screen.getByTestId('cliente-12-sub')).toHaveTextContent('CUIT 30712345678');
+    expect(screen.getByTestId('cliente-12-sub')).toHaveTextContent('CUIT 30712345678 · Resp. Inscripto');
   });
 
   it('un cliente sin documento NO muestra ninguna etiqueta de que le falta', async () => {

@@ -130,6 +130,33 @@ describe('leerTablero — H5b (`datos.destino`, enum cerrado, aditivo)', () => {
   });
 });
 
+describe('leerTablero — `datos.desde` (el instante real de la caída de una conexión)', () => {
+  async function tarjetaCon(datos: unknown, extra: Record<string, unknown> = {}) {
+    const cruda = { ...TARJETA_CRUDA, regla: 'conexion_caida', datos, ...extra };
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
+    const res = await leerTablero();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    return res.tablero.solapas[0]!.tarjetas[0]!;
+  }
+
+  it('lee `datos.desde` tal cual: es lo que el backend manda sólo con un instante real', async () => {
+    const t = await tarjetaCon({ nombre: 'Mercado Pago', desde: '2026-10-13T12:12:00+00:00' });
+    expect(t.desde).toBe('2026-10-13T12:12:00+00:00');
+  });
+
+  it('🔴 sin `datos.desde` (Composio no guarda instante) → null, y NUNCA se rellena con `creada_en`', async () => {
+    const t = await tarjetaCon({ nombre: 'Gmail' }, { creada_en: '2026-10-13T15:00:00Z' });
+    expect(t.desde).toBeNull();
+    expect(t.desde).not.toBe('2026-10-13T15:00:00Z');
+  });
+
+  it('🔴 un valor que no es un instante (vacío, texto, número, objeto) → null, no se transporta basura', async () => {
+    for (const desde of ['', '   ', 'ayer a la tarde', 1760000000, { iso: '2026-10-13' }, null]) {
+      expect((await tarjetaCon({ desde })).desde).toBeNull();
+    }
+  });
+});
+
 describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () => {
   it('lee los tres campos que manda el backend', async () => {
     const cruda = { ...TARJETA_CRUDA, categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo' };
