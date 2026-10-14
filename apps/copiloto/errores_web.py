@@ -33,6 +33,8 @@ INGRESO_DUPLICADO_PROBABLE = "ingreso_duplicado_probable"
 DOCUMENTO_DE_OTRO_CLIENTE = "documento_de_otro_cliente"
 # BL-O6 Parte B: `POST /me/legal/aceptar` recibió una versión que ya no es la vigente del servidor.
 LEGAL_VERSION_DESACTUALIZADA = "version_desactualizada"
+# SM-C3: `POST /me/onboarding/completar` sin los datos mínimos del negocio (`faltantes` viaja como extra).
+PERFIL_MINIMO_INCOMPLETO = "perfil_minimo_incompleto"
 
 # Estos tres son de AFIP. Los dos primeros **ya venían con `codigo`** en `afip_web.py` antes de que
 # existiera este módulo: se adoptan con el nombre que ya tenían, no se renombran. Un rename acá sería
@@ -65,7 +67,7 @@ CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTUR
                      TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, EMAIL_YA_REGISTRADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
                      SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA, TRAUMA_DOMINIO_PROHIBIDO,
-                     CUIT_NO_VINCULADO, LEGAL_VERSION_DESACTUALIZADA})
+                     CUIT_NO_VINCULADO, LEGAL_VERSION_DESACTUALIZADA, PERFIL_MINIMO_INCOMPLETO})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:

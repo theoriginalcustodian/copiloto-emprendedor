@@ -34,6 +34,7 @@ from context_factory import make_context_factory  # noqa: E402
 from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
 from mi_dia_web import create_mi_dia_app  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
+from perfil_negocio_store import PerfilNegocioStore  # noqa: E402
 from tenant_onboarding_store import TenantOnboardingStore  # noqa: E402
 from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
@@ -131,6 +132,7 @@ def two_tenants(crypto, conn_de_tenant):
                 cur.execute(f"DELETE FROM {_SCHEMA}.copiloto_web_replies WHERE cliente_id=%s", (cid,))
                 cur.execute(f"DELETE FROM {_SCHEMA}.mp_payments WHERE cliente_id=%s", (cid,))
                 cur.execute(f"DELETE FROM {_SCHEMA}.mp_credentials WHERE cliente_id=%s", (cid,))
+                cur.execute(f"DELETE FROM {_SCHEMA}.copiloto_perfil_negocio WHERE cliente_id=%s", (cid,))
         finally:
             conn_propia.close()
 
@@ -566,12 +568,15 @@ def test_K14_completar_con_el_cliente_de_A_no_cambia_la_fila_de_B(two_tenants, c
     assert TenantOnboardingStore(conn_de_tenant(b.cliente_id), b.cliente_id).completado() is False
 
 
-def test_adversarial_http_onboarding_completar_a_cannot_complete_for_b(two_tenants, crypto):
+def test_adversarial_http_onboarding_completar_a_cannot_complete_for_b(two_tenants, crypto, conn_de_tenant):
     """`POST /me/onboarding/completar` a nivel HTTP (gap del mismo patrón que K-14 store-level, señalado
     por planificación en #660/contrato STORE3): el test de arriba recibe el `cliente_id` YA RESUELTO y
     no ejercita `require_tenant`. De paso cierra el menor de la misma corrida: el test HTTP de `/me`
     nunca ejercitaba `onboarding_completado=True` -- acá sí, vía `/me` después de completar."""
     a, b = two_tenants
+    # SM-C3: completar exige el perfil mínimo. Se siembra el de A (y no el de B: B debe seguir en False).
+    PerfilNegocioStore(conn_de_tenant(a.cliente_id), a.cliente_id).upsert(
+        {"que_vende": "Pinturas", "nombre_comercial": "A SRL"})
     app = _build_http_app(two_tenants, crypto)
     client = TestClient(app)
 
@@ -885,3 +890,28 @@ def test_http_soporte_adjuntos_rechaza_formato_tamano_y_exceso_con_el_codigo_del
         declarar_tenant(None)
     finally:
         _limpiar_soporte(conn_de_tenant, a.cliente_id, two_tenants[1].cliente_id)
+
+
+def test_SMC3_http_completar_con_perfil_incompleto_de_A_es_409_aunque_B_este_completo(two_tenants, crypto,
+                                                                                    conn_de_tenant):
+    """SM-C3 sobre DB real + RLS: B tiene el perfil mínimo completo, A no. Con el token de A el
+    onboarding NO se completa (un gate que leyera el perfil equivocado —o sin filtrar por tenant—
+    pasaría por B). Control positivo: cuando A completa SU PROPIO perfil, pasa; B no se entera."""
+    a, b = two_tenants
+    PerfilNegocioStore(conn_de_tenant(b.cliente_id), b.cliente_id).upsert(
+        {"que_vende": "Pinturas B", "nombre_comercial": "B SRL"})
+    PerfilNegocioStore(conn_de_tenant(a.cliente_id), a.cliente_id).upsert({"que_vende": "Pinturas A"})
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+    h_a = {"Authorization": f"Bearer {a.token}"}
+
+    r = client.post("/me/onboarding/completar", headers=h_a)
+    assert r.status_code == 409
+    assert r.json()["detail"]["faltantes"] == ["nombre_comercial"]
+    assert client.get("/me", headers=h_a).json()["onboarding_completado"] is False
+
+    PerfilNegocioStore(conn_de_tenant(a.cliente_id), a.cliente_id).upsert({"nombre_comercial": "A SRL"})
+    assert client.post("/me/onboarding/completar", headers=h_a).status_code == 200
+    assert client.get("/me", headers=h_a).json()["onboarding_completado"] is True
+    assert client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()["onboarding_completado"] is False
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests

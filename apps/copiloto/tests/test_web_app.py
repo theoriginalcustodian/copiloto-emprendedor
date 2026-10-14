@@ -79,6 +79,7 @@ class _FakeTenantsDB:
         self.mp_caidos: set[str] = set()       # cliente_id con la fila marcada `reauth_desde` (caido)
         self.onboarding: dict[str, bool] = {}  # cliente_id -> onboarding_completado (K-14)
         self.legal: dict[str, tuple] = {}      # cliente_id -> (legal_version, legal_aceptado_en) (BL-O6)
+        self.perfiles: dict[str, dict] = {}    # cliente_id -> campos de copiloto_perfil_negocio (SM-C3)
         self.replies: list[dict] = []          # [{id, cliente_id, session_id, reply_text, choices}]
         self.tickets: dict[tuple[str, int], dict] = {}   # (cliente_id, id) -> fila de copiloto_tickets
         self.mensajes: list[dict] = []                   # [{cliente_id, ticket_id, id, autor, texto, created_at}]
@@ -116,6 +117,11 @@ class _FakeCursor:
         elif s.startswith("UPDATE UC_FACTORY.TENANTS SET ONBOARDING_COMPLETADO"):
             (cliente_id,) = params
             self._db.onboarding[cliente_id] = True
+        elif s.startswith("SELECT QUE_VENDE,") and "FROM UC_FACTORY.COPILOTO_PERFIL_NEGOCIO" in s:
+            from perfil_negocio_store import CAMPOS
+            (cliente_id,) = params
+            fila = self._db.perfiles.get(cliente_id)
+            self._result = (tuple(fila.get(c, "") for c in CAMPOS) + (None,)) if fila is not None else None
         elif s.startswith("SELECT LEGAL_VERSION FROM UC_FACTORY.TENANTS"):
             (cliente_id,) = params
             fila = self._db.legal.get(cliente_id)
@@ -632,6 +638,7 @@ def test_me_con_fila_pero_reauth_marcado_reporta_mp_connected_false():
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():
     db = _FakeTenantsDB()
+    db.perfiles["cid-A"] = {"que_vende": "Pinturas", "nombre_comercial": "Lin SRL"}   # SM-C3: perfil mínimo
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
     cli = TestClient(app)
     assert cli.get("/me").json()["onboarding_completado"] is False
@@ -649,6 +656,7 @@ def test_K14_completar_onboarding_sin_token_es_401_y_no_escribe():
 
 def test_K14_el_onboarding_de_A_no_se_ve_ni_se_marca_desde_B():
     db = _FakeTenantsDB()
+    db.perfiles["cid-A"] = {"que_vende": "Pinturas", "nombre_comercial": "Lin SRL"}   # SM-C3: perfil mínimo
     app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
     app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
     TestClient(app_a).post("/me/onboarding/completar")
@@ -1225,3 +1233,67 @@ def test_ASIMETRIA_es_admin_y_cuenta_google_valen_False_sin_token_aunque_los_cla
         "`cuenta_google` sale de los claims; estos no son de Google en ninguna de las dos ramas")
     assert "email" in con and "email" not in sin, (
         "`email` es la tercera asimetria deliberada: solo existe en la rama con token")
+
+
+# --- SM-C3: el onboarding no se cierra sin `que_vende` y `nombre_comercial` --------------------------
+
+def _perfil(**campos) -> dict:
+    return {"que_vende": "Pinturas", "nombre_comercial": "Lin SRL", **campos}
+
+
+def test_SMC3_completar_sin_perfil_es_409_perfil_minimo_incompleto_y_no_escribe():
+    db = _FakeTenantsDB()
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    r = TestClient(app).post("/me/onboarding/completar")
+    assert r.status_code == 409
+    assert r.json()["detail"]["codigo"] == "perfil_minimo_incompleto"
+    assert r.json()["detail"]["faltantes"] == ["que_vende", "nombre_comercial"]
+    assert db.onboarding == {}                       # NO se marcó: el rechazo no deja la cuenta «completa»
+
+
+@pytest.mark.parametrize("campos,faltante", [
+    ({"que_vende": ""}, "que_vende"),
+    ({"nombre_comercial": ""}, "nombre_comercial"),
+    ({"que_vende": "   "}, "que_vende"),             # sólo espacios = vacío (es como se «saltea» un obligatorio)
+    ({"nombre_comercial": "\t \n"}, "nombre_comercial"),
+])
+def test_SMC3_adversarial_con_UNO_de_los_dos_vacio_no_completa(campos, faltante):
+    """DoD de SM-C3 (adversarial): uno solo de los dos vacío ⇒ rechazado. El otro lleno no lo rescata."""
+    db = _FakeTenantsDB()
+    db.perfiles["cid-A"] = _perfil(**campos)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    r = TestClient(app).post("/me/onboarding/completar")
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"]["faltantes"] == [faltante]
+    assert db.onboarding == {}
+
+
+def test_SMC3_control_positivo_con_los_dos_llenos_completa_y_se_refleja_en_me():
+    """Sin esto los rechazos de arriba pasarían también si el endpoint rechazara SIEMPRE."""
+    db = _FakeTenantsDB()
+    db.perfiles["cid-A"] = _perfil()
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    cli = TestClient(app)
+    assert cli.post("/me/onboarding/completar").json() == {"onboarding_completado": True}
+    assert cli.get("/me").json()["onboarding_completado"] is True
+
+
+def test_SMC3_el_default_de_a_quien_NO_satisface_el_gate():
+    """Canario de la deuda nombrada en la ficha: `a_quien` defaultea a `"ambos"` (nunca vacío), así que
+    un perfil que sólo trae `a_quien` y `formalidad` tiene que seguir rechazado. Si alguien agrega
+    `a_quien` a los obligatorios sin un tercer estado, el gate queda hueco y esto lo dice."""
+    db = _FakeTenantsDB()
+    db.perfiles["cid-A"] = {"que_vende": "", "nombre_comercial": "", "a_quien": "ambos", "formalidad": "cercano"}
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    assert TestClient(app).post("/me/onboarding/completar").status_code == 409
+
+
+def test_SMC3_el_perfil_completo_de_B_no_completa_a_A():
+    """El gate lee el perfil del `cliente_id` del TOKEN: con B completo y A vacío, A sigue rechazado."""
+    db = _FakeTenantsDB()
+    db.perfiles["cid-B"] = _perfil()
+    app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
+    assert TestClient(app_a).post("/me/onboarding/completar").status_code == 409
+    assert TestClient(app_b).post("/me/onboarding/completar").status_code == 200
+    assert db.onboarding == {"cid-B": True}

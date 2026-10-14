@@ -42,6 +42,7 @@ from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
 from conexiones_salud import composio_caidos
+from perfil_negocio_store import PerfilNegocioStore, faltantes_perfil_minimo
 from tenant_onboarding_store import TenantOnboardingStore
 from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore
 from rate_limit import RateLimitMiddleware
@@ -63,7 +64,8 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
-from errores_web import EMAIL_YA_REGISTRADO, LEGAL_VERSION_DESACTUALIZADA, conflicto
+from errores_web import (EMAIL_YA_REGISTRADO, LEGAL_VERSION_DESACTUALIZADA, PERFIL_MINIMO_INCOMPLETO,
+                         conflicto)
 from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
@@ -1233,8 +1235,18 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
 
     @app.post("/me/onboarding/completar")
     def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:
-        """K-14: marca el onboarding como hecho (también lo llama «Después»: cerrar el hilo cuenta).
-        Sin body: el tenant sale SÓLO del token, nunca de un valor que mande el cliente. Idempotente."""
+        """K-14: marca el onboarding como hecho. Sin body: el tenant sale SÓLO del token, nunca de un
+        valor que mande el cliente. Idempotente.
+
+        SM-C3: NO marca si el perfil del negocio no tiene `que_vende` y `nombre_comercial` (409
+        `perfil_minimo_incompleto` + `faltantes`). El gate vive ACÁ y no sólo en las apps: un cliente
+        que se salte su propia pantalla (o una versión vieja) igual no deja la cuenta «completa». El
+        perfil se lee con el `cliente_id` del token, jamás de un valor del cliente."""
+        faltantes = faltantes_perfil_minimo(PerfilNegocioStore(conn_factory, cliente_id).get())
+        if faltantes:
+            raise conflicto(PERFIL_MINIMO_INCOMPLETO,
+                            "Para empezar contanos qué vendés y cómo se llama tu negocio.",
+                            faltantes=faltantes)
         TenantOnboardingStore(conn_factory, cliente_id).completar()
         return {"onboarding_completado": True}
 
