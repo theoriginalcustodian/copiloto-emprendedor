@@ -5,12 +5,7 @@ import { obtenerMiTicket, type MensajeTicketPropio, type TicketPropio } from '@c
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
-
-const ETIQUETA_ESTADO: Record<TicketPropio['estado'], string> = {
-  abierto: 'Abierto',
-  respondido: 'Respondido',
-  cerrado: 'Cerrado',
-};
+import { ETIQUETA_ESTADO_TICKET } from './etiquetasTicket';
 
 /** Igual criterio que `fechaCorta` de `AdminScreen.tsx` (web) — dato ilegible es información, un
  *  cartel de error no. No se comparte el helper entre plataformas. */
@@ -70,7 +65,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
     cargar();
   }, [cargar]);
 
-  const titulo = ticket != null ? `${ticket.codigo} · ${ETIQUETA_ESTADO[ticket.estado]}` : 'Tu ticket';
+  const titulo = ticket != null ? `${ticket.codigo} · ${ETIQUETA_ESTADO_TICKET[ticket.estado]}` : 'Tu ticket';
 
   return (
     <MarcoGlass titulo={titulo} icono="soporte" testID="pantalla-ticket">

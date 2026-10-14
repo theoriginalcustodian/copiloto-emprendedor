@@ -426,8 +426,17 @@ export type { FuncionSoporte, SoporteAudioResponse, SoporteChatRequest, SoporteC
 
 /** `GET /soporte/tickets/{id}` — S6-11, el hilo de un ticket propio del lado del usuario. Ver el
  * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */
-export { obtenerMiTicket } from './soporteTicket';
-export type { EstadoTicketPropio, MensajeTicketPropio, MiTicketResult, TicketPropio } from './soporteTicket';
+export { adjuntarFotoATicket, listarMisTickets, obtenerMiTicket } from './soporteTicket';
+export type {
+  AdjuntarResult,
+  AdjuntoGuardado,
+  EstadoTicketPropio,
+  MensajeTicketPropio,
+  MiTicketResult,
+  MisTicketsOk,
+  MisTicketsResult,
+  TicketPropio,
+} from './soporteTicket';
 
 /** `POST /transcribir` — BL-J7/K-10, transcribe SIN despachar al agente. Ver el docstring de
  * `transcribir.ts` para la diferencia con `sendAudio` (`/chat/audio`, sí dispara un workflow). */

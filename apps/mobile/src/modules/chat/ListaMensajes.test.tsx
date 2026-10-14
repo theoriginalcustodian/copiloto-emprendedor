@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -7,6 +7,8 @@ import { StyleSheet } from 'react-native';
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
 import { EJEMPLOS_CHAT, type ChatMessage } from '@copiloto/core';
+
+import type { ReactElement } from 'react';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ListaMensajes } from './ListaMensajes';
@@ -18,6 +20,7 @@ async function envolver(
   onResolverTarjeta = jest.fn(),
   ejemplos?: readonly string[],
   vacio?: 'completo' | 'ninguno',
+  pie?: ReactElement,
 ) {
   await render(
     <ThemeProvider>
@@ -27,6 +30,7 @@ async function envolver(
         onResolverTarjeta={onResolverTarjeta}
         ejemplos={ejemplos}
         vacio={vacio}
+        pie={pie}
       />
     </ThemeProvider>,
   );
@@ -34,6 +38,24 @@ async function envolver(
 }
 
 describe('ListaMensajes', () => {
+  // PROTO4APP §D: `pie` es un slot al final del hilo (Soporte cuelga la tarjeta de su ticket). Aditivo:
+  // sin él (ChatView, MicFuncion) no se pinta nada extra.
+  it('`pie` se pinta DESPUÉS de los mensajes, dentro de la lista', async () => {
+    const mensajes: ChatMessage[] = [{ id: 'm1', role: 'user', text: 'hola' }];
+    await envolver(mensajes, jest.fn(), jest.fn(), undefined, 'ninguno', <Text testID="pie-prueba">pie</Text>);
+    expect(screen.getByTestId('pie-prueba')).toBeTruthy();
+  });
+
+  it('`pie` se pinta también con la lista VACÍA (primer ingreso a Soporte con un ticket abierto)', async () => {
+    await envolver([], jest.fn(), jest.fn(), undefined, 'ninguno', <Text testID="pie-prueba">pie</Text>);
+    expect(screen.getByTestId('pie-prueba')).toBeTruthy();
+  });
+
+  it('sin `pie` no se pinta nada extra', async () => {
+    await envolver([{ id: 'm1', role: 'user', text: 'hola' }]);
+    expect(screen.queryByTestId('pie-prueba')).toBeNull();
+  });
+
   it('el estado vacío muestra la marca y el texto de bienvenida', async () => {
     await envolver([]);
 

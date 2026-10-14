@@ -81,7 +81,14 @@ jest.mock('react-native-gesture-handler', () => {
   const { View, Text } = require('react-native');
 
   const FlatList = React.forwardRef(function FlatList(props, ref) {
-    const { data, renderItem, keyExtractor, ListEmptyComponent, testID, contentContainerStyle } = props;
+    const { data, renderItem, keyExtractor, ListEmptyComponent, ListFooterComponent, testID, contentContainerStyle } = props;
+    // `ListFooterComponent` (PROTO4APP §D: `ListaMensajes.pie`): el FlatList real lo pinta SIEMPRE, con la
+    // lista vacía o no, después del último item. El stub tiene que reproducirlo o ningún test lo ve.
+    const pie = React.isValidElement(ListFooterComponent)
+      ? ListFooterComponent
+      : typeof ListFooterComponent === 'function'
+        ? React.createElement(ListFooterComponent)
+        : null;
     React.useImperativeHandle(ref, () => ({ scrollToEnd: () => {} }), []);
 
     if (!data || data.length === 0) {
@@ -90,7 +97,7 @@ jest.mock('react-native-gesture-handler', () => {
         : typeof ListEmptyComponent === 'function'
           ? React.createElement(ListEmptyComponent)
           : null;
-      return React.createElement(View, { testID, style: contentContainerStyle }, vacio);
+      return React.createElement(View, { testID, style: contentContainerStyle }, vacio, pie);
     }
 
     return React.createElement(
@@ -103,6 +110,7 @@ jest.mock('react-native-gesture-handler', () => {
           renderItem({ item, index }),
         ),
       ),
+      pie,
     );
   });
 
