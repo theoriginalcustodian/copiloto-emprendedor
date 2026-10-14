@@ -67,7 +67,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | ⬜ PENDIENTE | — |
+| **SM-F4** | `#1013` | 🟨 EN-CURSO | planificacion |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -475,6 +475,8 @@ cierra, aunque los otros siete estén verdes.***
   correcta y engañosa a la vez.
 - **DoD:** cada id con veredicto del vocabulario cerrado y su `medido_contra:`. Por lotes, con un
   `avance_` por lote.
+- **🔄 REMEDIDO 2026-10-14 @`95d7963f`** (mismo instrumento, mismo sujeto de 54): **12** comparados de verdad · **4** cubiertos sin comparación · **38** sin nada ⇒ **42 a medir**. Avanzaron 4 ids desde que se escribió la ficha y nadie volvió a correr el medidor — el mismo patrón que `SM-B3`/`SM-B4`. La cifra de arriba **no se retira**: era correcta a su fecha.
+- **Dueñas:** frontend1 + frontend2, por **lotes disjuntos** (el device es de dueño único).
 - **Depende de:** SM-A1.
 
 ### SM-F3 · `M-03` — Los 5 ids cubiertos sin comparación
@@ -482,12 +484,16 @@ cierra, aunque los otros siete estén verdes.***
 - **Estado:** PENDIENTE
 - `cobro-voz` · `fact-voz` · `onb-cumplida` · `pres-voz` · `vozchat`.
 - **DoD:** veredicto real y **salen de esa población** (que `falta-en-mobile.py` los deje de listar).
+- **🔄 REMEDIDO 2026-10-14 @`95d7963f`**: **`cobro-voz` y `fact-voz` YA salieron** de la población (están comparados de verdad). Quedan **4**: `onb-cumplida` · `preg` · `pres-voz` · `vozchat` — y `preg` no estaba en la lista original. **2 de 5 ya estaban hechos sin registrar.**
+- **Dueña:** frontend1.
 
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** planificacion
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
+- **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.
 
 ### SM-F5 · `M-04` — Tester externo con video
 
