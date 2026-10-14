@@ -114,6 +114,7 @@ function gasto(over: Partial<Gasto> = {}): Gasto {
     descripcion: null,
     origen: 'manual',
     creadoEn: '2026-07-22T01:41:08.185511+00:00',
+    imputacion: null,
     ...over,
   };
 }

@@ -3,14 +3,20 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  destinoDeImputacion,
+  etiquetaDeDestino,
   ETIQUETA_CATEGORIA,
   formatearFechaLarga,
   formatearImporte,
+  imputarGasto,
+  listarTrabajosImputables,
   obtenerGasto,
+  type DestinoTrabajo,
   type Gasto,
+  type TrabajoImputable,
 } from '@copiloto/core';
 
-import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
+import { CampoSelect, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -51,6 +57,173 @@ function Dato({ etiqueta, valor, testID }: { etiqueta: string; valor: string; te
     <View style={styles.filaDato} testID={testID}>
       <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, flex: 1 }}>{etiqueta}</Text>
       <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>{valor}</Text>
+    </View>
+  );
+}
+
+/**
+ * «¿De qué trabajo es este gasto?» — el bloque de **imputación**, gemelo de
+ * `apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx`. Lo que decide qué mostrar vive en
+ * `@copiloto/core` (`destinoDeImputacion`, `etiquetaDeDestino`, `listarTrabajosImputables`), no acá:
+ * el mismo defecto en dos pantallas gemelas es el que ya pagamos
+ * (`memoria/dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md`). Lo único que difiere
+ * entre los dos fronts es el JSX.
+ *
+ * 🔴 **Tres estados, no dos.** `gasto.imputacion === null` NO es «sin imputar»: es «este backend no
+ * lo dijo» (la clave entró al GET el 2026-10-14, PR #1175). En ese caso el bloque **no se muestra**
+ * — «sin imputar» es una afirmación sobre la plata del emprendedor y no se inventa. Sin imputar de
+ * verdad son las tres referencias en `null`, y eso lo contesta `destinoDeImputacion`.
+ *
+ * 🔴 **Imputar no es obligatorio y esta pantalla no lo vuelve obligatorio** — lo dice el endpoint en
+ * su docstring (`apps/copiloto/gastos_web.py:162`): *«el gasto ya entró a la caja sin esto; si
+ * imputar se volviera un requisito, el emprendedor dejaría de cargar gastos»*. Por eso el texto del
+ * caso sin imputar nombra la **consecuencia** (no le baja el margen a ningún trabajo) y no pide que
+ * lo arregle.
+ *
+ * Elegir el trabajo es `CampoSelect` —chips de vidrio— y no un `Picker` nativo ni una lista propia:
+ * es el componente canónico de «elegir entre opciones» de esta app, con el `Pressable` de
+ * gesture-handler ya adentro (dos árbitros de gesto sobre el mismo dedo es un bug ya cazado acá).
+ */
+type EstadoLista = 'cerrada' | 'cargando' | 'abierta' | 'no_disponible';
+
+function clave(d: DestinoTrabajo): string {
+  return `${d.eslabon}:${d.ref}`;
+}
+
+function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
+  const tema = useTema();
+  const [destino, setDestino] = useState<DestinoTrabajo | null>(destinoDeImputacion(gasto.imputacion));
+  const [lista, setLista] = useState<EstadoLista>('cerrada');
+  const [trabajos, setTrabajos] = useState<readonly TrabajoImputable[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // El gasto fresco puede traer otra imputación que la del listado (el detalle se abrió con el
+  // objeto viejo). Gana el del servidor, igual que el resto de la pantalla.
+  useEffect(() => {
+    setDestino(destinoDeImputacion(gasto.imputacion));
+  }, [gasto.imputacion]);
+
+  if (gasto.imputacion === null) return null;
+
+  const abrir = async () => {
+    setError(null);
+    setLista('cargando');
+    const res = await listarTrabajosImputables();
+    if (res.status !== 'ok') {
+      setLista('no_disponible');
+      return;
+    }
+    setTrabajos(res.trabajos);
+    setLista('abierta');
+  };
+
+  const escribir = async (nuevo: DestinoTrabajo | null) => {
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await imputarGasto(gasto.id, nuevo);
+      if (res.status === 'no_encontrado') {
+        // 404 cubre dos casos que el backend no distingue a propósito: el gasto o el trabajo. El
+        // texto no afirma cuál, porque esta capa no lo sabe.
+        setError('No encontramos ese gasto o ese trabajo.');
+        return;
+      }
+      if (res.status !== 'ok') {
+        setError('No pudimos guardar el trabajo. Probá de nuevo.');
+        return;
+      }
+      setDestino(destinoDeImputacion(res.imputacion));
+      setLista('cerrada');
+    } catch {
+      setError('No pudimos guardar el trabajo. Probá de nuevo.');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <View style={{ gap: tema.espacio.sm }} testID="detalle-gasto-trabajo">
+      {destino !== null ? (
+        <>
+          <Dato etiqueta="Trabajo" valor={etiquetaDeDestino(destino)} testID="detalle-gasto-trabajo-imputado" />
+          <FilaBotones
+            testID="detalle-gasto-trabajo-acciones"
+            compacto
+            botones={[{
+              etiqueta: 'Quitar del trabajo',
+              onPress: () => { void escribir(null); },
+              variante: 'secundario',
+              deshabilitado: guardando,
+              testID: 'detalle-gasto-desimputar',
+            }]}
+          />
+        </>
+      ) : (
+        <>
+          <Text
+            testID="detalle-gasto-sin-imputar"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+          >
+            Sin imputar: este gasto no le baja el margen a ningún trabajo.
+          </Text>
+          {lista === 'cerrada' && (
+            <FilaBotones
+              testID="detalle-gasto-trabajo-acciones"
+              compacto
+              botones={[{
+                etiqueta: 'Imputar a un trabajo',
+                onPress: () => { void abrir(); },
+                variante: 'secundario',
+                deshabilitado: guardando,
+                testID: 'detalle-gasto-imputar',
+              }]}
+            />
+          )}
+        </>
+      )}
+
+      {lista === 'cargando' && (
+        <ActivityIndicator testID="detalle-gasto-trabajos-cargando" color={tema.color.acento} />
+      )}
+
+      {lista === 'no_disponible' && (
+        <Text
+          testID="detalle-gasto-trabajos-no-disponible"
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+        >
+          No pudimos traer tus trabajos.
+        </Text>
+      )}
+
+      {lista === 'abierta' && trabajos.length === 0 && (
+        <Text
+          testID="detalle-gasto-trabajos-vacio"
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+        >
+          Todavía no tenés trabajos a los que imputarlo.
+        </Text>
+      )}
+
+      {lista === 'abierta' && trabajos.length > 0 && (
+        <CampoSelect
+          etiqueta="¿De qué trabajo es?"
+          testID="detalle-gasto-trabajos"
+          valor=""
+          disabled={guardando}
+          opciones={trabajos.map((t) => ({ valor: clave(t), etiqueta: t.etiqueta }))}
+          onChange={(v) => {
+            const elegido = trabajos.find((t) => clave(t) === v);
+            if (elegido != null) void escribir({ eslabon: elegido.eslabon, ref: elegido.ref });
+          }}
+        />
+      )}
+
+      {error != null && (
+        <Text testID="detalle-gasto-trabajo-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 }
@@ -160,6 +333,10 @@ export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
             Del ticket leímos: {formatearImporte(g.montoSugerido)}
           </Text>
         )}
+
+        {/* SM-E3: a qué trabajo pertenece el gasto. Después de los datos y antes de las acciones:
+            no es un dato del ticket, es lo que decide si el margen de ese trabajo está completo. */}
+        <BloqueTrabajo gasto={g} />
 
         <FilaBotones
           testID="detalle-gasto-acciones"

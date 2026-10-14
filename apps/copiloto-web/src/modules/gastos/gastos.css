@@ -449,3 +449,22 @@
   margin-top: auto;
   padding-top: 8px;
 }
+/* SM-E3: el bloque de imputación del gasto a un trabajo. Sin color propio — hereda los tokens del
+   detalle: lo que distingue este bloque es que tiene ACCIONES, no un color. */
+.detalle-gasto__trabajo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detalle-gasto__trabajos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* El grupo de acciones del bloque de imputacion -- mismo rol que `.detalle-gasto__acciones` para los
+   CTA del detalle: agrupa, no colorea. Su `data-testid` parea con el `FilaBotones` de mobile. */
+.detalle-gasto__trabajo-acciones {
+  display: flex;
+  gap: 8px;
+}

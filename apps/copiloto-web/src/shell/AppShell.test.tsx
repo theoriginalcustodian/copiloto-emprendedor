@@ -38,6 +38,7 @@ function gastoFixture(id: number, proveedor: string): Gasto {
     descripcion: null,
     origen: 'manual',
     creadoEn: '2026-08-01T00:00:00Z',
+    imputacion: null,
   };
 }
 

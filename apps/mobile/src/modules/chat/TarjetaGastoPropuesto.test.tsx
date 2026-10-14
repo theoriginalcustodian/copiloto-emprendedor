@@ -35,7 +35,7 @@ function gastoGuardado(monto: string): Gasto {
   return {
     id: 9, monto, montoSugerido: null, fecha: '2026-07-20', categoria: 'mercaderia',
     proveedor: 'Distribuidora Sur', medioPago: null, descripcion: null, origen: 'voz',
-    creadoEn: '2026-07-22T02:00:00+00:00',
+    creadoEn: '2026-07-22T02:00:00+00:00', imputacion: null,
   };
 }
 

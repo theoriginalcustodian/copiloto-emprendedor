@@ -155,9 +155,11 @@ export type {
 export {
   CATEGORIAS_GASTO,
   crearGasto,
+  destinoDeImputacion,
   esCategoriaValida,
   ETIQUETA_CATEGORIA,
   ETIQUETA_ORIGEN_GASTO,
+  imputarGasto,
   listarGastos,
   obtenerGasto,
   obtenerResumenGastos,
@@ -167,10 +169,17 @@ export type {
   CategoriaResumen,
   CrearGastoRequest,
   Gasto,
+  ImputacionGasto,
   ListarGastosParams,
   OrigenGasto,
   ResumenGastos,
 } from './gastos';
+
+// `trabajos` — el TRABAJO (`presupuesto → comprobante → cobro`) como sujeto del cliente. No hay
+// `GET /trabajos`: `listarTrabajosImputables` compone las dos fuentes que existen, y su docstring
+// dice qué NO puede ofrecer. Lo usa la imputación del gasto en los dos fronts.
+export { etiquetaDeDestino, listarTrabajosImputables, mismoTrabajo } from './trabajos';
+export type { DestinoTrabajo, TrabajoImputable } from './trabajos';
 
 // `/contabilidad/resumen` — caja y facturación, dos preguntas separadas (§2 del contrato). El endpoint
 // todavía no existe: ver el docstring de `contabilidad.ts` para el estado de `[ASSUMED_PENDING_VERIFY]`.

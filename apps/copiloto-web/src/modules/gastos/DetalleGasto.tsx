@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
+  destinoDeImputacion,
+  etiquetaDeDestino,
   ETIQUETA_CATEGORIA,
   formatearFechaLarga,
   formatearImporte,
+  imputarGasto,
+  listarTrabajosImputables,
   obtenerGasto,
+  type DestinoTrabajo,
   type Gasto,
+  type TrabajoImputable,
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
@@ -35,6 +41,160 @@ function Dato({ etiqueta, valor, testID }: { etiqueta: string; valor: string; te
       <span className="detalle-gasto__dato-etiqueta">{etiqueta}</span>
       <span className="detalle-gasto__dato-valor">{valor}</span>
     </p>
+  );
+}
+
+/**
+ * «¿De qué trabajo es este gasto?» — el bloque de **imputación**, gemelo de
+ * `apps/mobile/src/modules/gastos/DetalleGasto.tsx`. Lo que decide qué mostrar vive en
+ * `@copiloto/core` (`destinoDeImputacion`, `etiquetaDeDestino`, `listarTrabajosImputables`) y no acá:
+ * el mismo defecto en dos pantallas gemelas es el que ya pagamos
+ * (`memoria/dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md`).
+ *
+ * 🔴 **Tres estados, no dos.** `gasto.imputacion === null` no es «sin imputar»: es «este backend no
+ * lo dijo» (la clave entró al GET el 2026-10-14). En ese caso el bloque **no se muestra**, porque
+ * «sin imputar» es una afirmación sobre la plata del emprendedor y no se inventa. Sin imputar de
+ * verdad son las tres referencias en `null`.
+ *
+ * 🔴 **Imputar no es obligatorio y esta pantalla no lo vuelve obligatorio** — lo dice el endpoint en
+ * su propio docstring (`apps/copiloto/gastos_web.py:162`): *«el gasto ya entró a la caja sin esto;
+ * si imputar se volviera un requisito, el emprendedor dejaría de cargar gastos»*. De ahí que el
+ * texto del caso sin imputar explique la **consecuencia** (no cuenta en ningún margen) en vez de
+ * pedir que lo arregle.
+ */
+type EstadoLista = 'cerrada' | 'cargando' | 'abierta' | 'no_disponible';
+
+function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
+  const [destino, setDestino] = useState<DestinoTrabajo | null>(destinoDeImputacion(gasto.imputacion));
+  const [lista, setLista] = useState<EstadoLista>('cerrada');
+  const [trabajos, setTrabajos] = useState<readonly TrabajoImputable[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // El gasto fresco puede traer otra imputación que la del listado (se abrió el detalle con el
+  // objeto viejo). Gana el del servidor, igual que el resto de la pantalla.
+  useEffect(() => {
+    setDestino(destinoDeImputacion(gasto.imputacion));
+  }, [gasto.imputacion]);
+
+  if (gasto.imputacion === null) return null;
+
+  const abrir = async () => {
+    setError(null);
+    setLista('cargando');
+    const res = await listarTrabajosImputables();
+    if (res.status !== 'ok') {
+      setLista('no_disponible');
+      return;
+    }
+    setTrabajos(res.trabajos);
+    setLista('abierta');
+  };
+
+  const escribir = async (nuevo: DestinoTrabajo | null) => {
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await imputarGasto(gasto.id, nuevo);
+      if (res.status === 'no_encontrado') {
+        // 404 cubre dos casos que el backend no distingue: el gasto o el trabajo. El texto no
+        // afirma cuál de los dos, porque esta capa no lo sabe.
+        setError('No encontramos ese gasto o ese trabajo.');
+        return;
+      }
+      if (res.status !== 'ok') {
+        setError('No pudimos guardar el trabajo. Probá de nuevo.');
+        return;
+      }
+      setDestino(destinoDeImputacion(res.imputacion));
+      setLista('cerrada');
+    } catch {
+      setError('No pudimos guardar el trabajo. Probá de nuevo.');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="detalle-gasto__trabajo" data-testid="detalle-gasto-trabajo">
+      {destino !== null ? (
+        <>
+          <Dato
+            etiqueta="Trabajo"
+            valor={etiquetaDeDestino(destino)}
+            testID="detalle-gasto-trabajo-imputado"
+          />
+          <div className="detalle-gasto__trabajo-acciones" data-testid="detalle-gasto-trabajo-acciones">
+            <Button
+              variant="ghost"
+              onClick={() => void escribir(null)}
+              disabled={guardando}
+              data-testid="detalle-gasto-desimputar"
+            >
+              Quitar del trabajo
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="detalle-gasto__aviso" data-testid="detalle-gasto-sin-imputar">
+            Sin imputar: este gasto no le baja el margen a ningún trabajo.
+          </p>
+          {lista === 'cerrada' && (
+            <div className="detalle-gasto__trabajo-acciones" data-testid="detalle-gasto-trabajo-acciones">
+              <Button
+                variant="ghost"
+                onClick={() => void abrir()}
+                disabled={guardando}
+                data-testid="detalle-gasto-imputar"
+              >
+                Imputar a un trabajo
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {lista === 'cargando' && (
+        <div data-testid="detalle-gasto-trabajos-cargando" className="detalle-gasto__loading">
+          <Skeleton height={16} radius={8} />
+        </div>
+      )}
+
+      {lista === 'no_disponible' && (
+        <p className="detalle-gasto__aviso" data-testid="detalle-gasto-trabajos-no-disponible">
+          No pudimos traer tus trabajos.
+        </p>
+      )}
+
+      {lista === 'abierta' && trabajos.length === 0 && (
+        <p className="detalle-gasto__aviso" data-testid="detalle-gasto-trabajos-vacio">
+          Todavía no tenés trabajos a los que imputarlo.
+        </p>
+      )}
+
+      {lista === 'abierta' && trabajos.length > 0 && (
+        <div className="detalle-gasto__trabajos" data-testid="detalle-gasto-trabajos">
+          {trabajos.map((t) => (
+            <Button
+              key={`${t.eslabon}:${t.ref}`}
+              variant="cancel"
+              onClick={() => void escribir({ eslabon: t.eslabon, ref: t.ref })}
+              disabled={guardando}
+              data-testid={`detalle-gasto-trabajo-${t.eslabon}-${t.ref}`}
+            >
+              {t.etiqueta}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {error != null && (
+        <p className="detalle-gasto__error" data-testid="detalle-gasto-trabajo-error">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -128,6 +288,11 @@ export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
             Del ticket leímos: {formatearImporte(g.montoSugerido)}
           </p>
         )}
+
+        {/* SM-E3: a qué trabajo pertenece el gasto. Va DESPUÉS de los datos y antes de las
+            acciones: no es un dato del comprobante, es lo que decide si el margen de ese trabajo
+            está completo. */}
+        <BloqueTrabajo gasto={g} />
 
         <div className="detalle-gasto__acciones" data-testid="detalle-gasto-acciones">
           <Button variant="cancel" onClick={onCerrar} data-testid="detalle-gasto-cerrar">
