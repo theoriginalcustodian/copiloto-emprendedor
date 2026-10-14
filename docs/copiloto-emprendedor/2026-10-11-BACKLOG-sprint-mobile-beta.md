@@ -62,7 +62,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
 | **SM-E1** | `#1005` | ⬜ PENDIENTE | — |
-| **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
+| **SM-E2** | `#1006` | 🟨 EN-CURSO | backend |
 | **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
@@ -400,7 +400,8 @@ no el arranque del sprint.***
 
 ### SM-E2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** backend
 - **DoD:** lo anunciado y lo cableado coinciden, **ítem por ítem** (no «en general»).
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama

@@ -37,7 +37,8 @@ function insignias(card: ReplyCard): (string | null)[] | null {
 
 const ESPERADAS: Record<string, (string | null)[]> = {
   mercadopago: ['Solo lectura', 'Nunca sin tu OK'],
-  gmail: ['Solo lectura', 'Nunca sin tu OK', 'Solo lectura'],
+  // SM-E2: Gmail sólo anuncia lo que cablea (`gmail_send`); «Leer mails» y «Buscar» se podaron.
+  gmail: ['Nunca sin tu OK'],
   servicio_sin_ficha: [],
 };
 

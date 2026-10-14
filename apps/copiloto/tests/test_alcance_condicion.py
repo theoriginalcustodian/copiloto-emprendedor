@@ -152,6 +152,7 @@ def test_el_par_no_es_vacio_el_fixture_trae_objetos_con_condicion_en_alcance():
     cards = json.loads(_FIXTURE.read_text(encoding="utf-8"))
     items = [i for c in cards for i in c["alcance"]]
     print(f"PAR alcance (backend): {len(cards)} cards, {len(items)} ítems con condicion")
-    assert len(cards) >= 3 and len(items) >= 4
+    # SM-E2: Gmail pasó de 3 ítems a 1 (sólo anuncia `gmail_send`): MP 2 + Gmail 1 = 3.
+    assert len(cards) >= 3 and len(items) >= 3
     assert not _fuera_del_enum(items), "el fixture trae ítems fuera del contrato {texto, condicion}"
     assert all("alcance_items" not in c for c in cards), "los objetos van en `alcance`, no en `alcance_items`"
