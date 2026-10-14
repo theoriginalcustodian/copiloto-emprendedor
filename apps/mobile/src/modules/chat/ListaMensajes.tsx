@@ -5,6 +5,8 @@ import { FlatList, Pressable } from 'react-native-gesture-handler';
 import type { ListRenderItemInfo } from 'react-native';
 
 import {
+  clasificarChoices,
+  leerArtefactoEnlace,
   leerClientePropuesto,
   leerDatosNegocio,
   leerFacturaPropuesta,
@@ -33,7 +35,9 @@ import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
 import { ChipArmarFactura } from './ChipArmarFactura';
+import { ChipsDesambiguacion } from './ChipsDesambiguacion';
 import { Recibo } from './Recibo';
+import { TarjetaArtefacto } from './TarjetaArtefacto';
 import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaDatosNegocio } from './TarjetaDatosNegocio';
@@ -327,6 +331,8 @@ interface FilaMensajeProps {
   sinConfirmar?: boolean;
   /** hitl (a.4) — sólo si ESTE recibo es resultado del aviso en curso (lo decide la lista). */
   onVolverDelRecibo?: () => void;
+  /** SM-D1 — es el último mensaje del hilo: sólo ahí un `choices` sigue esperando respuesta. */
+  ultimo?: boolean;
 }
 
 /**
@@ -343,6 +349,7 @@ const FilaMensaje = memo(function FilaMensaje({
   onResolverTarjeta = () => {},
   sinConfirmar = false,
   onVolverDelRecibo,
+  ultimo = false,
 }: FilaMensajeProps) {
   if (mensaje.role === 'user') {
     // El dictado del emprendedor SIEMPRE llega acá, antes de toda rama de card: lo que una card reemplaza es
@@ -503,6 +510,18 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
+  // SM-D1 — el evento de Calendar / documento / planilla / archivo / borrador que dejó la acción. No lleva
+  // `choices` ni los kinds de arriba: sin esta rama caía en `Burbuja` y el enlace se perdía.
+  const artefacto = leerArtefactoEnlace(mensaje.card);
+  if (artefacto) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <TarjetaArtefacto artefacto={artefacto} />
+      </View>
+    );
+  }
+
   const gate = mapearGate(mensaje);
   if (gate) {
     // H-A4-9 — `gate.respondido` viene de `mensaje.hitlRespondido` (ver `mapearGate`/`hitl.ts`): ya
@@ -521,6 +540,21 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
+  // SM-D1 — `choices` que NO es el par confirmar/cancelar (desambiguación): la pregunta + una opción por
+  // chip. Tocable sólo mientras es el último mensaje: si ya llegó otro, la elección ya se mandó.
+  if (clasificarChoices(mensaje.choices) === 'choices' && mensaje.choices) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <ChipsDesambiguacion
+          choices={mensaje.choices}
+          deshabilitado={!ultimo}
+          onSelect={(value, label) => onChoice(value, { displayText: label })}
+        />
+      </View>
+    );
+  }
+
   return <Burbuja role="assistant" text={mensaje.text} />;
 });
 
@@ -532,8 +566,8 @@ const FilaMensaje = memo(function FilaMensaje({
  *    `TarjetaConfirmacion`, NUNCA `Burbuja` — es el único HITL de este sprint.
  *  - asistente sin gate -> `Burbuja` de texto plano.
  *
- * Un `choices` que NO sea el par confirmar/cancelar (desambiguación multi-opción) no tiene UI
- * dedicada en este hito — mismo alcance que el origen; se ve el texto de la burbuja igual, sin chips.
+ * Un `choices` que NO sea el par confirmar/cancelar (desambiguación multi-opción) se pinta como la
+ * burbuja + `ChipsDesambiguacion` (SM-D1): una opción por chip, tocable sólo en el último mensaje.
  *
  * Auto-scroll al último mensaje en cada cambio (best-effort: `scrollToEnd` puede no existir bajo el
  * test-renderer).
@@ -571,6 +605,9 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
     // fact-voz (d): cuál mensaje propio no se puede dar por recibido todavía (ver `idMensajeSinConfirmar`).
     const idSinConfirmar = useMemo(() => idMensajeSinConfirmar(messages, sendStatus), [messages, sendStatus]);
 
+    // SM-D1: el último mensaje del hilo — el único cuyos `choices` siguen esperando respuesta.
+    const idUltimo = messages.length > 0 ? messages[messages.length - 1].id : null;
+
     // hitl (a.4): ids de los mensajes que llegaron DESPUÉS de que entró el aviso — los únicos cuyo recibo
     // puede cerrar su tarjeta. `null` = nadie (sin salida o sin aviso de origen).
     const idsConSalida = useMemo(
@@ -605,10 +642,11 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
             onResolverTarjeta={onResolverTarjeta}
             sinConfirmar={item.id === idSinConfirmar}
             onVolverDelRecibo={idsConSalida?.has(item.id) ? onVolverDelRecibo : undefined}
+            ultimo={item.id === idUltimo}
           />
         </View>
       ),
-      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar, idsConSalida, onVolverDelRecibo],
+      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar, idsConSalida, onVolverDelRecibo, idUltimo],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
