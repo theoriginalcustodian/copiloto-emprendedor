@@ -1,5 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Partial mock: sólo la red — mismo arnés que `GastosScreen.test.tsx`. */
@@ -120,9 +119,9 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     render(<DetalleGasto gasto={gasto()} onCerrar={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-imputar')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')); });
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-imputado')).toBeTruthy());
     expect(mockImputar).toHaveBeenCalledWith(2, { eslabon: 'presupuesto', ref: 12 });
@@ -137,7 +136,7 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     render(<DetalleGasto gasto={g} onCerrar={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-desimputar')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-desimputar')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-desimputar')); });
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-sin-imputar')).toBeTruthy());
     expect(mockImputar).toHaveBeenCalledWith(2, null);
@@ -150,9 +149,9 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     render(<DetalleGasto gasto={gasto()} onCerrar={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-imputar')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-trabajo-presupuesto-12')); });
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-error')).toBeTruthy());
     expect(screen.queryByTestId('detalle-gasto-trabajo-imputado')).toBeNull();
@@ -166,7 +165,7 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     render(<DetalleGasto gasto={gasto()} onCerrar={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-imputar')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajos-no-disponible')).toBeTruthy());
     expect(screen.queryByTestId('detalle-gasto-trabajos-vacio')).toBeNull();
@@ -177,7 +176,7 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     render(<DetalleGasto gasto={gasto()} onCerrar={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-imputar')).toBeTruthy());
-    await act(async () => { await userEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('detalle-gasto-imputar')); });
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajos-vacio')).toBeTruthy());
   });
