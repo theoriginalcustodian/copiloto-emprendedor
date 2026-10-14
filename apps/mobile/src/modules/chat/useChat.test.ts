@@ -180,6 +180,45 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     unmount();
   });
 
+  // SM-D5 (#1007) — el DoD: la card responde UNA vez y un segundo toque no reenvía. Los dos `send` salen
+  // del mismo frame (no hay re-render entre ellos), que es el caso en que la card todavía no se repintó.
+  it('SM-D5: dos toques seguidos sobre la MISMA card mandan UNA sola respuesta', async () => {
+    jest.mocked(api.getReply)
+      .mockResolvedValueOnce({
+        replies: [
+          {
+            id: 5,
+            text: 'Vas a mandar este mail. ¿Confirmás?',
+            choices: [
+              { label: 'Sí, mandalo', value: 'confirm:0:0' },
+              { label: 'Cancelar', value: 'cancel:0:0' },
+            ],
+          },
+        ],
+        next_id: 5,
+      })
+      .mockResolvedValue({ replies: [], next_id: 5 });
+    jest.mocked(api.sendChat).mockClear().mockResolvedValue({ wf_id: 'wf-hitl', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+    const gateId = result.current.estado!.messages[0].id;
+
+    await act(async () => {
+      const opts = { kind: 'callback' as const, displayText: 'Sí, mandalo', hitlMessageId: gateId };
+      await Promise.all([
+        result.current.send('confirm:0:0', opts),
+        result.current.send('confirm:0:0', opts),
+      ]);
+    });
+
+    expect(api.sendChat).toHaveBeenCalledTimes(1);
+    // Control de ceguera: la primera respuesta SÍ salió y quedó marcada (si no, "1 llamada" sería trivial).
+    expect(result.current.estado?.messages[0].hitlRespondido).toMatchObject({ value: 'confirm:0:0' });
+    expect(result.current.estado?.messages.filter((m) => m.role === 'user')).toHaveLength(1);
+    unmount();
+  });
+
   it('no se puede enviar vacío o sólo espacios', async () => {
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
