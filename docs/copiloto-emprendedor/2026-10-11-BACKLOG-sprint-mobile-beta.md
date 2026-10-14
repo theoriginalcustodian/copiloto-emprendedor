@@ -55,7 +55,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
-| **SM-D2** | `#1018` | ⬜ PENDIENTE | — |
+| **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
@@ -328,7 +328,8 @@ no el arranque del sprint.***
 
 ### SM-D2 · `#1018` — Mobile no tiene los bloques de agregado que web sí
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el e2e sale 3 (no discrimina); barra==detalle SI verificado en 2026-08 y 2026-09; la igualdad entre las 4 superficies para el mismo mes la prueba backend test_facturado_predicado_unico.py (B-3, Postgres del VPS). (2) device: los dos bloques medidos en el telefono. (3) hallazgo abierto: el resumen Esperando respuesta se deriva de GET /presupuestos con limit=50 por defecto (presupuestos_web.py:41), con mas de 50 vigentes subcuenta sin avisar
 - **Medido:** faltan «facturado del mes» y el resumen de presupuestos.
 - **DoD:** los dos bloques existen **y su cifra coincide con la del detalle** para el mismo mes.
 - **Depende de:** SM-B3 (el predicado único). **Es el criterio 6 del DoD del sprint.**

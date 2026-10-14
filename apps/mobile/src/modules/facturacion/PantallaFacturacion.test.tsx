@@ -80,6 +80,7 @@ import {
   estadoAnulacion,
   estadoFactura,
   esperarEstadoEstable,
+  leerPortada,
   listarComprobantes,
   quitarItem,
   setCliente,
@@ -468,6 +469,46 @@ describe('PantallaFacturacion', () => {
     await montarYEntrarAlWizard();
 
     await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeTruthy());
+  });
+
+  /**
+   * 🔴 **SM-D2 (#1018) — «Facturado este mes» es la cifra del BACKEND, no la suma del listado.**
+   *
+   * El listado de este mes trae una factura vigente de 100.000, una de 50.000 que después se anuló y
+   * su nota de crédito (estado `emitida`, como todo lo que tiene CAE): sumarlo en el cliente daría
+   * 200.000 (o 150.000 sin la NC). El backend, con el predicado único de «lo facturado» (B-3), dice
+   * 100.000: la anulada y su NC se cancelan. Si el bloque derivara su cifra del listado, esta
+   * igualdad no cerraría — y con un listado paginado, tampoco sería «el mes».
+   *
+   * El control de ceguera es que el listado SE VE (las 3 filas): sin él, un listado que no cargó
+   * dejaría el test verde por la razón equivocada.
+   */
+  it('SM-D2: «Facturado este mes» muestra la cifra del backend aunque el listado sume otra cosa', async () => {
+    jest.mocked(listarComprobantes).mockResolvedValue({
+      status: 'ok',
+      comprobantes: [
+        comprobanteMock({ nro: 21, total: '100000.00' }),
+        comprobanteMock({ nro: 22, total: '50000.00', estado: 'anulada' }),
+        comprobanteMock({ nro: 23, tipoCbte: 13, total: '50000.00', cbteAsocNro: 22 }),
+      ],
+    });
+    jest.mocked(leerPortada).mockResolvedValue({
+      status: 'ok',
+      portada: {
+        mes: { ingresos: null, gastos: null, rentabilidad: null, facturado: '100000.00', cobrado: null },
+      },
+    } as unknown as Awaited<ReturnType<typeof leerPortada>>);
+    try {
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-21')).toBeTruthy());
+      expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-22')).toBeTruthy();
+      expect(screen.getByTestId('facturacion-mis-comprobantes-fila-13-6-23')).toBeTruthy();
+
+      await waitFor(() => expect(screen.getByTestId('facturacion-resumen-cifra')).toBeTruthy());
+      expect(screen.getByTestId('facturacion-resumen-cifra')).toHaveTextContent('$100.000,00');
+    } finally {
+      jest.mocked(leerPortada).mockReset().mockResolvedValue({ status: 'no_disponible' });
+    }
   });
 
   /**
