@@ -1,6 +1,12 @@
 import {
+  ApiError,
   completarOnboarding,
   dejarPendiente,
+  faltantesDelPerfilMinimo,
+  guardarPerfilNegocio,
+  LIMITE_CAMPO_CORTO,
+  LIMITE_QUE_VENDE,
+  leerPerfilNegocio,
   leerPortada,
   listarCatalogo,
   pedirLinkDeVinculacion,
@@ -9,6 +15,7 @@ import {
   permisosDelHilo,
   primerInsight,
   textoDelInsight,
+  type CampoPerfilMinimo,
   type PermisoDelHilo,
   type PrimerInsight,
 } from '@copiloto/core';
@@ -19,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Burbuja } from '../chat/Burbuja';
 import { Recibo } from '../chat/Recibo';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
-import { FilaBotones } from '../../theme/glass/campos';
+import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
 
 /** Dos permisos ante el usuario, no seis servicios: el alcance se dice ANTES de pedir. */
@@ -32,7 +39,17 @@ const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; bot
   },
 };
 
-type Paso = 'promesa' | 'recibo';
+/** `perfil` = el paso del perfil mínimo (SM-C3): sólo se entra desde un 409 `perfil_minimo_incompleto`. */
+type Paso = 'promesa' | 'recibo' | 'perfil';
+
+/** Cómo se nombra cada campo del perfil mínimo ante la persona (las etiquetas de Ajustes → Mi negocio). */
+const ETIQUETA_CAMPO: Record<CampoPerfilMinimo, string> = {
+  queVende: 'qué vendés',
+  nombreComercial: 'el nombre comercial',
+};
+
+const nombrarFaltantes = (campos: readonly CampoPerfilMinimo[]): string =>
+  campos.map((c) => ETIQUETA_CAMPO[c]).join(' y ');
 
 export interface PantallaOnboardingProps {
   /** El hilo terminó (por «Entrar» o por «Después»). Quien lo monta lo retira. */
@@ -63,6 +80,7 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
   const [permisos, setPermisos] = useState<readonly PermisoDelHilo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState<PermisoDelHilo['id'] | null>(null);
+  const [faltantes, setFaltantes] = useState<readonly CampoPerfilMinimo[]>([]);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -72,7 +90,9 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
       if (!vivo.current || res.status === 'no_disponible') return;
       const p = permisosDelHilo(res.servicios);
       setPermisos(p);
-      if (permisosCompletos(p)) setPaso('recibo'); // ya están los dos: no se pide nada más
+      // ya están los dos: no se pide nada más. Sólo desde la promesa: volver del navegador con el paso del
+      // perfil abierto no puede devolver a la persona al recibo (el AppState dispara esta carga).
+      if (permisosCompletos(p)) setPaso((actual) => (actual === 'promesa' ? 'recibo' : actual));
     } catch {
       /* fail-soft: sin catálogo la promesa igual se ve y «Después» sigue disponible */
     }
@@ -88,14 +108,17 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
   }, [cargarCatalogo]);
 
   async function terminar() {
-    // El resultado se DESCARTA, y con el gate del 409 (SM-C3) eso dejo de ser inocuo: si el
-    // backend rechazo por perfil incompleto, cerrar el hilo manda a la persona a un shell donde
-    // el server no la deja entrar, sin decirle que le falta. completarOnboarding() ya devuelve
-    // {ok, perfilIncompleto, faltantes} (core, SM-C3 DoD 1); pintar el paso con los dos campos
-    // es trabajo de ESTA pantalla y sigue PENDIENTE -- SM-C3 DoD 2-4, sin dueno al 2026-10-14.
-    // Mientras el retorno siga descartado, el gate server-side es la unica red.
-    await completarOnboarding();
-    if (vivo.current) onTerminar();
+    const res = await completarOnboarding();
+    if (!vivo.current) return;
+    // 409 `perfil_minimo_incompleto` (SM-C3): el hilo NO se cierra — el server no deja entrar al shell
+    // sin `queVende` y `nombreComercial`, y el paso se los pide acá, dentro del hilo (no es pantalla nueva).
+    if (!res.ok && res.perfilIncompleto) {
+      setFaltantes(res.faltantes);
+      setPaso('perfil');
+      return;
+    }
+    // Cualquier otro fallo (red, 500): se cierra igual y se reintenta al próximo arranque, como antes.
+    onTerminar();
   }
 
   async function conectar(permiso: PermisoDelHilo) {
@@ -125,6 +148,10 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
     styles.pantalla,
     { paddingTop: insets.top + tema.espacio.lg, paddingBottom: insets.bottom + tema.espacio.lg, paddingHorizontal: tema.espacio.lg, gap: tema.espacio.md },
   ];
+
+  if (paso === 'perfil') {
+    return <PasoPerfil estiloContenedor={contenedor} faltantesIniciales={faltantes} onTerminar={onTerminar} />;
+  }
 
   if (paso === 'recibo') return <PasoRecibo estiloContenedor={contenedor} onEntrar={() => void terminar()} />;
 
@@ -177,6 +204,129 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
         </CristalVidrio>
       </View>
     </View>
+  );
+}
+
+/**
+ * El paso del perfil mínimo (SM-C3 DoD 2-4): `queVende` y `nombreComercial`, y no deja avanzar sin los dos.
+ * La regla sale de `faltantesDelPerfilMinimo` de core (UNA definición para las dos apps; vacío o sólo
+ * espacios cuenta como vacío igual que el backend). El backend sigue siendo el que manda: si rechaza otra
+ * vez, el hilo no se cierra y se nombra lo que falta.
+ */
+function PasoPerfil({
+  estiloContenedor,
+  faltantesIniciales,
+  onTerminar,
+}: {
+  estiloContenedor: object[];
+  faltantesIniciales: readonly CampoPerfilMinimo[];
+  onTerminar: () => void;
+}) {
+  const tema = useTema();
+  const [campos, setCampos] = useState({ queVende: '', nombreComercial: '' });
+  const [rechazados, setRechazados] = useState<readonly CampoPerfilMinimo[]>(faltantesIniciales);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const vivo = useRef(true);
+  useEffect(() => () => { vivo.current = false; }, []);
+
+  // Pre-llena con lo que ya hay (alguien que cargó uno de los dos antes). Fail-soft: sin perfil, vacío.
+  // Nunca pisa lo que la persona ya empezó a escribir.
+  useEffect(() => {
+    leerPerfilNegocio()
+      .then((res) => {
+        if (!vivo.current || res.status !== 'ok' || res.perfil == null) return;
+        const { queVende, nombreComercial } = res.perfil;
+        setCampos((c) => ({
+          queVende: c.queVende === '' ? queVende : c.queVende,
+          nombreComercial: c.nombreComercial === '' ? nombreComercial : c.nombreComercial,
+        }));
+      })
+      .catch(() => {});
+  }, []);
+
+  const vacios = faltantesDelPerfilMinimo(campos);
+  const errorDe = (campo: CampoPerfilMinimo) =>
+    rechazados.includes(campo) && vacios.includes(campo) ? `Falta ${ETIQUETA_CAMPO[campo]}` : undefined;
+
+  async function guardar() {
+    if (vacios.length > 0) {
+      setRechazados(vacios);
+      return;
+    }
+    setError(null);
+    setEnviando(true);
+    try {
+      const g = await guardarPerfilNegocio({
+        queVende: campos.queVende.trim(),
+        nombreComercial: campos.nombreComercial.trim(),
+      });
+      if (!vivo.current) return;
+      if (g.status !== 'ok') {
+        setError('Guardar tu negocio todavía no está disponible. Probá de nuevo en un rato.');
+        return;
+      }
+      const res = await completarOnboarding();
+      if (!vivo.current) return;
+      if (!res.ok && res.perfilIncompleto) {
+        setRechazados(res.faltantes);
+        setError(`Todavía falta ${nombrarFaltantes(res.faltantes)}.`);
+        return;
+      }
+      onTerminar();
+    } catch (e) {
+      if (vivo.current) {
+        setError(e instanceof ApiError ? (e.detail ?? e.message) : 'No pudimos guardar tu negocio. Probá de nuevo.');
+      }
+    } finally {
+      if (vivo.current) setEnviando(false);
+    }
+  }
+
+  return (
+    <ScrollFormulario
+      testID="onboarding-perfil"
+      style={{ backgroundColor: tema.color.fondo }}
+      contentContainerStyle={[...estiloContenedor, { flexGrow: 1 }]}
+    >
+      <Burbuja role="assistant" text="Antes de entrar, contame de tu negocio: qué vendés y cómo se llama." />
+      <CampoTexto
+        testID="onboarding-perfil-que-vende"
+        etiqueta="Qué vendés"
+        valor={campos.queVende}
+        onChange={(v) => setCampos((c) => ({ ...c, queVende: v }))}
+        placeholder="Contá qué hacés"
+        multiline
+        maxLength={LIMITE_QUE_VENDE}
+        error={errorDe('queVende')}
+      />
+      <CampoTexto
+        testID="onboarding-perfil-nombre-comercial"
+        etiqueta="Nombre comercial"
+        valor={campos.nombreComercial}
+        onChange={(v) => setCampos((c) => ({ ...c, nombreComercial: v }))}
+        placeholder="Con el que te conocen"
+        maxLength={LIMITE_CAMPO_CORTO}
+        error={errorDe('nombreComercial')}
+      />
+      {error != null && (
+        <Text accessibilityRole="alert" testID="onboarding-perfil-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
+          {error}
+        </Text>
+      )}
+      <FilaBotones
+        testID="onboarding-perfil-guardar-botones"
+        botones={[
+          {
+            etiqueta: enviando ? 'Guardando…' : 'Guardar y entrar',
+            onPress: () => void guardar(),
+            variante: 'primario',
+            deshabilitado: enviando,
+            testID: 'onboarding-perfil-guardar',
+          },
+        ]}
+      />
+    </ScrollFormulario>
   );
 }
 
