@@ -20,7 +20,7 @@ npx --yes eas-cli@24.13.0 build:list --platform android --limit 6 --json --non-i
 Mirá `expirationDate` del último `FINISHED` con perfil `development`. **EAS borra los artefactos a los
 14 días** del build, no de la última descarga.
 
-⚠️ **Dos trampas de este comando, ya pagadas:**
+⚠️ **TRES trampas de este comando, ya pagadas:**
 
 1. **Corrido desde un worktree sin `node_modules` falla con exit code 0.** Imprime `Failed to resolve
    plugin for module "expo-router" … Do you have node modules installed?` y devuelve **0**. Si lo
@@ -29,6 +29,17 @@ Mirá `expirationDate` del último `FINISHED` con perfil `development`. **EAS bo
 2. **`apps/mobile/node_modules` existe y está VACÍO** en todos los checkouts: es un monorepo con npm
    workspaces y los paquetes están **hoisteados a la raíz**. «La carpeta existe» no significa
    instalado — contá archivos.
+3. 🔴 **Corrido desde la RAÍZ del worktree, el error te manda a romper el proyecto.** No dice
+   «estás en el directorio equivocado»: dice `EAS project not configured. … Run eas init --account
+   341lin --non-interactive`. **No corras eso.** El `projectId` está versionado en
+   `apps/mobile/app.json:55` (`05317fbe-ca0e-4f46-a63e-6f47a1cb118a`) y EAS lo busca en el **cwd**;
+   `eas init` crearía un proyecto NUEVO y los builds existentes dejarían de aparecer en
+   `build:list`, que es precisamente lo que viniste a medir. El `cd apps/mobile` del bloque de
+   arriba no es decorativo.
+   ⚠️ Y fijate la asimetría, porque es la que me hizo caer: **el `npm install` del paso 2 va en la
+   RAÍZ y este comando va en `apps/mobile`.** Dos pasos de la misma receta con cwd **opuesto** —
+   «ya sé que en este repo se instala desde la raíz» es exactamente el razonamiento que lo rompe.
+   Tipeá el literal de cada bloque (pagado el 2026-10-14 por el autor de esta receta).
 
 ---
 
@@ -127,7 +138,7 @@ termina, con la salida de `build:list` — no con mi palabra.
 ### Resultado medido (salida de `build:list`, no mi palabra)
 
 ```
-d6cecf02 IN_QUEUE   development  git= 93d792d2 | creado 2026-10-14T14:21:56 | expira 2026-10-28T14:21:56 | apk no
+d6cecf02 IN_PROGRESS development  git= 93d792d2 | creado 2026-10-14T14:21:56 | expira 2026-10-28T14:21:56 | apk no   <- remedido 12:36 (era IN_QUEUE)
 ad2ce5e4 FINISHED   development  git= ca5e3fe6 | creado 2026-10-13T20:07:11 | expira 2026-10-27T20:07:11 | apk SI
 ```
 
