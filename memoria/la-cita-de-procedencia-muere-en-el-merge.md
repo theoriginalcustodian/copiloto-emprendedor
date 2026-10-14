@@ -113,3 +113,20 @@ mergeado?* → `gh pr list --state merged --head`, que es el único registro que
 (2) si no lo tiene, *¿vive el fix en `main`?* → grep del símbolo distintivo, **no** diff de ramas. Y
 cualquier conteo de «ramas mergeadas» se acompaña del predicado con el que se midió: sin eso, cuatro
 números contradictorios son todos «la cifra».
+
+---
+
+## Refuerzo 2026-10-13 — lo mismo mata un **DISPARADOR**, y ahí el síntoma es una sesión que no arranca
+
+Hasta acá esto era sobre **citas** y sobre **borrar ramas**. Tiene una tercera forma, más caro todavía:
+usar `--is-ancestor` como **condición de arranque** entre dos sesiones. Una sesión propuso esperar con
+`git merge-base --is-ancestor 6fb08eef origin/main` para empezar su parte cuando la otra mergeara. Con
+squash-merge ese commit **nunca** va a ser ancestro de `main`: el predicado queda en «todavía no» para
+siempre, sobre trabajo ya mergeado, y el síntoma no es un error — es **quietud**, que es justo lo que
+nadie mira.
+
+**Cómo aplicarlo:** un disparador entre sesiones se mide por **EFECTO**, no por procedencia.
+`git grep -c "<símbolo distintivo>" origin/main -- <ruta>` > 0 sobrevive al squash, al rebase, al
+cherry-pick y al «lo reconstruí limpio». Y si el símbolo todavía no tiene nombre, el disparador
+tampoco está listo para escribirse.
+→ [[una-espera-sin-disparador-nombrable-es-paralisis]] · [[un-disparador-cumplido-no-avisa-a-nadie]]

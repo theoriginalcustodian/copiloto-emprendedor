@@ -142,3 +142,24 @@ funciona» y **tenía razón** — lo que no existía era la relación entre ese
 - Y el costo asimétrico: un falso **0** aquí no deja deuda visible — **borra** una divergencia real
   del tablero y la firma una sesión con autoridad para decidirlo.
   → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+---
+
+## Refuerzo 2026-10-13 — el caso límite: **medí el nombre que yo mismo había inventado**
+
+Diseñé una pieza (`origenPuente`, para llevar la identidad de la tarjeta al chat), busqué
+`origenPuente` en `apps/` + `packages/`, dio **0 hits**, puse control positivo (vivo), y bajé un
+contrato pidiendo construirla. **El `0` era una tautología:** nadie escribe un nombre que acabo de
+acuñar yo. El portador del rol existía y se llamaba `AvisoAlChat = {texto, contexto}` — sólo le
+faltaba un campo. Lo encontró otra sesión, no mi búsqueda.
+
+Por qué este caso es peor que el de `Buscar`/`Buscá`: ahí el falso `0` **borraba** una divergencia
+real. Acá el falso `0` **manda a construir lo que ya existe**, que es el fallo que CANON 3 (reutilizar)
+está escrito para evitar — y encima el control positivo **no puede delatarlo**: prueba que mi patrón
+caza algo, no que el sujeto tenga otro nombre.
+
+**Cómo aplicarlo, en una línea:** un `0 hits` sobre un identificador **que yo propuse** no es
+evidencia de nada — es un espejo. Antes de pedir que se construya una pieza, buscá el **rol**
+(*«¿qué lleva hoy el dato del punto A al punto B?»*), no el nombre de tu solución. Y si el rol no
+aparece, nombrá qué forma tendría si existiera **antes** de firmar el vacío.
+→ [[el-fix-ya-existe-en-otro-call-site]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
