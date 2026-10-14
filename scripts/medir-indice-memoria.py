@@ -19,6 +19,7 @@ import argparse
 import collections
 import difflib
 import re
+import subprocess
 import sys
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -107,6 +108,49 @@ def main() -> int:
         return 1
 
     topicos = sorted(f for f in MEM.glob("*.md") if f.name not in ("MEMORY.md", "HISTORIA.md"))
+
+    # Una entrada GITIGNORED no puede exigir línea en un índice VERSIONADO: es una contradicción
+    # estructural, no una deuda. El caso que lo destapó (2026-10-14) es
+    # `telegram-composio-canal-operador.md` — datos de contacto del operador, deliberadamente fuera
+    # del repo público por decisión escrita en `.gitignore:101`. El medidor la contaba huérfana y
+    # dejaba la cobertura en 402/403 PARA SIEMPRE: un rojo que no se puede apagar enseña a ignorar
+    # el gate entero, y ahí se pierden las huérfanas de verdad.
+    # Ver memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md.
+    #
+    # Se EXCLUYEN, pero se DECLARAN: un gate que esconde lo que no mide se lee como "cubrí todo".
+    # Degradado a propósito hacia el ROJO: si `git` no contesta, no se excluye nada y el medidor
+    # queda MÁS estricto. Absolver ante la duda envenena la medición
+    # (memoria/un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md).
+    no_versionadas = []
+    try:
+        # 🔴 input en BYTES con LF explícito, NO `text=True`. En Windows `text=True` traduce los
+        # `\n` INTERNOS del stdin a `\r\n`, así que cada path le llega a git con un `\r` pegado y
+        # no matchea ninguna regla: `check-ignore` sale 1 («ninguno ignorado») en silencio.
+        # Medido el 2026-10-14, y la trampa es que el bug ESCALA AL REVÉS: con UN path el input no
+        # tiene `\n` que traducir y funciona perfecto; recién con dos o más fallan todos salvo el
+        # último (el único sin newline detrás). Un control positivo de un solo elemento lo absuelve.
+        # Hermana de memoria/anclar-texto-multilinea-sin-medir-el-separador-de-linea.md y de
+        # memoria/un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md.
+        ci = subprocess.run(
+            ["git", "-C", str(MEM.parent), "check-ignore", "--stdin"],
+            input="\n".join(f"memoria/{f.name}" for f in topicos).encode("utf-8"),
+            capture_output=True, timeout=30,
+        )
+        # rc 0 = hay ignorados · 1 = ninguno · otro = el que falló es git, no la memoria
+        if ci.returncode in (0, 1):
+            salida = ci.stdout.decode("utf-8", errors="replace")
+            ignorados = {ln.strip().rsplit("/", 1)[-1] for ln in salida.splitlines() if ln.strip()}
+            no_versionadas = [f.name for f in topicos if f.name in ignorados]
+            topicos = [f for f in topicos if f.name not in ignorados]
+        else:
+            print(f"[⚠️ ] check-ignore salió {ci.returncode}: NO excluyo nada (medición más estricta)")
+    except Exception as e:  # noqa: BLE001 — cualquier falla de git deja la medición estricta
+        print(f"[⚠️ ] no pude correr check-ignore ({type(e).__name__}): NO excluyo nada")
+
+    if no_versionadas:
+        print(f"[OK ] fuera de cobertura por gitignore ({len(no_versionadas)}): "
+              f"{', '.join(no_versionadas)} — no se versionan, no pueden indexarse")
+
     fallas = []
 
     # --- 0. duplicados EXACTOS de línea: el presupuesto MIENTE mientras haya copias ---

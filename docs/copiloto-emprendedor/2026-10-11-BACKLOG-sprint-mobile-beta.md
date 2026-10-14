@@ -52,7 +52,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
 | **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) … |
-| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
+| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en … |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
@@ -272,27 +272,55 @@ no el arranque del sprint.***
 ### SM-C4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD NO se verifico punto por punto: que la aceptacion CONDICIONE algo, y la evidencia de device. Lo acredita frontend2 con su cierre_
+- **Falta:** DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en los dos lados— YA esta en main (#1183 c8cbc21b). Falta SOLO evidencia de device del boton de aceptar + la version guardada; NADA de guard, NADA de backend. Lo acredita frontend2 con su cierre_
 - **Medido, en dos mitades distintas:**
   1. La **pantalla de lectura de mobile ya existe** — `apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`,
      montada en `apps/mobile/app/legal.tsx:17`. ⚠️ Este issue decía antes «mobile no tiene pantalla de
      aceptación legal» y habría mandado a alguien a **construir una pantalla que existe**. Lo que
      falta es el **botón de aceptar** y la llamada a `POST /me/legal/aceptar` (`web.py:1143`).
   2. La aceptación **no condiciona nada en ninguna plataforma**: se puede operar sin haber aceptado.
-- **DoD:** un alta nueva **no puede operar** sin aceptar, en las dos plataformas; mobile llama el
-  endpoint y guarda la versión aceptada. **Test del caso hostil:** una cuenta sin aceptación vigente
-  es **rechazada** al operar — no sólo «la que aceptó puede».
-- ✅ **DECIDIDO (2026-10-12) — se cablea YA con el texto provisorio marcado como tal.** La
-  aceptación pasa a ser **obligatoria en las dos plataformas**; no se espera al abogado. Cuando
-  llegue el texto definitivo se reemplaza el **contenido**, no el mecanismo — y eso es justamente lo
-  que hace que cablear ahora no sea trabajo tirado.
-- **El DoD no cambia, y su mitad hostil es la que importa:** «una cuenta sin aceptación vigente es
-  **rechazada** al operar». Sin ese test el control es indistinguible de su ausencia: el happy-path
-  («la que aceptó puede operar») sale verde igual si el guard no existe. Es la regla dura de
-  `CLAUDE.md` §Seguridad, no una preferencia de cobertura.
-- **Dueño:** frontend (botón + `POST /me/legal/aceptar` en mobile) + backend (el guard que rechaza).
-  **El marcado del texto va visible en la pantalla**, no en un comentario del código: un comentario
-  que declara un estado no lo comunica a nadie que no lea el fuente.
+     ✅ **Desde el 13-10 eso dejó de ser el defecto y pasó a ser el comportamiento DECIDIDO** — se mide
+     para confirmarlo, no para corregirlo.
+- **DoD (VIGENTE, reescrito 2026-10-14 al aplicar `LEGALNOOPERA`):** mobile **muestra** los terminos
+  (`apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`), tiene **boton de aceptar** que llama
+  `POST /me/legal/aceptar` (`apps/copiloto/web.py:1253`) y **guarda la version aceptada**; Mi cuenta
+  distingue sus tres estados. La aceptacion **INFORMA, no bloquea**: una cuenta con
+  `legal_aceptado=false` **opera igual**, y eso no es un agujero — es la decision.
+- **Su mitad hostil, en la forma que corresponde — CANARIO INVERTIDO, y YA ESTA EN `main`:** ningun
+  camino de produccion lee la aceptacion para decidir acceso, y el dia que alguien agregue el guard
+  se pone **rojo**. `apps/copiloto/tests/test_legal_no_bloquea_canario.py` (AST, backend) +
+  `packages/core/src/legalNoBloquea.canario.test.ts` (core + mobile + web), los dos con control
+  positivo sobre fuentes mutadas en memoria y denominadores > 0 exigidos. Entraron en **#1183
+  `c8cbc21b`** (14-10 15:15).
+- 🔻 **SUPERSEDED — el DoD anterior pedia lo contrario y mandaba a construir un guard RETIRADO.**
+  Decia «un alta nueva **no puede operar** sin aceptar» + «una cuenta sin aceptacion vigente es
+  **rechazada** al operar», con dueno «backend (el guard que rechaza)», apoyado en la decision del
+  **12-10** («obligatoria en las dos plataformas»). La decision del **13-10** —`LEGALNOOPERA`, v2
+  «Informar», `docs/copiloto-emprendedor/2026-10-06-lo-que-espera-tu-decision.md:44-45`— es
+  **posterior y la reemplaza**. Entre el 13-10 y hoy el doc siguio pidiendo el guard: **frontend2 lo
+  cazo y no lo invento** (`dato_` del 14-10), que es exactamente lo correcto — la contradiccion era
+  del contrato, no suya.
+- ⚠️ **Y la regla dura de `CLAUDE.md` §Seguridad NO se esta salteando.** Exige test adversarial para
+  todo control de **acceso/aislamiento**; aca la decision del operador es precisamente que la
+  aceptacion **no es un control de acceso**. Cuando lo que hay que proteger es la **ausencia** de un
+  guard, su test adversarial **es** el canario invertido: un test que exigiera el rechazo naceria
+  rojo y se volveria escudo de los rojos propios
+  (`memoria/el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md`).
+- ✅ **De la decision del 12-10 sobrevive su otra mitad, y SIGUE VIGENTE:** se cablea YA
+  **con el texto provisorio marcado como tal**; no se espera al abogado, y cuando llegue el texto
+  definitivo se reemplaza el **contenido**, no el mecanismo. Lo que `LEGALNOOPERA` retiro es solo
+  el «obligatoria / rechazada», no esto. **El marcado va VISIBLE en la pantalla**, no en un
+  comentario del codigo: un comentario que declara un estado no lo comunica a nadie que no lea el
+  fuente ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
+- **Falta, y es lo UNICO que falta:** **evidencia de device** del boton de aceptar y de la version
+  guardada. **Nada de guard, nada de backend.** Dueno: **frontend2**, con su `cierre_`.
+- ⚠️ **Hueco nombrado, NO bloqueante — es del operador:** la decision del 13-10 se tomo sobre «que
+  hace la app si **la version aceptada ≠ la vigente**», y #1183 la aplico al caso **amplio** (incluye
+  «nunca acepto»). Es coherente con «informa, no bloquea» y es el estado que **ya vive en `main`**,
+  pero el caso «alta nueva que nunca acepto» no fue decidido con esas palabras — es
+  [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]. Si el operador quiere que el alta si exija
+  el tilde, eso es `v1` y entra **por el mismo endpoint, sin trabajo nuevo de mecanismo**. **Default
+  hasta que diga otra cosa: lo que esta en `main`.** Esto NO frena el cierre de SM-C4.
 
 ### SM-C5 · `#1002` — Sin SMTP no hay recuperación de contraseña
 
