@@ -191,7 +191,11 @@ export {
   crearCliente,
   editarCliente,
   cambiosDeCliente,
+  estadoFacturacionCliente,
   facturacionDeCliente,
+  subtituloDeCliente,
+  textoComprobantes,
+  textoMontoCliente,
 } from './clientes';
 export type {
   Cliente,

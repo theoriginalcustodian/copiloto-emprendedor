@@ -7,6 +7,8 @@ import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSw
 import Animated, { type SharedValue } from 'react-native-reanimated';
 
 import {
+  avisoAlChat,
+  formatearInstanteDeCaida,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
   estadoDeServicio,
@@ -18,6 +20,7 @@ import {
   leerPortada,
   listarCatalogo,
   leerTablero,
+  type AvisoAlChat,
   type CalendarioMiDia,
   CATEGORIAS,
   ETIQUETA_CATEGORIA_TARJETA,
@@ -313,9 +316,22 @@ export interface PantallaMiDiaProps {
    * crítica cae a `onAjustes` y la de `presentacion` queda como rótulo.
    */
   onDestino?: (ruta: RutaDestino) => void;
+  /**
+   * `hitl (a)` — el puente tarjeta → chat (C-D5 Opción A). Tocar el verbo de una tarjeta detectada lleva su
+   * aviso al chat principal, **sembrado en el composer**. Lo cablea el shell, porque el chat vive en la
+   * misma pantalla que la base. Sin él (la ruta `/midia` como glass: el chat queda detrás de otra capa) el
+   * verbo sigue siendo el rótulo de siempre: un botón que no lleva a ningún lado es peor que un rótulo.
+   */
+  onAvisoAlChat?: (aviso: AvisoAlChat) => void;
 }
 
-export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onDestino }: PantallaMiDiaProps = {}) {
+export function PantallaMiDia({
+  comoPortada = false,
+  onAjustes,
+  onAgenda,
+  onDestino,
+  onAvisoAlChat,
+}: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
@@ -557,6 +573,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda, onDest
                     // un `tipo` que esta versión no conoce) queda como rótulo — nunca cae a Ajustes por su
                     // cuenta: acá no hay una pantalla «por defecto» que no sea adivinar.
                     onAccion={onDestino}
+                    onAviso={onAvisoAlChat}
                   />
                 ))}
                 {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo. */}
@@ -685,6 +702,7 @@ function TarjetaMiDiaRow({
   onAvanzar,
   onBorrar,
   onAccion,
+  onAviso,
 }: {
   tarjeta: TarjetaMiDia;
   expandida: boolean;
@@ -695,6 +713,8 @@ function TarjetaMiDiaRow({
   onBorrar: () => void;
   /** A dónde lleva la acción de `presentacion`, ya resuelta por `rutaDeDestino`. Sin ella, rótulo. */
   onAccion?: (ruta: RutaDestino) => void;
+  /** El puente al chat (`hitl a`). Sin él, o en una tarjeta sin puente (manual), el verbo es rótulo. */
+  onAviso?: (aviso: AvisoAlChat) => void;
 }) {
   const tema = useTema();
   const swipeableRef = useRef<SwipeableMethods>(null);
@@ -711,12 +731,23 @@ function TarjetaMiDiaRow({
   // nombre del cliente desaparece de la tarjeta). Sale en el PR en que el titular lo diga, no antes. Si el
   // backend ya mandó una kv «Cliente», no se duplica.
   const hayClienteEnKv = kvBackend.some((f) => f.clave.trim().toLowerCase() === 'cliente');
-  const detalle: { clave: string; valor: string }[] =
+  const conCliente: { clave: string; valor: string }[] =
     tarjeta.cliente != null && !hayClienteEnKv
       ? [{ clave: 'Cliente', valor: tarjeta.cliente }, ...kvBackend]
       : kvBackend;
+  // `caida`: el kv «Se cayó · hora» del prototipo (`index.html:3658`) sale de `datos.desde`, que el backend
+  // manda SÓLO con un instante real (Mercado Pago; Composio no lo guarda). Sin instante la fila NO existe:
+  // jamás se rellena con `creada_en` (cuándo corrió el detector, no cuándo cayó). Si el backend algún día
+  // la manda ya en `presentacion.kv`, no se duplica.
+  const seCayo = tarjeta.regla === 'conexion_caida' ? formatearInstanteDeCaida(tarjeta.desde) : null;
+  const hayCayoEnKv = conCliente.some((f) => f.clave.trim().toLowerCase() === 'se cayó');
+  const detalle: { clave: string; valor: string }[] =
+    seCayo != null && !hayCayoEnKv ? [...conCliente, { clave: 'Se cayó', valor: seCayo }] : conCliente;
   const accion = presentacion?.accion ?? null;
   const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
+  // El verbo se vuelve botón SÓLO cuando hay a dónde llevarlo: la `accion` de `presentacion` manda (ya
+  // tiene su destino); sin ella, el verbo lleva el aviso al chat. La tarjeta manual no tiene puente.
+  const aviso = accion == null && onAviso != null ? avisoAlChat(tarjeta) : null;
   const chip = presentacion?.chip ?? null;
   // `tono` reusa la escala de `criticidad`. Uno desconocido NO tiene color propio: se pinta neutro.
   const colorChip =
@@ -820,7 +851,21 @@ function TarjetaMiDiaRow({
               </Text>
             </Pressable>
           )}
-          {expandida && accion == null && tarjeta.verbo != null && (
+          {expandida && accion == null && tarjeta.verbo != null && aviso != null && (
+            <Pressable
+              testID={`midia-tarjeta-${tarjeta.id}-verbo`}
+              accessibilityRole="button"
+              accessibilityLabel={tarjeta.verbo}
+              onPress={() => onAviso?.(aviso)}
+              hitSlop={10}
+              style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
+            >
+              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                {tarjeta.verbo}
+              </Text>
+            </Pressable>
+          )}
+          {expandida && accion == null && tarjeta.verbo != null && aviso == null && (
             <Text
               testID={`midia-tarjeta-${tarjeta.id}-verbo`}
               style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}

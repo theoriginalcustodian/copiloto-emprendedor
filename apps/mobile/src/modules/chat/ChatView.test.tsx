@@ -653,3 +653,117 @@ describe('ChatView -- foto de ticket (Gastos Fase 2, OCR)', () => {
     alertSpy.mockRestore();
   });
 });
+
+describe('ChatView -- hitl (a): el aviso de una tarjeta de Mi día entra sembrado', () => {
+  const AVISO = {
+    aviso: {
+      texto: 'Sobre este aviso de Mi día: «Hace 12 días que le mandaste el presupuesto a Lucía». Acción: Mandarle un recordatorio',
+      contexto: 'Desde tu aviso · Presupuestos · Lucía',
+    },
+    id: 1,
+  };
+
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+  });
+
+  it('🔴 siembra el texto en el composer y NO lo manda solo: la card de confirmación viene DESPUÉS de que lo lea', async () => {
+    await render(
+      <ThemeProvider>
+        <ChatView avisoEntrante={AVISO} onVolverAlTablero={jest.fn()} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe(AVISO.aviso.texto));
+    expect(api.sendChat).not.toHaveBeenCalled();
+    expect(screen.getByTestId('chat-contexto-aviso-texto')).toHaveTextContent('Desde tu aviso · Presupuestos · Lucía');
+  });
+
+  it('lo que viaja es el texto del composer; el chip es sólo UI y no entra al request', async () => {
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-aviso', accepted: true });
+    await render(
+      <ThemeProvider>
+        <ChatView avisoEntrante={AVISO} onVolverAlTablero={jest.fn()} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe(AVISO.aviso.texto));
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    const llamada = jest.mocked(api.sendChat).mock.calls[0]?.[0];
+    expect(llamada).toMatchObject({ text: AVISO.aviso.texto, kind: 'text' });
+    expect(JSON.stringify(llamada)).not.toContain('Desde tu aviso');
+  });
+
+  it('«Volver al tablero» llama a la salida', async () => {
+    const onVolver = jest.fn();
+    await render(
+      <ThemeProvider>
+        <ChatView avisoEntrante={AVISO} onVolverAlTablero={onVolver} />
+      </ThemeProvider>,
+    );
+    await fireEvent.press(await screen.findByTestId('chat-contexto-aviso-volver'));
+    expect(onVolver).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin aviso no hay chip ni salida (el chat de siempre); sin salida el chip no ofrece un botón muerto', async () => {
+    const sin = await render(
+      <ThemeProvider>
+        <ChatView />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(screen.queryByTestId('chat-contexto-aviso')).toBeNull();
+    // RNTL 14: `unmount()` devuelve una Promise. Sin `await` el desmontaje queda a medias y contamina al bloque
+    // que corre después (fact-voz (d): «Unable to find an element with testID: chat-composer»).
+    await sin.unmount();
+
+    await render(
+      <ThemeProvider>
+        <ChatView avisoEntrante={AVISO} />
+      </ThemeProvider>,
+    );
+    expect(await screen.findByTestId('chat-contexto-aviso')).toBeTruthy();
+    expect(screen.queryByTestId('chat-contexto-aviso-volver')).toBeNull();
+  });
+});
+
+// fact-voz (d) — la COSTURA: `ChatView` le pasa a la lista el `sendStatus` real de `useChat`. Un test de
+// `ListaMensajes` con `sendStatus` armado a mano no ve un cableado roto acá (la prop se pierde y la lista
+// asume «nada en vuelo» → «recibido» sobre un mensaje que todavía no salió).
+describe('ChatView — fact-voz (d): «✓✓ recibido» sólo cuando el servidor aceptó el envío', () => {
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+  });
+
+  async function enviar(texto: string) {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), texto);
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+    return screen.findByText(texto);
+  }
+
+  it('🔴 con el POST todavía en vuelo el mensaje está en pantalla SIN «recibido»', async () => {
+    jest.mocked(api.sendChat).mockReturnValue(new Promise(() => {}));
+    await enviar('hola copiloto');
+    expect(screen.queryByTestId('chat-bubble-recibido')).toBeNull();
+  });
+
+  it('cuando el POST lo aceptó, el mismo mensaje pasa a «<hora> ✓✓ recibido»', async () => {
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-r', accepted: true });
+    await enviar('hola copiloto');
+    await waitFor(() => expect(screen.getByTestId('chat-bubble-recibido')).toHaveTextContent(/^\d{1,2}:\d{2} ✓✓ recibido$/));
+  });
+
+  it('🔴 si el envío falla, el mensaje queda en pantalla y NO dice «recibido»', async () => {
+    jest.mocked(api.sendChat).mockRejectedValue(new Error('sin red'));
+    await enviar('hola copiloto');
+    await waitFor(() => expect(screen.getByTestId('composer-status')).not.toHaveTextContent('Trabajando…'));
+    expect(screen.queryByTestId('chat-bubble-recibido')).toBeNull();
+  });
+});

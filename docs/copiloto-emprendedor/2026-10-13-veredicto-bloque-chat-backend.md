@@ -49,6 +49,13 @@ medidor de #1086 (`aea3a81f`) sobre `439c1c4c` + este doc: `CUMPLE EL DoD 28/54`
 nombrado y `preg` en `CERRADA-EN-CODIGO`. **Es un movimiento chico y es el verdadero**: cualquier cifra más alta saldría de contar la
 mitad de backend como la fila entera (el medidor anterior, sobre el mismo árbol, daba `40/54`: contaba las 5 como cumplidas).
 
+> **Actualización 2026-10-13 (BLOQUENATIVO5, frontend1).** Las 5 filas abiertas de arriba eran abiertas **por la mitad
+> app**, y esa mitad cerró: puente de `hitl`, monto de `clientes` en mobile, `datos.desde` de `caida`, meta «✓✓ recibido»
+> de `fact-voz` y el motivo de `cobro-voz` #5. Los veredictos con `path:línea` están en [`2026-10-13-veredicto-bloque-chat-frontend1.md`](2026-10-13-veredicto-bloque-chat-frontend1.md) (filas 17-21). El cuerpo de
+> cada fila de abajo **se conserva tal como se midió el 2026-10-13 @ `159f883b`** (es la historia de qué faltaba); lo que
+> cambió son los **encabezados** y esta columna, que son lo que el medidor lee. El medidor une los símbolos de todos los
+> docs del brazo, así que mientras acá quedara un `⚠` la fila seguía `PENDIENTE-DECLARADA` aunque el otro doc la resolviera.
+
 ---
 
 ## Fila por fila
@@ -100,7 +107,7 @@ DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya exi
 
 ---
 
-### 3 · `clientes` — ⚠ ABIERTA (backend, core y web pintan el monto; mobile no)
+### 3 · `clientes` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: mobile pinta el monto; ver fila 18 del doc de frontend1)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.
 Ninguna queda sin veredicto.»* El mapeo apunta a **mobile** (`PantallaClientes.tsx:299`, `TarjetaCliente.tsx:38`).
@@ -124,7 +131,7 @@ la enmienda con su motivo; y un veredicto de las divergencias 2-5.
 
 ---
 
-### 4 · `cobro-voz` — ⚠ ABIERTA, casi (falta UN veredicto)
+### 4 · `cobro-voz` — 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: la #5 es enmienda fundada; ver fila 20 del doc de frontend1)
 
 DoD: *«Cada divergencia listada en la fila queda resuelta en el código, o declarada enmienda fundada con su motivo escrito.»*
 Archivo de la fila: `apps/mobile/src/modules/chat/TarjetaLinkDeCobro.tsx:28`.
@@ -150,7 +157,7 @@ tengo evidencia de por qué se hizo así. Con esa línea, la fila cierra.
 
 ---
 
-### 5 · `fact-voz` — ⚠ ABIERTA (dos divergencias originales sin veredicto de nadie)
+### 5 · `fact-voz` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: (d) implementada, (e) fuera de referencia; ver fila 21 del doc de frontend1)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»*
 
@@ -171,7 +178,7 @@ entonces la fila no cierra**, aunque lo que sí estaba decidido (a-c) esté en m
 
 ---
 
-### 6 · `hitl` — ⚠ ABIERTA (la card con detalle y recibo está; el puente no)
+### 6 · `hitl` — ✅ + 📝 (cerrada por BLOQUENATIVO5, 2026-10-13: el puente tarjeta → chat existe; ver fila 17 del doc de frontend1)
 
 DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:línea`, y se ve.»* El mapeo (l.78) declara
 **ausente** el puente tarjeta→chat.

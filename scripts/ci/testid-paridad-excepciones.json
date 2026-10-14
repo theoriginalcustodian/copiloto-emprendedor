@@ -5098,6 +5098,36 @@
       "id": "glass-etiqueta",
       "motivo": "Período junto al título (prototipo `.atras .per`, index.html:2248) en el MARCO nativo `MarcoGlass`, que la web no tiene (es el vidrio del shell móvil; los glass-* hermanos tienen la misma excepción). La web pinta el mismo dato en el header de su pantalla con la clase `ingresos-screen__periodo`. Fila `ingresos` de TRIAJE15.",
       "pantalla": "src/theme"
+    },
+    "modules/chat::chat-contexto-aviso": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-contexto-aviso-texto": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso-texto",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-contexto-aviso-volver": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso-volver",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
     }
   }
 }

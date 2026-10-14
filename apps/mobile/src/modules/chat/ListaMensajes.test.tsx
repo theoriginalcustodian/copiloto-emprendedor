@@ -6,7 +6,7 @@ import { StyleSheet, Text } from 'react-native';
 /** `TarjetaClientePropuesto` importa `empujarUnaVez`, que toca `expo-router`. */
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
-import { EJEMPLOS_CHAT, type ChatMessage } from '@copiloto/core';
+import { EJEMPLOS_CHAT, type ChatMessage, type SendStatus } from '@copiloto/core';
 
 import type { ReactElement } from 'react';
 
@@ -874,5 +874,101 @@ describe('ListaMensajes', () => {
         clienteResuelto: { estado: 'descartado' },
       });
     });
+  });
+});
+
+// fact-voz (d) — la meta «10:12 ✓✓ recibido» bajo la burbuja PROPIA (`index.html:2164`). «Recibido» es una
+// afirmación sobre el servidor: sólo se pinta cuando `POST /chat` aceptó el envío.
+describe('ListaMensajes — fact-voz (d): «✓✓ recibido» bajo la burbuja propia', () => {
+  const HORA = new Date(2026, 9, 13, 9, 12).getTime();
+  const hilo: ChatMessage[] = [
+    { id: 'u1', role: 'user', text: 'cobrale 2500 a Lucía', creadoEn: HORA },
+    { id: 'a1', role: 'assistant', text: 'Dale, ¿te armo el link?' },
+    { id: 'u2', role: 'user', text: 'sí, armalo', creadoEn: HORA + 60_000 },
+  ];
+
+  async function montar(messages: ChatMessage[], sendStatus?: SendStatus) {
+    await render(
+      <ThemeProvider>
+        <ListaMensajes messages={messages} onChoice={jest.fn()} sendStatus={sendStatus} />
+      </ThemeProvider>,
+    );
+  }
+
+  it('cada mensaje propio lleva su hora y «✓✓ recibido»; el del asistente no lleva meta', async () => {
+    await montar(hilo, 'idle');
+    const metas = screen.getAllByTestId('chat-bubble-recibido');
+    expect(metas).toHaveLength(2);
+    expect(metas[0]).toHaveTextContent('9:12 ✓✓ recibido');
+    expect(metas[1]).toHaveTextContent('9:13 ✓✓ recibido');
+  });
+
+  it('🔴 con el envío en vuelo, el último mensaje propio NO se rotula recibido (los anteriores sí)', async () => {
+    await montar(hilo, 'sending');
+    const metas = screen.getAllByTestId('chat-bubble-recibido');
+    expect(metas).toHaveLength(1);
+    expect(metas[0]).toHaveTextContent('9:12 ✓✓ recibido');
+  });
+
+  it('🔴 con el envío FALLIDO tampoco: un «recibido» sobre un mensaje que no llegó es mentirle', async () => {
+    await montar([hilo[0]!, { id: 'u2', role: 'user', text: 'sí, armalo', creadoEn: HORA + 60_000 }], 'error');
+    expect(screen.getAllByTestId('chat-bubble-recibido')).toHaveLength(1);
+  });
+
+  it('con el envío aceptado y la respuesta pendiente (waiting) ya está recibido', async () => {
+    await montar(hilo, 'waiting');
+    expect(screen.getAllByTestId('chat-bubble-recibido')).toHaveLength(2);
+  });
+
+  it('🔴 cuando SÓLO cambia `sendStatus` (envío aceptado, mismos mensajes) la fila se actualiza', async () => {
+    const un = [{ id: 'u1', role: 'user' as const, text: 'hola', creadoEn: HORA }];
+    // `onChoice` ESTABLE: con un `jest.fn()` nuevo por render, el `renderItem` cambia de identidad por esa
+    // vía y el test pasaría aunque la lista no dependiera de `sendStatus`.
+    const onChoice = jest.fn();
+    const vista = await render(
+      <ThemeProvider>
+        <ListaMensajes messages={un} onChoice={onChoice} sendStatus="sending" />
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('chat-bubble-recibido')).toBeNull();
+
+    await vista.rerender(
+      <ThemeProvider>
+        <ListaMensajes messages={un} onChoice={onChoice} sendStatus="waiting" />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('chat-bubble-recibido')).toHaveTextContent('9:12 ✓✓ recibido');
+  });
+
+  it('historial sin `creadoEn`: queda «✓✓ recibido» a secas, sin inventar una hora', async () => {
+    await montar([{ id: 'u1', role: 'user', text: 'hola' }], 'idle');
+    expect(screen.getByTestId('chat-bubble-recibido').props.children).toBe('✓✓ recibido');
+  });
+});
+
+// cobro-voz #5 (ENMIENDA FUNDADA): la card `payment_link` va SOLA, y el motivo es que el dictado del
+// emprendedor no se pierde — lo que la card reemplaza es el texto del COPILOTO, no el del usuario.
+describe('ListaMensajes — cobro-voz #5: la card payment_link reemplaza al texto del copiloto, no al dictado', () => {
+  it('el mensaje del usuario sigue siendo burbuja; el texto del asistente cede su lugar a la card', async () => {
+    await render(
+      <ThemeProvider>
+        <ListaMensajes
+          messages={[
+            { id: 'u1', role: 'user', text: 'hacele un link de cobro de 2500 a Lucía' },
+            {
+              id: 'a1',
+              role: 'assistant',
+              text: 'Listo, ahí tenés el link.',
+              card: { kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 2500, concept: 'Clase' } },
+            },
+          ]}
+          onChoice={jest.fn()}
+        />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText('hacele un link de cobro de 2500 a Lucía')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-link-cobro')).toBeTruthy();
+    expect(screen.queryByText('Listo, ahí tenés el link.')).toBeNull();
   });
 });

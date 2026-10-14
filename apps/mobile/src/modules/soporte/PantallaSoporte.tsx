@@ -222,6 +222,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
         <ListaMensajes
           ref={scrollRef}
           messages={estado?.messages ?? []}
+          sendStatus={estado?.sendStatus}
           onChoice={manejarEleccion}
           ejemplos={SIN_EJEMPLOS}
           vacio="ninguno"

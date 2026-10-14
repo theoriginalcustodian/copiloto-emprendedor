@@ -7,9 +7,13 @@ import {
   cambiosDeCliente,
   crearCliente,
   editarCliente,
+  estadoFacturacionCliente,
   facturacionDeCliente,
   listarClientes,
   obtenerCliente,
+  subtituloDeCliente,
+  textoComprobantes,
+  textoMontoCliente,
 } from './clientes';
 
 /** Molde: `gastos.test.ts` — `HttpPort` FAKE, sin `fetch` real. */
@@ -571,5 +575,83 @@ describe('facturacionDeCliente — la regla de UI de C-D1 (binaria y testeable)'
     expect(facturacionDeCliente({})).toEqual({ tipo: 'desconocida' });
     expect(facturacionDeCliente({ montoFacturado: '0.00' })).toEqual({ tipo: 'desconocida' });
     expect(facturacionDeCliente({ facturasAtribuibles: true })).toEqual({ tipo: 'desconocida' });
+  });
+});
+
+describe('textoMontoCliente / estadoFacturacionCliente — lo que dice el slot, en UN lugar para web y mobile', () => {
+  it('con documento y compras: «$importe · N comprobantes» (singular con 1)', () => {
+    expect(textoMontoCliente({ facturasAtribuibles: true, montoFacturado: '320000.00', comprobantesCantidad: 3 })).toBe(
+      '$320.000,00 · 3 comprobantes',
+    );
+    expect(textoMontoCliente({ facturasAtribuibles: true, montoFacturado: '500.00', comprobantesCantidad: 1 })).toBe(
+      '$500,00 · 1 comprobante',
+    );
+  });
+
+  it('🔴 sin documento NUNCA un número: «—» aunque el wire traiga "0.00" o plata', () => {
+    expect(textoMontoCliente({ facturasAtribuibles: false, montoFacturado: '0.00', comprobantesCantidad: 0 })).toBe('—');
+    expect(textoMontoCliente({ facturasAtribuibles: false, montoFacturado: '500.00', comprobantesCantidad: 2 })).toBe('—');
+  });
+
+  it('el backend no declaró el par → cae al conteo de comprobantes, y sin conteo a «—» (nunca un cero inventado)', () => {
+    expect(textoMontoCliente({ comprobantesCantidad: 4 })).toBe('4 comprobantes');
+    expect(textoMontoCliente({})).toBe('—');
+  });
+
+  it('sin conteo el importe va solo; «Todavía sin comprar» conserva su «$0,00»', () => {
+    expect(textoMontoCliente({ facturasAtribuibles: true, montoFacturado: '1000.00' })).toBe('$1.000,00');
+    expect(textoMontoCliente({ facturasAtribuibles: true, montoFacturado: '0.00', comprobantesCantidad: 0 })).toBe(
+      '$0,00 · 0 comprobantes',
+    );
+  });
+
+  it('textoComprobantes: undefined → «—», 0 se dice (lo declaró el backend)', () => {
+    expect(textoComprobantes(undefined)).toBe('—');
+    expect(textoComprobantes(0)).toBe('0 comprobantes');
+  });
+
+  it('chip de estado: lo medido manda sobre `origen`; con compras y cargado a mano no hay nada que afirmar', () => {
+    expect(estadoFacturacionCliente({ tipo: 'sin_documento' }, true)).toEqual({ texto: 'Sin CUIT cargado', auto: false });
+    expect(estadoFacturacionCliente({ tipo: 'sin_compras', importe: '$0,00' }, true)).toEqual({
+      texto: 'Todavía sin comprar',
+      auto: false,
+    });
+    expect(estadoFacturacionCliente({ tipo: 'con_monto', importe: '$1,00' }, true)).toEqual({
+      texto: 'Se agregó solo',
+      auto: true,
+    });
+    expect(estadoFacturacionCliente({ tipo: 'con_monto', importe: '$1,00' }, false)).toBeNull();
+    expect(estadoFacturacionCliente({ tipo: 'desconocida' }, false)).toEqual({ texto: 'Todavía sin comprar', auto: false });
+  });
+});
+
+describe('subtituloDeCliente — el renglón de identificación, en UN lugar para web y mobile', () => {
+  const base = { docTipo: null, docNro: null, condicionIva: null, telefono: null, email: null, domicilio: null, notas: null };
+
+  it('con documento: «CUIT n · condición IVA» (el prototipo trae las dos cosas)', () => {
+    expect(subtituloDeCliente({ ...base, docTipo: 80, docNro: '30712345678', condicionIva: 1 })).toBe(
+      'CUIT 30712345678 · Resp. Inscripto',
+    );
+    expect(subtituloDeCliente({ ...base, docTipo: 96, docNro: '12345678', condicionIva: 5 })).toBe(
+      'DNI 12345678 · Consumidor Final',
+    );
+  });
+
+  it('🔴 con documento pero sin condición cargada lo dice, no la inventa', () => {
+    expect(subtituloDeCliente({ ...base, docTipo: 80, docNro: '30712345678' })).toBe(
+      'CUIT 30712345678 · sin condición cargada',
+    );
+  });
+
+  it('🔴 una condición que el mapa no conoce no se adivina', () => {
+    expect(subtituloDeCliente({ ...base, docTipo: 80, docNro: '30712345678', condicionIva: 99 })).toBe(
+      'CUIT 30712345678 · Condición no identificada',
+    );
+  });
+
+  it('sin documento cae al primer dato que identifique, en orden teléfono · email · domicilio · notas', () => {
+    expect(subtituloDeCliente({ ...base, telefono: '11 5555-1234', email: 'a@b.c' })).toBe('11 5555-1234');
+    expect(subtituloDeCliente({ ...base, telefono: '  ', email: 'a@b.c' })).toBe('a@b.c');
+    expect(subtituloDeCliente({ ...base })).toBeNull();
   });
 });

@@ -77,6 +77,15 @@ export interface TarjetaMiDia {
    * emite: la tarjeta se pinta como siempre. La app NO arma una tabla regla→pantalla para suplirla.
    */
   presentacion?: PresentacionTarjeta | null;
+  /**
+   * `datos.desde` — el instante (ISO) en que se cayó la conexión, sólo en la tarjeta `conexion_caida` y sólo
+   * cuando el backend lo CONOCE (`mi_dia_detector.py:270`: Mercado Pago guarda `reauth_desde`; Composio no
+   * guarda instante, y ahí el campo está AUSENTE — no `null`). `null` = no vino o no es un instante parseable.
+   *
+   * 🔴 **Nunca se sustituye por `creada_en`**: esa es la hora a la que corrió el detector, no la de la caída;
+   * pintarla como «Se cayó · hora» es inventar el dato. Quien pinta omite la fila entera si es `null`.
+   */
+  desde?: string | null;
 }
 
 export interface PresentacionTarjeta {
@@ -110,6 +119,12 @@ export interface DestinoTarjeta {
   id: string | null;
   /** Verbatim del catálogo — **nunca** se arma desde la `key` (`catalogo.test.ts`: MercadoPago ≠ Composio). */
   connectPath: string | null;
+}
+
+/** `datos.desde` → el ISO tal cual, o `null` si no es un string que `Date` pueda leer como instante. */
+function instanteDe(v: unknown): string | null {
+  const s = texto(v);
+  return s != null && !Number.isNaN(new Date(s).getTime()) ? s : null;
 }
 
 /** `datos.destino` → `DestinoTarjeta`, o `null` si no es un objeto con `tipo` string no vacío. */
@@ -195,6 +210,7 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     // es sólo tolerancia con un emisor viejo, NO una alternativa válida: `datos` no tiene forma cerrada y un
     // campo de contrato dentro de esa bolsa hereda el modo de falla de H12 (leído y nunca escrito).
     presentacion: presentacionDe(r.presentacion ?? datos.presentacion),
+    desde: instanteDe(datos.desde),
   };
 }
 

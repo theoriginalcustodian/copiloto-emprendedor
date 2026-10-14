@@ -606,3 +606,30 @@ describe('PantallaSoporte -- tickets propios y adjunto (PROTO4APP §D/§E)', () 
     expect(jest.mocked(listarMisTickets).mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// fact-voz (d) — el prototipo muestra «✓✓ recibido» también en `#s-soporte`. La costura es la misma que en
+// ChatView: `PantallaSoporte` tiene que pasarle a la lista el `sendStatus` real, o un mensaje que todavía no
+// salió se rotula recibido.
+describe('PantallaSoporte -- fact-voz (d): «✓✓ recibido» sólo cuando el servidor aceptó el envío', () => {
+  beforeEach(() => {
+    jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
+  });
+
+  async function escribir(texto: string) {
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), texto);
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+    await screen.findByText(texto);
+  }
+
+  it('🔴 con el POST en vuelo el mensaje no dice «recibido»; con el POST aceptado, sí', async () => {
+    let aceptar!: (v: never) => void;
+    jest.mocked(sendSoporteChat).mockReset().mockReturnValue(new Promise((res) => { aceptar = res as never; }) as never);
+    await escribir('no me deja facturar');
+    expect(screen.queryByTestId('chat-bubble-recibido')).toBeNull();
+
+    aceptar({ wf_id: 'wf-1', accepted: true, session_id: 'sop:abc' } as never);
+    await waitFor(() => expect(screen.getByTestId('chat-bubble-recibido')).toHaveTextContent('✓✓ recibido'));
+  });
+});
