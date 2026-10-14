@@ -58,7 +58,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
 | **SM-D3** | `#1019` | ⬜ PENDIENTE | — |
 | **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
-| **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
+| **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
@@ -371,7 +371,8 @@ no el arranque del sprint.***
 
 ### SM-D5 · `#1007` — La card de confirmación queda activa después de responderla
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se reemplaza por un Recibo sin botones al responderla (ListaMensajes) y useChat.send descarta un segundo callback sobre una card ya marcada hitlRespondido (dos toques en el mismo frame); test con mutante muerto
 - **DoD:** la card responde **una vez** y queda resuelta; un segundo toque **no reenvía**.
 - **Criterio 7 del DoD del sprint.** El mecanismo canónico de las cards por voz dice que nunca se
   pregunta dos veces: una card que sigue activa lo viola de hecho.
