@@ -300,3 +300,43 @@ compartido: `git diff --stat origin/main -- <el script>`. Vacío ⇒ creele; no 
 otra versión, **incluido su rc=0**. (2) Cuando cablees un guard a un compositor, preguntá **quién más
 invoca a sus piezas por separado**: si alguien las llama directo, ese camino no tiene guard. (3) Una
 norma que difundís a otros no se cumple sola en vos: dejale un instrumento, no un recordatorio.
+
+## Faz nueva (2026-10-13): sirve la **memoria** truncada, y una memoria truncada hace REINCIDIR en el defecto que ella documenta
+
+Las fases anteriores de esta entrada son sobre **scripts** e **instrumentos** viejos. Esta es sobre el
+`memoria/` del propio repo, y el daño es de otra clase: no ejecuta nada mal, **me hace repetir un error
+que ya estaba escrito**.
+
+Abrí `memoria/el-pipe-se-come-el-exit-code.md` desde el checkout compartido para no reincidir en un
+defecto de exit code. Me sirvió **27 líneas**. En `main` tiene **197**, con cinco refuerzos — dos de
+ellos, los del 10-08 y el 10-12, describían el caso que yo tenía delante y uno prohibía explícitamente
+lo que hice después (acusar a un instrumento ajeno sin medirlo). Reincidí en los dos, con la entrada
+abierta.
+
+**Por qué no se nota, que es lo único que importa acá:**
+
+- El frontmatter está completo y el título es el correcto, así que el archivo **se ve íntegro**.
+- La versión corta **cierra bien**: termina en una regla general sensata (*«para un comando de fondo, el
+  veredicto es el output, no el status»*) y en un corolario con `[[link]]`. Nada dice «sigue».
+- Y produce el efecto contrario al de no consultar: **la sensación de haber consultado**. Si el archivo
+  no hubiera existido, habría buscado. Al existir truncado, dejé de buscar.
+- La versión corta nombra el defecto por **una** causa (el pipe). Los refuerzos faltantes son justamente
+  los que agregan las otras vías. ⇒ un documento truncado no es «la misma información, menos»: es
+  **una teoría más simple y más falsa**, con la autoridad del documento completo.
+
+**Y el riesgo de escritura, que es simétrico y peor:** appendeé mi refuerzo a esa versión corta. El
+commit habría borrado los cinco refuerzos anteriores, con `+36 −167` y un mensaje que dice «agrega
+refuerzo». Lo cacé con `git diff origin/main --numstat` **antes** de commitear. Leer el archivo no lo
+habría cazado: se leía perfecto.
+
+**La regla, en dos comandos:**
+
+- Antes de **confiar** en una entrada de `memoria/` leída desde el checkout compartido:
+  `git diff origin/main --numstat -- memoria/<entrada>.md`. Si borra líneas, lo que tenés no es la
+  entrada — leé `git show origin/main:memoria/<entrada>.md`.
+- Antes de **appendear** a cualquier archivo versionado del checkout compartido, el mismo comando. El
+  signo manda: [[base-rancia-invierte-la-direccion-del-diff]].
+
+Hermanas: [[el-indice-truncado-fabrica-duplicados]] (el índice truncado hace **escribir de nuevo** lo
+que ya existe; acá la **entrada** truncada hace **hacer de nuevo** el error que ya se pagó) ·
+[[el-pipe-se-come-el-exit-code]] §refuerzo 2026-10-13.

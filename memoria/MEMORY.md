@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **✅ Criterio 3: web 54/54 · 🔴 mobile 13/54** (medido 08/10 con `contar-veredictos.py`; device habilitado 13-10: las 15 filas se miden ahora). Cifra sin unidad = inutilizable.
+- **📊 DOS cifras, DOS medidores (13-10): criterio 3 web 54/54 · mobile 16/54 (`contar-veredictos.py`) · 🎯 SPRINT 39/54=72% (`medir-mapeo-implementacion.py`)**. Citar una por la otra = el error del día.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **📱 SPRINT VIGENTE = MOBILE, y device está DENTRO** (13-10). El de la beta cerró 08/10 (`DEC-14` 7/7 @`92fd8a06`): «al sprint siguiente» YA VENCIÓ — el siguiente es ESTE.
@@ -129,7 +129,7 @@
 ### Delegación, contexto y herramientas
 - [🖥️🚫 Sub-agentes: CERO — agotan la RAM del operador](subagentes-van-headless-no-inline-en-la-terminal.md) — 13/10 revocó headless. Script-first.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
-- [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) - sin cargar completo ⇒ duplicados.
+- [📚 Índice truncado ⇒ duplicados](el-indice-truncado-fabrica-duplicados.md) · [ENTRADA truncada ⇒ REINCIDIR en lo ya escrito](el-checkout-compartido-sirve-comandos-viejos.md) - `diff --numstat` vs main antes de confiar.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
 - [🧠🔁 Memoria repo vs slug divergen — `seed-memory.sh` es SEGURO (`--update`)](memoria-repo-vs-slug-drift.md) — NO correrlo es lo que las diverge.
 - [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) - apuntá a paths, no «explorá».
