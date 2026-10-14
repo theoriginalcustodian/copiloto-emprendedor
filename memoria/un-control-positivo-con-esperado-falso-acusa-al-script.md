@@ -204,3 +204,40 @@ el artefacto: audita el control.
 **La trampa a nombrar:** «no puedo probarlo porque perdí el insumo» suena a rigor y se parece mucho
 a rigor. Antes de aceptarla hay que preguntar *¿el insumo lo tengo que tener YO?*. Acá no: lo
 necesitaba **alguien**, y había alguien disponible a un tool call de distancia.
+
+---
+
+## Refuerzo 2026-10-14 — la TERCERA parte que puede estar mal: el SUJETO que fabriqué para el control
+
+Esta entrada dice que un control positivo tiene dos partes falibles: el instrumento y el esperado. Hay
+una tercera, y hoy me mintió con la cara de la peor conclusión posible: **el sujeto de prueba**.
+
+Declaré `UMBRAL_SILENCIO: 480` en un `pedido_` propio para apagar una alarma que llevaba cinco ciclos
+gritando sin acción posible. El gate pasó a `rc=0`, y antes de reportarlo quise el control positivo:
+armé un buzón de prueba con dos archivos de 200 minutos de edad, uno con el umbral declarado y otro sin
+él. **Ninguno de los dos disparó.** La lectura inmediata era la grave: lo dejé ciego.
+
+No era eso. El escalador mide `max(mtime, ctime)` a propósito (`escaladores-buzon.sh:603-610`: el `mv`
+de `abierto/` a `en-curso/` no cambia el mtime, así que un contrato recién **tomado** nacía marcado con
+la edad de cuando se escribió). Y `touch -d '200 minutes ago'` cambia el mtime… **y pone el ctime en
+ahora**. Mis dos archivos tenían edad 0 para el instrumento. El sujeto que fabriqué **no tenía la
+propiedad que el instrumento mide**, y el ctime no se puede falsificar sin tocar el reloj.
+
+**La forma general:** cuando fabricás el sujeto de un control positivo, copiás las propiedades que
+*vos* crees que definen el caso. Si el instrumento mide otra —una que el fabricado resetea por el acto
+mismo de crearlo— el control sale mudo, y mudo se lee como ceguera del instrumento. Es
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] aplicado al sujeto: probé «archivo con mtime
+viejo» y concluí sobre «archivo viejo».
+
+**Lo que lo resolvió, y es la salida barata correcta:** no fabricar el sujeto — **mover el umbral sobre
+los sujetos reales**. Con `UMBRAL_SILENCIO_DEFAULT_MIN=1` sobre el buzón real el escalador disparó
+sobre 3 contratos (⇒ mira), y el `pedido_` con 480 **siguió callado incluso con umbral 1** (⇒ lo calla
+el umbral declarado, no la ceguera). Un control diferencial sobre lo real, con una sola variable movida,
+en vez de un sujeto sintético con propiedades que no controlo.
+
+**Y la causa que casi se me cuela gratis:** editar el archivo para insertar el umbral le refrescó el
+mtime, así que el `rc=0` tenía **dos explicaciones suficientes** —el touch y el 480— y el gate no
+atribuye ([[dos-causas-suficientes-el-test-no-atribuye]]). El mismo control diferencial las separó: con
+default=1, el touch ya no lo salva.
+
+→ [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] · [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]] · [[la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido]]
