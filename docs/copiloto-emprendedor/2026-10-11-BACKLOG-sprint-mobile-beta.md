@@ -63,7 +63,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado; merge b392389b, PR #1175: la imputación se… |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
@@ -416,8 +416,7 @@ no el arranque del sprint.***
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
 - **Estado:** DOD-PARCIAL
-- **Dueno-activo:** backend
-- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de frontend: (1) retirar preguntarInteligencia de packages/core (inteligencia.ts:193-210, index.ts:359, inteligencia.test.ts); (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas con pantalla y dueno; (3) cambiar-email bloqueado por SMTP (SM-C5). Pedido en buzon: 2026-10-14_pedido_backend-a-planificacion_SM-E3-y-SM-E1.
+- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado; merge b392389b, PR #1175: la imputación se LEE — GET /gastos y /gastos/{id} traen gasto.imputacion {gasto_id,presupuesto_ref,comprobante_ref,cobro_ref}, misma forma que el PUT; VPS verdes, adversarial+mutante). Falta, de frontend: (1) retirar preguntarInteligencia de packages/core (inteligencia.ts:193-210, index.ts:359, inteligencia.test.ts); (2) cablear imputacion -> margen en la UI: leer gasto.imputacion de core (tipo Gasto) y agregar el punto de entrada de imputar en DetalleGasto (hoy sin editar, contrato §12) — la tarjeta de margen ya dice cuántos gastos hay imputados pero nadie puede imputar; mi-dia/tarjetas con pantalla y dueno; (3) cambiar-email bloqueado por SMTP (SM-C5).
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
