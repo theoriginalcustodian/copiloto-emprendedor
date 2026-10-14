@@ -44,7 +44,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
 | **SM-A1** | `#1010` | ✅ TERMINADO | merge ea810b7a (#1178) - DoD(1) abre al primer toque 6 de 6 ciclos con pestana visible, escalas de animacion en valor… |
-| **SM-A2** | `#1012` | ⬜ PENDIENTE | — |
+| **SM-A2** | `#1012` | ✅ TERMINADO | evidencia docs/copiloto-emprendedor/Auditorias/2026-10-14-SM-A2-eje-A-las-21-rutas-en-device.md (medido contra main e… |
 | **SM-B1** | `#1014` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS (gh pr view 1023) - DoD: el pago MercadoPago deja de contarse dos v… |
 | **SM-B2** | `#1015` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS - DoD: la fila vale nota_credito y la app ya no ofrece anular una NC |
 | **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
@@ -100,7 +100,9 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 
 ### SM-A2 · `#1012` — El eje A tiene 1 ruta verificada de 21
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** frontend2
+- **Cierre:** evidencia docs/copiloto-emprendedor/Auditorias/2026-10-14-SM-A2-eje-A-las-21-rutas-en-device.md (medido contra main ea810b7a, prod 9e536c38) - DoD(1) las 21 rutas con veredicto del eje A: 19 LLEGA, 1 NO_LLEGA (/midia: cero call-sites), 1 NO_ATRIBUIBLE (/agenda: Calendar caido en el tenant) - DoD(2) animaciones en valor normal; control positivo (tile abre) y negativo (toque en zona vacia, captura byte-identica) en la misma corrida
 - **Medido:** **1 válida de 21.** 15 nunca se intentaron; 5 quedaron `NO_ATRIBUIBLE` al retirar `H-60`.
 - **DoD:** las **21** con veredicto del vocabulario cerrado, medidas con animaciones en valor normal.
 - **Evidencia:** por corrida, su control positivo. Un rojo sin control positivo válido es
