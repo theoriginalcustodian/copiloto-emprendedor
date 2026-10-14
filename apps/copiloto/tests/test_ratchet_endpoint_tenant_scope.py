@@ -165,7 +165,12 @@ def _fernet_key_env(monkeypatch):
 # `/gastos/{gasto_id}/imputacion`, `/trabajos/{eslabon}/{ref}/margen`, `/presupuestos`,
 # `/presupuestos/{presupuesto_id}` (+ `/estado`, `/facturar`), `/conceptos`, `/conceptos/{concepto_id}`,
 # `/perfil-negocio`, `/perfil-negocio/ejemplo`. Baja porque alguien las cubrió: la cobertura real SUBIÓ.
-_DEUDA_TENANT_SCOPED_SIN_TEST = 50
+# 50 -> 43 (RATCHET lote 2, 2026-10-14): 7 rutas ganan su caso hostil HTTP en `test_adversarial_multitenant.py`
+# (mismo armado: una app, dos tenants por token, 404 «de otro» == 404 «no existe», control positivo):
+# `/ingresos`, `/ingresos/resumen`, `/ingresos/{ingreso_id}`, `/clientes`, `/clientes/{cliente}`,
+# `/contabilidad/resumen`, `/actividad`. Lote: 7 intentadas, 7 cubiertas, 0 sin poder. Además el alta de
+# cliente con el MISMO documento que otro tenant se afirma 201 (nunca un 409 que nombre al otro).
+_DEUDA_TENANT_SCOPED_SIN_TEST = 43
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------
@@ -483,6 +488,9 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
         "/presupuestos", "/presupuestos/{presupuesto_id}", "/presupuestos/{presupuesto_id}/estado",
         "/presupuestos/{presupuesto_id}/facturar",
         "/conceptos", "/conceptos/{concepto_id}", "/perfil-negocio", "/perfil-negocio/ejemplo",
+        # RATCHET lote 2 2026-10-14
+        "/ingresos", "/ingresos/resumen", "/ingresos/{ingreso_id}",
+        "/clientes", "/clientes/{cliente}", "/contabilidad/resumen", "/actividad",
     }
 
 

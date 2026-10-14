@@ -26,6 +26,7 @@ import pytest
 
 from fastapi import HTTPException, Request  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
 from decimal import Decimal  # noqa: E402
 
 import web as web_module  # noqa: E402
@@ -34,6 +35,14 @@ from clients.agent.providers.crypto import FernetCrypto  # noqa: E402
 from context_factory import make_context_factory  # noqa: E402
 from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
 from concepto_store import ConceptoStore  # noqa: E402
+from actividad_store import ActividadStore  # noqa: E402
+from actividad_web import create_actividad_app  # noqa: E402
+from afip_comprobante_store import AfipComprobanteStore  # noqa: E402
+from afip_web import create_afip_app  # noqa: E402
+from cliente_store import ClienteStore  # noqa: E402
+from clientes_web import create_clientes_app  # noqa: E402
+from cobro_store import CobroStore  # noqa: E402
+from contabilidad_web import create_contabilidad_app  # noqa: E402
 from gasto_store import GastoStore  # noqa: E402
 from gastos_web import create_gastos_app  # noqa: E402
 from mi_dia_web import create_mi_dia_app  # noqa: E402
@@ -1143,3 +1152,158 @@ def test_adversarial_http_perfil_negocio_a_no_lee_ni_pisa_el_de_b_y_sin_token_no
         assert client.get("/perfil-negocio/ejemplo", params=params, headers=h_a).status_code == 200
     finally:
         _limpiar_finanzas(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+# --- RATCHET lote 2 (2026-10-14): ingresos, clientes, contabilidad y actividad ---------------------
+# Una sola `FastAPI` sirviendo a los dos tenants por token, con los routers REALES de cada módulo.
+# Los 404 «es de otro» se comparan contra un id inexistente: si difirieran, A enumeraría los ids de B.
+
+def _build_negocio_http_app(two_tenants):
+    a, b = two_tenants
+    cf = conexion_con_tenant(_conn_factory_cruda())
+    rt = _RequireTenantByToken({a.token: a.cliente_id, b.token: b.cliente_id})
+    app = FastAPI()
+    # `perfil/cred/handoff/start_onboarding` son obligatorios de `create_afip_app` pero ninguna ruta
+    # de ingresos los toca: si alguna lo hiciera, el `None` reventaría y el test lo diría a gritos.
+    app.include_router(create_afip_app(
+        require_tenant=rt, perfil_store_factory=lambda cid: None, cred_store_factory=lambda cid: None,
+        handoff_factory=lambda cid: None, start_onboarding=lambda *args: "wf",
+        cobro_store_factory=lambda cid: CobroStore(cf, cid)).router)
+    app.include_router(create_clientes_app(
+        require_tenant=rt, cliente_store_factory=lambda cid: ClienteStore(cf, cid)).router)
+    app.include_router(create_contabilidad_app(
+        require_tenant=rt, cobro_store_factory=lambda cid: CobroStore(cf, cid),
+        gasto_store_factory=lambda cid: GastoStore(cf, cid),
+        afip_comprobante_store_factory=lambda cid: AfipComprobanteStore(cf, cid)).router)
+    app.include_router(create_actividad_app(
+        require_tenant=rt, actividad_store_factory=lambda cid: ActividadStore(cf, cid)).router)
+    return app
+
+
+def _limpiar_negocio(conn_de_tenant, *cids):
+    _limpiar_finanzas(conn_de_tenant, *cids)
+    for cid in cids:
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_cobros WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_clientes WHERE cliente_id = %s", (cid,))
+        conn.commit()
+        conn.close()
+
+
+def test_adversarial_http_ingresos_a_no_ve_ni_borra_ni_completa_el_de_b(two_tenants, conn_de_tenant):
+    """A, con su token, pide / completa / borra el ingreso de B y le mira el resumen del mes.
+
+    CONTROL POSITIVO: B ve y borra su propio ingreso con el mismo armado."""
+    a, b = two_tenants
+    try:
+        ingreso_b = CobroStore(conn_de_tenant(b.cliente_id), b.cliente_id).registrar_suelto(
+            monto=Decimal("5000"), concepto="trabajo de B")["id"]
+        client = TestClient(_build_negocio_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        r_cross = client.patch(f"/ingresos/{ingreso_b}", json={"concepto": "pisado por A"}, headers=h_a)
+        r_inex = client.patch("/ingresos/999999999", json={"concepto": "pisado por A"}, headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        r_cross = client.delete(f"/ingresos/{ingreso_b}", headers=h_a)
+        r_inex = client.delete("/ingresos/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # el listado y el resumen de A no traen nada de B (ni con un `?cliente_id=` ajeno)
+        r_lista = client.get("/ingresos", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_lista.status_code == 200
+        assert r_lista.json()["ingresos"] == [] and Decimal(r_lista.json()["total"]) == 0
+        r_res = client.get("/ingresos/resumen", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_res.status_code == 200 and Decimal(r_res.json()["total"]) == 0
+
+        # A anota lo suyo: es SU fila y no toca la de B
+        r_alta = client.post("/ingresos", json={"monto": "100", "concepto": "de A"}, headers=h_a)
+        assert r_alta.status_code == 201
+
+        # CONTROL POSITIVO: B ve SU ingreso intacto y su resumen; y lo puede borrar
+        de_b = client.get("/ingresos", headers=h_b).json()["ingresos"]
+        assert [(i["id"], i["concepto"]) for i in de_b] == [(ingreso_b, "trabajo de B")]
+        assert Decimal(client.get("/ingresos/resumen", headers=h_b).json()["total"]) == Decimal("5000")
+        assert client.delete(f"/ingresos/{ingreso_b}", headers=h_b).status_code == 200
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_http_clientes_a_no_ve_ni_edita_el_de_b_y_su_documento_no_da_409(
+        two_tenants, conn_de_tenant):
+    """A pide / edita la ficha de B, y da de alta un cliente con el MISMO documento que B.
+
+    Ese último caso es el sutil: si el índice de duplicados no estuviera por tenant, A recibiría un
+    409 «ese documento ya es de <nombre de B>» y se enteraría de a quién le vende B."""
+    a, b = two_tenants
+    try:
+        ficha_b = ClienteStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            nombre="Panadería de B", doc_tipo=80, doc_nro="20111111112")
+        cliente_b = ficha_b["id"]
+        client = TestClient(_build_negocio_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        r_cross = client.get(f"/clientes/{cliente_b}", headers=h_a)
+        r_inex = client.get("/clientes/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        r_cross = client.post(f"/clientes/{cliente_b}", json={"nombre": "pisado por A"}, headers=h_a)
+        r_inex = client.post("/clientes/999999999", json={"nombre": "pisado por A"}, headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # la cartera de A no trae la de B, ni con `?q=` ni con `?cliente_id=` ajeno
+        r_lista = client.get("/clientes", params={"q": "Panadería", "cliente_id": b.cliente_id},
+                             headers=h_a)
+        assert r_lista.status_code == 200
+        assert r_lista.json()["clientes"] == [] and r_lista.json()["total"] == 0
+
+        # mismo documento y mismo nombre que B: es de A, 201 — y NUNCA un 409 que nombre a B
+        r_alta = client.post("/clientes", json={"nombre": "Panadería de B", "doc_tipo": 80,
+                                                "doc_nro": "20111111112"}, headers=h_a)
+        assert r_alta.status_code == 201, r_alta.text
+        assert r_alta.json()["id"] != cliente_b
+
+        # CONTROL POSITIVO: la ficha de B sigue siendo la suya, intacta
+        r_b = client.get(f"/clientes/{cliente_b}", headers=h_b)
+        assert r_b.status_code == 200
+        assert r_b.json()["cliente"]["nombre"] == "Panadería de B"
+        assert client.get("/clientes", headers=h_b).json()["total"] == 1
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_http_contabilidad_y_actividad_a_no_ven_la_plata_ni_los_movimientos_de_b(
+        two_tenants, conn_de_tenant):
+    """El resumen de la caja y el feed de actividad de A no suman ni listan lo de B.
+
+    CONTROL POSITIVO: B ve en los dos lo suyo, con el mismo armado — si la app fallara para todos, el
+    «A no ve nada» no probaría aislamiento."""
+    a, b = two_tenants
+    try:
+        CobroStore(conn_de_tenant(b.cliente_id), b.cliente_id).registrar_suelto(
+            monto=Decimal("7000"), concepto="cobro de B")
+        GastoStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            monto=Decimal("1500"), categoria="otros")
+        client = TestClient(_build_negocio_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        r_a = client.get("/contabilidad/resumen", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_a.status_code == 200
+        assert Decimal(str(r_a.json()["caja"]["entro"])) == 0
+        assert Decimal(str(r_a.json()["caja"]["salio"])) == 0
+
+        act_a = client.get("/actividad", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert act_a.status_code == 200 and act_a.json()["items"] == []
+
+        # CONTROL POSITIVO
+        r_b = client.get("/contabilidad/resumen", headers=h_b)
+        assert Decimal(str(r_b.json()["caja"]["entro"])) == Decimal("7000")
+        assert Decimal(str(r_b.json()["caja"]["salio"])) == Decimal("1500")
+        assert len(client.get("/actividad", headers=h_b).json()["items"]) >= 2
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
