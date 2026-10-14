@@ -34,6 +34,7 @@ import {
 } from '@copiloto/core';
 
 import { MidiaScreen } from './MidiaScreen';
+import midiaScreenSource from './MidiaScreen.tsx?raw';
 
 const leerMock = vi.mocked(leerTablero);
 const cambiarEstadoMock = vi.mocked(cambiarEstadoTarjetaMiDia);
@@ -290,11 +291,9 @@ describe('MidiaScreen — chips, contador y banner crítico (BL-W7 + BL-J5)', ()
     expect(screen.queryByTestId('midia-tarjeta-s-prosa')).not.toBeInTheDocument();
   });
 
-  it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', async () => {
-    const { readFileSync } = await import('node:fs');
-    const { join } = await import('node:path');
-    const fuente = readFileSync(join(__dirname, 'MidiaScreen.tsx'), 'utf8');
-    expect(fuente).not.toMatch(/tarjeta\.(monto|fecha)/);
+  it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', () => {
+    expect(midiaScreenSource).toMatch(/tarjeta\.cliente/); // control positivo: el scan SI ve esta fuente
+    expect(midiaScreenSource).not.toMatch(/tarjeta\.(monto|fecha)\b/);
   });
 });
 

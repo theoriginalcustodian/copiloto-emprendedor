@@ -620,9 +620,8 @@ describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida
   it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', () => {
     // Si la tabla fija Monto/Fecha vuelve en un merge, esas filas quedan escritas e inalcanzables y nadie lo
     // ve (ya pasó). El campo tampoco existe en `TarjetaMiDia`, así que el tipo también lo frena.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fuente: string = require('fs').readFileSync(require('path').join(__dirname, 'PantallaMiDia.tsx'), 'utf8');
-    expect(fuente).not.toMatch(/tarjeta\.(monto|fecha)/);
+    expect(fuente).not.toMatch(/tarjeta\.(monto|fecha)\b/);
   });
 
   it('la píldora rutea por `rutaDeDestino` TAL CUAL: conexion con id → abre ESA conexión', async () => {
