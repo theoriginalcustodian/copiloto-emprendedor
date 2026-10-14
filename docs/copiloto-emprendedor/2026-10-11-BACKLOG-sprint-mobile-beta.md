@@ -61,9 +61,9 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ⬜ PENDIENTE | — |
 | **SM-D6** | `#1008` | ⬜ PENDIENTE | — |
 | **SM-D7** | `#1009` | ⬜ PENDIENTE | — |
-| **SM-E1** | `#1005` | 🟨 EN-CURSO | backend |
-| **SM-E2** | `#1006` | 🟨 EN-CURSO | backend |
-| **SM-E3** | `#1020` | 🟨 EN-CURSO | backend |
+| **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado… |
+| **SM-E2** | `#1006` | ⬜ PENDIENTE | — |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de … |
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
@@ -395,21 +395,22 @@ no el arranque del sprint.***
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** backend
+- **Falta:** Backend HECHO (merge b705a403, PR #1155: RI -> puede_facturar false + motivo_no_puede_facturar, perfil RI 422, estado() no explota; VPS 2446 verdes, mutante 5 rojos). Falta, de frontend: exponer motivoNoPuedeFacturar en packages/core afip.ts, copy de las dos PantallaFacturacion (hoy el CTA 'todavia no configuraste' hace lazo para un RI) y la opcion Responsable inscripto de las dos PantallaAfipSetup (ahora 422).
 - **Medido:** la promesa se muestra y la emisión levanta `NotImplementedError`.
 - **DoD:** **o** la emisión funciona para ese caso, **o** la promesa no se muestra. **Nunca las dos.**
 
 ### SM-E2 · `#1006` — El catálogo de apps anuncia herramientas que fueron podadas
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** backend
+- **Estado:** PENDIENTE
 - **DoD:** lo anunciado y lo cableado coinciden, **ítem por ítem** (no «en general»).
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** backend
+- **Falta:** Backend HECHO (merge e7601bc6, PR #1154: POST /inteligencia/chat retirado, VPS 2418 verdes, mutante rojo). Falta, de frontend: (1) retirar preguntarInteligencia de packages/core (inteligencia.ts:193-210, index.ts:359, inteligencia.test.ts); (2) cablear imputacion -> margen (margen nunca sin gastos_imputados al lado, gastos_web.py:183) y mi-dia/tarjetas con pantalla y dueno; (3) cambiar-email bloqueado por SMTP (SM-C5). Pedido en buzon: 2026-10-14_pedido_backend-a-planificacion_SM-E3-y-SM-E1.
 - **Medido:** 5 endpoints que **ninguna** app consume; **3** de ellos ya tienen la función del cliente
   compartido escrita y **sin consumidor**.
 - **DoD:** cada una clasificada **explícitamente**: se cablea (con dueño y pantalla) o se retira
