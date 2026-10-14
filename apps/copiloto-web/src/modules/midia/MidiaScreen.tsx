@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
   estadoDeServicio,
   ETIQUETA_CATEGORIA_TARJETA,
   fechaDeHoyMidia,
@@ -59,6 +60,87 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   para_hoy: { estado: 'haciendo', etiqueta: 'Empezar' },
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
+
+/**
+ * El alta **a mano** de una tarjeta de Mi dia, gemelo de `apps/mobile/.../PantallaMiDia.tsx`.
+ *
+ * Por que existe: `POST /mi-dia/tarjetas` esta en el backend desde siempre y
+ * `crearTarjetaMiDia` en el cliente compartido desde `miDia.ts:240`, pero **ninguna pantalla lo
+ * llamaba** -- la capacidad estaba escrita y muerta (ficha SM-E3, hallazgo de las cinco
+ * capacidades sin consumidor). Y la propia pantalla ya se lo prometia al emprendedor: la nota que
+ * cierra la lista dice *«Las que anotaste vos las moves vos»* cuando no habia con que anotarlas.
+ *
+ * La tarjeta manual nace en `para_hoy` (`mi_dia_tarjeta_store.py:123` no fija estado, cae al
+ * default de la tabla), asi que despues de crear se salta a esa solapa: si no, el emprendedor
+ * toca «Agregar» parado en «Haciendo» y no ve aparecer nada.
+ *
+ * El error NO abre un cartel propio: va al banner `midia-error` que la pantalla ya tiene para
+ * mover y borrar. Un segundo lugar donde mirar errores es el que nadie mira.
+ */
+function AltaTarjeta({
+  onCreada,
+  onError,
+}: {
+  onCreada: () => void;
+  onError: (motivo: string) => void;
+}) {
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const vacio = texto.trim() === '';
+
+  async function agregar() {
+    if (vacio || guardando) return;
+    setGuardando(true);
+    try {
+      const res = await crearTarjetaMiDia(texto.trim());
+      if (res.status === 'ok') {
+        setTexto('');
+        onCreada();
+        return;
+      }
+      // El motivo del backend se muestra TAL CUAL: es el unico que dice que corregir.
+      if (res.status === 'texto_vacio') {
+        onError(res.motivo);
+        return;
+      }
+      onError('No se pudo anotar la tarjeta. Proba de nuevo en un momento.');
+    } catch {
+      onError('No se pudo anotar la tarjeta. Proba de nuevo en un momento.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form
+      className="midia-screen__alta"
+      data-testid="midia-alta"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void agregar();
+      }}
+    >
+      <label className="midia-screen__alta-campo">
+        <span className="midia-screen__alta-etiqueta">Anotar algo para hoy</span>
+        <input
+          data-testid="midia-alta-texto"
+          type="text"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder="Llamar al proveedor"
+          disabled={guardando}
+        />
+      </label>
+      {/* El wrapper existe para que el gate de paridad de testIDs compare contra algo real: en
+          mobile las acciones viven en un `FilaBotones` (`midia-alta-acciones`), no sueltas. */}
+      <div className="midia-screen__alta-acciones" data-testid="midia-alta-acciones">
+        <Button type="submit" variant="primary" disabled={vacio || guardando} data-testid="midia-alta-enviar">
+          Agregar
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbrirChat?: () => void } = {}) {
   // BL-J13: la agenda de varios días es una sub-vista de Mi día (sin ruta propia, como las de Ajustes).
@@ -234,6 +316,16 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
       </div>
 
       <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
+
+      {/* SM-E3: anotar a mano. Va arriba de la lista, no al final: lo que se anota se anota antes
+          de repasar el dia, y al final de una lista larga nadie lo encuentra. */}
+      <AltaTarjeta
+        onCreada={() => {
+          setSolapaActiva('para_hoy');
+          void cargar();
+        }}
+        onError={setError}
+      />
 
       {error != null && (
         <div className="midia-screen__error" data-testid="midia-error" role="alert">

@@ -10,6 +10,7 @@ import {
   avisoAlChat,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
   estadoDeServicio,
   fechaDeHoyMidia,
   horaDeEvento,
@@ -39,6 +40,7 @@ import { AvatarCuenta } from './AvatarCuenta';
 import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
+import { CampoTexto, FilaBotones } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
@@ -332,6 +334,76 @@ export interface PantallaMiDiaProps {
   cierreDeAviso?: { tarjetaId: string; n: number } | null;
 }
 
+/**
+ * El alta **a mano** de una tarjeta de Mi dia, gemelo de
+ * `apps/copiloto-web/src/modules/midia/MidiaScreen.tsx`.
+ *
+ * Por que existe: `POST /mi-dia/tarjetas` esta en el backend desde siempre y `crearTarjetaMiDia`
+ * en el cliente compartido (`miDia.ts:240`), pero **ninguna pantalla lo llamaba** -- la capacidad
+ * estaba escrita y muerta (ficha SM-E3). Y esta misma pantalla ya se lo prometia al emprendedor:
+ * la nota que cierra la lista dice *«Las que anotaste vos las moves vos»* cuando no habia con que
+ * anotarlas.
+ *
+ * La tarjeta manual nace en `para_hoy` (`mi_dia_tarjeta_store.py:123` no fija estado: cae al
+ * default de la tabla), asi que al crear se salta a esa solapa -- si no, el emprendedor toca
+ * «Agregar» parado en «Haciendo» y no ve aparecer nada.
+ *
+ * El error va por `Alert`, el mismo camino que `avanzar` y `borrar` de esta pantalla: un segundo
+ * lugar donde mirar errores es el que nadie mira.
+ */
+function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
+  const tema = useTema();
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const vacio = texto.trim() === '';
+
+  async function agregar() {
+    if (vacio || guardando) return;
+    setGuardando(true);
+    try {
+      const res = await crearTarjetaMiDia(texto.trim());
+      if (res.status === 'ok') {
+        setTexto('');
+        onCreada();
+        return;
+      }
+      // El motivo del backend se muestra TAL CUAL: es el unico que dice que corregir.
+      if (res.status === 'texto_vacio') {
+        Alert.alert('No se pudo anotar la tarjeta', res.motivo);
+        return;
+      }
+      Alert.alert('No se pudo anotar la tarjeta', 'Proba de nuevo en un momento.');
+    } catch {
+      Alert.alert('No se pudo anotar la tarjeta', 'Proba de nuevo en un momento.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <View style={{ gap: tema.espacio.sm, paddingHorizontal: 16 }} testID="midia-alta">
+      <CampoTexto
+        etiqueta="Anotar algo para hoy"
+        testID="midia-alta-texto"
+        valor={texto}
+        onChange={setTexto}
+        placeholder="Llamar al proveedor"
+      />
+      <FilaBotones
+        testID="midia-alta-acciones"
+        compacto
+        botones={[{
+          etiqueta: 'Agregar',
+          onPress: () => { void agregar(); },
+          variante: 'primario',
+          deshabilitado: vacio || guardando,
+          testID: 'midia-alta-enviar',
+        }]}
+      />
+    </View>
+  );
+}
+
 export function PantallaMiDia({
   comoPortada = false,
   onAjustes,
@@ -532,6 +604,15 @@ export function PantallaMiDia({
         />
 
         <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
+
+        {/* SM-E3: anotar a mano. Arriba de la lista, no al final: lo que se anota se anota antes de
+            repasar el dia, y al final de una lista larga nadie lo encuentra. */}
+        <AltaTarjeta
+          onCreada={() => {
+            setSolapaActiva('para_hoy');
+            void cargar();
+          }}
+        />
 
         {estado === 'cargando' && (
           <View style={styles.centro}>

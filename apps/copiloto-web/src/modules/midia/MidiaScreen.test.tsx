@@ -13,6 +13,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     leerTablero: vi.fn(),
     cambiarEstadoTarjetaMiDia: vi.fn(),
     borrarTarjetaMiDia: vi.fn(),
+    crearTarjetaMiDia: vi.fn(),
     leerCalendario: vi.fn(),
     leerPortada: vi.fn(),
     leerAgenda: vi.fn(),
@@ -24,6 +25,7 @@ import {
   CLAVE_DIAS_CALMA,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
   fechaDeHoyMidia,
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
@@ -39,6 +41,7 @@ import midiaScreenSource from './MidiaScreen.tsx?raw';
 const leerMock = vi.mocked(leerTablero);
 const cambiarEstadoMock = vi.mocked(cambiarEstadoTarjetaMiDia);
 const borrarMock = vi.mocked(borrarTarjetaMiDia);
+const crearMock = vi.mocked(crearTarjetaMiDia);
 const leerCalendarioMock = vi.mocked(leerCalendario);
 const leerPortadaMock = vi.mocked(leerPortada);
 const listarCatalogoMock = vi.mocked(listarCatalogo);
@@ -72,6 +75,7 @@ beforeEach(() => {
   leerMock.mockReset().mockResolvedValue({ status: 'ok', tablero: TABLERO });
   cambiarEstadoMock.mockReset().mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockReset().mockResolvedValue({ status: 'ok' });
+  crearMock.mockReset().mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   leerCalendarioMock.mockReset().mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
   leerPortadaMock.mockReset().mockResolvedValue({ status: 'no_disponible' });
   listarCatalogoMock.mockReset().mockResolvedValue({ status: 'ok', servicios: [] });
@@ -367,5 +371,77 @@ describe('MidiaScreen — agenda de varios días (BL-J13)', () => {
 
     await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeInTheDocument());
     expect(screen.getByTestId('midia-ver-agenda')).toBeInTheDocument();
+  });
+});
+
+/**
+ * El alta **a mano** (SM-E3) -- gemelo de `apps/mobile/.../PantallaMiDia.test.tsx`. `POST
+ * /mi-dia/tarjetas` y `crearTarjetaMiDia` existian desde siempre y **ninguna pantalla los
+ * llamaba**: estos casos son lo que impide que la capacidad vuelva a quedar muerta.
+ */
+describe('MidiaScreen — anotar una tarjeta a mano (SM-E3)', () => {
+  it('con el campo vacío el botón no deja mandar, y los espacios no cuentan como texto', async () => {
+    render(<MidiaScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('midia-alta-enviar')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-alta-enviar')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: '   ' } });
+    expect(screen.getByTestId('midia-alta-enviar')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: 'Llamar al proveedor' } });
+    expect(screen.getByTestId('midia-alta-enviar')).not.toBeDisabled();
+  });
+
+  it('agrega la tarjeta con el texto sin blancos de borde y vuelve a leer el tablero', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto')).toBeInTheDocument());
+    const lecturasAntes = leerMock.mock.calls.length;
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: '  Llamar al proveedor  ' } });
+    fireEvent.click(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(crearMock).toHaveBeenCalledWith('Llamar al proveedor'));
+    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturasAntes));
+    // El campo queda limpio: si no, el siguiente toque crea la misma tarjeta otra vez.
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto')).toHaveValue(''));
+  });
+
+  it('🔴 anotar parado en «Haciendo» salta a «Para hoy»: la tarjeta manual nace ahí', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-solapa-haciendo')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('midia-solapa-haciendo'));
+    expect(screen.getByTestId('midia-solapa-haciendo')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: 'Comprar bolsas' } });
+    fireEvent.click(screen.getByTestId('midia-alta-enviar'));
+
+    // Sin esto el emprendedor toca «Agregar» y no ve aparecer nada: la tarjeta existe, pero en otra
+    // solapa. Un alta que no se ve es indistinguible de un alta que falló.
+    await waitFor(() => expect(screen.getByTestId('midia-solapa-para_hoy')).toHaveAttribute('aria-pressed', 'true'));
+  });
+
+  it('🔴 texto vacío para el backend muestra SU motivo, no uno genérico nuestro', async () => {
+    crearMock.mockResolvedValue({ status: 'texto_vacio', motivo: 'texto vacío' });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: 'algo' } });
+    fireEvent.click(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(screen.getByTestId('midia-error')).toHaveTextContent('texto vacío'));
+  });
+
+  it('🔴 si el alta falla, lo que escribió NO se pierde', async () => {
+    crearMock.mockResolvedValue({ status: 'no_disponible' });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByTestId('midia-alta-texto'), { target: { value: 'Llamar al proveedor' } });
+    fireEvent.click(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(screen.getByTestId('midia-error')).toBeInTheDocument());
+    // Limpiar el campo ante un fallo le borra el texto al emprendedor y encima le sugiere que anduvo.
+    expect(screen.getByTestId('midia-alta-texto')).toHaveValue('Llamar al proveedor');
   });
 });

@@ -5118,6 +5118,18 @@
       "id": "detalle-gasto-trabajo-imputado",
       "motivo": "SM-E3 (el trabajo al que esta imputado el gasto): punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. Web lo declara en `DetalleGasto.tsx:125` (`<Dato ... testID=\"detalle-gasto-trabajo-imputado\" />`) y sus tests lo afirman por testID en los dos fronts. Es el sexto hermano de los cinco `Dato` ya listados (categoria, fecha, medio-pago, origen, proveedor), con la misma causa. Dueno: planificacion. Disparador para sacar las SEIS juntas: que el escaner resuelva la prop `testID` reenviada por `Dato` -- no tiene sentido triarlas de a una.",
       "pantalla": "modules/gastos"
+    },
+    "modules/midia::midia-alta-enviar": {
+      "en": [
+        "apps/copiloto-web/src/modules/midia/MidiaScreen.tsx"
+      ],
+      "falta_en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "fecha": "2026-10-14",
+      "id": "midia-alta-enviar",
+      "motivo": "PUNTO CIEGO DEL GATE, no falta de paridad: el boton mobile EXISTE y lleva este testID, pero sale del config-object de FilaBotones (botones=[{..., testID}], FilaBotones.tsx:65,71) y testid_paridad.py solo caza el literal testID=\"...\". RETIRAR junto a las 3 de detalle-gasto-* (medido contra main: imputar, desimputar, trabajo-imputado) cuando el gate aprenda a leer los config-objects de FilaBotones.",
+      "pantalla": "modules/midia"
     }
   }
 }

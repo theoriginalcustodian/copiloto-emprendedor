@@ -25,6 +25,7 @@ jest.mock('@copiloto/core', () => {
     leerTablero: jest.fn(),
     cambiarEstadoTarjetaMiDia: jest.fn(),
     borrarTarjetaMiDia: jest.fn(),
+    crearTarjetaMiDia: jest.fn(),
     leerCalendario: jest.fn(),
     listarCatalogo: jest.fn(),
   };
@@ -53,9 +54,12 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react-native';
 
+import { Alert } from 'react-native';
+
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
   fechaDeHoyMidia,
   KEY_GOOGLE_CALENDAR,
   leerCalendario,
@@ -69,6 +73,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
 const cambiarEstadoMock = cambiarEstadoTarjetaMiDia as jest.MockedFunction<typeof cambiarEstadoTarjetaMiDia>;
 const borrarMock = borrarTarjetaMiDia as jest.MockedFunction<typeof borrarTarjetaMiDia>;
+const crearMock = crearTarjetaMiDia as jest.MockedFunction<typeof crearTarjetaMiDia>;
 const leerCalendarioMock = leerCalendario as jest.MockedFunction<typeof leerCalendario>;
 const listarCatalogoMock = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
 
@@ -127,6 +132,7 @@ beforeEach(() => {
   leerMock.mockResolvedValue({ status: 'ok', tablero: TABLERO });
   cambiarEstadoMock.mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockResolvedValue({ status: 'ok' });
+  crearMock.mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
   listarCatalogoMock.mockResolvedValue({ status: 'ok', servicios: [] });
 });
@@ -946,5 +952,85 @@ describe('PantallaMiDia — caida: «Se cayó» lo trae el backend en `presentac
     });
     expect(within(detalle).getAllByText('Se cayó')).toHaveLength(1);
     expect(detalle).toHaveTextContent(/Hoy, 9:12/);
+  });
+});
+
+/**
+ * El alta **a mano** (SM-E3) -- gemelo de
+ * `apps/copiloto-web/src/modules/midia/MidiaScreen.test.tsx`. `POST /mi-dia/tarjetas` y
+ * `crearTarjetaMiDia` existian desde siempre y **ninguna pantalla los llamaba**: estos casos son lo
+ * que impide que la capacidad vuelva a quedar muerta.
+ */
+describe('PantallaMiDia — anotar una tarjeta a mano (SM-E3)', () => {
+  // ⚠️ El `TextInput` real de `CampoTexto` es `${testID}-input` (`CampoTexto.tsx:84`): el testID pelado
+  // es el View contenedor. La primera versión de estos casos tocaba el contenedor, así que `changeText`
+  // no cambiaba nada, el campo quedaba vacío y el botón deshabilitado -- los 4 rojos medían el
+  // silencio del instrumento, no la pantalla.
+  it('con el campo vacío no manda nada, y los espacios no cuentan como texto', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-alta-enviar')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+    expect(crearMock).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), '   ');
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+    expect(crearMock).not.toHaveBeenCalled();
+  });
+
+  it('agrega la tarjeta con el texto sin blancos de borde y vuelve a leer el tablero', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
+    const lecturasAntes = leerMock.mock.calls.length;
+
+    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), '  Llamar al proveedor  ');
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(crearMock).toHaveBeenCalledWith('Llamar al proveedor'));
+    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturasAntes));
+    // El campo queda limpio: si no, el siguiente toque crea la misma tarjeta otra vez.
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input').props.value).toBe(''));
+  });
+
+  it('🔴 anotar parado en «Haciendo» vuelve a «Para hoy»: la tarjeta manual nace ahí', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-solapa-haciendo'));
+    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
+
+    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'Comprar bolsas');
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+
+    // Sin esto el emprendedor toca «Agregar» y no ve aparecer nada: la tarjeta existe, pero en otra
+    // solapa. Un alta que no se ve es indistinguible de un alta que falló.
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+  });
+
+  it('🔴 texto vacío para el backend muestra SU motivo, no uno genérico nuestro', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    crearMock.mockResolvedValue({ status: 'texto_vacio', motivo: 'texto vacío' });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
+
+    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'algo');
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('No se pudo anotar la tarjeta', 'texto vacío'));
+    alertSpy.mockRestore();
+  });
+
+  it('🔴 si el alta falla, lo que escribió NO se pierde', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    crearMock.mockResolvedValue({ status: 'no_disponible' });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
+
+    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'Llamar al proveedor');
+    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    // Limpiar el campo ante un fallo le borra el texto al emprendedor y encima le sugiere que anduvo.
+    expect(screen.getByTestId('midia-alta-texto-input').props.value).toBe('Llamar al proveedor');
+    alertSpy.mockRestore();
   });
 });
