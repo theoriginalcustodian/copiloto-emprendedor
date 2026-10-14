@@ -47,3 +47,32 @@ código es el gate que evita que mi error se canonice. Mantenerlo: nunca congela
 dejarle al ejecutor la puerta del `hallazgo_` abierta y el `[ASSUMED_PENDING_VERIFY]` puesto donde no leí
 la fuente. Relacionado: [[verificar-que-el-camino-recomendado-existe]] · [[spike-first-central-proyecto]] ·
 [[verificar-la-composicion-root-no-el-default]].
+
+## Refuerzo 2026-10-13 — el docstring afirmaba el comportamiento de **su consumidor**, y el consumidor hacía lo contrario
+
+Tercera instancia, y la más barata de repetir porque el texto falso **estaba en el repo, no en un contrato mío**.
+`apps/mobile/src/modules/midia/destinoTarjeta.ts` es una función pura de 8 líneas. Su docstring dice:
+
+> *«`null` = «no sé a dónde llevarte»: **quien la usa cae a Ajustes**.»*
+
+Su **único** consumidor dice lo contrario, dos veces, con el motivo escrito:
+`PantallaMiDia.tsx:808-812` → `disabled={rutaAccion == null || onAccion == null}` + *«un botón que no hace nada es peor que un
+rótulo (DEVICE15 H5)»*, y `:554-556` → *«nunca cae a Ajustes por su cuenta: acá no hay una pantalla por defecto que no sea
+adivinar»*. El código hace lo **correcto**; el comentario describe una versión que ya no existe.
+
+Leí el docstring, no el call-site, y publiqué en un `contrato_` que *«si backend emitiera ese destino hoy, el botón llevaría a
+Ajustes sin que nada falle»* — presentado como medición, con el tono de un hallazgo de seguridad. **El archivo ya estaba en
+`en-curso/`** (tomado) cuando terminé de medir bien.
+
+**Lo nuevo, y es la generalización que faltaba:** un docstring sobre **lo que hace quien me llama** no se puede verificar desde
+donde está escrito. El autor lo escribió mirando al consumidor de ese día; el consumidor cambió; nadie actualiza un comentario
+que vive en el otro archivo. Un docstring sobre *lo que esta función devuelve* envejece con la función (y un test lo cuida); uno
+sobre *lo que el llamador hace con el valor* envejece **con un archivo que este archivo no importa** y ningún test lo toca.
+
+**Cómo aplicarlo:** si una afirmación cruza el límite del archivo —«quien la usa…», «el llamador…», «la app cae a…»— es una
+**hipótesis sobre otro archivo**: `rg` el consumidor y leé la rama real antes de citarla. Y si lo que vas a publicar es que algo
+**falla en silencio**, el costo de equivocarse es alto en las dos direcciones: una alarma falsa gasta el crédito de la próxima
+(ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]) y manda a arreglar algo que ya está bien.
+Y el degradado silencioso **existía igual**, sólo que era otro: la app rutea 1 de los 5 destinos que el backend emite, y por eso
+**6 de las 7 tarjetas con acción tienen la píldora deshabilitada** (ítem `ACCIONDISABLED`). El defecto real estaba al lado del que
+inventé: medir el mecanismo lo encontró; inferirlo del comentario lo habría tapado con un falso.
