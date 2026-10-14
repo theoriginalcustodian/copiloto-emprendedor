@@ -781,11 +781,119 @@ describe('PantallaMiDia — hitl (a): el verbo lleva el aviso al chat', () => {
     expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
   });
 
+  const ACCION_PRESUPUESTO = {
+    chip: null,
+    kv: [],
+    accion: { texto: 'Mandarle un recordatorio', destino: { tipo: 'presupuesto', id: 'p-1', connectPath: null } },
+  };
+
+  it('`presupuesto` con `accion`: la píldora es un botón y entrega el aviso de ESA tarjeta (con su `tarjetaId`)', async () => {
+    const onAvisoAlChat = jest.fn();
+    const onDestino = jest.fn();
+    await expandirVerbo({ presentacion: ACCION_PRESUPUESTO }, { onAvisoAlChat, onDestino });
+
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    expect(pildora.props.accessibilityState?.disabled).toBeFalsy();
+    await fireEvent.press(pildora);
+
+    expect(onDestino).not.toHaveBeenCalled();
+    expect(onAvisoAlChat).toHaveBeenCalledTimes(1);
+    const aviso = onAvisoAlChat.mock.calls[0][0];
+    expect(aviso.tarjetaId).toBe('p');
+    expect(aviso.contexto).toBe('Desde tu aviso · Presupuestos · Lucía');
+    expect(aviso.texto).toContain('Hace 12 días que le mandaste el presupuesto a Lucía');
+    expect(aviso.texto).toContain('Acción: Mandarle un recordatorio');
+  });
+
+  it('🔴 `presupuesto` SIN `onAvisoAlChat`: rótulo deshabilitado (no un botón que no lleva a ningún lado)', async () => {
+    await expandirVerbo({ presentacion: ACCION_PRESUPUESTO });
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    expect(pildora).toHaveTextContent('Mandarle un recordatorio');
+    expect(pildora.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('🔴 `presupuesto` en una tarjeta SIN regla (manual): no hay puente aunque haya handler', async () => {
+    const onAvisoAlChat = jest.fn();
+    await expandirVerbo({ regla: null, presentacion: ACCION_PRESUPUESTO }, { onAvisoAlChat });
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    await fireEvent.press(pildora);
+    expect(onAvisoAlChat).not.toHaveBeenCalled();
+    expect(pildora.props.accessibilityState?.disabled).toBe(true);
+  });
+
   it('el chip no inventa cliente ni categoría: sin ellos queda «Desde tu aviso»', async () => {
     const onAvisoAlChat = jest.fn();
     await expandirVerbo({ categoria: null, cliente: null }, { onAvisoAlChat });
     await fireEvent.press(screen.getByTestId('midia-tarjeta-p-verbo'));
     expect(onAvisoAlChat.mock.calls[0][0].contexto).toBe('Desde tu aviso');
+  });
+});
+
+// hitl (a.5) — el ciclo cierra donde empezó (`index.html:2779-2781`). La fuente de verdad es el SERVIDOR: el
+// mock de abajo lo modela (un PATCH cambia lo que la siguiente lectura devuelve), así que «no vuelve a
+// ofrecerse» no depende de ningún flag local de la pantalla.
+describe('PantallaMiDia — hitl (a.5): volver del chat con resultado cierra la tarjeta de origen', () => {
+  function servidorConUnaTarjeta() {
+    const estado: Record<string, string> = { p: 'pendiente' };
+    leerMock.mockImplementation(async () => {
+      const t = tarjetaDe('p', { texto: 'Hace 12 días que le mandaste el presupuesto a Lucía.', verbo: 'Mandarle un recordatorio' });
+      return {
+        status: 'ok' as const,
+        tablero: {
+          solapas: [
+            { id: 'para_hoy' as const, titulo: 'Para hoy', tarjetas: estado.p === 'hecha' ? [] : [t] },
+            { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+            { id: 'hecha' as const, titulo: 'Hechas', tarjetas: estado.p === 'hecha' ? [t] : [] },
+          ],
+        },
+      };
+    });
+    cambiarEstadoMock.mockImplementation(async (id, nuevo) => {
+      estado[id] = nuevo;
+      return { status: 'ok' as const, tarjeta: tarjetaDe(id) as never };
+    });
+  }
+
+  it('con `cierreDeAviso` marca la tarjeta `hecha` en el servidor, recarga y NO vuelve a ofrecerse en «Para hoy»', async () => {
+    servidorConUnaTarjeta();
+    const { rerender } = await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
+
+    await rerender(
+      <ThemeProvider>
+        <PantallaMiDia cierreDeAviso={{ tarjetaId: 'p', n: 1 }} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(cambiarEstadoMock).toHaveBeenCalledWith('p', 'hecha'));
+    await waitFor(() => expect(screen.queryByTestId('midia-tarjeta-p')).toBeNull());
+  });
+
+  it('un re-render con el MISMO cierre no manda un segundo PATCH; uno nuevo (`n` mayor) sí', async () => {
+    servidorConUnaTarjeta();
+    const { rerender } = await montar({ cierreDeAviso: { tarjetaId: 'p', n: 1 } });
+    await waitFor(() => expect(cambiarEstadoMock).toHaveBeenCalledTimes(1));
+
+    await rerender(
+      <ThemeProvider>
+        <PantallaMiDia cierreDeAviso={{ tarjetaId: 'p', n: 1 }} />
+      </ThemeProvider>,
+    );
+    expect(cambiarEstadoMock).toHaveBeenCalledTimes(1);
+
+    await rerender(
+      <ThemeProvider>
+        <PantallaMiDia cierreDeAviso={{ tarjetaId: 'p', n: 2 }} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(cambiarEstadoMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('🔴 sin `cierreDeAviso` no se toca ninguna tarjeta (volver del chat con el chip no resuelve nada)', async () => {
+    servidorConUnaTarjeta();
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
+    expect(cambiarEstadoMock).not.toHaveBeenCalled();
   });
 });
 

@@ -657,6 +657,7 @@ describe('ChatView -- foto de ticket (Gastos Fase 2, OCR)', () => {
 describe('ChatView -- hitl (a): el aviso de una tarjeta de Mi día entra sembrado', () => {
   const AVISO = {
     aviso: {
+      tarjetaId: 'lucia',
       texto: 'Sobre este aviso de Mi día: «Hace 12 días que le mandaste el presupuesto a Lucía». Acción: Mandarle un recordatorio',
       contexto: 'Desde tu aviso · Presupuestos · Lucía',
     },

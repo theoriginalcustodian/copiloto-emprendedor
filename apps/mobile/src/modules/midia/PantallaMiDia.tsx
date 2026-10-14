@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Pressable, ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -37,7 +37,7 @@ import {
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
-import { rutaDeDestino, type RutaDestino } from './destinoTarjeta';
+import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -323,6 +323,14 @@ export interface PantallaMiDiaProps {
    * verbo sigue siendo el rótulo de siempre: un botón que no lleva a ningún lado es peor que un rótulo.
    */
   onAvisoAlChat?: (aviso: AvisoAlChat) => void;
+  /**
+   * `hitl (a.5)` — el ciclo cierra donde empezó (`index.html:2779-2781`): al volver del chat con
+   * `resultado: 'hecha'`, la tarjeta de origen pasa a «Hechas» **en el servidor** (`cambiarEstadoTarjeta`)
+   * y el tablero se recarga. La fuente de verdad es el servidor, no un flag local: la tarjeta no vuelve a
+   * ofrecerse aunque la pantalla se remonte. `n` crece con cada cierre (el mismo aviso dos veces actúa dos
+   * veces). Lo cablea el shell, dueño del chat.
+   */
+  cierreDeAviso?: { tarjetaId: string; n: number } | null;
 }
 
 export function PantallaMiDia({
@@ -331,6 +339,7 @@ export function PantallaMiDia({
   onAgenda,
   onDestino,
   onAvisoAlChat,
+  cierreDeAviso = null,
 }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
@@ -420,6 +429,22 @@ export function PantallaMiDia({
       };
     }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]),
   );
+
+  // a.5: el cierre del ciclo. Un `n` ya atendido no se repite (un re-render con el mismo cierre no manda
+  // otro PATCH).
+  const cierreAtendido = useRef(0);
+  useEffect(() => {
+    if (cierreDeAviso == null || cierreDeAviso.n === cierreAtendido.current) return;
+    cierreAtendido.current = cierreDeAviso.n;
+    void (async () => {
+      const res = await cambiarEstadoTarjetaMiDia(cierreDeAviso.tarjetaId, 'hecha');
+      if (res.status === 'ok') {
+        void cargar();
+        return;
+      }
+      Alert.alert('No se pudo marcar la tarjeta como hecha', 'Probá de nuevo desde el tablero.');
+    })();
+  }, [cierreDeAviso, cargar]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -745,6 +770,12 @@ function TarjetaMiDiaRow({
     seCayo != null && !hayCayoEnKv ? [...conCliente, { clave: 'Se cayó', valor: seCayo }] : conCliente;
   const accion = presentacion?.accion ?? null;
   const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
+  // `presupuesto` no abre una pantalla: la píldora lleva el aviso al chat (a.1). El verbo de la acción es lo
+  // que el emprendedor tocó, así que es el que se siembra («Acción: …»). Sin puente (manual, sin handler)
+  // la píldora queda como rótulo, igual que cualquier destino sin a dónde ir.
+  const accionAlChat = accion != null && llevaAlChat(accion.destino);
+  const avisoDeAccion =
+    accionAlChat && onAviso != null ? avisoAlChat({ ...tarjeta, verbo: accion.texto }) : null;
   // El verbo se vuelve botón SÓLO cuando hay a dónde llevarlo: la `accion` de `presentacion` manda (ya
   // tiene su destino); sin ella, el verbo lleva el aviso al chat. La tarjeta manual no tiene puente.
   const aviso = accion == null && onAviso != null ? avisoAlChat(tarjeta) : null;
@@ -839,8 +870,12 @@ function TarjetaMiDiaRow({
               accessibilityLabel={accion.texto}
               // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
               // que no hace nada es peor que un rótulo (DEVICE15 H5).
-              disabled={rutaAccion == null || onAccion == null}
+              disabled={accionAlChat ? avisoDeAccion == null : rutaAccion == null || onAccion == null}
               onPress={() => {
+                if (accionAlChat) {
+                  if (avisoDeAccion != null) onAviso?.(avisoDeAccion);
+                  return;
+                }
                 if (rutaAccion != null) onAccion?.(rutaAccion);
               }}
               hitSlop={10}

@@ -18,6 +18,7 @@ jest.mock('@copiloto/core', () => {
     apiReal: { ...actual.apiReal, sendChat: jest.fn(), sendAudio: jest.fn(), sendFoto: jest.fn(), getReply: jest.fn() },
     leerPerfilNegocio: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
     leerTablero: jest.fn(),
+    cambiarEstadoTarjetaMiDia: jest.fn(),
     leerCalendario: jest.fn(),
     listarCatalogo: jest.fn(),
   };
@@ -61,7 +62,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { apiReal as api, leerCalendario, leerTablero, listarCatalogo } from '@copiloto/core';
+import { apiReal as api, cambiarEstadoTarjetaMiDia, leerCalendario, leerTablero, listarCatalogo } from '@copiloto/core';
 
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
@@ -124,5 +125,7 @@ describe('PantallaPrincipal — hitl (a): el verbo de la tarjeta lleva el aviso 
     // La salida del prototipo: el contexto se cierra.
     await fireEvent.press(screen.getByTestId('chat-contexto-aviso-volver'));
     await waitFor(() => expect(screen.queryByTestId('chat-contexto-aviso')).toBeNull());
+    // a.5: salir de la charla NO resuelve la tarjeta — sólo un cierre `hecha` explícito la toca.
+    expect(cambiarEstadoTarjetaMiDia).not.toHaveBeenCalled();
   });
 });
