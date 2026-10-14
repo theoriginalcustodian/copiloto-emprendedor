@@ -1,4 +1,4 @@
-"""Qué significa cada tarjeta de «Mi día» EN PANTALLA, derivado de su `regla` (PROTO4DEPS §3).
+"""Qué significa cada tarjeta de «Mi día» EN PANTALLA, derivado de su `regla` (PROTO4DEPS §3 + H12).
 
 Hermano de `mi_dia_clasificacion.py` y con el mismo criterio: función pura sobre el conjunto CERRADO de
 reglas, sin columna ni migración, calculada al leer — una tarjeta ya persistida sale con su
@@ -9,38 +9,46 @@ urge*; esto, *qué se dice y a dónde lleva*.
 
 Si la app mapeara `regla → layout`, cada regla nueva saldría a producción muda o mal pintada y nadie se
 enteraría: el agujero vive en el par, no en ninguno de los dos lados. El backend emite SEMÁNTICA (un
-chip con tono, filas clave/valor ya rotuladas, una acción con `destino` de enum cerrado); la app pinta
-y rutea. Una regla sin entrada en `_PRESENTADORES` rompe `test_mi_dia_presentacion.py` en vez de salir
-muda, y `REGLAS_CONOCIDAS` (de `mi_dia_clasificacion`) sigue siendo la única lista de reglas.
+chip con tono, una prosa, filas clave/valor ya rotuladas y formateadas, una acción con `destino` de enum
+cerrado); la app pinta y rutea. Una regla sin entrada en `_PRESENTADORES` rompe `test_mi_dia_presentacion.py`
+en vez de salir muda, y `REGLAS_CONOCIDAS` (de `mi_dia_clasificacion`) sigue siendo la única lista de reglas.
 
 ## Forma
 
-    {"chip":   {"texto": "47 días sin respuesta", "tono": "pronto"},        # opcional
-     "kv":     [{"k": "Saldo", "v": "$84.000"}, {"k": "Emitida", "v": "12/09"}],   # opcional
+    {"chip":   {"texto": "47 días sin respuesta", "tono": "pronto"},                    # opcional
+     "prosa":  "Emitida hace 31 días. Son $84.000 que ya facturaste y todavía no entraron.",   # opcional
+     "kv":     [{"k": "Factura", "v": "0001-00000007"}, {"k": "Emitida", "v": "12 de septiembre"}],
      "accion": {"texto": "Reclamar el pago",
-                "destino": {"tipo": "comprobante", "id": "412"}}}           # sólo reglas con verbo
+                "destino": {"tipo": "comprobante", "id": "412"}}}                     # sólo reglas con verbo
 
+* `kv` va con `{k, v}` (lo que lee el parser del core), YA formateado: importe con `$` y miles, fecha en
+  texto. Mandar el valor crudo obligaría a la app a tener la tabla regla→formato que esto existe para evitar.
+* **La prosa y las kv se entregan JUNTAS** (contrato H12 §3): en la pantalla del prototipo el importe de una
+  factura impaga vive en la prosa, no en una kv. Cada presentador las arma del mismo `datos`.
 * `tono` reusa `criticidad` (`critico|pronto|sin_plazo`): no hay una tercera escala.
 * `accion.destino.tipo` es un ENUM CERRADO (`TIPOS_DESTINO_ACCION`), extensión del `destino` de H5b. La app
   trata un `tipo` desconocido como «rótulo sin acción»; por eso agregar uno exige enmendar el contrato.
-* Regla sin verbo (`gasto_del_mes_alto`), tarjeta manual o regla desconocida NO llevan `accion`; las dos
-  últimas ni siquiera llevan `presentacion` (`None`).
-* Nada se fabrica: una fila o un chip sólo existe si el dato que lo sostiene está en `datos`. Una tarjeta
-  vieja sin fecha sale sin esa fila, no con una fecha inventada.
+* Regla sin verbo (`gasto_del_mes_alto`) NO lleva `accion`. Una regla DESCONOCIDA no lleva `presentacion`
+  (`None`); la tarjeta anotada a mano (`regla is None`) sí: «Lo anotaste vos» + la fila «Anotado».
+* Nada se fabrica: una fila, un chip o una frase sólo existe si el dato que lo sostiene está en `datos`. Una
+  tarjeta vieja sin fecha sale sin esa fila, no con una fecha inventada.
 
-## Los alias `monto`/`fecha`
+## Lo que el prototipo NO modela (extrapolación declarada, no medición)
 
-El core lee `datos.monto` y `datos.fecha` (`packages/core/src/api/miDia.ts`) y ninguna regla los
-escribía (H12/DETALLEKV): las filas del detalle estaban cerradas en código e inalcanzables. `alias`
-devuelve esas dos claves, ya resueltas por regla, para completarlas al leer — así la costura que ya está
-en producción empieza a recibir dato sin esperar a que la app lea `presentacion`.
+* **Trabajo** (`trabajo_con_*`): ninguna superficie del prototipo lo dibuja ⇒ `kv: []` y sólo prosa. No se
+  inventan rótulos.
+* **CAE** («Vence» / «Detectado»): sólo la capa `#midia` del prototipo lo muestra; se extrapola de ahí.
+* **Factura**: el prototipo dice «Venció»; acá es «Emitida» porque `CobroStore.impagos()` trae la fecha de
+  emisión y NO la de vencimiento de pago (`fecha_vto_pago` sólo existe en el payload de facturar servicios).
 """
 from __future__ import annotations
 
 import datetime
 from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo
 
 from catalog import TIPO_DESTINO_CONEXION, destino_conexion
+from clients.agent.datetime_resolver import DEFAULT_TZ
 from mi_dia_clasificacion import clasificar
 
 TIPO_DESTINO_COMPROBANTE = "comprobante"
@@ -51,6 +59,12 @@ TIPO_DESTINO_CERTIFICADO = "certificado"
 #: ENUM CERRADO de `accion.destino.tipo`. Un valor nuevo exige enmendar el contrato (ver docstring).
 TIPOS_DESTINO_ACCION = (TIPO_DESTINO_CONEXION, TIPO_DESTINO_COMPROBANTE, TIPO_DESTINO_PRESUPUESTO,
                         TIPO_DESTINO_TRABAJO, TIPO_DESTINO_CERTIFICADO)
+
+_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
+          "octubre", "noviembre", "diciembre")
+
+#: La frase fija de la tarjeta anotada a mano (prototipo `#tablero`, tercer renglón).
+PROSA_ANOTADA_A_MANO = "Lo anotaste vos, así que lo cerrás vos."
 
 
 # ── formato ─────────────────────────────────────────────────────────────────────────────────────
@@ -71,9 +85,30 @@ def _fecha(v) -> datetime.date | None:
     return None
 
 
-def _dd_mm(d: datetime.date, hoy: datetime.date) -> str:
-    """`12/09` dentro del año en curso, `12/09/2025` fuera de él."""
-    return d.strftime("%d/%m") if d.year == hoy.year else d.strftime("%d/%m/%Y")
+def _en_local(instante: datetime.datetime) -> datetime.datetime:
+    """El instante en la zona del producto (`DEFAULT_TZ`). Un `datetime` sin zona se toma como UTC: es lo
+    que la base devuelve para un `timestamptz` sin sesión configurada."""
+    if instante.tzinfo is None:
+        instante = instante.replace(tzinfo=datetime.timezone.utc)
+    return instante.astimezone(ZoneInfo(DEFAULT_TZ))
+
+
+def _dia_local(v) -> datetime.date | None:
+    """El DÍA (en zona local) de un instante. A las 22:00 de Buenos Aires el UTC ya es «mañana»: usar
+    `.date()` a secas dice «Detectado» un día después de cuando fue."""
+    if isinstance(v, datetime.datetime):
+        return _en_local(v).date()
+    return _fecha(v)
+
+
+def _hoy_local() -> datetime.date:
+    return datetime.datetime.now(ZoneInfo(DEFAULT_TZ)).date()
+
+
+def _fecha_texto(d: datetime.date, hoy: datetime.date) -> str:
+    """`12 de septiembre` dentro del año en curso, `12 de septiembre de 2025` fuera de él."""
+    base = f"{d.day} de {_MESES[d.month - 1]}"
+    return base if d.year == hoy.year else f"{base} de {d.year}"
 
 
 def _pesos(v) -> str | None:
@@ -110,7 +145,7 @@ def _transcurridos(creada, hoy: datetime.date) -> int:
     """Días entre que se sacó la foto de `datos` (`creada_en`; `crear_si_no_existe` es DO NOTHING, así
     que `datos` NO se refresca) y hoy. Un `dias` guardado envejece con la tarjeta; sin esto el chip diría
     «hace 47 días» cuando ya son 60. Aproximación de ±1 día (zona horaria del instante de creación)."""
-    d = _fecha(creada)
+    d = _dia_local(creada)
     return max(0, (hoy - d).days) if d else 0
 
 
@@ -122,32 +157,38 @@ def _kv(*filas) -> list[dict]:
     return [{"k": k, "v": v} for k, v in filas if v]
 
 
-# ── un presentador por regla: (datos, entidad_id, creada, hoy) → (chip, kv, alias) ───────────────
+def _prosa(*frases) -> str | None:
+    """Une las frases que SÍ tienen dato; `None` si ninguna (no se emite una prosa hueca)."""
+    return " ".join(f for f in frases if f) or None
+
+
+# ── un presentador por regla: (datos, entidad_id, creada, hoy) → (chip, kv, prosa) ───────────────
 
 def _facturas_impagas_viejas(datos, entidad_id, creada, hoy):
     emision = _fecha(datos.get("fecha_emision"))
     dias = (hoy - emision).days if emision else None
     if dias is None and _entero(datos.get("dias")) is not None:
         dias = _entero(datos["dias"]) + _transcurridos(creada, hoy)
-    chip = (_chip(f"Emitida hace {_dias(dias)}", "facturas_impagas_viejas")
-            if dias is not None and dias >= 0 else None)
+    emitida = dias is not None and dias >= 0
     saldo = _pesos(datos.get("saldo"))
-    fecha = _dd_mm(emision, hoy) if emision else None
-    alias = {**({"monto": str(datos["saldo"])} if saldo else {}),
-             **({"fecha": fecha} if fecha else {})}
-    return chip, _kv(("Saldo", saldo), ("Emitida", fecha)), alias
+    prosa = _prosa(f"Emitida hace {_dias(dias)}." if emitida else None,
+                   f"Son {saldo} que ya facturaste y todavía no entraron." if saldo else None)
+    kv = _kv(("Factura", datos.get("nro")),
+             ("Emitida", _fecha_texto(emision, hoy) if emision else None))
+    chip = _chip(f"Emitida hace {_dias(dias)}", "facturas_impagas_viejas") if emitida else None
+    return chip, kv, prosa
 
 
 def _presupuestos_enfriandose(datos, entidad_id, creada, hoy):
     fecha_p = _fecha(datos.get("fecha"))
     dias = (hoy - fecha_p).days if fecha_p else None
-    chip = (_chip(f"{_dias(dias)} sin respuesta", "presupuestos_enfriandose")
-            if dias is not None and dias >= 0 else None)
-    total = _pesos(datos.get("total"))
-    fecha = _dd_mm(fecha_p, hoy) if fecha_p else None
-    alias = {**({"monto": str(datos["total"])} if total else {}),
-             **({"fecha": fecha} if fecha else {})}
-    return chip, _kv(("Total", total), ("Fecha", fecha)), alias
+    hay_dias = dias is not None and dias >= 0
+    chip = _chip(f"{_dias(dias)} sin respuesta", "presupuestos_enfriandose") if hay_dias else None
+    prosa = _prosa(f"Se lo mandaste hace {_dias(dias)} y no contestó." if hay_dias else "No contestó.",
+                   "Un presupuesto que se enfría rara vez se recupera solo.")
+    kv = _kv(("Monto", _pesos(datos.get("total"))),
+             ("Enviado", _fecha_texto(fecha_p, hoy) if fecha_p else None))
+    return chip, kv, prosa
 
 
 def _por_vencer(datos, clave_fecha, creada, hoy):
@@ -160,39 +201,49 @@ def _por_vencer(datos, clave_fecha, creada, hoy):
     return (None if snap is None else snap - _transcurridos(creada, hoy)), None
 
 
-def _vence_texto(n: int | None, sujeto: str) -> str | None:
+def _vence_texto(n: int | None, sujeto: str, *, vencido: str = "vencido") -> str | None:
     if n is None:
         return None
     if n < 0:
-        return f"{sujeto} vencido"
+        return f"{sujeto} {vencido}"
     return f"{sujeto} vence hoy" if n == 0 else f"{sujeto} vence en {_dias(n)}"
 
 
 def _cae_por_vencer(datos, entidad_id, creada, hoy):
     n, venc = _por_vencer(datos, "cae_vto", creada, hoy)
     texto = _vence_texto(n, "CAE")
-    fecha = _dd_mm(venc, hoy) if venc else None
-    return (_chip(texto, "cae_por_vencer") if texto else None,
-            _kv(("Vence", fecha)), {"fecha": fecha} if fecha else {})
+    frase = _vence_texto(n, "El CAE de esta factura", vencido="está vencido")
+    detectado = _dia_local(creada)
+    kv = _kv(("Vence", _fecha_texto(venc, hoy) if venc else None),
+             ("Detectado", _fecha_texto(detectado, hoy) if detectado else None))
+    return (_chip(texto, "cae_por_vencer") if texto else None, kv, f"{frase}." if frase else None)
 
 
 def _certificado_afip_por_vencer(datos, entidad_id, creada, hoy):
     n, venc = _por_vencer(datos, "vence_at", creada, hoy)
     if datos.get("ilegible"):
-        texto = "No se pudo leer el certificado"
+        texto, frase = "No se pudo leer el certificado", "No se pudo leer el certificado de ARCA"
     elif datos.get("vencido"):
-        texto = "Certificado vencido"
+        texto, frase = "Certificado vencido", "El certificado de ARCA está vencido"
     else:
         texto = _vence_texto(n, "Certificado")
-    fecha = _dd_mm(venc, hoy) if venc else None
-    filas = _kv(("Vence", fecha), ("CUIT", datos.get("cuit")), ("Ambiente", datos.get("ambiente")))
-    return (_chip(texto, "certificado_afip_por_vencer") if texto else None,
-            filas, {"fecha": fecha} if fecha else {})
+        frase = _vence_texto(n, "El certificado de ARCA", vencido="está vencido")
+    kv = _kv(("Vence", _fecha_texto(venc, hoy) if venc else None),
+             ("CUIT", datos.get("cuit")), ("Ambiente", datos.get("ambiente")))
+    return (_chip(texto, "certificado_afip_por_vencer") if texto else None, kv,
+            f"{frase}." if frase else None)
+
+
+def _sujeto_trabajo(datos) -> str:
+    etiqueta = (datos.get("etiqueta") or "").strip()
+    return f"«{etiqueta}»" if etiqueta else "Este trabajo"
 
 
 def _trabajo_con_margen_negativo(datos, entidad_id, creada, hoy):
-    return None, _kv(("Cobrado", _pesos(datos.get("cobrado"))), ("Gastado", _pesos(datos.get("gastado"))),
-                     ("Margen", _pesos(datos.get("margen")))), {}
+    cobrado, gastado, margen = (_pesos(datos.get(k)) for k in ("cobrado", "gastado", "margen"))
+    prosa = (f"{_sujeto_trabajo(datos)}: cobraste {cobrado} y gastaste {gastado}, te queda en {margen}."
+             if cobrado and gastado and margen else None)
+    return None, [], prosa    # el prototipo no modela el trabajo: sin rótulos inventados (H12 §4)
 
 
 def _trabajo_con_gastos_y_sin_ingreso(datos, entidad_id, creada, hoy):
@@ -200,16 +251,23 @@ def _trabajo_con_gastos_y_sin_ingreso(datos, entidad_id, creada, hoy):
     dias = None if snap is None else snap + _transcurridos(creada, hoy)
     chip = (_chip(f"{_dias(dias)} sin movimiento", "trabajo_con_gastos_y_sin_ingreso")
             if dias is not None else None)
-    return chip, _kv(("Gastado", _pesos(datos.get("gastado")))), {}
+    gastado = _pesos(datos.get("gastado"))
+    etiqueta = (datos.get("etiqueta") or "").strip()
+    en_trabajo = f" en «{etiqueta}»" if etiqueta else ""
+    prosa = _prosa(f"Gastaste {gastado}{en_trabajo} y no registraste ningún ingreso." if gastado else None,
+                   f"Hace {_dias(dias)} que no se mueve." if dias is not None else None)
+    return chip, [], prosa
 
 
 def _gasto_del_mes_alto(datos, entidad_id, creada, hoy):
-    return None, _kv(("Este mes", _pesos(datos.get("gasto_actual"))),
-                     ("Mes anterior", _pesos(datos.get("gasto_anterior")))), {}
+    actual, anterior = _pesos(datos.get("gasto_actual")), _pesos(datos.get("gasto_anterior"))
+    prosa = f"Este mes gastaste {actual}; el mes anterior, {anterior}." if actual and anterior else None
+    return None, _kv(("Este mes", actual), ("Mes anterior", anterior)), prosa
 
 
 def _conexion_caida(datos, entidad_id, creada, hoy):
-    return None, _kv(("Servicio", datos.get("nombre"))), {}
+    nombre = datos.get("nombre")
+    return None, _kv(("Servicio", nombre)), f"Se cortó la conexión con {nombre}." if nombre else None
 
 
 #: regla → (tipo del `accion.destino` o `None` si la regla no lleva acción, presentador).
@@ -232,31 +290,41 @@ def _destino(tipo: str, entidad_id) -> dict:
     return {"tipo": tipo, "id": str(entidad_id)}
 
 
-def _calcular(regla, entidad_id, datos, creada, hoy):
+def _anotada_a_mano(creada, hoy: datetime.date) -> dict | None:
+    """Tarjeta sin regla: «Lo anotaste vos» + UNA fila «Anotado» con el momento (`Ayer, 19:20`). Sin
+    `creada_en` no hay momento que decir, y entonces tampoco hay nada que presentar."""
+    if not isinstance(creada, datetime.datetime):
+        return None
+    local = _en_local(creada)
+    dias = (hoy - local.date()).days
+    hora = local.strftime("%H:%M")
+    if dias == 0:
+        cuando = f"Hoy, {hora}"
+    elif dias == 1:
+        cuando = f"Ayer, {hora}"
+    else:
+        cuando = f"{_fecha_texto(local.date(), hoy)}, {hora}"
+    return {"prosa": PROSA_ANOTADA_A_MANO, "kv": [{"k": "Anotado", "v": cuando}]}
+
+
+def presentar(regla: str | None, entidad_id, datos, creada=None, hoy: datetime.date | None = None) -> dict | None:
+    """El bloque `presentacion` de la tarjeta, o `None` (regla desconocida o nada que decir)."""
+    hoy = hoy or _hoy_local()
+    if regla is None:
+        return _anotada_a_mano(creada, hoy)
     if regla not in _PRESENTADORES:
         return None
     datos = datos if isinstance(datos, dict) else {}
-    hoy = hoy or datetime.date.today()
     tipo, presentador = _PRESENTADORES[regla]
-    chip, kv, alias = presentador(datos, entidad_id, creada, hoy)
+    chip, kv, prosa = presentador(datos, entidad_id, creada, hoy)
     bloque: dict = {}
     if chip:
         bloque["chip"] = chip
+    if prosa:
+        bloque["prosa"] = prosa
     if kv:
         bloque["kv"] = kv
     verbo = clasificar(regla)["verbo"]
     if tipo is not None and verbo and entidad_id not in (None, ""):
         bloque["accion"] = {"texto": verbo, "destino": _destino(tipo, entidad_id)}
-    return bloque or None, alias
-
-
-def presentar(regla: str | None, entidad_id, datos, creada=None, hoy: datetime.date | None = None) -> dict | None:
-    """El bloque `presentacion` de la tarjeta, o `None` (manual, regla desconocida, o nada que decir)."""
-    r = _calcular(regla, entidad_id, datos, creada, hoy)
-    return r[0] if r else None
-
-
-def alias_datos(regla: str | None, entidad_id, datos, creada=None, hoy: datetime.date | None = None) -> dict:
-    """`{monto?, fecha?}` ya resueltos por regla, para completar `datos` al leer (ver docstring)."""
-    r = _calcular(regla, entidad_id, datos, creada, hoy)
-    return r[1] if r else {}
+    return bloque or None
