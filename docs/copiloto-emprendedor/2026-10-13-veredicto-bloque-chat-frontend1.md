@@ -28,8 +28,8 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 2 | `pres-ciclo` | ✅ + 📝 | recibo con N°/total/receptor/Doc + chip «Mandalo por mail» | rehidratación; «me aprobaron» |
 | 3 | `fact-cae` | ✅ + 📝 | «Guardar» → «Abrir PDF/Drive» | «Mandala por mail» (sin contacto en el dato) |
 | 4 | `fact-hitl` | ✅ + 📝 | encabezado «Factura C · ARCA» desde el dato | filas no editables, sin Cancelar, «Emitir» |
-| 5 | `card-factura` | ✅ + 📝 + ⛓️ | «Emitir» → «Emitir la factura» | mic en Facturación → ⛓️ `mic-facturacion` |
-| 6 | `factura` | ✅ + 📝 + ⛓️ | «Facturado este mes» | chip de conteo, composer/mic → ⛓️ `mic-facturacion` |
+| 5 | `card-factura` | ✅ + 📝 | «Emitir» → «Emitir la factura» | mic en Facturación → 📝 `mic-facturacion` (enmienda: emitir es irreversible) |
+| 6 | `factura` | ✅ + 📝 | «Facturado este mes» | chip de conteo, composer/mic → 📝 `mic-facturacion` (enmienda: emitir es irreversible) |
 | 7 | `gastos` | ✅ + 📝 | importe **y %** por categoría · dictado → campos extraídos (#1065) | rótulo «Gastado en <período>» |
 | 8 | `presu` | ✅ + 📝 | resumen «Esperando respuesta» + estado por fila | «Enviado · 5 días» (sin dato) |
 | 9 | `pres-hitl` | ✅ + 📝 | nota «a tu cliente no le llega nada» | formulario completo, «Cancelar» |
@@ -41,8 +41,9 @@ device queda anotado en cada fila como *«[sin ver en device]»*.
 | 15 | `card-presu` | 📝 | **medida**: DIVERGE | formulario completo vs 3 filas kv |
 | 16 | `onb-promesa` | ✅ + 📝 | copy de la fila Google + «desde Ajustes» | pantalla completa, un botón por permiso |
 
-**Cuenta honesta:** 16 filas con veredicto. **Ninguna** queda «sin veredicto». **2 no están cerradas del
-todo** (⛓️: filas 5 y 6 dependen de `mic-facturacion` — ver §Dependencias). Hasta la re-medición de abajo
+**Cuenta honesta:** 16 filas con veredicto. **Ninguna** queda «sin veredicto». **Ninguna** queda con una
+dependencia abierta (las filas 5 y 6 llevaban ⛓️ por `mic-facturacion` y pasaron a 📝 por enmienda fundada,
+MICFACTENM, 2026-10-13 — ver §Dependencias). Hasta la re-medición de abajo
 eran 7: las filas 7, 10, 12, 13 y 14 colgaban de una dependencia (extracción por destino) y de un copy
 que **ya estaban en `main`** cuando se escribieron las pendientes. Que tengan veredicto no quiere decir
 que estén hechas.
@@ -78,8 +79,8 @@ existe infla el denominador igual que una enmienda falsa lo deflaciona.**
 
 **Resultado:** de 19 cláusulas medidas, **10 estaban rancias** (6 por #1065, 3 por #1056, 1 por #1048; una
 de ellas —`card-cobro` campos— era de **dos referentes** y no de un cambio de código), **1 se corrige
-acá** y **8 siguen vigentes** (7 como enmienda con su motivo, 1 como dependencia real:
-`mic-facturacion`). El padrón **no se toca por mano**: los símbolos de las filas 5, 7, 10, 12, 13 y 14 de
+acá** y **8 siguen vigentes** (las 8 como enmienda con su motivo: `mic-facturacion` era la única
+dependencia real y pasó a enmienda fundada el 2026-10-13, MICFACTENM). El padrón **no se toca por mano**: los símbolos de las filas 5, 7, 10, 12, 13 y 14 de
 este documento son lo que lee el medidor, y es el medidor el que recalcula.
 
 ### Qué rama describe cada cláusula del dictado (`card` · `card-cliente` · `gastos`)
@@ -165,7 +166,7 @@ trae contacto ni mail**. Un `mailto:` saldría sin destinatario, que es lo que y
 - **La nota** es `AVISO_FACTURA_ANULACION` («se anula con una nota de crédito») y no la del prototipo: es
   la que protege contra duplicar un comprobante fiscal real (H-23).
 
-### 5 · `card-factura` — ✅ + 📝 + ⛓️
+### 5 · `card-factura` — ✅ + 📝
 
 Nada nuevo en código. Divergencias y su estado:
 - Compuerta de sólo lectura, sin Editar/Cambiar ni Cancelar → 📝 (ver fila 4).
@@ -175,15 +176,20 @@ Nada nuevo en código. Divergencias y su estado:
 - Muestra ítems y Total en vez de Cliente/Monto/Concepto → 📝: lo que se emite **es** el borrador que el
   backend armó, con sus ítems; resumirlo en tres filas ocultaría lo que se factura.
 - **Dictar desde Facturación hacia una card no existe** (`PantallaFacturacion` no monta `MicFuncion`) →
-  ⛓️ **`mic-facturacion`** — 🔴 y **backend lo dejó fuera a propósito** del dictado por destino
+  📝 **`mic-facturacion`** (enmienda fundada, MICFACTENM) — 🔴 y **backend lo dejó fuera a propósito** del dictado por destino
   (`apps/copiloto/dictado_destinos.py:43-44`: emitir es irreversible, la transcripción cruda no precarga
   nada), así que no falta una forma: falta una **decisión** (no es la fila `fact-voz`, que planificación resolvió en `2b43e5a3`: el contrato del hito 9 manda y la card HITL de `factura_propuesta` es el camino). No lo implementé: sin contrato, el mic sólo podría precargar la transcripción
   cruda en el wizard — lo que es **inventar la forma** del handoff (`[ASSUMED_PENDING_VERIFY]`).
 
-> ⚠️ **El DoD de esta fila dice «el elemento ausente existe y se ve». NO se cumple.** Está declarada
-> aquí, con su dependencia, en vez de cerrarse con una enmienda que no tiene motivo propio.
+> ✅ **Enmienda fundada — MICFACTENM (2026-10-13).** Esta nota decía que el DoD de la fila («el elemento
+> ausente existe y se ve») NO se cumplía y la dejaba como dependencia «en vez de cerrarse con una enmienda
+> que no tiene motivo propio». El motivo propio existe y está en `main`: `apps/copiloto/dictado_destinos.py:43-44` («`factura` NO está, y no es casualidad: emitir es irreversible ante ARCA, así que la transcripción cruda no precarga nada»; `_DESTINOS` lista sólo las cuatro reversibles: `gasto`/`ingreso`/`presupuesto`/`cliente`). Es una **decisión**,
+> no una forma que falte, y planificación la concedió textual en el contrato
+> `…tus-dos-pedidos-YA-estan-contestados…` §5 («es decisión, no forma; eso es enmienda fundada y la cláusula
+> del padrón sobra»). El mic **no se construye** en Facturación: emitir sigue yendo por la card HITL de
+> `factura_propuesta` y el wizard. Si el operador reabre la exclusión, esta fila vuelve a ⛓️.
 
-### 6 · `factura` — ✅ + 📝 + ⛓️
+### 6 · `factura` — ✅ + 📝
 
 **Resuelto**
 - «**Facturado este mes**»: `facturacion/ResumenFacturado.tsx` montado al tope en
@@ -203,7 +209,9 @@ Nada nuevo en código. Divergencias y su estado:
 - **Wizard tras el pill «Nueva factura»** (`PantallaFacturacion.tsx`, fila fija) en vez del composer: es
   el único camino de alta que existe y está verificado.
 
-**Depende** — composer «Facturale a alguien, o hablá…» y mic → ⛓️ **`mic-facturacion`** (fila 5).
+**Enmienda** — composer «Facturale a alguien, o hablá…» y mic → 📝 **`mic-facturacion`**: la misma razón y la
+misma cita que la fila 5 (`dictado_destinos.py:43-44`, emitir es irreversible ante ARCA). Concedida por
+planificación; ver la nota de la fila 5.
 
 > ⚠️ **Dependencia con F1.** La cifra mostrada hoy usa el predicado que tenga `main`. Cuando backend
 > mergee F1.4 (predicado único, NC resta) el **número cambia** sin que esta pantalla se toque — eso es lo
@@ -367,7 +375,7 @@ El contrato exige que la fila diga **COINCIDE** o **nombre la divergencia**. **M
 
 | contrato | filas | qué falta | dueño |
 |---|---|---|---|
-| **`mic-facturacion`** — mic/composer dentro de `PantallaFacturacion` (≠ fila `fact-voz`, ya resuelta en `2b43e5a3`) | 5, 6 | **una decisión, no sólo una forma**: backend excluyó `factura` del dictado por destino a propósito (`dictado_destinos.py:43-44`, emitir es irreversible). Qué hace el mic en Facturación sin precargar un borrador | planificación + backend (+ operador si reabre la exclusión) |
+| ~~**`mic-facturacion`** — mic/composer dentro de `PantallaFacturacion` (≠ fila `fact-voz`, ya resuelta en `2b43e5a3`)~~ | ~~5, 6~~ | **una decisión, no sólo una forma**: backend excluyó `factura` del dictado por destino a propósito (`dictado_destinos.py:43-44`, emitir es irreversible). Qué hace el mic en Facturación sin precargar un borrador | — **enmienda fundada (MICFACTENM, 2026-10-13)**: planificación la concedió; las filas 5 y 6 pasaron a 📝. Sólo vuelve a ⛓️ si el operador reabre la exclusión |
 | ~~**Extracción de campos por destino al dictar desde una función**~~ | ~~7, 10, 12, 13, 14~~ | **RESUELTA**: backend #1050 (`kind=dictado:<destino>`) + app #1065 (`useDictadoPorFuncion`). Es la variante «(b) rutear al chat con un hint» y el turno no toca el hilo (`useDictadoPorFuncion.ts:70-72`) | — |
 | **F1.4** — predicado único de facturado | 6 | sólo para saber que la cifra va a cambiar | backend (en curso) |
 
