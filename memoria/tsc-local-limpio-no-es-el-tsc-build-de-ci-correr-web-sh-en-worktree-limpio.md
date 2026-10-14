@@ -20,4 +20,16 @@ el instrumento corrió en otro entorno que el que decide.
 **How to apply:** antes de pushear un cambio web, correr `bash scripts/ci/web.sh` en un worktree **sin**
 `node_modules` previo (hace `npm install` + `tsc --build --force` + vitest). Y para leer un `.css`/archivo
 desde un test web, usar `import x from './archivo.css?raw'` — es el patrón del repo
-(`authNoHexLiterals.test.ts`), no `fs`/`__dirname`. Grepear `?raw` ANTES de escribir `require`.
+(`authNoHexLiterals.test.ts`), no `fs`/`__dirname`. Grepear `?raw` ANTES de escribir `require`.**Refuerzo 2026-10-14 — el mismo mecanismo por otra puerta, y un control mas barato.** `#1180`
+(SM-E3) salio con `web` rojo y el gate local en `web=0`: el test importaba
+`@testing-library/user-event`, que resolvia en mi `node_modules` por **hoisting del monorepo**.
+No era un `@types` traido por transitividad: era un **paquete entero que no esta declarado en ningun
+`package.json` del repo** y que **ningun otro archivo de `apps/` ni `packages/` importa** (medido:
+0). Mi propio docstring decia «mismo arnes que `GastosScreen.test.tsx`» — y ese arnes es `fireEvent`
+de `@testing-library/react`, no `user-event`.
+
+El control de arriba (correr `web.sh` en un worktree sin `node_modules`) lo caza, pero cuesta un
+`npm install` entero. **Mas barato y previo: por cada import nuevo de un paquete externo en un test,
+grepear que este declarado** (`grep -rn "<paquete>" */package.json`) **y que alguien mas del repo ya
+lo use**. Cero uso previo + cero declaracion = resuelve por hoisting y CI lo va a rechazar. Y la
+salida correcta no es agregar la dependencia: es usar el arnes que el repo ya tiene (CANON 3).
