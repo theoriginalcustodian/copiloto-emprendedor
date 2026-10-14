@@ -130,30 +130,27 @@ describe('leerTablero — H5b (`datos.destino`, enum cerrado, aditivo)', () => {
   });
 });
 
-describe('leerTablero — `datos.desde` (el instante real de la caída de una conexión)', () => {
-  async function tarjetaCon(datos: unknown, extra: Record<string, unknown> = {}) {
-    const cruda = { ...TARJETA_CRUDA, regla: 'conexion_caida', datos, ...extra };
+describe('leerTablero — `datos.desde` NO se transporta (KVCAIDASALE: «Se cayó» lo arma el backend)', () => {
+  async function tarjetasCon(datos: unknown) {
+    const cruda = { ...TARJETA_CRUDA, regla: 'conexion_caida', datos };
     responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
     const res = await leerTablero();
     if (res.status !== 'ok') throw new Error('esperaba ok');
-    return res.tablero.solapas[0]!.tarjetas[0]!;
+    return res.tablero.solapas[0]!.tarjetas;
   }
 
-  it('lee `datos.desde` tal cual: es lo que el backend manda sólo con un instante real', async () => {
-    const t = await tarjetaCon({ nombre: 'Mercado Pago', desde: '2026-10-13T12:12:00+00:00' });
-    expect(t.desde).toBe('2026-10-13T12:12:00+00:00');
-  });
-
-  it('🔴 sin `datos.desde` (Composio no guarda instante) → null, y NUNCA se rellena con `creada_en`', async () => {
-    const t = await tarjetaCon({ nombre: 'Gmail' }, { creada_en: '2026-10-13T15:00:00Z' });
-    expect(t.desde).toBeNull();
-    expect(t.desde).not.toBe('2026-10-13T15:00:00Z');
-  });
-
-  it('🔴 un valor que no es un instante (vacío, texto, número, objeto) → null, no se transporta basura', async () => {
-    for (const desde of ['', '   ', 'ayer a la tarde', 1760000000, { iso: '2026-10-13' }, null]) {
-      expect((await tarjetaCon({ desde })).desde).toBeNull();
-    }
+  it('🔴 aunque el backend mande `datos.desde`, la tarjeta no lo expone: la app no puede armar «Se cayó»', async () => {
+    const tarjetas = await tarjetasCon({
+      destino: { tipo: 'conexion', id: 'mercadopago' },
+      desde: '2026-10-13T12:12:00+00:00',
+    });
+    // Control de ceguera: miró UNA tarjeta real, de la regla correcta, y leyó `datos` (su `destino` sí viaja).
+    // Sin esto, un recorrido vacío o un `datos` ignorado haría pasar los `not` de abajo solos.
+    expect(tarjetas).toHaveLength(1);
+    expect(tarjetas[0]!.regla).toBe('conexion_caida');
+    expect(tarjetas[0]!.destino).toEqual({ tipo: 'conexion', id: 'mercadopago', connectPath: null });
+    expect(tarjetas[0]).not.toHaveProperty('desde');
+    expect(JSON.stringify(tarjetas[0])).not.toContain('2026-10-13T12:12');
   });
 });
 

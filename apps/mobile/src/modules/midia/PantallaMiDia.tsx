@@ -8,7 +8,6 @@ import Animated, { type SharedValue } from 'react-native-reanimated';
 
 import {
   avisoAlChat,
-  formatearInstanteDeCaida,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
   estadoDeServicio,
@@ -760,14 +759,11 @@ function TarjetaMiDiaRow({
     tarjeta.cliente != null && !hayClienteEnKv
       ? [{ clave: 'Cliente', valor: tarjeta.cliente }, ...kvBackend]
       : kvBackend;
-  // `caida`: el kv «Se cayó · hora» del prototipo (`index.html:3658`) sale de `datos.desde`, que el backend
-  // manda SÓLO con un instante real (Mercado Pago; Composio no lo guarda). Sin instante la fila NO existe:
-  // jamás se rellena con `creada_en` (cuándo corrió el detector, no cuándo cayó). Si el backend algún día
-  // la manda ya en `presentacion.kv`, no se duplica.
-  const seCayo = tarjeta.regla === 'conexion_caida' ? formatearInstanteDeCaida(tarjeta.desde) : null;
-  const hayCayoEnKv = conCliente.some((f) => f.clave.trim().toLowerCase() === 'se cayó');
-  const detalle: { clave: string; valor: string }[] =
-    seCayo != null && !hayCayoEnKv ? [...conCliente, { clave: 'Se cayó', valor: seCayo }] : conCliente;
+  // `caida`: el kv «Se cayó · hora» del prototipo (`index.html:3658`) lo emite el BACKEND en `presentacion.kv`
+  // (`mi_dia_presentacion.py`) y se pinta como cualquier otra fila. La app NO lo arma: leer `datos.desde` acá
+  // era la tabla regla→campo que DETALLEKV §2 prohíbe, y post-deploy quedaba inalcanzable y verde
+  // (KVCAIDASALE, retirado 2026-10-14). Un test lo fija: `PantallaMiDia.test.tsx`, bloque «caida».
+  const detalle = conCliente;
   const accion = presentacion?.accion ?? null;
   const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
   // `presupuesto` no abre una pantalla: la píldora lleva el aviso al chat (a.1). El verbo de la acción es lo

@@ -897,9 +897,10 @@ describe('PantallaMiDia — hitl (a.5): volver del chat con resultado cierra la 
   });
 });
 
-// caida — `datos.desde`: el kv «Se cayó · hora» del prototipo (`index.html:3658`). El caso SIN instante va
-// primero: es el normal de Composio (el backend no guarda cuándo cayó) y no puede pintar nada inventado.
-describe('PantallaMiDia — caida: «Se cayó» sale de `datos.desde` y de nada más', () => {
+// caida — «Se cayó · hora» (`index.html:3658`) lo emite el BACKEND en `presentacion.kv`; la app NO lo arma.
+// KVCAIDASALE (2026-10-14): armarlo acá desde `datos.desde` era la tabla regla→campo que DETALLEKV §2 prohíbe y,
+// post-deploy, un camino inalcanzable y verde. Este bloque es lo que lo pone ROJO si alguien lo reintroduce.
+describe('PantallaMiDia — caida: «Se cayó» lo trae el backend en `presentacion.kv`, la app no lo arma', () => {
   const hoyA = (h: number, m: number) => {
     const d = new Date();
     d.setHours(h, m, 0, 0);
@@ -919,29 +920,31 @@ describe('PantallaMiDia — caida: «Se cayó» sale de `datos.desde` y de nada 
     return screen.getByTestId('midia-tarjeta-c-detalle');
   }
 
-  it('🔴 sin `desde` (Composio no guarda instante) no hay fila «Se cayó» — ni una hora inventada', async () => {
-    const detalle = await expandirCaida({ desde: null, cliente: 'Mercado Pago' });
+  it('🔴 un instante en la tarjeta NO fabrica la fila «Se cayó» ni una hora (la app no arma el kv)', async () => {
+    // `desde` ya no existe en `TarjetaMiDia`: se lo inyecto crudo. Si alguien vuelve a leerlo para pintar
+    // «Se cayó», este `it` se pone rojo — es el mutante que se reintrodujo a mano para verificarlo.
+    const detalle = await expandirCaida({
+      desde: hoyA(9, 12),
+      presentacion: { chip: null, kv: [{ k: 'Servicio', v: 'Mercado Pago' }], accion: null },
+    });
+    // Control de ceguera: miró un detalle con filas (si estuviera vacío, los `not` pasarían solos).
+    expect(within(detalle).getByText('Servicio')).toBeTruthy();
+    expect(within(detalle).getByText('Mercado Pago')).toBeTruthy();
     expect(detalle).not.toHaveTextContent(/Se cayó/);
     expect(detalle).not.toHaveTextContent(/Hoy,/);
   });
 
-  it('con `desde` pinta «Se cayó» con la hora del instante real', async () => {
-    const detalle = await expandirCaida({ desde: hoyA(9, 12) });
-    expect(detalle).toHaveTextContent(/Se cayó/);
-    expect(detalle).toHaveTextContent(/Hoy, 9:12/);
-  });
-
-  it('la fila es de `conexion_caida`: un `desde` en otra regla no se pinta', async () => {
-    const detalle = await expandirCaida({ regla: 'facturas_impagas_viejas', desde: hoyA(9, 12), cliente: 'Lucía' });
+  it('sin `presentacion` (backend previo) tampoco hay «Se cayó»: no hay hora que inventar', async () => {
+    const detalle = await expandirCaida({ desde: hoyA(9, 12), cliente: 'Mercado Pago' });
+    expect(within(detalle).getByText('Mercado Pago')).toBeTruthy(); // control: el detalle tiene su fila «Cliente»
     expect(detalle).not.toHaveTextContent(/Se cayó/);
   });
 
-  it('si el backend ya mandó la kv «Se cayó» en `presentacion`, no se duplica', async () => {
+  it('lo que el backend manda en `presentacion.kv` se pinta tal cual y una sola vez', async () => {
     const detalle = await expandirCaida({
-      desde: hoyA(9, 12),
       presentacion: { chip: null, kv: [{ k: 'Se cayó', v: 'Hoy, 9:12' }], accion: null },
     });
+    expect(within(detalle).getAllByText('Se cayó')).toHaveLength(1);
     expect(detalle).toHaveTextContent(/Hoy, 9:12/);
-    expect(screen.getAllByText('Se cayó')).toHaveLength(1);
   });
 });
