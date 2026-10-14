@@ -17,8 +17,6 @@
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras - se cumplen, no se evalúan)
-- [🔓 LEVANTADA 13-10: device HABILITADO y con dev-client](device-tests-al-final-telefono-limpio.md) — cero rebuild; el binario va ADELANTE de main.
-
 - [Autorización PERMANENTE de merges/deploys - y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) - no repreguntes; sólo escalá lo MAYOR.
 - [Autónomo = ejecutar, no esperar un "dale"](ejecutar-autonomo-no-esperar-si-dale.md) - disparador cumplido ⇒ se ejecuta. Costó ~400 min de ocio.
 - [Un solo usuario de prueba canónico, a fuego](usuario-de-prueba-canonico-uno-solo-a-fuego.md) - `e2e-device@copiloto.test`. Ningún agente elige otro.
