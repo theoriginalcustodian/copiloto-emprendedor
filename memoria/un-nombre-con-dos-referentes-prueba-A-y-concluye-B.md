@@ -137,3 +137,27 @@ NAVEGACIÓN, no el de la llamada — hermano de
 
 ⚠️ Y el mismo nombre colisiona una tercera vez: `afip_onboarding_workflow.py` es el alta **durable de
 ARCA**, sin relación con ninguna de las dos. Va a `CONTEXT.md`.
+---
+
+## 🔁 REFUERZO 2026-10-14 — `margen` es a la vez el KPI del negocio y el token de *spacing* del tema
+
+Buscando quién consume el margen por trabajo (`SM-E3`), `git grep -ln margen` sobre los dos fronts dio
+**28 archivos**. Ninguno de los primeros veinte tenía que ver con el KPI: `theme/tokens.ts`,
+`canonGlass.ts`, `themes.css`, `railScroll.test.ts`, `Onda.tsx`, `PanelDeslizable.tsx` — todos son
+`margen` = *margin* de CSS. El dato que importaba estaba sepultado entre falsos positivos, y la
+conclusión fácil («lo menciona todo el mundo, debe estar cableado») es tan falsa como la opuesta.
+
+**El control que sí separa los dos referentes no es el nombre: es el borde.** Quién llama al
+**endpoint** (`/margen`, `/trabajos/{eslabon}/{ref}/margen`) o al **lector del core**
+(`leerGraficoMargenTrabajo`). Con ese grep el resultado fue de 28 archivos a 2, y los 2 eran los
+correctos. Un token de estilo nunca cruza el borde de la red: por eso el borde desambigua y el nombre no.
+
+**Why:** un nombre de dominio en español choca con el vocabulario de layout mucho más seguido de lo que
+parece (`margen`, `fondo`, `peso`, `caja`, `orden`, `sombra`), y el grep por nombre no distingue el
+referente. El glosario del repo ([`CONTEXT.md`](../CONTEXT.md)) ya cobra esta clase de colisión en el
+dominio; ésta es la variante que cruza **dominio ↔ presentación**.
+
+**How to apply:** cuando el símbolo que buscás tiene nombre de palabra común, no grepeés el nombre:
+grepeá **el borde que sólo el referente que te importa puede cruzar** —la ruta del endpoint, el nombre
+de la función del cliente, el `testID`— y contá cuánto baja el resultado. Si no baja, elegiste un borde
+que los dos referentes comparten.

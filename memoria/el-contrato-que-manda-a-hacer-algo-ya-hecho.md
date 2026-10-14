@@ -253,3 +253,39 @@ contrato tiene que nombrar la diferencia; (9) antes de bajar un id, `grep` tu pr
 da «0 en fuente, sólo tests», **no concluyas ausencia**: buscá la función/el helper que lo encapsula
 (`descripcionLegal`, `connectable_policy`) — el patrón se repitió en dos dominios distintos el mismo
 día, así que no es casualidad de un archivo.
+---
+
+## 🔁 REFUERZO 2026-10-14 (c) — la premisa rancia era una **AUSENCIA**, y la escalé al operador sin grepear nada
+
+El refuerzo (b) cerró con *«el que manda es el código para la ausencia y la fila para la decisión»*.
+Hoy pagué el caso que ese consejo no cubre: **la afirmación de ausencia no venía del tablero ni de mi
+grep — venía de una TABLA DE MEDICIÓN dentro de la ficha**, y las tablas de medición también vencen.
+
+`SM-E3` trae en su cuerpo una tabla «dónde encaja cada una», medida *«contra `modules/` de los dos
+fronts, no supuesto»*. Su fila del margen decía: **«⚠️ no existe módulo `trabajos` en ningún front ⇒ el
+más alto: pantalla nueva, o bloque en `inteligencia` — a decidir»**. Sobre esa fila escalé al operador
+que el margen era **MAYOR** (pantalla nueva). Medido hoy con `git grep` contra `origin/main`:
+`TarjetaMargenTrabajo` **existe en los dos fronts** —
+`apps/copiloto-web/src/modules/inteligencia/graficos/GraficosInteligencia.tsx:151` y
+`apps/mobile/.../GraficosInteligencia.tsx:163`, las dos montadas por `GraficosInteligencia`, con
+`leerGraficoMargenTrabajo` ya cableado en core. La opción «bloque en `inteligencia`» que la tabla
+dejaba *a decidir* **ya se había tomado de hecho**, y lo que faltaba no era una pantalla: era **pintar
+el conteo de gastos imputados** — el trabajo que terminé en una tarde.
+
+**La diferencia con (b), que es la que hace falta nombrar:** ahí el defecto fue *medir el código y no
+leer la fila*. Acá **no medí nada**: heredé la medición de un tercero fechada, la leí como estado
+presente y la convertí en una escalación. Una tabla con el sello «medido, no supuesto» **invita** a
+eso: lleva adentro la palabra que desactiva la pregunta. Es
+[[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]] aplicado a una
+medición: el sello acredita **el día en que se midió**, nunca hoy.
+
+**Y el costo específico de escalar una ausencia:** una escalación de trabajo ya hecho se retracta; una
+escalación que dice «esto es MAYOR, no lo puedo decidir yo» **transfiere al operador una decisión que
+no existe** y, peor, deja la ficha congelada mientras espera una respuesta que no destraba nada. Las
+otras tres escalaciones que mandé el mismo día siguen siendo reales; la cuarta bajó la señal de las tres.
+
+**How to apply (completa las de arriba):** (11) **toda afirmación de ausencia se re-mide antes de
+citarse**, también —y sobre todo— cuando viene de una tabla que dice «medido»: una ausencia es la clase
+de afirmación que el tiempo invierte sola, porque alguien implementa y nadie vuelve a la tabla;
+(12) si la ficha ofrece opciones «a decidir», antes de escalar la decisión **medí si el código ya eligió
+una**: en un repo con tres sesiones, la decisión de hecho llega antes que la decisión escrita.

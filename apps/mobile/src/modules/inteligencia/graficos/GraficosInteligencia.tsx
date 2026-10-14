@@ -7,6 +7,7 @@ import {
   ETIQUETA_CATEGORIA,
   esCategoriaValida,
   formatearFechaCorta,
+  imputacionDeTrabajos,
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
@@ -200,6 +201,16 @@ function TarjetaMargenTrabajo() {
             ]}
           />
         </ScrollView>
+      )}
+      {/* SM-E3: el conteo va SIEMPRE que haya margen en pantalla -- un margen sobre cero gastos
+          imputados se ve igual que uno completo (`apps/copiloto/gastos_web.py:188`). */}
+      {res.trabajos.length > 0 && (
+        <Text
+          testID="inteligencia-grafico-margen-trabajo-imputacion"
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 4 }}
+        >
+          {imputacionDeTrabajos(res.trabajos).texto}
+        </Text>
       )}
       {res.sinIngreso.length > 0 && (
         <Text

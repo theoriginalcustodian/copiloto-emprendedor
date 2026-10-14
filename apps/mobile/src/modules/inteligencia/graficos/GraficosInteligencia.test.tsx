@@ -123,3 +123,47 @@ describe('GraficosInteligencia — lo que NO inventa', () => {
     await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-margen-trabajo-vacio')).toBeTruthy());
   });
 });
+
+/**
+ * SM-E3, DoD de UI: **ninguna pantalla muestra margen sin el conteo de gastos imputados al lado.** Un
+ * margen sobre cero gastos imputados es el cobrado entero y se ve identico a uno completo
+ * (`apps/copiloto/gastos_web.py:188`). El texto lo decide `imputacionDeTrabajos` en core (8 casos en
+ * `packages/core/src/api/inteligencia.test.ts`); aca se fija que la tarjeta lo PINTE.
+ */
+describe('TarjetaMargenTrabajo - el margen nunca se muestra solo', () => {
+  it('con trabajos imputados muestra el conteo al lado del margen', async () => {
+    await montar();
+    await waitFor(() =>
+      expect(screen.getByTestId('inteligencia-grafico-margen-trabajo-imputacion')).toBeTruthy(),
+    );
+    expect(screen.getByText('2 gastos imputados en el trabajo.')).toBeTruthy();
+  });
+
+  it('CERO gastos imputados: avisa que el margen es el cobrado entero', async () => {
+    margenTrabajoMock.mockResolvedValue({
+      status: 'ok',
+      modo: 'lista',
+      tipo: 'barras',
+      trabajos: [
+        { eslabon: 'comprobante', ref: 1, etiqueta: 'Factura #12', cobrado: '30000.00', gastado: null, margen: '30000.00', gastosImputados: 0 },
+      ],
+      sinIngreso: [],
+    });
+
+    await montar();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('inteligencia-grafico-margen-trabajo-imputacion')).toBeTruthy(),
+    );
+    expect(screen.getByText(/cobrado entero/)).toBeTruthy();
+  });
+
+  it('sin trabajos no hay conteo: no se califica un margen que no esta en pantalla', async () => {
+    margenTrabajoMock.mockResolvedValue({ status: 'ok', modo: 'lista', tipo: 'barras', trabajos: [], sinIngreso: [] });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-margen-trabajo-vacio')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-grafico-margen-trabajo-imputacion')).toBeNull();
+  });
+});
