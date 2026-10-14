@@ -26,6 +26,8 @@ jest.mock('@copiloto/core', () => {
     ...actual,
     sendSoporteChat: jest.fn(),
     sendSoporteAudio: jest.fn(),
+    listarMisTickets: jest.fn(),
+    adjuntarFotoATicket: jest.fn(),
     apiReal: { ...actual.apiReal, getReply: jest.fn() },
   };
 });
@@ -34,6 +36,21 @@ jest.mock('@copiloto/core', () => {
  *  apenas monta `useVozComando` en la misma sesión. */
 jest.mock('expo-file-system/legacy', () => ({
   deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+/** El picker nativo (Alert Cámara/Galería + expo-image-picker) no existe en jest: se devuelve el archivo
+ *  que cada test fije en `mockElegirFoto`. */
+const mockElegirFoto = jest.fn();
+jest.mock('../chat/useCapturaFoto', () => ({
+  useCapturaFoto: () => ({ elegir: (...a: unknown[]) => mockElegirFoto(...a) }),
+}));
+
+/** `empujarUnaVez` empuja al `router` real de expo-router, ausente en este árbol: se observa la llamada. */
+const mockEmpujarUnaVez = jest.fn();
+const mockReabrirNavegacion = jest.fn();
+jest.mock('../../navegacion/empujarUnaVez', () => ({
+  empujarUnaVez: (...a: unknown[]) => mockEmpujarUnaVez(...a),
+  reabrirNavegacion: () => mockReabrirNavegacion(),
 }));
 
 /**
@@ -112,7 +129,13 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { apiReal as api, sendSoporteAudio } from '@copiloto/core';
+import {
+  adjuntarFotoATicket,
+  apiReal as api,
+  listarMisTickets,
+  sendSoporteAudio,
+  sendSoporteChat,
+} from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaSoporte } from './PantallaSoporte';
@@ -384,5 +407,202 @@ describe('PantallaSoporte -- encabezado (BL-W10)', () => {
     // H-A4-4: SOPORTE_QUIEN (packages/core/src/ayuda/textosSoporte.ts) es compartido con web; el
     // cambio de "Soporte de Odobi" a "Soporte técnico" pegó acá sin tocar código de mobile.
     expect(screen.getByTestId('soporte-quien').props.children).toBe('Soporte técnico');
+  });
+});
+
+// ---- PROTO4APP §D/§E: la tarjeta del ticket en el hilo + «Ver tickets anteriores (N)» + el clip ----
+
+const ticket = (o: Record<string, unknown> = {}) => ({
+  id: 9,
+  codigo: 'SOP-0009',
+  asunto: 'No me deja facturar',
+  estado: 'abierto' as const,
+  creadoEn: '2026-10-13T10:00:00Z',
+  ...o,
+});
+
+function listaDe(items: ReturnType<typeof ticket>[], total = items.length, respuestaEstimada: string | null = null) {
+  jest.mocked(listarMisTickets).mockResolvedValue({ status: 'ok', items, total, respuestaEstimada } as never);
+}
+
+describe('PantallaSoporte -- tickets propios y adjunto (PROTO4APP §D/§E)', () => {
+  jest.setTimeout(30000);
+
+  beforeEach(() => {
+    jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
+    jest.mocked(listarMisTickets).mockReset().mockResolvedValue({ status: 'no_disponible' } as never);
+    jest.mocked(adjuntarFotoATicket).mockReset();
+    mockElegirFoto.mockReset();
+    mockEmpujarUnaVez.mockReset();
+    mockReabrirNavegacion.mockReset();
+  });
+
+  it('con un ticket en curso pinta la tarjeta con SU código, estado y asunto, y el pie es el de textosSoporte (no el del prototipo)', async () => {
+    listaDe([ticket()]);
+    await renderPantallaSoporte();
+
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+    expect(screen.getByText('Ticket SOP-0009')).toBeTruthy();
+    expect(screen.getByTestId('soporte-ticket-estado').props.children).toBe('Abierto');
+    expect(screen.getByTestId('soporte-ticket-sobre').props.children).toBe('No me deja facturar');
+    const arbol = JSON.stringify(screen.toJSON());
+    expect(arbol).toContain('asunto y un resumen');
+    // Los literales del prototipo están contradichos: ni plazo en horas ni «va con esta conversación».
+    expect(arbol).not.toMatch(/4 h|hábiles|Va con esta conversación/i);
+  });
+
+  it('con `respuesta_estimada: null` la fila «Te contestan» NO se pinta', async () => {
+    listaDe([ticket()]);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+    expect(screen.queryByTestId('soporte-ticket-contestan')).toBeNull();
+  });
+
+  it('con un plazo del backend la fila «Te contestan» SÍ se pinta, con ese plazo', async () => {
+    listaDe([ticket()], 1, 'Antes de 24 h');
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-contestan')).toBeTruthy());
+    expect(screen.getByTestId('soporte-ticket-contestan').props.children).toBe('Antes de 24 h');
+  });
+
+  it('el último ticket CERRADO no es tarjeta: sólo queda «Ver tickets anteriores (N)» con N = lo que se despliega', async () => {
+    listaDe([ticket({ estado: 'cerrado' }), ticket({ id: 7, codigo: 'SOP-0007', estado: 'cerrado' })]);
+    await renderPantallaSoporte();
+
+    await waitFor(() => expect(screen.getByTestId('soporte-tickets-anteriores')).toBeTruthy());
+    expect(screen.queryByTestId('soporte-ticket-card')).toBeNull();
+    expect(JSON.stringify(screen.toJSON())).toContain('Ver tickets anteriores (2)');
+  });
+
+  it('con tarjeta vigente, N descuenta el vigente y sale de `total` (no de items.length); tocar despliega las filas', async () => {
+    listaDe([ticket(), ticket({ id: 7, codigo: 'SOP-0007', estado: 'cerrado' })], 5);
+    await renderPantallaSoporte();
+
+    await waitFor(() => expect(screen.getByTestId('soporte-tickets-anteriores')).toBeTruthy());
+    expect(JSON.stringify(screen.toJSON())).toContain('Ver tickets anteriores (4)');
+    expect(screen.queryByTestId('soporte-ticket-anterior-7')).toBeNull();
+    await fireEvent.press(screen.getByTestId('soporte-tickets-anteriores'));
+    expect(screen.getByTestId('soporte-ticket-anterior-7')).toBeTruthy();
+  });
+
+  it('un solo ticket vigente y ningún anterior: NO hay enlace «Ver tickets anteriores»', async () => {
+    listaDe([ticket()]);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+    expect(screen.queryByTestId('soporte-tickets-anteriores')).toBeNull();
+  });
+
+  it('tocar la tarjeta abre ESE ticket (reabriendo la puerta de navegación primero)', async () => {
+    listaDe([ticket()]);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('soporte-ticket-card'));
+
+    expect(mockReabrirNavegacion).toHaveBeenCalledTimes(1);
+    expect(mockEmpujarUnaVez).toHaveBeenCalledWith({ pathname: '/soporte-ticket', params: { ticketId: '9' } });
+  });
+
+  it('fail-soft: si la lista falla (red/5xx) no hay tarjeta y el chat queda usable', async () => {
+    jest.mocked(listarMisTickets).mockRejectedValue(new Error('boom'));
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(listarMisTickets).toHaveBeenCalled();
+    expect(screen.queryByTestId('soporte-tickets')).toBeNull();
+  });
+
+  it('el clip SIN ticket en curso avisa con el motivo y NO abre el picker (no acepta una foto para perderla)', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('chat-foto')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    expect(alertSpy).toHaveBeenCalledWith('Todavía no hay un ticket abierto', expect.stringContaining('se adjunta a un ticket'));
+    expect(mockElegirFoto).not.toHaveBeenCalled();
+    expect(adjuntarFotoATicket).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('el clip CON ticket sube la foto a ESE ticket, avisa y borra el archivo local (cero retención)', async () => {
+    const { deleteAsync } = require('expo-file-system/legacy');
+    deleteAsync.mockClear();
+    listaDe([ticket()]);
+    const archivo = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
+    mockElegirFoto.mockResolvedValue(archivo);
+    jest.mocked(adjuntarFotoATicket).mockResolvedValue({
+      status: 'ok',
+      adjunto: { id: 5, nombre: 'ticket.jpg', tipo: 'image/jpeg', bytes: 10 },
+    } as never);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    await waitFor(() => expect(adjuntarFotoATicket).toHaveBeenCalledWith(9, archivo));
+    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
+    expect(screen.getByTestId('soporte-adjunto-aviso').props.children).toBe('Listo, la foto quedó adjunta al ticket.');
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/ticket.jpg', { idempotent: true });
+  });
+
+  it('si el usuario cancela el picker no se sube nada', async () => {
+    listaDe([ticket()]);
+    mockElegirFoto.mockResolvedValue(null);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    await waitFor(() => expect(mockElegirFoto).toHaveBeenCalledTimes(1));
+    expect(adjuntarFotoATicket).not.toHaveBeenCalled();
+  });
+
+  it('un rechazo del backend (413) se dice en palabras y la foto igual se borra', async () => {
+    const { deleteAsync } = require('expo-file-system/legacy');
+    deleteAsync.mockClear();
+    listaDe([ticket()]);
+    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/grande.jpg' });
+    jest.mocked(adjuntarFotoATicket).mockResolvedValue({ status: 'rechazado' } as never);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
+    expect(String(screen.getByTestId('soporte-adjunto-aviso').props.children)).toMatch(/pesa demasiado/);
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/grande.jpg', { idempotent: true });
+  });
+
+  it('un error de red al subir cae en el aviso genérico (no crashea) y también borra el archivo', async () => {
+    const { deleteAsync } = require('expo-file-system/legacy');
+    deleteAsync.mockClear();
+    listaDe([ticket()]);
+    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/x.jpg' });
+    jest.mocked(adjuntarFotoATicket).mockRejectedValue(new Error('red'));
+    await renderPantallaSoporte();
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
+    expect(String(screen.getByTestId('soporte-adjunto-aviso').props.children)).toMatch(/No pudimos subir la foto/);
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/x.jpg', { idempotent: true });
+  });
+
+  it('al terminar un turno del chat vuelve a pedir los tickets (el agente pudo abrir uno)', async () => {
+    jest.mocked(sendSoporteChat).mockReset().mockResolvedValue({ wf_id: 'wf-1', accepted: true, session_id: 'sop:abc' } as never);
+    listaDe([]);
+    await renderPantallaSoporte();
+    await waitFor(() => expect(listarMisTickets).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    // El turno SOLO termina (`sendStatus` vuelve a `idle`) cuando llega la respuesta del agente.
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [{ id: 1, text: 'Abrí el ticket SOP-0009' }], next_id: 1 });
+    listaDe([ticket()]);
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'no me deja facturar');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy(), { timeout: 10000 });
+    expect(jest.mocked(listarMisTickets).mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 });

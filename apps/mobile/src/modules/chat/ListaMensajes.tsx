@@ -1,4 +1,5 @@
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 import type { ListRenderItemInfo } from 'react-native';
@@ -63,6 +64,12 @@ export interface ListaMensajesProps {
    * sueltos a propósito: cada pantalla que se monte sobre esta lista elegiría copy nuevo sin revisión.
    */
   vacio?: 'completo' | 'ninguno';
+  /**
+   * Lo que va DESPUÉS del último mensaje, dentro del scroll (`ListFooterComponent`). Existe para que Soporte
+   * cuelgue la tarjeta de su ticket al final del hilo sin que `ListaMensajes` sepa de tickets: es un slot,
+   * no una variante. Ausente = nada (el chat general no pasa nada, sin cambio).
+   */
+  pie?: ReactElement;
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
    * gate de este sprint lo usa todavía.
@@ -486,7 +493,7 @@ const FilaMensaje = memo(function FilaMensaje({
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo' }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -535,6 +542,7 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
         initialNumToRender={15}
         maxToRenderPerBatch={10}
         windowSize={10}
+        ListFooterComponent={pie ?? null}
         ListEmptyComponent={
           vacio === 'ninguno' ? null : (
             <View testID="chat-vacio" style={styles.vacio}>

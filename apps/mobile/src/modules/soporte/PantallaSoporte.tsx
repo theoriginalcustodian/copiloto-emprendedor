@@ -3,6 +3,8 @@ import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'r
 import type { FlatList } from 'react-native-gesture-handler';
 
 import {
+  SOPORTE_ADJUNTO_SIN_TICKET,
+  SOPORTE_ADJUNTO_SIN_TICKET_TITULO,
   SOPORTE_PLACEHOLDER,
   SOPORTE_PRESENTACION,
   SOPORTE_QUE_VIAJA,
@@ -18,11 +20,15 @@ import { BotonVoz } from '../chat/BotonVoz';
 import { Composer } from '../chat/Composer';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { ListaMensajes } from '../chat/ListaMensajes';
+import { useCapturaFoto } from '../chat/useCapturaFoto';
 import { useVozComando } from '../chat/useVozComando';
+import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { Marca } from '../../theme/Marca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+import { TarjetaTicketSoporte } from './TarjetaTicketSoporte';
 import { useChatSoporte } from './useChatSoporte';
+import { useTicketsSoporte } from './useTicketsSoporte';
 
 /** Soporte no tiene ejemplos propios (el prototipo arranca el hilo con mensajes y sólo invita con el campo
  *  «Contame qué pasó…»): `[]` = el vacío no monta el rodillo, en vez de heredar los de gasto/cobro. */
@@ -78,6 +84,8 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const tema = useTema();
   const { me } = useSession();
   const { estado, send, enviarAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
+  const tickets = useTicketsSoporte(estado?.sendStatus ?? 'idle');
+  const captura = useCapturaFoto();
   const voz = useVozComando();
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
@@ -141,6 +149,29 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   // BL-D2: deslizar a la izquierda / toque corto descarta lo grabado sin enviarlo.
   const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
+  // §E: el clip adjunta a UN ticket (`POST /soporte/tickets/{id}/adjuntos`), no a la conversación. Sin un
+  // ticket en curso no hay a dónde mandar la foto, y aceptarla para perderla sería peor que decirlo.
+  const { vigente, adjuntarFoto, adjuntando } = tickets;
+  const alAdjuntarFoto = useCallback(() => {
+    if (adjuntando) return; // un upload a la vez: el clip sigue visible, sólo no dispara otro
+    if (vigente === null) {
+      Alert.alert(SOPORTE_ADJUNTO_SIN_TICKET_TITULO, SOPORTE_ADJUNTO_SIN_TICKET);
+      return;
+    }
+    void (async () => {
+      const archivo = await captura.elegir();
+      if (archivo !== null) await adjuntarFoto(archivo);
+    })();
+  }, [vigente, captura, adjuntarFoto, adjuntando]);
+
+  // Esta pantalla ya fue abierta con `empujarUnaVez` (la puerta quedó cerrada hasta que el lanzador
+  // recupere el foco), así que abrir el ticket desde acá la reabre primero: es un toque deliberado
+  // dentro de la pantalla, y `empujarUnaVez` la vuelve a cerrar de forma síncrona contra el doble toque.
+  const abrirTicket = useCallback((ticketId: number) => {
+    reabrirNavegacion();
+    empujarUnaVez({ pathname: '/soporte-ticket', params: { ticketId: String(ticketId) } });
+  }, []);
+
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
   // PISTAFIJARSOPORTE: la pista del candado es la ALTERNATIVA que exige WCAG 2.5.1 al mantener apretado;
   // sin ella el gesto de fijar no tiene cartel (mismo cableado que `ChatView`/`MicFuncion`).
@@ -194,6 +225,16 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           onChoice={manejarEleccion}
           ejemplos={SIN_EJEMPLOS}
           vacio="ninguno"
+          pie={
+            <TarjetaTicketSoporte
+              vigente={tickets.vigente}
+              anteriores={tickets.anteriores}
+              cantidadAnteriores={tickets.cantidadAnteriores}
+              respuestaEstimada={tickets.respuestaEstimada}
+              aviso={tickets.aviso}
+              onAbrirTicket={abrirTicket}
+            />
+          }
         />
 
         {!fijado && (
@@ -241,6 +282,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
             onSend={manejarEnvio}
             disabled={estado === null}
             placeholder={SOPORTE_PLACEHOLDER}
+            onFoto={alAdjuntarFoto}
           />
         </View>
       </KeyboardAvoidingView>
