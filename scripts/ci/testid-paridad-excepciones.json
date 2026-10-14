@@ -711,86 +711,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/admin"
     },
-    "modules/ajustes/afip::afip-arca-paso-1-continuar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-paso-1-continuar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-paso-2-cancelar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-paso-2-cancelar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-paso-2-confirmar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-paso-2-confirmar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-paso-3-atras": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-paso-3-atras",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-reconectar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-reconectar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-rehacer": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-rehacer",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-reintentar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-reintentar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-arca-vincular": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-arca-vincular",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
     "modules/ajustes/afip::afip-perfil-cuit-error": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
@@ -798,16 +718,6 @@
       "falta_en": "mobile",
       "fecha": "2026-09-22",
       "id": "afip-perfil-cuit-error",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/afip::afip-perfil-guardar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "afip-perfil-guardar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/afip"
     },
@@ -841,16 +751,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/negocio"
     },
-    "modules/ajustes/negocio::perfil-negocio-guardar-negocio": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "perfil-negocio-guardar-negocio",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/negocio"
-    },
     "modules/ajustes/negocio::perfil-negocio-seccion-personalidad": {
       "en": [
         "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
@@ -871,16 +771,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/negocio"
     },
-    "modules/ajustes/negocio::perfil-negocio-volver-confirmacion": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "perfil-negocio-volver-confirmacion",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/negocio"
-    },
     "modules/ajustes/negocio::tono-botones": {
       "en": [
         "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
@@ -898,16 +788,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "tono-ejemplo-caja",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/ajustes/negocio::tono-guardar": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/negocio/PantallaTono.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "tono-guardar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/negocio"
     },
@@ -1955,16 +1835,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
-    "modules/chat::sheet-requiere-conexion-ahora-no": {
-      "en": [
-        "apps/copiloto-web/src/modules/chat/SheetRequiereConexion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "sheet-requiere-conexion-ahora-no",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
     "modules/chat::sheet-requiere-conexion-ancla": {
       "en": [
         "apps/mobile/src/modules/chat/SheetRequiereConexion.tsx"
@@ -1982,16 +1852,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "sheet-requiere-conexion-botones",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::sheet-requiere-conexion-conectar": {
-      "en": [
-        "apps/copiloto-web/src/modules/chat/SheetRequiereConexion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "sheet-requiere-conexion-conectar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
@@ -2325,16 +2185,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/clientes"
     },
-    "modules/clientes::clientes-duplicado-abrir": {
-      "en": [
-        "apps/copiloto-web/src/modules/clientes/ClientesScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "clientes-duplicado-abrir",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/clientes"
-    },
     "modules/clientes::clientes-duplicado-acciones": {
       "en": [
         "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
@@ -2365,16 +2215,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/clientes"
     },
-    "modules/clientes::clientes-nuevo": {
-      "en": [
-        "apps/copiloto-web/src/modules/clientes/ClientesScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "clientes-nuevo",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/clientes"
-    },
     "modules/clientes::clientes-refresh": {
       "en": [
         "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
@@ -2402,26 +2242,6 @@
       "falta_en": "mobile",
       "fecha": "2026-09-22",
       "id": "clientes-resumen-cifra",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/clientes"
-    },
-    "modules/clientes::ficha-cliente-cerrar": {
-      "en": [
-        "apps/copiloto-web/src/modules/clientes/FichaCliente.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "ficha-cliente-cerrar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/clientes"
-    },
-    "modules/clientes::ficha-cliente-editar": {
-      "en": [
-        "apps/copiloto-web/src/modules/clientes/FichaCliente.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "ficha-cliente-editar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/clientes"
     },
@@ -2535,16 +2355,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
-    "modules/facturacion::facturacion-cancelada-nueva": {
-      "en": [
-        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "facturacion-cancelada-nueva",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/facturacion"
-    },
     "modules/facturacion::facturacion-error-borrador-botones": {
       "en": [
         "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
@@ -2552,16 +2362,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "facturacion-error-borrador-botones",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/facturacion"
-    },
-    "modules/facturacion::facturacion-error-borrador-reintentar": {
-      "en": [
-        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "facturacion-error-borrador-reintentar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
@@ -2585,17 +2385,6 @@
       "motivo": "FACTID + H-A4-5 (mobile, 2026-09-29): testID del `FilaBotones` contenedor del pill -- detalle de layout de mobile (mismo patron que facturacion-error-borrador-botones), sin equivalente semantico en web, que sólo tiene el pill suelto. No es asimetria a resolver.",
       "pantalla": "modules/facturacion"
     },
-    "modules/facturacion::facturacion-nueva-factura-pill": {
-      "en": [
-        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx",
-        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-29",
-      "id": "facturacion-nueva-factura-pill",
-      "motivo": "FACTID + H-A4-5 (mobile, 2026-09-29): falso positivo del gate, no drift real -- el testID SI existe en mobile (linea 653), pasado como `testID: '...'` dentro del array `botones` de `FilaBotones`, no como literal JSX `testID=\"...\"` -- el regex del script (LITERAL_MOBILE_RE) no lo detecta, mismo patron que facturacion-error-borrador-reintentar (tambien via FilaBotones). Confirmado con los 2 tests H-A4-5 en PantallaFacturacion.test.tsx (mobile) que ejercitan justo este pill.",
-      "pantalla": "modules/facturacion"
-    },
     "modules/facturacion::facturacion-rechazada-botones": {
       "en": [
         "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
@@ -2603,16 +2392,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "facturacion-rechazada-botones",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/facturacion"
-    },
-    "modules/facturacion::facturacion-rechazada-nueva": {
-      "en": [
-        "apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "facturacion-rechazada-nueva",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
@@ -2756,16 +2535,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/feedback"
     },
-    "modules/gastos::detalle-gasto-cerrar": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-28",
-      "id": "detalle-gasto-cerrar",
-      "motivo": "ACTID: el boton existe en las dos plataformas -- mobile lo declara como testID: 'detalle-gasto-cerrar' dentro del array botones=[{...}] de un componente de lista de acciones (config-object, no atributo JSX directo), y el regex de literales (testID=\"...\") no ve esa forma; el docstring del script ya documenta el caso testID={...} dinamico como punto ciego, pero no este (literal dentro de un objeto). No es gap de UX ni de paridad real: el boton Cerrar existe y funciona en ambas plataformas, verificado en el codigo (DetalleGasto.tsx mobile linea 166, web linea 133). Dueno: frontend2.",
-      "pantalla": "modules/gastos"
-    },
     "modules/gastos::detalle-gasto-categoria": {
       "en": [
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
@@ -2836,26 +2605,6 @@
       "motivo": "BL-J7 3er item del DoD (POST /gastos/leer-foto): input file oculto de web (dispara el picker nativo del navegador). Mobile captura con useCapturaFoto (expo-image-picker), sin elemento equivalente -- no hay <input> ni DOM del lado nativo. Unilateral por diseno de plataforma, no deuda pendiente de triar.",
       "pantalla": "modules/gastos"
     },
-    "modules/gastos::gasto-cancelar": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "gasto-cancelar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::gasto-guardar": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "gasto-guardar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
     "modules/gastos::gastos-acciones": {
       "en": [
         "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
@@ -2883,16 +2632,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "gastos-lista",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::gastos-nuevo": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/GastosScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "gastos-nuevo",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
@@ -3146,16 +2885,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ingresos"
     },
-    "modules/ingresos::ingresos-nuevo": {
-      "en": [
-        "apps/copiloto-web/src/modules/ingresos/IngresosScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "ingresos-nuevo",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ingresos"
-    },
     "modules/ingresos::ingresos-refresh": {
       "en": [
         "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
@@ -3376,26 +3105,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/midia"
     },
-    "modules/midia::agenda-nuevo-evento": {
-      "en": [
-        "apps/copiloto-web/src/modules/midia/AgendaScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "agenda-nuevo-evento",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/midia"
-    },
-    "modules/midia::agenda-reintentar": {
-      "en": [
-        "apps/copiloto-web/src/modules/midia/AgendaScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "agenda-reintentar",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/midia"
-    },
     "modules/midia::agenda-reintentar-fila": {
       "en": [
         "apps/mobile/src/modules/midia/PantallaAgenda.tsx"
@@ -3494,26 +3203,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "onboarding-cargando",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-despues": {
-      "en": [
-        "apps/copiloto-web/src/modules/onboarding/Onboarding.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "onboarding-despues",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/onboarding::onboarding-entrar": {
-      "en": [
-        "apps/copiloto-web/src/modules/onboarding/Onboarding.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "onboarding-entrar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/onboarding"
     },
@@ -3987,16 +3676,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/presupuestos"
     },
-    "modules/presupuestos::presupuestos-nuevo": {
-      "en": [
-        "apps/copiloto-web/src/modules/presupuestos/PresupuestosScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "presupuestos-nuevo",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/presupuestos"
-    },
     "modules/presupuestos::presupuestos-refresh": {
       "en": [
         "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
@@ -4024,16 +3703,6 @@
       "falta_en": "mobile",
       "fecha": "2026-09-22",
       "id": "presupuestos-resumen-total",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/presupuestos"
-    },
-    "modules/presupuestos::presupuestos-toggle-historial": {
-      "en": [
-        "apps/copiloto-web/src/modules/presupuestos/PresupuestosScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "presupuestos-toggle-historial",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/presupuestos"
     },
@@ -5089,26 +4758,6 @@
       "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
       "pantalla": "modules/onboarding"
     },
-    "modules/gastos::detalle-gasto-imputar": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-14",
-      "id": "detalle-gasto-imputar",
-      "motivo": "SM-E3 (imputar un gasto a un trabajo): el boton existe en las DOS plataformas -- mobile lo declara como `testID: 'detalle-gasto-imputar'` dentro del array `botones` de `FilaBotones` (`apps/mobile/src/modules/gastos/DetalleGasto.tsx:179`), config-object y no atributo JSX, forma que `LITERAL_MOBILE_RE` (`testID=\"...\"`) no ve. Precedente identico y mismo archivo: `detalle-gasto-cerrar` (2026-09-28). No se fuerza un literal artificial ni se abandona `FilaBotones`, que es el componente canonico de CTA del vidrio. Ejercitado por los 8 casos de `apps/mobile/src/modules/gastos/DetalleGasto.test.tsx`, que lo tocan por testID. Dueno: planificacion. Disparador para sacarla: que `testid_paridad.py` aprenda a leer `testID:` dentro de un objeto (saca de una vez estas dos, `detalle-gasto-cerrar` y las de `facturacion-error-borrador-*`).",
-      "pantalla": "modules/gastos"
-    },
-    "modules/gastos::detalle-gasto-desimputar": {
-      "en": [
-        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-14",
-      "id": "detalle-gasto-desimputar",
-      "motivo": "SM-E3 (quitar la imputacion): mismo caso y mismo mecanismo que `detalle-gasto-imputar` -- mobile lo declara `testID: 'detalle-gasto-desimputar'` en el array `botones` de `FilaBotones` (`apps/mobile/src/modules/gastos/DetalleGasto.tsx:158`). El boton existe en las dos plataformas y su caso 🔴 («quitar manda null y la pantalla vuelve a sin imputar») esta en los dos tests de `DetalleGasto.test.tsx`. Dueno: planificacion. Disparador para sacarla: el mismo.",
-      "pantalla": "modules/gastos"
-    },
     "modules/gastos::detalle-gasto-trabajo-imputado": {
       "en": [
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
@@ -5119,17 +4768,115 @@
       "motivo": "SM-E3 (el trabajo al que esta imputado el gasto): punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. Web lo declara en `DetalleGasto.tsx:125` (`<Dato ... testID=\"detalle-gasto-trabajo-imputado\" />`) y sus tests lo afirman por testID en los dos fronts. Es el sexto hermano de los cinco `Dato` ya listados (categoria, fecha, medio-pago, origen, proveedor), con la misma causa. Dueno: planificacion. Disparador para sacar las SEIS juntas: que el escaner resuelva la prop `testID` reenviada por `Dato` -- no tiene sentido triarlas de a una.",
       "pantalla": "modules/gastos"
     },
-    "modules/midia::midia-alta-enviar": {
+    "modules/ajustes::cuenta-cerrar-sesion": {
       "en": [
-        "apps/copiloto-web/src/modules/midia/MidiaScreen.tsx"
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
       ],
-      "falta_en": [
-        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
-      ],
+      "falta_en": "web",
       "fecha": "2026-10-14",
-      "id": "midia-alta-enviar",
-      "motivo": "PUNTO CIEGO DEL GATE, no falta de paridad: el boton mobile EXISTE y lleva este testID, pero sale del config-object de FilaBotones (botones=[{..., testID}], FilaBotones.tsx:65,71) y testid_paridad.py solo caza el literal testID=\"...\". RETIRAR junto a las 3 de detalle-gasto-* (medido contra main: imputar, desimputar, trabajo-imputado) cuando el gate aprenda a leer los config-objects de FilaBotones.",
-      "pantalla": "modules/midia"
+      "id": "cuenta-cerrar-sesion",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cerrar-sesion-no": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-cerrar-sesion-no",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cerrar-sesion-si": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-cerrar-sesion-si",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-contrasena-cancelar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-cancelar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-contrasena-cerrar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-cerrar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-contrasena-guardar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-guardar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes/negocio::tono-volver": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "tono-volver",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/chat::recibo-ejecutado-volver": {
+      "en": [
+        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "recibo-ejecutado-volver",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/chat"
+    },
+    "modules/feedback::feedback-texto-enviar": {
+      "en": [
+        "apps/mobile/src/modules/feedback/PantallaFeedback.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "feedback-texto-enviar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/feedback"
+    },
+    "modules/onboarding::onboarding-chip-detalle-boton": {
+      "en": [
+        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "onboarding-chip-detalle-boton",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/onboarding"
+    },
+    "modules/onboarding::onboarding-perfil-guardar": {
+      "en": [
+        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "onboarding-perfil-guardar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/onboarding"
     }
   }
 }
