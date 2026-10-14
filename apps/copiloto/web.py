@@ -31,7 +31,7 @@ from typing import Callable
 from _paths import ensure_paths
 ensure_paths()
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -68,7 +68,8 @@ from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tena
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
-from soporte_store import TicketStore
+from soporte_store import ESTADOS_VALIDOS as SOPORTE_ESTADOS_VALIDOS
+from soporte_store import MAX_ADJUNTOS_POR_TICKET, TicketStore
 
 import dictado_destinos
 import services
@@ -101,6 +102,12 @@ CONTEXTOS_TRANSCRIBIR = dictado_destinos.CONTEXTOS_TRANSCRIBIR
 # Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
 # 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
 MAX_IMAGEN_BYTES = int(os.environ.get("MAX_IMAGEN_BYTES", 10 * 1024 * 1024))
+
+# Adjuntos de soporte (PROTO4DEPS §4): el blob se guarda en la base (bytea), no en disco ni en un bucket,
+# así que el techo es MÁS bajo que el de `/chat/foto` (que sólo lo procesa en RAM y lo descarta). 5 MB
+# alcanza para una captura de pantalla o una foto comprimida; por ticket hay además un tope de cantidad
+# (`soporte_store.MAX_ADJUNTOS_POR_TICKET`). Parametrizable.
+MAX_ADJUNTO_BYTES = int(os.environ.get("MAX_ADJUNTO_BYTES", 5 * 1024 * 1024))
 
 # Contrato BETA1a-feedback-endpoint §1: 2000 caracteres alcanza de sobra para feedback in-app
 # (no es un campo de texto libre extenso como una nota de voz larga transcripta).
@@ -995,6 +1002,27 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref,
                 "transcript": transcript}
 
+    @app.get("/soporte/tickets")
+    def soporte_tickets_propios(estado: str | None = Query(None),
+                                limite: int = Query(50, ge=1, le=100),
+                                cliente_id: str = Depends(require_tenant)) -> dict:
+        """Listado de los tickets de SOPORTE del propio tenant (contrato de las 4 dependencias del
+        prototipo, §1). El mismo `TicketStore` que el detalle: el `WHERE cliente_id = %s` es el
+        aislamiento, y `cliente_id` sale del token, nunca del query.
+
+        `total` es el conteo del tenant bajo el MISMO filtro de `estado`, sin el tope de `limite`
+        (no `len(items)`). `respuesta_estimada` va SIEMPRE `null`: el «4 h hábiles» es decisión del
+        operador, y emitirlo sin esa decisión sería inventar una promesa -- la clave existe para
+        que la app no tenga que adivinar su forma cuando se decida."""
+        if estado is not None and estado not in SOPORTE_ESTADOS_VALIDOS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"estado inválido (válidos: {', '.join(SOPORTE_ESTADOS_VALIDOS)})")
+        store = TicketStore(conn_factory, cliente_id)
+        return {"items": store.listar_tickets(estado=estado, limite=limite),
+                "total": store.contar_tickets(estado=estado),
+                "respuesta_estimada": None}
+
     @app.get("/soporte/tickets/{ticket_id}")
     def soporte_ticket_propio(ticket_id: int, cliente_id: str = Depends(require_tenant)) -> dict:
         """S6-11 (pedido de frontend, `pedido_frontend-a-todos_S6-11-...`): el usuario final necesita
@@ -1009,7 +1037,43 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if ticket is None:
             raise HTTPException(status_code=404, detail="ticket no encontrado")
         mensajes = store.listar_mensajes(ticket_id=ticket_id)
-        return {"ticket": ticket, "mensajes": mensajes}
+        return {"ticket": ticket, "mensajes": mensajes,
+                "adjuntos": store.listar_adjuntos(ticket_id=ticket_id)}
+
+    @app.post("/soporte/tickets/{ticket_id}/adjuntos", status_code=201)
+    async def soporte_ticket_adjuntar(ticket_id: int, adjunto: UploadFile = File(...),
+                                      cliente_id: str = Depends(require_tenant)) -> dict:
+        """PROTO4DEPS §4: el clip del chat de soporte. Una imagen (jpg/png) adjunta a UN ticket PROPIO.
+
+        Orden de los chequeos, y por qué: (1) ownership primero -- `obtener_ticket` hace el
+        `WHERE cliente_id = %s`, así que ajeno e inexistente dan el MISMO 404 que el GET, y un tenant
+        no aprende nada del ticket de otro ni siquiera por el código de error de un archivo malo;
+        (2) tamaño (413) ANTES de leer en RAM, en el front-door COMPARTIDO; (3) magic bytes (415)
+        con el MISMO `upload_validacion` que los otros 4 uploads -- `content_type` es un dato no
+        confiable del cliente, no se valida con un whitelist propio; (4) tope por ticket (413).
+
+        Sólo `image/jpeg` y `image/png` (`FIRMAS_IMAGEN`): son las firmas que el módulo ya conoce y
+        lo que el clip adjunta hoy. Un PDF exigiría agregar su firma ahí, no una validación acá."""
+        store = TicketStore(conn_factory, cliente_id)
+        if store.obtener_ticket(ticket_id=ticket_id) is None:
+            raise HTTPException(status_code=404, detail="ticket no encontrado")
+        techo_mb = MAX_ADJUNTO_BYTES // (1024 * 1024)
+        if adjunto.size is not None and adjunto.size > MAX_ADJUNTO_BYTES:
+            raise HTTPException(status_code=413, detail=f"adjunto demasiado grande (máx {techo_mb} MB)")
+        contenido = await adjunto.read()
+        if len(contenido) > MAX_ADJUNTO_BYTES:
+            raise HTTPException(status_code=413, detail=f"adjunto demasiado grande (máx {techo_mb} MB)")
+        tipo = adjunto.content_type or ""
+        if not contenido or not magic_bytes_validos(contenido, tipo, FIRMAS_IMAGEN):
+            raise HTTPException(status_code=415, detail="formato de adjunto no soportado (jpg/png)")
+        # El nombre es del cliente: sólo se conserva el último tramo (sin `../`) y se acota.
+        nombre = (adjunto.filename or "").replace("\\", "/").rsplit("/", 1)[-1].strip()[:120] or "adjunto"
+        guardado = store.agregar_adjunto(ticket_id=ticket_id, nombre=nombre, tipo=tipo, contenido=contenido)
+        if guardado is None:
+            raise HTTPException(
+                status_code=413,
+                detail=f"el ticket ya tiene el máximo de adjuntos ({MAX_ADJUNTOS_POR_TICKET})")
+        return guardado
 
     @app.get("/feedback")
     def feedback_propio(cliente_id: str = Depends(require_tenant)) -> dict:

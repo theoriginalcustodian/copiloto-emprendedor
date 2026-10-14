@@ -17,6 +17,7 @@ from typing import Callable
 
 from catalog import TIPO_DESTINO_CONEXION, destino_conexion
 from mi_dia_clasificacion import clasificar
+from mi_dia_presentacion import presentar
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_mi_dia_tarjetas"
@@ -57,6 +58,11 @@ def _datos_con_destino(entidad_tipo, entidad_id, datos):
 def _fila_a_dict(fila: tuple) -> dict:
     id_, regla, entidad_tipo, entidad_id, texto, estado, datos, creada, movida = fila
     datos = _datos_con_destino(entidad_tipo, entidad_id, datos)
+    # PROTO4DEPS §3 + H12: lo que la tarjeta SIGNIFICA en pantalla (prosa + kv ya formateadas + chip +
+    # acción), derivado de la regla igual que `clasificar()`. Cuelga de la TARJETA, hermana de `datos`
+    # (D2); `datos` NO se toca: normalizar `monto`/`fecha` ahí fue rechazado por H12 (una forma cerrada
+    # viviendo en la bolsa sin forma es lo que dejó esas filas inalcanzables).
+    presentacion = presentar(regla, entidad_id, datos, creada)
     return {
         # `str(id_)`: el id es SERIAL (int) en la DB, pero el contrato del wire lo espera string
         # (packages/core/src/api/miDia.ts:91 descarta en silencio toda tarjeta con `id` no-string —
@@ -67,6 +73,7 @@ def _fila_a_dict(fila: tuple) -> dict:
         "movida_en": movida.isoformat() if movida else None,
         # K-06: derivados de `regla` al leer (sin columna); aditivos para el cliente viejo.
         **clasificar(regla),
+        **({"presentacion": presentacion} if presentacion else {}),
     }
 
 

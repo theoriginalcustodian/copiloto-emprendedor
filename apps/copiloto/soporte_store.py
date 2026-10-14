@@ -27,10 +27,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from psycopg2 import Binary
+
 SCHEMA = "uc_factory"
 TABLA_TICKETS = f"{SCHEMA}.copiloto_tickets"
 TABLA_MENSAJES = f"{SCHEMA}.copiloto_mensajes"
 TABLA_SECUENCIA = f"{SCHEMA}.copiloto_ticket_secuencia"
+TABLA_ADJUNTOS = f"{SCHEMA}.copiloto_ticket_adjuntos"
+
+#: Tope de adjuntos por ticket. Los blobs viven en la base (bytea, ver `agregar_adjunto`): sin un tope
+#: por ticket, un tenant autenticado podría crecer la base compartida sin límite. 10 × el techo por
+#: archivo (`MAX_ADJUNTO_BYTES` en web.py) acota un ticket a ~50 MB.
+MAX_ADJUNTOS_POR_TICKET = 10
 
 #: Los dos canales que este módulo cubre. `feedback` NO es un canal de acá -- sigue en
 #: `copiloto_feedback` (B4: convive, no migra).
@@ -42,6 +50,7 @@ CANALES_VALIDOS = (SOPORTE_TECNICO, COMO_USO_LA_APP)
 ABIERTO = "abierto"
 RESPONDIDO = "respondido"
 CERRADO = "cerrado"
+ESTADOS_VALIDOS = (ABIERTO, RESPONDIDO, CERRADO)
 
 
 class TicketStore:
@@ -137,12 +146,31 @@ class TicketStore:
         finally:
             conn.close()
 
+    def contar_tickets(self, *, estado: str | None = None) -> int:
+        """Cuántos tickets tiene ESTE tenant (opcionalmente de un `estado`), SIN tope de `limite`.
+        Es el `total` de `GET /soporte/tickets`: `len(items)` miente en cuanto hay más de un
+        `limite`, y la app no puede paginar ni rotular «N tickets» con eso."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                if estado:
+                    cur.execute(
+                        f"SELECT count(*) FROM {TABLA_TICKETS} WHERE cliente_id = %s AND estado = %s",
+                        (self._cid, estado))
+                else:
+                    cur.execute(f"SELECT count(*) FROM {TABLA_TICKETS} WHERE cliente_id = %s",
+                                (self._cid,))
+                (total,) = cur.fetchone()
+                return int(total)
+        finally:
+            conn.close()
+
     def cambiar_estado(self, *, ticket_id: int, nuevo_estado: str) -> str | None:
         """El verbo que faltaba (SOP6 §0): `abierto → respondido → cerrado`, vocabulario cerrado.
         Devuelve el estado ANTERIOR (para la auditoría del caller) o `None` si `ticket_id` no
         existe EN ESTE TENANT -- el `WHERE cliente_id = %s` es lo que hace que "no existe" y "es de
         otro tenant" se vean exactamente igual, que es la propiedad que RLS/multi-tenant necesita."""
-        if nuevo_estado not in (ABIERTO, RESPONDIDO, CERRADO):
+        if nuevo_estado not in ESTADOS_VALIDOS:
             raise ValueError(f"estado inválido: {nuevo_estado!r} (válidos: abierto/respondido/cerrado)")
         conn = self._conn_factory()
         try:
@@ -180,6 +208,52 @@ class TicketStore:
                     return None
                 cols = ("id", "codigo", "canal", "estado", "asunto", "created_at", "updated_at")
                 return dict(zip(cols, fila))
+        finally:
+            conn.close()
+
+    def agregar_adjunto(self, *, ticket_id: int, nombre: str, tipo: str,
+                        contenido: bytes) -> dict[str, Any] | None:
+        """Guarda UN adjunto del ticket y devuelve `{id, nombre, tipo, bytes}`, o `None` si el ticket
+        ya tiene `MAX_ADJUNTOS_POR_TICKET` (el llamador lo traduce a 413).
+
+        El BLOB vive en `copiloto_ticket_adjuntos.contenido` (bytea): cero infraestructura nueva de
+        storage, y hereda RLS FORCE + la FK compuesta `(cliente_id, ticket_id)` -> el ticket tiene que
+        ser DEL MISMO tenant o la base rechaza el INSERT, aunque el endpoint se olvidara del 404.
+        `obtener_ticket` es la comprobación de existencia/ownership; esto NO la repite.
+
+        El conteo y el INSERT van en UNA sentencia: sin ventana entre «¿hay lugar?» y «insertá»."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""INSERT INTO {TABLA_ADJUNTOS} (cliente_id, ticket_id, nombre, tipo, bytes, contenido)
+                        SELECT %s, %s, %s, %s, %s, %s
+                        WHERE (SELECT count(*) FROM {TABLA_ADJUNTOS}
+                               WHERE cliente_id = %s AND ticket_id = %s) < %s
+                        RETURNING id""",
+                    (self._cid, ticket_id, nombre, tipo, len(contenido), Binary(contenido),
+                     self._cid, ticket_id, MAX_ADJUNTOS_POR_TICKET))
+                fila = cur.fetchone()
+            conn.commit()
+            if fila is None:
+                return None
+            return {"id": fila[0], "nombre": nombre, "tipo": tipo, "bytes": len(contenido)}
+        finally:
+            conn.close()
+
+    def listar_adjuntos(self, *, ticket_id: int) -> list[dict[str, Any]]:
+        """Metadatos (`id, nombre, tipo, bytes`) de los adjuntos de UN ticket de este tenant, en orden
+        de subida. NUNCA el `contenido`: un listado no tiene por qué cargar 50 MB."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT id, nombre, tipo, bytes FROM {TABLA_ADJUNTOS}
+                        WHERE cliente_id = %s AND ticket_id = %s
+                        ORDER BY created_at ASC, id ASC""",
+                    (self._cid, ticket_id))
+                cols = ("id", "nombre", "tipo", "bytes")
+                return [dict(zip(cols, fila)) for fila in cur.fetchall()]
         finally:
             conn.close()
 

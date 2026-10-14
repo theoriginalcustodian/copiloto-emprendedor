@@ -106,9 +106,13 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `spikes/afip-emit-pdf/RESULT.md` viaja porque `tests/test_afip_payload_archivado.py` lo LEE (la respuesta
 # real de AFIP archivada, contra el contrato del gateway). Sólo ese archivo, no el spike entero: el
 # resto son PNG y un script que el runner no necesita. Si falta en el stage, el test falla (no skipea).
+# `packages/core/src/chat/__fixtures__/requiere_conexion.cards.json` viaja por lo mismo: es el fixture del
+# PAR de la costura `alcance` (lo consume el lado app y lo ata `tests/test_alcance_condicion.py` con una
+# igualdad contra `requiere_conexion_card`). Sólo ese archivo; si falta, el test falla.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
   --exclude='.env' --exclude='.env.*' \
   -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts spikes/afip-emit-pdf/RESULT.md \
+  packages/core/src/chat/__fixtures__/requiere_conexion.cards.json \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
