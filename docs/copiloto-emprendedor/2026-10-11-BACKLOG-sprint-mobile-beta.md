@@ -56,8 +56,8 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
-| **SM-D3** | `#1019` | 🟨 EN-CURSO | frontend2 |
-| **SM-D4** | `#1021` | ⬜ PENDIENTE | — |
+| **SM-D3** | `#1019` | ✅ TERMINADO | merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chi… |
+| **SM-D4** | `#1021` | ✅ TERMINADO | merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cu… |
 | **SM-D5** | `#1007` | 🟧 DOD-PARCIAL | medido en DEVICE (segundo toque sobre una card ya respondida no dispara nada). Codigo y tests en main/PR: la card se … |
 | **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
 | **SM-D7** | `#1009` | 🟧 DOD-PARCIAL | medido en DEVICE: forzar un fallo de anular/confirmar y ver el texto de error en el panel (código y tests jest/vitest… |
@@ -338,8 +338,8 @@ no el arranque del sprint.***
 
 ### SM-D3 · `#1019` — «Tus apps» y los modos están escritos e inalcanzables en web
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** frontend2
+- **Estado:** TERMINADO
+- **Cierre:** merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chip de modo del composer - DoD(2) mode del send() limpiado (Composer.onSend(text), SendOptions, body de sendChat) - DoD(3) precondicion de runtime: 0 montajes sobre AppShell y DesktopShell reales pulsando 23 y 27 controles, control de ceguera >10, CI 6/6
 - **Medido:** `'apps'` **no está** en `TABS`; los dos shells de web lo declaran ellos mismos. No
   existe en mobile.
 - **Por qué es el ítem que ahorra trabajo:** parecía una feature de web **para portar**. Portarla
@@ -364,7 +364,8 @@ no el arranque del sprint.***
 
 ### SM-D4 · `#1021` — Tres filas de «Mi cuenta» en web prometen y no hacen nada
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cuenta web, canario negativo en AccountScreen.test - DoD(2) el docstring de AccountScreen ya no las cita como capacidad existente, CI 6/6
 - **Medido:** dos `<div>` **sin `onClick`** y un toggle **sin endpoint**. Estaban por portarse a mobile
   **así como están**.
 - **DoD:** cada una **se cablea o se retira de la UI**. Ninguna queda visible prometiendo. Y el
