@@ -99,6 +99,8 @@ DoD: *«El elemento que la fila declara ausente existe en la pantalla que ya exi
 **Qué falta, con dueño:** (2) pintar `datos.desde` cuando exista — adenda C-D2 al **dueño de Mi día**; (3)(4)(5) un veredicto del dueño
 de `PortadaNegocio`. **Nada de esto es de backend.** El contrato del dato ya está cumplido y probado en ambas ramas.
 
+> **Actualización 2026-10-13 (frontend2):** (3)(4)(5) ya tienen veredicto — #5 ✅ resuelta en código, #4 🔁 duplicada, #3 📝 enmienda E10 — en `2026-10-13-veredicto-caida-cascara-portada-fe2.md`. La fila `caida` sigue abierta **sólo** por (2): le falta al presentador de backend emitir el kv «Se cayó» (la app ya renderiza cualquier `presentacion.kv`).
+
 ---
 
 ### 3 · `clientes` — ⚠ ABIERTA (backend, core y web pintan el monto; mobile no)
