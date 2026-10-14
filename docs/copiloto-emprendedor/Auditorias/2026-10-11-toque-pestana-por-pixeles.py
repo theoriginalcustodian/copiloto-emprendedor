@@ -91,7 +91,9 @@ print('  device: %s' % dev[0].split()[0])
 for s in ESCALAS:
     v = adb('shell', 'settings', 'get', 'global', s).strip()
     print('  %-28s %s' % (s, v))
-    if v != '1':
+    # `settings get` devuelve `null` cuando la escala nunca se tocó: Android aplica su default, 1.0
+    # (medido en RF8T318RN9T el 2026-10-14). Eso ES el valor normal; sólo 0/0.5/etc. lo cambian.
+    if v not in ('1', '1.0', 'null'):
         print('INVALIDO: este instrumento mide la condicion NORMAL; con %s=%s mediria la otra, que '
               'es la que ya se sabe que da "no abre"' % (s, v))
         raise SystemExit(3)
