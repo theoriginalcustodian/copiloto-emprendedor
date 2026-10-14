@@ -19,6 +19,8 @@ Cuatro propiedades del gate (pedidas por planificación tras la v1):
     verde que no midió nada).
  4. La comparación es POR PANTALLA, no un set global: dos ids iguales en pantallas distintas no se
     dan por buenos entre sí.
+ 5. Mobile: además del atributo JSX `testID="..."`, cuenta la forma config-object `testID: '...'`
+    (FilaBotones.botones, CampoSelect.opciones). Sin ella el gate no ve el camino canónico de acciones.
 
 Uso:
     testid_paridad.py --check                     # gate: exit 1 si hay drift sin excepción o trinquete roto
@@ -40,6 +42,11 @@ MOBILE_SUBROOTS = [("apps/mobile/app", "app"), ("apps/mobile/src", "src")]
 WEB_SUBROOTS = [("apps/copiloto-web/src", "src")]
 
 LITERAL_MOBILE_RE = re.compile(r'testID="([^"]+)"')
+# Forma config-object: `botones={[{ etiqueta: 'Agregar', testID: 'midia-alta-enviar' }]}` (FilaBotones,
+# opciones de CampoSelect). El id sale de una prop de OBJETO, no de un atributo JSX: sin esta forma el
+# gate no lo ve y lo reporta como "falta en mobile" aunque el botón exista y el test lo toque (pedido de
+# planificación 14-10). Sólo string literal: `testID: algo` (identificador/plantilla) queda no medido.
+CONFIG_OBJ_MOBILE_RE = re.compile(r"""\btestID:\s*(?:'([^'\n]+)'|"([^"\n]+)")""")
 LITERAL_WEB_RE = re.compile(r'data-testid="([^"]+)"')
 DINAMICO_MOBILE_RE = re.compile(r'testID=\{')
 DINAMICO_WEB_RE = re.compile(r'data-testid=\{')
@@ -69,7 +76,7 @@ def _es_arnes_de_test(f: Path) -> bool:
     return bool(_ARNES_DE_TEST_RE.search(f.name)) or "__tests__" in f.parts
 
 
-def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_re: re.Pattern, dinamico_re: re.Pattern):
+def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_res: tuple[re.Pattern, ...], dinamico_re: re.Pattern):
     """Devuelve (por_pantalla: {pantalla: {id: [archivo,...]}}, dinamicos: {archivo: n})."""
     por_pantalla: dict[str, dict[str, list[str]]] = {}
     dinamicos: dict[str, int] = {}
@@ -84,8 +91,10 @@ def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_re
             rel_bajo = str(f.relative_to(base)).replace("\\", "/")
             texto = f.read_text(encoding="utf-8", errors="ignore")
             pant = pantalla_de(rel_bajo, prefijo)
-            for m in literal_re.finditer(texto):
-                por_pantalla.setdefault(pant, {}).setdefault(m.group(1), []).append(rel_full)
+            for literal_re in literal_res:
+                for m in literal_re.finditer(texto):
+                    id_ = next(g for g in m.groups() if g is not None)
+                    por_pantalla.setdefault(pant, {}).setdefault(id_, []).append(rel_full)
             n = len(dinamico_re.findall(texto))
             if n:
                 dinamicos[rel_full] = n
@@ -93,8 +102,9 @@ def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_re
 
 
 def escanear(root: Path):
-    mobile, dyn_mobile = _escanear_plataforma(root, MOBILE_SUBROOTS, LITERAL_MOBILE_RE, DINAMICO_MOBILE_RE)
-    web, dyn_web = _escanear_plataforma(root, WEB_SUBROOTS, LITERAL_WEB_RE, DINAMICO_WEB_RE)
+    mobile, dyn_mobile = _escanear_plataforma(
+        root, MOBILE_SUBROOTS, (LITERAL_MOBILE_RE, CONFIG_OBJ_MOBILE_RE), DINAMICO_MOBILE_RE)
+    web, dyn_web = _escanear_plataforma(root, WEB_SUBROOTS, (LITERAL_WEB_RE,), DINAMICO_WEB_RE)
     return mobile, web, dyn_mobile, dyn_web
 
 

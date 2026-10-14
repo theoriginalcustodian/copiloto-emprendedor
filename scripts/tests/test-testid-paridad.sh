@@ -230,6 +230,31 @@ fi
 rm -f /tmp/bl-q1-arnes.$$
 rm -rf "$T/apps/mobile/src/modules/clientes"
 
+# --- (pedido planificación 14-10) la forma CONFIG-OBJECT de FilaBotones también cuenta --------------
+# `botones={[{ ..., testID: 'x' }]}` no es un atributo JSX: el gate no lo veía y reportaba «falta en
+# mobile» sobre botones que existen. Control positivo: con la forma puesta el id APARECE (rojo si no
+# tiene par); con su par web, verde; y `testID: identificador` sigue siendo no medido, no un id.
+mkdir -p "$T/apps/mobile/src/modules/clientes" "$T/apps/copiloto-web/src/modules/clientes"
+cat > "$T/apps/mobile/src/modules/clientes/Botones.tsx" <<'EOF'
+<FilaBotones botones={[{ etiqueta: 'Nuevo', onPress, testID: 'cfgobj-solo-mobile' }, { etiqueta: 'X', testID: idDinamico }]} />
+EOF
+python3 "$CHK" --root "$T" --check >/tmp/bl-q1-cfg.$$ 2>&1
+rc=$?
+if [ "$rc" = 1 ] && grep -q "cfgobj-solo-mobile" /tmp/bl-q1-cfg.$$ && ! grep -q "idDinamico" /tmp/bl-q1-cfg.$$; then
+  ok "config-object: el id literal de FilaBotones se VE (rojo sin par) y el identificador no es un id"
+else
+  mal "config-object: debía ver cfgobj-solo-mobile y no idDinamico (rc=$rc): $(cat /tmp/bl-q1-cfg.$$)"
+fi
+cat > "$T/apps/copiloto-web/src/modules/clientes/Botones.tsx" <<'EOF'
+<button data-testid="cfgobj-solo-mobile" />
+EOF
+python3 "$CHK" --root "$T" --check >/dev/null 2>&1
+rc=$?
+[ "$rc" = 0 ] && ok "config-object: con su par web el id queda en paridad (verde)" \
+  || mal "config-object: con par web debía dar verde (rc=$rc)"
+rm -f /tmp/bl-q1-cfg.$$
+rm -rf "$T/apps/mobile/src/modules/clientes" "$T/apps/copiloto-web/src/modules/clientes"
+
 # --- --inventario no toca disco fuera del root fixture y es JSON válido ----------------------------
 salida="$(python3 "$CHK" --root "$T" --inventario 2>&1)"
 echo "$salida" | python3 -c "import json,sys; json.load(sys.stdin)" >/dev/null 2>&1 \
