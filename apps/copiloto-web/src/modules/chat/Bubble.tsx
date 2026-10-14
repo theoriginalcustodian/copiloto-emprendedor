@@ -29,8 +29,8 @@ export interface BubbleProps {
 // con regex globales reusadas).
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 
-/** `.msg-row .quien` del prototipo: 38px. */
-const AVATAR_ASISTENTE = 38;
+/** El mismo tamaño que `.chat-header__avatar`: una sola geometría de avatar en el chat. */
+const AVATAR_ASISTENTE = 36;
 
 function linkifyText(text: string): ReactNode {
   const parts = text.split(URL_RE);
@@ -55,8 +55,12 @@ function linkifyText(text: string): ReactNode {
  * AVATARASIST — el par por rol del prototipo (`index.html:3191`, helper `O`): la burbuja del asistente
  * lleva el isotipo a su izquierda (`.msg-row` + `.quien`, alineado al borde inferior) y la del
  * emprendedor lleva en cambio la meta «✓✓ recibido». Es el `Marca` del design system (el mismo del
- * vacío del chat y del login): acá NO hay un isotipo propio ni un asset. El tamaño y el hueco son los
- * del prototipo (`.quien` 38px, `gap: var(--s1)`).
+ * vacío del chat y del login): acá NO hay un isotipo propio ni un asset.
+ *
+ * El disco es el MISMO del avatar del header (`.chat-header__avatar`): 36, redondo y con el set
+ * `--avatar-*`. El prototipo pide la rima con el header («rima con el del usuario en el header»), no el
+ * pixel del `.quien` (38 blanco con sombra); en web esa rima ES el set de tokens. Ver
+ * `.chat-asistente__avatar` en `chat.css`.
  */
 export function Bubble({ role, text, card, porVoz }: BubbleProps) {
   if (role === 'user') {
@@ -80,7 +84,9 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
   return (
     <div className="chat-row chat-row--assistant">
       <div className="chat-asistente">
-        <Marca size={AVATAR_ASISTENTE} />
+        <span className="chat-asistente__avatar" aria-hidden="true">
+          <Marca size={AVATAR_ASISTENTE} />
+        </span>
         <Surface variant="bubble" blur className="chat-bubble chat-bubble--assistant">
           <p className="chat-bubble__text">{linkifyText(text)}</p>
         </Surface>

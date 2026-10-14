@@ -19,11 +19,26 @@ describe('Bubble', () => {
     const fila = asistente.querySelector('.chat-asistente');
     expect(fila?.querySelector('[data-testid="marca"]')).not.toBeNull();
     expect(fila?.querySelector('.chat-bubble--assistant')).not.toBeNull();
+    // El isotipo va dentro del DISCO del avatar (el del header), no suelto.
+    expect(fila?.querySelector('.chat-asistente__avatar [data-testid="marca"]')).not.toBeNull();
 
     const { container: usuario } = render(<Bubble role="user" text="Cobrale 15 lucas a Juan" />);
     expect(usuario.querySelectorAll('[data-testid="marca"]')).toHaveLength(0);
+    expect(usuario.querySelector('.chat-asistente__avatar')).toBeNull();
     // …y el emprendedor conserva la otra mitad del par: la meta «✓✓ recibido».
     expect(screen.getAllByText('✓✓ recibido')).toHaveLength(1);
+  });
+
+  it('AVATARASIST: el disco del avatar lee el set `--avatar-*` y NO declara colores propios', () => {
+    // Una sola definición del disco: si el CSS del mensaje trajera sus propios literales, el próximo
+    // ajuste del avatar del header llegaría a uno solo. Se lee el CSS real, no un mock.
+    const css: string = require('fs').readFileSync(require('path').join(__dirname, 'chat.css'), 'utf8');
+    const regla = css.match(/\.chat-asistente__avatar\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(regla).toMatch(/var\(--avatar-bg\)/);
+    expect(regla).toMatch(/var\(--avatar-border\)/);
+    expect(regla).toMatch(/var\(--avatar-shadow\)/);
+    expect(regla).toMatch(/--btn-fg:\s*var\(--avatar-fg\)/);
+    expect(regla).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 
   it('AVATARASIST: un mensaje del asistente con card (artifact) lleva UN solo isotipo, no uno por pieza', () => {

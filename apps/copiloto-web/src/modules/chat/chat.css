@@ -227,6 +227,26 @@
   min-width: 0;
 }
 
+/* El disco del avatar del mensaje: la MISMA definición visual que `.chat-header__avatar` (36, 50%, set
+   `--avatar-*`). `Marca` pinta su badge con `--btn-bg`/`--btn-fg` por estilo inline: acá se REASIGNAN
+   localmente (el badge pasa a transparente y el isotipo toma `--avatar-fg`), sin tocar `Marca`, sin un
+   5º tono y sin un set de colores paralelo. */
+.chat-asistente__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  box-shadow: var(--avatar-shadow);
+  color: var(--avatar-fg);
+  --btn-bg: transparent;
+  --btn-fg: var(--avatar-fg);
+}
+
 .chat-bubble__receipt {
   margin-top: 4px;
   font-family: var(--font-mono);
