@@ -77,9 +77,19 @@ describe('leerTablero — el camino bueno', () => {
     expect(t.texto).toContain('¿Te lo pagaron?');
     expect(t.regla).toBe('trabajo_con_gastos_y_sin_ingreso');
     expect(t.entidadTipo).toBe('trabajo');
-    expect(t.monto).toBe('42000.00');
-    expect(typeof t.monto).toBe('string');
     expect(t.cliente).toBe('Panadería del barrio');
+  });
+
+  it('🔴 control de ceguera H12: `datos.monto`/`datos.fecha` existen en el wire y la tarjeta NO los expone', async () => {
+    // El wire trae `monto` y `fecha` (TARJETA_CRUDA los lleva en `datos`) y aun así la tarjeta no los tiene:
+    // ninguna regla los escribe (H12/DETALLEKV), y si la app vuelve a leerlos las filas «Monto»/«Fecha» quedan
+    // escritas e inalcanzables sin dar síntoma. Si alguien los re-agrega a `TarjetaMiDia`, este test cae.
+    responder = () => respuesta(200, TABLERO_VIVO);
+    const res = await leerTablero();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    const t = res.tablero.solapas[0]!.tarjetas[0]!;
+    expect('monto' in t).toBe(false);
+    expect('fecha' in t).toBe(false);
   });
 });
 
@@ -197,13 +207,13 @@ describe('leerTablero — lo que NO inventa', () => {
     if (res.status === 'ok') expect(res.tablero.solapas.map((s) => s.id)).toEqual(['haciendo']);
   });
 
-  it('🔴 monto ausente queda `null`, jamás `0` — y `datos` sin esos campos no descarta la tarjeta', async () => {
+  it('🔴 `datos` sin forma conocida no descarta la tarjeta ni inventa un cliente', async () => {
     responder = () =>
       respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'P', tarjetas: [{ id: 'a', texto: 'm', datos: { otro_campo: 'x' } }] }] });
     const res = await leerTablero();
     if (res.status === 'ok') {
-      expect(res.tablero.solapas[0]!.tarjetas[0]!.monto).toBeNull();
       expect(res.tablero.solapas[0]!.tarjetas[0]!.id).toBe('a');
+      expect(res.tablero.solapas[0]!.tarjetas[0]!.cliente).toBeNull();
     }
   });
 
@@ -389,6 +399,7 @@ describe('leerTablero — PROTO4DEPS §C (`presentacion`, fail-soft, aditiva)', 
   it('lee las tres piezas; `accion.destino` conserva tipo e id para que lo rutee la app', async () => {
     const t = await tarjetaCon({ presentacion: PRESENTACION });
     expect(t.presentacion).toEqual({
+      prosa: null,
       chip: { texto: '31 días sin respuesta', tono: 'pronto' },
       kv: [
         { k: 'Monto', v: '$84.000' },
@@ -412,7 +423,33 @@ describe('leerTablero — PROTO4DEPS §C (`presentacion`, fail-soft, aditiva)', 
     const t = await tarjetaCon({
       presentacion: { chip: { texto: 'Vence en 3 días', tono: 'critico' }, kv: [{ k: 'Monto' }, 'x', { k: 'Vence', v: '15/10' }], accion: { destino: { tipo: 'conexion', id: 'gmail' } } },
     });
-    expect(t.presentacion).toEqual({ chip: { texto: 'Vence en 3 días', tono: 'critico' }, kv: [{ k: 'Vence', v: '15/10' }], accion: null });
+    expect(t.presentacion).toEqual({ prosa: null, chip: { texto: 'Vence en 3 días', tono: 'critico' }, kv: [{ k: 'Vence', v: '15/10' }], accion: null });
+  });
+
+  describe('H12 — `prosa` (el importe de la factura vive acá, no en ninguna `kv`)', () => {
+    const PROSA = 'Emitida hace 22 días. Son $120.000 que ya facturaste y todavía no entraron.';
+
+    it('🔴 una tarjeta de SÓLO prosa se lee (regla «trabajo»: `kv: []`); con el guard viejo daba null y la prosa no se pintaba nunca', async () => {
+      const t = await tarjetaCon({ presentacion: { prosa: PROSA, kv: [] } });
+      expect(t.presentacion).toEqual({ prosa: PROSA, chip: null, kv: [], accion: null });
+    });
+
+    it('prosa y kv viajan juntas, ya formateadas, sin tocarlas', async () => {
+      const t = await tarjetaCon({
+        presentacion: { prosa: PROSA, kv: [{ k: 'Factura', v: 'A-0034' }, { k: 'Emitida', v: '22 de septiembre' }] },
+      });
+      expect(t.presentacion?.prosa).toBe(PROSA);
+      expect(t.presentacion?.kv).toEqual([{ k: 'Factura', v: 'A-0034' }, { k: 'Emitida', v: '22 de septiembre' }]);
+    });
+
+    it('una `kv` con otra forma ({clave, valor}) se descarta y NO se lleva la prosa: el importe sigue en pantalla', async () => {
+      const t = await tarjetaCon({ presentacion: { prosa: PROSA, kv: [{ clave: 'Factura', valor: 'A-0034' }] } });
+      expect(t.presentacion).toEqual({ prosa: PROSA, chip: null, kv: [], accion: null });
+    });
+
+    it('prosa en blanco no cuenta: sin otra pieza pintable → null', async () => {
+      expect((await tarjetaCon({ presentacion: { prosa: '   ', kv: [] } })).presentacion).toBeNull();
+    });
   });
 
   it('basura o vacía → null, nunca un objeto a medias', async () => {

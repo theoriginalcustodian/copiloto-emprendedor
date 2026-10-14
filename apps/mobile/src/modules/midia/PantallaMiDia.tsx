@@ -11,7 +11,6 @@ import {
   cambiarEstadoTarjetaMiDia,
   estadoDeServicio,
   fechaDeHoyMidia,
-  formatearImporte,
   horaDeEvento,
   KEY_GOOGLE_CALENDAR,
   leerCalendario,
@@ -697,22 +696,23 @@ function TarjetaMiDiaRow({
 }) {
   const tema = useTema();
   const swipeableRef = useRef<SwipeableMethods>(null);
-  // Filas clave/valor como los `.kv` del prototipo (`index.html:1692`: «Enviado · 18 de julio», «Monto · $180.000»).
-  // El rótulo de la fecha es genérico a propósito: el prototipo lo cambia por regla («Enviado», «Emitida»,
-  // «Vence»…) y esa tabla regla→rótulo no la define el contrato — hay `pedido_` al backend (DEVICE15 `detalle`).
-  // PROTO4DEPS §C: si el backend mandó `presentacion`, MANDA — el rótulo lo decide la regla y la app no
-  // adivina el campo (las kv de abajo leen `datos.monto`/`datos.fecha`, que ninguna regla escribe: H12).
-  // Sin `presentacion` (producción hoy) todo es exactamente como antes.
+  // Filas clave/valor como los `.kv` del prototipo (pantalla `#tablero`, `index.html:2493-2495`: «Monto ·
+  // $180.000», «Enviado · 18 de julio»). El rótulo y el valor los decide la REGLA y llegan ya formateados en
+  // `presentacion.kv`: la app no arma la tabla regla→campo (contrato H12/DETALLEKV §2; era la tabla fija
+  // `Monto`/`Fecha` leyendo `datos.monto`/`datos.fecha`, que ninguna regla escribe — H12). Por eso la tarjeta
+  // ya NO lee `monto`/`fecha`: el campo no existe en `TarjetaMiDia` y un test lo cuida.
+  // Sin `presentacion` (producción hoy) sólo queda la fila «Cliente».
   const presentacion = tarjeta.presentacion ?? null;
-  const detalleLegado: { clave: string; valor: string }[] = [
-    { clave: 'Cliente', valor: tarjeta.cliente ?? '' },
-    { clave: 'Monto', valor: tarjeta.monto != null ? formatearImporte(tarjeta.monto) : '' },
-    { clave: 'Fecha', valor: tarjeta.fecha ?? '' },
-  ].filter((f) => f.valor !== '');
-  const detalle =
-    presentacion != null && presentacion.kv.length > 0
-      ? presentacion.kv.map((f) => ({ clave: f.k, valor: f.v }))
-      : detalleLegado;
+  const prosa = presentacion?.prosa ?? null;
+  const kvBackend = presentacion?.kv.map((f) => ({ clave: f.k, valor: f.v })) ?? [];
+  // «Cliente» se queda mientras `texto` no nombre la entidad (H12 §5: si se saca con el `texto` genérico, el
+  // nombre del cliente desaparece de la tarjeta). Sale en el PR en que el titular lo diga, no antes. Si el
+  // backend ya mandó una kv «Cliente», no se duplica.
+  const hayClienteEnKv = kvBackend.some((f) => f.clave.trim().toLowerCase() === 'cliente');
+  const detalle: { clave: string; valor: string }[] =
+    tarjeta.cliente != null && !hayClienteEnKv
+      ? [{ clave: 'Cliente', valor: tarjeta.cliente }, ...kvBackend]
+      : kvBackend;
   const accion = presentacion?.accion ?? null;
   const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
   const chip = presentacion?.chip ?? null;
@@ -783,6 +783,14 @@ function TarjetaMiDiaRow({
           >
             {tarjeta.texto}
           </Text>
+          {expandida && prosa != null && (
+            <Text
+              testID={`midia-tarjeta-${tarjeta.id}-prosa`}
+              style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
+            >
+              {prosa}
+            </Text>
+          )}
           {expandida && chip != null && (
             <View
               testID={`midia-tarjeta-${tarjeta.id}-chip`}

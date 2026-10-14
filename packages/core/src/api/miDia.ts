@@ -25,22 +25,17 @@ import type { ConDisponibilidad } from './afip';
  * con id pero sin frase no tiene qué mostrarle al emprendedor. Se descarta, no se pinta en blanco.
  *
  * 🔴 **`datos` es un objeto sin forma cerrada** (varía por regla — contrato §1: cada regla "trae" sus
- * propios campos). Sólo se leen de ahí los que ya se saben mostrar (cliente/monto/fecha, si vienen con
- * ese nombre); lo que no se reconoce no se inventa ni se descarta la tarjeta entera por eso.
+ * propios campos). Sólo se lee de ahí lo que ya se sabe mostrar (`cliente`, si viene con ese nombre); lo
+ * que no se reconoce no se inventa ni se descarta la tarjeta entera por eso. **`monto`/`fecha` NO se leen
+ * de `datos`**: ninguna regla los escribe (H12/DETALLEKV) — el importe y la fecha de la tarjeta viajan ya
+ * formateados en `presentacion` (`prosa` + `kv`), y la app no arma esa tabla regla→campo.
  *
  * 🔴 **`estado` no tiene un conjunto cerrado declarado por el contrato** (a diferencia del viejo
  * `EstadoTarjeta` del pipeline) — se transporta como el string que venga, sin inventar un enum que
  * backend no fijó. La UI lo usa sólo para saber en qué solapa está, no para pintar colores por él.
  *
- * 🔴 **`ausente ≠ cero`.** Un monto que no vino vale `null`, jamás `0`.
+ * 🔴 **`ausente ≠ cero`.** Un dato que no vino vale `null`, jamás `0` ni `''`.
  */
-
-/** Un importe del wire como string, o `null`. Gemelo del de `afip.ts`/`inteligencia.ts`. */
-function importe(v: unknown): string | null {
-  if (typeof v === 'string' && v.trim() !== '') return v.trim();
-  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-  return null;
-}
 
 function texto(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
@@ -62,9 +57,8 @@ export interface TarjetaMiDia {
   entidadId: string | null;
   /** El estado crudo que manda backend — sin enum propio, ver docstring del módulo. */
   estado: string | null;
+  /** `datos.cliente`. Se mantiene como fila mientras `texto` no nombre la entidad (contrato H12 §5). */
   cliente: string | null;
-  monto: string | null;
-  fecha: string | null;
   /** BL-J5: `cobros|arca|presupuestos|tuyas`, o `null` (trabajo/gasto: sólo en «Todo», o backend previo). */
   categoria: string | null;
   /** BL-J5: `critico|pronto|sin_plazo`. `null` sólo con un backend previo al campo — nunca se infiere. */
@@ -86,9 +80,16 @@ export interface TarjetaMiDia {
 }
 
 export interface PresentacionTarjeta {
+  /**
+   * H12 §2 — la línea explicativa de la tarjeta («Venció hace 22 días. Son $120.000 que ya facturaste…»).
+   * 🔴 En la factura impaga **el importe vive acá y no en ninguna `kv`**: pintar `kv` sin `prosa` borra el
+   * importe de la pantalla. Por eso `prosa` y `kv` se leen y se pintan juntas.
+   */
+  prosa: string | null;
   /** `tono` crudo: `critico|pronto|sin_plazo` (la escala de `criticidad`); uno desconocido NO se descarta. */
   chip: { texto: string; tono: string | null } | null;
-  /** El rótulo lo decide la regla («Enviado», «Vence»), no el campo: por eso `k` viaja con el dato. */
+  /** El rótulo lo decide la regla («Enviado», «Vence»), no el campo: por eso `k` viaja con el dato.
+   *  Ya formateado por el backend (`$180.000`, `18 de julio`): la app lo pinta tal cual. */
   kv: { k: string; v: string }[];
   /** `destino` con el MISMO shape que `datos.destino`: quien rutea es la app (`rutaDeDestino`). */
   accion: { texto: string; destino: DestinoTarjeta | null } | null;
@@ -147,8 +148,10 @@ function presentacionDe(v: unknown): PresentacionTarjeta | null {
   const accionTexto = accionRaw != null ? texto(accionRaw.texto) : null;
   const accion = accionTexto != null ? { texto: accionTexto, destino: destinoDe(accionRaw?.destino) } : null;
 
-  if (chip == null && kv.length === 0 && accion == null) return null;
-  return { chip, kv, accion };
+  const prosa = texto(r.prosa);
+
+  if (prosa == null && chip == null && kv.length === 0 && accion == null) return null;
+  return { prosa, chip, kv, accion };
 }
 
 export interface SolapaMiDia {
@@ -184,8 +187,6 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     entidadId: texto(r.entidad_id),
     estado: texto(r.estado),
     cliente: texto(datos.cliente),
-    monto: importe(datos.monto),
-    fecha: texto(datos.fecha),
     categoria: texto(r.categoria),
     criticidad: texto(r.criticidad),
     verbo: texto(r.verbo),

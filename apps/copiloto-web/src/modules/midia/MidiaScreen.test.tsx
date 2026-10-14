@@ -34,6 +34,7 @@ import {
 } from '@copiloto/core';
 
 import { MidiaScreen } from './MidiaScreen';
+import midiaScreenSource from './MidiaScreen.tsx?raw';
 
 const leerMock = vi.mocked(leerTablero);
 const cambiarEstadoMock = vi.mocked(cambiarEstadoTarjetaMiDia);
@@ -56,8 +57,6 @@ const TABLERO = {
           entidadId: 'trab-1',
           estado: 'pendiente',
           cliente: 'Panadería del barrio',
-          monto: '-8000.00',
-          fecha: '2026-07-22',
           categoria: null,
           criticidad: 'pronto',
           verbo: 'Revisar el trabajo',
@@ -191,7 +190,7 @@ describe('MidiaScreen — portada del negocio (BL-W8)', () => {
 function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
   return {
     id, texto: `Tarjeta ${id}`, regla: 'x', entidadTipo: null, entidadId: null, estado: 'pendiente',
-    cliente: null, monto: null, fecha: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
+    cliente: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
   };
 }
 function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
@@ -263,6 +262,38 @@ describe('MidiaScreen — chips, contador y banner crítico (BL-W7 + BL-J5)', ()
     fireEvent.click(screen.getByLabelText(/expandir/));
 
     expect(screen.getByTestId('midia-tarjeta-t1-verbo')).toHaveTextContent('Revisar el trabajo');
+  });
+
+  it('🔴 H12: la tarjeta expandida pinta la PROSA (ahí vive el importe) y las kv ya formateadas; sin `presentacion` no hay prosa', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('f', {
+          presentacion: {
+            prosa: 'Emitida hace 22 días. Son $120.000 que ya facturaste y todavía no entraron.',
+            chip: null,
+            kv: [{ k: 'Factura', v: 'A-0034' }, { k: 'Emitida', v: '22 de septiembre' }],
+            accion: null,
+          },
+        }),
+        tarjetaDe('s'),
+      ]),
+    });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-f')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-tarjeta-f-prosa')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Tarjeta f, expandir'));
+    expect(screen.getByTestId('midia-tarjeta-f-prosa')).toHaveTextContent('Son $120.000 que ya facturaste');
+    expect(screen.getByTestId('midia-tarjeta-f-detalle')).toHaveTextContent('Factura: A-0034');
+
+    fireEvent.click(screen.getByLabelText('Tarjeta s, expandir'));
+    expect(screen.queryByTestId('midia-tarjeta-s-prosa')).not.toBeInTheDocument();
+  });
+
+  it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', () => {
+    expect(midiaScreenSource).toMatch(/tarjeta\.cliente/); // control positivo: el scan SI ve esta fuente
+    expect(midiaScreenSource).not.toMatch(/tarjeta\.(monto|fecha)\b/);
   });
 });
 

@@ -7,7 +7,6 @@ import {
   ETIQUETA_CATEGORIA_TARJETA,
   fechaDeHoyMidia,
   filtrarPorCategoria,
-  formatearImporte,
   horaDeEvento,
   KEY_GOOGLE_CALENDAR,
   leerCalendario,
@@ -384,7 +383,12 @@ function TarjetaMiDiaRow({
   onAvanzar: () => void;
   onBorrar: () => void;
 }) {
-  const detalle = [tarjeta.cliente, tarjeta.monto != null ? formatearImporte(tarjeta.monto) : null, tarjeta.fecha]
+  // H12/DETALLEKV: la fecha y el importe los decide la regla y llegan ya formateados en `presentacion`
+  // (`prosa` + `kv`); esta tarjeta ya no lee `monto`/`fecha` (ninguna regla los escribía). «Cliente» se queda
+  // mientras `texto` no nombre la entidad (contrato H12 §5).
+  const presentacion = tarjeta.presentacion ?? null;
+  const prosa = presentacion?.prosa ?? null;
+  const detalle = [tarjeta.cliente, ...(presentacion?.kv.map((f) => `${f.k}: ${f.v}`) ?? [])]
     .filter((x): x is string => x != null && x !== '')
     .join(' · ');
 
@@ -398,6 +402,11 @@ function TarjetaMiDiaRow({
         aria-label={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
       >
         <p className={`midia-tarjeta__frase${expandida ? '' : ' midia-tarjeta__frase--clamp'}`}>{tarjeta.texto}</p>
+        {expandida && prosa != null && (
+          <p className="midia-tarjeta__prosa" data-testid={`midia-tarjeta-${tarjeta.id}-prosa`}>
+            {prosa}
+          </p>
+        )}
         {expandida && tarjeta.verbo != null && (
           <p className="midia-tarjeta__verbo" data-testid={`midia-tarjeta-${tarjeta.id}-verbo`}>
             {tarjeta.verbo}
