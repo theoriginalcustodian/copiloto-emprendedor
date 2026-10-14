@@ -159,7 +159,13 @@ def _fernet_key_env(monkeypatch):
 # 64 -> 63 (SM-E3, 2026-10-14): se RETIRA `POST /inteligencia/chat` (sin caso hostil: estaba en la
 # deuda). Baja porque la ruta dejó de existir, NO porque alguien la cubriera: la cobertura real no
 # cambió.
-_DEUDA_TENANT_SCOPED_SIN_TEST = 63
+# 63 -> 50 (RATCHET, 2026-10-14): 13 rutas ganan su caso hostil HTTP en `test_adversarial_multitenant.py`
+# (una instancia de app sirviendo a dos tenants por token; cada denegación se compara contra un id
+# INEXISTENTE y cada test lleva su control positivo): `/gastos`, `/gastos/resumen`, `/gastos/{gasto_id}`,
+# `/gastos/{gasto_id}/imputacion`, `/trabajos/{eslabon}/{ref}/margen`, `/presupuestos`,
+# `/presupuestos/{presupuesto_id}` (+ `/estado`, `/facturar`), `/conceptos`, `/conceptos/{concepto_id}`,
+# `/perfil-negocio`, `/perfil-negocio/ejemplo`. Baja porque alguien las cubrió: la cobertura real SUBIÓ.
+_DEUDA_TENANT_SCOPED_SIN_TEST = 50
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------
@@ -471,6 +477,12 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
         "/me/onboarding/completar", "/me/legal/aceptar", "/feedback",
         "/afip/facturas", "/afip/facturas/{factura_id}", "/afip/comprobantes/anular",
         "/soporte/tickets", "/soporte/tickets/{ticket_id}", "/soporte/tickets/{ticket_id}/adjuntos",
+        # RATCHET 2026-10-14
+        "/gastos", "/gastos/resumen", "/gastos/{gasto_id}", "/gastos/{gasto_id}/imputacion",
+        "/trabajos/{eslabon}/{ref}/margen",
+        "/presupuestos", "/presupuestos/{presupuesto_id}", "/presupuestos/{presupuesto_id}/estado",
+        "/presupuestos/{presupuesto_id}/facturar",
+        "/conceptos", "/conceptos/{concepto_id}", "/perfil-negocio", "/perfil-negocio/ejemplo",
     }
 
 

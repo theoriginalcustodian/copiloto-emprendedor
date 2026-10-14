@@ -26,15 +26,22 @@ import pytest
 
 from fastapi import HTTPException, Request  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from decimal import Decimal  # noqa: E402
 
 import web as web_module  # noqa: E402
 from auth import resolve_cliente_id  # noqa: E402
 from clients.agent.providers.crypto import FernetCrypto  # noqa: E402
 from context_factory import make_context_factory  # noqa: E402
 from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
+from concepto_store import ConceptoStore  # noqa: E402
+from gasto_store import GastoStore  # noqa: E402
+from gastos_web import create_gastos_app  # noqa: E402
 from mi_dia_web import create_mi_dia_app  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
 from perfil_negocio_store import PerfilNegocioStore  # noqa: E402
+from presupuestos_web import create_presupuestos_app  # noqa: E402
+from presupuesto_store import PresupuestoStore  # noqa: E402
+from trabajo_store import TrabajoStore  # noqa: E402
 from tenant_onboarding_store import TenantOnboardingStore  # noqa: E402
 from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
@@ -915,3 +922,224 @@ def test_SMC3_http_completar_con_perfil_incompleto_de_A_es_409_aunque_B_este_com
     assert client.get("/me", headers=h_a).json()["onboarding_completado"] is True
     assert client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()["onboarding_completado"] is False
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+# --- RATCHET (2026-10-14): gastos, imputación y margen por trabajo -------------------------------
+# Los stores ya tenían su adversarial (`test_imputacion_y_margen.py`), pero llamaban al store con el
+# cliente_id YA resuelto: nunca pasaban por `Depends(require_tenant)` — la mitad que este archivo
+# existe para vigilar. Acá, UNA instancia de `create_gastos_app` sirviendo a los dos tenants por token.
+
+def _build_gastos_http_app(two_tenants):
+    a, b = two_tenants
+    cf = conexion_con_tenant(_conn_factory_cruda())
+    token_to_cid = {a.token: a.cliente_id, b.token: b.cliente_id}
+    return create_gastos_app(
+        require_tenant=_RequireTenantByToken(token_to_cid),
+        gasto_store_factory=lambda cid: GastoStore(cf, cid),
+        trabajo_store_factory=lambda cid: TrabajoStore(cf, cid))
+
+
+def _limpiar_finanzas(conn_de_tenant, *cids):
+    for cid in cids:
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            # gastos ANTES que presupuestos: el gasto imputado apunta al presupuesto.
+            cur.execute("DELETE FROM uc_factory.copiloto_gastos WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_presupuestos WHERE cliente_id = %s", (cid,))
+            cur.execute("DELETE FROM uc_factory.copiloto_conceptos WHERE cliente_id = %s", (cid,))
+        conn.commit()
+        conn.close()
+
+
+def _presupuesto_de(conn_de_tenant, cid) -> int:
+    return PresupuestoStore(conn_de_tenant(cid), cid).crear(
+        concepto="Pintura", receptor={"nombre": "Panadería Los Tilos"},
+        items=[{"descripcion": "Living", "cantidad": Decimal(1),
+                "precio_unitario": Decimal("100000"), "codigo": ""}])["id"]
+
+
+def test_adversarial_http_gastos_a_no_ve_ni_imputa_el_gasto_de_b_ni_su_margen(two_tenants, conn_de_tenant):
+    """El token de A pide, por HTTP, el gasto de B, lo imputa y le pide el margen de su trabajo.
+
+    Cada denegación se compara contra un id INEXISTENTE: el 404 de «es de otro» tiene que ser
+    idéntico al de «no existe» (si difirieran, A podría enumerar los ids de B). CONTROL POSITIVO: B
+    ve su gasto imputado y su margen con el conteo — si la app fallara para todos, nada de lo de
+    arriba probaría aislamiento."""
+    a, b = two_tenants
+    try:
+        presupuesto_b = _presupuesto_de(conn_de_tenant, b.cliente_id)
+        presupuesto_a = _presupuesto_de(conn_de_tenant, a.cliente_id)
+        gasto_b = GastoStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            monto=Decimal("2500"), categoria="otros")
+        gasto_a = GastoStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            monto=Decimal("100"), categoria="otros")
+        TrabajoStore(conn_de_tenant(b.cliente_id), b.cliente_id).imputar(
+            gasto_b["id"], "presupuesto", presupuesto_b)
+
+        client = TestClient(_build_gastos_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        # detalle: A pide el gasto de B -> el MISMO 404 que un id inexistente
+        r_cross = client.get(f"/gastos/{gasto_b['id']}", headers=h_a)
+        r_inex = client.get("/gastos/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # imputar: A no mueve el gasto de B ni aunque apunte a un trabajo PROPIO …
+        cuerpo = {"eslabon": "presupuesto", "ref": presupuesto_a}
+        r_cross = client.put(f"/gastos/{gasto_b['id']}/imputacion", json=cuerpo, headers=h_a)
+        r_inex = client.put("/gastos/999999999/imputacion", json=cuerpo, headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+        # … y la imputación de B quedó intacta
+        detalle_b = client.get(f"/gastos/{gasto_b['id']}", headers=h_b)
+        assert detalle_b.status_code == 200
+        assert detalle_b.json()["imputacion"]["presupuesto_ref"] == presupuesto_b
+
+        # imputar el gasto PROPIO al trabajo de B: 404 «ese trabajo no existe» y no se escribe nada
+        r = client.put(f"/gastos/{gasto_a['id']}/imputacion",
+                       json={"eslabon": "presupuesto", "ref": presupuesto_b}, headers=h_a)
+        assert r.status_code == 404
+        propio = client.get(f"/gastos/{gasto_a['id']}", headers=h_a).json()
+        assert propio["imputacion"] == {"gasto_id": gasto_a["id"], "presupuesto_ref": None,
+                                        "comprobante_ref": None, "cobro_ref": None}
+
+        # margen: el trabajo de B pedido por A -> el MISMO 404 que un trabajo inexistente
+        r_cross = client.get(f"/trabajos/presupuesto/{presupuesto_b}/margen", headers=h_a)
+        r_inex = client.get("/trabajos/presupuesto/999999999/margen", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # listado y resumen: A ve sólo lo suyo; un `?cliente_id=` ajeno no mueve nada
+        r_a = client.get("/gastos", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_a.status_code == 200
+        ids_a = {g["id"] for g in r_a.json()["gastos"]}
+        assert gasto_a["id"] in ids_a and gasto_b["id"] not in ids_a
+        assert r_a.json()["total"] == 1
+        total_a = Decimal(str(client.get("/gastos/resumen", headers=h_a).json()["total"]))
+        total_b = Decimal(str(client.get("/gastos/resumen", headers=h_b).json()["total"]))
+        assert (total_a, total_b) == (Decimal("100"), Decimal("2500"))
+
+        # CONTROL POSITIVO: B ve SU margen, con el conteo de lo imputado
+        margen_b = client.get(f"/trabajos/presupuesto/{presupuesto_b}/margen", headers=h_b)
+        assert margen_b.status_code == 200
+        assert margen_b.json()["gastos_imputados"] == 1
+    finally:
+        _limpiar_finanzas(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+# --- RATCHET (2026-10-14): presupuestos, catálogo de conceptos y perfil del negocio ---------------
+
+def _build_presupuestos_http_app(two_tenants):
+    """Sin `abrir_borrador`/`signal_factura`: el 404 de «presupuesto ajeno» de `facturar` sale ANTES
+    del 503 «la facturación no está disponible», así que la denegación se mide igual; lo que no se
+    puede medir acá (el borrador AFIP en sí) tiene su caso en `test_afip_web_facturas.py`."""
+    a, b = two_tenants
+    cf = conexion_con_tenant(_conn_factory_cruda())
+    token_to_cid = {a.token: a.cliente_id, b.token: b.cliente_id}
+    return create_presupuestos_app(
+        require_tenant=_RequireTenantByToken(token_to_cid),
+        perfil_negocio_store_factory=lambda cid: PerfilNegocioStore(cf, cid),
+        presupuesto_store_factory=lambda cid: PresupuestoStore(cf, cid),
+        concepto_store_factory=lambda cid: ConceptoStore(cf, cid))
+
+
+def test_adversarial_http_presupuestos_a_no_ve_ni_cambia_ni_factura_el_de_b(two_tenants, conn_de_tenant):
+    """A, con su token, pide / cambia de estado / factura el presupuesto de B. Cada denegación es el
+    MISMO 404 que un id inexistente (si difirieran, A enumeraría los ids de B) y la fila de B queda
+    intacta. CONTROL POSITIVO: B ve y opera su presupuesto con el mismo armado."""
+    a, b = two_tenants
+    try:
+        presupuesto_b = _presupuesto_de(conn_de_tenant, b.cliente_id)
+        presupuesto_a = _presupuesto_de(conn_de_tenant, a.cliente_id)
+        client = TestClient(_build_presupuestos_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        r_cross = client.get(f"/presupuestos/{presupuesto_b}", headers=h_a)
+        r_inex = client.get("/presupuestos/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        r_cross = client.patch(f"/presupuestos/{presupuesto_b}/estado", json={"estado": "aprobado"},
+                               headers=h_a)
+        r_inex = client.patch("/presupuestos/999999999/estado", json={"estado": "aprobado"},
+                              headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        r_cross = client.post(f"/presupuestos/{presupuesto_b}/facturar", headers=h_a)
+        r_inex = client.post("/presupuestos/999999999/facturar", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # el listado de A trae lo suyo y nada de B (ni con un `?cliente_id=` ajeno en el query)
+        r_lista = client.get("/presupuestos", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_lista.status_code == 200
+        ids = {p["id"] for p in r_lista.json()["presupuestos"]}
+        assert presupuesto_a in ids and presupuesto_b not in ids
+
+        # CONTROL POSITIVO: B lo ve, y quedó SIN tocar (pendiente, sin factura)
+        r_b = client.get(f"/presupuestos/{presupuesto_b}", headers=h_b)
+        assert r_b.status_code == 200
+        assert r_b.json()["presupuesto"]["estado"] == "pendiente"
+        assert not r_b.json()["presupuesto"].get("facturado")
+        assert presupuesto_b in {p["id"] for p in client.get("/presupuestos", headers=h_b)
+                                 .json()["presupuestos"]}
+    finally:
+        _limpiar_finanzas(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_http_conceptos_a_no_edita_ni_desactiva_el_concepto_de_b(two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_presupuestos_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+        creado = client.post("/conceptos", json={"nombre": "Pintura interior B"}, headers=h_b)
+        assert creado.status_code == 201
+        concepto_b = creado.json()["concepto"]["id"]
+
+        r_cross = client.patch(f"/conceptos/{concepto_b}", json={"nombre": "pisado por A"}, headers=h_a)
+        r_inex = client.patch("/conceptos/999999999", json={"nombre": "pisado por A"}, headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        r_cross = client.delete(f"/conceptos/{concepto_b}", headers=h_a)
+        r_inex = client.delete("/conceptos/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        # el catálogo de A no trae el de B; el de B sigue ACTIVO y con su nombre
+        assert client.get("/conceptos", headers=h_a).json() == {"conceptos": []}
+        # CONTROL POSITIVO: B lo ve, intacto
+        de_b = client.get("/conceptos", headers=h_b).json()["conceptos"]
+        assert [(c["id"], c["nombre"]) for c in de_b] == [(concepto_b, "Pintura interior B")]
+    finally:
+        _limpiar_finanzas(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_http_perfil_negocio_a_no_lee_ni_pisa_el_de_b_y_sin_token_no_hay_ejemplo(
+        two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_presupuestos_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+        assert client.post("/perfil-negocio", json={"nombre_comercial": "Taller de B"},
+                           headers=h_b).status_code == 200
+
+        # A nunca configuró nada: su perfil es null y NO el de B, aunque pida el de B por query
+        r_a = client.get("/perfil-negocio", params={"cliente_id": b.cliente_id}, headers=h_a)
+        assert r_a.status_code == 200 and r_a.json() == {"perfil": None}
+
+        # A guarda lo suyo: el de B no se mueve
+        assert client.post("/perfil-negocio", json={"nombre_comercial": "Taller de A"},
+                           headers=h_a).status_code == 200
+        assert client.get("/perfil-negocio", headers=h_a).json()["perfil"]["nombre_comercial"] == "Taller de A"
+        # CONTROL POSITIVO: B conserva el suyo
+        assert client.get("/perfil-negocio", headers=h_b).json()["perfil"]["nombre_comercial"] == "Taller de B"
+
+        # `/perfil-negocio/ejemplo` no lee datos del negocio, pero exige sesión: sin token es 401
+        params = {"formalidad": "formal", "largo_respuesta": "breve"}
+        assert client.get("/perfil-negocio/ejemplo", params=params).status_code == 401
+        assert client.get("/perfil-negocio/ejemplo", params=params, headers=h_a).status_code == 200
+    finally:
+        _limpiar_finanzas(conn_de_tenant, a.cliente_id, b.cliente_id)
