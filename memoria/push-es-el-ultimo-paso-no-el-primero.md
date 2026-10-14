@@ -235,3 +235,28 @@ real era 0). Hay que mirar **sólo los archivos que la rama tocó** —
 y el respaldo vive en el contenido. Cada instrumento nuevo acercó el sujeto medido al real sin
 alcanzarlo, y las dos veces el que lo creyó suficiente fui yo. Antes de confiar en el próximo:
 ¿cuál es el caso en que este control diría «falta» sobre algo que ya está?
+
+### Refuerzo 2026-10-14 — el criterio que SÍ decide: main con más adiciones que la rama ⇒ rama CONTENIDA
+
+El cierre de arriba deja la pregunta abierta: «mirar sólo los archivos que la rama tocó y preguntar de
+cada uno si difiere». **«Difiere» no alcanza como criterio** — una rama vieja difiere de `main` en todos
+sus archivos justamente porque `main` avanzó, y ahí vuelve a parecer que falta respaldo.
+
+El criterio que separa los dos casos es el **signo de las adiciones por archivo**, contra el `merge-base`:
+
+```
+git diff --numstat $(git merge-base origin/main HEAD)..origin/main -- <f>   # lo que main agregó
+git diff --numstat $(git merge-base origin/main HEAD)..HEAD      -- <f>     # lo que la rama agregó
+```
+
+Si en **cada** archivo que la rama tocó el primer número es **mayor o igual** que el segundo, la rama
+está **contenida**: todo lo suyo llegó, y lo que sobra en `main` es trabajo posterior de otros. Si algún
+archivo tiene más adiciones en la rama que en `main`, ahí hay aporte real sin respaldo — y ése es el
+único caso que merece un push.
+
+**Por qué este nivel no se rompe como los tres anteriores:** `ls-remote` pregunta por un *nombre*,
+`cherry` por un *patch-id*, el diff crudo por una *diferencia* — y las tres se confunden con el avance
+ajeno. Contar adiciones por archivo y comparar los dos lados pregunta por el **contenido aportado**, que
+es exactamente lo que significa «respaldado». Sigue valiendo la pregunta de cierre: ¿en qué caso este
+control diría «falta» sobre algo que ya está? El que conozco: un archivo que la rama **borró** (0
+adiciones a los dos lados) — para esos el signo no decide y hay que mirar el `-` del numstat.
