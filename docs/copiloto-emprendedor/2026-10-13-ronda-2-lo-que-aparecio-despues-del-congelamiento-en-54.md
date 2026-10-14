@@ -1,0 +1,114 @@
+# Ronda 2 — lo que apareció DESPUÉS de congelar el padrón en 54
+
+> **Por qué existe este archivo.** El corpus del mapeo declara: *«Un id que aparezca después va a
+> una **lista de ronda 2** y **no reabre** ninguna fila cerrada»*
+> (`2026-10-12-mapeo-prototipo-vs-nativo.md`, encabezado). Medido el 2026-10-13: esa lista
+> **no existía como archivo** — sólo como frase. Un destino de desborde que no existe no avisa que
+> está vacío: lo que se encuentre después de congelar **desaparece**, y la desaparición se ve igual
+> que «no había nada». Mismo patrón que un mecanismo roto hacia el «no», que nunca da síntoma.
+>
+> **Qué NO es.** No es una re-apertura. Ninguna entrada de acá mueve el padrón (**32/54** sobre
+> `53786937`) ni cambia un veredicto: por **DEC-18** un hallazgo nuevo no reabre una fila cerrada.
+> Entrar acá es exactamente lo contrario de reabrir — es el lugar donde algo espera **sin** inflar
+> el criterio del sprint vigente.
+>
+> **Medido sobre `origin/main` `10d8029a`**, árbol limpio (`C:/gfw-src/wt-medir-main`).
+
+---
+
+## Cómo se buscó, y qué NO puede encontrar este método
+
+1. **Cruce de ids.** Los 85 `id="…"` del prototipo contra los 54 del padrón (quitando el prefijo
+   `s-`): **60 sin fila**. Publicar «60 huecos» sería una cifra sin unidad — el padrón mide
+   **pantallas y estados**, no nodos del DOM. **Clasificados los 60, no una muestra** — y la primera pasada fue de 18, que es exactamente el error que este doc denuncia: **de los 60, uno solo es `class="subp"`** (una pantalla): `s-plan`. El resto son botones, rótulos, contenedores de scroll
+   y paths de SVG (`cerrar-aj`, `total-gastos`, `scallopPathProto`…), o capas de pantallas que ya
+   tienen fila (`midia` → `tablero`, `escritorio` → `apps`, `hilo` → `chat`, `calma` → `vacio`,
+   que cita `index.html:1713-1857`).
+2. **Cobertura por línea.** Para lo que no tiene id propio: qué rangos de `index.html` citan las 54
+   filas, y qué quedó entre dos citas.
+3. **El desglose de los 60, para que se pueda auditar sin repetir el barrido** (clase y línea de cada uno, medidos): **14** controles de cierre/cancelación (`cerrar-aj`, `cerrar-bi`, `cerrar-fn`, `cerrar-cli`, `cerrar-fact`, `cerrar-ing`, `cerrar-presu`, `volver-tablero`, `no-consent`, `cancelar-card`, `cancelar-hitl`, `cancelar-voz-chat`, `fuera-card`, `fuera-consent`) · **5** botones de confirmación (`guardar`, `confirmar`, `confirmar-voz`, `ir-hablarle`, `volver-ayuda` — este último **ya medido** en la fila `comousar`, que declara «grep 0») · **9** contenedores de pantallas que **sí tienen fila** (`midia`→`tablero`, `escritorio`→`apps`, `hilo`→`chat`, `hilo-sop`→`soporte`, `bi-scroll`/`bi-clientes`→`bi`, `p-parcial`/`peek-chat`/`grip-chat`→`chat`) · **4** de la ilustración del vacío (`calma`, `calma-expl`, `color`, `exp`), que la fila `vacio` cita como `index.html:1713-1857` · **6** del SVG decorativo (`scallop-proto`, `scallopPathProto`, `e-ext`, `e-int`, `e-o1`, `e-o2`) · **20** rótulos y contenidos de pantallas con fila (`total-gastos`, `lista-gastos`, `mic-gastos`, `card-tit`, `card-campos`, `encaja-lbl`, `bi-refresh-txt`, `sec-hoy`, `sp-rest`, `grip-arriba`, `prog`, `prog-txt`, `cargando`, `salio`, `app`, `funcion`, `inteligencia`, `aviso-lucia`, `accion-lucia`, `cerrar-aj`…) · y **2 que SÍ son inquilinos**: `s-plan` (R2-1) y `snack`+`deshacer` (R2-2). **Ningún tercero.** Los dos inquilinos estaban entre los «SIN-CLASE» y los `subp`, o sea que **la clase sola no alcanzaba para descartar**: hubo que abrir los 60.
+
+🔴 **El punto ciego, declarado porque sin él esta lista parecería completa:** el cruce de ids
+encuentra **nodos**, no **mecanismos**. El segundo inquilino de abajo se encontró leyendo los
+comentarios del CSS del prototipo, no por su id — su `#snack` tiene id, pero el gesto que lo dispara
+vive en cuatro comentarios de diseño sin id ninguno. **Un mecanismo repartido en reglas de CSS y
+handlers no tiene un id que cruzar**, así que esta lista es *lo encontrado*, nunca *lo que falta*.
+Para afirmar completitud hace falta un barrido por **función** del prototipo, pantalla por pantalla,
+que es lo que construyó el mapeo original — y eso es un frente, no un párrafo.
+
+---
+
+## R2-1 · `plan` — «Mi plan»: acciones del mes y límites
+
+| qué | dónde |
+|---|---|
+| prototipo, pantalla | `index.html:s-plan` (`class="subp"`) — «Mi plan · Profesional», `64 de 200 acciones este mes`, dos bloques «Gasta / No gasta», y la regla del tope: *«Si llegás al tope, Odobi deja de ejecutar pero sigue respondiendo: podés seguir preguntando todo el mes»* |
+| prototipo, entrada | fila propia de Ajustes: «Mi plan → Acciones del mes y límites» (`index.html:2108-2140`, 4ª de «Tu negocio») |
+| app | **no existe, y es deliberado**: `AjusteKey` tiene 8 claves y ninguna es plan (`PantallaAjustes.tsx:15-23`); salió por **DEC-8** (2026-10-06) con **control negativo** que lo fija (`PantallaAjustes.test.tsx:54-59`, `ajuste-tile-miPlan` nulo) |
+| backend | **sin mecanismo de medición de acciones.** Grep de `acciones_mes` / `cuota` / `quota` / `limite_acciones` en `apps/copiloto/*.py` sólo pega en `autosanacion_workflow.py` y `ciclo_autosanacion.py`, que son de otra cosa |
+
+**Por qué entra acá y no al padrón:** no es un hueco del corpus — es **alcance post-beta** con
+decisión firmada. Entra para que no se pierda: el prototipo modela una **superficie de producto
+entera** (medidor de acciones + qué consume + comportamiento al tope) que hoy no tiene ni fila, ni
+backend, ni dueño. **Esto no es una pantalla: es un frente** — cuando se tome, arranca por el
+contador del backend, no por la pantalla.
+
+## R2-2 · `descarte` — descartar un aviso deslizando, con «Deshacer»
+
+| qué | dónde |
+|---|---|
+| prototipo, gesto | *«descartar un aviso deslizando»* (`index.html:1567`), fondo de descarte terracota `#B04A2E` con tacho blanco (`:1580`), y razonamiento de eje en cuatro lugares (`:1289`, `:1341`, `:1374`, `:1429`) |
+| prototipo, confirmación | `#snack` → **«Aviso descartado · Deshacer»** (`:2644`, estilos `:1593-1599`) |
+| app | el swipe **existe** y está bien hecho: `ReanimatedSwipeable` (`PantallaMiDia.tsx:741`, no un `Gesture.Pan` a mano), con la skill citada en el código (`:704`). Pero **revela botones** —«Avanzar» y «Borrar» (`:706-737`)— y `onBorrar()` **ejecuta de inmediato**: no hay snackbar ni deshacer |
+| padrón | **ninguna fila lo cubre.** Ninguna de las 54 cita `:1567-1599` ni `:2644` (las citas vecinas son `:2623` y `:2688-2692`), y ninguna menciona swipe / descarte / deslizar en su divergencia |
+| docs | 0 resultados para «descartar un aviso» / «swipe de descarte» / «deslizando» en `docs/copiloto-emprendedor/*.md` |
+
+**Las dos mitades no valen lo mismo, y conviene no mezclarlas:**
+
+- **La forma del gesto** (revelar botones vs. descartar deslizando) es UX, y puede haber sido una
+  decisión del contrato §2.3 que pidió «swipe corto» — **no lo afirmo**: no leí ese contrato, y la
+  diferencia podría estar decidida.
+- **La ausencia de «Deshacer» es lo que muerde**, y es independiente de la forma: hoy «Borrar»
+  es una acción **destructiva e inmediata** sobre una fila de Mi día, y el prototipo la diseñó con
+  una ventana de reversa. Eso no es estética: es la diferencia entre un error recuperable y uno que
+  no. **Entra como el ítem con prioridad de esta lista.**
+
+### Medido después de escribir esto: **no es un descarte, es un `DELETE FROM`**
+
+Cuando escribí «es la diferencia entre un error recuperable y uno que no», lo estaba **afirmando sin
+medirlo** — podía ser un descarte local de la lista. Medido ahora, la cadena completa:
+
+| capa | qué hace | dónde |
+|---|---|---|
+| app | `onBorrar()` → `borrar(t)` sin confirmación ni ventana | `PantallaMiDia.tsx:554`, `:422-429` |
+| core | `DELETE /mi-dia/tarjetas/{id}` | `packages/core/src/api/miDia.ts:235-246` |
+| backend | handler sin estado intermedio: `_store(cliente_id).borrar(id)` | `apps/copiloto/mi_dia_web.py:223-228` |
+| **DB** | **`DELETE FROM … WHERE cliente_id = %s AND id = %s`** — borrado duro, **sin columna de soft-delete** | `apps/copiloto/mi_dia_tarjeta_store.py:139-143` |
+
+🔴 **No hay camino de vuelta en ninguna capa**: ni `deshacer` en la app, ni endpoint de restore, ni
+fila que sobreviva en la tabla. Un solo tap sobre «Borrar» destruye el dato. El prototipo diseñó la
+ventana de reversa (`#snack` → «Aviso descartado · **Deshacer**», `index.html:2644`) y la app
+implementó el gesto **sin** ella.
+
+**El mecanismo más barato que lo arregla no necesita backend nuevo:** **borrado diferido** — sacar la
+tarjeta de la lista en el cliente, mostrar el snack, y disparar el `DELETE` sólo cuando la ventana
+expira o la pantalla se desmonta. Un endpoint de restore obligaría a cambiar el schema (soft-delete)
+y a mantener filas fantasma que `listar_tablero` tendría que excluir — exactamente el booleano que
+ese mismo archivo declara **no** querer mantener (`mi_dia_tarjeta_store.py:148-151`).
+
+⚠️ **Pero sumar esto al sprint vigente es decisión de SCOPE, no táctica**, y el padrón está
+congelado en 54 con **DEC-18** firmado. Por eso **no bajo contrato por mi cuenta**: va al pedido
+consolidado al operador con esta medición y una recomendación. Lo que sí queda cerrado acá es que
+**la entrada ya no es una sospecha**: tiene las cuatro capas con `path:línea`.
+
+---
+
+## Regla de esta lista
+
+1. **Una entrada NO reabre nada.** Si al medirla aparece que una fila cerrada estaba mal, eso va
+   como **enmienda anotada** en la fila (con su evidencia), y el padrón no se mueve — DEC-18.
+2. **Cada entrada declara qué midió y qué no.** Una entrada sin `path:línea` de los dos lados
+   (prototipo y app) es una sospecha, no una entrada.
+3. **No se prioriza acá.** Esta lista no compite con el sprint vigente; la toma el operador o la
+   planificación al abrir la ronda siguiente. Lo único que esta lista garantiza es que **existe el
+   lugar**: eso era lo que faltaba.

@@ -61,7 +61,7 @@ Acreditables con test en el VPS. No necesitan el telefono, asi que **no esperan*
 |---|---|---|---|
 | `afip` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `agenda` | frontend | Comparada contra el prototipo: la fila dice COINCIDE o nombra la divergencia. Hoy no esta medida, y «sin comparacion» no es «coincide». | UI pura, verificable con test |
-| `ajustes` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
+| `ajustes` | frontend | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | UI pura, verificable con test |
 | `apar` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `apps` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `bi` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
