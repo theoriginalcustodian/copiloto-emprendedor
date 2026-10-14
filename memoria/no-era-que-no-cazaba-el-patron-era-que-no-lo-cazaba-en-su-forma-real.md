@@ -163,3 +163,40 @@ evidencia de nada — es un espejo. Antes de pedir que se construya una pieza, b
 (*«¿qué lleva hoy el dato del punto A al punto B?»*), no el nombre de tu solución. Y si el rol no
 aparece, nombrá qué forma tendría si existiera **antes** de firmar el vacío.
 → [[el-fix-ya-existe-en-otro-call-site]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+---
+
+## Refuerzo 2026-10-14 — el **ESPEJO** del voseo: el identificador **era una palabra común del español**
+
+El refuerzo del 13/10 cierra en que el idioma hace que el patrón **no cace** (`Buscar` vs `Buscá`).
+Hoy el mismo idioma lo hizo cazar **de más**, y por eso casi refuto en falso un contrato que estaba
+bien. Auditando la vigencia de un `contrato_` que declaraba **0** en dos anclas, mis greps dieron
+**3 y 3** — y las seis eran basura:
+
+| ancla | mi patrón | lo que cazó |
+|---|---|---|
+| `datos.desde` → 0 | `\.desde\b` | `relleno.desde` · `rango.desde` · `d.desde` — otros objetos |
+| `datos.desde` → 0 | `datos.*desde` | **prosa**: «Editar **desde** acá» · «verlo **desde** la app» |
+| `recibido` en mobile → 0 | `recibido\|✓✓` | **prosa de tests ajenos**: «respeta el `size` **recibido**» |
+
+**El contrato tenía razón en las dos.** Si hubiera publicado mis números, el efecto no era un
+hallazgo: era declarar **caída** un ancla vigente y mandar a re-medir trabajo que estaba bien
+descrito. Es el costo inverso al del falso `0` —que borra una divergencia— y llega con la misma cara
+de rigor (*«lo re-medí contra main, hoy da 3»*).
+
+🔑 **La causa es estructural, no un descuido:** este repo escribe **código en inglés y comentarios en
+español**, y varios identificadores del dominio son **palabras funcionales del idioma de los
+comentarios** — `desde`, `hasta`, `estado`, `cuenta`, `origen`, `recibido`. Para esos, el nombre no
+distingue código de prosa: cualquier patrón que no ancle el **receptor** mide las dos cosas.
+
+**Cómo aplicarlo**
+- Si el identificador es también una palabra común del español, el patrón se ancla al **receptor
+  completo** (`datos\.desde\b`, no `\.desde`) y, mejor, al **call-site** (`datos\.desde` dentro del
+  módulo que lo consume).
+- **Cuando N es chico, el conteo no alcanza: abrí los N.** `-c` dio «3» y los 3 eran falsos; `-n`
+  los mostró en una línea. Un número sin sus líneas no distingue hit de prosa, y es lo único que
+  separa «el ancla cayó» de «mi patrón es laxo».
+- Y la asimetría a tener presente: contra un artefacto **ajeno**, un falso positivo lo declara
+  rancio. Antes de refutar una medición que no es tuya, mirá los hits uno por uno.
+  → [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
