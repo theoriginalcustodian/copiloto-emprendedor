@@ -178,3 +178,55 @@ Esta entrada compara **dos** lados: el índice del repo y el del slug. Hay un te
 **Medido hoy:** cité como hallazgo la línea «Criterio 3: 53 de 54 — falta `(home)`, nunca medida» y la iba a entregar a planificación. Esa línea tenía **0 ocurrencias** en los dos archivos de disco (repo 25 575 B, slug 25 112 B) y **1** en mi contexto. Ya había sido corregida — y el error que fabricó ya estaba reportado y cerrado **ese mismo día**, en dos sesiones antes de la mía.
 
 **La consecuencia operativa:** `seed-memory.sh` reconcilia repo ↔ slug, pero **no puede alcanzar al tercer lado**: una sesión ya abierta se queda con la foto hasta que termine. Por eso, **antes de reportar una divergencia contra el índice, hay que releer el archivo en disco** — `grep` sobre `memoria/MEMORY.md`, no el bloque del `system-reminder`. Y lo que lo hace traicionero: la línea vieja suele **coincidir** con lo que estás por concluir, así que entra como corroboración en vez de como dato a verificar.
+
+---
+
+**Refuerzo 2026-10-14 — el caveat nombra `MEMORY.md`, y la divergencia pasó en `HISTORIA.md`: 4
+entradas invisibles en el slug y visibles en el repo.** `seed-memory.sh` corrió sin error y su medidor
+cerró con **`FALLA: 5 entradas sin línea en MEMORY.md ni HISTORIA.md`** — «huérfana (invisible para toda
+sesión)». Corrí el **mismo** medidor en un worktree limpio desde `origin/main` y dio **1**. Dos corridas
+del mismo script sobre el mismo repo, 5 contra 1 — y la cifra correcta no era ninguna de las dos
+lecturas que hice primero.
+
+Lo que pasó, medido archivo por archivo:
+
+| `HISTORIA.md` en… | bytes | |
+|---|---|---|
+| `origin/main` | **72445** | el completo |
+| **checkout compartido** (desde donde corre el seed) | **71237** | **atrasado 4 líneas, 0 propias** |
+| slug | 71237 → 72445 | heredaba el atraso del compartido |
+
+`MEMORY.md` era **md5 idéntico** en los tres. El drift vivía entero en `HISTORIA.md`, y el atrasado no
+era el destino sino **la fuente**: `seed-memory.sh` siembra el slug **desde el checkout compartido**, así
+que propagaba su atraso y el medidor acusaba al slug con la causa en el origen
+([[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]). Tres copias del
+mismo nombre, y las dos primeras que comparé eran las dos equivocadas
+([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]], acá con tres).
+
+Las 4 entradas en disputa (`metro-en-modo-ci-no-observa-archivos…`, `python-heredoc-con-dev-null…`,
+`tsc-local-limpio…`, `un-proceso-en-background-sin-stdin…`) están cubiertas **por `HISTORIA.md`**, no por
+el índice. Y `HISTORIA.md` es exactamente el archivo que **nadie reconcilia**: el caveat de este repo dice
+que «el único merge que NO hace solo es el del índice `MEMORY.md`» — y `MEMORY.md` estaba perfecto.
+**El mecanismo que se nombró quedó vigilado y el otro, que cumple la misma función de cobertura, quedó
+armado** ([[una-orden-de-parada-que-nombra-un-mecanismo-deja-el-otro-armado]]).
+
+**Lo que casi hice con esa lectura.** Tomé el «5 huérfanas» como estado del repo y arranqué a buscar qué
+**podar** del índice para hacerles lugar — con el índice en 23946/24000 bytes, podar significa **borrar
+punteros**. La métrica que elegí para podar sin arbitrariedad (cuántas veces cada entrada es citada con
+`[[…]]` por los otros 400 topic files) **no separó**: las 14 candidatas top dieron `citas=0` todas, así
+que el orden lo decidió el desempate accidental por bytes y arriba aparecieron **órdenes duras del
+operador** (`adb input motionevent` nunca `input tap`, «no PR por cada cambio chico») y entradas que
+había usado ese mismo día. Las `[[…]]` miden cuánto una entrada se **referencia al razonar**, no cuánto
+**ordena al arrancar**: una regla dura no necesita que otra la cite — se cumple, no se discute. O sea:
+iba a destruir información del índice para arreglar un problema que **no estaba en el índice**, usando
+una métrica que medía la propiedad equivocada.
+
+**How to apply:** cuando `seed-memory.sh` reporte huérfanas, **corré `medir-indice-memoria.py` en un
+worktree limpio antes de tocar nada**: si las dos cifras no coinciden, el problema es drift y no
+cobertura, y el archivo a comparar es **`HISTORIA.md`** tanto como `MEMORY.md` (`md5sum` de los dos, en
+los dos lados — el peso puede coincidir y el contenido no). El arreglo es traer `HISTORIA.md` de
+`origin/main` **al checkout compartido** (que es la fuente del seed) y recién después sembrar — no
+agregar líneas al índice, y no parchear el slug, que vuelve a heredar el atraso en la próxima corrida.
+Verificado aditivo antes de escribir: `comm` dio **0 líneas propias** del compartido y 4 sólo en main. Y antes de podar cualquier índice: corré la métrica con
+la que pensás ordenar **y mirá si separa**; un top que empata en `0` no es criterio, es un desempate
+accidental con cara de rigor.
