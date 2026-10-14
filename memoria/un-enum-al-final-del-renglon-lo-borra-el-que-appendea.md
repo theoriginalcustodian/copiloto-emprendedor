@@ -312,3 +312,43 @@ la misma receta del refuerzo de arriba: contar los campos, no leerlos.
 mandar el caso vacío a propósito y ver el rojo — sin eso, el verde acredita sólo el camino lleno
 ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]); (4) si tenés que
 diagnosticar uno ya roto, el instrumento es `printf '[%s]' "$@"` en el **remoto**: local no reproduce.
+
+## Refuerzo 2026-10-14 — esta vez no lo borró un append: lo borró UN EMOJI DECORATIVO, delante
+
+`vigilancia-check.sh` reportó: *«COLA: estado no reconocido en: EXHAUSTIVEDEPSON — un hito así es
+INVISIBLE para la cola»*. El renglón estaba **completo y correcto**: medición del 14-10 por frontend2,
+las dos cifras, el umbral pre-comprometido, el porqué de no medir desde el checkout compartido. Y su
+último campo **sí** empezaba con el enum… precedido de un `📏`:
+
+```
+EXHAUSTIVEDEPSON  => ULTIMO=[ 📏✅ **MEDIDA 2026-10-14 por frontend2 — … APAGADA con cifra…** ]
+DIRECTIVASIMPORT  => ULTIMO=[ ✅ CERRADA ]                          ← válido
+ENCODINGWINPRINT  => ULTIMO=[ ❌ CONGELADA — regla `CONGELAINSTR` ]  ← válido
+```
+
+El parser exige que el campo **empiece** con `✅`/`❌` (o sea uno de los enums). `📏✅` no empieza con
+`✅`: empieza con `📏`. **Dos caracteres de adorno, y el hito desapareció de la cola.** Fix: mover el
+emoji detrás (`✅ 📏 **MEDIDA…**`). Control positivo inmediato: el instrumento dejó de reportarlo.
+
+**Qué agrega al caso original.** Ahí el enum lo sepultó alguien que **appendeó** y el renglón quedó
+mal armado. Acá nadie appendeó nada y el renglón estaba bien pensado — **el enum estaba en su lugar,
+al final, con su contenido correcto**. Lo rompió un prefijo decorativo puesto por quien **sabía** el
+formato y creyó que «empieza con ✅» significaba «contiene un ✅ al principio». No es descuido: es que
+`📏✅` **se ve** como un estado válido con un ícono, y a ojo humano lo es.
+
+**La forma general:** un gate que valida por **prefijo exacto** convierte cualquier adorno delante en
+un fallo total y silencioso, y el adorno es justo lo que nadie audita porque no es contenido. El
+hermano del append que corre las celdas — mismo daño, puerta opuesta: uno agrega al **final**, el otro
+al **principio**.
+
+**El control, y es distinto del de pipes:** el `awk` de arriba cuenta campos y a este caso **lo deja
+pasar** (los campos están bien). Lo que hay que mirar es el **primer carácter** del último campo:
+
+```bash
+awk -F'|' '/^[A-Z]/ {f=$NF; sub(/^ +/,"",f); printf "%.18s => [%.3s]
+", $1, f}' coordinacion/PLAN.md
+```
+
+Si el enum no es **lo primero** que imprime, el renglón es invisible. Y como siempre con esta clase:
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] — el hito no da error, **deja de existir** para la cola,
+que es [[lo-que-no-esta-en-la-tabla-de-hitos-no-existe]] por la puerta de atrás.
