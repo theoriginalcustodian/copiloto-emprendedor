@@ -64,7 +64,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-E1** | `#1005` | 🟧 DOD-PARCIAL | medido en DEVICE: con una cuenta RI con perfil cargado, la pantalla de Facturación muestra el aviso y no el CTA «Conf… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO, FALTA DEVICE (+1 punto bloqueado por el operador). Las 5 capacidades quedaron clasificadas, ninguna … |
-| **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
+| **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
 | **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
@@ -492,7 +492,9 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F1 · `#1011` — Las 6 cadenas de negocio nunca se midieron de punta a punta en device
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** frontend2
+- **Cierre:** Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_MEDIBLE; 2 camino de error COHERENTE + exito NO_MEDIBLE; 1 REQUIERE_TRIAGE (token ARCA invalido en la emision). Doc docs/copiloto-emprendedor/Auditorias/2026-10-14-SM-F1-las-6-cadenas-de-negocio-en-device.md
 - **DoD:** las 6 con veredicto del vocabulario cerrado y su `medido_contra:`.
 - **Depende de:** SM-A1.
 
