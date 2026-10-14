@@ -264,34 +264,58 @@ describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)'
 
     it('destino conexion con id → abre ESA conexión (y no Ajustes)', async () => {
       const onAjustes = jest.fn();
-      const onConexion = jest.fn();
-      await montarBannerCon({ tipo: 'conexion', id: 'gmail', connectPath: '/composio/connect?service=gmail' }, { onAjustes, onConexion });
-      expect(onConexion).toHaveBeenCalledWith('gmail');
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'conexion', id: 'gmail', connectPath: '/composio/connect?service=gmail' }, { onAjustes, onDestino });
+      expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'gmail' });
       expect(onAjustes).not.toHaveBeenCalled();
+    });
+
+    it('destino comprobante con id de fila → abre ESE comprobante (y no Ajustes)', async () => {
+      const onAjustes = jest.fn();
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'comprobante', id: '412', connectPath: null }, { onAjustes, onDestino });
+      expect(onDestino).toHaveBeenCalledWith({ tipo: 'comprobante', comprobanteId: '412' });
+      expect(onAjustes).not.toHaveBeenCalled();
+    });
+
+    it('destino certificado → abre la pantalla de AFIP (y no Ajustes)', async () => {
+      const onAjustes = jest.fn();
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'certificado', id: '20123456786:homologacion', connectPath: null }, { onAjustes, onDestino });
+      expect(onDestino).toHaveBeenCalledWith({ tipo: 'certificado' });
+      expect(onAjustes).not.toHaveBeenCalled();
+    });
+
+    it('🔴 trabajo (sin pantalla donde abrir) → cae a Ajustes: no hay un destino que no sea adivinar', async () => {
+      const onAjustes = jest.fn();
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'trabajo', id: 'presupuesto:7', connectPath: null }, { onAjustes, onDestino });
+      expect(onDestino).not.toHaveBeenCalled();
+      expect(onAjustes).toHaveBeenCalledTimes(1);
     });
 
     it('🔴 tipo DESCONOCIDO (valor inventado) → cae a Ajustes, sin crash ni pantalla en blanco', async () => {
       const onAjustes = jest.fn();
-      const onConexion = jest.fn();
-      await montarBannerCon({ tipo: 'lo-que-sea', id: 'gmail', connectPath: null }, { onAjustes, onConexion });
-      expect(onConexion).not.toHaveBeenCalled();
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'lo-que-sea', id: 'gmail', connectPath: null }, { onAjustes, onDestino });
+      expect(onDestino).not.toHaveBeenCalled();
       expect(onAjustes).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
     });
 
     it('destino ausente (backend previo) → Ajustes', async () => {
       const onAjustes = jest.fn();
-      const onConexion = jest.fn();
-      await montarBannerCon(undefined, { onAjustes, onConexion });
-      expect(onConexion).not.toHaveBeenCalled();
+      const onDestino = jest.fn();
+      await montarBannerCon(undefined, { onAjustes, onDestino });
+      expect(onDestino).not.toHaveBeenCalled();
       expect(onAjustes).toHaveBeenCalledTimes(1);
     });
 
     it('conexion SIN id → Ajustes (no hay a qué conexión ir)', async () => {
       const onAjustes = jest.fn();
-      const onConexion = jest.fn();
-      await montarBannerCon({ tipo: 'conexion', id: null, connectPath: null }, { onAjustes, onConexion });
-      expect(onConexion).not.toHaveBeenCalled();
+      const onDestino = jest.fn();
+      await montarBannerCon({ tipo: 'conexion', id: null, connectPath: null }, { onAjustes, onDestino });
+      expect(onDestino).not.toHaveBeenCalled();
       expect(onAjustes).toHaveBeenCalledTimes(1);
     });
   });
@@ -625,23 +649,57 @@ describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida
   });
 
   it('la píldora rutea por `rutaDeDestino` TAL CUAL: conexion con id → abre ESA conexión', async () => {
-    const onConexion = jest.fn();
-    await expandir({ presentacion: PRESENTACION }, { onConexion });
+    const onDestino = jest.fn();
+    await expandir({ presentacion: PRESENTACION }, { onDestino });
     await fireEvent.press(screen.getByTestId('midia-tarjeta-p-accion'));
-    expect(onConexion).toHaveBeenCalledWith('mercadopago');
+    expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'mercadopago' });
   });
 
-  it('🔴 un `tipo` que esta app no conoce deja la píldora como RÓTULO: no navega ni cae a Ajustes', async () => {
-    const onConexion = jest.fn();
-    const onAjustes = jest.fn();
+  it('la píldora de una factura impaga abre el detalle de ESE comprobante', async () => {
+    const onDestino = jest.fn();
     await expandir(
-      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'presupuesto', id: '412', connectPath: null } } } },
-      { onConexion, onAjustes },
+      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'comprobante', id: '412', connectPath: null } } } },
+      { onDestino },
     );
     const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    expect(pildora).toHaveTextContent('Reclamar el pago');
+    expect(pildora.props.accessibilityState?.disabled).toBeFalsy();
     await fireEvent.press(pildora);
-    expect(onConexion).not.toHaveBeenCalled();
+    expect(onDestino).toHaveBeenCalledWith({ tipo: 'comprobante', comprobanteId: '412' });
+  });
+
+  it('la píldora del certificado por vencer abre la pantalla de AFIP', async () => {
+    const onDestino = jest.fn();
+    await expandir(
+      { presentacion: { ...PRESENTACION, accion: { texto: 'Renovarlo', destino: { tipo: 'certificado', id: '20123456786:produccion', connectPath: null } } } },
+      { onDestino },
+    );
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-accion'));
+    expect(onDestino).toHaveBeenCalledWith({ tipo: 'certificado' });
+  });
+
+  it('🔴 un comprobante con id NO numérico queda como rótulo: abrir «borrador nuevo» sería peor que no navegar', async () => {
+    const onDestino = jest.fn();
+    await expandir(
+      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'comprobante', id: 'A-0034', connectPath: null } } } },
+      { onDestino },
+    );
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    await fireEvent.press(pildora);
+    expect(onDestino).not.toHaveBeenCalled();
+    expect(pildora.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('🔴 un `tipo` sin pantalla donde abrir (trabajo) deja la píldora como RÓTULO: no navega ni cae a Ajustes', async () => {
+    const onDestino = jest.fn();
+    const onAjustes = jest.fn();
+    await expandir(
+      { presentacion: { ...PRESENTACION, accion: { texto: 'Revisarlo', destino: { tipo: 'trabajo', id: 'presupuesto:7', connectPath: null } } } },
+      { onDestino, onAjustes },
+    );
+    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
+    expect(pildora).toHaveTextContent('Revisarlo');
+    await fireEvent.press(pildora);
+    expect(onDestino).not.toHaveBeenCalled();
     expect(onAjustes).not.toHaveBeenCalled();
     expect(pildora.props.accessibilityState?.disabled).toBe(true);
   });
