@@ -279,6 +279,56 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-13 - VOCABAJENO, y la instancia mas cara hasta hoy: este documento SI MIDE LA PANTALLA
+    # -- tabla por fila con `archivo:linea` sobre `origin/main` @ `159f883b`, cada «0 hits» con su
+    # control positivo, resultado versionado en `docs/.../2026-10-13-veredicto-bloque-chat-backend.md`
+    # -- y encima REFUTO lo que venia a cerrar (esperaba cerrar 5 acreditaciones, cierra 1: `preg`).
+    # Lo que lo deja afuera NO es el rol: es el IDIOMA. Su columna de veredicto dice `✅ + 📝 CIERRA`
+    # y `abierta`, y el `VOCABULARIO` cerrado (`:608`) no tiene esos tokens, asi que el parser lee
+    # «1 id con algo en rol de veredicto, 0 interpretable».
+    #
+    # 🔴 Por que NO va a `MEDICION_SIN_VEREDICTO_CERRADO_JUSTIFICADA`: esa lista pregunta «el
+    # documento NO MIDE o NO SE LEE», y su propio comentario prohibe usarla cuando la respuesta es
+    # «no se lee» -- eso seria firmar un hueco de lectura como decision de clasificacion. Aca la
+    # respuesta es NO SE LEE.
+    #
+    # ⚠️ El descarte NO retira sus 6 veredictos: quedan PENDIENTES DE RE-EMISION por backend en el
+    # vocabulario del criterio (COHERENTE / DESVIO / NO_MEDIBLE / PENDIENTE_DEVICE / REQUIERE_TRIAGE
+    # / INCOMPLETO). Mientras no se re-emitan, la cifra NO cuenta `preg` como cerrada aunque el
+    # documento lo demuestre -- y eso es correcto: el padron se mueve con veredictos legibles, no con
+    # prosa que un humano sabe interpretar y el contador no.
+    "2026-10-13_cierre_backend-a-planificacion_EVIDENCIABUZON-6-filas":
+        "VOCABAJENO: mide la pantalla con path:linea pero su columna usa vocabulario propio "
+        "(`✅ CIERRA` / `abierta`) fuera del VOCABULARIO cerrado; sus 6 veredictos quedan pendientes "
+        "de re-emision por backend, no retirados",
+    # 2026-10-13 - CONTRATO MIO (planificacion). Dictamina ESTADO DE COLA y asigna trabajo: cuales de
+    # las 7 pendientes de app tienen clausula rancia y quien traba las otras cinco. Las cifras que usa
+    # («el padron declara 12 pendientes que NO cumplen») son CITA de este mismo medidor: contarlas
+    # seria contar mi propia salida como dato nuevo, que es como una cifra se infla sola.
+    "2026-10-13_contrato_planificacion-a-frontend1_tu-cola-NO-esta-vacia":
+        "dictamina estado de cola y cita el padron para asignar trabajo; no mide ninguna pantalla",
+    # 2026-10-12 - CONTRATO MIO (planificacion). Baja la decision del operador sobre `esc` (opcion A,
+    # reset a Mi Dia) y RATIFICA 5 filas de `MicFuncion` que ya habia medido FE2. Su unica tabla con
+    # `medido en` apunta al PROTOTIPO (`index.html:2688-2692`) para fundar que la regla NO esta en la
+    # referencia y por eso la decidio el operador: mide la REFERENCIA, no la app. Ratificar un
+    # veredicto ajeno y contarlo otra vez es `el-veredicto-no-dice-cuantas-veces-lo-miraron`.
+    "2026-10-12_contrato_planificacion-a-frontend_la-fila-esc-se-desbloqueo-opcion-A":
+        "dictamina la decision del operador y ratifica veredictos ya medidos por FE2; su tabla mide el prototipo, no la app",
+    # 2026-10-13 - CONTRATO MIO (planificacion). Dictamina ESTADO DE COLA y asigna trabajo: dice
+    # cuales de las 7 pendientes de app tienen clausula rancia y quien traba las otras cinco. Las
+    # cifras que usa («el padron declara 12 pendientes que NO cumplen») son CITA de este mismo
+    # medidor: contarlas seria contar mi propia salida como si fuera un dato nuevo, que es como una
+    # cifra se infla sola. No mide ninguna pantalla contra el prototipo.
+    "2026-10-13_contrato_planificacion-a-frontend1_tu-cola-NO-esta-vacia":
+        "dictamina estado de cola y cita el padron para asignar trabajo; no mide ninguna pantalla",
+    # 2026-10-12 - CONTRATO MIO (planificacion). Baja la decision del operador sobre `esc` (opcion A,
+    # reset a Mi Dia) y RATIFICA 5 filas de `MicFuncion` que ya habia medido FE2. Su unica tabla con
+    # `medido en` apunta al PROTOTIPO (`index.html:2688-2692`) para fundar que la regla NO esta en el
+    # prototipo y por eso la decidio el operador -- o sea mide la REFERENCIA, no la app. Ratificar un
+    # veredicto ajeno y contarlo de nuevo es exactamente el defecto de `el-veredicto-no-dice-cuantas-
+    # veces-lo-miraron`: dos documentos, una sola medicion.
+    "2026-10-12_contrato_planificacion-a-frontend_la-fila-esc-se-desbloqueo-opcion-A":
+        "dictamina la decision del operador y ratifica veredictos ya medidos por FE2; su tabla mide el prototipo, no la app",
     # 2026-10-13 - MIDE, con path:linea @ `bf8eb87e`, y NO es citador: lectura de primera mano.
     # Pero mide EL EMISOR (que campos manda el backend), y el criterio 3 mide LA PANTALLA
     # (que pinta la app contra el prototipo). Un `DIVERGE` de aca significa «el backend no manda
