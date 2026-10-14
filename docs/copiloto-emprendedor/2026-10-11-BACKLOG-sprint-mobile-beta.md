@@ -51,7 +51,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | ⬜ PENDIENTE | — |
-| **SM-C3** | `#1016` | ⬜ PENDIENTE | medido 14-10: la DECISION esta (7de6d9dc) pero el codigo NO - no existe el predicado unico junto a debeMostrarOnboard… |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | Backend HECHO (merge 46cd8cc0, PR #1161: 409 perfil_minimo_incompleto con faltantes, adversarial por front-door + Pos… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | ⬜ PENDIENTE | — |
@@ -67,7 +67,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-F1** | `#1011` | ⬜ PENDIENTE | — |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
-| **SM-F4** | `#1013` | 🟧 DOD-PARCIAL | receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado… |
+| **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-e… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -211,8 +211,8 @@ no el arranque del sprint.***
 
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
-- **Estado:** PENDIENTE
-- **Falta:** medido 14-10: la DECISION esta (7de6d9dc) pero el codigo NO - no existe el predicado unico junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts:17) ni el test adversarial por app
+- **Estado:** DOD-PARCIAL
+- **Falta:** Backend HECHO (merge 46cd8cc0, PR #1161: 409 perfil_minimo_incompleto con faltantes, adversarial por front-door + Postgres con RLS, mutante 8 rojos/1 verde). DoD 1 HECHO por planificacion 14-10: predicado unico faltantesDelPerfilMinimo + perfilMinimoCompleto + CAMPOS_PERFIL_MINIMO junto a debeMostrarOnboarding (packages/core/src/api/onboarding.ts), y completarOnboarding dejo de tragar el 409: devuelve {ok,perfilIncompleto,faltantes} (21/21 verdes, mutante 2 rojos/19 verdes). FALTA, de frontend con pantalla y dueno: (2) el paso del hilo de onboarding que pide los DOS campos -- hoy los dos call-sites DESCARTAN el retorno (apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx:97, apps/copiloto-web/src/modules/onboarding/Onboarding.tsx:98), asi que con el 409 la persona queda fuera del shell sin saber por que; (3)(4) test adversarial por app: uno de los dos campos vacio no entra, control positivo con los dos llenos.
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
@@ -491,8 +491,8 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F4 · `#1013` — El APK de dev-client se evapora de EAS a los 14 días
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** receta escrita y ejercitada desde cero (worktree limpio + npm install en la raiz + eas build): build d6cecf02 lanzado con git=93d792d2, expira 2026-10-28. Falta que pase a FINISHED con apk -- una receta se acredita cuando el artefacto existe, no cuando el CLI sale con exit 0. Doc: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md
+- **Estado:** TERMINADO
+- **Cierre:** merge aeeb3eab (PR #1157) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md, en origin/main desde aeeb3eab, con las 4 trampas que cobro al ejercitarla. DoD(2) se ejercitio una vez y el ARTEFACTO EXISTE: build d6cecf02 FINISHED con apk (expo.dev/artifacts/eas/TeAkIfKPu5wY88WZuXHt9-fhFEHZGR53jO7KNarb9q4.apk), procedencia git=93d792d2 (sha de main), expira 2026-10-28; medido 2026-10-14 12:07 con el disparador literal del doc (npx --yes eas-cli@24.13.0 build:list --platform android --json), no con autoevaluacion. El bloque RESULTADO-EJERCICIO del doc quedo remedido a FINISHED en este mismo PR.
 - **DoD:** la receta de reconstrucción existe **y se ejercitó una vez**. Una receta no ejercitada es
   una promesa.
 - **Dueña:** planificación — no necesita el teléfono para la parte de build, así que no compite por el device.
