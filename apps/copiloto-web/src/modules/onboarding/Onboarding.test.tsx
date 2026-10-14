@@ -5,12 +5,16 @@ const mockCatalogo = vi.fn();
 const mockLink = vi.fn();
 const mockPortada = vi.fn();
 const mockCompletar = vi.fn();
+const mockLeerPerfil = vi.fn();
+const mockGuardarPerfil = vi.fn();
 vi.mock('@copiloto/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@copiloto/core')>()),
   listarCatalogo: (...a: unknown[]) => mockCatalogo(...a),
   pedirLinkDeVinculacion: (...a: unknown[]) => mockLink(...a),
   leerPortada: (...a: unknown[]) => mockPortada(...a),
   completarOnboarding: (...a: unknown[]) => mockCompletar(...a),
+  leerPerfilNegocio: (...a: unknown[]) => mockLeerPerfil(...a),
+  guardarPerfilNegocio: (...a: unknown[]) => mockGuardarPerfil(...a),
 }));
 
 import { PEDIDO_DETALLE_POR_COBRAR, tomarPendiente } from '@copiloto/core';
@@ -42,6 +46,8 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     mockLink.mockReset();
     mockPortada.mockReset();
     mockCompletar.mockReset().mockResolvedValue({ ok: true });
+    mockLeerPerfil.mockReset().mockResolvedValue({ status: 'no_disponible' });
+    mockGuardarPerfil.mockReset().mockResolvedValue({ status: 'ok', perfil: {} });
     tomarPendiente(); // el buzón es un módulo con estado: un test no hereda el pedido del anterior
   });
 
@@ -241,5 +247,115 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     fireEvent.click(screen.getByTestId('onboarding-entrar'));
     await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
     expect(tomarPendiente()).toBeNull();
+  });
+
+  // SM-C3 DoD 2-4 — el 409 `perfil_minimo_incompleto` ya no se descarta: el hilo no se cierra y el
+  // paso pide `queVende` y `nombreComercial`. El caso hostil (campo vacío / sólo espacios) es el que
+  // prueba el control; el happy-path verde pasaría igual con el gate roto.
+  describe('paso del perfil mínimo (SM-C3)', () => {
+    const FALTAN_LOS_DOS = { ok: false, perfilIncompleto: true, faltantes: ['queVende', 'nombreComercial'] };
+
+    /** Llega al paso `perfil` por el camino real: «Después» → 409 de completar. */
+    async function enPasoPerfil(faltantes: unknown = FALTAN_LOS_DOS) {
+      mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+      mockCompletar.mockResolvedValueOnce(faltantes);
+      const onTerminar = vi.fn();
+      render(<Onboarding onTerminar={onTerminar} />);
+      fireEvent.click(await screen.findByTestId('onboarding-despues'));
+      await screen.findByTestId('onboarding-perfil');
+      return onTerminar;
+    }
+    const escribir = (id: string, value: string) =>
+      fireEvent.change(screen.getByTestId(id), { target: { value } });
+
+    it('el 409 NO cierra el hilo: abre el paso con los dos campos', async () => {
+      const onTerminar = await enPasoPerfil();
+      expect(screen.getByTestId('onboarding-perfil-que-vende')).toBeInTheDocument();
+      expect(screen.getByTestId('onboarding-perfil-nombre-comercial')).toBeInTheDocument();
+      expect(onTerminar).not.toHaveBeenCalled();
+    });
+
+    it('🔴 adversarial — sin `queVende` no entra: no guarda, no completa, no cierra y lo nombra', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-nombre-comercial-input', 'Panadería Lucía');
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      expect(await screen.findByTestId('onboarding-perfil-que-vende-error')).toHaveTextContent('Falta qué vendés');
+      expect(mockGuardarPerfil).not.toHaveBeenCalled();
+      expect(mockCompletar).toHaveBeenCalledTimes(1); // sólo el intento de «Después»
+      expect(onTerminar).not.toHaveBeenCalled();
+    });
+
+    it('🔴 adversarial — sin `nombreComercial` no entra', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-que-vende-input', 'Pan y facturas');
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      expect(await screen.findByTestId('onboarding-perfil-nombre-comercial-error')).toHaveTextContent(
+        'Falta el nombre comercial',
+      );
+      expect(mockGuardarPerfil).not.toHaveBeenCalled();
+      expect(onTerminar).not.toHaveBeenCalled();
+    });
+
+    it('🔴 adversarial — «sólo espacios» cuenta como vacío (igual que el backend)', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-que-vende-input', '   ');
+      escribir('onboarding-perfil-nombre-comercial-input', '  \t ');
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      expect(await screen.findByTestId('onboarding-perfil-que-vende-error')).toBeInTheDocument();
+      expect(screen.getByTestId('onboarding-perfil-nombre-comercial-error')).toBeInTheDocument();
+      expect(mockGuardarPerfil).not.toHaveBeenCalled();
+      expect(onTerminar).not.toHaveBeenCalled();
+    });
+
+    it('control positivo — con los dos llenos guarda (recortado), completa y entra', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-que-vende-input', '  Pan y facturas ');
+      escribir('onboarding-perfil-nombre-comercial-input', ' Panadería Lucía ');
+      mockCompletar.mockResolvedValueOnce({ ok: true });
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+      expect(mockGuardarPerfil).toHaveBeenCalledWith({ queVende: 'Pan y facturas', nombreComercial: 'Panadería Lucía' });
+      expect(mockCompletar).toHaveBeenCalledTimes(2);
+    });
+
+    it('si el backend vuelve a rechazar, el hilo NO se cierra y se nombra lo que falta', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-que-vende-input', 'Pan');
+      escribir('onboarding-perfil-nombre-comercial-input', 'Lucía');
+      mockCompletar.mockResolvedValueOnce({ ok: false, perfilIncompleto: true, faltantes: ['nombreComercial'] });
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      expect(await screen.findByTestId('onboarding-perfil-error')).toHaveTextContent(
+        'Todavía falta el nombre comercial.',
+      );
+      expect(onTerminar).not.toHaveBeenCalled();
+    });
+
+    it('si guardar el negocio no está disponible, no entra y lo dice', async () => {
+      const onTerminar = await enPasoPerfil();
+      escribir('onboarding-perfil-que-vende-input', 'Pan');
+      escribir('onboarding-perfil-nombre-comercial-input', 'Lucía');
+      mockGuardarPerfil.mockResolvedValueOnce({ status: 'no_disponible' });
+      fireEvent.click(screen.getByTestId('onboarding-perfil-guardar'));
+      expect(await screen.findByTestId('onboarding-perfil-error')).toHaveTextContent(/todavía no está disponible/);
+      expect(onTerminar).not.toHaveBeenCalled();
+      expect(mockCompletar).toHaveBeenCalledTimes(1);
+    });
+
+    it('pre-llena con el perfil que ya hay, sin pisar lo que la persona escribió', async () => {
+      mockLeerPerfil.mockResolvedValue({ status: 'ok', perfil: { queVende: 'Pan', nombreComercial: '' } });
+      await enPasoPerfil({ ok: false, perfilIncompleto: true, faltantes: ['nombreComercial'] });
+      await waitFor(() => expect(screen.getByTestId('onboarding-perfil-que-vende-input')).toHaveValue('Pan'));
+      expect(screen.getByTestId('onboarding-perfil-nombre-comercial-input')).toHaveValue('');
+    });
+
+    it('un fallo que NO es perfil incompleto (red, 500) cierra igual, como antes', async () => {
+      mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+      mockCompletar.mockResolvedValueOnce({ ok: false, perfilIncompleto: false });
+      const onTerminar = vi.fn();
+      render(<Onboarding onTerminar={onTerminar} />);
+      fireEvent.click(await screen.findByTestId('onboarding-despues'));
+      await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+      expect(screen.queryByTestId('onboarding-perfil')).not.toBeInTheDocument();
+    });
   });
 });

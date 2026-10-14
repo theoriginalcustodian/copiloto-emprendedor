@@ -51,7 +51,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
-| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | mitad web (frontend2, apps/copiloto-web/.../Onboarding.tsx: mismo paso) y medicion en device del paso mobile (409 rea… |
+| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) … |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | hay codigo (packages/core/src/legal.ts + apps/mobile/src/modules/ajustes/PantallaCuenta.tsx, @004ee3ce) pero el DoD N… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | medido en DEVICE: un choices de 3+ opciones se ve y se elige en el teléfono, y un artefacto post-confirmación (evento… |
@@ -217,7 +217,8 @@ no el arranque del sprint.***
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** mitad web (frontend2, apps/copiloto-web/.../Onboarding.tsx: mismo paso) y medicion en device del paso mobile (409 real -> paso -> entra)
+- **Dueno-activo:** frontend2
+- **Falta:** medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) y web (este PR); el codigo de las dos mitades esta en main con test adversarial por app
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 

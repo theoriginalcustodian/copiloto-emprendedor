@@ -1,7 +1,13 @@
 import {
+  ApiError,
   completarOnboarding,
   dejarPendiente,
+  faltantesDelPerfilMinimo,
+  guardarPerfilNegocio,
+  leerPerfilNegocio,
   leerPortada,
+  LIMITE_CAMPO_CORTO,
+  LIMITE_QUE_VENDE,
   listarCatalogo,
   pedirLinkDeVinculacion,
   PEDIDO_DETALLE_POR_COBRAR,
@@ -9,6 +15,7 @@ import {
   permisosDelHilo,
   primerInsight,
   textoDelInsight,
+  type CampoPerfilMinimo,
   type PermisoDelHilo,
   type PrimerInsight,
 } from '@copiloto/core';
@@ -37,7 +44,25 @@ const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; pro
   },
 };
 
-type Paso = 'promesa' | 'recibo';
+/** `perfil` = el paso del perfil mínimo (SM-C3): sólo se entra desde un 409 `perfil_minimo_incompleto`. */
+type Paso = 'promesa' | 'recibo' | 'perfil';
+
+/** Cómo se nombra cada campo del perfil mínimo ante la persona (gemelo de mobile: mismas palabras). */
+const ETIQUETA_CAMPO: Record<CampoPerfilMinimo, string> = {
+  queVende: 'qué vendés',
+  nombreComercial: 'el nombre comercial',
+};
+
+/**
+ * Ids del paso. Los sufijos `-input` / `-error` y el botón `-guardar` los arma mobile con `CampoTexto` /
+ * `FilaBotones` (ids derivados): acá se derivan igual, así el e2e usa los MISMOS ids en las dos apps sin
+ * abrir deuda nueva en el baseline de paridad (que sólo ve literales, ver `testid_paridad.py`).
+ */
+const ID_QUE_VENDE = 'onboarding-perfil-que-vende';
+const ID_NOMBRE = 'onboarding-perfil-nombre-comercial';
+
+const nombrarFaltantes = (campos: readonly CampoPerfilMinimo[]): string =>
+  campos.map((c) => ETIQUETA_CAMPO[c]).join(' y ');
 
 /**
  * Onboarding de dos permisos y primer insight (K-14 / BL-X8 resto, contrato `2026-09-22_contrato_
@@ -61,6 +86,7 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   const [permisos, setPermisos] = useState<readonly PermisoDelHilo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState<PermisoDelHilo['id'] | null>(null);
+  const [faltantes, setFaltantes] = useState<readonly CampoPerfilMinimo[]>([]);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -89,14 +115,17 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   }, [cargarCatalogo]);
 
   async function terminar() {
-    // El resultado se DESCARTA, y con el gate del 409 (SM-C3) eso dejo de ser inocuo: si el
-    // backend rechazo por perfil incompleto, cerrar el hilo manda a la persona a un shell donde
-    // el server no la deja entrar, sin decirle que le falta. completarOnboarding() ya devuelve
-    // {ok, perfilIncompleto, faltantes} (core, SM-C3 DoD 1); pintar el paso con los dos campos
-    // es trabajo de ESTA pantalla y sigue PENDIENTE -- SM-C3 DoD 2-4, sin dueno al 2026-10-14.
-    // Mientras el retorno siga descartado, el gate server-side es la unica red.
-    await completarOnboarding();
-    if (vivo.current) onTerminar();
+    const res = await completarOnboarding();
+    if (!vivo.current) return;
+    // 409 `perfil_minimo_incompleto` (SM-C3): el hilo NO se cierra. El server no deja entrar al shell
+    // sin `queVende` y `nombreComercial`, así que el paso se los pide acá, dentro del mismo hilo.
+    if (!res.ok && res.perfilIncompleto) {
+      setFaltantes(res.faltantes);
+      setPaso('perfil');
+      return;
+    }
+    // Cualquier otro fallo (red, 500) cierra igual y se reintenta al próximo arranque, como antes.
+    onTerminar();
   }
 
   async function conectar(permiso: PermisoDelHilo) {
@@ -119,6 +148,7 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   }
 
   if (paso === 'recibo') return <PasoRecibo onEntrar={() => void terminar()} />;
+  if (paso === 'perfil') return <PasoPerfil faltantesIniciales={faltantes} onTerminar={onTerminar} />;
 
   return (
     <main className="onboarding-hilo" data-testid="onboarding">
@@ -173,6 +203,139 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
           <div className="hitl-card__actions">
             <Button variant="cancel" onClick={() => void terminar()} data-testid="onboarding-despues">
               Después
+            </Button>
+          </div>
+        </Surface>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * El paso del perfil mínimo (SM-C3 DoD 2-4): `queVende` y `nombreComercial`, y no deja avanzar sin los
+ * dos. La regla sale de `faltantesDelPerfilMinimo` de core (UNA definición para las dos apps; vacío o
+ * sólo espacios cuenta como vacío igual que el backend). El backend sigue mandando: si rechaza de
+ * nuevo, el hilo no se cierra y se nombra lo que falta.
+ */
+function PasoPerfil({
+  faltantesIniciales,
+  onTerminar,
+}: {
+  faltantesIniciales: readonly CampoPerfilMinimo[];
+  onTerminar: () => void;
+}) {
+  const [campos, setCampos] = useState({ queVende: '', nombreComercial: '' });
+  const [rechazados, setRechazados] = useState<readonly CampoPerfilMinimo[]>(faltantesIniciales);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const vivo = useRef(true);
+  useEffect(() => () => { vivo.current = false; }, []);
+
+  // Pre-llena con lo que ya hay (alguien que cargó uno de los dos antes). Fail-soft: sin perfil, vacío.
+  // Nunca pisa lo que la persona ya empezó a escribir.
+  useEffect(() => {
+    leerPerfilNegocio()
+      .then((res) => {
+        if (!vivo.current || res.status !== 'ok' || res.perfil == null) return;
+        const { queVende, nombreComercial } = res.perfil;
+        setCampos((c) => ({
+          queVende: c.queVende === '' ? queVende : c.queVende,
+          nombreComercial: c.nombreComercial === '' ? nombreComercial : c.nombreComercial,
+        }));
+      })
+      .catch(() => {});
+  }, []);
+
+  const vacios = faltantesDelPerfilMinimo(campos);
+  const errorDe = (campo: CampoPerfilMinimo) =>
+    rechazados.includes(campo) && vacios.includes(campo) ? `Falta ${ETIQUETA_CAMPO[campo]}` : undefined;
+
+  async function guardar() {
+    if (vacios.length > 0) {
+      setRechazados(vacios);
+      return;
+    }
+    setError(null);
+    setEnviando(true);
+    try {
+      const g = await guardarPerfilNegocio({
+        queVende: campos.queVende.trim(),
+        nombreComercial: campos.nombreComercial.trim(),
+      });
+      if (!vivo.current) return;
+      if (g.status !== 'ok') {
+        setError('Guardar tu negocio todavía no está disponible. Probá de nuevo en un rato.');
+        return;
+      }
+      const res = await completarOnboarding();
+      if (!vivo.current) return;
+      if (!res.ok && res.perfilIncompleto) {
+        setRechazados(res.faltantes);
+        setError(`Todavía falta ${nombrarFaltantes(res.faltantes)}.`);
+        return;
+      }
+      onTerminar();
+    } catch (e) {
+      if (vivo.current) {
+        setError(e instanceof ApiError ? (e.detail ?? e.message) : 'No pudimos guardar tu negocio. Probá de nuevo.');
+      }
+    } finally {
+      if (vivo.current) setEnviando(false);
+    }
+  }
+
+  const errQueVende = errorDe('queVende');
+  const errNombre = errorDe('nombreComercial');
+  return (
+    <main className="onboarding-hilo" data-testid="onboarding-perfil">
+      <Bubble role="assistant" text="Antes de entrar, contame de tu negocio: qué vendés y cómo se llama." />
+      <div className="chat-row chat-row--assistant">
+        <Surface variant="card" blur className="hitl-card" role="group" aria-label="Tu negocio">
+          <label className="onboarding-perfil__campo" data-testid="onboarding-perfil-que-vende">
+            <span className="onboarding-perfil__etiqueta">Qué vendés</span>
+            <textarea
+              data-testid={`${ID_QUE_VENDE}-input`}
+              value={campos.queVende}
+              onChange={(e) => setCampos((c) => ({ ...c, queVende: e.target.value }))}
+              placeholder="Contá qué hacés"
+              maxLength={LIMITE_QUE_VENDE}
+              aria-invalid={errQueVende != null}
+            />
+            {errQueVende != null && (
+              <span className="onboarding-perfil__error" role="status" data-testid={`${ID_QUE_VENDE}-error`}>
+                {errQueVende}
+              </span>
+            )}
+          </label>
+          <label className="onboarding-perfil__campo" data-testid="onboarding-perfil-nombre-comercial">
+            <span className="onboarding-perfil__etiqueta">Nombre comercial</span>
+            <input
+              data-testid={`${ID_NOMBRE}-input`}
+              type="text"
+              value={campos.nombreComercial}
+              onChange={(e) => setCampos((c) => ({ ...c, nombreComercial: e.target.value }))}
+              placeholder="Con el que te conocen"
+              maxLength={LIMITE_CAMPO_CORTO}
+              aria-invalid={errNombre != null}
+            />
+            {errNombre != null && (
+              <span
+                className="onboarding-perfil__error"
+                role="status"
+                data-testid={`${ID_NOMBRE}-error`}
+              >
+                {errNombre}
+              </span>
+            )}
+          </label>
+          {error != null && (
+            <p role="alert" className="hitl-card__concept" data-testid="onboarding-perfil-error">
+              {error}
+            </p>
+          )}
+          <div className="hitl-card__actions" data-testid="onboarding-perfil-guardar-botones">
+            <Button onClick={() => void guardar()} disabled={enviando} data-testid="onboarding-perfil-guardar">
+              {enviando ? 'Guardando…' : 'Guardar y entrar'}
             </Button>
           </div>
         </Surface>

@@ -29,3 +29,46 @@
   font-size: 14px;
   color: var(--label);
 }
+
+/* SM-C3 — el paso del perfil mínimo dentro del mismo hilo (mismos tokens que el form de Ajustes). */
+.onboarding-perfil__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-perfil__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.onboarding-perfil__error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--danger-fg);
+}
+
+.onboarding-perfil__campo input,
+.onboarding-perfil__campo textarea {
+  border-radius: var(--r-s);
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.onboarding-perfil__campo textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.onboarding-perfil__campo input:focus-visible,
+.onboarding-perfil__campo textarea:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
