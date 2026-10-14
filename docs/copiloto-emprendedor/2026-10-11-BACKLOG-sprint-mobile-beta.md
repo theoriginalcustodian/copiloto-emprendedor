@@ -43,7 +43,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-A1** | `#1010` | ⬜ PENDIENTE | — |
+| **SM-A1** | `#1010` | ✅ TERMINADO | merge ea810b7a (#1178) - DoD(1) abre al primer toque 6 de 6 ciclos con pestana visible, escalas de animacion en valor… |
 | **SM-A2** | `#1012` | ⬜ PENDIENTE | — |
 | **SM-B1** | `#1014` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS (gh pr view 1023) - DoD: el pago MercadoPago deja de contarse dos v… |
 | **SM-B2** | `#1015` | ✅ TERMINADO | merge 6d3b3579 (PR #1023, 12-10) - CI 6/6 SUCCESS - DoD: la fila vale nota_credito y la app ya no ofrece anular una NC |
@@ -78,7 +78,9 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 
 ### SM-A1 · `#1010` — El toque de la pestaña del escritorio es intermitente
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** frontend2
+- **Cierre:** merge ea810b7a (#1178) - DoD(1) abre al primer toque 6 de 6 ciclos con pestana visible, escalas de animacion en valor normal (null) y sensor por pixeles, device RF8T318RN9T, medido_contra main@2927faa6 - DoD(2) control positivo en la corrida: arrastre de 1000 px mueve la franja 26,7 pct; original 0 de 4 ciclos (12 toques) con Metro reiniciado entre variantes
 - **Medido (2026-10-11):** abre **4 de 6** ciclos; **al primer toque, 1 de 6**. El tap vive en el
   `onEnd` de un `Gesture.Pan()` — `apps/mobile/src/modules/escritorio/PanelFunciones.tsx:94-98`.
 - **Historia que importa:** el issue nació diciendo «hacen falta dos gestos». **Eso fue retirado**

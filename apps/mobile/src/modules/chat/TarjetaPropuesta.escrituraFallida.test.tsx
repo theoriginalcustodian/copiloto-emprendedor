@@ -77,6 +77,7 @@ const gastoGuardado: Gasto = {
   descripcion: null,
   origen: 'voz',
   creadoEn: '2026-07-22T02:00:00+00:00',
+  imputacion: null,
 };
 
 function conTema(ui: React.ReactElement) {

@@ -212,6 +212,17 @@ export const apiClient = {
     return request<T>(path, { ...opts, method: 'POST', body });
   },
   /**
+   * `PUT` — lo usa `imputarGasto` (`PUT /gastos/{id}/imputacion`), el primer PUT del repo.
+   *
+   * Es `PUT` y no `PATCH` porque el backend trata la imputación como **el estado completo** del
+   * destino: un solo `UPDATE` escribe las tres columnas de referencia en el mismo movimiento
+   * (`apps/copiloto/trabajo_store.py`, `imputar()`), así que mandar «a este trabajo» reemplaza lo
+   * que hubiera, y `{"eslabon": null}` lo deja sin imputar. No hay mezcla parcial que parchear.
+   */
+  put<T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return request<T>(path, { ...opts, method: 'PUT', body });
+  },
+  /**
    * `PATCH` — lo usa `cambiarEstadoPresupuesto` (hito 3). El `HttpPort` ya declaraba `'PATCH'` en su
    * unión de métodos y los dos adaptadores lo pasan tal cual a `fetch()` sin ramificar, así que esto
    * es sólo el atajo que faltaba del lado del cliente: no hubo que tocar ninguna plataforma.

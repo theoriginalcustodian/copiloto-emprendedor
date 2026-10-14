@@ -2771,9 +2771,9 @@
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
+      "fecha": "2026-10-14",
       "id": "detalle-gasto-categoria",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::detalle-gasto-fecha": {
@@ -2781,9 +2781,9 @@
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
+      "fecha": "2026-10-14",
       "id": "detalle-gasto-fecha",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::detalle-gasto-medio-pago": {
@@ -2791,9 +2791,9 @@
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
+      "fecha": "2026-10-14",
       "id": "detalle-gasto-medio-pago",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::detalle-gasto-origen": {
@@ -2801,9 +2801,9 @@
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
+      "fecha": "2026-10-14",
       "id": "detalle-gasto-origen",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::detalle-gasto-proveedor": {
@@ -2811,9 +2811,9 @@
         "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
+      "fecha": "2026-10-14",
       "id": "detalle-gasto-proveedor",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::formulario-gasto": {
@@ -5089,6 +5089,36 @@
       "motivo": "SM-C3 mitad mobile (paso del perfil minimo en el hilo de onboarding). La mitad web es de frontend2 (apps/copiloto-web/src/modules/onboarding/Onboarding.tsx, contrato SM-C3 DoD 2-4). Disparador: cuando web suba el paso con estos mismos ids el trinquete lo marca STALE y se saca de aca. Dueno: frontend2.",
       "pantalla": "modules/onboarding"
     },
+    "modules/gastos::detalle-gasto-imputar": {
+      "en": [
+        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-14",
+      "id": "detalle-gasto-imputar",
+      "motivo": "SM-E3 (imputar un gasto a un trabajo): el boton existe en las DOS plataformas -- mobile lo declara como `testID: 'detalle-gasto-imputar'` dentro del array `botones` de `FilaBotones` (`apps/mobile/src/modules/gastos/DetalleGasto.tsx:179`), config-object y no atributo JSX, forma que `LITERAL_MOBILE_RE` (`testID=\"...\"`) no ve. Precedente identico y mismo archivo: `detalle-gasto-cerrar` (2026-09-28). No se fuerza un literal artificial ni se abandona `FilaBotones`, que es el componente canonico de CTA del vidrio. Ejercitado por los 8 casos de `apps/mobile/src/modules/gastos/DetalleGasto.test.tsx`, que lo tocan por testID. Dueno: planificacion. Disparador para sacarla: que `testid_paridad.py` aprenda a leer `testID:` dentro de un objeto (saca de una vez estas dos, `detalle-gasto-cerrar` y las de `facturacion-error-borrador-*`).",
+      "pantalla": "modules/gastos"
+    },
+    "modules/gastos::detalle-gasto-desimputar": {
+      "en": [
+        "apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-14",
+      "id": "detalle-gasto-desimputar",
+      "motivo": "SM-E3 (quitar la imputacion): mismo caso y mismo mecanismo que `detalle-gasto-imputar` -- mobile lo declara `testID: 'detalle-gasto-desimputar'` en el array `botones` de `FilaBotones` (`apps/mobile/src/modules/gastos/DetalleGasto.tsx:158`). El boton existe en las dos plataformas y su caso 🔴 («quitar manda null y la pantalla vuelve a sin imputar») esta en los dos tests de `DetalleGasto.test.tsx`. Dueno: planificacion. Disparador para sacarla: el mismo.",
+      "pantalla": "modules/gastos"
+    },
+    "modules/gastos::detalle-gasto-trabajo-imputado": {
+      "en": [
+        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "detalle-gasto-trabajo-imputado",
+      "motivo": "SM-E3 (el trabajo al que esta imputado el gasto): punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. Web lo declara en `DetalleGasto.tsx:125` (`<Dato ... testID=\"detalle-gasto-trabajo-imputado\" />`) y sus tests lo afirman por testID en los dos fronts. Es el sexto hermano de los cinco `Dato` ya listados (categoria, fecha, medio-pago, origen, proveedor), con la misma causa. Dueno: planificacion. Disparador para sacar las SEIS juntas: que el escaner resuelva la prop `testID` reenviada por `Dato` -- no tiene sentido triarlas de a una.",
+      "pantalla": "modules/gastos"
+    },
     "modules/midia::midia-alta-enviar": {
       "en": [
         "apps/copiloto-web/src/modules/midia/MidiaScreen.tsx"
@@ -5098,7 +5128,7 @@
       ],
       "fecha": "2026-10-14",
       "id": "midia-alta-enviar",
-      "motivo": "PUNTO CIEGO DEL GATE, no falta de paridad: el boton mobile EXISTE y lleva este testID, pero sale del config-object de FilaBotones (botones=[{..., testID}], FilaBotones.tsx:65,71) y testid_paridad.py solo caza el literal testID=\"...\". RETIRAR junto a las 4 de detalle-gasto-* cuando el gate aprenda a leer los config-objects de FilaBotones.",
+      "motivo": "PUNTO CIEGO DEL GATE, no falta de paridad: el boton mobile EXISTE y lleva este testID, pero sale del config-object de FilaBotones (botones=[{..., testID}], FilaBotones.tsx:65,71) y testid_paridad.py solo caza el literal testID=\"...\". RETIRAR junto a las 3 de detalle-gasto-* (medido contra main: imputar, desimputar, trabajo-imputado) cuando el gate aprenda a leer los config-objects de FilaBotones.",
       "pantalla": "modules/midia"
     }
   }

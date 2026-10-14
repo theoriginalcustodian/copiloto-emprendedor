@@ -38,8 +38,14 @@ export interface PeticionHttp {
    * facturación (`DELETE /afip/facturas/{id}/items/{indice}`). Los adaptadores pasan este valor tal
    * cual a `fetch()` (`RequestInit.method`), sin ramificar por método — re-verificado el 2026-07-21
    * contra `http.native.ts:55` y `http.web.ts:41`, así que sumar un método a esta unión no les pide
-   * ningún cambio. */
-  metodo: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+   * ningún cambio.
+   *
+   * `PUT` lo usa `imputarGasto` (`PUT /gastos/{id}/imputacion`), sumado el 2026-10-14. Se re-verificó
+   * la afirmación de arriba antes de confiar en ella —y es el punto de
+   * `memoria/el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md`—: los
+   * tres adaptadores siguen pasando `p.metodo` tal cual, hoy en `apps/copiloto-web/src/adapters/
+   * http.ts:38`, `apps/mobile/src/adapters/http.native.ts:64` y `http.web.ts:50`. Ninguno ramifica. */
+  metodo: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   /** Path relativo, ej. `'/chat'`. El adaptador le antepone el `apiBase` de su plataforma. */
   path: string;
   headers: Record<string, string>;

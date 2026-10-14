@@ -7,7 +7,9 @@ import type { AlmacenTokens } from './tokens';
 import {
   CATEGORIAS_GASTO,
   crearGasto,
+  destinoDeImputacion,
   esCategoriaValida,
+  imputarGasto,
   listarGastos,
   obtenerGasto,
   obtenerResumenGastos,
@@ -346,6 +348,155 @@ describe('gastos.ts', () => {
       await obtenerResumenGastos('2026-06');
 
       expect(peticiones[0]!.path).toBe('/gastos/resumen?periodo=2026-06');
+    });
+  });
+
+  /**
+   * La imputación al trabajo — `PUT /gastos/{id}/imputacion` + la clave `imputacion` de los dos GET.
+   *
+   * 🔴 **Lo que más muerde acá no es el happy-path: es la diferencia entre «sin imputar» y «este
+   * backend no lo dijo».** La clave `imputacion` entró al GET el 2026-10-14 (PR #1175); contra un
+   * deploy anterior no viene. Si el cliente tradujera «ausente» a «sin imputar», la pantalla
+   * afirmaría algo sobre la plata del emprendedor que nadie midió — y lo afirmaría *justo* en el
+   * deploy donde no se puede saber.
+   */
+  describe('imputación del gasto', () => {
+    describe('el parser: la ausencia NO es «sin imputar»', () => {
+      it('🔴 un gasto sin la clave `imputacion` deja el campo en null -- no en un objeto vacío', async () => {
+        responder = () => respuesta(200, gastoCrudo());
+
+        const res = await obtenerGasto(2);
+
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect(res.gasto.imputacion).toBeNull();
+        // Y el destino también: a ninguno CONOCIDO. La pantalla distingue los dos casos por
+        // `imputacion !== null`, no por el destino.
+        expect(destinoDeImputacion(res.gasto.imputacion)).toBeNull();
+      });
+
+      it('🔴 las tres referencias en null SÍ es «sin imputar»: el objeto viene, el destino no', async () => {
+        responder = () =>
+          respuesta(200, gastoCrudo({
+            imputacion: { gasto_id: 2, presupuesto_ref: null, comprobante_ref: null, cobro_ref: null },
+          }));
+
+        const res = await obtenerGasto(2);
+
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        // El objeto presente es la prueba de que el backend contestó la pregunta.
+        expect(res.gasto.imputacion).toEqual({
+          gastoId: 2, presupuestoRef: null, comprobanteRef: null, cobroRef: null,
+        });
+        expect(destinoDeImputacion(res.gasto.imputacion)).toBeNull();
+      });
+
+      it('resuelve el destino en cada uno de los tres eslabones', async () => {
+        expect(destinoDeImputacion({ gastoId: 1, presupuestoRef: 12, comprobanteRef: null, cobroRef: null }))
+          .toEqual({ eslabon: 'presupuesto', ref: 12 });
+        expect(destinoDeImputacion({ gastoId: 1, presupuestoRef: null, comprobanteRef: 90, cobroRef: null }))
+          .toEqual({ eslabon: 'comprobante', ref: 90 });
+        expect(destinoDeImputacion({ gastoId: 1, presupuestoRef: null, comprobanteRef: null, cobroRef: 4 }))
+          .toEqual({ eslabon: 'cobro', ref: 4 });
+      });
+
+      it('🔴 con DOS referencias no nulas elige una sola, y siempre la misma', async () => {
+        // El backend garantiza que a lo sumo una es no nula (`imputar()` escribe las tres columnas en
+        // el mismo UPDATE). Si esa garantía se rompiera, un lector ingenuo por pantalla mostraría la
+        // primera que mira y cada una elegiría distinta: dos pantallas discrepando sobre el mismo
+        // gasto. Acá la precedencia es del eslabón RAÍZ hacia afuera, y es única para todo el repo.
+        const imp = { gastoId: 1, presupuestoRef: 12, comprobanteRef: 90, cobroRef: 4 };
+        expect(destinoDeImputacion(imp)).toEqual({ eslabon: 'presupuesto', ref: 12 });
+      });
+
+      it('una ref no numérica no acredita imputación -- cae a null, no a NaN', async () => {
+        responder = () =>
+          respuesta(200, gastoCrudo({
+            imputacion: { gasto_id: 2, presupuesto_ref: '12', comprobante_ref: null, cobro_ref: null },
+          }));
+
+        const res = await obtenerGasto(2);
+
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect(res.gasto.imputacion!.presupuestoRef).toBeNull();
+        expect(destinoDeImputacion(res.gasto.imputacion)).toBeNull();
+      });
+
+      it('la imputación también viaja en el LISTADO, no sólo en el detalle', async () => {
+        responder = () =>
+          respuesta(200, {
+            gastos: [gastoCrudo({
+              imputacion: { gasto_id: 2, presupuesto_ref: null, comprobante_ref: 90, cobro_ref: null },
+            })],
+            total: 1,
+          });
+
+        const res = await listarGastos();
+
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect(destinoDeImputacion(res.gastos[0]!.imputacion)).toEqual({ eslabon: 'comprobante', ref: 90 });
+      });
+    });
+
+    describe('imputarGasto', () => {
+      it('manda PUT al endpoint del gasto con eslabón y ref', async () => {
+        responder = () =>
+          respuesta(200, { imputacion: { gasto_id: 2, presupuesto_ref: 12, comprobante_ref: null, cobro_ref: null } });
+
+        const res = await imputarGasto(2, { eslabon: 'presupuesto', ref: 12 });
+
+        expect(peticiones[0]!.metodo).toBe('PUT');
+        expect(peticiones[0]!.path).toBe('/gastos/2/imputacion');
+        expect(peticiones[0]!.cuerpoJson).toEqual({ eslabon: 'presupuesto', ref: 12 });
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect(res.imputacion.presupuestoRef).toBe(12);
+      });
+
+      it('🔴 desimputar manda `{eslabon: null}` SIN ref -- una ref con eslabón nulo describe un destino que no existe', async () => {
+        responder = () =>
+          respuesta(200, { imputacion: { gasto_id: 2, presupuesto_ref: null, comprobante_ref: null, cobro_ref: null } });
+
+        const res = await imputarGasto(2, null);
+
+        expect(peticiones[0]!.cuerpoJson).toEqual({ eslabon: null });
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect(destinoDeImputacion(res.imputacion)).toBeNull();
+      });
+
+      it('404 es no_encontrado -- y cubre DOS casos que el backend no distingue a propósito', async () => {
+        // El gasto ajeno y el trabajo ajeno dan el mismo 404: el backend no confirma recursos de
+        // otros tenants. Esta capa no inventa la diferencia.
+        responder = () => respuesta(404, { detail: 'ese trabajo no existe' });
+
+        await expect(imputarGasto(2, { eslabon: 'cobro', ref: 999 }))
+          .resolves.toEqual({ status: 'no_encontrado' });
+      });
+
+      it('🔴 un 200 sin la clave `imputacion` es no_disponible, NO un desimputado exitoso', async () => {
+        // El catch-all del SPA y un endpoint que todavía no está devuelven 200 con otra cosa. Leerlo
+        // como «quedó sin imputar» mostraría el efecto contrario al que el usuario pidió.
+        responder = () => respuesta(200, { ok: true });
+
+        await expect(imputarGasto(2, { eslabon: 'presupuesto', ref: 12 }))
+          .resolves.toEqual({ status: 'no_disponible' });
+      });
+
+      it('405/501 es no_disponible: el endpoint no está en este deploy', async () => {
+        responder = () => respuesta(405, { detail: 'Method Not Allowed' });
+
+        await expect(imputarGasto(2, null)).resolves.toEqual({ status: 'no_disponible' });
+      });
+
+      it('un 503 del trabajo_store se propaga como ApiError -- no se traga como «sin imputar»', async () => {
+        responder = () => respuesta(503, { detail: 'la imputación no está disponible' });
+
+        await expect(imputarGasto(2, { eslabon: 'presupuesto', ref: 12 })).rejects.toThrow(ApiError);
+      });
     });
   });
 });

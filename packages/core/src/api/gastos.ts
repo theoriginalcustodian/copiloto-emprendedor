@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
+import type { DestinoTrabajo } from './trabajos';
 
 /**
  * `/gastos` — lo que sale. La otra mitad de la contabilidad de gestión (facturación es lo que entra).
@@ -112,6 +113,72 @@ export interface Gasto {
    * El ejemplo del contrato mostraba `Z`. No hacer `endsWith('Z')` con esto.
    */
   creadoEn: string;
+  /**
+   * A qué trabajo está imputado, o `null`.
+   *
+   * 🔴 **`null` NO significa «sin imputar»: significa «este backend no lo dijo».** Son dos cosas
+   * distintas y la UI tiene que poder distinguirlas, porque «sin imputar» es una afirmación sobre
+   * la plata del emprendedor. La clave `imputacion` entró al `GET` el 2026-10-14
+   * (`apps/copiloto/gasto_store.py`, PR #1175): contra un deploy anterior no viene, y pintar «sin
+   * imputar» ahí sería inventar un dato que nadie midió. Sin imputar de verdad son las **tres
+   * referencias en `null`** — eso lo contesta `destinoDeImputacion`, no la ausencia del objeto.
+   */
+  imputacion: ImputacionGasto | null;
+}
+
+/**
+ * «A qué trabajo está imputado este gasto» — la forma **única**, la misma que devuelve el `PUT` y la
+ * que traen `GET /gastos` y `GET /gastos/{id}` (`imputacion_de()`, `apps/copiloto/gasto_store.py:61`).
+ *
+ * Las tres referencias viajan **siempre**, y a lo sumo UNA es no nula: es invariante de `imputar()`,
+ * que escribe las tres columnas en el mismo `UPDATE`. Las tres en `null` = sin imputar.
+ *
+ * ⚠️ **No se lee campo por campo desde la UI.** Usar `destinoDeImputacion`: si alguna vez llegaran
+ * dos refs no nulas, un lector ingenuo mostraría la primera que mira y cada pantalla elegiría una
+ * distinta.
+ */
+export interface ImputacionGasto {
+  gastoId: number;
+  presupuestoRef: number | null;
+  comprobanteRef: number | null;
+  cobroRef: number | null;
+}
+
+/**
+ * El trabajo al que está imputado el gasto, o `null` si no está imputado a ninguno.
+ *
+ * Es la **única** forma de preguntarlo. `null` tapa dos casos distintos a propósito —las tres refs en
+ * `null`, o el backend que no manda `imputacion`— porque para la pregunta *«¿a qué trabajo?»* la
+ * respuesta es la misma: a ninguno conocido. Lo que **no** se puede derivar de acá es «está sin
+ * imputar», y para eso está `gasto.imputacion !== null` como condición previa.
+ */
+export function destinoDeImputacion(imp: ImputacionGasto | null): DestinoTrabajo | null {
+  if (imp === null) return null;
+  if (imp.presupuestoRef != null) return { eslabon: 'presupuesto', ref: imp.presupuestoRef };
+  if (imp.comprobanteRef != null) return { eslabon: 'comprobante', ref: imp.comprobanteRef };
+  if (imp.cobroRef != null) return { eslabon: 'cobro', ref: imp.cobroRef };
+  return null;
+}
+
+function refNumerica(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Parsea la clave `imputacion` del wire. **Ausente o no-objeto ⇒ `null`**, que es «no lo dijo», no
+ * «sin imputar» (ver `Gasto.imputacion`).
+ */
+function parsearImputacion(v: unknown, gastoId: number): ImputacionGasto | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  // `gasto_id` viene en el objeto, pero manda el id del gasto que estamos normalizando: si el
+  // backend mandara otro, el que vale es el del recurso que se pidió.
+  return {
+    gastoId,
+    presupuestoRef: refNumerica(r.presupuesto_ref),
+    comprobanteRef: refNumerica(r.comprobante_ref),
+    cobroRef: refNumerica(r.cobro_ref),
+  };
 }
 
 interface GastoCrudo {
@@ -125,6 +192,8 @@ interface GastoCrudo {
   descripcion?: string | null;
   origen?: string;
   creado_en?: string;
+  /** `unknown` y no un tipo: la forma la valida `parsearImputacion`, no la declaración. */
+  imputacion?: unknown;
 }
 
 function normalizar(g: GastoCrudo): Gasto {
@@ -145,6 +214,7 @@ function normalizar(g: GastoCrudo): Gasto {
     descripcion: g.descripcion ?? null,
     origen: origen === 'voz' || origen === 'foto' ? origen : 'manual',
     creadoEn: g.creado_en ?? '',
+    imputacion: parsearImputacion(g.imputacion, g.id),
   };
 }
 
@@ -389,6 +459,50 @@ export async function obtenerResumenGastos(
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+/**
+ * Imputa el gasto a un trabajo, o lo **desimputa** con `destino: null`.
+ *
+ * 🔴 **Esto NO es la edición del gasto que el contrato §12 prohíbe**, y vale decirlo porque el
+ * docstring de arriba declara «no hay `PATCH` ni `DELETE`, y no hay que agregarlo por las dudas». No
+ * toca ningún campo del gasto: escribe **a qué trabajo pertenece**, por su propio endpoint
+ * (`PUT /gastos/{id}/imputacion`, addendum del hito 3), que el backend expone aparte justamente
+ * porque es otra decisión. El monto, la fecha y la categoría siguen sin ser editables.
+ *
+ * 🔴 **Imputar nunca es obligatorio** — lo dice el endpoint en su propio docstring
+ * (`apps/copiloto/gastos_web.py:162`): *«el gasto ya entró a la caja sin esto; si imputar se volviera
+ * un requisito, el emprendedor dejaría de cargar gastos — y perderíamos el dato bueno por exigir el
+ * perfecto»*. Ninguna pantalla puede bloquear nada esperando esto.
+ *
+ * `no_encontrado` cubre el 404, que el backend usa para **dos** casos a propósito: el gasto no existe
+ * (o es de otro tenant) **y** el trabajo no existe (o es de otro tenant). No se inventa la diferencia
+ * acá: el backend no confirma recursos ajenos, y tiene test adversarial.
+ *
+ * Un eslabón desconocido es 400 y se propaga como `ApiError` — es un bug del llamador, no un estado
+ * del usuario: `destino.eslabon` sale de `EslabonTrabajo`, así que sólo puede pasar por un cast.
+ */
+export async function imputarGasto(
+  id: number,
+  destino: DestinoTrabajo | null,
+): Promise<ConDisponibilidad<{ imputacion: ImputacionGasto }> | { status: 'no_encontrado' }> {
+  // Desimputar manda `{eslabon: null}` SIN `ref`: así lo lee el backend (`ImputacionBody`), y mandar
+  // una `ref` junto a un eslabón nulo describiría un destino que no existe.
+  const body: Record<string, unknown> = destino === null
+    ? { eslabon: null }
+    : { eslabon: destino.eslabon, ref: destino.ref };
+  try {
+    const raw = await apiClient.put<Record<string, unknown>>(`/gastos/${id}/imputacion`, body);
+    if (!esRespuestaDelEndpoint(raw, 'imputacion')) return { status: 'no_disponible' };
+    const imputacion = parsearImputacion(raw.imputacion, id);
+    // `imputacion` envuelta pero ilegible es respuesta rota, no «sin imputar»: no se traduce a un
+    // objeto vacío que la UI mostraría como desimputado exitoso.
+    if (imputacion === null) return { status: 'no_disponible' };
+    return { status: 'ok', imputacion };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     throw err;
   }
 }
