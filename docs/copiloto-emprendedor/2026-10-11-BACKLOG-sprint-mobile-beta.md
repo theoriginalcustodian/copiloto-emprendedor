@@ -51,7 +51,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
-| **SM-C3** | `#1016` | 🟧 DOD-PARCIAL | medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) … |
+| **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
 | **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en … |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
@@ -217,9 +217,9 @@ no el arranque del sprint.***
 
 ### SM-C3 · `#1016` — El gate del primer ingreso existe; lo que falta es QUÉ pide
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend2
-- **Falta:** medicion en device del paso perfil minimo (cuenta SIN onboarding cerrado: 409 real -> paso -> entra), mobile (#1173) y web (este PR); el codigo de las dos mitades esta en main con test adversarial por app
+- **Cierre:** merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unico faltantesDelPerfilMinimo/perfilMinimoCompleto en packages/core/src/api/onboarding.ts importado por las dos apps; DoD(2) device y web: 409 real -> paso perfil, vacio/espacios/un solo campo NO entra; DoD(3) tests adversariales PantallaOnboarding.test.tsx:269,282 y Onboarding.test.tsx:299; DoD(4) control positivo: los dos llenos entran al shell en device y web
 - **⚠️ Este renglón decía «Mobile no tiene alta de cuenta». Medido el 2026-10-12: es FALSO.** El gate
   del primer ingreso está **implementado en las dos apps, con predicado único**:
 
