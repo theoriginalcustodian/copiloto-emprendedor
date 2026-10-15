@@ -331,7 +331,10 @@ def _evaluar_certificado_por_vencer(certificados: list[dict]) -> list[dict]:
 # ── Reglas — mitad IMPURA (traen los datos de la capa del hito 6) ──────────────────────────────────
 
 def _candidatos_presupuestos_enfriandose(conn_factory: Callable, cliente_id: str) -> list[dict]:
-    return PresupuestoStore(conn_factory, cliente_id).listar(limit=200)
+    # SIN tope y filtrado en SQL: `listar(limit=200)` ordena por `fecha DESC`, así que con más de 200
+    # presupuestos cortaba los MÁS VIEJOS, que son justo los que llevan más tiempo sin respuesta, y la
+    # alerta «se enfría» desaparecía sin error. Los pendientes son un conjunto chico por naturaleza.
+    return PresupuestoStore(conn_factory, cliente_id).listar(limit=None, estado=PENDIENTE)
 
 
 def _candidatos_facturas_impagas_viejas(conn_factory: Callable, cliente_id: str) -> dict:
