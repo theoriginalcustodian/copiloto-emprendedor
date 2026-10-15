@@ -226,4 +226,28 @@ if [ "$rc" = "0" ] \
 else
   fail "10 rc=$rc · pend=$(campo "$out" pendiente_declarada) dod=$(campo "$out" cumple_dod) cod=$(campo "$out" cerrada_en_codigo) · una dependencia pendiente se conto como cumplida: $(head -c 300 <<< "$out")"
 fi
-[ "$fallos" -eq 0 ] && echo "  OK (10/10)" || { echo "  $fallos fallo(s)"; exit 1; }
+# -- 11 - una fila de DEVICE con divergencia PENDIENTE no cumple, aunque device15 diga COHERENTE --
+# CANARIO INVERTIDO del fix del 2026-10-15. Hasta ese dia las 15 filas `nativa-con-device` tenian su
+# propio clasificador: COHERENCIA con el prototipo (`DESVIO`/`COHERENTE` del doc device15), una
+# pregunta que NINGUNO de sus 15 DoD hace. Consecuencia dura: `ENMIENDA-FUNDADA` esta en CUMPLE_DOD y
+# ese brazo NO TENIA RAMA QUE PUDIERA EMITIRLA — criterio inalcanzable por construccion — y los ⚠/⛓
+# escritos en los otros brazos se DESCARTABAN (15/15 filas los tenian, y el medidor publicaba
+# «PENDIENTE DECLARADA: 0/54» con 8 pendientes reales).
+# Este caso pone las dos mitades en tension: device15 dice COHERENTE y el brazo chat dice ⚠. Si
+# alguien vuelve a clasificar device por coherencia, `dv-dos` cuenta como cumplida y esto se pone
+# ROJO. Sin este caso el fix es reversible en silencio: los otros 10 pasan igual.
+#   -> memoria: un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar
+J="$TMP/device-pendiente"; armar "$J"
+printf '\n### 2 \xc2\xb7 `dv-dos` \xe2\x80\x94 \xe2\x9a\xa0 el gesto no cierra\n\ncuerpo\n' \
+  >> "$J/docs/copiloto-emprendedor/2026-10-13-veredicto-bloque-chat-fixture.md"
+out="$(correr "$J" --json)"; rc=$?
+if [ "$rc" = "0" ] \
+   && [ "$(campo "$out" pendiente_declarada)" = "1" ] \
+   && [ "$(campo "$out" cumple_dod)" = "2" ] \
+   && [ "$(campo "$out" con_veredicto)" = "4" ]; then
+  ok "11 device con ⚠ -> no cumple, aunque device15 diga COHERENTE (el simbolo manda)"
+else
+  fail "11 rc=$rc · pend=$(campo "$out" pendiente_declarada) dod=$(campo "$out" cumple_dod) · una fila de device con ⚠ se conto como cumplida: $(head -c 300 <<< "$out")"
+fi
+
+[ "$fallos" -eq 0 ] && echo "  OK (11/11)" || { echo "  $fallos fallo(s)"; exit 1; }
