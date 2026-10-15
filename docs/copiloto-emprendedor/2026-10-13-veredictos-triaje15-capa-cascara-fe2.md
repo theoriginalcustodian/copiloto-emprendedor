@@ -42,7 +42,7 @@ Convención: `R` = resuelta en código · `E` = enmienda con autoridad · `D` = 
 | | forma residual sobre el wordmark | **R** corregido en H8 (TRIAJE15 B, `6e10b57d`); **espera re-medición** |
 | | «Crear una nueva cuenta» | **E** `EntradaSesion.tsx:17-21` — decisión #3 (2026-08-04): en `primeraVez` la acción única es «Empecemos» |
 | | botón pronunciar (`rv-say`, `index.html:2549`) | **D** ⛓ requiere el asset de audio de la pronunciación (pedido al operador/Martín); sin audio un altavoz mudo es peor que no tenerlo |
-| `splash` | no existe la tagline «Tu copiloto emprendedor» | **R** `RevealEntrada.tsx:80` `Tagline` (`tema.tipo.base`, fade-up tras `T_BOUNCE_END`) · test incluido reduced motion |
+| `splash` | no existe la tagline «Tu copiloto emprendedor» | **R** `RevealEntrada.tsx:80` `Tagline` (`tema.tipo.base`, fade-up tras `T_BOUNCE_END`) · test incluido reduced motion · **se ve en device** (15-10, tras Cerrar sesión desde Mi cuenta; app sobre `5678979e`, prod `72b85cba`): la entrada muestra el lockup y, en estado estable, «Tu copiloto emprendedor» bajo él y «se dice o-DO-bi» debajo, con «Entrar» y «Entrar con otra cuenta»; la ráfaga de capturas pescó la fase intermedia (aro de la O colapsando) antes de la tagline |
 | | formas sólidas vs gradientes y radios asimétricos | **R** `IdentidadEntrada.tsx:72,79,86` (`bordeElipticoPath`) y `:133-149` (`LinearGradient`) · `formasPath.test.ts` |
 | | wordmark letra por letra con rebote | **P** `NO_MEDIBLE` por screencap (~1 s vs animación por letra); medible con grabación de pantalla a 60 fps |
 | `entrada` | fondo crema vs `#FFFFFF` del prototipo | **R** `EntradaDiaria.tsx:128` — blanco en piel clara; en piel oscura manda el lienzo del tema (el prototipo sólo modela la clara) · test con sonda `useTema` |
