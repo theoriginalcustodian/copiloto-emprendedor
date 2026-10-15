@@ -111,3 +111,28 @@ describe('TarjetaCliente — monto facturado y estado (C-D1)', () => {
     expect(screen.getByTestId('cliente-7-monto')).toHaveTextContent('-$100,00 · 1 comprobante');
   });
 });
+
+describe('TarjetaCliente — identificador fiscal en la fila (CLIENTESCUIT)', () => {
+  // La decisión del operador (2026-10-15) es CUIT/DNI COMPLETO en la lista, no enmascarado. Estos tests
+  // fijan LA FORMA —los once/ocho dígitos enteros— y no sólo la presencia de un subtítulo: un
+  // «CUIT ***5678 · …» también «tiene subtítulo».
+  it('🔴 CUIT completo: los 11 dígitos, sin máscara, con su condición IVA', () => {
+    render(<TarjetaCliente cliente={cliente()} />);
+    const sub = screen.getByTestId('cliente-7-sub');
+    expect(sub).toHaveTextContent('CUIT 30712345678 · Resp. Inscripto');
+    expect(sub.textContent).not.toMatch(/[*•x]/i);
+  });
+
+  it('🔴 DNI completo: los 8 dígitos, sin máscara', () => {
+    render(<TarjetaCliente cliente={cliente({ docTipo: 96, docNro: '12345678', condicionIva: 5 })} />);
+    const sub = screen.getByTestId('cliente-7-sub');
+    expect(sub).toHaveTextContent('DNI 12345678 · Consumidor Final');
+    expect(sub.textContent).not.toMatch(/[*•x]/i);
+  });
+
+  it('sin documento no se inventa un identificador: cae al primer dato que identifique', () => {
+    render(<TarjetaCliente cliente={cliente({ docTipo: null, docNro: null, telefono: '11 5555-1234' })} />);
+    expect(screen.getByTestId('cliente-7-sub')).toHaveTextContent('11 5555-1234');
+    expect(screen.getByTestId('cliente-7-sub').textContent).not.toMatch(/CUIT|DNI/);
+  });
+});
