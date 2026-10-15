@@ -64,7 +64,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D8** | `GASTOSCATEG` | ⬜ PENDIENTE | el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El |
 | **SM-E1** | `#1005` | ✅ TERMINADO | merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positiv… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto abierto es POST /auth/cambiar-email, bloqueado por SMTP = SM-C5, que es del operador. Las 5 capacidades quedaron clasificadas, ninguna … |
+| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto… |
 | **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
 | **SM-F2** | `M-02` | ⬜ PENDIENTE | — |
 | **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
