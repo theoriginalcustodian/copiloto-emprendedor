@@ -132,3 +132,45 @@ así que el arreglo **no** es dejar de usarlo. Es que la salida distinga. Un fla
 etiquetar lo que agrega convierte una mejora de cobertura en una pérdida de precisión.
 
 → [[el-instrumento-respondio-sobre-otro-sujeto]] · [[una-fila-por-valor-de-una-variable-no-es-una-fila]] · [[instrumento-que-no-mira-nunca-falla]]
+
+## Refuerzo 2026-10-15 — la unidad que faltaba era el ARBOL, y la etiqueta existia a 76 renglones de la cifra
+
+**Medido hoy, 2026-10-15.** Las tres sesiones citaron **«46 de 54, faltan 8»** durante horas como el
+estado del sprint. Con el **mismo script** y **una sola variable movida** —el arbol donde se lo
+corre— `origin/main` daba **52 de 54, faltan 2** (`reveal` `soporte`). Los otros seis ya estaban
+mergeados.
+
+**La unidad que faltaba no era la plataforma: era el arbol.** `RAIZ` sale de
+`git rev-parse --show-toplevel` (linea 79 de `medir-mapeo-implementacion.py`), o sea **el arbol desde
+donde lo ejecutas**, y el checkout compartido —el `cwd` por defecto de las tres sesiones— esta **106
+commits atras**. Ninguna cifra era falsa: median arboles distintos y ninguna lo decia.
+
+**Y acá esta el golpe, porque es contra el texto de arriba.** Este mismo archivo ya traia la receta
+escrita: *«Lo que el instrumento ya hacia bien y hay que copiar: imprime la unidad en la misma linea
+que el numero»*. El instrumento la aplico a la plataforma (web/mobile) y **al arbol no**: para el
+arbol imprimia una etiqueta `ARBOL MEDIDO` en la **linea 1 de 77**, mientras las cifras salen en las
+**70-77**. La regla estaba; el caso que faltaba no estaba cubierto por ella.
+
+**Por qué una etiqueta que EXISTE no alcanza:**
+
+- **El resumen se lee con `tail`.** `tail -5` fue literalmente el comando de la verificacion, y es el
+  mismo corte que borraba la etiqueta. Una etiqueta **a 76 renglones** de la cifra que etiqueta no
+  esta puesta: esta **archivada**.
+- **Decia *donde*, no *cuan atras*.** Una ruta (`C:/Proyectos/.../copiloto-emprendedor`) no le dice
+  nada a nadie sobre si ese arbol esta al dia. `+106 comm DETRAS de origin/main 7450e2f4` si.
+- **Y el `grep` no la rescata**, porque nadie grepea una etiqueta que no sabe que existe.
+
+**El fix de raiz, y por qué NO es un gate.** `_procedencia()` va pegada a los **tres renglones que
+varian** — `  @origin/main 7450e2f4` o `  @arbol +106 comm DETRAS de origin/main 7450e2f4`. No falla
+y no bloquea, igual que el `corpus_divergente()` que ya vivia en ese mismo archivo y lo declara «A
+PROPOSITO»: trabajar sobre un arbol atrasado **es legitimo** (es exactamente lo que hace una sesion
+que todavia no rebaseo), lo ilegitimo es que la cifra salga sin decirlo. Un guard que grita en el
+caso normal se desarma solo → [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].
+
+**El test que lo caza la proxima:** no «¿declara su unidad?» sino **«¿la declara en el renglon que
+alguien va a copiar y pegar?»**. Si la etiqueta y la cifra se pueden separar con un `tail`, un
+`| grep`, un copy-paste de una linea o una captura de pantalla, **estan separadas ya**.
+
+Relacionado: [[el-instrumento-versionado-difiere-por-rama]] (ahi la variable era el *script*, aca el
+*arbol* — la medicion honesta fija una y mueve la otra) · [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
+· [[la-cita-de-procedencia-muere-en-el-merge]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
