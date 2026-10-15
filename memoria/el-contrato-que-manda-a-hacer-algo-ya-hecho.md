@@ -289,3 +289,41 @@ citarse**, también —y sobre todo— cuando viene de una tabla que dice «medi
 de afirmación que el tiempo invierte sola, porque alguien implementa y nadie vuelve a la tabla;
 (12) si la ficha ofrece opciones «a decidir», antes de escalar la decisión **medí si el código ya eligió
 una**: en un repo con tres sesiones, la decisión de hecho llega antes que la decisión escrita.
+
+## REFUERZO 2026-10-15 - el ESCALADOR reclama el contrato rancio, y convierte mi descuido en presion sobre un peer OCUPADO
+
+Dos ciclos seguidos del vigia, dos `CONTRATO SIN TOMAR` (155min y 128min), los dos **mios**, los dos
+contra sesiones que estaban trabajando. Y los dos **sin objeto**:
+
+| contrato | lo que pedia | medido @ `a554d088` desde el pin |
+|---|---|---|
+| `los-6-P-son-TODOS-mobile` (a FE1+FE2) | implementar 6 elementos `P` | **4 de 6 ya cerradas** (`bi-refresh` `detalle` `entrada` `splash`); las 2 restantes con contrato mas fresco y otro dueno |
+| `el-instrumento-de-60fps-EXISTE-1237` (a FE2) | medir `splash`/`entrada`/`detalle` hasta 51/54 | las 3 **CERRADA-EN-CODIGO**, y 51/54 es el numero exacto que mide `origin/main` hoy: **su propio DoD, cumplido** |
+
+**Lo nuevo no es que un contrato quede rancio - eso ya esta medido tres veces mas arriba. Lo nuevo es
+que el GUARD lo amplifica.** `escaladores-buzon.sh` mide *"nadie lo tomo"*, y ese predicado **no
+distingue** dos estados opuestos:
+
+- *nadie lo tomo y hace falta* -> alarma legitima, hay que destrabar
+- *nadie lo tomo porque su objeto ya no existe* -> el reclamo es **ruido dirigido**, y encima
+  genera un `urgente_` con nombre fijo que vuelve cada ciclo
+
+Un contrato **no tiene fecha de vencimiento**, asi que su ranciedad no se degrada sola: se convierte
+en presion recurrente sobre quien esta ocupado. FE2 estaba en **SM-F3 en device**, el recurso mas
+escaso del sprint, y el gate le empujaba dos contratos hechos.
+
+**La correccion, y es de dueno, no de instrumento:** el escalador **no puede** saber si el objeto se
+movio - eso se mide con el instrumento canonico del dominio (aca `medir-mapeo-implementacion.py`
+desde el pin), no con el mtime de un archivo. Entonces **la ranciedad es del EMISOR**: antes de
+reclamar un contrato propio, medir sus filas; si el objeto se movio, el cierre correcto es
+**cerrarlo citando donde se movio** - no reclamarlo, y tampoco borrarlo en silencio. Cerrar ademas
+apaga el escalador por efecto (lo verifique: al ciclo siguiente ya no aparecia).
+
+**Y el segundo contrato tenia mas veneno que el primero:** su §5 declaraba `soporte` "marcador
+muerto, retiralo", y `(home)` "decision del operador (OAuth de Calendar)". **Las dos falsas** -
+`soporte` es una `D` real del operador (A/B/C del dictado) y `(home)` nunca fue suya (su DoD pide que
+el elemento exista y se vea; la autoridad esta en main, `apps/copiloto/mi_dia_web.py:12-13`). Un
+contrato rancio **no se queda quieto**: sus afirmaciones laterales siguen citables y mandan trabajo
+en la direccion equivocada. Por eso el cierre lleva la tabla de *que dijo mal*, no solo *ya esta
+hecho*. Relacionado: [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]] y
+[[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].

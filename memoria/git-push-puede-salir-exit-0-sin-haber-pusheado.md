@@ -208,3 +208,38 @@ la rama sin borrar es cosmética. Y para evitarlo de entrada, mergeá **sin** `-
 worktree, o borrala después con `git push origin --delete <rama>`, que no necesita checkout.
 
 Relacionadas: [[el-pipe-se-come-el-exit-code]] · [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]
+
+## Refuerzo 2026-10-15 - `mv -n` al destino que YA existe sale **0 sin mover nada**, y el nombre FIJO hace que colisionar sea el caso NORMAL
+
+Archivaba a mano un artefacto huerfano del gate (`urgente_vigilancia-a-frontend2_contratos-sin-tomar.md`,
+generado por `escaladores-buzon.sh` y ya sin objeto porque cerre el contrato que citaba):
+
+    mv -n "$U" "coordinacion/cerrado/2026-10-15/$(basename "$U")"
+    echo "mv_urgente_rc=$?"        ->  mv_urgente_rc=0
+
+**Exit 0. El archivo seguia en `abierto/`.** Lo cazo el control por efecto que corri a continuacion
+(`ls coordinacion/abierto | grep urgente`), no el `rc`. Causa: `-n` es *no-clobber*; con el destino
+ocupado **no es un error**, es el comportamiento pedido - no mover. Y el destino estaba ocupado
+porque **el escalador genera el archivo con nombre FIJO por rol**
+(`escaladores-buzon.sh:92-93`: `URGENTE_ST_INFIJO` + `URGENTE_ST_SUF` = `_urgente_vigilancia-a-<rol>_contratos-sin-tomar.md`),
+asi que una copia de las 15:32 ya estaba en `cerrado/<hoy>/`.
+
+**Y aca esta lo que lo vuelve clase y no anecdota: para un artefacto de nombre fijo que se REGENERA
+cada ciclo, la colision no es el borde raro - es el caso normal.** Cuanto mas veces dispara la
+alarma, mas garantizado es que `mv -n` no haga nada. El flag que elegi *para no perder datos* es
+exactamente el que garantiza que la limpieza falle en silencio.
+
+**Los dos lados del mismo filo, medidos el mismo dia:** el janitor
+(`archivar-buzon.sh:100,124`) mueve con `mv` **pelado**, sin `-n`, asi que el riesgo alla es el
+opuesto: **pisa** la copia anterior del mismo nombre y pierde el registro de lo que se escalo antes.
+Ninguno de los dos defaults es seguro para un nombre que se repite: `-n` pierde la **limpieza**,
+pelado pierde la **historia**. Si el nombre se repite, el sufijo distintivo no es prolijidad, es la
+unica forma de que la operacion tenga efecto Y conserve lo anterior:
+
+    mv -n "$U" "$CERRADO/$(basename "$U" .md)--regen-1546.md"   # efecto + historia
+
+**El patron padre, otra vez:** `rc=0` no dice *hice lo que pediste*, dice *no hubo error segun MI
+definicion de error*. Para `mv -n`, "no hice nada" **no** es un error. El control sigue siendo el
+mismo de toda esta entrada: **medir el efecto en el destino y en el origen**, nunca el codigo de
+salida. Relacionado: [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] -
+aca ni mensaje hubo.
