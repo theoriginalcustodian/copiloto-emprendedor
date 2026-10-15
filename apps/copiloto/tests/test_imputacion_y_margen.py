@@ -375,7 +375,8 @@ def test_SME3_la_imputacion_viaja_en_el_detalle_y_en_el_listado_con_la_forma_del
     g = gastos.crear(monto="4000", categoria="otros")
 
     assert g["imputacion"] == {"gasto_id": g["id"], "presupuesto_ref": None,
-                               "comprobante_ref": None, "cobro_ref": None}
+                               "comprobante_ref": None, "cobro_ref": None,
+                               "etiqueta": None}
     assert gastos.detalle(g["id"])["imputacion"] == g["imputacion"]
 
     del_put = trabajos.imputar(g["id"], "presupuesto", presupuesto)
@@ -433,3 +434,98 @@ def test_SME3_canario_reimputar_deja_UNA_sola_columna_no_nula_leida_por_la_lectu
         assert _no_nulas(gastos.detalle(g["id"])["imputacion"]) == [columna]
     trabajos.imputar(g["id"], None, None)
     assert _no_nulas(gastos.detalle(g["id"])["imputacion"]) == []
+
+
+# ── el rótulo del trabajo viaja con la imputación (contrato 2026-10-15) ─────────────────────────────
+
+def _numero_humano(conn_de_tenant, cid, presupuesto_id) -> int:
+    conn = conn_de_tenant(cid)()
+    with conn.cursor() as cur:
+        cur.execute("SELECT numero FROM uc_factory.copiloto_presupuestos WHERE cliente_id=%s AND id=%s",
+                    (cid, presupuesto_id))
+        return cur.fetchone()[0]
+
+
+@necesita_pg
+def test_ETIQUETA_la_imputacion_trae_el_rotulo_humano_y_NO_el_id_interno(conn_de_tenant, tenants):
+    """El defecto: el selector mostraba «Pintura · #3» y el detalle «Presupuesto #227» (el id de base).
+    DoD: la etiqueta es `concepto · #numero`, idéntica en el PUT, el detalle y el listado, y el id
+    interno NO aparece. El presupuesto se crea tras otros para que `id != numero` (si fueran iguales
+    el test no distinguiría un rótulo bien armado de uno armado con el id)."""
+    a, _ = tenants
+    presupuesto, _ = _trabajo_completo(conn_de_tenant, a, nro=820)
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    numero = _numero_humano(conn_de_tenant, a, presupuesto)
+    g = gastos.crear(monto="900", categoria="otros")
+
+    del_put = trabajos.imputar(g["id"], "presupuesto", presupuesto)
+    esperada = f"Pintura · #{numero}"
+    assert del_put["etiqueta"] == esperada
+    assert gastos.detalle(g["id"])["imputacion"] == del_put
+    assert {x["id"]: x for x in gastos.listar()[0]}[g["id"]]["imputacion"] == del_put
+    if presupuesto != numero:                                   # el id interno nunca es parte del rótulo
+        assert f"#{presupuesto}" not in del_put["etiqueta"]
+
+
+@necesita_pg
+def test_ETIQUETA_es_null_sin_imputar_y_tras_desimputar(conn_de_tenant, tenants):
+    a, _ = tenants
+    presupuesto, _ = _trabajo_completo(conn_de_tenant, a, nro=821)
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    g = gastos.crear(monto="10", categoria="otros")
+    assert gastos.detalle(g["id"])["imputacion"]["etiqueta"] is None
+    assert trabajos.imputar(g["id"], "presupuesto", presupuesto)["etiqueta"] is not None
+    assert trabajos.imputar(g["id"], None, None)["etiqueta"] is None
+    assert gastos.detalle(g["id"])["imputacion"]["etiqueta"] is None
+
+
+@necesita_pg
+def test_ETIQUETA_de_factura_y_cobro_usa_numeracion_visible_y_no_el_id(conn_de_tenant, tenants):
+    a, _ = tenants
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=822)
+    cobro = CobroStore(conn_de_tenant(a), a).registrar_suelto(
+        monto="1500", medio="efectivo", presupuesto_ref=presupuesto)["id"]
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    g = gastos.crear(monto="1", categoria="otros")
+
+    assert trabajos.imputar(g["id"], "comprobante", comprobante)["etiqueta"] ==         "Panadería · Factura 0001-00000822"
+    et_cobro = trabajos.imputar(g["id"], "cobro", cobro)["etiqueta"]
+    assert "Cobro 20" in et_cobro and et_cobro.endswith(" $1500.00"), et_cobro
+    assert f"#{cobro}" not in et_cobro
+
+
+@necesita_pg
+def test_ETIQUETA_ADVERSARIAL_A_no_resuelve_el_rotulo_de_un_trabajo_de_B(conn_de_tenant, tenants):
+    """El resolver filtra por `cliente_id`: pedirle a A los pares de B devuelve vacío (no el rótulo de B
+    ni uno armado con el id). CONTROL POSITIVO: B, con los mismos pares, sí los resuelve."""
+    from trabajo_etiqueta import etiquetas_de_trabajo
+    a, b = tenants
+    p_b, comp_b = _trabajo_completo(conn_de_tenant, b, nro=823)
+    pares = {("presupuesto", p_b), ("comprobante", comp_b)}
+    with conn_de_tenant(a)() as conn, conn.cursor() as cur:
+        assert etiquetas_de_trabajo(cur, a, pares) == {}
+    with conn_de_tenant(b)() as conn, conn.cursor() as cur:
+        assert set(etiquetas_de_trabajo(cur, b, pares)) == pares
+
+
+@necesita_pg
+def test_ETIQUETA_del_margen_no_es_solo_fecha_ni_se_repite_entre_trabajos(conn_de_tenant, tenants):
+    """Observación 1: el selector mostraba filas rotuladas sólo `2026-07-23` y dos idénticas
+    `Kiosco · 2026-08-12`. Dos cobros sueltos del mismo cliente el mismo día, de distinto monto, y uno
+    sin nombre de cliente: ninguna etiqueta es sólo una fecha y ninguna se repite."""
+    from inteligencia_queries import InteligenciaQueries
+    a, _ = tenants
+    cobros = CobroStore(conn_de_tenant(a), a)
+    ids = [cobros.registrar_suelto(monto=m, medio="efectivo", cliente_nombre=n)["id"]
+           for m, n in (("1000", "Kiosco Don Ramón"), ("2500", "Kiosco Don Ramón"), ("700", ""))]
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
+    for cid in ids:
+        g = gastos.crear(monto="10", categoria="otros")
+        trabajos.imputar(g["id"], "cobro", cid)
+
+    g4 = InteligenciaQueries(conn_de_tenant(a), a).margen_por_trabajo()
+    etiquetas = [t["etiqueta"] for t in g4["trabajos"] + g4["sin_ingreso"]]
+    assert len(etiquetas) == 3
+    assert len(set(etiquetas)) == 3, f"etiquetas repetidas: {etiquetas}"
+    import re
+    assert not any(re.fullmatch(r"\d{4}-\d{2}-\d{2}", e) for e in etiquetas), etiquetas

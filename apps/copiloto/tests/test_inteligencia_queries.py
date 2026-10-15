@@ -533,7 +533,7 @@ def test_margen_por_trabajo_un_gasto_imputado_sin_cobro_va_a_sin_ingreso(conn_de
     assert item["eslabon"] == "presupuesto" and item["ref"] == p_id
     assert item["gastado"] == "15000.00"
     assert item["gastos_imputados"] == 1
-    assert "Panadería Los Tilos" in item["etiqueta"]
+    assert item["etiqueta"].startswith("Pintura · #")        # concepto · número, el mismo rótulo que el selector
 
 
 @necesita_pg

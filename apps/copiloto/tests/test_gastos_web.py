@@ -59,7 +59,8 @@ class _FakeGastoStore:
              "monto_sugerido": f"{Decimal(str(monto_sugerido)):.2f}" if monto_sugerido else None,
              "creado_en": "2026-07-21T22:00:00+00:00",
              "imputacion": {"gasto_id": self._b["_seq"], "presupuesto_ref": None,
-                            "comprobante_ref": None, "cobro_ref": None}}
+                            "comprobante_ref": None, "cobro_ref": None,
+                            "etiqueta": None}}
         if idem_key:
             g["_idem_key"] = idem_key
         mios[g["id"]] = g
