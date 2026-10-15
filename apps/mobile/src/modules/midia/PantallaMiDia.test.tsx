@@ -1069,3 +1069,27 @@ describe('PantallaMiDia — anotar una tarjeta a mano (SM-E3)', () => {
     alertSpy.mockRestore();
   });
 });
+
+describe('PantallaMiDia — el teclado no tapa el alta (SM-E3 obs. 3)', () => {
+  // La portada (home) NO vive dentro de `MarcoGlass`, que es quien pone el `KeyboardAvoidingView` a las
+  // funciones con campos. Sin él el teclado se dibuja ENCIMA (documed lo midió en este mismo teléfono) y
+  // el campo «Anotar algo para hoy» y su botón quedan tapados: en device 15-10 sólo se veía el teclado.
+  // jsdom no dibuja un teclado: acá se afirma el CABLEADO (el contenedor que se achica y el scroll que
+  // revela el campo); que el campo quede visible es DoD de device.
+  it('🔴 como portada, la raíz es un KeyboardAvoidingView (mide su layout para achicarse con el teclado) y contiene el campo del alta', async () => {
+    await montar({ comoPortada: true });
+    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
+
+    // RNTL 14 no expone `UNSAFE_getByType`: se reconoce al KAV por lo que sólo él le agrega a su `View`
+    // (el `onLayout` con el que mide su frame; la `View` pelada de antes no lo tenía).
+    const raiz = screen.getByTestId('pantalla-midia');
+    expect(typeof raiz.props.onLayout).toBe('function');
+    expect(within(raiz).getByTestId('midia-alta-texto-input')).toBeTruthy();
+  });
+
+  it('el scroll deja pasar el primer toque con el teclado abierto (`handled`): «Agregar» responde al primer toque', async () => {
+    await montar({ comoPortada: true });
+    await waitFor(() => expect(screen.getByTestId('midia-scroll')).toBeTruthy());
+    expect(screen.getByTestId('midia-scroll').props.keyboardShouldPersistTaps).toBe('handled');
+  });
+});

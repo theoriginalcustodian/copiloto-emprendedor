@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import { Pressable, ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -41,7 +41,7 @@ import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { TileCategoria } from './TileCategoria';
 import { EstadoVacio } from '../../theme/EstadoVacio';
-import { CampoTexto, FilaBotones } from '../../theme/glass/campos';
+import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
@@ -357,6 +357,8 @@ function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
   const [texto, setTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const vacio = texto.trim() === '';
+  // El teclado tapaba el botón aunque el campo se revelara: se revela el grupo campo + «Agregar».
+  const refGrupo = useRef<View>(null);
 
   async function agregar() {
     if (vacio || guardando) return;
@@ -382,9 +384,10 @@ function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
   }
 
   return (
-    <View style={{ gap: tema.espacio.sm, paddingHorizontal: 16 }} testID="midia-alta">
+    <View ref={refGrupo} collapsable={false} style={{ gap: tema.espacio.sm, paddingHorizontal: 16 }} testID="midia-alta">
       <CampoTexto
         etiqueta="Anotar algo para hoy"
+        revelarJunto={refGrupo}
         testID="midia-alta-texto"
         valor={texto}
         onChange={setTexto}
@@ -549,7 +552,7 @@ export function PantallaMiDia({
       // 🔴 UN solo scroll para TODA la pantalla (DEVICE15 `tablero`, «viewport útil ≈120 dp»): antes el
       // encabezado (portada + aviso + resumen + banner + solapas) era fijo y sólo la lista scrolleaba, y con un
       // aviso crítico quedaban ~1,5 tarjetas a la vista. Ahora el encabezado se va con el dedo.
-      <ScrollView style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
+      <ScrollFormulario style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
         {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
             dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
             sería peor que la ausencia. */}
@@ -690,7 +693,7 @@ export function PantallaMiDia({
             )}
           </>
         )}
-      </ScrollView>
+      </ScrollFormulario>
   );
 
   if (!comoPortada) {
@@ -702,7 +705,12 @@ export function PantallaMiDia({
   }
 
   return (
-    <View style={styles.portadaRaiz} testID="pantalla-midia">
+    // 🔴 SM-E3 obs. 3: la portada NO vive dentro de `MarcoGlass`, que es quien le pone este
+    // `KeyboardAvoidingView` a las funciones con campos. Sin él el teclado se dibuja ENCIMA sin achicar
+    // la ventana (documed lo midió en este mismo teléfono, `ChatView.tsx:207`): «Anotar algo para hoy» y
+    // «Agregar» quedaban tapados y el emprendedor escribía a ciegas. Las dos mitades son necesarias: este
+    // contenedor se achica y `ScrollFormulario` (arriba) revela el campo enfocado.
+    <KeyboardAvoidingView behavior="padding" style={styles.portadaRaiz} testID="pantalla-midia">
       {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
           ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
       <View style={styles.encabezadoPortada}>
@@ -721,7 +729,7 @@ export function PantallaMiDia({
         <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
       </View>
       {cuerpo}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

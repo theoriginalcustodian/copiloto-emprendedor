@@ -22,8 +22,8 @@
  * peleándose el mismo dedo (regla de "las dos mitades" de Software Mansion — `swmansion-rn-gestures`).
  */
 import type { PropsWithChildren, ReactElement } from 'react';
-import { createContext, useCallback, useContext, useRef } from 'react';
-import { StyleSheet, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useRef } from 'react';
+import { Keyboard, StyleSheet, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { calcularDesplazamiento } from './revelarCampo';
@@ -57,6 +57,12 @@ export function useRevelarCampo(): Revelar {
  */
 const DEMORA_TECLADO_MS = 120;
 
+/**
+ * Margen tras `keyboardDidShow`: el `KeyboardAvoidingView` escucha ESE mismo evento para aplicar su
+ * padding, y el layout se reasienta un frame después. Sirve para el segundo pasado del revelado.
+ */
+const DEMORA_POST_TECLADO_MS = 60;
+
 export interface ScrollFormularioProps extends PropsWithChildren {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -87,26 +93,57 @@ export function ScrollFormulario({
   const refArea = useRef<View>(null);
   const offsetActual = useRef(0);
 
-  const revelar = useCallback<Revelar>((nodo) => {
-    if (nodo == null) return;
-    setTimeout(() => {
-      const area = refArea.current;
-      // `measureInWindow` es asíncrono y no se resuelve fuera de un device (en jsdom nunca llama al
-      // callback). No hay nada que compensar acá: sin medidas, no se scrollea.
-      area?.measureInWindow((_ax, areaY, _aAncho, areaAlto) => {
-        nodo.measureInWindow((_x, campoY, _ancho, campoAlto) => {
-          const destino = calcularDesplazamiento({
-            areaY,
-            areaAlto,
-            campoY,
-            campoAlto,
-            offsetActual: offsetActual.current,
-          });
-          if (destino != null) refScroll.current?.scrollTo({ y: destino, animated: true });
+  // El último nodo que pidió revelarse, para repetir la medida cuando el teclado termina de abrir.
+  const nodoPendiente = useRef<NodoMedible | null>(null);
+
+  const medirYScrollear = useCallback((nodo: NodoMedible) => {
+    const area = refArea.current;
+    // `measureInWindow` es asíncrono y no se resuelve fuera de un device (en jsdom nunca llama al
+    // callback). No hay nada que compensar acá: sin medidas, no se scrollea.
+    area?.measureInWindow((_ax, areaY, _aAncho, areaAlto) => {
+      nodo.measureInWindow((_x, campoY, _ancho, campoAlto) => {
+        const destino = calcularDesplazamiento({
+          areaY,
+          areaAlto,
+          campoY,
+          campoAlto,
+          offsetActual: offsetActual.current,
         });
+        if (destino != null) refScroll.current?.scrollTo({ y: destino, animated: true });
       });
-    }, DEMORA_TECLADO_MS);
+    });
   }, []);
+
+  const revelar = useCallback<Revelar>(
+    (nodo) => {
+      if (nodo == null) return;
+      nodoPendiente.current = nodo;
+      setTimeout(() => medirYScrollear(nodo), DEMORA_TECLADO_MS);
+    },
+    [medirYScrollear]
+  );
+
+  // 🔴 Segunda pasada cuando el teclado YA abrió. La demora fija de arriba mide, a veces, contra el alto
+  // VIEJO del área (la animación del teclado dura más que 120 ms): el scroll se queda corto y un grupo
+  // alto —campo + su botón— sigue con la mitad detrás del teclado (medido en device, Mi día 15-10: el
+  // campo entraba y «Agregar» no). Si el nodo ya se ve entero, `calcularDesplazamiento` devuelve `null`
+  // y esta pasada no hace nada.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      const nodo = nodoPendiente.current;
+      if (nodo == null) return;
+      setTimeout(() => medirYScrollear(nodo), DEMORA_POST_TECLADO_MS);
+    });
+    // Al cerrarse el teclado el nodo deja de ser «el que se estaba revelando»: si no, un teclado abierto
+    // después por OTRO input (fuera de este scroll) volvería a scrollear hacia un campo viejo.
+    const subOculto = Keyboard.addListener('keyboardDidHide', () => {
+      nodoPendiente.current = null;
+    });
+    return () => {
+      sub.remove();
+      subOculto.remove();
+    };
+  }, [medirYScrollear]);
 
   return (
     /**
