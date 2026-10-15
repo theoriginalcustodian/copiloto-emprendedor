@@ -298,6 +298,18 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-15 - DICTAMINA, no mide. Este contrato reparte trabajo y clasifica las 7 filas
+    # PENDIENTE del mapeo mobile: resuelve cada una a `path` real de `origin/main` y a duena, y
+    # nombra el criterio del medidor (`medir-mapeo-implementacion.py:238,338`: `**D**` y `**P**`
+    # pesan igual). Nada de eso emite un veredicto del criterio 3 (paridad web/mobile): el
+    # predicado es «quien hace que», no «se ve en las dos plataformas».
+    # Lo clasifico YO, que lo escribi, porque el gate lo marco SIN CLASIFICAR y la duena del
+    # corpus es planificacion. Sumarlo inflaria la cifra con un documento que no midio nada.
+    # Igual que el caso de arriba: el motivo es el PREDICADO, no el vocabulario -- aunque este
+    # doc cite cifras (41/54, 47/54), citarlas no es medirlas.
+    "2026-10-15_contrato_planificacion-a-frontend1-y-frontend2_los-6-P-son-TODOS-mobile":
+        "dictamina reparto y clasificacion de las pendientes del mapeo; su predicado es «quien "
+        "hace que», no el criterio de paridad -- las cifras que cita las midio otro instrumento",
     # 2026-10-15 - OTRO PREDICADO, no otro vocabulario. El `avance_` de frontend1 mide con rigor
     # (`path:linea` por elemento, grep a mano porque el ratchet no ve afirmaciones posicionales),
     # pero mide EXISTENCIA EN CODIGO -- la mitad «por codigo» del DoD -- y su autor DECLINA
