@@ -154,3 +154,16 @@ export function descripcionLegal(me: MeLegalCampos | null | undefined): string {
   if (me.legal_aceptado) return `Aceptaste la versión vigente (${me.legal_version_aceptada}).`;
   return `Aceptaste la versión ${me.legal_version_aceptada}, que ya no es la vigente.`;
 }
+
+/**
+ * ¿Mostrar el botón «Aceptar» en Mi cuenta? (SM-C4, mobile no tiene alta: las cuentas que entran
+ * por Google nunca pasaron por el SignupScreen web donde se registra la aceptación.)
+ *
+ * Es una OFERTA, no un guard: lo que decide es si se muestra un botón que registra la aceptación;
+ * ninguna otra acción de la app depende de esto. Sólo `legal_aceptado === false` ofrece (nunca
+ * aceptó, o aceptó una versión que ya no es la vigente). El campo ausente NO ofrece: si no se pudo
+ * verificar, no se sabe si hace falta — el mismo cuarto estado de `descripcionLegal`.
+ */
+export function ofrecerAceptarLegal(me: MeLegalCampos | null | undefined): boolean {
+  return !!me && me.legal_aceptado === false;
+}

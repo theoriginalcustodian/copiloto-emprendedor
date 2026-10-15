@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 /**
  * ⚠️ **Se preserva el resto del módulo con `requireActual`.** Antes esto devolvía **sólo** `router`, y
@@ -31,6 +31,15 @@ const mockSesion = {
 };
 jest.mock('../auth', () => ({ useSession: () => mockSesion }));
 
+// SM-C4: el POST de aceptar es lo único del core que se pisa; el resto (descripcionLegal,
+// ofrecerAceptarLegal, ApiError) es el REAL, así que el test ejercita la decisión de verdad.
+const mockAceptarLegal = jest.fn();
+jest.mock('@copiloto/core', () => ({
+  ...jest.requireActual('@copiloto/core'),
+  aceptarLegal: (version: string) => mockAceptarLegal(version),
+}));
+
+import { ApiError, LEGAL_VERSION } from '@copiloto/core';
 import { router } from 'expo-router';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -134,6 +143,86 @@ describe('PantallaCuenta', () => {
       await montar();
       expect(estado()).toHaveTextContent('No pudimos verificar qué versión aceptaste.');
       expect(estado()).not.toHaveTextContent('Todavía no aceptaste');
+    });
+  });
+
+  /**
+   * SM-C4 — el botón «Aceptar». Mobile no tiene alta, así que acá es donde una cuenta que entró por
+   * Google registra la aceptación. Es una OFERTA: INFORMA, no bloquea (LEGALNOOPERA).
+   */
+  describe('aceptar la versión vigente (SM-C4)', () => {
+    const base = { cliente_id: 'c-1', email: 'ana@negocio.test' };
+    const boton = () => screen.queryByTestId('cuenta-legal-aceptar');
+
+    beforeEach(() => mockAceptarLegal.mockReset());
+
+    it('ya aceptó la vigente → NO se ofrece el botón', async () => {
+      mockSesion.me = { ...base, legal_aceptado: true, legal_version_aceptada: LEGAL_VERSION } as never;
+      await montar();
+      expect(boton()).toBeNull();
+    });
+
+    it('🐤 campo ausente (backend viejo) → NO se ofrece: no se sabe si hace falta', async () => {
+      mockSesion.me = { ...base, legal_aceptado: true } as never;
+      await montar();
+      expect(boton()).toBeNull();
+    });
+
+    it('nunca aceptó → se ofrece, registra LEGAL_VERSION y el estado pasa a «vigente»', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: null } as never;
+      mockAceptarLegal.mockResolvedValue({ aceptado: true, version: LEGAL_VERSION, en: '2026-10-15T12:00:00Z' });
+      await montar();
+      expect(screen.getByTestId('cuenta-legal-version')).toHaveTextContent('Todavía no aceptaste ninguna versión.');
+
+      fireEvent.press(screen.getByTestId('cuenta-legal-aceptar'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('cuenta-legal-version')).toHaveTextContent(
+          `Aceptaste la versión vigente (${LEGAL_VERSION}).`,
+        ),
+      );
+      expect(mockAceptarLegal).toHaveBeenCalledTimes(1);
+      expect(mockAceptarLegal).toHaveBeenCalledWith(LEGAL_VERSION);
+      expect(boton()).toBeNull();
+    });
+
+    it('aceptó una versión VIEJA → también se ofrece', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: '2026-06-01' } as never;
+      await montar();
+      expect(boton()).not.toBeNull();
+    });
+
+    it('INFORMA, no bloquea: sin aceptar, el resto de la pantalla opera igual', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: null } as never;
+      await montar();
+      fireEvent.press(screen.getByTestId('cuenta-legal-tos'));
+      expect(router.push).toHaveBeenCalledWith('/legal?kind=tos');
+      expect(screen.getByTestId('cuenta-cerrar-sesion')).toBeTruthy();
+    });
+
+    it('409 (el texto quedó viejo) → lo dice, NO marca aceptada y deja reintentar', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: null } as never;
+      mockAceptarLegal.mockRejectedValue(new ApiError(409, 'versión desactualizada', 'legal_version_desactualizada', {}));
+      await montar();
+
+      fireEvent.press(screen.getByTestId('cuenta-legal-aceptar'));
+
+      await waitFor(() => expect(screen.getByTestId('cuenta-legal-aceptar-error')).toBeTruthy());
+      expect(screen.getByTestId('cuenta-legal-aceptar-error')).toHaveTextContent(/Los términos cambiaron/);
+      expect(screen.getByTestId('cuenta-legal-version')).toHaveTextContent('Todavía no aceptaste ninguna versión.');
+      expect(boton()).not.toBeNull();
+    });
+
+    it('falla de red → mensaje genérico, sin marcar aceptada', async () => {
+      mockSesion.me = { ...base, legal_aceptado: false, legal_version_aceptada: null } as never;
+      mockAceptarLegal.mockRejectedValue(new Error('network'));
+      await montar();
+
+      fireEvent.press(screen.getByTestId('cuenta-legal-aceptar'));
+
+      await waitFor(() => expect(screen.getByTestId('cuenta-legal-aceptar-error')).toBeTruthy());
+      expect(screen.getByTestId('cuenta-legal-aceptar-error')).toHaveTextContent(/No pudimos registrar/);
+      expect(boton()).not.toBeNull();
     });
   });
 
