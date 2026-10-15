@@ -298,6 +298,21 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-15 - OTRO PREDICADO, no otro vocabulario. El `avance_` de frontend1 mide con rigor
+    # (`path:linea` por elemento, grep a mano porque el ratchet no ve afirmaciones posicionales),
+    # pero mide EXISTENCIA EN CODIGO -- la mitad «por codigo» del DoD -- y su autor DECLINA
+    # explicitamente cerrar el veredicto del criterio: «la mitad "y se ve" sigue siendo device y no
+    # la cierro». Contarlo sumaria veredictos que el que midio se nego a emitir.
+    # El motivo NO es el vocabulario (`✅ por codigo` / `🟧 parcial` / `❌ FALLA por codigo` tampoco
+    # es el cerrado): es que responde OTRA PREGUNTA. Esa distincion importa justo por el caso
+    # VOCABAJENO de abajo: un descarte motivado en el idioma CADUCA en silencio si alguien re-emite
+    # la columna, y uno motivado en el predicado no.
+    # Su contenido no se pierde ni queda sin dueño: las 4 filas que mide son las que
+    # `existe-en-main.py` reporta `CANDIDATA-A-REVISAR`, y su hallazgo de 2 filas rancias (`splash`,
+    # `detalle`) es trabajo del mapeo, no de este contador.
+    "2026-10-15_avance_frontend1-a-planificacion-y-frontend2_GREP-de-las-4":
+        "mide existencia en codigo (mitad «por codigo» del DoD) y declina cerrar el veredicto de "
+        "device; contarlo emitiria veredictos que su autor se nego a emitir",
     # 2026-10-13 - VOCABAJENO: RESUELTO, no vigente. El cierre de backend estuvo aca porque su
     # columna de veredicto decia `✅ + 📝 CIERRA` / `abierta` -- tokens fuera del `VOCABULARIO`
     # cerrado -- aunque el documento SI midiera la pantalla con `archivo:linea`. Backend RE-EMITIO
