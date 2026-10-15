@@ -634,6 +634,34 @@ NO_SON_MEDICION = {
         "viva (ancla corrida, mitad ya hecha en main), no mide la paridad de ninguna pantalla. 0 "
         "tokens del VOCABULARIO, 0 ids del padron en rol de fila medida: los nombres de la columna "
         "1 son titulos de contrato, aunque colisionen con `fact-voz`/`cobro-voz`/`clientes`.",
+
+    # 2026-10-15 - los dos que el gate cazo hoy. Ninguno mide el criterio 3, y por motivos DISTINTOS:
+    # uno mide otra PREGUNTA, el otro dictamina sobre el MEDIDOR. Se separan a proposito -- un motivo
+    # generico («no mide») haria indistinguibles dos casos que se revisan distinto.
+    #
+    # Mide la RANCIEDAD de las filas del mapeo, que es una tercera pregunta: no «esta pantalla
+    # coincide con el prototipo» (criterio 3) ni «en que estado esta la divergencia»
+    # (`medir-mapeo-implementacion.py`), sino «lo que la fila AFIRMA sigue siendo cierto contra el
+    # codigo vivo». Sus 17 filas rancias no son 17 veredictos de paridad: son 17 filas cuyo literal,
+    # ruta o afirmacion de ausencia quedo vieja. Sumarlas contaria como paridad medida un barrido que
+    # nunca mira una pantalla. Y el motivo por el que IMPORTA igual: una fila rancia produce un
+    # veredicto falso en cualquiera de los dos sentidos, asi que este doc califica a las mediciones
+    # del criterio 3 sin ser una.
+    "2026-10-14_avance_frontend1-a-planificacion_MAPEO-barrido-de-las-54-contra-el-codigo-17-filas-RANCIAS-confirmadas-31pct-y-el-script-no-ve-las-posicionales":
+        "mide RANCIEDAD de filas del mapeo (ruta/linea/literal/ausencia contra el codigo vivo), no "
+        "paridad de pantallas. 17 filas rancias != 17 veredictos del criterio 3: ninguna fila de ese "
+        "barrido mira una pantalla. Califica a las mediciones ajenas sin ser una medicion.",
+
+    # PEDIDO MIO (planificacion). Dictamina sobre el MEDIDOR —que `medir-mapeo-implementacion.py:241`
+    # clasifica las 15 filas de device por coherencia mientras los 15 DoD piden otra cosa— y escala 4
+    # decisiones. Las dos filas que nombra con veredicto (`ingresos`, `reveal`) las CITA de
+    # `2026-10-13-veredictos-device15-15-filas.md`; lo unico que medi yo es el DoD textual del padron
+    # y un grep de imports, que no son veredictos de paridad. Contarlo seria contar mi propia lectura
+    # del padron como medicion nueva, que es exactamente como una cifra se infla sola.
+    "2026-10-15_pedido_planificacion-al-operador_EL-SPRINT-NO-ESTA-EN-44-54-el-medidor-mide-COHERENCIA-y-los-15-DoD-de-device-piden-OTRA-cosa-3-decisiones":
+        "dictamina sobre el MEDIDOR y escala decisiones; no mide ninguna pantalla. Los veredictos de "
+        "`ingresos` y `reveal` son CITA de device15. Lo medido propio es el DoD textual del padron y "
+        "un grep de imports -- ninguno es un veredicto de paridad.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",
