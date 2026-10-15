@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, type ViewStyle } from 'react-native';
 
 import { ThemeProvider } from '../ThemeProvider';
 import { CristalVidrio } from './CristalVidrio';
@@ -21,8 +21,8 @@ async function cuerpo(alturaAuto?: boolean) {
     </ThemeProvider>
   );
   const externo = screen.getByTestId('cristal-test');
-  const interno = externo.children[0] as { props: { style: unknown } };
-  return StyleSheet.flatten(interno.props.style as never) as { flex?: number; overflow?: string };
+  const interno = externo.children[0] as unknown as { props: { style: ViewStyle | ViewStyle[] } };
+  return StyleSheet.flatten(interno.props.style) as ViewStyle;
 }
 
 describe('CristalVidrio — alto del cuerpo', () => {

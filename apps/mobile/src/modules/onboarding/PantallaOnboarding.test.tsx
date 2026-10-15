@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AppState, Linking, StyleSheet } from 'react-native';
+import { AppState, Linking, StyleSheet, type ViewStyle } from 'react-native';
 
 jest.mock('@copiloto/core', () => ({
   ...jest.requireActual('@copiloto/core'),
@@ -78,8 +78,8 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
   it('🔴 la tarjeta de servicios mide su contenido: con el cuerpo en `flex: 1` colapsaba a 4 px y «Conectar…» / «Después» quedaban recortados', async () => {
     await montar();
     const tarjeta = await screen.findByTestId('onboarding-tarjeta-servicios');
-    const interno = tarjeta.children[0] as { props: { style: unknown } };
-    expect(StyleSheet.flatten(interno.props.style as never).flex).toBeUndefined();
+    const interno = tarjeta.children[0] as unknown as { props: { style: ViewStyle | ViewStyle[] } };
+    expect(StyleSheet.flatten(interno.props.style).flex).toBeUndefined();
   });
 
   it('«Después» no bloquea: marca el onboarding y cierra sin conectar nada', async () => {
