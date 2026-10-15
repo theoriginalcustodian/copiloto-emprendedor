@@ -387,24 +387,55 @@ class PresupuestoStore:
 
     # --- lectura -----------------------------------------------------------------
 
-    def listar(self, *, limit: int = 50, incluir_reemplazados: bool = False) -> list[dict]:
+    def _where(self, incluir_reemplazados: bool, estado: str | None = None) -> tuple[str, list]:
+        """El filtro del listado, UNO solo: `listar` y `contar` lo comparten, así que el `total` que
+        viaja al cliente no puede contar otra cosa que lo que `listar` pagina."""
+        where, params = "WHERE p.cliente_id=%s", [self._cid]
+        if not incluir_reemplazados:
+            where += (f" AND NOT EXISTS (SELECT 1 FROM {_TABLE} r WHERE r.cliente_id=p.cliente_id "
+                      f"AND r.reemplaza_a = p.id)")
+        if estado == PENDIENTE:
+            # `estado` es NULL en las filas previas al hito de desenlace: `_fila_a_dict` las lee como
+            # pendiente (`d["estado"] or PENDIENTE`), así que el filtro tiene que hacer lo mismo.
+            where += " AND (p.estado IS NULL OR p.estado = 'pendiente')"
+        elif estado is not None:
+            where += " AND p.estado = %s"
+            params.append(estado)
+        return where, params
+
+    def listar(self, *, limit: int | None = 50, incluir_reemplazados: bool = False,
+               estado: str | None = None) -> list[dict]:
         """Listado para las cards, más nuevo primero. SIN ítems (para eso está `detalle`).
 
         Por default oculta los reemplazados: corregir tres veces un presupuesto dejaría cuatro cards
         del mismo trabajo sin forma de saber cuál vale. El filtro va en SQL (`NOT EXISTS`) y no en el
         cliente porque del lado del cliente sólo sería correcto si toda la cadena de reemplazos entró
         en la página pedida.
+
+        `limit=None` = sin tope. Es para quien decide sobre el CONJUNTO (el detector de Mi Día): un
+        `LIMIT` sobre `fecha DESC` corta justo los más viejos, que son los que llevan más tiempo sin
+        respuesta. `estado` filtra en SQL por el mismo motivo: pedir 200 filas a una cartera de 300 y
+        filtrar «pendiente» en Python pierde presupuestos en silencio.
         """
-        where = "WHERE p.cliente_id=%s"
-        if not incluir_reemplazados:
-            where += (f" AND NOT EXISTS (SELECT 1 FROM {_TABLE} r WHERE r.cliente_id=p.cliente_id "
-                      f"AND r.reemplaza_a = p.id)")
+        where, params = self._where(incluir_reemplazados, estado)
+        sql = f"{_SELECT} {where} ORDER BY p.fecha DESC, p.id DESC"
+        if limit is not None:
+            sql += " LIMIT %s"
+            params.append(limit)
         conn = self._conn_factory()
         with conn.cursor() as cur:
-            cur.execute(f"{_SELECT} {where} ORDER BY p.fecha DESC, p.id DESC LIMIT %s",
-                        (self._cid, limit))
+            cur.execute(sql, params)
             filas = cur.fetchall()
         return [_fila_a_dict(f) for f in filas]
+
+    def contar(self, *, incluir_reemplazados: bool = False) -> int:
+        """Cuántos presupuestos tiene el TENANT con el mismo filtro que `listar`, sin importar el
+        `limit`. Es lo que permite al cliente distinguir «hay 50» de «hay 50 de 200»."""
+        where, params = self._where(incluir_reemplazados)
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT count(*) FROM {_TABLE} p {where}", params)
+            return int(cur.fetchone()[0])
 
     def detalle(self, presupuesto_id: int) -> dict | None:
         """El presupuesto CON sus ítems, o None si no existe **para este tenant**.

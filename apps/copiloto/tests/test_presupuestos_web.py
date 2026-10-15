@@ -92,11 +92,20 @@ class _FakePresupuestoStore:
     def detalle(self, presupuesto_id: int):
         return self._mios().get(presupuesto_id)
 
-    def listar(self, *, limit=50, incluir_reemplazados=False):
+    def _vivos(self, incluir_reemplazados):
         vivos = list(self._mios().values())
         if not incluir_reemplazados:
             vivos = [p for p in vivos if p.get("reemplazado_por") is None]
-        return vivos[:limit]
+        return vivos
+
+    def listar(self, *, limit=50, incluir_reemplazados=False, estado=None):
+        vivos = self._vivos(incluir_reemplazados)
+        if estado is not None:
+            vivos = [p for p in vivos if p.get("estado") == estado]
+        return vivos if limit is None else vivos[:limit]
+
+    def contar(self, *, incluir_reemplazados=False):
+        return len(self._vivos(incluir_reemplazados))
 
     def adjuntar_doc(self, presupuesto_id, *, doc_id, doc_link) -> None:
         p = self._mios().get(presupuesto_id)
@@ -425,7 +434,23 @@ def test_listado_vacio_es_200_con_lista_vacia_no_404():
     cli, *_ = _app()
     r = cli.get("/presupuestos")
     assert r.status_code == 200
-    assert r.json() == {"presupuestos": []}
+    assert r.json() == {"presupuestos": [], "total": 0}
+
+
+def test_el_total_del_listado_es_el_del_TENANT_no_el_de_la_pagina():
+    """El defecto que cerró SM-D2/3: la página se corta en `limit` y el cliente no lo sabía. Con 51
+    filas y el default de 50 la lista trae 50 y `total` dice 51 — y con el código previo (que no
+    devolvía `total`) `r["total"]` es KeyError, o sea que este test FALLA sin el fix."""
+    cli, *_ = _app()
+    for _ in range(51):
+        assert cli.post("/presupuestos", json=_BODY).status_code == 201
+    r = cli.get("/presupuestos").json()
+    assert len(r["presupuestos"]) == 50 and r["total"] == 51
+    # El total ignora el limit pedido: pedir 3 no lo baja.
+    r3 = cli.get("/presupuestos?limit=3").json()
+    assert len(r3["presupuestos"]) == 3 and r3["total"] == 51
+    # Y `llegó al tope` es decidible sin heurística: faltan filas cuando len < total.
+    assert len(r["presupuestos"]) < r["total"]
 
 
 def test_detalle_inexistente_es_404():
