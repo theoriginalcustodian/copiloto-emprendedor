@@ -132,3 +132,35 @@ en el cuerpo: un marcador (`\` armado con `chr(92)`) y reemplazo al final.
 antes de anclar. El control que delata al medidor en un comando: corrélo contra un archivo que
 **sabes** LF; si no da cero, no es un medidor.
 [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+---
+
+## Refuerzo 2026-10-15 — medí bien el SEPARADOR y mal el ALCANCE: el ancla incluía al vecino y el replace lo borró
+
+Para insertar una entrada al final de un `set` de Python usé como ancla la **última entrada más la
+llave de cierre**:
+
+```python
+ancla = b'    "...reveal-SE-VE-en-device...md",\r\n}'
+raw = raw.replace(ancla, nuevo + b'}', 1)     # ← el vecino no se vuelve a escribir
+```
+
+El separador estaba medido (CRLF, correcto), el ancla aparecía exactamente una vez, el `os.replace` fue
+atómico y la sintaxis quedó válida. **Y aun así borré la entrada de `reveal`**, porque la incluí en lo
+que reemplacé y sólo re-escribí la llave. El comentario de `reveal` quedó huérfano arriba del mío.
+
+**Cómo apareció:** no por leer el diff — por el gate. El medidor pasó de acusar a mi documento a acusar
+**al de `reveal`** como «SIN CLASIFICAR». Un documento que *estaba* declarado apareciendo como no
+declarado es la firma de una entrada borrada, no de un bug del parser.
+
+**La regla:** un ancla que contiene texto que querés CONSERVAR tiene que re-emitirlo en el reemplazo.
+Lo seguro es anclar en lo que **no** se toca y concatenar: `raw.replace(ancla, ancla + nuevo, 1)`,
+anclando en el renglón completo del vecino (con su separador) y dejando la llave de cierre afuera.
+
+**El control que lo caza en el acto, y es de una línea:** contar los elementos antes y después.
+`N_despues == N_antes + 1` o abortar. Yo verifiqué que mi clave estuviera y que el archivo parseara —
+dos preguntas sobre lo que agregué, ninguna sobre lo que había. Es el mismo sesgo que
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+
+Relacionadas: [[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]] ·
+[[open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo]]
