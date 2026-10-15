@@ -327,3 +327,43 @@ contrato rancio **no se queda quieto**: sus afirmaciones laterales siguen citabl
 en la direccion equivocada. Por eso el cierre lleva la tabla de *que dijo mal*, no solo *ya esta
 hecho*. Relacionado: [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]] y
 [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]].
+
+---
+
+## 🔁 REFUERZO 2026-10-15 (b) — la polaridad INVERSA: la costura «sin dueño» ya estaba cerrada de los dos lados, y lo que lo destapó fue medir **en el momento de citar**
+
+Los catorce refuerzos de arriba registran el contrato rancio **emitido**. Éste registra el que **no
+salió**, porque es la única forma de saber cuánto cuesta el control: iba a bajar un `contrato_` por la
+costura del listado de presupuestos —«el listado pide 50 y trunca sin avisar; la costura entre
+`trabajos` y `presupuestos` no tiene dueño»— y antes de redactarlo corrí un `grep -n` sobre el sha.
+Los tres puntos estaban cerrados, medidos contra `c5cb2fa7` con control negativo (un símbolo
+inventado da `0`):
+
+| Lo que iba a pedir | Lo que ya estaba en main |
+|---|---|
+| «que alguien sea dueño de la costura» | `packages/core/src/api/trabajos.ts:3` importa `LIMITE_LISTADO_PRESUPUESTOS`, `listadoTruncado` y `listarPresupuestos` del módulo vecino: dueño único y declarado |
+| «que no pida 50» | `trabajos.ts:113` pide `listarPresupuestos({ limit: LIMITE_LISTADO_PRESUPUESTOS })`, y `presupuestos.ts:267` lo fija en **200** |
+| «que avise cuando truncó» | `trabajos.ts:147` deriva `truncado` con `listadoTruncado(cantidad, total)` (`presupuestos.ts:285-287`), que **con `total` presente es un hecho** y sólo sin `total` cae a la heurística |
+
+**La señal que me hizo dudar fue gramatical, no técnica:** «nadie es dueño de la costura» es una
+afirmación sobre una **ausencia**, y una ausencia no se verifica mirando mi propio plano —se verifica
+grepeando **quién importa a quién**. Es la misma lección que el refuerzo (c) de arriba (la premisa
+rancia era una ausencia y la escalé sin grepear nada) y que
+[[la-costura-leia-un-campo-que-nadie-escribe]], donde el control era grepear quién **escribe** el
+campo, no quién lo lee.
+
+**Y el número que casi cité mal prueba que el momento importa tanto como el comando.** Tenía anotado
+`listadoTruncado` en la línea 280; al re-medirlo contra el sha que iba a citar está en **285**. Una
+hora de deriva movió la cita. Si hubiera copiado mi propia nota —medida, mía, de esta misma sesión— el
+refuerzo habría nacido con una cita rancia: exactamente el defecto que la entrada describe, dentro de
+la entrada que lo describe. Por eso la regla no es «medí antes de redactar» sino **medí contra el sha
+que vas a citar, en el momento de citarlo**; una nota propia de hace una hora es una fuente de tercera
+mano sobre un árbol que se movió. Relacionado:
+[[la-cita-de-procedencia-muere-en-el-merge]].
+
+**Lo que esto fija como asimetría de costo:** evitar el contrato rancio costó **un `grep -n` sobre el
+sha**. Emitirlo cuesta, medido en esta entrada, que el peer lo lea, mida, conteste y pierda su turno
+—y después que sus afirmaciones laterales queden citables mandando trabajo en la dirección
+equivocada. No hay prudencia que justifique saltear el control más barato de los dos. Tercera vez en
+el día que esta clase se evitó midiendo primero, y ninguna de las tres fue por sospecha: fueron por
+correr el comando igual.
