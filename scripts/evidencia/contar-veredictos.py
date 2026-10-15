@@ -319,6 +319,9 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend2-a-planificacion_DECLARAR-los-8-ids-de-estado-NO_MEDIBLE-con-Falta-concreto-preg-NO-entra-ya-esta-medido-DESVIO-y-SM-C4-con-su-Falta.md",
     # 2026-10-15 — reveal, plataforma mobile: SE VE en device (consumidor real EntradaSesion.tsx:32); DESVIO documentado.
     "2026-10-15_cierre_frontend2-a-planificacion_reveal-SE-VE-en-device-DESVIO-lockup-y-sin-boton-de-pronunciar.md",
+    # 2026-10-15 — los 4 ids de device sin veredicto, plataforma mobile, medidos sobre d8d689e9:
+    # hablar/factura/presu DESVIO (copy o estructura central coinciden, difiere el resto) y grabando COHERENTE.
+    "2026-10-15_cierre_frontend2-a-planificacion_los-4-ids-de-device-hablar-factura-presu-grabando-MEDIDOS-en-d8d689e9.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
@@ -2422,6 +2425,17 @@ CONFLICTOS_CONOCIDOS = {
               "lockup —isotipo como «O» + `dobi`, `RevealEntrada.tsx:32-34`—, no hay boton de pronunciar por "
               "falta de asset de audio y suma la linea «Tu copiloto emprendedor»). Dos superficies, las dos "
               "vigentes.",
+    "hablar": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 07/10 "
+              "(BL-Q3-PWA: guia fuera de Ajustes, tono en Mi negocio) vs DESVIO mobile 15/10 (device, "
+              "d8d689e9: el copy de «Como hablarle» coincide palabra por palabra; difieren las opciones "
+              "como pastillas en vez de filas con radio, el nombre como campo editable inline en vez de "
+              "fila con «Editar», y los extras «Asi te responderia» + «Guardar»). Dos superficies, las dos "
+              "vigentes.",
+    "presu": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
+             "(matriz web re-medida: total «esperando respuesta», chips de estado, lista, «Nuevo "
+             "presupuesto») vs DESVIO mobile 15/10 (device, d8d689e9: la card oscura y las filas "
+             "COINCIDEN; difiere el titulo sin mes, «Nuevo presupuesto» arriba junto al microfono, el "
+             "buscador y la linea «N° · descripcion · items · fecha»). Dos superficies, las dos vigentes.",
     "afip": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
             "(BL-Q3-web, frontend2: «mismos campos del perfil fiscal», landing sin datos) vs DESVIO "
             "mobile 15/10 (device, estado SIN VINCULAR: encabezado «1. Perfil fiscal» numerado, sin "
