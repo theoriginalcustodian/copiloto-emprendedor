@@ -247,3 +247,56 @@ porque leía el comentario. Un control positivo que no discrimina **acredita al 
 - Y el guard del mutante tiene que sobrevivir a que cambie la **forma** de lo que muta: el del caso 2
   borraba líneas del allowlist por archivos nombrados y quedó mudo cuando el allowlist pasó a ser un
   directorio. → [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+---
+
+## Refuerzo 2026-10-15 (el DUAL) — el guard **lee** su propia explicación como dato, y el padrón que la línea declara deja de ser el que el humano escribió
+
+El caso raíz es un guard que *buscaba* una cadena y la encontraba en el comentario que explicaba por
+qué hacía falta. Éste es el dual, y muerde más fuerte porque **no hay nada que buscar: hay un valor
+que se lee mal**.
+
+`escaladores-buzon.sh` / `vigilancia-check.sh` suprimen una alarma si el contrato declara su padrón
+en una línea `ROLES:`. El mecanismo está bien diseñado y bien cableado — `vigilancia-check.sh:515-524`
+hasta explica el motivo correcto: *«una alarma que suena siempre enseña a saltear el gate entero»*. La
+ficha declaraba:
+
+```
+**ROLES:** backend, frontend1, frontend2 — los roles con ventana. `auditoria` y
+`manejo-de-errores` NO tienen sesión viva, y `escaladores-buzon.sh` expande un `-a-todos_`…
+```
+
+Y la función devolvía **cinco** roles, no tres:
+
+```
+roles_declarados_en <ficha>  ->  backend frontend1 frontend2 auditoria manejo-de-errores
+```
+
+`buzon-roles.sh:88` recorta sólo hasta los dos puntos y tokeniza **el resto de la línea entera**,
+prosa incluida. La oración que explicaba *por qué esos dos roles quedan afuera* los **nombra**, y
+nombrarlos ahí es declararlos. **La aclaración que excluye a dos roles es exactamente lo que los
+incluye**, y el gate gritó `SIN DUEÑO` contra dos roles sin sesión viva cada 3 minutos durante un día.
+
+**Por qué no dio síntoma, y es la parte que viaja:** el archivo **tenía** la línea. Cualquier control
+que pregunte *«¿declara `ROLES:`?»* sale verde, y el test que existe (`buzon-roles.sh:84` lo cita como
+«caso 3») prueba que **el ancla matchea**. Nadie compara el **valor devuelto** contra lo que el humano
+escribió. Es [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] aplicado a un parser: se prueba
+*se encuentra la línea* y se concluye *el padrón es el declarado*.
+
+Dos cosas que se chequean en 10 segundos y lo cazan:
+
+1. **El control negativo del padrón, no de la presencia.** Un test que declare `ROLES: backend — y no
+   auditoria` y **exija** que `auditoria` NO salga. Todos los controles que había probaban a quién
+   **encuentra**; ninguno probaba a quién **excluye** — [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]].
+2. **Si una línea de configuración no tolera una explicación al lado, está mal diseñada.** El
+   comentario de `buzon-roles.sh:83` ya avisaba que era *«cuarta vuelta del mismo error en este
+   archivo»*; ésta fue la quinta, por una vía que el ancla no cubre. Un campo que obliga a no explicar
+   nada lo va a romper la próxima persona igual, con buena intención: escribiendo por qué.
+
+**La pregunta que lo caza antes:** *¿este parser lee hasta dónde termina el **valor**, o hasta dónde
+termina la **línea**?* Si es lo segundo, todo lo que escribas para aclarar el valor **es** el valor.
+
+Arreglado por el lado del dato (partir la línea; la prosa a un bloque siguiente, que `grep -m1` ya no
+mira) y **no** del instrumento: es el lanzador de las tres sesiones y había una midiendo en device con
+él — [[el-instrumento-versionado-difiere-por-rama]]. El arreglo de raíz queda nombrado con su dueño:
+cortar el valor en el primer `—`, `.` o `(`.
