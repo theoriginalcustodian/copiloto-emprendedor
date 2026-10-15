@@ -22,7 +22,6 @@ Uso:
 """
 from __future__ import annotations
 
-import os
 import sys
 import time
 import uuid
@@ -71,14 +70,11 @@ def login_canonico() -> tuple[str, str]:
 
 
 def provisionar_y_loguear_adversario() -> tuple[str, str]:
-    # C4.1 (PR merged post-lote-B): /auth/signup exige invite_token (FAIL-CLOSED, COPILOTO_INVITE_TOKEN
-    # en el VPS). Se pasa por env var -- nunca hardcodeado ni impreso.
-    invite_token = os.environ.get("COPILOTO_INVITE_TOKEN", "")
-    if not invite_token:
-        raise RuntimeError("falta COPILOTO_INVITE_TOKEN en el entorno del script")
+    # SM-C2 (2026-10-14, orden del operador): /auth/signup NO exige invite_token -- el alta por email es
+    # abierta. Este alta es el medio para tener un segundo tenant, no un control bajo prueba: lo que se
+    # prueba abajo es el aislamiento entre tenants, no el alta.
     r = requests.post(f"{BASE}/auth/signup",
-                       json={"email": ADVERSARY_EMAIL, "password": ADVERSARY_PASSWORD,
-                             "invite_token": invite_token}, timeout=20)
+                       json={"email": ADVERSARY_EMAIL, "password": ADVERSARY_PASSWORD}, timeout=20)
     if r.status_code == 200:
         log(f"tenant adversario provisionado: cliente_id={r.json()['cliente_id']}")
     else:
