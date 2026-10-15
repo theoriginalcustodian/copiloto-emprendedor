@@ -555,3 +555,30 @@ override: no se sabe contra qué core se midieron. Si una fila cambia de veredic
 tras mis gestos, mensajes que no controlo (STT sobre audio ambiente; origen exacto del texto **no verificado**): «Música» (voz 0:05),
 «gaste 1234 en librería» → **gasto $1.234,00 anotado**, «cuánto vendí esta semana» → respuesta del agente. «Salió» del mes pasó a
 $51.234,00. Es la cuenta de prueba canónica; no se tocó ninguna integración.
+
+## Enmienda 2026-10-15 (3) — `soporte`: el código ya existía; la ausencia medida era del DATO, no de la app
+
+La fila 13 de la enmienda 2 dice que «Ver tickets anteriores (N) ›» y el clip siguen ausentes y que falta código de
+app. **Eso era falso en el código y verdadero en la pantalla de ese momento**: la UI entró en #1115 (`e3d1efa3`,
+13-10, ancestro de `ac86a5bd`), pero `TarjetaTicketSoporte` devuelve `null` sin ticket vigente ni anteriores, y el
+tenant canónico no tenía tickets cuando se midió. Hoy tiene 5 (SOP-0001…SOP-0005) y la pantalla muestra la tarjeta
+del vigente (SOP-0005, Abierto) y «Ver tickets anteriores (4) ›» desplegable (captura `s3`, Metro local sobre
+`5678979e`; prod sirve `ac86a5bd`, que ya contiene #1115). El clip es el control `chat-foto` del composer
+(`PantallaSoporte.tsx:286`): con SOP-0005 vigente abre «Foto del ticket · ¿De dónde sacamos la foto? Cancelar / Cámara / Galería»
+(captura `clip1`); se canceló sin elegir, no se subió nada. El control negativo (0 tickets) no se midió en device: el canónico ya
+tiene 5 y no hay DELETE; lo cubren los tests de `PantallaSoporte.test.tsx`. Los tickets los abrió otra sesión por el camino real, no esta.
+**Método:** una ausencia en pantalla con un componente que se oculta sin datos no prueba ausencia de código — se
+lee el componente antes de escribir «falta código». Re-marcado en `2026-10-13-veredictos-triaje15-capa-cascara-fe2.md`.
+
+## Enmienda 2026-10-15 (4) — H12 DoD 6 en device: prosa con importe VISTA; las kv de la regla NO caben en ESTA fila
+
+medido_contra: prod `72b85cba` (`/healthz` 15-10) · app: Metro local sobre `5678979e` (el lado app de H12 es #1110, ya en `ac86a5bd`) · canónico.
+
+- **Factura impaga expandida** (`facturas_impagas_viejas`): se ve la **prosa con el importe** — «Emitida hace 42 días. Son $50.000 que ya facturaste y todavía no entraron.» —, el chip «Emitida hace 42 días», la acción «Reclamar el pago» y la kv «Cliente · Cliente Seed Mi Dia». **No se ven** las dos kv de la regla («Factura», «Emitida»).
+- **Por qué faltan, y no es defecto de la app:** `_kv` descarta los valores vacíos (`mi_dia_presentacion.py:159-160`) y el presentador arma «Factura» con `datos.nro` y «Emitida» con `datos.fecha_emision` (`:179-180`). La tarjeta SÍ muestra el chip y la prosa «Emitida hace 42 días», que en ese mismo presentador sólo salen por el camino de respaldo `datos.dias` + días transcurridos (`:172-174`) — o sea que `fecha_emision` está vacío en esta fila (si no, «Emitida» saldría en las kv) y `nro` también. Es una tarjeta **sembrada antes de que el detector escribiera esos campos** (`mi_dia_detector.py:180-182` ya los escribe para las nuevas). Deducido de lo visto en device + el código, no leído de la respuesta cruda de la API.
+- **El mecanismo H12 sí funciona de punta a punta:** la tarjeta de presupuesto expandida muestra prosa («No contestó. Un presupuesto que se enfría rara vez se recupera solo.»), acción y kv «Cliente · Juan Pérez» + «Monto · $50.000» (la kv «Monto» llega del backend, ya formateada).
+- **Veredicto DoD 6:** prosa con importe ✔ en device; «las dos kv de la regla» **no medible con esta fila** — hace falta una factura impaga nacida con el detector actual (con `nro` y `fecha_emision`), y no se fabrica una: una factura de más de 30 días no se puede crear hoy sin backdatear en el canónico. Cubierto por backend: un caso por regla en `test_mi_dia_presentacion`. Observación aparte: el titular de esa tarjeta dice «hace 31 días» y la prosa «hace 42» — el titular se congela al alta, la prosa se recalcula al leer.
+
+## Enmienda 2026-10-15 (5) — `splash`: «se ve» medido (y `reveal` sigue sin el botón de pronunciar)
+
+Cierre de sesión desde Mi cuenta (confirmación «Sí, cerrar sesión») → la entrada sin sesión. Ráfaga de 8 capturas a ~1 s + una estable: mitad de animación (aro oscuro colapsando alrededor de la O, «se dice o-DO-bi» ya visible) y estado final con el lockup (monograma + «dobi») y **«Tu copiloto emprendedor»** debajo. Es la tagline que el DEVICE15 original daba por ausente: `RevealEntrada.tsx` `Tagline`. **`reveal`:** «se dice o-DO-bi» está como texto, **sin** el botón de altavoz (`rv-say`): sigue pendiente del asset de audio y es decisión del operador (no se tocó). Relogin con el harness (`--sin-arranque`, canónico): entró a Mi día; el harness reportó «el login no llevó al shell» porque perdió el foco hacia el launcher tras el login, no porque fallara —se verificó con `am start` + captura de Mi día—. Es un defecto del harness de verificación (no hay cierre de foco), no de la app.

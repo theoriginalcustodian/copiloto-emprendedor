@@ -130,6 +130,13 @@ export interface Tokens {
      * tiene que cambiar si el operador cambia de tema.
      */
     categorico: readonly string[];
+    /**
+     * Tile de color por categoría de tarjeta de Mi día (`index.html:2493`, `--f-cobros/--f-afip/--f-presu/
+     * --f-propio`). Pastel FIJO en las 2 pieles —la identidad de la categoría no cambia con el tema, mismo
+     * criterio que `categorico`— y por eso el glifo lleva `tinta` (negro tostado, ≥13,5:1 sobre los 4),
+     * no `texto`, que en `oscuro` es claro y se perdería sobre el pastel.
+     */
+    tileFuncion: { cobros: string; arca: string; presupuestos: string; tuyas: string; tinta: string };
   };
   glass: {
     tint: string;
@@ -421,6 +428,15 @@ const APOYO = '#E8A088';
 /** Los dos extremos de la paleta (`CLAUDE.md` §2): estructura y lienzo. El bloque los usa
  *  cruzados según la piel. */
 const NEGRO_TOSTADO = '#1A1512';
+
+/** Ver `Tokens.color.tileFuncion`. Hex del prototipo (`index.html:37-38`), no derivados del acento. */
+const TILE_FUNCION = {
+  cobros: '#DCE8DC',
+  arca: '#E4DCEC',
+  presupuestos: '#F7E6CD',
+  tuyas: '#EDE6DC',
+  tinta: NEGRO_TOSTADO,
+};
 const CREMA = '#F7F3EC';
 // El acento es #DE7250 en adorno. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
@@ -604,6 +620,7 @@ function construirTokens(p: PaletaCruda): Tokens {
       peligroBorde: p.peligroBorde,
       exito: p.exito,
       categorico: CATEGORICO,
+      tileFuncion: TILE_FUNCION,
     },
     glass: {
       tint: p.tint, tint2: p.tint2, bd, hi, s1, s2, chip, pill,
