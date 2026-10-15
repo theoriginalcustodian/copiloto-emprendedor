@@ -269,3 +269,30 @@ describe('PantallaInteligencia — estados textuales del refresco (BL-W6)', () =
     await waitFor(() => expect(texto()).toBe('Al día · recién'));
   });
 });
+
+describe('PantallaInteligencia — el refresh se dispara al SOLTAR, no al apoyar el dedo (DEVICE15 H4, fila `bi-refresh`)', () => {
+  // 🔴 El defecto de device: con el `RefreshControl` de `react-native`, `onRefresh` se disparaba a los 0,3 s del
+  // DOWN, 6 s antes del UP. La causa es el ÁRBITRO del gesto: el `ScrollView` de RNGH hace `waitFor` sobre el
+  // handler del `RefreshControl` de RNGH (le inyecta un `ref`); con el de RN ese `waitFor` apunta a nada y los dos
+  // árbitros se disputan el dedo. Jest no tiene dedo ni UP, así que NO puede medir «después del UP» -- eso lo mide el
+  // device. Lo que SÍ puede fijar es el mecanismo que lo causa: de QUÉ componente es el control. El test de arriba
+  // llama `onRefresh()` a mano y por eso seguía verde con el control equivocado.
+  it('el control de refresco es el de react-native-gesture-handler, NO el de react-native', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-portada')).toBeTruthy());
+
+    const control = screen.getByTestId('inteligencia-portada').props.refreshControl;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const rngh = require('react-native-gesture-handler').RefreshControl;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const rn = require('react-native').RefreshControl;
+
+    // Control positivo del instrumento: los dos son componentes DISTINTOS, si no la aserción de abajo no separa nada.
+    expect(rngh).toBeDefined();
+    expect(rn).toBeDefined();
+    expect(rngh).not.toBe(rn);
+
+    expect(control.type).toBe(rngh);
+    expect(control.type).not.toBe(rn);
+  });
+});
