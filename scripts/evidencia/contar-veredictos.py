@@ -297,7 +297,18 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F2-lote-frontend2-26-filas-mobile-con-veredicto-medido-contra-2e7d2af5.md",
     # 2026-10-15 — SM-F3 lote device, plataforma mobile: vozchat y pres-voz medidos con dictado real (DESVIO de
     # estructura/copy), onb-cumplida NO_MEDIBLE con el motivo escrito, y el hallazgo de la tarjeta del onboarding.
-    "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-y-pres-voz-DESVIO-medidos-en-device-onb-cumplida-NO_MEDIBLE-y-HALLAZGO-la-tarjeta-de-servicios-del-onboarding-medía-4px-1247.md",
+    # 2026-10-15 - RE-CLAVEADO por un RENAME. Este set se consulta con igualdad EXACTA
+    # (`n not in MEDICIONES_DECLARADAS`), a diferencia de `NO_SON_MEDICION`, que admite prefijo
+    # (`p.name == k or p.name.startswith(k)`). El archivo se acorto -- muy probablemente por el
+    # MAX_PATH de 260 de Windows, que es el motivo habitual de los renames en este buzon -- y la
+    # clave larga dejo de matchear: el ratchet lo reporto primero como «declarado que el glob ya no
+    # encuentra» y despues como SIN CLASIFICAR. El documento nunca dejo de existir ni de medir.
+    # ATAJO DECLARADO, no invisible: igualar la semantica de los dos sets (admitir prefijo aca)
+    # cerraria la clase entera, pero un prefijo corto en un set que SUMA a la cifra puede matchear
+    # un documento ajeno e INFLARLA -- peor que el sintoma. Queda como deuda con dueno
+    # (planificacion) y disparador: el proximo rename que rompa una clave de este set.
+    # El nombre no se tipea de memoria: se mide con un glob del buzon (ver scratchpad/reclave.py).
+    "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-pres-voz-DESVIO-onb-cumplida-NO_MEDIBLE-tarjeta-onboarding-4px-1247.md",
     # 2026-10-15 — SM-F3, plataforma mobile: preg medida en device (DESVIO; la card de resultado existe).
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-preg-DESVIO-medido-en-device-la-card-de-resultado-EXISTE-el-mapeo-decia-NO-EXISTE.md",
 }
@@ -306,6 +317,46 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-15 - PREFIJO INVARIANTE a proposito. Los dos `cierre_` de abajo se renombraron
+    # -- mas cortos -- a los MINUTOS de que yo los clasificara, y la clave larga dejo de matchear:
+    # `DECLARAR-6-de-los-10-ids-fiscales` paso a `DECLARAR-6-ids-fiscales`. Paso DOS veces en diez
+    # minutos (el otro caso, el del re-claveado de `SM-F3-vozchat`, esta mas abajo), asi que la
+    # causa no es un descuido: el MAX_PATH de 260 de Windows fuerza acortar los nombres de este
+    # buzon, y cualquier clave pegada a la parte VARIABLE del titulo caduca sola.
+    # La clave se corta donde el nombre deja de cambiar: fecha + tipo + emisor + destinatario +
+    # `DECLARAR-`. Verificado con un glob del buzon: cada prefijo matchea EXACTAMENTE 1 archivo
+    # (si matcheara 2, descartaria de mas -- el riesgo real del prefijo corto en este set).
+    # 2026-10-15 - El GEMELO del de frontend1, y se descarta por el MISMO predicado. Dictamina
+    # `NO_MEDIBLE` con `Falta:` terminal para 7 ids de estado, marca la ficha `SM-C4` como
+    # DOD-PARCIAL, y declara lo que NO hizo (no sembro, no vacio, no creo segunda cuenta).
+    # El UNICO veredicto que trae es `preg` = DESVIO, y ese es vocabulario del MAPEO (device15),
+    # no del criterio 3 de paridad web<->mobile: son dos medidores con dos preguntas.
+    # Segundo motivo, independiente y suficiente: ese veredicto de `preg` el propio doc lo REMITE
+    # a su registro canonico en otro cierre (`SM-F3-preg`), asi que contarlo aca lo contaria dos
+    # veces -- justo lo que `DEC-18` prohibe (solo UN lugar mide).
+    # Lo clasifico YO: el gate lo marco SIN CLASIFICAR y la duena del corpus es planificacion.
+    "2026-10-15_cierre_frontend2-a-planificacion_DECLARAR-":
+        "dictamina NO_MEDIBLE de 7 ids de estado y marca la ficha SM-C4 (decision DECLARAR); el "
+        "unico veredicto que trae (`preg` = DESVIO) es del mapeo, no del criterio 3, y lo remite "
+        "a su registro canonico en el cierre de SM-F3-preg -- contarlo aca seria contarlo dos veces",
+    # 2026-10-15 - DICTAMINA NO_MEDIBLE del MAPEO, y su propio autor declara que no toca este
+    # criterio: «estas 6 filas cierran como declaradas, no como medidas: el criterio 3 mobile NO
+    # sube por ellas; sale de la poblacion "sin nada" pero entra en "no comparables"». No hay
+    # motivo mas solido que el autodeclarado, y coincide con el predicado: el doc resuelve 6 ids
+    # fiscales a un `Falta:` terminal por estado de cuenta (decision DECLARAR del operador 15/10),
+    # y no emite ningun veredicto de paridad web<->mobile por `id + camino`, que es lo que cuenta
+    # este script.
+    # Lo clasifico YO porque el gate lo marco SIN CLASIFICAR, la duena del corpus es planificacion,
+    # y frontend1 lo pide explicitamente en su cierre: «no toco ese script: es tuyo».
+    # Ojo con el reflejo de sumarlo: el doc mide con rigor -- codigo a `1e48cc42` mas el
+    # `/afip/estado` del canonico -- y ese rigor invita a contarlo. Rigor no es predicado: sumarlo
+    # inflaria el criterio 3 con filas que su autor declara NO comparables (DEC-18, solo UN lugar
+    # mide). El segundo motivo es independiente y suficiente: las 6 filas ya tienen registro
+    # canonico en el doc de veredictos del mapeo, asi que contarlo aparte las contaria dos veces.
+    "2026-10-15_cierre_frontend1-a-planificacion_DECLARAR-":
+        "dictamina NO_MEDIBLE de 6 ids fiscales del mapeo por estado de cuenta (decision "
+        "DECLARAR); su autor declara explicitamente que «el criterio 3 mobile NO sube por "
+        "ellas» -- entran en «no comparables», no en «medidas»",
     # 2026-10-15 - OTRO MEDIDOR, no otro vocabulario. El `avance_` de frontend2 MIDE, y mide bien:
     # trae veredictos `**R**` de device por fila, cada uno con su carpeta de evidencia, y declara un
     # control negativo (sin lista cargada, modo avion, no hay tarjeta de ticket). No lo descarto por
