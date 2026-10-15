@@ -530,3 +530,84 @@ abierta.
 - Un doc que declara *«no re-derivé X»* está marcando un **falso rojo probable**, no una nota al pie.
   Esa frase es el disparador de una re-medición, y quien la escribe no es quien la va a leer.
   → [[instrumento-que-no-mira-nunca-falla]]
+
+## 🔁 REFUERZO 2026-10-15 — el falso rojo salió de un ancla que **heredé del PR anterior**, donde el sufijo existía por una colisión que este archivo no tenía
+
+Mergeé dos refuerzos de memoria seguidos. El primero (#1256) entró en una entrada que **ya tenía** un
+refuerzo con la fecha de hoy, así que el guard de unicidad me obligó a renombrar el mío a
+`REFUERZO 2026-10-15 **(b)**` y a anclar el control en ese literal. El segundo (#1257) fue a **otro
+archivo**, que no tenía ninguna colisión: su ancla es `REFUERZO 2026-10-15`, sin sufijo.
+
+El control por efecto del segundo merge imprimió:
+
+```
+b46494e3 docs(memoria): refuerzo — la autoridad hablaba de este mismo caso POR NOMBRE … (#1257)
+el refuerzo en main: 0          ← FALSO ROJO
+control positivo (DEC-11 sigue): 3
+```
+
+El `0` no decía «el merge falló»: decía «el literal que busqué no está». Re-medido contra
+`origin/main` en el acto, el refuerzo **sí estaba** — `grep -n '^## '` lo encuentra en la **línea 56**
+y el archivo pesa los **5241 bytes** exactos que había escrito. El merge fue perfecto; lo que falló
+fue el instrumento.
+
+### Por qué este falso rojo es de una clase propia
+
+Los demás de este archivo salen de medir **la forma equivocada del sujeto** (el nombre cuando la
+inclusión es por glob, el path en vez del archivo, la FORMA de una aserción). Éste sale de otra
+parte: **el ancla era correcta — para el commit anterior.** El `(b)` no era un error de tipeo ni una
+elección estética: era la **cicatriz de una colisión** en un archivo distinto, y viajó al control del
+siguiente porque los dos comandos se escribieron en la misma tanda, a quince minutos uno del otro.
+
+Y el control positivo **no lo podía cazar**, aunque hizo todo bien: `DEC-11 → 3` sólo acredita que el
+grep leyó el archivo correcto en la rama correcta. Un control positivo valida el **canal**; no puede
+validar el **literal que buscás**, porque el literal es justamente la parte que no comparten.
+
+### La pregunta que lo caza
+
+> **«¿este ancla la escribí para ESTE sujeto, o la copié del anterior?»**
+
+Y su versión operativa, que es más barata que la pregunta: **el ancla se saca del archivo que vas a
+medir, en el momento de medirlo** — `grep -n '^## ' <el archivo>` y copiar el renglón que salga. No
+del comando de al lado, ni de lo que recordás haber titulado. Es la misma regla que ya aprendí para
+las citas de línea (*medí contra el sha que vas a citar, en el momento de citarlo*,
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]]), aplicada un escalón antes: al **literal de
+búsqueda**, no al número de línea.
+
+### El costo real, que no es el minuto de re-medir
+
+Un falso rojo en un control por efecto **ya corrido después del merge** no se parece a un bug: se
+parece a prudencia. Si lo hubiera reportado tal cual, habría dicho *«el merge de #1257 entró pero el
+refuerzo no está en main»* — una frase que manda a alguien a investigar un repo sano, y que en un
+checkout compartido invita exactamente al movimiento que CANON 9 prohíbe. El guard de colisión de
+anclas se ganó el lugar dos PRs antes; lo que faltaba era **el guard simétrico**: que el ancla del
+control salga medida del sujeto, igual que el ancla de la escritura.
+
+- Dos commits seguidos sobre el mismo tema comparten el **comando**, no el **sujeto**. Reusar el
+  comando es correcto; reusar su literal es el defecto. → [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
+- Un sufijo que nació de una colisión (`(b)`, `-v2`, `-final`) es **estado de otro archivo**. Si
+  aparece en un control, preguntá de dónde vino antes de creerle el veredicto.
+  → [[el-instrumento-fabrica-una-referencia-que-no-existe]]
+
+### Coda medida en el acto: **el guard de unicidad del ancla tenía el mismo defecto**
+
+El `assert` que escribí para proteger este refuerzo contaba el ancla **en todo el archivo**, no en los
+renglones de encabezado — y disparó, porque el cuerpo de arriba **cita** dos veces el ancla del PR
+anterior. Un rojo de apariencia legítima sobre un archivo correcto: el mismo patrón que este refuerzo
+describe, reproducido por el instrumento escrito para describirlo. El guard real mide el **sujeto**,
+que es el renglón `^## `:
+
+```python
+encabezados = [l for l in t.split("
+") if l.startswith("## ") and ANCLA in l]
+assert len(encabezados) == 1     # un solo ENCABEZADO
+assert t.count(ANCLA) == 3       # + las citas en prosa, contadas a proposito
+```
+
+Medido en este archivo: **1 encabezado · 3 menciones**. Y el primer intento de corrección falló otra
+vez, por una tercera vía: `print()` del encabezado reventó con `UnicodeEncodeError` en `cp1252` por el
+emoji del título — el **archivo** estaba bien, el `stdout` de Windows no
+(`sys.stdout.reconfigure(encoding="utf-8")`). Tres rojos seguidos, ninguno del sujeto.
+
+Un guard de unicidad que no distingue **declarar** de **citar** prohíbe hablar del caso anterior, y
+escribir memoria es casi siempre citar el caso anterior.
