@@ -109,7 +109,11 @@ def _centro(bounds: str) -> tuple[int, int] | None:
 
 def buscar(test_id: str = "", texto: str = "") -> tuple[int, int] | None:
     """Centro del primer nodo cuyo resource-id/content-desc == test_id, o cuyo texto contenga `texto`."""
-    raiz = arbol()
+    return buscar_en(arbol(), test_id, texto)
+
+
+def buscar_en(raiz: ET.Element | None, test_id: str = "", texto: str = "") -> tuple[int, int] | None:
+    """`buscar` sobre un árbol YA volcado. Pura: se prueba sin device (`scripts/tests/test-en-el-shell.sh`)."""
     if raiz is None:
         return None
     for nodo in raiz.iter("node"):
@@ -360,10 +364,33 @@ def arbol_expone_rn() -> bool:
     return False
 
 
+# Anclas del SHELL, vale decir de CUALQUIERA de sus pantallas de entrada (Mi día, chat, …), no sólo del chat.
+# Hasta 2026-10-15 el único ancla era el chat (`chat-composer` / «En qué te ayudo»): la app abría LOGUEADA en
+# Mi día —el tablero— y el harness informaba «la pantalla de login nunca apareció»: el instrumento condenó al
+# producto por su propia ceguera (el caso que `arbol_expone_rn` ya documenta, en la función de al lado).
+# `panel-handle` / `panel-hint` son del PanelDeslizable, que envuelve a TODAS las pantallas del shell.
+ANCLAS_SHELL = ("chat-composer", "panel-handle", "panel-hint", "midia-alta-texto", "midia-chips")
+TEXTOS_SHELL = ("En qué te ayudo", "Escribile a Odobi")
+
+
+def hay_shell(raiz: ET.Element | None) -> bool:
+    """¿El árbol volcado es el SHELL logueado? Pura (se prueba sin device).
+
+    Dos mitades, y las dos se ejercitan en `test-en-el-shell.sh`: (a) el login en primer plano da False
+    AUNQUE se cuele algún ancla (`login-screen` gana), y (b) cualquier pantalla del shell da True. Sin
+    la mitad (a), arreglar el falso rojo cambiaría un falso rojo por un falso VERDE, que es peor."""
+    if raiz is None or buscar_en(raiz, "login-screen") is not None:
+        return False
+    return any(buscar_en(raiz, a) is not None for a in ANCLAS_SHELL) or any(
+        buscar_en(raiz, texto=t) is not None for t in TEXTOS_SHELL
+    )
+
+
 def en_el_shell() -> bool:
-    """Ancla en elementos INTERACTIVOS (el composer) o en texto visible — los contenedores de RN
-    (`panel-principal`, `chat-view`) no siempre llegan al volcado de uiautomator como nodo propio."""
-    return buscar("chat-composer") is not None or buscar(texto="En qué te ayudo") is not None
+    """Ancla en elementos INTERACTIVOS (composer, asidero del panel) o en texto visible — los contenedores
+    de RN (`panel-principal`, `chat-view`) no siempre llegan al volcado de uiautomator como nodo propio.
+    Un solo volcado por llamada (antes eran dos). Ver `ANCLAS_SHELL` / `hay_shell`."""
+    return hay_shell(arbol())
 
 
 def frente_login() -> bool:
