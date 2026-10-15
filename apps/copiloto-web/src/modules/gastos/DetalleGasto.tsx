@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   destinoDeImputacion,
-  etiquetaDeDestino,
   ETIQUETA_CATEGORIA,
   formatearFechaLarga,
   formatearImporte,
   imputarGasto,
   listarTrabajosImputables,
   obtenerGasto,
+  rotuloDeImputacion,
   type DestinoTrabajo,
   type Gasto,
+  type ImputacionGasto,
   type TrabajoImputable,
 } from '@copiloto/core';
 
@@ -47,7 +48,7 @@ function Dato({ etiqueta, valor, testID }: { etiqueta: string; valor: string; te
 /**
  * «¿De qué trabajo es este gasto?» — el bloque de **imputación**, gemelo de
  * `apps/mobile/src/modules/gastos/DetalleGasto.tsx`. Lo que decide qué mostrar vive en
- * `@copiloto/core` (`destinoDeImputacion`, `etiquetaDeDestino`, `listarTrabajosImputables`) y no acá:
+ * `@copiloto/core` (`destinoDeImputacion`, `rotuloDeImputacion`, `listarTrabajosImputables`) y no acá:
  * el mismo defecto en dos pantallas gemelas es el que ya pagamos
  * (`memoria/dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md`).
  *
@@ -65,7 +66,10 @@ function Dato({ etiqueta, valor, testID }: { etiqueta: string; valor: string; te
 type EstadoLista = 'cerrada' | 'cargando' | 'abierta' | 'no_disponible';
 
 function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
-  const [destino, setDestino] = useState<DestinoTrabajo | null>(destinoDeImputacion(gasto.imputacion));
+  // Se guarda la IMPUTACIÓN entera y no sólo el destino: el rótulo (`etiqueta`) viaja con ella, y
+  // re-derivarlo desde el `ref` es lo que mostraba `#227` donde el selector decía `#3`.
+  const [imputado, setImputado] = useState<ImputacionGasto | null>(gasto.imputacion);
+  const destino: DestinoTrabajo | null = destinoDeImputacion(imputado);
   const [lista, setLista] = useState<EstadoLista>('cerrada');
   const [trabajos, setTrabajos] = useState<readonly TrabajoImputable[]>([]);
   const [guardando, setGuardando] = useState(false);
@@ -74,7 +78,7 @@ function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
   // El gasto fresco puede traer otra imputación que la del listado (se abrió el detalle con el
   // objeto viejo). Gana el del servidor, igual que el resto de la pantalla.
   useEffect(() => {
-    setDestino(destinoDeImputacion(gasto.imputacion));
+    setImputado(gasto.imputacion);
   }, [gasto.imputacion]);
 
   if (gasto.imputacion === null) return null;
@@ -106,7 +110,7 @@ function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
         setError('No pudimos guardar el trabajo. Probá de nuevo.');
         return;
       }
-      setDestino(destinoDeImputacion(res.imputacion));
+      setImputado(res.imputacion);
       setLista('cerrada');
     } catch {
       setError('No pudimos guardar el trabajo. Probá de nuevo.');
@@ -121,7 +125,7 @@ function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
         <>
           <Dato
             etiqueta="Trabajo"
-            valor={etiquetaDeDestino(destino)}
+            valor={rotuloDeImputacion(imputado) ?? ''}
             testID="detalle-gasto-trabajo-imputado"
           />
           <div className="detalle-gasto__trabajo-acciones" data-testid="detalle-gasto-trabajo-acciones">

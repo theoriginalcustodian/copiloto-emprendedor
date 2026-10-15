@@ -38,14 +38,21 @@ const NOMBRE_ESLABON: Record<EslabonTrabajo, string> = {
   cobro: 'Cobro',
 };
 
+/** El nombre del eslabón sin número: `Presupuesto`, `Factura`, `Cobro`. */
+export function nombreDeEslabon(eslabon: EslabonTrabajo): string {
+  return NOMBRE_ESLABON[eslabon];
+}
+
 /**
- * El nombre mínimo de un trabajo, **sin pedir nada a la red**: `Presupuesto #12`, `Factura #7`.
+ * El nombre mínimo de un trabajo a partir de su `ref`, **sin pedir nada a la red**: `Presupuesto #12`.
  *
- * 🔴 **Existe para que mostrar «a qué trabajo está imputado este gasto» no cueste una llamada.** La
- * imputación que trae `GET /gastos/{id}` son tres referencias y nada más (`imputacion_de()`,
- * `apps/copiloto/gasto_store.py:61`): no viaja la etiqueta. Resolverla exigiría listar trabajos cada
- * vez que se abre un detalle, y el detalle se abre mucho más seguido de lo que se imputa. La etiqueta
- * rica —el concepto del presupuesto— se usa donde sí hace falta elegir: `listarTrabajosImputables`.
+ * 🔴 **El `#` es el `ref` INTERNO (el id de base), NO el número que el emprendedor ve.** Para un
+ * presupuesto, `ref` es `presupuesto.id` y el número humano es `presupuesto.numero`: son dos números
+ * distintos del mismo trabajo (medido en device el 2026-10-15: el selector decía `#3`, el detalle
+ * `#227`). Por eso **no se usa para rotular «a qué trabajo está imputado este gasto»**: ahí manda
+ * `rotuloDeImputacion` (`gastos.ts`), que usa la etiqueta que trae el backend y, si no viene, el
+ * nombre del eslabón SIN número. Este helper queda para el fallback de una fila de lista que llegó sin
+ * texto, donde mostrar un identificador es mejor que una fila que no se puede elegir.
  */
 export function etiquetaDeDestino(destino: DestinoTrabajo): string {
   return `${NOMBRE_ESLABON[destino.eslabon]} #${destino.ref}`;
