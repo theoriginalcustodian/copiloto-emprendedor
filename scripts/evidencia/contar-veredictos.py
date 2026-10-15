@@ -295,6 +295,9 @@ MEDICIONES_DECLARADAS = {
     # 2026-10-15 — SM-F2 lote frontend2, plataforma mobile: 16 filas medidas en device ese dia (tabla A) y 10
     # re-emitidas desde docs ya versionados (tabla B), con `plataforma` y `medido_contra` declarados.
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F2-lote-frontend2-26-filas-mobile-con-veredicto-medido-contra-2e7d2af5.md",
+    # 2026-10-15 — SM-F3 lote device, plataforma mobile: vozchat y pres-voz medidos con dictado real (DESVIO de
+    # estructura/copy), onb-cumplida NO_MEDIBLE con el motivo escrito, y el hallazgo de la tarjeta del onboarding.
+    "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-y-pres-voz-DESVIO-medidos-en-device-onb-cumplida-NO_MEDIBLE-y-HALLAZGO-la-tarjeta-de-servicios-del-onboarding-medía-4px-1247.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
