@@ -187,3 +187,50 @@ Y el detalle incómodo: ese mismo día encontré el defecto del medidor del mape
 nombre en vez de por lo que el nombre señalaba**. Cometí la versión en miniatura del defecto que estaba
 denunciando, en el mismo documento donde lo denunciaba.
   -> [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]
+
+## Refuerzo 2026-10-15 (bis) — cuando el que resuelve el nombre ambiguo es un INSTRUMENTO, elige por orden de `os.walk` y **acusa**
+
+Escribí un auditor que verifica que cada divergencia marcada `E` cite autoridad existente: saca las
+referencias `` `archivo.ext:linea` `` de los docs de veredictos y comprueba que el archivo exista y que
+la línea esté dentro. **Dos corridas, dos acusaciones falsas, y ninguna de las dos fue un bug de
+lógica: las dos fueron el mismo atajo de resolución de nombres.**
+
+**Primera corrida — condena el 100%.** Resolví cada cita con `os.path.join(RAIZ, ruta)`, pero los docs
+citan **basenames** (`PantallaMiDia.tsx:451`), no rutas desde la raíz. Ningún join resolvió, así que el
+reporte salió con 12 `[PROBLEMA] AUSENTE:` sobre archivos que yo había **leído a mano diez minutos
+antes**. Lo único que me frenó de publicarlo fue reconocer un nombre propio en la lista de ausentes.
+
+**Segunda corrida — condena uno, al azar.** Arreglado con un índice `basename -> [rutas]`, quedó **una**
+acusación: la fila `chat` citaba `index.html:1873` y el índice dijo «21 líneas». Pero `index.html` tiene
+en este repo **al menos 5 referentes**, y mi índice se quedó con `idx[base][0]`, o sea **el primero que
+devolvió `os.walk`**: `apps/copiloto-web/index.html`, de 21 líneas. El que la cita nombraba es
+`Prototipo frontend/odobi-ui/prototipo/index.html`, de **3900**. La cita era correcta.
+
+**Lo que esto agrega al refuerzo anterior del mismo día** (donde los dos referentes de `ENV_E2E` eran dos
+archivos y el que confundió los usos fui **yo**): acá el que resuelve la ambigüedad es **código**, y eso
+cambia tres cosas.
+
+1. **Escala.** Yo confundo un nombre por vez; el instrumento lo hace sobre todo el corpus en una corrida.
+2. **Dirección.** El atajo no produce un «no sé»: produce un **veredicto**, y en este caso en la
+   dirección acusatoria — [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]. Un falso «AUSENTE»
+   parece rigor: «encontré una exención sin autoridad» se lee mejor que «no encontré nada».
+3. **Reproducibilidad engañosa.** `idx[base][0]` es determinista, así que volver a correrlo da el mismo
+   resultado y eso **se siente como confirmación**. El veredicto depende del orden del filesystem, no del
+   dato.
+
+**Las reglas, operables:**
+
+- Un instrumento que resuelve citas **no puede resolver por basename**. Si el corpus cita basenames,
+  el instrumento tiene que reportar «`N` referentes posibles» y **abstenerse**, no elegir uno. Elegir es
+  fabricar un veredicto sobre una pregunta que el dato no contesta.
+- **Control positivo obligatorio sobre el ÍNDICE, no sobre el resultado:** antes de creer una sola línea
+  del reporte, afirmar que el índice resuelve 2 o 3 nombres que ya leíste a mano, y que un nombre
+  inventado **no** resuelve. Eso es lo que convirtió «12 problemas» en «0 problemas».
+- Y el síntoma barato que funcionó las dos veces: **si el reporte acusa algo que acabas de leer con tus
+  ojos, el sospechoso es el reporte.** No lo publiques para que otro lo refute.
+
+Resultado real después de los dos arreglos: **30 divergencias `E` examinadas, 0 con autoridad inexistente**
+(14 con `path:linea` que resuelve, 15 que citan id de backlog o motivo verificable en prosa, 1 que era mi
+colisión). O sea que la auditoría cuyo valor era «encontrar enmiendas sin autoridad» devolvió **vacío** — y
+ese vacío es el resultado, no un fracaso: [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
+  -> [[instrumento-que-no-mira-nunca-falla]] · [[exencion-sin-autoridad]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
