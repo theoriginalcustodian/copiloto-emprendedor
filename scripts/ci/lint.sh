@@ -151,6 +151,20 @@ echo "✅ mapeo del criterio 3: 6 controles OK sobre LOS DOS fixtures (original 
 python3 -I -X utf8 "$ROOT/scripts/evidencia/auditar-mapeo-vs-codigo.py" --ratchet
 
 # ───────────────────────────────────────────────────────────────────────────────
+# `existe-en-main.py`: sus PREDICADOS, no su veredicto (2026-10-15)
+#
+# Lo que se ejercita aca es el `--canario` (8 controles: 2 positivos, 2 negativos, prosa,
+# normalizacion del `:linea`, la jerga del registro y su negativo), NO la corrida sobre el corpus.
+# La corrida depende del estado de los docs, que es vivo y compartido entre tres sesiones: meterla
+# en el gate pondria rojo el lint de TODAS las ramas cuando otra sesion re-marca una fila, que es
+# exactamente el defecto LINTALCANCE que `fabricar-corpus-fixture.py` vino a cerrar.
+#
+# En GitHub Actions el fetch es shallow y `origin/main` no existe: ahi el canario SALTEA diciendolo
+# (no aborta, no devuelve verde callado). Es el unico de los tres comportamientos que no miente, y
+# tiene su propio control -- medido el 2026-10-15 en un repo sin ese ref.
+python3 -I -X utf8 "$ROOT/scripts/evidencia/existe-en-main.py" --canario
+
+# ───────────────────────────────────────────────────────────────────────────────
 # Registro UNICO del sprint: coherencia + tabla regenerada (2026-10-14)
 #
 # POR QUE ES UN GATE Y NO UNA COSTUMBRE: medido el 14-10, 18 de las 26 fichas del backlog
