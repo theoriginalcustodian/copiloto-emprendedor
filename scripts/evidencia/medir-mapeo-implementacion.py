@@ -128,6 +128,43 @@ def corpus_divergente(paths):
     except Exception as e:                      # noqa: BLE001 - etiqueta, nunca tumba la medicion
         return [], "no pude medir la vigencia del corpus: %s" % e
 
+def _procedencia():
+    """La PROCEDENCIA de la cifra, para pegarla al renglon del numero.
+
+    POR QUE NO ALCANZA CON `ARBOL MEDIDO` (medido 2026-10-15, el dia que paro el sprint).
+    La etiqueta ya existia y aun asi las tres sesiones citaron 46/54 durante horas creyendo que
+    era el estado del sprint: sale en la **linea 1 de 77**, el resumen en la 70-77, y el resumen
+    se lee con `tail`, que corta justo la etiqueta. Una etiqueta a 76 renglones de la cifra que
+    etiqueta no esta puesta: esta archivada.
+    Y decia *donde* (una ruta), no *cuan atras*: ver `.../copiloto-emprendedor` no avisa de los
+    106 commits de distancia. El checkout COMPARTIDO es el cwd por defecto de las sesiones, asi
+    que el arbol atrasado es el caso FRECUENTE, no el raro. Efecto medido ese dia: 46/54 con 8
+    pendientes desde el checkout contra 52/54 con 2 (`reveal` `soporte`) sobre origin/main, con
+    el MISMO script -- una sola variable movida.
+
+    NO ES UN GATE Y NO FALLA, igual que `corpus_divergente`: trabajar sobre un arbol atrasado es
+    legitimo; lo que no es legitimo es que la cifra salga sin decirlo. Gritar en el caso normal
+    desarma el guard (`memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md`).
+    """
+    import subprocess
+    try:
+        v = subprocess.run(["git", "rev-parse", "--verify", "--short", "origin/main"],
+                           cwd=str(RAIZ), capture_output=True, text=True, timeout=20)
+        if v.returncode != 0:
+            return "  @arbol sin `origin/main` (distancia NO medida)"
+        sha = v.stdout.strip()
+        d = subprocess.run(["git", "rev-list", "--count", "HEAD..origin/main"],
+                           cwd=str(RAIZ), capture_output=True, text=True, timeout=30)
+        if d.returncode != 0 or not d.stdout.strip().isdigit():
+            return "  @arbol a distancia NO medida de origin/main"
+        atras = int(d.stdout.strip())
+        if atras == 0:
+            return "  @origin/main %s" % sha
+        return "  @arbol +%d comm DETRAS de origin/main %s" % (atras, sha)
+    except Exception as e:                      # noqa: BLE001 - etiqueta, nunca tumba la medicion
+        return "  @procedencia no medida (%s)" % str(e)[:60]
+
+
 SIN_MEDIR = ("SIN VEREDICTO", "FUERA-DE-ESTE-CORPUS")
 CUMPLE_DOD = {"CERRADA-EN-CODIGO", "ENMIENDA-FUNDADA", "COHERENTE"}
 BRAZOS = ("chat", "cascara", "device")   # el canario rompe estos de a uno
@@ -442,10 +479,11 @@ def main():
             for k, v in por_bloque[g].most_common():
                 print("    %3d  %s" % (v, k))
         print("-" * 96)
-        print("CUMPLE EL DoD        : %d/%d filas (%d%%)  [codigo + enmienda fundada]"
-              % (cumple, n, cumple * 100 // n))
-        print("CERRADA EN CODIGO    : %d/%d filas (%d%%)  [solo lo escrito y mergeado]"
-              % (codigo, n, codigo * 100 // n))
+        proc = _procedencia()   # la cifra NUNCA sale sin su arbol: van en el MISMO renglon
+        print("CUMPLE EL DoD        : %d/%d filas (%d%%)  [codigo + enmienda fundada]%s"
+              % (cumple, n, cumple * 100 // n, proc))
+        print("CERRADA EN CODIGO    : %d/%d filas (%d%%)  [solo lo escrito y mergeado]%s"
+              % (codigo, n, codigo * 100 // n, proc))
         # Esta cifra NO es un cierre: cuenta filas MEDIDAS, pendientes incluidas. Lo pidio
         # backend el 2026-10-13 al ver que con 54/54 «con veredicto» y 12 pendientes, la
         # linea leida sola suena a 100% hecho. Una cifra que no declara su sujeto se deja
@@ -454,8 +492,8 @@ def main():
               % (medidas, n, medidas * 100 // n, len(pend)))
         print("FUERA DE ESTE CORPUS : %d/%d filas  [backend+nativa: su evidencia son los cierres del buzon]"
               % (fuera, n))
-        print("PENDIENTE DECLARADA  : %d/%d filas  [una divergencia con ⛓/⚠: NO cumplen el DoD]"
-              % (len(pend), n))
+        print("PENDIENTE DECLARADA  : %d/%d filas  [una divergencia con ⛓/⚠: NO cumplen el DoD]%s"
+              % (len(pend), n, proc))
         if pend:
             print("    " + " ".join(pend))
         if huecos:
