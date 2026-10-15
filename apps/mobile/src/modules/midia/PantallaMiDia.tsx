@@ -39,6 +39,7 @@ import {
 import { AvatarCuenta } from './AvatarCuenta';
 import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
+import { TileCategoria } from './TileCategoria';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { CampoTexto, FilaBotones } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -917,86 +918,90 @@ function TarjetaMiDiaRow({
         testID={`midia-tarjeta-${tarjeta.id}`}
         accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
       >
-        <View style={styles.tarjeta}>
-          <Text
-            numberOfLines={expandida ? undefined : 2}
-            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
-          >
-            {tarjeta.texto}
-          </Text>
-          {expandida && prosa != null && (
+        {/* El tile de la categoría (`TileCategoria`): sin categoría decidida por el backend, no hay tile. */}
+        <View style={styles.cabTarjeta}>
+          <TileCategoria categoria={tarjeta.categoria} testID={`midia-tarjeta-${tarjeta.id}-tile`} />
+          <View style={styles.tarjeta}>
             <Text
-              testID={`midia-tarjeta-${tarjeta.id}-prosa`}
-              style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
+              numberOfLines={expandida ? undefined : 2}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
             >
-              {prosa}
+              {tarjeta.texto}
             </Text>
-          )}
-          {expandida && chip != null && (
-            <View
-              testID={`midia-tarjeta-${tarjeta.id}-chip`}
-              style={[styles.chipPresentacion, { borderColor: colorChip, borderRadius: tema.radio.completo }]}
-            >
-              <Text style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>{chip.texto}</Text>
-            </View>
-          )}
-          {expandida && accion != null && (
-            <Pressable
-              testID={`midia-tarjeta-${tarjeta.id}-accion`}
-              accessibilityRole="button"
-              accessibilityLabel={accion.texto}
-              // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
-              // que no hace nada es peor que un rótulo (DEVICE15 H5).
-              disabled={accionAlChat ? avisoDeAccion == null : rutaAccion == null || onAccion == null}
-              onPress={() => {
-                if (accionAlChat) {
-                  if (avisoDeAccion != null) onAviso?.(avisoDeAccion);
-                  return;
-                }
-                if (rutaAccion != null) onAccion?.(rutaAccion);
-              }}
-              hitSlop={10}
-              style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
-            >
-              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                {accion.texto}
+            {expandida && prosa != null && (
+              <Text
+                testID={`midia-tarjeta-${tarjeta.id}-prosa`}
+                style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
+              >
+                {prosa}
               </Text>
-            </Pressable>
-          )}
-          {expandida && accion == null && tarjeta.verbo != null && aviso != null && (
-            <Pressable
-              testID={`midia-tarjeta-${tarjeta.id}-verbo`}
-              accessibilityRole="button"
-              accessibilityLabel={tarjeta.verbo}
-              onPress={() => onAviso?.(aviso)}
-              hitSlop={10}
-              style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
-            >
-              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+            )}
+            {expandida && chip != null && (
+              <View
+                testID={`midia-tarjeta-${tarjeta.id}-chip`}
+                style={[styles.chipPresentacion, { borderColor: colorChip, borderRadius: tema.radio.completo }]}
+              >
+                <Text style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>{chip.texto}</Text>
+              </View>
+            )}
+            {expandida && accion != null && (
+              <Pressable
+                testID={`midia-tarjeta-${tarjeta.id}-accion`}
+                accessibilityRole="button"
+                accessibilityLabel={accion.texto}
+                // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
+                // que no hace nada es peor que un rótulo (DEVICE15 H5).
+                disabled={accionAlChat ? avisoDeAccion == null : rutaAccion == null || onAccion == null}
+                onPress={() => {
+                  if (accionAlChat) {
+                    if (avisoDeAccion != null) onAviso?.(avisoDeAccion);
+                    return;
+                  }
+                  if (rutaAccion != null) onAccion?.(rutaAccion);
+                }}
+                hitSlop={10}
+                style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
+              >
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                  {accion.texto}
+                </Text>
+              </Pressable>
+            )}
+            {expandida && accion == null && tarjeta.verbo != null && aviso != null && (
+              <Pressable
+                testID={`midia-tarjeta-${tarjeta.id}-verbo`}
+                accessibilityRole="button"
+                accessibilityLabel={tarjeta.verbo}
+                onPress={() => onAviso?.(aviso)}
+                hitSlop={10}
+                style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
+              >
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                  {tarjeta.verbo}
+                </Text>
+              </Pressable>
+            )}
+            {expandida && accion == null && tarjeta.verbo != null && aviso == null && (
+              <Text
+                testID={`midia-tarjeta-${tarjeta.id}-verbo`}
+                style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+              >
                 {tarjeta.verbo}
               </Text>
-            </Pressable>
-          )}
-          {expandida && accion == null && tarjeta.verbo != null && aviso == null && (
-            <Text
-              testID={`midia-tarjeta-${tarjeta.id}-verbo`}
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
-            >
-              {tarjeta.verbo}
-            </Text>
-          )}
-          {expandida && detalle.length > 0 && (
-            <View testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={styles.detalleKv}>
-              {detalle.map((f) => (
-                <View key={f.clave} style={styles.filaKv}>
-                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{f.clave}</Text>
-                  <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico, flexShrink: 1, textAlign: 'right' }}>
-                    {f.valor}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+            )}
+            {expandida && detalle.length > 0 && (
+              <View testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={styles.detalleKv}>
+                {detalle.map((f) => (
+                  <View key={f.clave} style={styles.filaKv}>
+                    <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{f.clave}</Text>
+                    <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico, flexShrink: 1, textAlign: 'right' }}>
+                      {f.valor}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
       </Row>
     </Swipeable>
@@ -1036,6 +1041,7 @@ const styles = StyleSheet.create({
   },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   lista: { gap: 8, padding: 16, paddingBottom: 120 },
+  cabTarjeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   tarjeta: { flex: 1, gap: 4 },
   detalleKv: { gap: 4, paddingTop: 4 },
   chipPresentacion: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },

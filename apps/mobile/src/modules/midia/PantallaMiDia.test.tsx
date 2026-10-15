@@ -199,6 +199,41 @@ function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
   };
 }
 
+describe('PantallaMiDia — tile de color por categoría (`detalle`, index.html:2493)', () => {
+  it('cada tarjeta con categoría decidida por el backend lleva SU tile, con el pastel de su categoría', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { categoria: 'cobros' }),
+        tarjetaDe('a', { categoria: 'arca' }),
+        tarjetaDe('p', { categoria: 'presupuestos' }),
+        tarjetaDe('t', { categoria: 'tuyas' }),
+      ]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-c')).toBeTruthy());
+
+    const fondos = ['c', 'a', 'p', 't'].map((id) => {
+      const estilo = screen.getByTestId(`midia-tarjeta-${id}-tile`).props.style;
+      return Array.isArray(estilo) ? Object.assign({}, ...estilo.flat()).backgroundColor : estilo.backgroundColor;
+    });
+    // Cuatro categorías, cuatro colores DISTINTOS: un tile del mismo color en todas no distingue nada.
+    expect(new Set(fondos).size).toBe(4);
+  });
+
+  it('sin categoría —o con una que esta versión no conoce— NO hay tile: no se inventa una identidad', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([tarjetaDe('n', { categoria: null }), tarjetaDe('x', { categoria: 'categoria-del-futuro' })]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-n')).toBeTruthy());
+
+    expect(screen.queryByTestId('midia-tarjeta-n-tile')).toBeNull();
+    expect(screen.queryByTestId('midia-tarjeta-x-tile')).toBeNull();
+  });
+});
+
 describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)', () => {
   it('los chips filtran por `t.categoria`; categoria null sólo aparece en «Todo»', async () => {
     leerMock.mockResolvedValue({
