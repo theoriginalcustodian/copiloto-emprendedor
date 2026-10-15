@@ -233,4 +233,4 @@ Resultado real después de los dos arreglos: **30 divergencias `E` examinadas, 0
 (14 con `path:linea` que resuelve, 15 que citan id de backlog o motivo verificable en prosa, 1 que era mi
 colisión). O sea que la auditoría cuyo valor era «encontrar enmiendas sin autoridad» devolvió **vacío** — y
 ese vacío es el resultado, no un fracaso: [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
-  -> [[un-instrumento-que-no-mira-nunca-falla]] · [[exencion-sin-autoridad]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+  -> [[instrumento-que-no-mira-nunca-falla]] · [[exencion-sin-autoridad]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
