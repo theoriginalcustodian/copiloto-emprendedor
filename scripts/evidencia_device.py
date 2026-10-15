@@ -41,6 +41,7 @@ for _flujo in (sys.stdout, sys.stderr):
 PAQUETE = "app.copiloto.emprendedor"
 PAQUETE_AJENO = "app.documed.clinico"  # la app de la otra sesión, en el mismo teléfono
 SCHEME = "copiloto"
+EMAIL_CANONICO = "e2e-device@copiloto.test"  # único usuario de prueba, a fuego (regla del operador)
 RAIZ = Path(__file__).resolve().parent.parent
 EVIDENCIA = RAIZ / "_evidencia"
 FUNCIONES = ["apps", "ajustes", "recientes", "redes", "metricas", "facturacion"]
@@ -339,9 +340,25 @@ def cerrar_capas_dev_client(*, espera_inicial: float = 0) -> bool:
 
 
 # ── frentes ──────────────────────────────────────────────────────────────────────────────────────
-def leer_credencial() -> tuple[str, str]:
-    p = Path.home() / ".claude" / "secrets" / "copiloto-e2e.env"
+class UsuarioNoCanonico(RuntimeError):
+    """El archivo de secretos trae un usuario que NO es el canónico. Se aborta, no se loguea."""
+
+
+def leer_credencial(ruta: Path | None = None) -> tuple[str, str]:
+    """`usuario|clave` del archivo de secretos del operador.
+
+    🔴 Guard (2026-10-15): la orden del operador es «un solo usuario de prueba canónico, a fuego;
+    ningún agente elige otro» (memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md). Este harness
+    aceptaba CUALQUIER usuario que el archivo trajera, y el desvío entró mudo: el login escribió
+    `sprint-e2e-…@copiloto.test` en vez del canónico y nadie lo supo hasta medir la pantalla. Ahora
+    el fallo dice cuáles son los dos usuarios, en vez de loguear con el equivocado."""
+    p = ruta or Path.home() / ".claude" / "secrets" / "copiloto-e2e.env"
     usuario, _, clave = p.read_text(encoding="utf-8").strip().partition("|")
+    if usuario != EMAIL_CANONICO:
+        raise UsuarioNoCanonico(
+            f"el archivo de credenciales trae el usuario {usuario!r} y el canónico es {EMAIL_CANONICO!r}. "
+            "No se loguea: corregí el archivo (es del operador), no el guard."
+        )
     return usuario, clave
 
 
@@ -419,7 +436,11 @@ def frente_login() -> bool:
         return False
     capturar("d1-login-vacio")
 
-    usuario, clave = leer_credencial()
+    try:
+        usuario, clave = leer_credencial()
+    except UsuarioNoCanonico as exc:
+        print(f"   ❌ {exc}")
+        return False
     if not tocar("login-email"):
         return False
     escribir(usuario)
