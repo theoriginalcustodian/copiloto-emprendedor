@@ -172,6 +172,7 @@
 - [📱🔀 El device NO corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — el binario va ADELANTE de main.
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`.
+- [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) - Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
 

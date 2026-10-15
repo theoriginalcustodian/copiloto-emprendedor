@@ -292,6 +292,9 @@ MEDICIONES_DECLARADAS = {
     # glob de uno y concluir sobre el otro. Su `pedido_` posterior se corrige a si mismo; el `cierre_`
     # se queda con la afirmacion rancia, y es el que va a archivarse y quedar grepeable.
     "2026-10-13_cierre_backend-a-planificacion_EVIDENCIABUZON-6-filas-backend-nativa-con-veredicto-versionado-en-main-439c1c4c-1-cierra-5-quedan.md",
+    # 2026-10-15 — SM-F2 lote frontend2, plataforma mobile: 16 filas medidas en device ese dia (tabla A) y 10
+    # re-emitidas desde docs ya versionados (tabla B), con `plataforma` y `medido_contra` declarados.
+    "2026-10-15_cierre_frontend2-a-planificacion_SM-F2-lote-frontend2-26-filas-mobile-con-veredicto-medido-contra-2e7d2af5.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
@@ -2386,6 +2389,23 @@ CONFLICTOS_CONOCIDOS = {
                "preguntas distintas sobre el mismo id. [POR VERIFICAR]",
     "comousar": "Misma forma que `soporte`: COHERENTE (FE1 web 22/09) vs DESVIO (auditoria 29/09), "
                 "y la sospecha es la misma — hallazgo-resuelto vs coincide-con-proto. [POR VERIFICAR]",
+    # 2026-10-15 - TRES ids con la forma de `clientes`/`hitl`: el contraste agrupa por `id` y no por
+    # `(id, plataforma)`, asi que COHERENTE web (22/09) + DESVIO mobile (15/10) dispara conflicto aunque
+    # sean DOS SUPERFICIES. Declarado, no arreglado el instrumento (`CONGELAINSTR`).
+    "afip": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
+            "(BL-Q3-web, frontend2: «mismos campos del perfil fiscal», landing sin datos) vs DESVIO "
+            "mobile 15/10 (device, estado SIN VINCULAR: encabezado «1. Perfil fiscal» numerado, sin "
+            "«ARCA vinculada · CUIT» ni «Bloqueado»; el estado vinculado NO se pudo medir). Dos "
+            "superficies, las dos vigentes.",
+    "apar": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
+            "(FE1, H-A4-7: 2 tiles + fila «Como el telefono» + nota) vs DESVIO mobile 15/10 (device: "
+            "la estructura COINCIDE; difiere UNA frase extra en la nota al pie, menor). Dos "
+            "superficies, las dos vigentes.",
+    "bi-refresh": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web "
+                  "22/09 (FE1: estructura del resumen, estado cero) vs DESVIO mobile 13 y 15/10 "
+                  "(device: el control nativo no tiene fase «Solta», sin linea permanente). El web mide "
+                  "la estructura de la pantalla; el mobile mide el gesto de tirar para actualizar. Dos "
+                  "superficies, las dos vigentes.",
 }
 
 
