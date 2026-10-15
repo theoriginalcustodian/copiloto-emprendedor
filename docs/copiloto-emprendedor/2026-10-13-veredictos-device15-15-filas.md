@@ -555,3 +555,15 @@ override: no se sabe contra qué core se midieron. Si una fila cambia de veredic
 tras mis gestos, mensajes que no controlo (STT sobre audio ambiente; origen exacto del texto **no verificado**): «Música» (voz 0:05),
 «gaste 1234 en librería» → **gasto $1.234,00 anotado**, «cuánto vendí esta semana» → respuesta del agente. «Salió» del mes pasó a
 $51.234,00. Es la cuenta de prueba canónica; no se tocó ninguna integración.
+
+## Enmienda 2026-10-15 (3) — `soporte`: el código ya existía; la ausencia medida era del DATO, no de la app
+
+La fila 13 de la enmienda 2 dice que «Ver tickets anteriores (N) ›» y el clip siguen ausentes y que falta código de
+app. **Eso era falso en el código y verdadero en la pantalla de ese momento**: la UI entró en #1115 (`e3d1efa3`,
+13-10, ancestro de `ac86a5bd`), pero `TarjetaTicketSoporte` devuelve `null` sin ticket vigente ni anteriores, y el
+tenant canónico no tenía tickets cuando se midió. Hoy tiene 5 (SOP-0001…SOP-0005) y la pantalla muestra la tarjeta
+del vigente (SOP-0005, Abierto) y «Ver tickets anteriores (4) ›» desplegable (captura `s3`, Metro local sobre
+`5678979e`; prod sirve `ac86a5bd`, que ya contiene #1115). El clip es el control `chat-foto` del composer
+(`PantallaSoporte.tsx:286`); no se ejerció su picker para no escribir un adjunto en el canónico.
+**Método:** una ausencia en pantalla con un componente que se oculta sin datos no prueba ausencia de código — se
+lee el componente antes de escribir «falta código». Re-marcado en `2026-10-13-veredictos-triaje15-capa-cascara-fe2.md`.
