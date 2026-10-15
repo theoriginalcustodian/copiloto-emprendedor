@@ -12,6 +12,7 @@ import Animated, {
 import Svg, { Path, type PathProps } from 'react-native-svg';
 
 import { useTema } from '../../theme/ThemeProvider';
+import { fotogramaOnda, type ArcoOnda } from './ondaEntrada';
 
 // `pathLength` es un atributo SVG estándar (draw-on vía `strokeDasharray`/`strokeDashoffset`
 // normalizados) que react-native-svg SOPORTA en runtime pero no declara en `PathProps` -- se
@@ -26,15 +27,15 @@ const EASE_ENTRADA = Easing.bezier(0.2, 0.8, 0.2, 1);
 
 /** Mismos 4 trazos que `theme/Marca.tsx` (isotipo canónico, viewBox 24) -- ver
  * `explorations/isotipo-david/entrada.html`. Los dos primeros se DIBUJAN (draw-on vía
- * `pathLength`/`strokeDashoffset`); las dos ondas sólo funden opacidad (simplificación deliberada
- * vs. el translateX/scaleX del prototipo web -- a refinar en la verificación visual). */
+ * `pathLength`/`strokeDashoffset`); las dos ondas replican `@keyframes onda` del prototipo
+ * (`index.html:1171`): funden opacidad Y se desplazan/escalan en X (`ondaEntrada.ts`). */
 const ARCOS = [
   { d: 'M11 3.5a8.5 8.5 0 1 0 0 17', duracion: 420, delay: 0 },
   { d: 'M11 7.5a4.5 4.5 0 1 0 0 9', duracion: 340, delay: 140 },
 ];
-const ONDAS = [
-  { d: 'M16.5 8.8a4.8 4.8 0 0 1 0 6.4', duracion: 460, delay: 300 },
-  { d: 'M19.5 6.5a9 9 0 0 1 0 11', duracion: 460, delay: 420 },
+const ONDAS: { arco: ArcoOnda; duracion: number; delay: number }[] = [
+  { arco: { x: 16.5, y: 8.8, r: 4.8, dy: 6.4 }, duracion: 460, delay: 300 }, // 'M16.5 8.8a4.8 4.8 0 0 1 0 6.4'
+  { arco: { x: 19.5, y: 6.5, r: 9, dy: 11 }, duracion: 460, delay: 420 }, // 'M19.5 6.5a9 9 0 0 1 0 11'
 ];
 
 function Trazo({
@@ -75,27 +76,30 @@ function Trazo({
 }
 
 function Onda({
-  d,
+  arco,
   duracion,
   delay,
   reducido,
   color,
+  testID,
 }: {
-  d: string;
+  arco: ArcoOnda;
   duracion: number;
   delay: number;
   reducido: boolean;
   color: string;
+  testID: string;
 }) {
-  const opacidad = useSharedValue(reducido ? 1 : 0);
+  // Con «reducir movimiento» la onda nace en su estado final (progreso 1): sin fundido ni desplazamiento.
+  const progreso = useSharedValue(reducido ? 1 : 0);
   useEffect(() => {
     if (reducido) return;
-    opacidad.value = withDelay(delay, withTiming(1, { duration: duracion, easing: EASE_ENTRADA }));
+    progreso.value = withDelay(delay, withTiming(1, { duration: duracion, easing: EASE_ENTRADA }));
   }, []);
-  const animatedProps = useAnimatedProps(() => ({ opacity: opacidad.value }));
+  const animatedProps = useAnimatedProps(() => fotogramaOnda(progreso.value, arco));
   return (
     <AnimatedPath
-      d={d}
+      testID={testID}
       animatedProps={animatedProps}
       stroke={color}
       strokeWidth={1.3}
@@ -136,8 +140,8 @@ export function EntradaDiaria({ onFin }: { onFin: () => void }) {
         {ARCOS.map((a, i) => (
           <Trazo key={a.d} {...a} reducido={reducido} color={tema.color.acento} testID={`entrada-diaria-trazo-${i + 1}`} />
         ))}
-        {ONDAS.map((o) => (
-          <Onda key={o.d} {...o} reducido={reducido} color={tema.color.acento} />
+        {ONDAS.map((o, i) => (
+          <Onda key={o.arco.x} {...o} reducido={reducido} color={tema.color.acento} testID={`entrada-diaria-onda-${i + 1}`} />
         ))}
       </Svg>
     </View>
