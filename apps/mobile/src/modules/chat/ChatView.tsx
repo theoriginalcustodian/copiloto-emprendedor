@@ -317,14 +317,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
         volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
       />
 
-      <SheetRequiereConexion
-        conexion={conexion.pendiente?.conexion ?? null}
-        onConectar={conexion.conectar}
-        onAhoraNo={conexion.ahoraNo}
-        ocupado={conexion.ocupado}
-        error={conexion.error}
-      />
-
       {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
           esté fijado: con controles flotantes abajo, mantener el botón visible sumaría ruido). Se
           oculta con el teclado a la vista (ver `useTecladoVisible`). */}
@@ -381,6 +373,17 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
           semilla={semilla}
         />
       </View>
+
+      {/* ÚLTIMO hijo a propósito: el sheet es `position:absolute` y el composer + el botón de voz son hermanos
+          en flujo — pintan DESPUÉS de lo que va antes y lo tapaban (medido en device 2026-10-15: «Conectar» /
+          «Ahora no» quedaban bajo el composer y el toque lo agarraba el campo de texto). */}
+      <SheetRequiereConexion
+        conexion={conexion.pendiente?.conexion ?? null}
+        onConectar={conexion.conectar}
+        onAhoraNo={conexion.ahoraNo}
+        ocupado={conexion.ocupado}
+        error={conexion.error}
+      />
     </KeyboardAvoidingView>
   );
 }

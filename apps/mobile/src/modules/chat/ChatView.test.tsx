@@ -169,11 +169,17 @@ jest.mock('expo-audio', () => ({
 }));
 
 import { apiReal as api, dejarPendiente, tomarPendiente } from '@copiloto/core';
+import { useConexionRequerida } from './useConexionRequerida';
 
 import { almacenClave } from '../../adapters/almacen';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ChatView } from './ChatView';
+
+jest.mock('./useConexionRequerida', () => {
+  const actual = jest.requireActual('./useConexionRequerida');
+  return { ...actual, useConexionRequerida: jest.fn(actual.useConexionRequerida) };
+});
 
 async function renderChatView() {
   return render(
@@ -865,5 +871,46 @@ describe('ChatView -- hitl (a.4): «Volver al tablero →» dentro del recibo ci
 
     expect(await screen.findByTestId('recibo-ejecutado')).toBeTruthy();
     expect(screen.queryByTestId('recibo-ejecutado-volver')).toBeNull();
+  });
+});
+
+describe('ChatView -- sheet «conectá X»: debe pintar ENCIMA del composer y del botón de voz', () => {
+  const CONEXION = {
+    pendiente: {
+      mensajeId: 'm-conexion',
+      textoOriginal: null,
+      conexion: { service: 'mercadopago', label: 'Mercado Pago', alcance: [], pendiente: null, connectPath: '/x' },
+    },
+    conectar: jest.fn(),
+    ahoraNo: jest.fn(),
+    ocupado: false,
+    error: null,
+  };
+  const actualHook = jest.requireActual('./useConexionRequerida').useConexionRequerida;
+
+  /** Hermanos del contenedor raíz de ChatView, en orden de pintado (el último queda arriba). */
+  function ordenDePintado(): string[] {
+    const hermanos = (n: any): any[] | null => {
+      if (n == null || typeof n !== 'object') return null;
+      const hijos: any[] = Array.isArray(n.children) ? n.children : [];
+      const ids = hijos.map((h) => h?.props?.testID);
+      if (ids.includes('sheet-requiere-conexion-ancla')) return hijos;
+      for (const h of hijos) { const r = hermanos(h); if (r) return r; }
+      return null;
+    };
+    const hs = hermanos(screen.toJSON());
+    return (hs ?? []).map((h) => h?.props?.testID).filter(Boolean);
+  }
+
+  afterEach(() => jest.mocked(useConexionRequerida).mockImplementation(actualHook));
+
+  it('🔴 el ancla del sheet es el ÚLTIMO hermano con testID: el composer y el overlay de voz no la tapan', async () => {
+    jest.mocked(useConexionRequerida).mockReturnValue(CONEXION as any);
+    await renderChatView();
+    const orden = ordenDePintado();
+    expect(orden).toContain('sheet-requiere-conexion-ancla');
+    expect(orden).toContain('chat-composer-contenedor');
+    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('chat-composer-contenedor'));
+    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('overlay-voz'));
   });
 });
