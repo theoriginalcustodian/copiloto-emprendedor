@@ -158,6 +158,7 @@ export {
   CATEGORIAS_GASTO,
   crearGasto,
   destinoDeImputacion,
+  rotuloDeImputacion,
   esCategoriaValida,
   ETIQUETA_CATEGORIA,
   ETIQUETA_ORIGEN_GASTO,

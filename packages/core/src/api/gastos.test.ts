@@ -8,6 +8,7 @@ import {
   CATEGORIAS_GASTO,
   crearGasto,
   destinoDeImputacion,
+  rotuloDeImputacion,
   esCategoriaValida,
   imputarGasto,
   listarGastos,
@@ -387,9 +388,77 @@ describe('gastos.ts', () => {
         if (res.status !== 'ok') return;
         // El objeto presente es la prueba de que el backend contestó la pregunta.
         expect(res.gasto.imputacion).toEqual({
-          gastoId: 2, presupuestoRef: null, comprobanteRef: null, cobroRef: null,
+          gastoId: 2, presupuestoRef: null, comprobanteRef: null, cobroRef: null, etiqueta: null,
         });
         expect(destinoDeImputacion(res.gasto.imputacion)).toBeNull();
+      });
+
+      describe('🔴 el rótulo del trabajo imputado viaja con el dato (`etiqueta`), no se re-deriva del id', () => {
+        it('GET: la etiqueta del backend llega tal cual (sin espacios de los bordes) y es lo que se pinta', async () => {
+          responder = () =>
+            respuesta(200, gastoCrudo({
+              imputacion: {
+                gasto_id: 2, presupuesto_ref: 227, comprobante_ref: null, cobro_ref: null,
+                etiqueta: ' asesoría contable · #3 ',
+              },
+            }));
+
+          const res = await obtenerGasto(2);
+
+          expect(res.status).toBe('ok');
+          if (res.status !== 'ok') return;
+          // El defecto medido: ref=227 (id de base) y número humano #3. El rótulo es el humano.
+          expect(rotuloDeImputacion(res.gasto.imputacion)).toBe('asesoría contable · #3');
+        });
+
+        it('PUT: la misma forma en el camino de escritura, para que no diverja del de lectura', async () => {
+          responder = () =>
+            respuesta(200, {
+              imputacion: {
+                gasto_id: 2, presupuesto_ref: 227, comprobante_ref: null, cobro_ref: null,
+                etiqueta: 'asesoría contable · #3',
+              },
+            });
+
+          const res = await imputarGasto(2, { eslabon: 'presupuesto', ref: 227 });
+
+          expect(res.status).toBe('ok');
+          if (res.status !== 'ok') return;
+          expect(rotuloDeImputacion(res.imputacion)).toBe('asesoría contable · #3');
+        });
+
+        it('🔴 SIN etiqueta (backend viejo o `null`) NO se inventa un número: queda el nombre del eslabón', () => {
+          const base = { gastoId: 2, presupuestoRef: 227, comprobanteRef: null, cobroRef: null };
+          for (const etiqueta of [undefined, null]) {
+            const rotulo = rotuloDeImputacion({ ...base, etiqueta });
+            expect(rotulo).toBe('Presupuesto');
+            expect(rotulo).not.toContain('#');
+            expect(rotulo).not.toContain('227');
+          }
+          expect(rotuloDeImputacion({ gastoId: 2, presupuestoRef: null, comprobanteRef: 90, cobroRef: null })).toBe('Factura');
+          expect(rotuloDeImputacion({ gastoId: 2, presupuestoRef: null, comprobanteRef: null, cobroRef: 4 })).toBe('Cobro');
+        });
+
+        it('una etiqueta ilegible en el wire (vacía, en blanco, número, objeto) se parsea a `null`, no a un rótulo vacío', async () => {
+          for (const etiqueta of ['', '   ', 12, {}]) {
+            responder = () =>
+              respuesta(200, gastoCrudo({
+                imputacion: { gasto_id: 2, presupuesto_ref: 227, comprobante_ref: null, cobro_ref: null, etiqueta },
+              }));
+            const res = await obtenerGasto(2);
+            expect(res.status).toBe('ok');
+            if (res.status !== 'ok') return;
+            expect(res.gasto.imputacion!.etiqueta).toBeNull();
+            expect(rotuloDeImputacion(res.gasto.imputacion)).toBe('Presupuesto');
+          }
+        });
+
+        it('sin trabajo imputado no hay rótulo, aunque venga una etiqueta suelta', () => {
+          expect(rotuloDeImputacion(null)).toBeNull();
+          expect(
+            rotuloDeImputacion({ gastoId: 2, presupuestoRef: null, comprobanteRef: null, cobroRef: null, etiqueta: 'x · #1' }),
+          ).toBeNull();
+        });
       });
 
       it('resuelve el destino en cada uno de los tres eslabones', async () => {

@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
-import type { DestinoTrabajo } from './trabajos';
+import { nombreDeEslabon, type DestinoTrabajo } from './trabajos';
 
 /**
  * `/gastos` — lo que sale. La otra mitad de la contabilidad de gestión (facturación es lo que entra).
@@ -142,6 +142,13 @@ export interface ImputacionGasto {
   presupuestoRef: number | null;
   comprobanteRef: number | null;
   cobroRef: number | null;
+  /**
+   * El rótulo humano del trabajo imputado, ya armado por el backend (`«asesoría contable · #3»`:
+   * concepto + **número**, nunca el id). `null` = el backend no lo trajo o no pudo resolver el trabajo.
+   * Opcional en el TIPO sólo para no romper a quien arma el objeto a mano (mocks): `parsearImputacion`
+   * lo emite siempre. Para pintarlo, `rotuloDeImputacion` — no leerlo campo por campo.
+   */
+  etiqueta?: string | null;
 }
 
 /**
@@ -158,6 +165,22 @@ export function destinoDeImputacion(imp: ImputacionGasto | null): DestinoTrabajo
   if (imp.comprobanteRef != null) return { eslabon: 'comprobante', ref: imp.comprobanteRef };
   if (imp.cobroRef != null) return { eslabon: 'cobro', ref: imp.cobroRef };
   return null;
+}
+
+/**
+ * El rótulo con el que se muestra «a qué trabajo está imputado este gasto», o `null` si no hay
+ * trabajo imputado.
+ *
+ * 🔴 **Dos números para el mismo trabajo fue el defecto** (`contrato_` 2026-10-15): el selector rotula
+ * `concepto · #numero` y el detalle re-derivaba `Presupuesto #id` desde el id interno. El rótulo viaja
+ * con el dato (`imputacion.etiqueta`); acá no se re-deriva. **Sin etiqueta no se inventa un número**:
+ * queda el nombre del eslabón solo (`Presupuesto`), que es verdad; un `#` armado con el `ref` no lo es.
+ */
+export function rotuloDeImputacion(imp: ImputacionGasto | null): string | null {
+  if (imp === null) return null;
+  const destino = destinoDeImputacion(imp);
+  if (destino === null) return null;
+  return imp.etiqueta ?? nombreDeEslabon(destino.eslabon);
 }
 
 function refNumerica(v: unknown): number | null {
@@ -178,6 +201,8 @@ function parsearImputacion(v: unknown, gastoId: number): ImputacionGasto | null 
     presupuestoRef: refNumerica(r.presupuesto_ref),
     comprobanteRef: refNumerica(r.comprobante_ref),
     cobroRef: refNumerica(r.cobro_ref),
+    // Un string no vacío o `null`: un rótulo en blanco pintaría una fila sin texto.
+    etiqueta: typeof r.etiqueta === 'string' && r.etiqueta.trim() !== '' ? r.etiqueta.trim() : null,
   };
 }
 
