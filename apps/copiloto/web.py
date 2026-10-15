@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import hmac
 import logging
 import os
 import re
@@ -594,26 +593,16 @@ def _default_extraer_ticket(imagen_bytes: bytes, content_type: str) -> dict:
 # arrancar antes de que el env esté completo, y un valor congelado en el import sería un gate que
 # depende del orden de arranque. También hace que los tests puedan moverlas con `monkeypatch` sin
 # reimportar el módulo.
-INVITE_TOKEN_ENV = "COPILOTO_INVITE_TOKEN"
+# 🟥 RETIRADO (SM-C2 / Ítem 11, decisión del operador 2026-10-14, bajada por planificación): el
+# `invite_token` ya NO es requisito de `POST /auth/signup` — alta por email self-service real. La
+# allow-list de abajo (first-login OAuth Google) NO se tocó: es otra puerta y otra decisión.
+#
+# ⚠️ Lo que esto abre, escrito junto a la decisión: el repo es público, la URL de la beta es conocida y
+# NO hay límite de volumen en el alta. Cualquiera con la URL puede crear un tenant. Mitigaciones que
+# NO cambian la decisión (rate limit por IP / cupo de tenants) se proponen por `pedido_`; no se
+# implementan sin que el operador las pida. Si alguien vuelve a poner el gate, los tests
+# `test_signup_sin_invite_token_*` de `test_web_app.py` y `test_SMC2_*` avisan.
 SIGNUP_ALLOWLIST_ENV = "COPILOTO_SIGNUP_ALLOWLIST"
-
-
-def _invite_token_valido(recibido: str) -> bool:
-    """FAIL-CLOSED: si `COPILOTO_INVITE_TOKEN` no está seteada o está vacía, **nadie** se registra.
-
-    El default permisivo es justamente cómo se llega acá: un gate que "no aplica si falta la env"
-    reintroduce el agujero entero en el primer deploy que se olvide la variable, y falla ABIERTO,
-    que es el modo en que nadie se entera. Preferimos romper el alta ruidosamente.
-
-    `hmac.compare_digest` en vez de `==` porque es un secreto compartido comparado en cada request y
-    el `==` de Python corta en el primer byte distinto. No es el vector más probable acá, pero la
-    comparación en tiempo constante no cuesta nada y evita tener que discutirlo en la próxima
-    auditoría.
-    """
-    esperado = os.environ.get(INVITE_TOKEN_ENV, "").strip()
-    if not esperado:
-        return False
-    return hmac.compare_digest(recibido.strip(), esperado)
 
 
 def _email_en_allowlist(email: str) -> bool:
@@ -636,8 +625,8 @@ def _email_en_allowlist(email: str) -> bool:
 class SignupIn(BaseModel):
     email: str
     password: str
-    # Opcional en el modelo para que la ausencia dé **403 y no 422**: el cliente viejo tiene que
-    # recibir "no estás invitado", no un error de validación que parece un bug de contrato.
+    # IGNORADO desde SM-C2 / Ítem 11 (ver el retiro arriba). Se conserva en el modelo sólo para que un
+    # cliente que todavía lo manda no reciba un 422 por un campo que ya no significa nada.
     invite_token: str = ""
 
 
@@ -1407,12 +1396,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         # claim (Task 3). Sin `require_tenant` -- todavía no hay tenant al momento del signup.
         # `def` (no async): httpx sync + psycopg2 -> threadpool, no bloquea el loop.
         #
-        # C4.1: la barrera va ACÁ y no en `signup_and_provision` porque ésta es la frontera HTTP —
-        # el único punto por el que entra un desconocido. `signup_and_provision` también la usa el
-        # provisioning interno, y meterle el gate ahí obligaría a inventarle un bypass, que es la
-        # forma habitual de que un fail-closed se vuelva fail-open sin que nadie lo note.
-        if not _invite_token_valido(body.invite_token):
-            raise HTTPException(status_code=403, detail="alta por invitación: invite-token inválido o ausente")
+        # Sin gate: alta self-service (SM-C2 / Ítem 11, decisión del operador 2026-10-14). Esta es la
+        # frontera HTTP por la que entra un desconocido; si alguna vez vuelve una barrera, va ACÁ y no
+        # en `signup_and_provision` (la usa también el provisioning interno: meterle el gate obligaría
+        # a inventarle un bypass, la forma habitual de que un fail-closed se vuelva fail-open).
         return signup_and_provision(email=body.email, password=body.password, gotrue=gotrue,
                                     conn_factory=conn_factory)
 

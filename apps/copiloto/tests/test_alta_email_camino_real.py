@@ -14,11 +14,15 @@ Acá, el mismo `create_web_app` que arma producción, con los tres colaboradores
   * `make_require_tenant` / `make_require_claims` de verdad, validando el JWT que GoTrue firmó.
 
 Recorrido: `POST /auth/signup` → `POST /auth/login` → `GET /me` con el Bearer que salió del login.
-El control negativo corre sobre el MISMO armado: sin invite-token no se crea NADA (ni user ni tenant).
 
-Lo que este test NO cubre, y está dicho: que el CLIENTE web mande `invite_token`. Eso es el formulario
-(`apps/copiloto-web`), mitad de frontend de la ficha; este archivo fija el contrato que tiene que
-cumplir: `POST /auth/signup {email, password, invite_token}`.
+⚠️ EL 403 SE RETIRÓ (SM-C2 / Ítem 11, decisión del operador 2026-10-14, bajada por planificación):
+`POST /auth/signup` ya no exige `invite_token` — alta por email self-service. Los casos que antes
+afirmaban «sin invite ⇒ 403 y ni user ni tenant» y «fail-closed sin la env» están INVERTIDOS acá, no
+borrados: afirman que el alta FUNCIONA sin token, con uno equivocado y sin la env. Si alguien vuelve
+a poner el gate, estos casos se ponen rojos. Lo que abre (repo público, sin límite de volumen) está
+escrito junto al retiro en `web.py`.
+
+Contrato que fija: `POST /auth/signup {email, password}` (`invite_token` se acepta e ignora).
 """
 from __future__ import annotations
 
@@ -40,14 +44,12 @@ necesita_real = pytest.mark.skipif(
     reason="requiere GoTrue de test + Postgres: eval \"$(bash deploy/copiloto/test-db.sh --export)\" "
            "&& eval \"$(bash deploy/copiloto/test-gotrue.sh --export)\"")
 
-INVITE = "invite-sm-c2-no-es-un-secreto-de-prod"
-
-
 @pytest.fixture(autouse=True)
 def _entorno(monkeypatch):
     from clients.agent.providers.crypto import FernetCrypto
     monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
-    monkeypatch.setenv(web_module.INVITE_TOKEN_ENV, INVITE)
+    # SIN env de invitación a propósito: el alta self-service no puede depender de ella.
+    monkeypatch.delenv("COPILOTO_INVITE_TOKEN", raising=False)
 
 
 def _admin() -> GoTrueAdmin:
@@ -95,7 +97,7 @@ def test_SMC2_alta_por_email_de_punta_a_punta_signup_login_me(alta_real):
     email, password = _email(), "clave-real-sm-c2-1"
     creados.append(email)
 
-    r = cli.post("/auth/signup", json={"email": email, "password": password, "invite_token": INVITE})
+    r = cli.post("/auth/signup", json={"email": email, "password": password})   # sin invite_token
     assert r.status_code == 200, r.text
     cliente_id = r.json()["cliente_id"]
     assert cliente_id
@@ -113,32 +115,33 @@ def test_SMC2_alta_por_email_de_punta_a_punta_signup_login_me(alta_real):
 
 @necesita_real
 @pytest.mark.parametrize("invite", ["", "otro-token"])
-def test_SMC2_adversarial_sin_invite_o_con_uno_equivocado_no_crea_ni_user_ni_tenant(alta_real, invite):
+def test_SMC2_INVERTIDO_sin_invite_o_con_uno_equivocado_se_registra_igual(alta_real, invite):
+    """INVERTIDO (antes: 403 y «ni user ni tenant»). El `invite_token` se ignora: user real en la
+    GoTrue y fila de tenant creados. Es el control que se pone rojo si el gate vuelve."""
     cli, admin, creados = alta_real
     email, password = _email(), "clave-real-sm-c2-2"
     creados.append(email)
 
     r = cli.post("/auth/signup", json={"email": email, "password": password, "invite_token": invite})
-    assert r.status_code == 403
+    assert r.status_code == 200, r.text
 
-    with pytest.raises(InvalidCredentials):          # el user NO existe en la GoTrue real
-        admin.password_grant(email, password)
+    assert admin.password_grant(email, password)     # el user EXISTE en la GoTrue real
     conn = _conn_factory_cruda()()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM uc_factory.tenants WHERE email = %s", (email,))
-            assert cur.fetchone()[0] == 0            # ni fila de tenant
+            assert cur.fetchone()[0] == 1            # y su fila de tenant
     finally:
         conn.close()
 
 
 @necesita_real
-def test_SMC2_fail_closed_sin_la_env_del_invite_nadie_se_registra_ni_con_el_token_correcto(alta_real, monkeypatch):
+def test_SMC2_INVERTIDO_sin_env_del_invite_el_alta_funciona(alta_real, monkeypatch):
+    """INVERTIDO (antes: «fail-closed sin la env ⇒ 403»). Ya no hay env de invitación que leer."""
     cli, admin, creados = alta_real
-    monkeypatch.delenv(web_module.INVITE_TOKEN_ENV)
+    monkeypatch.delenv("COPILOTO_INVITE_TOKEN", raising=False)
     email = _email()
     creados.append(email)
-    r = cli.post("/auth/signup", json={"email": email, "password": "clave-real-sm-c2-3", "invite_token": INVITE})
-    assert r.status_code == 403
-    with pytest.raises(InvalidCredentials):
-        admin.password_grant(email, "clave-real-sm-c2-3")
+    r = cli.post("/auth/signup", json={"email": email, "password": "clave-real-sm-c2-3"})
+    assert r.status_code == 200, r.text
+    assert admin.password_grant(email, "clave-real-sm-c2-3")
