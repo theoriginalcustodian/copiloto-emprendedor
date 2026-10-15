@@ -68,6 +68,7 @@
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 - [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
+- [🏷️🩸 El marcador de pendencia SOBREVIVE a su refutacion](el-marcador-de-pendencia-sobrevive-a-su-propia-refutacion.md) - y el texto ANTES del marcador es lo HECHO, no el motivo.
 - [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
@@ -82,13 +83,11 @@
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
 - [🎭🚪 Dos causas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso lleva al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) - todo gate necesita control POSITIVO.
-- [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
 - [📉🫥 El dato DEGENERADO imita la AUSENCIA del mecanismo](dato-degenerado-imita-ausencia-del-mecanismo.md) - N=1 se lee como N=0.
 - [🩹🎭 Un degradado PRUDENTE al caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda».
-- [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
 - [🎲 Un instrumento INTERMITENTE fabrica una excusa](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - «es el flake» lava la próxima.
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.
 - [🐕‍🦺 El watchdog ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra lo esperado.

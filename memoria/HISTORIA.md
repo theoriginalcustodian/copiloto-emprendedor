@@ -498,3 +498,7 @@ slugs son «buscables en memoria/, NO leer por reflejo».
 - [🧪🔀 «tsc limpio» en mi máquina NO es el `tsc --build --force` de CI](tsc-local-limpio-no-es-el-tsc-build-de-ci-correr-web-sh-en-worktree-limpio.md) — pasó con `require`/`__dirname` en un test web; CI, sin `@types/node`, lo rechazó. El control es correr `web.sh` en un worktree limpio, no el tsc del editor.
 - [🛰️🧊 Metro con `CI=1` NO observa archivos: el device corre el PRIMER build](metro-en-modo-ci-no-observa-archivos-el-device-corre-el-primer-build.md) — un A/B «original vs fix» midió dos veces el original. Reiniciá Metro tras dejar el archivo en disco.
 - [📚 Índice truncado ⇒ duplicados](el-indice-truncado-fabrica-duplicados.md) · [ENTRADA truncada ⇒ REINCIDIR en lo ya escrito](el-checkout-compartido-sirve-comandos-viejos.md) - `diff --numstat` vs main antes de confiar.
+
+## Bajadas del indice el 2026-10-15 (mecanismo general ya cubierto por otra entrada)
+- [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
+- [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
