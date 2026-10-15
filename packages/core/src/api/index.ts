@@ -181,6 +181,8 @@ export type {
 // `trabajos` — el TRABAJO (`presupuesto → comprobante → cobro`) como sujeto del cliente. No hay
 // `GET /trabajos`: `listarTrabajosImputables` compone las dos fuentes que existen, y su docstring
 // dice qué NO puede ofrecer. Lo usa la imputación del gasto en los dos fronts.
+export { aceptarLegal } from './me';
+export type { AceptarLegalResultado } from './me';
 export { etiquetaDeDestino, listarTrabajosImputables, mismoTrabajo } from './trabajos';
 export type { DestinoTrabajo, TrabajoImputable } from './trabajos';
 

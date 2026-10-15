@@ -1,4 +1,4 @@
-import { descripcionLegal } from '@copiloto/core';
+import { ApiError, LEGAL_VERSION, aceptarLegal, descripcionLegal, ofrecerAceptarLegal } from '@copiloto/core';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -32,6 +32,36 @@ export function PantallaCuenta() {
   const tema = useTema();
   const { me, logout } = useSession();
   const [confirmando, setConfirmando] = useState(false);
+  // SM-C4: la aceptación registrada en ESTA sesión pisa lo que trajo `/me` (que no se vuelve a pedir
+  // hasta el próximo arranque). Es sólo texto + ocultar la oferta: no toca la sesión ni gatea nada.
+  const [aceptadaAhora, setAceptadaAhora] = useState<string | null>(null);
+  const [aceptando, setAceptando] = useState(false);
+  const [errorAceptar, setErrorAceptar] = useState<string | null>(null);
+  const meLegal =
+    aceptadaAhora !== null
+      ? {
+          legal_aceptado: true,
+          legal_version_aceptada: aceptadaAhora,
+        }
+      : me;
+
+  async function aceptar() {
+    setAceptando(true);
+    setErrorAceptar(null);
+    try {
+      const r = await aceptarLegal(LEGAL_VERSION);
+      setAceptadaAhora(r.version);
+    } catch (err) {
+      // 409 = el texto que se leyó quedó viejo (el server rotó la versión): no es un error de red.
+      setErrorAceptar(
+        err instanceof ApiError && err.status === 409
+          ? 'Los términos cambiaron mientras los leías. Cerrá y volvé a abrir la app para ver la versión nueva.'
+          : 'No pudimos registrar tu aceptación. Probá de nuevo en un rato.',
+      );
+    } finally {
+      setAceptando(false);
+    }
+  }
 
   return (
     <MarcoGlass titulo="Mi cuenta" icono="cuenta" testID="pantalla-cuenta">
@@ -72,10 +102,30 @@ export function PantallaCuenta() {
               testID="cuenta-legal-version"
               style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
             >
-              {descripcionLegal(me)}
+              {descripcionLegal(meLegal)}
             </Text>
           </View>
         </Row>
+        {/* SM-C4: mobile no tiene alta, así que acá es donde se acepta. Es una OFERTA que registra la
+            versión que muestra la pantalla de Términos: no bloquea nada (INFORMA, v2 LEGALNOOPERA). */}
+        {ofrecerAceptarLegal(meLegal) && (
+          <FilaBotones
+            testID="cuenta-legal-aceptar-botones"
+            botones={[
+              {
+                etiqueta: aceptando ? 'Registrando…' : `Aceptar la versión vigente (${LEGAL_VERSION})`,
+                onPress: () => void aceptar(),
+                deshabilitado: aceptando,
+                testID: 'cuenta-legal-aceptar',
+              },
+            ]}
+          />
+        )}
+        {errorAceptar !== null && (
+          <Text testID="cuenta-legal-aceptar-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+            {errorAceptar}
+          </Text>
+        )}
         <Row testID="cuenta-legal-tos" onPress={() => router.push('/legal?kind=tos')}>
           <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
             Términos y Condiciones
