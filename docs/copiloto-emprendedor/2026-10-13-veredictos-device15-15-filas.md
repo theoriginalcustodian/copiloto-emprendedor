@@ -564,6 +564,8 @@ app. **Eso era falso en el código y verdadero en la pantalla de ese momento**: 
 tenant canónico no tenía tickets cuando se midió. Hoy tiene 5 (SOP-0001…SOP-0005) y la pantalla muestra la tarjeta
 del vigente (SOP-0005, Abierto) y «Ver tickets anteriores (4) ›» desplegable (captura `s3`, Metro local sobre
 `5678979e`; prod sirve `ac86a5bd`, que ya contiene #1115). El clip es el control `chat-foto` del composer
-(`PantallaSoporte.tsx:286`); no se ejerció su picker para no escribir un adjunto en el canónico.
+(`PantallaSoporte.tsx:286`): con SOP-0005 vigente abre «Foto del ticket · ¿De dónde sacamos la foto? Cancelar / Cámara / Galería»
+(captura `clip1`); se canceló sin elegir, no se subió nada. El control negativo (0 tickets) no se midió en device: el canónico ya
+tiene 5 y no hay DELETE; lo cubren los tests de `PantallaSoporte.test.tsx`. Los tickets los abrió otra sesión por el camino real, no esta.
 **Método:** una ausencia en pantalla con un componente que se oculta sin datos no prueba ausencia de código — se
 lee el componente antes de escribir «falta código». Re-marcado en `2026-10-13-veredictos-triaje15-capa-cascara-fe2.md`.
