@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   formatearImporte,
+  LIMITE_LISTADO_PRESUPUESTOS,
+  listadoLlegoAlTope,
   listarPresupuestos,
   obtenerPresupuesto,
   type Presupuesto,
@@ -112,7 +114,7 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const cargar = useCallback(
     (silencioso = false): Promise<void> => {
       if (!silencioso) setEstado('cargando');
-      return listarPresupuestos(verHistorial ? { incluirReemplazados: true } : {})
+      return listarPresupuestos({ limit: LIMITE_LISTADO_PRESUPUESTOS, ...(verHistorial ? { incluirReemplazados: true } : {}) })
         .then((res) => {
           if (!vivo.current) return;
           if (res.status === 'no_disponible') {
@@ -195,6 +197,8 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const sinContestar = vigentes.filter((p) => p.estado === 'pendiente');
   const aceptados = vigentes.filter((p) => p.estado === 'aprobado');
   const esperandoRespuesta = sumarImportes(sinContestar.map((p) => p.total));
+  // SM-D2 (3): la cifra sale de la página pedida. Si llegó al tope puede haber más — se declara parcial.
+  const resumenParcial = listadoLlegoAlTope(presupuestos.length);
   const comparacion = `${sinContestar.length} sin contestar · ${aceptados.length} aceptado${aceptados.length === 1 ? '' : 's'}`;
   const rotuloLista = verHistorial ? 'Historial' : 'Activos';
 
@@ -269,6 +273,11 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
                 <span className="presupuestos-resumen__comparacion" data-testid="presupuestos-resumen-comparacion">
                   {comparacion}
                 </span>
+                {resumenParcial && (
+                  <span className="presupuestos-resumen__aviso" data-testid="presupuestos-resumen-aviso" role="status">
+                    Mostrando los últimos {LIMITE_LISTADO_PRESUPUESTOS} presupuestos: la cifra puede ser mayor.
+                  </span>
+                )}
               </Surface>
 
               {/* Rótulo de sección + alta, misma fila (CLAUDE.md §5): el pill NUNCA es un FAB —

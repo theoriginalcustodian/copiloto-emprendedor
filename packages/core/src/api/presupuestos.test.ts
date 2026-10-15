@@ -9,6 +9,8 @@ import {
   crearPresupuesto,
   mailtoMandarPresupuesto,
   facturarPresupuesto,
+  LIMITE_LISTADO_PRESUPUESTOS,
+  listadoLlegoAlTope,
   listarPresupuestos,
   obtenerPresupuesto,
 } from './presupuestos';
@@ -544,5 +546,18 @@ describe('presupuestos.ts', () => {
       responder = () => respuesta(200, { detail: 'algo que no es un presupuesto' });
       expect(await cambiarEstadoPresupuesto(12, 'desestimado')).toEqual({ status: 'no_disponible' });
     });
+  });
+});
+
+describe('listadoLlegoAlTope — un agregado sobre una página truncada se declara parcial (SM-D2 punto 3)', () => {
+  it('el tope es el máximo del backend, no el default de 50', () => {
+    expect(LIMITE_LISTADO_PRESUPUESTOS).toBe(200);
+  });
+
+  it('por debajo del tope la página es completa; en el tope (o más) puede haber más', () => {
+    expect(listadoLlegoAlTope(0)).toBe(false);
+    expect(listadoLlegoAlTope(199)).toBe(false);
+    expect(listadoLlegoAlTope(200)).toBe(true);
+    expect(listadoLlegoAlTope(50, 50)).toBe(true);
   });
 });
