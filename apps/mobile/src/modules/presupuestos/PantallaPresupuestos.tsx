@@ -6,6 +6,8 @@ import { RefreshControl } from 'react-native-gesture-handler';
 
 import {
   formatearImporte,
+  LIMITE_LISTADO_PRESUPUESTOS,
+  listadoLlegoAlTope,
   listarPresupuestos,
   obtenerPresupuesto,
   type Presupuesto,
@@ -94,7 +96,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const cargar = useCallback(
     (silencioso = false): Promise<void> => {
       if (!silencioso) setEstado('cargando');
-      return listarPresupuestos(verHistorial ? { incluirReemplazados: true } : {})
+      return listarPresupuestos({ limit: LIMITE_LISTADO_PRESUPUESTOS, ...(verHistorial ? { incluirReemplazados: true } : {}) })
         .then((res) => {
           if (!vivo.current) return;
           if (res.status === 'no_disponible') {
@@ -182,6 +184,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const hayPresupuestos = presupuestos.length > 0;
 
   const resumen = resumenEspera(presupuestos);
+  // SM-D2 (3): la cifra sale de la página pedida. Si llegó al tope puede haber más — se declara parcial.
+  const resumenParcial = listadoLlegoAlTope(presupuestos.length);
 
   return (
     <MarcoGlass titulo="Presupuestos" icono="presupuestos" testID="pantalla-presupuestos">
@@ -278,7 +282,17 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                   rotulo="Esperando respuesta"
                   cifra={formatearImporte(centavosADecimal(resumen.centavosEsperando))}
                   chip={chipResumenEspera(resumen)}
-                />
+                >
+                  {resumenParcial && (
+                    <Text
+                      testID="presupuestos-resumen-aviso"
+                      accessibilityRole="alert"
+                      style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}
+                    >
+                      {`Mostrando los últimos ${LIMITE_LISTADO_PRESUPUESTOS} presupuestos: la cifra puede ser mayor.`}
+                    </Text>
+                  )}
+                </BloqueCifra>
               )}
 
               {errorMic != null && (

@@ -258,6 +258,22 @@ function esRespuestaDelEndpoint(raw: unknown, clave: string): boolean {
   return typeof raw === 'object' && raw !== null && clave in raw;
 }
 
+/**
+ * Tope del listado del backend (`LIMITE_LISTADO_MAX`, `apps/copiloto/presupuestos_web.py`). Sin `limit`
+ * el endpoint corta en 50 (`LIMITE_LISTADO_DEFAULT`) y **no avisa**: quien derive una CIFRA del listado
+ * (el resumen «Esperando respuesta») tiene que pedir este tope explícito y llamar a
+ * `listadoLlegoAlTope` — una suma sobre una página truncada se lee como el total y no lo es (SM-D2 punto 3).
+ */
+export const LIMITE_LISTADO_PRESUPUESTOS = 200;
+
+/**
+ * `true` si la página llegó al tope pedido: puede haber más presupuestos de los que se ven, así que
+ * cualquier agregado calculado sobre ella es PARCIAL y la pantalla lo tiene que decir.
+ */
+export function listadoLlegoAlTope(cantidad: number, limite: number = LIMITE_LISTADO_PRESUPUESTOS): boolean {
+  return cantidad >= limite;
+}
+
 export interface ListarPresupuestosParams {
   /** Default 50, máximo 200 del lado del backend. Sin cursor por ahora. */
   limit?: number;

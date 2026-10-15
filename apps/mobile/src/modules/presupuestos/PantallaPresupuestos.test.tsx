@@ -208,6 +208,45 @@ describe('PantallaPresupuestos', () => {
     expect(screen.getByTestId('presupuestos-resumen-chip')).toHaveTextContent('1 sin contestar · 1 aceptado');
   });
 
+  describe('SM-D2 (3): el resumen no se deriva de una página truncada', () => {
+    /** El backend de verdad: respeta `limit`, lo clampa a 200 y, sin él, devuelve 50
+     * (`apps/copiloto/presupuestos_web.py`: `LIMITE_LISTADO_DEFAULT`/`LIMITE_LISTADO_MAX`). */
+    function backendConTotal(total: number) {
+      const todos = Array.from({ length: total }, (_, i) =>
+        presupuesto({ id: i + 1, numero: i + 1, estado: 'pendiente', total: '1000.00', sinRespuesta: false }),
+      );
+      mockListar.mockImplementation(async (params) => ({
+        status: 'ok',
+        presupuestos: todos.slice(0, Math.max(1, Math.min(params?.limit ?? 50, 200))),
+      }));
+    }
+
+    it('🔴 con 60 pendientes la cifra es la de LOS 60, no la de los 50 que corta el default', async () => {
+      backendConTotal(60);
+      await montar();
+
+      await waitFor(() => expect(screen.getByTestId('presupuestos-resumen')).toBeTruthy());
+      expect(screen.getByTestId('presupuestos-resumen-cifra')).toHaveTextContent('$60.000,00');
+      expect(screen.queryByTestId('presupuestos-resumen-aviso')).toBeNull();
+    });
+
+    it('🔴 si la página llegó al TOPE del backend (más de 200), la cifra se declara parcial', async () => {
+      backendConTotal(250);
+      await montar();
+
+      await waitFor(() => expect(screen.getByTestId('presupuestos-resumen-aviso')).toBeTruthy());
+      expect(screen.getByTestId('presupuestos-resumen-aviso')).toHaveTextContent('200', { exact: false });
+    });
+
+    it('control de no-regresión: la pantalla PIDE el tope — sin `limit` el listado se corta en 50 en silencio', async () => {
+      backendConTotal(10);
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('presupuestos-resumen')).toBeTruthy());
+
+      expect(mockListar.mock.calls[0]?.[0]?.limit).toBe(200);
+    });
+  });
+
   it('🔴 `presu`: si el backend no manda `estado` NO hay resumen (no se afirma «$0 esperando»)', async () => {
     mockListar.mockResolvedValue({ status: 'ok', presupuestos: [presupuesto({ id: 1 })] });
     await montar();
@@ -290,7 +329,7 @@ describe('PantallaPresupuestos', () => {
 
     fireEvent.press(screen.getByTestId('presupuestos-toggle-historial'));
 
-    await waitFor(() => expect(mockListar).toHaveBeenCalledWith({ incluirReemplazados: true }));
+    await waitFor(() => expect(mockListar).toHaveBeenCalledWith({ limit: 200, incluirReemplazados: true }));
   });
 
   describe('el detalle', () => {

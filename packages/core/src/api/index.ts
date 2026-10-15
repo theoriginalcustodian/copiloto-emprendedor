@@ -133,6 +133,8 @@ export {
   cambiarEstadoPresupuesto,
   crearPresupuesto,
   facturarPresupuesto,
+  LIMITE_LISTADO_PRESUPUESTOS,
+  listadoLlegoAlTope,
   listarPresupuestos,
   mailtoMandarPresupuesto,
   obtenerPresupuesto,

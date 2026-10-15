@@ -547,3 +547,11 @@
   margin-top: auto;
   padding-top: 8px;
 }
+
+/* SM-D2 (3): la cifra salió de una página que llegó al tope — se dice, no se esconde. */
+.presupuestos-resumen__aviso {
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg);
+}
