@@ -341,23 +341,46 @@ def cerrar_capas_dev_client(*, espera_inicial: float = 0) -> bool:
 
 # ── frentes ──────────────────────────────────────────────────────────────────────────────────────
 class UsuarioNoCanonico(RuntimeError):
-    """El archivo de secretos trae un usuario que NO es el canónico. Se aborta, no se loguea."""
+    """El `.env.e2e` trae un usuario que NO es el canónico. Se aborta, no se loguea."""
+
+
+def ruta_env_e2e() -> Path:
+    """`.env.e2e` de la RAÍZ del checkout principal — el MISMO archivo que leen los `e2e_g6_*`.
+
+    Está gitignored, así que un worktree no lo trae: si no está en `RAIZ`, se busca en el checkout
+    principal (el padre del `--git-common-dir`)."""
+    local = RAIZ / ".env.e2e"
+    if local.exists():
+        return local
+    comun = subprocess.run(["git", "-C", str(RAIZ), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                           capture_output=True, text=True).stdout.strip()
+    return Path(comun).parent / ".env.e2e" if comun else local
 
 
 def leer_credencial(ruta: Path | None = None) -> tuple[str, str]:
-    """`usuario|clave` del archivo de secretos del operador.
+    """`E2E_DEVICE_EMAIL` / `E2E_DEVICE_PASSWORD` de `.env.e2e` (líneas `CLAVE=valor`).
 
-    🔴 Guard (2026-10-15): la orden del operador es «un solo usuario de prueba canónico, a fuego;
-    ningún agente elige otro» (memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md). Este harness
-    aceptaba CUALQUIER usuario que el archivo trajera, y el desvío entró mudo: el login escribió
-    `sprint-e2e-…@copiloto.test` en vez del canónico y nadie lo supo hasta medir la pantalla. Ahora
-    el fallo dice cuáles son los dos usuarios, en vez de loguear con el equivocado."""
-    p = ruta or Path.home() / ".claude" / "secrets" / "copiloto-e2e.env"
-    usuario, _, clave = p.read_text(encoding="utf-8").strip().partition("|")
+    🔴 UN SOLO ORIGEN de la credencial para todo el harness (2026-10-15): esta función leía
+    `~/.claude/secrets/copiloto-e2e.env` —un archivo que nadie mantenía, con el usuario viejo
+    `sprint-e2e-…`— mientras los `e2e_g6_*` leen `.env.e2e`. El login del device tipeó el usuario
+    equivocado, la app contestó «No pudimos conectarnos» y el síntoma se leyó como bloqueo del operador.
+
+    🔴 Guard: la orden del operador es «un solo usuario de prueba canónico, a fuego; ningún agente elige
+    otro» (memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md). Si el email leído no es el canónico
+    se aborta nombrando los DOS — fail-closed, no se escribe nada en el device."""
+    p = ruta or ruta_env_e2e()
+    env: dict[str, str] = {}
+    for linea in p.read_text(encoding="utf-8").splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        k, _, v = linea.partition("=")
+        env[k.strip()] = v.strip()
+    usuario, clave = env.get("E2E_DEVICE_EMAIL", ""), env.get("E2E_DEVICE_PASSWORD", "")
     if usuario != EMAIL_CANONICO:
         raise UsuarioNoCanonico(
-            f"el archivo de credenciales trae el usuario {usuario!r} y el canónico es {EMAIL_CANONICO!r}. "
-            "No se loguea: corregí el archivo (es del operador), no el guard."
+            f"{p.name} trae el usuario {usuario!r} y el canónico es {EMAIL_CANONICO!r}. "
+            "No se loguea: corregí el archivo, no el guard."
         )
     return usuario, clave
 
@@ -611,6 +634,9 @@ def main() -> int:
     ap.add_argument("--reset", action="store_true",
                     help="pm clear antes de arrancar. OPT-IN: dispara la hoja de bienvenida del "
                          "dev-client, que tapa la app. Sólo si hace falta forzar sesión limpia.")
+    ap.add_argument("--sin-arranque", action="store_true",
+                    help="NO reinicia la app: ya está arriba y conectada (receta avión + reverse + Connect). "
+                         "El arranque por deep-link dispara el ANR del dev-launcher cuando hay red.")
     args = ap.parse_args()
 
     if not shutil.which("adb"):
@@ -622,7 +648,7 @@ def main() -> int:
         return 2
 
     EVIDENCIA.mkdir(exist_ok=True)
-    if not arrancar_app(args.puerto, reset=args.reset):
+    if not args.sin_arranque and not arrancar_app(args.puerto, reset=args.reset):
         return 1
 
     resultados: dict[str, bool] = {}
