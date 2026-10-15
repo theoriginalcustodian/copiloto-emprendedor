@@ -200,3 +200,29 @@ distingue código de prosa: cualquier patrón que no ancle el **receptor** mide 
   rancio. Antes de refutar una medición que no es tuya, mirá los hits uno por uno.
   → [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
 
+
+
+## Refuerzo 2026-10-15 — el estímulo que NOMBRA el sujeto no es el que lo DISPARA
+
+La fila `consent` del mapeo quedó dos días en `NO_REPRODUCIBLE_SIN_EFECTO`: «el sheet sólo se monta con
+una card backend `requiere_conexion`… forzarla exige provocar una tool que falle por falta de conexión
+(conectar/desconectar una cuenta de Composio): **efecto externo**». La medición fue honesta y el intento
+quedó escrito: **se pidió por chat «Mercado Pago» y «HubSpot»**, y el agente contestó texto.
+
+El veredicto era correcto sobre lo intentado y **falso sobre la conclusión**. Escribir el **nombre** del
+servicio no ejercita ninguna tool — es texto, y el agente contesta texto. La card nace cuando una
+**acción** falla por falta de conexión: `dispatcher_emprendedor.py:113-119` la emite si no hay
+credenciales de MP, y `:292-298` ante cualquier `ConnectionRequired`. Receta: **«armá un link de cobro de
+$1000»**. Un mensaje de chat, cero integraciones tocadas — exactamente el mismo efecto que los dos
+mensajes que la medición ya había dejado en el tenant de prueba.
+
+Es la misma forma que el caso raíz: el patrón **existía** en el sistema y el estímulo no lo tocaba en su
+forma real. Acá la forma real del estímulo es **el verbo**, no el sustantivo: el mecanismo se dispara por
+lo que el usuario PIDE HACER, no por lo que NOMBRA.
+
+**El chequeo:** antes de escribir «no se puede alcanzar sin un efecto externo», leé **quién construye**
+el artefacto que buscás (grep del constructor, no del consumidor) y qué rama lo devuelve. Si la rama es
+un `except` o un `if not creds`, el estímulo es la acción que lo provoca, no el nombre del servicio.
+Y cuando la frase que vas a escribir es «exige efecto externo», esa frase **cierra la fila por dos días**:
+cuesta menos un grep del constructor que dos días de una fila parada.
+  -> [[la-costura-leia-un-campo-que-nadie-escribe]] · [[un-disparador-cumplido-no-avisa-a-nadie]]
