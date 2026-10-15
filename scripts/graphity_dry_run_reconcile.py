@@ -16,7 +16,9 @@ Como se lee el resultado:
   - ZOMBIES   = en el grafo pero ya no en el codigo. Huerfanos: nodos de funciones
                 borradas, o aristas que apuntan a un nodo que cambio de identidad.
   - FALTANTES = el codigo los tiene y el grafo no. **Esto si es grave**: significa que
-                la ingesta no completo. Un sync sano deja FALTANTES en 0.
+                la ingesta no completo. Un sync sano deja FALTANTES en 0. Desde 2026-10-14 se
+                imprimen con tipo y nombre (antes salian como uuid5 opacos, que es justo lo
+                que hacia falta para resolverlos). Ver `expected_index`.
 
 Antes de correr `sync --force`, correr esto y mirar la lista. Si los zombies son de
 archivos que efectivamente cambiaron/se borraron, el --force es seguro.
@@ -30,6 +32,7 @@ Exit codes:
     0 — el diff se computo (haya o no zombies).
     2 — `expected` vino VACIO: el instrumento no midio nada y cualquier conteo que
         reporte seria falso. Ver el control positivo horneado abajo.
+    3 — el indice de descripciones divergio de `expected_uuids`: ver `expected_index`.
 """
 from __future__ import annotations
 
@@ -45,6 +48,8 @@ from bridge.config import load_repos, select_repos
 from bridge.enrich import build_enriched_graph
 from bridge.reader.graph_json import read_code_graph
 from bridge.reconciler.differ import expected_uuids
+from bridge.identity import edge_uuid, external_id, node_uuid
+from bridge.partition.partitioner import DEFAULT_EXCLUDED, partition_edges
 
 for _s in (sys.stdout, sys.stderr):
     if hasattr(_s, "reconfigure"):
@@ -72,6 +77,42 @@ def listar_completo(client: GraphityClient, kind: str, group_id: str) -> dict[st
             return fuera
 
 
+def expected_index(graph, types, group_id: str, repo: str,
+                   exclude_types=DEFAULT_EXCLUDED) -> dict[str, str]:
+    """``{uuid: descripcion}`` de lo que la corrida DEBERIA haber producido.
+
+    Por que existe (2026-10-14): los ZOMBIES se imprimian con tipo, nombre y `source_file` porque
+    estan EN Graphity y el endpoint devuelve el objeto entero. Los FALTANTES, por definicion, NO
+    estan ahi -- `expected_uuids` solo devuelve un `set` de uuid5-- asi que salian como hashes
+    opacos. La asimetria importaba: los faltantes son el UNICO criterio que bloquea el destrabe
+    (`destrabar-grafo-force.ps1` aborta si FALTANTES != 0), de modo que cuando el guard disparaba,
+    el instrumento no entregaba con que resolverlo. Medido ese dia: 11 faltantes, 11 UUIDs y nada mas.
+
+    NO reimplementa la identidad: importa `node_uuid`/`edge_uuid`/`external_id` y `partition_edges`,
+    las MISMAS que usa `differ.py` -- `differ.py:4-6` advierte que reimplementarla vaciaria el grafo.
+    Lo que si duplica es el RECORRIDO, y por eso su llamador DEBE comparar las claves contra
+    `expected_uuids`: si los dos recorridos divergen alguna vez, el control lo ve y aborta en vez de
+    describir mal lo que falta. Ese control es la razon por la que esta duplicacion es segura.
+    """
+    idx: dict[str, str] = {}
+
+    def _nid(node_id: str) -> str:
+        etype = types[node_id]
+        return node_uuid(group_id, etype, external_id(repo, node_id, etype))
+
+    for p in partition_edges(graph, types, exclude_types):
+        for e in p.edges:
+            src, tgt = _nid(e.source), _nid(e.target)
+            idx.setdefault(src, f"[{types[e.source]}] {e.source}")
+            idx.setdefault(tgt, f"[{types[e.target]}] {e.target}")
+            idx.setdefault(edge_uuid(group_id, src, p.relation, tgt),
+                           f"[{p.relation}] {e.source} -> {e.target}")
+    for nid in graph.nodes:
+        if types[nid] not in exclude_types:
+            idx.setdefault(_nid(nid), f"[{types[nid]}] {nid}")
+    return idx
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=Path, required=True)
@@ -84,6 +125,18 @@ def main() -> int:
     clustered = repo.graphify_workdir / "graph_clustered.json"
     graph, types = build_enriched_graph(read_code_graph(raw, clustered), repo)
     expected = expected_uuids(graph, types, repo.group_id, repo.name)
+    indice = expected_index(graph, types, repo.group_id, repo.name)
+    # CONTROL del indice: `expected_index` DUPLICA el recorrido de `expected_uuids` para poder
+    # ponerle nombre a cada uuid. Si los dos recorridos divergieran, describiria MAL lo que falta
+    # -- y un instrumento que nombra el objeto equivocado es peor que uno que imprime hashes.
+    # Se compara ANTES de llamar a Graphity: falla barato y no deja dudas sobre quien difiere.
+    if set(indice) != expected:
+        sobran, faltan = len(set(indice) - expected), len(expected - set(indice))
+        print()
+        print(f"[CONTROL] el indice divergio de expected_uuids "
+              f"(+{sobran} / -{faltan}) -> no puedo nombrar los faltantes sin mentir. Abortar.",
+              file=sys.stderr)
+        return 3
 
     client = GraphityClient.from_env()
     try:
@@ -136,10 +189,24 @@ def main() -> int:
         for e in z_aristas[:10]:
             print(f"  {str(e.get('name')):<14} {str(e.get('fact'))[:95]}")
 
+    if faltantes:
+        # Los faltantes van DESPUES de los zombies a proposito: son los que bloquean el destrabe
+        # (`destrabar-grafo-force.ps1` aborta si != 0), asi que cierran la salida y quedan a la vista.
+        print()
+        print(f"--- FALTANTES: {len(faltantes)} objeto(s) que el codigo tiene y el grafo NO ---")
+        for u in sorted(faltantes, key=lambda x: indice.get(x, '')):
+            print(f"  {indice.get(u, '(sin descripcion: uuid fuera del indice)')}")
+        print()
+        print("  por tipo:")
+        for t, c in Counter(indice.get(u, '[?]').split(']')[0].lstrip('[')
+                            for u in faltantes).most_common():
+            print(f"    {t:<18} {c}")
+
     if args.volcar:
         args.volcar.write_text(json.dumps(
             {"zombies_nodos": z_nodos, "zombies_aristas": z_aristas,
-             "faltantes": sorted(faltantes)[:500]},
+             "faltantes": [{"uuid": u, "descripcion": indice.get(u)}
+                           for u in sorted(faltantes, key=lambda x: indice.get(x, ''))[:500]]},
             ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\ndetalle completo -> {args.volcar}")
     return 0
