@@ -306,6 +306,8 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend1-a-planificacion_DECLARAR-6-ids-fiscales-NO_MEDIBLE-con-Falta-concreto.md",
     # 2026-10-15 — DECLARAR (operador): 7 ids de estado NO_MEDIBLE con `Falta:` concreto; preg NO entra (ya DESVIO).
     "2026-10-15_cierre_frontend2-a-planificacion_DECLARAR-los-8-ids-de-estado-NO_MEDIBLE-con-Falta-concreto-preg-NO-entra-ya-esta-medido-DESVIO-y-SM-C4-con-su-Falta.md",
+    # 2026-10-15 — reveal, plataforma mobile: SE VE en device (consumidor real EntradaSesion.tsx:32); DESVIO documentado.
+    "2026-10-15_cierre_frontend2-a-planificacion_reveal-SE-VE-en-device-DESVIO-lockup-y-sin-boton-de-pronunciar.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
@@ -2403,6 +2405,12 @@ CONFLICTOS_CONOCIDOS = {
     # 2026-10-15 - TRES ids con la forma de `clientes`/`hitl`: el contraste agrupa por `id` y no por
     # `(id, plataforma)`, asi que COHERENTE web (22/09) + DESVIO mobile (15/10) dispara conflicto aunque
     # sean DOS SUPERFICIES. Declarado, no arreglado el instrumento (`CONGELAINSTR`).
+    "reveal": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 28/09 "
+              "(BL-Q3-v2 lote B: `Splash`, cta primario «Empecemos», «Crear cuenta» ausente por decision H-A4-15) "
+              "vs DESVIO mobile 15/10 (device: el reveal «volver» tras cierre voluntario SE VE; difiere el "
+              "lockup —isotipo como «O» + `dobi`, `RevealEntrada.tsx:32-34`—, no hay boton de pronunciar por "
+              "falta de asset de audio y suma la linea «Tu copiloto emprendedor»). Dos superficies, las dos "
+              "vigentes.",
     "afip": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
             "(BL-Q3-web, frontend2: «mismos campos del perfil fiscal», landing sin datos) vs DESVIO "
             "mobile 15/10 (device, estado SIN VINCULAR: encabezado «1. Perfil fiscal» numerado, sin "
