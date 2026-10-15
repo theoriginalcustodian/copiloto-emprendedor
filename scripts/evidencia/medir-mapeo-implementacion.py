@@ -86,6 +86,47 @@ def _raiz():
 RAIZ = _raiz()
 DOCS = RAIZ / "docs" / "copiloto-emprendedor"
 CONTRATOS = DOCS / "2026-10-12-contratos-del-mapeo.md"
+# El glob del corpus vive ACA y no literal en dos lugares: lo usan el lector de veredictos y
+# la etiqueta de vigencia, y si divergen la etiqueta mide un corpus distinto del que se midio.
+GLOB_CORPUS = "*veredicto*.md"
+
+
+def corpus_divergente(paths):
+    """CORPUSVIEJO -> ([paths que difieren de origin/main], motivo_si_no_se_pudo_medir)
+
+    POR QUE EXISTE (medido 2026-10-15, el mismo dia que #1224). `vigia.sh` ancla el CODIGO del
+    instrumento al pin de `origin/main`, y eso cierra la mitad del problema. La otra mitad sigue
+    viva: `RAIZ` sale del **CWD**, asi que el CORPUS que se mide es el del arbol desde donde se
+    corre. Corrido por `vigia.sh` desde el checkout compartido dio **46/54 con 8 pendientes**; el
+    MISMO codigo sobre un worktree en `dbdf36dc` dio **47/54 con 7**. La diferencia era `consent`,
+    re-marcado en los docs que el checkout todavia no tenia. Dos cifras del mismo instrumento, y
+    ninguna de las dos decia de que corpus salia.
+
+    NO ES UN GATE Y NO FALLA, A PROPOSITO. Trabajar con el arbol atrasado es legitimo (otra sesion
+    acaba de mergear y vos todavia no actualizaste); lo que no es legitimo es que la cifra salga
+    sin decirlo. Un guard que grita en el caso normal se desarma solo
+    (`memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md`), asi que esto ETIQUETA.
+
+    El `None` del motivo distingue «medi y estan al dia» de «no pude medir»: sin esa distincion,
+    una lista vacia por falta de `origin/main` (CI con fetch shallow) se lee como luz verde, que es
+    `memoria/medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md`.
+    """
+    import subprocess
+    rel = [str(x.relative_to(RAIZ)).replace("\\", "/") for x in paths if x.exists()]
+    if not rel:
+        return [], "el corpus no tiene ningun archivo en disco"
+    try:
+        v = subprocess.run(["git", "rev-parse", "--verify", "origin/main"], cwd=str(RAIZ),
+                           capture_output=True, text=True, timeout=20)
+        if v.returncode != 0:
+            return [], "no existe `origin/main` en este arbol (fetch shallow?)"
+        r = subprocess.run(["git", "diff", "--name-only", "origin/main", "--"] + rel,
+                           cwd=str(RAIZ), capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            return [], "git diff fallo: " + (r.stderr or "").strip()[:120]
+        return [x for x in r.stdout.splitlines() if x.strip()], None
+    except Exception as e:                      # noqa: BLE001 - etiqueta, nunca tumba la medicion
+        return [], "no pude medir la vigencia del corpus: %s" % e
 
 SIN_MEDIR = ("SIN VEREDICTO", "FUERA-DE-ESTE-CORPUS")
 CUMPLE_DOD = {"CERRADA-EN-CODIGO", "ENMIENDA-FUNDADA", "COHERENTE"}
@@ -129,9 +170,9 @@ def universo():
 
 def corpus(roto=None):
     """Descubre los docs de veredictos por glob y los asigna a un brazo. Sin lista a mano."""
-    hallados = sorted(DOCS.glob("*veredicto*.md"))
+    hallados = sorted(DOCS.glob(GLOB_CORPUS))
     if not hallados:
-        morir("el glob '*veredicto*.md' no encontro ningun doc en " + str(DOCS))
+        morir("el glob '%s' no encontro ningun doc en %s" % (GLOB_CORPUS, DOCS))
     asignados, sin_parser = {}, []
     for p in hallados:
         n = p.name
@@ -168,6 +209,11 @@ def leer_veredictos(asignados):
         for m in re.finditer(r"^### \d+ . `([^`]+)` . (.+)$", txt, re.M):
             e = est.setdefault(m.group(1), {"simbolos": set(), "origen": p.name + " (sin device)"})
             e["simbolos"].update(re.findall(r"[✅\U0001F4DD⛓⚠]", m.group(2)))
+            # TEXTOPENDIENTE: el texto crudo de la divergencia, que hasta hoy se descartaba despues de
+            # extraerle los simbolos. Lo consume `existe-en-main.py` para medir si lo que la fila declara
+            # ausente EXISTE en `origin/main`. Se ACUMULA porque un id aparece en mas de un brazo y cada
+            # uno nombra su mitad.
+            e["texto"] = (e.get("texto", "") + " " + m.group(2)).strip()
 
     aporte = {"chat": len(est) - antes["chat"]}
 
@@ -191,6 +237,10 @@ def leer_veredictos(asignados):
             e = est.setdefault(ult, {"simbolos": set(), "origen": p.name + " (sin device)"})
             mapa = {"R": "✅", "E": "\U0001F4DD", "D": "⛓", "P": "⚠"}
             e["simbolos"].update(mapa[x] for x in re.findall(r"\*\*([REDP])\*\*", cols[2]))
+            # TEXTOPENDIENTE: van las DOS celdas. `cols[1]` es la divergencia y `cols[2]` el veredicto
+            # con su evidencia; la fila de `soporte` nombraba el backend ya cumplido en la de VEREDICTO,
+            # no en la de divergencia, asi que mirar una sola mitad dejaba ese caso ciego.
+            e["texto"] = (e.get("texto", "") + " " + cols[1] + " " + cols[2]).strip()
 
     aporte["cascara"] = len(est) - antes["cascara"]
 
@@ -198,10 +248,14 @@ def leer_veredictos(asignados):
     con_device = 0
     for p in asignados.get("device", []):
         txt = p.read_text(encoding="utf-8")
-        for m in re.finditer(r"^\| *\d+ *\| *`([^`]+)` *\| *([^|]+?) *\| *([^|]+?) *\|", txt, re.M):
+        # TEXTOPENDIENTE: el grupo 4 (la nota) va AL FINAL a proposito -- los grupos 1-3 conservan
+        # su numero, asi que el `device` de abajo sigue leyendo lo mismo. Es `*` y no `+` porque una
+        # fila puede no tener nota: ahi el grupo vale "" en vez de no matchear la linea entera.
+        for m in re.finditer(r"^\| *\d+ *\| *`([^`]+)` *\| *([^|]+?) *\| *([^|]+?) *\|([^\n]*)", txt, re.M):
             e = est.setdefault(m.group(1), {"simbolos": set(),
                                             "origen": p.name + " (MEDIDO EN DEVICE)"})
             e["device"] = (m.group(2).strip("` *"), m.group(3).strip("` *"))
+            e["texto"] = (e.get("texto", "") + " " + (m.group(4) or "")).strip()
             con_device += 1
     aporte["device"] = con_device
     return est, aporte
@@ -305,7 +359,7 @@ def medir(roto=None):
     por_bloque = {g: Counter() for g in set(ids.values())}
     for _i, (g, clase, _o) in filas.items():
         por_bloque[g][clase] += 1
-    return ids, declarado, filas, huecos, por_bloque
+    return ids, declarado, filas, huecos, por_bloque, est
 
 
 def cubiertas(filas):
@@ -332,12 +386,18 @@ def canario():
     print("OK: los %d brazos estan controlados" % len(BRAZOS))
 
 
+def _corpus_json():
+    """CORPUSVIEJO en forma de dato: `null` = no se pudo medir (NO es "al dia")."""
+    div, motivo = corpus_divergente(sorted(DOCS.glob(GLOB_CORPUS)) + [CONTRATOS])
+    return None if motivo is not None else div
+
+
 def main():
     if "--canario" in sys.argv:
         canario()
         return
 
-    ids, declarado, filas, huecos, por_bloque = medir()   # el control positivo vive adentro
+    ids, declarado, filas, huecos, por_bloque, est = medir()   # el control positivo vive adentro
     n = len(ids)
     cumple = sum(1 for _i, (_g, c, _o) in filas.items() if c in CUMPLE_DOD)
     codigo = sum(1 for _i, (_g, c, _o) in filas.items() if c == "CERRADA-EN-CODIGO")
@@ -352,11 +412,26 @@ def main():
                           "cumple_dod": cumple, "cerrada_en_codigo": codigo,
                           "con_veredicto": medidas, "fuera_de_este_corpus": fuera,
                           "pendiente_declarada": len(pend), "pendientes": pend,
+                          # TEXTOPENDIENTE: el texto crudo de cada fila pendiente. No cambia ninguna
+                          # cifra; existe para que `existe-en-main.py` NO tenga que re-parsear los docs
+                          # y fabricar una segunda definicion de "que declara ausente esta fila".
+                          "texto_de_las_pendientes": {i: est.get(i, {}).get("texto", "")
+                                                      for i in pend},
+                          "corpus_divergente_de_main": _corpus_json(),
                           "huecos": ["%s/%s" % (g, i) for g, i in huecos],
                           "por_bloque": {g: dict(c) for g, c in por_bloque.items()}},
                          ensure_ascii=False, indent=2))
     else:
         print("ARBOL MEDIDO: %s" % RAIZ)   # sin esto la cifra no dice de que rama es
+        div, motivo = corpus_divergente(sorted(DOCS.glob(GLOB_CORPUS)) + [CONTRATOS])
+        if motivo is not None:
+            print("CORPUS: no pude medir su vigencia (%s) - la cifra puede salir de docs viejos" % motivo)
+        elif div:
+            print("CORPUS ATRASADO: %d doc(s) de este arbol difieren de origin/main -> la cifra NO es"
+                  " la de main. %s" % (len(div), ", ".join(x.split("/")[-1] for x in div[:3])
+                                       + (" ..." if len(div) > 3 else "")))
+        else:
+            print("CORPUS: al dia con origin/main (%d docs)" % (len(sorted(DOCS.glob(GLOB_CORPUS))) + 1))
         print("PADRON: %d filas de contrato - declarado por el doc: %s" % (n, declarado))
         print("UNIDAD: filas de contrato del mapeo prototipo->nativo (NO ids del criterio 3)\n")
         for i, (g, clase, origen) in sorted(filas.items(), key=lambda kv: (kv[1][0], kv[0])):

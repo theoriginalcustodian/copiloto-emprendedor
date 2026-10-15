@@ -250,4 +250,47 @@ else
   fail "11 rc=$rc · pend=$(campo "$out" pendiente_declarada) dod=$(campo "$out" cumple_dod) · una fila de device con ⚠ se conto como cumplida: $(head -c 300 <<< "$out")"
 fi
 
-[ "$fallos" -eq 0 ] && echo "  OK (11/11)" || { echo "  $fallos fallo(s)"; exit 1; }
+# -- 12/13/14 - CORPUSVIEJO: la etiqueta de vigencia del corpus ------------------------------------
+# POR QUE (medido 2026-10-15). `vigia.sh` ancla el CODIGO del instrumento al pin de `origin/main`
+# (#1224) y eso cierra una mitad. La otra quedo viva: `RAIZ` sale del CWD, asi que el CORPUS es el
+# del arbol desde donde se corre. El MISMO codigo dio **46/54 con 8 pendientes** corrido desde el
+# checkout compartido y **47/54 con 7** sobre un worktree en `dbdf36dc` — la diferencia era
+# `consent`, re-marcado en docs que el checkout no tenia. Ninguna de las dos cifras decia de que
+# corpus salia. La etiqueta no FALLA (trabajar con el arbol atrasado es legitimo; un guard que grita
+# en el caso normal se desarma solo), pero tiene que DECIRLO.
+# El caso 12 es el que importa: «no pude medir» NO puede leerse como «al dia». Un vacio por falta de
+# `origin/main` (CI con fetch shallow) parseado como luz verde es el defecto de
+# `medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero`.
+K="$TMP/corpus-sin-git"; armar "$K"
+out="$(correr "$K")"
+if grep -q "no pude medir su vigencia" <<< "$out" && ! grep -q "CORPUS: al dia" <<< "$out"; then
+  ok "12 corpus sin \`origin/main\` -> dice que NO pudo medir, y NO lo reporta como al día"
+else
+  fail "12 un corpus inmedible se reporto como al día (o calló): $(grep -i corpus <<< "$out" | head -2)"
+fi
+
+# 13/14 necesitan un `origin/main` real. `update-ref` lo fabrica sin remoto: es el mismo ref que
+# resuelve `git diff origin/main`, y asi el caso ejercita el camino de produccion y no un mock.
+L="$TMP/corpus-con-git"; armar "$L"
+(cd "$L" && git init -q . && git add -A docs && \
+ git -c user.email=t@t -c user.name=t commit -qm fixture && \
+ git update-ref refs/remotes/origin/main HEAD) >/dev/null 2>&1
+if [ -d "$L/.git" ]; then
+  out="$(correr "$L")"
+  if grep -q "CORPUS: al dia con origin/main" <<< "$out"; then
+    ok "13 corpus idéntico a \`origin/main\` -> «al dia» (control POSITIVO: sin esto, 14 pasa con un script que grite siempre)"
+  else
+    fail "13 un corpus al día no se reporto como tal: $(grep -i corpus <<< "$out" | head -2)"
+  fi
+  printf '\n<!-- divergencia -->\n' >> "$L/docs/copiloto-emprendedor/2026-10-13-veredictos-bloque-cascara-fixture.md"
+  out="$(correr "$L")"
+  if grep -q "CORPUS ATRASADO" <<< "$out" && grep -q "cascara-fixture.md" <<< "$out"; then
+    ok "14 un doc del corpus divergente -> «ATRASADO» y NOMBRA el archivo (no un total inmóvil)"
+  else
+    fail "14 un corpus divergente no disparo la etiqueta: $(grep -i corpus <<< "$out" | head -2)"
+  fi
+else
+  echo "  ⏭️  13/14 sin git usable — salteado (no es un verde: es una medición que no se hizo)"
+fi
+
+[ "$fallos" -eq 0 ] && echo "  OK (14/14)" || { echo "  $fallos fallo(s)"; exit 1; }
