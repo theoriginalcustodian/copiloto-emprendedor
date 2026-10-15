@@ -46,7 +46,9 @@ como `NO_MEDIBLE`/`NO_REPRODUCIBLE_SIN_EFECTO` con motivo, no como `COHERENTE`.
 | 3 | `bloqueado` | DESVÍO | DESVÍO | «Pausar»/«Enviar» partidos en 2 líneas: **corregido (H6)**; el DESVÍO de la fila persiste por la columna de candado |
 | 4 | `chat` | DESVÍO | DESVÍO | |
 | 5 | `consent` | `NO_REPRODUCIBLE_SIN_EFECTO` | `NO_REPRODUCIBLE_SIN_EFECTO` | el sheet no se alcanza sin un efecto externo |
+| 13 | `soporte` | **DESVÍO** | **COHERENTE** | «se ve»: desde Ajustes → «Soporte técnico» abre la pantalla (`s1ajustes`, `s2soporte`): marca + título, «Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.», «Los tickets los responde una persona del equipo; todavía no tenemos un plazo de respuesta fijo…», aviso de privacidad, chat vacío, mic + composer «Contame qué pasó…». **Sigue sin** «Ver tickets anteriores (N) ›» y sin clip de adjuntos: el backend de ambos **ya existe** (`web.py:996`, `:1034`), falta el código de app. «Antes de 4 h hábiles»: enmienda (no hay SLA, `BL-O7`). No se abrió ningún ticket |
 | 6 | `detalle` | DESVÍO | DESVÍO | monto/fecha bajo el pliegue: `NO_MEDIBLE` en esa parte |
+| 5 | `consent` | **COHERENTE** | **DESVÍO** | alcanzado sin efecto externo con un **verbo que falla**: «arma un link de cobro de 1000 pesos» (Mercado Pago figura desconectado) → nace la card y el sheet (`k3resp`). Texto: «Conectá Mercado Pago», «Para hacer eso necesito acceso a Mercado Pago.», «• Leer tus cobros» + «Solo lectura», «• Armar links de cobro cuando vos confirmás» + «Nunca sin tu OK» (los calificadores del `alcance` **se ven**), «Apenas conectes, sigo: armar el link de cobro de $1.000.» (el pendiente viene del turno), botones «Conectar» / «Ahora no». Difiere del prototipo sólo en copy deliberado (voseo; «Leer tus cobros» sin «y movimientos»; subtítulo). **DESVÍO de COMP, defecto real: el composer y el botón de voz se pintan ENCIMA del sheet** — «Conectar» queda bajo el composer y un toque sobre «Ahora no» **enfoca el campo de texto** en vez de cerrar el sheet (`k6b`, `k7tap-ahorano`). Causa: el sheet es `position:absolute` y iba antes de sus hermanos en flujo. **Corregido en este PR** (último hijo de `ChatView`, test con mutante) y **verificado en device sobre `249f382b`** (Metro del PR, core del worktree): el sheet se ve entero con «Conectar» / «Ahora no» sin nada encima (`q1`) y un toque sobre «Ahora no» **cierra el sheet** y devuelve el composer (`q2`) |
 | 7 | `entrada` | DESVÍO | `NO_MEDIBLE` | fondo medido; la animación no se resuelve con screencap |
 | 8 | `esc` | `FUERA-DE-REFERENCIA` | COHERENTE | era: **incumple la decisión A** (reset a Mi día). **Corregido y re-medido 2026-10-13 (TRIAJE15 A)** — ver «TRIAJE15 (A)» |
 | 9 | `feedback` | DESVÍO | DESVÍO | |
@@ -527,3 +529,29 @@ el 2026-10-13 sobre `2610bb6b`). Esto sólo deja escrito **contra qué DoD se le
   Divergencias que la fila ya nombra: sin «Crear una nueva cuenta» (decisión documentada, `EntradaSesion.tsx:17-21`), wordmark
   40 dp `#B04A2E` vs 46 terracota, forma residual sobre el wordmark en reposo. El botón de pronunciar (`rv-say`) está `**D**`:
   espera el asset de audio del operador y **no es parte de este DoD**.
+
+## Enmienda 2026-10-15 (2) — CLASE A del contrato «las 10 filas de device»: re-medición en teléfono sobre `ac86a5bd`
+
+**Medido contra:** `medido_contra: ac86a5bd` (= `/healthz` de prod al tomar el device). Mismo device `RF8T318RN9T`, usuario canónico
+`e2e-device@copiloto.test`, gestos `adb input motionevent DOWN/MOVE/UP`, `screencap` (no `dump`). Bundle servido por Metro local
+desde un worktree detached en `ac86a5bd`.
+
+⚠️ **Límite de procedencia (declarado, no resuelto):** el sha citado es el del **worktree**. En un worktree `node_modules` es un
+*junction* al del checkout compartido, y el bundle resolvía `@copiloto/core` desde ahí: el core servido **pudo ser el del checkout
+compartido y no el de `ac86a5bd`** si no se corrige. Para esta ronda se **forzó** el resolver de `@copiloto/core` al
+`packages/core/src` del worktree (override temporal de `metro.config.js`, no commiteado) — **verificado sólo porque Metro devolvió
+200 con ese path; no hay un detector que lo pruebe en el bundle**. Las mediciones del 2026-10-13 «sobre `2610bb6b`» **no** tuvieron ese
+override: no se sabe contra qué core se midieron. Si una fila cambia de veredicto con core fresco, se sabrá al re-medirla.
+
+| # | fila | CONT | COMP | qué se midió (captura) |
+|---|---|---|---|---|
+| 2 | `bi-refresh` | **COHERENTE** | **DESVÍO** | reposo: **sin** línea permanente «Tirá para actualizar» (`r3intel`). Arrastre 450→900 px: sólo el disco del sistema, **sin «Actualizando…»** durante el arrastre (`p1drag`, `p2drag-largo`); tras `UP` a 0,4 s aparece «Actualizando…» (`p3up400`) → el refresh dispara **después** del UP. Residual: indicador del **sistema** (`RefreshControl`) y no el propio 0→64 px; la fase «Soltá» sigue no alcanzable en Android `[código]`. «Al día · recién»: a 2 s de soltar **no** se ve (`p4up2s`); no se muestreó entre 0,4 y 1,6 s |
+| 3 | `bloqueado` | **COHERENTE** | **COHERENTE** | durante el hold: **columna de candado + caret** sobre el botón, cronómetro `0:01`→`0:03`, «Deslizá para cancelar ‹» (`b3hold`, `b4move`). Fijada: tacho + onda + `0:04` + pausa + enviar, una línea (`b1`). Pausada: «**En pausa**» + `0:06` + ▶ + enviar (`c2pausa`); tacho descarta (`c3discard`). Todo lo que la fila declaraba ausente (cronómetro, candado/caret, «desliza para cancelar», «En pausa», tacho+onda) existe. Residual no medido: eje dominante en diagonal |
+| 4 | `chat` | **COHERENTE** | **`NO_MEDIBLE`** | grip del chat: «Bajá para volver a Mi día» (`b1`); grip de Mi día: «Bajá para tus funciones», pie «Escribile a Odobi» (`t1midia`) — el «ESCRIBILE A ODOBI» en ambas posiciones **ya no está** (voseo en vez de «Baja»: deliberado). **Isotipo del vacío 120 vs 96 px: `NO_MEDIBLE`** — el estado vacío no es alcanzable: el chat del canónico ya tiene historial y vaciarlo es un efecto sobre su base |
+| 15 | `tablero` | **DESVÍO** | **COHERENTE** | contadores en solapas «Para hoy **2**» ✔; nota «Las que detecta Odobi se cierran solas…» ✔ (`t3scroll2`); resumen «2 para hoy · 0 en curso» fuera de las solapas (el prototipo lo trae como `estado-pag` con «1 crítico»). DESVÍO de CONT: título **«Odobi» + fecha** (no «Tu día» + «Lo que Odobi detectó…»), sin card de alerta con acción (el aviso de Calendar/MP es texto sin píldora, `t1midia`) — el tablero está fusionado en Mi día (decisión del mapeo). **El «viewport ≈120 dp» ya no existe:** la página entera scrollea y las 2 filas se leen completas. «Reconectar» y destino fino (H5b): **`NO_MEDIBLE`** — no hay alerta con acción en el estado de esta cuenta |
+| 6 | `detalle` | **COHERENTE** (parcial) | **DESVÍO** | tarjeta expandida con el chat colapsado (`d3exp-scroll`): **prosa con importe** «Emitida hace 42 días. Son $50.000 que ya facturaste y todavía no entraron», **chip** «Emitida hace 42 días», **píldora** «Reclamar el pago», **kv** «Cliente · Cliente Seed Mi Dia». El backend de prod **sí** entrega `presentacion` (sin ella no habría chip ni prosa). Persiste: **sin tile de color**. El kv «Monto» **no es un faltante**: se retiró a propósito (contrato H12, «sacar Monto sin la prosa borra el importe» — el importe vive en la prosa, que se ve). El chip de la **factura** es «Emitida hace…», **no** «31 días sin respuesta» (ese texto es del presupuesto, no se expandió). La parte antes `NO_MEDIBLE` (monto/fecha) **se midió: está en la prosa** |
+
+**Efecto sobre la base del canónico (el device escribe):** gestos de voz que sueltan sin fijar **envían** (H7). Aparecieron en su chat,
+tras mis gestos, mensajes que no controlo (STT sobre audio ambiente; origen exacto del texto **no verificado**): «Música» (voz 0:05),
+«gaste 1234 en librería» → **gasto $1.234,00 anotado**, «cuánto vendí esta semana» → respuesta del agente. «Salió» del mes pasó a
+$51.234,00. Es la cuenta de prueba canónica; no se tocó ninguna integración.

@@ -38,3 +38,13 @@ motivo por el que el login no "tomaba" era el leak cross-tenant de `AsyncStorage
 **PROHIBIDO crear usuarios de prueba ad-hoc** o elegir "el que esté a mano": si no es el canónico, es un
 error. La credencial se toma del lugar reproducible del harness, no se inventa ni se pide de nuevo. Cambiar
 el usuario canónico es MAYOR: se decide y se re-documenta acá, no se asume.
+
+**Filas BASURA conocidas en el tenant canónico (no son un gasto/cobro real; no las cites al medir):**
+
+- **2026-10-15 — gasto `$1.234,00` «gaste 1234 en librería»** + voz «Música» + «cuánto vendí esta semana». Los escribió un gesto de
+  voz de la pasada de device15 (soltar sin fijar **envía**, H7; el STT transcribió audio ambiente). Hoy no hay `DELETE` de gastos
+  (`packages/core/src/api/index.ts:156`, «Sin PATCH/DELETE en Fase 1»), así que **no se borró**: se anota acá y en
+  `Auditorias/…/2026-10-13-veredictos-device15-15-filas.md` (enmienda 2). Ese mes el «Salió» sube de $50.000 a $51.234; el «Salió» de
+  $111 `BLQ3-recibo` y el de $50.000 «Distribuidora Sur» también son de pruebas anteriores.
+- **Prevención:** en un gesto de voz **sin intención de enviar**, soltar a >80 dp (fija) y descartar con el tacho; soltar corto
+  envía lo que el micrófono haya oído.
