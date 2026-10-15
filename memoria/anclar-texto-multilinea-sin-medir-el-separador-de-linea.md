@@ -89,3 +89,46 @@ mismo y cuesta una linea: contar bytes de control sobre lo ESCRITO, no revisar l
 escribir · `sum(1 for c in b if c < 9 or 13 < c < 32)` debe dar **0**, y el backslash literal se
 construye por codigo (`bytes([0x5c])`), no por escape.
 → [[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]]
+## Refuerzo 2026-10-15 - el medidor del separador que esta entrada recomienda **no separa**, y el heredoc colapso mi escape
+
+Esta entrada manda **medir el separador antes de anclar**. Hoy lo hice con `grep -c $'\r' <archivo>`,
+me dio **342 sobre 342 lineas** y concluí **CRLF**. Anclé con `\r\n`... y el archivo era **LF**:
+quedó mixto, 341 LF sueltos mas mi bloque CRLF. Lo cazó Python, no el grep.
+
+**Control positivo y negativo, dos archivos fabricados a proposito** (`printf 'a\r\nb\r\nc\r\n'`
+y `printf 'a\nb\nc\n'`, verificados con Python: CR=3 y CR=0):
+
+| medidor | archivo CRLF | archivo LF | separa? |
+|---|---|---|---|
+| Python `read().count(b'\r')` | **3** | **0** | **SI** |
+| `grep -c $'\r$'` | 3 | 3 | no |
+| `grep -c $'\r'` | 3 | 3 | no |
+| `grep -cP '\r'` | 0 | 0 | no, y **al reves** |
+
+**Causa de los dos primeros:** en este Git Bash el `$'\r'` **no llega a grep** — se consume antes, el
+patron queda **vacio**, y un patron vacio matchea **todas** las lineas. El resultado es siempre
+`= wc -l`, que es **exactamente** lo que un CRLF puro produciria: el falso positivo **imita** al
+verdadero positivo, no da nunca un numero raro que te haga dudar.
+
+**La otra cara:** `grep -cP '\r'` da **0 en los dos** — falso **negativo**, absuelve a un CRLF.
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+
+**Y la capa que casi me come de nuevo, en el mismo turno:** al escribir este refuerzo puse `\\r`
+(doble) dentro de un heredoc **quoted** `<<'PY'` para que Python viera un backslash literal. Un
+heredoc quoted no deberia tocar nada; medido, **colapsa el doble a uno**, y Python interpretó el
+resultado como **CR real** — el `assert "\r" not in nuevo` saltó:
+
+    s = """tiene \\r escapado"""     -> Python recibe:  'tiene \r escapado'   (CR real)
+
+O sea: el contenido que describe el defecto **contenia** el defecto. La salida es no escribir escapes
+en el cuerpo: un marcador (`\` armado con `chr(92)`) y reemplazo al final.
+[[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]]
+
+**La regla:** el separador se mide **en bytes, con Python**, nunca con grep en este shell:
+
+    python -I -X utf8 -c "b=open(r'<path>','rb').read(); print('CR=',b.count(b'\r'),'LF=',b.count(b'\n'))"
+
+`CR == LF` es CRLF puro · `CR == 0` es LF · cualquier otra cosa es **mixto**, y hay que normalizar
+antes de anclar. El control que delata al medidor en un comando: corrélo contra un archivo que
+**sabes** LF; si no da cero, no es un medidor.
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]

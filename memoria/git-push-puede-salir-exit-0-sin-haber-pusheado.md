@@ -243,3 +243,64 @@ definicion de error*. Para `mv -n`, "no hice nada" **no** es un error. El contro
 mismo de toda esta entrada: **medir el efecto en el destino y en el origen**, nunca el codigo de
 salida. Relacionado: [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] -
 aca ni mensaje hubo.
+## Refuerzo 2026-10-15 (2) - la firma que separa el push COLGADO del gate LENTO es la DERIVADA del CPU, no su valor
+
+Esta entrada ya dice que el push se verifica **por efecto** (`git ls-remote`), y eso sigue siendo el
+control. Lo que faltaba era como decidir **si esperar o matar**, porque las dos situaciones se ven
+igual desde afuera: el comando no vuelve.
+
+Hoy me pasaron las dos, con cuatro horas de diferencia:
+
+| | push COLGADO (manana) | gate LENTO (17:00) |
+|---|---|---|
+| `git.exe` CPU | 0,031 s y 0,016 s, **sin moverse** | 0,047 s y 0,016 s (igual de bajo) |
+| proceso del hook | **ninguno** | `python` PID 21176 |
+| CPU de ese proceso | — | **31,9 s -> 55,9 s en 3 min** |
+| `.git/*.lock` | 0 | 0 |
+| que hice | `TaskStop` + repush (nunca `--no-verify`) | **esperar** |
+
+**El valor del CPU de `git` no separa nada: es bajisimo en los dos casos**, porque en un push con hook
+el que trabaja no es `git`, es el **gate**. Mirar a `git` y ver 0,03 s invita a concluir "colgado" —
+y en el caso lento es falso.
+
+**Lo que separa es la DERIVADA del CPU del proceso que hace el trabajo.** Dos mediciones separadas
+2-3 minutos: si el CPU **crece**, hay trabajo y se espera; si esta **estancado** y ademas no existe
+proceso de hook, esta bloqueado en I/O y se mata. Una sola foto no alcanza — un numero alto puede ser
+trabajo viejo ya terminado, y uno bajo puede ser un gate que recien arranco.
+
+    Get-Process git,python,bash | Select Id,ProcessName,CPU,StartTime   # ...y repetir a los 3 min
+
+**AUTOCORRECCION 20 min despues, en el mismo turno: la tabla de arriba esta bien y el criterio que
+saque de ella estaba MAL, por una razon que importa mas que la tabla.**
+
+Mientras esperaba, dije "el `pre-push` de este repo tarda 8-10 min, asi que esperar es lo correcto".
+Despues mate el push y **el repush completo tardo 7 segundos** (`17:05:05 -> 17:05:12`, rc=0, rama en
+el remoto). O sea: el `pre-push` **no** tarda 8-10 min. El primer push estuvo **colgado desde el
+principio**, y yo justifique 20 minutos de espera con una duracion que me invente.
+
+**De donde salio el numero:** del CPU de un proceso `python` que crecia (31,9 -> 55,9 -> 84,1 -> 102,4 s)
+y que **nunca verifique que fuera hijo de mi push**. Cuando por fin medi parentesco, **no habia ningun
+`git` vivo**: ese proceso era de otra sesion del repo, trabajando en lo suyo. Mi "evidencia de que el
+gate trabaja" era el trabajo de alguien mas.
+
+**La regla corregida, y es mas simple que la anterior:**
+
+1. Medir **parentesco antes que actividad**: `Get-Process git` — si **no hay `git` vivo**, el push
+   murio, sin importar que CPU veas en otro proceso. Con tres sesiones sobre el mismo repo, mirar
+   "el python que trabaja" es mirar a cualquiera.
+2. El umbral real de este repo es **segundos**, no minutos. Un push que pasa de **~2 min** ya es
+   sospechoso; no hay ninguna duracion normal de 10 minutos que justifique esperar.
+3. El control sigue siendo el **efecto**: `git ls-remote --heads origin "<rama>*"` con control
+   positivo en `main`. Un `0` con el positivo en `1` es un `0` real.
+
+**La derivada del CPU sigue sirviendo, pero solo sobre el proceso correcto.** Sin el paso 1 mide a un
+vecino y confirma lo que quieras creer: [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]].
+Y el costo de equivocarse para el otro lado es bajo — repushear sale 7 s — asi que ante la duda
+**se corta y se repushea**, nunca con `--no-verify`.
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (el falso rojo parece prudencia) ·
+[[un-disparador-cumplido-no-avisa-a-nadie]]
+
+**Y el corolario de eficiencia, que sobrevive a la correccion:** los refuerzos del mismo turno se
+apilan en la **misma** rama antes de que cierre el push, no en PRs separados. El motivo real no es la
+duracion del gate (son segundos) sino que cada PR extra es otro ciclo de revision, otro merge y otra
+rama que limpiar. Este refuerzo y los dos anteriores viajaron juntos por eso.

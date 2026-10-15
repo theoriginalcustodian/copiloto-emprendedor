@@ -340,3 +340,42 @@ habría cazado: se leía perfecto.
 Hermanas: [[el-indice-truncado-fabrica-duplicados]] (el índice truncado hace **escribir de nuevo** lo
 que ya existe; acá la **entrada** truncada hace **hacer de nuevo** el error que ya se pagó) ·
 [[el-pipe-se-come-el-exit-code]] §refuerzo 2026-10-13.
+## Faz nueva (2026-10-15): el instrumento no esta TRUNCADO, **no esta** — y su `Errno 2` se lee como "tipeé mal"
+
+Las tres fases anteriores son todas la misma forma: el checkout sirve **algo**, viejo. Medido hoy
+sobre este mismo arbol contra `origin/main`, hay una cuarta que no sirve nada:
+
+    git diff --numstat origin/main | wc -l                   -> 252 archivos divergen
+    ...y de esos, los que NO EXISTEN en disco                ->  53
+
+Entre los 53 ausentes: `scripts/sprint-estado.py` (17113 B en main), `scripts/evidencia/device_medir.py`
+(14611 B), `existe-en-main.py`, `auditar-mapeo-vs-codigo.py`, `memoria-citas-check.py`, 4 tests de
+`scripts/tests/`, 3 entradas de `memoria/` **y `scripts/evidencia/mapeo-vs-codigo-piso.json`**, que es
+el piso del ratchet.
+
+**Por que esta faz es peor que la truncada, aunque suene mas benigna.** Un archivo truncado todavia
+corre y da un numero; el ausente no corre, y el mensaje es:
+
+    [Errno 2] No such file or directory: 'scripts/sprint-estado.py'
+
+Ese texto es **identico** al de un path mal tipeado, que es la causa mil veces mas frecuente. Lo lei
+asi hace una hora: concluí "me equivoqué de carpeta", lo busqué con `find`, lo encontré en otro arbol
+y segui trabajando — sin registrar que **en el checkout compartido el instrumento esta borrado**. La
+conclusion benigna no es un descuido: es la que el mensaje **invita** a sacar.
+[[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]], con el agravante de que
+aca la causa benigna tiene remedio trivial (retipear) y por eso se prueba primero y "funciona":
+encontras el archivo en otro arbol, y el defecto del checkout queda sin nombre.
+
+**El control, un comando, antes de concluir que tipeaste mal:**
+
+    git cat-file -e origin/main:<path> && echo "EXISTE EN MAIN -> tu checkout lo tiene BORRADO"
+
+**Y el corolario que vale para el `git add` con rutas explicitas** (CANON 9): de los 53 divergentes de
+`memoria/`+`scripts/`, el signo es `+0 -N` en **todos** — cero lineas propias, N que main tiene y el
+disco no. Ninguno aporta; todos restan. La regla no es "explicitas por prolijidad": es que cualquiera
+de esos 252 paths, agregado desde aca, **revierte main**.
+
+**El patron correcto, que FE1 dejo escrito hoy en #1252:** instrumento que solo **lee** -> desde el pin
+de `origin/main`; instrumento que **escribe** (`sprint-estado.py --marcar`) -> worktree limpio del sha
+que vas a citar, nunca desde el pin (es el arbol del que miden las tres sesiones) ni desde el
+compartido. [[el-instrumento-versionado-difiere-por-rama]]
