@@ -300,6 +300,10 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-y-pres-voz-DESVIO-medidos-en-device-onb-cumplida-NO_MEDIBLE-y-HALLAZGO-la-tarjeta-de-servicios-del-onboarding-medía-4px-1247.md",
     # 2026-10-15 — SM-F3, plataforma mobile: preg medida en device (DESVIO; la card de resultado existe).
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-preg-DESVIO-medido-en-device-la-card-de-resultado-EXISTE-el-mapeo-decia-NO-EXISTE.md",
+    # 2026-10-15 — SM-F2 lote frontend1, plataforma mobile: 6 ids fiscales/de presupuesto declarados NO_MEDIBLE con
+    # `Falta:` concreto por la decision DECLARAR del operador (NO se toca el canonico). NO cuenta como comparacion:
+    # `NO_MEDIBLE` esta en NO_COMPARACION, asi que sube «cubiertos» y no «comparados de verdad».
+    "2026-10-15_cierre_frontend1-a-planificacion_DECLARAR-6-ids-fiscales-NO_MEDIBLE-con-Falta-concreto.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
