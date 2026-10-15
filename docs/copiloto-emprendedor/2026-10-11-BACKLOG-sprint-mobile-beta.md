@@ -66,7 +66,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto… |
 | **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
-| **SM-F2** | `M-02` | 🟧 DOD-PARCIAL | lote de frontend1 (necesita device, dueno unico frontend2): quedan 20 ids por medir en mobile = 12 sin veredicto (hom… |
+| **SM-F2** | `M-02` | 🟧 DOD-PARCIAL | quedan 14 sin comparar en mobile: (home) sin ningun veredicto + 13 cubiertos sin comparacion = agenda bi-vacio chat c… |
 | **SM-F3** | `M-03` | 🟧 DOD-PARCIAL | onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba… |
 | **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
@@ -607,8 +607,8 @@ cierra, aunque los otros siete estén verdes.***
 ### SM-F2 · `M-02` — Medir en device los 46 ids que faltan
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** lote de frontend1 (necesita device, dueno unico frontend2): quedan 20 ids por medir en mobile = 12 sin veredicto (home card-factura fact-cae fact-hitl factura grabando hablar pres-ciclo pres-hitl presu recibo reveal) + 8 cubiertos sin comparar (agenda bi-vacio chat consent onb-cumplida preg vacio vacio-visto)
-- **Cierre:** lote frontend2 entregado: 26 filas mobile medidas en device contra 2e7d2af5 (cierre_frontend2 SM-F2, 15-10); criterio 3 mobile 16 a 42 de 54 (falta-en-mobile.py @9bf65de6)
+- **Falta:** quedan 14 sin comparar en mobile: (home) sin ningun veredicto + 13 cubiertos sin comparacion = agenda bi-vacio chat consent vacio vacio-visto (cuenta de estado/ajeno al fiscal) y los 6 fiscales declarados NO_MEDIBLE (card-factura fact-cae fact-hitl pres-ciclo pres-hitl recibo) que esperan la decision A/B del operador (perfil fiscal en el canonico) · onb-cumplida NO_MEDIBLE (exige MP+Google, OAuth externo)
+- **Cierre:** lotes de frontend2 (26 filas, SM-F2) + 4 ids de device (hablar factura presu grabando) medidos 15-10 y registrados en #1268; criterio 3 mobile: cubiertos 53 de 54, comparados de verdad 40 (falta-en-mobile.py @410250ec)
 - **Medido:** `scripts/evidencia/falta-en-mobile.py` los lista por nombre. Mobile: **8** comparados de
   verdad · **5** cubiertos sin comparación · **41** sin nada ⇒ **46 a medir**.
 - **Por qué 46 y no 41:** la cifra que circulaba, «mobile 13/54», cuenta como cubiertos 5 ids cuyos
