@@ -61,6 +61,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
 | **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
 | **SM-D7** | `#1009` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
+| **SM-D8** | `GASTOSCATEG` | ⬜ PENDIENTE | el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El |
 | **SM-E1** | `#1005` | ✅ TERMINADO | merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positiv… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO, FALTA DEVICE (+1 punto bloqueado por el operador). Las 5 capacidades quedaron clasificadas, ninguna … |
@@ -445,6 +446,40 @@ no el arranque del sprint.***
 ---
 
 # Bloque E · Promesas sin rama
+
+### SM-D8 · `GASTOSCATEG` — el desglose por categoría de `gastos` EXISTE y no lo fija ningún test
+
+- **Estado:** PENDIENTE
+- **Dueño-activo:** frontend2
+- **Medido:** ⚠️ **la premisa original de esta fila es FALSA, y la refutó su propia dueña antes de
+  escribir una línea.** La fila nació como «la tarjeta de gastos no tiene el desglose por categoría
+  con barras que el prototipo promete» (FE2, 2026-10-07, PWA servido `9e344bdf`) y estuvo **15 días**
+  escalada al operador como *capacidad de producto faltante*. **El 2026-10-14, con el operador ya
+  decidiendo «entra a la beta», FE2 volvió a medir y el desglose YA EXISTÍA — y ya existía en el
+  mismo `9e344bdf` de la medición original** (`#237`, `0dba3bef`): `ResumenMes.tsx:47` emite
+  `gastos-resumen-barra-<cat>` y `GastosScreen.tsx:232` lo monta (verificado también por
+  planificación con `git grep` sobre `origin/main`, no citado de su reporte).
+- **Causa del falso positivo — y es la parte que hay que no repetir:** octubre del usuario canónico
+  tiene **todos** los gastos en la categoría `otros`, así que `GET /gastos/resumen` devuelve
+  `por_categoria: [{otros, 100%}]` y la tarjeta pinta **una** barra. **Una barra se leyó como
+  ninguna.** El instrumento era correcto y el dato también; lo que falló fue inferir *ausencia del
+  mecanismo* de una *forma degenerada del dato*. Mismo patrón que
+  `un-supuesto-cuya-falla-parece-un-estado-legitimo`: la pregunta que faltaba era *¿cómo se vería
+  esto si el render SÍ existiera y el mes tuviera una sola categoría?* — exactamente igual.
+- **Falta:** el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El
+  único caso que cubre `GastosScreen.test.tsx` es `porCategoria: []`, o sea el camino en que las
+  barras **no se pintan**. El orden descendente, la normalización sobre la suma real y el caso de
+  ≥2 categorías **no están fijados por nada**, y un render sin test que lo ejercite se puede
+  romper sin que ninguna suite se ponga roja.
+- **DoD:** tests de `ResumenMes` en web, sin inventar UI nueva: (1) **control positivo primero**,
+  `porCategoria: []` — la tarjeta no rompe (ya cubierto: se mantiene, no se duplica); (2) **≥3
+  categorías**, assert de que salen **ordenadas de mayor a menor** y de que los anchos normalizan
+  sobre la suma real; (3) **mutante**: con **una sola categoría** el render **cambia** — *si no
+  cambia, el test no está mirando el mecanismo*. CI 6/6 y el sha de `main` contra el que se corrió.
+- **Lo que este DoD NO pide, y es deliberado:** cargar gastos de varias categorías en prod para
+  verlo en vivo. Eso **mutaría el usuario canónico**, que es a fuego
+  (`usuario-de-prueba-canonico-uno-solo-a-fuego`). FE2 lo planteó y se rechaza por esa razón: el
+  mecanismo se fija con tests, no ensuciando el único canónico que tenemos.
 
 ### SM-E1 · `#1005` — Un Responsable Inscripto lee «ya podés facturar» y la emisión explota
 

@@ -58,7 +58,9 @@
 param(
     [switch]$Force,
     [string]$Bridge = 'C:\Proyectos\Claude\Claude code\graphify-graphity-bridge',
-    [string]$DryRun = 'C:\gfw-src\copiloto-grafo\scripts\graphity_dry_run_reconcile.py',
+    # Derivado del PROPIO script, no hardcodeado: apuntaba a C:\gfw-src\copiloto-grafo, OTRO
+    # worktree, de modo que un fix al dry-run no le llegaba nunca a este wrapper.
+    [string]$DryRun = (Join-Path $PSScriptRoot 'graphity_dry_run_reconcile.py'),
     [string]$RepoRoot = ''
 )
 
@@ -156,10 +158,32 @@ $mF = [regex]::Match($txt, 'FALTANTES.*?:\s*(\d+)')
 if (-not $mZ.Success -or -not $mF.Success) { Die "no pude leer ZOMBIES/FALTANTES de la salida del dry-run. No se sigue a ciegas." }
 $zombies = [int]$mZ.Groups[1].Value
 $faltantes = [int]$mF.Groups[1].Value
-Say "`n  -> ZOMBIES $zombies  ·  FALTANTES $faltantes" 'Cyan'
 
-if ($faltantes -ne 0) {
-    Die "FALTANTES = $faltantes (deberia ser 0). El propio dry-run lo declara grave: la ingesta NO completo, asi que los zombies pueden ser identidad cambiada y no re-poda. --force aca seria un borrado a ciegas. ESCALAR, no forzar."
+# El criterio NO es FALTANTES total: es FALTANTES **GRAVES**. Medido el 2026-10-14: de los 11
+# faltantes, los 11 son auto-aristas `contains: X -> X` que graphify emite para los
+# `*.contrato.paridad.test` y que Graphity no materializa jamas. O sea que FALTANTES no podia dar 0
+# en NINGUNA corrida y este guard estaba cerrado POR CONSTRUCCION -- invisible porque el unico
+# criterio bloqueante era tambien el unico ilegible: los faltantes se imprimian como uuid5 opacos.
+# El dry-run ahora los parte en graves/benignos (PR #1207) y aca se lee esa particion.
+# FAIL-CLOSED a proposito: si hay faltantes y NO se puede leer la particion, el dry-run es una
+# version VIEJA y no se fuerza a ciegas -- se aborta igual que antes.
+$graves = 0
+$benignos = 0
+if ($faltantes -gt 0) {
+    $mG = [regex]::Match($txt, 'FALTANTES:\s*\d+\s*=\s*(\d+)\s*grave\(s\)\s*\+\s*(\d+)\s*auto-arista')
+    if (-not $mG.Success) {
+        Die "hay $faltantes FALTANTES y la salida del dry-run NO trae la particion graves/benignos: es una version VIEJA ($DryRun). Sin poder distinguir lo grave de lo benigno, no se fuerza a ciegas."
+    }
+    $graves = [int]$mG.Groups[1].Value
+    $benignos = [int]$mG.Groups[2].Value
+}
+Say "`n  -> ZOMBIES $zombies  ·  FALTANTES $faltantes = $graves grave(s) + $benignos benigna(s)" 'Cyan'
+
+if ($graves -ne 0) {
+    Die "FALTANTES GRAVES = $graves (deberia ser 0). Son objetos que el codigo tiene, Graphity no, y que SI deberian estar: la ingesta NO completo, asi que los zombies pueden ser identidad cambiada y no re-poda. --force aca seria un borrado a ciegas. ESCALAR, no forzar."
+}
+if ($benignos -gt 0) {
+    Say "  ($benignos faltante(s) BENIGNO(s): auto-aristas que Graphity no materializa nunca. No bloquean.)" 'DarkGray'
 }
 if ($zombies -eq 0) {
     Say "`n[OK] ZOMBIES 0: el grafo ya esta reconciliado. No hay nada que forzar." 'Green'

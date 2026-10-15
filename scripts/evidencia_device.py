@@ -41,6 +41,7 @@ for _flujo in (sys.stdout, sys.stderr):
 PAQUETE = "app.copiloto.emprendedor"
 PAQUETE_AJENO = "app.documed.clinico"  # la app de la otra sesión, en el mismo teléfono
 SCHEME = "copiloto"
+EMAIL_CANONICO = "e2e-device@copiloto.test"  # único usuario de prueba, a fuego (regla del operador)
 RAIZ = Path(__file__).resolve().parent.parent
 EVIDENCIA = RAIZ / "_evidencia"
 FUNCIONES = ["apps", "ajustes", "recientes", "redes", "metricas", "facturacion"]
@@ -109,7 +110,11 @@ def _centro(bounds: str) -> tuple[int, int] | None:
 
 def buscar(test_id: str = "", texto: str = "") -> tuple[int, int] | None:
     """Centro del primer nodo cuyo resource-id/content-desc == test_id, o cuyo texto contenga `texto`."""
-    raiz = arbol()
+    return buscar_en(arbol(), test_id, texto)
+
+
+def buscar_en(raiz: ET.Element | None, test_id: str = "", texto: str = "") -> tuple[int, int] | None:
+    """`buscar` sobre un árbol YA volcado. Pura: se prueba sin device (`scripts/tests/test-en-el-shell.sh`)."""
     if raiz is None:
         return None
     for nodo in raiz.iter("node"):
@@ -335,9 +340,25 @@ def cerrar_capas_dev_client(*, espera_inicial: float = 0) -> bool:
 
 
 # ── frentes ──────────────────────────────────────────────────────────────────────────────────────
-def leer_credencial() -> tuple[str, str]:
-    p = Path.home() / ".claude" / "secrets" / "copiloto-e2e.env"
+class UsuarioNoCanonico(RuntimeError):
+    """El archivo de secretos trae un usuario que NO es el canónico. Se aborta, no se loguea."""
+
+
+def leer_credencial(ruta: Path | None = None) -> tuple[str, str]:
+    """`usuario|clave` del archivo de secretos del operador.
+
+    🔴 Guard (2026-10-15): la orden del operador es «un solo usuario de prueba canónico, a fuego;
+    ningún agente elige otro» (memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md). Este harness
+    aceptaba CUALQUIER usuario que el archivo trajera, y el desvío entró mudo: el login escribió
+    `sprint-e2e-…@copiloto.test` en vez del canónico y nadie lo supo hasta medir la pantalla. Ahora
+    el fallo dice cuáles son los dos usuarios, en vez de loguear con el equivocado."""
+    p = ruta or Path.home() / ".claude" / "secrets" / "copiloto-e2e.env"
     usuario, _, clave = p.read_text(encoding="utf-8").strip().partition("|")
+    if usuario != EMAIL_CANONICO:
+        raise UsuarioNoCanonico(
+            f"el archivo de credenciales trae el usuario {usuario!r} y el canónico es {EMAIL_CANONICO!r}. "
+            "No se loguea: corregí el archivo (es del operador), no el guard."
+        )
     return usuario, clave
 
 
@@ -360,10 +381,33 @@ def arbol_expone_rn() -> bool:
     return False
 
 
+# Anclas del SHELL, vale decir de CUALQUIERA de sus pantallas de entrada (Mi día, chat, …), no sólo del chat.
+# Hasta 2026-10-15 el único ancla era el chat (`chat-composer` / «En qué te ayudo»): la app abría LOGUEADA en
+# Mi día —el tablero— y el harness informaba «la pantalla de login nunca apareció»: el instrumento condenó al
+# producto por su propia ceguera (el caso que `arbol_expone_rn` ya documenta, en la función de al lado).
+# `panel-handle` / `panel-hint` son del PanelDeslizable, que envuelve a TODAS las pantallas del shell.
+ANCLAS_SHELL = ("chat-composer", "panel-handle", "panel-hint", "midia-alta-texto", "midia-chips")
+TEXTOS_SHELL = ("En qué te ayudo", "Escribile a Odobi")
+
+
+def hay_shell(raiz: ET.Element | None) -> bool:
+    """¿El árbol volcado es el SHELL logueado? Pura (se prueba sin device).
+
+    Dos mitades, y las dos se ejercitan en `test-en-el-shell.sh`: (a) el login en primer plano da False
+    AUNQUE se cuele algún ancla (`login-screen` gana), y (b) cualquier pantalla del shell da True. Sin
+    la mitad (a), arreglar el falso rojo cambiaría un falso rojo por un falso VERDE, que es peor."""
+    if raiz is None or buscar_en(raiz, "login-screen") is not None:
+        return False
+    return any(buscar_en(raiz, a) is not None for a in ANCLAS_SHELL) or any(
+        buscar_en(raiz, texto=t) is not None for t in TEXTOS_SHELL
+    )
+
+
 def en_el_shell() -> bool:
-    """Ancla en elementos INTERACTIVOS (el composer) o en texto visible — los contenedores de RN
-    (`panel-principal`, `chat-view`) no siempre llegan al volcado de uiautomator como nodo propio."""
-    return buscar("chat-composer") is not None or buscar(texto="En qué te ayudo") is not None
+    """Ancla en elementos INTERACTIVOS (composer, asidero del panel) o en texto visible — los contenedores
+    de RN (`panel-principal`, `chat-view`) no siempre llegan al volcado de uiautomator como nodo propio.
+    Un solo volcado por llamada (antes eran dos). Ver `ANCLAS_SHELL` / `hay_shell`."""
+    return hay_shell(arbol())
 
 
 def frente_login() -> bool:
@@ -392,7 +436,11 @@ def frente_login() -> bool:
         return False
     capturar("d1-login-vacio")
 
-    usuario, clave = leer_credencial()
+    try:
+        usuario, clave = leer_credencial()
+    except UsuarioNoCanonico as exc:
+        print(f"   ❌ {exc}")
+        return False
     if not tocar("login-email"):
         return False
     escribir(usuario)

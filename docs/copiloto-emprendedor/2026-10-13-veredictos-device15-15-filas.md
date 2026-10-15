@@ -508,3 +508,22 @@ El device **escribe en la base** del usuario canónico. Quedó registrado en su 
    restauradas a sus valores previos al terminar.
 
 No se compiló, no se publicó nada a un usuario, no se tocó una integración real (ni conectar ni desconectar).
+
+## Enmienda 2026-10-15 — CLASE B del contrato «las 10 filas de device»: `ingresos` y `reveal` frente a su DoD textual
+
+Sin re-medir en teléfono y sin tocar ningún veredicto de arriba (las celdas CONT/COMP de las filas 11 y 12 quedan como se midieron
+el 2026-10-13 sobre `2610bb6b`). Esto sólo deja escrito **contra qué DoD se leen** esas dos filas y dónde está la evidencia
+(`2026-10-12-contratos-del-mapeo.md:50-51`).
+
+- **`ingresos`** — DoD textual: *«la fila dice COINCIDE o nombra la divergencia»*. La fila 11 **nombra tres divergencias de
+  contenido** (período junto al título; «BUSCAR» + buscador en lugar de «Últimos»; sin la nota de cobros por MercadoPago, causa
+  no atribuida) y declara COMP **COHERENTE**. El DESVÍO de CONT es el contenido nombrado, no un incumplimiento del DoD: el DoD no
+  pide coherencia, pide que la comparación esté hecha y escrita. Qué de las tres es deliberado queda como decisión de
+  producto (H10, arriba), no como trabajo de medición.
+- **`reveal`** — DoD textual: *«al menos UN consumidor real en `apps/mobile/src` fuera de su propio archivo y de sus tests, y se
+  VE en la pantalla»*. Consumidor medido sobre `origin/main` `e8d193c1`: `apps/mobile/app/_layout.tsx:102` renderiza
+  `<EntradaSesion />` y `apps/mobile/src/modules/auth/EntradaSesion.tsx:32` renderiza `<RevealEntrada>` (definido en
+  `RevealEntrada.tsx:135`). Que se VE: la fila 12 lo observó en device (secuencia de `reveal-frio2`, cuadros f04–f25).
+  Divergencias que la fila ya nombra: sin «Crear una nueva cuenta» (decisión documentada, `EntradaSesion.tsx:17-21`), wordmark
+  40 dp `#B04A2E` vs 46 terracota, forma residual sobre el wordmark en reposo. El botón de pronunciar (`rv-say`) está `**D**`:
+  espera el asset de audio del operador y **no es parte de este DoD**.

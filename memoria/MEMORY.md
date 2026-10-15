@@ -51,8 +51,8 @@
 ### Evidencia: el instrumento antes que el resultado
 - [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra.
 - [🔭🎚️ La condición que el instrumento EXIGE para VER cambia lo medido](la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido.md) — apagué las animaciones y con eso el tap no abría.
-- [🎯🏹 El ESCALADOR acusa al destinatario, nunca al emisor que no cumplió el disparador](el-escalador-acusa-al-destinatario-nunca-al-emisor-que-no-cumplio-el-disparador.md) - 3 sesiones a la vez ⇒ sospechá del que coordina.
-- [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md) — siguió rojo tras mi fix: la causa era de otro, de 9 días.
+- [🎯🏹 El ESCALADOR acusa al destinatario, nunca al emisor que no cumplió el disparador](el-escalador-acusa-al-destinatario-nunca-al-emisor-que-no-cumplio-el-disparador.md)
+- [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md)
 - [🪄💥 Una orden correcta con el COMANDO INCOMPLETO da un éxito falso](una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md) — sin `--base` podó 1 de 21. Tipeá el literal del doc.
 - [🔍🎭 No era «no caza X»: era en su FORMA real](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el contraste mueve UNA variable.
 - [📝🛡️ El comentario que DECLARA protección ciega la búsqueda](el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md) — cubre UNA mitad.
@@ -70,7 +70,7 @@
 
 - [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
-- [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — ¿cuántos elementos miró? · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
+- [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
 - [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
@@ -86,6 +86,7 @@
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
+- [📉🫥 El dato DEGENERADO imita la AUSENCIA del mecanismo](dato-degenerado-imita-ausencia-del-mecanismo.md) - N=1 se lee como N=0.
 - [🩹🎭 Un degradado PRUDENTE al caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda».
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
 - [🎲 Un instrumento INTERMITENTE fabrica una excusa](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - «es el flake» lava la próxima.
