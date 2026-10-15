@@ -34,6 +34,7 @@ from typing import Callable
 
 from evento_store import registrar_evento
 from gasto_store import dos_decimales, imputacion_de
+from trabajo_etiqueta import etiquetas_de_trabajo
 
 _SCHEMA = "uc_factory"
 _GASTOS = f"{_SCHEMA}.copiloto_gastos"
@@ -220,4 +221,6 @@ class TrabajoStore:
                              evento=("imputado" if eslabon is not None else "desimputado"),
                              campo="imputacion",
                              valor_a=({"eslabon": eslabon, "ref": ref} if eslabon is not None else None))
-        return imputacion_de(gasto_id, fila[0], fila[1], fila[2])
+            etiqueta = (etiquetas_de_trabajo(cur, self._cid, [(eslabon, ref)]).get((eslabon, ref))
+                        if eslabon is not None else None)
+        return imputacion_de(gasto_id, fila[0], fila[1], fila[2], etiqueta)

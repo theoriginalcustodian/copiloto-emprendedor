@@ -29,6 +29,7 @@ from afip_rules import facturado_filtro_sql, facturado_monto_sql
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 from mp_credential_store import MpCredentialStore
+from trabajo_etiqueta import etiquetas_de_trabajo
 from trabajo_store import TrabajoStore
 
 _SCHEMA = "uc_factory"
@@ -450,33 +451,6 @@ class InteligenciaQueries:
                 candidatos.add(("cobro", cobro_id))
         return candidatos
 
-    def _etiqueta_trabajo(self, cur, eslabon: str, ref: int) -> str:
-        """Nombre legible para la barra: `{cliente} · {fecha}`. Un margen sin nombre es un número que
-        nadie puede ubicar entre las otras barras."""
-        if eslabon == "presupuesto":
-            cur.execute(f"SELECT receptor_nombre, fecha FROM {_SCHEMA}.copiloto_presupuestos "
-                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
-                        {"cid": self._cliente_id, "ref": ref})
-            fila = cur.fetchone()
-            nombre, fecha = (fila or ("", None))
-            fecha_str = fecha.date().isoformat() if fecha else ""
-        elif eslabon == "comprobante":
-            cur.execute(f"SELECT coalesce(receptor_nombre, ''), fecha_emision FROM {_SCHEMA}.afip_comprobantes "
-                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
-                        {"cid": self._cliente_id, "ref": ref})
-            fila = cur.fetchone()
-            nombre, fecha = (fila or ("", None))
-            fecha_str = fecha.isoformat() if fecha else ""
-        else:
-            cur.execute(f"SELECT coalesce(cliente_nombre, ''), fecha FROM {_SCHEMA}.copiloto_cobros "
-                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
-                        {"cid": self._cliente_id, "ref": ref})
-            fila = cur.fetchone()
-            nombre, fecha = (fila or ("", None))
-            fecha_str = fecha.isoformat() if fecha else ""
-        nombre = (nombre or "").strip()
-        return f"{nombre} · {fecha_str}" if nombre else (fecha_str or f"{eslabon} #{ref}")
-
     def margen_por_trabajo(self) -> dict:
         """`{tipo, trabajos:[...], sin_ingreso:[...]}` — TODOS los trabajos con al menos un cobro o un
         gasto imputado, SIN filtro de período (un trabajo puede abarcar cualquier fecha). Los de
@@ -497,11 +471,14 @@ class InteligenciaQueries:
                     raices[clave] = ("comprobante", cadena["comprobante"])
                 else:
                     raices[clave] = ("cobro", cadena["cobros"][0])
-            etiquetas = {(e, r): self._etiqueta_trabajo(cur, e, r) for e, r in raices.values()}
+            # El rótulo sale de `trabajo_etiqueta` — la MISMA función que arma `gasto.imputacion.etiqueta`
+            # y que el selector de imputación consume tal cual: un solo texto por trabajo en todas las
+            # pantallas. Antes era `cliente · fecha` (a veces sólo la fecha, y idéntico para dos trabajos).
+            etiquetas = etiquetas_de_trabajo(cur, self._cliente_id, set(raices.values()))
         trabajos, sin_ingreso = [], []
         for eslabon, ref in raices.values():
             m = ts.margen(eslabon, ref)
-            base = {"eslabon": eslabon, "ref": ref, "etiqueta": etiquetas[(eslabon, ref)],
+            base = {"eslabon": eslabon, "ref": ref, "etiqueta": etiquetas.get((eslabon, ref)) or f"{eslabon} sin rótulo",
                    "gastos_imputados": m["gastos_imputados"],
                    # Hito 7 (detector): "días desde el último movimiento" — NO desde que empezó el
                    # trabajo, para no avisar de algo que sigue EN CURSO. Campo aditivo, opcional

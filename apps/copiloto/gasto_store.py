@@ -14,6 +14,7 @@ from typing import Callable
 import psycopg2.errors
 
 from evento_store import registrar_evento
+from trabajo_etiqueta import etiquetas_de_trabajo
 
 
 @contextmanager
@@ -59,15 +60,42 @@ _COLS = ("id", "monto", "fecha", "categoria", "proveedor", "medio_pago", "descri
 
 
 def imputacion_de(gasto_id: int, presupuesto_ref: int | None, comprobante_ref: int | None,
-                  cobro_ref: int | None) -> dict:
+                  cobro_ref: int | None, etiqueta: str | None = None) -> dict:
     """La ÚNICA forma de «a qué trabajo está imputado este gasto».
 
     La devuelve `PUT /gastos/{id}/imputacion` (`{"imputacion": …}`) y la trae `GET /gastos` /
     `GET /gastos/{id}` en la clave `imputacion` de cada gasto: un solo parser del lado del cliente.
     Las tres referencias viajan SIEMPRE; a lo sumo UNA es no nula (invariante de `imputar()`, que
-    escribe las tres columnas en el mismo UPDATE). Sin imputar = las tres en `null`."""
+    escribe las tres columnas en el mismo UPDATE). Sin imputar = las tres en `null`.
+
+    `etiqueta` es el rótulo humano del trabajo (`trabajo_etiqueta.py`: «asesoría contable · #3»), el
+    MISMO que muestra el selector. Viaja con el dato porque el detalle no puede re-derivarlo del `*_ref`
+    (es un id interno: «Presupuesto #227» para el que el emprendedor ve como #3). `null` si no hay
+    imputación o si el trabajo no se pudo resolver — nunca un string armado con el id."""
     return {"gasto_id": gasto_id, "presupuesto_ref": presupuesto_ref,
-            "comprobante_ref": comprobante_ref, "cobro_ref": cobro_ref}
+            "comprobante_ref": comprobante_ref, "cobro_ref": cobro_ref, "etiqueta": etiqueta}
+
+
+def _destino_de(imputacion: dict) -> tuple[str, int] | None:
+    for eslabon, col in (("presupuesto", "presupuesto_ref"), ("comprobante", "comprobante_ref"),
+                         ("cobro", "cobro_ref")):
+        if imputacion[col] is not None:
+            return eslabon, imputacion[col]
+    return None
+
+
+def poner_etiquetas(cur, cliente_id: str, gastos: list[dict]) -> list[dict]:
+    """Completa `imputacion.etiqueta` de cada gasto imputado, **una consulta por eslabón** para toda la
+    página (no una por gasto). Muta y devuelve la misma lista."""
+    destinos = {d for g in gastos if (d := _destino_de(g["imputacion"])) is not None}
+    if not destinos:
+        return gastos
+    etiquetas = etiquetas_de_trabajo(cur, cliente_id, destinos)
+    for g in gastos:
+        d = _destino_de(g["imputacion"])
+        if d is not None:
+            g["imputacion"]["etiqueta"] = etiquetas.get(d)
+    return gastos
 
 
 def hoy_del_negocio(ahora: datetime.datetime | None = None) -> datetime.date:
@@ -203,7 +231,7 @@ class GastoStore:
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} WHERE cliente_id = %s "
                         f"ORDER BY fecha DESC, id DESC LIMIT %s", (self._cliente_id, limit))
-            filas = [self._fila(r) for r in cur.fetchall()]
+            filas = poner_etiquetas(cur, self._cliente_id, [self._fila(r) for r in cur.fetchall()])
             cur.execute(f"SELECT count(*) FROM {_TABLE} WHERE cliente_id = %s", (self._cliente_id,))
             return filas, int(cur.fetchone()[0])
 
@@ -212,7 +240,7 @@ class GastoStore:
             cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} "
                         f"WHERE cliente_id = %s AND id = %s", (self._cliente_id, gasto_id))
             row = cur.fetchone()
-            return self._fila(row) if row else None
+            return poner_etiquetas(cur, self._cliente_id, [self._fila(row)])[0] if row else None
 
     def resumen(self, periodo: str | None = None) -> dict:
         """Total del mes + desglose por categoría + total del mes anterior.

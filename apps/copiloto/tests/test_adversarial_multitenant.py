@@ -1011,7 +1011,8 @@ def test_adversarial_http_gastos_a_no_ve_ni_imputa_el_gasto_de_b_ni_su_margen(tw
         assert r.status_code == 404
         propio = client.get(f"/gastos/{gasto_a['id']}", headers=h_a).json()
         assert propio["imputacion"] == {"gasto_id": gasto_a["id"], "presupuesto_ref": None,
-                                        "comprobante_ref": None, "cobro_ref": None}
+                                        "comprobante_ref": None, "cobro_ref": None,
+                                        "etiqueta": None}
 
         # margen: el trabajo de B pedido por A -> el MISMO 404 que un trabajo inexistente
         r_cross = client.get(f"/trabajos/presupuesto/{presupuesto_b}/margen", headers=h_a)
