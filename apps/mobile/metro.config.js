@@ -25,4 +25,25 @@ config.resolver.nodeModulesPaths = [
 //    sola línea de la app. Lo diagnosticó `expo-doctor` ("disableHierarchicalLookup mismatch,
 //    expected false"). El default de Expo ya maneja bien el monorepo vía `nodeModulesPaths`.
 
+// 4. `@copiloto/core` se FIJA al `packages/core` de ESTE workspace (no al que resuelva `node_modules`).
+//    En un git worktree `node_modules` es una junction al del checkout compartido, cuyo core puede estar
+//    atrasado: el bundle compilaba OTRO core que el sha del worktree y nada lo avisaba (medido 2026-10-15,
+//    frontend2). Las rutas salen del `exports` del propio package.json: cero tabla paralela.
+const corePkg = require('../../packages/core/package.json');
+const coreDir = path.resolve(workspaceRoot, 'packages/core');
+const resolverPrevio = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === corePkg.name || moduleName.startsWith(`${corePkg.name}/`)) {
+    const subpath = `.${moduleName.slice(corePkg.name.length)}`;
+    const destino = corePkg.exports[subpath];
+    if (destino) return { type: 'sourceFile', filePath: path.resolve(coreDir, destino) };
+  }
+  return (resolverPrevio ?? context.resolveRequest)(context, moduleName, platform);
+};
+
+// 5. Con la junction, el realpath de `node_modules` cae FUERA de `watchFolders` y Metro no ve sus archivos
+//    (`UnableToResolve expo-router/entry`). Se lo observa sólo cuando es ajeno al workspace.
+const nodeModulesReal = require('node:fs').realpathSync(path.resolve(workspaceRoot, 'node_modules'));
+if (!nodeModulesReal.startsWith(workspaceRoot)) config.watchFolders.push(nodeModulesReal);
+
 module.exports = config;

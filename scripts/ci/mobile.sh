@@ -9,6 +9,9 @@ bash "$ROOT/scripts/ci/nativo-freeze.sh"
 cd "$ROOT"
 npm install --no-audit --no-fund
 
+# metro.config.js fija @copiloto/core al packages/core del workspace (junction de worktree → core atrasado, 2026-10-15).
+bash "$ROOT/scripts/tests/test-metro-core-pin.sh"
+
 cd "$ROOT/apps/mobile"
 npx tsc --noEmit
 # jest, con un único reintento acotado al EPERM de su caché en Windows (2026-09-22: 60a6999a, b4c46a85).
