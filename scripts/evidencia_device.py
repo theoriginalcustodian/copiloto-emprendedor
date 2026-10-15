@@ -634,6 +634,9 @@ def main() -> int:
     ap.add_argument("--reset", action="store_true",
                     help="pm clear antes de arrancar. OPT-IN: dispara la hoja de bienvenida del "
                          "dev-client, que tapa la app. Sólo si hace falta forzar sesión limpia.")
+    ap.add_argument("--sin-arranque", action="store_true",
+                    help="NO reinicia la app: ya está arriba y conectada (receta avión + reverse + Connect). "
+                         "El arranque por deep-link dispara el ANR del dev-launcher cuando hay red.")
     args = ap.parse_args()
 
     if not shutil.which("adb"):
@@ -645,7 +648,7 @@ def main() -> int:
         return 2
 
     EVIDENCIA.mkdir(exist_ok=True)
-    if not arrancar_app(args.puerto, reset=args.reset):
+    if not args.sin_arranque and not arrancar_app(args.puerto, reset=args.reset):
         return 1
 
     resultados: dict[str, bool] = {}
