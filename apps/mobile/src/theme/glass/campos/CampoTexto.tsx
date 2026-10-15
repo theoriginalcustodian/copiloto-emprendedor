@@ -8,7 +8,7 @@
  * `CampoSecreto` es literalmente "este mismo campo con esas tres props fijas" -- separar el dibujo del
  * vidrio en dos componentes hubiera sido la duplicación que `EnvolturaCampo` existe para evitar.
  */
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
 import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions, type TextInputProps } from 'react-native';
 
@@ -39,6 +39,13 @@ export interface CampoTextoProps {
   textContentType?: TextInputProps['textContentType'];
   /** Control pegado al borde derecho, DENTRO del vidrio del campo. Hoy: el ojo de `CampoSecreto`. */
   accesorioDerecha?: ReactNode;
+  /**
+   * El grupo entero que tiene que quedar a la vista al enfocar este campo, cuando el campo no es lo
+   * único que se necesita ver: p. ej. el campo + su botón «Agregar». Sin esto el scroll sólo revela el
+   * campo y el botón queda detrás del teclado (medido en device, Mi día 15-10). El ref apunta a una
+   * `View` con `collapsable={false}` que envuelve al campo; si no se pasa, se revela el campo solo.
+   */
+  revelarJunto?: RefObject<View | null>;
   testID?: string;
 }
 
@@ -58,6 +65,7 @@ export function CampoTexto({
   autoCorrect,
   textContentType,
   accesorioDerecha,
+  revelarJunto,
   testID = 'campo-texto',
 }: CampoTextoProps) {
   const tema = useTema();
@@ -101,7 +109,7 @@ export function CampoTexto({
           ]}
           value={valor}
           onChangeText={onChange}
-          onFocus={() => revelarCampo(refContenedor.current)}
+          onFocus={() => revelarCampo(revelarJunto?.current ?? refContenedor.current)}
           onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={tema.color.textoTenue}
