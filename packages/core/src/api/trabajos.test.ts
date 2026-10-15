@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi } from './config';
@@ -191,7 +193,45 @@ describe('listarTrabajosImputables -- dos fuentes porque ninguna alcanza sola', 
     await listarTrabajosImputables();
 
     const paths = peticiones.map((p) => p.path).sort();
-    expect(paths).toEqual(['/inteligencia/graficos/margen-trabajo', '/presupuestos?limit=50']);
+    // 200 = LIMITE_LISTADO_PRESUPUESTOS (el máximo del backend). Con 50 un emprendedor con más de 50
+    // presupuestos vigentes no veía los demás como opción y nadie se lo decía.
+    expect(paths).toEqual(['/inteligencia/graficos/margen-trabajo', '/presupuestos?limit=200']);
+  });
+
+  it('🔴 `truncado` avisa cuando los presupuestos NO entraron todos: «hay 1 de 3», no «hay 1»', async () => {
+    responder = (p) =>
+      p.path.startsWith('/presupuestos')
+        ? respuesta(200, { presupuestos: [presupuestoCrudo()], total: 3 })
+        : respuesta(200, { tipo: 'barras', trabajos: [], sin_ingreso: [] });
+
+    const res = await listarTrabajosImputables();
+
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(res.trabajos).toHaveLength(1);
+    expect(res.truncado).toBe(true);
+  });
+
+  it('`truncado` es false cuando el total coincide, aunque la página esté llena', async () => {
+    responder = (p) =>
+      p.path.startsWith('/presupuestos')
+        ? respuesta(200, { presupuestos: [presupuestoCrudo()], total: 1 })
+        : respuesta(200, { tipo: 'barras', trabajos: [], sin_ingreso: [] });
+
+    const res = await listarTrabajosImputables();
+
+    expect(res.status === 'ok' && res.truncado).toBe(false);
+  });
+
+  it('`truncado` es false si la fuente de presupuestos cayó: no hay nada contra qué comparar', async () => {
+    responder = (p) =>
+      p.path.startsWith('/presupuestos')
+        ? respuesta(503, { detail: 'no disponible' })
+        : respuesta(200, { tipo: 'barras', trabajos: [], sin_ingreso: [] });
+
+    const res = await listarTrabajosImputables();
+
+    expect(res.status === 'ok' && res.truncado).toBe(false);
   });
 });
 
@@ -208,5 +248,22 @@ describe('etiquetaDeDestino / mismoTrabajo', () => {
     expect(mismoTrabajo({ eslabon: 'presupuesto', ref: 12 }, { eslabon: 'comprobante', ref: 12 })).toBe(false);
     expect(mismoTrabajo(null, null)).toBe(true);
     expect(mismoTrabajo({ eslabon: 'cobro', ref: 1 }, null)).toBe(false);
+  });
+});
+
+describe('trabajos.ts -- el tope del listado NO es un literal (SM-D2 punto 3)', () => {
+  // Un `limit: 50` hardcodeado ya cortó en silencio los trabajos del 51 en adelante (los mas viejos, justo
+  // los que la alerta «se enfria» existe para encontrar). El tope tiene UN dueño: LIMITE_LISTADO_PRESUPUESTOS.
+  const LITERAL_DE_TOPE = /\blimit\s*:\s*\d+/;
+  const fuente = readFileSync(fileURLToPath(new URL('./trabajos.ts', import.meta.url)), 'utf-8');
+
+  it('control positivo: el detector SI caza un literal de tope inyectado', () => {
+    expect(LITERAL_DE_TOPE.test("listarPresupuestos({ limit: 50 })")).toBe(true);
+    expect(LITERAL_DE_TOPE.test("listarPresupuestos({ limit:200 })")).toBe(true);
+  });
+
+  it('trabajos.ts no pide un tope con numero literal y usa el importado', () => {
+    expect(LITERAL_DE_TOPE.test(fuente)).toBe(false);
+    expect(fuente).toContain('limit: LIMITE_LISTADO_PRESUPUESTOS');
   });
 });

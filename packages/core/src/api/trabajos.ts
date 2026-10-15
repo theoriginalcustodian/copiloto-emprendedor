@@ -1,6 +1,6 @@
 import type { EslabonTrabajo } from './inteligencia';
 import { leerGraficoMargenTrabajo } from './inteligencia';
-import { listarPresupuestos } from './presupuestos';
+import { LIMITE_LISTADO_PRESUPUESTOS, listadoTruncado, listarPresupuestos } from './presupuestos';
 
 /**
  * `trabajos` — **el "trabajo" como sujeto propio del cliente**, que hasta hoy no tenía módulo.
@@ -90,10 +90,20 @@ function clave(d: DestinoTrabajo): string {
  * hay — media lista es útil, y un `no_disponible` por la mitad caída esconde la mitad sana.
  */
 export async function listarTrabajosImputables(): Promise<
-  { status: 'ok'; trabajos: TrabajoImputable[] } | { status: 'no_disponible' }
+  | {
+      status: 'ok';
+      trabajos: TrabajoImputable[];
+      /**
+       * `true` = la lista NO es completa (los presupuestos no entraron todos en la página). Siempre lo
+       * emite esta función; es opcional en el TIPO sólo para no romper a quien arma el resultado a
+       * mano (mocks de las pantallas). Ausente = «no se sabe que falten», nunca «completo garantizado».
+       */
+      truncado?: boolean;
+    }
+  | { status: 'no_disponible' }
 > {
   const [presup, margen] = await Promise.all([
-    listarPresupuestos({ limit: 50 }).catch(() => ({ status: 'no_disponible' }) as const),
+    listarPresupuestos({ limit: LIMITE_LISTADO_PRESUPUESTOS }).catch(() => ({ status: 'no_disponible' }) as const),
     leerGraficoMargenTrabajo().catch(() => ({ status: 'no_disponible' }) as const),
   ]);
 
@@ -123,5 +133,10 @@ export async function listarTrabajosImputables(): Promise<
     }
   }
 
-  return { status: 'ok', trabajos };
+  // `truncado`: la lista NO es completa porque los presupuestos no entraron todos en la página. Es el
+  // dato que distingue «hay N» de «hay N de M»: sin él, un selector corto se lee como «no tenés ese
+  // trabajo». Sólo mira los presupuestos —la otra fuente (el gráfico) no tiene tope de página—, y si esa
+  // fuente falló no hay nada que comparar: `false`, porque la caída ya se vio como media lista.
+  const truncado = presup.status === 'ok' && listadoTruncado(presup.presupuestos.length, presup.total);
+  return { status: 'ok', trabajos, truncado };
 }
