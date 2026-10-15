@@ -297,9 +297,11 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F2-lote-frontend2-26-filas-mobile-con-veredicto-medido-contra-2e7d2af5.md",
     # 2026-10-15 — SM-F3 lote device, plataforma mobile: vozchat y pres-voz medidos con dictado real (DESVIO de
     # estructura/copy), onb-cumplida NO_MEDIBLE con el motivo escrito, y el hallazgo de la tarjeta del onboarding.
-    "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-y-pres-voz-DESVIO-medidos-en-device-onb-cumplida-NO_MEDIBLE-y-HALLAZGO-la-tarjeta-de-servicios-del-onboarding-medía-4px-1247.md",
+    "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-pres-voz-DESVIO-onb-cumplida-NO_MEDIBLE-tarjeta-onboarding-4px-1247.md",
     # 2026-10-15 — SM-F3, plataforma mobile: preg medida en device (DESVIO; la card de resultado existe).
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-preg-DESVIO-medido-en-device-la-card-de-resultado-EXISTE-el-mapeo-decia-NO-EXISTE.md",
+    # 2026-10-15 — DECLARAR (operador): 7 ids de estado NO_MEDIBLE con `Falta:` concreto; preg NO entra (ya DESVIO).
+    "2026-10-15_cierre_frontend2-a-planificacion_DECLARAR-los-8-ids-de-estado-NO_MEDIBLE-con-Falta-concreto-preg-NO-entra-ya-esta-medido-DESVIO-y-SM-C4-con-su-Falta.md",
 }
 
 # Candidatos que el parser encuentra y que NO son mediciones. El motivo es obligatorio: sin el, la
