@@ -243,3 +243,40 @@ definicion de error*. Para `mv -n`, "no hice nada" **no** es un error. El contro
 mismo de toda esta entrada: **medir el efecto en el destino y en el origen**, nunca el codigo de
 salida. Relacionado: [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] -
 aca ni mensaje hubo.
+## Refuerzo 2026-10-15 (2) - la firma que separa el push COLGADO del gate LENTO es la DERIVADA del CPU, no su valor
+
+Esta entrada ya dice que el push se verifica **por efecto** (`git ls-remote`), y eso sigue siendo el
+control. Lo que faltaba era como decidir **si esperar o matar**, porque las dos situaciones se ven
+igual desde afuera: el comando no vuelve.
+
+Hoy me pasaron las dos, con cuatro horas de diferencia:
+
+| | push COLGADO (manana) | gate LENTO (17:00) |
+|---|---|---|
+| `git.exe` CPU | 0,031 s y 0,016 s, **sin moverse** | 0,047 s y 0,016 s (igual de bajo) |
+| proceso del hook | **ninguno** | `python` PID 21176 |
+| CPU de ese proceso | — | **31,9 s -> 55,9 s en 3 min** |
+| `.git/*.lock` | 0 | 0 |
+| que hice | `TaskStop` + repush (nunca `--no-verify`) | **esperar** |
+
+**El valor del CPU de `git` no separa nada: es bajisimo en los dos casos**, porque en un push con hook
+el que trabaja no es `git`, es el **gate**. Mirar a `git` y ver 0,03 s invita a concluir "colgado" —
+y en el caso lento es falso.
+
+**Lo que separa es la DERIVADA del CPU del proceso que hace el trabajo.** Dos mediciones separadas
+2-3 minutos: si el CPU **crece**, hay trabajo y se espera; si esta **estancado** y ademas no existe
+proceso de hook, esta bloqueado en I/O y se mata. Una sola foto no alcanza — un numero alto puede ser
+trabajo viejo ya terminado, y uno bajo puede ser un gate que recien arranco.
+
+    Get-Process git,python,bash | Select Id,ProcessName,CPU,StartTime   # ...y repetir a los 3 min
+
+Corolario de costo, que es por lo que esto importa: el `pre-push` de este repo corre la suite y tarda
+**8-10 min**. Matarlo a los 12 min "por prudencia" paga el gate dos veces. Y al reves: esperar un
+colgado real paga el ciclo entero del cron en vano. La diferencia entre las dos decisiones es **una
+segunda medicion**, no mas prudencia.
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (el falso rojo parece prudencia) ·
+[[un-disparador-cumplido-no-avisa-a-nadie]]
+
+**Y el corolario de eficiencia:** mientras el push corre, un segundo PR por un refuerzo nuevo paga
+**otro** gate de 8-10 min. Los refuerzos del mismo turno se apilan en la **misma** rama antes de que
+cierre el push, no en PRs separados. Este es uno de ellos.
