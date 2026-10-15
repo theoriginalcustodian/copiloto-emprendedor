@@ -48,6 +48,11 @@ eso nada marca. Hubo que medirlo en device (y=940, ENTRE la contrasena y=830 y E
 para un orden, una jerarquia, un «a la derecha de», o un ancla `:NNN` que se corrio pero sigue cayendo
 dentro del archivo. Eso es juicio de quien mide en device; este script no lo reemplaza. Una fila con
 afirmacion posicional que el barrido da por sana NO esta verificada, esta no-refutada.
+  MEDIDO (2026-10-15, mapeo @9a0d8354): las filas `splash` y `detalle` afirmaban ausencias estructurales («sin degrade»,
+  «sin chip-p…») FALSAS y el ratchet daba 0/54: no las veia. Por eso la salida ya no deja el «0» solo: `sin_juzgar()`
+  NOMBRA las filas con clausulas negativas/posicionales que el script no contrasta (hoy 45 de 54, 84 clausulas), y
+  `canario()` inyecta una afirmacion estructural falsa para exigir que salga nombrada como no juzgada.
+  «0 rancias detectadas» NO significa «54 filas verificadas».
 
 RATCHET (decision de planificacion 2026-10-14, en vez de un gate binario): un guard que se pone rojo en el
 caso NORMAL se desarma solo (`--no-verify`) y deja sensacion de cobertura. `--ratchet` compara contra el
@@ -311,6 +316,36 @@ def auditar(filas, idx, proto_n: str, proto_lineas=None):
     return res
 
 
+_GUILLEMETS = re.compile(r"«[^»]*»")
+# Afirmaciones que este script NO sabe contrastar contra el codigo: una negacion sin identificador
+# («sin degrade», «no existe tablero aparte») o una posicion («despues de», «a la derecha de»).
+_NEGATIVA = re.compile(
+    r"\bsin\b|\bno (?:hay|existe|tiene|lleva|aparece|muestra|se dibuja|se pinta|esta)\b|\bnunca\b|\bausente\b|\bfalta\b|\bcero\b")
+_POSICIONAL = re.compile(
+    r"\b(?:despues de|antes de|debajo|arriba|abajo|encima|a la (?:derecha|izquierda)|entre (?:la|el|los|las)|bajo el pliegue)\b")
+
+
+def sin_juzgar(div: str):
+    """Clausulas de la divergencia que AFIRMAN algo estructural y que `auditar` no contrasta: [(tipo, clausula)].
+
+    Cero-que-no-miro y cero-que-miro-y-no-encontro son el mismo numero y dos cosas distintas: esto separa la
+    segunda de la primera. Una negacion queda JUZGADA solo si `ids_ausencia` le saca un identificador (es decir,
+    la frase dura «grep 0 / cero hits / NUNCA se dibuja» + un item citado, que `auditar` si busca en el codigo).
+    Una cita entre comillas NO la juzga: `LITERAL` verifica que el texto exista, no que la negacion sea cierta.
+    Lo que va entre «guillemets» es texto citado SIN afirmar (convencion del doc) y se ignora.
+    Es un ORDEN DE MAGNITUD, no una cota: sobrecuenta negaciones inocuas («sin ella solo queda la fila…») y no ve
+    las afirmaciones estructurales AFIRMATIVAS («las acciones son swipe»). Sirve para lo que importa: que el «0»
+    de arriba no se lea como «54 filas verificadas»."""
+    out = []
+    for clausula in re.split(r"[;]|\.\s", _GUILLEMETS.sub(" ", div)):
+        n = norm(clausula)
+        tipo = "NEGACION" if _NEGATIVA.search(n) else ("POSICION" if _POSICIONAL.search(n) else None)
+        if tipo is None or ids_ausencia(clausula):
+            continue
+        out.append((tipo, clausula.strip()))
+    return out
+
+
 def evaluar_piso(con_hallazgo: set, piso: set):
     """(suben, bajaron). `suben`: filas con hallazgo que el piso NO acepta. `bajaron`: filas aceptadas que
     ya no tienen hallazgo (el piso tiene holgura y hay que bajarlo). Pura: no toca disco."""
@@ -347,6 +382,19 @@ def canario(filas, idx, proto_n, proto_lineas=None) -> list[str]:
         h = [t for t, _ in auditar([fila], idx, proto_n, proto_lineas)[0]["hallazgos"]]
         if tipo not in h:
             fallos.append(f"el canario {tipo} NO fue detectado (hallazgos: {h or 'ninguno'})")
+    # SIN JUZGAR: una afirmacion estructural FALSA e inyectada a proposito tiene que salir NOMBRADA como no
+    # juzgada (el barrido no puede refutarla, pero no puede dejarla pasar como «limpia»); una juzgada
+    # (identificador + «grep 0») y una citada entre «guillemets» NO tienen que sumar.
+    n0 = len(sin_juzgar(base["div"]))
+    for tipo, extra, delta in (
+        ("NEGACION", ' ; sin degrade ni rebote en el titulo', 1),
+        ("POSICION", ' ; la alerta va despues de los botones', 1),
+        ("juzgada-no-suma", f' ; sin consumidores: `{Path(nombre).stem}` (grep 0)', 0),
+        ("guillemets-no-suma", ' ; «sin degrade ni rebote» era lo que decia la fila', 0),
+    ):
+        n = len(sin_juzgar(base["div"] + extra))
+        if n - n0 != delta:
+            fallos.append(f"sin_juzgar {tipo}: la fila ensuciada suma {n - n0} clausula(s) sin juzgar, esperado {delta}")
     # control positivo del RATCHET: sube -> acusa; baja -> acusa; igual -> calla
     if evaluar_piso({"zz"}, set()) != (["zz"], []):
         fallos.append("ratchet: una fila rancia fuera del piso NO se acuso como regresion")
@@ -377,7 +425,8 @@ def main(argv):
         for x in f:
             print("CANARIO ❌", x)
         if not f:
-            print("CANARIO ✅ RUTA, LINEA, LITERAL y AUSENCIA detectados sobre una fila ensuciada; la fila limpia no marca")
+            print("CANARIO ✅ RUTA, LINEA, LITERAL y AUSENCIA detectados sobre una fila ensuciada; la fila limpia no marca; "
+                  "una negacion/posicion inyectada sale NOMBRADA como sin juzgar (y una juzgada o entre «guillemets» no suma)")
         return 1 if f else 0
     # el control positivo corre SIEMPRE antes de confiar en el «0 rancias»
     ctl = canario(filas, idx, proto_n, proto_lineas)
@@ -388,8 +437,14 @@ def main(argv):
     res = auditar(filas, idx, proto_n, proto_lineas)
     con = [r for r in res if r["hallazgos"]]
     total = sum(len(r["hallazgos"]) for r in res)
+    ciegas = {f["id"]: sin_juzgar(f["div"]) for f in filas}
+    ciegas = {i: c for i, c in ciegas.items() if c}
+    n_clausulas = sum(len(c) for c in ciegas.values())
     if as_json:
-        print(json.dumps({"filas": len(res), "con_hallazgo": len(con), "hallazgos": total, "detalle": con}, ensure_ascii=False, indent=1))
+        print(json.dumps({"filas": len(res), "con_hallazgo": len(con), "hallazgos": total, "detalle": con,
+                          "sin_juzgar": {"filas": len(ciegas), "clausulas": n_clausulas,
+                                         "detalle": {i: [{"tipo": t, "clausula": c} for t, c in cl] for i, cl in ciegas.items()}}},
+                         ensure_ascii=False, indent=1))
     else:
         sin_cita = [r["id"] for r in res if r["citas"] == 0]
         print(f"filas: {len(res)} · con citas resolubles: {sum(1 for r in res if r['archivos'])} · sin cita a codigo: {len(sin_cita)} {sin_cita}")
@@ -398,6 +453,15 @@ def main(argv):
             for tipo, motivo in r["hallazgos"]:
                 print(f"  [{tipo}] {r['id']}: {motivo}")
         print("control positivo: OK (RUTA/LINEA/LITERAL/AUSENCIA detectan sobre fila ensuciada)")
+        # el «0» de arriba mira SOLO rutas, lineas, literales e identificadores: esto es lo que NO mira
+        print(f"SIN JUZGAR: {len(ciegas)} de {len(res)} filas llevan {n_clausulas} clausula(s) negativa(s)/posicional(es) "
+              f"que este barrido NO contrasta con el codigo — el «{len(con)} con hallazgo» NO las cubre (orden de magnitud, ver sin_juzgar())")
+        if "--sin-juzgar" in argv:
+            for i, cl in ciegas.items():
+                for t, c in cl:
+                    print(f"  [{t}] {i}: {c[:140]}")
+        else:
+            print(f"  filas: {sorted(ciegas)}  (--sin-juzgar para ver cada clausula)")
     if "--ratchet" in argv:
         suben, bajaron = evaluar_piso({r["id"] for r in con}, leer_piso())
         for i in suben:
@@ -411,7 +475,8 @@ def main(argv):
         if bajaron and not suben:
             print("RATCHET ❌ el piso tiene holgura: bajalo en este mismo PR.")
         if not suben and not bajaron:
-            print(f"RATCHET ✅ {len(con)} filas rancias de {len(res)} (piso {len(leer_piso())}): no empeoro")
+            print(f"RATCHET ✅ {len(con)} filas rancias DETECTADAS de {len(res)} (piso {len(leer_piso())}): no empeoro. "
+                  f"NO es «{len(res)} filas verificadas»: {len(ciegas)} llevan afirmaciones que este barrido no juzga")
         return 1 if (suben or bajaron) else 0
     return 1 if con else 0
 
