@@ -67,7 +67,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto… |
 | **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
 | **SM-F2** | `M-02` | 🟧 DOD-PARCIAL | lote de frontend1 (necesita device, dueno unico frontend2): quedan 20 ids por medir en mobile = 12 sin veredicto (hom… |
-| **SM-F3** | `M-03` | ⬜ PENDIENTE | — |
+| **SM-F3** | `M-03` | 🟧 DOD-PARCIAL | onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba… |
 | **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
 | **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
 
@@ -621,7 +621,10 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F3 · `M-03` — Los 5 ids cubiertos sin comparación
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend2
+- **Falta:** onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba la decision del operador sobre el estado de la cuenta canonica
+- **Cierre:** evidencia en el cierre_frontend2 SM-F3 del 15-10: vozchat, pres-voz y preg medidos en device con veredicto DESVIO; falta-en-mobile.py los deja comparados de verdad
 - `cobro-voz` · `fact-voz` · `onb-cumplida` · `pres-voz` · `vozchat`.
 - **DoD:** veredicto real y **salen de esa población** (que `falta-en-mobile.py` los deje de listar).
 - **🔄 REMEDIDO 2026-10-14 @`95d7963f`**: **`cobro-voz` y `fact-voz` YA salieron** de la población (están comparados de verdad). Quedan **4**: `onb-cumplida` · `preg` · `pres-voz` · `vozchat` — y `preg` no estaba en la lista original. **2 de 5 ya estaban hechos sin registrar.**
