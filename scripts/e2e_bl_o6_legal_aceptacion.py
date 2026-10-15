@@ -21,14 +21,11 @@ Casos (los 3 que pidió el `pedido_`, más el happy-path que los ancla):
      `require_tenant` (nunca de un valor que mande el cliente), así que no hay endpoint que permita
      "leer la aceptación de otro" -- el control es que CADA tenant ve SU PROPIO estado, nunca el ajeno.
 
-Uso (necesita `COPILOTO_INVITE_TOKEN` en el entorno para provisionar al adversario -- en el VPS,
-NUNCA hardcodeado ni impreso):
-    export COPILOTO_INVITE_TOKEN="$(ssh unreal-copilot "grep '^COPILOTO_INVITE_TOKEN=' /etc/unreal-copilot/copiloto.env" | cut -d= -f2-)"
+Uso (el alta del adversario es abierta desde SM-C2: ya no hace falta ningún token de invitación):
     python scripts/e2e_bl_o6_legal_aceptacion.py
 """
 from __future__ import annotations
 
-import os
 import sys
 import uuid
 from pathlib import Path
@@ -81,12 +78,8 @@ def login_canonico() -> str:
 
 
 def provisionar_y_loguear_adversario() -> str:
-    invite_token = os.environ.get("COPILOTO_INVITE_TOKEN", "")
-    if not invite_token:
-        raise RuntimeError("falta COPILOTO_INVITE_TOKEN en el entorno del script")
     r = requests.post(f"{BASE}/auth/signup",
-                       json={"email": ADVERSARY_EMAIL, "password": ADVERSARY_PASSWORD,
-                             "invite_token": invite_token}, timeout=20)
+                       json={"email": ADVERSARY_EMAIL, "password": ADVERSARY_PASSWORD}, timeout=20)
     if r.status_code == 200:
         log(f"tenant adversario provisionado: cliente_id={r.json()['cliente_id']}")
     else:

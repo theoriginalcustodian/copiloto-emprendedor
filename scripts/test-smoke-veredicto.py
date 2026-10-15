@@ -134,8 +134,10 @@ class Client:
             return _R(data=d)
         return _R(data=BODY)
     def post(self, path, json=None, headers=None):
-        if path == "/auth/signup" and not (json or {}).get("invite_token"):
-            return _R(403, {"detail": "invite"})
+        if path == "/auth/signup" and "password" not in (json or {}):
+            # La sonda del alta (SM-C2): body inválido => la validación del contrato corta con 422 y no
+            # escribe nada. STUB_SIGNUP_MODE=GATE simula que reapareció un gate previo (403).
+            return _R(403 if _os.environ.get("STUB_SIGNUP_MODE") == "GATE" else 422, {"detail": "x"})
         if path == "/auth/login":
             d = {k: None for k in CLAVES_LOGIN}
             d["access_token"] = "t"; d["refresh_token"] = "r"
@@ -157,8 +159,7 @@ def correr_script(smoke_path, env_extra=None):
     d = tempfile.mkdtemp()
     try:
         open(os.path.join(d, "httpx.py"), "w", encoding="utf-8").write(STUB)
-        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONPATH": d, "COPILOTO_INVITE_TOKEN": "tok-de-prueba",
-               "SUPABASE_URL": "https://sup.test", "SERVICE_ROLE_KEY": "k-de-prueba"}
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONPATH": d, "SUPABASE_URL": "https://sup.test", "SERVICE_ROLE_KEY": "k-de-prueba"}
         env.update(env_extra or {})
         p = subprocess.run([sys.executable, smoke_path], capture_output=True, encoding="utf-8", env=env, timeout=120)
         return p.returncode, p.stdout + p.stderr
@@ -202,6 +203,12 @@ for ep in sorted(CLAVES_RESTO):
     chk(f"MECLAVES control: clave declarada que no llega en /{ep} ⇒ exit 1, BLOQUEA y la nombra",
         rcf == 1 and "BLOQUEA" in outf and f"'{una_declarada}'" in outf
         and f"FAIL] /{ep}: set de claves = CLAVES_{ep.upper()}" in outf, f"rc={rcf}\n{outf[-800:]}")
+
+# --- 2a.quater) SM-C2: la sonda del alta es CRÍTICA. Si reaparece un gate previo (403), el smoke cae --
+rcg, outg = correr_script(SMOKE, {"STUB_SIGNUP_MODE": "GATE"})
+chk("SM-C2 control: la sonda del alta devuelve 403 ⇒ exit 1 y nombra la sonda",
+    rcg == 1 and "FAIL] alta sin invite-token llega a validación, ya no es 403 (SM-C2)" in outg
+    and "status=403" in outg, f"rc={rcg}\n{outg[-800:]}")
 
 # --- 2b) recuento FIJO: una rama que falla NO cambia el denominador (43), la falla sale roja con nombre
 rc3, out3 = correr_script(SMOKE, {"SUPABASE_URL": ""})  # grant admin sin credenciales => rama de falla
