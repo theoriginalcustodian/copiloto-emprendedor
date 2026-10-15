@@ -16,14 +16,27 @@ Uso (ADB_SERIAL por defecto RF8T318RN9T):
   device_medir.py arrastrar <testID> <dx> <dy> [pasos]   DOWN, MOVEs, UP (fijar dictado = arriba)
   device_medir.py hay <texto|testID>        exit 0 si está visible, 1 si no (aserción de la receta)
   device_medir.py foto <archivo.png>        screencap por exec-out
+  device_medir.py filmar <dir> [--seg 4] [--disparo-tocar <testID>] [--disparo-relanzar]
+                            [--fps-min 50] [--sello]
+        GRABA la pantalla y parte el video en un PNG por cuadro. Es el instrumento para lo que
+        `foto` NO puede medir: una animacion de ~1 s no la resuelve una cadena de screencap
+        (cada screencap tarda del orden del fenomeno que quiere medir). Con 60 fps reales, 1 s
+        son ~60 cuadros.
+        `--disparo-relanzar` mata y relanza la app DESPUES de arrancar la grabacion: es la unica
+        forma de filmar una animacion de ENTRADA (splash / reveal), que solo ocurre al montar.
+        Corta con exit 5 si los fps REALES no llegan a `--fps-min`: una captura a 24 fps es tan
+        ciega como el screencap que vino a reemplazar, y tiene que decirlo en vez de entregar
+        cuadros que parecen evidencia.
   device_medir.py autotest                  control positivo OFFLINE del parser (sin adb)
 """
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from html import unescape
+from pathlib import Path
 
 SERIAL = os.environ.get('ADB_SERIAL', 'RF8T318RN9T')
 BOUNDS = re.compile(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]')
@@ -75,6 +88,195 @@ def motion(accion, x, y):
     adb('shell', 'input', 'motionevent', accion, str(x), str(y), t=20)
 
 
+PAQUETE = 'app.copiloto.emprendedor'  # el OTRO paquete del telefono es documed: filmar el ajeno se ve valido
+REMOTO = '/sdcard/uc-filmar.mp4'
+FPS_MIN_DEFECTO = 50.0
+
+
+def _opt(args, nombre, defecto):
+    return args[args.index(nombre) + 1] if nombre in args else defecto
+
+
+def _corr(cmd, t=180):
+    r = subprocess.run(cmd, capture_output=True, timeout=t)
+    return r.returncode, r.stdout.decode('utf-8', 'replace'), r.stderr.decode('utf-8', 'replace')
+
+
+def fps_y_cuadros(mp4):
+    """(fps, cuadros) de un mp4. CUENTA los cuadros (`-count_frames`); no los estima.
+
+    Si el contenedor no declara `avg_frame_rate` (pasa con lo que escribe `screenrecord`), los fps
+    se DERIVAN de cuadros/duracion. Derivar no es leer: por eso el que llama recibe el numero y
+    decide, en vez de que esta funcion complete un default que despues se cita como medicion.
+    """
+    rc, out, err = _corr(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_frames',
+                          '-show_entries', 'stream=avg_frame_rate,nb_read_frames,duration',
+                          '-of', 'default=nw=1', str(mp4)])
+    if rc != 0:
+        raise RuntimeError('ffprobe fallo: ' + (err.strip() or 'sin stderr')[:300])
+    d = dict(l.split('=', 1) for l in out.splitlines() if '=' in l)
+    cuadros = int(d.get('nb_read_frames') or 0)
+    num, _, den = (d.get('avg_frame_rate') or '0/0').partition('/')
+    try:
+        fps = float(num) / float(den) if float(den or 0) else 0.0
+    except ValueError:
+        fps = 0.0
+    if fps <= 0:
+        dur = float(d.get('duration') or 0)
+        fps = cuadros / dur if dur > 0 else 0.0
+    return fps, cuadros
+
+
+def extraer(mp4, destino):
+    """Un PNG por cuadro + el pts de cada uno en ms.
+
+    `-vsync 0` es lo que importa: sin el, ffmpeg DUPLICA o TIRA cuadros para encajar en un fps
+    fijo, y entonces los PNG dejan de ser lo que el telefono mostro.
+    """
+    destino.mkdir(parents=True, exist_ok=True)
+    rc, _, err = _corr(['ffmpeg', '-v', 'error', '-y', '-i', str(mp4), '-vsync', '0',
+                        '-f', 'image2', str(destino / 'cuadro_%05d.png')], t=600)
+    if rc != 0:
+        raise RuntimeError('ffmpeg fallo: ' + (err.strip() or 'sin stderr')[:300])
+    rc, out, _ = _corr(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+                        'frame=best_effort_timestamp_time', '-of', 'csv=p=0', str(mp4)])
+    crudos = out.replace(',', ' ').split()
+    ms = [round(float(x) * 1000, 1) for x in crudos if x and x != 'N/A']
+    return sorted(destino.glob('cuadro_*.png')), ms
+
+
+def _foco():
+    _, o = adb('shell', 'dumpsys', 'window', t=40)
+    for ln in o.splitlines():
+        if 'mCurrentFocus' in ln:
+            return ln.strip()
+    return ''
+
+
+def filmar(args):
+    if not args:
+        print('falta el directorio de salida', file=sys.stderr)
+        return 2
+    destino = Path(args[0])
+    seg = int(_opt(args, '--seg', '4'))
+    fps_min = float(_opt(args, '--fps-min', str(FPS_MIN_DEFECTO)))
+    tocar_id = _opt(args, '--disparo-tocar', '')
+    relanzar = '--disparo-relanzar' in args
+
+    adb('shell', 'rm', '-f', REMOTO, t=30)
+    if relanzar:
+        adb('shell', 'am', 'force-stop', PAQUETE, t=40)
+        time.sleep(0.6)
+
+    cmd = ['adb', '-s', SERIAL, 'shell', 'screenrecord', '--bit-rate', '20000000',
+           '--time-limit', str(seg)]
+    if '--sello' in args:
+        cmd.append('--bugreport')  # estampa tiempo y nro de cuadro EN la imagen; ensucia el pixel
+    cmd.append(REMOTO)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # La grabacion NO arranca cuando arranca el proceso. Disparar antes de que el archivo crezca
+    # filma el final de la animacion, o nada: se espera a que el device escriba bytes.
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < 3:
+        _, o = adb('shell', 'ls', '-l', REMOTO, t=20)
+        if any(p.isdigit() and int(p) > 0 for p in o.split()):
+            break
+        time.sleep(0.15)
+    else:
+        proc.kill()
+        print('screenrecord no empezo a escribir en 3 s', file=sys.stderr)
+        return 1
+    arranque = time.monotonic()
+
+    if relanzar:
+        adb('shell', 'monkey', '-p', PAQUETE, '-c', 'android.intent.category.LAUNCHER', '1', t=60)
+    elif tocar_id:
+        c = buscar(tocar_id)
+        if c is None:
+            proc.kill()
+            print('no esta visible: ' + tocar_id, file=sys.stderr)
+            return 3
+        motion('DOWN', c[0], c[1])
+        time.sleep(0.08)
+        motion('UP', c[0], c[1])
+    disparo_ms = round((time.monotonic() - arranque) * 1000)
+
+    try:
+        proc.wait(timeout=seg + 25)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        print('screenrecord no termino', file=sys.stderr)
+        return 1
+
+    foco = _foco()
+    if PAQUETE not in foco:
+        print('FOCO AJENO, el video no es de esta app: ' + (foco or 'sin mCurrentFocus'),
+              file=sys.stderr)
+        return 4
+
+    destino.mkdir(parents=True, exist_ok=True)
+    local = destino / 'pantalla.mp4'
+    rc, _, err = _corr(['adb', '-s', SERIAL, 'pull', REMOTO, str(local)], t=180)
+    adb('shell', 'rm', '-f', REMOTO, t=30)
+    if rc != 0 or not local.exists():
+        print('pull fallo: ' + err.strip()[:200], file=sys.stderr)
+        return 1
+
+    fps, cuadros = fps_y_cuadros(local)
+    print('video    : %s (%d bytes)' % (local, local.stat().st_size))
+    print('fps REAL : %.2f  ·  cuadros contados: %d  ·  %d s pedidos' % (fps, cuadros, seg))
+    print('disparo  : ~%d ms despues del primer byte '
+          '(precision limitada por el arranque de screenrecord)' % disparo_ms)
+    if fps < fps_min:
+        print('[FAIL] fps reales %.2f < %.0f exigidos: esta captura NO resuelve una animacion '
+              'de ~1 s.' % (fps, fps_min), file=sys.stderr)
+        print('       No se extraen cuadros: entregarlos los volveria evidencia de algo que no '
+              'se vio.', file=sys.stderr)
+        return 5
+    pngs, ms = extraer(local, destino)
+    print('cuadros  : %d PNG en %s' % (len(pngs), destino))
+    if ms:
+        print('ventana  : %.1f ms .. %.1f ms  ·  paso medio %.1f ms'
+              % (ms[0], ms[-1], (ms[-1] - ms[0]) / max(len(ms) - 1, 1)))
+    for i, p in enumerate(pngs):
+        print('  %s  t=%s ms' % (p.name, ms[i] if i < len(ms) else '?'))
+    return 0
+
+
+def _autotest_video():
+    """Control del camino ffprobe/ffmpeg SIN device: se fabrica el video y se mide el resultado.
+
+    Dos mitades, porque una sola absuelve al ciego: que ACEPTE 60 fps no prueba que el gate de
+    `--fps-min` pueda RECHAZAR. Se fabrica tambien un clip de 24 fps y se exige que lo rechace,
+    que es el control positivo del "no" (un mecanismo roto hacia el NO no da sintoma).
+    """
+    if _corr(['ffmpeg', '-version'], t=30)[0] != 0:
+        print('[SALTEADO] ffmpeg no esta: el camino de video queda SIN CONTROL (no es un OK)')
+        return 4
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        for rate, esperado in ((60, True), (24, False)):
+            mp4 = d / ('c%d.mp4' % rate)
+            rc, _, err = _corr(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
+                                'testsrc=duration=1:size=320x240:rate=%d' % rate,
+                                '-pix_fmt', 'yuv420p', str(mp4)], t=120)
+            assert rc == 0, 'no se pudo fabricar el clip: ' + err[:200]
+            fps, cuadros = fps_y_cuadros(mp4)
+            assert abs(fps - rate) < 1.5, 'fps mal leidos: %.2f vs %d' % (fps, rate)
+            assert abs(cuadros - rate) <= 2, 'cuadros mal contados: %d vs %d' % (cuadros, rate)
+            assert (fps >= FPS_MIN_DEFECTO) is esperado, (
+                'el gate de fps no discrimina: %.2f fps con umbral %.0f' % (fps, FPS_MIN_DEFECTO))
+        pngs, ms = extraer(d / 'c60.mp4', d / 'cuadros')
+        assert len(pngs) >= 58, ('extrajo %d cuadros de 60: -vsync 0 no esta preservandolos'
+                                 % len(pngs))
+        assert len(ms) == len(pngs), 'un pts por cuadro: %d vs %d' % (len(ms), len(pngs))
+        assert ms[0] < ms[-1], 'los pts no avanzan'
+    print('autotest video OK: lee 60 y 24 fps, cuenta cuadros, extrae 1 PNG por cuadro '
+          'y el gate de fps RECHAZA 24 (control negativo)')
+    return 0
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
@@ -89,7 +291,9 @@ def main(argv):
         assert ('', 'Por voz · 7s', (25, 25)) in e, e
         assert all(r != 'vacio' for r, _, _ in e), 'un nodo de área 0 no se puede tocar'
         print('autotest OK: testID, texto y descarte de bounds vacíos')
-        return 0
+        return _autotest_video()
+    if cmd == 'filmar':
+        return filmar(args)
     if cmd == 'ver':
         filtro = args[args.index('--filtro') + 1] if '--filtro' in args else ''
         for rid, txt, (x, y) in arbol():
