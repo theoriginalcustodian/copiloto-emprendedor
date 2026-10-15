@@ -298,6 +298,22 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # 2026-10-15 - OTRO MEDIDOR, no otro vocabulario. El `avance_` de frontend2 MIDE, y mide bien:
+    # trae veredictos `**R**` de device por fila, cada uno con su carpeta de evidencia, y declara un
+    # control negativo (sin lista cargada, modo avion, no hay tarjeta de ticket). No lo descarto por
+    # flojo. Lo descarto porque su PREDICADO es el del OTRO instrumento: emite veredictos del
+    # **mapeo** prototipo<->implementacion (`medir-mapeo-implementacion.py`, de donde sale su 51/54
+    # sobre la rama de #1240), no del criterio 3 de **paridad web/mobile**, que es lo que cuenta este
+    # script. Las dos cifras viven en medidores distintos y citar una por la otra es el error que el
+    # indice de memoria marca como «el error del dia».
+    # Lo clasifico YO porque el gate lo marco SIN CLASIFICAR y la duena del corpus es planificacion.
+    # Segundo motivo, independiente y suficiente: aun si el predicado coincidiera, las filas que
+    # reporta ya tienen registro canonico en el doc de veredictos y en #1240 -- contarlo como fuente
+    # aparte las contaria dos veces, que es justo lo que `DEC-18` prohibe (solo UN lugar mide).
+    "2026-10-15_avance_frontend2-a-planificacion_51-de-54-entrada-MERGEADA":
+        "mide, pero con el OTRO medidor: emite veredictos del mapeo prototipo<->implementacion "
+        "(`medir-mapeo-implementacion.py`, su 51/54), no del criterio 3 de paridad web/mobile; y "
+        "las filas que reporta ya tienen registro canonico en el doc de veredictos + PR #1240",
     # 2026-10-15 - DICTAMINA, no mide. Este contrato reparte trabajo y clasifica las 7 filas
     # PENDIENTE del mapeo mobile: resuelve cada una a `path` real de `origin/main` y a duena, y
     # nombra el criterio del medidor (`medir-mapeo-implementacion.py:238,338`: `**D**` y `**P**`
