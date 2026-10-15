@@ -17,7 +17,7 @@ Convención: `R` = resuelta en código · `E` = enmienda con autoridad · `D` = 
 |---|---|---|
 | `(home)` | grip «FUNCIONES» vs «Baja para tus funciones» (`index.html:1639`) | **R** `PanelFunciones.tsx:186` — «Bajá para tus funciones» / «Subí para volver a Mi día» según abierto · test de `PanelDeslizable` |
 | | no existe «Ver tablero ›» (el tablero se fusionó en las solapas) | **E** `PantallaMiDia.tsx:101-103` — las solapas con su contador ya SON el tablero; un vínculo a una pantalla que no existe sería una ruta muerta (Mi día = base, Ola 4) |
-| | agenda «Ahora» inline | **P** requiere Google Calendar conectado (OAuth externo, `NO_REPRODUCIBLE_SIN_EFECTO`); medible con una cuenta con Calendar conectado en device |
+| | agenda «Ahora» inline | **E** la Agenda es un espacio **aparte** del Kanban por decisión de arquitectura ya cerrada: `apps/copiloto/mi_dia_web.py:12-13` («NO es una solapa del Kanban»), ADR-004 «No reemplaza… Eso sigue vigente», y `PantallaMiDia.tsx:451`. La agenda está implementada en su lugar (`PanelCalendario` + `PantallaAgenda.tsx`); el inline del prototipo queda desalineado por la decisión, no por falta de trabajo |
 | `bi-refresh` | línea permanente «Tirá para actualizar» | **R** `PantallaInteligencia.tsx:174-176` — el estado sólo existe durante el gesto o la confirmación · test de Inteligencia |
 | | «Al día · recién» dura 3000 ms vs 700 ms | **R** `textosRefresco.ts:21` `MS_AL_DIA = 700` (`PantallaInteligencia.tsx:141`) · test |
 | | indicador del sistema vs el propio con flecha que gira; fase «Soltá» | **E** `PantallaInteligencia.tsx:7,196` — `RefreshControl` de RNGH por el `waitFor` del handler del `ScrollView`; en Android el sistema no expone la fase «Soltá». Se conserva el control nativo |
