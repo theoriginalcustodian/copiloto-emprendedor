@@ -37,10 +37,10 @@ El telefono tiene **un solo dueno**. Nada de este grupo se declara listo con un 
 
 | id | dueno | DoD binario | por que esta capa |
 |---|---|---|---|
-| `(home)` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
+| `(home)` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
 | `bi-refresh` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
-| `bloqueado` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
-| `chat` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
+| `bloqueado` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
+| `chat` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
 | `consent` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `detalle` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
 | `entrada` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
@@ -49,8 +49,8 @@ El telefono tiene **un solo dueno**. Nada de este grupo se declara listo con un 
 | `grabando` | frontend (device, dueno unico) | La capacidad tiene al menos UN consumidor real en `apps/mobile/src` fuera de su propio archivo y de sus tests, y se VE en la pantalla. Hoy esta escrita y nadie la usa. | lo tactil no lo acredita un test unitario |
 | `ingresos` | frontend (device, dueno unico) | Comparada contra el prototipo: la fila dice COINCIDE o nombra la divergencia. Hoy no esta medida, y «sin comparacion» no es «coincide». | lo tactil no lo acredita un test unitario |
 | `reveal` | frontend (device, dueno unico) | La capacidad tiene al menos UN consumidor real en `apps/mobile/src` fuera de su propio archivo y de sus tests, y se VE en la pantalla. Hoy esta escrita y nadie la usa. | lo tactil no lo acredita un test unitario |
-| `soporte` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
-| `splash` | frontend (device, dueno unico) | El elemento que la fila declara ausente existe en la pantalla que ya existe, con `path:linea`, y se ve. No alcanza con que el componente este definido. | lo tactil no lo acredita un test unitario |
+| `soporte` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
+| `splash` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `tablero` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 
 ## nativa-sin-device — 32 renglones
