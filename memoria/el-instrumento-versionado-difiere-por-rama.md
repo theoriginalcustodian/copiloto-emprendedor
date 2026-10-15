@@ -110,3 +110,50 @@ El fix no fue un gate: el medidor ahora imprime `CORPUS: al dia (N docs)` / `COR
 el árbol atrasado es legítimo, y [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]. Los tres
 casos nuevos del test disparan contra el medidor anterior; el `null` del json significa «no se pudo
 medir» y nunca «al día» ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
+
+
+## Refuerzo 2026-10-15 (bis) — el RATCHET del instrumento prohíbe auditar el pasado
+
+El punto 2 de arriba manda fijar un factor: «un solo corpus medido por los distintos blobs». El
+15-10 fui a hacer exactamente eso —la cifra del criterio 3 mobile había pasado de **16 a 42 de 54** y
+quería saber si el salto era trabajo o un lector más listo— y el experimento **no se puede hacer en
+este instrumento**. Por dos razones independientes, y la segunda no estaba escrita acá:
+
+1. **La raíz sale de `__file__`.** Copiado al scratchpad, el lector del 13-10 buscó el padrón contra
+   el directorio temp y abortó: `ABORTA: no encontré …\docs\copiloto-emprendedor\2026-09-22-BL-P5-…`.
+   Esto ya lo dice la entrada; se resuelve poniendo el blob viejo **en el directorio del nuevo**
+   (`cp` + limpieza en `trap`, para no dejar el mutante —
+   [[un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante]]).
+2. **Y aun así no emite cifra:** desde el directorio correcto salió `rc=8` **sin imprimir número**.
+   Su propio ratchet aborta ante documentos del corpus que él no tiene clasificados — y un corpus
+   más nuevo que el lector **siempre** tiene alguno. O sea: **la versión N de este instrumento no
+   puede medir el corpus N+1, nunca.**
+
+**Lo que esto agrega:** un instrumento con **ratchet sobre el corpus** no sirve como referencia
+histórica, y no por un bug — por su diseño. El mismo guard que impide emitir una cifra sobre
+material sin clasificar (que es correcto, y es el `rc=8` que yo acababa de pagar) **prohíbe el
+contraste con el pasado**. Fijar el corpus y variar el blob es imposible por construcción, no por
+mala suerte. Hermana de [[un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate]]: ahí el
+alcance moría tras un `return`; acá la cifra muere tras el ratchet.
+
+**La salida que SÍ atribuye, y no necesita correr nada:** leer el commit que produjo el delta y
+clasificar su diff en **datos vs lógica**.
+
+```
+git show 5715fea8 --numstat   ->  20 lineas +, 0 -, en contar-veredictos.py
+git show 5715fea8 -- <script> ->  1 basename en MEDICIONES_DECLARADAS + 3 entradas de
+                                  CONFLICTOS_CONOCIDOS.  CERO logica.
+```
+
+Con eso el 16→42 queda atribuido **al corpus** (frontend2 midió 26 filas mobile), no al lector. Y el
+matiz que hay que decir igual: la cifra subió por un **acto de declaración** (agregar el basename),
+así que *quién declara* es parte del instrumento — anotado como atajo con dueño y disparador, no
+como hallazgo cerrado ([[un-control-de-corroboracion-premia-al-que-mas-cita]]).
+
+**How to apply (se suma a las de arriba):**
+- Antes de planear un contraste histórico, preguntá si el instrumento viejo **puede emitir salida**
+  sobre el corpus nuevo. Si tiene ratchet/allowlist del corpus, no puede: ahorrate el experimento.
+- Cuando el contraste es imposible, **atribuí por el diff del commit que movió la cifra**, separando
+  datos de lógica. Es más barato y más concluyente que re-correr dos versiones.
+- Y leé el `rc` del **proceso**, no del pipe: las dos veces que medí esto, el `| grep`/`| tail` me
+  devolvió `rc=0` tapando un `rc=2` y un `rc=8` ([[el-pipe-se-come-el-exit-code]]).

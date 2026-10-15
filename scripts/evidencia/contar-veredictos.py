@@ -297,6 +297,17 @@ MEDICIONES_DECLARADAS = {
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F2-lote-frontend2-26-filas-mobile-con-veredicto-medido-contra-2e7d2af5.md",
     # 2026-10-15 — SM-F3 lote device, plataforma mobile: vozchat y pres-voz medidos con dictado real (DESVIO de
     # estructura/copy), onb-cumplida NO_MEDIBLE con el motivo escrito, y el hallazgo de la tarjeta del onboarding.
+    # 2026-10-15 - RE-CLAVEADO por un RENAME. Este set se consulta con igualdad EXACTA
+    # (`n not in MEDICIONES_DECLARADAS`), a diferencia de `NO_SON_MEDICION`, que admite prefijo
+    # (`p.name == k or p.name.startswith(k)`). El archivo se acorto -- muy probablemente por el
+    # MAX_PATH de 260 de Windows, que es el motivo habitual de los renames en este buzon -- y la
+    # clave larga dejo de matchear: el ratchet lo reporto primero como «declarado que el glob ya no
+    # encuentra» y despues como SIN CLASIFICAR. El documento nunca dejo de existir ni de medir.
+    # ATAJO DECLARADO, no invisible: igualar la semantica de los dos sets (admitir prefijo aca)
+    # cerraria la clase entera, pero un prefijo corto en un set que SUMA a la cifra puede matchear
+    # un documento ajeno e INFLARLA -- peor que el sintoma. Queda como deuda con dueno
+    # (planificacion) y disparador: el proximo rename que rompa una clave de este set.
+    # El nombre no se tipea de memoria: se mide con un glob del buzon (ver scratchpad/reclave.py).
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-vozchat-pres-voz-DESVIO-onb-cumplida-NO_MEDIBLE-tarjeta-onboarding-4px-1247.md",
     # 2026-10-15 — SM-F3, plataforma mobile: preg medida en device (DESVIO; la card de resultado existe).
     "2026-10-15_cierre_frontend2-a-planificacion_SM-F3-preg-DESVIO-medido-en-device-la-card-de-resultado-EXISTE-el-mapeo-decia-NO-EXISTE.md",
