@@ -36,6 +36,14 @@ Citar una por la otra es el error más repetido del sprint. Ninguna de las dos e
 `MEDICIONES_DECLARADAS`: nadie la había medido nunca y **no por olvido** — su id era ilegible para el
 parser, así que la cifra no podía pasar de 53 por mucho que se midiera.
 
+> 🚧 **Y ese `53/54` de mobile es TECHO, no deuda.** `(home)` no es trabajo pendiente de ninguna
+> sesión: su lado mobile exige **Google Calendar conectado** (la agenda «Ahora» inline), que es OAuth
+> externo y frente abierto — el disparador está **afuera** de las tres sesiones, que es justo la
+> categoría que `cola-check.sh:198` reserva para `⏳`. FE2 lo dejó dicho sin que nadie se lo pidiera:
+> *«no re-emito `(home)` ni `reveal`: tienen decisión del operador pendiente y no son mías de
+> cerrar»*. **Leer «falta 1» como «falta trabajo» es el error**: mientras no haya Calendar conectado,
+> 53 es el techo alcanzable, igual que web declara el suyo en 54.
+
 ## 2. La única pendiente real: `soporte`
 
 No cumple su DoD y **está bien que no lo cumpla**: su bloqueante es el **hold-to-record**, que espera
