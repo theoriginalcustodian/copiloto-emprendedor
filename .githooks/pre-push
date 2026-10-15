@@ -113,7 +113,7 @@ if [ "$GRAPH_RC" -ne 0 ]; then
     echo "[pre-push] ⚠️  graph-sync.sh salió rc=$GRAPH_RC — el push SIGUE (el grafo es auxiliar), pero el grafo quedó desactualizado."
     echo "[pre-push]    1) ver QUÉ borraría, sin borrar nada:  powershell -ExecutionPolicy Bypass -File scripts/destrabar-grafo-force.ps1"
     echo "[pre-push]    2) si la lista cierra: el mismo comando con -Force (borra del grafo COMPARTIDO por las 4 sesiones)."
-    echo "[pre-push]    El paso 1 aborta si FALTANTES != 0. Ojo: 11 de esos faltantes son auto-aristas BENIGNAS (PR #1207)."
+    echo "[pre-push]    El paso 1 aborta solo si hay faltantes GRAVES; las auto-aristas benignas no bloquean (son 11 hoy)."
   } >&2
 fi
 if [ "$(cat "$MARCADOR" 2>/dev/null || echo ninguno)" = "$MAIN_SHA" ]; then
