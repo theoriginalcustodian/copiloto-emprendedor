@@ -76,9 +76,13 @@ if printf '%s' "$err" | grep -q 'DEGRADADO'; then ok "avisó DEGRADADO en stderr
 if printf '%s' "$err" | grep -qF 'NO es un pase'; then ok "dice que no es un pase"; else bad "no declara que no es un pase"; fi
 
 echo "— 6) COMPLETITUD: ningún comando de monitoreo invoca un instrumento con path RELATIVO"
-# la lista se DERIVA del case de vigia.sh; copiarla la haría envejecer en silencio
+# la lista se DERIVA del case de vigia.sh; copiarla la haría envejecer en silencio.
+# El patrón caza `.sh|.py`: hasta el 2026-10-15 sólo cazaba `.sh`, así que
+# `medir-mapeo-implementacion.py` habría entrado a la whitelist SIN que este control de completitud
+# lo mirara nunca -- un instrumento que ningún gate caza por estar del lado equivocado del patrón
+# (`nada-cazaba-al-mal-clasificado-solo-al-no-clasificado`).
 mapfile -t permitidos < <(sed -n '/case "\$INSTRUMENTO" in/,/^  \*)/p' "$VIGIA" \
-  | grep -oE '[a-z0-9-]+\.sh' | sort -u)
+  | grep -oE '[a-z0-9-]+\.(sh|py)' | sort -u)
 if [ "${#permitidos[@]}" -ge 5 ]; then ok "derivé ${#permitidos[@]} instrumentos del case de vigia.sh"
 else bad "CEGUERA: derivé ${#permitidos[@]} instrumentos — el parseo del case se rompió"; fi
 cmds=0; malos=0; convigia=0; usan=0
@@ -90,7 +94,7 @@ for f in "$ROOT"/.claude/commands/monitoreo*.md; do
   [ "$_usa" = "1" ] && usan=$((usan+1))
   if [ "$_usa" = "1" ] && grep -q 'vigia\.sh' "$f"; then convigia=$((convigia+1)); fi
   for i in "${permitidos[@]}"; do
-    if grep -qE "bash +(\")?scripts/$i" "$f"; then
+    if grep -qE "(bash|python3?) +(\")?scripts/(evidencia/)?$i" "$f"; then
       printf '      ↳ %s invoca %s con path relativo\n' "$(basename "$f")" "$i"
       malos=$((malos+1))
     fi
@@ -239,6 +243,53 @@ if grep -q "NO lo agregues por simetria" "$VIGIA"; then
 else
   bad "se perdio el comentario que explica por que gate.sh no entra -- el proximo lo agrega"
 fi
+
+echo "— 11) un instrumento .py de un SUBDIRECTORIO sale del PIN y se corre con python"
+# Por que existe: `medir-mapeo-implementacion.py` vive en `scripts/evidencia/` (no en `scripts/`) y
+# el lanzador resolvia UN solo nivel, asi que lo rechazaba con rc 2 -- y por eso nadie lo corria por
+# aca, aunque su propio docstring declaraba estar habilitado. El 2026-10-15 esa habilitacion escrita
+# y nunca ejecutada se pago: corrido desde el checkout compartido midio 44/54 con 0 pendientes (la
+# clasificacion previa a #1218) cuando main daba 46/54 con 8.
+# Ademas el `exec` era `bash` fijo: un `.py` lanzado con bash muere con un error de SINTAXIS, que no
+# se parece a «elegi mal el interprete» y manda a arreglar el instrumento, que no esta roto.
+# El fixture usa sintaxis que SOLO corre en python (`import`), asi que este caso prueba las DOS
+# cosas juntas: que se encontro en el subdirectorio Y que el interprete se eligio por extension.
+mkdir -p "$PIN/scripts/evidencia" "$LOCAL/scripts/evidencia"
+cat > "$PIN/scripts/evidencia/medir-mapeo-implementacion.py" <<'EOP'
+import sys
+print("MARCA-PY-DEL-PIN args=%s" % (sys.argv[1:],))
+EOP
+cat > "$LOCAL/scripts/evidencia/medir-mapeo-implementacion.py" <<'EOP'
+print("MARCA-PY-LOCAL-NO-DEBE-SALIR")
+EOP
+out11="$(UC_VIGIA_NO_REFRESH=1 UC_VIGIA_PIN="$PIN" bash "$LOCAL/scripts/vigia.sh" \
+  medir-mapeo-implementacion.py --base x 2>/dev/null)"; rc11=$?
+if [ "$rc11" = "0" ] && printf '%s' "$out11" | grep -q 'MARCA-PY-DEL-PIN'; then
+  ok "el .py de scripts/evidencia/ corrio desde el pin, con python"
+else
+  bad "no corrio el .py del pin: rc=$rc11 salida=[$out11]"
+fi
+if printf '%s' "$out11" | grep -qF "args=['--base', 'x']"; then
+  ok "los argumentos llegan tal cual al .py"
+else
+  bad "los argumentos no llegaron al .py: [$out11]"
+fi
+if printf '%s' "$out11" | grep -q 'MARCA-PY-LOCAL'; then
+  bad "salio la copia LOCAL del .py: el subdirectorio se resolvio contra el working tree"
+else
+  ok "CONTROL: no salio la copia local del .py"
+fi
+# CONTROL DE CEGUERA del caso: sin el .py en el pin tiene que DEGRADAR y gritar, no fallar mudo.
+# Sin esto, un rechazo incondicional (o un exit 0 mudo) haria pasar los tres de arriba.
+rm -f "$PIN/scripts/evidencia/medir-mapeo-implementacion.py"
+UC_VIGIA_NO_REFRESH=1 UC_VIGIA_PIN="$PIN" bash "$LOCAL/scripts/vigia.sh" \
+  medir-mapeo-implementacion.py >"$TMP/o11b" 2>"$TMP/e11b"
+if grep -q 'DEGRADADO' "$TMP/e11b" && grep -q 'MARCA-PY-LOCAL' "$TMP/o11b"; then
+  ok "CONTROL DE CEGUERA: sin el .py en el pin cae al working tree y GRITA"
+else
+  bad "sin el .py en el pin no degrado con aviso: err=[$(cat "$TMP/e11b")] out=[$(cat "$TMP/o11b")]"
+fi
+
 
 printf '\n  %s corridos · %s fallados\n' "$corridos" "$fallos"
 [ "$fallos" = "0" ] || exit 1

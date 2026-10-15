@@ -164,7 +164,8 @@ fi
 
 # -- QUE PUEDE PASAR POR ACA, y el criterio (medido el 2026-10-13, no deducido)
 #
-# El lanzador hace `exec bash "$EJECUTA" "$@"` SIN `cd`: el ARCHIVO sale del pin (al dia) y el
+# El lanzador hace `exec <interprete> "$EJECUTA" "$@"` SIN `cd` — el interprete sale de la
+# EXTENSION desde el 2026-10-15 (`bash` .sh, `python` .py): el ARCHIVO sale del pin (al dia) y el
 # CWD se hereda del llamador. Eso parte los instrumentos en dos clases y solo una puede entrar:
 #
 #   OK  los que NO miran el arbol de trabajo. `ci-verde.sh` es el caso puro: 12 llamadas a `gh`,
@@ -187,29 +188,59 @@ fi
 #
 # Criterio para el proximo: cambia lo que el instrumento MIDE segun de donde salga el archivo?
 # Si cambia, no entra. Grep de `BASH_SOURCE|show-toplevel|pytest|npm |jest|vitest`.
+#
+# SI  `medir-mapeo-implementacion.py` (2026-10-15). Su `_raiz()` saca la raiz del CWD via
+#     `git rev-parse --show-toplevel` y SOLO cae a `__file__` fuera de un repo; su propio docstring
+#     dice que esa diferencia «es la que habilita este script a pasar por scripts/vigia.sh».
+#     O sea: la habilitacion estaba ESCRITA y nunca se ejecuto, y el dia que faltaba se pago. El
+#     2026-10-15 esta sesion lo corrio desde el checkout compartido y midio **44/54 con 0
+#     pendientes** (la clasificacion previa a #1218) cuando main daba **46/54 con 8**: casi publico
+#     la cifra vieja del sprint como cierre. Control de que NO mide distinto segun de donde salga el
+#     archivo: corrido desde `scripts/evidencia/` y desde una copia fuera del repo devuelve el mismo
+#     `arbol` y el mismo `padron` (54).
+#     -> memoria: un-disparador-cumplido-no-avisa-a-nadie
+#
+# En Python el equivalente del grep de arriba es `__file__`: un instrumento que derive su raiz de
+# `__file__` mide el arbol del PIN y NO entra.
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
   escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
-  mi-buzon.sh|ci-verde.sh) ;;
+  mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py) ;;
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
     printf '%s\n' "              foco-check.sh escaladores-buzon.sh archivar-buzon.sh" >&2
     printf '%s\n' "              lint-contratos-referencias.sh podar-worktrees.sh mi-buzon.sh" >&2
     printf '%s
-' "              ci-verde.sh" >&2
+' "              ci-verde.sh medir-mapeo-implementacion.py" >&2
     exit 2 ;;
 esac
 
 # ── elegir qué se ejecuta, y decirlo cuando no es lo pedido
+# El instrumento puede vivir en `scripts/` o en un subdirectorio DECLARADO (hoy `scripts/evidencia/`).
+# Se prueban en ese orden y gana el primero que exista. El nombre de la whitelist sigue siendo el
+# UNICO identificador: sumar un subdirectorio se hace aca y NO cambia como se invoca el instrumento.
+SUBDIRS="/ /evidencia/"
 EJECUTA=""
-if [ -n "$PIN" ] && [ -f "$PIN/scripts/$INSTRUMENTO" ]; then
-  EJECUTA="$PIN/scripts/$INSTRUMENTO"
-elif [ -f "$REPO_ROOT/scripts/$INSTRUMENTO" ]; then
-  EJECUTA="$REPO_ROOT/scripts/$INSTRUMENTO"
-  degradado="${degradado:+$degradado · }SIN PIN: corriendo la copia del working tree"
-else
-  printf '%s\n' "vigia.sh: no encontré '$INSTRUMENTO' ni en el pin ni en $REPO_ROOT/scripts/" >&2
+if [ -n "$PIN" ]; then
+  for _sd in $SUBDIRS; do
+    if [ -f "$PIN/scripts${_sd}$INSTRUMENTO" ]; then
+      EJECUTA="$PIN/scripts${_sd}$INSTRUMENTO"
+      break
+    fi
+  done
+fi
+if [ -z "$EJECUTA" ]; then
+  for _sd in $SUBDIRS; do
+    if [ -f "$REPO_ROOT/scripts${_sd}$INSTRUMENTO" ]; then
+      EJECUTA="$REPO_ROOT/scripts${_sd}$INSTRUMENTO"
+      degradado="${degradado:+$degradado · }SIN PIN: corriendo la copia del working tree"
+      break
+    fi
+  done
+fi
+if [ -z "$EJECUTA" ]; then
+  printf '%s\n' "vigia.sh: no encontré '$INSTRUMENTO' ni en el pin ni en $REPO_ROOT/scripts/{,evidencia/}" >&2
   exit 3
 fi
 
@@ -227,4 +258,18 @@ if [ -n "$degradado" ]; then
   } >&2
 fi
 
-exec bash "$EJECUTA" "$@"
+# El interprete sale de la EXTENSION del instrumento, no de un default: un `.py` lanzado con
+# `bash` muere con un error de sintaxis que NO se parece a «elegi mal el interprete» — se leeria
+# como «el instrumento esta roto», y mandaria a arreglar lo que no esta mal.
+case "$EJECUTA" in
+  *.py)
+    _py="$(command -v python || command -v python3 || true)"
+    if [ -z "$_py" ]; then
+      printf '%s
+' "vigia.sh: no encontre python para '$INSTRUMENTO' (ni python ni python3 en PATH)" >&2
+      exit 3
+    fi
+    exec "$_py" "$EJECUTA" "$@" ;;
+  *)
+    exec bash "$EJECUTA" "$@" ;;
+esac
