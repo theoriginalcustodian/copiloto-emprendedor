@@ -138,3 +138,59 @@ def test_K01_la_misma_clave_en_otro_tenant_NO_colisiona_ni_devuelve_lo_ajeno(con
     pb, rep = _crear(PresupuestoStore(conn_de_tenant(b), b), idem_key="clave-compartida")
     assert rep is False and pb["id"] != pa["id"]
     assert PresupuestoStore(conn_de_tenant(b), b).detalle(pa["id"]) is None
+
+
+# --- SM-D2/3 (trabajos.ts) + detector: un listado con tope no puede cortar EN SILENCIO ----------------
+
+def _alta(store, n):
+    return store.crear(concepto=f"Trabajo {n}", receptor={"nombre": "Cliente"},
+                       items=[{"descripcion": "Mano de obra", "cantidad": 1,
+                               "precio_unitario": "1000.00"}])
+
+
+@necesita_pg
+def test_contar_es_del_TENANT_ignora_el_limit_y_comparte_el_filtro_con_listar(conn_de_tenant, tenants):
+    a, b = tenants
+    sa = PresupuestoStore(conn_de_tenant(a), a)
+    for n in range(5):
+        _alta(sa, n)
+    for n in range(3):                       # el tenant B NO suma al total de A
+        _alta(PresupuestoStore(conn_de_tenant(b), b), n)
+    assert len(sa.listar(limit=2)) == 2 and sa.contar() == 5
+    # mismo filtro: el reemplazado no cuenta en `contar` igual que no aparece en `listar`
+    p = _alta(sa, 99)
+    sa.crear(concepto="Corrección", receptor={"nombre": "Cliente"}, reemplaza_a=p["id"],
+             items=[{"descripcion": "Mano de obra", "cantidad": 1, "precio_unitario": "1100.00"}])
+    assert sa.contar() == len(sa.listar(limit=None)) == 6
+    assert sa.contar(incluir_reemplazados=True) == len(sa.listar(limit=None, incluir_reemplazados=True)) == 7
+
+
+@necesita_pg
+def test_listar_con_tope_corta_los_MAS_VIEJOS_y_estado_pendiente_no_pierde_ninguno(conn_de_tenant, tenants):
+    """El defecto del detector: `listar(limit=N)` ordena por `fecha DESC`, así que con más de N filas
+    se pierde el pendiente MÁS VIEJO — justo el que lleva más tiempo sin respuesta. Acá el viejo queda
+    pendiente y los 2 nuevos se aprueban: el tope de 2 devuelve sólo aprobados (control positivo del
+    defecto) y `estado=pendiente` sin tope lo encuentra."""
+    a, _ = tenants
+    s = PresupuestoStore(conn_de_tenant(a), a)
+    viejo = _alta(s, 0)
+    for n in (1, 2):
+        s.cambiar_estado(_alta(s, n)["id"], "aprobado")
+    con_tope = s.listar(limit=2)
+    assert viejo["id"] not in {p["id"] for p in con_tope}, "el tope corta al más viejo (defecto)"
+    pendientes = s.listar(limit=None, estado="pendiente")
+    assert [p["id"] for p in pendientes] == [viejo["id"]]
+    assert {p["estado"] for p in pendientes} == {"pendiente"}
+
+
+@necesita_pg
+def test_el_detector_ve_el_pendiente_mas_viejo_aunque_haya_mas_de_200(conn_de_tenant, tenants):
+    """Control positivo del detector contra el camino real: 205 presupuestos pendientes; con el
+    `listar(limit=200)` previo los 5 más viejos no llegaban a `_evaluar_presupuestos_enfriandose` y su
+    alerta «se enfría» no se emitía, sin error."""
+    import mi_dia_detector as detector
+    a, _ = tenants
+    s = PresupuestoStore(conn_de_tenant(a), a)
+    ids = [_alta(s, n)["id"] for n in range(205)]
+    vistos = {p["id"] for p in detector._candidatos_presupuestos_enfriandose(conn_de_tenant(a), a)}
+    assert vistos == set(ids), f"faltan {len(set(ids) - vistos)} (los más viejos)"

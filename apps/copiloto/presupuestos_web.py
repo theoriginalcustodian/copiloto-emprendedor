@@ -308,15 +308,23 @@ def create_presupuestos_app(
     async def listar_presupuestos(limit: int = LIMITE_LISTADO_DEFAULT,
                                   incluir_reemplazados: bool = False,
                                   cliente_id: str = Depends(require_tenant)) -> dict:
-        """Sin presupuestos → `200 {"presupuestos": []}`. Nunca 404: una lista vacía es un resultado.
+        """Sin presupuestos → `200 {"presupuestos": [], "total": 0}`. Nunca 404: una lista vacía es un
+        resultado.
 
         Por default oculta los reemplazados (el N° 7 corregido deja de verse cuando existe el N° 8);
-        `?incluir_reemplazados=true` trae el historial completo."""
+        `?incluir_reemplazados=true` trae el historial completo.
+
+        `total` = presupuestos del TENANT con ese mismo filtro, ignorando `limit` (igual que en
+        `/clientes` y `/gastos`). Sin él, una página cortada por el tope (50 por default, 200 de máximo)
+        es indistinguible de la lista entera: el cliente lee «no tenés ese trabajo» cuando es «no
+        entró en la página». Aditivo: quien no lo lee sigue viendo lo de antes."""
         limit = max(1, min(int(limit), LIMITE_LISTADO_MAX))
-        filas = await asyncio.to_thread(
-            lambda: presupuesto_store_factory(cliente_id).listar(
-                limit=limit, incluir_reemplazados=incluir_reemplazados))
-        return {"presupuestos": filas}
+        def _leer():
+            store = presupuesto_store_factory(cliente_id)
+            return (store.listar(limit=limit, incluir_reemplazados=incluir_reemplazados),
+                    store.contar(incluir_reemplazados=incluir_reemplazados))
+        filas, total = await asyncio.to_thread(_leer)
+        return {"presupuestos": filas, "total": total}
 
     @app.get("/presupuestos/{presupuesto_id}")
     async def detalle_presupuesto(presupuesto_id: int,
