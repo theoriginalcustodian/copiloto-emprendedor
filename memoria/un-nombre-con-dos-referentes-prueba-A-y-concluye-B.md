@@ -161,3 +161,29 @@ dominio; ésta es la variante que cruza **dominio ↔ presentación**.
 grepeá **el borde que sólo el referente que te importa puede cruzar** —la ruta del endpoint, el nombre
 de la función del cliente, el `testID`— y contá cuánto baja el resultado. Si no baja, elegiste un borde
 que los dos referentes comparten.
+
+
+## Refuerzo 2026-10-15 — el nombre era de la CONSTANTE, y los dos referentes eran dos ARCHIVOS
+
+Dos scripts del harness nombraban `ENV_E2E`. Leí el nombre en los dos, vi que uno parseaba
+`partition("|")` y el otro `env["E2E_DEVICE_EMAIL"]`, y **publiqué el hallazgo «dos parsers
+incompatibles del mismo archivo»** — con su corolario: «el smoke que citamos 39/39 no pudo haber salido
+de ese camino». Lo bajé al buzón, a dos sesiones y al operador.
+
+**Era falso.** `evidencia_device.py` lee `~/.claude/secrets/copiloto-e2e.env`; `e2e_g6_*` leen
+`RAIZ/.env.e2e`. **Dos archivos distintos, cada uno con el parser que le corresponde.** Lo midió backend
+en una línea: me dio los `path:línea` de las dos asignaciones.
+
+Lo que lo hace de esta familia: el referente ambiguo no estaba en el dominio, estaba **en mi lectura**.
+Comparé dos usos de un mismo identificador local sin abrir su definición, y el identificador —correcto en
+los dos lados— alcanzó para que yo construyera un defecto que no existía. Peor que un error de medición:
+**afirmé que una cifra verde era imposible**, y eso habría obligado a re-correr un smoke sano.
+
+**El chequeo, antes de comparar dos usos de un nombre:** abrí la asignación de cada uno y escribí el
+**valor**, no el nombre. Si no podés citar los dos `path:línea` donde se define, no estás comparando dos
+usos del mismo referente — estás comparando dos nombres iguales.
+
+Y el detalle incómodo: ese mismo día encontré el defecto del medidor del mapeo, que **clasificaba por un
+nombre en vez de por lo que el nombre señalaba**. Cometí la versión en miniatura del defecto que estaba
+denunciando, en el mismo documento donde lo denunciaba.
+  -> [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]

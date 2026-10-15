@@ -80,3 +80,30 @@ coordina. Es el mismo criterio que
 escrito en [[el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el]]. Pero despertar a una sesión
 que esperaba bien no la destraba: vuelve a dormirse en el mismo disparador. **Lo que destraba es
 cumplir el disparador.**
+
+
+## Refuerzo 2026-10-15 — escalé al operador un insumo que era un PATH MAL APUNTADO nuestro
+
+Bajé un `pedido_` al operador con 4 decisiones. La 4ª decía: **«el único bloqueo técnico del sprint: poné
+`e2e-device@copiloto.test|<clave>` en `~/.claude/secrets/copiloto-e2e.env`»**, y con eso el device quedaba
+parado esperándolo. Tres sesiones lo repitieron como «bloqueado por el operador».
+
+**La credencial canónica ya existía, en el repo, y funcionaba ese mismo día.** `.env.e2e` de la raíz trae
+`E2E_DEVICE_EMAIL=e2e-device@copiloto.test`, y el gate de durabilidad del deploy la usó a las 13:20:58Z
+(`last_sign_in_at` medido por backend en GoTrue, sin contraseñas). Lo que fallaba era **nuestro**:
+`evidencia_device.py::leer_credencial()` leía OTRO archivo, el que nadie mantiene, con el usuario viejo.
+
+La forma del error es la de esta entrada, y por eso va acá: el escalado **acusó al que no había cumplido
+el disparador** —el operador, que «no puso la credencial»— cuando el disparador estaba cumplido y lo que
+no funcionaba era el lector del emisor. Un escalado así es caro doble: para el operador parece una tarea
+suya, y para nosotros **clausura la búsqueda** (nadie grepea un bloqueo que ya tiene dueño ajeno).
+
+Agravante medido el mismo día: el síntoma que sostenía el escalado era «la app dice **No pudimos
+conectarnos**», que es un mensaje de **red**, no de credencial. Dos causas compartían el paso fallido y el
+diagnóstico eligió una sin separarlas.
+
+**El chequeo, antes de escalar un insumo a una persona:** preguntate *¿existe ya en el repo o en el
+sistema, con otro nombre o en otro path?* y **grepeá el valor, no el concepto**. Si existe, no hay insumo
+que pedir: hay un path que apunta mal. Y escribí el síntoma **textual** junto al pedido — si el síntoma no
+nombra la causa que estás escalando, todavía no sabés a quién le toca.
+  -> [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]] · [[un-disparador-cumplido-no-avisa-a-nadie]]
