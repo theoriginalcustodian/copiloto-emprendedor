@@ -300,3 +300,50 @@ Arreglado por el lado del dato (partir la línea; la prosa a un bloque siguiente
 mira) y **no** del instrumento: es el lanzador de las tres sesiones y había una midiendo en device con
 él — [[el-instrumento-versionado-difiere-por-rama]]. El arreglo de raíz queda nombrado con su dueño:
 cortar el valor en el primer `—`, `.` o `(`.
+
+---
+
+## Refuerzo 2026-10-15 (bis) — la CITA del veredicto retirado le entra al parser como veredicto VIGENTE, y la pagué DOS veces en el mismo turno
+
+Las variantes de arriba son sobre un instrumento que **busca** una cadena. Ésta es sobre uno que
+**lee un dato**, y el dato a corregir es el veredicto mismo: ahí la documentación del cambio cae
+inevitablemente dentro del universo del parser.
+
+`medir-mapeo-implementacion.py` clasifica cada una de las 54 filas por los **símbolos de su veredicto
+escrito**, con precedencia explícita: un solo símbolo bloqueante en **cualquier** celda de la fila la
+deja `PENDIENTE-DECLARADA`, aunque las otras cuatro divergencias estén cerradas. La fila `reveal`
+declaraba bloqueante el botón pronunciar — algo que su DoD no pide (pide consumidor real + que se vea
+en pantalla, las dos cosas medidas).
+
+**Intento 1.** Cambié el veredicto a enmienda fundada y escribí la nota que todo cambio de veredicto
+necesita para ser auditable: «hasta el 15-10 esta celda decía …» **con el glifo pegado**. Re-medí: la
+fila **siguió** `PENDIENTE-DECLARADA`. El regex de símbolos barre esa misma celda y no distingue cita
+de veredicto.
+
+**Intento 2.** Saqué el glifo y lo nombré en palabras… escribiendo el **código** entre asteriscos
+dobles. **Siguió pendiente**: el segundo parser del mismo archivo
+(`findall(r"\*\*([REDP])\*\*", cols[2])`) mapea ese código **al mismo glifo**. Dos notaciones, un
+significado, y mi nota tenía las dos — tapar una no mueve nada.
+
+Lo que lo cazó **no fue la re-medición**: ésa sólo dice «sigue mal», no dónde. Fue mover el control a
+**celda por celda, ANTES del `os.replace`**. La segunda vez abortó con `rc=3` nombrando la línea y
+**sin tocar el disco**. Un control por efecto post-escritura habría publicado la versión mala.
+
+**Cómo aplicarlo**
+
+- Un cambio de veredicto en un documento que un instrumento parsea se escribe con **guard previo**:
+  validar el renglón/celda resultante y abortar antes de escribir. El `os.replace` es el punto de no
+  retorno; después del commit la cifra ya salió con tu cita adentro.
+- La nota describe la notación retirada **sin escribirla**: «el código de dependencia bloqueante» en
+  vez del literal. Si no se puede explicar el cambio sin citar el valor, el campo mezcla dato y prosa
+  — el mismo defecto de diseño que el DUAL de `ROLES:` de más arriba.
+- **Contá las notaciones del mismo valor antes de declarar limpio.** Acá eran dos (glifo crudo y
+  código entre asteriscos) y el primer fix sólo tapó una.
+  → [[no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real]]
+- Y la asimetría que lo hace caro: el parser tiene **precedencia** del símbolo bloqueante, así que
+  una sola mención accidental tumba la fila entera. Donde hay precedencia, el falso cuesta más que la
+  omisión. → [[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]]
+
+Efecto medido: mapeo prototipo→nativo **52 → 53/54 (98%)**, `rc=0` sobre `d8d689e9`. Control negativo:
+`soporte` conserva su símbolo bloqueante (su pendiente es real — espera la decisión A/B/C del
+operador sobre el dictado), así que el cambio no aflojó el instrumento para todos.
