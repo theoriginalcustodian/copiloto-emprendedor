@@ -64,3 +64,45 @@ reporte es lo único que se puede entregar con honestidad** — la salida no es 
 reportes, es **ponerle frontera al criterio**. Caso espejo:
 [[definicion-delgada-de-ux-se-llena-con-el-port-del-canonico]] — ahí falta definición y se llena
 con lo ajeno; acá sobra criterio y nunca cierra.
+
+
+---
+
+## Refuerzo 2026-10-15 — la otra forma de ser inalcanzable: el criterio que el instrumento NUNCA PUDO EMITIR
+
+Arriba el criterio es inalcanzable porque **crece**. Hay una segunda forma, y apareció **dos veces en
+el mismo día**, en dos instrumentos sin relación: el criterio **no se mueve**, pero la salida que
+declara legítima **no tiene rama en el código que la produzca**.
+
+| # | el criterio dice | el instrumento | por qué era inalcanzable |
+|---|---|---|---|
+| 1 | `differ.py:21-26`: superar el tope de 200 objetos es esperable, *«para eso existe `--force`»* | `destrabar-grafo-force.ps1` abortaba si `FALTANTES != 0` | graphify emite 11 auto-aristas (`contains: X → X`) que Graphity **no materializa nunca**, así que `FALTANTES` jamás podía ser 0. El camino de destrabe estaba cerrado **por construcción** |
+| 2 | el padrón del mapeo: 9 de las 15 filas de device cierran con «resuelta en el código, **o declarada enmienda fundada con su motivo escrito**» | `medir-mapeo-implementacion.py:241` sólo puede emitir `DESVIO`/`COHERENTE`/`NO-MEDIBLE` para ese grupo | `ENMIENDA-FUNDADA` **está** en `CUMPLE_DOD` (`:91`) y el grupo device no tiene ninguna rama que la emita. El 44/54 del sprint estaba calculado hacia abajo |
+
+**La firma, y es la parte reusable:** el criterio vive **en prosa** (un docstring, una columna de DoD)
+y el instrumento implementa **un subconjunto más estricto sin declararlo**. Nadie miente: el que
+escribió la prosa describió el criterio completo, y el que escribió el código cubrió los casos que
+tenía a mano. El hueco vive **en el par**, igual que en
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]].
+
+**Por qué no da síntoma.** El instrumento no falla: **emite un rechazo**, y un rechazo se lee como
+rigor. El caso 1 vivió detrás del único criterio que además era **ilegible** (uuid5 opacos), así que
+nadie podía ver que el número nunca bajaría. El caso 2 llevaba el sprint entero diciendo «faltan 10
+filas de device» cuando dos de ellas **ya cumplían su DoD textual** (`ingresos`: «nombra la
+divergencia», y las 3 estaban nombradas; `reveal`: «un consumidor real y se ve», y
+`EntradaSesion.tsx:6` lo importa y `:32` lo renderiza).
+
+**El chequeo, en una línea:** *para cada salida que el criterio declara aceptable, ¿existe una rama
+del código que la produzca?* Se contesta grepeando el **enum de salidas** del instrumento contra el
+**texto del criterio** — no leyendo el instrumento, que se lee coherente consigo mismo.
+
+**Y la trampa de arreglarlo:** lo correcto es codificar el criterio que el padrón **ya declara**, no
+aflojar el umbral. Para el caso 2 eso significa que un veredicto `NO_REPRODUCIBLE_SIN_EFECTO` **con
+motivo escrito** en una fila cuyo DoD admite enmienda cuenta como `ENMIENDA-FUNDADA`, y que un
+`NO_MEDIBLE` por límite del instrumento (una captura de pantalla no ve 60 fps) **no** cuenta: «no lo
+medí» no es «decidimos otra cosa». Sin esa distinción, arreglar un criterio insatisfacible se vuelve
+regalarlo — y el medidor queda complaciente, que es el fallo de
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]] por el otro lado.
+
+Relacionadas: [[el-guard-falla-abierto-en-su-caso-de-activacion]] (ahí el guard deja pasar en su
+caso de activación; acá **bloquea** en el suyo) · [[medir-si-un-gate-dispara-antes-de-embarcarlo]].

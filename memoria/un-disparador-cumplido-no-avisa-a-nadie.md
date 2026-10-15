@@ -103,3 +103,37 @@ nombre de archivo**. Dos filas invisibles por el canal, un sprint sin cifra por 
 
 Ver también: [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] — misma familia, la
 señal que no existe se cuela por el camino feliz.
+
+
+---
+
+## Refuerzo 2026-10-15 — el disparador vivía en el contrato y en `/healthz`, y nadie miraba el segundo
+
+Un contrato del sprint mobile (H12/`DETALLEKV`) declaraba en su cuerpo:
+
+> **DISPARADOR: pendiente.** Falta sólo la medición en device del DoD 6, y no es medible hoy: el
+> backend desplegado (`/healthz` sha `47c09040`) NO contiene `mi_dia_presentacion.py` (commit
+> `083f5055`, 48 commits detrás de main).
+
+**Era cierto el día que se escribió, y dejó de serlo ~13 horas antes de que alguien lo mirara.**
+Medido: prod corría `f037307e` desde las 21:34 del día anterior, `083f5055` **es** su ancestro, y
+`apps/copiloto/mi_dia_presentacion.py` **está** en el árbol de ese sha. Mientras tanto la sesión
+dueña de la medición esperaba, y el frente figuraba como bloqueado por backend — que no tenía nada
+pendiente.
+
+**Lo nuevo frente al caso de 2026-08-12:** ahí el disparador vivía en dos **registros** (la memoria y
+el buzón) y ninguno gritaba. Acá uno de los dos lados **no es un documento**: es el **estado del
+sistema vivo** (`/healthz`). Un `NO_MEDIBLE` fundado contra un estado externo **envejece solo**, sin
+que nadie edite nada, y se sigue citando como vigente porque el documento no cambió. Es el mismo
+mecanismo que [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]], pero en el eje del
+tiempo: lo que falta no es la unidad, es la **fecha de vencimiento**.
+
+**El control, y es barato:** un `NO_MEDIBLE` cuyo motivo cite un estado externo se escribe con el
+**comando que lo refuta**, pegado al motivo — acá, `curl /healthz` + `merge-base --is-ancestor`. Dos
+controles y no uno, a propósito: que el commit sea ancestro dice que *debería* estar desplegado; que
+el **archivo esté en el árbol de ese sha** dice que está. El primero solo habría bastado para
+equivocarse si el deploy hubiera sido parcial.
+
+Y el corolario operativo: **ninguna sesión es dueña de un disparador que vive en producción.** La que
+espera no lo mira porque está esperando, y la que desplegó no sabe a quién destrabó. Lo cazó un
+barrido de coordinación, no el dueño de ninguno de los dos lados.
