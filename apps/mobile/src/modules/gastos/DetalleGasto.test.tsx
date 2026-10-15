@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 /**
- * Partial mock de `@copiloto/core`: sólo la red. `destinoDeImputacion` y `etiquetaDeDestino` quedan
+ * Partial mock de `@copiloto/core`: sólo la red. `destinoDeImputacion` y `rotuloDeImputacion` quedan
  * REALES a propósito — lo que se prueba acá es que la pantalla las use; su comportamiento ya tiene
  * sus casos en `packages/core/src/api/gastos.test.ts` y `trabajos.test.ts`.
  */
@@ -111,13 +111,38 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
     await montar(g);
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-imputado')).toBeTruthy());
-    expect(screen.getByText('Presupuesto #12')).toBeTruthy();
     expect(screen.getByTestId('detalle-gasto-desimputar')).toBeTruthy();
     expect(screen.queryByTestId('detalle-gasto-sin-imputar')).toBeNull();
   });
 
+  it('🔴 imputado pinta EXACTAMENTE la etiqueta del backend, no un número re-derivado del id', async () => {
+    // El defecto de device (2026-10-15): se eligió «asesoría contable · #3» (número humano) y el
+    // detalle mostró «Presupuesto #227» (el id de base). `presupuestoRef` es 227 a propósito.
+    const g = gasto({ imputacion: { ...SIN_IMPUTAR, presupuestoRef: 227, etiqueta: 'asesoría contable · #3' } });
+    mockObtener.mockResolvedValue({ status: 'ok', gasto: g });
+
+    await montar(g);
+
+    await waitFor(() => expect(screen.getByText('asesoría contable · #3')).toBeTruthy());
+    expect(screen.queryByText(/227/)).toBeNull();
+  });
+
+  it('🔴 imputado SIN etiqueta (`null`) no inventa ningún número: el nombre del eslabón solo', async () => {
+    const g = gasto({ imputacion: { ...SIN_IMPUTAR, presupuestoRef: 227, etiqueta: null } });
+    mockObtener.mockResolvedValue({ status: 'ok', gasto: g });
+
+    await montar(g);
+
+    await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-imputado')).toBeTruthy());
+    expect(screen.getByText('Presupuesto')).toBeTruthy();
+    expect(screen.queryByText(/#/)).toBeNull();
+  });
+
   it('elegir un trabajo manda la imputación y la pantalla pasa a mostrarlo', async () => {
-    mockImputar.mockResolvedValue({ status: 'ok', imputacion: { ...SIN_IMPUTAR, presupuestoRef: 12 } });
+    mockImputar.mockResolvedValue({
+      status: 'ok',
+      imputacion: { ...SIN_IMPUTAR, presupuestoRef: 12, etiqueta: 'asesoría contable · #3' },
+    });
     await montar(gasto());
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-imputar')).toBeTruthy());
@@ -128,7 +153,9 @@ describe('DetalleGasto · imputación al trabajo (SM-E3)', () => {
 
     await waitFor(() => expect(screen.getByTestId('detalle-gasto-trabajo-imputado')).toBeTruthy());
     expect(mockImputar).toHaveBeenCalledWith(2, { eslabon: 'presupuesto', ref: 12 });
-    expect(screen.getByText('Presupuesto #12')).toBeTruthy();
+    // Lo que confirma es el rótulo que devolvió el PUT, el mismo del selector -- no `Presupuesto #12`.
+    expect(screen.getByText('asesoría contable · #3')).toBeTruthy();
+    expect(screen.queryByText('Presupuesto #12')).toBeNull();
   });
 
   it('🔴 quitar manda `null` y la pantalla vuelve a «sin imputar» -- el efecto, no sólo la llamada', async () => {
