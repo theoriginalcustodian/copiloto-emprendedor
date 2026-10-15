@@ -52,7 +52,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
 | **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
-| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en … |
+| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA CON LA ACEPTACION LEGAL PENDIENTE para ver el boton de ace… |
 | **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
 | **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
@@ -273,7 +273,8 @@ no el arranque del sprint.***
 ### SM-C4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD REESCRITO 14-10 (LEGALNOOPERA 13-10): la aceptacion INFORMA, no bloquea, y su mitad hostil —canario invertido en los dos lados— YA esta en main (#1183 c8cbc21b). Falta SOLO evidencia de device del boton de aceptar + la version guardada; NADA de guard, NADA de backend. Lo acredita frontend2 con su cierre_
+- **Dueno-activo:** frontend2
+- **Falta:** NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA CON LA ACEPTACION LEGAL PENDIENTE para ver el boton de aceptar de mobile y la version guardada tras aceptar; el canonico e2e-device@copiloto.test ya acepto la version vigente (2026-09-22) y no se toca. La mitad hostil (canario invertido, los dos lados) esta en main (#1183 c8cbc21b)
 - **Medido, en dos mitades distintas:**
   1. La **pantalla de lectura de mobile ya existe** — `apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`,
      montada en `apps/mobile/app/legal.tsx:17`. ⚠️ Este issue decía antes «mobile no tiene pantalla de
