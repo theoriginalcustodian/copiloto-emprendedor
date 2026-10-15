@@ -230,6 +230,35 @@ preguntando si alguna vez dio 0; (3) un sistema auxiliar nunca puede ser fail-cl
 crítico de otros — degradalo a aviso **accionable** (rc + el comando exacto de destrabe), porque un
 warning mudo es peor que el abort: nadie lo persigue ([[un-disparador-cumplido-no-avisa-a-nadie]]).
 
+## Refuerzo 2026-10-15 — el aviso que el guard IMPRIME es parte del guard, y mi propio fix lo volvio falso
+
+Cerre el arco: el criterio paso de `FALTANTES != 0` a `graves != 0` y el destrabe dejo de estar
+cerrado por construccion (corrida real: `ZOMBIES 218 · FALTANTES 11 = 0 grave(s) + 11 benigna(s)`
+→ llego al modo medicion, donde antes moria en «ESCALAR, no forzar»). Lo que no vi venir es que
+**tres commits antes, en el MISMO PR**, yo habia escrito el aviso que el `pre-push` imprime cuando
+el sync falla, y ahi decia literal: «El paso 1 aborta si FALTANTES != 0». Mi propio commit siguiente
+volvio esa frase **falsa**.
+
+Por que importa y no es cosmetico: el que lee ese aviso **no va a correr el destrabe** si el texto
+le dice que aborta con faltantes != 0 y el dry-run le muestra 11. O sea que el aviso rancio
+**reproduce exactamente el bloqueo que el fix acababa de quitar**, sin un solo gate de por medio. Un
+guard tiene dos superficies —su condicion y el texto con que se explica— y arreglar una deja la otra
+operando sola.
+
+Y el detalle que lo hizo invisible por tres commits: el aviso lo **habia escrito yo**, en ese PR,
+por una buena razon (que el degradado no fuera mudo). Un texto propio y reciente es el que menos se
+relee: no es «codigo heredado» que se audita, es algo que uno acaba de pensar bien.
+Lo cace recien al leer el **output de mi propio push**, no revisando el diff.
+
+**Pregunta que lo caza:** al cambiar un criterio, *¿que texto CITA el criterio viejo?* — mensajes del
+guard, docstrings, el doc del runbook, el `dato_` que mande al buzon ayer. `grep` por el nombre del
+criterio viejo (`FALTANTES`, el umbral, el flag) y no por el nombre del archivo que toque.
+
+**Como aplicarlo:** un cambio de criterio no esta terminado cuando el test pasa; esta terminado
+cuando ningun texto alcanzable afirma el criterio anterior. Y si uno de esos textos ya circulo
+—un mensaje del buzon, un reporte— el fix incluye **retirarlo**, no solo appendear la correccion:
+el titular refutado sigue ganandole al anexo ([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+
 Relacionadas: [[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]] ·
 [[el-guard-falla-abierto-en-su-caso-de-activacion]] ·
 [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]
