@@ -104,4 +104,4 @@ control condicionado a datos **no puede** aparecer.
 
 La pregunta que lo caza antes: *¿este elemento depende de que exista un dato? Entonces medirlo sin
 el dato no distingue «no está implementado» de «está implementado y no corresponde mostrarlo»*. Es
-[[un-supuesto-cuya-falla-parece-un-estado-legitimo]] visto desde el lado del instrumento.
+[[supuesto-cuya-falla-parece-un-estado-legitimo]] visto desde el lado del instrumento.

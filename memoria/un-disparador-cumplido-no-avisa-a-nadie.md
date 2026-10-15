@@ -161,6 +161,6 @@ no se ve desde ningún lado: cada sesión verificó su mitad.
 
 **El cierre fue un instrumento, no una costumbre:** `scripts/evidencia/existe-en-main.py` mide, por
 cada fila pendiente, si los identificadores que nombra existen en `origin/main`. Primera corrida:
-**5 de 7 candidatas**. No marca nada —el símbolo lo escribe su dueña, [[DEC-18]]— y su veredicto es
+**5 de 7 candidatas**. No marca nada —el símbolo lo escribe su dueña, `DEC-18`— y su veredicto es
 `CANDIDATA-A-REVISAR`, nunca `CERRADA`: `soporte` tenía todo en main y **seguía** necesitando
 device, así que existir no es cumplir.
