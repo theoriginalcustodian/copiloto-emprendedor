@@ -38,3 +38,38 @@ que la real**: «¿qué dice el default?» en vez de «¿qué corre en producci�
 respuesta correcta a la pregunta equivocada se siente idéntica a la verdad.
 
 [[no-codificar-la-esperanza-principio-raiz]] [[copiloto-motor-react-concatenadas]]
+
+---
+
+## Refuerzo 2026-10-15 — el ARCHIVO de configuración no es la composición root, y paré a dos sesiones por eso
+
+Mismo defecto, versión caro: emití un `urgente_` que **prohibía medir en device** a las dos sesiones
+de frontend, fundado en que el harness se logueaba con un tenant equivocado. La evidencia que tenía
+era el **archivo**: leí `~/.claude/secrets/copiloto-e2e.env`, vi el usuario viejo, y concluí el
+comportamiento.
+
+**El harness había dejado de leer ese archivo nueve horas antes** (#1217, `8fe59a1e`). El camino real
+es `scripts/evidencia_device.py:360-385` → `ruta_env_e2e()` → `.env.e2e`, con guard **fail-closed**
+que aborta si el email no es el canónico. O sea no sólo no leía el archivo que yo miré: era
+**estructuralmente incapaz** de loguear otro tenant en silencio. Y el docstring de la función nombra
+mi error con todas las letras — dice que *antes* leía ese archivo «que nadie mantenía».
+
+🔑 **La forma, que es la de esta entrada pero con un archivo en lugar de un default:** un archivo de
+config es una **entrada posible**, no el sujeto. El sujeto es **quién lo lee hoy**. Un archivo
+abandonado se ve idéntico a uno vigente: tiene el nombre correcto, está en el lugar correcto, y su
+contenido es plausible. Lo único que lo distingue es que **nadie lo abre**, y eso no se ve mirándolo.
+
+**Lo que hubiera costado 30 segundos:** `grep -rn "copiloto-e2e.env" .` — el único hit vivo era un
+docstring que decía «lo leía». Medir el **lector**, no el archivo. Es la misma operación que ya está
+escrita en [[el-guard-se-satisface-con-su-propio-comentario]] («grepeé la BANDERA, no la
+CAPACIDAD»): cuando concluís sobre comportamiento, el inventario correcto es de **llamadores**.
+
+**Y el agravante que lo hace tipo `feedback` y no `project`:** una afirmación de configuración puede
+**parar trabajo ajeno**. La asimetría importa — un `dato_` equivocado se corrige solo cuando alguien
+lo contradice, pero un `urgente_` que ordena **no medir** produce quietud, y la quietud no da síntoma
+([[una-espera-sin-disparador-nombrable-es-paralisis]]). Antes de emitir una parada fundada en
+configuración: medí el **efecto** en el camino real (correrlo y ver qué usa), no el estado del
+archivo. Lo contrario es codificar la esperanza en dirección pesimista.
+
+Quien me contradijo tenía razón y lo había medido por efecto (el guard pasó y entró a la cuenta
+canónica). **Verificar antes de aceptar la corrección fue correcto; haberla necesitado, no.**
