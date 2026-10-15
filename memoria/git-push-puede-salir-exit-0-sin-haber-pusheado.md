@@ -270,13 +270,37 @@ trabajo viejo ya terminado, y uno bajo puede ser un gate que recien arranco.
 
     Get-Process git,python,bash | Select Id,ProcessName,CPU,StartTime   # ...y repetir a los 3 min
 
-Corolario de costo, que es por lo que esto importa: el `pre-push` de este repo corre la suite y tarda
-**8-10 min**. Matarlo a los 12 min "por prudencia" paga el gate dos veces. Y al reves: esperar un
-colgado real paga el ciclo entero del cron en vano. La diferencia entre las dos decisiones es **una
-segunda medicion**, no mas prudencia.
+**AUTOCORRECCION 20 min despues, en el mismo turno: la tabla de arriba esta bien y el criterio que
+saque de ella estaba MAL, por una razon que importa mas que la tabla.**
+
+Mientras esperaba, dije "el `pre-push` de este repo tarda 8-10 min, asi que esperar es lo correcto".
+Despues mate el push y **el repush completo tardo 7 segundos** (`17:05:05 -> 17:05:12`, rc=0, rama en
+el remoto). O sea: el `pre-push` **no** tarda 8-10 min. El primer push estuvo **colgado desde el
+principio**, y yo justifique 20 minutos de espera con una duracion que me invente.
+
+**De donde salio el numero:** del CPU de un proceso `python` que crecia (31,9 -> 55,9 -> 84,1 -> 102,4 s)
+y que **nunca verifique que fuera hijo de mi push**. Cuando por fin medi parentesco, **no habia ningun
+`git` vivo**: ese proceso era de otra sesion del repo, trabajando en lo suyo. Mi "evidencia de que el
+gate trabaja" era el trabajo de alguien mas.
+
+**La regla corregida, y es mas simple que la anterior:**
+
+1. Medir **parentesco antes que actividad**: `Get-Process git` — si **no hay `git` vivo**, el push
+   murio, sin importar que CPU veas en otro proceso. Con tres sesiones sobre el mismo repo, mirar
+   "el python que trabaja" es mirar a cualquiera.
+2. El umbral real de este repo es **segundos**, no minutos. Un push que pasa de **~2 min** ya es
+   sospechoso; no hay ninguna duracion normal de 10 minutos que justifique esperar.
+3. El control sigue siendo el **efecto**: `git ls-remote --heads origin "<rama>*"` con control
+   positivo en `main`. Un `0` con el positivo en `1` es un `0` real.
+
+**La derivada del CPU sigue sirviendo, pero solo sobre el proceso correcto.** Sin el paso 1 mide a un
+vecino y confirma lo que quieras creer: [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]].
+Y el costo de equivocarse para el otro lado es bajo — repushear sale 7 s — asi que ante la duda
+**se corta y se repushea**, nunca con `--no-verify`.
 [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] (el falso rojo parece prudencia) ·
 [[un-disparador-cumplido-no-avisa-a-nadie]]
 
-**Y el corolario de eficiencia:** mientras el push corre, un segundo PR por un refuerzo nuevo paga
-**otro** gate de 8-10 min. Los refuerzos del mismo turno se apilan en la **misma** rama antes de que
-cierre el push, no en PRs separados. Este es uno de ellos.
+**Y el corolario de eficiencia, que sobrevive a la correccion:** los refuerzos del mismo turno se
+apilan en la **misma** rama antes de que cierre el push, no en PRs separados. El motivo real no es la
+duracion del gate (son segundos) sino que cada PR extra es otro ciclo de revision, otro merge y otra
+rama que limpiar. Este refuerzo y los dos anteriores viajaron juntos por eso.
