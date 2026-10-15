@@ -4817,6 +4817,36 @@
       "id": "onboarding-chip-detalle-boton",
       "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/onboarding"
+    },
+    "modules/ajustes::cuenta-legal-aceptar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el boton). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-legal-aceptar-botones": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar-botones",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el contenedor de los dos botones). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-legal-aceptar-error": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar-error",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el estado de error). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
     }
   }
 }
