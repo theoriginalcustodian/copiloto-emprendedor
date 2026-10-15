@@ -57,6 +57,7 @@ EXIT CODES
 
 Read-only. Uso: python existe-en-main.py [--json] [--canario]
 """
+import io
 import json
 import re
 import subprocess
@@ -233,7 +234,15 @@ def canario():
         fallos.append("2 NEGATIVO: un path inventado dio existe=True (el medidor dice si a todo)")
     if not existe_simbolo("adjuntarFotoATicket"):
         fallos.append("3 SIMBOLO POSITIVO: `adjuntarFotoATicket` esta en packages/core y no lo vio")
-    if existe_simbolo("ZanahoriaDeTitanioInexistente"):
+    # El token del control negativo NO puede escribirse literal: este archivo vive en `scripts/`, que
+    # es uno de los AMBITOS que `existe_simbolo` busca, asi que un literal aca SE ENCUENTRA A SI MISMO
+    # en cuanto el archivo entra a main. Medido en vivo: el token anterior enrojecio el lint de TODAS
+    # las ramas minutos despues de mergearse #1226 -- el instrumento paso a ser parte del corpus que
+    # mide, y el control que probaba «un simbolo inventado NO da hits» empezo a fallar por si mismo.
+    # Se arma en tiempo de corrida para que el literal no exista en el disco; el control 9 verifica
+    # que siga siendo asi, porque «simplificarlo» de vuelta a un literal reintroduce el defecto.
+    inventado = "Berenjena" + "DeCuarzo" + "QueNadieEscribio"
+    if existe_simbolo(inventado):
         fallos.append("4 SIMBOLO NEGATIVO: un simbolo inventado dio hits")
     # La prosa NO puede contarse como ausente: contarla asi convertiria cada frase de una fila en una
     # divergencia viva, y el reporte diria que nada existe.
@@ -251,11 +260,22 @@ def canario():
     for t in ("PantallaSoporte", "adjuntarFotoATicket", "TAGLINE_MARCA"):
         if clasificar_token(t)[0] != "simbolo":
             fallos.append("8 JERGA DEMASIADO ANCHA: `%s` dejo de ser medible" % t)
+    # 9 - el control 4 se degrada SOLO si alguien vuelve a escribir su token como literal: ahi el
+    # token esta de nuevo en el disco y el 4 enrojece para siempre sin decir por que. Esto lo caza
+    # antes, leyendo el propio archivo.
+    try:
+        propio = io.open(__file__, encoding="utf-8").read()
+    except OSError:
+        propio = None                         # «no medi» != «medi y esta limpio»
+    if propio is not None and inventado in propio:
+        fallos.append("9 TOKEN LITERAL: el simbolo del control 4 esta escrito literal en este "
+                      "archivo -- se va a encontrar a si mismo en cuanto entre a main")
     for f in fallos:
         print("CANARIO ROJO: " + f)
     if fallos:
         sys.exit(1)
-    print("CANARIO OK: responden los 8 controles (2 positivos, 2 negativos, prosa, normalizacion, jerga y su negativo)")
+    print("CANARIO OK: responden los 9 controles (2 positivos, 2 negativos, prosa, normalizacion,"
+          " jerga y su negativo, y el token del 4 que no puede estar literal en el disco)")
 
 
 def main():

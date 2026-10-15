@@ -45,3 +45,36 @@ confundirlos habría tirado un entregable correcto. La medición separa las dos 
 Emparentado con [[el-nombre-es-una-hipotesis-sobre-el-contenido]] (el nombre no describe el contenido) y
 con [[si-el-formato-no-codifica-el-rol-ningun-parser-lo-recupera]] (el mismo problema, del lado del
 parser: un texto que no distingue roles no se arregla con más ingenio del extractor).
+
+## Refuerzo 2026-10-15 — y el inverso: el id inventado ENTRA al corpus y se encuentra a sí mismo
+
+Esta entrada decía «un id que fabrica el instrumento no puede parecerse a uno real». Hoy mordió
+la cara B: **un id que NO se parece a ninguno real igual rompe, si el archivo que lo escribe vive
+adentro del corpus que el instrumento busca.**
+
+`existe-en-main.py` tenía un control negativo sano: grepea un símbolo inventado
+(`Zanahoria…Inexistente`) y exige **0 hits**. Verde en su propio PR. **El literal estaba escrito en
+`scripts/evidencia/existe-en-main.py`, y `scripts` es uno de los `AMBITOS` que el script grepea** —
+con `git grep … origin/main`. Mientras el archivo vivía sólo en la rama, `origin/main` no lo tenía y
+el control daba 0. **En el instante del merge (#1226) el instrumento pasó a ser parte del corpus que
+mide**, su propio literal se volvió un hit, y el canario enrojeció el lint de **todas** las ramas de
+las tres sesiones — no sólo las mías. El PR que lo destapó (#1227) era de docs: ni una línea de
+código, rojo igual.
+
+**Lo que lo hace difícil de ver:** el control es correcto, el token es correcto, el PR que lo embarca
+sale verde, y el rojo aparece **después del merge, en PRs ajenos y sin relación**. El que lo recibe
+lee «CANARIO ROJO 4» en su rama de docs y no tiene motivo para sospechar de un merge de otra sesión.
+
+**La pregunta que lo caza, antes de embarcar cualquier control negativo:** *¿el archivo que escribe
+este literal está dentro de lo que el instrumento busca?* Si sí, el literal **no puede estar en el
+disco**: se arma en tiempo de corrida (`"Beren" + "jena" + …`) y se agrega un control que verifica que
+siga armado — porque «simplificarlo» de vuelta a un literal reintroduce el defecto en silencio.
+
+**Y el corolario del deadlock:** el control grepea `origin/main`, así que mientras el literal esté en
+main **ninguna rama puede salir verde, ni la que trae el fix** si reusa el mismo token. El fix tiene
+que cambiar el token *además* de dejar de escribirlo literal. Un gate que mide `origin/main` puede
+quedar trabado contra sí mismo, y ahí no hay rama que lo arregle sin cambiar el sujeto medido.
+
+Diferencial de atribución: mismo árbol, misma cwd, sólo la versión del script → viejo **ROJO 4**,
+nuevo **OK 9 controles**. Emparentado con [[el-artefacto-que-genera-el-instrumento-no-tiene-dueno]] y
+con [[el-guard-se-satisface-con-su-propio-comentario]], que es el mismo error con el signo invertido.
