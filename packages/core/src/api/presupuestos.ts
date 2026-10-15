@@ -274,6 +274,22 @@ export function listadoLlegoAlTope(cantidad: number, limite: number = LIMITE_LIS
   return cantidad >= limite;
 }
 
+/**
+ * `true` si el listado NO trae todos los presupuestos del tenant: «hay 50 de 200», no «hay 50».
+ *
+ * Con `total` (el backend lo manda desde `72b85cba`) la respuesta es un HECHO: faltan filas ⇔
+ * `cantidad < total`. Sin `total` (backend anterior al deploy, o un mock) cae a la heurística de
+ * `listadoLlegoAlTope`, que sólo sabe que la página se llenó. Un listado cortado por el tope sin
+ * avisarlo se lee como «no tenés ese trabajo» cuando es «no entró en la página».
+ */
+export function listadoTruncado(
+  cantidad: number,
+  total: number | undefined,
+  limite: number = LIMITE_LISTADO_PRESUPUESTOS,
+): boolean {
+  return total !== undefined ? cantidad < total : listadoLlegoAlTope(cantidad, limite);
+}
+
 export interface ListarPresupuestosParams {
   /** Default 50, máximo 200 del lado del backend. Sin cursor por ahora. */
   limit?: number;
@@ -294,17 +310,24 @@ export interface ListarPresupuestosParams {
  */
 export async function listarPresupuestos(
   params: ListarPresupuestosParams = {},
-): Promise<ConDisponibilidad<{ presupuestos: Presupuesto[] }>> {
+): Promise<ConDisponibilidad<{ presupuestos: Presupuesto[]; total?: number }>> {
   const query = new URLSearchParams();
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.incluirReemplazados === true) query.set('incluir_reemplazados', 'true');
   const qs = query.toString();
   try {
-    const raw = await apiClient.get<{ presupuestos: PresupuestoCrudo[] }>(
+    const raw = await apiClient.get<{ presupuestos: PresupuestoCrudo[]; total?: unknown }>(
       qs ? `/presupuestos?${qs}` : '/presupuestos',
     );
     if (!esRespuestaDelEndpoint(raw, 'presupuestos')) return { status: 'no_disponible' };
-    return { status: 'ok', presupuestos: (raw.presupuestos ?? []).map(normalizar) };
+    // `total` = presupuestos del TENANT con el mismo filtro, ignorando `limit`. Opcional a propósito:
+    // se OMITE si el backend no lo manda (o manda algo que no es un entero), en vez de inventar un 0.
+    const total = typeof raw.total === 'number' && Number.isInteger(raw.total) && raw.total >= 0 ? raw.total : undefined;
+    return {
+      status: 'ok',
+      presupuestos: (raw.presupuestos ?? []).map(normalizar),
+      ...(total !== undefined ? { total } : {}),
+    };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     // Un 200 con HTML (el catch-all sirviendo el SPA) explota en `res.json()`, no en `mapearError`:

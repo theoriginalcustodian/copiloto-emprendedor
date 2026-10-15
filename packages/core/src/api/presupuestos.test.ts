@@ -11,6 +11,7 @@ import {
   facturarPresupuesto,
   LIMITE_LISTADO_PRESUPUESTOS,
   listadoLlegoAlTope,
+  listadoTruncado,
   listarPresupuestos,
   obtenerPresupuesto,
 } from './presupuestos';
@@ -95,6 +96,35 @@ describe('presupuestos.ts', () => {
   });
 
   describe('listarPresupuestos', () => {
+    it('🔴 expone `total` (los del TENANT) para distinguir «hay 1» de «hay 1 de 3»', async () => {
+      responder = () => respuesta(200, { presupuestos: [presupuestoCrudo()], total: 3 });
+
+      const res = await listarPresupuestos();
+
+      expect(res.status).toBe('ok');
+      if (res.status !== 'ok') return;
+      expect(res.presupuestos).toHaveLength(1);
+      expect(res.total).toBe(3);
+    });
+
+    it('sin `total` en el wire (backend anterior) lo OMITE: no inventa un 0 ni un length', async () => {
+      responder = () => respuesta(200, { presupuestos: [presupuestoCrudo()] });
+      const res = await listarPresupuestos();
+      expect(res.status).toBe('ok');
+      if (res.status !== 'ok') return;
+      expect('total' in res).toBe(false);
+    });
+
+    it('un `total` que no es un entero >= 0 se descarta (string, negativo, decimal)', async () => {
+      for (const malo of ['3', -1, 2.5, null]) {
+        responder = () => respuesta(200, { presupuestos: [], total: malo });
+        const res = await listarPresupuestos();
+        expect(res.status).toBe('ok');
+        if (res.status !== 'ok') return;
+        expect('total' in res).toBe(false);
+      }
+    });
+
     it('normaliza a camelCase conservando el id ENTERO y los montos como string', async () => {
       responder = () => respuesta(200, { presupuestos: [presupuestoCrudo()] });
 
@@ -546,6 +576,23 @@ describe('presupuestos.ts', () => {
       responder = () => respuesta(200, { detail: 'algo que no es un presupuesto' });
       expect(await cambiarEstadoPresupuesto(12, 'desestimado')).toEqual({ status: 'no_disponible' });
     });
+  });
+});
+
+describe('listadoTruncado — «hay N» vs «hay N de M» (SM-D2 punto 3)', () => {
+  it('con total es un HECHO: faltan filas sii cantidad < total, sin importar el tope', () => {
+    expect(listadoTruncado(50, 51)).toBe(true);
+    expect(listadoTruncado(50, 50)).toBe(false);
+    expect(listadoTruncado(0, 0)).toBe(false);
+    // Una página llena que además es TODO el tenant NO está truncada (la heurística diría que sí).
+    expect(listadoTruncado(200, 200)).toBe(false);
+    expect(listadoTruncado(200, 201)).toBe(true);
+  });
+
+  it('sin total cae a la heurística del tope (página llena = puede haber más)', () => {
+    expect(listadoTruncado(199, undefined)).toBe(false);
+    expect(listadoTruncado(200, undefined)).toBe(true);
+    expect(listadoTruncado(50, undefined, 50)).toBe(true);
   });
 });
 
