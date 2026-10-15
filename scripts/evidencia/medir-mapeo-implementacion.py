@@ -236,11 +236,35 @@ def clasificar(ids, est):
             huecos.append((g, i))
             filas[i] = (g, "SIN VEREDICTO", None)
             continue
-        if g == "nativa-con-device":
+        # Las 54 filas se clasifican con UNA regla: los simbolos de su veredicto escrito. Hasta el
+        # 2026-10-15 las 15 `nativa-con-device` tenian la suya aparte — clasificaban por COHERENCIA
+        # con el prototipo (`DESVIO`/`COHERENTE`/`NO-MEDIBLE` leidos del doc device15) — y eso medía
+        # una pregunta que NINGUNO de sus 15 DoD hace. 9 de los 15 piden, literal, «resuelta en el
+        # codigo, O declarada enmienda fundada con su motivo escrito»; los otros 6 piden existencia,
+        # consumidor real o nombrar la divergencia. Ninguno pregunta «coincide con el prototipo».
+        #
+        # El efecto no era un redondeo: `ENMIENDA-FUNDADA` esta en CUMPLE_DOD y el brazo de device
+        # NO TENIA NINGUNA RAMA QUE PUDIERA EMITIRLA, asi que para esas 15 filas el criterio era
+        # inalcanzable por construccion. Y los simbolos EXISTIAN: medido sobre origin/main 9a0d8354,
+        # las 15 de 15 tienen veredicto escrito (⚠/⛓/✅/📝) en los docs de los otros brazos, y el
+        # medidor los descartaba. Delta neto +2 (44->46), pero el CONJUNTO cambia en 6 filas:
+        # entran `bloqueado` `chat` `ingresos` `tablero` (✅ sin pendiente) y salen `entrada` y
+        # `splash`, que tenian ⚠ — o sea tambien corrige DOS creditos falsos, no solo suma.
+        #   -> memoria: un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar (Refuerzo 15-10)
+        #
+        # El veredicto de device15 NO se tira: sigue siendo la evidencia que el guard EXIGE para que
+        # la fila se mida (`"device" not in e` -> hueco). Lo que ya no hace es decidir la clase.
+        # Si la fila de device NO tiene simbolos escritos, se mantiene la regla vieja (coherencia
+        # con el prototipo). Es deliberado y acotado: volverla un hueco dejaba SIN MEDIR filas que
+        # el doc device15 si acredita (6 fixtures de `scripts/tests/test-medir-mapeo-implementacion.sh`
+        # lo ejercitan). La limitacion residual queda DECLARADA, no silenciosa: para esas filas el
+        # medidor sigue sin poder emitir ENMIENDA-FUNDADA, asi que una enmienda de una fila de device
+        # EXIGE su simbolo escrito en el doc del brazo correspondiente. Medido hoy: 15/15 lo tienen.
+        s = e["simbolos"]
+        if g == "nativa-con-device" and not s:
             v = " ".join(e["device"]).upper()
             clase = "DESVIO" if "DESV" in v else ("COHERENTE" if "COHERENTE" in v else "NO-MEDIBLE")
         else:
-            s = e["simbolos"]
             # PRECEDENCIA: una divergencia PENDIENTE (⛓ atada a una dependencia, ⚠ sin cerrar)
             # manda sobre el ✅ de las otras divergencias de la misma fila. El DoD es POR FILA y
             # dice, literal: «cada divergencia listada en la fila queda resuelta en el codigo, O
