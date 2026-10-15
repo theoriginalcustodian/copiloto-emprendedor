@@ -82,3 +82,26 @@ con su propio reset. Y si el fenómeno resulta intermitente, el número **es** e
 Es el espejo de [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]: ahí la
 intermitencia del **instrumento** sirve de coartada («es el flake»); acá la intermitencia del
 **sujeto** se disfraza de ley porque tres de tres se ve igual que siempre.
+
+
+## Refuerzo 2026-10-15 — medir la pantalla LIMPIA borró justo lo que se venía a medir
+
+La fila `soporte` quedó con ⚠ «falta el código de app» por el clip de adjuntos y «Ver tickets
+anteriores (N) ›». Las dos cosas estaban escritas desde #1115
+(`PantallaSoporte.tsx:152-165,230-232`, `useTicketsSoporte.ts:37,97`).
+
+La medición se hizo con **cero tickets**, y su propia nota lo decía: «No se abrió ningún ticket». Con
+`vigente === null` el hook devuelve `anteriores = []` y `cantidadAnteriores = 0`: la tarjeta no tiene
+qué mostrar, y el clip —si se toca— avisa por `Alert`, **escrito a propósito** en el comentario del
+código («sin un ticket en curso no hay a dónde mandar la foto, y aceptarla para perderla sería peor
+que decirlo»). Re-medido con un ticket vigente: tarjeta, «Ver tickets anteriores (**4**) ›» y clip
+con destino, los tres se ven.
+
+**Lo que esto agrega:** el caso original era una condición que el instrumento *exige* para ver. Acá
+la condición es el **estado inicial del sujeto**, que parece el más neutral de todos — una pantalla
+vacía se siente como el caso base, no como una configuración. Y es la configuración en la que un
+control condicionado a datos **no puede** aparecer.
+
+La pregunta que lo caza antes: *¿este elemento depende de que exista un dato? Entonces medirlo sin
+el dato no distingue «no está implementado» de «está implementado y no corresponde mostrarlo»*. Es
+[[supuesto-cuya-falla-parece-un-estado-legitimo]] visto desde el lado del instrumento.

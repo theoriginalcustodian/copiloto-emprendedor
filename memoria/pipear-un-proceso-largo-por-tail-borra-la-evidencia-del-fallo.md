@@ -112,3 +112,21 @@ no arrancado). El error siguiente no es «no sé qué pasó», es diagnosticar l
    ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
 8. La clase se repite **en el mismo turno en que la nombrás**: hoy escribí el refuerzo del vacío
    mal leído y minutos después leí un vacío mal.
+
+
+## Refuerzo 2026-10-15 — `head -N` sobre una lista ORDENADA no es una muestra, es un sesgo
+
+Grepeé `/soporte` sobre el repo, salieron **13 archivos**, y le puse `head -5`. El que contestaba la
+pregunta era **el #13** (`apps/copiloto/web.py`). Los cinco primeros alcanzaron para construir una
+historia coherente y falsa —«hay un store y un endpoint de admin, falta el del tenant»— con la que
+bajé un contrato acusando al backend de un agujero BOLA. Backend lo refutó con `web.py:996`, `:1034`
+y su test adversarial, de dos semanas antes.
+
+**Lo que esto agrega:** el refuerzo anterior habla del `tail` que **tapa el rojo**. Éste es el otro
+filo: `head`/`tail` sobre una salida **ordenada alfabéticamente** no devuelve una muestra al azar,
+devuelve exactamente el tramo que el orden eligió — y `apps/` viene antes que todo. Un recorte de 5
+sobre 13 no se siente como un recorte: se siente como el resultado.
+
+La regla: cuando el grep es para decidir si algo **existe**, no se recorta nunca; se cuenta
+(`grep -c`) o se lee la lista entera. El recorte es para mirar, no para concluir.
+Y sigue valiendo [[instrumento-que-no-mira-nunca-falla]]: la pregunta es *cuántos elementos miró*.

@@ -83,3 +83,30 @@ por nadie — ni por quien lo vio. Un diagnóstico así no se puede atribuir ni 
   diagnóstico ajeno, preguntá qué blob lo emitió.
 - Si el repo tiene un checkout compartido, el control que falta es el que ya existe para lo vendoreado:
   comparar los blobs de `scripts/` contra `main` y listar los divergentes (`no-drift.sh` es el patrón).
+
+
+## Refuerzo 2026-10-15 — anclar el CÓDIGO del instrumento deja vivo el CORPUS
+
+`vigia.sh` existe justamente para esto: corre el instrumento desde un pin de `origin/main` para que
+no herede la versión del checkout viejo. El 15-10 habilité el medidor del sprint en ese lanzador
+(#1224) y **la cifra siguió dependiendo de dónde la corría**:
+
+| cómo | cifra |
+|---|---|
+| `vigia.sh` desde el checkout compartido | 46/54 · 8 pendientes |
+| el MISMO código, worktree en `dbdf36dc` | 47/54 · 7 pendientes |
+
+Porque el medidor tiene **dos insumos** y el lanzador ancla uno solo: el **código** sale del pin, y
+la **raíz del corpus** sale del `CWD`. Los docs que medía eran los del checkout, que no tenía el
+re-marcado de `consent`.
+
+**Lo que esto agrega a la entrada:** la pregunta no es «¿de qué rama salió el script?» sino **«¿de
+qué rama salió cada insumo del script?»**. Un instrumento puede estar anclado y medir material
+viejo, y entonces el ancla da confianza sin dar vigencia — que es peor que no tener ancla, porque
+ahí uno al menos desconfía.
+
+El fix no fue un gate: el medidor ahora imprime `CORPUS: al dia (N docs)` / `CORPUS ATRASADO: …` /
+`CORPUS: no pude medir su vigencia (<motivo>)`. Etiquetar y no fallar es deliberado — trabajar con
+el árbol atrasado es legítimo, y [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]. Los tres
+casos nuevos del test disparan contra el medidor anterior; el `null` del json significa «no se pudo
+medir» y nunca «al día» ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).

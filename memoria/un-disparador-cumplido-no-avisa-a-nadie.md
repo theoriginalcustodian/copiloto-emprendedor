@@ -137,3 +137,30 @@ equivocarse si el deploy hubiera sido parcial.
 Y el corolario operativo: **ninguna sesión es dueña de un disparador que vive en producción.** La que
 espera no lo mira porque está esperando, y la que desplegó no sabe a quién destrabó. Lo cazó un
 barrido de coordinación, no el dueño de ninguno de los dos lados.
+
+## Refuerzo 2026-10-15 (segundo del día, otra sesión escribió el de arriba) — SEIS veces: el ⛓ cruzado no tiene dueño que lo cierre
+
+El caso raíz de esta entrada era un disparador que vive en dos lugares y uno no se mira. Acá la
+misma forma, medida seis veces **en una sola jornada**:
+
+1. `consent` — el ⛓ pedía `capacidades[]`; lo cumplía `alcance_items` (`catalog.py:145`), mergeado.
+2. el `total` del listado — existía en `presupuestos_web.py:325-327` (#1219). **Yo** bajé un
+   contrato declarándolo inexistente; backend lo refutó con la medición.
+3. `soporte` backend — `GET /soporte/tickets` existía desde #1111.
+4. el helper de presupuestos — ya estaba en main (#1210).
+5. `soporte` código de app — el clip y «Ver tickets anteriores (N) ›» desde #1115.
+6. las 4 filas que midió frontend1 — de **11** divergencias declaradas, **8 existían** (#1093).
+
+**La mecánica, idéntica en los seis:** el símbolo lo escribe la dueña del doc; la dependencia la
+cumple otra sesión, que mergea y avisa en el buzón; **nadie cierra el símbolo**, porque quien podría
+no es quien lo escribió. El aviso de cumplimiento existe y llega — y muere ahí, porque cerrar el ⛓
+no es tarea de nadie en particular.
+
+Efecto sobre la cifra: las pendientes quedan **sobreestimadas** y las cumplidas **subestimadas**, y
+no se ve desde ningún lado: cada sesión verificó su mitad.
+
+**El cierre fue un instrumento, no una costumbre:** `scripts/evidencia/existe-en-main.py` mide, por
+cada fila pendiente, si los identificadores que nombra existen en `origin/main`. Primera corrida:
+**5 de 7 candidatas**. No marca nada —el símbolo lo escribe su dueña, `DEC-18`— y su veredicto es
+`CANDIDATA-A-REVISAR`, nunca `CERRADA`: `soporte` tenía todo en main y **seguía** necesitando
+device, así que existir no es cumplir.
