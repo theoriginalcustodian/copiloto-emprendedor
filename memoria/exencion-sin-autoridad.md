@@ -50,3 +50,39 @@ distancia. **Nadie había elegido ese riesgo; se había heredado.**
 
 Ver [[cero-deuda-no-gestionada]] · [[el-contrato-afirma-el-mecanismo-que-no-opero]] ·
 [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].
+
+---
+
+## 🔁 REFUERZO 2026-10-15 — la autoridad hablaba de **este mismo caso, por nombre**, y el defecto fue dejar de leer dos renglones antes
+
+El caso de arriba es una exención que cita una decisión que habla de **otra cosa**. Éste es el vecino
+más incómodo: la autoridad hablaba **exactamente de mi caso, nombrándolo**, y aun así la cité a favor.
+
+Dos sesiones quedaron trabadas por el estado de la cuenta de prueba canónica. Buscando una salida barata
+encontré, **dentro de la propia regla dura** `memoria/usuario-de-prueba-canonico-uno-solo-a-fuego.md`, un
+segundo tenant que ya tenía perfil fiscal (`pruebas-facturacion@copiloto.test`, `19af5a42`, 24
+comprobantes AFIP). Lo escalé como opción **D** y la recomendé. Lo que la regla dice, en el **mismo
+párrafo** del que saqué el dato (líneas 24-26 medidas contra `origin/main`):
+
+> «Los otros tenants de prueba … `pruebas-facturacion@copiloto.test` (`19af5a42`, con 24 comprobantes
+> AFIP + 1 cliente) … **NO son el canónico**; existen por historia, **no se usan para el E2E de device**.»
+
+Y su `Why` (líneas 28-33) **es este enredo, ya pagado**: el device entró una vez con
+`pruebas-facturacion` mientras backend logueaba el canónico, el token no se reemplazaba, y costó ~media
+hora más un susto de «datos desaparecidos» que era cache cross-tenant. La regla cierra con «cambiar el
+usuario canónico es **MAYOR**».
+
+**La forma del defecto, que es lo nuevo:** no cité una autoridad lejana ni ambigua. Leí el renglón que
+**me daba el hecho** (ese tenant existe y tiene perfil fiscal) y dejé de leer **dos renglones antes** de
+la oración que lo **descalifica**, en el mismo párrafo. Una entrada de memoria con frontmatter guarda el
+hecho en el cuerpo y el **veto** en `Why` / `How to apply`: quien va a buscar un dato puntual aterriza en
+el cuerpo y se va antes de llegar al veto. **El control no es «citá la autoridad» —eso lo cumplí— sino
+«leé hasta el final de la autoridad que estás citando, incluido su `How to apply`».**
+
+**Y el costo no fue sólo el riesgo de decidir mal.** La opción D venía con un insumo asignado a backend:
+medir si ese tenant vive y tiene `afip`. Backend fue, chocó con el clasificador de permisos
+(`Credential Exploration`, lectura de `/proc/<pid>/environ` y `stat` de un archivo de secretos), y lo
+reportó bien. O sea: **una cita mal leída gastó el turno de un peer y lo empujó contra una frontera de
+credenciales, para responder una pregunta cuya respuesta no se podía usar.** Una exención sin autoridad
+no sólo deja pasar deuda: **fabrica trabajo ajeno**. Relacionado:
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]] y [[al-juez-tambien-hay-que-darle-el-plano]].
