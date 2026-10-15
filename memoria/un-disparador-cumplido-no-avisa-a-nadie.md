@@ -164,3 +164,50 @@ cada fila pendiente, si los identificadores que nombra existen en `origin/main`.
 **5 de 7 candidatas**. No marca nada —el símbolo lo escribe su dueña, `DEC-18`— y su veredicto es
 `CANDIDATA-A-REVISAR`, nunca `CERRADA`: `soporte` tenía todo en main y **seguía** necesitando
 device, así que existir no es cumplir.
+
+
+---
+
+## Refuerzo 2026-10-15 (2) — el bloqueo que **nombra** el instrumento que le falta se lee como justificación, no como tarea
+
+Tres filas del mapeo (`splash`, `entrada`, `detalle`) llevaban días en `**P**` / `NO_MEDIBLE`, y el
+texto del propio marcador decía qué faltaba: **«medible con grabación de pantalla a 60 fps»**. No era
+una conjetura ni una pregunta abierta: era el nombre del instrumento. Y no existía — `screenrecord`
+aparecía **una sola vez** en todo el repo, en un plan de septiembre, nunca implementado.
+
+**Por qué nadie lo levantó en días.** Un marcador está escrito en la gramática de una *excusa* («por
+qué no pude medir esto») y no en la de una *tarea* («qué hay que construir»). El que lo lee busca
+confirmar que la fila sigue bloqueada, lo confirma, y pasa. Encima el dueño es ambiguo por
+construcción: la fila es de frontend, pero construir el instrumento es trabajo de instrumento, y
+«retirar el bloqueo ajeno» no está en la cola de nadie — la misma orfandad que
+[[el-artefacto-que-genera-el-instrumento-no-tiene-dueno]].
+
+**La pregunta que lo caza:** *¿este marcador nombra lo que le falta? Entonces eso es un id de
+trabajo, con dueño, no un motivo de pendencia.* Un bloqueo que nombra su propia solución dejó de ser
+un bloqueo externo: es una tarea sin asignar.
+
+### La segunda mitad, que es la que ahorra una pasada entera
+
+**Tres etiquetas `NO_MEDIBLE` idénticas no son el mismo bloqueo.** Leídas juntas parecen una sola
+causa, y ahí está la trampa:
+
+- `splash` y `entrada` eran **resolución temporal**: el fenómeno dura ~1 s y cada `screencap` tarda
+  del orden del fenómeno. Eso lo arregla filmar a 60 fps.
+- `detalle` era **oclusión**: el panel de chat tapa la línea. Filmar a 60 fps un elemento tapado lo
+  filma tapado 60 veces por segundo.
+
+Haber leído las tres como «falta el instrumento de 60 fps» habría gastado una pasada de device
+completa —recurso de dueño único y serial— para producir 240 cuadros de algo invisible, y el
+resultado se habría reportado como «medido». Es
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] aplicado a la etiqueta de un bloqueo: una
+etiqueta compartida no implica un mecanismo compartido.
+
+### Y el instrumento nuevo necesitó su propio control del «no»
+
+`device_medir.py filmar` (PR #1237, `4855568a`) corta con exit 5 si los fps **reales** no llegan al
+mínimo: una captura a 24 fps es tan ciega como el screencap que vino a reemplazar, y tiene que
+decirlo en vez de entregar PNG que parecen evidencia. El `autotest` fabrica con ffmpeg un clip de 60
+y otro de **24**, y exige que el gate **rechace** el segundo — porque que acepte 60 no prueba que
+pueda rechazar ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]). Ese control se ganó el lugar en su
+primera corrida: cazó que `ffprobe -of csv=p=0` deja una coma colgando por valor, que habría
+reventado el parseo de pts **con el teléfono ya tomado**, que es cuando una corrida cuesta minutos.
