@@ -181,3 +181,55 @@ criterio de equivalencia; (3) el criterio tiene que ser **mecánico y falsable**
 nunca «ante la duda, es equivalente» ([[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]]);
 (4) dejá escrito qué lo **invalida** (acá: cualquier archivo en los 6 paths ⇒ re-gate), porque un criterio
 de equivalencia sin condición de ruptura es un permiso permanente.
+
+---
+
+## 2026-10-14 — la cuarta variante: el criterio de salida era **INSATISFACIBLE**
+
+Las tres de arriba son guards que frenan de más. Ésta es la peor de la familia porque **no tiene
+salida**: el guard pide una condición que el sistema no puede cumplir nunca.
+
+`destrabar-grafo-force.ps1` aborta si `FALTANTES != 0`, y está bien que lo haga: forzar un reconcile
+con ingesta incompleta borraría objetos vivos. Medido hoy: **11 faltantes**, y los 11 son aristas
+`contains: X -> X` **autorreferenciales** que graphify emite (11 de 33.888) para archivos cuyo id
+sanitizado colisiona con el del símbolo que definen. El bridge no filtra auto-aristas, así que el
+reconcile las **espera**; Graphity no las materializa. Por lo tanto `FALTANTES` no podía dar 0 en
+**ninguna** corrida, ni ayer ni dentro de un año: el destrabe estaba cerrado **por construcción**.
+
+**Por qué vivió invisible.** Los ZOMBIES se imprimían con tipo, nombre y `source_file` —están EN
+Graphity y el endpoint devuelve el objeto entero—. Los FALTANTES salían como **uuid5 opacos**,
+porque `expected_uuids` devuelve un `set` y nada más. La asimetría caía exactamente del lado malo:
+**el único criterio que bloquea el destrabe era el único que no se podía leer.** Nadie puede
+refutar un hash. Ponerles nombre (`expected_index`) convirtió «11 faltantes, esto es grave» en «11
+auto-aristas benignas» en una sola corrida. El instrumento no medía mal: **clasificaba** mal, y su
+docstring decía de todos los faltantes *«esto sí es grave»* — una lectura falsa con la autoridad de
+un número medido. Ver [[nada-cazaba-al-mal-clasificado-solo-al-no-clasificado]].
+
+**Y el que vetaba no era el tope.** El mismo día, el push volvió a quedar vetado — pero por
+`503 Graph backend unavailable`, no por los 200 objetos. El `pre-push` era fail-closed sobre el sync
+(`set -euo pipefail` + una invocación sin `||`), así que **cualquier** fallo de un sistema AUXILIAR
+—tope, backend caído, timeout de red— se convertía en veto sobre el trabajo de todos, incluido el de
+quien no tocó el grafo. Tres variantes distintas del mismo veto en tres meses se habían leído como
+«el problema es el tope»: el tope era el síntoma más frecuente, no la causa.
+
+**La pregunta que discrimina**, y hay que hacérsela al ESCRIBIR el guard:
+
+> *¿Existe un estado alcanzable del sistema en el que este guard me deje pasar? Nombralo, y medí si
+> hoy estoy a una acción de él.*
+
+- «Sí, borrando/arreglando X» → es un guard sano, hay trabajo que hacer.
+- «No lo sé, el guard me devuelve hashes» → **primero hacé legible el criterio.** Un guard cuyo
+  motivo de rechazo no se puede leer es indistinguible de uno insatisfacible, y se lo acata igual.
+- «No existe tal estado» → el guard no es estricto: está **roto**, y lleva roto desde que se escribió.
+
+**How to apply:** (1) todo guard que aborta tiene que imprimir **qué objetos** lo activaron, con
+nombre, no con id — si el id es lo único que hay, el guard necesita su índice de descripciones antes
+de necesitar cualquier otra cosa; (2) cuando un criterio de bloqueo se mantiene constante corrida
+tras corrida (11, 11, 11), eso no es deuda estable: es sospecha de **insatisfacible**, y se verifica
+preguntando si alguna vez dio 0; (3) un sistema auxiliar nunca puede ser fail-closed sobre el camino
+crítico de otros — degradalo a aviso **accionable** (rc + el comando exacto de destrabe), porque un
+warning mudo es peor que el abort: nadie lo persigue ([[un-disparador-cumplido-no-avisa-a-nadie]]).
+
+Relacionadas: [[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]] ·
+[[el-guard-falla-abierto-en-su-caso-de-activacion]] ·
+[[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]
