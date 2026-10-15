@@ -77,10 +77,20 @@ export interface CristalVidrioProps extends PropsWithChildren {
   nivel?: NivelCristal;
   /** Estilo del contenedor EXTERNO (posición/tamaño). El radio y el recorte los pone el primitivo. */
   style?: ViewStyle | ViewStyle[];
+  /**
+   * 🔴 El cuerpo mide lo que mide su CONTENIDO, en vez de llenar al contenedor externo.
+   *
+   * Por defecto el interno es `flex: 1` (llena un padre de alto definido: el panel, o el fondo absoluto
+   * de `DetalleComprobante`). En un padre de alto AUTOMÁTICO eso colapsa a 0 —`flex: 1` es `flexBasis: 0`—
+   * y con `overflow: hidden` el contenido queda recortado e invisible: medido en device en el onboarding,
+   * donde «Tus servicios», «Conectar…» y «Después» no se veían (la tarjeta medía 4 px). Quien envuelve
+   * contenido de alto libre lo declara acá; el resto no cambia.
+   */
+  alturaAuto?: boolean;
   testID?: string;
 }
 
-export function CristalVidrio({ nivel = 'conversacion', style, testID, children }: CristalVidrioProps) {
+export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = false, testID, children }: CristalVidrioProps) {
   const tema = useTema();
   const cfg = NIVELES[nivel];
 
@@ -91,7 +101,7 @@ export function CristalVidrio({ nivel = 'conversacion', style, testID, children 
     >
       <View
         style={[
-          styles.interno,
+          alturaAuto ? styles.internoAuto : styles.interno,
           {
             borderRadius: cfg.radio,
             borderColor: tema.glass.bd,
@@ -116,5 +126,6 @@ export function CristalVidrio({ nivel = 'conversacion', style, testID, children 
 const styles = StyleSheet.create({
   externo: { backgroundColor: 'transparent' },
   interno: { flex: 1, overflow: 'hidden' },
+  internoAuto: { overflow: 'hidden' },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, opacity: 0.9 },
 });

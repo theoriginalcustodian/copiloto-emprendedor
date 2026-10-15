@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AppState, Linking } from 'react-native';
+import { AppState, Linking, StyleSheet, type ViewStyle } from 'react-native';
 
 jest.mock('@copiloto/core', () => ({
   ...jest.requireActual('@copiloto/core'),
@@ -73,6 +73,13 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     expect(await screen.findByTestId('onboarding-conectar-mercadopago')).toBeTruthy();
     expect(screen.getByTestId('onboarding-conectar-google')).toBeTruthy();
     expect(screen.getByTestId('onboarding-alcance')).toHaveTextContent(/Cada permiso se corta cuando quieras/);
+  });
+
+  it('🔴 la tarjeta de servicios mide su contenido: con el cuerpo en `flex: 1` colapsaba a 4 px y «Conectar…» / «Después» quedaban recortados', async () => {
+    await montar();
+    const tarjeta = await screen.findByTestId('onboarding-tarjeta-servicios');
+    const interno = tarjeta.children[0] as unknown as { props: { style: ViewStyle | ViewStyle[] } };
+    expect(StyleSheet.flatten(interno.props.style).flex).toBeUndefined();
   });
 
   it('«Después» no bloquea: marca el onboarding y cierra sin conectar nada', async () => {

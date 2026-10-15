@@ -160,7 +160,7 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
       <Burbuja role="assistant" text="Laburo así: vos me hablás, yo resuelvo. Pero primero necesito ver tu negocio." />
       <Burbuja role="assistant" text="¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés." />
       <View testID="onboarding-permisos">
-        <CristalVidrio nivel="informe" testID="onboarding-tarjeta-servicios">
+        <CristalVidrio nivel="informe" alturaAuto testID="onboarding-tarjeta-servicios">
           <View style={{ padding: tema.espacio.md, gap: tema.espacio.sm }}>
             <View style={styles.encabezado}>
               <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700', flex: 1 }}>Tus servicios</Text>
