@@ -455,7 +455,8 @@ def main(argv):
         print("control positivo: OK (RUTA/LINEA/LITERAL/AUSENCIA detectan sobre fila ensuciada)")
         # el «0» de arriba mira SOLO rutas, lineas, literales e identificadores: esto es lo que NO mira
         print(f"SIN JUZGAR: {len(ciegas)} de {len(res)} filas llevan {n_clausulas} clausula(s) negativa(s)/posicional(es) "
-              f"que este barrido NO contrasta con el codigo — el «{len(con)} con hallazgo» NO las cubre (orden de magnitud, ver sin_juzgar())")
+              f"que este barrido NO contrasta con el codigo — el «{len(con)} con hallazgo» NO las cubre. "
+              f"LIMITES: SOBRECUENTA (muchas negaciones son inocuas) · NO VE AFIRMATIVAS FALSAS (una fila que afirma algo falso pasa limpia)")
         if "--sin-juzgar" in argv:
             for i, cl in ciegas.items():
                 for t, c in cl:
