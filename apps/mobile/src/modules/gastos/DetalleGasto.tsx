@@ -94,7 +94,7 @@ function clave(d: DestinoTrabajo): string {
 function BloqueTrabajo({ gasto }: { gasto: Gasto }) {
   const tema = useTema();
   // Se guarda la IMPUTACIÓN entera y no sólo el destino: el rótulo (`etiqueta`) viaja con ella, y
-  // re-derivarlo desde el `ref` es lo que mostraba `#227` donde el selector decía `#3` (gemelo del web).
+  // re-derivarlo desde el `ref` mostraba el id de base donde el selector decía el número del trabajo (gemelo del web).
   const [imputado, setImputado] = useState<ImputacionGasto | null>(gasto.imputacion);
   const destino: DestinoTrabajo | null = destinoDeImputacion(imputado);
   const [lista, setLista] = useState<EstadoLista>('cerrada');
