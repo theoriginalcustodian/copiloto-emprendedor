@@ -2494,40 +2494,6 @@ CONFLICTOS_CONOCIDOS = {
                "preguntas distintas sobre el mismo id. [POR VERIFICAR]",
     "comousar": "Misma forma que `soporte`: COHERENTE (FE1 web 22/09) vs DESVIO (auditoria 29/09), "
                 "y la sospecha es la misma — hallazgo-resuelto vs coincide-con-proto. [POR VERIFICAR]",
-    # 2026-10-15 - TRES ids con la forma de `clientes`/`hitl`: el contraste agrupa por `id` y no por
-    # `(id, plataforma)`, asi que COHERENTE web (22/09) + DESVIO mobile (15/10) dispara conflicto aunque
-    # sean DOS SUPERFICIES. Declarado, no arreglado el instrumento (`CONGELAINSTR`).
-    "reveal": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 28/09 "
-              "(BL-Q3-v2 lote B: `Splash`, cta primario «Empecemos», «Crear cuenta» ausente por decision H-A4-15) "
-              "vs DESVIO mobile 15/10 (device: el reveal «volver» tras cierre voluntario SE VE; difiere el "
-              "lockup —isotipo como «O» + `dobi`, `RevealEntrada.tsx:32-34`—, no hay boton de pronunciar por "
-              "falta de asset de audio y suma la linea «Tu copiloto emprendedor»). Dos superficies, las dos "
-              "vigentes.",
-    "hablar": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 07/10 "
-              "(BL-Q3-PWA: guia fuera de Ajustes, tono en Mi negocio) vs DESVIO mobile 15/10 (device, "
-              "d8d689e9: el copy de «Como hablarle» coincide palabra por palabra; difieren las opciones "
-              "como pastillas en vez de filas con radio, el nombre como campo editable inline en vez de "
-              "fila con «Editar», y los extras «Asi te responderia» + «Guardar»). Dos superficies, las dos "
-              "vigentes.",
-    "presu": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
-             "(matriz web re-medida: total «esperando respuesta», chips de estado, lista, «Nuevo "
-             "presupuesto») vs DESVIO mobile 15/10 (device, d8d689e9: la card oscura y las filas "
-             "COINCIDEN; difiere el titulo sin mes, «Nuevo presupuesto» arriba junto al microfono, el "
-             "buscador y la linea «N° · descripcion · items · fecha»). Dos superficies, las dos vigentes.",
-    "afip": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
-            "(BL-Q3-web, frontend2: «mismos campos del perfil fiscal», landing sin datos) vs DESVIO "
-            "mobile 15/10 (device, estado SIN VINCULAR: encabezado «1. Perfil fiscal» numerado, sin "
-            "«ARCA vinculada · CUIT» ni «Bloqueado»; el estado vinculado NO se pudo medir). Dos "
-            "superficies, las dos vigentes.",
-    "apar": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web 22/09 "
-            "(FE1, H-A4-7: 2 tiles + fila «Como el telefono» + nota) vs DESVIO mobile 15/10 (device: "
-            "la estructura COINCIDE; difiere UNA frase extra en la nota al pie, menor). Dos "
-            "superficies, las dos vigentes.",
-    "bi-refresh": "[DIRIMIDO 2026-10-15 - PLATAFORMAS DISTINTAS, no contradiccion] COHERENTE web "
-                  "22/09 (FE1: estructura del resumen, estado cero) vs DESVIO mobile 13 y 15/10 "
-                  "(device: el control nativo no tiene fase «Solta», sin linea permanente). El web mide "
-                  "la estructura de la pantalla; el mobile mide el gesto de tirar para actualizar. Dos "
-                  "superficies, las dos vigentes.",
 }
 
 
