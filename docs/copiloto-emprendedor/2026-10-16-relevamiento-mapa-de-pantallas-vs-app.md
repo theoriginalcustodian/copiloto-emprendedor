@@ -350,9 +350,9 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 2 | `base` | Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». |
 | 3 | `esc` | Igualar título, orden y estilo de tiles (C1). Dejar R02 como está. |
 | 4 | `chat` | Mismo arreglo que R01: campo + mic chico siempre visibles al pie. |
-| 5 | `grabando` | Barra de grabación al pie, de ancho completo, que reemplace al campo (N8); arreglar el choque del reloj con el chevron. |
-| 6 | `bloqueado` | Controles del audio bloqueado en una barra al pie con onda ancha, como el prototipo (N8). |
-| 7 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
+| 5 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
+| 6 | `grabando` | Barra de grabación al pie, de ancho completo, que reemplace al campo (N8); arreglar el choque del reloj con el chevron. |
+| 7 | `bloqueado` | Controles del audio bloqueado en una barra al pie con onda ancha, como el prototipo (N8). |
 | 8 | `bi-refresh` | Ocultar el indicador nativo del `RefreshControl` (color transparente) y dejar la línea «Actualizando…». |
 | 9 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
 | 10 | `caida` | Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1). |
