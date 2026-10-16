@@ -708,3 +708,65 @@ que **la prudencia que yo sentía apuntaba a la destrucción**, y la que frenó 
 línea *qué efecto observable esperaría si el sistema estuviera SANO*, y medir **eso**. Si la respuesta
 es «se vería igual que ahora», no tengo un diagnóstico: tengo una ausencia de señal.
 [[instrumento-que-no-mira-nunca-falla]] · [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]
+
+---
+
+## 🔁 REFUERZO 2026-10-16 (3) — escribí el refuerzo de arriba y repetí el error **2 horas después**, con el instrumento ya escrito
+
+El refuerzo anterior es de las **00:0x** del 16-10. A las **00:2x**, en el mismo turno, volví a hacer
+exactamente lo que ese texto describe. Vale escribirlo porque la lección no es el defecto —ya está
+arriba— sino **por qué tener la lección escrita no alcanzó**.
+
+**Lo que pasó.** Barriendo worktrees antes de apagar la PC, clasifiqué 13 ramas como «trabajo sin
+respaldo» con este control: *«el `HEAD` de la rama no aparece en `git ls-remote`»*. Pusheé las 13 y
+escribí un `hallazgo_` diciendo que `SM-E3` había cerrado «mientras 1886 líneas suyas vivían sin
+pushear». **Las 13 eran residuo**: su contenido estaba en `main` desde dos días antes, por sus
+propios PR squash-mergeados (`#1180`, `#1181`, …). Medido con el contraste correcto: **28 de 28
+archivos idénticos al commit que las mergeó**; y la ficha decía, en su propio `Falta:`, *«CÓDIGO
+COMPLETO y DEVICE MEDIDO 7/7»*.
+
+**La parte que duele y es el aporte: el instrumento correcto existía y lo había escrito yo**, media
+hora antes, en el mismo turno. Comparaba blobs justamente porque el squash rompe el control por sha.
+No falló: **nunca vio el caso**, porque su primera línea era
+
+```bash
+grep -q "^$HEAD_LOCAL" /tmp/remotas.txt && continue   # "ya respaldada, no la analizo"
+```
+
+y las ramas que yo acababa de pushear **estaban en el remoto justamente porque yo las había
+pusheado**. El filtro excluía del corpus, por construcción, **los casos sobre los que yo ya había
+actuado**: el instrumento no podía auditar mi propia acción.
+[[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]
+
+> **El control que faltaba, y es barato:** cuando escribo un instrumento *después* de haber actuado,
+> el primer caso que tiene que pasar por él es **el que ya resolví a mano**. Si el filtro lo excluye,
+> el filtro está mal — no el caso.
+
+**Y una segunda falla, de distinto tipo, que INFLABA el hallazgo.** El comparador decía
+
+```bash
+a=$(git rev-parse "HEAD:$p" 2>/dev/null || echo AUSENTE)
+```
+
+pero **`rev-parse` imprime el argumento en stdout cuando falla**, así que el `||` nunca dispara: un
+archivo **ausente en los dos lados** (porque la rama lo borra) daba dos cadenas distintas y se
+contaba como **«difiere»**. Por eso una rama que es residuo `4/4` figuraba como «aporta 3 archivos».
+Se arregla con `rev-parse --verify -q` y se detecta con **un control positivo de una línea**:
+*¿`__AUSENTE__` contra `__AUSENTE__` da IGUAL?* Si el comparador no sabe decir «los dos lados no
+tienen esto», no está comparando — está comparando mensajes de error.
+[[un-control-positivo-con-esperado-falso-acusa-al-script]] · [[vacio-no-es-hallazgo-correr-el-control]]
+
+**El criterio operativo que queda, para no re-derivarlo:**
+
+> Para *«¿el contenido de esta rama está en `main`?»* el contraste válido es **contra el commit que la
+> mergeó** (`gh pr list --state merged --head <rama>` → `.mergeCommit.oid`). **No** contra
+> `origin/main`, que avanza y hace diferir archivos cuyo contenido sí entró. **No** contra la
+> presencia del sha en el remoto, que el squash rompe **por diseño**.
+
+**Costo real:** 13 ramas publicadas de más en un repo público (ruido, no riesgo: su contenido ya
+estaba en `main`, y el barrido de credenciales dio 0 con control positivo), un `hallazgo_` falso
+circulando con un **nombre** que afirmaba lo falso —se corrigió con un archivo **nuevo**, no
+appendeando, porque [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]— y una «primera
+acción al reencender» que no había que hacer. **Lo que no costó:** nada se perdió ni se rompió; el
+error fue de más prudencia, no de menos. Que es precisamente el disfraz que este archivo entero
+denuncia. [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
