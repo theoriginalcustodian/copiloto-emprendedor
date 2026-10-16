@@ -502,3 +502,6 @@ slugs son «buscables en memoria/, NO leer por reflejo».
 ## Bajadas del indice el 2026-10-15 (mecanismo general ya cubierto por otra entrada)
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
+
+## Bajadas del indice el 2026-10-16 (vencidas por el cierre del sprint mobile)
+- **📱 El sprint MOBILE fue el vigente del 13-10 al 16-10** — cerró 25/25 (alcance vivo) el 16-10 00:0x; «device está DENTRO» valió para ÉL. Bajada porque un índice que nombra un sprint vigente ya cerrado manda a trabajar en lo terminado.

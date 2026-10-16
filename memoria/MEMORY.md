@@ -10,7 +10,6 @@
 - **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** (techo: `(home)` espera OAuth) · 🎯 SPRINT **53/54**=98%, 1 pendiente real `soporte`**. Citar una por otra = el error del día.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
-- **📱 SPRINT VIGENTE = MOBILE, y device está DENTRO** (13-10). El de la beta cerró 08/10 (`DEC-14` 7/7 @`92fd8a06`): «al sprint siguiente» YA VENCIÓ — el siguiente es ESTE.
 - **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -28,6 +27,7 @@
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) - leerla ANTES de implementar. Portar adaptando, no copiar ciego.
 - [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) - se juntan. Reincidí con 7 PRs en una sesión.
 - [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) - diferido a prod; sólo no commitear ni pegar en chat.
+- [Nadie apaga la PC; la orden NO se propaga](una-orden-de-apagado-no-se-propaga.md) - vale sólo en su sesión y su trabajo; se consume al usarla.
 
 
 ## 🧭 Cómo trabajo
