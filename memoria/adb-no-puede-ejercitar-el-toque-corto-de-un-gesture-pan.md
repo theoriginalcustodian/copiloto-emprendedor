@@ -64,3 +64,10 @@ componente funciona? ¿un drag grande en el MISMO componente funciona?) antes de
 roto o verificado — y si el toque corto específico sigue sin disparar con todo lo demás verde, es el
 patrón del touch-slop: reportar INCONCLUSO con la hipótesis, no forzar un veredicto. Ver también
 [[gate-jsdom-no-ve-gestos-tactiles]] (limitación hermana, en el gate de CI en vez de en ADB).
+
+⚠️ **Los umbrales de RNGH están en dp y `motionevent` mueve en PÍXELES** (medido 2026-10-16). `UMBRAL_CANCELAR_PX = 70` son
+70 **dp** (~129 px en un teléfono de 720×1600 a 390 dp, 1 dp = 1,846 px), y `translationX` cuenta desde que el `Pan`
+se ACTIVA (~10 dp después de apoyar), no desde el DOWN. Tres corridas con −104/−119/−134 px (56–73 dp) «no armaron»
+la cancelación y se reportó `[UNVERIFIED]`/«defecto real o límite del instrumento»: era el instrumento. Con 13 MOVE
+hasta −157 px (≈85 dp) apareció «Soltá para cancelar». **Antes de concluir «el gesto no llega al umbral», convertí:
+umbral_dp × densidad + margen de activación, y pasate** (`adb shell wm density` da la densidad).

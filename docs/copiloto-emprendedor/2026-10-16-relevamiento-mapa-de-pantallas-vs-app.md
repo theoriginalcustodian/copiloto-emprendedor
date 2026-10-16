@@ -100,7 +100,7 @@ Prototipo: [detalle](2026-10-16-relevamiento-capturas/proto-mapa-detalle.png) ·
 **12 · `grabando` — Grabando** — **DIFERENTE · A** · DEVICE  
 Prototipo: [grabando](2026-10-16-relevamiento-capturas/proto-mapa-grabando.png) · App: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [deslizando a la izquierda sin armar](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)  
 *Diferencia:* Medido en Gastos con un dedo sostenido (`adb shell input motionevent DOWN` sin `UP`, sin voz: no hace falta audio para ver la pantalla). Aparecen punto rojo, reloj «0:01» y «‹ Deslizá para cancelar» **debajo** del botón del micrófono, que se pone pálido; arriba, candado, flecha y una franja de onda. El prototipo lo dibuja como una barra al pie, «● 0:09 … deslizá para cancelar ‹», con el micrófono naranja a la derecha. Además el botón «Anotar un gasto» queda aplastado en columna y parte la palabra por sílabas («An/o/tar/un/ga/sto»), y el reloj choca con el chevron («0:01‹»). Causa: `BarraSostenida` se dibuja dentro de `MicFuncion` (`voz/MicFuncion.tsx:145`), en la columna angosta de la fila `filaConMic` (`PantallaGastos.tsx:262`, `:329`), en vez de reemplazar al campo; el comentario de `PistasVoz.tsx:85` dice que «no flota». Ver N8.  
-*Corrección:* Que la barra de grabación ocupe el ancho al pie y reemplace al campo, como en el prototipo (N8). Queda sin verificar, con un dedo real, el cancelar al deslizar a la izquierda (`[UNVERIFIED]`, ver N8).
+*Corrección:* Que la barra de grabación ocupe el ancho al pie y reemplace al campo, como en el prototipo (N8). El cancelar al deslizar a la izquierda **sí funciona** (verificado en device con `adb`, ver N8: las corridas que no lo armaban medían en píxeles un umbral que está en dp).
 
 **13 · `bloqueado` — Audio bloqueado** — **DIFERENTE · A** · DEVICE  
 Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png) · App: [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png)  
@@ -154,10 +154,10 @@ Prototipo: [consent](2026-10-16-relevamiento-capturas/proto-mapa-consent.png) ·
 *Corrección:* Agregar íconos por capacidad y el banner de continuación.  
 *Vínculo:* K6a · K6b
 
-**22 · `caida` — Conexión caída** — **DIFERENTE · A** · DEVICE  
+**22 · `caida` — Conexión caída** — **DIFERENTE · A** · DEVICE — **copy RESUELTO** (decisión del operador, 2026-10-16: gana la frase del código; se corrigió el mapa)  
 Prototipo: [caida](2026-10-16-relevamiento-capturas/proto-mapa-caida.png) · App: [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* La portada admite estar incompleta, como el mapa, pero el copy es otro: el mapa dice «faltan los cobros de hoy — Mercado Pago está caído» en una línea bajo el monto; la app dice «Se cayó la conexión con Mercado Pago: faltan los cobros de hoy, así que estos números pueden estar incompletos.» y agrega un segundo aviso de Google Calendar. Los montos de los tres cuadros se parten en dos líneas.  
-*Corrección:* Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1).  
+*Corrección aplicada:* el copy de Mercado Pago se alineó con la frase del código (prototipo, `specs/mobile-coherencia.md` y la nota del mockup 02; mismo criterio que la decisión 8); el corte de los montos (N1) quedó resuelto en #1297. *Sin decidir:* el segundo aviso de Google Calendar que la app agrega y el mapa no tiene.  
 *Vínculo:* C3 · N1
 
 **23 · `preg` — Pregunta libre** — **NO-VERIFICABLE** · NO-MEDIBLE  
@@ -208,10 +208,10 @@ Prototipo: [pres-ciclo](2026-10-16-relevamiento-capturas/proto-mapa-pres-ciclo.p
 *Corrección:* Medir con un presupuesto de prueba.  
 *Vínculo:* K3
 
-**31 · `limite` — El límite** — **DIFERENTE · B** · CÓDIGO  
+**31 · `limite` — El límite** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
 Prototipo: [limite](2026-10-16-relevamiento-capturas/proto-mapa-limite.png) · App: — (no existe)  
 *Diferencia:* Cambio deliberado con cita: «Plan y límites no entran en la beta» (DEC-8, operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`; `BL-X9` → `BL-V2`; `plan` y `limite` son VISIÓN en `BL-P5`). La app no tiene pantalla de límite y no hay nada que medir en device; un test lo fija para «Mi plan» (`PantallaAjustes.test.tsx:54`, «no hay tile Mi plan»). El mapa sigue dibujándola.  
-*Corrección:* En el mapa, marcar «El límite» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
+*Corrección aplicada:* el mapa la marca «VISIÓN post-beta» y cita DEC-8. El backlog ya la dejaba fuera de la beta (`BL-X9` → `BL-V2`); `PLAN.md` (carpeta de planificación) se pidió por el buzón.  
 *Vínculo:* F7b
 
 **32 · `vacio-visto` — Calma, ya conocida** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
@@ -316,10 +316,10 @@ Prototipo: [apps](2026-10-16-relevamiento-capturas/proto-mapa-apps.png) · App: 
 *Corrección:* Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta.  
 *Vínculo:* F11-apps
 
-**48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO  
+**48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
 Prototipo: [plan](2026-10-16-relevamiento-capturas/proto-mapa-plan.png) · App: — (no existe)  
 *Diferencia:* Cambio deliberado con cita: DEC-8 (operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`): «Plan y límites no entran en la beta». La app no tiene «Mi plan» y hay un control negativo que lo exige (`PantallaAjustes.test.tsx:54-59`: sin tile `miPlan` ni texto «Mi plan»). No hay pantalla que medir.  
-*Corrección:* En el mapa, marcar «Mi plan» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
+*Corrección aplicada:* el mapa la marca «VISIÓN post-beta» y cita DEC-8 (mismo cierre que `limite`).  
 *Vínculo:* F7b
 
 **49 · `cuenta` — Mi cuenta** — **DIFERENTE · B** · DEVICE  
@@ -355,7 +355,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 7 | `bloqueado` | **RESUELTO (N8, 2026-10-16)** — fijado, los controles ocupan toda la fila con la onda ancha. Capturas en N8. |
 | 8 | `bi-refresh` | **RESUELTO (N2, 2026-10-16)** — el círculo nativo queda fuera de cuadro (`progressViewOffset`); sólo se ve «Actualizando…». Capturas en N2. |
 | 9 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
-| 10 | `caida` | Igualar el copy al mapa o actualizar el mapa; **el corte de los montos (N1) está RESUELTO (2026-10-16)**. |
+| 10 | `caida` | **RESUELTO (2026-10-16)** — copy de Mercado Pago = frase del código (mapa actualizado) y montos en una línea (N1). Queda sin decidir el segundo aviso de Calendar. |
 | 11 | `comousar` | Igualar contenedor y numeración. |
 | 12 | `soporte` | Agregar el clip; quitar el botón de voz grande si el mapa manda. |
 | 13 | `feedback` | Igualar estructura y posición del mes. |
@@ -374,7 +374,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 26 | N2 | **RESUELTO (2026-10-16)** — el círculo nativo del refresh queda fuera de cuadro; sólo se ve «Actualizando…». Ojo: el primer intento (color transparente) falló en device. |
 | 27 | N3 | **Aviso de la card de gasto distinto del mapa.** Decidir cuál frase manda y alinear mapa, app y glosario. |
 | 28 | N6 | **RESUELTO (decisión 7, 2026-10-16)** — «Volver» a la izquierda con chevron en `MarcoGlass`; capturas en device. |
-| 29 | N8 | **RESUELTO (2026-10-16)** — `MicFuncion` arma la fila entera: la barra toma el lugar del botón de alta; fijado, los controles ocupan toda la fila. Medido en Gastos y Presupuestos; queda `[UNVERIFIED]` el cancelar deslizando. |
+| 29 | N8 | **RESUELTO (2026-10-16)** — `MicFuncion` arma la fila entera: la barra toma el lugar del botón de alta; fijado, los controles ocupan toda la fila. Medido en Gastos y Presupuestos; el cancelar deslizando también quedó verificado en device. |
 
 ### 3.2 Se corrige en el mapa (cambio deliberado o mapa rancio)
 
@@ -383,9 +383,9 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 1 | `splash` | Quitar «Crear una nueva cuenta» del mapa (splash, reveal y volver) o reabrir la decisión #3. |
 | 2 | `detalle` | Ninguna en la app. Retirar el sheet del mapa si todavía figura. |
 | 3 | `reveal` | Igual que «Splash». |
-| 4 | `limite` | Marcar «El límite» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
+| 4 | `limite` | **RESUELTO (2026-10-16)** — marcada VISIÓN post-beta en el mapa. Cita: DEC-8 (acta 2026-09-21). |
 | 5 | `ajustes` | Agregar subtítulos y encabezado; actualizar el mapa por la grilla. |
-| 6 | `plan` | Marcar «Mi plan» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
+| 6 | `plan` | **RESUELTO (2026-10-16)** — marcada VISIÓN post-beta en el mapa. Cita: DEC-8 (acta 2026-09-21). |
 | 7 | `cuenta` | Agregar «desde …» y chevrons; decidir «Cambiar el mail» (pregunta 6). |
 | 8 | N5 | **`?ver=vacio` y `?ver=vacio-visto` no muestran su estado.** Corregir los dos deep links del prototipo. |
 | 9 | N7 | **Portada del mapa dice «30 pantallas»; el mapa lista 51.** Corregir el encabezado del mapa. |
@@ -428,7 +428,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 
 **N7 — Portada del mapa dice «30 pantallas»; el mapa lista 51** (defecto del mapa o del prototipo). Inconsistencia del propio mapa de pantallas: el encabezado cuenta 30 y la grilla muestra 51 entradas (5 + 3 + 29 + 6 + 8). *Corrección:* Corregir el encabezado del mapa.
 
-**N8 — El botón «Anotar un gasto» se aplasta mientras se graba** (**RESUELTO**, 2026-10-16: se corrigió la app; el cancelar deslizando sigue `[UNVERIFIED]`). En Gastos, al mantener apretado el micrófono, `BarraSostenida` (punto, reloj y «‹ Deslizá para cancelar») se dibuja dentro de `MicFuncion` y no en lugar del campo: queda en la columna angosta de la fila `filaConMic`, entre la foto y «Anotar un gasto», que se comprime hasta partir la palabra por sílabas («An/o/tar/un/ga/sto»). Con la grabación fijada, los controles (tacho, onda, reloj, pausa, enviar) flotan a media pantalla con una onda angosta que el reloj pisa, y el botón colapsa a una tira vertical vacía. El prototipo transforma la barra del composer en una barra al pie de ancho completo; el comentario de `PistasVoz.tsx:85` dice «no flota» y el chat (`ChatView.tsx:351`) y Soporte (`PantallaSoporte.tsx:266`) sí reemplazan el campo. Capturas: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png). *Alcance:* medido en Gastos; el mismo `MicFuncion` lo usan Clientes, Ingresos y Presupuestos, no medidos. *Corrección:* Que la barra de grabación reemplace al campo en la fila (o la fila se oculte mientras se graba). *`[UNVERIFIED]` — cancelar al deslizar a la izquierda:* en dos corridas con `motionevent` (5 `MOVE` a −134 px y 12 `MOVE` a −119 px) nunca apareció «Soltá para cancelar» ([captura](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)), mientras que deslizar hacia arriba sí fija; al soltar sin armar se transcribe. Puede ser un límite del instrumento o un defecto real: se resuelve con el dedo del operador. *Corrección aplicada:* `MicFuncion.tsx` pasa a ser la FILA entera (`antes` · mic · `alLado`): sosteniendo, la barra reemplaza al botón de alta en su misma ranura y la onda y el candado flotan encima del mic (absolutos), así que el botón no se mueve bajo el dedo; fijado, los controles ocupan toda la fila y `antes`/`alLado` se esconden sin desmontarse. Las cuatro pantallas (Gastos, Ingresos, Clientes, Presupuestos) le pasan `antes`/`alLado`. Capturas en device — Gastos: [sosteniendo](2026-10-16-relevamiento-capturas/n8-gastos-sosteniendo-barra-en-la-ranura-del-alta-despues.png) · [fijado](2026-10-16-relevamiento-capturas/n8-gastos-fijado-controles-fila-completa-despues.png) · [pausado](2026-10-16-relevamiento-capturas/n8-gastos-fijado-pausado-despues.png) · [descartado](2026-10-16-relevamiento-capturas/n8-gastos-descartado-fila-restaurada-despues.png); Presupuestos: [sosteniendo](2026-10-16-relevamiento-capturas/n8-presupuestos-sosteniendo-barra-en-la-ranura-del-alta-despues.png). Un tercer intento de cancelar con `motionevent` (−104 px, en Presupuestos) tampoco armó «Soltá para cancelar»; al soltar se transcribió el audio ambiente y se abrió un formulario, que se canceló sin guardar. Ingresos y Clientes, con el mismo componente, no se midieron en device.
+**N8 — El botón «Anotar un gasto» se aplasta mientras se graba** (**RESUELTO**, 2026-10-16: se corrigió la app; el cancelar deslizando funciona — las corridas que no lo armaban eran un error de unidades del instrumento). En Gastos, al mantener apretado el micrófono, `BarraSostenida` (punto, reloj y «‹ Deslizá para cancelar») se dibuja dentro de `MicFuncion` y no en lugar del campo: queda en la columna angosta de la fila `filaConMic`, entre la foto y «Anotar un gasto», que se comprime hasta partir la palabra por sílabas («An/o/tar/un/ga/sto»). Con la grabación fijada, los controles (tacho, onda, reloj, pausa, enviar) flotan a media pantalla con una onda angosta que el reloj pisa, y el botón colapsa a una tira vertical vacía. El prototipo transforma la barra del composer en una barra al pie de ancho completo; el comentario de `PistasVoz.tsx:85` dice «no flota» y el chat (`ChatView.tsx:351`) y Soporte (`PantallaSoporte.tsx:266`) sí reemplazan el campo. Capturas: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png). *Alcance:* medido en Gastos; el mismo `MicFuncion` lo usan Clientes, Ingresos y Presupuestos, no medidos. *Corrección:* Que la barra de grabación reemplace al campo en la fila (o la fila se oculte mientras se graba). *Cancelar al deslizar a la izquierda — primero «no se arma», después explicado:* en dos corridas con `motionevent` (5 `MOVE` a −134 px y 12 `MOVE` a −119 px) nunca apareció «Soltá para cancelar» ([captura](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)), mientras que deslizar hacia arriba sí fija; al soltar sin armar se transcribe. **Causa (medida el 2026-10-16): era el instrumento.** `UMBRAL_CANCELAR_PX = 70` está en **dp**, no en píxeles; en este teléfono 1 dp = 1,846 px, así que son ~129 px, y `translationX` de RNGH cuenta desde que el `Pan` se activa (unos 10 dp después de apoyar el dedo). Los −134, −119 y −104 px de las corridas eran 56–73 dp menos ese tramo: nunca llegaban a 70. Con 13 `MOVE` de 12 px (−157 px ≈ 85 dp) aparece «Soltá para cancelar» en rojo ([captura](2026-10-16-relevamiento-capturas/n8-gastos-deslizando-izquierda-cancelando-despues.png)), y al soltar **no se transcribe nada**, no se abre ningún formulario y la fila vuelve a su reposo (comprobado a 1,5 s y a 7 s). *Corrección aplicada:* `MicFuncion.tsx` pasa a ser la FILA entera (`antes` · mic · `alLado`): sosteniendo, la barra reemplaza al botón de alta en su misma ranura y la onda y el candado flotan encima del mic (absolutos), así que el botón no se mueve bajo el dedo; fijado, los controles ocupan toda la fila y `antes`/`alLado` se esconden sin desmontarse. Las cuatro pantallas (Gastos, Ingresos, Clientes, Presupuestos) le pasan `antes`/`alLado`. Capturas en device — Gastos: [sosteniendo](2026-10-16-relevamiento-capturas/n8-gastos-sosteniendo-barra-en-la-ranura-del-alta-despues.png) · [fijado](2026-10-16-relevamiento-capturas/n8-gastos-fijado-controles-fila-completa-despues.png) · [pausado](2026-10-16-relevamiento-capturas/n8-gastos-fijado-pausado-despues.png) · [descartado](2026-10-16-relevamiento-capturas/n8-gastos-descartado-fila-restaurada-despues.png); Presupuestos: [sosteniendo](2026-10-16-relevamiento-capturas/n8-presupuestos-sosteniendo-barra-en-la-ranura-del-alta-despues.png). Una tercera corrida corta (−104 px, en Presupuestos) tampoco armó la cancelación: al soltar se transcribió el audio ambiente y se abrió un formulario, que se canceló sin guardar. Ingresos y Clientes, con el mismo componente, no se midieron en device. **Contexto del operador (2026-10-16):** el botón grande del mic de las pantallas de función es transitorio; el destino, como en el prototipo, es la barra inferior de ingreso de texto con el botón del mic, no este botón. La función (grabar, fijar, cancelar deslizando) quedó verificada y es la que se reubica.
 
 ## 5. Decisiones de los mockups
 

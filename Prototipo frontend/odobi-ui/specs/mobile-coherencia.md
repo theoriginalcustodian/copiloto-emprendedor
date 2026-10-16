@@ -120,8 +120,10 @@ devuelve ninguna superficie). Hay que crearlo y decidir, en cada pantalla, cuál
       | `gastos` | «Total del mes» (bajada del mapa) |
       | `ingresos` | Todo lo que entró |
       | `midia` | **«En caja»** + **«−18% vs julio»** + el trío Entró / Salió / Por cobrar.
-        ⚠️ Y la línea que **admite estar incompleto** («faltan los cobros de hoy — Mercado Pago
-        está caído»): regla dura del repo, el dato que falta se DICE, no se disfraza de cero |
+        ⚠️ Y la línea que **admite estar incompleto** («Se cayó la conexión con Mercado Pago:
+        faltan los cobros de hoy, así que estos números pueden estar incompletos.» — frase canónica
+        del código, `packages/core/src/midia/caja.ts`; decisión del operador 2026-10-16): regla dura
+        del repo, el dato que falta se DICE, no se disfraza de cero |
       | `bi` | **«Saldo en caja»** + chip **«Al 19 de agosto»** + **Entró / Salió dentro del
         bloque** (confirmado por Martin, 17/09, contra `prototipo/index.html:1858-1863`).
         ⚠️ Martin lo llamó «el acumulado del mes»; **el rótulo de la pantalla es «Saldo en caja»**
