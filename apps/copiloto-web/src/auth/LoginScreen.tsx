@@ -21,9 +21,16 @@ export interface LoginScreenProps {
   /** BL-X12w — prellenado al volver desde el reveal ("Entrar" trae el mail; "Entrar con otra
    *  cuenta" llega en blanco), gemelo de mobile `PantallaLogin.emailInicial` (BL-X12m). */
   emailInicial?: string;
+  /**
+   * SM-C2 — la PUERTA al alta por email. Sin esto, `SignupScreen` sólo era alcanzable tipeando
+   * `?signup=1` a mano: el formulario existía y nadie podía llegar. Opcional porque el login se
+   * monta también en contextos sin alta (tests de su propio comportamiento); cuando falta, el
+   * pie no dibuja la puerta.
+   */
+  onCrearCuenta?: () => void;
 }
 
-export function LoginScreen({ emailInicial = '' }: LoginScreenProps) {
+export function LoginScreen({ emailInicial = '', onCrearCuenta }: LoginScreenProps) {
   const { status, avisoSesion, login } = useSession();
   const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState('');
@@ -155,6 +162,18 @@ export function LoginScreen({ emailInicial = '' }: LoginScreenProps) {
             </>
           )}
         </Surface>
+
+        {/* SM-C2: la puerta al alta, con las MISMAS clases que ya usa el pie de `SignupScreen`
+            (`login.css`) — cero CSS nuevo. Va después de la tarjeta y antes del pie de confianza:
+            es una salida, no una acción de la tarjeta. */}
+        {onCrearCuenta && (
+          <p className="login-screen__link-row" data-testid="login-ir-a-signup">
+            ¿Todavía no tenés cuenta?{' '}
+            <button type="button" className="login-screen__link-hint" onClick={onCrearCuenta}>
+              Creá una.
+            </button>
+          </p>
+        )}
 
         <p className="login-screen__pie" data-testid="login-pie">
           Tus datos quedan guardados: al volver a entrar está todo como lo dejaste.

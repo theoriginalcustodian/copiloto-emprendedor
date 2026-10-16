@@ -29,6 +29,13 @@ completo». El merge commit es UNA de las evidencias, no el criterio. De ahi el 
                Este es el estado que impide el error que este repo ya pago: declarar terminado
                sin la evidencia de device.
   TERMINADO    DoD completo; exige `Cierre:` con >=1 sha ANCESTRO de origin/main + evidencia.
+  CERRADO-POR-DECISION  el DoD NO se va a cumplir y eso ES la resolucion: el operador declaro
+               que la ficha cierra sin esa evidencia (p.ej. su DoD no es medible en device).
+               Exige `Decision:` con QUIEN + CUANDO + DONDE (un doc del repo que EXISTE) y
+               `Falta:` con lo que queda sin cumplir -- el hueco se DECLARA, no se borra.
+  DIFERIDO     sale del alcance de ESTE sprint con su DoD intacto; exige `Decision:` igual y
+               `Diferido-a:` con el destino. No es un cierre sino un cambio de ALCANCE, y por
+               eso --pct lo descuenta del denominador en vez de sumarlo al avance.
 
 El gate NO puede verificar lo tactil (device). Lo que hace es impedir que se declare TERMINADO
 sin que la evidencia este ESCRITA y el sha exista: lo no mecanizable queda visible, no implicito.
@@ -58,7 +65,19 @@ import tempfile
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKLOG = os.path.join(RAIZ, "docs", "copiloto-emprendedor", "2026-10-11-BACKLOG-sprint-mobile-beta.md")
 
-ESTADOS = ("PENDIENTE", "EN-CURSO", "DOD-PARCIAL", "TERMINADO")
+ESTADOS = ("PENDIENTE", "EN-CURSO", "DOD-PARCIAL", "TERMINADO",
+           "CERRADO-POR-DECISION", "DIFERIDO")
+# Un estado que NO EXISTE en el enum no se puede marcar, y una ficha que no se puede marcar
+# queda DOD-PARCIAL para siempre aunque el operador ya la haya resuelto. Medido el 2026-10-15:
+# el operador decidio que 4 fichas cierran por DECLARACION (su DoD no es medible en device) y
+# que 3 salen del sprint (SMTP/dominio, el tester externo), y el registro no tenia renglon para
+# ninguna de las dos cosas -> el techo MECANICO del sprint era 23/27 = 85.2% por falta de una
+# palabra en esta tupla. El enum ES el registro: lo que no esta aca no existe para el gate.
+DECISORES = ("operador", "david")
+RE_FECHA_ISO = re.compile(r"\b20\d\d-\d\d-\d\d\b")
+RE_CITA_DOC = re.compile(
+    r"(?P<path>(?:docs|memoria|scripts|apps|packages|deploy|motor)/[^\s,;)]+"
+    r"\.(?:md|py|ts|tsx|sh))")
 MARCA_INI = "<!-- TABLA-ESTADO:INICIO (generada por scripts/sprint-estado.py --tabla - NO editar a mano) -->"
 MARCA_FIN = "<!-- TABLA-ESTADO:FIN -->"
 
@@ -132,6 +151,23 @@ def sha_en_main(sha):
         return False, "git no disponible: %s" % exc
 
 
+def _sha_ancestro_para_autotest():
+    """Un sha corto que ES ancestro de origin/main en CUALQUIER rama, o None si no hay remoto.
+
+    `merge-base HEAD origin/main` es el punto de bifurcacion: existe en el clon y esta en main.
+    Usar HEAD en su lugar hace que el control positivo mida la rama (ver el comentario en
+    `autotest`)."""
+    for args in (["merge-base", "HEAD", "origin/main"], ["rev-parse", "origin/main"]):
+        try:
+            out = subprocess.check_output(["git", "-C", RAIZ] + args,
+                                          stderr=subprocess.DEVNULL).decode().strip()
+        except (subprocess.CalledProcessError, OSError):
+            continue
+        if out:
+            return out[:8], True
+    return None, False
+
+
 def verificar(fichas, con_git=True):
     """Devuelve (errores, avisos). Un error = exit 1 del gate."""
     errores, avisos = [], []
@@ -148,6 +184,8 @@ def verificar(fichas, con_git=True):
         if est == "EN-CURSO" and not f["campos"].get("Dueno-activo"):
             errores.append("%s: EN-CURSO sin **Dueno-activo:**. Una ficha tomada sin dueno es una "
                            "ficha parada que nadie reclama." % fid)
+        if est in ("CERRADO-POR-DECISION", "DIFERIDO"):
+            errores.extend(validar_decision(fid, est, f["campos"]))
         if est == "DOD-PARCIAL" and not f["campos"].get("Falta"):
             errores.append("%s: DOD-PARCIAL sin **Falta:**. El estado existe para NOMBRAR lo que "
                            "falta del DoD; sin eso es un TERMINADO disfrazado." % fid)
@@ -176,9 +214,58 @@ def verificar(fichas, con_git=True):
     return errores, avisos
 
 
+def validar_decision(fid, est, campos):
+    """La evidencia de una decision es VERIFICABLE o no es evidencia.
+
+    El operador pidio el estado «con evidencia obligatoria» (2026-10-15). Un `Decision:` en prosa
+    libre seria el mismo agujero que este repo ya pago con el «0 secretos» de la cabecera de
+    CLAUDE.md: una atestacion sin fecha se cita como si fuera de hoy. Asi que el gate exige las
+    TRES cosas que la hacen auditable y chequea la unica que puede chequear solo -- que el doc
+    citado EXISTA:
+
+      QUIEN   uno de DECISORES; una decision sin sujeto no se puede contrastar con nadie.
+      CUANDO  fecha ISO; sin fecha la decision no envejece, y por eso nunca se revisa.
+      DONDE   un path del repo que existe. NO vale `coordinacion/` (no esta versionada: un gate con
+              corpus fuera del repo mide al equipo y en CI da vacio) ni «lo dijo en el chat», que
+              no es citable por quien clona el repo.
+    """
+    out = []
+    dec = campos.get("Decision", "")
+    if not dec:
+        out.append("%s: %s sin **Decision:**. El estado existe para registrar una decision AJENA al "
+                   "DoD; sin quien/cuando/donde es un TERMINADO disfrazado de tramite." % (fid, est))
+        return out
+    falta = []
+    if not any(d in dec.lower() for d in DECISORES):
+        falta.append("QUIEN (uno de %s)" % "|".join(DECISORES))
+    # La fecha se busca con los paths BORRADOS. Lo cazo el control negativo del autotest, no yo:
+    # en este repo todo doc se llama `2026-10-11-...md`, asi que cualquier cita satisfacia el
+    # chequeo de CUANDO sola y el gate era decorativo EN EL CASO NORMAL -- el unico que importa.
+    if not RE_FECHA_ISO.search(RE_CITA_DOC.sub(" ", dec)):
+        falta.append("CUANDO (fecha YYYY-MM-DD propia; la del nombre del doc citado no cuenta)")
+    m = RE_CITA_DOC.search(dec)
+    if not m:
+        falta.append("DONDE (un doc del repo: docs/...md; `coordinacion/` no esta versionada)")
+    else:
+        p = m.group("path").split("#")[0].split(":")[0]
+        if not os.path.exists(os.path.join(RAIZ, p)):
+            falta.append("DONDE: el doc citado '%s' NO existe en el repo" % p)
+    if falta:
+        out.append("%s: **Decision:** incompleta -- falta %s. Lo escrito: %r"
+                   % (fid, " + ".join(falta), dec[:90]))
+    if est == "CERRADO-POR-DECISION" and not campos.get("Falta"):
+        out.append("%s: CERRADO-POR-DECISION sin **Falta:**. Cerrar por decision no borra el hueco: "
+                   "lo DECLARA. Sin el, la ficha es indistinguible de un DoD cumplido." % fid)
+    if est == "DIFERIDO" and not campos.get("Diferido-a"):
+        out.append("%s: DIFERIDO sin **Diferido-a:**. Un diferido sin destino es un abandono con "
+                   "mejor nombre: nadie lo vuelve a levantar." % fid)
+    return out
+
+
 def tabla(fichas):
     icono = {"PENDIENTE": "⬜", "EN-CURSO": "\U0001f7e8",
-             "DOD-PARCIAL": "\U0001f7e7", "TERMINADO": "✅"}
+             "DOD-PARCIAL": "\U0001f7e7", "TERMINADO": "✅",
+             "CERRADO-POR-DECISION": "\U0001f5f3\ufe0f", "DIFERIDO": "\u23ed\ufe0f"}
     out = [MARCA_INI, "",
            "| Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |",
            "|---|---|---|---|"]
@@ -208,7 +295,8 @@ def insertar_tabla(texto, fichas):
     return texto[:ancla] + cuerpo + nl + nl + texto[ancla:]
 
 
-def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None):
+def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None,
+           decision=None, diferido_a=None):
     """Escribe/actualiza los bullets gestionados de UNA ficha, debajo de su encabezado."""
     if estado not in ESTADOS:
         raise SystemExit("estado '%s' no esta en %s" % (estado, "|".join(ESTADOS)))
@@ -218,7 +306,7 @@ def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None):
                 if RE_FICHA.match(ln) and RE_FICHA.match(ln).group("id") == fid), None)
     if idx is None:
         raise SystemExit("ficha '%s' no existe en el backlog. Un id inventado no es una orden." % fid)
-    gestionados = ("Estado", "Cierre", "Falta", "Dueno-activo")
+    gestionados = ("Estado", "Cierre", "Falta", "Dueno-activo", "Decision", "Diferido-a")
     j = idx + 1
     while j < len(lineas) and not lineas[j].startswith("#"):
         mc = RE_CAMPO.match(lineas[j])
@@ -230,6 +318,10 @@ def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None):
         nuevos.append("- **Dueno-activo:** %s" % dueno)
     if falta:
         nuevos.append("- **Falta:** %s" % falta)
+    if decision:
+        nuevos.append("- **Decision:** %s" % decision)
+    if diferido_a:
+        nuevos.append("- **Diferido-a:** %s" % diferido_a)
     if cierre:
         nuevos.append("- **Cierre:** %s" % cierre)
     lineas = [ln for ln in lineas if ln is not None]
@@ -244,6 +336,8 @@ def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None):
 def autotest():
     """Control POSITIVO y NEGATIVO del gate: un gate que nunca dispara no es un gate."""
     base = "### SM-F9 · `#1` — ficha de prueba\r\n\r\n- **DoD:** algo\r\n"
+    DOC_OK = "docs/copiloto-emprendedor/2026-10-11-BACKLOG-sprint-mobile-beta.md"
+    DEC_OK = "operador 2026-10-15, ver %s" % DOC_OK
     casos = [
         ("sin Estado", base, 1),
         ("Estado invalido", base.replace("- **DoD:**", "- **Estado:** CASI\r\n- **DoD:**"), 1),
@@ -253,6 +347,29 @@ def autotest():
         ("DOD-PARCIAL sin Falta", base.replace("- **DoD:**", "- **Estado:** DOD-PARCIAL\r\n- **DoD:**"), 1),
         ("EN-CURSO sin dueno", base.replace("- **DoD:**", "- **Estado:** EN-CURSO\r\n- **DoD:**"), 1),
         ("PENDIENTE limpio", base.replace("- **DoD:**", "- **Estado:** PENDIENTE\r\n- **DoD:**"), 0),
+        ("CxD sin Decision", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Falta:** x\r\n- **DoD:**"), 1),
+        ("CxD sin Falta", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Decision:** " + DEC_OK
+            + "\r\n- **DoD:**"), 1),
+        ("CxD Decision sin fecha", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Falta:** x\r\n"
+            "- **Decision:** operador en %s\r\n- **DoD:**" % DOC_OK), 1),
+        ("CxD Decision sin quien", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Falta:** x\r\n"
+            "- **Decision:** 2026-10-15 en %s\r\n- **DoD:**" % DOC_OK), 1),
+        ("CxD doc INEXISTENTE", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Falta:** x\r\n"
+            "- **Decision:** operador 2026-10-15 en docs/no-existe-jamas.md\r\n- **DoD:**"), 1),
+        ("CxD COMPLETO", base.replace(
+            "- **DoD:**", "- **Estado:** CERRADO-POR-DECISION\r\n- **Falta:** x\r\n"
+            "- **Decision:** " + DEC_OK + "\r\n- **DoD:**"), 0),
+        ("DIFERIDO sin destino", base.replace(
+            "- **DoD:**", "- **Estado:** DIFERIDO\r\n- **Decision:** " + DEC_OK
+            + "\r\n- **DoD:**"), 1),
+        ("DIFERIDO COMPLETO", base.replace(
+            "- **DoD:**", "- **Estado:** DIFERIDO\r\n- **Diferido-a:** sprint siguiente\r\n"
+            "- **Decision:** " + DEC_OK + "\r\n- **DoD:**"), 0),
         ("TERMINADO sin-codigo", base.replace(
             "- **DoD:**",
             "- **Estado:** TERMINADO\r\n- **Cierre:** sin-codigo - decision operador\r\n- **DoD:**"), 0),
@@ -270,7 +387,21 @@ def autotest():
         print("  [%s] %-26s esperado=%d obtenido=%d %s"
               % ("OK   " if obtenido == esperado else "FALLA", nombre, esperado, obtenido,
                  ("| " + errs[0][:62]) if errs else ""))
-    sha_real = subprocess.check_output(["git", "-C", RAIZ, "rev-parse", "HEAD"]).decode().strip()[:8]
+    # El sha del control positivo sale de `origin/main`, NO de HEAD. Con HEAD, este caso medía la
+    # RAMA y no el gate: `sha_en_main()` exige ser ANCESTRO de origin/main, y el HEAD de cualquier
+    # rama de PR no lo es todavia -- el autotest daba VERDE en main y ROJO en las dos ramas que lo
+    # estrenaron (CI de #1275 y #1276, 2026-10-16). O sea: el control fallaba exactamente donde el
+    # gate sirve, y un falso rojo no es prudencia -- es el permiso para el `--no-verify`, que en
+    # este repo arrastra gitleaks. `merge-base HEAD origin/main` es ancestro de origin/main por
+    # definicion y existe en cualquier checkout con el remoto; si no hay remoto, cae a HEAD y el
+    # caso se SALTEA en vez de condenar (se declara, no se finge verde).
+    sha_real, _puede = _sha_ancestro_para_autotest()
+    if sha_real is None:
+        print("  [SKIP ] %-26s sin `origin/main` en este clon: el caso no se puede montar"
+              % "TERMINADO sha REAL")
+        print("\nautotest: %s (%d fallos de %d casos, 1 salteado)"
+              % ("VERDE" if not fallos else "ROJO", fallos, len(casos)))
+        return 1 if fallos else 0
     txt_ok = base.replace("- **DoD:**",
                           "- **Estado:** TERMINADO\r\n- **Cierre:** merge %s - ev\r\n- **DoD:**" % sha_real)
     visto = parsear(txt_ok)
@@ -300,6 +431,8 @@ def main():
     ap.add_argument("--cierre")
     ap.add_argument("--falta")
     ap.add_argument("--dueno")
+    ap.add_argument("--decision", help="QUIEN + CUANDO + DONDE (doc del repo) de la decision")
+    ap.add_argument("--diferido-a", dest="diferido_a", help="destino de una ficha DIFERIDA")
     ap.add_argument("--autotest", action="store_true")
     ap.add_argument("--sin-git", action="store_true", help="no validar shas contra origin/main")
     a = ap.parse_args()
@@ -312,7 +445,8 @@ def main():
     if a.marcar:
         if not a.estado:
             raise SystemExit("--marcar exige --estado")
-        texto = marcar(texto, a.marcar, a.estado, a.cierre, a.falta, a.dueno)
+        texto = marcar(texto, a.marcar, a.estado, a.cierre, a.falta, a.dueno,
+                       a.decision, a.diferido_a)
         fichas = parsear(texto)
         errs, _ = verificar([f for f in fichas if f["id"] == a.marcar], con_git=not a.sin_git)
         if errs:
@@ -359,8 +493,23 @@ def main():
         sin = cuenta.get("", 0)
         if sin:
             print("  %-12s %2d  (%4.1f%%)  <- sin campo Estado" % ("(sin marcar)", sin, 100.0 * sin / tot))
-        print("DoD COMPLETO: %d/%d = %.1f%% - una cifra sin sujeto ni fecha es inutilizable"
+        # TRES cifras y no una, por la misma razon que el repo ya pago en la memoria
+        # `una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta`: "cuanto del DoD esta
+        # cumplido", "cuanto esta RESUELTO" y "cuanto queda del alcance VIVO" son preguntas
+        # distintas, y una sola cifra se cita para las tres -- siempre la mas alta.
+        dec = cuenta.get("CERRADO-POR-DECISION", 0)
+        dif = cuenta.get("DIFERIDO", 0)
+        vivo = tot - dif
+        print("DoD COMPLETO            : %d/%d = %.1f%%  (evidencia del DoD entero)"
               % (term, tot, 100.0 * term / tot))
+        print("+ CERRADAS POR DECISION : %d/%d = %.1f%%  (RESUELTAS: %d con DoD + %d declaradas)"
+              % (term + dec, tot, 100.0 * (term + dec) / tot, term, dec))
+        if dif:
+            print("ALCANCE VIVO            : %d/%d = %.1f%%  (sin las %d DIFERIDAS, que salieron "
+                  "del sprint con su DoD intacto)"
+                  % (term + dec, vivo, 100.0 * (term + dec) / vivo if vivo else 0.0, dif))
+        print("Una cifra sin sujeto ni fecha es inutilizable, y una sin UNIDAD se cita para "
+              "cualquiera de las tres preguntas.")
     return 0
 
 
