@@ -14,7 +14,7 @@
 2. **Operador:** reconectar **Google Calendar** (autorización de Google, en el teléfono) → medir `agenda`.
 3. Con la sesión del operador abierta, recorrer las entradas que usan su usuario (§2): `vozchat`, `fact-voz`, `pres-voz`, `card`, `preg`, `hitl` (cancelar, sin mail), `recibo`, `pres-hitl`, `pres-ciclo`, más los veredictos por código de §2.bis (`splash`, `volver`, `reveal`, `ingresar-error`; el cierre de sesión sólo con el usuario del operador).
 4. **Usuario descartable** (autorizado): falta el mecanismo del alta — el operador genera la invitación / el alias; el candado `COPILOTO_SIGNUP_ALLOWLIST` + `COPILOTO_INVITE_TOKEN` no se lee. Cubre `bi-vacio`, `vacio`, `vacio-visto`, `onb-cumplida`, `onb-promesa`.
-5. **Build release** para `entrada` y el experimento R03: **el operador todavía NO contestó** si se hace. Preguntárselo.
+5. **Build release** para `entrada` y el experimento R03: **DECIDIDO (operador, 2026-10-16): se hace AL FINAL**, después de terminar todo el relevamiento **y** de implementar todas las correcciones que salgan de él (incluida la Pregunta 4). No se compila antes.
 
 **Trabajo mío que no necesita al operador (puede adelantarse):**
 - Editar el prototipo y el mapa (`mapa-pantallas/index.html`, `prototipo/index.html`, `specs/mobile-coherencia.md`) para agregar el **aviso de Google Calendar** caído en la portada de Mi día.
