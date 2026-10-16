@@ -132,6 +132,7 @@ _Avoid_: **tarjeta** al hablar del concepto (los componentes sí se llaman `Tarj
 **Card en pantalla ≠ dato guardado**:
 Regla dura del producto: mientras la card está visible, nada se persistió — y el copiloto no dice
 "listo" ni "lo anoté".
+Aviso canónico de la card de gasto (el del código, `TarjetaGastoPropuesto`): «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.»
 
 **Gate**:
 El par confirmar/cancelar que precede a una acción de negocio. Lo reversible puede no tenerlo; **lo

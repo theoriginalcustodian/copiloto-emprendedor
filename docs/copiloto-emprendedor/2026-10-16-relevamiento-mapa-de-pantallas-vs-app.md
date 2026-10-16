@@ -109,7 +109,7 @@ Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png
 
 **14 · `card` — La card en la función** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
 Prototipo: [card](2026-10-16-relevamiento-capturas/proto-mapa-card.png) · App: — (no capturada)  
-*Diferencia:* La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa dice «Todavía no se guardó nada.» (ver N3).  
+*Diferencia:* La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa decía otra frase, corregida a la del código por la decisión 8 del operador (ver N3).  
 *Corrección:* Medir con autorización explícita para generar el dato.  
 *Vínculo:* K1
 
@@ -395,7 +395,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | `agenda` | La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14). | Reconectar Calendar en el usuario canónico y medir. |
 | `grabando` | Exige audio real y un dedo sostenido; `adb` no graba. Triaje previo: DEVICE15 (`2026-10-13-veredictos-device15-15-filas.md`). | Medir con una persona. |
 | `bloqueado` | Igual que «Grabando»: el bloqueo del audio por deslizamiento exige un gesto con micrófono vivo. | Medir con una persona. |
-| `card` | La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa dice «Todavía no se guardó nada.» (ver N3). | Medir con autorización explícita para generar el dato. |
+| `card` | La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa decía otra frase, corregida a la del código por la decisión 8 del operador (ver N3). | Medir con autorización explícita para generar el dato. |
 | `vozchat` | Igual que «Grabando»: necesita una nota de voz real. | Medir con una persona. |
 | `bi-vacio` | El estado sin ventas exige un tenant sin datos; el canónico tiene gastos. Fabricarlo sería borrar datos. | Medir con un tenant vacío. |
 | `onb-cumplida` | El primer insight con plata real sólo se produce en la primera sesión de un tenant con datos de facturas. Los importes del mapa (`$147.000`, `$63.000`) son un ejemplo, no copy. | Medir con un usuario nuevo con facturas cargadas. |
@@ -417,7 +417,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 
 **N2 — El indicador nativo de refresh tapa el saldo** (A · se corrige en la app). Al tirar para actualizar en Inteligencia, un círculo blanco con flecha se dibuja encima del monto; el prototipo sólo muestra «Actualizando…». No encontré cita que lo justifique. *Corrección:* Dejar sólo la línea «Actualizando…» (color del indicador transparente). Captura: [mapa-bi-tirando](2026-10-16-relevamiento-capturas/app-mapa-bi-tirando.png).
 
-**N3 — Aviso de la card de gasto distinto del mapa** (A · se corrige en la app). Mapa: «Todavía no se guardó nada.» (mockups 03/11). App: «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`). La frase del mapa es además la citada en `CONTEXT.md`, que ya figura como cita rota. *Corrección:* Decidir cuál frase manda y alinear mapa, app y glosario.
+**N3 — Aviso de la card de gasto distinto del mapa** (**RESUELTO** por la decisión 8 del operador, 2026-10-16: la frase canónica es la del código; se corrigió el mapa, no la app). Mapa: una frase corta anterior (mockup 11), que `CONTEXT.md` citaba sin contenerla. App: «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`). *Corrección aplicada:* mapa, prototipo, mockup 11 y `CONTEXT.md` alineados con la frase del código; cero cambios en `apps/mobile`.
 
 **N4 — Paso de perfil de negocio en el onboarding** (D · no determinado). La app agrega, antes de entrar, «Antes de entrar, contame de tu negocio: qué vendés y cómo se llama.» (`PantallaOnboarding.tsx:292`), un paso que el mapa no tiene. Es un gate del backend (`perfilIncompleto`); el docstring cita el contrato BL-Q3 fila 3, pero no pude confirmar que ese contrato lo ordene. *Corrección:* Agregar el paso al mapa o documentar su cita.
 
@@ -441,7 +441,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 10 · Arranque | Ajustes sale de la grilla y va al avatar con punto de estado | CONFORME | El avatar con punto existe en la cabecera; muestra «·» sin inicial porque el negocio del canónico no tiene nombre (`AvatarCuenta.tsx:51`). |
 | 10 · Arranque | El composer es el borde visible del panel de conversación | DIFERENTE | La app muestra la tira «Escribile a Odobi», no un campo (R01). |
 | 10 · Arranque | Estado vacío del chat con ejemplo que gira y contrato fijo | CONFORME | Medido en device (chat vacío). |
-| 11 · Voz contextual | Card en la función y «Todavía no se guardó nada» | NO-VERIFICABLE | Exige un gasto real; la frase difiere por código (N3). |
+| 11 · Voz contextual | Card en la función y su aviso | NO-VERIFICABLE | Exige un gasto real; la frase del mapa ya es la del código (N3, decisión 8). |
 | 12 · Funciones | Anatomía: card blanca con nombre + bloque negro + lista | DIFERENTE | El bloque negro existe; el nombre y el período no están en la card blanca (F6, N6). |
 | 12 · Funciones | Dato faltante: «—», nunca «$0» | CONFORME | Rentabilidad muestra «—» con la explicación en Inteligencia. |
 | 12 · Funciones | «Volver» a la izquierda, con chevron | DIFERENTE | En la app va a la derecha, sin chevron (N6). |
@@ -465,7 +465,7 @@ Los mockups 01, 02, 03, 05, 06 y 08 se repasaron en las entradas de arranque, co
 ## 6. Preguntas para el operador (siguen la numeración del relevamiento previo)
 
 - **PREGUNTA 7 →** «Volver» va a la derecha y sin chevron en todas las funciones (`MarcoGlass.tsx`); el mockup 12 lo decidió a la izquierda con chevron. ¿Se mueve o se registra la derogación?
-- **PREGUNTA 8 →** La frase del aviso de la card de gasto: «Todavía no se guardó nada.» (mapa y `CONTEXT.md`) o «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (app).
+- **PREGUNTA 8 → RESUELTA (operador, 2026-10-16):** la frase del aviso de la card de gasto es la del código, «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.»; se corrigieron el mapa, el prototipo, el mockup 11 y `CONTEXT.md`.
 - La corrección más grande de la lista es la estructura de Mi día y el tablero (entradas `base` y `tablero`): es la **pregunta 4** del relevamiento previo.
 
 ## 7. Criterio de terminado
