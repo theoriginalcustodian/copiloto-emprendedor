@@ -62,7 +62,7 @@ Prototipo: [entrada](2026-10-16-relevamiento-capturas/proto-mapa-entrada.png) ·
 **06 · `base` — Mi día** — **DIFERENTE · A** · DEVICE  
 Prototipo: [base](2026-10-16-relevamiento-capturas/proto-mapa-base.png) · App: [midia-reposo](2026-10-16-relevamiento-capturas/app-midia-reposo.png) · [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* Mi día en reposo: el prototipo muestra la cabecera dentro de una tarjeta («Odobi» + fecha) con avatar «M», la caja con el chip «−18% vs julio», la lista «Ahora» con la agenda y «Para hoy 4 cosas · Ver tablero ›». La app dibuja «Odobi» suelto, el chip de fecha, **el tablero embebido** (pestañas Para hoy / Haciendo / Hechas, filtros, «Anotar algo para hoy») y no tiene «Ver tablero ›» ni la tarjeta de cabecera. Además, los tres cuadros de la portada parten el monto en dos líneas (`$101.234,` / `00`): ver N1.  
-*Corrección:* Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día».  
+*Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): gana el mapa.** Construir la tarjeta de cabecera, la lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». Pendiente de ficha (pedido a planificación).  
 *Vínculo:* C1 · C3 · C5 · N1
 
 **07 · `esc` — Funciones** — **DIFERENTE · A** · DEVICE  
@@ -83,7 +83,7 @@ Prototipo: [chat](2026-10-16-relevamiento-capturas/proto-mapa-chat.png) · App: 
 **09 · `tablero` — Tablero** — **DIFERENTE · A** · DEVICE  
 Prototipo: [tablero](2026-10-16-relevamiento-capturas/proto-mapa-tablero.png) · App: [mapa-tablero-haciendo](2026-10-16-relevamiento-capturas/app-mapa-tablero-haciendo.png) · [mapa-tablero-hechas](2026-10-16-relevamiento-capturas/app-mapa-tablero-hechas.png) · [mapa-tablero-scroll](2026-10-16-relevamiento-capturas/app-mapa-tablero-scroll.png)  
 *Diferencia:* Las pestañas Para hoy · Haciendo · Hechas, los contadores y la nota al pie («Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.») existen y coinciden. Difieren: el tablero no es una pantalla propia («Tu día» con «Volver»), el título es «Mi día» y no «Tu día», y la app agrega filtros por categoría y un campo «Anotar algo para hoy».  
-*Corrección:* Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita.  
+*Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): el tablero es pantalla propia, como en el mapa** («Tu día» con «Volver»). El resto (título «Tu día», filtros por categoría y «Anotar algo para hoy», que el mapa no cita) se decide al bajar la ficha.  
 *Vínculo:* C5 · F8
 
 **10 · `agenda` — Agenda** — **NO-VERIFICABLE** · NO-MEDIBLE  
@@ -157,7 +157,7 @@ Prototipo: [consent](2026-10-16-relevamiento-capturas/proto-mapa-consent.png) ·
 **22 · `caida` — Conexión caída** — **DIFERENTE · A** · DEVICE — **copy RESUELTO** (decisión del operador, 2026-10-16: gana la frase del código; se corrigió el mapa)  
 Prototipo: [caida](2026-10-16-relevamiento-capturas/proto-mapa-caida.png) · App: [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* La portada admite estar incompleta, como el mapa, pero el copy es otro: el mapa dice «faltan los cobros de hoy — Mercado Pago está caído» en una línea bajo el monto; la app dice «Se cayó la conexión con Mercado Pago: faltan los cobros de hoy, así que estos números pueden estar incompletos.» y agrega un segundo aviso de Google Calendar. Los montos de los tres cuadros se parten en dos líneas.  
-*Corrección aplicada:* el copy de Mercado Pago se alineó con la frase del código (prototipo, `specs/mobile-coherencia.md` y la nota del mockup 02; mismo criterio que la decisión 8); el corte de los montos (N1) quedó resuelto en #1297. *Sin decidir:* el segundo aviso de Google Calendar que la app agrega y el mapa no tiene.  
+*Corrección aplicada:* el copy de Mercado Pago se alineó con la frase del código (prototipo, `specs/mobile-coherencia.md` y la nota del mockup 02; mismo criterio que la decisión 8); el corte de los montos (N1) quedó resuelto en #1297. *Decidido (operador, 2026-10-16):* el segundo aviso de Google Calendar que la app agrega **se agrega al mapa**.  
 *Vínculo:* C3 · N1
 
 **23 · `preg` — Pregunta libre** — **NO-VERIFICABLE** · NO-MEDIBLE  
@@ -347,15 +347,15 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | # | Entrada | Qué hay que hacer |
 |---|---|---|
 | 1 | `ingresar` | Igualar la estructura del formulario al prototipo y agregar el aviso de sesión cerrada (el flujo de «sesión caída sola» ya va directo a este formulario, `EntradaSesion.tsx:25`). |
-| 2 | `base` | Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». |
+| 2 | `base` | **DECIDIDO (2026-10-16): gana el mapa.** Tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». Ficha pendiente. |
 | 3 | `esc` | Igualar título, orden y estilo de tiles (C1). Dejar R02 como está. |
 | 4 | `chat` | Mismo arreglo que R01: campo + mic chico siempre visibles al pie. |
-| 5 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
+| 5 | `tablero` | **DECIDIDO (2026-10-16): pantalla propia, como el mapa.** Título «Tu día» y «Volver»; filtros y «Anotar algo para hoy» a decidir al bajar la ficha. |
 | 6 | `grabando` | **RESUELTO (N8, 2026-10-16)** — la barra de grabación toma el lugar del botón de alta en la misma fila y el reloj ya no pisa al chevron. Capturas en N8. |
 | 7 | `bloqueado` | **RESUELTO (N8, 2026-10-16)** — fijado, los controles ocupan toda la fila con la onda ancha. Capturas en N8. |
 | 8 | `bi-refresh` | **RESUELTO (N2, 2026-10-16)** — el círculo nativo queda fuera de cuadro (`progressViewOffset`); sólo se ve «Actualizando…». Capturas en N2. |
 | 9 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
-| 10 | `caida` | **RESUELTO (2026-10-16)** — copy de Mercado Pago = frase del código (mapa actualizado) y montos en una línea (N1). Queda sin decidir el segundo aviso de Calendar. |
+| 10 | `caida` | **RESUELTO (2026-10-16)** — copy de Mercado Pago = frase del código (mapa actualizado) y montos en una línea (N1). **Segundo aviso de Google Calendar: DECIDIDO (2026-10-16) — se agrega al mapa** (falta editar el prototipo/mapa). |
 | 11 | `comousar` | Igualar contenedor y numeración. |
 | 12 | `soporte` | Agregar el clip; quitar el botón de voz grande si el mapa manda. |
 | 13 | `feedback` | Igualar estructura y posición del mes. |
@@ -469,7 +469,7 @@ Los mockups 01, 02, 03, 05, 06 y 08 se repasaron en las entradas de arranque, co
 
 - **PREGUNTA 7 → RESUELTA (operador, 2026-10-16):** «Volver» va arriba a la izquierda con «‹» (gana el prototipo); se cambió `MarcoGlass.tsx` y se verificó en device en dos pantallas.
 - **PREGUNTA 8 → RESUELTA (operador, 2026-10-16):** la frase del aviso de la card de gasto es la del código, «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.»; se corrigieron el mapa, el prototipo, el mockup 11 y `CONTEXT.md`.
-- La corrección más grande de la lista es la estructura de Mi día y el tablero (entradas `base` y `tablero`): es la **pregunta 4** del relevamiento previo.
+- La corrección más grande de la lista es la estructura de Mi día y el tablero (entradas `base` y `tablero`): es la **pregunta 4** del relevamiento previo — **RESUELTA (operador, 2026-10-16): gana el mapa** (tablero como pantalla propia «Tu día»); falta la ficha de implementación.
 
 ## 7. Criterio de terminado
 
