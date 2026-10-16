@@ -100,3 +100,53 @@ al lado de las reglas que ya existían para `*.sh`. Con eso el archivo en disco 
 las máquinas, el peaje de 180 bytes desaparece y la cifra del medidor deja de depender del checkout.
 Verificado por mecanismo (`git check-attr eol -- memoria/MEMORY.md` → `lf`) y por efecto (23777 de
 24000, rc 0). Podar 111 bytes habría dejado la causa viva y el próximo puntero la vuelve a pagar.
+
+
+---
+
+## Refuerzo 2026-10-15 — el EJE que la clave distinguía, colapsado DOS veces en el mismo archivo
+
+Mismo patrón, otro instrumento, y la segunda vez **justo después** de arreglar la primera.
+
+`contar-veredictos.py` cruza veredictos para cazar contradicciones. La clave de su corpus es
+`id·camino·plataforma` (`:2501`, disponible desde `515d50f6`) — o sea **ya distingue tres ejes**. Pero:
+
+1. **Eje `plataforma`, colapsado en la lectura.** `veredictos_por_id` hacía `clave.split("·")[0]` y
+   tiraba los otros dos. Resultado: **9 ids** (`afip apar bi-refresh clientes detalle hablar hitl
+   presu reveal`) reportados como contradicción siendo **web-`COHERENTE` vs mobile-`DESVÍO`** — o sea
+   acuerdo entre dos plataformas distintas. Arreglado de raíz en `6f978ba5` (#1269): conflictos
+   vigentes **13 → 4**, cifras idénticas, y los 4 que sobreviven son **intra-web**, el control positivo.
+
+2. **Eje `dimensión`, colapsado en el PARSEO — y lo encontré re-leyendo el reporte del propio fix.**
+   El brazo `tabla-partida` captura pares `(etiqueta, veredicto)` con `PARTIDA` (`:704-710`) y después
+   hace `hits.append((n, v, "tabla-partida", corr))` (`:1335`): **`et` se descarta en la línea
+   siguiente a capturarlo.** Por eso 3 ids (`esc`, `factura`, `soporte`) se reportan como documento
+   «que se contradice A SÍ MISMO», cuando su fila dice literalmente
+   `PARTIDO: contenido=COHERENTE · componente=DESVÍO` y su columna de veredicto dice `partido`
+   (`2026-09-29_cierre_frontend1-…_B1-13-ids-superficie-y-dimension.md:44-46`).
+
+**Lo que hace al #2 peor que al #1:** el reporte cierra con *«se le pide al autor que lo separe por
+dimensión»* — y el autor **ya lo separó**, en la celda, con el rótulo y todo. Un instrumento que pide
+trabajo ya hecho no sólo mide mal: **fabrica trabajo en otra sesión**, y lo hace con la autoridad de
+un gate. → [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+**La trampa fina, y es la mejor parte:** el docstring de
+`conflictos_internos_de_un_documento` (`:1853`) ya decidió **a propósito** no separar por el rótulo
+«PARTIDO», *«eso ataría el instrumento a una palabra que un autor puede no escribir. Se separa por la
+ESTRUCTURA del dato, que siempre está»*. El razonamiento es correcto **y la estructura existe**: los
+pares `contenido=X · componente=Y` son estructura, no una palabra suelta. La decisión bien fundada de
+no usar el rótulo **tapó** que había un camino estructural disponible, y el comentario que explica por
+qué no se hizo lo barato apagó la búsqueda de lo correcto. → [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]
+
+**El test que caza la clase, y sirve para los dos:** por cada eje que la clave del corpus distingue,
+preguntar *¿la función que decide vuelve a verlo, o lo colapsó una capa antes?* Grep concreto:
+`split(SEP)[0]` y cualquier `append` que reciba menos campos de los que la línea de arriba capturó.
+Ninguno de los dos defectos se ve en el resultado —las cifras eran correctas— sólo en el **ámbito**
+sobre el que se decide.
+
+**Estado (declarado, no silenciado):** el #2 queda **medido y sin arreglar**. No mueve ninguna cifra
+del sprint, y propagar `et` hasta el contraste toca 5 desempaques `for n, v, f, c in hits`
+(`:1596 :1750 :2436 :2478` + comprensiones por índice), o sea no es el cambio de una línea que
+parece. **Dueño: planificación. Disparador: el primer PR que vuelva a tocar el contraste** — no antes,
+porque la regla del goal manda escribir el hallazgo y seguir, no abrir un PR fuera del sujeto
+(forense 08/10: 64 PRs en un día, 4 del backlog firmado). → [[la-cita-de-procedencia-muere-en-el-merge]]
