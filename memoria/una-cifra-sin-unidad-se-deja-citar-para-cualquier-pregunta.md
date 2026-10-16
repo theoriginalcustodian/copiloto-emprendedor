@@ -174,3 +174,55 @@ alguien va a copiar y pegar?»**. Si la etiqueta y la cifra se pueden separar co
 Relacionado: [[el-instrumento-versionado-difiere-por-rama]] (ahi la variable era el *script*, aca el
 *arbol* — la medicion honesta fija una y mueve la otra) · [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
 · [[la-cita-de-procedencia-muere-en-el-merge]] · [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+## Refuerzo 2026-10-16 — «el gate tardaba 23 min»: la unidad que falta es la PLATAFORMA
+
+Arreglé el gate de lint en dos iteraciones y reporté **«1399 s → ~12 min»**. La cifra es cierta y el
+sujeto estaba nombrado en el commit (`scripts/ci/lint.sh`, corrido a mano), pero le falta la unidad
+que más importa: **en qué plataforma**. Medido después de mergear, sobre el job `lint` de GitHub
+Actions en los PRs previos a cualquiera de los dos fixes:
+
+```
+ANTES   #1270 2m04s · #1272 2m18s · #1273 2m24s · #1271 2m47s · #1269 2m53s
+DESPUES #1289 2m52s · #1291 2m37s
+```
+
+**En CI el lint nunca tardó 23 minutos**, y mis dos fixes no lo movieron fuera de esa varianza. Los
+1399 s son del gate **local en Windows**, que es otro sujeto con otra física: el fork cuesta ~15-20 ms
+(≈1 ms en Linux) y `psycopg2.connect(None)` tarda **4,07 s** (en Linux falla al instante, por socket
+unix). Las dos causas que encontré son reales y el trabajo rinde donde se paga —el `pre-push` corre
+esto en cada push y los crones corren `vigilancia-check` cada 3 min—, pero **«el gate tardaba 23 min»
+se va a citar para responder «¿por qué tarda el CI?», y para esa pregunta es falso**.
+
+**La regla, afilada:** una cifra de rendimiento necesita la plataforma en la misma línea que el
+número, no en el párrafo que la rodea. «El gate tardaba 23 min» y «el gate local en Windows tardaba
+23 min; en CI Linux, 2 min siempre» son la misma medición y afirmaciones distintas — y la primera es
+la que sobrevive al copiado.
+
+**Lo que lo hubiera cazado antes de reportar:** medir el MISMO instrumento en las dos plataformas
+antes de escribir la mejora, que acá costaba un `gh pr checks` de un PR viejo. La asimetría no era
+sospechable desde la máquina: en Windows el síntoma era enorme y en Linux no existía.
+
+### La cifra corregida, y por qué la que publiqué no era defendible
+
+En el PR #1289 publiqué **«corpus 1313 → 650 s, −50,5%»**. No es defendible, y el defecto no es el
+número: es el **instrumento**. Esa cifra sale de **una** corrida de `tests-coordinacion.sh`, y el
+mismo corpus dio **650 / 752 / 677 s** en tres corridas del mismo día. Su dispersión (±50 s) es del
+orden de la mejora que yo quería medir con él (108 s), así que una corrida no puede separar la señal
+del ruido — y la que cité era, previsiblemente, la más favorable de las tres.
+
+Lo que sí es citable son las **partes**, cada una medida más de una vez y con un control propio:
+
+| | antes | ahora | control |
+|---|---|---|---|
+| `lint.sh` completo (el sujeto original) | 1399,9 s | **788,2 s (−43,7%)** | misma corrida a mano, mismo instrumento |
+| `test-smoke-veredicto.sh` | 110,9 s | **2,3 s** | salida del smoke equivalente: 2 líneas de 44 |
+| corrida del smoke bajo stub | 6,79 s | **0,12 s** | 3 corridas |
+| `goal-barrido.sh` | 9,61 s | **0,45 s** | salida `--tsv` byte-idéntica |
+| `vigilancia-check` (fixture / real) | 11,5 / 67 s | **1,6 / 18,9 s** | 2 corridas cada uno |
+
+**La regla:** antes de publicar un porcentaje, medí la **varianza del instrumento** con el que lo
+sacás. Si no corriste el medidor dos veces sobre el mismo sujeto, no sabés si tu mejora cabe dentro
+de su ruido — y una sola corrida siempre produce un número que *parece* una medición. Donde la mejora
+es grande frente al ruido (110,9 → 2,3 s) una corrida basta; donde es del tamaño del ruido, hay que
+cambiar de sujeto: medir la parte que tocaste, o el total que de verdad importa.
