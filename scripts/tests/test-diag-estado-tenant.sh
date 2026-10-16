@@ -54,7 +54,42 @@ for args in "" "--email a@b.com --cliente-id 48a9d75f-124b-4f9d-af8d-a73e2311bbb
     || malo "'${args:-<sin selector>}' dio exit=$codigo"
 done
 
-echo "== 3. ALLOWLIST del selector: lo hostil se RECHAZA, no se escapa =="
+echo "== 3. NEWLINE EMBEBIDO: el agujero que este test NO miraba =="
+# Lo encontró una revisión de seguridad el 2026-10-16, sobre la v1 de este script — que ya pasaba
+# los 19 controles de acá. El validador era `grep -qE '^…$'`, y grep evalúa **línea por línea**:
+# sale 0 si ALGUNA línea matchea. Así, `$'a@b.com\n'"' or 1=1--"` pasaba con su primera línea y el
+# payload entraba al SQL (reproducido: el dry-run emitía `' or 1=1--`, en los DOS selectores).
+# Yo había probado nueve inyecciones y ninguna traía un newline: el control positivo cubrió la mitad
+# que sospechaba y la otra quedó muda. Este caso es esa otra mitad.
+for sel in "--email:a@b.com" "--cliente-id:48a9d75f-124b-4f9d-af8d-a73e2311bbbd"; do
+  flag="${sel%%:*}"; base="${sel#*:}"
+  payload="$base"$'\n'"' or 1=1--"
+  set +e; out="$(bash "$ORIGINAL" "$flag" "$payload" --dry-run 2>&1)"; codigo=$?; set -e
+  if [ "$codigo" = "2" ] && ! echo "$out" | grep -q "or 1=1"; then
+    ok "$flag con newline embebido ⇒ exit 2 y el payload no llega al SQL"
+  else
+    malo "$flag con newline: exit=$codigo y el SQL emitido contiene el payload — INYECTABLE"
+  fi
+done
+# Y el \r solo, que algunos validadores tratan distinto del \n.
+set +e; out="$(bash "$ORIGINAL" --email "a@b.com"$'\r'"' or 1=1--" --dry-run 2>&1)"; codigo=$?; set -e
+[ "$codigo" = "2" ] && ok "--email con retorno de carro ⇒ exit 2" \
+  || malo "--email con retorno de carro: exit=$codigo"
+
+echo "== 4. el selector NO se interpola en el SQL (es variable de psql) =="
+# La barrera que no depende de que el validador sea perfecto: el valor viaja como `-v sel=…` y en el
+# SQL figura `:'sel'`. Si alguien vuelve a incrustarlo en la cadena, acá se cae — y ese es el punto:
+# el control no mide el validador, mide que el valor nunca sea texto SQL.
+sql_lineas="$(bash "$ORIGINAL" --email "$EMAIL_OK" --dry-run 2>&1 | grep -E '^  ')"
+if echo "$sql_lineas" | grep -q "$EMAIL_OK"; then
+  malo "el selector está INCRUSTADO en el SQL: volvió la clase entera de inyección"
+else
+  ok "el selector no aparece en ninguna línea de SQL"
+fi
+echo "$sql_lineas" | grep -q ":'sel'" && ok "el SQL referencia la variable :'sel'" \
+  || malo "el SQL ya no usa :'sel': el selector volvió a ser texto"
+
+echo "== 5. ALLOWLIST del selector: lo hostil se RECHAZA, no se escapa =="
 # Cada uno llega como UN solo argv (entre comillas). Sin las comillas el shell lo parte y el script
 # rechaza por «argumento no reconocido» — un verde que NO prueba la allowlist, que es el control que
 # acá importa.
@@ -69,7 +104,7 @@ for malote in "no-es-uuid" "48a9d75f-124b-4f9d-af8d-a73e2311bbbd'" "../../etc/pa
     || malo "cliente-id hostil ACEPTADO (exit=$codigo): <$malote>"
 done
 
-echo "== 4. CONTROL POSITIVO del guard read-only: un verbo de escritura tiene que cortar (exit 3) =="
+echo "== 6. CONTROL POSITIVO del guard read-only: un verbo de escritura tiene que cortar (exit 3) =="
 mutar "escritura.sh" "union all select 'afip_perfil: filas'" \
   "union all select 'hostil', (select count(*) from x where 1=1); delete from uc_factory.afip_credentials --'"
 if [ ! -s "$TMP/escritura.sh" ]; then
@@ -80,7 +115,7 @@ else
     || malo "el guard read-only NO disparó: exit=$codigo. El SQL hostil habría salido"
 fi
 
-echo "== 5. CONTROL POSITIVO del guard de host: una constante con forma de flag tiene que cortar =="
+echo "== 7. CONTROL POSITIVO del guard de host: una constante con forma de flag tiene que cortar =="
 # `prod_psql` ya pone `--` antes del host, pero el guard existe para cortar ANTES y con un mensaje
 # propio. Un guard que nunca se vio disparar no se sabe si existe.
 mutar "host-malo.sh" "readonly HOST='unreal-copilot'" "readonly HOST='-oProxyCommand=touch /tmp/pwned'"
@@ -91,7 +126,7 @@ else
   malo "el guard de host NO disparó: exit=$codigo. Salida: ${salida:0:160}"
 fi
 
-echo "== 6. el SQL NUNCA nombra la credencial fiscal (cert_enc / key_enc) =="
+echo "== 8. el SQL NUNCA nombra la credencial fiscal (cert_enc / key_enc) =="
 # Se mide sobre el SQL que el script REALMENTE emitiría, no sobre el fuente: un comentario que
 # mencione `cert_enc` no es una fuga, y una columna agregada a mano sí lo sería.
 sql="$(bash "$ORIGINAL" --email "$EMAIL_OK" --dry-run 2>&1)"
@@ -113,7 +148,7 @@ fi
 echo "$sql" | grep -q "right(cuit, 3)" && ok "el CUIT se emite enmascarado (right(cuit,3))" \
   || malo "el CUIT ya no está enmascarado"
 
-echo "== 7. el CONTROL de RLS sigue en el reporte (sin él, un 0 miente) =="
+echo "== 9. el CONTROL de RLS sigue en el reporte (sin él, un 0 miente) =="
 # Sin declarar el tenant, la policy `cliente_id = current_cliente_id()` no matchea y el count da 0
 # — indistinguible de «no tiene ARCA». El reporte abre contando SIN declarar tenant justamente para
 # que ese riesgo quede visible. Si alguien poda ese fragmento, el falso negativo vuelve en silencio.
@@ -128,10 +163,22 @@ else
   malo "el reporte ya no filtra explícitamente por tenant: si RLS no aplica, cuenta de TODOS"
 fi
 
+echo "== 10. la sesión remota abre en SÓLO-LECTURA del lado del motor =="
+# `default_transaction_read_only=on` es la barrera que no depende de enumerar verbos: el guard de
+# §6 es un grep y sólo caza lo que lista, mientras que esto lo rechaza Postgres aunque el grep no lo
+# haya visto. Se mide sobre el comando que `prod_psql` armaría, con un ssh falso que lo captura.
+cmd_remoto="$(
+  cd "$RAIZ" && source scripts/lib/psql-prod.sh
+  ssh() { printf '%s' "${@: -1}"; }
+  prod_psql "unreal-copilot" "uc-copiloto-web.service" -v "sel=x" "select 1"
+)"
+echo "$cmd_remoto" | grep -q "default_transaction_read_only=on"   && ok "el comando remoto abre la sesión read-only"   || malo "falta default_transaction_read_only: el read-only queda sólo en el grep de verbos"
+echo "$cmd_remoto" | grep -q -- "-v 'sel=x'"   && ok "el selector viaja como variable de psql (-v), no como texto SQL"   || malo "el -v no llegó al comando remoto: el selector volvería a interpolarse"
+
 echo
 echo "--- CONTROL: $vistos control(es) ejercitados ---"
-if [ "$vistos" -lt 15 ]; then
-  echo "ROJO: sólo $vistos controles corrieron; esperaba ≥15. Un control que no mira nunca falla."
+if [ "$vistos" -lt 24 ]; then
+  echo "ROJO: sólo $vistos controles corrieron; esperaba ≥24. Un control que no mira nunca falla."
   exit 1
 fi
 if [ "$fallos" = "0" ]; then

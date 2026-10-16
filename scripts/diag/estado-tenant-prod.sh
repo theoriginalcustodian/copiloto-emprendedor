@@ -83,22 +83,38 @@ fi
 
 # Allowlist ESTRICTA. Se rechaza lo que no encaja; no se escapa. Un selector con comilla simple, con
 # espacio o con punto y coma no se neutraliza: no entra.
+#
+# Se valida con `[[ =~ ]]` de bash y NO con `grep -qE '^…$'`. La v1 usaba grep y era INYECTABLE:
+# grep evalúa **línea por línea** y sale 0 si ALGUNA línea matchea, así que
+#   --email $'a@b.com\n'"' or 1=1--"
+# pasaba el validador con su primera línea y metía el payload con la segunda. Reproducido el
+# 2026-10-16: el SQL emitido contenía `' or 1=1--`, en los DOS selectores. Es la misma clase de
+# defecto que `deploy/worker/provision_tables.py` documenta para `re.match` vs `re.fullmatch`, y
+# reapareció porque el ancla `^…$` *parece* anclar el valor entero. El regex de bash no tiene
+# semántica de línea, y `prod_guard_una_linea` rechaza el newline con un mensaje propio.
+#
+# Y aun así el valor NO se interpola en el SQL: viaja como variable de psql (`-v sel=…`, referenciada
+# como `:'sel'`). Ésa es la barrera que no depende de que el validador sea perfecto.
 if [ -n "$CID" ]; then
-  if ! echo "$CID" | grep -qiE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+  prod_guard_una_linea "$CID" "--cliente-id" || exit $?
+  if [[ ! $CID =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
     echo "ABORTA: --cliente-id no tiene forma de UUID: '$CID'" >&2; exit 2
   fi
-  SELECTOR_SQL="'${CID}'"
+  SELECTOR_VALOR="$CID"
+  SELECTOR_SQL=":'sel'"
   COMO="cliente_id=${CID}"
 else
+  prod_guard_una_linea "$EMAIL" "--email" || exit $?
   # Sin comillas, sin espacios, sin metacaracteres: sólo lo que un email realmente necesita.
-  if ! echo "$EMAIL" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+  if [[ ! $EMAIL =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
     echo "ABORTA: --email no tiene forma de email o trae caracteres no permitidos: '$EMAIL'" >&2
     exit 2
   fi
   if [ "${#EMAIL}" -gt 254 ]; then
     echo "ABORTA: --email demasiado largo (${#EMAIL} caracteres)" >&2; exit 2
   fi
-  SELECTOR_SQL="(select cliente_id::text from uc_factory.tenants where email = '${EMAIL}')"
+  SELECTOR_VALOR="$EMAIL"
+  SELECTOR_SQL="(select cliente_id::text from uc_factory.tenants where email = :'sel')"
   COMO="email=${EMAIL}"
 fi
 
@@ -147,6 +163,10 @@ prod_guard_readonly "${SQL_CONTROL} ${SQL_DECLARAR} ${SQL_REPORTE}" || exit $?
 
 if [ "$DRY" = "1" ]; then
   echo "[dry-run] host=${HOST} unit=${UNIT} selector=${COMO}"
+  # El selector se imprime APARTE y el SQL muestra `:'sel'`, que es exactamente lo que se envía: el
+  # valor no es parte del texto SQL. Si alguna vez el dry-run vuelve a mostrar el valor INCRUSTADO
+  # en el SQL, eso significa que alguien deshizo el fix de inyección.
+  echo "[dry-run] variable psql: sel=<${SELECTOR_VALOR}>  (viaja como -v, no como texto SQL)"
   echo "[dry-run] 1/3 control de RLS:"; echo "  ${SQL_CONTROL}"
   echo "[dry-run] 2/3 declarar tenant:"; echo "  ${SQL_DECLARAR}"
   echo "[dry-run] 3/3 reporte:";         echo "  ${SQL_REPORTE}"
@@ -154,4 +174,5 @@ if [ "$DRY" = "1" ]; then
 fi
 
 echo "== estado del tenant en la instancia viva (${COMO}) =="
-prod_psql "$HOST" "$UNIT" "$SQL_CONTROL" "$SQL_DECLARAR" "$SQL_REPORTE"
+prod_psql "$HOST" "$UNIT" -v "sel=${SELECTOR_VALOR}" \
+  "$SQL_CONTROL" "$SQL_DECLARAR" "$SQL_REPORTE"
