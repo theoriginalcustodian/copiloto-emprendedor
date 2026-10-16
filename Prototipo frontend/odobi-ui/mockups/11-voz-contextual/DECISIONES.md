@@ -16,7 +16,7 @@ Creado el 16/08/2026. Dibuja el **paso 5** del plan de `audit/ANALISIS-PROTOTIPO
 | La función durante la grabación | **Queda entera visible** (rev. 24/08) | Es la diferencia entre *"estoy dictando un gasto"* y *"estoy hablando con Odobi"*. El velo al 96% ya lo buscaba dejando el fondo insinuado; **no tapar nada lo consigue del todo** | Velar la pantalla: se pierde la señal de contexto justo cuando más importa |
 | Dónde aterriza el resultado | **La card aparece ahí mismo**, como hoja sobre la lista | Ves el efecto donde ya estabas mirando; al guardar, la lista y el resumen de atrás se actualizan solos | Un receipt en el chat: obliga a viajar para confirmar que el dato llegó |
 | La card | **Formulario real precargado**, con Editá/Cambiá por campo | Mecanismo canónico del repo: *"nunca un sí/no ciego, porque un error de transcripción sólo se corrige editando"*. Y es más crítico de lo que parece: **no hay editar ni borrar después de guardar** (contrato §12) — la card es el único control de calidad del dato | Confirmación sí/no: deja pasar errores de transcripción sin salida posible |
-| "Todavía no se guardó nada" | **Texto fijo en la card** | **Regla dura del producto**, no cortesía: mientras la card está visible está prohibido decir "listo" o "lo anoté" (`CONTEXT.md`) | Omitirlo: la card se parece demasiado a un registro ya hecho |
+| "Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté." | **Texto fijo en la card** | **Regla dura del producto**, no cortesía: mientras la card está visible está prohibido decir "listo" o "lo anoté" (`CONTEXT.md`) | Omitirlo: la card se parece demasiado a un registro ya hecho |
 | **La card oscurece el fondo; grabar no** | Card con velo oscuro al 28%; grabar sin velo alguno (rev. 24/08) | **La diferencia no es estética: es de rol.** En la card hay una **decisión pendiente** y el foco tiene que estar en ella (es modal). Mientras grabás sólo se oye — sacarte el contexto no aporta nada, y desde el 24/08 el contraste entre los dos momentos es total | Usar el mismo tratamiento para las dos: la card dejaría de leerse como "esto espera algo de vos" |
 | Origen "por voz" en la lista | **Visible en cada gasto** | El campo `origen` existe en el repo (voz · manual · foto · derivado · mercadopago · factura). Mostrarlo **cierra el círculo**: ves que lo que dictaste llegó y por dónde entró | Ocultarlo: el usuario no tiene forma de confirmar que su dictado terminó donde debía |
 | Las barras de categoría | **Arena, no terracota** | Son dato, no algo que se toque (Decisión B) | — |
@@ -74,7 +74,7 @@ la card aterriza ahí. Lo que cambió es cómo se empieza a hablar.
 
 ⚠️ **La card es una sola pieza que cambia de contenido** según de dónde dictaste (`CARDS` en el
 prototipo): Gastos pide monto/categoría/proveedor, Clientes pide nombre/teléfono/CUIT. Lo que no
-cambia nunca es el contrato — **"Todavía no se guardó nada"**.
+cambia nunca es el contrato — **"Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté."**.
 
 ⚠️ **Lo que este mockup sigue sin cerrar:** sólo Gastos tiene la lista dibujada, así que guardar
 desde las otras funciones cierra la card sin mostrar el resultado. Es carencia del prototipo, no

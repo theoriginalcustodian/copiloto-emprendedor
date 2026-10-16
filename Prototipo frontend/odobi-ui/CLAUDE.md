@@ -720,7 +720,7 @@ alcanzaba. El de cancelar sigue en 70 px, sobre el otro eje.
   sea una función porque el repo la define como **BI conversacional**: responde, no registra, y no
   tiene dónde aterrizar una card.
 - La card es **una sola pieza que cambia de contenido** según de dónde dictaste (`CARDS` en el
-  prototipo). Lo que no cambia nunca es el contrato: **"Todavía no se guardó nada"**.
+  prototipo). Lo que no cambia nunca es el contrato: **"Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté."**.
 - **El título NOMBRA el registro; el botón conserva el VERBO del repo** (Martin, 24/08).
   Deroga *"Esto es lo que entendí"*, que describía cómo llegó el dato en vez de decir qué
   se va a guardar. **Un título nombra, un botón actúa** — así cada elemento hace un solo
@@ -751,7 +751,7 @@ sigue sin abrir el chat y la card sigue aterrizando en la propia función.
 - La puerta de voz de una función **es el mismo composer**, con placeholder y destino de esa función. ⚠️ El rótulo "Estás en Gastos" quedó **derogado** el 19/08 (ver arriba): la promesa la lleva el placeholder.
 - **Dictar ahí NO abre el chat** (perdería el contexto que la pantalla resuelve) y **la card aterriza en la propia función**.
 - **La card oscurece el fondo; grabar no.** No es estética: en la card hay una decisión pendiente (es modal), mientras grabás sólo se oye. Desde el 24/08 grabar directamente no tapa nada.
-- La card es el **formulario real precargado** (mecanismo canónico del repo, 24/07) y lleva **"Todavía no se guardó nada"** — regla dura: prohibido decir "listo" con la card visible.
+- La card es el **formulario real precargado** (mecanismo canónico del repo, 24/07) y lleva **"Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté."** — regla dura: prohibido decir "listo" con la card visible.
 
 - Vigente además: crítica integral 26/07 (3 critical · 7 major · 4 minor) — C1 rol del chat, C2 datos del lane tranquilo del 09, M2 unificar datacard/portada, M4 "Mi día" vs "esta semana", M5 saludo display, m1 wordmark 04, m2 tabbar 04, m3 promo sin cierre, m4 placeholder.
 
