@@ -62,7 +62,7 @@ Prototipo: [entrada](2026-10-16-relevamiento-capturas/proto-mapa-entrada.png) ·
 **06 · `base` — Mi día** — **DIFERENTE · A** · DEVICE  
 Prototipo: [base](2026-10-16-relevamiento-capturas/proto-mapa-base.png) · App: [midia-reposo](2026-10-16-relevamiento-capturas/app-midia-reposo.png) · [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* Mi día en reposo: el prototipo muestra la cabecera dentro de una tarjeta («Odobi» + fecha) con avatar «M», la caja con el chip «−18% vs julio», la lista «Ahora» con la agenda y «Para hoy 4 cosas · Ver tablero ›». La app dibuja «Odobi» suelto, el chip de fecha, **el tablero embebido** (pestañas Para hoy / Haciendo / Hechas, filtros, «Anotar algo para hoy») y no tiene «Ver tablero ›» ni la tarjeta de cabecera. Además, los tres cuadros de la portada parten el monto en dos líneas (`$101.234,` / `00`): ver N1.  
-*Corrección:* Decidir una sola estructura (pregunta 7). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día».  
+*Corrección:* Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día».  
 *Vínculo:* C1 · C3 · C5 · N1
 
 **07 · `esc` — Funciones** — **DIFERENTE · A** · DEVICE  
@@ -83,7 +83,7 @@ Prototipo: [chat](2026-10-16-relevamiento-capturas/proto-mapa-chat.png) · App: 
 **09 · `tablero` — Tablero** — **DIFERENTE · A** · DEVICE  
 Prototipo: [tablero](2026-10-16-relevamiento-capturas/proto-mapa-tablero.png) · App: [mapa-tablero-haciendo](2026-10-16-relevamiento-capturas/app-mapa-tablero-haciendo.png) · [mapa-tablero-hechas](2026-10-16-relevamiento-capturas/app-mapa-tablero-hechas.png) · [mapa-tablero-scroll](2026-10-16-relevamiento-capturas/app-mapa-tablero-scroll.png)  
 *Diferencia:* Las pestañas Para hoy · Haciendo · Hechas, los contadores y la nota al pie («Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.») existen y coinciden. Difieren: el tablero no es una pantalla propia («Tu día» con «Volver»), el título es «Mi día» y no «Tu día», y la app agrega filtros por categoría y un campo «Anotar algo para hoy».  
-*Corrección:* Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 7); el resto es copy y filtros extra sin cita.  
+*Corrección:* Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita.  
 *Vínculo:* C5 · F8
 
 **10 · `agenda` — Agenda** — **NO-VERIFICABLE** · NO-MEDIBLE  
@@ -347,10 +347,10 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | # | Entrada | Qué hay que hacer |
 |---|---|---|
 | 1 | `ingresar` | Igualar la estructura del formulario al prototipo y agregar el aviso de sesión cerrada (el flujo de «sesión caída sola» ya va directo a este formulario, `EntradaSesion.tsx:25`). |
-| 2 | `base` | Decidir una sola estructura (pregunta 7). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». |
+| 2 | `base` | Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». |
 | 3 | `esc` | Igualar título, orden y estilo de tiles (C1). Dejar R02 como está. |
 | 4 | `chat` | Mismo arreglo que R01: campo + mic chico siempre visibles al pie. |
-| 5 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 7); el resto es copy y filtros extra sin cita. |
+| 5 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
 | 6 | `bi-refresh` | Ocultar el indicador nativo del `RefreshControl` (color transparente) y dejar la línea «Actualizando…». |
 | 7 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
 | 8 | `caida` | Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1). |
@@ -462,11 +462,11 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 
 Los mockups 01, 02, 03, 05, 06 y 08 se repasaron en las entradas de arranque, consent, chat, facturación, presupuestos y plan; sus decisiones que dependen de acciones reales están en la sección 3.3. El mockup 08 (plan y límites) quedó retirado por DEC-8.
 
-## 6. Preguntas nuevas para el operador
+## 6. Preguntas para el operador (siguen la numeración del relevamiento previo)
 
-- **PREGUNTA 7 →** Mi día: el mapa tiene una portada con tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día»; la app embebe el tablero en Mi día con filtros y «Anotar algo para hoy». ¿Cuál es la estructura que manda? Es la corrección más grande de la lista (entradas `base`, `tablero`).
-- **PREGUNTA 8 →** «Volver» va a la derecha y sin chevron en todas las funciones (`MarcoGlass.tsx`); el mockup 12 lo decidió a la izquierda con chevron. ¿Se mueve o se registra la derogación?
-- **PREGUNTA 9 →** La frase del aviso de la card de gasto: «Todavía no se guardó nada.» (mapa y `CONTEXT.md`) o «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (app).
+- **PREGUNTA 7 →** «Volver» va a la derecha y sin chevron en todas las funciones (`MarcoGlass.tsx`); el mockup 12 lo decidió a la izquierda con chevron. ¿Se mueve o se registra la derogación?
+- **PREGUNTA 8 →** La frase del aviso de la card de gasto: «Todavía no se guardó nada.» (mapa y `CONTEXT.md`) o «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (app).
+- La corrección más grande de la lista es la estructura de Mi día y el tablero (entradas `base` y `tablero`): es la **pregunta 4** del relevamiento previo.
 
 ## 7. Criterio de terminado
 
