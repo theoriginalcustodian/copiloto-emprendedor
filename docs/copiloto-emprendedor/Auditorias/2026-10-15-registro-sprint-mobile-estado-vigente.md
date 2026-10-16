@@ -28,9 +28,14 @@ Citar una por la otra es el error más repetido del sprint. Ninguna de las dos e
 | **Pregunta** | ¿cada una de las 54 pantallas `spec` tiene un **veredicto medido** (COHERENTE / DESVÍO / NO_MEDIBLE…)? | ¿cada fila del mapeo **cumple su DoD**, el que su propio contrato le escribió? |
 | **Instrumento** | `scripts/evidencia/contar-veredictos.py` | `scripts/evidencia/medir-mapeo-implementacion.py` |
 | **Corpus** | `coordinacion/` (el buzón) | `docs/copiloto-emprendedor/` |
-| **Cifra vigente** | **web 54/54 (100%)** · **mobile 53/54** | **53/54 (98%)** cumplen su DoD |
-| **Letra chica** | web está **acotada por `DEC-14`** (criterio 3 acotado a web, sprint cerrado el 08/10). De los 54 web, **9 sin comparación**; de los 53 mobile, **13 sin comparación** — «medida» no es «comparada». | **47/54 (87%)** están cerradas **en código**; las otras 6 cumplen por **enmienda fundada**. |
-| **Lo que falta** | `(home)` es el **único** id sin veredicto mobile. | `soporte` es la **única** `PENDIENTE-DECLARADA`. |
+| **Cifra vigente** | **web 54/54 (100%)** · **mobile 53/54** | **54/54 (100%)** cumplen su DoD ✅ @`2741fe19` |
+| **Letra chica** | web está **acotada por `DEC-14`** (criterio 3 acotado a web, sprint cerrado el 08/10). De los 54 web, **9 sin comparación**; de los 53 mobile, **13 sin comparación** — «medida» no es «comparada». | **48/54 (88%)** están cerradas **en código**; las otras 6 cumplen por **enmienda fundada**. |
+| **Lo que falta** | `(home)` es el **único** id sin veredicto mobile. | **Nada — `PENDIENTE-DECLARADA` 0/54.** |
+
+
+> ✅ **La columna del mapeo cerró el 2026-10-15 23:5x: de `53/54` a `54/54`, y `PENDIENTE-DECLARADA` de 1 a 0.** La única que faltaba era **`soporte`**, y no le faltaba código: su única divergencia era un **`D ⛓`** — una decisión A/B/C del operador sobre el dictado por función — y **esa decisión ya estaba tomada** desde ese mismo día, escrita en **otro documento**. O sea que la ficha esperaba algo que ya existía: el destrabe fue **relayearla**, no trabajar ([[sesion-parada-la-respuesta-existe-pero-enterrada]]). FE2 la tomó y la cerró en minutos (#1281, `2741fe19`). **La cifra anterior queda dicha y no borrada:** era `53/54 (98%)` con `47/54` en código, medida @`410250ec`.
+>
+> ⚠️ **Y la columna del criterio 3 NO se movió con esto**: su `53/54` de mobile sigue siendo el techo por `(home)`, que depende de **Google Calendar conectado** — OAuth externo, frente abierto, disparador **afuera** de las tres sesiones. `soporte` pasó de `D` a `E` en el **mapeo**; mover la otra columna por este merge habría sido citar una cifra por la otra, que es el error que esta sección entera existe para frenar.
 
 **`(home)`** ya estaba cerrada por enmienda del lado del mapeo, y su historia está en el comentario de
 `MEDICIONES_DECLARADAS`: nadie la había medido nunca y **no por olvido** — su id era ilegible para el
