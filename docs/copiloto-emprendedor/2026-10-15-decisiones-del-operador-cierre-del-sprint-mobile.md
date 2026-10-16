@@ -42,11 +42,15 @@ El hueco **no se borra: se declara** en el `Falta:` de cada ficha, que queda com
 | `SM-E3` | `POST /auth/cambiar-email` sigue sin camino de usuario | su DoD es **«cada una clasificada explícitamente»**, y las 5 lo están: 4 cableadas con dueño y pantalla, y ésta clasificada como «espera SMTP» — que es `SM-C5`, diferido en §3. Código completo y device 7/7 medido el 15-10 sobre prod `72b85cba` |
 | `SM-F2` | 14 ids sin comparar en mobile | 6 fiscales + `onb-cumplida` son `NO_MEDIBLE` con el canónico (perfil fiscal, MP+Google); el resto no tiene frente propio. El operador declaró que **las no medibles cierran declarando el hueco** |
 | `SM-F3` | `onb-cumplida` | exige Mercado Pago **y** Google conectados en la cuenta, y el canónico no los tiene. Cambiar el usuario canónico es MAYOR y el operador lo dejó a fuego |
+| `SM-D1` | evidencia de device de las 2 `choices` de confirmación elegidas y del artefacto post-confirmación con su enlace | **se agregó el 2026-10-15 a las 23:4x, después de que la medición existiera** (§2 la daba por medible y §5 la listaba como «no depende del operador»). Medida en device por frontend2 — `RF8T318RN9T`, prod `2e7d2af5`, bundle de `origin/main` `9123bf52`—: **`NO_MEDIBLE`**, y la causa es la **misma de `SM-F3`**: el canónico no tiene **ninguna** app externa conectada (Gmail contesta «no está conectado» en el chat; MP y Google Calendar caídos en Mi día), y las acciones que piden confirmación con `choices` son justamente las de herramientas externas, así que el agente responde «conectá X» antes de proponer nada. Recorrido el hilo completo del canónico (15:34→16:40): **cero** filas con el par Confirmar/Cancelar. Cierra por la regla **§4.1**, sin fabricar el sustrato. Las otras 2 piezas del DoD enmendado (componente 3+ y canario invertido) ya están en main (`39818828`) |
 
 **Lectura que hice yo y que el operador puede refutar:** `SM-E3` la clasifiqué como cerrada por
 decisión y no como diferida, porque su DoD escrito pide *clasificar*, no *cablear todo*, y las cinco
 están clasificadas. Si el criterio era «hasta que cambiar-email tenga camino», entonces va a
 `DIFERIDO` junto con `SM-C5` y el alcance vivo baja a 24.
+
+**Segunda lectura mía, del mismo tipo y también refutable — `SM-D1`.** La decisión que la cierra es la **§4.1** («las casillas que no son medibles con el usuario canónico cierran declarando el hueco, no fabricando datos ni cambiando el canónico»), que el operador tomó el 2026-10-15 como **regla**, no como lista de fichas; la tabla de §2 era la asignación de los ids que ese día ya estaban medidos, y el `NO_MEDIBLE` de `SM-D1` llegó a las 22:20. Quien la aplicó a esta ficha fui yo, planificación, y lo escribo acá para que no se lea como una sexta decisión del operador: **la autoridad es suya, la subsunción es mía.** Las dos vías de refutación están abiertas y son las del `pedido_` que sigue vivo en el buzón: (a) conectar Gmail a una cuenta de prueba vía OAuth de Composio —lo único que vuelve medible la pieza— y la ficha **se reabre** con su DoD intacto; o (b) confirmar este cierre. Lo que **no** era una opción es sembrar el gate o conectar apps al canónico: eso es lo que §1 prohíbe y por lo que frontend2 paró en vez de forzarlo.
+
 
 ---
 
@@ -98,6 +102,19 @@ Medido con `python -I -X utf8 scripts/sprint-estado.py --pct --hoy 2026-10-15` s
 **Lo que falta para el 100% del alcance vivo son tres fichas, y ninguna depende del operador:**
 `SM-C2` (el formulario web no manda `invite_token`), `SM-D1` (device; el código ya está en main) y
 `SM-D8` (la capacidad existe, falta el test).
+
+### Re-medición del mismo día, 23:5x — qué pasó con esas tres
+
+Las tres cifras de arriba quedan **como fueron medidas** (`--hoy 2026-10-15`, 22/27): una cifra fechada no se reescribe, se vuelve a medir al lado. Al cierre del día, con los tres frentes de esa lista resueltos:
+
+| Cifra | Valor | Qué cambió |
+|---|---|---|
+| DoD completo | **19/27 = 70,4%** | entraron `SM-C2` (#1275/#1278 — el test del DoD ya existía y **el CI lo salteaba** por un `skipif` sin GoTrue de test; corrido en el VPS, 4/4) y `SM-D8` (#1276, el gemelo mobile del desglose con canario de 3 mutantes) |
+| + cerradas por decisión | **24/27 = 88,9%** | las 5 de §2 más `SM-D1`, que cierra por §4.1 con la medición de device de frontend2 |
+| Alcance vivo | **24/25 = 96,0%** | el denominador no se movió: siguen fuera las 2 `DIFERIDO` de §3 |
+
+**Por qué no es 25/25.** `SM-E3` quedó `CERRADO-POR-DECISION` y la propia §2 avisa que, si el criterio del operador era «hasta que cambiar-email tenga camino», va a `DIFERIDO` con `SM-C5` y el alcance vivo baja a 24 — o sea que el 96,0% es el techo **con la lectura conservadora**, no un hueco de trabajo sin hacer. Medido con `scripts/sprint-estado.py --pct` desde un pin de `origin/main`; el estado de cada ficha lo escribió el script, no una persona.
+
 
 ---
 
