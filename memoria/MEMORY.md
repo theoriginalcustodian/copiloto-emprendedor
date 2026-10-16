@@ -89,7 +89,6 @@
 - [📉🫥 El dato DEGENERADO imita la AUSENCIA del mecanismo](dato-degenerado-imita-ausencia-del-mecanismo.md) - N=1 se lee como N=0.
 - [🩹🎭 Un degradado PRUDENTE al caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda».
 - [🎲 Un instrumento INTERMITENTE fabrica una excusa](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - «es el flake» lava la próxima.
-- [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.
 - [🐕‍🦺 El watchdog ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra lo esperado.
 - [✂️ Pipear por `tail` BORRA la evidencia](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa la roja: archivo COMPLETO.
 - [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
@@ -156,6 +155,8 @@
 - [🪟↩️ Anclar multilínea sin medir el SEPARADOR: los `.md` son CRLF](anclar-texto-multilinea-sin-medir-el-separador-de-linea.md) - «0 coincidencias» ≠ cambió.
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
 - [🚪📤 Una orden de «no publicar» NO protege un archivo VERSIONADO](una-orden-de-no-publicar-no-protege-un-archivo-ya-versionado.md) — el PR iba por otra cosa.
+
+- [Relevamiento: pendientes de device](relevamiento-mapa-pendientes-device-plan-guardado.md) - 21 sin medir.
 
 ## 🏭 El producto - LEER antes de tocar
 - [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.
