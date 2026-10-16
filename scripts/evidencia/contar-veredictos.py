@@ -1910,11 +1910,54 @@ def contraste_de_veredictos(res):
     Separada de `main` porque el ABORT tiene que correr antes de la bifurcación de `--json` y la
     TABLA después: mezclarlas es lo que dejó el gate inerte en el único camino que se usa.
     """
+    # DOS indices del mismo dato: `por_id` es lo que se REPORTA (todas las emisiones del id, para
+    # que el lector vea la sucesion completa) y `por_par`/`sin_plat` es con lo que se DECIDE.
+    #
+    # 2026-10-15 - el cruce era por `id` solo, y con el sprint mobile midiendo los mismos 54 ids en
+    # la otra plataforma eso empezo a reportar como contradiccion lo que son dos superficies: `presu`
+    # COHERENTE en web (`matriz-web-re-medida`, con `plataforma: web` declarada) contra DESVIO en
+    # mobile (device, 2026-10-15). No es un falso positivo cualquiera: la clase dispara UNA VEZ POR
+    # ID a medida que el sprint mide mobile, y un gate que grita en el caso normal se desarma solo.
+    # El dato para distinguirlos ya estaba en la clave desde `515d50f6`; lo tiraba el parser.
+    #
+    # MEDIDO antes/despues sobre el mismo corpus, no razonado: la clase son 9 ids, los 2 que el gate
+    # reportaba como nuevos (`hablar`, `presu`) y 7 que el ratchet ya tenia DECLARADOS con una
+    # lectura (`afip`, `apar`, `bi-refresh`, `clientes`, `detalle`, `hitl`, `reveal`). Los 9 son
+    # web-COHERENTE contra mobile-DESVIO -- `detalle` al reves, web DESVIO contra mobile COHERENTE --
+    # y ninguno es intra-plataforma. Esas 7 declaraciones quedan huerfanas y el script lo dice solo,
+    # en `declaradas_sin_conflicto_vigente` (8 antes, 15 despues): el fix no las oculta, las expone.
+    #
+    # Lo que NO se afloja: una emision SIN plataforma declarada cruza contra TODAS las plataformas
+    # del id. No se sabe que superficie midio, asi que no se le puede conceder que hable de otra.
+    #
+    # CONTROL POSITIVO con dato real, no con fixture: tras el fix siguen disparando 4 conflictos
+    # (`card`, `esc`, `factura`, `soporte`) y los 4 son intra-plataforma web -- `card` entre dos
+    # documentos, y los otros tres con COHERENTE y DESVIO en el MISMO documento (`B1-13-ids`). La
+    # deteccion que importa queda intacta, incluida la contradiccion interna. (Escribi aca que
+    # `hablar` seguiria en conflicto «porque su COHERENTE del 2026-10-07 no declara plataforma»:
+    # era falso. El COHERENTE que aporta al cruce es el del lote B del 28/09, que declara
+    # `plataforma: web`. Lo dejo anotado porque el comentario se escribio como prediccion y la
+    # medicion lo refuto en el mismo turno.)
     por_id = {}
+    por_par = {}
+    sin_plat = {}
     for nombre, d in res["lotes"].items():
-        for i, vs in d.get("veredictos_por_id", {}).items():
-            for v in vs:
-                por_id.setdefault(i, {}).setdefault(v, []).append(nombre)
+        seg = d.get("veredictos_por_id_plataforma")
+        if seg:
+            for i, mapa_plat in seg.items():
+                for plat, vs in mapa_plat.items():
+                    for v in vs:
+                        por_id.setdefault(i, {}).setdefault(v, []).append(nombre)
+                        destino = (sin_plat.setdefault(i, {}) if plat == SIN_PLATAFORMA
+                                   else por_par.setdefault((i, plat), {}))
+                        destino.setdefault(v, []).append(nombre)
+        else:
+            # Lote de un instrumento viejo que no publica el mapa partido: se trata como SIN
+            # plataforma, que es el comportamiento conservador (cruza contra todo).
+            for i, vs in d.get("veredictos_por_id", {}).items():
+                for v in vs:
+                    por_id.setdefault(i, {}).setdefault(v, []).append(nombre)
+                    sin_plat.setdefault(i, {}).setdefault(v, []).append(nombre)
     conflictos = {}
     # Cada documento con su FECHA, para que el lector pueda ver la SUCESION sin recomputarla.
     # El ratchet de abajo declara dos lecturas posibles -- (a) sucesion legitima, (b)
@@ -1926,12 +1969,24 @@ def contraste_de_veredictos(res):
     # -- COHERENTE 22/09, REQUIERE_TRIAGE 22/09 posterior, DESVÍO 28/09 -- y la lectura (a) se
     # lee sola. Antes el eslabon del medio era invisible y el conflicto parecia un desacuerdo.
     for i, mapa in por_id.items():
+        base = sin_plat.get(i, {})
+        ambitos = []
+        for (ii, plat), m in por_par.items():
+            if ii != i:
+                continue
+            juntos = {v: list(docs) for v, docs in m.items()}
+            for v, docs in base.items():
+                juntos.setdefault(v, []).extend(docs)
+            ambitos.append(juntos)
+        if base:
+            ambitos.append(base)
         # `v1, v2` y no `a, b`: en `main`, `a`/`b` son los conteos de los lotes que se imprimen más
         # abajo («lote A={a}, lote B={b}»). Con el bloque al final daba igual; al subirlo, el
         # desempaquetado los pisaba con dos strings y el reporte mentía la cifra de control.
-        for v1, v2 in INCOMPATIBLES:
-            if v1 in mapa and v2 in mapa:
-                conflictos[i] = mapa
+        for ambito in ambitos:
+            for v1, v2 in INCOMPATIBLES:
+                if v1 in ambito and v2 in ambito:
+                    conflictos[i] = mapa
     return conflictos, sorted(set(conflictos) - set(CONFLICTOS_CONOCIDOS))
 
 
@@ -2295,6 +2350,29 @@ def veredictos_por_id(con, ids):
     return salida
 
 
+def veredictos_por_id_plat(con, ids):
+    """{id del padron: {plataforma: [veredictos CERRADOS]}} -- lo MISMO que `veredictos_por_id`, sin
+    tirar la plataforma.
+
+    La clave de `con` es `id·camino·plataforma` (ver `:2501`), asi que el dato ya estaba
+    medido y el `split("·")[0]` de `veredictos_por_id` lo descartaba. El contraste lo necesita
+    entero: `COHERENTE` en web y `DESVÍO` en mobile no son dos afirmaciones opuestas sobre la
+    misma pantalla -- son dos pantallas.
+    """
+    salida = {}
+    for clave, vs in con.items():
+        partes = clave.split("·")
+        i = partes[0]
+        if i not in ids:
+            continue
+        plat = partes[2] if len(partes) > 2 else SIN_PLATAFORMA
+        buenos = {v for v in vs if v in VOCABULARIO}
+        if buenos:
+            previo = salida.setdefault(i, {}).setdefault(plat, [])
+            salida[i][plat] = sorted(set(previo) | buenos)
+    return salida
+
+
 # Los pares de veredictos que NO pueden ser ciertos los dos sobre la misma pantalla contra el mismo
 # proto. `NO_MEDIBLE` y `FUERA-DE-REFERENCIA` no entran: no afirman coincidencia ni desvio, dicen que
 # la comparacion no se puede hacer — chocar con ellos es una discusion de alcance, no de hecho.
@@ -2599,6 +2677,11 @@ def main():
             # Se publican aparte para que el retiro sea AUDITABLE — quien, cuando y cuales.
             "veredictos_por_id": {i: v for i, v in veredictos_por_id(con, ids).items()
                                   if i not in superados},
+            # El MISMO mapa partido por plataforma, para que el contraste cruce (id, plataforma) y
+            # no `id` solo. Se filtra por `superados` igual que el de arriba: un veredicto retirado
+            # por quien lo emitio no sostiene un conflicto en ninguna plataforma.
+            "veredictos_por_id_plataforma": {i: pl for i, pl in veredictos_por_id_plat(con, ids).items()
+                                             if i not in superados},
             "superados": sorted(superados),
             "superado_nota": nota_sup,
             "ids_medidos_fuera_del_padron": {k: v for k, v in sorted(fuera.items())},

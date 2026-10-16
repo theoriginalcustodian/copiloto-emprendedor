@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 2 cifras, 2 medidores: criterio 3 web 54/54 · mobile 16/54 (`contar-veredictos.py`) · 🎯 SPRINT 46/54=85% + 8 PENDIENTES (15-10, `medir-mapeo-implementacion.py`)**. Citar una por otra = el error del día.
+- **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** (techo: `(home)` espera OAuth) · 🎯 SPRINT **53/54**=98%, 1 pendiente real `soporte`**. Citar una por otra = el error del día.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **📱 SPRINT VIGENTE = MOBILE, y device está DENTRO** (13-10). El de la beta cerró 08/10 (`DEC-14` 7/7 @`92fd8a06`): «al sprint siguiente» YA VENCIÓ — el siguiente es ESTE.

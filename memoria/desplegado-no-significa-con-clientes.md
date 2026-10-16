@@ -51,3 +51,38 @@ credenciales.
 
 **Cuándo dejar de aplicar esta entrada:** el día que exista el primer emprendedor real usando el
 sistema. Ahí se invierte todo lo de arriba — y esta entrada hay que **borrarla**, no matizarla.
+
+---
+
+## Refuerzo 2026-10-15 — el estado VACÍO del tenant se lee como capacidad AUSENTE, y pasó TRES veces en un día
+
+Las tres fabricaron trabajo que no existía, y las tres se cazaban con la misma pregunta:
+
+1. **`soporte` / «Ver tickets anteriores»** — se dio por ausente. El código estaba desde #1115
+   (`e3d1efa3`). El canónico no tenía tickets.
+2. **`preg` / la card de resultado** — el mapeo decía «NO EXISTE». Existe: lo midió FE2 en device.
+3. **`CLIENTESCUIT` / «`clientes` muestra teléfono donde el prototipo pide CUIT»** — medido el
+   2026-10-07 sobre el PWA servido, y **cierto como observación**. Pero
+   `packages/core/src/api/clientes.ts:258` devuelve el documento **sólo si `docNro` no está vacío**, y
+   si no cae a `[telefono, email, domicilio, notas]` a propósito (`TarjetaCliente.tsx:19`: «para no
+   dejar homónimos indistinguibles»). El cliente de esa medición **no tenía documento cargado**. No
+   había layout que arreglar ni forma que decidir: se vio el fallback diseñado.
+
+**El test que las caza, antes de abrir un hallazgo:** *¿lo que veo vacío es del PRODUCTO o del TENANT?*
+Concreto: ¿existe una rama del código que produzca exactamente esto cuando el dato falta? Si existe,
+el hallazgo no es «falta la capacidad» sino «falta el dato», y el dueño es otro — con otro disparador y
+otro costo.
+
+**Por qué muerde acá en particular:** este repo mide la app contra un prototipo que está **lleno de
+datos de ejemplo**. El prototipo siempre tiene el caso poblado; el canónico casi nunca. Así que la
+comparación prototipo-vs-app, hecha sobre un tenant vacío, produce DESVÍO sistemático en toda fila
+cuya forma dependa del dato — y el DESVÍO se lee como defecto de implementación.
+
+**Y lo que no se arregla con cuidado:** mientras el estado del tenant no se pueda fabricar, la
+pregunta vuelve en cada fila. Por eso el `contrato_` del 2026-10-15 convierte
+`deploy/copiloto/setup_tenant_pruebas.py` en la salida (una palabra del operador: vincularlo al
+canónico o declarar las filas `NO_MEDIBLE`) en lugar de volver a discutir fila por fila.
+
+Relacionadas: [[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]] ·
+[[supuesto-cuya-falla-parece-un-estado-legitimo]] · [[usuario-de-prueba-canonico-uno-solo-a-fuego]] ·
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]
