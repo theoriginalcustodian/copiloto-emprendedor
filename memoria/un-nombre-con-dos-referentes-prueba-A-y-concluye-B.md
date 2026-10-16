@@ -234,3 +234,51 @@ Resultado real después de los dos arreglos: **30 divergencias `E` examinadas, 0
 colisión). O sea que la auditoría cuyo valor era «encontrar enmiendas sin autoridad» devolvió **vacío** — y
 ese vacío es el resultado, no un fracaso: [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].
   -> [[instrumento-que-no-mira-nunca-falla]] · [[exencion-sin-autoridad]] · [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+---
+
+## 🔁 REFUERZO 2026-10-16 — el referente doble en un **marcador de estado**, no en un id
+
+Hasta hoy este archivo documentaba el defecto en **identificadores** (`A-1` que matchea prosa, `D2`
+que nombra dos cosas). Apareció en otra familia, y por eso vale escribirlo: **un marcador de cierre
+puede referirse al archivo que lo lleva o a otro archivo**, y nada en el token lo dice.
+
+**El caso.** Buscando un criterio mecánico para archivar los broadcasts del buzón que nunca se
+cierran (19 en `abierto/`: ni el escalador los escala —`urgente_` no es ninguna de sus tres
+reglas— ni el janitor los archiva —`archivar-buzon.sh:66` los protege a propósito), probé tres
+criterios y descarté los dos primeros con medición:
+
+1. **antigüedad** → mide la edad del archivo, no el estado de la norma;
+2. **la palabra `CERRADO`/`VENCIDO` en el cuerpo** → caza prosa (*«un hallazgo nuevo NO reabre un
+   punto **cerrado**»*, *«archivado en `**cerrado**/2026-10-13/`»*): el defecto clásico de este
+   archivo, en su forma de siempre;
+3. **el banner `⛔` al inicio de línea** → token deliberado, no prosa. Dio **4/4**, con control
+   positivo (banner inyectado: lo caza) **y** negativo (prosa `cerrado`: no la caza). Parecía el
+   criterio bueno.
+
+**Y el tercero es el que muerde.** De los 4 que marcó, uno era
+`…_hallazgo_…_REFUTADO-mi-propio-hallazgo-las-13-ramas…`, cuyo banner dice
+`# ⛔ REFUTADO — mi propio hallazgo de anoche`. Ese archivo **no está refutado: él refuta a otro.**
+Es el artefacto **vigente**, el que corrige. Un janitor con ese criterio lo habría archivado y
+habría dejado circulando el nombre que afirma lo falso — exactamente el daño que ese archivo existía
+para evitar. [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]
+
+> **El criterio que queda:** un marcador de estado sólo sirve si es **auto-referencial por
+> construcción** — si no se puede escribir para hablar de otra cosa. `⛔`, `REFUTADO`, `VENCIDO`
+> sueltos no lo son: son adjetivos sin sujeto. Un campo dedicado sí:
+> `CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo>`, cuyo sujeto **es** el archivo que lo contiene.
+>
+> La prueba barata, antes de embarcar el criterio: **¿existe un archivo donde este marcador hable de
+> OTRO?** Si la respuesta es sí, el marcador no es un estado — es un comentario.
+
+**El control que lo cazó no fue el positivo ni el negativo**, que los dos pasaron: fue **leer los 4
+que el detector marcó, de uno en uno**. Un detector con sus dos controles verdes puede estar
+midiendo una propiedad distinta de la que pregunto. [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+· [[la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido]]
+
+**Lo que sí se ejecutó:** se archivaron los **4** cuyo cierre es inequívoco (los dos `⛔ VENCIDO`
+auto-referenciales y el par refutado+refutación, que viajan juntos), con la cita del banner adosada
+a cada archivo. Los otros 19 quedan abiertos **a propósito**: su norma puede estar vigente y ningún
+criterio mecánico de hoy puede decidirlo. Medición y propuesta de protocolo →
+`coordinacion/abierto/2026-10-16_hallazgo_…19-broadcasts-nunca-se-cierran…`
+(no versionada; el hallazgo es de ese día).
