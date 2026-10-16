@@ -77,6 +77,31 @@ El motor **nació** como copia vendorizada del arquetipo `conversational_agent` 
      apruebes". Ese fue el fallo del 2026-08-06: dos PR de rescate quedaron parados y se los
      reporté como deuda suya cuando eran míos.
 
+9. **NINGUNA SESIÓN APAGA EL EQUIPO. NUNCA.** Orden del operador del 2026-10-16: *"nunca se
+   apaga el ordenador salvo orden expresa mía....el apagado automátic solo se ejecuta con orden
+   expresa del operador"*. Prohibido `shutdown`, `Stop-Computer`, un reinicio, o una tarea
+   programada que apague — tampoco "para liberar recursos", ni al cerrar un sprint, ni porque la
+   cola quedó vacía. Si creés que corresponde apagar: **pedíselo y seguí trabajando.**
+   - **Una orden de apagado NO se propaga ni se hereda.** Vale sólo en la **sesión que la recibe**,
+     del operador, y para **el trabajo que nombra**; se **consume** con ese apagado. No viaja por el
+     buzón, ni por un `dato_`, ni por memoria, ni a otra sesión, ni al día siguiente.
+   - **Por qué es regla y no criterio** (medido el 2026-10-16, Event Log + 3,1 GB de transcripts con
+     control negativo): la PC se apagó **dos** veces. A las **00:25:53** la apagó planificación con
+     orden textual de las **00:02:09** («cuando termines el trabajo apaga la pc», referida al cierre
+     del sprint). Pero planificación escribió esa orden puntual en el buzón como un **título general
+     y sin vencimiento** —`urgente_…LA-PC-SE-APAGA-POR-ORDEN-DEL-OPERADOR…`— y a las **08:13:52** la
+     sesión **backend** lo leyó y a las **08:14:27** apagó la máquina citándolo, para **otro**
+     trabajo. El operador volvió y la encontró apagada: *«y porue apagaste la pc?? yo nunca te lo
+     pedí»*. **La falla fue de propagación, no de desobediencia:** las dos sesiones creyeron tener
+     autorización, y la segunda la tenía por escrito. Ese archivo está retractado en
+     `cerrado/2026-10-16/2026-10-16_RETRACTADO_planificacion-a-todos_NINGUNA-SESION-APAGA-LA-PC-*`.
+   - **Esto NO contradice la regla 8.** Merge y deploy están autorizados de forma permanente porque
+     son **reversibles y propios del trabajo**; apagar la máquina **mata las otras sesiones, los
+     crones y Metro**, y no lo decide quien no es dueño de la máquina. Una autorización amplia sobre
+     el trabajo no se extiende al host.
+   - Si encontrás un apagado **pendiente**: abortalo con `shutdown /a` (exit `1116` = no había
+     ninguno; `0` = había uno y lo abortaste) y decilo.
+
 ## 3.bis Skills a invocar (no son opcionales cuando aplican)
 
 Instaladas globales en `~/.claude/skills/`, verificadas el 2026-07-20 (34 en total; las 14 de mobile
