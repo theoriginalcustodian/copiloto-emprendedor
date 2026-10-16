@@ -21,7 +21,7 @@ import { useSession } from './useSession';
  *
  * ⚠️ Acá decía «Reachable hoy SOLO por ruta directa […] este formulario NO manda invite-token, así
  * que contra el backend real toda alta por email termina rechazada». **El formulario sigue sin
- * mandar invite-token y eso ya es correcto:** `f3b60672` (PR #1206, 2026-10-14) retiró ese gate de
+ * mandar invite-token y eso ya es correcto:** `f3b60672` (PR 1206, 2026-10-14) retiró ese gate de
  * `POST /auth/signup` («Sin gate: alta self-service», `web.py:1399`). No hay campo que agregar —
  * lo que faltaba era la puerta, no el token.
  */

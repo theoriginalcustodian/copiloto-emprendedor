@@ -19,7 +19,7 @@ import { useSession } from './useSession';
  *
  * ⚠️ Hasta hoy este docstring decía lo contrario — «`SignupScreen` no manda invite-token, así que
  * contra el backend real toda alta por email queda rechazada […] el botón secundario de
- * `primeraVez` no se dibuja». Esa premisa **venció el 2026-10-14**: `f3b60672` (PR #1206) retiró el
+ * `primeraVez` no se dibuja». Esa premisa **venció el 2026-10-14**: `f3b60672` (PR 1206) retiró el
  * gate `invite_token` de `POST /auth/signup` («Sin gate: alta self-service», `web.py:1399`). El
  * comentario sobrevivió al cambio y era la razón DECLARADA para no dibujar la puerta — mientras
  * dijera eso, el próximo que leyera volvía a apagarla. Es
