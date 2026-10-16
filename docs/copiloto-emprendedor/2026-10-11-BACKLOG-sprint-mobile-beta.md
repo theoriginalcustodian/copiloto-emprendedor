@@ -50,7 +50,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
-| **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
+| **SM-C2** | `#1000` | ✅ TERMINADO | merge ec54c998 (PR #1275) en main. DoD «alta por email de punta a punta, con test del camino real por el composition … |
 | **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
 | **SM-C4** | `#1001` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA … |
 | **SM-C5** | `#1002` | ⏭️ DIFERIDO | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
@@ -206,8 +206,8 @@ no el arranque del sprint.***
 
 ### SM-C2 · `#1000` — El alta por email de web no se puede completar
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por camino real GoTrue+Postgres (PR #1162): signup->login->/me verde, adversarial sin invite no crea user ni tenant
+- **Estado:** TERMINADO
+- **Cierre:** merge ec54c998 (PR #1275) en main. DoD «alta por email de punta a punta, con test del camino real por el composition root»: tests/test_alta_email_camino_real.py 4/4 PASSED corrido EN EL VPS con GoTrue real + Postgres RLS FORCE + el mismo create_web_app de prod, recorrido signup->login->/me (PYTEST_RC=0, 2026-10-16) -- OJO: en CI esos 4 casos salen SKIPPED (no hay GoTrue de test en Actions), asi que el verde del CI nunca los acredito; la evidencia es la corrida del VPS. La premisa del Falta: quedo REFUTADA: el gate invite_token se retiro (web.py:1399; el campo sobrevive ignorado en web.py:630 solo para no dar 422), y el cliente manda {email,password} (apps/copiloto-web/src/lib/api/auth.ts:13) -- la MISMA forma que fija el test, costura medida en los dos lados. Y ?signup=1 ya NO es la unica puerta: DOS puertas verificadas EN PROD a 390px sobre build-sha=ec54c998 -- el secundario «Crear una nueva cuenta» del reveal y «¿Todavia no tenes cuenta? Crea una.» del login, con la ida y la vuelta, sin crear ningun usuario; el cableado lo cubre App.test.tsx (composition root) y el canario de 4 mutantes dio 4/4 con esperados declarados.
 - **Medido:** el backend exige `invite_token` y el cliente **nunca lo manda**; además el formulario
   sólo se abre con `?signup=1` en la URL.
 - **DoD:** alta por email de punta a punta, con test del **camino real** — el de producción, por el
