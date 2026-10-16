@@ -151,6 +151,23 @@ def sha_en_main(sha):
         return False, "git no disponible: %s" % exc
 
 
+def _sha_ancestro_para_autotest():
+    """Un sha corto que ES ancestro de origin/main en CUALQUIER rama, o None si no hay remoto.
+
+    `merge-base HEAD origin/main` es el punto de bifurcacion: existe en el clon y esta en main.
+    Usar HEAD en su lugar hace que el control positivo mida la rama (ver el comentario en
+    `autotest`)."""
+    for args in (["merge-base", "HEAD", "origin/main"], ["rev-parse", "origin/main"]):
+        try:
+            out = subprocess.check_output(["git", "-C", RAIZ] + args,
+                                          stderr=subprocess.DEVNULL).decode().strip()
+        except (subprocess.CalledProcessError, OSError):
+            continue
+        if out:
+            return out[:8], True
+    return None, False
+
+
 def verificar(fichas, con_git=True):
     """Devuelve (errores, avisos). Un error = exit 1 del gate."""
     errores, avisos = [], []
@@ -370,7 +387,21 @@ def autotest():
         print("  [%s] %-26s esperado=%d obtenido=%d %s"
               % ("OK   " if obtenido == esperado else "FALLA", nombre, esperado, obtenido,
                  ("| " + errs[0][:62]) if errs else ""))
-    sha_real = subprocess.check_output(["git", "-C", RAIZ, "rev-parse", "HEAD"]).decode().strip()[:8]
+    # El sha del control positivo sale de `origin/main`, NO de HEAD. Con HEAD, este caso medía la
+    # RAMA y no el gate: `sha_en_main()` exige ser ANCESTRO de origin/main, y el HEAD de cualquier
+    # rama de PR no lo es todavia -- el autotest daba VERDE en main y ROJO en las dos ramas que lo
+    # estrenaron (CI de #1275 y #1276, 2026-10-16). O sea: el control fallaba exactamente donde el
+    # gate sirve, y un falso rojo no es prudencia -- es el permiso para el `--no-verify`, que en
+    # este repo arrastra gitleaks. `merge-base HEAD origin/main` es ancestro de origin/main por
+    # definicion y existe en cualquier checkout con el remoto; si no hay remoto, cae a HEAD y el
+    # caso se SALTEA en vez de condenar (se declara, no se finge verde).
+    sha_real, _puede = _sha_ancestro_para_autotest()
+    if sha_real is None:
+        print("  [SKIP ] %-26s sin `origin/main` en este clon: el caso no se puede montar"
+              % "TERMINADO sha REAL")
+        print("\nautotest: %s (%d fallos de %d casos, 1 salteado)"
+              % ("VERDE" if not fallos else "ROJO", fallos, len(casos)))
+        return 1 if fallos else 0
     txt_ok = base.replace("- **DoD:**",
                           "- **Estado:** TERMINADO\r\n- **Cierre:** merge %s - ev\r\n- **DoD:**" % sha_real)
     visto = parsear(txt_ok)
