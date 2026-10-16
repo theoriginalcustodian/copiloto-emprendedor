@@ -52,10 +52,10 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
 | **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
 | **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
-| **SM-C4** | `#1001` | 🟧 DOD-PARCIAL | NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA CON LA ACEPTACION LEGAL PENDIENTE para ver el boton de ace… |
-| **SM-C5** | `#1002` | ⬜ PENDIENTE | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
+| **SM-C4** | `#1001` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA … |
+| **SM-C5** | `#1002` | ⏭️ DIFERIDO | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
 | **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
-| **SM-D2** | `#1018` | 🟧 DOD-PARCIAL | (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el… |
+| **SM-D2** | `#1018` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] (1) portada.mes.facturado == detalle CON filas en el mes EN… |
 | **SM-D3** | `#1019` | ✅ TERMINADO | merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chi… |
 | **SM-D4** | `#1021` | ✅ TERMINADO | merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cu… |
 | **SM-D5** | `#1007` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
@@ -64,12 +64,12 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D8** | `GASTOSCATEG` | ⬜ PENDIENTE | el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El |
 | **SM-E1** | `#1005` | ✅ TERMINADO | merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positiv… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
-| **SM-E3** | `#1020` | 🟧 DOD-PARCIAL | CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto… |
+| **SM-E3** | `#1020` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de fr… |
 | **SM-F1** | `#1011` | ✅ TERMINADO | Las 6 cadenas con veredicto y medido_contra main@ea810b7a/prod 9e536c38: 4,5,6 COHERENTE; 3 COHERENTE manual + MP NO_… |
-| **SM-F2** | `M-02` | 🟧 DOD-PARCIAL | quedan 14 sin comparar en mobile: (home) sin ningun veredicto + 13 cubiertos sin comparacion = agenda bi-vacio chat c… |
-| **SM-F3** | `M-03` | 🟧 DOD-PARCIAL | onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba… |
+| **SM-F2** | `M-02` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] quedan 14 sin comparar en mobile: (home) sin ningun veredic… |
+| **SM-F3** | `M-03` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conec… |
 | **SM-F4** | `#1013` | ✅ TERMINADO | merge aeeb3eab (PR #1157, la receta) - DoD(1) la receta existe: docs/copiloto-emprendedor/2026-10-14-receta-rebuild-d… |
-| **SM-F5** | `M-04` | ⬜ PENDIENTE | — |
+| **SM-F5** | `M-04` | ⏭️ DIFERIDO | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -272,9 +272,9 @@ no el arranque del sprint.***
 
 ### SM-C4 · `#1001` — La aceptación legal no condiciona nada, y mobile no la cablea
 
-- **Estado:** DOD-PARCIAL
-- **Dueno-activo:** frontend2
-- **Falta:** NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA CON LA ACEPTACION LEGAL PENDIENTE para ver el boton de aceptar de mobile y la version guardada tras aceptar; el canonico e2e-device@copiloto.test ya acepto la version vigente (2026-09-22) y no se toca. La mitad hostil (canario invertido, los dos lados) esta en main (#1183 c8cbc21b)
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** [TERMINAL - cerrada por decision del operador 2026-10-15] NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA CON LA ACEPTACION LEGAL PENDIENTE para ver el boton de aceptar de mobile y la version guardada tras aceptar; el canonico e2e-device@copiloto.test ya acepto la version vigente (2026-09-22) y no se toca. La mitad hostil (canario invertido, los dos lados) esta en main (#1183 c8cbc21b)
+- **Decision:** operador, 2026-10-15 - DECLARAR: cierra sin la evidencia de device porque exige una cuenta con la aceptacion legal pendiente y el canonico no se toca. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §2
 - **Medido, en dos mitades distintas:**
   1. La **pantalla de lectura de mobile ya existe** — `apps/mobile/src/modules/ajustes/PantallaLegal.tsx:31`,
      montada en `apps/mobile/app/legal.tsx:17`. ⚠️ Este issue decía antes «mobile no tiene pantalla de
@@ -326,8 +326,10 @@ no el arranque del sprint.***
 
 ### SM-C5 · `#1002` — Sin SMTP no hay recuperación de contraseña
 
-- **Estado:** PENDIENTE
+- **Estado:** DIFERIDO
 - **Falta:** bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario recupera su clave sin intervencion de nadie' sigue sin cumplirse
+- **Decision:** operador, 2026-10-15 - «lo de smtp y domino queda diferido al proximo sprint». Era el unico item del sprint bloqueado en el operador. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §3
+- **Diferido-a:** proximo sprint (junto con el DNS SPF/MX/DKIM, que no tiene ficha propia)
 - **Medido:** no hay proveedor configurado ⇒ ni recuperación de clave ni cambio de email.
 - **DoD:** el usuario recupera su clave **sin intervención de nadie**.
 - ✅ **DECIDIDO (2026-10-12) — DIFERIDO a pre-prod: en beta el operador resetea las claves a mano.**
@@ -378,8 +380,9 @@ no el arranque del sprint.***
 
 ### SM-D2 · `#1018` — Mobile no tiene los bloques de agregado que web sí
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el e2e sale 3 (no discrimina); barra==detalle SI verificado en 2026-08 y 2026-09; la igualdad entre las 4 superficies para el mismo mes la prueba backend test_facturado_predicado_unico.py (B-3, Postgres del VPS). (2) device: los dos bloques medidos en el telefono. (3) hallazgo abierto: el resumen Esperando respuesta se deriva de GET /presupuestos con limit=50 por defecto (presupuestos_web.py:41), con mas de 50 vigentes subcuenta sin avisar
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** [TERMINAL - cerrada por decision del operador 2026-10-15] (1) portada.mes.facturado == detalle CON filas en el mes EN CURSO, en vivo: el canonico tiene 0 filas en 2026-10 y el e2e sale 3 (no discrimina); barra==detalle SI verificado en 2026-08 y 2026-09; la igualdad entre las 4 superficies para el mismo mes la prueba backend test_facturado_predicado_unico.py (B-3, Postgres del VPS). (2) device: los dos bloques medidos en el telefono. (3) hallazgo abierto: el resumen Esperando respuesta se deriva de GET /presupuestos con limit=50 por defecto (presupuestos_web.py:41), con mas de 50 vigentes subcuenta sin avisar
+- **Decision:** operador, 2026-10-15 - DECLARAR: cierra sin la igualdad en el mes EN CURSO porque el canonico tiene 0 filas en 2026-10 y no se fabrican datos. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §2
 - **Medido:** faltan «facturado del mes» y el resumen de presupuestos.
 - **DoD:** los dos bloques existen **y su cifra coincide con la del detalle** para el mismo mes.
 - **Depende de:** SM-B3 (el predicado único). **Es el criterio 6 del DoD del sprint.**
@@ -516,8 +519,9 @@ no el arranque del sprint.***
 
 ### SM-E3 · `#1020` — Cinco capacidades del backend cableadas que nadie llama
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto abierto es POST /auth/cambiar-email, bloqueado por SMTP = SM-C5, que es del operador. Las 5 capacidades quedaron clasificadas, ninguna en el medio: (1) PUT /gastos/{id}/imputacion -> CABLEADA el 14-10, merge ddd68358 (PR #1180): gasto.imputacion en el tipo Gasto de core, imputarGasto/desimputarGasto contra gastos_web.py:161, leerTrabajos para el selector y el bloque de imputacion en DetalleGasto de los DOS fronts (web paso de 0 a 8 tests). (2) GET /trabajos/{eslabon}/{ref}/margen -> CABLEADA: imputacionDeTrabajos en packages/core/src/api/inteligencia.ts (8 casos, mutante 6 rojos/31 verdes) y las dos TarjetaMargenTrabajo gemelas pintan el conteo siempre que haya barra (web GraficosInteligencia.tsx:151 + mobile :163), que es el DoD de UI del hallazgo 2. (3) POST /inteligencia/chat -> RETIRADA, entro en 9e536c38 (PR #1166); 0 ocurrencias de preguntarInteligencia en packages/apps/motor de origin/main (git grep 14-10). (4) POST /mi-dia/tarjetas -> CABLEADA el 14-10, merge 274af593 (PR #1181): crearTarjetaMiDia (miDia.ts:240) deja de estar sin consumidor, con formulario en MidiaScreen (web, 29 tests) y PantallaMiDia (mobile, 67 tests), y el 400 del backend convertido en ESTADO de la UI en vez de promesa (46 tests de core). (5) POST /auth/cambiar-email -> clasificada 'se cablea' pero BLOQUEADA por SMTP (SM-C5, operador): unico punto que no cierra por codigo. Backend previo: merge e7601bc6 (PR #1154) + LECTURA de la imputacion en merge b392389b (PR #1175), GET /gastos y GET /gastos/{id} con gasto.imputacion {gasto_id,presupuesto_ref,comprobante_ref,cobro_ref}, misma forma que el retorno del PUT (adversarial + canario + mutante, VPS). FALTA PARA TERMINAR: la pasada de device de los dos flujos nuevos (imputar un gasto y anotar una tarjeta), con receta escrita de 7 veredictos, en manos de frontend2 -- contrato_ del 14-10 en el buzon. HALLAZGO que NO reabre esta ficha (DEC-18): la rama modo:'detalle' de leerGraficoMargenTrabajo (inteligencia.ts:503-512, tipada DetalleMargenTrabajo con trabajo: unknown [PROVISIONAL]) no tiene consumidor -- GraficosInteligencia.tsx:153 la llama sin params y siempre cae en modo:'lista', y hay 0 ocurrencias de DetalleMargenTrabajo en todo apps/. Mi barrido conto FUNCIONES de red sin consumidor (71 en core, 0 huerfanas) y por construccion no podia ver una RAMA muerta del retorno de una funcion que si se consume: va como hallazgo propio, no como hueco de SM-E3.
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** [TERMINAL - cerrada por decision del operador 2026-10-15] CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de frontend2 sobre prod 72b85cba, receta SM-E3): el UNICO punto abierto es POST /auth/cambiar-email, bloqueado por SMTP = SM-C5, que es del operador. Las 5 capacidades quedaron clasificadas, ninguna en el medio: (1) PUT /gastos/{id}/imputacion -> CABLEADA el 14-10, merge ddd68358 (PR #1180): gasto.imputacion en el tipo Gasto de core, imputarGasto/desimputarGasto contra gastos_web.py:161, leerTrabajos para el selector y el bloque de imputacion en DetalleGasto de los DOS fronts (web paso de 0 a 8 tests). (2) GET /trabajos/{eslabon}/{ref}/margen -> CABLEADA: imputacionDeTrabajos en packages/core/src/api/inteligencia.ts (8 casos, mutante 6 rojos/31 verdes) y las dos TarjetaMargenTrabajo gemelas pintan el conteo siempre que haya barra (web GraficosInteligencia.tsx:151 + mobile :163), que es el DoD de UI del hallazgo 2. (3) POST /inteligencia/chat -> RETIRADA, entro en 9e536c38 (PR #1166); 0 ocurrencias de preguntarInteligencia en packages/apps/motor de origin/main (git grep 14-10). (4) POST /mi-dia/tarjetas -> CABLEADA el 14-10, merge 274af593 (PR #1181): crearTarjetaMiDia (miDia.ts:240) deja de estar sin consumidor, con formulario en MidiaScreen (web, 29 tests) y PantallaMiDia (mobile, 67 tests), y el 400 del backend convertido en ESTADO de la UI en vez de promesa (46 tests de core). (5) POST /auth/cambiar-email -> clasificada 'se cablea' pero BLOQUEADA por SMTP (SM-C5, operador): unico punto que no cierra por codigo. Backend previo: merge e7601bc6 (PR #1154) + LECTURA de la imputacion en merge b392389b (PR #1175), GET /gastos y GET /gastos/{id} con gasto.imputacion {gasto_id,presupuesto_ref,comprobante_ref,cobro_ref}, misma forma que el retorno del PUT (adversarial + canario + mutante, VPS). FALTA PARA TERMINAR: la pasada de device de los dos flujos nuevos (imputar un gasto y anotar una tarjeta), con receta escrita de 7 veredictos, en manos de frontend2 -- contrato_ del 14-10 en el buzon. HALLAZGO que NO reabre esta ficha (DEC-18): la rama modo:'detalle' de leerGraficoMargenTrabajo (inteligencia.ts:503-512, tipada DetalleMargenTrabajo con trabajo: unknown [PROVISIONAL]) no tiene consumidor -- GraficosInteligencia.tsx:153 la llama sin params y siempre cae en modo:'lista', y hay 0 ocurrencias de DetalleMargenTrabajo en todo apps/. Mi barrido conto FUNCIONES de red sin consumidor (71 en core, 0 huerfanas) y por construccion no podia ver una RAMA muerta del retorno de una funcion que si se consume: va como hallazgo propio, no como hueco de SM-E3.
+- **Decision:** operador, 2026-10-15 - DECLARAR: las 5 capacidades estan clasificadas (4 cableadas + cambiar-email espera SMTP, diferido con SM-C5), y clasificar ES el DoD. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §2
 - **Evidencia de device (2026-10-15, frontend2):** `coordinacion/evidencia/SM-E3-2026-10-15/` + el
   `cierre_frontend2-a-planificacion_SM-E3-7-de-7-...`. **B1-B3** (anotar tarjeta: el campo vacío no
   promete, la tarjeta entra y el contador pasa 2→3, y PERSISTE tras `force-stop` + relanzar) y **A1-A4**
@@ -606,8 +610,9 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F2 · `M-02` — Medir en device los 46 ids que faltan
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** quedan 14 sin comparar en mobile: (home) sin ningun veredicto + 13 cubiertos sin comparacion = agenda bi-vacio chat consent vacio vacio-visto (cuenta de estado/ajeno al fiscal) y los 6 fiscales declarados NO_MEDIBLE (card-factura fact-cae fact-hitl pres-ciclo pres-hitl recibo) que esperan la decision A/B del operador (perfil fiscal en el canonico) · onb-cumplida NO_MEDIBLE (exige MP+Google, OAuth externo)
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** [TERMINAL - cerrada por decision del operador 2026-10-15] quedan 14 sin comparar en mobile: (home) sin ningun veredicto + 13 cubiertos sin comparacion = agenda bi-vacio chat consent vacio vacio-visto (cuenta de estado/ajeno al fiscal) y los 6 fiscales declarados NO_MEDIBLE (card-factura fact-cae fact-hitl pres-ciclo pres-hitl recibo) que esperan la decision A/B del operador (perfil fiscal en el canonico) · onb-cumplida NO_MEDIBLE (exige MP+Google, OAuth externo)
+- **Decision:** operador, 2026-10-15 - DECLARAR: los 14 ids sin comparar son NO_MEDIBLE con el usuario canonico (perfil fiscal, MP+Google) o no tienen frente propio. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §2
 - **Cierre:** lotes de frontend2 (26 filas, SM-F2) + 4 ids de device (hablar factura presu grabando) medidos 15-10 y registrados en #1268; criterio 3 mobile: cubiertos 53 de 54, comparados de verdad 40 (falta-en-mobile.py @410250ec)
 - **Medido:** `scripts/evidencia/falta-en-mobile.py` los lista por nombre. Mobile: **8** comparados de
   verdad · **5** cubiertos sin comparación · **41** sin nada ⇒ **46 a medir**.
@@ -622,9 +627,9 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F3 · `M-03` — Los 5 ids cubiertos sin comparación
 
-- **Estado:** DOD-PARCIAL
-- **Dueno-activo:** frontend2
-- **Falta:** onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba la decision del operador sobre el estado de la cuenta canonica
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** [TERMINAL - cerrada por decision del operador 2026-10-15] onb-cumplida: NO_MEDIBLE, exige Mercado Pago y Google conectados en la cuenta y el canonico no los tiene; la destraba la decision del operador sobre el estado de la cuenta canonica
+- **Decision:** operador, 2026-10-15 - DECLARAR: onb-cumplida exige MP y Google conectados en el canonico, y cambiar el usuario canonico es MAYOR. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §2
 - **Cierre:** evidencia en el cierre_frontend2 SM-F3 del 15-10: vozchat, pres-voz y preg medidos en device con veredicto DESVIO; falta-en-mobile.py los deja comparados de verdad
 - `cobro-voz` · `fact-voz` · `onb-cumplida` · `pres-voz` · `vozchat`.
 - **DoD:** veredicto real y **salen de esa población** (que `falta-en-mobile.py` los deje de listar).
@@ -641,7 +646,9 @@ cierra, aunque los otros siete estén verdes.***
 
 ### SM-F5 · `M-04` — Tester externo con video
 
-- **Estado:** PENDIENTE
+- **Estado:** DIFERIDO
+- **Decision:** operador, 2026-10-15 - diferida antes que cerrada por declaracion: el tester externo con video depende de una persona ajena al equipo. Ver docs/copiloto-emprendedor/2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md §3
+- **Diferido-a:** proximo sprint, con el DoD intacto
 - **DoD:** el video existe y **cada hallazgo entra como fila** del registro, con id y veredicto — no
   como impresión en prosa. Una impresión no se puede volver a medir.
 
