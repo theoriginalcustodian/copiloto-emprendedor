@@ -191,6 +191,36 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/account"
     },
+    "modules/account::account-legal-estado": {
+      "en": [
+        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-06",
+      "id": "account-legal-estado",
+      "motivo": "LEGALVERMICUENTA: web lo monta en modules/account; su gemelo mobile ya existe como cuenta-legal-version en PantallaCuenta.tsx (modules/ajustes, 2026-10-13). Sigue sin aparearse por el gate porque cada plataforma lo tiene en un modulo distinto.",
+      "pantalla": "modules/account"
+    },
+    "modules/account::account-legal-privacidad": {
+      "en": [
+        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-06",
+      "id": "account-legal-privacidad",
+      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
+      "pantalla": "modules/account"
+    },
+    "modules/account::account-legal-tos": {
+      "en": [
+        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-06",
+      "id": "account-legal-tos",
+      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
+      "pantalla": "modules/account"
+    },
     "modules/account::account-no-molestar": {
       "en": [
         "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
@@ -209,6 +239,16 @@
       "fecha": "2026-09-22",
       "id": "account-screen",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/account"
+    },
+    "modules/account::account-screen-salir-grupo": {
+      "en": [
+        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-08",
+      "id": "account-screen-salir-grupo",
+      "motivo": "BL-J11: web necesita un wrapper <div data-testid> propio para agrupar 'Cerrar sesion' porque sus filas son <div>/<button> planos dentro de un unico tile generico sin limite de componente. Mobile ya cumple el MISMO criterio (fila en su propio grupo, separada por estructura) con un componente propio, FilaBotones (testID cuenta-salir-botones, PantallaCuenta.tsx:101-110) que ya actua como el contenedor -- no hace falta un wrapper adicional con este id especifico. No es drift: cada plataforma resuelve la misma casilla con su propio mecanismo de agrupacion.",
       "pantalla": "modules/account"
     },
     "modules/account::account-soporte-tecnico": {
@@ -711,6 +751,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/admin"
     },
+    "modules/ajustes/afip::afip-estado-vinculo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "afip-estado-vinculo",
+      "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/afip"
+    },
     "modules/ajustes/afip::afip-perfil-cuit-error": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
@@ -749,6 +799,26 @@
       "fecha": "2026-09-22",
       "id": "perfil-negocio-email-error",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes/negocio::perfil-negocio-estado-modo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "perfil-negocio-estado-modo",
+      "motivo": "Mapeo `negocio` (2026-10-13): estado-pag del prototipo (index.html:2280) «Te pide confirmacion antes de ejecutar» en la pantalla nativa Mi negocio. La web (modules/negocio) muestra el modo en su propio bloque; paridad web diferida, no contenido faltante de mobile.",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes/negocio::perfil-negocio-que-vende-error": {
+      "en": [
+        "apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-13",
+      "id": "perfil-negocio-que-vende-error",
+      "motivo": "No es unilateral: mobile lo emite derivado -- `CampoTexto` (theme/glass/campos/CampoTexto.tsx) pinta `${testID}-error` con testID=\"perfil-negocio-que-vende\", y el gate no resuelve templates (mismo caso que telefono-error/email-error). Verificado en el test mobile de PantallaPerfilNegocio ('«Qué vendés» corto'). Aviso no bloqueante, decision de planificacion 2026-10-13.",
       "pantalla": "modules/ajustes/negocio"
     },
     "modules/ajustes/negocio::perfil-negocio-seccion-personalidad": {
@@ -791,6 +861,26 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/negocio"
     },
+    "modules/ajustes/negocio::tono-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-intro",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Subtitulo «Como te contesta Odobi…».",
+      "pantalla": "modules/ajustes/negocio"
+    },
+    "modules/ajustes/negocio::tono-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "tono-nota",
+      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Nota «Esto se guarda aparte del perfil de tu negocio…».",
+      "pantalla": "modules/ajustes/negocio"
+    },
     "modules/ajustes/negocio::tono-seccion": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/negocio/PantallaTono.tsx"
@@ -801,6 +891,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes/negocio"
     },
+    "modules/ajustes/negocio::tono-volver": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "tono-volver",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes/negocio"
+    },
     "modules/ajustes::ajustes-grid": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/PantallaAjustes.tsx"
@@ -809,6 +909,16 @@
       "fecha": "2026-09-22",
       "id": "ajustes-grid",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::ajustes-intro": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaAjustes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ajustes-intro",
+      "motivo": "Mapeo `ajustes` (2026-10-13): subtitulo del prototipo (index.html:2113) en la pantalla nativa Ajustes. La web no tiene pantalla Ajustes con grilla (su configuracion vive en modules/account y modules/connections); no es contenido faltante de mobile.",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::ajustes-volver": {
@@ -841,6 +951,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-avisos-rotulo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-avisos-rotulo",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Rotulo «Avisos» sobre No molestar.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-cambiar-contrasena": {
       "en": [
         "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
@@ -849,6 +969,46 @@
       "fecha": "2026-09-22",
       "id": "cuenta-cambiar-contrasena",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cerrar-sesion": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-cerrar-sesion",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cerrar-sesion-no": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-cerrar-sesion-no",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cerrar-sesion-si": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-cerrar-sesion-si",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-cierre-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-cierre-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota bajo Cerrar sesion: los datos quedan guardados.",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::cuenta-confirmar-botones": {
@@ -891,6 +1051,26 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-contrasena-cancelar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-cancelar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-contrasena-cerrar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-cerrar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-contrasena-form": {
       "en": [
         "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
@@ -899,6 +1079,16 @@
       "fecha": "2026-09-22",
       "id": "cuenta-contrasena-form",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-contrasena-guardar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "cuenta-contrasena-guardar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::cuenta-contrasena-nueva": {
@@ -971,6 +1161,36 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-legal-aceptar": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el boton). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-legal-aceptar-botones": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar-botones",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el contenedor de los dos botones). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-legal-aceptar-error": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-15",
+      "id": "cuenta-legal-aceptar-error",
+      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el estado de error). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-legal-privacidad": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
@@ -1009,6 +1229,26 @@
       "fecha": "2026-09-22",
       "id": "cuenta-no-molestar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-nota",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota con el porque de la demora de No molestar.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-no-molestar-pronto": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "cuenta-no-molestar-pronto",
+      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Chip «Pronto» de la fila No molestar (la accion sigue sin onPress a proposito).",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::cuenta-salir-botones": {
@@ -1211,6 +1451,36 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::skin-card-sistema": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). El id ya existia como skin-card-${nombre}; al ser fila propia se escribe literal y el regex del gate lo ve.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skin-card-sistema-activo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skin-card-sistema-activo",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Marca ✓ Activo de la fila; mismo id de antes, ahora literal.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::skins-nota": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "skins-nota",
+      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Nota al pie del prototipo (index.html:2410): el tema cambia fondo y texto, no la marca.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::theme-pill-sistema": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/PantallaApariencia.tsx"
@@ -1251,6 +1521,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/apps"
     },
+    "modules/apps::apps-error": {
+      "en": [
+        "apps/mobile/src/modules/apps/PantallaApps.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "apps-error",
+      "motivo": "SM-D3 (issue 1019): web retiro modules/apps (AppsScreen/ModeButton, «Tus apps» inalcanzable, decision 2026-10-12 rama b), el par web de este id desaparecio. Mobile conserva PantallaApps (Ajustes > Apps conectadas, alcanzable), que es la pantalla real de conexiones; el equivalente web es ConnectionsScreen (modules/connections), con sus propios ids. No es un gap de UX: la pantalla web que tenia este par ya no existe. Dueno: frontend2.",
+      "pantalla": "modules/apps"
+    },
     "modules/apps::apps-error-vinculo": {
       "en": [
         "apps/mobile/src/modules/apps/PantallaApps.tsx"
@@ -1259,6 +1539,16 @@
       "fecha": "2026-09-22",
       "id": "apps-error-vinculo",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/apps"
+    },
+    "modules/apps::apps-estado": {
+      "en": [
+        "apps/mobile/src/modules/apps/PantallaApps.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "apps-estado",
+      "motivo": "Mapeo `apps` (2026-10-13): contador «N conectadas de M» del encabezado (estado-pag, index.html:2338) en la pantalla nativa. La web lista integraciones en otro modulo y no lo muestra; paridad web diferida a frontend1/web, no es contenido faltante de mobile.",
       "pantalla": "modules/apps"
     },
     "modules/apps::apps-lista": {
@@ -1502,6 +1792,36 @@
       "fecha": "2026-10-13",
       "id": "chat-composer-contenedor",
       "motivo": "Wrapper del `Composer` que se OCULTA (display none, sigue montado) mientras la grabación de voz transforma la barra (G3 de TRIAJE15, `index.html:2939-2949`). Sólo existe para que el test distinga «oculto» de «desmontado» (que perdería el borrador). La PWA dicta con `MicButton` (toque) y no transforma su campo: no hay par que esperar.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-contexto-aviso": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-contexto-aviso-texto": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso-texto",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-contexto-aviso-volver": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "chat-contexto-aviso-volver",
+      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
       "pantalla": "modules/chat"
     },
     "modules/chat::chat-enviar": {
@@ -1805,6 +2125,26 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::recibo-ejecutado": {
+      "en": [
+        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "recibo-ejecutado",
+      "motivo": "C-D3 (recibo de la accion ejecutada, piloto Gmail): el par SI existe en web, pero no es un literal `data-testid=\"...\"`: MessageList.tsx lo declara con la prop `testId=\"recibo-ejecutado\"` del `Recibo` del design-system, que lo emite como data-testid del contenedor. testid_paridad.py solo ve literales (DINAMICO/prop no), asi que acusa un faltante que no es real. Limite del instrumento, no asimetria de producto: el test web (MessageList.test.tsx, `recibo-ejecutado`) lo ejercita. Se saca si el script aprende a leer la prop `testId` de Recibo.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::recibo-ejecutado-volver": {
+      "en": [
+        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "recibo-ejecutado-volver",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/chat"
+    },
     "modules/chat::recording-overlay": {
       "en": [
         "apps/copiloto-web/src/modules/chat/RecordingOverlay.tsx"
@@ -1983,6 +2323,77 @@
       "fecha": "2026-09-22",
       "id": "voz-cancelar-aviso",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-eliminar": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-eliminar",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonDescartar`, invisible a este gate (sólo ve `testID=` literales); al dibujarse como ícono pasó a literal y aparece. La PWA (`RecordingOverlay`) cancela con su propio control sin `data-testid`: es otra superficie de la misma acción, no un par ausente por diseño.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-en-pausa": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-en-pausa",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «En pausa» en texto (WCAG 1.4.1) — vive donde estaba la onda del gesto fijado.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-enviar": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-enviar",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonPrimario`, invisible a este gate; al dibujarse como ícono (mic-como-enviar) pasó a literal y aparece. La PWA envía con un botón de `aria-label=\"Enviar audio\"` sin `data-testid`: misma acción, otra superficie.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pista-cancelar": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pista-cancelar",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «Deslizá para cancelar» (prototipo `rec-hint`).",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pista-candado": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pista-candado",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: candado + flecha (prototipo `lock-col`); alternativa WCAG 2.5.1 a sostener la presión.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-pistas": {
+      "en": [
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-pistas",
+      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: contenedor de las dos pistas del gesto (cancelar + candado).",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::voz-reloj": {
+      "en": [
+        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx",
+        "apps/mobile/src/modules/chat/PistasVoz.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "voz-reloj",
+      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). El reloj `0:07` (`.rec-t`, `:2940`) que el operador mandó implementar el 2026-10-13 (contrato «el prototipo GANA»). La PWA no lo dibuja todavía: es una divergencia de la capa web declarada, NO una decisión de que no deba existir — la excepción es por qué falta, no un permiso para que siga faltando.",
       "pantalla": "modules/chat"
     },
     "modules/clientes::cliente-acciones": {
@@ -2183,6 +2594,16 @@
       "fecha": "2026-09-22",
       "id": "clientes-actualizar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/clientes"
+    },
+    "modules/clientes::clientes-dictado": {
+      "en": [
+        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "clientes-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
       "pantalla": "modules/clientes"
     },
     "modules/clientes::clientes-duplicado-acciones": {
@@ -2505,6 +2926,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/feedback"
     },
+    "modules/feedback::feedback-texto-enviar": {
+      "en": [
+        "apps/mobile/src/modules/feedback/PantallaFeedback.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "feedback-texto-enviar",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/feedback"
+    },
     "modules/feedback::feedback-texto-error": {
       "en": [
         "apps/mobile/src/modules/feedback/PantallaFeedback.tsx"
@@ -2585,6 +3016,16 @@
       "motivo": "TRIADA 2026-10-14 (su propio disparador: «la proxima vez que alguien toque la pantalla que lo contiene» -- se toco hoy, SM-E3). Su motivo anterior decia «drift preexistente ... sin triage id-por-id todavia» y «Dueno: backend»: las dos cosas eran falsas. NO es drift de producto -- es punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. El id existe en las dos plataformas y lo ejercitan los tests de las dos. Y la pantalla es de frontend, no de backend. Dueno: planificacion. Disparador para sacarla: que el escaner resuelva la prop `testID` reenviada por `Dato` -- entonces salen las SEIS de una (incluida `detalle-gasto-trabajo-imputado`), porque comparten exactamente una causa.",
       "pantalla": "modules/gastos"
     },
+    "modules/gastos::detalle-gasto-trabajo-imputado": {
+      "en": [
+        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "detalle-gasto-trabajo-imputado",
+      "motivo": "SM-E3 (el trabajo al que esta imputado el gasto): punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. Web lo declara en `DetalleGasto.tsx:125` (`<Dato ... testID=\"detalle-gasto-trabajo-imputado\" />`) y sus tests lo afirman por testID en los dos fronts. Es el sexto hermano de los cinco `Dato` ya listados (categoria, fecha, medio-pago, origen, proveedor), con la misma causa. Dueno: planificacion. Disparador para sacar las SEIS juntas: que el escaner resuelva la prop `testID` reenviada por `Dato` -- no tiene sentido triarlas de a una.",
+      "pantalla": "modules/gastos"
+    },
     "modules/gastos::formulario-gasto": {
       "en": [
         "apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx"
@@ -2623,6 +3064,16 @@
       "fecha": "2026-09-22",
       "id": "gastos-actualizar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/gastos"
+    },
+    "modules/gastos::gastos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "gastos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::gastos-lista": {
@@ -2863,6 +3314,16 @@
       "fecha": "2026-09-22",
       "id": "ingresos-actualizar",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ingresos"
+    },
+    "modules/ingresos::ingresos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ingresos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
       "pantalla": "modules/ingresos"
     },
     "modules/ingresos::ingresos-error-carga": {
@@ -3204,6 +3665,16 @@
       "fecha": "2026-09-22",
       "id": "onboarding-cargando",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/onboarding"
+    },
+    "modules/onboarding::onboarding-chip-detalle-boton": {
+      "en": [
+        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-14",
+      "id": "onboarding-chip-detalle-boton",
+      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/onboarding"
     },
     "modules/onboarding::onboarding-entrar-botones": {
@@ -3656,6 +4127,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/presupuestos"
     },
+    "modules/presupuestos::presupuestos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "presupuestos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/presupuestos"
+    },
     "modules/presupuestos::presupuestos-historial-botones": {
       "en": [
         "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
@@ -3897,6 +4378,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
     },
+    "modules/soporte::soporte-adjunto-aviso": {
+      "en": [
+        "apps/mobile/src/modules/soporte/TarjetaTicketSoporte.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "soporte-adjunto-aviso",
+      "motivo": "PROTO4APP §D/§E (2026-10-13): la tarjeta del ticket dentro del hilo de Soporte es de la APP; la web de Soporte (ComposerSoporte + MiTicketScreen) es un formulario y un hilo aparte, sin tarjeta embebida en el chat. Resultado del último adjunto del clip: la web adjunta desde el formulario del ticket, con su propio aviso. El gemelo web (si el operador lo quiere) es otro contrato, no deuda de este PR.",
+      "pantalla": "modules/soporte"
+    },
     "modules/soporte::soporte-presentacion": {
       "en": [
         "apps/copiloto-web/src/modules/soporte/SoporteScreen.tsx"
@@ -3915,56 +4406,6 @@
       "fecha": "2026-09-22",
       "id": "soporte-screen",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::soporte-view": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaSoporte.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "soporte-view",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::ticket-no-disponible": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "ticket-no-disponible",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::ticket-no-encontrado": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "ticket-no-encontrado",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::ticket-scroll": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "ticket-scroll",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::soporte-adjunto-aviso": {
-      "en": [
-        "apps/mobile/src/modules/soporte/TarjetaTicketSoporte.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "soporte-adjunto-aviso",
-      "motivo": "PROTO4APP §D/§E (2026-10-13): la tarjeta del ticket dentro del hilo de Soporte es de la APP; la web de Soporte (ComposerSoporte + MiTicketScreen) es un formulario y un hilo aparte, sin tarjeta embebida en el chat. Resultado del último adjunto del clip: la web adjunta desde el formulario del ticket, con su propio aviso. El gemelo web (si el operador lo quiere) es otro contrato, no deuda de este PR.",
       "pantalla": "modules/soporte"
     },
     "modules/soporte::soporte-ticket-card": {
@@ -4027,6 +4468,46 @@
       "motivo": "PROTO4APP §D/§E (2026-10-13): la tarjeta del ticket dentro del hilo de Soporte es de la APP; la web de Soporte (ComposerSoporte + MiTicketScreen) es un formulario y un hilo aparte, sin tarjeta embebida en el chat. Enlace «Ver tickets anteriores (N)» que despliega la lista. El gemelo web (si el operador lo quiere) es otro contrato, no deuda de este PR.",
       "pantalla": "modules/soporte"
     },
+    "modules/soporte::soporte-view": {
+      "en": [
+        "apps/mobile/src/modules/soporte/PantallaSoporte.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-22",
+      "id": "soporte-view",
+      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/soporte"
+    },
+    "modules/soporte::ticket-no-disponible": {
+      "en": [
+        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-22",
+      "id": "ticket-no-disponible",
+      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/soporte"
+    },
+    "modules/soporte::ticket-no-encontrado": {
+      "en": [
+        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-22",
+      "id": "ticket-no-encontrado",
+      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/soporte"
+    },
+    "modules/soporte::ticket-scroll": {
+      "en": [
+        "apps/mobile/src/modules/soporte/PantallaTicket.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-09-22",
+      "id": "ticket-scroll",
+      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/soporte"
+    },
     "modules/voz::mic-funcion-fijado": {
       "en": [
         "apps/mobile/src/modules/voz/MicFuncion.tsx"
@@ -4076,6 +4557,15 @@
       "id": "login-google",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "src/auth"
+    },
+    "src/auth::login-ir-a-signup": {
+      "en": [
+        "apps/copiloto-web/src/auth/LoginScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-10-15",
+      "id": "login-ir-a-signup",
+      "motivo": "SM-C2: la puerta al alta por email. UNILATERAL POR DISENO HOY, no drift ni baseline: web tiene pantalla de alta (SignupScreen, BETA-4b) y mobile NO TIENE NINGUNA -- medido el 2026-10-15, cero archivos de signup/alta en apps/mobile/src (el unico alta de mobile es Google OAuth, BETA-5, donde entrar y crear cuenta son el mismo acto). Poner el id en mobile para satisfacer la paridad dibujaria un boton sin destino, que es peor que su ausencia -- el mismo criterio que este PR aplica a `primeraVez` sin `onCrearCuenta`. DUENO: frontend. DISPARADOR PARA RETIRARLA: el dia que mobile tenga pantalla de alta por email, el id va ahi y esta entrada sale (el trinquete del gate la hace fallar sola cuando aparezca el par)."
     },
     "src/auth::login-pie": {
       "en": [
@@ -4297,6 +4787,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "src/shell"
     },
+    "src/theme::glass-etiqueta": {
+      "en": [
+        "apps/mobile/src/theme/glass/MarcoGlass.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "glass-etiqueta",
+      "motivo": "Período junto al título (prototipo `.atras .per`, index.html:2248) en el MARCO nativo `MarcoGlass`, que la web no tiene (es el vidrio del shell móvil; los glass-* hermanos tienen la misma excepción). La web pinta el mismo dato en el header de su pantalla con la clase `ingresos-screen__periodo`. Fila `ingresos` de TRIAJE15.",
+      "pantalla": "src/theme"
+    },
     "src/theme::glass-handle": {
       "en": [
         "apps/mobile/src/theme/glass/MarcoGlass.tsx"
@@ -4356,497 +4856,6 @@
       "id": "marca-isotipo",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "src/theme"
-    },
-    "modules/account::account-legal-estado": {
-      "en": [
-        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-06",
-      "id": "account-legal-estado",
-      "motivo": "LEGALVERMICUENTA: web lo monta en modules/account; su gemelo mobile ya existe como cuenta-legal-version en PantallaCuenta.tsx (modules/ajustes, 2026-10-13). Sigue sin aparearse por el gate porque cada plataforma lo tiene en un modulo distinto.",
-      "pantalla": "modules/account"
-    },
-    "modules/account::account-legal-tos": {
-      "en": [
-        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-06",
-      "id": "account-legal-tos",
-      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
-      "pantalla": "modules/account"
-    },
-    "modules/account::account-legal-privacidad": {
-      "en": [
-        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-06",
-      "id": "account-legal-privacidad",
-      "motivo": "LEGALVERMICUENTA (2026-10-06): la fila legal de Mi cuenta existe solo en web. Mobile queda fuera de sprint por la orden del 22-09 (device al final) y se nombra, no se asigna; cuando entre su sprint, la fila se porta a PantallaCuenta.tsx con estos mismos ids.",
-      "pantalla": "modules/account"
-    },
-    "modules/account::account-screen-salir-grupo": {
-      "en": [
-        "apps/copiloto-web/src/modules/account/AccountScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-08",
-      "id": "account-screen-salir-grupo",
-      "motivo": "BL-J11: web necesita un wrapper <div data-testid> propio para agrupar 'Cerrar sesion' porque sus filas son <div>/<button> planos dentro de un unico tile generico sin limite de componente. Mobile ya cumple el MISMO criterio (fila en su propio grupo, separada por estructura) con un componente propio, FilaBotones (testID cuenta-salir-botones, PantallaCuenta.tsx:101-110) que ya actua como el contenedor -- no hace falta un wrapper adicional con este id especifico. No es drift: cada plataforma resuelve la misma casilla con su propio mecanismo de agrupacion.",
-      "pantalla": "modules/account"
-    },
-    "modules/ajustes::skin-card-sistema": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "skin-card-sistema",
-      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). El id ya existia como skin-card-${nombre}; al ser fila propia se escribe literal y el regex del gate lo ve.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::skin-card-sistema-activo": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "skin-card-sistema-activo",
-      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Marca ✓ Activo de la fila; mismo id de antes, ahora literal.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::skins-nota": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaSkins.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "skins-nota",
-      "motivo": "Mapeo `apar` (fila del bloque cascara-ajustes-auth, 2026-10-13): la web elige el tema desde un menu en Mi cuenta y no tiene la pantalla Apariencia; en mobile «Como el teléfono» pasó de ser una de tres cards a su propia fila (index.html:2406). Nota al pie del prototipo (index.html:2410): el tema cambia fondo y texto, no la marca.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/apps::apps-estado": {
-      "en": [
-        "apps/mobile/src/modules/apps/PantallaApps.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "apps-estado",
-      "motivo": "Mapeo `apps` (2026-10-13): contador «N conectadas de M» del encabezado (estado-pag, index.html:2338) en la pantalla nativa. La web lista integraciones en otro modulo y no lo muestra; paridad web diferida a frontend1/web, no es contenido faltante de mobile.",
-      "pantalla": "modules/apps"
-    },
-    "modules/ajustes::cuenta-avisos-rotulo": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "cuenta-avisos-rotulo",
-      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Rotulo «Avisos» sobre No molestar.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-no-molestar-pronto": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "cuenta-no-molestar-pronto",
-      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Chip «Pronto» de la fila No molestar (la accion sigue sin onPress a proposito).",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-no-molestar-nota": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "cuenta-no-molestar-nota",
-      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota con el porque de la demora de No molestar.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-cierre-nota": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "cuenta-cierre-nota",
-      "motivo": "Mapeo `cuenta` (2026-10-13, bloque cascara-ajustes-auth): copy del prototipo (index.html:2372-2384) aplicado a la pantalla nativa Mi cuenta; la web lo tiene en modules/account con otra estructura y no lleva estos elementos. Paridad web diferida, no contenido faltante en mobile. Nota bajo Cerrar sesion: los datos quedan guardados.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes/negocio::tono-intro": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "tono-intro",
-      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Subtitulo «Como te contesta Odobi…».",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/ajustes/negocio::tono-nota": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "tono-nota",
-      "motivo": "Mapeo `hablar` (2026-10-13): copy del prototipo (index.html:2413-2434) en la pantalla nativa «Como hablarle»; la web (PantallaTono) la mantiene aparte y se alinea en un cambio propio. Nota «Esto se guarda aparte del perfil de tu negocio…».",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/ajustes::ajustes-intro": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaAjustes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "ajustes-intro",
-      "motivo": "Mapeo `ajustes` (2026-10-13): subtitulo del prototipo (index.html:2113) en la pantalla nativa Ajustes. La web no tiene pantalla Ajustes con grilla (su configuracion vive en modules/account y modules/connections); no es contenido faltante de mobile.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes/afip::afip-estado-vinculo": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "afip-estado-vinculo",
-      "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
-      "pantalla": "modules/ajustes/afip"
-    },
-    "modules/ajustes/negocio::perfil-negocio-estado-modo": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "perfil-negocio-estado-modo",
-      "motivo": "Mapeo `negocio` (2026-10-13): estado-pag del prototipo (index.html:2280) «Te pide confirmacion antes de ejecutar» en la pantalla nativa Mi negocio. La web (modules/negocio) muestra el modo en su propio bloque; paridad web diferida, no contenido faltante de mobile.",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/ajustes/negocio::perfil-negocio-que-vende-error": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-10-13",
-      "id": "perfil-negocio-que-vende-error",
-      "motivo": "No es unilateral: mobile lo emite derivado -- `CampoTexto` (theme/glass/campos/CampoTexto.tsx) pinta `${testID}-error` con testID=\"perfil-negocio-que-vende\", y el gate no resuelve templates (mismo caso que telefono-error/email-error). Verificado en el test mobile de PantallaPerfilNegocio ('«Qué vendés» corto'). Aviso no bloqueante, decision de planificacion 2026-10-13.",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/clientes::clientes-dictado": {
-      "en": [
-        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "clientes-dictado",
-      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
-      "pantalla": "modules/clientes"
-    },
-    "modules/gastos::gastos-dictado": {
-      "en": [
-        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "gastos-dictado",
-      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
-      "pantalla": "modules/gastos"
-    },
-    "modules/ingresos::ingresos-dictado": {
-      "en": [
-        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "ingresos-dictado",
-      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
-      "pantalla": "modules/ingresos"
-    },
-    "modules/presupuestos::presupuestos-dictado": {
-      "en": [
-        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "presupuestos-dictado",
-      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
-      "pantalla": "modules/presupuestos"
-    },
-    "modules/chat::recibo-ejecutado": {
-      "en": [
-        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "recibo-ejecutado",
-      "motivo": "C-D3 (recibo de la accion ejecutada, piloto Gmail): el par SI existe en web, pero no es un literal `data-testid=\"...\"`: MessageList.tsx lo declara con la prop `testId=\"recibo-ejecutado\"` del `Recibo` del design-system, que lo emite como data-testid del contenedor. testid_paridad.py solo ve literales (DINAMICO/prop no), asi que acusa un faltante que no es real. Limite del instrumento, no asimetria de producto: el test web (MessageList.test.tsx, `recibo-ejecutado`) lo ejercita. Se saca si el script aprende a leer la prop `testId` de Recibo.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-pistas": {
-      "en": [
-        "apps/mobile/src/modules/chat/PistasVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-pistas",
-      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: contenedor de las dos pistas del gesto (cancelar + candado).",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-pista-cancelar": {
-      "en": [
-        "apps/mobile/src/modules/chat/PistasVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-pista-cancelar",
-      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «Deslizá para cancelar» (prototipo `rec-hint`).",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-pista-candado": {
-      "en": [
-        "apps/mobile/src/modules/chat/PistasVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-pista-candado",
-      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: candado + flecha (prototipo `lock-col`); alternativa WCAG 2.5.1 a sostener la presión.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-en-pausa": {
-      "en": [
-        "apps/mobile/src/modules/chat/PistasVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-en-pausa",
-      "motivo": "Pista del gesto de VOZ (mantener-y-deslizar): el gesto es del táctil nativo — la PWA dicta con `MicButton` (toque), no hay deslizar-para-fijar ni deslizar-para-cancelar que enseñar. Mismo caso que `voz-cancelar-aviso` / `overlay-voz`. Fila `bloqueado`/`grabando` de TRIAJE15. Este id: «En pausa» en texto (WCAG 1.4.1) — vive donde estaba la onda del gesto fijado.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-eliminar": {
-      "en": [
-        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-eliminar",
-      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonDescartar`, invisible a este gate (sólo ve `testID=` literales); al dibujarse como ícono pasó a literal y aparece. La PWA (`RecordingOverlay`) cancela con su propio control sin `data-testid`: es otra superficie de la misma acción, no un par ausente por diseño.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-enviar": {
-      "en": [
-        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-enviar",
-      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). Ya existía pero pasaba por el prop `id=` de `BotonPrimario`, invisible a este gate; al dibujarse como ícono (mic-como-enviar) pasó a literal y aparece. La PWA envía con un botón de `aria-label=\"Enviar audio\"` sin `data-testid`: misma acción, otra superficie.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::voz-reloj": {
-      "en": [
-        "apps/mobile/src/modules/chat/ControlesFlotantes.tsx",
-        "apps/mobile/src/modules/chat/PistasVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "voz-reloj",
-      "motivo": "Control del composer de VOZ fijada (prototipo `index.html:2943-2949`). El reloj `0:07` (`.rec-t`, `:2940`) que el operador mandó implementar el 2026-10-13 (contrato «el prototipo GANA»). La PWA no lo dibuja todavía: es una divergencia de la capa web declarada, NO una decisión de que no deba existir — la excepción es por qué falta, no un permiso para que siga faltando.",
-      "pantalla": "modules/chat"
-    },
-    "src/theme::glass-etiqueta": {
-      "en": [
-        "apps/mobile/src/theme/glass/MarcoGlass.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "glass-etiqueta",
-      "motivo": "Período junto al título (prototipo `.atras .per`, index.html:2248) en el MARCO nativo `MarcoGlass`, que la web no tiene (es el vidrio del shell móvil; los glass-* hermanos tienen la misma excepción). La web pinta el mismo dato en el header de su pantalla con la clase `ingresos-screen__periodo`. Fila `ingresos` de TRIAJE15.",
-      "pantalla": "src/theme"
-    },
-    "modules/chat::chat-contexto-aviso": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "chat-contexto-aviso",
-      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::chat-contexto-aviso-texto": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "chat-contexto-aviso-texto",
-      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::chat-contexto-aviso-volver": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "chat-contexto-aviso-volver",
-      "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
-      "pantalla": "modules/chat"
-    },
-    "modules/apps::apps-error": {
-      "en": [
-        "apps/mobile/src/modules/apps/PantallaApps.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "apps-error",
-      "motivo": "SM-D3 (issue 1019): web retiro modules/apps (AppsScreen/ModeButton, «Tus apps» inalcanzable, decision 2026-10-12 rama b), el par web de este id desaparecio. Mobile conserva PantallaApps (Ajustes > Apps conectadas, alcanzable), que es la pantalla real de conexiones; el equivalente web es ConnectionsScreen (modules/connections), con sus propios ids. No es un gap de UX: la pantalla web que tenia este par ya no existe. Dueno: frontend2.",
-      "pantalla": "modules/apps"
-    },
-    "modules/gastos::detalle-gasto-trabajo-imputado": {
-      "en": [
-        "apps/mobile/src/modules/gastos/DetalleGasto.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "detalle-gasto-trabajo-imputado",
-      "motivo": "SM-E3 (el trabajo al que esta imputado el gasto): punto ciego del escaner, verificado: web pasa el id por la PROP `testID` de su componente `Dato`, que lo reemite como `data-testid={testID}` (`apps/copiloto-web/src/modules/gastos/DetalleGasto.tsx:40`) -- `LITERAL_WEB_RE` solo ve `data-testid=\"...\"` escrito a mano, asi que el id existe en web y el gate no lo puede ver. Mobile lo escribe literal y por eso aparece como unilateral. Web lo declara en `DetalleGasto.tsx:125` (`<Dato ... testID=\"detalle-gasto-trabajo-imputado\" />`) y sus tests lo afirman por testID en los dos fronts. Es el sexto hermano de los cinco `Dato` ya listados (categoria, fecha, medio-pago, origen, proveedor), con la misma causa. Dueno: planificacion. Disparador para sacar las SEIS juntas: que el escaner resuelva la prop `testID` reenviada por `Dato` -- no tiene sentido triarlas de a una.",
-      "pantalla": "modules/gastos"
-    },
-    "modules/ajustes::cuenta-cerrar-sesion": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-cerrar-sesion",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-cerrar-sesion-no": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-cerrar-sesion-no",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-cerrar-sesion-si": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-cerrar-sesion-si",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-contrasena-cancelar": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-contrasena-cancelar",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-contrasena-cerrar": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-contrasena-cerrar",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-contrasena-guardar": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/CambiarCredenciales.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "cuenta-contrasena-guardar",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes/negocio::tono-volver": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/negocio/PantallaTono.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "tono-volver",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes/negocio"
-    },
-    "modules/chat::recibo-ejecutado-volver": {
-      "en": [
-        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "recibo-ejecutado-volver",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/feedback::feedback-texto-enviar": {
-      "en": [
-        "apps/mobile/src/modules/feedback/PantallaFeedback.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "feedback-texto-enviar",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/feedback"
-    },
-    "modules/onboarding::onboarding-chip-detalle-boton": {
-      "en": [
-        "apps/mobile/src/modules/onboarding/PantallaOnboarding.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-14",
-      "id": "onboarding-chip-detalle-boton",
-      "motivo": "visibilizado el 2026-10-14 al ensenar al gate la forma config-object (testID: '...' dentro de botones={[{...}]} de FilaBotones): el id existia en mobile y el gate no lo veia. Sin triage id-por-id todavia -- es deuda visible, no paridad confirmada. Dueno: frontend2. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/onboarding"
-    },
-    "modules/ajustes::cuenta-legal-aceptar": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-15",
-      "id": "cuenta-legal-aceptar",
-      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el boton). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-legal-aceptar-botones": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-15",
-      "id": "cuenta-legal-aceptar-botones",
-      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el contenedor de los dos botones). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::cuenta-legal-aceptar-error": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-15",
-      "id": "cuenta-legal-aceptar-error",
-      "motivo": "SM-C4: mobile implementa la ACCION de aceptar la version vigente (el estado de error). El gemelo web la declara fuera de su alcance en AccountScreen.tsx:114-115 (BL-O6/LEGALVERMICUENTA: 'Solo muestra; que se hace cuando no es la vigente es decision del operador, no de esta fila'). La asimetria no es drift: un lado decidio mostrar y el otro actuar; medido en device sobre prod 72b85cba (cierre_frontend2 SM-C4 3/3). Dueno del par web: el operador decide si la web tambien actua. Disparador para triar: esa decision, o la proxima vez que alguien toque modules/account.",
-      "pantalla": "modules/ajustes"
     }
   }
 }

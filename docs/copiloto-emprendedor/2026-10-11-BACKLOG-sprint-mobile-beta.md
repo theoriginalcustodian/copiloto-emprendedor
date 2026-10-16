@@ -54,7 +54,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
 | **SM-C4** | `#1001` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA … |
 | **SM-C5** | `#1002` | ⏭️ DIFERIDO | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
-| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
+| **SM-D1** | `#1017` | 🟧 DOD-PARCIAL | device con el sustrato REAL (las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su en… |
 | **SM-D2** | `#1018` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] (1) portada.mes.facturado == detalle CON filas en el mes EN… |
 | **SM-D3** | `#1019` | ✅ TERMINADO | merge 7d27fcc4 - DoD(1) rama (b) ejecutada: retirados de web la pantalla modules/apps, modeStore, ModeButton y el chi… |
 | **SM-D4** | `#1021` | ✅ TERMINADO | merge 84edfa11 - DoD(1) las tres filas (Idioma, Notificaciones, Privacidad del historial) retiradas de la UI de Mi cu… |
@@ -352,7 +352,8 @@ no el arranque del sprint.***
 ### SM-D1 · `#1017` — El chat de mobile no tiene renderer de artefactos ni desambiguación multi-opción
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** device con el sustrato REAL: las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su enlace (componente 3+ y canario ya en main, 39818828)
+- **Dueno-activo:** operador
+- **Falta:** device con el sustrato REAL (las 2 choices de confirmacion se ven y se eligen + artefacto post-confirmacion con su enlace). MEDIDO el 2026-10-15 por frontend2 en device RF8T318RN9T sobre prod 2e7d2af5, bundle de origin/main 9123bf52: NO_MEDIBLE, y la causa esta nombrada -- el usuario canonico no tiene NINGUNA app externa conectada (Gmail responde 'no esta conectado' en el chat; MP y Google Calendar caidos en Mi dia), y las acciones que piden confirmacion con choices son justamente las de herramientas externas, asi que el agente contesta 'conecta X' antes de proponer nada. Recorrido el hilo completo del canonico (15:34 a 16:40): cero filas con el par Confirmar/Cancelar; la tarjeta de presupuesto propuesto es otra cosa (TarjetaPresupuestoPropuesto, card editable, no el par choices). Fabricar el estado (conectar Gmail al canonico o sembrar un gate) es lo que las decisiones del 15-10 prohiben. DISPARADOR: una cuenta de prueba con Gmail conectado -- DUENO: el operador, porque reconectar es OAuth de Composio, ya abierto como frente propio. Las piezas 2 (componente 3+) y 3 (canario invertido) del DoD enmendado YA estan en main (39818828).
 - **Medido, y lo declara el propio código:** `apps/mobile/src/modules/chat/Burbuja.tsx:23` y
   `apps/mobile/src/modules/chat/ListaMensajes.tsx:356`.
 - **Consecuencia:** una respuesta con **3+ opciones** no se puede elegir en el teléfono, y un artefacto

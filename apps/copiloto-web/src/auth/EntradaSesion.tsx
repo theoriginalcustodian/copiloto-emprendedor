@@ -15,21 +15,34 @@ import { useSession } from './useSession';
  * SOLA (CTA5, ninguno de los dos flags) sigue yendo directo al formulario, como hasta ahora: el
  * aviso de sesión caída vive ahí (`LoginScreen`).
  *
- * «Crear una nueva cuenta»: la decisión operador #3 YA está resuelta (2026-08-04, ver docstring de
- * `SignupScreen.tsx`/`App.tsx`) pero `SignupScreen` no manda invite-token, así que contra el backend
- * real toda alta por email queda rechazada salvo la ruta directa para invitados — y el alta
- * self-service de la beta es Google (BETA-5), donde «entrar» y «crear cuenta» son el mismo acto, ya
- * cubierto por `Entrar`. No hay alta distinta que ofrecer acá: el botón secundario de `primeraVez`
- * no se dibuja (rama del DoD para "no hay alta en la app"), sin PR de seguimiento pendiente.
+ * «Crear una nueva cuenta» (SM-C2, 2026-10-15): **se dibuja**, y va al alta por email.
+ *
+ * ⚠️ Hasta hoy este docstring decía lo contrario — «`SignupScreen` no manda invite-token, así que
+ * contra el backend real toda alta por email queda rechazada […] el botón secundario de
+ * `primeraVez` no se dibuja». Esa premisa **venció el 2026-10-14**: `f3b60672` (PR 1206) retiró el
+ * gate `invite_token` de `POST /auth/signup` («Sin gate: alta self-service», `web.py:1399`). El
+ * comentario sobrevivió al cambio y era la razón DECLARADA para no dibujar la puerta — mientras
+ * dijera eso, el próximo que leyera volvía a apagarla. Es
+ * `memoria/el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md`.
  *
  * No hay un segundo splash: es `Splash` (BL-X10) con `cta`, mismo motor para las dos puertas.
  */
-export function EntradaSesion() {
+export interface EntradaSesionProps {
+  /** SM-C2 — lleva al alta por email. Lo provee `App` (que es quien tiene el estado del router). */
+  onCrearCuenta?: () => void;
+}
+
+export function EntradaSesion({ onCrearCuenta }: EntradaSesionProps = {}) {
   const { cierreVoluntario, primeraVez } = useSession();
   const [paso, setPaso] = useState<{ tipo: 'reveal' } | { tipo: 'login'; email: string }>({ tipo: 'reveal' });
 
   if ((cierreVoluntario == null && !primeraVez) || paso.tipo === 'login') {
-    return <LoginScreen emailInicial={paso.tipo === 'login' ? paso.email : ''} />;
+    return (
+      <LoginScreen
+        emailInicial={paso.tipo === 'login' ? paso.email : ''}
+        onCrearCuenta={onCrearCuenta}
+      />
+    );
   }
 
   const textos = cierreVoluntario != null ? TEXTOS_REVEAL.volver : TEXTOS_REVEAL.primeraVez;
@@ -38,11 +51,14 @@ export function EntradaSesion() {
       onFin={() => {}}
       cta={{
         primario: textos.primario,
-        // BETA-4b (ver docstring): sin alta distinta que ofrecer. `onSecundario` no se llega a
-        // disparar porque `Splash` no dibuja el botón cuando `secundario === ''`.
-        secundario: cierreVoluntario != null ? textos.secundario : '',
+        // SM-C2: el secundario se dibuja en los DOS caminos, pero NO significan lo mismo —
+        // «Entrar con otra cuenta» (volver) es un login en blanco; «Crear una nueva cuenta»
+        // (primeraVez) es el alta. En `primeraVez` sin `onCrearCuenta` queda `''` y `Splash` no
+        // lo dibuja: un botón que no lleva a ninguna parte es peor que su ausencia.
+        secundario: cierreVoluntario != null || onCrearCuenta ? textos.secundario : '',
         onPrimario: () => setPaso({ tipo: 'login', email: cierreVoluntario?.email ?? '' }),
-        onSecundario: () => setPaso({ tipo: 'login', email: '' }),
+        onSecundario: () =>
+          cierreVoluntario != null ? setPaso({ tipo: 'login', email: '' }) : onCrearCuenta?.(),
       }}
     />
   );

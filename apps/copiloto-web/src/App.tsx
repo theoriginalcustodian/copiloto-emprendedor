@@ -10,12 +10,16 @@ import { Onboarding } from './modules/onboarding';
 import { EntradaDiaria, Splash } from './modules/splash';
 import { ResponsiveShell } from './shell/ResponsiveShell';
 
-/** BETA-4b: `SignupScreen` es reachable SOLO por `?signup=1` — sin link público desde
- * `LoginScreen`. La decisión operador #3 (modo de alta) YA está resuelta desde 2026-08-04
- * (`Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md:93`, implementado en
- * `apps/copiloto/web.py:550-592`): dos puertas con allow-list, Google OAuth o invite-token de env.
- * `SignupScreen` no manda invite-token todavía, así que contra el backend real toda alta por email
- * se rechaza salvo por ruta directa `?signup=1` para invitados — de ahí que siga sin link público.
+/** `?signup=1` abre el alta directo, para un link que se comparte. **Ya no es la única puerta**
+ * (SM-C2, 2026-10-15): `EntradaSesion`/`LoginScreen` llevan al alta desde la app.
+ *
+ * ⚠️ Acá decía «reachable SOLO por `?signup=1` — sin link público […] contra el backend real toda
+ * alta por email se rechaza salvo por ruta directa». Falso desde `f3b60672` (PR 1206, 2026-10-14):
+ * el gate `invite_token` de `POST /auth/signup` se retiró y el alta por email es self-service. La
+ * premisa muerta vivía en TRES docstrings (acá, `SignupScreen.tsx`, `EntradaSesion.tsx`) y en un
+ * test que afirmaba la ausencia del botón — por eso el formulario existía desde BETA-4b y nadie
+ * podía llegar sin tipear la query a mano.
+ *
  * Leído UNA vez al montar: navegar entre login/signup adentro de la sesión usa el toggle interno
  * de `AppRouter`, no vuelve a leer la URL. */
 function leerSignupDeQuery(): boolean {
@@ -86,7 +90,7 @@ function AppRouter() {
       />
     );
   }
-  return <EntradaSesion />;
+  return <EntradaSesion onCrearCuenta={() => setMostrarSignup(true)} />;
 }
 
 export function App() {
