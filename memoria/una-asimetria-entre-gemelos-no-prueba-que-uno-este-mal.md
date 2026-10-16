@@ -228,3 +228,21 @@ tanda diferida. (2) Desconfiá del razonamiento *«el fix no aplica acá ⇒ fal
 sequitur** que convierte una fila cerrada en trabajo de device, y el error cae del lado caro (difiere algo que
 se cerraba hoy). (3) Cuando el gemelo declara una decisión de diseño con id (acá K-11/`BL-J8`, «NO un Modal»),
 eso contesta **«por qué el fix no se porta»** y **no** contesta «si el defecto está» — leelo como lo primero.
+
+## Refuerzo 2026-10-16 — la asimetría SÍ condenaba: los dos gemelos hacían la MISMA pregunta
+
+Dos conexiones a la misma base, con el mismo DSN, en el mismo archivo: `smoke_beta_e2e.py:532` hace
+`if dsn:` antes de conectar; la `:387` conecta directo. Esta vez la asimetría **sí** acusaba al de
+arriba, y el criterio que lo decide es el que este archivo ya propone, leído al revés: **¿qué
+pregunta hace cada lado?** Acá los dos hacían *exactamente* la misma —«conectá a `DATABASE_URL`»—,
+y cuando la pregunta es la misma, una validación en un solo lado no es un contexto distinto: es una
+que falta.
+
+El costo era medible, no teórico: sin `DATABASE_URL`, `connect(None)` espera **4,07 s** a un
+localhost que no existe (control aislado) y después reporta un `OperationalError` opaco que **no
+nombra la variable que falta**. El lado validado falla en 0 s y lo nombra.
+
+**La forma de la pregunta que separa los dos casos:** si los gemelos difieren en *qué* preguntan, la
+asimetría es información y no veredicto (el caso original de este archivo). Si preguntan lo mismo y
+difieren en *cómo se protegen*, el que no se protege está mal. Lo primero que hay que medir, entonces,
+no es la diferencia: es si el sujeto es el mismo.
