@@ -154,10 +154,10 @@ Prototipo: [consent](2026-10-16-relevamiento-capturas/proto-mapa-consent.png) ·
 *Corrección:* Agregar íconos por capacidad y el banner de continuación.  
 *Vínculo:* K6a · K6b
 
-**22 · `caida` — Conexión caída** — **DIFERENTE · A** · DEVICE  
+**22 · `caida` — Conexión caída** — **DIFERENTE · A** · DEVICE — **copy RESUELTO** (decisión del operador, 2026-10-16: gana la frase del código; se corrigió el mapa)  
 Prototipo: [caida](2026-10-16-relevamiento-capturas/proto-mapa-caida.png) · App: [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* La portada admite estar incompleta, como el mapa, pero el copy es otro: el mapa dice «faltan los cobros de hoy — Mercado Pago está caído» en una línea bajo el monto; la app dice «Se cayó la conexión con Mercado Pago: faltan los cobros de hoy, así que estos números pueden estar incompletos.» y agrega un segundo aviso de Google Calendar. Los montos de los tres cuadros se parten en dos líneas.  
-*Corrección:* Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1).  
+*Corrección aplicada:* el copy de Mercado Pago se alineó con la frase del código (prototipo, `specs/mobile-coherencia.md` y la nota del mockup 02; mismo criterio que la decisión 8); el corte de los montos (N1) quedó resuelto en #1297. *Sin decidir:* el segundo aviso de Google Calendar que la app agrega y el mapa no tiene.  
 *Vínculo:* C3 · N1
 
 **23 · `preg` — Pregunta libre** — **NO-VERIFICABLE** · NO-MEDIBLE  
@@ -208,10 +208,10 @@ Prototipo: [pres-ciclo](2026-10-16-relevamiento-capturas/proto-mapa-pres-ciclo.p
 *Corrección:* Medir con un presupuesto de prueba.  
 *Vínculo:* K3
 
-**31 · `limite` — El límite** — **DIFERENTE · B** · CÓDIGO  
+**31 · `limite` — El límite** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
 Prototipo: [limite](2026-10-16-relevamiento-capturas/proto-mapa-limite.png) · App: — (no existe)  
 *Diferencia:* Cambio deliberado con cita: «Plan y límites no entran en la beta» (DEC-8, operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`; `BL-X9` → `BL-V2`; `plan` y `limite` son VISIÓN en `BL-P5`). La app no tiene pantalla de límite y no hay nada que medir en device; un test lo fija para «Mi plan» (`PantallaAjustes.test.tsx:54`, «no hay tile Mi plan»). El mapa sigue dibujándola.  
-*Corrección:* En el mapa, marcar «El límite» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
+*Corrección aplicada:* el mapa la marca «VISIÓN post-beta» y cita DEC-8. El backlog ya la dejaba fuera de la beta (`BL-X9` → `BL-V2`); `PLAN.md` (carpeta de planificación) se pidió por el buzón.  
 *Vínculo:* F7b
 
 **32 · `vacio-visto` — Calma, ya conocida** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
@@ -316,10 +316,10 @@ Prototipo: [apps](2026-10-16-relevamiento-capturas/proto-mapa-apps.png) · App: 
 *Corrección:* Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta.  
 *Vínculo:* F11-apps
 
-**48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO  
+**48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
 Prototipo: [plan](2026-10-16-relevamiento-capturas/proto-mapa-plan.png) · App: — (no existe)  
 *Diferencia:* Cambio deliberado con cita: DEC-8 (operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`): «Plan y límites no entran en la beta». La app no tiene «Mi plan» y hay un control negativo que lo exige (`PantallaAjustes.test.tsx:54-59`: sin tile `miPlan` ni texto «Mi plan»). No hay pantalla que medir.  
-*Corrección:* En el mapa, marcar «Mi plan» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
+*Corrección aplicada:* el mapa la marca «VISIÓN post-beta» y cita DEC-8 (mismo cierre que `limite`).  
 *Vínculo:* F7b
 
 **49 · `cuenta` — Mi cuenta** — **DIFERENTE · B** · DEVICE  
@@ -355,7 +355,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 7 | `bloqueado` | **RESUELTO (N8, 2026-10-16)** — fijado, los controles ocupan toda la fila con la onda ancha. Capturas en N8. |
 | 8 | `bi-refresh` | **RESUELTO (N2, 2026-10-16)** — el círculo nativo queda fuera de cuadro (`progressViewOffset`); sólo se ve «Actualizando…». Capturas en N2. |
 | 9 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
-| 10 | `caida` | Igualar el copy al mapa o actualizar el mapa; **el corte de los montos (N1) está RESUELTO (2026-10-16)**. |
+| 10 | `caida` | **RESUELTO (2026-10-16)** — copy de Mercado Pago = frase del código (mapa actualizado) y montos en una línea (N1). Queda sin decidir el segundo aviso de Calendar. |
 | 11 | `comousar` | Igualar contenedor y numeración. |
 | 12 | `soporte` | Agregar el clip; quitar el botón de voz grande si el mapa manda. |
 | 13 | `feedback` | Igualar estructura y posición del mes. |
@@ -383,9 +383,9 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 1 | `splash` | Quitar «Crear una nueva cuenta» del mapa (splash, reveal y volver) o reabrir la decisión #3. |
 | 2 | `detalle` | Ninguna en la app. Retirar el sheet del mapa si todavía figura. |
 | 3 | `reveal` | Igual que «Splash». |
-| 4 | `limite` | Marcar «El límite» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
+| 4 | `limite` | **RESUELTO (2026-10-16)** — marcada VISIÓN post-beta en el mapa. Cita: DEC-8 (acta 2026-09-21). |
 | 5 | `ajustes` | Agregar subtítulos y encabezado; actualizar el mapa por la grilla. |
-| 6 | `plan` | Marcar «Mi plan» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
+| 6 | `plan` | **RESUELTO (2026-10-16)** — marcada VISIÓN post-beta en el mapa. Cita: DEC-8 (acta 2026-09-21). |
 | 7 | `cuenta` | Agregar «desde …» y chevrons; decidir «Cambiar el mail» (pregunta 6). |
 | 8 | N5 | **`?ver=vacio` y `?ver=vacio-visto` no muestran su estado.** Corregir los dos deep links del prototipo. |
 | 9 | N7 | **Portada del mapa dice «30 pantallas»; el mapa lista 51.** Corregir el encabezado del mapa. |
