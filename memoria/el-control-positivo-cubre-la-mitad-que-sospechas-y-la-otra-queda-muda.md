@@ -393,3 +393,49 @@ de acreditarlo. Y el patrón del fabricador se vuelve tolerante a la forma real 
 `sed -E 's/^([[:space:]]*)mi-buzon[.]sh([|][^)]*)?[)] ;;/…/'`— para que un alias nuevo no lo deje mudo otra
 vez. Medido: con el `sed` viejo restaurado, la suite ahora dice **«no pude fabricar la copia vieja»**;
 antes de este fix, verde.
+
+## Refuerzo 2026-10-16 — nueve inyecciones probadas, ninguna con un newline
+
+Escribí un validador de allowlist para el selector de `scripts/diag/estado-tenant-prod.sh` y le puse
+un test con **nueve** payloads hostiles: comilla simple, `; drop table`, `$(id)`, `or`, path
+traversal. Los nueve rechazados. **19/19 verde.** Una revisión de seguridad automática encontró, en
+el mismo commit, que el validador era **inyectable**:
+
+```bash
+if ! echo "$EMAIL" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then … fi
+SELECTOR_SQL="… where email = '${EMAIL}'"
+```
+
+`grep` evalúa **línea por línea** y sale 0 si **alguna** línea matchea. Con
+`--email $'a@b.com\n'"' or 1=1--"`, la primera línea matchea, el guard aprueba, y el payload entra
+al SQL en la segunda. Reproducido en los dos selectores antes de tocar nada: el `--dry-run` emitía
+`' or 1=1--`.
+
+**Lo que hace esto digno de refuerzo son tres cosas, no una:**
+
+1. **El ancla `^…$` *parece* anclar el valor entero.** Es la misma clase de defecto que este repo ya
+   había encontrado y **documentado** —`deploy/worker/provision_tables.py` lo dice para Python:
+   «validar con `re.fullmatch` (NO `.match`): `$` matchea ANTES de un `\n` final»— y reapareció en
+   bash el mismo día, en código mío, porque el conocimiento estaba guardado como *un detalle de
+   Python* y no como *una propiedad de los validadores con ancla*.
+2. **Mi corpus de hostilidad tenía una forma sola.** Los nueve payloads eran variaciones de
+   «meter sintaxis SQL»: ninguno atacaba el **validador**, todos atacaban el **SQL**. El newline no
+   es un payload más potente, es un payload de **otra categoría** — no explota la consulta, explota
+   la lectura del guard. Nueve ejemplos de una categoría miden una categoría.
+3. **El verde del test es lo que lo volvió invisible.** 19/19 con nueve inyecciones rechazadas se
+   lee como «la allowlist está probada». Un test que cubre bien UNA familia se cita como si cubriera
+   el riesgo, y ahí deja de haber motivo para seguir buscando.
+
+**El fix NO fue arreglar el validador.** Fue sacarle el trabajo: el selector ahora viaja como
+**variable de psql** (`-v sel=…`, referenciada `:'sel'`), así que nunca es parte del texto SQL y su
+contenido no puede cambiar la consulta. Encima de eso, `[[ =~ ]]` de bash en vez de grep (no tiene
+semántica de línea), un guard explícito que rechaza `\n`/`\r`/control con mensaje propio, y
+`default_transaction_read_only=on` del lado del motor — que es la barrera que no depende de enumerar
+verbos, al revés del grep de `insert|update|delete|…`, que sólo caza lo que lista. Tres barreras, y
+la que importa es la estructural: **la que vale no es la que detecta el ataque, es la que hace que el
+valor no pueda ser código.**
+
+**La pregunta para el próximo validador:** ¿mis casos hostiles atacan el *sujeto protegido* o el
+*mecanismo que protege*? Si todos atacan el sujeto, el mecanismo está sin probar. Para un regex, el
+caso que prueba el mecanismo es el que explota su **modelo de texto**: newline, `\r`, NUL, un
+carácter Unicode que normaliza a otro, un valor larguísimo.

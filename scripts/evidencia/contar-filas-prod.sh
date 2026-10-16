@@ -38,6 +38,13 @@
 #   bash scripts/evidencia/contar-filas-prod.sh               # cuenta contra el host fijo
 set -euo pipefail
 
+# El mecanismo de acceso (ssh + DSN del proceso vivo + los dos guards) vive en la lib: es el mismo
+# que usa `scripts/diag/estado-tenant-prod.sh`, y código de acceso a producción no puede vivir dos
+# veces. Lo que NO está en la lib, a propósito, es el ALCANCE: el host, la unidad y la lista de
+# tablas se quedan acá, porque el permiso del harness apunta a ESTE archivo y un alcance que no se
+# lee donde se otorga el permiso no es un alcance.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/psql-prod.sh"
+
 # Fijos, a propósito: son el alcance del permiso, no parámetros.
 readonly HOST='unreal-copilot'
 readonly UNIT='uc-copiloto-web.service'
@@ -55,10 +62,7 @@ done
 
 # Cinturón además de tirantes: aunque HOST sea una constante, el destino nunca puede empezar con `-`
 # ni traer metacaracteres. Si esta constante se edita mal en el futuro, corta acá y no en ssh.
-case "$HOST" in
-  -*|*[!A-Za-z0-9.-]*|'')
-    echo "ABORTA: host inválido o con forma de flag: '$HOST'" >&2; exit 2 ;;
-esac
+prod_guard_host "$HOST" || exit $?
 
 # Cada entrada: etiqueta | tabla | predicado (vacío = todas las filas).
 # Para agregar una fila, se edita ACÁ — es la única superficie de cambio, y queda en el diff.
@@ -86,10 +90,7 @@ sql="${sql};"
 
 # Guard de sólo-lectura. Si alguna edición futura mete un verbo de escritura, esto corta ANTES de
 # conectarse. Control positivo de este guard: `scripts/tests/test-contar-filas-readonly.sh`.
-if echo "$sql" | grep -qi -E '\b(insert|update|delete|drop|truncate|alter|create|grant|copy)\b'; then
-  echo "ABORTA: el SQL armado contiene un verbo de escritura. Este script es read-only." >&2
-  exit 3
-fi
+prod_guard_readonly "$sql" || exit $?
 
 if [ "$DRY" = "1" ]; then
   echo "[dry-run] host=${HOST} unit=${UNIT}"
@@ -98,9 +99,6 @@ if [ "$DRY" = "1" ]; then
   exit 0
 fi
 
-# La URL se lee del environ del proceso vivo y NUNCA se imprime: va por stdin del psql remoto.
-ssh -o ConnectTimeout=15 -o BatchMode=yes -- "$HOST" \
-  "P=\$(systemctl show -p MainPID --value ${UNIT}); \
-   DB=\$(tr '\\0' '\\n' < /proc/\$P/environ | grep '^DATABASE_URL=' | cut -d= -f2-); \
-   if [ -z \"\$DB\" ]; then echo 'SIN DATABASE_URL en el proceso' >&2; exit 4; fi; \
-   psql \"\$DB\" -v ON_ERROR_STOP=1 --single-transaction -t -A -F' | ' -c \"$sql\""
+# La URL se lee del environ del proceso vivo DENTRO del shell remoto y NUNCA se imprime ni viaja
+# por la línea de comandos local. El detalle del mecanismo está en la lib.
+prod_psql "$HOST" "$UNIT" "$sql"

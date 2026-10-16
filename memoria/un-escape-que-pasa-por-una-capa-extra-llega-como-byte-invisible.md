@@ -98,3 +98,39 @@ con `\b` en un string no-raw escribió un `0x08` dentro de `/tarjeta\.(monto|fec
 arreglo, escrito otra vez con `"\b"` en un string no-raw, volvió a meter el byte. Lo cazó `no-control-regex`
 de eslint en CI, no mi suite. Reglas: `rb"\b"`; y un test `not.toMatch` exige **control positivo**
 (`toMatch` sobre un token que SÍ está) y un **mutante** que lo ponga en rojo — también al re-escribirlo.
+
+## Refuerzo 2026-10-16 — el mismo escape, una capa más adentro: `'\''` llegó como `'''`
+
+Al extraer el acceso a prod a `scripts/lib/psql-prod.sh` tuve que pasar SQL por una cadena de ssh,
+o sea `bash local → ssh → sh remoto → psql`. La comilla simple embebida se cierra con el truco POSIX
+`'\''`, y lo escribí con `sed "s/'/'\\''/g"`. La capa extra se comió el backslash y **cada comilla
+llegó como `'''`**, que el shell colapsa a **nada**:
+
+```
+quería:  -c 'select set_config('\''request.jwt.claims'\'', …)'
+llegó:   -c 'select set_config('''request.jwt.claims''', …)'
+o sea:   select set_config(request.jwt.claims, …)      <- SIN los literales
+```
+
+El SQL resultante es sintácticamente válido y semánticamente otra cosa: `request.jwt.claims` pasa a
+ser un **identificador** que no existe. No es un error de escape que explota ruidosamente — es un
+comando distinto que parece el mío.
+
+**Lo que lo cazó no fue leer el código.** Fue un control de armado que no necesita red ni base:
+redefinir `ssh` como una función que captura su último argumento, y ejecutar ese argumento con un
+`psql` y un `systemctl` falsos en el `PATH` que imprimen lo que reciben. Tres líneas, y la salida
+mostró el `'''` literal. El fix fue reemplazar el `sed` por expansión de bash (`${frag//$q/$esc}`),
+que no tiene capa de interpretación propia.
+
+**La regla, afilada:** cuando un string atraviesa N capas de interpretación, el escape no se razona
+— se imprime en el destino final. Y el destino final no es «lo que mandé», es **lo que el último
+proceso recibió como argv**. Un `echo` del comando no sirve: muestra la capa de donde salió.
+
+**Y hubo una segunda vuelta del mismo patrón en la misma hora**, por si hacía falta la confirmación:
+el parcheador que escribía el fix era un heredoc de bash con python adentro, y el `\b` del ancla del
+guard read-only **tampoco sobrevivió** — el `assert ancla in s` falló tres veces seguidas contra un
+archivo que sí contenía el texto. Primero lo resolví quitando los backslashes del ancla (buscar por
+índices); después la tercera corrupción —los `\n` de un reemplazo convertidos en newlines reales—
+dejó claro lo que correspondía: **escribir el script con la herramienta de escritura directa, no por
+heredoc**. Cuando el problema es la cantidad de capas, la solución no es escapar mejor: es sacar una
+capa.

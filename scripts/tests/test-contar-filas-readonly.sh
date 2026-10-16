@@ -9,7 +9,13 @@ set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ORIGINAL="$RAIZ/scripts/evidencia/contar-filas-prod.sh"
-TMP="$(mktemp -d)"
+# El mutante se escribe DENTRO de `scripts/evidencia/` y no en /tmp: desde el 2026-10-16 el script
+# sourcea `scripts/lib/psql-prod.sh` relativo a su propia ubicación, así que una copia en /tmp no
+# resuelve `../lib` y sale con exit 1 ANTES de llegar al guard. Va en `scripts/` y no en
+# `scripts/evidencia/` porque el mutante queda un nivel mas abajo: desde un subdirectorio de
+# `evidencia/`, `../lib` apunta a `evidencia/lib`, que no existe. Eso daba dos controles en rojo que
+# no acusaban al guard sino a la ruta: un falso rojo que parece prudencia. El trap lo borra.
+TMP="$(mktemp -d "$RAIZ/scripts/.tmp-test-XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 fallos=0

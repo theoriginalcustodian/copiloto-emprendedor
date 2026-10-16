@@ -60,3 +60,36 @@ en vez del mecanismo**: un contrato que fija el mecanismo invita a mejorarlo.
 Hermana de [[no-codificar-la-esperanza-principio-raiz]] (una hipótesis marcada sigue siendo hipótesis)
 y de [[vacio-no-es-hallazgo-correr-el-control]] (el caso donde el vacío no protesta). Caso completo en
 `coordinacion/.../dato_..._clientes-el-409-NO-trae-el-id`, commits `e8681f8` → `702fa1a`.
+
+## Refuerzo 2026-10-16 — el fail-closed de RLS: `0 filas` se lee como «no tiene»
+
+El operador preguntó si su usuario ya tenía ARCA vinculado. La consulta natural es
+`select count(*) from uc_factory.afip_credentials where cliente_id = '<uuid>'`, y **habría devuelto
+0 estando vinculado**.
+
+Motivo: la tabla tiene `FORCE ROW LEVEL SECURITY` y su policy es
+`cliente_id = uc_factory.current_cliente_id()`, que lee la GUC `request.jwt.claims`
+(`deploy/worker/provision_tables.py:49`). Sin declarar el tenant la función devuelve **NULL**,
+ninguna fila matchea, y el resultado es 0 filas. Eso es **fail-closed** y es el comportamiento
+correcto del control de seguridad — el problema es cómo se lee: el `0` de «no tengo permiso de
+verlo» es **el mismo byte** que el `0` de «no existe». Y la conclusión que invita es la peor de las
+dos: «no está vinculado» manda a revisar el onboarding en vez de la conexión.
+
+Lo notable es que el repo **ya lo había pagado y documentado**: `e2e_facturacion_http.py:63` tiene la
+nota exacta («sin declarar el tenant esta consulta devuelve 0 filas y el script aborta con "no tiene
+certificado activo" — un diagnóstico falso»). Y su gemelo `_precheck_midia_readonly.py:45` hace la
+**misma pregunta sobre la misma tabla sin declarar el tenant**: dos lecturas del mismo dato, una con
+la salvaguarda y otra sin ella. Cuál de las dos tiene razón no se decide por simetría, se decide por
+cuál pregunta hacen — y hacen la misma. (Pendiente de medir: si el rol del DSN tiene `BYPASSRLS`,
+`_precheck` acierta por accidente. Esa es la pregunta, no el veredicto.)
+
+**Lo que hice, y es el patrón reutilizable:** el reporte **abre con un control** que cuenta la tabla
+**sin** declarar tenant. Tiene que dar 0. Si da más, RLS no está aplicando a ese rol y el resto hay
+que leerlo distinto. Así el riesgo de falso negativo queda **visible en la salida** en vez de
+implícito en un número; y además el reporte filtra por `current_cliente_id()` de forma explícita
+aunque RLS ya lo haría, para ser correcto en las dos ramas.
+
+**La regla:** antes de leer un `0` como ausencia, preguntá qué mecanismo podría estar devolviéndolo
+como negativa. Si existe uno —RLS, un filtro de scope, un permiso, un `graph_id`—, el instrumento
+necesita un control que distinga «no hay» de «no veo». Sin ese control, los dos casos se reportan
+igual y el más alarmante de los dos es el que no da síntoma.
