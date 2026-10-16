@@ -667,3 +667,44 @@ script. `rc=1`, el canario cantó «acusó»… por el crash, no por el defecto.
 satisfecho con un rojo que no midió nada es el mismo error que este archivo describe, cometido en el
 instrumento del instrumento. Con la coma (`'["rev-parse", "HEAD"],'`) el mutante reprodujo el renglón
 exacto del CI. [[un-control-positivo-con-esperado-falso-acusa-al-script]]
+
+---
+
+## 🔁 REFUERZO 2026-10-15/16 — TRES falsos rojos en un día, y los tres pedían una acción destructiva
+
+El archivo ya dice que *el falso rojo parece prudencia*. Lo que agrega el día de cierre del sprint
+mobile es la **forma** en que se presenta: ninguno de los tres se veía como un instrumento fallando.
+Los tres se veían como **el sistema roto**, y la acción que cada uno sugería era irreversible.
+
+| Lo que el instrumento dijo | Lo que concluí | Lo que era | La acción que empujaba |
+|---|---|---|---|
+| `git push` sin output + `ls-remote` vacío | «el push está colgado» | corriendo: `graph-sync` tarda **13 min** (32612 filas) | `kill` del push a mitad de la ingesta |
+| el `.db-wal` del checkpoint, **88 s sin tocar** | «ahora sí está muerto» | el WAL se había escrito 3 s antes de mi segunda medición | `kill 1066; kill 999` — **lo frenó el clasificador de permisos, no yo** |
+| `git merge-base --is-ancestor <sha> origin/main` → **NO** | «el contenido no está en main, no borro la rama» | **squash-merge**: el squash crea un commit nuevo, así que ningún commit de la rama llega a ser ancestro | dejar la rama viva para siempre, y re-hacer trabajo ya mergeado |
+| el diff de `exencion-sin-autoridad.md` contra `main`: 2 líneas | «el checkout compartido divergió» | **mi propio `split()`** del refuerzo había dejado el `---` del lado de la base | «restaurar» un archivo que estaba idéntico |
+
+**El patrón, que es lo único que hay que recordar:** en los cuatro casos el instrumento medía la
+**ausencia de una señal** —no hay output, el archivo no cambió, el sha no es ancestro, el texto no
+coincide— y la ausencia de señal tiene **dos causas** y el mensaje elige una
+([[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]). El instrumento que
+acertó siempre fue el que medía el **EFECTO**, no la ausencia:
+
+> - ¿el proceso vive? → `ps -ef` + el **mtime del artefacto muestreado DOS veces**, no una.
+>   Un mtime solo no distingue «muerto» de «entre dos escrituras»; la **segunda** muestra sí.
+> - ¿el WAL desapareciendo es falla? → **no**: es SQLite haciendo checkpoint, o sea el **éxito**.
+>   El desenlace bueno y el malo se parecen: los dos borran el archivo que yo estaba mirando.
+> - ¿el contenido está en main? → comparar **blobs**: `git rev-parse "<sha>:<path>"` contra
+>   `git rev-parse "origin/main:<path>"`. Eso responde la pregunta que me importaba; `--is-ancestor`
+>   responde otra ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+> - ¿el archivo divergió? → medir **la base** contra main antes de acusar al checkout.
+
+**Y el dato que más incomoda:** el único control que me impidió hacer daño real no fue mío. Fue el
+**clasificador de permisos**, que denegó el `kill` de la ingesta por «Interfere With Workloads». Mi
+propio razonamiento había llegado dos veces a la conclusión opuesta, con evidencia que yo mismo había
+medido mal. No busqué la vuelta a la denegación —y eso es la regla, no mérito— pero el aprendizaje es
+que **la prudencia que yo sentía apuntaba a la destrucción**, y la que frenó venía de afuera.
+
+**El control barato, antes de cualquier `kill` / revert / «no borro por si acaso»:** escribir en una
+línea *qué efecto observable esperaría si el sistema estuviera SANO*, y medir **eso**. Si la respuesta
+es «se vería igual que ahora», no tengo un diagnóstico: tengo una ausencia de señal.
+[[instrumento-que-no-mira-nunca-falla]] · [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]
