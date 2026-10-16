@@ -72,12 +72,24 @@ SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
 #   TRANSCRIPTS_EXTRA_DIRS=auto                                      → auto, contra RAMAS_GIT_DIR/SLUGS_ROOT
 #   TRANSCRIPTS_EXTRA_DIRS=<dirs separados por newline>              → esos
 slugs_de_worktrees() {
-  local wt slug d
+  local wt slug d nombre
+  # El `find -iname` por worktree costaba 146 forks + 146 `printf|sed` por corrida: ~14,5 s de
+  # los 67 s que tarda este script, que el gate de lint invoca ~20 veces (medido 2026-10-16). El
+  # directorio de slugs no cambia durante la corrida, asi que se indexa UNA vez. Mismo `find` que
+  # antes (no un glob: `*/` no ve los dotdirs y `find` si), y se conserva el "primero gana" que
+  # daba el `head -1`.
+  local -A idx=()
+  while IFS= read -r d; do
+    nombre="${d##*/}"
+    [ -n "${idx[${nombre,,}]+x}" ] || idx[${nombre,,}]="$d"
+  done < <(find "$SLUGS_ROOT" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
   git -C "$RAMAS_GIT_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' |
   while IFS= read -r wt; do
-    slug="$(printf '%s' "$wt" | sed 's/[^A-Za-z0-9]/-/g')"
-    # La letra de unidad cambia de caja según quién abrió la ventana (`c--` / `C--`).
-    d="$(find "$SLUGS_ROOT" -mindepth 1 -maxdepth 1 -type d -iname "$slug" 2>/dev/null | head -1)"
+    # `${wt//[!A-Za-z0-9]/-}` == `sed 's/[^A-Za-z0-9]/-/g'`, sin forkear.
+    slug="${wt//[!A-Za-z0-9]/-}"
+    # La letra de unidad cambia de caja según quién abrió la ventana (`c--` / `C--`): de ahi el
+    # indice en minusculas, que es lo que daba el `-iname`.
+    d="${idx[${slug,,}]:-}"
     [ -n "$d" ] && [ "$d" != "$TRANSCRIPTS" ] && printf '%s\n' "$d"
   done
 }
@@ -98,6 +110,8 @@ done
 
 alarma=0
 reporte=()
+declare -A _DECL_MEMO=()   # memo del bloque SIN DUEÑO: (archivo -> roles declarados)
+declare -A _MT_MEMO=()     # memo del bloque SIN DUEÑO: (archivo -> mtime)
 add() { reporte+=("$1"); alarma=1; }
 
 # ── 0) HOOKS: el pre-push de secretos depende de una config LOCAL compartida ──────────────────
@@ -521,10 +535,19 @@ for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" 
     # una alarma que suena siempre ensena a saltear el gate entero. El `ROLES:` no afloja nada: el
     # contrato que NO lo declara sigue interpelando a todo su alcance (escalar de menos pierde el
     # contrato; un typo deja la lista vacia y cae al default, por diseno de esa funcion).
-    declarados_c="$(roles_declarados_en "$BUZON/abierto/$nombre")"
+    # Este bloque recorre (rol x archivo), asi que sin memo cada contrato se lee y se `stat`ea
+    # una vez POR ROL: con 4 roles eran ~100 `roles_declarados_en` + 80 `stat` por corrida
+    # (~6,7 s de los 67 s, medido 2026-10-16). La cache es local al proceso y este script no
+    # reescribe el buzon mientras lo lee; por eso va aca y no en la lib, donde un test que
+    # reescriba el mismo path entre dos llamadas la dejaria rancia.
+    if [ -z "${_DECL_MEMO[$nombre]+x}" ]; then
+      _DECL_MEMO[$nombre]="$(roles_declarados_en "$BUZON/abierto/$nombre")"
+      _MT_MEMO[$nombre]="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+    fi
+    declarados_c="${_DECL_MEMO[$nombre]}"
     if [ -n "$declarados_c" ] && ! printf '%s
 ' "$declarados_c" | grep -qxF "$rol"; then continue; fi
-    mt_c="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+    mt_c="${_MT_MEMO[$nombre]}"
     [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
   done < <(ls -1 "$BUZON/abierto" 2>/dev/null | grep -iE '^[0-9-]+_(contrato|urgente)_')
@@ -543,7 +566,10 @@ done
 # del 2026-10-08. Todavía NO es alarma por sí sola: ninguna sesión usa /goal aún y un guard
 # que grita en el caso normal se desarma solo. Se calibra con la adopción medida.
 if [ "$alarma" = "1" ] && [ -x "$REPO_ROOT/scripts/goal-barrido.sh" ]; then
-  _goals="$(bash "$REPO_ROOT/scripts/goal-barrido.sh" 2>/dev/null || true)"
+  # `RAMAS_GIT_DIR` explicita, no heredada del entorno: en uso real es $REPO_ROOT (igual que
+  # antes) y en un test es el repo del fixture, para que el barrido no salga a contar los
+  # worktrees reales del disco.
+  _goals="$(RAMAS_GIT_DIR="$RAMAS_GIT_DIR" bash "$REPO_ROOT/scripts/goal-barrido.sh" 2>/dev/null || true)"
   [ -n "$_goals" ] && add "ÓRDENES DE TRABAJO declaradas (scripts/goal-barrido.sh):
 $_goals"
 fi

@@ -75,6 +75,10 @@ roles_de_broadcast() {
 # no lo lee nadie. Y si la línea no deja ningún rol válido, se devuelve vacío para que el
 # llamador caiga al comportamiento por defecto — un typo no puede apagar el escalador para un
 # contrato. Escalar de más cuesta ruido; escalar de menos pierde el contrato.
+# Prefijo `ROLES:` con su adorno de markdown. Mismo ERE que usaba el `sed -E`, en una variable
+# porque `[[ =~ ]]` entre comillas compara como cadena y sin comillas lo parte el shell.
+ROLES_PREFIJO_RE='^[[:space:]>*_-]*[Rr][Oo][Ll][Ee][Ss][[:space:]*_]*:?(.*)$'
+
 roles_declarados_en() {
   local f="$1" linea crudo tok r valido
   [ -f "$f" ] || return 0
@@ -85,8 +89,13 @@ roles_declarados_en() {
   linea="$(grep -m1 -iE '^[[:space:]>*_-]*ROLES[[:space:]*_]*:?[[:space:]*_`]*[a-z]' "$f" 2>/dev/null)" || return 0
   [ -n "$linea" ] || return 0
   # Todo lo que sigue a los dos puntos, con los adornos de markdown y los separadores a espacios.
-  crudo="$(printf '%s' "$linea" | sed -E 's/^[[:space:]>*_-]*[Rr][Oo][Ll][Ee][Ss][[:space:]*_]*:?//' \
-                                 | tr -d '`*_' | tr ',;/' '   ')"
+  # Era `printf | sed | tr | tr` (5 procesos por archivo). Con un buzon de 3300 .md eso costaba
+  # ~10 s de los 67 s de `vigilancia-check.sh`, que el gate de lint invoca ~20 veces (medido
+  # 2026-10-16). El ERE es el MISMO que tenia el sed; los dos `tr` son clases de glob, no regex.
+  # Si la linea no matchea el ancla de extraccion se usa entera, igual que el sed sin match.
+  if [[ "$linea" =~ $ROLES_PREFIJO_RE ]]; then crudo="${BASH_REMATCH[1]}"; else crudo="$linea"; fi
+  crudo="${crudo//[\`*_]/}"
+  crudo="${crudo//[,;\/]/ }"
   for tok in $crudo; do
     valido=0
     for r in "${ROLES_BUZON[@]}"; do [ "$tok" = "$r" ] && valido=1 && break; done
@@ -131,10 +140,19 @@ rol_alternacion_destino() {
 # me_interpela <rol> <ruta-o-basename> -- LA pregunta, en una sola definicion. exit 0 = es para
 # <rol>. Un nombre fuera de convencion devuelve 1 y NO se asume `todos`: ese default silencioso es
 # el defecto que pario esta lib el 2026-09-07.
+declare -gA _ME_INTERPELA_RE=()   # patron por rol: rol_alternacion_destino() es pura
+
 me_interpela() {
   local rol="$1" b
-  b="$(basename -- "$2")"
-  printf '%s' "$b" | grep -qiE "^[0-9-]+_[a-z]+_[a-z0-9-]+-a-$(rol_alternacion_destino "$rol")_"
+  # Eran 3 forks por llamada (`basename`, el pipe `printf|grep`, y el `$(rol_alternacion_destino)`)
+  # y el consumidor la llama una vez por archivo del buzon. Medido 2026-10-16: ~9 s de los 67 s de
+  # `vigilancia-check.sh`. Equivalencias: `${2##*/}` == `basename --` para rutas sin barra final
+  # (las del buzon son archivos); `${b,,}` + ERE sin `-i` == `grep -qiE`, porque el patron solo
+  # tiene las clases [0-9-] y [a-z0-9-]; `[[ =~ ]]` usa el mismo ERE que `grep -E`.
+  [ -n "${_ME_INTERPELA_RE[$rol]+x}" ] || \
+    _ME_INTERPELA_RE[$rol]="^[0-9-]+_[a-z]+_[a-z0-9-]+-a-$(rol_alternacion_destino "$rol")_"
+  b="${2##*/}"
+  [[ "${b,,}" =~ ${_ME_INTERPELA_RE[$rol]} ]]
 }
 
 # lee_patrones <sesion> -- cada patron de nombre que ESA sesion debe leer, en forma de GLOB, para
