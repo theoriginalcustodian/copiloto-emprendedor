@@ -972,3 +972,58 @@ que nombra su sujeto es lo único que impide que su cifra correcta se cite para 
 produjo. El «13/54» vivía tachado en `ALCANCE-CIERRE-BETA.md:197` *derivado al sprint mobile* —o sea
 esperando esta medición— y en el índice de memoria como estado vivo. Hubo que ir a buscarlo
 ([[el-fix-ya-existe-en-otro-call-site]], y el refuerzo del 2026-10-05 de este mismo archivo).
+
+## Refuerzo 2026-10-16 — 6 controles verdes, 5 dias, y el script no podia correr
+
+`scripts/evidencia/contar-filas-prod.sh` existe para contar filas en la instancia viva y decidir con
+un número si un defecto de dinero estaba dañando algo **hoy**. Tenía **6 controles positivos verdes**
+desde el 2026-10-11 y lo citaban dos documentos. El 2026-10-16, al correrlo por primera vez:
+
+```
+bash: line 5: psql: command not found      (exit 127)
+```
+
+**En el VPS no hay psql.** No está en el PATH, no está el paquete, y la base vive en otro nodo
+(`10.0.0.3:5432`), así que tampoco hay un contenedor con el cliente adentro. El script fue incapaz de
+ejecutar su camino feliz **desde el día que se escribió**, durante cinco días, con la suite verde.
+
+**Lo que hace esto distinto de un instrumento ciego:** el instrumento no estaba ciego. Miraba, y
+miraba bien — dos dimensiones, las dos completas:
+
+- **los RECHAZOS**: host con forma de flag ⇒ exit 2 · verbo de escritura ⇒ exit 3 · `--host` libre
+  rechazado · argumento desconocido ⇒ exit 2. Cada guard *visto disparar*, no asumido.
+- **el ARMADO**: `--dry-run` imprime el SQL exacto que se enviaría, y se verificaba su contenido.
+
+Falta la tercera, que es la única donde vive el 127: **que LLEGUE**. Y es la más fácil de no tener,
+porque es la única que no se puede meter en CI — CI no tiene la llave ni la red. Así que el corpus se
+estabiliza en las dos dimensiones automatizables y el verde se lee como «el script está probado».
+
+**El contraste exacto es con el otro script del mismo día.** `estado-tenant-prod.sh` tenía **26**
+controles verdes sobre el **mismo mecanismo roto**, y tampoco lo vieron. 26 no es mejor que 6 acá: la
+cantidad crece dentro de las dimensiones que ya se miran. Un control más de la misma clase no
+convierte un corpus parcial en completo — sólo lo hace parecer más completo.
+
+**Y el 127 no es un rojo cualquiera:** no es ninguno de los códigos del contrato del script (2, 3, 4).
+Un exit fuera del contrato significa «esto no falló, esto ni empezó», y es justo el que ningún control
+de armado puede producir. Cuando un script define sus propios códigos de salida, conviene preguntar
+qué pasa con los que **no** definió.
+
+**La pregunta que lo hubiera cazado en cinco minutos:** *¿alguna vez lo corrí?* No «¿pasa los tests?»,
+no «¿está bien escrito?» — **¿existe una corrida, con su salida?** Para todo script que sale de la
+máquina (ssh, HTTP, device, deploy), el verde de la suite acredita cómo se arma; que llegue a destino
+lo acredita **una** corrida, y esa corrida se cita como evidencia igual que un test
+([[una-orden-cerrada-exige-evidencia-de-device]] dice lo mismo para el teléfono: es el mismo límite —
+lo que no se puede automatizar hay que *hacerlo*, y escribir que se hizo).
+
+**El arreglo estructural, además del fix:** los dos tests ahora dicen en su encabezado que *verde acá
+no significa que el script funcione*, y el mecanismo deriva el intérprete del `ExecStart` de la unidad
+y lo verifica con `-x` antes de ejecutarlo — así un binario ausente da **exit 4 con mensaje propio** en
+vez de un 127 anónimo del shell. No evita el problema; lo vuelve legible la próxima vez.
+
+**Y el segundo defecto, que el primero tapaba:** una vez que el script pudo correr, sus seis conteos
+dieron **0** — porque las tablas tienen RLS y el rol de la conexión (`uc_factory`) no tiene
+`BYPASSRLS`, así que sin declarar tenant la policy no deja ver nada. Un script de **evidencia** cuyo
+0 significa «no te dejan verlas» y se lee «no hay filas»
+([[supuesto-cuya-falla-parece-un-estado-legitimo]]). O sea que arreglar el transporte habría producido
+un número **peor** que el 127: el 127 grita, el 0 se cita. Cuando un instrumento roto se arregla, hay
+que volver a preguntar qué mide — no sólo si ya corre.

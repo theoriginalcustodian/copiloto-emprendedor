@@ -101,7 +101,7 @@ de eslint en CI, no mi suite. Reglas: `rb"\b"`; y un test `not.toMatch` exige **
 
 ## Refuerzo 2026-10-16 — el mismo escape, una capa más adentro: `'\''` llegó como `'''`
 
-Al extraer el acceso a prod a `scripts/lib/psql-prod.sh` tuve que pasar SQL por una cadena de ssh,
+Al extraer el acceso a prod a `scripts/lib/db-prod.sh` tuve que pasar SQL por una cadena de ssh,
 o sea `bash local → ssh → sh remoto → psql`. La comilla simple embebida se cierra con el truco POSIX
 `'\''`, y lo escribí con `sed "s/'/'\\''/g"`. La capa extra se comió el backslash y **cada comilla
 llegó como `'''`**, que el shell colapsa a **nada**:
