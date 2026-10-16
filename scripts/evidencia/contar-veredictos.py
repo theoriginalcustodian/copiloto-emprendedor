@@ -328,6 +328,17 @@ MEDICIONES_DECLARADAS = {
 # lista es indistinguible de una exclusion por conveniencia — y la exclusion sin motivo es como se
 # hace desaparecer un dato incomodo sin que nadie lo note.
 NO_SON_MEDICION = {
+    # Lo destapo el GATE, no yo: el `dato_` que DENUNCIA el falso positivo del contraste lo
+    # REPRODUCE al ser clasificado como medicion. Medido (fixture negativo, corrida A del
+    # 2026-10-15): aporta 3 mediciones y 6 ocurrencias -- 3 COHERENTE + 3 DESVIO, las DOS
+    # puntas de los 3 pares, todas por el brazo `tabla-partida`. Son el bloque citado de
+    # `...B1-13-ids-superficie-y-dimension.md:44-46`, que copie LITERAL como evidencia.
+    # Clave por PREFIJO a proposito: `NO_SON_MEDICION` se consulta con `startswith` (`:621`)
+    # y el nombre completo tiene 145 chars -- un rename por el MAX_PATH 260 de Windows
+    # romperia una clave exacta, que es como se perdio una de `MEDICIONES_DECLARADAS`.
+    "2026-10-15_dato_planificacion-a-frontend1-y-a-todos_el-reporte-les-PIDE-separar-por-dimension":
+        "CITA para DICTAMINAR sobre el instrumento, no mide ninguna pantalla: su sujeto es el parser (`PARTIDA` captura `(etiqueta, veredicto)` y `hits.append` descarta `et`), no la paridad prototipo<->app. Los 6 tokens son el bloque de 3 filas que cite textual para probar que el autor YA separo por dimension. Ningun id trae superficie, dimension ni `medido_contra` propio. Sumarlo no movia la cifra del criterio (saturada en web 54/54 y mobile 53/54), y por eso el riesgo era INVISIBLE ahi: lo que ensuciaba era el CONTRASTE, aportando las dos puntas de `esc`/`factura`/`soporte` desde un documento que existe para decir que ese cruce esta mal.",
+
     # 2026-10-15 - OTRO MEDIDOR, no otro vocabulario. El `avance_` de frontend2 MIDE, y mide bien:
     # trae veredictos `**R**` de device por fila, cada uno con su carpeta de evidencia, y declara un
     # control negativo (sin lista cargada, modo avion, no hay tarjeta de ticket). No lo descarto por
