@@ -73,9 +73,18 @@ El alta tiene candado: `COPILOTO_SIGNUP_ALLOWLIST` y `COPILOTO_INVITE_TOKEN` (no
 - Camino A (sin permisos especiales): ingresar en el teléfono con el usuario del operador y mirar **Ajustes → ARCA**. Necesita la contraseña o que el operador haga el ingreso con Google.
 - Camino B: correr la consulta con aprobación puntual del operador, o que la corra él.
 
-**Regla de seguridad para emitir:** no emitir nada sin haber visto el estado de ARCA; factura de $100 a un cliente de prueba; el operador autoriza el botón final; registrar el ambiente en el cierre.
+**ARCA MEDIDO (2026-10-16, tras #1299, `scripts/diag/estado-tenant-prod.sh --email 341lin@gmail.com`, sólo lectura):** `afip_credentials` = **0** filas (ni homologación ni producción), activas 0; `afip_perfil` = 1; `mp_credentials` = 1. Controles del propio script: RLS sin tenant = 0 (fail-closed), tenant resuelto con la función de la policy, adversarial «0 = las propias». **El usuario del operador NO tiene ARCA vinculado**: hay que vincularlo (por ambiente) antes de emitir. Camino A queda como confirmación en device (Ajustes → ARCA).
 
-## 5. Falta de herramienta — pedido del operador (sin resolver)
+**Decisiones del operador (2026-10-16, textual):**
+- *Ambiente de la factura de $100:* «ambos ambientes probaremos» → **homologación Y producción**. La credencial es **una por ambiente** (`afip_credential_store.py:88-95`: `dev`/`prod`, certificados distintos), así que son **dos vinculaciones** y dos facturas; el toggle entre ambientes ya vinculados es `afip_web.py:655`. El default de la superficie es homologación (`afip_web.py:99`).
+- *Botón final de emitir:* «lo toco yo, pero será con mi usuario, no con uno de prueba» → emite `341lin@gmail.com`, **no** un usuario descartable. Sustituye la regla anterior de «cliente de prueba». **Producción = comprobante fiscal real** con CAE: sólo el operador toca el botón, y se registra ambiente, CUIT enmascarado y número de comprobante en el cierre.
+- *Sin decidir (falta el receptor):* a quién se factura los $100 en cada ambiente (consumidor final / un CUIT concreto).
+
+**Regla de seguridad para emitir:** no emitir nada sin haber visto el estado de ARCA (visto: 0 credenciales); el operador autoriza el botón final en cada ambiente; registrar el ambiente en el cierre.
+
+## 5. Falta de herramienta — pedido del operador (RESUELTO el 2026-10-16 por #1296 + #1299)
+
+> **Estado:** `scripts/diag/estado-tenant-prod.sh` (read-only, selector por email o cliente_id, sin `cert_enc`/`key_enc`/`DATABASE_URL`, CUIT enmascarado, con control RLS y adversarial) corre en real desde #1299 y contestó el §4. El texto de abajo es el planteo original.
 
 El operador dijo: *«si en el futuro necesito chequear cosas como estas no puedo entrar a la app de un usuario… hay que resolverlo de alguna forma».* Hoy ver el estado de un tenant (ARCA vinculado, método de alta) exige un acceso directo a la base de producción que el clasificador frena. Hay que **diseñar una vía legítima de diagnóstico por tenant**, de sólo lectura, con auditoría. Candidatos a investigar (no confirmados): endpoints de admin protegidos por el claim `copiloto_admin` (§5.5 de `HANDOFF.md`), la consola (`COPILOTO_CONSOLA_DSN`), y `scripts/evidencia/contar-filas-prod.sh` (ya tiene permiso en `.claude/settings.local.json`). Es una decisión **MAYOR** (superficie nueva sobre datos de tenants): Plan v1 + v2 antes de tocar, y control adversarial (un admin no ve lo de otro por error de scoping).
 
@@ -84,7 +93,7 @@ El operador dijo: *«si en el futuro necesito chequear cosas como estas no puedo
 - **Contrato de planificación** `2026-10-16_contrato_planificacion-a-frontend2_DECISIONES-7-y-8…` (en `coordinacion/abierto/`): **el operador ordenó dejarlo pendiente; no se tocó en ese momento — después ordenó ejecutarlo primero y quedó hecho el 2026-10-16: la 8 en #1293, la 7 con la fila E5 de la concordancia en CONFORME.** Dice: (7) «Volver» a la izquierda con «‹» en todos los call-sites del marco glass + captura a 390 px de ≥2 pantallas + fila E5 → CONFORME; (8) gana la frase del código «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.», se actualiza el **mapa** y `CONTEXT.md`, cero cambios en `apps/mobile`, grep del literal viejo = 0 con control positivo. Se creó y no se usó nada: ningún worktree de esa tarea existe.
 - **R03** sigue `[UNVERIFIED]`: necesita el experimento de +0,3 / +0,8 / +3 s.
 - **N1** (montos partidos) y **N2** (indicador de refresh sobre el saldo): defectos, a la cola de trabajo.
-- Tercer conflicto de copy sin decidir: aviso de **Mercado Pago caído**, mapa corto vs app largo (línea 159 del doc de #1288).
+- ~~Tercer conflicto de copy: aviso de **Mercado Pago caído**~~ — **RESUELTO 2026-10-16** (#1298: gana la frase del código). Sigue sin decidir el **segundo aviso de Google Calendar** en la portada (el mapa no lo tiene).
 - **Pregunta 4** (estructura de Mi día / tablero) sigue abierta; es la corrección más grande de la lista.
 - Defectos del propio mapa: portada dice «30 pantallas» y hay 51 (N7); `?ver=vacio` y `?ver=vacio-visto` no muestran su estado (N5).
 
