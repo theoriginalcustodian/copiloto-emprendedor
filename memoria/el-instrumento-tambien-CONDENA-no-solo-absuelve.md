@@ -611,3 +611,59 @@ emoji del título — el **archivo** estaba bien, el `stdout` de Windows no
 
 Un guard de unicidad que no distingue **declarar** de **citar** prohíbe hablar del caso anterior, y
 escribir memoria es casi siempre citar el caso anterior.
+---
+
+## Refuerzo 2026-10-16 — el control POSITIVO del gate medía la RAMA, y por eso sólo era verde donde no hacía falta
+
+El caso de arriba es un contador roto. Éste es más fino: el instrumento estaba bien, **el dato de
+prueba con el que se auditaba a sí mismo** era el equivocado.
+
+`scripts/sprint-estado.py --autotest` se enganchó al `lint.sh` el 2026-10-15 (`7b4a6efd`, PR #1274)
+precisamente para que un `--check` verde no pudiera venir de un gate ciego. Su caso positivo armaba
+una ficha `TERMINADO` con un sha real y exigía 0 errores. El sha salía de:
+
+```python
+sha_real = git rev-parse HEAD
+```
+
+y la validación que ese caso ejercita es `sha_en_main()`, que pide ser **ancestro de `origin/main`**.
+En `main`, `HEAD` lo es. **En cualquier rama de PR, no.** Resultado medido al día siguiente: autotest
+**VERDE en main** y **ROJO en las dos primeras ramas que lo estrenaron** (CI de los PR #1275 y #1276,
+caso `TERMINADO sha REAL`: `esperado=0 obtenido=1`).
+
+O sea: el control positivo del gate fallaba **en toda rama** — el único lugar donde un gate de PR
+sirve — y pasaba sólo en main, donde ya no hace falta. Un instrumento que mide bien exclusivamente
+en el estado en que nadie lo consulta.
+
+**Lo que lo vuelve caro acá y no sólo molesto:** un `lint` rojo por una razón falsa es el permiso
+para el `--no-verify`, y en este repo `--no-verify` arrastra **gitleaks** en un repo PÚBLICO. El
+falso rojo no es la versión prudente del error: es el agujero.
+[[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]
+
+**La pregunta que lo caza, y que no es «¿el gate dispara?»** — eso ya lo había medido (canario sobre
+`validar_decision`, ROJO 1/17). La que faltaba es:
+
+> **¿el dato de prueba de mi control positivo depende del ESTADO en que corro el gate?**
+
+Si el caso positivo se construye con `HEAD`, la rama actual, la fecha de hoy, el cwd o la variable de
+entorno del momento, entonces el control no mide el gate: mide dónde estoy parado. Y como el autor lo
+corre en su rama y el CI lo corre en otra, el desacuerdo aparece **después** del merge.
+[[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]] · [[el-instrumento-versionado-difiere-por-rama]]
+
+**Fix de raíz** (`c8f6ce1f`): el sha sale de `merge-base HEAD origin/main` — el punto de bifurcación,
+ancestro de `origin/main` por definición y presente en cualquier checkout con el remoto. Sin remoto
+el caso se **saltea declarándolo** (`[SKIP ]`): ni condena ni finge verde, que es la tercera opción
+que casi nunca se escribe. [[un-control-de-ceguera-ubicado-despues-del-guard-que-dispara]]
+
+**Y el canario del fix falló primero, por una razón que vale más que el fix.** El mutante reintrodujo
+el bug así:
+
+```python
+NUEVO = '["rev-parse", "HEAD"]'      # sin la coma final
+```
+
+lo que dejó `for args in (["rev-parse", "HEAD"])` — que itera los **strings** y hace crashear el
+script. `rc=1`, el canario cantó «acusó»… por el crash, no por el defecto. Un canario que se declara
+satisfecho con un rojo que no midió nada es el mismo error que este archivo describe, cometido en el
+instrumento del instrumento. Con la coma (`'["rev-parse", "HEAD"],'`) el mutante reprodujo el renglón
+exacto del CI. [[un-control-positivo-con-esperado-falso-acusa-al-script]]
