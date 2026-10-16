@@ -1,0 +1,81 @@
+{
+ "estado_reposo": {
+  "marcoQueRecorta": {
+   "sel": "#app",
+   "overflow": "hidden",
+   "y": 118,
+   "bottom": 962,
+   "h": 844
+  },
+  "viewport": [
+   1920,
+   1080
+  ],
+  "peek": {
+   "x": 766,
+   "y": 864,
+   "w": 388,
+   "h": 97
+  },
+  "gripChat": {
+   "x": 766,
+   "y": 975,
+   "w": 388,
+   "h": 33
+  },
+  "gripArriba": {
+   "x": 766,
+   "y": 133,
+   "w": 388,
+   "h": 33
+  },
+  "peekDentroDelMarco": true,
+  "gripChatDentroDelMarco": false,
+  "elementoEnCentroDelPeek": "campo",
+  "elementoEnCentroDelGripChat": "BODY",
+  "txtGripArriba": "Bajá para tus funciones",
+  "transformMidia": "translateY(0px)",
+  "transformChat": "translateY(842px)"
+ },
+ "estado_escritorio_abierto": {
+  "marcoQueRecorta": {
+   "sel": "#app",
+   "overflow": "hidden",
+   "y": 118,
+   "bottom": 962,
+   "h": 844
+  },
+  "viewport": [
+   1920,
+   1080
+  ],
+  "peek": {
+   "x": 766,
+   "y": 1640,
+   "w": 388,
+   "h": 101
+  },
+  "gripChat": {
+   "x": 766,
+   "y": 975,
+   "w": 388,
+   "h": 33
+  },
+  "gripArriba": {
+   "x": 766,
+   "y": 913,
+   "w": 388,
+   "h": 37
+  },
+  "peekDentroDelMarco": false,
+  "gripChatDentroDelMarco": false,
+  "elementoEnCentroDelPeek": null,
+  "elementoEnCentroDelGripChat": "BODY",
+  "txtGripArriba": "Subí para volver a Mi día",
+  "transformMidia": "translateY(780px)",
+  "transformChat": "translateY(842px)"
+ },
+ "errores_consola": [],
+ "captura": "04-escritorio-abierto-peek-y-grip-chat-FUERA-de-pantalla.png",
+ "sha": "a58ba4321ad9"
+}
