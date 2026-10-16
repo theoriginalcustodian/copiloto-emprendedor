@@ -176,6 +176,12 @@ python3 -I -X utf8 "$ROOT/scripts/evidencia/existe-en-main.py" --canario
 #   · y una tabla-indice desincronizada del cuerpo del doc.
 # El criterio de TERMINADO es el DoD COMPLETO (orden del operador 14-10), no el merge commit.
 echo "── registro del sprint (scripts/sprint-estado.py) ──"
+if ! python -I -X utf8 scripts/sprint-estado.py --autotest >/dev/null 2>&1; then
+  echo "❌ el AUTOTEST del registro falla: el gate no distingue un estado valido de uno invalido,"
+  echo "   asi que su --check verde no acredita nada. Corré: scripts/sprint-estado.py --autotest"
+  python -I -X utf8 scripts/sprint-estado.py --autotest | tail -22
+  exit 1
+fi
 if ! python -I -X utf8 scripts/sprint-estado.py --check; then
   echo "❌ el registro del sprint es incoherente (ver arriba)."
   exit 1
@@ -190,4 +196,4 @@ if ! diff -q "$_bk_antes" "$_bk" >/dev/null; then
   cp "$_bk_antes" "$_bk"; rm -f "$_bk_antes"; exit 1
 fi
 rm -f "$_bk_antes"
-echo "✅ registro del sprint: coherente e idempotente (26 fichas, tabla al dia)"
+echo "✅ registro del sprint: autotest verde, coherente e idempotente ($(grep -cE '^### SM-[A-F][0-9]+ ' "$_bk") fichas, tabla al dia)"
