@@ -61,7 +61,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-D5** | `#1007` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
 | **SM-D6** | `#1008` | ✅ TERMINADO | merge 2d198a96 - DoD(1) el mensaje refleja el resultado real de la escritura: TarjetaPropuesta.escrituraFallida.test.… |
 | **SM-D7** | `#1009` | ✅ TERMINADO | merge 2d198a96 (PR #1165) + device medido por frontend2 contra main@ea810b7a, cierre_ SM-D5/SM-D7 en buzon |
-| **SM-D8** | `GASTOSCATEG` | ⬜ PENDIENTE | el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El |
+| **SM-D8** | `GASTOSCATEG` | ✅ TERMINADO | merge 4c405783 (PR #1201, cierre_ de frontend2 del 14-10, ancestro de origin/main verificado) - DoD(1) control positi… |
 | **SM-E1** | `#1005` | ✅ TERMINADO | merge 1966c340 - 4 puntos del DoD enmendado (8f578bfd) en main con tests: mobile 4 pass / web 5 pass, control positiv… |
 | **SM-E2** | `#1006` | ✅ TERMINADO | 716e63da4460cf02abaa7b6ee825124e697e8c43 |
 | **SM-E3** | `#1020` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] CODIGO COMPLETO y DEVICE MEDIDO 7/7 el 15-10 (cierre_ de fr… |
@@ -453,7 +453,8 @@ no el arranque del sprint.***
 
 ### SM-D8 · `GASTOSCATEG` — el desglose por categoría de `gastos` EXISTE y no lo fija ningún test
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** merge 4c405783 (PR #1201, cierre_ de frontend2 del 14-10, ancestro de origin/main verificado) - DoD(1) control positivo porCategoria:[] -> ResumenMes.test.tsx:32 «con 0 gastos no rompe» - DoD(2) >=3 categorias ordenadas mayor a menor y anchos normalizados sobre la suma REAL -> :41 y :66 (50/30/20 ⇒ 50%/30%/20%; 3x33,3 ⇒ 100/3 cada una, no 99,9) - DoD(3) mutante de UNA categoria cambia el render -> porCategoria.slice(0,1) dio 3 de 5 ROJOS, restaurado 5/5 verde - DoD(4) CI 6/6 por ci-verde.sh 1201. Limite dicho a proposito: el caso multi-categoria NO se fotografio en prod porque cargar gastos de >=2 categorias mutaria al usuario canonico
 - **Dueño-activo:** frontend2
 - **Medido:** ⚠️ **la premisa original de esta fila es FALSA, y la refutó su propia dueña antes de
   escribir una línea.** La fila nació como «la tarjeta de gastos no tiene el desglose por categoría
@@ -470,7 +471,6 @@ no el arranque del sprint.***
   mecanismo* de una *forma degenerada del dato*. Mismo patrón que
   `un-supuesto-cuya-falla-parece-un-estado-legitimo`: la pregunta que faltaba era *¿cómo se vería
   esto si el render SÍ existiera y el mes tuviera una sola categoría?* — exactamente igual.
-- **Falta:** el defecto real **no es UI faltante: es que nada fija el mecanismo que ya existe.** El
   único caso que cubre `GastosScreen.test.tsx` es `porCategoria: []`, o sea el camino en que las
   barras **no se pintan**. El orden descendente, la normalización sobre la suma real y el caso de
   ≥2 categorías **no están fijados por nada**, y un render sin test que lo ejercite se puede
