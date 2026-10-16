@@ -86,3 +86,47 @@ reportó bien. O sea: **una cita mal leída gastó el turno de un peer y lo empu
 credenciales, para responder una pregunta cuya respuesta no se podía usar.** Una exención sin autoridad
 no sólo deja pasar deuda: **fabrica trabajo ajeno**. Relacionado:
 [[el-contrato-que-manda-a-hacer-algo-ya-hecho]] y [[al-juez-tambien-hay-que-darle-el-plano]].
+
+---
+
+## 🔁 REFUERZO 2026-10-15 (2) — cuando la cita es CORRECTA, lo que falta firmar es **quién subsumió**
+
+Los dos casos de arriba son de citar mal. Éste es el que más se parece a trabajo bien hecho, y por eso
+vale escribirlo: **la autoridad amparaba de verdad, y aun así había un paso mío que, sin firma, se lee
+como decisión del operador.**
+
+`SM-D1` era la última ficha viva del sprint mobile. Su device salió `NO_MEDIBLE` medido (el usuario
+canónico no tiene ninguna app externa conectada). El operador había decidido ese mismo día una regla:
+*«las casillas que no son medibles con el usuario canónico cierran declarando el hueco, no fabricando
+datos ni cambiando el canónico»* (§4.1 del doc versionado), y una ficha de causa **idéntica** —`SM-F3`,
+que exigía MP+Google conectados— ya había cerrado por ella.
+
+**El control que apliqué, y que es el aporte:** antes de citar, preguntar si la autoridad es una
+**lista cerrada** o una **regla general**. La tabla del doc nombraba fichas una por una y `SM-D1` **no
+estaba** — por la lista, no me amparaba. Pero el renglón de arriba de la tabla dice *«Los ids que no se
+pueden medir sin fabricar estado se cierran como `NO_MEDIBLE`»*: eso es una regla, y la tabla era la
+**asignación de los ids ya medidos ese día**. El `NO_MEDIBLE` de `SM-D1` llegó nueve horas después. La
+distinción decide el caso: *contar* (el control barato del caso de arriba) habría dado «la tabla nombra
+5, yo cierro una sexta» y habría concluido lo contrario de lo correcto.
+
+**Y lo que no se arregla citando bien:** quien aplica la regla a un caso nuevo **es el agente**, y ese
+paso no está en el doc del decisor. Si no se escribe, la ficha queda con un `Decision: operador,
+2026-10-15` que es cierto a medias — la autoridad es suya, la **subsunción** es mía — y aparece como
+sexta decisión del operador cuando él nunca vio la ficha. Eso es exactamente el corolario de arriba
+(«una decisión tomada por quien escribió el código, con la apariencia de estar aprobada»), pero
+alcanzado **sin ningún error de cita**.
+
+**El control, entonces, son tres preguntas y no una:**
+
+> 1. ¿la autoridad es una **lista** o una **regla**? (si es lista y mi caso no está, no me ampara)
+> 2. ¿**leí hasta el final**, incluido el `Why` / `How to apply`? (refuerzo 1 de este archivo)
+> 3. ¿**quién subsumió** este caso bajo esa regla? Si fui yo, va escrito como lectura **refutable**,
+>    con el disparador concreto que la reabre — no como una decisión del decisor.
+
+Acá el 3 se cumplió escribiendo la fila en el doc de autoridad con la frase «la autoridad es suya, la
+subsunción es mía», la aclaración de que se agregó **después** de que la medición existiera, y la vía
+de reapertura nombrada (una cuenta de prueba con Gmail conectado por OAuth). El `pedido_` al operador
+quedó **vivo** en el buzón: cerrar no fue dejar de preguntar, fue dejar de **esperar** — que es lo que
+[[una-espera-sin-disparador-nombrable-es-paralisis]] pide, y lo contrario de
+[[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]], donde una ficha quedaba
+`DOD-PARCIAL` para siempre aunque ya estuviera resuelta.
