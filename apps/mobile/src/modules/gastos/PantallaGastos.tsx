@@ -258,16 +258,15 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
               {/* BL-J7/K-10: mic + foto viven junto al botón de alta — dictar/leer una foto abren el
                   formulario con `descripcion`/la propuesta del OCR prellenada (K-10/§2, sin sesión de
                   chat), nunca envían nada solo. `scrollRef` se omite: `ScrollFormulario` no es un
-                  `FlatList` de RNGH. */}
-              <View style={styles.filaConMic}>
-                <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
-                <MicFuncion
-                  contexto="gasto"
-                  onTranscripcion={(t) => void alDictarGasto(t)}
-                  onError={setErrorMic}
-                  disabled={dictado.ocupado}
-                />
-                <View style={styles.botonesFlex}>
+                  `FlatList` de RNGH. La FILA ([foto] [mic] [Anotar un gasto]) la arma `MicFuncion`: mientras se
+                  sostiene el mic, la barra de grabación toma el lugar del botón de alta (N8). */}
+              <MicFuncion
+                contexto="gasto"
+                onTranscripcion={(t) => void alDictarGasto(t)}
+                onError={setErrorMic}
+                disabled={dictado.ocupado}
+                antes={<FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />}
+                alLado={
                   <FilaBotones
                     testID="gastos-acciones"
                     botones={[
@@ -279,8 +278,8 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
                       },
                     ]}
                   />
-                </View>
-              </View>
+                }
+              />
 
               {errorMic != null && (
                 <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -325,7 +324,4 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  // BL-J7/K-10 — ver el mismo comentario en el JSX: mic de tamaño fijo + botón que ocupa el resto.
-  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  botonesFlex: { flex: 1 },
 });

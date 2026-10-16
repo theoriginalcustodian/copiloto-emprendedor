@@ -1,4 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { useEffect } from 'react';
+import { StyleSheet, Text } from 'react-native';
+import { act, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Gesture } from 'react-native-gesture-handler';
 
 jest.mock('expo-file-system/legacy', () => ({
@@ -220,5 +222,124 @@ describe('MicFuncion (mobile)', () => {
     // deje la barra del gesto ni el candado encima de los controles.
     expect(screen.queryByTestId('voz-pistas')).toBeNull();
     expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
+  });
+});
+
+/**
+ * N8 (relevamiento 2026-10-16). Medido en device: en Gastos la barra de grabación (punto + reloj + «Deslizá para
+ * cancelar») crecía DENTRO de la columna angosta del mic y le robaba el ancho a «Anotar un gasto» (~38 dp,
+ * «An·o·tar·un·ga·sto»), el reloj pisaba al chevron, y al fijar los controles flotaban a media pantalla con una
+ * onda de ~20 dp. jsdom no mide píxeles: lo que se fija acá es la ESTRUCTURA que lo evita (quién comparte fila con
+ * quién, qué se reemplaza, qué sólo se esconde); que se vea bien en el teléfono se prueba en device.
+ */
+describe('MicFuncion — la fila del dictado se transforma, no se apila (N8)', () => {
+  const montajesDelAlta = jest.fn();
+  /** Un `alLado` con estado propio: si `MicFuncion` lo desmontara al fijar, `montajesDelAlta` contaría 2. */
+  function Alta() {
+    useEffect(() => {
+      montajesDelAlta();
+    }, []);
+    return <Text testID="alta-de-prueba">Anotar un gasto</Text>;
+  }
+  const alLado = <Alta />;
+  const antes = <Text testID="antes-de-prueba">foto</Text>;
+
+  /** El ancestro más bajo de `a` que también contiene a `b`: dónde se separan en el árbol. */
+  function ancestroComun(a: ReturnType<typeof screen.getByTestId>, testIDDeB: string) {
+    for (let n = a.parent; n != null; n = n.parent) {
+      if (within(n).queryByTestId(testIDDeB) != null) return n;
+    }
+    return null;
+  }
+
+  beforeEach(() => {
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    montajesDelAlta.mockClear();
+  });
+
+  it('en reposo: [antes] [mic] [alLado] a la vista, y ninguna barra de grabación', async () => {
+    await montar({ antes, alLado });
+
+    expect(screen.getByTestId('antes-de-prueba')).toBeTruthy();
+    expect(screen.getByTestId('boton-voz')).toBeTruthy();
+    expect(screen.getByTestId('alta-de-prueba')).toBeTruthy();
+    expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
+  });
+
+  it('sosteniendo el mic: la barra TOMA EL LUGAR del botón de alta, y la foto sigue donde estaba', async () => {
+    mockVoz.fase = 'grabando';
+    await montar({ antes, alLado });
+
+    expect(screen.getByTestId('voz-barra-sostenida')).toBeTruthy();
+    expect(screen.getByTestId('voz-reloj')).toBeTruthy();
+    // Es un REEMPLAZO en su misma ranura, no un agregado: el botón de alta sale del árbol mientras dura el gesto.
+    expect(screen.queryByTestId('alta-de-prueba')).toBeNull();
+    expect(screen.getByTestId('antes-de-prueba')).toBeTruthy();
+  });
+
+  it('la barra y el mic son HERMANOS de una FILA: ya no crece adentro de la columna del botón', async () => {
+    mockVoz.fase = 'grabando';
+    await montar({ antes, alLado });
+
+    const comun = ancestroComun(screen.getByTestId('boton-voz'), 'voz-barra-sostenida');
+
+    expect(comun).not.toBeNull();
+    // Antes el ancestro común era la columna del mic (alineada al centro, ancho = lo que mide su contenido):
+    // por eso el reloj + la pista le comían el ancho a todo lo demás. Ahora comparten una fila.
+    expect(StyleSheet.flatten(comun!.props.style)?.flexDirection).toBe('row');
+  });
+
+  it('la onda y el candado FLOTAN encima del mic (absolutos): no suman alto a la fila', async () => {
+    mockVoz.fase = 'grabando';
+    await montar({ antes, alLado });
+
+    const sobre = screen.getByTestId('voz-pistas').parent;
+    let n = sobre;
+    let flota: Record<string, unknown> | undefined;
+    while (n != null && flota == null) {
+      const estilo = StyleSheet.flatten(n.props.style) as Record<string, unknown> | undefined;
+      if (estilo?.position === 'absolute') flota = estilo;
+      n = n.parent;
+    }
+
+    expect(flota).toBeDefined();
+    // Sin `elevation` el bloque oscuro (que la tiene) se dibuja ENCIMA en Android aunque venga antes en el árbol.
+    expect(flota!.elevation).toBeGreaterThan(0);
+  });
+
+  it('fijado: los controles ocupan TODA la fila y antes/alLado se ESCONDEN sin desmontarse', async () => {
+    const espiaPan = jest.spyOn(Gesture, 'Pan');
+    mockVoz.fase = 'grabando';
+    await montar({ antes, alLado });
+    const recognizer = espiaPan.mock.results[0].value as {
+      handlers: {
+        onBegin?: (e: unknown) => void;
+        onUpdate?: (e: { translationX: number; translationY: number }) => void;
+      };
+    };
+    espiaPan.mockRestore();
+    await act(async () => {
+      recognizer.handlers.onBegin?.({});
+      recognizer.handlers.onUpdate?.({ translationX: 0, translationY: -(UMBRAL_FIJAR_PX + 1) });
+    });
+    await waitFor(() => expect(screen.getByTestId('mic-funcion-fijado')).toBeTruthy());
+
+    const fijado = screen.getByTestId('mic-funcion-fijado');
+    expect(StyleSheet.flatten(fijado.props.style)?.alignSelf).toBe('stretch');
+    // Esconder ≠ desmontar: lo que llega por `alLado` conserva su estado (un solo montaje en toda la sesión).
+    expect(montajesDelAlta).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('alta-de-prueba', { includeHiddenElements: true })).not.toBeVisible();
+    expect(screen.getByTestId('antes-de-prueba', { includeHiddenElements: true })).not.toBeVisible();
+    // Y la barra del gesto ya no está: los controles tomaron el mando.
+    expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
+  });
+
+  it('sin antes/alLado (uso suelto, como antes de N8) monta igual y sin ranuras vacías', async () => {
+    mockVoz.fase = 'grabando';
+    await montar();
+
+    expect(screen.getByTestId('boton-voz')).toBeTruthy();
+    expect(screen.getByTestId('voz-barra-sostenida')).toBeTruthy();
   });
 });

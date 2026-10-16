@@ -57,7 +57,14 @@ export function PortadaNegocio({ portada }: PortadaNegocioProps) {
             testID={`midia-portada-${etiqueta.toLowerCase().replace(' ', '-')}`}
           >
             <Text style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}>{etiqueta}</Text>
+            {/* 🔴 Una sola línea SIEMPRE (N1, relevamiento 2026-10-16): con tres celdas en un teléfono de ~384 dp
+                cada una mide ~76 dp útiles y `$101.234,00` no entra, así que Android lo cortaba en la coma
+                (`$101.234,` arriba, `00` abajo). El `,00` es exacto y deliberado (`formatearImporte`): no se
+                recorta el dato, se encoge la letra hasta que entre. Piso 0,6: `$1.234.567,00` sigue legible. */}
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
               style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
             >
               {importe(valor)}

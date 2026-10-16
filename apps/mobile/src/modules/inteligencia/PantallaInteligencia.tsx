@@ -56,6 +56,9 @@ import { useTema } from '../../theme/ThemeProvider';
 
 type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
 
+/** dp por encima de la pantalla donde Android ubica el círculo del pull-to-refresh: afuera de cuadro, recortado. */
+const OFFSET_REFRESH_FUERA_DE_CUADRO = -1000;
+
 /** Vuelve al chat principal: la pregunta se hace ahí (ver la cabecera). */
 function irAlChat() {
   router.back();
@@ -193,11 +196,20 @@ export function PantallaInteligencia() {
           testID="inteligencia-portada"
           contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
           refreshControl={
+            // 🔴 Indicador nativo FUERA DE CUADRO (N2, relevamiento 2026-10-16): el círculo con flecha de Android se
+            // dibujaba ENCIMA del saldo al tirar, y el prototipo no lo tiene — dice sólo «Actualizando…»
+            // (`inteligencia-refresco-estado`, arriba). El gesto sigue siendo el nativo (`onRefresh` y `refreshing`
+            // no cambian); lo que se saca es lo que se DIBUJA.
+            // OJO: `colors={['transparent']}` NO sirve en Android — `CircularProgressDrawable` pisa el canal alfa del
+            // color, así que el arco sale NEGRO opaco (medido en device: un arco oscuro sobre el saldo, con
+            // `progressBackgroundColor` transparente y todo). Lo que funciona es sacarlo de pantalla:
+            // `progressViewOffset` negativo lo ubica por encima del área visible y lo recorta. `tintColor` es la
+            // flecha de iOS, donde el alfa sí se respeta.
             <RefreshControl
               refreshing={refrescando}
               onRefresh={() => void tirarParaRefrescar()}
-              tintColor={tema.color.acento}
-              colors={[tema.color.acento]}
+              tintColor="transparent"
+              progressViewOffset={OFFSET_REFRESH_FUERA_DE_CUADRO}
               testID="inteligencia-refresh"
             />
           }

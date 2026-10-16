@@ -296,3 +296,23 @@ describe('PantallaInteligencia — el refresh se dispara al SOLTAR, no al apoyar
     expect(control.type).not.toBe(rn);
   });
 });
+
+describe('PantallaInteligencia — el indicador NATIVO del refresh no se dibuja (N2, relevamiento 2026-10-16)', () => {
+  // 🔴 El defecto de device: al tirar para actualizar, el círculo con flecha de Android se dibujaba ENCIMA del saldo; el
+  // prototipo sólo muestra «Actualizando…» (el texto de arriba). jsdom no dibuja el círculo, así que se fija lo que lo
+  // ubica: `progressViewOffset` muy negativo (lo saca de cuadro). NO se afirma `colors: ['transparent']`: en Android el
+  // alfa del color se pisa y el arco sale negro opaco (medido en device, 1er intento de este arreglo). Que en el teléfono
+  // ya no se vea se prueba en device (captura en el doc del relevamiento).
+  it('el círculo nativo queda FUERA de cuadro, y el gesto intacto (`onRefresh` + `refreshing` siguen ahí)', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-portada')).toBeTruthy());
+
+    const { props } = screen.getByTestId('inteligencia-portada').props.refreshControl;
+
+    expect(props.tintColor).toBe('transparent'); // iOS: la flecha sí respeta el alfa
+    expect(props.progressViewOffset).toBeLessThanOrEqual(-500);
+    expect(props.colors).toBeUndefined(); // no se confía en un color «transparente» (Android lo pinta negro)
+    expect(typeof props.onRefresh).toBe('function');
+    expect(props.refreshing).toBe(false);
+  });
+});
