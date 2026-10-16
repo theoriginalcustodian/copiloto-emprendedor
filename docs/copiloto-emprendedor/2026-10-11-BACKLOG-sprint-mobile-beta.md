@@ -50,7 +50,7 @@ completa y el por qué están en `CLAUDE.md §3.quater.bis`.
 | **SM-B3** | `#1003` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: un predicado en apps/copiloto/afip_rules.py + test_facturado… |
 | **SM-B4** | `#1004` | ✅ TERMINADO | merge bf8eb87e (PR #1045, 13-10) - CI 6/6 SUCCESS - DoD: la NC reserva por el mismo mecanismo que la factura (test_af… |
 | **SM-C1** | `#999` | ✅ TERMINADO | sin-codigo - decision del operador 12-10 registrada en ff42a5f7 (PR #1028); el DoD de esta ficha es explicitamente 'n… |
-| **SM-C2** | `#1000` | 🟧 DOD-PARCIAL | frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por c… |
+| **SM-C2** | `#1000` | ✅ TERMINADO | merge ec54c998 (#1275, web: la puerta al alta sin ?signup=1) + 6c63bf8d (#1162, camino real GoTrue+Postgres signup->l… |
 | **SM-C3** | `#1016` | ✅ TERMINADO | merge bb42cfe0 (mobile) y f037307e (web) en main; medido 15-10 contra 2e7d2af5 con el canonico: DoD(1) predicado unic… |
 | **SM-C4** | `#1001` | 🗳️ CERRADO-POR-DECISION | [TERMINAL - cerrada por decision del operador 2026-10-15] NO_MEDIBLE por DECLARAR (operador 15/10): falta UNA CUENTA … |
 | **SM-C5** | `#1002` | ⏭️ DIFERIDO | bloqueada en el OPERADOR: SMTP espera dominio/DNS (avance_ backend 14-10, sin cambio desde 07-25). El DoD 'el usuario… |
@@ -206,8 +206,8 @@ no el arranque del sprint.***
 
 ### SM-C2 · `#1000` — El alta por email de web no se puede completar
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** frontend: el formulario web no manda invite_token (campo + copy) y ?signup=1 es la unica puerta. Backend medido por camino real GoTrue+Postgres (PR #1162): signup->login->/me verde, adversarial sin invite no crea user ni tenant
+- **Estado:** TERMINADO
+- **Cierre:** merge ec54c998 (#1275, web: la puerta al alta sin ?signup=1) + 6c63bf8d (#1162, camino real GoTrue+Postgres signup->login->/me) + f3b60672 (#1206, gate invite_token retirado del backend) - DoD(1) alta por email punta a punta: puerta visible en la entrada (App.test.tsx monta App entero y llega al alta sin ?signup=1), POST /auth/signup {email,password} sin invite_token (SignupScreen.tsx -> web.py SignupIn, mismo shape; test_alta_email_camino_real.py:100 lo postea identico), login encadenado y /me; adversarial sin invite no crea user ni tenant - DoD(2) test del camino real por composition root: test_alta_email_camino_real.py (backend, GoTrue+Postgres reales) + App.test.tsx (web) - desplegado 16-10: prod sirve data-build-sha=ec54c998 y el bundle index-CVTd4rjL.js contiene 'Crear una nueva cuenta' (curl); NO se corrio un alta real en prod (fabricaria un usuario de produccion): la costura UI->API se verifico por contrato leido en ambos lados, no por una corrida unica
 - **Medido:** el backend exige `invite_token` y el cliente **nunca lo manda**; además el formulario
   sólo se abre con `?signup=1` en la URL.
 - **DoD:** alta por email de punta a punta, con test del **camino real** — el de producción, por el
