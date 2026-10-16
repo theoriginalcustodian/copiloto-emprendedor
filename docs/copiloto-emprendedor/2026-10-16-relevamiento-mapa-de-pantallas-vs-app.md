@@ -11,18 +11,18 @@
 | Veredicto | Entradas |
 |---|---|
 | CONFORME | 4 |
-| DIFERENTE | 26 |
+| DIFERENTE | 30 |
 | FALTA | 0 |
-| NO-VERIFICABLE | 21 |
+| NO-VERIFICABLE | 17 |
 | **Total** | **51** |
 
-De las 26 entradas que difieren: **22 son A** (falta o no hay decisión citable: se corrige la **app**) y **4 son B** (cambio deliberado con cita: se corrige el **mapa**). Método: CÓDIGO 6 · DEVICE 23 · DEVICE+CÓDIGO 9 · NO-MEDIBLE 13.
+De las 30 entradas que difieren: **24 son A** (falta o no hay decisión citable: se corrige la **app**) y **6 son B** (cambio deliberado con cita: se corrige el **mapa**). Método: CÓDIGO 7 · DEVICE 25 · DEVICE+CÓDIGO 9 · NO-MEDIBLE 10.
 
-Hallazgos nuevos de esta pasada (sección 4): 7 — 4 A, 1 D, 2 defectos del propio mapa o del prototipo.
+Hallazgos nuevos de esta pasada (sección 4): 8 — 5 A, 1 D, 2 defectos del propio mapa o del prototipo.
 
 Decisiones de mockups repasadas (sección 5): 28 — NO-VERIFICABLE 7, CONFORME 14, DIFERENTE 7.
 
-**Lo que NO cubre.** Las entradas NO-VERIFICABLE (21) quedan sin medir por una razón escrita en cada fila: audio, datos del tenant, acciones irreversibles o pantallas retiradas. No se inventó ningún veredicto para ellas.
+**Lo que NO cubre.** Las entradas NO-VERIFICABLE (17) quedan sin medir por una razón escrita en cada fila: voz real, datos del tenant, acciones irreversibles, Google Calendar o un build de release. No se inventó ningún veredicto para ellas.
 
 ## 2. Las 51 entradas
 
@@ -97,15 +97,15 @@ Prototipo: [detalle](2026-10-16-relevamiento-capturas/proto-mapa-detalle.png) ·
 *Diferencia:* El mockup 14 deroga el sheet de detalle: la tarjeta se expande en su lugar. En la app, tocar «Presupuesto de Lucía» abre el detalle dentro de la fila (texto explicativo, Monto, Enviado y «Mandarle un recordatorio»). El sheet del prototipo quedó superado.  
 *Corrección:* Ninguna en la app. Retirar el sheet del mapa si todavía figura.
 
-**12 · `grabando` — Grabando** — **NO-VERIFICABLE** · NO-MEDIBLE  
-Prototipo: [grabando](2026-10-16-relevamiento-capturas/proto-mapa-grabando.png) · App: — (no capturada)  
-*Diferencia:* Exige audio real y un dedo sostenido; `adb` no graba. Triaje previo: DEVICE15 (`2026-10-13-veredictos-device15-15-filas.md`).  
-*Corrección:* Medir con una persona.
+**12 · `grabando` — Grabando** — **DIFERENTE · A** · DEVICE  
+Prototipo: [grabando](2026-10-16-relevamiento-capturas/proto-mapa-grabando.png) · App: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [deslizando a la izquierda sin armar](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)  
+*Diferencia:* Medido en Gastos con un dedo sostenido (`adb shell input motionevent DOWN` sin `UP`, sin voz: no hace falta audio para ver la pantalla). Aparecen punto rojo, reloj «0:01» y «‹ Deslizá para cancelar» **debajo** del botón del micrófono, que se pone pálido; arriba, candado, flecha y una franja de onda. El prototipo lo dibuja como una barra al pie, «● 0:09 … deslizá para cancelar ‹», con el micrófono naranja a la derecha. Además el botón «Anotar un gasto» queda aplastado en columna y parte la palabra por sílabas («An/o/tar/un/ga/sto»), y el reloj choca con el chevron («0:01‹»). Causa: `BarraSostenida` se dibuja dentro de `MicFuncion` (`voz/MicFuncion.tsx:145`), en la columna angosta de la fila `filaConMic` (`PantallaGastos.tsx:262`, `:329`), en vez de reemplazar al campo; el comentario de `PistasVoz.tsx:85` dice que «no flota». Ver N8.  
+*Corrección:* Que la barra de grabación ocupe el ancho al pie y reemplace al campo, como en el prototipo (N8). Queda sin verificar, con un dedo real, el cancelar al deslizar a la izquierda (`[UNVERIFIED]`, ver N8).
 
-**13 · `bloqueado` — Audio bloqueado** — **NO-VERIFICABLE** · NO-MEDIBLE  
-Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png) · App: — (no capturada)  
-*Diferencia:* Igual que «Grabando»: el bloqueo del audio por deslizamiento exige un gesto con micrófono vivo.  
-*Corrección:* Medir con una persona.
+**13 · `bloqueado` — Audio bloqueado** — **DIFERENTE · A** · DEVICE  
+Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png) · App: [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png)  
+*Diferencia:* Con `DOWN` y seis `MOVE` hacia arriba (927 → 700 px) la grabación se fija: aparecen tacho, onda, reloj «0:02», pausa y enviar (círculo rojo). El prototipo los dibuja en una barra al pie con tacho, onda ancha, «0:09», pausa y enviar. En la app los controles flotan a media pantalla en lugar de ir en una barra al pie, la onda es angosta y el reloj la pisa, y «Anotar un gasto» colapsa a una tira vertical vacía a la derecha (mismo N8). Se descartó con el tacho: no se envió nada (la lista de gastos y el hilo del chat quedaron sin cambios).  
+*Corrección:* Mismo arreglo que «Grabando» (N8): barra al pie, de ancho completo.
 
 **14 · `card` — La card en la función** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
 Prototipo: [card](2026-10-16-relevamiento-capturas/proto-mapa-card.png) · App: — (no capturada)  
@@ -208,10 +208,10 @@ Prototipo: [pres-ciclo](2026-10-16-relevamiento-capturas/proto-mapa-pres-ciclo.p
 *Corrección:* Medir con un presupuesto de prueba.  
 *Vínculo:* K3
 
-**31 · `limite` — El límite** — **NO-VERIFICABLE** · NO-MEDIBLE  
-Prototipo: [limite](2026-10-16-relevamiento-capturas/proto-mapa-limite.png) · App: — (no capturada)  
-*Diferencia:* El límite de acciones se retiró de la app con «Mi plan» (decisión DEC-8, 2026-10-06). Si el mapa sigue mostrándolo, el mapa quedó rancio.  
-*Corrección:* Retirar «El límite» del mapa si DEC-8 sigue vigente.  
+**31 · `limite` — El límite** — **DIFERENTE · B** · CÓDIGO  
+Prototipo: [limite](2026-10-16-relevamiento-capturas/proto-mapa-limite.png) · App: — (no existe)  
+*Diferencia:* Cambio deliberado con cita: «Plan y límites no entran en la beta» (DEC-8, operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`; `BL-X9` → `BL-V2`; `plan` y `limite` son VISIÓN en `BL-P5`). La app no tiene pantalla de límite y no hay nada que medir en device; un test lo fija para «Mi plan» (`PantallaAjustes.test.tsx:54`, «no hay tile Mi plan»). El mapa sigue dibujándola.  
+*Corrección:* En el mapa, marcar «El límite» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
 *Vínculo:* F7b
 
 **32 · `vacio-visto` — Calma, ya conocida** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
@@ -316,10 +316,10 @@ Prototipo: [apps](2026-10-16-relevamiento-capturas/proto-mapa-apps.png) · App: 
 *Corrección:* Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta.  
 *Vínculo:* F11-apps
 
-**48 · `plan` — Mi plan** — **NO-VERIFICABLE** · CÓDIGO  
-Prototipo: [plan](2026-10-16-relevamiento-capturas/proto-mapa-plan.png) · App: — (no capturada)  
-*Diferencia:* «Mi plan» se retiró de la app (DEC-8, 2026-10-06): no hay pantalla para medir.  
-*Corrección:* Retirar «Mi plan» del mapa si DEC-8 sigue vigente.  
+**48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO  
+Prototipo: [plan](2026-10-16-relevamiento-capturas/proto-mapa-plan.png) · App: — (no existe)  
+*Diferencia:* Cambio deliberado con cita: DEC-8 (operador, 2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`): «Plan y límites no entran en la beta». La app no tiene «Mi plan» y hay un control negativo que lo exige (`PantallaAjustes.test.tsx:54-59`: sin tile `miPlan` ni texto «Mi plan»). No hay pantalla que medir.  
+*Corrección:* En el mapa, marcar «Mi plan» como VISIÓN (post-beta) o retirarlo, citando DEC-8.  
 *Vínculo:* F7b
 
 **49 · `cuenta` — Mi cuenta** — **DIFERENTE · B** · DEVICE  
@@ -350,28 +350,31 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 2 | `base` | Decidir una sola estructura (pregunta 4). Si gana el mapa: tarjeta de cabecera, lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». |
 | 3 | `esc` | Igualar título, orden y estilo de tiles (C1). Dejar R02 como está. |
 | 4 | `chat` | Mismo arreglo que R01: campo + mic chico siempre visibles al pie. |
-| 5 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
-| 6 | `bi-refresh` | Ocultar el indicador nativo del `RefreshControl` (color transparente) y dejar la línea «Actualizando…». |
-| 7 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
-| 8 | `caida` | Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1). |
-| 9 | `comousar` | Igualar contenedor y numeración. |
-| 10 | `soporte` | Agregar el clip; quitar el botón de voz grande si el mapa manda. |
-| 11 | `feedback` | Igualar estructura y posición del mes. |
-| 12 | `gastos` | Agregar el dock y «Ticket»; decidir qué hacer con BUSCAR. |
-| 13 | `ingresos` | Agregar el dock. |
-| 14 | `factura` | Agregar chips y dock; retirar «Te deben» o documentarlo. |
-| 15 | `presu` | Agregar chips de antigüedad y dock. |
-| 16 | `bi` | Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6). |
-| 17 | `clientes` | Traer monto y comprobantes del backend y dibujarlos; agregar el dock. |
-| 18 | `negocio` | Igualar la estructura del formulario. |
-| 19 | `afip` | Igualar subtítulo y «Necesito cambiarlo ›»; decidir el texto de la clave fiscal. |
-| 20 | `apps` | Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta. |
-| 21 | `apar` | Igualar el mosaico y el chevron. |
-| 22 | `hablar` | Igualar el control de selección. |
-| 23 | N1 | **Montos partidos en dos líneas en la portada.** Una línea por monto: `numberOfLines={1}` con `adjustsFontSizeToFit` en `PortadaNegocio.tsx`, o sin centavos en los cuadros chicos. |
-| 24 | N2 | **El indicador nativo de refresh tapa el saldo.** Dejar sólo la línea «Actualizando…» (color del indicador transparente). |
-| 25 | N3 | **Aviso de la card de gasto distinto del mapa.** Decidir cuál frase manda y alinear mapa, app y glosario. |
-| 26 | N6 | **RESUELTO (decisión 7, 2026-10-16)** — «Volver» a la izquierda con chevron en `MarcoGlass`; capturas en device. |
+| 5 | `grabando` | Barra de grabación al pie, de ancho completo, que reemplace al campo (N8); arreglar el choque del reloj con el chevron. |
+| 6 | `bloqueado` | Controles del audio bloqueado en una barra al pie con onda ancha, como el prototipo (N8). |
+| 7 | `tablero` | Decidir con el mapa si el tablero es pantalla propia o parte de Mi día (pregunta 4); el resto es copy y filtros extra sin cita. |
+| 8 | `bi-refresh` | Ocultar el indicador nativo del `RefreshControl` (color transparente) y dejar la línea «Actualizando…». |
+| 9 | `consent` | Agregar íconos por capacidad y el banner de continuación. |
+| 10 | `caida` | Igualar el copy al mapa o actualizar el mapa; arreglar el corte de los montos (N1). |
+| 11 | `comousar` | Igualar contenedor y numeración. |
+| 12 | `soporte` | Agregar el clip; quitar el botón de voz grande si el mapa manda. |
+| 13 | `feedback` | Igualar estructura y posición del mes. |
+| 14 | `gastos` | Agregar el dock y «Ticket»; decidir qué hacer con BUSCAR. |
+| 15 | `ingresos` | Agregar el dock. |
+| 16 | `factura` | Agregar chips y dock; retirar «Te deben» o documentarlo. |
+| 17 | `presu` | Agregar chips de antigüedad y dock. |
+| 18 | `bi` | Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6). |
+| 19 | `clientes` | Traer monto y comprobantes del backend y dibujarlos; agregar el dock. |
+| 20 | `negocio` | Igualar la estructura del formulario. |
+| 21 | `afip` | Igualar subtítulo y «Necesito cambiarlo ›»; decidir el texto de la clave fiscal. |
+| 22 | `apps` | Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta. |
+| 23 | `apar` | Igualar el mosaico y el chevron. |
+| 24 | `hablar` | Igualar el control de selección. |
+| 25 | N1 | **Montos partidos en dos líneas en la portada.** Una línea por monto: `numberOfLines={1}` con `adjustsFontSizeToFit` en `PortadaNegocio.tsx`, o sin centavos en los cuadros chicos. |
+| 26 | N2 | **El indicador nativo de refresh tapa el saldo.** Dejar sólo la línea «Actualizando…» (color del indicador transparente). |
+| 27 | N3 | **Aviso de la card de gasto distinto del mapa.** Decidir cuál frase manda y alinear mapa, app y glosario. |
+| 28 | N6 | **RESUELTO (decisión 7, 2026-10-16)** — «Volver» a la izquierda con chevron en `MarcoGlass`; capturas en device. |
+| 29 | N8 | **El botón «Anotar un gasto» queda aplastado mientras se graba.** Hacer que `BarraSostenida` reemplace al campo de la fila en vez de vivir dentro de `MicFuncion` (`voz/MicFuncion.tsx:145`, `PantallaGastos.tsx:262`). |
 
 ### 3.2 Se corrige en el mapa (cambio deliberado o mapa rancio)
 
@@ -380,9 +383,9 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 1 | `splash` | Quitar «Crear una nueva cuenta» del mapa (splash, reveal y volver) o reabrir la decisión #3. |
 | 2 | `detalle` | Ninguna en la app. Retirar el sheet del mapa si todavía figura. |
 | 3 | `reveal` | Igual que «Splash». |
-| 4 | `limite` | Retirar «El límite» del mapa si DEC-8 sigue vigente. |
+| 4 | `limite` | Marcar «El límite» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
 | 5 | `ajustes` | Agregar subtítulos y encabezado; actualizar el mapa por la grilla. |
-| 6 | `plan` | Retirar «Mi plan» del mapa si DEC-8 sigue vigente. |
+| 6 | `plan` | Marcar «Mi plan» como VISIÓN (post-beta) en el mapa o retirarlo. Cita: DEC-8 (acta 2026-09-21). |
 | 7 | `cuenta` | Agregar «desde …» y chevrons; decidir «Cambiar el mail» (pregunta 6). |
 | 8 | N5 | **`?ver=vacio` y `?ver=vacio-visto` no muestran su estado.** Corregir los dos deep links del prototipo. |
 | 9 | N7 | **Portada del mapa dice «30 pantallas»; el mapa lista 51.** Corregir el encabezado del mapa. |
@@ -393,10 +396,8 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 |---|---|---|
 | `entrada` | El arranque en frío se grabó (60 cuadros): logo negro sobre crema, luego la carga del dev-client (fondo oscuro con el botón «Tools»), luego Mi día y, a los pocos segundos, **el chat sube solo** con el rótulo viejo («Escribile a Odobi»). El mapa dice que la entrada dura lo que tarda Mi día en cargar y aterriza en Mi día. La fase del dev-client contamina la medición: sólo un build de release da el tiempo real. Que el chat suba solo no se pudo atribuir a la app o a la restauración de estado del dev-client. | Medir con un build de release. Si el chat sube solo también ahí, es un defecto nuevo (se suma al R03). |
 | `agenda` | La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14). | Reconectar Calendar en el usuario canónico y medir. |
-| `grabando` | Exige audio real y un dedo sostenido; `adb` no graba. Triaje previo: DEVICE15 (`2026-10-13-veredictos-device15-15-filas.md`). | Medir con una persona. |
-| `bloqueado` | Igual que «Grabando»: el bloqueo del audio por deslizamiento exige un gesto con micrófono vivo. | Medir con una persona. |
 | `card` | La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa decía otra frase, corregida a la del código por la decisión 8 del operador (ver N3). | Medir con autorización explícita para generar el dato. |
-| `vozchat` | Igual que «Grabando»: necesita una nota de voz real. | Medir con una persona. |
+| `vozchat` | Necesita una nota de voz real transcripta y enviada al hilo (la pantalla «Grabando» ya se midió sin voz, entrada 12). | Medir con una persona. |
 | `bi-vacio` | El estado sin ventas exige un tenant sin datos; el canónico tiene gastos. Fabricarlo sería borrar datos. | Medir con un tenant vacío. |
 | `onb-cumplida` | El primer insight con plata real sólo se produce en la primera sesión de un tenant con datos de facturas. Los importes del mapa (`$147.000`, `$63.000`) son un ejemplo, no copy. | Medir con un usuario nuevo con facturas cargadas. |
 | `preg` | La pregunta libre se contesta con un mensaje real al agente: consume una acción del plan y escribe en el hilo del canónico (el clasificador de permisos lo denegó). Además la app resuelve «Preguntar» saliendo al chat (decisión del 2026-10-13), no con una respuesta dentro de Inteligencia. | Medir con autorización explícita. |
@@ -426,6 +427,8 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 **N6 — «Volver» a la derecha y sin chevron** (**RESUELTO** por la decisión 7 del operador, 2026-10-16: gana el prototipo; se cambió la app). Las funciones ponían «Volver» a la derecha, sin chevron ([antes](2026-10-16-relevamiento-capturas/app-inteligencia-top.png)); el mockup 12 decide «a la izquierda, con chevron» y el prototipo lo dibuja así. *Corrección aplicada:* `MarcoGlass.tsx` (único archivo que dibuja «Volver», 23 pantallas) lo ancla arriba a la izquierda con «‹» y el título dejó de reservar ancho a la derecha. Capturas en device: [gastos](2026-10-16-relevamiento-capturas/app-volver-izquierda-gastos.png) · [ingresos](2026-10-16-relevamiento-capturas/app-volver-izquierda-ingresos.png) · [tras tocar «Volver»](2026-10-16-relevamiento-capturas/app-volver-izquierda-tras-tocar-volver.png).
 
 **N7 — Portada del mapa dice «30 pantallas»; el mapa lista 51** (defecto del mapa o del prototipo). Inconsistencia del propio mapa de pantallas: el encabezado cuenta 30 y la grilla muestra 51 entradas (5 + 3 + 29 + 6 + 8). *Corrección:* Corregir el encabezado del mapa.
+
+**N8 — El botón «Anotar un gasto» se aplasta mientras se graba** (A · se corrige en la app). En Gastos, al mantener apretado el micrófono, `BarraSostenida` (punto, reloj y «‹ Deslizá para cancelar») se dibuja dentro de `MicFuncion` y no en lugar del campo: queda en la columna angosta de la fila `filaConMic`, entre la foto y «Anotar un gasto», que se comprime hasta partir la palabra por sílabas («An/o/tar/un/ga/sto»). Con la grabación fijada, los controles (tacho, onda, reloj, pausa, enviar) flotan a media pantalla con una onda angosta que el reloj pisa, y el botón colapsa a una tira vertical vacía. El prototipo transforma la barra del composer en una barra al pie de ancho completo; el comentario de `PistasVoz.tsx:85` dice «no flota» y el chat (`ChatView.tsx:351`) y Soporte (`PantallaSoporte.tsx:266`) sí reemplazan el campo. Capturas: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png). *Alcance:* medido en Gastos; el mismo `MicFuncion` lo usan Clientes, Ingresos y Presupuestos, no medidos. *Corrección:* Que la barra de grabación reemplace al campo en la fila (o la fila se oculte mientras se graba). *`[UNVERIFIED]` — cancelar al deslizar a la izquierda:* en dos corridas con `motionevent` (5 `MOVE` a −134 px y 12 `MOVE` a −119 px) nunca apareció «Soltá para cancelar» ([captura](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)), mientras que deslizar hacia arriba sí fija; al soltar sin armar se transcribe. Puede ser un límite del instrumento o un defecto real: se resuelve con el dedo del operador.
 
 ## 5. Decisiones de los mockups
 
@@ -472,6 +475,6 @@ Los mockups 01, 02, 03, 05, 06 y 08 se repasaron en las entradas de arranque, co
 
 1. Las 51 entradas tienen veredicto, método y diferencia. ✔ (51 de 51, contadas con `collections.Counter` en `gen_mapa.py`.)
 2. Cada diferencia cita `path:línea` o una captura de ambos lados. ✔
-3. Lo no medido está declarado con su motivo, sin veredicto inventado. ✔ (21 entradas)
+3. Lo no medido está declarado con su motivo, sin veredicto inventado. ✔ (17 entradas)
 4. Capturas versionadas en `2026-10-16-relevamiento-capturas/`: 51 del prototipo + 12 nuevas del device. ✔
 5. Sin cambios de código en `apps/` ni `packages/`. ✔

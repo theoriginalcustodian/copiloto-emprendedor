@@ -13,6 +13,7 @@
 ## 1. Qué ya está hecho (no repetir)
 
 - 51 entradas del mapa clasificadas: 4 CONFORME · 26 DIFERENTE (22 A + 4 B) · 21 NO-VERIFICABLE (`scratchpad` del doc de #1288, conteo con `collections.Counter`).
+- **Actualización 2026-10-16 (tarde):** `grabando` y `bloqueado` medidos en device (DIFERENTE · A, hallazgo N8) y `plan`/`limite` clasificados por CÓDIGO con la cita de DEC-8 (DIFERENTE · B): el doc del mapa queda en **4 CONFORME · 30 DIFERENTE (24 A + 6 B) · 17 NO-VERIFICABLE**. Las filas 1, 2, 20 y 21 de la sección 2 ya están resueltas; el resto de la tabla sigue vigente.
 - Relevamiento previo de 45 filas: A 29 · B 9 · C 0 · D 7.
 - 28 decisiones de los 14 mockups repasadas; hallazgos N1–N7.
 - Las 63 capturas nuevas están versionadas en `2026-10-16-relevamiento-capturas/`.
@@ -23,8 +24,8 @@ Clave de método: **MOTION** = `adb input motionevent` (DOWN/MOVE/UP; nunca `inp
 
 | # | Entrada | Qué se mide | Cómo | Riesgo / requisito |
 |---|---|---|---|---|
-| 1 | `grabando` | pantalla de grabación en curso | MOTION: DOWN sin UP sobre el micrófono; capturar con el dedo apoyado | no hay que grabar contenido; soltar con UP al final (o deslizar a cancelar) |
-| 2 | `bloqueado` | audio bloqueado por deslizamiento | MOTION: DOWN + MOVE hacia el candado + UP; capturar | ídem; mirar que no quede una nota de voz enviada |
+| 1 | `grabando` | pantalla de grabación en curso | **✔ HECHO 2026-10-16** (DOWN sostenido sin voz en Gastos) → DIFERENTE · A; ver N8 en el doc del mapa | sólo queda, con un dedo real, el cancelar al deslizar a la izquierda (`[UNVERIFIED]`) |
+| 2 | `bloqueado` | audio bloqueado por deslizamiento | **✔ HECHO 2026-10-16** (DOWN + 6 MOVE hacia arriba, descartado con el tacho) → DIFERENTE · A; ver N8 | no quedó ninguna nota de voz enviada |
 | 3 | `vozchat` | lo dictado aterrizando en el chat | MOTION como #1 y soltar hasta que aparezca el texto | **escribe un mensaje en el hilo**: con el usuario del operador, no con el canónico |
 | 4 | `fact-voz` | facturar por voz | ídem, entrando desde Facturación | usa datos de cliente: cliente de prueba |
 | 5 | `pres-voz` | presupuesto por voz | ídem, desde Presupuestos | cliente de prueba |
