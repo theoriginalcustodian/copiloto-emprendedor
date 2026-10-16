@@ -226,3 +226,37 @@ sacás. Si no corriste el medidor dos veces sobre el mismo sujeto, no sabés si 
 de su ruido — y una sola corrida siempre produce un número que *parece* una medición. Donde la mejora
 es grande frente al ruido (110,9 → 2,3 s) una corrida basta; donde es del tamaño del ruido, hay que
 cambiar de sujeto: medir la parte que tocaste, o el total que de verdad importa.
+
+## Refuerzo 2026-10-16 (b) — un `401` SIN credenciales no mide el permiso del OTRO
+
+El operador pidió poder modificar cosas en prod. Medí el gate de la consola con
+
+```
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:8099/admin/salud   →  401
+```
+
+y reporté: **«la vía existe y está viva; el único bloqueo es que tu usuario no tiene el claim
+`copiloto_admin`»**. Construí un wrapper para otorgárselo, lo verifiqué entero y se lo pasé.
+
+Lo corrió, y el propio script imprimió la refutación en su primera línea:
+
+```
+app_metadata ANTES={'cliente_id': '48a9…', 'copiloto_admin': True, 'provider': 'email', …}
+```
+
+**Ya era administrador.** El claim estaba desde antes; el script fue un no-op.
+
+El `401` nunca dijo lo que le hice decir. Dijo *«quien hizo ESTA request no mandó credenciales»* — y
+quien no las mandó fui yo. La prueba respondió **¿esto responde sin token?** y la cité como respuesta
+a **¿él tiene permiso?**: dos preguntas distintas que comparten el mismo número, que es exactamente
+el eje de esta entrada. Y es peor que una cifra ambigua, porque acá el resultado lo causó mi propia
+omisión: *el instrumento midió mi ausencia de credencial y yo lo leí como la ausencia de permiso
+ajena.*
+
+**Lo que lo habría cazado, y costaba lo mismo:** leer `app_metadata` del usuario — un dato del
+sujeto, no de mi request. Regla práctica: antes de afirmar que a ALGUIEN le falta un permiso, mirá
+al sujeto, nunca a una request hecha sin ser él. Un `401` obtenido sin credenciales es un control
+del gate, no una medición del padrón.
+
+El costo no fue el trabajo (el wrapper quedó correcto y útil para otro usuario): fue haberle dado al
+operador un «el único bloqueo es X» que no era bloqueo, y que él ejecutó confiando en el diagnóstico.
