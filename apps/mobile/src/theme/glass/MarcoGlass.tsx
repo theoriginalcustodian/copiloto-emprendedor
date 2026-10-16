@@ -253,11 +253,15 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
 
                 `identidad` (ícono+título) es contenido NO interactivo — sumarlo al mismo
                 `GestureDetector` del handle no le compite el toque a nada. `Volver` queda AFUERA,
-                posicionado absoluto sobre el mismo renglón visual: layout idéntico al de antes,
-                cero riesgo sobre un botón que hoy funciona. `zonaArrastre` reserva
-                `paddingRight` para el ancho de "Volver" — los títulos de este marco son nombres de
-                función corridos (`titulo`, prop fija por pantalla, nunca texto largo de usuario), así
-                que no hay caso real donde el título necesite ese espacio.
+                posicionado absoluto: cero riesgo sobre un botón que hoy funciona.
+
+                🔴 **«‹ Volver» va ARRIBA A LA IZQUIERDA — decisión 7 del operador (2026-10-16): gana
+                el prototipo** (`.fn-head` con `justify-content:flex-start`, `index.html:417`). Vive en
+                el renglón del handle —la barra va centrada, así que el margen izquierdo está libre— y
+                no en el del título: así el título ya no compite con él por el ancho (antes se
+                reservaban 76dp a la derecha) y la salida queda donde el pulgar de una mano la espera.
+                Es UN solo lugar para las 23 pantallas que usan este marco; no hay otro marco con su
+                propia copia del botón.
               */}
               <View style={styles.filaEncabezado}>
                 <GestureDetector gesture={gesto}>
@@ -268,7 +272,7 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                     <View
                       style={[
                         styles.identidad,
-                        { paddingHorizontal: tema.espacio.md, paddingRight: ANCHO_RESERVADO_VOLVER, gap: tema.espacio.sm },
+                        { paddingHorizontal: tema.espacio.md, gap: tema.espacio.sm },
                       ]}
                       testID="glass-zona-arrastre-identidad"
                     >
@@ -292,8 +296,9 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                   </View>
                 </GestureDetector>
                 {/* `PRESS_FADE` y no `PRESS_SCALE`: es un link de texto suelto, sin caja propia que
-                    pueda hundirse. Posición absoluta: mismo lugar visual que antes (fila del
-                    encabezado, alineado a la derecha), pero FUERA del `GestureDetector` de arriba. */}
+                    pueda hundirse. Posición absoluta sobre el renglón del handle, alineado a la
+                    IZQUIERDA, y FUERA del `GestureDetector` de arriba. El chevron «‹» es un glifo
+                    de texto como el `›` de `EncabezadoListado`: mismo criterio, sin sumar un ícono. */}
                 <Pressable
                   testID="glass-volver"
                   onPress={cerrar}
@@ -301,9 +306,12 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                   style={(estado) => [
                     pressableStyle(undefined, PRESS_FADE)(estado),
                     styles.volverFlotante,
-                    { right: tema.espacio.md },
+                    { left: tema.espacio.md },
                   ]}
                 >
+                  <Text style={[styles.chevronVolver, { color: tema.color.acentoTinta }]}>
+                    ‹
+                  </Text>
                   <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Volver</Text>
                 </Pressable>
               </View>
@@ -317,12 +325,6 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
   );
 }
 
-/** Ancho reservado a la derecha de `identidad` para que el título nunca quede bajo "Volver" (que
- *  ahora vive posicionado absoluto, fuera del flujo). "Volver" (uiSemibold, tipo base) más el aire
- *  del layout — no hace falta medirlo exacto: los `titulo` de este marco son nombres de función
- *  fijos y cortos ("Ingresos", "Facturación AFIP"), nunca texto largo que necesite ese espacio. */
-const ANCHO_RESERVADO_VOLVER = 76;
-
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
   panel: { flex: 1 },
@@ -331,12 +333,21 @@ const styles = StyleSheet.create({
   contenido: { flex: 1 },
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center' },
   barraHandle: { ...BARRA_HANDLE },
-  // `position:'relative'` es lo que ancla a "Volver" (`position:'absolute'` adentro) al mismo
-  // renglón visual del título, sin ser parte del `GestureDetector` de arriba.
+  // `position:'relative'` es lo que ancla a "Volver" (`position:'absolute'` adentro) al renglón del
+  // handle, sin ser parte del `GestureDetector` de arriba.
   filaEncabezado: { position: 'relative' },
   identidad: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  // `top: ALTO_HANDLE`: el handle ocupa el tramo de arriba de `filaEncabezado`; "Volver" tiene que
-  // alinearse con la fila de ícono+título que viene DESPUÉS, no con el bloque entero (handle incluido)
-  // — sin este offset, quedaría centrado a mitad de handle+título en vez de a la altura del título.
-  volverFlotante: { position: 'absolute', top: ALTO_HANDLE, bottom: 0, justifyContent: 'center' },
+  // `top: 0` + `height: ALTO_HANDLE`: "Volver" ocupa el renglón del handle (arriba del título), centrado
+  // en vertical con la barra, que va en el medio — el margen izquierdo de ese renglón está libre.
+  volverFlotante: {
+    position: 'absolute',
+    top: 0,
+    height: ALTO_HANDLE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  // Mismo glifo y tamaño que la flecha de `EncabezadoListado` pero a la izquierda; el `marginTop`
+  // negativo compensa que el `‹` de una fuente de texto cae bajo la línea media de "Volver".
+  chevronVolver: { fontSize: 22, lineHeight: 24, marginTop: -2 },
 });

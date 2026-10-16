@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { ThemeProvider } from '../ThemeProvider';
 import { MarcoGlass } from './MarcoGlass';
@@ -58,6 +58,58 @@ describe('MarcoGlass -- la zona de arrastre creció (handle+identidad), "Volver"
   it('el contenido (children) sigue montando debajo del encabezado', async () => {
     await montar();
     expect(screen.getByText('contenido')).toBeTruthy();
+  });
+});
+
+/**
+ * Decisión 7 del operador (2026-10-16): «‹ Volver» va ARRIBA A LA IZQUIERDA — gana el prototipo
+ * (`.fn-head { justify-content:flex-start }`). jsdom no mide pixeles, así que lo que se fija es el
+ * ANCLAJE (`left` y no `right`), el chevron, y que el título dejó de reservar ancho a la derecha.
+ * La posición real a 390 px se prueba en device (capturas en el doc de concordancia, fila E5).
+ */
+describe('MarcoGlass -- «‹ Volver» arriba a la izquierda (decisión 7)', () => {
+  it('lleva el chevron «‹» antes de la palabra «Volver»', async () => {
+    await montar();
+
+    expect(screen.getByText('‹')).toBeTruthy();
+    expect(screen.getByTestId('glass-volver')).toHaveTextContent('‹Volver');
+  });
+
+  it('🔴 está anclado a la IZQUIERDA: tiene `left` y NO tiene `right`', async () => {
+    await montar();
+
+    const estilo = StyleSheet.flatten(screen.getByTestId('glass-volver').props.style);
+
+    expect(estilo.position).toBe('absolute');
+    expect(estilo.left).toBeGreaterThan(0);
+    expect(estilo.right).toBeUndefined();
+  });
+
+  it('vive en el renglón del handle (arriba del título), no en el del título', async () => {
+    await montar();
+
+    const estilo = StyleSheet.flatten(screen.getByTestId('glass-volver').props.style);
+
+    expect(estilo.top).toBe(0);
+  });
+
+  it('el título ya no reserva ancho a la derecha para «Volver»', async () => {
+    await montar();
+
+    const identidad = StyleSheet.flatten(screen.getByTestId('glass-zona-arrastre-identidad').props.style);
+
+    expect(identidad.paddingRight).toBeUndefined();
+  });
+
+  it('«Volver» sigue AFUERA de la zona de arrastre (no es hijo de la identidad ni del handle)', async () => {
+    await montar();
+
+    const volver = screen.getByTestId('glass-volver');
+    const identidad = screen.getByTestId('glass-zona-arrastre-identidad');
+    const handle = screen.getByTestId('glass-handle');
+
+    expect(identidad).not.toContainElement(volver);
+    expect(handle).not.toContainElement(volver);
   });
 });
 

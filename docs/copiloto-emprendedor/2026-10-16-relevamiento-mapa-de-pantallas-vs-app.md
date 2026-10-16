@@ -279,8 +279,8 @@ Prototipo: [presu](2026-10-16-relevamiento-capturas/proto-mapa-presu.png) · App
 
 **42 · `bi` — Inteligencia de Negocio** — **DIFERENTE · A** · DEVICE  
 Prototipo: [bi](2026-10-16-relevamiento-capturas/proto-mapa-bi.png) · App: [inteligencia-top](2026-10-16-relevamiento-capturas/app-inteligencia-top.png) · [mapa-bi-reposo](2026-10-16-relevamiento-capturas/app-mapa-bi-reposo.png)  
-*Diferencia:* Falta la etiqueta de mes y los mosaicos y el dock «Preguntame lo que quieras…» + mic. «Volver» va a la derecha y sin chevron, y el título está suelto con ícono, no dentro de una card blanca con período (mockup 12: «Volver a la izquierda, con chevron»; «nombre y período en la card blanca»). La regla del dato faltante sí se cumple: Rentabilidad muestra «—» y la explicación, no «$0» (decisión del mockup 12). La pestaña «Preguntar» es una salida al chat (B).  
-*Corrección:* Igualar cabecera, etiqueta de mes, mosaicos y dock; mover «Volver» a la izquierda con chevron (N6).  
+*Diferencia:* Falta la etiqueta de mes y los mosaicos y el dock «Preguntame lo que quieras…» + mic. El título está suelto con ícono, no dentro de una card blanca con período (mockup 12: «nombre y período en la card blanca»); «Volver» ya va a la izquierda con chevron (N6, decisión 7). La regla del dato faltante sí se cumple: Rentabilidad muestra «—» y la explicación, no «$0» (decisión del mockup 12). La pestaña «Preguntar» es una salida al chat (B).  
+*Corrección:* Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6).  
 *Vínculo:* F6 · F6b · N6 · F12
 
 **43 · `clientes` — Clientes** — **DIFERENTE · A** · DEVICE  
@@ -361,7 +361,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 13 | `ingresos` | Agregar el dock. |
 | 14 | `factura` | Agregar chips y dock; retirar «Te deben» o documentarlo. |
 | 15 | `presu` | Agregar chips de antigüedad y dock. |
-| 16 | `bi` | Igualar cabecera, etiqueta de mes, mosaicos y dock; mover «Volver» a la izquierda con chevron (N6). |
+| 16 | `bi` | Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6). |
 | 17 | `clientes` | Traer monto y comprobantes del backend y dibujarlos; agregar el dock. |
 | 18 | `negocio` | Igualar la estructura del formulario. |
 | 19 | `afip` | Igualar subtítulo y «Necesito cambiarlo ›»; decidir el texto de la clave fiscal. |
@@ -371,7 +371,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 23 | N1 | **Montos partidos en dos líneas en la portada.** Una línea por monto: `numberOfLines={1}` con `adjustsFontSizeToFit` en `PortadaNegocio.tsx`, o sin centavos en los cuadros chicos. |
 | 24 | N2 | **El indicador nativo de refresh tapa el saldo.** Dejar sólo la línea «Actualizando…» (color del indicador transparente). |
 | 25 | N3 | **Aviso de la card de gasto distinto del mapa.** Decidir cuál frase manda y alinear mapa, app y glosario. |
-| 26 | N6 | **«Volver» a la derecha y sin chevron.** Mover «Volver» a la izquierda con chevron en `MarcoGlass`, o registrar la derogación. |
+| 26 | N6 | **RESUELTO (decisión 7, 2026-10-16)** — «Volver» a la izquierda con chevron en `MarcoGlass`; capturas en device. |
 
 ### 3.2 Se corrige en el mapa (cambio deliberado o mapa rancio)
 
@@ -423,7 +423,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 
 **N5 — `?ver=vacio` y `?ver=vacio-visto` no muestran su estado** (defecto del mapa o del prototipo). En el prototipo las dos entradas del mapa se ven igual que la base; el estado vacío de Mi día no se puede mirar. *Corrección:* Corregir los dos deep links del prototipo.
 
-**N6 — «Volver» a la derecha y sin chevron** (A · se corrige en la app). Las funciones ponen «Volver» a la derecha, sin chevron (`MarcoGlass.tsx:296-307`); el mockup 12 decide «a la izquierda, con chevron» y el prototipo lo dibuja así. El comentario del código explica el posicionamiento (fuera del `GestureDetector` del handle) pero no cita una decisión que derogue la del mockup. *Corrección:* Mover «Volver» a la izquierda con chevron en `MarcoGlass`, o registrar la derogación. Captura: [inteligencia-top](2026-10-16-relevamiento-capturas/app-inteligencia-top.png).
+**N6 — «Volver» a la derecha y sin chevron** (**RESUELTO** por la decisión 7 del operador, 2026-10-16: gana el prototipo; se cambió la app). Las funciones ponían «Volver» a la derecha, sin chevron ([antes](2026-10-16-relevamiento-capturas/app-inteligencia-top.png)); el mockup 12 decide «a la izquierda, con chevron» y el prototipo lo dibuja así. *Corrección aplicada:* `MarcoGlass.tsx` (único archivo que dibuja «Volver», 23 pantallas) lo ancla arriba a la izquierda con «‹» y el título dejó de reservar ancho a la derecha. Capturas en device: [gastos](2026-10-16-relevamiento-capturas/app-volver-izquierda-gastos.png) · [ingresos](2026-10-16-relevamiento-capturas/app-volver-izquierda-ingresos.png) · [tras tocar «Volver»](2026-10-16-relevamiento-capturas/app-volver-izquierda-tras-tocar-volver.png).
 
 **N7 — Portada del mapa dice «30 pantallas»; el mapa lista 51** (defecto del mapa o del prototipo). Inconsistencia del propio mapa de pantallas: el encabezado cuenta 30 y la grilla muestra 51 entradas (5 + 3 + 29 + 6 + 8). *Corrección:* Corregir el encabezado del mapa.
 
@@ -444,7 +444,7 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 11 · Voz contextual | Card en la función y su aviso | NO-VERIFICABLE | Exige un gasto real; la frase del mapa ya es la del código (N3, decisión 8). |
 | 12 · Funciones | Anatomía: card blanca con nombre + bloque negro + lista | DIFERENTE | El bloque negro existe; el nombre y el período no están en la card blanca (F6, N6). |
 | 12 · Funciones | Dato faltante: «—», nunca «$0» | CONFORME | Rentabilidad muestra «—» con la explicación en Inteligencia. |
-| 12 · Funciones | «Volver» a la izquierda, con chevron | DIFERENTE | En la app va a la derecha, sin chevron (N6). |
+| 12 · Funciones | «Volver» a la izquierda, con chevron | CONFORME | Desde la decisión 7 (N6): «‹ Volver» arriba a la izquierda en las 23 pantallas con marco ([gastos](2026-10-16-relevamiento-capturas/app-volver-izquierda-gastos.png) · [ingresos](2026-10-16-relevamiento-capturas/app-volver-izquierda-ingresos.png)). |
 | 12 · Funciones | Alta manual como pill en la fila del rótulo, con el verbo del repo | NO-VERIFICABLE | No se comparó el rótulo de cada función; «Anotar que me pagaron» existe como verbo en Ingresos. |
 | 12 · Funciones | «Estás en Gastos» derogado (el placeholder lo dice) | CONFORME | El texto no existe en la app. |
 | 12 · Funciones | Contabilidad absorbida por Inteligencia | CONFORME | Se fundió con Inteligencia (`EscritorioFunciones.tsx:77`). |
@@ -464,7 +464,7 @@ Los mockups 01, 02, 03, 05, 06 y 08 se repasaron en las entradas de arranque, co
 
 ## 6. Preguntas para el operador (siguen la numeración del relevamiento previo)
 
-- **PREGUNTA 7 →** «Volver» va a la derecha y sin chevron en todas las funciones (`MarcoGlass.tsx`); el mockup 12 lo decidió a la izquierda con chevron. ¿Se mueve o se registra la derogación?
+- **PREGUNTA 7 → RESUELTA (operador, 2026-10-16):** «Volver» va arriba a la izquierda con «‹» (gana el prototipo); se cambió `MarcoGlass.tsx` y se verificó en device en dos pantallas.
 - **PREGUNTA 8 → RESUELTA (operador, 2026-10-16):** la frase del aviso de la card de gasto es la del código, «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.»; se corrigieron el mapa, el prototipo, el mockup 11 y `CONTEXT.md`.
 - La corrección más grande de la lista es la estructura de Mi día y el tablero (entradas `base` y `tablero`): es la **pregunta 4** del relevamiento previo.
 
