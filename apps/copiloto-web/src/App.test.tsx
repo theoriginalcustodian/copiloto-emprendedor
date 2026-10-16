@@ -82,6 +82,23 @@ describe('App (router raíz)', () => {
     expect(screen.queryByTestId('signup-screen')).not.toBeInTheDocument();
   });
 
+  // SM-C2 — el DoD pide el camino REAL, por el composition root: `App` monta el router, el login
+  // y el alta de verdad (sólo la sesión y la api estan mockeadas), asi que esto mide el cableado
+  // completo y no un happy-path de componente. Sin este test, la puerta podia existir en
+  // `LoginScreen` y no estar conectada a nada — que es exactamente el estado del que venimos.
+  it('SM-C2: anon SIN ?signup=1 llega al alta desde el login (la puerta ya no es la query)', () => {
+    render(<App />);
+    expect(screen.getByTestId('login-screen')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Creá una.' }));
+
+    expect(screen.getByTestId('signup-screen')).toBeInTheDocument();
+    expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument();
+    // Y la vuelta cierra el ciclo: se puede ir y volver sin recargar ni tocar la URL.
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciá sesión.' }));
+    expect(screen.getByTestId('login-screen')).toBeInTheDocument();
+  });
+
   it('anon con ?signup=1 -> SignupScreen (BETA-4b, reachable sólo por ruta directa)', () => {
     setUrl('?signup=1');
     render(<App />);

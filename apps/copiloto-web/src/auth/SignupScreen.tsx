@@ -16,13 +16,14 @@ import { useSession } from './useSession';
  * loguear, reusando toda la máquina de estado de sesión existente (token, `/me`, 'authed'/
  * 'no-habilitada') en vez de reimplementarla acá.
  *
- * 🔴 Reachable hoy SOLO por ruta directa (`?signup=1`, ver `App.tsx`) — el link público "Crear
- * cuenta" del login NO se expone todavía. La decisión operador #3 (modo de alta) YA está resuelta
- * desde 2026-08-04 (allow-list fail-closed, `apps/copiloto/web.py:550-592`: Google OAuth o
- * invite-token de env) — pero este formulario NO manda invite-token, así que contra el backend real
- * toda alta por email termina rechazada salvo esta ruta directa para invitados. El alta self-service
- * de la beta es Google (BETA-5): ahí "entrar" y "crear cuenta" son el mismo acto, ya cubierto por
- * `Entrar` en el login.
+ * Alcanzable desde el login y desde el reveal de primer arranque (SM-C2, 2026-10-15), y también
+ * por `?signup=1` para un link que se comparte.
+ *
+ * ⚠️ Acá decía «Reachable hoy SOLO por ruta directa […] este formulario NO manda invite-token, así
+ * que contra el backend real toda alta por email termina rechazada». **El formulario sigue sin
+ * mandar invite-token y eso ya es correcto:** `f3b60672` (PR #1206, 2026-10-14) retiró ese gate de
+ * `POST /auth/signup` («Sin gate: alta self-service», `web.py:1399`). No hay campo que agregar —
+ * lo que faltaba era la puerta, no el token.
  */
 
 type FormState =

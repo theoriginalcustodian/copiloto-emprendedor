@@ -23,10 +23,10 @@ import { SessionProvider } from './SessionProvider';
 import { LoginScreen } from './LoginScreen';
 import { LEGAL_VERSION } from '@copiloto/core';
 
-function renderLoginScreen() {
+function renderLoginScreen(props: { onCrearCuenta?: () => void } = {}) {
   return render(
     <SessionProvider>
-      <LoginScreen />
+      <LoginScreen {...props} />
     </SessionProvider>,
   );
 }
@@ -152,5 +152,21 @@ describe('LoginScreen — lockup y copy del prototipo (BL-X11 / BL-X12w)', () =>
     expect(screen.getByTestId('login-pie')).toHaveTextContent('Tus datos quedan guardados');
     expect(screen.queryByText(/Escribinos/)).not.toBeInTheDocument();
     expect(screen.queryByText(/tu copiloto de ia/i)).not.toBeInTheDocument();
+  });
+  // SM-C2 — la puerta al alta por email. El formulario de alta existía desde BETA-4b y sólo se
+  // alcanzaba tipeando `?signup=1`: cableado que nadie encuentra es capacidad que no existe.
+  it('ofrece la puerta al alta cuando hay dónde ir, y la dispara', () => {
+    const onCrearCuenta = vi.fn();
+    renderLoginScreen({ onCrearCuenta });
+    expect(screen.getByTestId('login-ir-a-signup')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Creá una.' }));
+    expect(onCrearCuenta).toHaveBeenCalledTimes(1);
+  });
+
+  it('control negativo: sin `onCrearCuenta` el pie no dibuja la puerta', () => {
+    renderLoginScreen();
+    expect(screen.queryByTestId('login-ir-a-signup')).not.toBeInTheDocument();
+    // El pie de confianza sigue estando: lo que se omite es la puerta, no el pie.
+    expect(screen.getByTestId('login-pie')).toBeInTheDocument();
   });
 });
