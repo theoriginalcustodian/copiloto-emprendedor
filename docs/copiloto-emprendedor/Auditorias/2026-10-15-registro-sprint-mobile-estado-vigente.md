@@ -91,10 +91,35 @@ paralelo, acá— movió **mobile de 49/54 a 53/54**. No era una cifra más baja
 sin clasificar el medidor salía **`rc=8` sin emitir ninguna cifra**. Un `cierre_` que delega su propio
 enganche al corpus deja el instrumento **mudo**, no incompleto.
 
+## 6. La TERCERA cifra: las 27 FICHAS del backlog — y el sprint cierra en ella
+
+> ⚠️ **No es «la cifra del sprint» que falta: es OTRO SUJETO.** Las dos de §1 miden los **54 ids** del criterio 3 y del mapeo. Ésta mide las **27 fichas** del backlog, que es la unidad en la que el sprint se declara terminado (`CLAUDE.md §3.quater.bis`: el registro único es el backlog). Un id de pantalla y una ficha de trabajo no son la misma cosa, y una ficha puede cerrar con varios ids dentro. **Citar 25/25 como si fuera «las 54 pantallas» es el mismo error que §1 previene**, en una capa más arriba.
+
+| | **Fichas del backlog** |
+|---|---|
+| **Pregunta** | ¿cada ficha del sprint está **resuelta** — DoD completo con sha en `origin/main`, o cerrada por decisión con su `Decision:` (quién/cuándo/dónde)? |
+| **Instrumento** | `scripts/sprint-estado.py --pct` (el registro **escribe** el estado; nadie lo marca a mano, y `--check` lo rechaza si no cumple su propia regla) |
+| **Corpus** | `docs/copiloto-emprendedor/2026-10-11-BACKLOG-sprint-mobile-beta.md` (**versionado** — un gate cuyo corpus vive fuera del repo mide al equipo, no al commit) |
+| **Cifra al 2026-10-15 23:5x** | **DoD completo 19/27 = 70,4%** · **resueltas 25/27 = 92,6%** · **alcance vivo 25/25 = 100,0%** |
+| **Reparto** | `TERMINADO` 19 · `CERRADO-POR-DECISION` 6 · `DIFERIDO` 2 · **`PENDIENTE` 0 · `EN-CURSO` 0 · `DOD-PARCIAL` 0** |
+| **Control del instrumento** | `--autotest` **VERDE, 0 fallos de 17 casos** (9 negativos + 3 controles positivos). Su fixture de sha se deriva de `merge-base HEAD origin/main`, no de `HEAD`: con `HEAD` el control positivo sólo era verde donde no hacía falta (fix `c8f6ce1f`) |
+
+**Las tres cifras responden tres preguntas y ninguna es «el %» del sprint a secas.** Lo que cierra el sprint es la tercera: **0 fichas pendientes, en curso o parciales**.
+
+### Por qué el alcance vivo es 25/25 y no 27/27
+
+Las 2 que faltan están **`DIFERIDO`**, y diferir no es cerrar: el DoD queda intacto y la ficha sale del denominador (`SM-C5`, SMTP/dominio, bloqueado en DNS desde el 2026-07-25; `SM-F5`, tester externo con video). Las eligió el operador el 15-10. Las **6** `CERRADO-POR-DECISION` declaran el hueco en un `Falta:` terminal en vez de borrarlo, y cada una cita el doc versionado de la decisión — por eso el 100,0% es auditable y no una absolución.
+
+### La última en cerrar, y la parte que es lectura mía
+
+`SM-D1` fue la última ficha viva. Cerró `CERRADO-POR-DECISION` el 15-10 con la medición de device de frontend2 (`RF8T318RN9T`, prod `2e7d2af5`, bundle de `origin/main` `9123bf52`): **`NO_MEDIBLE`** porque el canónico no tiene **ninguna** app externa conectada y las acciones que emiten el par `Confirmar/Cancelar` son justamente las de herramientas externas. La ampara la regla **§4.1** del operador; **la subsunción de esa ficha bajo esa regla la hizo planificación**, está escrita como refutable en [`2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md`](../2026-10-15-decisiones-del-operador-cierre-del-sprint-mobile.md) §2, y su disparador de reapertura es concreto: una cuenta de prueba con Gmail conectado por OAuth de Composio.
+
 ## 5. Lo que NO está en mis manos
 
 | Qué | De quién | Disparador exacto |
 |---|---|---|
 | `soporte` | **operador** | decisión A/B/C del hold-to-record |
 | 11 filas fiscales (`SM-E1` + 10 de `SM-F2`) | **operador** | **A** vincular el perfil fiscal de homologación al canónico (`deploy/copiloto/setup_tenant_pruebas.py` con `COPILOTO_TENANT_PRUEBAS_EMAIL=e2e-device@copiloto.test`, comando listo) ó **B** declararlas `NO_MEDIBLE` |
-| revisión de PII de `CLIENTESCUIT` | **backend** | tres preguntas binarias, ya bajadas al buzón. El código no espera nada |
+| ~~revisión de PII de `CLIENTESCUIT`~~ | ~~backend~~ | ✅ **CONTESTADA el 15-10**, y la midió planificación en vez de volver a preguntar: las tres binarias salieron SÍ/NO/NO y la lista **no persiste** el documento. Fila cerrada |
+| ~~11 filas fiscales (`SM-E1` + 10 de `SM-F2`)~~ | ~~operador~~ | ✅ **resueltas por la vía B** el 15-10: `SM-F2` quedó `CERRADO-POR-DECISION` declarando el hueco (§4.1), sin vincular el perfil fiscal al canónico. La vía **A** sigue disponible y reabriría con el DoD intacto |
+| `SM-D1` (device de las 2 `choices` + artefacto) | **operador** | **A** una cuenta de prueba con **Gmail conectado** por OAuth de Composio — y la ficha se reabre con su DoD intacto — ó **B** confirmar el cierre por §4.1 que ya está aplicado. Medida `NO_MEDIBLE` en device, no supuesta |
