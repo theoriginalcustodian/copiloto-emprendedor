@@ -384,6 +384,12 @@ if admin_token:
         import json as _json
         import psycopg2 as _psycopg2
         dsn_fab = os.environ.get("DATABASE_URL")
+        # Sin DSN no se intenta conectar: `connect(None)` sale a buscar un localhost que no existe,
+        # tarda 4,07 s en rendirse (medido 2026-10-16) y reporta un OperationalError que NO nombra la
+        # variable que falta. El cleanup de la :532 ya validaba (`if dsn:`); esta no, y era la misma
+        # conexion. El rec() de abajo queda rojo igual -- cambia el motivo, no el veredicto.
+        if not dsn_fab:
+            raise RuntimeError("DATABASE_URL no definida: no se puede fabricar el trauma")
         conn = _psycopg2.connect(dsn_fab); conn.autocommit = True
         with conn.cursor() as cur:
             # copiloto_traumas tiene FORCE RLS -- hay que declarar el tenant ANTES del INSERT

@@ -932,3 +932,46 @@ desde `main` hoy PIERDE** los 5 assets y el permiso de cámara.
 midiendo?»* — no «¿qué pasó en main desde entonces?». Para un binario eso es medible y barato: su
 `firstInstall` (11/10 17:53:50) acota la ventana, y el commit que toca config nativa **40 minutos antes** es el
 candidato obvio. Yo tomé `main` como sujeto porque es el default de todo lo demás que mido.
+
+## Refuerzo 2026-10-16 — perfilé el camino REAL cuando el que paga el costo es el de FIXTURE
+
+El gate de lint tardaba **23 min** y el 94,6% estaba en un solo paso. Perfilé `vigilancia-check.sh`
+—el instrumento culpable—, encontré **67 s** repartidos en forks por iteración, los arreglé, y medí
+**67 → 46 s (−31%)**. Después corrí el corpus completo: **1313 → 1270 s, −3,3%**.
+
+**El fix era correcto y el sujeto estaba mal.** Los tests invocan ese script con
+`TRANSCRIPTS_DIR` seteado, y por ese camino el `if` de `vigilancia-check.sh:82` cae al else: la
+función que yo había optimizado —`slugs_de_worktrees()`, 14,5 s de los 67— **ni se ejecuta**. La
+corrida real y la del gate no son la misma corrida: son **dos sujetos** con dos repartos de costo
+distintos. Yo perfilé el que podía correr a mano, no el que paga.
+
+Al perfilar el camino de **fixture** (11,5 s por invocación con el buzón **vacío**, o sea costo
+fijo y no de los datos) apareció lo que de verdad dominaba: **`goal-barrido.sh`, 10,0 s = 87%**,
+haciendo un `git branch --show-current` por cada uno de los 146 worktrees para preguntar algo que
+**ya tenía en la mano** —la rama de cada worktree viene en el `git worktree list --porcelain` que el
+script ya estaba parseando—. Arreglado eso: **9,61 → 0,45 s (21×)** con salida byte-idéntica, y el
+corpus **1313 → 650 s (−50,5%)** con 82/82 verde.
+
+**La pregunta que lo hubiera cazado, y es una sola:** *¿el sujeto que estoy perfilando es el que
+corre cuando se paga el costo?* No «¿dónde está el tiempo de este script?». Un instrumento con modo
+test y modo real tiene **dos** perfiles, y el default —correrlo a mano, sin fixture— es justamente
+el que el gate no usa.
+
+**Y una cifra derivada que también era de otro sujeto:** dije «~20 invocaciones de 67 s» porque
+conté *menciones* con `grep -c`. Un solo test lo invoca **15 veces** en un bucle, así que eran
+muchas más invocaciones y mucho más baratas cada una. El grep contó líneas de texto; yo lo leí como
+llamadas en ejecución.
+
+### El control que dio exactamente N de N no midió: coincidió
+
+En la misma sesión, antes de reescribir dos instrumentos, medí el separador de línea con
+`grep -c $'\r'` y me dio **226 de 226** y **557 de 557**: «100% CRLF». Era **100% LF**. El `$'\r'`
+no se expandió y grep contó la letra **`r`**, que aparece en casi toda línea de prosa en español.
+
+Lo cazó el guard del script de parcheo, que se negaba a escribir sobre separadores mezclados y
+reportó «0 CRLF, 226 LF». Sin ese guard habría reescrito los dos instrumentos del gate con CRLF.
+
+**La señal estaba en el número:** un control que devuelve **exactamente N de N** no está midiendo la
+propiedad, está empatando con el total — y un empate perfecto es más probable que venga de que el
+patrón matchea todo que de que la propiedad se cumpla siempre. Vale para cualquier conteo: si el
+resultado es «todas», buscá primero el patrón que matchea cualquier cosa.

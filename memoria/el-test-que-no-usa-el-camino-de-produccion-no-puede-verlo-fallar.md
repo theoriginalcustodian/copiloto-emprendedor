@@ -219,3 +219,28 @@ tar») sino la **regla** («todo path que el runner pide viaja»), porque el pr�
 de distancia; (4) cuando el fix se hace de a dos sesiones en paralelo, el riesgo no es el conflicto de
 texto sino que **los dos controles se contradigan**: uno verifica el mecanismo y otro la regla, y el
 primero se pone rojo cuando el mecanismo cambia de forma sin que el defecto vuelva.
+
+## Refuerzo 2026-10-16 — el caso espejo: el doble cubría UNA capa y dejaba DOS abiertas
+
+`test-smoke-veredicto.py` ejecuta el smoke real 16 veces con un **`httpx` de mentira** puesto por
+`PYTHONPATH` — buen patrón, y la razón por la que este archivo existe: el test sí usa el camino de
+producción. El problema fue el inverso al de arriba: lo usaba **demasiado**. El smoke también importa
+`psycopg2` (dentro de funciones) y `temporalio.client`, y el doble no los cubría.
+
+Dos consecuencias, y la segunda es la grave:
+
+- **Costo:** cada corrida esperaba 4,07 s a un Postgres inexistente y 2,45 s a un Temporal
+  inexistente — 6,53 de sus 6,80 s. × 16 = los **110 s** que el test ponía en el gate. El gate no
+  medía el commit: medía que la máquina no tiene esos servicios levantados.
+- **Aislamiento:** con `DATABASE_URL` definida en el entorno, el test salía a una **base real** y le
+  hacía un `INSERT` en `uc_factory.copiloto_traumas`. Que no lo hiciera dependía de que la máquina
+  **no estuviera configurada** — justo lo que un dev sí tiene, y lo que el VPS tiene siempre.
+
+**La pregunta:** *¿cuántas capas de salida tiene el sujeto, y mi doble cuántas cubre?* Un doble
+parcial no da síntoma mientras el entorno esté vacío; el verde no distingue «lo aislé» de «no había
+nada a lo que salir». Contá los `import` que cruzan el proceso, no los que recordás haber falseado.
+
+Y el contraste que lo cierra: los stubs nuevos fallan **al instante y con el mismo tipo de
+excepción**, no devuelven un éxito falso. Control de equivalencia: la salida del smoke difirió en
+**2 líneas de 44**, las dos previstas. Un doble que «arregla» el caso en vez de reproducirlo habría
+cambiado lo medido y el test habría seguido verde igual.

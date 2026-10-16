@@ -155,10 +155,40 @@ def request(method, url, headers=None, timeout=None): return _R()
 '''.replace("__CLAVES_ME__", json.dumps(CLAVES_ME)).replace("__CLAVES_LOGIN__", json.dumps(CLAVES_LOGIN)).replace("__CLAVES_RESTO__", json.dumps(CLAVES_RESTO))
 
 
+# El doble de httpx no alcanzaba: el smoke tambien importa `psycopg2` (:385, :526) y
+# `temporalio.client` (:506), DENTRO de funciones, asi que el PYTHONPATH al tempdir los intercepta
+# por el mismo mecanismo. Sin estos dos, cada corrida esperaba 4,07 s a un Postgres inexistente y
+# 2,45 s a un Temporal inexistente -- 6,5 de los 6,8 s de cada corrida, x16 = los 110 s del test
+# (medido con cProfile el 2026-10-16). Y lo peor no era el tiempo: con DATABASE_URL definida en el
+# entorno, el test salia a una base REAL y le hacia el INSERT de la :396. El aislamiento dependia de
+# que la maquina no estuviera configurada.
+# Fallan al instante y con el MISMO tipo de excepcion que hoy, para que el `except` del smoke tome
+# exactamente la misma rama: lo que se quita es la espera, no el resultado.
+STUB_PSYCOPG2 = """
+class Error(Exception): pass
+class OperationalError(Error): pass
+class ProgrammingError(Error): pass
+def connect(*a, **k):
+    raise OperationalError("psycopg2 de mentira: este test no toca ninguna base de datos")
+"""
+
+STUB_TEMPORALIO_CLIENT = """
+class Client:
+    @classmethod
+    async def connect(cls, *a, **k):
+        raise RuntimeError("temporalio de mentira: este test no habla con ningun Temporal")
+"""
+
+
 def correr_script(smoke_path, env_extra=None):
     d = tempfile.mkdtemp()
     try:
         open(os.path.join(d, "httpx.py"), "w", encoding="utf-8").write(STUB)
+        open(os.path.join(d, "psycopg2.py"), "w", encoding="utf-8").write(STUB_PSYCOPG2)
+        os.makedirs(os.path.join(d, "temporalio"), exist_ok=True)
+        open(os.path.join(d, "temporalio", "__init__.py"), "w", encoding="utf-8").write("")
+        open(os.path.join(d, "temporalio", "client.py"), "w", encoding="utf-8").write(
+            STUB_TEMPORALIO_CLIENT)
         env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONPATH": d, "SUPABASE_URL": "https://sup.test", "SERVICE_ROLE_KEY": "k-de-prueba"}
         env.update(env_extra or {})
         p = subprocess.run([sys.executable, smoke_path], capture_output=True, encoding="utf-8", env=env, timeout=120)
