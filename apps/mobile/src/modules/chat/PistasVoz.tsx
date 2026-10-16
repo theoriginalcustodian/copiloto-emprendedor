@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { formatearDuracion } from '@copiloto/core';
@@ -78,6 +78,9 @@ export interface BarraSostenidaProps {
   segundos: number;
   /** El dedo ya pasó el umbral a la izquierda: en vez de la pista, el aviso «Soltá para cancelar». */
   cancelando: boolean;
+  /** Pisa el estilo de la barra. `MicFuncion` la mete en la ranura de la fila, que ya tiene su propio margen
+   *  (sin los 16 dp laterales ni el `paddingBottom` que alinean la barra con el composer del chat). */
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -90,10 +93,10 @@ export interface BarraSostenidaProps {
  *
  * Al armar la cancelación la pista la reemplaza el `AvisoCancelar` (mismo lugar, misma fila).
  */
-export function BarraSostenida({ segundos, cancelando }: BarraSostenidaProps) {
+export function BarraSostenida({ segundos, cancelando, style }: BarraSostenidaProps) {
   const tema = useTema();
   return (
-    <View testID="voz-barra-sostenida" style={estilos.barra}>
+    <View testID="voz-barra-sostenida" style={[estilos.barra, style]}>
       <View testID="voz-reloj" accessibilityRole="timer" style={estilos.grupo}>
         <View style={[estilos.punto, { backgroundColor: tema.color.peligro }]} />
         <Text
@@ -111,11 +114,15 @@ export function BarraSostenida({ segundos, cancelando }: BarraSostenidaProps) {
         {cancelando ? (
           <AvisoCancelar />
         ) : (
-          <View testID="voz-pista-cancelar" style={estilos.grupo}>
+          <View testID="voz-pista-cancelar" style={[estilos.grupo, estilos.grupoQueSeAchica]}>
             <Svg width={13} height={13} viewBox="0 0 256 256" accessibilityElementsHidden>
               <Path d={TRAZO_CHEVRON_IZQ} fill={tema.color.textoTenue} />
             </Svg>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base - 2 }}>Deslizá para cancelar</Text>
+            {/* `flexShrink: 1`: en una ranura angosta el texto se PARTE en dos líneas en vez de empujar al
+                chevron encima del reloj (N8, medido en device: «0:01‹ Deslizá para / cancelar»). */}
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base - 2, flexShrink: 1 }}>
+              Deslizá para cancelar
+            </Text>
           </View>
         )}
       </View>
@@ -143,6 +150,7 @@ export function EstadoEnPausa() {
 const estilos = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   grupo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  grupoQueSeAchica: { flexShrink: 1 },
   candado: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8 },
   punto: { width: 11, height: 11, borderRadius: 6 },
   // 52 = el alto del círculo de «enviar» de `ControlesFlotantes`: la barra NO cambia de alto al fijar.
@@ -156,5 +164,5 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  pista: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  pista: { flex: 1, minWidth: 0, alignItems: 'flex-end', justifyContent: 'center' },
 });

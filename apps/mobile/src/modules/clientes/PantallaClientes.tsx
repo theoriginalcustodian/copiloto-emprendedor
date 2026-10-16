@@ -324,14 +324,12 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   alta con `nombre` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
-              <View style={styles.filaConMic}>
-                <MicFuncion
-                  contexto="cliente"
-                  onTranscripcion={(t) => void alDictarCliente(t)}
-                  onError={setErrorMic}
-                  disabled={dictado.ocupado}
-                />
-                <View style={styles.botonesFlex}>
+              <MicFuncion
+                contexto="cliente"
+                onTranscripcion={(t) => void alDictarCliente(t)}
+                onError={setErrorMic}
+                disabled={dictado.ocupado}
+                alLado={
                   <FilaBotones
                     testID="clientes-acciones"
                     botones={[
@@ -343,8 +341,8 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                       },
                     ]}
                   />
-                </View>
-              </View>
+                }
+              />
 
               {errorMic != null && (
                 <Text testID="clientes-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -422,7 +420,4 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`.
-  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  botonesFlex: { flex: 1 },
 });

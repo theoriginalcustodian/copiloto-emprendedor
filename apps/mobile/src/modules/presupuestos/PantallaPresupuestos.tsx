@@ -252,14 +252,12 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat),
                   nunca una corrección. */}
-              <View style={styles.filaConMic}>
-                <MicFuncion
-                  contexto="presupuesto"
-                  onTranscripcion={(t) => void alDictarPresupuesto(t)}
-                  onError={setErrorMic}
-                  disabled={dictado.ocupado}
-                />
-                <View style={styles.botonesFlex}>
+              <MicFuncion
+                contexto="presupuesto"
+                onTranscripcion={(t) => void alDictarPresupuesto(t)}
+                onError={setErrorMic}
+                disabled={dictado.ocupado}
+                alLado={
                   <FilaBotones
                     testID="presupuestos-acciones"
                     botones={[
@@ -271,8 +269,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                       },
                     ]}
                   />
-                </View>
-              </View>
+                }
+              />
 
               {/* `presu` (mapeo 2026-10-12): el resumen que el prototipo pone arriba de la lista. Derivado
                   del listado — ver `resumenEspera.ts`. Sin `estado` en ningún presupuesto no se pinta. */}
@@ -366,7 +364,4 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`.
-  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  botonesFlex: { flex: 1 },
 });
