@@ -42,6 +42,7 @@
 # Nota: sin -e a propósito — necesitamos leer PIPESTATUS y decidir nosotros, no abortar en
 # la línea del pipe antes de poder inspeccionar qué pasó.
 set -uo pipefail
+T_INICIO="${EPOCHREALTIME//[.,]/}"   # para la fase `preparacion` (fetch + saneo del worktree), ver FASES
 
 # Git EXPORTA GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE a los hooks, y esas variables GANAN sobre `-C`:
 # `-C "$WT"` cambia el cwd, no qué repositorio abre git cuando el entorno ya se lo dice. Sin este
@@ -247,7 +248,7 @@ OUT=""
 
 cleanup_exit() {
   local rc=$?
-  [ -n "$OUT" ] && rm -f "$OUT"
+  [ -n "$OUT" ] && rm -f "$OUT" "${OUT}.ts"
   [ "$LOCK_OWNED" = "1" ] && rm -rf "$LOCKDIR"
   registrar_sync "$rc"   # este trap REEMPLAZA al de la bitácora: sin esta línea, todo lo que pasa
                          # del lock para adelante -que es donde ocurren los fallos- no se registra.
@@ -367,6 +368,47 @@ mkdir -p "$(dirname "$DETAIL_LOG")"
 DETAIL_LOG_MAX_BYTES="${UC_GRAPH_DETAIL_LOG_MAX_BYTES:-5242880}"
 
 OUT="$(mktemp)"
+OUT_TS="${OUT}.ts"
+
+# FASES (2026-10-19): «el sync tarda» no se podía atribuir. El detalle no tenía UN timestamp por
+# línea, y la medición de los 22 syncs del log contradijo la hipótesis de partida: los últimos 9
+# mandaron 0 chunks (el checkpoint ya saltea lo no cambiado), así que el costo NO es la ingesta sino
+# lo fijo — graphify sobre el árbol entero, co_change sobre toda la historia y el reconcile, que
+# lista el grafo completo en ~243 requests aunque no haya nada que borrar. Para decidir qué se
+# optimiza en el bridge hace falta el tiempo de cada fase, no una intuición.
+# El sello va a un archivo APARTE ($OUT_TS): la línea que ven tee/$OUT/_ERROR_GREP sale intacta —
+# prefijarla rompería el `^abortado:` anclado de _ERROR_GREP, y el gate quedaría ciego sin síntoma.
+# `${EPOCHREALTIME//[.,]/}` = microsegundos enteros: bash no tiene aritmética de punto flotante, y
+# con locale es_* el separador decimal puede ser coma.
+_us_ahora() { local t="${EPOCHREALTIME//[.,]/}"; printf '%s' "$t"; }
+sellar() {
+  local t0="$1" dest="$2" linea
+  while IFS= read -r linea || [ -n "$linea" ]; do
+    printf '%s\n' "$linea"
+    printf '%s %s\n' "$(( ($(_us_ahora) - t0) / 1000 ))" "$linea" >> "$dest"
+  done
+}
+# Resumen por fase sobre $OUT_TS. Una fase cuyo hito no apareció se informa `?`, nunca 0: un 0
+# inventado diría «esta fase no cuesta», que es justo la conclusión que la medición tiene que poder
+# refutar (memoria/medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md).
+resumir_fases() {
+  awk '
+    function d(a, b) { return (a == "" || b == "") ? "?" : (b - a) }
+    /graphify OK/                          { ext = $1 }
+    /enricher /                            { enr = $1 }
+    /particiones, [0-9]+ filas ingeridas/  { ing = $1 }
+    /chunk [0-9]+ ingerida/                { chunks++ }
+    /HTTP Request: POST .*\/graph\/(edge|node)\/graph\// { lst++ }
+    /HTTP Request: DELETE /                { del++ }
+    /sync OK/                              { fin = $1 }
+    { ult = $1 }
+    END {
+      if (enr == "") enr = ext
+      printf "extraccion=%s enriquecimiento=%s ingesta=%s(chunks_enviados=%d) reconcile=%s(requests_listado=%d,borrados=%d) total_bridge=%s",
+        (ext == "" ? "?" : ext), d(ext, enr), d(enr, ing), chunks, d(ing, fin), lst, del, ult
+    }' "$1"
+}
+T_SYNC="$(_us_ahora)"
 
 (
   cd "$BRIDGE"
@@ -379,8 +421,9 @@ OUT="$(mktemp)"
     uv run bridge --config config/repos.toml --repo "$REPO_NAME" sync \
       --checkpoint "$CKPT" "${FORCE_FLAG[@]}"
   fi
-) 2>&1 | tee "$OUT"
+) 2>&1 | sellar "$T_SYNC" "$OUT_TS" | tee "$OUT"
 sync_status="${PIPESTATUS[0]}"
+FASES="preparacion=$(( (T_SYNC - T_INICIO) / 1000 )) $(resumir_fases "$OUT_TS")"
 
 # Se persiste SIEMPRE (éxito o fallo, con o sin chunks) — una corrida sin particiones también
 # tiene que dejar rastro, para distinguir "no hubo chunks" de "no se midió". No se toca el pipe
@@ -392,8 +435,14 @@ fi
 {
   printf '=== %s repo=%s since=%s sha=%s status=%s ===\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$REPO_NAME" "${SINCE:-<full>}" "${SHA:0:12}" "$sync_status"
-  cat "$OUT"
+  # La versión SELLADA (`<ms desde el arranque> <línea>`): el resumen de fases dice CUÁL cuesta, el
+  # sello por línea dice QUÉ adentro de esa fase (p. ej. set_ontology vs el POST de ingesta).
+  # Sin lectores automáticos (verificado 2026-10-19: grep de `graph-sync-detalle` = sólo este script).
+  cat "$OUT_TS" 2>/dev/null || cat "$OUT"
+  printf -- '--- fases_ms: %s\n' "$FASES"
 } >> "$DETAIL_LOG"
+rm -f "$OUT_TS"
+echo "[graph-sync] fases (ms): $FASES"
 
 if [ "$sync_status" -ne 0 ]; then
   echo "[graph-sync] ❌ el sync salió con status ${sync_status}." >&2
@@ -404,6 +453,7 @@ if grep -Eq "$_ERROR_GREP" "$OUT"; then
   exit 1
 fi
 
+T_PC="$(_us_ahora)"
 (
   cd "$BRIDGE"
   if [ -n "$SINCE" ]; then
@@ -413,6 +463,7 @@ fi
   fi
 )
 pc_status=$?
+printf -- '--- control_positivo_ms=%s rc=%s\n' "$(( ($(_us_ahora) - T_PC) / 1000 ))" "$pc_status" >> "$DETAIL_LOG"
 
 if [ "$pc_status" -eq 1 ]; then
   echo "[graph-sync] ❌ control positivo FALLÓ — el grafo remoto no tiene el símbolo esperado." >&2

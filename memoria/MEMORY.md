@@ -164,7 +164,7 @@
 - [🧠🧱 MemoryProvider - memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) - **al tocar la memoria.** warm+recall+remember, gate `config`.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) - nunca se pregunta 2 veces; a la 2ª manda la card.
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) - incluye borrado. No heredarlo a agentes autónomos.
-- [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga.
+- [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga. · [sync: costo FIJO](el-costo-del-sync-del-grafo-es-fijo-no-de-ingesta.md)
 - [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md)
 - [🧪 DESPLEGADO ≠ con clientes - los datos se fabrican](desplegado-no-significa-con-clientes.md) - cero usuarios; "prod-beta" desvía a migraciones defensivas.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) - keys que pasaron por chat. grep-first + restart al rotar.

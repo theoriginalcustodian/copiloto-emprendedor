@@ -67,60 +67,86 @@ fi
 #
 # Ahora: si origin/main NO se movió desde el último sync exitoso, no hay nada que hacer y el push
 # sigue de largo (pushear una rama de trabajo ya no paga el costo del sync). Si SÍ se movió —o sea,
-# alguien mergeó— se sincroniza, y sigue siendo fail-closed: si falla, el push aborta.
+# alguien mergeó— se sincroniza (en segundo plano desde 2026-10-19, ver abajo).
 # Bypass ante fallo transitorio: git push --no-verify.
 git fetch origin main --quiet 2>/dev/null || true
-MAIN_SHA="$(git rev-parse origin/main 2>/dev/null || echo desconocido)"
+# `--verify -q`: sin él, un ref ausente hace que rev-parse IMPRIMA el nombre ("origin/main") antes
+# de fallar, y el `|| echo` lo concatena — un SHA de dos líneas que rompía el formato de $RC_BG.
+MAIN_SHA="$(git rev-parse --verify -q origin/main 2>/dev/null || echo desconocido)"
 MARCADOR="$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
 ULTIMO="$(cat "$MARCADOR" 2>/dev/null || echo ninguno)"
-if [ "$MAIN_SHA" = "$ULTIMO" ]; then
-  echo "[pre-push] (grafo ya sincronizado con origin/main @ ${MAIN_SHA:0:12} — nada que hacer)"
+# -----------------------------------------------------------------------------
+# 2026-10-19 — el sync corre en SEGUNDO PLANO; el push no lo espera.
+# -----------------------------------------------------------------------------
+# Desde el 14-10 un fallo del sync ya NO aborta el push (bloque de abajo), así que esperarlo no
+# protegía nada: sólo cobraba el sync entero —graphify + co_change + el listado del reconcile— al
+# primer push de CUALQUIER sesión después de cada merge. Medido sobre los 22 syncs del detalle: los
+# últimos 9 mandaron 0 chunks; el costo es fijo, no de ingesta.
+# Lo que se conserva, y por qué no se pierde nada:
+#   · fail-loud: el rc de la corrida en background queda en $RC_BG y el push SIGUIENTE lo imprime
+#     con el destrabe (un fallo degradado a warning MUDO es peor que el abort: nadie lo persigue).
+#   · serialización: el lock de graph-sync.sh sigue mandando; dos pushes seguidos = contención, no
+#     doble sync.
+#   · el ✅ se sigue declarando contra el MARCADOR, nunca por haber lanzado el proceso.
+# UC_GRAPH_SYNC_FOREGROUND=1 vuelve al modo bloqueante (diagnóstico a mano).
+RC_BG="$BRIDGE/.bridge/graph-sync-bg-${REPO_NAME}.rc"
+LOG_BG="$BRIDGE/.bridge/graph-sync-bg-${REPO_NAME}.log"
+GRAPH_SYNC="$(git rev-parse --show-toplevel)/scripts/graph-sync.sh"
 
-  exit 0
-fi
-echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sincronizando el grafo…"
-# 🔴 2026-10-14 — el rc se CAPTURA en vez de matar el hook. Con `set -euo pipefail` (línea 4), esta
-# llamada SIN `||` se llevaba el push puesto cuando `graph-sync.sh` salía ≠ 0, y todo el manejo
-# cuidadoso de abajo —el chequeo del marcador, que YA degrada a warning sin abortar— NUNCA se
-# alcanzaba en ese caso. El comentario de la línea 37 declara «fail-closed» y describe un diseño que
-# el código de la línea 90 ya contradecía: por eso el hueco vivió tres meses sin que nadie lo viera.
-# Medido: pasó 3 veces (221 objetos el 31-07, 1406 el 30-09, 218 el 14-10), SIEMPRE por una re-poda
-# LEGÍTIMA que supera el tope absoluto de 200 del reconcile (`differ.py:27`). Superar ese tope NO es
-# un bug: `differ.py:21-26` lo declara esperable y ofrece `--force` como salida consciente. El bug
-# era que un sistema AUXILIAR —la memoria del código— tuviera VETO sobre TODO push de la flota,
-# incluido el de quien no tocó el grafo. El 14-10 dejó a tres sesiones sin poder pushear.
-# El trato ahora es el MISMO que ya tenía la contención del lock: se avisa, el marcador queda viejo
-# y el próximo push reintenta. Los otros dos gates de este hook ya llevan su `|| true` deliberado
-# (atribución, línea 28); el del grafo era el único que no, y sin motivo escrito.
-# ⚠️ Lo que este fix NO hace: no silencia nada. El bloque `GRAPH_RC -ne 0` de abajo imprime el rc y el
-# destrabe, porque un fallo degradado a warning MUDO es peor que el abort — nadie lo persigue.
-GRAPH_RC=0
-bash "$(git rev-parse --show-toplevel)/scripts/graph-sync.sh" || GRAPH_RC=$?
-# El ✅ NO se declara por haber llamado al script: se declara contra el marcador, que graph-sync.sh
-# escribe SOLO al final, después de sus 3 capas de verificación (graph-sync.sh:263). Hay un camino
-# real de exit 0 sin sincronizar — el lock ocupado por otro push concurrente (graph-sync.sh:155-156)
-# sale antes de escribirlo. Ese caso NO aborta el push (es contención, no fallo: el marcador queda
-# viejo y el próximo push reintenta), pero tampoco puede reportarse como sincronizado.
-# Raíz 2026-08-19: el echo era incondicional y anunció "✅ sincronizado" sobre un sync que había
-# salido sin tocar el árbol. Ver memoria/instrumentos-que-confirman-en-vez-de-verificar.md.
-# Un fallo degradado a warning MUDO es peor que el abort: nadie lo persigue. Si el sync fallo el
-# push SIGUE (el grafo es auxiliar), pero el rc y el camino de destrabe quedan impresos en stderr.
-# Va ANTES del chequeo del marcador y condicionado a rc != 0 a proposito: rc=0 con marcador viejo
-# es contencion del lock (graph-sync.sh:155-156), caso benigno donde gritar el destrabe seria un
-# falso positivo — y un guard que grita en el caso normal se desarma solo.
-if [ "$GRAPH_RC" -ne 0 ]; then
+avisar_destrabe() {
   {
-    echo "[pre-push] ⚠️  graph-sync.sh salió rc=$GRAPH_RC — el push SIGUE (el grafo es auxiliar), pero el grafo quedó desactualizado."
+    echo "[pre-push] ⚠️  graph-sync.sh salió rc=$1 $2 — el push SIGUE (el grafo es auxiliar), pero el grafo quedó desactualizado."
+    echo "[pre-push]    salida completa: $LOG_BG"
     echo "[pre-push]    1) ver QUÉ borraría, sin borrar nada:  powershell -ExecutionPolicy Bypass -File scripts/destrabar-grafo-force.ps1"
     echo "[pre-push]    2) si la lista cierra: el mismo comando con -Force (borra del grafo COMPARTIDO por las 4 sesiones)."
     echo "[pre-push]    El paso 1 aborta solo si hay faltantes GRAVES; las auto-aristas benignas no bloquean (son 11 hoy)."
   } >&2
+}
+
+# Resultado de la corrida ANTERIOR en background. Formato de $RC_BG: `<rc|en-curso> <sha> <iso>`.
+# rc=0 no se anuncia (el caso normal no grita); en-curso tampoco es alarma (lo ve el lock).
+if read -r _rc_prev _sha_prev _ts_prev < "$RC_BG" 2>/dev/null; then
+  case "$_rc_prev" in
+    0|en-curso) : ;;
+    *) avisar_destrabe "$_rc_prev" "(corrida en background de ${_sha_prev:0:12}, ${_ts_prev})" ;;
+  esac
 fi
-if [ "$(cat "$MARCADOR" 2>/dev/null || echo ninguno)" = "$MAIN_SHA" ]; then
-  echo "[pre-push] ✅ grafo de código sincronizado desde origin/main @ ${MAIN_SHA:0:12}"
-else
-  echo "[pre-push] ⚠️  el sync NO completó (marcador sigue en ${ULTIMO:0:12}, esperado ${MAIN_SHA:0:12}) — el próximo push reintenta." >&2
+
+if [ "$MAIN_SHA" = "$ULTIMO" ]; then
+  echo "[pre-push] (grafo ya sincronizado con origin/main @ ${MAIN_SHA:0:12} — nada que hacer)"
+  exit 0
 fi
+
+if [ -n "${UC_GRAPH_SYNC_FOREGROUND:-}" ]; then
+  echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sincronizando el grafo (foreground)…"
+  # 🔴 2026-10-14 — el rc se CAPTURA en vez de matar el hook (con `set -e` una salida ≠ 0 se llevaba
+  # el push puesto). Un sistema AUXILIAR no tiene veto sobre todo push de la flota: re-podas
+  # LEGÍTIMAS sobre el tope de 200 (`differ.py:27`) ya dejaron a tres sesiones sin pushear.
+  GRAPH_RC=0
+  bash "$GRAPH_SYNC" || GRAPH_RC=$?
+  [ "$GRAPH_RC" -ne 0 ] && avisar_destrabe "$GRAPH_RC" ""
+  # El ✅ se declara contra el marcador (graph-sync.sh lo escribe SOLO tras sus 3 capas de
+  # verificación): rc=0 con marcador viejo es contención del lock, no éxito.
+  if [ "$(cat "$MARCADOR" 2>/dev/null || echo ninguno)" = "$MAIN_SHA" ]; then
+    echo "[pre-push] ✅ grafo de código sincronizado desde origin/main @ ${MAIN_SHA:0:12}"
+  else
+    echo "[pre-push] ⚠️  el sync NO completó (marcador sigue en ${ULTIMO:0:12}, esperado ${MAIN_SHA:0:12}) — el próximo push reintenta." >&2
+  fi
+  exit 0
+fi
+
+# Todas las fds redirigidas. git sólo espera al PROCESO del hook, pero quien PIPEA el push
+# (`git push 2>&1 | tail`, lo normal en los agentes) espera el EOF del pipe, y un hijo que herede
+# el stdout/stderr lo retiene hasta que termina el sync: medido 9 s vs 0 s (test caso 4).
+mkdir -p "$BRIDGE/.bridge"
+printf 'en-curso %s %s\n' "$MAIN_SHA" "$(date +%Y-%m-%dT%H:%M:%S)" > "$RC_BG"
+nohup bash -c '
+  rc=0; bash "$1" || rc=$?
+  printf "%s %s %s\n" "$rc" "$2" "$(date +%Y-%m-%dT%H:%M:%S)" > "$3"
+' _ "$GRAPH_SYNC" "$MAIN_SHA" "$RC_BG" > "$LOG_BG" 2>&1 < /dev/null &
+disown 2>/dev/null || true
+echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sync del grafo lanzado en segundo plano."
+echo "[pre-push]    salida: $LOG_BG · resultado: $RC_BG (el próximo push avisa si falló)"
 exit 0
 
 # ----- (muerto desde 2026-07-31; se conserva un ciclo por si hay que volver atrás) -----
