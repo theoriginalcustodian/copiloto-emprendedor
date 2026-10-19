@@ -32,6 +32,32 @@ import path from "node:path";
 
 const MINUTOS_THROTTLE = 30;   // dos sesiones que arrancan juntas no disparan dos barridos de 42 s
 
+/**
+ * Devuelve el primer worktree registrado que TENGA el guión, con su raíz — o null si ninguno lo
+ * tiene. Deriva del estado real (`git worktree list`) por el mismo motivo que las bases del
+ * janitor: una lista declarada envejece en silencio y deja el instrumento mirando 0 directorios.
+ * Prefiere `repo` cuando lo tiene, para no cruzar de worktree sin necesidad.
+ */
+function resolverGuion(repo) {
+  const rel = path.join("scripts", "poda-worktrees-en-background.sh");
+  const candidatos = [repo];
+  try {
+    const salida = execFileSync("git", ["-C", repo, "worktree", "list", "--porcelain"],
+      { encoding: "utf8", timeout: 5000 });
+    for (const linea of salida.split("\n")) {
+      if (linea.startsWith("worktree ")) candidatos.push(linea.slice(9).trim());
+    }
+  } catch { /* con `repo` solo alcanza para el caso normal */ }
+  for (const base of candidatos) {
+    if (!base) continue;
+    try {
+      const cand = path.join(base, rel);
+      if (fs.existsSync(cand)) return { guion: cand, raiz: base };
+    } catch { /* un worktree puede estar registrado y no estar en disco */ }
+  }
+  return null;
+}
+
 try {
   const repo = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
@@ -47,8 +73,25 @@ try {
 
   const marca = path.join(comun, "poda-worktrees-ultima.json");
   const log = path.join(comun, "poda-worktrees.log");
-  const guion = path.join(repo, "scripts", "poda-worktrees-en-background.sh");
-  if (!fs.existsSync(guion)) process.exit(0);   // rama vieja: no es un error
+  // El guión se DERIVA de los worktrees que git registra; no se declara contra `repo`.
+  // Medido el 2026-10-19: el checkout COMPARTIDO (que es el cwd primario del proyecto, y donde
+  // arranca la mayoría de las sesiones) estaba en 9123bf52, sin el merge que trajo este hook. Con
+  // `repo` a secas el guión no existía ahí y el `exit 0` de abajo apagaba el mecanismo **callado**,
+  // justo en su caso de activación. Y hay una segunda mitad del mismo defecto: el runner hace
+  // `cd "$REPO"` y corre `scripts/podar-worktrees.sh` RELATIVO a ese path, así que apuntar a un
+  // checkout atrasado corría la versión VIEJA del janitor — la de las bases declaradas, que mira 0
+  // directorios y reporta tres ceros. Pasarle la raíz donde el guión existe arregla las dos.
+  const hallado = resolverGuion(repo);
+  if (!hallado) {
+    // NO se sale callado: éste ES el caso de activación del guard. Que el mecanismo no corra tiene
+    // que verse, o es indistinguible de que corra y no encuentre nada.
+    console.log("[poda] ningún worktree registrado tiene scripts/poda-worktrees-en-background.sh: " +
+                "el janitor de worktrees NO corrió en esta sesión. Actualizá el checkout contra " +
+                "origin/main, o corré `bash scripts/podar-worktrees.sh --podar` desde un worktree " +
+                "al día (CLAUDE.md §3.sexies).");
+    process.exit(0);
+  }
+  const { guion, raiz } = hallado;
 
   let prev = null;
   try { prev = JSON.parse(fs.readFileSync(marca, "utf8")); } catch { /* primera vez */ }
@@ -66,7 +109,7 @@ try {
     if (Number.isFinite(edadMin) && edadMin < MINUTOS_THROTTLE) process.exit(0);
   }
 
-  const hijo = spawn("bash", [guion, repo, log, marca],
+  const hijo = spawn("bash", [guion, raiz, log, marca],
     { detached: true, stdio: "ignore", windowsHide: true });
   hijo.unref();
 } catch { /* un hook de higiene nunca puede impedir que arranque una sesión */ }

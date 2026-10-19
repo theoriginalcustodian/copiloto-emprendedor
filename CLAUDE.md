@@ -335,6 +335,20 @@ dicho «0 podables», que se lee como «está limpio» y significaba «no miré�
 (`memoria/instrumento-que-no-mira-nunca-falla.md`). Desde el 19/10 **las bases se DERIVAN** de los
 worktrees que git registra: la base no se declara, se descubre, así que el próximo cambio de layout
 no vuelve a dejarlo ciego. **No le pases `--base` al hook** — eso reintroduce el path fijo que falló.
+**Refuerzo del mismo 19/10, horas después: el disparador cableado estaba apagado, y en el checkout
+que más importa.** El hook resolvía su guión contra `CLAUDE_PROJECT_DIR` y, si no estaba, salía
+`exit 0` **callado** («rama vieja: no es un error»). Pero el **checkout compartido** —el cwd primario
+del proyecto, donde arranca la mayoría de las sesiones— estaba en `9123bf52`, sin el merge que trajo
+el hook: ninguno de los dos archivos existía ahí. O sea que el mecanismo quedaba apagado justo en su
+caso de activación, sin síntoma. Y había una segunda mitad: el runner hace `cd "$REPO"` y corre
+`scripts/podar-worktrees.sh` **relativo a ese path**, así que apuntar a un checkout atrasado
+ejecutaba la **versión vieja** del janitor —la de bases declaradas— que reportó los **tres ceros**
+(`0 podado · 0 conservado · 0 protegido`): ni podó, ni conservó, ni protegió, porque no miró.
+Desde el fix, el hook **deriva** la raíz de `git worktree list` (igual que las bases), usa el primer
+worktree que tenga el guión y le pasa **esa** raíz; si no está en ninguno, **lo dice** en vez de
+callarse. Contraste medido sobre el mismo checkout compartido: antes silencio y nada; después marca
+nueva y `2 protegido(s) por las guardas`. **Corolario operativo: un checkout atrasado ya no apaga la
+poda — pero sí apagaría cualquier hook nuevo que resuelva sus scripts contra el cwd a secas.**
 
 **Lo que el borrado NO puede llevarse** — las tres guardas del script son **AND**, y ante cualquier
 duda conserva:
