@@ -32,8 +32,9 @@ HOOK="$RAIZ/.githooks/pre-push"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 fallos=0
+oks=0   # el total lo CUENTA el test: un «N/N» escrito a mano ya dijo 15 sobre 14 (2026-10-19)
 
-ok()   { echo "  ✅ $1"; }
+ok()   { echo "  ✅ $1"; oks=$((oks + 1)); }
 malo() { echo "  ❌ $1"; fallos=$((fallos + 1)); }
 
 [ -f "$HOOK" ] || { echo "❌ no encuentro $HOOK"; exit 1; }
@@ -174,6 +175,7 @@ else
   malo "rc=$rc3 en ${dur3}s — el push esperó al sync (o falló):"
   sed 's/^/     | /' "$d3/push.log"
 fi
+grep -q "No such file" "$d3/push.log" && malo "el primer push (sin .rc previo) imprimió «No such file»"   || ok "sin .rc previo el push no hace ruido"
 grep -q "lanzado en segundo plano" "$d3/push.log" && ok "dijo que lo lanzó en background"   || malo "no anunció el lanzamiento: el push quedaría mudo sobre el sync"
 if esperar_bg "$d3"; then
   ok "la corrida en background terminó y dejó su rc ($(cut -d' ' -f1 "$d3/bridge/.bridge/graph-sync-bg-copiloto-emprendedor.rc"))"
@@ -196,7 +198,7 @@ echo "== 4 (NEGATIVO) la variante que hereda las fds del hook => el push SÍ esp
 # Se deriva del hook real quitándole la redirección de las fds del nohup: así se mide que el caso 3
 # depende de esa redirección, y no de que el hook salga antes de lanzar nada.
 heredado="$TMP/pre-push-hereda-fds"
-sed -E 's|^(.*"\$RC_BG") > "\$LOG_BG" 2>&1 < /dev/null &$|\1 \&|' "$HOOK" > "$heredado"
+sed -E 's|^(.*) > "\$LOG_BG" 2>&1 < /dev/null &$|\1 \&|' "$HOOK" > "$heredado"
 if diff -q "$HOOK" "$heredado" >/dev/null; then
   malo "el sed no cambió nada: no pude derivar la variante que hereda fds, este control NO corrió"
 else
@@ -214,10 +216,48 @@ else
   esperar_bg "$d4" || true
 fi
 
+echo "== 5 (POSITIVO) push con un sync VIVO => no relanza, y el rc final es el de la corrida real =="
+# Medido 2026-10-19 en el primer push real: el push de borrado de una rama lanzó una 2ª corrida que
+# escribió rc=0 (contención) sobre el en-curso de la real y le truncó el .log.
+correr_caso5() {
+  local d="$1" hook="$2"
+  mkdir -p "$d"
+  montar "$d" "$hook"
+  pushear "$d" "$d/push1.log" >/dev/null
+  ( cd "$d/wt" && echo cinco > e.txt && git add e.txt && git commit -q -m "push con sync vivo" )
+  pushear "$d" "$d/push2.log" rama-5 >/dev/null
+}
+d5="$TMP/caso5"
+correr_caso5 "$d5" "$HOOK"
+rcf5="$d5/bridge/.bridge/graph-sync-bg-copiloto-emprendedor.rc"
+grep -q "no relanzo" "$d5/push2.log" && ok "el 2º push vio el sync vivo y no relanzó" \
+  || { malo "el 2º push relanzó con un sync vivo:"; sed 's/^/     | /' "$d5/push2.log"; }
+esperar_bg "$d5" || true
+[ "$(cut -d' ' -f1 "$rcf5" 2>/dev/null)" = "1" ] && ok "el .rc final es el de la corrida real (1), no un 0 de contención" \
+  || malo "el .rc final es '$(cat "$rcf5" 2>/dev/null)', no el rc=1 de la corrida real"
+[ "$(grep -c '\[stub\]' "$d5/bridge/.bridge/graph-sync-bg-copiloto-emprendedor.log" 2>/dev/null)" = "1" ] \
+  && ok "el .log de la corrida real quedó entero (una sola salida del stub)" \
+  || malo "el .log no tiene exactamente una salida del stub: otra corrida lo pisó"
+
+echo "== 6 (NEGATIVO) la variante SIN la guarda de corrida viva => SÍ relanza =="
+singuarda="$TMP/pre-push-sin-guarda"
+sed -E 's|&& kill -0 "\$_pid_prev" 2>/dev/null; then$|\&\& false; then|' "$HOOK" > "$singuarda"
+if diff -q "$HOOK" "$singuarda" >/dev/null; then
+  malo "el sed no cambió nada: no pude derivar la variante sin guarda, este control NO corrió"
+else
+  d6="$TMP/caso6"
+  correr_caso5 "$d6" "$singuarda"
+  grep -q "lanzado en segundo plano" "$d6/push2.log" \
+    && ok "sin la guarda el 2º push relanza — el caso 5 mide la guarda, no un atajo" \
+    || malo "sin la guarda el 2º push tampoco relanzó: el caso 5 no prueba nada"
+  esperar_bg "$d6" || true
+  sleep 9   # la 1ª corrida de este caso puede seguir viva: que no escriba en un $TMP ya borrado
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ 9/9 — el sync no veta, no bloquea el push, avisa su fallo, y los controles negativos lo acreditan"
+  echo "✅ ${oks}/${oks} — el sync no veta, no bloquea el push, avisa su fallo, no se relanza sobre sí mismo, y los controles negativos lo acreditan"
   exit 0
 fi
-echo "❌ $fallos control(es) en rojo"
+echo "❌ $fallos de $((oks + fallos)) control(es) en rojo"
 exit 1
