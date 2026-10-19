@@ -35,3 +35,13 @@ en background que herede stdout/stderr NO retiene un `git push > archivo`, pero 
 `git push 2>&1 | tail` (el lector espera el EOF del pipe): medido 9 s vs 0 s en
 `scripts/tests/test-pre-push-grafo-no-vetea.sh` caso 4. Por eso el `nohup` del pre-push redirige
 las tres fds. Ver [[el-pipe-se-come-el-exit-code]] · [[instrumento-que-no-mira-nunca-falla]].
+
+**Refuerzo (mismo día, primer push real con el background):** el push de BORRADO de una rama
+relanzó el sync sobre el que seguía vivo. La 2ª corrida salió al instante por contención del lock,
+escribió `rc=0` sobre el `en-curso` de la real y le truncó el `.log` con `>`. Sin síntoma: el `.rc`
+decía «ok» de un sync que no había terminado (y el `.log` de la real quedó con bytes NUL: `grep` lo
+trata como binario). 2ª medición, esa corrida: ingesta=347s con 3 chunks (~115 s/chunk),
+reconcile=137s → 518 s, con el push en 5 s. Fix `fix/grafo-bg-no-relanzar`: el wrapper escribe su PID, el hook no
+relanza si `kill -0` lo encuentra, y un rc=0 con el marcador sin mover (contención) no escribe.
+Un estado «terminó» que puede escribir quien NO trabajó es [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]
+al revés: absuelve.

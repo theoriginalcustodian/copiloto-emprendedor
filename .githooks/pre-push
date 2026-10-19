@@ -103,9 +103,12 @@ avisar_destrabe() {
   } >&2
 }
 
-# Resultado de la corrida ANTERIOR en background. Formato de $RC_BG: `<rc|en-curso> <sha> <iso>`.
-# rc=0 no se anuncia (el caso normal no grita); en-curso tampoco es alarma (lo ve el lock).
-if read -r _rc_prev _sha_prev _ts_prev < "$RC_BG" 2>/dev/null; then
+# Resultado de la corrida ANTERIOR en background. Formato de $RC_BG: `<rc|en-curso> <sha> <iso> [pid]`.
+# rc=0 no se anuncia (el caso normal no grita); en-curso tampoco es alarma.
+# El `[ -f ]` va ANTES del read: en `read < f 2>/dev/null` la redirección de entrada falla antes de
+# que se aplique el `2>`, y el primer push de cada máquina imprimía «No such file» (medido 2026-10-19).
+_rc_prev=""; _sha_prev=""; _ts_prev=""; _pid_prev=""
+if [ -f "$RC_BG" ] && read -r _rc_prev _sha_prev _ts_prev _pid_prev < "$RC_BG"; then
   case "$_rc_prev" in
     0|en-curso) : ;;
     *) avisar_destrabe "$_rc_prev" "(corrida en background de ${_sha_prev:0:12}, ${_ts_prev})" ;;
@@ -138,12 +141,27 @@ fi
 # Todas las fds redirigidas. git sólo espera al PROCESO del hook, pero quien PIPEA el push
 # (`git push 2>&1 | tail`, lo normal en los agentes) espera el EOF del pipe, y un hijo que herede
 # el stdout/stderr lo retiene hasta que termina el sync: medido 9 s vs 0 s (test caso 4).
+# NO RELANZAR si la corrida anterior sigue viva (medido 2026-10-19 en el primer push real): el push
+# de borrado de la rama lanzó una 2ª corrida que (1) salió al instante por contención del lock
+# escribiendo rc=0 sobre el `en-curso` de la real, y (2) truncó con `>` el .log que la real seguía
+# escribiendo. Ninguna de las dos cosas da síntoma: el .rc decía «ok» de un sync que no había
+# terminado. El PID lo escribe el propio wrapper; `kill -0` sólo pregunta si existe.
+if [ "$_rc_prev" = "en-curso" ] && [ -n "$_pid_prev" ] && kill -0 "$_pid_prev" 2>/dev/null; then
+  echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}), pero ya hay un sync del grafo en curso (pid $_pid_prev, de ${_sha_prev:0:12}) — no relanzo."
+  echo "[pre-push]    si main vuelve a moverse, el próximo push con el sync terminado lo retoma."
+  exit 0
+fi
 mkdir -p "$BRIDGE/.bridge"
-printf 'en-curso %s %s\n' "$MAIN_SHA" "$(date +%Y-%m-%dT%H:%M:%S)" > "$RC_BG"
+# El wrapper escribe `en-curso … <su pid>` al arrancar y el rc al terminar — salvo rc=0 con el
+# marcador sin mover, que es contención del lock (otro sync vivo, lanzado a mano o desde otro
+# worktree): ese no terminó NADA y no puede pisar el resultado del que sí está trabajando.
 nohup bash -c '
+  printf "en-curso %s %s %s\n" "$2" "$(date +%Y-%m-%dT%H:%M:%S)" "$$" > "$3"
   rc=0; bash "$1" || rc=$?
-  printf "%s %s %s\n" "$rc" "$2" "$(date +%Y-%m-%dT%H:%M:%S)" > "$3"
-' _ "$GRAPH_SYNC" "$MAIN_SHA" "$RC_BG" > "$LOG_BG" 2>&1 < /dev/null &
+  if [ "$rc" -ne 0 ] || [ "$(cat "$4" 2>/dev/null)" = "$2" ]; then
+    printf "%s %s %s\n" "$rc" "$2" "$(date +%Y-%m-%dT%H:%M:%S)" > "$3"
+  fi
+' _ "$GRAPH_SYNC" "$MAIN_SHA" "$RC_BG" "$MARCADOR" > "$LOG_BG" 2>&1 < /dev/null &
 disown 2>/dev/null || true
 echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sync del grafo lanzado en segundo plano."
 echo "[pre-push]    salida: $LOG_BG · resultado: $RC_BG (el próximo push avisa si falló)"
