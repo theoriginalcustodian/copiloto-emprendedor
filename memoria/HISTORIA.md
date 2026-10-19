@@ -507,3 +507,9 @@ slugs son «buscables en memoria/, NO leer por reflejo».
 - **📱 El sprint MOBILE fue el vigente del 13-10 al 16-10** — cerró 25/25 (alcance vivo) el 16-10 00:0x; «device está DENTRO» valió para ÉL. Bajada porque un índice que nombra un sprint vigente ya cerrado manda a trabajar en lo terminado.
 
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.  <!-- bajada del índice 2026-10-16 para hacer lugar -->
+
+## Bajadas del índice el 2026-10-19 — cupo justo: entra la entrada de los CERO INVOCADORES
+
+El índice estaba en 23.879 de 24.000 bytes (121 libres) y la entrada nueva pesa más que eso. La baja es la del subsistema que hoy no se toca (ciclo de autosanación, 2026-08-02); **el archivo se conserva y sigue buscable**, y lo citan `GOTCHAS.md` y [[orden-de-merge-por-el-estado-intermedio]], así que bajarlo del índice no rompe ningún link.
+
+- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
