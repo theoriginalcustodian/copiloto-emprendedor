@@ -1,11 +1,13 @@
 ---
 name: memoria-repo-vs-slug-drift
-description: seed-memory.sh espeja repo→slug con --delete y habría borrado 14 lecciones que sólo vivían en el slug de Claude Code
+description: Las dos memorias (repo y slug) divergen y el índice se mergeó a mano; seed-memory.sh es SEGURO desde 2026-07-31 (rsync --update, bidireccional) — NO correrlo es lo que las diverge
 metadata:
   type: project
 ---
 
-# 🧠💣 La memoria del repo y la del slug divergen — y `seed-memory.sh` borra
+# 🧠🔁 La memoria del repo y la del slug divergen — y `seed-memory.sh` es el REMEDIO
+
+> ⚠️ **Hasta el 2026-10-19 el título y la `description` de ESTA entrada decían que el script «borra» / «espeja con `--delete`», en presente.** Es falso desde el 2026-07-31 (hoy `rsync -a --update`, `scripts/seed-memory.sh:131`) y es **la misma falla que el refuerzo del 2026-09-22 de más abajo documenta**: la advertencia sobrevivió al peligro y el drift pasó de 14 a 57 archivos porque nadie corría el remedio. El cuerpo estaba corregido; el **encabezado**, que es lo que se lee primero y lo que decide la relevancia en el recall, no.
 
 **Detectado el 2026-07-21** al ir a escribir una entrada nueva. No lo estaba buscando.
 

@@ -102,7 +102,7 @@
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
-- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
+- [🧪🔌 Test VERDE y CERO invocadores = el control NO existe](un-control-con-test-verde-y-cero-invocadores.md) - un permiso NO es un disparador. 4ª vez.
 - [🔗🛡️ El 1er test rojo MATA la suite: el ajeno escuda](el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md) - corrieron 8 de 47.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) - el hueco vive en el par.
 
