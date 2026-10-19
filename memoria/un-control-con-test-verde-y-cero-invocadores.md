@@ -79,3 +79,40 @@ capa más abajo: la parte mecánica quedó dependiendo de que alguien se acuerde
 **Cierre:** `11c02fb3` (PR #1303, CI 6/6) — hook `SessionStart` +
 `scripts/poda-worktrees-en-background.sh` + bases derivadas + test del disparador, documentado en
 `CLAUDE.md §3.sexies`. Efecto medido: **145 → 3 worktrees**.
+
+---
+
+## 🔁 Refuerzo del mismo día: cablear el disparador no alcanza si el CABLE apunta al checkout atrasado
+
+Horas después de embarcar el hook, lo corrí contra el estado real y dio **tres ceros**:
+`0 podado · 0 conservado · 0 protegido`. Ni podó, ni conservó, ni protegió — **no miró**. La causa es
+la misma lección una capa más abajo:
+
+- El `.mjs` resolvía su guión contra `CLAUDE_PROJECT_DIR` y, si no estaba, hacía `exit 0` **callado**
+  («rama vieja: no es un error»). El **checkout compartido** —el cwd primario del proyecto, donde
+  arranca la mayoría de las sesiones— estaba en `9123bf52`, sin el merge que trajo el hook: los dos
+  archivos faltaban ahí. **El mecanismo quedaba apagado exactamente en su caso de activación**, sin
+  síntoma ([[el-guard-falla-abierto-en-su-caso-de-activacion]], [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+- Segunda mitad: el runner hace `cd "$REPO"` y corre `scripts/podar-worktrees.sh` **relativo a ese
+  path**. Apuntar a un checkout atrasado ejecutaba la **versión vieja** del janitor, la de las bases
+  declaradas. Las dos mitades se arreglan con un solo cambio: pasarle la raíz del worktree que
+  **tiene** el guión.
+
+**El arreglo es el mismo principio: derivar, no declarar.** El guión se busca en los worktrees que
+`git worktree list` registra, se usa el primero que lo tenga, y si no está en ninguno **el hook lo
+dice** en vez de callarse. Contraste medido sobre el mismo checkout compartido: antes, silencio y
+nada; después, marca nueva y `2 protegido(s) por las guardas`.
+
+**Y una trampa que me comí escribiendo el control de esto:** la aserción «le pasa la raíz correcta»
+(`[ ! -f "$VIEJOTMP/LLAMADO.txt" ]`) daba **✅ con el hook viejo**, que no lanza nada — verde por
+**ausencia** del archivo, o sea verde **por** el defecto que el control de al lado acusa. Ahora sólo
+concluye si hubo lanzamiento y, si no, se marca `⏭ no medido`. Un control cuyo verde no distingue
+«pasó» de «no ocurrió nada» es [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+otra vez, y lo cometí en el test escrito para evitarlo.
+
+**How to apply (se suma a lo de arriba):** después de cablear un disparador, **corrélo contra el
+checkout donde las sesiones realmente arrancan**, no sólo desde el worktree al día donde lo
+escribiste — y pedí el contraste con la versión anterior: si el test nuevo no se pone **rojo** con el
+código viejo, no está midiendo el fix. Relacionado:
+[[los-crones-corren-los-scripts-del-checkout-principal-no-los-de-main]] ·
+[[metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree]].
