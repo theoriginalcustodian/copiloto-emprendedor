@@ -12,6 +12,12 @@
 # Mide el EFECTO, no la forma: no grepea el hook buscando `|| true`, monta un repo de verdad con un
 # `graph-sync.sh` que falla y PUSHEA. Un grep se satisface con un comentario; un push no.
 #
+# 2026-10-19 — el sync pasó a SEGUNDO PLANO. Se agregan los dos controles de ese contrato:
+#   3 (POSITIVO)  push con un sync lento (8 s)                        =>  el push NO lo espera
+#   4 (NEGATIVO)  la variante que hereda las fds del hook, derivada   =>  el push SÍ lo espera
+#   + el fallo de la corrida en background lo AVISA el push siguiente (no queda mudo).
+# Los casos 1 y 2 pasan a medir el modo foreground (UC_GRAPH_SYNC_FOREGROUND=1), que se conserva.
+#
 # Las DOS mitades, porque un mecanismo roto hacia el "no" no da síntoma (si el push pasara siempre
 # —por ejemplo porque el hook sale antes de llegar al sync— el caso positivo sería verde igual y no
 # probaría nada):
@@ -49,7 +55,7 @@ montar() {
   printf '#!/usr/bin/env bash\nexit 0\n' > "$wt/scripts/secretos-check.sh"
   printf '#!/usr/bin/env bash\nexit 0\n' > "$wt/scripts/ci/atribucion.sh"
   # LA VARIABLE: el sync falla, como cuando el reconcile supera el tope absoluto.
-  printf '#!/usr/bin/env bash\necho "[stub] el reconcile borraría 218 objetos (tope absoluto 200)" >&2\nexit 1\n' \
+  printf '#!/usr/bin/env bash\nsleep "${STUB_SLEEP:-0}"\necho "[stub] el reconcile borraría 218 objetos (tope absoluto 200)" >&2\nexit 1\n' \
     > "$wt/scripts/graph-sync.sh"
   chmod +x "$wt/scripts/secretos-check.sh" "$wt/scripts/ci/atribucion.sh" "$wt/scripts/graph-sync.sh"
 
@@ -68,7 +74,7 @@ montar() {
     # `main` en el remote y el marcador del bridge en otro sha: así el atajo "ya sincronizado"
     # no aplica y el hook SÍ llega a llamar al sync. Sin esto el hook saldría 0 por el atajo y
     # los dos casos darían verde — el control negativo es justo lo que detecta ese escenario.
-    git push -q origin HEAD:main 2>/dev/null
+    git push -q --no-verify origin HEAD:main 2>/dev/null
     echo 0000000000000000000000000000000000000000 \
       > "$dir/bridge/.bridge/last-synced-copiloto-emprendedor.sha"
     echo dos > b.txt
@@ -80,15 +86,32 @@ montar() {
 # Pushea y devuelve el rc. El PATH lleva el `uv` falso adelante; GRAPHITY_BRIDGE_PATH apunta al
 # bridge falso. La salida completa va a un archivo: pipearla por `tail` borraría la evidencia.
 pushear() {
-  local dir="$1" log="$2"
+  local dir="$1" log="$2" rama="${3:-rama-de-prueba}"
   (
     cd "$dir/wt" || exit 1
     PATH="$dir:$PATH" GRAPHITY_BRIDGE_PATH="$dir/bridge" \
-      git push origin HEAD:refs/heads/rama-de-prueba > "$log" 2>&1
+      git push origin "HEAD:refs/heads/$rama" 2>&1 | cat > "$log"
   )
   echo $?
 }
+# Por qué el `| cat` y no `> "$log"` (medido 2026-10-19): git sólo espera al PROCESO del hook, no a
+# sus fds. Con la salida a un archivo, un hijo en background que las herede no retiene a nadie y el
+# caso 4 salía verde-por-ciego (1 s heredando las fds). Lo que sí retiene es un PIPE: el lector
+# espera el EOF hasta que el último escritor suelte el fd. Y pipear `git push` es lo normal en los
+# agentes de este repo (`git push 2>&1 | tail`), así que es el caso que hay que medir.
+# `pipefail` (arriba) hace que el rc sea el de git, no el de `cat`.
+_seg() { local t="${EPOCHREALTIME//[.,]/}"; echo $(( t / 1000000 )); }
+# Espera a que la corrida en background deje su rc (o se rinde a los 60 s y lo dice).
+esperar_bg() {
+  local rcf="$1/bridge/.bridge/graph-sync-bg-copiloto-emprendedor.rc" i=0
+  while [ "$i" -lt 120 ]; do
+    if [ -f "$rcf" ] && ! grep -q '^en-curso' "$rcf"; then return 0; fi
+    sleep 0.5; i=$((i + 1))
+  done
+  return 1
+}
 
+export UC_GRAPH_SYNC_FOREGROUND=1
 echo "== 1 (POSITIVO) el pre-push del repo + graph-sync.sh que falla => el push PASA =="
 d1="$TMP/caso1"
 mkdir -p "$d1"
@@ -116,7 +139,7 @@ fi
 echo "== 2 (NEGATIVO) la variante vieja + el mismo sync que falla => el push ABORTA =="
 # Se deriva del hook real: se le quita la captura del rc, que es exactamente lo que había antes.
 viejo="$TMP/pre-push-viejo"
-sed -E 's|^bash "\$\(git rev-parse --show-toplevel\)/scripts/graph-sync\.sh" \|\| GRAPH_RC=\$\?$|bash "$(git rev-parse --show-toplevel)/scripts/graph-sync.sh"|' \
+sed -E 's|^([[:space:]]*)bash "\$GRAPH_SYNC" \|\| GRAPH_RC=\$\?$|\1bash "$GRAPH_SYNC"|' \
   "$HOOK" > "$viejo"
 if diff -q "$HOOK" "$viejo" >/dev/null; then
   malo "el sed no cambió nada: no pude derivar la variante vieja, así que este control NO corrió"
@@ -135,9 +158,65 @@ else
   fi
 fi
 
+unset UC_GRAPH_SYNC_FOREGROUND
+export STUB_SLEEP=8
+
+echo "== 3 (POSITIVO) background + sync lento (8 s) que falla => el push NO lo espera =="
+d3="$TMP/caso3"
+mkdir -p "$d3"
+montar "$d3" "$HOOK"
+t0="$(_seg)"
+rc3="$(pushear "$d3" "$d3/push.log")"
+dur3=$(( $(_seg) - t0 ))
+if [ "$rc3" -eq 0 ] && [ "$dur3" -lt "$STUB_SLEEP" ]; then
+  ok "el push entró en ${dur3}s sin esperar al sync de ${STUB_SLEEP}s"
+else
+  malo "rc=$rc3 en ${dur3}s — el push esperó al sync (o falló):"
+  sed 's/^/     | /' "$d3/push.log"
+fi
+grep -q "lanzado en segundo plano" "$d3/push.log" && ok "dijo que lo lanzó en background"   || malo "no anunció el lanzamiento: el push quedaría mudo sobre el sync"
+if esperar_bg "$d3"; then
+  ok "la corrida en background terminó y dejó su rc ($(cut -d' ' -f1 "$d3/bridge/.bridge/graph-sync-bg-copiloto-emprendedor.rc"))"
+else
+  malo "la corrida en background no dejó rc en 60 s: el resultado no llega a nadie"
+fi
+# El fallo de ESA corrida lo tiene que avisar el push SIGUIENTE: si no, un fallo en background es
+# un warning mudo, que es peor que el abort.
+( cd "$d3/wt" && echo tres > c.txt && git add c.txt && git commit -q -m "segundo push" )
+STUB_SLEEP=0 pushear "$d3" "$d3/push2.log" rama-2 >/dev/null
+if grep -q "graph-sync.sh salió rc=1" "$d3/push2.log" && grep -q "destrabar-grafo-force" "$d3/push2.log"; then
+  ok "el push siguiente avisó el rc=1 de la corrida anterior, con el destrabe"
+else
+  malo "el push siguiente NO avisó el fallo de la corrida en background:"
+  sed 's/^/     | /' "$d3/push2.log"
+fi
+esperar_bg "$d3" || true
+
+echo "== 4 (NEGATIVO) la variante que hereda las fds del hook => el push SÍ espera =="
+# Se deriva del hook real quitándole la redirección de las fds del nohup: así se mide que el caso 3
+# depende de esa redirección, y no de que el hook salga antes de lanzar nada.
+heredado="$TMP/pre-push-hereda-fds"
+sed -E 's|^(.*"\$RC_BG") > "\$LOG_BG" 2>&1 < /dev/null &$|\1 \&|' "$HOOK" > "$heredado"
+if diff -q "$HOOK" "$heredado" >/dev/null; then
+  malo "el sed no cambió nada: no pude derivar la variante que hereda fds, este control NO corrió"
+else
+  d4="$TMP/caso4"
+  mkdir -p "$d4"
+  montar "$d4" "$heredado"
+  t0="$(_seg)"
+  pushear "$d4" "$d4/push.log" >/dev/null
+  dur4=$(( $(_seg) - t0 ))
+  if [ "$dur4" -ge "$STUB_SLEEP" ]; then
+    ok "heredando las fds el push esperó ${dur4}s — el caso 3 mide la redirección, no un atajo"
+  else
+    malo "heredando las fds el push tardó ${dur4}s (< ${STUB_SLEEP}s): el caso 3 no prueba nada"
+  fi
+  esperar_bg "$d4" || true
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ 4/4 — el sync del grafo avisa pero no veta, y el control negativo lo acredita"
+  echo "✅ 9/9 — el sync no veta, no bloquea el push, avisa su fallo, y los controles negativos lo acreditan"
   exit 0
 fi
 echo "❌ $fallos control(es) en rojo"
