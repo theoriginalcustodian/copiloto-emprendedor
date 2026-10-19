@@ -308,6 +308,58 @@ Detalle en `memoria/cero-tiempo-ocioso-tres-estados.md` §Refuerzo 2026-10-08.
 
 ---
 
+## 3.sexies Un worktree que terminó su trabajo SE BORRA — y no lo decide tu memoria
+
+**La regla, en una línea: ningún worktree sobrevive al trabajo que lo justificó.** Lo que sigue es
+cómo se cumple, que es la parte que este repo ya pagó dos veces.
+
+**No es una norma de disciplina, y por eso funciona.** La poda la dispara el hook `SessionStart`
+`scripts/hooks/podar_worktrees_al_arrancar.mjs` (registrado en `.claude/settings.json`, versionado),
+que lanza `scripts/poda-worktrees-en-background.sh` → `scripts/podar-worktrees.sh --podar`. Corre
+desacoplado —el hook sale en **99 ms** medidos, la poda tarda ~42 s— con throttle de 30 min y sin
+decir nada en el caso normal. **No tenés que acordarte de nada.**
+
+**Por qué no alcanzaba escribirla acá** (medido el 2026-10-19, y es el motivo de que esta sección
+exista): `podar-worktrees.sh` ya existía desde agosto, con su test y su criterio correcto, y **nadie
+lo invocaba**. El único hit del grep fuera del propio script era `.claude/settings.local.json`, que
+sólo lo **permite** — y un permiso no es un disparador. Peor: su cabecera afirmaba «el default
+conserva el comportamiento de los crones que ya lo invocan», frase que envejeció y se leía como que
+el mecanismo estaba andando. Se acumularon **145 worktrees y ~6 GB**. La norma escrita sin mecanismo
+es el mismo fracaso que el buzón (32 → 136 abiertos con la regla de archivar a mano escrita, resuelto
+por un janitor): `memoria/buzon-se-ordena-por-janitor-no-por-disciplina.md`.
+
+**Y el default del script estaba CIEGO, que es lo que volvía inútil cablear un cron.** Con sus bases
+por defecto entraban **0 de 3** worktrees al análisis (7 directorios mirados) porque miraban el path
+fijo `.claude/worktrees/` mientras las sesiones trabajan en `C:/gfw-src/wt-*`. Su resumen habría
+dicho «0 podables», que se lee como «está limpio» y significaba «no miré»
+(`memoria/instrumento-que-no-mira-nunca-falla.md`). Desde el 19/10 **las bases se DERIVAN** de los
+worktrees que git registra: la base no se declara, se descubre, así que el próximo cambio de layout
+no vuelve a dejarlo ciego. **No le pases `--base` al hook** — eso reintroduce el path fijo que falló.
+
+**Lo que el borrado NO puede llevarse** — las tres guardas del script son **AND**, y ante cualquier
+duda conserva:
+
+| Guarda | Qué protege |
+|---|---|
+| trabajo ya en `origin/main` | acá se mergea con **squash**, así que la rama nunca es ancestro de `main`: se prueba por tres vías (ancestro · PR mergeado según GitHub · contenido idéntico) y basta una |
+| working tree **limpio** | un archivo sin commitear no está en ninguna rama y se pierde entero |
+| sin actividad hace 6 h | limpio + mergeado + tocado hace 10 min = una sesión que acaba de mergear y **sigue ahí** |
+
+Nunca toca el worktree principal ni el actual. El costo de conservar de más es una línea en un
+listado; el de borrar de menos es el WIP de otra sesión.
+
+**Si querés cerrar el tuyo sin esperar al próximo arranque:** `bash scripts/podar-worktrees.sh`
+(dry-run, no borra nada) y después `--podar`. Hacerlo es bienvenido; **omitirlo no rompe nada**, y
+ahí está el punto: la higiene no depende de que te acuerdes.
+
+⚠️ **Lo que el mecanismo NO limpia, y sigue siendo decisión del operador:** los **restos** de un
+`worktree remove` parcial —directorios con archivos del repo pero sin su `.git`, que en Windows deja
+el `MAX_PATH` sobre `node_modules`— y los directorios ajenos. El script los **lista y no los toca**,
+porque sin su `.git` ningún comando git puede afirmar que estén vacíos de trabajo. Medido el 19/10:
+**14 restos** en `C:/gfw-src`, varios de ~1 GB.
+
+---
+
 ## 4. Deploy y cutover (Fase 2.5)
 
 El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquesta el VPS por SSH) ya está **reconciliado al layout graduado**: el path del motor pasó de `deploy/skeleton_kit/.../reference` a `motor/` en `deploy.sh`, ambos units `uc-copiloto-{web,worker}.service` (PYTHONPATH), `sync-test-backend.sh` y `gotrue/deploy-gotrue.sh`. Mount verificado en el VPS (spike: **333 colección VERDE** con `motor/`).

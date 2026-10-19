@@ -9,6 +9,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/podar_worktrees_al_arrancar.mjs\""
+          }
+        ]
+      }
     ]
   }
 }

@@ -42,7 +42,16 @@
 #
 # Por qué PARAMETRIZAR y no cambiar el path hardcodeado por otro: el próximo layout de worktrees
 # vuelve a dejar el script ciego, y la ceguera es muda. Con `--base` la elección es explícita en el
-# comando, y el default conserva el comportamiento de los crones que ya lo invocan.
+# comando, y el default ya no depende de que nadie lo pase.
+#
+# ⚠️ ACA DECIA «el default conserva el comportamiento de los crones que ya lo invocan», y el
+# 2026-10-19 se midio que NO HABIA NINGUN CRON invocandolo: el unico hit del grep en todo el repo,
+# fuera de este archivo, era `.claude/settings.local.json`, que solo lo PERMITE. Un permiso no es un
+# disparador. Peor: la frase se leia como que el mecanismo estaba andando, asi que nadie lo busco —
+# se acumularon 145 worktrees y ~6 GB. Y el default tampoco servia: con el, entraban **0 de 3**
+# worktrees al analisis (control positivo del 19/10, 7 directorios mirados contra 162 despues).
+# Hoy lo dispara el hook SessionStart `scripts/hooks/podar_worktrees_al_arrancar.mjs` y las bases
+# del default se DERIVAN de los worktrees registrados (ver mas abajo). Norma: CLAUDE.md §3.sexies.
 #
 # El riesgo de una base equivocada es el MISMO que el de `PODAR_REF` (ver abajo): decide qué entra
 # al análisis. Por eso una base tiene que existir, no puede ser `/` ni el checkout principal, y las
@@ -93,8 +102,27 @@ GRACIA_SEG=$((HORAS_GRACIA * 3600))
 # huerfanos mas abajo.
 if [ "${#BASES[@]}" -eq 0 ]; then
   _principal="$(git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0,10); exit}')"
+  _padre_principal="$(dirname "${_principal:-$REPO_ROOT}")"
+  # (a) el layout historico, que puede no existir — se agrega igual y el censo lo reporta.
   _def="${_principal:-$REPO_ROOT}/.claude/worktrees"
-  BASES+=("$(cd "$_def" 2>/dev/null && pwd -P || echo "$_def")")
+  [ -d "$_def" ] && BASES+=("$(cd "$_def" && pwd -P)")
+  # (b) DERIVADAS de los worktrees que git registra AHORA. Esto es lo que evita que el default
+  #     vuelva a quedar ciego cuando cambie el layout: la base no se declara, se descubre. El 29/09
+  #     el path fijo `.claude/worktrees/` dejo 23 de 34 worktrees fuera del analisis y el resumen
+  #     dijo «0 no mergeados», que se lee como «no hay» y significaba «no mire».
+  #     → memoria/instrumento-que-no-mira-nunca-falla.md
+  while read -r _wt; do
+    [ -n "$_wt" ] || continue
+    _pad="$(cd "$(dirname "$_wt")" 2>/dev/null && pwd -P)" || continue
+    # Guardas: el padre del checkout principal metaria los repos vecinos del workspace al analisis,
+    # y `/` el filesystem entero. Son las mismas dos que ya valida `--base`.
+    [ "$_pad" = "/" ] && continue
+    [ "$_pad" = "$_padre_principal" ] && continue
+    for _ya in "${BASES[@]}"; do [ "$_ya" = "$_pad" ] && continue 2; done
+    BASES+=("$_pad")
+  done < <(git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0,10)}' | tail -n +2)
+  # (c) si no hay NINGUN worktree secundario, queda el historico para que el censo siga hablando.
+  [ "${#BASES[@]}" -eq 0 ] && BASES+=("$_def")
 fi
 AHORA="$(date +%s)"
 
