@@ -24,6 +24,13 @@
 
 **Teléfono:** `RF8T318RN9T` libre (aviso en el buzón). Antes de tomarlo mañana, `avance_` de TOMO.
 
+**Para que el agente termine SOLO tras los cuatro toques del operador (sesión, ARCA, Calendar, botón de emitir):**
+- *Operador, antes de irse:* (a) teléfono con USB depuración, desbloqueado y conectado a la PC; (b) iniciar sesión con `341lin@gmail.com` y **dejarla abierta**; (c) vincular ARCA homologación (y producción si hay tiempo) y reconectar Calendar; (d) para el descartable: agregar el mail/alias a la allowlist o dar la invitación (nunca pegar el token en el chat) y elegir la contraseña **en el teléfono**.
+- *Agente, receta:* worktree desde `origin/main` en `C:/gfw-src/wt-fe2-relevN` · `cd apps/mobile && CI=1 EXPO_PUBLIC_API_BASE=https://copilotoemprendedor.duckdns.org npx expo start --dev-client --port 8081 --clear` · `adb reverse tcp:8081 tcp:8081` · helpers versionados en `scripts/device/adb_helpers.py` (`cap`, `tap`, `swipe`, `hold`, `slide` en dp, `deeplink`).
+- *Orden autónomo:* §2 con la sesión abierta → `fact-hitl`/`fact-cae` sólo hasta la card (el botón lo toca el operador) → cierres de sesión (`splash`/`volver`/`reveal`/`ingresar-error`) AL FINAL, porque vuelven a pedir login → descartable → regenerar conteos y `cierre_` (§8).
+- *Sin el operador no se hace:* el botón de emitir, el login tras cada cierre de sesión, la voz real (si no hay quien hable, la fila queda NO-VERIFICABLE con el motivo), el build release.
+- *Estado del repo:* PR #1300 lleva estas decisiones; el CI no corrió solo (docs): se disparó con `gh workflow run tests.yml --ref <rama>`.
+
 ## 0. Orden del operador (textual, 2026-10-16)
 
 > «necesitamos prueba empírica del device de cada pantalla que falta… con adb sí se puede grabar y lo hemos hecho para las pruebas de audio… además no tenemos que grabar nada, sólo probar las pantallas… además también estoy yo para poder hacer lo que necesitemos en el device para terminar el relevamiento completo.»
