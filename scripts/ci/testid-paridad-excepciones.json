@@ -751,6 +751,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/admin"
     },
+    "modules/ajustes/afip::afip-drive-apagado-motivo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "afip-drive-apagado-motivo",
+      "motivo": "SM-K3 (2026-11-02): ficha de la APP (DoD: cada boton apagado dice por que). El toggle de Drive de mobile mostraba solo opacidad con la copia en «no»; la web ya pinta su texto de estado propio (afip-drive-desconectado, PantallaAfipSetup.tsx:807). Divergencia de alcance, no de diseno. Dueno: frontend web. Disparador para cerrar: portar el motivo a la web si el mapa lo pide.",
+      "pantalla": "modules/ajustes/afip"
+    },
     "modules/ajustes/afip::afip-estado-vinculo": {
       "en": [
         "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
