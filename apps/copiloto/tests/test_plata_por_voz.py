@@ -698,3 +698,22 @@ def test_las_formas_que_PUBLICAMOS_son_las_que_entendemos():
     for forma in tool_catalog.FECHAS_QUE_ENTIENDO:
         _fecha, entendida = tool_catalog._fecha_dictada(forma, _reloj_fijo)
         assert entendida is True, f"publicamos {forma!r} pero el resolvedor no la entiende"
+
+
+def test_N20_las_ramas_ambiguas_no_le_pasan_al_modelo_el_total_crudo():
+    """Con 2 candidatos la observation lleva `candidatos[].total/saldo`: crudo («50000.0000») el LLM lo escribe en
+    inglés («$50,000.00») y, ya en el historial, lo contagia a las respuestas siguientes (medido en prod 2026-11-02:
+    3/3 borradores de la sesión). Formateado, no hay crudo que reescribir."""
+    import re
+    crudo = re.compile(r"(?<![\d.$])\d{4,}\.\d{2,}")
+    p = _PresupuestoFake(filas=[_presu(1, 41, "Panadería", total="50000.0000"),
+                                _presu(2, 42, "Panadería", total="70000.0000")])
+    r = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=p)
+    assert [c["total"] for c in r.observation["candidatos"]] == ["$50.000", "$70.000"]
+    store = _CobroFake(impagas=[
+        {"id": 10, "nro": "0001-00000042", "receptor_nombre": "Panadería", "saldo": "50000.00"},
+        {"id": 11, "nro": "0001-00000043", "receptor_nombre": "Panadería", "saldo": "70000.00"}])
+    c = _correr("marcar_factura_cobrada", {"factura": "panadería"}, cobro=store)
+    assert [x["saldo"] for x in c.observation["candidatos"]] == ["$50.000", "$70.000"]
+    # control positivo del patrón: el crudo que se evita SÍ lo caza
+    assert crudo.search("50000.0000") and not crudo.search(str(r.observation) + str(c.observation))
