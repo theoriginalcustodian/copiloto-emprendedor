@@ -36,12 +36,14 @@ export function PasoDatosVenta({
   testID = 'facturacion-paso-datos-venta',
 }: PasoDatosVentaProps) {
   const tema = useTema();
-  const [fecha, setFecha] = useState('');
-  const [concepto, setConcepto] = useState('1');
-  const [condicionVenta, setCondicionVenta] = useState('');
-  const [fechaServicioDesde, setFechaServicioDesde] = useState('');
-  const [fechaServicioHasta, setFechaServicioHasta] = useState('');
-  const [fechaVtoPago, setFechaVtoPago] = useState('');
+  // SM-H1 — arranca con lo cargado: para cambiar un dato no hay que volver a tipear los otros.
+  const cargado = estado.datosVenta;
+  const [fecha, setFecha] = useState(cargado?.fecha ?? '');
+  const [concepto, setConcepto] = useState(cargado ? String(cargado.concepto) : '1');
+  const [condicionVenta, setCondicionVenta] = useState(cargado?.condicionVenta ?? '');
+  const [fechaServicioDesde, setFechaServicioDesde] = useState(cargado?.fechaServicioDesde ?? '');
+  const [fechaServicioHasta, setFechaServicioHasta] = useState(cargado?.fechaServicioHasta ?? '');
+  const [fechaVtoPago, setFechaVtoPago] = useState(cargado?.fechaVtoPago ?? '');
   const [enviando, setEnviando] = useState(false);
 
   const requiereFechasServicio = concepto === '2' || concepto === '3';

@@ -1261,9 +1261,21 @@ export async function esperarEstadoEstable(
  * Firma de lo que un signal puede cambiar: el estado de la máquina, los ítems y el total. Se compara
  * esto y no sólo `estado` porque hay signals que NO mueven el estado — agregar un segundo ítem deja
  * `items_ok` igual pero cambia la lista. Sin mirar los ítems, esos casos esperarían el tope entero.
+ *
+ * SM-H1 — cubre todo lo editable. Con sólo `items.length` y `total`, cambiar un nombre o una descripción
+ * no movía la firma: el eco agotaba su tope, y `FacturaWorkflow._token()` tampoco ve esos datos.
  */
-function firmaDeEstado(e: EstadoFacturaResp): string {
-  return `${e.estado}|${e.items.length}|${e.total}|${e.faltantes.length}|${e.tokenConfirmacion ?? ''}`;
+export function firmaDeEstado(e: EstadoFacturaResp): string {
+  return JSON.stringify([
+    e.estado,
+    e.items,
+    e.total,
+    e.faltantes.length,
+    e.tokenConfirmacion,
+    e.receptor,
+    e.datosVenta,
+    e.motivo,
+  ]);
 }
 
 export interface EcoDelSignalResultado {
