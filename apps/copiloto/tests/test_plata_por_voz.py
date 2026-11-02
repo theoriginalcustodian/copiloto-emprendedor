@@ -377,6 +377,32 @@ def test_N8_la_observacion_de_marcar_presupuesto_no_lleva_consigna_al_modelo():
         assert not re.search(r"confirm[aá]m?(el|se|lo)|l[ií]nea corta", txt, re.I), txt
 
 
+_CONSIGNA = r"confirm[aá](?:me|se)(?:lo|la)?|confirm[aá]l[oa] en una l[ií]nea|l[ií]nea corta"
+
+
+def _consignas_en(fuente: str) -> list:
+    """Literales de string (no comentarios) del código con una orden al modelo tipo «Confirmáselo…»."""
+    import ast
+    import re
+    return [n.value for n in ast.walk(ast.parse(fuente))
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and re.search(_CONSIGNA, n.value, re.I)]
+
+
+def test_N13_ninguna_observacion_de_tool_catalog_lleva_consigna_al_modelo():
+    """SM-N13: el fix de SM-N8 viajó a TODOS los call-sites. Se barre el AST de `tool_catalog.py`, así que
+    es rojo si la consigna vuelve a CUALQUIER observación (no sólo a las que hoy conocemos)."""
+    import pathlib
+    import tool_catalog
+    assert _consignas_en(pathlib.Path(tool_catalog.__file__).read_text(encoding="utf-8")) == []
+
+
+def test_N13_control_positivo_el_barrido_ve_la_consigna_en_sus_formas_reales():
+    for frase in ("Moví «x» a hecho. Confirmáselo en una línea corta.", "Listo. Confirmáselo en una línea.",
+                  "Cancelé la factura. Confirmalo en una línea corta.", "Anoté «x». Confirmámelo."):
+        assert _consignas_en(f"X = {frase!r}"), frase
+    assert _consignas_en("X = 'Marqué el presupuesto 3 como aprobado.'") == []
+
+
 def test_K07B_aprobar_deja_la_card_sugerencia_armar_factura_y_descartar_no():
     """K-07-B: al APROBAR la observación lleva `gate_card` (el motor la adjunta al reply); al descartar, no."""
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
