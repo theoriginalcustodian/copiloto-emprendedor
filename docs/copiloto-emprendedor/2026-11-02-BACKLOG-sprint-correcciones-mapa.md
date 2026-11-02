@@ -103,6 +103,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -848,3 +849,34 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      la operación ⇒ rojo; afirmar una capacidad no cableada ⇒ rojo.
   3. Corrida en el VPS con la salida adjunta, y el conteo final (`6/6` atadas, o el número real con el
      motivo de lo que quede afuera).
+### SM-N8 · `sin-issue` — El `reply_text` de la aprobación hace eco de la consigna interna: el emprendedor lee la instrucción dirigida al modelo
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido por backend** mientras cerraba las mitades de `SM-H5` (#1363, `681c3b53`), y reportado
+  **sin parchar**, que fue lo correcto: la respuesta de la aprobación **a veces** repite la consigna
+  interna, del tipo «Confirmáselo en una línea corta».
+- **Por qué no es cosmético.** Lo que se filtra no es un texto raro: es una **instrucción dirigida al
+  modelo**, en imperativo y en segunda persona. El emprendedor no lee un error — lee el andamiaje, y
+  una frase que le ordena algo a alguien que no es él. Rompe la voz del producto en el único momento
+  en que el sistema le confirma que su plata se registró, que es donde la confianza se gana o se
+  pierde. No hay excepción ni log: sale como si fuera la respuesta.
+- **Por qué lleva ficha y no queda en el `cierre_` de `SM-H5`:** esa ficha cerró su mitad de backend
+  con su DoD cumplido. Un hallazgo no reabre lo cerrado, y un `cierre_` es un entregable: nadie lo
+  persigue. Es el mismo caso que `SM-N7`.
+- **⚠️ Es INTERMITENTE, y eso decide el instrumento.** Backend escribió «a veces». Un defecto
+  intermitente **no se verifica con una corrida**: una sola salida limpia no distingue «arreglado» de
+  «esta vez no apareció», y es exactamente la forma que fabrica una excusa lista («fue el flake»).
+  Hace falta una **sonda con N declarado** y la tasa del antes y el después — como la sonda de 12 que
+  ya se usó en `SM-N1`/`SM-N2` y las de 6 de este mismo cierre.
+- **DoD:**
+  1. **Tasa del baseline** con N declarado (≥10 aprobaciones reales), contando cuántas respuestas
+     contienen rastro de la consigna. El número va escrito, aunque sea bajo.
+  2. Causa nombrada: **dónde** la consigna entra al texto que se devuelve. Si resulta ser otra vez la
+     jerarquía *observación > descripción* —el patrón que ya se pagó en `SM-N2`— el fix es sacar la
+     consigna de donde el modelo la lee como contenido, **no** pedirle en la descripción que no la
+     repita.
+  3. Sonda posterior con **el mismo N** y la tasa final. Un «0 de 6» tras un baseline de 12 no es
+     comparable: el instrumento tiene que ser el mismo a los dos lados.
+  4. Corrida en el VPS con la salida adjunta.
+- **Tope:** no se reescribe la voz de las confirmaciones en esta ficha. Lo que se arregla es la fuga.
