@@ -560,7 +560,7 @@ describe('PantallaAfipSetup', () => {
       estadoOk({ conectado: false, onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'x', causa }) }),
     );
     await montar();
-    expect(await screen.findByTestId('afip-arca-progreso-causa')).toHaveTextContent(texto);
+    expect(await screen.findByText(texto)).toBeTruthy();
   });
 
   it('SM-K3: sin causa (backend viejo) no se afirma ninguna', async () => {
@@ -571,7 +571,7 @@ describe('PantallaAfipSetup', () => {
     );
     await montar();
     await screen.findByTestId('afip-arca-progreso-fallido');
-    expect(screen.queryByTestId('afip-arca-progreso-causa')).toBeNull();
+    expect(screen.queryByText(/dato que cargaste|problema del servicio|No pudimos determinar/)).toBeNull();
   });
 
   // -----------------------------------------------------------------------------------------

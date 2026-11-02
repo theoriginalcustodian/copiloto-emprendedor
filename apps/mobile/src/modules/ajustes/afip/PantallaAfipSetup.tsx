@@ -749,7 +749,7 @@ export function PantallaAfipSetup() {
                         diagnostique la equivocada (corregir un dato que estaba bien, o reintentar sin
                         parar un dato que sí estaba mal). Sin `causa` no se afirma ninguna. */}
                     {onboardingActual.causa != null && (
-                      <Text testID="afip-arca-progreso-causa" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
                         {TEXTO_CAUSA_FALLO[onboardingActual.causa]}
                       </Text>
                     )}

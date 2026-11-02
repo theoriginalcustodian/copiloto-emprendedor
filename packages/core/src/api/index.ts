@@ -300,6 +300,7 @@ export type {
   Faltante,
   GuardarPerfilRequest,
   ItemFactura,
+  CausaFalloOnboarding,
   MotivoCodigo,
   NuevoItem,
   OnboardingProgreso,

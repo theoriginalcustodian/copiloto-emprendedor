@@ -365,7 +365,7 @@ describe('afip.ts', () => {
         wsAutorizados: ['wsfe'],
         perfilCompleto: true,
         puedeFacturar: true,
-        onboarding: { paso: 'habilitado', motivo: null, wsAutorizados: ['wsfe'], terminado: true, ok: true },
+        onboarding: { paso: 'habilitado', motivo: null, causa: null, wsAutorizados: ['wsfe'], terminado: true, ok: true },
       });
     });
 
