@@ -94,7 +94,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-L3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-L3** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en… |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
@@ -657,7 +657,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L3 · `sin-issue` — La anulación de facturas nunca se ejercitó contra ARCA real
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en exit 0; antes, elegir cuál de los DOS pares N°10/N°11 (tenants 19af5a42 y 48a9d75f) es el suyo
+- **Cierre:** 25a219b3 control de estado en servidor (verificar-anulacion.sh) + receta; cancelar/anular son caminos distintos
 - **Dueño:** backend + **operador (el botón final)**
 - **Medido:** las facturas reales N° 10 y N° 11 están emitidas en Producción.
 - **DoD:** las dos anuladas (D10), con captura **y estado en servidor** que lo confirme — no sólo la
