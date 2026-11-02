@@ -115,6 +115,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
 | **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. S… |
+| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1368,3 +1369,30 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   4. Corrida en device: dictar un presupuesto, **ver la card**, corregir algo en ella y recién ahí
      confirmarlo. La parte de «corregir» es la que el operador nombró y la que un test de card
      presente no cubre.
+
+### SM-N20 · `sin-issue` — FUERA DEL SPRINT: el LLM escribe los importes en formato inglés y agrega frases que no vienen de la observación
+
+- **Estado:** DOD-PARCIAL
+- **Dueño:** backend
+- **De dónde sale:** lateral que backend destapó midiendo SM-H5/SM-N8, 2026-11-02. Misma clase que
+  aquellas dos, pero en tools que ninguna cubría.
+- **El síntoma, dos cosas distintas en el mismo texto.** El `reply_text` que ve el usuario trae
+  «$50,000» (separador de miles inglés, no `$50.000`) y un «Esto es lo que entendí:» que **no está
+  en ningún código** — grep limpio, 0/6 en sesión limpia: es muletilla del LLM.
+- **Causa medida, y no era la tool que parecía.** `registrar_presupuesto` **no lleva importe** en su
+  `observation`, así que el «$50.000» no salía de ahí. Reproducido con LLM real: las ramas
+  **AMBIGUAS** de `marcar_presupuesto` y `marcar_factura_cobrada` pasaban `candidatos[].total/saldo`
+  **crudo** (`"50000.0000"`). En la sesión de prod del operador (`6ab0dae4`) los 3 borradores (1662,
+  1678, 1767) salieron en inglés, y antes había respuestas ambiguas con `$50,000.00` (1525/1526):
+  **contagio por historial** — una vez que el formato entra en la conversación, se propaga.
+- **Fix #1414** (mergeado y desplegado; VPS 2567 passed, CI 6/6): `plata_corta` en los candidatos
+  + la frase.
+- **Por qué NO es TERMINADO.** Sonda post-deploy con el mismo instrumento, 8 sesiones: ambigua en
+  inglés **1/8** y borrador nuevo **1/8** — bajó respecto del baseline (2/5 y 1/5) pero **no llegó a
+  0**, y la n es chica, así que la mejora no es concluyente. El caso residual es el que explica el
+  límite: la `observation` ya traía **«$70.000» bien formateado** y el modelo escribió **«$70,000»**
+  igual. Se quitó la fuente cruda; queda un hábito del LLM que el dato limpio no elimina.
+- **Falta:** lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el
+  usuario **no pase por el LLM** — card y reply armados por código. Eso es decisión de diseño más
+  grande que la ficha y **no la toma backend por su cuenta**: queda planteada acá como la opción de
+  raíz, y la decide el operador. Mientras no se tome, el residual se acepta y queda medido (1/8).

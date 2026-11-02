@@ -102,6 +102,29 @@ El motor **nació** como copia vendorizada del arquetipo `conversational_agent` 
    - Si encontrás un apagado **pendiente**: abortalo con `shutdown /a` (exit `1116` = no había
      ninguno; `0` = había uno y lo abortaste) y decilo.
 
+10. **El ESTADO de las fichas va EN LOTE: marcar una ficha NO abre un PR.** Orden del operador,
+    2026-11-02: *«si hacemos commits y PRs por cada cosa insignificante el trabajo se traba y no
+    terminamos nunca... porque por cada commit hay que esperar CI y así no avanzamos más»*.
+    - **No abren PR y se acumulan:** marcar una ficha (`sprint-estado.py --marcar`), corregir un
+      `Cierre:`/`Falta:`, un refuerzo de memoria, un doc de registro. Cada sesión mantiene **una**
+      rama de lote (`<sesion>/lote-estado-fichas`) que sube cuando hay varias cosas o al cerrar el
+      día: **un CI por lote**.
+    - **Sí abren PR propio y de inmediato:** código, fixes desplegables, gates, instrumentos. El
+      criterio no es el tamaño del diff — es **si puede romper algo en runtime**.
+    - **Un hecho, un commit.** Quien tiene la evidencia la manda; **planificación registra Y marca
+      en el mismo commit**. Prohibido el patrón de dos PRs por un hecho («registrá vos y marco yo
+      después»).
+    - **Lo que el lote NO relaja:** el DoD exige la misma evidencia, `--marcar` sigue siendo el
+      único que escribe el estado, el gate sigue corriendo y un `TERMINADO` sigue necesitando su sha
+      ancestro de `origin/main`. El lote cambia **cuándo** se sube, no **qué** se acredita.
+    - **Por qué hizo falta escribirlo dos veces:** la orden ya estaba en
+      `memoria/batch-cambios-no-pr-por-tweak.md` y se reincidió igual, con **ocho** PRs en un día
+      (#1400, #1402, #1403, #1405, #1407, #1410, #1412, #1415) casi todos de marcado. Cada uno se
+      justificaba **solo** —el estado tiene que quedar escrito, el gate lo exige, hay alguien
+      esperando el merge— y el error sólo se ve sumando: el trámite cuesta más que el cambio.
+      Disparador para revisarse: si en una jornada abriste más de un par de PRs y la mayoría no toca
+      código, ya reincidiste.
+
 ## 3.bis Skills a invocar (no son opcionales cuando aplican)
 
 Instaladas globales en `~/.claude/skills/`, verificadas el 2026-07-20 (34 en total; las 14 de mobile
