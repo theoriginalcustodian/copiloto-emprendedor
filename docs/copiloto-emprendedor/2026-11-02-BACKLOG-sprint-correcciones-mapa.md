@@ -94,7 +94,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-L3** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en… |
+| **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas… |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
@@ -109,6 +109,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
 | **SM-N13** | `sin-issue` | ✅ TERMINADO | 7811aad1 consigna fuera de las 6 observaciones restantes; test AST; sonda Mi dia N=12 6/12 -> 0/12 (desplegado) |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
+| **SM-N15** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -657,9 +658,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L3 · `sin-issue` — La anulación de facturas nunca se ejercitó contra ARCA real
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en exit 0; antes, elegir cuál de los DOS pares N°10/N°11 (tenants 19af5a42 y 48a9d75f) es el suyo
-- **Cierre:** 25a219b3 control de estado en servidor (verificar-anulacion.sh) + receta; cancelar/anular son caminos distintos
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas porque ya probamos que funciona». El DoD se RETIRA, no se declara satisfecho: nadie anuló las facturas N° 10 y N° 11 en esta ronda. La anulación queda acreditada por la prueba anterior del operador, no por este sprint.
 - **Dueño:** backend + **operador (el botón final)**
 - **Medido:** las facturas reales N° 10 y N° 11 están emitidas en Producción.
 - **DoD:** las dos anuladas (D10), con captura **y estado en servidor** que lo confirme — no sólo la
@@ -1043,6 +1043,42 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. El comentario de `:37-38` reemplazado por el motivo real.
   4. Corrido donde corresponde (`scripts/ci/core.sh` + `web.sh`), con el conteo en el `cierre_`.
 - **No necesita device:** es código + test. La captura de Gastos ya existe, del relevamiento.
+
+### SM-N15 · `sin-issue` — SEGUNDO usuario de prueba: no-admin y tenant VACÍO (decisión del operador, 2026-11-02)
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (provisión) — **desbloquea `SM-K1` y `SM-J3`**
+- **Decisión del operador (2026-11-02), textual:** *«creamos segundo usuario de prueba»*. Es la
+  respuesta a la pregunta MAYOR que planificación escaló: si un usuario canónico único alcanza para
+  probar controles que dependen del **rol** o de la **sesión**. Respuesta: **no alcanza**.
+- **Por qué el usuario del operador NO sirve para estas dos, aunque sí sirve para otras tres.** El
+  operador ofreció su propio usuario y destraba `SM-H3` (Gmail conectado), `SM-J4` (clientes reales
+  con y sin facturas) y `SM-K6` (invalidación de sesión; con el canónico el logout está prohibido).
+  Pero `SM-K1` y `SM-J3` necesitan lo **contrario**: **menos** privilegios (no-admin) y **menos**
+  datos (tenant vacío). Un usuario más completo no puede encarnar un estado más pobre. Ésa es la
+  forma del problema, y es la razón por la que el número de disparadores sin dueño fue 1 → 3 → 4 →
+  5 → 6 en un día: cada captura destapaba otro estado del tenant que el único canónico no podía ser.
+- **Lo que NO cambia: el canónico sigue siendo `e2e-device@copiloto.test`.** Esto es una **ampliación
+  por ficha**, no un reemplazo — la orden «un solo usuario canónico, a fuego» sigue vigente para todo
+  lo demás, y sigue PROHIBIDO crear usuarios de prueba ad-hoc. El segundo usuario existe para las dos
+  fichas que lo nombran, se documenta en el mismo lugar que el canónico, y cualquier uso fuera de
+  `SM-K1`/`SM-J3` es MAYOR y vuelve al operador.
+- **DoD binario:**
+  1. Un usuario de prueba creado con **rol no-admin** y **tenant propio y vacío** (cero clientes,
+     cero comprobantes, cero gastos). Control positivo: una consulta que muestre los conteos en cero
+     **y** que el canónico los tenga distintos de cero — si los dos dan vacío, el instrumento mira
+     mal.
+  2. **Su password NUNCA en el repo trackeado ni en la memoria**, igual que el canónico: va a
+     `.env.e2e`. El repo es **público**.
+  3. El rol no-admin **verificado con un test adversarial**, no por configuración: el usuario intenta
+     la acción de admin y recibe denegación (regla dura del `CLAUDE.md` — un control de autorización
+     sin test adversarial es un control no verificado; ADR-013, BOLA/OWASP API1:2023). Sin ese test
+     la ficha queda `[UNVERIFIED]` y **no** desbloquea `SM-K1`.
+  4. Aislamiento cross-tenant ejercitado: el usuario nuevo pide un recurso del canónico y **no** lo
+     obtiene.
+  5. Documentado donde está documentado el canónico, con **para qué dos fichas existe** y la frase de
+     que todo otro uso es MAYOR.
+- **No necesita device** para la provisión. El device entra después, en `SM-K1` y `SM-J3`.
 
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 
