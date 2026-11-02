@@ -28,11 +28,23 @@ const raizGit = (d) => {
   }
 };
 
-// La raíz se busca desde la ubicación de ESTE archivo primero, y sólo después desde el cwd.
-// Medido: con el cwd en otro lado el hook salía MUDO — y un hook mudo no da síntoma, que es
-// exactamente la clase de defecto que este mecanismo existe para evitar.
-const raizDesde = [dirname(fileURLToPath(import.meta.url)), process.cwd()]
-  .map(raizGit).find(Boolean);
+// La raíz se elige por quien TIENE .goal, y entre las que lo tienen gana el CWD.
+//
+// Antes se elegía la primera ruta que fuera un repo, empezando por la ubicación de este archivo.
+// Con tres sesiones en worktrees eso leía SIEMPRE el `.goal` del checkout compartido, porque el
+// hook está registrado en `settings.json` por ruta absoluta y vive ahí: el 2026-11-02 anunció
+// `SM-K8` (de frontend2) a la sesión de planificación y a frontend1 a la vez, en los dos casos una
+// ficha ajena. Y una orden ajena inyectada con `priority="max"` es PEOR que ninguna: el gate de
+// atribución marca FUERA-GOAL los commits propios por no citar un id que nunca fue de la sesión,
+// y lo que el agente lee como su orden lo puso otro.
+//
+// El orden de BÚSQUEDA se conserva —por el defecto que ya se midió: con el cwd en otro lado el hook
+// salía MUDO, y un hook mudo no da síntoma— pero deja de decidirse por «es repo» y pasa a decidirse
+// por «hay `.goal` acá», con el cwd adelante porque es la sesión. Sin `.goal` en ninguna de las dos,
+// cae a la primera raíz que exista y el hook sigue emitiendo cero, como antes.
+const candidatas = [process.cwd(), dirname(fileURLToPath(import.meta.url))]
+  .map(raizGit).filter(Boolean);
+const raizDesde = candidatas.find((r) => existsSync(join(r, ".goal"))) || candidatas[0];
 
 let salida = "";
 try {
