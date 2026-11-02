@@ -41,9 +41,11 @@ export interface TileProps extends PropsWithChildren {
   style?: ViewStyle | ViewStyle[];
   testID?: string;
   accessibilityLabel?: string;
+  /** Sin el vidrio: el fondo lo pone quien lo usa por `style`, como las casillas del escritorio (SM-I4). */
+  solido?: boolean;
 }
 
-export function Tile({ onPress, style, testID, accessibilityLabel, children }: TileProps) {
+export function Tile({ onPress, style, testID, accessibilityLabel, solido = false, children }: TileProps) {
   const tema = useTema();
   const g = tema.glass;
 
@@ -74,15 +76,17 @@ export function Tile({ onPress, style, testID, accessibilityLabel, children }: T
     >
       {/* El botón de RNGH no recorta a sus hijos (`clipChildren = false`), así que `overflow` no alcanza: sin
           esta capa el gradiente pinta las esquinas rectas por fuera del borde redondeado (SM-N4). */}
-      <View style={styles.capaVidrio} pointerEvents="none">
-        <LinearGradient
-          colors={[g.s1, g.s2]}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[styles.luzSuperior, { backgroundColor: g.bd }]} />
-      </View>
+      {!solido && (
+        <View style={styles.capaVidrio} pointerEvents="none">
+          <LinearGradient
+            colors={[g.s1, g.s2]}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.luzSuperior, { backgroundColor: g.bd }]} />
+        </View>
+      )}
       {children}
     </Pressable>
   );

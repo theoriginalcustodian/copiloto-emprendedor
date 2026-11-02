@@ -21,6 +21,7 @@ jest.mock('react-native-reanimated', () => {
     createAnimatedComponent: (Comp) => Comp,
     useSharedValue: (inicial) => ({ value: inicial }),
     useAnimatedStyle: () => ({}),
+    useAnimatedReaction: () => undefined,
     // `EscritorioFunciones.tsx` (C6): el offset de scroll horizontal ya no pasa por `setState` -- va
     // directo a un `SharedValue` vía este handler. Bajo test no se dispara ningún scroll real (no hay
     // hilo de UI), así que basta con no reventar al invocarse: como los demás worklets de este mock,

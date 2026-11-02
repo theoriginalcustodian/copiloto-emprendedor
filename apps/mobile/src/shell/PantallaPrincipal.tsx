@@ -21,6 +21,7 @@
  * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
 import { useFocusEffect } from 'expo-router';
+import { useSharedValue } from 'react-native-reanimated';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -151,6 +152,11 @@ export function PantallaPrincipal() {
    * instante en que la conversación empieza a bajar, para que se cierren en paralelo.
    */
   const [senalCerrar, setSenalCerrar] = useState(0);
+  // SM-I4: el BACK cierra primero lo que está arriba. `progresoFunciones` lleva el gesto a la tira del chat.
+  const [escritorioAbierto, setEscritorioAbierto] = useState(false);
+  const progresoFunciones = useSharedValue(0);
+  // El punto del avatar es el mismo en las dos capas: lo sabe Mi día, que es quien pide el catálogo.
+  const [conexionCaida, setConexionCaida] = useState(false);
   /**
    * `hitl (a)` — el puente tarjeta → chat (C-D5 Opción A). Mi día y el chat son la MISMA pantalla: el
    * aviso no navega ni pasa por un buzón de módulo, baja por props. `id` crece con cada aviso, así el
@@ -210,11 +216,15 @@ export function PantallaPrincipal() {
   useEffect(() => {
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!panelAbajo) return false;
+      if (escritorioAbierto) {
+        setSenalCerrar((n) => n + 1);
+        return true;
+      }
       setSenalSubir((n) => n + 1);
       return true;
     });
     return () => suscripcion.remove();
-  }, [panelAbajo]);
+  }, [panelAbajo, escritorioAbierto]);
 
   /**
    * 🔴 **Las tres capas del sistema, en el orden que manda el modelo (Ola 4, 2026-09-18).**
@@ -238,10 +248,13 @@ export function PantallaPrincipal() {
       onPanelAbajoChange={setPanelAbajo}
       alBajar={alBajarChat}
       arrancaAbajo
+      ocultarTira={progresoFunciones}
       hintAbajo="Escribile a Odobi"
       fondo={
         <PanelFunciones
           senalCerrar={senalCerrar}
+          progreso={progresoFunciones}
+          onAbiertoChange={setEscritorioAbierto}
           escritorio={
             <EscritorioFunciones
               onFuncion={alFuncion}
@@ -251,11 +264,14 @@ export function PantallaPrincipal() {
               // El encabezado "Actividad reciente" entra a la lista COMPLETA. `empujarUnaVez` y no
               // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
               onVerRecientes={() => empujarUnaVez('/recientes')}
+              onAjustes={() => empujarUnaVez('/ajustes')}
+              avisa={conexionCaida}
             />
           }
         >
           <PantallaMiDia
             onAjustes={() => empujarUnaVez('/ajustes')}
+            onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}
             // H5b: la acción de la tarjeta abre la pantalla de su `destino` (conexión, comprobante, AFIP).

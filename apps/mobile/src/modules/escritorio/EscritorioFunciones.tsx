@@ -18,9 +18,9 @@
  * afordancia se fueron — una flecha que señala el vacío enseña a desconfiar de las que sí señalan
  * algo. Ver el docstring de `TILES` para por qué son 6 y no 9.
  *
- * Layout: padding `64/22/20`, título, el grid, el encabezado TAPEABLE "Actividad reciente"
- * (→ `/recientes`) y la lista, scrolleable con `paddingBottom` generoso para no quedar tapada por el
- * panel/handle que se superpone encima (Capa 1+).
+ * Layout (`.esc`, `index.html:1611-1631`, SM-I4): el avatar a la misma altura que en Mi día, el título, el grid
+ * y el bloque negro con el encabezado TAPEABLE "Actividad reciente" (→ `/recientes`) y su lista, que scrollea
+ * adentro. El negro va abajo, en lo que ya pasó: en Mi día va arriba, en lo que hay que hacer.
  */
 import { StyleSheet, Text, View } from 'react-native';
 /**
@@ -45,6 +45,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import type { ActividadItem } from '@copiloto/core';
 
 import { FilaActividad } from '../actividad/FilaActividad';
+import { AvatarCuenta } from '../midia/AvatarCuenta';
 import { EncabezadoListado } from '../../theme/glass/EncabezadoListado';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
@@ -53,9 +54,9 @@ import { useTema } from '../../theme/ThemeProvider';
 
 /** Las funciones del escritorio del copiloto. Ver `TILES` para la regla que fija su ORDEN. */
 export type FuncionKey =
-  | 'facturacion'
-  | 'ingresos'
   | 'gastos'
+  | 'ingresos'
+  | 'facturacion'
   | 'presupuestos'
   | 'clientes'
   | 'inteligencia';
@@ -100,14 +101,15 @@ export interface DefinicionTile {
  */
 export const TILES: readonly DefinicionTile[] = [
   // Las CUATRO OPERATIVAS — los cuatro verbos diarios: facturar, cobrar, gastar, presupuestar. Es lo
-  // único que tiene que verse SIN SCROLLEAR, y ése es el criterio de aceptación real del orden.
-  { key: 'facturacion', label: 'Facturación', icono: 'facturacion' },
+  // único que tiene que verse SIN SCROLLEAR, y ése es el criterio de aceptación real del orden. Entre ellas
+  // manda el mapa (SM-I4): Gastos primero, y Facturación cierra la fila de arriba.
+  { key: 'gastos', label: 'Gastos', icono: 'gastos' },
   // 🆕 2026-07-22. Simétrica de Gastos, y **por eso va al lado**: si el emprendedor ve Gastos y no
   // ve Ingresos, asume que la plata que entra no se registra — y no la va a ir a buscar adentro de
   // otra pantalla. Hoy un cobro sólo existe si pasó por MercadoPago; el efectivo y las
   // transferencias no dejaban rastro, así que la caja daba números coherentes y falsos.
   { key: 'ingresos', label: 'Ingresos', icono: 'ingresos' },
-  { key: 'gastos', label: 'Gastos', icono: 'gastos' },
+  { key: 'facturacion', label: 'Facturación', icono: 'facturacion' },
   { key: 'presupuestos', label: 'Presupuestos', icono: 'presupuestos' },
   // Baja al 5º: la cartera **se llena sola** a medida que se factura, así que casi no se entra a
   // mano. Los cuatro de arriba son los cuatro verbos diarios — facturar, cobrar, gastar, presupuestar.
@@ -123,9 +125,9 @@ export const TILES: readonly DefinicionTile[] = [
  * lo que el test usa para frenar a quien meta una función nueva arriba sin pensarlo.
  */
 export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
-  'facturacion',
-  'ingresos',
   'gastos',
+  'ingresos',
+  'facturacion',
   'presupuestos',
 ];
 
@@ -139,16 +141,6 @@ export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
  * fuera de pantalla.
  */
 const COLUMNAS_GRID = 3;
-
-/**
- * Alto reservado para la etiqueta. Cada tile mide lo que mida su etiqueta: "Redes Sociales" envuelve
- * a 2 líneas y "Apps" o "Métricas" entran en 1, así que las cards de una misma fila saldrían de
- * alturas distintas sin esto. Reservando siempre 2 líneas, todas las cards miden lo mismo SOLAS.
- *
- * 2 líneas de `fontSize 11.5` con `lineHeight 14` = 28, redondeado a 30 para que un glifo con cola
- * (una "g", una "j") no quede recortado en el borde inferior.
- */
-const ALTO_LABEL = 30;
 
 /**
  * Agrupa `items` en filas de `porFila` elementos, preservando el orden. Genérica y sin el conteo de
@@ -197,6 +189,10 @@ export interface EscritorioFuncionesProps {
    * tapeable — nunca una flecha sin destino.
    */
   onVerRecientes?: () => void;
+  /** El avatar, la puerta a Ajustes: la misma que en Mi día, para que no dependa de en qué capa estás. */
+  onAjustes?: () => void;
+  /** Enciende el punto del avatar. Ver `AvatarCuenta`. */
+  avisa?: boolean;
 }
 
 export function EscritorioFunciones({
@@ -205,21 +201,19 @@ export function EscritorioFunciones({
   cargandoActividad = false,
   onAbrirActividad,
   onVerRecientes,
+  onAjustes,
+  avisa = false,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
 
   return (
-    <View style={[styles.contenedor, { paddingHorizontal: 22 }]}>
-      <View style={styles.headerFila}>
-        <Text
-          style={[
-            styles.titulo,
-            { color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: 24 },
-          ]}
-        >
-          Funciones
-        </Text>
+    <View style={styles.contenedor}>
+      <View style={styles.filaAvatar}>
+        <AvatarCuenta testID="escritorio-avatar" avisa={avisa} onPress={onAjustes} />
       </View>
+      <Text style={[styles.titulo, { color: tema.color.texto, fontFamily: tema.fuente.display }]}>
+        Tus funciones
+      </Text>
 
       {/* 3×2 fijo. Se fue el `ScrollView` horizontal con su fade y su solapa: con 6 funciones no hay
           nada a la derecha que anunciar, y una afordancia que señala hacia el vacío enseña a
@@ -233,9 +227,13 @@ export function EscritorioFunciones({
                 testID={`tile-${t.key}`}
                 accessibilityLabel={t.label}
                 onPress={() => onFuncion?.(t.key)}
-                style={styles.tile}
+                solido
+                style={[styles.tile, { backgroundColor: tema.color.superficieAlta }]}
               >
-                <GlassIcon name={t.icono} size={46} />
+                {/* El chip es pastel fijo en las dos pieles, y por eso el glifo también va fijo. */}
+                <View style={[styles.chipIcono, { backgroundColor: tema.color.tileFuncion.arena }]}>
+                  <GlassIcon name={t.icono} size={22} color={tema.color.tileFuncion.tinta} />
+                </View>
                 {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
                     no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…". */}
                 <Text
@@ -259,45 +257,70 @@ export function EscritorioFunciones({
           sería una regresión (quedaría inalcanzable desde el principal). El título tapeable, en cambio,
           es adelantable sobre el layout actual, y de yapa destraba ver la lista COMPLETA, que hoy no
           tiene entrada. */}
-      <EncabezadoListado
-        titulo="Actividad reciente"
-        onPress={onVerRecientes}
-        style={styles.encabezadoReciente}
-        testID="escritorio-encabezado-recientes"
-      />
+      <View
+        testID="escritorio-bloque-actividad"
+        style={[styles.bloque, { backgroundColor: tema.color.bloque }]}
+      >
+        <EncabezadoListado
+          titulo="Actividad reciente"
+          onPress={onVerRecientes}
+          color={tema.color.bloqueApoyo}
+          style={styles.encabezadoReciente}
+          testID="escritorio-encabezado-recientes"
+        />
 
-      <ScrollView contentContainerStyle={styles.listaReciente} testID="escritorio-actividad">
-        {!cargandoActividad && actividad.length === 0 && (
-          <Text
-            testID="escritorio-actividad-vacia"
-            style={[styles.vacio, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-          >
-            Todavía no hay movimientos. Lo que hagas va a aparecer acá.
-          </Text>
-        )}
-        {actividad.map((item) => (
-          <FilaActividad key={item.id} item={item} onPress={onAbrirActividad} />
-        ))}
-      </ScrollView>
+        <ScrollView style={styles.scrollReciente} testID="escritorio-actividad">
+          {!cargandoActividad && actividad.length === 0 && (
+            <Text
+              testID="escritorio-actividad-vacia"
+              style={[styles.vacio, { color: tema.color.bloqueApoyo, fontFamily: tema.fuente.mono }]}
+            >
+              Todavía no hay movimientos. Lo que hagas va a aparecer acá.
+            </Text>
+          )}
+          {actividad.map((item, i) => (
+            <FilaActividad
+              key={item.id}
+              item={item}
+              onPress={onAbrirActividad}
+              enBloque
+              ultima={i === actividad.length - 1}
+            />
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, paddingTop: 64, paddingBottom: 20 },
-  headerFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  titulo: {},
-  contenedorGrid: { marginBottom: 20, gap: 12 },
-  filaGrid: { flexDirection: 'row', gap: 12 },
+  // `paddingTop` y la fila del avatar repiten los de `PantallaMiDia`: si no, el avatar saltaría al cambiar de capa.
+  contenedor: { flex: 1, paddingTop: 58, paddingHorizontal: 16, paddingBottom: 16 },
+  filaAvatar: { flexDirection: 'row', justifyContent: 'flex-end', paddingBottom: 8 },
+  titulo: { fontSize: 20, lineHeight: 24, paddingHorizontal: 8, paddingBottom: 8 },
+  contenedorGrid: { marginBottom: 16, gap: 10 },
+  filaGrid: { flexDirection: 'row', gap: 10 },
   // `flex:1` y NO un ancho fijo: sin scroll horizontal las tres columnas se reparten el ancho real
   // del teléfono, que es lo que hace que el grid entre igual en un 360 y en un 430.
-  // Sin `height`: el alto sale solo y es el mismo en todas las cards porque el bloque de la etiqueta
-  // mide siempre igual (ver `ALTO_LABEL`).
+  // Las casillas de una fila miden lo mismo porque la fila las estira.
   // `paddingHorizontal` chico porque el rótulo es lo más ancho de la casilla: con los 16 de `Tile`
   // «Presupuestos» se partía (SM-N6).
-  tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 6 },
-  labelTile: { fontSize: 11.5, lineHeight: 14, height: ALTO_LABEL, textAlign: 'center' },
-  encabezadoReciente: { marginBottom: 10 },
-  listaReciente: { gap: 8, paddingBottom: 180 },
-  vacio: { fontSize: 11, opacity: 0.8 },
+  tile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 96,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 22,
+    borderWidth: 0,
+  },
+  chipIcono: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  labelTile: { fontSize: 13, lineHeight: 16, textAlign: 'center' },
+  // `flexShrink`: con muchas operaciones el bloque termina en el borde y la lista scrollea adentro. Con pocas,
+  // mide lo que mide su contenido y no se estira hasta la pestaña.
+  bloque: { flexShrink: 1, borderRadius: 26, paddingTop: 16, paddingHorizontal: 16, paddingBottom: 8 },
+  encabezadoReciente: { marginBottom: 4 },
+  scrollReciente: { flexGrow: 0 },
+  vacio: { fontSize: 11, paddingVertical: 12 },
 });

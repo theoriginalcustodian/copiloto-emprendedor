@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { formatearImporte, type ActividadItem } from '@copiloto/core';
 
 import { GlassIcon } from '../../theme/glass/GlassIcon';
+import { pressableStyle } from '../../theme/glass/presion';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
@@ -43,17 +45,77 @@ export interface FilaActividadProps {
   /** Ausente = la fila no es tocable. Ver el docstring. */
   onPress?: (item: ActividadItem) => void;
   testID?: string;
+  /**
+   * Adentro del bloque negro del escritorio (`.r-fila`, `index.html`): una línea de texto con su separador, sin
+   * vidrio ni ícono. Los datos, los testIDs y el nombre accesible son los mismos que en `/recientes`.
+   */
+  enBloque?: boolean;
+  /** Dentro del bloque, la última fila no lleva separador. */
+  ultima?: boolean;
 }
 
-export function FilaActividad({ item, onPress, testID }: FilaActividadProps) {
+export function FilaActividad({ item, onPress, testID, enBloque = false, ultima = false }: FilaActividadProps) {
   const tema = useTema();
   const icono = ICONO_POR_TIPO[item.tipo] ?? 'actividadReciente';
-  const colorMonto =
-    item.signo === 'entra'
+  // En el bloque el monto va en el color del texto: el verde y el rojo no están pensados para el negro, y el
+  // signo sigue diciendo si entra o sale.
+  const colorMonto = enBloque
+    ? tema.color.bloqueTexto
+    : item.signo === 'entra'
       ? tema.color.exito
       : item.signo === 'sale'
         ? tema.color.peligro
         : tema.color.textoTenue;
+  const colorTitulo = enBloque ? tema.color.bloqueTexto : tema.color.texto;
+  const colorDetalle = enBloque ? tema.color.bloqueApoyo : tema.color.textoTenue;
+
+  const contenido = (
+    <>
+      <View style={styles.texto}>
+        <Text
+          numberOfLines={1}
+          style={[styles.titulo, { color: colorTitulo, fontFamily: tema.fuente.uiMedium }]}
+          testID={`actividad-${item.id}-titulo`}
+        >
+          {item.titulo}
+        </Text>
+        {item.detalle !== '' && (
+          <Text
+            numberOfLines={1}
+            style={[styles.detalle, { color: colorDetalle, fontFamily: tema.fuente.mono }]}
+            testID={`actividad-${item.id}-detalle`}
+          >
+            {item.detalle}
+          </Text>
+        )}
+      </View>
+      {/* `monto` es `null` en los tipos que no mueven plata (un cliente nuevo). No se dibuja un
+          `$0,00` ahí: sería afirmar que la operación valió cero. */}
+      {item.monto != null && (
+        <Text style={[styles.monto, { color: colorMonto }]} testID={`actividad-${item.id}-monto`}>
+          {item.signo === 'sale' ? '−' : ''}
+          {formatearImporte(item.monto)}
+        </Text>
+      )}
+    </>
+  );
+
+  if (enBloque) {
+    return (
+      <Pressable
+        testID={testID ?? `actividad-${item.id}`}
+        accessibilityRole={onPress != null ? 'button' : undefined}
+        accessibilityLabel={item.detalle !== '' ? `${item.titulo} · ${item.detalle}` : item.titulo}
+        onPress={onPress != null ? () => onPress(item) : undefined}
+        style={pressableStyle([
+          styles.filaBloque,
+          !ultima && { borderBottomWidth: 1, borderBottomColor: tema.color.bloqueChip },
+        ])}
+      >
+        {contenido}
+      </Pressable>
+    );
+  }
 
   return (
     <Row
@@ -72,38 +134,14 @@ export function FilaActividad({ item, onPress, testID }: FilaActividadProps) {
       style={styles.fila}
     >
       <GlassIcon name={icono} size={34} />
-      <View style={styles.texto}>
-        <Text
-          numberOfLines={1}
-          style={[styles.titulo, { color: tema.color.texto, fontFamily: tema.fuente.uiMedium }]}
-          testID={`actividad-${item.id}-titulo`}
-        >
-          {item.titulo}
-        </Text>
-        {item.detalle !== '' && (
-          <Text
-            numberOfLines={1}
-            style={[styles.detalle, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-            testID={`actividad-${item.id}-detalle`}
-          >
-            {item.detalle}
-          </Text>
-        )}
-      </View>
-      {/* `monto` es `null` en los tipos que no mueven plata (un cliente nuevo). No se dibuja un
-          `$0,00` ahí: sería afirmar que la operación valió cero. */}
-      {item.monto != null && (
-        <Text style={[styles.monto, { color: colorMonto }]} testID={`actividad-${item.id}-monto`}>
-          {item.signo === 'sale' ? '−' : ''}
-          {formatearImporte(item.monto)}
-        </Text>
-      )}
+      {contenido}
     </Row>
   );
 }
 
 const styles = StyleSheet.create({
   fila: { gap: 12, alignItems: 'center' },
+  filaBloque: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 12 },
   texto: { flex: 1 },
   titulo: { fontSize: 13 },
   detalle: { fontSize: 11, marginTop: 2 },

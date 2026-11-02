@@ -8,6 +8,7 @@ import { textoDeMotivo, type MotivoFallo, type SendStatus } from '@copiloto/core
 import { pressableStyle } from '../../theme/glass/presion';
 import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
+import { tonoBotonEntrada, tonoBotonFoto } from './tonoBotonEntrada';
 
 /** Fork del composer de DocuMed (`_staging/documed/apps/mobile/src/modules/chat/Composer.tsx`): el
  *  avión de papel como botón de envío = ícono, no la palabra "Enviar". */
@@ -211,15 +212,14 @@ export function Composer({
             style={pressableStyle([
               styles.boton,
               {
-                backgroundColor: tema.glass.chip,
+                backgroundColor: tonoBotonFoto(tema, !disabled).fondo,
                 borderColor: tema.color.borde,
                 borderWidth: 1,
                 borderRadius: RADIO_FOTO,
-                opacity: disabled ? 0.5 : 1,
               },
             ])}
           >
-            <IconoCamara color={tema.color.acentoTinta} />
+            <IconoCamara color={tonoBotonFoto(tema, !disabled).glifo} />
           </Pressable>
         )}
         {/* El campo es una píldora de vidrio (gradiente s1→s2, borde, radio, luz superior) — un
@@ -268,10 +268,10 @@ export function Composer({
             onPress={enviar}
             style={pressableStyle([
               styles.enviar,
-              { backgroundColor: tema.glass.ub2, opacity: puedeEnviar ? 1 : 0.5 },
+              { backgroundColor: tonoBotonEntrada(tema, puedeEnviar).fondo },
             ])}
           >
-            <IconoAvion color={tema.color.acentoTexto} />
+            <IconoAvion color={tonoBotonEntrada(tema, puedeEnviar).glifo} />
           </Pressable>
         )}
       </View>

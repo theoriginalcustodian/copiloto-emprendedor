@@ -8,7 +8,7 @@ import { Text } from 'react-native';
 // dos capas + el handle montan sin crashear (reanimated/gesture-handler no revientan bajo el harness).
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { PanelDeslizable } from './PanelDeslizable';
+import { PanelDeslizable, translacionPanel } from './PanelDeslizable';
 
 async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
@@ -98,3 +98,34 @@ describe('PanelDeslizable — senalBajar', () => {
 // `hintBloqueado`) se retiró junto con esos props — ver el docstring de `PanelDeslizable.tsx` (decisión
 // D6). No queda nada que ejercitar acá: el copiloto no tiene una grabación viva que se pueda "dejar
 // corriendo sin darse cuenta" al deslizar el panel.
+
+/**
+ * SM-I4 (D1): con el escritorio abierto la tira del chat sale por abajo y queda una sola solapa. La cuenta es
+ * una función pura porque el mock de Reanimated no calcula estilos animados.
+ */
+describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
+  const recorrido = 700;
+  const altoTira = 80;
+
+  it('con el escritorio cerrado no cambia nada', () => {
+    expect(translacionPanel(0, recorrido, 0, altoTira)).toBe(0);
+    expect(translacionPanel(350, recorrido, 0, altoTira)).toBe(350);
+    expect(translacionPanel(recorrido, recorrido, 0, altoTira)).toBe(recorrido);
+  });
+
+  it('con el escritorio abierto y el chat abajo, la tira entera queda fuera de pantalla', () => {
+    expect(translacionPanel(recorrido, recorrido, 1, altoTira)).toBe(recorrido + altoTira);
+  });
+
+  it('🔴 con el chat ARRIBA el escritorio abierto no lo corre: si no, el chat quedaría desplazado', () => {
+    expect(translacionPanel(0, recorrido, 1, altoTira)).toBe(0);
+  });
+
+  it('a mitad de camino se va en proporción', () => {
+    expect(translacionPanel(recorrido, recorrido, 0.5, altoTira)).toBe(recorrido + altoTira / 2);
+  });
+
+  it('sin recorrido medido no inventa un destino', () => {
+    expect(translacionPanel(0, 0, 1, altoTira)).toBe(0);
+  });
+});
