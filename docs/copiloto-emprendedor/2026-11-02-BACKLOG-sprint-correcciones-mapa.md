@@ -113,6 +113,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N18** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1257,3 +1258,49 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      sobrevivió a la limpieza del prompt.
   4. Si el fix toca la DB del tenant: corrida en device con la cuenta del operador mostrando que el
      aviso ya no está. Esa cuenta es la que lo reportó, así que es la que lo acredita.
+
+### SM-N18 · `sin-issue` — FUERA DEL SPRINT: `composio_caidos` avisa de CUALQUIER toolkit que Composio liste, soportado o no
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (se ofreció al medir `SM-N17`)
+- **De dónde sale:** es la **raíz** del síntoma de `SM-N17` (el aviso de «se cayó la conexión con
+  Instagram» en la cuenta del operador). La ficha se separa porque el síntoma y la causa tienen
+  dueños y remedios distintos.
+- **Medido por backend (sólo lectura, nada borrado).** El aviso **no** sale del front ni de un
+  registro suelto: sale de **Composio en vivo** — `serve.py:268` → `conexiones_salud.composio_caidos`
+  (toolkit `EXPIRED` sin `ACTIVE`) → `mi_dia_detector._evaluar_conexion_caida`, y queda **persistido**
+  como tarjeta en `copiloto_mi_dia_tarjetas`. Evidencia: tenant `48a9d75f` tiene 1 fila
+  `regla=conexion_caida`, `entidad=instagram`, `estado=para_hoy`, creada 2026-11-02 13:08 UTC.
+  **Control positivo:** las tarjetas reales de `mercadopago`/`googlecalendar` del tenant `4f3ecb78`
+  salen en la misma consulta — la query ve lo que tiene que ver. Los otros 4 tenants: 0.
+- **La consecuencia que cambia el fix, y por eso la pregunta previa valió:** sacar `instagram` de
+  `serviceIcons.tsx` / `PantallaApps.tsx` / `hitl.ts` **NO apaga el aviso**. Frontend1 no tenía nada
+  que quitar para este síntoma. Si se hubiera implementado el fix «obvio» del front, el aviso
+  habría seguido vivo y el diff habría parecido trabajo.
+- **El defecto de raíz:** `composio_caidos` avisa de **cualquier** toolkit que Composio liste para el
+  `composio_user_id`, aunque la app no lo soporte. Instagram **no existe como servicio de la app**
+  (`service_risk_contrato.py:18`: «cero módulo, cero tool»), y aun así el detector lo trata como una
+  conexión propia caída. Eso es una fuga del proveedor hacia la UI: lo que un tercero liste se
+  convierte en una tarea para el emprendedor.
+- **Señal lateral que confirma que el toolkit es ajeno al dominio:** `datos.nombre` guarda
+  `"instagram"` en **minúscula cruda**, sin `display_name`, porque `_PRESENTATION` no lo conoce. Un
+  valor que no pasa por la capa de presentación es la huella de que entró por fuera del catálogo.
+- **Las dos salidas, y NO son excluyentes:**
+  1. **Del operador, inmediata:** revocar esa conexión en Composio — la tarjeta se cierra sola por
+     ausencia. Apaga el síntoma de hoy y **no arregla nada**: el próximo toolkit ajeno vuelve a
+     avisar.
+  2. **De raíz, esta ficha:** `composio_caidos` sólo avisa de toolkits que la app **soporta**.
+- **DoD:**
+  1. El detector filtra por el catálogo de servicios soportados de la app, con **una sola** fuente de
+     verdad de esa lista — no una segunda lista paralela que después divergirá de la primera.
+  2. Test **rojo si vuelve a avisar de un toolkit no soportado**: inyectar un toolkit ajeno
+     `EXPIRED` y verificar que **no** se crea tarjeta; y, como control positivo en el mismo test, un
+     toolkit soportado `EXPIRED` que **sí** la crea. Sin las dos mitades el test no distingue «filtra
+     bien» de «no avisa nunca».
+  3. Qué pasa con las tarjetas **ya persistidas** de toolkits no soportados: decidido y escrito
+     (cerrarlas, dejarlas, o migrarlas). Hoy hay 1 viva en `48a9d75f`. Un filtro que sólo mira hacia
+     adelante deja el síntoma del operador en pantalla.
+  4. Corrida en el **VPS**. No necesita device.
+- **No verificado todavía, y conviene que lo esté antes de codear:** el listado real de Composio para
+  ese `composio_user_id` — backend lo infirió por código, no lo consultó.
+- **FUERA DEL SPRINT** (`DEC-18`): el 54 no se mueve.
