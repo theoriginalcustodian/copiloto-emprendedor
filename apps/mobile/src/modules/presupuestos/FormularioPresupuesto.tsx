@@ -7,6 +7,7 @@ import {
   calcularTotalAproximado,
   crearPresupuesto,
   formatearImporte,
+  formatearImporteSinCentavosCero,
   listarConceptos,
   normalizarDecimal,
   type Concepto,
@@ -88,6 +89,8 @@ export interface FormularioPresupuestoProps {
   iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto, sugerencias: SugerenciasPresupuesto | null) => void;
   onCancelar: () => void;
+  /** La card del chat descarta algo que nunca se guardó; en el alta manual, «Cancelar» cierra el formulario. */
+  etiquetaCancelar?: string;
   /**
    * El `id` del `ChatMessage` que trae la card que envuelve este formulario (BL-V32/K-01 ampliado). Si
    * viene, la `idem_key` se DERIVA de él en vez de nacer con el montaje — así sobrevive a un remount de
@@ -104,6 +107,7 @@ export function FormularioPresupuesto({
   iniciales = null,
   onCreado,
   onCancelar,
+  etiquetaCancelar = 'Cancelar',
   mensajeId,
   testID = 'formulario-presupuesto',
 }: FormularioPresupuestoProps) {
@@ -398,7 +402,7 @@ export function FormularioPresupuesto({
       {/* 🔴 "aproximado" en el texto, no decorativo: el total definitivo lo calcula el backend. */}
       {aproximado != null && (
         <Text testID={`${testID}-total-aproximado`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Total aproximado: {formatearImporte(aproximado)} — el definitivo lo calcula el sistema al
+          Total aproximado: {formatearImporteSinCentavosCero(aproximado)} — el definitivo lo calcula el sistema al
           guardar.
         </Text>
       )}
@@ -419,7 +423,7 @@ export function FormularioPresupuesto({
             deshabilitado: !puedeGuardar || enviando,
             testID: `${testID}-guardar`,
           },
-          { etiqueta: 'Cancelar', onPress: onCancelar, testID: `${testID}-cancelar` },
+          { etiqueta: etiquetaCancelar, onPress: onCancelar, testID: `${testID}-cancelar` },
         ]}
       />
     </View>

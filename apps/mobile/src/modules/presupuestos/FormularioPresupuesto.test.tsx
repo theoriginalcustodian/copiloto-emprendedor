@@ -219,3 +219,24 @@ describe('FormularioPresupuesto — rótulo del botón', () => {
     expect(boton).not.toHaveTextContent(/^Guardar presupuesto$/);
   });
 });
+
+// SM-H5: el mapa muestra el total sin `,00`. Con centavos reales no se pueden comer.
+describe('FormularioPresupuesto — total aproximado', () => {
+  const totalCon = async (precio: string) => {
+    await montar();
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-item-0-descripcion-input'), 'Corte');
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-item-0-cantidad-input'), '1');
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-item-0-precio-input'), precio);
+    return screen.getByTestId('formulario-presupuesto-total-aproximado');
+  };
+
+  it('sin centavos dice $50.000', async () => {
+    const total = await totalCon('50000');
+    expect(total).toHaveTextContent(/Total aproximado: \$50\.000 —/);
+  });
+
+  it('con centavos reales los conserva', async () => {
+    const total = await totalCon('1500.50');
+    expect(total).toHaveTextContent(/Total aproximado: \$1\.500,50 —/);
+  });
+});

@@ -27,6 +27,7 @@ import {
   TIPO_DOC_CONSUMIDOR_FINAL,
 } from '../facturacion/catalogos';
 import { AccionesComprobante, DatosComprobante } from '../facturacion/comprobante';
+import { nombreTipoComprobante } from '../facturacion/etiquetasComprobante';
 import { derivarPasoVisible } from '../facturacion/maquinaEstado';
 import { PasoCliente } from '../facturacion/PasoCliente';
 import { PasoDatosVenta } from '../facturacion/PasoDatosVenta';
@@ -208,7 +209,7 @@ export function TarjetaFacturaPropuesta({
       <Recibo
         testID={`${testID}-emitida`}
         tono="exito"
-        titulo="Factura emitida."
+        titulo={`${lectura?.resultado != null ? nombreTipoComprobante(lectura.resultado.tipoCbte) : 'Factura'} emitida.`}
         nota={
           lectura == null || !lectura.terminado
             ? {

@@ -35,7 +35,7 @@ import { useTema } from '../../theme/ThemeProvider';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-import { nombreTipoComprobante } from './etiquetasComprobante';
+import { nombreTipoComprobante, numeroFormateado } from './etiquetasComprobante';
 import { SeccionCobro } from './SeccionCobro';
 
 /**
@@ -61,11 +61,6 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 // El mapeo vive en `etiquetasComprobante.ts`: tenerlo acá adentro fue lo que hizo que la LISTA
 // imprimiera el código crudo de la AFIP — no estaba a mano para reusar.
 const nombreTipo = nombreTipoComprobante;
-
-/** `0006-00000015` — el formato con el que AFIP identifica un comprobante. */
-export function numeroFormateado(puntoVenta: number, nro: number): string {
-  return `${String(puntoVenta).padStart(4, '0')}-${String(nro).padStart(8, '0')}`;
-}
 
 export interface DetalleComprobanteProps {
   comprobante: Comprobante;

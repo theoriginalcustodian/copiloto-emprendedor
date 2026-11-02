@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking } from 'react-native';
 
 import {
-  formatearImporte,
+  formatearImporteSinCentavosCero,
   mailtoMandarPresupuesto,
   type ChatMessage,
   type Presupuesto,
@@ -79,9 +79,17 @@ export function TarjetaPresupuestoPropuesto({
     const detalle: string[] = [];
     if (creado != null) {
       detalle.push(
-        [formatearImporte(creado.total), creado.receptor.nombre].filter((v) => v.trim() !== '').join(' · '),
+        [formatearImporteSinCentavosCero(creado.total), creado.receptor.nombre]
+          .filter((v) => v.trim() !== '')
+          .join(' · '),
       );
-      if (creado.docLink != null) detalle.push('Doc listo para mandar');
+      // Sólo con el dato del backend: al rehidratar no se muestra, porque el presupuesto pudo haberse
+      // aprobado después y lo persistido en el mensaje es únicamente el número.
+      const situacion = [
+        ...(creado.estado === 'pendiente' ? ['Pendiente'] : []),
+        ...(creado.docLink != null ? ['Doc listo para mandar'] : []),
+      ];
+      if (situacion.length > 0) detalle.push(situacion.join(' · '));
     }
     const docLink = creado?.docLink ?? null;
     const mandarPorMail = sugerencias?.mandarPorMail ?? null;
@@ -134,6 +142,7 @@ export function TarjetaPresupuestoPropuesto({
           setEstado('guardado');
           onResolver?.({ estado: 'guardado', numero: p.numero });
         }}
+        etiquetaCancelar="Descartar"
         onCancelar={() => {
           setEstado('descartado');
           onResolver?.({ estado: 'descartado' });

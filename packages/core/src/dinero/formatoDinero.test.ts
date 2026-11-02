@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatearFechaCorta, formatearFechaLarga, formatearImporte, formatearMesDePeriodo } from './formatoDinero';
+import {
+  formatearFechaCorta,
+  formatearFechaLarga,
+  formatearImporte,
+  formatearImporteSinCentavosCero,
+  formatearMesDePeriodo,
+} from './formatoDinero';
+
+describe('formatearImporteSinCentavosCero', () => {
+  it('saca sólo los centavos en cero', () => {
+    expect(formatearImporteSinCentavosCero('50000.00')).toBe('$50.000');
+    expect(formatearImporteSinCentavosCero('100.0')).toBe('$100');
+    expect(formatearImporteSinCentavosCero('-1500.00')).toBe('-$1.500');
+  });
+
+  it('control negativo: no toca centavos reales, ni un dato raro', () => {
+    expect(formatearImporteSinCentavosCero('50000.50')).toBe('$50.000,50');
+    expect(formatearImporteSinCentavosCero('1.000')).toBe('$1,000');
+    expect(formatearImporteSinCentavosCero('50000')).toBe('$50.000');
+    expect(formatearImporteSinCentavosCero('abc,00')).toBe('abc,00');
+  });
+});
 
 describe('formatearImporte', () => {
   it('agrupa miles y usa coma decimal', () => {
