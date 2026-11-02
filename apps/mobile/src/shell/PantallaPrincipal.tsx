@@ -21,6 +21,7 @@
  * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
 import { useFocusEffect } from 'expo-router';
+import { useInicialCuenta } from '../modules/midia/useInicialCuenta';
 import { useSharedValue } from 'react-native-reanimated';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, View } from 'react-native';
@@ -117,6 +118,7 @@ export function PantallaPrincipal() {
   // SM-N16: un solo destino para las dos capas que muestran el avatar. El camino a cerrar sesión pasa
   // por acá, y un operador quedó sin salida en el escritorio cuando el acceso vivía sólo en Mi día.
   const alAjustes = () => empujarUnaVez('/ajustes');
+  const inicialCuenta = useInicialCuenta();
 
   /**
    * Tocar una operación de la lista la abre **en su función**, con su id.
@@ -269,12 +271,14 @@ export function PantallaPrincipal() {
               // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
               onVerRecientes={() => empujarUnaVez('/recientes')}
               onAjustes={alAjustes}
+              inicialCuenta={inicialCuenta}
               avisa={conexionCaida}
             />
           }
         >
           <PantallaMiDia
             onAjustes={alAjustes}
+            inicialCuenta={inicialCuenta}
             onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}

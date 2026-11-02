@@ -191,6 +191,7 @@ export interface EscritorioFuncionesProps {
   onVerRecientes?: () => void;
   /** El avatar, la puerta a Ajustes: la misma que en Mi día, para que no dependa de en qué capa estás. */
   onAjustes?: () => void;
+  inicialCuenta?: string;
   /** Enciende el punto del avatar. Ver `AvatarCuenta`. */
   avisa?: boolean;
 }
@@ -202,6 +203,7 @@ export function EscritorioFunciones({
   onAbrirActividad,
   onVerRecientes,
   onAjustes,
+  inicialCuenta,
   avisa = false,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
@@ -209,7 +211,7 @@ export function EscritorioFunciones({
   return (
     <View style={styles.contenedor}>
       <View style={styles.filaAvatar}>
-        <AvatarCuenta testID="escritorio-avatar" avisa={avisa} onPress={onAjustes} />
+        <AvatarCuenta testID="escritorio-avatar" inicial={inicialCuenta} avisa={avisa} onPress={onAjustes} />
       </View>
       <Text style={[styles.titulo, { color: tema.color.texto, fontFamily: tema.fuente.display }]}>
         Tus funciones
