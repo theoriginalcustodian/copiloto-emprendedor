@@ -60,6 +60,7 @@ def armar(*, creds=None, perfil=None, onboarding_spy=None):
         return _wf_id_onboarding(cliente_id, cuit, ambiente)
 
     afip = create_afip_app(
+        es_admin_dep=lambda: True,   # estos tests ejercen el flujo de ambiente; el gate D6 vive en test_afip_homologacion_solo_admin.py
         require_tenant=lambda: TENANT,
         perfil_store_factory=lambda cid: type("P", (), {"get": lambda s, c: perfil})(),
         cred_store_factory=lambda cid: store,
