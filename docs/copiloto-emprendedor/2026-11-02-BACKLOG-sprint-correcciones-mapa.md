@@ -71,7 +71,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
-| **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
 | **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I4** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -270,7 +270,8 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I1 · `sin-issue` — Mi día embute el tablero en vez de abrirlo como pantalla
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia con Volver, filtros y alta · N1 ya estaba hecho (PortadaNegocio.test.tsx:52) · testID y anclas revisados (test-en-el-shell.sh OK, CI 6/6) · capturas de device 2026-11-02 en 2026-11-02-sprint-correcciones-evidencia/SM-I1.md, que declara lo no ejercido
 - **Dueño:** frontend1 — **candado exclusivo de `PantallaMiDia.tsx` (1067 líneas)**
 - **Medido:** la app dibuja «Odobi» suelto, el chip de fecha y **el tablero embebido** (pestañas,
   filtros, «Anotar algo para hoy»); no tiene tarjeta de cabecera, lista «Ahora» ni «Ver tablero ›».
