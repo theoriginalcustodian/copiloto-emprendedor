@@ -3716,7 +3716,10 @@ function retirarExplicacion(){
     dias.push(hoy);
     try { localStorage.setItem('odobi-calma-dias', JSON.stringify(dias)); } catch(_){}
   }
-  p.style.display = dias.length >= CALMA_TOPE ? 'none' : '';
+  /* ⚠️ En el mapa los dos deep links conviven en iframes y comparten este localStorage:
+     el que limpia pisa al que siembra. Cada uno fija su estado sin depender del conteo. */
+  const retirada = ver === 'vacio-visto' || (ver !== 'vacio' && dias.length >= CALMA_TOPE);
+  p.style.display = retirada ? 'none' : '';
 }
 /* `?ver=vacio-visto` fuerza el estado veterano sin esperar cinco días: hace falta
    para mostrar los dos momentos en el mapa y en el deck. */
