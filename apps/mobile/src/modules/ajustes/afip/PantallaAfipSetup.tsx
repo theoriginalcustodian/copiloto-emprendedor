@@ -29,8 +29,8 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
-import { pressableStyle } from '../../../theme/glass/presion';
 import { useTema } from '../../../theme/ThemeProvider';
+import { pressableStyle } from '../../../theme/glass/presion';
 
 /**
  * `PantallaAfipSetup` — F5: perfil fiscal + alta ante ARCA + selector de ambiente.
@@ -524,6 +524,12 @@ export function PantallaAfipSetup() {
   // si el selector se muestra o si la pantalla admite que no sabe -- ver el render de abajo.
   // -------------------------------------------------------------------------------------------
   const ambientesVinculados = estadoGeneral?.ambientesVinculados;
+  // SM-K2: el ambiente al que va a vincular el formulario. Si se pidió «otro ambiente» sin elegir,
+  // es el que todavía no está vinculado; si no se puede saber, no se afirma ninguno.
+  const ambienteDestino: AmbienteAfip | null =
+    ambienteObjetivo ??
+    (ambientesVinculados != null ? (['dev', 'prod'] as const).find((e) => !ambientesVinculados.includes(e)) ?? null : null);
+
 
   // -------------------------------------------------------------------------------------------
   // Render.
@@ -776,6 +782,11 @@ export function PantallaAfipSetup() {
               <>
                 {pasoArca === 1 && (
                   <View testID="afip-arca-paso-1" style={{ gap: tema.espacio.sm }}>
+                    {ambienteDestino != null && (
+                      <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+                        Vas a vincular en {ETIQUETA_AMBIENTE[ambienteDestino]}.
+                      </Text>
+                    )}
                     <CampoTexto
                       testID="afip-arca-cuit"
                       etiqueta="CUIT"
@@ -802,7 +813,7 @@ export function PantallaAfipSetup() {
                 {pasoArca === 2 && (
                   <View testID="afip-arca-paso-2" style={{ gap: tema.espacio.sm }}>
                     <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-                      Vas a vincular el CUIT {formatearCuit(cuit)} con ARCA.
+                      Vas a vincular el CUIT {formatearCuit(cuit)} con ARCA{ambienteDestino != null ? ` en ${ETIQUETA_AMBIENTE[ambienteDestino]}` : ''}.
                     </Text>
                     <FilaBotones
                       testID="afip-arca-paso-2-botones"
@@ -893,46 +904,41 @@ export function PantallaAfipSetup() {
                 {(['dev', 'prod'] as const).map((env) => {
                   const vinculado = ambientesVinculados.includes(env);
                   const activo = estadoGeneral?.ambiente === env;
+                  // SM-K2: el recuadro ENTERO es lo tocable (antes sólo el texto «Vincular»/«Usar este»)
+                  // y se ve igual vinculado o no: lo que cambia es la etiqueta de estado, no la forma.
+                  const accion: 'usar' | 'vincular' | null = !vinculado ? 'vincular' : activo ? null : 'usar';
+                  const etiquetaEstado = !vinculado
+                    ? 'Vincular'
+                    : activo
+                      ? 'Activo'
+                      : cambiandoAmbiente === env
+                        ? 'Cambiando…'
+                        : 'Usar este';
                   return (
-                    <View
+                    <Pressable
                       key={env}
-                      testID={`afip-ambiente-${env}`}
-                      style={[
+                      testID={accion ? `afip-ambiente-${env}-${accion}` : `afip-ambiente-${env}`}
+                      accessibilityRole={accion ? 'button' : undefined}
+                      disabled={accion === null || (accion === 'usar' && cambiandoAmbiente !== null)}
+                      onPress={() => (accion === 'usar' ? void usarAmbiente(env) : iniciarAltaPara(env))}
+                      style={pressableStyle([
                         styles.chipAmbiente,
                         { borderColor: activo ? tema.color.acento : tema.color.borde },
-                      ]}
+                      ])}
                     >
                       <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium }}>
                         {ETIQUETA_AMBIENTE[env]}
                       </Text>
-                      {vinculado ? (
-                        activo ? (
-                          <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico }}>Activo</Text>
-                        ) : (
-                          // 🔴 Vinculado-pero-no-activo es TOCABLE. Dejarlo como una etiqueta muerta
-                          // ("Vinculado") es indistinguible de una función rota: el usuario ve que su
-                          // otro ambiente existe y no encuentra cómo pasarse a él.
-                          <Pressable
-                            testID={`afip-ambiente-${env}-usar`}
-                            disabled={cambiandoAmbiente !== null}
-                            onPress={() => void usarAmbiente(env)}
-                            style={pressableStyle(undefined)}
-                          >
-                            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                              {cambiandoAmbiente === env ? 'Cambiando…' : 'Usar este'}
-                            </Text>
-                          </Pressable>
-                        )
-                      ) : (
-                        <Pressable
-                          testID={`afip-ambiente-${env}-vincular`}
-                          onPress={() => iniciarAltaPara(env)}
-                          style={pressableStyle(undefined)}
-                        >
-                          <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Vincular</Text>
-                        </Pressable>
-                      )}
-                    </View>
+                      <Text
+                        style={{
+                          color: tema.color.acentoTinta,
+                          fontFamily: tema.fuente.uiSemibold,
+                          fontSize: tema.tipo.chico,
+                        }}
+                      >
+                        {etiquetaEstado}
+                      </Text>
+                    </Pressable>
                   );
                 })}
               </View>
