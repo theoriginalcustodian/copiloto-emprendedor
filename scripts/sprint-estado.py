@@ -63,7 +63,20 @@ import sys
 import tempfile
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKLOG = os.path.join(RAIZ, "docs", "copiloto-emprendedor", "2026-10-11-BACKLOG-sprint-mobile-beta.md")
+# Los registros de sprint, en orden (viejo -> vigente). Es una LISTA y no un path
+# porque el sprint que arranca necesita su propio doc, y un gate que siguiera mirando
+# SOLO el doc viejo no veria ninguna ficha del nuevo: un instrumento que no mira nunca
+# falla. `--check` y `--tabla` recorren TODOS; `--marcar` encuentra la ficha sola.
+def _reg(nombre):
+    return os.path.join(RAIZ, "docs", "copiloto-emprendedor", nombre)
+
+
+REGISTROS = (
+    _reg("2026-10-11-BACKLOG-sprint-mobile-beta.md"),
+    _reg("2026-11-02-BACKLOG-sprint-correcciones-mapa.md"),
+)
+# Compat: el vigente es el ultimo. El autotest y cualquier llamador viejo lo siguen usando.
+BACKLOG = REGISTROS[-1]
 
 ESTADOS = ("PENDIENTE", "EN-CURSO", "DOD-PARCIAL", "TERMINADO",
            "CERRADO-POR-DECISION", "DIFERIDO")
@@ -81,8 +94,8 @@ RE_CITA_DOC = re.compile(
 MARCA_INI = "<!-- TABLA-ESTADO:INICIO (generada por scripts/sprint-estado.py --tabla - NO editar a mano) -->"
 MARCA_FIN = "<!-- TABLA-ESTADO:FIN -->"
 
-RE_FICHA = re.compile(r"^### (?P<id>SM-[A-F]\d+) · `(?P<issue>[^`]+)` — (?P<titulo>.*?)\s*$")
-RE_BLOQUE = re.compile(r"^# Bloque (?P<letra>[A-F]) · (?P<nombre>.*?)\s*$")
+RE_FICHA = re.compile(r"^### (?P<id>SM-[A-Z]\d+) · `(?P<issue>[^`]+)` — (?P<titulo>.*?)\s*$")
+RE_BLOQUE = re.compile(r"^# Bloque (?P<letra>[A-Z]) · (?P<nombre>.*?)\s*$")
 RE_CAMPO = re.compile(r"^\s*-\s+\*\*(?P<campo>[^:*]+):?\*\*:?\s*(?P<valor>.*?)\s*$")
 RE_SHA = re.compile(r"\b[0-9a-f]{7,40}\b")
 
@@ -207,7 +220,7 @@ def verificar(fichas, con_git=True):
                         errores.append("%s: TERMINADO pero ningun sha citado esta en origin/main (%s)."
                                        % (fid, detalle))
             dep = f["campos"].get("Depende de", "")
-            for otro in re.findall(r"\b(SM-[A-F]\d+)\b", dep):
+            for otro in re.findall(r"\b(SM-[A-Z]\d+)\b", dep):
                 if otro in por_id and estado_de(por_id[otro]) != "TERMINADO":
                     avisos.append("%s esta TERMINADO pero su dependencia %s esta %s."
                                   % (fid, otro, estado_de(por_id[otro]) or "sin estado"))
@@ -289,9 +302,16 @@ def insertar_tabla(texto, fichas):
         ini = texto.index(MARCA_INI)
         fin = texto.index(MARCA_FIN) + len(MARCA_FIN)
         return texto[:ini] + cuerpo + texto[fin:]
-    ancla = texto.find("# Bloque A")
+    # El ancla es el PRIMER bloque, derivado del doc. Era el literal "# Bloque A", y un
+    # registro que arranca en otra letra -- el sprint de correcciones arranca en G -- no tenia
+    # donde insertar la tabla: --tabla salia 1 y el gate quedaba sin tabla que comparar.
+    ancla = -1
+    for linea in texto.split(nl):
+        if RE_BLOQUE.match(linea):
+            ancla = texto.find(linea)
+            break
     if ancla < 0:
-        raise SystemExit("no encuentro el ancla '# Bloque A' para insertar la tabla")
+        raise SystemExit("no encuentro ningun '# Bloque <letra>' para insertar la tabla")
     return texto[:ancla] + cuerpo + nl + nl + texto[ancla:]
 
 
@@ -420,12 +440,36 @@ def autotest():
     return 1 if fallos else 0
 
 
+def registros_existentes():
+    """Los registros que hay EN DISCO, en orden (viejo -> vigente).
+
+    Un registro declarado y ausente es un gate que mide un corpus vacio, asi que se
+    reporta en vez de ignorarse."""
+    vivos, faltan = [], []
+    for p in REGISTROS:
+        (vivos if os.path.exists(p) else faltan).append(p)
+    return vivos, faltan
+
+
+def doc_de_ficha(ident, docs):
+    """En que registro vive una ficha. Evita que cada sesion tenga que saberlo."""
+    hallados = []
+    for d in docs:
+        for f in parsear(leer(d)):
+            if f["id"] == ident:
+                hallados.append(d)
+                break
+    return hallados
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Registro unico de estado del sprint mobile.")
+    ap = argparse.ArgumentParser(description="Registro unico de estado de los sprints.")
     ap.add_argument("--check", action="store_true", help="gate: exit 1 si hay un TERMINADO sin evidencia")
     ap.add_argument("--tabla", action="store_true", help="regenera la tabla-indice (idempotente)")
     ap.add_argument("--pct", action="store_true", help="porcentaje con sujeto y fecha")
     ap.add_argument("--hoy", help="fecha para el reporte de --pct (no la invento)")
+    ap.add_argument("--registro", help="basename o path del registro a medir con --pct "
+                                       "(default: el vigente). --check y --tabla miran TODOS.")
     ap.add_argument("--marcar", metavar="ID", help="ficha a marcar")
     ap.add_argument("--estado", choices=ESTADOS)
     ap.add_argument("--cierre")
@@ -440,11 +484,26 @@ def main():
     if a.autotest:
         return autotest()
 
-    texto = leer(BACKLOG)
+    docs, faltan = registros_existentes()
+    for p in faltan:
+        print("[!] registro declarado y AUSENTE en disco: %s" % os.path.relpath(p, RAIZ))
+    if not docs:
+        raise SystemExit("ningun registro en disco: el gate mediria un corpus vacio. "
+                         "Vacio = pregunta, no luz verde.")
 
     if a.marcar:
         if not a.estado:
             raise SystemExit("--marcar exige --estado")
+        duenos = doc_de_ficha(a.marcar, docs)
+        if not duenos:
+            raise SystemExit("la ficha %s no existe en ningun registro (%s). Un id inventado "
+                             "no es una ficha." % (a.marcar, ", ".join(os.path.basename(d) for d in docs)))
+        if len(duenos) > 1:
+            raise SystemExit("la ficha %s vive en %d registros: %s. Un nombre con dos referentes "
+                             "hace que se pruebe A y se concluya B."
+                             % (a.marcar, len(duenos), ", ".join(os.path.basename(d) for d in duenos)))
+        doc = duenos[0]
+        texto = leer(doc)
         texto = marcar(texto, a.marcar, a.estado, a.cierre, a.falta, a.dueno,
                        a.decision, a.diferido_a)
         fichas = parsear(texto)
@@ -455,44 +514,65 @@ def main():
                 print("  [X] " + e)
             return 1
         texto = insertar_tabla(texto, fichas)
-        escribir_atomico(BACKLOG, texto)
-        print("OK %s -> %s (tabla regenerada)" % (a.marcar, a.estado))
+        escribir_atomico(doc, texto)
+        print("OK %s -> %s en %s (tabla regenerada)"
+              % (a.marcar, a.estado, os.path.basename(doc)))
         return 0
 
-    fichas = parsear(texto)
-    if not fichas:
-        raise SystemExit("0 fichas parseadas: el formato del backlog cambio. Vacio = pregunta, no luz verde.")
+    rc = 0
+    todas = []
+    for doc in docs:
+        texto = leer(doc)
+        fichas = parsear(texto)
+        if not fichas:
+            raise SystemExit("0 fichas parseadas en %s: el formato cambio. Vacio = pregunta, "
+                             "no luz verde." % os.path.basename(doc))
+        todas.append((doc, fichas))
 
-    if a.tabla:
-        escribir_atomico(BACKLOG, insertar_tabla(texto, fichas))
-        print("tabla regenerada: %d fichas" % len(fichas))
+        if a.tabla:
+            escribir_atomico(doc, insertar_tabla(texto, fichas))
+            print("tabla regenerada: %d fichas en %s" % (len(fichas), os.path.basename(doc)))
 
-    if a.check:
-        errs, avisos = verificar(fichas, con_git=not a.sin_git)
-        for w in avisos:
-            print("[!] " + w)
-        if errs:
-            print("\n[X] REGISTRO INCOHERENTE - %d problema(s):" % len(errs))
-            for e in errs:
-                print("  - " + e)
-            print("\nArreglalo con: python -I -X utf8 scripts/sprint-estado.py --marcar <ID> --estado <E> ...")
-            return 1
-        print("OK registro coherente: %d fichas, todos los TERMINADO con sha en origin/main" % len(fichas))
+        if a.check:
+            errs, avisos = verificar(fichas, con_git=not a.sin_git)
+            for w in avisos:
+                print("[!] %s: %s" % (os.path.basename(doc), w))
+            if errs:
+                print(chr(10) + "[X] REGISTRO INCOHERENTE en %s - %d problema(s):"
+                      % (os.path.basename(doc), len(errs)))
+                for e in errs:
+                    print("  - " + e)
+                rc = 1
+            else:
+                print("OK %s: %d fichas, todos los TERMINADO con sha en origin/main"
+                      % (os.path.basename(doc), len(fichas)))
+    if a.check and rc:
+        print(chr(10) + "Arreglalo con: python -I -X utf8 scripts/sprint-estado.py "
+                        "--marcar <ID> --estado <E> ...")
 
     if a.pct:
+        if a.registro:
+            cands = [d for d in docs if a.registro in d]
+            if len(cands) != 1:
+                raise SystemExit("--registro %r no identifica UN registro (%d candidatos)"
+                                 % (a.registro, len(cands)))
+            elegido = cands[0]
+        else:
+            elegido = docs[-1]
+        fichas = dict(todas)[elegido]
         cuenta = {}
         for f in fichas:
             cuenta[estado_de(f)] = cuenta.get(estado_de(f), 0) + 1
         tot = len(fichas)
         term = cuenta.get("TERMINADO", 0)
-        print("SUJETO: fichas del backlog del sprint mobile (%s)" % os.path.basename(BACKLOG))
+        print("SUJETO: fichas de %s" % os.path.basename(elegido))
         print("FECHA : %s" % (a.hoy or "no declarada (pasa --hoy)"))
         print("TOTAL : %d fichas" % tot)
         for e in ESTADOS:
-            print("  %-12s %2d  (%4.1f%%)" % (e, cuenta.get(e, 0), 100.0 * cuenta.get(e, 0) / tot))
+            print("  %-22s %2d  (%4.1f%%)" % (e, cuenta.get(e, 0), 100.0 * cuenta.get(e, 0) / tot))
         sin = cuenta.get("", 0)
         if sin:
-            print("  %-12s %2d  (%4.1f%%)  <- sin campo Estado" % ("(sin marcar)", sin, 100.0 * sin / tot))
+            print("  %-22s %2d  (%4.1f%%)  <- sin campo Estado" % ("(sin marcar)", sin, 100.0 * sin / tot))
         # TRES cifras y no una, por la misma razon que el repo ya pago en la memoria
         # `una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta`: "cuanto del DoD esta
         # cumplido", "cuanto esta RESUELTO" y "cuanto queda del alcance VIVO" son preguntas
@@ -510,7 +590,7 @@ def main():
                   % (term + dec, vivo, 100.0 * (term + dec) / vivo if vivo else 0.0, dif))
         print("Una cifra sin sujeto ni fecha es inutilizable, y una sin UNIDAD se cita para "
               "cualquiera de las tres preguntas.")
-    return 0
+    return rc
 
 
 if __name__ == "__main__":
