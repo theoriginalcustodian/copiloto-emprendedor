@@ -272,7 +272,7 @@ describe('TarjetaFacturaPropuesta', () => {
 
     it('mientras Cancelar espera al servidor, el botón no dice «Emitiendo…»', async () => {
       await montar();
-      let soltar: (v: { ok: boolean }) => void = () => undefined;
+      let soltar: (v: { ok: true }) => void = () => undefined;
       mockCancelar.mockReturnValue(new Promise((r) => { soltar = r; }));
 
       await tocar('factura-propuesta-cancelar');
