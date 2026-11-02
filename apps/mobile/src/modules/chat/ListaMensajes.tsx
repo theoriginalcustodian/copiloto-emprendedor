@@ -6,6 +6,8 @@ import type { ListRenderItemInfo } from 'react-native';
 
 import {
   clasificarChoices,
+  desenlaceGate,
+  type DesenlaceGate,
   leerArtefactoEnlace,
   leerClientePropuesto,
   leerDatosNegocio,
@@ -189,6 +191,12 @@ interface TarjetaConfirmacionProps {
   onCancel: () => void;
 }
 
+const TITULO_DESENLACE: Record<DesenlaceGate, string> = {
+  confirmado: 'Confirmado',
+  cancelado: 'No lo hicimos',
+  indeterminado: 'Respondida en el chat',
+};
+
 /**
  * Tarjeta del gate de confirmación genérico (`mapearGate`, `@copiloto/core/chat`) — cualquier reply
  * cuyos `choices` sean exactamente el par confirmar/cancelar (ej. "vas a mandar este mail a Juan,
@@ -209,13 +217,13 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
 
   // Ya respondida (H-A4-9, persistida en `hitlRespondido`): el estado terminal es un `Recibo`, no la
   // card atenuada. Así la card resuelta dice qué pasó, y no hay botones que parezcan activos.
-  if (gate.respondido) {
-    const cancelo = gate.respondido.value === gate.cancelValue;
+  const desenlace = desenlaceGate(gate);
+  if (desenlace) {
     return (
       <Recibo
         testID="tarjeta-confirmacion"
-        tono={cancelo ? 'tenue' : 'exito'}
-        titulo={cancelo ? 'No lo hicimos' : 'Confirmado'}
+        tono={desenlace === 'confirmado' ? 'exito' : 'tenue'}
+        titulo={TITULO_DESENLACE[desenlace]}
       />
     );
   }
