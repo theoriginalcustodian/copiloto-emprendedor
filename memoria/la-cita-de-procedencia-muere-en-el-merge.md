@@ -196,3 +196,33 @@ la reabría.
    el doc, antes de bajar la ficha, no después del tercer incidente.
 
 → [[supuesto-cuya-falla-parece-un-estado-legitimo]] · [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]
+
+### Refuerzo del mismo día: la clase que el barrido NO caza — el DoD **prescribe** el defecto
+
+`SM-J3` pedía ocultar el indicador de refresco **«con color transparente»**. El archivo que había que
+tocar documenta, **medido en device**, que `colors={['transparent']}` **no sirve en Android**:
+`CircularProgressDrawable` pisa el canal alfa y el arco sale negro opaco encima del saldo
+(`PantallaInteligencia.tsx:203-211`). Lo que funciona — `progressViewOffset` negativo — **ya estaba
+en `main`**. O sea: seguir el DoD al pie de la letra **reintroducía el defecto que la ficha pide
+arreglar**.
+
+**La ficha que PRESCRIBE la técnica ya descartada es peor que la que afirma una ausencia falsa**, y
+por dos motivos:
+
+1. **Ningún barrido de ausencias la ve.** `scripts/premisas-de-ausencia.py` clasifica fichas que
+   afirman que algo **no existe**; ésta afirma una **solución**. Son gramáticas distintas, así que el
+   gate salió verde y la ficha pasó.
+2. **El daño es silencioso y sale verde.** Una ausencia falsa se descubre al buscar y no encontrar
+   trabajo que hacer. Una solución falsa **se implementa sin fricción**, el DoD queda cumplido al
+   pie de la letra, y el defecto vuelve — con la ficha marcada ✅.
+
+**La regla operativa, que es la misma de los cinco casos y ahora cubre las dos gramáticas:** antes
+de implementar una ficha, se lee el **docstring del archivo que se va a tocar**. Vale igual si la
+ficha dice *que falta algo* o *cómo arreglarlo*: un comentario que registra una medición en device
+es evidencia de primera mano; la ficha es una cita de segunda, y su formato imperativo no la hace
+más medida.
+
+**Y el corolario sobre los gates:** un barrido cubre **una** gramática de premisa. Dar por cubierto
+«el problema de las premisas rancias» porque existe el script es la forma de este mismo defecto
+aplicada al harness — ver
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]].

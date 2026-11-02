@@ -264,6 +264,13 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
   hoy» (D3). Montos en **una** línea (`numberOfLines={1}` con `adjustsFontSizeToFit` en
   `apps/mobile/src/modules/midia/PortadaNegocio.tsx`, o sin centavos en los cuadros chicos). Los `testID` `midia-*` y los E2E que
   dependan de la estructura actual, revisados y pasando. Captura de device de las dos pantallas.
+- ⚠️ **PREMISA PARCIALMENTE REFUTADA (medido 2026-11-02 contra `origin/main`, lo vio frontend1 al
+  implementar):** el punto **N1 ya está hecho** — `PortadaNegocio.tsx:60` documenta «Una sola línea
+  SIEMPRE (N1, relevamiento 2026-10-16)» y `PortadaNegocio.test.tsx:52` lo acredita con un test
+  propio. Entró por #1297 (`51cb7bca`, 2026-10-16), **el mismo día del relevamiento que lo reclama**.
+  **Lo que SIGUE en pie:** la tarjeta de cabecera, la lista «Ahora», «Para hoy · Ver tablero ›» y la
+  pantalla «Tu día» propia con «Volver» (D3). La ficha queda `PENDIENTE` por eso, **menos** el punto
+  de los montos: no se vuelve a tocar `PortadaNegocio.tsx` para eso.
 - **Bloquea:** SM-I2 (comparten el pie de Mi día).
 
 ### SM-I2 · `sin-issue` — El dock «campo + mic chico» no existe: cada pantalla improvisa el suyo
@@ -284,6 +291,13 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
   Evidencia de device en Mi día, chat y Gastos. **El cancelar deslizando queda `[UNVERIFIED]`
   explícito** hasta SM-L2: `adb` no lo reprodujo en dos corridas y no se sabe si es límite del
   instrumento o defecto.
+- ⚠️ **PREMISA PARCIALMENTE REFUTADA (medido 2026-11-02 contra `origin/main`, lo vio frontend1 al
+  implementar):** el punto **N8 ya está hecho** — la barra de grabación **toma el lugar del botón de
+  alta** (`PantallaGastos.tsx:262`), y es la **fila entera** del dictado la que se transforma, no el
+  botón (`MicFuncion.tsx:63`, con test en `MicFuncion.test.tsx:235`). También de #1297 (`51cb7bca`).
+  **Lo que SIGUE en pie, y es el motivo de la ficha:** el **dock compartido** no existe. Y seguí
+  leyendo el DoD como está: se **extrae** el `Composer` que ya usan `ChatView`, `FotoFuncion` y
+  `PantallaSoporte` — no se escribe un dock de cero.
 - **Depende:** SM-I1. **Bloquea:** SM-J1 (las 6 funciones heredan este dock).
 
 ### SM-I3 · `sin-issue` — Los botones del chat no se leen y el deshabilitado no se distingue
@@ -384,6 +398,24 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
   indicador nativo oculto (color transparente) dejando sólo la línea «Actualizando…». Captura de
   los tres estados, incluido el refresh en curso.
 
+- ⛔ **EL DoD PRESCRIBÍA EL DEFECTO — corregido el 2026-11-02 (lo vio frontend1 al implementar).**
+  Decía «indicador nativo oculto (**color transparente**)», y
+  `apps/mobile/src/modules/inteligencia/PantallaInteligencia.tsx:203-211` documenta, **medido en
+  device**, que `colors={['transparent']}` **NO sirve en Android**: `CircularProgressDrawable` pisa
+  el canal alfa y el arco sale **negro opaco encima del saldo**. Seguir el DoD al pie de la letra
+  **reintroducía el defecto que la ficha pide arreglar**.
+- ✅ **Y el punto N2 ya está hecho:** lo que funciona es sacarlo de pantalla —
+  `progressViewOffset={OFFSET_REFRESH_FUERA_DE_CUADRO}` negativo, con `tintColor` sólo para la
+  flecha de iOS (donde el alfa sí se respeta). En `main` por #1297 (`51cb7bca`).
+- **DoD vigente (reemplaza el del punto del indicador):** cabecera, etiqueta de mes y mosaicos del
+  mapa; «Sin ventas todavía» en el vacío; **el indicador nativo ya está fuera de cuadro — NO se
+  toca el `RefreshControl`**. Captura de los tres estados, incluido el refresh en curso, que debe
+  mostrar sólo «Actualizando…».
+- 🧭 **Clase nueva, y el barrido no la caza:** `premisas-de-ausencia.py` busca fichas que afirman una
+  **ausencia**; ésta afirmaba una **solución**. Una ficha que prescribe *cómo* arreglar algo puede
+  prescribir una técnica ya descartada en device, y el que la implementa lo descubre recién al
+  tocar el archivo. Antes de seguir un DoD que dice *cómo*, se lee el docstring del archivo: ahí
+  está la medición que la ficha no tiene.
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
