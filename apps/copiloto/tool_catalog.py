@@ -1473,6 +1473,12 @@ def _borrador_desde_dictado(arguments: dict, now_iso_provider, cliente_registro:
     return BorradorFactura(datos_venta=datos_venta, items=items, receptor=receptor)
 
 
+# Espera acotada del contexto del workflow de factura (SM-N1): 20 × 0,25 s = 5 s de techo; la activity
+# de carga es una lectura local, normalmente tarda decenas de ms.
+ESPERA_CONTEXTO_FACTURA_INTENTOS = 20
+ESPERA_CONTEXTO_FACTURA_SEG = 0.25
+
+
 def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                         afip_cred_store_factory, afip_perfil_store_factory,
                         abrir_borrador_dictado, consultar_factura_dictado, signal_factura_dictado,
@@ -1560,6 +1566,20 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
             "nro_doc": borrador.receptor.nro_doc, "nombre": borrador.receptor.nombre})
 
         estado = await consultar_factura_dictado(ctx.cliente_id, factura_id)
+        # SM-N1: los signals se aceptan al instante pero el workflow arranca cargando el perfil en una
+        # activity; hasta que termina, `faltantes` dice `perfil_ausente` sobre un perfil que existe.
+        # Se espera (acotado) a que el contexto esté cargado. Una ejecución en vuelo, anterior a la
+        # marca, no trae la clave: se toma como cargada. Por qué ese lado y no el otro: esas ejecuciones
+        # YA cargaron su contexto (el workflow que las creó lo hacía como primera activity y la marca
+        # sólo se agregó después), así que `False` por defecto las haría esperar el techo entero sin
+        # motivo, en cada dictado. El riesgo contrario (leer `perfil_ausente` espurio) sólo existe en
+        # ejecuciones NUEVAS, que sí traen la clave. Lo que prueba que el fix funciona no es este
+        # razonamiento sino la sonda de 12 dictados contra prod (SM-N1).
+        for _ in range(ESPERA_CONTEXTO_FACTURA_INTENTOS):
+            if estado is None or estado.get("contexto_cargado", True):
+                break
+            await asyncio.sleep(ESPERA_CONTEXTO_FACTURA_SEG)
+            estado = await consultar_factura_dictado(ctx.cliente_id, factura_id)
         return "ok", estado, continuando, factura_id
 
     resultado, estado, continuando, factura_id = asyncio.run(_flujo())
@@ -1577,14 +1597,14 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
         # final NO se le pide documento: lo que el monto exija lo pide R5 con su propio mensaje.
         faltan = [e.get("mensaje") for e in (estado.get("faltantes") or []) if e.get("mensaje")]
         detalle = errores_dictado[0].mensaje if errores_dictado else (
-            "Faltan datos para facturar" + (f": {'; '.join(faltan)}" if faltan else "") + ".")
+            "Faltan datos para facturar" + (f": {'; '.join(faltan).rstrip('.')}" if faltan else ""))
         # Si el faltante ES identificar al cliente (supera el tope), la consigna de arriba mentiría.
         pide_identificar = ("supera_tope_sin_identificar" in faltantes_codigos
                             or any(e.codigo == "supera_tope_sin_identificar" for e in errores_dictado))
         sufijo = (" Pedí SÓLO eso." if pide_identificar else
                   " Pedí SÓLO eso. Si el cliente es consumidor final NO le pidas nombre, CUIT ni DNI.")
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
-                          observation={"result": detalle + sufijo})
+                          observation={"result": detalle.rstrip(".") + "." + sufijo})
 
     tipo_comprobante = determinar_tipo_comprobante(perfil, borrador.receptor).name if perfil else None
     total = estado.get("total") or "0.00"

@@ -83,6 +83,11 @@ class FacturaWorkflow:
         self._cliente_id = ""
         self._cuit = ""
         self._perfil: PerfilFiscal | None = None
+        # `True` cuando `cargar_contexto_factura` ya devolvió. Antes de eso `_perfil` es None porque
+        # NADIE lo cargó todavía, no porque falte: sin esta marca, quien consulta el estado en esa
+        # ventana (la tool de voz manda signals y consulta enseguida) lee `perfil_ausente` sobre un
+        # perfil que existe — medido en prod 2026-11-02: 2 de 6 dictados idénticos (SM-N1).
+        self._contexto_cargado = False
         self._borrador = BorradorFactura()
         self._estado = EstadoFactura.BORRADOR
         self._errores: list[dict] = []
@@ -111,6 +116,7 @@ class FacturaWorkflow:
         """Todo lo que la UI necesita pintar. El estado de la factura vive acá, no en el front."""
         return {
             "estado": self._estado.value,
+            "contexto_cargado": self._contexto_cargado,
             "faltantes": list(self._errores),
             "items": [self._item_dict(i) for i in self._borrador.items],
             "receptor": self._receptor_dict(self._borrador.receptor),
@@ -268,6 +274,7 @@ class FacturaWorkflow:
         contexto = await workflow.execute_activity(
             "cargar_contexto_factura", args=[cliente_id, cuit],
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+        self._contexto_cargado = True
 
         if not contexto.get("tiene_certificado"):
             self._estado = EstadoFactura.RECHAZADA
