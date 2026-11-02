@@ -37,6 +37,7 @@ from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
+from afip_factura_workflow import MOTIVO_CODIGO_CANCELADA, MOTIVO_CODIGO_YA_EMITIDA
 from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
@@ -381,12 +382,69 @@ async def _confirmar_por_update(handle, args: list, que: str) -> dict:
         raise HTTPException(503, detail=f"no se pudo confirmar {que}: reintentá en unos segundos")
 
 
+async def _rechazo_por_workflow_cerrado(handle, que: str, accion: str) -> dict | None:
+    """Un update sobre un workflow YA CERRADO contesta NOT_FOUND — igual que si nunca hubiera existido.
+
+    SM-H2: sin esto, `confirmar` sobre una factura cancelada daba un 404 «no encontrada», que la app no
+    puede distinguir de un id inventado, y una factura ya emitida tampoco se distinguía de ninguna de
+    las dos. La query SÍ responde sobre un workflow cerrado, así que se pregunta el estado real:
+
+    · `cancelada` → `factura_cancelada` · `emitida`/`entregada` → `factura_ya_emitida` (rechazos, 409).
+    · la query también dice NOT_FOUND → de verdad no existe: devuelve `None` y el llamador da el 404.
+
+    El cliente_id va dentro del id del workflow (`_wf_id_factura`), así que una factura de otro tenant
+    nunca llega a este camino con datos: el handle apunta a un id que no existe para quien pregunta.
+    """
+    estado = await _estado_de_workflow(handle, que)
+    if estado is None:
+        return None
+    if estado.get("estado") == "cancelada":
+        if accion == "confirmar":
+            return {"aceptado": False, "motivo": f"{que} ya fue cancelada",
+                    "motivo_codigo": MOTIVO_CODIGO_CANCELADA}
+        return {"aceptado": True, "motivo": None, "motivo_codigo": None}  # cancelar de nuevo: idempotente
+    return {"aceptado": False,
+            "motivo": f"{que} ya se emitió: no se puede " + ("confirmar de nuevo" if accion == "confirmar"
+                                                             else "cancelar"),
+            "motivo_codigo": MOTIVO_CODIGO_YA_EMITIDA}
+
+
 def make_confirmar_factura(temporal_client) -> Callable:
     async def confirmar_factura(cliente_id: str, factura_id: str, token: str) -> dict:
         handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
-        return await _confirmar_por_update(handle, [token], "la factura")
+        try:
+            return await _confirmar_por_update(handle, [token], "la factura")
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            rechazo = await _rechazo_por_workflow_cerrado(handle, "la factura", "confirmar")
+            if rechazo is None:
+                raise
+            return rechazo
 
     return confirmar_factura
+
+
+def make_cancelar_factura(temporal_client) -> Callable:
+    """Cancela por Workflow Update y devuelve si VALIÓ — el botón y la herramienta del agente comparten
+    esta función, o sea la misma señal del mismo workflow (SM-H2: «no una segunda vía»).
+
+    Idempotente: cancelar una factura ya cancelada contesta `aceptado` (un toque repetido o un reintento
+    no puede dar error). Sobre una emitida contesta rechazo `factura_ya_emitida`."""
+    async def cancelar_factura(cliente_id: str, factura_id: str) -> dict:
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        try:
+            return await handle.execute_update("cancelar")
+        except Exception as exc:  # noqa: BLE001
+            if not _no_existe(exc):
+                _log.error("no se pudo cancelar la factura (%s): %s", type(exc).__name__, exc)
+                raise HTTPException(503, detail="no se pudo cancelar la factura: reintentá en unos segundos")
+            rechazo = await _rechazo_por_workflow_cerrado(handle, "la factura", "cancelar")
+            if rechazo is None:
+                raise HTTPException(404, detail="la factura no encontrada") from exc
+            return rechazo
+
+    return cancelar_factura
 
 
 def make_confirmar_anulacion(temporal_client) -> Callable:
@@ -412,7 +470,8 @@ VENTANA_DICTADO_ABIERTO = timedelta(minutes=15)
 _CLIENTE_ID_OK = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
-def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
+def make_buscar_borrador_dictado_abierto(temporal_client, *,
+                                         ventana: timedelta | None = None) -> Callable:
     """Encuentra el `FacturaWorkflow` de origen VOZ que sigue abierto para este `cliente_id`, si hay
     uno — Visibility de Temporal, no una tabla nueva: *"no puede desincronizarse de Temporal porque
     ES Temporal"* (respuesta de planificación, `respuesta_planificacion-a-backend_arranca-por-
@@ -431,7 +490,8 @@ def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
         # cross-tenant en silencio (hallazgo de planificación, `la-query-de-visibility-se-blinda`).
         if not _CLIENTE_ID_OK.fullmatch(cliente_id):
             raise HTTPException(status_code=400, detail="cliente_id inválido")
-        desde = (datetime.now(timezone.utc) - VENTANA_DICTADO_ABIERTO).strftime("%Y-%m-%dT%H:%M:%SZ")
+        desde = (datetime.now(timezone.utc) - (ventana or VENTANA_DICTADO_ABIERTO)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
         prefijo = _wf_id_factura(cliente_id, "dictado-")
         query = (f"WorkflowType='FacturaWorkflow' AND WorkflowId STARTS_WITH '{prefijo}' "
                 f"AND ExecutionStatus='Running' AND StartTime > '{desde}'")

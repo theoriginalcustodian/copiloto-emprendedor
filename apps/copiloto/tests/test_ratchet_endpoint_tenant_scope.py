@@ -170,7 +170,7 @@ def _fernet_key_env(monkeypatch):
 # `/ingresos`, `/ingresos/resumen`, `/ingresos/{ingreso_id}`, `/clientes`, `/clientes/{cliente}`,
 # `/contabilidad/resumen`, `/actividad`. Lote: 7 intentadas, 7 cubiertas, 0 sin poder. Además el alta de
 # cliente con el MISMO documento que otro tenant se afirma 201 (nunca un 409 que nombre al otro).
-_DEUDA_TENANT_SCOPED_SIN_TEST = 43
+_DEUDA_TENANT_SCOPED_SIN_TEST = 42  # SM-H2: bajó 43→42 (cancelar ya tiene su caso hostil)
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------
@@ -491,6 +491,8 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
         # RATCHET lote 2 2026-10-14
         "/ingresos", "/ingresos/resumen", "/ingresos/{ingreso_id}",
         "/clientes", "/clientes/{cliente}", "/contabilidad/resumen", "/actividad",
+        # SM-H2 2026-11-02
+        "/afip/facturas/{factura_id}/cancelar",
     }
 
 

@@ -155,6 +155,7 @@ def create_afip_app(
     # Confirmar por Workflow Update en vez de signal: devuelve si la confirmación se TOMÓ. Opcionales
     # y con fallback al signal para no romper a quien arme el app sin ellas (tests, montajes parciales).
     confirmar_factura: Callable | None = None,
+    cancelar_factura: Callable | None = None,
     confirmar_anulacion: Callable | None = None,
     iniciar_anulacion: Callable | None = None,
     consultar_anulacion: Callable | None = None,
@@ -351,9 +352,22 @@ def create_afip_app(
         return {"ok": True, "aceptado": True}
 
     @app.post("/afip/facturas/{factura_id}/cancelar")
-    async def cancelar_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
-        await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
-        return {"ok": True}
+    async def post_cancelar_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Cancela la propuesta — la MISMA señal que usa la herramienta del agente (SM-H2).
+
+        Va por Workflow Update, que devuelve lo que el workflow decidió: antes era un signal y
+        contestaba `200 ok` aunque la factura ya se estuviera emitiendo. Ahora una factura ya emitida
+        contesta **409** (`factura_ya_emitida`); cancelar una ya cancelada es idempotente (200). El
+        signal queda como fallback para montajes que no inyecten la dependencia.
+        """
+        if cancelar_factura is None:
+            await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
+            return {"ok": True}
+
+        resultado = await _maybe_async(cancelar_factura, cliente_id, factura_id)
+        if not resultado.get("aceptado"):
+            raise _rechazo(resultado)
+        return {"ok": True, "aceptado": True}
 
     @app.get("/afip/comprobantes")
     async def listar(cuit: str, limite: int = 50,
