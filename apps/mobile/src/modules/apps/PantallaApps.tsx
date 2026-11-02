@@ -312,17 +312,29 @@ export function PantallaApps({ servicioDestacado = null }: { servicioDestacado?:
                       {s.descripcion}
                     </Text>
                   </View>
+                  {/* SM-K4: el estado va como ETIQUETA a la derecha del nombre (mapa: «● Conectada»), no
+                      como texto suelto debajo. Sigue sin dar «Conectada» por supuesto: sale de `s.conectado`. */}
+                  {s.conectado && (
+                    <Text
+                      testID={`app-${s.key}-conectada`}
+                      style={{
+                        color: tema.color.exito,
+                        fontFamily: tema.fuente.uiSemibold,
+                        fontSize: tema.tipo.chico,
+                        backgroundColor: tema.color.superficieAlta,
+                        borderRadius: tema.radio.completo,
+                        paddingHorizontal: tema.espacio.sm,
+                        paddingVertical: 2,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      ● Conectada
+                    </Text>
+                  )}
                 </View>
 
                 {s.conectado ? (
                   <View style={{ gap: tema.espacio.sm }}>
-                    <Text
-                      testID={`app-${s.key}-conectada`}
-                      style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}
-                    >
-                      Conectada
-                    </Text>
-
                     {objetivoBaja !== s.key ? (
                       <FilaBotones
                         compacto
