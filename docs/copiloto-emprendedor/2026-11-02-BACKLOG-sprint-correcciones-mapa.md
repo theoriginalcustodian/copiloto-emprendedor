@@ -664,7 +664,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 > con lenguaje natural en prod**. Backend las reportó y **no las parcheó**, que es lo correcto —
 > parchear fuera de la ficha es el desvío que el gate de atribución marca.
 
-### SM-N1 · `sin-issue` — El perfil fiscal del canónico en prod parece inválido: contamina toda sonda
+### SM-N1 · `sin-issue` — Carrera entre la tool y la carga de contexto: `estado()` dice `perfil_ausente` con el perfil INTACTO
 
 - **Estado:** TERMINADO
 - **Cierre:** f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs cargar_contexto_factura, no el perfil (intacto, id 42); misma sonda de 12 en prod: 0/12 datos fiscales (antes 4/12), 9/12 card (antes 6/12), los 3 restantes piden periodo = SM-N2
@@ -672,6 +672,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Medido:** 12 dictados en prod con el canónico tras el deploy de `SM-H4` — **0/12 piden
   CUIT/DNI/nombre** (el fix funciona), pero **4/12 responden «faltan tus datos fiscales»** en vez de
   producir la card. El perfil fiscal de `e2e-device@copiloto.test` en prod parece inválido o ausente.
+- ✅ **TÍTULO CORREGIDO 2026-11-02 — mi premisa era falsa y la refutó backend al medirla.** La ficha decía «el perfil fiscal parece inválido». El perfil está **intacto** (`afip_perfil` id 42, CUIT con dígito verificador válido, monotributo, `updated_at` 2026-10-14 sin cambios). La causa es una **carrera**: `tool_catalog._run_emitir_factura` consulta el estado mientras la activity `cargar_contexto_factura` todavía corre (`afip_factura_workflow.py:268-279`), y hasta que termina `self._perfil` es `None`, así que `estado()` devuelve `perfil_ausente`. **La firma era el mismo input con tres salidas distintas** (6 dictados idénticos → 3 card, 1 período, 2 «datos fiscales»): eso es una carrera, no un dato faltante. Un título que sigue acusando al perfil manda a la próxima sesión a revisar algo que está bien.
 - **Por qué es lo primero y no una molestia:** el canónico es **el** instrumento de medición del
   sprint. Si su perfil fiscal está roto, **toda sonda de factura con ese usuario mide el perfil, no
   la conducta del agente** — y el resultado se lee como defecto del agente. Un instrumento
