@@ -79,10 +79,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-J2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
-| **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -347,10 +347,30 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J2 · `sin-issue` — Faltan los chips por fila y de antigüedad
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan apagados por decision documentada (:47-48 el chip auto, :50-52 origen derivado, :67-71 el codigo descarta auto a proposito). #1079 ya habia pagado esta deuda escribiendo el motivo; implementarla la reabria. Revisar la decision = pedido_ con dato nuevo, no esta ficha.
 - **Dueño:** frontend2
 - **Medido:** `factura` sin chips por fila; `presu` sin chips de antigüedad.
 - **DoD:** los chips del mapa en las dos pantallas, con el dato real (no un literal). Captura.
+
+⛔ **PREMISA REFUTADA — medido el 2026-11-02, la ficha queda SIN OBJETO.** Los chips **existen** en
+`apps/mobile/src/modules/clientes/TarjetaCliente.tsx`, y los dos que esta ficha reclamaba están
+**deliberadamente apagados con el motivo escrito en el docstring**:
+`TarjetaCliente.tsx:47-48` — «Se agregó solo» no se pinta en la columna derecha (el prototipo lo
+muestra como chip `.estado.auto`) · `TarjetaCliente.tsx:50-52` — «`origen: 'derivado'` no se marca.
+Es el default de una cartera que se armó sola; etiquetar el caso mayoritario es ruido» ·
+`TarjetaCliente.tsx:67-71` — el código pasa `esAuto = true` **para descartar** el chip `auto`, de
+modo que sólo sobreviven los estados MEDIDOS y un listado sin el par declarado no cae a un
+«Todavía sin comprar» **deducido**. El conteo no se perdió: lo lleva el `BloqueCifra` de
+`PantallaClientes` («N se agregaron solos este mes»).
+
+**Y el agravante:** el mismo docstring registra que esta deuda **ya se pagó una vez** — #1079
+atribuía la ausencia a «una decisión documentada en su docstring» que no estaba escrita, y el fix
+fue escribirla. Implementar esta ficha habría revertido la decisión **y** reabierto la deuda que ese
+PR cerró. El prototipo los muestra; el código decidió no mostrarlos, a propósito, y dejó el porqué.
+
+**Si se quiere revisar la decisión, eso es un `pedido_` con el dato nuevo, no esta ficha:** una ficha
+que afirma una ausencia inexistente no puede ser el vehículo para cambiar una decisión de diseño.
 
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
@@ -402,7 +422,8 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J5 · `sin-issue` — La agenda no distingue hoy de los días siguientes
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin hora con los titulos EXACTOS del backend (BL-J13, K-13, ADR-004), grupos con testID agenda-grupo-$id (:148) y caso vacio (:156); PantallaAgenda.test.tsx:65 lo afirma. Lo que la pantalla no hace es otra cosa y es decision documentada: sin Calendar conectado NUNCA dice 'no tenes eventos' y BL-V23 desempata nunca-conectada de caida.
 - **Dueño:** frontend2
 - **Medido:** medida el 2026-11-02 con Calendar reconectado. Falta la línea del ahora (mockup 14),
   «+ Nuevo evento» y el punto de estado. Un evento aparece **repetido** en «Esta semana».
@@ -416,6 +437,20 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 # Bloque K · Ajustes y ARCA (wave 4)
 
 Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el dock.
+
+⛔ **PREMISA REFUTADA — medido el 2026-11-02, la ficha queda SIN OBJETO.** La agenda **sí** distingue
+hoy de los días siguientes: `apps/mobile/src/modules/midia/PantallaAgenda.tsx:23-24` —
+«la agenda de los próximos días, sólo lectura: **Hoy · Mañana · Esta semana · Sin hora**, con los
+`titulo` EXACTOS que manda el backend. Paridad con `AgendaScreen` de la web; la lógica (cliente,
+rango ≤ 14 días, franja horaria) vive en `@copiloto/core`» (BL-J13, K-13, ADR-004). Los grupos se
+dibujan con `testID={`agenda-grupo-${g.id}`}` (`:148`) y su caso vacío en `:156`; el test
+`PantallaAgenda.test.tsx:65` afirma que `agenda-grupo-manana` contiene «Mañana».
+
+**Lo que la pantalla NO hace es distinto y ya está documentado como decisión:** con Calendar sin
+conectar **nunca** dice «no tenés eventos» —es falso, no sabemos nada— y ofrece conectar; y
+`agenda.conectado === false` desempata «nunca conectada» de «caída» leyendo `estadoConexion` del
+catálogo (BL-V23). Si el relevamiento vio «no distingue los días», midió una pantalla sin Calendar
+conectado — que es el estado que esas dos reglas gobiernan a propósito.
 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
@@ -447,6 +482,18 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
   conserva la frase del código** (criterio de la decisión 8) y el mapa se corrige. Captura de los
   dos errores. **Causa de separar los errores:** dos causas que comparten mensaje hacen que se
   diagnostique la equivocada.
+
+⚠️ **PREMISA PARCIALMENTE REFUTADA — medido por frontend2 el 2026-11-02, y toca una decisión DEL
+OPERADOR.** Lo que esta ficha pedía agregar no falta: **«Necesito cambiarlo ›» está OMITIDO por
+decisión del operador (BL-V27, 2026-10-13)**, escrita en `apps/mobile/src/modules/afip/
+PantallaAfipSetup.tsx:551-555` — «cero control que sugiera cambiar el CUIT; el test lo fija».
+Agregarlo habría **revertido una decisión del operador**, que no es táctico: es MAYOR. El
+«subtítulo» tampoco falta: existe como `afip-estado-vinculo` («ARCA vinculada · CUIT …»).
+
+**Queda de esta ficha, que sí es real:** consumir el campo `causa` ∈ `dato|servicio|desconocida`
+publicado por backend (#1334, `GET /afip/estado` → `onboarding.causa`), el refresco al terminar, y el
+motivo de los botones apagados. Contrato del lado app: `dato` → ofrecer corregir · `servicio` →
+reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**.
 
 ### SM-K4 · `sin-issue` — Apps conectadas no dice qué NO puede hacer el copiloto
 
