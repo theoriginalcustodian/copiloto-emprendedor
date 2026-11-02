@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Backend: el chip dice «¿Te armo la factura?» y debe decir «Armá la factura»; el texto del LLM dice $50,000.00. Con es… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -227,8 +227,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Backend: el chip dice «¿Te armo la factura?» y debe decir «Armá la factura»; el texto del LLM dice $50,000.00. Con eso desplegado, frontend1 cambia TEXTO_SUGERENCIA_ARMAR_FACTURA en core y captura pres-ciclo en device.
-- **Cierre:** d7d0a351 (#1354). App: formulario editable, «Guardar el presupuesto», «Descartar», total y recibo en $50.000, «Pendiente» en sesión viva. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
+- **Falta:** captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «Pendiente» en la card
+- **Cierre:** mitades backend en main 681c3b53 (#1363): chip «Armá la factura» y importe $50.000 en frases del LLM; sonda real 0/6 inglés. SM-H5
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
