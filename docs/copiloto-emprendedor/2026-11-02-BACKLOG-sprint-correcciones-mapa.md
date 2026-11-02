@@ -63,13 +63,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G1** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) 15 archivos y 62 lineas de enlaces; barrido de todos los HTML de odo… |
 | **SM-G2** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) Playwright 390x844 y dentro del marco del mapa: encabezado 51 con 51… |
 | **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
-| **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-G4** | `sin-issue` | ✅ TERMINADO | sin-codigo: experimento de device sin cambios en la app. Veredicto: DEMORA, 4/4 corridas con los rótulos rancios a +0… |
 | **SM-H1** | `sin-issue` | ✅ TERMINADO | acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobr… |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Backend: el chip dice «¿Te armo la factura?» y debe decir «Armá la factura»; el texto del LLM dice $50,000.00. Con es… |
+| **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -149,7 +149,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 ### SM-G4 · `sin-issue` — R03: no se sabe si el retardo al soltar es demora o defecto
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo: experimento de device sin cambios en la app. Veredicto: DEMORA, 4/4 corridas con los rótulos rancios a +0,3 y +0,8 s y correctos a +3 s. Corrió en dev-client: el ejercicio en release sigue pendiente por decisión del 2026-10-16. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-G4.md
 - **Dueño:** frontend1
 - **Medido:** `cierre_` de frontend1 del 2026-10-16 dejó el experimento sin correr.
 - **DoD:** capturas a **+0,3 s, +0,8 s y +3 s** de soltar, las tres adjuntas, y el veredicto escrito:
@@ -221,7 +222,9 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Backend: el chip dice «¿Te armo la factura?» y debe decir «Armá la factura»; el texto del LLM dice $50,000.00. Con eso desplegado, frontend1 cambia TEXTO_SUGERENCIA_ARMAR_FACTURA en core y captura pres-ciclo en device.
+- **Cierre:** d7d0a351 (#1354). App: formulario editable, «Guardar el presupuesto», «Descartar», total y recibo en $50.000, «Pendiente» en sesión viva. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -230,7 +233,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H6 · `sin-issue` — «Factura emitida.» no dice de quién ni con qué número
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail» abre Gmail con asunto y link. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
 - **Dueño:** frontend1
 - **Medido:** `fact-cae` omite cliente y muestra el número sin formatear; Drive/Compartir sin
   opción de mail.
