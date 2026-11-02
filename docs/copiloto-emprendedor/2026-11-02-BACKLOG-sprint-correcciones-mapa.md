@@ -62,7 +62,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 |---|---|---|---|
 | **SM-G1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-G2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-G3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -131,7 +131,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 ### SM-G3 · `sin-issue` — El teléfono quedó logueado con el usuario descartable del relevamiento
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.test; descartable borrado (GoTrue 200, tenants 0); evidencia docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-G3.md
 - **Dueño:** frontend2
 - **Medido:** `avance_` de frontend2 del 2026-11-02: «TELÉFONO LIBRE RF8T318RN9T queda logueado como
   el descartable».
