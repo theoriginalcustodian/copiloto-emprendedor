@@ -123,7 +123,6 @@ describe('PantallaPrincipal — hitl (a): bajar el chat con el gesto cierra el c
     );
 
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-lucia')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-lucia'));
     await fireEvent.press(screen.getByTestId('midia-tarjeta-lucia-verbo'));
     await waitFor(() => expect(screen.getByTestId('chat-contexto-aviso')).toBeTruthy());
 

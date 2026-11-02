@@ -1,16 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
-import { Pressable, ScrollView } from 'react-native-gesture-handler';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, { type SharedValue } from 'react-native-reanimated';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import {
-  avisoAlChat,
-  borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
-  crearTarjetaMiDia,
   estadoDeServicio,
   fechaDeHoyMidia,
   horaDeEvento,
@@ -19,310 +13,57 @@ import {
   hayConexionCaida,
   leerPortada,
   listarCatalogo,
-  leerTablero,
   type AvisoAlChat,
   type CalendarioMiDia,
-  CATEGORIAS,
-  ETIQUETA_CATEGORIA_TARJETA,
-  filtrarPorCategoria,
-  hayCategorias,
-  tarjetasCriticas,
-  type CategoriaTarjeta,
   type EstadoConexion,
   type EventoCalendario,
-  type IdSolapa,
   type Portada,
-  type TarjetaMiDia,
-  type TableroMiDia,
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
-import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
+import type { RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
-import { TileCategoria } from './TileCategoria';
+import { TarjetaMiDiaRow } from './TarjetaMiDiaRow';
+import { useTableroMiDia, type EstadoLista } from './useTableroMiDia';
 import { EstadoVacio } from '../../theme/EstadoVacio';
-import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
-import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { pressableStyle } from '../../theme/glass/presion';
-import { Row } from '../../theme/glass/Row';
+import { ScrollFormulario } from '../../theme/glass/campos';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * `PantallaMiDia` — el tablero del detector proactivo (hito 7): 3 solapas (Para hoy · Haciendo ·
- * Hechas), pobladas por las tarjetas que las 8 reglas determinísticas del `contrato_mi-dia-y-el-
- * detector-proactivo` van generando.
+ * `PantallaMiDia` — la base de la app: *«el copiloto habla primero»*. Se lee de reojo, en el orden en que se
+ * decide una mañana (`index.html:1251`): cuánto tengo, qué tengo ahora, qué tengo que hacer hoy.
  *
- * 🔴 **Reemplaza al Kanban de 4 columnas retirado el 2026-07-23.** Ver `respuesta_planificacion-a-
- * frontend-backend_mi-dia-es-el-detector-3-solapas...`: el pipeline de facturación NO es Mi Día — son
- * conceptos distintos que compartían por error la misma URL.
+ * 🔴 **Resume, no gestiona (SM-I1).** Las solapas, los chips, el alta a mano, el swipe y el banner crítico
+ * viven en Tu día (`PantallaTuDia`), detrás de «Ver tablero ›». Sin banner a propósito: acá la prioridad la
+ * dice la tarjeta, con su chip y su acción (`index.html:1439`).
  *
- * 🔴 **`GET /mi-dia/tablero` está VIVO** (backend PR#96, desplegado y verificado por HTTP —401 sin
- * token, no 404/500). La verificación funcional con tenant real queda para el E2E de device (contrato
- * §6). Toda la pantalla habla con `leerTablero()`; si algo falla igual degrada a `no_disponible` y lo
- * DICE — no simula tarjetas.
+ * 🔴 **La primera tarjeta arranca abierta** (`.ex.on`, `index.html:1668`): lo primero que hay que hacer se
+ * lee sin tocar nada. Cerrarla es una decisión del emprendedor y se respeta: `undefined` es «todavía no
+ * tocó», `null` es «cerró todo».
  *
- * 🔴 **Lista vertical con solapas arriba, NUNCA columnas ni drag** (contrato §2.3): el arrastre lateral
- * con el pulgar compite con el Pan del panel glass — ya pagado dos veces en este repo (scroll de Apps,
- * glass apilado). El cambio de solapa es un tap sobre la pestaña, no un gesto.
- *
- * 🔴 **Tap → expande (contrato addendum §2).** Colapsada muestra el texto ya redactado (2 líneas);
- * expandida agrega el detalle crudo (cliente/monto/fecha, si la regla los trajo en `datos`) debajo. Es
- * estado local puro, sin red.
- *
- * 🔴 **Swipe con `ReanimatedSwipeable`, no un `Gesture.Pan` a mano** (contrato §2.3 pide "swipe corto...
- * nunca arrastre libre" — el componente YA fija acciones a un ancho reservado, no drag libre). Revela
- * "Empezar"/"Terminé" (avanzar de solapa) + "Borrar" a la derecha; en `hecha` sólo queda "Borrar" — no
- * hay solapa siguiente. Después de una mutación se **relee el tablero entero**, nunca se edita el
- * estado local a mano: la tarjeta se va de la lista porque el backend confirmó que se movió, no porque
- * la UI lo asumió (mismo criterio que §2.1 — la tarjeta muere por el HECHO).
- *
- * 🔴 **`estado` que se manda es una ASUNCIÓN razonada, no confirmada literal.** Backend documentó los
- * CAMPOS de la tarjeta pero no el conjunto de valores válidos de `estado`; asumo que coincide con los
- * `id` de solapa (mismo vocabulario ya confirmado: `para_hoy`/`haciendo`/`hecha`) — preguntado en
- * `pedido_frontend-a-backend_valores-reales-de-estado...`. Si la asunción es incorrecta, el 400 trae
- * el `detail` real de backend y se lo muestra tal cual al emprendedor (`estado_invalido` en
- * `cambiarEstadoTarjetaMiDia`) — no falla en silencio ni inventa un mensaje genérico.
- *
- * 🔴 **Se relee al recuperar el FOCO, no sólo al montar** (mi propio pedido sobre el contrato original):
- * una tarjeta puede morir por una acción hecha en OTRA pantalla (cobrar una factura en Facturación), y
- * si esta pantalla sólo cargara al montar, el emprendedor volvería a ver una tarjeta que ya resolvió.
- *
- * 🔴 **`ScrollView`/`Pressable` de gesture-handler, no de react-native** — convención del repo (ver
- * `Tile.tsx`): la app cuelga de un `GestureHandlerRootView` y mezclar el responder system de RN con
- * RNGH hace que un tap corto quede sin dueño.
+ * 🔴 **Se relee al recuperar el FOCO, no sólo al montar:** una tarjeta puede morir por una acción hecha en
+ * OTRA pantalla (cobrar una factura en Facturación, moverla en Tu día), y si esta pantalla sólo cargara al
+ * montar, el emprendedor volvería a ver una tarjeta que ya resolvió.
  */
-
-type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
-
-const OPCIONES_SOLAPA: readonly { valor: IdSolapa; etiqueta: string }[] = [
-  { valor: 'para_hoy', etiqueta: 'Para hoy' },
-  { valor: 'haciendo', etiqueta: 'Haciendo' },
-  // `id` es `hecha` (singular, confirmado backend PR#96); el TÍTULO visible sí es plural.
-  { valor: 'hecha', etiqueta: 'Hechas' },
-];
-
-/**
- * Las solapas con su contador pegado al rótulo («Para hoy 3» · «Haciendo 1» · «Hechas»), como el
- * `.segb` del prototipo (`index.html:2490`). «Hechas» no lleva número —es historia, no pendiente— y un
- * contador en 0 no se dibuja: «Haciendo 0» no informa nada que el vacío de la solapa no diga.
- */
-function Solapas({
-  activa,
-  onCambiar,
-  conteos = {},
-}: {
-  activa: IdSolapa;
-  onCambiar: (id: IdSolapa) => void;
-  conteos?: Partial<Record<IdSolapa, number>>;
-}) {
-  const tema = useTema();
-  return (
-    <View style={styles.solapas} testID="midia-solapas">
-      {OPCIONES_SOLAPA.map((o) => {
-        const seleccionada = o.valor === activa;
-        return (
-          <Pressable
-            key={o.valor}
-            testID={`midia-solapa-${o.valor}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: seleccionada }}
-            onPress={() => onCambiar(o.valor)}
-            style={pressableStyle(styles.solapaPresionable)}
-          >
-            <View style={[styles.solapa, { borderColor: seleccionada ? tema.color.acento : tema.color.borde }]}>
-              <Text
-                style={{
-                  color: seleccionada ? tema.color.acento : tema.color.textoTenue,
-                  fontFamily: tema.fuente.uiMedium,
-                  fontSize: tema.tipo.base,
-                }}
-              >
-                {o.valor !== 'hecha' && (conteos[o.valor] ?? 0) > 0 ? `${o.etiqueta} ${conteos[o.valor]}` : o.etiqueta}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-/**
- * Los chips de categoría del prototipo. Filtran la solapa activa; **«Todo» es el default y no
- * filtra**.
- *
- * Filtran por `t.categoria`, que decide el detector del backend (BL-J5, K-06) — la vista no deduce
- * nada. Con un backend previo al campo (ninguna tarjeta trae categoría) no se dibujan: un chip que
- * filtra a vacío mentiría.
- */
-function ChipsCategoria({
-  activa,
-  onCambiar,
-  tablero,
-}: {
-  activa: CategoriaTarjeta;
-  onCambiar: (c: CategoriaTarjeta) => void;
-  tablero: TableroMiDia | null;
-}) {
-  const tema = useTema();
-  if (!hayCategorias(tablero)) return null;
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chips}
-      testID="midia-chips"
-    >
-      {CATEGORIAS.map((c) => {
-        const seleccionada = c === activa;
-        return (
-          <Pressable
-            key={c}
-            testID={`midia-chip-${c}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: seleccionada }}
-            onPress={() => onCambiar(c)}
-            style={pressableStyle(undefined)}
-          >
-            {/* Borde y texto, SIN relleno: son atajos para mirar, no decisiones. Con fill competirían
-                con los botones de acción de las tarjetas, que sí ejecutan algo (Decisión B: la
-                terracota marca lo que hace algo al tocarlo). */}
-            <View
-              style={[
-                styles.chip,
-                { borderColor: seleccionada ? tema.color.acento : tema.color.borde },
-              ]}
-            >
-              <Text
-                style={{
-                  color: seleccionada ? tema.color.acento : tema.color.textoTenue,
-                  fontFamily: tema.fuente.uiMedium,
-                  fontSize: tema.tipo.chico,
-                }}
-              >
-                {ETIQUETA_CATEGORIA_TARJETA[c]}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-/** El contador del prototipo: «3 para hoy · 1 en curso · 1 crítico». */
-function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
-  const tema = useTema();
-  if (tablero == null) return null;
-  const cuenta = (id: IdSolapa) => tablero.solapas.find((s) => s.id === id)?.tarjetas.length ?? 0;
-  const paraHoy = cuenta('para_hoy');
-  const enCurso = cuenta('haciendo');
-  const criticas = tarjetasCriticas(tablero).length;
-  if (paraHoy === 0 && enCurso === 0) return null;
-
-  return (
-    <Text
-      testID="midia-contador"
-      style={{
-        color: tema.color.textoTenue,
-        fontSize: tema.tipo.chico,
-        paddingHorizontal: 16,
-        paddingTop: 8,
-      }}
-    >
-      {paraHoy} para hoy · {enCurso} en curso{criticas > 0 ? ` · ${criticas} crítico${criticas === 1 ? '' : 's'}` : ''}
-    </Text>
-  );
-}
-
-/**
- * El banner de alerta crítica (`.alerta` del prototipo): arriba de las solapas porque es transversal a
- * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
- * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
- */
-function BannerCritico({
-  tablero,
-  onAccion,
-}: {
-  tablero: TableroMiDia | null;
-  /** Recibe la tarjeta: a dónde lleva lo decide su `destino` (H5b), no el banner. */
-  onAccion?: (tarjeta: TarjetaMiDia) => void;
-}) {
-  const tema = useTema();
-  const criticas = tarjetasCriticas(tablero);
-  if (criticas.length === 0) return null;
-  return (
-    <View
-      testID="midia-alerta"
-      accessibilityRole="alert"
-      style={[styles.alerta, { backgroundColor: tema.color.bloque, borderRadius: tema.radio.lg }]}
-    >
-      {criticas.map((t) => (
-        <View key={t.id} testID={`midia-alerta-${t.id}`} style={styles.alertaItem}>
-          <Text style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-            {t.texto}
-          </Text>
-          {t.verbo != null && (
-            <Pressable
-              testID={`midia-alerta-${t.id}-accion`}
-              accessibilityRole="button"
-              accessibilityLabel={t.verbo}
-              // Sin `onAccion` (quien monta no sabe a dónde llevar) la píldora queda como rótulo: un botón
-              // que no hace nada es peor que un rótulo — DEVICE15 H5 lo midió `clickable=false`.
-              disabled={onAccion == null}
-              onPress={() => onAccion?.(t)}
-              hitSlop={10}
-              style={[
-                styles.alertaAccion,
-                { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo },
-              ]}
-            >
-              <Text style={{ color: tema.color.bloqueApoyo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                {t.verbo}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** A qué solapa avanza cada una, y cómo se llama la acción. `hecha` no tiene entrada: es terminal, no
- *  hay "siguiente" — sólo queda la acción de borrar. */
-const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }>> = {
-  para_hoy: { estado: 'haciendo', etiqueta: 'Empezar' },
-  haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
-};
 
 export interface PantallaMiDiaProps {
-  /**
-   * `true` cuando Mi día se monta como **la base de la app** y no como un glass encima del
-   * escritorio (Ola 4). Cambia una sola cosa: el chrome. Como base no lleva `MarcoGlass` —no hay
-   * "Volver" desde la pantalla a la que se vuelve— y en su lugar va el encabezado propio, con el
-   * wordmark y el avatar, que es la única puerta a Ajustes.
-   *
-   * 🔴 **El cuerpo es EL MISMO en los dos casos, a propósito.** La ruta `/midia` sigue viva porque
-   * las tarjetas de actividad y los enlaces internos la usan; si la base y la ruta tuvieran cuerpos
-   * distintos, cada arreglo habría que hacerlo dos veces y la segunda copia se olvidaría.
-   */
-  comoPortada?: boolean;
-  /** Tocar el avatar. Sólo se usa con `comoPortada`; la navegación la cablea el shell. */
+  /** Tocar el avatar, la única puerta a Ajustes. La navegación la cablea el shell. */
   onAjustes?: () => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
   onAgenda?: () => void;
+  /** SM-I1: abre Tu día. La cablea el shell (`empujarUnaVez`). */
+  onVerTablero?: () => void;
   /**
    * H5b — abre la pantalla a la que apunta `destino` (la conexión, el comprobante, AFIP: ver
    * `rutaDeDestino`). Recibe la ruta YA resuelta; a qué pantalla de la app corresponde lo decide el
-   * shell (`hrefDeRuta` + `empujarUnaVez`). Sin él, o con un `destino` ausente/desconocido, la acción
-   * crítica cae a `onAjustes` y la de `presentacion` queda como rótulo.
+   * shell (`hrefDeRuta` + `empujarUnaVez`). Sin él la acción de `presentacion` queda como rótulo.
    */
   onDestino?: (ruta: RutaDestino) => void;
   /**
    * `hitl (a)` — el puente tarjeta → chat (C-D5 Opción A). Tocar el verbo de una tarjeta detectada lleva su
    * aviso al chat principal, **sembrado en el composer**. Lo cablea el shell, porque el chat vive en la
-   * misma pantalla que la base. Sin él (la ruta `/midia` como glass: el chat queda detrás de otra capa) el
-   * verbo sigue siendo el rótulo de siempre: un botón que no lleva a ningún lado es peor que un rótulo.
+   * misma pantalla que la base.
    */
   onAvisoAlChat?: (aviso: AvisoAlChat) => void;
   /**
@@ -335,93 +76,77 @@ export interface PantallaMiDiaProps {
   cierreDeAviso?: { tarjetaId: string; n: number } | null;
 }
 
+/** La hora de la sección «Ahora». */
+function horaActual(): string {
+  const ahora = new Date();
+  return `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+}
+
 /**
- * El alta **a mano** de una tarjeta de Mi dia, gemelo de
- * `apps/copiloto-web/src/modules/midia/MidiaScreen.tsx`.
- *
- * Por que existe: `POST /mi-dia/tarjetas` esta en el backend desde siempre y `crearTarjetaMiDia`
- * en el cliente compartido (`miDia.ts:240`), pero **ninguna pantalla lo llamaba** -- la capacidad
- * estaba escrita y muerta (ficha SM-E3). Y esta misma pantalla ya se lo prometia al emprendedor:
- * la nota que cierra la lista dice *«Las que anotaste vos las moves vos»* cuando no habia con que
- * anotarlas.
- *
- * La tarjeta manual nace en `para_hoy` (`mi_dia_tarjeta_store.py:123` no fija estado: cae al
- * default de la tabla), asi que al crear se salta a esa solapa -- si no, el emprendedor toca
- * «Agregar» parado en «Haciendo» y no ve aparecer nada.
- *
- * El error va por `Alert`, el mismo camino que `avanzar` y `borrar` de esta pantalla: un segundo
- * lugar donde mirar errores es el que nadie mira.
+ * Se relee sola: la pantalla base queda abierta horas, y un «Ahora 16:12» a las 16:40 es un dato falso.
+ * Cada 15 s y no cada 60: el timer no arranca alineado al minuto. Si la hora es la misma, React no redibuja.
  */
-function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
+function useHoraActual(): string {
+  const [hora, setHora] = useState(horaActual);
+  useEffect(() => {
+    const id = setInterval(() => setHora(horaActual()), 15_000);
+    return () => clearInterval(id);
+  }, []);
+  return hora;
+}
+
+/** El rótulo de sección del prototipo (`.sec`): título, un dato al lado y, a la derecha, su puerta. */
+function Seccion({
+  titulo,
+  dato,
+  enlace,
+}: {
+  titulo: string;
+  dato?: { texto: string; testID: string };
+  enlace?: { texto: string; testID: string; onPress: () => void };
+}) {
   const tema = useTema();
-  const [texto, setTexto] = useState('');
-  const [guardando, setGuardando] = useState(false);
-  const vacio = texto.trim() === '';
-  // El teclado tapaba el botón aunque el campo se revelara: se revela el grupo campo + «Agregar».
-  const refGrupo = useRef<View>(null);
-
-  async function agregar() {
-    if (vacio || guardando) return;
-    setGuardando(true);
-    try {
-      const res = await crearTarjetaMiDia(texto.trim());
-      if (res.status === 'ok') {
-        setTexto('');
-        onCreada();
-        return;
-      }
-      // El motivo del backend se muestra TAL CUAL: es el unico que dice que corregir.
-      if (res.status === 'texto_vacio') {
-        Alert.alert('No se pudo anotar la tarjeta', res.motivo);
-        return;
-      }
-      Alert.alert('No se pudo anotar la tarjeta', 'Proba de nuevo en un momento.');
-    } catch {
-      Alert.alert('No se pudo anotar la tarjeta', 'Proba de nuevo en un momento.');
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   return (
-    <View ref={refGrupo} collapsable={false} style={{ gap: tema.espacio.sm, paddingHorizontal: 16 }} testID="midia-alta">
-      <CampoTexto
-        etiqueta="Anotar algo para hoy"
-        revelarJunto={refGrupo}
-        testID="midia-alta-texto"
-        valor={texto}
-        onChange={setTexto}
-        placeholder="Llamar al proveedor"
-      />
-      <FilaBotones
-        testID="midia-alta-acciones"
-        compacto
-        botones={[{
-          etiqueta: 'Agregar',
-          onPress: () => { void agregar(); },
-          variante: 'primario',
-          deshabilitado: vacio || guardando,
-          testID: 'midia-alta-enviar',
-        }]}
-      />
+    <View style={styles.seccion}>
+      <View style={styles.seccionTitulo}>
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>{titulo}</Text>
+        {dato != null && (
+          <Text testID={dato.testID} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            {dato.texto}
+          </Text>
+        )}
+      </View>
+      {enlace != null && (
+        <Pressable
+          testID={enlace.testID}
+          accessibilityRole="button"
+          accessibilityLabel={enlace.texto}
+          onPress={enlace.onPress}
+          hitSlop={8}
+          style={pressableStyle(undefined, PRESS_FADE)}
+        >
+          <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
+            {enlace.texto} ›
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
 export function PantallaMiDia({
-  comoPortada = false,
   onAjustes,
   onAgenda,
+  onVerTablero,
   onDestino,
   onAvisoAlChat,
   cierreDeAviso = null,
 }: PantallaMiDiaProps = {}) {
+  const hora = useHoraActual();
   const tema = useTema();
-  const [estado, setEstado] = useState<EstadoLista>('cargando');
-  const [tablero, setTablero] = useState<TableroMiDia | null>(null);
-  const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
-  const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
-  const [expandida, setExpandida] = useState<string | null>(null);
+  const { estado, tablero, cargar, borrar } = useTableroMiDia();
+  // `undefined`: no tocó nada, va abierta la primera. `null`: cerró la que estaba abierta.
+  const [expandida, setExpandida] = useState<string | null | undefined>(undefined);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
   const [portada, setPortada] = useState<Portada | null>(null);
@@ -432,21 +157,6 @@ export function PantallaMiDia({
   // `/mi-dia/calendario` no trae (ver `CalendarioMiDia`). `null` si el catálogo no responde.
   const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const vivo = useRef(true);
-
-  const cargar = useCallback(async () => {
-    try {
-      const res = await leerTablero();
-      if (!vivo.current) return;
-      if (res.status === 'ok') {
-        setTablero(res.tablero);
-        setEstado('ok');
-        return;
-      }
-      setEstado('no_disponible');
-    } catch {
-      if (vivo.current) setEstado('no_disponible');
-    }
-  }, []);
 
   // Panel aparte, independiente del Kanban (contrato CAL1 §3): un calendario caído no puede tapar
   // ni bloquear el tablero, así que carga y degrada en su propio estado, nunca comparte `estado`.
@@ -495,14 +205,13 @@ export function PantallaMiDia({
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
-      void cargar();
       void cargarCalendario();
       void cargarPortada();
       void cargarSaludConexiones();
       return () => {
         vivo.current = false;
       };
-    }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]),
+    }, [cargarCalendario, cargarPortada, cargarSaludConexiones]),
   );
 
   // a.5: el cierre del ciclo. Un `n` ya atendido no se repite (un re-render con el mismo cierre no manda
@@ -521,101 +230,73 @@ export function PantallaMiDia({
     })();
   }, [cierreDeAviso, cargar]);
 
-  async function avanzar(t: TarjetaMiDia) {
-    const siguiente = SIGUIENTE[solapaActiva];
-    if (siguiente == null) return;
-    const res = await cambiarEstadoTarjetaMiDia(t.id, siguiente.estado);
-    if (res.status === 'ok') {
-      void cargar();
-      return;
-    }
-    if (res.status === 'estado_invalido') {
-      Alert.alert('No se pudo mover la tarjeta', res.motivo);
-      return;
-    }
-    Alert.alert('No se pudo mover la tarjeta', 'Probá de nuevo en un momento.');
-  }
+  const paraHoy = tablero?.solapas.find((s) => s.id === 'para_hoy')?.tarjetas ?? [];
+  const abierta = expandida === undefined ? (paraHoy[0]?.id ?? null) : expandida;
 
-  async function borrar(t: TarjetaMiDia) {
-    const res = await borrarTarjetaMiDia(t.id);
-    if (res.status === 'ok') {
-      void cargar();
-      return;
-    }
-    Alert.alert('No se pudo borrar la tarjeta', 'Probá de nuevo en un momento.');
-  }
-
-  const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
-  const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
-
-  const cuerpo = (
-      // 🔴 UN solo scroll para TODA la pantalla (DEVICE15 `tablero`, «viewport útil ≈120 dp»): antes el
-      // encabezado (portada + aviso + resumen + banner + solapas) era fijo y sólo la lista scrolleaba, y con un
-      // aviso crítico quedaban ~1,5 tarjetas a la vista. Ahora el encabezado se va con el dedo.
+  return (
+    <View style={styles.portadaRaiz} testID="pantalla-midia">
+      {/* 🔴 UN solo scroll para TODA la pantalla (DEVICE15 `tablero`, «viewport útil ≈120 dp»): lo único fijo
+          arriba es el asidero del panel, que es el control del gesto y no un dato. */}
       <ScrollFormulario style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
-        {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
-            dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
-            sería peor que la ausencia. */}
-        {portada != null && <PortadaNegocio portada={portada} />}
+        <View style={styles.encabezadoPortada}>
+          <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
+        </View>
 
-        <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
-
-        {/* AGCAID: con la conexión CAÍDA no hay agenda que mostrar -- mismo criterio que la web
-            (MidiaScreen.tsx). Con `nunca_conectado` sigue visible. */}
-        {estadoCalendario === 'ok' && onAgenda != null && estadoGoogleCalendar !== 'caido' && (
-          <Pressable
-            testID="midia-ver-agenda"
-            accessibilityRole="button"
-            accessibilityLabel="Ver agenda"
-            onPress={onAgenda}
-            style={styles.verAgenda}
-            hitSlop={8}
+        {/* La tarjeta de cabecera (`.stack`, `index.html:102`): blanca, detrás del bloque negro, y asoma con
+            el wordmark y la fecha, así los números quedan fechados dentro del objeto que los muestra. La
+            portada no se dibuja si no cargó —Mi día sigue sirviendo sin ella—, y la cabecera sí. */}
+        <View style={styles.pila}>
+          <View
+            testID="midia-cabecera"
+            style={[
+              styles.cabecera,
+              portada == null && styles.cabeceraSola,
+              { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.lg },
+            ]}
           >
-            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-              Ver agenda
+            <Text
+              testID="midia-wordmark"
+              style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}
+            >
+              Odobi
             </Text>
-          </Pressable>
+            {/* BL-W11 fila 4a: fecha de hoy, sin hora. */}
+            <Text testID="midia-fecha" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              {fechaDeHoyMidia()}
+            </Text>
+          </View>
+          {portada != null && <PortadaNegocio portada={portada} />}
+        </View>
+
+        {/* Un calendario que no está listo (o que falló) se omite entero, rótulo incluido: no compite por
+            atención con lo que sí tiene evidencia detrás. */}
+        {estadoCalendario === 'ok' && (
+          <>
+            <Seccion
+              titulo="Ahora"
+              dato={{ texto: hora, testID: 'midia-hora' }}
+              // AGCAID: con la conexión CAÍDA no hay agenda que mostrar -- mismo criterio que la web
+              // (MidiaScreen.tsx). Con `nunca_conectado` sigue visible.
+              enlace={
+                onAgenda != null && estadoGoogleCalendar !== 'caido'
+                  ? { texto: 'Ver agenda', testID: 'midia-ver-agenda', onPress: onAgenda }
+                  : undefined
+              }
+            />
+            <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
+          </>
         )}
 
-        <ContadorTablero tablero={tablero} />
-
-        {/* 🔴 La píldora del banner lleva a Ajustes: es donde se resuelven las dos reglas críticas
-            («Reconectala en Ajustes → Apps» · «Renovarlo» en ARCA) y lo único que `PantallaMiDia` ya
-            sabe abrir sin inventar una tabla regla→ruta que el contrato no define. Un destino más fino
-            necesita que el backend mande `destino` en la tarjeta (ver el `pedido_` de DEVICE15 H5). */}
-        <BannerCritico
-          tablero={tablero}
-          // H5b: lleva a donde dice `destino`; sin destino conocido, a Ajustes (lo de antes). Sin
-          // ninguno de los dos callbacks la píldora queda como rótulo (ver `BannerCritico`).
-          onAccion={
-            onAjustes != null || onDestino != null
-              ? (t) => {
-                  const ruta = rutaDeDestino(t.destino);
-                  if (ruta != null && onDestino != null) onDestino(ruta);
-                  else onAjustes?.();
-                }
+        {/* El rótulo queda SIEMPRE, también vacío o sin cargar (`index.html:3739`): la puerta al tablero no
+            puede depender de que haya algo para hoy, porque ahí también se anota. */}
+        <Seccion
+          titulo="Para hoy"
+          dato={
+            paraHoy.length > 0
+              ? { texto: `${paraHoy.length} ${paraHoy.length === 1 ? 'cosa' : 'cosas'}`, testID: 'midia-para-hoy-cuenta' }
               : undefined
           }
-        />
-
-        <Solapas
-          activa={solapaActiva}
-          onCambiar={setSolapaActiva}
-          conteos={{
-            para_hoy: tablero?.solapas.find((s) => s.id === 'para_hoy')?.tarjetas.length ?? 0,
-            haciendo: tablero?.solapas.find((s) => s.id === 'haciendo')?.tarjetas.length ?? 0,
-          }}
-        />
-
-        <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
-
-        {/* SM-E3: anotar a mano. Arriba de la lista, no al final: lo que se anota se anota antes de
-            repasar el dia, y al final de una lista larga nadie lo encuentra. */}
-        <AltaTarjeta
-          onCreada={() => {
-            setSolapaActiva('para_hoy');
-            void cargar();
-          }}
+          enlace={onVerTablero != null ? { texto: 'Ver tablero', testID: 'midia-ver-tablero', onPress: onVerTablero } : undefined}
         />
 
         {estado === 'cargando' && (
@@ -635,101 +316,35 @@ export function PantallaMiDia({
           </View>
         )}
 
-        {estado === 'ok' && (
-          <>
-            {tarjetas.length === 0 && categoria !== 'todo' && (
-              <View style={styles.centro}>
-                {/* Vacío POR EL FILTRO, no por el día: decirlo evita que un chip mal elegido se lea
-                    como «no tengo nada pendiente». Sin ilustración — este vacío no se celebra. */}
-                <EstadoVacio
-                  testID="midia-vacio-filtro"
-                  titulo={`Nada en ${ETIQUETA_CATEGORIA_TARJETA[categoria]} por acá.`}
-                  cuerpo="Tocá «Todo» para ver el resto."
-                />
-              </View>
-            )}
+        {estado === 'ok' && paraHoy.length === 0 && (
+          <View style={styles.centro}>
+            {/* El vacío es una buena noticia y la ilustración la celebra. */}
+            <EstadoVacio
+              testID="midia-vacio"
+              ilustracion
+              titulo="Nada urgente por hoy."
+              cuerpo="Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame."
+            />
+          </View>
+        )}
 
-            {tarjetas.length === 0 && categoria === 'todo' && (
-              <View style={styles.centro}>
-                {/* La taza va SÓLO en «Para hoy» sin pendientes: ahí el vacío es una buena
-                    noticia y la ilustración la celebra. En las otras solapas el vacío es
-                    «todavía no hay nada acá», que no se celebra. */}
-                {solapaActiva === 'para_hoy' ? (
-                  <EstadoVacio
-                    testID="midia-vacio"
-                    ilustracion
-                    titulo="Nada urgente por hoy."
-                    cuerpo="Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame."
-                  />
-                ) : (
-                  <EstadoVacio testID="midia-vacio" titulo="No hay tarjetas acá todavía." />
-                )}
-              </View>
-            )}
-
-            {tarjetas.length > 0 && (
-              <View style={styles.lista} testID="midia-lista">
-                {tarjetas.map((t) => (
-                  <TarjetaMiDiaRow
-                    key={t.id}
-                    tarjeta={t}
-                    expandida={expandida === t.id}
-                    etiquetaAvanzar={SIGUIENTE[solapaActiva]?.etiqueta ?? null}
-                    onPress={() => setExpandida((prev) => (prev === t.id ? null : t.id))}
-                    onAvanzar={() => void avanzar(t)}
-                    onBorrar={() => void borrar(t)}
-                    // §C: la acción de `presentacion` rutea por `rutaDeDestino` TAL CUAL. Sin handler (o con
-                    // un `tipo` que esta versión no conoce) queda como rótulo — nunca cae a Ajustes por su
-                    // cuenta: acá no hay una pantalla «por defecto» que no sea adivinar.
-                    onAccion={onDestino}
-                    onAviso={onAvisoAlChat}
-                  />
-                ))}
-                {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo. */}
-                <Text testID="midia-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingTop: 4 }}>
-                  Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.
-                </Text>
-              </View>
-            )}
-          </>
+        {estado === 'ok' && paraHoy.length > 0 && (
+          <View style={styles.lista} testID="midia-para-hoy">
+            {paraHoy.map((t) => (
+              <TarjetaMiDiaRow
+                key={t.id}
+                tarjeta={t}
+                expandida={abierta === t.id}
+                onPress={() => setExpandida(abierta === t.id ? null : t.id)}
+                onAccion={onDestino}
+                onAviso={onAvisoAlChat}
+                onBorrar={() => void borrar(t.id)}
+              />
+            ))}
+          </View>
         )}
       </ScrollFormulario>
-  );
-
-  if (!comoPortada) {
-    return (
-      <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
-        {cuerpo}
-      </MarcoGlass>
-    );
-  }
-
-  return (
-    // 🔴 SM-E3 obs. 3: la portada NO vive dentro de `MarcoGlass`, que es quien le pone este
-    // `KeyboardAvoidingView` a las funciones con campos. Sin él el teclado se dibuja ENCIMA sin achicar
-    // la ventana (documed lo midió en este mismo teléfono, `ChatView.tsx:207`): «Anotar algo para hoy» y
-    // «Agregar» quedaban tapados y el emprendedor escribía a ciegas. Las dos mitades son necesarias: este
-    // contenedor se achica y `ScrollFormulario` (arriba) revela el campo enfocado.
-    <KeyboardAvoidingView behavior="padding" style={styles.portadaRaiz} testID="pantalla-midia">
-      {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
-          ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
-      <View style={styles.encabezadoPortada}>
-        <View>
-          <Text
-            testID="midia-wordmark"
-            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
-          >
-            Odobi
-          </Text>
-          {/* BL-W11 fila 4a: fecha de hoy, sin hora — bajo el wordmark, no compite con él. */}
-          <Text testID="midia-fecha" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {fechaDeHoyMidia()}
-          </Text>
-        </View>
-        <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
-      </View>
-      {cuerpo}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -759,309 +374,92 @@ function PanelCalendario({
   // omite en silencio, mismo criterio que el resto de los paneles "no disponible" del escritorio.
   if (estado !== 'ok' || calendario == null) return null;
 
-  if (!calendario.conectado) {
-    if (estadoConexion === 'caido') {
+  const contenido = () => {
+    if (!calendario.conectado) {
+      return estadoConexion === 'caido' ? (
+        <Text testID="midia-calendario-caida" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
+          tus eventos de hoy.
+        </Text>
+      ) : (
+        <Text testID="midia-calendario-no-conectado" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
+        </Text>
+      );
+    }
+    if (calendario.eventos.length === 0) {
       return (
-        <View style={styles.calendario} testID="midia-calendario-caida">
-          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
-            tus eventos de hoy.
-          </Text>
-        </View>
+        <Text testID="midia-calendario-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          Sin eventos en tu calendario hoy.
+        </Text>
       );
     }
     return (
-      <View style={styles.calendario} testID="midia-calendario-no-conectado">
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
-        </Text>
+      <View testID="midia-calendario">
+        {calendario.eventos.map((ev: EventoCalendario, i: number) => {
+          const hora = horaDeEvento(ev.inicioCrudo);
+          return (
+            <View
+              key={ev.id}
+              style={[styles.calendarioEvento, i > 0 && { borderTopWidth: 1, borderTopColor: tema.color.borde }]}
+              testID={`midia-calendario-evento-${ev.id}`}
+            >
+              <Text style={[styles.calendarioHora, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>{hora ?? ''}</Text>
+              <Text
+                style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, flexShrink: 1 }}
+                numberOfLines={1}
+              >
+                {ev.titulo}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     );
-  }
-
-  if (calendario.eventos.length === 0) {
-    return (
-      <View style={styles.calendario} testID="midia-calendario-vacio">
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Sin eventos en tu calendario hoy.</Text>
-      </View>
-    );
-  }
+  };
 
   return (
-    <View style={styles.calendario} testID="midia-calendario">
-      {calendario.eventos.map((ev: EventoCalendario) => {
-        const hora = horaDeEvento(ev.inicioCrudo);
-        return (
-          <View key={ev.id} style={styles.calendarioEvento} testID={`midia-calendario-evento-${ev.id}`}>
-            {hora != null && (
-              <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                {hora}
-              </Text>
-            )}
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flexShrink: 1 }} numberOfLines={1}>
-              {ev.titulo}
-            </Text>
-          </View>
-        );
-      })}
+    <View style={[styles.calendario, { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md }]}>
+      {contenido()}
     </View>
   );
 }
 
-function TarjetaMiDiaRow({
-  tarjeta,
-  expandida,
-  etiquetaAvanzar,
-  onPress,
-  onAvanzar,
-  onBorrar,
-  onAccion,
-  onAviso,
-}: {
-  tarjeta: TarjetaMiDia;
-  expandida: boolean;
-  /** `null` en la solapa "hecha": no hay siguiente, sólo se puede borrar. */
-  etiquetaAvanzar: string | null;
-  onPress: () => void;
-  onAvanzar: () => void;
-  onBorrar: () => void;
-  /** A dónde lleva la acción de `presentacion`, ya resuelta por `rutaDeDestino`. Sin ella, rótulo. */
-  onAccion?: (ruta: RutaDestino) => void;
-  /** El puente al chat (`hitl a`). Sin él, o en una tarjeta sin puente (manual), el verbo es rótulo. */
-  onAviso?: (aviso: AvisoAlChat) => void;
-}) {
-  const tema = useTema();
-  const swipeableRef = useRef<SwipeableMethods>(null);
-  // Filas clave/valor como los `.kv` del prototipo (pantalla `#tablero`, `index.html:2493-2495`: «Monto ·
-  // $180.000», «Enviado · 18 de julio»). El rótulo y el valor los decide la REGLA y llegan ya formateados en
-  // `presentacion.kv`: la app no arma la tabla regla→campo (contrato H12/DETALLEKV §2; era la tabla fija
-  // `Monto`/`Fecha` leyendo `datos.monto`/`datos.fecha`, que ninguna regla escribe — H12). Por eso la tarjeta
-  // ya NO lee `monto`/`fecha`: el campo no existe en `TarjetaMiDia` y un test lo cuida.
-  // Sin `presentacion` (producción hoy) sólo queda la fila «Cliente».
-  const presentacion = tarjeta.presentacion ?? null;
-  const prosa = presentacion?.prosa ?? null;
-  const kvBackend = presentacion?.kv.map((f) => ({ clave: f.k, valor: f.v })) ?? [];
-  // «Cliente» se queda mientras `texto` no nombre la entidad (H12 §5: si se saca con el `texto` genérico, el
-  // nombre del cliente desaparece de la tarjeta). Sale en el PR en que el titular lo diga, no antes. Si el
-  // backend ya mandó una kv «Cliente», no se duplica.
-  const hayClienteEnKv = kvBackend.some((f) => f.clave.trim().toLowerCase() === 'cliente');
-  const conCliente: { clave: string; valor: string }[] =
-    tarjeta.cliente != null && !hayClienteEnKv
-      ? [{ clave: 'Cliente', valor: tarjeta.cliente }, ...kvBackend]
-      : kvBackend;
-  // `caida`: el kv «Se cayó · hora» del prototipo (`index.html:3658`) lo emite el BACKEND en `presentacion.kv`
-  // (`mi_dia_presentacion.py`) y se pinta como cualquier otra fila. La app NO lo arma: leer `datos.desde` acá
-  // era la tabla regla→campo que DETALLEKV §2 prohíbe, y post-deploy quedaba inalcanzable y verde
-  // (KVCAIDASALE, retirado 2026-10-14). Un test lo fija: `PantallaMiDia.test.tsx`, bloque «caida».
-  const detalle = conCliente;
-  const accion = presentacion?.accion ?? null;
-  const rutaAccion = accion != null ? rutaDeDestino(accion.destino) : null;
-  // `presupuesto` no abre una pantalla: la píldora lleva el aviso al chat (a.1). El verbo de la acción es lo
-  // que el emprendedor tocó, así que es el que se siembra («Acción: …»). Sin puente (manual, sin handler)
-  // la píldora queda como rótulo, igual que cualquier destino sin a dónde ir.
-  const accionAlChat = accion != null && llevaAlChat(accion.destino);
-  const avisoDeAccion =
-    accionAlChat && onAviso != null ? avisoAlChat({ ...tarjeta, verbo: accion.texto }) : null;
-  // El verbo se vuelve botón SÓLO cuando hay a dónde llevarlo: la `accion` de `presentacion` manda (ya
-  // tiene su destino); sin ella, el verbo lleva el aviso al chat. La tarjeta manual no tiene puente.
-  const aviso = accion == null && onAviso != null ? avisoAlChat(tarjeta) : null;
-  const chip = presentacion?.chip ?? null;
-  // `tono` reusa la escala de `criticidad`. Uno desconocido NO tiene color propio: se pinta neutro.
-  const colorChip =
-    chip?.tono === 'critico' ? tema.color.peligro : chip?.tono === 'pronto' ? tema.color.acentoTinta : tema.color.textoTenue;
-
-  // `opacity: progress` — Reanimated acepta un `SharedValue` directo en el style de `Animated.View`
-  // (no hace falta `useAnimatedStyle` para un caso de un solo campo). Mismo patrón que la referencia
-  // de la skill `swmansion-rn-gestures` (`swipeable-and-drawer.md`).
-  const acciones = (progress: SharedValue<number>) => (
-    <Animated.View style={[styles.accionesSwipe, { opacity: progress }]}>
-      {etiquetaAvanzar != null && (
-        <Pressable
-          testID={`midia-tarjeta-${tarjeta.id}-avanzar`}
-          accessibilityRole="button"
-          accessibilityLabel={etiquetaAvanzar}
-          onPress={() => {
-            swipeableRef.current?.close();
-            onAvanzar();
-          }}
-          style={[styles.botonSwipe, { backgroundColor: tema.color.acentoSuperficie }]}
-        >
-          <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-            {etiquetaAvanzar}
-          </Text>
-        </Pressable>
-      )}
-      <Pressable
-        testID={`midia-tarjeta-${tarjeta.id}-borrar`}
-        accessibilityRole="button"
-        accessibilityLabel="Borrar"
-        onPress={() => {
-          swipeableRef.current?.close();
-          onBorrar();
-        }}
-        style={[styles.botonSwipe, { backgroundColor: tema.color.peligro }]}
-      >
-        <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-          Borrar
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-
-  return (
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={acciones}
-      rightThreshold={40}
-      overshootFriction={8}
-      // 🔴 SIN wiring explícito contra el `Gesture.Pan()` de `MarcoGlass` (drag-down-para-cerrar): ese
-      // gesto vive DENTRO de `MarcoGlass` y no se expone como prop, así que no hay forma de pasárselo acá.
-      // Confío en la resolución de arena por defecto de RNGH (el hijo más profundo prueba primero; si el
-      // gesto no activa por dirección — el Pan del marco es vertical, este swipe es horizontal — cede al
-      // padre), el mismo patrón que ya funciona con el `ScrollView` vertical de esta lista. **NO
-      // verificado — es justo el ítem del DoD "el swipe no rompe el panel deslizable, en device".**
-    >
-      <Row
-        onPress={onPress}
-        testID={`midia-tarjeta-${tarjeta.id}`}
-        accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
-      >
-        {/* El tile de la categoría (`TileCategoria`): sin categoría decidida por el backend, no hay tile. */}
-        <View style={styles.cabTarjeta}>
-          <TileCategoria categoria={tarjeta.categoria} testID={`midia-tarjeta-${tarjeta.id}-tile`} />
-          <View style={styles.tarjeta}>
-            <Text
-              numberOfLines={expandida ? undefined : 2}
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
-            >
-              {tarjeta.texto}
-            </Text>
-            {expandida && prosa != null && (
-              <Text
-                testID={`midia-tarjeta-${tarjeta.id}-prosa`}
-                style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
-              >
-                {prosa}
-              </Text>
-            )}
-            {expandida && chip != null && (
-              <View
-                testID={`midia-tarjeta-${tarjeta.id}-chip`}
-                style={[styles.chipPresentacion, { borderColor: colorChip, borderRadius: tema.radio.completo }]}
-              >
-                <Text style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>{chip.texto}</Text>
-              </View>
-            )}
-            {expandida && accion != null && (
-              <Pressable
-                testID={`midia-tarjeta-${tarjeta.id}-accion`}
-                accessibilityRole="button"
-                accessibilityLabel={accion.texto}
-                // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
-                // que no hace nada es peor que un rótulo (DEVICE15 H5).
-                disabled={accionAlChat ? avisoDeAccion == null : rutaAccion == null || onAccion == null}
-                onPress={() => {
-                  if (accionAlChat) {
-                    if (avisoDeAccion != null) onAviso?.(avisoDeAccion);
-                    return;
-                  }
-                  if (rutaAccion != null) onAccion?.(rutaAccion);
-                }}
-                hitSlop={10}
-                style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
-              >
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                  {accion.texto}
-                </Text>
-              </Pressable>
-            )}
-            {expandida && accion == null && tarjeta.verbo != null && aviso != null && (
-              <Pressable
-                testID={`midia-tarjeta-${tarjeta.id}-verbo`}
-                accessibilityRole="button"
-                accessibilityLabel={tarjeta.verbo}
-                onPress={() => onAviso?.(aviso)}
-                hitSlop={10}
-                style={[styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }]}
-              >
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                  {tarjeta.verbo}
-                </Text>
-              </Pressable>
-            )}
-            {expandida && accion == null && tarjeta.verbo != null && aviso == null && (
-              <Text
-                testID={`midia-tarjeta-${tarjeta.id}-verbo`}
-                style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
-              >
-                {tarjeta.verbo}
-              </Text>
-            )}
-            {expandida && detalle.length > 0 && (
-              <View testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={styles.detalleKv}>
-                {detalle.map((f) => (
-                  <View key={f.clave} style={styles.filaKv}>
-                    <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{f.clave}</Text>
-                    <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico, flexShrink: 1, textAlign: 'right' }}>
-                      {f.valor}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      </Row>
-    </Swipeable>
-  );
-}
-
 const styles = StyleSheet.create({
-  // Como base, la pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para
-  // que el wordmark quede debajo del reloj sin pedirle safe-area a un componente que no la conoce.
+  // La pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para que el avatar quede
+  // debajo del reloj sin pedirle safe-area a un componente que no la conoce.
   portadaRaiz: { flex: 1, paddingTop: 58 },
-  encabezadoPortada: {
+  encabezadoPortada: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8 },
+  raiz: { flex: 1 },
+  raizContenido: { flexGrow: 1, paddingBottom: 120 },
+  // `.stack`: la cabecera mide lo que asoma (52) más un tramo que queda tapado por el bloque negro, para que
+  // su borde inferior no se vea recortado.
+  pila: { marginHorizontal: 16, paddingTop: 52 },
+  cabecera: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 104,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  cabeceraSola: { height: 52, position: 'relative', marginTop: -52 },
+  seccion: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 4,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
-  raiz: { flex: 1 },
-  raizContenido: { flexGrow: 1 },
-  calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
-  calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
-  verAgenda: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  alerta: { marginHorizontal: 16, marginTop: 12, padding: 16, gap: 12 },
-  alertaItem: { gap: 8, alignItems: 'flex-start' },
-  alertaAccion: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
-  solapaPresionable: { flexGrow: 1 },
-  solapa: {
-    minHeight: 0,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-  },
-  centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  lista: { gap: 8, padding: 16, paddingBottom: 120 },
-  cabTarjeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  tarjeta: { flex: 1, gap: 4 },
-  detalleKv: { gap: 4, paddingTop: 4 },
-  chipPresentacion: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  accionFila: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  filaKv: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  accionesSwipe: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
-  botonSwipe: {
-    height: '100%',
-    minWidth: 76,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
+  seccionTitulo: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  calendario: { marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 8 },
+  calendarioEvento: { flexDirection: 'row', gap: 12, alignItems: 'baseline', paddingVertical: 10 },
+  calendarioHora: { width: 42 },
+  centro: { alignItems: 'center', justifyContent: 'center', padding: 24 },
+  lista: { gap: 8, paddingHorizontal: 16 },
 });

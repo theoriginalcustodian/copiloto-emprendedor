@@ -1,9 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
+import { leerPerfilNegocio } from '@copiloto/core';
+
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaAjustes, type AjusteKey } from './PantallaAjustes';
+
+jest.mock('@copiloto/core', () => ({
+  ...jest.requireActual('@copiloto/core'),
+  leerPerfilNegocio: jest.fn(),
+}));
+const leerMock = leerPerfilNegocio as jest.Mock;
+
+beforeEach(() => leerMock.mockResolvedValue({ status: 'ok', perfil: null }));
 
 async function envolver(onAjuste?: (key: AjusteKey) => void) {
   return render(
@@ -114,5 +124,27 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     await envolver();
     await fireEvent.press(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
+  });
+});
+
+describe('SM-N9: encabezado con el nombre comercial', () => {
+  it('con nombre cargado lo muestra en la etiqueta del encabezado', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', perfil: { nombreComercial: 'El Galpón' } });
+    await envolver();
+    await waitFor(() => expect(screen.getByTestId('glass-etiqueta').props.children).toBe('El Galpón'));
+  });
+
+  it('sin nombre (emprendedor nuevo) no dibuja etiqueta ni hueco', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', perfil: { nombreComercial: '   ' } });
+    await envolver();
+    await waitFor(() => expect(leerMock).toHaveBeenCalled());
+    expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
+  });
+
+  it('sin perfil o con la lectura caída tampoco', async () => {
+    leerMock.mockRejectedValue(new Error('red'));
+    await envolver();
+    await waitFor(() => expect(leerMock).toHaveBeenCalled());
+    expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
   });
 });

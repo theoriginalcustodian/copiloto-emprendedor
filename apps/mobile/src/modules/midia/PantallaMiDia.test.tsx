@@ -1,20 +1,8 @@
 /**
- * `PantallaMiDia` — el tablero del detector proactivo: 3 solapas, tarjetas con `texto` redactado,
- * tap-para-expandir, swipe-para-mutar (avanzar/borrar).
+ * `PantallaMiDia` — la base: cabecera + portada, «Ahora · Ver agenda ›» y «Para hoy · N cosas · Ver tablero ›».
+ * Resume y no gestiona (SM-I1): lo de gestionar se prueba en `PantallaTuDia.test.tsx`.
  *
- * **`leerTablero()` mockeado** (endpoint vivo en device, no en jsdom). Se fija: (1) «todavía no está» ≠
- * «tablero vacío», (2) las 3 solapas están y arranca en "Para hoy" con `id` real (`hecha`, singular),
- * (3) cambiar de solapa muestra SU lista, (4) tap expande/contrae, (5) una solapa sin tarjetas se ve
- * vacía sin romper, (6) las acciones de swipe llaman la mutación correcta y relean el tablero.
- *
- * 🔴 **`ReanimatedSwipeable` se mockea a un passthrough que revela las acciones SIEMPRE** — mismo
- * criterio que el resto del repo con gestos de RNGH (`gate-jsdom-no-ve-gestos-tactiles`): jsdom no
- * puede ejercitar el drag horizontal real (ni siquiera el `GestureDetector` interno de la librería
- * reconstruye su cadena reanimated↔gesture-handler bajo el stub mínimo de `jest.setup.js` — intentarlo
- * es el "whack-a-mole" que ese mismo archivo advierte). Lo que SÍ se prueba acá, con jsdom, es el
- * WIRING: que tocar el botón revelado llama `cambiarEstadoTarjetaMiDia`/`borrarTarjetaMiDia` con los
- * argumentos correctos y que el tablero se relee después. Que el SWIPE en sí (el gesto físico) revela
- * esas acciones sin romper el panel/scroll es DoD de device (contrato §5), no de este archivo.
+ * **`leerTablero()` mockeado** (endpoint vivo en device, no en jsdom).
  *
  * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
  */
@@ -52,7 +40,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 });
 
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, within, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react-native';
 
 import { Alert } from 'react-native';
 
@@ -137,51 +125,7 @@ beforeEach(() => {
   listarCatalogoMock.mockResolvedValue({ status: 'ok', servicios: [] });
 });
 
-describe('PantallaMiDia — las 3 solapas', () => {
-  it('arranca en "Para hoy" y pinta su tarjeta', async () => {
-    await montar();
 
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-    expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeTruthy();
-    expect(screen.queryByTestId('midia-tarjeta-t2')).toBeNull();
-  });
-
-  it('tocar la solapa "hecha" (id singular) muestra SU lista, no la anterior', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-solapa-hecha'));
-
-    expect(screen.getByTestId('midia-tarjeta-t2')).toBeTruthy();
-    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
-  });
-
-  it('una solapa sin tarjetas ("Haciendo") se ve vacía, no rota', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-solapa-haciendo'));
-
-    expect(screen.getByTestId('midia-vacio')).toBeTruthy();
-    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
-  });
-});
-
-describe('PantallaMiDia — expandir', () => {
-  it('🔴 tocar la tarjeta muestra el detalle (cliente); tocar de nuevo lo contrae', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
-    expect(screen.getByTestId('midia-tarjeta-t1-detalle')).toBeTruthy();
-    expect(screen.getByText(/Panadería del barrio/)).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
-    expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
-  });
-});
 
 function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
   return {
@@ -199,286 +143,33 @@ function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
   };
 }
 
-describe('PantallaMiDia — tile de color por categoría (`detalle`, index.html:2493)', () => {
-  it('cada tarjeta con categoría decidida por el backend lleva SU tile, con el pastel de su categoría', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('c', { categoria: 'cobros' }),
-        tarjetaDe('a', { categoria: 'arca' }),
-        tarjetaDe('p', { categoria: 'presupuestos' }),
-        tarjetaDe('t', { categoria: 'tuyas' }),
-      ]),
-    });
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-c')).toBeTruthy());
 
-    const fondos = ['c', 'a', 'p', 't'].map((id) => {
-      const estilo = screen.getByTestId(`midia-tarjeta-${id}-tile`).props.style;
-      return Array.isArray(estilo) ? Object.assign({}, ...estilo.flat()).backgroundColor : estilo.backgroundColor;
-    });
-    // Cuatro categorías, cuatro colores DISTINTOS: un tile del mismo color en todas no distingue nada.
-    expect(new Set(fondos).size).toBe(4);
-  });
 
-  it('sin categoría —o con una que esta versión no conoce— NO hay tile: no se inventa una identidad', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([tarjetaDe('n', { categoria: null }), tarjetaDe('x', { categoria: 'categoria-del-futuro' })]),
-    });
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-n')).toBeTruthy());
 
-    expect(screen.queryByTestId('midia-tarjeta-n-tile')).toBeNull();
-    expect(screen.queryByTestId('midia-tarjeta-x-tile')).toBeNull();
-  });
-});
 
-describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)', () => {
-  it('los chips filtran por `t.categoria`; categoria null sólo aparece en «Todo»', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([tarjetaDe('a', { categoria: 'arca' }), tarjetaDe('n', { categoria: null })]),
-    });
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy());
 
-    await fireEvent.press(screen.getByTestId('midia-chip-arca'));
-    expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy();
-    expect(screen.queryByTestId('midia-tarjeta-n')).toBeNull();
 
-    await fireEvent.press(screen.getByTestId('midia-chip-todo'));
-    expect(screen.getByTestId('midia-tarjeta-n')).toBeTruthy();
-  });
 
-  it('🔴 backend previo (ninguna tarjeta con categoría): no se dibujan chips', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-    expect(screen.queryByTestId('midia-chips')).toBeNull();
-  });
+// PROTO4DEPS §C — `presentacion`: chip, filas clave/valor y acción derivados por el backend. Fail-soft:
+// sin ella (producción hoy) la tarjeta se pinta como siempre. El caso VACÍO va primero.
 
-  it('banner crítico: con una tarjeta `critico` aparece con su verbo y el contador la cuenta', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('c', { criticidad: 'critico', verbo: 'Renovarlo', texto: 'Tu certificado vence en 12 días' }),
-        tarjetaDe('p'),
-      ]),
-    });
-    await montar();
+// hitl (a) — el puente tarjeta → chat (C-D5 Opción A, texto sembrado). El caso SIN puente va primero:
+// el verbo inerte de siempre es lo que ve quien monta la pantalla sin handler (la ruta `/midia` glass).
 
-    await waitFor(() => expect(screen.getByTestId('midia-alerta')).toBeTruthy());
-    expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
-    expect(screen.queryByTestId('midia-alerta-p')).toBeNull();
-    expect(screen.getByText('Renovarlo')).toBeTruthy();
-    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
-  });
+// hitl (a.5) — el ciclo cierra donde empezó (`index.html:2779-2781`). La fuente de verdad es el SERVIDOR: el
+// mock de abajo lo modela (un PATCH cambia lo que la siguiente lectura devuelve), así que «no vuelve a
+// ofrecerse» no depende de ningún flag local de la pantalla.
 
-  it('🔴 DEVICE15 H5: la píldora del banner es un botón y lleva a Ajustes (antes era un rótulo inerte)', async () => {
-    const onAjustes = jest.fn();
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail' }),
-      ]),
-    });
-    await montar({ onAjustes });
+// caida — «Se cayó · hora» (`index.html:3658`) lo emite el BACKEND en `presentacion.kv`; la app NO lo arma.
+// KVCAIDASALE (2026-10-14): armarlo acá desde `datos.desde` era la tabla regla→campo que DETALLEKV §2 prohíbe y,
+// post-deploy, un camino inalcanzable y verde. Este bloque es lo que lo pone ROJO si alguien lo reintroduce.
 
-    await waitFor(() => expect(screen.getByTestId('midia-alerta-c-accion')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-alerta-c-accion'));
-
-    expect(onAjustes).toHaveBeenCalledTimes(1);
-  });
-
-  describe('H5b — «Reconectar» rutea por `destino.tipo` (contrato H5B-destino-en-la-tarjeta-critica)', () => {
-    async function montarBannerCon(destino: unknown, props: ComponentProps<typeof PantallaMiDia> = {}) {
-      leerMock.mockResolvedValue({
-        status: 'ok',
-        tablero: tableroCon([
-          tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail', destino }),
-        ]),
-      });
-      await montar(props);
-      await waitFor(() => expect(screen.getByTestId('midia-alerta-c-accion')).toBeTruthy());
-      await fireEvent.press(screen.getByTestId('midia-alerta-c-accion'));
-    }
-
-    it('destino conexion con id → abre ESA conexión (y no Ajustes)', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'conexion', id: 'gmail', connectPath: '/composio/connect?service=gmail' }, { onAjustes, onDestino });
-      expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'gmail' });
-      expect(onAjustes).not.toHaveBeenCalled();
-    });
-
-    it('destino comprobante con id de fila → abre ESE comprobante (y no Ajustes)', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'comprobante', id: '412', connectPath: null }, { onAjustes, onDestino });
-      expect(onDestino).toHaveBeenCalledWith({ tipo: 'comprobante', comprobanteId: '412' });
-      expect(onAjustes).not.toHaveBeenCalled();
-    });
-
-    it('destino certificado → abre la pantalla de AFIP (y no Ajustes)', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'certificado', id: '20123456786:homologacion', connectPath: null }, { onAjustes, onDestino });
-      expect(onDestino).toHaveBeenCalledWith({ tipo: 'certificado' });
-      expect(onAjustes).not.toHaveBeenCalled();
-    });
-
-    it('🔴 trabajo (sin pantalla donde abrir) → cae a Ajustes: no hay un destino que no sea adivinar', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'trabajo', id: 'presupuesto:7', connectPath: null }, { onAjustes, onDestino });
-      expect(onDestino).not.toHaveBeenCalled();
-      expect(onAjustes).toHaveBeenCalledTimes(1);
-    });
-
-    it('🔴 tipo DESCONOCIDO (valor inventado) → cae a Ajustes, sin crash ni pantalla en blanco', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'lo-que-sea', id: 'gmail', connectPath: null }, { onAjustes, onDestino });
-      expect(onDestino).not.toHaveBeenCalled();
-      expect(onAjustes).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
-    });
-
-    it('destino ausente (backend previo) → Ajustes', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon(undefined, { onAjustes, onDestino });
-      expect(onDestino).not.toHaveBeenCalled();
-      expect(onAjustes).toHaveBeenCalledTimes(1);
-    });
-
-    it('conexion SIN id → Ajustes (no hay a qué conexión ir)', async () => {
-      const onAjustes = jest.fn();
-      const onDestino = jest.fn();
-      await montarBannerCon({ tipo: 'conexion', id: null, connectPath: null }, { onAjustes, onDestino });
-      expect(onDestino).not.toHaveBeenCalled();
-      expect(onAjustes).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('🔴 `tablero`: encabezado, banner, solapas y lista viven en UN solo scroll (no queda una lista de ~1,5 tarjetas)', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('c', { criticidad: 'critico', verbo: 'Reconectar', texto: 'Se me cayó la conexión con Gmail' }),
-        tarjetaDe('p'),
-      ]),
-    });
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-scroll')).toBeTruthy());
-    const scroll = within(screen.getByTestId('midia-scroll'));
-    expect(scroll.getByTestId('midia-contador')).toBeTruthy();
-    expect(scroll.getByTestId('midia-alerta')).toBeTruthy();
-    expect(scroll.getByTestId('midia-solapas')).toBeTruthy();
-    expect(scroll.getByTestId('midia-lista')).toBeTruthy();
-  });
-
-  it('sin tarjeta crítica no hay banner', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-    expect(screen.queryByTestId('midia-alerta')).toBeNull();
-  });
-
-  it('el verbo se muestra en la tarjeta expandida', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-    expect(screen.queryByTestId('midia-tarjeta-t1-verbo')).toBeNull();
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
-
-    expect(screen.getByTestId('midia-tarjeta-t1-verbo')).toHaveTextContent('Revisar el trabajo');
-  });
-});
-
-describe('PantallaMiDia — swipe (wiring, no el gesto físico)', () => {
-  it('en "Para hoy" ofrece "Empezar" (→ haciendo) y "Borrar"; "Empezar" llama la mutación y relee', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    expect(screen.getByTestId('midia-tarjeta-t1-avanzar')).toBeTruthy();
-    expect(screen.getByTestId('midia-tarjeta-t1-borrar')).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1-avanzar'));
-
-    expect(cambiarEstadoMock).toHaveBeenCalledWith('t1', 'haciendo');
-    await waitFor(() => expect(leerMock).toHaveBeenCalledTimes(2));
-  });
-
-  it('en "Hechas" (terminal) NO ofrece "avanzar" — sólo "Borrar"', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-solapa-hecha'));
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t2')).toBeTruthy());
-
-    expect(screen.queryByTestId('midia-tarjeta-t2-avanzar')).toBeNull();
-    expect(screen.getByTestId('midia-tarjeta-t2-borrar')).toBeTruthy();
-  });
-
-  it('"Borrar" llama borrarTarjetaMiDia y relee el tablero', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1-borrar'));
-
-    expect(borrarMock).toHaveBeenCalledWith('t1');
-    await waitFor(() => expect(leerMock).toHaveBeenCalledTimes(2));
-  });
-
-  it('🔴 `estado_invalido` NO se disfraza de éxito — no relee, y el tablero queda como estaba', async () => {
-    cambiarEstadoMock.mockResolvedValue({ status: 'estado_invalido', motivo: 'ese estado no existe' });
-
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1-avanzar'));
-
-    expect(cambiarEstadoMock).toHaveBeenCalled();
-    expect(leerMock).toHaveBeenCalledTimes(1);
-    // La tarjeta sigue ahí: no se asumió el movimiento sin confirmación del backend.
-    expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy();
-  });
-});
-
-describe('PantallaMiDia — lo que NO inventa', () => {
-  it('🔴 sin endpoint desplegado lo DICE, y no dibuja lista', async () => {
-    leerMock.mockResolvedValue({ status: 'no_disponible' });
-
-    await montar();
-
-    await waitFor(() => expect(screen.getByTestId('midia-no-disponible')).toBeTruthy());
-    expect(screen.queryByTestId('midia-lista')).toBeNull();
-  });
-
-  it('🔴 tablero REAL sin ninguna tarjeta dice «nada pendiente» — NO se confunde con no_disponible', async () => {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: { solapas: TABLERO.solapas.map((s) => ({ ...s, tarjetas: [] })) },
-    });
-
-    await montar();
-
-    await waitFor(() => expect(screen.getByTestId('midia-vacio')).toBeTruthy());
-    expect(screen.queryByTestId('midia-no-disponible')).toBeNull();
-    // Mapeo `vacio` (index.html:1853-1854): título con punto y el cuerpo del prototipo.
-    expect(screen.getByTestId('midia-vacio-titulo').props.children).toBe('Nada urgente por hoy.');
-    expect(screen.getByTestId('midia-vacio-cuerpo').props.children).toBe(
-      'Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.',
-    );
-  });
-
-  it('🔴 CONTROL — encuentra una tarjeta presente y NO una ausente', async () => {
-    await montar();
-
-    await waitFor(() => expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeTruthy());
-    expect(screen.queryByText('Tarjeta Que No Existe')).toBeNull();
-  });
-});
+/**
+ * El alta **a mano** (SM-E3) -- gemelo de
+ * `apps/copiloto-web/src/modules/midia/MidiaScreen.test.tsx`. `POST /mi-dia/tarjetas` y
+ * `crearTarjetaMiDia` existian desde siempre y **ninguna pantalla los llamaba**: estos casos son lo
+ * que impide que la capacidad vuelva a quedar muerta.
+ */
 
 describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', () => {
   it('sin conectar: invita a conectar, no rompe el resto de la pantalla', async () => {
@@ -559,7 +250,7 @@ describe('PantallaMiDia — fecha de hoy en la portada (BL-W11 fila 4a)', () => 
   it('la portada (home) muestra la fecha de hoy, sin hora, junto al wordmark', async () => {
     render(
       <ThemeProvider>
-        <PantallaMiDia comoPortada />
+        <PantallaMiDia />
       </ThemeProvider>,
     );
 
@@ -625,254 +316,6 @@ describe('PantallaMiDia — entrada a la agenda (BL-J13)', () => {
   });
 });
 
-// PROTO4DEPS §C — `presentacion`: chip, filas clave/valor y acción derivados por el backend. Fail-soft:
-// sin ella (producción hoy) la tarjeta se pinta como siempre. El caso VACÍO va primero.
-describe('PantallaMiDia — PROTO4DEPS §C (presentacion de la tarjeta expandida)', () => {
-  const PRESENTACION = {
-    chip: { texto: '31 días sin respuesta', tono: 'pronto' },
-    kv: [
-      { k: 'Monto', v: '$84.000' },
-      { k: 'Enviado', v: '12/09' },
-    ],
-    accion: { texto: 'Reclamar el pago', destino: { tipo: 'conexion', id: 'mercadopago', connectPath: null } },
-  };
-
-  async function expandir(over: Record<string, unknown>, props: ComponentProps<typeof PantallaMiDia> = {}) {
-    leerMock.mockResolvedValue({ status: 'ok', tablero: tableroCon([tarjetaDe('p', { verbo: 'Reclamar', ...over })]) });
-    await montar(props);
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p'));
-  }
-
-  it('🔴 SIN presentacion: nada nuevo — el verbo inerte de siempre, sin chip ni píldora', async () => {
-    await expandir({});
-    expect(screen.getByTestId('midia-tarjeta-p-verbo')).toHaveTextContent('Reclamar');
-    expect(screen.queryByTestId('midia-tarjeta-p-chip')).toBeNull();
-    expect(screen.queryByTestId('midia-tarjeta-p-accion')).toBeNull();
-  });
-
-  it('con presentacion: chip, filas del backend (con SU rótulo) y la píldora en lugar del verbo inerte', async () => {
-    await expandir({ presentacion: PRESENTACION, cliente: 'Panadería' });
-    expect(screen.getByTestId('midia-tarjeta-p-chip')).toHaveTextContent('31 días sin respuesta');
-    const detalle = screen.getByTestId('midia-tarjeta-p-detalle');
-    expect(detalle).toHaveTextContent(/Monto/);
-    expect(detalle).toHaveTextContent(/\$84\.000/);
-    expect(detalle).toHaveTextContent(/Enviado/);
-    expect(detalle).toHaveTextContent(/12\/09/);
-    // H12 §5: «Cliente» se queda mientras `texto` no nombre la entidad — el nombre no desaparece al llegar la `presentacion`.
-    expect(detalle).toHaveTextContent(/Panadería/);
-    expect(screen.getByTestId('midia-tarjeta-p-accion')).toHaveTextContent('Reclamar el pago');
-    expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
-  });
-
-  it('🔴 H12: la PROSA se pinta (ahí vive el importe de la factura) junto a las kv, y sin `presentacion` no hay prosa', async () => {
-    await expandir({
-      presentacion: {
-        prosa: 'Emitida hace 22 días. Son $120.000 que ya facturaste y todavía no entraron.',
-        kv: [{ k: 'Factura', v: 'A-0034' }, { k: 'Emitida', v: '22 de septiembre' }],
-      },
-    });
-    expect(screen.getByTestId('midia-tarjeta-p-prosa')).toHaveTextContent(/Son \$120\.000 que ya facturaste/);
-    expect(screen.getByTestId('midia-tarjeta-p-detalle')).toHaveTextContent(/A-0034/);
-  });
-
-  it('🔴 H12: una tarjeta de SÓLO prosa (regla «trabajo», kv vacía) pinta la prosa y ninguna fila', async () => {
-    await expandir({ presentacion: { prosa: 'Pusiste $20.000 y no registraste que te pagaran.', kv: [] } });
-    expect(screen.getByTestId('midia-tarjeta-p-prosa')).toHaveTextContent(/no registraste que te pagaran/);
-    expect(screen.queryByTestId('midia-tarjeta-p-detalle')).toBeNull();
-  });
-
-  it('🔴 H12 control de ceguera: la pantalla NO lee `tarjeta.monto`/`tarjeta.fecha` (ninguna regla los escribe)', () => {
-    // Si la tabla fija Monto/Fecha vuelve en un merge, esas filas quedan escritas e inalcanzables y nadie lo
-    // ve (ya pasó). El campo tampoco existe en `TarjetaMiDia`, así que el tipo también lo frena.
-    const fuente: string = require('fs').readFileSync(require('path').join(__dirname, 'PantallaMiDia.tsx'), 'utf8');
-    expect(fuente).not.toMatch(/tarjeta\.(monto|fecha)\b/);
-  });
-
-  it('la píldora rutea por `rutaDeDestino` TAL CUAL: conexion con id → abre ESA conexión', async () => {
-    const onDestino = jest.fn();
-    await expandir({ presentacion: PRESENTACION }, { onDestino });
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-accion'));
-    expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'mercadopago' });
-  });
-
-  it('la píldora de una factura impaga abre el detalle de ESE comprobante', async () => {
-    const onDestino = jest.fn();
-    await expandir(
-      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'comprobante', id: '412', connectPath: null } } } },
-      { onDestino },
-    );
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    expect(pildora.props.accessibilityState?.disabled).toBeFalsy();
-    await fireEvent.press(pildora);
-    expect(onDestino).toHaveBeenCalledWith({ tipo: 'comprobante', comprobanteId: '412' });
-  });
-
-  it('la píldora del certificado por vencer abre la pantalla de AFIP', async () => {
-    const onDestino = jest.fn();
-    await expandir(
-      { presentacion: { ...PRESENTACION, accion: { texto: 'Renovarlo', destino: { tipo: 'certificado', id: '20123456786:produccion', connectPath: null } } } },
-      { onDestino },
-    );
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-accion'));
-    expect(onDestino).toHaveBeenCalledWith({ tipo: 'certificado' });
-  });
-
-  it('🔴 un comprobante con id NO numérico queda como rótulo: abrir «borrador nuevo» sería peor que no navegar', async () => {
-    const onDestino = jest.fn();
-    await expandir(
-      { presentacion: { ...PRESENTACION, accion: { texto: 'Reclamar el pago', destino: { tipo: 'comprobante', id: 'A-0034', connectPath: null } } } },
-      { onDestino },
-    );
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    await fireEvent.press(pildora);
-    expect(onDestino).not.toHaveBeenCalled();
-    expect(pildora.props.accessibilityState?.disabled).toBe(true);
-  });
-
-  it('🔴 un `tipo` sin pantalla donde abrir (trabajo) deja la píldora como RÓTULO: no navega ni cae a Ajustes', async () => {
-    const onDestino = jest.fn();
-    const onAjustes = jest.fn();
-    await expandir(
-      { presentacion: { ...PRESENTACION, accion: { texto: 'Revisarlo', destino: { tipo: 'trabajo', id: 'presupuesto:7', connectPath: null } } } },
-      { onDestino, onAjustes },
-    );
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    expect(pildora).toHaveTextContent('Revisarlo');
-    await fireEvent.press(pildora);
-    expect(onDestino).not.toHaveBeenCalled();
-    expect(onAjustes).not.toHaveBeenCalled();
-    expect(pildora.props.accessibilityState?.disabled).toBe(true);
-  });
-
-  it('un `tono` desconocido pinta el chip igual (sin color propio) y no rompe', async () => {
-    await expandir({ presentacion: { chip: { texto: 'Nuevo', tono: 'urgentisimo' }, kv: [], accion: null } });
-    expect(screen.getByTestId('midia-tarjeta-p-chip')).toHaveTextContent('Nuevo');
-  });
-
-  it('presentacion sin kv: las filas legadas siguen (no se pierde el detalle que ya había)', async () => {
-    await expandir({ presentacion: { chip: { texto: 'x', tono: null }, kv: [], accion: null }, cliente: 'Panadería' });
-    expect(screen.getByTestId('midia-tarjeta-p-detalle')).toHaveTextContent(/Panadería/);
-    // Sin `accion` de presentacion, el verbo inerte sigue.
-    expect(screen.getByTestId('midia-tarjeta-p-verbo')).toBeTruthy();
-  });
-});
-
-// hitl (a) — el puente tarjeta → chat (C-D5 Opción A, texto sembrado). El caso SIN puente va primero:
-// el verbo inerte de siempre es lo que ve quien monta la pantalla sin handler (la ruta `/midia` glass).
-describe('PantallaMiDia — hitl (a): el verbo lleva el aviso al chat', () => {
-  async function expandirVerbo(over: Record<string, unknown>, props: ComponentProps<typeof PantallaMiDia> = {}) {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('p', {
-          texto: 'Hace 12 días que le mandaste el presupuesto a Lucía y no te respondió.',
-          regla: 'presupuestos_enfriandose',
-          verbo: 'Mandarle un recordatorio',
-          categoria: 'presupuestos',
-          cliente: 'Lucía',
-          ...over,
-        }),
-      ]),
-    });
-    await montar(props);
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-p')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p'));
-  }
-
-  it('🔴 SIN `onAvisoAlChat` el verbo sigue siendo rótulo: no es un botón que no lleva a ningún lado', async () => {
-    await expandirVerbo({});
-    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
-    expect(verbo).toHaveTextContent('Mandarle un recordatorio');
-    expect(verbo.props.accessibilityRole).not.toBe('button');
-  });
-
-  it('con `onAvisoAlChat` el verbo es un botón, y tocarlo entrega el aviso sembrado + el chip del prototipo', async () => {
-    const onAvisoAlChat = jest.fn();
-    await expandirVerbo({}, { onAvisoAlChat });
-
-    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
-    expect(verbo.props.accessibilityRole).toBe('button');
-    await fireEvent.press(verbo);
-
-    expect(onAvisoAlChat).toHaveBeenCalledTimes(1);
-    const aviso = onAvisoAlChat.mock.calls[0][0];
-    expect(aviso.contexto).toBe('Desde tu aviso · Presupuestos · Lucía');
-    expect(aviso.texto).toContain('Hace 12 días que le mandaste el presupuesto a Lucía');
-    expect(aviso.texto).toContain('Mandarle un recordatorio');
-  });
-
-  it('🔴 la tarjeta MANUAL no tiene puente aunque haya handler: su verbo («Borrar») no es un pedido al agente', async () => {
-    const onAvisoAlChat = jest.fn();
-    await expandirVerbo({ regla: null, verbo: 'Borrar', categoria: 'tuyas', cliente: null }, { onAvisoAlChat });
-
-    const verbo = screen.getByTestId('midia-tarjeta-p-verbo');
-    expect(verbo.props.accessibilityRole).not.toBe('button');
-    await fireEvent.press(verbo);
-    expect(onAvisoAlChat).not.toHaveBeenCalled();
-  });
-
-  it('si la tarjeta trae `accion` (con su destino) manda la píldora: el verbo no se duplica como segundo botón', async () => {
-    const onAvisoAlChat = jest.fn();
-    await expandirVerbo(
-      { presentacion: { chip: null, kv: [], accion: { texto: 'Reclamar el pago', destino: { tipo: 'conexion', id: 'gmail', connectPath: null } } } },
-      { onAvisoAlChat },
-    );
-    expect(screen.getByTestId('midia-tarjeta-p-accion')).toBeTruthy();
-    expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
-  });
-
-  const ACCION_PRESUPUESTO = {
-    chip: null,
-    kv: [],
-    accion: { texto: 'Mandarle un recordatorio', destino: { tipo: 'presupuesto', id: 'p-1', connectPath: null } },
-  };
-
-  it('`presupuesto` con `accion`: la píldora es un botón y entrega el aviso de ESA tarjeta (con su `tarjetaId`)', async () => {
-    const onAvisoAlChat = jest.fn();
-    const onDestino = jest.fn();
-    await expandirVerbo({ presentacion: ACCION_PRESUPUESTO }, { onAvisoAlChat, onDestino });
-
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    expect(pildora.props.accessibilityState?.disabled).toBeFalsy();
-    await fireEvent.press(pildora);
-
-    expect(onDestino).not.toHaveBeenCalled();
-    expect(onAvisoAlChat).toHaveBeenCalledTimes(1);
-    const aviso = onAvisoAlChat.mock.calls[0][0];
-    expect(aviso.tarjetaId).toBe('p');
-    expect(aviso.contexto).toBe('Desde tu aviso · Presupuestos · Lucía');
-    expect(aviso.texto).toContain('Hace 12 días que le mandaste el presupuesto a Lucía');
-    expect(aviso.texto).toContain('Acción: Mandarle un recordatorio');
-  });
-
-  it('🔴 `presupuesto` SIN `onAvisoAlChat`: rótulo deshabilitado (no un botón que no lleva a ningún lado)', async () => {
-    await expandirVerbo({ presentacion: ACCION_PRESUPUESTO });
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    expect(pildora).toHaveTextContent('Mandarle un recordatorio');
-    expect(pildora.props.accessibilityState?.disabled).toBe(true);
-  });
-
-  it('🔴 `presupuesto` en una tarjeta SIN regla (manual): no hay puente aunque haya handler', async () => {
-    const onAvisoAlChat = jest.fn();
-    await expandirVerbo({ regla: null, presentacion: ACCION_PRESUPUESTO }, { onAvisoAlChat });
-    const pildora = screen.getByTestId('midia-tarjeta-p-accion');
-    await fireEvent.press(pildora);
-    expect(onAvisoAlChat).not.toHaveBeenCalled();
-    expect(pildora.props.accessibilityState?.disabled).toBe(true);
-  });
-
-  it('el chip no inventa cliente ni categoría: sin ellos queda «Desde tu aviso»', async () => {
-    const onAvisoAlChat = jest.fn();
-    await expandirVerbo({ categoria: null, cliente: null }, { onAvisoAlChat });
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-verbo'));
-    expect(onAvisoAlChat.mock.calls[0][0].contexto).toBe('Desde tu aviso');
-  });
-});
-
-// hitl (a.5) — el ciclo cierra donde empezó (`index.html:2779-2781`). La fuente de verdad es el SERVIDOR: el
-// mock de abajo lo modela (un PATCH cambia lo que la siguiente lectura devuelve), así que «no vuelve a
-// ofrecerse» no depende de ningún flag local de la pantalla.
 describe('PantallaMiDia — hitl (a.5): volver del chat con resultado cierra la tarjeta de origen', () => {
   function servidorConUnaTarjeta() {
     const estado: Record<string, string> = { p: 'pendiente' };
@@ -938,158 +381,142 @@ describe('PantallaMiDia — hitl (a.5): volver del chat con resultado cierra la 
   });
 });
 
-// caida — «Se cayó · hora» (`index.html:3658`) lo emite el BACKEND en `presentacion.kv`; la app NO lo arma.
-// KVCAIDASALE (2026-10-14): armarlo acá desde `datos.desde` era la tabla regla→campo que DETALLEKV §2 prohíbe y,
-// post-deploy, un camino inalcanzable y verde. Este bloque es lo que lo pone ROJO si alguien lo reintroduce.
-describe('PantallaMiDia — caida: «Se cayó» lo trae el backend en `presentacion.kv`, la app no lo arma', () => {
-  const hoyA = (h: number, m: number) => {
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d.toISOString();
-  };
+describe('PantallaMiDia — SM-I1: resume, no gestiona', () => {
+  const CRITICA = tarjetaDe('caida', {
+    texto: 'Se cortó la conexión con Mercado Pago.',
+    criticidad: 'critico',
+    presentacion: {
+      chip: null,
+      kv: [],
+      prosa: null,
+      accion: { texto: 'Reconectar', destino: { tipo: 'conexion', id: 'mercadopago' } },
+    },
+  } as never);
+  const conParaHoy = (tarjetas: readonly unknown[]) => ({
+    status: 'ok' as const,
+    tablero: {
+      solapas: [
+        { id: 'para_hoy' as const, titulo: 'Para hoy', tarjetas: tarjetas as never },
+        { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+        { id: 'hecha' as const, titulo: 'Hechas', tarjetas: [tarjetaDe('vieja', { texto: 'Una que ya terminó.' })] as never },
+      ],
+    },
+  });
 
-  async function expandirCaida(over: Record<string, unknown>) {
-    leerMock.mockResolvedValue({
-      status: 'ok',
-      tablero: tableroCon([
-        tarjetaDe('c', { regla: 'conexion_caida', texto: 'Mercado Pago está caído', verbo: 'Reconectar', ...over }),
-      ]),
-    });
+  it('la cabecera lleva el wordmark y la fecha aunque la portada no haya cargado', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-c')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-c'));
-    return screen.getByTestId('midia-tarjeta-c-detalle');
-  }
-
-  it('🔴 un instante en la tarjeta NO fabrica la fila «Se cayó» ni una hora (la app no arma el kv)', async () => {
-    // `desde` ya no existe en `TarjetaMiDia`: se lo inyecto crudo. Si alguien vuelve a leerlo para pintar
-    // «Se cayó», este `it` se pone rojo — es el mutante que se reintrodujo a mano para verificarlo.
-    const detalle = await expandirCaida({
-      desde: hoyA(9, 12),
-      presentacion: { chip: null, kv: [{ k: 'Servicio', v: 'Mercado Pago' }], accion: null },
-    });
-    // Control de ceguera: miró un detalle con filas (si estuviera vacío, los `not` pasarían solos).
-    expect(within(detalle).getByText('Servicio')).toBeTruthy();
-    expect(within(detalle).getByText('Mercado Pago')).toBeTruthy();
-    expect(detalle).not.toHaveTextContent(/Se cayó/);
-    expect(detalle).not.toHaveTextContent(/Hoy,/);
+    await waitFor(() => expect(screen.getByTestId('midia-cabecera')).toBeTruthy());
+    expect(within(screen.getByTestId('midia-cabecera')).getByTestId('midia-wordmark')).toBeTruthy();
+    expect(within(screen.getByTestId('midia-cabecera')).getByTestId('midia-fecha')).toBeTruthy();
   });
 
-  it('sin `presentacion` (backend previo) tampoco hay «Se cayó»: no hay hora que inventar', async () => {
-    const detalle = await expandirCaida({ desde: hoyA(9, 12), cliente: 'Mercado Pago' });
-    expect(within(detalle).getByText('Mercado Pago')).toBeTruthy(); // control: el detalle tiene su fila «Cliente»
-    expect(detalle).not.toHaveTextContent(/Se cayó/);
+  it('«Ahora» muestra la hora con «Ver agenda ›» al lado', async () => {
+    await montar({ onAgenda: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('midia-hora')).toBeTruthy());
+    expect(screen.getByTestId('midia-hora').props.children).toMatch(/^\d{2}:\d{2}$/);
+    expect(screen.getByText('Ahora')).toBeTruthy();
   });
 
-  it('lo que el backend manda en `presentacion.kv` se pinta tal cual y una sola vez', async () => {
-    const detalle = await expandirCaida({
-      presentacion: { chip: null, kv: [{ k: 'Se cayó', v: 'Hoy, 9:12' }], accion: null },
-    });
-    expect(within(detalle).getAllByText('Se cayó')).toHaveLength(1);
-    expect(detalle).toHaveTextContent(/Hoy, 9:12/);
-  });
-});
-
-/**
- * El alta **a mano** (SM-E3) -- gemelo de
- * `apps/copiloto-web/src/modules/midia/MidiaScreen.test.tsx`. `POST /mi-dia/tarjetas` y
- * `crearTarjetaMiDia` existian desde siempre y **ninguna pantalla los llamaba**: estos casos son lo
- * que impide que la capacidad vuelva a quedar muerta.
- */
-describe('PantallaMiDia — anotar una tarjeta a mano (SM-E3)', () => {
-  // ⚠️ El `TextInput` real de `CampoTexto` es `${testID}-input` (`CampoTexto.tsx:84`): el testID pelado
-  // es el View contenedor. La primera versión de estos casos tocaba el contenedor, así que `changeText`
-  // no cambiaba nada, el campo quedaba vacío y el botón deshabilitado -- los 4 rojos medían el
-  // silencio del instrumento, no la pantalla.
-  it('con el campo vacío no manda nada, y los espacios no cuentan como texto', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-alta-enviar')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-    expect(crearMock).not.toHaveBeenCalled();
-
-    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), '   ');
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-    expect(crearMock).not.toHaveBeenCalled();
+  it('🔴 la hora de «Ahora» no queda vieja con la pantalla abierta', async () => {
+    jest.useFakeTimers({ now: new Date(2026, 10, 2, 16, 12, 0) });
+    try {
+      await montar({ onAgenda: jest.fn() });
+      await waitFor(() => expect(screen.getByTestId('midia-hora').props.children).toBe('16:12'));
+      await act(async () => {
+        jest.advanceTimersByTime(60_000);
+      });
+      expect(screen.getByTestId('midia-hora').props.children).toBe('16:13');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
-  it('agrega la tarjeta con el texto sin blancos de borde y vuelve a leer el tablero', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
-    const lecturasAntes = leerMock.mock.calls.length;
-
-    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), '  Llamar al proveedor  ');
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-
-    await waitFor(() => expect(crearMock).toHaveBeenCalledWith('Llamar al proveedor'));
-    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturasAntes));
-    // El campo queda limpio: si no, el siguiente toque crea la misma tarjeta otra vez.
-    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input').props.value).toBe(''));
-  });
-
-  it('🔴 anotar parado en «Haciendo» vuelve a «Para hoy»: la tarjeta manual nace ahí', async () => {
+  it('un calendario `no_disponible` se lleva también el rótulo «Ahora»', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'no_disponible' });
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('midia-solapa-haciendo'));
-    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
-
-    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'Comprar bolsas');
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-
-    // Sin esto el emprendedor toca «Agregar» y no ve aparecer nada: la tarjeta existe, pero en otra
-    // solapa. Un alta que no se ve es indistinguible de un alta que falló.
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByText('Ahora')).toBeNull();
   });
 
-  it('🔴 texto vacío para el backend muestra SU motivo, no uno genérico nuestro', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    crearMock.mockResolvedValue({ status: 'texto_vacio', motivo: 'texto vacío' });
+  it('«Para hoy» cuenta en singular, y «Ver tablero ›» abre Tu día', async () => {
+    const onVerTablero = jest.fn();
+    await montar({ onVerTablero });
+    await waitFor(() => expect(screen.getByTestId('midia-para-hoy-cuenta').props.children).toBe('1 cosa'));
+    await fireEvent.press(screen.getByTestId('midia-ver-tablero'));
+    expect(onVerTablero).toHaveBeenCalledTimes(1);
+  });
+
+  it('«Para hoy» cuenta en plural', async () => {
+    leerMock.mockResolvedValue(conParaHoy([tarjetaDe('a'), tarjetaDe('b')]));
     await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
-
-    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'algo');
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('No se pudo anotar la tarjeta', 'texto vacío'));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(screen.getByTestId('midia-para-hoy-cuenta').props.children).toBe('2 cosas'));
   });
 
-  it('🔴 si el alta falla, lo que escribió NO se pierde', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    crearMock.mockResolvedValue({ status: 'no_disponible' });
+  it('🔴 el rótulo «Para hoy · Ver tablero» sigue con el día vacío: es la puerta para anotar', async () => {
+    leerMock.mockResolvedValue(conParaHoy([]));
+    await montar({ onVerTablero: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('midia-vacio')).toBeTruthy());
+    expect(screen.getByTestId('midia-ver-tablero')).toBeTruthy();
+    expect(screen.queryByTestId('midia-para-hoy-cuenta')).toBeNull();
+  });
+
+  it('🔴 el rótulo también sigue con el tablero caído', async () => {
+    leerMock.mockResolvedValue({ status: 'no_disponible' });
+    await montar({ onVerTablero: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('midia-no-disponible')).toBeTruthy());
+    expect(screen.getByTestId('midia-ver-tablero')).toBeTruthy();
+  });
+
+  it('sólo lista «Para hoy»: lo hecho vive en el tablero', async () => {
+    leerMock.mockResolvedValue(conParaHoy([tarjetaDe('a')]));
     await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
-
-    await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'Llamar al proveedor');
-    await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
-
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
-    // Limpiar el campo ante un fallo le borra el texto al emprendedor y encima le sugiere que anduvo.
-    expect(screen.getByTestId('midia-alta-texto-input').props.value).toBe('Llamar al proveedor');
-    alertSpy.mockRestore();
-  });
-});
-
-describe('PantallaMiDia — el teclado no tapa el alta (SM-E3 obs. 3)', () => {
-  // La portada (home) NO vive dentro de `MarcoGlass`, que es quien pone el `KeyboardAvoidingView` a las
-  // funciones con campos. Sin él el teclado se dibuja ENCIMA (documed lo midió en este mismo teléfono) y
-  // el campo «Anotar algo para hoy» y su botón quedan tapados: en device 15-10 sólo se veía el teclado.
-  // jsdom no dibuja un teclado: acá se afirma el CABLEADO (el contenedor que se achica y el scroll que
-  // revela el campo); que el campo quede visible es DoD de device.
-  it('🔴 como portada, la raíz es un KeyboardAvoidingView (mide su layout para achicarse con el teclado) y contiene el campo del alta', async () => {
-    await montar({ comoPortada: true });
-    await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
-
-    // RNTL 14 no expone `UNSAFE_getByType`: se reconoce al KAV por lo que sólo él le agrega a su `View`
-    // (el `onLayout` con el que mide su frame; la `View` pelada de antes no lo tenía).
-    const raiz = screen.getByTestId('pantalla-midia');
-    expect(typeof raiz.props.onLayout).toBe('function');
-    expect(within(raiz).getByTestId('midia-alta-texto-input')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy());
+    expect(screen.queryByTestId('midia-tarjeta-vieja')).toBeNull();
   });
 
-  it('el scroll deja pasar el primer toque con el teclado abierto (`handled`): «Agregar» responde al primer toque', async () => {
-    await montar({ comoPortada: true });
-    await waitFor(() => expect(screen.getByTestId('midia-scroll')).toBeTruthy());
-    expect(screen.getByTestId('midia-scroll').props.keyboardShouldPersistTaps).toBe('handled');
+  it('🔴 la primera arranca abierta y cerrarla se respeta', async () => {
+    leerMock.mockResolvedValue(conParaHoy([{ ...CRITICA }, tarjetaDe('b')]));
+    await montar({ onDestino: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-caida-accion')).toBeTruthy());
+    expect(screen.queryByTestId('midia-tarjeta-b-verbo')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-caida'));
+    expect(screen.queryByTestId('midia-tarjeta-caida-accion')).toBeNull();
+    // Lo que abre el emprendedor reemplaza a la primera.
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-caida'));
+    expect(screen.getByTestId('midia-tarjeta-caida-accion')).toBeTruthy();
+  });
+
+  it('🔴 lo crítico se actúa desde su tarjeta: sin banner, la acción lleva a su destino', async () => {
+    const onDestino = jest.fn();
+    leerMock.mockResolvedValue(conParaHoy([CRITICA]));
+    await montar({ onDestino });
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-caida-accion')).toBeTruthy());
+    expect(screen.queryByTestId('midia-alerta')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-caida-accion'));
+    expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'mercadopago' });
+  });
+
+  it('🔴 la tarjeta anotada se borra desde su botón y el tablero se relee: el verbo no queda como texto muerto', async () => {
+    jest.mocked(borrarTarjetaMiDia).mockResolvedValue({ status: 'ok' });
+    leerMock.mockResolvedValue(conParaHoy([tarjetaDe('anotada', { texto: 'Pasar por el banco', regla: null, verbo: 'Borrar', categoria: 'tuyas', criticidad: 'sin_plazo' } as never)]));
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-anotada-verbo')).toBeTruthy());
+    const lecturas = leerMock.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada-verbo'));
+    expect(borrarTarjetaMiDia).toHaveBeenCalledWith('anotada');
+    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturas));
+  });
+
+  it('🔴 lo de gestionar NO está acá: ni solapas, ni chips, ni alta, ni swipe', async () => {
+    leerMock.mockResolvedValue(conParaHoy([tarjetaDe('a', { categoria: 'presupuestos' } as never)]));
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy());
+    expect(screen.queryByTestId('midia-solapas')).toBeNull();
+    expect(screen.queryByTestId('midia-chips')).toBeNull();
+    expect(screen.queryByTestId('midia-alta')).toBeNull();
+    expect(screen.queryByTestId('midia-tarjeta-a-borrar')).toBeNull();
+    expect(screen.queryByTestId('midia-tarjeta-a-avanzar')).toBeNull();
   });
 });

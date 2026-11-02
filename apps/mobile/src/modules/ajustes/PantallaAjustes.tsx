@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+
+import { leerPerfilNegocio } from '@copiloto/core';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
@@ -121,8 +124,8 @@ function agruparEnFilas(
  *  - la entrada sigue siendo un TILE (ícono + etiqueta) y no una fila con subtítulo («Qué vendés, a
  *    quién y tu horario»): la grilla de vidrio es la decisión de diseño de esta pantalla, y en 3
  *    columnas no entra una segunda línea sin recortarla;
- *  - el encabezado «El Galpón · Martín Cairo» necesita el nombre comercial (`perfilNegocio`, una
- *    lectura aparte) y el nombre de la PERSONA, que `/me` no trae: no se fabrica.
+ *  - del encabezado «El Galpón · Martín Cairo» se muestra el nombre comercial (`perfilNegocio`, SM-N9);
+ *    el nombre de la PERSONA no, porque `/me` no lo trae: no se fabrica.
  */
 const GRUPOS_AJUSTES: readonly { id: string; rotulo: string; keys: readonly AjusteKey[] }[] = [
   { id: 'negocio', rotulo: 'Tu negocio', keys: ['perfilNegocio', 'facturacionAfip', 'apps'] },
@@ -142,14 +145,41 @@ export interface PantallaAjustesProps {
 }
 
 /**
+ * El nombre comercial para el encabezado (SM-N9). Es una lectura aparte (`perfilNegocio`), pero el dato
+ * EXISTE: el motivo para no pintarlo era de costo, no de imposibilidad. Sin nombre cargado
+ * (`nombreComercial === ''`, el emprendedor nuevo), ausente o con la lectura caída devuelve `undefined`:
+ * `MarcoGlass` no dibuja la etiqueta y el encabezado queda como antes, sin hueco ni texto de relleno.
+ */
+function useNombreComercial(): string | undefined {
+  const [nombre, setNombre] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let vivo = true;
+    void leerPerfilNegocio()
+      .then((res) => {
+        if (!vivo || res.status !== 'ok' || !res.perfil) return;
+        const n = res.perfil.nombreComercial.trim();
+        if (n !== '') setNombre(n);
+      })
+      .catch(() => {
+        // Secundario: un error de red no pinta cartel; el encabezado queda sin etiqueta.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  return nombre;
+}
+
+/**
  * Pantalla Ajustes -- grilla de iconos con las 5 entradas. Esta pantalla sólo cablea la navegación
  * (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
  */
 export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();
+  const nombreComercial = useNombreComercial();
 
   return (
-    <MarcoGlass titulo="Ajustes" icono="ajustes" testID="pantalla-ajustes">
+    <MarcoGlass titulo="Ajustes" icono="ajustes" etiqueta={nombreComercial} testID="pantalla-ajustes">
       {/* `flex:1` en el ScrollView MISMO (ver PantallaApps): con los rótulos de grupo la pantalla ya no
           entra en un teléfono chico y sin scroll lo que sobra se recorta sin aviso. */}
       <ScrollView style={styles.contenedor} contentContainerStyle={{ padding: tema.espacio.md }}>
