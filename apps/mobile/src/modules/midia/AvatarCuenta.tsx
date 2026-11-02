@@ -13,15 +13,26 @@
  * El punto entra por `avisa`: Mi día lo enciende cuando el catálogo trae ≥ 1 servicio `caido`
  * (K-09 / BL-J4). Si el catálogo no responde queda apagado: un punto que avisa de algo que no se
  * sabe es peor que ninguno.
+ *
+ * 🔴 **Tiene que leerse como botón aunque el negocio no tenga nombre (SM-N16).** El operador no lo
+ * encontraba: círculo del color del fondo, borde tenue y un `·` adentro. Por eso el aro lleva tinta medida
+ * contra el lienzo, más fuerte que el `--border` del mockup, y sin letra se dibuja el glifo de cuenta.
  */
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
+import { GlassIcon } from '../../theme/glass/GlassIcon';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+import type { Tokens } from '../../theme/tokens';
+
+/** El aro se mide contra el lienzo (`AvatarCuenta.test.tsx`): es lo que hace ver el botón. */
+export function tonoAvatar(tema: Tokens): { relleno: string; aro: string; tinta: string } {
+  return { relleno: tema.color.superficieAlta, aro: tema.color.acentoTinta, tinta: tema.color.texto };
+}
 
 export interface AvatarCuentaProps {
-  /** Qué se dibuja adentro: la inicial del negocio. Vacío o ausente → el signo neutro. */
+  /** Qué se dibuja adentro: la inicial del negocio. Vacío o ausente → el glifo de cuenta. */
   inicial?: string;
   /** Hay algo que mirar en Ajustes (una conexión caída, por ejemplo). Ver el docstring. */
   avisa?: boolean;
@@ -32,6 +43,7 @@ export interface AvatarCuentaProps {
 export function AvatarCuenta({ inicial, avisa = false, onPress, testID = 'avatar-cuenta' }: AvatarCuentaProps) {
   const tema = useTema();
   const letra = (inicial ?? '').trim().slice(0, 1).toUpperCase();
+  const tono = tonoAvatar(tema);
 
   return (
     <Pressable
@@ -43,13 +55,20 @@ export function AvatarCuenta({ inicial, avisa = false, onPress, testID = 'avatar
       onPress={onPress}
       style={pressableStyle(styles.zona)}
     >
-      <View style={[styles.circulo, { backgroundColor: tema.color.superficieAlta, borderColor: tema.color.borde }]}>
-        <Text
-          style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-          testID={`${testID}-inicial`}
-        >
-          {letra !== '' ? letra : '·'}
-        </Text>
+      <View
+        testID={`${testID}-circulo`}
+        style={[styles.circulo, { backgroundColor: tono.relleno, borderColor: tono.aro }]}
+      >
+        {letra !== '' ? (
+          <Text
+            style={{ color: tono.tinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+            testID={`${testID}-inicial`}
+          >
+            {letra}
+          </Text>
+        ) : (
+          <GlassIcon name="cuenta" size={20} color={tono.tinta} />
+        )}
       </View>
       {avisa && (
         <View
@@ -65,6 +84,6 @@ const styles = StyleSheet.create({
   // 44×44 de área tocable aunque el círculo mida 36: es el piso de target de WCAG 2.5.8, y acá pesa
   // más que en cualquier otro control porque no hay una segunda forma de llegar a Ajustes.
   zona: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  circulo: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  circulo: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   punto: { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 });

@@ -210,3 +210,39 @@ def test_composio_caido_no_trae_desde_aunque_mp_si_lo_tenga_la_clave_es_por_serv
     assert set(por_servicio) == {"mercadopago", "gmail"}
     assert "desde" in por_servicio["mercadopago"]
     assert "desde" not in por_servicio["gmail"]            # el instante de MP no se le presta a Gmail
+
+
+# ── SM-N18: sólo se avisa de lo que la app SOPORTA (un toolkit ajeno EXPIRED no crea tarjeta) ───────
+
+def test_N18_toolkit_ajeno_expired_no_es_caido_y_uno_soportado_si():
+    """LAS DOS mitades: con sólo la primera, «filtra bien» y «no avisa nunca» dan el mismo verde."""
+    from conexiones_salud import toolkits_conectables
+    assert "instagram" not in toolkits_conectables() and "gmail" in toolkits_conectables()
+    con = [{"toolkit": "instagram", "status": "EXPIRED"}, {"toolkit": "instagram", "status": "EXPIRED"},
+           {"toolkit": "gmail", "status": "EXPIRED"}]
+    assert composio_caidos(con) == ["gmail"]                          # ajeno fuera, soportado dentro
+    assert composio_caidos(con[:2]) == []                             # sólo el ajeno: nada
+    assert composio_caidos(con, soportados=frozenset({"instagram", "gmail"})) == ["gmail", "instagram"]  # control: sin filtro, el defecto reaparece
+
+
+def test_N18_la_fuente_es_una_sola_la_misma_que_valida_composio_connect():
+    from conexiones_salud import toolkits_conectables
+    import web
+    assert web._composio_valid_toolkits() == toolkits_conectables()
+
+
+@necesita_pg
+def test_N18_la_tarjeta_ya_persistida_de_un_toolkit_ajeno_se_cierra_sola(conn_de_tenant, tenants):
+    """La del operador: 1 fila `instagram` para_hoy ya guardada. Un filtro que sólo mira hacia adelante la dejaría viva."""
+    from mi_dia_tarjeta_store import TarjetaStore
+    a, _ = tenants
+    TarjetaStore(conn_de_tenant(a), a).crear_si_no_existe(
+        REGLA_CONEXION_CAIDA, "conexion", "instagram", "Se cortó la conexión con instagram.",
+        {"nombre": "instagram", "servicio": "instagram"})
+    ig = lambda: [{"toolkit": "instagram", "status": "EXPIRED"}]
+    tab = avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig)
+    assert not [x for x in tab["para_hoy"] + tab["haciendo"] if x["regla"] == REGLA_CONEXION_CAIDA]
+    assert [x for x in tab["hecha"] if x["entidad_id"] == "instagram"]          # cerrada por el HECHO
+    # y el soportado SÍ crea tarjeta por esta misma ruta (el detector no quedó mudo)
+    tab = avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=lambda: [{"toolkit": "gmail", "status": "EXPIRED"}])
+    assert [x for x in tab["para_hoy"] if x["entidad_id"] == "gmail"]

@@ -73,15 +73,15 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
 | **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
-| **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-I4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
+| **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
 | **SM-I5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B: captura del cliente CON CUIT mostrando monto y «N comprobantes» reales. Disparador: backend responde si una … |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al e… |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
@@ -100,8 +100,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
 | **SM-N4** | `sin-issue` | 🟧 DOD-PARCIAL | control del criterio v3: revertir la sombra de Row en Metro local y volcar la lista de capas con el rectangulo presen… |
-| **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card recargada con importe y cliente. |
+| **SM-N6** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se… |
 | **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
 | **SM-N8** | `sin-issue` | ✅ TERMINADO | bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado) |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
@@ -111,7 +111,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N16** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
+| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N18** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -222,6 +224,18 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
   «Confirmado» en ningún recorrido, incluido recargar.
 - **Depende:** SM-H2, SM-H7.
 
+- **✅ DISPARADOR CUMPLIDO 2026-11-02 19:04 — Gmail ESTÁ conectado.** El operador se logueó
+  manualmente con su cuenta en el device y la pantalla «Apps conectadas» dice **«5 conectadas
+  de 5»** con **Gmail · Conectada** (captura:
+  `2026-11-02-sprint-correcciones-evidencia/SM-H3-gmail-conectada-cuenta-operador.png`).
+  Esto **retira el bloqueo**, no cierra la ficha: lo que sigue faltando es la captura de la
+  card de Gmail con la aclaración de que el mail sale al confirmar. El `Cierre:` actual cita
+  que el canónico respondía «No tengo habilitado el servicio de correo» — eso era del
+  **canónico**, y acreditaba la elección de herramienta, no la ausencia de Gmail en general.
+- ⚠️ **Al capturar: la sesión del device es la del OPERADOR, no la del canónico.** Decir de
+  qué usuario es cada captura es parte de la evidencia; una card obtenida bajo su cuenta
+  acredita el comportamiento del dispatcher, no el estado del canónico.
+
 ### SM-H4 · `sin-issue` — Con «consumidor final» explícito el agente sigue pidiendo CUIT
 
 - **Estado:** TERMINADO
@@ -327,7 +341,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I3 · `sin-issue` — Los botones del chat no se leen y el deshabilitado no se distingue
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de los dos estados, reposo y deshabilitado.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Sin opacity en mic, enviar y foto; tonoBotonEntrada.test.ts mide >=3:1 en las dos pieles y activo distinto de apagado (antes: 1,07:1 el mic deshabilitado en claro). mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** contraste insuficiente en reposo; el estado deshabilitado no se diferencia del activo.
 - **DoD:** contraste legible en reposo y deshabilitado distinguible, medidos contra el criterio de
@@ -335,7 +351,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I4 · `sin-issue` — El escritorio difiere del mapa en título, orden, tiles y solapas
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas filas, tema oscuro y sin parpadeo al primer layout.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Titulo, orden, casillas y bloque del mapa; la tira se va con el escritorio (translacionPanel, 5 casos) y el BACK cierra primero el escritorio. Motivo de #1084 citado en el PR. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** `esc` difiere en título, avatar y orden de la primera fila y en el estilo de los tiles;
   con el escritorio abierto se ven **dos** solapas apiladas (R02); «Presupuestos» se parte.
@@ -362,7 +380,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I7 · `sin-issue` — La pantalla de permisos no dice qué capacidad concede cada ítem
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device del sheet con iconos y con el aviso de continuacion.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Un icono por fila segun la condicion que manda el backend y aviso de continuacion con glifo. El icono dice el tipo de capacidad, no los especificos del mockup: uno por capacidad exige un campo icono en el contrato. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** `consent` sin íconos por capacidad y sin el banner de continuación del mapa.
 - **DoD:** un ícono por capacidad y el banner de continuación. Captura de device.
@@ -448,7 +468,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Mitad B: captura del cliente CON CUIT mostrando monto y «N comprobantes» reales. Disparador: backend responde si una factura ya emitida (N°10/N°11 del tenant 48a9d75f) se puede atribuir a un cliente nuevo sin emitir nada. Mitad A hecha: captura del caso facturas_atribuibles:false (el «—» + «Sin CUIT cargado» es deliberado), cuenta del OPERADOR (no canónica), cliente creado por la app sin tocar lo fiscal. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-J4-clientes-sin-CUIT-el-guion-es-deliberado-CUENTA-DEL-OPERADOR.webp
+- **Falta:** Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al emitir (cliente_store.py:72-78 _FACTURADO_DEL_CLIENTE_JOIN, predicado en :41-58, _es_atribuible en :61); afip_comprobantes.cuit es el EMISOR y no sirve. Medido read-only en 48a9d75f: N 10 y N 11 tienen doc_tipo=99 y doc_nro vacio/0, asi que NO son atribuibles a ningun cliente (crear un cliente con el CUIT 20269996065 no las atribuye: es el CUIT del emisor, el propio operador). Disparador exacto: una factura emitida con RECEPTOR IDENTIFICADO (doc_tipo y doc_nro con digitos); emitir esta fuera de alcance por decision del operador. Rechazado como atajo: cliente doc_tipo=99 nro 0 para forzar el match (seria consumidor-final-generico, la captura mentiria). Mitad A HECHA: captura del caso facturas_atribuibles:false (el guion + «Sin CUIT cargado» es deliberado), cuenta del OPERADOR (no canonica), cliente creado por la app sin tocar lo fiscal. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-J4-clientes-sin-CUIT-el-guion-es-deliberado-CUENTA-DEL-OPERADOR.webp
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
@@ -815,7 +835,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Captura de device del antes y el después.
 ### SM-N5 · `sin-issue` — El recibo de presupuesto pierde importe y cliente al rehidratar, y el motivo documentado cubre sólo el estado
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de la card recargada con importe y cliente.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). El mensaje persiste el id, la card relee por id y muestra importe y cliente, el estado sigue sin mostrarse al rehidratar; test en TarjetaPresupuestoPropuesto.test.tsx y comentario corregido. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device: en vivo la card dice `Presupuesto anotado — N° 3`,
   `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar`. Tras recargar queda sólo
@@ -851,7 +873,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   declara un motivo más amplio que el que lo justifica es lo que hizo que esto viviera sin pregunta.
 ### SM-N6 · `sin-issue` — «Presupuestos» se parte en dos líneas en la casilla del escritorio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se mide en jest.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Arreglo en la casilla y no en el rotulo, rotulo a 13 px sin cortar. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device al capturar `SM-G4`: la casilla de Funciones muestra «Presupuesto» y
   abajo «s». Se ve en `SM-G4-1-mas-0-3s.webp`. El rótulo es el `label: 'Presupuestos'` de
@@ -1133,7 +1157,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N16 · `sin-issue` — El Escritorio de Funciones no tiene acceso a Ajustes, y sin él no se puede cerrar sesión
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque, comparando la region y no la captura entera; DoD 6 causa del no-responde: con MOVE no navego a las 19:05 en la cuenta del operador, y si navego a las 17:54 y 18:29 en el canonico, asi que falta medir que difiere: puerta de empujarUnaVez (tocar un tile en el mismo estado), cuenta o bundle. El dibujo va en la rama de SM-I5.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Avatar del escritorio por el mismo alAjustes de Mi dia, sin segundo call-site; PantallaPrincipal.test.tsx da rojo con el mutante sin el cable. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **De dónde sale:** el **operador**, 2026-11-02, atrapado dentro de la app con su propia cuenta:
   «en la pantalla funciones no está el icono de ajustes de usuario… no puedo cerrar la sesion a mano».
@@ -1190,3 +1216,102 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   6. Averiguar **por qué** no respondía antes de cambiar nada — si es el gesto del panel
      comiéndose el toque, la skill `swmansion-rn-gestures` (composición Pan/tap) es la fuente del
      criterio, no la intuición. Dos intentos fallidos ⇒ el tercero es leer la skill.
+- **🔬 REVERIFICADO 19:05 — el «no responde» estuvo a punto de ser MÍO, y el control lo salvó.**
+  El primer veredicto («el avatar no navega») salió de un `motionevent` DOWN+UP **sin MOVE**.
+  Minutos después, el tile «Apps conectadas» **tampoco** respondía a ese mismo tap y **sí** respondió
+  al agregarle un `MOVE` de 1 px. O sea: mi instrumento no activaba ningún control, y yo había
+  escrito que el defecto era del avatar. **Control positivo conseguido** (dos controles ajenos que
+  abren con MOVE: «Apps conectadas» y «Mi cuenta»), repetida la prueba sobre el avatar **con** MOVE:
+  **sigue sin navegar**. El veredicto se sostiene, pero ahora está acreditado y antes no lo estaba.
+- **🧪 Y el control que usé primero era malo:** comparé capturas por hash de pantalla COMPLETA y dio
+  «CAMBIO» cuando lo único que cambió fue **el reloj** (19:04 → 19:05). Un reloj en la barra de
+  estado mueve el hash de cualquier captura: **comparar por hash total siempre dice que cambió**.
+  Para acreditar un toque hay que comparar **la región** que debería cambiar, o un elemento
+  concreto. Queda anotado acá porque es trampa de instrumento, no de esta ficha.
+- **Sospecha para quien lo arregle (no verificada):** el avatar vive en la franja superior, que es
+  zona del panel deslizable; un Pan que se come el tap es exactamente el caso de
+  `swmansion-rn-gestures`. Es hipótesis, no hallazgo — medila antes de codear.
+
+### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
+- **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
+  aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
+  de las apps a conectar, no sé por qué figura esto».
+- **Medido, y el código le da la razón de forma incómoda.** `service_risk_contrato.py:18` lo dice
+  textual: «Instagram NO está ahí -- cero módulo, cero tool». Y `:4-6` registra que esto **ya pasó
+  una vez**: el prompt ofrecía «ver contactos y redes» cuando «HubSpot e Instagram ni existían como
+  tool» (`system_prompt.py:33` lo repite: «un agente que ofrece algo inexistente hace…»). O sea: la
+  clase de defecto está documentada y cazada **en el prompt**, y sobrevivió **en la UI**.
+- **Dónde sigue cableado:** `apps/copiloto-web/src/design-system/serviceIcons.tsx:64` ·
+  `apps/mobile/src/modules/apps/PantallaApps.tsx:69` (`instagram: 'grabar'`) ·
+  `packages/core/src/chat/hitl.ts:91` (badge `IRREVERSIBLE`, `tono: danger`) ·
+  `tool_catalog.py:80` y `conversation_workflow.py:659` lo nombran como ejemplo de badge de riesgo.
+- **Por qué no es cosmético.** Un aviso de «conexión caída» es una llamada a la acción: manda al
+  emprendedor a reconectar algo que no se puede conectar. Y el badge `IRREVERSIBLE` de `hitl.ts:91`
+  está reservado para acciones que no se pueden deshacer: tenerlo vivo para un servicio inexistente
+  gasta la señal más cara de la app en un fantasma.
+- **PREGUNTA PREVIA, para backend, ANTES de que frontend1 toque nada:** ¿de dónde sale el aviso?
+  Puede venir (a) de un registro de conexiones en la DB del tenant que todavía lista `instagram`, o
+  (b) del catálogo del front. **Son fixes opuestos** — borrar el ícono del front deja el registro
+  vivo y el aviso puede volver por otra vista; limpiar la DB sin sacar el catálogo deja el camino
+  abierto a que se re-cree. Medirlo es barato y decide el dueño del fix. Hasta que esté medido,
+  frontend1 **no** implementa.
+- **FUERA DEL SPRINT** (`DEC-18`): no sale del mapa, sale del uso. El 54 no se mueve.
+- **DoD:**
+  1. Medido de dónde sale el aviso (la pregunta previa), escrito con `path:línea` o con la consulta
+     que lo mostró.
+  2. Instagram deja de ofrecerse y deja de avisar, en **las dos** superficies — mobile y web: el
+     mismo defecto vivía dos veces ya es patrón conocido de este repo.
+  3. Un test que sea **rojo si Instagram vuelve a aparecer** como servicio ofrecible. Sin eso, el
+     próximo que agregue una key al catálogo lo revive sin enterarse — que es exactamente cómo
+     sobrevivió a la limpieza del prompt.
+  4. Si el fix toca la DB del tenant: corrida en device con la cuenta del operador mostrando que el
+     aviso ya no está. Esa cuenta es la que lo reportó, así que es la que lo acredita.
+
+### SM-N18 · `sin-issue` — FUERA DEL SPRINT: `composio_caidos` avisa de CUALQUIER toolkit que Composio liste, soportado o no
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (se ofreció al medir `SM-N17`)
+- **De dónde sale:** es la **raíz** del síntoma de `SM-N17` (el aviso de «se cayó la conexión con
+  Instagram» en la cuenta del operador). La ficha se separa porque el síntoma y la causa tienen
+  dueños y remedios distintos.
+- **Medido por backend (sólo lectura, nada borrado).** El aviso **no** sale del front ni de un
+  registro suelto: sale de **Composio en vivo** — `serve.py:268` → `conexiones_salud.composio_caidos`
+  (toolkit `EXPIRED` sin `ACTIVE`) → `mi_dia_detector._evaluar_conexion_caida`, y queda **persistido**
+  como tarjeta en `copiloto_mi_dia_tarjetas`. Evidencia: tenant `48a9d75f` tiene 1 fila
+  `regla=conexion_caida`, `entidad=instagram`, `estado=para_hoy`, creada 2026-11-02 13:08 UTC.
+  **Control positivo:** las tarjetas reales de `mercadopago`/`googlecalendar` del tenant `4f3ecb78`
+  salen en la misma consulta — la query ve lo que tiene que ver. Los otros 4 tenants: 0.
+- **La consecuencia que cambia el fix, y por eso la pregunta previa valió:** sacar `instagram` de
+  `serviceIcons.tsx` / `PantallaApps.tsx` / `hitl.ts` **NO apaga el aviso**. Frontend1 no tenía nada
+  que quitar para este síntoma. Si se hubiera implementado el fix «obvio» del front, el aviso
+  habría seguido vivo y el diff habría parecido trabajo.
+- **El defecto de raíz:** `composio_caidos` avisa de **cualquier** toolkit que Composio liste para el
+  `composio_user_id`, aunque la app no lo soporte. Instagram **no existe como servicio de la app**
+  (`service_risk_contrato.py:18`: «cero módulo, cero tool»), y aun así el detector lo trata como una
+  conexión propia caída. Eso es una fuga del proveedor hacia la UI: lo que un tercero liste se
+  convierte en una tarea para el emprendedor.
+- **Señal lateral que confirma que el toolkit es ajeno al dominio:** `datos.nombre` guarda
+  `"instagram"` en **minúscula cruda**, sin `display_name`, porque `_PRESENTATION` no lo conoce. Un
+  valor que no pasa por la capa de presentación es la huella de que entró por fuera del catálogo.
+- **Las dos salidas, y NO son excluyentes:**
+  1. **Del operador, inmediata:** revocar esa conexión en Composio — la tarjeta se cierra sola por
+     ausencia. Apaga el síntoma de hoy y **no arregla nada**: el próximo toolkit ajeno vuelve a
+     avisar.
+  2. **De raíz, esta ficha:** `composio_caidos` sólo avisa de toolkits que la app **soporta**.
+- **DoD:**
+  1. El detector filtra por el catálogo de servicios soportados de la app, con **una sola** fuente de
+     verdad de esa lista — no una segunda lista paralela que después divergirá de la primera.
+  2. Test **rojo si vuelve a avisar de un toolkit no soportado**: inyectar un toolkit ajeno
+     `EXPIRED` y verificar que **no** se crea tarjeta; y, como control positivo en el mismo test, un
+     toolkit soportado `EXPIRED` que **sí** la crea. Sin las dos mitades el test no distingue «filtra
+     bien» de «no avisa nunca».
+  3. Qué pasa con las tarjetas **ya persistidas** de toolkits no soportados: decidido y escrito
+     (cerrarlas, dejarlas, o migrarlas). Hoy hay 1 viva en `48a9d75f`. Un filtro que sólo mira hacia
+     adelante deja el síntoma del operador en pantalla.
+  4. Corrida en el **VPS**. No necesita device.
+- **No verificado todavía, y conviene que lo esté antes de codear:** el listado real de Composio para
+  ese `composio_user_id` — backend lo infirió por código, no lo consultó.
+- **FUERA DEL SPRINT** (`DEC-18`): el 54 no se mueve.

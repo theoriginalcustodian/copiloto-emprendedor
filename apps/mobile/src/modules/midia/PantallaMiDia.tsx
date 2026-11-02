@@ -50,6 +50,8 @@ import { useTema } from '../../theme/ThemeProvider';
 export interface PantallaMiDiaProps {
   /** Tocar el avatar, la única puerta a Ajustes. La navegación la cablea el shell. */
   onAjustes?: () => void;
+  /** La inicial del negocio para el avatar. La resuelve el shell: la comparten las dos capas. */
+  inicialCuenta?: string;
   /** Avisa si el catálogo trae un servicio caído: el avatar del escritorio lleva el mismo punto. */
   onConexionCaida?: (caida: boolean) => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
@@ -140,6 +142,7 @@ function Seccion({
 
 export function PantallaMiDia({
   onAjustes,
+  inicialCuenta,
   onConexionCaida,
   onAgenda,
   onVerTablero,
@@ -249,7 +252,7 @@ export function PantallaMiDia({
           arriba es el asidero del panel, que es el control del gesto y no un dato. */}
       <ScrollFormulario style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
         <View style={styles.encabezadoPortada}>
-          <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
+          <AvatarCuenta inicial={inicialCuenta} avisa={conexionCaida} onPress={onAjustes} />
         </View>
 
         {/* La tarjeta de cabecera (`.stack`, `index.html:102`): blanca, detrás del bloque negro, y asoma con
