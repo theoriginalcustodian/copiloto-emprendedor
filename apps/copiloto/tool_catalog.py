@@ -656,10 +656,8 @@ def _monto_legible(amount) -> str:
     """SM-N21: el importe del preview del HITL de `mp_charge` -- el ÚNICO texto con plata que el usuario lee al
     AUTORIZAR un cobro real a un tercero. Formateado (`$70.000`), nunca `$70000` crudo. Si el monto no es
     numérico (no debería: el schema es `number`) cae al texto tal cual en vez de romper el gate."""
-    try:
-        return _plata_corta(str(amount))
-    except (ValueError, TypeError):
-        return f"${amount}"
+    texto = str(amount)
+    return _plata_corta(texto) if re.fullmatch(r"-?\d+(\.\d+)?", texto) else f"${texto}"
 
 
 def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, mp_dedup_factory):
