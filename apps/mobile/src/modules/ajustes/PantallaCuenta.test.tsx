@@ -102,6 +102,21 @@ describe('PantallaCuenta', () => {
     expect(mockLogout).not.toHaveBeenCalled();
   });
 
+  it('SM-K5: la confirmación de salida dice «usuario y contraseña» sólo si NO entró con Google', async () => {
+    await montar();
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    expect(screen.getByText(/usuario y contraseña/)).toBeTruthy();
+    expect(screen.queryByText(/cuenta de Google/)).toBeNull();
+  });
+
+  it('🔴 SM-K5: con cuenta de Google la confirmación dice Google, no «usuario y contraseña»', async () => {
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', cuenta_google: true } as never;
+    await montar();
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    expect(screen.getByText(/cuenta de Google/)).toBeTruthy();
+    expect(screen.queryByText(/usuario y contraseña/)).toBeNull();
+  });
+
   it.each([
     ['cuenta-legal-tos', '/legal?kind=tos'],
     ['cuenta-legal-privacidad', '/legal?kind=privacidad'],

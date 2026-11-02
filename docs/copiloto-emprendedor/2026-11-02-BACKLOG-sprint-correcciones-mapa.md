@@ -80,7 +80,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
-| **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualiz… |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
@@ -402,7 +402,9 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualizando…»)
+- **Cierre:** ba79737b (#1350) · etiqueta de mes del corte de caja + «Sin ventas todavía» sólo con cero medido (tests, control null) · RefreshControl intacto (DoD #1348)
 - **Dueño:** frontend2
 - **Medido:** `bi` sin cabecera en card blanca con período, sin etiqueta de mes y sin mosaicos;
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
