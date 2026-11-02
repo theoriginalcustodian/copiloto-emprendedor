@@ -6,8 +6,8 @@
 |---|---|---|---|
 | Gastos | ✅ (SM-I2) | «Anotá un gasto, o hablá…» | pastilla + «Ticket» |
 | Ingresos | ✅ | «Anotá un cobro, o hablá…» | «Anotar que me pagaron» |
-| Presupuestos | ✅ | «Contame el presupuesto, o hablá…» | «Nuevo presupuesto» |
-| Clientes | ✅ | «Nombre del cliente, o hablá…» | «Nuevo cliente» |
+| Presupuestos | ✅ | «Un presupuesto, o hablá…» | «Nuevo presupuesto» |
+| Clientes | ✅ | «Un cliente nuevo, o hablá…» | «Nuevo cliente» |
 | Facturación | ❌ **sin contrato** | — | — |
 | Inteligencia (`bi`) | ❌ **sin contrato** | — | — |
 

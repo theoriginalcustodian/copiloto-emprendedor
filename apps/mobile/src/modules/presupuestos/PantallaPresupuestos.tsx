@@ -25,7 +25,7 @@ import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 
-const PLACEHOLDER_DOCK = 'Contame el presupuesto, o hablá…';
+const PLACEHOLDER_DOCK = 'Un presupuesto, o hablá…';
 
 /**
  * `PantallaPresupuestos` — la función "Presupuestos" del escritorio: listado, alta y detalle, todo en

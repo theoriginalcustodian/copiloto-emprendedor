@@ -21,7 +21,7 @@ import { BloqueCifra } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 
-const PLACEHOLDER_DOCK = 'Nombre del cliente, o hablá…';
+const PLACEHOLDER_DOCK = 'Un cliente nuevo, o hablá…';
 
 /**
  * `PantallaClientes` — la cartera: listado, búsqueda y ficha, todo en UN `MarcoGlass`.
