@@ -1264,6 +1264,15 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   vivo y el aviso puede volver por otra vista; limpiar la DB sin sacar el catálogo deja el camino
   abierto a que se re-cree. Medirlo es barato y decide el dueño del fix. Hasta que esté medido,
   frontend1 **no** implementa.
+- **✅ CONTESTADA 2026-11-02, y era (c): ninguna de las dos.** No sale de un registro de la
+  DB del tenant ni del catalogo del front: sale de **Composio en vivo** — `serve.py:268` →
+  `conexiones_salud.composio_caidos` (toolkit `EXPIRED` sin `ACTIVE`) →
+  `mi_dia_detector._evaluar_conexion_caida`, y queda persistido como tarjeta en
+  `copiloto_mi_dia_tarjetas`. Medido por backend read-only (ver `SM-N18`, que es la raiz y ya
+  tiene su fix `0046ded4`: filtro por `toolkits_conectables`). **frontend1 YA puede
+  implementar**: el bloqueo de esta linea quedo vencido el mismo dia en que se escribio, y
+  nadie lo bajo a la ficha hasta ahora — una pregunta previa contestada que sigue diciendo «no
+  implementa» es un bloqueo fantasma.
 - **FUERA DEL SPRINT** (`DEC-18`): no sale del mapa, sale del uso. El 54 no se mueve.
 - **DoD:**
   1. Medido de dónde sale el aviso (la pregunta previa), escrito con `path:línea` o con la consulta
