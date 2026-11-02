@@ -168,7 +168,8 @@ def test_dice_el_monto_en_la_propuesta():
     """Mismo criterio que gasto: el monto viaja en el texto que el LLM relaya, para que el
     emprendedor pueda oír si entendió mal — antes de que exista una card que mirar."""
     res = _correr("registrar_ingreso", {"monto": "85000"}, cobro=_CobroFake())
-    assert "$85000.00" in res.observation["result"]
+    assert "$85.000" in res.observation["result"]
+    assert "85000" not in res.observation["result"], "SM-N21 mitad A: el crudo no viaja al modelo"
 
 
 def test_los_datos_opcionales_viajan_en_la_card_sin_perseguirlos():
@@ -207,6 +208,8 @@ def test_el_duplicado_probable_NO_arma_card_y_pregunta_antes():
     res = _correr("registrar_ingreso", {"monto": "85000", "cliente": "Panadería"}, cobro=store)
     assert res.artifact is None, "preguntó y armó la card igual: la card ya prellenada se confirma sin mirar"
     assert "todavía NO lo anoté" in res.observation["result"]
+    assert "ingreso de $85.000 " in res.observation["result"], "SM-N21 (a): monto previo formateado"
+    assert "85000" not in res.observation["result"]
     assert "confirmar_duplicado" in res.observation["result"], \
         "el LLM tiene que saber CÓMO insistir, no adivinarlo"
 
@@ -717,3 +720,8 @@ def test_N20_las_ramas_ambiguas_no_le_pasan_al_modelo_el_total_crudo():
     assert [x["saldo"] for x in c.observation["candidatos"]] == ["$50.000", "$70.000"]
     # control positivo del patrón: el crudo que se evita SÍ lo caza
     assert crudo.search("50000.0000") and not crudo.search(str(r.observation) + str(c.observation))
+
+def test_N21_registrar_gasto_dice_el_monto_formateado_no_el_crudo():
+    res = _correr("registrar_gasto", {"monto": "50000", "categoria": "otros"})
+    assert "$50.000" in res.observation["result"]
+    assert "50000" not in res.observation["result"]
