@@ -102,8 +102,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
+| **SM-N8** | `sin-issue` | ✅ TERMINADO | bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado) |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -832,7 +832,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Captura de device a 390 px.
 ### SM-N7 · `sin-issue` — Cuatro descripciones del catálogo afirman una capacidad de ESCRITURA sin test que la ate
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed)
 - **Dueño:** backend
 - **Medido por backend en el barrido de `SM-N3`** (punto 3 de su DoD, sha `99097d83` / #1359): en
   `apps/copiloto/backend/catalog.py` **6 descripciones afirman una capacidad**; tras esa ficha **2 de
@@ -855,7 +856,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      motivo de lo que quede afuera).
 ### SM-N8 · `sin-issue` — El `reply_text` de la aprobación hace eco de la consigna interna: el emprendedor lee la instrucción dirigida al modelo
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado)
 - **Dueño:** backend
 - **Medido por backend** mientras cerraba las mitades de `SM-H5` (#1363, `681c3b53`), y reportado
   **sin parchar**, que fue lo correcto: la respuesta de la aprobación **a veces** repite la consigna
