@@ -71,3 +71,48 @@ se ACTIVA (~10 dp después de apoyar), no desde el DOWN. Tres corridas con −10
 la cancelación y se reportó `[UNVERIFIED]`/«defecto real o límite del instrumento»: era el instrumento. Con 13 MOVE
 hasta −157 px (≈85 dp) apareció «Soltá para cancelar». **Antes de concluir «el gesto no llega al umbral», convertí:
 umbral_dp × densidad + margen de activación, y pasate** (`adb shell wm density` da la densidad).
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — el tap sin MOVE no activa NINGÚN control, y el falso «no responde» casi queda escrito en una ficha
+
+La entrada de arriba dice que `adb input tap` no ejercita un Pan. Hoy medí el caso de al lado, que
+muerde distinto: **`input motionevent DOWN x y` + `UP x y`, sin MOVE intermedio, tampoco activa los
+`Pressable` comunes de esta app.**
+
+**Lo que pasó.** El operador reportó que no encontraba el acceso a Ajustes. Toqué el avatar de Mi
+Día con DOWN+UP y no navegó; escribí en la ficha «el avatar además no responde». Minutos más tarde
+el tile «Apps conectadas» **tampoco** respondía al mismo tap — y **sí** abrió al agregarle un `MOVE`
+de 1 píxel. O sea: mi instrumento no activaba nada, y yo ya había atribuido el defecto al
+componente. Repetida la prueba sobre el avatar **con** MOVE, y con dos controles ajenos que sí
+abren como **control positivo**, el veredicto se sostuvo. Pero se sostuvo por verificación, no por
+la primera corrida.
+
+**Why:** un instrumento que no activa nada produce «no responde» para **todo lo que toca**, y ese
+veredicto es indistinguible de un defecto real. Lo peligroso es la asimetría: si el control hubiera
+funcionado, yo habría concluido bien; como falló, concluí mal **sin ninguna señal de que estaba
+midiendo con un instrumento muerto**. Lo que lo destapó fue casualidad —otro botón falló igual—, y
+una verificación que depende de la casualidad no es una verificación.
+
+**How to apply:**
+1. En esta app, todo toque por ADB va **DOWN → MOVE (±1 px) → UP**. El tap sin desplazamiento no
+   sirve ni para `Pressable` ni para gestos.
+2. **Antes de escribir «X no responde», tocá otra cosa que SÍ deba responder.** Si el control ajeno
+   tampoco abre, el roto es el instrumento. Es un control positivo de una línea y convierte un
+   veredicto en evidencia.
+
+## ⚠️ REFUERZO 2026-11-02 (b) — el hash de la captura COMPLETA siempre dice «cambió»: lo mueve el reloj
+
+Para acreditar si un toque navegó comparé `md5` de las capturas antes/después. Dio **CAMBIO** — y al
+abrirlas, lo único distinto era **el reloj de la barra de estado** (19:04 → 19:05). La pantalla era
+la misma.
+
+**Why:** la barra de estado tiene reloj, batería y señal, y los tres se mueven solos. Un hash de
+pantalla completa mide **el paso del tiempo**, no el efecto de tu acción. Y falla hacia el lado
+peligroso: dice que cambió, que es lo que uno quiere escuchar al verificar que un toque funcionó.
+El gemelo es que el hash **nunca** dice «no cambió», así que como control no distingue nada.
+
+**How to apply:** compará **la región** que debería cambiar (recortá, o compará un elemento
+concreto: un texto presente/ausente, el título de la pantalla). Si vas a comparar capturas enteras,
+recortá primero la barra de estado. Y ante un «CAMBIÓ», **mirá las dos imágenes** antes de
+declararlo: acá la diferencia eran dos dígitos ([[el-instrumento-tambien-CONDENA-no-solo-absuelve]]).
