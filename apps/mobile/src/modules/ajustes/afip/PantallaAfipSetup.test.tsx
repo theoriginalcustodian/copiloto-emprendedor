@@ -648,7 +648,7 @@ describe('PantallaAfipSetup', () => {
     // El testID del recuadro es el del Pressable: el nombre del ambiente está DENTRO de lo tocable.
     expect(within(screen.getByTestId('afip-ambiente-prod-vincular')).getByText('Producción')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('afip-ambiente-prod-vincular'));
-    expect(screen.getByTestId('afip-arca-ambiente-destino').props.children.join('')).toContain('Producción');
+    expect(screen.getByText(/Vas a vincular en Producción/)).toBeTruthy();
   });
 
   it('tocar "Usar este" llama a cambiarAmbiente con el ambiente elegido', async () => {

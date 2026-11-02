@@ -30,6 +30,7 @@ import {
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
 import { useTema } from '../../../theme/ThemeProvider';
+import { pressableStyle } from '../../../theme/glass/presion';
 
 /**
  * `PantallaAfipSetup` — F5: perfil fiscal + alta ante ARCA + selector de ambiente.
@@ -782,7 +783,7 @@ export function PantallaAfipSetup() {
                 {pasoArca === 1 && (
                   <View testID="afip-arca-paso-1" style={{ gap: tema.espacio.sm }}>
                     {ambienteDestino != null && (
-                      <Text testID="afip-arca-ambiente-destino" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+                      <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
                         Vas a vincular en {ETIQUETA_AMBIENTE[ambienteDestino]}.
                       </Text>
                     )}
@@ -920,10 +921,10 @@ export function PantallaAfipSetup() {
                       accessibilityRole={accion ? 'button' : undefined}
                       disabled={accion === null || (accion === 'usar' && cambiandoAmbiente !== null)}
                       onPress={() => (accion === 'usar' ? void usarAmbiente(env) : iniciarAltaPara(env))}
-                      style={[
+                      style={pressableStyle([
                         styles.chipAmbiente,
                         { borderColor: activo ? tema.color.acento : tema.color.borde },
-                      ]}
+                      ])}
                     >
                       <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium }}>
                         {ETIQUETA_AMBIENTE[env]}
