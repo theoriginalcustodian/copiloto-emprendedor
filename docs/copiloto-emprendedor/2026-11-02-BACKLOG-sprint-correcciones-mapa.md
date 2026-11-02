@@ -81,7 +81,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad A (frontend2, EN CURSO): captura del caso facturas_atribuibles:false mostrando que el guion es DELIBERADO -- sa… |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
@@ -468,8 +468,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y una del caso facturas_atribuibles:false mostrando que el «—» es DELIBERADO -- ese estado ya se malinterpreto una vez como falta de dato y es lo que origino la premisa falsa de esta ficha.
-- **Cierre:** punto 1 del DoD CERRADO por backend: c3867d10 (#1328), test_adversarial_http_clientes_a_cannot_read_b_cliente extendiendo test_adversarial_multitenant.py con el MISMO CUIT en A y B -- A: 0 / «0.00» con atribuible:true, B: 1 / «1500.00» como control positivo, y ajeno identico a inexistente (404, mismo cuerpo). VPS suite completa 2654 passed/41 skipped. Sin cambio de produccion: el dato ya existia desde #816 (2026-10-06).
+- **Falta:** Mitad A (frontend2, EN CURSO): captura del caso facturas_atribuibles:false mostrando que el guion es DELIBERADO -- sale creando un cliente por la app, autorizado por el operador el 02-11 (crear clientes no toca nada fiscal; lo fiscal es emitir). Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al emitir (cliente_store.py:72-78 _FACTURADO_DEL_CLIENTE_JOIN, predicado en :41-58, _es_atribuible en :61), y el docstring dice explicito que afip_comprobantes.cuit es el EMISOR y no sirve. Medido read-only en 48a9d75f: N 10 y N 11 tienen doc_tipo=99 y doc_nro vacio/0, asi que NO son atribuibles a ningun cliente. REFUTADA mi hipotesis de que crear un cliente con el CUIT 20269996065 las atribuiria: ese CUIT es del emisor, el propio operador. Disparador exacto de la mitad B: una factura emitida con RECEPTOR IDENTIFICADO (doc_tipo y doc_nro con digitos), y emitir esta fuera de alcance por decision del operador. Rechazado como atajo: crear un cliente doc_tipo=99 nro 0 para forzar el match -- seria atribuir consumidor-final-generico, no un cliente real, y la captura mentiria sobre lo que acredita.
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
