@@ -113,7 +113,6 @@ describe('PantallaPrincipal — hitl (a): el verbo de la tarjeta lleva el aviso 
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-lucia')).toBeTruthy());
     expect(screen.queryByTestId('chat-contexto-aviso')).toBeNull();
 
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-lucia'));
     await fireEvent.press(screen.getByTestId('midia-tarjeta-lucia-verbo'));
 
     // El aviso entra sembrado — NO se mandó: lo manda quien lo lee.

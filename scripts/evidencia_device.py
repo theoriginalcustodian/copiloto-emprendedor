@@ -409,7 +409,7 @@ def arbol_expone_rn() -> bool:
 # Mi día —el tablero— y el harness informaba «la pantalla de login nunca apareció»: el instrumento condenó al
 # producto por su propia ceguera (el caso que `arbol_expone_rn` ya documenta, en la función de al lado).
 # `panel-handle` / `panel-hint` son del PanelDeslizable, que envuelve a TODAS las pantallas del shell.
-ANCLAS_SHELL = ("chat-composer", "panel-handle", "panel-hint", "midia-alta-texto", "midia-chips")
+ANCLAS_SHELL = ("chat-composer", "panel-handle", "panel-hint", "midia-wordmark", "midia-ver-tablero")
 TEXTOS_SHELL = ("En qué te ayudo", "Escribile a Odobi")
 
 

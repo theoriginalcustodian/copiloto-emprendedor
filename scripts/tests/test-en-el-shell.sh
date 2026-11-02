@@ -35,7 +35,7 @@ def arbol(*nodos):
     return ET.fromstring(f'<hierarchy rotation="0"><node resource-id="" text="" bounds="[0,0][720,1600]">{items}</node></hierarchy>')
 
 NATIVO = [("action_bar_root", ""), ("content", ""), ("navigationBarBackground", "")]
-MI_DIA = arbol(*NATIVO, ("midia-chips", ""), ("midia-alta-texto", "Llamar al proveedor"), ("panel-handle", ""), ("panel-hint", "Escribile a Odobi"))
+MI_DIA = arbol(*NATIVO, ("midia-wordmark", "Odobi"), ("midia-ver-tablero", "Ver tablero ›"), ("panel-handle", ""), ("panel-hint", "Escribile a Odobi"))
 MI_DIA_SOLO_TEXTO = arbol(*NATIVO, ("", "Escribile a Odobi"))
 CHAT = arbol(*NATIVO, ("chat-composer", ""), ("", "En qué te ayudo"))
 LOGIN = arbol(*NATIVO, ("login-screen", ""), ("login-email", ""), ("login-password", ""), ("login-submit", "Entrar"))
