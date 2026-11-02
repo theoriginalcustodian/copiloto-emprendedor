@@ -14,7 +14,7 @@ jest.mock('@copiloto/core', () => {
 import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { PantallaApps } from './PantallaApps';
+import { ICONO_POR_SERVICIO, PantallaApps } from './PantallaApps';
 
 function servicioMock(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo {
   return {
@@ -42,6 +42,12 @@ async function envolver() {
 }
 
 describe('PantallaApps', () => {
+  // SM-N17: Instagram no es un servicio de Copiloto. Rojo si vuelve a la tabla de íconos.
+  it('no tiene ícono para instagram (no es un servicio) y sí para los reales', () => {
+    expect(Object.keys(ICONO_POR_SERVICIO)).not.toContain('instagram');
+    expect(Object.keys(ICONO_POR_SERVICIO)).toContain('gmail');
+  });
+
   beforeEach(() => {
     jest.mocked(listarCatalogo).mockReset().mockResolvedValue({ status: 'ok', servicios: [servicioMock()] });
     jest.mocked(pedirLinkDeVinculacion).mockReset().mockResolvedValue({

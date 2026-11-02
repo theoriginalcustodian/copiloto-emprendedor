@@ -17,7 +17,7 @@ import sheetsLogo from './logos/sheets.svg';
  * theme-aware — un logo no se retematiza) y este directorio NO está bajo el gate "cero hex en
  * componentes" (que sí cubre `modules/*` y `shell`). Mapea por la `key` REAL del catálogo
  * (`catalog.py`: `mercadopago`, `gmail`, `googlecalendar`, `hubspot`, `googledrive`, `googledocs`,
- * `googlesheets`, `instagram`); las keys sin ícono de marca degradan a marca-letra, nunca rompen.
+ * `googlesheets`; Instagram no está: no es un servicio del catálogo, SM-N17); las keys sin ícono de marca degradan a marca-letra, nunca rompen.
  */
 
 interface Brand {
@@ -61,17 +61,11 @@ const BRANDS: Record<string, Brand> = {
       </svg>
     ),
   },
-  instagram: {
-    bg: 'linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)',
-    icon: (
-      <svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
-        <rect x="3" y="3" width="18" height="18" rx="5.5" />
-        <circle cx="12" cy="12" r="4" />
-        <circle cx="17.2" cy="6.8" r="1.2" fill="#fff" stroke="none" />
-      </svg>
-    ),
-  },
 };
+
+/** Keys con ícono de marca propio. Exportado sólo para que `sinInstagram.contrato.test.ts` pueda
+ * medir qué se dibuja, sin una copia que driftee. */
+export const CLAVES_CON_ICONO_DE_MARCA: readonly string[] = [...Object.keys(LOGOS_REALES), ...Object.keys(BRANDS)];
 
 export interface ServiceIconProps {
   /** `key` real del catálogo (`CatalogService.key`). */
