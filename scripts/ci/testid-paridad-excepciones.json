@@ -4567,14 +4567,24 @@
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Chip «Por voz» del dock de función.",
       "pantalla": "modules/voz"
     },
-    "modules/voz::mic-funcion-fijado": {
+    "modules/voz::mic-funcion": {
       "en": [
-        "apps/mobile/src/modules/voz/MicFuncion.tsx"
+        "apps/copiloto-web/src/modules/voz/MicFuncion.tsx"
       ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "mic-funcion-fijado",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "falta_en": "mobile",
+      "fecha": "2026-11-02",
+      "id": "mic-funcion",
+      "motivo": "SM-J1 (2026-11-02): mobile retiro MicFuncion y migro las funciones a DockFuncion (SM-I2: campo + mic chico, ids propios); la web conserva MicFuncion. Divergencia de diseno declarada por la ficha, no drift. Dueno: frontend web. Disparador para cerrar: el dock de SM-I2 llega a la web.",
+      "pantalla": "modules/voz"
+    },
+    "modules/voz::mic-funcion-chip": {
+      "en": [
+        "apps/copiloto-web/src/modules/voz/MicFuncion.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-02",
+      "id": "mic-funcion-chip",
+      "motivo": "SM-J1 (2026-11-02): mobile retiro MicFuncion y migro las funciones a DockFuncion (SM-I2: campo + mic chico, ids propios); la web conserva MicFuncion. Divergencia de diseno declarada por la ficha, no drift. Dueno: frontend web. Disparador para cerrar: el dock de SM-I2 llega a la web.",
       "pantalla": "modules/voz"
     },
     "src/auth::legal-screen-descargo": {

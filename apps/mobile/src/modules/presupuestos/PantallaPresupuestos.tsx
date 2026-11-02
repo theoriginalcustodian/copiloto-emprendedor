@@ -20,10 +20,12 @@ import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
-import { AvisoDictado, inicialesDePresupuesto, MicFuncion, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, inicialesDePresupuesto, DockFuncion, useDictadoPorFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+
+const PLACEHOLDER_DOCK = 'Contame el presupuesto, o hablá…';
 
 /**
  * `PantallaPresupuestos` — la función "Presupuestos" del escritorio: listado, alta y detalle, todo en
@@ -252,14 +254,10 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat),
                   nunca una corrección. */}
-              <MicFuncion
-                contexto="presupuesto"
-                onTranscripcion={(t) => void alDictarPresupuesto(t)}
-                onError={setErrorMic}
-                disabled={dictado.ocupado}
-                alLado={
-                  <FilaBotones
+              <View style={styles.filaAlta}>
+                <FilaBotones
                     testID="presupuestos-acciones"
+                  compacto
                     botones={[
                       {
                         etiqueta: 'Nuevo presupuesto',
@@ -269,8 +267,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                       },
                     ]}
                   />
-                }
-              />
+              </View>
 
               {/* `presu` (mapeo 2026-10-12): el resumen que el prototipo pone arriba de la lista. Derivado
                   del listado — ver `resumenEspera.ts`. Sin `estado` en ningún presupuesto no se pinta. */}
@@ -337,6 +334,17 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
         </ScrollFormulario>
       )}
 
+      {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
+      {estado === 'ok' && vista === 'listado' && (
+        <DockFuncion
+          contexto="presupuesto"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t) => void alDictarPresupuesto(t)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
+      )}
+
       {/* 🔴 El detalle se monta ACÁ, fuera del scroll, y no dentro de la lista. Un overlay
           `position:absolute` montado dentro del área scrolleable se posiciona contra el CONTENIDO del
           scroll —que con veinte cards mide miles de píxeles— y queda centrado lejísimos de lo que el
@@ -363,5 +371,6 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 }
 
 const styles = StyleSheet.create({
+  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 });

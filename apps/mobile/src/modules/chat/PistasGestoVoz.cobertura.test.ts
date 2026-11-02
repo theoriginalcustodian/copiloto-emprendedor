@@ -47,7 +47,7 @@ describe('PISTAFIJARSOPORTE — cada pantalla con BotonVoz monta la pista del ca
     console.log(
       `PISTAFIJARSOPORTE: ${conBoton.filter((f) => conPista.has(f)).length}/${conBoton.length} pantallas con <BotonVoz> montan <PistasGestoVoz>\n  ${conBoton.join('\n  ')}`,
     );
-    // Piso: con SM-I2 el botón se monta en `DockEntrada` (chat, Soporte, Mi día, Gastos) y `MicFuncion`.
+    // Piso: con SM-I2 el botón se monta en `DockEntrada` (chat, Soporte, Mi día y las funciones, vía DockFuncion).
     // Si un refactor deja el glob en 0, el resto del archivo pasaría en vacío — esto lo vuelve rojo.
     expect(conBoton.length).toBeGreaterThanOrEqual(1);
   });

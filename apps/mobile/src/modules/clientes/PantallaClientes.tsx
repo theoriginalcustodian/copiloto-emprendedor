@@ -15,11 +15,13 @@ import {
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
-import { AvisoDictado, MicFuncion, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, DockFuncion, useDictadoPorFuncion } from '../voz';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+
+const PLACEHOLDER_DOCK = 'Nombre del cliente, o hablá…';
 
 /**
  * `PantallaClientes` — la cartera: listado, búsqueda y ficha, todo en UN `MarcoGlass`.
@@ -324,14 +326,10 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   alta con `nombre` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
-              <MicFuncion
-                contexto="cliente"
-                onTranscripcion={(t) => void alDictarCliente(t)}
-                onError={setErrorMic}
-                disabled={dictado.ocupado}
-                alLado={
-                  <FilaBotones
+              <View style={styles.filaAlta}>
+                <FilaBotones
                     testID="clientes-acciones"
+                  compacto
                     botones={[
                       {
                         etiqueta: 'Nuevo cliente',
@@ -341,8 +339,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                       },
                     ]}
                   />
-                }
-              />
+              </View>
 
               {errorMic != null && (
                 <Text testID="clientes-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -406,6 +403,17 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
         </ScrollFormulario>
       )}
 
+      {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
+      {estado === 'ok' && formulario === null && (
+        <DockFuncion
+          contexto="cliente"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t) => void alDictarCliente(t)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
+      )}
+
       {/* Fuera del scroll — ver el docstring de `FichaCliente`. */}
       {ficha != null && (
         <FichaCliente
@@ -419,5 +427,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 }
 
 const styles = StyleSheet.create({
+  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 });

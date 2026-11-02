@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { avisoErrorLecturaFoto, datosGastoPropuesto, leerFotoGasto } from '@copiloto/core';
@@ -98,11 +98,12 @@ export function FotoFuncion({ onLectura, onError, disabled }: FotoFuncionProps) 
         ])}
       >
         <IconoCamara color={tema.color.acentoTinta} />
+        <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>Ticket</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  boton: { width: 38, height: 38, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  boton: { height: 38, paddingHorizontal: 12, borderRadius: 16, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
 });
