@@ -80,13 +80,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
-| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualiz… |
+| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
-| **SM-K4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device (Metro de nuevo + teléfono) |
+| **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -104,7 +104,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N9** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del encabezado con el nombre (punto 4) |
+| **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -408,8 +408,8 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualizando…»)
-- **Cierre:** ba79737b (#1350) · etiqueta de mes del corte de caja + «Sin ventas todavía» sólo con cero medido (tests, control null) · RefreshControl intacto (DoD #1348)
+- **Falta:** captura del tenant vacio (operador: canonico unico, no se puede vaciar)
+- **Cierre:** bfa7b919 (#1376): capturas de device (RF8T318RN9T, canonico): reposo docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-etiqueta-del-mes-debajo-del-titulo.webp y refresh en curso, solo 'Actualizando…' sin spinner, docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-refresh-en-curso-solo-actualizando.webp. La captura de reposo destapo que la etiqueta del mes quedaba a ancho 0; ahora va debajo del titulo.
 - **Dueño:** frontend2
 - **Medido:** `bi` sin cabecera en card blanca con período, sin etiqueta de mes y sin mosaicos;
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
@@ -558,9 +558,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K4 · `sin-issue` — Apps conectadas no dice qué NO puede hacer el copiloto
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device (Metro de nuevo + teléfono)
-- **Cierre:** c1ee52924973b1994afca009e77a69ca33fabd53 · Gmail «No puede leerlos» (catalog.py) · estado como etiqueta «● Conectada» (test) · Sheets se queda: conector real (catalog.py googlesheets, services/sheets.py, test_catalog_route.py:188)
+- **Estado:** TERMINADO
+- **Cierre:** bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-K4-apps-no-puede-leerlos-y-conectada-entera.webp: Gmail 'No puede leerlos.' y pildora '● Conectada' entera. La captura destapo que la pildora se salia de la tarjeta; corregido en el mismo #1376.
 - **Dueño:** frontend2
 - **Medido:** falta «No puede leerlos» en Gmail (decisión del mockup 13); el estado va como texto
   suelto en vez de etiqueta; Google Sheets figura en el mapa.
@@ -886,9 +885,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Tope:** no se reescribe la voz de las confirmaciones en esta ficha. Lo que se arregla es la fuga.
 ### SM-N9 · `sin-issue` — El encabezado de Ajustes: el mapa pide el nombre comercial y ESE dato SÍ existe
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device del encabezado con el nombre (punto 4)
-- **Cierre:** 545a5dc7 (#1371): Ajustes lee perfilNegocio y muestra nombreComercial en la etiqueta del encabezado; vacio/blanco/error = sin etiqueta; 3 tests
+- **Estado:** TERMINADO
+- **Cierre:** 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqueta, 3 tests. DoD 4: captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N9-ajustes-encabezado-con-nombre-comercial.webp
 - **Dueño:** frontend2
 - **De dónde sale:** frontend2 lo nombró al corregir el mapa por la enmienda de `SM-K5` (#1368,
   `c5186d47`) y **no lo cargó por su cuenta** — preguntó. Correcto: la corrección del mapa estaba
