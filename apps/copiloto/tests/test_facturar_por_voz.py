@@ -213,7 +213,9 @@ def test_H4_consumidor_final_sobre_el_tope_lo_frena_R5_no_se_duplica_la_regla():
     backend = _FacturaBackendFake(perfil=perfil)
     grande = {"descripcion": "obra", "cantidad": "1",
               "precio_unitario": str(TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR + 1)}
-    _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [grande]}, perfil=perfil, idem_key="w1-1-0")
+    r1 = _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [grande]}, perfil=perfil, idem_key="w1-1-0")
+    # el 1er turno pregunta con el mensaje de R5 y NO le prohíbe pedir el documento (sería contradecirse)
+    assert "NO le pidas" not in r1.observation["result"]
     # 2ª vez (la 1ª incompleta pregunta sin card, DoD §5.1): la card trae lo que falta
     res = _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [grande]}, perfil=perfil, idem_key="w1-2-0")
     assert res.artifact is not None
@@ -322,3 +324,11 @@ async def test_cliente_id_valido_no_se_rechaza():
     resultado = await buscar("tenant-a")
     assert resultado is None
     assert client.queries              # sí llegó a construir/mandar la query
+
+
+def test_H4_primera_vez_incompleta_le_dice_al_LLM_que_falta_y_que_no_pida_documento_al_consumidor_final():
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final"}, perfil=perfil)   # sin ítems
+    assert res.artifact is None
+    assert "NO le pidas nombre, CUIT ni DNI" in res.observation["result"]
