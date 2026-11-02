@@ -56,6 +56,10 @@ TIMEOUT_CORTO = timedelta(seconds=60)
 # «abierto» para siempre (el link directo y el turno 2 lo reanudarían con datos de otro día).
 VENTANA_VIDA_BORRADOR = timedelta(hours=24)
 MOTIVO_CODIGO_VENCIDO = "dictado_vencido"
+# SM-H2: confirmar sobre una propuesta cancelada / cancelar sobre una ya emitida. Códigos propios,
+# distinguibles entre sí y de «no existe» (404): la app ramifica por el código, no por el texto.
+MOTIVO_CODIGO_CANCELADA = "factura_cancelada"
+MOTIVO_CODIGO_YA_EMITIDA = "factura_ya_emitida"
 # El archivado son 4 llamadas a Composio (buscar carpeta, crearla, subir, compartir) y la subida baja
 # el PDF desde AfipSDK server-side: más lento que una query, lejos de una emisión.
 TIMEOUT_ARCHIVADO = timedelta(minutes=2)
@@ -183,6 +187,14 @@ class FacturaWorkflow:
         no-op: fail-closed. Sin eso, un botón viejo podría autorizar una factura distinta de la que el
         usuario efectivamente revisó. Mismo criterio que el gate del motor ReAct.
         """
+        # SM-H2: una propuesta cancelada NO se emite, ni en la ventana en que el `run` todavía no
+        # procesó la cancelación. Sin esto `confirmar` tras `cancelar` marcaba `_confirmado` y sólo
+        # el orden de los `if` del `run` (cancelado primero) evitaba la emisión: correcto por
+        # casualidad de orden, no por contrato. El rechazo lleva su propio código.
+        if self._cancelado:
+            self._motivo = "la factura ya fue cancelada"
+            self._motivo_codigo = MOTIVO_CODIGO_CANCELADA
+            return
         if not puede_emitir(self._estado):
             self._motivo = "todavía faltan datos para emitir"
             self._motivo_codigo = "faltan_datos"
@@ -220,9 +232,32 @@ class FacturaWorkflow:
                 "motivo": None if self._confirmado else self._motivo,
                 "motivo_codigo": None if self._confirmado else self._motivo_codigo}
 
-    @workflow.signal
+    @workflow.signal(name="cancelar")
     def cancelar(self) -> None:
         self._cancelado = True
+
+    @workflow.update(name="cancelar")
+    async def cancelar_ahora(self) -> dict:
+        """La MISMA cancelación que el signal, pero diciendo si valió (SM-H2).
+
+        **Por qué existe.** El signal es fire-and-forget: `POST /cancelar` contestaba `200 ok` aunque la
+        factura ya estuviera emitiéndose o emitida, y la herramienta del agente habría dicho «cancelé»
+        sobre algo que ARCA ya había aceptado. Mismo defecto y misma cura que `confirmar_ahora`: un
+        update devuelve lo que el workflow decidió. El signal QUEDA para ejecuciones en vuelo y clientes
+        viejos.
+
+        Sólo se puede cancelar lo que todavía no empezó a emitirse. Idempotente: cancelar dos veces (un
+        toque repetido, un reintento) contesta aceptado las dos.
+        """
+        if self._cancelado:
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+        if self._estado in (EstadoFactura.EMITIENDO, EstadoFactura.EMITIDA,
+                            EstadoFactura.ENTREGADA, EstadoFactura.RECHAZADA):
+            return {"aceptado": False,
+                    "motivo": "la factura ya se emitió o se está emitiendo; no se puede cancelar",
+                    "motivo_codigo": MOTIVO_CODIGO_YA_EMITIDA}
+        self._cancelado = True
+        return {"aceptado": True, "motivo": None, "motivo_codigo": None}
 
     # -- ejecución ----------------------------------------------------------
 

@@ -53,7 +53,7 @@ from mp_web import create_mp_app
 from onboarding import GoTrueAdmin
 from reply_store import make_pg_reply_sink
 from web import (create_web_app, make_abrir_borrador_de_presupuesto, make_confirmar_anulacion,
-                 make_confirmar_factura, make_consultar_anulacion,
+                 make_cancelar_factura, make_confirmar_factura, make_consultar_anulacion,
                  make_consultar_factura,
                  make_consultar_onboarding, make_iniciar_anulacion, make_iniciar_factura,
                  make_signal_anulacion, make_signal_factura, make_start_onboarding,
@@ -166,6 +166,7 @@ async def _serve() -> None:
         consultar_factura=make_consultar_factura(client),
         signal_factura=make_signal_factura(client),
         confirmar_factura=make_confirmar_factura(client),
+        cancelar_factura=make_cancelar_factura(client),
         confirmar_anulacion=make_confirmar_anulacion(client),
         iniciar_anulacion=make_iniciar_anulacion(client),
         consultar_anulacion=make_consultar_anulacion(client),

@@ -64,7 +64,9 @@ from afip_gateway import AfipGateway
 # Hito 9: los MISMOS builders que `serve.py` usa para "Facturar" desde presupuesto — genéricos pese al
 # nombre (el `factura_id` lo pone SIEMPRE el llamador, ver `web.make_abrir_borrador_de_presupuesto`).
 # Reusarlos acá evita una segunda implementación del `id_conflict_policy=FAIL` que ya está probada.
+from afip_factura_workflow import VENTANA_VIDA_BORRADOR
 from web import (make_abrir_borrador_de_presupuesto, make_buscar_borrador_dictado_abierto,
+                 make_cancelar_factura,
                  make_consultar_factura, make_signal_factura)
 from cliente_store import ClienteStore
 from mi_dia_schedule_activities import avanzar_tablero_mi_dia, set_mi_dia_deps
@@ -247,6 +249,11 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     consultar_factura_dictado = make_consultar_factura(client) if client is not None else None
     signal_factura_dictado = make_signal_factura(client) if client is not None else None
     buscar_borrador_dictado = make_buscar_borrador_dictado_abierto(client) if client is not None else None
+    # SM-H2: cancelar busca en TODA la vida del borrador (24 h), no en los 15 min de «continuar un
+    # dictado»: la card puede llevar más de 15 min en pantalla y su botón Emitir sigue vivo.
+    buscar_borrador_cancelable = (make_buscar_borrador_dictado_abierto(client, ventana=VENTANA_VIDA_BORRADOR)
+                                  if client is not None else None)
+    cancelar_factura_dictado = make_cancelar_factura(client) if client is not None else None
 
     # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
     # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
@@ -270,6 +277,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         consultar_factura_dictado=consultar_factura_dictado,
         signal_factura_dictado=signal_factura_dictado,
         buscar_borrador_dictado=buscar_borrador_dictado,
+        buscar_borrador_cancelable=buscar_borrador_cancelable,
+        cancelar_factura_dictado=cancelar_factura_dictado,
         trauma_store_factory=fabrica_desde(conn_factory),
         inteligencia_queries_factory=_inteligencia_queries_factory)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,

@@ -332,6 +332,16 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
                                      + ". Omitilo si no lo dijo: se asume hoy."}},
         "required": ["cliente_nombre", "items"]}}}
 
+CANCELAR_FACTURA_SCHEMA = {"type": "function", "function": {
+    "name": "cancelar_factura",
+    "description": "Cancela la factura que está armando o que le mostraste en una tarjeta y todavía NO "
+                   "emitió ('cancelá la factura', 'no, dejá, no la emitas', 'borrá esa factura'). Sin "
+                   "parámetros: cancela la propuesta abierta del emprendedor. SÓLO decile «la cancelé» "
+                   "si esta tool te lo confirma — decir que la cancelaste sin llamarla deja la factura "
+                   "lista para emitirse. Si ya estaba emitida NO se puede cancelar: la tool te lo dice "
+                   "y tenés que darle esa respuesta tal cual.",
+    "parameters": {"type": "object", "properties": {}}}}
+
 # ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
 
 CREAR_TARJETA_MI_DIA_SCHEMA = {"type": "function", "function": {
@@ -481,7 +491,7 @@ def build_tool_catalog() -> list[dict]:
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
                REGISTRAR_PRESUPUESTO_SCHEMA,
-               EMITIR_FACTURA_SCHEMA,
+               EMITIR_FACTURA_SCHEMA, CANCELAR_FACTURA_SCHEMA,
                CREAR_TARJETA_MI_DIA_SCHEMA, MOVER_TARJETA_MI_DIA_SCHEMA,
                BORRAR_TARJETA_MI_DIA_SCHEMA]
     for mod in services.modules().values():
@@ -520,7 +530,11 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # fiscal irreversible, así que ni siquiera en confirm-gate sí/no — la única acción que
               # persiste algo (abrir el borrador) la dispara la propia tool, pero el borrador NO emite
               # nada hasta que el usuario toca Emitir desde la card (gate de dominio: token_confirmacion).
-              "emitir_factura": ("factura_dictado",)}
+              "emitir_factura": ("factura_dictado",),
+              # SM-H2 — cancelar la propuesta. Sin gate sí/no: cancelar sólo cierra un borrador que NO
+              # emite nada; el riesgo de dinero es el opuesto (que el agente DIGA «cancelé» y no
+              # cancele, que es el agujero que esta tool cierra), y eso lo cubre devolver el hecho.
+              "cancelar_factura": ("factura_cancelar",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -1583,6 +1597,44 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
             "total": total, "tipo_comprobante": tipo_comprobante}))
 
 
+def _run_cancelar_factura(arguments, ctx, idem_key, buscar_borrador_cancelable, cancelar_factura_dictado):
+    """*«Cancelá la factura»* → cierra la propuesta abierta del emprendedor **de verdad** (SM-H2).
+
+    Hasta acá el agente no tenía con qué cancelar: decía «la cancelé» y el `FacturaWorkflow` seguía
+    esperando confirmación, o sea emitible en Producción con el botón de la card. Esta tool señaliza la
+    MISMA cancelación que el botón (`make_cancelar_factura`: un Workflow Update) y **devuelve el
+    hecho**: la observación sólo afirma «cancelada» si el workflow la aceptó.
+
+    Qué propuesta: la abierta del propio `cliente_id` (Visibility, `ctx.cliente_id` del request — el
+    agente NO elige el id, así que no hay forma de apuntar a la de otro tenant). Sin propuesta abierta,
+    lo dice: nunca finge haber cancelado algo."""
+    if buscar_borrador_cancelable is None or cancelar_factura_dictado is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo cancelar facturas ahora mismo"})
+
+    async def _flujo():
+        factura_id = await buscar_borrador_cancelable(ctx.cliente_id)
+        if factura_id is None:
+            return None, None
+        return factura_id, await cancelar_factura_dictado(ctx.cliente_id, factura_id)
+
+    factura_id, resultado = asyncio.run(_flujo())
+    if factura_id is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No hay ninguna factura en armado para cancelar. NO digas "
+                                                 "que cancelaste nada: avisale que no encontré ninguna "
+                                                 "pendiente."})
+    if not resultado.get("aceptado"):
+        motivo = resultado.get("motivo") or "la factura no se pudo cancelar"
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": f"NO se canceló: {motivo}. Decile exactamente eso, "
+                                                 f"sin decir que la cancelaste.",
+                                       "motivo_codigo": resultado.get("motivo_codigo")})
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": "Cancelé la factura: ya no se puede emitir. Confirmáselo en "
+                                             "una línea corta.", "factura_id": factura_id})
+
+
 # ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
 #
 # Las tres PERSISTEN sin gate — mismo criterio que las del hito 3 (TOOL_INDEX): el riesgo real de
@@ -1677,6 +1729,7 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                        afip_cred_store_factory=None, afip_perfil_store_factory=None,
                        abrir_borrador_dictado=None, consultar_factura_dictado=None,
                        signal_factura_dictado=None, buscar_borrador_dictado=None,
+                       buscar_borrador_cancelable=None, cancelar_factura_dictado=None,
                        trauma_store_factory=None, inteligencia_queries_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
@@ -1744,6 +1797,10 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                            abrir_borrador_dictado, consultar_factura_dictado,
                                            signal_factura_dictado, buscar_borrador_dictado,
                                            cliente_store_factory)
+            # ── 1ra clase: SM-H2 — cancelar la propuesta de factura (ver TOOL_INDEX) ───────────────
+            if kind == "factura_cancelar":
+                return _run_cancelar_factura(arguments, ctx, idem_key, buscar_borrador_cancelable,
+                                             cancelar_factura_dictado)
             # ── 1ra clase: hito 7 — el Kanban "Mi día" por voz (persisten; sin gate, ver TOOL_INDEX) ─
             if kind == "mi_dia_crear":
                 return _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)

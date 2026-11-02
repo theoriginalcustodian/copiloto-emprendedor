@@ -1308,3 +1308,43 @@ def test_adversarial_http_contabilidad_y_actividad_a_no_ven_la_plata_ni_los_movi
         assert len(client.get("/actividad", headers=h_b).json()["items"]) >= 2
     finally:
         _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_http_cancelar_a_cannot_cancel_b_propuesta(two_tenants):
+    """SM-H2: UNA app, dos tokens. `POST /afip/facturas/{id}/cancelar` con el token de A sobre el id de
+    la propuesta de B tiene que apuntar al workflow de A (el id se reconstruye con el `cliente_id`
+    autenticado, `_wf_id_factura`): la de B ni se toca y sigue emitible. Control positivo: B cancela la
+    suya y SÓLO entonces su workflow recibe el update."""
+    a, b = two_tenants
+    tocados: list[str] = []
+
+    class _Handle:
+        def __init__(self, wf_id): self.wf_id = wf_id
+
+        async def execute_update(self, nombre, *args):
+            tocados.append(self.wf_id)
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+
+    class _Cliente:
+        def get_workflow_handle(self, wf_id): return _Handle(wf_id)
+
+    rt = _RequireTenantByToken({a.token: a.cliente_id, b.token: b.cliente_id})
+    app = FastAPI()
+    app.include_router(create_afip_app(
+        require_tenant=rt, perfil_store_factory=lambda cid: None, cred_store_factory=lambda cid: None,
+        handoff_factory=lambda cid: None, start_onboarding=lambda *args: "wf",
+        cancelar_factura=web_module.make_cancelar_factura(_Cliente())).router)
+    client = TestClient(app)
+
+    wf_b = web_module._wf_id_factura(b.cliente_id, "prop-b")
+    wf_a_sobre_id_de_b = web_module._wf_id_factura(a.cliente_id, "prop-b")
+    assert wf_b != wf_a_sobre_id_de_b
+
+    r = client.post("/afip/facturas/prop-b/cancelar", headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert tocados == [wf_a_sobre_id_de_b], "A sólo puede llegar a un workflow con SU cliente_id"
+    assert wf_b not in tocados, "la propuesta de B no se toca"
+
+    r = client.post("/afip/facturas/prop-b/cancelar", headers={"Authorization": f"Bearer {b.token}"})
+    assert r.status_code == 200 and tocados[-1] == wf_b
+    declarar_tenant(None)
