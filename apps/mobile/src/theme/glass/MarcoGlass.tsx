@@ -283,16 +283,26 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                       >
                         {titulo}
                       </Text>
-                      {etiqueta != null && etiqueta !== '' && (
-                        <Text
-                          testID="glass-etiqueta"
-                          numberOfLines={1}
-                          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, flexShrink: 1 }}
-                        >
-                          {etiqueta}
-                        </Text>
-                      )}
                     </View>
+                    {/* DEBAJO del título y no al lado: con un título largo («Inteligencia de Negocio») la
+                        etiqueta no entra en la misma fila y, con `flexShrink: 1`, se comprimía a ancho 0 y
+                        desaparecía (visto en device, SM-J3, 2026-11-02). `flexWrap` en la fila tampoco
+                        sirve: manda el título entero a otro renglón. Sangría = ícono (28) + gap, para quedar
+                        alineada con el título. */}
+                    {etiqueta != null && etiqueta !== '' && (
+                      <Text
+                        testID="glass-etiqueta"
+                        numberOfLines={1}
+                        style={{
+                          color: tema.color.textoTenue,
+                          fontSize: tema.tipo.chico,
+                          paddingLeft: tema.espacio.md + 28 + tema.espacio.sm,
+                          paddingRight: tema.espacio.md,
+                        }}
+                      >
+                        {etiqueta}
+                      </Text>
+                    )}
                   </View>
                 </GestureDetector>
                 {/* `PRESS_FADE` y no `PRESS_SCALE`: es un link de texto suelto, sin caja propia que

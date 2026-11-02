@@ -45,3 +45,38 @@ evidencias, no el criterio — de ahí el estado `DOD-PARCIAL` para «código en
 que es el que faltaba y el que impide el error que este repo ya pagó
 ([[una-orden-cerrada-exige-evidencia-de-device]]). Norma: `CLAUDE.md §3.quater.bis`; instrumento:
 `scripts/sprint-estado.py` (`--check` en `scripts/ci/lint.sh`, `--autotest` 9/9).
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — la ficha RECIEN BAJADA no es asignable: el padrón se lee de `origin/main`
+
+**Lo que pasó, dos veces el mismo día.** Bajé una ficha nueva y en el mismo ciclo la asigné como
+trabajo inmediato a la sesión dueña, **con su PR todavía abierto**. Las dos veces el dueño quedó
+bloqueado contra el gate: `goal.sh set <id>` **rechaza** un id que no está en el padrón, y
+`--marcar` tampoco puede escribir. Backend con `SM-N1` (lo destrabó el merge de #1351) y frontend2
+con `SM-N9` (#1370). Las dos sesiones hicieron lo correcto —siguieron con el código, declararon
+`ATRIBUCION: libre` y lo reportaron como bloqueo **propio**— pero perdieron el marcado.
+
+**La causa no es el gate: es que leí el padrón donde no vive.** `goal.sh` y `sprint-estado.py`
+resuelven el id contra los docs versionados **de `origin/main`**, no contra mi rama ni mi working
+tree. Mientras el PR de la ficha está abierto, el id **no existe para nadie más que para mí** — y
+eso es correcto: un goal que el agente se inventa no es una orden, y un padrón que aceptara ramas
+ajenas dejaría de ser un sujeto único.
+
+**La regla, entonces, es de SECUENCIA y es mía, no del dueño:**
+1. **Mergear la ficha primero**, verificar por efecto en `origin/main`, y **después** asignarla.
+2. Si hay motivo para avisar antes (destrabar a una sesión parada ya, que es el caso legítimo),
+   decirlo con **«todavía no marcable, su PR es #NNNN»** en el mismo mensaje. El costo de esa frase
+   es cero; el de omitirla es que el dueño lo descubra contra un rechazo que parece suyo.
+
+**Por qué se repite:** bajar la ficha y asignarla se sienten **un solo acto** —son el mismo
+pensamiento— y el merge queda en el medio sin que nadie lo note. El síntoma aparece recién en la
+otra sesión, varios minutos después, con la forma de «el gate me rechaza», o sea **lejos de la
+causa y pareciendo un problema del que lo sufre**. Es la misma estructura que
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] en chico: bajar la ficha está bien y
+exigir que el padrón salga de `origin/main` está bien — **el hueco vive en el par**, y el orden
+entre los dos no era de nadie.
+
+**El control, si hace falta:** antes de asignar, `git show origin/main:<doc> | grep -c "^### <id> "`.
+Si da `0`, el id no es asignable todavía — y `0` acá significa «mi PR no está mergeado», no «la ficha
+no existe» ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).

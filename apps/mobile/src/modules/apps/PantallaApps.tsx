@@ -297,7 +297,10 @@ export function PantallaApps({ servicioDestacado = null }: { servicioDestacado?:
               </Text>
               {g.items.map((s) => (
             <Row key={s.key} testID={`app-${s.key}`}>
-              <View style={{ gap: tema.espacio.sm }}>
+              {/* `flexShrink: 1`: `Row` es una fila y en RN `flexShrink` arranca en 0, así que este contenedor
+                  tomaba el ancho de su contenido y la descripción larga empujaba la píldora «● Conectada»
+                  fuera de la tarjeta (visto en device, SM-K4, 2026-11-02). */}
+              <View style={{ gap: tema.espacio.sm, flexShrink: 1 }}>
                 <View style={[styles.fila, { gap: tema.espacio.sm }]}>
                   {hayLogoDe(s.key) ? (
                     <LogoMarca servicio={s.key} testID={`app-${s.key}-logo`} />
