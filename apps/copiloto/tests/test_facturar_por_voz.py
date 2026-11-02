@@ -186,6 +186,40 @@ def test_dictado_completo_da_card_lista_para_emitir():
     assert "TODAVÍA NO está emitida" in res.observation["result"]
 
 
+# ── SM-H4: «consumidor final» explícito no pide identificar (el tope lo guarda R5, no esta tool) ───
+
+def test_H4_la_descripcion_de_la_tool_declara_consumidor_final_como_destinatario_completo():
+    """Lo que el LLM lee para decidir si pregunta. Medido en prod (2026-11-02, canónico): 4/8 dictados
+    «a consumidor final» terminaron en «¿cómo se llama el cliente?» porque `cliente_nombre` es required
+    y nada decía que «consumidor final» lo satisface."""
+    schema = next(s for s in tool_catalog.build_tool_catalog() if s["function"]["name"] == "emitir_factura")
+    desc = schema["function"]["parameters"]["properties"]["cliente_nombre"]["description"]
+    assert "Consumidor Final" in desc and "NO le pidas" in desc
+    # el monto del tope sale de la constante, no de un literal en el texto (comentario de afip_rules)
+    assert "10000000" not in desc and "10.000.000" not in desc
+
+
+def test_H4_consumidor_final_bajo_el_tope_da_card_lista_sin_pedir_documento():
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [ITEM]}, perfil=perfil)
+    assert res.status == "ok" and res.artifact is not None
+    assert res.artifact.data["faltantes"] == []
+
+
+def test_H4_consumidor_final_sobre_el_tope_lo_frena_R5_no_se_duplica_la_regla():
+    from afip_rules import TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    grande = {"descripcion": "obra", "cantidad": "1",
+              "precio_unitario": str(TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR + 1)}
+    _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [grande]}, perfil=perfil, idem_key="w1-1-0")
+    # 2ª vez (la 1ª incompleta pregunta sin card, DoD §5.1): la card trae lo que falta
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final", "items": [grande]}, perfil=perfil, idem_key="w1-2-0")
+    assert res.artifact is not None
+    assert "supera_tope_sin_identificar" in str(res.artifact.data["faltantes"])
+
+
 # ── el doble dictado NO duplica items en la continuación (control explícito del contrato §0) ───────
 
 def test_doble_dictado_no_duplica_items():
