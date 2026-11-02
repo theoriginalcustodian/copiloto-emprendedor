@@ -20,6 +20,8 @@ export interface PasoItemsProps {
   estado: EstadoFacturaResp;
   onAgregar: (item: NuevoItem) => Promise<void>;
   onQuitar: (indice: number) => Promise<void>;
+  /** SM-H1 — con esto cada fila ofrece «Editar». Sin esto, el paso sólo agrega y quita. */
+  onReemplazar?: (indice: number, item: NuevoItem) => Promise<void>;
   modoEdicion?: boolean;
   onVolverResumen?: () => void;
   testID?: string;
@@ -29,6 +31,7 @@ export function PasoItems({
   estado,
   onAgregar,
   onQuitar,
+  onReemplazar,
   modoEdicion = false,
   onVolverResumen,
   testID = 'facturacion-paso-items',
@@ -39,16 +42,33 @@ export function PasoItems({
   const [precioUnitario, setPrecioUnitario] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [quitando, setQuitando] = useState<number | null>(null);
+  const [editando, setEditando] = useState<number | null>(null);
 
   const listoLocal = descripcion.trim() !== '' && cantidad !== '' && precioUnitario !== '';
+
+  function limpiar() {
+    setEditando(null);
+    setDescripcion('');
+    setCantidad('');
+    setPrecioUnitario('');
+  }
+
+  function editar(indice: number) {
+    const item = estado.items[indice];
+    if (item == null) return;
+    setEditando(indice);
+    setDescripcion(item.descripcion);
+    setCantidad(item.cantidad);
+    setPrecioUnitario(item.precioUnitario);
+  }
 
   async function agregar() {
     setEnviando(true);
     try {
-      await onAgregar({ descripcion, cantidad, precioUnitario });
-      setDescripcion('');
-      setCantidad('');
-      setPrecioUnitario('');
+      const item = { descripcion, cantidad, precioUnitario };
+      if (editando != null && onReemplazar) await onReemplazar(editando, item);
+      else await onAgregar(item);
+      limpiar();
     } finally {
       setEnviando(false);
     }
@@ -56,6 +76,7 @@ export function PasoItems({
 
   async function quitar(indice: number) {
     setQuitando(indice);
+    limpiar();
     try {
       await onQuitar(indice);
     } finally {
@@ -86,6 +107,18 @@ export function PasoItems({
                 {item.cantidad} × {item.precioUnitario} = {item.subtotal}
               </Text>
             </View>
+            {onReemplazar && (
+              <Pressable
+                testID={`${testID}-editar-${indice}`}
+                accessibilityRole="button"
+                onPress={() => editar(indice)}
+                style={pressableStyle(undefined, PRESS_FADE)}
+              >
+                <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                  Editar
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               testID={`${testID}-eliminar-${indice}`}
               accessibilityRole="button"
@@ -114,12 +147,15 @@ export function PasoItems({
           testID={`${testID}-agregar-botones`}
           botones={[
             {
-              etiqueta: enviando ? 'Agregando…' : 'Agregar ítem',
+              etiqueta: enviando ? 'Guardando…' : editando != null ? 'Guardar el ítem' : 'Agregar ítem',
               onPress: agregar,
               variante: 'secundario',
               deshabilitado: !listoLocal || enviando,
               testID: `${testID}-agregar`,
             },
+            ...(editando != null
+              ? [{ etiqueta: 'Dejarlo como está', onPress: limpiar, testID: `${testID}-editar-cancelar` }]
+              : []),
           ]}
         />
       </View>

@@ -266,6 +266,7 @@ export {
   estadoFactura,
   ErrorValidacionFiscal,
   esperarEcoDelSignal,
+  firmaDeEstado,
   esperarEstadoEstable,
   guardarAjustesAfip,
   guardarPerfil,

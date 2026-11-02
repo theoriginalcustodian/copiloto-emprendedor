@@ -29,11 +29,13 @@ export function PasoCliente({
   testID = 'facturacion-paso-cliente',
 }: PasoClienteProps) {
   const tema = useTema();
-  const [condicionIva, setCondicionIva] = useState('');
-  const [tipoDoc, setTipoDoc] = useState('');
-  const [nroDoc, setNroDoc] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [domicilio, setDomicilio] = useState('');
+  // SM-H1 — arranca con lo cargado: para cambiar un dato no hay que volver a tipear los otros.
+  const cargado = estado.receptor;
+  const [condicionIva, setCondicionIva] = useState(cargado ? String(cargado.condicionIva) : '');
+  const [tipoDoc, setTipoDoc] = useState(cargado ? String(cargado.tipoDoc) : '');
+  const [nroDoc, setNroDoc] = useState(cargado?.nroDoc ?? '');
+  const [nombre, setNombre] = useState(cargado?.nombre ?? '');
+  const [domicilio, setDomicilio] = useState(cargado?.domicilio ?? '');
   const [enviando, setEnviando] = useState(false);
 
   /**
