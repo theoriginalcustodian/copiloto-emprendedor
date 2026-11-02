@@ -1571,9 +1571,20 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
     if faltantes_codigos and not continuando:
         # 1ª vez incompleta (DoD §5.1): pregunta, SIN card — el borrador quedó abierto (silencioso)
         # para que ESTA MISMA función lo encuentre si el emprendedor sigue dictando.
+        # SM-H4: el genérico «Faltan datos» dejaba al LLM adivinando QUÉ pedir, y adivinaba «CUIT o DNI»
+        # aun con «consumidor final» dictado (medido en prod: 2/8). Se le dice QUÉ falta de verdad
+        # (los mensajes de `estado.faltantes`, la misma fuente que la card) y que a un consumidor
+        # final NO se le pide documento: lo que el monto exija lo pide R5 con su propio mensaje.
+        faltan = [e.get("mensaje") for e in (estado.get("faltantes") or []) if e.get("mensaje")]
+        detalle = errores_dictado[0].mensaje if errores_dictado else (
+            "Faltan datos para facturar" + (f": {'; '.join(faltan)}" if faltan else "") + ".")
+        # Si el faltante ES identificar al cliente (supera el tope), la consigna de arriba mentiría.
+        pide_identificar = ("supera_tope_sin_identificar" in faltantes_codigos
+                            or any(e.codigo == "supera_tope_sin_identificar" for e in errores_dictado))
+        sufijo = (" Pedí SÓLO eso." if pide_identificar else
+                  " Pedí SÓLO eso. Si el cliente es consumidor final NO le pidas nombre, CUIT ni DNI.")
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
-                          observation={"result": errores_dictado[0].mensaje if errores_dictado
-                                                  else "Faltan datos para facturar."})
+                          observation={"result": detalle + sufijo})
 
     tipo_comprobante = determinar_tipo_comprobante(perfil, borrador.receptor).name if perfil else None
     total = estado.get("total") or "0.00"
