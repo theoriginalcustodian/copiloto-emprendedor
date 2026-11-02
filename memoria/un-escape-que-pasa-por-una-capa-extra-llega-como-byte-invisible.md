@@ -134,3 +134,42 @@ archivo que sí contenía el texto. Primero lo resolví quitando los backslashes
 dejó claro lo que correspondía: **escribir el script con la herramienta de escritura directa, no por
 heredoc**. Cuando el problema es la cantidad de capas, la solución no es escapar mejor: es sacar una
 capa.
+
+---
+
+## REFUERZO 2026-11-02 — el caso exacto: un heredoc de Python dentro de Bash
+
+Me pasó **dos veces en la misma hora**, y la segunda no la reconocí a pesar de tener esta entrada
+escrita. El patrón es siempre el mismo:
+
+```bash
+python -I -X utf8 - <<'PY'
+viejo = "RE_ID='\b(BL-...'"     # intención: dos caracteres, barra + b
+PY
+```
+
+El literal cruza **dos** capas de escape (el heredoc y el parser de Python). Lo que llega al archivo
+es `\x08`, un **backspace**, y de ahí en adelante:
+
+| Lo que ves | Lo que es |
+|---|---|
+| `grep -ohE '[A-Z]{1,4}-...'` | `grep -ohE '<0x08>[A-Z]{1,4}-...<0x08>'` |
+| el regex «no matchea nada» | matchea un carácter de control que no existe en el archivo |
+| **síntoma: `0 de 0`** | y `0 de 0` se lee como «no hay nada que medir», no como «mi regex es basura» |
+
+**El síntoma no se parece a la causa, y ahí está el costo.** La primera vez el diagnóstico fue
+«el padrón no coincide, revisar a mano»; la segunda, perseguí el `PWD`, el `git reset` y el sourceo
+de la librería antes de mirar los bytes. Cuatro iteraciones.
+
+**Las tres reglas que lo cierran:**
+
+1. **Un `\` dentro de un heredoc anidado: no.** El fix de una línea va con `sed -i 's/.../.../'`, que
+   tiene **una** capa. Si el cambio necesita Python, el script va a un **archivo** del scratchpad y
+   se invoca por path — un archivo no tiene capa de escape.
+2. **Ante «0 resultados» en algo que construí yo, el primer comando es `cat -A`**, no releer la
+   lógica. `^H`, `^M` y `M-BM-` salen en una línea; la lógica no tiene nada de malo.
+3. **Si el archivo ya tiene control characters, limpialos con `sed -i 's/\x08//g'` y contá:**
+   `grep -c $'\x08' <archivo>` tiene que dar `0`. Un byte invisible sobrevive a la revisión visual
+   del diff, al code review y al `git show`.
+
+→ [[la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido]] · [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]
