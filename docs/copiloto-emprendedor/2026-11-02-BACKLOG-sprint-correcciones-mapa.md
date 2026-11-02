@@ -66,7 +66,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G4** | `sin-issue` | ✅ TERMINADO | sin-codigo: experimento de device sin cambios en la app. Veredicto: DEMORA, 4/4 corridas con los rótulos rancios a +0… |
 | **SM-H1** | `sin-issue` | ✅ TERMINADO | acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobr… |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
-| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
+| **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
 | **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | la frase del agente dijo $50,000 en device (18:02, 1 caso; la sonda de #1363 daba 0/6). Es de backend, o planificacio… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
@@ -76,7 +76,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
-| **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | captura del antes y el despues en device; medir donde se van los ~1,3 s que tarda el escritorio en empezar a cerrar, … |
+| **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
@@ -114,7 +114,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
-| **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. S… |
+| **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -214,9 +214,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H3 · `sin-issue` — «Mandale un recordatorio por mail» produce una card de Calendar
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail conectado. Dueno: el operador, escalado por planificacion.
-- **Cierre:** 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar, medida en device. Device 2026-11-02: el pedido natural elige correo, responde 'No tengo habilitado el servicio de correo' y abre 'Conecta Gmail': la eleccion de herramienta queda acreditada.
+- **Estado:** TERMINADO
+- **Cierre:** 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar, medida en device. Device 2026-11-02: el pedido natural elige correo, responde 'No tengo habilitado el servicio de correo' y abre 'Conecta Gmail': la eleccion de herramienta queda acreditada. Device 2026-11-02 19:42 con cuenta del operador: card de Gmail con la aclaracion de que sale al confirmar; cancelada dice No lo hicimos, tambien tras recargar y tras force-stop. No salio ningun mail. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-H3.md.
 - **Dueño:** backend (dispatcher) + frontend1 (card)
 - **Medido:** el pedido de mail devuelve una card de **Calendar**, no la de Gmail «Confirmar y
   mandar / Cancelar». Y una card de Calendar **cancelada** pasa a «✓ Confirmado».
@@ -376,8 +375,8 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 ### SM-I6 · `sin-issue` — El retardo al soltar (R03) sigue sin corregir
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura del antes y el despues en device; medir donde se van los ~1,3 s que tarda el escritorio en empezar a cerrar, y si existen en release (SM-G4). Hasta medirlo la senal de cierre sigue pasando por el hilo de JS.
-- **Cierre:** 80f1a36f8bb7fac841c63b3698d0238d0db7ba1a (#1411). Los rotulos de PanelDeslizable y PanelFunciones salen de la posicion en el hilo de UI y no del estado fijado al terminar la animacion; tests del cableado rojos con el mutante. mobile.sh 1549 verdes en el worktree y CI 6/6.
+- **Falta:** medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo.
+- **Cierre:** 80f1a36f8bb7fac841c63b3698d0238d0db7ba1a (#1411). Los rotulos de PanelDeslizable y PanelFunciones salen de la posicion en el hilo de UI y no del estado fijado al terminar la animacion; tests del cableado rojos con el mutante. mobile.sh 1549 verdes en el worktree y CI 6/6. Despues filmado en device: el rotulo se va durante el movimiento (SM-I6.md). Desde #1401 el gesto de SM-G4 no tiene camino tactil, por lectura de codigo y una captura.
 - **Dueño:** frontend1
 - **Medido:** pendiente del experimento.
 - **DoD:** el arreglo que indique SM-G4, con la captura del antes y el después.
@@ -1325,8 +1324,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N19 · `sin-issue` — FUERA DEL SPRINT: el presupuesto se guardó SIN mostrar la card, sin chance de corregir
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. Su transcript: 20:59:49 pidio la card por chat, 21:02:08 corrio h5_guardar.sh (DOWN/MOVE/UP en 360,1243 sobre Guardar el presupuesto), 21:02:18 leyo el recibo N 4. Encaja exacto con lo medido por backend (UN POST, okhttp/4.12.0, 201, sin reintentos; crearPresupuesto con UN llamador en FormularioPresupuesto.tsx:237 colgado de onPress:421). CONCLUSIONES QUE SOBREVIVEN: (a) NO hay write no consentido por codigo; (b) la hipotesis 2 TOQUE CIEGO se queda SIN evidencia para la 1767 y no se persigue hasta que algo la sostenga. MI ERROR, que es la leccion de la ficha: afirme que ninguna sesion tenia el device midiendo los avisos con un filtro de nombre *TOMO*/*SOLTE*, y frontend1 lo tenia declarado en otro TIPO de mensaje (dato_ de las 18:05, y a las 17:40 un cierre con cancelar ejercido con adb) => el filtro no miro los archivos donde estaba la respuesta. Para saber quien tenia el device NO se consultan los avisos por nombre: se mide el device. FALTA (frontend1, con el device y la cuenta del operador): hipotesis 1, la card no sobrevive al re-pintado del hilo -- el operador vio solo el reply_text donde habia una card. Grep de quien ESCRIBE la card en el estado del hilo vs quien lo sobrescribe con el historico del server, y evidencia en device = captura con la card visible + salir y volver + segunda captura. Pendiente ademas el cruce de las otras dos cards guardadas (1524 a 49s y 1662 a 70s) contra los transcripts: el tenant canonico lo usan todas las sesiones y es probable que tambien sean pruebas nuestras, lo que retiraria el no es el unico caso.
+- **Estado:** TERMINADO
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al rehidratar. Premisa refutada: el presupuesto 4 lo guardo frontend1 por ADB a las 21:02:08 UTC, y N 2 y N 3 tambien fueron pruebas por ADB. La card sin resolver no desaparece: chatMachine.ts:410 la escribe, useChat.ts:119 la persiste entera y useChat.ts:272-276 la rehidrata; intacta tras salir y volver, HOME y force-stop con pid nuevo (device 2026-11-02, cuenta del operador). Lo que vio el operador, un recibo con solo el N 4, es el mensaje del N 4 guardado antes de #1401, sin id; la captura con importe y cliente de uno nuevo queda en la Falta de SM-N5. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-N19.md.
 - **Dueño:** backend (la medición primero) — frontend1 queda a la espera, ver abajo
 - **De dónde sale:** el **operador**, 2026-11-02, usando la app con su cuenta: «nunca se mostró la
   card del presupuesto... se generó directamente sin posibilidad de corregir ni agregar nada...
