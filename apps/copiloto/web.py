@@ -41,7 +41,7 @@ from afip_factura_workflow import MOTIVO_CODIGO_CANCELADA, MOTIVO_CODIGO_YA_EMIT
 from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
-from conexiones_salud import composio_caidos
+from conexiones_salud import composio_caidos, toolkits_conectables
 from perfil_negocio_store import PerfilNegocioStore, faltantes_perfil_minimo
 from tenant_onboarding_store import TenantOnboardingStore
 from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore
@@ -549,7 +549,7 @@ def _composio_valid_toolkits() -> frozenset[str]:
     módulos de `services/` con acciones (`services.connectable_policy()`). Sin lista literal que pueda driftear.
     Un servicio sin `TOOLS` (Drive, tras la poda del hito 2) no aparece ni acepta `/composio/connect`.
     El worker sigue usando `services.merged_policy()` completo para no romper el archivado de facturas."""
-    return frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
+    return toolkits_conectables()      # SM-N18: UNA definición, compartida con el aviso de conexión caída
 
 
 def _composio_known_toolkits() -> frozenset[str]:

@@ -15,13 +15,28 @@ MERCADOPAGO = "mercadopago"
 ESTADOS_CAIDOS_COMPOSIO = frozenset({"EXPIRED"})
 
 
-def composio_caidos(conexiones: Iterable[dict]) -> list[str]:
-    """Toolkits Composio caídos: alguna cuenta en `EXPIRED` y ninguna `ACTIVE` del mismo toolkit."""
+def toolkits_conectables() -> frozenset[str]:
+    """Toolkits Composio que ESTA app ofrece conectar: `CALENDAR_POLICY` más los módulos de `services/`
+    con acciones. Es la ÚNICA definición de «servicio soportado» (SM-N18): `/composio/connect`, `/catalog`
+    y el aviso de conexión caída la comparten, así que no pueden discrepar. Una lista paralela diverge."""
+    import services
+    from calendar_policy import CALENDAR_POLICY
+    return frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
+
+
+def composio_caidos(conexiones: Iterable[dict], soportados: frozenset[str] | None = None) -> list[str]:
+    """Toolkits Composio caídos: alguna cuenta en `EXPIRED` y ninguna `ACTIVE` del mismo toolkit.
+
+    SM-N18: sólo los que la app SOPORTA (`toolkits_conectables()` salvo que se inyecte `soportados`).
+    Composio lista TODO lo que el usuario autorizó alguna vez en su cuenta, también toolkits sin una sola
+    tool acá (medido 2026-11-02: dos cuentas `instagram` EXPIRED); avisar de ellos manda al usuario a
+    «Reconectar» algo que la app no puede usar ni reconectar."""
+    soportados = toolkits_conectables() if soportados is None else soportados
     activos, caidos = set(), set()
     for c in conexiones or ():
         toolkit = (c.get("toolkit") or "").lower()
         estado = (c.get("status") or "").upper()
-        if not toolkit:
+        if not toolkit or toolkit not in soportados:
             continue
         if estado == "ACTIVE":
             activos.add(toolkit)
