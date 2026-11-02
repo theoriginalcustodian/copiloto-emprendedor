@@ -84,7 +84,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro (vinculado / no vinculado) y del formulario nombrando el ambiente; … |
 | **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -427,7 +427,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K2 · `sin-issue` — El recuadro de vincular ARCA no se ve tocable ni dice a qué ambiente vincula
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura de device de los dos estados del recuadro (vinculado / no vinculado) y del formulario nombrando el ambiente; web no recibió el cambio (gate de paridad: sin testID nuevo)
+- **Cierre:** b06f0841
 - **Dueño:** frontend2
 - **Medido:** `afip` vincular: sólo parte del recuadro responde y se ve distinto según el estado;
   «Vincular» no aclara el ambiente.
