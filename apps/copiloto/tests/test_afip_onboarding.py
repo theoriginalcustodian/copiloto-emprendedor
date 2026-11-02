@@ -116,6 +116,7 @@ def cliente(piezas):
     arranques: list[tuple] = []
 
     app_afip = create_afip_app(
+        es_admin_dep=lambda: True,   # el gate D6 vive en test_afip_homologacion_solo_admin.py
         require_tenant=lambda: TENANT,
         perfil_store_factory=lambda cid: perfil,
         cred_store_factory=lambda cid: cred,
@@ -383,6 +384,7 @@ async def test_el_workflow_termina_en_fallido_si_el_alta_falla():
     # excepción, y lo que se vigila es que el texto sea accionable.
     assert res["motivo"] == ("La sesión de vinculación venció. Volvé a ingresar tu clave fiscal.")
     assert "handle_invalido" not in res["motivo"], "el código crudo no puede llegar al usuario"
+    assert res["causa"] == "dato", "SM-K3: el dato mal cargado se nombra como tal"
 
 
 # ── El certificado huérfano: el peor desenlace del alta ──────────────────────────────────────────
@@ -522,3 +524,81 @@ def test_SME1_guardar_perfil_responsable_inscripto_es_422_con_codigo(cliente):
         "inicio_actividades": "2020-01-01", "punto_venta": 1})
     assert r.status_code == 422
     assert any(d["codigo"] == "condicion_iva_no_soportada" for d in r.json()["detail"])
+
+
+# ── SM-K3: el error nombra CUÁL de las dos causas es ────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("codigo,causa", [
+    ("clave o usuario incorrecto", "dato"),
+    ("handle_invalido_o_vencido", "dato"),
+    ("Tu clave fue bloqueada", "dato"),
+    ("certificado_ok_falta_autorizar_wsfe", "servicio"),
+    ("timeout esperando a ARCA", "servicio"),
+    ("sin_certificado", "servicio"),
+    ("wsfe_no_autorizado", "servicio"),
+    ("ws_degradado: down", "servicio"),
+    ("algo que nadie previó", "desconocida"),
+])
+def test_K3_cada_codigo_declara_su_causa(codigo, causa):
+    from afip_onboarding_workflow import _causa_de_codigo
+    assert _causa_de_codigo(codigo) == causa
+
+
+def test_K3_dato_y_servicio_NO_comparten_mensaje():
+    """El defecto de raíz: dos causas con el mismo texto hacen diagnosticar la equivocada."""
+    from afip_onboarding_workflow import _motivo_de_codigo
+    assert _motivo_de_codigo("clave incorrecta") != _motivo_de_codigo("ws_inaccesible: boom")
+
+
+def test_K3_el_motivo_de_verificacion_no_filtra_el_texto_crudo_de_la_excepcion():
+    """`ws_inaccesible: <exc>` llegaba tal cual a la pantalla; la excepción puede traer detalle interno."""
+    from afip_onboarding_workflow import _motivo_de_codigo
+    texto = _motivo_de_codigo(f"ws_inaccesible: 401 body={CLAVE}")
+    assert CLAVE not in texto and "ws_inaccesible" not in texto and "body" not in texto
+
+
+def test_K3_estado_consulta_el_onboarding_del_ambiente_vinculado(piezas):
+    """Un tenant vinculado en producción no puede leer el alta del workflow `dev`."""
+    handoff, perfil, cred, _ = piezas
+    cred.save(CUIT, cert="C", key="K", ambiente="prod", ws_autorizados=["wsfe"])
+    vistos = []
+
+    def consultar(cid, cuit, ambiente="dev"):
+        vistos.append(ambiente)
+        return {"paso": "fallido", "causa": "dato"}
+
+    app_afip = create_afip_app(
+        es_admin_dep=lambda: True, require_tenant=lambda: TENANT,
+        perfil_store_factory=lambda cid: perfil, cred_store_factory=lambda cid: cred,
+        handoff_factory=lambda cid: handoff,
+        start_onboarding=lambda *a, **k: "wf-1", consultar_onboarding=consultar)
+    app = FastAPI()
+    app.include_router(app_afip.router)
+    r = TestClient(app).get("/afip/estado")
+    assert r.status_code == 200
+    assert vistos == ["prod"]
+    assert r.json()["onboarding"]["causa"] == "dato"
+
+
+def test_K3_alta_interrumpida_declara_causa_servicio():
+    import asyncio
+
+    import web
+
+    class _Desc:
+        status = type("S", (), {"name": "TERMINATED"})()
+
+    class _Handle:
+        async def describe(self):
+            return _Desc()
+
+        async def query(self, nombre):
+            raise RuntimeError("replay roto")
+
+    class _Cli:
+        def get_workflow_handle(self, wf_id):
+            return _Handle()
+
+    r = asyncio.run(web.make_consultar_onboarding(_Cli())("t1", CUIT, "prod"))
+    assert r["paso"] == "fallido" and r["causa"] == "servicio"

@@ -1,6 +1,6 @@
 ---
 name: la-cita-de-procedencia-muere-en-el-merge
-description: Un «medido @ sha» de rama deja de resolver en el instante del squash-merge, justo cuando el documento empieza a circular. Medido: 26% de las citas de SHA del repo no sobrevive a un clon nuevo.
+description: Un «medido @ sha» de rama deja de resolver en el instante del squash-merge, justo cuando el documento empieza a circular. Medido: 26% de las citas de SHA del repo no sobrevive a un clon nuevo. Y el segundo modo de morir (02-11): la cita `path:linea` RESUELVE y lo que afirma ya es falso -- la precision del formato se lee como frescura.
 metadata:
   type: feedback
 ---
@@ -130,3 +130,36 @@ nadie mira.
 cherry-pick y al «lo reconstruí limpio». Y si el símbolo todavía no tiene nombre, el disparador
 tampoco está listo para escribirse.
 → [[una-espera-sin-disparador-nombrable-es-paralisis]] · [[un-disparador-cumplido-no-avisa-a-nadie]]
+
+---
+
+## REFUERZO 2026-11-02 — el otro modo de morir: la cita RESUELVE y ya es falsa
+
+La cita de arriba muere **ruidosamente**: no resuelve y el que audita lo ve. Hay un segundo modo,
+peor, medido hoy sobre el sprint CORRECCIONES: la cita **resuelve perfecto** y lo que afirma dejó de
+ser cierto.
+
+Dos fichas del relevamiento del 2026-10-16 afirmaban una ausencia citando `path:línea`:
+
+| Ficha | Lo que afirmaba | Lo medido |
+|---|---|---|
+| `SM-J4` | «la app no recibe monto/comprobantes» (`api/clientes.ts:31`) | el campo entró al core el **2026-10-06** (#816), **diez días ANTES** del relevamiento |
+| `SM-K6` | el aviso de sesión caída «no existe en ningún archivo» | existía con otra redacción — lo dice el cuerpo del commit `117dc669` del que lo implementó |
+
+**Una cita `path:línea` parece medida: la precisión del formato se lee como frescura.** El
+relevamiento la heredó de un «mapeo previo» que su propio texto nombra y no la volvió a correr;
+planificación la trasladó a un `contrato_` **bloqueante** y frenó a una sesión contra un dato que
+existía desde hacía casi un mes. La forma de la cita no dice nada sobre su edad, y la de un
+`path:línea` sugiere lo contrario.
+
+**Las dos las refutó quien IMPLEMENTA, no quien planifica** — y eso es el instrumento que faltaba:
+el que escribe el código corre el `git grep` por necesidad; el que planifica cita. Así que el gate
+no es un revisor más: es que *toda afirmación de ausencia* («no existe», «no llega», «falta») se
+corra con `git grep` + `git log -S '<símbolo>'` **antes** de bajar un contrato. Un comando, y cierra
+las dos.
+
+Y el corolario para la sesión que implementa: si la premisa de tu ficha cae, **eso no es un desvío
+del goal — es el hallazgo**. Se devuelve a planificación, no se parchea por tu lado ni se implementa
+contra una premisa que ya sabés falsa.
+
+→ [[supuesto-cuya-falla-parece-un-estado-legitimo]] · [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]

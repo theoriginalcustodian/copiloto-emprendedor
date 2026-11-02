@@ -28,7 +28,7 @@ const escuchas = new Set<Escucha>();
  * Es lo único de este módulo que es copy de UI. Va junto al aviso, no en el design-system, porque su
  * razón de existir es este evento y no un estilo compartido.
  */
-export const MENSAJE_SESION_EXPIRADA = 'Tu sesión expiró. Entrá de nuevo.';
+export const MENSAJE_SESION_EXPIRADA = 'Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estabas.';
 
 /**
  * Suscribe un aviso de «la sesión murió». Devuelve la función para desuscribir —pensada para

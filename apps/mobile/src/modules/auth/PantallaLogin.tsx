@@ -24,7 +24,7 @@ type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 
 // inflar la escala global `tipo` con un tamaño que sólo usa una pantalla).
 const HERO = 34;
 /** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
-const LOCKUP_SIMBOLO = 44;
+const LOCKUP_SIMBOLO = 38;
 const ALTO_CAMPO = 52;
 const ALTO_BOTON = 54;
 
@@ -90,7 +90,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
   const estiloCampo = {
     color: tema.color.texto,
     borderColor: tema.color.borde,
-    backgroundColor: tema.color.superficie,
+    backgroundColor: tema.color.superficieAlta,
     borderRadius: tema.radio.md,
     paddingHorizontal: tema.espacio.md,
     height: ALTO_CAMPO,
@@ -130,7 +130,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           * un número elegido a ojo.
           */}
         <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
-          <Marca size={LOCKUP_SIMBOLO} />
+          <Marca size={LOCKUP_SIMBOLO} tono="tinta" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           <Text
@@ -229,7 +229,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               styles.boton,
               {
                 backgroundColor: tema.color.acentoSuperficie,
-                borderRadius: tema.radio.md,
+                borderRadius: tema.radio.completo,
                 height: ALTO_BOTON,
                 marginTop: tema.espacio.xs,
                 opacity: deshabilitado ? 0.7 : 1,
@@ -254,7 +254,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               {
                 // Sin borde (`.btn2` del prototipo, BL-X12m): la jerarquía la da el relleno, no un marco.
                 backgroundColor: tema.color.superficie,
-                borderRadius: tema.radio.md,
+                borderRadius: tema.radio.completo,
                 height: ALTO_BOTON,
                 opacity: procesandoGoogle ? 0.7 : 1,
               },

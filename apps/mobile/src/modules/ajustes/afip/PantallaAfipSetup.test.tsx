@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -16,6 +16,11 @@ jest.mock('../../../adapters/almacen', () => ({
 /** Partial mock de `@copiloto/core`: sólo se reemplazan las 4 funciones de red de `afip.ts`.
  *  `ErrorValidacionFiscal` se conserva REAL (`...actual`) -- el componente hace
  *  `e instanceof ErrorValidacionFiscal`, así que un mock de la clase rompería ese chequeo. */
+// SM-K1: `es_admin` sale de `useSession().me`. Por defecto admin (los tests previos ejercitan los dos
+// ambientes); los de no-admin lo bajan a `false` explícitamente.
+const mockSesion = { me: { es_admin: true } as { es_admin: boolean } | null };
+jest.mock('../../auth', () => ({ useSession: () => mockSesion }));
+
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -631,6 +636,56 @@ describe('PantallaAfipSetup', () => {
     await waitFor(() => expect(screen.getByTestId('afip-ambiente-lista')).toBeTruthy());
     expect(screen.getByTestId('afip-ambiente-prod-vincular')).toBeTruthy();
     expect(screen.queryByTestId('afip-ambiente-prod-usar')).toBeNull();
+  });
+
+  it('SM-K1: un NO admin no ve Homologación y su primer vínculo manda ambiente prod EXPLÍCITO', async () => {
+    mockSesion.me = { es_admin: false };
+    try {
+      jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+      jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+      jest.mocked(estadoAfip).mockResolvedValue({ ...estadoOk(), ambientesVinculados: [] });
+      jest.mocked(conectarArca).mockReturnValueOnce(new Promise(() => {}));
+
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('afip-ambiente-lista')).toBeTruthy());
+      expect(screen.queryByTestId('afip-ambiente-dev-vincular')).toBeNull();
+      expect(screen.queryByTestId('afip-ambiente-dev')).toBeNull();
+      expect(screen.getByTestId('afip-ambiente-prod-vincular')).toBeTruthy();
+
+      await avanzarAPaso3();
+      await fireEvent.changeText(screen.getByTestId('afip-arca-usuario-input'), 'ana');
+      await fireEvent.changeText(screen.getByTestId('afip-arca-clave-campo-input'), 'x');
+      await fireEvent.press(screen.getByTestId('afip-arca-vincular'));
+      expect(conectarArca).toHaveBeenCalledWith(expect.objectContaining({ ambiente: 'prod' }));
+    } finally {
+      mockSesion.me = { es_admin: true };
+    }
+  });
+
+  it('SM-K1: un admin sigue viendo Homologación', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue({ ...estadoOk(), ambiente: 'prod', ambientesVinculados: ['prod'] });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-ambiente-dev-vincular')).toBeTruthy());
+  });
+
+  it('SM-K2: el recuadro ENTERO de un ambiente no vinculado es lo tocable, y el formulario dice a cuál vincula', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue({
+      ...estadoOk(),
+      ambiente: 'dev',
+      ambientesVinculados: ['dev'],
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('afip-ambiente-lista')).toBeTruthy());
+    // El testID del recuadro es el del Pressable: el nombre del ambiente está DENTRO de lo tocable.
+    expect(within(screen.getByTestId('afip-ambiente-prod-vincular')).getByText('Producción')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('afip-ambiente-prod-vincular'));
+    expect(screen.getByText(/Vas a vincular en Producción/)).toBeTruthy();
   });
 
   it('tocar "Usar este" llama a cambiarAmbiente con el ambiente elegido', async () => {

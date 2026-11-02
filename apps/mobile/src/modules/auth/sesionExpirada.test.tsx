@@ -128,4 +128,8 @@ describe('CTA5 mobile — la sesión que se cae sola avisa en castellano', () =>
     expect(result.current.estado).toBe('autenticado');
     expect(result.current.avisoSesion).toBeUndefined();
   });
+
+  it('SM-K6: el aviso dice lo que dice el prototipo (index.html `.ig-aviso`), no una redacción propia', () => {
+    expect(MENSAJE_SESION_EXPIRADA).toBe('Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estabas.');
+  });
 });

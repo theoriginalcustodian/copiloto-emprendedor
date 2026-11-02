@@ -66,7 +66,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
-| **SM-H3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La cap… |
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -81,16 +81,16 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-J4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
+| **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo,… |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K8** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K8** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L co… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -191,7 +191,9 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H3 · `sin-issue` — «Mandale un recordatorio por mail» produce una card de Calendar
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La captura tiene que partir de un PEDIDO EN LENGUAJE NATURAL real ('mandale un recordatorio por mail a X para manana'), no de un disparo directo de la card: backend fijo el discriminante en las descripciones de gmail_send/calendar_book y el comportamiento por tipo (observation.service=='gmail'), pero QUIEN ELIGE LA TOOL es el LLM y eso no se ejercito. Un test que no usa el camino de produccion no puede verlo fallar: la captura con pedido natural es el UNICO control de esa eleccion.
+- **Cierre:** mitad backend CERRADA: 70e46d9f (#1318), desplegado y durabilidad VERDE. test_card_mail_gmail.py afirma la card por TIPO (observation.service=='gmail'); confirma->1 envio y no-confirma->0 en tests SEPARADOS, porque un mecanismo roto hacia el 'no' no da sintoma como segunda asercion del happy-path. VPS suite completa 2653 passed/41 skipped. Sin envio programado (D8).
 - **Dueño:** backend (dispatcher) + frontend1 (card)
 - **Medido:** el pedido de mail devuelve una card de **Calendar**, no la de Gmail «Confirmar y
   mandar / Cancelar». Y una card de Calendar **cancelada** pasa a «✓ Confirmado».
@@ -362,15 +364,41 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
   indicador nativo oculto (color transparente) dejando sólo la línea «Actualizando…». Captura de
   los tres estados, incluido el refresh en curso.
 
-### SM-J4 · `sin-issue` — La pantalla de clientes no recibe monto ni comprobantes
+### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
-- **Estado:** PENDIENTE
-- **Dueño:** backend (dato) → frontend2 (dibujo)
-- **Medido:** el mapa pide monto, comprobantes y chips por cliente; **la app no los recibe hoy**.
-- **DoD:** el endpoint los devuelve por tenant (con su test de aislamiento: A no ve los de B) y la
-  pantalla los dibuja. La junta baja como **`contrato_`** antes de que ninguna implemente: endpoint,
-  request, response, códigos y DoD binario por lado. **Causa:** si el frontend inventa la forma del
-  endpoint, eso es codificar la esperanza, y la costura no es de nadie.
+- **Estado:** DOD-PARCIAL
+- **Falta:** las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y una del caso facturas_atribuibles:false mostrando que el «—» es DELIBERADO -- ese estado ya se malinterpreto una vez como falta de dato y es lo que origino la premisa falsa de esta ficha.
+- **Cierre:** punto 1 del DoD CERRADO por backend: c3867d10 (#1328), test_adversarial_http_clientes_a_cannot_read_b_cliente extendiendo test_adversarial_multitenant.py con el MISMO CUIT en A y B -- A: 0 / «0.00» con atribuible:true, B: 1 / «1500.00» como control positivo, y ajeno identico a inexistente (404, mismo cuerpo). VPS suite completa 2654 passed/41 skipped. Sin cambio de produccion: el dato ya existia desde #816 (2026-10-06).
+- **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
+- ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
+  Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
+  (string decimal, **nunca** null) y `facturas_atribuibles` (bool) — `cliente_store.py:310-320`,
+  `clientes_web.py:147`; la app los consume en `packages/core/src/api/clientes.ts` y los dibuja en
+  `apps/mobile/src/modules/clientes/TarjetaCliente.tsx`, con tests que lo acreditan
+  (`clientes.test.ts`, casos `BL-V18` y `C-D1`).
+  **Por qué nadie lo vio:** el relevamiento (2026-10-16) cita como causa «`api/clientes.ts:31` no
+  trae esos campos», heredada del *mapeo previo* que su propio texto nombra. El campo entró al core
+  el **2026-10-06** (#816, `BL-V18`), **diez días antes** de ese relevamiento: la causa ya era falsa
+  cuando se escribió. Una cita con `path:línea` **parece medida** — la precisión del formato se lee
+  como frescura — y planificación la trasladó a un `contrato_` sin volver a correrla, bloqueando a
+  frontend2 contra un dato que ya existía.
+- **Lo que el «—» de la pantalla significa en realidad:** los clientes de prueba no tienen CUIT
+  (`doc_tipo: null`) ⇒ `facturas_atribuibles: false` ⇒ la UI **a propósito** no pinta número, porque
+  no se puede atribuir. El síntoma observado era el comportamiento correcto, no el defecto.
+- **Los chips quedan FUERA de esta ficha.** El relevamiento pide chips en `factura` (entrada 40) y
+  chips de antigüedad en `presu` (41); en `clientes` (43) dice «chips» sin decir cuáles ni con qué
+  dato. Lo único existente es el chip de cartera (`agregados_este_mes`) y `origen`. No se inventa una
+  regla para llenar una definición delgada: si hacen falta otros, es un `pedido_` con su dato.
+- **DoD:** (1) el **adversarial que falta**: monto y comprobantes aislados por tenant con el **mismo
+  CUIT** en A y B — sin él el aislamiento de estos tres campos queda `[UNVERIFIED]`, y ajeno vs.
+  inexistente ya responde `404` idéntico en código y cuerpo; (2) captura de device con un cliente
+  **que tenga CUIT**, mostrando monto y «N comprobantes» reales; (3) captura del caso
+  `facturas_atribuibles: false` mostrando que el «—» es deliberado.
+- **Ya NO es un `contrato_` bloqueante.** La forma está publicada y medida contra prod:
+  `GET /clientes?q=&limit=` → `{clientes:[{…,comprobantes_cantidad,monto_facturado,facturas_atribuibles}], total, agregados_este_mes}`,
+  tenant por `Depends(require_tenant)` per-request, cartera vacía = `200` con lista vacía. Monto =
+  **facturado neto acumulado** (NC resta), no «por cobrar» ni «del mes»; comprobantes = **cuenta**
+  con CAE, incluida la anulada.
 
 ### SM-J5 · `sin-issue` — La agenda no distingue hoy de los días siguientes
 
@@ -391,7 +419,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de Homologacion oculta para no-admin (frontend2)
+- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
@@ -401,7 +431,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K2 · `sin-issue` — El recuadro de vincular ARCA no se ve tocable ni dice a qué ambiente vincula
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el cambio en esta ficha (el gate de paridad testID exige el mismo testID en ambos lados y no se agrego uno); la diferencia web/mobile es deliberada, no un bug
+- **Cierre:** b06f0841 (#1326)
 - **Dueño:** frontend2
 - **Medido:** `afip` vincular: sólo parte del recuadro responde y se ve distinto según el estado;
   «Vincular» no aclara el ambiente.
@@ -410,7 +442,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo, captura de los dos errores
+- **Cierre:** 1789d8bc (#1334) backend: campo causa dato|servicio|desconocida en onboarding de GET /afip/estado, desplegado en 77326ae5; VPS 79 passed
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
@@ -442,7 +476,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar la del canónico del lado servidor, ventana L
+- **Cierre:** 117dc669
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
@@ -464,7 +500,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K8 · `sin-issue` — El onboarding marca error antes de que el usuario escriba
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L con el operador)
+- **Cierre:** sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test (falla con el defecto, pasa con el fix) + paso en el mapa como onb-perfil + contrato verificado: SM-C3 DoD 2-4
 - **Dueño:** frontend2
 - **Medido:** N4 — la app agrega un paso de perfil que el mapa no tiene
   (`PantallaOnboarding.tsx:292`), gate del backend por `perfilIncompleto`. Su docstring cita el

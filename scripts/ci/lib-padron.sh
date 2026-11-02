@@ -12,7 +12,7 @@
 #      checkout, así que todos los ids M-* se habrían reportado como FANTASMA.
 # El padrón es un hecho compartido del repo, no del branch donde estás parado.
 
-RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+|SM-[A-F][0-9]+)\b'
+RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+|SM-[A-Z][0-9]+)\b'
 
 # Patrón de nombre de los docs-padrón. `-acta-` va anclado con guiones a propósito:
 # `*acta*` matcheaba «comp-ACTA-cion» (2026-07-22-compactacion-a-umbral-investigacion.md),
@@ -119,11 +119,44 @@ padron_ids() { { padron_texto "${1:-.}" | grep -ohE "$RE_ID"; padron_tablero_ids
 
 # Dónde vive un id: devuelve  <path>:<línea>|<texto de la línea>  o vacío si no está.
 # Busca primero en el working tree (path clickeable) y después en origin/main.
+# Devuelve "<linea>|<dod>" del BLOQUE de una ficha (`### <id> · ...`), o vacio si no hay bloque.
+#
+# Por que existe: `padron_donde` prefiere a proposito la primera linea que contenga `|`, porque
+# en los docs viejos cada ficha ERA una fila y su DoD vivia en esa misma fila. En el registro de
+# sprint la ficha es un BLOQUE con bullets, y arriba hay una tabla-indice GENERADA cuya fila no
+# tiene DoD: `| **SM-K6** | `sin-issue` | PENDIENTE | - |`. Esa fila gana por estar primera, asi
+# que el goal quedaba anclado a un "DoD" que no es criterio de cierre de nada -- una orden de
+# trabajo sin DoD no puede cerrarse con evidencia, que es justamente lo que este archivo existe
+# para garantizar. Medido el 2026-11-02 en dos sesiones a la vez (SM-H7 y SM-K8).
+#
+# El bullet se junta multilinea: el DoD de estas fichas se envuelve en 2-3 renglones y cortarlo
+# en el primero deja una frase a medias que se lee como un DoD mas corto del que es.
+_padron_bloque() {
+  local id="$1" f="$2" ln dod
+  ln="$(grep -nE "^#{2,4} +\*{0,2}$id\*{0,2}( |·|\.|$)" "$f" | head -1)"
+  [ -z "$ln" ] && return 1
+  ln="${ln%%:*}"
+  dod="$(awk -v inicio="$ln" '
+    NR <= inicio { next }
+    /^#{2,4} / { exit }
+    /^- \*\*DoD/ { cap = 1; sub(/^- \*\*DoD:?\*\*:? */, ""); printf "%s", $0; next }
+    cap && /^- / { exit }
+    cap && NF == 0 { exit }
+    cap { sub(/^[[:space:]]+/, " "); printf "%s", $0 }
+  ' "$f")"
+  [ -z "$dod" ] && return 1
+  printf '%s|%s
+' "$ln" "$dod"
+}
+
 padron_donde() {
   local id="$1" raiz="${2:-.}" f hit
   while IFS= read -r f; do
     [ -f "$f" ] || continue
-    hit="$(grep -nE "(^|[^A-Z0-9-])$id([^A-Z0-9-]|$)" "$f" | grep -E ':[[:space:]]*\|' | head -1)"
+    # El BLOQUE gana sobre la fila: la tabla-indice es generada y su fila NO tiene DoD.
+    hit=""
+    if bloque="$(_padron_bloque "$id" "$f")"; then hit="${bloque%%|*}:${bloque#*|}"; fi
+    [ -z "$hit" ] && hit="$(grep -nE "(^|[^A-Z0-9-])$id([^A-Z0-9-]|$)" "$f" | grep -E ':[[:space:]]*\|' | head -1)"
     [ -z "$hit" ] && hit="$(grep -nE "(^|[^A-Z0-9-])$id([^A-Z0-9-]|$)" "$f" | head -1)"
     if [ -n "$hit" ]; then
       printf '%s:%s|%s\n' "${f#$raiz/}" "${hit%%:*}" "$(printf '%s' "${hit#*:}" | sed 's/^[[:space:]]*//')"

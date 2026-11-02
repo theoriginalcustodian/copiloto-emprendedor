@@ -1348,3 +1348,45 @@ def test_adversarial_http_cancelar_a_cannot_cancel_b_propuesta(two_tenants):
     r = client.post("/afip/facturas/prop-b/cancelar", headers={"Authorization": f"Bearer {b.token}"})
     assert r.status_code == 200 and tocados[-1] == wf_b
     declarar_tenant(None)
+
+
+def test_adversarial_http_clientes_a_cannot_read_b_cliente(two_tenants, conn_de_tenant):
+    """SM-J4: monto y comprobantes del listado de A no cuentan lo de B, aunque compartan DOCUMENTO.
+
+    A y B tienen un cliente con el MISMO CUIT; sólo B emitió una factura a ese CUIT. El listado de A
+    tiene que decir 0 / «0.00», no heredar la cuenta de B (el join por documento corre dentro del
+    tenant). Y pedir el cliente de B por id es indistinguible de uno inexistente en código Y cuerpo.
+    CONTROL POSITIVO: B ve su comprobante y su monto con el mismo armado — si el armado fallara para
+    todos, el «A ve cero» no probaría aislamiento."""
+    from gasto_store import hoy_del_negocio
+    a, b = two_tenants
+    doc = "20111111112"
+    try:
+        ficha_a = ClienteStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            nombre="Panadería", doc_tipo=80, doc_nro=doc)
+        ficha_b = ClienteStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            nombre="Panadería", doc_tipo=80, doc_nro=doc)
+        AfipComprobanteStore(conn_de_tenant(b.cliente_id), b.cliente_id).registrar(
+            cuit="30711111111", tipo_cbte=11, punto_venta=1, nro=1, cae="CAE1", cae_vto=None,
+            fecha_emision=hoy_del_negocio(), doc_tipo=80, doc_nro=doc, total=1500, estado=None)
+        client = TestClient(_build_negocio_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+
+        fila_a = {c["id"]: c for c in client.get("/clientes", headers=h_a).json()["clientes"]}[ficha_a["id"]]
+        assert fila_a["comprobantes_cantidad"] == 0 and fila_a["monto_facturado"] == "0.00"
+        assert fila_a["facturas_atribuibles"] is True   # tiene CUIT: el 0 es «no compró», no «no sé»
+
+        r_cross = client.get(f"/clientes/{ficha_b['id']}", headers=h_a)
+        r_inex = client.get("/clientes/999999999", headers=h_a)
+        assert r_cross.status_code == r_inex.status_code == 404
+        assert r_cross.json() == r_inex.json()
+
+        fila_b = {c["id"]: c for c in client.get("/clientes", headers=h_b).json()["clientes"]}[ficha_b["id"]]
+        assert fila_b["comprobantes_cantidad"] == 1 and fila_b["monto_facturado"] == "1500.00"
+    finally:
+        conn = conn_de_tenant(b.cliente_id)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.afip_comprobantes WHERE cliente_id = %s", (b.cliente_id,))
+        conn.commit()
+        conn.close()
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
