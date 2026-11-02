@@ -107,6 +107,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N13** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N14** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -968,6 +970,73 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   2. Test que afirme el texto RENDERIZADO (no el campo crudo), en `DetalleComprobante.test.tsx`.
   3. Captura de device del detalle.
 - **Los puntos 1-2 NO necesitan el teléfono.** Sólo el 3.
+
+### SM-N13 · `sin-issue` — 🚫 FUERA DEL SPRINT — La consigna de N8 sigue viva en DOS observaciones más: el fix existe y no viajó
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Fuera del denominador, a propósito:** igual que `SM-N12`. El sprint se mide contra el mapa del
+  16-10 y esto salió de arreglar `SM-N8` hoy, no del mapa (`DEC-18`: un criterio que crece con cada
+  medición no se puede alcanzar). Tiene id porque un hallazgo que sólo vive en un `cierre_` no vuelve
+  a aparecer — y porque la cola de backend quedó vacía, así que se puede tomar YA.
+- **Medido (2026-11-02, sobre `origin/main`):** `git grep -n "Confirmáselo en una línea corta"` da
+  **3** hits en `apps/copiloto/tool_catalog.py` y 1 en el test:
+  - `:1303` → **vivo**
+  - `:1750` → **vivo**
+  - `:1366` → ya arreglado por `SM-N8` (#1383), con el comentario que explica por qué
+  - `tests/test_plata_por_voz.py:369` → el test de N8, que nombra la consigna: es el control, no un defecto
+  Control positivo del instrumento: el hit arreglado (`:1366`) aparece en el mismo grep, así que el
+  patrón **sí** caza la forma viva.
+- **Por qué no es cosmético:** N8 lo midió con sonda, no con criterio. Baseline N=12 → **7/12 con
+  eco**; sacando la consigna, **0/12**. Las dos que quedan están en observaciones que el emprendedor
+  lee igual de seguido (por lo que el `cierre_` de backend nombra: registrar cobro, cancelar factura,
+  Mi día), así que el eco sigue llegando al usuario por otra puerta.
+- **Es PROPAGACIÓN, no diseño.** El fix ya existe en otro call-site: se borra la línea, igual que en
+  `:1366`, y se le pone el mismo comentario explicando por qué no vuelve. No hay decisión que tomar.
+- **DoD binario:**
+  1. `git grep -c "Confirmáselo en una línea corta" -- apps/copiloto/tool_catalog.py` = **0**.
+  2. El test de N8 (`test_plata_por_voz.py:369`) extendido a los dos call-sites nuevos, o uno
+     equivalente que falle si la consigna vuelve a cualquiera de los tres. **Un test que afirme el
+     síntoma no sirve**: tiene que ser rojo si el mecanismo se rompe.
+  3. La misma sonda de N8 (N=12) sobre **una** de las dos observaciones tocadas: eco esperado **0/12**,
+     con el baseline citado.
+  4. Corrido en el **VPS** (regla 2 del `CLAUDE.md`), con el conteo pegado en el `cierre_`.
+- **No necesita device.** Es backend puro.
+
+### SM-N14 · `sin-issue` — 🚫 FUERA DEL SPRINT — El resumen de Gastos dice «Gastado en 1 nov»: un período formateado como día, y el comentario declara el paliativo como solución
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (reportado por frontend1 al capturar, 2026-11-02) — **sin device**, se toma al
+  soltar el teléfono, después de `SM-N11` y `SM-N10`.
+- **Fuera del denominador, a propósito:** como `SM-N12`/`SM-N13`. Salió de una captura de hoy, no del
+  mapa del 16-10 (`DEC-18`). Tiene id porque un hallazgo que sólo vive en un `dato_` no vuelve a
+  aparecer.
+- **No es criterio de planificación: el contrato ya existe y el código lo contradice.**
+  `apps/mobile/src/theme/BloqueCifra.tsx:32` documenta el ejemplo como «Gastado en **agosto**» y
+  `BloqueCifra.test.tsx:13` usa el literal `"Gastado en agosto"`. El rótulo correcto es el **nombre
+  del mes**.
+- **Medido (2026-11-02, `origin/main`):**
+  - `apps/mobile/src/modules/gastos/ResumenMes.tsx:39` → `Gastado en ${formatearFechaCorta(resumen.periodo)}`
+  - `apps/copiloto-web/src/modules/gastos/ResumenMes.tsx:25` → **el mismo defecto, segunda vez**
+  - `packages/core/src/dinero/formatoDinero.ts:152` → `formatearFechaCorta` devuelve
+    `${p.dia} ${MESES_CORTOS[p.mes]}`, así que con un período `"YYYY-MM"` **siempre** dice «1 nov».
+    Hace lo que promete: está mal elegida.
+- **La función que falta YA EXISTE — no hay nada que diseñar:** `formatearMesDePeriodo`
+  (`packages/core/src/dinero/formatoDinero.ts:174`). Se cambia la llamada en los **dos** call-sites.
+- **Y el hallazgo que vale más que el bug:** el comentario de `ResumenMes.tsx:37-38` declara que
+  «`formatearFechaCorta` ya resuelve un período sin día como su día 1». Es **verdad** y es
+  exactamente el defecto: declara el paliativo como si fuera la solución, y por eso nadie volvió a
+  mirarlo. Al arreglarlo, el comentario se **reemplaza** por el motivo real (un período se formatea
+  como mes), no se borra: un comentario que dice «ya está resuelto» apaga la búsqueda del próximo.
+- **DoD binario:**
+  1. Los **dos** call-sites usan `formatearMesDePeriodo`. Control: `git grep -c "formatearFechaCorta"`
+     en los dos `ResumenMes.tsx` = **0**. Arreglar uno solo no cuenta (son gemelos).
+  2. Un test por call-site que falle si vuelve el día: período `"2026-11"` → el rótulo contiene
+     `noviembre` y **no** contiene `"1 nov"`. El assert negativo es obligatorio — sin él, el test
+     pasa igual con el formateador viejo si el mes acierta.
+  3. El comentario de `:37-38` reemplazado por el motivo real.
+  4. Corrido donde corresponde (`scripts/ci/core.sh` + `web.sh`), con el conteo en el `cierre_`.
+- **No necesita device:** es código + test. La captura de Gastos ya existe, del relevamiento.
 
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 
