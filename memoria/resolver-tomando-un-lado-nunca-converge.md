@@ -84,3 +84,31 @@ la otra sesión**, con tono de medición.
 
 Ver [[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] y
 [[amend-en-checkout-compartido-pisa-el-commit-de-otro]].
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — la EXCEPCIÓN: si el artefacto es GENERADO, tomar un lado es inocuo
+
+La regla de arriba vale para artefactos **escritos**. Hoy encontré su excepción, y conviene no
+confundirlas porque el procedimiento es opuesto.
+
+**Lo medido.** El backlog del sprint tiene una **tabla-índice generada** por
+`scripts/sprint-estado.py --tabla`. Dos ramas la tocaron (yo bajando `SM-N10/N11/N12`, frontend2
+marcando `SM-N9`) y el conflicto cayó **sólo ahí** — los bullets del cuerpo mergearon solos, porque
+cada ficha vive en su propio bloque. Resolví tomando el lado `HEAD`, donde `SM-N9` figuraba
+`DOD-PARCIAL`, y **después de regenerar la fila quedó `✅ TERMINADO` con los dos shas de frontend2**.
+Pasó **dos veces** en la misma tarde (main se movió otra vez entre mi push y el merge).
+
+**Why:** en un artefacto generado el lado que elegís no contiene información — es una **proyección**
+del cuerpo. Descartar la mitad del otro ahí no pierde nada, porque la mitad real nunca estuvo en la
+tabla: estaba en el bullet que mergeó limpio. Lo que convierte «tomar un lado» en pérdida es que el
+texto elegido **sea** la fuente; cuando es una derivación, la fuente sobrevive intacta y el
+instrumento la vuelve a proyectar.
+
+**How to apply:** ante un conflicto, la primera pregunta no es «qué lado conservo» sino **«este
+bloque es fuente o es derivado?»**. Si hay un comando que lo produce —tabla, índice, lockfile,
+snapshot, `--tabla`, un `generated` en el encabezado— resolvelo **corriendo el comando**, no
+eligiendo: `git checkout --ours <doc>` (da igual el lado) y después el generador, y el control es
+que las **dos** mitades aparezcan en la salida. Si es fuente, sigue valiendo todo lo de arriba: un
+grep por cada mitad. Y si el conflicto cae en los **dos** tipos de bloque en el mismo archivo, son
+dos problemas distintos en el mismo diff — tratalos por separado.

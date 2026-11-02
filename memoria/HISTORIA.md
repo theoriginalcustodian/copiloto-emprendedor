@@ -521,3 +521,12 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 - [🧪🎞️ El mock de Reanimated hace inalcanzable `finished: false`](el-mock-de-reanimated-hace-inalcanzable-finished-false-y-el-callback-del-spring.md) - un fix en esa rama sale verde sin ejercitarse.
 - [📚🔢 La skill dice `runOnJS` removido y en Reanimated 4.5.0 existe](la-skill-swmansion-dice-runOnJS-removido-y-en-reanimated-4-5-0-existe.md) - canónica del dominio, no de la versión instalada.
 - [Relevamiento: pendientes de device](relevamiento-mapa-pendientes-device-plan-guardado.md) - 21 sin medir.  — bajada 2026-11-02: el relevamiento se midió en device y se convirtió en el sprint CORRECCIONES (39 fichas, bloques G a N).
+
+## Movidos del indice el 2026-11-02 (indice en su techo exacto, 24000/24000 B)
+
+> Bajadas con **margen 0**: el indice estaba en 24000 de 24000 bytes y la proxima entrada no
+> entraba. Criterio: principio ya disponible por otra via, no conteo de citas — medido el
+> 2026-11-02, «hoja del grafo» marca lo RECIEN escrito, no lo prescindible.
+
+- [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
+- [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
