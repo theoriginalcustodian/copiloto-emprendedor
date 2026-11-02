@@ -23,7 +23,7 @@
  */
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -71,6 +71,20 @@ export interface PanelFuncionesProps extends PropsWithChildren {
   /** Espejo de lectura del estado asentado, para el BACK de Android. No mueve nada. */
   onAbiertoChange?: (abierto: boolean) => void;
   testID?: string;
+}
+
+/**
+ * Cuánto se ve el rótulo de abierto: 0 hasta el 40 % del recorrido, 1 desde el 60 %, y a la inversa el de cerrado.
+ *
+ * 🔴 **SM-I6: lo decide la posición en el hilo de UI, no el estado de React**, igual que
+ * `PanelDeslizable.opacidadRotuloAbajo` y por lo mismo: SM-G4 midió el escritorio cerrado a +1,7 s y la pestaña
+ * diciendo «Subí para volver a Mi día» hasta +2,9 s. Sólo lee `y`: no es un dueño más. Local a propósito: ver el
+ * comentario de `CONFIG_SNAP`.
+ */
+export function opacidadRotuloAbierto(y: number, alto: number): number {
+  'worklet';
+  if (alto <= 0) return 0;
+  return Math.min(Math.max((1 + y / alto - 0.4) / 0.2, 0), 1);
 }
 
 export function PanelFunciones({
@@ -186,6 +200,9 @@ export function PanelFunciones({
 
   const estilo = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
+  const estiloRotuloCerrado = useAnimatedStyle(() => ({ opacity: 1 - opacidadRotuloAbierto(y.value, alto.value) }));
+  const estiloRotuloAbierto = useAnimatedStyle(() => ({ opacity: opacidadRotuloAbierto(y.value, alto.value) }));
+
   return (
     <View style={styles.raiz} testID={testID}>
       {/* La BASE — Mi día. Ocupa todo; el escritorio le cae encima. */}
@@ -216,9 +233,23 @@ export function PanelFunciones({
               accessibilityState={{ expanded: abierto }}
             >
               <View style={[styles.barra, { backgroundColor: tema.glass.pill }]} />
-              <Text style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-                {abierto ? 'Subí para volver a Mi día' : 'Bajá para tus funciones'}
-              </Text>
+              <View style={styles.rotulos}>
+                <Animated.Text
+                  style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }, estiloRotuloCerrado]}
+                >
+                  Bajá para tus funciones
+                </Animated.Text>
+                <Animated.Text
+                  style={[
+                    styles.rotulo,
+                    StyleSheet.absoluteFill,
+                    { color: tema.color.textoTenue, fontFamily: tema.fuente.mono },
+                    estiloRotuloAbierto,
+                  ]}
+                >
+                  Subí para volver a Mi día
+                </Animated.Text>
+              </View>
             </View>
           </GestureDetector>
         </CristalVidrio>
@@ -239,5 +270,6 @@ const styles = StyleSheet.create({
   pestana: { height: ALTO_PESTANA, alignItems: 'center', justifyContent: 'center', gap: 6 },
   barra: { width: 44, height: 5, borderRadius: 3 },
   // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
-  rotulo: { fontSize: 11, letterSpacing: 0.2 },
+  rotulos: { alignSelf: 'stretch' },
+  rotulo: { fontSize: 11, letterSpacing: 0.2, textAlign: 'center' },
 });
