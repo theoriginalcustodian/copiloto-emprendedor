@@ -1280,11 +1280,11 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
     factura, problema = _elegir_uno(
         candidatos, "ninguna factura impaga que coincida",
         lambda c: f"«{c['nro']} de {c['receptor_nombre'] or 'sin nombre'} "
-                  f"por {_plata(c['saldo'])}»")
+                  f"por {_plata_corta(c['saldo'])}»")
     if problema:
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
                           observation={"result": problema,
-                                       "candidatos": [{"nro": c["nro"], "saldo": c["saldo"],
+                                       "candidatos": [{"nro": c["nro"], "saldo": _plata_corta(c["saldo"]),
                                                        "receptor": c["receptor_nombre"]}
                                                       for c in candidatos[:6]]})
 
@@ -1335,11 +1335,11 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
     presupuesto, problema = _elegir_uno(
         candidatos, f"ningún presupuesto que se pueda marcar como {nuevo}",
         lambda p: f"«{p['numero']} de {p['receptor']['nombre'] or 'sin nombre'} "
-                  f"por {_plata(p['total'])}»")
+                  f"por {_plata_corta(p['total'])}»")
     if problema:
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
                           observation={"result": problema,
-                                       "candidatos": [{"numero": p["numero"], "total": p["total"],
+                                       "candidatos": [{"numero": p["numero"], "total": _plata_corta(p["total"]),
                                                        "receptor": p["receptor"]["nombre"]}
                                                       for p in candidatos[:6]]})
     try:
