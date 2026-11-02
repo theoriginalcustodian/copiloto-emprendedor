@@ -31,6 +31,30 @@
 - *Sin el operador no se hace:* el botón de emitir, el login tras cada cierre de sesión, la voz real (si no hay quien hable, la fila queda NO-VERIFICABLE con el motivo), el build release.
 - *Estado del repo:* PR #1300 lleva estas decisiones; el CI no corrió solo (docs): se disparó con `gh workflow run tests.yml --ref <rama>`.
 
+## 00.bis Sesión con el operador (2026-11-02): avance y hallazgos NUEVOS
+
+**Hecho en device (teléfono `RF8T318RN9T`, sesión Google de `341lin@gmail.com`):**
+- Sesión iniciada; perfil de onboarding completado por el operador; **Calendar ya estaba conectado** (no hizo falta reconectarlo: `agenda` se mide sin su toque).
+- **ARCA vinculada en Homologación** (`afip_credentials` 0 → 1 activa `dev:***065`, medido con `scripts/diag/estado-tenant-prod.sh`). Causa del primer fallo: el token de AfipSDK (`AFIP_ACCESS_TOKEN`) estaba vencido (`401 invalid_token`); se reemplazó en `/etc/unreal-copilot/copiloto.env` con el token «TOC» (respaldo del `.env` en el mismo directorio; permisos devueltos a `600` tras un descuido mío que los dejó en `644` ~1 min).
+- Producción: **sin vincular** (el operador debe cargar usuario y clave fiscal de producción; el CUIT de prueba precargado `20111111112` NO era el suyo).
+
+**Pedidos del operador (decididos, a implementar en la tanda de correcciones):**
+1. **Icono de configuración en «Funciones».** Hoy la única puerta a Ajustes es el avatar de «Mi día» (`PantallaMiDia.tsx:729`); en el panel «Funciones» no hay ninguna. Hay que poner un icono de acceso a Ajustes ahí.
+2. **El botón «Vincular» de cada ambiente debe ser el RECUADRO COMPLETO tocable**, no solo la palabra (`PantallaAfipSetup.tsx:927-933`: hoy solo la palabra es `Pressable`). Y el recuadro de un ambiente sin vincular debe **verse igual** que el de Homologación «Activo» (mismo marco y estado visual).
+3. **En la beta no aparecerá Homologación** (decisión del operador: es solo para pruebas). El selector de ambientes de la beta muestra solo Producción; Homologación queda para desarrollo/pruebas internas.
+
+**Hallazgos de usabilidad (clase A, medidos en device):**
+- Tocar «Vincular» en un ambiente abre el formulario en el bloque «2. Conectar con ARCA» (arriba), sin desplazar la pantalla: desde el bloque 3 parece que no pasó nada.
+- El formulario de usuario/clave **no dice a qué ambiente vincula**; con Producción (comprobantes reales) es el caso grave.
+- Los botones «Guardar perfil» y «Continuar» se apagan con CUIT de menos de 11 dígitos **sin decir por qué** (`PantallaAfipSetup.tsx:679`, `:793`).
+- El error «No pudimos vincular… escribinos» no distingue una falla del servicio (token del proveedor) de un dato mal cargado.
+- El avatar de Mi día se dibuja vacío («·») porque nadie le pasa `inicial` (`AvatarCuenta.tsx`), y es la única puerta a Ajustes.
+- El paso de perfil del onboarding (N4) muestra los errores en rojo antes de tocar nada.
+- «Presupuestos» se parte en «Presupuesto/s» en el tile de Funciones (a 390 dp).
+- Observación (no concluyente): el proceso de la app murió una vez por `signal 9` (muerte externa, sin crash en el log).
+
+**Pendiente de esta sesión:** vincular Producción (operador), factura de $100 a consumidor final en el ambiente que se decida (botón final lo toca el operador), y recorrido autónomo del resto.
+
 ## 0. Orden del operador (textual, 2026-10-16)
 
 > «necesitamos prueba empírica del device de cada pantalla que falta… con adb sí se puede grabar y lo hemos hecho para las pruebas de audio… además no tenemos que grabar nada, sólo probar las pantallas… además también estoy yo para poder hacer lo que necesitemos en el device para terminar el relevamiento completo.»
