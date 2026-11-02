@@ -191,6 +191,51 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
   });
 });
 
+describe('PantallaInteligencia — SM-J3: mes en la cabecera y «Sin ventas todavía»', () => {
+  const VACIA = {
+    ...PORTADA,
+    mes: { ...PORTADA.mes, ingresos: '0.00', facturado: '0.00', cobrado: '0.00' },
+    serieMensual: [],
+    mejoresClientes: [],
+  };
+
+  it('con fecha de corte la cabecera lleva el mes («Agosto»); sin ella, ninguno inventado', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: { ...PORTADA, caja: { ...PORTADA.caja, fechaCorte: '2026-08-19' } },
+    });
+    await montar();
+    expect((await screen.findByTestId('glass-etiqueta')).props.children).toBe('Agosto');
+  });
+
+  it('sin fecha de corte NO hay etiqueta de mes', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
+    await montar();
+    await screen.findByTestId('inteligencia-portada');
+    expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
+  });
+
+  it('con todo en cero medido dice «Sin ventas todavía»', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', portada: VACIA });
+    await montar();
+    expect(await screen.findByText('Sin ventas todavía')).toBeTruthy();
+  });
+
+  it('🔴 control: con ventas NO lo dice', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
+    await montar();
+    await screen.findByTestId('inteligencia-portada');
+    expect(screen.queryByText('Sin ventas todavía')).toBeNull();
+  });
+
+  it('🔴 un `null` («no se puede calcular») NO se lee como cero: tampoco lo dice', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', portada: { ...VACIA, mes: { ...VACIA.mes, ingresos: null } } });
+    await montar();
+    await screen.findByTestId('inteligencia-portada');
+    expect(screen.queryByText('Sin ventas todavía')).toBeNull();
+  });
+});
+
 describe('PantallaInteligencia — la solapa "Preguntar" es una SALIDA al chat (decisión táctica 2026-10-13)', () => {
   afterEach(() => {
     jest.restoreAllMocks();

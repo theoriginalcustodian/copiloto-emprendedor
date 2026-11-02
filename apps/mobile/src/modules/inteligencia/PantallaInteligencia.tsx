@@ -10,6 +10,7 @@ import {
   chipDeCaja,
   faseRefresco,
   formatearImporte,
+  formatearMesDePeriodo,
   leerPortada,
   MS_AL_DIA,
   TEXTO_REFRESCO,
@@ -58,6 +59,22 @@ type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
 
 /** dp por encima de la pantalla donde Android ubica el círculo del pull-to-refresh: afuera de cuadro, recortado. */
 const OFFSET_REFRESH_FUERA_DE_CUADRO = -1000;
+
+/**
+ * SM-J3 — ¿el negocio todavía no vendió nada? Sólo con CERO medido: un `null` es «no se puede calcular»,
+ * no «cero», y decir «Sin ventas todavía» sobre un dato ausente sería afirmar lo que no se sabe. Los tres
+ * del mes tienen que ser exactamente 0, sin clientes en el ranking y sin ingresos en la serie.
+ */
+export function sinVentasTodavia(p: Portada): boolean {
+  const cero = (v: string | null) => v != null && Number(v) === 0;
+  return (
+    cero(p.mes.ingresos) &&
+    cero(p.mes.facturado) &&
+    cero(p.mes.cobrado) &&
+    p.mejoresClientes.length === 0 &&
+    p.serieMensual.every((m) => m.ingresos == null || Number(m.ingresos) === 0)
+  );
+}
 
 /** Vuelve al chat principal: la pregunta se hace ahí (ver la cabecera). */
 function irAlChat() {
@@ -150,7 +167,14 @@ export function PantallaInteligencia() {
   const kpi = (v: string | null) => (v != null ? formatearImporte(v) : '—');
 
   return (
-    <MarcoGlass titulo="Inteligencia de Negocio" icono="inteligencia" testID="pantalla-inteligencia">
+    // `etiqueta` = el mes del corte de caja («Agosto»), como `.per` del prototipo. Sin fecha de corte no hay
+    // mes que decir, y no se inventa uno con la fecha del teléfono.
+    <MarcoGlass
+      titulo="Inteligencia de Negocio"
+      icono="inteligencia"
+      etiqueta={portada?.caja.fechaCorte != null ? formatearMesDePeriodo(portada.caja.fechaCorte) : undefined}
+      testID="pantalla-inteligencia"
+    >
       <View style={styles.raiz}>
         <Solapas />
 
@@ -246,6 +270,14 @@ export function PantallaInteligencia() {
               ))}
             </View>
           </BloqueCifra>
+
+          {sinVentasTodavia(portada) && (
+            <Text
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
+            >
+              Sin ventas todavía
+            </Text>
+          )}
 
           {/* EL MES — cuatro números en grilla de dos columnas + Rentabilidad en fila completa con
               su nota cuando falta el dato (mismo patrón que web `.kpi.sindato`: «no es cero, es que

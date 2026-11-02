@@ -70,7 +70,7 @@ _PRESENTATION: dict[str, dict] = {
         "category": "Comunicación",
         # SM-E2: «Leer mails» y «Buscar» se anunciaban y `services/gmail.py` sólo cablea `gmail_send`
         # (A8: «Gmail manda y NO lee»). Se anuncia lo que se hace.
-        "description": "Enviá mails desde el chat.",
+        "description": "Enviá mails desde el chat. No puede leerlos.",
         "alcance": [_cap("Enviar mails", CONDICION_REQUIERE_OK, "gmail_send")],
     },
     "googlecalendar": {

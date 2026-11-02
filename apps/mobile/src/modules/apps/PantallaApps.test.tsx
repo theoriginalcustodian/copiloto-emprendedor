@@ -102,6 +102,8 @@ describe('PantallaApps', () => {
     expect(screen.queryByTestId('app-gmail-conectar')).toBeNull();
     expect(screen.getByTestId('app-googledrive-conectar')).toBeTruthy();
     expect(screen.queryByTestId('app-googledrive-conectada')).toBeNull();
+    // SM-K4: el estado es una etiqueta («● Conectada»), no texto suelto.
+    expect(screen.getByTestId('app-gmail-conectada').props.children).toBe('● Conectada');
   });
 
   it('mapeo `apps`: contador «N conectadas de M» y dos grupos, con Drive en «Trabaja sola, de fondo»', async () => {

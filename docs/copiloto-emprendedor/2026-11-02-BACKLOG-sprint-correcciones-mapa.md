@@ -86,7 +86,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
-| **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device (Metro de nuevo + teléfono) |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -541,7 +541,9 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K4 · `sin-issue` — Apps conectadas no dice qué NO puede hacer el copiloto
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device (Metro de nuevo + teléfono)
+- **Cierre:** c1ee52924973b1994afca009e77a69ca33fabd53 · Gmail «No puede leerlos» (catalog.py) · estado como etiqueta «● Conectada» (test) · Sheets se queda: conector real (catalog.py googlesheets, services/sheets.py, test_catalog_route.py:188)
 - **Dueño:** frontend2
 - **Medido:** falta «No puede leerlos» en Gmail (decisión del mockup 13); el estado va como texto
   suelto en vez de etiqueta; Google Sheets figura en el mapa.
