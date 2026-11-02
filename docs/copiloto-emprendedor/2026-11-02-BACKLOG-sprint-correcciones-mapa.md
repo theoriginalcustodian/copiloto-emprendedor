@@ -85,12 +85,12 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo,… |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K8** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L co… |
+| **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -510,8 +510,8 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo, captura de los dos errores
-- **Cierre:** 1789d8bc (#1334) backend: campo causa dato|servicio|desconocida en onboarding de GET /afip/estado, desplegado en 77326ae5; VPS 79 passed
+- **Falta:** Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya refresca el estado: premisa sin medir); subtitulo contra el mapa; captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (omitido por decision del operador BL-V27)
+- **Cierre:** c18439ff (#1339) app: la pantalla nombra la causa dato|servicio|desconocida del fallo del alta; backend 1789d8bc (#1334)
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
@@ -556,8 +556,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar la del canónico del lado servidor, ventana L
-- **Cierre:** 117dc669
+- **Falta:** una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: el JWT de acceso es stateless; ventana L)
+- **Cierre:** 117dc669 · captura de device 2026-11-02 del ingreso normal sin aviso en docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-K6-ingreso-normal-sin-aviso-lockup-odobi.webp
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
@@ -579,9 +579,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K8 · `sin-issue` — El onboarding marca error antes de que el usuario escriba
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L con el operador)
-- **Cierre:** sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test (falla con el defecto, pasa con el fix) + paso en el mapa como onb-perfil + contrato verificado: SM-C3 DoD 2-4
+- **Estado:** TERMINADO
+- **Cierre:** sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-11-02 en docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-K8-paso-perfil-sin-errores-al-abrir.webp (onboarding del canónico puesto en false con k8.py y restaurado a true, verificado)
 - **Dueño:** frontend2
 - **Medido:** N4 — la app agrega un paso de perfil que el mapa no tiene
   (`PantallaOnboarding.tsx:292`), gate del backend por `perfilIncompleto`. Su docstring cita el
