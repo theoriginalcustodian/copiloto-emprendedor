@@ -774,10 +774,27 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   sesión arreglando algo que en la pantalla no existe — y el «fix» va a parecer que funciona, porque
   la próxima captura también va a cambiar.
 - **DoD:**
-  1. **Control del instrumento, primero:** mirar las dos cards en la pantalla del teléfono **sin
-     capturar**, con el canónico. Reportar si el rectángulo está a ojo. **Si NO está a ojo, la ficha
-     cierra `TERMINADO` como artefacto de `screencap`** — con esa frase escrita, porque lo que se
-     retira es la causa, no la observación.
+  1. **Control del instrumento, primero — ⚠️ ENMIENDA DEL DoD (planificación, 2026-11-02):** la
+     redacción original pedía mirar la pantalla **«a ojo», sin capturar**. Eso estaba mal: **ninguna
+     sesión puede cumplirlo.** Ninguna ve una pantalla — todo lo que llamamos «ver» pasa por un
+     instrumento. Era un DoD cuyo único ejecutor posible era el operador, sin declararlo: el mismo
+     defecto de los cinco disparadores sin dueño. Lo reemplaza un **cruce de dos instrumentos que no
+     comparten el punto ciego**:
+     - `screencap`, que **compone y aplana** (lo ya medido), y
+     - `adb shell dumpsys SurfaceFlinger`, leyendo la **lista de capas con geometría y alfa** — no una
+       imagen compuesta, sino si **existe una capa** con esos bounds rectos.
+
+     El veredicto sale del **cruce**, y se reporta qué dijo cada instrumento por separado:
+     - capa con esos bounds **existe** → el rectángulo es real; se pasa al punto 2 **con la capa ya
+       nombrada**, que era lo que el punto 2 pedía averiguar;
+     - **ninguna** capa con esos bounds → artefacto de `screencap`; cierra `TERMINADO` con esa frase
+       escrita, porque lo que se retira es la causa, no la observación;
+     - ambiguo → **recién ahí** va a la ventana del operador, como disparador propio, no antes.
+
+     **Lo que NO vale: SurfaceFlinger solo, como sustituto del ojo.** La pregunta del punto 1 es *¿el
+     compositor fabrica el rectángulo?*, y SurfaceFlinger **es** el compositor: medir con él para
+     descartarlo es pedirle al sospechoso que testifique. Sirve como **segundo** instrumento de un
+     cruce, nunca como el único.
   2. Sólo si está a ojo: comparar con el equivalente de documed (§3.ter) y nombrar la capa (sombra,
      vidrio del shell, o el recorte del padre) antes de tocar nada.
   3. Captura de device del antes y el después.
