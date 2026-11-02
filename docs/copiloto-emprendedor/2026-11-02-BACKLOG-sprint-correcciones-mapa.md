@@ -108,6 +108,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N13** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N14** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -1000,6 +1001,41 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      con el baseline citado.
   4. Corrido en el **VPS** (regla 2 del `CLAUDE.md`), con el conteo pegado en el `cierre_`.
 - **No necesita device.** Es backend puro.
+
+### SM-N14 · `sin-issue` — 🚫 FUERA DEL SPRINT — El resumen de Gastos dice «Gastado en 1 nov»: un período formateado como día, y el comentario declara el paliativo como solución
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (reportado por frontend1 al capturar, 2026-11-02) — **sin device**, se toma al
+  soltar el teléfono, después de `SM-N11` y `SM-N10`.
+- **Fuera del denominador, a propósito:** como `SM-N12`/`SM-N13`. Salió de una captura de hoy, no del
+  mapa del 16-10 (`DEC-18`). Tiene id porque un hallazgo que sólo vive en un `dato_` no vuelve a
+  aparecer.
+- **No es criterio de planificación: el contrato ya existe y el código lo contradice.**
+  `apps/mobile/src/theme/BloqueCifra.tsx:32` documenta el ejemplo como «Gastado en **agosto**» y
+  `BloqueCifra.test.tsx:13` usa el literal `"Gastado en agosto"`. El rótulo correcto es el **nombre
+  del mes**.
+- **Medido (2026-11-02, `origin/main`):**
+  - `apps/mobile/src/modules/gastos/ResumenMes.tsx:39` → `Gastado en ${formatearFechaCorta(resumen.periodo)}`
+  - `apps/copiloto-web/src/modules/gastos/ResumenMes.tsx:25` → **el mismo defecto, segunda vez**
+  - `packages/core/src/dinero/formatoDinero.ts:152` → `formatearFechaCorta` devuelve
+    `${p.dia} ${MESES_CORTOS[p.mes]}`, así que con un período `"YYYY-MM"` **siempre** dice «1 nov».
+    Hace lo que promete: está mal elegida.
+- **La función que falta YA EXISTE — no hay nada que diseñar:** `formatearMesDePeriodo`
+  (`packages/core/src/dinero/formatoDinero.ts:174`). Se cambia la llamada en los **dos** call-sites.
+- **Y el hallazgo que vale más que el bug:** el comentario de `ResumenMes.tsx:37-38` declara que
+  «`formatearFechaCorta` ya resuelve un período sin día como su día 1». Es **verdad** y es
+  exactamente el defecto: declara el paliativo como si fuera la solución, y por eso nadie volvió a
+  mirarlo. Al arreglarlo, el comentario se **reemplaza** por el motivo real (un período se formatea
+  como mes), no se borra: un comentario que dice «ya está resuelto» apaga la búsqueda del próximo.
+- **DoD binario:**
+  1. Los **dos** call-sites usan `formatearMesDePeriodo`. Control: `git grep -c "formatearFechaCorta"`
+     en los dos `ResumenMes.tsx` = **0**. Arreglar uno solo no cuenta (son gemelos).
+  2. Un test por call-site que falle si vuelve el día: período `"2026-11"` → el rótulo contiene
+     `noviembre` y **no** contiene `"1 nov"`. El assert negativo es obligatorio — sin él, el test
+     pasa igual con el formateador viejo si el mes acierta.
+  3. El comentario de `:37-38` reemplazado por el motivo real.
+  4. Corrido donde corresponde (`scripts/ci/core.sh` + `web.sh`), con el conteo en el `cierre_`.
+- **No necesita device:** es código + test. La captura de Gastos ya existe, del relevamiento.
 
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 
