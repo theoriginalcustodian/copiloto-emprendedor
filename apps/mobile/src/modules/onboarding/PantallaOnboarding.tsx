@@ -80,7 +80,6 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
   const [permisos, setPermisos] = useState<readonly PermisoDelHilo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState<PermisoDelHilo['id'] | null>(null);
-  const [faltantes, setFaltantes] = useState<readonly CampoPerfilMinimo[]>([]);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -113,7 +112,6 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
     // 409 `perfil_minimo_incompleto` (SM-C3): el hilo NO se cierra — el server no deja entrar al shell
     // sin `queVende` y `nombreComercial`, y el paso se los pide acá, dentro del hilo (no es pantalla nueva).
     if (!res.ok && res.perfilIncompleto) {
-      setFaltantes(res.faltantes);
       setPaso('perfil');
       return;
     }
@@ -150,7 +148,7 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
   ];
 
   if (paso === 'perfil') {
-    return <PasoPerfil estiloContenedor={contenedor} faltantesIniciales={faltantes} onTerminar={onTerminar} />;
+    return <PasoPerfil estiloContenedor={contenedor} onTerminar={onTerminar} />;
   }
 
   if (paso === 'recibo') return <PasoRecibo estiloContenedor={contenedor} onEntrar={() => void terminar()} />;
@@ -215,16 +213,14 @@ export function PantallaOnboarding({ onTerminar }: PantallaOnboardingProps) {
  */
 function PasoPerfil({
   estiloContenedor,
-  faltantesIniciales,
   onTerminar,
 }: {
   estiloContenedor: object[];
-  faltantesIniciales: readonly CampoPerfilMinimo[];
   onTerminar: () => void;
 }) {
   const tema = useTema();
   const [campos, setCampos] = useState({ queVende: '', nombreComercial: '' });
-  const [rechazados, setRechazados] = useState<readonly CampoPerfilMinimo[]>(faltantesIniciales);
+  const [rechazados, setRechazados] = useState<readonly CampoPerfilMinimo[]>([]); // vacío al abrir: el error aparece al intentar avanzar (SM-K8)
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const vivo = useRef(true);
