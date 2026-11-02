@@ -6,7 +6,7 @@ import { StyleSheet, Text } from 'react-native';
 /** `TarjetaClientePropuesto` importa `empujarUnaVez`, que toca `expo-router`. */
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
-import { EJEMPLOS_CHAT, type ChatMessage, type SendStatus } from '@copiloto/core';
+import { EJEMPLOS_CHAT, sanitizarHitlRespondido, type ChatMessage, type SendStatus } from '@copiloto/core';
 
 import type { ReactElement } from 'react';
 
@@ -245,6 +245,65 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('Confirmado')).toBeTruthy();
     expect(screen.queryByText('No lo hicimos')).toBeNull();
     expect(screen.queryByTestId('tarjeta-confirmacion-confirmar')).toBeNull();
+  });
+
+  // SM-H7 — la card cancelada que se leía «Confirmado» al recargar (medido en device 2026-11-02,
+  // `app-pres-guardado-y-card-calendar-confirmado.png`). Corre la cadena REAL de rehidratación
+  // (`sanitizarHitlRespondido` → `mapearGate` → vista): cada mitad probada sola salía verde.
+  describe('SM-H7: una card cancelada nunca se lee «Confirmado»', () => {
+    const cardCalendar: ChatMessage = {
+      id: 'assistant-1',
+      role: 'assistant',
+      text: 'agendar «Recordatorio para Lucía»',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:2:0' },
+        { label: 'Cancelar', value: 'cancel:2:0' },
+      ],
+    };
+
+    it('cancelada por el botón, al recargar: la burbuja guarda el label y el recibo dice «No lo hicimos»', async () => {
+      await envolver(sanitizarHitlRespondido([cardCalendar, { id: 'u1', role: 'user', text: 'Cancelar' }]));
+      expect(screen.getByText('No lo hicimos')).toBeTruthy();
+      expect(screen.queryByText('Confirmado')).toBeNull();
+    });
+
+    it('la marca mal guardada que ya está persistida en el teléfono se cura al rehidratar', async () => {
+      await envolver(
+        sanitizarHitlRespondido([
+          { ...cardCalendar, hitlRespondido: { value: 'Cancelar', label: 'Cancelar' } },
+          { id: 'u1', role: 'user', text: 'Cancelar' },
+        ]),
+      );
+      expect(screen.getByText('No lo hicimos')).toBeTruthy();
+      expect(screen.queryByText('Confirmado')).toBeNull();
+    });
+
+    it('confirmada por el botón, al recargar: sigue diciendo «Confirmado» (control positivo)', async () => {
+      await envolver(sanitizarHitlRespondido([cardCalendar, { id: 'u1', role: 'user', text: 'Confirmar' }]));
+      expect(screen.getByText('Confirmado')).toBeTruthy();
+    });
+
+    it('respondida con texto libre: no se afirma ni que se hizo ni que no', async () => {
+      await envolver(sanitizarHitlRespondido([cardCalendar, { id: 'u1', role: 'user', text: 'no, mejor dejalo' }]));
+      expect(screen.queryByText('Confirmado')).toBeNull();
+      expect(screen.queryByText('No lo hicimos')).toBeNull();
+      expect(screen.getByText('Respondida en el chat')).toBeTruthy();
+      expect(screen.queryByTestId('tarjeta-confirmacion-confirmar')).toBeNull();
+    });
+
+    it('la vista no depende del texto del botón: un rótulo cualquiera con su value resuelve igual', async () => {
+      const choices = [
+        { label: 'Sí, mandalo', value: 'confirm:7:1' },
+        { label: 'Mejor no', value: 'cancel:7:1' },
+      ];
+      await envolver(
+        sanitizarHitlRespondido([
+          { ...cardCalendar, choices },
+          { id: 'u1', role: 'user', text: 'Mejor no' },
+        ]),
+      );
+      expect(screen.getByText('No lo hicimos')).toBeTruthy();
+    });
   });
 
   it('sin hitlRespondido (control negativo): la card sigue activa, press dispara onChoice', async () => {

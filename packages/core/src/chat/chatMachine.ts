@@ -179,8 +179,16 @@ export type EventoChat =
    * El POST (o el STT de `sendAudio`) falló. El `motivo` decide QUÉ SE LE DICE al usuario — ver
    * `MotivoFallo`. Ausente = `'servidor'`, la degradación honesta: no sabemos por qué falló y no
    * inventamos una causa que mandaría a revisar lo que no es.
+   *
+   * `revertirHitl` (SM-H7) — el envío fallido era la respuesta a una card HITL: se le saca la marca y se
+   * quita la burbuja, en la MISMA transición. Con la burbuja sola, `sanitizarHitlRespondido` volvería a
+   * marcar la card al recargar.
    */
-  | { tipo: 'envio_fallo'; motivo?: MotivoFallo }
+  | {
+      tipo: 'envio_fallo';
+      motivo?: MotivoFallo;
+      revertirHitl?: { mensajeId: string; respuestaId: string };
+    }
   /** Una tanda de `GET /reply`. `nextId` avanza SIEMPRE (incluso sin novedades); los `replies` que
    * el reducer ya vio (por `seenIds`) se descartan en silencio. */
   | { tipo: 'respuestas_recibidas'; replies: ReplyMessage[]; nextId: number }
@@ -297,6 +305,19 @@ export function construirEnvioClinico(opts?: {
   };
 }
 
+function revertirRespuestaHitl(
+  mensajes: ChatMessage[],
+  { mensajeId, respuestaId }: { mensajeId: string; respuestaId: string },
+): ChatMessage[] {
+  return mensajes
+    .filter((mensaje) => mensaje.id !== respuestaId)
+    .map((mensaje) => {
+      if (mensaje.id !== mensajeId) return mensaje;
+      const { hitlRespondido: _revertida, ...sinMarca } = mensaje;
+      return sinMarca;
+    });
+}
+
 export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat {
   switch (evento.tipo) {
     case 'nueva_sesion':
@@ -343,7 +364,12 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
     case 'envio_fallo':
       // Sin motivo -> 'servidor'. NUNCA se adivina 'red': mandar a revisar la conexión cuando el
       // problema era otro es exactamente el error que este campo existe para no repetir.
-      return { ...estado, sendStatus: 'error', motivoFallo: evento.motivo ?? 'servidor' };
+      return {
+        ...estado,
+        messages: evento.revertirHitl ? revertirRespuestaHitl(estado.messages, evento.revertirHitl) : estado.messages,
+        sendStatus: 'error',
+        motivoFallo: evento.motivo ?? 'servidor',
+      };
 
     case 'conexion_descartada':
       // Sólo marca el mensaje `evento.mensajeId` — inmutable, spread, mismo patrón que

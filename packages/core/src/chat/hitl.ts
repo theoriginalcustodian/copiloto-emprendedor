@@ -140,6 +140,22 @@ export function mapearGate(mensaje: ChatMessage): Gate | null {
   };
 }
 
+/** Qué pasó con un gate ya respondido. `indeterminado` = respondió con texto libre: lo que haya pasado
+ * lo dice el hilo, no la card. */
+export type DesenlaceGate = 'confirmado' | 'cancelado' | 'indeterminado';
+
+/**
+ * SM-H7 — el desenlace sale de comparar `value` contra los `value` del gate, nunca del texto del botón.
+ * «Confirmado» exige igualdad con `confirmValue`: lo que no se reconoce no se presenta como hecho (la
+ * vista comparaba sólo contra `cancelValue`, y todo lo demás se leía como confirmado).
+ */
+export function desenlaceGate(gate: Gate): DesenlaceGate | null {
+  if (!gate.respondido) return null;
+  if (gate.respondido.value === gate.confirmValue) return 'confirmado';
+  if (gate.respondido.value === gate.cancelValue) return 'cancelado';
+  return 'indeterminado';
+}
+
 /** Token técnico LEGACY (pre-#624/BL-D4): antes de ese fix, la burbuja optimista del usuario pintaba
  * el `value` crudo del choice elegido (`cancel:<turn>:<step>` / `confirm:<turn>:<step>`) en vez del
  * label que vio y tocó. Sólo sirve para RECONOCER ese formato viejo al rehidratar — nunca se manda
@@ -161,14 +177,27 @@ const LEGACY_TOKEN_RE = /^(cancel|confirm):/i;
  *  - el token TÉCNICO crudo LEGACY (pre-#624, `cancel:2:0`/`confirm:2:0` — `LEGACY_TOKEN_RE`).
  * En los dos casos alcanza con saber QUE fue respondida para deshabilitar la card; el `label` se
  * normaliza a "Cancelar"/"Confirmar" cuando el formato es el token legacy — mostrar `cancel:2:0` en
- * cualquier lugar sería peor que no mostrar nada. Mensajes ya migrados (`hitlRespondido` presente,
- * escritos por esta misma fix) pasan de largo — la migración es idempotente.
+ * cualquier lugar sería peor que no mostrar nada.
+ *
+ * SM-H7 — `value` es el del choice elegido, que es contra lo que compara `desenlaceGate`. Guardar el
+ * texto de la burbuja hacía que una card cancelada se leyera «Confirmado» al recargar. Esta función es
+ * el único lugar que lee ese texto, porque el historial no guarda otra cosa; lo compara contra los
+ * `label` y `value` que trajo el mensaje, no contra un rótulo fijo. Lo que no coincide (texto libre) se
+ * guarda tal cual y da `indeterminado`. Las marcas mal guardadas por la versión anterior se corrigen
+ * acá. Una marca cuyo `value` ya es el de un choice pasa de largo: la migración es idempotente.
  */
 export function sanitizarHitlRespondido(mensajes: readonly ChatMessage[]): ChatMessage[] {
   return mensajes.map((mensaje, index) => {
     if (mensaje.role !== 'assistant') return mensaje;
-    if (mensaje.hitlRespondido) return mensaje;
     if (clasificarChoices(mensaje.choices) !== 'hitl') return mensaje;
+    const choices = mensaje.choices ?? [];
+
+    const marca = mensaje.hitlRespondido;
+    if (marca) {
+      if (choices.some((choice) => choice.value === marca.value)) return mensaje;
+      const elegido = reconocerChoice(choices, marca.value) ?? reconocerChoice(choices, marca.label);
+      return elegido ? { ...mensaje, hitlRespondido: { value: elegido.value, label: marca.label } } : mensaje;
+    }
 
     const siguiente = mensajes[index + 1];
     if (!siguiente || siguiente.role !== 'user') return mensaje; // sin respuesta después -> sigue activa
@@ -176,7 +205,18 @@ export function sanitizarHitlRespondido(mensajes: readonly ChatMessage[]): ChatM
     const legacyMatch = LEGACY_TOKEN_RE.exec(siguiente.text);
     const legacyKind = legacyMatch?.[1]?.toLowerCase();
     const label = legacyKind ? (legacyKind === 'cancel' ? 'Cancelar' : 'Confirmar') : siguiente.text;
+    const elegido = reconocerChoice(choices, siguiente.text);
 
-    return { ...mensaje, hitlRespondido: { value: siguiente.text, label } };
+    return { ...mensaje, hitlRespondido: { value: elegido?.value ?? siguiente.text, label } };
   });
+}
+
+/** El choice que nombra `texto`, por su `value` o por su `label` exactos; el token legacy, por su tipo. */
+function reconocerChoice(choices: readonly ReplyChoice[], texto: string): ReplyChoice | undefined {
+  const exacto = choices.find((choice) => choice.value === texto || choice.label === texto);
+  if (exacto) return exacto;
+  const legacyKind = LEGACY_TOKEN_RE.exec(texto)?.[1]?.toLowerCase();
+  if (!legacyKind) return undefined;
+  const re = legacyKind === 'cancel' ? CANCEL_VALUE_RE : CONFIRM_VALUE_RE;
+  return choices.find((choice) => re.test(choice.value));
 }

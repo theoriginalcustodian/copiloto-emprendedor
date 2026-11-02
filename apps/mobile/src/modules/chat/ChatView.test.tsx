@@ -305,6 +305,70 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
   });
 
   // ─── DoD: el componente vive DENTRO del cristal del panel, que ya aporta el chrome ─────────────
+  // SM-H7 — `ChatView` reenviaba el toque sin `hitlMessageId`: la card nunca se marcaba, seguía con los
+  // dos botones activos (`app-hitl-cancelada-card-sigue-visible.png`) y la guarda de SM-D5 no corría.
+  describe('SM-H7: el toque en el gate marca ESA card', () => {
+    const gateCalendar = {
+      replies: [
+        {
+          id: 1,
+          text: 'agendar «Recordatorio para Lucía»',
+          choices: [
+            { label: 'Confirmar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+        },
+      ],
+      next_id: 1,
+    };
+
+    it('tocar Cancelar deja la card resuelta en el acto, sin botones', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gateCalendar);
+      jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-2', accepted: true });
+
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-cancelar')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-cancelar'));
+
+      await waitFor(() => expect(screen.getByText('No lo hicimos')).toBeTruthy());
+      expect(screen.queryByTestId('tarjeta-confirmacion-cancelar')).toBeNull();
+      expect(screen.queryByTestId('tarjeta-confirmacion-confirmar')).toBeNull();
+      expect(api.sendChat).toHaveBeenCalledWith(expect.objectContaining({ text: 'cancel:2:0', kind: 'callback' }));
+    });
+
+    it('si el envío falla, no dice «Confirmado»: los botones vuelven y se puede reintentar', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gateCalendar);
+      jest.mocked(api.sendChat).mockRejectedValueOnce(new Error('sin red'));
+
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-confirmar')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+
+      await waitFor(() => expect(api.sendChat).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-confirmar')).toBeTruthy());
+      expect(screen.queryByText('Confirmado')).toBeNull();
+
+      jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-2', accepted: true });
+      await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+      await waitFor(() => expect(screen.getByText('Confirmado')).toBeTruthy());
+      expect(jest.mocked(api.sendChat).mock.calls.filter(([r]) => r.text === 'confirm:2:0')).toHaveLength(2);
+    });
+
+    it('dos toques seguidos en Confirmar mandan UN solo callback', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gateCalendar);
+      jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-2', accepted: true });
+
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-confirmar')).toBeTruthy());
+      const confirmar = screen.getByTestId('tarjeta-confirmacion-confirmar');
+      await fireEvent.press(confirmar);
+      await fireEvent.press(confirmar);
+
+      await waitFor(() => expect(api.sendChat).toHaveBeenCalled());
+      expect(jest.mocked(api.sendChat).mock.calls.filter(([r]) => r.text === 'confirm:2:0')).toHaveLength(1);
+    });
+  });
+
   it('no pinta fondo propio -- el vidrio lo aporta el panel que lo monta', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));

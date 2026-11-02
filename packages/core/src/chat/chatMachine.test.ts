@@ -10,7 +10,7 @@ import {
   type EventoChat,
 } from './chatMachine';
 import type { ChatContenido } from '../api/types';
-import { mapearGate, sanitizarHitlRespondido } from './hitl';
+import { desenlaceGate, mapearGate, sanitizarHitlRespondido } from './hitl';
 
 /**
  * Estos tests prueban el reducer AISLADO de red/timers/storage: cada evento es la traducción pura de
@@ -224,7 +224,46 @@ describe('HITL ya respondida (H-A4-9)', () => {
 
     const migrado = sanitizarHitlRespondido(historial);
 
-    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'Confirmar', label: 'Confirmar' });
+    // SM-H7 — este test afirmaba `value: 'Confirmar'`: el SÍNTOMA del defecto. `value` es el del choice,
+    // que es contra lo que compara la vista; el texto de la burbuja sólo sirve para reconocerlo.
+    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'confirm:0:0', label: 'Confirmar' });
+  });
+
+  describe('SM-H7: `value` siempre es el del choice elegido, o queda claro que no se sabe', () => {
+    const card: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: '¿Confirmás?',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:0:0' },
+        { label: 'Cancelar', value: 'cancel:0:0' },
+      ],
+    };
+
+    it('el label de Cancelar resuelve al value de cancelar', () => {
+      const [m] = sanitizarHitlRespondido([card, { id: 'u', role: 'user', text: 'Cancelar' }]);
+      expect(m!.hitlRespondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+      expect(desenlaceGate(mapearGate(m!)!)).toBe('cancelado');
+    });
+
+    it('una marca persistida con el texto se corrige, y la corrección es idempotente', () => {
+      const una = sanitizarHitlRespondido([
+        { ...card, hitlRespondido: { value: 'Cancelar', label: 'Cancelar' } },
+        { id: 'u', role: 'user', text: 'Cancelar' },
+      ]);
+      expect(una[0]!.hitlRespondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+      expect(sanitizarHitlRespondido(una)).toEqual(una);
+    });
+
+    it('texto libre: desenlace indeterminado, nunca «confirmado»', () => {
+      const [m] = sanitizarHitlRespondido([card, { id: 'u', role: 'user', text: 'no, mejor dejalo' }]);
+      expect(m!.hitlRespondido).toEqual({ value: 'no, mejor dejalo', label: 'no, mejor dejalo' });
+      expect(desenlaceGate(mapearGate(m!)!)).toBe('indeterminado');
+    });
+
+    it('sin marca no hay desenlace', () => {
+      expect(desenlaceGate(mapearGate(card)!)).toBeNull();
+    });
   });
 
   it('sin respuesta después, sigue activa — sanitizarHitlRespondido NO la marca', () => {

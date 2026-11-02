@@ -352,7 +352,9 @@ export function useChat(clienteId: string): UseChatResult {
           : undefined,
       });
       siguiente = reducirChat(siguiente, { tipo: 'envio_iniciado' });
-      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      // SM-H7 — la respuesta a una card se persiste recién cuando el servidor la acepta: si la app muere
+      // antes, al volver la card sigue activa en vez de decir «Confirmado» sin que haya salido nada.
+      if (!opts?.hitlMessageId) persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
 
       try {
@@ -366,11 +368,20 @@ export function useChat(clienteId: string): UseChatResult {
         const conError = estadoRef.current ?? siguiente;
         // `motivoDeError` distingue sesión vencida (401) de un fallo genérico de servidor/red — un
         // solo mensaje para todo mandaría a diagnosticar lo que no es (ver `motivoFallo.ts`).
-        actualizarEstado(reducirChat(conError, { tipo: 'envio_fallo', motivo: motivoDeError(e) }));
+        actualizarEstado(
+          reducirChat(conError, {
+            tipo: 'envio_fallo',
+            motivo: motivoDeError(e),
+            revertirHitl: opts?.hitlMessageId
+              ? { mensajeId: opts.hitlMessageId, respuestaId: mensajeUsuario.id }
+              : undefined,
+          }),
+        );
         return;
       }
 
       const enviado = estadoRef.current ?? siguiente;
+      if (opts?.hitlMessageId) persistirMensajes(clienteId, enviado.sessionId, enviado.messages);
       actualizarEstado(reducirChat(enviado, { tipo: 'envio_ok' }));
       iniciarEsperaDeRespuesta();
     },
