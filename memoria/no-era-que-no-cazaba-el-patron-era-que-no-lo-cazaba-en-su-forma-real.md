@@ -226,3 +226,33 @@ un `except` o un `if not creds`, el estímulo es la acción que lo provoca, no e
 Y cuando la frase que vas a escribir es «exige efecto externo», esa frase **cierra la fila por dos días**:
 cuesta menos un grep del constructor que dos días de una fila parada.
   -> [[la-costura-leia-un-campo-que-nadie-escribe]] · [[un-disparador-cumplido-no-avisa-a-nadie]]
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — el grep mide el TEXTO de una línea; el defecto vive en el VALOR de la cadena
+
+**Lo medido.** Bajé la ficha `SM-N13` con un inventario hecho a `git grep -n "Confirmáselo en una
+línea corta"` sobre `apps/copiloto/tool_catalog.py`: **2 sitios vivos**. Backend la implementó y
+encontró **6** — la frase se parte en **dos literales adyacentes**, así que no existe completa en
+ninguna línea sola y mi patrón no podía verla. Control por efecto: en `7811aad1^` había **7**
+ocurrencias de `Confirmáselo`; hoy queda **1**, el comentario explicativo. Mi cifra se equivocaba
+por un factor de 3.
+
+**Y el control positivo PASÓ.** Lo había puesto a propósito: el call-site ya arreglado aparecía en
+el mismo grep, «así que el patrón caza la forma viva». Pero ese sitio estaba en la forma **sin
+partir** — el control compartía exactamente el punto ciego del patrón. Un control positivo elegido
+del **mismo molde** que el patrón no prueba cobertura: prueba que el patrón se encuentra a sí mismo.
+Es la versión fuerte de [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]:
+no es que la otra mitad quedó muda, es que **la elegí ciega sin darme cuenta**.
+
+**Why:** un grep de línea mide el **texto fuente**; el defecto vive en el **valor en runtime**. Todo
+lo que construye una cadena —literales adyacentes, `f"…" f"…"`, `+`, `join`, `textwrap.dedent`, una
+constante interpolada— rompe el patrón sin cambiar el comportamiento. Y falla hacia el lado peligroso:
+devuelve **menos**, que se lee como «ya está casi todo bien», no como «no sé medir esto».
+
+**How to apply:** para contar ocurrencias de un **valor** en código, el instrumento es el **AST**
+(backend lo hizo así y por eso su test es rojo venga la consigna entera o partida), o como mínimo:
+grepear el **fragmento más corto e indivisible** (`Confirmáselo`, no la frase), y **contar contra un
+total independiente** antes de citar la cifra. Si el inventario va a una ficha, el DoD pide el
+instrumento que mide el valor, no el que mide el texto — si no, el implementador descubre tu error
+por su cuenta, y descubrirlo es suerte.
