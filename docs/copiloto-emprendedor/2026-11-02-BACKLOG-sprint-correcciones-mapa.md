@@ -99,7 +99,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
-| **SM-N4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N4** | `sin-issue` | 🟧 DOD-PARCIAL | control del criterio v3: revertir la sombra de Row en Metro local y volcar la lista de capas con el rectangulo presen… |
 | **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
@@ -762,7 +762,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Tope:** no se reescriben los textos del catálogo en esta ficha. Lo que se agrega es el amarre.
 ### SM-N4 · `sin-issue` — Un rectángulo claro de esquinas rectas detrás del contenido de las cards del chat
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** control del criterio v3: revertir la sombra de Row en Metro local y volcar la lista de capas con el rectangulo presente; repetir el toque sobre Tile
+- **Cierre:** b87b4136be132829ba96c32e3f051b9849a4d4fc (#1393). Sombra con boxShadow y gradiente recortado en Tile; capas nombradas y capturas en 2026-11-02-sprint-correcciones-evidencia/SM-N4.md
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device (`RF8T318RN9T`, canónico, 2026-11-02 15:38-15:45), en las cards de
   factura y de presupuesto: un rectángulo más claro detrás del contenido, con esquinas rectas que se

@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -164,9 +165,31 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    * layout sí reintroduciría la carrera que documenta el bloque de arriba.
    */
   arrancaAbajo?: boolean;
+  /**
+   * Cuánto del escritorio de funciones está abierto, de 0 a 1 (SM-I4, D1): con el escritorio abierto la tira
+   * del chat sale por abajo y queda una sola solapa. Sólo se LEE al calcular el estilo, no escribe `panelY`:
+   * no es un tercer dueño. Ver `translacionPanel`.
+   */
+  ocultarTira?: SharedValue<number>;
   /** El texto del borde visible cuando el panel está abajo. Ver `hint` abajo. */
   hintAbajo?: string;
   testID?: string;
+}
+
+/**
+ * Dónde se dibuja el panel. Suma al recorrido el alto de la tira en proporción a `panelY`, y por eso con el
+ * chat arriba (`panelY` 0) el escritorio abierto no lo corre. `altoTira` es lo que asoma con el chat abajo: el
+ * handle más el spacer de la status bar.
+ */
+export function translacionPanel(
+  panelY: number,
+  recorrido: number,
+  ocultarTira: number,
+  altoTira: number,
+): number {
+  'worklet';
+  if (recorrido <= 0) return panelY;
+  return panelY + ocultarTira * altoTira * (panelY / recorrido);
 }
 
 /**
@@ -186,6 +209,7 @@ export function PanelDeslizable({
   onPanelAbajoChange,
   alBajar,
   arrancaAbajo = false,
+  ocultarTira,
   hintAbajo = 'Subir conversación',
   testID,
 }: PanelDeslizableProps) {
@@ -356,7 +380,12 @@ export function PanelDeslizable({
       });
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada]);
 
-  const estiloPanel = useAnimatedStyle(() => ({ transform: [{ translateY: panelY.value }] }));
+  const altoTira = ALTO_HANDLE + insets.top;
+  const estiloPanel = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translacionPanel(panelY.value, recorrido.value, ocultarTira?.value ?? 0, altoTira) },
+    ],
+  }));
 
   /**
    * Clearance de la status bar: el handle tiene que caer DEBAJO del reloj cuando el panel está

@@ -99,7 +99,7 @@ export interface ChatMessage {
    * pero mobile no tiene ningún mecanismo de poda para esas claves (a diferencia de la web, que ya
    * podó su propio patrón A), así que cada mensaje resuelto deja una clave que nunca se borra. Patrón
    * B no tiene nada que podar: la marca vive y muere con el mensaje persistido. */
-  presupuestoResuelto?: { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
+  presupuestoResuelto?: { estado: 'guardado'; numero: number | null; id?: number } | { estado: 'descartado' };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';

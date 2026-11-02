@@ -25,10 +25,11 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   runOnJS,
+  type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -37,7 +38,6 @@ import Animated, {
 
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
-import { ALTO_HANDLE } from './PanelDeslizable';
 
 /** Lo que asoma del escritorio cuando está cerrado: la pestaña con su rótulo. */
 const ALTO_PESTANA = 44;
@@ -66,6 +66,10 @@ export interface PanelFuncionesProps extends PropsWithChildren {
    * gesto de la pestaña y esta señal.
    */
   senalCerrar?: number;
+  /** Publica cuánto está abierto, de 0 a 1, para que la tira del chat se vaya a la par. Ver `y`. */
+  progreso?: SharedValue<number>;
+  /** Espejo de lectura del estado asentado, para el BACK de Android. No mueve nada. */
+  onAbiertoChange?: (abierto: boolean) => void;
   testID?: string;
 }
 
@@ -73,28 +77,40 @@ export function PanelFunciones({
   escritorio,
   children,
   senalCerrar,
+  progreso,
+  onAbiertoChange,
   testID = 'panel-funciones',
 }: PanelFuncionesProps) {
   const tema = useTema();
-  const insets = useSafeAreaInsets();
-  /**
-   * Lo que tapa la tira de la conversación cuando está abajo: el handle (`ALTO_HANDLE`) más el spacer de
-   * la status bar que `PanelDeslizable` lleva DENTRO del vidrio (ver su `estiloSpacer`). La capa del
-   * escritorio termina arriba de eso.
-   *
-   * 🔴 **Sin esto la pestaña «Volver a tu día» quedaba TAPADA** (DEVICE15 H1, medido en device): con el
-   * escritorio abierto, la pestaña vive en el borde inferior de la capa, que es justo donde asoma la
-   * tira del chat (`zIndex: 3`). Un control que existe pero no se ve ni se alcanza es lo mismo que uno
-   * que no existe — y era la única vuelta a Mi día con un solo puntero.
-   */
-  const bajoTira = ALTO_HANDLE + insets.top;
   // `y` va de `-alto` (cerrado: sólo asoma la pestaña) a 0 (abierto: el escritorio tapa la base).
   const y = useSharedValue(0);
   const inicio = useSharedValue(0);
   const alto = useSharedValue(0);
   const [abierto, setAbierto] = useState(false);
 
-  const marcar = useCallback((v: boolean) => setAbierto(v), []);
+  // Por `ref`, como en `PanelDeslizable`: `marcar` entra en las dependencias del gesto y tiene que ser estable.
+  const onAbiertoChangeRef = useRef(onAbiertoChange);
+  useEffect(() => {
+    onAbiertoChangeRef.current = onAbiertoChange;
+  }, [onAbiertoChange]);
+  const marcar = useCallback((v: boolean) => {
+    setAbierto(v);
+    onAbiertoChangeRef.current?.(v);
+  }, []);
+
+  /**
+   * 🔴 **La capa llega al borde de la pantalla porque la tira ya no está ahí (SM-I4, D1).** Hasta #1084 la
+   * capa terminaba arriba de la tira: con el escritorio abierto la pestaña vive en el borde inferior, justo
+   * donde asomaba la tira (`zIndex: 3`), y quedaba tapada (DEVICE15 H1). Era la única vuelta a Mi día con un
+   * solo puntero. El mapa muestra una sola solapa, así que la tira se va mientras el escritorio baja: las dos
+   * no se cruzan en ningún punto del recorrido, y volver a dejar la capa corta devolvería las dos solapas.
+   */
+  useAnimatedReaction(
+    () => (alto.value > 0 ? 1 + y.value / alto.value : 0),
+    (p) => {
+      if (progreso != null) progreso.value = p;
+    },
+  );
 
   // Cierra cuando llega la señal. Se ignora el primer render: montar la pantalla no es un pedido de
   // cerrar, y el escritorio ya nace cerrado. Mismo criterio que `PanelDeslizable.senalSubir`: el
@@ -176,7 +192,7 @@ export function PanelFunciones({
       <View style={StyleSheet.absoluteFill}>{children}</View>
 
       <Animated.View
-        style={[styles.capa, { bottom: bajoTira }, estilo]}
+        style={[styles.capa, estilo]}
         testID={`${testID}-capa`}
         onLayout={(e) => {
           // El recorrido es el alto REAL de esta capa menos lo que queda asomando. Medido, no
@@ -215,8 +231,7 @@ const styles = StyleSheet.create({
   raiz: { flex: 1 },
   // `zIndex: 2`: por encima de la base y por debajo del panel de conversación (`zIndex: 3`), que es
   // el orden del modelo de capas — la conversación es lo que uno tiene entre manos.
-  // `bottom` va inline: depende de los insets (ver `bajoTira`).
-  capa: { position: 'absolute', top: 0, right: 0, left: 0, zIndex: 2 },
+  capa: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 2 },
   cristal: { flex: 1 },
   contenido: { flex: 1 },
   // La pestaña va ABAJO de la capa: es el borde que asoma cuando el escritorio está arriba, fuera de

@@ -8,6 +8,8 @@ import type { NombreIconoGlass } from './icons';
 interface PropsGlassIcon {
   name: NombreIconoGlass;
   size?: number;
+  /** Sólo sobre un fondo fijo que no cambia con la piel, como el chip pastel del escritorio. */
+  color?: string;
 }
 
 /** Traduce un descriptor de glifo (dato puro) al primitivo `react-native-svg` correspondiente. Todos
@@ -25,14 +27,14 @@ interface PropsGlassIcon {
  * `viewBox` 0 0 256 256, el nativo de Phosphor. Qué glifo le toca a cada pantalla vive en
  * `mapaIconos.ts`, extraído del prototipo.
  */
-export function GlassIcon({ name, size = 24 }: PropsGlassIcon) {
+export function GlassIcon({ name, size = 24, color }: PropsGlassIcon) {
   const tema = useTema();
   const glifos = PHOSPHOR[ICONO_DEL_SISTEMA[name]] ?? [];
 
   return (
     <Svg testID={`glass-icon-${name}`} width={size} height={size} viewBox={VIEWBOX_PHOSPHOR} fill="none">
       {glifos.map((d, i) => (
-        <Path key={i} d={d} fill={tema.color.texto} stroke="none" />
+        <Path key={i} d={d} fill={color ?? tema.color.texto} stroke="none" />
       ))}
     </Svg>
   );

@@ -136,7 +136,7 @@ export interface Tokens {
      * criterio que `categorico`— y por eso el glifo lleva `tinta` (negro tostado, ≥13,5:1 sobre los 4),
      * no `texto`, que en `oscuro` es claro y se perdería sobre el pastel.
      */
-    tileFuncion: { cobros: string; arca: string; presupuestos: string; tuyas: string; tinta: string };
+    tileFuncion: { cobros: string; arca: string; presupuestos: string; tuyas: string; tinta: string; arena: string };
   };
   glass: {
     tint: string;
@@ -435,6 +435,9 @@ const TILE_FUNCION = {
   arca: '#E4DCEC',
   presupuestos: '#F7E6CD',
   tuyas: '#EDE6DC',
+  // `--arena-30` (`.fn .ic`, `.cs-fila .tile`, `.cs-pend`): el cuadrado del ícono en el escritorio y en el
+  // consentimiento, y el fondo del aviso de continuación.
+  arena: '#F8E2DB',
   tinta: NEGRO_TOSTADO,
 };
 const CREMA = '#F7F3EC';

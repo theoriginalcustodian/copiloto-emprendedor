@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { sombraNivel } from '../../theme/glass/relieve';
 import { useTema } from '../../theme/ThemeProvider';
+import { tonoBotonEntrada } from './tonoBotonEntrada';
 
 /** El micrófono del mapa (Phosphor, viewBox 256; el mismo trazo que `.mic`, `index.html:1862`). Es el glifo
  *  que decide SM-I2: un botón de 52 tiene que decir «hablá», y a ese tamaño el isotipo no lo dice. */
@@ -316,15 +317,15 @@ export function BotonVoz({
           testID="boton-voz-nucleo"
           style={[
             styles.boton,
-            { backgroundColor: disabled ? tema.color.superficieAlta : tema.glass.ub2 },
+            { backgroundColor: tonoBotonEntrada(tema, !disabled).fondo },
             // Nivel 3 · Acento elevado (DoD §2.4: "botón primario, FAB de voz" — textual).
             !disabled && sombraNivel(tema.glass.relieve.nivel3),
             // El mic crece bajo el dedo sin cambiar su caja (`.inputbar.rec-on .mic`, `index.html:215`).
             capturando && styles.botonGrabando,
           ]}
         >
-          <Svg testID="boton-voz-glifo" width={TAMANO_GLIFO} height={TAMANO_GLIFO} viewBox="0 0 256 256" opacity={disabled ? 0.45 : 1}>
-            <Path d={TRAZO_MIC} fill={tema.color.acentoTexto} />
+          <Svg testID="boton-voz-glifo" width={TAMANO_GLIFO} height={TAMANO_GLIFO} viewBox="0 0 256 256">
+            <Path d={TRAZO_MIC} fill={tonoBotonEntrada(tema, !disabled).glifo} />
           </Svg>
         </View>
       </View>

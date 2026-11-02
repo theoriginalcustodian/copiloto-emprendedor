@@ -27,15 +27,17 @@ export interface EncabezadoListadoProps {
   titulo: string;
   /** Ausente = no tapeable: se muestra el título sin flecha ni rol de botón. */
   onPress?: () => void;
+  /** Título y flecha, para cuando va sobre un fondo propio como el bloque del escritorio. */
+  color?: string;
   style?: ViewStyle | ViewStyle[];
   testID?: string;
 }
 
 /** El tamaño del label del tile (`EscritorioFunciones.labelTile.fontSize`). Un solo número, acá, para
  *  que el día que cambie el token del tile este encabezado lo siga sin re-inventarlo. */
-const TAM_LABEL_TILE = 11.5;
+const TAM_LABEL_TILE = 13;
 
-export function EncabezadoListado({ titulo, onPress, style, testID }: EncabezadoListadoProps) {
+export function EncabezadoListado({ titulo, onPress, color, style, testID }: EncabezadoListadoProps) {
   const tema = useTema();
   const tapeable = onPress != null;
 
@@ -50,13 +52,13 @@ export function EncabezadoListado({ titulo, onPress, style, testID }: Encabezado
       disabled={!tapeable}
       style={({ pressed }) => [styles.raiz, pressed && tapeable ? PRESS_FADE : null, style]}
     >
-      <Text style={[styles.titulo, { color: tema.color.texto, fontFamily: tema.fuente.uiSemibold }]}>
+      <Text style={[styles.titulo, { color: color ?? tema.color.texto, fontFamily: tema.fuente.uiSemibold }]}>
         {titulo}
       </Text>
       {tapeable && (
         <Text
           testID={testID != null ? `${testID}-flecha` : undefined}
-          style={[styles.flecha, { color: tema.color.acentoTinta }]}
+          style={[styles.flecha, { color: color ?? tema.color.acentoTinta }]}
         >
           ›
         </Text>

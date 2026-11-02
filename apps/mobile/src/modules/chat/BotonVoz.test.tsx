@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react-native';
 import { useRef } from 'react';
+import { StyleSheet } from 'react-native';
 import { Gesture, type FlatList } from 'react-native-gesture-handler';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { SKINS } from '../../theme/tokens';
 import {
   BotonVoz,
   DURACION_MINIMA_MS,
@@ -364,21 +366,24 @@ describe('BotonVoz -- hold-graba/soltar-envía/deslizar-fija (cableado nativo ve
 });
 
 describe('BotonVoz -- el mic chico del dock (SM-I2, `.mic` del mapa)', () => {
-  it('deshabilitado atenúa el glifo (opacity 0.45) y lo dice a la accesibilidad', async () => {
+  const fondoNucleo = () => StyleSheet.flatten(screen.getByTestId('boton-voz-nucleo').props.style).backgroundColor;
+
+  it('deshabilitado cambia de tono, sin atenuar el glifo, y lo dice a la accesibilidad', async () => {
     await montar({ disabled: true });
-    expect(screen.getByTestId('boton-voz-glifo').props.opacity).toBe(0.45);
+    expect(screen.getByTestId('boton-voz-glifo').props.opacity).toBeUndefined();
+    expect(fondoNucleo()).not.toBe(SKINS.claro.glass.ub2);
     expect(screen.getByTestId('boton-voz').props.accessibilityState.disabled).toBe(true);
   });
 
-  it('sin `disabled`, el glifo va a opacidad plena', async () => {
+  it('sin `disabled`, va con el fondo del acento', async () => {
     await montar();
-    expect(screen.getByTestId('boton-voz-glifo').props.opacity).toBe(1);
+    expect(fondoNucleo()).toBe(SKINS.claro.glass.ub2);
     expect(screen.getByTestId('boton-voz').props.accessibilityState.disabled).toBe(false);
   });
 
   it('🔴 capturando NO agrisa: es el botón que el dedo está apretando, aunque no admita otra captura', async () => {
     await montar({ capturando: true });
-    expect(screen.getByTestId('boton-voz-glifo').props.opacity).toBe(1);
+    expect(fondoNucleo()).toBe(SKINS.claro.glass.ub2);
     expect(screen.getByTestId('boton-voz').props.accessibilityState.disabled).toBe(true);
   });
 });

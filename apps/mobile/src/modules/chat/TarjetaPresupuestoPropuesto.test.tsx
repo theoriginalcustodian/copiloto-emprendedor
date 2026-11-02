@@ -8,16 +8,18 @@ jest.mock('@copiloto/core', () => {
   return {
     ...actual,
     crearPresupuesto: jest.fn(),
+    obtenerPresupuesto: jest.fn(),
     listarConceptos: jest.fn().mockResolvedValue({ status: 'ok', conceptos: [] }),
   };
 });
 
-import { crearPresupuesto, leerPresupuestoPropuesto, type ChatMessage, type Presupuesto } from '@copiloto/core';
+import { crearPresupuesto, leerPresupuestoPropuesto, obtenerPresupuesto, type ChatMessage, type Presupuesto } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
 
 const mockCrear = crearPresupuesto as jest.MockedFunction<typeof crearPresupuesto>;
+const mockObtener = obtenerPresupuesto as jest.MockedFunction<typeof obtenerPresupuesto>;
 
 function propuesta(over: Record<string, unknown> = {}) {
   const p = leerPresupuestoPropuesto({
@@ -316,7 +318,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
       });
 
       await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
-      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', numero: 7 });
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', numero: 7, id: 9 });
     });
 
     it('al descartar, llama a `onResolver` con `descartado`', async () => {
@@ -328,6 +330,79 @@ describe('TarjetaPresupuestoPropuesto', () => {
       });
 
       expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
+    });
+  });
+
+  /**
+   * SM-N5: lo persistido es el `id` y no una copia de los datos, para que haya una sola fuente de verdad. El
+   * estado no vuelve al rehidratar aunque el backend lo traiga: lo que se muestra acá es el recibo de lo que se
+   * anotó, y el estado de hoy se consulta en Presupuestos.
+   */
+  describe('rehidratación (SM-N5)', () => {
+    const guardado = { estado: 'guardado', numero: 7, id: 9 } as const;
+
+    it('relee por `id` y muestra importe y cliente, sin el estado', async () => {
+      mockObtener.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+      await montar(propuesta(), { resuelto: guardado });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$45.000 · Juan Pérez'),
+      );
+      expect(mockObtener).toHaveBeenCalledWith(9);
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).not.toHaveTextContent(/Pendiente/);
+      expect(screen.queryByTestId('presupuesto-propuesto-guardado-detalle-1')).toBeNull();
+    });
+
+    it('un presupuesto aprobado después tampoco muestra estado, y el importe es el de hoy', async () => {
+      mockObtener.mockResolvedValue({
+        status: 'ok',
+        presupuesto: { ...presupuestoGuardado(7), estado: 'aprobado', total: '60000.00' } as Presupuesto,
+      });
+      await montar(propuesta(), { resuelto: guardado });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$60.000 · Juan Pérez'),
+      );
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).not.toHaveTextContent(/aprob|Pendiente/i);
+    });
+
+    it('un mensaje viejo, sin `id`, no consulta nada y queda con el título', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'guardado', numero: 7 } });
+
+      expect(mockObtener).not.toHaveBeenCalled();
+      expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
+      expect(screen.queryByTestId('presupuesto-propuesto-guardado-detalle-0')).toBeNull();
+    });
+
+    it('🔴 un `id` que el backend no reconoce como propio (404) no pinta datos', async () => {
+      mockObtener.mockResolvedValue({ status: 'no_encontrado' });
+      await montar(propuesta(), { resuelto: guardado });
+
+      await waitFor(() => expect(mockObtener).toHaveBeenCalledWith(9));
+      await act(async () => {});
+      expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
+      expect(screen.queryByTestId('presupuesto-propuesto-guardado-detalle-0')).toBeNull();
+    });
+
+    it('si la relectura falla, la card sigue en pie con el título', async () => {
+      mockObtener.mockRejectedValue(new Error('red'));
+      await montar(propuesta(), { resuelto: guardado });
+
+      await waitFor(() => expect(mockObtener).toHaveBeenCalledWith(9));
+      await act(async () => {});
+      expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
+    });
+
+    it('recién guardado no relee: ya tiene el dato, con su estado', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+      await montar();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent(/^Pendiente$/));
+      expect(mockObtener).not.toHaveBeenCalled();
     });
   });
 });

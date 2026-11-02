@@ -908,7 +908,10 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
     const fs = require('fs');
     const path = require('path');
     const boton = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'BotonVoz.tsx'), 'utf8');
-    expect(boton).toMatch(/backgroundColor: disabled \? tema\.color\.superficieAlta : tema\.glass\.ub2/);
+    const tono = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'tonoBotonEntrada.ts'), 'utf8');
+    expect(boton).toMatch(/backgroundColor: tonoBotonEntrada\(tema, !disabled\)\.fondo/);
+    expect(tono).toMatch(/fondo: tema\.glass\.ub2/);
+    expect(tono).toMatch(/fondo: tema\.color\.superficieAlta/);
     expect(boton).not.toMatch(/accent2|tema\.color\.acento\b/);
   });
 });

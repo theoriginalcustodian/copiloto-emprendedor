@@ -34,7 +34,7 @@ describe('SheetRequiereConexion', () => {
   it('muestra el nombre y el alcance del catálogo con «Conectar» y «Ahora no»', async () => {
     await montar();
     expect(screen.getByText('Conectá Gmail')).toBeTruthy();
-    expect(screen.getByText('• Enviar mails')).toBeTruthy();
+    expect(screen.getByText('Enviar mails')).toBeTruthy();
     expect(screen.getByTestId('sheet-requiere-conexion-conectar')).toBeTruthy();
     expect(screen.getByTestId('sheet-requiere-conexion-ahora-no')).toBeTruthy();
   });
@@ -57,7 +57,7 @@ describe('SheetRequiereConexion', () => {
     await montar();
     expect(screen.queryByTestId('sheet-requiere-conexion-condicion-0')).toBeNull();
     expect(screen.queryByText('Solo lectura')).toBeNull();
-    expect(screen.getByText('• Leer mails')).toBeTruthy();
+    expect(screen.getByText('Leer mails')).toBeTruthy();
   });
 
   it('pinta la insignia de cada permiso con condicion: «Solo lectura» y «Nunca sin tu OK»', async () => {
@@ -76,6 +76,21 @@ describe('SheetRequiereConexion', () => {
     expect(screen.getByTestId('sheet-requiere-conexion-condicion-0')).toHaveTextContent('Solo lectura');
     expect(screen.getByTestId('sheet-requiere-conexion-condicion-1')).toHaveTextContent('Nunca sin tu OK');
     expect(screen.queryByTestId('sheet-requiere-conexion-condicion-2')).toBeNull();
+  });
+
+  it('SM-I7: cada capacidad lleva su ícono, también con una condición que esta versión no conoce', async () => {
+    await montar({
+      conexion: {
+        ...CONEXION,
+        alcance: [
+          { texto: 'Leer', condicion: 'solo_lectura' },
+          { texto: 'Escribir', condicion: 'requiere_ok' },
+          { texto: 'Otra', condicion: 'condicion_futura' as never },
+        ],
+      },
+    });
+    [0, 1, 2].forEach((i) => expect(screen.getByTestId(`sheet-requiere-conexion-icono-${i}`)).toBeTruthy());
+    expect(screen.queryByTestId('sheet-requiere-conexion-icono-3')).toBeNull();
   });
 
   // PROTO4DEPS §B — el bloque pendiente es del turno y opcional.

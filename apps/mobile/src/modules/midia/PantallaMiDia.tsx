@@ -50,6 +50,8 @@ import { useTema } from '../../theme/ThemeProvider';
 export interface PantallaMiDiaProps {
   /** Tocar el avatar, la única puerta a Ajustes. La navegación la cablea el shell. */
   onAjustes?: () => void;
+  /** Avisa si el catálogo trae un servicio caído: el avatar del escritorio lleva el mismo punto. */
+  onConexionCaida?: (caida: boolean) => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
   onAgenda?: () => void;
   /** SM-I1: abre Tu día. La cablea el shell (`empujarUnaVez`). */
@@ -138,6 +140,7 @@ function Seccion({
 
 export function PantallaMiDia({
   onAjustes,
+  onConexionCaida,
   onAgenda,
   onVerTablero,
   onDestino,
@@ -191,6 +194,10 @@ export function PantallaMiDia({
       /* silencio deliberado: sin portada la pantalla no se rompe, sólo muestra menos. */
     }
   }, []);
+
+  useEffect(() => {
+    onConexionCaida?.(conexionCaida);
+  }, [conexionCaida, onConexionCaida]);
 
   const cargarSaludConexiones = useCallback(async () => {
     try {

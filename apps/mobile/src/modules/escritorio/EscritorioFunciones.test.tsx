@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) — describe/it/expect son globales, no se importan de vitest.
 
@@ -14,7 +14,7 @@ import {
 /** Las keys esperadas, EXPLÍCITAS y no `TILES.length`: así agregar/sacar una función obliga a
  *  nombrarla acá, igual criterio que `GlassIcon.test.tsx` con el catálogo de íconos. */
 const KEYS_ESPERADAS: FuncionKey[] = [
-  'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes', 'inteligencia',
+  'gastos', 'ingresos', 'facturacion', 'presupuestos', 'clientes', 'inteligencia',
 ];
 
 async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {
@@ -37,6 +37,40 @@ describe('agruparEnFilas — invariante genérico, sin acoplar al conteo de TILE
 
   it('con porFila mayor que el total, arma una sola fila', () => {
     expect(agruparEnFilas([1, 2, 3], 10)).toEqual([[1, 2, 3]]);
+  });
+});
+
+describe('EscritorioFunciones — el mapa (SM-I4)', () => {
+  it('se titula «Tus funciones»', async () => {
+    await envolver();
+    expect(screen.getByText('Tus funciones')).toBeTruthy();
+    expect(screen.queryByText('Funciones')).toBeNull();
+  });
+
+  it('el avatar abre Ajustes y lleva el punto de aviso', async () => {
+    const onAjustes = jest.fn();
+    await envolver({ onAjustes, avisa: true });
+    await fireEvent.press(screen.getByTestId('escritorio-avatar'));
+    expect(onAjustes).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('escritorio-avatar').props.accessibilityLabel).toMatch(/hay algo para mirar/);
+  });
+
+  it('la actividad va adentro del bloque, sin el ícono de la fila de vidrio', async () => {
+    await envolver({
+      actividad: [
+        { id: 'g-1', tipo: 'gasto', titulo: 'Gasto · nafta', detalle: 'hoy', monto: '15000.00', signo: 'sale' },
+        { id: 'f-1', tipo: 'factura', titulo: 'Factura B', detalle: 'ayer', monto: '80000.00', signo: 'entra' },
+      ] as never,
+    });
+    const bloque = screen.getByTestId('escritorio-bloque-actividad');
+    expect(within(bloque).getByTestId('actividad-g-1-titulo')).toHaveTextContent('Gasto · nafta');
+    expect(within(bloque).getByTestId('actividad-g-1-monto')).toHaveTextContent(/^−/);
+    expect(within(bloque).queryByTestId('glass-icon-gastos')).toBeNull();
+  });
+
+  it('el vacío también se dice adentro del bloque', async () => {
+    await envolver({ actividad: [] });
+    expect(within(screen.getByTestId('escritorio-bloque-actividad')).getByTestId('escritorio-actividad-vacia')).toBeTruthy();
   });
 });
 
