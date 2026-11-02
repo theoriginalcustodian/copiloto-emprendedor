@@ -41,7 +41,7 @@ function presupuestoGuardado(numero: number): Presupuesto {
     id: 9, numero, fecha: '2026-07-24T12:00:00Z', concepto: 'Instalación eléctrica',
     receptor: { nombre: 'Juan Pérez', docTipo: 96, docNro: '20123456', condicionIva: null, domicilio: '', contacto: 'juan@mail.com' },
     items: [], cantidadItems: 2, total: '45000.00', moneda: 'ARS', docLink: null, docId: null,
-    sheetFila: null, reemplazaA: null, reemplazadoPor: null, facturaId: null, facturado: false,
+    sheetFila: null, reemplazaA: null, reemplazadoPor: null, facturaId: null, facturado: false, estado: 'pendiente',
   } as unknown as Presupuesto;
 }
 
@@ -142,8 +142,9 @@ describe('TarjetaPresupuestoPropuesto', () => {
     await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
     expect(screen.getByTestId('presupuesto-propuesto-guardado-titulo')).toHaveTextContent('Presupuesto anotado — N° 7');
     // `pres-ciclo` (mapeo 2026-10-12): el recibo trae el total y el receptor, como el `REC` del prototipo.
-    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$45.000,00 · Juan Pérez');
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-0')).toHaveTextContent('$45.000 · Juan Pérez');
     // Sin docLink no hay «Doc listo para mandar» ni enlace: `null` no es un error (docstring de `Presupuesto`).
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent(/^Pendiente$/);
     expect(screen.queryByTestId('presupuesto-propuesto-guardado-enlace')).toBeNull();
     expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
   });
@@ -160,7 +161,27 @@ describe('TarjetaPresupuestoPropuesto', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado-enlace')).toBeTruthy());
-    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent('Doc listo para mandar');
+    expect(screen.getByTestId('presupuesto-propuesto-guardado-detalle-1')).toHaveTextContent(
+      'Pendiente · Doc listo para mandar',
+    );
+  });
+
+  it('control negativo: sin estado del backend no afirma «Pendiente»', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: { ...presupuestoGuardado(7), estado: null } });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
+    expect(screen.getByTestId('presupuesto-propuesto-guardado')).not.toHaveTextContent(/Pendiente/);
+  });
+
+  it('el botón de salida dice «Descartar», como el mapa', async () => {
+    await montar();
+
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-cancelar')).toHaveTextContent('Descartar');
   });
 
   it('con la sugerencia del backend el recibo ofrece «Mandalo por mail» y abre el mailto con el link del Doc', async () => {

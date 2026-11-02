@@ -39,6 +39,11 @@ export function nombreTipoComprobante(tipo: number): string {
   return NOMBRE_TIPO_CBTE[tipo] ?? `Comprobante tipo ${tipo}`;
 }
 
+/** `0006-00000015` — el formato con el que AFIP identifica un comprobante. */
+export function numeroFormateado(puntoVenta: number, nro: number): string {
+  return `${String(puntoVenta).padStart(4, '0')}-${String(nro).padStart(8, '0')}`;
+}
+
 /**
  * El renglón con el que un comprobante se identifica en una lista: **«Factura C 6-18»**.
  *

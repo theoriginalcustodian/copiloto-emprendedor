@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 
 /** Partial mock: sólo la red. `leerFacturaPropuesta`, REAL. */
 jest.mock('@copiloto/core', () => {
@@ -211,7 +212,7 @@ describe('TarjetaFacturaPropuesta', () => {
 
     expect(mockConfirmar).toHaveBeenCalledWith('presu-12');
     await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
-    expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Factura emitida\./);
+    expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Factura C emitida\./);
   });
 
   describe('SM-H1: Editar · Cancelar · Emitir sobre el mismo workflow', () => {
@@ -511,11 +512,66 @@ describe('TarjetaFacturaPropuesta', () => {
       });
 
       expect(screen.getByTestId('factura-propuesta-emitida-cae')).toHaveTextContent('CAE: 86294776469171');
-      expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Punto de venta 6 · N° 8/);
+      expect(screen.getByTestId('factura-propuesta-emitida-identidad')).toHaveTextContent(/^N° 0006-00000008 · /);
+      expect(screen.getByTestId('factura-propuesta-emitida-mandar-por-mail')).toBeTruthy();
       expect(screen.getByTestId('factura-propuesta-emitida-guardar')).toBeTruthy();
       expect(screen.getByTestId('factura-propuesta-emitida-compartir')).toBeTruthy();
       expect(screen.getByTestId('factura-propuesta-emitida-aviso-24h')).toBeTruthy();
       expect(screen.queryByTestId('factura-propuesta-preparando-pdf')).toBeNull();
+    });
+
+    describe('SM-H6: de quién es, con qué número, y por mail', () => {
+      async function emitirCon(over: Partial<EstadoFacturaResp>) {
+        mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida(over) });
+        await montar();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+        });
+      }
+      const receptor = { condicionIva: 5, tipoDoc: 80, nroDoc: '20304050607', nombre: 'Rodríguez SRL', domicilio: '' };
+
+      it('dice el número formateado, el importe y el cliente', async () => {
+        await emitirCon({ receptor });
+
+        expect(screen.getByTestId('factura-propuesta-emitida-identidad')).toHaveTextContent(
+          /^N° 0006-00000008 · \$50\.000 · Rodríguez SRL$/,
+        );
+      });
+
+      it('sin nombre y sin documento es un consumidor final', async () => {
+        await emitirCon({ receptor: { ...receptor, tipoDoc: 99, nroDoc: '', nombre: ' ' } });
+
+        expect(screen.getByTestId('factura-propuesta-emitida-identidad')).toHaveTextContent(/· Consumidor final$/);
+      });
+
+      it('control negativo: sin nombre pero con documento no inventa «Consumidor final»', async () => {
+        await emitirCon({ receptor: { ...receptor, nombre: '' } });
+
+        expect(screen.getByTestId('factura-propuesta-emitida-identidad')).toHaveTextContent(/^N° 0006-00000008 · \$50\.000$/);
+      });
+
+      it('«Mandala por mail» abre el mailto con el número y el link, sin mandar nada solo', async () => {
+        const abrir = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+        await emitirCon({ receptor });
+
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('factura-propuesta-emitida-mandar-por-mail'));
+        });
+
+        expect(abrir).toHaveBeenCalledTimes(1);
+        const url = decodeURIComponent(String(abrir.mock.calls[0]?.[0]));
+        expect(url.startsWith('mailto:?')).toBe(true);
+        expect(url).toContain('0006-00000008');
+        expect(url).toContain('https://afipsdk/f.pdf');
+        expect(mockConfirmar).toHaveBeenCalledTimes(1);
+        abrir.mockRestore();
+      });
+
+      it('control negativo: sin PDF no hay qué mandar y el botón no aparece', async () => {
+        await emitirCon({ pdf: null });
+
+        expect(screen.queryByTestId('factura-propuesta-emitida-mandar-por-mail')).toBeNull();
+      });
     });
 
     it('🔴 con copia en Drive ofrece ESE link, que no vence — misma precedencia que la pantalla', async () => {

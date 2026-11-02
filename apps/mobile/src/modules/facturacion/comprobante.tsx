@@ -14,13 +14,14 @@
  * orden. Cuando se defina el `Recibo` compartido con el backend, esto se absorbe adentro — no se
  * amplía acá por las dudas.
  */
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 
-import type { EstadoFacturaResp } from '@copiloto/core';
+import { formatearImporteSinCentavosCero, mailtoMandarFactura, type EstadoFacturaResp } from '@copiloto/core';
 
 import { FilaBotones } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
 import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
+import { numeroFormateado } from './etiquetasComprobante';
 
 export const AVISO_24H =
   'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de ARCA con el CAE.';
@@ -45,8 +46,15 @@ export interface DatosComprobanteProps {
   testID: string;
 }
 
-/** Tipo · punto de venta · número · CAE · vencimiento del CAE · total. El CAE es el dato principal:
- *  es lo único que sigue sirviendo cuando el link del PDF ya venció. */
+/** Sin nombre y sin documento (código 99 de AFIP), el receptor es un consumidor final. */
+function nombreDelReceptor(receptor: EstadoFacturaResp['receptor']): string {
+  if (receptor == null) return '';
+  const nombre = receptor.nombre.trim();
+  return nombre !== '' ? nombre : receptor.tipoDoc === 99 ? 'Consumidor final' : '';
+}
+
+/** Número · importe · cliente · CAE · vencimiento del CAE. El CAE es el dato principal: es lo único
+ *  que sigue sirviendo cuando el link del PDF ya venció. */
 export function DatosComprobante({ estado, testID }: DatosComprobanteProps) {
   const tema = useTema();
   const resultado = estado.resultado;
@@ -54,8 +62,14 @@ export function DatosComprobante({ estado, testID }: DatosComprobanteProps) {
 
   return (
     <View style={{ gap: tema.espacio.xs }}>
-      <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-        Tipo de comprobante {resultado.tipoCbte} · Punto de venta {resultado.puntoVenta} · N° {resultado.nro}
+      <Text testID={`${testID}-identidad`} style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+        {[
+          `N° ${numeroFormateado(resultado.puntoVenta, resultado.nro)}`,
+          formatearImporteSinCentavosCero(estado.total),
+          nombreDelReceptor(estado.receptor),
+        ]
+          .filter((v) => v !== '')
+          .join(' · ')}
       </Text>
       <Text
         testID={`${testID}-cae`}
@@ -66,7 +80,6 @@ export function DatosComprobante({ estado, testID }: DatosComprobanteProps) {
       {resultado.caeVto != null && (
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Vence el {resultado.caeVto}</Text>
       )}
-      <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>Total: {estado.total}</Text>
     </View>
   );
 }
@@ -80,6 +93,7 @@ export interface AccionesComprobanteProps {
 export function AccionesComprobante({ estado, testID }: AccionesComprobanteProps) {
   const tema = useTema();
   const { link, enDrive } = linkDelComprobante(estado);
+  const resultado = estado.resultado;
 
   if (link == null) {
     return (
@@ -122,6 +136,19 @@ export function AccionesComprobante({ estado, testID }: AccionesComprobanteProps
             variante: 'primario',
             testID: `${testID}-guardar`,
           },
+          ...(resultado != null
+            ? [
+                {
+                  etiqueta: 'Mandala por mail',
+                  onPress: () =>
+                    void Linking.openURL(
+                      mailtoMandarFactura(numeroFormateado(resultado.puntoVenta, resultado.nro), link),
+                    ).catch(() => undefined),
+                  variante: 'secundario' as const,
+                  testID: `${testID}-mandar-por-mail`,
+                },
+              ]
+            : []),
           {
             etiqueta: 'Compartir',
             onPress: () => void compartirLink(link, 'tu factura'),

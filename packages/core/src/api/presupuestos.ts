@@ -488,6 +488,15 @@ ${docLink}`);
   return `mailto:${para}?subject=${asunto}&body=${cuerpo}`;
 }
 
+/** Igual que el del presupuesto: abre el mail de quien factura, no manda nada solo. El receptor fiscal no
+ * trae contacto, así que el destinatario lo elige esa persona. */
+export function mailtoMandarFactura(numero: string, link: string): string {
+  const asunto = encodeURIComponent(`Factura N° ${numero}`);
+  const cuerpo = encodeURIComponent(`Hola, te paso la factura:
+${link}`);
+  return `mailto:?subject=${asunto}&body=${cuerpo}`;
+}
+
 /**
  * Resultado de tocar "Facturar".
  *

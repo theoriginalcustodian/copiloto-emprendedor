@@ -105,6 +105,16 @@ export function formatearImporte(valor: string, simbolo = '$'): string {
 }
 
 /**
+ * `"50000.00"` → `"$50.000"`. Para los recibos del chat, que se leen de un vistazo: centavos en cero
+ * no afirman nada. Con centavos reales (`"50000.50"` → `"$50.000,50"`) no se toca una cifra: acá
+ * tampoco se redondea.
+ */
+export function formatearImporteSinCentavosCero(valor: string, simbolo = '$'): string {
+  const formateado = formatearImporte(valor, simbolo);
+  return /^-?\d+\.0{1,2}$/.test(valor.trim()) ? formateado.slice(0, -3) : formateado;
+}
+
+/**
  * `"2026-07-21T22:14:03.120Z"` → `"21 jul"`. Para las cards, donde el año casi siempre sobra.
  *
  * Una fecha ilegible se devuelve `''` en vez de `Invalid Date`: la card simplemente no muestra fecha,

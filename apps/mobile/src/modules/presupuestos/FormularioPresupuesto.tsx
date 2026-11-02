@@ -88,6 +88,8 @@ export interface FormularioPresupuestoProps {
   iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto, sugerencias: SugerenciasPresupuesto | null) => void;
   onCancelar: () => void;
+  /** La card del chat descarta algo que nunca se guardó; en el alta manual, «Cancelar» cierra el formulario. */
+  etiquetaCancelar?: string;
   /**
    * El `id` del `ChatMessage` que trae la card que envuelve este formulario (BL-V32/K-01 ampliado). Si
    * viene, la `idem_key` se DERIVA de él en vez de nacer con el montaje — así sobrevive a un remount de
@@ -104,6 +106,7 @@ export function FormularioPresupuesto({
   iniciales = null,
   onCreado,
   onCancelar,
+  etiquetaCancelar = 'Cancelar',
   mensajeId,
   testID = 'formulario-presupuesto',
 }: FormularioPresupuestoProps) {
@@ -419,7 +422,7 @@ export function FormularioPresupuesto({
             deshabilitado: !puedeGuardar || enviando,
             testID: `${testID}-guardar`,
           },
-          { etiqueta: 'Cancelar', onPress: onCancelar, testID: `${testID}-cancelar` },
+          { etiqueta: etiquetaCancelar, onPress: onCancelar, testID: `${testID}-cancelar` },
         ]}
       />
     </View>

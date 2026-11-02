@@ -3355,14 +3355,17 @@ const HILOS = {
 
   'pres-hitl': () =>
     D('Lunes 20') +
-    O('Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.') +
+    O('Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté.') +
+    /* Decisión D5 (2026-11-02): es un formulario editable, cada campo se toca directo. Por eso no hay
+       «Cambiar» ni «Editar» por renglón. El rótulo con artículo es el copy de 2026-10-13 (#1056). */
     HITL('Presupuesto', 'Docs',
-      FILA('Cliente', 'Fernández', 'Cambiar') +
-      FILA('Ítem', 'Pintura completa<span class="sub-k">1 × $80.000</span>', 'Editar') +
-      FILA('Ítem', 'Cambio de luminarias<span class="sub-k">1 × $65.000</span>', 'Editar') +
+      FILA('Concepto', 'Reforma del local') +
+      FILA('Cliente', 'Fernández') +
+      FILA('Ítem', 'Pintura completa<span class="sub-k">1 × $80.000</span>') +
+      FILA('Ítem', 'Cambio de luminarias<span class="sub-k">1 × $65.000</span>') +
       FILA('Total', '<b>$145.000</b>', 'suma de ítems'),
       'Queda en tu registro y te armo el Doc. A Fernández no le llega nada hasta que vos se lo mandes.',
-      'Guardar presupuesto', 'Descartar'),
+      'Guardar el presupuesto', 'Descartar'),
 
   'pres-ciclo': () =>
     D('Lunes 20') +

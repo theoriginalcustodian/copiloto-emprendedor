@@ -136,6 +136,7 @@ export {
   LIMITE_LISTADO_PRESUPUESTOS,
   listadoLlegoAlTope,
   listarPresupuestos,
+  mailtoMandarFactura,
   mailtoMandarPresupuesto,
   obtenerPresupuesto,
 } from './presupuestos';

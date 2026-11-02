@@ -11,7 +11,8 @@ import { Linking } from 'react-native';
 import type { Comprobante } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { DetalleComprobante, numeroFormateado } from './DetalleComprobante';
+import { DetalleComprobante } from './DetalleComprobante';
+import { numeroFormateado } from './etiquetasComprobante';
 
 function comprobante(over: Partial<Comprobante> = {}): Comprobante {
   return {
