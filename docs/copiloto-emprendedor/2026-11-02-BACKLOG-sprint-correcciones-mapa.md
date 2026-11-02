@@ -66,7 +66,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
-| **SM-H3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app: captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirma… |
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -191,7 +191,9 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H3 · `sin-issue` — «Mandale un recordatorio por mail» produce una card de Calendar
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** mitad app: captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado' (frontend1)
+- **Cierre:** 70e46d9f (#1318) backend: card Gmail por tipo + ramas confirma/no-confirma en VPS 2653 passed; deploy OK
 - **Dueño:** backend (dispatcher) + frontend1 (card)
 - **Medido:** el pedido de mail devuelve una card de **Calendar**, no la de Gmail «Confirmar y
   mandar / Cancelar». Y una card de Calendar **cancelada** pasa a «✓ Confirmado».
