@@ -266,6 +266,13 @@ describe('PantallaOnboarding — SM-C3: el paso del perfil mínimo', () => {
     expect(onTerminar).not.toHaveBeenCalled();
   });
 
+  it('SM-K8: al abrir el paso NO hay errores de campo — recién aparecen al intentar avanzar', async () => {
+    await irAlPaso();
+    expect(screen.queryByTestId('onboarding-perfil-que-vende-error')).toBeNull();
+    expect(screen.queryByTestId('onboarding-perfil-nombre-comercial-error')).toBeNull();
+    expect(screen.queryByTestId('onboarding-perfil-error')).toBeNull();
+  });
+
   it('🔴 adversarial: con UNO de los dos vacío no entra, no llama al server y dice cuál falta', async () => {
     const onTerminar = await irAlPaso();
     await escribir('nombre-comercial', 'Panadería La Esquina');
