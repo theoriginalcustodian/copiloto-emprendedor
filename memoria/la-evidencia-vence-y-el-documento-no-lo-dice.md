@@ -96,12 +96,21 @@ cambió después: el relevamiento comparó **prototipo ↔ captura** y nunca abr
 motivo estaba escrito. Hay **5** declaraciones `ENMIENDA FUNDADA` en el código: es un corpus chico
 y el chequeo es barato.
 
-**Vía B — la ventana ciega entre medir y actuar.** Entre el relevamiento (16-10) y el arranque del
-sprint (02-11) hubo **15 commits que tocaron 17 componentes de pantalla** (`PantallaAjustes`,
-`PantallaApps`, `PantallaClientes`, `PantallaMiDia`, `PantallaInteligencia`, `TarjetaFacturaPropuesta`,
-`PantallaPrincipal`…). Esa ventana no requiere que nadie se equivoque: un mapeo que tarda dos semanas
-en bajar a fichas mide un sujeto que se movió mientras tanto, y **en los dos sentidos** — hay
-divergencias ya arregladas y puede haber nuevas que el relevamiento no vio nacer.
+**Vía B — la ventana ciega entre medir y actuar: la MEDÍ MAL y casi la publico.** Primero conté
+`git log --since=2026-10-16 --until=2026-11-02` sobre `apps/mobile/src` + `packages/core/src` y
+anoté **«15 commits, 17 componentes»**. Desglosado por fecha: **14 de los 15 son de HOY** — el
+trabajo del propio sprint. La ventana real (17-10 … 01-11) tiene **CERO** commits, y el único que
+queda, `51cb7bca`, es del **16-10, el mismo día del relevamiento** (toca `PistasVoz`,
+`PantallaGastos`, `MicFuncion`, `PantallaInteligencia`, y su asunto cita los ids `N1, N2, N8`, así
+que es justo del tipo que podría haber vencido una premisa). O sea: **la vía B no existe como
+clase** — hay un caso de borde de un día, que afecta a dos fichas abiertas (`SM-I2`, `SM-J3`).
+
+**Y el error de medición es el aprendizaje más caro de los dos.** Una ventana `[medición, hoy]`
+contiene el trabajo que estoy haciendo ahora, así que **siempre** devuelve «mucho cambió» — crece
+sola con cada commit que agrego mientras la mido. El sujeto correcto es `[medición, arranque del
+sprint)`, con el extremo derecho **cerrado antes** de mi propio trabajo. Lo mismo que
+[[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]], pero en el eje del tiempo: el
+denominador me incluía.
 
 **Why:** un relevamiento se cita como si fuera del día en que se lee. Las tres «premisas vencidas»
 aparecieron de a una, cada vez al intentar la captura, y cada una se explicó sola como caso aislado;
@@ -114,6 +123,9 @@ implementa**: se «arregla» algo que ya estaba bien y el diff queda pareciendo 
    `ENMIENDA FUNDADA` y la fecha del fix** (`git log -S` del síntoma). Si el código ya declara el
    motivo, la ficha cierra como premisa vencida y lo que se corrige es **el mapa**, no la app.
 2. Todo relevamiento lleva **su fecha y su sha** en cada ítem, y al bajarlo a fichas se re-mide lo
-   que cambió desde ese sha (`git log <sha>..origin/main -- <paths>`). Una medición sin ventana
-   declarada se cita como vigente para siempre
+   que cambió desde ese sha — con la ventana **cerrada antes de tu propio trabajo**:
+   `git log <sha>..<sha-del-arranque-del-sprint> -- <paths>`, **nunca** `..origin/main` ni
+   `--until=hoy`, que te meten adentro del denominador. Y desglosá por fecha antes de citar el
+   total: fue eso lo que destapó que 14 de mis 15 «commits de la ventana» eran míos, de hoy. Una
+   medición sin ventana declarada se cita como vigente para siempre
    ([[la-cita-de-procedencia-muere-en-el-merge]] · [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]).
