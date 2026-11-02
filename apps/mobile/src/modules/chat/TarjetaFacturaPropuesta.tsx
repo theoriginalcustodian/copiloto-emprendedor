@@ -112,6 +112,8 @@ export function TarjetaFacturaPropuesta({
   // el formulario de Emitir sobre una factura que YA se mandó.
   const [estado, setEstado] = useState<Estado>(resuelto ? 'emitida' : 'mostrando');
   const [ocupado, setOcupado] = useState(false);
+  // `ocupado` también lo prenden Editar y Cancelar: el rótulo «Emitiendo…» no puede salir de ahí.
+  const [enviando, setEnviando] = useState(false);
   const [motivo, setMotivo] = useState<string | null>(null);
   const [lectura, setLectura] = useState<EstadoFacturaResp | null>(null);
   // Hasta la primera lectura los botones no se pueden tocar: una card cancelada no muestra un Emitir activo.
@@ -231,6 +233,7 @@ export function TarjetaFacturaPropuesta({
   async function emitir() {
     if (ocupado) return;
     setOcupado(true);
+    setEnviando(true);
     setMotivo(null);
     try {
       const fresca = await consultarEstadoFactura(facturaId);
@@ -250,7 +253,10 @@ export function TarjetaFacturaPropuesta({
     } catch {
       setMotivo('No pudimos emitirla. Probá de nuevo.');
     } finally {
-      if (vivo.current) setOcupado(false);
+      if (vivo.current) {
+        setOcupado(false);
+        setEnviando(false);
+      }
     }
   }
 
@@ -461,7 +467,8 @@ export function TarjetaFacturaPropuesta({
 
         {lectura != null && lectura.faltantes.length > 0 && (
           <Text testID={`${testID}-faltantes`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {lectura.faltantes.map((f) => f.mensaje).join(' · ')}
+            {/* El backend manda un faltante por CAMPO, y varios comparten la misma frase. */}
+            {[...new Set(lectura.faltantes.map((f) => f.mensaje))].join(' · ')}
           </Text>
         )}
 
@@ -504,7 +511,7 @@ export function TarjetaFacturaPropuesta({
                   ...(lista
                     ? [
                         {
-                          etiqueta: ocupado || emitiendo ? 'Emitiendo…' : 'Emitir la factura',
+                          etiqueta: enviando || emitiendo ? 'Emitiendo…' : 'Emitir la factura',
                           onPress: () => void emitir(),
                           variante: 'primario' as const,
                           deshabilitado: apagados,

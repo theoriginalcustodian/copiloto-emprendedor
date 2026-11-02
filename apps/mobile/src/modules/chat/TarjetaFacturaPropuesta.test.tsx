@@ -250,6 +250,43 @@ describe('TarjetaFacturaPropuesta', () => {
       expect(mockConfirmar).not.toHaveBeenCalled();
     });
 
+    it('la misma frase de varios faltantes se muestra una sola vez', async () => {
+      const mensaje = 'ARCA exige el período del servicio';
+      mockEstado.mockResolvedValue(
+        borrador({
+          estado: 'items_ok',
+          faltantes: [
+            { codigo: 'periodo', campo: 'fch_serv_desde', mensaje },
+            { codigo: 'periodo', campo: 'fch_serv_hasta', mensaje },
+            { codigo: 'cliente', campo: 'receptor', mensaje: 'Falta el cliente' },
+          ],
+          tokenConfirmacion: null,
+        }),
+      );
+      await montar(propuesta({ faltantes: ['periodo'] }));
+
+      await waitFor(() =>
+        expect(textoDe('factura-propuesta-faltantes')).toHaveTextContent(`${mensaje} · Falta el cliente`),
+      );
+    });
+
+    it('mientras Cancelar espera al servidor, el botón no dice «Emitiendo…»', async () => {
+      await montar();
+      let soltar: (v: { ok: boolean }) => void = () => undefined;
+      mockCancelar.mockReturnValue(new Promise((r) => { soltar = r; }));
+
+      await tocar('factura-propuesta-cancelar');
+
+      await waitFor(() => expect(mockCancelar).toHaveBeenCalled());
+      expect(textoDe('factura-propuesta-emitir')).toHaveTextContent('Emitir la factura');
+      expect(screen.queryByText('Emitiendo…')).toBeNull();
+      expect(mockConfirmar).not.toHaveBeenCalled();
+
+      await act(async () => {
+        soltar({ ok: true });
+      });
+    });
+
     describe('Cancelar', () => {
       it('cancela de verdad y deja un recibo sin botones', async () => {
         mockCancelar.mockResolvedValue({ ok: true });
