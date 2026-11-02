@@ -35,6 +35,9 @@ export interface CampoSelectProps {
   /** Las opciones se ven pero NO se pueden elegir: para una capacidad que el tenant no tiene. Distinto
    *  de ocultar el campo — el usuario ve QUÉ existe y qué valor tiene. */
   disabled?: boolean;
+  /** `chips` (default): opciones al ancho de su contenido, en renglón. `filas`: una por renglón a todo el
+   *  ancho con un radio a la derecha (mapa `hablar`, SM-K7) — para opciones que llevan descripción. */
+  variante?: 'chips' | 'filas';
 }
 
 export function CampoSelect({
@@ -45,15 +48,17 @@ export function CampoSelect({
   error,
   testID = 'campo-select',
   disabled = false,
+  variante = 'chips',
 }: CampoSelectProps) {
   const tema = useTema();
   const hayError = error != null && error !== '';
+  const filas = variante === 'filas';
   return (
     <View style={styles.contenedor} testID={testID}>
       <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
         {etiqueta}
       </Text>
-      <View style={[styles.chips, disabled && styles.chipsDeshabilitados]}>
+      <View style={[styles.chips, filas && styles.filas, disabled && styles.chipsDeshabilitados]}>
         {opciones.map((opcion) => {
           const seleccionado = opcion.valor === valor;
           const idOpcion = `${testID}-opcion-${opcion.valor}`;
@@ -65,7 +70,7 @@ export function CampoSelect({
               accessibilityState={{ selected: seleccionado, disabled }}
               disabled={disabled}
               onPress={() => onChange(opcion.valor)}
-              style={pressableStyle(styles.chipPresionable)}
+              style={pressableStyle(filas ? styles.filaPresionable : styles.chipPresionable)}
             >
               {/* `hayError` no tiñe el chip individual -- el error de un select es "no elegiste
                   ninguna", no "esta opción está mal"; el aviso de abajo ya lo comunica. El borde del
@@ -73,22 +78,34 @@ export function CampoSelect({
               <EnvolturaCampo
                 style={[styles.chip, { borderColor: seleccionado ? tema.color.acento : tema.color.borde }]}
               >
-                <Text
-                  style={{
-                    color: seleccionado ? tema.color.acento : tema.color.texto,
-                    fontFamily: tema.fuente.uiMedium,
-                    fontSize: tema.tipo.base,
-                  }}
-                >
-                  {opcion.etiqueta}
-                </Text>
-                {opcion.descripcion != null && opcion.descripcion !== '' && (
-                  <Text
-                    style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
-                  >
-                    {opcion.descripcion}
-                  </Text>
-                )}
+                <View style={filas ? styles.filaContenido : undefined}>
+                  <View style={filas ? styles.filaTextos : styles.textos}>
+                    <Text
+                      style={{
+                        color: seleccionado ? tema.color.acento : tema.color.texto,
+                        fontFamily: tema.fuente.uiMedium,
+                        fontSize: tema.tipo.base,
+                      }}
+                    >
+                      {opcion.etiqueta}
+                    </Text>
+                    {opcion.descripcion != null && opcion.descripcion !== '' && (
+                      <Text
+                        style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: tema.tipo.chico }}
+                      >
+                        {opcion.descripcion}
+                      </Text>
+                    )}
+                  </View>
+                  {filas && (
+                    <View
+                      testID={`${idOpcion}-radio`}
+                      style={[styles.radio, { borderColor: seleccionado ? tema.color.acento : tema.color.borde }]}
+                    >
+                      {seleccionado && <View style={[styles.radioPunto, { backgroundColor: tema.color.acento }]} />}
+                    </View>
+                  )}
+                </View>
               </EnvolturaCampo>
             </Pressable>
           );
@@ -112,6 +129,13 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipsDeshabilitados: { opacity: 0.5 },
   chipPresionable: { flexGrow: 0 },
+  filas: { flexDirection: 'column', flexWrap: 'nowrap' },
+  filaPresionable: { alignSelf: 'stretch' },
+  filaContenido: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  textos: { gap: 2 },
+  filaTextos: { flex: 1, gap: 2 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  radioPunto: { width: 10, height: 10, borderRadius: 5 },
   chip: { minHeight: 0, paddingVertical: 10, paddingHorizontal: 14, justifyContent: 'center', gap: 2 },
   error: { fontSize: 11, letterSpacing: 0.2 },
 });

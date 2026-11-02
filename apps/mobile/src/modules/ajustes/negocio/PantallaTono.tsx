@@ -139,6 +139,7 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
           <CampoSelect
             testID="tono-formalidad"
             etiqueta="Tono"
+            variante="filas"
             opciones={OPCIONES_FORMALIDAD}
             valor={formalidad}
             onChange={(v) => {
@@ -149,6 +150,7 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
           <CampoSelect
             testID="tono-largo"
             etiqueta="Largo de las respuestas"
+            variante="filas"
             opciones={OPCIONES_LARGO}
             valor={largo}
             onChange={(v) => {
