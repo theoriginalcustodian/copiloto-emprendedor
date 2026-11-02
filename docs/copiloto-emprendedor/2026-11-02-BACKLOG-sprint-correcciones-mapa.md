@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal s… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -649,8 +649,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: el JWT de acceso es stateless; ventana L)
-- **Cierre:** 117dc669 · captura de device 2026-11-02 del ingreso normal sin aviso en docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-K6-ingreso-normal-sin-aviso-lockup-odobi.webp
+- **Falta:** una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal sin aviso que ya existe en 117dc669. CORREGIDO 2026-11-02: este Falta decia 'invalidar la sesion del canonico del lado servidor' y esa premisa era FALSA - apps/copiloto/auth.py:47 valida solo firma+exp+iss y no consulta sesion en GoTrue, asi que el backend no tiene el concepto 'sesion cerrada': a un access token solo le puede pasar VENCER (GOTRUE_JWT_EXP=3600 medido en el contenedor vivo por backend). El disparador del aviso es un 401 en el cliente, no un registro muerto en GoTrue. Consecuencia: SM-K6 YA NO depende de que el operador cierre su sesion ni de la cuenta canonica - sale del bloque 2 y se acredita con cualquier cuenta. Pendiente de backend: codigo y cuerpo exactos ante ExpiredSignatureError, porque si un token vencido y un login fallido llegan al front como el mismo 401 indistinguible, el 'ausente en un ingreso normal' del DoD no se puede implementar bien y ESO es el hallazgo.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
