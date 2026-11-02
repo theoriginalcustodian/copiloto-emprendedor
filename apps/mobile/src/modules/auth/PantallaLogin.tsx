@@ -130,7 +130,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           * un número elegido a ojo.
           */}
         <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
-          <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
+          <Marca size={LOCKUP_SIMBOLO} tono="tinta" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           <Text
