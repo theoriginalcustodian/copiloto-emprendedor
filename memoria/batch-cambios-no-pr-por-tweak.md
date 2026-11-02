@@ -64,3 +64,43 @@ eso se dice explícito al abrirlo. Caso de hoy: los dos refuerzos quedaron commi
 
 **El chequeo de un segundo, antes de tipear `gh pr create`:** *¿esto es el DoD del goal activo, o
 desbloquea a alguien hoy?* Si ninguna de las dos, el commit se queda local.
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — la forma que reincide es el PR POR MARCADO DE FICHA, y el costo es la espera de CI
+
+**Lo medido.** Reincidí en un solo día con **ocho** PRs: #1400, #1402, #1403, #1405, #1407, #1410,
+#1412, #1415. Casi ninguno era código: eran **marcados de ficha** (`--marcar … --estado`),
+correcciones de un `Cierre:`/`Falta:` y refuerzos de memoria. Cada uno con su rama, su PR, su
+`gh workflow run`, su espera de 6 jobs y su merge. El reclamo del operador nombró el costo exacto,
+y no es el ruido en el historial:
+
+> «si hacemos commits y PRs por cada cosa insignificante el trabajo se traba y no terminamos nunca…
+> **porque por cada commit hay que esperar CI** y así no avanzamos más»
+
+**Why:** la orden de arriba ya existía y aun así reincidí, porque cada PR se justificaba **solo**.
+Marcar una ficha se siente obligatorio —el estado tiene que quedar escrito, el gate lo exige, hay
+una sesión esperando el merge para marcar lo suyo— y ninguno de esos argumentos es falso. El error
+no está en ningún PR individual: está en que **el trámite cuesta más que el cambio**, y eso sólo se
+ve sumando. Un marcado no puede romper runtime; lo único que compra su CI es la atestación de un
+doc. Peor todavía era el patrón de dos PRs por un hecho: una sesión manda `cierre_`, planificación
+registra la ficha en un PR, y la sesión marca el estado en **otro**.
+
+**How to apply:**
+1. **Una rama de lote por sesión** (`<sesion>/lote-estado-fichas`), viva, que acumula marcados,
+   correcciones de `Cierre:`/`Falta:`, refuerzos de memoria y docs de registro. Sube cuando hay
+   varias cosas o al cerrar el día: **un CI por lote**.
+2. **Código, fixes desplegables, gates e instrumentos siguen abriendo PR propio y ya.** Ahí la
+   espera de CI se paga por algo. El criterio no es el tamaño del diff: es **si puede romper algo
+   en runtime**.
+3. **Un hecho, un commit.** Quien tiene la evidencia la manda; **planificación registra Y marca en
+   el mismo commit**. Nunca «registrá vos y marco yo después».
+4. Lo que el lote **no** relaja: el DoD exige la misma evidencia, `sprint-estado.py --marcar` sigue
+   siendo el único que escribe el estado, y un `TERMINADO` sigue necesitando su sha ancestro de
+   `origin/main`. El lote cambia **cuándo** se sube, no **qué** se acredita.
+5. Conflicto del lote en la **tabla generada**: no se toma un lado, se regenera con `--tabla`
+   conservando los dos bloques de bullets ([[resolver-tomando-un-lado-nunca-converge]]).
+
+**El disparador para revisarse, porque la autoevaluación acá no sirve:** si en una jornada abriste
+más de un par de PRs y la mayoría no toca código, ya reincidiste — contalos antes de abrir el
+siguiente ([[prometer-no-es-ejecutar-el-gate-media-la-palabra]]).
