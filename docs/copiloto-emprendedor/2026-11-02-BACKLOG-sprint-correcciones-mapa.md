@@ -66,7 +66,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
-| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app: captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirma… |
+| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La cap… |
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -192,8 +192,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H3 · `sin-issue` — «Mandale un recordatorio por mail» produce una card de Calendar
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** mitad app: captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado' (frontend1)
-- **Cierre:** 70e46d9f (#1318) backend: card Gmail por tipo + ramas confirma/no-confirma en VPS 2653 passed; deploy OK
+- **Falta:** captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La captura tiene que partir de un PEDIDO EN LENGUAJE NATURAL real ('mandale un recordatorio por mail a X para manana'), no de un disparo directo de la card: backend fijo el discriminante en las descripciones de gmail_send/calendar_book y el comportamiento por tipo (observation.service=='gmail'), pero QUIEN ELIGE LA TOOL es el LLM y eso no se ejercito. Un test que no usa el camino de produccion no puede verlo fallar: la captura con pedido natural es el UNICO control de esa eleccion.
+- **Cierre:** mitad backend CERRADA: 70e46d9f (#1318), desplegado y durabilidad VERDE. test_card_mail_gmail.py afirma la card por TIPO (observation.service=='gmail'); confirma->1 envio y no-confirma->0 en tests SEPARADOS, porque un mecanismo roto hacia el 'no' no da sintoma como segunda asercion del happy-path. VPS suite completa 2653 passed/41 skipped. Sin envio programado (D8).
 - **Dueño:** backend (dispatcher) + frontend1 (card)
 - **Medido:** el pedido de mail devuelve una card de **Calendar**, no la de Gmail «Confirmar y
   mandar / Cancelar». Y una card de Calendar **cancelada** pasa a «✓ Confirmado».
