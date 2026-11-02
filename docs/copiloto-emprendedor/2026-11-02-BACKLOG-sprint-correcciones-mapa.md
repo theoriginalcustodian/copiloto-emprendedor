@@ -89,12 +89,12 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
-| **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-L3** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en… |
+| **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas… |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
@@ -109,6 +109,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
 | **SM-N13** | `sin-issue` | ✅ TERMINADO | 7811aad1 consigna fuera de las 6 observaciones restantes; test AST; sonda Mi dia N=12 6/12 -> 0/12 (desplegado) |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
+| **SM-N15** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -598,7 +599,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K7 · `sin-issue` — Seis pantallas secundarias difieren del mapa en estructura
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título duplicado/rótulo/sin oración repetida; apar y soporte sin código (enmienda fundada PantallaSkins.tsx:145 desde 004ee3ce; clip de soporte desde #1115). Capturas de device en 2026-11-02-sprint-correcciones-evidencia/SM-K7-*.webp. Inventario #1379. Enmienda del mapa pendiente: contenedor en una sola tarjeta y chevron de apar.
 - **Dueño:** frontend2
 - **Medido:** `negocio` (estructura del formulario), `comousar` (contenedor y numeración), `soporte`
   (falta el clip; y sale el botón de voz grande por D2), `feedback` (estructura y posición del mes),
@@ -657,9 +659,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L3 · `sin-issue` — La anulación de facturas nunca se ejercitó contra ARCA real
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** SOLO el botón: el operador anula N°10 y N°11 en la app (receta) + captura + salida final de verificar-anulacion.sh en exit 0; antes, elegir cuál de los DOS pares N°10/N°11 (tenants 19af5a42 y 48a9d75f) es el suyo
-- **Cierre:** 25a219b3 control de estado en servidor (verificar-anulacion.sh) + receta; cancelar/anular son caminos distintos
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas porque ya probamos que funciona». El DoD se RETIRA, no se declara satisfecho: nadie anuló las facturas N° 10 y N° 11 en esta ronda. La anulación queda acreditada por la prueba anterior del operador, no por este sprint.
 - **Dueño:** backend + **operador (el botón final)**
 - **Medido:** las facturas reales N° 10 y N° 11 están emitidas en Producción.
 - **DoD:** las dos anuladas (D10), con captura **y estado en servidor** que lo confirme — no sólo la
@@ -776,10 +777,39 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   sesión arreglando algo que en la pantalla no existe — y el «fix» va a parecer que funciona, porque
   la próxima captura también va a cambiar.
 - **DoD:**
-  1. **Control del instrumento, primero:** mirar las dos cards en la pantalla del teléfono **sin
-     capturar**, con el canónico. Reportar si el rectángulo está a ojo. **Si NO está a ojo, la ficha
-     cierra `TERMINADO` como artefacto de `screencap`** — con esa frase escrita, porque lo que se
-     retira es la causa, no la observación.
+  1. **Control del instrumento — ⚠️ ENMIENDA DEL DoD, SEGUNDA VUELTA (planificación, 2026-11-02).**
+     Dos redacciones anteriores estaban mal, y las dejo escritas porque el error importa más que el
+     texto final:
+
+     - **v1 pedía mirar la pantalla «a ojo», sin capturar.** No lo puede cumplir **ninguna sesión**:
+       ninguna ve una pantalla, todo lo que llamamos «ver» pasa por un instrumento. Era un DoD cuyo
+       único ejecutor posible era el operador, sin declararlo.
+     - **v2 proponía cruzar `screencap` con `dumpsys SurfaceFlinger`, y FALLABA ABIERTA.** La regla
+       «ninguna capa con esos bounds → artefacto» **absuelve siempre**: una `View` de React Native
+       **no tiene capa propia** en SurfaceFlinger — sombra, gradiente y fondo se pintan en el único
+       buffer de la app. La lista tiene una sola capa esté el rectángulo pintado o no, así que un
+       defecto **real** salía clasificado como artefacto. Lo cazó frontend1, con la lista de capas
+       ya medida en `SM-N4.md`. Es el patrón del guard que da luz verde justo en su caso de
+       activación.
+
+     **v3, el criterio que SÍ discrimina — diferencial de código con un solo instrumento.** Un
+     artefacto de composición **no obedece a un cambio de estilo en un solo componente**:
+     - con el primer cambio, el rectángulo **desapareció de `Tile` y siguió en `Row`**, en la misma
+       captura y el mismo buffer;
+     - al tocar `Row`, se fue de `Row`.
+
+     Eso responde el punto 1: **el defecto era real y tenía causa en el código**, ya nombrada en el
+     punto 2. El `screencap` no se descarta como instrumento — se usa con **dos estados del código**,
+     que es lo que vuelve la medición diferencial.
+
+     **Control de la propia v3** (frontend1, próxima tanda de device): revertir a propósito la sombra
+     de `Row` en Metro local, sin commit, capturar y volcar la lista de capas **con el rectángulo
+     presente**. Si apareciera una capa con esos bounds, v3 se cae y hay que volver a pensarlo.
+
+     **Lo que v3 NO cubre, declarado:** que la pantalla **física** muestre algo distinto de ese
+     buffer. Eso sólo lo ve el operador — y no era la hipótesis de la ficha, que temía lo inverso:
+     que la captura **fabricara** el borde. Sin capa propia, `screencap` lee el mismo buffer que
+     recibe el compositor, así que no hay una capa que aplanar mal.
   2. Sólo si está a ojo: comparar con el equivalente de documed (§3.ter) y nombrar la capa (sombra,
      vidrio del shell, o el recorte del padre) antes de tocar nada.
   3. Captura de device del antes y el después.
@@ -1045,6 +1075,42 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. El comentario de `:37-38` reemplazado por el motivo real.
   4. Corrido donde corresponde (`scripts/ci/core.sh` + `web.sh`), con el conteo en el `cierre_`.
 - **No necesita device:** es código + test. La captura de Gastos ya existe, del relevamiento.
+
+### SM-N15 · `sin-issue` — SEGUNDO usuario de prueba: no-admin y tenant VACÍO (decisión del operador, 2026-11-02)
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (provisión) — **desbloquea `SM-K1` y `SM-J3`**
+- **Decisión del operador (2026-11-02), textual:** *«creamos segundo usuario de prueba»*. Es la
+  respuesta a la pregunta MAYOR que planificación escaló: si un usuario canónico único alcanza para
+  probar controles que dependen del **rol** o de la **sesión**. Respuesta: **no alcanza**.
+- **Por qué el usuario del operador NO sirve para estas dos, aunque sí sirve para otras tres.** El
+  operador ofreció su propio usuario y destraba `SM-H3` (Gmail conectado), `SM-J4` (clientes reales
+  con y sin facturas) y `SM-K6` (invalidación de sesión; con el canónico el logout está prohibido).
+  Pero `SM-K1` y `SM-J3` necesitan lo **contrario**: **menos** privilegios (no-admin) y **menos**
+  datos (tenant vacío). Un usuario más completo no puede encarnar un estado más pobre. Ésa es la
+  forma del problema, y es la razón por la que el número de disparadores sin dueño fue 1 → 3 → 4 →
+  5 → 6 en un día: cada captura destapaba otro estado del tenant que el único canónico no podía ser.
+- **Lo que NO cambia: el canónico sigue siendo `e2e-device@copiloto.test`.** Esto es una **ampliación
+  por ficha**, no un reemplazo — la orden «un solo usuario canónico, a fuego» sigue vigente para todo
+  lo demás, y sigue PROHIBIDO crear usuarios de prueba ad-hoc. El segundo usuario existe para las dos
+  fichas que lo nombran, se documenta en el mismo lugar que el canónico, y cualquier uso fuera de
+  `SM-K1`/`SM-J3` es MAYOR y vuelve al operador.
+- **DoD binario:**
+  1. Un usuario de prueba creado con **rol no-admin** y **tenant propio y vacío** (cero clientes,
+     cero comprobantes, cero gastos). Control positivo: una consulta que muestre los conteos en cero
+     **y** que el canónico los tenga distintos de cero — si los dos dan vacío, el instrumento mira
+     mal.
+  2. **Su password NUNCA en el repo trackeado ni en la memoria**, igual que el canónico: va a
+     `.env.e2e`. El repo es **público**.
+  3. El rol no-admin **verificado con un test adversarial**, no por configuración: el usuario intenta
+     la acción de admin y recibe denegación (regla dura del `CLAUDE.md` — un control de autorización
+     sin test adversarial es un control no verificado; ADR-013, BOLA/OWASP API1:2023). Sin ese test
+     la ficha queda `[UNVERIFIED]` y **no** desbloquea `SM-K1`.
+  4. Aislamiento cross-tenant ejercitado: el usuario nuevo pide un recurso del canónico y **no** lo
+     obtiene.
+  5. Documentado donde está documentado el canónico, con **para qué dos fichas existe** y la frase de
+     que todo otro uso es MAYOR.
+- **No necesita device** para la provisión. El device entra después, en `SM-K1` y `SM-J3`.
 
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 

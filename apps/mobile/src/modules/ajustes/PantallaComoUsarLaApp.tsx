@@ -100,22 +100,20 @@ export function PantallaComoUsarLaApp() {
             onPress={() => preguntar(t.pregunta)}
           >
             <View style={styles.tema}>
-              <Text
-                style={{
-                  color: tema.color.acentoTinta,
-                  fontFamily: tema.fuente.uiSemibold,
-                  fontSize: tema.tipo.base,
-                  width: 20,
-                }}
-              >
-                {i + 1}
-              </Text>
+              {/* Círculo tintado con el número (mapa `comousar`, SM-K7). */}
+              <View style={[styles.numero, { backgroundColor: tema.color.superficieAlta }]}>
+                <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                  {i + 1}
+                </Text>
+              </View>
               <View style={styles.bloque}>
                 <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
                   {t.titulo}
                 </Text>
                 <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{t.detalle}</Text>
               </View>
+              {/* Cada tema se toca y lleva al chat: el `›` es la afordancia (ver EncabezadoListado). */}
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.titulo }}>›</Text>
             </View>
           </Row>
         ))}
@@ -205,6 +203,7 @@ const rotulo = (tema: ReturnType<typeof useTema>) => ({
 });
 
 const styles = StyleSheet.create({
-  tema: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 },
+  tema: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   bloque: { flex: 1, gap: 4 },
+  numero: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

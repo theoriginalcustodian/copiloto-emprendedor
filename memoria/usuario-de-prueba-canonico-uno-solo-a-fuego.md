@@ -48,3 +48,18 @@ el usuario canónico es MAYOR: se decide y se re-documenta acá, no se asume.
   $111 `BLQ3-recibo` y el de $50.000 «Distribuidora Sur» también son de pruebas anteriores.
 - **Prevención:** en un gesto de voz **sin intención de enviar**, soltar a >80 dp (fija) y descartar con el tacho; soltar corto
   envía lo que el micrófono haya oído.
+
+
+## Ampliación por ficha (SM-N15, 2026-11-02): un SEGUNDO usuario, sólo para SM-K1 y SM-J3
+
+El operador aprobó (*«creamos segundo usuario de prueba»*) un usuario **no-admin con tenant VACÍO**, porque
+`SM-K1` (menos privilegios) y `SM-J3` (menos datos) necesitan lo **contrario** de lo que el canónico puede
+ser. **El canónico sigue siendo `e2e-device@copiloto.test`** — esto es ampliación por ficha, no reemplazo.
+
+- **Email:** `e2e-vacio@copiloto.test` · **cliente_id:** `d292192d-1d88-43e0-92d4-093e5aca9214`.
+- **Credencial:** en `.env.e2e` (claves `E2E_VACIO_*`), igual que el canónico. NUNCA en el repo ni en la memoria.
+- **Alta y verificación (idempotente):** `scripts/provision_usuario_vacio_sm_n15.py` — no-admin con test adversarial
+  (`/admin/*`: 401 sin token, 403 con el token del usuario), tenant vacío con control positivo (0 vs canónico
+  3/4/14/40 en clientes/comprobantes/gastos/presupuestos) y cross-tenant (comprobante ajeno → 404).
+- **Todo uso fuera de `SM-K1`/`SM-J3` es MAYOR y vuelve al operador.** Para `SM-H3`, `SM-J4` y `SM-K6` el operador
+  ofreció SU propio usuario; no se crean más cuentas.
