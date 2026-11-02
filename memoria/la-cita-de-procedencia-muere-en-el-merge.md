@@ -162,4 +162,37 @@ Y el corolario para la sesión que implementa: si la premisa de tu ficha cae, **
 del goal — es el hallazgo**. Se devuelve a planificación, no se parchea por tu lado ni se implementa
 contra una premisa que ya sabés falsa.
 
+
+### Ampliación del mismo día: fueron CINCO, y el patrón tiene dueño
+
+| Ficha | Afirmaba | Lo medido | Quién lo vio |
+|---|---|---|---|
+| `SM-J4` | la app no recibe monto/comprobantes | llegaban desde el 06-10 (#816) | backend, al implementar |
+| `SM-K6` | el aviso no existe en ningún archivo | existía con otra redacción | frontend2, al implementar |
+| `SM-K3` | falta «Necesito cambiarlo ›» | **omitido por decisión del OPERADOR** (BL-V27) | frontend2, al implementar |
+| `SM-J2` | faltan los chips | existen; los 2 reclamados **apagados por decisión** | barrido, al 3er caso |
+| `SM-J5` | la agenda no distingue hoy | agrupa Hoy/Mañana/Esta semana/Sin hora (ADR-004) | barrido, al 3er caso |
+
+**Dos habrían REVERTIDO una decisión deliberada, y la de `SM-K3` era del operador** — o sea un MAYOR
+entrando disfrazado de tarea táctica, que es la forma más cara de este defecto. `SM-J2` es la peor del
+grupo: su docstring registra que esa deuda **ya se pagó una vez** (#1079 atribuía la ausencia a «una
+decisión documentada en su docstring» que no estaba escrita, y el fix fue escribirla). Implementarla
+la reabría.
+
+**Las tres cosas que esto enseña, y la tercera es la incómoda:**
+
+1. **La refutación estaba EN EL CÓDIGO en las cinco** — en cuatro, dentro de un comentario que
+   explicaba la decisión. Así que el gate no es un revisor más: **antes de implementar una ficha que
+   afirma una ausencia, se lee el docstring del archivo que se va a tocar.** Un comentario que declara
+   una decisión es evidencia de primera mano; la ficha es una cita de segunda.
+2. **Una ficha sin objeto no se borra: se cierra con `sin-codigo` + el motivo medido.** Una ficha
+   retirada en silencio vuelve el mes que viene, porque el relevamiento que la generó sigue ahí.
+3. **Ninguna la encontró quien planificó, leyendo su propio relevamiento.** Las encontró **quien fue
+   a implementar**, y las dos que cacé con un barrido las cacé recién **después de que el patrón se
+   repitiera tres veces**. El que escribe el código corre el `git grep` por necesidad; el que planifica
+   **cita** — y cuando la cita tiene formato `path:línea`, la lee como medida propia. **El rol que baja
+   los contratos es estructuralmente el que menos puede detectar su propia premisa rancia**, así que
+   el control no puede vivir en su buena voluntad: el barrido tiene que ser un script que corra sobre
+   el doc, antes de bajar la ficha, no después del tercer incidente.
+
 → [[supuesto-cuya-falla-parece-un-estado-legitimo]] · [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]
