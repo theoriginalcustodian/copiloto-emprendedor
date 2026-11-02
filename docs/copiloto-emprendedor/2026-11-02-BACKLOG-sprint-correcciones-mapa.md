@@ -105,6 +105,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
+| **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -915,3 +918,68 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   corregido; si alguna vez se agrega, es otra ficha con su `pedido_` al backend.
 - **Los puntos 1-3 NO necesitan el teléfono.** Sólo el punto 4. Es trabajo hacedero mientras el device
   está tomado.
+
+### SM-N10 · `sin-issue` — La barra de estado del sistema es ilegible, y el canónico NO la resuelve
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **De dónde sale:** frontend1 al capturar `SM-I1` (íconos claros sobre fondo crema). Pidió ficha o
+  exclusión en vez de arreglarlo por su cuenta.
+- **Lo medido (planificación, 2026-11-02, contra `origin/main`).** Tenía razón, y con un matiz que
+  cambia cómo se hace:
+  - **cero** `StatusBar` / `expo-status-bar` en los 257 `.tsx` de `apps/mobile` (control positivo:
+    el mismo grep sí encuentra `NavigationBar` en `apps/mobile/app/_layout.tsx`).
+  - **documed tampoco la tiene**: `statusbar` en `documed-front/apps/mobile` aparece sólo dentro de
+    `node_modules/react-native-gesture-handler`. O sea que el canónico resolvió la barra de **abajo**
+    (`NavigationBar`, que acá ya está portada) y **nunca** la de arriba.
+- **Por eso esta ficha dice el método explícito:** acá **no hay nada que portar**. Es la excepción a
+  §3.ter, y nombrarla evita el peaje inverso — buscar en documed un archivo que no existe y leer el
+  vacío como «ya está resuelto allá».
+- **DoD:**
+  1. `StatusBar` con el estilo que contraste sobre el fondo crema, en el shell (un solo lugar).
+  2. Decidido y probado el **tema oscuro** si existe: un `style` fijo ilegible en el otro tema es el
+     mismo defecto espejado.
+  3. Captura de device con los íconos legibles.
+
+### SM-N11 · `sin-issue` — El detalle de comprobante pinta `2026-11-12` y `100.0` crudos: el formateador YA existe y ese call-site lo saltea
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **De dónde sale:** frontend1 al capturar `SM-I1`.
+- **Lo medido (planificación, 2026-11-02, contra `origin/main`).** No es un formateador que falte
+  —es **un call-site que no lo usa**:
+  - `apps/mobile/src/modules/facturacion/DetalleComprobante.tsx:176-177` pasa `c.fechaEmision` y
+    `c.total` **sin formato** a `<Dato valor={…}>`, y el archivo **no importa** ningún formateador
+    (sus imports son `:29-39`).
+  - `formatearImporte`, `formatearFechaCorta` y `formatearFechaLarga` ya existen en
+    `packages/core/src/dinero/formatoDinero.ts:84,148,156` y los usan **27** archivos de la app.
+  - El gemelo más cercano formatea **el mismo campo del mismo comprobante**:
+    `facturacion/etiquetasComprobante.ts:69` → `formatearImporte(c.total)`.
+- **Por eso el fix es propagar, no diseñar.** Y la pregunta que el DoD obliga a contestar es cuál de
+  los dos de importe: `formatearImporte` o `formatearImporteSinCentavosCero` (`:112`, el que ya usa
+  `facturacion/comprobante.tsx:68`). Dos formateadores para el mismo número es la asimetría que hay
+  que resolver mirando qué pide la pantalla, no la que esté más a mano.
+- **DoD:**
+  1. `:176-177` formateados con los formateadores de `@copiloto/core` — sin un formateador nuevo y
+     sin formatear dos veces el mismo valor.
+  2. Test que afirme el texto RENDERIZADO (no el campo crudo), en `DetalleComprobante.test.tsx`.
+  3. Captura de device del detalle.
+- **Los puntos 1-2 NO necesitan el teléfono.** Sólo el 3.
+
+### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (**después** del sprint)
+- **De dónde sale:** frontend1, cuarto hallazgo al capturar `SM-I1`: tocar `Revisarla` o `Borrar`
+  dentro de la tarjeta también activa el gesto de la tarjeta, y al volver queda cerrada.
+- **Por qué queda FUERA y eso no es descartarla.** Este sprint mide **divergencias mapa ↔ app**, y
+  esto no es una: el mapa no dice nada al respecto y, como frontend1 midió, **viene de antes** — no
+  lo introdujo ninguna ficha de esta tanda. Meterla adentro movería el denominador del sprint, que
+  es justo el defecto ya pagado: un criterio que crece con cada medición no se puede alcanzar
+  (`DEC-18`).
+- **Queda registrada acá y no suelta en un mensaje** para que tenga id y pueda marcarse cuando se
+  tome. Un hallazgo que sólo vive en un `cierre_` no vuelve a aparecer.
+- **DoD (cuando se tome):** antes de tocar el gesto, la skill `swmansion-rn-gestures` —composición
+  Pan/tap y propagación en contenedores— es la fuente del criterio; es el mismo gate que ya evitó
+  dos iteraciones a ciegas sobre el panel de Apps. Después: el fix, un test del toque del botón
+  que NO cierre la tarjeta, y la corrida en device con `adb input motionevent` (DOWN/MOVE/UP).

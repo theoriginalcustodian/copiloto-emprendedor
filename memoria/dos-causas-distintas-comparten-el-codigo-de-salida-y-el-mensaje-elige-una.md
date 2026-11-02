@@ -306,3 +306,27 @@ glob matchea **8 slugs** y sigue su curso. Un código por causa ⇒ el lector no
 **Deuda declarada:** el criterio de whitelist de `vigia.sh` pregunta «¿cambia lo que el instrumento MIDE
 según de dónde salga el archivo?», pero su grep (`BASH_SOURCE|show-toplevel|pytest|npm |jest|vitest`) **no
 puede ver** un `basename`+glob-de-slug. Este instrumento pasó un criterio incapaz de detectar su propia falla.
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — «SIN MEDIR» no es «falló»: el evento del CI puede no haber llegado nunca
+
+**Lo medido.** Tres pushes a la misma rama (`planificacion/fichas-n10-n12`) y **cero** check-runs:
+`gh pr checks 1378` devolvía *«no checks reported»* aunque `tests.yml` declara `on: pull_request`
+**sin filtros de path**. No fue una corrida roja ni lenta: el evento no disparó. El gate lo dijo
+bien —`ROJO — SIN MEDIR: no es que el CI falló, es que no hay ninguna medición`, rc=2— y la
+distinción es la que importa, porque el mismo rojo del gate se lee por reflejo como «algo está
+mal en mi rama» y lleva a buscar un bug que no existe.
+
+**Why:** un fallo y una **ausencia de medición** llegan por el mismo canal y con el mismo color. La
+diferencia es que al fallo hay que arreglarlo y a la ausencia hay que **pedirla de nuevo**. Si el
+instrumento no separara las dos, el camino de menor resistencia sería `--no-verify`, que es
+exactamente el fail-open que este repo ya pagó.
+
+**How to apply:** `gh workflow run tests.yml --ref <rama>` y después mergear. Es la razón por la que
+`workflow_dispatch` está en el workflow, documentada ahí desde el outage del 2026-08-06 con el
+detalle de lo que **no** sirve (`gh run rerun` deja el run en limbo; `close`+`reopen` deduplica por
+SHA; un commit vacío tampoco dispara). Y el veredicto se lee del **estado remoto**, nunca del exit
+code de `gh`. Lo que acá se agrega al caso del outage: **esto también pasa sin outage**, en un día
+normal y de forma repetida sobre la misma rama — así que «el CI no corrió» no necesita una causa
+grande para ser la explicación correcta.
