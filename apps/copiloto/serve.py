@@ -32,6 +32,7 @@ from _paths import ensure_paths
 ensure_paths()
 
 import psycopg2
+from fastapi import Depends
 import uvicorn
 from temporalio.client import Client
 
@@ -41,7 +42,7 @@ from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 
 import services
-from auth import make_require_admin, make_require_claims, make_require_tenant
+from auth import es_admin, make_require_admin, make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
 from conn_pool import pool_de_conexiones
@@ -153,8 +154,12 @@ async def _serve() -> None:
     )
     # AFIP (Ajustes): perfil fiscal + alta ARCA. El alta arranca el workflow durable y el estado se lee
     # por query — la pantalla muestra progreso real durante los minutos que tarda el RPA de AfipSDK.
+    def es_admin_dep(claims: dict = Depends(require_claims)) -> bool:
+        return es_admin(claims)
+
     afip_app = create_afip_app(
         require_tenant=require_tenant,
+        es_admin_dep=es_admin_dep,
         perfil_store_factory=lambda cid: AfipPerfilStore(conn_factory, cid),
         cred_store_factory=lambda cid: AfipCredentialStore(conn_factory, cid, crypto),
         handoff_factory=lambda cid: AfipSecretHandoff(conn_factory, cid, crypto),

@@ -116,6 +116,7 @@ def cliente(piezas):
     arranques: list[tuple] = []
 
     app_afip = create_afip_app(
+        es_admin_dep=lambda: True,   # el gate D6 vive en test_afip_homologacion_solo_admin.py
         require_tenant=lambda: TENANT,
         perfil_store_factory=lambda cid: perfil,
         cred_store_factory=lambda cid: cred,

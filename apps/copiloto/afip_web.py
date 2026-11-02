@@ -103,11 +103,19 @@ AMBIENTE_DEFAULT = "dev"
 _NOMBRE_AMBIENTE = {"dev": "homologación (pruebas)", "prod": "producción"}
 
 
+# SM-K1 / D6 — Homologación (`dev`) es SÓLO para `copiloto_admin`. Ocultar el botón no es un control: lo
+# rechaza el backend. Fail-closed: sin la dependencia inyectada nadie es admin.
+HOMOLOGACION_SOLO_ADMIN = "homologacion_solo_admin"
+AMBIENTE_REQUERIDO = "ambiente_requerido"
+
+
 class ConectarBody(BaseModel):
     cuit: str = Field(min_length=11, max_length=11)
     usuario: str
     clave_fiscal: str = Field(repr=False)  # `repr=False`: que no salga en un log de pydantic
-    ambiente: Literal["dev", "prod"] = AMBIENTE_DEFAULT
+    # `None` = «no lo indicó». Para un admin vale el default (homologación); para el resto NO hay default:
+    # ver `_ambiente_permitido`. Un default silencioso a producción vincularía ARCA real sin que lo pidan.
+    ambiente: Literal["dev", "prod"] | None = None
 
 
 class AmbienteBody(BaseModel):
@@ -156,6 +164,9 @@ def create_afip_app(
     # y con fallback al signal para no romper a quien arme el app sin ellas (tests, montajes parciales).
     confirmar_factura: Callable | None = None,
     cancelar_factura: Callable | None = None,
+    # SM-K1: dependencia que contesta `bool` «¿este token es `copiloto_admin`?» (serve.py la arma con
+    # `auth.es_admin`, la MISMA pregunta que `/me`). None = nadie es admin (fail-closed).
+    es_admin_dep: Callable | None = None,
     confirmar_anulacion: Callable | None = None,
     iniciar_anulacion: Callable | None = None,
     consultar_anulacion: Callable | None = None,
@@ -163,6 +174,25 @@ def create_afip_app(
     composio_gateway=None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto ARCA")
+
+    if es_admin_dep is None:
+        async def _es_admin() -> bool:   # fail-closed: sin wiring, nadie homologa
+            return False
+    else:
+        async def _es_admin(admin: bool = Depends(es_admin_dep)) -> bool:
+            return bool(admin)
+
+    def _ambiente_permitido(pedido: str | None, es_admin: bool) -> str:
+        """Resuelve el ambiente de una operación y RECHAZA homologación a quien no es admin (D6)."""
+        if es_admin:
+            return pedido or AMBIENTE_DEFAULT
+        if pedido is None:
+            raise HTTPException(422, detail={"codigo": AMBIENTE_REQUERIDO,
+                                             "mensaje": "Indicá en qué ambiente vincular tu cuenta de ARCA."})
+        if pedido == "dev":
+            raise HTTPException(403, detail={"codigo": HOMOLOGACION_SOLO_ADMIN,
+                                             "mensaje": "La homologación es sólo para administradores."})
+        return pedido
 
     async def _drive_conectado(cliente_id: str) -> bool | None:
         """¿El tenant tiene Google Drive vinculado? `None` si no se pudo averiguar.
@@ -240,8 +270,10 @@ def create_afip_app(
         return {"ok": True, "guardar_en_drive": body.guardar_en_drive}
 
     @app.post("/afip/conectar")
-    async def conectar(body: ConectarBody, cliente_id: str = Depends(require_tenant)) -> dict:
+    async def conectar(body: ConectarBody, cliente_id: str = Depends(require_tenant),
+                       es_admin: bool = Depends(_es_admin)) -> dict:
         """Alta ante ARCA. Recibe la clave fiscal, la deja en el claim-check y arranca el workflow."""
+        ambiente = _ambiente_permitido(body.ambiente, es_admin)   # ANTES de tocar la clave fiscal
         if not validar_cuit(body.cuit):
             raise HTTPException(422, detail="CUIT inválido")
         if not body.clave_fiscal.strip():
@@ -252,10 +284,10 @@ def create_afip_app(
 
         # A partir de acá la clave ya no se toca: al workflow sólo viaja el handle.
         workflow_id = await _maybe_async(
-            start_onboarding, cliente_id, body.cuit, handle, body.ambiente)
-        return {"ok": True, "workflow_id": workflow_id, "ambiente": body.ambiente,
+            start_onboarding, cliente_id, body.cuit, handle, ambiente)
+        return {"ok": True, "workflow_id": workflow_id, "ambiente": ambiente,
                 "mensaje": f"Estamos vinculando tu cuenta con ARCA en "
-                           f"{_NOMBRE_AMBIENTE[body.ambiente]}. Puede demorar unos minutos."}
+                           f"{_NOMBRE_AMBIENTE[ambiente]}. Puede demorar unos minutos."}
 
     # -- facturación --------------------------------------------------------
     # Superficie REST sobre la máquina de estados. Cada endpoint manda un signal o lee la query: el
@@ -664,13 +696,14 @@ def create_afip_app(
         }
 
     @app.post("/afip/ambiente")
-    async def cambiar_ambiente(body: AmbienteBody,
-                               cliente_id: str = Depends(require_tenant)) -> dict:
+    async def cambiar_ambiente(body: AmbienteBody, cliente_id: str = Depends(require_tenant),
+                               es_admin: bool = Depends(_es_admin)) -> dict:
         """Toggle homologación ↔ producción entre ambientes YA vinculados.
 
         Si el ambiente pedido no tiene certificado devuelve 409, no 500: es un caso esperado del
         producto (el usuario todavía no vinculó ese ambiente), y la app tiene que ofrecerle el alta.
         """
+        _ambiente_permitido(body.ambiente, es_admin)   # D6: pasar a homologación = sólo admin
         ok = await asyncio.to_thread(
             cred_store_factory(cliente_id).activar, body.cuit, body.ambiente)
         if not ok:
