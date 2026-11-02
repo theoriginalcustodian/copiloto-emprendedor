@@ -1,30 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, type FlatList } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
-import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { sombraNivel } from '../../theme/glass/relieve';
-import { ECUALIZADOR_BARRAS } from '../../theme/glass/ecualizadorPalette';
-import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
 
-/** `viewBox` nativo del isotipo (`docs/Imagen de marca/isotipo-odobi/isotipo-odobi-positivo.svg`) y
- *  el tamaño al que se renderiza dentro del botón (DoD ODOBI línea 352: "el del botón de voz es el
- *  de 34", no 22 como el resto de los íconos inline). */
-const ISOTIPO_VIEWBOX = 24;
-const ISOTIPO_TAMANO_BOTON = 34;
-/** `logoScale` (mecanismo de ODOBI7/DoD líneas 346-349): al escalar el glifo × k, el `stroke-width`
- *  se divide por la misma k para que el trazo se vea igual de fino a cualquier tamaño — el `<G
- *  transform="scale(k)">` ya multiplica todo lo de adentro por k, así que predividir lo cancela. */
-const ISOTIPO_ESCALA = ISOTIPO_TAMANO_BOTON / ISOTIPO_VIEWBOX;
-/**
- * 🔴 **1.3 PLANO, no 1.6 en chico / 1.3 en grande.** El `LEEME` del sistema define los dos valores;
- * Martin cerró el plano el 2026-09-18 para toda la app. El motivo por el que acá alcanza: `logoScale`
- * ya mantiene el trazo ÓPTICAMENTE igual a cualquier tamaño, así que el segundo valor corregiría algo
- * que la división por la escala corrige sola. Mobile lo tenía en 1.7 y engordaba el signo.
- */
-const ISOTIPO_STROKE_WIDTH = 1.3 / ISOTIPO_ESCALA;
+/** El micrófono del mapa (Phosphor, viewBox 256; el mismo trazo que `.mic`, `index.html:1862`). Es el glifo
+ *  que decide SM-I2: un botón de 52 tiene que decir «hablá», y a ese tamaño el isotipo no lo dice. */
+const TRAZO_MIC =
+  'M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z';
 
 /** Cuánto hay que deslizar hacia arriba (px) antes de "fijar" la grabación — mismo umbral y misma
  *  razón que documed (`modules/captura/BotonVoz.tsx`, fuente canónica del gesto): un temblor
@@ -67,9 +53,13 @@ export interface BotonVozProps {
   /** Avisa que el dedo va subiendo y ya está CERCA de fijar (`FRACCION_CERCA_DE_FIJAR` del umbral), o
    *  que dejó de estarlo, para que el padre tiña la pista del candado antes de soltar. */
   onCerca?: (cerca: boolean) => void;
-  /** Se apaga mientras ya hay una captura en curso (grabando/pausada/lista) — un segundo `onIniciar`
-   *  no puede reiniciar `useVozComando` a mitad de una captura. */
+  /** No se puede dictar todavía (el chat no terminó de hidratarse, el formulario está ocupado): se apaga
+   *  y se ve apagado. */
   disabled?: boolean;
+  /** Ya hay una captura en curso (grabando/pausada/lista): un segundo `onIniciar` no puede reiniciar
+   *  `useVozComando` a mitad de una captura. Bloquea igual que `disabled`, pero sin agrisar: el mic chico
+   *  sigue a la vista mientras se graba, y es el botón que se está apretando (`index.html:176-180`). */
+  capturando?: boolean;
   /** El `ref` de `ListaMensajes` (su `FlatList` de RNGH, ver C6 — antes `ScrollView`) — este botón
    *  flota encima y su gesto tiene que declararse `simultaneousWithExternalGesture` con el scroll
    *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo.
@@ -80,7 +70,9 @@ export interface BotonVozProps {
 }
 
 /**
- * El botón de voz del copiloto: central, grande, palpita. **Reescrito** contra
+ * El mic chico del dock (SM-I2, D2: `.mic` del mapa, `index.html:169-171`; lo monta `DockEntrada`, y
+ * `MicFuncion` hasta que SM-J1 lo retire). Hasta SM-I2 fue el botón central grande de ODOBI8, con isotipo,
+ * ecualizador y pulso. El gesto es el mismo. **Reescrito** contra
  * `contrato_planificacion-a-frontend_dictado-por-voz-sin-glass-hold-graba-soltar-envia-deslizar-fija`
  * — la versión anterior (un toque simple que abría un HUD glass) mis-citó una decisión cerrada (D6,
  * de RETENCIÓN de audio) como si fuera autoridad de una decisión de UX que nunca se tomó; ver el
@@ -100,9 +92,8 @@ export interface BotonVozProps {
  * **Y es UNO SOLO, no una composición** — ver el docstring de `gesto` (tercer hallazgo de device):
  * dos recognizers componiendo el mismo ciclo se desincronizan, y ése era el bug de la fase trabada.
  *
- * 🔴 **Sin `useSharedValue` — nada que animar en el hilo de UI acá.** El pulso sigue en `Animated`
- * del core (igual que antes); los callbacks del gesto sólo llaman a las tres props (funciones JS
- * planas), así que necesitan `scheduleOnRN` para cruzar del hilo de UI (donde corre el gesto, con
+ * 🔴 **Sin `useSharedValue` — nada que animar en el hilo de UI acá.** Los callbacks del gesto sólo
+ * llaman a las props (funciones JS planas), así que necesitan `scheduleOnRN` para cruzar del hilo de UI (donde corre el gesto, con
  * Reanimated instalado) al de JS — mismo patrón ya probado en `MarcoGlass.tsx`.
  */
 export function BotonVoz({
@@ -113,12 +104,10 @@ export function BotonVoz({
   onCancelando,
   onCerca,
   disabled = false,
+  capturando = false,
   scrollRef,
 }: BotonVozProps) {
   const tema = useTema();
-
-  const pulso = useRef(new Animated.Value(1)).current;
-  const movimientoReducido = useMovimientoReducido();
 
   // Espejo síncrono de "¿ya fijé?", leído DENTRO de los callbacks del gesto (funciones JS planas
   // invocadas vía `scheduleOnRN`, no worklets). No hace falta re-renderizar el botón por esto — el ESTADO
@@ -136,25 +125,11 @@ export function BotonVoz({
   // 2026-08-12): la guarda de "no reiniciar una captura en curso" tiene que leerse acá, DENTRO de
   // `comenzar()`, y no vía el `useMemo` del gesto — si `disabled` fuera dependencia del memo, el
   // objeto se reconstruye en el peor momento posible: el instante en que arranca la propia captura.
-  const disabledRef = useRef(disabled);
+  const bloqueado = disabled || capturando;
+  const disabledRef = useRef(bloqueado);
   useEffect(() => {
-    disabledRef.current = disabled;
-  }, [disabled]);
-
-  useEffect(() => {
-    if (disabled || movimientoReducido) {
-      pulso.setValue(1);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulso, { toValue: 1.08, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulso, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [disabled, movimientoReducido, pulso]);
+    disabledRef.current = bloqueado;
+  }, [bloqueado]);
 
   // 🔴 **`useCallback`, no funciones planas.** El gesto de abajo las captura por closure dentro de un
   // `useMemo` — si estas tres se recrearan en cada render (como antes), el `useMemo` tendría que
@@ -322,133 +297,53 @@ export function BotonVoz({
       });
   }, [scrollRef, comenzar, mover, soltar]);
 
-  const etiqueta = disabled
+  const etiqueta = capturando
     ? 'Grabando — ya hay una captura en curso'
-    : 'Mantené apretado para grabar. Deslizá hacia arriba para fijar sin soltar.';
+    : disabled
+      ? 'Todavía no se puede dictar'
+      : 'Mantené apretado para grabar. Deslizá hacia arriba para fijar sin soltar.';
 
   return (
-    <View style={styles.contenedor}>
-      {/* Ecualizador estático (ODOBI8 §B) — decorativo, SIN reactividad al audio real (excluido
-          explícitamente por el DoD del sprint ODOBI, línea 358). `pointerEvents="none"`: no compite
-          con el gesto del botón que tiene debajo. */}
-      <View testID="boton-voz-ecualizador" style={styles.ecualizador} pointerEvents="none">
-        {ECUALIZADOR_BARRAS.map((barra, indice) => (
-          <View
-            key={indice}
-            testID={`boton-voz-ecualizador-barra-${indice}`}
-            style={[styles.barraEcualizador, { height: barra.altura, backgroundColor: barra.color }]}
-          />
-        ))}
-      </View>
-      <GestureDetector gesture={gesto}>
+    <GestureDetector gesture={gesto}>
+      <View
+        testID="boton-voz"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: bloqueado }}
+        accessibilityLabel={etiqueta}
+        style={styles.contenedor}
+      >
         <View
-          testID="boton-voz"
-          accessibilityRole="button"
-          accessibilityState={{ disabled }}
-          accessibilityLabel={etiqueta}
+          testID="boton-voz-nucleo"
+          style={[
+            styles.boton,
+            { backgroundColor: disabled ? tema.color.superficieAlta : tema.glass.ub2 },
+            // Nivel 3 · Acento elevado (DoD §2.4: "botón primario, FAB de voz" — textual).
+            !disabled && sombraNivel(tema.glass.relieve.nivel3),
+            // El mic crece bajo el dedo sin cambiar su caja (`.inputbar.rec-on .mic`, `index.html:215`).
+            capturando && styles.botonGrabando,
+          ]}
         >
-          {/* El aro exterior: hace que el botón se lea como una fuente de luz y no como un círculo pintado. */}
-          <View style={styles.halo}>
-            <View
-              style={[
-                styles.aro,
-                { borderColor: tema.color.acento, borderRadius: tema.radio.completo, opacity: disabled ? 0.15 : 0.5 },
-              ]}
-              pointerEvents="none"
-            />
-            <Animated.View
-              testID="boton-voz-nucleo"
-              style={[
-                styles.boton,
-                { transform: [{ scale: pulso }], borderRadius: tema.radio.completo, borderColor: tema.glass.hi },
-                // Nivel 3 · Acento elevado (DoD §2.4: "botón primario, FAB de voz" — textual).
-                !disabled && sombraNivel(tema.glass.relieve.nivel3),
-              ]}
-            >
-              {/* La esfera: degradado RADIAL `glass.ub1 -> glass.ub2` (DEC-11/DEC11FILL, Pieza A —
-                  antes `accent2 -> acento` daba 1,26:1 con el isotipo blanco, deuda que PR #730
-                  (Pieza B/C) dejó registrada a propósito porque un ajuste GEOMÉTRICO (mover cx/cy/r)
-                  no cambia qué colores ve el gate. Esto no es geométrico: es el mismo par
-                  `glass.ub1 → glass.ub2` que `HudGrabacion.tsx` ya usa para su burbuja, aplicado al
-                  degradado radial en vez de lineal porque la esfera necesita seguir leyéndose como
-                  fuente de luz, no como un círculo pintado — peor caso 5,43:1, igual que ahí.
-                  `expo-linear-gradient` sólo hace lineales, así que el radial va por SVG. */}
-              <Svg width="100%" height="100%" viewBox="0 0 80 80">
-                <Defs>
-                  <RadialGradient id="esferaVoz" cx="38%" cy="30%" r="75%">
-                    <Stop offset="0" stopColor={disabled ? tema.color.superficieAlta : tema.glass.ub1} />
-                    <Stop offset="0.7" stopColor={disabled ? tema.color.superficie : tema.glass.ub2} />
-                    <Stop offset="1" stopColor={disabled ? tema.color.superficie : tema.glass.ub2} />
-                  </RadialGradient>
-                </Defs>
-                <Circle cx="40" cy="40" r="40" fill="url(#esferaVoz)" />
-                {/* El isotipo ODOBI (ODOBI8 §A) — reemplaza el micrófono genérico heredado de antes
-                    del sprint de marca. Centrado: (80 - 34) / 2 = 23. */}
-                <G
-                  testID="boton-voz-isotipo"
-                  transform={`translate(23 23) scale(${ISOTIPO_ESCALA})`}
-                  opacity={disabled ? 0.45 : 1}
-                >
-                  <Path
-                    testID="boton-voz-isotipo-trazo-1"
-                    d="M11 3.5a8.5 8.5 0 1 0 0 17"
-                    stroke={tema.color.acentoTexto}
-                    strokeWidth={ISOTIPO_STROKE_WIDTH}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                  <Path
-                    testID="boton-voz-isotipo-trazo-2"
-                    d="M11 7.5a4.5 4.5 0 1 0 0 9"
-                    stroke={tema.color.acentoTexto}
-                    strokeWidth={ISOTIPO_STROKE_WIDTH}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                  <Path
-                    testID="boton-voz-isotipo-trazo-3"
-                    d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"
-                    stroke={tema.color.acentoTexto}
-                    strokeWidth={ISOTIPO_STROKE_WIDTH}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                  <Path
-                    testID="boton-voz-isotipo-trazo-4"
-                    d="M19.5 6.5a9 9 0 0 1 0 11"
-                    stroke={tema.color.acentoTexto}
-                    strokeWidth={ISOTIPO_STROKE_WIDTH}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </G>
-              </Svg>
-            </Animated.View>
-          </View>
+          <Svg testID="boton-voz-glifo" width={TAMANO_GLIFO} height={TAMANO_GLIFO} viewBox="0 0 256 256" opacity={disabled ? 0.45 : 1}>
+            <Path d={TRAZO_MIC} fill={tema.color.acentoTexto} />
+          </Svg>
         </View>
-      </GestureDetector>
-    </View>
+      </View>
+    </GestureDetector>
   );
 }
 
-/** Medidas del template heredadas del origen: esfera de 80 y aro a -10px alrededor. */
-const DIAMETRO_BOTON = 80;
-const SEPARACION_ARO = 10;
+/** `.mic` del mapa: círculo de 52, por encima del mínimo táctil. */
+const DIAMETRO_BOTON = 52;
+const TAMANO_GLIFO = 26;
 
 const styles = StyleSheet.create({
-  contenedor: { alignItems: 'center', gap: 8 },
-  halo: {
-    width: DIAMETRO_BOTON + SEPARACION_ARO * 2,
-    height: DIAMETRO_BOTON + SEPARACION_ARO * 2,
+  contenedor: { width: DIAMETRO_BOTON, height: DIAMETRO_BOTON },
+  boton: {
+    width: DIAMETRO_BOTON,
+    height: DIAMETRO_BOTON,
+    borderRadius: DIAMETRO_BOTON / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aro: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 1.5 },
-  boton: { width: DIAMETRO_BOTON, height: DIAMETRO_BOTON, borderWidth: 1, overflow: 'hidden' },
-  ecualizador: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 26 },
-  barraEcualizador: { width: 3, borderRadius: 2 },
+  botonGrabando: { transform: [{ scale: 1.14 }] },
 });

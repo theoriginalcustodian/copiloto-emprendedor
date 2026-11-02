@@ -1,16 +1,12 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import { ROTULO_VOLVER_AL_TABLERO, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
+import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
 
-import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
-import { BotonVoz } from './BotonVoz';
-import { Composer } from './Composer';
-import { ControlesFlotantes } from './ControlesFlotantes';
-import { BarraSostenida, PistasGestoVoz } from './PistasVoz';
+import { DockEntrada } from './DockEntrada';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
@@ -20,30 +16,6 @@ import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChat } from './useChat';
 import { useConexionRequerida } from './useConexionRequerida';
-import { useVozComando } from './useVozComando';
-
-/**
- * ¿Está el teclado a la vista? Sirve para esconder el botón de voz mientras se escribe -- mismo
- * criterio que documed (2026-07-19): con el teclado abierto el usuario ya eligió escribir, y el botón
- * flotante le comería la mitad de lo que le queda de conversación a la vista.
- *
- * Se usan los eventos `Did` y no los `Will`: en Android los `Will*` no se emiten. Y se esconde con
- * `display:'none'`, no desmontando `BotonVoz` -- desmontarlo no tiraría estado propio (no lo tiene:
- * la grabación en curso vive en `useVozComando`, acá arriba, no en el botón), pero desmontar/remontar
- * en cada aparición/desaparición del teclado reiniciaría su animación de pulso sin necesidad.
- */
-function useTecladoVisible(): boolean {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const alMostrar = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
-    const alOcultar = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
-    return () => {
-      alMostrar.remove();
-      alOcultar.remove();
-    };
-  }, []);
-  return visible;
-}
 
 export interface ChatViewProps {
   /**
@@ -59,10 +31,15 @@ export interface ChatViewProps {
    * `hecha` el shell además cierra la tarjeta de origen (a.5 — lo invoca el recibo, a.4, de frontend1).
    */
   onVolverAlTablero?: (cierre?: CierreAviso) => void;
+  /**
+   * SM-I2 — lo que se grabó en el dock de Mi día, que vive en la misma pantalla: baja por props, como
+   * `avisoEntrante`. `id` crece con cada audio.
+   */
+  audioEntrante?: { audio: ArchivoSubida; duracionSeg: number; id: number } | null;
 }
 
 /**
- * El copiloto: lista de mensajes + botón de voz + entrada de texto. Fork mobile de `ChatView.tsx` de
+ * El copiloto: lista de mensajes + dock de entrada (`DockEntrada`: campo + mic chico). Fork mobile de `ChatView.tsx` de
  * DocuMed (`_staging/documed/apps/mobile/src/modules/chat/ChatView.tsx`), ahora con voz-comando (F6)
  * cableada:
  *
@@ -82,20 +59,10 @@ export interface ChatViewProps {
  * `BotonVoz.tsx` para el resto. El único feedback visual es la onda flotante (`Onda`) + los controles
  * flotantes (`ControlesFlotantes`) una vez que el usuario desliza para fijar — nunca un glass.
  *
- * `fijado` es el ÚNICO estado que este componente agrega sobre `voz.fase`: si se deslizó hacia arriba
- * lo suficiente (`BotonVoz.onFijar`), y por lo tanto hay que mostrar los controles flotantes en vez de
- * "soltar = enviar". Se resetea solo cuando `voz.fase` vuelve a `inactivo` (Enviar/Eliminar ya
- * terminaron su ciclo) — así una próxima grabación siempre arranca sin fijar.
- *
- * 🔴 **`scrollRef` es la costura de la composición de gestos.** `BotonVoz` flota ENCIMA de
- * `ListaMensajes` y su gesto (`Gesture.LongPress`+`Gesture.Pan`) necesita saber del `FlatList` de la
- * lista (`simultaneousWithExternalGesture`, C6: antes era un `ScrollView`) para no comerle el toque ni
+ * 🔴 **`scrollRef` es la costura de la composición de gestos.** `BotonVoz` queda sobre
+ * `ListaMensajes` y su gesto necesita saber del `FlatList` de la lista (`simultaneousWithExternalGesture`, C6: antes era un `ScrollView`) para no comerle el toque ni
  * que el scroll se lo coma a él — es la causa raíz del bug de device que este contrato vino a cerrar
  * (§2 del contrato).
- *
- * 🔴 **Permiso de micrófono denegado: aviso legible, sin romper el chat.** `useVozComando().iniciar()`
- * devuelve `false` si el usuario no concedió el permiso; acá eso dispara un `Alert` nativo en vez de
- * dejar el toque sin ningún efecto visible (que el usuario leería como "el botón no funciona").
  *
  * 🔴 **Foto de ticket (Gastos Fase 2) — botón dentro del `Composer`, no overlay.** A diferencia de
  * la voz, elegir una foto (`useCapturaFoto`) es una sola llamada async sin fases que animar -- ver
@@ -108,7 +75,7 @@ export interface ChatViewProps {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
@@ -118,29 +85,8 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
   const { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta } = useChat(
     me?.cliente_id ?? '',
   );
-  const voz = useVozComando();
   const foto = useCapturaFoto();
-  const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
-  const [fijado, setFijado] = useState(false);
-  const [cancelando, setCancelando] = useState(false);
-  const [cerca, setCerca] = useState(false);
-
-  // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
-  // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
-  // `useMemo` del gesto compuesto de `BotonVoz` (causa raíz real de ODOBI8-C: sin esa estabilidad,
-  // el recognizer se re-ataca en pleno LongPress y pierde el estado -- ver hallazgo2 en
-  // `coordinacion/`). Mismo patrón que `estadoRef` en `useChat`: un ref espejo, actualizado
-  // síncronamente en cada render, para leer el valor vigente sin declarar `voz` como dependencia.
-  const vozRef = useRef(voz);
-  vozRef.current = voz;
-
-  // Una vez que la captura vuelve a `inactivo` (Enviar/Eliminar ya terminaron su ciclo), la puerta de
-  // `fijado` se reabre sola — sin esto, la SEGUNDA grabación de la sesión arrancaría ya "fijada" sin
-  // que el usuario haya deslizado nada.
-  useEffect(() => {
-    if (voz.fase === 'inactivo') setFijado(false);
-  }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
   const semilla = useMemo(
@@ -186,6 +132,16 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
    * `hidratado` está en las deps, así que el efecto corre de nuevo cuando el estado llega.
    */
   const hidratado = estado !== null;
+
+  // SM-I2: lo grabado en el dock de Mi día se manda acá, con la conversación que sube. Por `id`, una vez por
+  // audio, y recién con el estado hidratado: `enviarAudio` descarta en silencio mientras sea `null`.
+  const ultimoAudio = useRef<number | null>(null);
+  useEffect(() => {
+    if (audioEntrante == null || !hidratado || audioEntrante.id === ultimoAudio.current) return;
+    ultimoAudio.current = audioEntrante.id;
+    void enviarAudio(audioEntrante.audio, audioEntrante.duracionSeg);
+  }, [audioEntrante, hidratado, enviarAudio]);
+
   useFocusEffect(
     useCallback(() => {
       if (!hidratado) return;
@@ -211,48 +167,10 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
     [send],
   );
 
-  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx` (voz standalone): el instante del toque que
-  // arranca la grabación mide la duración del dictado para el chip «Por voz · m:ss» de la burbuja. No
-  // se usa `voz.segundos` (el reloj propio del grabador, que excluye pausas) para no ensanchar el
-  // contrato de `useVozComando` — hook compartido con `feedback`/`soporte`, fuera del alcance de esta
-  // fila.
-  const inicioMsRef = useRef(0);
-  const alIniciarVoz = useCallback(() => {
-    inicioMsRef.current = Date.now();
-    void (async () => {
-      const ok = await vozRef.current.iniciar();
-      if (!ok) {
-        Alert.alert(
-          'Sin acceso al micrófono',
-          'Activá el permiso de micrófono en Ajustes para dictarle al copiloto por voz.',
-        );
-      }
-    })();
-  }, []);
-
-  /**
-   * Enviar corta (si todavía graba o está en pausa) y manda en un solo toque -- mismo criterio que
-   * documed (2026-07-20): sin fase intermedia "detenida, esperando Enviar" de la que no se puede
-   * volver a Pausar. Es el mismo camino para "soltar sin fijar" (contrato §1, fila 2) y para el botón
-   * "Enviar" de los controles flotantes (fila 3) — un solo lugar que decide qué es "mandar el audio".
-   * Lee todo vía `vozRef` (no `voz` directo) para quedar referencialmente ESTABLE -- ver el
-   * comentario de `vozRef` arriba.
-   */
-  const alEnviarVoz = useCallback(async () => {
-    const actual = vozRef.current;
-    if (actual.fase === 'grabando' || actual.fase === 'pausado') {
-      await actual.detener();
-    }
-    const audio = actual.tomar();
-    if (audio === null) return; // no llegó a grabar nada
-    const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
-    void enviarAudio(audio, duracionSeg);
-  }, [enviarAudio]);
-
-  const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
-  const onFijarVoz = useCallback(() => setFijado(true), []);
-  // BL-D2: deslizar a la izquierda / toque corto -> se descarta lo grabado sin enviarlo.
-  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
+  const alAudio = useCallback(
+    (audio: ArchivoSubida, duracionSeg: number) => void enviarAudio(audio, duracionSeg),
+    [enviarAudio],
+  );
 
   // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
   // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
@@ -263,14 +181,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
       void enviarFoto(archivo);
     })();
   }, [foto, enviarFoto]);
-
-  // La onda sólo corre mientras graba: en pausa la reemplaza el texto «En pausa» (WCAG 1.4.1 — el
-  // estado no puede depender sólo de que algo deje de moverse).
-  const ondaVisible = voz.fase === 'grabando';
-  const pistasVisibles = voz.fase === 'grabando' || cancelando;
-  // G3 (TRIAJE15): la barra del composer SE TRANSFORMA mientras hay captura — el campo de texto cede su
-  // lugar a la barra de grabación (`index.html:2939-2949`), no queda debajo con algo flotando encima.
-  const enCaptura = voz.fase !== 'inactivo';
 
   return (
     /**
@@ -326,62 +236,16 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero }: ChatViewPr
         volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
       />
 
-      {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
-          esté fijado: con controles flotantes abajo, mantener el botón visible sumaría ruido). Se
-          oculta con el teclado a la vista (ver `useTecladoVisible`). */}
-      {!fijado && (
-        <View
-          testID="overlay-voz"
-          style={[styles.overlayVoz, tecladoVisible && styles.oculto]}
-          pointerEvents={tecladoVisible ? 'none' : 'box-none'}
-        >
-          {ondaVisible && (
-            <View testID="onda-flotante" style={styles.ondaFlotante} pointerEvents="none">
-              <Onda niveles={voz.niveles} />
-            </View>
-          )}
-          {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
-          <BotonVoz
-            onIniciar={alIniciarVoz}
-            onSoltarSinFijar={onSoltarSinFijarVoz}
-            onFijar={onFijarVoz}
-            onCancelar={onCancelarVoz}
-            onCancelando={setCancelando}
-            onCerca={setCerca}
-            disabled={voz.fase !== 'inactivo'}
-            scrollRef={scrollRef}
-          />
-        </View>
-      )}
-
-      {/* La barra de grabación ocupa el lugar del composer (G3). Mantenido: punto + reloj + «deslizá
-          para cancelar». Fijado: tacho · onda · reloj · pausa/play · enviar — se termina por Enviar o
-          Eliminar, nunca soltando el dedo (ya no hay dedo que sostener). */}
-      {enCaptura && !fijado && <BarraSostenida segundos={voz.segundos} cancelando={cancelando} />}
-      {fijado && (
-        <ControlesFlotantes
-          fase={voz.fase}
-          segundos={voz.segundos}
-          niveles={voz.niveles}
-          alPausar={voz.pausar}
-          alReanudar={voz.reanudar}
-          alEnviar={() => void alEnviarVoz()}
-          alEliminar={() => void voz.descartar()}
-        />
-      )}
-
-      {/* Siempre montado: oculto (no desmontado) para no perder el borrador que alguien venía
-          escribiendo cuando eligió dictar. */}
-      <View testID="chat-composer-contenedor" style={enCaptura ? styles.oculto : undefined}>
-        <Composer
-          motivoFallo={estado?.motivoFallo ?? null}
-          sendStatus={estado?.sendStatus ?? 'idle'}
-          onSend={manejarEnvio}
-          disabled={estado === null}
-          onFoto={alElegirFoto}
-          semilla={semilla}
-        />
-      </View>
+      <DockEntrada
+        motivoFallo={estado?.motivoFallo ?? null}
+        sendStatus={estado?.sendStatus ?? 'idle'}
+        onEnviarTexto={manejarEnvio}
+        onAudio={alAudio}
+        disabled={estado === null}
+        onFoto={alElegirFoto}
+        semilla={semilla}
+        scrollRef={scrollRef}
+      />
 
       {/* ÚLTIMO hijo a propósito: el sheet es `position:absolute` y el composer + el botón de voz son hermanos
           en flujo — pintan DESPUÉS de lo que va antes y lo tapaban (medido en device 2026-10-15: «Conectar» /
@@ -413,9 +277,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
   },
-  overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
-  ondaFlotante: { width: '100%', paddingHorizontal: 24 },
-  // `display:'none'` y no `opacity:0`: con opacity el botón seguiría ocupando su lugar y el composer
-  // no ganaría el espacio que justamente hace falta cuando el teclado se comió media pantalla.
-  oculto: { display: 'none' },
 });

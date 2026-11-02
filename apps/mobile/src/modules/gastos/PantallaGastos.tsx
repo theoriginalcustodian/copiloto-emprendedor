@@ -19,7 +19,7 @@ import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { AvisoDictado, inicialesDeGasto, MicFuncion, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, DockFuncion, inicialesDeGasto, useDictadoPorFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -47,6 +47,9 @@ import { useTema } from '../../theme/ThemeProvider';
  * listado: son dos endpoints, y tratarlos como uno haría que un fallo del agregado esconda los datos
  * que sí llegaron.
  */
+
+/** El campo del dock en Gastos (`index.html:1924`). */
+const PLACEHOLDER_DOCK = 'Anotá un gasto, o hablá…';
 
 type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
@@ -255,31 +258,23 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
-              {/* BL-J7/K-10: mic + foto viven junto al botón de alta — dictar/leer una foto abren el
-                  formulario con `descripcion`/la propuesta del OCR prellenada (K-10/§2, sin sesión de
-                  chat), nunca envían nada solo. `scrollRef` se omite: `ScrollFormulario` no es un
-                  `FlatList` de RNGH. La FILA ([foto] [mic] [Anotar un gasto]) la arma `MicFuncion`: mientras se
-                  sostiene el mic, la barra de grabación toma el lugar del botón de alta (N8). */}
-              <MicFuncion
-                contexto="gasto"
-                onTranscripcion={(t) => void alDictarGasto(t)}
-                onError={setErrorMic}
-                disabled={dictado.ocupado}
-                antes={<FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />}
-                alLado={
-                  <FilaBotones
-                    testID="gastos-acciones"
-                    botones={[
-                      {
-                        etiqueta: 'Anotar un gasto',
-                        onPress: abrirFormularioEnBlanco,
-                        variante: 'primario',
-                        testID: 'gastos-nuevo',
-                      },
-                    ]}
-                  />
-                }
-              />
+              {/* SM-I2: la píldora de alta manual del mockup 12, con la foto al lado. Dictar y escribir viven
+                  en el dock del pie; leer una foto abre el formulario con la propuesta del OCR prellenada. */}
+              <View style={styles.filaAlta}>
+                <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
+                <FilaBotones
+                  testID="gastos-acciones"
+                  compacto
+                  botones={[
+                    {
+                      etiqueta: 'Anotar un gasto',
+                      onPress: abrirFormularioEnBlanco,
+                      variante: 'primario',
+                      testID: 'gastos-nuevo',
+                    },
+                  ]}
+                />
+              </View>
 
               {errorMic != null && (
                 <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -314,6 +309,18 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
         </ScrollFormulario>
       )}
 
+      {/* SM-I2: el dock, fijo al pie y fuera del scroll. Dictar o escribir abren el formulario prellenado, nunca
+          envían nada solo: lo escrito va por el mismo camino que lo dictado (K-10/§2, sin sesión de chat). */}
+      {estado === 'ok' && vista === 'listado' && (
+        <DockFuncion
+          contexto="gasto"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t) => void alDictarGasto(t)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
+      )}
+
       {/* 🔴 Fuera del scroll, como el detalle de presupuestos y la ficha de clientes: un overlay
           montado DENTRO del área scrolleable se posiciona contra el contenido del scroll y queda
           fuera de cuadro. Ver el docstring de `DetalleGasto`. */}
@@ -324,4 +331,5 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
 });

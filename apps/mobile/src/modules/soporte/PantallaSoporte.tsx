@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef } from 'react';
+import { Alert, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import {
@@ -13,15 +13,10 @@ import {
   type FuncionSoporte,
 } from '@copiloto/core';
 
-import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
-import { BarraSostenida, PistasGestoVoz } from '../chat/PistasVoz';
-import { BotonVoz } from '../chat/BotonVoz';
-import { Composer } from '../chat/Composer';
-import { ControlesFlotantes } from '../chat/ControlesFlotantes';
+import { DockEntrada } from '../chat/DockEntrada';
 import { ListaMensajes } from '../chat/ListaMensajes';
 import { useCapturaFoto } from '../chat/useCapturaFoto';
-import { useVozComando } from '../chat/useVozComando';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { Marca } from '../../theme/Marca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -39,21 +34,6 @@ const TITULO: Record<FuncionSoporte, string> = {
   como_uso_la_app: 'Cómo uso la app',
 };
 
-/** Puerto literal de `useTecladoVisible` en `modules/chat/ChatView.tsx` -- mismo porqué (esconder
- *  el botón de voz mientras se escribe), ver su docstring. */
-function useTecladoVisible(): boolean {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const alMostrar = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
-    const alOcultar = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
-    return () => {
-      alMostrar.remove();
-      alOcultar.remove();
-    };
-  }, []);
-  return visible;
-}
-
 export interface PantallaSoporteProps {
   /** Fija para toda la vida de la pantalla — dos entradas separadas en `PantallaCuenta` la fijan de
    * antemano (ver el docstring de `useChatSoporte` sobre por qué no cambia a mitad de conversación). */
@@ -63,17 +43,15 @@ export interface PantallaSoporteProps {
 /**
  * `PantallaSoporte` — SOP5, el chat de soporte embebido en la app.
  *
- * Reusa `ListaMensajes`/`Composer` de `modules/chat/` **tal cual** — son genéricos de
+ * Reusa `ListaMensajes`/`DockEntrada` de `modules/chat/` **tal cual** — son genéricos de
  * presentación (no saben de negocio ni de soporte, sólo de `ChatMessage`/`SendStatus`), mismo
  * criterio que el propio contrato SOP5 pide para el backend del lado del cliente: no reinventar lo
  * que ya funciona. Lo que SÍ es propio: `useChatSoporte`, que apunta a `/soporte/chat` en vez de
  * `/chat` — ver su docstring.
  *
- * **Voz (ODOBI8 §C2)** — `BotonVoz`/`ControlesFlotantes`/`useVozComando`, MISMO patrón que
- * `modules/chat/ChatView.tsx` (hold-graba/soltar-envía/deslizar-fija, `scrollRef` compuesto contra
- * el scroll de `ListaMensajes`, `Onda` como único feedback visual mientras graba). Reusa esos
- * componentes/hooks TAL CUAL — son genéricos del gesto, no saben de negocio ni de soporte; lo único
- * propio es `useChatSoporte().enviarAudio`, que namespacea por `funcion` (ver su docstring).
+ * **Voz (ODOBI8 §C2, SM-I2)** — el MISMO `DockEntrada` que `modules/chat/ChatView.tsx`
+ * (hold-graba/soltar-envía/deslizar-fija, `scrollRef` compuesto contra el scroll de `ListaMensajes`). Es
+ * genérico del gesto, no sabe de negocio ni de soporte; lo único propio es `useChatSoporte().enviarAudio`, que namespacea por `funcion` (ver su docstring).
  *
  * ⚠️ **Deuda declarada (DoD §F4, dueño frontend):** el DoD pide una ventana DISCRETA ("al estilo de
  * las apps del rubro", no una pantalla completa) — esta pantalla hoy es una ruta dedicada de
@@ -86,27 +64,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const { estado, send, enviarAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
   const tickets = useTicketsSoporte(estado?.sendStatus ?? 'idle');
   const captura = useCapturaFoto();
-  const voz = useVozComando();
-  const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
-  const [fijado, setFijado] = useState(false);
-  const [cancelando, setCancelando] = useState(false);
-  const [cerca, setCerca] = useState(false);
-
-  // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
-  // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
-  // `useMemo` del gesto compuesto de `BotonVoz` (causa raíz real de ODOBI8-C: sin esa estabilidad,
-  // el recognizer se re-ataca en pleno LongPress y pierde el estado -- ver hallazgo2 en
-  // `coordinacion/`). Mismo patrón que `estadoRef` en `useChatSoporte`: un ref espejo, actualizado
-  // síncronamente en cada render, para leer el valor vigente sin declarar `voz` como dependencia.
-  const vozRef = useRef(voz);
-  vozRef.current = voz;
-
-  // Misma puerta que ChatView: al volver `voz.fase` a `inactivo`, la próxima grabación arranca sin
-  // fijar.
-  useEffect(() => {
-    if (voz.fase === 'inactivo') setFijado(false);
-  }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
 
@@ -117,37 +75,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
     (value: string) => void send(value, { kind: 'callback' }),
     [send],
   );
-
-  const alIniciarVoz = useCallback(() => {
-    void (async () => {
-      const ok = await vozRef.current.iniciar();
-      if (!ok) {
-        Alert.alert(
-          'Sin acceso al micrófono',
-          'Activá el permiso de micrófono en Ajustes para dictarle al copiloto por voz.',
-        );
-      }
-    })();
-  }, []);
-
-  // Mismo criterio que `alEnviarVoz` de ChatView: un solo lugar decide qué es "mandar el audio",
-  // sea por soltar sin fijar o por el botón Enviar de los controles flotantes. Lee todo vía
-  // `vozRef` (no `voz` directo) para que esta función quede referencialmente ESTABLE -- ver el
-  // comentario de `vozRef` arriba.
-  const alEnviarVoz = useCallback(async () => {
-    const actual = vozRef.current;
-    if (actual.fase === 'grabando' || actual.fase === 'pausado') {
-      await actual.detener();
-    }
-    const audio = actual.tomar();
-    if (audio === null) return; // no llegó a grabar nada
-    void enviarAudio(audio);
-  }, [enviarAudio]);
-
-  const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
-  const onFijarVoz = useCallback(() => setFijado(true), []);
-  // BL-D2: deslizar a la izquierda / toque corto descarta lo grabado sin enviarlo.
-  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   // §E: el clip adjunta a UN ticket (`POST /soporte/tickets/{id}/adjuntos`), no a la conversación. Sin un
   // ticket en curso no hay a dónde mandar la foto, y aceptarla para perderla sería peor que decirlo.
@@ -171,13 +98,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
     reabrirNavegacion();
     empujarUnaVez({ pathname: '/soporte-ticket', params: { ticketId: String(ticketId) } });
   }, []);
-
-  const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
-  // PISTAFIJARSOPORTE: la pista del candado es la ALTERNATIVA que exige WCAG 2.5.1 al mantener apretado;
-  // sin ella el gesto de fijar no tiene cartel (mismo cableado que `ChatView`/`MicFuncion`).
-  const pistasVisibles = voz.fase === 'grabando' || cancelando;
-  // G3: la barra del composer cede su lugar a la de grabación (misma transformación que `ChatView`).
-  const enCaptura = voz.fase !== 'inactivo';
 
   return (
     <MarcoGlass
@@ -238,54 +158,16 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           }
         />
 
-        {!fijado && (
-          <View
-            testID="overlay-voz-soporte"
-            style={[styles.overlayVoz, tecladoVisible && styles.oculto]}
-            pointerEvents={tecladoVisible ? 'none' : 'box-none'}
-          >
-            {ondaVisible && (
-              <View testID="onda-flotante" style={styles.ondaFlotante} pointerEvents="none">
-                <Onda niveles={voz.niveles} />
-              </View>
-            )}
-            {pistasVisibles && <PistasGestoVoz cancelando={cancelando} cerca={cerca} />}
-            <BotonVoz
-              onIniciar={alIniciarVoz}
-              onSoltarSinFijar={onSoltarSinFijarVoz}
-              onFijar={onFijarVoz}
-              onCancelar={onCancelarVoz}
-              onCancelando={setCancelando}
-              onCerca={setCerca}
-              disabled={voz.fase !== 'inactivo'}
-              scrollRef={scrollRef}
-            />
-          </View>
-        )}
-
-        {enCaptura && !fijado && <BarraSostenida segundos={voz.segundos} cancelando={cancelando} />}
-        {fijado && (
-          <ControlesFlotantes
-            fase={voz.fase}
-            segundos={voz.segundos}
-            niveles={voz.niveles}
-            alPausar={voz.pausar}
-            alReanudar={voz.reanudar}
-            alEnviar={() => void alEnviarVoz()}
-            alEliminar={() => void voz.descartar()}
-          />
-        )}
-
-        <View style={enCaptura ? styles.oculto : undefined}>
-          <Composer
-            motivoFallo={estado?.motivoFallo ?? null}
-            sendStatus={estado?.sendStatus ?? 'idle'}
-            onSend={manejarEnvio}
-            disabled={estado === null}
-            placeholder={SOPORTE_PLACEHOLDER}
-            onFoto={alAdjuntarFoto}
-          />
-        </View>
+        <DockEntrada
+          motivoFallo={estado?.motivoFallo ?? null}
+          sendStatus={estado?.sendStatus ?? 'idle'}
+          onEnviarTexto={manejarEnvio}
+          onAudio={(audio) => void enviarAudio(audio)}
+          disabled={estado === null}
+          placeholder={SOPORTE_PLACEHOLDER}
+          onFoto={alAdjuntarFoto}
+          scrollRef={scrollRef}
+        />
       </KeyboardAvoidingView>
     </MarcoGlass>
   );
@@ -295,7 +177,4 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1 },
   presentacion: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingBottom: 12 },
   presentacionTextos: { flex: 1, gap: 2 },
-  overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
-  ondaFlotante: { width: '100%', paddingHorizontal: 24 },
-  oculto: { display: 'none' },
 });

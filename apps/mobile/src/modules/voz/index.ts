@@ -1,3 +1,4 @@
+export { DockFuncion, type DockFuncionProps } from './DockFuncion';
 export { MicFuncion, type MicFuncionProps } from './MicFuncion';
 export { AvisoDictado, type AvisoDictadoProps } from './AvisoDictado';
 export { useDictadoPorFuncion, AVISO_DICTADO, type DictadoPorFuncion, type OpcionesDictado, type PropuestaDe } from './useDictadoPorFuncion';

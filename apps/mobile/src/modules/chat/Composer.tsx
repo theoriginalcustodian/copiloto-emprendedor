@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -87,6 +87,21 @@ export interface ComposerProps {
    * arriba y lo anterior queda debajo, a la vista.
    */
   semilla?: { texto: string; id: number } | null;
+  /**
+   * SM-I2 — el mic chico, en el lugar del avión mientras no haya nada escrito (patrón de WhatsApp): escribir o
+   * hablar se eligen con el mismo pulgar. Lo arma `DockEntrada`.
+   */
+  mic?: ReactNode;
+  /**
+   * SM-I2 — lo que ocupa el lugar del campo durante una captura: la barra de grabación, a ancho completo. El
+   * campo queda oculto, no desmontado, y conserva el borrador.
+   */
+  enLugarDelCampo?: ReactNode;
+  /**
+   * SM-I2 — el campo no abre el teclado acá: tocarlo lleva a donde se escribe. Mi día lo usa para subir el
+   * chat (`index.html:2717`), que es el que tiene dónde mostrar la respuesta.
+   */
+  onTocarCampo?: () => void;
 }
 
 const PLACEHOLDER_CHAT = 'Escribí, o hablá…';
@@ -116,11 +131,10 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
 }
 
 /**
- * Composer de texto — fork mobile del `Composer.tsx` de DocuMed, sólo la parte texto: sin mic ni
- * botones de acción propios (esas se piden por lenguaje natural en el mensaje). El dictado por voz
- * (F6) SÍ existe ya, pero no vive acá adentro: `BotonVoz` flota sobre `ListaMensajes` como overlay
- * independiente (mismo layout que documed) porque el ciclo de vida de una grabación (HUD de
- * `GlassGrabacionCopiloto`) no tiene nada que ver con el de un mensaje de texto -- ver `ChatView.tsx`.
+ * Composer de texto — fork mobile del `Composer.tsx` de DocuMed, sólo la parte texto: sin botones de
+ * acción propios (esas se piden por lenguaje natural en el mensaje). El dictado por voz (F6) llega por
+ * `mic`, pero su máquina no vive acá adentro: el ciclo de vida de una grabación no tiene nada que ver con
+ * el de un mensaje de texto -- ver `DockEntrada.tsx`.
  * Vacío/sólo-espacios no envía; `sendStatus==='sending'` bloquea un segundo envío mientras el primero
  * está en vuelo.
  *
@@ -129,8 +143,7 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
  * ("anotame un gasto de $500") porque el copiloto las entiende por lenguaje natural; "sacame una
  * foto" no es algo que el copiloto pueda ejecutar por sí mismo -- abrir la cámara del teléfono es
  * una capacidad del DISPOSITIVO, no del agente. Por eso necesita un botón, igual que el dictado por
- * voz necesitó `BotonVoz`. Vive DENTRO del composer (y no como overlay como `BotonVoz`) porque no
- * tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
+ * voz necesitó `BotonVoz`. Vive DENTRO del composer porque no tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
  * resuelve o cancela, no una máquina de fases.
  */
 export function Composer({
@@ -141,6 +154,9 @@ export function Composer({
   onFoto,
   placeholder = PLACEHOLDER_CHAT,
   semilla = null,
+  mic = null,
+  enLugarDelCampo = null,
+  onTocarCampo,
 }: ComposerProps) {
   const tema = useTema();
   const [borrador, setBorrador] = useState('');
@@ -155,6 +171,9 @@ export function Composer({
   }, [semilla]);
   const puedeEnviar = !disabled && borrador.trim() !== '' && sendStatus !== 'sending';
   const hint = textoEstado(sendStatus, motivoFallo);
+  const capturando = enLugarDelCampo != null;
+  // Con una captura en curso el mic se queda aunque haya borrador: es el botón que el dedo está apretando.
+  const mostrarMic = mic != null && (borrador.trim() === '' || capturando);
 
   function enviar() {
     if (!puedeEnviar) return;
@@ -182,7 +201,7 @@ export function Composer({
         </View>
       )}
       <View style={styles.fila}>
-        {onFoto && (
+        {onFoto && !capturando && (
           <Pressable
             testID="chat-foto"
             accessibilityRole="button"
@@ -195,7 +214,7 @@ export function Composer({
                 backgroundColor: tema.glass.chip,
                 borderColor: tema.color.borde,
                 borderWidth: 1,
-                borderRadius: RADIO_BOTON,
+                borderRadius: RADIO_FOTO,
                 opacity: disabled ? 0.5 : 1,
               },
             ])}
@@ -206,7 +225,11 @@ export function Composer({
         {/* El campo es una píldora de vidrio (gradiente s1→s2, borde, radio, luz superior) — un
             `TextInput` no puede llevar hijos, así que el vidrio se arma alrededor y el input va
             adentro, transparente. */}
-        <View style={[styles.campo, { borderColor: tema.color.borde, borderRadius: RADIO_CAMPO }]}>
+        {enLugarDelCampo}
+        <View
+          testID="chat-composer-campo"
+          style={[styles.campo, { borderColor: tema.color.borde, borderRadius: RADIO_CAMPO }, capturando && styles.oculto]}
+        >
           <LinearGradient
             colors={[tema.glass.s1, tema.glass.s2]}
             start={{ x: 0.2, y: 0 }}
@@ -221,29 +244,36 @@ export function Composer({
             placeholderTextColor={tema.color.textoTenue}
             value={borrador}
             onChangeText={setBorrador}
-            editable={!disabled}
+            editable={!disabled && onTocarCampo == null}
             multiline
           />
+          {onTocarCampo != null && (
+            <Pressable
+              testID="chat-composer-abrir"
+              accessibilityRole="button"
+              accessibilityLabel={placeholder}
+              onPress={onTocarCampo}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
         </View>
-        <Pressable
-          testID="chat-enviar"
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-          disabled={!puedeEnviar}
-          onPress={enviar}
-          style={pressableStyle([
-            styles.boton,
-            {
-              backgroundColor: tema.glass.chip,
-              borderColor: tema.color.borde,
-              borderWidth: 1,
-              borderRadius: RADIO_BOTON,
-              opacity: puedeEnviar ? 1 : 0.5,
-            },
-          ])}
-        >
-          <IconoAvion color={tema.glass.accent2} />
-        </Pressable>
+        {mostrarMic ? (
+          mic
+        ) : (
+          <Pressable
+            testID="chat-enviar"
+            accessibilityRole="button"
+            accessibilityLabel="Enviar"
+            disabled={!puedeEnviar}
+            onPress={enviar}
+            style={pressableStyle([
+              styles.enviar,
+              { backgroundColor: tema.glass.ub2, opacity: puedeEnviar ? 1 : 0.5 },
+            ])}
+          >
+            <IconoAvion color={tema.color.acentoTexto} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -252,21 +282,21 @@ export function Composer({
 /** Proporciones del diseño de vidrio (heredadas del port de DocuMed) — no salen de los tokens de
  *  espaciado: los tokens gobiernan el COLOR (regla cero-hex), estas son proporciones de un diseño
  *  concreto. */
-const RADIO_CAMPO = 20;
-const RADIO_BOTON = 16;
-/** Alto mínimo del campo: da la proporción de píldora en vez de una franja delgada. */
-const ALTO_MINIMO_CAMPO = 48;
+const RADIO_FOTO = 16;
+/** El campo del mapa: píldora de 52, el mismo lado que el mic (`.campo`/`.mic`, `index.html:166-171`). */
+const ALTO_BARRA = 52;
+const RADIO_CAMPO = ALTO_BARRA / 2;
 
 const styles = StyleSheet.create({
   contenedor: {},
   filaEstado: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start' },
   punto: { width: 8, height: 8, borderRadius: 4 },
-  // `stretch` (no `flex-end`): el botón tiene la MISMA altura que el campo.
-  fila: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+  // `flex-end`: si el texto crece a varias líneas, el mic y el avión se quedan abajo, bajo el pulgar.
+  fila: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   campo: {
     flex: 1,
     borderWidth: 1,
-    minHeight: ALTO_MINIMO_CAMPO,
+    minHeight: ALTO_BARRA,
     justifyContent: 'center',
     overflow: 'hidden',
   },
@@ -276,5 +306,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: 'transparent',
   },
-  boton: { width: 46, alignItems: 'center', justifyContent: 'center' },
+  boton: { width: 46, height: ALTO_BARRA, alignItems: 'center', justifyContent: 'center' },
+  enviar: {
+    width: ALTO_BARRA,
+    height: ALTO_BARRA,
+    borderRadius: ALTO_BARRA / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  oculto: { display: 'none' },
 });

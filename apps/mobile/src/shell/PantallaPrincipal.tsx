@@ -22,18 +22,20 @@
  */
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { listarActividad, type ActividadItem, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
+import { listarActividad, type ActividadItem, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
 
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
+import { DockEntrada } from '../modules/chat/DockEntrada';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
-import { PanelDeslizable } from './PanelDeslizable';
+import { ALTO_HANDLE, PanelDeslizable } from './PanelDeslizable';
 import { PanelFunciones } from './PanelFunciones';
 
 /**
@@ -50,6 +52,9 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   clientes: '/clientes',
   inteligencia: '/inteligencia',
 };
+
+/** El campo del dock de Mi día no se edita (`onTocarCampo`): no tiene texto que mandar. */
+const sinTexto = () => undefined;
 
 export function PantallaPrincipal() {
   // 🔴 El escritorio es la pantalla LANZADORA: cada vez que recupera el foco —al arrancar y al volver
@@ -151,6 +156,7 @@ export function PantallaPrincipal() {
    * aviso no navega ni pasa por un buzón de módulo, baja por props. `id` crece con cada aviso, así el
    * mismo aviso dos veces siembra dos veces.
    */
+  const insets = useSafeAreaInsets();
   const [avisoEntrante, setAvisoEntrante] = useState<{ aviso: AvisoAlChat; id: number } | null>(null);
   const avisoSeq = useRef(0);
   const [senalBajar, setSenalBajar] = useState(0);
@@ -159,6 +165,19 @@ export function PantallaPrincipal() {
     setAvisoEntrante({ aviso, id: avisoSeq.current });
     setSenalSubir((n) => n + 1);
   }, []);
+  /**
+   * SM-I2 — el dock de Mi día (D2). Tocar el campo sube el chat, como el prototipo (`index.html:2717`): el
+   * teclado se abre donde hay lugar para la respuesta. Lo que se graba acá se manda allá, por el mismo
+   * canal que el aviso.
+   */
+  const [audioEntrante, setAudioEntrante] = useState<{ audio: ArchivoSubida; duracionSeg: number; id: number } | null>(null);
+  const audioSeq = useRef(0);
+  const alAudioDesdeMiDia = useCallback((audio: ArchivoSubida, duracionSeg: number) => {
+    audioSeq.current += 1;
+    setAudioEntrante({ audio, duracionSeg, id: audioSeq.current });
+    setSenalSubir((n) => n + 1);
+  }, []);
+  const alTocarCampoDeMiDia = useCallback(() => setSenalSubir((n) => n + 1), []);
   // SM-I1: el verbo tocado en Tu día (una ruta, sin props hasta acá) llega al volver. El «Volver al tablero»
   // de esa charla baja a Mi día: Tu día ya se cerró.
   useFocusEffect(
@@ -244,10 +263,16 @@ export function PantallaPrincipal() {
             // hitl (a): el verbo de una tarjeta detectada lleva su aviso al chat, sembrado en el composer.
             onAvisoAlChat={alAvisoAlChat}
             cierreDeAviso={cierreDeAviso}
+            pie={
+              // La tira de la conversación tapa el borde de abajo: el handle más su spacer (ver `PanelFunciones`).
+              <View style={{ marginBottom: ALTO_HANDLE + insets.top }}>
+                <DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />
+              </View>
+            }
           />
         </PanelFunciones>
       }>
-      <ChatView avisoEntrante={avisoEntrante} onVolverAlTablero={alVolverAlTablero} />
+      <ChatView avisoEntrante={avisoEntrante} onVolverAlTablero={alVolverAlTablero} audioEntrante={audioEntrante} />
     </PanelDeslizable>
   );
 }

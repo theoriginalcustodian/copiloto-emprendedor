@@ -1,3 +1,4 @@
+import { Text } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
@@ -96,5 +97,59 @@ describe('Composer -- semilla (hitl a: el aviso de una tarjeta de Mi día)', () 
     await renderComposer();
     await waitFor(() => expect(screen.getByTestId('chat-composer')).toBeTruthy());
     expect(screen.getByTestId('chat-composer').props.value).toBe('');
+  });
+});
+
+describe('Composer -- SM-I2: mic, barra y campo que abre', () => {
+  const Mic = () => <Text testID="mic-prueba">mic</Text>;
+  const Barra = <Text testID="barra-prueba">0:07</Text>;
+
+  it('sin mic (quien no dicta), el avión queda en su lugar, deshabilitado hasta que haya texto', async () => {
+    await renderComposer();
+    expect(screen.getByTestId('chat-enviar').props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'hola');
+    expect(screen.getByTestId('chat-enviar').props.accessibilityState?.disabled).toBe(false);
+  });
+
+  it('el mic cede su lugar al avión apenas hay texto, y vuelve si se borra', async () => {
+    await renderComposer({ mic: <Mic /> });
+    expect(screen.getByTestId('mic-prueba')).toBeTruthy();
+    expect(screen.queryByTestId('chat-enviar')).toBeNull();
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'hola');
+    expect(screen.queryByTestId('mic-prueba')).toBeNull();
+    expect(screen.getByTestId('chat-enviar')).toBeTruthy();
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), '  ');
+    expect(screen.getByTestId('mic-prueba')).toBeTruthy();
+  });
+
+  it('🔴 con captura en curso el mic se queda aunque haya borrador, y el borrador no se pierde', async () => {
+    const { rerender } = await renderComposer({ mic: <Mic /> });
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'lo que venía escribiendo');
+
+    await rerender(
+      <ThemeProvider>
+        <Composer sendStatus="idle" onSend={jest.fn()} mic={<Mic />} enLugarDelCampo={Barra} />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('barra-prueba')).toBeTruthy();
+    expect(screen.getByTestId('mic-prueba')).toBeTruthy();
+    expect(screen.getByTestId('chat-composer-campo', { includeHiddenElements: true })).toHaveStyle({ display: 'none' });
+
+    await rerender(
+      <ThemeProvider>
+        <Composer sendStatus="idle" onSend={jest.fn()} mic={<Mic />} />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('chat-composer').props.value).toBe('lo que venía escribiendo');
+  });
+
+  it('con `onTocarCampo` el campo no abre teclado: tocarlo avisa', async () => {
+    const onTocarCampo = jest.fn();
+    await renderComposer({ onTocarCampo });
+    expect(screen.getByTestId('chat-composer').props.editable).toBe(false);
+    await fireEvent.press(screen.getByTestId('chat-composer-abrir'));
+    expect(onTocarCampo).toHaveBeenCalledTimes(1);
   });
 });

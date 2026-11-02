@@ -116,8 +116,11 @@ describe('PantallaPrincipal — hitl (a): el verbo de la tarjeta lleva el aviso 
     await fireEvent.press(screen.getByTestId('midia-tarjeta-lucia-verbo'));
 
     // El aviso entra sembrado — NO se mandó: lo manda quien lo lee.
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toContain(TEXTO_AVISO));
-    expect(screen.getByTestId('chat-composer').props.value).toContain('Mandarle un recordatorio');
+    // SM-I2: Mi día monta su propio dock, así que hay dos `chat-composer`; el aviso va sólo al del chat.
+    const sembrados = () =>
+      screen.getAllByTestId('chat-composer').filter((c) => String(c.props.value).includes(TEXTO_AVISO));
+    await waitFor(() => expect(sembrados()).toHaveLength(1));
+    expect(sembrados()[0].props.value).toContain('Mandarle un recordatorio');
     expect(api.sendChat).not.toHaveBeenCalled();
     expect(screen.getByTestId('chat-contexto-aviso-texto')).toHaveTextContent('Desde tu aviso · Presupuestos · Lucía');
 
