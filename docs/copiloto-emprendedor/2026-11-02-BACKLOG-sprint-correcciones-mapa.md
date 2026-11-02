@@ -222,6 +222,18 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
   «Confirmado» en ningún recorrido, incluido recargar.
 - **Depende:** SM-H2, SM-H7.
 
+- **✅ DISPARADOR CUMPLIDO 2026-11-02 19:04 — Gmail ESTÁ conectado.** El operador se logueó
+  manualmente con su cuenta en el device y la pantalla «Apps conectadas» dice **«5 conectadas
+  de 5»** con **Gmail · Conectada** (captura:
+  `2026-11-02-sprint-correcciones-evidencia/SM-H3-gmail-conectada-cuenta-operador.png`).
+  Esto **retira el bloqueo**, no cierra la ficha: lo que sigue faltando es la captura de la
+  card de Gmail con la aclaración de que el mail sale al confirmar. El `Cierre:` actual cita
+  que el canónico respondía «No tengo habilitado el servicio de correo» — eso era del
+  **canónico**, y acreditaba la elección de herramienta, no la ausencia de Gmail en general.
+- ⚠️ **Al capturar: la sesión del device es la del OPERADOR, no la del canónico.** Decir de
+  qué usuario es cada captura es parte de la evidencia; una card obtenida bajo su cuenta
+  acredita el comportamiento del dispatcher, no el estado del canónico.
+
 ### SM-H4 · `sin-issue` — Con «consumidor final» explícito el agente sigue pidiendo CUIT
 
 - **Estado:** TERMINADO
@@ -1189,3 +1201,18 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   6. Averiguar **por qué** no respondía antes de cambiar nada — si es el gesto del panel
      comiéndose el toque, la skill `swmansion-rn-gestures` (composición Pan/tap) es la fuente del
      criterio, no la intuición. Dos intentos fallidos ⇒ el tercero es leer la skill.
+- **🔬 REVERIFICADO 19:05 — el «no responde» estuvo a punto de ser MÍO, y el control lo salvó.**
+  El primer veredicto («el avatar no navega») salió de un `motionevent` DOWN+UP **sin MOVE**.
+  Minutos después, el tile «Apps conectadas» **tampoco** respondía a ese mismo tap y **sí** respondió
+  al agregarle un `MOVE` de 1 px. O sea: mi instrumento no activaba ningún control, y yo había
+  escrito que el defecto era del avatar. **Control positivo conseguido** (dos controles ajenos que
+  abren con MOVE: «Apps conectadas» y «Mi cuenta»), repetida la prueba sobre el avatar **con** MOVE:
+  **sigue sin navegar**. El veredicto se sostiene, pero ahora está acreditado y antes no lo estaba.
+- **🧪 Y el control que usé primero era malo:** comparé capturas por hash de pantalla COMPLETA y dio
+  «CAMBIO» cuando lo único que cambió fue **el reloj** (19:04 → 19:05). Un reloj en la barra de
+  estado mueve el hash de cualquier captura: **comparar por hash total siempre dice que cambió**.
+  Para acreditar un toque hay que comparar **la región** que debería cambiar, o un elemento
+  concreto. Queda anotado acá porque es trampa de instrumento, no de esta ficha.
+- **Sospecha para quien lo arregle (no verificada):** el avatar vive en la franja superior, que es
+  zona del panel deslizable; un Pan que se come el tap es exactamente el caso de
+  `swmansion-rn-gestures`. Es hipótesis, no hallazgo — medila antes de codear.
