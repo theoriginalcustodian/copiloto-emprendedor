@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { deleteAsync } from 'expo-file-system/legacy';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import {
   avisoErrorTranscripcion,
   formatearDuracion,
   transcribir,
-  type ArchivoSubida,
   type ContextoTranscripcion,
 } from '@copiloto/core';
 
@@ -17,6 +15,7 @@ import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { BarraSostenida, PistasGestoVoz } from '../chat/PistasVoz';
 import { useVozComando } from '../chat/useVozComando';
 import { useTema } from '../../theme/ThemeProvider';
+import { borrarArchivoLocal } from './borrarArchivoLocal';
 
 export interface MicFuncionProps {
   /** A dónde va el texto. Se llama UNA sola vez por dictado, ya transcripto. */
@@ -35,18 +34,6 @@ export interface MicFuncionProps {
   /** Lo que va DESPUÉS del mic: el botón de alta («Anotar un gasto»…). Mientras se sostiene el mic lo
    *  reemplaza la barra de grabación en su misma ranura; fijado, se esconde igual que `antes`. */
   alLado?: ReactNode;
-}
-
-/** Best-effort, mismo criterio que `borrarArchivoLocal` de `useChat.ts` (política D6, cero
- * retención): nunca lanza, `datos` sólo se borra si es una URI de archivo (string) — en web sería un
- * `Blob` y este componente ni se monta ahí. */
-async function borrarArchivoLocal(archivo: ArchivoSubida): Promise<void> {
-  if (typeof archivo.datos !== 'string') return;
-  try {
-    await deleteAsync(archivo.datos, { idempotent: true });
-  } catch {
-    // best-effort — ver docstring.
-  }
 }
 
 /**
@@ -168,7 +155,8 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
               onCancelar={onCancelarVoz}
               onCancelando={setCancelando}
               onCerca={setCerca}
-              disabled={disabled || voz.fase !== 'inactivo'}
+              disabled={disabled}
+              capturando={voz.fase !== 'inactivo'}
               scrollRef={scrollRef}
             />
           )}

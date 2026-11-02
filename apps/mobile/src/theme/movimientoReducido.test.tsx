@@ -10,11 +10,9 @@
  * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
  */
 import { render, screen, waitFor } from '@testing-library/react-native';
-import { useRef } from 'react';
 import { AccessibilityInfo } from 'react-native';
-import type { FlatList } from 'react-native-gesture-handler';
 
-import { BotonVoz } from '../modules/chat/BotonVoz';
+import { Composer } from '../modules/chat/Composer';
 import { ThemeProvider } from './ThemeProvider';
 
 const leerAjuste = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled');
@@ -23,14 +21,10 @@ async function envolver(nodo: React.ReactElement) {
   return render(<ThemeProvider>{nodo}</ThemeProvider>);
 }
 
-/** `BotonVoz` necesita un `scrollRef` real (para `simultaneousWithExternalGesture`) — este archivo
- *  no prueba el gesto (ver `BotonVoz.test.tsx`), sólo necesita un ref válido para montar. */
-function botonVoz() {
-  function Arnes() {
-    const scrollRef = useRef<FlatList>(null);
-    return <BotonVoz onIniciar={() => {}} onSoltarSinFijar={() => {}} onFijar={() => {}} onCancelar={() => {}} scrollRef={scrollRef} />;
-  }
-  return <Arnes />;
+/** El punto de `Composer` es el consumidor del ajuste en la pantalla principal: sólo se monta con un
+ *  estado que mostrar, por eso `sending`. */
+function conEstado() {
+  return <Composer sendStatus="sending" onSend={() => {}} />;
 }
 
 beforeEach(() => {
@@ -42,25 +36,20 @@ describe('movimiento reducido', () => {
   it('🔴 se PREGUNTA por el ajuste — sin esto, el resto del archivo no prueba nada', async () => {
     // El control de que el cableado existe. Si nadie consulta el ajuste, los tests de abajo pasarían
     // igual con la app ignorándolo por completo.
-    await envolver(botonVoz());
+    await envolver(conEstado());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
   });
 
-  it('el botón de voz SIGUE ESTANDO con el ajuste activo — se apaga el latido, no el control', async () => {
+  it('la fila de estado SIGUE ESTANDO con el ajuste activo — se apaga el parpadeo, no el dato', async () => {
     // La regresión que este test frena: "apagar la animación" resuelto escondiendo el elemento.
-    // Quien pide menos movimiento quiere una app quieta, no una app con menos botones.
+    // Quien pide menos movimiento quiere una app quieta, no una app que informa menos.
     leerAjuste.mockResolvedValue(true);
 
-    await envolver(botonVoz());
+    await envolver(conEstado());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
-    expect(screen.getByTestId('boton-voz')).toBeTruthy();
-    expect(screen.getByTestId('boton-voz-nucleo')).toBeTruthy();
-    // Y conserva su nombre: apagar movimiento no puede costarle el nombre a un control.
-    expect(
-      screen.getByLabelText('Mantené apretado para grabar. Deslizá hacia arriba para fijar sin soltar.'),
-    ).toBeTruthy();
+    expect(screen.getByTestId('composer-status')).toBeTruthy();
   });
 
   it('🔴 si la lectura del ajuste FALLA, la app queda como es hoy', async () => {
@@ -69,10 +58,10 @@ describe('movimiento reducido', () => {
     // pero no puede tumbar el render.
     leerAjuste.mockRejectedValue(new Error('sin soporte'));
 
-    await envolver(botonVoz());
+    await envolver(conEstado());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
-    expect(screen.getByTestId('boton-voz')).toBeTruthy();
+    expect(screen.getByTestId('composer-status')).toBeTruthy();
   });
 });
 

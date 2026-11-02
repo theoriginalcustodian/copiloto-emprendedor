@@ -501,6 +501,23 @@ describe('PantallaGastos — dictado por chat (contrato 2026-10-13)', () => {
     expect(screen.queryByTestId('gastos-dictado-aviso')).toBeNull();
   });
 
+  it('🔴 SM-I2: lo ESCRITO en el dock aprovecha la propuesta pero se guarda como «manual», nunca como dictado', async () => {
+    mockDictar.mockResolvedValue(PROPUESTA);
+    mockCrear.mockResolvedValue({ status: 'ok', gasto: gasto() });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'pagué 15 mil de mercadería');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('15000.00');
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo cargaste a mano');
+
+    await fireEvent.press(screen.getByTestId('gasto-guardar'));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledWith(expect.objectContaining({ origen: 'manual' })));
+  });
+
   it('🔴 si el motor no devuelve la card, cae al texto crudo Y LO DICE (no degrada en silencio)', async () => {
     mockDictar.mockResolvedValue(null);
     hook({ aviso: 'Tardó demasiado en responder. Te dejé lo que dijiste para que lo completes a mano.' });

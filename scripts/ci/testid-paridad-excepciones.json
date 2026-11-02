@@ -1704,64 +1704,14 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
-    "modules/chat::boton-voz-ecualizador": {
+    "modules/chat::boton-voz-glifo": {
       "en": [
         "apps/mobile/src/modules/chat/BotonVoz.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-ecualizador",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::boton-voz-isotipo": {
-      "en": [
-        "apps/mobile/src/modules/chat/BotonVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-isotipo",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::boton-voz-isotipo-trazo-1": {
-      "en": [
-        "apps/mobile/src/modules/chat/BotonVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-isotipo-trazo-1",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::boton-voz-isotipo-trazo-2": {
-      "en": [
-        "apps/mobile/src/modules/chat/BotonVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-isotipo-trazo-2",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::boton-voz-isotipo-trazo-3": {
-      "en": [
-        "apps/mobile/src/modules/chat/BotonVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-isotipo-trazo-3",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::boton-voz-isotipo-trazo-4": {
-      "en": [
-        "apps/mobile/src/modules/chat/BotonVoz.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "boton-voz-isotipo-trazo-4",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "fecha": "2026-11-02",
+      "id": "boton-voz-glifo",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Glifo del mic: la web no tiene el botón de voz nativo.",
       "pantalla": "modules/chat"
     },
     "modules/chat::boton-voz-nucleo": {
@@ -1784,14 +1734,24 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
-    "modules/chat::chat-composer-contenedor": {
+    "modules/chat::chat-composer-abrir": {
       "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
+        "apps/mobile/src/modules/chat/Composer.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "chat-composer-contenedor",
-      "motivo": "Wrapper del `Composer` que se OCULTA (display none, sigue montado) mientras la grabación de voz transforma la barra (G3 de TRIAJE15, `index.html:2939-2949`). Sólo existe para que el test distinga «oculto» de «desmontado» (que perdería el borrador). La PWA dicta con `MicButton` (toque) y no transforma su campo: no hay par que esperar.",
+      "fecha": "2026-11-02",
+      "id": "chat-composer-abrir",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Campo de Mi día que sube el chat en vez de abrir teclado: la web no tiene ese dock.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-composer-campo": {
+      "en": [
+        "apps/mobile/src/modules/chat/Composer.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-composer-campo",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Marco del campo, que la barra de grabación reemplaza: gesto nativo, la web no lo tiene.",
       "pantalla": "modules/chat"
     },
     "modules/chat::chat-contexto-aviso": {
@@ -1942,6 +1902,26 @@
       "fecha": "2026-09-22",
       "id": "disambiguation-chips",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::dock-entrada": {
+      "en": [
+        "apps/mobile/src/modules/chat/DockEntrada.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "dock-entrada",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Raíz del dock.",
+      "pantalla": "modules/chat"
+    },
+    "modules/chat::dock-entrada-composer": {
+      "en": [
+        "apps/mobile/src/modules/chat/DockEntrada.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "dock-entrada-composer",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Composer oculto con la grabación fijada.",
       "pantalla": "modules/chat"
     },
     "modules/chat::factura-propuesta": {
@@ -2102,16 +2082,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "onda-flotante",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::overlay-voz": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "overlay-voz",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
@@ -4397,27 +4367,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
     },
-    "modules/soporte::onda-flotante": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaSoporte.tsx",
-        "apps/mobile/src/modules/soporte/PantallaSoporte.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "onda-flotante",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
-    "modules/soporte::overlay-voz-soporte": {
-      "en": [
-        "apps/mobile/src/modules/soporte/PantallaSoporte.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "overlay-voz-soporte",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
-    },
     "modules/soporte::pantalla-mi-ticket": {
       "en": [
         "apps/copiloto-web/src/modules/soporte/MiTicketScreen.tsx"
@@ -4577,6 +4526,26 @@
       "id": "ticket-scroll",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
+    },
+    "modules/voz::dock-funcion": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "dock-funcion",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Dock al pie de una función: la web sigue con su mic.",
+      "pantalla": "modules/voz"
+    },
+    "modules/voz::dock-funcion-chip": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "dock-funcion-chip",
+      "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Chip «Por voz» del dock de función.",
+      "pantalla": "modules/voz"
     },
     "modules/voz::mic-funcion-fijado": {
       "en": [

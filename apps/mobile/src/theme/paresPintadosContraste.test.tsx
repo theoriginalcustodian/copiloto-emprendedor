@@ -902,19 +902,14 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
     expect(gradiente[1]).toMatch(/glass\.ub1/);
   });
 
-  it('DEC11FILL Pieza A: el botón de voz (esfera) no vuelve al degradado que terminaba en accent2 (1,26:1)', () => {
-    // Misma forma de control que el `it` de arriba para HudGrabacion, adaptada al `RadialGradient`
-    // de 3 `Stop` de BotonVoz (`stopColor`, no `colors={[...]}`) -- caza la regresión sobre el
-    // fuente, sin depender de que `react-native-svg` esté mockeado a passthrough en el árbol montado.
+  it('DEC11FILL Pieza A: el botón de voz no vuelve al relleno que terminaba en accent2 (1,26:1)', () => {
+    // SM-I2: dejó de ser una esfera con degradado, ahora es sólido. Se lee del fuente, como el `it` de
+    // arriba: el control es sobre lo que se escribió, no sobre un árbol con `react-native-svg` mockeado.
     const fs = require('fs');
     const path = require('path');
     const boton = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'BotonVoz.tsx'), 'utf8');
-    const stops = [...boton.matchAll(/stopColor=\{disabled \? [^:]+ : ([^}]+)\}/g)].map((m) => m[1]);
-    expect(stops).toHaveLength(3);
-    for (const stop of stops) {
-      expect(stop).not.toMatch(/accent2|tema\.color\.acento\b/);
-      expect(stop).toMatch(/glass\.ub[12]/);
-    }
+    expect(boton).toMatch(/backgroundColor: disabled \? tema\.color\.superficieAlta : tema\.glass\.ub2/);
+    expect(boton).not.toMatch(/accent2|tema\.color\.acento\b/);
   });
 });
 

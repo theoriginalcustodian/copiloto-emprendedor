@@ -97,7 +97,7 @@ export function FotoFuncion({ onLectura, onError, disabled }: FotoFuncionProps) 
           },
         ])}
       >
-        <IconoCamara color={tema.glass.accent2} />
+        <IconoCamara color={tema.color.acentoTinta} />
       </Pressable>
     </View>
   );

@@ -19,7 +19,7 @@ import { AvisoCancelar } from './AvisoCancelar';
  * Son DOS piezas porque el prototipo las pone en DOS lugares: la `.rec` vive DENTRO de la barra del
  * composer (que se transforma, fila `grabando` G3) y la `.lock-col` asoma por ENCIMA del botón.
  *
- * Presentacional puro: lo comparten `ChatView` y `MicFuncion` (el mismo composer en contexto de
+ * Presentacional puro: lo comparten `DockEntrada` y `MicFuncion` (el mismo gesto en contexto de
  * formulario), que son quienes saben `cancelando`/`cerca` por `BotonVoz`.
  */
 

@@ -224,10 +224,10 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
+    // SM-I2: sin texto real no hay avión que tocar, el lugar es del mic.
     await fireEvent.changeText(screen.getByTestId('chat-composer'), '   ');
-    expect(screen.getByTestId('chat-enviar').props.accessibilityState?.disabled).toBe(true);
-
-    await fireEvent.press(screen.getByTestId('chat-enviar'));
+    expect(screen.queryByTestId('chat-enviar')).toBeNull();
+    expect(screen.getByTestId('boton-voz')).toBeTruthy();
     expect(api.sendChat).not.toHaveBeenCalled();
   });
 
@@ -538,13 +538,13 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
     expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull();
-    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
+    expect(screen.getByTestId('chat-composer-campo', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
 
     await fireEvent.press(screen.getByTestId('boton-voz'));
 
     await waitFor(() => expect(screen.getByTestId('voz-barra-sostenida')).toBeTruthy());
     expect(screen.getByTestId('chat-composer', { includeHiddenElements: true })).toBeTruthy(); // montado: el borrador no se pierde
-    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).toHaveStyle({ display: 'none' });
+    expect(screen.getByTestId('chat-composer-campo', { includeHiddenElements: true })).toHaveStyle({ display: 'none' });
   });
 
   it('G3: al terminar la captura el composer vuelve y la barra se va', async () => {
@@ -557,7 +557,7 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
 
     await waitFor(() => expect(screen.queryByTestId('voz-barra-sostenida')).toBeNull());
-    expect(screen.getByTestId('chat-composer-contenedor', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
+    expect(screen.getByTestId('chat-composer-campo', { includeHiddenElements: true })).not.toHaveStyle({ display: 'none' });
   });
 
   it('🔴 fijado: soltar el dedo (mock: onSoltarSinFijar) NO hace nada -- se termina por Enviar/Eliminar', async () => {
@@ -973,8 +973,7 @@ describe('ChatView -- sheet «conectá X»: debe pintar ENCIMA del composer y de
     await renderChatView();
     const orden = ordenDePintado();
     expect(orden).toContain('sheet-requiere-conexion-ancla');
-    expect(orden).toContain('chat-composer-contenedor');
-    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('chat-composer-contenedor'));
-    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('overlay-voz'));
+    expect(orden).toContain('dock-entrada');
+    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('dock-entrada'));
   });
 });

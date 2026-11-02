@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
@@ -54,6 +54,8 @@ export interface PantallaMiDiaProps {
   onAgenda?: () => void;
   /** SM-I1: abre Tu día. La cablea el shell (`empujarUnaVez`). */
   onVerTablero?: () => void;
+  /** SM-I2: el dock, fijo al pie y fuera del scroll. Lo arma el shell, que es dueño del chat al que va. */
+  pie?: ReactNode;
   /**
    * H5b — abre la pantalla a la que apunta `destino` (la conexión, el comprobante, AFIP: ver
    * `rutaDeDestino`). Recibe la ruta YA resuelta; a qué pantalla de la app corresponde lo decide el
@@ -141,6 +143,7 @@ export function PantallaMiDia({
   onDestino,
   onAvisoAlChat,
   cierreDeAviso = null,
+  pie,
 }: PantallaMiDiaProps = {}) {
   const hora = useHoraActual();
   const tema = useTema();
@@ -344,6 +347,7 @@ export function PantallaMiDia({
           </View>
         )}
       </ScrollFormulario>
+      {pie}
     </View>
   );
 }
@@ -431,7 +435,7 @@ const styles = StyleSheet.create({
   portadaRaiz: { flex: 1, paddingTop: 58 },
   encabezadoPortada: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8 },
   raiz: { flex: 1 },
-  raizContenido: { flexGrow: 1, paddingBottom: 120 },
+  raizContenido: { flexGrow: 1, paddingBottom: 16 },
   // `.stack`: la cabecera mide lo que asoma (52) más un tramo que queda tapado por el bloque negro, para que
   // su borde inferior no se vea recortado.
   pila: { marginHorizontal: 16, paddingTop: 52 },

@@ -11,8 +11,7 @@ import { join } from 'node:path';
  * `glass/ondaPalette.ts` (el degradé de la onda de audio) — la galería de ondas declara
  * explícitamente *«cada onda trae su propia paleta fija — sin skins»*, un color **INTRÍNSECO del
  * diseño**, no del tema. Es SÓLO-DATOS-DE-COLOR, sin lógica; quien lo consume (`Onda.tsx`) queda
- * cero-hex. Y `glass/ecualizadorPalette.ts` (ODOBI8 §B): mismo criterio — el degradé
- * dorado→terracota del ecualizador estático del botón de voz es fijo del mock, no del tema.
+ * cero-hex.
  *
  * `glass/iconPalette.ts` (las 8 paletas de los iconos glass, con el mismo criterio) se RETIRÓ en
  * ODOBI hito 5: el set de íconos nuevo (`icons.ts`) no tiene paleta propia por ícono, usa el acento
@@ -27,7 +26,6 @@ import { join } from 'node:path';
 const ARCHIVOS_DE_COLOR = [
   join('theme', 'tokens.ts'),
   join('theme', 'glass', 'ondaPalette.ts'),
-  join('theme', 'glass', 'ecualizadorPalette.ts'),
   /**
    * Los logos de Gmail, Calendar, Sheets, Docs, Drive y Mercado Pago, como XML crudo.
    *
