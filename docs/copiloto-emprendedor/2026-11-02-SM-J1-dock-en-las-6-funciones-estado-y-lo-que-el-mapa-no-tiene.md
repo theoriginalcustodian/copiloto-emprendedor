@@ -23,3 +23,11 @@ forma de endpoint → `pedido_` a planificación, no se inventa.
 - **Chip «N facturas · N impaga»**: NO se implementa. `ResumenFacturado.tsx:12-14`: la portada no trae
   conteos y derivarlos del listado paginado da un número que depende de cuántas páginas se bajaron.
 - **«Últimos»**: ya existía en Ingresos (`rotuloLista`); se suma a Gastos.
+
+## ENMIENDA FUNDADA — Facturación e Inteligencia NO llevan dock (veredicto de planificación, 2026-11-02)
+`packages/core/src/api/transcribir.ts:7` admite exactamente `'gasto' | 'ingreso' | 'presupuesto' | 'cliente'`; no es una limitación accidental.
+1. **El dock es un prellenador de formulario**: dictar o escribir → transcribir con un `contexto` → prellenar el formulario de esa función. Facturación es asistente (la factura se propone y se confirma por card) e Inteligencia es lectura: no hay destino. Un dock sin destino promete una acción que no existe (misma clase que SM-N17).
+2. **Facturación, razón de seguridad**: emitir es irreversible; la vía canónica es la card HITL con confirmación explícita. Un dock que prellene por otro camino sería una segunda entrada a una acción irreversible. No es un dock faltante: es un dock que no debe existir.
+3. **Ampliar `ContextoTranscripcion`** con dos valores sin destino sumaría superficie de contrato y ramas muertas en el backend.
+
+Las dos funciones salen del denominador de J1 por enmienda; no quedan como deuda.
