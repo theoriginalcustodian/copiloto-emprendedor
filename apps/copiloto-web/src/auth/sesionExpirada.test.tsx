@@ -18,7 +18,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { marcarSesionViva } from '@copiloto/core';
+import { MENSAJE_SESION_EXPIRADA, marcarSesionViva } from '@copiloto/core';
 
 import { ApiError, apiClient } from '../lib/api/client';
 import { LoginScreen } from './LoginScreen';
@@ -68,7 +68,7 @@ describe('CTA5 — una sesión que se cae sola termina en el login, en castellan
 
     montarLogin();
 
-    expect(await screen.findByText('Tu sesión expiró. Entrá de nuevo.')).toBeInTheDocument();
+    expect(await screen.findByText(MENSAJE_SESION_EXPIRADA)).toBeInTheDocument();
     // El punto 2 del contrato: el string interno del backend no se muestra NUNCA.
     expect(screen.queryByText(DETALLE_CRUDO)).not.toBeInTheDocument();
     // Y la sesión quedó realmente borrada, no sólo anunciada.
@@ -81,7 +81,7 @@ describe('CTA5 — una sesión que se cae sola termina en el login, en castellan
     montarLogin();
 
     await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
-    expect(screen.queryByText('Tu sesión expiró. Entrá de nuevo.')).not.toBeInTheDocument();
+    expect(screen.queryByText(MENSAJE_SESION_EXPIRADA)).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -98,7 +98,7 @@ describe('CTA5 — una sesión que se cae sola termina en el login, en castellan
       apiClient.post('/auth/login', { email: 'a@b.c', password: 'mal' }, { auth: false }),
     ).rejects.toThrow();
 
-    expect(screen.queryByText('Tu sesión expiró. Entrá de nuevo.')).not.toBeInTheDocument();
+    expect(screen.queryByText(MENSAJE_SESION_EXPIRADA)).not.toBeInTheDocument();
   });
 
   it('control: un 422 real sigue mostrando el `detail` del backend — eso estaba bien y no se toca', async () => {
