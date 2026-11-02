@@ -208,6 +208,8 @@ def test_el_duplicado_probable_NO_arma_card_y_pregunta_antes():
     res = _correr("registrar_ingreso", {"monto": "85000", "cliente": "Panadería"}, cobro=store)
     assert res.artifact is None, "preguntó y armó la card igual: la card ya prellenada se confirma sin mirar"
     assert "todavía NO lo anoté" in res.observation["result"]
+    assert "ingreso de $85.000 " in res.observation["result"], "SM-N21 (a): monto previo formateado"
+    assert "85000" not in res.observation["result"]
     assert "confirmar_duplicado" in res.observation["result"], \
         "el LLM tiene que saber CÓMO insistir, no adivinarlo"
 

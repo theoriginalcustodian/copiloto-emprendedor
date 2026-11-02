@@ -1161,7 +1161,7 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
             return ToolResult(
                 tool_call_id=idem_key, is_write=False, status="ok",
                 observation={"result": f"OJO, todavía NO lo anoté: el {candidato['fecha']} ya "
-                                       f"registré un ingreso de {_plata(candidato['monto'])}{quien}"
+                                       f"registré un ingreso de {_plata_corta(candidato['monto'])}{quien}"
                                        f" ({candidato['origen']}). Preguntale si es OTRO cobro o el "
                                        f"MISMO. Si dice que es otro, volvé a llamar "
                                        f"`registrar_ingreso` con confirmar_duplicado=true.",
