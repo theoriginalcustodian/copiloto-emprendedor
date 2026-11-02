@@ -254,10 +254,22 @@ export interface PerfilFiscal {
   guardarEnDrive: boolean;
 }
 
+/** Pura. Sólo los tres valores del contrato; cualquier otra cosa es «sin causa» (nunca se inventa una). */
+function leerCausaFallo(v: unknown): CausaFalloOnboarding | null {
+  return v === 'dato' || v === 'servicio' || v === 'desconocida' ? v : null;
+}
+
 /** Progreso del alta ante ARCA (`AfipOnboardingWorkflow.progreso()`), normalizado. */
+/** SM-K3 · de quién es el problema cuando el alta falló. `dato` = algo que el emprendedor cargó mal
+ *  (corrige y reintenta); `servicio` = ARCA o nosotros (no hay nada que corregir de su lado);
+ *  `desconocida` = no se pudo clasificar (NO se degrada a `servicio` «ante la duda»). */
+export type CausaFalloOnboarding = 'dato' | 'servicio' | 'desconocida';
+
 export interface OnboardingProgreso {
   paso: PasoOnboarding;
   motivo: string | null;
+  /** Ausente/`null` = backend anterior al campo o alta sin fallo: no se afirma ninguna causa. */
+  causa?: CausaFalloOnboarding | null;
   wsAutorizados: string[];
   terminado: boolean;
   ok: boolean;
@@ -675,7 +687,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       perfil_completo: boolean;
       puede_facturar: boolean;
       motivo_no_puede_facturar?: string | null;
-      onboarding: { paso: string; motivo: string | null; ws_autorizados: string[]; terminado: boolean; ok: boolean } | null;
+      onboarding: { paso: string; motivo: string | null; causa?: string | null; ws_autorizados: string[]; terminado: boolean; ok: boolean } | null;
       // ⚠️ Los tres de abajo todavía NO los manda el backend (pedidos §2 y §3, verificado contra el
       // servicio vivo el 2026-07-21). Se leen igual, opcionales: cuando los suba, esta función los
       // propaga sola y la pantalla de Ajustes sale del modo degradado sin tocar una línea de UI.
@@ -703,6 +715,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
         ? {
             paso: raw.onboarding.paso as PasoOnboarding,
             motivo: raw.onboarding.motivo,
+            causa: leerCausaFallo(raw.onboarding.causa),
             wsAutorizados: raw.onboarding.ws_autorizados,
             terminado: raw.onboarding.terminado,
             ok: raw.onboarding.ok,

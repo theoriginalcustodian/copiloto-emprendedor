@@ -396,6 +396,16 @@ describe('afip.ts', () => {
      * Es la clase de defecto que un test de "normaliza a camelCase" nunca caza: pasa verde porque lo
      * que afirma —que las 5 claves conocidas se traducen— sigue siendo cierto.
      */
+    it('SM-K3: propaga la causa del fallo del alta y descarta valores fuera del contrato', async () => {
+      const base = { conectado: false, ws_autorizados: [], perfil_completo: true, puede_facturar: false };
+      for (const [entrada, esperado] of [['dato', 'dato'], ['servicio', 'servicio'], ['desconocida', 'desconocida'], ['otra', null], [null, null]] as const) {
+        responder = () =>
+          respuesta(200, { ...base, onboarding: { paso: 'fallido', motivo: 'x', causa: entrada, ws_autorizados: [], terminado: true, ok: false } });
+        const r = await estadoAfip();
+        expect(r.status === 'ok' && r.onboarding?.causa).toBe(esperado);
+      }
+    });
+
     it('propaga cuit/ambiente/ambientes_vinculados cuando el backend los manda', async () => {
       responder = () =>
         respuesta(200, {
