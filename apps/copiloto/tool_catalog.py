@@ -299,7 +299,8 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
     "description": "Arma una factura electrónica ARCA (ex AFIP) a partir de lo dictado ('facturale 50 mil a Juan por el "
                    "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
                    "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
-                   "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió — el "
+                   "mano si falta algo. Necesita como mínimo a quién le factura (o que diga «consumidor final») y "
+                   "qué le vendió — el "
                    "resto de los campos (documento, tipo de documento, concepto, fecha) es OPCIONAL: "
                    "llamala apenas tengas esos dos datos mínimos, aunque falte todo lo demás. NO le "
                    "preguntes al usuario por un campo que este schema no marca como \"required\" antes "
@@ -311,7 +312,13 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
                    "faltante. Preguntar antes de llamar es el error: la tool está hecha para invocación "
                    "parcial.",
     "parameters": {"type": "object", "properties": {
-        "cliente_nombre": {"type": "string", "description": "a quién le factura"},
+        "cliente_nombre": {"type": "string",
+                           "description": "a quién le factura. Si dijo «consumidor final» (o que es una "
+                                          "venta al público, sin cliente), poné exactamente «Consumidor "
+                                          "Final»: es un destinatario válido y completo — NO le pidas "
+                                          "nombre, CUIT ni DNI (por debajo del tope legal ARCA permite "
+                                          "facturar sin identificar; si el monto lo supera, la tarjeta "
+                                          "lo avisa y lo pide ahí)"},
         "cliente_documento": {"type": "string", "description": "CUIT o DNI del cliente, si lo dijo"},
         "cliente_tipo_doc": {"type": "string", "enum": ["CUIT", "DNI"],
                              "description": "si dijo la palabra «CUIT» o «DNI». Omitilo si sólo dictó "

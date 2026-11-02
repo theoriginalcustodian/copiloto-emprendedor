@@ -9,8 +9,8 @@ import { useTema } from '../../theme/ThemeProvider';
 
 /**
  * BL-J9 / K-07-B — «¿Te armo la factura?». Sin pantalla nueva: `facturarPresupuesto` es idempotente y
- * devuelve el borrador; se navega a `/facturacion` (el gate de factura existente) con ese `facturaId`,
- * igual que «Completar a mano» de `TarjetaFacturaPropuesta`. Si no se pudo, se dice — no se navega.
+ * devuelve el borrador; se navega a `/facturacion` (el gate de factura existente) con ese `facturaId`.
+ * Si no se pudo, se dice — no se navega.
  */
 export interface ChipArmarFacturaProps {
   sugerencia: SugerenciaArmarFactura;

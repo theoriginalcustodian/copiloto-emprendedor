@@ -13,6 +13,7 @@ import {
   guardarPerfil,
   leerPerfil,
   type AmbienteAfip,
+  type CausaFalloOnboarding,
   type CondicionIvaEmisor,
   type EstadoAfip,
 } from '@copiloto/core';
@@ -126,6 +127,12 @@ function formatearCuit(digitos: string): string {
  * Ambos corregidos en `packages/core/src/api/afip.ts` con tests de regresión. Por eso acá no hay
  * traductor ni `as`: se lee el contrato directo.
  */
+const TEXTO_CAUSA_FALLO: Record<CausaFalloOnboarding, string> = {
+  dato: 'Es un dato que cargaste: revisalo y probá de nuevo.',
+  servicio: 'No es un dato tuyo: es un problema del servicio. No hace falta que cambies nada.',
+  desconocida: 'No pudimos determinar si es un dato o el servicio.',
+};
+
 const ETIQUETA_AMBIENTE: Record<AmbienteAfip, string> = {
   dev: 'Homologación',
   prod: 'Producción',
@@ -738,6 +745,14 @@ export function PantallaAfipSetup() {
                       {COPY_PASO_ONBOARDING.fallido}
                       {onboardingActual.motivo ? ` ${onboardingActual.motivo}` : ''}
                     </Text>
+                    {/* SM-K3: de quién es el problema. Dos causas con el mismo mensaje hacen que se
+                        diagnostique la equivocada (corregir un dato que estaba bien, o reintentar sin
+                        parar un dato que sí estaba mal). Sin `causa` no se afirma ninguna. */}
+                    {onboardingActual.causa != null && (
+                      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                        {TEXTO_CAUSA_FALLO[onboardingActual.causa]}
+                      </Text>
+                    )}
                     <FilaBotones
                       testID="afip-arca-progreso-botones"
                       botones={[

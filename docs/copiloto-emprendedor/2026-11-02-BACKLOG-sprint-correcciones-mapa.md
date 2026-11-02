@@ -64,13 +64,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H1** | `sin-issue` | ✅ TERMINADO | acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobr… |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
-| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La cap… |
+| **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card cancelada tras recargar y del recibo en vivo, en la tanda de SM-H3 |
+| **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -161,7 +161,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H1 · `sin-issue` — La card de factura propuesta sólo ofrece «Emitir»
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobre el mismo workflow; emite solo por confirmarConTokenFresco; ADR-007 ACCEPTED. Device RF8T318RN9T 2026-11-02, ambiente dev, sin emitir: cantidad 1 a 2, total 100000, vuelve a la card; force-stop conserva; cancelada en vivo y tras recargar. mobile 1438, core 870, CI 6/6. Web no entra: manda mobile. Evidencia en 2026-11-02-sprint-correcciones-evidencia/SM-H1-SM-H7.md
 - **Dueño:** frontend1 (card) con el contrato de backend
 - **Medido:** `apps/mobile/src/modules/chat/TarjetaFacturaPropuesta.tsx` (288 líneas) dibuja un
   único botón «Emitir la factura»; no hay forma de editar un dato ni de cancelar desde la card.
@@ -192,8 +193,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H3 · `sin-issue` — «Mandale un recordatorio por mail» produce una card de Calendar
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de la card de Gmail con su aclaracion y de la card cancelada tras recargar sin 'Confirmado'. La captura tiene que partir de un PEDIDO EN LENGUAJE NATURAL real ('mandale un recordatorio por mail a X para manana'), no de un disparo directo de la card: backend fijo el discriminante en las descripciones de gmail_send/calendar_book y el comportamiento por tipo (observation.service=='gmail'), pero QUIEN ELIGE LA TOOL es el LLM y eso no se ejercito. Un test que no usa el camino de produccion no puede verlo fallar: la captura con pedido natural es el UNICO control de esa eleccion.
-- **Cierre:** mitad backend CERRADA: 70e46d9f (#1318), desplegado y durabilidad VERDE. test_card_mail_gmail.py afirma la card por TIPO (observation.service=='gmail'); confirma->1 envio y no-confirma->0 en tests SEPARADOS, porque un mecanismo roto hacia el 'no' no da sintoma como segunda asercion del happy-path. VPS suite completa 2653 passed/41 skipped. Sin envio programado (D8).
+- **Falta:** captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail conectado. Dueno: el operador, escalado por planificacion.
+- **Cierre:** 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar, medida en device. Device 2026-11-02: el pedido natural elige correo, responde 'No tengo habilitado el servicio de correo' y abre 'Conecta Gmail': la eleccion de herramienta queda acreditada.
 - **Dueño:** backend (dispatcher) + frontend1 (card)
 - **Medido:** el pedido de mail devuelve una card de **Calendar**, no la de Gmail «Confirmar y
   mandar / Cancelar». Y una card de Calendar **cancelada** pasa a «✓ Confirmado».
@@ -231,9 +232,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H7 · `sin-issue` — Una card cancelada vuelve a leerse como «Confirmado» al recargar
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de la card cancelada tras recargar y del recibo en vivo, en la tanda de SM-H3
-- **Cierre:** 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314)
+- **Estado:** TERMINADO
+- **Cierre:** 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa (#1328) capturas. Device RF8T318RN9T 2026-11-02: pedido natural de Calendar, Cancelar, 'No lo hicimos' en vivo y tras force-stop, sin Confirmado, ningun evento creado. Evidencia en 2026-11-02-sprint-correcciones-evidencia/SM-H7-1, SM-H7-2 y SM-H7-3
 - **Dueño:** frontend1
 - **Medido:** **causa candidata, leída y no corrida:** `sanitizarHitlRespondido` guarda como `value`
   el **texto** «Cancelar» (`packages/core/src/chat/hitl.ts`) y `ListaMensajes.tsx:213` lo compara

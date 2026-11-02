@@ -1,36 +1,47 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-/**
- * Mock de `expo-router`: "Completar a mano" navega vía `empujarUnaVez` (que llama `router.push`).
- * Mismo criterio que `TarjetaClientePropuesto.test.tsx`.
- */
-jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn() },
-}));
-
 /** Partial mock: sólo la red. `leerFacturaPropuesta`, REAL. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, confirmarConTokenFresco: jest.fn(), estadoFactura: jest.fn() };
+  return {
+    ...actual,
+    agregarItem: jest.fn(),
+    cancelarFactura: jest.fn(),
+    confirmarConTokenFresco: jest.fn(),
+    esperarEcoDelSignal: jest.fn(),
+    estadoFactura: jest.fn(),
+    quitarItem: jest.fn(),
+    setCliente: jest.fn(),
+    setDatosVenta: jest.fn(),
+  };
 });
 
-import { router } from 'expo-router';
-
 import {
+  agregarItem,
+  ApiError,
+  cancelarFactura,
   confirmarConTokenFresco,
+  esperarEcoDelSignal,
   estadoFactura,
   leerFacturaPropuesta,
+  quitarItem,
+  setCliente,
+  setDatosVenta,
   type ChatMessage,
   type EstadoFacturaResp,
 } from '@copiloto/core';
 
-import { reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 
 const mockConfirmar = confirmarConTokenFresco as jest.MockedFunction<typeof confirmarConTokenFresco>;
 const mockEstado = estadoFactura as jest.MockedFunction<typeof estadoFactura>;
-const mockPush = router.push as jest.MockedFunction<typeof router.push>;
+const mockEco = esperarEcoDelSignal as jest.MockedFunction<typeof esperarEcoDelSignal>;
+const mockCancelar = cancelarFactura as jest.MockedFunction<typeof cancelarFactura>;
+const mockAgregar = agregarItem as jest.MockedFunction<typeof agregarItem>;
+const mockQuitar = quitarItem as jest.MockedFunction<typeof quitarItem>;
+const mockSetCliente = setCliente as jest.MockedFunction<typeof setCliente>;
+const mockSetDatosVenta = setDatosVenta as jest.MockedFunction<typeof setDatosVenta>;
 
 function propuesta(over: Record<string, unknown> = {}) {
   const p = leerFacturaPropuesta({
@@ -81,6 +92,22 @@ function emitida(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
   };
 }
 
+/** El borrador en el workflow, listo para confirmar: los mismos datos que trae `propuesta()`. */
+function borrador(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
+  return emitida({
+    estado: 'esperando_confirmacion',
+    items: [{ descripcion: 'Service de aire', cantidad: '1', precioUnitario: '50000', subtotal: '50000.00' }],
+    total: '50000',
+    tokenConfirmacion: 'tok',
+    resultado: null,
+    pdf: null,
+    receptor: { condicionIva: 5, tipoDoc: 80, nroDoc: '20304050607', nombre: 'Juan Pérez', domicilio: '' },
+    datosVenta: { fecha: '2026-11-02', concepto: 1, condicionVenta: 'contado' },
+    terminado: false,
+    ...over,
+  });
+}
+
 async function montar(
   p = propuesta(),
   opts: { resuelto?: ChatMessage['facturaResuelta']; onResolver?: () => void } = {},
@@ -95,7 +122,7 @@ async function montar(
 describe('TarjetaFacturaPropuesta', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    reabrirNavegacion();
+    mockEstado.mockResolvedValue(borrador());
   });
 
   it('dice explícitamente que TODAVÍA no la mandó', async () => {
@@ -142,6 +169,7 @@ describe('TarjetaFacturaPropuesta', () => {
     };
 
     it('del registro: se ve la marca y la condición de IVA del registro', async () => {
+      mockEstado.mockRejectedValue(new Error('red')); // sin lectura, la card muestra el artifact
       await montar(propuesta({ cliente: delRegistro, tipo_comprobante: 'FACTURA_A' }));
 
       expect(screen.getByTestId('factura-propuesta-cliente-registro')).toHaveTextContent('De tu registro de clientes');
@@ -157,6 +185,7 @@ describe('TarjetaFacturaPropuesta', () => {
     });
 
     it('una condición de IVA que la app no conoce no se pinta cruda (ni se inventa)', async () => {
+      mockEstado.mockRejectedValue(new Error('red')); // sin lectura, la card muestra el artifact
       await montar(propuesta({ cliente: { ...delRegistro, condicion_iva: 'ALGO_NUEVO' } }));
 
       expect(screen.queryByTestId('factura-propuesta-cliente-condicion')).toBeNull();
@@ -170,18 +199,10 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(screen.queryByTestId('factura-propuesta-tipo')).toBeNull();
   });
 
-  it('🔴 no permite editar ítems en el chat — no hay ningún input, sólo lectura + acción', async () => {
-    await montar();
-
-    expect(screen.queryByTestId('factura-propuesta-item-0-input')).toBeNull();
-    expect(screen.queryByTestId('factura-propuesta-formulario')).toBeNull();
-  });
-
   it('faltantes vacío → botón Emitir; al tocarlo, confía en `confirmarConTokenFresco`', async () => {
     mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida() });
     await montar();
 
-    expect(screen.queryByTestId('factura-propuesta-completar')).toBeNull();
     // El rótulo es el del prototipo (`CARDS.factura.b`, index.html:2876) y el aviso lo nombra igual.
     expect(screen.getByTestId('factura-propuesta-emitir')).toHaveTextContent(/^Emitir la factura$/);
     await act(async () => {
@@ -191,6 +212,293 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(mockConfirmar).toHaveBeenCalledWith('presu-12');
     await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
     expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Factura emitida\./);
+  });
+
+  describe('SM-H1: Editar · Cancelar · Emitir sobre el mismo workflow', () => {
+    function textoDe(testID: string) {
+      return screen.getByTestId(testID);
+    }
+
+    async function tocar(testID: string) {
+      await fireEvent.press(screen.getByTestId(testID));
+    }
+
+    it('los tres botones van en ese orden', async () => {
+      await montar();
+
+      const fila = screen.getByTestId('factura-propuesta-botones');
+      const orden = fila.children.map((b) => (b as unknown as { props: { testID: string } }).props.testID);
+      expect(orden).toEqual([
+        'factura-propuesta-editar',
+        'factura-propuesta-cancelar',
+        'factura-propuesta-emitir',
+      ]);
+    });
+
+    it('con faltantes no hay Emitir, y Editar abre el dato que falta sin salir del hilo', async () => {
+      const faltante = { codigo: 'cliente', campo: 'receptor', mensaje: 'Falta el cliente' };
+      mockEstado.mockResolvedValue(
+        borrador({ estado: 'items_ok', faltantes: [faltante], receptor: null, tokenConfirmacion: null }),
+      );
+      await montar(propuesta({ faltantes: ['cliente'] }));
+
+      await waitFor(() => expect(textoDe('factura-propuesta-faltantes')).toHaveTextContent('Falta el cliente'));
+      expect(screen.queryByTestId('factura-propuesta-emitir')).toBeNull();
+      await tocar('factura-propuesta-editar');
+
+      expect(await screen.findByTestId('factura-propuesta-editar-cliente')).toBeTruthy();
+      expect(mockConfirmar).not.toHaveBeenCalled();
+    });
+
+    it('la misma frase de varios faltantes se muestra una sola vez', async () => {
+      const mensaje = 'ARCA exige el período del servicio';
+      mockEstado.mockResolvedValue(
+        borrador({
+          estado: 'items_ok',
+          faltantes: [
+            { codigo: 'periodo', campo: 'fch_serv_desde', mensaje },
+            { codigo: 'periodo', campo: 'fch_serv_hasta', mensaje },
+            { codigo: 'cliente', campo: 'receptor', mensaje: 'Falta el cliente' },
+          ],
+          tokenConfirmacion: null,
+        }),
+      );
+      await montar(propuesta({ faltantes: ['periodo'] }));
+
+      await waitFor(() =>
+        expect(textoDe('factura-propuesta-faltantes')).toHaveTextContent(`${mensaje} · Falta el cliente`),
+      );
+    });
+
+    it('mientras Cancelar espera al servidor, el botón no dice «Emitiendo…»', async () => {
+      await montar();
+      let soltar: (v: { ok: true }) => void = () => undefined;
+      mockCancelar.mockReturnValue(new Promise((r) => { soltar = r; }));
+
+      await tocar('factura-propuesta-cancelar');
+
+      await waitFor(() => expect(mockCancelar).toHaveBeenCalled());
+      expect(textoDe('factura-propuesta-emitir')).toHaveTextContent('Emitir la factura');
+      expect(screen.queryByText('Emitiendo…')).toBeNull();
+      expect(mockConfirmar).not.toHaveBeenCalled();
+
+      await act(async () => {
+        soltar({ ok: true });
+      });
+    });
+
+    describe('Cancelar', () => {
+      it('cancela de verdad y deja un recibo sin botones', async () => {
+        mockCancelar.mockResolvedValue({ ok: true });
+        await montar();
+        mockEstado.mockResolvedValue(borrador({ estado: 'cancelada', terminado: true, tokenConfirmacion: null }));
+
+        await tocar('factura-propuesta-cancelar');
+
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-cancelada')).toBeTruthy());
+        expect(mockCancelar).toHaveBeenCalledWith('presu-12');
+        expect(screen.getByTestId('factura-propuesta-cancelada')).toHaveTextContent(/Factura cancelada/);
+        expect(screen.queryByTestId('factura-propuesta-emitir')).toBeNull();
+        expect(screen.queryByText(/Confirmado|emitida\./)).toBeNull();
+      });
+
+      it('una factura ya emitida no se presenta como cancelada: el 409 lleva al comprobante', async () => {
+        mockCancelar.mockRejectedValue(new ApiError(409, 'conflicto', undefined, { code: 'confirmacion_no_tomada' }));
+        await montar();
+        mockEstado.mockResolvedValue(emitida());
+
+        await tocar('factura-propuesta-cancelar');
+
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
+        expect(screen.queryByTestId('factura-propuesta-cancelada')).toBeNull();
+      });
+
+      it('si falla y sigue abierta lo dice, y la factura sigue ahí', async () => {
+        mockCancelar.mockRejectedValue(new Error('red'));
+        await montar();
+
+        await tocar('factura-propuesta-cancelar');
+
+        await waitFor(() => expect(textoDe('factura-propuesta-error')).toHaveTextContent(/No pudimos cancelarla/));
+        expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
+      });
+
+      it('al recargar una factura cancelada no vuelven los botones', async () => {
+        mockEstado.mockResolvedValue(borrador({ estado: 'cancelada', terminado: true, tokenConfirmacion: null }));
+        await montar();
+
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-cancelada')).toBeTruthy());
+        expect(screen.queryByTestId('factura-propuesta-botones')).toBeNull();
+      });
+
+      it('cancelada por chat con la card en pantalla: la card se entera sola', async () => {
+        jest.useFakeTimers();
+        try {
+          await montar();
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(0);
+          });
+          expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
+
+          mockEstado.mockResolvedValue(borrador({ estado: 'cancelada', terminado: true, tokenConfirmacion: null }));
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(5000);
+          });
+
+          expect(screen.getByTestId('factura-propuesta-cancelada')).toBeTruthy();
+          expect(screen.queryByTestId('factura-propuesta-emitir')).toBeNull();
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it('rechazada por ARCA: no se presenta como emitida aunque esté marcada resuelta', async () => {
+        mockEstado.mockResolvedValue(
+          borrador({ estado: 'rechazada', motivo: 'CUIT inválido', motivoCodigo: 'rechazo_afip', terminado: true }),
+        );
+        await montar(propuesta(), { resuelto: true });
+
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-rechazada')).toHaveTextContent(/CUIT inválido/));
+        expect(screen.queryByTestId('factura-propuesta-emitida')).toBeNull();
+      });
+
+      it('el workflow ya no existe (404): lo dice, sin botones que no pueden andar', async () => {
+        mockEstado.mockRejectedValue(new ApiError(404, 'no encontrada'));
+        await montar();
+
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-no-disponible')).toBeTruthy());
+        expect(screen.queryByTestId('factura-propuesta-botones')).toBeNull();
+      });
+    });
+
+    describe('Editar', () => {
+      async function abrir(selector: string) {
+        await tocar('factura-propuesta-editar');
+        await tocar(selector);
+      }
+
+      it('cliente: arranca con lo cargado, manda el dato al mismo workflow y vuelve a la card', async () => {
+        const nuevo = borrador({
+          receptor: { condicionIva: 5, tipoDoc: 80, nroDoc: '20304050607', nombre: 'Lucía Gómez', domicilio: '' },
+        });
+        mockSetCliente.mockResolvedValue({ ok: true });
+        mockEco.mockResolvedValue({ estado: nuevo, cambio: true });
+        await montar();
+
+        await abrir('factura-propuesta-menu-cliente');
+        await screen.findByTestId('factura-propuesta-editar-cliente');
+        await fireEvent.changeText(screen.getByDisplayValue('Juan Pérez'), 'Lucía Gómez');
+        await tocar('factura-propuesta-editar-cliente-continuar');
+
+        await waitFor(() => expect(textoDe('factura-propuesta-cliente')).toHaveTextContent(/Lucía Gómez/));
+        expect(mockSetCliente).toHaveBeenCalledWith('presu-12', {
+          condicionIva: 5,
+          tipoDoc: 80,
+          nroDoc: '20304050607',
+          nombre: 'Lucía Gómez',
+          domicilio: '',
+        });
+        // Editar no emite, y la vuelta deja los tres botones.
+        expect(mockConfirmar).not.toHaveBeenCalled();
+        expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
+      });
+
+      it('datos de venta: arrancan con lo cargado y van por su señal', async () => {
+        mockSetDatosVenta.mockResolvedValue({ ok: true });
+        mockEco.mockResolvedValue({ estado: borrador(), cambio: false });
+        await montar();
+
+        await abrir('factura-propuesta-menu-datos-venta');
+        await screen.findByTestId('factura-propuesta-editar-datos-venta');
+        await tocar('factura-propuesta-editar-datos-venta-continuar');
+
+        await waitFor(() =>
+          expect(mockSetDatosVenta).toHaveBeenCalledWith(
+            'presu-12',
+            expect.objectContaining({ fecha: '2026-11-02', concepto: 1, condicionVenta: 'contado' }),
+          ),
+        );
+      });
+
+      it('🔴 cambiar el documento borra la marca «De tu registro»: ese dato ya no salió del registro', async () => {
+        const conMarca = propuesta({
+          cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CONSUMIDOR_FINAL', del_registro: true },
+        });
+        await montar(conMarca);
+        await waitFor(() => expect(screen.getByTestId('factura-propuesta-cliente-registro')).toBeTruthy());
+
+        mockEstado.mockResolvedValue(
+          borrador({ receptor: { condicionIva: 5, tipoDoc: 80, nroDoc: '27111111112', nombre: 'Otra', domicilio: '' } }),
+        );
+        await tocar('factura-propuesta-editar');
+
+        await waitFor(() => expect(screen.queryByTestId('factura-propuesta-cliente-registro')).toBeNull());
+      });
+
+      it('ítem: se reemplaza agregando primero y quitando después, y la card muestra el total nuevo', async () => {
+        const conLosDos = borrador({
+          items: [
+            { descripcion: 'Service de aire', cantidad: '1', precioUnitario: '50000', subtotal: '50000.00' },
+            { descripcion: 'Service de aire', cantidad: '1', precioUnitario: '70000', subtotal: '70000.00' },
+          ],
+          total: '120000',
+        });
+        const final = borrador({
+          items: [{ descripcion: 'Service de aire', cantidad: '1', precioUnitario: '70000', subtotal: '70000.00' }],
+          total: '70000',
+        });
+        mockAgregar.mockResolvedValue({ ok: true });
+        mockQuitar.mockResolvedValue({ ok: true });
+        mockEco.mockResolvedValueOnce({ estado: conLosDos, cambio: true }).mockResolvedValueOnce({ estado: final, cambio: true });
+        await montar();
+
+        await abrir('factura-propuesta-menu-items');
+        await tocar('factura-propuesta-editar-items-editar-0');
+        await fireEvent.changeText(screen.getByDisplayValue('50000'), '70000');
+        await tocar('factura-propuesta-editar-items-agregar');
+
+        await waitFor(() => expect(mockQuitar).toHaveBeenCalledWith('presu-12', 0));
+        expect(mockAgregar).toHaveBeenCalledWith(
+          'presu-12',
+          expect.objectContaining({ descripcion: 'Service de aire', cantidad: '1', precioUnitario: '70000' }),
+        );
+        expect(mockAgregar.mock.invocationCallOrder[0]!).toBeLessThan(mockQuitar.mock.invocationCallOrder[0]!);
+        // La segunda espera compara contra el estado con los dos ítems, no contra el de antes de agregar.
+        expect(mockEco.mock.calls[1]![1]).toBe(conLosDos);
+
+        await tocar('factura-propuesta-editar-items-volver');
+        expect(textoDe('factura-propuesta-total')).toHaveTextContent('Total: 70000');
+      });
+
+      it('si guardar falla lo dice y no vuelve a la card como si hubiera andado', async () => {
+        mockSetCliente.mockRejectedValue(new Error('red'));
+        await montar();
+
+        await abrir('factura-propuesta-menu-cliente');
+        await screen.findByTestId('factura-propuesta-editar-cliente');
+        await tocar('factura-propuesta-editar-cliente-continuar');
+
+        await waitFor(() => expect(textoDe('factura-propuesta-error')).toHaveTextContent(/No pudimos guardar/));
+        expect(screen.getByTestId('factura-propuesta-editar-cliente')).toBeTruthy();
+      });
+    });
+
+    it('🔴 si la factura cambió desde la última lectura, Emitir no emite: repinta y pide revisar', async () => {
+      await montar();
+      await waitFor(() => expect(mockEstado).toHaveBeenCalled());
+      mockEstado.mockResolvedValue(
+        borrador({
+          items: [{ descripcion: 'Otro', cantidad: '1', precioUnitario: '99', subtotal: '99.00' }],
+          total: '99',
+        }),
+      );
+
+      await tocar('factura-propuesta-emitir');
+
+      await waitFor(() => expect(textoDe('factura-propuesta-error')).toHaveTextContent(/cambió/));
+      expect(mockConfirmar).not.toHaveBeenCalled();
+      expect(textoDe('factura-propuesta-total')).toHaveTextContent('Total: 99');
+    });
   });
 
   describe('el comprobante en el chat — CAE + abrir/compartir el PDF', () => {
@@ -243,7 +551,6 @@ describe('TarjetaFacturaPropuesta', () => {
         emitida: true,
         estado: emitida({ estado: 'emitida', pdf: null, terminado: false }),
       });
-      mockEstado.mockResolvedValue(emitida());
       jest.useFakeTimers();
       try {
         await montar();
@@ -251,6 +558,7 @@ describe('TarjetaFacturaPropuesta', () => {
         await act(async () => {
           fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
         });
+        mockEstado.mockResolvedValue(emitida());
 
         // La ventana entre el CAE y el PDF: el CAE ya se muestra, el PDF se anuncia como en camino.
         expect(screen.getByTestId('factura-propuesta-emitida-cae')).toBeTruthy();
@@ -288,27 +596,9 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
   });
 
-  it('faltantes no vacío → botón "Completar a mano", sin Emitir', async () => {
-    await montar(propuesta({ faltantes: ['cliente'] }));
-
-    expect(screen.queryByTestId('factura-propuesta-emitir')).toBeNull();
-    expect(screen.getByTestId('factura-propuesta-completar')).toBeTruthy();
-    expect(mockConfirmar).not.toHaveBeenCalled();
-  });
-
-  it('🔴 "Completar a mano" NAVEGA de verdad, al mismo borrador — no crea uno nuevo', async () => {
-    await montar(propuesta({ faltantes: ['cliente'] }));
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('factura-propuesta-completar'));
-    });
-
-    expect(mockPush).toHaveBeenCalledWith({ pathname: '/facturacion', params: { facturaId: 'presu-12' } });
-  });
-
   /**
-   * GUARDM parte 2 — guard cross-remount patrón B. Único camino terminal real: `emitida` (emitir es
-   * un acto fiscal irreversible; "Completar a mano" no marca nada, ver docstring de la card). Al
+   * GUARDM parte 2 — guard cross-remount patrón B. Lo único que se persiste es `emitida` (emitir es
+   * un acto fiscal irreversible; cancelada la dice el workflow en cada lectura). Al
    * rehidratar ya emitida, el comprobante NO viaja en el mensaje: se re-consulta con `estadoFactura`.
    */
   describe('guard cross-remount (patrón B)', () => {
@@ -326,7 +616,7 @@ describe('TarjetaFacturaPropuesta', () => {
       await montar();
 
       expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
-      expect(mockEstado).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('factura-propuesta-emitida')).toBeNull();
     });
 
     it('al emitir con éxito, llama a `onResolver`', async () => {
