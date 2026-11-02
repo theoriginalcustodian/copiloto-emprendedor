@@ -78,7 +78,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ult… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al e… |
@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal s… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -119,6 +119,41 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
+
+# Enmiendas FUNDADAS al mapa — el « salvo lo que definimos », escrito
+
+**La cadena del sprint es `relevamiento → artefacto (el mapa) → plan`**, y está citada arriba
+(`Fuente de los hechos`, @`3c439cb4`). El criterio del operador, 2026-11-02: *«lo más importante de
+este sprint es dejar la app móvil tal cual definimos y como está en el mapa — debemos respetar los
+diseños salvo en los casos que definimos otras cosas»*.
+
+**Esta sección existe porque la segunda mitad de esa frase no estaba escrita en ninguna parte
+versionada.** Las enmiendas decididas vivían en docs sueltos y en contratos de `coordinacion/`, que
+**no se versiona** y no sobrevive a un clon. Consecuencia medida: tres veces en un día una sesión
+comparó la app con el mapa y reportó como **defecto** algo decidido a propósito. Un gate no puede
+distinguir una cosa de la otra si la decisión no tiene dónde leerse.
+
+**Regla de uso, antes de implementar o de abrir un hallazgo:** `grep "ENMIENDA FUNDADA"` en este doc.
+Una divergencia que figura acá **no es un defecto** y no abre ficha. Una que no figura, sí — y si
+alguien la cree decidida, primero la trae acá con su fundamento.
+
+**Qué hace FUNDADA a una enmienda**, y no es el tamaño: (1) nombra la divergencia concreta contra el
+mapa; (2) da el `path:línea` del código o del mapa que la sostiene; (3) dice **por qué** gana la app
+— capacidad real que se perdería, dato que el usuario viene a buscar, o una decisión previa (acta,
+`DEC-*`) que el mapa no alcanzó a reflejar. Sin las tres, es una divergencia sin decidir.
+
+| # | Enmienda | Fundamento | `path:línea` |
+|---|---|---|---|
+| E-1 | **BUSCAR en Gastos se queda**, el mapa no lo dibuja | buscar sobre el histórico es función real y ya implementada; retirarla es perder capacidad | `apps/mobile/src/modules/gastos/PantallaGastos.tsx:290` (`BuscadorActividad funcion="gastos"`) |
+| E-2 | **«Te deben» en Facturación se queda**, el mapa no la dibuja | es el dato que el emprendedor viene a mirar, con antigüedad de impagas | `apps/mobile/src/modules/facturacion/SeccionMeDeben.tsx:39` |
+| E-3 | **El chip «N facturas · N impaga» NO se agrega** | la portada no trae conteos; derivarlos del listado paginado da un número que depende de cuántas páginas se bajaron → **dos verdades para una pregunta** | `apps/mobile/src/modules/facturacion/ResumenFacturado.tsx:12-14` |
+| E-4 | **Facturación e Inteligencia NO llevan dock de voz** | el contexto de transcripción es un tipo cerrado de cuatro valores y ninguna de las dos está en él; agregarlas no es estilo, es ampliar el contrato | `packages/core/src/api/transcribir.ts:7` |
+| E-5 | **Web conserva `MicFuncion`; mobile pasó a `DockFuncion`** (`SM-I2`) | la paridad web↔mobile queda declarada como excepción **con fecha**, hasta que el dock llegue a web — no es drift sin dueño | `scripts/ci/testid-paridad-excepciones.json` (2026-11-02) |
+| E-6 | **El escritorio no da acceso a Ajustes** y las dos divergencias del mapa de `SM-K7` quedan como están | ver el contrato de `SM-K7`: el mapa pide una entrada que la navegación real no tiene | ficha `SM-K7` |
+
+**Lo que esta sección NO hace:** no absuelve una divergencia por el hecho de estar escrita acá — cada
+fila es revisable por el operador, que es quien decide lo MAYOR. Lo que garantiza es que la decisión
+exista **en un lugar que un clon trae**, en vez de en la memoria de la sesión que la tomó.
 
 # Bloque G · Preparación (wave 0)
 
@@ -401,7 +436,8 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ultimos» en Gastos, «Ticket» en la pastilla de foto). Codigo mergeado en 52e9a85d (#1418, 6/6). Facturacion e Inteligencia NO entran al denominador: ENMIENDA FUNDADA por planificacion — el dock es un prellenador de formulario y esas dos no tienen formulario (factura es asistente con card HITL, bi es lectura), ContextoTranscripcion admite solo gasto/ingreso/presupuesto/cliente (packages/core/src/api/transcribir.ts:7), y en factura un dock seria una SEGUNDA entrada a una accion irreversible, que es lo que el mecanismo de cards existe para evitar. DISPARADOR: van en el BLOQUE 1 de la pasada de device (cualquiera de las dos cuentas sirve para esas 4 pantallas); el telefono lo tiene frontend1 y las saca de corrido con el resto del bloque, rotulando el usuario.
 - **Dueño:** frontend2
 - **Medido:** `gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
   rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».
@@ -613,8 +649,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: el JWT de acceso es stateless; ventana L)
-- **Cierre:** 117dc669 · captura de device 2026-11-02 del ingreso normal sin aviso en docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-K6-ingreso-normal-sin-aviso-lockup-odobi.webp
+- **Falta:** una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal sin aviso que ya existe en 117dc669. CORREGIDO 2026-11-02: este Falta decia 'invalidar la sesion del canonico del lado servidor' y esa premisa era FALSA - apps/copiloto/auth.py:47 valida solo firma+exp+iss y no consulta sesion en GoTrue, asi que el backend no tiene el concepto 'sesion cerrada': a un access token solo le puede pasar VENCER (GOTRUE_JWT_EXP=3600 medido en el contenedor vivo por backend). El disparador del aviso es un 401 en el cliente, no un registro muerto en GoTrue. Consecuencia: SM-K6 YA NO depende de que el operador cierre su sesion ni de la cuenta canonica - sale del bloque 2 y se acredita con cualquier cuenta. Pendiente de backend: codigo y cuerpo exactos ante ExpiredSignatureError, porque si un token vencido y un login fallido llegan al front como el mismo 401 indistinguible, el 'ausente en un ingreso normal' del DoD no se puede implementar bien y ESO es el hallazgo.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
