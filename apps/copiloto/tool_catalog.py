@@ -816,10 +816,10 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
         # la instrucción en prosa ("decíselo en una línea corta") dejaba que el LLM parafraseara con
         # "anoté...revisalo" (verbo de hecho consumado) — medido en device, 2/2 turnos siguientes lo
         # imitaban. Ahora se prohíbe el verbo explícitamente y se da la frase EXACTA a relayar.
-        observation={"result": f"Propuse el gasto (${gasto['monto']}, {categoria}) y se lo muestro en "
+        observation={"result": f"Propuse el gasto ({_plata_corta(gasto['monto'])}, {categoria}) y se lo muestro en "
                                f"una tarjeta para que la revise. TODAVÍA NO está guardado — NO digas "
                                f"\"anoté\", \"listo\" ni \"guardado\" porque no es cierto. Decile "
-                               f"exactamente: \"Te armé un borrador de ${gasto['monto']} en {categoria}, "
+                               f"exactamente: \"Te armé un borrador de {_plata_corta(gasto['monto'])} en {categoria}, "
                                f"revisalo y confirmalo cuando quieras.\""
                                # Sin aviso de fecha a propósito: la card lo muestra pegado al campo,
                                # y preguntarlo por chat mandaría la respuesta al mismo resolvedor que
@@ -1183,10 +1183,10 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
         tool_call_id=idem_key, is_write=False, status="ok",
         # Mismo verbo prohibido que gasto/cliente [[copiloto-narra-la-accion-sin-ejecutarla]]: con la
         # card en pantalla, "anoté"/"listo"/"guardado" son falsos hasta que el emprendedor confirma.
-        observation={"result": f"Propuse el ingreso (${ingreso['monto']}) y se lo muestro en una "
+        observation={"result": f"Propuse el ingreso ({_plata_corta(ingreso['monto'])}) y se lo muestro en una "
                                f"tarjeta para que la revise. TODAVÍA NO está guardado — NO digas "
                                f"\"anoté\", \"listo\" ni \"guardado\" porque no es cierto. Decile "
-                               f"exactamente: \"Te armé un borrador de ${ingreso['monto']}, revisalo "
+                               f"exactamente: \"Te armé un borrador de {_plata_corta(ingreso['monto'])}, revisalo "
                                f"y confirmalo cuando quieras.\""
                                f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}"},
         artifact=Artifact(kind="ingreso_propuesto", data=ingreso))
