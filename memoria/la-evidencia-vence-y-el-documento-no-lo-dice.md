@@ -79,3 +79,41 @@ caducado. Sin ella, la matriz se habría citado como vigente sin que nada fallar
 
 Origen: la sesión de auditoría. Ver [[el-veredicto-no-dice-cuantas-veces-lo-miraron]] ·
 [[medicion-de-estado-volatil-vence]].
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — el relevamiento midió un estado que la app ya había dejado, y por DOS vías distintas
+
+Las dos se parecen desde afuera —«esto ya estaba arreglado»— y tienen causa y remedio opuestos.
+Conflatearlas hace que se arregle una y la otra siga produciendo falsos positivos.
+
+**Vía A — el relevamiento no leyó las DECLARACIONES del código.** Tres ítems que marcó como
+divergencia estaban resueltos **antes** de que corriera (relevamiento 2026-10-16): el clip de
+`soporte` existía desde `#1115` (13-10), el mosaico de 4 muestras de `apar` estaba declarado
+`ENMIENDA FUNDADA` en `PantallaSkins.tsx:145-148` desde el **13-10** (`004ee3ce`, #1051) **con su
+test fijándolo como contrato**, y el dato de `clientes` llegaba desde el 06-10. No es que el estado
+cambió después: el relevamiento comparó **prototipo ↔ captura** y nunca abrió el archivo, donde el
+motivo estaba escrito. Hay **5** declaraciones `ENMIENDA FUNDADA` en el código: es un corpus chico
+y el chequeo es barato.
+
+**Vía B — la ventana ciega entre medir y actuar.** Entre el relevamiento (16-10) y el arranque del
+sprint (02-11) hubo **15 commits que tocaron 17 componentes de pantalla** (`PantallaAjustes`,
+`PantallaApps`, `PantallaClientes`, `PantallaMiDia`, `PantallaInteligencia`, `TarjetaFacturaPropuesta`,
+`PantallaPrincipal`…). Esa ventana no requiere que nadie se equivoque: un mapeo que tarda dos semanas
+en bajar a fichas mide un sujeto que se movió mientras tanto, y **en los dos sentidos** — hay
+divergencias ya arregladas y puede haber nuevas que el relevamiento no vio nacer.
+
+**Why:** un relevamiento se cita como si fuera del día en que se lee. Las tres «premisas vencidas»
+aparecieron de a una, cada vez al intentar la captura, y cada una se explicó sola como caso aislado;
+recién la tercera obligó a medir y mostró que el denominador del sprint estaba inflado por
+construcción. Lo peligroso no es el falso positivo —cuesta una lectura— es que **el ítem vencido se
+implementa**: se «arregla» algo que ya estaba bien y el diff queda pareciendo trabajo.
+
+**How to apply:** dos controles, uno por vía.
+1. Antes de implementar una ficha de divergencia, **abrí el archivo destino y grepeá
+   `ENMIENDA FUNDADA` y la fecha del fix** (`git log -S` del síntoma). Si el código ya declara el
+   motivo, la ficha cierra como premisa vencida y lo que se corrige es **el mapa**, no la app.
+2. Todo relevamiento lleva **su fecha y su sha** en cada ítem, y al bajarlo a fichas se re-mide lo
+   que cambió desde ese sha (`git log <sha>..origin/main -- <paths>`). Una medición sin ventana
+   declarada se cita como vigente para siempre
+   ([[la-cita-de-procedencia-muere-en-el-merge]] · [[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]]).
