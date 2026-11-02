@@ -15,7 +15,7 @@ cd "$TMP" || exit 1
 git init -q .; git config user.email t@t.t; git config user.name t
 mkdir -p docs/copiloto-emprendedor
 # El padrón sintético: estos son los únicos ids "autorizados" para el test.
-printf '| BL-J9 | algo | PENDIENTE |\n| DEC-14 | otra | FIRMADA |\n| M-00 | tercera | ABIERTA |\n' \
+printf '| BL-J9 | algo | PENDIENTE |\n| DEC-14 | otra | FIRMADA |\n| M-00 | tercera | ABIERTA |\n| SM-G1 | ficha del sprint vivo | PENDIENTE |\n' \
   > docs/copiloto-emprendedor/2026-01-01-backlog-de-prueba-con-dod.md
 git add -A >/dev/null; git commit -qm "base: padron de prueba"
 git branch -q -M main; git remote add origin . 2>/dev/null || true
@@ -25,7 +25,7 @@ fallos=0
 # El total del resumen NO se escribe a mano: `ok` cuenta y el cierre COMPARA. Medido el
 # 2026-10-13 en el test hermano: el resumen decia `14/14` literal mientras corrian 18
 # aserciones. Un veredicto que no cuenta lo que miro absuelve a un bloque que no se ejecuto.
-ASERCIONES_ESPERADAS=11
+ASERCIONES_ESPERADAS=12
 oks=0
 chk() { # chk <nombre> <esperado-en-salida> <esperado-exit> <bloquea> <rango>
   local nom="$1" pat="$2" exp_rc="$3" bl="$4" rango="$5" out rc
@@ -115,6 +115,39 @@ rm -f docs/copiloto-emprendedor/*backlog*.md
 git add -A >/dev/null; git commit -qm "quito el padron"
 chk "8· padrón vacío: avisa en vez de aprobar por vacío" "salió VACÍO" 0 0 "$BASE..HEAD"
 
+# --- 12) CANARIO DEL PAR: todo id del PADRON tiene que ser CITABLE por `ids_citados_en`.
+# El universo (el padrón) y su lector (`RE_ID`) son dos piezas distintas, y el 2026-11-02 no
+# compartían alfabeto: `RE_ID` topaba en `SM-[A-F]` y el sprint vivo usa `G`..`L` ⇒ el gate era
+# CIEGO a las 36 fichas y las clasificaba SIN-ID aunque el asunto citara la ficha.
+# **No daba síntoma, y hay una razón peor que el tope:** `SIN-ID` se lee como «no citaron el id»,
+# que es conducta; así que el comentario de `atribucion.sh` ya había absuelto al instrumento con esa
+# lectura («0 de 25 asuntos citan un id… ese número es conducta, no ceguera del instrumento»). La
+# ceguera venía firmada como diagnóstico.
+# Es el mismo eje que `canario-alfabeto-padron.py` —universo y lector sin alfabeto compartido— sobre
+# el par que aquél no cubre. Un canario por eje y no por par deja pares mudos.
+# `cd "$TMP"` explicito: un caso anterior trabaja en `tab/` y deja el PWD ahi. Sin esto el
+# glob del universo sale VACIO y el canario mide 0 ids -- el guard `total > 0` lo caza, pero
+# el sintoma (0 de 0) no se parece a la causa (estoy en otro directorio).
+cd "$TMP" || exit 1
+git reset -q --hard "$BASE"
+. "$(dirname "$GATE")/lib-padron.sh"
+" " ")"
+universo="$(grep -ohE '[A-Z]{1,4}-[A-Z0-9]+' docs/copiloto-emprendedor/*.md | sort -u)"
+ilegibles=0; total=0
+while IFS= read -r id; do
+  [ -z "$id" ] && continue
+  total=$((total + 1))
+  citado="$(printf 'docs(x): %s algo\n' "$id" | ids_citados_en "$PWD" | grep -cx "$id" || true)"
+  if [ "$citado" -eq 0 ]; then ilegibles=$((ilegibles + 1)); echo "       | ILEGIBLE para RE_ID: $id"; fi
+done <<< "$universo"
+if [ "$total" -gt 0 ] && [ "$ilegibles" -eq 0 ]; then
+  printf '  ✅ %-52s (%s ids, todos citables)\n' '12· canario del par: padrón <-> lector' "$total"
+  oks=$((oks + 1))
+else
+  printf '  ❌ %-52s (%s de %s ILEGIBLES)\n' '12· canario del par: padrón <-> lector' "$ilegibles" "$total"
+  fallos=$((fallos + 1))
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
   corridas=$((oks + fallos))
@@ -122,7 +155,7 @@ if [ "$fallos" -eq 0 ]; then
     echo "❌ test-atribucion: corrieron $corridas de $ASERCIONES_ESPERADAS — faltaron aserciones (un caso que no se ejecuta NO da sintoma)"
     exit 1
   fi
-  echo "✅ test-atribucion: $oks/$ASERCIONES_ESPERADAS — incluye el control positivo del NO (casos 5 y 7) y el id del TABLERO (10, 11)"
+  echo "✅ test-atribucion: $oks/$ASERCIONES_ESPERADAS — incluye el control positivo del NO (casos 5 y 7) el id del TABLERO (10, 11) y el canario del par padron<->lector (12)"
   exit 0
 fi
 echo "❌ test-atribucion: $fallos caso(s) fallaron"
