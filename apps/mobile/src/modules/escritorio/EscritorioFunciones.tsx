@@ -293,7 +293,9 @@ const styles = StyleSheet.create({
   // del teléfono, que es lo que hace que el grid entre igual en un 360 y en un 430.
   // Sin `height`: el alto sale solo y es el mismo en todas las cards porque el bloque de la etiqueta
   // mide siempre igual (ver `ALTO_LABEL`).
-  tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  // `paddingHorizontal` chico porque el rótulo es lo más ancho de la casilla: con los 16 de `Tile`
+  // «Presupuestos» se partía (SM-N6).
+  tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 6 },
   labelTile: { fontSize: 11.5, lineHeight: 14, height: ALTO_LABEL, textAlign: 'center' },
   encabezadoReciente: { marginBottom: 10 },
   listaReciente: { gap: 8, paddingBottom: 180 },

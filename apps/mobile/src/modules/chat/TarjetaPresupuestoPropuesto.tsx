@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking } from 'react-native';
 
 import {
   formatearImporteSinCentavosCero,
   mailtoMandarPresupuesto,
+  obtenerPresupuesto,
   type ChatMessage,
   type Presupuesto,
   type PresupuestoPropuesto,
@@ -69,22 +70,41 @@ export function TarjetaPresupuestoPropuesto({
   // async) — sin `useEffect` de lectura ni estado `leido` que gatee el primer render.
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
   const [numero, setNumero] = useState<number | null>(resuelto?.estado === 'guardado' ? resuelto.numero : null);
-  // Sólo de sesión viva: lo persistido en el mensaje es `numero` (GUARDM). Al rehidratar un guardado el
-  // recibo queda con el título y el N°, sin las líneas de datos ni el enlace «Doc».
+  // Sólo de sesión viva: es lo que devolvió el alta, con su estado y su enlace «Doc».
   const [creado, setCreado] = useState<Presupuesto | null>(null);
+  // Al rehidratar: el mensaje guarda el `id`, no una copia, y de lo releído salen importe y cliente (SM-N5). Un
+  // mensaje anterior a ese campo, o una relectura que falla, deja el recibo con el título y el N°.
+  const [releido, setReleido] = useState<Presupuesto | null>(null);
+  const idPorReleer = creado == null && resuelto?.estado === 'guardado' ? resuelto.id : undefined;
   // `sugerencias.mandarPorMail` sólo viene con un Doc ya generado (backend `presupuesto_sugerencias.py`).
   const [sugerencias, setSugerencias] = useState<SugerenciasPresupuesto | null>(null);
 
+  useEffect(() => {
+    if (idPorReleer == null) return;
+    let vivo = true;
+    void obtenerPresupuesto(idPorReleer)
+      .then((res) => {
+        if (vivo && res.status === 'ok') setReleido(res.presupuesto);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [idPorReleer]);
+
   if (estado === 'guardado') {
     const detalle: string[] = [];
-    if (creado != null) {
+    const datos = creado ?? releido;
+    if (datos != null) {
       detalle.push(
-        [formatearImporteSinCentavosCero(creado.total), creado.receptor.nombre]
+        [formatearImporteSinCentavosCero(datos.total), datos.receptor.nombre]
           .filter((v) => v.trim() !== '')
           .join(' · '),
       );
-      // Sólo con el dato del backend: al rehidratar no se muestra, porque el presupuesto pudo haberse
-      // aprobado después y lo persistido en el mensaje es únicamente el número.
+    }
+    if (creado != null) {
+      // Sólo recién guardado: al rehidratar el estado no se muestra, porque el recibo es de cuando se anotó y
+      // el presupuesto pudo haberse aprobado después.
       const situacion = [
         ...(creado.estado === 'pendiente' ? ['Pendiente'] : []),
         ...(creado.docLink != null ? ['Doc listo para mandar'] : []),
@@ -140,7 +160,7 @@ export function TarjetaPresupuestoPropuesto({
           setCreado(p);
           setSugerencias(sug);
           setEstado('guardado');
-          onResolver?.({ estado: 'guardado', numero: p.numero });
+          onResolver?.({ estado: 'guardado', numero: p.numero, id: p.id });
         }}
         etiquetaCancelar="Descartar"
         onCancelar={() => {
