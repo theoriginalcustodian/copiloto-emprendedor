@@ -31,6 +31,7 @@ import {
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
 import { useTema } from '../../../theme/ThemeProvider';
 import { pressableStyle } from '../../../theme/glass/presion';
+import { useSession } from '../../auth';
 
 /**
  * `PantallaAfipSetup` — F5: perfil fiscal + alta ante ARCA + selector de ambiente.
@@ -337,6 +338,10 @@ export function PantallaAfipSetup() {
   const [usuarioArca, setUsuarioArca] = useState('');
   const [claveArca, setClaveArca] = useState('');
   const [ambienteObjetivo, setAmbienteObjetivo] = useState<AmbienteAfip | null>(null);
+  // SM-K1: Homologación es sólo del admin. `es_admin` sólo decide qué se MUESTRA; el que rechaza es el
+  // backend (403 `homologacion_solo_admin`; ambiente omitido para un no-admin → 422 `ambiente_requerido`).
+  const esAdmin = useSession().me?.es_admin === true;
+  const ambientesVisibles: readonly AmbienteAfip[] = esAdmin ? ['dev', 'prod'] : ['prod'];
   const [enviandoArca, setEnviandoArca] = useState(false);
   const [errorArca, setErrorArca] = useState<string | null>(null);
 
@@ -432,7 +437,8 @@ export function PantallaAfipSetup() {
         cuit,
         usuario: usuarioArca,
         claveFiscal: claveEnviada,
-        ambiente: ambienteObjetivo ?? undefined,
+        // No-admin: SIEMPRE explícito. El backend ya no lo resuelve a `dev` por defecto (SM-K1).
+        ambiente: ambienteObjetivo ?? (esAdmin ? undefined : 'prod'),
       });
       if (res.status === 'no_disponible') {
         setErrorArca('La vinculación con ARCA todavía no está disponible. Probá más tarde.');
@@ -526,9 +532,9 @@ export function PantallaAfipSetup() {
   const ambientesVinculados = estadoGeneral?.ambientesVinculados;
   // SM-K2: el ambiente al que va a vincular el formulario. Si se pidió «otro ambiente» sin elegir,
   // es el que todavía no está vinculado; si no se puede saber, no se afirma ninguno.
-  const ambienteDestino: AmbienteAfip | null =
-    ambienteObjetivo ??
-    (ambientesVinculados != null ? (['dev', 'prod'] as const).find((e) => !ambientesVinculados.includes(e)) ?? null : null);
+  const ambientePendiente =
+    ambientesVinculados != null ? ambientesVisibles.find((e) => !ambientesVinculados.includes(e)) : undefined;
+  const ambienteDestino: AmbienteAfip | null = ambienteObjetivo ?? ambientePendiente ?? (esAdmin ? null : 'prod');
 
 
   // -------------------------------------------------------------------------------------------
@@ -884,8 +890,9 @@ export function PantallaAfipSetup() {
         <Seccion titulo="3. Ambiente" testID="afip-bloque-ambiente">
           <View style={{ gap: tema.espacio.sm }}>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Homologación — facturas de prueba, sin efecto fiscal. Producción — comprobantes fiscales
-              reales.
+              {esAdmin
+                ? 'Homologación — facturas de prueba, sin efecto fiscal. Producción — comprobantes fiscales reales.'
+                : 'Producción — comprobantes fiscales reales.'}
             </Text>
 
             {ambientesVinculados == null ? (
@@ -901,7 +908,7 @@ export function PantallaAfipSetup() {
               </Text>
             ) : (
               <View testID="afip-ambiente-lista" style={styles.chipsAmbiente}>
-                {(['dev', 'prod'] as const).map((env) => {
+                {ambientesVisibles.map((env) => {
                   const vinculado = ambientesVinculados.includes(env);
                   const activo = estadoGeneral?.ambiente === env;
                   // SM-K2: el recuadro ENTERO es lo tocable (antes sólo el texto «Vincular»/«Usar este»)
