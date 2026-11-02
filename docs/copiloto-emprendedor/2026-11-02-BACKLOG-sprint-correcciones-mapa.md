@@ -97,7 +97,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
-| **SM-N2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -692,7 +692,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N2 · `sin-issue` — El agente pide período/vencimiento aunque la descripción lo prohibe
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar la pregunta de la observación. Sonda de 12 en prod: 12/12 card (antes 9/12), 0/12 piden período/documento. Tests VPS 62 passed. SM-N2
 - **Dueño:** backend
 - **Medido:** 3 de los 12 dictados piden **período o vencimiento de servicio** a pesar de la consigna
   de `emitir_factura` que lo prohibe explícitamente (deploy `c0219797`, #1343).
