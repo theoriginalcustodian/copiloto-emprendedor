@@ -7,6 +7,7 @@ import {
   calcularTotalAproximado,
   crearPresupuesto,
   formatearImporte,
+  formatearImporteSinCentavosCero,
   listarConceptos,
   normalizarDecimal,
   type Concepto,
@@ -401,7 +402,7 @@ export function FormularioPresupuesto({
       {/* 🔴 "aproximado" en el texto, no decorativo: el total definitivo lo calcula el backend. */}
       {aproximado != null && (
         <Text testID={`${testID}-total-aproximado`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Total aproximado: {formatearImporte(aproximado)} — el definitivo lo calcula el sistema al
+          Total aproximado: {formatearImporteSinCentavosCero(aproximado)} — el definitivo lo calcula el sistema al
           guardar.
         </Text>
       )}
