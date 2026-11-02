@@ -99,6 +99,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
+| **SM-N4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -740,3 +744,103 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Barrer el resto de `catalog.py`: **cuántos otros textos afirman una capacidad** y cuántos
      tienen test. El número va en el `cierre_`, aunque sea 0.
 - **Tope:** no se reescriben los textos del catálogo en esta ficha. Lo que se agrega es el amarre.
+### SM-N4 · `sin-issue` — Un rectángulo claro de esquinas rectas detrás del contenido de las cards del chat
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device (`RF8T318RN9T`, canónico, 2026-11-02 15:38-15:45), en las cards de
+  factura y de presupuesto: un rectángulo más claro detrás del contenido, con esquinas rectas que se
+  salen del borde redondeado de la card. Se ve en `SM-H6-1-factura-emitida-con-cliente-y-mail.webp` y
+  `SM-H5-2-recibo-con-importe-y-pendiente.webp` (rama `frontend1/sm-h5-h6-cards`).
+- **⚠️ El primer paso del DoD es descartar el INSTRUMENTO, no diagnosticar el defecto.** Las dos
+  evidencias son capturas de `screencap`, y `screencap` compone la pantalla por su cuenta: puede
+  **fabricar** un borde que el ojo no ve (aplana capas, pierde el alfa de un vidrio, ignora el
+  recorte del `borderRadius` del padre). Frontend1 fue explícita en que **no lo miró a ojo**. Si se
+  entra a diagnosticar la sombra o `TarjetaPropuestaShell` antes de ese control, se puede pasar una
+  sesión arreglando algo que en la pantalla no existe — y el «fix» va a parecer que funciona, porque
+  la próxima captura también va a cambiar.
+- **DoD:**
+  1. **Control del instrumento, primero:** mirar las dos cards en la pantalla del teléfono **sin
+     capturar**, con el canónico. Reportar si el rectángulo está a ojo. **Si NO está a ojo, la ficha
+     cierra `TERMINADO` como artefacto de `screencap`** — con esa frase escrita, porque lo que se
+     retira es la causa, no la observación.
+  2. Sólo si está a ojo: comparar con el equivalente de documed (§3.ter) y nombrar la capa (sombra,
+     vidrio del shell, o el recorte del padre) antes de tocar nada.
+  3. Captura de device del antes y el después.
+### SM-N5 · `sin-issue` — El recibo de presupuesto pierde importe y cliente al rehidratar, y el motivo documentado cubre sólo el estado
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device: en vivo la card dice `Presupuesto anotado — N° 3`,
+  `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar`. Tras recargar queda sólo
+  `Presupuesto anotado — N° 3`.
+- **No es un olvido: está decidido en el código, y ahí está el defecto.**
+  `apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx:86-87` lo dice: *«Sólo con el dato del
+  backend: al rehidratar no se muestra, porque el presupuesto pudo haberse aprobado después y lo
+  persistido en el mensaje es únicamente el número»*. El motivo es **correcto para el estado** —
+  «Pendiente» puede haber cambiado solo — y **no aplica al importe ni al cliente**, que no cambian por
+  su cuenta. El comentario mete los tres en la misma bolsa y, al declarar un motivo, **apaga la
+  pregunta**: quien lo lee ve una decisión tomada, no un alcance por revisar.
+- **⚠️ Medido por planificación (2026-11-02, contra `origin/main`) — la opción que frontend1 propuso
+  primero NO tiene endpoint, y la otra tampoco es la correcta:**
+  - «Que la card relea el presupuesto por su **número**» no se puede: `numero` es un **correlativo por
+    tenant** (`presupuesto_store.py:265-278`, `max(numero)+1 WHERE cliente_id`), columna **distinta**
+    de `id`. El endpoint de detalle es `GET /presupuestos/{presupuesto_id}` y toma el `id`
+    (`presupuestos_web.py:329`). Releer por número exigiría un endpoint nuevo.
+  - «Guardar importe y cliente en el mensaje» repite el defecto que el propio comentario evita: un
+    snapshot miente igual que el estado el día que el presupuesto se edite.
+  - **Lo que sí existe:** la respuesta de creación devuelve el `presupuesto` completo, con su `id`
+    entero (`presupuestos_web.py:253-305`; `packages/core/src/api/presupuestos.ts:52-53`). Persistir
+    el **`id`** junto al número y releer con el endpoint que ya está es una sola fuente de verdad, sin
+    endpoint nuevo.
+- **Esto NO necesita `contrato_`, y por eso no bajo uno.** Frontend1 lo pidió porque creía que tocaba
+  la junta con backend; medido, no la toca: el dato ya viaja y el endpoint ya existe. Es app pura.
+- **DoD:**
+  1. El mensaje persiste el `id` del presupuesto además del número.
+  2. Al rehidratar, la card relee por `id` y muestra importe y cliente. El **estado sigue sin
+     mostrarse** al rehidratar — eso era correcto y no se cambia.
+  3. Test que afirme la rehidratación con importe y cliente presentes y estado ausente.
+  4. Captura de device: la card recargada con importe y cliente.
+- **Y corregir el comentario `:86-87`** para que su motivo nombre sólo el estado. Un comentario que
+  declara un motivo más amplio que el que lo justifica es lo que hizo que esto viviera sin pregunta.
+### SM-N6 · `sin-issue` — «Presupuestos» se parte en dos líneas en la casilla del escritorio
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device al capturar `SM-G4`: la casilla de Funciones muestra «Presupuesto» y
+  abajo «s». Se ve en `SM-G4-1-mas-0-3s.webp`. El rótulo es el `label: 'Presupuestos'` de
+  `apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx:111` — **verificado por planificación
+  contra `origin/main`**, y este componente es de los que **NO** están duplicados en
+  `apps/copiloto-web/` (única copia, con su `.test.tsx` al lado), así que el hallazgo de las seis
+  copias dobles del `contrato_` del sprint no aplica acá.
+- **Por qué lleva ficha aunque sea una línea:** es el rótulo más largo de la grilla, así que es el
+  **canario del ancho de la casilla**, no un caso suelto. Arreglarlo bajando el tamaño de fuente de
+  esa casilla sola tapa el síntoma y deja al próximo rótulo largo en la misma trampa.
+- **DoD:**
+  1. «Presupuestos» entra en una línea a 390 px.
+  2. El arreglo es de la **casilla**, no de ese rótulo: se verifica con un rótulo de prueba igual o
+     más largo, y la grilla no se rompe.
+  3. Captura de device a 390 px.
+### SM-N7 · `sin-issue` — Cuatro descripciones del catálogo afirman una capacidad de ESCRITURA sin test que la ate
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido por backend en el barrido de `SM-N3`** (punto 3 de su DoD, sha `99097d83` / #1359): en
+  `apps/copiloto/backend/catalog.py` **6 descripciones afirman una capacidad**; tras esa ficha **2 de
+  6** quedan atadas a nivel texto (lectura: Gmail niega, Docs afirma). Las **4 restantes son
+  escrituras, cubiertas sólo por `alcance`** — es decir por el permiso, no por el texto.
+- **Por qué es ficha y no una nota al pie de `SM-N3`:** `SM-N3` cerró con su DoD completo y su tope
+  explícito («no se reescriben los textos; lo que se agrega es el amarre»). El hueco que su barrido
+  **midió** es otro sujeto, y un hallazgo no reabre un ✅. Si queda dentro del `cierre_` de `SM-N3`,
+  muere ahí: un `cierre_` es un entregable y nadie lo persigue.
+- **Y el riesgo no es simétrico con el de lectura.** `SM-N3` ató el caso en que el texto **niega** una
+  capacidad; estas cuatro **afirman** que el agente escribe. `alcance` frena la acción, pero no frena
+  que el texto le prometa al emprendedor algo que el cableado no hace — y una promesa de escritura
+  incumplida se descubre con el efecto esperado ausente, sin error que la delate.
+- **DoD:**
+  1. Las 4 descripciones de escritura atadas al **mecanismo** (`TOOLS`−`WRITE_OPS`, como en `SM-N3`),
+     no a una constante.
+  2. **Control positivo en las dos direcciones** por cada una, como ya se hizo en `SM-N3`: descablear
+     la operación ⇒ rojo; afirmar una capacidad no cableada ⇒ rojo.
+  3. Corrida en el VPS con la salida adjunta, y el conteo final (`6/6` atadas, o el número real con el
+     motivo de lo que quede afuera).
