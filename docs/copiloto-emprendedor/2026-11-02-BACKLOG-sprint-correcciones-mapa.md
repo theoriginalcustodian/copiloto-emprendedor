@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K8** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L co… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -444,7 +444,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar la del canónico del lado servidor, ventana L
+- **Cierre:** 117dc669
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
