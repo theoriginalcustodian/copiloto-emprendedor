@@ -1588,15 +1588,26 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                           observation={"error": "esa factura ya se había emitido; no la reabrí"})
 
     faltantes_codigos = [e.get("codigo") for e in (estado.get("faltantes") or []) if e.get("codigo")]
-    if faltantes_codigos and not continuando:
+    # SM-N2: el período del servicio y el vencimiento (R6) los completa la persona EN la card, con campo
+    # editable (lo dice la descripción de la tool). Medido en prod (historial Temporal): al dictar un
+    # «service» el LLM manda concepto=servicios, la 1ª vez devolvía el mensaje de R6 + «Pedí SÓLO eso», y
+    # esa observación —lo último que lee el modelo— le ganaba a la descripción lejana: preguntaba el
+    # período en el chat. Un faltante que la card ya pide no justifica preguntar antes de armarla.
+    # Seguro por construcción: R6 dispara SÓLO con concepto SERVICIOS/PRODUCTOS_Y_SERVICIOS (`afip_rules.py`),
+    # el mismo conjunto con que `PasoDatosVenta` muestra los 3 campos (`requiereFechasServicio`): nunca hay
+    # un faltante de período sin dónde escribirlo.
+    faltantes_codigos_a_preguntar = [c for c in faltantes_codigos if c != "fecha_servicio_faltante"]
+    if faltantes_codigos_a_preguntar and not continuando:
         # 1ª vez incompleta (DoD §5.1): pregunta, SIN card — el borrador quedó abierto (silencioso)
         # para que ESTA MISMA función lo encuentre si el emprendedor sigue dictando.
         # SM-H4: el genérico «Faltan datos» dejaba al LLM adivinando QUÉ pedir, y adivinaba «CUIT o DNI»
         # aun con «consumidor final» dictado (medido en prod: 2/8). Se le dice QUÉ falta de verdad
         # (los mensajes de `estado.faltantes`, la misma fuente que la card) y que a un consumidor
         # final NO se le pide documento: lo que el monto exija lo pide R5 con su propio mensaje.
-        faltan = [e.get("mensaje") for e in (estado.get("faltantes") or []) if e.get("mensaje")]
-        detalle = errores_dictado[0].mensaje if errores_dictado else (
+        faltan = [e.get("mensaje") for e in (estado.get("faltantes") or [])
+                  if e.get("mensaje") and e.get("codigo") != "fecha_servicio_faltante"]
+        a_preguntar = [e for e in errores_dictado if e.codigo != "fecha_servicio_faltante"]   # SM-N2
+        detalle = a_preguntar[0].mensaje if a_preguntar else (
             "Faltan datos para facturar" + (f": {'; '.join(faltan).rstrip('.')}" if faltan else ""))
         # Si el faltante ES identificar al cliente (supera el tope), la consigna de arriba mentiría.
         pide_identificar = ("supera_tope_sin_identificar" in faltantes_codigos
