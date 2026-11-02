@@ -113,7 +113,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N18** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1272,7 +1272,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N18 · `sin-issue` — FUERA DEL SPRINT: `composio_caidos` avisa de CUALQUIER toolkit que Composio liste, soportado o no
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir la fila
+- **Cierre:** 0046ded4 filtro por toolkits_conectables, fuente unica, tests 2 mitades, VPS 2566 passed
 - **Dueño:** backend (se ofreció al medir `SM-N17`)
 - **De dónde sale:** es la **raíz** del síntoma de `SM-N17` (el aviso de «se cayó la conexión con
   Instagram» en la cuenta del operador). La ficha se separa porque el síntoma y la causa tienen
