@@ -86,3 +86,15 @@ def test_control_positivo_una_tool_que_promete_vencimiento_se_detecta(monkeypatc
         "mp_charge", {"amount": 5000, "concept": "x"}, _ctx(), False, "idem-2", lambda: "t", None).observation,
         ensure_ascii=False)
     assert PROMESA.search(salida), "el detector no caza una promesa de vencimiento"
+
+
+def test_N21_el_preview_del_HITL_lleva_el_importe_formateado_de_4_y_de_7_cifras():
+    """SM-N21: el preview es lo que el usuario lee al autorizar un cobro real a un tercero. `$5000` /
+    `$1234567` crudos son ambiguos justo donde la ambigüedad cambia una decisión."""
+    for amount, esperado, crudo in ((5000, "$5.000", "5000"), (1234567, "$1.234.567", "1234567"),
+                                    (70000.5, "$70.000,50", "70000")):
+        r = tool_catalog._run_mp_charge("mp_charge", {"amount": amount, "concept": "Clase"}, _ctx(),
+                                        False, "idem-1", lambda: "2026-10-13T10:00:00", None)
+        assert r.status == "needs_confirmation"
+        preview = r.observation["preview"]
+        assert f"por {esperado} " in preview and crudo not in preview, preview

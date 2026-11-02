@@ -725,3 +725,67 @@ def test_N21_registrar_gasto_dice_el_monto_formateado_no_el_crudo():
     res = _correr("registrar_gasto", {"monto": "50000", "categoria": "otros"})
     assert "$50.000" in res.observation["result"]
     assert "50000" not in res.observation["result"]
+
+
+# ── SM-N21 (opción C): `reply_literal` en las tools que MUEVEN PLATA ─────────────────────────────
+
+def _con_flag(monkeypatch, valor="1"):
+    monkeypatch.setenv("UC_REPLY_LITERAL", valor)
+
+
+def _cinco_que_mueven_plata():
+    """(nombre, resultado) de las tools de este archivo que escriben/confirman un monto."""
+    cobro = _CobroFake()
+    cobro.registrar_suelto(monto="85000", idem_key="seed-1")
+    return [
+        ("registrar_gasto", _correr("registrar_gasto", {"monto": "50000", "categoria": "otros"})),
+        ("registrar_ingreso", _correr("registrar_ingreso", {"monto": "85000"}, cobro=_CobroFake())),
+        ("completar_ingreso", _correr("completar_ingreso", {"cliente": "Panadería"}, cobro=cobro)),
+        ("marcar_factura_cobrada", _correr("marcar_factura_cobrada", {"factura": "panadería"},
+                                           cobro=_CobroFake(impagas=list(_UNA_IMPAGA)))),
+        ("marcar_presupuesto", _correr(
+            "marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"},
+            presupuesto=_PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos",
+                                                       total="50000.0000")]))),
+    ]
+
+
+def test_N21_con_el_flag_las_que_mueven_plata_dejan_el_texto_exacto_y_formateado():
+    import os
+    import re
+    crudo = re.compile(r"(?<![\d.$-])\d{4,}\.\d{2,}|\$\s?\d{4,}(?![.\d])|(?<![\d-])(?:50|85)000")
+    os.environ["UC_REPLY_LITERAL"] = "1"
+    try:
+        for nombre, res in _cinco_que_mueven_plata():
+            lit = res.observation.get("reply_literal")
+            assert isinstance(lit, str) and lit.strip(), f"{nombre}: no dejó reply_literal"
+            assert "$" in lit, f"{nombre}: el literal no lleva el importe"
+            assert not crudo.search(lit), f"{nombre}: crudo en el literal: {lit!r}"
+            assert "decile" not in lit.lower() and "no digas" not in lit.lower(), \
+                f"{nombre}: el literal es para el USUARIO, no una consigna al modelo: {lit!r}"
+    finally:
+        os.environ.pop("UC_REPLY_LITERAL", None)
+
+
+def test_N21_sin_el_flag_ninguna_deja_reply_literal():
+    for nombre, res in _cinco_que_mueven_plata():
+        assert "reply_literal" not in res.observation, f"{nombre}: flag apagado y dejó literal"
+
+
+def test_N21_NEGATIVO_las_que_no_mueven_plata_siguen_redactando_libres_aun_con_el_flag(monkeypatch):
+    """Sin esta mitad, «apliqué C» y «apliqué B de más» salen igual de verdes: el flag prendido NO puede
+    tocar candidatos (el usuario elige), duplicado (pregunta abierta) ni consultas."""
+    _con_flag(monkeypatch)
+    p = _PresupuestoFake(filas=[_presu(1, 41, "Panadería", total="50000.0000"),
+                                _presu(2, 42, "Panadería", total="70000.0000")])
+    amb_p = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=p)
+    amb_c = _correr("marcar_factura_cobrada", {"factura": "panadería"}, cobro=_CobroFake(impagas=[
+        {"id": 10, "nro": "0001-00000042", "receptor_nombre": "Panadería", "saldo": "50000.00"},
+        {"id": 11, "nro": "0001-00000043", "receptor_nombre": "Panadería", "saldo": "70000.00"}]))
+    dup = _correr("registrar_ingreso", {"monto": "85000", "cliente": "Panadería"}, cobro=_CobroFake(
+        duplicado={"id": 7, "monto": "85000.00", "fecha": "2026-07-20", "origen": "mercadopago",
+                   "cliente_nombre": "Panadería"}))
+    cli = _correr("registrar_cliente", {"nombre": "Panadería Nueva"})
+    for etiqueta, res in (("candidatos presupuesto", amb_p), ("candidatos cobro", amb_c),
+                          ("duplicado de ingreso", dup), ("registrar_cliente", cli)):
+        assert "reply_literal" not in res.observation, f"{etiqueta}: B aplicado de más"

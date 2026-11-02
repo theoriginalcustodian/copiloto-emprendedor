@@ -652,6 +652,14 @@ def _run_calendar_book(name, arguments, ctx, confirmed, idem_key, gateway, now_i
                       artifact=_artifact_for(name, res, arguments) if ok else None)
 
 
+def _monto_legible(amount) -> str:
+    """SM-N21: el importe del preview del HITL de `mp_charge` -- el ÚNICO texto con plata que el usuario lee al
+    AUTORIZAR un cobro real a un tercero. Formateado (`$70.000`), nunca `$70000` crudo. Si el monto no es
+    numérico (no debería: el schema es `number`) cae al texto tal cual en vez de romper el gate."""
+    texto = str(amount)
+    return _plata_corta(texto) if re.fullmatch(r"-?\d+(\.\d+)?", texto) else f"${texto}"
+
+
 def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, mp_dedup_factory):
     """Genera un link de cobro MercadoPago. Dedup app-side (spike C, Task 7): MP /checkout/preferences NO
     deduplica, así que un retry at-least-once de Temporal con el mismo `idem_key` cachea (SELECT) antes de
@@ -692,7 +700,7 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
                                            pendiente=pendiente_de_cobro(arguments))})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
-                          observation={"preview": f"generar link de cobro por ${amount} ({concept})",
+                          observation={"preview": f"generar link de cobro por {_monto_legible(amount)} ({concept})",
                                        **_obs_service("mercadopago")})
     dedup = mp_dedup_factory(ctx.cliente_id) if mp_dedup_factory else None
     if dedup:                                             # spike C: MP no deduplica -> dedup app-side
@@ -770,6 +778,26 @@ def _monto_dictado(bruto) -> "Decimal | None":
     return monto if monto > 0 else None
 
 
+def _literal(texto: str) -> dict:
+    """SM-N21 (opción C): `reply_literal` = el texto EXACTO que ve el usuario, sin que el LLM lo reescriba.
+
+    Sólo lo usan las tools que MUEVEN PLATA (escriben o confirman un monto que queda registrado: gasto, ingreso,
+    cobro, presupuesto, factura). Listar/buscar/resumir NO: ahí el LLM redacta libre. Detrás de flag
+    `UC_REPLY_LITERAL=1` (default apagado; dueño: backend; limpiar el flag antes de 2026-12-02). Se lee ACÁ,
+    en la activity -- nunca en el workflow --, así que no introduce no-determinismo."""
+    import os
+    return {"reply_literal": texto} if os.environ.get("UC_REPLY_LITERAL") == "1" else {}
+
+
+def _aviso_de_fecha_literal(entendida: bool, fecha_raw) -> str:
+    """El aviso de `_aviso_de_fecha` (sin card) dicho al USUARIO, no como consigna al modelo."""
+    if entendida:
+        return ""
+    formas = "», «".join(FECHAS_QUE_ENTIENDO[1:4])
+    return (f" No ubiqué «{fecha_raw}», así que quedó con fecha de hoy. Decímela como «{formas}», "
+            f"o corregila desde la pantalla.")
+
+
 def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
     """Propone un gasto dictado. NO persiste — ver el comentario de `_FIRST_CLASS_WRITES`.
 
@@ -824,7 +852,9 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
                                # Sin aviso de fecha a propósito: la card lo muestra pegado al campo,
                                # y preguntarlo por chat mandaría la respuesta al mismo resolvedor que
                                # ya falló. `hay_card=True` lo deja mudo.
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}"},
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}",
+                               **_literal(f"Te armé un borrador de {_plata_corta(gasto['monto'])} en {categoria}, "
+                                           f"revisalo y confirmalo cuando quieras.")},
         artifact=Artifact(kind="gasto_propuesto", data=gasto))
 
 
@@ -1188,7 +1218,9 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
                                f"\"anoté\", \"listo\" ni \"guardado\" porque no es cierto. Decile "
                                f"exactamente: \"Te armé un borrador de {_plata_corta(ingreso['monto'])}, revisalo "
                                f"y confirmalo cuando quieras.\""
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}"},
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}",
+                               **_literal(f"Te armé un borrador de {_plata_corta(ingreso['monto'])}, "
+                                           f"revisalo y confirmalo cuando quieras.")},
         artifact=Artifact(kind="ingreso_propuesto", data=ingreso))
 
 
@@ -1237,7 +1269,10 @@ def _run_completar_ingreso(arguments, ctx, idem_key, cobro_store_factory):
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Listo, lo agregué al MISMO ingreso de "
                                              f"{_plata(ingreso['monto'])} (no creé otro).{cola}",
-                                   "ingreso": ingreso})
+                                   "ingreso": ingreso,
+                                   **_literal(f"Listo, lo agregué al mismo ingreso de "
+                                              f"{_plata_corta(ingreso['monto'])} (no creé otro)."
+                                              + (f" Todavía falta {' y '.join(falta)}." if falta else ""))})
 
 
 def _elegir_uno(candidatos, etiqueta, como_se_llama):
@@ -1300,7 +1335,12 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
         observation={"result": f"Registré {_plata(cobro['monto'])} de la factura {factura['nro']}"
                                f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda}"
                                f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=False)}",
-                     "cobro": cobro, "resumen": resumen})
+                     "cobro": cobro, "resumen": resumen,
+                     **_literal(f"Registré {_plata_corta(cobro['monto'])} de la factura {factura['nro']}"
+                                f" ({factura['receptor_nombre'] or 'sin nombre'})."
+                                + ("" if resumen["estado"] == COBRADA
+                                   else f" Todavía quedan {_plata_corta(resumen['saldo'])} por pagar.")
+                                + _aviso_de_fecha_literal(fecha_ok, arguments.get("fecha_raw")))})
 
 
 def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory):
@@ -1372,7 +1412,10 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                                        # `card` (mismo camino que K-11; sin activity nueva -> replay-safe).
                                        "gate_card": sugerencia_armar_factura_card(
                                            sugerencia["presupuesto_id"], sugerencia["texto"])}
-                                      if sugerencia else {})})
+                                      if sugerencia else {}),
+                                   **_literal(f"Marqué el presupuesto {actualizado['numero']} de "
+                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
+                                              f"({_plata_corta(actualizado['total'])}) como {verbo}.")})
 
 
 # ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────
@@ -1637,7 +1680,8 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
         observation={"result": f"Armé la factura ({importe}) y se la muestro en una tarjeta para que "
                                f"la revise. TODAVÍA NO está emitida — NO digas \"emití\", \"listo\" ni "
                                f"\"la mandé\" porque no es cierto. Decile exactamente EXACTAMENTE: "
-                               f"\"{texto_card}\""},
+                               f"\"{texto_card}\"",
+                       **_literal(texto_card)},
         artifact=Artifact(kind="factura_propuesta", data={
             "factura_id": factura_id, "faltantes": faltantes_codigos,
             "items": estado.get("items") or [],
