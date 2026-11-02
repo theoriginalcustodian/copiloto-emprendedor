@@ -364,15 +364,39 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
   indicador nativo oculto (color transparente) dejando sólo la línea «Actualizando…». Captura de
   los tres estados, incluido el refresh en curso.
 
-### SM-J4 · `sin-issue` — La pantalla de clientes no recibe monto ni comprobantes
+### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** PENDIENTE
-- **Dueño:** backend (dato) → frontend2 (dibujo)
-- **Medido:** el mapa pide monto, comprobantes y chips por cliente; **la app no los recibe hoy**.
-- **DoD:** el endpoint los devuelve por tenant (con su test de aislamiento: A no ve los de B) y la
-  pantalla los dibuja. La junta baja como **`contrato_`** antes de que ninguna implemente: endpoint,
-  request, response, códigos y DoD binario por lado. **Causa:** si el frontend inventa la forma del
-  endpoint, eso es codificar la esperanza, y la costura no es de nadie.
+- **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
+- ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
+  Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
+  (string decimal, **nunca** null) y `facturas_atribuibles` (bool) — `cliente_store.py:310-320`,
+  `clientes_web.py:147`; la app los consume en `packages/core/src/api/clientes.ts` y los dibuja en
+  `apps/mobile/src/modules/clientes/TarjetaCliente.tsx`, con tests que lo acreditan
+  (`clientes.test.ts`, casos `BL-V18` y `C-D1`).
+  **Por qué nadie lo vio:** el relevamiento (2026-10-16) cita como causa «`api/clientes.ts:31` no
+  trae esos campos», heredada del *mapeo previo* que su propio texto nombra. El campo entró al core
+  el **2026-10-06** (#816, `BL-V18`), **diez días antes** de ese relevamiento: la causa ya era falsa
+  cuando se escribió. Una cita con `path:línea` **parece medida** — la precisión del formato se lee
+  como frescura — y planificación la trasladó a un `contrato_` sin volver a correrla, bloqueando a
+  frontend2 contra un dato que ya existía.
+- **Lo que el «—» de la pantalla significa en realidad:** los clientes de prueba no tienen CUIT
+  (`doc_tipo: null`) ⇒ `facturas_atribuibles: false` ⇒ la UI **a propósito** no pinta número, porque
+  no se puede atribuir. El síntoma observado era el comportamiento correcto, no el defecto.
+- **Los chips quedan FUERA de esta ficha.** El relevamiento pide chips en `factura` (entrada 40) y
+  chips de antigüedad en `presu` (41); en `clientes` (43) dice «chips» sin decir cuáles ni con qué
+  dato. Lo único existente es el chip de cartera (`agregados_este_mes`) y `origen`. No se inventa una
+  regla para llenar una definición delgada: si hacen falta otros, es un `pedido_` con su dato.
+- **DoD:** (1) el **adversarial que falta**: monto y comprobantes aislados por tenant con el **mismo
+  CUIT** en A y B — sin él el aislamiento de estos tres campos queda `[UNVERIFIED]`, y ajeno vs.
+  inexistente ya responde `404` idéntico en código y cuerpo; (2) captura de device con un cliente
+  **que tenga CUIT**, mostrando monto y «N comprobantes» reales; (3) captura del caso
+  `facturas_atribuibles: false` mostrando que el «—» es deliberado.
+- **Ya NO es un `contrato_` bloqueante.** La forma está publicada y medida contra prod:
+  `GET /clientes?q=&limit=` → `{clientes:[{…,comprobantes_cantidad,monto_facturado,facturas_atribuibles}], total, agregados_este_mes}`,
+  tenant por `Depends(require_tenant)` per-request, cartera vacía = `200` con lista vacía. Monto =
+  **facturado neto acumulado** (NC resta), no «por cobrar» ni «del mes»; comprobantes = **cuenta**
+  con CAE, incluida la anulada.
 
 ### SM-J5 · `sin-issue` — La agenda no distingue hoy de los días siguientes
 
