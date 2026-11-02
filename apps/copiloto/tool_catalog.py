@@ -1363,8 +1363,10 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Marqué el presupuesto {actualizado['numero']} de "
                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
-                                             f"({_plata_corta(actualizado['total'])}) como {verbo}. "
-                                             f"Confirmáselo en una línea corta.",
+                                             # SM-N8: SIN consigna al final. «Confirmáselo en una línea corta» es una orden al
+                                             # modelo en la última frase que lee; 7/12 veces la repitió al emprendedor (misma
+                                             # jerarquía que SM-N2: la observación le gana a cualquier descripción).
+                                             f"({_plata_corta(actualizado['total'])}) como {verbo}.",
                                    "presupuesto": actualizado,
                                    # K-07: sólo al APROBAR el cliente ofrece armar la factura (nunca al descartar).
                                    **({"sugerencia": sugerencia,
