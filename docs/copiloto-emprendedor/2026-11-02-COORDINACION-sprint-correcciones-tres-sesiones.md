@@ -32,6 +32,48 @@ declarado, no como conforme.
 
 ---
 
+## 0.bis El reporte por peer: los cuatro momentos
+
+**Orden del operador del 2026-11-02:** las tres sesiones reportan a planificación **por mensajería
+peer**, siempre, sin que se lo pidan.
+
+**Por qué es una norma y no una cortesía.** Este sprint corre **sin crones**: no hay vigía que barra
+el buzón ni monitor de parálisis. La única señal que queda sin el reporte es el `mtime` del
+transcript, y eso **mide que la sesión está viva, no que produce** — medido el 2026-07-24, la sesión
+**ociosa** tuvo 42 disparos y la que implementaba 5. Sin reporte, una sesión parada y una
+trabajando se ven idénticas desde afuera.
+
+| Momento | Qué va en el peer |
+|---|---|
+| **Tomás** una ficha | «TOMO SM-XX» + el `/goal` fijado |
+| **Terminás una etapa** dentro de una ficha larga | el test en rojo que confirma la causa, la **firma** del endpoint publicada, el merge hecho |
+| **Cerrás** | `FICHA:` · `SHA:` (merge commit en `main`) · `DOD:` una línea por punto con su evidencia |
+| **Te bloqueás** | qué falta, **quién** lo tiene, y con qué **acción concreta** se destraba |
+
+**El segundo momento es el que más rinde, y el que se omite.** Los disparadores de este sprint son
+**etapas, no cierres**: `SM-H1` arranca cuando `SM-H2` **publica la firma**, no cuando está
+mergeada. Reportar sólo al cerrar hace que la otra sesión espere de más sin estar bloqueada — que es
+exactamente la espera mutua que el monitor de parálisis veía y que acá no existe.
+
+**Lo que NO va por peer:** acuses de recibo, avances cada N minutos, y el anuncio de lo que vas a
+hacer. *Prometer no es ejecutar*: se reporta lo hecho, con su evidencia.
+
+**El peer no reemplaza al `cierre_`.** El `cierre_` en el buzón es el **registro** —es lo que queda y
+lo que acredita—; el peer es el **control**, para que planificación lo sepa sin barrer el buzón. Y
+ninguno de los dos escribe el estado: eso lo hace `sprint-estado.py --marcar`.
+
+⚠️ **Mergear no es marcar, y el peer lo destapa.** Caso del propio día 1: `SM-H2` entró a `main` en
+**#1313** y el medidor seguía en **1/36**, porque la ficha nunca se marcó. Código en `main` con la
+ficha en `PENDIENTE` es trabajo invisible para todo instrumento del sprint — el mismo defecto que el
+2026-10-14 dejó 18 de 26 fichas sin nombrar. El cierre tiene **tres pasos**: merge, `cierre_`,
+`--marcar`.
+
+**Declarar los candados es parte del reporte**, al tomarlos **y** al soltarlos:
+`PantallaMiDia.tsx`, el dock compartido y el teléfono `RF8T318RN9T`. Son los tres recursos donde dos
+sesiones se pisan sin enterarse hasta leer la evidencia.
+
+---
+
 ## 1. Reparto por sesión
 
 Las waves del plan se mantienen; lo que esto agrega es **dueño por ficha, candados y disparadores**.
