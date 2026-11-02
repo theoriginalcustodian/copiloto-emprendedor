@@ -73,5 +73,7 @@ Dos fallas distintas, y las dos valen más que el incidente:
 2. **Un control que no puede dar negativo de verdad no es un control.** 12 segundos de quietud no
    prueban ausencia de un actor **intermitente**: prueban que no tocó nada en 12 segundos.
 
+**Refuerzo 2026-11-02 (SM-N19): la prueba por ADB deja una huella que nadie firma.** Guardé un presupuesto de prueba con el teléfono físicamente al lado del operador; horas después eso se leyó como «la app guardó sola». Backend midió el POST y planificación barrió quién tenía el teléfono con un filtro de NOMBRE (`*TOMO*`), y yo lo había declarado dentro de un `dato_`: su vacío se leyó como «nadie». La respuesta estaba en mi transcript, y el cruce por hora la dio en un minuto. **Antes de abrir una hipótesis de write no consentido, cruzá la hora contra los transcripts de las sesiones.** Declará la tenencia con `avance_` y TOMO en el nombre, y pedí datos de prueba rotulados (`Prueba SM19`).
+
 [[instrumentos-que-confirman-en-vez-de-verificar]] [[vacio-no-es-hallazgo-correr-el-control]]
 [[coordinacion-tres-sesiones-buzon]]
