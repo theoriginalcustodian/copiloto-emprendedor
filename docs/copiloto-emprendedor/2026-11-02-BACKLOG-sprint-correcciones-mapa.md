@@ -112,6 +112,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
+| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -221,6 +222,18 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
   confirmar** (D8 — no se construye envío programado). Una card cancelada no puede mostrar
   «Confirmado» en ningún recorrido, incluido recargar.
 - **Depende:** SM-H2, SM-H7.
+
+- **✅ DISPARADOR CUMPLIDO 2026-11-02 19:04 — Gmail ESTÁ conectado.** El operador se logueó
+  manualmente con su cuenta en el device y la pantalla «Apps conectadas» dice **«5 conectadas
+  de 5»** con **Gmail · Conectada** (captura:
+  `2026-11-02-sprint-correcciones-evidencia/SM-H3-gmail-conectada-cuenta-operador.png`).
+  Esto **retira el bloqueo**, no cierra la ficha: lo que sigue faltando es la captura de la
+  card de Gmail con la aclaración de que el mail sale al confirmar. El `Cierre:` actual cita
+  que el canónico respondía «No tengo habilitado el servicio de correo» — eso era del
+  **canónico**, y acreditaba la elección de herramienta, no la ausencia de Gmail en general.
+- ⚠️ **Al capturar: la sesión del device es la del OPERADOR, no la del canónico.** Decir de
+  qué usuario es cada captura es parte de la evidencia; una card obtenida bajo su cuenta
+  acredita el comportamiento del dispatcher, no el estado del canónico.
 
 ### SM-H4 · `sin-issue` — Con «consumidor final» explícito el agente sigue pidiendo CUIT
 
@@ -1145,7 +1158,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N16 · `sin-issue` — El Escritorio de Funciones no tiene acceso a Ajustes, y sin él no se puede cerrar sesión
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque; DoD 6 causa del no-responde: el mismo avatar navego el 02-11 a las 17:54 y 18:29 con DOWN/MOVE/UP, asi que falta medir DOWN/UP sin MOVE y la puerta de empujarUnaVez. El dibujo va en la rama de SM-I5.
+- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque, comparando la region y no la captura entera; DoD 6 causa del no-responde: con MOVE no navego a las 19:05 en la cuenta del operador, y si navego a las 17:54 y 18:29 en el canonico, asi que falta medir que difiere: puerta de empujarUnaVez (tocar un tile en el mismo estado), cuenta o bundle. El dibujo va en la rama de SM-I5.
 - **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Avatar del escritorio por el mismo alAjustes de Mi dia, sin segundo call-site; PantallaPrincipal.test.tsx da rojo con el mutante sin el cable. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **De dónde sale:** el **operador**, 2026-11-02, atrapado dentro de la app con su propia cuenta:
@@ -1203,3 +1216,56 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   6. Averiguar **por qué** no respondía antes de cambiar nada — si es el gesto del panel
      comiéndose el toque, la skill `swmansion-rn-gestures` (composición Pan/tap) es la fuente del
      criterio, no la intuición. Dos intentos fallidos ⇒ el tercero es leer la skill.
+- **🔬 REVERIFICADO 19:05 — el «no responde» estuvo a punto de ser MÍO, y el control lo salvó.**
+  El primer veredicto («el avatar no navega») salió de un `motionevent` DOWN+UP **sin MOVE**.
+  Minutos después, el tile «Apps conectadas» **tampoco** respondía a ese mismo tap y **sí** respondió
+  al agregarle un `MOVE` de 1 px. O sea: mi instrumento no activaba ningún control, y yo había
+  escrito que el defecto era del avatar. **Control positivo conseguido** (dos controles ajenos que
+  abren con MOVE: «Apps conectadas» y «Mi cuenta»), repetida la prueba sobre el avatar **con** MOVE:
+  **sigue sin navegar**. El veredicto se sostiene, pero ahora está acreditado y antes no lo estaba.
+- **🧪 Y el control que usé primero era malo:** comparé capturas por hash de pantalla COMPLETA y dio
+  «CAMBIO» cuando lo único que cambió fue **el reloj** (19:04 → 19:05). Un reloj en la barra de
+  estado mueve el hash de cualquier captura: **comparar por hash total siempre dice que cambió**.
+  Para acreditar un toque hay que comparar **la región** que debería cambiar, o un elemento
+  concreto. Queda anotado acá porque es trampa de instrumento, no de esta ficha.
+- **Sospecha para quien lo arregle (no verificada):** el avatar vive en la franja superior, que es
+  zona del panel deslizable; un Pan que se come el tap es exactamente el caso de
+  `swmansion-rn-gestures`. Es hipótesis, no hallazgo — medila antes de codear.
+
+### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
+- **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
+  aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
+  de las apps a conectar, no sé por qué figura esto».
+- **Medido, y el código le da la razón de forma incómoda.** `service_risk_contrato.py:18` lo dice
+  textual: «Instagram NO está ahí -- cero módulo, cero tool». Y `:4-6` registra que esto **ya pasó
+  una vez**: el prompt ofrecía «ver contactos y redes» cuando «HubSpot e Instagram ni existían como
+  tool» (`system_prompt.py:33` lo repite: «un agente que ofrece algo inexistente hace…»). O sea: la
+  clase de defecto está documentada y cazada **en el prompt**, y sobrevivió **en la UI**.
+- **Dónde sigue cableado:** `apps/copiloto-web/src/design-system/serviceIcons.tsx:64` ·
+  `apps/mobile/src/modules/apps/PantallaApps.tsx:69` (`instagram: 'grabar'`) ·
+  `packages/core/src/chat/hitl.ts:91` (badge `IRREVERSIBLE`, `tono: danger`) ·
+  `tool_catalog.py:80` y `conversation_workflow.py:659` lo nombran como ejemplo de badge de riesgo.
+- **Por qué no es cosmético.** Un aviso de «conexión caída» es una llamada a la acción: manda al
+  emprendedor a reconectar algo que no se puede conectar. Y el badge `IRREVERSIBLE` de `hitl.ts:91`
+  está reservado para acciones que no se pueden deshacer: tenerlo vivo para un servicio inexistente
+  gasta la señal más cara de la app en un fantasma.
+- **PREGUNTA PREVIA, para backend, ANTES de que frontend1 toque nada:** ¿de dónde sale el aviso?
+  Puede venir (a) de un registro de conexiones en la DB del tenant que todavía lista `instagram`, o
+  (b) del catálogo del front. **Son fixes opuestos** — borrar el ícono del front deja el registro
+  vivo y el aviso puede volver por otra vista; limpiar la DB sin sacar el catálogo deja el camino
+  abierto a que se re-cree. Medirlo es barato y decide el dueño del fix. Hasta que esté medido,
+  frontend1 **no** implementa.
+- **FUERA DEL SPRINT** (`DEC-18`): no sale del mapa, sale del uso. El 54 no se mueve.
+- **DoD:**
+  1. Medido de dónde sale el aviso (la pregunta previa), escrito con `path:línea` o con la consulta
+     que lo mostró.
+  2. Instagram deja de ofrecerse y deja de avisar, en **las dos** superficies — mobile y web: el
+     mismo defecto vivía dos veces ya es patrón conocido de este repo.
+  3. Un test que sea **rojo si Instagram vuelve a aparecer** como servicio ofrecible. Sin eso, el
+     próximo que agregue una key al catálogo lo revive sin enterarse — que es exactamente cómo
+     sobrevivió a la limpieza del prompt.
+  4. Si el fix toca la DB del tenant: corrida en device con la cuenta del operador mostrando que el
+     aviso ya no está. Esa cuenta es la que lo reportó, así que es la que lo acredita.
