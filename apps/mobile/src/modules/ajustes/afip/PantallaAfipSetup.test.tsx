@@ -549,6 +549,31 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-arca-conectado')).toBeNull();
   });
 
+  it.each([
+    ['dato', /dato que cargaste/],
+    ['servicio', /problema del servicio/],
+    ['desconocida', /No pudimos determinar/],
+  ] as const)('SM-K3: el fallo del alta nombra la causa «%s»', async (causa, texto) => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({ conectado: false, onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'x', causa }) }),
+    );
+    await montar();
+    expect(await screen.findByText(texto)).toBeTruthy();
+  });
+
+  it('SM-K3: sin causa (backend viejo) no se afirma ninguna', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({ conectado: false, onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'x' }) }),
+    );
+    await montar();
+    await screen.findByTestId('afip-arca-progreso-fallido');
+    expect(screen.queryByText(/dato que cargaste|problema del servicio|No pudimos determinar/)).toBeNull();
+  });
+
   // -----------------------------------------------------------------------------------------
   // Corte honesto a los 10 minutos.
   // -----------------------------------------------------------------------------------------
