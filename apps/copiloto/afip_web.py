@@ -671,7 +671,10 @@ def create_afip_app(
         perfil = await asyncio.to_thread(perfil_store_factory(cliente_id).get, cuit)
         progreso = None
         if consultar_onboarding is not None:
-            progreso = await _maybe_async(consultar_onboarding, cliente_id, cuit)
+            # El alta corre bajo un workflow id POR AMBIENTE: sin pasarlo se miraba siempre el de `dev`,
+            # y un tenant vinculado en producción veía el estado de otra alta (o ninguna).
+            progreso = await _maybe_async(consultar_onboarding, cliente_id, cuit,
+                                          (creds or {}).get("ambiente") or "dev")
 
         # SM-E1: «puede facturar» no es sólo «tiene certificado y perfil»: es que la emisión de SU
         # condición exista. Un Responsable Inscripto tiene las dos cosas y la emisión (A/B) no está
