@@ -513,3 +513,10 @@ slugs son «buscables en memoria/, NO leer por reflejo».
 El índice estaba en 23.879 de 24.000 bytes (121 libres) y la entrada nueva pesa más que eso. La baja es la del subsistema que hoy no se toca (ciclo de autosanación, 2026-08-02); **el archivo se conserva y sigue buscable**, y lo citan `GOTCHAS.md` y [[orden-de-merge-por-el-estado-intermedio]], así que bajarlo del índice no rompe ningún link.
 
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
+
+## Sin pasar por el índice el 2026-11-02 — frontend, con el índice a 47 bytes del techo
+
+Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se buscan por tema.
+
+- [🧪🎞️ El mock de Reanimated hace inalcanzable `finished: false`](el-mock-de-reanimated-hace-inalcanzable-finished-false-y-el-callback-del-spring.md) - un fix en esa rama sale verde sin ejercitarse.
+- [📚🔢 La skill dice `runOnJS` removido y en Reanimated 4.5.0 existe](la-skill-swmansion-dice-runOnJS-removido-y-en-reanimated-4-5-0-existe.md) - canónica del dominio, no de la versión instalada.
