@@ -31,6 +31,7 @@ import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
+import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
 import { PanelDeslizable } from './PanelDeslizable';
 import { PanelFunciones } from './PanelFunciones';
@@ -158,6 +159,14 @@ export function PantallaPrincipal() {
     setAvisoEntrante({ aviso, id: avisoSeq.current });
     setSenalSubir((n) => n + 1);
   }, []);
+  // SM-I1: el verbo tocado en Tu día (una ruta, sin props hasta acá) llega al volver. El «Volver al tablero»
+  // de esa charla baja a Mi día: Tu día ya se cerró.
+  useFocusEffect(
+    useCallback(() => {
+      const aviso = tomarAvisoParaElChat();
+      if (aviso != null) alAvisoAlChat(aviso);
+    }, [alAvisoAlChat]),
+  );
   // El contexto se cierra acá, explícito, y no sólo «porque el panel avisó que bajó»: la salida es del
   // emprendedor, y que el chip siga diciendo «Desde tu aviso» sobre una conversación que ya dejó no depende
   // de que la animación del panel se haya completado.
@@ -227,9 +236,9 @@ export function PantallaPrincipal() {
           }
         >
           <PantallaMiDia
-            comoPortada
             onAjustes={() => empujarUnaVez('/ajustes')}
             onAgenda={() => empujarUnaVez('/agenda')}
+            onVerTablero={() => empujarUnaVez('/midia')}
             // H5b: la acción de la tarjeta abre la pantalla de su `destino` (conexión, comprobante, AFIP).
             onDestino={(ruta) => empujarUnaVez(hrefDeRuta(ruta))}
             // hitl (a): el verbo de una tarjeta detectada lleva su aviso al chat, sembrado en el composer.

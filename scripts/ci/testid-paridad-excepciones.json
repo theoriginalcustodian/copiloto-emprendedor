@@ -3586,6 +3586,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/midia"
     },
+    "modules/midia::midia-cabecera": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-cabecera",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Tarjeta de cabecera de Mi día: la web no la tiene, su encabezado es otro.",
+      "pantalla": "modules/midia"
+    },
     "modules/midia::midia-error": {
       "en": [
         "apps/copiloto-web/src/modules/midia/MidiaScreen.tsx"
@@ -3594,6 +3604,36 @@
       "fecha": "2026-09-22",
       "id": "midia-error",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::midia-hora": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-hora",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Hora de la sección «Ahora»: la web no tiene esa sección.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::midia-para-hoy": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-para-hoy",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Lista resumida de Mi día: en la web la lista es la del tablero (`midia-lista`).",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::midia-para-hoy-cuenta": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-para-hoy-cuenta",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. «N cosas» del rótulo de Mi día: en la web el conteo es `midia-contador`.",
       "pantalla": "modules/midia"
     },
     "modules/midia::midia-portada-caja": {
@@ -3647,6 +3687,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/midia"
     },
+    "modules/midia::midia-ver-tablero": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-ver-tablero",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Puerta a Tu día: en la web no hay nada que abrir, el tablero está en la misma pantalla.",
+      "pantalla": "modules/midia"
+    },
     "modules/midia::midia-wordmark": {
       "en": [
         "apps/mobile/src/modules/midia/PantallaMiDia.tsx"
@@ -3655,6 +3705,26 @@
       "fecha": "2026-09-22",
       "id": "midia-wordmark",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::pantalla-tu-dia": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaTuDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "pantalla-tu-dia",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Raíz de la pantalla propia de Tu día: en la web el tablero vive dentro de `pantalla-midia`.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::tudia-subtitulo": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaTuDia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "tudia-subtitulo",
+      "motivo": "SM-I1 separó Mi día y Tu día en mobile; la web sigue con una sola pantalla (`MidiaScreen.tsx`) porque en el sprint de correcciones del mapa manda mobile. Bajada de Tu día: en la web no existe esa pantalla.",
       "pantalla": "modules/midia"
     },
     "modules/onboarding::onboarding-cargando": {
