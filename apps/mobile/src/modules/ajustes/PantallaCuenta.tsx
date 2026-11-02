@@ -28,6 +28,16 @@ import { useTema } from '../../theme/ThemeProvider';
  * trabajo en curso: hay que volver a escribir usuario y contraseña, y en un teléfono eso es fricción
  * real. Un toque accidental en una grilla de íconos no puede echarte.
  */
+/** SM-K5: el «›» de las filas que abren otra pantalla (mapa `cuenta`). Decorativo: el rol lo da la fila. */
+function Chevron() {
+  const tema = useTema();
+  return (
+    <Text accessibilityElementsHidden importantForAccessibility="no" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.grande }}>
+      ›
+    </Text>
+  );
+}
+
 export function PantallaCuenta() {
   const tema = useTema();
   const { me, logout } = useSession();
@@ -130,11 +140,13 @@ export function PantallaCuenta() {
           <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
             Términos y Condiciones
           </Text>
+          <Chevron />
         </Row>
         <Row testID="cuenta-legal-privacidad" onPress={() => router.push('/legal?kind=privacidad')}>
           <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
             Política de Privacidad
           </Text>
+          <Chevron />
         </Row>
 
         {/* 🔴 **Acá había tres filas —Feedback, Soporte técnico y «Cómo uso la app»— y se fueron a
@@ -213,8 +225,10 @@ export function PantallaCuenta() {
             }}
           >
             <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-              Vas a tener que volver a entrar con tu usuario y contraseña. Tus datos y tus facturas
-              no se borran.
+              {me?.cuenta_google === true
+                ? 'Vas a tener que volver a entrar con tu cuenta de Google.'
+                : 'Vas a tener que volver a entrar con tu usuario y contraseña.'}{' '}
+              Tus datos y tus facturas no se borran.
             </Text>
             <FilaBotones
               testID="cuenta-confirmar-botones"

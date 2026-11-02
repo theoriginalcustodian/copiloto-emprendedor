@@ -63,13 +63,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G1** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) 15 archivos y 62 lineas de enlaces; barrido de todos los HTML de odo… |
 | **SM-G2** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) Playwright 390x844 y dentro del marco del mapa: encabezado 51 con 51… |
 | **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
-| **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-G4** | `sin-issue` | ✅ TERMINADO | sin-codigo: experimento de device sin cambios en la app. Veredicto: DEMORA, 4/4 corridas con los rótulos rancios a +0… |
 | **SM-H1** | `sin-issue` | ✅ TERMINADO | acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobr… |
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «… |
+| **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -80,14 +80,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
-| **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualiz… |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device (Metro de nuevo + teléfono) |
-| **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
@@ -99,6 +99,12 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
+| **SM-N4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N9** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -149,7 +155,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 ### SM-G4 · `sin-issue` — R03: no se sabe si el retardo al soltar es demora o defecto
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo: experimento de device sin cambios en la app. Veredicto: DEMORA, 4/4 corridas con los rótulos rancios a +0,3 y +0,8 s y correctos a +3 s. Corrió en dev-client: el ejercicio en release sigue pendiente por decisión del 2026-10-16. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-G4.md
 - **Dueño:** frontend1
 - **Medido:** `cierre_` de frontend1 del 2026-10-16 dejó el experimento sin correr.
 - **DoD:** capturas a **+0,3 s, +0,8 s y +3 s** de soltar, las tres adjuntas, y el veredicto escrito:
@@ -221,7 +228,9 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «Pendiente» en la card
+- **Cierre:** mitades backend en main 681c3b53 (#1363): chip «Armá la factura» y importe $50.000 en frases del LLM; sonda real 0/6 inglés. SM-H5
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -230,7 +239,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H6 · `sin-issue` — «Factura emitida.» no dice de quién ni con qué número
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail» abre Gmail con asunto y link. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
 - **Dueño:** frontend1
 - **Medido:** `fact-cae` omite cliente y muestra el número sin formatear; Drive/Compartir sin
   opción de mail.
@@ -394,7 +404,9 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de los tres estados (reposo, vacío —exige tenant vacío— y refresh en curso mostrando sólo «Actualizando…»)
+- **Cierre:** ba79737b (#1350) · etiqueta de mes del corte de caja + «Sin ventas todavía» sólo con cero medido (tests, control null) · RefreshControl intacto (DoD #1348)
 - **Dueño:** frontend2
 - **Medido:** `bi` sin cabecera en card blanca con período, sin etiqueta de mes y sin mosaicos;
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
@@ -554,7 +566,9 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captura por pantalla; pedido_ a backend si se quiere «desde …» (fecha_alta en me_contrato.py + me.contrato.ts, mismo PR)
+- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido: sin nombre de persona ni «desde …» (aval planificación; /me no los expone, me_contrato.py) · «Cambiar el mail» fuera por DoD
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
@@ -736,3 +750,167 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Barrer el resto de `catalog.py`: **cuántos otros textos afirman una capacidad** y cuántos
      tienen test. El número va en el `cierre_`, aunque sea 0.
 - **Tope:** no se reescriben los textos del catálogo en esta ficha. Lo que se agrega es el amarre.
+### SM-N4 · `sin-issue` — Un rectángulo claro de esquinas rectas detrás del contenido de las cards del chat
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device (`RF8T318RN9T`, canónico, 2026-11-02 15:38-15:45), en las cards de
+  factura y de presupuesto: un rectángulo más claro detrás del contenido, con esquinas rectas que se
+  salen del borde redondeado de la card. Se ve en `SM-H6-1-factura-emitida-con-cliente-y-mail.webp` y
+  `SM-H5-2-recibo-con-importe-y-pendiente.webp` (rama `frontend1/sm-h5-h6-cards`).
+- **⚠️ El primer paso del DoD es descartar el INSTRUMENTO, no diagnosticar el defecto.** Las dos
+  evidencias son capturas de `screencap`, y `screencap` compone la pantalla por su cuenta: puede
+  **fabricar** un borde que el ojo no ve (aplana capas, pierde el alfa de un vidrio, ignora el
+  recorte del `borderRadius` del padre). Frontend1 fue explícita en que **no lo miró a ojo**. Si se
+  entra a diagnosticar la sombra o `TarjetaPropuestaShell` antes de ese control, se puede pasar una
+  sesión arreglando algo que en la pantalla no existe — y el «fix» va a parecer que funciona, porque
+  la próxima captura también va a cambiar.
+- **DoD:**
+  1. **Control del instrumento, primero:** mirar las dos cards en la pantalla del teléfono **sin
+     capturar**, con el canónico. Reportar si el rectángulo está a ojo. **Si NO está a ojo, la ficha
+     cierra `TERMINADO` como artefacto de `screencap`** — con esa frase escrita, porque lo que se
+     retira es la causa, no la observación.
+  2. Sólo si está a ojo: comparar con el equivalente de documed (§3.ter) y nombrar la capa (sombra,
+     vidrio del shell, o el recorte del padre) antes de tocar nada.
+  3. Captura de device del antes y el después.
+### SM-N5 · `sin-issue` — El recibo de presupuesto pierde importe y cliente al rehidratar, y el motivo documentado cubre sólo el estado
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device: en vivo la card dice `Presupuesto anotado — N° 3`,
+  `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar`. Tras recargar queda sólo
+  `Presupuesto anotado — N° 3`.
+- **No es un olvido: está decidido en el código, y ahí está el defecto.**
+  `apps/mobile/src/modules/chat/TarjetaPresupuestoPropuesto.tsx:86-87` lo dice: *«Sólo con el dato del
+  backend: al rehidratar no se muestra, porque el presupuesto pudo haberse aprobado después y lo
+  persistido en el mensaje es únicamente el número»*. El motivo es **correcto para el estado** —
+  «Pendiente» puede haber cambiado solo — y **no aplica al importe ni al cliente**, que no cambian por
+  su cuenta. El comentario mete los tres en la misma bolsa y, al declarar un motivo, **apaga la
+  pregunta**: quien lo lee ve una decisión tomada, no un alcance por revisar.
+- **⚠️ Medido por planificación (2026-11-02, contra `origin/main`) — la opción que frontend1 propuso
+  primero NO tiene endpoint, y la otra tampoco es la correcta:**
+  - «Que la card relea el presupuesto por su **número**» no se puede: `numero` es un **correlativo por
+    tenant** (`presupuesto_store.py:265-278`, `max(numero)+1 WHERE cliente_id`), columna **distinta**
+    de `id`. El endpoint de detalle es `GET /presupuestos/{presupuesto_id}` y toma el `id`
+    (`presupuestos_web.py:329`). Releer por número exigiría un endpoint nuevo.
+  - «Guardar importe y cliente en el mensaje» repite el defecto que el propio comentario evita: un
+    snapshot miente igual que el estado el día que el presupuesto se edite.
+  - **Lo que sí existe:** la respuesta de creación devuelve el `presupuesto` completo, con su `id`
+    entero (`presupuestos_web.py:253-305`; `packages/core/src/api/presupuestos.ts:52-53`). Persistir
+    el **`id`** junto al número y releer con el endpoint que ya está es una sola fuente de verdad, sin
+    endpoint nuevo.
+- **Esto NO necesita `contrato_`, y por eso no bajo uno.** Frontend1 lo pidió porque creía que tocaba
+  la junta con backend; medido, no la toca: el dato ya viaja y el endpoint ya existe. Es app pura.
+- **DoD:**
+  1. El mensaje persiste el `id` del presupuesto además del número.
+  2. Al rehidratar, la card relee por `id` y muestra importe y cliente. El **estado sigue sin
+     mostrarse** al rehidratar — eso era correcto y no se cambia.
+  3. Test que afirme la rehidratación con importe y cliente presentes y estado ausente.
+  4. Captura de device: la card recargada con importe y cliente.
+- **Y corregir el comentario `:86-87`** para que su motivo nombre sólo el estado. Un comentario que
+  declara un motivo más amplio que el que lo justifica es lo que hizo que esto viviera sin pregunta.
+### SM-N6 · `sin-issue` — «Presupuestos» se parte en dos líneas en la casilla del escritorio
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1
+- **Medido:** frontend1 en device al capturar `SM-G4`: la casilla de Funciones muestra «Presupuesto» y
+  abajo «s». Se ve en `SM-G4-1-mas-0-3s.webp`. El rótulo es el `label: 'Presupuestos'` de
+  `apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx:111` — **verificado por planificación
+  contra `origin/main`**, y este componente es de los que **NO** están duplicados en
+  `apps/copiloto-web/` (única copia, con su `.test.tsx` al lado), así que el hallazgo de las seis
+  copias dobles del `contrato_` del sprint no aplica acá.
+- **Por qué lleva ficha aunque sea una línea:** es el rótulo más largo de la grilla, así que es el
+  **canario del ancho de la casilla**, no un caso suelto. Arreglarlo bajando el tamaño de fuente de
+  esa casilla sola tapa el síntoma y deja al próximo rótulo largo en la misma trampa.
+- **DoD:**
+  1. «Presupuestos» entra en una línea a 390 px.
+  2. El arreglo es de la **casilla**, no de ese rótulo: se verifica con un rótulo de prueba igual o
+     más largo, y la grilla no se rompe.
+  3. Captura de device a 390 px.
+### SM-N7 · `sin-issue` — Cuatro descripciones del catálogo afirman una capacidad de ESCRITURA sin test que la ate
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido por backend en el barrido de `SM-N3`** (punto 3 de su DoD, sha `99097d83` / #1359): en
+  `apps/copiloto/backend/catalog.py` **6 descripciones afirman una capacidad**; tras esa ficha **2 de
+  6** quedan atadas a nivel texto (lectura: Gmail niega, Docs afirma). Las **4 restantes son
+  escrituras, cubiertas sólo por `alcance`** — es decir por el permiso, no por el texto.
+- **Por qué es ficha y no una nota al pie de `SM-N3`:** `SM-N3` cerró con su DoD completo y su tope
+  explícito («no se reescriben los textos; lo que se agrega es el amarre»). El hueco que su barrido
+  **midió** es otro sujeto, y un hallazgo no reabre un ✅. Si queda dentro del `cierre_` de `SM-N3`,
+  muere ahí: un `cierre_` es un entregable y nadie lo persigue.
+- **Y el riesgo no es simétrico con el de lectura.** `SM-N3` ató el caso en que el texto **niega** una
+  capacidad; estas cuatro **afirman** que el agente escribe. `alcance` frena la acción, pero no frena
+  que el texto le prometa al emprendedor algo que el cableado no hace — y una promesa de escritura
+  incumplida se descubre con el efecto esperado ausente, sin error que la delate.
+- **DoD:**
+  1. Las 4 descripciones de escritura atadas al **mecanismo** (`TOOLS`−`WRITE_OPS`, como en `SM-N3`),
+     no a una constante.
+  2. **Control positivo en las dos direcciones** por cada una, como ya se hizo en `SM-N3`: descablear
+     la operación ⇒ rojo; afirmar una capacidad no cableada ⇒ rojo.
+  3. Corrida en el VPS con la salida adjunta, y el conteo final (`6/6` atadas, o el número real con el
+     motivo de lo que quede afuera).
+### SM-N8 · `sin-issue` — El `reply_text` de la aprobación hace eco de la consigna interna: el emprendedor lee la instrucción dirigida al modelo
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido por backend** mientras cerraba las mitades de `SM-H5` (#1363, `681c3b53`), y reportado
+  **sin parchar**, que fue lo correcto: la respuesta de la aprobación **a veces** repite la consigna
+  interna, del tipo «Confirmáselo en una línea corta».
+- **Por qué no es cosmético.** Lo que se filtra no es un texto raro: es una **instrucción dirigida al
+  modelo**, en imperativo y en segunda persona. El emprendedor no lee un error — lee el andamiaje, y
+  una frase que le ordena algo a alguien que no es él. Rompe la voz del producto en el único momento
+  en que el sistema le confirma que su plata se registró, que es donde la confianza se gana o se
+  pierde. No hay excepción ni log: sale como si fuera la respuesta.
+- **Por qué lleva ficha y no queda en el `cierre_` de `SM-H5`:** esa ficha cerró su mitad de backend
+  con su DoD cumplido. Un hallazgo no reabre lo cerrado, y un `cierre_` es un entregable: nadie lo
+  persigue. Es el mismo caso que `SM-N7`.
+- **⚠️ Es INTERMITENTE, y eso decide el instrumento.** Backend escribió «a veces». Un defecto
+  intermitente **no se verifica con una corrida**: una sola salida limpia no distingue «arreglado» de
+  «esta vez no apareció», y es exactamente la forma que fabrica una excusa lista («fue el flake»).
+  Hace falta una **sonda con N declarado** y la tasa del antes y el después — como la sonda de 12 que
+  ya se usó en `SM-N1`/`SM-N2` y las de 6 de este mismo cierre.
+- **DoD:**
+  1. **Tasa del baseline** con N declarado (≥10 aprobaciones reales), contando cuántas respuestas
+     contienen rastro de la consigna. El número va escrito, aunque sea bajo.
+  2. Causa nombrada: **dónde** la consigna entra al texto que se devuelve. Si resulta ser otra vez la
+     jerarquía *observación > descripción* —el patrón que ya se pagó en `SM-N2`— el fix es sacar la
+     consigna de donde el modelo la lee como contenido, **no** pedirle en la descripción que no la
+     repita.
+  3. Sonda posterior con **el mismo N** y la tasa final. Un «0 de 6» tras un baseline de 12 no es
+     comparable: el instrumento tiene que ser el mismo a los dos lados.
+  4. Corrida en el VPS con la salida adjunta.
+- **Tope:** no se reescribe la voz de las confirmaciones en esta ficha. Lo que se arregla es la fuga.
+### SM-N9 · `sin-issue` — El encabezado de Ajustes: el mapa pide el nombre comercial y ESE dato SÍ existe
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** frontend2 lo nombró al corregir el mapa por la enmienda de `SM-K5` (#1368,
+  `c5186d47`) y **no lo cargó por su cuenta** — preguntó. Correcto: la corrección del mapa estaba
+  avalada para lo que `/me` no trae, no para esto.
+- **Lo medido (planificación, 2026-11-02, contra `origin/main`).** El comentario de
+  `apps/mobile/src/modules/ajustes/PantallaAjustes.tsx:123-125` declara que el encabezado
+  «El Galpón · Martín Cairo» necesita **dos** datos: el nombre comercial (`perfilNegocio`, *«una
+  lectura aparte»*) y el nombre de la **persona**, que `/me` no trae. Son de distinta naturaleza y la
+  enmienda los trató juntos:
+  - el nombre de la **persona** no existe — `me_contrato.py` declara 9 claves y ninguna es ésa. Ahí
+    la enmienda es correcta y el mapa ya quedó corregido.
+  - el **nombre comercial sí existe**: `nombreComercial` es campo de `PerfilNegocio`
+    (`packages/core/src/api/perfilNegocio.ts:43`, desde `nombre_comercial` en `:82`/`:112`), y la app
+    ya tiene la pantalla que lo consume (`modules/ajustes/negocio/PantallaPerfilNegocio.tsx`).
+- **Por eso queda divergencia, y es la mitad que el mapa conservó.** Frontend2 dejó el mapa pidiendo
+  «El Galpón» en el encabezado de Ajustes, y la app hoy **no hace esa lectura**. El motivo escrito en
+  el código no es imposibilidad: es **«una lectura aparte»**, o sea costo. Un motivo de costo y uno de
+  dato inexistente conviven en el mismo comentario, y al leerse juntos el segundo le presta su
+  autoridad al primero — así es como una decisión de costo queda registrada como imposible.
+- **DoD:**
+  1. El encabezado de Ajustes muestra el nombre comercial leído de `perfilNegocio`.
+  2. El caso **vacío** resuelto explícitamente: `nombreComercial` cae a `''` (`perfilNegocio.ts:112`),
+     así que hay que decidir y probar qué se ve sin nombre cargado — no un encabezado con un hueco.
+     El emprendedor nuevo es el caso normal, no el borde.
+  3. Test que afirme las dos ramas (con nombre y sin nombre).
+  4. Captura de device del encabezado con el nombre.
+- **Lo que esta ficha NO hace:** el nombre de la **persona**. Ese no existe y el mapa ya fue
+  corregido; si alguna vez se agrega, es otra ficha con su `pedido_` al backend.
+- **Los puntos 1-3 NO necesitan el teléfono.** Sólo el punto 4. Es trabajo hacedero mientras el device
+  está tomado.

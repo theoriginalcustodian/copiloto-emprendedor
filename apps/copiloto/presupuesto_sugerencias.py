@@ -17,5 +17,5 @@ def sugerencias_de_guardado(presupuesto: dict) -> dict | None:
 
 
 def sugerencia_de_aprobacion(presupuesto: dict) -> dict:
-    """`marcar_presupuesto` → aprobado: el chip «¿Te armo la factura?» del cliente."""
-    return {"kind": KIND_ARMAR_FACTURA, "presupuesto_id": presupuesto["id"], "texto": "¿Te armo la factura?"}
+    """`marcar_presupuesto` → aprobado: el chip «Armá la factura» del cliente."""
+    return {"kind": KIND_ARMAR_FACTURA, "presupuesto_id": presupuesto["id"], "texto": "Armá la factura"}
