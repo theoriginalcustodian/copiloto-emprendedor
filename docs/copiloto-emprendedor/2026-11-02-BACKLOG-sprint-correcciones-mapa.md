@@ -96,6 +96,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N3** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -650,3 +653,78 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   no se cuenta como CONFORME. **Un hallazgo nuevo no reabre una entrada ya cerrada** — va a ficha
   aparte (DEC-18: un criterio que crece con cada medición no se puede alcanzar).
 - **Depende:** todas las anteriores.
+
+# Bloque N · Instrumento contaminado (destapado al cerrar SM-H4)
+
+> Las dos salen del cierre de `SM-H4` (backend, 2026-11-02): no eran features, las destapó **medir
+> con lenguaje natural en prod**. Backend las reportó y **no las parcheó**, que es lo correcto —
+> parchear fuera de la ficha es el desvío que el gate de atribución marca.
+
+### SM-N1 · `sin-issue` — El perfil fiscal del canónico en prod parece inválido: contamina toda sonda
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido:** 12 dictados en prod con el canónico tras el deploy de `SM-H4` — **0/12 piden
+  CUIT/DNI/nombre** (el fix funciona), pero **4/12 responden «faltan tus datos fiscales»** en vez de
+  producir la card. El perfil fiscal de `e2e-device@copiloto.test` en prod parece inválido o ausente.
+- **Por qué es lo primero y no una molestia:** el canónico es **el** instrumento de medición del
+  sprint. Si su perfil fiscal está roto, **toda sonda de factura con ese usuario mide el perfil, no
+  la conducta del agente** — y el resultado se lee como defecto del agente. Un instrumento
+  contaminado no da error: da una conclusión equivocada con cara de medición.
+- **DoD:**
+  1. **Diagnóstico primero, sin tocar nada:** qué tiene hoy el perfil fiscal del canónico en prod y
+     **qué campo exacto** dispara «faltan tus datos fiscales» (`path:línea` de la validación).
+     Prohibido «completarlo y ver si anda»: eso borra la evidencia de la causa.
+  2. **Decir si el perfil se rompió o nunca estuvo**, con el dato que lo distinga. Si se rompió,
+     cuándo y por qué — un perfil que se degrada solo es un defecto aparte.
+  3. Restaurado el perfil, **re-correr la misma sonda de 12** y reportar el delta. El control es el
+     **mismo** instrumento, no uno nuevo: cambiar la sonda y el sujeto a la vez mide dos variables.
+  4. **No se crea otro usuario** para esquivarlo (regla del canónico único). Si el arreglo exigiera
+     un segundo usuario, eso es MAYOR y va al `pedido_` del operador que ya existe.
+- **Tope:** si la causa resulta ser un cambio de schema o de validación propio, **no se parchea el
+  dato**: se arregla la causa y el dato se reconstruye.
+
+### SM-N2 · `sin-issue` — El agente pide período/vencimiento aunque la descripción lo prohibe
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Medido:** 3 de los 12 dictados piden **período o vencimiento de servicio** a pesar de la consigna
+  de `emitir_factura` que lo prohibe explícitamente (deploy `c0219797`, #1343).
+- **Qué clase de defecto es:** **la descripción de la herramienta no gobierna al modelo**. No es un
+  bug de validación — la validación ni se alcanza. Es el mismo hueco que dejó `SM-H3` en
+  `DOD-PARCIAL`: lo que falla es la **elección y el relleno** del tool call, y eso sólo se ejercita
+  con lenguaje natural, no con un test de la función.
+- **DoD:**
+  1. Reproducirlo con **las 3 frases exactas** que lo dispararon, guardadas literales. Una frase
+     parafraseada no reproduce un defecto de prompt.
+  2. Decir **por qué** la consigna no gana: si es orden, ubicación, competencia con otra instrucción,
+     o que el modelo infiere «servicio» del dictado. Con evidencia, no con hipótesis.
+  3. Fix + **la misma sonda de 12 frases**, reportando cuántas piden período antes y después. El
+     número de antes ya existe (3/12): es el control.
+  4. **Depende de `SM-N1`:** con el perfil fiscal roto, 4 de las 12 ni llegan a la card, así que la
+     sonda tiene 8 casillas útiles y el «después» no es comparable con el «antes». **`SM-N1`
+     primero.**
+
+### SM-N3 · `sin-issue` — El texto del catálogo que afirma qué PUEDE hacer una app no tiene test
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (`apps/copiloto/backend/catalog.py` es suyo; el cambio lo hizo frontend2 en
+  `SM-K4` y lo reportó él mismo)
+- **Medido:** `SM-K4` cambió el texto de Gmail de «Enviá mails desde el chat.» a «…No puede
+  leerlos.» — **un string, sin test que lo fije** (#1349, `c1ee5292`). Y el string **afirma una
+  capacidad**: que el agente **no** lee mails, lo cual es cierto hoy porque `services/gmail.py`
+  sólo cablea `gmail_send` (`SM-E2` le quitó «leer» a propósito).
+- **Por qué es una ficha y no un detalle:** el texto es una **afirmación sobre el código** que vive
+  lejos del código que la hace verdadera. El día que alguien cablee `gmail_read`, el catálogo va a
+  seguir diciendo «no puede leerlos» y nadie se va a enterar — y al revés, si alguien «corrige» el
+  texto a «leyé tus mails», no hay nada que lo frene. Es el patrón de la costura sin dueño: cada
+  lado es correcto y la afirmación que los une no la verifica nadie.
+- **DoD:**
+  1. Test que ate el texto a la **capacidad real**: afirma «no puede leerlos» **si y sólo si** el
+     cableado de Gmail no expone lectura. No un test que compare el string con una constante — eso
+     afirma el síntoma, no el mecanismo, y sale verde aunque el cableado cambie.
+  2. **Control positivo:** con `gmail_read` cableado a propósito, el test debe salir **rojo**. Sin
+     esa corrida el test no se sabe si mide.
+  3. Barrer el resto de `catalog.py`: **cuántos otros textos afirman una capacidad** y cuántos
+     tienen test. El número va en el `cierre_`, aunque sea 0.
+- **Tope:** no se reescriben los textos del catálogo en esta ficha. Lo que se agrega es el amarre.
