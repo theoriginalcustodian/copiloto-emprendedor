@@ -29,7 +29,6 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
-import { pressableStyle } from '../../../theme/glass/presion';
 import { useTema } from '../../../theme/ThemeProvider';
 
 /**
