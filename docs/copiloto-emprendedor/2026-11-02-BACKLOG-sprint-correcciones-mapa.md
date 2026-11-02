@@ -90,7 +90,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K8** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K8** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L co… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -462,7 +462,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K8 · `sin-issue` — El onboarding marca error antes de que el usuario escriba
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device del paso (exige una cuenta SIN onboarding cerrado; no se crea usuario ad-hoc: va en la ventana L con el operador)
+- **Cierre:** sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test (falla con el defecto, pasa con el fix) + paso en el mapa como onb-perfil + contrato verificado: SM-C3 DoD 2-4
 - **Dueño:** frontend2
 - **Medido:** N4 — la app agrega un paso de perfil que el mapa no tiene
   (`PantallaOnboarding.tsx:292`), gate del backend por `perfilIncompleto`. Su docstring cita el
