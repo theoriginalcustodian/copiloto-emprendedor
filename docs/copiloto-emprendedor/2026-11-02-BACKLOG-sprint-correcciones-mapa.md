@@ -114,6 +114,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
+| **SM-N19** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1319,3 +1320,48 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **No verificado todavía, y conviene que lo esté antes de codear:** el listado real de Composio para
   ese `composio_user_id` — backend lo infirió por código, no lo consultó.
 - **FUERA DEL SPRINT** (`DEC-18`): el 54 no se mueve.
+
+### SM-N19 · `sin-issue` — FUERA DEL SPRINT: el presupuesto se guardó SIN mostrar la card, sin chance de corregir
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (la medición primero) — frontend1 queda a la espera, ver abajo
+- **De dónde sale:** el **operador**, 2026-11-02, usando la app con su cuenta: «nunca se mostró la
+  card del presupuesto... se generó directamente sin posibilidad de corregir ni agregar nada...
+  fijate presupuesto 4 en pantalla».
+- **Lo que YA está medido, y descarta la explicación fácil.** El backend **sí cumple** su contrato:
+  `_run_registrar_presupuesto` (`tool_catalog.py:883`) devuelve **`is_write=False`**, no persiste, y
+  su `observation` (`:944-950`) le ordena al agente, textual: «TODAVÍA NO está guardado — NO digas
+  "anoté", "listo" ni "guardado" porque no es cierto». El schema de la tool dice lo mismo
+  (`:266`): «NO lo guarda: arma una propuesta para que él la revise y confirme».
+  **Conclusión parcial: el presupuesto 4 lo creó OTRO camino.** Esto no es un detalle: invalida el
+  fix «hacer que registrar_presupuesto no guarde», que es donde habría ido a parar cualquiera que
+  leyera sólo el síntoma.
+- **PREGUNTA MEDIBLE, es el primer paso y es de backend:** ¿qué creó el presupuesto N° 4 del tenant
+  del operador? Candidatos a distinguir, y llevan a fixes distintos:
+  (a) un segundo paso del agente que sí persiste tras la propuesta (patrón `then`, como el
+      `create→publish` documentado en `services/base.py:21`);
+  (b) el endpoint HTTP de `presupuestos_web.py`, o sea la app llamando a guardar sin pasar por la
+      card;
+  (c) la card **sí** se emitió y el front no la pintó — en cuyo caso el dueño es frontend1 y no
+      backend.
+  Se distinguen mirando el registro de la conversación y la fila del presupuesto (quién la escribió,
+  con qué `idem_key`, a qué hora respecto del mensaje). READ ONLY: es la cuenta fiscal del operador.
+- **Hasta que eso esté medido, frontend1 NO implementa.** Es la misma lección que acaba de pagar
+  `SM-N17`/`SM-N18` hoy: ahí el fix «obvio» del front no habría apagado nada porque el síntoma nacía
+  en otra capa, y la pregunta previa lo evitó.
+- **Por qué no es menor.** El patrón de confirmación es el corazón del producto: «nunca se pregunta
+  dos veces; a la segunda manda la card». Un camino que escribe sin pasar por la card no es una
+  molestia de UX — es el gate de revisión salteado en una entidad de negocio. Y el daño es el mismo
+  que el de una factura mal emitida salvo que el presupuesto no es fiscal: el emprendedor manda algo
+  que no revisó.
+- **FUERA DEL SPRINT** (`DEC-18`): no sale del mapa, sale del uso. El 54 no se mueve.
+- **DoD:**
+  1. Medido y escrito **qué** creó el presupuesto 4, con la evidencia (fila, `idem_key`, traza).
+  2. El camino que escribía sin card deja de hacerlo, o pasa por la card. Si el hallazgo es (c), el
+     fix es del front y esta ficha cambia de dueño — eso se escribe, no se asume.
+  3. Test **rojo si un presupuesto se persiste sin confirmación previa**. Y con su control positivo:
+     uno confirmado que **sí** se persiste. Sin las dos mitades no se distingue «el gate funciona»
+     de «ya no se guarda nunca».
+  4. Corrida en device: dictar un presupuesto, **ver la card**, corregir algo en ella y recién ahí
+     confirmarlo. La parte de «corregir» es la que el operador nombró y la que un test de card
+     presente no cubre.
