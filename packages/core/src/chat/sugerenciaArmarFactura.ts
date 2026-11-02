@@ -15,7 +15,7 @@ export interface SugerenciaArmarFactura {
   texto: string;
 }
 
-export const TEXTO_SUGERENCIA_ARMAR_FACTURA = '¿Te armo la factura?';
+export const TEXTO_SUGERENCIA_ARMAR_FACTURA = 'Armá la factura';
 
 export function leerSugerenciaArmarFactura(
   card: ReplyCard | null | undefined,

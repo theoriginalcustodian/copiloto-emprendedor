@@ -41,3 +41,17 @@ Se ve en `SM-H5-2`, arriba del recibo:
 - El texto del asistente dice `$50,000.00`.
 
 Hasta que se despliegue ese arreglo no se puede capturar `pres-ciclo` como pide el DoD.
+
+## SM-H5 · `pres-ciclo`, con las mitades de backend desplegadas
+
+Presupuesto de prueba N° 4 creado y aprobado por chat con texto escrito, sin audio. No se tocó el chip: no se armó ninguna factura.
+
+| Punto | Medido en device | Captura |
+|---|---|---|
+| Chip | `Armá la factura`, igual que el mapa | `SM-H5-4-aprobado-chip-arma-la-factura.webp` |
+| Recibo | `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar` | ídem |
+| Frase del agente | **Dice `$50,000`.** Es el mismo importe en inglés, en la burbuja de arriba del chip | ídem |
+
+La sonda de backend había dado 0/6 en inglés, y este caso es uno que se le escapó. La frase la escribe el modelo: queda abierto.
+
+La constante `TEXTO_SUGERENCIA_ARMAR_FACTURA` del core también pasó a `Armá la factura`. Es el respaldo si el backend no manda texto.
