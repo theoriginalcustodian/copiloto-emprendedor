@@ -26,6 +26,7 @@ import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth'
 import { PantallaOnboarding } from '../src/modules/onboarding';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
 import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
+import { BarraEstado } from '../src/theme/BarraEstado';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 /**
@@ -128,6 +129,7 @@ export default function LayoutRaiz() {
         <SafeAreaProvider initialMetrics={initialWindowMetrics}>
           <BarraNavegacionOculta />
           <ThemeProvider>
+          <BarraEstado />
           {fuentesListas ? (
             <SessionProvider>
               <Guard>

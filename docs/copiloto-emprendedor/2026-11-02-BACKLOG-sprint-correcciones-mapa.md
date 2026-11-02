@@ -72,7 +72,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
-| **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
 | **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I5** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -295,7 +295,8 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I2 · `sin-issue` — El dock «campo + mic chico» no existe: cada pantalla improvisa el suyo
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton grande fuera tambien en Soporte; pildora de alta queda; barra a ancho completo. Device canonico 2026-11-02 en Mi dia, chat, Gastos y Soporte: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-I2.md. Cancelar deslizando ejercido con adb, no con dedo real (punto de SM-L2).
 - **Dueño:** frontend1
 - **Medido:** no hay componente de dock compartido. `apps/mobile/src/modules/chat/ChatView.tsx` y
   `apps/mobile/src/modules/soporte/PantallaSoporte.tsx` ya reemplazan el campo al grabar;

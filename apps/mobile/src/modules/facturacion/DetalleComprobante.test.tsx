@@ -61,6 +61,18 @@ describe('DetalleComprobante', () => {
     expect(screen.getByTestId('detalle-comprobante-documento')).toHaveTextContent('CUIT 20111111112');
   });
 
+  // SM-N11: en device se leía `2026-11-12` y `100.0`, en la misma pantalla donde la lista decía `$100,00`.
+  it('🔴 fechas e importe se leen formateados, nunca como viajan', async () => {
+    await montar(comprobante({ caeVto: '2026-11-12', fechaEmision: '2026-11-02', total: '100.0' }));
+
+    expect(screen.getByText('12 nov 2026')).toBeTruthy();
+    expect(screen.getByText('2 nov 2026')).toBeTruthy();
+    expect(screen.getByTestId('detalle-comprobante-total')).toHaveTextContent('$100,00');
+    expect(screen.queryByText('2026-11-12')).toBeNull();
+    expect(screen.queryByText('2026-11-02')).toBeNull();
+    expect(screen.queryByText('100.0')).toBeNull();
+  });
+
   /**
    * 🔴 20 comprobantes del tenant de pruebas no tienen receptor: se emitieron antes de que el campo
    * existiera. Es el caso NORMAL para cualquiera que ya venía facturando, no un borde raro.
