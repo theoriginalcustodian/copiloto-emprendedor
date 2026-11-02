@@ -710,6 +710,18 @@ class ConversationWorkflow:
                 trace.append(tc["name"])
             if tr.get("artifact"):
                 last_artifact = tr["artifact"]
+            # SM-N21 (opción C, operador 2026-11-02): una tool que MUEVE PLATA puede dejar en su observación un
+            # `reply_literal` -- el texto EXACTO del reply. El motor (domain-blind) lo emite tal cual y NO vuelve
+            # a llamar al LLM, porque un importe que el modelo reescribe («$70,000») no se puede garantizar.
+            # Replay-safe: sólo ramifica sobre un dato que viene de la activity `execute_tool` (ya grabado en la
+            # historia); las historias previas no traen la clave, así que nunca entran acá. `patched` igual,
+            # por contrato (deja un TemporalChangeVersion auditable). Se consulta SÓLO si hay literal.
+            literal = observation.get("reply_literal")
+            if (tr.get("status") == "ok" and isinstance(literal, str) and literal.strip()
+                    and workflow.patched("reply-literal-de-la-tool")):
+                await self._react_finish(channel, channel_ref, cliente_id, literal, last_artifact,
+                                         tool_trace=trace, card=gate_card, confirmed_tool=confirmed_tool)
+                return False
             step += 1
         # tope de pasos: cerrar con texto de fallo (guardrail, jamás loop silencioso)
         await self._react_finish(channel, channel_ref, cliente_id,
