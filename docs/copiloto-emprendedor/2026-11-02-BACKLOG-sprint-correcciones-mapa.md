@@ -114,7 +114,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
-| **SM-N19** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. S… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1325,7 +1325,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N19 · `sin-issue` — FUERA DEL SPRINT: el presupuesto se guardó SIN mostrar la card, sin chance de corregir
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. Su transcript: 20:59:49 pidio la card por chat, 21:02:08 corrio h5_guardar.sh (DOWN/MOVE/UP en 360,1243 sobre Guardar el presupuesto), 21:02:18 leyo el recibo N 4. Encaja exacto con lo medido por backend (UN POST, okhttp/4.12.0, 201, sin reintentos; crearPresupuesto con UN llamador en FormularioPresupuesto.tsx:237 colgado de onPress:421). CONCLUSIONES QUE SOBREVIVEN: (a) NO hay write no consentido por codigo; (b) la hipotesis 2 TOQUE CIEGO se queda SIN evidencia para la 1767 y no se persigue hasta que algo la sostenga. MI ERROR, que es la leccion de la ficha: afirme que ninguna sesion tenia el device midiendo los avisos con un filtro de nombre *TOMO*/*SOLTE*, y frontend1 lo tenia declarado en otro TIPO de mensaje (dato_ de las 18:05, y a las 17:40 un cierre con cancelar ejercido con adb) => el filtro no miro los archivos donde estaba la respuesta. Para saber quien tenia el device NO se consultan los avisos por nombre: se mide el device. FALTA (frontend1, con el device y la cuenta del operador): hipotesis 1, la card no sobrevive al re-pintado del hilo -- el operador vio solo el reply_text donde habia una card. Grep de quien ESCRIBE la card en el estado del hilo vs quien lo sobrescribe con el historico del server, y evidencia en device = captura con la card visible + salir y volver + segunda captura. Pendiente ademas el cruce de las otras dos cards guardadas (1524 a 49s y 1662 a 70s) contra los transcripts: el tenant canonico lo usan todas las sesiones y es probable que tambien sean pruebas nuestras, lo que retiraria el no es el unico caso.
 - **Dueño:** backend (la medición primero) — frontend1 queda a la espera, ver abajo
 - **De dónde sale:** el **operador**, 2026-11-02, usando la app con su cuenta: «nunca se mostró la
   card del presupuesto... se generó directamente sin posibilidad de corregir ni agregar nada...
