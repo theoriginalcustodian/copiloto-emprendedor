@@ -125,18 +125,36 @@ type EstadoGuardado = 'idle' | 'enviando' | 'ok' | 'error';
 type Seccion = 'negocio' | 'modo';
 
 interface SeccionProps {
-  titulo: string;
+  /** Sin título: la pantalla ya se llama igual (mapa `negocio`, SM-K7) — repetirlo era ruido. */
+  titulo?: string;
+  /** Rótulo chico en versalitas (`CÓMO TE HABLA` del mapa) en vez del encabezado grande. */
+  rotulo?: boolean;
   testID: string;
   children: React.ReactNode;
 }
 
-function Seccion({ titulo, testID, children }: SeccionProps) {
+function Seccion({ titulo, rotulo = false, testID, children }: SeccionProps) {
   const tema = useTema();
   return (
     <View testID={testID} style={{ gap: tema.espacio.sm }}>
-      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
-        {titulo}
-      </Text>
+      {titulo != null &&
+        (rotulo ? (
+          <Text
+            style={{
+              color: tema.color.textoTenue,
+              fontFamily: tema.fuente.uiSemibold,
+              fontSize: tema.tipo.chico,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+            }}
+          >
+            {titulo}
+          </Text>
+        ) : (
+          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
+            {titulo}
+          </Text>
+        ))}
       {children}
     </View>
   );
@@ -358,7 +376,7 @@ export function PantallaPerfilNegocio() {
               ? 'Anota lo que le dictás y te avisa después'
               : 'Te pide confirmación antes de ejecutar'}
           </Text>
-          <Seccion titulo="Mi negocio" testID="perfil-negocio-seccion-negocio">
+          <Seccion testID="perfil-negocio-seccion-negocio">
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Con esto el copiloto entiende de qué se trata tu trabajo y puede responderte mejor.
             </Text>
@@ -451,7 +469,7 @@ export function PantallaPerfilNegocio() {
             </Text>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               {campos.modoCeremonia === 'automatico'
-                ? 'Anota lo que le dictás y te avisa después. Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
+                ? 'Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
                 : 'Cuando le dictás algo, te muestra una tarjeta para que la revises antes de guardarla. Así ves qué entendió y lo corregís ahí mismo.'}
             </Text>
             {/* 🔴 Sólo en automático, y en UNA dirección: apagar. Encender es una oferta del copiloto
@@ -479,7 +497,7 @@ export function PantallaPerfilNegocio() {
               prototipo («Escribí al menos 10 caracteres…») NO se porta: el backend no la exige y
               bloquear Guardar sobre perfiles ya guardados es un cambio de contrato (MAYOR), que se
               pide a planificación; (3) Guardar es explícito por sección y no edición inline. */}
-          <Seccion titulo="Cómo te habla" testID="perfil-negocio-seccion-personalidad">
+          <Seccion titulo="Cómo te habla" rotulo testID="perfil-negocio-seccion-personalidad">
             <Row testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
               <Text testID="perfil-negocio-tono-resumen" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
                 {resumenDeTono(campos)} ›

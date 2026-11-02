@@ -60,8 +60,19 @@ export function LoPedisteVos({ version = 0 }: { version?: number }) {
           testID={`lo-pediste-vos-${it.id}`}
           style={{ gap: 2, paddingVertical: tema.espacio.xs }}
         >
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{it.texto}</Text>
-          {/* Estado (BL-J12/K-08) + el mes en que se mandó, que es lo que dibuja el prototipo (`.cuando`). */}
+          {/* El mes va a la DERECHA de la fila, en versalitas (`.cuando` del mapa `feedback`, SM-K7). */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: tema.espacio.sm }}>
+            <Text style={{ flex: 1, color: tema.color.texto, fontSize: tema.tipo.base }}>{it.texto}</Text>
+            {mesDeEnvio(it.creadoEn) != null && (
+              <Text
+                testID={`lo-pediste-vos-${it.id}-mes`}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, textTransform: 'uppercase', letterSpacing: 0.6 }}
+              >
+                {mesDeEnvio(it.creadoEn)}
+              </Text>
+            )}
+          </View>
+          {/* Estado (BL-J12/K-08). */}
           <View style={{ flexDirection: 'row', gap: tema.espacio.sm }}>
             {it.escuchado ? (
               <Text
@@ -76,14 +87,6 @@ export function LoPedisteVos({ version = 0 }: { version?: number }) {
                 style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
               >
                 Enviado
-              </Text>
-            )}
-            {mesDeEnvio(it.creadoEn) != null && (
-              <Text
-                testID={`lo-pediste-vos-${it.id}-mes`}
-                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-              >
-                · {mesDeEnvio(it.creadoEn)}
               </Text>
             )}
           </View>

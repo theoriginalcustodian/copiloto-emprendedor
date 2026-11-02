@@ -147,6 +147,19 @@ describe('CampoSelect', () => {
     await fireEvent.press(screen.getByTestId('cs-opcion-cuenta_corriente'));
     expect(onChange).toHaveBeenCalledWith('cuenta_corriente');
   });
+
+  it("variante 'filas': dibuja un radio por opción y sólo la elegida lleva punto (SM-K7)", async () => {
+    await envolver(
+      <CampoSelect etiqueta="Tono" opciones={OPCIONES} valor="tarjeta" onChange={() => {}} testID="cs" variante="filas" />,
+    );
+    expect(screen.getByTestId('cs-opcion-tarjeta-radio').children).toHaveLength(1);
+    expect(screen.getByTestId('cs-opcion-contado-radio').children).toHaveLength(0);
+  });
+
+  it("variante por defecto ('chips'): no dibuja radio", async () => {
+    await envolver(<CampoSelect etiqueta="Tono" opciones={OPCIONES} valor="tarjeta" onChange={() => {}} testID="cs" />);
+    expect(screen.queryByTestId('cs-opcion-tarjeta-radio')).toBeNull();
+  });
 });
 
 describe('CampoFecha', () => {
