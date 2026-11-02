@@ -76,7 +76,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
-| **SM-I6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | captura del antes y el despues en device; medir donde se van los ~1,3 s que tarda el escritorio en empezar a cerrar, … |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
@@ -375,7 +375,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I6 · `sin-issue` — El retardo al soltar (R03) sigue sin corregir
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura del antes y el despues en device; medir donde se van los ~1,3 s que tarda el escritorio en empezar a cerrar, y si existen en release (SM-G4). Hasta medirlo la senal de cierre sigue pasando por el hilo de JS.
+- **Cierre:** 80f1a36f8bb7fac841c63b3698d0238d0db7ba1a (#1411). Los rotulos de PanelDeslizable y PanelFunciones salen de la posicion en el hilo de UI y no del estado fijado al terminar la animacion; tests del cableado rojos con el mutante. mobile.sh 1549 verdes en el worktree y CI 6/6.
 - **Dueño:** frontend1
 - **Medido:** pendiente del experimento.
 - **DoD:** el arreglo que indique SM-G4, con la captura del antes y el después.
