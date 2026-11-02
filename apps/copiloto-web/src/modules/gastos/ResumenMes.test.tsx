@@ -27,6 +27,17 @@ const filas = (): string[] =>
 const anchoDe = (cat: string): string =>
   (screen.getByTestId(`gastos-resumen-barra-${cat}`) as HTMLElement).style.width;
 
+describe('ResumenMes — rótulo del período', () => {
+  // SM-N14: el negativo es lo que importa. Sin él, el test pasa con el formateador de fecha cuando el mes acierta.
+  it('🔴 un período se lee como mes, sin inventar un día', () => {
+    render(<ResumenMes resumen={resumen({ periodo: '2026-11' })} />);
+
+    const rotulo = screen.getByTestId('gastos-resumen-periodo').textContent;
+    expect(rotulo).toContain('Gastado en noviembre');
+    expect(rotulo).not.toContain('1 nov');
+  });
+});
+
 describe('ResumenMes — desglose por categoría', () => {
   // Control positivo del caso VACÍO, primero: diseñar sólo contra el caso lleno ciega al normal.
   it('con 0 gastos no rompe: total en cero, sin filas ni barras', () => {

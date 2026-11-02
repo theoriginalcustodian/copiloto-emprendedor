@@ -56,6 +56,17 @@ const filas = (): string[] =>
 const anchoDe = (cat: CategoriaGasto): string =>
   String(StyleSheet.flatten(screen.getByTestId(`gastos-resumen-barra-${cat}`).props.style).width);
 
+describe('ResumenMes (mobile) — rótulo del período', () => {
+  // SM-N14: el negativo es lo que importa. Sin él, el test pasa con el formateador de fecha cuando el mes acierta.
+  it('🔴 un período se lee como mes, sin inventar un día', async () => {
+    await montar(resumen({ periodo: '2026-11' }));
+
+    const rotulo = screen.getByTestId('gastos-resumen-rotulo');
+    expect(rotulo).toHaveTextContent('Gastado en noviembre');
+    expect(rotulo).not.toHaveTextContent('1 nov');
+  });
+});
+
 describe('ResumenMes (mobile) — desglose por categoría', () => {
   // El caso VACÍO primero: diseñar contra el caso lleno ciega al normal, y en octubre del usuario
   // canónico este render tiene UNA sola categoría — fue lo que hizo leer «una barra» como «ninguna».

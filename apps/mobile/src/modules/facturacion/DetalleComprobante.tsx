@@ -28,7 +28,7 @@
  */
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { Comprobante } from '@copiloto/core';
+import { formatearFechaLarga, formatearImporte, type Comprobante } from '@copiloto/core';
 
 import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
 import { useTema } from '../../theme/ThemeProvider';
@@ -172,9 +172,9 @@ export function DetalleComprobante({
               testID={`${testID}-numero`}
             />
             <Dato etiqueta="CAE" valor={c.cae} destacado testID={`${testID}-cae`} />
-            {c.caeVto != null && <Dato etiqueta="Vence el" valor={c.caeVto} />}
-            {c.fechaEmision != null && <Dato etiqueta="Emitida el" valor={c.fechaEmision} />}
-            <Dato etiqueta="Total" valor={c.total} testID={`${testID}-total`} />
+            {c.caeVto != null && <Dato etiqueta="Vence el" valor={formatearFechaLarga(c.caeVto)} />}
+            {c.fechaEmision != null && <Dato etiqueta="Emitida el" valor={formatearFechaLarga(c.fechaEmision)} />}
+            <Dato etiqueta="Total" valor={formatearImporte(c.total)} testID={`${testID}-total`} />
 
             {/* 🔴 Los comprobantes anteriores al 2026-07-21 no tienen receptor: el dato no existía
                 todavía. No es un error ni un vacío que haya que explicar — simplemente no se dibuja

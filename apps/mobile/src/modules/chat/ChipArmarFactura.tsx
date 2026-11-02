@@ -8,7 +8,7 @@ import { FilaBotones } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * BL-J9 / K-07-B — «¿Te armo la factura?». Sin pantalla nueva: `facturarPresupuesto` es idempotente y
+ * BL-J9 / K-07-B — «Armá la factura». Sin pantalla nueva: `facturarPresupuesto` es idempotente y
  * devuelve el borrador; se navega a `/facturacion` (el gate de factura existente) con ese `facturaId`.
  * Si no se pudo, se dice — no se navega.
  */

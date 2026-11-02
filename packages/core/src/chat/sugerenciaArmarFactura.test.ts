@@ -5,13 +5,13 @@ import { avisoArmarFactura, leerSugerenciaArmarFactura } from './sugerenciaArmar
 describe('leerSugerenciaArmarFactura', () => {
   it('lee la card completa', () => {
     expect(
-      leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7, texto: '¿Te armo la factura?' } as ReplyCard),
-    ).toEqual({ presupuestoId: 7, texto: '¿Te armo la factura?' });
+      leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7, texto: 'Armá la factura' } as ReplyCard),
+    ).toEqual({ presupuestoId: 7, texto: 'Armá la factura' });
   });
 
   it('sin texto usa el default', () => {
     expect(leerSugerenciaArmarFactura({ kind: 'sugerencia_armar_factura', presupuesto_id: 7 } as ReplyCard)?.texto).toBe(
-      '¿Te armo la factura?',
+      'Armá la factura',
     );
   });
 

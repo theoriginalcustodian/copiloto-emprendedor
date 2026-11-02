@@ -12,7 +12,7 @@ export interface ChipArmarFacturaProps {
 }
 
 /**
- * BL-J9 / K-07-B — el chip «¿Te armo la factura?». Sin pantalla nueva: `facturarPresupuesto` es
+ * BL-J9 / K-07-B — el chip «Armá la factura». Sin pantalla nueva: `facturarPresupuesto` es
  * idempotente y devuelve el borrador; el gate de factura (`PantallaFacturacion`) hace el resto.
  * Sin `onFacturar` no hay adónde ir, así que no se ofrece.
  */
