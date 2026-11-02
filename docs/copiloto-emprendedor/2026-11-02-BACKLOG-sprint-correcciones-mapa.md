@@ -70,7 +70,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card cancelada tras recargar y del recibo en vivo, en la tanda de SM-H3 |
 | **SM-I1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -229,7 +229,9 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H7 · `sin-issue` — Una card cancelada vuelve a leerse como «Confirmado» al recargar
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de la card cancelada tras recargar y del recibo en vivo, en la tanda de SM-H3
+- **Cierre:** 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314)
 - **Dueño:** frontend1
 - **Medido:** **causa candidata, leída y no corrida:** `sanitizarHitlRespondido` guarda como `value`
   el **texto** «Cancelar» (`packages/core/src/chat/hitl.ts`) y `ListaMensajes.tsx:213` lo compara
