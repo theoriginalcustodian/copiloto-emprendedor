@@ -394,8 +394,10 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
   nativo del `RefreshControl` se dibuja **encima del monto** (N2), donde el mapa sólo pone
   «Actualizando…».
-- **DoD:** cabecera, etiqueta de mes y mosaicos del mapa; «Sin ventas todavía» en el vacío; el
-  indicador nativo oculto (color transparente) dejando sólo la línea «Actualizando…». Captura de
+- **DoD (corregido 2026-11-02 — ver el ⛔ de abajo):** cabecera, etiqueta de mes y mosaicos del
+  mapa; «Sin ventas todavía» en el vacío; ~~el indicador nativo oculto (color transparente)~~
+  **el indicador nativo YA está fuera de cuadro: NO se toca el `RefreshControl`** — dejando sólo
+  la línea «Actualizando…». Captura de
   los tres estados, incluido el refresh en curso.
 
 - ⛔ **EL DoD PRESCRIBÍA EL DEFECTO — corregido el 2026-11-02 (lo vio frontend1 al implementar).**
