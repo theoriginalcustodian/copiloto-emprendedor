@@ -326,6 +326,37 @@ async def test_cliente_id_valido_no_se_rechaza():
     assert client.queries              # sí llegó a construir/mandar la query
 
 
+def test_N2_servicio_sin_periodo_arma_la_card_en_la_1a_vez_no_pregunta_el_periodo():
+    """Medido en prod: concepto=servicios + R6 ⇒ la 1ª vez devolvía «ARCA exige el período… Pedí SÓLO
+    eso» y el LLM lo preguntaba en el chat. El período lo completa la card."""
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final", "concepto": "servicios",
+                            "items": [{"descripcion": "service", "cantidad": "1", "precio_unitario": "30000"}]},
+                  perfil=perfil)
+    assert res.artifact is not None, "armó la card en vez de preguntar"
+    assert "fecha_servicio_faltante" in str(res.artifact.data["faltantes"])   # la card lo pide, editable
+
+
+def test_N2_si_ademas_falta_otra_cosa_sigue_preguntando_pero_sin_mencionar_el_periodo():
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final", "concepto": "servicios"}, perfil=perfil)  # sin ítems
+    assert res.artifact is None
+    assert "período" not in res.observation["result"]
+
+
+def test_N2_el_faltante_de_periodo_solo_existe_cuando_el_concepto_lo_muestra_en_la_card():
+    """Acople con la app (`PasoDatosVenta.requiereFechasServicio`: concepto 2 o 3): con productos R6 no
+    dispara, así que la card nunca pide un período que no tiene dónde escribirse."""
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final", "concepto": "productos", "items": [ITEM]},
+                  perfil=perfil)
+    assert res.artifact is not None
+    assert "fecha_servicio_faltante" not in str(res.artifact.data["faltantes"])
+
+
 def test_H4_primera_vez_incompleta_le_dice_al_LLM_que_falta_y_que_no_pida_documento_al_consumidor_final():
     perfil = _perfil()
     backend = _FacturaBackendFake(perfil=perfil)
