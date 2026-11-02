@@ -112,6 +112,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1218,3 +1219,41 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Sospecha para quien lo arregle (no verificada):** el avatar vive en la franja superior, que es
   zona del panel deslizable; un Pan que se come el tap es exactamente el caso de
   `swmansion-rn-gestures`. Es hipótesis, no hallazgo — medila antes de codear.
+
+### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
+- **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
+  aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
+  de las apps a conectar, no sé por qué figura esto».
+- **Medido, y el código le da la razón de forma incómoda.** `service_risk_contrato.py:18` lo dice
+  textual: «Instagram NO está ahí -- cero módulo, cero tool». Y `:4-6` registra que esto **ya pasó
+  una vez**: el prompt ofrecía «ver contactos y redes» cuando «HubSpot e Instagram ni existían como
+  tool» (`system_prompt.py:33` lo repite: «un agente que ofrece algo inexistente hace…»). O sea: la
+  clase de defecto está documentada y cazada **en el prompt**, y sobrevivió **en la UI**.
+- **Dónde sigue cableado:** `apps/copiloto-web/src/design-system/serviceIcons.tsx:64` ·
+  `apps/mobile/src/modules/apps/PantallaApps.tsx:69` (`instagram: 'grabar'`) ·
+  `packages/core/src/chat/hitl.ts:91` (badge `IRREVERSIBLE`, `tono: danger`) ·
+  `tool_catalog.py:80` y `conversation_workflow.py:659` lo nombran como ejemplo de badge de riesgo.
+- **Por qué no es cosmético.** Un aviso de «conexión caída» es una llamada a la acción: manda al
+  emprendedor a reconectar algo que no se puede conectar. Y el badge `IRREVERSIBLE` de `hitl.ts:91`
+  está reservado para acciones que no se pueden deshacer: tenerlo vivo para un servicio inexistente
+  gasta la señal más cara de la app en un fantasma.
+- **PREGUNTA PREVIA, para backend, ANTES de que frontend1 toque nada:** ¿de dónde sale el aviso?
+  Puede venir (a) de un registro de conexiones en la DB del tenant que todavía lista `instagram`, o
+  (b) del catálogo del front. **Son fixes opuestos** — borrar el ícono del front deja el registro
+  vivo y el aviso puede volver por otra vista; limpiar la DB sin sacar el catálogo deja el camino
+  abierto a que se re-cree. Medirlo es barato y decide el dueño del fix. Hasta que esté medido,
+  frontend1 **no** implementa.
+- **FUERA DEL SPRINT** (`DEC-18`): no sale del mapa, sale del uso. El 54 no se mueve.
+- **DoD:**
+  1. Medido de dónde sale el aviso (la pregunta previa), escrito con `path:línea` o con la consulta
+     que lo mostró.
+  2. Instagram deja de ofrecerse y deja de avisar, en **las dos** superficies — mobile y web: el
+     mismo defecto vivía dos veces ya es patrón conocido de este repo.
+  3. Un test que sea **rojo si Instagram vuelve a aparecer** como servicio ofrecible. Sin eso, el
+     próximo que agregue una key al catálogo lo revive sin enterarse — que es exactamente cómo
+     sobrevivió a la limpieza del prompt.
+  4. Si el fix toca la DB del tenant: corrida en device con la cuenta del operador mostrando que el
+     aviso ya no está. Esa cuenta es la que lo reportó, así que es la que lo acredita.
