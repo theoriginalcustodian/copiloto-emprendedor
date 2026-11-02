@@ -85,7 +85,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo,… |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar… |
@@ -478,8 +478,8 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo, captura de los dos errores
-- **Cierre:** 1789d8bc (#1334) backend: campo causa dato|servicio|desconocida en onboarding de GET /afip/estado, desplegado en 77326ae5; VPS 79 passed
+- **Falta:** Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya refresca el estado: premisa sin medir); subtitulo contra el mapa; captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (omitido por decision del operador BL-V27)
+- **Cierre:** c18439ff (#1339) app: la pantalla nombra la causa dato|servicio|desconocida del fallo del alta; backend 1789d8bc (#1334)
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
