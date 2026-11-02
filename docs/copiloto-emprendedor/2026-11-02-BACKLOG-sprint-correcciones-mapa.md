@@ -87,7 +87,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device (Metro de nuevo + teléfono) |
-| **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | «desde …»: GET /me no trae fecha de alta (pedido_ a backend, sin inventarla) · fondo blanco sobre tiles y «Sí, cerrar… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device: aviso presente con sesión caída (hay que invalidar la sesión del canónico del lado servidor: e… |
 | **SM-K7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
@@ -564,7 +564,9 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** «desde …»: GET /me no trae fecha de alta (pedido_ a backend, sin inventarla) · fondo blanco sobre tiles y «Sí, cerrar sesión» cortado: sólo medibles en device (cerrar sesión SÓLO con el usuario del operador) · subtítulos/encabezado de Ajustes: enmienda fundada en PantallaAjustes (tile sin subtítulo; /me no trae el nombre de la persona) → corregir el mapa, falta esa edición
+- **Cierre:** 3be85a91 (#1365) · chevrons en Términos/Privacidad · copy de salida «cuenta de Google» (tests con control) · «Cambiar el mail» fuera por DoD
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
