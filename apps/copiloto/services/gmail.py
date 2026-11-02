@@ -70,7 +70,8 @@ TOOLS = {"gmail_send": "send"}
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
         "name": "gmail_send",
-        "description": "Envía un correo por Gmail. Devuelve un borrador enlazable para revisar antes de enviar.",
+        "description": "Envía un correo por Gmail. Devuelve un borrador enlazable para revisar antes de enviar. "
+                       "USALA para todo pedido de mandar, avisar o recordar algo POR MAIL ('mandale un recordatorio por mail'): el recordatorio es el CONTENIDO del mail. El mail sale cuando el usuario lo confirma; no se puede programar para después, así que 'para mañana' va en el texto, no como fecha de envío.",
         "parameters": {"type": "object", "properties": {
             "to": {"type": "string", "description": "email destino"},
             "subject": {"type": "string", "description": "asunto"},

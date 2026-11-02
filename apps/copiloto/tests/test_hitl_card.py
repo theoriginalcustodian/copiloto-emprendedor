@@ -33,7 +33,7 @@ def test_gate_de_gmail_trae_el_detalle_estructurado():
         "filas": [{"k": "Para", "v": "lucia@x.com", "sub": None, "editable": False},
                   {"k": "Asunto", "v": "Recordatorio", "sub": None, "editable": False}],
         "cita": "Te recuerdo la reunión del lunes.",
-        "nota": "Se manda desde tu Gmail.",
+        "nota": "El mail sale desde tu Gmail cuando confirmes, no antes.",
     }
     assert "recibo" not in tr.observation                      # el recibo es del cierre, no del gate
     assert tr.observation["service"] == "gmail"                # lo de antes sigue igual
