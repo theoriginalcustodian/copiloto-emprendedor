@@ -104,6 +104,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N9** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -880,3 +881,36 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      comparable: el instrumento tiene que ser el mismo a los dos lados.
   4. Corrida en el VPS con la salida adjunta.
 - **Tope:** no se reescribe la voz de las confirmaciones en esta ficha. Lo que se arregla es la fuga.
+### SM-N9 · `sin-issue` — El encabezado de Ajustes: el mapa pide el nombre comercial y ESE dato SÍ existe
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** frontend2 lo nombró al corregir el mapa por la enmienda de `SM-K5` (#1368,
+  `c5186d47`) y **no lo cargó por su cuenta** — preguntó. Correcto: la corrección del mapa estaba
+  avalada para lo que `/me` no trae, no para esto.
+- **Lo medido (planificación, 2026-11-02, contra `origin/main`).** El comentario de
+  `apps/mobile/src/modules/ajustes/PantallaAjustes.tsx:123-125` declara que el encabezado
+  «El Galpón · Martín Cairo» necesita **dos** datos: el nombre comercial (`perfilNegocio`, *«una
+  lectura aparte»*) y el nombre de la **persona**, que `/me` no trae. Son de distinta naturaleza y la
+  enmienda los trató juntos:
+  - el nombre de la **persona** no existe — `me_contrato.py` declara 9 claves y ninguna es ésa. Ahí
+    la enmienda es correcta y el mapa ya quedó corregido.
+  - el **nombre comercial sí existe**: `nombreComercial` es campo de `PerfilNegocio`
+    (`packages/core/src/api/perfilNegocio.ts:43`, desde `nombre_comercial` en `:82`/`:112`), y la app
+    ya tiene la pantalla que lo consume (`modules/ajustes/negocio/PantallaPerfilNegocio.tsx`).
+- **Por eso queda divergencia, y es la mitad que el mapa conservó.** Frontend2 dejó el mapa pidiendo
+  «El Galpón» en el encabezado de Ajustes, y la app hoy **no hace esa lectura**. El motivo escrito en
+  el código no es imposibilidad: es **«una lectura aparte»**, o sea costo. Un motivo de costo y uno de
+  dato inexistente conviven en el mismo comentario, y al leerse juntos el segundo le presta su
+  autoridad al primero — así es como una decisión de costo queda registrada como imposible.
+- **DoD:**
+  1. El encabezado de Ajustes muestra el nombre comercial leído de `perfilNegocio`.
+  2. El caso **vacío** resuelto explícitamente: `nombreComercial` cae a `''` (`perfilNegocio.ts:112`),
+     así que hay que decidir y probar qué se ve sin nombre cargado — no un encabezado con un hueco.
+     El emprendedor nuevo es el caso normal, no el borde.
+  3. Test que afirme las dos ramas (con nombre y sin nombre).
+  4. Captura de device del encabezado con el nombre.
+- **Lo que esta ficha NO hace:** el nombre de la **persona**. Ese no existe y el mapa ya fue
+  corregido; si alguna vez se agrega, es otra ficha con su `pedido_` al backend.
+- **Los puntos 1-3 NO necesitan el teléfono.** Sólo el punto 4. Es trabajo hacedero mientras el device
+  está tomado.
