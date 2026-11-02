@@ -115,7 +115,7 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     expect(router.push).toHaveBeenCalledWith('/clientes');
   });
 
-  it('🔴 la app aterriza en Mi día, con el avatar como única puerta a Ajustes (Ola 4)', async () => {
+  it('🔴 la app aterriza en Mi día, con el avatar como puerta a Ajustes (Ola 4)', async () => {
     // El cambio de aterrizaje: antes esta pantalla montaba el escritorio de fondo y la conversación
     // adelante, con Mi día como una ruta más del grid — o sea que a la base del sistema se llegaba
     // entrando a una función. Ahora la base ES Mi día y el escritorio cuelga del borde de arriba.
@@ -143,6 +143,17 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    * (`addendum_mi-dia` §3). Antes no había forma de ver la lista COMPLETA desde el principal; ahora el
    * título es la entrada. `empujarUnaVez` igual que los tiles: dos toques no apilan dos glass.
    */
+  it('🔴 SM-N16: el avatar del escritorio también abre Ajustes, único camino a cerrar sesión', async () => {
+    // Se monta el shell y no el escritorio solo: lo que faltaba era el cable. Con un `onAjustes` de mock
+    // este caso seguiría verde aunque `PantallaPrincipal` dejara de pasarlo.
+    await envolver();
+
+    await fireEvent.press(screen.getByTestId('escritorio-avatar'));
+
+    expect(router.push).toHaveBeenCalledWith('/ajustes');
+    expect(router.push).toHaveBeenCalledTimes(1);
+  });
+
   it('tocar el encabezado "Actividad reciente" navega a /recientes', async () => {
     await envolver();
 

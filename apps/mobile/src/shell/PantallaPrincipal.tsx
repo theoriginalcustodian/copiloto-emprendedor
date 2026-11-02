@@ -114,6 +114,10 @@ export function PantallaPrincipal() {
   // bien medido): es que la navegación no tenía invariante de "uno a la vez".
   const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
+  // SM-N16: un solo destino para las dos capas que muestran el avatar. El camino a cerrar sesión pasa
+  // por acá, y un operador quedó sin salida en el escritorio cuando el acceso vivía sólo en Mi día.
+  const alAjustes = () => empujarUnaVez('/ajustes');
+
   /**
    * Tocar una operación de la lista la abre **en su función**, con su id.
    *
@@ -264,13 +268,13 @@ export function PantallaPrincipal() {
               // El encabezado "Actividad reciente" entra a la lista COMPLETA. `empujarUnaVez` y no
               // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
               onVerRecientes={() => empujarUnaVez('/recientes')}
-              onAjustes={() => empujarUnaVez('/ajustes')}
+              onAjustes={alAjustes}
               avisa={conexionCaida}
             />
           }
         >
           <PantallaMiDia
-            onAjustes={() => empujarUnaVez('/ajustes')}
+            onAjustes={alAjustes}
             onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}
