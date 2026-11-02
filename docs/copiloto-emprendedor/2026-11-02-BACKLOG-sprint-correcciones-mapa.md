@@ -104,7 +104,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N8** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N9** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N9** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del encabezado con el nombre (punto 4) |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -883,7 +883,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Tope:** no se reescribe la voz de las confirmaciones en esta ficha. Lo que se arregla es la fuga.
 ### SM-N9 · `sin-issue` — El encabezado de Ajustes: el mapa pide el nombre comercial y ESE dato SÍ existe
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device del encabezado con el nombre (punto 4)
+- **Cierre:** 545a5dc7 (#1371): Ajustes lee perfilNegocio y muestra nombreComercial en la etiqueta del encabezado; vacio/blanco/error = sin etiqueta; 3 tests
 - **Dueño:** frontend2
 - **De dónde sale:** frontend2 lo nombró al corregir el mapa por la enmienda de `SM-K5` (#1368,
   `c5186d47`) y **no lo cargó por su cuenta** — preguntó. Correcto: la corrección del mapa estaba
