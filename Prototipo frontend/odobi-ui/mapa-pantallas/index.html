@@ -103,7 +103,7 @@
     <div class="atras"><span class="wm">Odobi</span><span class="per">Mapa de pantallas</span></div>
     <div class="port">
       <div class="lbl">Prototipo navegable</div>
-      <div class="n">30<i>pantallas</i></div>
+      <div class="n"><span id="n-pantallas"></span><i>pantallas</i></div>
       <div class="chip">Cada teléfono es el prototipo real, en vivo</div>
     </div>
   </div>
@@ -192,8 +192,6 @@ const PANTALLAS = {
      'el tablero YA EXISTÍA en kb-usuario/midia.md — no había que inventarlo, había que dibujarlo. En mobile son PESTAÑAS: a 390 px tres columnas dan 118 px cada una y no cabe el nombre de un cliente.'],
     ['agenda', 'Agenda', 'Google Calendar y lo que vence, en la misma línea.',
      'el bloque "sin hora" es obligatorio: un presupuesto frío no vence a las 14:30, y forzarlo a una posición horaria inventa un dato. Los encabezados de día reemplazan al selector Hoy/Semana — un control menos.'],
-    ['detalle', 'Detalle', 'El sheet que sube al tocar una tarjeta.',
-     'resuelve dos cosas: el detalle que el repo pide al tocar, y la alternativa de un solo puntero que WCAG 2.5.1 exige para el swipe.'],
     ['grabando', 'Grabando', 'Mantenés apretado el mic y sólo cambia la barra.',
      'reemplaza a la escucha a pantalla completa (24/08): mientras grabás no se tapa nada. El campo de texto cede su lugar dentro de la misma barra y el mic no se mueve — es el mismo botón el que graba y el que manda, así el pulgar no se reubica entre empezar y enviar.'],
     ['bloqueado', 'Audio bloqueado', 'Deslizás hacia arriba y soltás el dedo.',
@@ -303,6 +301,9 @@ const tel = (v, titulo, bajada, nota) => {
 for (const [id, lista] of Object.entries(PANTALLAS)) {
   document.getElementById(id).innerHTML = lista.map(p => tel(...p)).join('');
 }
+
+/* El número de la portada sale de la lista: escrito a mano decía 30 con 51 entradas. */
+document.getElementById('n-pantallas').textContent = Object.values(PANTALLAS).flat().length;
 
 document.getElementById('b-notas').addEventListener('click', e => {
   document.body.classList.toggle('sin-notas');

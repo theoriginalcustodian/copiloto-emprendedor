@@ -1239,10 +1239,7 @@
   /* Regla dura del 28/07 v2: fill #DE7250 + DISPLAY 20 Bold blanco = 3,17:1 AA texto grande */
   #splash .b-primary{background:var(--terracota);color:var(--blanco);
                      font-family:var(--display);font-size:20px;line-height:24px}
-  #splash .b-ghost{background:var(--blanco);border:1px solid #E8E2D9;color:var(--negro);
-                   font-size:16px;font-weight:500}                     /* 16,37:1 ✅ */
   #splash.st-final .b-primary{animation:fade-up 620ms var(--ease) 900ms forwards}
-  #splash.st-final .b-ghost{animation:fade-up 620ms var(--ease) 1040ms forwards}
   @media (prefers-reduced-motion:reduce){
     #splash .blob{display:none}
     #splash .finalbg{opacity:1;animation:none}
@@ -2465,7 +2462,6 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     </div>
     <div class="actions">
       <div class="b b-primary">Empecemos</div>
-      <div class="b b-ghost">Crear una nueva cuenta</div>
     </div>
   </div>
 
@@ -2561,7 +2557,8 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     </div>
     <div class="rv-act">
       <div class="btn">Empecemos</div>
-      <div class="rv-ghost">Crear una nueva cuenta</div>
+      <!-- Sin alta propia (decisión #3): la segunda puerta sólo existe en `?ver=volver`. -->
+      <div class="rv-ghost" style="display:none"></div>
     </div>
   </div>
 
@@ -3482,8 +3479,8 @@ if (ver === 'ingresos') setTimeout(() => $('#ingresos').classList.add('on'), 60)
 if (ver === 'cargando') { /* el esqueleto queda fijo, ver bloque de carga */ }
 if (ver === 'tablero') setTimeout(() => $('#tablero').classList.add('on'), 60);
 if (ver === 'agenda')  setTimeout(() => $('#agenda').classList.add('on'), 60);
-/* `?ver=detalle` sobrevive como alias: ahora abre el tablero con la primera fila
-   YA EXPANDIDA — es lo que reemplazó al sheet, y el mapa y el 14 lo enlazan. */
+/* `?ver=detalle` sobrevive como alias: abre el tablero con la primera fila YA EXPANDIDA,
+   que es lo que reemplazó al sheet. El mapa ya no lo lista (SM-G2). */
 if (ver === 'detalle') setTimeout(() => {
   $('#tablero').classList.add('on');
   const f = document.querySelector('#tablero .fi');
@@ -3583,6 +3580,7 @@ if (ver === 'volver') setTimeout(() => {
   $('#reveal').classList.add('on');
   $('#reveal .btn').textContent = 'Entrar';
   $('#reveal .rv-ghost').textContent = 'Entrar con otra cuenta';
+  $('#reveal .rv-ghost').style.display = '';
 }, 60);
 /* La pantalla de credenciales, con y sin el error del intento. */
 if (ver === 'ingresar')       setTimeout(() => $('#ingresar').classList.add('on'), 60);
@@ -3688,6 +3686,10 @@ if (ver === 'vacio' || ver === 'vacio-visto' || location.search.includes('vacio'
     w.classList.add('sale');
   });
   revisarCalma();
+  /* ⚠️ La calma queda debajo de «Ahora» y «Para hoy», fuera de la vista, y el marco del
+     mapa no scrollea: sin esto el deep link se ve igual que la base. Corre después de
+     los 1100 ms del esqueleto, que vuelve a acomodar la lista. */
+  setTimeout(() => { const b = $('#calma').parentElement; b.scrollTop = b.scrollHeight; }, 1200);
 }, 60);
 /* ── La explicación de la calma se RETIRA con el uso (Martin, 25/08) ──
    "Cuando haya algo que mirar, te lo dejo acá" enseña qué significa una pantalla
