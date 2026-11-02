@@ -81,11 +81,11 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-J4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | deploy del backend (backend despliega al recibir el aviso de frontend2, ya enviado) y captura de device del no-admin … |
+| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo,… |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | Dos capturas de device (aviso presente con sesión caída / ausente en ingreso normal); sesión caída requiere invalidar… |
@@ -366,7 +366,9 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y una del caso facturas_atribuibles:false mostrando que el «—» es DELIBERADO -- ese estado ya se malinterpreto una vez como falta de dato y es lo que origino la premisa falsa de esta ficha.
+- **Cierre:** punto 1 del DoD CERRADO por backend: c3867d10 (#1328), test_adversarial_http_clientes_a_cannot_read_b_cliente extendiendo test_adversarial_multitenant.py con el MISMO CUIT en A y B -- A: 0 / «0.00» con atribuible:true, B: 1 / «1500.00» como control positivo, y ajeno identico a inexistente (404, mismo cuerpo). VPS suite completa 2654 passed/41 skipped. Sin cambio de produccion: el dato ya existia desde #816 (2026-10-06).
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
@@ -418,8 +420,8 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** deploy del backend (backend despliega al recibir el aviso de frontend2, ya enviado) y captura de device del no-admin sin Homologacion
-- **Cierre:** 476f508a (#1330) backend: 403 homologacion_solo_admin + 422 ambiente_requerido, adversarial con JWT reales en VPS 2663 passed; f5cf69ac (#1333) app: no-admin no ve Homologacion y manda ambiente prod explicito (test que falla sin el fix)
+- **Falta:** captura de device de Homologacion oculta para no-admin (frontend2)
+- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
@@ -440,7 +442,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** mitad app (frontend2): refresco propio, botones apagados con motivo, mostrar la causa, subtitulo, Necesito cambiarlo, captura de los dos errores
+- **Cierre:** 1789d8bc (#1334) backend: campo causa dato|servicio|desconocida en onboarding de GET /afip/estado, desplegado en 77326ae5; VPS 79 passed
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».

@@ -38,30 +38,58 @@ REINTENTO_LECTURA = RetryPolicy(maximum_attempts=3)
 
 PASOS = ("iniciado", "dando_de_alta", "verificando", "habilitado", "fallido")
 
-# Lo que ARCA responde ↔ lo que el usuario necesita leer. El orden importa: se toma el primero que
-# matchea.
+# Causa del fallo (SM-K3). La app necesita saber CUÁL de las dos es para decirle al emprendedor qué
+# hacer: si es un DATO que cargó mal, corrige y reintenta; si es el SERVICIO (ARCA o nosotros), no hay
+# nada que corregir de su lado. Dos causas con el mismo mensaje hacen que se diagnostique la equivocada.
+CAUSA_DATO = "dato"
+CAUSA_SERVICIO = "servicio"
+CAUSA_DESCONOCIDA = "desconocida"
+
+# Lo que ARCA responde ↔ lo que el usuario necesita leer + de quién es el problema. El orden importa:
+# se toma el primero que matchea.
 _MOTIVOS_CONOCIDOS = (
-    ("clave o usuario incorrecto", "La clave fiscal o el usuario no son correctos. Revisalos y "
-                                   "probá de nuevo."),
-    ("usuario incorrecto", "El usuario de ARCA no es correcto."),
-    ("clave incorrecta", "La clave fiscal no es correcta."),
-    ("bloquead", "Tu clave fiscal está bloqueada en ARCA. Tenés que desbloquearla desde el sitio "
-                 "de ARCA antes de reintentar."),
-    ("handle_invalido_o_vencido", "La sesión de vinculación venció. Volvé a ingresar tu clave "
-                                  "fiscal."),
+    ("clave o usuario incorrecto", CAUSA_DATO,
+     "La clave fiscal o el usuario no son correctos. Revisalos y probá de nuevo."),
+    ("usuario incorrecto", CAUSA_DATO, "El usuario de ARCA no es correcto."),
+    ("clave incorrecta", CAUSA_DATO, "La clave fiscal no es correcta."),
+    ("bloquead", CAUSA_DATO,
+     "Tu clave fiscal está bloqueada en ARCA. Tenés que desbloquearla desde el sitio de ARCA antes "
+     "de reintentar."),
+    ("handle_invalido_o_vencido", CAUSA_DATO,
+     "La sesión de vinculación venció. Volvé a ingresar tu clave fiscal."),
     # El certificado YA existe en ARCA y ya está guardado acá: lo único que faltó fue habilitar el
     # web service. Decirlo importa porque cambia lo que el usuario tiene que hacer — reintentar SIN
     # volver a gastar una clave fiscal, que es one-shot.
-    ("certificado_ok_falta_autorizar_wsfe",
+    ("certificado_ok_falta_autorizar_wsfe", CAUSA_SERVICIO,
      "Tu certificado quedó creado, pero no llegamos a habilitar la facturación electrónica. Probá de "
      "nuevo en unos minutos: no hace falta que vuelvas a ingresar tu clave fiscal."),
-    ("alias", "El certificado no se pudo crear por un problema de configuración nuestro. Ya estamos "
-              "al tanto."),
-    ("timeout", "ARCA tardó demasiado en responder. Probá de nuevo en unos minutos."),
+    ("alias", CAUSA_SERVICIO,
+     "El certificado no se pudo crear por un problema de configuración nuestro. Ya estamos al tanto."),
+    ("timeout", CAUSA_SERVICIO, "ARCA tardó demasiado en responder. Probá de nuevo en unos minutos."),
+    # Códigos de la verificación post-alta (`verificar_habilitacion_afip`). Iban CRUDOS a la pantalla
+    # —incluido `ws_inaccesible: <texto de la excepción>`, que puede arrastrar detalle interno—.
+    ("sin_certificado", CAUSA_SERVICIO,
+     "No encontramos tu certificado después del alta. Probá de nuevo en unos minutos."),
+    ("wsfe_no_autorizado", CAUSA_SERVICIO,
+     "El certificado se creó, pero ARCA todavía no habilita la facturación electrónica. Probá de "
+     "nuevo en unos minutos: no hace falta que vuelvas a ingresar tu clave fiscal."),
+    ("ws_inaccesible", CAUSA_SERVICIO, "No pudimos comunicarnos con ARCA. Probá de nuevo en unos minutos."),
+    ("ws_degradado", CAUSA_SERVICIO, "ARCA está respondiendo con problemas. Probá de nuevo en unos minutos."),
 )
 
 _MOTIVO_GENERICO = ("No pudimos vincular tu cuenta con ARCA. Probá de nuevo; si sigue fallando, "
                     "escribinos.")
+
+
+def _clasificar(codigo: str) -> tuple[str, str]:
+    """(causa, texto para el usuario) de un código/excepción de fallo. Ante lo no reconocido la causa
+    es `desconocida`, NO `servicio`: degradar «ante la duda» al caso benigno es afirmar lo que no se
+    midió, y la app dejaría de ofrecer corregir un dato que quizá sí estaba mal."""
+    texto = codigo.lower()
+    for patron, causa, copy in _MOTIVOS_CONOCIDOS:
+        if patron in texto:
+            return causa, copy
+    return CAUSA_DESCONOCIDA, _MOTIVO_GENERICO
 
 
 def _motivo_legible(exc: Exception) -> str:
@@ -83,11 +111,11 @@ def _motivo_de_codigo(codigo: str) -> str:
     máquina en la cara del usuario no le dice qué hacer, que es lo único que un motivo tiene que
     hacer.
     """
-    texto = codigo.lower()
-    for patron, copy in _MOTIVOS_CONOCIDOS:
-        if patron in texto:
-            return copy
-    return _MOTIVO_GENERICO
+    return _clasificar(codigo)[1]
+
+
+def _causa_de_codigo(codigo: str) -> str:
+    return _clasificar(codigo)[0]
 
 
 @workflow.defn
@@ -95,6 +123,7 @@ class AfipOnboardingWorkflow:
     def __init__(self) -> None:
         self._paso = "iniciado"
         self._motivo: str | None = None
+        self._causa: str | None = None
         self._ws_autorizados: list[str] = []
         self._ambiente = "dev"
 
@@ -104,6 +133,7 @@ class AfipOnboardingWorkflow:
         return {
             "paso": self._paso,
             "motivo": self._motivo,
+            "causa": self._causa,
             "ambiente": self._ambiente,
             "ws_autorizados": list(self._ws_autorizados),
             "terminado": self._paso in ("habilitado", "fallido"),
@@ -139,6 +169,7 @@ class AfipOnboardingWorkflow:
             # el workflow, no revienta.
             self._paso = "fallido"
             self._motivo = _motivo_legible(exc)
+            self._causa = _causa_de_codigo(str(exc))
             return self.progreso()
 
         if not alta.get("ok"):
@@ -146,7 +177,9 @@ class AfipOnboardingWorkflow:
             # Traducido, no crudo: `motivo` es texto para el usuario por contrato (lo pinta la
             # pantalla de Ajustes tal cual). Sin esto, un alta fallida mostraba literalmente
             # `handle_invalido_o_vencido` sobre la cara del emprendedor.
-            self._motivo = _motivo_de_codigo(alta.get("motivo") or "alta_fallida")
+            codigo = alta.get("motivo") or "alta_fallida"
+            self._motivo = _motivo_de_codigo(codigo)
+            self._causa = _causa_de_codigo(codigo)
             return self.progreso()
 
         self._ws_autorizados = alta.get("ws_autorizados") or []
@@ -165,8 +198,12 @@ class AfipOnboardingWorkflow:
         if verificacion.get("habilitado"):
             self._paso = "habilitado"
             self._motivo = None
+            self._causa = None
         else:
             self._paso = "fallido"
-            self._motivo = verificacion.get("motivo") or "verificacion_fallida"
+            # Traducido como el resto: `motivo` es texto para el usuario, no el código de máquina.
+            codigo = verificacion.get("motivo") or "verificacion_fallida"
+            self._motivo = _motivo_de_codigo(codigo)
+            self._causa = _causa_de_codigo(codigo)
 
         return self.progreso()

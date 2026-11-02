@@ -12,7 +12,7 @@
 #      checkout, así que todos los ids M-* se habrían reportado como FANTASMA.
 # El padrón es un hecho compartido del repo, no del branch donde estás parado.
 
-RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+|SM-[A-F][0-9]+)\b'
+RE_ID='\b(BL-[A-Z0-9]+|DEC-[0-9]+|M-[0-9]+|SM-[A-Z][0-9]+)\b'
 
 # Patrón de nombre de los docs-padrón. `-acta-` va anclado con guiones a propósito:
 # `*acta*` matcheaba «comp-ACTA-cion» (2026-07-22-compactacion-a-umbral-investigacion.md),
