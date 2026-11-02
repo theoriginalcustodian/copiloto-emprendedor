@@ -60,8 +60,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-G1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-G2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-G1** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) 15 archivos y 62 lineas de enlaces; barrido de todos los HTML de odo… |
+| **SM-G2** | `sin-issue` | ✅ TERMINADO | e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) Playwright 390x844 y dentro del marco del mapa: encabezado 51 con 51… |
 | **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ✅ TERMINADO | acc58cccce18056fe005876a135874ccefc0b9fa (#1328): Editar, Cancelar y Emitir en la card; Editar dentro de la card sobr… |
@@ -103,7 +103,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 ### SM-G1 · `sin-issue` — Los arreglos de enlaces del mapa viven sólo en el checkout compartido
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) 15 archivos y 62 lineas de enlaces; barrido de todos los HTML de odobi-ui: 173 enlaces, 0 a carpeta, 6 no resuelven y son marcadores __IMG_*__ de plantilla. Evidencia en 2026-11-02-sprint-correcciones-evidencia/SM-G1-SM-G2.md
 - **Dueño:** frontend1
 - **Medido:** 16 archivos con cambios sin commitear en el checkout compartido, 15 de ellos
   `Prototipo frontend/odobi-ui/**` (`mapa-pantallas/index.html`, `prototipo/mapa.html` y 13 mockups).
@@ -117,7 +118,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 ### SM-G2 · `sin-issue` — El mapa se contradice a sí mismo en cuatro puntos
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** e791cf5ec84037c66560d0704ad44b3085a74405 (#1346) Playwright 390x844 y dentro del marco del mapa: encabezado 51 con 51 marcos, ?ver=vacio con explicacion y ?ver=vacio-visto sin ella, ambos dentro de la vista; 0 filas detalle; 0 Crear una nueva cuenta. Evidencia y capturas en 2026-11-02-sprint-correcciones-evidencia/SM-G1-SM-G2.md
 - **Dueño:** frontend1
 - **Medido:** N7 — la portada dice «30 pantallas» y la grilla lista **51** (5+3+29+6+8). N5 — los
   deep links `?ver=vacio` y `?ver=vacio-visto` se ven iguales que la base, así que el estado vacío
