@@ -223,9 +223,10 @@ def make_consultar_onboarding(temporal_client) -> Callable:
 
         if progreso is None:
             return ({"paso": "dando_de_alta", "terminado": False, "ok": False, "motivo": None,
-                     "ws_autorizados": []} if vivo else
+                     "causa": None, "ws_autorizados": []} if vivo else
                     {"paso": "fallido", "terminado": True, "ok": False,
-                     "motivo": _MOTIVO_ALTA_INTERRUMPIDA, "ws_autorizados": []})
+                     "motivo": _MOTIVO_ALTA_INTERRUMPIDA, "causa": "servicio",
+                     "ws_autorizados": []})
 
         # Una ejecución MUERTA sigue respondiendo queries: devuelve el último estado del replay. Si el
         # workflow murió por una excepción antes de marcarse como terminado, ese estado dice "en
@@ -237,7 +238,8 @@ def make_consultar_onboarding(temporal_client) -> Callable:
         # puede atrapar: honesto por construcción, no por que cada camino de error se acuerde.
         if not vivo and not progreso.get("terminado"):
             progreso = {**progreso, "paso": "fallido", "terminado": True, "ok": False,
-                        "motivo": progreso.get("motivo") or _MOTIVO_ALTA_INTERRUMPIDA}
+                        "motivo": progreso.get("motivo") or _MOTIVO_ALTA_INTERRUMPIDA,
+                        "causa": progreso.get("causa") or "servicio"}
         return progreso
 
     return consultar_onboarding
