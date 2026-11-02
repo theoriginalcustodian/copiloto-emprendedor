@@ -107,6 +107,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N13** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -967,6 +968,38 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   2. Test que afirme el texto RENDERIZADO (no el campo crudo), en `DetalleComprobante.test.tsx`.
   3. Captura de device del detalle.
 - **Los puntos 1-2 NO necesitan el teléfono.** Sólo el 3.
+
+### SM-N13 · `sin-issue` — 🚫 FUERA DEL SPRINT — La consigna de N8 sigue viva en DOS observaciones más: el fix existe y no viajó
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **Fuera del denominador, a propósito:** igual que `SM-N12`. El sprint se mide contra el mapa del
+  16-10 y esto salió de arreglar `SM-N8` hoy, no del mapa (`DEC-18`: un criterio que crece con cada
+  medición no se puede alcanzar). Tiene id porque un hallazgo que sólo vive en un `cierre_` no vuelve
+  a aparecer — y porque la cola de backend quedó vacía, así que se puede tomar YA.
+- **Medido (2026-11-02, sobre `origin/main`):** `git grep -n "Confirmáselo en una línea corta"` da
+  **3** hits en `apps/copiloto/tool_catalog.py` y 1 en el test:
+  - `:1303` → **vivo**
+  - `:1750` → **vivo**
+  - `:1366` → ya arreglado por `SM-N8` (#1383), con el comentario que explica por qué
+  - `tests/test_plata_por_voz.py:369` → el test de N8, que nombra la consigna: es el control, no un defecto
+  Control positivo del instrumento: el hit arreglado (`:1366`) aparece en el mismo grep, así que el
+  patrón **sí** caza la forma viva.
+- **Por qué no es cosmético:** N8 lo midió con sonda, no con criterio. Baseline N=12 → **7/12 con
+  eco**; sacando la consigna, **0/12**. Las dos que quedan están en observaciones que el emprendedor
+  lee igual de seguido (por lo que el `cierre_` de backend nombra: registrar cobro, cancelar factura,
+  Mi día), así que el eco sigue llegando al usuario por otra puerta.
+- **Es PROPAGACIÓN, no diseño.** El fix ya existe en otro call-site: se borra la línea, igual que en
+  `:1366`, y se le pone el mismo comentario explicando por qué no vuelve. No hay decisión que tomar.
+- **DoD binario:**
+  1. `git grep -c "Confirmáselo en una línea corta" -- apps/copiloto/tool_catalog.py` = **0**.
+  2. El test de N8 (`test_plata_por_voz.py:369`) extendido a los dos call-sites nuevos, o uno
+     equivalente que falle si la consigna vuelve a cualquiera de los tres. **Un test que afirme el
+     síntoma no sirve**: tiene que ser rojo si el mecanismo se rompe.
+  3. La misma sonda de N8 (N=12) sobre **una** de las dos observaciones tocadas: eco esperado **0/12**,
+     con el baseline citado.
+  4. Corrido en el **VPS** (regla 2 del `CLAUDE.md`), con el conteo pegado en el `cierre_`.
+- **No necesita device.** Es backend puro.
 
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 
