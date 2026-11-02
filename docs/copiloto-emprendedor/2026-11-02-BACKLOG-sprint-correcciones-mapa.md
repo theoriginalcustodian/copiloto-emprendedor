@@ -81,7 +81,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B: captura del cliente CON CUIT mostrando monto y «N comprobantes» reales. Disparador: backend responde si una … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
@@ -448,8 +448,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y una del caso facturas_atribuibles:false mostrando que el «—» es DELIBERADO -- ese estado ya se malinterpreto una vez como falta de dato y es lo que origino la premisa falsa de esta ficha.
-- **Cierre:** punto 1 del DoD CERRADO por backend: c3867d10 (#1328), test_adversarial_http_clientes_a_cannot_read_b_cliente extendiendo test_adversarial_multitenant.py con el MISMO CUIT en A y B -- A: 0 / «0.00» con atribuible:true, B: 1 / «1500.00» como control positivo, y ajeno identico a inexistente (404, mismo cuerpo). VPS suite completa 2654 passed/41 skipped. Sin cambio de produccion: el dato ya existia desde #816 (2026-10-06).
+- **Falta:** Mitad B: captura del cliente CON CUIT mostrando monto y «N comprobantes» reales. Disparador: backend responde si una factura ya emitida (N°10/N°11 del tenant 48a9d75f) se puede atribuir a un cliente nuevo sin emitir nada. Mitad A hecha: captura del caso facturas_atribuibles:false (el «—» + «Sin CUIT cargado» es deliberado), cuenta del OPERADOR (no canónica), cliente creado por la app sin tocar lo fiscal. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-J4-clientes-sin-CUIT-el-guion-es-deliberado-CUENTA-DEL-OPERADOR.webp
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
