@@ -94,7 +94,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas… |
+| **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
@@ -661,7 +661,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L3 · `sin-issue` — La anulación de facturas nunca se ejercitó contra ARCA real
 
 - **Estado:** TERMINADO
-- **Cierre:** sin-codigo — FUERA DE ALCANCE por decisión del operador (2026-11-02, textual): «las facturas no necesitamos probarlas porque ya probamos que funciona». El DoD se RETIRA, no se declara satisfecho: nadie anuló las facturas N° 10 y N° 11 en esta ronda. La anulación queda acreditada por la prueba anterior del operador, no por este sprint.
+- **Cierre:** sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarlas porque ya probamos que funciona». El DoD se RETIRA, no se declara satisfecho: nadie anulo las facturas N 10 y N 11 en esta ronda, y la anulacion queda acreditada por la prueba anterior del operador, no por este sprint. CORRECCION: el cierre decia «sin-codigo» y era falso — el script y la receta de backend ya estaban en main (#1392, DOD-PARCIAL mergeado antes del aviso de parada); quedan sin ejecutar. Lo retirado es el DoD, no el codigo.
 - **Dueño:** backend + **operador (el botón final)**
 - **Medido:** las facturas reales N° 10 y N° 11 están emitidas en Producción.
 - **DoD:** las dos anuladas (D10), con captura **y estado en servidor** que lo confirme — no sólo la
@@ -1166,3 +1166,25 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      Un test que sólo afirme que el componente monta no acredita nada.
   4. Corrida en device con el usuario canónico: entrar al escritorio, llegar a Ajustes → Cuenta y
      **ver** el botón de cerrar sesión, sin pasar por la portada. Captura.
+- **⚠️ CORREGIDO — MEDIDO EN DEVICE 2026-11-02 18:57, y es PEOR que lo que decía el código.** Yo
+  había deducido de `PantallaMiDia.tsx:729` que «el acceso existe en la portada y falta en el
+  escritorio». El operador, mirando la pantalla, insistió en que **no hay ningún avatar**. Tenía
+  razón, y la captura por ADB lo fija:
+  1. **El avatar se pinta INVISIBLE**: círculo del mismo color que el fondo, **sin iniciales**,
+     apenas un punto (esquina superior derecha de Mi Día). Está en el árbol y no se lee como botón.
+  2. **Y tampoco responde**: un `adb input motionevent` DOWN/UP exacto sobre sus coordenadas
+     (650,150) **no navegó** — captura idéntica antes y después.
+  3. El deep-link `copiloto://ajustes-cuenta` **sí** entra (verificado); cae en el grid de Ajustes,
+     de ahí «Mi cuenta» → «Cerrar sesión» visible.
+  Por qué importa la corrección y no es un matiz: con el diagnóstico viejo el fix era *agregar* el
+  acceso al escritorio, y eso **habría dejado la portada igual de rota**. El defecto de la portada
+  es de RENDER y de TOQUE, no de ausencia. Son dos fallas, y una ficha que nombra una sola deja la
+  otra viva. Lección: el operador frente a la pantalla midió mejor que mi grep — el código decía
+  dónde está el componente, no si se ve ni si funciona.
+- **DoD ampliado por lo anterior:**
+  5. El avatar de la portada **se ve** (contraste contra el fondo) y **navega** al tocarlo,
+     ejercitado con `adb input motionevent` DOWN/UP y captura antes/después que difieran. Una
+     captura sola no acredita: el control es el PAR.
+  6. Averiguar **por qué** no respondía antes de cambiar nada — si es el gesto del panel
+     comiéndose el toque, la skill `swmansion-rn-gestures` (composición Pan/tap) es la fuente del
+     criterio, no la intuición. Dos intentos fallidos ⇒ el tercero es leer la skill.
