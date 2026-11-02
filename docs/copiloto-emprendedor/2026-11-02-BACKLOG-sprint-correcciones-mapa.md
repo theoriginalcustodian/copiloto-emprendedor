@@ -73,11 +73,11 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
 | **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
-| **SM-I3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-I4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
+| **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
 | **SM-I5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
@@ -100,8 +100,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
 | **SM-N4** | `sin-issue` | 🟧 DOD-PARCIAL | control del criterio v3: revertir la sombra de Row en Metro local y volcar la lista de capas con el rectangulo presen… |
-| **SM-N5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N6** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card recargada con importe y cliente. |
+| **SM-N6** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se… |
 | **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
 | **SM-N8** | `sin-issue` | ✅ TERMINADO | bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado) |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
@@ -111,7 +111,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N16** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -327,7 +327,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I3 · `sin-issue` — Los botones del chat no se leen y el deshabilitado no se distingue
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de los dos estados, reposo y deshabilitado.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Sin opacity en mic, enviar y foto; tonoBotonEntrada.test.ts mide >=3:1 en las dos pieles y activo distinto de apagado (antes: 1,07:1 el mic deshabilitado en claro). mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** contraste insuficiente en reposo; el estado deshabilitado no se diferencia del activo.
 - **DoD:** contraste legible en reposo y deshabilitado distinguible, medidos contra el criterio de
@@ -335,7 +337,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I4 · `sin-issue` — El escritorio difiere del mapa en título, orden, tiles y solapas
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas filas, tema oscuro y sin parpadeo al primer layout.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Titulo, orden, casillas y bloque del mapa; la tira se va con el escritorio (translacionPanel, 5 casos) y el BACK cierra primero el escritorio. Motivo de #1084 citado en el PR. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** `esc` difiere en título, avatar y orden de la primera fila y en el estilo de los tiles;
   con el escritorio abierto se ven **dos** solapas apiladas (R02); «Presupuestos» se parte.
@@ -362,7 +366,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I7 · `sin-issue` — La pantalla de permisos no dice qué capacidad concede cada ítem
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device del sheet con iconos y con el aviso de continuacion.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Un icono por fila segun la condicion que manda el backend y aviso de continuacion con glifo. El icono dice el tipo de capacidad, no los especificos del mockup: uno por capacidad exige un campo icono en el contrato. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** `consent` sin íconos por capacidad y sin el banner de continuación del mapa.
 - **DoD:** un ícono por capacidad y el banner de continuación. Captura de device.
@@ -816,7 +822,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Captura de device del antes y el después.
 ### SM-N5 · `sin-issue` — El recibo de presupuesto pierde importe y cliente al rehidratar, y el motivo documentado cubre sólo el estado
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device de la card recargada con importe y cliente.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). El mensaje persiste el id, la card relee por id y muestra importe y cliente, el estado sigue sin mostrarse al rehidratar; test en TarjetaPresupuestoPropuesto.test.tsx y comentario corregido. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device: en vivo la card dice `Presupuesto anotado — N° 3`,
   `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar`. Tras recargar queda sólo
@@ -852,7 +860,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   declara un motivo más amplio que el que lo justifica es lo que hizo que esto viviera sin pregunta.
 ### SM-N6 · `sin-issue` — «Presupuestos» se parte en dos líneas en la casilla del escritorio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se mide en jest.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Arreglo en la casilla y no en el rotulo, rotulo a 13 px sin cortar. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device al capturar `SM-G4`: la casilla de Funciones muestra «Presupuesto» y
   abajo «s». Se ve en `SM-G4-1-mas-0-3s.webp`. El rótulo es el `label: 'Presupuestos'` de
@@ -1134,7 +1144,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N16 · `sin-issue` — El Escritorio de Funciones no tiene acceso a Ajustes, y sin él no se puede cerrar sesión
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque; DoD 6 causa del no-responde: el mismo avatar navego el 02-11 a las 17:54 y 18:29 con DOWN/MOVE/UP, asi que falta medir DOWN/UP sin MOVE y la puerta de empujarUnaVez. El dibujo va en la rama de SM-I5.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Avatar del escritorio por el mismo alAjustes de Mi dia, sin segundo call-site; PantallaPrincipal.test.tsx da rojo con el mutante sin el cable. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **De dónde sale:** el **operador**, 2026-11-02, atrapado dentro de la app con su propia cuenta:
   «en la pantalla funciones no está el icono de ajustes de usuario… no puedo cerrar la sesion a mano».
