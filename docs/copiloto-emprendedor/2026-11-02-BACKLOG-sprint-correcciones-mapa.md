@@ -78,7 +78,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ult… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al e… |
@@ -401,7 +401,8 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ultimos» en Gastos, «Ticket» en la pastilla de foto). Codigo mergeado en 52e9a85d (#1418, 6/6). Facturacion e Inteligencia NO entran al denominador: ENMIENDA FUNDADA por planificacion — el dock es un prellenador de formulario y esas dos no tienen formulario (factura es asistente con card HITL, bi es lectura), ContextoTranscripcion admite solo gasto/ingreso/presupuesto/cliente (packages/core/src/api/transcribir.ts:7), y en factura un dock seria una SEGUNDA entrada a una accion irreversible, que es lo que el mecanismo de cards existe para evitar. DISPARADOR: van en el BLOQUE 1 de la pasada de device (cualquiera de las dos cuentas sirve para esas 4 pantallas); el telefono lo tiene frontend1 y las saca de corrido con el resto del bloque, rotulando el usuario.
 - **Dueño:** frontend2
 - **Medido:** `gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
   rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».
