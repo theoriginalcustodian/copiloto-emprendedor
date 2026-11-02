@@ -109,7 +109,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
 | **SM-N13** | `sin-issue` | ✅ TERMINADO | 7811aad1 consigna fuera de las 6 observaciones restantes; test AST; sonda Mi dia N=12 6/12 -> 0/12 (desplegado) |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
-| **SM-N15** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -1076,7 +1076,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N15 · `sin-issue` — SEGUNDO usuario de prueba: no-admin y tenant VACÍO (decisión del operador, 2026-11-02)
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canonico 3/4/14/40
 - **Dueño:** backend (provisión) — **desbloquea `SM-K1` y `SM-J3`**
 - **Decisión del operador (2026-11-02), textual:** *«creamos segundo usuario de prueba»*. Es la
   respuesta a la pregunta MAYOR que planificación escaló: si un usuario canónico único alcanza para
