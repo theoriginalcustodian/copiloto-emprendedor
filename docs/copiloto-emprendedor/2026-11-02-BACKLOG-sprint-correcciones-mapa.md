@@ -116,6 +116,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
 | **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | CORREGIDO 2026-11-02: el POST de las 21:02:13Z es un toque por ADB de FRONTEND1, no del operador ni un toque ciego. S… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
+| **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1405,3 +1406,44 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   usuario **no pase por el LLM** — card y reply armados por código. Eso es decisión de diseño más
   grande que la ficha y **no la toma backend por su cuenta**: queda planteada acá como la opción de
   raíz, y la decide el operador. Mientras no se tome, el residual se acepta y queda medido (1/8).
+
+### SM-N21 · `sin-issue` — FUERA DEL SPRINT: opción C — los importes que mueven plata se escriben por código, no los redacta el LLM
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** decisión del **operador**, 2026-11-02: «acuerdo opción C», sobre el inventario
+  que midió backend para `SM-N20` (13 sitios donde un importe llega al usuario). Es la raíz que
+  `SM-N20` dejó planteada y no podía tomar: `SM-N20` queda abierta hasta que esta cierre.
+- **Por qué C y no A ni B.** A (limpiar los crudos que quedan) **no garantiza**: el residual medido
+  es 1/8 y su caso testigo lo explica — la `observation` ya traía «$70.000» bien formateado y el
+  modelo escribió «$70,000» igual. Es hábito del LLM, no dato sucio, así que ningún prompt lo cierra.
+  B (`reply_literal` en todo) **sí garantiza**, pero toca el **workflow Temporal**, que es el moat:
+  pagar riesgo sobre la pieza durable para ganar el 1/8 en frases que no mueven plata es desproporcionado.
+- **El criterio de alcance, que lo fija planificación y no se reinterpreta:** una tool **mueve plata**
+  cuando **escribe o confirma un monto que queda registrado** — gasto, ingreso, cobro, presupuesto,
+  factura. Listar, buscar, resumir y responder preguntas **no** mueven plata, aunque muestren
+  importes. Si un caso es dudoso, **no se decide en la implementación**: se pregunta.
+- **DoD:**
+  1. **Mitad A, en TODAS:** los 2 sitios que todavía pasan el número crudo en la frase relayada
+     (`registrar_gasto` L819/822, `registrar_ingreso` L1186/1189) formateados con `plata_corta`,
+     como los 3 que ya lo usan. Es barato y no depende de la mitad B.
+  2. **Mitad B, SÓLO en las que mueven plata según el criterio de arriba:** el texto con el importe
+     lo arma el **código** y el LLM no lo redacta (`reply_literal`). La lista concreta la propone
+     backend desde su inventario **citando el criterio por cada tool**, y la confirmo antes de que
+     implemente: una lista derivada sin criterio explícito es la puerta para que el alcance crezca
+     o se achique solo.
+  3. **Temporal:** invocar `temporal-developer` ANTES de tocar el workflow (regla 3 del `CLAUDE.md`,
+     no es opcional). El cambio **no puede** introducir no-determinismo ni side effects en el
+     workflow, y eso se acredita, no se afirma.
+  4. **Tests** que fijen el contrato: para una tool con `reply_literal`, que el texto que ve el
+     usuario sea **exactamente** el del código. Y el control que falta en la mitad A y acá no:
+     **un caso negativo** — una tool que NO mueve plata sigue redactando libremente. Sin esa mitad
+     no se distingue «apliqué C» de «apliqué B sin darme cuenta».
+  5. **Medición post-deploy con el MISMO instrumento** de la sonda de `SM-N20` (mismas sesiones,
+     mismo baseline), sobre las tools con `reply_literal`: el esperado es **0**, no «menos». Si no
+     da 0 en ésas, el mecanismo no está puesto donde se cree — y eso es el hallazgo, no un residual.
+  6. VPS verde + CI, y el recibo del SHA.
+- **Lo que esta ficha NO hace:** no toca las 5 frases formateadas-pero-redactadas que no mueven
+  plata. Ahí el residual queda **aceptado y medido** (1/8), no pendiente: nadie vuelve a iterar el
+  prompt buscando el 0, porque la sonda ya mostró que ahí no se llega.
+- **FUERA DEL SPRINT** (`DEC-18`): sale del uso, no del mapa. El 54 no se mueve.
