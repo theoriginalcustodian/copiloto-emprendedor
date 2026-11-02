@@ -71,8 +71,8 @@ export interface BotonVozProps {
 }
 
 /**
- * El mic chico del dock (SM-I2, D2: `.mic` del mapa, `index.html:169-171`; lo monta `DockEntrada`, y
- * `MicFuncion` hasta que SM-J1 lo retire). Hasta SM-I2 fue el botón central grande de ODOBI8, con isotipo,
+ * El mic chico del dock (SM-I2, D2: `.mic` del mapa, `index.html:169-171`; lo monta `DockEntrada`).
+ * Hasta SM-I2 fue el botón central grande de ODOBI8, con isotipo,
  * ecualizador y pulso. El gesto es el mismo. **Reescrito** contra
  * `contrato_planificacion-a-frontend_dictado-por-voz-sin-glass-hold-graba-soltar-envia-deslizar-fija`
  * — la versión anterior (un toque simple que abría un HUD glass) mis-citó una decisión cerrada (D6,

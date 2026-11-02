@@ -287,7 +287,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
               {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
                   query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
                   `/actividad?funcion=gastos&q=` y muestra el card uniforme. La lista rica queda intacta. */}
-              <BuscadorActividad funcion="gastos" testIDBase="gastos-busqueda" placeholder="Buscar un gasto">
+              <BuscadorActividad funcion="gastos" testIDBase="gastos-busqueda" placeholder="Buscar un gasto" rotuloLista="Últimos">
                 {!hayGastos && (
                   <Text testID="gastos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
                     Todavía no anotaste ningún gasto. También podés decírselo al copiloto hablando.

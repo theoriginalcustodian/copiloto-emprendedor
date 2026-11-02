@@ -19,12 +19,14 @@ import {
 import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { AvisoDictado, inicialesDeIngreso, MicFuncion, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, DockFuncion, inicialesDeIngreso, useDictadoPorFuncion, type ViaTexto } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
+
+const PLACEHOLDER_DOCK = 'Anotá un cobro, o hablá…';
 
 /**
  * `PantallaIngresos` — la función "Ingresos": **todo lo que entró**, y el alta manual.
@@ -127,12 +129,12 @@ export function PantallaIngresos() {
 
   // Ver `alDictarGasto` en `PantallaGastos.tsx`: propuesta del motor si hay, texto crudo en `concepto`
   // (el comportamiento de antes) si el camino está apagado o falló.
-  async function alDictarIngreso(texto: string) {
+  async function alDictarIngreso(texto: string, via: ViaTexto) {
     setErrorMic(null);
     const propuesta = await dictado.dictar(texto);
     if (!vivo.current) return;
     setInicialesDictado(propuesta !== null ? inicialesDeIngreso(propuesta) : { concepto: texto });
-    setOrigenAlta(propuesta !== null ? 'voz' : undefined);
+    setOrigenAlta(propuesta !== null && via === 'dictado' ? 'voz' : undefined);
     setVista('formulario');
   }
 
@@ -203,25 +205,20 @@ export function PantallaIngresos() {
 
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
-              <MicFuncion
-                contexto="ingreso"
-                onTranscripcion={(t) => void alDictarIngreso(t)}
-                onError={setErrorMic}
-                disabled={dictado.ocupado}
-                alLado={
-                  <FilaBotones
-                    testID="ingresos-acciones"
-                    botones={[
-                      {
-                        etiqueta: 'Anotar que me pagaron',
-                        onPress: () => { setInicialesDictado(undefined); setOrigenAlta(undefined); setVista('formulario'); },
-                        variante: 'primario',
-                        testID: 'ingresos-nuevo',
-                      },
-                    ]}
-                  />
-                }
-              />
+              <View style={styles.filaAlta}>
+                <FilaBotones
+                  testID="ingresos-acciones"
+                  compacto
+                  botones={[
+                    {
+                      etiqueta: 'Anotar que me pagaron',
+                      onPress: () => { setInicialesDictado(undefined); setOrigenAlta(undefined); setVista('formulario'); },
+                      variante: 'primario',
+                      testID: 'ingresos-nuevo',
+                    },
+                  ]}
+                />
+              </View>
 
               {errorMic != null && (
                 <Text testID="ingresos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -295,6 +292,17 @@ export function PantallaIngresos() {
           )}
         </ScrollFormulario>
       )}
+
+      {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
+      {estado === 'ok' && vista === 'listado' && (
+        <DockFuncion
+          contexto="ingreso"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t, via) => void alDictarIngreso(t, via)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
+      )}
     </MarcoGlass>
   );
 }
@@ -302,4 +310,5 @@ export function PantallaIngresos() {
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   textos: { flex: 1, gap: 2 },
+  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
 });
