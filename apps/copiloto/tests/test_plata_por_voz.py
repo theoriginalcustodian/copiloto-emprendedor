@@ -365,6 +365,18 @@ def test_H5_el_importe_viaja_formateado_sin_centavos_en_cero_y_con_centavos_real
     assert "$" in res.observation["result"] and ",00" not in res.observation["result"]
 
 
+def test_N8_la_observacion_de_marcar_presupuesto_no_lleva_consigna_al_modelo():
+    """SM-N8: una orden al modelo («Confirmáselo en una línea corta») al final de la observación la
+    repetía el LLM al emprendedor (7/12 en prod). La observación son hechos, nunca imperativos."""
+    import re
+    for estado in ("aprobado", "desestimado"):
+        store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
+        res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": estado}, presupuesto=store)
+        txt = res.observation["result"]
+        assert "Marqué el presupuesto" in txt
+        assert not re.search(r"confirm[aá]m?(el|se|lo)|l[ií]nea corta", txt, re.I), txt
+
+
 def test_K07B_aprobar_deja_la_card_sugerencia_armar_factura_y_descartar_no():
     """K-07-B: al APROBAR la observación lleva `gate_card` (el motor la adjunta al reply); al descartar, no."""
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
