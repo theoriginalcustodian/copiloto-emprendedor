@@ -10,32 +10,34 @@
 
 | Veredicto | Entradas |
 |---|---|
-| CONFORME | 4 |
-| DIFERENTE | 30 |
+| CONFORME | 7 |
+| DIFERENTE | 37 |
 | FALTA | 0 |
-| NO-VERIFICABLE | 17 |
+| NO-VERIFICABLE | 7 |
 | **Total** | **51** |
 
-De las 30 entradas que difieren: **24 son A** (falta o no hay decisión citable: se corrige la **app**) y **6 son B** (cambio deliberado con cita: se corrige el **mapa**). Método: CÓDIGO 7 · DEVICE 25 · DEVICE+CÓDIGO 9 · NO-MEDIBLE 10.
+De las 37 entradas que difieren: **31 son A** (falta o no hay decisión citable: se corrige la **app**) y **6 son B** (cambio deliberado con cita: se corrige el **mapa**). Método: CÓDIGO 3 · CÓDIGO+DEVICE 1 · DEVICE 38 · DEVICE+CÓDIGO 5 · NO-MEDIBLE 4.
 
 Hallazgos nuevos de esta pasada (sección 4): 8 — 5 A, 1 D, 2 defectos del propio mapa o del prototipo.
 
 Decisiones de mockups repasadas (sección 5): 28 — NO-VERIFICABLE 7, CONFORME 14, DIFERENTE 7.
 
-**Lo que NO cubre.** Las entradas NO-VERIFICABLE (17) quedan sin medir por una razón escrita en cada fila: voz real, datos del tenant, acciones irreversibles, Google Calendar o un build de release. No se inventó ningún veredicto para ellas.
+**Lo que NO cubre.** Las entradas NO-VERIFICABLE (7) quedan sin medir por una razón escrita en cada fila: voz real, datos del tenant, acciones irreversibles, Google Calendar o un build de release. No se inventó ningún veredicto para ellas.
 
 ## 2. Las 51 entradas
 
 
 ### Arranque
 
-**01 · `splash` — Splash** — **DIFERENTE · B** · CÓDIGO  
+**01 · `splash` — Splash** — **DIFERENTE · B** · CÓDIGO+DEVICE  
 Prototipo: [splash](2026-10-16-relevamiento-capturas/proto-mapa-splash.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* La animación se midió en device (grabada, fotogramas a 1,5/s): estallido → círculo naranja → logo → «dobi» que se escribe → «Tu copiloto emprendedor» → «se dice o-DO-bi», unos 5 s; los botones aparecen antes de que termine. La variante de primera vez («Empecemos») no se vio: el teléfono ya tiene historial y muestra la de «volver». [app-reveal-animacion-fotogramas-1.5fps](2026-10-16-relevamiento-capturas/app-reveal-animacion-fotogramas-1.5fps.png)  
 *Diferencia:* El prototipo lleva dos botones, «Empecemos» y «Crear una nueva cuenta». La app dibuja sólo el primero: no hay alta propia, el alta self-service es Google y «entrar» y «crear cuenta» son el mismo acto (`EntradaSesion.tsx:6-17`, decisión del operador #3, 2026-08-04). El copy y la marca coinciden (`TEXTOS_REVEAL.primeraVez`, `TAGLINE_MARCA`: «Tu copiloto emprendedor»). La animación de 6,8 s no se midió: exige cerrar la sesión del usuario canónico.  
 *Corrección:* Quitar «Crear una nueva cuenta» del mapa (splash, reveal y volver) o reabrir la decisión #3.
 
-**02 · `volver` — Volver a entrar** — **CONFORME** · CÓDIGO  
+**02 · `volver` — Volver a entrar** — **CONFORME** · DEVICE  
 Prototipo: [volver](2026-10-16-relevamiento-capturas/proto-mapa-volver.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medido en device tras «Cerrar sesión»: «Entrar» y «Entrar con otra cuenta» (texto igual al mapa) con la animación del reveal. Detalle: el aviso de confirmación dice «volver a entrar con tu usuario y contraseña» aunque el operador entra con Google (B). [app-bienvenida-tras-cerrar-sesion](2026-10-16-relevamiento-capturas/app-bienvenida-tras-cerrar-sesion.png) · [app-cerrar-sesion-confirmacion](2026-10-16-relevamiento-capturas/app-cerrar-sesion-confirmacion.png)  
 *Diferencia:* Los textos de las dos puertas salen de `TEXTOS_REVEAL.volver` («Entrar» / «Entrar con otra cuenta», `textosEntrada.ts:18`) y coinciden con el mapa. La animación no se midió (exige cerrar sesión).  
 *Corrección:* Ninguna por copy. Falta medir la animación en device cuando haya un usuario descartable.
 
@@ -45,8 +47,9 @@ Prototipo: [ingresar](2026-10-16-relevamiento-capturas/proto-mapa-ingresar.png) 
 *Corrección:* Igualar la estructura del formulario al prototipo y agregar el aviso de sesión cerrada (el flujo de «sesión caída sola» ya va directo a este formulario, `EntradaSesion.tsx:25`).  
 *Vínculo:* F10
 
-**04 · `ingresar-error` — No coinciden** — **CONFORME** · CÓDIGO  
+**04 · `ingresar-error` — No coinciden** — **CONFORME** · DEVICE  
 Prototipo: [ingresar-error](2026-10-16-relevamiento-capturas/proto-mapa-ingresar-error.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medido con contraseña mala a propósito: «Ese mail y esa contraseña no coinciden. Probá de nuevo.», igual al mapa; cambia el estilo (campos crema, logo con tile). [app-ingresar-error-clave-mala](2026-10-16-relevamiento-capturas/app-ingresar-error-clave-mala.png)  
 *Diferencia:* El mensaje es idéntico: «Ese mail y esa contraseña no coinciden. Probá de nuevo.» (`textosEntrada.ts:7`), va entre los campos y los botones y en terracota profunda, como el mapa (`PantallaLogin.tsx:200-208`). No se provocó el error en device: habría fallado un ingreso del usuario canónico.  
 *Corrección:* Ninguna por copy y posición. Falta ver el estado en device.
 
@@ -86,8 +89,9 @@ Prototipo: [tablero](2026-10-16-relevamiento-capturas/proto-mapa-tablero.png) ·
 *Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): el tablero es pantalla propia, como en el mapa** («Tu día» con «Volver»). El resto (título «Tu día», filtros por categoría y «Anotar algo para hoy», que el mapa no cita) se decide al bajar la ficha.  
 *Vínculo:* C5 · F8
 
-**10 · `agenda` — Agenda** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**10 · `agenda` — Agenda** — **DIFERENTE · A** · DEVICE  
 Prototipo: [agenda](2026-10-16-relevamiento-capturas/proto-mapa-agenda.png) · App: [agenda](2026-10-16-relevamiento-capturas/app-agenda.png)  
+*Medición 2026-11-02 (device):* Medida con Google Calendar reconectado (5 de 5 apps). Difiere del mapa; detalle en el doc de pendientes (00.bis). [app-agenda](2026-10-16-relevamiento-capturas/app-agenda.png) · [app-apps-conectadas-5-de-5](2026-10-16-relevamiento-capturas/app-apps-conectadas-5-de-5.png)  
 *Diferencia:* La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14).  
 *Corrección:* Reconectar Calendar en el usuario canónico y medir.  
 *Vínculo:* F9
@@ -107,8 +111,9 @@ Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png
 *Diferencia:* Con `DOWN` y seis `MOVE` hacia arriba (927 → 700 px) la grabación se fija: aparecen tacho, onda, reloj «0:02», pausa y enviar (círculo rojo). El prototipo los dibuja en una barra al pie con tacho, onda ancha, «0:09», pausa y enviar. En la app los controles flotan a media pantalla en lugar de ir en una barra al pie, la onda es angosta y el reloj la pisa, y «Anotar un gasto» colapsa a una tira vertical vacía a la derecha (mismo N8). Se descartó con el tacho: no se envió nada (la lista de gastos y el hilo del chat quedaron sin cambios).  
 *Corrección:* Mismo arreglo que «Grabando» (N8): barra al pie, de ancho completo.
 
-**14 · `card` — La card en la función** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
+**14 · `card` — La card en la función** — **CONFORME** · DEVICE  
 Prototipo: [card](2026-10-16-relevamiento-capturas/proto-mapa-card.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida por chat con un gasto de prueba: la card es editable con «Cancelar» y «Guardar»; el aviso coincide con la frase del código (decisión 8). [app-card-gasto-arriba](2026-10-16-relevamiento-capturas/app-card-gasto-arriba.png) · [app-card-gasto-abajo](2026-10-16-relevamiento-capturas/app-card-gasto-abajo.png) · [app-card-gasto-cancelada](2026-10-16-relevamiento-capturas/app-card-gasto-cancelada.png)  
 *Diferencia:* La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa decía otra frase, corregida a la del código por la decisión 8 del operador (ver N3).  
 *Corrección:* Medir con autorización explícita para generar el dato.  
 *Vínculo:* K1
@@ -119,8 +124,9 @@ Prototipo: [vozchat](2026-10-16-relevamiento-capturas/proto-mapa-vozchat.png) ·
 *Corrección:* Medir con una persona.  
 *Vínculo:* K1
 
-**16 · `bi-vacio` — Sin ventas todavía** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**16 · `bi-vacio` — Sin ventas todavía** — **DIFERENTE · A** · DEVICE  
 Prototipo: [bi-vacio](2026-10-16-relevamiento-capturas/proto-mapa-bi-vacio.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida con el usuario descartable (tenant vacío): ceros, gráficos de 6 meses sin barras, «Sin gastos en este período.» y «Todavía no hay trabajos con presupuesto o factura para medir margen.». No hay mensaje global «Sin ventas todavía». [app-bi-vacio-arriba](2026-10-16-relevamiento-capturas/app-bi-vacio-arriba.png) · [app-bi-vacio-abajo](2026-10-16-relevamiento-capturas/app-bi-vacio-abajo.png)  
 *Diferencia:* El estado sin ventas exige un tenant sin datos; el canónico tiene gastos. Fabricarlo sería borrar datos.  
 *Corrección:* Medir con un tenant vacío.  
 *Vínculo:* F6
@@ -136,8 +142,9 @@ Prototipo: [reveal](2026-10-16-relevamiento-capturas/proto-mapa-reveal.png) · A
 *Diferencia:* Es el mismo reveal que «Splash»: «se dice o-DO-bi» y el botón de altavoz existen (`PRONUNCIACION_MARCA`, `RevealEntrada.tsx`); falta «Crear una nueva cuenta» por la decisión #3.  
 *Corrección:* Igual que «Splash».
 
-**19 · `onb-promesa` — La promesa** — **CONFORME** · CÓDIGO  
+**19 · `onb-promesa` — La promesa** — **CONFORME** · DEVICE  
 Prototipo: [onb-promesa](2026-10-16-relevamiento-capturas/proto-mapa-onb-promesa.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida con el usuario descartable: mismo copy («Laburo así…», «Tus servicios · 2 permisos»). El mapa asume Mercado Pago «Conectado ✓» y un solo CTA; la app muestra «Conectar Mercado Pago», «Conectar Google» y «Después». Hay un paso extra no mapeado («contame de tu negocio») con errores visibles antes de escribir. [app-onboarding-descartable-primer-ingreso](2026-10-16-relevamiento-capturas/app-onboarding-descartable-primer-ingreso.png) · [app-onboarding-paso-negocio-errores-prematuros](2026-10-16-relevamiento-capturas/app-onboarding-paso-negocio-errores-prematuros.png)  
 *Diferencia:* Los 13 textos propios de la pantalla (incluida «Son dos minutos y te digo algo que no sabés.») están en `PantallaOnboarding.tsx` y `textosEntrada.ts`. No se vio en device: exige un usuario nuevo. La app suma un paso que el mapa no tiene (N4).  
 *Corrección:* Ninguna por copy.  
 *Vínculo:* N4
@@ -160,14 +167,16 @@ Prototipo: [caida](2026-10-16-relevamiento-capturas/proto-mapa-caida.png) · App
 *Corrección aplicada:* el copy de Mercado Pago se alineó con la frase del código (prototipo, `specs/mobile-coherencia.md` y la nota del mockup 02; mismo criterio que la decisión 8); el corte de los montos (N1) quedó resuelto en #1297. *Decidido (operador, 2026-10-16):* el segundo aviso de Google Calendar que la app agrega **se agrega al mapa**.  
 *Vínculo:* C3 · N1
 
-**23 · `preg` — Pregunta libre** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**23 · `preg` — Pregunta libre** — **CONFORME** · DEVICE  
 Prototipo: [preg](2026-10-16-relevamiento-capturas/proto-mapa-preg.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida por chat («cuánto facturé»): responde dentro del hilo. [app-preg-cuanto-facture](2026-10-16-relevamiento-capturas/app-preg-cuanto-facture.png)  
 *Diferencia:* La pregunta libre se contesta con un mensaje real al agente: consume una acción del plan y escribe en el hilo del canónico (el clasificador de permisos lo denegó). Además la app resuelve «Preguntar» saliendo al chat (decisión del 2026-10-13), no con una respuesta dentro de Inteligencia.  
 *Corrección:* Medir con autorización explícita.  
 *Vínculo:* F6b
 
-**24 · `recibo` — El comprobante** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
+**24 · `recibo` — El comprobante** — **CONFORME** · DEVICE  
 Prototipo: [recibo](2026-10-16-relevamiento-capturas/proto-mapa-recibo.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medido con un presupuesto de prueba: card «Presupuesto anotado — N° 2» con «Doc» y la meta «✓✓ recibido». [app-pres-guardado-y-card-calendar-confirmado](2026-10-16-relevamiento-capturas/app-pres-guardado-y-card-calendar-confirmado.png)  
 *Diferencia:* El comprobante tras ejecutar exige confirmar una acción real. Por código el recibo existe (`chat/Recibo.tsx`) y la meta «✓✓ recibido» también (C8).  
 *Corrección:* Medir con una acción de prueba autorizada.  
 *Vínculo:* C8
@@ -178,14 +187,16 @@ Prototipo: [fact-voz](2026-10-16-relevamiento-capturas/proto-mapa-fact-voz.png) 
 *Corrección:* Medir con una persona y un cliente de prueba.  
 *Vínculo:* K2
 
-**26 · `fact-hitl` — Segundo HITL — emitir** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
+**26 · `fact-hitl` — Segundo HITL — emitir** — **DIFERENTE · A** · DEVICE  
 Prototipo: [fact-hitl](2026-10-16-relevamiento-capturas/proto-mapa-fact-hitl.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida con facturas reales en Producción (N° 10 y N° 11, $100): la card «Factura C · ARCA» es gate + handoff con un solo botón «Emitir la factura»; falta **Editar** (todos los datos) y **Cancelar**. Defecto grave: cancelar por chat no desactiva la card. [app-mapa-fact-hitl-sin-boton-editar](2026-10-16-relevamiento-capturas/app-mapa-fact-hitl-sin-boton-editar.png) · [app-fact-hitl-cancelada-por-chat-sigue-emitible](2026-10-16-relevamiento-capturas/app-fact-hitl-cancelada-por-chat-sigue-emitible.png)  
 *Diferencia:* La confirmación para emitir (Segundo HITL) no se provocó: emitir es irreversible. Por código: «Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.» y encabezado «Factura C · ARCA» (`TarjetaFacturaPropuesta.tsx:187-202`). El mapa dice «Queda así. Revisala antes de emitir» y «Una factura emitida no se borra».  
 *Corrección:* Medir en homologación, nunca en producción.  
 *Vínculo:* K2
 
-**27 · `fact-cae` — Emitida — el CAE** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**27 · `fact-cae` — Emitida — el CAE** — **DIFERENTE · A** · DEVICE  
 Prototipo: [fact-cae](2026-10-16-relevamiento-capturas/proto-mapa-fact-cae.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida con las facturas reales N° 10/11: «Factura emitida.» sin cliente ni número formateado; Drive/Compartir sin mail. Detalle en el doc de pendientes (00.bis).  
 *Diferencia:* El CAE sólo existe tras emitir una factura real.  
 *Corrección:* Medir en homologación.  
 *Vínculo:* K2
@@ -196,14 +207,16 @@ Prototipo: [pres-voz](2026-10-16-relevamiento-capturas/proto-mapa-pres-voz.png) 
 *Corrección:* Medir con una persona.  
 *Vínculo:* K3
 
-**29 · `pres-hitl` — La tarjeta editable** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
+**29 · `pres-hitl` — La tarjeta editable** — **DIFERENTE · A** · DEVICE  
 Prototipo: [pres-hitl](2026-10-16-relevamiento-capturas/proto-mapa-pres-hitl.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida por chat: la app muestra un formulario editable (Concepto, Cliente, Tipo de documento, Contacto, Ítems, «Agregar ítem», «Guardar el presupuesto», «Cancelar»); el mapa, una vista de lectura con «Cambiar»/«Editar» por renglón y chip «Docs». [app-pres-hitl-tarjeta-editable](2026-10-16-relevamiento-capturas/app-pres-hitl-tarjeta-editable.png)  
 *Diferencia:* Por código el aviso es «Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté. Al guardar, a tu cliente no le llega…» (`TarjetaPresupuestoPropuesto.tsx:126`): coincide con la idea del mapa («Todavía no lo anoté»). El botón difiere: «Guardar presupuesto» (mapa) contra «Guardar el presupuesto».  
 *Corrección:* Medir con una propuesta real; igualar el rótulo del botón.  
 *Vínculo:* K3
 
-**30 · `pres-ciclo` — El ciclo** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**30 · `pres-ciclo` — El ciclo** — **DIFERENTE · A** · DEVICE  
 Prototipo: [pres-ciclo](2026-10-16-relevamiento-capturas/proto-mapa-pres-ciclo.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medido: anotado → «Me aprobaron el de Mostrador Device Verify» → desambigua → «Marqué el presupuesto número 2 … como aprobado. ¿Te armo la factura para esto?». Difieren el rótulo del chip, el importe en formato inglés («$50,000.00») y que la card «anotado» no muestre «Pendiente». El último paso (armar la factura) no se ejecutó. [app-pres-ciclo-desambigua](2026-10-16-relevamiento-capturas/app-pres-ciclo-desambigua.png) · [app-pres-ciclo-aprobado](2026-10-16-relevamiento-capturas/app-pres-ciclo-aprobado.png)  
 *Diferencia:* El ciclo anotado → aprobado → factura exige varios pasos reales.  
 *Corrección:* Medir con un presupuesto de prueba.  
 *Vínculo:* K3
@@ -238,14 +251,16 @@ Prototipo: [feedback](2026-10-16-relevamiento-capturas/proto-mapa-feedback.png) 
 *Corrección:* Igualar estructura y posición del mes.  
 *Vínculo:* F11-feedback
 
-**36 · `hitl` — Confirmación** — **NO-VERIFICABLE** · NO-MEDIBLE  
+**36 · `hitl` — Confirmación** — **DIFERENTE · A** · DEVICE  
 Prototipo: [hitl](2026-10-16-relevamiento-capturas/proto-mapa-hitl.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medida por chat: el pedido «Mandale un recordatorio por mail a Lucia para mañana» produjo una card de Google Calendar («agendar «Recordatorio para Lucía»») y no un mail Gmail con «Confirmar y mandar». Al cancelar, la card siguió con ambos botones y luego pasó a «✓ Confirmado» aunque no se creó evento (servidor verificado). [app-hitl-recordatorio-lucia](2026-10-16-relevamiento-capturas/app-hitl-recordatorio-lucia.png) · [app-hitl-cancelada-card-sigue-visible](2026-10-16-relevamiento-capturas/app-hitl-cancelada-card-sigue-visible.png)  
 *Diferencia:* La confirmación de «Recordatorio a Lucía» (patrón madre, «Confirmar y mandar» / «Cancelar») exige un mensaje real que no se mandó: escribiría en el hilo del canónico y mandaría un mail. Mockup 04: el ícono del ojo y «Un solo mail, ahora. No se manda nada sin tu confirmación.»  
 *Corrección:* Medir con autorización explícita y un destinatario de prueba.  
 *Vínculo:* K1-K5
 
 **37 · `vacio` — Mi día sin avisos** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
 Prototipo: [vacio](2026-10-16-relevamiento-capturas/proto-mapa-vacio.png) · App: — (no capturada)  
+*Medición 2026-11-02 (device):* Medido en device con el descartable: «Nada urgente por hoy. Cuando haya algo que mirar, te lo dejo…» con ilustración y aviso «Conectá Google Calendar en Ajustes → Apps». Sigue sin veredicto porque el prototipo `?ver=vacio` no muestra su estado (N5). [app-vacio-nada-urgente-por-hoy](2026-10-16-relevamiento-capturas/app-vacio-nada-urgente-por-hoy.png)  
 *Diferencia:* En el prototipo `?ver=vacio` tampoco muestra su estado. Por código: «Nada urgente por hoy.» (`PantallaMiDia.tsx:661`).  
 *Corrección:* Corregir el deep link del prototipo.  
 *Vínculo:* N5
@@ -375,6 +390,13 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 27 | N3 | **Aviso de la card de gasto distinto del mapa.** Decidir cuál frase manda y alinear mapa, app y glosario. |
 | 28 | N6 | **RESUELTO (decisión 7, 2026-10-16)** — «Volver» a la izquierda con chevron en `MarcoGlass`; capturas en device. |
 | 29 | N8 | **RESUELTO (2026-10-16)** — `MicFuncion` arma la fila entera: la barra toma el lugar del botón de alta; fijado, los controles ocupan toda la fila. Medido en Gastos y Presupuestos; el cancelar deslizando también quedó verificado en device. |
+| 30 | `hitl` | El pedido «mandale un recordatorio por mail» debe producir la card Gmail «Confirmar y mandar» / «Cancelar», no una de Calendar. **Cancelar** debe desactivar la card y el backend debe rechazar `confirmar` de una propuesta cancelada (test adversarial). La card de Calendar cancelada no puede pasar a «✓ Confirmado». |
+| 31 | `fact-hitl` | Agregar **Editar** (todos los datos de la factura) y **Cancelar** a la card «Factura C · ARCA»; hoy sólo tiene «Emitir la factura». Cancelar por chat debe desactivar la card (mismo contrato que `hitl`). |
+| 32 | `fact-cae` | Mostrar cliente y número formateado en «Factura emitida.»; Drive/Compartir sin mail. |
+| 33 | `pres-hitl` | Decidir si manda el formulario editable de la app o la vista de lectura del mapa (con «Cambiar»/«Editar» por renglón y chip «Docs»). |
+| 34 | `pres-ciclo` | Igualar el rótulo del chip, el formato del importe («$50.000» y no «$50,000.00») y mostrar «Pendiente» en la card «anotado». |
+| 35 | `agenda` | Igualar con el mapa (detalle en el doc de pendientes, 00.bis). |
+| 36 | `bi-vacio` | Agregar el mensaje global «Sin ventas todavía» al estado vacío de Inteligencia. |
 
 ### 3.2 Se corrige en el mapa (cambio deliberado o mapa rancio)
 
@@ -395,21 +417,11 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | Entrada | Por qué no se midió | Qué hace falta |
 |---|---|---|
 | `entrada` | El arranque en frío se grabó (60 cuadros): logo negro sobre crema, luego la carga del dev-client (fondo oscuro con el botón «Tools»), luego Mi día y, a los pocos segundos, **el chat sube solo** con el rótulo viejo («Escribile a Odobi»). El mapa dice que la entrada dura lo que tarda Mi día en cargar y aterriza en Mi día. La fase del dev-client contamina la medición: sólo un build de release da el tiempo real. Que el chat suba solo no se pudo atribuir a la app o a la restauración de estado del dev-client. | Medir con un build de release. Si el chat sube solo también ahí, es un defecto nuevo (se suma al R03). |
-| `agenda` | La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14). | Reconectar Calendar en el usuario canónico y medir. |
-| `card` | La card de gasto aterrizando desde Gastos exige dictar o escribir un gasto: crea un dato en el tenant canónico. Por código, el aviso es «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» (`TarjetaGastoPropuesto`); el mapa decía otra frase, corregida a la del código por la decisión 8 del operador (ver N3). | Medir con autorización explícita para generar el dato. |
 | `vozchat` | Necesita una nota de voz real transcripta y enviada al hilo (la pantalla «Grabando» ya se midió sin voz, entrada 12). | Medir con una persona. |
-| `bi-vacio` | El estado sin ventas exige un tenant sin datos; el canónico tiene gastos. Fabricarlo sería borrar datos. | Medir con un tenant vacío. |
 | `onb-cumplida` | El primer insight con plata real sólo se produce en la primera sesión de un tenant con datos de facturas. Los importes del mapa (`$147.000`, `$63.000`) son un ejemplo, no copy. | Medir con un usuario nuevo con facturas cargadas. |
-| `preg` | La pregunta libre se contesta con un mensaje real al agente: consume una acción del plan y escribe en el hilo del canónico (el clasificador de permisos lo denegó). Además la app resuelve «Preguntar» saliendo al chat (decisión del 2026-10-13), no con una respuesta dentro de Inteligencia. | Medir con autorización explícita. |
-| `recibo` | El comprobante tras ejecutar exige confirmar una acción real. Por código el recibo existe (`chat/Recibo.tsx`) y la meta «✓✓ recibido» también (C8). | Medir con una acción de prueba autorizada. |
 | `fact-voz` | Facturar por voz exige dictado y datos reales de un cliente. | Medir con una persona y un cliente de prueba. |
-| `fact-hitl` | La confirmación para emitir (Segundo HITL) no se provocó: emitir es irreversible. Por código: «Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.» y encabezado «Factura C · ARCA» (`TarjetaFacturaPropuesta.tsx:187-202`). El mapa dice «Queda así. Revisala antes de emitir» y «Una factura emitida no se borra». | Medir en homologación, nunca en producción. |
-| `fact-cae` | El CAE sólo existe tras emitir una factura real. | Medir en homologación. |
 | `pres-voz` | Igual que «Facturar por voz». | Medir con una persona. |
-| `pres-hitl` | Por código el aviso es «Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté. Al guardar, a tu cliente no le llega…» (`TarjetaPresupuestoPropuesto.tsx:126`): coincide con la idea del mapa («Todavía no lo anoté»). El botón difiere: «Guardar presupuesto» (mapa) contra «Guardar el presupuesto». | Medir con una propuesta real; igualar el rótulo del botón. |
-| `pres-ciclo` | El ciclo anotado → aprobado → factura exige varios pasos reales. | Medir con un presupuesto de prueba. |
 | `vacio-visto` | En el prototipo `?ver=vacio-visto` no muestra su estado (hallazgo del propio mapa). Por código la app dibuja «Nada urgente por hoy.» y varía la calma por días (`PantallaMiDia.tsx:661`, `EstadoVacio.tsx`). El canónico tiene tarjetas, así que no se ve. | Corregir el deep link del prototipo para que muestre el estado. |
-| `hitl` | La confirmación de «Recordatorio a Lucía» (patrón madre, «Confirmar y mandar» / «Cancelar») exige un mensaje real que no se mandó: escribiría en el hilo del canónico y mandaría un mail. Mockup 04: el ícono del ojo y «Un solo mail, ahora. No se manda nada sin tu confirmación.» | Medir con autorización explícita y un destinatario de prueba. |
 | `vacio` | En el prototipo `?ver=vacio` tampoco muestra su estado. Por código: «Nada urgente por hoy.» (`PantallaMiDia.tsx:661`). | Corregir el deep link del prototipo. |
 
 ## 4. Hallazgos nuevos de esta pasada
