@@ -139,6 +139,61 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
 
   // H-A4-9 — el confirm/cancel de un gate con `opts.hitlMessageId` marca ESA card `hitlRespondido`,
   // atómico con la burbuja nueva (mismo reducer, ver `chatMachine.test.ts` en `@copiloto/core`).
+  // SM-H7 — la marca se escribe antes del POST para frenar el doble toque. Si el POST falla, marca y
+  // burbuja se van juntas: con la burbuja sola, `sanitizarHitlRespondido` la volvería a marcar al recargar.
+  describe('SM-H7: una respuesta que no salió no queda como respondida', () => {
+    const gate = {
+      replies: [
+        {
+          id: 5,
+          text: '¿Confirmás?',
+          choices: [
+            { label: 'Confirmar', value: 'confirm:0:0' },
+            { label: 'Cancelar', value: 'cancel:0:0' },
+          ],
+        },
+      ],
+      next_id: 5,
+    };
+    const persistido = () =>
+      JSON.stringify(jest.mocked(almacenClave.guardar).mock.calls.map(([, valor]) => valor));
+
+    it('el POST falla: se revierten marca y burbuja, y nada de eso se persiste', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gate).mockResolvedValue({ replies: [], next_id: 5 });
+      jest.mocked(api.sendChat).mockRejectedValueOnce(new Error('sin red'));
+      const { result, unmount } = await renderHook(() => useChat('cli-test'));
+      await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+      const id = result.current.estado!.messages[0]!.id;
+      jest.mocked(almacenClave.guardar).mockClear();
+
+      await act(async () => {
+        await result.current.send('confirm:0:0', { kind: 'callback', displayText: 'Confirmar', hitlMessageId: id });
+      });
+
+      expect(result.current.estado?.messages).toHaveLength(1);
+      expect(result.current.estado?.messages[0]?.hitlRespondido).toBeUndefined();
+      expect(result.current.estado?.sendStatus).toBe('error');
+      expect(persistido()).not.toContain('hitlRespondido');
+      unmount();
+    });
+
+    it('el POST se acepta: la marca se persiste (control positivo)', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gate).mockResolvedValue({ replies: [], next_id: 5 });
+      jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-hitl', accepted: true });
+      const { result, unmount } = await renderHook(() => useChat('cli-test'));
+      await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+      const id = result.current.estado!.messages[0]!.id;
+      jest.mocked(almacenClave.guardar).mockClear();
+
+      await act(async () => {
+        await result.current.send('confirm:0:0', { kind: 'callback', displayText: 'Confirmar', hitlMessageId: id });
+      });
+
+      await waitFor(() => expect(persistido()).toContain('hitlRespondido'));
+      unmount();
+    });
+  });
+
   it('H-A4-9: el confirm/cancel de un gate con hitlMessageId marca ESA card hitlRespondido', async () => {
     jest.mocked(api.getReply)
       // Un poll real trae el reply con la card HITL (confirmar/cancelar) -- así llega en producción.

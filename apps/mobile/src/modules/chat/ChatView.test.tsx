@@ -336,6 +336,24 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
       expect(api.sendChat).toHaveBeenCalledWith(expect.objectContaining({ text: 'cancel:2:0', kind: 'callback' }));
     });
 
+    it('si el envío falla, no dice «Confirmado»: los botones vuelven y se puede reintentar', async () => {
+      jest.mocked(api.getReply).mockResolvedValueOnce(gateCalendar);
+      jest.mocked(api.sendChat).mockRejectedValueOnce(new Error('sin red'));
+
+      await renderChatView();
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-confirmar')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+
+      await waitFor(() => expect(api.sendChat).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('tarjeta-confirmacion-confirmar')).toBeTruthy());
+      expect(screen.queryByText('Confirmado')).toBeNull();
+
+      jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-2', accepted: true });
+      await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+      await waitFor(() => expect(screen.getByText('Confirmado')).toBeTruthy());
+      expect(jest.mocked(api.sendChat).mock.calls.filter(([r]) => r.text === 'confirm:2:0')).toHaveLength(2);
+    });
+
     it('dos toques seguidos en Confirmar mandan UN solo callback', async () => {
       jest.mocked(api.getReply).mockResolvedValueOnce(gateCalendar);
       jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-2', accepted: true });
