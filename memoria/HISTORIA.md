@@ -520,3 +520,4 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 
 - [🧪🎞️ El mock de Reanimated hace inalcanzable `finished: false`](el-mock-de-reanimated-hace-inalcanzable-finished-false-y-el-callback-del-spring.md) - un fix en esa rama sale verde sin ejercitarse.
 - [📚🔢 La skill dice `runOnJS` removido y en Reanimated 4.5.0 existe](la-skill-swmansion-dice-runOnJS-removido-y-en-reanimated-4-5-0-existe.md) - canónica del dominio, no de la versión instalada.
+- [Relevamiento: pendientes de device](relevamiento-mapa-pendientes-device-plan-guardado.md) - 21 sin medir.  — bajada 2026-11-02: el relevamiento se midió en device y se convirtió en el sprint CORRECCIONES (39 fichas, bloques G a N).

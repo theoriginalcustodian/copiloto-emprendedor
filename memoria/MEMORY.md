@@ -140,6 +140,7 @@
 - [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
+- [🧪 El sujeto de prueba ÚNICO no encarna el estado exigido](sujeto-de-prueba-unico-no-encarna-el-estado-que-exige-el-control.md) — 4 fichas, 1 causa
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 
@@ -156,7 +157,6 @@
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
 - [🚪📤 Una orden de «no publicar» NO protege un archivo VERSIONADO](una-orden-de-no-publicar-no-protege-un-archivo-ya-versionado.md) — el PR iba por otra cosa.
 
-- [Relevamiento: pendientes de device](relevamiento-mapa-pendientes-device-plan-guardado.md) - 21 sin medir.
 
 ## 🏭 El producto - LEER antes de tocar
 - [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.
