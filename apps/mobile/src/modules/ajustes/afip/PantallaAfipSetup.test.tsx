@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -631,6 +631,24 @@ describe('PantallaAfipSetup', () => {
     await waitFor(() => expect(screen.getByTestId('afip-ambiente-lista')).toBeTruthy());
     expect(screen.getByTestId('afip-ambiente-prod-vincular')).toBeTruthy();
     expect(screen.queryByTestId('afip-ambiente-prod-usar')).toBeNull();
+  });
+
+  it('SM-K2: el recuadro ENTERO de un ambiente no vinculado es lo tocable, y el formulario dice a cuál vincula', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue({
+      ...estadoOk(),
+      ambiente: 'dev',
+      ambientesVinculados: ['dev'],
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('afip-ambiente-lista')).toBeTruthy());
+    // El testID del recuadro es el del Pressable: el nombre del ambiente está DENTRO de lo tocable.
+    expect(within(screen.getByTestId('afip-ambiente-prod-vincular')).getByText('Producción')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('afip-ambiente-prod-vincular'));
+    expect(screen.getByTestId('afip-arca-ambiente-destino').props.children.join('')).toContain('Producción');
   });
 
   it('tocar "Usar este" llama a cambiarAmbiente con el ambiente elegido', async () => {
