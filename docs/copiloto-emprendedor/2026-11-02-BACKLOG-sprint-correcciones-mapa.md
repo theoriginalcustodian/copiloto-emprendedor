@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card de Gmail con la aclaracion de que sale al confirmar. Disparador: el canonico tiene Gmail… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | la frase del agente dijo $50,000 en device (18:02, 1 caso; la sonda de #1363 daba 0/6). Es de backend, o planificacio… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -105,10 +105,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
 | **SM-N8** | `sin-issue` | ✅ TERMINADO | bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado) |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
-| **SM-N10** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N11** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N10** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). BarraEstado montada en app/_layout.tsx, con test. Device RF8T318RN9… |
+| **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
 | **SM-N13** | `sin-issue` | ✅ TERMINADO | 7811aad1 consigna fuera de las 6 observaciones restantes; test AST; sonda Mi dia N=12 6/12 -> 0/12 (desplegado) |
-| **SM-N14** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -234,8 +234,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de pres-ciclo y pres-hitl + constante TEXTO_SUGERENCIA_ARMAR_FACTURA del core (frontend1); mapa y «Pendiente» en la card
-- **Cierre:** mitades backend en main 681c3b53 (#1363): chip «Armá la factura» y importe $50.000 en frases del LLM; sonda real 0/6 inglés. SM-H5
+- **Falta:** la frase del agente dijo $50,000 en device (18:02, 1 caso; la sonda de #1363 daba 0/6). Es de backend, o planificacion decide que el DoD mide solo las cards. Verificar tambien el mapa corregido por D5.
+- **Cierre:** 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390) mas 681c3b53 (#1363). Chip Arma la factura desde la constante del core, recibo $50.000, Pendiente visible. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -928,7 +928,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N10 · `sin-issue` — La barra de estado del sistema es ilegible, y el canónico NO la resuelve
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). BarraEstado montada en app/_layout.tsx, con test. Device RF8T318RN9T con el telefono en modo noche: Claro da iconos oscuros, Oscuro da iconos claros. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N10-N11.md
 - **Dueño:** frontend1
 - **De dónde sale:** frontend1 al capturar `SM-I1` (íconos claros sobre fondo crema). Pidió ficha o
   exclusión en vez de arreglarlo por su cuenta.
@@ -950,7 +951,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N11 · `sin-issue` — El detalle de comprobante pinta `2026-11-12` y `100.0` crudos: el formateador YA existe y ese call-site lo saltea
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, que la ficha no citaba; con test. Device: 12 nov 2026, 2 nov 2026, $100,00. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N10-N11.md
 - **Dueño:** frontend1
 - **De dónde sale:** frontend1 al capturar `SM-I1`.
 - **Lo medido (planificación, 2026-11-02, contra `origin/main`).** No es un formateador que falte
@@ -1008,7 +1010,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N14 · `sin-issue` — 🚫 FUERA DEL SPRINT — El resumen de Gastos dice «Gastado en 1 nov»: un período formateado como día, y el comentario declara el paliativo como solución
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo de 1 nov, rojo medido en los dos y verde con el fix. grep formatearFechaCorta = 0 en los dos archivos. Suites: core 0, web 0, mobile 1498 verdes.
 - **Dueño:** frontend1 (reportado por frontend1 al capturar, 2026-11-02) — **sin device**, se toma al
   soltar el teléfono, después de `SM-N11` y `SM-N10`.
 - **Fuera del denominador, a propósito:** como `SM-N12`/`SM-N13`. Salió de una captura de hoy, no del

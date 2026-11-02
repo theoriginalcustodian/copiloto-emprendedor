@@ -542,7 +542,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     // Sombra cálida validada por el spike del hito 0 (nivel 1 · reposo, §2.4 del DoD) — geometría
     // 10px/26px, distinta de la de oscuro (12px/28px, ver más abajo).
     relieve: {
-      nivel1: { color: '#6E4B2C', opacity: 0.3, offsetY: 10, radius: 26, elevation: 14 },
+      nivel1: { color: '#6E4B2C', opacity: 0.3, offsetY: 10, radius: 26, elevation: 14, spread: -12 },
       nivel2: { color: '#46321E', opacity: 0.32, ...RELIEVE_NIVEL2_GEOM },
       nivel3: RELIEVE_NIVEL3,
       nivel4: { color: '#6E4B2C', opacity: 0.4, ...RELIEVE_NIVEL4_GEOM },
@@ -572,7 +572,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     fondoLuz: [],
     // §2.4: nivel 1 oscuro es NEGRO (no cálido) — geometría 12px/28px, distinta de claro (10px/26px).
     relieve: {
-      nivel1: { color: '#000000', opacity: 0.6, offsetY: 12, radius: 28, elevation: 14 },
+      nivel1: { color: '#000000', opacity: 0.6, offsetY: 12, radius: 28, elevation: 14, spread: -12 },
       nivel2: { color: '#000000', opacity: 0.5, ...RELIEVE_NIVEL2_GEOM }, // "idem" geometría, §2.4
       nivel3: RELIEVE_NIVEL3,
       nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
