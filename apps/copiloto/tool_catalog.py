@@ -1236,8 +1236,7 @@ def _run_completar_ingreso(arguments, ctx, idem_key, cobro_store_factory):
     cola = f" Todavía falta {' y '.join(falta)}, pero NO se lo vuelvas a pedir." if falta else ""
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Listo, lo agregué al MISMO ingreso de "
-                                             f"{_plata(ingreso['monto'])} (no creé otro). "
-                                             f"Confirmáselo en una línea.{cola}",
+                                             f"{_plata(ingreso['monto'])} (no creé otro).{cola}",
                                    "ingreso": ingreso})
 
 
@@ -1299,8 +1298,7 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
     return ToolResult(
         tool_call_id=idem_key, is_write=True, status="ok",
         observation={"result": f"Registré {_plata(cobro['monto'])} de la factura {factura['nro']}"
-                               f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda} "
-                               f"Confirmáselo en una línea corta."
+                               f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda}"
                                f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=False)}",
                      "cobro": cobro, "resumen": resumen})
 
@@ -1685,8 +1683,7 @@ def _run_cancelar_factura(arguments, ctx, idem_key, buscar_borrador_cancelable, 
                                                  f"sin decir que la cancelaste.",
                                        "motivo_codigo": resultado.get("motivo_codigo")})
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
-                      observation={"result": "Cancelé la factura: ya no se puede emitir. Confirmáselo en "
-                                             "una línea corta.", "factura_id": factura_id})
+                      observation={"result": "Cancelé la factura: ya no se puede emitir.", "factura_id": factura_id})
 
 
 # ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
@@ -1714,8 +1711,7 @@ def _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
                           observation={"result": "No entendí qué anotar. Preguntale qué tarea es."})
     tarjeta = tarjeta_store_factory(ctx.cliente_id).crear_manual(texto)
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
-                      observation={"result": f"Anoté «{texto}» en Mi día. Confirmáselo en una línea "
-                                             f"corta.", "tarjeta": tarjeta})
+                      observation={"result": f"Anoté «{texto}» en Mi día.", "tarjeta": tarjeta})
 
 
 def _run_mover_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
@@ -1746,8 +1742,7 @@ def _run_mover_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
                           observation={"result": "Ese estado no es válido. Preguntale de nuevo."})
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
-                      observation={"result": f"Moví «{actualizada['texto']}» a {nuevo}. "
-                                             f"Confirmáselo en una línea corta.",
+                      observation={"result": f"Moví «{actualizada['texto']}» a {nuevo}.",
                                    "tarjeta": actualizada})
 
 
@@ -1773,8 +1768,7 @@ def _run_borrar_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
         return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
                           observation={"result": "Esa tarjeta ya no estaba — alguien la borró recién."})
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
-                      observation={"result": f"Borré «{tarjeta['texto']}» de Mi día. Confirmáselo en "
-                                             f"una línea corta."})
+                      observation={"result": f"Borré «{tarjeta['texto']}» de Mi día."})
 
 
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None,
