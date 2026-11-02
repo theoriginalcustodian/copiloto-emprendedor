@@ -83,7 +83,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | deploy del backend (espera que frontend2 mande ambiente explicito en el primer vinculo) y la mitad app: Homologacion … |
 | **SM-K2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -417,7 +417,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** deploy del backend (espera que frontend2 mande ambiente explicito en el primer vinculo) y la mitad app: Homologacion visible solo para copiloto_admin, con captura de device
+- **Cierre:** 476f508a (#1330) backend: 403 homologacion_solo_admin + 422 ambiente_requerido; adversarial con JWT reales en VPS 2663 passed
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
