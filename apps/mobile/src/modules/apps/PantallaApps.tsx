@@ -59,14 +59,13 @@ import type { NombreIconoGlass } from '../../theme/glass/icons';
  * ícono equivocado. Ninguno de los nombres del set Odobi significa literalmente "Gmail"/"Drive": son
  * íconos de FUNCIÓN, así que la asignación de abajo es la analogía más cercana, no un mapeo exacto.
  */
-const ICONO_POR_SERVICIO: Record<string, NombreIconoGlass> = {
+export const ICONO_POR_SERVICIO: Record<string, NombreIconoGlass> = {
   gmail: 'facturacion',
   googledrive: 'presupuestos',
   googlesheets: 'contabilidad',
   googledocs: 'presupuestos',
   googlecalendar: 'miDia',
   hubspot: 'clientes',
-  instagram: 'grabar',
   mercadopago: 'cobros',
 };
 const ICONO_POR_DEFECTO: NombreIconoGlass = 'appsConectadas';
