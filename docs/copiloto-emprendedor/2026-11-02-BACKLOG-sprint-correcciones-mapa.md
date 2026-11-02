@@ -75,7 +75,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
 | **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
-| **SM-I5** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -364,7 +364,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I5 · `sin-issue` — El avatar no dibuja la inicial
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado.
+- **Cierre:** dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404). Inicial del nombre comercial con caida al mail y glifo de cuenta si no hay ninguno; useInicialCuenta.test.tsx con dos adversariales entre tenants. mobile.sh 1543 verdes en el worktree y CI 6/6.
 - **Dueño:** frontend1
 - **Medido:** `apps/mobile/src/modules/midia/AvatarCuenta.tsx` (en web vive en `shell/`, otra
   carpeta) no muestra la inicial que el mapa pide («M»).

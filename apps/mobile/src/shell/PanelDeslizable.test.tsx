@@ -1,14 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type React from 'react';
 import { useRef } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import * as Reanimated from 'react-native-reanimated';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
 // toggle) se valida en el device (Fase 6) + lo validó el spike de Fase 1; en jest cubrimos que las
 // dos capas + el handle montan sin crashear (reanimated/gesture-handler no revientan bajo el harness).
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { PanelDeslizable, translacionPanel } from './PanelDeslizable';
+import { opacidadRotuloAbajo, PanelDeslizable, translacionPanel } from './PanelDeslizable';
 
 async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
@@ -39,7 +40,41 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     // la tira que asoma invita a hablarle, no a "subir la conversación" — que nombraba el mecanismo
     // en vez de lo que se consigue.
     await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
-    expect(screen.getByTestId('panel-hint').props.children).toBe('Escribile a Odobi');
+    expect(screen.getByText('Escribile a Odobi').props.accessibilityElementsHidden).toBe(false);
+    expect(screen.getByTestId('panel-hint', { includeHiddenElements: true }).props.accessibilityElementsHidden).toBe(true);
+  });
+
+  // 🔴 SM-I6. El rótulo se decidía con un estado de React que se fija al TERMINAR la animación y que además
+  // tiene que cruzar al hilo de JS: SM-G4 midió el chat en su lugar a +0,1 s y el rótulo viejo hasta +2,6 s.
+  describe('el rótulo lo decide la posición, no el estado de React (SM-I6)', () => {
+    it('muestra el de abajo recién pasada la mitad del recorrido, y a los dos extremos uno solo', () => {
+      expect(opacidadRotuloAbajo(0, 800)).toBe(0);
+      expect(opacidadRotuloAbajo(320, 800)).toBe(0);
+      expect(opacidadRotuloAbajo(400, 800)).toBeCloseTo(0.5);
+      expect(opacidadRotuloAbajo(480, 800)).toBeCloseTo(1);
+      expect(opacidadRotuloAbajo(800, 800)).toBe(1);
+    });
+
+    it('sin medir todavía no hay «abajo»: el panel está arriba', () => {
+      expect(opacidadRotuloAbajo(0, 0)).toBe(0);
+    });
+
+    it('🔴 con el estado diciendo «abajo» y el panel todavía arriba, se ve el rótulo de arriba', async () => {
+      // `arrancaAbajo` deja el estado en «abajo» desde el primer render, y el stub deja `panelY` en 0: es
+      // justo el desacuerdo entre los dos. Si el rótulo volviera a leer el estado, acá se vería el de abajo.
+      const espia = jest
+        .spyOn(Reanimated, 'useAnimatedStyle')
+        .mockImplementation(((actualizar: () => object) => actualizar()) as never);
+      try {
+        await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
+        const opacidad = (el: { props: Record<string, unknown> }) =>
+          (StyleSheet.flatten(el.props.style as never) as { opacity?: number }).opacity;
+        expect(opacidad(screen.getByTestId('panel-hint', { includeHiddenElements: true }))).toBe(1);
+        expect(opacidad(screen.getByText('Escribile a Odobi'))).toBe(0);
+      } finally {
+        espia.mockRestore();
+      }
+    });
   });
 });
 

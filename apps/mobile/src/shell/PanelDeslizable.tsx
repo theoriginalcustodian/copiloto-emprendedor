@@ -22,7 +22,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -193,6 +193,20 @@ export function translacionPanel(
 }
 
 /**
+ * Cuánto se ve el rótulo de abajo: 0 hasta el 40 % del recorrido, 1 desde el 60 %, y a la inversa el de arriba.
+ *
+ * 🔴 **SM-I6: lo decide la posición en el hilo de UI, no el estado de React.** El estado se fija al terminar la
+ * animación y tiene que cruzar al hilo de JS: SM-G4 midió el chat en su lugar a +0,1 s de soltar y el rótulo
+ * viejo hasta +2,6 s. Leído de `panelY` no puede quedar atrás del panel, y no agrega ningún render en pleno snap
+ * (ver `alternar`). Sólo lee `panelY`: no es un dueño más.
+ */
+export function opacidadRotuloAbajo(panelY: number, recorrido: number): number {
+  'worklet';
+  if (recorrido <= 0) return 0;
+  return Math.min(Math.max((panelY / recorrido - 0.4) / 0.2, 0), 1);
+}
+
+/**
  * 🔴 **Sin `bloqueado`/`hintBloqueado` a propósito (decisión D6, sprint mobile-first).** En DocuMed
  * este panel trababa el gesto entero mientras había una grabación clínica viva, para que el médico no
  * pudiera minimizar el HUD y olvidarse el micrófono abierto. Acá esa amenaza no existe: el dictado del
@@ -227,8 +241,9 @@ export function PanelDeslizable({
    * un panel que no se mueve durante el primer frame a uno que se desliza a una posición inventada.
    */
   const recorrido = useSharedValue(RECORRIDO_SIN_MEDIR);
-  // Espejo en React del estado del panel, SÓLO para el texto del pull-hint (el template lo alterna).
-  // Se actualiza vía `runOnJS` en cada snap; el drag en sí sigue 100% en el hilo de UI (no re-renderiza).
+  // Espejo en React del estado del panel, SÓLO para decirle al lector de pantalla cuál de los dos rótulos leer:
+  // lo que se VE lo decide `opacidadRotuloAbajo`. Se actualiza vía `runOnJS` en cada snap; el drag en sí sigue
+  // 100% en el hilo de UI (no re-renderiza).
   const [panelAbajo, setPanelAbajo] = useState(arrancaAbajo);
   /** Que la posición inicial se aplique UNA sola vez, en la primera medida. Ver `arrancaAbajo`. */
   const inicialAplicada = useRef(false);
@@ -326,7 +341,7 @@ export function PanelDeslizable({
       // dispara un render de React en pleno snap, y un render es un commit del shadow tree: la vista
       // se re-aplica desde el árbol de React, donde `styles.panel` no tiene transform — el panel
       // salta arriba por un cuadro. `finished` es false si otra animación interrumpió a esta: ahí el
-      // estado lo fija quien interrumpió, y pisarlo dejaría el hint mintiendo sobre dónde está el
+      // estado lo fija quien interrumpió, y pisarlo dejaría el espejo mintiendo sobre dónde está el
       // panel.
       if (destino === max) runOnJS(avisarBajada)();
       panelY.value = withTiming(destino, CONFIG_SNAP, (finished) => {
@@ -379,6 +394,13 @@ export function PanelDeslizable({
         );
       });
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada]);
+
+  const estiloRotuloArriba = useAnimatedStyle(() => ({
+    opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value),
+  }));
+  const estiloRotuloAbajo = useAnimatedStyle(() => ({
+    opacity: opacidadRotuloAbajo(panelY.value, recorrido.value),
+  }));
 
   const altoTira = ALTO_HANDLE + insets.top;
   const estiloPanel = useAnimatedStyle(() => ({
@@ -492,13 +514,30 @@ export function PanelDeslizable({
           <GestureDetector gesture={gesto}>
             <View style={styles.zonaHandle} testID="panel-handle">
               <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
-              {/* Pull-hint del template (mono 10px uppercase): alterna según el estado del panel. */}
-              <Text
-                testID="panel-hint"
-                style={[styles.hint, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-              >
-                {panelAbajo ? hintAbajo : 'Bajá para volver a Mi día'}
-              </Text>
+              {/* Pull-hint del template (mono 10px uppercase): los dos montados, uno encima del otro. Ver
+                  `opacidadRotuloAbajo`. */}
+              <View style={styles.hints}>
+                <Animated.Text
+                  testID="panel-hint"
+                  accessibilityElementsHidden={panelAbajo}
+                  importantForAccessibility={panelAbajo ? 'no' : 'auto'}
+                  style={[styles.hint, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }, estiloRotuloArriba]}
+                >
+                  Bajá para volver a Mi día
+                </Animated.Text>
+                <Animated.Text
+                  accessibilityElementsHidden={!panelAbajo}
+                  importantForAccessibility={panelAbajo ? 'auto' : 'no'}
+                  style={[
+                    styles.hint,
+                    StyleSheet.absoluteFill,
+                    { color: tema.color.textoTenue, fontFamily: tema.fuente.mono },
+                    estiloRotuloAbajo,
+                  ]}
+                >
+                  {hintAbajo}
+                </Animated.Text>
+              </View>
             </View>
           </GestureDetector>
           {children}
@@ -520,5 +559,6 @@ const styles = StyleSheet.create({
   // barra del handle (diseño: 44×5, radio 3).
   barraHandle: { width: 44, height: 5, borderRadius: 3 },
   // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
-  hint: { fontSize: 11, letterSpacing: 0.2 },
+  hints: { alignSelf: 'stretch' },
+  hint: { fontSize: 11, letterSpacing: 0.2, textAlign: 'center' },
 });

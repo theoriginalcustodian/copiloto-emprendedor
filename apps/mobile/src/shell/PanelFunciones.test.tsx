@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import * as Reanimated from 'react-native-reanimated';
 
 // El COMPORTAMIENTO del gesto (drag/snap/toggle) se valida en device, igual que con
 // `PanelDeslizable`: acá se cubre que la capa monta, que la base queda montada debajo y que la
@@ -21,7 +22,7 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { PanelFunciones } from './PanelFunciones';
+import { opacidadRotuloAbierto, PanelFunciones } from './PanelFunciones';
 
 async function envolver() {
   return render(
@@ -39,6 +40,35 @@ describe('PanelFunciones — el escritorio colgado del borde de arriba (Ola 4)',
     expect(screen.getByText('base-mi-dia')).toBeTruthy();
     expect(screen.getByText('escritorio-arriba')).toBeTruthy();
     expect(screen.getByTestId('panel-funciones-capa')).toBeTruthy();
+  });
+
+  // 🔴 SM-I6. Medido en SM-G4: con el escritorio ya cerrado la pestaña seguía diciendo «Subí para volver a Mi
+  // día» hasta +2,9 s, porque el rótulo esperaba un estado de React que se fija al terminar la animación.
+  describe('el rótulo lo decide la posición, no el estado de React (SM-I6)', () => {
+    it('muestra el de abierto recién pasada la mitad del recorrido, y a los dos extremos uno solo', () => {
+      expect(opacidadRotuloAbierto(-756, 756)).toBe(0);
+      expect(opacidadRotuloAbierto(-378, 756)).toBeCloseTo(0.5);
+      expect(opacidadRotuloAbierto(0, 756)).toBe(1);
+    });
+
+    it('sin medir todavía el escritorio está cerrado', () => {
+      expect(opacidadRotuloAbierto(0, 0)).toBe(0);
+    });
+
+    it('🔴 cada rótulo pinta su mitad: cerrado se ve el de abrir, no el de cerrar', async () => {
+      const espia = jest
+        .spyOn(Reanimated, 'useAnimatedStyle')
+        .mockImplementation(((actualizar: () => object) => actualizar()) as never);
+      try {
+        await envolver();
+        const opacidad = (texto: string) =>
+          (StyleSheet.flatten(screen.getByText(texto).props.style) as { opacity?: number }).opacity;
+        expect(opacidad('Bajá para tus funciones')).toBe(1);
+        expect(opacidad('Subí para volver a Mi día')).toBe(0);
+      } finally {
+        espia.mockRestore();
+      }
+    });
   });
 
   it('🔴 la pestaña es TOCABLE y dice a dónde lleva — WCAG 2.5.1', async () => {
@@ -77,7 +107,6 @@ describe('PanelFunciones — el escritorio colgado del borde de arriba (Ola 4)',
 
     await act(async () => gesto('TapGestureHandler').onEnd({}, true));
     expect(abierto()).toBe(true);
-    expect(screen.getByText('Subí para volver a Mi día')).toBeTruthy();
     // El «cerrar» con un 2º toque no se ejercita acá: el stub de `useSharedValue` del setup crea un
     // objeto NUEVO por render, así que tras `setAbierto(true)` el `y`/`alto` del gesto vuelven a su
     // inicial. Alternar en ambos sentidos se mide en device (receta de SM-A1).
