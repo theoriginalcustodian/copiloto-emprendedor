@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../ThemeProvider';
 import { PRESS_FADE } from './presion';
-import { sombraNivel } from './relieve';
+import { sombraVidrio } from './relieve';
 
 export interface RowProps extends PropsWithChildren {
   onPress?: () => void;
@@ -37,8 +37,8 @@ export function Row({ onPress, style, testID, accessibilityLabel, children }: Ro
         // SIN `backgroundColor` — misma razón que en `Tile`: la fila es de vidrio. Ver `relieve.ts`.
         { borderColor: g.chip },
         // Nivel 1 · Superficie en reposo (DoD §2.4: "cards, burbujas, paneles" — una fila de lista es
-        // más card que chip). Mismo mecanismo validado por el spike del hito 0, ver `Tile.tsx`.
-        sombraNivel(tema.glass.relieve.nivel1),
+        // más card que chip). `boxShadow`, por lo mismo que `Tile`: ver `sombraVidrio`.
+        sombraVidrio(tema.glass.relieve.nivel1),
         // Opacidad y no escala: una fila ancha que encoge arrastra el layout de al lado. Ver `presion.ts`.
         pressed && onPress ? PRESS_FADE : null,
         style,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
-    // La sombra proyectada (relieve) la pone `sombraNivel(nivel1)` — ver `relieve.ts`.
+    // La sombra proyectada (relieve) la pone `sombraVidrio(nivel1)` — ver `relieve.ts`.
   },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
 });

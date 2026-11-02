@@ -34,7 +34,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../ThemeProvider';
-import { sombraNivel } from './relieve';
+import { sombraVidrio } from './relieve';
 
 export interface TileProps extends PropsWithChildren {
   onPress?: () => void;
@@ -60,10 +60,9 @@ export function Tile({ onPress, style, testID, accessibilityLabel, children }: T
         // pudiera dibujar la sombra por `elevation` — y era justo lo que le mataba la transparencia.
         // Ver `relieve.ts`.
         { borderColor: g.bd },
-        // Nivel 2 · Elemento chico (DoD §2.4: "chips, tiles del escritorio" — textual). Mismo
-        // mecanismo de sombra validado por el spike del hito 0 (`shadowColor` clásico), no el
-        // `boxShadow` que usaba `sombraTile` hasta el hito 1 — ver el docstring de `relieve.ts`.
-        sombraNivel(tema.glass.relieve.nivel2),
+        // Nivel 2 · Elemento chico (DoD §2.4: "chips, tiles del escritorio" — textual). `boxShadow`, como
+        // el canónico: sin fondo opaco, otra sombra se ve a través del vidrio. Ver `sombraVidrio`.
+        sombraVidrio(tema.glass.relieve.nivel2),
         // 🔴 **Sin hundido al presionar — pedido del operador:** *"el ícono tiene movimiento, se va
         // hacia atrás como un botón presionado y cuando se vuelve a levantar ahí recién lanza el
         // glass… vamos a quitarle ese movimiento, que sean fijos"*. El `scale(.95)` que había acá (en
@@ -73,13 +72,17 @@ export function Tile({ onPress, style, testID, accessibilityLabel, children }: T
         style,
       ]}
     >
-      <LinearGradient
-        colors={[g.s1, g.s2]}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.luzSuperior, { backgroundColor: g.bd }]} pointerEvents="none" />
+      {/* El botón de RNGH no recorta a sus hijos (`clipChildren = false`), así que `overflow` no alcanza: sin
+          esta capa el gradiente pinta las esquinas rectas por fuera del borde redondeado (SM-N4). */}
+      <View style={styles.capaVidrio} pointerEvents="none">
+        <LinearGradient
+          colors={[g.s1, g.s2]}
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.luzSuperior, { backgroundColor: g.bd }]} />
+      </View>
       {children}
     </Pressable>
   );
@@ -91,7 +94,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     padding: 16,
-    // La sombra proyectada (relieve/profundidad) la pone `sombraNivel(nivel2)` — ver `relieve.ts`.
+    // La sombra proyectada (relieve/profundidad) la pone `sombraVidrio(nivel2)` — ver `relieve.ts`.
   },
+  capaVidrio: { ...StyleSheet.absoluteFill, borderRadius: 19, overflow: 'hidden' },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
 });

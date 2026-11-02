@@ -17,10 +17,10 @@
  * fondo opaco que exigía la vieja `elevation` (este proyecto corre New Architecture, que aplica
  * `shadowColor/shadowRadius/shadowOpacity` en Android igual que en iOS, no sólo `elevation` con su
  * outline clásico). `boxShadow` (con `spreadDistance`) nunca se probó en device para tinte cálido —
- * no se asume que se comporta igual sin esa evidencia; unificar todo al shape validado es más seguro
- * que mantener dos mecanismos de sombra en paralelo, uno probado y otro no.
+ * no se asume que se comporta igual sin esa evidencia. Vale para lo que tiene fondo opaco o no deja ver
+ * lo de atrás; `Tile` y `Row`, que son vidrio, ya se vieron en device con `boxShadow`: ver `sombraVidrio`.
  *
- * RN no tiene `spread`: el DoD ya lo absorbe en cada nivel aproximando `shadowRadius`/`elevation`
+ * Este shape no tiene `spread`: el DoD ya lo absorbe en cada nivel aproximando `shadowRadius`/`elevation`
  * contra la magnitud del spread negativo del diseño (mismo criterio que usó el spike, documentado
  * en sus propios comentarios).
  */
@@ -33,6 +33,8 @@ export interface NivelRelieve {
   offsetY: number;
   radius: number;
   elevation: number;
+  /** El spread del DoD §2.4. Sólo lo lee `sombraVidrio`: el otro shape no tiene dónde ponerlo. */
+  spread?: number;
 }
 
 type Sombra = Pick<ViewStyle, 'shadowColor' | 'shadowOffset' | 'shadowRadius' | 'shadowOpacity' | 'elevation'>;
@@ -48,6 +50,21 @@ export function sombraNivel(n: NivelRelieve, haciaArriba = false): Sombra {
     shadowRadius: n.radius,
     shadowOpacity: n.opacity,
     elevation: n.elevation,
+  };
+}
+
+/**
+ * El mismo nivel para una superficie de vidrio, sin fondo opaco (`Tile`, `Row`). `sombraNivel` deja ver
+ * la sombra A TRAVÉS del vidrio: un rectángulo claro de esquinas rectas adentro de la card (SM-N4).
+ * `boxShadow` la dibuja sólo FUERA de la caja, que es por lo que el canónico (documed `relieve.ts`) lo usa.
+ * Sin el spread negativo la sombra sale por los costados, y una lista con scroll la corta en recto.
+ */
+export function sombraVidrio(n: NivelRelieve): Pick<ViewStyle, 'boxShadow'> {
+  const alfa = Math.round(n.opacity * 255).toString(16).padStart(2, '0');
+  return {
+    boxShadow: [
+      { offsetX: 0, offsetY: n.offsetY, blurRadius: n.radius, spreadDistance: n.spread ?? 0, color: `${n.color}${alfa}` },
+    ],
   };
 }
 
