@@ -326,6 +326,18 @@ async def test_cliente_id_valido_no_se_rechaza():
     assert client.queries              # sí llegó a construir/mandar la query
 
 
+def test_H5_la_frase_que_el_LLM_relaya_lleva_el_importe_formateado_no_el_crudo():
+    """SM-H5: «Decile exactamente: Te armé la factura por $X» con X crudo (`50000.00`) lo reescribía el LLM
+    como «$50,000.00». El importe llega ya como `$50.000` y el crudo no viaja en la frase."""
+    perfil = _perfil()
+    backend = _FacturaBackendFake(perfil=perfil)
+    res = _correr(backend, {"cliente_nombre": "Consumidor Final",
+                            "items": [{"descripcion": "tortas", "cantidad": "1", "precio_unitario": "50000"}]},
+                  perfil=perfil)
+    frase = res.observation["result"]
+    assert "$50.000" in frase and "50000" not in frase and "50,000" not in frase
+
+
 def test_N2_servicio_sin_periodo_arma_la_card_en_la_1a_vez_no_pregunta_el_periodo():
     """Medido en prod: concepto=servicios + R6 ⇒ la 1ª vez devolvía «ARCA exige el período… Pedí SÓLO
     eso» y el LLM lo preguntaba en el chat. El período lo completa la card."""

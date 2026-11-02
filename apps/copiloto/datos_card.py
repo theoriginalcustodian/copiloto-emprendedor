@@ -49,6 +49,13 @@ def plata(monto: str) -> str:
     return f"{'-' if negativo else ''}${miles},{(decimales or '00')[:2]:0<2}"
 
 
+def plata_corta(monto: str) -> str:
+    """Como `plata()` pero sin `,00` cuando los centavos son cero: `"50000.00"` → `"$50.000"`, `"50000.50"` →
+    `"$50.000,50"`. Es lo que el mapa pide en las frases que el LLM relaya al usuario (SM-H5)."""
+    texto = plata(monto)
+    return texto[:-3] if texto.endswith(",00") else texto
+
+
 def _mes_legible(clave: str) -> str:
     """`"2026-10"` → `"octubre 2026"`."""
     anio, mes = clave.split("-")

@@ -71,7 +71,7 @@ from hitl_card import detalle_de, recibo_de  # noqa: E402
 # preg-datos (C-D5): la card `datos_negocio`. `plata` vive ahí y se re-exporta como `_plata` (lo usan
 # `consultar_cliente` y los tests): una sola definición de cómo se escribe la plata acá.
 from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOCIO,  # noqa: E402
-                        cuando_usar as _cuando_usar_negocio, datos_de, plata as _plata,
+                        cuando_usar as _cuando_usar_negocio, datos_de, plata as _plata, plata_corta as _plata_corta,
                         texto_para_el_llm)
 
 
@@ -1363,7 +1363,7 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Marqué el presupuesto {actualizado['numero']} de "
                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
-                                             f"({_plata(actualizado['total'])}) como {verbo}. "
+                                             f"({_plata_corta(actualizado['total'])}) como {verbo}. "
                                              f"Confirmáselo en una línea corta.",
                                    "presupuesto": actualizado,
                                    # K-07: sólo al APROBAR el cliente ofrece armar la factura (nunca al descartar).
@@ -1625,13 +1625,16 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
     # app; esta frase es lo que funciona aunque la app todavía no lo pinte.
     del_registro = (f" para {borrador.receptor.nombre} ({borrador.receptor.tipo_doc.name} "
                     f"{borrador.receptor.nro_doc}, de tu registro de clientes)" if cliente_registro else "")
-    texto_card = (f"Te armé la factura por ${total}{del_registro}, revisala y confirmala cuando quieras."
+    # SM-H5: el importe va YA formateado (`$50.000`). Con el crudo (`50000.00`) el LLM lo reescribía a su
+    # manera —«$50,000.00»— al relayar la frase «exacta»: lo medido NO venía de `marcar_presupuesto`.
+    importe = _plata_corta(total)
+    texto_card = (f"Te armé la factura por {importe}{del_registro}, revisala y confirmala cuando quieras."
                   if completa
-                  else f"Esto entendí de la factura (${total}){del_registro}. Faltan datos — revisala y "
+                  else f"Esto entendí de la factura ({importe}){del_registro}. Faltan datos — revisala y "
                        f"completala a mano.")
     return ToolResult(
         tool_call_id=idem_key, is_write=False, status="ok",
-        observation={"result": f"Armé la factura (${total}) y se la muestro en una tarjeta para que "
+        observation={"result": f"Armé la factura ({importe}) y se la muestro en una tarjeta para que "
                                f"la revise. TODAVÍA NO está emitida — NO digas \"emití\", \"listo\" ni "
                                f"\"la mandé\" porque no es cierto. Decile exactamente EXACTAMENTE: "
                                f"\"{texto_card}\""},
