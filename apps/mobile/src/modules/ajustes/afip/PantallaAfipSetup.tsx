@@ -1030,6 +1030,15 @@ export function PantallaAfipSetup() {
                 interactivo, y NO manda a «Apps» a conectar algo que hoy no puede escribir
                 (`DRIVECERO`). La emisión no se rompe: la factura sale igual y el comprobante avisa
                 con evidencia (`drive.motivo`) si quedó sin copia. */}
+            {/* SM-K3: el toggle apagado dice POR QUÉ. Sin esto, con la copia en «no» y sin Drive no había
+                ningún texto (los de abajo exigen `guardarEnDrive`) y sólo la opacidad avisaba. */}
+            {!guardarEnDrive && estadoGeneral != null && estadoGeneral.driveConectado !== true && (
+              <Text testID="afip-drive-apagado-motivo" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                {estadoGeneral.driveConectado === false
+                  ? 'Apagado: tu Google Drive no está conectado, así que no hay dónde guardar la copia.'
+                  : 'Apagado: no pudimos verificar tu Google Drive. Se activa cuando podamos.'}
+              </Text>
+            )}
             {guardarEnDrive && estadoGeneral?.driveConectado === true && (
               <Text testID="afip-drive-conectado" style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}>
                 Google Drive está conectado. Cada factura nueva va a quedar guardada ahí.
