@@ -111,8 +111,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
-| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4: requiere la sesion CANONICA puesta en el telefono para llegar a Cerrar sesion (con la del operador no se llega… |
+| **SM-N17** | `sin-issue` | ✅ TERMINADO | 8378d53d (#1425): Instagram fuera de las tablas de iconos de mobile (PantallaApps.tsx) y web (serviceIcons.tsx); sinI… |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
@@ -1199,8 +1199,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N16 · `sin-issue` — El Escritorio de Funciones no tiene acceso a Ajustes, y sin él no se puede cerrar sesión
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque, comparando la region y no la captura entera; DoD 6 causa del no-responde: con MOVE no navego a las 19:05 en la cuenta del operador, y si navego a las 17:54 y 18:29 en el canonico, asi que falta medir que difiere: puerta de empujarUnaVez (tocar un tile en el mismo estado), cuenta o bundle. El dibujo va en la rama de SM-I5.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Avatar del escritorio por el mismo alAjustes de Mi dia, sin segundo call-site; PantallaPrincipal.test.tsx da rojo con el mutante sin el cable. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
+- **Falta:** DoD 4: requiere la sesion CANONICA puesta en el telefono para llegar a Cerrar sesion (con la del operador no se llega sin cerrar su sesion). DoD 6: hoy navego con el mismo gesto, el no-responde de las 19:05 no se reprodujo y su causa (puerta de empujarUnaVez, bundle o estado) queda sin atribuir; solo se cierra si reaparece.
+- **Cierre:** b64856dc (#1401) + medido en device 2026-11-02 20:56 con la cuenta del operador: avatar visible (anillo + inicial S) y el toque DOWN/MOVE/UP navega a Ajustes; region del avatar comparada antes/despues. Evidencia SM-N16.md
 - **Dueño:** frontend1
 - **De dónde sale:** el **operador**, 2026-11-02, atrapado dentro de la app con su propia cuenta:
   «en la pantalla funciones no está el icono de ajustes de usuario… no puedo cerrar la sesion a mano».
@@ -1275,7 +1275,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 8378d53d (#1425): Instagram fuera de las tablas de iconos de mobile (PantallaApps.tsx) y web (serviceIcons.tsx); sinInstagram.contrato.test.ts (web) y PantallaApps.test.tsx (mobile) en rojo con el mutante que lo repone. El aviso salia de Composio en vivo (serve.py:268), raiz y fix en SM-N18 (0046ded4); no toca la DB del tenant, DoD 4 no aplica. SERVICE_RISK.instagram (hitl.ts) queda: excepcion fechada para historial viejo. mobile/web/core/lint rc=0 y 6/6 jobs en CI.
 - **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
 - **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
   aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
