@@ -23,7 +23,7 @@ fallos=0
 # El total del resumen NO se escribe a mano: `ok` cuenta y el cierre COMPARA. Medido el
 # 2026-10-13 en el test hermano: el resumen decia `14/14` literal mientras corrian 18
 # aserciones. Un veredicto que no cuenta lo que miro absuelve a un bloque que no se ejecuto.
-ASERCIONES_ESPERADAS=12
+ASERCIONES_ESPERADAS=14
 oks=0
 chk() { local nom="$1" pat="$2" exp="$3" bl="$4" out rc ok=1
   out="$(UC_ATRIBUCION_BLOQUEA="$bl" bash "$GATE" "$BASE..HEAD" 2>&1)"; rc=$?
@@ -77,6 +77,35 @@ chkrc "10· goal con un id del TABLERO -> lo toma" 0 env UC_PADRON_TABLERO="$TMP
 bash "$GOAL" clear >/dev/null 2>&1
 chkrc "11· un id FUERA del bloque COLA-VIVA -> lo rechaza" 1 env UC_PADRON_TABLERO="$TMP/tab/PLAN.md" bash "$GOAL" set OTROFUERA
 chkrc "12· SIN tablero, el mismo id -> lo rechaza (degrada, no afloja)" 1 env UC_PADRON_TABLERO="$TMP/tab/NO-EXISTE.md" bash "$GOAL" set FILAVIVA
+bash "$GOAL" clear >/dev/null 2>&1
+
+# --- 13) LA TABLA-INDICE GENERADA vs EL BLOQUE DE LA FICHA (2026-11-02).
+# Causa: `padron_donde` preferia la primera linea con `|` porque en los docs viejos la ficha ERA
+# una fila con su DoD adentro. Desde que el registro de sprint lleva una tabla-indice GENERADA al
+# principio, esa fila gana -- y NO tiene DoD: el goal quedaba anclado a `| **SM-K6** | sin-issue |
+# PENDIENTE | - |`. Una orden de trabajo sin DoD no se puede cerrar con evidencia, que es lo unico
+# que este mecanismo existe para garantizar. Lo reportaron dos sesiones el mismo dia (SM-H7, SM-K8).
+# El fixture reproduce el orden real: tabla primero, bloque despues.
+mkdir -p "$TMP/reg/docs/copiloto-emprendedor"
+cat > docs/copiloto-emprendedor/2026-01-02-BACKLOG-de-prueba-con-tabla.md <<'FIXEOF'
+| Ficha | Issue | Estado | Cierre |
+|---|---|---|---|
+| **BL-T1** | `sin-issue` | PENDIENTE | — |
+
+# Bloque T · pruebas
+
+### BL-T1 · `sin-issue` — Una ficha cuyo DoD vive en el bloque, no en la fila
+- **Estado:** PENDIENTE
+- **DoD:** el criterio REAL de cierre, que se envuelve en dos renglones para que el test
+  tambien cace el corte en el primero.
+FIXEOF
+bash "$GOAL" clear >/dev/null 2>&1
+chkrc "13· ficha con tabla-indice ANTES del bloque -> la toma" 0 bash "$GOAL" set BL-T1
+if grep -q '^dod=el criterio REAL de cierre' .goal; then
+  echo "  ✅ 13b· el DoD sale del BLOQUE, no de la fila generada         (rc=0)"; oks=$((oks + 1))
+else
+  echo "  ❌ 13b· el DoD salio de la fila generada (sin criterio de cierre): $(grep '^dod=' .goal | cut -c1-90)"; fallos=$((fallos + 1))
+fi
 bash "$GOAL" clear >/dev/null 2>&1
 echo
 corridas=$((oks + fallos))
