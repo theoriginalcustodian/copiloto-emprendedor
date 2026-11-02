@@ -7,7 +7,7 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 
 const mockVoz = {
-  fase: 'grabando' as const,
+  fase: 'grabando' as 'grabando' | 'inactivo',
   niveles: [] as number[],
   segundos: 0,
   iniciar: jest.fn().mockResolvedValue(true),
@@ -56,6 +56,7 @@ async function montar() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockVoz.fase = 'grabando';
   mockVoz.tomar.mockReturnValue(AUDIO);
 });
 
@@ -66,10 +67,22 @@ describe('DockFuncion -- SM-I2: escrito y dictado caen en el mismo camino', () =
 
     await fireEvent.press(screen.getByTestId('mock-soltar'));
 
-    await waitFor(() => expect(onTexto).toHaveBeenCalledWith('café 1500'));
+    await waitFor(() => expect(onTexto).toHaveBeenCalledWith('café 1500', 'dictado'));
     expect(mockTranscribir).toHaveBeenCalledWith(AUDIO, 'gasto');
     expect(screen.getByTestId('dock-funcion-chip')).toHaveTextContent(/^Por voz · /);
     expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('lo escrito llega marcado como escrito, sin transcribir y sin chip', async () => {
+    mockVoz.fase = 'inactivo';
+    const { onTexto } = await montar();
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'café 1500');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(onTexto).toHaveBeenCalledWith('café 1500', 'escrito'));
+    expect(mockTranscribir).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('dock-funcion-chip')).toBeNull();
   });
 
   it('🔴 cero retención: el archivo se borra también cuando la transcripción falla', async () => {

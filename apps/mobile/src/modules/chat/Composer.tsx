@@ -219,7 +219,7 @@ export function Composer({
               },
             ])}
           >
-            <IconoCamara color={tema.glass.accent2} />
+            <IconoCamara color={tema.color.acentoTinta} />
           </Pressable>
         )}
         {/* El campo es una píldora de vidrio (gradiente s1→s2, borde, radio, luz superior) — un

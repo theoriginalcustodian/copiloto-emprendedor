@@ -19,7 +19,7 @@ import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { AvisoDictado, DockFuncion, inicialesDeGasto, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, DockFuncion, inicialesDeGasto, useDictadoPorFuncion, type ViaTexto } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -159,12 +159,14 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   // El dictado va por el chat (`useDictadoPorFuncion`): si el motor devuelve la propuesta, el formulario
   // abre con monto/categoría/proveedor ya extraídos; si el camino está apagado o falla, cae al texto
   // crudo en `descripcion` (el comportamiento de antes) y el hook deja el `aviso` que lo dice.
-  async function alDictarGasto(texto: string) {
+  // SM-I2: lo escrito en el dock usa el mismo camino, pero `propuesta.origen` siempre dice `voz`:
+  // guardarlo así persistiría que lo dictó.
+  async function alDictarGasto(texto: string, via: ViaTexto) {
     setErrorMic(null);
     const propuesta = await dictado.dictar(texto);
     if (!vivo.current) return;
     setInicialesDictado(propuesta !== null ? inicialesDeGasto(propuesta) : { descripcion: texto });
-    setOrigenAlta(propuesta !== null ? propuesta.origen : 'manual');
+    setOrigenAlta(propuesta !== null && via === 'dictado' ? propuesta.origen : 'manual');
     setErrorFoto(null);
     setVista('formulario');
   }
@@ -315,7 +317,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
         <DockFuncion
           contexto="gasto"
           placeholder={PLACEHOLDER_DOCK}
-          onTexto={(t) => void alDictarGasto(t)}
+          onTexto={(t, via) => void alDictarGasto(t, via)}
           onError={setErrorMic}
           disabled={dictado.ocupado}
         />

@@ -13,9 +13,12 @@ import { DockEntrada } from '../chat/DockEntrada';
 import { useTema } from '../../theme/ThemeProvider';
 import { borrarArchivoLocal } from './borrarArchivoLocal';
 
+/** Cómo llegó el texto: el camino es el mismo, pero el `origen` de lo guardado no. */
+export type ViaTexto = 'escrito' | 'dictado';
+
 export interface DockFuncionProps {
   /** Lo que escribió o dictó, ya transcripto: las dos entradas caen en el MISMO camino. */
-  onTexto: (texto: string) => void;
+  onTexto: (texto: string, via: ViaTexto) => void;
   /** Viaja como `contexto` a `/transcribir` (sólo logging del lado del backend). */
   contexto: ContextoTranscripcion;
   placeholder: string;
@@ -47,7 +50,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError 
         return;
       }
       setUltimaDuracionSeg(duracionSeg);
-      onTexto(texto);
+      onTexto(texto, 'dictado');
     } catch (err) {
       onError?.(avisoErrorTranscripcion(err));
     } finally {
@@ -64,7 +67,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError 
       )}
       <DockEntrada
         placeholder={placeholder}
-        onEnviarTexto={onTexto}
+        onEnviarTexto={(texto) => onTexto(texto, 'escrito')}
         onAudio={(audio, duracionSeg) => void alAudio(audio, duracionSeg)}
         onSinPermiso={() => onError?.('Activá el permiso de micrófono en Ajustes para dictar por voz.')}
         disabled={disabled}
