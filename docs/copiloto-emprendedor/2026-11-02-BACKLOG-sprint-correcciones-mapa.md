@@ -96,7 +96,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N3** | `sin-issue` | ⬜ PENDIENTE | — |
 
@@ -664,7 +664,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N1 · `sin-issue` — El perfil fiscal del canónico en prod parece inválido: contamina toda sonda
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs cargar_contexto_factura, no el perfil (intacto, id 42); misma sonda de 12 en prod: 0/12 datos fiscales (antes 4/12), 9/12 card (antes 6/12), los 3 restantes piden periodo = SM-N2
 - **Dueño:** backend
 - **Medido:** 12 dictados en prod con el canónico tras el deploy de `SM-H4` — **0/12 piden
   CUIT/DNI/nombre** (el fix funciona), pero **4/12 responden «faltan tus datos fiscales»** en vez de
