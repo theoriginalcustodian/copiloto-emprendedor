@@ -126,7 +126,7 @@
 - [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) - "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
-- [🖥️🚫 Sub-agentes: CERO — agotan la RAM del operador](subagentes-van-headless-no-inline-en-la-terminal.md) — 13/10 revocó headless. Script-first.
+- [🖥️🎚️ Headless con TECHO: 3/sesión, contexto cero](subagentes-van-headless-no-inline-en-la-terminal.md) — 02/11; el veto era a N sin techo.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
 - [🧠🔁 Memoria repo vs slug divergen — `seed-memory.sh` es SEGURO (`--update`)](memoria-repo-vs-slug-drift.md) — NO correrlo es lo que las diverge.

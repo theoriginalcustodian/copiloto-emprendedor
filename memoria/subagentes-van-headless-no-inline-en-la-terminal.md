@@ -1,6 +1,6 @@
 ---
 name: subagentes-van-headless-no-inline-en-la-terminal
-description: Directiva del operador — el trabajo de sub-agentes (Agent tool) interfiere escribiendo en la terminal de la sesión; despachar headless (claude -p, sesión aislada) en vez de inline
+description: Headless `claude -p` AUTORIZADO con techo de 3 por sesión y contexto cero (operador, 02-11-2026); el `Agent` tool inline sigue prohibido. El veto de octubre era a N sin techo, no al mecanismo
 metadata:
   type: feedback
 ---
@@ -106,3 +106,44 @@ despachar headless; una sesión alcanzó a lanzar 15 procesos antes de la contra
 un reemplazo idempotente de la sección (`🤖 Despachá sub-agentes HEADLESS` → `🚫 CERO SUB-AGENTES`)
 y control que distingue la **instrucción** de la **prohibición** — grepear `claude -p` daba falso
 rojo porque la prohibición también lo nombra. Ver [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+---
+
+## ⚠️ REINSTAURADOS 2026-11-02, con la condición que faltaba
+
+**Orden del operador:** *«le 3 sesiones lanzan headless… pero máximo 3 sub agentes por sesión»*,
+con **contexto cero** (*«solo el mínimo del sistema»*) y **haiku para barrido, sonnet para
+construir**. El «cero» del 13-10 queda **superado**: vale esta.
+
+**Lo que hay que leer en el cambio, y es lo útil.** La prohibición del 13-10 no fue un veto al
+mecanismo: fue un veto a **N sin techo**. Esta misma entrada cerraba diciendo *«el límite no es el
+presupuesto, es el hardware, y hay que fijarlo a mano»* — y la orden de hoy es justamente eso
+hecho: **3 por sesión**. Lo que cambió no es la tolerancia del operador: es que ahora hay un
+número. Una prohibición que en realidad era «falta el parámetro» se lee como «el mecanismo está
+mal», y así queda vetado algo que sólo necesitaba un límite.
+
+**Las tres condiciones son parte de la autorización, no recomendaciones:**
+
+1. **El techo lo cuenta el LANZADOR, no la disciplina.** Cuenta procesos vivos y **encola**. Con 3
+   sesiones son 3×3 = 9 en el peor caso, y un techo que hay que acordarse de respetar es cómo
+   volvemos al 13-10: lo mecánico no se delega a la disciplina
+   ([[buzon-se-ordena-por-janitor-no-por-disciplina]]).
+2. **Contexto cero: el prompt lleva PATHS, nunca «explorá».** Un headless al que se le pide
+   averiguar cómo funciona algo gasta su presupuesto redescubriendo el repo y devuelve prosa
+   ([[sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho]]).
+3. **Control positivo en el mismo lanzador.** Un prompt no autocontenido devuelve **basura con exit
+   0**. El nivel de delegación es un instrumento nuevo, y un instrumento sin control positivo no se
+   sabe si mide ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]).
+
+**Y el orden que manda por encima:** *determinista antes que LLM* (regla global 8). El headless
+entra para lo que el código **no puede** juzgar. Un script idempotente sigue siendo mejor evidencia
+que el reporte de un agente, que es autoevaluación (CANON 7). Caso raíz del 26-10: ~1090 juicios
+innecesarios = más del 20 % de la cuota semanal.
+
+**Qué sigue prohibido:** el `Agent` tool **inline** (el motivo de julio no cambió: escribe en la
+terminal del operador), cualquier headless que toque el **device** — el teléfono tiene un dueño
+único y un proceso aislado no puede sostener ese candado —, y cualquiera que escriba en `main` o
+marque una ficha: la evidencia la aporta la sesión, que es quien responde por ella.
+
+**Dónde está bajado:**
+`docs/copiloto-emprendedor/2026-11-02-COORDINACION-sprint-correcciones-tres-sesiones.md` §5.
