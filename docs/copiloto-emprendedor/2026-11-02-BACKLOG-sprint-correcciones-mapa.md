@@ -83,8 +83,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | deploy del backend (espera que frontend2 mande ambiente explicito en el primer vinculo) y la mitad app: Homologacion … |
-| **SM-K2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | deploy del backend (backend despliega al recibir el aviso de frontend2, ya enviado) y captura de device del no-admin … |
+| **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
 | **SM-K3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-K5** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -420,8 +420,8 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** deploy del backend (espera que frontend2 mande ambiente explicito en el primer vinculo) y la mitad app: Homologacion visible solo para copiloto_admin, con captura de device
-- **Cierre:** 476f508a (#1330) backend: 403 homologacion_solo_admin + 422 ambiente_requerido; adversarial con JWT reales en VPS 2663 passed
+- **Falta:** deploy del backend (backend despliega al recibir el aviso de frontend2, ya enviado) y captura de device del no-admin sin Homologacion
+- **Cierre:** 476f508a (#1330) backend: 403 homologacion_solo_admin + 422 ambiente_requerido, adversarial con JWT reales en VPS 2663 passed; f5cf69ac (#1333) app: no-admin no ve Homologacion y manda ambiente prod explicito (test que falla sin el fix)
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
@@ -431,7 +431,9 @@ Puede correr **en paralelo con el bloque J**. No toca `PantallaMiDia.tsx` ni el 
 
 ### SM-K2 · `sin-issue` — El recuadro de vincular ARCA no se ve tocable ni dice a qué ambiente vincula
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el cambio en esta ficha (el gate de paridad testID exige el mismo testID en ambos lados y no se agrego uno); la diferencia web/mobile es deliberada, no un bug
+- **Cierre:** b06f0841 (#1326)
 - **Dueño:** frontend2
 - **Medido:** `afip` vincular: sólo parte del recuadro responde y se ve distinto según el estado;
   «Vincular» no aclara el ambiente.
