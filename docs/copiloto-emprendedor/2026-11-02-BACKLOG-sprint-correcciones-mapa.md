@@ -85,9 +85,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | device: captura del toggle APAGADO con su motivo (la cuenta del operador tiene Drive; pide tenant sin Drive) · refres… |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refres… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
-| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: el diálogo «Sí, cerrar sesión» (cortado?) solo aparece al tocar «Cerrar sesión»; hacerlo exige cerrar la sesi… |
+| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (ca… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal s… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
@@ -600,8 +600,8 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** device: captura del toggle APAGADO con su motivo (la cuenta del operador tiene Drive; pide tenant sin Drive) · refresco al terminar sin recargar (premisa sin medir) · captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (BL-V27)
-- **Cierre:** c18439ff (#1339) causa dato|servicio|desconocida · ff850770 (#1424) el toggle de Drive apagado dice por qué (test) · device 2026-11-02 cuenta OPERADOR: toggle ACTIVO (evidencia SM-K3-toggle-drive-activo)
+- **Falta:** requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refresco al terminar sin recargar (premisa sin medir) · captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (BL-V27)
+- **Cierre:** c18439ff (#1339) causa dato|servicio|desconocida · ff850770 (#1424) el toggle de Drive apagado dice por qué (test) · device 2026-11-02 cuenta OPERADOR: toggle ACTIVO (SM-K3-toggle-drive-activo)
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
@@ -636,8 +636,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** device: el diálogo «Sí, cerrar sesión» (cortado?) solo aparece al tocar «Cerrar sesión»; hacerlo exige cerrar la sesión del operador, no autorizado — disparador: autorización del operador
-- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido · device 2026-11-02 cuenta OPERADOR: tiles de Ajustes sin fondo blanco y «Cerrar sesión» entero (evidencia SM-K5-*.webp)
+- **Falta:** el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (canónico), no la del operador; con su cuenta el estado no se puede producir sin cerrársela (no autorizado)
+- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido · device 2026-11-02 cuenta OPERADOR: tiles sin fondo blanco y «Cerrar sesión» entero (SM-K5-*.webp)
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
