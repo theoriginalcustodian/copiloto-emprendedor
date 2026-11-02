@@ -102,7 +102,7 @@ FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "hace una semana", "hace tres 
 # ── tools de 1ra clase (gateways propios, no vía módulo de servicio) ─────────────────────────────
 CALENDAR_BOOK_SCHEMA = {"type": "function", "function": {
     "name": "calendar_book",
-    "description": "Agenda un evento en Google Calendar. Devuelve un link clicable al evento.",
+    "description": "Agenda un evento en Google Calendar. Devuelve un link clicable al evento. SOLO para turnos, reuniones o eventos con fecha y hora en el calendario; NO la uses para pedidos de mandar o recordar algo por mail (eso es gmail_send).",
     "parameters": {"type": "object", "properties": {
         "title": {"type": "string"}, "date_raw": {"type": "string", "description": "fecha en lenguaje natural"},
         "time_raw": {"type": "string", "description": "hora, ej '15'"}},

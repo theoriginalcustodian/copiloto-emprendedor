@@ -55,7 +55,7 @@ def _detalle_gmail(args: dict) -> dict | None:
         # El cuerpo va ENTERO, sin recortar: quien confirma tiene que ver LO QUE SE VA A MANDAR, y un
         # cuerpo cortado es una confirmación sobre texto que no leyó.
         "cita": str(args.get("body") or "") or None,
-        "nota": "Se manda desde tu Gmail.",
+        "nota": "El mail sale desde tu Gmail cuando confirmes, no antes.",
     }
 
 
