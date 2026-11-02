@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal s… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -119,6 +119,46 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
+
+# El eje de la pasada de device NO es la cuenta — es el ESTADO que la tenencia puede producir
+
+**Agrupé mal, y la corrección costó una pasada de teléfono.** El bloque 2 se llamó «cuenta
+canónica» y se dejó esperando **una** decisión del operador (cerrar su sesión). Medido el
+2026-11-02 con el teléfono en mano y la cuenta del operador puesta, tres fichas del bloque 1
+**no se pudieron acreditar aunque la tenencia era la correcta**:
+
+| Ficha | Qué pasó en device | Por qué |
+|---|---|---|
+| `SM-K3` | el toggle de Drive salió **activo** | el operador **tiene** Drive conectado |
+| `SM-K5` | el diálogo «Sí, cerrar sesión» no se pudo ver | sólo aparece **cerrando la sesión** del operador |
+| `SM-J3` | el tenant vacío no se pudo mirar | su cuenta **tiene datos** |
+
+**Ninguna de las tres faltaba «por device».** Tener el teléfono no las cerraba: con esa cuenta
+puesta, **el estado que miden no existe**. Y `SM-K6` cayó en la misma clase por un camino distinto
+— provocar el 401 **descarta la sesión de la cuenta que lo provoca**, así que la tenencia no puede
+producir el estado sin perderse a sí misma.
+
+**La regla, para no volver a agrupar por el eje equivocado:** antes de poner una ficha en una pasada,
+preguntar **¿la tenencia con la que se va a correr puede PRODUCIR el estado que la ficha mide?** — no
+¿alcanza la cuenta?. Y el `Falta:` tiene que nombrar **la tenencia, no el device**: si dice «falta la
+captura del toggle apagado», el próximo con el teléfono lo intenta otra vez con la misma cuenta y le
+vuelve a salir activo. Tiene que decir *«requiere un tenant SIN Drive conectado»*.
+
+**Los tres caminos reales, que la pila «esperando al operador» escondía:**
+
+1. **Estado forzable desde el cliente** — no necesita la cuenta del operador ni su decisión; alcanza
+   el usuario canónico y manipular el estado por Metro (`SM-K6`: corromper el token, sin commitear).
+2. **Estado que exige un tenant fabricado** — ninguna cuenta real lo produce: hay que crear la
+   condición (`SM-J3` tenant vacío, `SM-K3` tenant sin Drive). **Esto no es una decisión del
+   operador: es trabajo de preparación** y se puede hacer antes de pedirle la ventana.
+3. **Estado que exige al operador de verdad** — su teclado, su voz, su arranque en frío, o aceptar
+   perder su sesión (bloque L, `SM-K5`). **Esta es la única pila que realmente lo espera**, y es la
+   que hay que mantener corta.
+
+**Lo que esto cambia en la práctica:** la ventana del operador es el recurso más escaso del sprint y
+estaba reservada para fichas que no la necesitaban. Toda precondición que se pueda preparar antes
+—un tenant fabricado, un build de release, un token manipulado— **se prepara antes**, porque una
+ventana gastada esperando una precondición es una ventana perdida.
 
 # Enmiendas FUNDADAS al mapa — el « salvo lo que definimos », escrito
 
@@ -649,7 +689,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal sin aviso que ya existe en 117dc669. CORREGIDO 2026-11-02: este Falta decia 'invalidar la sesion del canonico del lado servidor' y esa premisa era FALSA - apps/copiloto/auth.py:47 valida solo firma+exp+iss y no consulta sesion en GoTrue, asi que el backend no tiene el concepto 'sesion cerrada': a un access token solo le puede pasar VENCER (GOTRUE_JWT_EXP=3600 medido en el contenedor vivo por backend). El disparador del aviso es un 401 en el cliente, no un registro muerto en GoTrue. Consecuencia: SM-K6 YA NO depende de que el operador cierre su sesion ni de la cuenta canonica - sale del bloque 2 y se acredita con cualquier cuenta. Pendiente de backend: codigo y cuerpo exactos ante ExpiredSignatureError, porque si un token vencido y un login fallido llegan al front como el mismo 401 indistinguible, el 'ausente en un ingreso normal' del DoD no se puede implementar bien y ESO es el hallazgo.
+- **Falta:** SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps/mobile/src/modules/auth/sesionExpirada.test.tsx) - no hay nada que implementar. Mecanismo: 401 con Bearer -> el cliente descarta la sesion (contrato medido por backend: token vencido o corrupto dan 401 {detail: invalid token} en auth.py:98-103; credenciales invalidas solo sale de /auth/login en web.py:1476, asi que 'sesion caida' vs 'login fallido' se distingue por CONTEXTO). CORREGIDO DOS VECES: (1) el Falta decia 'invalidar del lado servidor' y el backend no tiene ese concepto; (2) despues dije 'se acredita con cualquier cuenta' y tambien era falso - provocar el 401 DESCARTA la sesion de la cuenta que lo provoca, asi que la ficha sigue atada a la tenencia y VUELVE AL BLOQUE 2. Camino aprobado: con el canonico, corrompiendo el token por Metro sin commitear nada. NO con la cuenta del operador.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
