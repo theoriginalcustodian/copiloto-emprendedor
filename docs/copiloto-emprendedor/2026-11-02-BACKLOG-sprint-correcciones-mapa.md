@@ -80,7 +80,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
-| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura con refresh en curso (solo 'Actualizando…') y captura del tenant vacio (operador: canonico unico) |
+| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | las 2 capturas de device (frontend2): una con un cliente que TENGA CUIT mostrando monto y «N comprobantes» reales, y … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
@@ -405,8 +405,8 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura con refresh en curso (solo 'Actualizando…') y captura del tenant vacio (operador: canonico unico)
-- **Cierre:** bfa7b919 (#1376): captura de reposo en device docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-etiqueta-del-mes-debajo-del-titulo.webp (la captura destapo que la etiqueta del mes quedaba a ancho 0; ahora va debajo del titulo)
+- **Falta:** captura del tenant vacio (operador: canonico unico, no se puede vaciar)
+- **Cierre:** bfa7b919 (#1376): capturas de device (RF8T318RN9T, canonico): reposo docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-etiqueta-del-mes-debajo-del-titulo.webp y refresh en curso, solo 'Actualizando…' sin spinner, docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-refresh-en-curso-solo-actualizando.webp. La captura de reposo destapo que la etiqueta del mes quedaba a ancho 0; ahora va debajo del titulo.
 - **Dueño:** frontend2
 - **Medido:** `bi` sin cabecera en card blanca con período, sin etiqueta de mes y sin mosaicos;
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
