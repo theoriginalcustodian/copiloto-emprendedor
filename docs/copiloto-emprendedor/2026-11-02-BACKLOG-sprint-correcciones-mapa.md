@@ -65,7 +65,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-G3** | `sin-issue` | ✅ TERMINADO | sha ab955aba988451dea6932cbd56b4fbd23973a84e · device RF8T318RN9T 2026-11-02: Mi cuenta muestra e2e-device@copiloto.t… |
 | **SM-G4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-H2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-H5** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -176,7 +176,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 ### SM-H2 · `sin-issue` — No existe herramienta de cancelar: el agente no puede cumplir lo que promete
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 skipped; test_cancelar_factura_adversarial.py (10) + test_adversarial_http_cancelar_a_cannot_cancel_b_propuesta; deploy.sh OK con durabilidad VERDE
 - **Dueño:** backend
 - **Medido:** la señal `cancelar` **ya existe** (`afip_factura_workflow.py:224`, `afip_web.py:353`),
   pero `tool_catalog.py` **no tiene** herramienta de cancelar. O sea: el agente dice que canceló y
