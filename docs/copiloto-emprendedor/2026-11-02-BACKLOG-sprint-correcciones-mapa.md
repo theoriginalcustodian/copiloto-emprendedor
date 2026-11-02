@@ -120,6 +120,41 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 <!-- TABLA-ESTADO:FIN -->
 
+# Enmiendas FUNDADAS al mapa — el « salvo lo que definimos », escrito
+
+**La cadena del sprint es `relevamiento → artefacto (el mapa) → plan`**, y está citada arriba
+(`Fuente de los hechos`, @`3c439cb4`). El criterio del operador, 2026-11-02: *«lo más importante de
+este sprint es dejar la app móvil tal cual definimos y como está en el mapa — debemos respetar los
+diseños salvo en los casos que definimos otras cosas»*.
+
+**Esta sección existe porque la segunda mitad de esa frase no estaba escrita en ninguna parte
+versionada.** Las enmiendas decididas vivían en docs sueltos y en contratos de `coordinacion/`, que
+**no se versiona** y no sobrevive a un clon. Consecuencia medida: tres veces en un día una sesión
+comparó la app con el mapa y reportó como **defecto** algo decidido a propósito. Un gate no puede
+distinguir una cosa de la otra si la decisión no tiene dónde leerse.
+
+**Regla de uso, antes de implementar o de abrir un hallazgo:** `grep "ENMIENDA FUNDADA"` en este doc.
+Una divergencia que figura acá **no es un defecto** y no abre ficha. Una que no figura, sí — y si
+alguien la cree decidida, primero la trae acá con su fundamento.
+
+**Qué hace FUNDADA a una enmienda**, y no es el tamaño: (1) nombra la divergencia concreta contra el
+mapa; (2) da el `path:línea` del código o del mapa que la sostiene; (3) dice **por qué** gana la app
+— capacidad real que se perdería, dato que el usuario viene a buscar, o una decisión previa (acta,
+`DEC-*`) que el mapa no alcanzó a reflejar. Sin las tres, es una divergencia sin decidir.
+
+| # | Enmienda | Fundamento | `path:línea` |
+|---|---|---|---|
+| E-1 | **BUSCAR en Gastos se queda**, el mapa no lo dibuja | buscar sobre el histórico es función real y ya implementada; retirarla es perder capacidad | `apps/mobile/src/modules/gastos/PantallaGastos.tsx:290` (`BuscadorActividad funcion="gastos"`) |
+| E-2 | **«Te deben» en Facturación se queda**, el mapa no la dibuja | es el dato que el emprendedor viene a mirar, con antigüedad de impagas | `apps/mobile/src/modules/facturacion/SeccionMeDeben.tsx:39` |
+| E-3 | **El chip «N facturas · N impaga» NO se agrega** | la portada no trae conteos; derivarlos del listado paginado da un número que depende de cuántas páginas se bajaron → **dos verdades para una pregunta** | `apps/mobile/src/modules/facturacion/ResumenFacturado.tsx:12-14` |
+| E-4 | **Facturación e Inteligencia NO llevan dock de voz** | el contexto de transcripción es un tipo cerrado de cuatro valores y ninguna de las dos está en él; agregarlas no es estilo, es ampliar el contrato | `packages/core/src/api/transcribir.ts:7` |
+| E-5 | **Web conserva `MicFuncion`; mobile pasó a `DockFuncion`** (`SM-I2`) | la paridad web↔mobile queda declarada como excepción **con fecha**, hasta que el dock llegue a web — no es drift sin dueño | `scripts/ci/testid-paridad-excepciones.json` (2026-11-02) |
+| E-6 | **El escritorio no da acceso a Ajustes** y las dos divergencias del mapa de `SM-K7` quedan como están | ver el contrato de `SM-K7`: el mapa pide una entrada que la navegación real no tiene | ficha `SM-K7` |
+
+**Lo que esta sección NO hace:** no absuelve una divergencia por el hecho de estar escrita acá — cada
+fila es revisable por el operador, que es quien decide lo MAYOR. Lo que garantiza es que la decisión
+exista **en un lugar que un clon trae**, en vez de en la memoria de la sesión que la tomó.
+
 # Bloque G · Preparación (wave 0)
 
 ### SM-G1 · `sin-issue` — Los arreglos de enlaces del mapa viven sólo en el checkout compartido
