@@ -73,8 +73,9 @@ ajenas dejaría de ser un sujeto único.
 pensamiento— y el merge queda en el medio sin que nadie lo note. El síntoma aparece recién en la
 otra sesión, varios minutos después, con la forma de «el gate me rechaza», o sea **lejos de la
 causa y pareciendo un problema del que lo sufre**. Es la misma estructura que
-[[una-costura-sin-dueno]] en chico: cada lado hizo lo suyo bien y el orden entre los dos no era de
-nadie.
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]] en chico: bajar la ficha está bien y
+exigir que el padrón salga de `origin/main` está bien — **el hueco vive en el par**, y el orden
+entre los dos no era de nadie.
 
 **El control, si hace falta:** antes de asignar, `git show origin/main:<doc> | grep -c "^### <id> "`.
 Si da `0`, el id no es asignable todavía — y `0` acá significa «mi PR no está mergeado», no «la ficha
