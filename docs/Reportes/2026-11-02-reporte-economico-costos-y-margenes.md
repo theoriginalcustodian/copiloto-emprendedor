@@ -351,3 +351,90 @@ Campaigns US$0,50 a 2 en LATAM), 30 a 50% de activación, ~6% de bajas por mes, 
 Google Búsqueda sale 3 a 6 veces más caro por usuario. Para **5.000 de pago** (15% de conversión) la
 publicidad sube a US$130.000 a 330.000. No incluye sociedad, contador, impuestos ni comisiones de
 MercadoPago. **Validar con un piloto de ~US$500** comparando Meta, Google Apps y Google Búsqueda.
+
+## 13. Estrategia de financiamiento y crecimiento (agregado 2026-11-03)
+
+### 13.1 Decisión del operador: crecimiento autofinanciado
+
+**El negocio se autofinancia:** lo que pagan los usuarios se reinvierte en publicidad hasta alcanzar
+el equilibrio. Los socios aceptan no retirar beneficios durante ese período. Marketing, publicidad y
+soporte técnico los manejan los socios, sin contratar personal.
+
+### 13.2 Por qué funciona (si se cumplen los supuestos)
+
+| Variable | Valor | Origen |
+|---|---|---|
+| Costo por usuario activo | ~US$7 (rango 4 a 10) | Instalación ~US$2 (dato) ÷ 30 a 50% de activación (supuesto) |
+| Conversión a pago | 15% | Supuesto |
+| Costo por usuario de pago | ~US$47 | US$7 ÷ 15% |
+| Ingreso por usuario de pago | ~US$30/mes | Promedio de planes US$20 / 35 / 50 (§4) |
+| Margen bruto | ~99% | §4 |
+| **Recuperación del costo de adquisición** | **~1,5 meses** | US$47 ÷ US$30 |
+
+### 13.3 Simulación a 12 meses
+
+Arranque con 15 testers y US$500 de capital en los meses 1 y 2; bajas 6%/mes; 30% orgánico; costo
+variable US$0,6 por activo; fijos según la trayectoria de §12. Script en el bloque de abajo.
+
+| Escenario | Reinversión del neto | Activos mes 6 | Activos mes 12 |
+|---|---|---|---|
+| Base (US$7 por activo, 15% paga) | 70% | ~870 | **~7.300**: alcanza la meta |
+| Base | 100% | ~1.600 | ~31.000 (no creíble, ver abajo) |
+| Pesimista (US$10 por activo, 10% paga) | 70% a 100% | ~200 a 260 | **~370 a 780**: no despega |
+
+El escenario optimista (US$4, 20%) dio millones de usuarios y se descartó. **El modelo es optimista a
+escala:** asume costo por usuario constante, y en la realidad sube al agotarse el público más barato.
+
+**Conclusión:** lo que decide no es el porcentaje reinvertido sino la **conversión y la activación**.
+En el escenario base, reinvertir el 70% alcanza la meta; en el pesimista el negocio no despega aunque
+se reinvierta todo.
+
+```python
+def sim(cac_activo, conv, arpu, reinv, seed=500, churn=0.06, organico=0.30, meses=12):
+    activos = 15.0; out = []
+    for m in range(1, meses + 1):
+        n = activos
+        fijo = 135 if n < 500 else 200 if n < 1500 else 330 if n < 3000 else 520
+        neto = n * conv * arpu - n * 0.6 - fijo
+        ads = max(0, neto * reinv) + (seed if m <= 2 else 0)
+        activos = n * (1 - churn) + ads / cac_activo * (1 + organico)
+        out.append((m, round(activos)))
+    return out
+# sim(7, 0.15, 30, 0.7) -> base; sim(10, 0.10, 30, 1.0) -> pesimista
+```
+
+### 13.4 Regla de reinversión
+
+1. Reservar ~3 meses de costos fijos (~US$400 al inicio, ~US$1.500 al final).
+2. Reinvertir **70 a 100% del neto restante** mientras cada usuario de pago recupere su costo en
+   **3 meses o menos**.
+3. Si la recuperación pasa de 3 a 4 meses: bajar la inversión y corregir onboarding o precio antes
+   de seguir gastando.
+
+**Capital inicial necesario:** el piloto más US$500 a 1.000.
+
+### 13.5 Canales de publicidad
+
+| Canal | Dato encontrado | Costo por usuario activo (estimado) |
+|---|---|---|
+| Meta (Instagram y Facebook) | Instalación en Argentina ~US$2 (mediana Facebook, Superads; no es Instagram por separado). Instagram global: US$1,99 por instalación, US$9,23 por lead (Webtonic) | ~US$4 a 10 |
+| Google App Campaigns | Instalación en LATAM US$0,50 a 2; una fuente dice que Meta sale 20 a 40% más caro | ~US$3 a 8 |
+| Google Búsqueda | Clic en Argentina ARS 1.000 a 4.500; LATAM ~US$2; B2B/SaaS ~US$5,7 (fuente no verificable) | ~US$15 a 60 (con 5 a 15% de registro, supuesto) |
+
+Fuentes: blogs de agencias y proveedores, con cifras que se contradicen; ninguna oficial. **Activación,
+bajas, porcentaje orgánico y conversión a pago son supuestos propios, sin fuente.** Búsqueda cuesta 3 a
+6 veces más por usuario pero trae intención: usarla con palabras muy específicas.
+
+**Siguiente paso:** piloto de ~US$500 en un mes repartido entre Meta, Google Apps y Google Búsqueda,
+midiendo costo por instalación, activación y conversión a pago. Con eso se recalculan §12.1 y §13.3.
+
+### 13.6 Crowdfunding (investigado, descartado)
+
+- **Por recompensas (Kickstarter):** apps/web tienen menos del 10% de éxito y el modelo está pensado
+  para producto físico, no para suscripción. **No viable.**
+- **Por participación:** en Argentina hay marco legal (Ley 27.349, plataformas inscritas en la CNV;
+  RG 1125/2026 habilita emisiones chicas con autorización automática desde abril de 2026; reforma
+  enviada al Congreso el 2026-11-03, no vigente). Requiere sociedad, asesoría legal y diluye. Sin
+  tracción no es viable; reconsiderar sólo con métricas de la beta.
+- **Preventa a los primeros usuarios** (plan anual de socio fundador por MercadoPago): encaja con la
+  estrategia de autofinanciamiento y valida la disposición a pagar.
