@@ -293,6 +293,31 @@ def test_marcar_cobrada_por_nombre_parcial():
     assert "0001-00000042" in res.observation["result"]
 
 
+_DOS_PANADERIAS = [
+    {"id": 10, "nro": "0001-00000042", "receptor_nombre": "Panadería Los Tilos", "saldo": "50000.00", "total": "50000.00"},
+    {"id": 11, "nro": "0001-00000043", "receptor_nombre": "Panadería Don Pepe", "saldo": "50000.00", "total": "50000.00"},
+    {"id": 12, "nro": "0001-00000142", "receptor_nombre": "Ferretería Sur", "saldo": "9000.00", "total": "9000.00"},
+]
+
+
+@pytest.mark.parametrize("frase", ["42 de la panadería", "la de Los Tilos por 50000", "la 42 de 50000"])
+def test_marcar_cobrada_resuelve_frases_con_dos_datos(frase):
+    """Misma clase que SM-N46: `_coincide` es UNA función con 4 call-sites; acá la referencia con dos datos
+    (número+cliente, cliente+importe) daba 0 candidatos. El importe es el `saldo` de la impaga."""
+    store = _CobroFake(impagas=[dict(f) for f in _DOS_PANADERIAS])
+    _correr("marcar_factura_cobrada", {"factura": frase}, cobro=store)
+    assert [c["comprobante_id"] for c in store.cobros_de_factura] == [10]
+
+
+@pytest.mark.parametrize("frase", ["panadería", "50000", "la de 50000 de la panadería"])
+def test_marcar_cobrada_con_dato_ambiguo_pregunta_y_NO_cobra(frase):
+    """La mitad que importa: ensanchar candidatas no puede ensanchar a quién se le registra plata."""
+    store = _CobroFake(impagas=[dict(f) for f in _DOS_PANADERIAS])
+    res = _correr("marcar_factura_cobrada", {"factura": frase}, cobro=store)
+    assert store.cobros_de_factura == []
+    assert "Hay var" in res.observation["result"]
+
+
 def test_marcar_cobrada_por_numero_corto():
     """Dice «la 42», no `0001-00000042`. Si sólo matcheara el número completo, la tool existiría
     para una forma de hablar que nadie usa."""

@@ -1306,8 +1306,8 @@ def _coincide(texto: str, *campos) -> bool:
     Sirve la frase entera dentro de UN campo, o —para frases con dos datos, «87 de ClienteJ4»,
     «el de ClienteJ4 por 50000»— que CADA palabra con contenido aparezca en ALGÚN campo. Antes sólo
     valía lo primero y esas frases daban cero candidatos (medido en device, 2026-11-03: el agente
-    contestó «no encontré» con el presupuesto a la vista). Un número exige límite de dígitos: el 87
-    no es el 187 ni el 870. Esto sólo ensancha QUIÉN es candidato; `_elegir_uno` sigue preguntando si
+    contestó «no encontré» con el presupuesto a la vista). Un número exige límite de dígitos (con ceros a la izquierda
+    permitidos: la 42 es `0001-00000042`): el 87 no es el 187 ni el 870. Esto sólo ensancha QUIÉN es candidato; `_elegir_uno` sigue preguntando si
     queda más de uno, nunca elige."""
     aguja = (texto or "").strip().lower()
     if not aguja:
@@ -1321,7 +1321,7 @@ def _coincide(texto: str, *campos) -> bool:
 
     def _esta(w: str) -> bool:
         if w.isdigit():
-            return any(re.search(rf"(?<!\d){w}(?!\d)", t) for t in textos)
+            return any(re.search(rf"(?<!\d)0*{w}(?!\d)", t) for t in textos)
         return any(w in t for t in textos)
 
     return all(_esta(w) for w in palabras)
@@ -1335,7 +1335,8 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
     store = cobro_store_factory(ctx.cliente_id)
     impagas = store.impagos()["comprobantes"]
     referencia = str(arguments.get("factura") or "").strip()
-    candidatos = ([c for c in impagas if _coincide(referencia, c["nro"], c["receptor_nombre"])]
+    candidatos = ([c for c in impagas if _coincide(referencia, c["nro"], c["receptor_nombre"],
+                                                   c.get("saldo"))]
                   if referencia else impagas)
 
     factura, problema = _elegir_uno(
