@@ -14,8 +14,8 @@ import asyncio
 from datetime import date, datetime, timezone
 from typing import Callable, Literal
 
-from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import Depends, FastAPI, HTTPException, Request
+from pydantic import BaseModel, Field, ValidationError
 
 from afip_credential_store import ClaveFiscal
 from afip_rules import (CODIGO_CONDICION_NO_SOPORTADA, CondicionEmisor, PerfilFiscal,
@@ -150,6 +150,37 @@ class AnularBody(BaseModel):
     nro: int
 
 
+# SM-N35 (defensa en profundidad, NO la causa raíz): el 422 de pydantic es `[{type, loc, msg}]`, forma que el
+# cliente (`faltantesDeDetail`) vuelve `{codigo:'', campo:'', mensaje:''}` y la app termina mostrando el genérico
+# `afip-perfil-error`. Para `/afip/perfil` se reescribe a la MISMA forma que ya emite `validar_perfil`.
+# Se valida DENTRO de la ruta (dependencia) y no con un `exception_handler`: los handlers son de la app, y esta
+# app se pliega al front-door con `include_router`, que NO los copia (el fixture de test hace lo mismo).
+_ROTULO_CAMPO_PERFIL = {
+    "inicio_actividades": "el inicio de actividades (día, mes y año)",
+    "cuit": "el CUIT (11 dígitos)",
+    "razon_social": "la razón social",
+    "domicilio_comercial": "el domicilio comercial",
+    "condicion_iva": "la condición frente al IVA",
+    "ingresos_brutos": "ingresos brutos",
+    "punto_venta": "el punto de venta",
+}
+
+
+def _faltantes_de_pydantic(errores: list[dict]) -> list[dict]:
+    """`[{codigo, campo, mensaje}]` desde los errores de pydantic del body (`loc == (<campo>, ...)`)."""
+    salida: list[dict] = []
+    for e in errores:
+        loc = e.get("loc") or ()
+        campo = str(loc[0]) if loc else ""
+        faltante = e.get("type") == "missing"
+        rotulo = _ROTULO_CAMPO_PERFIL.get(campo, campo or "un dato")
+        mensaje = (f"Falta completar {rotulo}." if faltante or e.get("input") in ("", None)
+                   else f"Revisá {rotulo}: el valor no es válido.")
+        salida.append({"codigo": f"{campo}_{'faltante' if faltante else 'invalido'}" if campo else "invalido",
+                       "campo": campo, "mensaje": mensaje})
+    return salida
+
+
 def create_afip_app(
     *,
     require_tenant: Callable,
@@ -177,6 +208,18 @@ def create_afip_app(
     composio_gateway=None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto ARCA")
+
+    async def _perfil_body(request: Request) -> PerfilBody:
+        try:
+            raw = await request.json()
+        except ValueError:
+            # Body no-JSON: degradar a `None` es correcto, `model_validate(None)` lo rechaza abajo con el mismo 422
+            # `[{codigo,campo,mensaje}]`; no se traga un error, se lo entrega al validador.
+            raw = None
+        try:
+            return PerfilBody.model_validate(raw)
+        except ValidationError as exc:
+            raise HTTPException(422, detail=_faltantes_de_pydantic(exc.errors())) from None
 
     if es_admin_dep is None:
         async def _es_admin() -> bool:   # fail-closed: sin wiring, nadie homologa
@@ -220,7 +263,8 @@ def create_afip_app(
         return {"perfil": perfil}
 
     @app.post("/afip/perfil")
-    async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
+    async def guardar_perfil(cliente_id: str = Depends(require_tenant),
+                             body: PerfilBody = Depends(_perfil_body)) -> dict:
         """Valida con las MISMAS reglas que usa la emisión antes de aceptar el perfil.
 
         Si se validara sólo en el momento de facturar, el usuario cargaría datos en Ajustes, vería un
