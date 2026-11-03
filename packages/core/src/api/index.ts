@@ -251,6 +251,7 @@ export {
   agregarItem,
   anularComprobante,
   cambiarAmbiente,
+  CATEGORIAS_MONOTRIBUTO,
   CONDICIONES_IVA_NO_DISPONIBLES,
   leerMotivoNoPuedeFacturar,
   TEXTO_CONDICION_IVA_NO_DISPONIBLE,

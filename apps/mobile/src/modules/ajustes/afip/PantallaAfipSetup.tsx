@@ -5,6 +5,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import {
   ErrorValidacionFiscal,
   cambiarAmbiente,
+  CATEGORIAS_MONOTRIBUTO,
   CONDICIONES_IVA_NO_DISPONIBLES,
   conectarArca,
   estadoAfip,
@@ -87,6 +88,12 @@ export function opcionesCondicionIva(actual: string): OpcionSelect[] {
     (o) => !CONDICIONES_IVA_NO_DISPONIBLES.includes(o.valor as CondicionIvaEmisor) || o.valor === actual,
   );
 }
+
+/** SM-N35 — `''` = «Sin definir»: el fail-soft es el estado por defecto. */
+export const OPCIONES_CATEGORIA_MONOTRIBUTO: OpcionSelect[] = [
+  { valor: '', etiqueta: 'Sin definir' },
+  ...CATEGORIAS_MONOTRIBUTO.map((c) => ({ valor: c, etiqueta: `Categoría ${c}` })),
+];
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
   iniciado: 'Iniciando la vinculación con ARCA…',
@@ -172,6 +179,8 @@ interface CamposPerfil {
   ingresosBrutos: string;
   inicioActividades: string;
   puntoVenta: string;
+  /** SM-N35 — `''` = sin categoría (no se manda). */
+  categoriaMonotributo: string;
 }
 
 const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
@@ -181,6 +190,7 @@ const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
   ingresosBrutos: '',
   inicioActividades: '',
   puntoVenta: '1',
+  categoriaMonotributo: '',
 };
 
 type EstadoOperacion = 'idle' | 'cargando' | 'enviando' | 'ok' | 'error' | 'no_disponible';
@@ -230,6 +240,7 @@ export function PantallaAfipSetup() {
           ingresosBrutos: res.perfil.ingresosBrutos,
           inicioActividades: res.perfil.inicioActividades,
           puntoVenta: String(res.perfil.puntoVenta),
+          categoriaMonotributo: res.perfil.categoriaMonotributo ?? '',
         });
         // 🔴 Remonta `CampoFecha`. Es semi-controlado a propósito (sostiene sus 3 segmentos en estado
         // local y los siembra UNA vez al montar), así que su propio docstring pide una `key` nueva
@@ -263,6 +274,8 @@ export function PantallaAfipSetup() {
         ingresosBrutos: camposPerfil.ingresosBrutos,
         inicioActividades: camposPerfil.inicioActividades,
         puntoVenta,
+        // SM-N35: sólo aplica a monotributo; vacío o de otra condición → no se manda.
+        categoriaMonotributo: camposPerfil.condicionIva === 'monotributo' ? camposPerfil.categoriaMonotributo || null : null,
       });
       if (res.status === 'no_disponible') {
         setEstadoPerfil('no_disponible');
@@ -644,6 +657,17 @@ export function PantallaAfipSetup() {
               onChange={(v) => actualizarCampoPerfil('condicionIva', v as CondicionIvaEmisor)}
               error={erroresPerfil.condicion_iva}
             />
+            {/* SM-N35: la categoría es un dato del emprendedor y sólo existe para monotributo. Opcional:
+                «Sin definir» es el estado por defecto y no bloquea guardar. El tope lo deriva el backend (SM-N36). */}
+            {camposPerfil.condicionIva === 'monotributo' && (
+              <CampoSelect
+                testID="afip-perfil-categoria-monotributo"
+                etiqueta="Categoría de monotributo"
+                opciones={OPCIONES_CATEGORIA_MONOTRIBUTO}
+                valor={camposPerfil.categoriaMonotributo}
+                onChange={(v) => actualizarCampoPerfil('categoriaMonotributo', v)}
+              />
+            )}
             <Text
               testID="afip-perfil-condicion-iva-aviso"
               style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
