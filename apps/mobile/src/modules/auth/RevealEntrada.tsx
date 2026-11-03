@@ -179,7 +179,9 @@ export function RevealEntrada({
       <View style={styles.medio}>
         {esReveal ? (
           <View style={[styles.lockup, { gap: 16 }]}>
-            <Marca size={LOCKUP_SIMBOLO} />
+            {/* SM-A2: `#reveal` dibuja el signo DESNUDO, terracota, a 54 (`index.html:2547`, svg width 54), sin badge.
+                El `splash` de abajo es otra pantalla (la «O» de texto, `index.html:2447`) y conserva su `Marca`. */}
+            <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
             <Text testID={`${testID}-palabra`} style={estiloLetra}>
               Odobi
             </Text>
