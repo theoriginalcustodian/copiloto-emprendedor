@@ -370,7 +370,7 @@ export function PanelDeslizable({
   //
   // Las dependencias son shared values estables (`useSharedValue` devuelve el mismo objeto entre
   // renders) + `setPanelAbajoConAviso` (estable, deps `[]`), así que el gesto se construye UNA sola vez.
-  const gesto = useMemo(() => {
+  const gestos = useMemo(() => {
     const alternar = () => {
       'worklet';
       const max = recorrido.value;
@@ -388,11 +388,12 @@ export function PanelDeslizable({
       });
     };
 
-    return Gesture.Pan()
-      // SM-N38: la zona de arrastre crece HACIA ARRIBA hasta `ALTO_ZONA_ARRASTRE` (la misma pestaña de 44 dp del
-      // tirador de Mi día que funciona) SIN mover lo visible: `ALTO_HANDLE` está en la aritmética del layout.
-      // Hacia arriba solo hay el spacer de status bar del propio panel, así que no le roba toques a otra cosa.
-      .hitSlop({ top: holguraArrastreArriba(insetTop) })
+    // 🔴 SM-N38b — UN solo comportamiento de arrastre, DOS superficies que lo llevan. Un objeto `Gesture` no
+    // puede colgar de dos `GestureDetector`, así que el Pan se FABRICA: el del asa (la línea + el agarre hacia
+    // arriba) y el del pie (el campo «Escribile a Odobi» que asoma debajo con el panel abajo) salen de la misma
+    // función y comparten shared values, o sea el mismo arrastre. Antes el pie quedaba FUERA del detector: el
+    // dedo sobre el campo no arrastraba, sólo lo hacía sobre la línea de 13 dp (hallazgo del operador, 2026-11-03).
+    const crearPan = () => Gesture.Pan()
       // `onBegin` (al APOYAR el dedo), no `onStart` (al activarse el recognizer, ya pasado su umbral
       // de desplazamiento): es el patrón que documenta Software Mansion. Con `onStart`, el primer
       // `onUpdate` llega con un `translationY` que ya acumuló el umbral, y el panel arranca de un
@@ -436,7 +437,17 @@ export function PanelDeslizable({
           }
         );
       });
+
+    return {
+      // SM-N38: la zona de arrastre del asa crece HACIA ARRIBA hasta `ALTO_ZONA_ARRASTRE` (la misma pestaña de
+      // 44 dp del tirador de Mi día que funciona) SIN mover lo visible: `ALTO_HANDLE` está en la aritmética del
+      // layout. Hacia arriba solo hay el spacer de status bar del propio panel, así que no le roba toques.
+      gestoAsa: crearPan().hitSlop({ top: holguraArrastreArriba(insetTop) }),
+      // El pie lleva el MISMO Pan sin holgura: su superficie ya es toda la franja del campo.
+      gestoPie: crearPan(),
+    };
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop]);
+  const { gestoAsa, gestoPie } = gestos;
 
   // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
   // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
@@ -581,7 +592,7 @@ export function PanelDeslizable({
               sobre un degradé muestra su canto aunque el color coincida. El chat no tiene esa capa; Mi día tampoco. */}
           {/* Spacer de status bar (fijo) — no intercepta toques. */}
           <Animated.View style={estiloSpacer} pointerEvents="none" />
-          <GestureDetector gesture={gesto}>
+          <GestureDetector gesture={gestoAsa}>
             <View
               style={styles.zonaHandle}
               testID="panel-handle"
@@ -596,10 +607,18 @@ export function PanelDeslizable({
           {pieAbajo != null && (
             <Animated.View
               testID="panel-pie-abajo"
-              pointerEvents={panelAbajo ? 'box-none' : 'none'}
+              pointerEvents={panelAbajo ? 'auto' : 'none'}
               style={[styles.pieAbajo, { top: espacioSuperior(insets.top) + ALTO_HANDLE, height: altoPieAbajo }, estiloPieAbajo]}
             >
-              {pieAbajo}
+              {/* SM-N38b: el arrastre vale en TODA la franja del campo, no sólo en la línea. El toque sobre el
+                  campo sigue siendo del `Pressable` de adentro (`onTocarCampo`): el Pan sólo se activa al moverse más
+                  que su slop y ahí cancela el toque; quieto, el dedo es del campo. `collapsable={false}` para que el
+                  detector tenga una vista nativa propia a la que colgarse. */}
+              <GestureDetector gesture={gestoPie}>
+                <View style={styles.pieGesto} collapsable={false} testID="panel-pie-gesto">
+                  {pieAbajo}
+                </View>
+              </GestureDetector>
             </Animated.View>
           )}
         </CristalVidrio>
@@ -617,6 +636,7 @@ const styles = StyleSheet.create({
   cristal: { flex: 1 },
   superficie: { borderTopLeftRadius: 40, borderTopRightRadius: 40, borderTopWidth: 1 },
   pieAbajo: { position: 'absolute', left: 0, right: 0 },
+  pieGesto: { flex: 1 },
   scrimAbajo: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 },
   // SM-N38: sólo la línea — `.grip{padding:6px 0 2px}` del prototipo (6 + 5 + 2 = ALTO_HANDLE).
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', paddingTop: 6 },
