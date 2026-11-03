@@ -68,30 +68,30 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 RE-MEDIDO el 2026-11-03 y el veredicto PARCIAL se apoyaba en un instrumento CIEGO: el chip SI existe. Frontend1 rep… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
 | **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
-| **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de los dos estados, reposo y deshabilitado. |
+| **SM-I3** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 El estado DESHABILITADO, y el hallazgo es que el DoD pide un estado que la UI NO PRODUCE. Frontend1 midio el reposo… |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device: una sola solapa, pestana al borde inferior, Presupuestos en una linea, bloque con pocas y muchas f… |
-| **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
+| **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | La MITAD de Mi dia. El 2026-11-03 frontend1 capturo la inicial E derivada del mail en el ESCRITORIO (b1-escritorio-14… |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
-| **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | El residual es UNO y es de frontend1: las capturas de device de las 6 funciones a 390px. Todo lo demas de esta ficha … |
+| **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | Medido el 2026-11-03: la captura NO es posible con la cuenta canonica, y el motivo cambia el dueno del bloque. El she… |
+| **SM-J1** | `sin-issue` | ✅ TERMINADO | CODIGO del dock mergeado en 80c5ef21 (#1456): campo + mic en Facturacion e Inteligencia, el texto siembra el chat y l… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura del tenant VACIO. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio,… |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
+| **SM-J4** | `sin-issue` | ✅ TERMINADO | DoD(1): test adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10, #1325), corrido en VPS el 2026-11-… |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
-| **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
-| **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
+| **SM-K1** | `sin-issue` | ✅ TERMINADO | 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed. DEVICE 2… |
+| **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | UNA mitad, y esta medido por que no se pudo: el estado SIN VINCULAR. El 2026-11-03 frontend1 cerro la mitad (b): afip… |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | DOS lados, separados a proposito porque tienen DUENOS distintos y uno ya es arrancable: (1) EL APAGADO: frontend1 pue… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | La captura del dialogo «Si, cerrar sesion», que solo existe tocando el boton que cierra la sesion. DESBLOQUEADA el 20… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | La captura del aviso PRESENTE tras un 401 del lado cliente. Se provoca corrompiendo el token por Metro, sin commitear… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
-| **SM-K9** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en codigo 2026-11-03 (5dfe93a1, #1484, ancestro de origin/main): NO es una mascara. CampoFecha son TRES TextIn… |
+| **SM-K9** | `sin-issue` | ✅ TERMINADO | 5dfe93a1 (#1484, ancestro de origin/main): medido en codigo, NO es una mascara -- CampoFecha son TRES TextInput con a… |
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
@@ -100,8 +100,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
 | **SM-N4** | `sin-issue` | 🟧 DOD-PARCIAL | control del criterio v3: revertir la sombra de Row en Metro local y volcar la lista de capas con el rectangulo presen… |
-| **SM-N5** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de la card recargada con importe y cliente. |
-| **SM-N6** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se… |
+| **SM-N5** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401). El mensaje persiste el id, la card relee por id y muestra importe y… |
+| **SM-N6** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2: el rotulo de PRUEBA igual o mas largo que Presupuestos. Es el punto que de verdad prueba el arreglo -- que la … |
 | **SM-N7** | `sin-issue` | ✅ TERMINADO | 37e9e851 atadas al cableado 6/6 (test_catalogo_descripcion_afirma_escritura, 37e9e851, VPS 35 passed) |
 | **SM-N8** | `sin-issue` | ✅ TERMINADO | bd7c82fc baseline 7/12 -> 0/12 con N=12; observacion sin consigna (bd7c82fc, desplegado) |
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
@@ -112,30 +112,30 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4: la corrida en device hasta cerrar sesion -- DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionad… |
-| **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
+| **SM-N17** | `sin-issue` | ✅ TERMINADO | 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FU… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge, compartida con SM-N21 (frontend1). Se cierran juntas: es la … |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge (frontend1, tenedora del telefono). Entra en el bloque 1 de l… |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
-| **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
+| **SM-N24** | `sin-issue` | ✅ TERMINADO | 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara -- ChatView no pasa onFoto; test Ch… |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3: la card CLARA, que exige forzar la piel clara. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisio… |
-| **SM-N26** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de la cabecera SIN el indicador. Dueno: frontend1 (venia en su cola N23 -> N28 -> N26). |
+| **SM-N26** | `sin-issue` | ✅ TERMINADO | Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera … |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
-| **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
+| **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3, que es un CONTROL y no una captura mas: que con la conexion CAIDA el punto de aviso SIGA encendiendo en el ava… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion d… |
-| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 La captura del 2026-11-03 NO cierra, y la causa esta MEDIDA y no es del codigo: el bundle era viejo. Frontend1 enco… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
-| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedi… |
+| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | El DoD 4 NO lo acredita la captura de ayer, y conviene decirlo claro para que nadie la cuente: abrir la agenda por de… |
 | **SM-N35** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, con la evidencia de device de frontend1 (2026-11-03 12:07-12:10 local, usuario CANONIC… |
 | **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | DOS cosas, ninguna de codigo: (1) la captura «arriba» del chat bajo el MISMO bundle -- frontend1 tiene la de abajo a … |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
-| **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
+| **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 UN punto, y la corrida del 2026-11-03 NO lo cubrio -- midio justo la otra mitad. Lo que frontend1 ejercito en devic… |
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
 | **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
@@ -446,7 +446,7 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a5bb923, packages/core/src/chat/sugerenciaArmarFactura.ts:18 ya es TEXTO_SUGERENCIA_ARMAR_FACTURA='Arma la factura', identico al mapa (Prototipo frontend/odobi-ui/prototipo/index.html:3374, entrada pres-ciclo) y al backend (presupuesto_sugerencias.py:21). El importe y Pendiente cerraron con #1354. ESTE Falta estuvo DESACTUALIZADO DOS VECES: primero daba por pendientes dos mitades de backend ya desplegadas en #1363, y despues pedia un cambio de core ya hecho. Un Falta vencido no da sintoma: se lee como trabajo y se vuelve a despachar.
+- **Falta:** 🔴 RE-MEDIDO el 2026-11-03 y el veredicto PARCIAL se apoyaba en un instrumento CIEGO: el chip SI existe. Frontend1 reporto que el rotulo Arma la factura no aparece y que da 0 hits en el bundle; medido, el literal del codigo lleva TILDE -- es Arma con acento en la a final -- y los dos grepeamos la forma sin tilde, que da 0 TAMBIEN EN MAIN. Con la forma real: ChipArmarFactura.tsx lo tiene, y el arbol del bundle @ca6cb2c5 tambien; el commit de H5 (21cebf5a, #1390) es ancestro del bundle, verificado con merge-base --is-ancestor. La Falta anterior escribia el literal sin tilde porque lo escribi yo en ASCII: el falso negativo nace de MI texto. Y hay un SEGUNDO motivo por el que no iba a verse donde se miro: el chip no vive en el recibo -- se pinta en el CHAT, ListaMensajes.tsx:489-490, cuando llega card.kind sugerencia_armar_factura; la captura fue del recibo (b1-h5-recibo-1451, 13:43). Lo que FALTA entonces es provocar la card: crear un presupuesto por voz y capturar el chip en el chat. El importe y Pendiente ya cerraron con #1354, y el cambio de core ya no es parte (packages/core/src/chat/sugerenciaArmarFactura.ts:18 dice el texto del mapa).
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -537,7 +537,7 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 ### SM-I3 · `sin-issue` — Los botones del chat no se leen y el deshabilitado no se distingue
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de los dos estados, reposo y deshabilitado.
+- **Falta:** 🔴 El estado DESHABILITADO, y el hallazgo es que el DoD pide un estado que la UI NO PRODUCE. Frontend1 midio el reposo el 2026-11-03 (mic y avion legibles en piel clara, y el activo con texto: chat-enviar 1 hit, boton-voz-glifo 1 hit; capturas b1-i3-enviar-deshabilitado-vacio-canonico y b1-i3-enviar-activo-con-texto-canonico, 13:47) y declaro que el deshabilitado NO es forzable desde la UI: el mic solo se apaga bajo condiciones del composer. O sea no es que falte turno de device -- es que el criterio no tiene camino. Dos salidas y ninguna es capturar de nuevo: (a) frontend2 nombra la condicion exacta del composer que apaga el mic y se provoca esa condicion; (b) si no hay ninguna alcanzable, el punto se declara NO-ALCANZABLE con su motivo, como se hizo con completar_ingreso en SM-N21. Lo que NO se hace es dejarlo como captura pendiente para siempre: una espera sin disparador nombrable es paralisis.
 - **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Sin opacity en mic, enviar y foto; tonoBotonEntrada.test.ts mide >=3:1 en las dos pieles y activo distinto de apagado (antes: 1,07:1 el mic deshabilitado en claro). mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** contraste insuficiente en reposo; el estado deshabilitado no se diferencia del activo.
@@ -560,7 +560,7 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 ### SM-I5 · `sin-issue` — El avatar no dibuja la inicial
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado.
+- **Falta:** La MITAD de Mi dia. El 2026-11-03 frontend1 capturo la inicial E derivada del mail en el ESCRITORIO (b1-escritorio-1416, 13:30), pero el DoD pide la inicial del nombre comercial en Mi dia Y en el escritorio, con el usuario rotulado: son dos superficies y se midio una. Entra en la proxima pasada sin ningun bloqueo -- es la misma cuenta y la misma piel, solo otra pantalla.
 - **Cierre:** dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404). Inicial del nombre comercial con caida al mail y glifo de cuenta si no hay ninguno; useInicialCuenta.test.tsx con dos adversariales entre tenants. mobile.sh 1543 verdes en el worktree y CI 6/6.
 - **Dueño:** frontend1
 - **Medido:** `apps/mobile/src/modules/midia/AvatarCuenta.tsx` (en web vive en `shell/`, otra
@@ -580,7 +580,7 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 ### SM-I7 · `sin-issue` — La pantalla de permisos no dice qué capacidad concede cada ítem
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device del sheet con iconos y con el aviso de continuacion.
+- **Falta:** Medido el 2026-11-03: la captura NO es posible con la cuenta canonica, y el motivo cambia el dueno del bloque. El sheet de permisos vive en el ONBOARDING (Guard -> debeMostrarOnboarding(me)), que la canonica ya paso, asi que no hay forma de volver a verlo sin resetear a la canonica -- una escritura prohibida. Pasa al BLOQUE 6 de la pasada, el de la cuenta descartable, donde el onboarding se recorre de cero. El literal onboarding-permisos existe en el bundle (1 hit), asi que lo que falta es la condicion de pantalla, no el codigo. Dueno: frontend1 (tenencia), al final de su cola.
 - **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Un icono por fila segun la condicion que manda el backend y aviso de continuacion con glifo. El icono dice el tipo de capacidad, no los especificos del mockup: uno por capacidad exige un campo icono en el contrato. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
 - **Dueño:** frontend1
 - **Medido:** `consent` sin íconos por capacidad y sin el banner de continuación del mapa.
@@ -594,9 +594,9 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend1
-- **Falta:** El residual es UNO y es de frontend1: las capturas de device de las 6 funciones a 390px. Todo lo demas de esta ficha esta HECHO y verificado por planificacion contra origin/main (6a35d0af) con git grep sobre el ref remoto. (1) El CODIGO del dock: mergeado en 80c5ef21 (#1456) -- campo + mic en Facturacion e Inteligencia, el texto siembra el chat y la card HITL es el unico gate. Denominador CERRADO por el operador en SEIS funciones (2026-11-03): Ajustes, Contabilidad, Soporte y Feedback NO llevan dock. (2) EL TEST que acredita que el texto del dock NO emite: existe y cita la ficha -- PantallaFacturacion.test.tsx:870 «SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador», con el docstring del mecanismo en :867. Esta linea de Falta decia «verificar que entro con el PR»: entro. (3) LOS TRES ROTULOS: resueltos o decididos en contra, ver el Medido: corregido. Y lo que ya NO bloquea: esta Falta decia «bloqueadas porque adb devices sale VACIO». PREMISA VENCIDA -- el operador reconecto el telefono (RF8T318RN9T, Metro en :8081) y la tenencia es de frontend1 por su avance_ TOMO sin SOLTE. La captura no espera hardware: espera turno en la cola de device de frontend1, detras de SM-N38/SM-N22. Es el mismo defecto que el Medido: vencido -- una premisa con fecha que se sigue citando como estado vigente.
+- **Cierre:** CODIGO del dock mergeado en 80c5ef21 (#1456): campo + mic en Facturacion e Inteligencia, el texto siembra el chat y la card HITL es el unico gate. Denominador CERRADO por el operador en SEIS funciones (2026-11-03): Ajustes, Contabilidad, Soporte y Feedback NO llevan dock. TEST que acredita que el texto del dock NO emite: PantallaFacturacion.test.tsx:870 (SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador), con el docstring del mecanismo en :867. Los tres rotulos: resueltos o decididos en contra. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): dock PRESENTE en las SEIS funciones. ⚠️ Y la medicion corrige el criterio de la ficha, que decia 390 px: el device es 384 dp reales, asi que 390 nunca iba a cumplirse literal y habria dado un falso rojo por 6 dp -- el criterio se lee como ancho de telefono real, que es lo que el operador pedia. HALLAZGO QUE NO ENSANCHA ESTA FICHA (DEC-18): el dock tarda mas de 3 s en montarse en Presupuestos y Clientes, sin medir y sin atribuir; va a ficha propia si se reproduce con el bundle de origin/main.
 - **Dueño:** frontend2
 - **Medido:** ~~`gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
   rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».~~ **VENCIDA — corregido 2026-11-03 por
@@ -679,8 +679,8 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
   está la medición que la ficha no tiene.
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 1 passed, con control positivo del tenant B. Falta DoD(2) captura de device con cliente CON CUIT, solo en la canonica 4f3ecb78: frontend2 da de alta por la app un cliente con CUIT 20111111112 (el de sus 4 facturas) y la evidencia es el salto comprobantes_cantidad 0 a 4 en GET /clientes. No se crea por SQL. Decidido por planificacion 2026-11-02, 19af5a42 descartado.
+- **Estado:** TERMINADO
+- **Cierre:** DoD(1): test adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10, #1325), corrido en VPS el 2026-11-02, 1 passed, con control positivo del tenant B -- el aislamiento cross-tenant ejercitado con el caso hostil, no con el happy path. DoD(2) CERRADO con las DOS mitades el 2026-11-03: (a) DEVICE (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5) -- alta de ClienteJ4 con CUIT 20111111112 por la app, la tarjeta pasa a mostrar 235.000,00 - 4 comprobantes y el resumen salta de 3 a 4 clientes; captura b1-j4-lista-limpia-1411local-canonico, 13:28. (b) API (backend, mismo dia, GET /clientes con el canonico en prod, login real): ClienteJ4 da comprobantes_cantidad=4, monto_facturado=235000.00, doc_nro=20111111112, que coincide con la pantalla. 🎯 Y SU CONTROL NEGATIVO, que es lo que impide el falso verde: los otros 3 clientes dan 0 / 0.00 / doc None, asi que el 4 NO es un default ni un numero que la UI invente. Nada se creo por SQL (decidido el 2026-11-02, 19af5a42 descartado): el cliente se dio de alta por la app, que es el unico camino que ejercita el de produccion.
 - **Dueño:** frontend2 (la captura con dato real) — **corregido 2026-11-03:** este campo decía
   «backend (el adversarial que falta)» y lo contradecía el `Falta:` de su propia ficha, que
   acredita el adversarial HECHO (`c3867d10`, #1325, 1 passed en el VPS con control positivo del
@@ -752,9 +752,8 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de Homologacion oculta para no-admin (frontend2)
-- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed
+- **Estado:** TERMINADO
+- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): Homologacion AUSENTE de la pantalla de ARCA con la cuenta no-admin, medido sobre 392 nodos. Y trae su control: el literal Homologacion SI existe en el bundle, o sea la ausencia es por ROL y no porque el texto no este compilado -- sin ese control, una pantalla sin la palabra no distingue el guard de un bundle que no la tiene. Captura b1-k1k2-arca-1320local-canonico, 13:14 reloj del telefono.
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
@@ -765,7 +764,7 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K2 · `sin-issue` — El recuadro de vincular ARCA no se ve tocable ni dice a qué ambiente vincula
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el cambio en esta ficha (el gate de paridad testID exige el mismo testID en ambos lados y no se agrego uno); la diferencia web/mobile es deliberada, no un bug
+- **Falta:** UNA mitad, y esta medido por que no se pudo: el estado SIN VINCULAR. El 2026-11-03 frontend1 cerro la mitad (b): afip-ambiente-prod-vincular es UN nodo clickable [323,940][585,1065] y al tocarlo dice Vas a vincular en Produccion (captura b1-k2-prod-vincular-tocado-1330local-canonico, 13:17). La mitad (a) NO se midio porque la cuenta canonica YA esta vinculada y desvincularla es una ESCRITURA sobre el usuario canonico -- prohibido, y con razon: dejaria la canonica en un estado que las otras 20 fichas no esperan. Disparador exacto: se mide con el tenant de prueba e2e-vacio (que no tiene vinculo) en el bloque que use esa cuenta, NO tocando la canonica. Dueno: frontend1 (tenencia). Nota de la ficha que sigue vigente: web NO recibe el cambio -- la diferencia web/mobile es deliberada, no un bug.
 - **Cierre:** b06f0841 (#1326)
 - **Dueño:** frontend2
 - **Medido:** `afip` vincular: sólo parte del recuadro responde y se ve distinto según el estado;
@@ -858,9 +857,9 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K9 · `sin-issue` — La máscara de fecha podría no ser un defecto
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend2
-- **Falta:** Medido en codigo 2026-11-03 (5dfe93a1, #1484, ancestro de origin/main): NO es una mascara. CampoFecha son TRES TextInput con auto-avance (CampoFecha.tsx:96-128), asi que la premisa de la ficha -- «la mascara podria no ser un defecto» -- se responde: no hay mascara que juzgar. El «DD / 02 / 1120» que la abrio es CONSISTENTE con adb escribiendo mas rapido que el focus() entre segmentos, pero eso NO esta probado y la diferencia importa: si es el instrumento, no hay defecto de producto; si es el componente, si. FALTA la corrida con TECLADO REAL (receta de 3 min en el buzon para frontend1, que tiene la tenencia del device) -- es el unico control que separa las dos causas, porque adb y un dedo humano no escriben al mismo ritmo. El hallazgo aparte que salio de aca (el borrado hacia atras no vuelve al segmento anterior, 0 hits de onKeyPress) NO ensancha esta ficha: quedo como SM-N40 (DEC-18).
+- **Cierre:** 5dfe93a1 (#1484, ancestro de origin/main): medido en codigo, NO es una mascara -- CampoFecha son TRES TextInput con auto-avance (CampoFecha.tsx:96-128), asi que la premisa de la ficha (la mascara podria no ser un defecto) quedo respondida: no hay mascara que juzgar. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5) -- y esta corrida no fue una captura, fue EL EXPERIMENTO que separaba las dos causas: con TECLADO REAL se tecleo 12/02/2026 completo, dia vacio, foco en mes, retroceso que borra solo el mes, anio intacto y reteclado correcto. 🎯 VEREDICTO: el DD / 02 / 1120 que abrio la ficha NO se reproduce con un dedo humano, asi que era EL INSTRUMENTO (adb escribiendo mas rapido que el focus() entre segmentos), no el componente. Por eso la ficha cierra sin codigo de producto: lo que habia que decidir era de quien era el sintoma, y con adb y un dedo escribiendo a ritmos distintos ningun test podia decirlo. Captura b1-k9-12-02-2026-final-1400local-canonico, 13:24.
 - **Dueño:** frontend2
 - **Medido:** observada con `adb`, que no reproduce el teclado real.
 - **DoD:** **repetir con teclado real primero.** Si se reproduce, el fix y su captura; si no, la
@@ -1057,9 +1056,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Captura de device del antes y el después.
 ### SM-N5 · `sin-issue` — El recibo de presupuesto pierde importe y cliente al rehidratar, y el motivo documentado cubre sólo el estado
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de la card recargada con importe y cliente.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). El mensaje persiste el id, la card relee por id y muestra importe y cliente, el estado sigue sin mostrarse al rehidratar; test en TarjetaPresupuestoPropuesto.test.tsx y comentario corregido. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
+- **Estado:** TERMINADO
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). El mensaje persiste el id, la card relee por id y muestra importe y cliente, el estado sigue sin mostrarse al rehidratar; test en TarjetaPresupuestoPropuesto.test.tsx y comentario corregido. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401). DoD 4 CERRADO en DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): tras RECARGAR, la card quedo Presupuesto anotado - N 87 - 50.000 - ClienteJ4, con importe y cliente presentes y SIN estado -- las dos mitades que el DoD pedia, la que afirma y la que niega. Captura b1-n5-card-rehidratada-1459local-canonico, 13:45.
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device: en vivo la card dice `Presupuesto anotado — N° 3`,
   `$50.000 · Mostrador Device Verify` y `Pendiente · Doc listo para mandar`. Tras recargar queda sólo
@@ -1096,8 +1094,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N6 · `sin-issue` — «Presupuestos» se parte en dos líneas en la casilla del escritorio
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device a 390 px y comprobar en device un rotulo de prueba igual o mas largo: el ancho real del texto no se mide en jest.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Arreglo en la casilla y no en el rotulo, rotulo a 13 px sin cortar. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
+- **Falta:** DoD 2: el rotulo de PRUEBA igual o mas largo que Presupuestos. Es el punto que de verdad prueba el arreglo -- que la palabra mas larga de hoy entre en una linea no dice si la casilla aguanta, y el ancho real del texto no se mide en jest. Sin esa mitad, el verde solo dice que el rotulo actual cabe. Dueno: frontend1 (tenencia). Y un dato de la corrida que corrige el criterio: el device es 384 dp, no 390 -- cualquier umbral escrito en 390 px exactos da falso rojo por 6 dp.
+- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Arreglo en la casilla y no en el rotulo, rotulo a 13 px sin cortar. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401). DoD 1 CERRADO en DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): Presupuestos entra en UNA linea.
 - **Dueño:** frontend1
 - **Medido:** frontend1 en device al capturar `SM-G4`: la casilla de Funciones muestra «Presupuesto» y
   abajo «s». Se ve en `SM-G4-1-mas-0-3s.webp`. El rótulo es el `label: 'Presupuestos'` de
@@ -1455,9 +1453,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que mide lo mismo desde el otro lado.
-- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54.
+- **Estado:** TERMINADO
+- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): CERO menciones de Instagram en Mi dia, medido sobre 61 nodos -- el aviso de conexion caida de un servicio que la app no soporta ya no aparece. Captura b1-midia-1418local-canonico, 13:30.
 - **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
 - **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
   aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
@@ -1770,9 +1767,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N24 · `sin-issue` — DENTRO DEL SPRINT: el botón de cámara no va en el chat; sólo al cargar un gasto
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. NOTA: esta ficha estuvo declarada PENDIENTE con el codigo YA en main desde #1430 — el estado lo corrigio frontend2 al refutar un conteo mio.
-- **Cierre:** 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara — ChatView no pasa onFoto; test ChatView.test.tsx:655; comentario de Composer.tsx actualizado (DoD 5); la foto del comprobante queda donde corresponde, en Gastos; Soporte intacto.
+- **Estado:** TERMINADO
+- **Cierre:** 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara -- ChatView no pasa onFoto; test ChatView.test.tsx:655 (DoD 4); comentario de Composer.tsx actualizado (DoD 5); la foto del comprobante queda donde corresponde, en Gastos; Soporte intacto. DoD 1/2/3 CERRADOS en DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): chat SIN camara, Gastos CON el boton Ticket (foto-funcion-boton, 1 hit en el bundle) y Soporte con chat-foto INTACTO -- el punto 3 es el control negativo del retiro, y sin el no se distingue retire el boton del chat de rompi la foto en todas partes. Capturas b1-gastos-1427 y b1-soporte-1429, 13:34.
 - **Dueño:** frontend1 (dueño del chat) · coordinar con frontend2 (dueño de Gastos)
 - **Decisión del operador, 2026-11-02:** *«el botón de la cámara hay que quitarlo — la única
   función de la cámara es para los gastos, para incluir una foto del comprobante; debe aparecer
@@ -1860,9 +1856,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Captura de device de la cabecera SIN el indicador. Dueno: frontend1 (venia en su cola N23 -> N28 -> N26).
-- **Cierre:** Codigo en main: c0b17494 (#1441) — retirado el indicador «Pedir confirmacion» de la cabecera del chat. Ancestro de origin/main.
+- **Estado:** TERMINADO
+- **Cierre:** Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera del chat. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): 0 nodos de Pedir confirmacion en la cabecera, medido sobre 110 nodos de la pantalla. Con su control, que es lo que lo hace valer: el literal Pedir confirmacion SIGUE en el bundle (lo usa otro componente), asi que el 0 mide la cabecera y no un bundle sin la frase. Captura b1-chat-1420local-canonico, 13:30.
 - **✅ DESBLOQUEADA el 2026-11-02 — se retira ENTERO.** El bloqueo existió porque el contrapunto de
   abajo no estaba medido; **ahora lo está y se cae**. El texto del contrapunto queda igual a
   propósito: explica qué se pierde y qué hay que reponer cuando el modo sea elegible.
@@ -2006,8 +2001,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mitad que un retiro mal hecho se lleva puesta), y el control de que el aviso de conexion caida SIGUE encendiendo en el avatar del escritorio. Y DoD 4/5: tests que monten PantallaMiDia esperando el avatar, revisados, y el comentario de PantallaPrincipal.tsx:118-119 actualizado (hoy dice 'las dos capas que muestran el avatar' y queda una). Verificar si #1435 ya cubrio 4 y 5. NOTA: estuvo declarada PENDIENTE con el codigo ya en main.
-- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones.
+- **Falta:** DoD 3, que es un CONTROL y no una captura mas: que con la conexion CAIDA el punto de aviso SIGA encendiendo en el avatar del escritorio. La corrida vio un punto de aviso presente, pero NO se forzo la conexion caida, asi que no acredita el punto 3 -- un indicador que aparece por otro motivo se ve igual. Hay que provocar la caida (el mismo mecanismo de SM-K6: corromper el token del lado cliente) y recien ahi mirar el avatar. Y DoD 4/5: verificar si #1435 ya cubrio los tests que montan PantallaMiDia esperando el avatar y el comentario de PantallaPrincipal.tsx:118-119, que hoy dice las dos capas que muestran el avatar y queda una. Los 4/5 no son de device: los puede cerrar frontend2 leyendo el PR.
+- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 1 y 2 CERRADOS en DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): Mi dia SIN avatar, y el escritorio CON el avatar E -- el punto 2 es la mitad que un retiro mal hecho se lleva puesta. Capturas b1-midia-1418 y b1-escritorio-1416, 13:30.
 - **Dueño:** frontend1 (dueño del shell)
 - **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
   la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
@@ -2359,7 +2354,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUERA del sprint y escalado al operador (pide la categoria del emprendedor + tabla de escala AFIP versionada), no recortado por mi.
+- **Falta:** 🔴 La captura del 2026-11-03 NO cierra, y la causa esta MEDIDA y no es del codigo: el bundle era viejo. Frontend1 encontro 6 de 7 ids OK y ausente el nodo inteligencia-clientes (capturas b1-n32-inteligencia-1440 y -fin-1442, 13:36). Ese testID lo agrego SM-N45 en a6600880 (PantallaInteligencia.tsx:303), y a6600880 NO es ancestro del bundle @ca6cb2c5 con el que corrio el device -- verificado con merge-base --is-ancestor; el bundle estaba 15 commits atras de origin/main. O sea el nodo falta porque no estaba compilado, no porque no exista. Se re-mide con el bundle de origin/main que frontend1 ya dijo que va a servir, y ahi el veredicto es binario. NADIE toca codigo por esto. El tope de monotributo sigue FUERA del sprint y escalado al operador (pide la categoria del emprendedor + tabla de escala AFIP versionada).
 - **Cierre:** Codigo COMPLETO en main: backend 5928f837 (#1459, CI 6/6, 89 passed en VPS con adversarial de mismo CUIT en A y B) + front acdbff54 (#1460, CI 6/6) sobre 32730046 (#1454). Entraron: selector Resumen/Preguntar retirado, montos del mes en negro, las 8 categorias con porcentaje, margen PONDERADO rotulado «Sobre N» con peor trabajo, y N comprobantes por cliente con el null oculto.
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
@@ -2517,7 +2512,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend2
-- **Falta:** RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedido buscar: _eventos_de recorria todo el arbol del payload SIN deduplicar, asi que el MISMO id que aparecia por dos ramas salia dos veces. Fix ccbe2aa2 (#1483, ancestro de origin/main), CI 6/6, 23 passed en VPS, DESPLEGADO. Los otros tres hallazgos: (a) el endpoint es GET /mi-dia/calendario en mi_dia_web.py y /agenda NO EXISTE -- por eso mi grep daba 0 hits, y el vacio era la pregunta, no la respuesta; (b) un evento NO puede caer en dos grupos, _agrupar da una sola cubeta (con test); (c) las instancias de un recurrente con id DISTINTO si son varias, y eso es dato, no defecto (con test). Lo que FALTA es solo el DoD 4: la captura con payload REAL, que no existe porque Calendar sigue sin conectar en el tenant canonico. Eso depende de una decision del OPERADOR -- que cuenta Google vincular -- escalada y sin respuesta; backend se nego correctamente a improvisar una cuenta o a insertar filas a mano, porque un INSERT mediria un estado falso. Mas el codigo de frontend2 que no necesita payload: el «+» de «Nuevo evento», la decision punto-vs-texto del estado y la linea del ahora (que medido en codigo NO existe).
+- **Falta:** El DoD 4 NO lo acredita la captura de ayer, y conviene decirlo claro para que nadie la cuente: abrir la agenda por deep link prueba que la pantalla monta, no que agrupe un payload REAL. Falta la captura con eventos de verdad, que no existe porque Calendar sigue sin conectar en el tenant canonico -- depende de una decision del OPERADOR (que cuenta Google vincular), escalada y sin respuesta. Backend se nego correctamente a improvisar una cuenta o a insertar filas a mano: un INSERT mediria un estado falso. Mas el codigo de frontend2 que NO necesita payload: el + de Nuevo evento, la decision punto-vs-texto del estado y la linea del ahora (medido en codigo: no existe).
+- **Cierre:** Fix ccbe2aa2 (#1483, ancestro de origin/main), CI 6/6, 23 passed en VPS, DESPLEGADO: _eventos_de recorria todo el arbol del payload SIN deduplicar, asi que el MISMO id que aparecia por dos ramas salia dos veces -- un defecto real que nadie habia pedido buscar, lo destapo el pedido_ a backend. Los otros tres hallazgos de esa medicion: (a) el endpoint es GET /mi-dia/calendario en mi_dia_web.py y /agenda NO EXISTE -- por eso un grep daba 0 hits, y el vacio era la pregunta y no la respuesta; (b) un evento NO puede caer en dos grupos, _agrupar da una sola cubeta (con test); (c) las instancias de un recurrente con id DISTINTO si son varias, y eso es dato, no defecto (con test). DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): la agenda abre por deep link, captura b1-n34-agenda-deeplink-1317local-canonico, 13:13.
 - **Dueño:** frontend2
 - **De dónde sale:** auditoría de `SM-L4` (planificación, 2026-11-03) sobre las entradas que
   `scripts/mapa-51-estado.py` marcaba como **cubiertas sólo por el nombre**. La entrada **10
@@ -2726,7 +2722,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1
-- **Falta:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el salto temprano era el defecto espejo y esta cubierto. Los 4 tests traen CONTROL NEGATIVO, que es lo que los hace valer: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que la suite verde no puede ser verde por otra causa. Lo que FALTA es un solo punto y lo declaro frontend2, no yo: que el teclado de Android EMITA Backspace sobre un TextInput ya VACIO no esta verificado, y de eso depende todo el mecanismo -- si el teclado no manda la tecla, el handler es correcto y nunca corre. Es la MISMA corrida de device de SM-K9, sumando un punto a su receta: «el retroceso con el dia vacio vuelve al segmento anterior». Dueno de esa corrida: frontend1, que tiene la tenencia del device. Gesto con teclado real, nunca adb input tap.
+- **Falta:** 🔴 UN punto, y la corrida del 2026-11-03 NO lo cubrio -- midio justo la otra mitad. Lo que frontend1 ejercito en device fue: dia vacio, foco en MES, retroceso que borra solo el mes y anio intacto. Ese es el caso del segmento NO VACIO, o sea el CONTROL NEGATIVO del fix: confirma que no hay salto temprano. Lo que falta es el caso que el handler ATIENDE: retroceso sobre un segmento YA VACIO, que debe devolver el foco al anterior y borrarle el ultimo digito. De eso depende todo el mecanismo -- si el teclado de Android no EMITE Backspace sobre un TextInput vacio, el handler es correcto y nunca corre, y la ficha estaria verde por una corrida que jamas lo invoco. Un renglon mas en la receta de frontend1, teclado real, nunca adb input tap. Es la misma corrida de SM-K9, que ya cerro.
+- **Cierre:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el salto temprano era el defecto espejo y esta cubierto. Los 4 tests traen CONTROL NEGATIVO, que es lo que los hace valer: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que la suite verde no puede ser verde por otra causa.
 - **Dueño:** frontend2
 - **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
   ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
