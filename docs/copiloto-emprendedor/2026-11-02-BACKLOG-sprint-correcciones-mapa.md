@@ -118,7 +118,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | REFUTADO POR EL OPERADOR en device el 2026-11-03 06:40: 'en la pantalla mi dia el campo de texto todavia esta por enc… |
-| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio e… |
+| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (captura del ANTES con el panel arriba a 390px), DoD 2 (captura del DESPUES mas EL NUMERO: cuantos px de margen… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
 | **SM-N26** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de la cabecera SIN el indicador. Dueno: frontend1 (venia en su cola N23 -> N28 -> N26). |
@@ -1686,8 +1686,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio el ANTES con metodo declarado (y=53 sobre PanelFunciones-pestana, 4 arrastres con adb motionevent sin que el panel abriera; el shade del sistema se come todo y<~48). Falta el DESPUES con el MISMO metodo y las mismas coordenadas: si el margen corrigio la causa, el mismo gesto que fallaba 4 de 4 ahora abre. Sin repetir el gesto identico no se distingue 'el fix funciono' de 'esta vez le acerte al pixel'. Dueno: frontend1.
-- **Cierre:** 2d257f95 (#1432, ancestro de origin/main): margen fijo bajo la barra de estado para el tirador de arriba.
+- **Falta:** DoD 1 (captura del ANTES con el panel arriba a 390px), DoD 2 (captura del DESPUES mas EL NUMERO: cuantos px de margen quedaron bajo insets.top - un 'quedo mas abajo' sin cifra no es acreditable) y DoD 5 (la tira de abajo sigue midiendo exactamente una card, no se engroso con espacio muerto). La prediccion escrita de frontend1 decia ROJO a y=53 y salio VERDE: la lectura del layout estaba mal, y la causa es que panel-funciones-pestana mide [0,0][720,150] por uiautomator, o sea el gesto cubre la pestana entera y no solo la barra; el shade solo gana por debajo de ~y=47.
+- **Cierre:** 2d257f95 (#1432) margen fijo bajo la barra de estado + 988ba029 (#1443, ancestro de origin/main, 71 lineas en PanelFunciones.tsx/.test.tsx). DoD 3 y 4 CUMPLIDOS en device por frontend1 el 2026-11-03: con motionevent DOWN-MOVE-UP, y=53 abre el panel 6/6 y el shade 0/6; y=90 tambien 6/6; control y=40 abre NotificationShade, que distingue 'no se mueve' de 'el ADB no ejercita nada'. N=6 declarado, por encima del minimo de 5. Condicion: Mi dia con el panel abajo, Metro con --clear desde wt-fe1-h5 HEAD cab346d9 con PanelFunciones IDENTICO a main (988ba029); el resto del bundle NO es main. El primer intento del dia (0/6 y 0/6) esta DESCARTADO: Metro logueaba 'None of the callbacks in the gesture are worklets', o sea los gestos corrian en el hilo JS - era el instrumento, no el fix.
 - **Dueño:** frontend1 (dueño del shell)
 - **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
   desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
