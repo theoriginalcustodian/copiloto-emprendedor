@@ -125,6 +125,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N27** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N29** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N30** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2020,4 +2021,66 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   cumplen los **6,8 s** del mapa: eso es de `SM-L1`, en release.
 - **DENTRO del sprint:** es una pantalla del mapa (`?ver=splash`, `?ver=volver`) que nunca se
   verificó contra la app. Entra por el denominador del mapa.
+
+### SM-N30 · `sin-issue` — DENTRO DEL SPRINT: la pantalla de entrada REAL no es la que dibuja el mapa («Volver a entrar»)
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (va pegada a `SM-N29`: misma pantalla, misma pasada de device)
+- **Reportado por:** el operador, 2026-11-02, sobre el mapa `?ver=volver`: *«la pantalla de entrada es
+  diferente a la del mapa; la imagen de "volver a entrar" no es la misma que tiene la app»*.
+- **🔴 Es la OTRA mitad de `SM-N29`, y conviene no confundirlas.** `N29` pregunta **si el reveal se
+  ve** (llega a mostrarse, íntegro, en arranque frío). Ésta pregunta **si lo que se ve es LO QUE EL
+  MAPA DIBUJA**. Un reveal que aparece completo y no coincide con el mapa cierra `N29` y deja ésta
+  abierta: son dos veredictos distintos sobre la misma pantalla. Marcar una por la otra es el error
+  esperable ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+- **✅ TRES divergencias ya medidas en código, sin device** — esto NO arranca de cero, y ninguna de
+  las tres necesita el teléfono para confirmarse como divergencia (el device decide cuál se ve, no si
+  existe):
+
+  | # | El mapa (captura del operador, `?ver=volver`) | La app (código) |
+  |---|---|---|
+  | 1 | **sin** tagline bajo el wordmark | **dibuja** `TAGLINE_MARCA` «Tu copiloto emprendedor» — `apps/mobile/src/modules/auth/RevealEntrada.tsx:106`, con fade-up propio (`:79`) |
+  | 2 | **botón de audio** junto a «se dice o-DO-bi» (el parlante de la captura) | **no se renderiza**: depende de `pronunciacionAsset`, y **no hay ningún audio en el repo** — el propio docstring lo declara `[ASSUMED_PENDING_VERIFY]` (`RevealEntrada.tsx` §`pronunciacionAsset`, BL-X10) |
+  | 3 | la pantalla «Volver a entrar» como **lo que se ve al no tener sesión** | sólo aparece con **`cierreVoluntario != null`** — o sea **sólo si el usuario cerró sesión A PROPÓSITO**. La sesión **caída sola** (token vencido, CTA5) va **directo al formulario**, sin reveal: `apps/mobile/src/modules/auth/EntradaSesion.tsx:26` |
+
+- **⚠️ La #3 es la que más muerde, y no es un bug: es una decisión tomada.** El comentario de
+  `EntradaSesion.tsx:10-14` la declara explícita. Pero el mapa **no la dibuja**, así que el mapa
+  afirma un estado que la app sólo produce bajo una condición que el mapa no nombra. Quien compare
+  «la app contra el mapa» sin saber esto va a concluir que el reveal está roto cuando en realidad
+  entró por el camino de sesión caída. **Antes de tocar una línea de UI hay que decidir cuál de los
+  dos se corrige**, y eso es decisión de producto del operador, no táctica:
+  - **(a) manda el mapa** ⇒ el reveal también se muestra con la sesión caída sola, y hay que decidir
+    dónde queda el aviso de «se cayó tu sesión», que hoy vive en el formulario;
+  - **(b) manda la app** ⇒ el mapa suma el estado que falta y aclara que «Volver a entrar» es
+    **post-logout voluntario**, no «cualquier arranque sin sesión».
+  **No se implementa ninguna de las dos hasta que el operador elija.** Las divergencias #1 y #2 **no
+  esperan esa decisión** y se pueden cerrar antes.
+- **⚠️ Y la #1 tiene antecedente, que es el motivo de no «arreglarla» mirando una sola captura:** el
+  propio `packages/core/src/textosEntrada.ts:24-27` dice que *«la fila `splash` de DEVICE15 lo midió
+  **ausente** en todos los cuadros»*. O sea: **ya se midió una vez que el tagline no se veía** —
+  mientras el código lo dibuja. Hay que establecer si hoy se ve o no **antes** de decidir si sobra
+  en la app o falta en el mapa; si no se ve, la divergencia con el mapa no existe y el defecto es
+  otro (el tagline que no llega a pintarse), que es un hallazgo distinto.
+- **DoD:**
+  1. **Captura de la app** en la pantalla de entrada real, device, 390 px, **al lado** de la del mapa
+     `?ver=volver`. Una sola imagen comparada, no dos descripciones.
+  2. **Veredicto por cada una de las tres filas**: coincide / no coincide / no aplica, con lo que se
+     ve. Un «se parece» no acredita: la tabla tiene tres renglones y cada uno necesita el suyo.
+  3. **Decir por qué camino entró** la app en esa captura (`cierreVoluntario` presente o no). Sin ese
+     dato la captura no se puede interpretar: la misma pantalla tiene dos orígenes. Es el control que
+     distingue «el reveal está mal» de «no era el reveal».
+  4. **Divergencias #1 y #2 resueltas**: el tagline, visible o retirado según lo que se mida; y el
+     botón de audio, **dibujado o quitado del mapa** — hoy el mapa promete un control que la app no
+     puede tener porque el asset no existe. Prometer un botón que no hay es deuda del mapa, no de la
+     app.
+  5. **Divergencia #3:** sólo la **decisión del operador escrita acá**. La implementación, si la hay,
+     es ficha aparte — no se cuela en ésta.
+- **Tenencia:** cuenta canónica (`e2e-device@copiloto.test`). Se fuerza cerrando sesión con ella, que
+  es exactamente el camino de `cierreVoluntario`. **La sesión del operador no se toca.** Para medir
+  el camino de sesión caída sola hace falta invalidar el token, no cerrar sesión — y eso ya es otra
+  tenencia: si no se logra, se declara en `Falta:`, no se finge.
+- **🔗 Se corre PEGADA a `SM-N29`**: misma pantalla, mismo logout, misma pasada. Separarlas obliga a
+  cerrar sesión dos veces y a pagar el arranque frío dos veces.
+- **DENTRO del sprint:** es literalmente una pantalla del mapa que no coincide con la app, que es el
+  denominador del sprint.
 
