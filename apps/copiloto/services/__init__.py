@@ -59,15 +59,25 @@ def merged_policy() -> dict:
     return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values()}
 
 
+def tiene_acciones_detras(mod) -> bool:
+    """¿Este módulo tiene ALGO que hacer cuando el usuario lo conecta? Dos ejes distintos, y no se confunden:
+    `TOOLS` = lo que se le OFRECE al agente conversacional; `ARCHIVADO_SLUGS` = lo que usa SOLO una activity del
+    worker (Drive: archivar el PDF de cada factura). Un módulo con cualquiera de los dos es conectable; sólo
+    `TOOLS` llega al agente (`acciones_por_toolkit`, `tool_catalog`). SM-Z1."""
+    return bool(getattr(mod, "TOOLS", None) or getattr(mod, "ARCHIVADO_SLUGS", None))
+
+
 def connectable_policy() -> dict:
-    """Subconjunto de `merged_policy()` que el usuario puede CONECTAR: sólo los módulos con al menos una acción.
+    """Subconjunto de `merged_policy()` que el usuario puede CONECTAR: los módulos con acciones detrás.
 
     Regla del DoD A7 (contrato de cierre): conectable + prometido en la UI sin una sola acción detrás es el
-    defecto. Un módulo con `TOOLS` vacío (poda deliberada, p. ej. Drive) sigue existiendo para el worker,
-    pero no se ofrece en el catálogo ni acepta `/composio/connect`.
+    defecto. «Acciones detrás» = `TOOLS` **o** `ARCHIVADO_SLUGS` (`tiene_acciones_detras`): Drive tiene `TOOLS`
+    vacío por poda deliberada (el agente no sube archivos) pero SÍ archiva facturas, así que se conecta desde
+    Ajustes (SM-Z1, decisión del operador 2026-11-03). Un módulo sin ninguna de las dos no se ofrece en el
+    catálogo ni acepta `/composio/connect`.
     """
     _discover()
-    return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values() if getattr(mod, "TOOLS", None)}
+    return {mod.TOOLKIT: mod.POLICY for mod in _BY_SERVICE.values() if tiene_acciones_detras(mod)}
 
 
 def acciones_por_toolkit() -> dict:

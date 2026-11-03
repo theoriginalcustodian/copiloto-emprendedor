@@ -54,3 +54,48 @@ def test_drive_no_resuelve_en_tool_index_control_positivo(monkeypatch):
     monkeypatch.setitem(drive.TOOLS, "drive_create_file", "create_file")
     idx = tool_catalog._service_index()
     assert idx["drive_create_file"] == ("service", drive, "create_file")
+
+
+# SM-Z1 — CONTROL NEGATIVO del veto que se conserva. Drive vuelve a ser CONECTABLE (`connectable_policy`), pero
+# eso NO le devuelve al agente conversacional la capacidad de subir archivos ni repartir permisos: sin este
+# test, «Drive volvió» no se distingue de «se le devolvió todo». Los slugs de archivado ESTÁN en la policy del
+# gateway (la activity los necesita), así que lo que los frena es que el agente no tiene cómo nombrarlos.
+class _GatewayEspia:
+    def __init__(self):
+        self.llamadas = []
+
+    def __getattr__(self, nombre):
+        def _registrar(*args, **kwargs):
+            self.llamadas.append((nombre, args, kwargs))
+            raise AssertionError(f"el agente llegó al gateway: {nombre}")
+        return _registrar
+
+
+_INTENTOS_DE_SUBIR = ("drive_upload", "drive_upload_from_url", "drive_create_file", "drive_create_permission",
+                      "GOOGLEDRIVE_UPLOAD_FROM_URL", "GOOGLEDRIVE_CREATE_PERMISSION",
+                      "GOOGLEDRIVE_CREATE_FOLDER", "GOOGLEDRIVE_CREATE_FILE_FROM_TEXT")
+
+
+def test_agente_no_puede_subir_a_drive_aunque_drive_sea_conectable():
+    gw = _GatewayEspia()
+    ejecutar = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-11-03T12:00:00+00:00")
+    ofrecidas = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
+    for intento in _INTENTOS_DE_SUBIR:
+        assert intento not in ofrecidas and intento not in tool_catalog.TOOL_INDEX
+        res = ejecutar(intento, {"file_name": "x.pdf", "url": "https://x/y.pdf"}, object(),
+                       confirmed=True, idem_key="k")
+        assert res.status == "error" and "desconocida" in str(res.observation)
+    assert gw.llamadas == []
+
+
+def test_agente_no_puede_subir_a_drive_control_positivo(monkeypatch):
+    """Si el veto se rompiera (el índice de tools expusiera una acción de Drive) el executor ya no contestaría
+    «tool desconocida»: el test de arriba tiene que poder FALLAR, no pasar por vacío."""
+    monkeypatch.setitem(tool_catalog.TOOL_INDEX, "drive_upload", ("service", drive, "create_file"))
+    ejecutar = tool_catalog.make_tool_executor(_GatewayEspia(), now_iso_provider=lambda: "2026-11-03T12:00:00+00:00")
+    try:
+        res = ejecutar("drive_upload", {"name": "x"}, object(), confirmed=True, idem_key="k")
+        llego = "desconocida" not in str(res.observation)
+    except Exception:   # noqa: BLE001 — llegó a algo más profundo que el índice
+        llego = True
+    assert llego

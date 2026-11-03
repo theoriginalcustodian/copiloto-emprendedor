@@ -121,8 +121,10 @@ def test_catalog_with_token_returns_services_list():
     keys = {s["key"] for s in body["services"]}
     assert "mercadopago" in keys
     assert "gmail" in keys           # uno de los toolkits con acciones (connectable_policy)
-    # A7: el catálogo ofrece sólo lo conectable (módulos con TOOLS). Drive no aparece: no tiene acciones.
-    assert "googledrive" not in keys
+    # A7 + SM-Z1: el catálogo ofrece sólo lo conectable (módulos con TOOLS **o** ARCHIVADO_SLUGS). Drive vuelve:
+    # archiva facturas aunque el agente no tenga tools de Drive. Son 6 keys: MP + los 5 toolkits Composio.
+    assert "googledrive" in keys
+    assert len(keys) == 6
     assert keys == {"mercadopago"} | set(web_module._composio_valid_toolkits())
 
 
