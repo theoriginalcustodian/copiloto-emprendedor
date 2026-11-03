@@ -11,7 +11,9 @@ contenido OGG/Opus sí). Calidad es-AR ≥ ElevenLabs; latencia ~0.5s. NO requie
 """
 from __future__ import annotations
 
+import base64
 import json
+import logging
 import os
 import random
 import time
@@ -92,3 +94,77 @@ class GroqSTT:
                   audio_bytes + nl,
                   b"--" + b + b"--" + nl]
         return b"".join(parts)
+
+
+# --- Respaldo: OpenRouter (mismo modelo, otros proveedores) -------------------------------------------------------
+OPENROUTER_STT_URL = "https://openrouter.ai/api/v1/audio/transcriptions"
+OPENROUTER_STT_MODEL = os.environ.get("OPENROUTER_STT_MODEL") or "openai/whisper-large-v3-turbo"
+# extensión del filename -> `input_audio.format` que acepta OpenRouter (mp3, mp4, wav, webm, flac, ogg)
+_OR_FORMATOS = {"ogg": "ogg", "oga": "ogg", "opus": "ogg", "mp3": "mp3", "mpeg": "mp3", "mp4": "mp4", "m4a": "mp4",
+                "wav": "wav", "x-wav": "wav", "webm": "webm", "flac": "flac"}
+_log = logging.getLogger(__name__)
+
+
+class OpenRouterSTT:
+    """Respaldo de `GroqSTT` vía OpenRouter (`/audio/transcriptions`, JSON con el audio en base64 — NO multipart).
+    Mismo contrato: `transcribe(audio_bytes, filename=, content_type=) -> str`; lanza si falta la key o falla la API.
+    Validado contra la API real (spike 2026-11-02: HTTP 200, `{"text", "usage": {"seconds", "cost"}}`)."""
+
+    def __init__(self, *, model: str = OPENROUTER_STT_MODEL, language: str = "es",
+                 api_key_env: str = "OPENROUTER_API_KEY", url: str = OPENROUTER_STT_URL, timeout: float = 60.0):
+        self.model = model
+        self.language = language
+        self._api_key_env = api_key_env
+        self._url = url
+        self._timeout = timeout
+
+    def transcribe(self, audio_bytes: bytes, *, filename: str = "audio.ogg",
+                   content_type: str = "audio/ogg") -> str:
+        key = os.environ.get(self._api_key_env)
+        if not key:
+            raise RuntimeError(f"falta {self._api_key_env} en el env del worker")
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        fmt = _OR_FORMATOS.get(ext) or _OR_FORMATOS.get((content_type or "").split("/")[-1].split(";")[0].lower())
+        if not fmt:
+            raise ValueError(f"formato de audio no soportado por OpenRouter: {filename!r} / {content_type!r}")
+        body = {"model": self.model, "language": self.language,
+                "input_audio": {"data": base64.b64encode(audio_bytes).decode(), "format": fmt}}
+        req = urllib.request.Request(self._url, data=json.dumps(body).encode(), method="POST", headers={
+            "Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "uc-clinic-agent/1.0"})
+        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+            d = json.loads(resp.read().decode())
+        return (d.get("text") or "").strip()
+
+
+def _es_recuperable(e: BaseException) -> bool:
+    """¿Vale la pena probar el respaldo? Rate limit (429), falla del servidor (5xx) o de red. NO: 4xx (audio inválido,
+    key rechazada) ni RuntimeError de configuración — el respaldo no los arregla y taparlos esconde el bug."""
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code == 429 or e.code >= 500
+    return isinstance(e, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+class STTConRespaldo:
+    """Primario + respaldo. Misma interfaz que `GroqSTT`. Si el primario falla de forma recuperable, prueba el respaldo;
+    si el respaldo también falla, propaga ESE error (encadenado al del primario)."""
+
+    def __init__(self, primario, respaldo):
+        self.primario, self.respaldo = primario, respaldo
+
+    def transcribe(self, audio_bytes: bytes, *, filename: str = "audio.ogg", content_type: str = "audio/ogg") -> str:
+        try:
+            return self.primario.transcribe(audio_bytes, filename=filename, content_type=content_type)
+        except Exception as e:  # noqa: BLE001 — se re-lanza si no es recuperable
+            if not _es_recuperable(e):
+                raise
+            _log.warning('{"evento": "stt_respaldo", "motivo": "%s"}', type(e).__name__ + (f" {e.code}" if hasattr(e, "code") else ""))
+            return self.respaldo.transcribe(audio_bytes, filename=filename, content_type=content_type)
+
+
+def build_stt():
+    """STT por defecto del front-door: Groq, con OpenRouter de respaldo SÓLO si hay `OPENROUTER_API_KEY` en el env.
+    Con respaldo, el primario no espera ni reintenta ante un 429 (cae al respaldo en el acto: menor latencia para el
+    usuario); sin respaldo, conserva el reintento acotado de `GroqSTT`."""
+    if os.environ.get("OPENROUTER_API_KEY"):
+        return STTConRespaldo(GroqSTT(reintentos_429=0), OpenRouterSTT())
+    return GroqSTT()

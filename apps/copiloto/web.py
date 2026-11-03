@@ -57,7 +57,7 @@ from canario_autosanacion import disparar as disparar_canario
 from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
-from clients.agent.providers.stt import GroqSTT
+from clients.agent.providers.stt import build_stt
 from clients.agent.providers.vision import _API_ERRORS as _VISION_API_ERRORS
 from clients.agent.providers.vision import OpenAIVisionOCR
 from feedback_store import FeedbackStore
@@ -628,12 +628,12 @@ def _filename_for_content_type(content_type: str) -> str:
 
 
 def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
-    """Transcriber por default de `/chat/audio` (voz-backend): `GroqSTT` real. Se construye ACÁ
+    """Transcriber por default de `/chat/audio` (voz-backend): `build_stt()` (Groq, con OpenRouter de respaldo si hay key). Se construye ACÁ
     DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
     la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
     `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
     sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
-    return GroqSTT().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
+    return build_stt().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
                                 content_type=content_type or "audio/ogg")
 
 
