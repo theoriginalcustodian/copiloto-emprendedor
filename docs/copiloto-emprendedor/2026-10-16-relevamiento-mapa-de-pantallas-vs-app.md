@@ -294,7 +294,40 @@ Prototipo: [presu](2026-10-16-relevamiento-capturas/proto-mapa-presu.png) · App
 
 **42 · `bi` — Inteligencia de Negocio** — **DIFERENTE · A** · DEVICE  
 Prototipo: [bi](2026-10-16-relevamiento-capturas/proto-mapa-bi.png) · App: [inteligencia-top](2026-10-16-relevamiento-capturas/app-inteligencia-top.png) · [mapa-bi-reposo](2026-10-16-relevamiento-capturas/app-mapa-bi-reposo.png)  
-*Diferencia:* Falta la etiqueta de mes y los mosaicos y el dock «Preguntame lo que quieras…» + mic. El título está suelto con ícono, no dentro de una card blanca con período (mockup 12: «nombre y período en la card blanca»); «Volver» ya va a la izquierda con chevron (N6, decisión 7). La regla del dato faltante sí se cumple: Rentabilidad muestra «—» y la explicación, no «$0» (decisión del mockup 12). La pestaña «Preguntar» es una salida al chat (B).  
+*Diferencia:* ⚠️ **Este resumen estuvo INCOMPLETO del 2026-10-16 al 2026-11-03** y la
+corrección es la parte útil de la entrada: enumeraba **tres** faltantes cuando faltan **cuatro
+secciones enteras** más detalles. Se había escrito mirando la captura del prototipo, que está
+**recortada a la mitad de arriba**; reescrito el 2026-11-03 contra el **DOM del prototipo vivo**
+(`?ver=bi`, contenedor `#bi-scroll`), que es completo por construcción. **Un corpus de comparación se
+arma contra el DOM o contra la pantalla scrolleada entera, nunca contra una captura del tope**
+— un inventario leído de un `.png` termina donde termina la imagen, y nada en el resultado delata
+que faltó la mitad.
+**Las ONCE secciones del mapa, en orden:** 1 «Tirá para actualizar» · 2 card blanca con nombre +
+período · 3 card negra Saldo en caja / Entró / Salió · 4 **Este mes** (Ingresos·Gastos·Facturado·Cobrado)
+· 5 **Rentabilidad** · 6 **Por cobrar** + «$X vencidos» · 7 **En qué se te va la plata** (desglose por
+categoría) · 8 **Entró vs. salió** · 9 **Mejores clientes** (con «N comprobantes» y su vacío propio) ·
+10 **Acumulado del año** + barra «68% del tope» + línea del monotributo · 11 **Margen por trabajo**;
+más el dock, fuera del scroll.
+**Faltan en la app:** las secciones **6, 7, 11**, la **barra del tope y la línea del monotributo** de
+la 10, «N comprobantes» y el vacío propio de la 9 — además de la etiqueta de mes, los mosaicos y el
+dock que esta entrada ya nombraba. La **7** no es decoración: el mockup 12 la declara el corazón de la
+pantalla (*«el desglose por categoría con su porcentaje es lo que el repo define como resumen
+mensual… es la respuesta a "en qué se me va la plata"»*).
+**Sobran en la app:** una sección **«FACTURACIÓN»** con gráfico de barras que el mapa no dibuja, y los
+montos en **verde/rojo**, paleta que el mockup 12 **derogó explícitamente** (*«traía una paleta
+semántica que el sistema no tiene y competiría con el único acento»*) — fue considerada y rechazada,
+no es un olvido.
+→ **Ficha `SM-N32`**, dueño frontend2. El lado **app** de esta entrada sigue siendo del 2026-10-16:
+re-verificar en device antes de implementar. El título está suelto con ícono, no dentro de una card blanca con período (mockup 12: «nombre y período en la card blanca»); «Volver» ya va a la izquierda con chevron (N6, decisión 7). La regla del dato faltante sí se cumple: Rentabilidad muestra «—» y la explicación, no «$0» (decisión del mockup 12). 🔴 **Los dos botones «Resumen»/«Preguntar»: esta entrada los clasificó `B` y con eso los
+dio por BUENOS.** Decía *«La pestaña «Preguntar» es una salida al chat (B)»*, y `B` significa «gana
+la app, se enmienda el mapa» — así que **nunca fueron tarea de nadie** y el operador los vio en
+device el 2026-11-03, 18 días después. **Un elemento mal clasificado no genera trabajo y ningún
+barrido lo levanta: los controles cazan lo NO clasificado, nunca lo clasificado MAL.** El mapa **no
+los dibuja** y declara la baja en pasado: *«la misma duplicación que **sacamos** con la solapa
+"Preguntar" de Inteligencia»* (`mapa-pantallas/index.html:240`). El veredicto de esta frase se
+corrige a **`A`** (gana el mapa, se retiran) **midiendo la app en device**, que es el paso 1 del DoD
+de `SM-N32`; antes de retirar «Preguntar» hay que medir a dónde va hoy, porque si es el único acceso
+a ese camino se retira **junto con** el dock que lo reemplaza, no antes.  
 *Corrección:* Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6).  
 *Vínculo:* F6 · F6b · N6 · F12
 
