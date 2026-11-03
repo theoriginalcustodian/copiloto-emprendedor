@@ -110,6 +110,34 @@ roles_de_broadcast() {
   done
 }
 
+# roles_del_frente <frente> — los roles que COMPONEN un frente, uno por línea.
+#
+# Un `contrato_` puede dirigirse a DOS dueños (`planificacion-a-frontend1-y-frontend2_...`), y
+# entonces el «frente» no es un rol: es la concatenación de dos. Ningún archivo se llama
+# `avance_frontend1-y-frontend2-a-*` — cada dueño reporta con SU rol —, así que un glob que ancle
+# el frente como literal busca un nombre que no existe NUNCA y devuelve vacío. Medido el
+# 2026-11-03: `EN-CURSO SIN AVANCE` sonó 125 min sobre la pasada de device mientras había **11**
+# `avance_frontend1*` ese mismo día. Un frente con dos dueños no podía apagar su propia alarma, y
+# un guard que grita en el caso normal se desarma solo.
+#
+# Se descompone contra `ROLES_BUZON` (fuente única) y no contra una lista paralela: un rol nuevo
+# tiene que entrar en UN solo lugar. El patrón va anclado entre guiones (`-rol-`) para que
+# `frontend` NO matchee dentro de `frontend1` — si no, el frente `frontend1` devolvería los dos.
+#
+# Un frente que no contiene ningún rol conocido se devuelve TAL CUAL: el llamador se comporta
+# exactamente como antes del fix, en vez de quedarse sin nada que buscar. El caso raro no debe
+# volverse silencio.
+roles_del_frente() {
+  local frente="$1" r hubo=0
+  [ -n "$frente" ] || return 0
+  for r in "${ROLES_BUZON[@]}"; do
+    case "-$frente-" in
+      *-"$r"-*) printf '%s\n' "$r"; hubo=1 ;;
+    esac
+  done
+  [ "$hubo" = "1" ] || printf '%s\n' "$frente"
+}
+
 # roles_declarados_en <archivo> — los roles que EL CONTRATO declara con una línea `ROLES:`,
 # uno por línea, o nada si no la declara o si ninguno es válido.
 #
