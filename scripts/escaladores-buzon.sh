@@ -298,12 +298,21 @@ avance_mas_reciente_epoch() {
   [ -n "$frente" ] || return 0
   if [ -n "${_avance_cache[$frente]:-}" ]; then AVANCE_EPOCH="${_avance_cache[$frente]}"; return 0; fi
   shopt -s nullglob
-  files=("$CERRADO"/*/????-??-??_{avance,cierre}_"${frente}"-a-*.md   # anclado por posición, ver Regla 1
-         "$ABIERTO"/????-??-??_{avance,cierre}_"${frente}"-a-*.md)
-  if [ "${#files[@]}" -gt 0 ]; then
-    AVANCE_EPOCH="$(stat -c %Y "${files[@]}" 2>/dev/null | sort -n | tail -1)"
-    [[ "$AVANCE_EPOCH" =~ ^[0-9]+$ ]] || AVANCE_EPOCH=0
-  fi
+  # Un frente puede tener DOS dueños (`frontend1-y-frontend2`); se descompone contra ROLES_BUZON
+  # porque cada dueño reporta con SU rol y `avance_frontend1-y-frontend2-a-*` no existe nunca.
+  # Ver roles_del_frente() en lib/buzon-roles.sh. Para un frente de un solo rol el resultado es
+  # idéntico al glob anterior.
+  local __r __sub __mejor=0
+  while IFS= read -r __r; do
+    [ -n "$__r" ] || continue
+    files=("$CERRADO"/*/????-??-??_{avance,cierre}_"${__r}"-a-*.md   # anclado por posición, ver Regla 1
+           "$ABIERTO"/????-??-??_{avance,cierre}_"${__r}"-a-*.md)
+    [ "${#files[@]}" -gt 0 ] || continue
+    __sub="$(stat -c %Y "${files[@]}" 2>/dev/null | sort -n | tail -1)"
+    [[ "$__sub" =~ ^[0-9]+$ ]] || continue
+    [ "$__sub" -gt "$__mejor" ] && __mejor="$__sub"
+  done < <(roles_del_frente "$frente")
+  AVANCE_EPOCH="$__mejor"
   _avance_cache["$frente"]="$AVANCE_EPOCH"
 }
 
