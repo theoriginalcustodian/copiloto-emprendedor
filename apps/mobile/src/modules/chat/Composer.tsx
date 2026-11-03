@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { textoDeMotivo, type MotivoFallo, type SendStatus } from '@copiloto/core';
 
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
@@ -229,6 +230,14 @@ export function Composer({
           testID="chat-composer-campo"
           style={[styles.campo, { borderColor: tema.color.borde, borderRadius: RADIO_CAMPO }, capturando && styles.oculto]}
         >
+          {/* SM-N25 — base translúcida BAJO el vidrio: el campo flota sobre el chat, y con el vidrio solo (alfa .04-.14 en oscuro)
+              el texto de una card que pasa por detrás se pisa con el placeholder (medido en device 2026-11-02). Tomada del
+              token `fondo` de la piel; `ALFA_BASE_CAMPO` es el piso de contraste, no un adorno. */}
+          <View
+            testID="chat-composer-campo-base"
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: conAlfa(tema.color.fondo, ALFA_BASE_CAMPO) }]}
+          />
           <LinearGradient
             colors={[tema.glass.s1, tema.glass.s2]}
             start={{ x: 0.2, y: 0 }}
@@ -285,6 +294,8 @@ const RADIO_FOTO = 16;
 /** El campo del mapa: píldora de 52, el mismo lado que el mic (`.campo`/`.mic`, `index.html:166-171`). */
 const ALTO_BARRA = 52;
 const RADIO_CAMPO = ALTO_BARRA / 2;
+/** Opacidad de la base bajo el vidrio del campo (SM-N25): suficiente para que lo que pasa detrás no compita con el texto. */
+const ALFA_BASE_CAMPO = 0.85;
 
 const styles = StyleSheet.create({
   contenedor: {},

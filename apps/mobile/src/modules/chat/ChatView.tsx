@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
@@ -11,6 +12,7 @@ import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChat } from './useChat';
@@ -168,6 +170,10 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     [enviarAudio],
   );
 
+  // SM-N25 — alto real del dock flotante: es el padding que la lista reserva al final. Medido, no supuesto.
+  const [altoDock, setAltoDock] = useState(0);
+  const alMedirDock = useCallback((e: LayoutChangeEvent) => setAltoDock(Math.round(e.nativeEvent.layout.height)), []);
+
   return (
     /**
      * `behavior="padding"` en ambas plataformas: agrega abajo exactamente el alto del teclado para
@@ -212,6 +218,12 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         </View>
       )}
 
+      {/* SM-N25 — el campo y el mic FLOTAN: la lista ocupa TODA el área y corre por debajo del dock (antes la
+          lista terminaba en un borde duro sobre el composer, así que nada se veía pasar por detrás). `area` es el
+          que encoge con el teclado (`KeyboardAvoidingView` agrega el padding al contenedor), y el dock se ancla a
+          SU borde inferior, no al de la pantalla. */}
+      <View testID="chat-area" style={styles.area}>
+      <View style={StyleSheet.absoluteFill}>
       <ListaMensajes
         ref={scrollRef}
         messages={estado?.messages ?? []}
@@ -220,8 +232,22 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         onResolverTarjeta={marcarCardResuelta}
         onVolverDelRecibo={tarjetaDelAviso != null && onVolverAlTablero != null ? alVolverDelRecibo : undefined}
         volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
+        margenInferior={altoDock}
       />
+      </View>
 
+      {/* `box-none`: la sangría alrededor del campo no captura toques — se sigue scrolleando la lista por ahí.
+          Scrim (SM-N25 DoD 4): degradé de `fondo` que sube desde el borde inferior; es lo que garantiza el contraste
+          del texto del campo cuando por detrás pasa una card CLARA. Corto y que se desvanece a 0 arriba: el contenido
+          sigue viéndose correr, el scrim sólo le baja el contraste justo bajo el campo. */}
+      <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
+        <LinearGradient
+          testID="chat-dock-scrim"
+          pointerEvents="none"
+          colors={[conAlfa(tema.color.fondo, 0), conAlfa(tema.color.fondo, ALFA_SCRIM_ABAJO)]}
+          locations={[0, 1]}
+          style={StyleSheet.absoluteFill}
+        />
       <DockEntrada
         motivoFallo={estado?.motivoFallo ?? null}
         sendStatus={estado?.sendStatus ?? 'idle'}
@@ -231,6 +257,8 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         semilla={semilla}
         scrollRef={scrollRef}
       />
+      </View>
+      </View>
 
       {/* ÚLTIMO hijo a propósito: el sheet es `position:absolute` y el composer + el botón de voz son hermanos
           en flujo — pintan DESPUÉS de lo que va antes y lo tapaban (medido en device 2026-10-15: «Conectar» /
@@ -246,9 +274,14 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   );
 }
 
+/** Opacidad del scrim en el borde inferior del dock. Alta pero no 1: el chat se sigue viendo correr, sólo atenuado. */
+const ALFA_SCRIM_ABAJO = 0.9;
+
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
+  area: { flex: 1 },
+  dockFlotante: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
   contextoAviso: {
     flexDirection: 'row',
