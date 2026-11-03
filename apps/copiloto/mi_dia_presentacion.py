@@ -268,6 +268,23 @@ def _gasto_del_mes_alto(datos, entidad_id, creada, hoy):
     return None, _kv(("Este mes", actual), ("Mes anterior", anterior)), prosa
 
 
+def _monotributo_cerca_del_limite(datos, entidad_id, creada, hoy):
+    """Los números son la FOTO del día en que se avisó (`crear_si_no_existe` no refresca `datos`): se rotulan
+    «Al avisarte» y no como estado actual -- el acumulado de 12 meses se mueve todos los días."""
+    pct = datos.get("porcentaje")
+    try:
+        pct_txt = f"{float(pct):.1f}".replace(".", ",") + " %" if pct is not None else None
+    except (TypeError, ValueError):
+        # Porcentaje ilegible: sin chip ni fila, nunca un número inventado.
+        pct_txt = None
+    cat = datos.get("categoria")
+    facturado, tope = _pesos(datos.get("facturado")), _pesos(datos.get("tope"))
+    prosa = _prosa(f"Cuando te avisamos llevabas facturado {facturado} de {tope}." if facturado and tope else None,
+                   f"Es el tope anual de la categoría {cat} de monotributo." if cat else None)
+    return (_chip(f"{pct_txt} del tope", "monotributo_cerca_del_limite") if pct_txt else None,
+            _kv(("Categoría", cat), ("Al avisarte", pct_txt), ("Facturado", facturado), ("Tope", tope)), prosa)
+
+
 def _instante(v) -> datetime.datetime | None:
     """El INSTANTE (fecha + hora) de un ISO, o `None`. Una fecha sola (`2026-09-12`) NO es un instante: dar
     «Hoy, 0:00» sería una hora fabricada, así que se degrada a «sin instante» y la fila se omite."""
@@ -304,6 +321,7 @@ _PRESENTADORES = {
     "trabajo_con_gastos_y_sin_ingreso": (None, _trabajo_con_gastos_y_sin_ingreso),
     "gasto_del_mes_alto":               (None, _gasto_del_mes_alto),
     "conexion_caida":                   (TIPO_DESTINO_CONEXION, _conexion_caida),
+    "monotributo_cerca_del_limite":     (None, _monotributo_cerca_del_limite),
 }
 
 

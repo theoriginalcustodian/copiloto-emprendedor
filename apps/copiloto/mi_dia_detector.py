@@ -18,14 +18,17 @@ propósito en dos mitades:
 from __future__ import annotations
 
 import datetime
+import functools
 import json
 import os
 from decimal import Decimal
 from typing import Callable
 
 from afip_comprobante_store import AfipComprobanteStore
-from afip_credential_store import AfipCredentialStore
+from afip_credential_store import AfipCredentialStore, AfipPerfilStore
 from cobro_store import CobroStore
+from escala_monotributo import ConfigEscala, cargar as cargar_escala, escala_vigente, medidor
+from gasto_store import hoy_del_negocio
 # `DIAS_VENCIDO` es el umbral de "vencido" del hito 6 (`por_cobrar`) — se importa, no se redefine:
 # una sola definición de "factura vieja" en toda la app.
 from inteligencia_queries import DIAS_VENCIDO as DIAS_FACTURA_VENCIDA
@@ -89,6 +92,15 @@ class AvisosEmitidosStore:
                         f"AND silenciado_hasta > now()", (self._cid, regla))
             return {r[0] for r in cur.fetchall()}
 
+    def liberar_ausentes(self, regla: str, vigentes: set[str]) -> int:
+        """Borra el silencio de `regla` para todo `entidad_id` que YA NO esté en `vigentes` (re-arma el aviso:
+        la próxima vez que ese candidato dispare, avisa de nuevo). `vigentes` es la verdad CRUDA del detector,
+        no la filtrada por silencio. Vacío => libera todos los de esa regla del tenant."""
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {_TABLE} WHERE cliente_id=%s AND regla=%s "
+                        f"AND NOT (entidad_id = ANY(%s))", (self._cid, regla, [str(v) for v in vigentes]))
+            return cur.rowcount
+
     def emitir(self, regla: str, entidad_tipo: str, entidad_id: str, *,
                dias_silencio: int | None, datos: dict | None = None) -> None:
         """Registra el aviso y fija su silencio. `dias_silencio=None` → `SILENCIO_PARA_SIEMPRE`.
@@ -123,6 +135,7 @@ REGLA_GASTO_MES_ALTO = "gasto_del_mes_alto"
 REGLA_CAE_POR_VENCER = "cae_por_vencer"
 REGLA_CERTIFICADO_POR_VENCER = "certificado_afip_por_vencer"
 REGLA_CONEXION_CAIDA = "conexion_caida"
+REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE = "monotributo_cerca_del_limite"
 
 
 def _fecha_iso(v) -> str | None:
@@ -293,6 +306,36 @@ def _evaluar_conexion_caida(caidas: list[str], desde: dict[str, str] | None = No
     return out
 
 
+def _evaluar_monotributo_cerca_del_limite(categoria: str | None, doce_meses: Decimal,
+                                          config: ConfigEscala, hoy: datetime.date) -> list[dict]:
+    """SM-N37: el acumulado de 12 meses alcanzó el umbral de aviso (`umbrales.aviso_pct` de la config de la
+    escala) del tope de la categoría del emprendedor.
+
+    Usa `medidor()` -- la MISMA función que dibuja el medidor de la pantalla (SM-N36): una sola definición de
+    «cuánto del tope llevás», no dos que puedan discrepar.
+
+    🔴 **Nunca dispara con `tope == null`.** `medidor` da `None` sin categoría, sin escala vigente HOY o con la
+    escala vencida; en esos casos NO hay porcentaje que comparar, y avisar «estás al X %» contra un tope que la
+    pantalla muestra como desconocido sería inventar el número.
+
+    **Una vez por cruce de umbral.** El `entidad_id` es `categoria:vigencia_desde` y el silencio es «para
+    siempre» (`dias_silencio=None`): mientras el % siga >= umbral la fila existe y no se repite -- tampoco al
+    pasar de amarillo a rojo, que es el MISMO cruce. Cambiar de categoría o entrar una escala nueva es otra
+    situación (otro tope) y avisa de nuevo. Si el % BAJA del umbral (los meses viejos salen de la ventana de
+    12 meses, o se anula una factura) el candidato desaparece y el orquestador RE-ARMA el aviso
+    (`REGLAS_REARMAN_AL_BAJAR`): la próxima vez que vuelva a cruzar, avisa otra vez. Ver el orquestador."""
+    tope = medidor(config, categoria, doce_meses, hoy)
+    if tope is None or Decimal(str(tope["porcentaje"])) < config.umbrales.aviso_pct:
+        return []
+    escala = escala_vigente(config, hoy)
+    return [{
+        "regla": REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE, "entidad_tipo": "monotributo",
+        "entidad_id": f"{categoria}:{escala.vigencia_desde.isoformat()}", "dias_silencio": None,
+        "datos": {"categoria": categoria, "porcentaje": tope["porcentaje"], "tope": tope["valor"],
+                  "facturado": f"{doce_meses:.2f}", "semaforo": tope["semaforo"]},
+    }]
+
+
 def _evaluar_certificado_por_vencer(certificados: list[dict]) -> list[dict]:
     """El certificado de AFIP está por vencer — o ya venció, o no se puede leer.
 
@@ -375,6 +418,21 @@ def _candidatos_certificado_por_vencer(conn_factory: Callable, cliente_id: str,
     return AfipCredentialStore(conn_factory, cliente_id, crypto).vencimientos()
 
 
+@functools.lru_cache(maxsize=1)
+def _escala_configurada() -> ConfigEscala:
+    """La config de la escala se lee del disco UNA vez por proceso (el detector corre por request)."""
+    return cargar_escala()
+
+
+def _candidatos_monotributo(conn_factory: Callable, cliente_id: str) -> dict:
+    """`{categoria, doce_meses}`. Sin categoría no se consulta ningún comprobante (no habría con qué comparar)."""
+    categoria = AfipPerfilStore(conn_factory, cliente_id).categoria_monotributo()
+    if categoria is None:
+        return {"categoria": None, "doce_meses": Decimal("0")}
+    doce = AfipComprobanteStore(conn_factory, cliente_id).total_periodo()["doce_meses"]
+    return {"categoria": categoria, "doce_meses": Decimal(str(doce))}
+
+
 def _candidatos_conexion_caida(conn_factory: Callable, cliente_id: str,
                                composio_conexiones: Callable | None = None) -> list[str]:
     """Servicios caídos de ESTE tenant (`conexiones_salud`, misma definición que `/catalog`). Sin
@@ -396,7 +454,9 @@ def _instantes_de_caida(conn_factory: Callable, cliente_id: str, caidas: list[st
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
 
 def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
-                   composio_conexiones: Callable | None = None) -> dict[str, list[dict]]:
+                   composio_conexiones: Callable | None = None, *,
+                   escala: ConfigEscala | None = None,
+                   hoy_fn: Callable = hoy_del_negocio) -> dict[str, list[dict]]:
     """DETECTAR puro (contrato §1, primer paso) — la verdad CRUDA, sin filtrar por silencio.
 
     🔴 A propósito NO filtra silenciados acá. Un consumidor que necesite "cerrar la tarjeta sola
@@ -411,6 +471,7 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
     """
     margen_por_trabajo = _candidatos_margen_por_trabajo(conn_factory, cliente_id)
     caidas = _candidatos_conexion_caida(conn_factory, cliente_id, composio_conexiones)
+    mono = _candidatos_monotributo(conn_factory, cliente_id)
     return {
         REGLA_PRESUPUESTOS_ENFRIANDOSE:
             _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id)),
@@ -429,6 +490,9 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
                 _candidatos_certificado_por_vencer(conn_factory, cliente_id, crypto)),
         REGLA_CONEXION_CAIDA:
             _evaluar_conexion_caida(caidas, _instantes_de_caida(conn_factory, cliente_id, caidas)),
+        REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE:
+            _evaluar_monotributo_cerca_del_limite(
+                mono["categoria"], mono["doce_meses"], escala or _escala_configurada(), hoy_fn()),
     }
 
 
@@ -445,5 +509,10 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
 # por el HECHO y no por el gesto importa acá más que en ninguna otra: una tarjeta de "certificado por
 # vencer" cerrada a mano sin haber renovado nada dejaría al emprendedor creyendo que lo resolvió.
 REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS,
-                      REGLA_TRABAJO_SIN_INGRESO, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA)
+                      REGLA_TRABAJO_SIN_INGRESO, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA,
+                      REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE)
+# Reglas cuyo silencio se LIBERA cuando el candidato deja de aparecer (SM-N37): «una vez por CRUCE», no «una
+# vez en la vida». Con silencio para siempre y sin esto, un % que baja del umbral y vuelve a subir no avisaría
+# nunca más. `monotributo_cerca_del_limite` SÍ auto-cierra su tarjeta (por el HECHO: el % ya no está cerca).
+REGLAS_REARMAN_AL_BAJAR = (REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE,)
 # `conexion_caida` SÍ: se cierra por el HECHO (la conexión volvió), no por el gesto de tocar la tarjeta.
