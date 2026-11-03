@@ -4964,6 +4964,15 @@
       "id": "panel-pie-scrim",
       "motivo": "SM-N38 (2026-11-03): el MISMO scrim del chat (ScrimDock) detras del campo colapsado de Mi dia, dentro del pie del panel nativo. La web no tiene panel deslizable."
     },
+    "src/shell::panel-pie-scrim-dock": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "panel-pie-scrim-dock",
+      "motivo": "SM-N38 (2026-11-03): contenedor del scrim anclado al borde de pantalla en el panel nativo de Mi dia. La web no tiene panel deslizable."
+    },
     "src/shell::panel-pie-abajo": {
       "en": [
         "apps/mobile/src/shell/PanelDeslizable.tsx"

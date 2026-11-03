@@ -549,6 +549,21 @@ export function PanelDeslizable({
         <View style={StyleSheet.absoluteFill}>{fondo}</View>
       </View>
 
+      {/* SM-N38: el MISMO scrim del chat (`ScrimDock`), ANCLADO AL BORDE DE PANTALLA (`bottom: 0`, como
+          `chat-dock-flotante`) y fuera del panel que se desliza: su extremo opaco (0.9) coincide siempre con el
+          borde de la pantalla y no hay canto que ver. Dentro de la caja acotada del pie (top + height) el borde de
+          abajo caía a mitad de pantalla durante el arrastre y mostraba un salto de color (medido en device).
+          Hereda la opacidad de `panelY` (`estiloPieAbajo`): arriba y a mitad del recorrido no existe. */}
+      {pieAbajo != null && (
+        <Animated.View
+          testID="panel-pie-scrim-dock"
+          pointerEvents="none"
+          style={[styles.scrimAbajo, { height: altoPieAbajo }, estiloPieAbajo]}
+        >
+          <ScrimDock testID="panel-pie-scrim" />
+        </Animated.View>
+      )}
+
       {/* Capa 1 — conversación en cristal, deslizable. */}
       <Animated.View style={[styles.panel, estiloPanel]}>
         <CristalVidrio nivel="conversacion" style={styles.cristal} sinFondo={pieAbajo != null}>
@@ -584,9 +599,6 @@ export function PanelDeslizable({
               pointerEvents={panelAbajo ? 'box-none' : 'none'}
               style={[styles.pieAbajo, { top: espacioSuperior(insets.top) + ALTO_HANDLE, height: altoPieAbajo }, estiloPieAbajo]}
             >
-              {/* SM-N38: el MISMO scrim del chat (`ScrimDock`) detrás del campo; hereda la opacidad del pie (`panelY`),
-                  así que no existe arriba ni a mitad del recorrido. Degradé: sin canto que mostrar. */}
-              <ScrimDock testID="panel-pie-scrim" />
               {pieAbajo}
             </Animated.View>
           )}
@@ -605,6 +617,7 @@ const styles = StyleSheet.create({
   cristal: { flex: 1 },
   superficie: { borderTopLeftRadius: 40, borderTopRightRadius: 40, borderTopWidth: 1 },
   pieAbajo: { position: 'absolute', left: 0, right: 0 },
+  scrimAbajo: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 },
   // SM-N38: sólo la línea — `.grip{padding:6px 0 2px}` del prototipo (6 + 5 + 2 = ALTO_HANDLE).
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', paddingTop: 6 },
   // barra del handle (diseño: 44×5, radio 3).
