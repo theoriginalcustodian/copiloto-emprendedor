@@ -11,13 +11,27 @@ import * as Reanimated from 'react-native-reanimated';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import {
   ALTO_HANDLE,
+  ALTO_ZONA_ARRASTRE,
   espacioSuperior,
+  holguraArrastreArriba,
   MARGEN_TIRADOR,
   opacidadRotuloAbajo,
   PanelDeslizable,
   recorridoDesdeAlto,
   translacionPanel,
 } from './PanelDeslizable';
+
+describe('SM-N38 — zona de arrastre del tirador de abajo', () => {
+  it('el agarre llega a 44 dp (el blanco del tirador de Mi día) sin tocar ALTO_HANDLE', () => {
+    expect(ALTO_HANDLE).toBe(13);
+    expect(ALTO_HANDLE + holguraArrastreArriba(24)).toBe(ALTO_ZONA_ARRASTRE);
+  });
+
+  it('nunca se extiende más allá del spacer del panel (no le roba toques a lo de arriba)', () => {
+    expect(holguraArrastreArriba(0)).toBeLessThanOrEqual(espacioSuperior(0));
+    expect(holguraArrastreArriba(24)).toBeLessThanOrEqual(espacioSuperior(24));
+  });
+});
 
 describe('SM-N23 — margen fijo del tirador de arriba', () => {
   const INSET = 24;
@@ -235,25 +249,15 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
     expect(e.top).toBeGreaterThanOrEqual(ALTO_HANDLE);
   });
 
-  it('SM-N38: el entorno del campo colapsado es el fondo plano del chat y lo mueve la misma señal que el pie', async () => {
-    const espia = jest
-      .spyOn(Reanimated, 'useAnimatedStyle')
-      .mockImplementation(((actualizar: () => object) => actualizar()) as never);
-    try {
-      await render(
-        <ThemeProvider>
-          <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
-            <Text>chat</Text>
-          </PanelDeslizable>
-        </ThemeProvider>,
-      );
-      const plano = StyleSheet.flatten(screen.getByTestId('panel-fondo-plano', { includeHiddenElements: true }).props.style);
-      const pie = StyleSheet.flatten(screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true }).props.style);
-      expect(plano.backgroundColor).toBeTruthy();
-      expect(plano.opacity).toBe(pie.opacity);
-    } finally {
-      espia.mockRestore();
-    }
+  it('SM-N38: detrás del campo colapsado no se monta ninguna capa de fondo propia (el chat no la tiene)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-fondo-plano', { includeHiddenElements: true })).toBeNull();
   });
 
   it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
