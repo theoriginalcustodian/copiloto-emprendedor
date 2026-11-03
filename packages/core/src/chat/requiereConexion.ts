@@ -34,6 +34,13 @@ export type CondicionAlcance = (typeof CONDICIONES_ALCANCE)[number];
 export interface AlcanceItem {
   texto: string;
   condicion: CondicionAlcance;
+  /**
+   * SM-I7 · nombre del glifo de ESTA fila (Phosphor, kebab-case). OPCIONAL a propósito: si fuera requerido, una
+   * capacidad nueva rompería su fila hasta que alguien le eligiera glifo. Ausente = la app deriva uno de
+   * `condicion`. Llega SIN validar contra el set de la app (el core no conoce los glifos): quien lo pinta
+   * resuelve con fallback, nunca confía en que exista.
+   */
+  icono?: string;
 }
 
 const ETIQUETA_CONDICION: Record<CondicionAlcance, string | null> = {
@@ -66,7 +73,9 @@ function itemDeAlcance(v: unknown): AlcanceItem | null {
   if (typeof v !== 'object' || v === null) return null;
   const r = v as Record<string, unknown>;
   const t = texto(r.texto);
-  return t == null ? null : { texto: t, condicion: condicionDe(r.condicion) };
+  if (t == null) return null;
+  const icono = texto(r.icono);
+  return icono == null ? { texto: t, condicion: condicionDe(r.condicion) } : { texto: t, condicion: condicionDe(r.condicion), icono };
 }
 
 /** `pendiente: {texto}` → el texto, o `null` si falta o viene sin texto (opcional por diseño). */

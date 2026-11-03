@@ -73,6 +73,24 @@ describe('leerRequiereConexion — alcance en las dos formas', () => {
     ]);
   });
 
+  it('SM-I7: `icono` opcional por fila — presente se conserva SIN validar; ausente, vacío o no-string no agrega la clave', () => {
+    const items = leerRequiereConexion({
+      kind: 'requiere_conexion',
+      service: 'mercadopago',
+      connect_path: '/x',
+      alcance: [
+        { texto: 'A', condicion: 'ninguna', icono: 'link' },
+        { texto: 'B', condicion: 'ninguna', icono: 'no-existe-este-glifo' },
+        { texto: 'C', condicion: 'ninguna' },
+        { texto: 'D', condicion: 'ninguna', icono: '  ' },
+        { texto: 'E', condicion: 'ninguna', icono: 7 },
+        'F',
+      ],
+    } as never)!.alcance;
+    expect(items.map((i) => i.icono)).toEqual(['link', 'no-existe-este-glifo', undefined, undefined, undefined, undefined]);
+    expect('icono' in items[2]!).toBe(false);
+  });
+
   it('una condicion DESCONOCIDA no tira: cae a «ninguna» (sin insignia), como un tipo ajeno en rutaDeDestino', () => {
     expect(card([{ texto: 'Borrar todo', condicion: 'solo_escritura' }])?.alcance).toEqual([{ texto: 'Borrar todo', condicion: 'ninguna' }]);
     expect(card([{ texto: 'X', condicion: 42 }])?.alcance).toEqual([{ texto: 'X', condicion: 'ninguna' }]);

@@ -1,7 +1,8 @@
 import { ApiError, LEGAL_VERSION, aceptarLegal, descripcionLegal, ofrecerAceptarLegal } from '@copiloto/core';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { useSession } from '../auth';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -51,6 +52,7 @@ export function PantallaCuenta() {
   const tema = useTema();
   const { me, logout } = useSession();
   const [confirmando, setConfirmando] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   // SM-C4: la aceptación registrada en ESTA sesión pisa lo que trajo `/me` (que no se vuelve a pedir
   // hasta el próximo arranque). Es sólo texto + ocultar la oferta: no toca la sesión ni gatea nada.
   const [aceptadaAhora, setAceptadaAhora] = useState<string | null>(null);
@@ -84,7 +86,16 @@ export function PantallaCuenta() {
 
   return (
     <MarcoGlass titulo="Mi cuenta" icono="cuenta" testID="pantalla-cuenta">
-      <View style={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}>
+      {/* 🔴 SM-K5: ScrollView, no View. Con la pantalla entera en una `View flex:1` el contenido que no
+          entraba se CORTABA contra el borde: en una cuenta con «Aceptar la versión vigente» arriba, la
+          confirmación «Sí, cerrar sesión / No» quedaba en el último píxel y no se alcanzaba a fuente
+          normal (device 2-nov: [45,1434][675,1465]; sólo con font_scale 0.8). Acción existente pero
+          inalcanzable: se arregla con scroll —que sobrevive a fuente grande—, no achicando nada. */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.contenedor}
+        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md }}
+      >
         <Row testID="cuenta-identidad">
           <View style={{ gap: 2 }}>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
@@ -231,6 +242,8 @@ export function PantallaCuenta() {
         ) : (
           <View
             testID="cuenta-confirmar-salida"
+            // Al aparecer la confirmación se lleva a la vista: aparece al pie, justo donde antes se cortaba.
+            onLayout={() => scrollRef.current?.scrollToEnd({ animated: true })}
             style={{
               backgroundColor: tema.color.superficieAlta,
               borderRadius: tema.radio.md,
@@ -263,7 +276,7 @@ export function PantallaCuenta() {
             Si cerrás sesión, tus datos quedan guardados: al volver a entrar está todo como lo dejaste.
           </Text>
         )}
-      </View>
+      </ScrollView>
     </MarcoGlass>
   );
 }
