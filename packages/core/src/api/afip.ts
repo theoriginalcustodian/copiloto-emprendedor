@@ -252,6 +252,20 @@ export interface PerfilFiscal {
   puntoVenta: number;
   /** Archivar cada factura en el Drive del emprendedor. **Default `false`** — ver `normalizarPerfil`. */
   guardarEnDrive: boolean;
+  /**
+   * SM-N35 — categoría de monotributo (`A`…`K`). Dato DEL EMPRENDEDOR; el tope lo deriva el backend con la escala
+   * vigente de ARCA (SM-N36). `null`/ausente = no la cargó (o backend viejo): ESTADO VÁLIDO, nunca un error.
+   * `[ASSUMED_PENDING_VERIFY]` hasta que backend persista `categoria_monotributo` en el perfil.
+   */
+  categoriaMonotributo?: string | null;
+}
+
+/** Las categorías vigentes del monotributo (A…K). Es la forma del dato, NO la escala (topes): esa la define ARCA. */
+export const CATEGORIAS_MONOTRIBUTO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'] as const;
+
+/** Pura. Sólo `A`…`K`; cualquier otra cosa es «sin categoría» (nunca se inventa una). */
+export function leerCategoriaMonotributo(v: unknown): string | null {
+  return typeof v === 'string' && (CATEGORIAS_MONOTRIBUTO as readonly string[]).includes(v) ? v : null;
 }
 
 /** Pura. Sólo los tres valores del contrato; cualquier otra cosa es «sin causa» (nunca se inventa una). */
@@ -418,6 +432,8 @@ export interface GuardarPerfilRequest {
   /** ISO `YYYY-MM-DD`. */
   inicioActividades: string;
   puntoVenta: number;
+  /** SM-N35 — `null`/ausente NO se manda: no mandar categoría sigue siendo válido (fail-soft). */
+  categoriaMonotributo?: string | null;
 }
 
 export interface ConectarArcaRequest {
@@ -569,6 +585,7 @@ function normalizarPerfil(raw: {
   inicio_actividades: string;
   punto_venta: number;
   guardar_en_drive?: boolean;
+  categoria_monotributo?: unknown;
 }): PerfilFiscal {
   return {
     cuit: raw.cuit,
@@ -581,6 +598,7 @@ function normalizarPerfil(raw: {
     // `?? false` y no `?? true`: subir los datos fiscales de alguien a una cuenta de Drive no puede
     // pasar por defecto. Si el backend no manda la clave, el ajuste está APAGADO.
     guardarEnDrive: raw.guardar_en_drive ?? false,
+    categoriaMonotributo: leerCategoriaMonotributo(raw.categoria_monotributo),
   };
 }
 
@@ -613,6 +631,10 @@ export async function guardarPerfil(perfil: GuardarPerfilRequest): Promise<ConDi
     ingresos_brutos: perfil.ingresosBrutos,
     inicio_actividades: perfil.inicioActividades,
     punto_venta: perfil.puntoVenta,
+    // SM-N35: sólo si hay categoría válida. Omitirla es el estado por defecto y no rompe a nadie.
+    ...(leerCategoriaMonotributo(perfil.categoriaMonotributo) != null
+      ? { categoria_monotributo: perfil.categoriaMonotributo }
+      : {}),
   };
   const res = await enviarAutenticado({ metodo: 'POST', path: '/afip/perfil', cuerpoJson: cuerpo });
   if (res.ok) return { status: 'ok', ok: true };

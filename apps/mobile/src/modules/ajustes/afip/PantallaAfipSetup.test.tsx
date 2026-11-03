@@ -374,6 +374,55 @@ describe('PantallaAfipSetup', () => {
     ]);
   });
 
+  // -----------------------------------------------------------------------------------------
+  // SM-N35 — categoría de monotributo.
+  // -----------------------------------------------------------------------------------------
+  it('SM-N35: la categoría se elige SOLO con monotributo, y viaja en el guardado', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-categoria-monotributo')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('afip-perfil-categoria-monotributo-opcion-A'));
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0]).toMatchObject({ condicionIva: 'monotributo', categoriaMonotributo: 'A' });
+  });
+
+  it('SM-N35: NO elegir categoría sigue siendo válido (fail-soft): se guarda con null, sin bloquear', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-categoria-monotributo')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].categoriaMonotributo).toBeNull();
+  });
+
+  it('SM-N35: una condición que no es monotributo no muestra el campo ni manda categoría', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({
+      status: 'ok',
+      perfil: perfilMock({ condicionIva: 'exento', categoriaMonotributo: 'C' }),
+    });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-condicion-iva')).toBeTruthy());
+    expect(screen.queryByTestId('afip-perfil-categoria-monotributo')).toBeNull();
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].categoriaMonotributo).toBeNull();
+  });
+
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
     await montar();
 
