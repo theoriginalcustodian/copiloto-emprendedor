@@ -115,7 +115,7 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     expect(router.push).toHaveBeenCalledWith('/clientes');
   });
 
-  it('🔴 la app aterriza en Mi día, con el avatar como puerta a Ajustes (Ola 4)', async () => {
+  it('🔴 la app aterriza en Mi día; SM-N28: Mi día NO pinta el avatar (vive sólo en el escritorio)', async () => {
     // El cambio de aterrizaje: antes esta pantalla montaba el escritorio de fondo y la conversación
     // adelante, con Mi día como una ruta más del grid — o sea que a la base del sistema se llegaba
     // entrando a una función. Ahora la base ES Mi día y el escritorio cuelga del borde de arriba.
@@ -125,8 +125,10 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     expect(screen.getByTestId('panel-funciones-pestana')).toBeTruthy();
     expect(screen.getByTestId('midia-wordmark')).toBeTruthy();
 
-    await fireEvent.press(screen.getByTestId('avatar-cuenta'));
-    expect(router.push).toHaveBeenCalledWith('/ajustes');
+    // SM-N28: decisión del operador (2026-11-02). El acceso a Ajustes quedó SÓLO en la pantalla de funciones;
+    // el test viejo afirmaba el avatar en Mi día y habría sostenido el síntoma que se retiró.
+    expect(screen.queryByTestId('avatar-cuenta')).toBeNull();
+    expect(screen.getByTestId('escritorio-avatar')).toBeTruthy();
   });
 
   it('doble toque rápido sobre el MISMO tile abre un solo glass', async () => {

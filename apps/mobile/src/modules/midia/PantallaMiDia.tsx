@@ -20,7 +20,6 @@ import {
   type Portada,
 } from '@copiloto/core';
 
-import { AvatarCuenta } from './AvatarCuenta';
 import type { RutaDestino } from './destinoTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { TarjetaMiDiaRow } from './TarjetaMiDiaRow';
@@ -48,11 +47,7 @@ import { useTema } from '../../theme/ThemeProvider';
  */
 
 export interface PantallaMiDiaProps {
-  /** Tocar el avatar, la única puerta a Ajustes. La navegación la cablea el shell. */
-  onAjustes?: () => void;
-  /** La inicial del negocio para el avatar. La resuelve el shell: la comparten las dos capas. */
-  inicialCuenta?: string;
-  /** Avisa si el catálogo trae un servicio caído: el avatar del escritorio lleva el mismo punto. */
+  /** Avisa si el catálogo trae un servicio caído: el avatar del escritorio (el único que queda, SM-N28) lleva el punto. */
   onConexionCaida?: (caida: boolean) => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
   onAgenda?: () => void;
@@ -141,8 +136,6 @@ function Seccion({
 }
 
 export function PantallaMiDia({
-  onAjustes,
-  inicialCuenta,
   onConexionCaida,
   onAgenda,
   onVerTablero,
@@ -251,10 +244,6 @@ export function PantallaMiDia({
       {/* 🔴 UN solo scroll para TODA la pantalla (DEVICE15 `tablero`, «viewport útil ≈120 dp»): lo único fijo
           arriba es el asidero del panel, que es el control del gesto y no un dato. */}
       <ScrollFormulario style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
-        <View style={styles.encabezadoPortada}>
-          <AvatarCuenta inicial={inicialCuenta} avisa={conexionCaida} onPress={onAjustes} />
-        </View>
-
         {/* La tarjeta de cabecera (`.stack`, `index.html:102`): blanca, detrás del bloque negro, y asoma con
             el wordmark y la fecha, así los números quedan fechados dentro del objeto que los muestra. La
             portada no se dibuja si no cargó —Mi día sigue sirviendo sin ella—, y la cabecera sí. */}
@@ -440,10 +429,9 @@ function PanelCalendario({
 }
 
 const styles = StyleSheet.create({
-  // La pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para que el avatar quede
+  // La pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para que el contenido quede
   // debajo del reloj sin pedirle safe-area a un componente que no la conoce.
   portadaRaiz: { flex: 1, paddingTop: 58 },
-  encabezadoPortada: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8 },
   raiz: { flex: 1 },
   raizContenido: { flexGrow: 1, paddingBottom: 16 },
   // `.stack`: la cabecera mide lo que asoma (52) más un tramo que queda tapado por el bloque negro, para que
