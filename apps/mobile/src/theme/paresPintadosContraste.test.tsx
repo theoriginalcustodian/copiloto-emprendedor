@@ -839,6 +839,10 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `#f8e0d9` ni a `#de7250`: los dos renglones de deuda que existían para ese par (éste y el de
     // abajo, `no-texto`) se dan de baja -- ninguno de los dos vuelve a aparecer en el barrido.
     '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca (BotonVoz salió de este par en DEC11FILL Pieza A, 2026-09-30).' },
+    // SM-N30 (2026-11-03): el lockup del login es el isotipo DESNUDO (trazos acento sobre el fondo de pantalla),
+    // como el mapa (prototipo/index.html:2571). Antes los trazos eran blancos sobre el badge sólido (par de arriba).
+    // Es el LOGOTIPO de la marca -- exento por norma; 2,86:1 medido en CI sobre #f7f3ec.
+    '#de7250→#f7f3ec': { min: 2.85, clase: 'logotipo', motivo: 'isotipo Odobi desnudo (trazos acento) sobre el fondo de pantalla -- lockup del login, SM-N30; es el logotipo, exento por norma.' },
     '#f8e0d9→#ebe7e0': { min: 1.02, clase: 'no-texto', motivo: 'ícono de enviar (Composer, chat-enviar), trazo SVG -- objeto gráfico, casi invisible contra su propio fondo (parece estado inactivo/vacío, sin texto en el composer al montar). Pre-existente, ajeno a DEC-11, no se arregla acá.' },
   },
   oscuro: {
@@ -922,7 +926,13 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
 });
 
 describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs logotipo exento)', () => {
-  it('control anti-aflojamiento: el ÚNICO par cuyo veredicto cambia frente al umbral uniforme de 4.5 es #ffffff→#de7250', () => {
+  it('control anti-aflojamiento: los ÚNICOS DOS pares cuyo veredicto cambia frente al umbral uniforme de 4.5 son #ffffff→#de7250 y #de7250→#f7f3ec', () => {
+    // SM-N30 (2026-11-03, aceptado por planificación, decisión táctica): pasó de 1 a 2 pares, ENUMERADOS A MANO. Un tercero sigue fallando.
+    //  1. #ffffff→#de7250 -- isotipo Odobi, trazo blanco sobre la placa de acento (Marca tono acento/superficie).
+    //  2. #de7250→#f7f3ec -- el REVERSO del mismo lockup: isotipo desnudo (trazo acento sobre el fondo de pantalla, PantallaLogin).
+    //     Motivo: WCAG 1.4.3 exime logotipos y nombres de marca; el prototipo lo dibuja así (index.html:2571, stroke terracota)
+    //     y la placa plena se eliminó (mockups/01-onboarding/index.html:187). Oscurecer el trazo inventaría un color del diseño.
+    // No es una clase nueva ni se generaliza: es el otro orden del mismo color.
     // "Veredicto" = ¿necesita registrarse como deuda (rojo) o no (verde)? -- independiente de si HOY
     // ya estaba o no en `DEUDA_CONOCIDA` (eso es detalle de mantenimiento, no del criterio WCAG).
     // DoD Pieza B, DEC-11 §3: si aparece un SEGUNDO par en esta lista, el cambio afloja el gate en vez
@@ -938,7 +948,7 @@ describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs log
         if (veredictoViejo !== veredictoNuevo) cambios.push(clavePar(par));
       }
     }
-    expect(dedup(cambios)).toEqual(['#ffffff→#de7250']);
+    expect(dedup(cambios).sort()).toEqual(['#de7250→#f7f3ec', '#ffffff→#de7250']);
   });
 
   it('control positivo: declarar clase "no-texto" en un par de TEXTO real NO lo exceptúa -- el origen estructural manda', () => {
