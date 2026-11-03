@@ -75,7 +75,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I2** | `sin-issue` | ✅ TERMINADO | 68632d8ee88d5cb87e2ed7787f2b8e67fae55667 (#1380) dock extraido en chat/DockEntrada.tsx y voz/DockFuncion.tsx; boton g… |
 | **SM-I3** | `sin-issue` | ✅ TERMINADO | b64856dc (#1401) el codigo; el DoD se cierra con la medicion de device del 2026-11-03 (frontend1, bloque 11, cuenta c… |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa y NO es de frontend1: el punto (a), el bloque en PIEL OSCURA. Dueno frontend2, es de CODIGO y no necesi… |
-| **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | La MITAD de Mi dia. El 2026-11-03 frontend1 capturo la inicial E derivada del mail en el ESCRITORIO (b1-escritorio-14… |
+| **SM-I5** | `sin-issue` | ✅ TERMINADO | Codigo: dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404) mas 2e3eb8a616793bf59726f67c908568069485becd (#1574, captura… |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa y es de CONTRATO con backend, no de app ni de captura. La captura YA NO FALTA y la premisa que trababa … |
 | **SM-J1** | `sin-issue` | ✅ TERMINADO | CODIGO del dock mergeado en 80c5ef21 (#1456): campo + mic en Facturacion e Inteligencia, el texto siembra el chat y l… |
@@ -565,9 +565,8 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I5 · `sin-issue` — El avatar no dibuja la inicial
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** La MITAD de Mi dia. El 2026-11-03 frontend1 capturo la inicial E derivada del mail en el ESCRITORIO (b1-escritorio-1416, 13:30), pero el DoD pide la inicial del nombre comercial en Mi dia Y en el escritorio, con el usuario rotulado: son dos superficies y se midio una. Entra en la proxima pasada sin ningun bloqueo -- es la misma cuenta y la misma piel, solo otra pantalla.
-- **Cierre:** dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404). Inicial del nombre comercial con caida al mail y glifo de cuenta si no hay ninguno; useInicialCuenta.test.tsx con dos adversariales entre tenants. mobile.sh 1543 verdes en el worktree y CI 6/6.
+- **Estado:** TERMINADO
+- **Cierre:** Codigo: dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404) mas 2e3eb8a616793bf59726f67c908568069485becd (#1574, capturas), ancestros verificados de origin/main. DoD REFORMULADO el 2026-11-03: el Falta anterior pedia la inicial en Mi dia Y en el escritorio, pero SM-N28 (4376027d, #1435) RETIRO el avatar de Mi dia por decision del operador del 2026-11-02 -- PantallaPrincipal.tsx:119 declara que el avatar vive SOLO en el escritorio de funciones. Esa mitad se retira del DoD: su ausencia es el comportamiento correcto, no trabajo pendiente. Lo que SI faltaba era otra cosa: la captura existente mostraba la E derivada del MAIL, compatible tanto con 'la derivacion del nombre funciona y esta cuenta no tiene nombre' como con 'nunca se usa el nombre'. DEVICE 2026-11-03 17:35 por frontend1 (tenedora) sobre bundle 98445513, tenant de prueba e2e-vacio: el escritorio dibuja la K del nombre comercial 'Kiosco Vacio' mientras el mail daria E -- las dos iniciales DIFIEREN, asi que la captura DISCRIMINA y descarta que siempre caiga al mail. Cero escrituras: el nombre ya estaba guardado. El tercer camino por test, no por device: AvatarCuenta.test 'sin inicial dibuja el glifo' mas inicialDeCuenta('', null/undefined) -> ''. Telefono SOLTADO (Metro parado, reverse quitado).
 - **Dueño:** frontend1
 - **Medido:** `apps/mobile/src/modules/midia/AvatarCuenta.tsx` (en web vive en `shell/`, otra
   carpeta) no muestra la inicial que el mapa pide («M»).
