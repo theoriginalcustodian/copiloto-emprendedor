@@ -117,6 +117,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
 | **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1521,3 +1522,43 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   plata. Ahí el residual queda **aceptado y medido** (1/8), no pendiente: nadie vuelve a iterar el
   prompt buscando el 0, porque la sonda ya mostró que ahí no se llega.
 - **FUERA DEL SPRINT** (`DEC-18`): sale del uso, no del mapa. El 54 no se mueve.
+
+### SM-N22 · `sin-issue` — DENTRO DEL SPRINT: el tirador para subir la conversación queda DEBAJO de la entrada de texto, y el mapa lo pone ARRIBA
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02, mirando el mapa contra la app.
+- **Medido (código, no impresión):** el grab-handle vive **adentro** del panel de la conversación y
+  **arriba de su contenido** — `apps/mobile/src/shell/PanelDeslizable.tsx:515` (`zonaHandle`,
+  `testID="panel-handle"`, barra 44×5 en `:560`), montado antes del contenido del panel. La entrada
+  de texto es `DockEntrada` → `Composer` (`apps/mobile/src/modules/chat/DockEntrada.tsx:151`), que
+  vive **dentro de ese mismo contenido**. Con el panel abajo, lo único que queda en pantalla es esa
+  tira (`ALTO_HANDLE = 56`, `:48`), y por eso el operador la ve **debajo** del campo.
+- **El mapa:** `mapa-pantallas/index.html`, vista de Mi día — la barrita de arrastre aparece
+  **inmediatamente encima** de «Escribí, o hablá…», no debajo.
+- **Por qué NO es cosmético, y por qué entra al sprint en vez de quedar FUERA:** el tirador es el
+  **único** control para traer la conversación de vuelta. Si queda del lado equivocado del campo de
+  texto, el gesto natural (subir desde el borde inferior) cae sobre el teclado o sobre el campo, no
+  sobre la zona agarrable — y el control más usado de la app depende de acertarle. Además es
+  **divergencia directa contra el mapa**, que es el criterio declarado del sprint, y **no figura en
+  las `ENMIENDA FUNDADA`**: nadie decidió cambiarlo, así que es defecto.
+- **NO se arregla moviendo la barrita de lugar.** El orden visual sale de la arquitectura del panel:
+  el handle es el borde **superior** de una capa que se desliza, y el composer viaja **adentro** de
+  esa capa. Mover el `View` sin entender eso rompe el gesto o lo deja agarrando la capa equivocada.
+  **Leer la skill `swmansion-rn-gestures` antes de tocarlo** (regla del repo) y `documed-front`, que
+  ya resolvió esta composición.
+- **DoD:**
+  1. **Captura del estado ACTUAL** en device, 390 px, con el panel abajo — el «antes», que hoy no
+     existe en ningún lado y sin él no se puede acreditar que cambió nada.
+  2. La zona agarrable **por encima** de la entrada de texto, como el mapa, con su captura «después».
+  3. El gesto **sigue funcionando**: subir y bajar la conversación ejercitado con
+     `adb input motionevent` DOWN → MOVE → UP (nunca `input tap`: el toque sin desplazamiento no
+     activa un Pan y da un «no responde» falso).
+  4. **Control de que el instrumento ve:** en la misma corrida, un gesto que SÍ debería responder,
+     para distinguir «no se mueve» de «el ADB no está ejercitando nada».
+  5. El teclado abierto no tapa la zona agarrable: captura con el campo enfocado.
+- **Tenencia:** cualquiera de las dos cuentas sirve — es estructura, no datos. No necesita la
+  ventana del operador ni el usuario canónico.
+- **DENTRO del sprint:** es divergencia contra el mapa reportada por el operador. El denominador se
+  mueve (es el caso que `DEC-18` contempla: lo que sale del **mapa**, no del uso).
+
