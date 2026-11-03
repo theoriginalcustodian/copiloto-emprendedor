@@ -31,12 +31,12 @@ export default function PantallaPresupuestosRoute() {
 
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/presupuestos');
     }, []),
   );
 
   function alFacturar(facturaId: string) {
-    empujarUnaVez({ pathname: '/facturacion', params: { facturaId } });
+    empujarUnaVez({ pathname: '/facturacion', params: { facturaId } }, '/presupuestos');
   }
 
   return (

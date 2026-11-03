@@ -42,12 +42,12 @@ const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
 export default function PantallaAjustesRoute() {
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/ajustes');
     }, []),
   );
 
   function alAjuste(key: AjusteKey) {
-    empujarUnaVez(RUTA_POR_AJUSTE[key]);
+    empujarUnaVez(RUTA_POR_AJUSTE[key], '/ajustes');
   }
 
   return <PantallaAjustes onAjuste={alAjuste} />;

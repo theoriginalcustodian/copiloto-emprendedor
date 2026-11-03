@@ -18,20 +18,48 @@ import { router } from 'expo-router';
  * tener el foco —o sea cuando el glass se cerró y volvimos a ella—, ni antes ni después.
  *
  * **Cómo se compone.** `puertaAbierta` es un flag de módulo, y funciona con un solo flag global porque
- * sólo una pantalla tiene foco a la vez (el modal de arriba). Cada pantalla LANZADORA (el escritorio y
- * Ajustes) llama `reabrirNavegacion()` desde su `useFocusEffect`: al ganar foco reabre. Al lanzar, este
- * helper cierra de forma SÍNCRONA, así que un segundo tap disparado un instante después ya ve la puerta
- * cerrada. Las pantallas hoja (Skins, Cuenta, …) no lanzan nada y no participan.
+ * sólo una pantalla tiene foco a la vez (el modal de arriba). Cada pantalla LANZADORA llama
+ * `reabrirNavegacion()` desde su `useFocusEffect`: al ganar foco reabre. Al lanzar, este helper cierra
+ * de forma SÍNCRONA, así que un segundo tap disparado un instante después ya ve la puerta cerrada.
+ * Las pantallas hoja (Skins, Cuenta, …) no lanzan nada y no participan.
+ *
+ * 🔴 **Corrección (SM-N27, 2026-11-02): "ganar foco" NO es "volver" cuando el destino es TAMBIÉN
+ * lanzador.** El párrafo anterior afirmaba "ni antes ni después", y es cierto sólo para un destino
+ * HOJA. Ajustes, Mi día, Presupuestos y Facturación son destino Y lanzadora: ganan foco a la IDA, o
+ * sea que reabrían la puerta justo al llegar, y un segundo toque —entregado por el sistema durante
+ * la transición— apilaba una segunda copia (el operador: "se abre dos veces la misma pantalla").
+ * Medido: `app/ajustes.tsx` reabría en su `useFocusEffect` sin distinguir llegada de regreso.
+ *
+ * **Cómo se distingue (sin tiempo).** La puerta recuerda QUÉ ruta la cerró (`cerradaPor`).
+ *  - `reabrirNavegacion(rutaPropia)`: si `rutaPropia === cerradaPor`, es la LLEGADA del destino que
+ *    cerró la puerta → no reabre. Cualquier otra pantalla que gane foco (el escritorio, o Ajustes al
+ *    volver de Cuenta, cuando `cerradaPor` ya es '/ajustes-cuenta') es un REGRESO → reabre.
+ *    Sin argumento reabre siempre (escape deliberado: un toque del usuario dentro de la pantalla).
+ *  - `empujarUnaVez(destino, desde)`: con la puerta cerrada pasa sólo si `desde === cerradaPor`, es
+ *    decir, si lo lanza el destino que acaba de llegar (Ajustes abriendo Cuenta). El doble toque sobre
+ *    un mismo tile lo bloquea igual, porque tras el primer lanzamiento `cerradaPor` ya es el destino
+ *    nuevo y `desde` no coincide.
+ * Un lock por TIEMPO sigue descartado (ver arriba): esto es estado de navegación, no un reloj.
  *
  * Esto deja pasar la navegación legítima —abrir Ajustes, volver, abrir Historias— porque entre una y
  * otra el escritorio recupera el foco y reabre; y bloquea la ilegítima —dos glass a la vez— porque
  * entre los dos taps el foco todavía no volvió.
  */
 let puertaAbierta = true;
+/** Ruta (sin query) que cerró la puerta; `null` con la puerta abierta. */
+let cerradaPor: string | null = null;
 
-/** La llama el `useFocusEffect` de cada pantalla lanzadora al ganar foco: reabre la puerta. */
-export function reabrirNavegacion(): void {
+const sinQuery = (ruta: string): string => ruta.split('?')[0] ?? ruta;
+
+/**
+ * La llama el `useFocusEffect` de cada pantalla lanzadora al ganar foco: reabre la puerta.
+ * `rutaPropia`: la ruta de la pantalla que llama, si es destino Y lanzadora. Si es justo la que
+ * cerró la puerta, es su llegada y no se reabre (ver el docstring del módulo).
+ */
+export function reabrirNavegacion(rutaPropia?: string): void {
+  if (rutaPropia !== undefined && !puertaAbierta && sinQuery(rutaPropia) === cerradaPor) return;
   puertaAbierta = true;
+  cerradaPor = null;
 }
 
 /**
@@ -48,8 +76,13 @@ export interface DestinoConParams {
   params: Record<string, string>;
 }
 
-export function empujarUnaVez(destino: string | DestinoConParams): void {
-  if (!puertaAbierta) return;
+/**
+ * `desde`: la ruta de la pantalla que lanza, cuando es destino Y lanzadora (Ajustes, Mi día…). Con la
+ * puerta cerrada, sólo pasa si `desde` es el destino que la cerró.
+ */
+export function empujarUnaVez(destino: string | DestinoConParams, desde?: string): void {
+  if (!puertaAbierta && (desde === undefined || sinQuery(desde) !== cerradaPor)) return;
   puertaAbierta = false;
+  cerradaPor = sinQuery(typeof destino === 'string' ? destino : destino.pathname);
   router.push(destino as never);
 }

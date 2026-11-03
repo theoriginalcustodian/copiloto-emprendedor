@@ -14,14 +14,14 @@ import { empujarUnaVez, reabrirNavegacion } from '../src/navegacion/empujarUnaVe
 export default function PantallaTuDiaRoute() {
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/midia');
     }, []),
   );
 
   return (
     <PantallaTuDia
-      onAjustes={() => empujarUnaVez('/ajustes')}
-      onDestino={(ruta) => empujarUnaVez(hrefDeRuta(ruta))}
+      onAjustes={() => empujarUnaVez('/ajustes', '/midia')}
+      onDestino={(ruta) => empujarUnaVez(hrefDeRuta(ruta), '/midia')}
       onAvisoAlChat={(aviso) => {
         dejarAvisoParaElChat(aviso);
         router.back();
