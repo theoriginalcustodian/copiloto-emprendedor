@@ -665,7 +665,13 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 
 - **Estado:** DOD-PARCIAL
 - **Falta:** DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 1 passed, con control positivo del tenant B. Falta DoD(2) captura de device con cliente CON CUIT, solo en la canonica 4f3ecb78: frontend2 da de alta por la app un cliente con CUIT 20111111112 (el de sus 4 facturas) y la evidencia es el salto comprobantes_cantidad 0 a 4 en GET /clientes. No se crea por SQL. Decidido por planificacion 2026-11-02, 19af5a42 descartado.
-- **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
+- **Dueño:** frontend2 (la captura con dato real) — **corregido 2026-11-03:** este campo decía
+  «backend (el adversarial que falta)» y lo contradecía el `Falta:` de su propia ficha, que
+  acredita el adversarial HECHO (`c3867d10`, #1325, 1 passed en el VPS con control positivo del
+  tenant B). Un rótulo de dueño que sobrevive al trabajo que lo justificaba hace creer a una
+  sesión que tiene cola cuando no la tiene, y a mí despachar contra el dueño equivocado: lo
+  medí al barrer las 7 fichas con nombre de backend y encontrar que el residual de todas es
+  ajeno. El residual de esta ficha es UNO y es de frontend2.
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
   (string decimal, **nunca** null) y `facturas_atribuibles` (bool) — `cliente_store.py:310-320`,

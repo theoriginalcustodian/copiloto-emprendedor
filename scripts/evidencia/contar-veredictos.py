@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Cuenta las mediciones del criterio 3 en los dos lotes, POR SUJETO y con la unidad declarada.
 
 Por qué existe: el 2026-09-28 circularon 12, 14, 30, 31 y 32 para el mismo frente, y todas eran
