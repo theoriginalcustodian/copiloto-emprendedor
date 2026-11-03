@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
-| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierre… |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03 con scripts/mapa-51-estado.py sobre 406ab8fc (#1481, ancestro de origin/main): DIFERENTE-B 6 -> … |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -128,7 +128,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
-| **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
 | **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
 | **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
@@ -887,8 +887,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierren las fichas que las cubren (22 entradas con ficha DOD-PARCIAL, 5 con PENDIENTE). onb-cumplida, vacio-visto y vacio necesitan datos y dias de uso reales: si no se pueden producir quedan DECLARADAS con su motivo, no contadas como CONFORME. Dueno: planificacion.
-- **Cierre:** El INSTRUMENTO que el DoD exige ya esta en main: scripts/mapa-51-estado.py (4f18d494 / #1448, ancestro de origin/main) cuenta las 51 entradas con collections.Counter y cruza cada divergencia con la ficha que la cubre. Corrida del 2026-11-03: 7 CONFORME, 31 DIFERENTE-A, 6 DIFERENTE-B, 7 NO-VERIFICABLE (13 de 51 en condicion), y 0 de las 38 no-conformes quedan sin ficha — las 2 que faltaban se abrieron como SM-N31.
+- **Dueno-activo:** planificacion
+- **Falta:** RE-MEDIDO 2026-11-03 con scripts/mapa-51-estado.py sobre 406ab8fc (#1481, ancestro de origin/main): DIFERENTE-B 6 -> 9 y EN CONDICION 13 -> 16 de 51. Las cuatro entradas del cruce de frontend2 quedaron: soporte(34) B, feedback(35) B, apar(50) B, y apps(47) SIGUE A -- en apps se retiraron 3 puntos VENCIDOS del corpus (No puede leerlos en catalog.py:73, estado como etiqueta en PantallaApps.tsx:317-334, seis apps) y el residual real es otro: las descripciones de catalog.py:60-106 difieren del prototipo (p.ej. Drive sin «No se usa por chat», index.html:2344). Faltan 35 entradas. De lo medido hoy, CUATRO quedan NO-VERIFICABLE-SIN-APP y van a la pasada de device de frontend1: dock como «boton de voz grande» (soporte), campo dentro de tarjeta blanca (feedback), render de pildora y logo en la fila (apps), proporcion de los 4 chips del mosaico (apar). Y DOS son decision del OPERADOR, no de una sesion: el texto de las descripciones de catalog.py (es de backend y no hay decision escrita) y el chevron de «Como el telefono» reemplazado por «✓ Activo» (PantallaSkins.tsx:125-132) -- si el operador quiere el chevron, apar vuelve a A. Escaladas las dos. onb-cumplida, vacio-visto y vacio siguen necesitando dias de uso reales.
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
   NO-VERIFICABLE.
@@ -2456,7 +2456,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N33 · `sin-issue` — El ranking de mejores clientes agrupa los cobros por NOMBRE, no por identificador
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y deploy VERDE con durabilidad. El defecto era que _mejores_clientes agrupaba por coalesce(cliente_nombre, receptor_nombre), que produce DOS errores opuestos a la vez: dos grafias del mismo cliente se parten en dos filas, y dos homonimos distintos se fusionan en una. Un ranking no da error al equivocarse: da un orden creible, y el emprendedor decide sobre el. Los 4 tests nuevos cubren las dos direcciones mas los bordes: (a) 2 grafias -> 1 fila, (b) 2 homonimos con CUIT distinto -> 2 filas, (c) sin identificador -> nombre normalizado con comprobantes None (el campo de #1459, que no resolvia el agrupamiento pero si evita afirmar un total que no se puede atribuir), (d) adversarial mismo CUIT en tenant A y B. El (d) es el que importa para la regla 7: agrupar por un identificador compartible abre la pregunta de si el agrupamiento cruza tenants, y sin ese test el aislamiento quedaria especificado y no ejercitado. Corrida EN EL VPS: 71 passed. cierre_ con FICHA/SHA/DOD en coordinacion/cerrado/2026-11-03/.
 - **Dueño:** backend
 - **De dónde sale:** hallazgo de backend al cerrar `SM-N32` (#1459 → `5928f837`). **No es
   presentación: es el dato.** Nace con id propio porque un hallazgo que sólo vive en un mensaje no
