@@ -1,8 +1,10 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) — describe/it/expect son globales, no se importan de vitest.
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { SKINS } from '../../theme/tokens';
 import {
   agruparEnFilas,
   EscritorioFunciones,
@@ -157,5 +159,24 @@ describe('EscritorioFunciones — el escritorio del copiloto', () => {
     await envolver();
     const prohibidas = /paciente|clínic|consulta médica/i;
     TILES.forEach((t) => expect(t.label).not.toMatch(prohibidas));
+  });
+});
+
+describe('EscritorioFunciones — casillas en piel oscura (SM-I4)', () => {
+  const fondoDe = (key: string) => {
+    const estilo = StyleSheet.flatten(screen.getByTestId(`tile-${key}`).props.style);
+    return estilo.backgroundColor;
+  };
+
+  it('🔴 la casilla usa el token de CARD (`superficie`), no el del campo aplanado: no se funde con el lienzo', async () => {
+    await render(
+      <ThemeProvider skinForzado="oscuro">
+        <EscritorioFunciones />
+      </ThemeProvider>,
+    );
+    expect(fondoDe('gastos')).toBe(SKINS.oscuro.color.superficie);
+    // Control negativo: el token anterior es otro valor, o sea que el test distingue el antes del después.
+    expect(SKINS.oscuro.color.superficieAlta).not.toBe(SKINS.oscuro.color.superficie);
+    expect(fondoDe('gastos')).not.toBe(SKINS.oscuro.color.superficieAlta);
   });
 });
