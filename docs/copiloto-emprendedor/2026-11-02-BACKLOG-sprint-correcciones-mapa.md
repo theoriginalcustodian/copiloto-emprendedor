@@ -93,7 +93,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ✅ TERMINADO | 5dfe93a1 (#1484, ancestro de origin/main): medido en codigo, NO es una mascara -- CampoFecha son TRES TextInput con a… |
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
-| **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-L2** | `sin-issue` | 🟧 DOD-PARCIAL | Las TRES entradas que exigen VOZ HUMANA REAL -- vozchat, fact-voz y pres-voz -- y es el unico punto de todo el sprint… |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
 | **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | El conteo final de las 51 con collections.Counter por script, que se corre cuando la pasada de device en lote cierre … |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
@@ -889,7 +889,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L2 · `sin-issue` — Cuatro entradas exigen voz real y ninguna se midió
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Las TRES entradas que exigen VOZ HUMANA REAL -- vozchat, fact-voz y pres-voz -- y es el unico punto de todo el sprint cuyo disparador NO es una sesion de agente: hay que HABLARLE al telefono. Ningun agente puede producirlo, y por eso no se asigna ni se espera de frontend1 ni de frontend2: es del OPERADOR, con el device, dictando. Escrito asi a proposito para que no quede como una espera sin dueño: la unica forma de que avance es que el operador lo haga, y la unica forma de que no se pierda es que figure como su renglon. Lo que SI esta listo para esa corrida: el dock unico ya existe (SM-I2 TERMINADO, 68632d8e) y el cancelar deslizando ya quedo acreditado en su lugar nuevo con motionevent (SM-N31, 2026-11-03), asi que el operador no tiene que verificar nada de eso -- solo dictar en las tres entradas y que quede la captura de cada una. ⚠️ Y una restriccion del metodo que ya cobro este sprint dos veces: si alguien intenta sustituir la voz real por adb, lo que mide es el instrumento. Para esto no hay sustituto.
+- **Cierre:** El punto del CANCELAR DESLIZANDO queda resuelto, y no por una corrida nueva: lo contesto la evidencia de OTRA ficha que nadie habia conectado. SM-I2 lo dejo [UNVERIFIED] con una pregunta explicita -- adb no lo reprodujo en dos corridas y NO SE SABIA si era limite del instrumento o defecto de la app. El 2026-11-03, midiendo SM-N31 en Gastos, frontend1 ejercito cancelar deslizando Y descartar con el tacho usando adb shell input motionevent DOWN/MOVE: los dos funcionan y no se envio nada. 🎯 O sea que la pregunta tenia respuesta y la respuesta era LIMITE DEL INSTRUMENTO: las dos corridas que fallaron usaban input tap, que no ejercita un Pan de RNGH. El defecto nunca estuvo en la app. Y lo que vale registrar es como se cerro: NO con device nuevo, sino reconciliando dos fichas -- un [UNVERIFIED] que plantea una disyuntiva (instrumento o defecto) puede quedar contestado por el cierre de otra ficha y no enterarse nadie, porque el que midio estaba contestando SU pregunta, no la de este registro. Antes de pedir una corrida hay que buscar si la respuesta ya existe en otro cierre. Dependencia SATISFECHA: SM-I2 esta TERMINADO (68632d8e, #1380), asi que el Depende de esta ficha ya no la frena.
 - **Dueño:** frontend2 + operador
 - **Medido:** `vozchat`, `fact-voz` y `pres-voz` necesitan dictado real; el cancelar deslizando quedó
   `[UNVERIFIED]` porque `adb` no lo reprodujo en dos corridas.
