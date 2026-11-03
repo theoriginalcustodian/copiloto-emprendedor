@@ -56,6 +56,15 @@ describe('PantallaLogin', () => {
     process.env.EXPO_PUBLIC_API_BASE = 'https://copilotoemprendedor.duckdns.org';
   });
 
+  it('SM-N30: el lockup del login es el símbolo DESNUDO (sin badge) de 38, como `.ig-marca` del mapa', async () => {
+    await montar();
+    const caja = StyleSheet.flatten(screen.getByTestId('marca').props.style);
+    // Sin fondo de badge: con `tinta` (avatar redondo de Soporte) esto es el color `bloque`.
+    expect(caja.backgroundColor).toBe('transparent');
+    // `size` es el del signo (mapa: svg width=38), no un tile de 38 con un signo de 16 adentro.
+    expect(screen.getByTestId('marca-isotipo').props.width).toBe(38);
+  });
+
   it('botón "Entrar con Google" visible, no interfiere con el camino email/password', async () => {
     await montar();
     expect(screen.getByTestId('login-google')).toBeTruthy();
