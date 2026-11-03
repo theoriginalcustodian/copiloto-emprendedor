@@ -53,7 +53,7 @@ export interface PantallaMiDiaProps {
   onAgenda?: () => void;
   /** SM-I1: abre Tu día. La cablea el shell (`empujarUnaVez`). */
   onVerTablero?: () => void;
-  /** SM-I2: el dock, fijo al pie y fuera del scroll. Lo arma el shell, que es dueño del chat al que va. */
+  /** SM-I2: la reserva del dock. SM-N38: va DENTRO del scroll (último hijo) para que la lista siga bajo el campo. Lo arma el shell. */
   pie?: ReactNode;
   /**
    * H5b — abre la pantalla a la que apunta `destino` (la conexión, el comprobante, AFIP: ver
@@ -345,8 +345,12 @@ export function PantallaMiDia({
             ))}
           </View>
         )}
+        {/* SM-N38: la reserva del dock es el ÚLTIMO hijo DEL scroll, no un hermano debajo. Como hermano el scroll
+            terminaba en el borde de la reserva y «Para hoy» se cortaba con canto duro sobre una franja vacía (lo que
+            el operador lee como «fondo alrededor del campo»); en el chat la lista sigue por debajo del scrim y se
+            difumina. Adentro, el viewport llega al borde de pantalla y la reserva sólo deja que el final se alcance. */}
+        {pie}
       </ScrollFormulario>
-      {pie}
     </View>
   );
 }

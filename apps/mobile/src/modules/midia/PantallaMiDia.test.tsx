@@ -520,3 +520,13 @@ describe('PantallaMiDia — SM-I1: resume, no gestiona', () => {
     expect(screen.queryByTestId('midia-tarjeta-a-avanzar')).toBeNull();
   });
 });
+describe('PantallaMiDia — SM-N38: la reserva del dock va DENTRO del scroll', () => {
+  it('pie es descendiente de midia-scroll (la lista sigue bajo el campo, como en el chat), no un hermano debajo', async () => {
+    const { Text } = require('react-native');
+    await montar({ pie: <Text testID="midia-pie-prueba">reserva</Text> });
+    const scroll = screen.getByTestId('midia-scroll');
+    // Mecanismo: si volviera a ser hermano del scroll, el viewport terminaría en el borde de la reserva y la
+    // lista se cortaría con canto duro sobre una franja vacía (lo que el operador lee como «fondo»).
+    expect(within(scroll).getByTestId('midia-pie-prueba')).toBeTruthy();
+  });
+});
