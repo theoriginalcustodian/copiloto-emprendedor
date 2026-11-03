@@ -69,6 +69,10 @@ ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> ma
 # quemaba los 5 intentos completos contra una API rota antes de fallar igual (mismo resultado final, tiempo
 # desperdiciado + 5x requests ruidosos a una cuenta ya sabida rota).
 LOOP_RETRY = RetryPolicy(maximum_attempts=5, non_retryable_error_types=["NonRetryableError"])
+
+
+class TurnoSinContenido(Exception):
+    """El LLM cerró el turno sin texto ni tool_calls. Sube al `except` de `run()`, no mata la sesión."""
 # Memoria best-effort: cubre el worst-case de UN intento del cliente Graphity (max_attempts=1: warm ~15s,
 # remember ensure_user+ensure_thread+add_messages ~55s). retry SIEMPRE max=1 → un timeout NO dispara los
 # reintentos ILIMITADOS del default de Temporal (footgun que colgaría run()/el loop bajo Graphity LENTO).
@@ -226,6 +230,10 @@ class ConversationWorkflow:
                     # `Exception` y no `BaseException`: `CancelledError` y el `ContinueAsNewError`
                     # tienen que seguir subiendo, son control de flujo de Temporal, no fallas.
                     workflow.logger.error("turno fallido, la sesión sigue viva: %s", exc)
+                    # Los fallos que nacen ACÁ (tool_call malformado, LLM vacío) no pasan por el
+                    # interceptor de activities: sin esto la DLQ recibe cero y la autosanación no los ve.
+                    if workflow.patched("trauma-de-turno-a-la-dlq"):
+                        await self._registrar_trauma_de_turno(config, exc, cliente_id)
                     await self._avisar_turno_fallido(channel, channel_ref, cliente_id)
                     done = False
             else:
@@ -264,6 +272,24 @@ class ConversationWorkflow:
         if config.get("engine_mode") == "react":
             return await self._run_react_turn(config, msg, domain, channel, channel_ref, cliente_id)
         return await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
+
+    async def _registrar_trauma_de_turno(self, config: dict, exc: BaseException,
+                                         cliente_id: str) -> None:
+        """Deposita el fallo del turno en la DLQ vía activity (el workflow no puede escribir en la base).
+        Best-effort: si la activity no existe en el worker o falla, se traga -- registrar no puede
+        matar la sesión."""
+        try:
+            await workflow.execute_activity(
+                "registrar_trauma_de_turno",
+                {"cliente_id": cliente_id,
+                 "nodo": "turno_react" if config.get("engine_mode") == "react" else "turno_dispatch",
+                 "error_type": type(exc).__name__, "error_message": str(exc)[:200],
+                 "payload_shape": type(exc).__name__,
+                 "workflow_id": workflow.info().workflow_id},
+                start_to_close_timeout=ACTIVITY_TIMEOUT,
+                retry_policy=RetryPolicy(maximum_attempts=1))
+        except Exception as e:  # noqa: BLE001
+            workflow.logger.error("tampoco se pudo registrar el trauma del turno: %s", e)
 
     async def _avisar_turno_fallido(self, channel: str, channel_ref: str, cliente_id: str) -> None:
         """Le dice al usuario que ESE mensaje no salió, sin prometer nada que no pasó.
@@ -589,6 +615,15 @@ class ConversationWorkflow:
             tool_calls = resp.get("tool_calls") or []
             if not tool_calls:                                   # el modelo cerró con texto
                 content = resp.get("content") or "Listo."
+                # Un LLM que cierra SIN texto y SIN tools (y sin haber ejecutado nada antes en el turno)
+                # no hizo nada: decir "Listo." miente, y con solo espacios el usuario recibía un mensaje
+                # en blanco. Se lo trata como turno fallido -> aviso honesto + DLQ. Con `trace` no vacío
+                # el "Listo." sigue siendo verdad (hay una tool real detrás). Versionado: el raise sólo
+                # es seguro dentro del try de `run()` (patch 1); sin él mataría la sesión.
+                if (not trace and not (resp.get("content") or "").strip()
+                        and workflow.patched("un-turno-roto-no-mata-la-sesion")
+                        and workflow.patched("llm-vacio-no-es-listo")):
+                    raise TurnoSinContenido("el LLM cerró el turno sin contenido ni tool_calls")
                 # TODO(narra-guardrail, backend, 2026-07-23): deuda GESTIONADA -- se retira cuando la CURA
                 # (Parte 2, react_transcript arriba) pase el retest adversarial en sesión limpia. Ver
                 # memoria/copiloto-narra-la-accion-sin-ejecutarla.md.
