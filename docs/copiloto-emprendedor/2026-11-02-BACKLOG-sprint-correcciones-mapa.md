@@ -139,7 +139,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N42** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» … |
 | **SM-N43** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 6 del DoD: captura en device del chat en modo CLARO con un mensaje propio y uno del asistente (frontend… |
-| **SM-N44** | `sin-issue` | ⬜ PENDIENTE | backend |
+| **SM-N44** | `sin-issue` | 🟧 DOD-PARCIAL | frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2886,8 +2886,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N44 · `sin-issue` — Facturacion lee el CUIT POR DEFECTO, no el del emprendedor: dice "no configuraste" sobre un perfil que SI existe
 
-- **Estado:** PENDIENTE
-- **Dueno-activo:** backend
+- **Estado:** DOD-PARCIAL
+- **Falta:** frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend1: GET /me + estado sin cuit con el mismo token
+- **Cierre:** backend #1510 c8736bff: cuit_vinculado + adversarial PG/RLS, suite VPS 2640 passed, deploy verde
 - **Dueño:** backend (el endpoint) · frontend1 (quien lo midio en device)
 - **De dónde sale:** hallazgo de frontend1 en device el 2026-11-03 12:09, **mientras media otra
   ficha** (`SM-N35`). No lo buscaba nadie: aparecio porque por primera vez hubo un perfil ARCA
