@@ -824,7 +824,7 @@ export function PantallaAfipSetup() {
                           ? {
                               etiqueta: 'Reintentar',
                               variante: 'primario',
-                              testID: 'afip-arca-reintentar-servicio',
+                              testID: 'afip-arca-rehacer',
                               onPress: reintentarSinCambiarDatos,
                             }
                           : {

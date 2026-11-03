@@ -693,7 +693,7 @@ describe('PantallaAfipSetup', () => {
 
   it.each([
     ['dato', 'Corregir mis datos', 'afip-arca-rehacer', 'afip-arca-paso-1'],
-    ['servicio', 'Reintentar', 'afip-arca-reintentar-servicio', 'afip-arca-paso-3'],
+    ['servicio', 'Reintentar', 'afip-arca-rehacer', 'afip-arca-paso-3'],
     ['desconocida', 'Rehacer', 'afip-arca-rehacer', 'afip-arca-paso-1'],
   ] as const)('SM-K3: la acción sigue a la causa «%s» (botón «%s», cae en %s)', async (causa, etiqueta, boton, paso) => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
