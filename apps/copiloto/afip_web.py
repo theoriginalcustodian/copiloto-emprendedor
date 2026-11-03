@@ -717,7 +717,7 @@ def create_afip_app(
             return {"cuit": None, "conectado": False, "ws_autorizados": [], "ambiente": None,
                     "ambientes_vinculados": [], "perfil_completo": False, "puede_facturar": False,
                     "onboarding": None, "drive_conectado": await _drive_conectado(cliente_id),
-                    "motivo_no_puede_facturar": None}
+                    "motivo_no_puede_facturar": None, "cuit_vinculado": None}
 
         creds = await asyncio.to_thread(cred_store.get, cuit)
         vinculados = await asyncio.to_thread(cred_store.ambientes_vinculados, cuit)
@@ -734,6 +734,11 @@ def create_afip_app(
         # implementada: prometerle «ya podés facturar» era el defecto. El motivo viaja aparte para que
         # la app explique en vez de mostrar un perfil «completo» que no deja facturar.
         condicion_soportada = (not perfil) or condicion_emisor_soportada(perfil.get("condicion_iva"))
+        # SM-N44: si el CUIT pedido NO es de este tenant (típico: un CUIT cacheado en el teléfono que quedó de
+        # otra cuenta o de una carga vieja), la respuesta lo ECHA con `conectado:false` y la app lo reescribía en
+        # su caché para siempre. `cuit_vinculado` dice cuál es el del tenant para que el cliente se corrija.
+        # Es el del PROPIO tenant (el store filtra por cliente_id + RLS): nunca el de otro.
+        cuit_vinculado = None if (creds or vinculados) else await asyncio.to_thread(cred_store.primer_cuit)
         return {
             "cuit": cuit,
             "conectado": bool(creds),
@@ -749,6 +754,7 @@ def create_afip_app(
             # haría que una caída de Composio se muestre como "conectá tu Drive" sobre una cuenta que
             # sí está vinculada — un rastro pisando el hecho, el error que ya pagamos con el alta.
             "drive_conectado": await _drive_conectado(cliente_id),
+            "cuit_vinculado": cuit_vinculado,
         }
 
     @app.post("/afip/ambiente")
