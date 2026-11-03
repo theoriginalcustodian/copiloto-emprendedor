@@ -65,3 +65,36 @@ seguía como si nada — aplicar mal **en silencio**, que es peor que fallar: co
 tests, y modificó un lugar que nadie eligió. El aplicador rechaza ambiguo · inventado · no-op ·
 más de 8 bloques (eso es una reescritura, no un parche revisable), y es **atómico**: si un bloque
 falla, no se aplica ninguno.
+
+## Refuerzo 2026-11-03 — **la cita de la medición de otro agente entra al registro como evidencia MÍA**
+
+Mismo patrón que el forjador, un escalón más arriba: ahí el productor era un script y lo que no se
+podía asumir era el **contenido**; acá el productor es **otra sesión que midió de verdad**, y la
+tentación es mayor porque la medición *existe* y es buena.
+
+**El caso.** Backend midió `GET /afip/estado` contra prod y me pasó la conclusión con un matiz:
+*«`afip_web.py:257` hace `str(estado or "").upper() == "ACTIVE"` → `None`, `EXPIRED` e `INITIATED`
+colapsan TODOS en `False`»*. Lo escribí **literal** en el `Cierre:` de la ficha y lo repetí a
+frontend1. Después leí el código:
+
+- el literal está en **`:258`**, no en `:257`;
+- **`None` NO colapsa**: es un tercer valor reservado a «no se pudo averiguar», devuelto en `:251`
+  (gateway ausente) y `:257` (excepción), y el docstring lo declara;
+- el front **ya trata los tres** (`PantallaAfipSetup.tsx:1067`: «tiene TRES valores y el `null` no se
+  colapsa»).
+
+**Por qué importa y no es un detalle:** sobre esa frase yo estaba por **abrir una ficha nueva** («la
+API no distingue apagado de nunca conectó»). La imprecisión no se quedó en el texto — iba a producir
+trabajo. Una cita ajena, puesta en el registro, **deja de ser suya**: el gate no distingue quién la
+midió, y nadie vuelve a leer el código porque ya hay una línea que lo afirma.
+
+**La regla:** la medición del otro se cita como **resultado** (qué devolvió el endpoint, con qué
+tenant); el **mecanismo** —qué línea, qué valores, qué colapsa— se verifica en el archivo antes de
+escribirlo, porque es la parte de la que se deducen fichas. Es barato: fue un `sed -n` sobre un
+archivo.
+
+**Y el regalo de haber bajado a leer:** el mismo rato destapé que el «hermano» que sospeché no lo era.
+`conexiones_salud.py:41` compara `== "ACTIVE"` **pero normaliza con `.upper()` la línea anterior**
+(`:38`). Mi grep mostró el `==` y no su contexto — [[el-guard-se-satisface-con-su-propio-comentario]]
+en su versión de **una línea de distancia**: la propiedad que buscaba estaba ahí, una línea arriba,
+fuera del match. Ver también [[un-control-positivo-con-esperado-falso-acusa-al-script]].
