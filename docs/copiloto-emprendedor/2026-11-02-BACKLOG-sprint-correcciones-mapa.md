@@ -129,7 +129,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N34** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2486,7 +2486,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N34 · `sin-issue` — Las tres faltas de la agenda quedaron HUÉRFANAS dentro de una ficha cerrada
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto ANTES de tocar el front - el front no deduplica, renderiza los grupos como llegan, asi que desde el front no se puede decidir; es un pedido_ a backend) y DoD 4 (captura de device con Google Calendar conectado - la tenencia es de frontend1). DoD 5 (el veredicto de la entrada 10 del corpus) no se puede cerrar hasta la captura: el veredicto se cambia midiendo la app, nunca por el estado de esta ficha.
+- **Cierre:** 64e9f29a (#1462, ancestro de origin/main): «+ Nuevo evento» con el + del mapa, punto de estado de Calendar como punto/color (ya no solo texto) y linea del ahora en Hoy, vista mixta D9. El DoD 1 lo habia cumplido frontend2 midiendo en codigo ANTES de implementar: «Nuevo evento» YA existia en PantallaAgenda.tsx:118 y el punto de estado existia como TEXTO en :109 - implementarlos de cero habria sido rehacer lo que estaba.
 - **Dueño:** frontend2
 - **De dónde sale:** auditoría de `SM-L4` (planificación, 2026-11-03) sobre las entradas que
   `scripts/mapa-51-estado.py` marcaba como **cubiertas sólo por el nombre**. La entrada **10
