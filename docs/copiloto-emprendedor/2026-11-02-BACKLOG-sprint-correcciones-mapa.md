@@ -137,6 +137,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 | **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N42** | `sin-issue` | ⬜ PENDIENTE | frontend2 |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2777,3 +2778,41 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      hardcodeado en el JSX, y el cambio se mira en las dos skins.
 - **Depende:** la decisión del operador para el punto 2. El punto 1 se puede adelantar en la pasada
   de device de frontend1.
+### SM-N42 · `sin-issue` — Las enmiendas al MAPA no son ficha de nadie, y por eso Ajustes "sigue distinta"
+
+- **Estado:** PENDIENTE
+- **Dueno-activo:** frontend2
+- **Dueño:** frontend2
+- **De dónde sale:** reclamo del operador, 2026-11-03, con captura del prototipo en pantalla:
+  *«¿por qué la pantalla de ajustes todavía sigue distinta al mapa? ¿no estaba contemplado esto?»*
+- **Medido (2026-11-03, contra `origin/main`).** Estaba contemplado, y el código está: `SM-K7`
+  TERMINADO, `SM-N9` TERMINADO, `SM-K5` DOD-PARCIAL con un único residual que no es de Ajustes (el
+  diálogo de cerrar sesión, que exige una sesión descartable), y la entrada **44 `ajustes`** del mapa
+  de 51 en **DIFERENTE·B** — o sea diferencia reconocida y decidida. Lo que sigue divergiendo es el
+  **MAPA**. Y la causa es estructural, no de disciplina: las enmiendas al mapa se declararon DENTRO
+  del cierre de otras fichas — el de `SM-K7` dice textual «Enmienda del mapa pendiente: contenedor en
+  una sola tarjeta y chevron de apar», y la enmienda `E-6` vive en la tabla de enmiendas — así que
+  **nunca tuvieron renglón propio en el registro que mide**. Una obligación declarada dentro del
+  cierre de otra ficha no tiene estado, no tiene dueño y nadie la persigue: la app avanza, el mapa
+  no, y el operador ve divergencia que en los papeles figura resuelta.
+- **Alcance:** el **mapa**, no la app. `Prototipo frontend/odobi-ui/mapa-pantallas/index.html`,
+  `mockups/13-ajustes/index.html` y las filas del relevamiento
+  (`2026-10-16-relevamiento-mapa-de-pantallas-vs-app.md`, grid `13 · Ajustes` y entrada 44).
+- **DoD:**
+  1. **«Mi plan» sale del mapa** — `DEC-8` (operador, 2026-09-21,
+     `2026-09-21-acta-decisiones-beta-odobi.md:18`): «Plan y límites no entran en la beta»; la app lo
+     fija con un control negativo (`PantallaAjustes.test.tsx:54-59`). Es el punto que el operador
+     tenía en pantalla.
+  2. **Cerrar sesión: de fila a botón** (F11-cuenta-b), ya implementado.
+  3. **Apariencia: el mosaico** (F11-apariencia). El **chevron** de «Como el teléfono» vs «✓ Activo`»
+     queda AFUERA: está escalado al operador desde el lote 1 y si él elige el chevron, la entrada
+     vuelve a A.
+  4. Las dos enmiendas que dejó el cierre de `SM-K7`: contenedor en una sola tarjeta y chevron de
+     apar.
+  5. Cada punto con el **literal grepeado contra `origin/main` antes de editar**. Si una enmienda ya
+     está aplicada, se devuelve el hallazgo en vez de re-aplicarla — dos contratos de esta semana
+     mandaron a hacer algo ya hecho.
+- **FUERA de alcance, y no se mezcla:** el wording de Gmail («No puede leerlos» vs «Enviá mails desde
+  el chat.») y el de la clave fiscal (`PantallaAfipSetup.tsx:840`). Son decisión del operador y ya
+  están agrupados en UN punto de su `pedido_`; duplicarlos acá convierte el pedido en ruido.
+
