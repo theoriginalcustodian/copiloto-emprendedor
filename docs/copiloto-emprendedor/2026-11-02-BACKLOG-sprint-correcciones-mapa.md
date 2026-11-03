@@ -80,15 +80,15 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
 | **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | El residual es UNO y es de frontend1: las capturas de device de las 6 funciones a 390px. Todo lo demas de esta ficha … |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
-| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
+| **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura del tenant VACIO. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio,… |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refres… |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | El estado de Drive APAGADO, que con la cuenta del operador no existe porque tiene Drive conectado; mas el refresco al… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
-| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (ca… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta… |
+| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | La captura del dialogo «Si, cerrar sesion», que solo existe tocando el boton que cierra la sesion. DESBLOQUEADA el 20… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | La captura del aviso PRESENTE tras un 401 del lado cliente. Se provoca corrompiendo el token por Metro, sin commitear… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en codigo 2026-11-03 (5dfe93a1, #1484, ancestro de origin/main): NO es una mascara. CampoFecha son TRES TextIn… |
@@ -111,7 +111,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
+| **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4: la corrida en device hasta cerrar sesion -- DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionad… |
 | **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
@@ -120,7 +120,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
-| **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
+| **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3: la card CLARA, que exige forzar la piel clara. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisio… |
 | **SM-N26** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de la cabecera SIN el indicador. Dueno: frontend1 (venia en su cola N23 -> N28 -> N26). |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
 | **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
@@ -647,8 +647,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J3 · `sin-issue` — Inteligencia no tiene la cabecera del mapa ni mensaje de vacío
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura del tenant vacio (operador: canonico unico, no se puede vaciar)
-- **Cierre:** bfa7b919 (#1376): capturas de device (RF8T318RN9T, canonico): reposo docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-etiqueta-del-mes-debajo-del-titulo.webp y refresh en curso, solo 'Actualizando…' sin spinner, docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-J3-inteligencia-refresh-en-curso-solo-actualizando.webp. La captura de reposo destapo que la etiqueta del mes quedaba a ancho 0; ahora va debajo del titulo.
+- **Falta:** Captura del tenant VACIO. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. Va con la cuenta de prueba, que nace vacia: ese es justamente el estado que el canonico no podia tener. Bloque 6 de la pasada de device (sesion descartable), que va ULTIMO porque cada ficha de ese bloque destruye la sesion que la produce.
 - **Dueño:** frontend2
 - **Medido:** `bi` sin cabecera en card blanca con período, sin etiqueta de mes y sin mosaicos;
   `bi-vacio` sin el mensaje global «Sin ventas todavía». Y al tirar para actualizar, el indicador
@@ -777,8 +776,7 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refresco al terminar sin recargar (premisa sin medir) · captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (BL-V27)
-- **Cierre:** c18439ff (#1339) causa dato|servicio|desconocida · ff850770 (#1424) el toggle de Drive apagado dice por qué (test) · device 2026-11-02 cuenta OPERADOR: toggle ACTIVO (SM-K3-toggle-drive-activo)
+- **Falta:** El estado de Drive APAGADO, que con la cuenta del operador no existe porque tiene Drive conectado; mas el refresco al terminar sin recargar (premisa aun sin medir) y la captura de los dos errores. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. La cuenta de prueba nace sin Drive. Bloque 6 de la pasada. NO se implementa «Necesito cambiarlo ›» (BL-V27): refutado.
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
@@ -813,8 +811,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (canónico), no la del operador; con su cuenta el estado no se puede producir sin cerrársela (no autorizado)
-- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido · device 2026-11-02 cuenta OPERADOR: tiles sin fondo blanco y «Cerrar sesión» entero (SM-K5-*.webp)
+- **Falta:** La captura del dialogo «Si, cerrar sesion», que solo existe tocando el boton que cierra la sesion. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. Va con la cuenta de prueba: cerrarsela a ella no cuesta nada, y era el unico motivo por el que esto estaba parado. Bloque 6 de la pasada.
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
@@ -826,8 +823,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta que lo provoca, asi que va con la canonica, corrompiendo el token por Metro sin commitear nada — NO con la cuenta del operador. NADA pendiente de backend: el contrato que este Falta le pedia ya estaba contestado en su cierre de N21.
-- **Cierre:** Codigo YA en main (117dc669 #1320). CONTRATO DEL 401 CONTESTADO por backend y verificado: token vencido, mal firmado o basura -> 401 {"detail":"invalid token"} (auth.py:98-103) · sin header -> 401 {"detail":"missing or malformed Authorization header"} · login malo -> 401 {"detail":"credenciales invalidas"}, SOLO en /auth/login. GOTRUE_JWT_EXP=3600. CONSECUENCIA para el DoD: 'token vencido' y 'login fallido' SI se distinguen — por ruta y por body — asi que el punto 'aviso ausente en un ingreso normal' ES implementable. Lo que NO se distingue es vencido vs mal firmado, y eso es anti-enumeracion deliberado, no un defecto.
+- **Falta:** La captura del aviso PRESENTE tras un 401 del lado cliente. Se provoca corrompiendo el token por Metro, sin commitear nada. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. Va con la cuenta de prueba y nunca con la del operador: provocar el 401 descarta la sesion que lo provoca. Bloque 6 de la pasada.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
@@ -1383,8 +1379,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N16 · `sin-issue` — El Escritorio de Funciones no tiene acceso a Ajustes, y sin él no se puede cerrar sesión
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del toque, comparando la region y no la captura entera; DoD 6 causa del no-responde: con MOVE no navego a las 19:05 en la cuenta del operador, y si navego a las 17:54 y 18:29 en el canonico, asi que falta medir que difiere: puerta de empujarUnaVez (tocar un tile en el mismo estado), cuenta o bundle. El dibujo va en la rama de SM-I5.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Avatar del escritorio por el mismo alAjustes de Mi dia, sin segundo call-site; PantallaPrincipal.test.tsx da rojo con el mutante sin el cable. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
+- **Falta:** DoD 4: la corrida en device hasta cerrar sesion -- DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. va con la cuenta de prueba, no con el canonico. DoD 5: captura del avatar visible y el par antes/despues del toque, comparando LA REGION y no la captura entera (una captura entera difiere por el reloj y da falso rojo). DoD 6: la causa del no-responde, con adb input motionevent DOWN/MOVE y nunca input tap, que no ejercita un Pan de RNGH -- esto va al bloque 7 (gestos), separado del 6, porque no necesita sesion descartable.
 - **Dueño:** frontend1
 - **De dónde sale:** el **operador**, 2026-11-02, atrapado dentro de la app con su propia cuenta:
   «en la pantalla funciones no está el icono de ajustes de usuario… no puedo cerrar la sesion a mano».
@@ -1823,8 +1818,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara y eso mutaria la cuenta del operador: queda para la pasada con tenencia canonica, no se fuerza. Dueno: frontend2.
-- **Cierre:** 6335f883 (#1440, ancestro de origin/main, CI 6/6): la mitad de ABAJO. Causa raiz medida en device (cuenta del operador, solo lectura de pantalla): el 'fondo pleno' era GEOMETRIA, no color — lista y dock hermanos en flujo, la lista se cortaba con borde duro sobre el campo (y~1450). Fix: lista a pantalla completa bajo un dock overlay + padding igual al alto medido; contraste con solucion nombrada (scrim 0->.9 + base .85 bajo el vidrio, desde tokens). ANTES/DESPUES 390px scrolleando capturados, NO versionados a proposito: llevan mensajes del operador.
+- **Falta:** DoD 3: la card CLARA, que exige forzar la piel clara. DESBLOQUEADA el 2026-11-03: la tenencia de prueba esta provisionada (backend, tenant vacio, 3 controles verdes, cuenta canonica intacta, credencial en .env.e2e y nunca en el repo), asi que la frase que este Falta tenia antes -- no se puede producir el estado sin cerrarle la sesion al operador -- dejo de ser cierta. YA NO depende del operador. Forzarla mutaba la cuenta del operador y por eso estaba diferido; ahora va con la cuenta de prueba, en el bloque 3 de la pasada (piel clara forzada). DoD 5: la zona de ARRIBA (misma pregunta, otro borde) sigue SIN TOCAR por decision, no por falta de device. Dueno: frontend2.
 - **Dueño:** frontend1 (dueño del chat)
 - **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
   mic debe ser transparente — el campo y el mic deben ser **flotantes** en el chat; lo mismo en la
