@@ -104,18 +104,22 @@ class TarjetaStore:
                 DO NOTHING
             """, (self._cid, regla, entidad_tipo, str(entidad_id), texto, _js(datos)))
 
-    def cerrar_resueltas(self, regla: str, entidad_ids_vigentes: set[str]) -> int:
+    def cerrar_resueltas(self, regla: str, entidad_ids_vigentes: set[str],
+                         solo_entidades: set[str] | None = None) -> int:
         """Contrato §2.1: la tarjeta se cierra sola cuando su candidato deja de aparecer en la
         verdad CRUDA del detector (`entidad_ids_vigentes` = `detectar_todos()[regla]`, SIN filtrar
         por silencio — ver el docstring de `detectar_todos`). Sólo toca `para_hoy`/`haciendo`: una
-        tarjeta ya `hecha` no se re-cierra ni se reabre. Devuelve cuántas cerró."""
+        tarjeta ya `hecha` no se re-cierra ni se reabre. `solo_entidades`: si se pasa, sólo se
+        cierran las de esas entidades (el resto de la regla no pudo mirarse). Devuelve cuántas cerró."""
         vigentes = [str(v) for v in entidad_ids_vigentes]
+        acotadas = None if solo_entidades is None else [str(e) for e in solo_entidades]
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"""
                 UPDATE {_TABLE} SET estado = %s, movida_en = now()
                  WHERE cliente_id = %s AND regla = %s AND estado IN (%s, %s)
                    AND NOT (entidad_id = ANY(%s))
-            """, (HECHA, self._cid, regla, PARA_HOY, HACIENDO, vigentes))
+                   AND (%s::text[] IS NULL OR entidad_id = ANY(%s::text[]))
+            """, (HECHA, self._cid, regla, PARA_HOY, HACIENDO, vigentes, acotadas, acotadas))
             return cur.rowcount
 
     # ── manual (contrato §2.4, tools de voz) ────────────────────────────────────────────────────
