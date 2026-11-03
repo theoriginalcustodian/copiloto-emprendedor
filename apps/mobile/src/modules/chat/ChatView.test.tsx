@@ -640,89 +640,18 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
   });
 });
 
-describe('ChatView -- foto de ticket (Gastos Fase 2, OCR)', () => {
+describe('ChatView -- SM-N24: la cámara NO es del chat, es de Gastos', () => {
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
-    jest.mocked(api.sendFoto).mockReset();
     jest.mocked(api.getReply).mockReset();
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
-    mockRequestCameraPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
-    mockLaunchCameraAsync.mockReset();
   });
 
-  /** Simula al usuario tocando el botón `texto` de la última llamada a `Alert.alert` -- mismo
-   *  helper que `useCapturaFoto.test.ts` (acá no se puede importar: depende del spy local). */
-  function tocarBoton(spy: jest.SpyInstance, texto: string) {
-    const llamada = spy.mock.calls.at(-1);
-    const botones = llamada?.[2] as { text: string; onPress?: () => void }[] | undefined;
-    botones?.find((b) => b.text === texto)?.onPress?.();
-  }
-
-  it('el botón de cámara existe y dispara el picker Cámara/Galería/Cancelar', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  it('el composer del chat no pinta el botón de cámara', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Foto del ticket',
-      expect.any(String),
-      expect.arrayContaining([expect.objectContaining({ text: 'Cámara' })]),
-    );
-    alertSpy.mockRestore();
-  });
-
-  it('Cámara -> sube la foto y agrega el mensaje optimista fijo en la lista', async () => {
-    mockLaunchCameraAsync.mockResolvedValue({
-      canceled: false,
-      assets: [{ uri: 'file:///cache/ticket.jpg', mimeType: 'image/jpeg' }],
-    });
-    jest.mocked(api.sendFoto).mockResolvedValue({ wf_id: 'wf-foto-1', accepted: true } as any);
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cámara');
-
-    await waitFor(() => expect(api.sendFoto).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('📷 Foto del ticket enviada')).toBeTruthy();
-    // `cliente_id` viaja vacío, mismo criterio que `enviarAudio` -- ver el docstring de `useChat.ts`.
-    expect(api.sendFoto).toHaveBeenCalledWith(
-      expect.any(String),
-      { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' },
-      '',
-    );
-    alertSpy.mockRestore();
-  });
-
-  it('permiso de cámara denegado: aviso legible, sin llamar a sendFoto', async () => {
-    mockRequestCameraPermissionsAsync.mockResolvedValue({ granted: false });
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cámara');
-
-    await waitFor(() => expect(alertSpy.mock.calls.length).toBeGreaterThanOrEqual(2));
-    expect(alertSpy.mock.calls[1]?.[0]).toMatch(/cámara/i);
-    expect(api.sendFoto).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
-  });
-
-  it('Cancelar en el picker no llama a sendFoto ni pide ningún permiso', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cancelar');
-
-    expect(mockRequestCameraPermissionsAsync).not.toHaveBeenCalled();
-    expect(api.sendFoto).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
+    expect(screen.queryByTestId('chat-foto')).toBeNull();
   });
 });
 
