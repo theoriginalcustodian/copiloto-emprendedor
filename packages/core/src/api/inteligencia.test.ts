@@ -108,6 +108,23 @@ describe('leerPortada — el camino bueno', () => {
 });
 
 describe('leerPortada — lo que NO inventa', () => {
+  it('SM-N32 -- `comprobantes` conserva 0 real y null; lo no numérico o negativo es null (nunca 0)', async () => {
+    responder = () =>
+      respuesta(200, {
+        caja: { saldo: '0', moneda: 'ARS' },
+        mejores_clientes: [
+          { cliente: 'A', total: '10', comprobantes: 2 },
+          { cliente: 'B', total: '10', comprobantes: 0 },
+          { cliente: 'C', total: '10', comprobantes: null },
+          { cliente: 'D', total: '10', comprobantes: '3' },
+          { cliente: 'E', total: '10' },
+        ],
+      });
+    const res = await leerPortada();
+    if (res.status !== 'ok') throw new Error('no ok');
+    expect(res.portada.mejoresClientes.map((m) => m.comprobantes)).toEqual([2, 0, null, null, null]);
+  });
+
   it('🔴 un `200` con el HTML del SPA es `no_disponible`, NO una portada en cero', async () => {
     // El endpoint todavía no está desplegado: el front-door devuelve el SPA. Sin el guard de forma,
     // esto sería «tu negocio está en $0» — una mentira tranquilizadora sobre la ausencia del dato.

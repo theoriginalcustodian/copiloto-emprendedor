@@ -47,7 +47,7 @@ const PORTADA = {
     { mes: '2026-03', ingresos: '80000.00', gastos: '20000.00' },
     { mes: '2026-04', ingresos: '95000.00', gastos: '31000.00' },
   ],
-  mejoresClientes: [{ cliente: 'Panadería Los Tilos', total: '48000.00' }],
+  mejoresClientes: [{ cliente: 'Panadería Los Tilos', total: '48000.00', comprobantes: 2 }],
   porCobrar: { total: '30000.00', vencido: '12000.00' },
 };
 
@@ -234,6 +234,27 @@ describe('PantallaInteligencia — SM-J3: mes en la cabecera y «Sin ventas toda
     await montar();
     await screen.findByTestId('inteligencia-portada');
     expect(screen.queryByText('Sin ventas todavía')).toBeNull();
+  });
+});
+
+describe('PantallaInteligencia — SM-N32: «N comprobantes» por cliente', () => {
+  it('muestra «2 comprobantes» y «0 comprobantes» reales, y OCULTA el sufijo con null (nunca un 0 inventado)', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: {
+        ...PORTADA,
+        mejoresClientes: [
+          { cliente: 'Con dos', total: '10.00', comprobantes: 2 },
+          { cliente: 'Con cero', total: '5.00', comprobantes: 0 },
+          { cliente: 'Sin dato', total: '1.00', comprobantes: null },
+        ],
+      },
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByText('Con dos')).toBeTruthy());
+    expect(screen.getByText('2 comprobantes')).toBeTruthy();
+    expect(screen.getByText('0 comprobantes')).toBeTruthy();
+    expect(screen.queryByTestId('inteligencia-cliente-Sin dato-comprobantes')).toBeNull();
   });
 });
 

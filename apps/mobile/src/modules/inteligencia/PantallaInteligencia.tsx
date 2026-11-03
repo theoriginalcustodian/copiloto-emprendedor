@@ -315,7 +315,15 @@ export function PantallaInteligencia() {
             portada.mejoresClientes.map((c) => (
               <Row key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`}>
                 <View style={styles.filaEntre}>
-                  <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
+                    {/* SM-N32: `null` = no se puede saber → se oculta; jamás «0 comprobantes». */}
+                    {c.comprobantes != null && (
+                      <Text testID={`inteligencia-cliente-${c.cliente}-comprobantes`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                        {c.comprobantes} comprobante{c.comprobantes === 1 ? '' : 's'}
+                      </Text>
+                    )}
+                  </View>
                   <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
                     {kpi(c.total)}
                   </Text>

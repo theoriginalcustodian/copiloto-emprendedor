@@ -68,6 +68,9 @@ export interface PuntoSerie {
 export interface MejorCliente {
   cliente: string;
   total: string | null;
+  /** SM-N32: facturas con CAE por documento (mismo predicado que `/clientes`). `null` = no se puede saber
+   *  (sin ficha, homónimos, sin documento) o backend viejo: NUNCA se pinta como «0 comprobantes». */
+  comprobantes?: number | null;
 }
 
 /** Lo que falta cobrar, y cuánto de eso ya está vencido. */
@@ -112,9 +115,11 @@ function puntoSerie(v: unknown): PuntoSerie | null {
 
 function mejorCliente(v: unknown): MejorCliente | null {
   if (typeof v !== 'object' || v === null) return null;
-  const r = v as { cliente?: unknown; total?: unknown };
+  const r = v as { cliente?: unknown; total?: unknown; comprobantes?: unknown };
   if (typeof r.cliente !== 'string' || r.cliente.trim() === '') return null;
-  return { cliente: r.cliente.trim(), total: importe(r.total) };
+  const comprobantes =
+    typeof r.comprobantes === 'number' && Number.isInteger(r.comprobantes) && r.comprobantes >= 0 ? r.comprobantes : null;
+  return { cliente: r.cliente.trim(), total: importe(r.total), comprobantes };
 }
 
 export async function leerPortada(): Promise<ConDisponibilidad<{ portada: Portada }>> {
