@@ -256,10 +256,11 @@ Prototipo: [vacio-visto](2026-10-16-relevamiento-capturas/proto-mapa-vacio-visto
 *Corrección:* Corregir el deep link del prototipo para que muestre el estado.  
 *Vínculo:* N5
 
-**33 · `comousar` — Cómo usar la app** — **DIFERENTE · A** · DEVICE  
+**33 · `comousar` — Cómo usar la app** — **CONFORME** · DEVICE+CÓDIGO  
 Prototipo: [comousar](2026-10-16-relevamiento-capturas/proto-mapa-comousar.png) · App: [comousar-0](2026-10-16-relevamiento-capturas/app-comousar-0.png)  
 *Diferencia:* Sólo cambia el contenedor (tarjeta única contra una por fila) y el número en círculo contra numeral.  
 *Medición 2026-11-03 (código en `origin/main`, SM-L4):* **El círculo numerado ya está; queda el contenedor.** `PantallaComoUsarLaApp.tsx` pinta cada tema con su `Row` y el número en círculo (SM-K7, TERMINADO `926163a4`, captura `SM-K7-como-usar.webp`). Sigue A sólo por el contenedor: una tarjeta por fila contra la tarjeta única del mapa. Corrección nombrada: un único `MarcoGlass`/superficie para las filas, o llevar el mapa a una por fila (wording/estructura menor, lista única).  
+*Medición 2026-11-03 (render real de la app + código, SM-L4, `origin/main` @ `a2ec0a02`; jest `PantallaComoUsarLaApp` 7/7):* **La línea anterior («queda el contenedor») está vencida:** SM-N42 p4 (#1516, `1fc5f281`) llevó la APP a la tarjeta única del prototipo (`s-comousar`, `.grupo`): `PantallaComoUsarLaApp.tsx:96-110` pinta los cinco temas en UNA `Row` con filetes hairline entre ellos, y el número en círculo está en `:117`. Test `SM-N42 p4: los cinco temas viven en UNA sola tarjeta`. Contenedor y numeración coinciden con el mapa.  
 *Corrección:* Igualar contenedor y numeración.  
 *Vínculo:* F11-comousar
 
@@ -286,10 +287,11 @@ Prototipo: [hitl](2026-10-16-relevamiento-capturas/proto-mapa-hitl.png) · App: 
 *Corrección:* Medir con autorización explícita y un destinatario de prueba.  
 *Vínculo:* K1-K5
 
-**37 · `vacio` — Mi día sin avisos** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
+**37 · `vacio` — Mi día sin avisos** — **CONFORME** · DEVICE+CÓDIGO  
 Prototipo: [vacio](2026-10-16-relevamiento-capturas/proto-mapa-vacio.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medido en device con el descartable: «Nada urgente por hoy. Cuando haya algo que mirar, te lo dejo…» con ilustración y aviso «Conectá Google Calendar en Ajustes → Apps». Sigue sin veredicto porque el prototipo `?ver=vacio` no muestra su estado (N5). [app-vacio-nada-urgente-por-hoy](2026-10-16-relevamiento-capturas/app-vacio-nada-urgente-por-hoy.png)  
 *Diferencia:* En el prototipo `?ver=vacio` tampoco muestra su estado. Por código: «Nada urgente por hoy.» (`PantallaMiDia.tsx:661`).  
+*Medición 2026-11-03 (código, SM-L4, `origin/main` @ `a2ec0a02`):* **El motivo de NO-VERIFICABLE («el prototipo `?ver=vacio` no muestra su estado») está resuelto:** el prototipo implementa el deep link (`prototipo/index.html:3168-3171`, arranca sin tarjetas) y su estado `#vacio` dice «Nada urgente por hoy.» (`:1851`). La app dice lo mismo (`PantallaMiDia.tsx:327`, `PantallaTuDia.tsx:465`; test `PantallaTuDia.test.tsx:499`) y se midió en device el 2026-11-02 con ilustración y aviso de Calendar. Ambos lados con el mismo texto. No medí el prototipo renderizado (el navegador de la sesión bloquea `file:`): la afirmación sobre el prototipo es de código.  
 *Corrección:* Corregir el deep link del prototipo.  
 *Vínculo:* N5
 
@@ -317,10 +319,11 @@ Prototipo: [factura](2026-10-16-relevamiento-capturas/proto-mapa-factura.png) ·
 *Corrección:* Agregar chips y dock; retirar «Te deben» o documentarlo.  
 *Vínculo:* F3 · F12
 
-**41 · `presu` — Presupuestos** — **DIFERENTE · A** · DEVICE  
+**41 · `presu` — Presupuestos** — **CONFORME** · DEVICE+CÓDIGO  
 Prototipo: [presu](2026-10-16-relevamiento-capturas/proto-mapa-presu.png) · App: [presupuestos-top](2026-10-16-relevamiento-capturas/app-presupuestos-top.png)  
 *Diferencia:* Sin dock ni chips de antigüedad.  
 *Medición 2026-11-03 (código en `origin/main`, SM-L4):* **El dock ya existe; queda el chip de antigüedad por fila.** Dock: `PantallaPresupuestos.tsx:339` (`DockFuncion`). La antigüedad aparece sólo en el resumen de arriba («Sin respuesta hace más de un mes», `resumenEspera.ts:74`) y en el detalle (`DetallePresupuesto.tsx:396`); **no hallé un chip por fila** al grepear `antig|hace|chip` en `presupuestos/`. Sigue A con la corrección acotada: chip de antigüedad por tarjeta de la lista.  
+*Medición 2026-11-03 (render real de la app + código, SM-L4, `origin/main` @ `a2ec0a02`; jest `presupuestos/` 48/48):* **Las dos diferencias de la entrada ya no existen.** (1) Dock con campo y mic: `PantallaPresupuestos.tsx:339` (`DockFuncion`). (2) Antigüedad por fila: `TarjetaPresupuesto.tsx:40` pinta `etiquetaEstado(p)` (`resumenEspera.ts`), «Se enfría · N días» / «Esperando respuesta · N días» con los días de `fecha`, como el prototipo (`prototipo/index.html:2083`); test `TarjetaPresupuesto.test.tsx:31-34` («Se enfría · 31 días»). La medición anterior («no hallé un chip por fila») quedó vencida por SM-J4. Medido sobre el componente renderizado, no deducido de que SM-J1/J2/J4 estén TERMINADO.  
 *Corrección:* Agregar chips de antigüedad y dock.  
 *Vínculo:* F4 · F12
 
