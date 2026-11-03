@@ -24,6 +24,8 @@ Uso:  python -I -X utf8 scripts/barrido_fakes_vs_stores.py [--ref <git-ref>]   (
 from __future__ import annotations
 
 import ast
+import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -33,36 +35,66 @@ RAIZ = Path(__file__).resolve().parent.parent
 T = "apps/copiloto/tests/"
 A = "apps/copiloto/"
 
-# (archivo del test, clase fake, archivo del real, clase real)
-PARES: list[tuple[str, str, str, str]] = [
-    # — plata —
-    (T + "test_plata_por_voz.py", "_CobroFake", A + "cobro_store.py", "CobroStore"),
-    (T + "test_plata_por_voz.py", "_PresupuestoFake", A + "presupuesto_store.py", "PresupuestoStore"),
-    (T + "test_ingresos_web.py", "CobroStoreFake", A + "cobro_store.py", "CobroStore"),
-    (T + "test_contabilidad_web.py", "_FakeCobroStore", A + "cobro_store.py", "CobroStore"),
-    (T + "test_contabilidad_web.py", "_FakeGastoStore", A + "gasto_store.py", "GastoStore"),
-    (T + "test_gastos_web.py", "_FakeGastoStore", A + "gasto_store.py", "GastoStore"),
-    (T + "test_presupuestos_web.py", "_FakePresupuestoStore", A + "presupuesto_store.py", "PresupuestoStore"),
-    (T + "test_facturar_presupuesto_atomico.py", "StoreFalso", A + "presupuesto_store.py", "PresupuestoStore"),
-    (T + "test_mp_web.py", "_FakePayStore", A + "mp_payment_store.py", "MpPaymentStore"),
-    (T + "test_mp_web.py", "_FakeCredStore", A + "mp_credential_store.py", "MpCredentialStore"),
-    # — comprobantes —
-    (T + "test_contabilidad_web.py", "_FakeAfipComprobanteStore", A + "afip_comprobante_store.py", "AfipComprobanteStore"),
-    (T + "test_afip_web_facturas.py", "ComprobanteStoreFake", A + "afip_comprobante_store.py", "AfipComprobanteStore"),
-    (T + "test_afip_drive_activity.py", "ComprobanteFake", A + "afip_comprobante_store.py", "AfipComprobanteStore"),
-    # — tenant / perfil / credenciales / clientes —
-    (T + "test_presupuestos_web.py", "_FakePerfilStore", A + "perfil_negocio_store.py", "PerfilNegocioStore"),
-    (T + "test_presupuestos_web.py", "_FakeCredStore", A + "afip_credential_store.py", "AfipCredentialStore"),
-    (T + "test_facturar_por_voz.py", "_PerfilStoreFake", A + "afip_credential_store.py", "AfipPerfilStore"),
-    (T + "test_facturar_por_voz.py", "_CredFake", A + "afip_credential_store.py", "AfipCredentialStore"),
-    (T + "test_afip_onboarding.py", "PerfilStoreFake", A + "afip_credential_store.py", "AfipPerfilStore"),
-    (T + "test_afip_onboarding.py", "CredStoreFake", A + "afip_credential_store.py", "AfipCredentialStore"),
-    (T + "test_afip_ambiente.py", "CredStoreFake", A + "afip_credential_store.py", "AfipCredentialStore"),
-    (T + "test_afip_drive_activity.py", "PerfilFake", A + "afip_credential_store.py", "AfipPerfilStore"),
-    (T + "test_clientes_web.py", "_FakeClienteStore", A + "cliente_store.py", "ClienteStore"),
-    (T + "test_clientes_voz.py", "_FakeStore", A + "cliente_store.py", "ClienteStore"),
-    (T + "test_mi_dia_web.py", "_TarjetaStoreFake", A + "mi_dia_tarjeta_store.py", "TarjetaStore"),
-]
+FAKE_RE = re.compile(r"fake|falso|stub", re.I)
+# dobles de CONEXIONES/CLIENTES/transportes, no de stores: se emparejarían por métodos genéricos (`commit`, `get`)
+NO_STORE_RE = re.compile(r"conn|cursor|cur\b|http|temporal|gateway|client(?!e)|handle|sdk|reloj|gotrue|crypto|input|request|tools", re.I)
+EXENCIONES = RAIZ / "scripts/ci/barrido-fakes-exenciones.json"
+
+
+def archivos(ref: str | None, carpeta: str) -> list[str]:
+    """`.py` directos de la carpeta (sin recursión: `apps/copiloto/*.py` es la capa de producción)."""
+    if ref is None:
+        return sorted(p.relative_to(RAIZ).as_posix() for p in (RAIZ / carpeta).glob("*.py"))
+    out = subprocess.run(["git", "ls-tree", "--name-only", ref, carpeta], cwd=RAIZ, capture_output=True, text=True,
+                         encoding="utf-8", check=True).stdout.split()
+    return sorted(f for f in out if f.endswith(".py"))
+
+
+def _publicos(cls: ast.ClassDef) -> set[str]:
+    return {n.name for n in cls.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")}
+
+
+def derivar_pares(ref: str | None) -> tuple[list[tuple[str, str, str, str]], list[str]]:
+    """REGLA (no una lista): el corte son los **stores de tenant** — toda clase `*Store` de `apps/copiloto/*.py` cuyo
+    `__init__` recibe `cliente_id` (ahí viven plata, comprobantes y aislamiento, y un store nuevo entra solo).
+    Cada clase fake/falso/stub de `apps/copiloto/tests/` se empareja con el store tenant cuyos métodos públicos
+    contiene (>= 50 % de los suyos y al menos 1 compartido); desempate: el test importa/nombra al real. Un empate
+    que sigue vivo NO se adivina: vuelve en `ambiguos` y el gate falla pidiendo un pin en el JSON de exenciones."""
+    reales: dict[str, tuple[str, set[str]]] = {}
+    for f in archivos(ref, A):
+        for c in ast.walk(ast.parse(leer(f, ref))):
+            if isinstance(c, ast.ClassDef) and c.name.endswith("Store"):
+                ini = next((n for n in c.body if isinstance(n, ast.FunctionDef) and n.name == "__init__"), None)
+                if ini and "cliente_id" in params(ini)[0]:
+                    reales[c.name] = (f, _publicos(c))
+    pins = json.loads(EXENCIONES.read_text(encoding="utf-8")).get("pares_fijos", {}) if EXENCIONES.exists() else {}
+    pares, ambiguos = [], []
+    for f in archivos(ref, T):
+        src = leer(f, ref)
+        for c in ast.walk(ast.parse(src)):
+            if not (isinstance(c, ast.ClassDef) and FAKE_RE.search(c.name) and not NO_STORE_RE.search(c.name)):
+                continue
+            pub = _publicos(c)
+            if not pub:
+                continue
+            clave = f"{Path(f).name}::{c.name}"
+            if clave in pins:
+                pares.append((f, c.name, reales[pins[clave]][0], pins[clave]))
+                continue
+            # cubre >= 1/3 de los métodos del fake, con >= 2 compartidos (uno solo es un nombre genérico: `get`, `save`)
+            cand = [((len(pub & rp) / len(pub), len(pub & rp) / len(pub | rp)), n) for n, (_, rp) in reales.items()
+                    if len(pub & rp) >= 2 and len(pub & rp) / len(pub) >= 0.34]
+            if not cand:
+                continue
+            mejor = max(sc for sc, _ in cand)       # (cobertura del fake, Jaccard: castiga al real mucho más grande)
+            top = [n for sc, n in cand if sc == mejor]
+            if len(top) > 1:
+                top = [n for n in top if n in src or Path(reales[n][0]).stem in src] or top
+            if len(top) == 1:
+                pares.append((f, c.name, reales[top[0]][0], top[0]))
+            else:
+                ambiguos.append(f"{clave} ~ {'/'.join(sorted(top))}")
+    return pares, ambiguos
 
 
 def leer(path: str, ref: str | None) -> str:
@@ -119,29 +151,26 @@ def claves_real(ms: dict, nombre: str, visto: frozenset = frozenset(), prof: int
     return out
 
 
-_LEIDAS: dict[str | None, set[str]] = {}
+_LECT: dict[str | None, dict[str, tuple[set[str], set[str], set[str]]]] = {}
 
 
-def claves_leidas(ref: str | None) -> set[str]:
-    """Claves-string que el código de PRODUCCIÓN lee de un dict: `x["k"]` o `x.get("k")`."""
-    if ref in _LEIDAS:
-        return _LEIDAS[ref]
-    if ref is None:
-        archivos = [p.relative_to(RAIZ).as_posix() for p in (RAIZ / A).glob("*.py")]
-    else:
-        out = subprocess.run(["git", "ls-tree", "--name-only", ref, A], cwd=RAIZ, capture_output=True, text=True,
-                             encoding="utf-8", check=True).stdout.split()
-        archivos = [f for f in out if f.endswith(".py")]
-    leidas: set[str] = set()
-    for f in archivos:
+def lecturas(ref: str | None) -> dict[str, tuple[set[str], set[str], set[str]]]:
+    """Por archivo de PRODUCCIÓN: (métodos que llama `.m(`, claves que lee con `.get("k")`, claves que lee con `x["k"]`)."""
+    if ref in _LECT:
+        return _LECT[ref]
+    out = {}
+    for f in archivos(ref, A):
+        llam, gets, subs = set(), set(), set()
         for n in ast.walk(ast.parse(leer(f, ref))):
             if isinstance(n, ast.Subscript) and isinstance(n.slice, ast.Constant) and isinstance(n.slice.value, str):
-                leidas.add(n.slice.value)
-            elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "get"
-                  and n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)):
-                leidas.add(n.args[0].value)
-    _LEIDAS[ref] = leidas
-    return leidas
+                subs.add(n.slice.value)
+            elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+                llam.add(n.func.attr)
+                if n.func.attr == "get" and n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str):
+                    gets.add(n.args[0].value)
+        out[f] = (llam, gets, subs)
+    _LECT[ref] = out
+    return out
 
 
 def params(f) -> tuple[set[str], bool]:
@@ -154,6 +183,7 @@ def params(f) -> tuple[set[str], bool]:
 class Hallazgo:
     tipo: str
     detalle: str
+    objeto: str = ""      # literal que una exención cita: `Fake.metodo(param)` / `Fake.metodo:clave=valor`
 
 
 def _pares_dict(nodo: ast.AST):
@@ -219,7 +249,16 @@ def dominios_real(ms: dict, nombre: str, tree: ast.Module, visto: frozenset = fr
 
 
 def comparar(pf: str, cf: str, pr: str, cr: str, ref: str | None) -> list[Hallazgo]:
-    tf, tr = ast.parse(leer(pf, ref)), ast.parse(leer(pr, ref))
+    tf = ast.parse(leer(pf, ref))
+    # Consumidores relevantes = los módulos de producción que ESE test importa (los que el fake puede estar alimentando),
+    # sin el propio store real (sus lecturas internas no consumen al fake).
+    imps = {n.module.split(".")[0] for n in ast.walk(tf) if isinstance(n, ast.ImportFrom) and n.module} | \
+           {a.name.split(".")[0] for n in ast.walk(tf) if isinstance(n, ast.Import) for a in n.names}
+    lect = {a: v for a, v in lecturas(ref).items() if Path(a).stem in imps and a != pr}
+    return comparar_ast(tf, ast.parse(leer(pr, ref)), pf, cf, pr, cr, lect)
+
+
+def comparar_ast(tf: ast.Module, tr: ast.Module, pf: str, cf: str, pr: str, cr: str, lect: dict) -> list[Hallazgo]:
     f, r = clase(tf, cf), clase(tr, cr)
     if f is None or r is None:
         raise SystemExit(f"par roto: {cf}@{pf} -> {cr}@{pr} (¿se renombró?)")
@@ -237,7 +276,8 @@ def comparar(pf: str, cf: str, pr: str, cr: str, ref: str | None) -> list[Hallaz
         pr_, kw_r = params(mr[nombre])
         if not kw_r:
             for p in sorted(pf_ - pr_):
-                hs.append(Hallazgo("PARAM", f"{cf}.{nombre}({p}=) ({pf}:{fm.lineno}) · {cr}.{nombre} no lo acepta ({pr}:{mr[nombre].lineno})"))
+                hs.append(Hallazgo("PARAM", f"{cf}.{nombre}({p}=) ({pf}:{fm.lineno}) · {cr}.{nombre} no lo acepta ({pr}:{mr[nombre].lineno})",
+                                   f"{cf}.{nombre}({p})"))
         dom = dominios_real(mr_ext, nombre, tr)
         for k, v, ln in _pares_dict(fm):
             if not _es_literal(v):
@@ -246,35 +286,144 @@ def comparar(pf: str, cf: str, pr: str, cr: str, ref: str | None) -> list[Hallaz
                 duenos = sorted(k2 for k2, d in dom.items() if val in d)
                 if duenos and k not in duenos:
                     hs.append(Hallazgo("VALOR", f"{cf}.{nombre} responde {k}={val!r} ({pf}:{ln}) · en {cr} `{val}` es valor de "
-                                                f"`{'/'.join(duenos)}`, no de `{k}` ({pr}:{mr[nombre].lineno})"))
+                                                f"`{'/'.join(duenos)}`, no de `{k}` ({pr}:{mr[nombre].lineno})",
+                                       f"{cf}.{nombre}:{k}={val}"))
         kf, kr = claves_dict(fm), claves_real(mr_ext, nombre)
         if not kr:     # el real no arma dicts (devuelve fila/objeto de otro lado): sin base para comparar claves
             continue
         for k in sorted(set(kf) - set(kr)):
             hs.append(Hallazgo("info-INVENTA", f"{cf}.{nombre} responde `{k}` ({pf}:{kf[k]}) · {cr}.{nombre} no lo produce ({pr}:{mr[nombre].lineno})"))
         if kf:
-            for k in sorted((set(kr) - set(kf)) & claves_leidas(ref)):
-                hs.append(Hallazgo("info-OMITE", f"{cf}.{nombre} no responde `{k}` (que producción lee) ({pf}:{fm.lineno}) · {cr}.{nombre} sí ({pr}:{kr[k]})"))
+            # TRIAGE del OMITE: sólo importa un consumidor REAL de este método (`.nombre(` en producción). Si lo lee
+            # con `x["k"]` y el fake no la da, el test revienta con KeyError (RUIDOSO, benigno). Si lo lee con
+            # `.get("k")` el default tapa la ausencia y el test sigue verde sobre una forma que no existe (SILENCIOSO).
+            for k in sorted(set(kr) - set(kf)):
+                cons = [(a, g, sb) for a, (ll, g, sb) in lect.items() if nombre in ll and (k in g or k in sb)]
+                silencioso = [a for a, g, sb in cons if k in g and k not in sb]
+                if silencioso:
+                    hs.append(Hallazgo("info-OMITE-SILENCIOSO", f"{cf}.{nombre} no responde `{k}` ({pf}:{fm.lineno}) · {cr}.{nombre} sí "
+                                       f"({pr}:{kr[k]}) · y `{silencioso[0]}` la lee con .get() tras llamar `.{nombre}(`",
+                                       f"{cf}.{nombre}~{k}"))
+                elif cons:
+                    hs.append(Hallazgo("info-OMITE", f"{cf}.{nombre} no responde `{k}` pero el consumidor la lee con [..] (KeyError ruidoso)"))
     return hs
 
 
+def cargar_json() -> dict:
+    return json.loads(EXENCIONES.read_text(encoding="utf-8")) if EXENCIONES.exists() else {}
+
+
+def aplicar_exenciones(duros: dict[str, list[Hallazgo]], exenciones: list[dict], hoy: str) -> tuple[dict[str, list[Hallazgo]], list[str]]:
+    """Quita los hallazgos exentos y devuelve (duros restantes, problemas): exención sin fecha/motivo, VENCIDA, o [STALE]
+    (su `objeto` ya no produce hallazgo: el defecto se arregló o el fake desapareció — la exención no puede sobrevivirlo)."""
+    problemas: list[str] = []
+    vivos = {h.objeto for hs in duros.values() for h in hs}
+    for e in exenciones:
+        obj = e.get("objeto", "")
+        if not (obj and e.get("motivo") and e.get("revisar_hasta")):
+            problemas.append(f"exención sin objeto/motivo/revisar_hasta: {e}")
+        elif e["revisar_hasta"] < hoy:
+            problemas.append(f"exención VENCIDA ({e['revisar_hasta']}): {obj} — arreglarlo o renovar con motivo")
+        elif obj not in vivos:
+            problemas.append(f"[STALE] exención de `{obj}`: ya no hay hallazgo — borrarla")
+    exentos = {e.get("objeto") for e in exenciones}
+    return {k: [h for h in hs if h.objeto not in exentos] for k, hs in duros.items()}, problemas
+
+
+# --- AUTOTEST: el gate se prueba a sí mismo con el N21 en miniatura (un gate que no sabe ponerse rojo no acredita nada)
+_REAL = """
+IMPAGA, PARCIAL, COBRADA = "impaga", "parcial", "cobrada"
+def estado_de_cobro(total, cobrado):
+    return COBRADA if cobrado >= total else PARCIAL
+class CobroStore:
+    def __init__(self, conn_factory, cliente_id): pass
+    def registrar(self, comprobante_id, *, monto=None):
+        return self._resumen(comprobante_id)
+    def _resumen(self, cid):
+        return {"estado_cobro": estado_de_cobro(1, 1), "estado": "emitida", "saldo": "0"}
+"""
+_FAKE_N21 = """
+class CobroFake:
+    def registrar(self, comprobante_id, *, monto=None):
+        return {"estado": "cobrada" if monto else "parcial", "saldo": "0"}
+"""
+_FAKE_OK = """
+class CobroFake:
+    def registrar(self, comprobante_id, *, monto=None):
+        return {"estado": "emitida", "estado_cobro": "cobrada" if monto else "parcial", "saldo": "0"}
+"""
+_FAKE_PARAM = _FAKE_OK.replace("monto=None", "importe=None").replace("if monto", "if importe")
+
+
+def autotest() -> int:
+    tr = ast.parse(_REAL)
+    casos = [("N21 (estado='cobrada' donde el real dice estado_cobro)", _FAKE_N21, "VALOR"),
+             ("fake fiel (estado='emitida' + estado_cobro)", _FAKE_OK, None),
+             ("kwarg que el real no acepta", _FAKE_PARAM, "PARAM")]
+    mal = 0
+    for nombre, src, espera in casos:
+        tipos = {h.tipo for h in comparar_ast(ast.parse(src), tr, "fake.py", "CobroFake", "real.py", "CobroStore", {})
+                 if not h.tipo.startswith("info")}
+        ok = (espera in tipos) if espera else not tipos
+        print(f"  {'✔' if ok else '✖'} {nombre}: duros={sorted(tipos) or '-'} (espera {espera or 'limpio'})")
+        mal += not ok
+    h = Hallazgo("PARAM", "x", "F.m(p)")
+    resto, prob = aplicar_exenciones({"par": [h]}, [{"objeto": "F.m(p)", "motivo": "m", "revisar_hasta": "2999-01-01"}], "2026-11-03")
+    ok = not resto["par"] and not prob
+    print(f"  {'✔' if ok else '✖'} exención con objeto vivo, motivo y fecha: absuelve el hallazgo")
+    mal += not ok
+    _, prob = aplicar_exenciones({"par": []}, [{"objeto": "F.m(p)", "motivo": "m", "revisar_hasta": "2999-01-01"}], "2026-11-03")
+    ok = len(prob) == 1 and "STALE" in prob[0]
+    print(f"  {'✔' if ok else '✖'} exención cuyo objeto ya no existe: [STALE]")
+    mal += not ok
+    _, prob = aplicar_exenciones({"par": [h]}, [{"objeto": "F.m(p)", "motivo": "m", "revisar_hasta": "2020-01-01"}], "2026-11-03")
+    ok = len(prob) == 1 and "VENCIDA" in prob[0]
+    print(f"  {'✔' if ok else '✖'} exención vencida: roja")
+    mal += not ok
+    print("autotest:", "OK" if not mal else f"FALLA ({mal})")
+    return 1 if mal else 0
+
+
 def main() -> int:
+    if "--autotest" in sys.argv:
+        return autotest()
     ref = sys.argv[sys.argv.index("--ref") + 1] if "--ref" in sys.argv else None
-    sucios = 0
-    for pf, cf, pr, cr in PARES:
+    check = "--check" in sys.argv
+    pares, ambiguos = derivar_pares(ref)
+    cfg = cargar_json()
+    problemas: list[str] = [f"AMBIGUO (sin pin en {EXENCIONES.name}): {a}" for a in ambiguos]
+    vistos = {f"{Path(f).name}::{c}" for f, c, _, _ in pares}
+    problemas += [f"[STALE] pin `{k}`: el fake ya no existe" for k in cfg.get("pares_fijos", {}) if k not in vistos]
+    duros: dict[str, list[Hallazgo]] = {}
+    silenciosos: list[Hallazgo] = []
+    for pf, cf, pr, cr in pares:
+        clave = f"{Path(pf).name}::{cf} → {cr}"
         try:
             hs = comparar(pf, cf, pr, cr, ref)
         except subprocess.CalledProcessError:
             print(f"?  {cf:28} → {cr:22} (no existe en {ref})")
             continue
-        duros = [h for h in hs if not h.tipo.startswith("info")]
-        print(f"{'✔ LIMPIO' if not duros else '✖ SUCIO '} {Path(pf).name}::{cf} → {cr}  "
-              f"({len(duros)} duros · {len(hs) - len(duros)} info)")
-        for h in duros:
-            print(f"      {h.tipo:8} {h.detalle}")
-        sucios += bool(duros)
-    print(f"\npares: {len(PARES)} · sucios: {sucios} · limpios: {len(PARES) - sucios}")
-    return 0
+        duros[clave] = [h for h in hs if not h.tipo.startswith("info")]
+        silenciosos += [h for h in hs if h.tipo == "info-OMITE-SILENCIOSO"]
+        if not check:
+            print(f"{'✔ LIMPIO' if not duros[clave] else '✖ SUCIO '} {clave}  ({len(duros[clave])} duros · {len(hs) - len(duros[clave])} info)")
+    if silenciosos and not check:
+        print(f"\nTRIAGE info-OMITE-SILENCIOSO ({len(silenciosos)}): clave que el real devuelve, el fake omite y un consumidor "
+              f"importado por el test lee con .get() (el default tapa la ausencia). NO decide el veredicto: casi todas son "
+              f"campos opcionales; se listan para revisión humana.")
+        for h in silenciosos:
+            print(f"      {h.detalle}")
+    duros, prob_ex = aplicar_exenciones(duros, cfg.get("exenciones", []), __import__("datetime").date.today().isoformat())
+    problemas += prob_ex
+    sucios = {k: v for k, v in duros.items() if v}
+    for k, hs in sucios.items():
+        print(f"✖ SUCIO {k}")
+        for h in hs:
+            print(f"      {h.tipo:6} {h.detalle}")
+    for pr_ in problemas:
+        print(f"✖ {pr_}")
+    print(f"\npares: {len(pares)} · sucios: {len(sucios)} · limpios: {len(duros) - len(sucios)} · problemas de config: {len(problemas)}")
+    return 1 if (check and (sucios or problemas)) else 0
 
 
 if __name__ == "__main__":

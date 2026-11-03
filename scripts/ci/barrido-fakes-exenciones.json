@@ -1,0 +1,16 @@
+{
+  "_doc": "Barrido fakes-vs-stores (scripts/barrido_fakes_vs_stores.py). `pares_fijos`: fakes que la regla de derivacion no puede emparejar sola (<2 metodos publicos compartidos: `get`/`save` son nombres genericos) -> {\"<test.py>::<Fake>\": \"<StoreReal>\"}. Un pin cuyo fake ya no existe lo marca [STALE] el gate. `exenciones`: hallazgos duros aceptados, cada uno con `objeto` (el literal que el barrido imprime: `Fake.metodo(param)` o `Fake.metodo:clave=valor`), `motivo` y `revisar_hasta` (YYYY-MM-DD). Si el objeto deja de dar hallazgo -> [STALE]; si vence la fecha -> rojo.",
+  "pares_fijos": {
+    "test_contabilidad_web.py::_FakeGastoStore": "GastoStore",
+    "test_contabilidad_web.py::_FakeAfipComprobanteStore": "AfipComprobanteStore",
+    "test_afip_web_facturas.py::ComprobanteStoreFake": "AfipComprobanteStore",
+    "test_afip_drive_activity.py::ComprobanteFake": "AfipComprobanteStore",
+    "test_presupuestos_web.py::_FakeCredStore": "AfipCredentialStore",
+    "test_facturar_por_voz.py::_PerfilStoreFake": "AfipPerfilStore",
+    "test_facturar_por_voz.py::_CredFake": "AfipCredentialStore",
+    "test_afip_onboarding.py::PerfilStoreFake": "AfipPerfilStore",
+    "test_mp_web.py::_FakePayStore": "MpPaymentStore",
+    "test_mp_web.py::_FakeCredStore": "MpCredentialStore"
+  },
+  "exenciones": []
+}

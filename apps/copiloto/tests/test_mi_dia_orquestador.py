@@ -37,8 +37,8 @@ class _TarjetasFake:
     def crear_si_no_existe(self, regla, entidad_tipo, entidad_id, texto, datos=None) -> None:
         self.creadas.append((regla, entidad_tipo, str(entidad_id), texto))
 
-    def cerrar_resueltas(self, regla: str, vigentes: set[str]) -> int:
-        self.cierres.append((regla, frozenset(str(v) for v in vigentes)))
+    def cerrar_resueltas(self, regla: str, entidad_ids_vigentes: set[str]) -> int:
+        self.cierres.append((regla, frozenset(str(v) for v in entidad_ids_vigentes)))
         return 0
 
     def listar_tablero(self) -> dict:

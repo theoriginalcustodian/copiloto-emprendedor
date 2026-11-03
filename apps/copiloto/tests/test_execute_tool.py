@@ -116,7 +116,7 @@ class _FakeMpGw:
 
 
 class _FakeCred:
-    def get(self, seller): return {"access_token": "tok"}
+    def get(self, seller_user_id): return {"access_token": "tok"}
     def salud(self): return "conectado"
 
 
@@ -242,7 +242,7 @@ def test_mp_charge_caido_devuelve_card_en_vez_de_llamar_a_mp_con_token_vencido()
     ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
     ctx = _mp_ctx(gw)
     class _CredCaida:
-        def get(self, seller): return {"access_token": "vencido"}   # fila EXISTE -> truthy
+        def get(self, seller_user_id): return {"access_token": "vencido"}   # fila EXISTE -> truthy
         def salud(self): return "caido"
     ctx.mp_cred_store = _CredCaida()
     tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=True, idem_key="run1-caido")
@@ -262,7 +262,7 @@ class _FakeCredConectadoSpy:
     """`salud()` dice "conectado" (pasa el guard preventivo) -- registra si `marcar_reauth` se llamó."""
     def __init__(self):
         self.reauth_calls = []
-    def get(self, seller): return {"access_token": "tok"}
+    def get(self, seller_user_id): return {"access_token": "tok"}
     def salud(self): return "conectado"
     def marcar_reauth(self, seller_user_id): self.reauth_calls.append(seller_user_id)
 
