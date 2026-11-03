@@ -39,6 +39,20 @@ describe('EntradaSesion', () => {
     expect(screen.queryByTestId('login-screen')).toBeNull();
   });
 
+  it('SM-N30: «volver» es el `reveal` del mapa — «Odobi» entero + pronunciación, sin descriptor', async () => {
+    await montar(sesion({ cierreVoluntario: { email: 'ana@x.com' } }));
+    expect(screen.getByText('Odobi')).toBeTruthy();
+    expect(screen.getByTestId('reveal-entrada-pronunciacion')).toBeTruthy();
+    expect(screen.queryByTestId('reveal-entrada-tagline')).toBeNull();
+  });
+
+  it('SM-N30: el primer arranque es el `splash` del mapa — glifo + «dobi» + descriptor, sin pronunciación', async () => {
+    await montar(sesion({ primeraVez: true }));
+    expect(screen.getByTestId('reveal-entrada-tagline')).toBeTruthy();
+    expect(screen.queryByText('Odobi')).toBeNull();
+    expect(screen.queryByTestId('reveal-entrada-pronunciacion')).toBeNull();
+  });
+
   it('«Entrar» va al formulario con el mail de la cuenta que salió precargado', async () => {
     await montar(sesion({ cierreVoluntario: { email: 'ana@x.com' } }));
     await fireEvent.press(screen.getByTestId('reveal-entrada-primario'));
