@@ -64,3 +64,30 @@ describe('etiquetaEstado (mapeo `presu`: el estado de la fila)', () => {
     expect(etiquetaEstado(p({ estado: 'desestimado' }))?.texto).toBe('Desestimado');
   });
 });
+
+describe('etiquetaEstado — los DÍAS por fila (SM-L4, entrada 41; prototipo `Se enfría · 31 días` / `… · 5 días`)', () => {
+  const AHORA = new Date('2026-11-03T12:00:00Z');
+  const hace = (dias: number) => new Date(AHORA.getTime() - dias * 86_400_000).toISOString();
+
+  it('sin respuesta: «Se enfría · N días» con los días reales de `fecha`', () => {
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: true, fecha: hace(31) }), AHORA)?.texto).toBe('Se enfría · 31 días');
+  });
+
+  it('esperando: «Esperando respuesta · N días», y hoy / 1 día en singular', () => {
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false, fecha: hace(5) }), AHORA)?.texto).toBe('Esperando respuesta · 5 días');
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false, fecha: hace(1) }), AHORA)?.texto).toBe('Esperando respuesta · 1 día');
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false, fecha: hace(0) }), AHORA)?.texto).toBe('Esperando respuesta · hoy');
+  });
+
+  it('🔴 control negativo: sin `fecha` válida NO se inventan días (queda el texto de antes)', () => {
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: true, fecha: '' }), AHORA)?.texto).toBe('Sin respuesta hace más de un mes');
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false, fecha: 'no-es-fecha' }), AHORA)?.texto).toBe('Esperando respuesta');
+    // Una fecha futura (reloj del teléfono atrasado) tampoco se convierte en «-3 días».
+    expect(etiquetaEstado(p({ estado: 'pendiente', sinRespuesta: false, fecha: hace(-3) }), AHORA)?.texto).toBe('Esperando respuesta');
+  });
+
+  it('los días no tocan a aceptado ni a desestimado', () => {
+    expect(etiquetaEstado(p({ estado: 'aprobado', fecha: hace(40) }), AHORA)?.texto).toBe('Aceptado');
+    expect(etiquetaEstado(p({ estado: 'desestimado', fecha: hace(40) }), AHORA)?.texto).toBe('Desestimado');
+  });
+});
