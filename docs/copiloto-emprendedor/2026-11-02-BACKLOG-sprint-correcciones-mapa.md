@@ -115,8 +115,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
-| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del preview de mp_charge (frontend1). Residual de las 5 frases que NO mueven plata (1/8) ACEPTADO y… |
-| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del preview HITL de mp_charge (frontend1) |
+| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge, compartida con SM-N21 (frontend1). Se cierran juntas: es la … |
+| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge (frontend1, tenedora). Entra en el bloque 1 de la pasada de d… |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
@@ -139,8 +139,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
 | **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
-| **SM-N44** | `sin-issue` | 🟧 DOD-PARCIAL | frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend… |
-| **SM-N45** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N44** | `sin-issue` | 🟧 DOD-PARCIAL | UN test de contrato en web (frontend2, acordado el 2026-11-03): que Facturacion llama estadoAfip() SIN CUIT y que el … |
+| **SM-N45** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 6: la captura en device de la pantalla con las cards en piel CLARA. Es de frontend1 (tenedora) y entra … |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1597,8 +1597,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N20 · `sin-issue` — FUERA DEL SPRINT: el LLM escribe los importes en formato inglés y agrega frases que no vienen de la observación
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device del preview de mp_charge (frontend1). Residual de las 5 frases que NO mueven plata (1/8) ACEPTADO y MEDIDO, no pendiente
-- **Cierre:** 30a05839 (#1414) + bf90c016 (#1423, SM-N21) reply_literal en las 6 tools que mueven plata; sonda LLM real 0/32 con flag; cobro con LLM real 0/3 distinto del literal (3b20a1f1, #1518)
+- **Falta:** SOLO la captura de device del preview HITL de mp_charge, compartida con SM-N21 (frontend1). Se cierran juntas: es la MISMA captura, y pedirla dos veces seria contar un trabajo por dos.
+- **Cierre:** Cubierta por la sonda de SM-N21: 3b20a1f1 (#1518, desplegado) + a2d07f74 (#1522). Lo que SM-N20 heredaba a SM-N21 -- cobro y completar_ingreso sin sonda de LLM real -- quedo resuelto: el cobro se sondeo con LLM real contra el store real (0/3 distinto del literal, con control positivo y negativo) y completar_ingreso quedo declarado NO-ALCANZABLE con su motivo. El residual de las 5 frases que NO mueven plata (1/8) sigue ACEPTADO como estaba.
 - **Dueño:** backend
 - **De dónde sale:** lateral que backend destapó midiendo SM-H5/SM-N8, 2026-11-02. Misma clase que
   aquellas dos, pero en tools que ninguna cubría.
@@ -1625,8 +1625,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N21 · `sin-issue` — FUERA DEL SPRINT: opción C — los importes que mueven plata se escriben por código, no los redacta el LLM
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** captura de device del preview HITL de mp_charge (frontend1)
-- **Cierre:** 71725e91 mitad A (#1420) + bf90c016 mitad B reply_literal (#1423), desplegado, flag UC_REPLY_LITERAL=1; sonda LLM real N=8 0/8 importe mal; SONDA DE COBRO con LLM real 3b20a1f1 (#1518, scripts/sonda_cobro_llm_sm_n21.py): 0/3 distinto del literal byte a byte, negativo redactado libre, tenant de prueba devuelto a 0; hallazgo+fix: el literal decia 'Todavia quedan $0 por pagar' en un cobro total (resumen[estado] vs estado_cobro), test contra CobroStore real; completar_ingreso NO-ALCANZABLE (modelo propone-no-persiste, ya no hay camino de LLM que lo persista)
+- **Falta:** SOLO la captura de device del preview HITL de mp_charge (frontend1, tenedora). Entra en el bloque 1 de la pasada de device (estado normal). Nada de codigo pendiente.
+- **Cierre:** 3b20a1f1 (#1518, desplegado) + registro a2d07f74 (#1522) por backend. Sonda con LLM REAL (scripts/sonda_cobro_llm_sm_n21.py) sobre el tenant de prueba de SM-N15 -- exigido vacio, NO el canonico ni el del operador -- con 3 facturas descartables por corrida, marca UNICA por corrida, reversion en finally y respaldo EN DISCO. Resultados: (A) cobro, 0/3 distinto del literal byte a byte ($70.000 - $25.000,50 - $1.234.567,89); (B) control negativo, «cuanto me deben?» redactado libre y su redaccion VARIO entre corridas, que es lo que un negativo tiene que mostrar; control POSITIVO: el endpoint real veia las 3 impagas antes de preguntar. Tenant devuelto a 0 comprobantes y 0 cobros. 🔴 HALLAZGO que la sonda destapo y que NADIE habia pedido buscar -- la 1a corrida salio ROJA: con el store real un cobro TOTAL respondia «Todavia quedan $0 por pagar», porque el tool comparaba resumen['estado'] (el estado del COMPROBANTE, 'emitida') contra COBRADA, condicion NUNCA verdadera; y el fake de test_plata_por_voz devolvia estado:'cobrada', un contrato que el store real no cumple -- o sea el test pasaba POR el fake, no por el codigo. Fix: estado_cobro + el fake con la forma real + 2 tests contra CobroStore REAL, verificados ROJOS con el codigo viejo y verdes con el fix, que es la mitad que casi nunca se hace: sin ella un test verde no distingue «arregle el bug» de «escribi un test que no mira». Suite VPS verde, CI 6/6, deploy verde. completar_ingreso: declarado NO-ALCANZABLE con su motivo (el modelo propone y no persiste) -- declarado con motivo es un cierre, «no se pudo» no lo es.
 - **Dueño:** backend
 - **De dónde sale:** decisión del **operador**, 2026-11-02: «acuerdo opción C», sobre el inventario
   que midió backend para `SM-N20` (13 sitios donde un importe llega al usuario). Es la raíz que
@@ -2880,8 +2880,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N44 · `sin-issue` — Facturacion lee el CUIT POR DEFECTO, no el del emprendedor: dice "no configuraste" sobre un perfil que SI existe
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend1: GET /me + estado sin cuit con el mismo token
-- **Cierre:** backend #1510 c8736bff: cuit_vinculado + adversarial PG/RLS, suite VPS 2640 passed, deploy verde
+- **Falta:** UN test de contrato en web (frontend2, acordado el 2026-11-03): que Facturacion llama estadoAfip() SIN CUIT y que el unico lugar que lo manda explicito es Setup con el que el usuario escribe. Hoy ese invariante lo sostiene un COMENTARIO, y un comentario que declara una proteccion no es la proteccion: si alguien agrega el parametro «para ser consistente con mobile», revive el defecto y nada lo frena. Es la raiz; propagar el fix de mobile era el parche.
+- **Cierre:** backend #1510 c8736bff (cuit_vinculado + adversarial PG/RLS, suite VPS 2640 passed, deploy verde) + frontend2 #1513 7f045246 (mobile usa cuitVinculado y converge la cache: PantallaFacturacion.tsx:275-277) + frontend1 el punto 6 en DEVICE: cuenta canonica e2e-device@copiloto.test, 12:53 local del 2026-11-03, Facturacion abre en la pantalla normal (Facturado este mes $0,00 - Te deben $205.000,00 - 4 filas - Nueva factura) y el gate «Todavia no configuraste tu facturacion ARCA» NO aparece (uiautomator: 0 coincidencias de configur/afip/arca). BUNDLE VERIFICADO antes de capturar, y asi se hace de ahora en mas: bajo el bundle de Metro (12,7 MB) y grepeo cuit_vinculado x1 + el comentario «la cache se CORRIGE» x2 -> Metro servia #1513. LIMITE declarado por frontend1, y esta bien declarado: sin run-as no puede probar que la cache local arrancara con el CUIT viejo, asi que lo medido es el EFECTO del DoD, no la convergencia de la cache en si -- eso lo cubre el test de #1513. EL RESIDUAL DE WEB: MEDIDO Y REFUTADO, no omitido. Yo despache la propagacion a web y estaba MAL: web llama estadoAfip() SIN parametro a proposito y con el comentario puesto (PantallaFacturacion.tsx:145,209; PantallaAfipSetup.tsx:28,210 «sin cache de CUIT»), sin parametro el backend resuelve primer_cuit() (afip_web.py:709-710) asi que res.cuit YA es el del tenant, y el unico lugar de web que manda un CUIT explicito es Setup con el que el usuario esta ESCRIBIENDO para vincular -- «corregirlo» a cuitVinculado pisaria el CUIT nuevo que esta dando de alta. O sea mi punto no era neutro: era un bug con forma de fix. La cache, que es el MECANISMO del defecto, solo existe en mobile.
 - **Dueño:** backend (el endpoint) · frontend1 (quien lo midio en device)
 - **De dónde sale:** hallazgo de frontend1 en device el 2026-11-03 12:09, **mientras media otra
   ficha** (`SM-N35`). No lo buscaba nadie: aparecio porque por primera vez hubo un perfil ARCA
@@ -2928,7 +2928,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N45 · `sin-issue` — Inteligencia dibuja PLANAS las seis secciones que el prototipo dibuja como cards
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** SOLO el punto 6: la captura en device de la pantalla con las cards en piel CLARA. Es de frontend1 (tenedora) y entra en el BLOQUE 3 de la pasada de device (piel clara forzada), que con la tenencia de prueba ya no exige mutar la cuenta del operador. Ningun gate puede medir esto.
+- **Cierre:** a6600880 (#1520, CI 6/6) por frontend2. DoD 1-5 HECHOS: componente Tarjeta en theme/ con color.superficie + radio del tema + el rotulo h4 11px/.14em, y elevacion() EXPORTADA de BloqueCifra y REUSADA, no reescrita -- el punto que mas importaba, porque el mismo helper viviendo dos veces con el fix llegando a uno es el defecto mas repetido de este repo. BloqueCifra intacto: la portada sigue siendo el bloque negro, una por pantalla. Test con las DOS mitades. TRES DECISIONES DE FRONTEND2, atribuidas como decisiones y NO como paridad: (1) Facturacion mensual y Mes a mes en card aunque el prototipo no las tenga, para no quedar planas entre cards; (2) el ranking de clientes como UNA card con filas adentro, como el prototipo; (3) las Row que ya eran card de VIDRIO pasan a la superficie blanca del tema, que es el defecto REAL. CORRIJO MI PREMISA: escribi cero contenedores de card y era falso -- medi borderRadius dentro del archivo y el contenedor lo aportaba Row (theme/glass/Row.tsx:61-62). BASELINE DE PARIDAD, interrogado y resuelto: frontend2 retiro la excepcion modules/inteligencia::inteligencia-clientes y NO fue para apagar el gate -- esa excepcion (alta 2026-09-22, falta_en mobile) declaraba una brecha real que este cambio CERRO (mobile ahora tiene el mismo testID, PantallaInteligencia.tsx:303, igual que web), y el gate la marco [STALE]. Medido en a6600880^ vs a6600880 con control INVERSO: 0 testID mobile-only nuevo, 510 excepciones vigentes intactas.
 - **Dueño:** frontend2 (el componente y el envoltorio) · frontend1 (la captura)
 - **De dónde sale:** el operador, 2026-11-03, mirando `prototipo/index.html?ver=bi` contra la app:
   *«la información al parecer está plana y no en cards como en el prototipo del mapa»*.
