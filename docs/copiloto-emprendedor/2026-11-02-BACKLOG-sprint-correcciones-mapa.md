@@ -143,6 +143,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N45** | `sin-issue` | ✅ TERMINADO | a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en them… |
 | **SM-N46** | `sin-issue` | ✅ TERMINADO | DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabi… |
 | **SM-N47** | `sin-issue` | ✅ TERMINADO | sin-codigo: es ficha de ATRIBUCION, y cierra con la SEGUNDA de las dos frases que su DoD 4 permite -- no se pudo atri… |
+| **SM-Z1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
+| **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-Z4** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3076,3 +3080,91 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      atribuir, se miró en A, B y C*. Un incidente que se archiva sin ninguna de las dos vuelve a
      entrar al registro dentro de un mes como hallazgo nuevo.
 
+
+### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
+
+- **Estado:** PENDIENTE
+- **Dueño:** operador (decisión de producto)
+- **⚠️ Por qué el id arranca en `Z` y no en `A`.** Esta ficha y sus hermanas `Z2`–`Z4` nacieron el
+  2026-11-03 citadas como `SM-A1`–`SM-A3`, y eso fue un error de planificación: `SM-A1` y `SM-A2` ya
+  existen en el backlog del sprint mobile (`#1010` «el toque de la pestaña es intermitente» y `#1012`
+  «el eje A tiene 1 ruta verificada de 21»). El encabezado de **este mismo doc** ya lo advertía —
+  «las letras arrancan en `G`… reusar una letra haría que `SM-B3` tuviera dos referentes» — y no se
+  leyó. El síntoma no fue teórico: `sprint-estado.py --marcar SM-A2 TERMINADO` **escribió en la
+  ficha ajena**, y se revirtió verificando el archivo contra `origin/main`.
+- **Medido (backend, 2026-11-03):** el catálogo real devuelve **5 keys**, sin `drive` ni
+  `googledrive`. La causa es la **policy de toolkits**, no la UI: `conexiones_salud.py:18`
+  `toolkits_conectables()` es la única definición de «servicio soportado» (`SM-N18`) y la poda de
+  `A7`/`SM-E2` dejó `services/drive.py:75` con `TOOLS = {}` — control positivo: `gmail.py:68` sí
+  publica `{"gmail_send": "send"}`.
+- **Medido (front):** `PantallaApps.tsx:122-124` termina en `.filter((g) => g.items.length > 0)` con
+  «no se pinta un rótulo sin filas». El rótulo «Trabaja sola, de fondo» ausente es la **consecuencia
+  correcta** de un grupo vacío, no un defecto de layout.
+- **Retirado:** planificación acusó una costura `drive` vs `googledrive` entre backend y front. **No
+  existe**: `catalog.py:94` usa `googledrive`, igual que el front; los hits de `'drive'` eran claves
+  del dispatcher de tools, otro sujeto con el mismo nombre.
+- **La decisión:** **(A)** el mapa deja de dibujar Drive, o **(B)** Drive vuelve a la policy de
+  toolkits. Recomendación de planificación: **B** sólo si Drive va a ser conectable por el
+  emprendedor; hoy `catalog.py:94` dice que sólo archiva facturas desde el worker, así que **A**.
+- **DoD:** la decisión escrita por el operador, y el lado que corresponda alineado con su control.
+
+### SM-Z2 · `sin-issue` — El reveal pintaba badge de acento y el prototipo lo dibuja DESNUDO
+
+- **Estado:** TERMINADO
+- **Cierre:** `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama
+  `esReveal` → `<Marca size={LOCKUP_SIMBOLO} tono="desnudo" />`: signo terracota a 54 sin badge,
+  alineado a `Prototipo frontend/odobi-ui/prototipo/index.html:2547` (svg width 54). Cerrada por
+  frontend2 con **control negativo** (un tercer par queda ROJO) y 66/66 de contraste. El tamaño 54
+  quedó intacto: el defecto era el **tono**, medido en la fuente sin gastar device.
+  **DEVICE 2026-11-03 17:08:06** (frontend1, tenedora) sobre bundle `61cfcccc` — procedencia medida
+  en el proceso que escucha en :8081, worktree `wt-fe1-h5`, que contiene `61b684c2`:
+  `marca-isotipo` con bounds `[211,665][313,766]` = **102 px ≈ 54 dp**, SIN badge, con los botones
+  «Entrar» y «Entrar con otra cuenta». Par ANTES/DESPUÉS contra la captura de 16:32:32.
+- **Dueño:** frontend2
+- **⚠️ Alcance, y es la mitad que no cubre:** `SM-Z2` toca **sólo** la rama `esReveal`. La rama
+  `splash` (`RevealEntrada.tsx:194`) sigue dibujando `<OAsentada><Marca /></OAsentada>` CON placa.
+  Eso es `SM-Z3`, id propio, y **no reabre esta ficha** (`DEC-18`).
+
+### SM-Z3 · `sin-issue` — El splash pinta el ISOTIPO EN PLACA y el prototipo pinta la «O» como LETRA
+
+- **Estado:** PENDIENTE
+- **Dueño:** operador (decisión de producto)
+- **De dónde sale:** captura del operador del teléfono, 2026-11-03 17:11, pantalla «Empecemos».
+- **Medido (código, sin device — las dos fuentes son texto):** `EntradaSesion.tsx:37`
+  `variante={cierreVoluntario != null ? 'reveal' : 'splash'}`; en arranque frío no hay cierre
+  voluntario ⇒ **splash**. `RevealEntrada.tsx:194` dibuja ahí `<OAsentada><Marca size={54} /></OAsentada>`
+  **con placa**, dentro de `IdentidadEntrada`, más el wordmark letra a letra y la `Tagline`.
+  `index.html:2447` (`#splash`) es **puramente tipográfico**: `<span class="o">O</span>` +
+  `<span class="rest">d o b i</span>` + `.tagline`, **sin ningún `<svg>`**.
+- **No es bundle viejo.** Planificación lo afirmó primero y fue **refutado por frontend1**: Metro
+  servía desde `wt-fe1-h5` @ `61cfcccc`, que contiene `61b684c2` y `ddccda38`. Queda retirado como
+  causa.
+- **No es un defecto de implementación:** la rama `splash` con `Marca` está deliberada, y el
+  comentario de `SM-Z2` en `RevealEntrada.tsx:183` declara que «el splash… conserva su `Marca`».
+  Medido contra el prototipo, ese supuesto no se sostiene — un comentario que declara algo correcto
+  apaga la búsqueda del próximo.
+- **La decisión:** **(A)** el splash pasa a lockup tipográfico, con la «O» como letra, y se retira el
+  isotipo de esa pantalla — arrastra `OAsentada`/`IdentidadEntrada`, que hoy animan ese signo
+  (BL-X10 fila 2, port fiel de web); o **(B)** dejar la app como está y anotar el mapa como
+  desactualizado. Recomendación: **A**, porque las otras dos pantallas ya se alinearon al prototipo y
+  dejar el splash como la única excepción no tiene motivo escrito. A no es gratis.
+- **DoD:** la decisión escrita; si es A, el splash alineado con su control y la animación resuelta.
+
+### SM-Z4 · `sin-issue` — El wordmark difiere en TAMAÑO y en COLOR, y sólo el tamaño se corrige sin decidir
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (parte 1) · operador (parte 2)
+- **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
+  `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
+- **Son dos defectos con distinto costo de decisión y NO van en el mismo commit.**
+- **DoD 1 — TAMAÑO (ejecutable ya):** 34 → 32 citando `index.html:517`, con un control que afirme
+  contra la constante y **no** repita el literal en el test — un test que repite el número es verde
+  por construcción y no vería el defecto volver.
+- **DoD 2 — COLOR (bloqueado, decisión del operador):** `#DE7250` sobre crema da **2,86:1**;
+  alinearlo viola WCAG 1.4.3 salvo que el wordmark sea **logotipo exento**. Hasta que haya decisión,
+  el color se queda y **se declara en el código** con su motivo y este id: sin esa línea, el próximo
+  que compare mapa y app lo «arregla» y baja el contraste sin saberlo.
+- **A medir antes de preguntar:** `RevealEntrada.tsx:146` ya dice «Color de MARCA fijo… no
+  `acentoTinta`: el wordmark es el logotipo» — el reveal **ya resolvió esta pregunta en el sentido
+  contrario al login**. Si eso es una decisión tomada que el login no heredó, la pregunta al operador
+  cambia de «¿es exento?» a «¿por qué dos pantallas resolvieron lo mismo distinto?».
