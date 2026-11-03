@@ -1328,7 +1328,11 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
     cobro, resumen = store.registrar(
         factura["id"], monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
         fecha=fecha, idem_key=idem_key)          # at-least-once: el retry NO puede cobrar dos veces la factura
-    queda = ("" if resumen["estado"] == COBRADA
+    # `estado_cobro`, NO `estado`: en el resumen REAL `estado` es el del COMPROBANTE ('emitida'), así que
+    # comparar `estado` con COBRADA nunca daba verdadero y una factura cobrada completa decía
+    # «Todavía quedan $0 por pagar» (SM-N21, hallado por la sonda con LLM real; el fake de los tests
+    # inventaba `estado:"cobrada"` y por eso salía verde).
+    queda = ("" if resumen["estado_cobro"] == COBRADA
              else f" Todavía le quedan {_plata(resumen['saldo'])} por pagar.")
     return ToolResult(
         tool_call_id=idem_key, is_write=True, status="ok",
@@ -1338,7 +1342,7 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
                      "cobro": cobro, "resumen": resumen,
                      **_literal(f"Registré {_plata_corta(cobro['monto'])} de la factura {factura['nro']}"
                                 f" ({factura['receptor_nombre'] or 'sin nombre'})."
-                                + ("" if resumen["estado"] == COBRADA
+                                + ("" if resumen["estado_cobro"] == COBRADA
                                    else f" Todavía quedan {_plata_corta(resumen['saldo'])} por pagar.")
                                 + _aviso_de_fecha_literal(fecha_ok, arguments.get("fecha_raw")))})
 
