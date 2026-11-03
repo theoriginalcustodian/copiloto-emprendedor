@@ -20,9 +20,18 @@ COMO CLASIFICA, Y DONDE ES FALIBLE
 Lee el campo `Falta:` de cada DOD-PARCIAL de los registros de `sprint-estado.py` y busca
 palabras. Es una heuristica LEXICA sobre prosa escrita a mano, no un analisis del DoD:
 
-  SOLO-DEVICE   el `Falta:` menciona captura/device/filmacion y NADA que suene a codigo.
-  DEVICE+ALGO   menciona las dos cosas: hay trabajo adelantable ANTES del telefono.
-  SIN-DEVICE    no menciona device: es ejecutable ya.
+  SOLO-DEVICE          el `Falta:` menciona captura/device/filmacion y NADA que suene a codigo.
+  DEVICE+ALGO          menciona las dos cosas: hay trabajo adelantable ANTES del telefono.
+  CANDIDATO-SIN-DEV    no menciona device. **NO es un veredicto: es una lista para leer.**
+
+La tercera casilla NO afirma que la ficha sea ejecutable. Medido el 2026-11-03 leyendo a mano las
+5 que cayeron ahi: **4 de 5 eran falsas** -- SM-N4 pedia «volcar la lista de capas» y «repetir el
+toque» (dumpsys + motionevent), SM-K5 exige una sesion DESCARTABLE que el usuario canonico unico
+no permite producir, SM-N25 exige forzar piel clara en device, y SM-L4 depende de que cierren las
+fichas que cubren sus entradas. Solo SM-N36 era ejecutable de verdad (tests en el VPS). Una
+casilla que se lee como «ejecutable ya» y acierta 1 de 5 es la que miente mas caro, porque su
+error manda a una sesion a tomar trabajo imposible. Por eso la salida la rotula CANDIDATO y
+imprime el recordatorio.
 
 Un `Falta:` mal redactado cae en la casilla equivocada, y un `Falta:` VENCIDO clasifica por
 lo que dice y no por lo que falta de verdad -- paso con SM-H5, cuyo `Falta:` pedia dos veces
@@ -40,7 +49,12 @@ REGISTROS = (
 )
 RE_FICHA = re.compile(r"^### (?P<id>SM-[A-Z]\d+) · ")
 
-DEVICE = ("captura", "capturar", "device", "filmad", "filmar", "release", "apk", "tenant vac")
+DEVICE = ("captura", "capturar", "device", "filmad", "filmar", "release", "apk", "tenant vac",
+          # un Falta puede describir una operacion de device SIN decir «device»: SM-N4 pedia
+          # «volcar la lista de capas» y «repetir el toque», que son dumpsys y un motionevent,
+          # y por decir «revertir» caia en SIN-DEVICE. La casilla sin device es la que miente
+          # mas barato, porque se lee como «ejecutable ya».
+          "volcar", "dumpsys", "toque", "metro local", "en el telefono", "logcat")
 CODIGO = ("codigo", "código", "test", "implement", "decidir", "decision", "decisión",
           "payload", "revertir", "escala", "adversarial", "build de release")
 
@@ -57,7 +71,7 @@ def texto_de(ref, path):
 
 
 def clasificar(ref):
-    cubos = {"SOLO-DEVICE": [], "DEVICE+ALGO": [], "SIN-DEVICE": []}
+    cubos = {"SOLO-DEVICE": [], "DEVICE+ALGO": [], "CANDIDATO-SIN-DEV": []}
     sin_falta = []
     for path in REGISTROS:
         for bloque in re.split(r"\n(?=### SM-)", texto_de(ref, path)):
@@ -80,7 +94,7 @@ def clasificar(ref):
             elif tiene_dev:
                 cubos["DEVICE+ALGO"].append(fid)
             else:
-                cubos["SIN-DEVICE"].append(fid)
+                cubos["CANDIDATO-SIN-DEV"].append(fid)
     return cubos, sin_falta
 
 
@@ -94,8 +108,13 @@ def main():
     print("SUJETO: %d fichas DOD-PARCIAL de los 2 registros, leidas en %s"
           % (total, ref or "el working tree"))
     print("NO es avance del sprint -- eso lo mide sprint-estado.py --pct.\n")
-    for k in ("SOLO-DEVICE", "DEVICE+ALGO", "SIN-DEVICE"):
-        print("%-12s %2d  %s" % (k, len(cubos[k]), " ".join(cubos[k])))
+    for k in ("SOLO-DEVICE", "DEVICE+ALGO", "CANDIDATO-SIN-DEV"):
+        print("%-18s %2d  %s" % (k, len(cubos[k]), " ".join(cubos[k])))
+    if cubos["CANDIDATO-SIN-DEV"]:
+        print("\n[!] CANDIDATO-SIN-DEV NO es un veredicto: es una lista PARA LEER. El 2026-11-03")
+        print("    se leyeron a mano las 5 que cayeron ahi y 4 eran falsas (N4 pedia dumpsys y un")
+        print("    toque, K5 una sesion descartable que el canonico unico no da, N25 piel clara en")
+        print("    device, L4 depende de otras fichas). Ninguna se despacha sin leer su DoD.")
     if sin_falta:
         print("\n[X] %d DOD-PARCIAL SIN campo Falta: %s" % (len(sin_falta), " ".join(sin_falta)))
         print("    Un DOD-PARCIAL sin Falta es un TERMINADO disfrazado; sprint-estado.py --check lo rechaza.")
