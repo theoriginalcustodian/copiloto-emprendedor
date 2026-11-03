@@ -19,12 +19,14 @@ import os
 import urllib.error
 import urllib.request
 
+from .llm import _aplicar_modelo
+
 # Errores de TRANSPORTE/API (para que el caller decida; NO los traga el provider) — mismo criterio que
 # `stt._API_ERRORS`.
 _API_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError, OSError)
 
 DEFAULT_URL = "https://api.openai.com/v1/chat/completions"
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL = os.environ.get("COPILOTO_VISION_MODELO") or "gpt-4o"
 
 _PROMPT_BASE = (
     "Sos un lector de tickets de gastos argentinos. Devolvé SOLO JSON (sin markdown) con estas claves: "
@@ -61,9 +63,10 @@ class OpenAIVisionOCR:
         if not key:
             raise RuntimeError(f"falta {self._api_key_env} en el env del worker")
         data_uri = f"data:{content_type};base64,{base64.b64encode(imagen_bytes).decode()}"
-        payload = {"model": self.model, "max_tokens": 300, "messages": [{"role": "user", "content": [
+        payload = {"messages": [{"role": "user", "content": [
             {"type": "text", "text": self._prompt},
             {"type": "image_url", "image_url": {"url": data_uri}}]}]}
+        _aplicar_modelo(payload, self.model, 300)
         req = urllib.request.Request(
             self._url, data=json.dumps(payload).encode(), method="POST",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",

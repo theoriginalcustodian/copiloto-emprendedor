@@ -166,3 +166,35 @@ def test_failover_de_otra_familia_reescribe_los_parametros(monkeypatch):
     assert "max_completion_tokens" in vistos[0] and "max_tokens" not in vistos[0]
     assert vistos[1]["model"] == "gpt-4o-mini" and vistos[1]["max_tokens"] == 1500
     assert "max_completion_tokens" not in vistos[1] and "reasoning_effort" not in vistos[1]
+
+
+def test_kwargs_sdk_familia_anterior_conserva_temperature_y_max_tokens():
+    from clients.agent.providers.llm import kwargs_sdk
+    assert kwargs_sdk("gpt-4o", max_tokens=200, temperature=0) == {"temperature": 0, "max_tokens": 200}
+    assert kwargs_sdk("gpt-4o-mini", temperature=0) == {"temperature": 0}
+
+
+def test_kwargs_sdk_gpt6_no_manda_temperature_ni_max_tokens():
+    from clients.agent.providers.llm import kwargs_sdk
+    k = kwargs_sdk("gpt-6-luna", max_tokens=200, temperature=0)
+    assert k == {"max_completion_tokens": 200, "extra_body": {"reasoning_effort": "none"}}
+
+
+def test_vision_payload_segun_modelo(monkeypatch):
+    import io, json
+    from clients.agent.providers import vision
+    visto = {}
+
+    class _R(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake(req, timeout=None):
+        visto.update(json.loads(req.data)); return _R(b'{"choices":[{"message":{"content":"{}"}}]}')
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.setattr(vision.urllib.request, "urlopen", fake)
+    vision.OpenAIVisionOCR(model="gpt-4o").leer_ticket(b"x")
+    assert visto["model"] == "gpt-4o" and visto["max_tokens"] == 300 and "reasoning_effort" not in visto
+    visto.clear()
+    vision.OpenAIVisionOCR(model="gpt-6-luna").leer_ticket(b"x")
+    assert visto["max_completion_tokens"] == 300 and visto["reasoning_effort"] == "none" and "max_tokens" not in visto
