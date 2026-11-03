@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn() },
@@ -64,6 +64,16 @@ describe('PantallaComoUsarLaApp — la fusión de la guía y el «cómo uso la a
     expect(tomarPendiente()).toBe(TEMAS_AYUDA[0]!.pregunta);
     expect(router.back).toHaveBeenCalledTimes(1);
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('SM-N42 p4: los cinco temas viven en UNA sola tarjeta (el `.grupo` del prototipo), no en cinco', async () => {
+    await montar();
+    const tarjeta = screen.getByTestId('como-usar-temas');
+    TEMAS_AYUDA.forEach((_, i) => {
+      expect(within(tarjeta).getByTestId(`como-usar-tema-${i}`)).toBeTruthy();
+    });
+    // Control: las tarjetas sueltas que quedan son las de la guía (grupos de ejemplos), no los temas.
+    expect(screen.queryAllByTestId(/^como-usar-tema-\d+$/)).toHaveLength(TEMAS_AYUDA.length);
   });
 
   it('lo que entra al chat es una PREGUNTA, no el título del tema', async () => {

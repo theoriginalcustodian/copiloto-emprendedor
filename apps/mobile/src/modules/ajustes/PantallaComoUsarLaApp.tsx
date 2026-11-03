@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   agruparCapacidadesPorRotulo,
@@ -12,6 +12,7 @@ import {
 import { dejarPendiente } from '../chat/mensajePendiente';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -92,12 +93,24 @@ export function PantallaComoUsarLaApp() {
         </Text>
 
         <Text style={rotulo(tema)}>EMPEZÁ POR ACÁ</Text>
-        {TEMAS_AYUDA.map((t, i) => (
-          <Row
+        {/* SM-N42 punto 4 -- los cinco temas viven en UNA tarjeta (`.grupo` del prototipo, `s-comousar`),
+            separados por un filete, no en cinco tarjetas sueltas. El contenedor es una `Row` sin onPress;
+            cada tema es su propio Pressable. El prototipo manda sobre el DoD de pieles (ver `tokens.ts`). */}
+        <Row testID="como-usar-temas" style={styles.grupo}>
+          {TEMAS_AYUDA.map((t, i) => (
+          <Pressable
             key={t.titulo}
             testID={`como-usar-tema-${i}`}
+            accessibilityRole="button"
             accessibilityLabel={t.titulo}
             onPress={() => preguntar(t.pregunta)}
+            style={pressableStyle(
+              [
+                styles.filaTema,
+                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tema.glass.chip },
+              ],
+              PRESS_FADE,
+            )}
           >
             <View style={styles.tema}>
               {/* Círculo tintado con el número (mapa `comousar`, SM-K7). */}
@@ -115,8 +128,9 @@ export function PantallaComoUsarLaApp() {
               {/* Cada tema se toca y lleva al chat: el `›` es la afordancia (ver EncabezadoListado). */}
               <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.titulo }}>›</Text>
             </View>
-          </Row>
-        ))}
+          </Pressable>
+          ))}
+        </Row>
 
         <Text testID="como-usar-pie" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
           Cada tema te lo explico en el chat, con tus propios datos. Si no está lo que buscás,
@@ -203,6 +217,9 @@ const rotulo = (tema: ReturnType<typeof useTema>) => ({
 });
 
 const styles = StyleSheet.create({
+  // Contenedor de la tarjeta única: pisa el padding/dirección de `Row` (que es una fila de lista).
+  grupo: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 4, paddingHorizontal: 16 },
+  filaTema: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   tema: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   bloque: { flex: 1, gap: 4 },
   numero: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
