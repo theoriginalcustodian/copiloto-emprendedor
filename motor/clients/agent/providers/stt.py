@@ -74,7 +74,7 @@ class GroqSTT:
                     raise
                 try:
                     espera = float(e.headers.get("retry-after") or 1)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError):  # retry-after ilegible: degradar a 1 s es correcto, el reintento sigue acotado por tope y por intentos
                     espera = 1.0
                 time.sleep(min(max(espera, 0.0), self._espera_max_429) + random.uniform(0, 0.5))
         raise RuntimeError("inalcanzable")  # pragma: no cover
