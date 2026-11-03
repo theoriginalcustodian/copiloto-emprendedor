@@ -112,18 +112,18 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
-| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay tex… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio e… |
+| **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
-| **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telef… |
 
@@ -1370,7 +1370,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que mide lo mismo desde el otro lado.
+- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54.
 - **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
 - **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
   aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
@@ -1624,7 +1626,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio el ANTES con metodo declarado (y=53 sobre PanelFunciones-pestana, 4 arrastres con adb motionevent sin que el panel abriera; el shade del sistema se come todo y<~48). Falta el DESPUES con el MISMO metodo y las mismas coordenadas: si el margen corrigio la causa, el mismo gesto que fallaba 4 de 4 ahora abre. Sin repetir el gesto identico no se distingue 'el fix funciono' de 'esta vez le acerte al pixel'. Dueno: frontend1.
+- **Cierre:** 2d257f95 (#1432, ancestro de origin/main): margen fijo bajo la barra de estado para el tirador de arriba.
 - **Dueño:** frontend1 (dueño del shell)
 - **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
   desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
@@ -1681,7 +1685,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N24 · `sin-issue` — DENTRO DEL SPRINT: el botón de cámara no va en el chat; sólo al cargar un gasto
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. NOTA: esta ficha estuvo declarada PENDIENTE con el codigo YA en main desde #1430 — el estado lo corrigio frontend2 al refutar un conteo mio.
+- **Cierre:** 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara — ChatView no pasa onFoto; test ChatView.test.tsx:655; comentario de Composer.tsx actualizado (DoD 5); la foto del comprobante queda donde corresponde, en Gastos; Soporte intacto.
 - **Dueño:** frontend1 (dueño del chat) · coordinar con frontend2 (dueño de Gastos)
 - **Decisión del operador, 2026-11-02:** *«el botón de la cámara hay que quitarlo — la única
   función de la cámara es para los gastos, para incluir una foto del comprobante; debe aparecer
@@ -1913,7 +1919,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mitad que un retiro mal hecho se lleva puesta), y el control de que el aviso de conexion caida SIGUE encendiendo en el avatar del escritorio. Y DoD 4/5: tests que monten PantallaMiDia esperando el avatar, revisados, y el comentario de PantallaPrincipal.tsx:118-119 actualizado (hoy dice 'las dos capas que muestran el avatar' y queda una). Verificar si #1435 ya cubrio 4 y 5. NOTA: estuvo declarada PENDIENTE con el codigo ya en main.
+- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones.
 - **Dueño:** frontend1 (dueño del shell)
 - **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
   la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
