@@ -137,8 +137,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 | **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N42** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» … |
-| **SM-N43** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 6 del DoD: captura en device del chat en modo CLARO con un mensaje propio y uno del asistente (frontend… |
+| **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
+| **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
 | **SM-N44** | `sin-issue` | 🟧 DOD-PARCIAL | frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend… |
 | **SM-N45** | `sin-issue` | ⬜ PENDIENTE | — |
 
@@ -2781,9 +2781,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   de device de frontend1.
 ### SM-N42 · `sin-issue` — Las enmiendas al MAPA no son ficha de nadie, y por eso Ajustes "sigue distinta"
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» viene del cierre de SM-K7 y yo lo cite sin decir de QUE pantalla. Resuelto al medir: el Medido de SM-K7 dice «comousar (contenedor y numeracion)», asi que el contenedor es el de «Como usar la app», no el de Ajustes. Frontend2 hizo lo correcto al NO adivinar y pedir la pantalla en vez de editar a ciegas. Pendiente: aplicar la enmienda sobre el mockup de comousar. NO cuenta como pendiente el chevron de apar (escalado al operador) ni el wording de Gmail y clave fiscal (decision del operador, agrupados en su pedido_).
-- **Cierre:** 35513f85 (#1504, ancestro de origin/main, CI 6/6) por frontend2. Puntos 1 y 2 HECHOS y verificados en el prototipo: «Mi plan» fuera de la lista de Ajustes (SUBS sin s-plan, «siete»->«seis» en mapa-pantallas y mockup 13) con #s-plan conservado como VISION porque criterio3-matriz.mjs:203 lo espera -- esa distincion la hizo frontend2 sola y es la correcta: sacar el tile de la lista no es borrar la pantalla del catalogo de vision. Punto 2: Cerrar sesion pasa a boton (btn2 peligro), alineado a PantallaCuenta.tsx:224-226. Relevamiento actualizado: grilla 13-Ajustes (Cerrar sesion->CONFORME, fila nueva Mi plan->CONFORME) y entrada 44 con su medicion. PUNTO 3 (mosaico de Apariencia): NO requeria cambio -- frontend2 midio que el prototipo ya tiene .tema claro/oscuro y la fila «Como el telefono», y la unica diferencia viva es el chevron vs «Activo», que esta escalado al operador y NO se toca. Un punto medido como ya-conforme no es un punto omitido. HALLAZGO que corrige mi propio alcance: hubo que editar prototipo/index.html, que mi contrato NO listaba, porque es el dibujo real que renderizan los iframes -- mi lista de archivos estaba incompleta.
+- **Estado:** TERMINADO
+- **Cierre:** 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 y 2 acreditados en 35513f85 (#1504) -- Mi plan fuera de la lista de Ajustes con #s-plan conservado como VISION porque criterio3-matriz.mjs:203 lo espera, y Cerrar sesion como boton peligro alineado a PantallaCuenta.tsx:224-226. PUNTO 3: medido como ya-conforme, el prototipo ya tiene .tema claro/oscuro y la fila Como el telefono; la unica diferencia viva es chevron vs Activo, escalada al operador y fuera de alcance. PUNTO 4: Como usar la app en mobile muestra los cinco temas en UNA tarjeta con filetes, como el .grupo del prototipo (PantallaComoUsarLaApp.tsx + su test; ajustes+tema 302/302, tsc limpio). Sin captura de device porque el DoD de esta ficha no la pide: el sujeto son el mockup y la pantalla, verificados por test y por el prototipo. REGISTRO de lo que costo: el primer intento de frontend2 fue RECHAZADO por el gate de paridad de testID -- habia puesto un testID mobile-only en el contenedor; lo corrigio sin testID propio, comparando el padre comun de los cinco temas. El gate disparo en el caso que tenia que disparar. Lo que NO cuenta como pendiente: el chevron de Apariencia y el wording de Gmail y clave fiscal, los dos agrupados en el pedido_ al operador.
 - **Dueño:** frontend2
 - **De dónde sale:** reclamo del operador, 2026-11-03, con captura del prototipo en pantalla:
   *«¿por qué la pantalla de ajustes todavía sigue distinta al mapa? ¿no estaba contemplado esto?»*
@@ -2820,9 +2819,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N43 · `sin-issue` — La burbuja del usuario esta INVERTIDA respecto del prototipo, y las dos superficies claras son colores que el prototipo no tiene
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** SOLO el punto 6 del DoD: captura en device del chat en modo CLARO con un mensaje propio y uno del asistente (frontend1, tenedora). Es el unico punto que ningun gate puede medir. Dos cosas que NO cuentan como pendientes porque se midieron y se decidieron: (a) el DoD 3 quedo con el relieve nivel1 del DoD 2.4, ya validado en device, y solo la burbuja del asistente toma la sombra del prototipo -- si se quieren las CARDS con la sombra del prototipo es otra ficha, no un residual de esta, y frontend2 hizo bien en no mezclarlo; (b) el tema oscuro sigue FUERA por falta de fuente (el prototipo no tiene tema oscuro: 0 coincidencias).
-- **Cierre:** 61ee42ec (#1508, ancestro de origin/main, CI 6/6; jest de tema y Burbuja corrido local con tsc limpio antes de pushear) por frontend2. Puntos 1 a 5 HECHOS: burbuja propia en claro #F8E2DB con tinta #1A1512, asistente #FFFFFF con la sombra del prototipo (0 4px 18px rgba(26,21,18,.07)), superficie y superficieAlta a #FFFFFF. Y la parte que importa del punto 2: NO arrastro ub1/ub2 -- creo tokens propios (mio1/mio2/tintaMio/bordeMio/asistente1/asistente2/bordeAsistente) y dejo ub1/ub2 como acento para sus CUATRO consumidores no-burbuja (HudGrabacion, ControlesFlotantes, PistasVoz, tonoBotonEntrada/BotonVoz), que es exactamente separar los dos roles que el comentario viejo habia decidido no separar. El comentario de tokens.ts:481 NO se borro: ahora declara que ante choque DoD-de-pieles vs prototipo gana el PROTOTIPO -- un comentario que declaraba autoridad quedo convertido en la regla de precedencia, que es el fix de raiz y no el parche. Punto 1 verificado sin relajar nada: solo 2 pares de contraste nuevos (#de7250 sobre #ffffff 3,17 y sobre #f2f2f2 2,83) y los dos con ratio MAYOR que los previos (2,95/2,57). Punto 5: barrido completo, 30 hex fuera del oscuro, 16 con procedencia y 14 sin, cada uno anotado en el archivo -- una lista, no un 'ya esta'. CORRIJO UNA AFIRMACION MIA del contrato: dije que la burbuja propia llevaba tinta BLANCA y era falso -- ya usaba color.texto (#2E2A20). Lo deduje del comentario de ACCENT_ON en vez de medir el componente, que es el mismo defecto que la ficha denuncia: creerle al comentario. El desvio del FONDO era real igual, y es el que el operador vio.
+- **Estado:** TERMINADO
+- **Cierre:** 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unico que faltaba. DOD punto por punto: puntos 1 a 5 ya acreditados en el Cierre previo (burbuja propia #F8E2DB con tinta #1A1512, asistente #FFFFFF con la sombra del prototipo, superficie y superficieAlta a #FFFFFF, tokens propios sin arrastrar ub1/ub2, 30 hex barridos con procedencia anotada uno por uno). PUNTO 6 -- captura n43-claro-chat-1241local-canonico.png, 12:41 hora local del 2026-11-03, cuenta canonica e2e-device@copiloto.test, Metro sirviendo el bundle de 61ee42ec (frontend1 verifico el SHA del bundle, no solo que Metro estuviera vivo). Medido en la captura: burbuja propia #F8E1DB, asistente #FFFFFF, lienzo #F7F3EC. El #F8E1DB frente al #F8E2DB del prototipo es REDONDEO del PNG (1 en el ultimo digito de un canal), no divergencia de token: el token del codigo es #F8E2DB y es el que el test afirma. Lo que NO cuenta como pendiente, ya decidido: el relieve nivel1 del DoD 2.4 (las CARDS con la sombra del prototipo son otra ficha) y el tema oscuro, FUERA por falta de fuente (el prototipo no tiene tema oscuro: 0 coincidencias).
 - **Dueño:** frontend2 (implementacion) · frontend1 (verificacion en device, es la tenedora)
 - **De dónde sale:** reclamo del operador, 2026-11-03: *«¿por qué la app en modo claro no refleja el
   verdadero color? está demasiado blanco el fondo... además las cards del chat para el usuario son
@@ -2947,10 +2945,21 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
     `h4` en `:871` (11 px, `letter-spacing:.14em`, uppercase, color secundario). Son **seis**:
     Por cobrar · En qué se te va la plata · Entró vs. salió · Mejores clientes ·
     Facturado en los últimos 12 meses · Margen por trabajo.
-  - **La app.** `PantallaInteligencia.tsx` (407 líneas) tiene **cero** contenedores de card: el
-    único `borderRadius` del archivo es `:406`, y es la barra de 12 px de un gráfico. `AcumuladoAnual.tsx`
-    (que dibuja «Facturado en los últimos 12 meses») tampoco: compone `Row` + `View` planos.
-    Las secciones se apoyan directo sobre el lienzo.
+  - **La app.** ⚠️ **CORRECCIÓN 2026-11-03 — frontend2 refutó mi premisa y tiene razón.** Yo había
+    escrito «**cero** contenedores de card, el único `borderRadius` del archivo es `:406`». Eso era
+    falso, y el motivo es el que importa: **medí `borderRadius` DENTRO del archivo, y el contenedor lo
+    aporta OTRO componente.** `Por cobrar` (`PantallaInteligencia.tsx:284`) y `Acumulado del año`
+    (`AcumuladoAnual.tsx:61`) **ya van envueltos en `Row`**, que es una card de verdad —
+    `theme/glass/Row.tsx:61-62` → `borderRadius:16` + `borderWidth:1`, **sin** `backgroundColor`
+    porque es de **vidrio** (lo dice su propio `:37`). Mi grep no podía verlo: la propiedad no vive
+    en el archivo que la usa. Es el mismo modo de falla que ya está escrito como
+    `la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo`, en su versión de composición.
+  - **Lo que queda en pie, re-medido:** lo realmente plano son los **4 gráficos**
+    (`inteligencia/graficos/GraficosInteligencia.tsx` — Facturación, Entró vs. salió, En qué se me va,
+    Margen por trabajo) y el **ranking de clientes**, que son `Row` sueltas por cliente en vez de UNA
+    card. Y el defecto de fondo cambia de nombre: no es «no hay card», es que **la card que hay es de
+    vidrio y la del prototipo es blanca con sombra** (`index.html:869-870`), más el rótulo `h4` que la
+    app no replica. El reporte del operador sigue siendo correcto; mi explicación de por qué, no lo era.
 - **🔴 La causa raíz, y no es «se olvidaron de poner la card»: la card del sistema NUNCA se volvió
   componente.** El único primitivo de superficie elevada es `BloqueCifra`, que es el bloque **negro**
   de máximo contraste y tiene una regla dura encima — *«una por pantalla, nunca dos»*
