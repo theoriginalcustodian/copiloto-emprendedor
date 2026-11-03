@@ -25,6 +25,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   runOnJS,
@@ -38,9 +39,20 @@ import Animated, {
 
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
+import { espacioSuperior } from './PanelDeslizable';
 
 /** Lo que asoma del escritorio cuando está cerrado: la pestaña con su rótulo. */
 const ALTO_PESTANA = 44;
+
+/**
+ * SM-N23 — alto REAL de la pestaña: su contenido (`ALTO_PESTANA`) más el aire fijo bajo la barra de estado
+ * (`espacioSuperior`, el mismo margen que el asa del chat). Cerrado, la pestaña asoma en el borde de arriba; sin
+ * este aire la barra quedaba a ~20 px, DENTRO de la barra de estado, y el gesto del shade del sistema (todo lo que
+ * cae en y < ~48) le ganaba el arrastre. Fijo, nunca animado: no depende de `y`.
+ */
+export function altoPestanaCon(insetTop: number): number {
+  return ALTO_PESTANA + espacioSuperior(insetTop);
+}
 
 // Mismas curvas y umbrales que `PanelDeslizable`, y **locales a propósito**: se leen dentro de
 // worklets de Reanimated, que corren en el runtime de UI y no resuelven bindings importados de otro
@@ -96,6 +108,11 @@ export function PanelFunciones({
   testID = 'panel-funciones',
 }: PanelFuncionesProps) {
   const tema = useTema();
+  const insets = useSafeAreaInsets();
+  const espacio = espacioSuperior(insets.top);
+  const altoPestana = altoPestanaCon(insets.top);
+  // Alto de la capa tal como lo midió `onLayout`; el recorrido se recalcula si la pestaña cambia de alto.
+  const altoCapa = useRef(0);
   // `y` va de `-alto` (cerrado: sólo asoma la pestaña) a 0 (abierto: el escritorio tapa la base).
   const y = useSharedValue(0);
   const inicio = useSharedValue(0);
@@ -198,6 +215,24 @@ export function PanelFunciones({
     return Gesture.Race(arrastre, toque);
   }, [y, inicio, alto, marcar, testID]);
 
+  /**
+   * El recorrido es el alto REAL de la capa menos lo que queda asomando (la pestaña, con su aire de arriba).
+   * Medido, no preguntado a `Dimensions`: la ventana no es el contenedor (mismo criterio que `PanelDeslizable`).
+   */
+  const aplicarMedida = () => {
+    if (altoCapa.current <= 0) return;
+    const h = Math.max(altoCapa.current - altoPestana, 0);
+    const primeraMedida = alto.value === 0;
+    // Si la capa estaba cerrada y su alto cambia (los insets llegan tarde), sigue cerrada: sin
+    // esto quedaría asomando de más o de menos justo el tamaño de la diferencia.
+    const estabaCerrada = y.value <= -alto.value + 0.5;
+    alto.value = h;
+    // Arranca CERRADO: la app abre en la base. Sin animación — no se "desliza" al abrir.
+    if ((primeraMedida || estabaCerrada) && h > 0) y.value = -h;
+  };
+  // Los insets pueden llegar después del primer layout: el layout de la capa no cambia, pero la pestaña sí.
+  useEffect(aplicarMedida, [altoPestana]);
+
   const estilo = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
   const estiloRotuloCerrado = useAnimatedStyle(() => ({ opacity: 1 - opacidadRotuloAbierto(y.value, alto.value) }));
@@ -206,29 +241,22 @@ export function PanelFunciones({
   return (
     <View style={styles.raiz} testID={testID}>
       {/* La BASE — Mi día. Ocupa todo; el escritorio le cae encima. */}
-      <View style={StyleSheet.absoluteFill}>{children}</View>
+      {/* SM-N23: la pestaña creció en `espacio` por arriba; la base baja lo mismo para que su cabecera (que ya
+          cuenta los 44 de la pestaña en su propio `paddingTop`) no quede tapada por ella. */}
+      <View testID={`${testID}-base`} style={[StyleSheet.absoluteFill, { paddingTop: espacio }]}>{children}</View>
 
       <Animated.View
         style={[styles.capa, estilo]}
         testID={`${testID}-capa`}
         onLayout={(e) => {
-          // El recorrido es el alto REAL de esta capa menos lo que queda asomando. Medido, no
-          // preguntado a `Dimensions`: la ventana no es el contenedor (mismo criterio que
-          // `PanelDeslizable`).
-          const h = Math.max(e.nativeEvent.layout.height - ALTO_PESTANA, 0);
-          const primeraMedida = alto.value === 0;
-          // Si la capa estaba cerrada y su alto cambia (los insets llegan tarde), sigue cerrada: sin
-          // esto quedaría asomando de más o de menos justo el tamaño de la diferencia.
-          const estabaCerrada = y.value <= -alto.value + 0.5;
-          alto.value = h;
-          // Arranca CERRADO: la app abre en la base. Sin animación — no se "desliza" al abrir.
-          if ((primeraMedida || estabaCerrada) && h > 0) y.value = -h;
+          altoCapa.current = e.nativeEvent.layout.height;
+          aplicarMedida();
         }}
       >
         <CristalVidrio nivel="conversacion" style={styles.cristal}>
           <View style={styles.contenido}>{escritorio}</View>
           <GestureDetector gesture={gesto}>
-            <View style={styles.pestana} testID={`${testID}-pestana`} accessible accessibilityRole="button"
+            <View style={[styles.pestana, { height: altoPestana, paddingTop: espacio }]} testID={`${testID}-pestana`} accessible accessibilityRole="button"
               accessibilityLabel={abierto ? 'Cerrar funciones' : 'Ver funciones'}
               accessibilityState={{ expanded: abierto }}
             >
@@ -266,7 +294,8 @@ const styles = StyleSheet.create({
   cristal: { flex: 1 },
   contenido: { flex: 1 },
   // La pestaña va ABAJO de la capa: es el borde que asoma cuando el escritorio está arriba, fuera de
-  // pantalla. Su alto es `ALTO_PESTANA` exacto, que es el mismo número que se le resta al recorrido.
+  // pantalla. Su alto real es `altoPestanaCon(insets.top)` (se pisa inline), el mismo número que se le resta al
+  // recorrido; el `paddingTop` inline es el aire fijo bajo la barra de estado (SM-N23).
   pestana: { height: ALTO_PESTANA, alignItems: 'center', justifyContent: 'center', gap: 6 },
   barra: { width: 44, height: 5, borderRadius: 3 },
   // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
