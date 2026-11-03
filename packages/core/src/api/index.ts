@@ -188,7 +188,7 @@ export { etiquetaDeDestino, listarTrabajosImputables, mismoTrabajo } from './tra
 export type { DestinoTrabajo, TrabajoImputable } from './trabajos';
 
 // `/contabilidad/resumen` — caja y facturación, dos preguntas separadas (§2 del contrato). El endpoint
-// todavía no existe: ver el docstring de `contabilidad.ts` para el estado de `[ASSUMED_PENDING_VERIFY]`.
+// existe y está verificado vivo (SM-N39, 2026-11-03): ver el docstring de `contabilidad.ts` — el único marcador vigente ahí es el `tope` (null hasta cargar la escala, SM-N36).
 export { obtenerResumenContabilidad } from './contabilidad';
 export type {
   CajaMesAnterior,
@@ -462,7 +462,7 @@ export { sendSoporteAudio, sendSoporteChat } from './soporte';
 export type { FuncionSoporte, SoporteAudioResponse, SoporteChatRequest, SoporteChatResponse } from './soporte';
 
 /** `GET /soporte/tickets/{id}` — S6-11, el hilo de un ticket propio del lado del usuario. Ver el
- * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */
+ * docstring de `soporteTicket.ts`. (SM-N39, 2026-11-03: ese módulo ya no lleva marcador; `GET /soporte/tickets` existe en `web.py:1059`.) */
 export { adjuntarFotoATicket, listarMisTickets, obtenerMiTicket } from './soporteTicket';
 export type {
   AdjuntarResult,

@@ -429,8 +429,8 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
-  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
-  // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
+  // 🔴 [kind resuelto SM-N39 2026-11-03: `tool_catalog.py:1004` lo emite] — `data` ya está confirmada (contrato §2.4 de
+  // Presupuestos). Si backend nunca mandara este `kind`, esta rama no dispara y cae a `Burbuja`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
   if (presupuestoPropuesto) {
     return (
@@ -443,8 +443,8 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
-  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
-  // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
+  // 🔴 [kind resuelto SM-N39 2026-11-03: `tool_catalog.py:1685` lo emite] — `data` ya está confirmada (contrato de hito
+  // 9 §2.1). Si backend nunca mandara `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
   const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
   if (facturaPropuesta) {
     return (
