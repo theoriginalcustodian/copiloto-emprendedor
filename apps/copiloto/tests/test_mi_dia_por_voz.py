@@ -6,6 +6,8 @@ Mismo criterio que `test_plata_por_voz.py`: `TarjetaStore` fake (la SQL ya está
 """
 from __future__ import annotations
 
+import pytest
+
 import tool_catalog
 from mi_dia_tarjeta_store import HACIENDO, HECHA, PARA_HOY, EstadoInvalido
 
@@ -109,6 +111,30 @@ def test_crear_tarjeta_sin_texto_no_persiste():
 
 
 # ── mover_tarjeta_mi_dia ─────────────────────────────────────────────────────────────────────────
+
+_TRES = [_t(1, "Llamar a Juan por la entrega"), _t(2, "Mandar presupuesto a Juan"), _t(3, "Llamar a Pedro")]
+
+
+@pytest.mark.parametrize("nombre,args", [("mover_tarjeta_mi_dia", {"estado": HACIENDO}),
+                                         ("borrar_tarjeta_mi_dia", {})])
+def test_tarjeta_resuelve_frase_con_dos_datos_y_solo_toca_esa(nombre, args):
+    """Misma clase que SM-N46: «llamar juan» no está entera en ningún texto, pero cada palabra sí."""
+    store = _TarjetaFake(tarjetas=[dict(t) for t in _TRES])
+    _correr(nombre, {**args, "tarjeta": "llamar juan"}, tarjeta=store)
+    if nombre.startswith("borrar"):
+        assert store.borradas == [1]
+    else:
+        assert store._tarjetas[1]["estado"] == HACIENDO and store._tarjetas[2]["estado"] == PARA_HOY
+
+
+@pytest.mark.parametrize("nombre,args", [("mover_tarjeta_mi_dia", {"estado": HACIENDO}),
+                                         ("borrar_tarjeta_mi_dia", {})])
+def test_tarjeta_con_dato_ambiguo_pregunta_y_NO_toca_nada(nombre, args):
+    store = _TarjetaFake(tarjetas=[dict(t) for t in _TRES])
+    res = _correr(nombre, {**args, "tarjeta": "juan"}, tarjeta=store)
+    assert store.borradas == [] and all(t["estado"] == PARA_HOY for t in store._tarjetas.values())
+    assert "Hay var" in res.observation["result"]
+
 
 def test_mover_tarjeta_unica_que_coincide():
     store = _TarjetaFake(tarjetas=[_t(1, "llamar a Juan"), _t(2, "pasar por el banco")])
