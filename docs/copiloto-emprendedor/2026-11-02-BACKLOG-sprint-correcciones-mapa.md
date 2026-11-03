@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | la frase del agente dijo $50,000 en device (18:02, 1 caso; la sonda de #1363 daba 0/6). Es de backend, o planificacio… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-cic… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refres… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (ca… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -112,18 +112,18 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
-| **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
 | **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay tex… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio e… |
+| **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
+| **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
-| **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telef… |
 
@@ -382,8 +382,8 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** la frase del agente dijo $50,000 en device (18:02, 1 caso; la sonda de #1363 daba 0/6). Es de backend, o planificacion decide que el DoD mide solo las cards. Verificar tambien el mapa corregido por D5.
-- **Cierre:** 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390) mas 681c3b53 (#1363). Chip Arma la factura desde la constante del core, recibo $50.000, Pendiente visible. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-H5-SM-H6.md
+- **Falta:** Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-ciclo en device. NADA de backend. ESTE Falta estuvo DESACTUALIZADO: decia que las dos mitades eran de backend cuando ya estaban desplegadas desde #1363, y por eso planificacion se las volvio a despachar — el cierre existia en el buzon y la ficha no lo sabia.
+- **Cierre:** Mitades de backend HECHAS y desplegadas: 681c3b53 (#1363, ancestro de origin/main) — el chip dice «Arma la factura» (presupuesto_sugerencias.py:21) y el test lo afirma POR LA CARD (test_plata_por_voz.py:354 y :414), no por el texto de la respuesta. El importe en formato ingles: medido con el LLM real, la causa candidata de frontend1 NO era la causa (6/6 con $50.000,00 ANTES del arreglo); el $50,000.00 salia de emitir_factura y lo cerro SM-N21 con reply_literal (sonda 0 de 32). Verificado por planificacion contra el codigo y origin/main el 2026-11-02.
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -744,7 +744,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps/mobile/src/modules/auth/sesionExpirada.test.tsx) - no hay nada que implementar. Mecanismo: 401 con Bearer -> el cliente descarta la sesion (contrato medido por backend: token vencido o corrupto dan 401 {detail: invalid token} en auth.py:98-103; credenciales invalidas solo sale de /auth/login en web.py:1476, asi que 'sesion caida' vs 'login fallido' se distingue por CONTEXTO). CORREGIDO DOS VECES: (1) el Falta decia 'invalidar del lado servidor' y el backend no tiene ese concepto; (2) despues dije 'se acredita con cualquier cuenta' y tambien era falso - provocar el 401 DESCARTA la sesion de la cuenta que lo provoca, asi que la ficha sigue atada a la tenencia y VUELVE AL BLOQUE 2. Camino aprobado: con el canonico, corrompiendo el token por Metro sin commitear nada. NO con la cuenta del operador.
+- **Falta:** SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta que lo provoca, asi que va con la canonica, corrompiendo el token por Metro sin commitear nada — NO con la cuenta del operador. NADA pendiente de backend: el contrato que este Falta le pedia ya estaba contestado en su cierre de N21.
+- **Cierre:** Codigo YA en main (117dc669 #1320). CONTRATO DEL 401 CONTESTADO por backend y verificado: token vencido, mal firmado o basura -> 401 {"detail":"invalid token"} (auth.py:98-103) · sin header -> 401 {"detail":"missing or malformed Authorization header"} · login malo -> 401 {"detail":"credenciales invalidas"}, SOLO en /auth/login. GOTRUE_JWT_EXP=3600. CONSECUENCIA para el DoD: 'token vencido' y 'login fallido' SI se distinguen — por ruta y por body — asi que el punto 'aviso ausente en un ingreso normal' ES implementable. Lo que NO se distingue es vencido vs mal firmado, y eso es anti-enumeracion deliberado, no un defecto.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
@@ -1370,7 +1371,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que mide lo mismo desde el otro lado.
+- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54.
 - **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
 - **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
   aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
@@ -1624,7 +1627,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio el ANTES con metodo declarado (y=53 sobre PanelFunciones-pestana, 4 arrastres con adb motionevent sin que el panel abriera; el shade del sistema se come todo y<~48). Falta el DESPUES con el MISMO metodo y las mismas coordenadas: si el margen corrigio la causa, el mismo gesto que fallaba 4 de 4 ahora abre. Sin repetir el gesto identico no se distingue 'el fix funciono' de 'esta vez le acerte al pixel'. Dueno: frontend1.
+- **Cierre:** 2d257f95 (#1432, ancestro de origin/main): margen fijo bajo la barra de estado para el tirador de arriba.
 - **Dueño:** frontend1 (dueño del shell)
 - **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
   desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
@@ -1681,7 +1686,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N24 · `sin-issue` — DENTRO DEL SPRINT: el botón de cámara no va en el chat; sólo al cargar un gasto
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. NOTA: esta ficha estuvo declarada PENDIENTE con el codigo YA en main desde #1430 — el estado lo corrigio frontend2 al refutar un conteo mio.
+- **Cierre:** 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara — ChatView no pasa onFoto; test ChatView.test.tsx:655; comentario de Composer.tsx actualizado (DoD 5); la foto del comprobante queda donde corresponde, en Gastos; Soporte intacto.
 - **Dueño:** frontend1 (dueño del chat) · coordinar con frontend2 (dueño de Gastos)
 - **Decisión del operador, 2026-11-02:** *«el botón de la cámara hay que quitarlo — la única
   función de la cámara es para los gastos, para incluir una foto del comprobante; debe aparecer
@@ -1727,7 +1734,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara y eso mutaria la cuenta del operador: queda para la pasada con tenencia canonica, no se fuerza. Dueno: frontend2.
+- **Cierre:** 6335f883 (#1440, ancestro de origin/main, CI 6/6): la mitad de ABAJO. Causa raiz medida en device (cuenta del operador, solo lectura de pantalla): el 'fondo pleno' era GEOMETRIA, no color — lista y dock hermanos en flujo, la lista se cortaba con borde duro sobre el campo (y~1450). Fix: lista a pantalla completa bajo un dock overlay + padding igual al alto medido; contraste con solucion nombrada (scrim 0->.9 + base .85 bajo el vidrio, desde tokens). ANTES/DESPUES 390px scrolleando capturados, NO versionados a proposito: llevan mensajes del operador.
 - **Dueño:** frontend1 (dueño del chat)
 - **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
   mic debe ser transparente — el campo y el mic deben ser **flotantes** en el chat; lo mismo en la
@@ -1911,7 +1920,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mitad que un retiro mal hecho se lleva puesta), y el control de que el aviso de conexion caida SIGUE encendiendo en el avatar del escritorio. Y DoD 4/5: tests que monten PantallaMiDia esperando el avatar, revisados, y el comentario de PantallaPrincipal.tsx:118-119 actualizado (hoy dice 'las dos capas que muestran el avatar' y queda una). Verificar si #1435 ya cubrio 4 y 5. NOTA: estuvo declarada PENDIENTE con el codigo ya en main.
+- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones.
 - **Dueño:** frontend1 (dueño del shell)
 - **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
   la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
