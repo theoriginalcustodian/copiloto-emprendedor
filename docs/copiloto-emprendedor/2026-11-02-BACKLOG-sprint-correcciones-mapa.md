@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-cic… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
-| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierre… |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03 con scripts/mapa-51-estado.py sobre 406ab8fc (#1481, ancestro de origin/main): DIFERENTE-B 6 -> … |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -128,13 +128,15 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
-| **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
 | **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
-| **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
-| **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N38** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N39** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
+| **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
+| **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
+| **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
+| **SM-N40** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -440,8 +442,7 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-ciclo en device. NADA de backend. ESTE Falta estuvo DESACTUALIZADO: decia que las dos mitades eran de backend cuando ya estaban desplegadas desde #1363, y por eso planificacion se las volvio a despachar — el cierre existia en el buzon y la ficha no lo sabia.
-- **Cierre:** Mitades de backend HECHAS y desplegadas: 681c3b53 (#1363, ancestro de origin/main) — el chip dice «Arma la factura» (presupuesto_sugerencias.py:21) y el test lo afirma POR LA CARD (test_plata_por_voz.py:354 y :414), no por el texto de la respuesta. El importe en formato ingles: medido con el LLM real, la causa candidata de frontend1 NO era la causa (6/6 con $50.000,00 ANTES del arreglo); el $50,000.00 salia de emitir_factura y lo cerro SM-N21 con reply_literal (sonda 0 de 32). Verificado por planificacion contra el codigo y origin/main el 2026-11-02.
+- **Falta:** Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a5bb923, packages/core/src/chat/sugerenciaArmarFactura.ts:18 ya es TEXTO_SUGERENCIA_ARMAR_FACTURA='Arma la factura', identico al mapa (Prototipo frontend/odobi-ui/prototipo/index.html:3374, entrada pres-ciclo) y al backend (presupuesto_sugerencias.py:21). El importe y Pendiente cerraron con #1354. ESTE Falta estuvo DESACTUALIZADO DOS VECES: primero daba por pendientes dos mitades de backend ya desplegadas en #1363, y despues pedia un cambio de core ya hecho. Un Falta vencido no da sintoma: se lee como trabajo y se vuelve a despachar.
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -888,8 +889,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierren las fichas que las cubren (22 entradas con ficha DOD-PARCIAL, 5 con PENDIENTE). onb-cumplida, vacio-visto y vacio necesitan datos y dias de uso reales: si no se pueden producir quedan DECLARADAS con su motivo, no contadas como CONFORME. Dueno: planificacion.
-- **Cierre:** El INSTRUMENTO que el DoD exige ya esta en main: scripts/mapa-51-estado.py (4f18d494 / #1448, ancestro de origin/main) cuenta las 51 entradas con collections.Counter y cruza cada divergencia con la ficha que la cubre. Corrida del 2026-11-03: 7 CONFORME, 31 DIFERENTE-A, 6 DIFERENTE-B, 7 NO-VERIFICABLE (13 de 51 en condicion), y 0 de las 38 no-conformes quedan sin ficha — las 2 que faltaban se abrieron como SM-N31.
+- **Dueno-activo:** planificacion
+- **Falta:** RE-MEDIDO 2026-11-03 con scripts/mapa-51-estado.py sobre 406ab8fc (#1481, ancestro de origin/main): DIFERENTE-B 6 -> 9 y EN CONDICION 13 -> 16 de 51. Las cuatro entradas del cruce de frontend2 quedaron: soporte(34) B, feedback(35) B, apar(50) B, y apps(47) SIGUE A -- en apps se retiraron 3 puntos VENCIDOS del corpus (No puede leerlos en catalog.py:73, estado como etiqueta en PantallaApps.tsx:317-334, seis apps) y el residual real es otro: las descripciones de catalog.py:60-106 difieren del prototipo (p.ej. Drive sin «No se usa por chat», index.html:2344). Faltan 35 entradas. De lo medido hoy, CUATRO quedan NO-VERIFICABLE-SIN-APP y van a la pasada de device de frontend1: dock como «boton de voz grande» (soporte), campo dentro de tarjeta blanca (feedback), render de pildora y logo en la fila (apps), proporcion de los 4 chips del mosaico (apar). Y DOS son decision del OPERADOR, no de una sesion: el texto de las descripciones de catalog.py (es de backend y no hay decision escrita) y el chevron de «Como el telefono» reemplazado por «✓ Activo» (PantallaSkins.tsx:125-132) -- si el operador quiere el chevron, apar vuelve a A. Escaladas las dos. onb-cumplida, vacio-visto y vacio siguen necesitando dias de uso reales.
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
   NO-VERIFICABLE.
@@ -2457,7 +2458,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N33 · `sin-issue` — El ranking de mejores clientes agrupa los cobros por NOMBRE, no por identificador
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y deploy VERDE con durabilidad. El defecto era que _mejores_clientes agrupaba por coalesce(cliente_nombre, receptor_nombre), que produce DOS errores opuestos a la vez: dos grafias del mismo cliente se parten en dos filas, y dos homonimos distintos se fusionan en una. Un ranking no da error al equivocarse: da un orden creible, y el emprendedor decide sobre el. Los 4 tests nuevos cubren las dos direcciones mas los bordes: (a) 2 grafias -> 1 fila, (b) 2 homonimos con CUIT distinto -> 2 filas, (c) sin identificador -> nombre normalizado con comprobantes None (el campo de #1459, que no resolvia el agrupamiento pero si evita afirmar un total que no se puede atribuir), (d) adversarial mismo CUIT en tenant A y B. El (d) es el que importa para la regla 7: agrupar por un identificador compartible abre la pregunta de si el agrupamiento cruza tenants, y sin ese test el aislamiento quedaria especificado y no ejercitado. Corrida EN EL VPS: 71 passed. cierre_ con FICHA/SHA/DOD en coordinacion/cerrado/2026-11-03/.
 - **Dueño:** backend
 - **De dónde sale:** hallazgo de backend al cerrar `SM-N32` (#1459 → `5928f837`). **No es
   presentación: es el dato.** Nace con id propio porque un hallazgo que sólo vive en un mensaje no
@@ -2577,9 +2580,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N36 · `sin-issue` — La escala de ARCA versionada y el `tope` que hoy es `null`
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCIDA => null y nunca el tope viejo, que es el modo de falla sin sintoma; (c) que los tests corrieron en el VPS, con la cita. Sin eso el DoD no esta completo aunque el codigo este en main.
-- **Cierre:** 4a5bb923 (#1469, ancestro de origin/main): escala de monotributo versionada con vigencia_desde y facturado.tope calculado; contabilidad_web.py deja de devolver None cuando hay categoria Y escala vigente.
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de monotributo versionada con vigencia_desde y facturado.tope calculado, y contabilidad_web.py deja de devolver None cuando hay categoria Y escala vigente. (a) las DOS ramas tienen test: test_escala_monotributo.py:77 y :90/:156. (b) el control explicito de escala VENCIDA => null y nunca el tope viejo: :95 y el endpoint en :160 -- es el punto que importaba, porque devolver el tope viejo cuando la escala vencio no da error, da un numero creible y equivocado. (c) corrida EN EL VPS: 42 passed sobre 0ceeb45c (test_escala_monotributo + test_monotributo_aviso). cierre_ en coordinacion/cerrado/2026-11-03/ con FICHA/SHA/DOD.
 - **Dueño:** backend
 - **De dónde sale:** el mismo contrato de monotributo. El hueco ya estaba **nombrado con dueño** en
   `apps/copiloto/contabilidad_web.py:68-72`: `"tope": None` deliberado, porque *«un tope viejo
@@ -2599,7 +2602,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N37 · `sin-issue` — El aviso al acercarse al límite de monotributo
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codigo: d53c7d02 (#1471), ancestro de origin/main confirmado con merge-base --is-ancestor. (1) Umbral EN CONFIG, no hardcodeado: escala_monotributo.json:7 umbrales.aviso_pct=80. (2) UNA vez por CRUCE, no por dia: AvisosEmitidosStore con dias_silencio=None -- el punto fino es que un aviso diario de un limite fiscal se vuelve ruido y se aprende a ignorar, que es el modo de falla que la ficha existia para evitar. (3) Si el % BAJA, el aviso se RE-ARMA y la tarjeta se cierra sola: mi_dia_detector.py:517 REGLAS_REARMAN_AL_BAJAR + mi_dia_orquestador.py:107-108 liberar_ausentes(regla, vigentes). Era el punto que mas podia quedar implicito y esta escrito con su motivo en el docstring :326. (4) NUNCA avisa con tope==null: control ADVERSARIAL en tests/test_monotributo_aviso.py:72-76 -- $999.999.999 facturados y la lista sale VACIA porque no hay tope contra que medir. Ese es el control correcto: sin tope, el bug no da error, da un aviso creible y sin fundamento. La ficha dependia de SM-N36 (escala versionada con tope calculado), que cerro con 4a5bb923 + 42 passed en VPS.
 - **Dueño:** backend
 - **De dónde sale:** el mismo contrato. **Es alcance NUEVO**: el mapa sólo dibujaba la barra «68 %
   del tope» y la proyección; el aviso proactivo no lo dibujaba nadie.
@@ -2618,7 +2623,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N38 · `sin-issue` — El tirador de Mi día: una línea sin texto, y el composer sin fondo
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre la linea con adb input motionevent -- un input tap no ejercita un Pan. Limite DECLARADO del DoD 5, con su motivo: el arrastre va sobre la linea y sobre el composer va el TOQUE; un segundo Pan sobre el composer chocaria con el de BotonVoz y pondria en riesgo el dictado (F6) para duplicar un camino ya cubierto. WCAG 2.5.1 queda satisfecho por el par gesto+toque, no por un cartel.
+- **Cierre:** Codigo en main: 0ceeb45c (#1476, ancestro de origin/main). Tirador de abajo = la barra sola, ALTO_HANDLE 13, sin texto y conservando el label accesible; la tarjeta del panel pasa a una capa con opacidad animada por panelY, asi que en colapsado no queda superficie detras del campo y del mic, sin animar layout ni tocar el gesto; tocar el campo sube el panel. 217 tests de shell/tema/composer verdes y lint 6/6 tras arreglar la paridad de testID en 3644dc61 (panel-superficie nuevo, panel-hint stale). El tirador de ARRIBA queda SIN TOCAR a proposito: es la misma pregunta en el otro borde y su texto no esta decidido.
 - **Dueño:** frontend1 (tomada el 2026-11-03, con el device `RF8T318RN9T`)
 - **De dónde sale:** orden del operador, 2026-11-03, con captura del mapa: *«el tirador de mi día
   está demasiado grande además de que todavía conserva el texto… debe ser una línea sobre el campo
@@ -2655,7 +2662,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N39 · `sin-issue` — Los TRES `[ASSUMED_PENDING_VERIFY]` de `afip.ts` estaban vencidos
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y facturaPropuesta.ts y fecha los vigentes; d7c0613c (#1477) resuelve los kinds de ListaMensajes (tool_catalog.py:1004 y :1685), actualiza dos punteros viejos de index.ts y fecha el vigente de clientes.test.ts -- tsc core+mobile ok, vitest clientes 54 ok. Alcance Python: d140f853 (#1479, CI 6/6) -- los 9 hits de 6 archivos .py de apps/copiloto quedan los 9 VIGENTES y FECHADOS 2026-11-03 con su motivo (Calendar sin conectar / SM-N34 x3, GoTrue filter y 400/401 sin medir x3, claims Google no verificados en el spike K-12, duplicados_probables sin medir, homonimo del grafo sin ejercitar). NINGUNO se retiro, y ese es el veredicto correcto: retirar un marcador sin evidencia es el error inverso al que abrio la ficha. El DoD 2 nunca pidio vaciar el grep -- pidio que ningun hit quede sin veredicto, y ahora los 21 hits (12 .ts/.tsx + 9 .py) lo tienen, con fecha. Los tres shas son ancestros de origin/main. DoD 3 no aplica: ninguno resulto vigente CON consecuencia de producto.
 - **Dueño:** frontend2
 - **De dónde sale:** barrido de planificación, 2026-11-03, disparado por el marcador que frontend2
   retiró en `#1472`. Si uno estaba vencido, los otros podían estarlo: **lo estaban los tres.**
@@ -2692,3 +2701,54 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **FUERA del corpus del mapa:** no es divergencia contra el mapa; no suma denominador de paridad.
 
 ---
+
+### SM-N40 · `sin-issue` — El borrado hacia atrás no vuelve al segmento anterior en el campo de fecha
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
+  ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
+  cosa, encontrada al mirar el mismo archivo (DEC-18 — un hallazgo nuevo va a ficha aparte).
+- **Medido:** `CampoFecha` son **tres `TextInput` con auto-avance** (`CampoFecha.tsx:96-128`), y el
+  barrido de `onKeyPress` da **0 hits** en el componente. El auto-avance empuja el foco hacia
+  adelante y **nada lo trae hacia atrás**: con el segundo segmento vacío, `⌫` no devuelve el foco al
+  primero.
+- **Por qué importa, y por qué no da síntoma en un test:** el usuario que se equivoca en el día
+  queda sin forma de corregirlo con el teclado — tiene que tocar el segmento. Es un defecto de
+  entrada de datos que **ningún test de render puede ver**, porque el árbol está correcto: lo que
+  falta es un handler. Y el camino feliz (tipear 8 dígitos seguidos) funciona, así que la suite
+  queda verde.
+- **DoD:**
+  1. Con un segmento **vacío**, `⌫` devuelve el foco al segmento anterior y borra su último dígito.
+  2. Con el segmento **no vacío**, `⌫` borra dentro del segmento y **no** salta — el salto temprano
+     sería el defecto espejo.
+  3. Test que ejercita `onKeyPress` con `Backspace` en los dos casos del punto 1 y 2. Un test que
+     sólo afirme que el handler existe no acredita nada.
+  4. Antes de tocar nada: leer la skill del dominio si el foco se maneja con refs imperativas.
+- **Depende:** nada. **No necesita device para implementar**; la corrida con teclado real cierra el
+  `Falta:` de `SM-K9`, no ésta.
+
+### SM-N41 · `sin-issue` — El campo del composer es translúcido y deja leer los mensajes de atrás
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** observación de **frontend1 en device**, 2026-11-03, reportada sin tocar nada
+  mientras medía `SM-N38`: *«con el chat arriba, el campo del composer es translúcido y deja ver el
+  texto de los mensajes (se lee "Editar/Cancelar" a través)»*. **Fuera del alcance de `SM-N38`**,
+  que es el fondo de **alrededor** del campo; esto es el fondo **de dentro**.
+- **Medido en device, no en el árbol:** el texto de los mensajes se lee **a través** del campo. El
+  candidato en código es `Composer.tsx:239` → `conAlfa(tema.color.fondo, ALFA_BASE_CAMPO)`: el alfa
+  del fondo del campo.
+- **🔴 La pregunta antes del fix, y es la que decide la ficha:** el operador pidió explícitamente
+  conservar *«el de dentro»* del campo. **No está escrito si lo quiere translúcido o legible.** Un
+  alfa es una decisión de diseño, no un defecto evidente: subirlo puede romper el efecto de cristal
+  que el resto de la cáscara sostiene. Así que esta ficha **arranca preguntando**, no implementando.
+- **DoD:**
+  1. Captura del caso: chat arriba, con mensajes detrás del campo, para que la decisión se tome
+     mirando el síntoma y no una descripción.
+  2. Decisión **escrita** del operador: legible (subir el alfa) o translúcido a propósito (y
+     entonces la ficha cierra `CERRADO-POR-DECISION`, sin tocar código).
+  3. Si se decide legible: el alfa va **parametrizado donde ya vive** (`ALFA_BASE_CAMPO`), no
+     hardcodeado en el JSX, y el cambio se mira en las dos skins.
+- **Depende:** la decisión del operador para el punto 2. El punto 1 se puede adelantar en la pasada
+  de device de frontend1.
