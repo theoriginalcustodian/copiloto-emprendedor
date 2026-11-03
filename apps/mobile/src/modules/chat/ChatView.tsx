@@ -10,7 +10,6 @@ import { DockEntrada } from './DockEntrada';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
-import { useCapturaFoto } from './useCapturaFoto';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
@@ -64,11 +63,11 @@ export interface ChatViewProps {
  * que el scroll se lo coma a él — es la causa raíz del bug de device que este contrato vino a cerrar
  * (§2 del contrato).
  *
- * 🔴 **Foto de ticket (Gastos Fase 2) — botón dentro del `Composer`, no overlay.** A diferencia de
- * la voz, elegir una foto (`useCapturaFoto`) es una sola llamada async sin fases que animar -- ver
- * el docstring de `Composer.onFoto` para el porqué de la excepción a "sin botones de acción propios".
+ * 🔴 **El chat NO lleva botón de cámara (SM-N24).** La foto del comprobante es sólo de Gastos: vive en
+ * `gastos/FotoFuncion` y aparece cuando se va a cargar un gasto. Acá no se pasa `onFoto` al dock, así que
+ * el composer no pinta el botón. (Soporte sí lo pasa, para adjuntar a un ticket: es otra pantalla.)
  *
- * Toda la lógica de envío/polling/durabilidad (texto, voz Y foto) vive en `useChat`; este componente
+ * Toda la lógica de envío/polling/durabilidad (texto y voz) vive en `useChat`; este componente
  * sólo arma los callbacks que conectan la vista con esa máquina.
  *
  * 🔴 **Sin fondo ni título propios.** Vive DENTRO del panel de vidrio (`PanelDeslizable`, fuera de
@@ -82,10 +81,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta } = useChat(
-    me?.cliente_id ?? '',
-  );
-  const foto = useCapturaFoto();
+  const { estado, send, enviarAudio, descartarConexion, marcarCardResuelta } = useChat(me?.cliente_id ?? '');
   const scrollRef = useRef<FlatList>(null);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
@@ -172,16 +168,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     [enviarAudio],
   );
 
-  // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
-  // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
-  const alElegirFoto = useCallback(() => {
-    void (async () => {
-      const archivo = await foto.elegir();
-      if (archivo === null) return;
-      void enviarFoto(archivo);
-    })();
-  }, [foto, enviarFoto]);
-
   return (
     /**
      * `behavior="padding"` en ambas plataformas: agrega abajo exactamente el alto del teclado para
@@ -242,7 +228,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         onEnviarTexto={manejarEnvio}
         onAudio={alAudio}
         disabled={estado === null}
-        onFoto={alElegirFoto}
         semilla={semilla}
         scrollRef={scrollRef}
       />

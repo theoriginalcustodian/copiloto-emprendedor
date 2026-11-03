@@ -30,7 +30,7 @@ export default function PantallaTicketRoute() {
 
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/soporte-ticket');
     }, []),
   );
 

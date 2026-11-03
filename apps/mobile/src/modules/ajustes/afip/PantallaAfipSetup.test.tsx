@@ -208,6 +208,26 @@ describe('PantallaAfipSetup', () => {
         if (otro !== testIdEsperado) expect(screen.queryByTestId(otro)).toBeNull();
       }
     });
+
+    // SM-K3: con la copia en «no» y sin Drive el toggle está apagado — y tiene que decir POR QUÉ.
+    it.each([
+      ['false → dice que no está conectado', false, /no está conectado/],
+      ['null → dice que no se pudo verificar', null, /no pudimos verificar/],
+    ])('toggle apagado con drive_conectado %s', async (_caso, driveConectado, texto) => {
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ driveConectado }));
+      await montarConPerfil(false);
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-apagado-motivo')).toBeTruthy());
+      expect(screen.getByTestId('afip-drive-apagado-motivo').props.children).toMatch(texto);
+    });
+
+    it('con Drive conectado el toggle no está apagado: no hay motivo que dar', async () => {
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ driveConectado: true }));
+      await montarConPerfil(false);
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-toggle')).toBeTruthy());
+      expect(screen.queryByTestId('afip-drive-apagado-motivo')).toBeNull();
+    });
   });
 
   // -----------------------------------------------------------------------------------------

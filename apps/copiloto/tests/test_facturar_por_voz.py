@@ -375,3 +375,18 @@ def test_H4_primera_vez_incompleta_le_dice_al_LLM_que_falta_y_que_no_pida_docume
     res = _correr(backend, {"cliente_nombre": "Consumidor Final"}, perfil=perfil)   # sin ítems
     assert res.artifact is None
     assert "NO le pidas nombre, CUIT ni DNI" in res.observation["result"]
+
+
+def test_N21_emitir_factura_con_flag_deja_la_frase_de_la_card_como_literal(monkeypatch):
+    """SM-N21: la factura armada es de las que mueven plata; el literal es EXACTAMENTE el texto de la card."""
+    perfil = _perfil()
+    args = {"cliente_nombre": "Consumidor Final",
+            "items": [{"descripcion": "tortas", "cantidad": "1", "precio_unitario": "50000"}]}
+    monkeypatch.delenv("UC_REPLY_LITERAL", raising=False)
+    apagado = _correr(_FacturaBackendFake(perfil=perfil), args, perfil=perfil)
+    assert "reply_literal" not in apagado.observation
+    monkeypatch.setenv("UC_REPLY_LITERAL", "1")
+    res = _correr(_FacturaBackendFake(perfil=perfil), args, perfil=perfil)
+    lit = res.observation["reply_literal"]
+    assert lit.startswith("Te armé la factura por $50.000") and "50000" not in lit
+    assert lit in res.observation["result"], "el literal tiene que ser la misma frase que la tool pedía relayar"

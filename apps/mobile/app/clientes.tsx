@@ -30,7 +30,7 @@ export default function PantallaClientesRoute() {
 
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/clientes');
     }, []),
   );
 

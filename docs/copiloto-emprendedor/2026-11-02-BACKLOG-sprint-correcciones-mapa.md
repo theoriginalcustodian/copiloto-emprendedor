@@ -81,13 +81,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ult… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al e… |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
-| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya … |
+| **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refres… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
-| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captur… |
+| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (ca… |
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
@@ -113,10 +113,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir… |
+| **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay tex… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
-| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
-| **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
+| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -605,7 +605,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al emitir (cliente_store.py:72-78 _FACTURADO_DEL_CLIENTE_JOIN, predicado en :41-58, _es_atribuible en :61); afip_comprobantes.cuit es el EMISOR y no sirve. Medido read-only en 48a9d75f: N 10 y N 11 tienen doc_tipo=99 y doc_nro vacio/0, asi que NO son atribuibles a ningun cliente (crear un cliente con el CUIT 20269996065 no las atribuye: es el CUIT del emisor, el propio operador). Disparador exacto: una factura emitida con RECEPTOR IDENTIFICADO (doc_tipo y doc_nro con digitos); emitir esta fuera de alcance por decision del operador. Rechazado como atajo: cliente doc_tipo=99 nro 0 para forzar el match (seria consumidor-final-generico, la captura mentiria). Mitad A HECHA: captura del caso facturas_atribuibles:false (el guion + «Sin CUIT cargado» es deliberado), cuenta del OPERADOR (no canonica), cliente creado por la app sin tocar lo fiscal. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-J4-clientes-sin-CUIT-el-guion-es-deliberado-CUENTA-DEL-OPERADOR.webp
+- **Falta:** DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 1 passed, con control positivo del tenant B. Falta DoD(2) captura de device con cliente CON CUIT, solo en la canonica 4f3ecb78: frontend2 da de alta por la app un cliente con CUIT 20111111112 (el de sus 4 facturas) y la evidencia es el salto comprobantes_cantidad 0 a 4 en GET /clientes. No se crea por SQL. Decidido por planificacion 2026-11-02, 19af5a42 descartado.
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
@@ -695,8 +695,8 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K3 · `sin-issue` — La pantalla de estado ARCA no se refresca y sus errores no distinguen la causa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Sin hacer: motivo visible en cada boton apagado; verificar en device si el refresco al terminar falla (el polling ya refresca el estado: premisa sin medir); subtitulo contra el mapa; captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (omitido por decision del operador BL-V27)
-- **Cierre:** c18439ff (#1339) app: la pantalla nombra la causa dato|servicio|desconocida del fallo del alta; backend 1789d8bc (#1334)
+- **Falta:** requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refresco al terminar sin recargar (premisa sin medir) · captura de los dos errores. Refutado, NO se implementa: «Necesito cambiarlo ›» (BL-V27)
+- **Cierre:** c18439ff (#1339) causa dato|servicio|desconocida · ff850770 (#1424) el toggle de Drive apagado dice por qué (test) · device 2026-11-02 cuenta OPERADOR: toggle ACTIVO (SM-K3-toggle-drive-activo)
 - **Dueño:** frontend2 (+ backend si el error no trae la causa)
 - **Medido:** no se refresca sola al terminar; los botones apagados no dicen por qué; el error no
   distingue falla del servicio de dato mal cargado; faltan subtítulo y «Necesito cambiarlo ›».
@@ -731,8 +731,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** device: fondo blanco sobre tiles y «Sí, cerrar sesión» cortado (logout SÓLO con el usuario del operador) + una captura por pantalla; pedido_ a backend si se quiere «desde …» (fecha_alta en me_contrato.py + me.contrato.ts, mismo PR)
-- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido: sin nombre de persona ni «desde …» (aval planificación; /me no los expone, me_contrato.py) · «Cambiar el mail» fuera por DoD
+- **Falta:** el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (canónico), no la del operador; con su cuenta el estado no se puede producir sin cerrársela (no autorizado)
+- **Cierre:** 3be85a91 (#1365) chevrons + copy Google · c5186d47 (#1368) mapa corregido · device 2026-11-02 cuenta OPERADOR: tiles sin fondo blanco y «Cerrar sesión» entero (SM-K5-*.webp)
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
@@ -1418,8 +1418,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N18 · `sin-issue` — FUERA DEL SPRINT: `composio_caidos` avisa de CUALQUIER toolkit que Composio liste, soportado o no
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** la tarjeta instagram viva de 48a9d75f sigue para_hoy hasta que se abra Mi Dia (se cierra sola por ausencia); re-medir la fila
-- **Cierre:** 0046ded4 filtro por toolkits_conectables, fuente unica, tests 2 mitades, VPS 2566 passed
+- **Falta:** captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay texto de conexion en pantalla; falta archivar esa captura
+- **Cierre:** 0046ded4 filtro por toolkits_conectables, fuente unica, tests 2 mitades, VPS 2566 passed; re-medido 2026-11-02 tras abrir Mi Dia (frontend1): fila instagram de 48a9d75f para_hoy -> hecha (read-only)
 - **Dueño:** backend (se ofreció al medir `SM-N17`)
 - **De dónde sale:** es la **raíz** del síntoma de `SM-N17` (el aviso de «se cayó la conexión con
   Instagram» en la cuenta del operador). La ficha se separa porque el síntoma y la causa tienen
@@ -1512,6 +1512,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N20 · `sin-issue` — FUERA DEL SPRINT: el LLM escribe los importes en formato inglés y agrega frases que no vienen de la observación
 
 - **Estado:** DOD-PARCIAL
+- **Falta:** lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que la propia sonda dejaria cobrada; captura de device del preview de mp_charge). El residual de las 5 frases que NO mueven plata (1/8) esta ACEPTADO y MEDIDO, no pendiente: no iterar el prompt buscando un 0 que la sonda ya mostro que no llega
+- **Cierre:** 30a05839 (#1414) crudos fuera de las ramas ambiguas + bf90c016 (#1423, SM-N21) reply_literal en las 6 tools que mueven plata; sonda LLM real 0 de 32 con el flag prendido
 - **Dueño:** backend
 - **De dónde sale:** lateral que backend destapó midiendo SM-H5/SM-N8, 2026-11-02. Misma clase que
   aquellas dos, pero en tools que ninguna cubría.
@@ -1531,14 +1533,15 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   0**, y la n es chica, así que la mejora no es concluyente. El caso residual es el que explica el
   límite: la `observation` ya traía **«$70.000» bien formateado** y el modelo escribió **«$70,000»**
   igual. Se quitó la fuente cruda; queda un hábito del LLM que el dato limpio no elimina.
-- **Falta:** lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el
   usuario **no pase por el LLM** — card y reply armados por código. Eso es decisión de diseño más
   grande que la ficha y **no la toma backend por su cuenta**: queda planteada acá como la opción de
   raíz, y la decide el operador. Mientras no se tome, el residual se acepta y queda medido (1/8).
 
 ### SM-N21 · `sin-issue` — FUERA DEL SPRINT: opción C — los importes que mueven plata se escriben por código, no los redacta el LLM
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar ya no es alcanzable tras el modelo propone-no-persiste): cubiertos por test unitario; captura de device del preview HITL de mp_charge (frontend1)
+- **Cierre:** 71725e91 mitad A (#1420) + bf90c016 mitad B reply_literal (#1423), desplegado, flag UC_REPLY_LITERAL=1 prendido; sonda LLM real mismo instrumento N=8: gasto/ingreso/presupuesto/factura importe MAL 0/8 (antes: ingreso 1/6, presupuesto 1/6); negativo con flag prendido en test; Replayer en test del motor
 - **Dueño:** backend
 - **De dónde sale:** decisión del **operador**, 2026-11-02: «acuerdo opción C», sobre el inventario
   que midió backend para `SM-N20` (13 sitios donde un importe llega al usuario). Es la raíz que

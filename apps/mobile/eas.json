@@ -16,6 +16,16 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "release-medicion": {
+      "extends": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://copilotoemprendedor.duckdns.org"
+      }
     }
   }
 }
