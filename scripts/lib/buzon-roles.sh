@@ -80,12 +80,31 @@ es_broadcast_buzon() {
 # uno por linea, excluyendo al emisor (nadie se escala a si mismo). Es la inversa de lee_patrones():
 # esa contesta «¿este archivo es para mi?» y esta «¿a quienes interpela este archivo?». Las dos
 # salen de la misma tabla a proposito — si divergen, un mensaje aparece en un gate y no en el otro.
+# 🔴 FAIL-OPEN OBLIGATORIO de la exclusión por sesión (2026-11-03). El caso 1 de
+# `test-escalador-roles-declarados.sh` es un guard de NO-REGRESIÓN con un veredicto escrito a
+# propósito: «cambió el comportamiento por defecto — esto NO es un fix, es un apagado». Protege
+# contra exactamente este movimiento: alguien que, para callar ruido, recorta a quiénes alcanza un
+# broadcast. Y acertó — la primera versión de `ROLES_SIN_SESION_BUZON` lo rompió.
+#
+# Lo que separa un fix de un apagado NO es la intención, que es indistinguible desde afuera: es que
+# **la exclusión no pueda dejar el conjunto VACÍO**. Si sacar a los roles sin sesión no deja a
+# nadie, la lista está mal (mal configurada, un sprint que terminó, un typo en el env) y la salida
+# segura es escalar a TODOS: un contrato que no interpela a nadie no se reclama nunca y muere en
+# silencio, que es un modo de falla peor que el ruido que esto vino a arreglar.
+#
+# Con el conjunto no vacío, el guard sigue vivo: nadie puede apagar el escalador por esta vía.
 roles_de_broadcast() {
-  local bc="$1" emisor="${2:-}" r
+  local bc="$1" emisor="${2:-}" r hay=0
+  if [ "$bc" = "todos" ]; then
+    for r in "${ROLES_BUZON[@]}"; do
+      [ "$r" = "$emisor" ] && continue
+      rol_sin_sesion_buzon "$r" || hay=1
+    done
+  fi
   for r in "${ROLES_BUZON[@]}"; do
     [ "$r" = "$emisor" ] && continue
     case "$bc" in
-      todos)    rol_sin_sesion_buzon "$r" || printf '%s\n' "$r" ;;
+      todos)    { [ "$hay" = "0" ] || ! rol_sin_sesion_buzon "$r"; } && printf '%s\n' "$r" ;;
       frontend) case "$r" in frontend1|frontend2) printf '%s\n' "$r" ;; esac ;;
     esac
   done
