@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -31,8 +33,11 @@ class GroqSTT:
     se sube con filename `.ogg` (spike S4/Motor C) — sin conversión."""
 
     def __init__(self, *, model: str = DEFAULT_MODEL, language: str = "es",
-                 api_key_env: str = "GROQ_API_KEY", url: str = DEFAULT_URL, timeout: float = 60.0):
+                 api_key_env: str = "GROQ_API_KEY", url: str = DEFAULT_URL, timeout: float = 60.0,
+                 reintentos_429: int = 2, espera_max_429: float = 5.0):
         self.model = model
+        self._reintentos_429 = reintentos_429
+        self._espera_max_429 = espera_max_429
         self.language = language
         self._api_key_env = api_key_env
         self._url = url
@@ -50,9 +55,27 @@ class GroqSTT:
             "Authorization": f"Bearer {key}",
             "Content-Type": f"multipart/form-data; boundary={boundary}",
             "User-Agent": "uc-clinic-agent/1.0"})   # Groq/Cloudflare devuelve 403 al UA por defecto de urllib
-        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-            d = json.loads(resp.read().decode())
+        d = self._post(req)
         return (d.get("text") or "").strip()
+
+    def _post(self, req: urllib.request.Request) -> dict:
+        """POST con reintento SÓLO ante 429 (rate limit): espera `retry-after` (tope `espera_max_429`, + jitter para
+        que las ráfagas no reintenten en el mismo instante) y reintenta hasta `reintentos_429` veces. Cualquier otro
+        error se propaga igual que antes. Acá NO hay Temporal que reintente: esto corre en el endpoint HTTP
+        (`/chat/audio`), así que sin esto un 429 llegaba al usuario como error de dictado."""
+        for intento in range(self._reintentos_429 + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                    return json.loads(resp.read().decode())
+            except urllib.error.HTTPError as e:
+                if e.code != 429 or intento >= self._reintentos_429:
+                    raise
+                try:
+                    espera = float(e.headers.get("retry-after") or 1)
+                except (TypeError, ValueError):
+                    espera = 1.0
+                time.sleep(min(max(espera, 0.0), self._espera_max_429) + random.uniform(0, 0.5))
+        raise RuntimeError("inalcanzable")  # pragma: no cover
 
     def _multipart(self, boundary: str, audio_bytes: bytes, filename: str, content_type: str) -> bytes:
         """Arma el body multipart/form-data a mano (sin deps): campos de texto + el archivo de audio."""
