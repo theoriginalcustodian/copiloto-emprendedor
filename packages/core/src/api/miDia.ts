@@ -320,7 +320,7 @@ export async function borrarTarjetaMiDia(
  * gracia si el toolkit no está conectado: `conectado: false` no es un error, es un estado a mostrar
  * ("conectá tu Calendar"). Ver `mi_dia_web.py` para el detalle del lado backend.
  *
- * 🔴 **`inicio` es `[ASSUMED_PENDING_VERIFY]`** (docstring de `mi_dia_web.py`): backend pasa crudo lo
+ * 🔴 **`inicio` es `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente]`** (docstring de `mi_dia_web.py`): backend pasa crudo lo
  * que devuelve Composio en `start`, sin shape confirmado contra datos reales (bloqueado por el OAuth
  * del tenant canónico). Por eso NO se parsea acá — se transporta como `inicioCrudo: unknown` y
  * `horaDeEvento` (abajo) sólo intenta mostrarlo si reconoce una de las 2 formas públicas y documentadas

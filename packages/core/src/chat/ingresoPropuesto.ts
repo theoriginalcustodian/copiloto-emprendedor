@@ -4,7 +4,7 @@ import type { ReplyCard } from '../api/types';
  * `ingreso_propuesto` — la card que el motor mandaría cuando el emprendedor **dicta** un ingreso
  * (hito 8, modo confirmación §2 del contrato: "anotar ingreso" pasa de directo a card editable).
  *
- * 🔴 **`[ASSUMED_PENDING_VERIFY]` — a diferencia de `gasto_propuesto`/`cliente_propuesto`, esta forma
+ * 🔴 **`[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: forma de data sin medir; el kind lo emite tool_catalog.py:1224]` — a diferencia de `gasto_propuesto`/`cliente_propuesto`, esta forma
  * NO está medida contra el `/reply` real de backend.** Sigue la MISMA convención que las dos que sí lo
  * están (`data` es exactamente el body de `POST /ingresos` — ver `aWire` en `api/ingresos.ts` — y
  * `kind` es `string` abierto en `ReplyCard`, precisamente para admitir un valor nuevo sin romper), así

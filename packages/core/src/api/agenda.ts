@@ -9,7 +9,7 @@ import { horaDeEvento, instanteDeEvento } from './miDia';
  * 🔴 **El rango lo arma el CLIENTE y nunca pasa de la ventana del backend** (≤ 14 días → 400 si no).
  * `rangoAgenda` clampa; un test fija que ningún `dias` lo saque de la ventana.
  *
- * `inicio`/`fin` siguen siendo `[ASSUMED_PENDING_VERIFY]` (Composio no verificado con Calendar
+ * `inicio`/`fin` siguen siendo `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: canónica sin Calendar]` (Composio no verificado con Calendar
  * conectado): se transportan crudos y `franjaDeEvento` sólo muestra lo que reconoce.
  */
 export const DIAS_MAX_AGENDA = 14;
