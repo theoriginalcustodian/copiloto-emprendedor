@@ -375,6 +375,7 @@ Prototipo: [clientes](2026-10-16-relevamiento-capturas/proto-mapa-clientes.png) 
 **44 · `ajustes` — Ajustes** — **DIFERENTE · B** · DEVICE  
 Prototipo: [ajustes](2026-10-16-relevamiento-capturas/proto-mapa-ajustes.png) · App: [ajustes](2026-10-16-relevamiento-capturas/app-ajustes.png)  
 *Diferencia:* Grilla de tiles en lugar de lista; «Cómo hablarle» no es entrada del grid; faltan subtítulos y encabezado de negocio (esos dos últimos, A).  
+*Medición 2026-11-03 (mapa, SM-L5):* **El mapa seguía dibujando siete opciones con «Mi plan» y el código ya tiene seis.** Enmendado: la fila «Mi plan» salió de la lista de Ajustes del prototipo (`prototipo/index.html`, `SUBS` sin `s-plan`), «siete» pasó a «seis» en `mapa-pantallas/index.html` y `mockups/13-ajustes/index.html`, y «Cerrar sesión» se dibuja como botón. La pantalla de Mi plan se conserva como visión post-beta. **No se tocó** el chevron de «Como el teléfono» (escalado al operador) ni el wording de Gmail y de la clave fiscal (decisión del operador).  
 *Corrección:* Agregar subtítulos y encabezado; actualizar el mapa por la grilla.  
 *Vínculo:* F7 · F7c · F7d
 
@@ -536,7 +537,8 @@ Prototipo: [hablar](2026-10-16-relevamiento-capturas/proto-mapa-hablar.png) · A
 | 13 · Ajustes | Gmail dice «No puede leerlos» | DIFERENTE | La app dice «Enviá mails desde el chat.» |
 | 13 · Ajustes | Google Drive en grupo aparte «Trabaja sola, de fondo» | CONFORME | `PantallaApps.tsx:111,124`. |
 | 13 · Ajustes | Clave fiscal: aclaración textual al pie | DIFERENTE | Existe con otro texto (`PantallaAfipSetup.tsx:840`). |
-| 13 · Ajustes | Cerrar sesión en grupo aparte, en terracota profunda | DIFERENTE | Existe `PantallaCuenta.tsx`; pasa de fila a botón (F11-cuenta-b). |
+| 13 · Ajustes | Cerrar sesión en grupo aparte, en terracota profunda | CONFORME | El mapa ya lo dibuja como botón (`prototipo/index.html`, `#cerrar-sesion`, `btn2 peligro`) como la app (`PantallaCuenta.tsx:224-226`, `variante: 'peligro'`). Enmienda del mapa aplicada 2026-11-03 (F11-cuenta-b). |
+| 13 · Ajustes | «Mi plan» no está en la lista de Ajustes | CONFORME | DEC-8 (2026-09-21, `2026-09-21-acta-decisiones-beta-odobi.md:18`): «Plan y límites no entran en la beta». La lista del mapa tiene seis opciones; la pantalla `#s-plan` queda como VISIÓN post-beta (sólo por `?ver=plan`). Control negativo en la app: `PantallaAjustes.test.tsx:54-59`. Enmienda del mapa aplicada 2026-11-03. |
 | 13 · Ajustes | Apariencia con muestras reales de los dos temas | DIFERENTE | Cambia el detalle del mosaico (F11-apariencia). |
 | 13 · Ajustes | «Cómo hablarle» muestra una respuesta de ejemplo | CONFORME | Existe el ejemplo vivo (F11-tono-b). |
 | 14 · Mi día 3V | Tablero en tres estados: Para hoy / Haciendo / Hechas | CONFORME | Las tres pestañas filtran su propia lista (medido). |

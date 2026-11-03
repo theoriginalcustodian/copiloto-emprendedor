@@ -794,10 +794,11 @@
   .nuevo svg{stroke:var(--terracota-prof);color:var(--terracota-prof);flex-shrink:0}
 
   /* ── Ajustes ─────────────────────────────────────────────────────
-     El repo define SIETE opciones en grilla y en este orden (kb-usuario/ajustes.md):
-     Mi negocio · Facturación ARCA · Apps conectadas · Mi plan · Mi cuenta ·
-     Apariencia · Cómo hablarle. No se reordena ni se agrupa: es el mapa que el
-     usuario ya tiene.
+     La beta tiene SEIS opciones en grilla y en este orden:
+     Mi negocio · Facturación ARCA · Apps conectadas · Mi cuenta ·
+     Apariencia · Cómo hablarle. «Mi plan» salió de la lista (DEC-8, 2026-09-21:
+     «Plan y límites no entran en la beta»): la pantalla #s-plan sigue dibujada
+     como VISIÓN post-beta y se abre sólo por ?ver=plan, no desde Ajustes.
      El bloque negro de esta pantalla es la IDENTIDAD FISCAL — quién sos ante ARCA.
      Es el dato del que dependen las facturas, y el único acá que vale una cifra. */
   #ajustes{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;
@@ -2114,7 +2115,6 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
         <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M232,96a7.89,7.89,0,0,0-.3-2.2L217.35,43.6A16.07,16.07,0,0,0,202,32H54A16.07,16.07,0,0,0,38.65,43.6L24.31,93.8A7.89,7.89,0,0,0,24,96h0v16a40,40,0,0,0,16,32v72a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V144a40,40,0,0,0,16-32V96ZM54,48H202l11.42,40H42.61Zm50,56h48v8a24,24,0,0,1-48,0Zm-16,0v8a24,24,0,0,1-35.12,21.26,7.88,7.88,0,0,0-1.82-1.06A24,24,0,0,1,40,112v-8ZM200,208H56V151.2a40.57,40.57,0,0,0,8,.8,40,40,0,0,0,32-16,40,40,0,0,0,64,0,40,40,0,0,0,32,16,40.57,40.57,0,0,0,8-.8Zm4.93-75.8a8.08,8.08,0,0,0-1.8,1.05A24,24,0,0,1,168,112v-8h48v8A24,24,0,0,1,204.93,132.2Z"/></svg></span><span class="t"><b>Mi negocio</b><span>Qué vendés, a quién y tu horario</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
         <div class="aj-fila"><span class="ic"><svg width="21" height="21" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd"><path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/></svg></span><span class="t"><b>Facturación ARCA</b><span>CUIT, condición y punto de venta</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
         <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37Z"/></svg></span><span class="t"><b>Apps conectadas</b><span>Gmail, Drive, Calendar, Mercado Pago</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
-        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144Z"/></svg></span><span class="t"><b>Mi plan</b><span>Acciones del mes y límites</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
       </div>
 
       <div class="lista-lbl">La app</div>
@@ -2382,9 +2382,10 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
            la demora. Textual del repo. -->
       <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span>Para silenciarme tengo que tocar una configuración de tu teléfono, y no quiero que se te quede mudo por accidente. Lo estamos terminando con cuidado.</span></div>
 
-      <div class="grupo">
-        <div class="lista-fila"><span class="v peligro">Cerrar sesión</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
-      </div>
+      <!-- Cerrar sesión es un BOTÓN, no una fila con chevron (F11-cuenta-b, implementado en la app:
+           `PantallaCuenta.tsx` FilaBotones variante peligro): una acción destructiva no se dibuja como
+           navegación — el chevron promete una pantalla y esto ejecuta. -->
+      <div class="btn2 peligro" id="cerrar-sesion">Cerrar sesión</div>
       <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>Si cerrás sesión, tus datos quedan guardados: al volver a entrar está todo como lo dejaste.</div>
     </div></div>
   </div>
@@ -2796,7 +2797,7 @@ $('#cerrar-aj').addEventListener('click', () => $('#ajustes').classList.remove('
 /* cada opción de la grilla abre su subpantalla; el índice sigue el orden del repo */
 /* Mismo orden que las filas en pantalla. Las tres de Ayuda todavía no tienen
    subpantalla dibujada: quedan sin destino hasta que se decida su diseño. */
-const SUBS = ['s-negocio','s-afip','s-apps','s-plan','s-cuenta','s-apar','s-hablar'];
+const SUBS = ['s-negocio','s-afip','s-apps','s-cuenta','s-apar','s-hablar'];
 document.querySelectorAll('#ajustes .aj-fila').forEach((a, i) => {
   if (!SUBS[i]) return;
   a.addEventListener('click', () => $('#' + SUBS[i]).classList.add('on'));
