@@ -1734,6 +1734,15 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::chat-area": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-area",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
     "modules/chat::chat-composer": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
@@ -1764,6 +1773,15 @@
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Marco del campo, que la barra de grabación reemplaza: gesto nativo, la web no lo tiene.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::chat-composer-campo-base": {
+      "en": [
+        "apps/mobile/src/modules/chat/Composer.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-composer-campo-base",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
     "modules/chat::chat-contexto-aviso": {
       "en": [
         "apps/mobile/src/modules/chat/ChatView.tsx"
@@ -1793,6 +1811,24 @@
       "id": "chat-contexto-aviso-volver",
       "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
       "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-dock-flotante": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-dock-flotante",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
+    "modules/chat::chat-dock-scrim": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-dock-scrim",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
     "modules/chat::chat-enviar": {
       "en": [

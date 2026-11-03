@@ -95,6 +95,12 @@ export interface ListaMensajesProps {
    */
   pie?: ReactElement;
   /**
+   * SM-N25 — alto que el dock (campo + mic) FLOTANTE tapa sobre el borde inferior de la lista. La lista llega hasta
+   * el borde de la pantalla y corre POR DEBAJO del dock; este padding sólo garantiza que el último mensaje se
+   * pueda scrollear hasta quedar libre del campo. Ausente = 0 (Soporte y los demás montajes no cambian).
+   */
+  margenInferior?: number;
+  /**
    * El estado del ÚLTIMO envío (`useChat().estado.sendStatus`). Decide si el último mensaje propio ya se
    * puede rotular «✓✓ recibido» (fact-voz d): en `sending`/`error` el servidor no lo aceptó. Ausente = se
    * asume que nada está en vuelo (los tests y pantallas que no tienen envío no cambian).
@@ -596,7 +602,7 @@ const FilaMensaje = memo(function FilaMensaje({
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
   function ListaMensajes(
-    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, sendStatus, onVolverDelRecibo, volverDesdeIndice },
+    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, margenInferior = 0, sendStatus, onVolverDelRecibo, volverDesdeIndice },
     refExterno,
   ) {
     const tema = useTema();
@@ -665,7 +671,10 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: tema.espacio.sm }]}
+        contentContainerStyle={[
+          styles.contenido,
+          { padding: tema.espacio.md, gap: tema.espacio.sm, paddingBottom: tema.espacio.md + margenInferior },
+        ]}
         removeClippedSubviews
         initialNumToRender={15}
         maxToRenderPerBatch={10}
