@@ -4,7 +4,7 @@ import type { ArchivoSubida } from './http';
 
 /** Contextos válidos de `POST /transcribir` (contrato K-10 §2) — sólo logging/telemetría del lado del
  * backend: un valor fuera de esta lista se ignora ahí, nunca 422. */
-export type ContextoTranscripcion = 'gasto' | 'ingreso' | 'presupuesto' | 'cliente';
+export type ContextoTranscripcion = 'gasto' | 'ingreso' | 'presupuesto' | 'cliente' | 'factura' | 'bi';
 
 export interface TranscribirResponse {
   transcript: string;

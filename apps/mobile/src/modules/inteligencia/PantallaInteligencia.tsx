@@ -20,6 +20,7 @@ import { AcumuladoAnual } from './AcumuladoAnual';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { DockAlChat } from '../voz';
 import { Row } from '../../theme/glass/Row';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
@@ -330,6 +331,8 @@ export function PantallaInteligencia() {
         </ScrollFormulario>
         </>
             )}
+        {/* SM-J1: el dock al pie, fuera del scroll. El texto es una pregunta sobre los datos: va al chat. */}
+        {estado === 'ok' && <DockAlChat contexto="bi" origen="Inteligencia" placeholder="Preguntame lo que quieras…" />}
       </View>
     </MarcoGlass>
   );
