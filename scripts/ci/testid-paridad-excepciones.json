@@ -1830,15 +1830,6 @@
       "id": "chat-dock-scrim",
       "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
-    "modules/chat::chat-scrim-superior": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-02",
-      "id": "chat-scrim-superior",
-      "motivo": "SM-N25 DoD 5 (2026-11-02): scrim bajo el asa del panel del chat MOBILE (la lista corre bajo el borde superior). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
-    },
     "modules/chat::chat-enviar": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
@@ -1878,6 +1869,15 @@
       "id": "chat-screen",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-scrim-superior": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-scrim-superior",
+      "motivo": "SM-N25 DoD 5 (2026-11-02): scrim bajo el asa del panel del chat MOBILE (la lista corre bajo el borde superior). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
     "modules/chat::chat-vacio-rodillo": {
       "en": [
@@ -3580,6 +3580,33 @@
       "id": "inteligencia-serie",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia"
+    },
+    "modules/inteligencia::inteligencia-solapa-preguntar": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapa-preguntar",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia::inteligencia-solapa-resumen": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapa-resumen",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia::inteligencia-solapas": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapas",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
     },
     "modules/midia::agenda-acciones": {
       "en": [

@@ -20,6 +20,7 @@ jest.mock('@copiloto/core', () => {
 });
 
 import { router } from 'expo-router';
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 import {
@@ -236,33 +237,26 @@ describe('PantallaInteligencia — SM-J3: mes en la cabecera y «Sin ventas toda
   });
 });
 
-describe('PantallaInteligencia — la solapa "Preguntar" es una SALIDA al chat (decisión táctica 2026-10-13)', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('tocar "Preguntar" vuelve al chat (router.back) y NO monta ninguna pantalla intermedia', async () => {
-    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
+describe('PantallaInteligencia — SM-N32: sin selector «Resumen»/«Preguntar» y montos del mes en negro', () => {
+  it('el selector NO se monta (el mapa lo sacó)', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
-
-    expect(back).toHaveBeenCalledTimes(1);
-    // Sin composer propio: la pregunta se escribe en el chat, que ya tiene el suyo.
-    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
-    // Y la portada sigue ahí — tocarla no cambió de cuerpo.
-    expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
+    expect(screen.queryByTestId('inteligencia-solapas')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-solapa-preguntar')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-solapa-resumen')).toBeNull();
+    expect(screen.queryByText('Preguntar')).toBeNull();
   });
 
-  it('🔴 CONTROL — tocar "Resumen" (la pantalla actual) NO navega: el spy distingue las dos solapas', async () => {
-    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
+  it('Ingresos y Gastos del mes usan el mismo color que Facturado y Cobrado (sin verde/rojo)', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
-
-    expect(back).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-ingresos')).toBeTruthy());
+    const color = (id: string) => {
+      const textos = within(screen.getByTestId(id)).getAllByText(/./);
+      return StyleSheet.flatten(textos[textos.length - 1].props.style).color;
+    };
+    const base = color('inteligencia-mes-facturado');
+    expect(color('inteligencia-mes-ingresos')).toBe(base);
+    expect(color('inteligencia-mes-gastos')).toBe(base);
   });
 
   it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {
