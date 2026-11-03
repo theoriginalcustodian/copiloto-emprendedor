@@ -3511,6 +3511,24 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia/graficos"
     },
+    "modules/inteligencia/graficos::inteligencia-grafico-margen-trabajo-peor": {
+      "en": [
+        "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-grafico-margen-trabajo-peor",
+      "motivo": "SM-N32 (2026-11-03): margen ponderado «Sobre N trabajos cerrados» + peor trabajo, derivados en mobile segun el mapa. Web no los dibuja todavia (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia/graficos::inteligencia-grafico-margen-trabajo-resumen": {
+      "en": [
+        "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-grafico-margen-trabajo-resumen",
+      "motivo": "SM-N32 (2026-11-03): margen ponderado «Sobre N trabajos cerrados» + peor trabajo, derivados en mobile segun el mapa. Web no los dibuja todavia (deuda visible, duena: frontend1/web)."
+    },
     "modules/inteligencia::inteligencia-actualizar": {
       "en": [
         "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
