@@ -121,7 +121,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N26** | `sin-issue` | ❔ PENDIENTE — **con un contrapunto escrito que el operador debe leer antes de que se | — |
+| **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1715,9 +1715,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
 
-- **Estado:** PENDIENTE — **con un contrapunto escrito que el operador debe leer antes de que se
-  implemente** (ver abajo). La decisión es suya; lo que no puede pasar es que se ejecute sin que el
-  costo esté dicho.
+- **Estado:** PENDIENTE
+- **⚠️ NO SE IMPLEMENTA hasta que el operador lea el CONTRAPUNTO de abajo.** La decisión es
+  suya; lo que no puede pasar es que se ejecute sin que el costo esté dicho.
 - **Dueño:** frontend1
 - **Decisión del operador, 2026-11-02:** *«hay que quitar eso de pedir confirmación — ensucia la
   pantalla; sólo dejar el tirador del margen superior»*.
