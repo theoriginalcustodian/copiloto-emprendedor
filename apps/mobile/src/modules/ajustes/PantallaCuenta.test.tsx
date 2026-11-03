@@ -241,6 +241,24 @@ describe('PantallaCuenta', () => {
     });
   });
 
+  it('🔴 SM-K5: con «Aceptar versión vigente» arriba, la confirmación de salida vive DENTRO del scroll (alcanzable a cualquier fuente)', async () => {
+    // El caso que se escapó: la cuenta CON el botón extra empuja el contenido y la confirmación quedaba
+    // cortada contra el borde. Sin ese control el defecto no se ve, así que el test lo incluye.
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', legal_aceptado: false, legal_version_aceptada: null } as never;
+    await montar();
+    expect(screen.getByTestId('cuenta-legal-aceptar')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    // Cada elemento accionable de la confirmación tiene un ScrollView por ancestro (host RCTScrollView).
+    const dentroDeScroll = (id: string) => {
+      let n = screen.getByTestId(id).parent;
+      while (n && n.type !== 'RCTScrollView') n = n.parent;
+      return n !== null;
+    };
+    expect(dentroDeScroll('cuenta-confirmar-salida')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-si')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-no')).toBe(true);
+  });
+
   it('confirmar cierra la sesión; decir que no, no', async () => {
     await montar();
 
