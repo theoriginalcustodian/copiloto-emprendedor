@@ -297,6 +297,52 @@ describe('PantallaFacturacion', () => {
     expect(screen.queryByTestId('facturacion-cta-configurar')).toBeNull();
   });
 
+  /**
+   * SM-N44 — la caché NO se re-escribe con su propia entrada rechazada. El backend echa el CUIT pedido con
+   * `conectado:false` cuando no es del tenant y manda el vinculado en `cuitVinculado`; el cliente persistía
+   * `res.cuit ?? cuit` (el rechazado) y la próxima lectura volvía a preguntar por él, para siempre. Un test
+   * que sólo afirme el happy-path no distingue el fix del estado pegado: éste mira QUÉ se guarda.
+   */
+  describe('SM-N44 — la caché converge al CUIT vinculado', () => {
+    const AJENO = CUIT;
+    const PROPIO = '27222333449'; // distinto de CUIT: si fueran iguales el test no distinguiría nada
+
+    it('🔴 con `conectado:false` + `cuitVinculado`: guarda el VINCULADO, nunca el rechazado, y re-verifica con él', async () => {
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValueOnce(
+          estadoAfipMock({ cuit: AJENO, conectado: false, perfilCompleto: false, puedeFacturar: false, cuitVinculado: PROPIO }),
+        )
+        .mockResolvedValueOnce(estadoAfipMock({ cuit: PROPIO, conectado: true }));
+
+      await montar();
+
+      await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(CLAVE_CUIT_AFIP, PROPIO));
+      await waitFor(() => expect(estadoAfip).toHaveBeenLastCalledWith(PROPIO));
+      expect(almacenClave.guardar).not.toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO);
+    });
+
+    it('control negativo: `conectado:false` SIN vinculado no re-escribe la caché con la respuesta que dijo «no»', async () => {
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValueOnce(estadoAfipMock({ cuit: AJENO, conectado: false, puedeFacturar: false }));
+
+      await montar();
+
+      await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+      expect(almacenClave.guardar).not.toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO);
+    });
+
+    it('control positivo: `conectado:true` sigue guardando el CUIT (la caché no se apagó)', async () => {
+      jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ cuit: AJENO, conectado: true }));
+
+      await montar();
+
+      await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO));
+    });
+  });
+
   it('lee el CUIT de la MISMA clave que usa cuitCache.ts (contrato compartido con F5)', async () => {
     await montar();
 
