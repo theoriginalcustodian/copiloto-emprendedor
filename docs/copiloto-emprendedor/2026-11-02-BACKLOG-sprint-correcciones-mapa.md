@@ -120,6 +120,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N26** | `sin-issue` | ❔ PENDIENTE — **con un contrapunto escrito que el operador debe leer antes de que se | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1669,4 +1671,87 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **DENTRO del sprint:** el mapa no dibuja cámara en la barra de entrada de Mi día (la captura que
   mandó el operador muestra sólo el micrófono), así que además de decisión de producto es
   convergencia con el mapa.
+
+### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del chat)
+- **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
+  mic debe ser transparente — el campo y el mic deben ser **flotantes** en el chat; lo mismo en la
+  parte superior: desde la zona que dice “Pedir confirmación” hacia arriba hay un fondo pleno»*.
+- **Medido (código) — son DOS fondos distintos, y por eso la ficha nombra los dos:**
+  - **Abajo:** el composer pinta **su propio degradado**: `apps/mobile/src/modules/chat/Composer.tsx:234`
+    (`colors={[tema.glass.s1, tema.glass.s2]}`), más la luz superior de `:239`
+    (`backgroundColor: tema.glass.hi`). El **campo** en sí ya es `backgroundColor: 'transparent'`
+    (`:307`), así que **lo que se ve lleno es la cáscara, no el input**: quien busque el fondo en el
+    `TextInput` no lo va a encontrar y va a concluir que no existe.
+  - **Arriba:** `ChatView` **no** pinta fondo — `:265` dice `// SIN backgroundColor a propósito` y
+    `:76` explica *«un `backgroundColor` acá taparía el vidrio detrás»*. O sea que el pleno de
+    arriba **no sale de ahí**: sale del `CristalVidrio nivel="conversacion"` del panel
+    (`shell/PanelDeslizable.tsx`) o de su `FondoIluminado`. **Hay que medirlo en device antes de
+    tocar**, no deducirlo: es justo el caso donde el comentario que declara «sin fondo a propósito»
+    apaga la búsqueda y el fondo real vive una capa más abajo.
+- **El criterio, para que no se interprete como «bajarle la opacidad a todo»:** flotante =
+  **el contenido del chat se ve correr por debajo** del campo y del mic. El campo tiene que seguir
+  siendo **legible y tocable** sobre cualquier contenido que pase atrás — texto largo, una card
+  clara, una foto. Transparencia sin legibilidad es otro defecto, no el fix.
+- **⚠️ El riesgo concreto: contraste.** El repo tiene un control de pares pintados
+  (`apps/mobile/src/theme/paresPintadosContraste.test.tsx`). Si el fondo del campo pasa a
+  transparente, **el par texto/fondo deja de estar garantizado**: depende de lo que haya detrás. El
+  DoD lo pide medido, no supuesto.
+- **DoD:**
+  1. Captura del **ANTES** (390 px) con contenido detrás del campo, y la del **DESPUÉS**.
+  2. El campo y el mic **flotando**, con el chat visible corriendo por detrás — demostrado
+     **scrolleando**: una captura estática no distingue «transparente» de «del mismo color que lo
+     que hay detrás en este momento».
+  3. **Legibilidad sobre el peor caso**: una captura con una card CLARA pasando bajo el campo. Es la
+     mitad que el verde del caso normal no acredita.
+  4. El control de contraste del repo pasando, y si alguna combinación queda fuera de umbral, la
+     solución (scrim, blur, borde) **nombrada**, no improvisada.
+  5. El fondo de ARRIBA identificado con `path:línea` real — no «toqué hasta que se fue».
+- **Tenencia:** cualquiera de las dos cuentas. No espera al operador.
+- **DENTRO del sprint:** es la cáscara del mapa.
+
+
+### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
+
+- **Estado:** PENDIENTE — **con un contrapunto escrito que el operador debe leer antes de que se
+  implemente** (ver abajo). La decisión es suya; lo que no puede pasar es que se ejecute sin que el
+  costo esté dicho.
+- **Dueño:** frontend1
+- **Decisión del operador, 2026-11-02:** *«hay que quitar eso de pedir confirmación — ensucia la
+  pantalla; sólo dejar el tirador del margen superior»*.
+- **Medido (código):** es `IndicadorModoCeremonia`
+  (`apps/mobile/src/modules/chat/IndicadorModoCeremonia.tsx:85`), montado como **primer hijo** de
+  `ChatView` (`:195`, envuelto en `styles.indicadorModo`, `:267`). Muestra `Automático` o
+  `Pedir confirmación`. Es **read-only a propósito** (`:13-17`): una `View`, no un `Pressable`,
+  porque *«un control que no responde al toque es peor que no tener control»*.
+- **⚠️ CONTRAPUNTO — lo que se pierde, con la evidencia de HOY:** ese indicador existe por el
+  **contrato de modos §4**, cuyo texto es *«estado siempre visible sin abrir nada»*
+  (`ChatView.tsx:192`). Es **la única señal permanente** de si el copiloto actúa solo o pide
+  confirmación. Y hoy mismo, el 2026-11-02, el operador reportó exactamente ese síntoma en
+  `SM-N19`: *«se está ejecutando todo de forma automática… yo no vi la card»*. Sacar el indicador
+  no causa ese comportamiento, pero **saca el único lugar donde se lee en qué modo está la app** —
+  justo la pregunta que hubo que contestar hoy leyendo código. Además es **fail-closed** (`:29-31`):
+  ante error o endpoint caído muestra «Pedir confirmación», nunca «Automático».
+- **La alternativa barata, por si el operador la prefiere** (decide él, no la implementación):
+  mostrarlo **sólo cuando el modo es `automático`**. En `confirmación` —que es el default y el
+  estado del tenant del operador— la pantalla queda limpia como pide, y la señal **reaparece
+  exactamente cuando importa**: cuando la app SÍ actúa sola. Costo: una condición. Así el «siempre
+  visible» del contrato §4 se degrada a «visible cuando hay algo que avisar», en vez de
+  desaparecer.
+- **Si el operador confirma el retiro total:** se retira **y se actualiza el contrato de modos §4**,
+  más los dos comentarios que lo invocan (`ChatView.tsx:192` y el docstring del indicador). Un
+  contrato que sigue afirmando «estado siempre visible» cuando ya no hay nada visible es
+  exactamente la clase de declaración que después se cita como si fuera verdad.
+- **DoD:**
+  1. La cabecera del chat sin el indicador (o con la condición, según lo que decida el operador),
+     captura de device — arriba queda sólo el tirador.
+  2. El contrato de modos §4 y los comentarios que lo citan, **actualizados al estado real**.
+  3. Tests que dependan del indicador, revisados — su lógica fail-closed no se borra: si el
+     indicador vuelve alguna vez, vuelve cerrado.
+  4. **Control:** que el modo del tenant **siga siendo legible en algún lado** (Ajustes → Mi
+     negocio, `PantallaPerfilNegocio.tsx:468`), y que esa ruta esté verificada, no supuesta.
+- **Tenencia:** cualquiera de las dos cuentas.
+- **DENTRO del sprint:** limpieza de la cáscara pedida por el operador.
 
