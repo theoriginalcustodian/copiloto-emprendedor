@@ -126,6 +126,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
+| **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2283,4 +2284,44 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   condicionada a `cierreVoluntario` (#3).
 - **DENTRO del sprint:** es literalmente una pantalla del mapa que no coincide con la app, que es el
   denominador del sprint.
+
+### SM-N31 · `sin-issue` — La barra de grabación no ocupa el ancho al pie: `grabando` y `bloqueado`
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
+  entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
+  en `DIFERENTE · A` desde el relevamiento del 2026-10-16 (entradas **12** y **13**). Lo que faltaba
+  era el **id** que las hiciera despachables — sin él se leían como pendientes, que es un estado
+  normal, y nadie las iba a tomar ([[el-registro-no-se-marcaba-porque-su-id-no-circulaba]]).
+- **Las dos son UNA corrección, y por eso van en una ficha:** el corpus dice *«Mismo arreglo que
+  "Grabando": barra al pie, de ancho completo»*. Separarlas daría dos fichas que se cierran con el
+  mismo commit y la misma captura.
+- **Medido (corpus 2026-10-16, con `adb`):**
+  - **12 `grabando`:** con un dedo sostenido (`DOWN` sin `UP`, sin voz — no hace falta audio para ver
+    la pantalla) aparecen punto rojo, reloj «0:01» y «‹ Deslizá para cancelar» **debajo** del campo.
+    El prototipo los pone en una **barra al pie que reemplaza al campo**.
+  - **13 `bloqueado`:** con `DOWN` + seis `MOVE` hacia arriba (927 → 700 px) la grabación se fija:
+    tacho, onda, reloj «0:02», pausa y enviar. El prototipo los dibuja en **la misma barra al pie**,
+    con onda ancha.
+  - ✅ **Lo que NO está roto, dicho para que no se "arregle":** el **cancelar deslizando sí funciona**
+    (verificado en device). La divergencia es de **ubicación y ancho**, no de comportamiento.
+- **⚠️ El `(N8)` del corpus NO es `SM-N8`.** El corpus escribe «(N8)» apuntando a la corrección de
+  otro sprint; `SM-N8` de este backlog es otra cosa (el `reply_text`). Un nombre con dos referentes
+  hace que se pruebe A y se concluya B — por eso esta ficha nace con id propio
+  ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+- **Skill obligatoria antes de tocar:** `swmansion-rn-gestures`. El gesto de grabación compone
+  `DOWN`/`MOVE` sostenido con el deslizamiento de cancelar, y mover la barra al pie cambia la zona
+  del gesto. Es el mismo gate que ya evitó dos iteraciones a ciegas sobre el panel de Apps.
+- **DoD:**
+  1. Durante la grabación, la barra **ocupa el ancho al pie y reemplaza al campo**, como el prototipo,
+     en los **dos** estados (sostenido y fijado).
+  2. El **cancelar deslizando sigue funcionando** después del cambio — es regresión obligatoria, no
+     opcional: hoy funciona y la ficha mueve su zona.
+  3. Capturas de device de los dos estados, con el método declarado (`adb shell input motionevent`
+     DOWN/MOVE, **nunca `input tap`**, que no ejercita un Pan de RNGH).
+  4. Las entradas **12** y **13** del corpus pasan a `CONFORME` **con su cita**, y el veredicto se
+     cambia **midiendo la app**, no por el estado de esta ficha.
+
+---
 

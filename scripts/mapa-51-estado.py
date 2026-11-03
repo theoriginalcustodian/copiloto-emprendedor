@@ -77,7 +77,23 @@ def entradas():
             sys.exit(2)
         out.append({"n": m.group("n"), "id": m.group("id"),
                     "nombre": m.group("nombre").strip(), "veredicto": ver,
-                    "fuente": (m.group("fuente") or "").strip()})
+                    "fuente": (m.group("fuente") or "").strip(),
+                    "vinculo": []})
+    # El corpus declara la ficha dueña en su propio campo `*Vínculo:*` (44 de 51
+    # filas lo tienen). La primera version de este script buscaba el dueño SOLO en
+    # el backlog y reporto 4 entradas «sin ficha» que lo tenian escrito dos lineas
+    # mas abajo: el dato existia y el instrumento no lo miraba
+    # ([[instrumento-que-no-mira-nunca-falla]]). El vinculo es declarativo, no
+    # medido, asi que se reporta como tal.
+    bloques = re.split(r"\n(?=\*\*\d+ · `)", t)
+    por_id = {e["id"]: e for e in out}
+    for b in bloques:
+        mi = re.match(r"\*\*\d+ · `([^`]+)`", b)
+        if not mi or mi.group(1) not in por_id:
+            continue
+        mv = re.search(r"^\*Vínculo:\* *(.+)$", b, re.M)
+        if mv:
+            por_id[mi.group(1)]["vinculo"] = re.findall(r"\b([A-Z]\d+)\b", mv.group(1))
     if len(out) != ESPERADAS:
         print("ERROR: el corpus dio %d filas y se esperaban %d. El corpus cambio de "
               "forma: no publico ninguna cifra sobre el." % (len(out), ESPERADAS),
@@ -142,8 +158,13 @@ def main(argv):
     por_nombre = []
     for e in divergentes:
         fs = cubren(e["id"], fich)
+        # el vinculo declarado en el corpus cuenta como dueno: lo escribio quien midio
+        for v in e["vinculo"]:
+            fid = "SM-%s" % v
+            if fid in fich and fid not in fs:
+                fs.append(fid)
         if fs:
-            cubiertas.append((e, [(f, fich[f][0]) for f in fs]))
+            cubiertas.append((e, [(f, fich[f][0]) for f in sorted(fs)]))
             continue
         # segunda pasada: el nombre, que NO acredita — sólo marca a revisar
         fn = cubren_por_nombre(e["nombre"], fich)
