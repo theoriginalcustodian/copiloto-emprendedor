@@ -37,7 +37,7 @@ import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
-import { ALTO_HANDLE, PanelDeslizable } from './PanelDeslizable';
+import { ALTO_HANDLE, espacioSuperior, PanelDeslizable } from './PanelDeslizable';
 import { PanelFunciones } from './PanelFunciones';
 
 /**
@@ -288,7 +288,7 @@ export function PantallaPrincipal() {
             cierreDeAviso={cierreDeAviso}
             pie={
               // La tira de la conversación tapa el borde de abajo: el handle más su spacer (ver `PanelFunciones`).
-              <View style={{ marginBottom: ALTO_HANDLE + insets.top }}>
+              <View style={{ marginBottom: ALTO_HANDLE + espacioSuperior(insets.top) }}>
                 <DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />
               </View>
             }

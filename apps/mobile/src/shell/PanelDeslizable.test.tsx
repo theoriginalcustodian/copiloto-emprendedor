@@ -9,7 +9,38 @@ import * as Reanimated from 'react-native-reanimated';
 // dos capas + el handle montan sin crashear (reanimated/gesture-handler no revientan bajo el harness).
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { opacidadRotuloAbajo, PanelDeslizable, translacionPanel } from './PanelDeslizable';
+import {
+  ALTO_HANDLE,
+  espacioSuperior,
+  MARGEN_TIRADOR,
+  opacidadRotuloAbajo,
+  PanelDeslizable,
+  recorridoDesdeAlto,
+  translacionPanel,
+} from './PanelDeslizable';
+
+describe('SM-N23 — margen fijo del tirador de arriba', () => {
+  const INSET = 24;
+  const ALTO = 853;
+
+  it('hay margen bajo la barra de estado (antes era 0) y el spacer lo incluye', () => {
+    expect(MARGEN_TIRADOR).toBeGreaterThan(0);
+    expect(espacioSuperior(INSET)).toBe(INSET + MARGEN_TIRADOR);
+  });
+
+  it('el recorrido se acorta EXACTAMENTE en el margen respecto de la geometría anterior', () => {
+    const anterior = ALTO - ALTO_HANDLE - INSET;
+    expect(recorridoDesdeAlto(ALTO, INSET)).toBe(anterior - MARGEN_TIRADOR);
+  });
+
+  it('el handle de abajo cae donde siempre: recorrido + spacer = alto - ALTO_HANDLE', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET) + espacioSuperior(INSET)).toBe(ALTO - ALTO_HANDLE);
+  });
+
+  it('con el alto sin medir no inventa un recorrido negativo', () => {
+    expect(recorridoDesdeAlto(0, INSET)).toBe(0);
+  });
+});
 
 async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
