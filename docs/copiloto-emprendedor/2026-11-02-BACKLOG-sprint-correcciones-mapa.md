@@ -81,7 +81,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ult… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
-| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al e… |
+| **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
 | **SM-J5** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): PantallaAgenda.tsx:23-24 agrupa Hoy / Manana / Esta semana / Sin h… |
 | **SM-K1** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Homologacion oculta para no-admin (frontend2) |
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de los dos estados del recuadro y del formulario nombrando el ambiente. DECISION: web NO recibe el … |
@@ -510,7 +510,7 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 ### SM-J4 · `sin-issue` — Clientes: el dato SÍ llega; falta medirlo con un cliente que tenga CUIT
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Mitad B BLOQUEADA DE VERDAD, no esperando: la atribucion es POR DOCUMENTO DEL RECEPTOR al consultar, sin vinculo al emitir (cliente_store.py:72-78 _FACTURADO_DEL_CLIENTE_JOIN, predicado en :41-58, _es_atribuible en :61); afip_comprobantes.cuit es el EMISOR y no sirve. Medido read-only en 48a9d75f: N 10 y N 11 tienen doc_tipo=99 y doc_nro vacio/0, asi que NO son atribuibles a ningun cliente (crear un cliente con el CUIT 20269996065 no las atribuye: es el CUIT del emisor, el propio operador). Disparador exacto: una factura emitida con RECEPTOR IDENTIFICADO (doc_tipo y doc_nro con digitos); emitir esta fuera de alcance por decision del operador. Rechazado como atajo: cliente doc_tipo=99 nro 0 para forzar el match (seria consumidor-final-generico, la captura mentiria). Mitad A HECHA: captura del caso facturas_atribuibles:false (el guion + «Sin CUIT cargado» es deliberado), cuenta del OPERADOR (no canonica), cliente creado por la app sin tocar lo fiscal. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-J4-clientes-sin-CUIT-el-guion-es-deliberado-CUENTA-DEL-OPERADOR.webp
+- **Falta:** DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 1 passed, con control positivo del tenant B. Falta DoD(2) captura de device con cliente CON CUIT, solo en la canonica 4f3ecb78: frontend2 da de alta por la app un cliente con CUIT 20111111112 (el de sus 4 facturas) y la evidencia es el salto comprobantes_cantidad 0 a 4 en GET /clientes. No se crea por SQL. Decidido por planificacion 2026-11-02, 19af5a42 descartado.
 - **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
