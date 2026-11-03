@@ -10,6 +10,12 @@ import { useTema } from '../../theme/ThemeProvider';
  * `IndicadorModoCeremonia` — el estado del contrato de modos §4 en el glass principal: *"estado
  * siempre visible sin abrir nada"*, sin tener que entrar a Ajustes → Mi negocio para saberlo.
  *
+ * ⚠️ **SM-N26 (2026-11-02): HOY NO ESTÁ MONTADO en ningún lado.** Ningún control escribe
+ * `modoCeremonia` (el único escritor es `volverAConfirmacion` → `'confirmacion'`), así que el cartel
+ * pintaba una constante. Se retiró de `ChatView`. **Cuando exista la opción de que el usuario elija el
+ * modo, montalo de nuevo**: es la única señal permanente de si el copiloto actúa solo. Vuelve igual de
+ * fail-closed (abajo). Mientras tanto el §4 «siempre visible» NO se cumple, a propósito.
+ *
  * 🔴 **Read-only, SIN segunda opción tocable — Decisión B, confirmada de nuevo para este indicador**
  * (`respuesta_planificacion-a-frontend_selector-es-indicador-read-only-hoy-B-manda-lectura-1`): el
  * automático se OFRECE por una conversación del copiloto cuando el tenant demuestra que dicta

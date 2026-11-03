@@ -19,10 +19,8 @@ jest.mock('../auth/useSession', () => ({
   useSession: () => ({ me: { cliente_id: 'cli-chatview-test', email: 'usuario@copiloto.test' } }),
 }));
 
-/** `leerPerfilNegocio` mockeado — `IndicadorModoCeremonia` la llama al montar (vía `useFocusEffect`,
- *  passthrough en `jest.setup.js`); sin mock intentaría un `fetch` real en cada test de este archivo,
- *  que no es lo que ninguno de ellos prueba. `no_disponible` deja el indicador en su default
- *  fail-closed ("Pedir confirmación"), invisible para las aserciones existentes. */
+/** `leerPerfilNegocio` mockeado por seguridad: el chat ya no monta el indicador de modo (SM-N26), pero
+ *  si algo del árbol la llamara intentaría un `fetch` real, que ningún test de este archivo prueba. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -653,6 +651,16 @@ describe('ChatView -- SM-N24: la cámara NO es del chat, es de Gastos', () => {
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
     expect(screen.queryByTestId('chat-foto')).toBeNull();
+  });
+});
+
+describe('ChatView -- SM-N26: sin indicador «Pedir confirmación» en la cabecera', () => {
+  it('el chat no monta el indicador de modo (era una constante: nadie escribe el campo)', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    expect(screen.queryByTestId('indicador-modo-ceremonia')).toBeNull();
+    expect(screen.queryByText('Pedir confirmación')).toBeNull();
   });
 });
 
