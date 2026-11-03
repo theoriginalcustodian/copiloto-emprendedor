@@ -9,6 +9,7 @@ import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
 import { CambiarCredenciales } from './CambiarCredenciales';
+import { Chevron } from './Chevron';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -29,16 +30,6 @@ import { useTema } from '../../theme/ThemeProvider';
  * trabajo en curso: hay que volver a escribir usuario y contraseña, y en un teléfono eso es fricción
  * real. Un toque accidental en una grilla de íconos no puede echarte.
  */
-/** SM-K5: el «›» de las filas que abren otra pantalla (mapa `cuenta`). Decorativo: el rol lo da la fila. */
-function Chevron() {
-  const tema = useTema();
-  return (
-    <Text accessibilityElementsHidden importantForAccessibility="no" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.grande }}>
-      ›
-    </Text>
-  );
-}
-
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 /** SM-K5: `fecha_alta` (`YYYY-MM-DD`) → «marzo de 2021». Cualquier otra forma o `null` → `null`: la línea se omite, no se inventa. */
