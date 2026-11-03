@@ -125,7 +125,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
 | **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
-| **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telef… |
+| **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
+| **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -168,6 +169,55 @@ versionado en `eas.json`**; el APK es desechable y se rehace desde el sha que ha
 implementación del sprint mergeada en `main`**. Recién ahí se compila, se instala, se mide
 `SM-I6` + `SM-L1` en la misma pasada de device, y se repone el dev-client con el build
 `development` de EAS.
+
+# Dos ordenes del operador del 2026-11-03: la tenencia queda AUTORIZADA y el audio DESCARTADO
+
+## 1. ✅ Tenencia de prueba AUTORIZADA — se cae el disparador que frenaba 9 fichas
+
+> *«autorizo la tenencia de prueba»*
+
+El segundo tenant (**vacío y no-admin**) deja de estar limitado a `SM-K1`/`SM-J3` y vale para toda
+ficha que necesite un segundo emprendedor. **El provisioning ya existía y no se diseñó de nuevo**
+(CANON 3): `scripts/provision_usuario_vacio_sm_n15.py` — idempotente, alta por `/auth/signup`,
+credencial a `.env.e2e` (gitignored; el repo es **PÚBLICO**), y **tres controles adversariales
+propios**: no-admin con 403 **y control de 401 sin token** (distingue «guard presente» de «ruta
+inexistente»), tenant vacío **con control positivo contra el canónico** (si los dos dieran 0, el
+instrumento mira mal, no el tenant) y cross-tenant denegado. Corre **en el VPS**.
+
+⚠️ **Lo que la orden NO autoriza:** el canónico sigue siendo `e2e-device@copiloto.test`. Autorizar un
+**segundo** tenant no es **mudar** el primero, y las dos cosas se dicen con la misma palabra
+(«usuario de prueba»): leer esta línea como «ya se puede elegir usuario» es el error que la memoria
+`usuario-de-prueba-canonico-uno-solo-a-fuego` previene.
+
+**Las 9 fichas, MEDIDAS contra el `Falta:` de cada una (no citadas de memoria):**
+`SM-J3` · `SM-J4` · `SM-K1` · `SM-K3` · `SM-K5` · `SM-K6` · `SM-N16` · `SM-N25` · `SM-N30`.
+🔬 **Y el barrido que las contó falló dos veces antes de dar esa lista, que es el dato útil:** la
+primera pasada dio **6** porque el patrón buscaba «canónic**a**» en femenino y el doc escribe
+«canónic**o**» para el usuario — `SM-J3`, `SM-K5` y `SM-K1` quedaron mudas. La segunda dio **11**
+porque `del operador` matcheaba «ORDEN DEL OPERADOR» (`SM-L1`) y «reporte del operador» (`SM-N27`),
+que no son tenencia. **Ni 6 ni 11: nueve.** Un conteo por grep sobre prosa libre necesita leer los
+dos lados — los que caza y los que descarta ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]).
+
+**Precondición única, y tiene dueño:** que el provisioning corra en el VPS y publique la credencial.
+Hasta ese `cierre_`, las 9 siguen bloqueadas por un disparador **nombrado y tomado**, no por una
+decisión pendiente.
+
+## 2. 🔴 El audio de pronunciación: DESCARTADO
+
+> *«no necesitamos la voz de odobi… no nos interesa el audio… no sé de dónde sacaste que había que
+> implementar eso»*
+
+**Era alcance que planificación inventó**, y la causa importa más que el punto: salió de **leer el
+prototipo como si fuera una especificación**. `#reveal` dibuja «se dice o-DO-bi»
+(`prototipo/index.html:2555`) y `RevealEntrada.tsx` tiene un `pronunciacionAsset` opcional; de ahí
+subí el botón a DoD y lo convertí en **pregunta abierta al operador**. Un elemento que existe en un
+mockup **no es alcance contratado**: «la app debe igualar al mapa» ordena corregir lo que
+**divergió**, no implementar todo lo que el mockup dibuja. El costo fue doble — pedir trabajo que
+nadie quería **y** dejar la ficha esperando una decisión que no existía.
+
+**Queda:** el **texto** «se dice o-DO-bi» no está en discusión (`textosEntrada.ts:21`, sin asset).
+**Sale:** el altavoz, del DoD y **del mapa** — única excepción a la decisión A, autorizada por la
+misma orden.
 
 # El eje de la pasada de device NO es la cuenta — es el ESTADO que la tenencia puede producir
 
@@ -2049,8 +2099,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N30 · `sin-issue` — DENTRO DEL SPRINT: la pantalla de entrada REAL no es la que dibuja el mapa («Volver a entrar»)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telefono tiene la cuenta del operador y no se fuerza. Disparador exacto: tenencia canonica habilitada. DoD 3, el boton de pronunciacion: el codigo ya lo soporta detras de pronunciacionAsset y NO hay nada que implementar — falta el ARCHIVO de audio (quien graba 'o-DO-bi' en voz de marca). No es decision pendiente, es un asset inexistente: queda con dueno a nombrar por el operador. DoD 4, camino de sesion caida sola: sin decidir ni implementar — hoy sigue yendo directo al formulario.
-- **Cierre:** 714838ce (#1439): RevealEntrada gana variante splash|reveal — splash INTACTO (glifo O + dobi + tagline, la decision BL-X10 que la orden del operador NO superaba), reveal = Odobi entero + se dice o-DO-bi SIN tagline, como prototipo/index.html:2553. Tests auth+theme 192 verdes, tsc limpio, paridad de testIDs; EntradaSesion.test fija que variante sale por cada camino (volver->Odobi sin tagline; primeraVez->tagline sin Odobi) — ese test es el control durable de la fusion de las dos pantallas. Mas dc8d2ffa (#1438): comentario vencido de textosEntrada.ts corregido, altavoz marcado PENDIENTE DE ASSET en el mapa y leyenda falsa 'en mobile no existe' corregida (DoD 6 y 7).
+- **Falta:** DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro cada una; el reveal volver REAL exige logout voluntario, que YA es posible: la tenencia de prueba quedo autorizada el 2026-11-03 y espera solo el provisioning en el VPS. DoD 4 (sesion caida sola) sin decidir, con la condicion dura de no perder el aviso que acredita SM-K6. DoD 3 (boton de audio) DESCARTADO por el operador: ya no es Falta.
+- **Cierre:** Decision A bajada (la app se alinea al mapa) + causa raiz medida: el mapa carga el prototipo REAL en un iframe y el prototipo tiene DOS pantallas (#splash con tagline y lockup por letra · #reveal con «Odobi» entera); RevealEntrada.tsx las fusiono. Eso REIVINDICA el port FIEL (03e9c200): fue fiel a #splash. Contrato en el buzon, frontend2 dueña.
 - **Dueño:** frontend2 (va pegada a `SM-N29`: misma pantalla, misma pasada de device)
 - **Reportado por:** el operador, 2026-11-02, sobre el mapa `?ver=volver`: *«la pantalla de entrada es
   diferente a la del mapa; la imagen de "volver a entrar" no es la misma que tiene la app»*.
@@ -2157,14 +2207,20 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   este backlog ya pagó en `SM-N16`/`SM-N28`. La animación por letra **no se descarta por sí
   misma**: lo que manda es que el resultado se lea como el lockup del mapa; si la animación puede
   sobrevivir dibujando «Odobi» entera, sobrevive.
-- **⚠️ Lo único que esta decisión NO puede cumplir hoy, y por qué no es excusa:** el **botón de
-  pronunciación** necesita un **asset de audio que no existe en el repo** (BL-X10,
-  `[ASSUMED_PENDING_VERIFY]`). No es una elección de diseño pendiente: es un archivo que falta.
-  **Se implementa el botón detrás del asset** —cuando el audio exista, el botón aparece sin tocar
-  más código, que es como ya está escrito (`pronunciacionAsset != null`)— y **el disparador se
-  nombra acá: quién graba «o-DO-bi» en voz de marca.** Mientras no exista, el mapa **no puede
-  seguir prometiéndolo sin decirlo**: la pantalla del mapa lleva la nota de que ese control está
-  pendiente de asset. Es el único punto de la ficha que cierra como `Falta:`, no como hecho.
+- **🔴 EL AUDIO QUEDA DESCARTADO — orden del operador, 2026-11-03:** *«no necesitamos la voz de
+  odobi… no nos interesa el audio… no sé de dónde sacaste que había que implementar eso»*. **No hay
+  botón de pronunciación, no hay asset, no hay disparador pendiente.** El punto sale del DoD.
+  ⚠️ **Y el error fue de planificación, dicho para que no se repita:** nadie pidió el audio. Salió
+  de **leer el prototipo como si fuera una especificación**: `#reveal` dibuja «se dice o-DO-bi»
+  (`prototipo/index.html:2555`) y `RevealEntrada.tsx` tiene un `pronunciacionAsset` opcional, y de
+  ahí lo subí a DoD y hasta lo convertí en **pregunta abierta al operador**. Un elemento que existe
+  en un mockup **no es alcance contratado**; «la app debe igualar al mapa» ordena corregir lo que
+  **divergió**, no implementar todo lo que el mockup dibuja. Un DoD inflado así cuesta doble: pide
+  trabajo que nadie quiere **y** bloquea la ficha esperando una decisión que no existía.
+- **✅ Lo que esto simplifica:** el **texto** «se dice o-DO-bi» no está en discusión (es una línea del
+  core, `textosEntrada.ts:21`, sin costo ni asset). Lo descartado es **el altavoz**. Donde el mapa
+  dibuja ese control, **se enmienda el mapa** — es la excepción explícita a la decisión A, y la
+  autoriza la misma orden que la descarta.
 - **🧭 La sub-decisión que la orden no resuelve, resuelta por defecto para no frenar (táctica, el
   operador la revierte si quiere otra cosa):** el mapa dibuja **dos** entradas —«Splash» (primer
   ingreso) y «Volver a entrar» (post-logout)— y **no dibuja** el tercer camino que la app sí tiene:
@@ -2206,9 +2262,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   2. **Tagline:** resuelto contra el mapa (el mapa no lo muestra ⇒ **sale de la app**, salvo que la
      captura del mapa a 390 px lo tenga y la del operador lo recortara — **medir el mapa, no la
      captura**, que es la trampa de este punto).
-  3. **Botón de pronunciación:** el código ya lo soporta detrás de `pronunciacionAsset`; queda como
-     `Falta:` con el disparador «quién graba el audio» y **la nota en el mapa** de que está
-     pendiente de asset.
+  3. **Botón de pronunciación: DESCARTADO** (orden del operador, 2026-11-03). No se implementa y no
+     queda como `Falta:`. Se **saca del mapa** el control de audio; si `RevealEntrada.tsx` tiene el
+     prop `pronunciacionAsset` muerto, se retira con la ficha.
   4. **Camino de sesión caída:** alineado al reveal «volver» **con el aviso**, o declarado por qué
      no se pudo sin romper `SM-K6`. Las dos salidas son válidas; el silencio no.
   5. **Captura app‖mapa** de las DOS entradas del mapa: `?ver=splash` (primer ingreso, «Empecemos»)
@@ -2228,4 +2284,44 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   condicionada a `cierreVoluntario` (#3).
 - **DENTRO del sprint:** es literalmente una pantalla del mapa que no coincide con la app, que es el
   denominador del sprint.
+
+### SM-N31 · `sin-issue` — La barra de grabación no ocupa el ancho al pie: `grabando` y `bloqueado`
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
+  entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
+  en `DIFERENTE · A` desde el relevamiento del 2026-10-16 (entradas **12** y **13**). Lo que faltaba
+  era el **id** que las hiciera despachables — sin él se leían como pendientes, que es un estado
+  normal, y nadie las iba a tomar ([[el-registro-no-se-marcaba-porque-su-id-no-circulaba]]).
+- **Las dos son UNA corrección, y por eso van en una ficha:** el corpus dice *«Mismo arreglo que
+  "Grabando": barra al pie, de ancho completo»*. Separarlas daría dos fichas que se cierran con el
+  mismo commit y la misma captura.
+- **Medido (corpus 2026-10-16, con `adb`):**
+  - **12 `grabando`:** con un dedo sostenido (`DOWN` sin `UP`, sin voz — no hace falta audio para ver
+    la pantalla) aparecen punto rojo, reloj «0:01» y «‹ Deslizá para cancelar» **debajo** del campo.
+    El prototipo los pone en una **barra al pie que reemplaza al campo**.
+  - **13 `bloqueado`:** con `DOWN` + seis `MOVE` hacia arriba (927 → 700 px) la grabación se fija:
+    tacho, onda, reloj «0:02», pausa y enviar. El prototipo los dibuja en **la misma barra al pie**,
+    con onda ancha.
+  - ✅ **Lo que NO está roto, dicho para que no se "arregle":** el **cancelar deslizando sí funciona**
+    (verificado en device). La divergencia es de **ubicación y ancho**, no de comportamiento.
+- **⚠️ El `(N8)` del corpus NO es `SM-N8`.** El corpus escribe «(N8)» apuntando a la corrección de
+  otro sprint; `SM-N8` de este backlog es otra cosa (el `reply_text`). Un nombre con dos referentes
+  hace que se pruebe A y se concluya B — por eso esta ficha nace con id propio
+  ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+- **Skill obligatoria antes de tocar:** `swmansion-rn-gestures`. El gesto de grabación compone
+  `DOWN`/`MOVE` sostenido con el deslizamiento de cancelar, y mover la barra al pie cambia la zona
+  del gesto. Es el mismo gate que ya evitó dos iteraciones a ciegas sobre el panel de Apps.
+- **DoD:**
+  1. Durante la grabación, la barra **ocupa el ancho al pie y reemplaza al campo**, como el prototipo,
+     en los **dos** estados (sostenido y fijado).
+  2. El **cancelar deslizando sigue funcionando** después del cambio — es regresión obligatoria, no
+     opcional: hoy funciona y la ficha mueve su zona.
+  3. Capturas de device de los dos estados, con el método declarado (`adb shell input motionevent`
+     DOWN/MOVE, **nunca `input tap`**, que no ejercita un Pan de RNGH).
+  4. Las entradas **12** y **13** del corpus pasan a `CONFORME` **con su cita**, y el veredicto se
+     cambia **midiendo la app**, no por el estado de esta ficha.
+
+---
 
