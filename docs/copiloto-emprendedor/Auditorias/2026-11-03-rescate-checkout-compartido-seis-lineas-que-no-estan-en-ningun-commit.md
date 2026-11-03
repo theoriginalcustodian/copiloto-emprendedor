@@ -68,3 +68,17 @@ Dos reglas, y valen más que el rescate que no existía:
 2. **Un peer que te refuta con shas se verifica, no se cree ni se descarta.** Los dos caminos
    fáciles fallan igual: aceptarlo por venir de un par, o defender lo propio por ser propio. Acá los
    shas se corrieron de nuevo y la refutación se sostuvo entera.
+
+## 3. Un DoD expresado como CIFRA se puede cumplir con la premisa falsa (aporte de frontend2)
+
+El DoD que bajé decía «las 6 líneas presentes en `main`, verificadas una por una». Es un **conteo**,
+y un conteo es ejecutable sin que su premisa sea cierta: las 6 habrían quedado presentes, el punto 1
+verde, y **las 3 decisiones del operador revertidas por debajo, acreditadas por un DoD cumplido**.
+Eso es peor que no hacer el trabajo, porque queda firmado.
+
+Lo que frenó a frontend2 no fue el DoD: fue haber visto en el diff una frase que el propio mapa trae
+reescrita. Y su aritmética es la que decide — *contrastar por línea cuesta 3 comandos; ejecutar y
+revertir cuesta un PR con DoD verde encima*.
+
+**Regla:** un DoD que cuenta nunca puede ser el único punto. Necesita al menos uno que pregunte
+**¿por qué falta esto?** — que acá era exactamente el `git log -S` que no corrí.
