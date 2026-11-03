@@ -22,7 +22,8 @@ type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 
 // Tamaños de la jerarquía del login. Son medidas de layout (no colores → no violan `temaSinHex`), y
 // viven acá y no en los tokens porque son propias de ESTE hero, no del sistema compartido (evita
 // inflar la escala global `tipo` con un tamaño que sólo usa una pantalla).
-const HERO = 34;
+/** El wordmark «Odobi» del lockup: `.ig-marca .w{font-size:32px}` (`prototipo/index.html:517`). SM-Z4 parte 1 (era 34). */
+const HERO = 32;
 /** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
 const LOCKUP_SIMBOLO = 38;
 const ALTO_CAMPO = 52;
@@ -137,6 +138,10 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
+          {/* SM-Z4 parte 2 (BLOQUEADA, decide el operador): el mapa lo pinta `--terracota` (#DE7250, `index.html:517`)
+              y acá es `acentoTinta`. NO se alinea todavía: #DE7250 como texto sobre crema da 2,86:1 y viola WCAG 1.4.3
+              salvo que el wordmark sea logotipo exento. El reveal ya lo trata así (`COLOR_PALABRA_MARCA`,
+              `identidadPalette.ts:13`); el login no heredó esa decisión. No «arreglar» bajando el contraste. */}
           <Text
             testID="login-wordmark"
             style={[
