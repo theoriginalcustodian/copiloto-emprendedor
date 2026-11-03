@@ -58,6 +58,26 @@ def _heredar_env_del_proceso(unit: str) -> str:
     return pid
 
 
+def _control_vacio(conn, cid: str) -> None:
+    """Un retiro que sólo mira la credencial deja el instrumento con aspecto de limpio: mira TAMBIÉN las filas de
+    negocio (gastos, ingresos, presupuestos…) y dice explícito si el tenant NO quedó vacío."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT table_name FROM information_schema.columns WHERE table_schema = %s "
+                    "AND column_name = 'cliente_id' AND table_name IN "
+                    "('copiloto_gastos','copiloto_ingresos','copiloto_presupuestos','copiloto_presupuesto_items')",
+                    (SCHEMA,))
+        sucias = {}
+        for (t,) in cur.fetchall():
+            cur.execute(f"SELECT count(*) FROM {SCHEMA}.{t} WHERE cliente_id = %s::uuid", (cid,))
+            n = cur.fetchone()[0]
+            if n:
+                sucias[t] = n
+    if sucias:
+        print(f"⚠ e2e-vacio NO quedó vacío: {sucias} — correr deploy/copiloto/resetear-vacio-e2e.py --ejecutar")
+    else:
+        print("control: gastos, ingresos y presupuestos en 0 (la credencial MP se informa arriba)")
+
+
 def main() -> int:
     args = _args()
     ejecutar = "--ejecutar" in args
@@ -95,11 +115,13 @@ def main() -> int:
             return 0
         if not ejecutar:
             print("dry-run: se borraría la fila del seller sintético (usar --ejecutar)")
+            _control_vacio(conn, cid)
             return 0
         with conn.cursor() as cur:
             cur.execute(f"DELETE FROM {SCHEMA}.mp_credentials WHERE cliente_id = %s::uuid AND seller_user_id = %s",
                         (cid, SELLER_SINTETICO))
         print(f"OK retirada · salud={store.salud()}")
+        _control_vacio(conn, cid)
         return 0
 
     if ajenos:
