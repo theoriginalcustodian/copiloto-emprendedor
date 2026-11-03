@@ -44,8 +44,8 @@ cp "$ME_CONTRATO_REAL" "$TMP_DEPLOYED/apps/copiloto/me_contrato.py"
 out="$(cd "$TMP_SMOKE" && env -u PYTHONPATH UC_ME_CONTRATO_PATH="$TMP_DEPLOYED/apps/copiloto/me_contrato.py" "$PY" -c \
   'from meclaves_check import cargar_claves_declaradas; print(len(cargar_claves_declaradas()))' 2>&1)"
 rc=$?
-chk "mecanismo nuevo: import como ARCHIVO desde el tmpdir + UC_ME_CONTRATO_PATH al árbol desplegado ⇒ 9 claves" \
-  "$([ $rc -eq 0 ] && [ "$out" = "9" ] && echo 1 || echo 0)" "rc=$rc out=$out"
+chk "mecanismo nuevo: import como ARCHIVO desde el tmpdir + UC_ME_CONTRATO_PATH al árbol desplegado ⇒ 10 claves" \
+  "$([ $rc -eq 0 ] && [ "$out" = "10" ] && echo 1 || echo 0)" "rc=$rc out=$out"
 
 # 3) FAIL-CLOSED: sin el override y sin la estructura relativa real (../../apps/copiloto no existe
 #    desde el tmpdir) tiene que FALLAR, no responder con cualquier número. Si esto no falla, el

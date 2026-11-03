@@ -23,6 +23,16 @@ class TenantOnboardingStore:
             row = cur.fetchone()
         return bool(row[0]) if row else False
 
+    def fecha_alta(self) -> str | None:
+        """SM-K5: fecha de alta de la cuenta (`tenants.created_at`) en ISO `YYYY-MM-DD`; `None` si la fila no
+        existe o no tiene fecha: ausente, nunca inventada. Sale del `cliente_id` del token, jamás de un
+        parámetro. Vive acá porque es la misma tabla/fila que `completado()` y `/me` ya la lee."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT created_at FROM {_TABLE} WHERE cliente_id = %s", (self._cid,))
+            row = cur.fetchone()
+        return row[0].date().isoformat() if row and row[0] else None
+
     def completar(self) -> None:
         """Idempotente: marcar dos veces es marcar una."""
         conn = self._conn_factory()

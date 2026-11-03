@@ -77,6 +77,7 @@ class _FakeTenantsDB:
         self.tenants: dict[str, dict] = {}     # auth_user_id -> {cliente_id, email, composio_user_id}
         self.mp_sellers: dict[str, str] = {}   # cliente_id -> seller_user_id (más reciente)
         self.mp_caidos: set[str] = set()       # cliente_id con la fila marcada `reauth_desde` (caido)
+        self.altas: dict[str, object] = {}     # cliente_id -> tenants.created_at (SM-K5)
         self.onboarding: dict[str, bool] = {}  # cliente_id -> onboarding_completado (K-14)
         self.legal: dict[str, tuple] = {}      # cliente_id -> (legal_version, legal_aceptado_en) (BL-O6)
         self.perfiles: dict[str, dict] = {}    # cliente_id -> campos de copiloto_perfil_negocio (SM-C3)
@@ -114,6 +115,9 @@ class _FakeCursor:
         elif s.startswith("SELECT ONBOARDING_COMPLETADO FROM UC_FACTORY.TENANTS"):
             (cliente_id,) = params
             self._result = (self._db.onboarding.get(cliente_id, False),)
+        elif s.startswith("SELECT CREATED_AT FROM UC_FACTORY.TENANTS"):
+            (cliente_id,) = params
+            self._result = (self._db.altas[cliente_id],) if cliente_id in self._db.altas else None
         elif s.startswith("UPDATE UC_FACTORY.TENANTS SET ONBOARDING_COMPLETADO"):
             (cliente_id,) = params
             self._db.onboarding[cliente_id] = True
@@ -609,7 +613,7 @@ def test_me_with_token_reports_mp_connected_true():
     assert r.status_code == 200
     assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False, "legal_version_aceptada": None}
+                        "legal_aceptado": False, "legal_version_aceptada": None, "fecha_alta": None}
 
 
 def test_me_without_mp_connection_reports_false():
@@ -617,7 +621,7 @@ def test_me_without_mp_connection_reports_false():
     r = TestClient(app).get("/me")
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
                         "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
-                        "legal_aceptado": False, "legal_version_aceptada": None}
+                        "legal_aceptado": False, "legal_version_aceptada": None, "fecha_alta": None}
 
 
 def test_me_con_fila_pero_reauth_marcado_reporta_mp_connected_false():
@@ -880,7 +884,7 @@ def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
                                         "composio_connected": [], "es_admin": False, "cuenta_google": False,
-                                        "onboarding_completado": False, "legal_aceptado": False, "legal_version_aceptada": None}
+                                        "onboarding_completado": False, "legal_aceptado": False, "legal_version_aceptada": None, "fecha_alta": None}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
                                              "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 
@@ -1294,3 +1298,21 @@ def test_SMC3_el_perfil_completo_de_B_no_completa_a_A():
     assert TestClient(app_a).post("/me/onboarding/completar").status_code == 409
     assert TestClient(app_b).post("/me/onboarding/completar").status_code == 200
     assert db.onboarding == {"cid-B": True}
+
+
+# --- SM-K5: `fecha_alta` en /me ----------------------------------------------------------------------
+
+def test_me_fecha_alta_es_la_del_PROPIO_tenant_en_iso_y_null_si_no_hay():
+    """El «desde marzo de 2021» de Ajustes: sale de `tenants.created_at` del `cliente_id` del token. A y B
+    tienen altas distintas y cada uno ve la suya (adversarial: el dato no cruza tenants); sin fecha -> null,
+    nunca una fecha inventada."""
+    import datetime
+    db = _FakeTenantsDB()
+    db.altas["cid-A"] = datetime.datetime(2021, 3, 14, 23, 59, tzinfo=datetime.timezone.utc)
+    db.altas["cid-B"] = datetime.datetime(2024, 8, 2, 1, 0, tzinfo=datetime.timezone.utc)
+    app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
+    app_c, _ = _build_app(require_tenant=_require_tenant_fixed("cid-C"), db=db)
+    assert TestClient(app_a).get("/me").json()["fecha_alta"] == "2021-03-14"
+    assert TestClient(app_b).get("/me").json()["fecha_alta"] == "2024-08-02"
+    assert TestClient(app_c).get("/me").json()["fecha_alta"] is None
