@@ -30,16 +30,17 @@ import { TAGLINE_MARCA } from '@copiloto/core';
 
 import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { RevealEntrada } from './RevealEntrada';
+import { RevealEntrada, type VarianteEntrada } from './RevealEntrada';
 
 afterEach(() => {
   mockReducedMotion = false;
 });
 
-async function montar(pronunciacionAsset?: number) {
+async function montar(pronunciacionAsset?: number, variante: VarianteEntrada = 'splash') {
   return render(
     <ThemeProvider>
       <RevealEntrada
+        variante={variante}
         primario="Entrar"
         secundario="Entrar con otra cuenta"
         onPrimario={jest.fn()}
@@ -52,13 +53,13 @@ async function montar(pronunciacionAsset?: number) {
 
 describe('RevealEntrada — botón de pronunciación (BL-X10)', () => {
   it('sin asset, no renderiza el botón (sólo el texto)', async () => {
-    await montar(undefined);
+    await montar(undefined, 'reveal');
     expect(screen.getByTestId('reveal-entrada-pronunciacion')).toBeTruthy();
     expect(screen.queryByTestId('reveal-entrada-pronunciar')).toBeNull();
   });
 
   it('con asset, renderiza el botón y reproduce al tocarlo', async () => {
-    await montar(1);
+    await montar(1, 'reveal');
     const boton = screen.getByTestId('reveal-entrada-pronunciar');
     expect(boton).toBeTruthy();
     await fireEvent.press(boton);
@@ -111,5 +112,32 @@ describe('RevealEntrada — lockup del prototipo (TRIAJE15, fila `reveal`/`splas
     mockReducedMotion = true;
     await montar(undefined);
     expect(screen.getByTestId('reveal-entrada-tagline')).toBeTruthy();
+  });
+});
+
+describe('RevealEntrada — SM-N30: `splash` y `reveal` son dos pantallas, no una fusionada', () => {
+  it('reveal: lockup ENTERO «Odobi» (no letra a letra), con «se dice o-DO-bi» y SIN descriptor (`#reveal`, index.html:2553)', async () => {
+    await montar(undefined, 'reveal');
+    expect(screen.getByTestId('marca')).toBeTruthy();
+    expect(screen.getByText('Odobi')).toBeTruthy();
+    expect(screen.getByTestId('reveal-entrada-pronunciacion')).toBeTruthy();
+    expect(screen.queryByTestId('reveal-entrada-tagline')).toBeNull();
+    expect(screen.queryByText('d')).toBeNull();
+  });
+
+  it('reveal: el fondo es el degradé crema del prototipo y ambas puertas se dibujan', async () => {
+    await montar(undefined, 'reveal');
+    expect(screen.getByTestId('reveal-entrada-fondo')).toBeTruthy();
+    expect(screen.getByTestId('reveal-entrada-primario')).toBeTruthy();
+    expect(screen.getByTestId('reveal-entrada-secundario')).toBeTruthy();
+  });
+
+  it('control: el splash conserva el descriptor y el «dobi» animado, y NO lleva pronunciación ni «Odobi» entero (`#splash`, index.html:2446)', async () => {
+    await montar(undefined, 'splash');
+    expect(screen.getByTestId('reveal-entrada-tagline')).toBeTruthy();
+    expect(screen.getByText('d')).toBeTruthy();
+    expect(screen.queryByText('Odobi')).toBeNull();
+    expect(screen.queryByTestId('reveal-entrada-pronunciacion')).toBeNull();
+    expect(screen.queryByTestId('reveal-entrada-fondo')).toBeNull();
   });
 });
