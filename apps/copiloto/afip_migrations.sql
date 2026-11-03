@@ -25,3 +25,7 @@ ALTER TABLE uc_factory.afip_perfil
 -- quedaba registrado: el detalle de una factura vieja podía mostrar "CUIT 20-...", jamás "Juan Pérez".
 -- Se guarda al emitir, tal como el usuario lo escribió.
 ALTER TABLE uc_factory.afip_comprobantes ADD COLUMN IF NOT EXISTS receptor_nombre text;
+
+-- 2026-11-03 — SM-N36: categoría de monotributo (A…K) del EMISOR. Dato del emprendedor, por CUIT, junto a
+-- `condicion_iva`. Nullable: no mandarla es válido (fail-soft: sin categoría el tope sale null).
+ALTER TABLE uc_factory.afip_perfil ADD COLUMN IF NOT EXISTS categoria_monotributo text;

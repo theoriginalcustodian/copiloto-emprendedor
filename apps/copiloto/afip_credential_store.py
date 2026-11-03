@@ -250,35 +250,59 @@ class AfipPerfilStore:
         self._cid = cliente_id
 
     def save(self, cuit: str, *, razon_social: str, domicilio_comercial: str, condicion_iva: str,
-             ingresos_brutos: str, inicio_actividades: date, punto_venta: int) -> None:
+             ingresos_brutos: str, inicio_actividades: date, punto_venta: int,
+             categoria_monotributo: str | None = None) -> None:
+        """SM-N36: `categoria_monotributo` sólo tiene sentido con `condicion_iva == 'monotributo'`.
+        - condición distinta de monotributo => se LIMPIA (NULL): una categoría colgada de un responsable
+          inscripto produciría un `tope` calculado contra algo que ya no tiene, y llegaría como número correcto.
+        - monotributo y `None` => se CONSERVA la ya guardada (un cliente viejo que no manda el campo no
+          debe borrarla)."""
+        es_mono = condicion_iva == "monotributo"
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
                 f"INSERT INTO {_T_PERFIL} "
                 f"(cliente_id, cuit, razon_social, domicilio_comercial, condicion_iva, "
-                f"ingresos_brutos, inicio_actividades, punto_venta) "
-                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                f"ingresos_brutos, inicio_actividades, punto_venta, categoria_monotributo) "
+                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                 f"ON CONFLICT (cliente_id, cuit) DO UPDATE SET "
                 f"razon_social=EXCLUDED.razon_social, domicilio_comercial=EXCLUDED.domicilio_comercial, "
                 f"condicion_iva=EXCLUDED.condicion_iva, ingresos_brutos=EXCLUDED.ingresos_brutos, "
                 f"inicio_actividades=EXCLUDED.inicio_actividades, punto_venta=EXCLUDED.punto_venta, "
-                f"updated_at=now()",
+                f"categoria_monotributo=CASE WHEN EXCLUDED.condicion_iva = 'monotributo' "
+                f"THEN COALESCE(EXCLUDED.categoria_monotributo, {_T_PERFIL}.categoria_monotributo) "
+                f"ELSE NULL END, updated_at=now()",
                 (self._cid, cuit, razon_social, domicilio_comercial, condicion_iva,
-                 ingresos_brutos, inicio_actividades, punto_venta))
+                 ingresos_brutos, inicio_actividades, punto_venta,
+                 categoria_monotributo if es_mono else None))
 
     def get(self, cuit: str) -> dict | None:
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, razon_social, domicilio_comercial, condicion_iva, ingresos_brutos, "
-                f"inicio_actividades, punto_venta, guardar_en_drive FROM {_T_PERFIL} "
+                f"inicio_actividades, punto_venta, guardar_en_drive, categoria_monotributo FROM {_T_PERFIL} "
                 f"WHERE cliente_id=%s AND cuit=%s", (self._cid, cuit))
             row = cur.fetchone()
         if not row:
             return None
         campos = ("cuit", "razon_social", "domicilio_comercial", "condicion_iva",
-                  "ingresos_brutos", "inicio_actividades", "punto_venta", "guardar_en_drive")
+                  "ingresos_brutos", "inicio_actividades", "punto_venta", "guardar_en_drive",
+                  "categoria_monotributo")
         return dict(zip(campos, row))
+
+    def categoria_monotributo(self) -> str | None:
+        """SM-N36: categoría vigente del emprendedor para calcular el tope. Sólo cuenta si la condición ACTUAL
+        del perfil es monotributo (defensa en profundidad: `save` ya limpia la columna al cambiar de
+        condición, pero esta lectura no depende de que lo haya hecho). Siempre filtrada por `cliente_id`."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT categoria_monotributo FROM {_T_PERFIL} "
+                f"WHERE cliente_id=%s AND condicion_iva='monotributo' ORDER BY updated_at DESC LIMIT 1",
+                (self._cid,))
+            row = cur.fetchone()
+        return row[0] if row else None
 
     def set_guardar_en_drive(self, cuit: str, activado: bool) -> bool:
         """Ajuste "guardar mis facturas en Drive". Devuelve False si no hay perfil para ese CUIT.
