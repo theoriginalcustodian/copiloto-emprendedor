@@ -127,7 +127,18 @@ def _eventos_de(res: dict) -> list[dict]:
             for v in o:
                 _walk(v)
     _walk(res)
-    return acc
+    # SM-N34: `_walk` recorre TODO el árbol, así que si Composio devuelve el mismo evento por dos ramas
+    # (p. ej. `data.items` y un espejo del envoltorio) salía dos veces. Un `id` de Google Calendar identifica
+    # UN evento: repetirlo nunca es un dato legítimo. Los recurrentes expandidos traen `id` distintos
+    # (`<base>_<fecha>`) y siguen siendo varios, como corresponde.
+    vistos: set = set()
+    unicos: list[dict] = []
+    for ev in acc:
+        if ev["id"] in vistos:
+            continue
+        vistos.add(ev["id"])
+        unicos.append(ev)
+    return unicos
 
 
 class TarjetaBody(BaseModel):
