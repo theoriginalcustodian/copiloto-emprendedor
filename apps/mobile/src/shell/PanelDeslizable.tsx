@@ -47,6 +47,25 @@ import { FondoIluminado } from '../theme/glass/FondoIluminado';
  *  spacer superior FIJO, y el recorrido se acorta en esa misma cantidad (ver `estiloSpacer`). */
 export const ALTO_HANDLE = 56;
 /**
+ * SM-N23 — aire FIJO entre la barra de estado y el tirador de arriba. Con 0 la zona de agarre arrancaba
+ * pegada al borde (medido en device: frontera exacta en y=47 px, y desde y=30 gana el sistema) y se
+ * confundía con el gesto de la sombra del sistema. Va fijo, nunca animado (ver `estiloSpacer`).
+ */
+export const MARGEN_TIRADOR = 12;
+
+/** Lo que ocupa el spacer superior: la barra de estado más el margen del tirador. */
+export function espacioSuperior(insetTop: number): number {
+  return insetTop + MARGEN_TIRADOR;
+}
+
+/**
+ * Techo del arrastre: el alto medido menos el handle y el spacer. Acortado en `MARGEN_TIRADOR` a la par
+ * del spacer, así `recorrido + espacioSuperior = alto - ALTO_HANDLE`: el handle de abajo cae donde siempre.
+ */
+export function recorridoDesdeAlto(alto: number, insetTop: number, altoPieAbajo = 0): number {
+  return Math.max(alto - ALTO_HANDLE - espacioSuperior(insetTop) - altoPieAbajo, 0);
+}
+/**
  * 🔴 **El alto se MIDE, no se pregunta.** Antes esto era
  * `const { height: ALTO_PANTALLA } = Dimensions.get('window')`, y estaba mal por dos motivos que se
  * suman:
@@ -173,6 +192,16 @@ export interface PanelDeslizableProps extends PropsWithChildren {
   ocultarTira?: SharedValue<number>;
   /** El texto del borde visible cuando el panel está abajo. Ver `hint` abajo. */
   hintAbajo?: string;
+  /**
+   * SM-N22 — lo que asoma BAJO el asa con el panel abajo (el campo de Mi día). El mapa pone la barrita de arrastre
+   * INMEDIATAMENTE ENCIMA de «Escribí, o hablá…»; antes el campo vivía en el escritorio y el asa del panel quedaba
+   * debajo. Va DENTRO del panel, absoluto bajo el asa, así que viaja con él (también cuando el escritorio de funciones
+   * lo baja) sin un segundo dueño de posición. Con el panel arriba se desvanece (lo reemplaza el dock del chat).
+   * Requiere `altoPieAbajo`: el recorrido se acorta en esa cantidad para que el campo no salga de pantalla.
+   */
+  pieAbajo?: ReactNode;
+  /** Alto FIJO que reserva `pieAbajo` (no se mide ni se anima: ver `estiloSpacer`). Ausente = 0. */
+  altoPieAbajo?: number;
   testID?: string;
 }
 
@@ -225,6 +254,8 @@ export function PanelDeslizable({
   arrancaAbajo = false,
   ocultarTira,
   hintAbajo = 'Subir conversación',
+  pieAbajo,
+  altoPieAbajo = 0,
   testID,
 }: PanelDeslizableProps) {
   const tema = useTema();
@@ -402,7 +433,12 @@ export function PanelDeslizable({
     opacity: opacidadRotuloAbajo(panelY.value, recorrido.value),
   }));
 
-  const altoTira = ALTO_HANDLE + insets.top;
+  // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
+  // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
+  const estiloPieAbajo = useAnimatedStyle(() => ({ opacity: opacidadRotuloAbajo(panelY.value, recorrido.value) }));
+  const estiloContenido = useAnimatedStyle(() => ({ flex: 1, opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value) }));
+
+  const altoTira = ALTO_HANDLE + espacioSuperior(insets.top) + altoPieAbajo;
   const estiloPanel = useAnimatedStyle(() => ({
     transform: [
       { translateY: translacionPanel(panelY.value, recorrido.value, ocultarTira?.value ?? 0, altoTira) },
@@ -435,7 +471,7 @@ export function PanelDeslizable({
    *
    * Mismo resultado visual, cero propiedades de layout animadas, cero commits durante el arrastre.
    */
-  const estiloSpacer = { height: insets.top };
+  const estiloSpacer = { height: espacioSuperior(insets.top) };
 
   return (
     /* El lienzo es un DEGRADÉ ASCENDENTE (`CLAUDE.md` §5): arena abajo, crema arriba. No es un
@@ -469,7 +505,7 @@ export function PanelDeslizable({
         // clampeado a [0,0], o sea muerto): medido en device, NO ocurre — `recorrido` se fija en 819
         // al montar y no vuelve a cambiar. La causa del "panel bloqueado" era otra, ver
         // `PantallaPrincipal.alFuncion`. Queda escrito para que nadie vuelva a sospechar de acá.
-        const medido = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
+        const medido = recorridoDesdeAlto(e.nativeEvent.layout.height, insets.top, altoPieAbajo);
         recorrido.value = medido;
         // La posición inicial necesita el recorrido medido: antes de esta primera medida, "abajo" no
         // es ningún número. Sin animación — el panel no se "desliza" al abrir la app, ya nace ahí.
@@ -540,7 +576,16 @@ export function PanelDeslizable({
               </View>
             </View>
           </GestureDetector>
-          {children}
+          <Animated.View style={estiloContenido}>{children}</Animated.View>
+          {pieAbajo != null && (
+            <Animated.View
+              testID="panel-pie-abajo"
+              pointerEvents={panelAbajo ? 'box-none' : 'none'}
+              style={[styles.pieAbajo, { top: espacioSuperior(insets.top) + ALTO_HANDLE, height: altoPieAbajo }, estiloPieAbajo]}
+            >
+              {pieAbajo}
+            </Animated.View>
+          )}
         </CristalVidrio>
       </Animated.View>
     </LinearGradient>
@@ -554,6 +599,7 @@ const styles = StyleSheet.create({
   // el escritorio -- ver el comentario de `RECORRIDO_SIN_MEDIR` arriba.
   panel: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 3 },
   cristal: { flex: 1 },
+  pieAbajo: { position: 'absolute', left: 0, right: 0 },
   // Handle card-sized: barra + hint centrados con margen chico (pedido operador 2026-07-18).
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center', gap: 7 },
   // barra del handle (diseño: 44×5, radio 3).

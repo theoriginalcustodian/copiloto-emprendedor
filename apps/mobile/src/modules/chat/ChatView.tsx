@@ -8,7 +8,6 @@ import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type Ci
 
 import { useSession } from '../auth/useSession';
 import { DockEntrada } from './DockEntrada';
-import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
@@ -19,6 +18,12 @@ import { useChat } from './useChat';
 import { useConexionRequerida } from './useConexionRequerida';
 
 export interface ChatViewProps {
+  /**
+   * SM-N22 — alto que hay entre el borde SUPERIOR de la pantalla y este chat (asa + margen del panel). `KeyboardAvoidingView`
+   * resta su `frame.y` RELATIVO al padre, no el de pantalla, así que sin esto el padding queda corto justo en esa cantidad
+   * y el teclado tapa el campo (medido en device: padding 363 px donde hacían falta 537, la diferencia = 174 px = la tira).
+   */
+  desplazamientoTeclado?: number;
   /**
    * `hitl (a)` — el aviso de una tarjeta de Mi día que el emprendedor llevó al chat. Entra **sembrado en
    * el composer** (lo manda él) y trae el chip «Desde tu aviso · …». `id` crece con cada aviso: el mismo
@@ -76,7 +81,7 @@ export interface ChatViewProps {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0 }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
@@ -180,12 +185,13 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
      * que el composer suba sin que la lista se redimensione (mismo criterio verificado en device por
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
-    <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
-      {/* Contrato de modos §4 ("estado siempre visible sin abrir nada"). Primer hijo, FUERA de
-          `PanelDeslizable` — mismo placement que `ModoClinicoToggle` en documed, ver su docstring. */}
-      <View style={styles.indicadorModo}>
-        <IndicadorModoCeremonia />
-      </View>
+    <KeyboardAvoidingView testID="chat-view" behavior="padding" keyboardVerticalOffset={desplazamientoTeclado} style={styles.contenedor}>
+      {/* SM-N26: SIN indicador de modo de ceremonia en la cabecera (decisión del operador, 2026-11-02:
+          «ensucia la pantalla; sólo dejar el tirador»). Ningún control escribe `modoCeremonia`, así que
+          el cartel pintaba una constante («Pedir confirmación» para todo tenant). El contrato de modos
+          §4 («estado siempre visible») hoy NO se cumple a propósito: cuando el usuario pueda ELEGIR el
+          modo, la señal permanente vuelve con esa opción — `IndicadorModoCeremonia` queda en el repo,
+          fail-closed, para ese día. */}
 
       {/* `.ctx-chip` del prototipo (`index.html:2750`): de dónde viene lo que está por decirse. SÓLO UI —
           el texto que viaja es el del composer. La salida es la del recibo del prototipo (`:2774`). */}
@@ -282,7 +288,6 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1 },
   area: { flex: 1 },
   dockFlotante: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
   contextoAviso: {
     flexDirection: 'row',
     alignItems: 'center',

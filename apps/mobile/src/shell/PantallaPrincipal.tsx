@@ -31,13 +31,14 @@ import { listarActividad, type ActividadItem, type ArchivoSubida, type AvisoAlCh
 
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
+import { ALTO_COMPOSER_REPOSO } from '../modules/chat/Composer';
 import { DockEntrada } from '../modules/chat/DockEntrada';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
-import { ALTO_HANDLE, PanelDeslizable } from './PanelDeslizable';
+import { ALTO_HANDLE, espacioSuperior, PanelDeslizable } from './PanelDeslizable';
 import { PanelFunciones } from './PanelFunciones';
 
 /**
@@ -257,6 +258,9 @@ export function PantallaPrincipal() {
       arrancaAbajo
       ocultarTira={progresoFunciones}
       hintAbajo="Escribile a Odobi"
+      // SM-N22: el asa queda ENCIMA del campo (mapa). El campo vive en el panel, bajo el asa.
+      pieAbajo={<DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />}
+      altoPieAbajo={ALTO_COMPOSER_REPOSO}
       fondo={
         <PanelFunciones
           senalCerrar={senalCerrar}
@@ -288,14 +292,17 @@ export function PantallaPrincipal() {
             cierreDeAviso={cierreDeAviso}
             pie={
               // La tira de la conversación tapa el borde de abajo: el handle más su spacer (ver `PanelFunciones`).
-              <View style={{ marginBottom: ALTO_HANDLE + insets.top }}>
-                <DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />
-              </View>
+              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + espacioSuperior(insets.top) + ALTO_COMPOSER_REPOSO }} />
             }
           />
         </PanelFunciones>
       }>
-      <ChatView avisoEntrante={avisoEntrante} onVolverAlTablero={alVolverAlTablero} audioEntrante={audioEntrante} />
+      <ChatView
+        avisoEntrante={avisoEntrante}
+        onVolverAlTablero={alVolverAlTablero}
+        audioEntrante={audioEntrante}
+        desplazamientoTeclado={ALTO_HANDLE + espacioSuperior(insets.top)}
+      />
     </PanelDeslizable>
   );
 }

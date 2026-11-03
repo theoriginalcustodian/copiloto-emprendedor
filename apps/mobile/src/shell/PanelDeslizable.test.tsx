@@ -9,7 +9,38 @@ import * as Reanimated from 'react-native-reanimated';
 // dos capas + el handle montan sin crashear (reanimated/gesture-handler no revientan bajo el harness).
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { opacidadRotuloAbajo, PanelDeslizable, translacionPanel } from './PanelDeslizable';
+import {
+  ALTO_HANDLE,
+  espacioSuperior,
+  MARGEN_TIRADOR,
+  opacidadRotuloAbajo,
+  PanelDeslizable,
+  recorridoDesdeAlto,
+  translacionPanel,
+} from './PanelDeslizable';
+
+describe('SM-N23 — margen fijo del tirador de arriba', () => {
+  const INSET = 24;
+  const ALTO = 853;
+
+  it('hay margen bajo la barra de estado (antes era 0) y el spacer lo incluye', () => {
+    expect(MARGEN_TIRADOR).toBeGreaterThan(0);
+    expect(espacioSuperior(INSET)).toBe(INSET + MARGEN_TIRADOR);
+  });
+
+  it('el recorrido se acorta EXACTAMENTE en el margen respecto de la geometría anterior', () => {
+    const anterior = ALTO - ALTO_HANDLE - INSET;
+    expect(recorridoDesdeAlto(ALTO, INSET)).toBe(anterior - MARGEN_TIRADOR);
+  });
+
+  it('el handle de abajo cae donde siempre: recorrido + spacer = alto - ALTO_HANDLE', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET) + espacioSuperior(INSET)).toBe(ALTO - ALTO_HANDLE);
+  });
+
+  it('con el alto sin medir no inventa un recorrido negativo', () => {
+    expect(recorridoDesdeAlto(0, INSET)).toBe(0);
+  });
+});
 
 async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
@@ -162,5 +193,49 @@ describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
 
   it('sin recorrido medido no inventa un destino', () => {
     expect(translacionPanel(0, 0, 1, altoTira)).toBe(0);
+  });
+});
+
+describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
+  const INSET = 24;
+  const ALTO = 853;
+  const PIE = 80;
+
+  it('el recorrido se acorta en el alto del pie: el asa sube justo esa cantidad y el campo cabe bajo ella', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE)).toBe(recorridoDesdeAlto(ALTO, INSET) - PIE);
+    // asa (arriba del pie) + pie = el borde inferior de la pantalla
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE) + espacioSuperior(INSET) + ALTO_HANDLE + PIE).toBe(ALTO);
+  });
+
+  it('sin pie el recorrido NO cambia (default 0: el resto de los montajes no se mueve)', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, 0)).toBe(recorridoDesdeAlto(ALTO, INSET));
+  });
+
+  it('el pie se monta DENTRO del panel y DESPUÉS del asa (el campo queda debajo de la barrita, como el mapa)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text testID="campo-pie">Escribí</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    const pie = screen.getByTestId('panel-pie-abajo');
+    expect(screen.getByTestId('campo-pie')).toBeTruthy();
+    const e = StyleSheet.flatten(pie.props.style);
+    expect(e.position).toBe('absolute');
+    expect(e.height).toBe(PIE);
+    // `top` = spacer + handle: arranca justo bajo el asa, nunca por encima de ella
+    expect(e.top).toBeGreaterThanOrEqual(ALTO_HANDLE);
+  });
+
+  it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-pie-abajo')).toBeNull();
   });
 });

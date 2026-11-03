@@ -22,7 +22,8 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { opacidadRotuloAbierto, PanelFunciones } from './PanelFunciones';
+import { altoPestanaCon, opacidadRotuloAbierto, PanelFunciones } from './PanelFunciones';
+import { espacioSuperior } from './PanelDeslizable';
 
 async function envolver() {
   return render(
@@ -40,6 +41,32 @@ describe('PanelFunciones — el escritorio colgado del borde de arriba (Ola 4)',
     expect(screen.getByText('base-mi-dia')).toBeTruthy();
     expect(screen.getByText('escritorio-arriba')).toBeTruthy();
     expect(screen.getByTestId('panel-funciones-capa')).toBeTruthy();
+  });
+
+  // SM-N23: la pestaña de arriba no puede nacer pegada a la barra de estado (el shade del sistema se come y<~48).
+  describe('SM-N23 — aire fijo entre la barra de estado y la pestaña de arriba', () => {
+    it('la pestaña mide su contenido MÁS el aire fijo, y ese aire es mayor que cero', () => {
+      expect(espacioSuperior(0)).toBeGreaterThan(0);
+      expect(altoPestanaCon(0)).toBeGreaterThan(altoPestanaCon(0) - espacioSuperior(0));
+      expect(altoPestanaCon(30) - altoPestanaCon(0)).toBe(30);
+    });
+
+    it('la pestaña renderizada lleva ese alto y ese padding arriba (no queda a ras)', async () => {
+      await envolver();
+      const estilo = StyleSheet.flatten(screen.getByTestId('panel-funciones-pestana').props.style) as {
+        height: number;
+        paddingTop: number;
+      };
+      expect(estilo.paddingTop).toBe(espacioSuperior(0));
+      expect(estilo.height).toBe(altoPestanaCon(0));
+      expect(estilo.paddingTop).toBeGreaterThan(0);
+    });
+
+    it('la base (Mi día) baja lo mismo que creció la pestaña: su cabecera no queda tapada', async () => {
+      await envolver();
+      const base = StyleSheet.flatten(screen.getByTestId('panel-funciones-base').props.style) as { paddingTop: number };
+      expect(base.paddingTop).toBe(espacioSuperior(0));
+    });
   });
 
   // 🔴 SM-I6. Medido en SM-G4: con el escritorio ya cerrado la pestaña seguía diciendo «Subí para volver a Mi
