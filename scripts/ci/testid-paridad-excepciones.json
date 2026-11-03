@@ -1830,6 +1830,15 @@
       "id": "chat-dock-scrim",
       "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
+    "modules/chat::chat-scrim-superior": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-scrim-superior",
+      "motivo": "SM-N25 DoD 5 (2026-11-02): scrim bajo el asa del panel del chat MOBILE (la lista corre bajo el borde superior). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
     "modules/chat::chat-enviar": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
