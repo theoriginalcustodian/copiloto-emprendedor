@@ -78,7 +78,10 @@ class _CobroFake:
                                        "idem_key": idem_key})
         saldo = float(factura["saldo"]) - float(cobrado)
         return ({"id": 1, "monto": str(cobrado), "origen": ORIGEN_FACTURA},
-                {"estado": "cobrada" if saldo <= 0 else "parcial", "saldo": f"{saldo:.2f}"})
+                # La forma REAL de `CobroStore._resumen`: `estado` es el del COMPROBANTE y `estado_cobro` el derivado.
+                # (Antes este fake devolvía `estado:"cobrada"`, un contrato que el store no cumple: verde falso.)
+                {"estado": "emitida", "estado_cobro": "cobrada" if saldo <= 0 else "parcial",
+                 "saldo": f"{saldo:.2f}"})
 
 
 class _PresupuestoFake:
