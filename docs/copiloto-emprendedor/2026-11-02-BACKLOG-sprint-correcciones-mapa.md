@@ -147,6 +147,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
+| **SM-Z5** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3168,3 +3169,44 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   `acentoTinta`: el wordmark es el logotipo» — el reveal **ya resolvió esta pregunta en el sentido
   contrario al login**. Si eso es una decisión tomada que el login no heredó, la pregunta al operador
   cambia de «¿es exento?» a «¿por qué dos pantallas resolvieron lo mismo distinto?».
+
+### SM-Z5 · `sin-issue` — Ajustes es una GRILLA de 8 tiles y el mapa dibuja una LISTA de filas: nadie tiene la pregunta
+
+- **Estado:** PENDIENTE
+- **Dueño:** operador (decisión de producto)
+- **De dónde sale:** captura del operador del teléfono, 2026-11-03 17:56 (cuenta «Kiosco Vacio»),
+  contra el mapa servido en `127.0.0.1:8931`. Pregunta textual: «¿por qué ajustes todavía se ve mal
+  y diferente al mapa?».
+- **Medido (código, sin device — las dos fuentes son texto):** `PantallaAjustes.tsx` pinta
+  `TILES_AJUSTES` —8 entradas: `perfilNegocio`, `facturacionAfip`, `apps`, `cuenta`, `apariencia`,
+  `comoUsar`, `soporte`, `feedback`— en `COLUMNAS = 3`, agrupadas por `agruparEnFilas()` y rellenadas
+  con `null` para que la última no se estire. Son exactamente los 8 de la captura. El mapa
+  (`index.html` §`ajustes`, línea 2106) los dibuja como **filas de lista con subtítulo y chevron**.
+- **🔴 Parte de la diferencia que se ve en pantalla NO es la app: es el mapa servido.** El
+  `127.0.0.1:8931` sirve el **checkout compartido**, y ese archivo difiere de `origin/main` — tiene
+  «Mi plan» en la lista de Ajustes (5 ocurrencias) y `origin/main` ya no (4). Esa fila la sacó
+  `SM-N42` a propósito. Comparar la app contra un mapa que no es el de `main` fabrica diferencias
+  que nadie introdujo, y ésta ya se contó una vez.
+- **⚠️ Por qué esto no estaba en ninguna cola, que es el hallazgo real.** `SM-K5` es literalmente
+  «Ajustes y Cuenta difieren del mapa en **estructura** y copy», pero su `Falta:` quedó reducido a
+  re-medir el diálogo de cerrar sesión: los **chevrons y subtítulos** que cita su propio `Medido` se
+  acreditaron sobre **Mi cuenta** (`PantallaCuenta.tsx:33`, que sí los tiene), no sobre esta
+  grilla. `SM-N42` —«las enmiendas al MAPA no son ficha de nadie, y por eso Ajustes sigue
+  distinta»— cerró `TERMINADO` enmendando **otros** puntos. Entre las dos, la pregunta de fondo
+  quedó sin dueño: cada ficha cerró su mitad y la costura no era de nadie.
+- **La grilla está deliberada y tiene historia escrita**, lo que la saca del terreno de «defecto»:
+  el docstring de `PantallaAjustes.tsx` documenta 8 → 6 → 5 tiles con las absorciones del
+  2026-07-22 (*Datos personales* → Mi cuenta; *Configuración del sistema* → Mi cuenta) y la
+  disciplina de «ningún ícono se repite dentro del grid». Nada de eso se dedujo del mapa: se decidió
+  en la app y el mapa nunca se enmendó.
+- **La decisión:** **(A)** el mapa se enmienda a la grilla de 3 columnas, que es la forma que la app
+  ya razonó y defendió; o **(B)** la app pasa a lista de filas con subtítulo y chevron, como el
+  mapa. Recomendación de planificación: **A**. `B` tira una estructura con decisiones documentadas y
+  reabre el problema que las absorciones resolvieron —un tile por fila inerte—, y la etiqueta corta
+  bajo un tile de 3 columnas es justamente lo que el código eligió para que entre («Contanos qué
+  tal» en el prototipo vs el label corto acá). **A no es gratis:** el mapa es el patrón contra el
+  que se mide el sprint, así que enmendarlo mueve el criterio de 1 entrada del corpus.
+- **DoD:** la decisión escrita por el operador, y el lado que corresponda alineado **con su
+  control**: si es A, la entrada del mapa enmendada y la corrida del contraste de veredictos
+  re-medida sobre ella; si es B, la grilla convertida con captura de device y los tests de
+  `PantallaAjustes` actualizados.
