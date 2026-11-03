@@ -67,6 +67,32 @@ def flood_threshold() -> int:
         return FLOOD_THRESHOLD_DEFAULT
 
 
+#: Evento de la línea que deja un depósito fallido. Nombre estable: es lo que se grepea/alarma.
+EVENTO_DEPOSITO_FALLIDO = "dlq_deposito_fallido"
+
+
+def avisar_deposito_fallido(exc: BaseException, *, cliente_id: str | None, fingerprint: str,
+                            workflow: str) -> None:
+    """Deja UNA línea estructurada cuando la DLQ no pudo guardar un trauma. **Nunca lanza.**
+
+    Sin esto, una DLQ rota (tabla que no está, policy que rechaza, base caída) no daba ningún síntoma:
+    el error original quedaba logueado, `depositar` devolvía `None`, y la DLQ vacía se leía como
+    «no hay nada que reparar». Un mecanismo roto hacia el «no» tiene que dejar rastro él mismo,
+    porque el silencio es justo el estado que parece sano. Medido 2026-11-03: 0 líneas de log con el
+    INSERT reventando y 0 con la conexión caída.
+
+    `fingerprint` es el del error que se quería depositar, no el de este fallo: es el dato que
+    permite saber QUÉ trauma se perdió.
+    """
+    try:
+        from log_estructurado import log_error
+        log_error(exc, workflow=EVENTO_DEPOSITO_FALLIDO, cliente_id=cliente_id,
+                  extra={"evento": EVENTO_DEPOSITO_FALLIDO, "fingerprint_perdido": fingerprint,
+                         "workflow_perdido": workflow})
+    except Exception:  # noqa: BLE001 — regla 1: avisar del fallo no puede generar otro
+        pass
+
+
 class TraumaStore:
     """Depósito de errores de la DLQ. **Dos modos de uso, y confundirlos falla en silencio.**
 
@@ -99,7 +125,9 @@ class TraumaStore:
         """
         try:
             conn = self._conn_factory()
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            avisar_deposito_fallido(exc, cliente_id=self._cid, fingerprint=fingerprint,
+                                    workflow=workflow)
             return None
         try:
             with conn.cursor() as cur:
@@ -124,7 +152,9 @@ class TraumaStore:
                      json.dumps(contexto, ensure_ascii=False, default=str) if contexto else None,
                      PENDIENTE, RESUELTO, PENDIENTE))
                 dedupe_count, insertado = cur.fetchone()
-        except Exception:  # noqa: BLE001 — regla 1: depositar un error no puede generar otro
+        except Exception as exc:  # noqa: BLE001 — regla 1: depositar un error no puede generar otro
+            avisar_deposito_fallido(exc, cliente_id=self._cid, fingerprint=fingerprint,
+                                    workflow=workflow)
             return None
         finally:
             try:
