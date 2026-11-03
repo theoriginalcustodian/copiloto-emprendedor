@@ -91,7 +91,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
-| **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-K9** | `sin-issue` | 🟧 DOD-PARCIAL | La corrida con teclado REAL en device (receta en el buzon, 3 min); sin ella no se puede declarar ni defecto ni observ… |
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
@@ -126,7 +126,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
-| **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion d… |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
@@ -837,7 +837,9 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K9 · `sin-issue` — La máscara de fecha podría no ser un defecto
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend2
+- **Falta:** La corrida con teclado REAL en device (receta en el buzon, 3 min); sin ella no se puede declarar ni defecto ni observacion no reproducida. Leido en codigo: CampoFecha son 3 TextInput con auto-avance, no una mascara; y no hay manejo de borrado hacia atras (candidato aparte). Dueno del telefono: frontend1.
 - **Dueño:** frontend2
 - **Medido:** observada con `adb`, que no reproduce el teclado real.
 - **DoD:** **repetir con teclado real primero.** Si se reproduce, el fix y su captura; si no, la
@@ -2296,7 +2298,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N31 · `sin-issue` — La barra de grabación no ocupa el ancho al pie: `grabando` y `bloqueado`
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend2
+- **Falta:** Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion del cancelar deslizando. En codigo la causa medida ya no existe (DockFuncion->DockEntrada, enLugarDelCampo; DockEntrada.test.tsx:108,128): entradas 12 y 13 pasan de A a NO-VERIFICABLE.
 - **Dueño:** frontend2
 - **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
   entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
