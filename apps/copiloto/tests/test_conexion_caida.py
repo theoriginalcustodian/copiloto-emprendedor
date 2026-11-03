@@ -246,3 +246,20 @@ def test_N18_la_tarjeta_ya_persistida_de_un_toolkit_ajeno_se_cierra_sola(conn_de
     # y el soportado SÍ crea tarjeta por esta misma ruta (el detector no quedó mudo)
     tab = avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=lambda: [{"toolkit": "gmail", "status": "EXPIRED"}])
     assert [x for x in tab["para_hoy"] if x["entidad_id"] == "gmail"]
+
+
+@necesita_pg
+def test_N18_CANARIO_por_la_ruta_real_el_filtro_es_lo_que_apaga_el_aviso(conn_de_tenant, tenants, monkeypatch):
+    """Atribución, no corroboración: la captura de device «Mi Día sin aviso de Instagram» es compatible con que el
+    filtro no haga nada (Composio podría no listar hoy un caído). Acá se INYECTA el toolkit ajeno `EXPIRED` en la
+    forma real de `list_connections` (`{id, toolkit: slug, status}`) y se pasa por `avanzar_tablero`, la misma ruta
+    que cablea serve.py. CON el filtro no hay tarjeta; SIN él (se lo reemplaza por uno que incluye `instagram`)
+    sí: si las dos mitades dieran igual, el filtro no discriminaría y N18 no estaría resuelto."""
+    import conexiones_salud
+    a, _ = tenants
+    ig = lambda: [{"id": "ca_canario", "toolkit": "instagram", "status": "EXPIRED"}]
+    esta = lambda tab: [x for x in tab["para_hoy"] + tab["haciendo"]
+                        if x["regla"] == REGLA_CONEXION_CAIDA and x["entidad_id"] == "instagram"]
+    assert not esta(avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig))            # CON el filtro real
+    monkeypatch.setattr(conexiones_salud, "toolkits_conectables", lambda: frozenset({"instagram"}))
+    assert esta(avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig))                # SIN él: el defecto vuelve
