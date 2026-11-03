@@ -115,8 +115,9 @@ export function PantallaPrincipal() {
   // bien medido): es que la navegación no tenía invariante de "uno a la vez".
   const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
-  // SM-N16: un solo destino para las dos capas que muestran el avatar. El camino a cerrar sesión pasa
-  // por acá, y un operador quedó sin salida en el escritorio cuando el acceso vivía sólo en Mi día.
+  // SM-N16 + SM-N28: el avatar vive SÓLO en el escritorio de funciones (Mi día ya no lo pinta). El camino
+  // a cerrar sesión pasa por acá: un operador quedó sin salida cuando el acceso vivía sólo en Mi día, y
+  // quitarlo del escritorio repetiría ese incidente. No restaurar el de Mi día: es decisión del operador.
   const alAjustes = () => empujarUnaVez('/ajustes');
   const inicialCuenta = useInicialCuenta();
 
@@ -277,8 +278,6 @@ export function PantallaPrincipal() {
           }
         >
           <PantallaMiDia
-            onAjustes={alAjustes}
-            inicialCuenta={inicialCuenta}
             onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}
