@@ -113,6 +113,17 @@ describe('RevealEntrada — SM-N30: `splash` y `reveal` son dos pantallas, no un
     expect(screen.queryByText('d')).toBeNull();
   });
 
+  it('SM-A2: el reveal dibuja el símbolo DESNUDO a 54, sin badge de acento (`#reveal`, index.html:2547)', async () => {
+    await montar('reveal');
+    expect(StyleSheet.flatten(screen.getByTestId('marca').props.style).backgroundColor).toBe('transparent');
+    expect(screen.getByTestId('marca-isotipo').props.width).toBe(54);
+  });
+
+  it('SM-A2 (control): el splash NO se tocó -- su `Marca` conserva el badge, la «O» es otra pantalla (`#splash`, index.html:2447)', async () => {
+    await montar('splash');
+    expect(StyleSheet.flatten(screen.getByTestId('marca').props.style).backgroundColor).not.toBe('transparent');
+  });
+
   it('reveal: el fondo es el degradé crema del prototipo y ambas puertas se dibujan', async () => {
     await montar('reveal');
     expect(screen.getByTestId('reveal-entrada-fondo')).toBeTruthy();
