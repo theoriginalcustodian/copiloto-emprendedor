@@ -12,6 +12,7 @@ import {
 
 import { TEXTO_CREDENCIALES_INCORRECTAS, TEXTO_PIE_INGRESAR } from '@copiloto/core';
 
+import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
@@ -138,15 +139,15 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
-          {/* SM-Z4 parte 2 (BLOQUEADA, decide el operador): el mapa lo pinta `--terracota` (#DE7250, `index.html:517`)
-              y acá es `acentoTinta`. NO se alinea todavía: #DE7250 como texto sobre crema da 2,86:1 y viola WCAG 1.4.3
-              salvo que el wordmark sea logotipo exento. El reveal ya lo trata así (`COLOR_PALABRA_MARCA`,
-              `identidadPalette.ts:13`); el login no heredó esa decisión. No «arreglar» bajando el contraste. */}
+          {/* SM-Z4 parte 2 (DECIDIDO por el operador, 2026-11-03): el wordmark es el LOGOTIPO y va en la terracota de marca del mapa
+              (--terracota #DE7250, index.html:517), igual que el reveal (COLOR_PALABRA_MARCA, identidadPalette.ts). Es exención
+              WCAG 1.4.3 (logotipo), NO texto de UI: el control de contraste lo reconoce sólo por color de marca + este testID
+              (LOGOTIPOS_TEXTO, paresPintadosContraste.test.tsx). No copiar este color a otro <Text>. */}
           <Text
             testID="login-wordmark"
             style={[
               styles.titulo,
-              { color: tema.color.acentoTinta, fontSize: HERO, fontFamily: tema.fuente.display },
+              { color: COLOR_PALABRA_MARCA, fontSize: HERO, fontFamily: tema.fuente.display },
             ]}
           >
             Odobi
