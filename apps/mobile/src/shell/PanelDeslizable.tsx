@@ -547,15 +547,9 @@ export function PanelDeslizable({
               style={[StyleSheet.absoluteFill, styles.superficie, { backgroundColor: tema.color.fondo, borderColor: tema.glass.bd }, estiloSuperficie]}
             />
           )}
-          {/* SM-N38: el campo de Mi día colapsado tiene que verse como el del chat, o sea sobre el fondo plano
-              (`tema.color.fondo`) y no sobre el degradé del lienzo. Misma señal que el pie: lo decide `panelY`. */}
-          {pieAbajo != null && (
-            <Animated.View
-              testID="panel-fondo-plano"
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, { backgroundColor: tema.color.fondo }, estiloPieAbajo]}
-            />
-          )}
+          {/* SM-N38: NO hay capa de fondo detrás del campo colapsado. Se probó `panel-fondo-plano` (#1487) y en
+              device pintaba un bloque de esquinas redondeadas (el radio 40 del cristal) sobre «Para hoy»: un plano
+              sobre un degradé muestra su canto aunque el color coincida. El chat no tiene esa capa; Mi día tampoco. */}
           {/* Spacer de status bar (fijo) — no intercepta toques. */}
           <Animated.View style={estiloSpacer} pointerEvents="none" />
           <GestureDetector gesture={gesto}>
