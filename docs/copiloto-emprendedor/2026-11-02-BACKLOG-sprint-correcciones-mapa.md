@@ -135,6 +135,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
+| **SM-N40** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2699,3 +2701,54 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **FUERA del corpus del mapa:** no es divergencia contra el mapa; no suma denominador de paridad.
 
 ---
+
+### SM-N40 · `sin-issue` — El borrado hacia atrás no vuelve al segmento anterior en el campo de fecha
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
+  ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
+  cosa, encontrada al mirar el mismo archivo (DEC-18 — un hallazgo nuevo va a ficha aparte).
+- **Medido:** `CampoFecha` son **tres `TextInput` con auto-avance** (`CampoFecha.tsx:96-128`), y el
+  barrido de `onKeyPress` da **0 hits** en el componente. El auto-avance empuja el foco hacia
+  adelante y **nada lo trae hacia atrás**: con el segundo segmento vacío, `⌫` no devuelve el foco al
+  primero.
+- **Por qué importa, y por qué no da síntoma en un test:** el usuario que se equivoca en el día
+  queda sin forma de corregirlo con el teclado — tiene que tocar el segmento. Es un defecto de
+  entrada de datos que **ningún test de render puede ver**, porque el árbol está correcto: lo que
+  falta es un handler. Y el camino feliz (tipear 8 dígitos seguidos) funciona, así que la suite
+  queda verde.
+- **DoD:**
+  1. Con un segmento **vacío**, `⌫` devuelve el foco al segmento anterior y borra su último dígito.
+  2. Con el segmento **no vacío**, `⌫` borra dentro del segmento y **no** salta — el salto temprano
+     sería el defecto espejo.
+  3. Test que ejercita `onKeyPress` con `Backspace` en los dos casos del punto 1 y 2. Un test que
+     sólo afirme que el handler existe no acredita nada.
+  4. Antes de tocar nada: leer la skill del dominio si el foco se maneja con refs imperativas.
+- **Depende:** nada. **No necesita device para implementar**; la corrida con teclado real cierra el
+  `Falta:` de `SM-K9`, no ésta.
+
+### SM-N41 · `sin-issue` — El campo del composer es translúcido y deja leer los mensajes de atrás
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** observación de **frontend1 en device**, 2026-11-03, reportada sin tocar nada
+  mientras medía `SM-N38`: *«con el chat arriba, el campo del composer es translúcido y deja ver el
+  texto de los mensajes (se lee "Editar/Cancelar" a través)»*. **Fuera del alcance de `SM-N38`**,
+  que es el fondo de **alrededor** del campo; esto es el fondo **de dentro**.
+- **Medido en device, no en el árbol:** el texto de los mensajes se lee **a través** del campo. El
+  candidato en código es `Composer.tsx:239` → `conAlfa(tema.color.fondo, ALFA_BASE_CAMPO)`: el alfa
+  del fondo del campo.
+- **🔴 La pregunta antes del fix, y es la que decide la ficha:** el operador pidió explícitamente
+  conservar *«el de dentro»* del campo. **No está escrito si lo quiere translúcido o legible.** Un
+  alfa es una decisión de diseño, no un defecto evidente: subirlo puede romper el efecto de cristal
+  que el resto de la cáscara sostiene. Así que esta ficha **arranca preguntando**, no implementando.
+- **DoD:**
+  1. Captura del caso: chat arriba, con mensajes detrás del campo, para que la decisión se tome
+     mirando el síntoma y no una descripción.
+  2. Decisión **escrita** del operador: legible (subir el alfa) o translúcido a propósito (y
+     entonces la ficha cierra `CERRADO-POR-DECISION`, sin tocar código).
+  3. Si se decide legible: el alfa va **parametrizado donde ya vive** (`ALFA_BASE_CAMPO`), no
+     hardcodeado en el JSX, y el cambio se mira en las dos skins.
+- **Depende:** la decisión del operador para el punto 2. El punto 1 se puede adelantar en la pasada
+  de device de frontend1.
