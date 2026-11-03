@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-cic… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -440,8 +440,7 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Solo de frontend1: cambiar TEXTO_SUGERENCIA_ARMAR_FACTURA en el core (backend ya aviso que podia) y capturar pres-ciclo en device. NADA de backend. ESTE Falta estuvo DESACTUALIZADO: decia que las dos mitades eran de backend cuando ya estaban desplegadas desde #1363, y por eso planificacion se las volvio a despachar — el cierre existia en el buzon y la ficha no lo sabia.
-- **Cierre:** Mitades de backend HECHAS y desplegadas: 681c3b53 (#1363, ancestro de origin/main) — el chip dice «Arma la factura» (presupuesto_sugerencias.py:21) y el test lo afirma POR LA CARD (test_plata_por_voz.py:354 y :414), no por el texto de la respuesta. El importe en formato ingles: medido con el LLM real, la causa candidata de frontend1 NO era la causa (6/6 con $50.000,00 ANTES del arreglo); el $50,000.00 salia de emitir_factura y lo cerro SM-N21 con reply_literal (sonda 0 de 32). Verificado por planificacion contra el codigo y origin/main el 2026-11-02.
+- **Falta:** Solo la captura de device de pres-ciclo. El cambio de core YA NO ES PARTE: medido por frontend1 contra origin/main 4a5bb923, packages/core/src/chat/sugerenciaArmarFactura.ts:18 ya es TEXTO_SUGERENCIA_ARMAR_FACTURA='Arma la factura', identico al mapa (Prototipo frontend/odobi-ui/prototipo/index.html:3374, entrada pres-ciclo) y al backend (presupuesto_sugerencias.py:21). El importe y Pendiente cerraron con #1354. ESTE Falta estuvo DESACTUALIZADO DOS VECES: primero daba por pendientes dos mitades de backend ya desplegadas en #1363, y despues pedia un cambio de core ya hecho. Un Falta vencido no da sintoma: se lee como trabajo y se vuelve a despachar.
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
