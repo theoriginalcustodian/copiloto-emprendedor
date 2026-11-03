@@ -437,8 +437,24 @@ def _candidatos_conexion_caida(conn_factory: Callable, cliente_id: str,
                                composio_conexiones: Callable | None = None) -> list[str]:
     """Servicios caídos de ESTE tenant (`conexiones_salud`, misma definición que `/catalog`). Sin
     `composio_conexiones` sólo se mira MercadoPago; no hace falta `crypto` para leer la salud."""
-    from conexiones_salud import conexiones_caidas
-    return conexiones_caidas(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones)
+    return _diagnostico_conexion_caida(conn_factory, cliente_id, composio_conexiones)[0]
+
+
+def _diagnostico_conexion_caida(conn_factory: Callable, cliente_id: str,
+                                composio_conexiones: Callable | None = None) -> tuple[list[str], bool]:
+    """`(caidas, composio_mirado)`: ver `conexiones_salud.diagnostico_conexiones`."""
+    from conexiones_salud import diagnostico_conexiones
+    return diagnostico_conexiones(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones)
+
+
+class VerdadCruda(dict):
+    """`detectar_todos()` + `sin_fuente`: las reglas cuya fuente NO pudo mirarse en esta pasada.
+
+    Es un `dict` (todos los consumidores siguen igual); el atributo es para quien RECONCILIA. Una regla
+    en `sin_fuente` tiene lista vacía por «no sé», no por «ya no pasa»: cerrar sus tarjetas por ausencia
+    afirmaría un hecho (que el emprendedor lo resolvió) que nadie verificó."""
+    # regla → entidades que SÍ se miraron igual (MP sale de la DB, no de Composio) y siguen cerrables.
+    sin_fuente: dict = {}
 
 
 def _instantes_de_caida(conn_factory: Callable, cliente_id: str, caidas: list[str]) -> dict[str, str]:
@@ -470,9 +486,9 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
     (texto con tono del negocio) y ENTREGAR (Kanban + portada) son pasos aparte, fuera de este módulo.
     """
     margen_por_trabajo = _candidatos_margen_por_trabajo(conn_factory, cliente_id)
-    caidas = _candidatos_conexion_caida(conn_factory, cliente_id, composio_conexiones)
+    caidas, composio_mirado = _diagnostico_conexion_caida(conn_factory, cliente_id, composio_conexiones)
     mono = _candidatos_monotributo(conn_factory, cliente_id)
-    return {
+    verdad = VerdadCruda({
         REGLA_PRESUPUESTOS_ENFRIANDOSE:
             _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id)),
         REGLA_FACTURAS_IMPAGAS_VIEJAS:
@@ -493,7 +509,11 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
         REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE:
             _evaluar_monotributo_cerca_del_limite(
                 mono["categoria"], mono["doce_meses"], escala or _escala_configurada(), hoy_fn()),
-    }
+    })
+    if not composio_mirado:
+        # Composio no se miró (no hay fuente inyectada, o lanzó): `[]` acá es «no sé», no «sano».
+        verdad.sin_fuente = {REGLA_CONEXION_CAIDA: frozenset({"mercadopago"})}
+    return verdad
 
 
 # Reglas cuya tarjeta se cierra SOLA cuando el candidato deja de aparecer en `detectar_todos()`

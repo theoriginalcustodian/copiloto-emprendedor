@@ -45,14 +45,29 @@ def composio_caidos(conexiones: Iterable[dict], soportados: frozenset[str] | Non
     return sorted(caidos - activos)
 
 
-def conexiones_caidas(mp_store, composio_conexiones: Callable[[], Iterable[dict]] | None = None) -> list[str]:
-    """Claves de los servicios caídos de ESTE tenant: `mercadopago` primero, luego toolkits Composio.
-    `composio_conexiones` es opcional; si Composio falla, MP sigue valiendo: un aviso de MP no se pierde
-    porque otro proveedor no contestó."""
+def diagnostico_conexiones(mp_store, composio_conexiones: Callable[[], Iterable[dict]] | None = None
+                           ) -> tuple[list[str], bool]:
+    """`(caidos, composio_mirado)`. Distingue «sano» de «no pude mirar»: `caidos == []` sólo significa
+    «sano» cuando `composio_mirado` es True.
+
+    `composio_mirado` es False si no se inyectó la fuente (el schedule diario de Mi día no la tiene) o si
+    Composio lanzó. Un consumidor que CIERRA por ausencia (el reconciliador de Mi día) no puede leer esa
+    lista vacía como «ya no está caído»: afirmaría «lo resolviste» sobre una conexión que sigue vencida.
+    """
     caidos = [MERCADOPAGO] if mp_store.salud() == "caido" else []
+    mirado = False
     if composio_conexiones is not None:
         try:
             caidos += composio_caidos(composio_conexiones())
-        except Exception:  # noqa: BLE001 -- degradación: el tablero no puede caerse por esto
-            pass
-    return caidos
+            mirado = True
+        except Exception as exc:  # noqa: BLE001 -- el tablero no puede caerse por esto, pero tampoco callar
+            from log_estructurado import log_error
+            log_error(exc, workflow="conexiones_salud", extra={"costura": "composio_list_connections"})
+    return caidos, mirado
+
+
+def conexiones_caidas(mp_store, composio_conexiones: Callable[[], Iterable[dict]] | None = None) -> list[str]:
+    """Claves de los servicios caídos de ESTE tenant: `mercadopago` primero, luego toolkits Composio.
+    Si Composio falla, MP sigue valiendo: un aviso de MP no se pierde porque otro proveedor no contestó.
+    Quien necesite saber si Composio llegó a mirarse usa `diagnostico_conexiones`."""
+    return diagnostico_conexiones(mp_store, composio_conexiones)[0]
