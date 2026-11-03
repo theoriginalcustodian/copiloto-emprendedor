@@ -118,6 +118,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que lo cerraría de verdad es **determinista**: que el texto con importes que ve el |
 | **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1561,4 +1562,61 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   ventana del operador ni el usuario canónico.
 - **DENTRO del sprint:** es divergencia contra el mapa reportada por el operador. El denominador se
   mueve (es el caso que `DEC-18` contempla: lo que sale del **mapa**, no del uso).
+
+### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
+  desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
+  cómoda»*.
+- **Es OTRO defecto que `SM-N22`**, aunque toquen el mismo componente: N22 es **orden** (el tirador
+  de abajo quedó del lado equivocado del campo de texto); ésta es **posición vertical** del tirador
+  de arriba. Se arreglan juntas pero se acreditan por separado: un fix que mueva la tira puede
+  cerrar una y dejar la otra igual.
+- **Medido (código):** `apps/mobile/src/shell/PanelDeslizable.tsx:434` lo declara explícito —
+  `handle_top (arriba) = 0 + insets.top`. O sea que el handle arranca **exactamente** donde termina
+  el inset de la status bar: **margen cero**. El spacer es fijo (`estiloSpacer = { height:
+  insets.top }`, `:436`).
+- **⚠️ Por qué nadie lo vio antes, y es el patrón que este repo ya tiene escrito:** el comentario
+  de `:413-434` **declara la protección** — *«el handle tiene que caer DEBAJO del reloj»*, y
+  termina en `← el handle cae debajo del reloj ✓`. La afirmación es **verdadera** y por eso apagó
+  la búsqueda: nadie volvió a preguntarse si «debajo del reloj» alcanzaba. **No alcanza, porque
+  cubre una mitad sola.** «No lo tapa el reloj» y «es cómodo de agarrar» son dos propiedades
+  distintas, y la segunda nunca se midió
+  ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
+- **La causa real de «se confunde con el sistema»:** el borde superior es **zona de gesto del
+  sistema** — arrastrar hacia abajo desde ahí abre el panel de notificaciones de Android. Con
+  margen cero, el arrastre del usuario compite con el shade: a veces responde la app y a veces el
+  sistema. **No es percepción: es dos receptores para el mismo gesto**, y por eso se siente
+  «difícil» en vez de «roto» — funciona una de cada dos veces.
+- **⚠️ CÓMO NO arreglarlo — esto ya costó días en este archivo.** La geometría de esta tira se
+  logró **sin animar ninguna propiedad de layout**. El comentario de `:417-427` documenta que
+  animar `height` producía *«se desliza, salta, se maximiza un instante y sigue bajando»*: cada
+  layout pass es un commit del shadow tree y en el árbol de React el panel no tiene transform, o
+  sea **el panel arriba tapando la pantalla** por un cuadro. **El margen nuevo va FIJO** (como el
+  spacer), nunca animado, y el recorrido se acorta en esa misma cantidad para que la tira de abajo
+  siga midiendo exactamente una card. Si el fix anima `height`, `top`, `margin` o `padding`, está
+  mal aunque se vea bien en el emulador.
+- **Antes de tocarlo:** `swmansion-rn-gestures` (composición Pan / zona agarrable) y
+  `documed-front`, que ya resolvió la convivencia con las barras del sistema — su
+  `app/_layout.tsx:213` es el precedente de este repo para la barra de Android.
+- **DoD:**
+  1. **Captura del ANTES** con el panel arriba, 390 px, donde se vea la distancia real entre el
+     borde y la barrita.
+  2. El tirador **bajado a una zona cómoda**, fuera de la franja de gesto del sistema, con su
+     captura «después» y **el número**: cuántos px de margen quedaron bajo `insets.top`. Un
+     «quedó más abajo» sin cifra no es acreditable.
+  3. **El control que esta ficha existe para pedir:** arrastrar hacia abajo desde la zona del
+     tirador **N veces seguidas** (N declarado, ≥5) y que **las N** muevan el panel y **ninguna**
+     abra el panel de notificaciones. Una sola pasada no distingue «arreglado» de «tuve suerte»:
+     el defecto es intermitente por naturaleza.
+  4. El gesto ejercitado con `adb input motionevent` DOWN → MOVE → UP (nunca `input tap`), más un
+     gesto de control que SÍ debería responder, para distinguir «no se mueve» de «el ADB no
+     ejercita nada».
+  5. La tira de abajo **sigue midiendo una card** tras el cambio (no se engrosó con espacio muerto:
+     es justo lo que `:43-48` previene).
+- **Tenencia:** cualquiera de las dos cuentas — es estructura, no datos. No espera al operador.
+- **DENTRO del sprint:** es jugabilidad del control principal, reportada por el operador sobre la
+  app contra el mapa.
 
