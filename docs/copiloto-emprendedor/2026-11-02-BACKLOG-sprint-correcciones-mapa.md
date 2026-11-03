@@ -76,7 +76,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I3** | `sin-issue` | ✅ TERMINADO | b64856dc (#1401) el codigo; el DoD se cierra con la medicion de device del 2026-11-03 (frontend1, bloque 11, cuenta c… |
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa y NO es de frontend1: el punto (a), el bloque en PIEL OSCURA. Dueno frontend2, es de CODIGO y no necesi… |
 | **SM-I5** | `sin-issue` | ✅ TERMINADO | Codigo: dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404) mas 2e3eb8a616793bf59726f67c908568069485becd (#1574, captura… |
-| **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
+| **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | Medir en release. 🔴 EL DISPARADOR ESTABA ESCRITO DENTRO DE UNA FICHA CERRADA, y por eso no circulaba: este Falta deci… |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa y es de CONTRATO con backend, no de app ni de captura. La captura YA NO FALTA y la premisa que trababa … |
 | **SM-J1** | `sin-issue` | ✅ TERMINADO | CODIGO del dock mergeado en 80c5ef21 (#1456): campo + mic en Facturacion e Inteligencia, el texto siembra el chat y l… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
@@ -87,14 +87,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K2** | `sin-issue` | 🟧 DOD-PARCIAL | UNA mitad, y esta medido por que no se pudo: el estado SIN VINCULAR. El 2026-11-03 frontend1 cerro la mitad (b): afip… |
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | Solo CAPTURA DE DEVICE, cero codigo, y el dueno es frontend1 (tenencia): los dos errores con su causa nombrada. La pa… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
-| **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | Solo la RE-MEDICION en device del dialogo que salio rojo, con el USUARIO DEL OPERADOR y a fuente NORMAL -- el DoD lo … |
+| **SM-K5** | `sin-issue` | ✅ TERMINADO | b3667d01 (fix de frontend2, ancestro de origin/main verificado) + la observacion del OPERADOR en su propio device el … |
 | **SM-K6** | `sin-issue` | ✅ TERMINADO | Las DOS mitades del DoD estan medidas, y la que el Falta NO nombraba se verifico aparte. (a) CODIGO: 117dc669 (#1320)… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ✅ TERMINADO | 5dfe93a1 (#1484, ancestro de origin/main): medido en codigo, NO es una mascara -- CampoFecha son TRES TextInput con a… |
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
-| **SM-L2** | `sin-issue` | 🟧 DOD-PARCIAL | Las TRES entradas que exigen VOZ HUMANA REAL -- vozchat, fact-voz y pres-voz -- y es el unico punto de todo el sprint… |
-| **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
+| **SM-L2** | `sin-issue` | ✅ TERMINADO | sin-codigo -- lo que faltaba NO era codigo sino voz humana real, y el 2026-11-03 el OPERADOR las declaro CONFORME por… |
+| **SM-L3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La anulacion real contra ARCA NO se ejercito en este sprint: las facturas N 10 y N 11 siguen sin anularse y nadie cor… |
 | **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | MEDIDO HOY por script, que es lo que el DoD exige: python -I -X utf8 scripts/mapa-51-estado.py sobre origin/main @a2e… |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
@@ -143,7 +143,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N45** | `sin-issue` | ✅ TERMINADO | a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en them… |
 | **SM-N46** | `sin-issue` | ✅ TERMINADO | DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabi… |
 | **SM-N47** | `sin-issue` | ✅ TERMINADO | sin-codigo: es ficha de ATRIBUCION, y cierra con la SEGUNDA de las dos frases que su DoD 4 permite -- no se pudo atri… |
-| **SM-Z1** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N48** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta la RE-HABILITACION de Drive en backend y despues el OAuth en el navegador. Estado medido, y cambio de dueño: la… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
@@ -576,7 +577,7 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 ### SM-I6 · `sin-issue` — El retardo al soltar (R03) sigue sin corregir
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo.
+- **Falta:** Medir en release. 🔴 EL DISPARADOR ESTABA ESCRITO DENTRO DE UNA FICHA CERRADA, y por eso no circulaba: este Falta decia -en el ejercicio final de SM-G4-, pero SM-G4 esta TERMINADO desde su propio cierre (sin-codigo, veredicto DEMORA 4/4 en dev-client, con el ejercicio en release declarado pendiente por decision del 2026-10-16). O sea que SM-I6 esperaba un evento alojado en una casilla que ya nadie mira: nadie va a -terminar- una ficha terminada, asi que la espera era indefinida y no daba sintoma. Lo trajo AUDITORIA en su lote 1 (H1) y lo confirmo con el literal de este mismo campo. Reescrito para que el disparador sea PROPIO: hay que correr el experimento R03 en build de RELEASE -- rotulos a +0,3 / +0,8 / +3 s como en SM-G4, mismo protocolo, 4 corridas -- y comparar contra el 4/4 de dev-client. Si en release los rotulos rancios desaparecen, el veredicto DEMORA se confirma y esta ficha cierra; si persisten, es DEFECTO y hay fix. ⚠️ Dos condiciones del metodo: el build de release corre ULTIMO por orden del operador (2026-11-02), despues de que toda la implementacion este en main, asi que esta ficha es de las ultimas del sprint por diseño y no por olvido; y NO hay filmacion del antes (la de SM-G4 no se guardo), asi que el par antes/despues se arma con los rotulos y los tiempos, no con video. SM-G4 no se reabre: un hallazgo nuevo no revierte un cierre, y lo que estaba mal era este campo, no aquel.
 - **Cierre:** 80f1a36f8bb7fac841c63b3698d0238d0db7ba1a (#1411). Los rotulos de PanelDeslizable y PanelFunciones salen de la posicion en el hilo de UI y no del estado fijado al terminar la animacion; tests del cableado rojos con el mutante. mobile.sh 1549 verdes en el worktree y CI 6/6. Despues filmado en device: el rotulo se va durante el movimiento (SM-I6.md). Desde #1401 el gesto de SM-G4 no tiene camino tactil, por lectura de codigo y una captura.
 - **Dueño:** frontend1
 - **Medido:** pendiente del experimento.
@@ -816,8 +817,8 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 ### SM-K5 · `sin-issue` — Ajustes y Cuenta difieren del mapa en estructura y copy
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Solo la RE-MEDICION en device del dialogo que salio rojo, con el USUARIO DEL OPERADOR y a fuente NORMAL -- el DoD lo exige asi de forma explicita (cerrar sesion se prueba solo con el usuario del operador, nunca con el canonico), asi que el disparador es del operador y no se puede delegar a la tenedora del device. EL FIX YA ESTA: frontend2 lo mergeo el 2026-11-03 en b3667d01 (ancestro de origin/main verificado), despues de que la medicion lo pusiera en rojo -- o sea esta ficha paso de -falta la captura- a -falta el fix- y de ahi a -falta re-medir-, y lo que la movio fue una medicion, no una relectura. Lo que la pasada de frontend1 del 2026-11-03 habia aportado no era el defecto (el campo Medido de esta ficha ya decia que -Si, cerrar sesion- aparece cortado desde que nacio) sino la CUANTIFICACION y la CONDICION DE REPRODUCCION: la confirmacion queda en [45,1434][675,1465] contra el borde y NO se alcanza a fuente normal cuando la cuenta tiene arriba el boton -Aceptar version vigente-; solo se alcanzaba bajando font_scale a 0.8. Esa condicion es la que hay que reproducir para que el verde signifique algo: medir sin el control extra arriba acreditaria el caso facil. font_scale quedo restaurado en 1.0 (verificado con settings get).
+- **Estado:** TERMINADO
+- **Cierre:** b3667d01 (fix de frontend2, ancestro de origin/main verificado) + la observacion del OPERADOR en su propio device el 2026-11-03, que es exactamente el sujeto que el DoD exigia -- cerrar sesion se prueba solo con el usuario del operador, nunca con el canonico -- y que ninguna sesion podia sustituir. Textual: -el boton de cerrar sesion se ve bien...no hay nada cortado-. O sea que el fix funciono y la re-medicion que faltaba quedo hecha por el unico actor habilitado. 🎯 EL LIMITE, declarado: es su observacion a ojo, no un uiautomator dump, asi que NO acredita el bounding box [45,1434][675,1465] ni controla si su cuenta tenia arriba el boton -Aceptar version vigente- (la condicion de reproduccion que la pasada de frontend1 habia aislado). Se acepta igual porque la pregunta del DoD era si EL lo ve cortado en SU app, y la respuesta es no: exigirle ademas el dump seria un criterio que crece con cada medicion (DEC-18). 🔴 Y DEJA ESCRITO UN ERROR MIO que el operador nombro: este punto se podia desplegar por adb y capturar sin molestarlo, porque la ficha exige su CUENTA logueada, no su DEDO. Lei una cosa por la otra y le pedi trabajo manual que una sesion podia hacer. La captura del dialogo con el usuario canonico queda despachada a frontend1 como refuerzo del registro, NO como condicion de este cierre.
 - **Dueño:** frontend2
 - **Medido:** faltan subtítulos y encabezado; falta «desde …» y los chevrons; el fondo blanco
   sobresale de las tiles; «Sí, cerrar sesión» aparece cortado; el copy dice «usuario y contraseña»
@@ -894,9 +895,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L2 · `sin-issue` — Cuatro entradas exigen voz real y ninguna se midió
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Las TRES entradas que exigen VOZ HUMANA REAL -- vozchat, fact-voz y pres-voz -- y es el unico punto de todo el sprint cuyo disparador NO es una sesion de agente: hay que HABLARLE al telefono. Ningun agente puede producirlo, y por eso no se asigna ni se espera de frontend1 ni de frontend2: es del OPERADOR, con el device, dictando. Escrito asi a proposito para que no quede como una espera sin dueño: la unica forma de que avance es que el operador lo haga, y la unica forma de que no se pierda es que figure como su renglon. Lo que SI esta listo para esa corrida: el dock unico ya existe (SM-I2 TERMINADO, 68632d8e) y el cancelar deslizando ya quedo acreditado en su lugar nuevo con motionevent (SM-N31, 2026-11-03), asi que el operador no tiene que verificar nada de eso -- solo dictar en las tres entradas y que quede la captura de cada una. ⚠️ Y una restriccion del metodo que ya cobro este sprint dos veces: si alguien intenta sustituir la voz real por adb, lo que mide es el instrumento. Para esto no hay sustituto.
-- **Cierre:** El punto del CANCELAR DESLIZANDO queda resuelto, y no por una corrida nueva: lo contesto la evidencia de OTRA ficha que nadie habia conectado. SM-I2 lo dejo [UNVERIFIED] con una pregunta explicita -- adb no lo reprodujo en dos corridas y NO SE SABIA si era limite del instrumento o defecto de la app. El 2026-11-03, midiendo SM-N31 en Gastos, frontend1 ejercito cancelar deslizando Y descartar con el tacho usando adb shell input motionevent DOWN/MOVE: los dos funcionan y no se envio nada. 🎯 O sea que la pregunta tenia respuesta y la respuesta era LIMITE DEL INSTRUMENTO: las dos corridas que fallaron usaban input tap, que no ejercita un Pan de RNGH. El defecto nunca estuvo en la app. Y lo que vale registrar es como se cerro: NO con device nuevo, sino reconciliando dos fichas -- un [UNVERIFIED] que plantea una disyuntiva (instrumento o defecto) puede quedar contestado por el cierre de otra ficha y no enterarse nadie, porque el que midio estaba contestando SU pregunta, no la de este registro. Antes de pedir una corrida hay que buscar si la respuesta ya existe en otro cierre. Dependencia SATISFECHA: SM-I2 esta TERMINADO (68632d8e, #1380), asi que el Depende de esta ficha ya no la frena.
+- **Estado:** TERMINADO
+- **Cierre:** sin-codigo -- lo que faltaba NO era codigo sino voz humana real, y el 2026-11-03 el OPERADOR las declaro CONFORME por su palabra, con la opcion (a) elegida explicitamente de dos que se le ofrecieron: las uso y funcionan. Las tres entradas que el DoD exigia -- vozchat, fact-voz y pres-voz -- quedan acreditadas por el unico sujeto que podia producir esa evidencia: ningun agente puede dictarle al telefono, y sustituirlo por adb habria medido el instrumento y no la voz (restriccion que este sprint ya cobro dos veces). 🎯 EL LIMITE DE ESTA EVIDENCIA, declarado y no escondido: es la palabra del operador sobre su propio uso, no una captura por entrada. Se acepta porque el DoD pedia que el dictado funcionara para el, el es el usuario, y el criterio alternativo -- exigirle tres capturas de algo que ya le funciona -- seria un criterio que crece con cada medicion (DEC-18). Lo que NO se apoya en su palabra y ya estaba medido: el dock unico (SM-I2, 68632d8e) y el cancelar deslizando (SM-N31, 2026-11-03, motionevent DOWN/MOVE), que quedo resuelto como LIMITE DEL INSTRUMENTO -- input tap no ejercita un Pan de RNGH -- y no como defecto de la app. Preguntarle al operador por el dictado cuando el reporto que todo le funciona bien fue un error mio de encuadre, que el nombro textual: -no entiendo para que quiers que hable al telefono si en principio funciona todo bien-.
 - **Dueño:** frontend2 + operador
 - **Medido:** `vozchat`, `fact-voz` y `pres-voz` necesitan dictado real; el cancelar deslizando quedó
   `[UNVERIFIED]` porque `adb` no lo reprodujo en dos corridas.
@@ -906,7 +906,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L3 · `sin-issue` — La anulación de facturas nunca se ejercitó contra ARCA real
 
-- **Estado:** TERMINADO
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** La anulacion real contra ARCA NO se ejercito en este sprint: las facturas N 10 y N 11 siguen sin anularse y nadie corrio la receta. Queda declarado y no borrado, que es la diferencia entre cerrar por decision y cerrar por DoD cumplido. El codigo esta en main y listo (#1392: script + receta en docs/copiloto-emprendedor/2026-11-02-receta-SM-L3-anulacion-real.md), asi que el hueco es de EJECUCION, no de implementacion: si alguna vez hace falta, la receta corre tal cual. La anulacion queda acreditada por la prueba anterior del operador, fuera de este sprint.
+- **Decision:** FUERA DE ALCANCE por decision del operador el 2026-11-02, textual: -las facturas no necesitamos probarlas porque ya probamos que funciona-. Registrada en docs/copiloto-emprendedor/2026-11-02-receta-SM-L3-anulacion-real.md (seccion DECISION al final del doc), que es la receta versionada del ejercicio retirado. El DoD se RETIRA, no se declara satisfecho. CAMBIO DE ESTADO el 2026-11-03 y el hallazgo NO es mio: lo trajo la sesion de AUDITORIA en su lote 1 (H3) el dia que se creo. Esta ficha estaba en TERMINADO y asi contaba dentro de los TERMINADO del sprint, con lo cual una cifra que se lee como -DoD cumplido- incluia una ficha cuyo DoD fue retirado. El texto del cierre lo decia con todas las letras y la casilla decia lo contrario: el estado contradecia a su propia evidencia y ganaba el estado, porque el estado es lo que cuenta el script. CERRADO-POR-DECISION existe para esto y no lo habia usado. Es la justificacion del operador al crear esa sesion contra mi recomendacion: el cierre no lo puede auditar quien marco las fichas. SM-N47 fue revisada en el mismo hallazgo y NO se mueve: su DoD 4 permitia explicitamente -no se pudo atribuir la causa- como una de sus dos salidas validas.
 - **Cierre:** sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarlas porque ya probamos que funciona». El DoD se RETIRA, no se declara satisfecho: nadie anulo las facturas N 10 y N 11 en esta ronda, y la anulacion queda acreditada por la prueba anterior del operador, no por este sprint. CORRECCION: el cierre decia «sin-codigo» y era falso — el script y la receta de backend ya estaban en main (#1392, DOD-PARCIAL mergeado antes del aviso de parada); quedan sin ejecutar. Lo retirado es el DoD, no el codigo.
 - **Dueño:** backend + **operador (el botón final)**
 - **Medido:** las facturas reales N° 10 y N° 11 están emitidas en Producción.
@@ -3080,10 +3082,57 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      atribuir, se miró en A, B y C*. Un incidente que se archiva sin ninguna de las dos vuelve a
      entrar al registro dentro de un mes como hallazgo nuevo.
 
+### SM-N48 · `sin-issue` — El tirador de ABAJO sólo agarra en la línea; el de ARRIBA agarra en toda la franja
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueña del shell)
+- **Reportado por:** el operador, en su device, 2026-11-03: *«el tirador de mi dia sobre el campo de
+  ingreso de texto funciona mal....te habia pedido que sea igual el tirador de arriba....el tirador
+  de abajo solo funciona si se pone el dedo unicamente en la linea sobre el campo de texto...el
+  tirador de arriba funciona desde cuanquier lugar en la franja horizontal...que revisen el
+  funcionamiento del tirador superior en mi dia y repliquen el mismo mecanismo en el de abajo. la
+  ubicacion del tirador está bien pero lo que hay que corregir es el gesto del scroll desde abajo se
+  deberia poder hacer desde cualquier lugar inclusive sobre el campo de ingreso de texto...una cosa
+  es el scroll y otra hacer tap sobre el campo de ingreso de texto para activar la escritura»*.
+- **🔴 Por qué necesita id PROPIO y no reabre ninguna de las tres fichas del mismo componente.** El
+  backlog ya tiene `SM-N22` (**orden/posición** del tirador de abajo), `SM-N23` (**posición
+  vertical** del de arriba) y `SM-N38` (**tamaño** del handle y el texto «Escribile a Odobi»).
+  Ésta es el **área de activación del gesto**, que ninguna de las tres mide. Y el operador lo dice
+  explícito —*«la ubicacion del tirador está bien»*—, así que marcar esto dentro de `SM-N22` sería
+  reabrir un ✅ con un hallazgo nuevo, que es justamente lo que `DEC-18` prohíbe: un criterio que
+  crece con cada medición no se puede alcanzar. Cuatro defectos, cuatro casillas, un solo componente.
+- **No es «el tap no anda».** El tap sobre el campo debe seguir abriendo el teclado. Lo que el
+  operador pide es que **convivan**: Pan desde cualquier punto de la franja, tap sobre el campo para
+  escribir. Un fix que gane el Pan comiéndose el tap cumple el DoD 1 y rompe el producto.
+- **Dónde vive la respuesta, y no hay que diseñarla:** `SM-N23` es la ficha del tirador **superior**,
+  el que el operador dice que funciona bien. Se lee antes de tocar nada. Punto de partida:
+  `apps/mobile/src/shell/PanelDeslizable.tsx` — `zonaHandle` ~`:515` (testID `panel-handle`), la
+  barra 44×5 en `:560`, `ALTO_HANDLE = 56` en `:48`.
+- **⚠️ Hipótesis de planificación, NO medición:** que la diferencia esté en la **superficie que lleva
+  el `GestureDetector`** (una franja de alto completo arriba vs. sólo la barra abajo) y no en el
+  gesto. Queda marcada como hipótesis a propósito: si al medir resulta que los dos tiradores
+  comparten código y la diferencia es otra, **eso** es el hallazgo y se escribe — este bullet es mío
+  y puede estar mal.
+- **🔴 Gate del tercer intento:** si dos fixes no convergen, el tercero **no es otro fix** — es la
+  skill `swmansion-rn-gestures`. Pan + tap sobre la misma zona es literalmente su caso
+  (`Simultaneous`/`Exclusive`, `requireExternalGestureToFail`, hit-slop) y este repo ya pagó dos
+  iteraciones a ciegas por razonarlo de cero. `documed-front` antes de inventar.
+- **DoD:**
+  1. El Pan activa desde **cualquier punto** de la franja horizontal del tirador inferior, incluido
+     encima del campo de texto.
+  2. El **tap sobre el campo sigue abriendo el teclado**. Sin medir esta mitad, el punto 1 verde no
+     prueba nada: es la propiedad que un fix apurado sacrifica.
+  3. Medido en **device** con `adb input motionevent` DOWN/MOVE/UP — ⚠️ `input tap` **no** ejercita un
+     Pan de RNGH, y eso ya está medido en este repo: usarlo daría un falso rojo que parece prudencia.
+  4. Par ANTES/DESPUÉS moviendo una sola variable, con el **sha del bundle** declarado y distinguido
+     de la procedencia (el device corre lo que Metro sirve, no `main`).
+  5. El `Cierre:` nombra **cuál resultó ser la diferencia** respecto del tirador superior.
+
 
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta la RE-HABILITACION de Drive en backend y despues el OAuth en el navegador. Estado medido, y cambio de dueño: la ficha nacio como -decision de producto del operador- y la decision YA ESTA TOMADA (2026-11-03: -primero que se instale la card de google drive dejando todo listo en el movil y luego se hace la vinculacion con drive desde el movil- + -vicularemos con mi cuenta real-), asi que lo que queda es codigo de backend, no una espera del operador. 🔴 Y REFUTA UNA PREMISA MIA: yo venia citando que /catalog devuelve 6 keys incluyendo googledrive. Backend midio PROD con el JSON crudo y devuelve 5 -- mercadopago, gmail, googlecalendar, googledocs, googlesheets -- sin drive ni googledrive, con control de que e2e-vacio da las mismas 5. Mi 6 salia de la medicion por CODIGO del corpus (_PRESENTATION, catalog.py:94); la de prod gana. Es el error del sprint otra vez: citar una cifra medida con un instrumento para contestar la pregunta del otro. CAUSA EN CODIGO: /catalog filtra por toolkits_conectables() (conexiones_salud.py:18-24), unica definicion de servicio soportado (SM-N18), y services/drive.py:68-74 quedo con TOOLS vacio por la poda deliberada del hito 2 (A7) -- asi que Drive no es conectable y no se publica. Hasta que eso cambie, -Apps muestra 5- es el comportamiento CORRECTO del backend y no un defecto del front. 🔴 EL DETALLE QUE DECIDE SI EL SINTOMA DESAPARECE: la key que backend emita tiene que ser googledrive, no drive, porque PantallaApps.tsx:112 filtra googledrive. Esa inconsistencia hoy esta latente (no se emite nada) y se activa en el instante en que se emita: emitir drive dejaria la card igual de ausente con el backend -arreglado-. Despachado a backend por contrato_ el 2026-11-03. El clic de OAuth del operador es el ULTIMO paso y solo existe despues del deploy.
 - **Dueño:** operador (decisión de producto)
 - **⚠️ Por qué el id arranca en `Z` y no en `A`.** Esta ficha y sus hermanas `Z2`–`Z4` nacieron el
   2026-11-03 citadas como `SM-A1`–`SM-A3`, y eso fue un error de planificación: `SM-A1` y `SM-A2` ya

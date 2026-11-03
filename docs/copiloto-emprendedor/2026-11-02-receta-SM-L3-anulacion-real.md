@@ -64,3 +64,34 @@ y el usuario con que entra a la app) y anular **sólo esas**. El script lista am
   vacío y el puntero vive en el **original**; el guard `nota_credito_de` (`afip_comprobante_store.py`) busca el sentido
   contrario. Si tras la anulación real la NC trae el puntero y el original también, el guard está bien; si no, un segundo
   «Anular» sobre la misma factura podría no frenarse. Por eso el script acepta los dos sentidos del puntero.
+
+---
+
+## ⛔ DECISIÓN — el DoD de `SM-L3` queda RETIRADO (2026-11-02, operador)
+
+Esta receta **no se ejecutó** y queda registrada como tal. El operador la sacó de alcance, textual:
+
+> «las facturas no necesitamos probarlas porque ya probamos que funciona»
+
+Lo que eso significa con precisión, porque las dos lecturas no son iguales:
+
+- **El DoD se RETIRA; no se declara satisfecho.** Nadie anuló las facturas N° 10 y N° 11 en esta
+  ronda. La anulación queda acreditada por la prueba anterior del operador, **fuera de este sprint**.
+- **El código SÍ está en `main`** (#1392: este script y esta receta), mergeado antes del aviso de
+  parada. Lo retirado es el ejercicio, no el código. Un `sin-codigo` acá habría sido falso.
+- **El hueco queda abierto y nombrado:** la anulación contra ARCA real sigue sin ejercitarse en este
+  sprint. Si alguna vez hace falta, la receta está lista y corre tal cual.
+
+### Por qué la ficha cambió de estado el 2026-11-03
+
+`SM-L3` estaba en `TERMINADO` y así contaba dentro de los TERMINADO del sprint — con lo cual una
+cifra que se lee como «DoD cumplido» incluía una ficha cuyo DoD fue retirado. El texto del cierre lo
+decía con todas las letras («el DoD se RETIRA, no se declara satisfecho») y **la casilla decía lo
+contrario**: el estado contradecía a su propia evidencia, y ganaba el estado, porque el estado es lo
+que cuenta el script. Pasa a **`CERRADO-POR-DECISION`**, que existe exactamente para esto.
+
+**El hallazgo no es de planificación: lo trajo la sesión de AUDITORÍA** en su lote 1 (H3), el día que
+se creó. Vale registrarlo porque es la justificación del operador al crearla, contra la recomendación
+de planificación: *el cierre no lo puede auditar quien marcó las fichas*. En el mismo hallazgo se
+revisó `SM-N47` y **no se mueve**: su DoD 4 permitía explícitamente «no se pudo atribuir la causa»
+como una de sus dos salidas válidas, así que ahí el DoD sí se cumplió.
