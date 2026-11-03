@@ -547,6 +547,15 @@ export function PanelDeslizable({
               style={[StyleSheet.absoluteFill, styles.superficie, { backgroundColor: tema.color.fondo, borderColor: tema.glass.bd }, estiloSuperficie]}
             />
           )}
+          {/* SM-N38: el campo de Mi día colapsado tiene que verse como el del chat, o sea sobre el fondo plano
+              (`tema.color.fondo`) y no sobre el degradé del lienzo. Misma señal que el pie: lo decide `panelY`. */}
+          {pieAbajo != null && (
+            <Animated.View
+              testID="panel-fondo-plano"
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: tema.color.fondo }, estiloPieAbajo]}
+            />
+          )}
           {/* Spacer de status bar (fijo) — no intercepta toques. */}
           <Animated.View style={estiloSpacer} pointerEvents="none" />
           <GestureDetector gesture={gesto}>
