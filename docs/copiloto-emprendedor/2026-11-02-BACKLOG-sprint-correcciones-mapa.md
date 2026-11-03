@@ -134,7 +134,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
 | **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
-| **SM-N39** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N39** | `sin-issue` | 🟧 DOD-PARCIAL | El DoD 2 pedia el barrido de packages/ Y apps/ con un veredicto POR HIT. El alcance TypeScript esta hecho (#1474 + #1… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2656,7 +2656,10 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N39 · `sin-issue` — Los TRES `[ASSUMED_PENDING_VERIFY]` de `afip.ts` estaban vencidos
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** backend
+- **Falta:** El DoD 2 pedia el barrido de packages/ Y apps/ con un veredicto POR HIT. El alcance TypeScript esta hecho (#1474 + #1477), pero quedan 9 hits de ASSUMED_PENDING_VERIFY en 6 archivos .py de apps/copiloto sin veredicto -- medido sobre origin/main. Eso es de BACKEND, no de frontend2: lo que falta es decir de cada uno si esta vigente (y entonces FECHARLO) o vencido (y entonces retirarlo citando el path:linea y el sha que lo invalida). Un marcador sin fecha se cita como si fuera de hoy, y de los tres que destaparon esta ficha los tres estaban vencidos.
+- **Cierre:** Alcance TypeScript COMPLETO: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y facturaPropuesta.ts y fecha los vigentes; d7c0613c (#1477) resuelve los kinds de ListaMensajes (tool_catalog.py:1004 y :1685), actualiza dos punteros viejos de index.ts y fecha el vigente de clientes.test.ts. Los dos son ancestros de origin/main. tsc core+mobile ok y vitest clientes 54 ok. Quedan 12 hits en .ts/.tsx, todos ya CON veredicto y fecha: el DoD no pedia vaciar el grep sino que ningun hit quede sin veredicto.
 - **Dueño:** frontend2
 - **De dónde sale:** barrido de planificación, 2026-11-03, disparado por el marcador que frontend2
   retiró en `#1472`. Si uno estaba vencido, los otros podían estarlo: **lo estaban los tres.**
