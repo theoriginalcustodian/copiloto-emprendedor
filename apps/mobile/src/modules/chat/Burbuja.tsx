@@ -64,9 +64,9 @@ export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: B
       <View
         style={[
           styles.burbuja,
-          sombraNivel(esUsuario ? g.relieve.burbujaUsuario : g.relieve.nivel1),
+          sombraNivel(esUsuario ? g.relieve.burbujaUsuario : g.relieve.burbujaAsistente),
           {
-            borderColor: esUsuario ? g.bd : g.s1,
+            borderColor: esUsuario ? g.bordeMio : g.bordeAsistente,
             backgroundColor: g.s2,
             // Cola direccional: la esquina "sin redondear" apunta a quién habla.
             borderTopLeftRadius: tema.radio.lg,
@@ -78,14 +78,14 @@ export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: B
         ]}
       >
         <LinearGradient
-          colors={esUsuario ? [g.ub1, g.ub2] : [g.s1, g.s2]}
+          colors={esUsuario ? [g.mio1, g.mio2] : [g.asistente1, g.asistente2]}
           start={{ x: 0.15, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         {/* Línea de luz superior: el canto iluminado que despega la burbuja. */}
         <View style={[styles.luzSuperior, { backgroundColor: g.hi }]} pointerEvents="none" />
-        <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{text}</Text>
+        <Text style={{ color: esUsuario ? g.tintaMio : tema.color.texto, fontSize: tema.tipo.base }}>{text}</Text>
         {porVoz && (
           <Text testID="chat-bubble-voz" style={[styles.chipVoz, { color: tema.color.textoTenue }]}>
             {`Por voz · ${formatearDuracion(porVoz.duracionSeg)}`}
