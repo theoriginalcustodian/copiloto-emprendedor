@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 /**
  * ⚠️ **Se preserva el resto del módulo con `requireActual`.** Antes esto devolvía **sólo** `router`, y
@@ -239,6 +239,20 @@ describe('PantallaCuenta', () => {
       expect(screen.getByTestId('cuenta-legal-aceptar-error')).toHaveTextContent(/No pudimos registrar/);
       expect(boton()).not.toBeNull();
     });
+  });
+
+  it('🔴 SM-K5: con «Aceptar versión vigente» arriba, la confirmación de salida vive DENTRO del scroll (alcanzable a cualquier fuente)', async () => {
+    // El caso que se escapó: la cuenta CON el botón extra empuja el contenido y la confirmación quedaba
+    // cortada contra el borde. Sin ese control el defecto no se ve, así que el test lo incluye.
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', legal_aceptado: false, legal_version_aceptada: null } as never;
+    await montar();
+    expect(screen.getByTestId('cuenta-legal-aceptar')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    const scroll = screen.getByTestId('cuenta-scroll');
+    const dentro = (id: string) => within(scroll).queryByTestId(id) !== null;
+    expect(dentro('cuenta-confirmar-salida')).toBe(true);
+    expect(dentro('cuenta-cerrar-sesion-si')).toBe(true);
+    expect(dentro('cuenta-cerrar-sesion-no')).toBe(true);
   });
 
   it('confirmar cierra la sesión; decir que no, no', async () => {
