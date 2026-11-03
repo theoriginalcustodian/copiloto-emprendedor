@@ -67,3 +67,27 @@ instrumento (el punto final pegado al path y la asociación por nombre de archiv
 campo `FICHA:`). **Las dos correcciones llegaron antes de que yo aplicara la conclusión**, y por eso
 `SM-N2` no quedó marcada por un hallazgo que no existía. Eso es el instrumento funcionando, no
 ruido.
+
+---
+
+## ➕ Refuerzo (mismo día, lote 19) — el gate mide ANCESTRÍA, no PERTINENCIA
+
+`sprint-estado.py --check` verifica que el sha del `Cierre:` sea **ancestro de `origin/main`**. Eso
+no verifica que el sha sea **de esta ficha**: un commit de **otra** ficha pasa el control sin
+síntoma. Medido por auditoría (H15): de **92** shas ancestros citados, **21** no nombran su ficha
+—casi todos cruces deliberados y rotulados como tales—, **4** fichas no tienen ningún sha propio, y
+**una sola** es un error real: `SM-N25` citaba `a6600880`, que es el commit de `SM-N45`.
+
+**Por qué el falso positivo es tan plácido:** el gate verde dice «el sha existe en la historia», y
+eso se lee como «el trabajo está acreditado». Lo primero es cierto y lo segundo no se midió. Es la
+misma forma que [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]: se verifica A y se concluye B.
+
+**Lo exigible mientras el gate no lo mida:** el `Cierre:` cita el sha **y** dice qué hizo ese commit
+en una línea. Un sha desnudo no se puede contrastar; con la línea, la discrepancia salta al leerlo.
+**Un cruce deliberado se rotula** («la evidencia de N20 vive en el `Cierre:` de N21»), que es lo que
+hicieron 20 de los 21 casos y por eso no son hallazgos.
+
+**No se intenta automatizar la pertinencia acá.** Un gate que exigiera que el commit nombre la ficha
+rechazaría los cruces legítimos, y el 20/21 dice que el cruce es la norma, no la excepción — un
+guard que grita en el caso normal se desarma solo
+([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]).
