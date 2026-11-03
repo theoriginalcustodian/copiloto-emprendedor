@@ -147,7 +147,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta la RE-HABILITACION de Drive en backend y despues el OAuth en el navegador. Estado medido, y cambio de dueño: la… |
+| **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
+| **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
@@ -3219,10 +3220,46 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      silencio (la distinción que ya se pagó en `SM-L3`).
 
 
+### SM-N52 · `sin-issue` — El aislamiento cross-tenant de la Consola TIENE test adversarial y el gate que decide merges NO lo corre
+
+- **Estado:** TERMINADO
+- **Dueno-activo:** manejo-de-errores
+- **Cierre:** sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en GitHub - medido en el VPS, con el DSN 58 passed; sin el (como CI) 23 passed / 35 skipped. DoD2 control binario: skipped del job backend 80 -> 42, o sea -38, y manejo-de-errores declara que esperaba -35: main se movio entre la corrida de referencia y la del PR, asi que el -3 extra NO es atribuible a este cambio; el -35 SI lo es, por el diferencial medido en el VPS. Eso es la forma correcta de reportar un control que no da el numero exacto: se separa lo atribuible de lo que no, en vez de redondear. DoD4: los skipped restantes quedan clasificados por motivo. 🔴 Lo que esta ficha cierra no es cobertura: era un aislamiento cross-tenant de SEGURIDAD con test adversarial que el gate que decide merges NO corria, y por el -q del job se salteaba en SILENCIO. 🔴 Nota de proceso: el commit cita SM-N52 pero el gate de atribucion lo marco SIN-ID porque la casilla no existia todavia - es el costo exacto de que la ficha llegue despues del trabajo, y es mio, no de manejo-de-errores.
+- **Dueño:** manejo-de-errores (lo encontró y ofreció tomarlo; es su frente: instrumentos que mienten)
+- **De dónde sale:** barrido de manejo-de-errores sobre los 80 `skipped` que quedan en el job
+  `backend` de GitHub, después de arreglar el mismo hueco para autosanación en #1589.
+- **Medido (estático, por variable que condiciona el skip — cuenta lecturas de `environ.get` en los
+  tests, no tests):** de los 80, hay **dos clases**:
+  - **Legítimos**, porque piden secreto o servicio real: `OPENAI` 7 · `COMPOSIO` 12 ·
+    `GRAPHITY` 3 · `RAG` 1.
+  - **Mismo hueco CI↔`gate.sh`** (rol o contenedor local, **sin** secreto):
+    **`COPILOTO_CONSOLA_DSN` 9** · `UC_TEST_GOTRUE_URL` 3 · `COPILOTO_SANDBOX_PYTHON` 2.
+- **🔴 Por qué esto es grave y no una deuda de cobertura:** los 9 de `COPILOTO_CONSOLA_DSN` son el
+  **aislamiento cross-tenant de la Consola de operador**. `CLAUDE.md §Seguridad` dice que un control
+  de acceso o aislamiento **sin test adversarial ejercitado** queda `[UNVERIFIED]`. El test existe
+  en el repo — pero **mergeamos con `ci-verde.sh`, que lee GitHub**, y en GitHub no corre. Un test
+  que existe y nunca corre en el gate que decide los merges es **indistinguible de no tenerlo**:
+  protege en `gate.sh` y no protege ningún merge.
+- **La forma del fix ya está probada, es la de #1589:** rol dedicado + el `GRANT` recortado de
+  `test-db.sh:236+` + el DSN en el job. Precedente con control binario cumplido:
+  `skipped` del job backend **89 → 80**, −9 exacto.
+- **Y el agravante que lo hacía invisible:** el `-q` del job **no muestra el motivo** del skip, así
+  que 9 tests de seguridad se salteaban **en silencio** en todos los merges. Es
+  `memoria/instrumento-que-no-mira-nunca-falla.md`: nadie preguntó cuántos miró.
+- **DoD:**
+  1. Los 9 tests de `COPILOTO_CONSOLA_DSN` **corren en GitHub**, no sólo en `gate.sh`.
+  2. **Control binario**, la misma forma que #1589: el `skipped` del job baja **exactamente 9**
+     (80 → 71). Un número distinto significa que el fix tocó otra cosa.
+  3. **Control positivo del propio control:** al menos uno de esos 9 tests da **ROJO** si se le
+     quita el aislamiento — si no, lo que se encendió no era el test adversarial.
+  4. Los `skipped` restantes quedan **clasificados por motivo** (`-ra`), para que la próxima vez el
+     hueco no sea invisible.
+  5. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par 80→71 medido.
+
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta la RE-HABILITACION de Drive en backend y despues el OAuth en el navegador. Estado medido, y cambio de dueño: la ficha nacio como -decision de producto del operador- y la decision YA ESTA TOMADA (2026-11-03: -primero que se instale la card de google drive dejando todo listo en el movil y luego se hace la vinculacion con drive desde el movil- + -vicularemos con mi cuenta real-), asi que lo que queda es codigo de backend, no una espera del operador. 🔴 Y REFUTA UNA PREMISA MIA: yo venia citando que /catalog devuelve 6 keys incluyendo googledrive. Backend midio PROD con el JSON crudo y devuelve 5 -- mercadopago, gmail, googlecalendar, googledocs, googlesheets -- sin drive ni googledrive, con control de que e2e-vacio da las mismas 5. Mi 6 salia de la medicion por CODIGO del corpus (_PRESENTATION, catalog.py:94); la de prod gana. Es el error del sprint otra vez: citar una cifra medida con un instrumento para contestar la pregunta del otro. CAUSA EN CODIGO: /catalog filtra por toolkits_conectables() (conexiones_salud.py:18-24), unica definicion de servicio soportado (SM-N18), y services/drive.py:68-74 quedo con TOOLS vacio por la poda deliberada del hito 2 (A7) -- asi que Drive no es conectable y no se publica. Hasta que eso cambie, -Apps muestra 5- es el comportamiento CORRECTO del backend y no un defecto del front. 🔴 EL DETALLE QUE DECIDE SI EL SINTOMA DESAPARECE: la key que backend emita tiene que ser googledrive, no drive, porque PantallaApps.tsx:112 filtra googledrive. Esa inconsistencia hoy esta latente (no se emite nada) y se activa en el instante en que se emita: emitir drive dejaria la card igual de ausente con el backend -arreglado-. Despachado a backend por contrato_ el 2026-11-03. El clic de OAuth del operador es el ULTIMO paso y solo existe despues del deploy.
+- **Falta:** ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en el movil. Verificado por mi: 63b50b8a (PR #1579, 18:33) es ancestro de origin/main - -Drive vuelve a ser conectable sin devolverle las tools al agente-, con el eje nuevo tiene_acciones_detras = TOOLS o ARCHIVADO_SLUGS, control positivo (modulo sin TOOLS ni archivado sigue afuera) y control negativo (el agente no resuelve ninguna accion de subida). La key emitida es googledrive, que es la que PantallaApps.tsx:112 filtra, asi que el detalle latente quedo cerrado. Backend midio PROD con login real, canonica y e2e-vacio: 6 keys, y los 6 textos identicos a los del prototipo (#s-apps), via 694a10ca desplegado. Disparador unico: el clic de OAuth del operador en el movil, que por su propia decision es el ULTIMO paso. 🔴 Y RETIRO LA REFUTACION QUE ESTE Falta DECLARABA: mi -6 keys- y el -5 keys- de backend eran AMBAS CIERTAS, en momentos distintos - su medicion es de ~18:00, su propio fix de 18:33. No me equivoque en la cifra: me equivoque en no fechar el sujeto. Una medicion sin HORA no se puede contrastar con otra, y yo la trate como refutacion de una premisa cuando era un estado anterior del mismo sistema. Ver memoria/dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md
 - **Dueño:** operador (decisión de producto)
 - **⚠️ Por qué el id arranca en `Z` y no en `A`.** Esta ficha y sus hermanas `Z2`–`Z4` nacieron el
   2026-11-03 citadas como `SM-A1`–`SM-A3`, y eso fue un error de planificación: `SM-A1` y `SM-A2` ya

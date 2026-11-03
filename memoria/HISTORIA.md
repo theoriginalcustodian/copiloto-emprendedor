@@ -547,3 +547,13 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
   - **Por que salio del indice:** SUPERADA el 2026-11-03: su causa (un solo sujeto de prueba que no podia encarnar el estado exigido) la resolvio la provision de la tenencia e2e-vacio, y la leccion vive ahora en un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md
 - [🔌🕳️ `adb devices` vacío NO acredita que no haya teléfono](adb-devices-vacio-no-acredita-que-no-haya-telefono.md) - el server en frío lista antes de enumerar. `wait-for-device` primero.
   - **Por que salio del indice:** detalle de arranque ya superado: el device esta habilitado y con dueno unico declarado
+
+## Bajadas del indice el 2026-11-03 (3.a vuelta) - la cifra del sprint ANTERIOR, vencida al abrir el de correcciones del mapa
+
+- **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** — bajada al abrir el sprint de correcciones del mapa.
+
+## Bajadas del indice el 2026-11-03 (4.a vuelta) - vencidas por el cierre del sprint anterior y por el frente de errores ya medido en sus 6 patrones
+
+- **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
+- **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
