@@ -16,6 +16,7 @@ limpia TODA la huella en el teardown — correr la suite 2x no rompe por residuo
 datos reales."""
 from __future__ import annotations
 
+import re
 import os
 import sys
 import uuid
@@ -472,6 +473,10 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     # El fixture siembra A y B con credencial VENCIDA (expires_at=1) => `salud()` = "caido" => mp_connected
     # false para los dos. Antes esta aserción esperaba true porque `/me` miraba sólo que hubiera FILA:
     # era el bug que `_estado_mp`/`_mp_connected` cierran. El aislamiento sigue probado por composio_connected.
+    # SM-K5: `fecha_alta` es la de la fila REAL de cada tenant (sembrada hoy): no se fija el valor, se exige
+    # que sea una fecha ISO y se compara el resto del payload exacto.
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", me_a.pop("fecha_alta"))
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", me_b.pop("fecha_alta"))
     assert me_a == {"cliente_id": a.cliente_id, "mp_connected": False, "composio_connected": ["gmail"],
                     "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
                     "legal_aceptado": False, "legal_version_aceptada": None}

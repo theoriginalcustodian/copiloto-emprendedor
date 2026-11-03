@@ -726,7 +726,8 @@ def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, cr
                           if (c["status"] or "").upper() == "ACTIVE"]
     return {"mp_connected": _mp_connected(estado_mp),
             "composio_connected": composio_connected,
-            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+            "fecha_alta": TenantOnboardingStore(conn_factory, cliente_id).fecha_alta()}
 
 
 def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:

@@ -14,6 +14,7 @@ export const CLAVES_DECLARADAS: Record<keyof MeResponse, true> = {
   es_admin: true,
   legal_aceptado: true,
   legal_version_aceptada: true,
+  fecha_alta: true,
 };
 
 export const RAMA_CON_CLAIMS: MeResponse = {
