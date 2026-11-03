@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { Text, TextInput } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect son globales. `render` de RNTL 14 es ASYNC (devuelve
 // Promise) -- mismo patrón que `primitivos.test.tsx`/`PantallaAjustes.test.tsx`: hay que `await`-earlo.
@@ -205,6 +205,50 @@ describe('CampoFecha', () => {
     await fireEvent.changeText(screen.getByTestId('cf-dia'), '07');
     await fireEvent.changeText(screen.getByTestId('cf-mes'), '03');
     expect(screen.getByTestId('cf-resultado').props.children).toBe('');
+  });
+
+  // SM-N40 -- el ⌫ vuelve hacia atrás SÓLO desde un segmento vacío. El camino feliz (tipear 8 dígitos
+  // seguidos) no lo ejercita, por eso la suite estaba verde sin este handler.
+  describe('⌫ entre segmentos', () => {
+    let foco: string[];
+    let espia: jest.SpyInstance;
+    beforeEach(() => {
+      foco = [];
+      espia = jest
+        .spyOn(TextInput.prototype, 'focus')
+        .mockImplementation(function (this: { props: { testID?: string } }) {
+          foco.push(String(this.props.testID));
+        });
+    });
+    afterEach(() => espia.mockRestore());
+
+    const retroceso = { nativeEvent: { key: 'Backspace' } };
+
+    it('mes VACÍO: ⌫ devuelve el foco al día', async () => {
+      await envolver(<Arnes />);
+      await fireEvent(screen.getByTestId('cf-mes'), 'keyPress', retroceso);
+      expect(foco).toEqual(['cf-dia']);
+    });
+
+    it('año VACÍO: ⌫ devuelve el foco al mes', async () => {
+      await envolver(<Arnes />);
+      await fireEvent(screen.getByTestId('cf-anio'), 'keyPress', retroceso);
+      expect(foco).toEqual(['cf-mes']);
+    });
+
+    it('segmento NO vacío: ⌫ borra adentro y NO salta (el salto temprano es el defecto espejo)', async () => {
+      await envolver(<Arnes />);
+      await fireEvent.changeText(screen.getByTestId('cf-mes'), '1');
+      foco.length = 0; // lo que importa es lo que pasa DESPUÉS de tener un dígito
+      await fireEvent(screen.getByTestId('cf-mes'), 'keyPress', retroceso);
+      expect(foco).toEqual([]);
+    });
+
+    it('otra tecla en un segmento vacío no mueve el foco', async () => {
+      await envolver(<Arnes />);
+      await fireEvent(screen.getByTestId('cf-mes'), 'keyPress', { nativeEvent: { key: '5' } });
+      expect(foco).toEqual([]);
+    });
   });
 });
 
