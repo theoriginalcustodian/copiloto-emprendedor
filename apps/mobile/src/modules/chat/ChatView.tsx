@@ -7,7 +7,6 @@ import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type Ci
 
 import { useSession } from '../auth/useSession';
 import { DockEntrada } from './DockEntrada';
-import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
@@ -175,11 +174,12 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
     <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
-      {/* Contrato de modos §4 ("estado siempre visible sin abrir nada"). Primer hijo, FUERA de
-          `PanelDeslizable` — mismo placement que `ModoClinicoToggle` en documed, ver su docstring. */}
-      <View style={styles.indicadorModo}>
-        <IndicadorModoCeremonia />
-      </View>
+      {/* SM-N26: SIN indicador de modo de ceremonia en la cabecera (decisión del operador, 2026-11-02:
+          «ensucia la pantalla; sólo dejar el tirador»). Ningún control escribe `modoCeremonia`, así que
+          el cartel pintaba una constante («Pedir confirmación» para todo tenant). El contrato de modos
+          §4 («estado siempre visible») hoy NO se cumple a propósito: cuando el usuario pueda ELEGIR el
+          modo, la señal permanente vuelve con esa opción — `IndicadorModoCeremonia` queda en el repo,
+          fail-closed, para ese día. */}
 
       {/* `.ctx-chip` del prototipo (`index.html:2750`): de dónde viene lo que está por decirse. SÓLO UI —
           el texto que viaja es el del composer. La salida es la del recibo del prototipo (`:2774`). */}
@@ -249,7 +249,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
-  indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
   contextoAviso: {
     flexDirection: 'row',
     alignItems: 'center',
