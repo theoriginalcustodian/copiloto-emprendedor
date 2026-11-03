@@ -123,6 +123,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N27** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1854,4 +1855,59 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **DENTRO del sprint:** es jugabilidad, reportada por el operador sobre la app. No es divergencia
   contra el mapa (el mapa no dibuja stacks), así que entra por la vía «defecto de uso», no por
   denominador del mapa.
+
+### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
+  la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
+- **⚠️ Esto NO contradice a `SM-N16`, y hay que decirlo porque parece que sí.** `N16` existió porque
+  el acceso vivía **sólo en Mi día** y *«un operador quedó sin salida en el escritorio»* — el camino a
+  cerrar sesión pasa por ahí (el comentario está en `apps/mobile/src/shell/PantallaPrincipal.tsx:118-119`).
+  `N16` **agregó** el avatar donde faltaba; esta ficha **retira el que quedó duplicado**. Las dos
+  apuntan al mismo invariante: **un solo acceso, y en el escritorio**. Quien lea `N16` sin esta ficha
+  va a creer que estamos revirtiendo su fix y lo va a «restaurar».
+- **Medido (código):** el avatar se pinta en **dos** lugares con el mismo componente
+  (`modules/midia/AvatarCuenta.tsx:43`):
+  - **el que SE VA** — `modules/midia/PantallaMiDia.tsx:255`,
+    `<AvatarCuenta inicial={inicialCuenta} avisa={conexionCaida} onPress={onAjustes} />`, cableado
+    desde `PantallaPrincipal.tsx:280`;
+  - **el que SE QUEDA** — `modules/escritorio/EscritorioFunciones.tsx:214`
+    (`testID="escritorio-avatar"`), cableado desde `PantallaPrincipal.tsx:273-277`.
+- **✅ El retiro NO cuesta nada, y esta es la medición que lo vuelve barato:** el punto de aviso de
+  conexión caída **ya viaja al avatar que se queda**. `conexionCaida` lo calcula Mi día
+  (`PantallaMiDia.tsx:163`) y lo **sube** por `onConexionCaida` (`:202-203` →
+  `PantallaPrincipal.tsx:281` `onConexionCaida={setConexionCaida}`), y el shell lo baja al escritorio
+  en `:276` (`avisa={conexionCaida}`). O sea: **sacar el avatar de Mi día no apaga ninguna señal** —
+  el aviso sigue encendiéndose, en el único avatar que queda. Si el aviso NO estuviera ya propagado,
+  esta ficha tendría que haber movido el cálculo, y ese es el trabajo que la medición ahorró.
+- **🔴 Lo que NO se toca, porque es la señal y no el botón:** el cálculo de `conexionCaida` y su
+  `onConexionCaida` **se quedan en Mi día**. Un barrido por `conexionCaida` que se lleve el estado
+  junto con el avatar apaga el punto del escritorio y el síntoma aparece **en otra pantalla**, donde
+  nadie lo va a atribuir a esta ficha. Se retira **el `AvatarCuenta` y su cableado `onAjustes` /
+  `inicialCuenta` en la rama de Mi día**, nada más.
+- **Relación con `SM-N27`:** retirar este call-site **reduce** la superficie del doble-abrir (queda un
+  solo avatar) pero **no lo arregla**: el defecto es que la puerta se reabre al llegar
+  (`app/ajustes.tsx:45`), y sigue vivo tocando dos veces el avatar del escritorio. **No marcar `N27`
+  por el efecto de esta ficha** — es justo el caso de [[dos-causas-suficientes-el-test-no-atribuye]].
+- **DoD:**
+  1. Captura de **Mi día** sin el avatar, 390 px, device — y que el lugar que ocupaba **no quede como
+     hueco**: lo que había alrededor tiene que cerrar el espacio, no dejar un vacío de 40 px.
+  2. Captura de la **pantalla de funciones** con el avatar **presente y funcionando** (abre Ajustes).
+     Es la mitad que un retiro mal hecho se lleva puesta: si desaparece de las dos, el operador queda
+     sin salida y repetimos exactamente el incidente de `SM-N16`.
+  3. **Control de la señal:** con la conexión caída, el punto de aviso **sigue encendiendo** en el
+     avatar del escritorio. Provocable sin tocar nada de red real: la señal entra por
+     `onConexionCaida`, así que alcanza forzar el estado desde Metro. Sin este control, «se ve bien»
+     no distingue entre «la señal viaja» y «la señal se apagó con el avatar».
+  4. Tests que monten `PantallaMiDia` esperando el avatar, **revisados** — y el censo de paridad
+     web↔mobile si lo toca. Que el test viejo siga verde afirmando el avatar en Mi día sería un test
+     que afirma el síntoma ([[un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal]]).
+  5. El comentario de `PantallaPrincipal.tsx:118-119` **actualizado**: hoy dice «las dos capas que
+     muestran el avatar», y después de esta ficha hay una sola. Dejarlo intacto es sembrar el
+     próximo «esto está roto, lo restauro».
+- **Tenencia:** cualquiera de las dos cuentas — es estructura. No espera al operador.
+- **DENTRO del sprint:** decisión de producto del operador sobre la cáscara, y además consolida el
+  invariante de `SM-N16` (un solo acceso a Ajustes, en el escritorio).
 
