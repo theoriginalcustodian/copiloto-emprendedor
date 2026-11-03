@@ -115,8 +115,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
-| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
-| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
+| **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del preview de mp_charge (frontend1). Residual de las 5 frases que NO mueven plata (1/8) ACEPTADO y… |
+| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del preview HITL de mp_charge (frontend1) |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
@@ -1602,8 +1602,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N20 · `sin-issue` — FUERA DEL SPRINT: el LLM escribe los importes en formato inglés y agrega frases que no vienen de la observación
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que la propia sonda dejaria cobrada; captura de device del preview de mp_charge). El residual de las 5 frases que NO mueven plata (1/8) esta ACEPTADO y MEDIDO, no pendiente: no iterar el prompt buscando un 0 que la sonda ya mostro que no llega
-- **Cierre:** 30a05839 (#1414) crudos fuera de las ramas ambiguas + bf90c016 (#1423, SM-N21) reply_literal en las 6 tools que mueven plata; sonda LLM real 0 de 32 con el flag prendido
+- **Falta:** captura de device del preview de mp_charge (frontend1). Residual de las 5 frases que NO mueven plata (1/8) ACEPTADO y MEDIDO, no pendiente
+- **Cierre:** 30a05839 (#1414) + bf90c016 (#1423, SM-N21) reply_literal en las 6 tools que mueven plata; sonda LLM real 0/32 con flag; cobro con LLM real 0/3 distinto del literal (3b20a1f1, #1518)
 - **Dueño:** backend
 - **De dónde sale:** lateral que backend destapó midiendo SM-H5/SM-N8, 2026-11-02. Misma clase que
   aquellas dos, pero en tools que ninguna cubría.
@@ -1630,8 +1630,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N21 · `sin-issue` — FUERA DEL SPRINT: opción C — los importes que mueven plata se escriben por código, no los redacta el LLM
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar ya no es alcanzable tras el modelo propone-no-persiste): cubiertos por test unitario; captura de device del preview HITL de mp_charge (frontend1)
-- **Cierre:** 71725e91 mitad A (#1420) + bf90c016 mitad B reply_literal (#1423), desplegado, flag UC_REPLY_LITERAL=1 prendido; sonda LLM real mismo instrumento N=8: gasto/ingreso/presupuesto/factura importe MAL 0/8 (antes: ingreso 1/6, presupuesto 1/6); negativo con flag prendido en test; Replayer en test del motor
+- **Falta:** captura de device del preview HITL de mp_charge (frontend1)
+- **Cierre:** 71725e91 mitad A (#1420) + bf90c016 mitad B reply_literal (#1423), desplegado, flag UC_REPLY_LITERAL=1; sonda LLM real N=8 0/8 importe mal; SONDA DE COBRO con LLM real 3b20a1f1 (#1518, scripts/sonda_cobro_llm_sm_n21.py): 0/3 distinto del literal byte a byte, negativo redactado libre, tenant de prueba devuelto a 0; hallazgo+fix: el literal decia 'Todavia quedan $0 por pagar' en un cobro total (resumen[estado] vs estado_cobro), test contra CobroStore real; completar_ingreso NO-ALCANZABLE (modelo propone-no-persiste, ya no hay camino de LLM que lo persista)
 - **Dueño:** backend
 - **De dónde sale:** decisión del **operador**, 2026-11-02: «acuerdo opción C», sobre el inventario
   que midió backend para `SM-N20` (13 sitios donde un importe llega al usuario). Es la raíz que
