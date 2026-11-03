@@ -133,7 +133,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
 | **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
 | **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N38** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
 | **SM-N39** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -2617,7 +2617,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N38 · `sin-issue` — El tirador de Mi día: una línea sin texto, y el composer sin fondo
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre la linea con adb input motionevent -- un input tap no ejercita un Pan. Limite DECLARADO del DoD 5, con su motivo: el arrastre va sobre la linea y sobre el composer va el TOQUE; un segundo Pan sobre el composer chocaria con el de BotonVoz y pondria en riesgo el dictado (F6) para duplicar un camino ya cubierto. WCAG 2.5.1 queda satisfecho por el par gesto+toque, no por un cartel.
+- **Cierre:** Codigo en main: 0ceeb45c (#1476, ancestro de origin/main). Tirador de abajo = la barra sola, ALTO_HANDLE 13, sin texto y conservando el label accesible; la tarjeta del panel pasa a una capa con opacidad animada por panelY, asi que en colapsado no queda superficie detras del campo y del mic, sin animar layout ni tocar el gesto; tocar el campo sube el panel. 217 tests de shell/tema/composer verdes y lint 6/6 tras arreglar la paridad de testID en 3644dc61 (panel-superficie nuevo, panel-hint stale). El tirador de ARRIBA queda SIN TOCAR a proposito: es la misma pregunta en el otro borde y su texto no esta decidido.
 - **Dueño:** frontend1 (tomada el 2026-11-03, con el device `RF8T318RN9T`)
 - **De dónde sale:** orden del operador, 2026-11-03, con captura del mapa: *«el tirador de mi día
   está demasiado grande además de que todavía conserva el texto… debe ser una línea sobre el campo
