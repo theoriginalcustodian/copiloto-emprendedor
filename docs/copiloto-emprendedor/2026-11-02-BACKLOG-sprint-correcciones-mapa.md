@@ -119,6 +119,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N21** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1535,6 +1536,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   de texto es `DockEntrada` → `Composer` (`apps/mobile/src/modules/chat/DockEntrada.tsx:151`), que
   vive **dentro de ese mismo contenido**. Con el panel abajo, lo único que queda en pantalla es esa
   tira (`ALTO_HANDLE = 56`, `:48`), y por eso el operador la ve **debajo** del campo.
+- **La pantalla es MI DÍA** (precisado por el operador, 2026-11-02): *«en la pantalla de mi día
+  el tirador está debajo de la entrada de texto… debe estar arriba del campo»*. Si el fix se
+  verifica en otra pantalla, no acredita esta ficha.
 - **El mapa:** `mapa-pantallas/index.html`, vista de Mi día — la barrita de arrastre aparece
   **inmediatamente encima** de «Escribí, o hablá…», no debajo.
 - **Por qué NO es cosmético, y por qué entra al sprint en vez de quedar FUERA:** el tirador es el
@@ -1619,4 +1623,50 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Tenencia:** cualquiera de las dos cuentas — es estructura, no datos. No espera al operador.
 - **DENTRO del sprint:** es jugabilidad del control principal, reportada por el operador sobre la
   app contra el mapa.
+
+### SM-N24 · `sin-issue` — DENTRO DEL SPRINT: el botón de cámara no va en el chat; sólo al cargar un gasto
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del chat) · coordinar con frontend2 (dueño de Gastos)
+- **Decisión del operador, 2026-11-02:** *«el botón de la cámara hay que quitarlo — la única
+  función de la cámara es para los gastos, para incluir una foto del comprobante; debe aparecer
+  sólo cuando se va a agregar un gasto»*. Es **decisión de producto**, no una preferencia visual:
+  acota el alcance de una capacidad a su único caso probado.
+- **Medido (código):**
+  - El botón se monta en el chat **sin condición**: `apps/mobile/src/modules/chat/ChatView.tsx:245`
+    pasa `onFoto={alElegirFoto}` siempre, y `Composer.tsx:205` lo pinta con sólo recibir el prop
+    (`{onFoto && !capturando && …}`).
+  - **La capacidad NO se pierde al sacarlo**, y esto es lo que hace la ficha barata: Gastos **ya
+    tiene su propia entrada de cámara**, con su propio ícono —
+    `apps/mobile/src/modules/gastos/FotoFuncion.tsx:100` (su `IconoCamara` de `:23` es, dicho en su
+    propio comentario, *«mismo trazo que `IconoCamara` de `chat/Composer.tsx`»*). O sea que el
+    camino que el operador describe **ya existe**: esta ficha **retira el duplicado del chat**, no
+    construye nada.
+  - `Composer` lo recibe como prop opcional (`onFoto?`, `:75`), así que **no pasarlo alcanza**: el
+    botón desaparece sin tocar el layout del composer.
+- **⚠️ Hay un comentario que va a defender el botón — leerlo y actualizarlo, no ignorarlo.**
+  `Composer.tsx:142-148` declara: *«`onFoto` rompe la regla de “sin botones de acción propios”, y es
+  la única excepción a propósito (Gastos Fase 2, OCR de ticket)»*, con el razonamiento de por qué
+  la cámara necesita botón (*«abrir la cámara es una capacidad del DISPOSITIVO, no del agente»*).
+  **Ese razonamiento sigue siendo cierto y no se discute** — lo que cambia es **dónde** vive el
+  botón: en el formulario de gasto, no en el chat general. Si el comentario queda como está,
+  el próximo que lo lea va a «restaurar» el botón creyendo que arregla una regresión.
+- **Otros llamadores — NO barrer a ciegas:** `apps/mobile/src/modules/soporte/PantallaSoporte.tsx:168`
+  también pasa `onFoto` (adjuntar una captura a un reporte de soporte). **Ese NO se toca**: no es
+  el chat del copiloto y su foto tiene otro propósito. La ficha retira **un** call-site, no el prop.
+- **DoD:**
+  1. El botón de cámara **ausente** del composer del chat (Mi día y conversación), con captura de
+     device.
+  2. El botón **presente** donde el operador lo pide — al cargar un gasto — con su captura. Las
+     dos mitades: un control que desaparece de todos lados no es lo pedido.
+  3. **Control negativo:** la foto de soporte (`PantallaSoporte`) **sigue funcionando**. Es el
+     llamador que un barrido por `onFoto` se llevaría puesto.
+  4. Tests que dependan del botón en el chat, revisados y pasando — incluido el censo de paridad
+     web↔mobile si lo toca.
+  5. El comentario de `Composer.tsx:142-148` **actualizado**: por qué la excepción sigue siendo
+     válida pero vive en Gastos.
+- **Tenencia:** cualquiera de las dos cuentas — es estructura. No espera al operador.
+- **DENTRO del sprint:** el mapa no dibuja cámara en la barra de entrada de Mi día (la captura que
+  mandó el operador muestra sólo el micrófono), así que además de decisión de producto es
+  convergencia con el mapa.
 
