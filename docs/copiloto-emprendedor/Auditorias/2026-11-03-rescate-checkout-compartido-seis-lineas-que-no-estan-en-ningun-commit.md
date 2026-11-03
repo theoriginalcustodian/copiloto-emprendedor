@@ -1,48 +1,70 @@
-# RESCATE — contenido que SOLO vive en el working tree del checkout compartido
+# ⛔ RETIRADO — no había nada que rescatar. Las 6 líneas las borró `main` a propósito.
 
-Medido el 2026-11-03 contra `origin/main`. Estas lineas **no estan en ningun commit**:
-no las tiene `main`, no las tiene el HEAD del checkout (207 commits atras) y no hay rama
-que las contenga. Un `merge --ff-only` con descarte, un `checkout` o un `reset` las borra
-y no hay de donde recuperarlas.
+> **El titular original de este doc era falso y decía:** *«6 líneas de prosa de diseño que no están
+> en ningún commit; un `--ff-only` las borraba sin dejar rastro»*. **No.** Las 6 son redacción
+> **vieja que `main` reemplazó o derogó por decisión firmada.** Portarlas no rescataba nada:
+> revertía tres decisiones del operador.
+>
+> Se reescribe el titular en vez de appendear la corrección, porque de dos artefactos gana el que
+> circula y un append deja el titular refutado al frente — que es justo el modo de falla que este
+> doc estuvo a punto de causar.
 
-**Por que no se arregla commiteando el archivo entero:** el HEAD de ese checkout esta
-rancio, asi que el archivo tambien trae su version VIEJA de lo que `main` ya cambio.
-Commitearlo rescata estas lineas y **revierte** las de main en el mismo movimiento.
-La resolucion es conservar las DOS mitades, nunca elegir un lado.
-
----
-
-## `Prototipo frontend/odobi-ui/mockups/11-voz-contextual/index.html`
-
-1 linea(s) unica(s):
-
-```html
-      "Todavía no se guardó nada" no es una cortesía: es <b>regla dura del producto</b> — mientras la card
-```
+**Refutado por frontend2 el 2026-11-03.** Verificado por planificación contra la historia de
+`origin/main` antes de aceptarlo (no se le creyó por venir de un peer): los dos shas citados existen,
+son **ancestros de `origin/main`**, y sus mensajes dicen literalmente lo que afirmó.
 
 ---
 
-## `Prototipo frontend/odobi-ui/mapa-pantallas/index.html`
+## El error, que es de método y no de cuidado
 
-5 linea(s) unica(s):
+Mi medidor preguntó **«¿está esta prosa en `main`?»** y contestó, correctamente, **«no»**.
+Y ahí paré. Ése es el defecto: *«no está en main»* **no es una conclusión, son dos mundos que la
+pregunta no separa**:
 
-```html
-     'no es otra pantalla: es el aterrizaje del splash con los labels del post-logout («Entrar» / «Entrar con otra cuenta»). Estaba escrito en §8 desde el 29/07 y nunca se había dibujado — y en mobile no existe: la app salta directo al formulario.'],
-    ['detalle', 'Detalle', 'El sheet que sube al tocar una tarjeta.',
-     'resuelve dos cosas: el detalle que el repo pide al tocar, y la alternativa de un solo puntero que WCAG 2.5.1 exige para el swipe.'],
-     'el título NOMBRA lo que vas a guardar ("Nuevo gasto") y el botón conserva el verbo del repo ("Guardar el gasto"). Un título nombra, un botón actúa. Cambia el contenido según de dónde dictaste; lo que no cambia nunca es "Todavía no se guardó nada".'],
-     'la regla del destino: lo que REGISTRA se queda en su función, lo que PREGUNTA va al chat. Nada se guarda al enviar — sigue vigente "Todavía no se guardó nada".'],
-```
+1. nadie lo escribió todavía ⇒ **puede** ser trabajo pendiente;
+2. **alguien lo borró a propósito** ⇒ rescatarlo es una **regresión**.
 
----
+El discriminante es una sola línea — **`git log origin/main -S'<token>' -- <archivo>`** — y **no la
+corrí**. Lo más caro del caso: ese paso está escrito, con esas palabras, en
+`memoria/base-rancia-invierte-la-direccion-del-diff.md` §«El paso que faltaba: ¿y si un commit lo
+BORRÓ a propósito?», y yo estaba **abriendo ese archivo para reforzarlo** con este hallazgo cuando
+llegó la refutación. Tener la regla escrita no la aplica: la entrada se leyó como «ya cubierto».
 
-## Control
+Y hay una capa más, porque me había felicitado por el medidor equivocado. Antes de esto **dos
+medidores propios se contradijeron** —`grep` de la frase decía «main la tiene», la línea completa
+decía «ausente»— y resolví bien esa disputa: el núcleo de prosa sin markup es el sujeto correcto
+**para la pregunta de la envoltura**. El problema es que respondida esa pregunta di por respondida
+**otra**. Un medidor más fino sobre el eje equivocado da una respuesta más convincente, no más
+verdadera.
 
-Instrumento: `medir_frase_vs_linea.py`. Compara el NUCLEO DE PROSA de cada linea
-(sin markup ni comillas) contra el archivo completo de `main`, porque comparar la
-linea entera cuenta como «unica» una reenvoltura y comparar la frase suelta la
-absuelve de mas. De las 12 lineas agregadas: 3 son la misma prosa con otra
-envoltura, 3 son markup puro, **6 son contenido unico**.
+## Las 6 líneas, una por una
 
-Control positivo: una frase inventada da AUSENTE (corrido, da False).
+| Línea del checkout | Qué pasó en `main` | Commit |
+|---|---|---|
+| «Todavía no se guardó nada» (11-voz l.293, mapa l.202/204) | **Reemplazada** por la frase canónica que decidió el operador el 2026-10-16 (DECISIONES 7 y 8): «Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.» `main` ya la trae. | `fffc3be8` (#1293) — *«la frase del aviso de la card de gasto es la del código (decisión 8)»* |
+| las 2 de la pantalla `detalle` | **Derogada a propósito** por `SM-G2`: *«Sale la fila del sheet derogado»* | `e791cf5e` (#1346) |
+| «en mobile no existe» (reveal, mapa l.174) | **Refutada por medición en device**: `main` dice «en mobile SÍ existe (`EntradaSesion`, medido en device 2026-11-02)» | `dc8d2ffa` (#1438) |
 
+Control: `'todavía no lo anoté' in main → True` · `'EntradaSesion' in main → True`.
+
+## Veredicto vigente
+
+**El working tree del checkout compartido NO tiene prosa de diseño sin respaldo.** Lo que le falta a
+`main` es exactamente lo que `main` descartó. Es el caso de libro de
+[[base-rancia-invierte-la-direccion-del-diff]]: contra una base rancia, **lo que `main` quitó a
+propósito se lee como trabajo propio pendiente**, y el reporte sale alarmado y coherente — no hay
+nada falso en los datos, el defecto está en la pregunta.
+
+**Consecuencia operativa:** los tres archivos divergentes son **descartables**, los 14 restantes se
+resuelven solos al avanzar el HEAD, y el checkout compartido queda al día sin rescatar nada. El paso
+que queda no es de contenido: es el `merge --ff-only`, que bajo CANON 9 no corre ninguna sesión
+—tampoco planificación— sin decisión explícita del operador.
+
+## Lo que sí sobrevive de este doc
+
+Dos reglas, y valen más que el rescate que no existía:
+
+1. **«No está en `main`» es una pregunta, no un veredicto.** Antes de rescatar: `git log -S`.
+2. **Un peer que te refuta con shas se verifica, no se cree ni se descarta.** Los dos caminos
+   fáciles fallan igual: aceptarlo por venir de un par, o defender lo propio por ser propio. Acá los
+   shas se corrieron de nuevo y la refutación se sostuvo entera.
