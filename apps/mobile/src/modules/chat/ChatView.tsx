@@ -19,6 +19,12 @@ import { useConexionRequerida } from './useConexionRequerida';
 
 export interface ChatViewProps {
   /**
+   * SM-N22 — alto que hay entre el borde SUPERIOR de la pantalla y este chat (asa + margen del panel). `KeyboardAvoidingView`
+   * resta su `frame.y` RELATIVO al padre, no el de pantalla, así que sin esto el padding queda corto justo en esa cantidad
+   * y el teclado tapa el campo (medido en device: padding 363 px donde hacían falta 537, la diferencia = 174 px = la tira).
+   */
+  desplazamientoTeclado?: number;
+  /**
    * `hitl (a)` — el aviso de una tarjeta de Mi día que el emprendedor llevó al chat. Entra **sembrado en
    * el composer** (lo manda él) y trae el chip «Desde tu aviso · …». `id` crece con cada aviso: el mismo
    * aviso dos veces vuelve a sembrar. Lo dueña quien monta el chat (`PantallaPrincipal`), porque Mi día
@@ -75,7 +81,7 @@ export interface ChatViewProps {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0 }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
@@ -179,7 +185,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
      * que el composer suba sin que la lista se redimensione (mismo criterio verificado en device por
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
-    <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
+    <KeyboardAvoidingView testID="chat-view" behavior="padding" keyboardVerticalOffset={desplazamientoTeclado} style={styles.contenedor}>
       {/* SM-N26: SIN indicador de modo de ceremonia en la cabecera (decisión del operador, 2026-11-02:
           «ensucia la pantalla; sólo dejar el tirador»). Ningún control escribe `modoCeremonia`, así que
           el cartel pintaba una constante («Pedir confirmación» para todo tenant). El contrato de modos
