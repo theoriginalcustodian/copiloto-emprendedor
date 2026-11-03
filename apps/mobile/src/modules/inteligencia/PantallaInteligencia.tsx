@@ -21,8 +21,8 @@ import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { DockAlChat } from '../voz';
-import { Row } from '../../theme/glass/Row';
 import { BloqueCifra } from '../../theme/BloqueCifra';
+import { Tarjeta } from '../../theme/Tarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -281,40 +281,33 @@ export function PantallaInteligencia() {
           <AcumuladoAnual />
 
           {/* POR COBRAR — con lo vencido resaltado, que es lo accionable. */}
-          <Row testID="inteligencia-por-cobrar">
-            <View style={styles.filaEntre}>
-              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-                Por cobrar
-              </Text>
-              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
-                {kpi(portada.porCobrar.total)}
-              </Text>
-            </View>
-          </Row>
-          {portada.porCobrar.vencido != null && (
-            <Text testID="inteligencia-vencido" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, marginTop: -8 }}>
-              {formatearImporte(portada.porCobrar.vencido)} vencido
+          <Tarjeta testID="inteligencia-por-cobrar" rotulo="Por cobrar">
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 28, letterSpacing: -0.5 }}>
+              {kpi(portada.porCobrar.total)}
             </Text>
-          )}
+            {portada.porCobrar.vencido != null && (
+              <Text testID="inteligencia-vencido" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                {formatearImporte(portada.porCobrar.vencido)} vencido
+              </Text>
+            )}
+          </Tarjeta>
 
           {/* SERIE MENSUAL — barras proporcionales, sin librería: ingresos vs gastos por mes. */}
           {portada.serieMensual.length > 0 && (
-            <View testID="inteligencia-serie">
-              <Text style={rotulo(tema)}>MES A MES</Text>
+            <Tarjeta testID="inteligencia-serie" rotulo="Mes a mes">
               <SerieBarras portada={portada} />
-            </View>
+            </Tarjeta>
           )}
 
           {/* MEJORES CLIENTES — degrada a vacío si Clientes no está (contrato §3.1). */}
-          <Text style={rotulo(tema)}>MEJORES CLIENTES</Text>
+          <Tarjeta testID="inteligencia-clientes" rotulo="Mejores clientes">
           {portada.mejoresClientes.length === 0 ? (
             <Text testID="inteligencia-clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
             </Text>
           ) : (
             portada.mejoresClientes.map((c) => (
-              <Row key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`}>
-                <View style={styles.filaEntre}>
+              <View key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`} style={styles.filaCliente}>
                   <View style={{ flexShrink: 1 }}>
                     <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
                     {/* SM-N32: `null` = no se puede saber → se oculta; jamás «0 comprobantes». */}
@@ -327,10 +320,10 @@ export function PantallaInteligencia() {
                   <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
                     {kpi(c.total)}
                   </Text>
-                </View>
-              </Row>
+              </View>
             ))
           )}
+          </Tarjeta>
 
           {/* LOS 4 GRÁFICOS — cada uno con su propia carga, endpoints independientes de la portada. */}
           <View testID="inteligencia-graficos-seccion" style={{ marginTop: tema.espacio.md }}>
@@ -398,6 +391,7 @@ const styles = StyleSheet.create({
   grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
   kpiCeldaAncha: { flexBasis: '100%' },
+  filaCliente: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
   filaEntre: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
   serieCol: { alignItems: 'center', gap: 4 },
