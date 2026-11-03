@@ -57,9 +57,10 @@ describe('RevealEntrada — pronunciación (SM-N30: el audio está descartado)',
 });
 
 describe('RevealEntrada — wordmark "dobi" letra a letra (BL-X10, port fiel)', () => {
-  it('monta el ícono Marca (glifo "O") y las 4 letras del wordmark, sin "Odobi" como bloque único', async () => {
+  it('SM-Z3: la «O» es una LETRA (no el isotipo) y las 4 letras del wordmark, sin "Odobi" como bloque único', async () => {
     await montar();
-    expect(screen.getByTestId('marca')).toBeTruthy();
+    expect(screen.queryByTestId('marca')).toBeNull();
+    expect(screen.getByTestId('reveal-entrada-o').props.children).toBe('O');
     // 4 `Text` separados, no un único nodo -- así queda cada uno con su propio delay/bounce.
     expect(screen.getByText('d')).toBeTruthy();
     expect(screen.getByText('o')).toBeTruthy();
@@ -68,10 +69,10 @@ describe('RevealEntrada — wordmark "dobi" letra a letra (BL-X10, port fiel)', 
     expect(screen.queryByText('Odobi')).toBeNull();
   });
 
-  it('con movimiento reducido, el lockup completo (Marca + "dobi") queda visible igual, sin animar', async () => {
+  it('con movimiento reducido, el lockup completo («O» + "dobi") queda visible igual, sin animar', async () => {
     mockReducedMotion = true;
     await montar();
-    expect(screen.getByTestId('marca')).toBeTruthy();
+    expect(screen.getByTestId('reveal-entrada-o')).toBeTruthy();
     expect(screen.getByText('d')).toBeTruthy();
     expect(screen.getByText('o')).toBeTruthy();
     expect(screen.getByText('b')).toBeTruthy();
@@ -80,11 +81,21 @@ describe('RevealEntrada — wordmark "dobi" letra a letra (BL-X10, port fiel)', 
 });
 
 describe('RevealEntrada — lockup del prototipo (TRIAJE15, fila `reveal`/`splash`)', () => {
-  it('el wordmark mide 46 dp y es del color de marca, no `acentoTinta` (`.rv-word`, index.html:469)', async () => {
-    await montar();
-    const estilo = StyleSheet.flatten(screen.getByText('d').props.style);
+  it('el wordmark del reveal mide 46 dp y es del color de marca, no `acentoTinta` (`.rv-word`, index.html:469)', async () => {
+    await montar('reveal');
+    const estilo = StyleSheet.flatten(screen.getByText('Odobi').props.style);
     expect(estilo.fontSize).toBe(46);
     expect(estilo.color).toBe(COLOR_PALABRA_MARCA);
+  });
+
+  it('SM-Z3: el wordmark del splash mide 96 dp (`#splash .word`, index.html:1222), con la «O» y el «dobi» del MISMO tamaño y color', async () => {
+    await montar('splash');
+    const o = StyleSheet.flatten(screen.getByTestId('reveal-entrada-o').props.style);
+    const d = StyleSheet.flatten(screen.getByText('d').props.style);
+    expect(o.fontSize).toBe(96);
+    expect(d.fontSize).toBe(96);
+    expect(o.color).toBe(COLOR_PALABRA_MARCA);
+    expect(o.fontFamily).toBe(d.fontFamily);
   });
 
   it('dibuja el descriptor «Tu copiloto emprendedor» junto al wordmark, más chico que él', async () => {
@@ -119,9 +130,13 @@ describe('RevealEntrada — SM-N30: `splash` y `reveal` son dos pantallas, no un
     expect(screen.getByTestId('marca-isotipo').props.width).toBe(54);
   });
 
-  it('SM-A2 (control): el splash NO se tocó -- su `Marca` conserva el badge, la «O» es otra pantalla (`#splash`, index.html:2447)', async () => {
+  it('SM-Z3 (control): el splash es puramente tipográfico -- NINGÚN signo ni badge, como `#splash` (index.html:2447, sin <svg> en el lockup)', async () => {
     await montar('splash');
-    expect(StyleSheet.flatten(screen.getByTestId('marca').props.style).backgroundColor).not.toBe('transparent');
+    expect(screen.queryByTestId('marca')).toBeNull();
+    expect(screen.queryByTestId('marca-isotipo')).toBeNull();
+    // y el control espejo: el reveal SÍ conserva su signo (si esto cae, el de arriba mide un montaje vacío).
+    await montar('reveal');
+    expect(screen.getAllByTestId('marca').length).toBe(1);
   });
 
   it('reveal: el fondo es el degradé crema del prototipo y ambas puertas se dibujan', async () => {
