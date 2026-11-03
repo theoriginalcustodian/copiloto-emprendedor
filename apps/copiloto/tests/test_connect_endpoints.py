@@ -218,11 +218,30 @@ def test_composio_valid_toolkits_derived_matches_policy_union():
     real). Si un test de este archivo divergiera de la policy real, este assert lo cazaría."""
     expected = frozenset(CALENDAR_POLICY) | frozenset(services.connectable_policy())
     assert web_module._composio_valid_toolkits() == expected
-    # Regla A7: conectable ⇔ tiene acciones. Drive se queda SIN conectar (TOOLS vacío), pero su policy
-    # sigue en el gateway del worker (`merged_policy`) para `archivar_factura_en_drive`.
-    drive = next(m.TOOLKIT for m in services.modules().values() if not getattr(m, "TOOLS", None))
-    assert drive not in expected
-    assert drive in services.merged_policy()
+    # Regla A7 + SM-Z1: conectable ⇔ acciones detrás (`TOOLS` o `ARCHIVADO_SLUGS`). Drive tiene `TOOLS` vacío
+    # (el agente no sube archivos) pero archiva facturas: se conecta desde Ajustes.
+    assert "googledrive" in expected
+    assert "googledrive" in services.merged_policy()
+
+
+def test_modulo_sin_tools_ni_archivado_sigue_fuera_de_conectables(monkeypatch):
+    """CONTROL POSITIVO del eje que agrega SM-Z1: sin esto, «Drive volvió» no se distingue de «ahora entra todo».
+    Un módulo con `TOOLS` vacío y SIN `ARCHIVADO_SLUGS` tiene su policy en el gateway pero no se conecta."""
+    import types
+    fantasma = types.SimpleNamespace(TOOLKIT="fantasma", POLICY=object(), TOOLS={}, build=lambda *a, **k: None)
+    services._discover()
+    monkeypatch.setitem(services._BY_SERVICE, "fantasma", fantasma)
+    assert not services.tiene_acciones_detras(fantasma)
+    assert "fantasma" in services.merged_policy()
+    assert "fantasma" not in services.connectable_policy()
+    assert "fantasma" not in web_module._composio_valid_toolkits()
+    assert "fantasma" not in services.acciones_por_toolkit()
+
+
+def test_drive_se_conecta_pero_no_le_inventa_acciones_al_agente():
+    """SM-Z1: `/composio/connect` acepta googledrive y `acciones_por_toolkit` NO le pone acciones de agente."""
+    assert "googledrive" in web_module._composio_valid_toolkits()
+    assert "googledrive" not in services.acciones_por_toolkit()
 
 
 @pytest.mark.parametrize("toolkit", sorted(
@@ -236,15 +255,23 @@ def test_composio_connect_accepts_every_derived_toolkit(toolkit):
     assert gateway.authorize_calls == [("cid-A", toolkit)]
 
 
-def test_composio_connect_rechaza_un_servicio_sin_acciones():
-    """A7: Drive no se puede conectar (no hay nada detrás). Un slug que no está en la lista conectable se
-    rechaza y NUNCA llega al gateway. Control: el mismo endpoint acepta uno conectable (test de arriba)."""
-    drive = next(m.TOOLKIT for m in services.modules().values() if not getattr(m, "TOOLS", None))
+def test_composio_connect_rechaza_un_servicio_sin_acciones(monkeypatch):
+    """A7: un módulo sin NADA detrás (ni `TOOLS` ni `ARCHIVADO_SLUGS`) no se puede conectar. Un slug que no está en
+    la lista conectable se rechaza y NUNCA llega al gateway. Control: el mismo endpoint acepta uno conectable
+    (test de arriba) y, desde SM-Z1, también Drive (`ARCHIVADO_SLUGS`, sin `TOOLS`)."""
+    import types
+    fantasma = types.SimpleNamespace(TOOLKIT="fantasma", POLICY=object(), TOOLS={}, build=lambda *a, **k: None)
+    services._discover()
+    monkeypatch.setitem(services._BY_SERVICE, "fantasma", fantasma)
     gateway = _FakeComposioGateway()
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), composio_gateway=gateway)
-    r = TestClient(app).get("/composio/connect", params={"service": drive})
+    r = TestClient(app).get("/composio/connect", params={"service": "fantasma"})
     assert r.status_code != 200
     assert gateway.authorize_calls == []
+    # Control positivo: Drive, con `TOOLS` vacío pero con archivado, SÍ entra.
+    r = TestClient(app).get("/composio/connect", params={"service": "googledrive"})
+    assert r.status_code == 200
+    assert gateway.authorize_calls == [("cid-A", "googledrive")]
 
 
 # --- DELETE /composio/connection ---------------------------------------------------
