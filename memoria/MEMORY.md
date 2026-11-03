@@ -94,12 +94,10 @@
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
-- [🛡️✅ El guard que te acusa de APAGAR algo suele tener razon](el-guard-que-te-acusa-de-apagar-algo-suele-tener-razon.md) - no lo edites: que tu cambio no pueda dejar el conjunto VACIO.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) - leé la rama de ERROR.
 - [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea.
 - [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
-- [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
 - [🧪🔌 Test VERDE y CERO invocadores = el control NO existe](un-control-con-test-verde-y-cero-invocadores.md) - un permiso NO es un disparador. 4ª vez.
 - [🔗🛡️ El 1er test rojo MATA la suite: el ajeno escuda](el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md) - corrieron 8 de 47.
@@ -138,8 +136,6 @@
 - [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
-- [🧪 El sujeto de prueba ÚNICO no encarna el estado exigido](sujeto-de-prueba-unico-no-encarna-el-estado-que-exige-el-control.md) — 4 fichas, 1 causa
-- [🔌🕳️ `adb devices` vacío NO acredita que no haya teléfono](adb-devices-vacio-no-acredita-que-no-haya-telefono.md) - el server en frío lista antes de enumerar. `wait-for-device` primero.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 - [📋🟢 Una receta con PREMISA VENCIDA da un falso VERDE](una-receta-con-premisa-vencida-produce-un-falso-VERDE.md) - el defecto pasa a ser lo esperado; nadie revisa un verde.
@@ -178,3 +174,5 @@
 
 ## 🗄️ Historia
 → [HISTORIA.md](HISTORIA.md) - cerrados y bajados. NO se carga; buscable.
+- [🗓️🕳️ `--since=<hoy>` dio CERO con seis commits de hoy](el-filtro-de-fecha-da-cero-en-el-borde-del-dia.md) — el filtro miente en el borde del dia; usa `-N`.
+- [🚧🔧 Un `Falta:` que dice IMPOSIBLE describe el INSTRUMENTO del dia](un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md) — una tenencia nueva destrabo 4 fichas sin tocar codigo.
