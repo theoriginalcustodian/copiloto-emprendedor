@@ -14,7 +14,7 @@ arquitectura ya cerrada: "SOLO LECTURA para mostrar/BI. NO importar eventos como
 de Google Calendar (por defecto HOY; `desde`/`hasta` hasta 14 días + `grupos`, ADR-004) del tenant, sin gate HITL (mismo trato que `consultar_actividad`). Con
 gracia si el toolkit no está conectado (`ConnectionRequired` -> `conectado=False`, nunca 500) — ver
 `spikes/calendar-find-event/RESULT.md`, que dejó ese camino verificado contra Composio real. El
-parseo de la RESPUESTA (`_eventos_de`) sigue `[ASSUMED_PENDING_VERIFY]`: el tenant canónico no tiene
+parseo de la RESPUESTA (`_eventos_de`) sigue `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: Calendar sigue sin conectar en el tenant canónico (SM-N34)]`: el tenant canónico no tiene
 Calendar conectado todavía, así que el shape exacto de `GOOGLECALENDAR_FIND_EVENT` (más allá de
 `id`/`summary`/`start`, lo único que `test_e2e.py::_events()` ya ejercitó) no se confirmó contra
 datos reales — se corrige apenas el spike se re-corra con la conexión en `ACTIVE`.
@@ -107,7 +107,7 @@ def _agrupar(eventos: list[dict], hoy: date, tz: str = DEFAULT_TZ) -> list[dict]
 def _eventos_de(res: dict) -> list[dict]:
     """Adapta el shape crudo de `GOOGLECALENDAR_FIND_EVENT` a lo que consume el frontend.
 
-    [ASSUMED_PENDING_VERIFY] — ver docstring del módulo y `spikes/calendar-find-event/RESULT.md`.
+    [ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: Calendar sin conectar, SM-N34] — ver docstring del módulo y `spikes/calendar-find-event/RESULT.md`.
     Recorta a `id`/`titulo`/`inicio` (equivalente a `id`/`summary`/`start`, los ÚNICOS campos que
     `test_e2e.py::_events()` ya ejercitó contra Composio real) porque es la única porción del shape
     con evidencia — no se inventan campos (fin/ubicación/invitados) sin haberlos visto. Recorre el

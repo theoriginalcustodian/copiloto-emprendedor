@@ -179,7 +179,7 @@ def test_calendario_no_conectado_da_conectado_false_no_500():
 
 
 def test_calendario_conectado_devuelve_eventos_parseados():
-    """[ASSUMED_PENDING_VERIFY] shape de ejemplo -- sólo `id`/`summary`/`start`, los únicos campos
+    """[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: Calendar sin conectar, SM-N34] shape de ejemplo -- sólo `id`/`summary`/`start`, los únicos campos
     que `test_e2e.py::_events()` ya ejercitó contra Composio real (ver docstring de `_eventos_de`)."""
     resultado = {"data": {"items": [
         {"id": "evt1", "summary": "Reunión con cliente", "start": {"dateTime": "2026-08-11T15:00:00-03:00"}},
