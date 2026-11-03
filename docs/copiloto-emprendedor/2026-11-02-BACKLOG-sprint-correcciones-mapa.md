@@ -140,6 +140,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N42** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» … |
 | **SM-N43** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 6 del DoD: captura en device del chat en modo CLARO con un mensaje propio y uno del asistente (frontend… |
 | **SM-N44** | `sin-issue` | 🟧 DOD-PARCIAL | frontend2: usar cuit_vinculado y no escribir res.cuit con conectado=false (PantallaFacturacion y AfipSetup); frontend… |
+| **SM-N45** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2932,4 +2933,58 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      configuraste». Es de frontend1, la tenedora.
 - **Depende:** nada. El perfil guardado que hace visible el defecto ya existe (`SM-N35`).
 - **FUERA del corpus del mapa:** no infla el denominador de paridad (`DEC-18`).
+
+### SM-N45 · `sin-issue` — Inteligencia dibuja PLANAS las seis secciones que el prototipo dibuja como cards
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (el componente y el envoltorio) · frontend1 (la captura)
+- **De dónde sale:** el operador, 2026-11-03, mirando `prototipo/index.html?ver=bi` contra la app:
+  *«la información al parecer está plana y no en cards como en el prototipo del mapa»*.
+- **Medido en los dos lados, contra `origin/main`:**
+  - **El prototipo.** La unidad visual es `.bloque`, y es una card de verdad:
+    `index.html:869-870` → `background:var(--blanco)` + `border-radius:var(--r-m)` +
+    `box-shadow:0 4px 18px rgba(26,21,18,.07)` (la elevación del sistema), más su rótulo
+    `h4` en `:871` (11 px, `letter-spacing:.14em`, uppercase, color secundario). Son **seis**:
+    Por cobrar · En qué se te va la plata · Entró vs. salió · Mejores clientes ·
+    Facturado en los últimos 12 meses · Margen por trabajo.
+  - **La app.** `PantallaInteligencia.tsx` (407 líneas) tiene **cero** contenedores de card: el
+    único `borderRadius` del archivo es `:406`, y es la barra de 12 px de un gráfico. `AcumuladoAnual.tsx`
+    (que dibuja «Facturado en los últimos 12 meses») tampoco: compone `Row` + `View` planos.
+    Las secciones se apoyan directo sobre el lienzo.
+- **🔴 La causa raíz, y no es «se olvidaron de poner la card»: la card del sistema NUNCA se volvió
+  componente.** El único primitivo de superficie elevada es `BloqueCifra`, que es el bloque **negro**
+  de máximo contraste y tiene una regla dura encima — *«una por pantalla, nunca dos»*
+  (`odobi-ui/CLAUDE.md` §5, citada en `BloqueCifra.tsx:4-7`). Y la función que implementa la elevación
+  del sistema, `elevacion()`, es **privada** de `BloqueCifra.tsx:94`: medido, **1 uso en todo
+  `apps/mobile/`**, el suyo. O sea la pieza reutilizable existe pero está encerrada en el archivo del
+  bloque negro, así que una pantalla que necesitaba una card **clara** no tenía ni componente ni
+  helper que usar, y la dibujó plana. Es el patrón inverso al de `SM-N43`: allá un rol se resolvió con
+  el token de otro; acá un rol **no tiene** pieza y se resolvió con ninguna.
+- **✅ Alcance ACOTADO, y la medición refutó mi propia predicción.** Supuse que si la card nunca fue
+  componente el defecto tenía que estar en varias pantallas. Medido por vista sobre el prototipo: las
+  **6** `.bloque` están **todas** en `inteligencia` (control negativo con una clase inexistente: 0).
+  Las otras vistas usan sus propias clases (`.fact`, `.resumen`, `.kpi`), que el operador no objetó.
+  **No se barren otras pantallas por esta clase** — y eso no es pereza: ampliar el denominador del
+  sprint con un hallazgo es el defecto que `DEC-18` ya cerró.
+- **DoD:**
+  1. **El primitivo, extraído donde ya vive.** Un componente de card clara en
+     `apps/mobile/src/theme/` que tome `color.superficie` (hoy `#FFFFFF`, por `SM-N43`), el radio del
+     tema y la elevación del sistema. `elevacion()` **se exporta desde `BloqueCifra.tsx` y se reusa**:
+     no se vuelve a escribir el `Platform.select`. Duplicar el helper es exactamente el defecto que
+     este repo ya pagó —el mismo arreglo viviendo dos veces y el fix llegando a uno.
+  2. **Las seis secciones envueltas**, incluido el rótulo `h4` del prototipo (hoy la app no replica
+     ni el tamaño ni el tracking ni la caja alta). `AcumuladoAnual.tsx` es una de las seis: se envuelve
+     también, sin tocar su contrato ni su fail-soft.
+  3. **`BloqueCifra` NO se toca.** La portada «Saldo en caja» sigue siendo el bloque negro, una y
+     nunca dos. Si el envoltorio llegara a convertir la portada en card clara, se rompió la regla §5.
+  4. **Test con las dos mitades:** que cada una de las seis tenga el contenedor (por `testID`, no por
+     snapshot), **y el caso negativo** — la portada **no** es una card clara. Sin esa segunda mitad no
+     se distingue «envolví las seis» de «envolví todo».
+  5. **Las dos pieles.** En la piel oscura la card va a `color.superficie` del tema, nunca a un blanco
+     fijo: un `#FFFFFF` hardcodeado deja la piel oscura ilegible, que es el mismo caso que
+     `BloqueCifra.tsx:19` documenta para el negro.
+  6. **Captura en device** de la pantalla con las seis cards, en piel clara (frontend1, tenedora). Es
+     lo único que ningún gate puede medir.
+- **Depende:** nada. Los seis contenedores y el primitivo son código, sin device ni decisión del
+  operador.
 
