@@ -63,10 +63,12 @@ def test_ningun_conector_con_tools_queda_sin_copy_dedicado():
 def test_la_accion_interna_no_viaja_en_la_respuesta():
     """El enum de la card es cerrado: `alcance_items` emite sólo texto+condicion."""
     entrada = catalog._entry("gmail", kind="composio", connected=False)
-    assert entrada["alcance_items"] == [{"texto": "Enviar mails", "condicion": "requiere_ok"}]
+    assert entrada["alcance_items"] == [{"texto": "Enviar mails", "condicion": "requiere_ok",
+                                         "icono": "paper-plane-tilt"}]
     assert entrada["capabilities"] == ["Enviar mails"]
     card = catalog.requiere_conexion_card("gmail", "Gmail")
-    assert all(set(i) == {"texto", "condicion"} for i in card["alcance"])
+    assert all(set(i) - {"icono"} == {"texto", "condicion"} for i in card["alcance"])
+    assert all("accion" not in i for i in card["alcance"] + entrada["alcance_items"])
 
 
 def test_el_catalogo_gmail_ya_no_promete_leer_ni_buscar():
