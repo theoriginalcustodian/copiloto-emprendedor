@@ -58,6 +58,24 @@ def _params_modelo(model: str, max_tokens: int) -> dict:
     return {"max_tokens": max_tokens}
 
 
+def kwargs_sdk(model: str, *, max_tokens: int | None = None, temperature: float | None = None) -> dict:
+    """Kwargs de `client.chat.completions.create` (SDK de OpenAI) para `model`: la familia gpt-6 no acepta
+    `temperature` ni `max_tokens` (usa `max_completion_tokens` + `reasoning_effort=none`); las anteriores
+    reciben exactamente lo que recibían. Para los call-sites con SDK (auditor, forjador), que no pasan por
+    `LlmProvider`."""
+    out: dict = {}
+    if model.startswith("gpt-6"):
+        if max_tokens is not None:
+            out["max_completion_tokens"] = max_tokens
+        out["extra_body"] = {"reasoning_effort": "none"}
+        return out
+    if temperature is not None:
+        out["temperature"] = temperature
+    if max_tokens is not None:
+        out["max_tokens"] = max_tokens
+    return out
+
+
 def _aplicar_modelo(payload: dict, model: str, max_tokens: int) -> dict:
     """Fija `model` y sus parámetros de límite en `payload`, descartando los de otra familia. Se usa también
     al pasar al failover, que puede ser de otra familia que el primario."""

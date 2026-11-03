@@ -34,13 +34,16 @@ de verdad — que es lo único que importa cuando el proveedor cambia un modelo 
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any
+
+from clients.agent.providers.llm import kwargs_sdk
 
 #: Modelos definidos por el operador (2026-07-31). El auditor es el caro a propósito: es el que puede
 #: dejar pasar un parche que toca dinero o el fisco.
 FORJADOR = "gpt-4o-mini"
-AUDITOR = "gpt-4o"
+AUDITOR = os.environ.get("COPILOTO_AUDITOR_MODELO") or "gpt-4o"
 
 INSTRUCCION = (
     'Respondé SOLO JSON: {"aprobado": true|false, "motivo": "<una frase>"}. '
@@ -139,8 +142,7 @@ def auditar(client: Any, parche: str, contexto: str, evidencia: str = "") -> Ver
             messages=[{"role": "user", "content":
                        f"{INSTRUCCION}\n\nCONTEXTO: {contexto}\n\n{bloque_evidencia}"
                        f"PARCHE PROPUESTO:\n```diff\n{parche}\n```"}],
-            temperature=0,
-            max_tokens=200,
+            **kwargs_sdk(AUDITOR, max_tokens=200, temperature=0),
             response_format={"type": "json_object"},
         )
         datos = json.loads(respuesta.choices[0].message.content or "{}")
