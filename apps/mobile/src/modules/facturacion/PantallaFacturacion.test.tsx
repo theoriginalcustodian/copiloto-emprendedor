@@ -92,6 +92,7 @@ import {
 
 import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { tomarAvisoParaElChat } from '../../navegacion/avisoParaElChat';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
 import { CLAVE_IDEM_STORAGE_KEY, PantallaFacturacion } from './PantallaFacturacion';
@@ -860,5 +861,28 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
 
     await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
     expect(jest.mocked(crearFactura).mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
+  });
+
+  /**
+   * SM-J1 — el dock de Facturación SIEMBRA el chat; jamás emite. Lo escrito llega como aviso al chat (donde la
+   * card HITL pide confirmación) y la pantalla vuelve atrás. Control negativo: ninguna API de emisión se toca.
+   */
+  it('SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador', async () => {
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
+    jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+    jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    const aviso = tomarAvisoParaElChat();
+    expect(aviso).toMatchObject({ texto: 'Factura a Pérez por 1500', contexto: 'Facturación' });
+    expect(router.back).toHaveBeenCalled();
+    expect(crearFactura).not.toHaveBeenCalled();
+    expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+    expect(setCliente).not.toHaveBeenCalled();
+    expect(agregarItem).not.toHaveBeenCalled();
   });
 });

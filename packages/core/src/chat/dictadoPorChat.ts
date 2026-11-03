@@ -33,7 +33,8 @@ import { leerPresupuestoPropuesto, type PresupuestoPropuesto } from './presupues
  * es exactamente lo que envenena la medición.
  */
 
-export type DestinoDictado = ContextoTranscripcion;
+/** Los destinos con formulario que prellenar; `factura`/`bi` (SM-J1) son sólo telemetría y van al chat, sin lector. */
+export type DestinoDictado = Exclude<ContextoTranscripcion, 'factura' | 'bi'>;
 
 export function kindDictado(destino: DestinoDictado): KindDictado {
   return `dictado:${destino}`;

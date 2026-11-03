@@ -38,6 +38,7 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { DockAlChat } from '../voz';
 import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -690,6 +691,9 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
           </>
         )}
       </ScrollFormulario>
+
+      {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
+      {gate.tipo === 'listo' && vista === 'listado' && <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />}
 
       {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
           se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado
