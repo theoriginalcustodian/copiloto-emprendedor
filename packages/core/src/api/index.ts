@@ -391,6 +391,8 @@ export {
   leerGraficoCategorias,
   leerGraficoMargenTrabajo,
   imputacionDeTrabajos,
+  margenPonderado,
+  type MargenPonderado,
 } from './inteligencia';
 export type {
   CajaPortada,

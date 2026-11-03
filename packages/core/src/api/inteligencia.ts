@@ -660,3 +660,34 @@ export function imputacionDeTrabajos(
     texto: textoDeImputacion(total, sinNingunGasto, gastosImputados),
   };
 }
+
+/**
+ * SM-N32 — el margen del conjunto de trabajos CERRADOS (con cobro), **ponderado**: `Σmargen / Σcobrado`.
+ * Decisión de planificación: un promedio simple de porcentajes deja que un trabajo de $1.000 pese igual
+ * que uno de $500.000. Por eso el rótulo es «Sobre N trabajos cerrados» y no «Promedio de N» (no es un
+ * promedio de los porcentajes). `peor` es el de menor margen %, con nombre. Sin trabajos con `cobrado > 0`
+ * y `margen` legibles → `pct: null` (ausente ≠ cero). Los `sinIngreso` no entran: ni siquiera llegan acá.
+ */
+export interface MargenPonderado {
+  n: number;
+  pct: number | null;
+  peor: { etiqueta: string; pct: number } | null;
+}
+
+export function margenPonderado(trabajos: readonly TrabajoConMargen[]): MargenPonderado {
+  let sumMargen = 0;
+  let sumCobrado = 0;
+  let n = 0;
+  let peor: { etiqueta: string; pct: number } | null = null;
+  for (const t of trabajos) {
+    const cobrado = t.cobrado != null ? Number(t.cobrado) : NaN;
+    const margen = t.margen != null ? Number(t.margen) : NaN;
+    if (!Number.isFinite(cobrado) || !Number.isFinite(margen) || cobrado <= 0) continue;
+    n += 1;
+    sumMargen += margen;
+    sumCobrado += cobrado;
+    const pct = (margen / cobrado) * 100;
+    if (peor === null || pct < peor.pct) peor = { etiqueta: t.etiqueta, pct };
+  }
+  return { n, pct: sumCobrado > 0 ? (sumMargen / sumCobrado) * 100 : null, peor };
+}
