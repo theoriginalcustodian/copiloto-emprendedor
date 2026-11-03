@@ -130,6 +130,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
+| **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
+| **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
+| **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N38** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2535,5 +2539,115 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Depende:** Google Calendar conectado en el usuario canónico (mismo disparador que ya tenía la
   entrada 10) y la tenencia del device, que hoy es de frontend1.
 - **DENTRO del sprint:** es divergencia directa contra el mapa — el criterio declarado del sprint.
+
+---
+
+### SM-N35 · `sin-issue` — La categoría de monotributo, en Ajustes › ARCA
+
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend2 no la puede producir sola.
+- **Cierre:** 8ec870e5 (#1468, ancestro de origin/main): selector de categoria A-K en PantallaAfipSetup junto a condicionIva, reusando OpcionSelect; solo con condicionIva=monotributo; opcional (no mandar categoria sigue siendo valido).
+- **Dueño:** frontend2
+- **De dónde sale:** decisión del operador, 2026-11-03, en
+  `coordinacion/.../2026-11-03_contrato_planificacion-a-backend-y-frontend2_MONOTRIBUTO-*`.
+  *«la escala de monotributo la define ARCA… y mi categoría es A… tal vez habría que agregar en
+  ajustes este dato dentro de la configuración de ARCA»*.
+- **⚠️ Casi todo existe — se completa, no se construye.** El medidor entero (barra, `N% del tope`,
+  semáforo) está en `apps/mobile/src/modules/inteligencia/AcumuladoAnual.tsx:76-98`, con su
+  fail-soft en `:16-17`. El formulario de ARCA y el patrón de selector, en
+  `apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx:85,171,180`. **El medidor nunca
+  apareció por falta de UNA entrada, no por falta de código:** quien escriba un medidor nuevo está
+  duplicando `AcumuladoAnual.tsx`.
+- **DoD:**
+  1. Selector de categoría (A…K) en `PantallaAfipSetup`, **junto a `condicionIva`**, reusando
+     `opcionesCondicionIva`/`OpcionSelect` (`:85`) — mismo patrón, no uno nuevo.
+  2. **Sólo visible/aplicable cuando `condicionIva === 'monotributo'`.** Un responsable inscripto no
+     tiene categoría; mostrarle el campo es pedirle un dato que no existe.
+  3. Persiste en el perfil por el mismo camino que los campos actuales (`:259-262`), per-tenant,
+     **nunca de env** (regla 7).
+  4. Test de que **no mandar categoría sigue siendo válido**: el fail-soft es el estado por defecto y
+     una validación obligatoria rompería a todo emprendedor ya dado de alta.
+  5. Captura de device del formulario con la categoría elegida.
+- **Depende:** nada del backend para la UI.
+- **FUERA del corpus del mapa:** alcance nuevo decidido por el operador; no infla el denominador de
+  paridad (`DEC-18`).
+
+---
+
+### SM-N36 · `sin-issue` — La escala de ARCA versionada y el `tope` que hoy es `null`
+
+- **Estado:** DOD-PARCIAL
+- **Falta:** Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCIDA => null y nunca el tope viejo, que es el modo de falla sin sintoma; (c) que los tests corrieron en el VPS, con la cita. Sin eso el DoD no esta completo aunque el codigo este en main.
+- **Cierre:** 4a5bb923 (#1469, ancestro de origin/main): escala de monotributo versionada con vigencia_desde y facturado.tope calculado; contabilidad_web.py deja de devolver None cuando hay categoria Y escala vigente.
+- **Dueño:** backend
+- **De dónde sale:** el mismo contrato de monotributo. El hueco ya estaba **nombrado con dueño** en
+  `apps/copiloto/contabilidad_web.py:68-72`: `"tope": None` deliberado, porque *«un tope viejo
+  mostrado como vigente es peor que no mostrar ninguno»*.
+- **DoD:**
+  1. Config **versionada con `vigencia_desde`** (lo que el comentario de `:72` ya exige), **no
+     hardcode**, con **dueño de actualización escrito**.
+  2. `contabilidad_web.py` deja de devolver `None` cuando **hay categoría Y hay escala vigente**; en
+     cualquier otro caso sigue devolviendo `None`. **Las dos ramas con test.**
+  3. 🔴 **Control explícito: escala vencida ⇒ `null`, nunca el tope viejo.** Es el modo de falla que
+     el propio comentario nombró, y el que **no da síntoma**: el número sale, se ve bien, y es falso.
+  4. Tests en el **VPS**.
+- **Depende:** la categoría de `SM-N35` llegando en el perfil (contrato de datos, no de UI).
+- **FUERA del corpus del mapa.**
+
+---
+
+### SM-N37 · `sin-issue` — El aviso al acercarse al límite de monotributo
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** el mismo contrato. **Es alcance NUEVO**: el mapa sólo dibujaba la barra «68 %
+  del tope» y la proyección; el aviso proactivo no lo dibujaba nadie.
+- **DoD:**
+  1. El umbral es **config**, no una constante enterrada.
+  2. **Se avisa UNA vez por cruce de umbral**, no en cada consulta. Un aviso que se repite se vuelve
+     ruido y el emprendedor lo apaga — el mismo mecanismo por el que un guard que grita en el caso
+     normal se desarma solo.
+  3. Qué pasa si la escala cambia y el % **baja** de vuelta: escrito, no implícito.
+  4. **No se dispara nunca con `tope == null`.** Un aviso calculado sobre un tope ausente es una
+     alarma inventada.
+- **Depende:** `SM-N36`.
+- **FUERA del corpus del mapa.**
+
+---
+
+### SM-N38 · `sin-issue` — El tirador de Mi día: una línea sin texto, y el composer sin fondo
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (tomada el 2026-11-03, con el device `RF8T318RN9T`)
+- **De dónde sale:** orden del operador, 2026-11-03, con captura del mapa: *«el tirador de mi día
+  está demasiado grande además de que todavía conserva el texto… debe ser una línea sobre el campo
+  de ingreso de texto igual que como se ve en el mapa… la única diferencia con la imagen es que
+  ahora no tiene fondo alrededor del campo y del botón»*. Contrato completo en
+  `coordinacion/.../2026-11-03_contrato_planificacion-a-frontend1_SM-N38-*`.
+- **Medido:** `apps/mobile/src/shell/PanelDeslizable.tsx:47` → `ALTO_HANDLE = 56`, y `:467-472`
+  monta un `<Text testID="panel-hint">` con «Escribile a Odobi» (`PantallaPrincipal.tsx:213`).
+  **frontend1 lo midió en device sobre `acdbff54`: 105 px reales.** El prototipo
+  (`Prototipo frontend/odobi-ui/mockups/09-mi-dia/index.html:123-124`) tiene el grip en **~13 px**
+  (barra 44×5 + padding 6/2) y `:128` declara `.peek{background:transparent}`.
+- **🔴 Corrección registrada:** planificación afirmó además que el composer quedaba fuera de
+  pantalla por el alto fijo de `:421`. **Falso en device:** `#1442` (SM-N22) ya monta el
+  `DockEntrada` como `pieAbajo` y el composer asoma. Ese punto se retiró. El device no corre `main`,
+  corre lo que Metro sirve — se midió el árbol y se afirmó el efecto.
+- **DoD:**
+  1. La tira del asa es **sólo la línea** (barra 44×5 con el padding del prototipo, ~13 px), **sin
+     `<Text>`**. `hintAbajo` y su paso desde `PantallaPrincipal.tsx:213` se retiran si quedan sin
+     uso — nada de dejar el prop muerto.
+  2. El composer va **sin fondo ni tarjeta** alrededor del campo y del botón
+     (`.peek{background:transparent}`). No se duplica el composer: es el que ya existe.
+  3. **Tocar el composer sube el panel**, con test. 🔴 Condiciona al punto 1: el hint de texto es hoy
+     la alternativa accesible al gesto de arrastre (WCAG 2.5.1), y el prototipo la resuelve con el
+     toque, no con un cartel. Retirar el texto sin esto deja el gesto sin alternativa.
+  4. El arrastre sigue funcionando sobre la línea y sobre el composer. Antes de tocar el gesto:
+     skill `swmansion-rn-gestures`; en device, `adb input motionevent`, nunca `input tap`.
+  5. Tests de `PanelDeslizable` actualizados — si alguno se vuelve verde por el síntoma y no por el
+     mecanismo, se reescribe, no se borra.
+  6. **Captura en device** del estado colapsado, comparable con la imagen del mapa.
+- **FUERA del corpus del mapa:** es una corrección pedida por el operador sobre una pantalla que el
+  corpus ya mide por otras entradas; no agrega denominador de paridad.
 
 ---
