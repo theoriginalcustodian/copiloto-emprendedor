@@ -458,3 +458,6 @@ def test_adversarial_N44_estado_sin_cuit_nunca_responde_con_el_cuit_de_otro_tena
     # se responde la verdad del que pregunta (no vinculado), sin filtrar nada del dueño.
     ajeno = client.get("/afip/estado", params={"cuit": cuit_b}, headers={"x-t": tenant_a}).json()
     assert ajeno["conectado"] is False and ajeno["perfil_completo"] is False and ajeno["ambientes_vinculados"] == []
+    # SM-N44: la respuesta le dice a A cuál es SU CUIT (para que el cliente se corrija), nunca el de B.
+    assert ajeno["cuit_vinculado"] == cuit_a and cuit_b not in (ajeno["cuit_vinculado"] or "")
+    assert ve_a["cuit_vinculado"] is None and ve_c["cuit_vinculado"] is None      # derivó el suyo, o no tiene
