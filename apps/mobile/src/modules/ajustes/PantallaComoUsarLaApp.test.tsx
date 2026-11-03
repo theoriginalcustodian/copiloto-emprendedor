@@ -68,12 +68,13 @@ describe('PantallaComoUsarLaApp — la fusión de la guía y el «cómo uso la a
 
   it('SM-N42 p4: los cinco temas viven en UNA sola tarjeta (el `.grupo` del prototipo), no en cinco', async () => {
     await montar();
-    const tarjeta = screen.getByTestId('como-usar-temas');
-    TEMAS_AYUDA.forEach((_, i) => {
-      expect(within(tarjeta).getByTestId(`como-usar-tema-${i}`)).toBeTruthy();
-    });
-    // Control: las tarjetas sueltas que quedan son las de la guía (grupos de ejemplos), no los temas.
-    expect(screen.queryAllByTestId(/^como-usar-tema-\d+$/)).toHaveLength(TEMAS_AYUDA.length);
+    // Sin testID propio en el contenedor (el gate de paridad lo exigiría también en web): los cinco temas
+    // comparten el MISMO padre. Con cinco `Row` sueltas cada tema tendría un padre distinto.
+    const padres = TEMAS_AYUDA.map((_, i) => screen.getByTestId(`como-usar-tema-${i}`).parent);
+    padres.forEach((p) => expect(p).toBe(padres[0]));
+    // Control negativo: un tema de otra tarjeta (grupo de ejemplos de la guía) NO comparte ese padre.
+    const grupo = screen.queryByTestId('como-usar-grupo-0');
+    if (grupo) expect(grupo.parent).not.toBe(padres[0]);
   });
 
   it('lo que entra al chat es una PREGUNTA, no el título del tema', async () => {

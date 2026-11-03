@@ -96,7 +96,7 @@ export function PantallaComoUsarLaApp() {
         {/* SM-N42 punto 4 -- los cinco temas viven en UNA tarjeta (`.grupo` del prototipo, `s-comousar`),
             separados por un filete, no en cinco tarjetas sueltas. El contenedor es una `Row` sin onPress;
             cada tema es su propio Pressable. El prototipo manda sobre el DoD de pieles (ver `tokens.ts`). */}
-        <Row testID="como-usar-temas" style={styles.grupo}>
+        <Row style={styles.grupo}>
           {TEMAS_AYUDA.map((t, i) => (
           <Pressable
             key={t.titulo}
