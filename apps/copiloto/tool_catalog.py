@@ -1292,13 +1292,39 @@ def _elegir_uno(candidatos, etiqueta, como_se_llama):
     return candidatos[0], None
 
 
+# Palabras que el emprendedor antepone al dato real («el presupuesto 87 de la panadería»): no
+# identifican nada y, exigidas como substring, hacían que ninguna frase con dos datos coincidiera.
+_RELLENO = frozenset({"de", "del", "la", "el", "los", "las", "lo", "un", "una", "por", "para", "con",
+                      "que", "ese", "esa", "numero", "número", "nro", "n", "presupuesto", "factura",
+                      "tarjeta", "recordatorio"})
+
+
 def _coincide(texto: str, *campos) -> bool:
-    """¿El texto dictado aparece en alguno de los campos? Comparación laxa a propósito: el
-    emprendedor dice «la panadería» o «la 42», no el nombre legal ni `0001-00000042`."""
+    """¿Lo dictado identifica a este registro? Comparación laxa a propósito: el emprendedor dice
+    «la panadería» o «la 42», no el nombre legal ni `0001-00000042`.
+
+    Sirve la frase entera dentro de UN campo, o —para frases con dos datos, «87 de ClienteJ4»,
+    «el de ClienteJ4 por 50000»— que CADA palabra con contenido aparezca en ALGÚN campo. Antes sólo
+    valía lo primero y esas frases daban cero candidatos (medido en device, 2026-11-03: el agente
+    contestó «no encontré» con el presupuesto a la vista). Un número exige límite de dígitos: el 87
+    no es el 187 ni el 870. Esto sólo ensancha QUIÉN es candidato; `_elegir_uno` sigue preguntando si
+    queda más de uno, nunca elige."""
     aguja = (texto or "").strip().lower()
     if not aguja:
         return False
-    return any(aguja in str(c or "").lower() for c in campos)
+    textos = [str(c or "").lower() for c in campos if c is not None]
+    if any(aguja in t for t in textos):
+        return True
+    palabras = [w for w in re.findall(r"\w+", aguja) if w not in _RELLENO]
+    if not palabras:
+        return False
+
+    def _esta(w: str) -> bool:
+        if w.isdigit():
+            return any(re.search(rf"(?<!\d){w}(?!\d)", t) for t in textos)
+        return any(w in t for t in textos)
+
+    return all(_esta(w) for w in palabras)
 
 
 def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobro_store_factory):
@@ -1372,8 +1398,8 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
     # en vez de trabajar sobre el que está esperando respuesta.
     abiertos = [p for p in store.listar(limit=100)
                 if p["estado"] in TRANSICIONES and nuevo in TRANSICIONES[p["estado"]]]
-    candidatos = ([p for p in abiertos if _coincide(referencia, p["numero"],
-                                                    p["receptor"]["nombre"], p["concepto"])]
+    candidatos = ([p for p in abiertos if _coincide(referencia, p["numero"], p["receptor"]["nombre"],
+                                                    p["concepto"], p["total"])]
                   if referencia else abiertos)
 
     presupuesto, problema = _elegir_uno(

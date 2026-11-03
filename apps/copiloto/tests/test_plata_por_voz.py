@@ -349,6 +349,43 @@ def test_aprobar_por_nombre_del_cliente():
     assert "aprobado" in res.observation["result"]
 
 
+def _cartera_del_87():
+    """El caso medido en device (2026-11-03): el N° 87 de ClienteJ4 por $50.000, con vecinos que un
+    matching flojo confundiría — el 187 y el 870 contienen «87», y el 870 comparte el importe."""
+    return _PresupuestoFake(filas=[
+        _presu(1, 87, "ClienteJ4", total="50000.00", concepto="Pintura de local"),
+        _presu(2, 187, "Kiosco Don Ramón", total="20000.00", concepto="Cartelería"),
+        _presu(3, 870, "Panadería Los Tilos", total="50000.00", concepto="Mostrador"),
+    ])
+
+
+@pytest.mark.parametrize("frase", ["87 de ClienteJ4", "el de ClienteJ4 por 50000", "presupuesto 87",
+                                   "el 87", "ClienteJ4 50000", "el de la pintura"])
+def test_aprobar_resuelve_frases_con_dos_datos_y_cae_en_el_87_y_solo_en_el_87(frase):
+    """Las dos primeras son LITERALES las que el agente le pasó a la tool en device y dieron «no encontré»:
+    la referencia tenía que aparecer entera dentro de UN campo. Ahora vale cada palabra en algún campo,
+    y un número exige límite de dígitos (87 no es 187 ni 870)."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": frase, "estado": "aprobado"}, presupuesto=store)
+    assert store.cambios == [(1, "aprobado")], res.observation
+
+
+def test_aprobar_con_un_dato_ambiguo_pregunta_y_NO_elige():
+    """Ensanchar quién es candidato no puede ensanchar quién se aprueba: «50000» es el 87 Y el 870."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": "50000", "estado": "aprobado"}, presupuesto=store)
+    assert store.cambios == []
+    assert "Hay varios" in res.observation["result"]
+
+
+def test_aprobar_con_una_palabra_que_no_esta_en_ningun_campo_no_aprueba_nada():
+    """Control negativo: AND entre palabras. «87 de OtroCliente» no cae en el 87 sólo por el número."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": "87 de OtroCliente", "estado": "aprobado"},
+                  presupuesto=store)
+    assert store.cambios == [] and res.observation["candidatos"] == []
+
+
 def test_K07_aprobar_ofrece_armar_la_factura_y_descartar_no():
     """K-07: el chip «Armá la factura» sólo aparece al APROBAR; el resto de la observación no cambia."""
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
