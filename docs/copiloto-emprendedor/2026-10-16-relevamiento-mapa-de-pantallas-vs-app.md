@@ -41,9 +41,10 @@ Prototipo: [volver](2026-10-16-relevamiento-capturas/proto-mapa-volver.png) · A
 *Diferencia:* Los textos de las dos puertas salen de `TEXTOS_REVEAL.volver` («Entrar» / «Entrar con otra cuenta», `textosEntrada.ts:18`) y coinciden con el mapa. La animación no se midió (exige cerrar sesión).  
 *Corrección:* Ninguna por copy. Falta medir la animación en device cuando haya un usuario descartable.
 
-**03 · `ingresar` — Ingresar** — **DIFERENTE · A** · DEVICE  
+**03 · `ingresar` — Ingresar** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [ingresar](2026-10-16-relevamiento-capturas/proto-mapa-ingresar.png) · App: [ingresar](2026-10-16-relevamiento-capturas/app-ingresar.png)  
 *Diferencia:* Cambian el logo (con o sin cuadro), el relleno de campos y botones, y falta el aviso «Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estaba»: no aparece en ningún archivo de `apps/mobile` ni de `packages/core`.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **El punto «falta el aviso de sesión cerrada» está VENCIDO: el aviso existe.** `MENSAJE_SESION_EXPIRADA` (`packages/core/src/api/sesion.ts:31`, «Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estabas.») lo arma `SessionProvider.tsx:89` y `PantallaLogin.tsx:280-285` lo pinta sólo si hubo cierre por seguridad y el form está en reposo; `EntradaSesion.tsx:17` fija que NO viaja al reveal (SM-N30 DoD 4). La corrección del corpus decía «ningún archivo de `apps/mobile` ni de `packages/core`»: era falso o ya dejó de serlo. **Lo que queda — logo con o sin cuadro, relleno de campos y botones — es sólo visual:** NO-VERIFICABLE-SIN-APP (device, SM-K6/SM-N30).  
 *Corrección:* Igualar la estructura del formulario al prototipo y agregar el aviso de sesión cerrada (el flujo de «sesión caída sola» ya va directo a este formulario, `EntradaSesion.tsx:25`).  
 *Vínculo:* SM-K6 · F10 (padrón viejo)
 
@@ -62,9 +63,10 @@ Prototipo: [entrada](2026-10-16-relevamiento-capturas/proto-mapa-entrada.png) ·
 
 ### Capas
 
-**06 · `base` — Mi día** — **DIFERENTE · A** · DEVICE  
+**06 · `base` — Mi día** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [base](2026-10-16-relevamiento-capturas/proto-mapa-base.png) · App: [midia-reposo](2026-10-16-relevamiento-capturas/app-midia-reposo.png) · [mapa-midia-caida](2026-10-16-relevamiento-capturas/app-mapa-midia-caida.png)  
 *Diferencia:* Mi día en reposo: el prototipo muestra la cabecera dentro de una tarjeta («Odobi» + fecha) con avatar «M», la caja con el chip «−18% vs julio», la lista «Ahora» con la agenda y «Para hoy 4 cosas · Ver tablero ›». La app dibuja «Odobi» suelto, el chip de fecha, **el tablero embebido** (pestañas Para hoy / Haciendo / Hechas, filtros, «Anotar algo para hoy») y no tiene «Ver tablero ›» ni la tarjeta de cabecera. Además, los tres cuadros de la portada parten el monto en dos líneas (`$101.234,` / `00`): ver N1.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Los tres puntos estructurales del corpus ya están resueltos en código; lo que queda es visual.** El tablero ya NO va embebido: Mi día «resume, no gestiona» y lo manda a Tu día (`PantallaMiDia.tsx:37`); «Ver tablero ›» existe (`PantallaMiDia.tsx:301`, `testID` `midia-ver-tablero`); la tarjeta de cabecera `.stack` existe (`:247`) y la sección «Ahora» también (`:278`). El corte de los montos (N1) quedó resuelto en #1297. **No se puede afirmar por código** el chip «−18% vs julio», el avatar «M» ni que la cabecera asome como en el mapa: NO-VERIFICABLE-SIN-APP (device, SM-N1/SM-I1).  
 *Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): gana el mapa.** Construir la tarjeta de cabecera, la lista «Ahora» y «Para hoy · Ver tablero ›» que abre una pantalla «Tu día». Pendiente de ficha (pedido a planificación).  
 *Vínculo:* C1 · C3 · C5 · N1
 
@@ -74,9 +76,10 @@ Prototipo: [esc](2026-10-16-relevamiento-capturas/proto-mapa-esc.png) · App: [e
 *Corrección:* Igualar título, orden y estilo de tiles (C1). Dejar R02 como está.  
 *Vínculo:* C1 · R02
 
-**08 · `chat` — Chat** — **DIFERENTE · A** · DEVICE  
+**08 · `chat` — Chat** — **DIFERENTE · B** · DEVICE  
 Prototipo: [chat](2026-10-16-relevamiento-capturas/proto-mapa-chat.png) · App: [chat-abierto](2026-10-16-relevamiento-capturas/app-chat-abierto.png) · [mapa-chat-vacio](2026-10-16-relevamiento-capturas/app-mapa-chat-vacio.png)  
 *Diferencia:* El contenido del estado en reposo coincide: «¿En qué te ayudo?», el ejemplo que gira («Gasté 15 lucas en nafta») y la línea fija «Antes de ejecutar algo importante, te lo muestro para que lo confirmes». Cambian la zona de entrada (botón de voz grande, más un «Pausar» que el mapa no tiene) y el botón de voz del campo.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **La zona de entrada ya es el dock del mapa; no queda botón de voz grande.** `ChatView.tsx:264` monta `DockEntrada` (campo + mic chico siempre visibles al pie, SM-I2 TERMINADO). «Pausar» ya no vive en reposo: sólo existe mientras se graba (`ControlesFlotantes.tsx:20,50`), que es el estado `grabando` (entrada 12), no éste. El contenido del estado en reposo ya coincidía según el propio corpus.  
 *Corrección:* Mismo arreglo que R01: campo + mic chico siempre visibles al pie.  
 *Vínculo:* SM-I2 · SM-J1 · R01 · C7 (padrón viejo)
 
@@ -89,10 +92,11 @@ Prototipo: [tablero](2026-10-16-relevamiento-capturas/proto-mapa-tablero.png) ·
 *Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): el tablero es pantalla propia, como en el mapa** («Tu día» con «Volver»). El resto (título «Tu día», filtros por categoría y «Anotar algo para hoy», que el mapa no cita) se decide al bajar la ficha.  
 *Vínculo:* SM-I1 · C5 · F8 (padrón viejo)
 
-**10 · `agenda` — Agenda** — **DIFERENTE · A** · DEVICE  
+**10 · `agenda` — Agenda** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [agenda](2026-10-16-relevamiento-capturas/proto-mapa-agenda.png) · App: [agenda](2026-10-16-relevamiento-capturas/app-agenda.png)  
 *Medición 2026-11-02 (device):* Medida con Google Calendar reconectado (5 de 5 apps). Difiere del mapa; detalle en el doc de pendientes (00.bis). [app-agenda](2026-10-16-relevamiento-capturas/app-agenda.png) · [app-apps-conectadas-5-de-5](2026-10-16-relevamiento-capturas/app-apps-conectadas-5-de-5.png)  
 *Diferencia:* La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14).  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **La diferencia no es de contenido sino de ESTADO: sólo se compara con Google Calendar conectado** y en el usuario canónico está caído (`PantallaMiDia.tsx:560-566` oculta «Ver agenda» y dice «Se cayó la conexión con Google Calendar»). Etiquetarla A era afirmar una diferencia que nadie midió. NO-VERIFICABLE-SIN-APP hasta que haya Calendar conectado en el teléfono (SM-N34).  
 *Corrección:* Reconectar Calendar en el usuario canónico y medir.  
 *Vínculo:* SM-N34 · F9 (padrón viejo)
 
@@ -126,16 +130,18 @@ Prototipo: [vozchat](2026-10-16-relevamiento-capturas/proto-mapa-vozchat.png) ·
 *Corrección:* Medir con una persona.  
 *Vínculo:* K1
 
-**16 · `bi-vacio` — Sin ventas todavía** — **DIFERENTE · A** · DEVICE  
+**16 · `bi-vacio` — Sin ventas todavía** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [bi-vacio](2026-10-16-relevamiento-capturas/proto-mapa-bi-vacio.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medida con el usuario descartable (tenant vacío): ceros, gráficos de 6 meses sin barras, «Sin gastos en este período.» y «Todavía no hay trabajos con presupuesto o factura para medir margen.». No hay mensaje global «Sin ventas todavía». [app-bi-vacio-arriba](2026-10-16-relevamiento-capturas/app-bi-vacio-arriba.png) · [app-bi-vacio-abajo](2026-10-16-relevamiento-capturas/app-bi-vacio-abajo.png)  
 *Diferencia:* El estado sin ventas exige un tenant sin datos; el canónico tiene gastos. Fabricarlo sería borrar datos.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **El estado «sin ventas» exige un tenant sin datos** y el canónico tiene gastos; fabricarlo sería borrar datos (regla del usuario canónico único). No hay diferencia medida: NO-VERIFICABLE-SIN-APP hasta que la tenencia provea un tenant vacío (SM-J3).  
 *Corrección:* Medir con un tenant vacío.  
 *Vínculo:* F6
 
-**17 · `bi-refresh` — Tirar para actualizar** — **DIFERENTE · A** · DEVICE  
+**17 · `bi-refresh` — Tirar para actualizar** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [bi-refresh](2026-10-16-relevamiento-capturas/proto-mapa-bi-refresh.png) · App: [mapa-bi-reposo](2026-10-16-relevamiento-capturas/app-mapa-bi-reposo.png) · [mapa-bi-tirando](2026-10-16-relevamiento-capturas/app-mapa-bi-tirando.png) · [mapa-bi-soltado](2026-10-16-relevamiento-capturas/app-mapa-bi-soltado.png)  
 *Diferencia:* Tirar para actualizar funciona y muestra la línea «Actualizando…» como el mapa. Pero mientras se tira, el indicador nativo (círculo blanco con flecha) se dibuja encima del saldo; el prototipo sólo muestra la línea de texto.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **La causa medida está tratada en código; el efecto sólo lo ve un teléfono.** `PantallaInteligencia.tsx:181-189` saca el indicador nativo de pantalla (`progressViewOffset` negativo + `tintColor` transparente; el comentario documenta que `colors={['transparent']}` NO sirve en Android porque `CircularProgressDrawable` pisa el canal alfa). Que «la causa se fue» no prueba que el círculo ya no se dibuje sobre el saldo: eso es una captura de device (SM-N2).  
 *Corrección:* Ocultar el indicador nativo del `RefreshControl` (color transparente) y dejar la línea «Actualizando…».  
 *Vínculo:* N2
 
@@ -157,9 +163,10 @@ Prototipo: [onb-cumplida](2026-10-16-relevamiento-capturas/proto-mapa-onb-cumpli
 *Corrección:* Medir con un usuario nuevo con facturas cargadas.  
 *Vínculo:* N4
 
-**21 · `consent` — Just-in-time consent** — **DIFERENTE · A** · DEVICE  
+**21 · `consent` — Just-in-time consent** — **DIFERENTE · B** · DEVICE  
 Prototipo: [consent](2026-10-16-relevamiento-capturas/proto-mapa-consent.png) · App: [chat-consent-gmail](2026-10-16-relevamiento-capturas/app-chat-consent-gmail.png)  
 *Diferencia:* La hoja de permiso existe y no jerarquiza aceptar contra rechazar (deliberado, B). Faltan los íconos por capacidad y el banner «Apenas conectes sigo con lo tuyo».  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Los dos faltantes ya existen.** Banner «Apenas conectes sigo con lo tuyo:» en `SheetRequiereConexion.tsx:111`; ícono por capacidad en el mismo archivo (`testID` `sheet-requiere-conexion-icono-${i}`), con el comentario que fija que el nombre ya está en el texto y el glifo es acompañamiento. La no-jerarquía aceptar/rechazar es deliberada (B) según el propio corpus. Queda sólo la proporción visual (device, SM-I7).  
 *Corrección:* Agregar íconos por capacidad y el banner de continuación.  
 *Vínculo:* K6a · K6b
 
@@ -216,10 +223,11 @@ Prototipo: [pres-hitl](2026-10-16-relevamiento-capturas/proto-mapa-pres-hitl.png
 *Corrección:* Medir con una propuesta real; igualar el rótulo del botón.  
 *Vínculo:* K3
 
-**30 · `pres-ciclo` — El ciclo** — **DIFERENTE · A** · DEVICE  
+**30 · `pres-ciclo` — El ciclo** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [pres-ciclo](2026-10-16-relevamiento-capturas/proto-mapa-pres-ciclo.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medido: anotado → «Me aprobaron el de Mostrador Device Verify» → desambigua → «Marqué el presupuesto número 2 … como aprobado. ¿Te armo la factura para esto?». Difieren el rótulo del chip, el importe en formato inglés («$50,000.00») y que la card «anotado» no muestre «Pendiente». El último paso (armar la factura) no se ejecutó. [app-pres-ciclo-desambigua](2026-10-16-relevamiento-capturas/app-pres-ciclo-desambigua.png) · [app-pres-ciclo-aprobado](2026-10-16-relevamiento-capturas/app-pres-ciclo-aprobado.png)  
 *Diferencia:* El ciclo anotado → aprobado → factura exige varios pasos reales.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **El ciclo anotado → aprobado → factura exige varios pasos reales** con un presupuesto de prueba que escribe en la base. Nadie lo midió, así que «A» era una etiqueta de espera, no un hallazgo. NO-VERIFICABLE-SIN-APP (device + datos, SM-H5/SM-K3).  
 *Corrección:* Medir con un presupuesto de prueba.  
 *Vínculo:* K3
 
@@ -255,10 +263,11 @@ Prototipo: [feedback](2026-10-16-relevamiento-capturas/proto-mapa-feedback.png) 
 *Medición 2026-11-03 (código, prototipo `prototipo/index.html:2181-2210` contra `PantallaFeedback.tsx`):* (1) **El mes ya va a la derecha** de cada fila (`LoPedisteVos.tsx:63-71`, `.cuando` del mapa; SM-K7 TERMINADO). (2) Bajada, pregunta «¿Qué le cambiarías?», placeholder, «Dictarlo»/«Mandar» y la nota de derivación a Soporte coinciden con el prototipo (`PantallaFeedback.tsx:111-133,151,181,222`). (3) **Diferencia que queda y es deliberada**: «Mandar» está deshabilitado con el campo vacío (`PantallaFeedback.tsx:184`, `deshabilitado: !puedeEnviarTexto`); el prototipo lo dibuja siempre sólido. Es un guard (no mandar vacío), no un descuido. (4) **NO-VERIFICABLE-SIN-APP**: si el `CampoTexto` queda dentro de una tarjeta blanca como `.redactar` o suelto exige ver el render; por código no se decide.
 *Vínculo:* F11-feedback
 
-**36 · `hitl` — Confirmación** — **DIFERENTE · A** · DEVICE  
+**36 · `hitl` — Confirmación** — **NO-VERIFICABLE** · DEVICE  
 Prototipo: [hitl](2026-10-16-relevamiento-capturas/proto-mapa-hitl.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medida por chat: el pedido «Mandale un recordatorio por mail a Lucia para mañana» produjo una card de Google Calendar («agendar «Recordatorio para Lucía»») y no un mail Gmail con «Confirmar y mandar». Al cancelar, la card siguió con ambos botones y luego pasó a «✓ Confirmado» aunque no se creó evento (servidor verificado). [app-hitl-recordatorio-lucia](2026-10-16-relevamiento-capturas/app-hitl-recordatorio-lucia.png) · [app-hitl-cancelada-card-sigue-visible](2026-10-16-relevamiento-capturas/app-hitl-cancelada-card-sigue-visible.png)  
 *Diferencia:* La confirmación de «Recordatorio a Lucía» (patrón madre, «Confirmar y mandar» / «Cancelar») exige un mensaje real que no se mandó: escribiría en el hilo del canónico y mandaría un mail. Mockup 04: el ícono del ojo y «Un solo mail, ahora. No se manda nada sin tu confirmación.»  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **La confirmación «Recordatorio a Lucía» exige mandar un mail real** desde la cuenta del canónico; no se provocó y por código no hay comparación posible sin ejecutarla. NO-VERIFICABLE-SIN-APP: necesita autorización explícita y un destinatario de prueba (SM-K1/SM-K5).  
 *Corrección:* Medir con autorización explícita y un destinatario de prueba.  
 *Vínculo:* K1-K5
 
@@ -272,21 +281,24 @@ Prototipo: [vacio](2026-10-16-relevamiento-capturas/proto-mapa-vacio.png) · App
 
 ### Funciones
 
-**38 · `gastos` — Gastos** — **DIFERENTE · A** · DEVICE  
+**38 · `gastos` — Gastos** — **DIFERENTE · B** · DEVICE  
 Prototipo: [gastos](2026-10-16-relevamiento-capturas/proto-mapa-gastos.png) · App: [gastos-top](2026-10-16-relevamiento-capturas/app-gastos-top.png) · [funcion-gastos](2026-10-16-relevamiento-capturas/app-funcion-gastos.png)  
 *Diferencia:* Sin dock con campo y mic, sin «Ticket», sin rótulo «ÚLTIMOS»; campo BUSCAR que el prototipo no tiene.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Los tres faltantes ya están y BUSCAR es una enmienda fundada.** Dock con campo y mic: `PantallaGastos.tsx:317` (`DockFuncion` → `DockEntrada`, SM-I2/J1). «Ticket»: `FotoFuncion.tsx:101`. Rótulo «Últimos»: `PantallaGastos.tsx:290` (`rotuloLista`, `BuscadorActividad.tsx:45`). BUSCAR se queda: enmienda **E-1** del backlog (`2026-11-02-BACKLOG-sprint-correcciones-mapa.md:302`), que da el `path:línea` y el motivo. **Lo que queda es visual (SM-J1 captura a 390 px), no una diferencia de contenido.**  
 *Corrección:* Agregar el dock y «Ticket»; decidir qué hacer con BUSCAR.  
 *Vínculo:* F1 · F12
 
-**39 · `ingresos` — Ingresos** — **DIFERENTE · A** · DEVICE  
+**39 · `ingresos` — Ingresos** — **DIFERENTE · B** · DEVICE  
 Prototipo: [ingresos](2026-10-16-relevamiento-capturas/proto-mapa-ingresos.png) · App: [ingresos-top](2026-10-16-relevamiento-capturas/app-ingresos-top.png)  
 *Diferencia:* Sin dock; la nota de Mercado Pago no se ve en la captura (puede estar bajo el pliegue). «Anotar que me pagaron» sí existe como verbo de alta.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Dock presente; la nota de Mercado Pago se retiró a propósito.** Dock: `PantallaIngresos.tsx:298` (`DockFuncion`). El aviso «los cobros por MercadoPago todavía no entran solos» lo retiró COBROMP (`9e4a70dc`): `ResumenIngresos.tsx:14-15`, porque un pago aprobado ya se vuelve Ingreso con `origen: 'mercadopago'`. Rótulo «Últimos»: `PantallaIngresos.tsx:236`. Si el mapa todavía la dibuja, el punto vencido es del mapa (el aviso decía algo que dejó de ser cierto), no de la app.  
 *Corrección:* Agregar el dock.  
 *Vínculo:* F2 · F12
 
-**40 · `factura` — Facturación** — **DIFERENTE · A** · DEVICE  
+**40 · `factura` — Facturación** — **DIFERENTE · B** · DEVICE  
 Prototipo: [factura](2026-10-16-relevamiento-capturas/proto-mapa-factura.png) · App: [facturacion-top](2026-10-16-relevamiento-capturas/app-facturacion-top.png)  
 *Diferencia:* Faltan «N facturas · N impaga», los chips por fila y el dock. «Te deben» no existe en el prototipo.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Cada punto del corpus está resuelto o decidido en contra por escrito.** Dock: `PantallaFacturacion.tsx:696` (`DockAlChat contexto="factura"`, #1456). «N facturas · N impaga» NO se agrega: enmienda **E-3** (backlog `:304`) y `ResumenFacturado.tsx:12-14` — la portada no trae conteos y derivarlos del listado paginado daría dos verdades para una pregunta. Chips por fila: SM-J2 TERMINADO `sin-codigo` — premisa refutada, existen en `TarjetaCliente.tsx` y los dos apagados lo están por decisión documentada. «Te deben» se queda: enmienda **E-2** (`SeccionMeDeben.tsx:39`).  
 *Corrección:* Agregar chips y dock; retirar «Te deben» o documentarlo.  
 *Vínculo:* F3 · F12
 
@@ -335,9 +347,10 @@ a ese camino se retira **junto con** el dock que lo reemplaza, no antes.
 *Corrección:* Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6).  
 *Vínculo:* F6 · F6b · N6 · F12
 
-**43 · `clientes` — Clientes** — **DIFERENTE · A** · DEVICE  
+**43 · `clientes` — Clientes** — **DIFERENTE · B** · DEVICE  
 Prototipo: [clientes](2026-10-16-relevamiento-capturas/proto-mapa-clientes.png) · App: [clientes-top](2026-10-16-relevamiento-capturas/app-clientes-top.png)  
 *Diferencia:* Falta la columna derecha (monto, comprobantes, chips) y el dock. Causa en el mapeo previo: `api/clientes.ts:31` no trae esos campos.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **La causa citada («`api/clientes.ts:31` no trae esos campos») está VENCIDA.** El cliente HTTP ya declara `montoFacturado` y `comprobantesCantidad` (`packages/core/src/api/clientes.ts:71,79`) y `TarjetaCliente.tsx:36` pinta «$importe · N comprobantes» en la columna derecha; sin CUIT dice «Sin CUIT cargado» y nunca un cero inventado. Dock: `PantallaClientes.tsx:408`. El chip `auto` está apagado por decisión escrita (`TarjetaCliente.tsx:47-48`, `:67`). Falta sólo la corrida con un cliente CON CUIT en el teléfono (SM-J4, frontend1).  
 *Corrección:* Traer monto y comprobantes del backend y dibujarlos; agregar el dock.  
 *Vínculo:* F5 · F12
 
