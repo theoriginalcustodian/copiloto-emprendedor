@@ -137,7 +137,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 | **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N42** | `sin-issue` | ⬜ PENDIENTE | frontend2 |
+| **SM-N42** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» … |
+| **SM-N43** | `sin-issue` | ⬜ PENDIENTE | frontend2 |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2779,8 +2780,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   de device de frontend1.
 ### SM-N42 · `sin-issue` — Las enmiendas al MAPA no son ficha de nadie, y por eso Ajustes "sigue distinta"
 
-- **Estado:** PENDIENTE
-- **Dueno-activo:** frontend2
+- **Estado:** DOD-PARCIAL
+- **Falta:** SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» viene del cierre de SM-K7 y yo lo cite sin decir de QUE pantalla. Resuelto al medir: el Medido de SM-K7 dice «comousar (contenedor y numeracion)», asi que el contenedor es el de «Como usar la app», no el de Ajustes. Frontend2 hizo lo correcto al NO adivinar y pedir la pantalla en vez de editar a ciegas. Pendiente: aplicar la enmienda sobre el mockup de comousar. NO cuenta como pendiente el chevron de apar (escalado al operador) ni el wording de Gmail y clave fiscal (decision del operador, agrupados en su pedido_).
+- **Cierre:** 35513f85 (#1504, ancestro de origin/main, CI 6/6) por frontend2. Puntos 1 y 2 HECHOS y verificados en el prototipo: «Mi plan» fuera de la lista de Ajustes (SUBS sin s-plan, «siete»->«seis» en mapa-pantallas y mockup 13) con #s-plan conservado como VISION porque criterio3-matriz.mjs:203 lo espera -- esa distincion la hizo frontend2 sola y es la correcta: sacar el tile de la lista no es borrar la pantalla del catalogo de vision. Punto 2: Cerrar sesion pasa a boton (btn2 peligro), alineado a PantallaCuenta.tsx:224-226. Relevamiento actualizado: grilla 13-Ajustes (Cerrar sesion->CONFORME, fila nueva Mi plan->CONFORME) y entrada 44 con su medicion. PUNTO 3 (mosaico de Apariencia): NO requeria cambio -- frontend2 midio que el prototipo ya tiene .tema claro/oscuro y la fila «Como el telefono», y la unica diferencia viva es el chevron vs «Activo», que esta escalado al operador y NO se toca. Un punto medido como ya-conforme no es un punto omitido. HALLAZGO que corrige mi propio alcance: hubo que editar prototipo/index.html, que mi contrato NO listaba, porque es el dibujo real que renderizan los iframes -- mi lista de archivos estaba incompleta.
 - **Dueño:** frontend2
 - **De dónde sale:** reclamo del operador, 2026-11-03, con captura del prototipo en pantalla:
   *«¿por qué la pantalla de ajustes todavía sigue distinta al mapa? ¿no estaba contemplado esto?»*
@@ -2814,4 +2816,70 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **FUERA de alcance, y no se mezcla:** el wording de Gmail («No puede leerlos» vs «Enviá mails desde
   el chat.») y el de la clave fiscal (`PantallaAfipSetup.tsx:840`). Son decisión del operador y ya
   están agrupados en UN punto de su `pedido_`; duplicarlos acá convierte el pedido en ruido.
+
+### SM-N43 · `sin-issue` — La burbuja del usuario esta INVERTIDA respecto del prototipo, y las dos superficies claras son colores que el prototipo no tiene
+
+- **Estado:** PENDIENTE
+- **Dueno-activo:** frontend2
+- **Dueño:** frontend2 (implementacion) · frontend1 (verificacion en device, es la tenedora)
+- **De dónde sale:** reclamo del operador, 2026-11-03: *«¿por qué la app en modo claro no refleja el
+  verdadero color? está demasiado blanco el fondo... además las cards del chat para el usuario son
+  completamente oscuras y tampoco coinciden con el diseño... los colores actualmente implementados no
+  son los del prototipo ni el mapa»*.
+- **Medido en HEX (2026-11-03, contra `origin/main`, los dos lados). El reclamo es correcto en lo
+  duro, y NO en la parte que el operador atribuyo al fondo:**
+
+  | Elemento | Prototipo (la fuente) | App (`tokens.ts`) | Veredicto |
+  |---|---|---|---|
+  | Burbuja PROPIA del chat | `.mio` → `--arena-30` **`#F8E2DB`** + texto `--negro` `#1A1512` (`prototipo/index.html:385-387`) | `ub1→ub2` = **`#B04A2E` → `#722717`** + texto `#FFFFFF` (`tokens.ts:491-492`) | 🔴 **INVERTIDA** |
+  | Burbuja del ASISTENTE | `.msg` → `--blanco` **`#FFFFFF`** + `box-shadow 0 4px 18px rgba(26,21,18,.07)` (`:330-331`) | `superficie` **`#F5EBD5`** (`tokens.ts:528`) | 🔴 distinta |
+  | Fondo del lienzo | `linear-gradient(0deg,#F5E7DE 0%, --crema 60%...)` (`:1318`) | `fondoDegradado ['#F5E7DE','#F7F3EC']`, `fondoBase #F7F3EC` (`tokens.ts:533`) | ✅ **COINCIDE EXACTO** |
+  | Superficies claras | el prototipo **no tiene ninguna**: sus cards son `--blanco #FFFFFF` sobre `--crema`, separadas por sombra | `superficie #F5EBD5` · `superficieAlta #FAF7EC` (`tokens.ts:528`) | 🔴 **dos hex que el prototipo no contiene** |
+
+  Dos cosas que esto cambia respecto de como se leia el reclamo: **(1)** el degradé del fondo NO es
+  el desvio — coincide literal con el del prototipo, asi que «demasiado blanco» no se arregla
+  tocandolo; lo que esta casi-blanco es `superficieAlta` **`#FAF7EC`**, que es el color de las
+  CARDS, y es un hex **inventado** (grep en el prototipo: 0 coincidencias, igual que `#F5EBD5`).
+  **(2)** la burbuja propia no esta «un poco distinta»: esta **al reves** — donde el diseño pone un
+  arena clarisimo con tinta negra (14,56:1 segun su propio comentario), la app pinta terracota
+  profunda→marron casi negro con tinta blanca.
+
+- **CAUSA RAIZ, y esta escrita en el propio codigo.** `tokens.ts:481-490` documenta la eleccion:
+  *«Burbuja del usuario = "acento (superficie)" del DoD, solida … es literalmente lo que el DoD
+  asigna a "burbuja del usuario" en la fila de acento»*. O sea: habia **dos fuentes de verdad** —el
+  DoD de pieles y el prototipo— y se tomo la del DoD, que es la que NO es el dibujo. El comentario
+  ademas **declara autoridad** (*«es literalmente lo que el DoD asigna»*) y por eso apaga la
+  busqueda del prototipo en quien lo lee despues: es el patron
+  `memoria/el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo.md`.
+  El mismo archivo ya habia pagado esta clase una vez y lo dejo anotado en `tokens.ts:529`:
+  *«🔴 `#EFE6D2` NO existia en el sistema de diseño»*. Hoy quedan DOS mas con esa forma.
+
+- **DoD:**
+  1. **La burbuja propia toma el valor del prototipo:** fill `#F8E2DB` (`--arena-30`) con tinta
+     `#1A1512`, no `ACCENT_TINTA_CLARO→UB2` con tinta blanca. El contraste **sube**, no baja (14,56:1
+     contra los 5,43:1 actuales), asi que ningun test de contraste se relaja para lograrlo — si
+     alguno se pone rojo, es que afirmaba el sintoma y hay que leerlo antes de tocarlo
+     (`memoria/un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md`).
+  2. **`UB1`/`UB2` dejan de ser el acento**, y los **11 consumidores** que el comentario de
+     `tokens.ts:475` censa se barren uno por uno: el que use `ub1/ub2` como *superficie de acento*
+     (el HUD de grabacion, `HudGrabacion.tsx`, citado en `tokens.ts:477`) **no** es la burbuja y NO
+     se arrastra — separar los dos roles es justamente lo que el comentario viejo decidio no hacer.
+     Contar **definiciones y consumidores**, no usos sueltos.
+  3. **Las superficies claras se derivan del prototipo:** card = `#FFFFFF` + la sombra declarada
+     (`0 4px 18px rgba(26,21,18,.07)`), sobre el crema. Si se decide conservar `#F5EBD5`/`#FAF7EC`,
+     se escribe **por que** y con la autoridad citada — no se deja un hex sin procedencia.
+  4. **El asistente queda `#FFFFFF`** y el propio `#F8E2DB`: el prototipo asigna el blanco al que
+     NO sos vos. Hoy estan los dos del otro lado.
+  5. **Barrido de hex sin procedencia en `tokens.ts`:** por cada hex del tema `claro`, o aparece en
+     el prototipo, o lleva comentario con la decision que lo autoriza. El resultado es una lista, no
+     un «ya esta»: el archivo tiene 75 hex.
+  6. **Verificacion en device** (frontend1, tenedora): captura del chat en modo claro con un mensaje
+     propio y uno del asistente. Es el unico punto que el gate no puede medir.
+
+- **FUERA de alcance:** el tema `oscuro`. El prototipo **no tiene tema oscuro** (grep
+  `prefers-color-scheme|data-theme|\.oscuro` → **0** coincidencias), asi que no hay fuente contra la
+  que compararlo y «alinear el oscuro al prototipo» seria inventar la fuente. Si el operador quiere
+  revisarlo, es otra pregunta con otro instrumento.
+- **Por que NO lo implementa planificacion:** orden del operador — esta sesion baja contratos y mide,
+  no toca codigo de producto.
 
