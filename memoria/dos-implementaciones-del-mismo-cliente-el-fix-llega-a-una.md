@@ -112,3 +112,48 @@ exportadas y preguntá por cada una cuál consumidor la usa para DECIDIR**. El f
 puerta que decide, no por la que da la lista más linda — y el test que lo prueba es el que pide el caso
 **rechazado**, no el aceptado.
 → [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+
+## Refuerzo 2026-11-03 — el LÍMITE del patrón: matchear por la FORMA manda a implementar un bug
+
+Este patrón tiene un modo de falla propio, y lo pagué aplicándolo: **la forma es «dos clientes, el
+fix llegó a uno», y eso se reconoce de lejos. El patrón sólo aplica si el MECANISMO del defecto
+existe en los dos.** Si no, lo que uno manda a «propagar» es un defecto nuevo con forma de fix.
+
+**El caso.** `SM-N44` arregló en mobile una caché del CUIT que se alimentaba de su propia entrada
+rechazada. Medí que mobile usaba `cuitVinculado` y que las dos pantallas de web seguían leyendo
+`res.cuit`, conté los call-sites, y despaché la propagación a web con cuatro puntos y su porqué.
+**Estaba mal**, y frontend2 lo midió antes de escribir una línea:
+
+- web llama `estadoAfip()` **sin parámetro, a propósito** y con el comentario puesto
+  (`PantallaFacturacion.tsx:145,209`; `PantallaAfipSetup.tsx:28,210` dice «sin caché de CUIT»);
+- sin parámetro el backend resuelve `cuit = primer_cuit()` (`afip_web.py:709-710`), así que
+  `res.cuit` **ya es el del tenant** y no puede traer uno ajeno;
+- `cuit_vinculado` sólo se llena cuando se pidió un CUIT que el tenant no tiene (`:741`);
+- y el único lugar de web que manda un CUIT explícito es **Setup, con el que el usuario está
+  escribiendo para vincular**: «corregirlo» a `cuitVinculado` **pisaría el CUIT nuevo que está dando
+  de alta**.
+
+O sea el punto 1 de mi despacho no era neutro: era un bug. **La caché —el mecanismo— sólo existía en
+mobile.** Mobile lo necesitaba porque lee la caché al montar; web no tiene caché.
+
+## La pregunta que separa los dos casos
+
+Antes de propagar un fix a un gemelo, la pregunta no es «¿el otro cliente tiene el fix?» (que es de
+forma y siempre da «no») sino **«¿el otro cliente tiene el MECANISMO que produce el defecto?»** —
+la caché, el campo, el estado compartido, la rama de código. Y se contesta leyendo el gemelo, no
+contando call-sites del fix.
+
+Corolario: un gemelo que resuelve lo mismo por **otro camino** no está atrasado, está **diseñado
+distinto**, y muchas veces el comentario lo dice. Acá lo decía: `«sin caché de CUIT»`.
+
+## Y el patrón de arriba sigue en pie
+
+Nada de esto lo invalida — invalida aplicarlo **sin** medir el mecanismo. Lo que agrega es un paso:
+el inventario de call-sites dice **dónde mirar**, no **qué propagar**.
+
+Nota de procedencia, porque importa quién midió: este refuerzo y
+[[exencion-sin-autoridad]]§Refuerzo-2026-11-03 salieron el mismo día, los dos de equivocarme yo y
+refutarme la sesión que iba a implementar. **Las dos veces el que tenía la medición era el ejecutor,
+no el que bajaba el contrato.** Un contrato que llega con la causa ya decidida invita a obedecer; el
+que llega con la causa **medida y citada** invita a refutarla — y eso es lo que salvó las dos.
