@@ -134,6 +134,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
 | **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N38** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N39** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2649,5 +2650,45 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   6. **Captura en device** del estado colapsado, comparable con la imagen del mapa.
 - **FUERA del corpus del mapa:** es una corrección pedida por el operador sobre una pantalla que el
   corpus ya mide por otras entradas; no agrega denominador de paridad.
+
+---
+
+### SM-N39 · `sin-issue` — Los TRES `[ASSUMED_PENDING_VERIFY]` de `afip.ts` estaban vencidos
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** barrido de planificación, 2026-11-03, disparado por el marcador que frontend2
+  retiró en `#1472`. Si uno estaba vencido, los otros podían estarlo: **lo estaban los tres.**
+- **Medido contra `origin/main`:**
+  - `packages/core/src/api/afip.ts:445-451` afirma que `ConectarBody` «todavía NO declara
+    `ambiente`» y que «el backend lo IGNORA en silencio» → `apps/copiloto/afip_web.py:121` lo
+    declara: `ambiente: Literal["dev","prod"] | None = None`. **VENCIDO.**
+  - `afip.ts:699-702` afirma que `estado` «hoy lo EXIGE (`cuit: str` sin default)» y que sin `cuit`
+    da 422 → `afip_web.py:655` es `estado(cuit: str | None = None …)` y su docstring dice «`cuit` es
+    OPCIONAL a propósito». **VENCIDO.**
+  - `afip.ts:258` (retirado en `#1472`): esperaba que backend persistiera `categoria_monotributo`,
+    que persiste desde `4a5bb923`. **Estaba vencido.**
+  - La consecuencia que el marcador 1 describía —«el selector de Ajustes queda en solo-lectura»—
+    **tampoco se sostiene**: `PantallaAfipSetup.tsx:402` llama `cambiarAmbiente` y `:461` manda
+    `ambiente` en el alta.
+- **🔴 Qué es y qué NO es:** **no es un bug de producto** — ninguno tiene consecuencia viva en la
+  app. Es **deuda de documentación con efecto medido**, y el efecto ya se cobró: la premisa «backend
+  no persiste la categoría» de la receta de capturas de `SM-N35` salió de uno de estos marcadores y
+  declaraba «Sin definir» como **resultado esperado**. Con eso, una pantalla rota habría cerrado el
+  DoD — un falso verde, que es el que nadie revisa. Un marcador de pendencia, mientras vive, apaga
+  la búsqueda del próximo que lo lea.
+- **DoD:**
+  1. Los marcadores **1** y **2** retirados, cada uno **citando el `path:línea` del backend y el
+     sha** que lo invalida — formato de `#1472`: el comentario pasa de «pendiente» a «resuelto en
+     `<sha>`», no se borra sin rastro.
+  2. **El barrido completo:** `grep -rn "ASSUMED_PENDING_VERIFY" packages/ apps/` sobre
+     `origin/main`, con el veredicto de cada hit (vigente / vencido + la medición). Lo que quede
+     vigente se queda **con su fecha**: un marcador sin fecha se cita como si fuera de hoy. Lo que
+     importa es que no quede ningún hit sin veredicto.
+  3. Si algún hit resulta **vigente con consecuencia de producto** (UI degradada, campo ignorado),
+     **no se arregla acá**: se emite `pedido_` y se nombra.
+  4. Gate `scripts/ci/lint.sh` verde.
+- **Depende:** nada. **No necesita device.**
+- **FUERA del corpus del mapa:** no es divergencia contra el mapa; no suma denominador de paridad.
 
 ---
