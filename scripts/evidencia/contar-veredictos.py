@@ -746,6 +746,16 @@ NO_SON_MEDICION = {
         "dictamina sobre el MEDIDOR y escala decisiones; no mide ninguna pantalla. Los veredictos de "
         "`ingresos` y `reveal` son CITA de device15. Lo medido propio es el DoD textual del padron y "
         "un grep de imports -- ninguno es un veredicto de paridad.",
+    # 2026-11-03 - SM-N39. Produce una tabla de "veredictos" y por eso cae en candidatos, pero el
+    # SUJETO es otro padron: los marcadores `[ASSUMED_PENDING_VERIFY]` del codigo. Es el caso
+    # `un-nombre-con-dos-referentes`: la palabra `veredicto` colisiona y el parser prueba A
+    # (hits de ASSUMED) mientras el criterio 3 pregunta B (paridad de pantallas). Verificado por
+    # mi (planificacion): su tabla nombra 13 filas, todas `archivo:linea` de TS/PY, y CERO ids del
+    # padron de 54. Sumarlo habria agregado 13 "veredictos" a una cifra de pantallas -- la forma
+    # exacta en que una cifra sin unidad se cita para la pregunta ajena.
+    "2026-11-03_avance_frontend2-a-planificacion_SM-N39-MERGEADO-PR-1474-barrido-de-ASSUMED-con-veredicto-por-hit.md":
+        "mide marcadores [ASSUMED_PENDING_VERIFY] por `archivo:linea`, no paridad de pantallas: 13 "
+        "filas y cero ids del padron de 54. Mismo vocabulario, otro sujeto.",
 }
 
 NO_COMPARACION = ("NO_MEDIBLE", "FUERA-DE-REFERENCIA", "NO_REPRODUCIBLE_SIN_EFECTO",

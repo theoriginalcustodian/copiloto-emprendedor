@@ -91,7 +91,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del aviso PRESENTE tras un 401 del lado cliente. Provocarlo DESCARTA la sesion de la cuenta… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
-| **SM-K9** | `sin-issue` | 🟧 DOD-PARCIAL | La corrida con teclado REAL en device (receta en el buzon, 3 min); sin ella no se puede declarar ni defecto ni observ… |
+| **SM-K9** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en codigo 2026-11-03 (5dfe93a1, #1484, ancestro de origin/main): NO es una mascara. CampoFecha son TRES TextIn… |
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
@@ -129,13 +129,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion d… |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
-| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
+| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedi… |
 | **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
 | **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
-| **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
+| **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | REFUTADA EN DEVICE POR EL OPERADOR el 2026-11-03, despues de que yo la marcara TERMINADO. La marque con la evidencia … |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
-| **SM-N40** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -665,7 +665,13 @@ que afirma una ausencia inexistente no puede ser el vehículo para cambiar una d
 
 - **Estado:** DOD-PARCIAL
 - **Falta:** DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 1 passed, con control positivo del tenant B. Falta DoD(2) captura de device con cliente CON CUIT, solo en la canonica 4f3ecb78: frontend2 da de alta por la app un cliente con CUIT 20111111112 (el de sus 4 facturas) y la evidencia es el salto comprobantes_cantidad 0 a 4 en GET /clientes. No se crea por SQL. Decidido por planificacion 2026-11-02, 19af5a42 descartado.
-- **Dueño:** backend (el adversarial que falta) · frontend2 (la captura con dato real)
+- **Dueño:** frontend2 (la captura con dato real) — **corregido 2026-11-03:** este campo decía
+  «backend (el adversarial que falta)» y lo contradecía el `Falta:` de su propia ficha, que
+  acredita el adversarial HECHO (`c3867d10`, #1325, 1 passed en el VPS con control positivo del
+  tenant B). Un rótulo de dueño que sobrevive al trabajo que lo justificaba hace creer a una
+  sesión que tiene cola cuando no la tiene, y a mí despachar contra el dueño equivocado: lo
+  medí al barrer las 7 fichas con nombre de backend y encontrar que el residual de todas es
+  ajeno. El residual de esta ficha es UNO y es de frontend2.
 - ⚠️ **PREMISA CORREGIDA el 2026-11-02 — la ficha decía «la app no los recibe hoy» y es FALSO.**
   Medido contra `origin/main`: el listado trae `comprobantes_cantidad` (int), `monto_facturado`
   (string decimal, **nunca** null) y `facturas_atribuibles` (bool) — `cliente_store.py:310-320`,
@@ -840,7 +846,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend2
-- **Falta:** La corrida con teclado REAL en device (receta en el buzon, 3 min); sin ella no se puede declarar ni defecto ni observacion no reproducida. Leido en codigo: CampoFecha son 3 TextInput con auto-avance, no una mascara; y no hay manejo de borrado hacia atras (candidato aparte). Dueno del telefono: frontend1.
+- **Falta:** Medido en codigo 2026-11-03 (5dfe93a1, #1484, ancestro de origin/main): NO es una mascara. CampoFecha son TRES TextInput con auto-avance (CampoFecha.tsx:96-128), asi que la premisa de la ficha -- «la mascara podria no ser un defecto» -- se responde: no hay mascara que juzgar. El «DD / 02 / 1120» que la abrio es CONSISTENTE con adb escribiendo mas rapido que el focus() entre segmentos, pero eso NO esta probado y la diferencia importa: si es el instrumento, no hay defecto de producto; si es el componente, si. FALTA la corrida con TECLADO REAL (receta de 3 min en el buzon para frontend1, que tiene la tenencia del device) -- es el unico control que separa las dos causas, porque adb y un dedo humano no escriben al mismo ritmo. El hallazgo aparte que salio de aca (el borrado hacia atras no vuelve al segmento anterior, 0 hits de onKeyPress) NO ensancha esta ficha: quedo como SM-N40 (DEC-18).
 - **Dueño:** frontend2
 - **Medido:** observada con `adb`, que no reproduce el teclado real.
 - **DoD:** **repetir con teclado real primero.** Si se reproduce, el fix y su captura; si no, la
@@ -2499,8 +2505,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N34 · `sin-issue` — Las tres faltas de la agenda quedaron HUÉRFANAS dentro de una ficha cerrada
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto ANTES de tocar el front - el front no deduplica, renderiza los grupos como llegan, asi que desde el front no se puede decidir; es un pedido_ a backend) y DoD 4 (captura de device con Google Calendar conectado - la tenencia es de frontend1). DoD 5 (el veredicto de la entrada 10 del corpus) no se puede cerrar hasta la captura: el veredicto se cambia midiendo la app, nunca por el estado de esta ficha.
-- **Cierre:** 64e9f29a (#1462, ancestro de origin/main): «+ Nuevo evento» con el + del mapa, punto de estado de Calendar como punto/color (ya no solo texto) y linea del ahora en Hoy, vista mixta D9. El DoD 1 lo habia cumplido frontend2 midiendo en codigo ANTES de implementar: «Nuevo evento» YA existia en PantallaAgenda.tsx:118 y el punto de estado existia como TEXTO en :109 - implementarlos de cero habria sido rehacer lo que estaba.
+- **Dueno-activo:** frontend2
+- **Falta:** RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedido buscar: _eventos_de recorria todo el arbol del payload SIN deduplicar, asi que el MISMO id que aparecia por dos ramas salia dos veces. Fix ccbe2aa2 (#1483, ancestro de origin/main), CI 6/6, 23 passed en VPS, DESPLEGADO. Los otros tres hallazgos: (a) el endpoint es GET /mi-dia/calendario en mi_dia_web.py y /agenda NO EXISTE -- por eso mi grep daba 0 hits, y el vacio era la pregunta, no la respuesta; (b) un evento NO puede caer en dos grupos, _agrupar da una sola cubeta (con test); (c) las instancias de un recurrente con id DISTINTO si son varias, y eso es dato, no defecto (con test). Lo que FALTA es solo el DoD 4: la captura con payload REAL, que no existe porque Calendar sigue sin conectar en el tenant canonico. Eso depende de una decision del OPERADOR -- que cuenta Google vincular -- escalada y sin respuesta; backend se nego correctamente a improvisar una cuenta o a insertar filas a mano, porque un INSERT mediria un estado falso. Mas el codigo de frontend2 que no necesita payload: el «+» de «Nuevo evento», la decision punto-vs-texto del estado y la linea del ahora (que medido en codigo NO existe).
 - **Dueño:** frontend2
 - **De dónde sale:** auditoría de `SM-L4` (planificación, 2026-11-03) sobre las entradas que
   `scripts/mapa-51-estado.py` marcaba como **cubiertas sólo por el nombre**. La entrada **10
@@ -2628,8 +2634,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N38 · `sin-issue` — El tirador de Mi día: una línea sin texto, y el composer sin fondo
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre la linea con adb input motionevent -- un input tap no ejercita un Pan. Limite DECLARADO del DoD 5, con su motivo: el arrastre va sobre la linea y sobre el composer va el TOQUE; un segundo Pan sobre el composer chocaria con el de BotonVoz y pondria en riesgo el dictado (F6) para duplicar un camino ya cubierto. WCAG 2.5.1 queda satisfecho por el par gesto+toque, no por un cartel.
-- **Cierre:** Codigo en main: 0ceeb45c (#1476, ancestro de origin/main). Tirador de abajo = la barra sola, ALTO_HANDLE 13, sin texto y conservando el label accesible; la tarjeta del panel pasa a una capa con opacidad animada por panelY, asi que en colapsado no queda superficie detras del campo y del mic, sin animar layout ni tocar el gesto; tocar el campo sube el panel. 217 tests de shell/tema/composer verdes y lint 6/6 tras arreglar la paridad de testID en 3644dc61 (panel-superficie nuevo, panel-hint stale). El tirador de ARRIBA queda SIN TOCAR a proposito: es la misma pregunta en el otro borde y su texto no esta decidido.
+- **Dueno-activo:** frontend1
+- **Falta:** REFUTADA EN DEVICE POR EL OPERADOR el 2026-11-03, despues de que yo la marcara TERMINADO. La marque con la evidencia de frontend1 (pixel de afuera identico al chat, d9192c61) y el operador reporta que el fondo SIGUE y que el tirador no anda bien. Mi marcado fue el error: un pixel medido en UN punto con el panel colapsado no cubre el estado que el operador ve, y esta es la TERCERA vez que esta ficha se declara cerrada antes de estarlo. DOS faltas, y la segunda es nueva y MEDIDA EN CODIGO: (1) EL FONDO: el operador lo sigue viendo. Pendiente la captura con el panel abajo para saber si es residual de otra capa o si la de d9192c61 no cubre todo el ancho/alto del entorno. (2) LA ZONA DE ARRASTRE ES 3,4x MAS CHICA QUE LA QUE FUNCIONA. El tirador de ARRIBA de Mi dia (PanelFunciones.tsx:299, ALTO_PESTANA=44 mas insets.top) anda bien; el de ABAJO (PanelDeslizable.tsx:598, zonaHandle height=ALTO_HANDLE=13) falla a veces. No es intermitencia del gesto: 13 px es el blanco y el dedo acierta o no segun donde caiga. El operador lo diagnostico solo -- «el area de tirado solo esta sobre la linea y debe ampliarse» -- y pidio replicar el mecanismo del de arriba a TODOS los tiradores. RESTRICCION que hace que esto NO sea subir el numero: ALTO_HANDLE esta en la aritmetica del layout (PanelDeslizable.tsx:64-67, :434, :461-462), asi que subirlo a 44 corre la tira VISIBLE que el operador recien aprobo en esta misma ficha. La zona tactil tiene que crecer sin mover lo visible: hitSlop (hacia arriba y a todo el ancho) o una capa de gesto absoluta, NO un ALTO_HANDLE mas grande. Dueno frontend1, que tiene la tenencia del device. Alcance: los DEMAS tiradores tambien, por orden del operador -- se barren y se miden todos, no solo este.
 - **Dueño:** frontend1 (tomada el 2026-11-03, con el device `RF8T318RN9T`)
 - **De dónde sale:** orden del operador, 2026-11-03, con captura del mapa: *«el tirador de mi día
   está demasiado grande además de que todavía conserva el texto… debe ser una línea sobre el campo
@@ -2708,7 +2714,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N40 · `sin-issue` — El borrado hacia atrás no vuelve al segmento anterior en el campo de fecha
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend1
+- **Falta:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el salto temprano era el defecto espejo y esta cubierto. Los 4 tests traen CONTROL NEGATIVO, que es lo que los hace valer: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que la suite verde no puede ser verde por otra causa. Lo que FALTA es un solo punto y lo declaro frontend2, no yo: que el teclado de Android EMITA Backspace sobre un TextInput ya VACIO no esta verificado, y de eso depende todo el mecanismo -- si el teclado no manda la tecla, el handler es correcto y nunca corre. Es la MISMA corrida de device de SM-K9, sumando un punto a su receta: «el retroceso con el dia vacio vuelve al segmento anterior». Dueno de esa corrida: frontend1, que tiene la tenencia del device. Gesto con teclado real, nunca adb input tap.
 - **Dueño:** frontend2
 - **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
   ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
