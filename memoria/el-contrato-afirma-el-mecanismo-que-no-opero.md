@@ -76,3 +76,50 @@ sobre *lo que el llamador hace con el valor* envejece **con un archivo que este 
 Y el degradado silencioso **existía igual**, sólo que era otro: la app rutea 1 de los 5 destinos que el backend emite, y por eso
 **6 de las 7 tarjetas con acción tienen la píldora deshabilitada** (ítem `ACCIONDISABLED`). El defecto real estaba al lado del que
 inventé: medir el mecanismo lo encontró; inferirlo del comentario lo habría tapado con un falso.
+
+---
+
+## ⚠️ REFUERZO 2026-11-02 — el BLOQUEO lo inventó el NOMBRE del defecto, y mandó a medir el mecanismo equivocado
+
+**Lo medido.** La ficha `SM-K6` se llama *«la pantalla de ingreso no avisa que la sesión se cerró»*.
+Le escribí este `Falta:`: *«hay que invalidar la sesión del canónico del lado servidor»*. De ahí salió
+una cadena entera: la ficha quedó en el bloque que espera que **el operador cierre su sesión**, dos
+sesiones se pusieron a coordinar el turno del teléfono, y backend tuvo que medir el contenedor vivo
+para contestarme.
+
+**La premisa era falsa.** `apps/copiloto/auth.py:47` valida **sólo firma + exp + iss** y no consulta
+sesión en GoTrue: el backend **no tiene** el concepto «sesión cerrada». A un access token sólo le
+puede pasar **vencer** (`GOTRUE_JWT_EXP=3600`). El aviso que la ficha pide lo dispara **un 401 en el
+cliente**. Invalidar del lado servidor no era el mecanismo: ni siquiera era *un* mecanismo — era una
+ventana de hasta 60 min, y medir dentro de esa ventana habría dado por cerrada una sesión viva.
+
+**Why:** escribí el `Falta:` razonando desde **el nombre del defecto** («la sesión se cerró» ⇒ «hay
+que cerrar la sesión») en vez de desde el camino que el código recorre. El nombre de un defecto
+describe **lo que el usuario vive**, no el mecanismo que lo produce; tomarlo como especificación
+fabrica una precondición que el sistema no tiene. Y lo caro no fue el error: fue que **la
+precondición inventada se veía igual que una real** — tenía dueño (el operador), disparador
+nombrable (cerrar la sesión) y hasta una objeción técnica correcta encima (el JWT es stateless), así
+que **nadie la cuestionó: la coordinaron**. Un bloqueo falso con dueño y disparador es
+indistinguible de uno verdadero, y consume el recurso escaso igual que él (acá: el teléfono y una
+decisión del operador). Esa es la mitad que esta entrada no cubría: no sólo el **contrato** afirma un
+mecanismo que no opera — también lo hace **el pedido de evidencia**, y ese arrastra gente.
+
+**How to apply:**
+1. **Antes de escribir un `Falta:` que nombre un mecanismo, grepeá el mecanismo.** Si el `Falta:`
+   dice «invalidar X», «forzar Y», «esperar Z»: buscar en el código qué lo dispara **de verdad**
+   antes de pedirle a alguien que lo ejecute. Es una lectura; cuesta menos que la coordinación que
+   genera.
+2. **El nombre del defecto no es la especificación del mecanismo.** Pregunta de control: *¿qué
+   camino recorre el código para producir lo que el usuario vio?* — no *¿cómo se llama lo que vio?*
+3. **Un bloqueo cuya precondición es ajena se verifica ANTES de declararlo**, justo porque esos son
+   los que no se cuestionan: tienen dueño, así que se esperan en vez de revisarse
+   ([[una-espera-sin-disparador-nombrable-es-paralisis]] cubre el caso sin dueño; éste es el
+   contrario, y es peor).
+4. **Cuando la premisa se cae, se corrige el `Falta:` por escrito y se dice qué se destraba.** Acá:
+   `SM-K6` salió del bloque que esperaba al operador (11 fichas → 10) y pasó a «código + dos
+   capturas, con cualquier cuenta». Si la corrección no circula, la coordinación inventada sigue
+   viva por su cuenta ([[el-contrato-que-manda-a-hacer-algo-ya-hecho]]).
+
+**El señalador más útil fue ajeno:** backend **no ejecutó** lo que le pedí y midió primero. Un peer
+que contesta «medí esto antes de que lo haga» está haciendo de control positivo de tu premisa — esa
+respuesta vale más que la obediencia, y hay que tratarla así en vez de insistir con la orden.

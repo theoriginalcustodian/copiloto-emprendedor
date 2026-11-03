@@ -88,7 +88,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-K3** | `sin-issue` | 🟧 DOD-PARCIAL | requiere un tenant SIN Drive conectado: con la cuenta del operador el estado apagado NO existe (tiene Drive) · refres… |
 | **SM-K4** | `sin-issue` | ✅ TERMINADO | bfa7b919 (#1376) sobre el merge previo de K4. Captura de device (RF8T318RN9T, canonico) docs/copiloto-emprendedor/202… |
 | **SM-K5** | `sin-issue` | 🟧 DOD-PARCIAL | el diálogo «Sí, cerrar sesión» solo existe tocando el botón que cierra la sesión: requiere una sesión DESCARTABLE (ca… |
-| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal s… |
+| **SM-K6** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps… |
 | **SM-K7** | `sin-issue` | ✅ TERMINADO | 926163a4 (#1395): hablar filas con radio, comousar círculo+chevron, feedback mes a la derecha, negocio sin título dup… |
 | **SM-K8** | `sin-issue` | ✅ TERMINADO | sha c712da76f345d8b8791be174d9103a9d9c5e7d41 · fix + test + paso en el mapa (SM-C3 DoD 2-4) · captura de device 2026-… |
 | **SM-K9** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -117,8 +117,103 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
+| **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N27** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N29** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N30** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
+
+# ORDEN DE SECUENCIA: el build de release va AL FINAL, no antes
+
+**Orden del operador, 2026-11-02:** *«el build hay que hacerlo al final, cuando terminemos todo,
+porque sino tenemos que volver a repetirlo y no tiene sentido; primero corrijamos todo y dejemos
+todo implementado, y el build al final»*.
+
+**Qué gatea.** Las dos fichas que piden medición en release **no arrancan hasta que la
+implementación esté cerrada**: `SM-I6` (hoy `DOD-PARCIAL`, su `Falta:` pide *«medir en release, en
+el ejercicio final de SM-G4»*) y `SM-L1` (su DoD pide el tiempo real de `entrada` medido con build
+de release). Las dos son **medición**, no implementación: no hay nada que corregir después de
+medirlas, y por eso van últimas.
+
+**El fundamento, medido el 2026-11-02 por frontend2:** un build de EAS tarda **~22 min** y queda
+atado al sha desde el que se compiló (el suyo salió de `fa87d95`). Cualquier ficha que cambie el
+bundle **invalida la medición**, porque mediría una app que ya no es la que se va a entregar. Y hay
+un segundo costo que lo hace peor: el APK de release **reemplaza el dev-client** (mismo
+`applicationId`, verificado), así que instalarlo antes de tiempo le saca Metro a las sesiones que
+están implementando — se pagarían 22 min de build **más** la reinstalación del dev-client, para
+después tener que repetir todo igual.
+
+**🔴 CORRECCIÓN a este mismo documento.** La sección «El eje de la pasada de device» de más abajo
+dice que *«toda precondición que se pueda preparar antes —un tenant fabricado, un build de release,
+un token manipulado— se prepara antes»*. **Para el build de release eso queda SUPERADO por esta
+orden**, y la frase se corrige ahí mismo. El principio sigue valiendo para el resto: un tenant
+fabricado o un token manipulado **no caducan** cuando el código cambia, y el build **sí**. La
+distinción que faltaba no es «se puede preparar antes» sino **«¿sobrevive a que el código siga
+cambiando?»** — y era justo el caso donde dos líneas correctas del mismo doc se cruzaban en un
+agujero ([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Lo que SÍ está cerrado y no se vuelve a investigar:** que el build de release **se puede producir
+sin el operador** (EAS, perfil `release-medicion`, keystore remoto ya configurado, cero gates de
+credenciales; local inviable por falta de Android SDK/Java). Ese hallazgo **no caduca** y es lo que
+saca a `SM-I6`/`SM-L1` de la pila «esperando al operador». El entregable durable es el **perfil
+versionado en `eas.json`**; el APK es desechable y se rehace desde el sha que haga falta.
+
+**El disparador para producirlo**, explícito para que no quede como espera indefinida: **toda la
+implementación del sprint mergeada en `main`**. Recién ahí se compila, se instala, se mide
+`SM-I6` + `SM-L1` en la misma pasada de device, y se repone el dev-client con el build
+`development` de EAS.
+
+# El eje de la pasada de device NO es la cuenta — es el ESTADO que la tenencia puede producir
+
+**Agrupé mal, y la corrección costó una pasada de teléfono.** El bloque 2 se llamó «cuenta
+canónica» y se dejó esperando **una** decisión del operador (cerrar su sesión). Medido el
+2026-11-02 con el teléfono en mano y la cuenta del operador puesta, tres fichas del bloque 1
+**no se pudieron acreditar aunque la tenencia era la correcta**:
+
+| Ficha | Qué pasó en device | Por qué |
+|---|---|---|
+| `SM-K3` | el toggle de Drive salió **activo** | el operador **tiene** Drive conectado |
+| `SM-K5` | el diálogo «Sí, cerrar sesión» no se pudo ver | sólo aparece **cerrando la sesión** del operador |
+| `SM-J3` | el tenant vacío no se pudo mirar | su cuenta **tiene datos** |
+
+**Ninguna de las tres faltaba «por device».** Tener el teléfono no las cerraba: con esa cuenta
+puesta, **el estado que miden no existe**. Y `SM-K6` cayó en la misma clase por un camino distinto
+— provocar el 401 **descarta la sesión de la cuenta que lo provoca**, así que la tenencia no puede
+producir el estado sin perderse a sí misma.
+
+**La regla, para no volver a agrupar por el eje equivocado:** antes de poner una ficha en una pasada,
+preguntar **¿la tenencia con la que se va a correr puede PRODUCIR el estado que la ficha mide?** — no
+¿alcanza la cuenta?. Y el `Falta:` tiene que nombrar **la tenencia, no el device**: si dice «falta la
+captura del toggle apagado», el próximo con el teléfono lo intenta otra vez con la misma cuenta y le
+vuelve a salir activo. Tiene que decir *«requiere un tenant SIN Drive conectado»*.
+
+**Los tres caminos reales, que la pila «esperando al operador» escondía:**
+
+1. **Estado forzable desde el cliente** — no necesita la cuenta del operador ni su decisión; alcanza
+   el usuario canónico y manipular el estado por Metro (`SM-K6`: corromper el token, sin commitear).
+2. **Estado que exige un tenant fabricado** — ninguna cuenta real lo produce: hay que crear la
+   condición (`SM-J3` tenant vacío, `SM-K3` tenant sin Drive). **Esto no es una decisión del
+   operador: es trabajo de preparación** y se puede hacer antes de pedirle la ventana.
+3. **Estado que exige al operador de verdad** — su teclado, su voz, su arranque en frío, o aceptar
+   perder su sesión (bloque L, `SM-K5`). **Esta es la única pila que realmente lo espera**, y es la
+   que hay que mantener corta.
+
+**Lo que esto cambia en la práctica:** la ventana del operador es el recurso más escaso del sprint y
+estaba reservada para fichas que no la necesitaban. Toda precondición **que no caduque** y se pueda
+preparar antes —un tenant fabricado, un token manipulado— **se prepara antes**, porque una ventana
+gastada esperando una precondición es una ventana perdida.
+
+⚠️ **Hasta el 2026-11-02 esta línea incluía «un build de release» en esa lista, y era un error de
+clasificación.** Un build **caduca**: queda atado al sha del que salió, así que cualquier ficha que
+cambie el bundle lo invalida. La pregunta correcta no es «¿se puede preparar antes?» sino
+**«¿sobrevive a que el código siga cambiando?»**. El build va **al final** por orden del operador
+(ver la sección «ORDEN DE SECUENCIA» arriba); el tenant fabricado y el token siguen yendo antes.
 
 # Enmiendas FUNDADAS al mapa — el « salvo lo que definimos », escrito
 
@@ -649,7 +744,7 @@ reintentar sin tocar datos · `desconocida` → mensaje genérico, **no asumir**
 ### SM-K6 · `sin-issue` — La pantalla de ingreso no avisa que la sesión se cerró
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** una captura de device con el aviso presente tras un 401 del lado CLIENTE (token vencido), mas la del ingreso normal sin aviso que ya existe en 117dc669. CORREGIDO 2026-11-02: este Falta decia 'invalidar la sesion del canonico del lado servidor' y esa premisa era FALSA - apps/copiloto/auth.py:47 valida solo firma+exp+iss y no consulta sesion en GoTrue, asi que el backend no tiene el concepto 'sesion cerrada': a un access token solo le puede pasar VENCER (GOTRUE_JWT_EXP=3600 medido en el contenedor vivo por backend). El disparador del aviso es un 401 en el cliente, no un registro muerto en GoTrue. Consecuencia: SM-K6 YA NO depende de que el operador cierre su sesion ni de la cuenta canonica - sale del bloque 2 y se acredita con cualquier cuenta. Pendiente de backend: codigo y cuerpo exactos ante ExpiredSignatureError, porque si un token vencido y un login fallido llegan al front como el mismo 401 indistinguible, el 'ausente en un ingreso normal' del DoD no se puede implementar bien y ESO es el hallazgo.
+- **Falta:** SOLO la captura del aviso PRESENTE: el codigo YA ESTA en main (117dc669 #1320, packages/core/src/api/sesion.ts + apps/mobile/src/modules/auth/sesionExpirada.test.tsx) - no hay nada que implementar. Mecanismo: 401 con Bearer -> el cliente descarta la sesion (contrato medido por backend: token vencido o corrupto dan 401 {detail: invalid token} en auth.py:98-103; credenciales invalidas solo sale de /auth/login en web.py:1476, asi que 'sesion caida' vs 'login fallido' se distingue por CONTEXTO). CORREGIDO DOS VECES: (1) el Falta decia 'invalidar del lado servidor' y el backend no tiene ese concepto; (2) despues dije 'se acredita con cualquier cuenta' y tambien era falso - provocar el 401 DESCARTA la sesion de la cuenta que lo provoca, asi que la ficha sigue atada a la tenencia y VUELVE AL BLOQUE 2. Camino aprobado: con el canonico, corrompiendo el token por Metro sin commitear nada. NO con la cuenta del operador.
 - **Dueño:** frontend2
 - **Medido:** el aviso «Tu sesión se cerró por seguridad…» **no existe en ningún archivo** de
   `apps/mobile` ni de `packages/core`; el flujo de sesión caída ya va directo a este formulario
@@ -1484,3 +1579,511 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   plata. Ahí el residual queda **aceptado y medido** (1/8), no pendiente: nadie vuelve a iterar el
   prompt buscando el 0, porque la sonda ya mostró que ahí no se llega.
 - **FUERA DEL SPRINT** (`DEC-18`): sale del uso, no del mapa. El 54 no se mueve.
+
+### SM-N22 · `sin-issue` — DENTRO DEL SPRINT: el tirador para subir la conversación queda DEBAJO de la entrada de texto, y el mapa lo pone ARRIBA
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02, mirando el mapa contra la app.
+- **Medido (código, no impresión):** el grab-handle vive **adentro** del panel de la conversación y
+  **arriba de su contenido** — `apps/mobile/src/shell/PanelDeslizable.tsx:515` (`zonaHandle`,
+  `testID="panel-handle"`, barra 44×5 en `:560`), montado antes del contenido del panel. La entrada
+  de texto es `DockEntrada` → `Composer` (`apps/mobile/src/modules/chat/DockEntrada.tsx:151`), que
+  vive **dentro de ese mismo contenido**. Con el panel abajo, lo único que queda en pantalla es esa
+  tira (`ALTO_HANDLE = 56`, `:48`), y por eso el operador la ve **debajo** del campo.
+- **La pantalla es MI DÍA** (precisado por el operador, 2026-11-02): *«en la pantalla de mi día
+  el tirador está debajo de la entrada de texto… debe estar arriba del campo»*. Si el fix se
+  verifica en otra pantalla, no acredita esta ficha.
+- **El mapa:** `mapa-pantallas/index.html`, vista de Mi día — la barrita de arrastre aparece
+  **inmediatamente encima** de «Escribí, o hablá…», no debajo.
+- **Por qué NO es cosmético, y por qué entra al sprint en vez de quedar FUERA:** el tirador es el
+  **único** control para traer la conversación de vuelta. Si queda del lado equivocado del campo de
+  texto, el gesto natural (subir desde el borde inferior) cae sobre el teclado o sobre el campo, no
+  sobre la zona agarrable — y el control más usado de la app depende de acertarle. Además es
+  **divergencia directa contra el mapa**, que es el criterio declarado del sprint, y **no figura en
+  las `ENMIENDA FUNDADA`**: nadie decidió cambiarlo, así que es defecto.
+- **NO se arregla moviendo la barrita de lugar.** El orden visual sale de la arquitectura del panel:
+  el handle es el borde **superior** de una capa que se desliza, y el composer viaja **adentro** de
+  esa capa. Mover el `View` sin entender eso rompe el gesto o lo deja agarrando la capa equivocada.
+  **Leer la skill `swmansion-rn-gestures` antes de tocarlo** (regla del repo) y `documed-front`, que
+  ya resolvió esta composición.
+- **DoD:**
+  1. **Captura del estado ACTUAL** en device, 390 px, con el panel abajo — el «antes», que hoy no
+     existe en ningún lado y sin él no se puede acreditar que cambió nada.
+  2. La zona agarrable **por encima** de la entrada de texto, como el mapa, con su captura «después».
+  3. El gesto **sigue funcionando**: subir y bajar la conversación ejercitado con
+     `adb input motionevent` DOWN → MOVE → UP (nunca `input tap`: el toque sin desplazamiento no
+     activa un Pan y da un «no responde» falso).
+  4. **Control de que el instrumento ve:** en la misma corrida, un gesto que SÍ debería responder,
+     para distinguir «no se mueve» de «el ADB no está ejercitando nada».
+  5. El teclado abierto no tapa la zona agarrable: captura con el campo enfocado.
+- **Tenencia:** cualquiera de las dos cuentas sirve — es estructura, no datos. No necesita la
+  ventana del operador ni el usuario canónico.
+- **DENTRO del sprint:** es divergencia contra el mapa reportada por el operador. El denominador se
+  mueve (es el caso que `DEC-18` contempla: lo que sale del **mapa**, no del uso).
+
+### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
+  desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
+  cómoda»*.
+- **Es OTRO defecto que `SM-N22`**, aunque toquen el mismo componente: N22 es **orden** (el tirador
+  de abajo quedó del lado equivocado del campo de texto); ésta es **posición vertical** del tirador
+  de arriba. Se arreglan juntas pero se acreditan por separado: un fix que mueva la tira puede
+  cerrar una y dejar la otra igual.
+- **Medido (código):** `apps/mobile/src/shell/PanelDeslizable.tsx:434` lo declara explícito —
+  `handle_top (arriba) = 0 + insets.top`. O sea que el handle arranca **exactamente** donde termina
+  el inset de la status bar: **margen cero**. El spacer es fijo (`estiloSpacer = { height:
+  insets.top }`, `:436`).
+- **⚠️ Por qué nadie lo vio antes, y es el patrón que este repo ya tiene escrito:** el comentario
+  de `:413-434` **declara la protección** — *«el handle tiene que caer DEBAJO del reloj»*, y
+  termina en `← el handle cae debajo del reloj ✓`. La afirmación es **verdadera** y por eso apagó
+  la búsqueda: nadie volvió a preguntarse si «debajo del reloj» alcanzaba. **No alcanza, porque
+  cubre una mitad sola.** «No lo tapa el reloj» y «es cómodo de agarrar» son dos propiedades
+  distintas, y la segunda nunca se midió
+  ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]]).
+- **La causa real de «se confunde con el sistema»:** el borde superior es **zona de gesto del
+  sistema** — arrastrar hacia abajo desde ahí abre el panel de notificaciones de Android. Con
+  margen cero, el arrastre del usuario compite con el shade: a veces responde la app y a veces el
+  sistema. **No es percepción: es dos receptores para el mismo gesto**, y por eso se siente
+  «difícil» en vez de «roto» — funciona una de cada dos veces.
+- **⚠️ CÓMO NO arreglarlo — esto ya costó días en este archivo.** La geometría de esta tira se
+  logró **sin animar ninguna propiedad de layout**. El comentario de `:417-427` documenta que
+  animar `height` producía *«se desliza, salta, se maximiza un instante y sigue bajando»*: cada
+  layout pass es un commit del shadow tree y en el árbol de React el panel no tiene transform, o
+  sea **el panel arriba tapando la pantalla** por un cuadro. **El margen nuevo va FIJO** (como el
+  spacer), nunca animado, y el recorrido se acorta en esa misma cantidad para que la tira de abajo
+  siga midiendo exactamente una card. Si el fix anima `height`, `top`, `margin` o `padding`, está
+  mal aunque se vea bien en el emulador.
+- **Antes de tocarlo:** `swmansion-rn-gestures` (composición Pan / zona agarrable) y
+  `documed-front`, que ya resolvió la convivencia con las barras del sistema — su
+  `app/_layout.tsx:213` es el precedente de este repo para la barra de Android.
+- **DoD:**
+  1. **Captura del ANTES** con el panel arriba, 390 px, donde se vea la distancia real entre el
+     borde y la barrita.
+  2. El tirador **bajado a una zona cómoda**, fuera de la franja de gesto del sistema, con su
+     captura «después» y **el número**: cuántos px de margen quedaron bajo `insets.top`. Un
+     «quedó más abajo» sin cifra no es acreditable.
+  3. **El control que esta ficha existe para pedir:** arrastrar hacia abajo desde la zona del
+     tirador **N veces seguidas** (N declarado, ≥5) y que **las N** muevan el panel y **ninguna**
+     abra el panel de notificaciones. Una sola pasada no distingue «arreglado» de «tuve suerte»:
+     el defecto es intermitente por naturaleza.
+  4. El gesto ejercitado con `adb input motionevent` DOWN → MOVE → UP (nunca `input tap`), más un
+     gesto de control que SÍ debería responder, para distinguir «no se mueve» de «el ADB no
+     ejercita nada».
+  5. La tira de abajo **sigue midiendo una card** tras el cambio (no se engrosó con espacio muerto:
+     es justo lo que `:43-48` previene).
+- **Tenencia:** cualquiera de las dos cuentas — es estructura, no datos. No espera al operador.
+- **DENTRO del sprint:** es jugabilidad del control principal, reportada por el operador sobre la
+  app contra el mapa.
+
+### SM-N24 · `sin-issue` — DENTRO DEL SPRINT: el botón de cámara no va en el chat; sólo al cargar un gasto
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del chat) · coordinar con frontend2 (dueño de Gastos)
+- **Decisión del operador, 2026-11-02:** *«el botón de la cámara hay que quitarlo — la única
+  función de la cámara es para los gastos, para incluir una foto del comprobante; debe aparecer
+  sólo cuando se va a agregar un gasto»*. Es **decisión de producto**, no una preferencia visual:
+  acota el alcance de una capacidad a su único caso probado.
+- **Medido (código):**
+  - El botón se monta en el chat **sin condición**: `apps/mobile/src/modules/chat/ChatView.tsx:245`
+    pasa `onFoto={alElegirFoto}` siempre, y `Composer.tsx:205` lo pinta con sólo recibir el prop
+    (`{onFoto && !capturando && …}`).
+  - **La capacidad NO se pierde al sacarlo**, y esto es lo que hace la ficha barata: Gastos **ya
+    tiene su propia entrada de cámara**, con su propio ícono —
+    `apps/mobile/src/modules/gastos/FotoFuncion.tsx:100` (su `IconoCamara` de `:23` es, dicho en su
+    propio comentario, *«mismo trazo que `IconoCamara` de `chat/Composer.tsx`»*). O sea que el
+    camino que el operador describe **ya existe**: esta ficha **retira el duplicado del chat**, no
+    construye nada.
+  - `Composer` lo recibe como prop opcional (`onFoto?`, `:75`), así que **no pasarlo alcanza**: el
+    botón desaparece sin tocar el layout del composer.
+- **⚠️ Hay un comentario que va a defender el botón — leerlo y actualizarlo, no ignorarlo.**
+  `Composer.tsx:142-148` declara: *«`onFoto` rompe la regla de “sin botones de acción propios”, y es
+  la única excepción a propósito (Gastos Fase 2, OCR de ticket)»*, con el razonamiento de por qué
+  la cámara necesita botón (*«abrir la cámara es una capacidad del DISPOSITIVO, no del agente»*).
+  **Ese razonamiento sigue siendo cierto y no se discute** — lo que cambia es **dónde** vive el
+  botón: en el formulario de gasto, no en el chat general. Si el comentario queda como está,
+  el próximo que lo lea va a «restaurar» el botón creyendo que arregla una regresión.
+- **Otros llamadores — NO barrer a ciegas:** `apps/mobile/src/modules/soporte/PantallaSoporte.tsx:168`
+  también pasa `onFoto` (adjuntar una captura a un reporte de soporte). **Ese NO se toca**: no es
+  el chat del copiloto y su foto tiene otro propósito. La ficha retira **un** call-site, no el prop.
+- **DoD:**
+  1. El botón de cámara **ausente** del composer del chat (Mi día y conversación), con captura de
+     device.
+  2. El botón **presente** donde el operador lo pide — al cargar un gasto — con su captura. Las
+     dos mitades: un control que desaparece de todos lados no es lo pedido.
+  3. **Control negativo:** la foto de soporte (`PantallaSoporte`) **sigue funcionando**. Es el
+     llamador que un barrido por `onFoto` se llevaría puesto.
+  4. Tests que dependan del botón en el chat, revisados y pasando — incluido el censo de paridad
+     web↔mobile si lo toca.
+  5. El comentario de `Composer.tsx:142-148` **actualizado**: por qué la excepción sigue siendo
+     válida pero vive en Gastos.
+- **Tenencia:** cualquiera de las dos cuentas — es estructura. No espera al operador.
+- **DENTRO del sprint:** el mapa no dibuja cámara en la barra de entrada de Mi día (la captura que
+  mandó el operador muestra sólo el micrófono), así que además de decisión de producto es
+  convergencia con el mapa.
+
+### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del chat)
+- **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
+  mic debe ser transparente — el campo y el mic deben ser **flotantes** en el chat; lo mismo en la
+  parte superior: desde la zona que dice “Pedir confirmación” hacia arriba hay un fondo pleno»*.
+- **Medido (código) — son DOS fondos distintos, y por eso la ficha nombra los dos:**
+  - **Abajo:** el composer pinta **su propio degradado**: `apps/mobile/src/modules/chat/Composer.tsx:234`
+    (`colors={[tema.glass.s1, tema.glass.s2]}`), más la luz superior de `:239`
+    (`backgroundColor: tema.glass.hi`). El **campo** en sí ya es `backgroundColor: 'transparent'`
+    (`:307`), así que **lo que se ve lleno es la cáscara, no el input**: quien busque el fondo en el
+    `TextInput` no lo va a encontrar y va a concluir que no existe.
+  - **Arriba:** `ChatView` **no** pinta fondo — `:265` dice `// SIN backgroundColor a propósito` y
+    `:76` explica *«un `backgroundColor` acá taparía el vidrio detrás»*. O sea que el pleno de
+    arriba **no sale de ahí**: sale del `CristalVidrio nivel="conversacion"` del panel
+    (`shell/PanelDeslizable.tsx`) o de su `FondoIluminado`. **Hay que medirlo en device antes de
+    tocar**, no deducirlo: es justo el caso donde el comentario que declara «sin fondo a propósito»
+    apaga la búsqueda y el fondo real vive una capa más abajo.
+- **El criterio, para que no se interprete como «bajarle la opacidad a todo»:** flotante =
+  **el contenido del chat se ve correr por debajo** del campo y del mic. El campo tiene que seguir
+  siendo **legible y tocable** sobre cualquier contenido que pase atrás — texto largo, una card
+  clara, una foto. Transparencia sin legibilidad es otro defecto, no el fix.
+- **⚠️ El riesgo concreto: contraste.** El repo tiene un control de pares pintados
+  (`apps/mobile/src/theme/paresPintadosContraste.test.tsx`). Si el fondo del campo pasa a
+  transparente, **el par texto/fondo deja de estar garantizado**: depende de lo que haya detrás. El
+  DoD lo pide medido, no supuesto.
+- **DoD:**
+  1. Captura del **ANTES** (390 px) con contenido detrás del campo, y la del **DESPUÉS**.
+  2. El campo y el mic **flotando**, con el chat visible corriendo por detrás — demostrado
+     **scrolleando**: una captura estática no distingue «transparente» de «del mismo color que lo
+     que hay detrás en este momento».
+  3. **Legibilidad sobre el peor caso**: una captura con una card CLARA pasando bajo el campo. Es la
+     mitad que el verde del caso normal no acredita.
+  4. El control de contraste del repo pasando, y si alguna combinación queda fuera de umbral, la
+     solución (scrim, blur, borde) **nombrada**, no improvisada.
+  5. El fondo de ARRIBA identificado con `path:línea` real — no «toqué hasta que se fue».
+- **Tenencia:** cualquiera de las dos cuentas. No espera al operador.
+- **DENTRO del sprint:** es la cáscara del mapa.
+
+
+### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
+
+- **Estado:** PENDIENTE
+- **✅ DESBLOQUEADA el 2026-11-02 — se retira ENTERO.** El bloqueo existió porque el contrapunto de
+  abajo no estaba medido; **ahora lo está y se cae**. El texto del contrapunto queda igual a
+  propósito: explica qué se pierde y qué hay que reponer cuando el modo sea elegible.
+- **✅ RESOLUCIÓN, 2026-11-02 — el contrapunto se CAE, medido.** El operador preguntó lo único que lo
+  decidía: *«¿existe algún lugar para setear este comportamiento a nivel de usuario? porque me parece
+  que no… y si no existe no tiene sentido que se muestre, porque debería pedir confirmación siempre,
+  al menos hasta que implementemos la opción para que el usuario pueda elegir»*. **No existe, y su
+  razonamiento es exacto.** El único escritor del campo desde cualquiera de las dos UIs es
+  `volverAConfirmacion()` → `guardarPerfilNegocio({ modoCeremonia: 'confirmacion' })`
+  (`apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx:310` y su gemelo web
+  `apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx:193`). El backend
+  **acepta** escribir `automatico` (`apps/copiloto/presupuestos_web.py:85`, validado contra `MODOS`),
+  pero **ningún control lo manda**; y el default es `confirmacion` para todo tenant, nuevo incluido
+  (`apps/copiloto/perfil_negocio_store.py:62-66`).
+  ⇒ El indicador muestra **siempre lo mismo, para todos los usuarios**: es una **constante disfrazada
+  de estado**. Y la alternativa que yo había ofrecido —«mostrarlo sólo cuando el modo es
+  `automatico`»— equivale a **no mostrarlo nunca**: no era una alternativa, era el mismo retiro con
+  una condición muerta adentro. **Se retira entero**, y el **punto 4 del DoD queda sin objeto** (no
+  hay ninguna «otra ruta» donde el modo sea legible, porque no hay modo que leer: el valor es fijo).
+- **🔴 La deuda que el retiro CREA, y que se escribe acá para que no se pierda:** cuando se
+  implemente la opción de que el usuario elija el modo, **la señal permanente vuelve con ella** — no
+  es decoración, es lo único que dice si el copiloto actúa solo. Va como nota en el contrato de modos
+  §4 junto con su corrección: hoy «estado siempre visible» afirma algo que no existe, y la próxima
+  sesión que lo lea le va a creer ([[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+- **Lo que esto enseña del método, y por qué el contrapunto estaba mal construido:** defendí el
+  cartel por **lo que el contrato dice que significa**, sin medir si la variable que pinta puede
+  cambiar de valor. Se pintó una variable que **nunca varía**. El chequeo que faltaba era de una
+  línea y ya está escrito en la memoria de este repo: **¿quién ESCRIBE este campo?**, no quién lo lee
+  ([[la-costura-leia-un-campo-que-nadie-escribe]]).
+- **Dueño:** frontend1
+- **Decisión del operador, 2026-11-02:** *«hay que quitar eso de pedir confirmación — ensucia la
+  pantalla; sólo dejar el tirador del margen superior»*.
+- **Medido (código):** es `IndicadorModoCeremonia`
+  (`apps/mobile/src/modules/chat/IndicadorModoCeremonia.tsx:85`), montado como **primer hijo** de
+  `ChatView` (`:195`, envuelto en `styles.indicadorModo`, `:267`). Muestra `Automático` o
+  `Pedir confirmación`. Es **read-only a propósito** (`:13-17`): una `View`, no un `Pressable`,
+  porque *«un control que no responde al toque es peor que no tener control»*.
+- **⚠️ CONTRAPUNTO — lo que se pierde, con la evidencia de HOY:** ese indicador existe por el
+  **contrato de modos §4**, cuyo texto es *«estado siempre visible sin abrir nada»*
+  (`ChatView.tsx:192`). Es **la única señal permanente** de si el copiloto actúa solo o pide
+  confirmación. Y hoy mismo, el 2026-11-02, el operador reportó exactamente ese síntoma en
+  `SM-N19`: *«se está ejecutando todo de forma automática… yo no vi la card»*. Sacar el indicador
+  no causa ese comportamiento, pero **saca el único lugar donde se lee en qué modo está la app** —
+  justo la pregunta que hubo que contestar hoy leyendo código. Además es **fail-closed** (`:29-31`):
+  ante error o endpoint caído muestra «Pedir confirmación», nunca «Automático».
+- **La alternativa barata, por si el operador la prefiere** (decide él, no la implementación):
+  mostrarlo **sólo cuando el modo es `automático`**. En `confirmación` —que es el default y el
+  estado del tenant del operador— la pantalla queda limpia como pide, y la señal **reaparece
+  exactamente cuando importa**: cuando la app SÍ actúa sola. Costo: una condición. Así el «siempre
+  visible» del contrato §4 se degrada a «visible cuando hay algo que avisar», en vez de
+  desaparecer.
+- **Si el operador confirma el retiro total:** se retira **y se actualiza el contrato de modos §4**,
+  más los dos comentarios que lo invocan (`ChatView.tsx:192` y el docstring del indicador). Un
+  contrato que sigue afirmando «estado siempre visible» cuando ya no hay nada visible es
+  exactamente la clase de declaración que después se cita como si fuera verdad.
+- **DoD:**
+  1. La cabecera del chat sin el indicador (o con la condición, según lo que decida el operador),
+     captura de device — arriba queda sólo el tirador.
+  2. El contrato de modos §4 y los comentarios que lo citan, **actualizados al estado real**.
+  3. Tests que dependan del indicador, revisados — su lógica fail-closed no se borra: si el
+     indicador vuelve alguna vez, vuelve cerrado.
+  4. **Control:** que el modo del tenant **siga siendo legible en algún lado** (Ajustes → Mi
+     negocio, `PantallaPerfilNegocio.tsx:468`), y que esa ruta esté verificada, no supuesta.
+- **Tenencia:** cualquiera de las dos cuentas.
+- **DENTRO del sprint:** limpieza de la cáscara pedida por el operador.
+
+### SM-N27 · `sin-issue` — DENTRO DEL SPRINT: dos toques al avatar abren Ajustes DOS veces — el guard existe y se derrota a sí mismo
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02: *«al apretar dos veces seguidas el botón para ingresar
+  a ajustes del usuario se abre dos veces la misma pantalla… al parecer como tarda en abrirse, si se
+  apreta dos veces se abre dos veces»*. Su diagnóstico es correcto y es la pista: **el defecto vive
+  en la ventana de la transición**.
+- **⚠️ El guard YA ESTÁ PUESTO en ese botón — así que «falta `empujarUnaVez`» es la explicación
+  equivocada y hay que descartarla de entrada.** `apps/mobile/src/shell/PantallaPrincipal.tsx:120`
+  es `const alAjustes = () => empujarUnaVez('/ajustes')`, y lo reciben **las dos** capas que pintan
+  el avatar (`:273` escritorio y `:280` Mi día). El flag se cierra de forma **síncrona**
+  (`navegacion/empujarUnaVez.ts:52-54`), así que un segundo tap inmediato **sí** lo ve cerrado.
+  Quien parchee agregando el helper va a «arreglar» algo que ya estaba y el defecto va a seguir.
+- **MEDIDO — la causa raíz: la puerta se reabre AL LLEGAR, no al volver.**
+  `apps/mobile/app/ajustes.tsx:45` llama `reabrirNavegacion()` dentro de su `useFocusEffect`, porque
+  Ajustes es **destino Y pantalla lanzadora a la vez** (lanza Skins, Cuenta, Negocio, AFIP…).
+  Secuencia real: tap 1 cierra la puerta y empuja `/ajustes` → Ajustes monta, gana foco y **reabre la
+  puerta** → el tap 2, que el sistema entregó durante la transición, encuentra la puerta abierta y
+  empuja un **segundo** `/ajustes`. Por eso el síntoma depende de que *«tarde en abrirse»*: la
+  ventana de falla es exactamente el tiempo de la transición.
+- **⚠️ El docstring afirma la invariante que el código NO cumple — y por eso nadie volvió a mirar.**
+  `empujarUnaVez.ts:17-18` dice textual: *«la puerta se cierra al lanzar y se reabre cuando la
+  pantalla lanzadora vuelve a tener el foco —o sea cuando el glass se cerró y volvimos a ella—, **ni
+  antes ni después**»*. La afirmación es verdadera para un destino HOJA, y **falsa para un destino
+  que también es lanzador**: ahí «ganar foco» ocurre a la IDA. El comentario describe la intención,
+  no el efecto, y leerlo apaga la búsqueda
+  ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]] ·
+  [[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+- **🔴 Es una CLASE, no un botón — el fix de un solo call-site deja el resto vivo.** Todo destino que
+  además sea lanzador reabre al llegar y tiene el mismo agujero: `app/ajustes.tsx:45`,
+  `app/midia.tsx:17`, `app/presupuestos.tsx:34`, `app/clientes.tsx:33`, `app/gastos.tsx:33`,
+  `app/soporte-ticket.tsx:33`, `modules/facturacion/PantallaFacturacion.tsx:206`. El único lugar
+  donde el riesgo está razonado por escrito es `modules/soporte/PantallaSoporte.tsx:94-99`, que
+  reabre **a propósito y acotado** a su propio lanzamiento. **Contar los llamadores antes de tocar**
+  ([[el-fix-ya-existe-en-otro-call-site]]).
+- **El criterio del fix, no su implementación** (la elige frontend1 con la skill en mano): la puerta
+  tiene que distinguir **«volví al lanzador»** de **«llegué al destino»**. Un lock por TIEMPO ya fue
+  rechazado con fundamento en `empujarUnaVez.ts:13-18` y **no se reintroduce**: tapa el doble-tap y
+  deja pasar el toque encolado tardío. Las dos direcciones que SÍ respetan la invariante escrita:
+  (a) que la puerta recuerde **qué ruta** la cerró y sólo la reabra quien no sea ese destino, o
+  (b) que el destino consuma el lanzamiento pendiente al llegar en vez de reabrir la puerta.
+  Cualquiera de las dos sirve; lo que no sirve es un `setTimeout`.
+- **Antes de tocarlo:** `swmansion-rn-gestures` (tap sobre `Pressable`, toques encolados) y
+  `documed-front`, de donde salió este mecanismo (`PantallaPrincipal.tsx:64-65` lo declara clon de
+  `documed-front/apps/mobile/app/(tabs)/index.tsx`) — **medir si documed ya resolvió el caso
+  destino-que-también-lanza antes de diseñar nada**, que es la regla §3.ter de este repo.
+- **DoD:**
+  1. **Reproducción del defecto ANTES del fix**, en device: dos toques rápidos al avatar y la
+     evidencia de que hay **dos** pantallas apiladas — dos «Volver» para salir, o el stack leído.
+     Sin el antes reproducido no hay forma de acreditar el después: el defecto es intermitente por
+     naturaleza (depende de la transición).
+  2. Dos toques rápidos → **una sola** pantalla, demostrado **N veces seguidas** (N declarado, ≥5).
+     Una pasada no distingue «arreglado» de «tuve suerte».
+  3. **Control de que la navegación LEGÍTIMA sigue viva** — es la mitad que un fix de este tipo
+     rompe calladito: abrir Ajustes → volver → abrir Ajustes otra vez **funciona**; y desde Ajustes
+     abrir Skins/Cuenta **funciona** (Ajustes es lanzadora: si el fix le quita el derecho a reabrir
+     sin más, queda muerta y el síntoma es el mismo *«se queda bloqueada y no responde»* de julio).
+  4. El toque ejercitado por ADB con el método **declarado** (acá es tap sobre `Pressable`, no un
+     Pan, así que `input tap` sirve — pero hay que decir cuál se usó), más un control que SÍ debería
+     responder, para distinguir «no se abrió» de «el ADB no ejercitó nada».
+  5. **El barrido de la clase**: los 7 destinos-lanzadores listados arriba, cada uno **dicho** —
+     arreglado por el mismo mecanismo, o medido como no afectado con el motivo. Un fix que cierre
+     sólo `/ajustes` deja seis agujeros idénticos y la ficha no se acredita.
+  6. El docstring de `empujarUnaVez.ts:13-28` **corregido al efecto real**, incluido el caso
+     destino-que-también-lanza. Es la declaración que apagó la búsqueda; dejarla intacta garantiza
+     el próximo.
+- **Tenencia:** cualquiera de las dos cuentas — es estructura de navegación. No espera al operador.
+- **DENTRO del sprint:** es jugabilidad, reportada por el operador sobre la app. No es divergencia
+  contra el mapa (el mapa no dibuja stacks), así que entra por la vía «defecto de uso», no por
+  denominador del mapa.
+
+### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
+  la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
+- **⚠️ Esto NO contradice a `SM-N16`, y hay que decirlo porque parece que sí.** `N16` existió porque
+  el acceso vivía **sólo en Mi día** y *«un operador quedó sin salida en el escritorio»* — el camino a
+  cerrar sesión pasa por ahí (el comentario está en `apps/mobile/src/shell/PantallaPrincipal.tsx:118-119`).
+  `N16` **agregó** el avatar donde faltaba; esta ficha **retira el que quedó duplicado**. Las dos
+  apuntan al mismo invariante: **un solo acceso, y en el escritorio**. Quien lea `N16` sin esta ficha
+  va a creer que estamos revirtiendo su fix y lo va a «restaurar».
+- **Medido (código):** el avatar se pinta en **dos** lugares con el mismo componente
+  (`modules/midia/AvatarCuenta.tsx:43`):
+  - **el que SE VA** — `modules/midia/PantallaMiDia.tsx:255`,
+    `<AvatarCuenta inicial={inicialCuenta} avisa={conexionCaida} onPress={onAjustes} />`, cableado
+    desde `PantallaPrincipal.tsx:280`;
+  - **el que SE QUEDA** — `modules/escritorio/EscritorioFunciones.tsx:214`
+    (`testID="escritorio-avatar"`), cableado desde `PantallaPrincipal.tsx:273-277`.
+- **✅ El retiro NO cuesta nada, y esta es la medición que lo vuelve barato:** el punto de aviso de
+  conexión caída **ya viaja al avatar que se queda**. `conexionCaida` lo calcula Mi día
+  (`PantallaMiDia.tsx:163`) y lo **sube** por `onConexionCaida` (`:202-203` →
+  `PantallaPrincipal.tsx:281` `onConexionCaida={setConexionCaida}`), y el shell lo baja al escritorio
+  en `:276` (`avisa={conexionCaida}`). O sea: **sacar el avatar de Mi día no apaga ninguna señal** —
+  el aviso sigue encendiéndose, en el único avatar que queda. Si el aviso NO estuviera ya propagado,
+  esta ficha tendría que haber movido el cálculo, y ese es el trabajo que la medición ahorró.
+- **🔴 Lo que NO se toca, porque es la señal y no el botón:** el cálculo de `conexionCaida` y su
+  `onConexionCaida` **se quedan en Mi día**. Un barrido por `conexionCaida` que se lleve el estado
+  junto con el avatar apaga el punto del escritorio y el síntoma aparece **en otra pantalla**, donde
+  nadie lo va a atribuir a esta ficha. Se retira **el `AvatarCuenta` y su cableado `onAjustes` /
+  `inicialCuenta` en la rama de Mi día**, nada más.
+- **Relación con `SM-N27`:** retirar este call-site **reduce** la superficie del doble-abrir (queda un
+  solo avatar) pero **no lo arregla**: el defecto es que la puerta se reabre al llegar
+  (`app/ajustes.tsx:45`), y sigue vivo tocando dos veces el avatar del escritorio. **No marcar `N27`
+  por el efecto de esta ficha** — es justo el caso de [[dos-causas-suficientes-el-test-no-atribuye]].
+- **DoD:**
+  1. Captura de **Mi día** sin el avatar, 390 px, device — y que el lugar que ocupaba **no quede como
+     hueco**: lo que había alrededor tiene que cerrar el espacio, no dejar un vacío de 40 px.
+  2. Captura de la **pantalla de funciones** con el avatar **presente y funcionando** (abre Ajustes).
+     Es la mitad que un retiro mal hecho se lleva puesta: si desaparece de las dos, el operador queda
+     sin salida y repetimos exactamente el incidente de `SM-N16`.
+  3. **Control de la señal:** con la conexión caída, el punto de aviso **sigue encendiendo** en el
+     avatar del escritorio. Provocable sin tocar nada de red real: la señal entra por
+     `onConexionCaida`, así que alcanza forzar el estado desde Metro. Sin este control, «se ve bien»
+     no distingue entre «la señal viaja» y «la señal se apagó con el avatar».
+  4. Tests que monten `PantallaMiDia` esperando el avatar, **revisados** — y el censo de paridad
+     web↔mobile si lo toca. Que el test viejo siga verde afirmando el avatar en Mi día sería un test
+     que afirma el síntoma ([[un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal]]).
+  5. El comentario de `PantallaPrincipal.tsx:118-119` **actualizado**: hoy dice «las dos capas que
+     muestran el avatar», y después de esta ficha hay una sola. Dejarlo intacto es sembrar el
+     próximo «esto está roto, lo restauro».
+- **Tenencia:** cualquiera de las dos cuentas — es estructura. No espera al operador.
+- **DENTRO del sprint:** decisión de producto del operador sobre la cáscara, y además consolida el
+  invariante de `SM-N16` (un solo acceso a Ajustes, en el escritorio).
+
+### SM-N29 · `sin-issue` — DENTRO DEL SPRINT: verificar que el splash se vea ÍNTEGRO en arranque frío (el operador nunca lo vio)
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (frontend1 está con la cáscara del chat)
+- **Reportado por:** el operador, 2026-11-02: *«¿por qué al inicio nunca aparece el splash que tiene
+  la app? ¿está implementado?»*. **Sí está implementado**; lo que falta es la verificación de que se
+  vea completo, que nunca se hizo.
+- **🔴 LO PRIMERO, porque es la trampa de esta ficha: «splash» nombra TRES cosas distintas en este
+  código, y verificar una concluyendo de otra es el error esperable.**
+
+  | # | Qué es | Dónde | Cuándo aparece |
+  |---|---|---|---|
+  | 1 | **`RevealEntrada`** — el del MAPA: lockup animado, pronunciación «o-DO-bi», botón Entrar. **6,8 s.** | `apps/mobile/src/modules/auth/RevealEntrada.tsx:135`, montado por `EntradaSesion.tsx:32` | **SIN sesión**: primer ingreso y post-logout |
+  | 2 | **`EntradaDiaria`** — el isotipo dibujándose, arranques 2..n | `apps/mobile/src/modules/splash/EntradaDiaria.tsx`, montado en `app/_layout.tsx:96` | mientras `estado === 'verificando'` (resuelve el token guardado) |
+  | 3 | **`Splash()`** — un `ActivityIndicator` pelado, **`testID="splash"`** | `apps/mobile/app/_layout.tsx:61-67` | fallback del layout |
+
+  ⚠️ **El `testID="splash"` pertenece al #3**, que es el que el mapa NO dibuja. Un test o una
+  captura que busque `splash` por testID **mide el spinner**, no el reveal del mapa ni la entrada
+  diaria ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] — acá son tres).
+- **Por qué el operador «nunca lo ve», medido:** con su sesión viva, el arranque entra por el **#2**,
+  y el gate es `if (estado === 'verificando')` (`app/_layout.tsx:96`). Ese estado dura lo que tarda
+  `AsyncStorage` en devolver el token + `/me`: con sesión válida resuelve casi instantáneo y el
+  componente **se desmonta a mitad de animación**. El **#1** —el que él tiene en la cabeza, porque es
+  el del mapa— **no se le muestra nunca**, porque requiere **no tener sesión**. No está roto: con esa
+  tenencia, el estado que mide **no existe** (la clase de `SM-K3`/`SM-K5`/`SM-J3`).
+- **⚠️ El #2 está DISEÑADO para cortarse, y eso NO es el defecto.** Su propio comentario lo dice:
+  *«el isotipo dibujándose cubre la latencia real de `/me`, no la extiende (`EntradaDiaria` no gatea
+  nada por sí sola)»* (`app/_layout.tsx:94-96`), y por eso recibe `onFin={sinOp}`. **Pedirle que se
+  vea «íntegro» sería pedirle que retrase el arranque** — exactamente lo contrario de lo que se
+  decidió. Para el #2 la pregunta correcta no es «¿se ve entero?» sino **«¿se ve BIEN mientras dura,
+  o alcanza a verse un destello roto / un salto de color / un frame en blanco?»**. Si alguien
+  «arregla» el #2 agregándole un tiempo mínimo, está rompiendo una decisión tomada, no cerrando esta
+  ficha.
+- **✅ Tenencia — y esta es la medición que vuelve la ficha ejecutable HOY:** el #1 se ve **cerrando
+  sesión**, y la sesión que hay que cerrar es la del **usuario canónico de prueba**
+  (`e2e-device@copiloto.test`), **no la del operador**. Así que **no espera su ventana ni su
+  decisión**: es el camino (1) del eje de tenencia — estado forzable con la cuenta de prueba. La
+  sesión del operador **no se toca**.
+- **DoD:**
+  1. **El #1 (`RevealEntrada`) filmado entero** en device, con la cuenta canónica: logout → arranque
+     → el lockup completo hasta el botón «Entrar». Contra el mapa (`?ver=splash`): mismo lockup,
+     mismo «se dice o-DO-bi», mismo botón. Filmación, no captura: es una animación, y una captura no
+     distingue «se animó» de «apareció el frame final».
+  2. **El audio de pronunciación**: que suene, o que su botón responda. Es parte del reveal del mapa
+     y es lo primero que se cae callado en release.
+  3. **El #2 (`EntradaDiaria`) en arranque frío**, filmado: la app matada de verdad
+     (`adb shell am force-stop app.copiloto.emprendedor`, no el botón atrás) y abierta. Veredicto
+     binario: **¿se ve bien mientras dura, sin destello blanco ni salto de color al entrar al
+     escritorio?** Su duración **no** es criterio de falla.
+  4. **El número**: cuánto dura el #2 en la práctica, medido, aunque sea 200 ms. Es el dato que hoy
+     no existe y que explica el «nunca aparece» del operador con una cifra en vez de una conjetura.
+  5. **Control negativo:** con la sesión ya iniciada, el #1 **NO** aparece. Confirma que la
+     condición de montaje es la que creemos y no otra.
+  6. Que la ficha **diga cuál de los tres** verificó en cada punto. Un «el splash anda» sin el número
+     del componente no acredita nada.
+- **🔗 Relación con `SM-L1` — NO se duplican, y conviene decir por qué:** `SM-L1` mide **tiempo** de
+  `entrada` y exige **build de release** (el dev-client contamina el timing). Ésta verifica
+  **integridad visual** y corre **con el dev-client**, hoy. Si el reveal estuviera roto, esperar al
+  build para enterarse sería descubrirlo al final. Lo que esta ficha **no** puede afirmar es si se
+  cumplen los **6,8 s** del mapa: eso es de `SM-L1`, en release.
+- **DENTRO del sprint:** es una pantalla del mapa (`?ver=splash`, `?ver=volver`) que nunca se
+  verificó contra la app. Entra por el denominador del mapa.
+
+### SM-N30 · `sin-issue` — DENTRO DEL SPRINT: la pantalla de entrada REAL no es la que dibuja el mapa («Volver a entrar»)
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (va pegada a `SM-N29`: misma pantalla, misma pasada de device)
+- **Reportado por:** el operador, 2026-11-02, sobre el mapa `?ver=volver`: *«la pantalla de entrada es
+  diferente a la del mapa; la imagen de "volver a entrar" no es la misma que tiene la app»*.
+- **🔴 Es la OTRA mitad de `SM-N29`, y conviene no confundirlas.** `N29` pregunta **si el reveal se
+  ve** (llega a mostrarse, íntegro, en arranque frío). Ésta pregunta **si lo que se ve es LO QUE EL
+  MAPA DIBUJA**. Un reveal que aparece completo y no coincide con el mapa cierra `N29` y deja ésta
+  abierta: son dos veredictos distintos sobre la misma pantalla. Marcar una por la otra es el error
+  esperable ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+- **✅ TRES divergencias ya medidas en código, sin device** — esto NO arranca de cero, y ninguna de
+  las tres necesita el teléfono para confirmarse como divergencia (el device decide cuál se ve, no si
+  existe):
+
+  | # | El mapa (captura del operador, `?ver=volver`) | La app (código) |
+  |---|---|---|
+  | 1 | **sin** tagline bajo el wordmark | **dibuja** `TAGLINE_MARCA` «Tu copiloto emprendedor» — `apps/mobile/src/modules/auth/RevealEntrada.tsx:106`, con fade-up propio (`:79`) |
+  | 2 | **botón de audio** junto a «se dice o-DO-bi» (el parlante de la captura) | **no se renderiza**: depende de `pronunciacionAsset`, y **no hay ningún audio en el repo** — el propio docstring lo declara `[ASSUMED_PENDING_VERIFY]` (`RevealEntrada.tsx` §`pronunciacionAsset`, BL-X10) |
+  | 3 | la pantalla «Volver a entrar» como **lo que se ve al no tener sesión** | sólo aparece con **`cierreVoluntario != null`** — o sea **sólo si el usuario cerró sesión A PROPÓSITO**. La sesión **caída sola** (token vencido, CTA5) va **directo al formulario**, sin reveal: `apps/mobile/src/modules/auth/EntradaSesion.tsx:26` |
+
+- **⚠️ La #3 es la que más muerde, y no es un bug: es una decisión tomada.** El comentario de
+  `EntradaSesion.tsx:10-14` la declara explícita. Pero el mapa **no la dibuja**, así que el mapa
+  afirma un estado que la app sólo produce bajo una condición que el mapa no nombra. Quien compare
+  «la app contra el mapa» sin saber esto va a concluir que el reveal está roto cuando en realidad
+  entró por el camino de sesión caída. **Antes de tocar una línea de UI hay que decidir cuál de los
+  dos se corrige**, y eso es decisión de producto del operador, no táctica:
+  - **(a) manda el mapa** ⇒ el reveal también se muestra con la sesión caída sola, y hay que decidir
+    dónde queda el aviso de «se cayó tu sesión», que hoy vive en el formulario;
+  - **(b) manda la app** ⇒ el mapa suma el estado que falta y aclara que «Volver a entrar» es
+    **post-logout voluntario**, no «cualquier arranque sin sesión».
+  **No se implementa ninguna de las dos hasta que el operador elija.** Las divergencias #1 y #2 **no
+  esperan esa decisión** y se pueden cerrar antes.
+- **⚠️ Y la #1 tiene antecedente, que es el motivo de no «arreglarla» mirando una sola captura:** el
+  propio `packages/core/src/textosEntrada.ts:24-27` dice que *«la fila `splash` de DEVICE15 lo midió
+  **ausente** en todos los cuadros»*. O sea: **ya se midió una vez que el tagline no se veía** —
+  mientras el código lo dibuja. Hay que establecer si hoy se ve o no **antes** de decidir si sobra
+  en la app o falta en el mapa; si no se ve, la divergencia con el mapa no existe y el defecto es
+  otro (el tagline que no llega a pintarse), que es un hallazgo distinto.
+- **DoD:**
+  1. **Captura de la app** en la pantalla de entrada real, device, 390 px, **al lado** de la del mapa
+     `?ver=volver`. Una sola imagen comparada, no dos descripciones.
+  2. **Veredicto por cada una de las tres filas**: coincide / no coincide / no aplica, con lo que se
+     ve. Un «se parece» no acredita: la tabla tiene tres renglones y cada uno necesita el suyo.
+  3. **Decir por qué camino entró** la app en esa captura (`cierreVoluntario` presente o no). Sin ese
+     dato la captura no se puede interpretar: la misma pantalla tiene dos orígenes. Es el control que
+     distingue «el reveal está mal» de «no era el reveal».
+  4. **Divergencias #1 y #2 resueltas**: el tagline, visible o retirado según lo que se mida; y el
+     botón de audio, **dibujado o quitado del mapa** — hoy el mapa promete un control que la app no
+     puede tener porque el asset no existe. Prometer un botón que no hay es deuda del mapa, no de la
+     app.
+  5. **Divergencia #3:** sólo la **decisión del operador escrita acá**. La implementación, si la hay,
+     es ficha aparte — no se cuela en ésta.
+- **Tenencia:** cuenta canónica (`e2e-device@copiloto.test`). Se fuerza cerrando sesión con ella, que
+  es exactamente el camino de `cierreVoluntario`. **La sesión del operador no se toca.** Para medir
+  el camino de sesión caída sola hace falta invalidar el token, no cerrar sesión — y eso ya es otra
+  tenencia: si no se logra, se declara en `Falta:`, no se finge.
+- **🔗 Se corre PEGADA a `SM-N29`**: misma pantalla, mismo logout, misma pasada. Separarlas obliga a
+  cerrar sesión dos veces y a pagar el arranque frío dos veces.
+- **DENTRO del sprint:** es literalmente una pantalla del mapa que no coincide con la app, que es el
+  denominador del sprint.
+
