@@ -235,25 +235,15 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
     expect(e.top).toBeGreaterThanOrEqual(ALTO_HANDLE);
   });
 
-  it('SM-N38: el entorno del campo colapsado es el fondo plano del chat y lo mueve la misma señal que el pie', async () => {
-    const espia = jest
-      .spyOn(Reanimated, 'useAnimatedStyle')
-      .mockImplementation(((actualizar: () => object) => actualizar()) as never);
-    try {
-      await render(
-        <ThemeProvider>
-          <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
-            <Text>chat</Text>
-          </PanelDeslizable>
-        </ThemeProvider>,
-      );
-      const plano = StyleSheet.flatten(screen.getByTestId('panel-fondo-plano', { includeHiddenElements: true }).props.style);
-      const pie = StyleSheet.flatten(screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true }).props.style);
-      expect(plano.backgroundColor).toBeTruthy();
-      expect(plano.opacity).toBe(pie.opacity);
-    } finally {
-      espia.mockRestore();
-    }
+  it('SM-N38: detrás del campo colapsado no se monta ninguna capa de fondo propia (el chat no la tiene)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-fondo-plano', { includeHiddenElements: true })).toBeNull();
   });
 
   it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
