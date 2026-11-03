@@ -246,6 +246,18 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
           Scrim (SM-N25 DoD 4): degradé de `fondo` que sube desde el borde inferior; es lo que garantiza el contraste
           del texto del campo cuando por detrás pasa una card CLARA. Corto y que se desvanece a 0 arriba: el contenido
           sigue viéndose correr, el scrim sólo le baja el contraste justo bajo el campo. */}
+      {/* SM-N25 DoD 5 — el fondo de ARRIBA. Medido en código: no sale de `ChatView` (sin backgroundColor, ver abajo) sino de
+          `CristalVidrio.tsx:108` (`backgroundColor: tema.color.fondo`, la superficie opaca del panel entero: tiene que ser
+          opaca porque detrás está Mi día). Esa superficie no se puede volver transparente; lo que sí se puede es lo que pasó
+          abajo: que la lista NO termine en un corte duro contra el asa. Scrim espejo del dock — `fondo` opaco bajo el asa que se
+          desvanece a 0 hacia abajo — y la lista corre por DEBAJO de él. */}
+      <LinearGradient
+        testID="chat-scrim-superior"
+        pointerEvents="none"
+        colors={[conAlfa(tema.color.fondo, ALFA_SCRIM_ARRIBA), conAlfa(tema.color.fondo, 0)]}
+        locations={[0, 1]}
+        style={styles.scrimSuperior}
+      />
       <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
         <LinearGradient
           testID="chat-dock-scrim"
@@ -282,11 +294,15 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
 
 /** Opacidad del scrim en el borde inferior del dock. Alta pero no 1: el chat se sigue viendo correr, sólo atenuado. */
 const ALFA_SCRIM_ABAJO = 0.9;
+/** Opacidad del scrim bajo el asa (borde superior de la lista) y su alto. Mismo criterio que el de abajo. */
+const ALFA_SCRIM_ARRIBA = 0.9;
+const ALTO_SCRIM_ARRIBA = 28;
 
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
   area: { flex: 1 },
+  scrimSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: ALTO_SCRIM_ARRIBA },
   dockFlotante: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   contextoAviso: {
     flexDirection: 'row',
