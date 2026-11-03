@@ -131,10 +131,10 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
 | **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
-| **SM-N36** | `sin-issue` | 🟧 DOD-PARCIAL | Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCID… |
-| **SM-N37** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
+| **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | Captura en device comparable con el mapa (entrada mi-dia), Para hoy entera hasta la linea, y el arrastre MEDIDO sobre… |
-| **SM-N39** | `sin-issue` | 🟧 DOD-PARCIAL | El DoD 2 pedia el barrido de packages/ Y apps/ con un veredicto POR HIT. El alcance TypeScript esta hecho (#1474 + #1… |
+| **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2576,9 +2576,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N36 · `sin-issue` — La escala de ARCA versionada y el `tope` que hoy es `null`
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** Acreditar en el cierre, punto por punto: (a) que las DOS ramas tienen test; (b) el control explicito de escala VENCIDA => null y nunca el tope viejo, que es el modo de falla sin sintoma; (c) que los tests corrieron en el VPS, con la cita. Sin eso el DoD no esta completo aunque el codigo este en main.
-- **Cierre:** 4a5bb923 (#1469, ancestro de origin/main): escala de monotributo versionada con vigencia_desde y facturado.tope calculado; contabilidad_web.py deja de devolver None cuando hay categoria Y escala vigente.
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de monotributo versionada con vigencia_desde y facturado.tope calculado, y contabilidad_web.py deja de devolver None cuando hay categoria Y escala vigente. (a) las DOS ramas tienen test: test_escala_monotributo.py:77 y :90/:156. (b) el control explicito de escala VENCIDA => null y nunca el tope viejo: :95 y el endpoint en :160 -- es el punto que importaba, porque devolver el tope viejo cuando la escala vencio no da error, da un numero creible y equivocado. (c) corrida EN EL VPS: 42 passed sobre 0ceeb45c (test_escala_monotributo + test_monotributo_aviso). cierre_ en coordinacion/cerrado/2026-11-03/ con FICHA/SHA/DOD.
 - **Dueño:** backend
 - **De dónde sale:** el mismo contrato de monotributo. El hueco ya estaba **nombrado con dueño** en
   `apps/copiloto/contabilidad_web.py:68-72`: `"tope": None` deliberado, porque *«un tope viejo
@@ -2598,7 +2598,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N37 · `sin-issue` — El aviso al acercarse al límite de monotributo
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Dueno-activo:** backend
+- **Cierre:** DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codigo: d53c7d02 (#1471), ancestro de origin/main confirmado con merge-base --is-ancestor. (1) Umbral EN CONFIG, no hardcodeado: escala_monotributo.json:7 umbrales.aviso_pct=80. (2) UNA vez por CRUCE, no por dia: AvisosEmitidosStore con dias_silencio=None -- el punto fino es que un aviso diario de un limite fiscal se vuelve ruido y se aprende a ignorar, que es el modo de falla que la ficha existia para evitar. (3) Si el % BAJA, el aviso se RE-ARMA y la tarjeta se cierra sola: mi_dia_detector.py:517 REGLAS_REARMAN_AL_BAJAR + mi_dia_orquestador.py:107-108 liberar_ausentes(regla, vigentes). Era el punto que mas podia quedar implicito y esta escrito con su motivo en el docstring :326. (4) NUNCA avisa con tope==null: control ADVERSARIAL en tests/test_monotributo_aviso.py:72-76 -- $999.999.999 facturados y la lista sale VACIA porque no hay tope contra que medir. Ese es el control correcto: sin tope, el bug no da error, da un aviso creible y sin fundamento. La ficha dependia de SM-N36 (escala versionada con tope calculado), que cerro con 4a5bb923 + 42 passed en VPS.
 - **Dueño:** backend
 - **De dónde sale:** el mismo contrato. **Es alcance NUEVO**: el mapa sólo dibujaba la barra «68 %
   del tope» y la proyección; el aviso proactivo no lo dibujaba nadie.
@@ -2656,10 +2658,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N39 · `sin-issue` — Los TRES `[ASSUMED_PENDING_VERIFY]` de `afip.ts` estaban vencidos
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** backend
-- **Falta:** El DoD 2 pedia el barrido de packages/ Y apps/ con un veredicto POR HIT. El alcance TypeScript esta hecho (#1474 + #1477), pero quedan 9 hits de ASSUMED_PENDING_VERIFY en 6 archivos .py de apps/copiloto sin veredicto -- medido sobre origin/main. Eso es de BACKEND, no de frontend2: lo que falta es decir de cada uno si esta vigente (y entonces FECHARLO) o vencido (y entonces retirarlo citando el path:linea y el sha que lo invalida). Un marcador sin fecha se cita como si fuera de hoy, y de los tres que destaparon esta ficha los tres estaban vencidos.
-- **Cierre:** Alcance TypeScript COMPLETO: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y facturaPropuesta.ts y fecha los vigentes; d7c0613c (#1477) resuelve los kinds de ListaMensajes (tool_catalog.py:1004 y :1685), actualiza dos punteros viejos de index.ts y fecha el vigente de clientes.test.ts. Los dos son ancestros de origin/main. tsc core+mobile ok y vitest clientes 54 ok. Quedan 12 hits en .ts/.tsx, todos ya CON veredicto y fecha: el DoD no pedia vaciar el grep sino que ningun hit quede sin veredicto.
+- **Cierre:** DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y facturaPropuesta.ts y fecha los vigentes; d7c0613c (#1477) resuelve los kinds de ListaMensajes (tool_catalog.py:1004 y :1685), actualiza dos punteros viejos de index.ts y fecha el vigente de clientes.test.ts -- tsc core+mobile ok, vitest clientes 54 ok. Alcance Python: d140f853 (#1479, CI 6/6) -- los 9 hits de 6 archivos .py de apps/copiloto quedan los 9 VIGENTES y FECHADOS 2026-11-03 con su motivo (Calendar sin conectar / SM-N34 x3, GoTrue filter y 400/401 sin medir x3, claims Google no verificados en el spike K-12, duplicados_probables sin medir, homonimo del grafo sin ejercitar). NINGUNO se retiro, y ese es el veredicto correcto: retirar un marcador sin evidencia es el error inverso al que abrio la ficha. El DoD 2 nunca pidio vaciar el grep -- pidio que ningun hit quede sin veredicto, y ahora los 21 hits (12 .ts/.tsx + 9 .py) lo tienen, con fecha. Los tres shas son ancestros de origin/main. DoD 3 no aplica: ninguno resulto vigente CON consecuencia de producto.
 - **Dueño:** frontend2
 - **De dónde sale:** barrido de planificación, 2026-11-03, disparado por el marcador que frontend2
   retiró en `#1472`. Si uno estaba vencido, los otros podían estarlo: **lo estaban los tres.**
