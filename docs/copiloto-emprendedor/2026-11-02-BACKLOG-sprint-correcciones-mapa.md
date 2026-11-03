@@ -146,7 +146,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z1** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-Z4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3152,7 +3152,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-Z4 · `sin-issue` — El wordmark difiere en TAMAÑO y en COLOR, y sólo el tamaño se corrige sin decidir
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:517, con test que lee .ig-marca .w del prototipo y compara contra el fontSize renderizado -- verde 13/13 y control NEGATIVO con HERO=34 en rojo (Expected 32, Received 34). SHA ab3eaf71 (#1572, CI 6/6), ancestro verificado. Falta la decision del operador sobre el color y, si es afirmativa, el par logotipo. MEDIDO por frontend2 y cambia la pregunta: NO son dos decisiones contrarias, es una divergencia que el login no heredo. El reveal tiene la decision ESCRITA -- identidadPalette.ts:13-16, COLOR_PALABRA_MARCA = #DE7250 con el motivo "es el logotipo, no texto de UI"; el login usa acentoTinta desde 810d1dff SIN decision escrita. Asi que la pregunta al operador deja de ser "el wordmark es logotipo exento?" y pasa a ser "el login adopta la misma exencion que el reveal YA tiene escrita?". Si la respuesta es si: agregar el par #de7250 -> #f7f3ec como logotipo para texto, con control positivo. Tambien pendiente de device el tamano real del wordmark en pantalla [ASSUMED_PENDING_VERIFY].
 - **Dueño:** frontend2 (parte 1) · operador (parte 2)
 - **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
   `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
