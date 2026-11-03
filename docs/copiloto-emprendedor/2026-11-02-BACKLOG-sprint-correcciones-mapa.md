@@ -2127,8 +2127,83 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   código no puede decidir cuál de las dos es** — lo decide quien tomó la decisión de marca. Elegir
   sin ese dato es tirar una moneda con cara de criterio
   ([[el-contrato-afirma-el-mecanismo-que-no-opero]]).
-- **🚫 Hasta que el operador responda, NO se toca `RevealEntrada.tsx`.** Lo que sí avanza sin
-  esperarlo: corregir el comentario vencido de `textosEntrada.ts:24-27` (#1), sacar del mapa el
+- **✅ DECISIÓN DEL OPERADOR, 2026-11-02 — OPCIÓN A, y queda DESBLOQUEADA:** *«la entrada debe ser
+  igual a la del mapa, debemos respetar este diseño»*. **El mapa es la fuente de verdad del diseño
+  de la entrada.** Donde app y mapa difieran, **se corrige la app**.
+- **🔴 Lo que esta decisión SUPERA, dicho explícito para que nadie lo «restaure»:** el lockup «O +
+  dobi» animado letra a letra es la decisión **BL-X10** (cerrada con Martín el 2026-07-29), y el
+  commit que lo portó se llama *«port FIEL del splash mobile»* (`03e9c200`). **BL-X10 queda
+  superada en el lockup por esta orden.** Quien lea BL-X10 o ese commit sin esta línea va a creer
+  que el lockup «Odobi» entero es un defecto y lo va a revertir — que es exactamente el ciclo que
+  este backlog ya pagó en `SM-N16`/`SM-N28`. La animación por letra **no se descarta por sí
+  misma**: lo que manda es que el resultado se lea como el lockup del mapa; si la animación puede
+  sobrevivir dibujando «Odobi» entera, sobrevive.
+- **⚠️ Lo único que esta decisión NO puede cumplir hoy, y por qué no es excusa:** el **botón de
+  pronunciación** necesita un **asset de audio que no existe en el repo** (BL-X10,
+  `[ASSUMED_PENDING_VERIFY]`). No es una elección de diseño pendiente: es un archivo que falta.
+  **Se implementa el botón detrás del asset** —cuando el audio exista, el botón aparece sin tocar
+  más código, que es como ya está escrito (`pronunciacionAsset != null`)— y **el disparador se
+  nombra acá: quién graba «o-DO-bi» en voz de marca.** Mientras no exista, el mapa **no puede
+  seguir prometiéndolo sin decirlo**: la pantalla del mapa lleva la nota de que ese control está
+  pendiente de asset. Es el único punto de la ficha que cierra como `Falta:`, no como hecho.
+- **🧭 La sub-decisión que la orden no resuelve, resuelta por defecto para no frenar (táctica, el
+  operador la revierte si quiere otra cosa):** el mapa dibuja **dos** entradas —«Splash» (primer
+  ingreso) y «Volver a entrar» (post-logout)— y **no dibuja** el tercer camino que la app sí tiene:
+  **sesión caída sola**, que hoy aterriza **directo en el formulario**, sin reveal
+  (`EntradaSesion.tsx:26`). «Igual al mapa» no dice nada de un camino que el mapa no muestra. **Se
+  resuelve alineando:** la sesión caída sola también aterriza en el reveal «volver», y **el aviso
+  de sesión caída viaja con ella** — hoy ese aviso vive en el formulario, y perderlo sería cambiar
+  la entrada **y además** romper `SM-K6`, que acredita justamente ese aviso. **Si el aviso no puede
+  viajar sin romper K6, el camino de sesión caída se queda como está y se declara acá**: alinear la
+  pantalla no vale perder el aviso.
+- **🎯 CAUSA RAÍZ MEDIDA EN EL PROTOTIPO, 2026-11-02 — y cambia el tamaño del trabajo: no son
+  cuatro divergencias sueltas, es UNA.** El mapa no es un artefacto aparte: carga **el prototipo
+  real en un iframe** (`mapa-pantallas/index.html:65,289` — *«el iframe carga el prototipo REAL, no
+  una captura»*). Y el prototipo tiene **DOS pantallas distintas**, no una:
+
+  | Prototipo | Lockup | Tagline | Pronunciación |
+  |---|---|---|---|
+  | **`#splash`** (`prototipo/index.html:2446-2462`) | glifo «O» + «dobi» letra a letra (`:2457-2459`) | **sí**, «Tu copiloto emprendedor» (`:2461`) | no |
+  | **`#reveal`** (`:2546+`) | **«Odobi» entera** (`:2553`, `.rv-word`) | **no** | sí, «se dice o-DO-bi» (`:2555`) |
+
+  **La app fusionó las dos en un solo componente.** `RevealEntrada.tsx` dibuja el **lockup y el
+  tagline de `#splash`** y les agrega **las puertas y la pronunciación de `#reveal``. Por eso el
+  reveal de la app tiene «dobi» y tagline donde el prototipo tiene «Odobi» y ninguno.
+- **🔴 Esto REIVINDICA el `port FIEL` y reencuadra la decisión A — leer antes de tocar nada.** El
+  port **sí fue fiel**… **a `#splash`**. El defecto no es el lockup animado: es que **se usó el
+  componente de una pantalla para dibujar la otra**. Por lo tanto la decisión A **no borra BL-X10
+  ni la animación por letra**: ésas siguen siendo correctas **en el splash**. Lo que se corrige es
+  **el reveal**, que debe verse como `#reveal`: **«Odobi» entera y sin tagline**.
+  ⚠️ **El error caro acá sería barrer el tagline y la animación de TODA la app** para «alinearse al
+  mapa»: eso rompería el `#splash`, que hoy **coincide** con el prototipo, y el síntoma aparecería
+  en otra pantalla, donde nadie lo atribuiría a esta ficha
+  ([[el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo]]).
+- **✅ Lo que esto achica:** el trabajo deja de ser «rediseñar la entrada» y pasa a ser **separar
+  los dos usos del componente**: el reveal pide lockup `#reveal` (palabra entera, sin tagline) y el
+  splash queda intacto. Y el punto 2 del DoD queda **resuelto por medición, no por criterio**: el
+  tagline **no se borra de la app** — sale **del reveal** y **se queda en el splash**.
+- **DoD (reescrito por la decisión A — reemplaza al de arriba):**
+  1. **Lockup:** la app dibuja isotipo + **«Odobi» entera**, como el mapa. Captura app‖mapa al lado.
+  2. **Tagline:** resuelto contra el mapa (el mapa no lo muestra ⇒ **sale de la app**, salvo que la
+     captura del mapa a 390 px lo tenga y la del operador lo recortara — **medir el mapa, no la
+     captura**, que es la trampa de este punto).
+  3. **Botón de pronunciación:** el código ya lo soporta detrás de `pronunciacionAsset`; queda como
+     `Falta:` con el disparador «quién graba el audio» y **la nota en el mapa** de que está
+     pendiente de asset.
+  4. **Camino de sesión caída:** alineado al reveal «volver» **con el aviso**, o declarado por qué
+     no se pudo sin romper `SM-K6`. Las dos salidas son válidas; el silencio no.
+  5. **Captura app‖mapa** de las DOS entradas del mapa: `?ver=splash` (primer ingreso, «Empecemos»)
+     y `?ver=volver` (post-logout, «Entrar»), **diciendo por qué camino entró cada una**. Sin eso
+     no se distingue «el reveal está mal» de «no era ese reveal» — es el control que ya evitó un
+     diagnóstico equivocado el 2026-11-02.
+  6. **El comentario vencido corregido:** `packages/core/src/textosEntrada.ts:24-27` afirma que
+     DEVICE15 midió el tagline **ausente**, y la medición de device lo refutó. Dejarlo es sembrar
+     el próximo diagnóstico falso.
+  7. **La leyenda falsa del mapa corregida:** dice *«en mobile no existe: la app salta directo al
+     formulario»*. Existe. Si además se alinea el camino de sesión caída (punto 4), la leyenda
+     queda doblemente vencida.
+- **✅ `RevealEntrada.tsx` DESBLOQUEADO** por la decisión A de arriba. Lo que ya avanzaba sin
+  esperarla, y sigue valiendo: corregir el comentario vencido de `textosEntrada.ts:24-27` (#1), sacar del mapa el
   botón de audio o declararlo pendiente de asset (#2), y enmendar la leyenda del mapa que hoy dice
   *«en mobile no existe: la app salta directo al formulario»* — **es falsa**: existe, sólo que
   condicionada a `cierreVoluntario` (#3).
