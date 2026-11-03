@@ -159,8 +159,9 @@ Prototipo: [bi-refresh](2026-10-16-relevamiento-capturas/proto-mapa-bi-refresh.p
 
 **18 · `reveal` — El reveal** — **DIFERENTE · B** · CÓDIGO  
 Prototipo: [reveal](2026-10-16-relevamiento-capturas/proto-mapa-reveal.png) · App: — (no capturada)  
-*Diferencia:* Es el mismo reveal que «Splash»: «se dice o-DO-bi» y el botón de altavoz existen (`PRONUNCIACION_MARCA`, `RevealEntrada.tsx`); falta «Crear una nueva cuenta» por la decisión #3.  
-*Corrección:* Igual que «Splash».
+*Diferencia:* **El punto «falta Crear una nueva cuenta» está VENCIDO:** el prototipo ya la oculta en el reveal (`.rv-ghost` con `display:none`, `index.html:2563`, «Sin alta propia (decisión #3)») y la app no la dibuja (`secundario === ''`, `RevealEntrada.tsx:219`). **El lockup es CONFORME:** símbolo desnudo 54 terracota + gap 16 + «Odobi» 46 px terracota con `letterSpacing -.02em` (`RevealEntrada.tsx:24,27,181-187,153` vs `index.html:468-469,2547-2554`), fondo en degradado (`:168-177` vs `:461`), «se dice o-DO-bi» y puerta «Empecemos». **Lo que difiere es el botón de altavoz:** el prototipo dibuja `.rv-say` (círculo blanco de 38 px con sombra, `index.html:2557-2559`) y la app no lo tiene — sólo el texto (`RevealEntrada.tsx:157-163`), porque el audio de la pronunciación está descartado (operador, 2026-11-03, `RevealEntrada.test.tsx:2,52`). La entrada decía que el altavoz «existe»: era falso.
+*Corrección:* Quitar el botón de altavoz del reveal del mapa (`.rv-say`) — clase B, el mapa sigue a la decisión del operador.
+*Re-medición 2026-11-03 (INSTRUMENTO: lectura de código sobre origin/main @809cc1fa, tras SM-Z2 `61b684c2`; NO device, NO render):* los píxeles (relleno, sombra, tipografía real) sólo se ven en device.
 
 **19 · `onb-promesa` — La promesa** — **CONFORME** · DEVICE  
 Prototipo: [onb-promesa](2026-10-16-relevamiento-capturas/proto-mapa-onb-promesa.png) · App: — (no capturada)  
