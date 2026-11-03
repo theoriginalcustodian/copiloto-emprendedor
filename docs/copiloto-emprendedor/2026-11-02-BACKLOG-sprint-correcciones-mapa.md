@@ -120,7 +120,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N22** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N23** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
 | **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -1727,7 +1727,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara y eso mutaria la cuenta del operador: queda para la pasada con tenencia canonica, no se fuerza. Dueno: frontend2.
+- **Cierre:** 6335f883 (#1440, ancestro de origin/main, CI 6/6): la mitad de ABAJO. Causa raiz medida en device (cuenta del operador, solo lectura de pantalla): el 'fondo pleno' era GEOMETRIA, no color — lista y dock hermanos en flujo, la lista se cortaba con borde duro sobre el campo (y~1450). Fix: lista a pantalla completa bajo un dock overlay + padding igual al alto medido; contraste con solucion nombrada (scrim 0->.9 + base .85 bajo el vidrio, desde tokens). ANTES/DESPUES 390px scrolleando capturados, NO versionados a proposito: llevan mensajes del operador.
 - **Dueño:** frontend1 (dueño del chat)
 - **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
   mic debe ser transparente — el campo y el mic deben ser **flotantes** en el chat; lo mismo en la
