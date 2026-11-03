@@ -54,6 +54,14 @@ export const ALTO_HANDLE = 13;
  */
 export const MARGEN_TIRADOR = 12;
 
+/** Alto de la zona que agarra el arrastre del tirador de abajo: el mismo blanco de 44 dp que `PanelFunciones` (SM-N38). */
+export const ALTO_ZONA_ARRASTRE = 44;
+
+/** Cuánto se extiende el agarre por ENCIMA del asa: lo que falta para los 44 dp, sin pasar del spacer del panel. */
+export function holguraArrastreArriba(insetTop: number): number {
+  return Math.min(ALTO_ZONA_ARRASTRE - ALTO_HANDLE, espacioSuperior(insetTop));
+}
+
 /** Lo que ocupa el spacer superior: la barra de estado más el margen del tirador. */
 export function espacioSuperior(insetTop: number): number {
   return insetTop + MARGEN_TIRADOR;
@@ -259,6 +267,7 @@ export function PanelDeslizable({
   const tema = useTema();
   const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
+  const insetTop = insets.top;
   // 0 = abierto (conversación tapa todo) · RECORRIDO_MAX = abajo (revela el escritorio).
   const panelY = useSharedValue(0);
   const inicio = useSharedValue(0);
@@ -379,6 +388,10 @@ export function PanelDeslizable({
     };
 
     return Gesture.Pan()
+      // SM-N38: la zona de arrastre crece HACIA ARRIBA hasta `ALTO_ZONA_ARRASTRE` (la misma pestaña de 44 dp del
+      // tirador de Mi día que funciona) SIN mover lo visible: `ALTO_HANDLE` está en la aritmética del layout.
+      // Hacia arriba solo hay el spacer de status bar del propio panel, así que no le roba toques a otra cosa.
+      .hitSlop({ top: holguraArrastreArriba(insetTop) })
       // `onBegin` (al APOYAR el dedo), no `onStart` (al activarse el recognizer, ya pasado su umbral
       // de desplazamiento): es el patrón que documenta Software Mansion. Con `onStart`, el primer
       // `onUpdate` llega con un `translationY` que ya acumuló el umbral, y el panel arranca de un
@@ -422,7 +435,7 @@ export function PanelDeslizable({
           }
         );
       });
-  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada]);
+  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop]);
 
   // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
   // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
