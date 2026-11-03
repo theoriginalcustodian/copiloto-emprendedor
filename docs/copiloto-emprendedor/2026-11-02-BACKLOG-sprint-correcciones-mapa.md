@@ -117,7 +117,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
-| **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | La reverificacion del TECLADO en device, que frontend2 declaro pendiente en su propio avance_ del 2026-11-02 ('teclad… |
+| **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | REFUTADO POR EL OPERADOR en device el 2026-11-03 06:40: 'en la pantalla mi dia el campo de texto todavia esta por enc… |
 | **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio e… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
@@ -1640,8 +1640,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N22 · `sin-issue` — DENTRO DEL SPRINT: el tirador para subir la conversación queda DEBAJO de la entrada de texto, y el mapa lo pone ARRIBA
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** La reverificacion del TECLADO en device, que frontend2 declaro pendiente en su propio avance_ del 2026-11-02 ('teclado por reverificar'). Dueno: frontend2.
-- **Cierre:** Codigo en main: 80f4e2ee (#1442) — el asa del panel queda encima del campo de Mi dia y el chat tiene offset de teclado. Ancestro de origin/main.
+- **Falta:** REFUTADO POR EL OPERADOR en device el 2026-11-03 06:40: 'en la pantalla mi dia el campo de texto todavia esta por encima del tirador' — o sea el defecto que 80f4e2ee declara arreglado SIGUE PRESENTE a la vista. DOS causas explican esa observacion igual de bien y la ficha NO atribuye ninguna hasta medir: (a) el device no corrio ese codigo — 80f4e2ee se mergeo 23:46:59 del 2-nov y frontend1/frontend2 dejaron de dar senal 23:51 y 23:57, asi que Metro casi con seguridad nunca sirvio el bundle con el fix (el device corre lo que Metro sirve, no main); (b) el fix esta servido y no resuelve el orden visual. El PRIMER paso NO es tocar codigo: es Metro sirviendo origin/main en el device y volver a mirar Mi dia. Si con el bundle al dia sigue mal, es (b) y recien ahi se toca PanelDeslizable.tsx. Dueno: frontend2 (tiene el device y la ficha de la reverificacion de teclado); frontend1 es dueno del shell si el fix hay que rehacerlo. Sigue faltando ademas la reverificacion del TECLADO que frontend2 declaro pendiente en su avance_ del 2026-11-02.
 - **Dueño:** frontend1 (dueño del shell)
 - **Reportado por:** el operador, 2026-11-02, mirando el mapa contra la app.
 - **Medido (código, no impresión):** el grab-handle vive **adentro** del panel de la conversación y
