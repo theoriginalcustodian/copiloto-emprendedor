@@ -442,11 +442,9 @@ export interface ConectarArcaRequest {
   /** 🔴 Sólo vive en el `cuerpoJson` de este POST. Ver el docstring del módulo. */
   claveFiscal: string;
   /**
-   * ⚠️ [ASSUMED_PENDING_VERIFY] `ConectarBody` en `afip_web.py` (verificado contra el backend vivo el
-   * 2026-07-21) todavía NO declara este campo — pydantic ignora claves extra por default, así que
-   * mandarlo no rompe nada, pero hoy el backend lo IGNORA en silencio y el alta queda en el default
-   * (`dev`). La sesión de backend confirmó que va a aceptarlo con estos mismos valores; hasta
-   * entonces, la pantalla de Ajustes muestra el selector en solo-lectura.
+   * Resuelto (SM-N39, medido contra `fd17a89e` el 2026-11-03): `ConectarBody` en `afip_web.py:121` declara
+   * `ambiente: Literal["dev","prod"] | None = None`, así que el backend lo acepta. Antes (2026-07-21) lo ignoraba
+   * y el alta quedaba en `dev`; el selector de Ajustes ya no es de solo-lectura (`PantallaAfipSetup.tsx`).
    */
   ambiente?: AmbienteAfip;
 }
@@ -697,9 +695,9 @@ export async function conectarArca(
 }
 
 /** `GET /afip/estado?cuit=` — Bearer requerido. Lo que Ajustes pinta. ⚠️ `cuit` se tipa opcional acá
- * (pedido §2 del plan de UI: descubrir el CUIT sin que el caller lo mande), pero `afip_web.py::estado`
- * hoy lo EXIGE (`cuit: str` sin default) — [ASSUMED_PENDING_VERIFY] mandar sin `cuit` da un 422 de
- * FastAPI, no `no_disponible`, hasta que el backend agregue el descubrimiento. */
+ * (pedido §2 del plan de UI: descubrir el CUIT sin que el caller lo mande). Resuelto (SM-N39, medido contra
+ * `fd17a89e` el 2026-11-03): `afip_web.py:655` es `estado(cuit: str | None = None, …)`, así que mandar sin `cuit`
+ * ya no da 422 (antes lo exigía como `cuit: str`). */
 export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<EstadoAfip>> {
   const query = cuit ? `?cuit=${encodeURIComponent(cuit)}` : '';
   try {
