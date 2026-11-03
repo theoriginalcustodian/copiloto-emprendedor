@@ -39,6 +39,7 @@ import { useInerteAlPerderFoco } from '../navegacion/inerteAlPerderFoco';
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
+import { ScrimDock } from '../theme/glass/ScrimDock';
 
 /** Alto del handle deslizable = SÓLO la línea (SM-N38, orden del operador 2026-11-03): barra 44×5 con el padding
  *  del prototipo (`mockups/09-mi-dia/index.html:123-124`, `.grip{padding:6px 0 2px}`) = 13. Sin texto: el camino
@@ -583,6 +584,9 @@ export function PanelDeslizable({
               pointerEvents={panelAbajo ? 'box-none' : 'none'}
               style={[styles.pieAbajo, { top: espacioSuperior(insets.top) + ALTO_HANDLE, height: altoPieAbajo }, estiloPieAbajo]}
             >
+              {/* SM-N38: el MISMO scrim del chat (`ScrimDock`) detrás del campo; hereda la opacidad del pie (`panelY`),
+                  así que no existe arriba ni a mitad del recorrido. Degradé: sin canto que mostrar. */}
+              <ScrimDock testID="panel-pie-scrim" />
               {pieAbajo}
             </Animated.View>
           )}
