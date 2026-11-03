@@ -79,3 +79,28 @@ cobertura completa. **Declarar no es resolver**, y ningún conteo distingue «co
 **Y una del instrumento:** el JSON del contraste publicaba `"bi": ["COHERENTE","DESVÍO"]` porque
 `sorted(mapa)` devuelve **las claves** y tira los documentos. Sin el documento no hay a quién pedirle
 la línea de cierre: un conflicto sin atribución es irresoluble por construcción, aunque el dueño exista.
+
+## Refuerzo 2026-11-03 — **el nombre de la sesión no dice el rol, y el listado no dice la cobertura**
+
+`ListAgents` devuelve nombres como `copiloto-emprendedor-c3`, que **no contienen el rol**. El mapa hay
+que preguntarlo o medirlo, y conviene tenerlo escrito porque se usa en cada despacho:
+
+| sesión | rol |
+|---|---|
+| `copiloto-emprendedor-c3` | frontend1 — **tenedora del device** (`RF8T318RN9T`) |
+| `copiloto-emprendedor-63` | backend |
+| `copiloto-emprendedor-d0` | frontend2 |
+| `copiloto-emprendedor-f3` | economía |
+| (planificación) | esta sesión; emite contratos, no implementa |
+
+**Y el refuerzo que vale más que la tabla: una sesión viva en el listado NO es cobertura de un rol.**
+El 2026-11-03 apareció una quinta (`-1c`, 1 h de vida) mientras yo tenía escalada la alarma de que
+AUDITORÍA y MANEJO-DE-ERRORES no tienen sesión. Lo barato era contarla y bajar la alarma. **Le
+pregunté**, y era una sesión ad hoc de prototipo: sin rol, sin fichas, sin `adb`, sin crones — y lo
+dijo ella misma, *«cerrá la alarma de esas dos vacantes sin contarme»*.
+
+Si la hubiera contado, la vacante quedaba cerrada en el papel **sin que nadie la tome**, que es el
+peor de los dos estados: una vacante declarada se resuelve, una vacante tapada no da síntoma. El
+listado prueba que un proceso existe; **sólo la sesión puede decir qué rol ocupa**. Preguntar cuesta
+un mensaje. Ver también [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] y
+[[el-tipo-de-mensaje-decide-si-alguien-lo-persigue]].
