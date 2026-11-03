@@ -195,3 +195,47 @@ describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
     expect(translacionPanel(0, 0, 1, altoTira)).toBe(0);
   });
 });
+
+describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
+  const INSET = 24;
+  const ALTO = 853;
+  const PIE = 80;
+
+  it('el recorrido se acorta en el alto del pie: el asa sube justo esa cantidad y el campo cabe bajo ella', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE)).toBe(recorridoDesdeAlto(ALTO, INSET) - PIE);
+    // asa (arriba del pie) + pie = el borde inferior de la pantalla
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE) + espacioSuperior(INSET) + ALTO_HANDLE + PIE).toBe(ALTO);
+  });
+
+  it('sin pie el recorrido NO cambia (default 0: el resto de los montajes no se mueve)', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, 0)).toBe(recorridoDesdeAlto(ALTO, INSET));
+  });
+
+  it('el pie se monta DENTRO del panel y DESPUÉS del asa (el campo queda debajo de la barrita, como el mapa)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text testID="campo-pie">Escribí</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    const pie = screen.getByTestId('panel-pie-abajo');
+    expect(screen.getByTestId('campo-pie')).toBeTruthy();
+    const e = StyleSheet.flatten(pie.props.style);
+    expect(e.position).toBe('absolute');
+    expect(e.height).toBe(PIE);
+    // `top` = spacer + handle: arranca justo bajo el asa, nunca por encima de ella
+    expect(e.top).toBeGreaterThanOrEqual(ALTO_HANDLE);
+  });
+
+  it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-pie-abajo')).toBeNull();
+  });
+});
