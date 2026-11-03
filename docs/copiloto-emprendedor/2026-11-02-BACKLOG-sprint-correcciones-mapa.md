@@ -130,7 +130,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedi… |
-| **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend… |
+| **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: captura de device del formulario con la categoria elegida (frontend1, tenencia del device). Y el guardado comp… |
 | **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | SIGUE DOD-PARCIAL, pero las DOS faltas que tenia estan RESUELTAS con evidencia y queda otra cosa. (1) EL FONDO: resue… |
@@ -2572,8 +2572,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N35 · `sin-issue` — La categoría de monotributo, en Ajustes › ARCA
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 5: la captura de device del formulario con la categoria elegida. La tenencia del device es de frontend1; frontend2 no la puede producir sola.
-- **Cierre:** 8ec870e5 (#1468, ancestro de origin/main): selector de categoria A-K en PantallaAfipSetup junto a condicionIva, reusando OpcionSelect; solo con condicionIva=monotributo; opcional (no mandar categoria sigue siendo valido).
+- **Falta:** DoD 5: captura de device del formulario con la categoria elegida (frontend1, tenencia del device). Y el guardado completo sigue fallando con un 409 sin atribuir: hay seis conflicto( en apps/copiloto/afip_web.py (:256, 277, 321, 534, 722, 739) y el access log no guarda el body (duenos: frontend1 + backend).
+- **Cierre:** 8ec870e5 (#1468): selector de categoria A-K, solo con monotributo, opcional. d42da583 (#1500, ancestro de origin/main): Guardar perfil no manda la fecha de inicio incompleta (CampoFecha emite vacio y afip_web.py:96 lo rechaza con 422 sin campo) y marca el campo; test con control positivo, CI 6/6.
 - **Dueño:** frontend2
 - **De dónde sale:** decisión del operador, 2026-11-03, en
   `coordinacion/.../2026-11-03_contrato_planificacion-a-backend-y-frontend2_MONOTRIBUTO-*`.
