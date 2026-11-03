@@ -241,7 +241,9 @@ export function PanelFunciones({
   return (
     <View style={styles.raiz} testID={testID}>
       {/* La BASE — Mi día. Ocupa todo; el escritorio le cae encima. */}
-      <View style={StyleSheet.absoluteFill}>{children}</View>
+      {/* SM-N23: la pestaña creció en `espacio` por arriba; la base baja lo mismo para que su cabecera (que ya
+          cuenta los 44 de la pestaña en su propio `paddingTop`) no quede tapada por ella. */}
+      <View testID={`${testID}-base`} style={[StyleSheet.absoluteFill, { paddingTop: espacio }]}>{children}</View>
 
       <Animated.View
         style={[styles.capa, estilo]}

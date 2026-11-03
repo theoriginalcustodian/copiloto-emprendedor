@@ -61,6 +61,12 @@ describe('PanelFunciones — el escritorio colgado del borde de arriba (Ola 4)',
       expect(estilo.height).toBe(altoPestanaCon(0));
       expect(estilo.paddingTop).toBeGreaterThan(0);
     });
+
+    it('la base (Mi día) baja lo mismo que creció la pestaña: su cabecera no queda tapada', async () => {
+      await envolver();
+      const base = StyleSheet.flatten(screen.getByTestId('panel-funciones-base').props.style) as { paddingTop: number };
+      expect(base.paddingTop).toBe(espacioSuperior(0));
+    });
   });
 
   // 🔴 SM-I6. Medido en SM-G4: con el escritorio ya cerrado la pestaña seguía diciendo «Subí para volver a Mi
