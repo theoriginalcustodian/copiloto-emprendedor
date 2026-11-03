@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 RE-MEDIDO el 2026-11-03 y el veredicto PARCIAL se apoyaba en un instrumento CIEGO: el chip SI existe. Frontend1 rep… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 BLOQUEADA por SM-N46, con causa raiz MEDIDA y las cuatro sospechas iniciales REFUTADAS. La card sugerencia_armar_fa… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -116,14 +116,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge, compartida con SM-N21 (frontend1). Se cierran juntas: es la … |
-| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device del preview HITL de mp_charge (frontend1, tenedora del telefono). Entra en el bloque 1 de l… |
+| **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 EL HUECO CAMBIO DE NATURALEZA: ya no es «falta una captura», es que el estado NO SE PUEDE PRODUCIR hoy. Medido por … |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
 | **SM-N24** | `sin-issue` | ✅ TERMINADO | 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara -- ChatView no pasa onFoto; test Ch… |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto y por DECISION, no por falta de device: el DoD 5, la zona de ARRIBA (misma pregunta, otro borde) con su fond… |
 | **SM-N26** | `sin-issue` | ✅ TERMINADO | Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera … |
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
-| **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto, el DoD 3, y es un CONTROL: con la conexion CAIDA, que el punto de aviso SIGA encendiendo en el avatar del e… |
+| **SM-N28** | `sin-issue` | ✅ TERMINADO | 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 4 y 5 p… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion d… |
@@ -135,12 +135,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | DOS cosas, ninguna de codigo: (1) la captura «arriba» del chat bajo el MISMO bundle -- frontend1 tiene la de abajo a … |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
-| **SM-N40** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 UN punto, y la corrida del 2026-11-03 NO lo cubrio -- midio justo la otra mitad. Lo que frontend1 ejercito en devic… |
-| **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N40** | `sin-issue` | ✅ TERMINADO | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
+| **SM-N41** | `sin-issue` | 🟧 DOD-PARCIAL | Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va leg… |
 | **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
 | **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
 | **SM-N44** | `sin-issue` | ✅ TERMINADO | DoD COMPLETO. (1) endpoint: backend #1510 c8736bff -- cuit_vinculado + test adversarial PG/RLS, suite VPS 2640 passed… |
-| **SM-N45** | `sin-issue` | 🟧 DOD-PARCIAL | UNA pregunta que la captura de device ABRIO sobre un punto ya declarado hecho, y por eso no la entierro: el DoD 2 exi… |
+| **SM-N45** | `sin-issue` | ✅ TERMINADO | a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en them… |
+| **SM-N46** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -446,7 +447,7 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 ### SM-H5 · `sin-issue` — Las cards de presupuesto desmienten al mapa en rótulo, importe y estado
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** 🔴 RE-MEDIDO el 2026-11-03 y el veredicto PARCIAL se apoyaba en un instrumento CIEGO: el chip SI existe. Frontend1 reporto que el rotulo Arma la factura no aparece y que da 0 hits en el bundle; medido, el literal del codigo lleva TILDE -- es Arma con acento en la a final -- y los dos grepeamos la forma sin tilde, que da 0 TAMBIEN EN MAIN. Con la forma real: ChipArmarFactura.tsx lo tiene, y el arbol del bundle @ca6cb2c5 tambien; el commit de H5 (21cebf5a, #1390) es ancestro del bundle, verificado con merge-base --is-ancestor. La Falta anterior escribia el literal sin tilde porque lo escribi yo en ASCII: el falso negativo nace de MI texto. Y hay un SEGUNDO motivo por el que no iba a verse donde se miro: el chip no vive en el recibo -- se pinta en el CHAT, ListaMensajes.tsx:489-490, cuando llega card.kind sugerencia_armar_factura; la captura fue del recibo (b1-h5-recibo-1451, 13:43). Lo que FALTA entonces es provocar la card: crear un presupuesto por voz y capturar el chip en el chat. El importe y Pendiente ya cerraron con #1354, y el cambio de core ya no es parte (packages/core/src/chat/sugerenciaArmarFactura.ts:18 dice el texto del mapa).
+- **Falta:** 🔴 BLOQUEADA por SM-N46, con causa raiz MEDIDA y las cuatro sospechas iniciales REFUTADAS. La card sugerencia_armar_factura sale SOLO al aprobar un presupuesto, y aprobar falla: frontend1 pidio aprobar el N 87 dos veces y el agente contesto «No encontre ningun presupuesto que se pueda marcar como aprobado», con el 87 existiendo y pendiente. Backend diagnostico en la historia de Temporal (workflow conv-web-4f3ecb78): la tool SI se invoco las dos veces (finish_reason=tool_calls), y la causa es tool_catalog.py:1295-1301 (_coincide) -- la referencia debe aparecer como SUBSTRING ENTERO dentro de UN solo campo (numero | receptor.nombre | concepto), asi que una frase con DOS datos («87 de ClienteJ4») no esta completa en ninguno y da 0 candidatos. Reproducido con control positivo: '87' y 'ClienteJ4' y 'pintura' dan [87]; '87 de ClienteJ4', 'presupuesto 87', 'el 87', '50000' dan []. 🎯 Y las cuatro hipotesis que yo despache eran plausibles y las cuatro falsas: NO es id-vs-numero visible (el 87 solo si matchea), NO es el estado (pendiente, en TRANSICIONES), NO es el tenant (trae los 87 del canonico), NO es que la tool no se invocara. El sintoma no apuntaba a ninguna de las capas que sugeria. Disparador exacto: se desbloquea al mergear el fix de SM-N46; recien ahi frontend1 re-intenta y captura el chip en el chat (ListaMensajes.tsx:489), con el literal ACENTUADO «Arma la factura» -- la forma sin tilde da 0 hits tambien en main y fue mi falso negativo original.
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
   `$50,000.00` en vez de `$50.000`, y falta «Pendiente» en la card «anotado».
@@ -1623,7 +1624,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N21 · `sin-issue` — FUERA DEL SPRINT: opción C — los importes que mueven plata se escriben por código, no los redacta el LLM
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** SOLO la captura de device del preview HITL de mp_charge (frontend1, tenedora del telefono). Entra en el bloque 1 de la pasada (estado normal). Codigo: NADA pendiente -- y ahora tampoco queda pendiente la clase, porque el hallazgo tiene gate con canario propio.
+- **Falta:** 🔴 EL HUECO CAMBIO DE NATURALEZA: ya no es «falta una captura», es que el estado NO SE PUEDE PRODUCIR hoy. Medido por frontend1 en codigo el 2026-11-03: tool_catalog.py:682 corta con la condicion `not creds or salud() == "caido"` y devuelve requiere_conexion_card ANTES de llegar al preview de :701-704, asi que cualquier «cobrale N» sale con la card de reconexion y NUNCA con el preview HITL de mp_charge. Y Mercado Pago esta CAIDO en la cuenta canonica -- el mismo hecho que cerro el DoD 3 de SM-N28, donde la caida real sirvio de control. Un estado sirvio para una ficha y bloqueo la otra, el mismo minuto. ⚠️ frontend1 lo declara como LECTURA DE CODIGO, no veredicto de device, y esa distincion se respeta. DOS caminos y el primero es barato: (a) backend siembra mp_cred_store SANO en el tenant de prueba vacio y pasa el usuario -- preguntado, sin respuesta todavia; (b) si no hay ninguno, espera al OPERADOR (reconectar MP en la canonica). Codigo: NADA pendiente -- backend cerro 3b20a1f1 (#1518, desplegado) + registro a2d07f74 (#1522) + barrido (#1526) + EL GATE con canario propio fd89f3a5 (#1530). 🎯 Esta Falta se escribio DOS veces y la primera salio mutilada sin aviso: la cita de codigo iba entre backticks dentro de un argumento con comillas DOBLES de bash, asi que el shell la ejecuto como command substitution y la condicion desaparecio. Lo grave no es el escape: es que la frase que quedo -- «corta con  y devuelve» -- siguio siendo GRAMATICAL, con el path y el nombre de la card intactos, asi que el texto se leia como una cita completa y nada en el --marcar fallo (respondio OK). Lo cazo un control que preguntaba por CADA literal de la cita, no por el parrafo. Y el unico rastro VISUAL que dejo el borrado fue un DOBLE espacio («corta con  y devuelve»), que en markdown renderizado colapsa a uno: la huella existia y era invisible justamente en la vista donde se lee la ficha. Una cita de codigo pasada por una capa de shell se verifica literal por literal: un hueco que deja la oracion leible es indistinguible de la oracion que se quiso escribir.
 - **Cierre:** 3b20a1f1 (#1518, desplegado) + registro a2d07f74 (#1522) + el barrido a2d07f74/e7dc3f47 (#1526) + EL GATE fd89f3a5 (#1530), todos por backend. La sonda con LLM REAL sobre el tenant de prueba de SM-N15 (exigido vacio, NO el canonico): cobro 0/3 distinto del literal byte a byte, control negativo con redaccion que VARIO entre corridas, control positivo del endpoint real, reversion en finally y respaldo en disco; tenant devuelto a 0. HALLAZGO que destapo la 1a corrida ROJA: el tool comparaba resumen['estado'] (estado del COMPROBANTE, 'emitida') contra COBRADA -- condicion NUNCA verdadera -- y el fake devolvia estado:'cobrada', un contrato que el store real no cumple: el test pasaba POR EL FAKE, no por el codigo. Fix con 2 tests contra CobroStore real, verificados ROJOS con el codigo viejo. 🔴 Y ESO NO QUEDO COMO ANECDOTA: backend barrio la CLASE y despues la convirtio en GATE. Barrido: 140 fakes, corte derivado por REGLA (stores de tenant x fakes) = 34 pares, 21 limpios y 3 sucios ARREGLADOS por renombre de kwargs sin exenciones -- y derivar por regla en vez de por lista destapo 6 hermanos iguales con el mismo arreglo (124 tests VPS verdes), que es justamente lo que una lista fija de 24 no habria encontrado. Gate en el lint con CANARIO MEDIDO EN LOS DOS SENTIDOS: --check en main = 34 pares, 0 sucios, exit 0; --check --ref 3b20a1f1^ = exit 1 nombrando el VALOR (_CobroFake.registrar estado='cobrada', test_plata_por_voz.py:81 vs cobro_store.py:166). O sea el gate se pone ROJO contra el arbol donde el defecto vivia, que es la unica prueba de que es un gate y no un script que corre; y --autotest lo ejercita en miniatura en cada lint, asi que no envejece. Hallazgo de METODO que vale mas que el resultado: la 1a version del barrido (set de CLAVES) NO cazaba este caso, porque el fake mentia en QUE CAMPO responde, no en el nombre ni el tipo -- lo caza el dominio de VALORES. info-OMITE triado: 46 -> 7 silenciosos, todos campos opcionales (cobertura, no forma falsa), declarados y no deciden. Afuera por declaracion: ~106 pares fuera del corte, dicts con dominio de columna SQL y Decimal-vs-str. completar_ingreso: NO-ALCANZABLE declarado con motivo (el modelo propone y no persiste).
 - **Dueño:** backend
 - **De dónde sale:** decisión del **operador**, 2026-11-02: «acuerdo opción C», sobre el inventario
@@ -2001,9 +2002,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N28 · `sin-issue` — DENTRO DEL SPRINT: el acceso a Ajustes sale de Mi día y queda SÓLO en la pantalla de funciones
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** UN punto, el DoD 3, y es un CONTROL: con la conexion CAIDA, que el punto de aviso SIGA encendiendo en el avatar del escritorio. Ya esta cubierto en JEST -- PantallaPrincipal.avatarSenal.test.tsx:43 lo afirma y :52 trae su control negativo (sin la senal, el punto es null) -- asi que lo que falta es solo la mitad de DEVICE, que ningun gate puede medir. Dueno: frontend1 (tenencia). Provocable sin tocar red real: la senal entra por onConexionCaida, alcanza forzar el estado desde Metro, o el mecanismo de SM-K6 (corromper el token del lado cliente). Y el DoD 1 trae una mitad que la captura de ayer no mira: que el lugar que ocupaba el avatar en Mi dia NO quede como hueco de 40 px. Se cierra con la misma captura, mirandola con esa pregunta.
-- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 1 y 2 CERRADOS en DEVICE 2026-11-03 (frontend1): Mi dia SIN avatar y el escritorio CON el avatar E -- el punto 2 es la mitad que un retiro mal hecho se lleva puesta (capturas b1-midia-1418 y b1-escritorio-1416, 13:30). DoD 4 y 5 CERRADOS por medicion de frontend2 el 2026-11-03, VERIFICADOS por mi en origin/main con los paths reales: ningun test monta PantallaMiDia esperando el avatar; PantallaPrincipal.test.tsx afirma queryByTestId('avatar-cuenta') null y escritorio-avatar presente; existen PantallaPrincipal.avatar.test.tsx y PantallaPrincipal.avatarSenal.test.tsx; y el comentario de PantallaPrincipal.tsx:119 ya dice «SM-N16 + SM-N28: el avatar vive SOLO en el escritorio de funciones». ⚠️ Y queda escrito como se verifico, porque la primera pasada fallo: frontend2 cito los paths modules/principal/ y modules/agenda/, que NO existen -- son src/shell/ y modules/midia/ -- asi que mi grep contra SUS paths dio VACIO en todo y por un momento parecio que nada de lo que afirmaba estaba. El contenido era correcto y la cita de path no, que es justo la mitad que no se puede heredar de la medicion de otra sesion: el resultado se cita, el mecanismo se re-verifica.
+- **Estado:** TERMINADO
+- **Cierre:** 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 4 y 5 por medicion de frontend2 VERIFICADA por mi en origin/main con los paths reales (src/shell/, modules/midia/, NO los que cito): ningun test monta PantallaMiDia esperando el avatar, PantallaPrincipal.test.tsx afirma avatar-cuenta null y escritorio-avatar presente, existen PantallaPrincipal.avatar.test.tsx y .avatarSenal.test.tsx, y el comentario de PantallaPrincipal.tsx:119 ya dice «el avatar vive SOLO en el escritorio de funciones». DEVICE 2026-11-03 (frontend1, canonica, RF8T318RN9T): DoD 1 Mi dia SIN avatar Y sin hueco -- la cabecera no deja vacio: solo wordmark + fecha con relleno simetrico, respondido mirando OTRA VEZ la captura b1-midia-1418 en vez de pidiendo otra corrida. DoD 2 el escritorio CON el avatar E (b1-escritorio-1416). DoD 3 CERRADO a las 14:19: escritorio-avatar-punto PRESENTE con la conexion caida, y Mi dia lista las dos caidas en el mismo minuto. 🎯 Y el metodo es mejor que el planeado: yo habia escrito que se provocara forzando onConexionCaida desde Metro, y frontend1 NO forzo nada -- Calendar y Mercado Pago estaban caidos DE VERDAD en la canonica, asi que el control corrio sobre el estado real y no sobre uno simulado. Un estado que ya existe vale mas que el mismo estado inyectado, porque no hay que descartar que el mecanismo de inyeccion sea lo que se esta viendo. Cero escrituras en la canonica.
 - **Dueño:** frontend1 (dueño del shell)
 - **Decisión del operador, 2026-11-02:** *«hay que quitar el botón de ingreso a ajustes del usuario de
   la pantalla de mi día… sólo debe estar en la pantalla de funciones»*.
@@ -2720,10 +2720,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N40 · `sin-issue` — El borrado hacia atrás no vuelve al segmento anterior en el campo de fecha
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend1
-- **Falta:** 🔴 UN punto, y la corrida del 2026-11-03 NO lo cubrio -- midio justo la otra mitad. Lo que frontend1 ejercito en device fue: dia vacio, foco en MES, retroceso que borra solo el mes y anio intacto. Ese es el caso del segmento NO VACIO, o sea el CONTROL NEGATIVO del fix: confirma que no hay salto temprano. Lo que falta es el caso que el handler ATIENDE: retroceso sobre un segmento YA VACIO, que debe devolver el foco al anterior y borrarle el ultimo digito. De eso depende todo el mecanismo -- si el teclado de Android no EMITE Backspace sobre un TextInput vacio, el handler es correcto y nunca corre, y la ficha estaria verde por una corrida que jamas lo invoco. Un renglon mas en la receta de frontend1, teclado real, nunca adb input tap. Es la misma corrida de SM-K9, que ya cerro.
-- **Cierre:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el salto temprano era el defecto espejo y esta cubierto. Los 4 tests traen CONTROL NEGATIVO, que es lo que los hace valer: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que la suite verde no puede ser verde por otra causa.
+- **Cierre:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el defecto espejo, cubierto. Los 4 tests traen control negativo: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que el verde no puede ser verde por otra causa. DEVICE 2026-11-03 (frontend1, tenedora, cuenta canonica e2e-device, RF8T318RN9T): con el retroceso del TECLADO EN PANTALLA el foco SI vuelve al segmento anterior y le borra el ultimo digito -- 2do toque: dia 01 -> 0 (el 1ro, sobre el vacio, no cambia valor visible, que es lo esperado). Cero escrituras verificado. 🎯 Y lo que esta ficha deja escrito es la trampa, no el veredicto: con  NO retrocede. Si esa hubiera sido la unica corrida -- y fue la primera -- el veredicto habria sido «el handler no funciona», con el defecto viviendo en el INSTRUMENTO. Es la SEGUNDA ficha del mismo dia falsamente acusada por adb: la otra es SM-K9, donde el DD / 02 / 1120 era adb escribiendo mas rapido que el focus(). Dos fichas, un instrumento, el mismo dia. Para lo tactil de segmentos de fecha, el teclado real no es una mejora de rigor: es la unica medicion valida. Y la PRIMERA corrida tampoco fue inutil: midio el segmento NO vacio, que es el control negativo del fix.
 - **Dueño:** frontend2
 - **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
   ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
@@ -2749,7 +2748,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N41 · `sin-issue` — El campo del composer es translúcido y deja leer los mensajes de atrás
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va legible (subir el alfa) o translucido a proposito (y entonces la ficha cierra CERRADO-POR-DECISION, sin tocar codigo). El operador pidio conservar «el de dentro» del campo y NO escribio si lo quiere translucido o legible; un alfa es decision de diseno, y subirlo puede romper el cristal que el resto de la cascara sostiene. El punto 3 solo existe si la decision es «legible»: el alfa va parametrizado donde YA vive (ALFA_BASE_CAMPO, Composer.tsx:239 -> conAlfa(tema.color.fondo, ALFA_BASE_CAMPO)), nunca hardcodeado en el JSX, y se mira en las DOS pieles. Dueno del 2: operador (escalado). Dueno del 3 si se decide: frontend2.
+- **Cierre:** DoD 1 CERRADO en device el 2026-11-03 (frontend1, canonica, piel clara): con el CHAT arriba, la burbuja del agente queda bajo el campo «Escribi, o habla...» y su texto se lee como FANTASMA a traves del campo y del mic. Captura b4-n41-p1-chat-burbuja-detras-del-campo-canonico, 14:23. NADIE toco ALFA_BASE_CAMPO: el punto 1 es captura, no fix. 🎯 Y la ficha registra una captura DESCARTADA, porque el descarte es la evidencia de que el criterio se aplico: la primera (14:20) era de MI DIA, no del chat, y frontend1 la retiro por su cuenta antes de que entrara al registro. El DoD 1 pide el sintoma «con el chat arriba, con mensajes detras del campo»; una captura de otra pantalla puede mostrar un campo translucido y no mostrar lo que el punto mide -- texto de BURBUJAS leyendose a traves. Una captura que se parece a la pedida no es la pedida, y el unico modo de distinguirlas es releer el criterio en vez de mirar la imagen.
 - **Dueño:** frontend2
 - **De dónde sale:** observación de **frontend1 en device**, 2026-11-03, reportada sin tocar nada
   mientras medía `SM-N38`: *«con el chat arriba, el campo del composer es translúcido y deja ver el
@@ -2925,9 +2926,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N45 · `sin-issue` — Inteligencia dibuja PLANAS las seis secciones que el prototipo dibuja como cards
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** UNA pregunta que la captura de device ABRIO sobre un punto ya declarado hecho, y por eso no la entierro: el DoD 2 exige las seis secciones envueltas «incluido el rotulo h4», y AcumuladoAnual es una de las seis. En device, «Acumulado del año» se ve DISTINTA de las otras -- titulo y cifra en una fila, SIN el rotulo h4 en caja alta (observacion de frontend1, bloque 3). Dos salidas y las dos cierran: (a) el prototipo no le da rotulo a esa card, y entonces la asimetria es fidelidad y el punto cierra con la cita del prototipo; (b) si le da, falta envolverla con rotulo. 🎯 Lo que NO vale es el camino que casi tomo: una asimetria entre la card impar y las otras seis no prueba por si sola que la impar este mal -- hay que preguntarse que dice la fuente, no cual se parece menos. frontend2 lo esta midiendo contra el prototipo ahora mismo y responde; dueno: frontend2.
-- **Cierre:** a6600880 (#1520, CI 6/6) por frontend2. DoD 1, 3, 4 y 5 HECHOS: componente Tarjeta en theme/ con color.superficie + radio del tema + el rotulo h4 11px/.14em, y elevacion() EXPORTADA de BloqueCifra y REUSADA, no reescrita -- el punto que mas importaba, porque el mismo helper viviendo dos veces con el fix llegando a uno es el defecto mas repetido de este repo. BloqueCifra intacto: la portada sigue siendo el bloque negro, una por pantalla. Test con las DOS mitades. DoD 6 CERRADO en device el 2026-11-03 (frontend1, DEVICE 2026-11-03 bloque 3 (frontend1, tenedora), cuenta canonica e2e-device, SM-M127F RF8T318RN9T 720x1600, bundle @ef9c716b tras --clear (12.755.726 B) -- este bundle SI tiene a6600880, verificado): seis cards blancas elevadas con el rotulo en mayusculas espaciadas -- POR COBRAR, MES A MES, MEJORES CLIENTES, y por scroll Facturacion, Entro vs. salio, En que se me va, Margen por trabajo -- y la portada «Saldo en caja» sigue siendo el bloque NEGRO, una sola, que es el control del punto 3. Capturas b3-n45-inteligencia-tramo1 a tramo6, 14:05.
+- **Estado:** TERMINADO
+- **Cierre:** a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en theme/ con color.superficie + radio del tema + el rotulo h4 11px/.14em, y elevacion() EXPORTADA de BloqueCifra y REUSADA, no reescrita -- el punto que mas importaba, porque el mismo helper viviendo dos veces con el fix llegando a uno es el defecto mas repetido de este repo. BloqueCifra intacto: la portada sigue siendo el bloque negro, una por pantalla. DoD 6 en DEVICE 2026-11-03 (frontend1, canonica, piel clara, RF8T318RN9T, bundle con a6600880 verificado por merge-base): seis cards blancas elevadas con el rotulo en mayusculas espaciadas -- POR COBRAR, MES A MES, MEJORES CLIENTES, y por scroll Facturacion, Entro vs. salio, En que se me va, Margen por trabajo -- y la portada Saldo en caja sigue siendo el bloque NEGRO, una sola, que es el control del punto 3. Capturas b3-n45-inteligencia-tramo1 a tramo6, 14:05. DoD 5 tambien en PIEL OSCURA el 2026-11-03 a las 14:27 (frontend1, canonica pasada a Oscuro y DEVUELTA a Claro, verificado 14:28): las seis cards con rotulos y contraste legibles. DoD 2 CERRADO en #1539: la etiqueta de AcumuladoAnual queda FUERA del bloque y la card recibe su propio rotulo, con test de control negativo -- la etiqueta NO esta dentro de la card -- y jest inteligencia 47/47, tsc 0. 🎯 Y el DoD 2 se cerro por la CITA, no por el parecido, que es lo que lo hace valer: frontend1 observo en device que Acumulado del anio se veia DISTINTA de las otras seis, y esa asimetria no probaba nada por si sola -- la card impar podia ser la correcta. frontend2 fue al prototipo (index.html:1996-1998), donde la etiqueta esta FUERA del bloque y la card lleva su propio h4, y recien ahi concluyo. La asimetria era la pregunta; la fuente fue la respuesta. Resuelto por cual se parece menos habia 50% de chance de envolver la card que ya estaba bien.
 - **Dueño:** frontend2 (el componente y el envoltorio) · frontend1 (la captura)
 - **De dónde sale:** el operador, 2026-11-03, mirando `prototipo/index.html?ver=bi` contra la app:
   *«la información al parecer está plana y no en cards como en el prototipo del mapa»*.
@@ -2989,4 +2989,54 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      lo único que ningún gate puede medir.
 - **Depende:** nada. Los seis contenedores y el primitivo son código, sin device ni decisión del
   operador.
+
+### SM-N46 · `sin-issue` — FUERA DEL DENOMINADOR: aprobar un presupuesto nombrándolo con dos datos no encuentra nada
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** frontend1 en device, 2026-11-03, intentando producir el estado que `SM-H5`
+  necesita capturar. Pidió al agente aprobar el presupuesto **N° 87** dos veces y recibió
+  «No encontré ningún presupuesto que se pueda marcar como aprobado», con ese presupuesto
+  **existiendo y en estado `pendiente`**.
+- **Causa raíz, medida por backend en la historia de Temporal del workflow `conv-web-4f3ecb78`:**
+  `tool_catalog.py:1295-1301` (`_coincide`) exige que la referencia aparezca como **substring entero
+  dentro de UN solo campo** (`numero` | `receptor.nombre` | `concepto`). Una frase con **dos datos**
+  —«87 de ClienteJ4», «el de ClienteJ4 por 50000»— no está completa en ningún campo, así que da
+  **0 candidatos** y `_run_marcar_presupuesto` (`:1350`) responde la pregunta de desambiguación.
+- **🎯 Las cuatro hipótesis que el diagnóstico REFUTÓ, y por eso el diagnóstico vale:** planificación
+  despachó sospechando (a) id-vs-número visible, (b) el filtro de estado, (c) el scoping por tenant,
+  (d) que la tool no se hubiera invocado. Medido: la tool **se invocó las dos veces**
+  (`finish_reason=tool_calls`), el `87` solo **sí** matchea, el estado es `pendiente` y está en
+  `TRANSICIONES`, y el listado trae los 87 presupuestos del canónico (el `limit 100` los cubre).
+  **Las cuatro eran plausibles y las cuatro eran falsas**: el defecto no estaba en ninguna capa que
+  el síntoma sugería.
+- **Reproducido** contra los 29 pendientes reales con la misma función, con su control positivo:
+  `'87'`→`[87]` · `'ClienteJ4'`→`[87]` · `'pintura'`→`[87]` — y `'87 de ClienteJ4'`→`[]` ·
+  `'presupuesto 87'`→`[]` · `'el 87'`→`[]` · `'ClienteJ4 50000'`→`[]` · `'50000'`→`[]` (el importe
+  **ni se compara**). Las que dan `[87]` son el control que prueba que la función no está muda.
+- **Por qué queda FUERA del denominador y eso NO es descartarla.** Este sprint mide **divergencias
+  mapa ↔ app**, y esto no es una: el mapa no habla de cómo se nombra un presupuesto al aprobarlo.
+  Meterla adentro movería el denominador del sprint, que es el defecto ya pagado (`DEC-18`: un
+  criterio que crece con cada medición no se puede alcanzar). Se registra **con id** —y no suelta en
+  un mensaje— porque es **precondición de `SM-H5`** y porque un hallazgo que sólo vive en un
+  `cierre_` no vuelve a aparecer.
+- **DoD:**
+  1. **Tokenizar la referencia** quitando el relleno («de», «el», «la», «por», «presupuesto»,
+     «número») y exigir que **cada token** aparezca en **algún** campo, incluido el importe/total —
+     que hoy ni se compara, y es el dato con el que un emprendedor nombra un presupuesto.
+  2. **`_elegir_uno` se mantiene intacto.** Si quedan >1 candidatos **pregunta**, nunca elige. Un fix
+     que convierta la desambiguación en una elección automática aprobaría el presupuesto equivocado:
+     el riesgo pasa de «no encuentra» a «aprueba otro», que es peor y silencioso.
+  3. **Tests con los casos medidos arriba**, las dos mitades: los que deben dar `[87]` y los que hoy
+     dan `[]` y deben dar `[87]`. Más un caso que debe seguir dando **>1 candidato** y preguntar.
+  4. **Test adversarial:** el actor A no resuelve el presupuesto de B. El aislamiento ya lo da el
+     `cliente_id` del store, pero un control de acceso sin test hostil es un control no verificado
+     (regla dura del repo; BOLA/OWASP API1:2023) — y acá el síntoma del sprint fue justamente un
+     «no encontré», que es **indistinguible** de un aislamiento que filtra por el lado benigno.
+  5. **Verificación en el tenant de prueba VACÍO**, creando un presupuesto propio. ⚠️ El N° 87 vive
+     en la cuenta **canónica** y es dato de `SM-N5`, `SM-N25` y `SM-H5`: **no se aprueba ni se muta**.
+     Aprobarlo para probar rompe la evidencia de tres fichas a la vez.
+  6. Desplegado, y `SM-H5` re-intentada en device: la card `sugerencia_armar_factura` tiene que
+     aparecer en el chat al aprobar.
+- **Desbloquea:** `SM-H5`.
 
