@@ -25,9 +25,16 @@ class MeteringStore:
         self._conn_factory = conn_factory
         self._cliente_id = cliente_id
 
-    def registrar(self, *, session_id: str, model: str, tokens: int | None, evento: str) -> None:
+    def registrar(self, *, session_id: str, model: str, tokens: int | None, evento: str,
+                  uso: dict | None = None) -> None:
+        """`uso` = `{entrada, salida, cacheados, razonamiento}` (ver `agent_activities.normalizar_uso`).
+        Ausente = columnas en NULL, que significa «el proveedor no lo informó», NUNCA «cero»: las filas
+        previas a esta columna y los eventos de tool quedan así, y un `sum()` sobre ellas no inventa gasto."""
+        u = uso or {}
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO {_TABLE} (cliente_id, session_id, model, tokens, evento) "
-                f"VALUES (%s, %s, %s, %s, %s)",
-                (self._cliente_id, session_id, model, tokens, evento))
+                f"INSERT INTO {_TABLE} (cliente_id, session_id, model, tokens, evento, "
+                f"tokens_entrada, tokens_salida, tokens_cacheados, tokens_razonamiento) "
+                f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (self._cliente_id, session_id, model, tokens, evento,
+                 u.get("entrada"), u.get("salida"), u.get("cacheados"), u.get("razonamiento")))

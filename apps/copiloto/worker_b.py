@@ -124,14 +124,14 @@ def _perfil_provider(conn_factory: Callable) -> Callable:
 
 
 def _metering_provider(conn_factory: Callable) -> Callable:
-    """`(cliente_id, session_id, model, tokens, evento) -> None`, boundary `metering_sink` (BETA-1b).
+    """`(cliente_id, session_id, model, tokens, evento[, uso]) -> None`, boundary `metering_sink` (BETA-1b).
 
     El try/except contra fallos de DB YA vive en `agent_activities._registrar_metering` (capa
     PLANTILLA) -- acá sólo se instancia el store per-request, mismo criterio de aislamiento que el
     resto de las fábricas de este archivo (regla 7: nunca un store compartido entre tenants)."""
-    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str) -> None:
+    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str, uso=None) -> None:
         MeteringStore(conn_factory, cliente_id).registrar(
-            session_id=session_id, model=model, tokens=tokens, evento=evento)
+            session_id=session_id, model=model, tokens=tokens, evento=evento, uso=uso)
 
     return registrar
 
