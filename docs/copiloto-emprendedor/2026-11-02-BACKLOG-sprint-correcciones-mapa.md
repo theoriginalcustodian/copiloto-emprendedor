@@ -122,6 +122,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N24** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N25** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N27** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1716,8 +1717,35 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
 
 - **Estado:** PENDIENTE
-- **⚠️ NO SE IMPLEMENTA hasta que el operador lea el CONTRAPUNTO de abajo.** La decisión es
-  suya; lo que no puede pasar es que se ejecute sin que el costo esté dicho.
+- **✅ DESBLOQUEADA el 2026-11-02 — se retira ENTERO.** El bloqueo existió porque el contrapunto de
+  abajo no estaba medido; **ahora lo está y se cae**. El texto del contrapunto queda igual a
+  propósito: explica qué se pierde y qué hay que reponer cuando el modo sea elegible.
+- **✅ RESOLUCIÓN, 2026-11-02 — el contrapunto se CAE, medido.** El operador preguntó lo único que lo
+  decidía: *«¿existe algún lugar para setear este comportamiento a nivel de usuario? porque me parece
+  que no… y si no existe no tiene sentido que se muestre, porque debería pedir confirmación siempre,
+  al menos hasta que implementemos la opción para que el usuario pueda elegir»*. **No existe, y su
+  razonamiento es exacto.** El único escritor del campo desde cualquiera de las dos UIs es
+  `volverAConfirmacion()` → `guardarPerfilNegocio({ modoCeremonia: 'confirmacion' })`
+  (`apps/mobile/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx:310` y su gemelo web
+  `apps/copiloto-web/src/modules/ajustes/negocio/PantallaPerfilNegocio.tsx:193`). El backend
+  **acepta** escribir `automatico` (`apps/copiloto/presupuestos_web.py:85`, validado contra `MODOS`),
+  pero **ningún control lo manda**; y el default es `confirmacion` para todo tenant, nuevo incluido
+  (`apps/copiloto/perfil_negocio_store.py:62-66`).
+  ⇒ El indicador muestra **siempre lo mismo, para todos los usuarios**: es una **constante disfrazada
+  de estado**. Y la alternativa que yo había ofrecido —«mostrarlo sólo cuando el modo es
+  `automatico`»— equivale a **no mostrarlo nunca**: no era una alternativa, era el mismo retiro con
+  una condición muerta adentro. **Se retira entero**, y el **punto 4 del DoD queda sin objeto** (no
+  hay ninguna «otra ruta» donde el modo sea legible, porque no hay modo que leer: el valor es fijo).
+- **🔴 La deuda que el retiro CREA, y que se escribe acá para que no se pierda:** cuando se
+  implemente la opción de que el usuario elija el modo, **la señal permanente vuelve con ella** — no
+  es decoración, es lo único que dice si el copiloto actúa solo. Va como nota en el contrato de modos
+  §4 junto con su corrección: hoy «estado siempre visible» afirma algo que no existe, y la próxima
+  sesión que lo lea le va a creer ([[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+- **Lo que esto enseña del método, y por qué el contrapunto estaba mal construido:** defendí el
+  cartel por **lo que el contrato dice que significa**, sin medir si la variable que pinta puede
+  cambiar de valor. Se pintó una variable que **nunca varía**. El chequeo que faltaba era de una
+  línea y ya está escrito en la memoria de este repo: **¿quién ESCRIBE este campo?**, no quién lo lee
+  ([[la-costura-leia-un-campo-que-nadie-escribe]]).
 - **Dueño:** frontend1
 - **Decisión del operador, 2026-11-02:** *«hay que quitar eso de pedir confirmación — ensucia la
   pantalla; sólo dejar el tirador del margen superior»*.
@@ -1754,4 +1782,76 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      negocio, `PantallaPerfilNegocio.tsx:468`), y que esa ruta esté verificada, no supuesta.
 - **Tenencia:** cualquiera de las dos cuentas.
 - **DENTRO del sprint:** limpieza de la cáscara pedida por el operador.
+
+### SM-N27 · `sin-issue` — DENTRO DEL SPRINT: dos toques al avatar abren Ajustes DOS veces — el guard existe y se derrota a sí mismo
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueño del shell)
+- **Reportado por:** el operador, 2026-11-02: *«al apretar dos veces seguidas el botón para ingresar
+  a ajustes del usuario se abre dos veces la misma pantalla… al parecer como tarda en abrirse, si se
+  apreta dos veces se abre dos veces»*. Su diagnóstico es correcto y es la pista: **el defecto vive
+  en la ventana de la transición**.
+- **⚠️ El guard YA ESTÁ PUESTO en ese botón — así que «falta `empujarUnaVez`» es la explicación
+  equivocada y hay que descartarla de entrada.** `apps/mobile/src/shell/PantallaPrincipal.tsx:120`
+  es `const alAjustes = () => empujarUnaVez('/ajustes')`, y lo reciben **las dos** capas que pintan
+  el avatar (`:273` escritorio y `:280` Mi día). El flag se cierra de forma **síncrona**
+  (`navegacion/empujarUnaVez.ts:52-54`), así que un segundo tap inmediato **sí** lo ve cerrado.
+  Quien parchee agregando el helper va a «arreglar» algo que ya estaba y el defecto va a seguir.
+- **MEDIDO — la causa raíz: la puerta se reabre AL LLEGAR, no al volver.**
+  `apps/mobile/app/ajustes.tsx:45` llama `reabrirNavegacion()` dentro de su `useFocusEffect`, porque
+  Ajustes es **destino Y pantalla lanzadora a la vez** (lanza Skins, Cuenta, Negocio, AFIP…).
+  Secuencia real: tap 1 cierra la puerta y empuja `/ajustes` → Ajustes monta, gana foco y **reabre la
+  puerta** → el tap 2, que el sistema entregó durante la transición, encuentra la puerta abierta y
+  empuja un **segundo** `/ajustes`. Por eso el síntoma depende de que *«tarde en abrirse»*: la
+  ventana de falla es exactamente el tiempo de la transición.
+- **⚠️ El docstring afirma la invariante que el código NO cumple — y por eso nadie volvió a mirar.**
+  `empujarUnaVez.ts:17-18` dice textual: *«la puerta se cierra al lanzar y se reabre cuando la
+  pantalla lanzadora vuelve a tener el foco —o sea cuando el glass se cerró y volvimos a ella—, **ni
+  antes ni después**»*. La afirmación es verdadera para un destino HOJA, y **falsa para un destino
+  que también es lanzador**: ahí «ganar foco» ocurre a la IDA. El comentario describe la intención,
+  no el efecto, y leerlo apaga la búsqueda
+  ([[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]] ·
+  [[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+- **🔴 Es una CLASE, no un botón — el fix de un solo call-site deja el resto vivo.** Todo destino que
+  además sea lanzador reabre al llegar y tiene el mismo agujero: `app/ajustes.tsx:45`,
+  `app/midia.tsx:17`, `app/presupuestos.tsx:34`, `app/clientes.tsx:33`, `app/gastos.tsx:33`,
+  `app/soporte-ticket.tsx:33`, `modules/facturacion/PantallaFacturacion.tsx:206`. El único lugar
+  donde el riesgo está razonado por escrito es `modules/soporte/PantallaSoporte.tsx:94-99`, que
+  reabre **a propósito y acotado** a su propio lanzamiento. **Contar los llamadores antes de tocar**
+  ([[el-fix-ya-existe-en-otro-call-site]]).
+- **El criterio del fix, no su implementación** (la elige frontend1 con la skill en mano): la puerta
+  tiene que distinguir **«volví al lanzador»** de **«llegué al destino»**. Un lock por TIEMPO ya fue
+  rechazado con fundamento en `empujarUnaVez.ts:13-18` y **no se reintroduce**: tapa el doble-tap y
+  deja pasar el toque encolado tardío. Las dos direcciones que SÍ respetan la invariante escrita:
+  (a) que la puerta recuerde **qué ruta** la cerró y sólo la reabra quien no sea ese destino, o
+  (b) que el destino consuma el lanzamiento pendiente al llegar en vez de reabrir la puerta.
+  Cualquiera de las dos sirve; lo que no sirve es un `setTimeout`.
+- **Antes de tocarlo:** `swmansion-rn-gestures` (tap sobre `Pressable`, toques encolados) y
+  `documed-front`, de donde salió este mecanismo (`PantallaPrincipal.tsx:64-65` lo declara clon de
+  `documed-front/apps/mobile/app/(tabs)/index.tsx`) — **medir si documed ya resolvió el caso
+  destino-que-también-lanza antes de diseñar nada**, que es la regla §3.ter de este repo.
+- **DoD:**
+  1. **Reproducción del defecto ANTES del fix**, en device: dos toques rápidos al avatar y la
+     evidencia de que hay **dos** pantallas apiladas — dos «Volver» para salir, o el stack leído.
+     Sin el antes reproducido no hay forma de acreditar el después: el defecto es intermitente por
+     naturaleza (depende de la transición).
+  2. Dos toques rápidos → **una sola** pantalla, demostrado **N veces seguidas** (N declarado, ≥5).
+     Una pasada no distingue «arreglado» de «tuve suerte».
+  3. **Control de que la navegación LEGÍTIMA sigue viva** — es la mitad que un fix de este tipo
+     rompe calladito: abrir Ajustes → volver → abrir Ajustes otra vez **funciona**; y desde Ajustes
+     abrir Skins/Cuenta **funciona** (Ajustes es lanzadora: si el fix le quita el derecho a reabrir
+     sin más, queda muerta y el síntoma es el mismo *«se queda bloqueada y no responde»* de julio).
+  4. El toque ejercitado por ADB con el método **declarado** (acá es tap sobre `Pressable`, no un
+     Pan, así que `input tap` sirve — pero hay que decir cuál se usó), más un control que SÍ debería
+     responder, para distinguir «no se abrió» de «el ADB no ejercitó nada».
+  5. **El barrido de la clase**: los 7 destinos-lanzadores listados arriba, cada uno **dicho** —
+     arreglado por el mismo mecanismo, o medido como no afectado con el motivo. Un fix que cierre
+     sólo `/ajustes` deja seis agujeros idénticos y la ficha no se acredita.
+  6. El docstring de `empujarUnaVez.ts:13-28` **corregido al efecto real**, incluido el caso
+     destino-que-también-lanza. Es la declaración que apagó la búsqueda; dejarla intacta garantiza
+     el próximo.
+- **Tenencia:** cualquiera de las dos cuentas — es estructura de navegación. No espera al operador.
+- **DENTRO del sprint:** es jugabilidad, reportada por el operador sobre la app. No es divergencia
+  contra el mapa (el mapa no dibuja stacks), así que entra por la vía «defecto de uso», no por
+  denominador del mapa.
 
