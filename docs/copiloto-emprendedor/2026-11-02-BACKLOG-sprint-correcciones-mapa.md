@@ -113,7 +113,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N16** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 corrida en device con el canonico hasta cerrar sesion; DoD 5 captura del avatar visible y par antes/despues del… |
 | **SM-N17** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device que confirme que el aviso de conexion caida de Instagram ya no aparece. Se agrupa con SM-N18, que m… |
-| **SM-N18** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay tex… |
+| **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
 | **SM-N19** | `sin-issue` | ✅ TERMINADO | b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al reh… |
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
@@ -1505,9 +1505,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N18 · `sin-issue` — FUERA DEL SPRINT: `composio_caidos` avisa de CUALQUIER toolkit que Composio liste, soportado o no
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** captura de device de Mi Dia sin aviso de conexion caida de instagram: frontend1 abrio Mi Dia a las 20:10 y no hay texto de conexion en pantalla; falta archivar esa captura
-- **Cierre:** 0046ded4 filtro por toolkits_conectables, fuente unica, tests 2 mitades, VPS 2566 passed; re-medido 2026-11-02 tras abrir Mi Dia (frontend1): fila instagram de 48a9d75f para_hoy -> hecha (read-only)
+- **Estado:** TERMINADO
+- **Cierre:** 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archivada en docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N18.md (Mi Dia sin aviso, 0 coincidencias con control positivo, bundle acdbff54); N18 acredita la CAUSA, N17 la pantalla
 - **Dueño:** backend (se ofreció al medir `SM-N17`)
 - **De dónde sale:** es la **raíz** del síntoma de `SM-N17` (el aviso de «se cayó la conexión con
   Instagram» en la cuenta del operador). La ficha se separa porque el síntoma y la causa tienen
