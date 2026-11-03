@@ -257,7 +257,6 @@ export function PantallaPrincipal() {
       alBajar={alBajarChat}
       arrancaAbajo
       ocultarTira={progresoFunciones}
-      hintAbajo="Escribile a Odobi"
       // SM-N22: el asa queda ENCIMA del campo (mapa). El campo vive en el panel, bajo el asa.
       pieAbajo={<DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />}
       altoPieAbajo={ALTO_COMPOSER_REPOSO}
