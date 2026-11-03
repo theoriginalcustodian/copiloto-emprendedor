@@ -301,3 +301,53 @@ Reseñas mayormente de afiliados, metodología inconsistente: steal de CPU por s
 de pico, 8 a 15% en pico), uptime entre 99,87% y 100%, disco más variable para bases de datos, soporte
 lento. Varias fuentes recomiendan Hetzner para producción con base de datos. Mover sólo la app a Contabo
 ahorraría ~US$600 a 800 en el año 1 y agrega latencia hacia la base. No recomendado en el año 1.
+
+## 12. Trayectoria de servidores y costos fijos por crecimiento (agregado 2026-11-03)
+
+Reemplaza la progresión de §11.2 como plan vigente. **Composio sale de los fijos**: se cobra por
+consumo y entra con los variables que paga el usuario. Precios Hetzner verificados el 2026-11-03,
+sin IVA; tipo de cambio supuesto ~1,1 US$ por euro.
+
+**Decisiones del operador (2026-11-03):**
+- Se arranca con **los 4 VPS separados desde el día 0** (app + frontend · Postgres · Temporal ·
+  Graphity) para no tener que separar servicios con datos reales adentro: después sólo se agranda.
+- **Graphity arranca en CPX32** (4 vCPU / 8 GB): Neo4j con 4 GB queda justo.
+- **Espejo completo en E4** (~US$180/mes extra): se acepta el costo para dar un servicio de calidad.
+
+| Etapa | Usuarios | Configuración (Hetzner) | US$/mes |
+|---|---|---|---|
+| E0 + E1 | 0 a 500 | App, Postgres y Temporal en CPX22 (2 vCPU / 4 GB) · Graphity en CPX32 | ~135 |
+| E2 | 500 a 1.500 | App y Postgres suben a CPX32 · Temporal sigue en CPX22 · Expo pasa a Starter (>1.000 MAU) | ~200 |
+| E3 | 1.500 a 3.000 | + 2.ª app (relevo) · + réplica de Postgres · Graphity a CPX42 · Temporal a CPX32 | ~330 |
+| E4 | 3.000 a 5.000 | Espejo completo | ~520 |
+
+Cada fila incluye snapshots (~20% de los servidores), Expo, Apple Developer (~US$8/mes) y Backblaze B2.
+**Año 1 con el crecimiento base (una etapa por trimestre): ~US$2.930**, más US$25 únicos de Google Play.
+
+**Cuándo subir de etapa** (deciden las métricas, no el conteo de usuarios): CPU >60% sostenido o
+RAM >75% · crece el tiempo de respuesta del chat o el schedule-to-start de Temporal · Postgres cerca
+del límite de conexiones o de disco.
+
+**Matices:**
+- E3 y E4 **agregan** servidores (2.ª app, réplica, espejo): hay que configurar réplica y balanceo;
+  no es sólo agrandar.
+- Agrandar en Hetzner requiere apagar el servidor unos minutos: hacerlo en horario de bajo uso hasta
+  tener relevo (E3).
+- Al agrandar, subir sólo CPU y RAM (sin disco) permitiría volver a bajar. **Sin confirmar.**
+- Hoy la app corre en VPS compartidos con otros proyectos; pasar a los 4 VPS dedicados es una
+  migración con trabajo propio.
+- **Sin prueba de carga:** los tamaños son estimados; hacerla antes de E3.
+
+### 12.1 Presupuesto total del año 1 sin contratar personal
+
+| Escenario | Publicidad/año | Total año 1 (servicios ~2.930 + LLM de usuarios gratis ~500 + reserva 20%) |
+|---|---|---|
+| Sólo orgánico | 0 | ~US$4.100 |
+| Ads moderados (~500/mes) | ~6.000 | ~US$10.100 |
+| Meta de 5.000 **activos** en 12 meses | ~34.000 (rango 20.000 a 49.000) | ~US$38.000 |
+
+Supuestos de la meta (no medidos): instalación en Argentina ~US$2 (mediana de Facebook; Google App
+Campaigns US$0,50 a 2 en LATAM), 30 a 50% de activación, ~6% de bajas por mes, 30% orgánico.
+Google Búsqueda sale 3 a 6 veces más caro por usuario. Para **5.000 de pago** (15% de conversión) la
+publicidad sube a US$130.000 a 330.000. No incluye sociedad, contador, impuestos ni comisiones de
+MercadoPago. **Validar con un piloto de ~US$500** comparando Meta, Google Apps y Google Búsqueda.
