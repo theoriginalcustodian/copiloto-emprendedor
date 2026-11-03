@@ -21,6 +21,7 @@ from afip_credential_store import ClaveFiscal
 from afip_rules import (CODIGO_CONDICION_NO_SOPORTADA, CondicionEmisor, PerfilFiscal,
                         condicion_emisor_soportada, rango_fechas_permitido,
                         validar_cuit, validar_perfil)
+from escala_monotributo import categoria_valida
 from gasto_store import hoy_del_negocio
 from errores_web import (AMBIENTE_NO_VINCULADO, CUIT_NO_VINCULADO, CONFIRMACION_NO_TOMADA, INGRESO_DUPLICADO_PROBABLE,
                          SIN_CERTIFICADO_AFIP, SIN_PERFIL_FISCAL, conflicto)
@@ -94,6 +95,8 @@ class PerfilBody(BaseModel):
     ingresos_brutos: str
     inicio_actividades: date
     punto_venta: int = 1
+    # SM-N36: A…K, sólo aplica con condicion_iva == 'monotributo'. Opcional: no mandarla es válido.
+    categoria_monotributo: str | None = None
 
 
 # Homologación es el default en TODA la superficie: si el ambiente se omite por un bug del cliente o
@@ -228,6 +231,11 @@ def create_afip_app(
         except ValueError:
             raise HTTPException(422, detail=f"condicion_iva inválida: {body.condicion_iva}") from None
 
+        if body.categoria_monotributo is not None and not categoria_valida(body.categoria_monotributo):
+            raise HTTPException(422, detail=[{"codigo": "categoria_monotributo_invalida",
+                                              "campo": "categoria_monotributo",
+                                              "mensaje": "La categoría de monotributo va de la A a la K."}])
+
         errores = validar_perfil(PerfilFiscal(
             cuit=body.cuit, razon_social=body.razon_social,
             domicilio_comercial=body.domicilio_comercial, condicion_iva=condicion,
@@ -252,7 +260,8 @@ def create_afip_app(
             perfil_store_factory(cliente_id).save, body.cuit,
             razon_social=body.razon_social, domicilio_comercial=body.domicilio_comercial,
             condicion_iva=condicion.value, ingresos_brutos=body.ingresos_brutos,
-            inicio_actividades=body.inicio_actividades, punto_venta=body.punto_venta)
+            inicio_actividades=body.inicio_actividades, punto_venta=body.punto_venta,
+            categoria_monotributo=body.categoria_monotributo)
         return {"ok": True}
 
     @app.post("/afip/ajustes")

@@ -591,6 +591,17 @@ def _ensure_afip_comprobante_params_pdf_column(conn) -> None:
           flush=True)
 
 
+def _ensure_afip_perfil_categoria_monotributo(conn) -> None:
+    """Migración aditiva de `afip_perfil.categoria_monotributo text` (SM-N36): la categoría A…K del emisor,
+    nullable (NULL = no la cargó). Declarada también en `uc_tables.json`, así que el guard anti-colisión
+    del pase estándar abortaría sobre una tabla viva sin ella: corre ANTES del pase estándar, igual que
+    sus hermanas. `ADD COLUMN IF NOT EXISTS` -> idempotente."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.afip_perfil "
+                f"ADD COLUMN IF NOT EXISTS categoria_monotributo text;")
+    print(f"OK {SCHEMA}.afip_perfil.categoria_monotributo (columna aditiva text, idempotente)", flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -655,6 +666,7 @@ def provision(conn) -> dict:
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).
     _ensure_metering_uso_columns(conn)              # ídem para el desglose de tokens de `copiloto_metering`.
     _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
+    _ensure_afip_perfil_categoria_monotributo(conn)   # ídem para `afip_perfil.categoria_monotributo` (SM-N36).
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _ensure_onboarding_completado(conn)             # K-14: flag del onboarding en `tenants`.

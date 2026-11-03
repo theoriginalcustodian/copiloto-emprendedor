@@ -56,6 +56,7 @@
     "inicio_actividades date NOT NULL",
     "punto_venta integer NOT NULL",
     "guardar_en_drive boolean NOT NULL DEFAULT false",
+    "categoria_monotributo text",
     "updated_at timestamptz DEFAULT now()"
   ],
   "afip_secret_handoff": [
