@@ -130,7 +130,11 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           * un número elegido a ojo.
           */}
         <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
-          <Marca size={LOCKUP_SIMBOLO} tono="tinta" />
+          {/* SM-N30: `desnudo` = el símbolo SIN badge, terracota, como el mapa (`prototipo/index.html:2571`,
+              `<svg width="38">` con `stroke: var(--terracota)`). Era `tinta`, que es el avatar redondo de
+              Soporte: el login importó el círculo sin su motivo. En `desnudo` el `size` es el del SIGNO
+              (38, como el mapa), no el de un tile; el `gap` de abajo sigue siendo 0,3 × ese ancho. */}
+          <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           <Text

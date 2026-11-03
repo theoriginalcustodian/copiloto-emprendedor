@@ -13,8 +13,10 @@ import { useTema } from './ThemeProvider';
  * predivide por la escala para que el trazo se vea igual de fino en cualquier tamaño. Reutilizable:
  * login + estado vacío del chat.
  *
- * `tono='acento'` (default) pinta el badge con el color de acento y el isotipo con `acentoTexto` —
- * para el hero del login. `tono='superficie'` invierte el par — para cuando acompaña texto y no
+ * `tono='acento'` (default) pinta el badge con el color de acento y el isotipo con `acentoTexto`.
+ * **NO es el login**: la placa de terracota plena del 28/07 se eliminó (`mockups/01-onboarding/index.html:187`,
+ * «dos momentos de marca seguidos gastaban el permiso dos veces»); el login usa `tono='desnudo'`
+ * (símbolo sin badge, terracota, `prototipo/index.html:2571`). `tono='superficie'` invierte el par — para cuando acompaña texto y no
  * debe competir con él. `tono='tinta'` usa el par del bloque de máximo contraste (negro tostado con
  * el signo en crema, invertido en la piel oscura): es el **avatar de Soporte**, donde la marca
  * identifica de qué producto es el chat sin pedir el permiso de color que pide el acento.
