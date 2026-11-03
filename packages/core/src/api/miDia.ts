@@ -372,6 +372,19 @@ export async function leerCalendario(): Promise<ConDisponibilidad<{ calendario: 
 /** Ver el docstring de `EventoCalendario` arriba — sólo reconoce las 2 formas públicas de la API de
  *  Google Calendar; `null` si no puede mostrar una hora con certeza (evento de día completo incluido:
  *  `{date}` sin `dateTime` es "todo el día", no una hora que valga la pena mostrar). */
+export function instanteDeEvento(inicioCrudo: unknown): number | null {
+  let iso: string | null = null;
+  if (typeof inicioCrudo === 'string') {
+    iso = inicioCrudo;
+  } else if (typeof inicioCrudo === 'object' && inicioCrudo !== null) {
+    const r = inicioCrudo as Record<string, unknown>;
+    if (typeof r.dateTime === 'string') iso = r.dateTime;
+  }
+  if (iso == null) return null;
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 export function horaDeEvento(inicioCrudo: unknown): string | null {
   let iso: string | null = null;
   if (typeof inicioCrudo === 'string') {

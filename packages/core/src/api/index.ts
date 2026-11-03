@@ -376,6 +376,7 @@ export {
   TEXTO_NUEVO_EVENTO,
   franjaDeEvento,
   leerAgenda,
+  posicionLineaAhora,
   rangoAgenda,
 } from './agenda';
 export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda } from './agenda';
