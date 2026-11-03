@@ -22,10 +22,12 @@ explícito es la barrera efectiva, con test adversarial que la ejercita (regla 7
 from __future__ import annotations
 
 import datetime
+import re
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
 from afip_rules import facturado_filtro_sql, facturado_monto_sql
+from cliente_store import _facturas_del_documento_sql, _es_atribuible, normalizar_nombre
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 from mp_credential_store import MpCredentialStore
@@ -87,6 +89,14 @@ def variacion_pct(actual: Decimal, anterior: Decimal) -> str | None:
         return None
     pct = (actual - anterior) / abs(anterior) * 100
     return str(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def _porcentaje(parte: Decimal, total: Decimal) -> str:
+    """`parte/total` en %, string con UNA posición (como `variacion_pct`). Total 0 -> "0.0", no división por
+    cero ni None: la categoría existe y pesó cero."""
+    if not total:
+        return "0.0"
+    return str((parte / total * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _primer_dia_del_mes(d: datetime.date) -> datetime.date:
@@ -174,7 +184,34 @@ class InteligenciaQueries:
                  GROUP BY 1
             ) x WHERE cliente <> '' ORDER BY total DESC, cliente LIMIT %(limite)s
         """, {"cid": self._cliente_id, "limite": max(1, int(limite))})
-        return [{"cliente": nombre, "total": dos_decimales(total)} for nombre, total in cur.fetchall()]
+        ranking = [{"cliente": nombre, "total": dos_decimales(total)} for nombre, total in cur.fetchall()]
+        for fila in ranking:
+            fila["comprobantes"] = self._comprobantes_del_cliente(cur, fila["cliente"])
+        return ranking
+
+    def _comprobantes_del_cliente(self, cur, nombre: str) -> int | None:
+        """SM-N32: «N comprobantes» del ranking = facturas con CAE atribuidas por DOCUMENTO del receptor,
+        el MISMO referente (y el mismo predicado, `_facturas_del_documento_sql`) que `comprobantes_cantidad`
+        de `GET /clientes`: dos cifras con un rótulo darían números distintos.
+
+        El ranking agrupa por NOMBRE (cobros), así que el cliente se busca por `nombre_normalizado`. `None`
+        = «no se puede saber», nunca 0: sin ficha en la cartera, con dos fichas homónimas o sin documento
+        no hay a qué atar facturas, y un 0 diría «no te compró» (la misma regla que `facturas_atribuibles`)."""
+        cur.execute(f"""
+            SELECT doc_tipo, doc_nro FROM {_SCHEMA}.copiloto_clientes
+             WHERE cliente_id = %(cid)s AND nombre_normalizado = %(nn)s
+        """, {"cid": self._cliente_id, "nn": normalizar_nombre(nombre)})
+        fichas = cur.fetchall()
+        if len(fichas) != 1 or not _es_atribuible(fichas[0][0], fichas[0][1]):
+            return None
+        doc_tipo, doc_nro = fichas[0]
+        doc = re.sub(r"\D", "", str(doc_nro))
+        cur.execute(f"""
+            SELECT count(*) FROM {_SCHEMA}.afip_comprobantes a
+             WHERE a.cliente_id = %(cid)s
+               AND {_facturas_del_documento_sql('a', '%(dt)s', '%(doc)s')}
+        """, {"cid": self._cliente_id, "dt": doc_tipo, "doc": doc})
+        return int(cur.fetchone()[0])
 
     def _serie_mensual(self, cur, meses: int) -> list[dict]:
         """`[{mes, ingresos, gastos}]` para los últimos `meses` (incluido el actual), SIN huecos: los
@@ -399,7 +436,13 @@ class InteligenciaQueries:
                  GROUP BY 1
             """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
             por_cat = {cat: Decimal(str(total or 0)) for cat, total in cur.fetchall()}
-        serie = [{"categoria": cat, "total": dos_decimales(por_cat.get(cat, 0))} for cat in CATEGORIAS]
+        total_mes = sum(por_cat.values(), Decimal(0))
+        # De mayor a menor (desempate por el orden de CATEGORIAS: determinista) y con el % calculado ACÁ,
+        # sobre el total del mes: el backend tiene el dato completo, el front podría no tenerlo. Cuántas se
+        # muestran y el «Otros» son presentación y viven en el front (SM-N32). Siempre las 8, en "0.00".
+        orden = sorted(CATEGORIAS, key=lambda c: (-por_cat.get(c, Decimal(0)), CATEGORIAS.index(c)))
+        serie = [{"categoria": cat, "total": dos_decimales(por_cat.get(cat, 0)),
+                  "porcentaje": _porcentaje(por_cat.get(cat, Decimal(0)), total_mes)} for cat in orden]
         return {"tipo": "torta", "periodo": clave, "serie": serie}
 
     def categoria_detalle(self, mes: str | None, categoria: str) -> dict:
@@ -489,8 +532,28 @@ class InteligenciaQueries:
             else:
                 trabajos.append({**base, "cobrado": m["cobrado"], "gastado": m["gastado"],
                                  "margen": m["margen"]})
+        for t in trabajos:
+            cobrado = Decimal(t["cobrado"])
+            t["margen_pct"] = _porcentaje(Decimal(t["margen"]), cobrado) if cobrado > 0 else None
         trabajos.sort(key=lambda t: Decimal(t["margen"]), reverse=True)
-        return {"tipo": "barras", "trabajos": trabajos, "sin_ingreso": sin_ingreso}
+        return {"tipo": "barras", "trabajos": trabajos, "sin_ingreso": sin_ingreso,
+                "resumen": self._resumen_de_margen(trabajos)}
+
+    @staticmethod
+    def _resumen_de_margen(trabajos: list[dict]) -> dict:
+        """SM-N32: el margen PONDERADO por monto (Σmargen / Σcobrado), no el promedio simple de porcentajes:
+        un trabajo de $1.000 pesaría igual que uno de $500.000. Por eso el rótulo es «Sobre N trabajos», no
+        «Promedio» (enmienda D4 del mapa). Solo cuentan los trabajos con cobro; los `sin_ingreso` siguen
+        aparte, nunca promediados. `peor` = el de menor margen_pct, con su nombre."""
+        con_cobro = [t for t in trabajos if t["margen_pct"] is not None]
+        if not con_cobro:
+            return {"trabajos": 0, "margen_pct_ponderado": None, "peor": None}
+        sum_margen = sum((Decimal(t["margen"]) for t in con_cobro), Decimal(0))
+        sum_cobrado = sum((Decimal(t["cobrado"]) for t in con_cobro), Decimal(0))
+        peor = min(con_cobro, key=lambda t: (Decimal(t["margen_pct"]), t["etiqueta"]))
+        return {"trabajos": len(con_cobro),
+                "margen_pct_ponderado": _porcentaje(sum_margen, sum_cobrado),
+                "peor": {"etiqueta": peor["etiqueta"], "margen_pct": peor["margen_pct"]}}
 
     def margen_trabajo_detalle(self, eslabon: str, ref: int) -> dict:
         """El mismo objeto que `GET /trabajos/{eslabon}/{ref}/margen` — no una forma nueva (§0)."""
