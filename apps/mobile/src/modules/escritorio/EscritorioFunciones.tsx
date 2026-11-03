@@ -230,9 +230,9 @@ export function EscritorioFunciones({
                 accessibilityLabel={t.label}
                 onPress={() => onFuncion?.(t.key)}
                 solido
-                // SM-I4 (oscuro): `superficieAlta` es el token del CAMPO aplanado (`#1B120B`, 1,02:1 contra el lienzo
-                // `#1A1512`): la casilla desaparecía. `superficie` es el de las cards (Tarjeta, SM-N45), ya
-                // medido legible en oscuro en device. En claro los dos valen `#FFFFFF`: sin cambio.
+                // SM-I4 (oscuro): `superficieAlta` es el token del CAMPO aplanado (1,02:1 contra el lienzo): la
+                // casilla desaparecía. `superficie` es el de las cards (Tarjeta, SM-N45), ya medido legible en
+                // oscuro en device. En claro los dos son iguales: sin cambio.
                 style={[styles.tile, { backgroundColor: tema.color.superficie }]}
               >
                 {/* El chip es pastel fijo en las dos pieles, y por eso el glifo también va fijo. */}
