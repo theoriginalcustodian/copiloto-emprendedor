@@ -1,10 +1,9 @@
-import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 // 🔴 `RefreshControl` de RNGH, NO el de `react-native`: el `ScrollView` de RNGH hace `waitFor` sobre el handler
 // del refresh control (le inyecta un `ref` para eso). Con el de RN ese `waitFor` apunta a nada y los dos
 // árbitros se disputan el dedo: `onRefresh` se disparaba a los 0,3 s del DOWN, 6 s antes del UP (DEVICE15 H4).
-import { Pressable, RefreshControl } from 'react-native-gesture-handler';
+import { RefreshControl } from 'react-native-gesture-handler';
 
 import {
   chipDeCaja,
@@ -21,7 +20,7 @@ import { AcumuladoAnual } from './AcumuladoAnual';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { pressableStyle } from '../../theme/glass/presion';
+import { DockAlChat } from '../voz';
 import { Row } from '../../theme/glass/Row';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
@@ -47,12 +46,9 @@ import { useTema } from '../../theme/ThemeProvider';
  * Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo scroll — leen
  * de un vistazo, no multiplican rutas para algo chico.
  *
- * 🔴 **«Preguntar» es una SALIDA al chat, no un cuerpo de esta pantalla** (decisión TÁCTICA de
- * planificación, 2026-10-13: «Preguntar → chat, sin pantalla intermedia ni endpoint»). El prototipo
- * sacó esa solapa por ser la duplicación del chat; el selector se conserva por contrato de ids y
- * tocarla cierra el glass y vuelve al chat principal (`router.back()`, el mismo gesto que `MarcoGlass`
- * hace al cerrar). No deja mensaje pendiente: la pregunta se escribe en el chat, que ya tiene su
- * composer, su historial y su hilo durable.
+ * 🔴 **SM-N32 — sin selector «Resumen»/«Preguntar».** El mapa los sacó («la misma duplicación que sacamos con la solapa
+ * "Preguntar" de Inteligencia», `mapa-pantallas/index.html:240`) y el operador lo reclamó el 2026-11-03. La pregunta se
+ * escribe en el chat (o en el dock de la función, SM-J1); esta pantalla es sólo lectura.
  */
 
 type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
@@ -73,46 +69,6 @@ export function sinVentasTodavia(p: Portada): boolean {
     cero(p.mes.cobrado) &&
     p.mejoresClientes.length === 0 &&
     p.serieMensual.every((m) => m.ingresos == null || Number(m.ingresos) === 0)
-  );
-}
-
-/** Vuelve al chat principal: la pregunta se hace ahí (ver la cabecera). */
-function irAlChat() {
-  router.back();
-}
-
-function Solapas() {
-  const tema = useTema();
-  return (
-    <View style={styles.solapas} testID="inteligencia-solapas">
-      {/* «Resumen» es ESTA pantalla: siempre activa, sin acción. */}
-      <View
-        testID="inteligencia-solapa-resumen"
-        accessible
-        accessibilityRole="button"
-        accessibilityState={{ selected: true }}
-        style={styles.solapaPresionable}
-      >
-        <View style={[styles.solapa, { borderColor: tema.color.acento }]}>
-          <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-            Resumen
-          </Text>
-        </View>
-      </View>
-      <Pressable
-        testID="inteligencia-solapa-preguntar"
-        accessibilityRole="button"
-        accessibilityState={{ selected: false }}
-        onPress={irAlChat}
-        style={pressableStyle(styles.solapaPresionable)}
-      >
-        <View style={[styles.solapa, { borderColor: tema.color.borde }]}>
-          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-            Preguntar
-          </Text>
-        </View>
-      </Pressable>
-    </View>
   );
 }
 
@@ -176,8 +132,6 @@ export function PantallaInteligencia() {
       testID="pantalla-inteligencia"
     >
       <View style={styles.raiz}>
-        <Solapas />
-
           {estado === 'cargando' && (
             <View style={styles.centro}>
               <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
@@ -279,6 +233,7 @@ export function PantallaInteligencia() {
             </Text>
           )}
 
+          {/* SM-N32: los cuatro del mes en NEGRO. El mockup 12 derogó la paleta verde/rojo («competiría con el único acento»). */}
           {/* EL MES — cuatro números en grilla de dos columnas + Rentabilidad en fila completa con
               su nota cuando falta el dato (mismo patrón que web `.kpi.sindato`: «no es cero, es que
               todavía no se puede calcular» — H-A4-3). */}
@@ -286,8 +241,8 @@ export function PantallaInteligencia() {
           <View style={styles.grillaKpis}>
             {(
               [
-                ['Ingresos', portada.mes.ingresos, tema.color.exito],
-                ['Gastos', portada.mes.gastos, tema.color.peligro],
+                ['Ingresos', portada.mes.ingresos, tema.color.texto],
+                ['Gastos', portada.mes.gastos, tema.color.texto],
                 ['Facturado', portada.mes.facturado, tema.color.texto],
                 ['Cobrado', portada.mes.cobrado, tema.color.texto],
               ] as const
@@ -376,6 +331,8 @@ export function PantallaInteligencia() {
         </ScrollFormulario>
         </>
             )}
+        {/* SM-J1: el dock al pie, fuera del scroll. El texto es una pregunta sobre los datos: va al chat. */}
+        {estado === 'ok' && <DockAlChat contexto="bi" origen="Inteligencia" placeholder="Preguntame lo que quieras…" />}
       </View>
     </MarcoGlass>
   );
@@ -429,16 +386,6 @@ const rotulo = (tema: ReturnType<typeof useTema>) => ({
 
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
-  solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  solapaPresionable: { flexGrow: 1 },
-  solapa: {
-    minHeight: 0,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-  },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },

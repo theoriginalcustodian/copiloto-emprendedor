@@ -126,15 +126,38 @@ async def transcribe_voice(payload: dict) -> dict:
         return {"text": "", "error": str(exc)}
 
 
+def normalizar_uso(usage: dict | None) -> dict | None:
+    """El `usage` crudo del proveedor (shape OpenAI) -> `{entrada, salida, cacheados, razonamiento}`.
+
+    Por qué existe: `total_tokens` mezcla entrada y salida, que cuestan MUY distinto (la salida vale 4-5x),
+    así que con el total solo no se puede calcular el gasto — sólo adivinarlo con una proporción supuesta.
+    `cacheados` ⊂ `entrada` (OpenAI los cuenta adentro de `prompt_tokens`) y `razonamiento` ⊂ `salida`: se
+    guardan APARTE para poder cobrarlos a su tarifa, no se suman.
+
+    `None` si el proveedor no informó ni entrada ni salida (otro shape, o `usage` vacío): el sink sigue
+    recibiendo SÓLO el total, igual que antes — nunca se inventa un 0 que parezca medido."""
+    u = usage or {}
+    entrada, salida = u.get("prompt_tokens"), u.get("completion_tokens")
+    if entrada is None and salida is None:
+        return None
+    return {"entrada": entrada, "salida": salida,
+            "cacheados": (u.get("prompt_tokens_details") or {}).get("cached_tokens"),
+            "razonamiento": (u.get("completion_tokens_details") or {}).get("reasoning_tokens")}
+
+
 async def _registrar_metering(dom: dict, *, cliente_id: str | None, session_id: str, model: str,
-                              tokens: int | None, evento: str) -> None:
+                              tokens: int | None, evento: str, uso: dict | None = None) -> None:
     """Best-effort (BETA-1b): el boundary `metering_sink` del dominio, si existe. Nunca rompe el turno
-    -- metering es telemetría, no correctitud, mismo criterio que `perfil_provider` arriba."""
+    -- metering es telemetría, no correctitud, mismo criterio que `perfil_provider` arriba.
+
+    `uso` (ver `normalizar_uso`) viaja como 6º argumento POSICIONAL y sólo cuando existe: un sink viejo de
+    5 argumentos sigue funcionando con los eventos que no tienen desglose (las tools)."""
     sink = dom.get("metering_sink")
     if sink is None or not cliente_id:
         return
     try:
-        await asyncio.to_thread(sink, cliente_id, session_id, model, tokens, evento)
+        args = (cliente_id, session_id, model, tokens, evento) + ((uso,) if uso is not None else ())
+        await asyncio.to_thread(sink, *args)
     except Exception as exc:  # noqa: BLE001
         activity.logger.warning("metering_sink falló (cliente=%s, evento=%s): %s", cliente_id, evento, exc)
 
@@ -216,7 +239,7 @@ async def call_llm_tools(payload: dict) -> dict:
     await _registrar_metering(
         dom, cliente_id=cliente_id, session_id=payload.get("session_id", ""),
         model=result.get("model", ""), tokens=(result.get("usage") or {}).get("total_tokens"),
-        evento="llm_turno")
+        evento="llm_turno", uso=normalizar_uso(result.get("usage")))
     return result
 
 

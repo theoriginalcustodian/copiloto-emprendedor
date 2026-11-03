@@ -33,7 +33,8 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
     sale — eso vive en la capa cliente. `None` (default) = el dominio no tiene perfil y el prompt queda
     EXACTAMENTE como antes, byte a byte.
 
-    `metering_sink` (opcional, BETA-1b): `(cliente_id, session_id, model, tokens, evento) -> None`,
+    `metering_sink` (opcional, BETA-1b): `(cliente_id, session_id, model, tokens, evento[, uso]) -> None`
+    (`uso` = `{entrada, salida, cacheados, razonamiento}`, sólo en eventos LLM que lo informan),
     boundary igual que `perfil_provider` — el motor no sabe a qué tabla va, sólo que existe un sumidero
     de eventos de uso. `None` (default) = no se registra nada (comportamiento actual, sin cambios).
 
