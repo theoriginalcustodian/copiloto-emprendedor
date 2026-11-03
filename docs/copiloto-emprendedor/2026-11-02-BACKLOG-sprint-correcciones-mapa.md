@@ -78,7 +78,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (80c5ef21, #1456): dock (campo + mic) en Facturacion e Inteligencia, con el texto sembrando e… |
+| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | El residual es UNO y es de frontend1: las capturas de device de las 6 funciones a 390px. Todo lo demas de esta ficha … |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
@@ -591,10 +591,23 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Codigo MERGEADO en main (80c5ef21, #1456): dock (campo + mic) en Facturacion e Inteligencia, con el texto sembrando el chat y la card HITL como unico gate. Denominador CERRADO por el operador en SEIS funciones (2026-11-03: 'las funciones principales son 6, despues hay mas pero tienen que ver con soporte tecnico, feedback etc') — Ajustes, Contabilidad, Soporte y Feedback NO llevan dock. Falta: las capturas de device de las 6 funciones a 390px, bloqueadas porque adb devices sale VACIO; y verificar que el test de Facturacion que acredita que el texto del dock NO emite entro con el PR.
+- **Dueno-activo:** frontend1
+- **Falta:** El residual es UNO y es de frontend1: las capturas de device de las 6 funciones a 390px. Todo lo demas de esta ficha esta HECHO y verificado por planificacion contra origin/main (6a35d0af) con git grep sobre el ref remoto. (1) El CODIGO del dock: mergeado en 80c5ef21 (#1456) -- campo + mic en Facturacion e Inteligencia, el texto siembra el chat y la card HITL es el unico gate. Denominador CERRADO por el operador en SEIS funciones (2026-11-03): Ajustes, Contabilidad, Soporte y Feedback NO llevan dock. (2) EL TEST que acredita que el texto del dock NO emite: existe y cita la ficha -- PantallaFacturacion.test.tsx:870 «SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador», con el docstring del mecanismo en :867. Esta linea de Falta decia «verificar que entro con el PR»: entro. (3) LOS TRES ROTULOS: resueltos o decididos en contra, ver el Medido: corregido. Y lo que ya NO bloquea: esta Falta decia «bloqueadas porque adb devices sale VACIO». PREMISA VENCIDA -- el operador reconecto el telefono (RF8T318RN9T, Metro en :8081) y la tenencia es de frontend1 por su avance_ TOMO sin SOLTE. La captura no espera hardware: espera turno en la cola de device de frontend1, detras de SM-N38/SM-N22. Es el mismo defecto que el Medido: vencido -- una premisa con fecha que se sigue citando como estado vigente.
 - **Dueño:** frontend2
-- **Medido:** `gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
-  rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».
+- **Medido:** ~~`gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
+  rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».~~ **VENCIDA — corregido 2026-11-03 por
+  planificación.** Los tres rótulos están resueltos o decididos en contra en `origin/main`
+  (`6a35d0af`), verificado con `git grep` sobre el ref remoto, no sobre un working tree:
+  «Últimos» existe (`BuscadorActividad.tsx:45`, usado en `PantallaGastos.tsx:290` e
+  `PantallaIngresos.tsx:236`) y era de **Gastos/Ingresos**, no de Facturación · «Ticket» existe
+  (`FotoFuncion.tsx:101`), también de Gastos · «N facturas · N impaga» **no se agrega por decisión
+  escrita**: enmienda E-3 (`:304`) + el docstring que la fundamenta (`ResumenFacturado.tsx:13`) —
+  la portada no trae conteos y derivarlos del listado paginado daría dos verdades para una
+  pregunta. **Lo refutó frontend2 al re-medir** después de que planificación le despachara los tres
+  como trabajo pendiente: yo cité esta línea `Medido:` en vez de grepear el literal, que es la
+  misma verificación que le había exigido a ella en el despacho. Tercera vez en el sprint que un
+  contrato manda a hacer algo ya hecho, y las tres veces la causa fue la misma — una línea de
+  medición sin fecha se cita como si fuera de hoy.
 - **DoD:** el dock de SM-I2 en las **6**, más sus rótulos. Captura de device de cada una. Lo que la
   app tiene y el mapa no — **BUSCAR** en Gastos y **«Te deben»** en Facturación — **se queda y se
   documenta en el mapa** (D4): no se retira.
