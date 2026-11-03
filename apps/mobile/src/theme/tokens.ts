@@ -154,6 +154,17 @@ export interface Tokens {
      *  burbuja es vidrio sobre el vidrio de la conversación — el fondo se ve a través. */
     ub1: string;
     ub2: string;
+    /** SM-N43 — la burbuja PROPIA del chat (gradiente `mio1 -> mio2`, `tintaMio` encima, `bordeMio`). Rol
+     *  distinto de `ub1/ub2`: aquéllos son una superficie de ACENTO (HUD de grabación, FAB, controles
+     *  flotantes); ésta es la burbuja del emprendedor, que en claro es `--arena-30` con tinta negra. */
+    mio1: string;
+    mio2: string;
+    tintaMio: string;
+    bordeMio: string;
+    /** SM-N43 — la burbuja del ASISTENTE (gradiente `asistente1 -> asistente2`, `bordeAsistente`). */
+    asistente1: string;
+    asistente2: string;
+    bordeAsistente: string;
     blur: number;
     esLight: boolean;
     /** Zonas de luz del fondo (mapeo de `--dm-phonebg`): 1-2 glows radiales sobre `color.fondo`. */
@@ -180,6 +191,9 @@ export interface Tokens {
       /** Sombra auxiliar de la burbuja del USUARIO (acento, no neutra) — DoD §2.4 "sombras
        *  auxiliares del acento". Idéntica en las 3 pieles (no deriva de la piel, deriva del acento). */
       burbujaUsuario: NivelRelieve;
+      /** SM-N43 — sombra de la burbuja del ASISTENTE. En claro es la del prototipo
+       *  (`.msg`, `0 4px 18px rgba(26,21,18,.07)`); en oscuro es el nivel 1, como antes. */
+      burbujaAsistente: NivelRelieve;
     };
   };
   espacio: { xs: number; sm: number; md: number; lg: number; xl: number };
@@ -312,6 +326,14 @@ interface PaletaCruda extends Partial<VidrioCrudo> {
   /** Gradiente de la burbuja del usuario (`--dm-ub1`/`--dm-ub2` del template). */
   ub1: string;
   ub2: string;
+  /** Burbujas del chat (SM-N43): ver `Tokens.glass.mio1`/`asistente1`. */
+  mio1: string;
+  mio2: string;
+  tintaMio: string;
+  bordeMio: string;
+  asistente1: string;
+  asistente2: string;
+  bordeAsistente: string;
   tx: string;
   dim: string;
   tint: string;
@@ -368,6 +390,7 @@ interface PaletaCruda extends Partial<VidrioCrudo> {
     nivel4: NivelRelieve;
     nivel5: string;
     burbujaUsuario: NivelRelieve;
+    burbujaAsistente: NivelRelieve;
   };
 }
 
@@ -477,9 +500,16 @@ const ACCENT2 = '#F8E0D9';
 // `glass.ub1 → glass.ub2` (#B04A2E → #722717, peor caso 5.43:1 con `ACCENT_ON`).
 const ACCENT_ON = '#FFFFFF';
 const ACCENT_GLOW = 'rgba(222,114,80,.55)';
-// Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
-// extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
-// usuario" en la fila de acento.
+// 🔴 SM-N43 (2026-11-03) — QUÉ FUENTE GANA. `UB1`/`UB2` son una superficie de ACENTO (HUD de grabación,
+// FAB, controles flotantes) y siguen siéndolo. Pero ya NO son la burbuja del emprendedor: esa vive en
+// `MIO1`/`MIO2` y sale del PROTOTIPO (`prototipo/index.html:385-387`, `.mio` = `--arena-30` #F8E2DB con
+// `--negro` #1A1512). Antes este comentario decía que la burbuja propia era «literalmente lo que el DoD
+// asigna a "burbuja del usuario" en la fila de acento»: había DOS fuentes de verdad (el DoD de pieles y el
+// dibujo) y se tomó la que no es el dibujo — la burbuja quedó AL REVÉS de lo diseñado. Regla: ante un
+// choque DoD-de-pieles vs prototipo, gana el prototipo (es lo que el operador aprobó mirando); el DoD se
+// corrige, no se cita como autoridad. No borres esto: un comentario que declara autoridad apaga la
+// búsqueda del prototipo en quien lo lee después.
+// Esto sigue valiendo para la parte de ACENTO de abajo:
 // 🔴 La burbuja del usuario LLEVA TEXTO encima, así que su gradiente entero tiene que ser legible:
 // arranca en `ACCENT_TINTA_CLARO` (peor caso 4.92:1 con `ACCENT_ON`) y no en el fill. `UB2` se deriva
 // aplicando al stop nuevo LA MISMA relación por canal que tenía el par viejo (#C2452E→#7E2417:
@@ -490,6 +520,12 @@ const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // sobre #DE7250 da 3.17:1 contra los 5.43:1 de #B04A2E (calculado, no estimado). Queda fijo.
 const UB1 = ACCENT_TINTA_CLARO;
 const UB2 = '#722717';
+// Burbujas del chat, tema claro — del prototipo, no derivadas. `.mio` (`prototipo/index.html:385-387`):
+// fill `--arena-30` #F8E2DB, tinta `--negro` #1A1512 (14,56:1). `.msg` (`:330-331`): fill `--blanco` #FFFFFF
+// con sombra `0 4px 18px rgba(26,21,18,.07)`. Ninguna lleva borde: el borde se pinta del propio fill.
+const MIO_CLARO = '#F8E2DB';
+const TINTA_MIO_CLARO = '#1A1512';
+const ASISTENTE_CLARO = '#FFFFFF';
 // Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
 // a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
 const TINT = 'rgba(222,114,80,.16)';
@@ -506,13 +542,24 @@ const RELIEVE_NIVEL4_GEOM = { offsetY: 30, radius: 60, elevation: 24 };
 // comparten color/opacidad de ACENTO §2.4: idénticos en las 3 pieles, no derivan del lienzo.
 const RELIEVE_NIVEL3: NivelRelieve = { color: UB2, opacity: 0.5, ...RELIEVE_NIVEL3_GEOM };
 const RELIEVE_BURBUJA_USUARIO: NivelRelieve = { color: UB2, opacity: 0.4, offsetY: 10, radius: 22, elevation: 12 };
+// SM-N43: en claro la burbuja propia NO lleva sombra (el prototipo `.mio` no declara `box-shadow`).
+const RELIEVE_BURBUJA_MIO_CLARO: NivelRelieve = { color: '#1A1512', opacity: 0, offsetY: 0, radius: 0, elevation: 0 };
 // Nivel 5 (ring de foco/grabando) — idéntico en las 3 pieles, es literalmente `TINT` (acento a .16).
 const RELIEVE_NIVEL5 = TINT;
 
+// 🔴 SM-N43 DoD 5 — BARRIDO de hex sin procedencia (2026-11-03). Fuera del bloque oscuro hay 30 hex distintos; 16
+// aparecen en el prototipo (`odobi-ui`, grep sobre html/css/md/json) y 14 NO. Esos 14 son una LISTA, no un «ya está»:
+//   · decisión declarada en su propia línea: `#00915d #00a7b8 #1f57c5 #876bed #8c398b #929d00 #aa3900 #eb5484` (paleta
+//     CATEGORICO de gráficos, no es del dibujo) y `#c7455a` (peligro: «no está en el DoD de ODOBI», se reusa).
+//   · derivados o del DoD de pieles, no del dibujo: `#2E2A20` (tx), `#6A6457` (dim, `tx` subido a AA), `#722717`
+//     (UB2, derivado de UB1), `#F8E0D9` (ACCENT2), `#46321E` (sombra nivel 2 del DoD §2.4).
+// Si el prototipo llega a declarar alguno de estos, GANA el prototipo (misma regla que `MIO1`): se corrige acá.
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   claro: {
     accent: ACCENT, accentTinta: ACCENT_TINTA_CLARO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
+    mio1: MIO_CLARO, mio2: MIO_CLARO, tintaMio: TINTA_MIO_CLARO, bordeMio: MIO_CLARO,
+    asistente1: ASISTENTE_CLARO, asistente2: ASISTENTE_CLARO, bordeAsistente: ASISTENTE_CLARO,
     tx: '#2E2A20',
     // Texto secundario del DoD es `rgba(46,42,32,.55)` — aplanado sobre el fondo da 3.23:1, bajo el
     // piso WCAG AA (4.5:1). Mismo alfa que `dim` necesita para textoTenue, así que se sube a `.69`
@@ -525,7 +572,11 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     // aplanada `#F5EBD5`, campo aplanado `#FAF7EC` (reusado como "superficie alta": el shape no tiene
     // un tercer nivel de elevación declarado por el DoD, y campo es la superficie más elevada que sí
     // lo está).
-    superficie: '#F5EBD5', superficieAlta: '#FAF7EC',
+    // SM-N43: `#F5EBD5` y `#FAF7EC` eran hex que el prototipo NO contiene (0 coincidencias en todo
+    // `odobi-ui`); sus cards (`.msg`, `.campo`, …) son `--blanco` #FFFFFF sobre `--crema`, separadas por
+    // sombra. Se toma el prototipo. El relieve (`nivel1`) queda como lo declara el DoD §2.4 validado en
+    // device: la sombra de la burbuja del asistente sí es la del prototipo (ver `burbujaAsistente`).
+    superficie: '#FFFFFF', superficieAlta: '#FFFFFF',
     // 🔴 `#EFE6D2` NO existía en el sistema de diseño: se verificó que no aparece en ningún
     // archivo de `odobi-ui`. El lienzo del sistema es el degradé ascendente del prototipo
     // (`#F5E7DE` abajo → crema arriba). `fondoBase` toma el crema —el 60% del degradé y el color
@@ -550,12 +601,17 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
       nivel3: RELIEVE_NIVEL3,
       nivel4: { color: '#6E4B2C', opacity: 0.4, ...RELIEVE_NIVEL4_GEOM },
       nivel5: RELIEVE_NIVEL5,
-      burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
+      burbujaUsuario: RELIEVE_BURBUJA_MIO_CLARO,
+      burbujaAsistente: { color: '#1A1512', opacity: 0.07, offsetY: 4, radius: 18, elevation: 4 },
     },
   },
   oscuro: {
     accent: ACCENT, accentTinta: ACCENT_TINTA_OSCURO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
+    // Oscuro FUERA del alcance de SM-N43 (el prototipo no tiene tema oscuro: no hay fuente contra la
+    // cual alinearlo). Conserva EXACTO lo que pintaba antes: usuario = acento, asistente = vidrio `s1/s2`.
+    mio1: UB1, mio2: UB2, tintaMio: '#F1E4CC', bordeMio: 'rgba(241,228,204,.14)',
+    asistente1: BASE_OSCURO.s1, asistente2: BASE_OSCURO.s2, bordeAsistente: BASE_OSCURO.s1,
     tx: '#F1E4CC',
     // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
     dim: '#928777',
@@ -581,6 +637,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
       nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
       nivel5: RELIEVE_NIVEL5,
       burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
+      burbujaAsistente: { color: '#000000', opacity: 0.6, offsetY: 12, radius: 28, elevation: 14, spread: -12 }, // = nivel1, como antes
     },
   },
 };
@@ -629,6 +686,8 @@ function construirTokens(p: PaletaCruda): Tokens {
       tint: p.tint, tint2: p.tint2, bd, hi, s1, s2, chip, pill,
       glow: p.glow, accent2: p.accent2, on: p.on, blur: p.blur, esLight: p.esLight,
       fondoLuz: p.fondoLuz, relieve: p.relieve, ub1: p.ub1, ub2: p.ub2,
+      mio1: p.mio1, mio2: p.mio2, tintaMio: p.tintaMio, bordeMio: p.bordeMio,
+      asistente1: p.asistente1, asistente2: p.asistente2, bordeAsistente: p.bordeAsistente,
     },
     espacio, radio, tipo, fuente,
   };
