@@ -42,6 +42,7 @@ import tool_catalog
 from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from deposito_traumas import fabrica_desde
+from trauma_de_turno_activities import registrar_trauma_de_turno, set_trauma_de_turno_deps
 from dictado_destinos import scope_de_sesion
 from interceptor_errores import CapturaDeErroresInterceptor
 from metering_store import MeteringStore
@@ -385,6 +386,9 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     # por-llamada dentro de la activity (ver `soporte_feedback_activities.py`).
     set_soporte_feedback_deps(conn_factory)
 
+    # Costura C3 para fallos que nacen DENTRO del workflow (el interceptor sólo ve activities).
+    set_trauma_de_turno_deps(fabrica_desde(conn_factory))
+
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
                           AutosanacionWorkflow, GrafoSyncWorkflow, SoporteFeedbackWorkflow],
@@ -397,7 +401,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                                          archivar_factura_en_drive, avanzar_tablero_mi_dia,
                                          sincronizar_grafo_negocio,
                                          clasificar_y_encolar_feedback,
-                                         procesar_feedback_pendiente_de_tenant]
+                                         procesar_feedback_pendiente_de_tenant,
+                                         registrar_trauma_de_turno]
                           + ACTIVITIES_AUTOSANACION,
             "context_factory": ctx_factory}
 

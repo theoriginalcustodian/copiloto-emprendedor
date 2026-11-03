@@ -67,7 +67,7 @@ _PRESENTATION: dict[str, dict] = {
         "display_name": "Mercado Pago",
         "work_label": "Cobrar",
         "category": "Pagos",
-        "description": "Generá links de cobro y cobrá desde el chat.",
+        "description": "Generar links de cobro para tus clientes.",
         # «movimientos» NO: lo que Copiloto lee de MP son los PAGOS que entran (webhook ->
         # `mp_payments`), no el extracto de la cuenta. Prometer «movimientos» sería decir de más.
         "alcance": [_cap("Leer tus cobros", CONDICION_SOLO_LECTURA, ACCION_WEBHOOK_MP, "coins"),
@@ -80,7 +80,7 @@ _PRESENTATION: dict[str, dict] = {
         "category": "Comunicación",
         # SM-E2: «Leer mails» y «Buscar» se anunciaban y `services/gmail.py` sólo cablea `gmail_send`
         # (A8: «Gmail manda y NO lee»). Se anuncia lo que se hace.
-        "description": "Enviá mails desde el chat. No puede leerlos.",
+        "description": "Mandar correos por vos. No puede leerlos.",
         "alcance": [_cap("Enviar mails", CONDICION_REQUIERE_OK, "gmail_send", "paper-plane-tilt")],
     },
     "googlecalendar": {
@@ -88,7 +88,7 @@ _PRESENTATION: dict[str, dict] = {
         "work_label": "Agenda",
         "category": "Agenda",
         # SM-E2: «Buscar turnos» no tiene tool (la única acción de Calendar es `calendar_book`).
-        "description": "Agendá reuniones en tu Google Calendar.",
+        "description": "Agendarte eventos y reuniones.",
         "alcance": [_cap("Agendar reuniones", CONDICION_REQUIERE_OK, "calendar_book")],
     },
     "googledrive": {
@@ -98,14 +98,14 @@ _PRESENTATION: dict[str, dict] = {
         # SM-E2: `services/drive.py` podó TODAS sus tools (`TOOLS = {}`); lo único que Drive hace es
         # el archivado automático de facturas del worker (`archivar_factura_en_drive`, ajuste del
         # usuario). Ya no se anuncia crear/buscar archivos desde el chat.
-        "description": "Guardá tus facturas en tu Google Drive.",
+        "description": "Archiva tus facturas automáticamente. No se usa por chat.",
         "alcance": [_cap("Guardar tus facturas", CONDICION_NINGUNA, ACCION_ARCHIVADO_DRIVE)],
     },
     "googledocs": {
         "display_name": "Google Docs",
         "work_label": "Archivos",
         "category": "Archivos",
-        "description": "Creá y leé documentos en Google Docs.",
+        "description": "Crear documentos o leer uno que ya tengas.",
         "alcance": [_cap("Crear documento", CONDICION_REQUIERE_OK, "docs_create_doc", "file-text"),
                     _cap("Leer documento", CONDICION_SOLO_LECTURA, "docs_read_doc", "file-text")],
     },
@@ -113,7 +113,7 @@ _PRESENTATION: dict[str, dict] = {
         "display_name": "Google Sheets",
         "work_label": "Archivos",
         "category": "Archivos",
-        "description": "Agregá filas a tus planillas de Google Sheets.",
+        "description": "Agregar filas a tus planillas.",
         "alcance": [_cap("Agregar fila", CONDICION_REQUIERE_OK, "sheets_append_row")],
     },
 }
