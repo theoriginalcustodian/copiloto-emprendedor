@@ -124,6 +124,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N26** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N27** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N29** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1956,4 +1957,67 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 - **Tenencia:** cualquiera de las dos cuentas — es estructura. No espera al operador.
 - **DENTRO del sprint:** decisión de producto del operador sobre la cáscara, y además consolida el
   invariante de `SM-N16` (un solo acceso a Ajustes, en el escritorio).
+
+### SM-N29 · `sin-issue` — DENTRO DEL SPRINT: verificar que el splash se vea ÍNTEGRO en arranque frío (el operador nunca lo vio)
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2 (frontend1 está con la cáscara del chat)
+- **Reportado por:** el operador, 2026-11-02: *«¿por qué al inicio nunca aparece el splash que tiene
+  la app? ¿está implementado?»*. **Sí está implementado**; lo que falta es la verificación de que se
+  vea completo, que nunca se hizo.
+- **🔴 LO PRIMERO, porque es la trampa de esta ficha: «splash» nombra TRES cosas distintas en este
+  código, y verificar una concluyendo de otra es el error esperable.**
+
+  | # | Qué es | Dónde | Cuándo aparece |
+  |---|---|---|---|
+  | 1 | **`RevealEntrada`** — el del MAPA: lockup animado, pronunciación «o-DO-bi», botón Entrar. **6,8 s.** | `apps/mobile/src/modules/auth/RevealEntrada.tsx:135`, montado por `EntradaSesion.tsx:32` | **SIN sesión**: primer ingreso y post-logout |
+  | 2 | **`EntradaDiaria`** — el isotipo dibujándose, arranques 2..n | `apps/mobile/src/modules/splash/EntradaDiaria.tsx`, montado en `app/_layout.tsx:96` | mientras `estado === 'verificando'` (resuelve el token guardado) |
+  | 3 | **`Splash()`** — un `ActivityIndicator` pelado, **`testID="splash"`** | `apps/mobile/app/_layout.tsx:61-67` | fallback del layout |
+
+  ⚠️ **El `testID="splash"` pertenece al #3**, que es el que el mapa NO dibuja. Un test o una
+  captura que busque `splash` por testID **mide el spinner**, no el reveal del mapa ni la entrada
+  diaria ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] — acá son tres).
+- **Por qué el operador «nunca lo ve», medido:** con su sesión viva, el arranque entra por el **#2**,
+  y el gate es `if (estado === 'verificando')` (`app/_layout.tsx:96`). Ese estado dura lo que tarda
+  `AsyncStorage` en devolver el token + `/me`: con sesión válida resuelve casi instantáneo y el
+  componente **se desmonta a mitad de animación**. El **#1** —el que él tiene en la cabeza, porque es
+  el del mapa— **no se le muestra nunca**, porque requiere **no tener sesión**. No está roto: con esa
+  tenencia, el estado que mide **no existe** (la clase de `SM-K3`/`SM-K5`/`SM-J3`).
+- **⚠️ El #2 está DISEÑADO para cortarse, y eso NO es el defecto.** Su propio comentario lo dice:
+  *«el isotipo dibujándose cubre la latencia real de `/me`, no la extiende (`EntradaDiaria` no gatea
+  nada por sí sola)»* (`app/_layout.tsx:94-96`), y por eso recibe `onFin={sinOp}`. **Pedirle que se
+  vea «íntegro» sería pedirle que retrase el arranque** — exactamente lo contrario de lo que se
+  decidió. Para el #2 la pregunta correcta no es «¿se ve entero?» sino **«¿se ve BIEN mientras dura,
+  o alcanza a verse un destello roto / un salto de color / un frame en blanco?»**. Si alguien
+  «arregla» el #2 agregándole un tiempo mínimo, está rompiendo una decisión tomada, no cerrando esta
+  ficha.
+- **✅ Tenencia — y esta es la medición que vuelve la ficha ejecutable HOY:** el #1 se ve **cerrando
+  sesión**, y la sesión que hay que cerrar es la del **usuario canónico de prueba**
+  (`e2e-device@copiloto.test`), **no la del operador**. Así que **no espera su ventana ni su
+  decisión**: es el camino (1) del eje de tenencia — estado forzable con la cuenta de prueba. La
+  sesión del operador **no se toca**.
+- **DoD:**
+  1. **El #1 (`RevealEntrada`) filmado entero** en device, con la cuenta canónica: logout → arranque
+     → el lockup completo hasta el botón «Entrar». Contra el mapa (`?ver=splash`): mismo lockup,
+     mismo «se dice o-DO-bi», mismo botón. Filmación, no captura: es una animación, y una captura no
+     distingue «se animó» de «apareció el frame final».
+  2. **El audio de pronunciación**: que suene, o que su botón responda. Es parte del reveal del mapa
+     y es lo primero que se cae callado en release.
+  3. **El #2 (`EntradaDiaria`) en arranque frío**, filmado: la app matada de verdad
+     (`adb shell am force-stop app.copiloto.emprendedor`, no el botón atrás) y abierta. Veredicto
+     binario: **¿se ve bien mientras dura, sin destello blanco ni salto de color al entrar al
+     escritorio?** Su duración **no** es criterio de falla.
+  4. **El número**: cuánto dura el #2 en la práctica, medido, aunque sea 200 ms. Es el dato que hoy
+     no existe y que explica el «nunca aparece» del operador con una cifra en vez de una conjetura.
+  5. **Control negativo:** con la sesión ya iniciada, el #1 **NO** aparece. Confirma que la
+     condición de montaje es la que creemos y no otra.
+  6. Que la ficha **diga cuál de los tres** verificó en cada punto. Un «el splash anda» sin el número
+     del componente no acredita nada.
+- **🔗 Relación con `SM-L1` — NO se duplican, y conviene decir por qué:** `SM-L1` mide **tiempo** de
+  `entrada` y exige **build de release** (el dev-client contamina el timing). Ésta verifica
+  **integridad visual** y corre **con el dev-client**, hoy. Si el reveal estuviera roto, esperar al
+  build para enterarse sería descubrirlo al final. Lo que esta ficha **no** puede afirmar es si se
+  cumplen los **6,8 s** del mapa: eso es de `SM-L1`, en release.
+- **DENTRO del sprint:** es una pantalla del mapa (`?ver=splash`, `?ver=volver`) que nunca se
+  verificó contra la app. Entra por el denominador del mapa.
 
