@@ -26,10 +26,29 @@ export interface SheetRequiereConexionProps {
 const GLIFO_CONDICION: Record<string, string> = { solo_lectura: 'eye', requiere_ok: 'check' };
 const GLIFO_CAPACIDAD = 'plugs-connected';
 
+/** Los glifos que ESTE archivo nombra por su cuenta: el test los cruza contra `PHOSPHOR`. */
+export const GLIFOS_DECLARADOS: readonly string[] = [...Object.values(GLIFO_CONDICION), GLIFO_CAPACIDAD];
+
+/** `PHOSPHOR` es un objeto plano: `PHOSPHOR['toString']` existe. Sólo cuentan las claves propias. */
+function existeGlifo(nombre: string | undefined): nombre is string {
+  return nombre != null && Object.prototype.hasOwnProperty.call(PHOSPHOR, nombre) && PHOSPHOR[nombre]!.length > 0;
+}
+
+/**
+ * SM-I7 · el glifo de una fila, en tres pasos y fail-safe: (1) el `icono` que mandó el backend, si EXISTE en
+ * el set; (2) si falta o es desconocido, el derivado de `condicion`; (3) si ni eso, el genérico. Nunca devuelve
+ * un nombre sin trazos: un tile vacío es una capacidad que el usuario no ve, y omitir la fila lo es aún peor.
+ */
+export function resolverGlifo(icono: string | undefined, condicion: string): string {
+  if (existeGlifo(icono)) return icono;
+  const derivado = GLIFO_CONDICION[condicion];
+  return existeGlifo(derivado) ? derivado : GLIFO_CAPACIDAD;
+}
+
 function Glifo({ nombre, tamano, color }: { nombre: string; tamano: number; color: string }) {
   return (
     <Svg width={tamano} height={tamano} viewBox={VIEWBOX_PHOSPHOR} fill="none">
-      {(PHOSPHOR[nombre] ?? []).map((d, i) => (
+      {(PHOSPHOR[nombre] ?? PHOSPHOR[GLIFO_CAPACIDAD] ?? []).map((d, i) => (
         <Path key={i} d={d} fill={color} stroke="none" />
       ))}
     </Svg>
@@ -75,7 +94,7 @@ export function SheetRequiereConexion({ conexion, onConectar, onAhoraNo, ocupado
                       style={[styles.tile, { backgroundColor: tema.color.tileFuncion.arena }]}
                     >
                       <Glifo
-                        nombre={GLIFO_CONDICION[a.condicion] ?? GLIFO_CAPACIDAD}
+                        nombre={resolverGlifo(a.icono, a.condicion)}
                         tamano={18}
                         color={tema.color.tileFuncion.tinta}
                       />
