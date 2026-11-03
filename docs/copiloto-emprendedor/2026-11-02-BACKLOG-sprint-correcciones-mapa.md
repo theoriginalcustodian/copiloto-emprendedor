@@ -78,7 +78,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ult… |
+| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | ENMIENDA RETIRADA POR ORDEN DEL OPERADOR, 2026-11-03: 'a las funciones facturacion e inteligencia de negocio le falta… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
@@ -127,6 +127,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N32** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -582,7 +583,7 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Capturas de device de las CUATRO funciones con dock: Gastos, Ingresos, Presupuestos y Clientes, con sus rotulos («Ultimos» en Gastos, «Ticket» en la pastilla de foto). Codigo mergeado en 52e9a85d (#1418, 6/6). Facturacion e Inteligencia NO entran al denominador: ENMIENDA FUNDADA por planificacion — el dock es un prellenador de formulario y esas dos no tienen formulario (factura es asistente con card HITL, bi es lectura), ContextoTranscripcion admite solo gasto/ingreso/presupuesto/cliente (packages/core/src/api/transcribir.ts:7), y en factura un dock seria una SEGUNDA entrada a una accion irreversible, que es lo que el mecanismo de cards existe para evitar. DISPARADOR: van en el BLOQUE 1 de la pasada de device (cualquiera de las dos cuentas sirve para esas 4 pantallas); el telefono lo tiene frontend1 y las saca de corrido con el resto del bloque, rotulando el usuario.
+- **Falta:** ENMIENDA RETIRADA POR ORDEN DEL OPERADOR, 2026-11-03: 'a las funciones facturacion e inteligencia de negocio le falta el campo de ingreso de texto y el boton del mic igual que todas las funciones'. El denominador vuelve a SEIS, que es lo que el DoD decia desde el principio y lo que dibuja el mapa. La enmienda la fundo PLANIFICACION (yo), no el operador, y sus DOS argumentos estan refutados por el codigo: (1) 'ContextoTranscripcion admite solo gasto/ingreso/presupuesto/cliente' — ese campo es SOLO logging/telemetria y el propio archivo lo dice, 'un valor fuera de esta lista se ignora ahi, nunca 422' (packages/core/src/api/transcribir.ts:5-7): nunca fue una restriccion funcional, y lo cite como si lo fuera; (2) 'en factura seria una SEGUNDA entrada a una accion irreversible' — DockFuncion no guarda ni despacha nada, devuelve texto por onTexto(texto, via) y cada pantalla decide (apps/mobile/src/modules/voz/DockFuncion.tsx:38-60), asi que la card HITL sigue siendo el unico gate y el dock solo PROPONE. FALTA ENTONCES: (a) las 4 capturas que ya faltaban — Gastos, Ingresos, Presupuestos, Clientes con sus rotulos; (b) el dock en Facturacion y en Inteligencia de negocio con su captura; (c) la decision, que NO es libre y va escrita antes de codear, de que hace onTexto en cada una: en Facturacion el texto propone la card HITL (nunca emite), en bi el texto es una PREGUNTA de lectura sobre los datos. Dueno: frontend2. El placeholder se LEE del mockup y de documed-front, no se inventa: las 4 vivas usan una constante PLACEHOLDER_DOCK por modulo.
 - **Dueño:** frontend2
 - **Medido:** `gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
   rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».
@@ -2323,6 +2324,125 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
      DOWN/MOVE, **nunca `input tap`**, que no ejercita un Pan de RNGH).
   4. Las entradas **12** y **13** del corpus pasan a `CONFORME` **con su cita**, y el veredicto se
      cambia **midiendo la app**, no por el estado de esta ficha.
+
+---
+
+### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
+  arriba, el de resumen y de preguntar… fueron eliminados»*, *«lo implementado en inteligencia de
+  negocio difiere del mapa»* y *«revisá la pantalla completa»* — esta última porque yo había mirado
+  **sólo la mitad de arriba** y había cerrado el diagnóstico con eso.
+
+- **🔬 Cómo se midió el lado del MAPA, y por qué esta vez el inventario es exacto:** no de las
+  capturas (que están recortadas y fue el error), sino del **DOM del prototipo vivo** —
+  `http://127.0.0.1:8931/prototipo/index.html?ver=bi`, contenedor `#bi-scroll`, 1.614 caracteres,
+  58 nodos de texto. Un inventario leído del DOM es **completo por construcción**; uno leído de un
+  `.png` termina donde termina la imagen, y ninguna de las tres capturas del relevamiento mostraba
+  la pantalla entera.
+
+- **LAS 11 SECCIONES DEL MAPA, en orden** (literal del DOM):
+  1. «Tirá para actualizar»
+  2. Card blanca: **«Inteligencia de Negocio» + «Agosto»** (el período, adentro de la card)
+  3. Card negra: **Saldo en caja** `$286.000` · «Al 19 de agosto» · **Entró** / **Salió**
+  4. **Este mes** — cuatro mosaicos: Ingresos · Gastos · Facturado · Cobrado
+  5. **Rentabilidad** — «—» + *«Falta asignar gastos a trabajos. No es cero: es que todavía no se
+     puede calcular.»*
+  6. **Por cobrar** — `$225.000` · **«$80.000 vencidos»**
+  7. **En qué se te va la plata** — Mercadería · Servicios · Transporte · Otros, con sus montos
+  8. **Entró vs. salió** — Abr · May · Jun · Jul · Ago
+  9. **Mejores clientes** — con **mensaje de vacío propio** (*«Todavía no registraste ventas a ningún
+     cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.»*) y, con datos,
+     **«N comprobantes»** por fila además del monto
+  10. **Acumulado del año** — «Facturado en los últimos 12 meses» `$4.420.000`, **barra «68% del
+      tope»** y *«Monotributo categoría F · tope $6.500.000. A este ritmo lo alcanzás en noviembre.»*
+  11. **Margen por trabajo** — `41%` + *«Promedio de 3 trabajos cerrados. El más flojo: Reforma Díaz,
+      12%.»*
+  + al pie, **fuera** del scroll: el dock **«Preguntame lo que quieras…» + mic**.
+
+- **LO QUE SOBRA EN LA APP** (medido sobre `2026-10-16-relevamiento-capturas/app-inteligencia-top.png`
+  y `app-inteligencia-2.png`):
+  1. **Los dos botones «Resumen» / «Preguntar»** bajo el título. El mapa **no los dibuja** y declara
+     la baja en pasado: *«la misma duplicación que **sacamos** con la solapa "Preguntar" de
+     Inteligencia»* (`mapa-pantallas/index.html:240`). Control: 0 coincidencias en
+     `mockups/12-funciones/index.html`, con control positivo sobre el mismo grep.
+  2. **Una sección «FACTURACIÓN · 1 may – 1 oct»** con su gráfico de barras, que **no existe en el
+     mapa** — el mapa trae el acumulado dentro de la sección 10, no un gráfico aparte.
+  3. **Los montos de Ingresos y Gastos en verde y rojo.** ⚠️ No es sólo que el mapa los ponga en
+     negro: el mockup 12 **derogó esa paleta explícitamente** — *«Teñir la fila de rojo/verde traería
+     una paleta semántica que el sistema no tiene y competiría con el único acento»*. Fue
+     considerado y rechazado.
+  4. **Un botón-engranaje flotante** sobre «ESTE MES». **Sin diagnosticar:** puede ser un control de
+     la app, un artefacto de la captura o una burbuja del sistema. Primer paso: mirarlo en device sin
+     capturar. No se retira nada hasta saber qué es.
+
+- **LO QUE FALTA EN LA APP** — cuatro secciones enteras del mapa, más dos detalles:
+  - **«Por cobrar»** con el monto y **«$X vencidos»** (sección 6) — no aparece en ninguna captura.
+  - **«En qué se te va la plata»** con el desglose por categoría (sección 7). ⚠️ El mockup 12 dice
+    que **esto es el corazón de la pantalla**: *«el desglose por categoría con su porcentaje es lo que
+    el repo define como resumen mensual — no es decoración, es la respuesta a "en qué se me va la
+    plata"»*. Es la sección más cara de las que faltan.
+  - **«Margen por trabajo»** (sección 11).
+  - **La barra «68% del tope» y la línea del monotributo** (sección 10). La app muestra el acumulado
+    pelado («Acumulado del año · $235.000 · Últimos 12 meses facturados») **sin** el tope ni la
+    proyección, que es la información que hace útil al número.
+  - **«N comprobantes»** por fila en Mejores clientes (sección 9): la app muestra sólo nombre y monto.
+  - **El mensaje de vacío propio** de Mejores clientes (sección 9).
+  - **El dock** — eso ya es `SM-J1`, no se duplica acá.
+
+- **⚠️ ASIMETRÍA DE LAS DOS MEDICIONES, y es la condición dura de esta ficha:** el lado **mapa** se
+  midió **hoy** contra el prototipo vivo y es exacto. El lado **app** sale de capturas del
+  **2026-10-16**, con `main` 18 días más viejo. **Antes de implementar hay que re-verificar en device
+  qué sigue faltando**: puede que algo ya esté hecho (`SM-J3` tocó cabecera y etiqueta de mes) y
+  volver a implementarlo sería trabajo doble sobre un diagnóstico vencido. **Lo que NO cambia** por
+  esa re-verificación son los dos botones y los colores: el operador los vio **hoy**.
+
+- **🔴 Por qué nada de esto llegó como tarea, que es lo que el operador preguntó** (*«¿no se supone
+  que habíamos hecho un relevamiento justamente para esto?»*): **el relevamiento sí lo vio** — la
+  entrada **42 `bi`** está desde el 2026-10-16 y dice *«Falta la etiqueta de mes y los mosaicos y el
+  dock»*. Fallaron **dos cosas distintas** y no conviene confundirlas:
+  - lo que quedó bien clasificado (`DIFERENTE · A`) **no se implementó**: es cola parada, y hoy hay
+    37 fichas con trabajo pendiente y las tres sesiones caídas entre 7 y 17 horas;
+  - **los dos botones quedaron clasificados `B`** —*«La pestaña "Preguntar" es una salida al chat
+    (B)»*—, y `B` significa **gana la app, se enmienda el mapa**. O sea: el corpus los **dio por
+    buenos**. Un elemento mal clasificado **no genera trabajo** y ningún barrido lo levanta: los
+    controles cazan lo **no** clasificado, nunca lo clasificado **mal**
+    ([[nada-cazaba-al-mal-clasificado-solo-al-no-clasificado]]);
+  - y el **resumen de la entrada 42 es incompleto**: enumera tres faltantes cuando faltan **cuatro
+    secciones** más detalles. Se escribió mirando el prototipo **recortado**, exactamente el mismo
+    error que yo repetí hoy hasta que el operador me mandó mirar la pantalla completa. **La lección
+    operativa: un corpus de comparación se arma contra el DOM o contra la pantalla scrolleada entera,
+    nunca contra una captura de la mitad de arriba.**
+
+- **DoD:**
+  1. **Re-verificación en device primero** (no es trámite: es lo que evita reimplementar lo ya
+     hecho): captura de la pantalla **scrolleada completa**, y la lista de qué de arriba sigue
+     faltando contra las 11 secciones. Sin eso no arranca la implementación.
+  2. **«Resumen» y «Preguntar» retirados**, con «antes» y «después».
+     ⚠️ **Antes de retirar «Preguntar», medí a dónde va hoy.** El corpus dice que es *«una salida al
+     chat»* (decisión del 2026-10-13). Si es el **único** acceso a ese camino, retirarlo deja al
+     usuario sin él: entonces se retira **junto con** el dock de `SM-J1`, que es el reemplazo, y no
+     antes. Las dos salidas son válidas; dejarlo sin medir, no.
+  3. **Los montos sin la paleta verde/rojo** (el contraste lo lleva el texto, no el color) y **la
+     sección «FACTURACIÓN» resuelta**: o se retira, o se documenta en el mapa con su porqué (D4). Las
+     dos salidas son válidas; que quede sin decidir, no.
+  4. **Las cuatro secciones faltantes implementadas**, en el orden del mapa: «Por cobrar», «En qué se
+     te va la plata», la barra del tope con la línea del monotributo, y «Margen por trabajo». Más
+     «N comprobantes» y el vacío de Mejores clientes.
+     🔴 **Cada una necesita su dato del backend.** Si alguno no existe, **eso es un `pedido_` a
+     backend, no una invención**: inventar la forma del endpoint es codificar la esperanza. Medí
+     primero qué trae hoy `api/` y bajá el pedido con los campos que falten.
+  5. **El engranaje identificado**, con una línea escrita aunque la respuesta sea «era de la
+     captura».
+  6. **La entrada 42 del corpus corregida**: «Preguntar» pasa de `B` a `A` con la cita del mapa que
+     lo funda, y el *Diferencia:* se reescribe con el inventario completo de las 11 secciones. El
+     veredicto se cambia **midiendo la app**, no por el estado de esta ficha.
+- **Tenencia:** el grueso es estructura y sirve cualquier cuenta. El **vacío** de Mejores clientes
+  necesita el tenant vacío — mismo disparador que `SM-J3`, que lo tiene declarado como su `Falta:`.
+- **DENTRO del sprint:** es divergencia directa contra el mapa, reportada por el operador — el
+  criterio declarado del sprint.
 
 ---
 
