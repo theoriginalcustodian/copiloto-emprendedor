@@ -128,6 +128,8 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las… |
+| **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N34** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2447,3 +2449,76 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ---
 
+### SM-N33 · `sin-issue` — El ranking de mejores clientes agrupa los cobros por NOMBRE, no por identificador
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** hallazgo de backend al cerrar `SM-N32` (#1459 → `5928f837`). **No es
+  presentación: es el dato.** Nace con id propio porque un hallazgo que sólo vive en un mensaje no
+  vuelve a aparecer ([[el-registro-no-se-marcaba-porque-su-id-no-circulaba]]).
+- **Medido:** `_mejores_clientes` en `inteligencia_queries.py` agrupa `copiloto_cobros` por
+  `coalesce(cliente_nombre, receptor_nombre)`. De ahí salen **los dos errores a la vez**, y son
+  opuestos: **dos grafías del mismo cliente dan dos filas** (se subdeclara a quien más compró) y
+  **dos homónimos distintos dan una sola** (se infla a quien no corresponde). El ranking es, por
+  definición, lo que más sufre un agrupamiento equivocado: ordena por el monto que acabamos de mal
+  sumar.
+- **⚠️ Lo que YA está mitigado, dicho para que no se "arregle" dos veces:** el campo
+  `comprobantes` que entró en #1459 devuelve **`null`** cuando hay homónimos, en vez de un número
+  que mentiría. Eso **acota el daño, no lo resuelve**: el `null` avisa en la columna de
+  comprobantes, mientras el **orden y los montos** del ranking siguen saliendo del agrupamiento por
+  nombre. Un mitigador visible hace parecer resuelto lo que no lo está.
+- **DoD:**
+  1. El agrupamiento pasa a un **identificador** (CUIT/ficha de cliente), con la regla escrita para
+     el caso **sin identificador** — ése es el caso difícil y no puede quedar implícito.
+  2. Un test con **dos grafías del mismo cliente** (→ UNA fila) y **dos homónimos con CUIT distinto**
+     (→ DOS filas). Los dos casos, no uno: son los dos sentidos del defecto y un test solo deja
+     mudo al otro.
+  3. El adversarial de aislamiento sigue verde (mismo CUIT en A y B: A ve 0, B ve 1) — es regresión
+     obligatoria, no opcional: la ficha toca justo la clave de agrupamiento.
+  4. Corrida en el VPS, nunca en la PC.
+- **Depende:** nada. No bloquea a nadie.
+- **FUERA del corpus del mapa:** no mueve ningún veredicto de paridad — el mapa no dibuja la clave
+  de agrupamiento. Entra al sprint porque es un defecto de dato **descubierto** por una ficha del
+  sprint, y queda explícito para que no infle el denominador (`DEC-18`).
+
+---
+
+### SM-N34 · `sin-issue` — Las tres faltas de la agenda quedaron HUÉRFANAS dentro de una ficha cerrada
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend2
+- **De dónde sale:** auditoría de `SM-L4` (planificación, 2026-11-03) sobre las entradas que
+  `scripts/mapa-51-estado.py` marcaba como **cubiertas sólo por el nombre**. La entrada **10
+  `agenda`** del corpus sigue `DIFERENTE · A` y la única ficha que la citaba es **`SM-J5`, que está
+  `TERMINADO` como «PREMISA REFUTADA / SIN OBJETO»**.
+- **Medido — y acá está el mecanismo, que es lo que importa:** lo que `SM-J5` refutó fue **una** de
+  sus premisas, la del agrupamiento: la agenda **sí** distingue Hoy · Mañana · Esta semana · Sin
+  hora (`apps/mobile/src/modules/midia/PantallaAgenda.tsx:23-24`, títulos exactos del backend). Pero
+  el cuerpo de esa misma ficha sigue reclamando, sin contradicción alguna, **la línea del ahora
+  (mockup 14)**, **«+ Nuevo evento»**, **el punto de estado** y un evento que aparece **repetido**
+  en «Esta semana». Al cerrarse por la premisa refutada, esas cuatro faltas quedaron **dentro de un
+  ✅** y ninguna ficha viva las cubre. Control: `grep` de «línea del ahora» en el backlog devuelve
+  **sólo** las dos líneas de `SM-J5`.
+- **🔴 Por qué nace ficha nueva en vez de reabrir `SM-J5`:** un hallazgo no reabre un ✅ (`DEC-18`) —
+  un criterio que crece con cada medición no se puede alcanzar. Y el riesgo de clase que esto
+  destapa es más ancho que la agenda: **una ficha con VARIAS premisas se cierra cuando se refuta
+  UNA**, y lo que arrastra al archivo es todo lo demás que decía. Vale revisar si hay otras
+  `TERMINADO · PREMISA REFUTADA` con faltas vivas en el cuerpo.
+- **DoD:**
+  1. **Primero, sin device y sin tocar nada:** decir si la línea del ahora, «+ Nuevo evento» y el
+     punto de estado **existen hoy** en `PantallaAgenda.tsx`, con `path:línea`. Si existen, la ficha
+     cierra con la cita y el veredicto se corrige — no se implementa de nuevo lo que ya está.
+  2. Lo que no exista, implementado según la vista **mixta** (D9): línea de tiempo con línea del
+     ahora para **hoy**, lista para **Mañana** y **Esta semana**.
+  3. El **repetido**: verificar **contra el dato de Calendar si es dato o defecto ANTES de arreglar
+     nada**. Si es dato, se escribe eso y ese punto cierra con la cita. (Este DoD es el de `SM-J5`
+     y sigue siendo el correcto: se hereda, no se reinventa.)
+  4. Captura de device, **con Google Calendar conectado** — sin eso la agenda no es comparable con
+     el mapa (`PantallaMiDia.tsx:560-566` oculta «Ver agenda» cuando la conexión está caída).
+  5. La entrada **10** del corpus pasa a `CONFORME` o a `DIFERENTE · B` **con cita**, y el veredicto
+     se cambia **midiendo la app**, nunca por el estado de esta ficha.
+- **Depende:** Google Calendar conectado en el usuario canónico (mismo disparador que ya tenía la
+  entrada 10) y la tenencia del device, que hoy es de frontend1.
+- **DENTRO del sprint:** es divergencia directa contra el mapa — el criterio declarado del sprint.
+
+---
