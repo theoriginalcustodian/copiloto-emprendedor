@@ -130,7 +130,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedi… |
-| **SM-N35** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: captura de device del formulario con la categoria elegida (frontend1, tenencia del device). Y el guardado comp… |
+| **SM-N35** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, con la evidencia de device de frontend1 (2026-11-03 12:07-12:10 local, usuario CANONIC… |
 | **SM-N36** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, acreditado por backend. Codigo: 4a5bb923 (#1469, ancestro de origin/main) -- escala de… |
 | **SM-N37** | `sin-issue` | ✅ TERMINADO | DoD completo, los 4 puntos VERIFICADOS por planificacion contra origin/main (no por autoevaluacion de backend). Codig… |
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | SIGUE DOD-PARCIAL y lo que queda NO es codigo: es la corrida con el operador mirando mas el diff de arboles. Todo lo … |
@@ -139,6 +139,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N41** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N42** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO el punto 4 del DoD, y esta bloqueado por una AMBIGUEDAD MIA, no por frontend2: «contenedor en una sola tarjeta» … |
 | **SM-N43** | `sin-issue` | ⬜ PENDIENTE | frontend2 |
+| **SM-N44** | `sin-issue` | ⬜ PENDIENTE | backend |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2572,9 +2573,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N35 · `sin-issue` — La categoría de monotributo, en Ajustes › ARCA
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** DoD 5: captura de device del formulario con la categoria elegida (frontend1, tenencia del device). Y el guardado completo sigue fallando con un 409 sin atribuir: hay seis conflicto( en apps/copiloto/afip_web.py (:256, 277, 321, 534, 722, 739) y el access log no guarda el body (duenos: frontend1 + backend).
-- **Cierre:** 8ec870e5 (#1468): selector de categoria A-K, solo con monotributo, opcional. d42da583 (#1500, ancestro de origin/main): Guardar perfil no manda la fecha de inicio incompleta (CampoFecha emite vacio y afip_web.py:96 lo rechaza con 422 sin campo) y marca el campo; test con control positivo, CI 6/6.
+- **Estado:** TERMINADO
+- **Cierre:** DoD completo, punto por punto, con la evidencia de device de frontend1 (2026-11-03 12:07-12:10 local, usuario CANONICO e2e-device@copiloto.test, CUIT de prueba 20111111112, origin/main servido 8fb68967). Codigo: 8ec870e5 (#1468, selector A-K solo con monotributo, opcional) + d42da583 (#1500, ancestro de origin/main: Guardar deja de mandar la fecha incompleta que afip_web.py:96 rechazaba con 422 sin campo; test con control positivo, CI 6/6). (1) selector junto a condicionIva reusando OpcionSelect: en el formulario, categoria C elegida y guardada. (2) el gate 'solo con monotributo' VERIFICADO EN DEVICE y en las DOS direcciones, que es lo que lo acredita: Exento OCULTA el selector y Monotributo lo DEVUELVE con C marcada -- un solo sentido no habria distinguido 'se oculta' de 'nunca se mostro'. (3) persiste per-tenant por el camino de los campos actuales, verificado del lado del server y no por la UI: GET /afip/perfil?cuit=20111111112 devuelve categoria_monotributo 'C' e inicio_actividades 2020-01-01. (4) no mandar categoria sigue siendo valido (fail-soft por defecto), test en el cierre de #1468. (5) capturas n35-pre-guardar-pos y n35-tras-guardar-1209local-canonico-b, mas las tres del punto 2. EL 409 QUEDA CERRADO Y NO ERA UN DEFECTO: era el guard de afip_web.py:253-257 funcionando -- exige vinculado=false Y primer_cuit() is not None, o sea solo dispara al intentar un CUIT distinto del ya vinculado. Con el CUIT correcto, Guardar no da error y la pantalla pasa a 'Tu cuenta ya esta vinculada con ARCA en Homologacion'. Mi conclusion anterior ('guardar es imposible') era falsa: apoyaba en un '0 filas' de backend que consultaba el id de AUTH y no el cliente_id de datos.
 - **Dueño:** frontend2
 - **De dónde sale:** decisión del operador, 2026-11-03, en
   `coordinacion/.../2026-11-03_contrato_planificacion-a-backend-y-frontend2_MONOTRIBUTO-*`.
@@ -2882,4 +2882,52 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   revisarlo, es otra pregunta con otro instrumento.
 - **Por que NO lo implementa planificacion:** orden del operador — esta sesion baja contratos y mide,
   no toca codigo de producto.
+
+### SM-N44 · `sin-issue` — Facturacion lee el CUIT POR DEFECTO, no el del emprendedor: dice "no configuraste" sobre un perfil que SI existe
+
+- **Estado:** PENDIENTE
+- **Dueno-activo:** backend
+- **Dueño:** backend (el endpoint) · frontend1 (quien lo midio en device)
+- **De dónde sale:** hallazgo de frontend1 en device el 2026-11-03 12:09, **mientras media otra
+  ficha** (`SM-N35`). No lo buscaba nadie: aparecio porque por primera vez hubo un perfil ARCA
+  realmente guardado contra el cual el defecto se podia ver.
+- **Medido en device (12:09, `origin/main` servido `8fb68967`, usuario canonico
+  `e2e-device@copiloto.test`):** con el perfil de ARCA **guardado y persistido** (categoria C,
+  inicio 2020-01-01, verificado por `GET /afip/perfil?cuit=20111111112`), la pantalla de
+  **Facturacion** sigue diciendo *«Todavia no configuraste tu facturacion ARCA»*. El diferencial que
+  lo atribuye:
+  - `GET /afip/estado` **sin** `?cuit` → `cuit 20269996065`, `conectado=false`, `perfil=null`.
+  - `GET /afip/estado` **con** `?cuit=20111111112` → `conectado=true`, `perfil_completo=true`.
+  O sea: el endpoint **no falla** — responde con verdad sobre **otro CUIT**. Es el peor modo de
+  falla de los dos posibles, porque no hay error que mirar: hay una respuesta coherente a una
+  pregunta que nadie hizo.
+- **Por que esto es de la clase que este sprint ya pago, y no un bug suelto:** un **CUIT por
+  defecto** es un valor de tenant que no vino per-request, y la regla 7 del `CLAUDE.md` del repo lo
+  prohibe explicitamente (*«ningun `cliente_id`/`composio_user_id`/seller sale de env — todo
+  per-request via `context_factory`»*). Un default que **existe** convierte el caso «falta el
+  parametro» en un exito falso: sin default, la llamada sin `?cuit` habria fallado ruidosa el primer
+  dia. Es `memoria/un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md`.
+- **DoD:**
+  1. **Encontrar de donde sale `20269996065`** y escribirlo con `path:linea`. Mientras no este
+     nombrado, cualquier fix es una conjetura: puede ser default del endpoint, cache, o el primer
+     CUIT de la tabla (`afip_credential_store.py:231` expone `primer_cuit`, candidato).
+  2. **Decidir la semantica, y es decision de diseño, no de parche:** `GET /afip/estado` sin `cuit`
+     o resuelve el CUIT **del tenant del request** (via `TenantCtx`), o **falla explicito**. Lo que
+     NO puede seguir haciendo es contestar sobre un CUIT arbitrario. Preferible fail-closed: un 4xx
+     se ve, un perfil ajeno no.
+  3. **Barrer los OTROS llamadores sin `?cuit`**, no solo el de Facturacion: contar los call-sites
+     en `apps/mobile` y en el backend. Si el default existe, es probable que mas de una pantalla lo
+     este consumiendo y solo una haya dado sintoma —
+     `memoria/el-fix-ya-existe-en-otro-call-site.md` al reves: el DEFECTO ya vive en otro
+     call-site.
+  4. 🔴 **Test adversarial, no happy-path** (regla dura del `CLAUDE.md` global + ADR-013): el tenant
+     A pide `/afip/estado` **sin** `cuit` y NO obtiene el estado del CUIT de B. Un control que
+     devuelve datos de otro CUIT es exactamente la forma de un BOLA/OWASP API1:2023, y el
+     happy-path («cada quien ve lo suyo») pasa igual si el aislamiento no existe. **Sin este test el
+     control queda `[UNVERIFIED]` y bloquea el cierre.**
+  5. Corrida de tests **en el VPS**.
+  6. **Re-medicion en device**: con el perfil guardado, Facturacion deja de decir «todavia no
+     configuraste». Es de frontend1, la tenedora.
+- **Depende:** nada. El perfil guardado que hace visible el defecto ya existe (`SM-N35`).
+- **FUERA del corpus del mapa:** no infla el denominador de paridad (`DEC-18`).
 
