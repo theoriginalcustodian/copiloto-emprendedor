@@ -16,6 +16,7 @@ jest.mock('@copiloto/core', () => {
     leerGraficoEntroVsSalio: jest.fn(),
     leerGraficoCategorias: jest.fn(),
     leerGraficoMargenTrabajo: jest.fn(),
+    obtenerResumenContabilidad: jest.fn(),
   };
 });
 
@@ -29,6 +30,7 @@ import {
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   leerPortada,
+  obtenerResumenContabilidad,
 } from '@copiloto/core';
 
 import { PantallaInteligencia } from './PantallaInteligencia';
@@ -68,6 +70,7 @@ beforeEach(() => {
   entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
   categoriasMock.mockResolvedValue({ status: 'no_disponible' });
   margenTrabajoMock.mockResolvedValue({ status: 'no_disponible' });
+  jest.mocked(obtenerResumenContabilidad).mockResolvedValue({ status: 'no_disponible' });
 });
 
 describe('PantallaInteligencia — lo que muestra', () => {
@@ -96,6 +99,47 @@ describe('PantallaInteligencia — lo que muestra', () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
     expect(screen.getAllByText('Inteligencia de Negocio')).toHaveLength(1);
+  });
+});
+
+describe('SM-N45 — las secciones del prototipo son CARDS, y la portada sigue siendo el bloque', () => {
+  const SECCIONES = [
+    'inteligencia-por-cobrar',
+    'inteligencia-grafico-categorias',
+    'inteligencia-grafico-entro-vs-salio',
+    'inteligencia-clientes',
+    'inteligencia-acumulado',
+    'inteligencia-grafico-margen-trabajo',
+  ];
+
+  async function conTodoCargado() {
+    facturacionMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'barras', periodo: '2026-07', serie: [{ mes: '2026-07', total: '120000.00', cantidad: 8 }] });
+    entroVsSalioMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'barras_enfrentadas', periodo: '2026-07', serie: [{ mes: '2026-07', entro: '95000.00', salio: '31000.00' }] });
+    categoriasMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'torta', periodo: '2026-07', serie: [{ categoria: 'servicios', total: '18000.00' }] });
+    margenTrabajoMock.mockResolvedValue({
+      status: 'ok', modo: 'lista', tipo: 'barras',
+      trabajos: [{ eslabon: 'comprobante', ref: 1, etiqueta: 'Factura #12', cobrado: '30000.00', gastado: '10000.00', margen: '20000.00', gastosImputados: 2 }],
+      sinIngreso: [],
+    });
+    jest.mocked(obtenerResumenContabilidad).mockResolvedValue({ status: 'ok', resumen: { facturado: { doceMeses: '4420000.00', tope: null } } } as never);
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-margen-trabajo')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('inteligencia-acumulado')).toBeTruthy());
+  }
+
+  const fondo = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)?.backgroundColor;
+
+  it('🔴 las seis tienen contenedor con el color de SUPERFICIE del tema (no un blanco fijo)', async () => {
+    await conTodoCargado();
+    const esperado = fondo('inteligencia-por-cobrar');
+    expect(esperado).toBeTruthy();
+    for (const id of SECCIONES) expect(fondo(id)).toBe(esperado);
+  });
+
+  it('🔴 y la portada «Saldo en caja» NO es una card clara: sigue siendo el bloque de máximo contraste', async () => {
+    await conTodoCargado();
+    // Sin esta mitad, «envolví las seis» no se distingue de «envolví todo»: las dos salen verdes.
+    expect(fondo('inteligencia-caja')).not.toBe(fondo('inteligencia-por-cobrar'));
   });
 });
 

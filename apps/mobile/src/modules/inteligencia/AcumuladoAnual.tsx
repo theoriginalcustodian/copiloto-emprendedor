@@ -22,7 +22,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { formatearImporte, obtenerResumenContabilidad, type ResumenContabilidad } from '@copiloto/core';
 
-import { Row } from '../../theme/glass/Row';
+import { Tarjeta } from '../../theme/Tarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 
 export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?: string }) {
@@ -58,7 +58,7 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
   };
 
   return (
-    <Row testID={testID}>
+    <Tarjeta testID={testID}>
       <View style={styles.cuerpo}>
         <View style={styles.fila}>
           <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
@@ -100,12 +100,12 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
           </View>
         )}
       </View>
-    </Row>
+    </Tarjeta>
   );
 }
 
 const styles = StyleSheet.create({
-  cuerpo: { flex: 1, gap: 4 },
+  cuerpo: { gap: 4 },
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   medidor: { gap: 6, marginTop: 8 },
   medidorFondo: { height: 8, borderRadius: 4, overflow: 'hidden' },
