@@ -11,13 +11,27 @@ import * as Reanimated from 'react-native-reanimated';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import {
   ALTO_HANDLE,
+  ALTO_ZONA_ARRASTRE,
   espacioSuperior,
+  holguraArrastreArriba,
   MARGEN_TIRADOR,
   opacidadRotuloAbajo,
   PanelDeslizable,
   recorridoDesdeAlto,
   translacionPanel,
 } from './PanelDeslizable';
+
+describe('SM-N38 — zona de arrastre del tirador de abajo', () => {
+  it('el agarre llega a 44 dp (el blanco del tirador de Mi día) sin tocar ALTO_HANDLE', () => {
+    expect(ALTO_HANDLE).toBe(13);
+    expect(ALTO_HANDLE + holguraArrastreArriba(24)).toBe(ALTO_ZONA_ARRASTRE);
+  });
+
+  it('nunca se extiende más allá del spacer del panel (no le roba toques a lo de arriba)', () => {
+    expect(holguraArrastreArriba(0)).toBeLessThanOrEqual(espacioSuperior(0));
+    expect(holguraArrastreArriba(24)).toBeLessThanOrEqual(espacioSuperior(24));
+  });
+});
 
 describe('SM-N23 — margen fijo del tirador de arriba', () => {
   const INSET = 24;
