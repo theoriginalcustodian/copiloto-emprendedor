@@ -355,7 +355,16 @@ export function PantallaAfipSetup() {
       if (!cacheado) return;
       setCuit(cacheado);
       await precargarPerfil(cacheado);
-      void refrescarEstadoGeneral(cacheado);
+      const r = await refrescarEstadoGeneral(cacheado);
+      // 🔴 SM-N44 — mismo defecto que `PantallaFacturacion`: si el CUIT cacheado no es del tenant, el backend
+      // manda el vinculado y la caché se CORRIGE (se reemplaza, no sólo se muestra), y se recarga con ése.
+      const vinculado = r.estado?.cuitVinculado;
+      if (vinculado && vinculado !== cacheado) {
+        void guardarCuitCacheado(vinculado);
+        setCuit(vinculado);
+        await precargarPerfil(vinculado);
+        void refrescarEstadoGeneral(vinculado);
+      }
     })();
   }, []);
 

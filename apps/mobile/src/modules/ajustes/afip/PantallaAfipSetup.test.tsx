@@ -337,6 +337,34 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
+  it('SM-N44: si el CUIT cacheado no es del tenant, la caché se CORRIGE con `cuitVinculado` y el perfil se recarga con ése', async () => {
+    const PROPIO = '20111111112';
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoOk({ cuit: CUIT, conectado: false, cuitVinculado: PROPIO }))
+      .mockResolvedValue(estadoOk({ cuit: PROPIO, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), PROPIO));
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(PROPIO));
+    expect(almacenClave.guardar).not.toHaveBeenCalledWith(expect.any(String), CUIT);
+  });
+
+  it('SM-N44 control negativo: sin `cuitVinculado` la caché no se toca', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ cuit: CUIT, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
+    await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+    expect(almacenClave.guardar).not.toHaveBeenCalled();
+  });
+
   it('mapeo `afip`: con vínculo dice «ARCA vinculada · CUIT …» y sin vínculo NO lo afirma; label «Condición frente al IVA»', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
