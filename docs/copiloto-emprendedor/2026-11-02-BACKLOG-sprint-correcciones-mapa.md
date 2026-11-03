@@ -78,7 +78,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I5** | `sin-issue` | 🟧 DOD-PARCIAL | captura en device de la inicial del nombre comercial en Mi dia y en el escritorio, con el usuario rotulado. |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | medir en release, en el ejercicio final de SM-G4. No hay filmacion del antes: la de SM-G4 no se guardo. |
 | **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | captura de device del sheet con iconos y con el aviso de continuacion. |
-| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | ENMIENDA RETIRADA POR ORDEN DEL OPERADOR, 2026-11-03: 'a las funciones facturacion e inteligencia de negocio le falta… |
+| **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (80c5ef21, #1456): dock (campo + mic) en Facturacion e Inteligencia, con el texto sembrando e… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | captura del tenant vacio (operador: canonico unico, no se puede vaciar) |
 | **SM-J4** | `sin-issue` | 🟧 DOD-PARCIAL | DoD(1) HECHO: adversarial test_adversarial_http_clientes_a_cannot_read_b (c3867d10 #1325), corrido en VPS 2026-11-02 … |
@@ -127,7 +127,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N32** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -583,7 +583,7 @@ Puede correr **en paralelo con el bloque K**. Depende de SM-I2 (el dock).
 ### SM-J1 · `sin-issue` — Las 6 funciones no tienen dock ni los rótulos del mapa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** ENMIENDA RETIRADA POR ORDEN DEL OPERADOR, 2026-11-03: 'a las funciones facturacion e inteligencia de negocio le falta el campo de ingreso de texto y el boton del mic igual que todas las funciones'. El denominador vuelve a SEIS, que es lo que el DoD decia desde el principio y lo que dibuja el mapa. La enmienda la fundo PLANIFICACION (yo), no el operador, y sus DOS argumentos estan refutados por el codigo: (1) 'ContextoTranscripcion admite solo gasto/ingreso/presupuesto/cliente' — ese campo es SOLO logging/telemetria y el propio archivo lo dice, 'un valor fuera de esta lista se ignora ahi, nunca 422' (packages/core/src/api/transcribir.ts:5-7): nunca fue una restriccion funcional, y lo cite como si lo fuera; (2) 'en factura seria una SEGUNDA entrada a una accion irreversible' — DockFuncion no guarda ni despacha nada, devuelve texto por onTexto(texto, via) y cada pantalla decide (apps/mobile/src/modules/voz/DockFuncion.tsx:38-60), asi que la card HITL sigue siendo el unico gate y el dock solo PROPONE. FALTA ENTONCES: (a) las 4 capturas que ya faltaban — Gastos, Ingresos, Presupuestos, Clientes con sus rotulos; (b) el dock en Facturacion y en Inteligencia de negocio con su captura; (c) la decision, que NO es libre y va escrita antes de codear, de que hace onTexto en cada una: en Facturacion el texto propone la card HITL (nunca emite), en bi el texto es una PREGUNTA de lectura sobre los datos. Dueno: frontend2. El placeholder se LEE del mockup y de documed-front, no se inventa: las 4 vivas usan una constante PLACEHOLDER_DOCK por modulo.
+- **Falta:** Codigo MERGEADO en main (80c5ef21, #1456): dock (campo + mic) en Facturacion e Inteligencia, con el texto sembrando el chat y la card HITL como unico gate. Denominador CERRADO por el operador en SEIS funciones (2026-11-03: 'las funciones principales son 6, despues hay mas pero tienen que ver con soporte tecnico, feedback etc') — Ajustes, Contabilidad, Soporte y Feedback NO llevan dock. Falta: las capturas de device de las 6 funciones a 390px, bloqueadas porque adb devices sale VACIO; y verificar que el test de Facturacion que acredita que el texto del dock NO emite entro con el PR.
 - **Dueño:** frontend2
 - **Medido:** `gastos`, `ingresos`, `factura`, `presu`, `clientes` y `bi` sin dock; faltan los
   rótulos «ÚLTIMOS», «Ticket» y «N facturas · N impaga».
@@ -2329,7 +2329,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las DOS cosas que el operador vio en device hoy. Falta: (1) la captura de device a 390px que lo acredite, bloqueada porque adb devices sale VACIO (cable o autorizacion USB, lo tiene el operador); (2) la re-verificacion en device de que sigue faltando de las 11 secciones del mapa, porque el lado app de la entrada 42 se midio el 2026-10-16 y main tiene 18 dias mas; (3) las 4 secciones faltantes (Por cobrar, En que se te va la plata, la barra del tope de monotributo, Margen por trabajo), que NO se implementan antes del punto 2 para no reimplementar lo que SM-J3 ya pudo haber hecho; (4) el engranaje flotante sin diagnosticar; (5) la entrada 42 del corpus ya corregida en 048a135b (#1453): su Diferencia reescrito contra el DOM y la frase de Preguntar marcada como mal clasificada B.
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
   arriba, el de resumen y de preguntar… fueron eliminados»*, *«lo implementado en inteligencia de
