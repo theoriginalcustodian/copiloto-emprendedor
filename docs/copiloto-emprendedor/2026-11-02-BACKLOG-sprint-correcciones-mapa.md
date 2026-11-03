@@ -127,7 +127,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las… |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N34** | `sin-issue` | ⬜ PENDIENTE | — |
 
@@ -2332,7 +2332,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las DOS cosas que el operador vio en device hoy. Falta: (1) la captura de device a 390px que lo acredite, bloqueada porque adb devices sale VACIO (cable o autorizacion USB, lo tiene el operador); (2) la re-verificacion en device de que sigue faltando de las 11 secciones del mapa, porque el lado app de la entrada 42 se midio el 2026-10-16 y main tiene 18 dias mas; (3) las 4 secciones faltantes (Por cobrar, En que se te va la plata, la barra del tope de monotributo, Margen por trabajo), que NO se implementan antes del punto 2 para no reimplementar lo que SM-J3 ya pudo haber hecho; (4) el engranaje flotante sin diagnosticar; (5) la entrada 42 del corpus ya corregida en 048a135b (#1453): su Diferencia reescrito contra el DOM y la frase de Preguntar marcada como mal clasificada B.
+- **Falta:** SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUERA del sprint y escalado al operador (pide la categoria del emprendedor + tabla de escala AFIP versionada), no recortado por mi.
+- **Cierre:** Codigo COMPLETO en main: backend 5928f837 (#1459, CI 6/6, 89 passed en VPS con adversarial de mismo CUIT en A y B) + front acdbff54 (#1460, CI 6/6) sobre 32730046 (#1454). Entraron: selector Resumen/Preguntar retirado, montos del mes en negro, las 8 categorias con porcentaje, margen PONDERADO rotulado «Sobre N» con peor trabajo, y N comprobantes por cliente con el null oculto.
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
   arriba, el de resumen y de preguntar… fueron eliminados»*, *«lo implementado en inteligencia de
@@ -2504,6 +2505,18 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   destapa es más ancho que la agenda: **una ficha con VARIAS premisas se cierra cuando se refuta
   UNA**, y lo que arrastra al archivo es todo lo demás que decía. Vale revisar si hay otras
   `TERMINADO · PREMISA REFUTADA` con faltas vivas en el cuerpo.
+- **Medido en código (frontend2, 2026-11-03) — el DoD 1 ya está CUMPLIDO, y recorta la ficha.**
+  `apps/mobile/src/modules/midia/PantallaAgenda.tsx`:
+  - **Línea del ahora: NO existe** (0 hits). Es lo único que hay que implementar de cero.
+  - **«Nuevo evento»: SÍ existe** — botón primario en `:118`, deja el texto en el chat. Le falta
+    sólo el **«+»** del mapa. Implementarlo de nuevo habría sido rehacer lo que ya estaba.
+  - **Punto de estado: existe, pero como TEXTO** «Google Calendar conectada» (`:109`), no como
+    punto/color. No es ausencia: es **otra forma**, así que la decisión es igualar al mapa o
+    documentar la diferencia como `DIFERENTE · B` — las dos salidas son válidas, que quede sin
+    decidir no.
+  - **Repetido: el front NO deduplica** — renderiza los grupos tal como llegan. ⇒ **dato vs defecto
+    no se puede decidir desde el front**: exige el payload real de `/agenda`. Eso es un `pedido_` a
+    backend, no una inspección más de la app.
 - **DoD:**
   1. **Primero, sin device y sin tocar nada:** decir si la línea del ahora, «+ Nuevo evento» y el
      punto de estado **existen hoy** en `PantallaAgenda.tsx`, con `path:línea`. Si existen, la ficha
