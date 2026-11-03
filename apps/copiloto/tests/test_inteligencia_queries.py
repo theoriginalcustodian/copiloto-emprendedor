@@ -688,3 +688,62 @@ def test_N32_ADVERSARIAL_las_facturas_de_B_con_el_mismo_CUIT_no_cuentan_en_el_ra
     en_b = InteligenciaQueries(conn_de_tenant(b), b).portada()["mejores_clientes"][0]
     assert en_a["comprobantes"] == 0          # A no hereda la factura de B
     assert en_b["comprobantes"] == 1          # control positivo: el mismo armado en B la ve
+
+
+# ── SM-N33: el ranking agrupa por IDENTIFICADOR, no por nombre ─────────────────────────────────────
+
+def _ranking(conn_de_tenant, tid):
+    return InteligenciaQueries(conn_de_tenant(tid), tid).portada()["mejores_clientes"]
+
+
+@necesita_pg
+def test_N33_dos_grafias_del_mismo_cliente_dan_UNA_fila(conn_de_tenant, tenants):
+    """Sentido 1 del defecto: «Juan Pérez» y «Juan Perez» con el mismo CUIT se subdeclaraban en dos filas."""
+    a, _ = tenants
+    ficha = ClienteStore(conn_de_tenant(a), a).crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20111111112")
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="600.00", cliente_ref=ficha["id"], cliente_nombre="Juan Pérez")
+    cobros.registrar_suelto(monto="400.00", cliente_ref=ficha["id"], cliente_nombre="Juan Perez")
+    cobros.registrar_suelto(monto="100.00", cliente_nombre="JUAN PEREZ")      # sin ref: la única ficha lo resuelve
+    ranking = _ranking(conn_de_tenant, a)
+    assert [(c["cliente"], c["total"]) for c in ranking] == [("Juan Pérez", "1100.00")]
+
+
+@necesita_pg
+def test_N33_dos_homonimos_con_CUIT_distinto_dan_DOS_filas(conn_de_tenant, tenants):
+    """Sentido 2 (opuesto): dos «Juan Pérez» distintos se fundían en uno e inflaban a quien no correspondía."""
+    a, _ = tenants
+    clientes = ClienteStore(conn_de_tenant(a), a)
+    uno = clientes.crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20111111112")
+    otro = clientes.crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20222222223", forzar=True)
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="700.00", cliente_ref=uno["id"], cliente_nombre="Juan Pérez")
+    cobros.registrar_suelto(monto="300.00", cliente_ref=otro["id"], cliente_nombre="Juan Pérez")
+    ranking = _ranking(conn_de_tenant, a)
+    assert sorted(c["total"] for c in ranking) == ["300.00", "700.00"]
+    assert len(ranking) == 2
+
+
+@necesita_pg
+def test_N33_sin_identificador_agrupa_por_nombre_normalizado_y_no_afirma_comprobantes(conn_de_tenant, tenants):
+    """La regla del caso difícil, escrita: sin ficha ni documento se agrupa por nombre normalizado, y
+    `comprobantes` es None («no se puede saber»), nunca 0."""
+    a, _ = tenants
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="200.00", cliente_nombre="Kiosco Pérez")
+    cobros.registrar_suelto(monto="50.00", cliente_nombre="kiosco perez")
+    ranking = _ranking(conn_de_tenant, a)
+    assert [(c["total"], c["comprobantes"]) for c in ranking] == [("250.00", None)]
+
+
+@necesita_pg
+def test_N33_ADVERSARIAL_el_mismo_CUIT_en_A_y_B_no_se_mezcla(conn_de_tenant, tenants):
+    """Regresión obligatoria: la ficha toca la clave de agrupamiento. Mismo CUIT en A y B: cada uno suma lo suyo."""
+    a, b = tenants
+    for tenant, monto in ((a, "500.00"), (b, "900.00")):
+        ficha = ClienteStore(conn_de_tenant(tenant), tenant).crear(nombre="Panadería", doc_tipo=80, doc_nro="20111111112")
+        CobroStore(conn_de_tenant(tenant), tenant).registrar_suelto(monto=monto, cliente_ref=ficha["id"], cliente_nombre="Panadería")
+    _comprobante_con_documento(conn_de_tenant, b, "20111111112", nro=904)
+    en_a, en_b = _ranking(conn_de_tenant, a), _ranking(conn_de_tenant, b)
+    assert [(c["total"], c["comprobantes"]) for c in en_a] == [("500.00", 0)]      # A no ve la factura de B
+    assert [(c["total"], c["comprobantes"]) for c in en_b] == [("900.00", 1)]      # control positivo
