@@ -260,6 +260,21 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
     expect(screen.queryByTestId('panel-fondo-plano', { includeHiddenElements: true })).toBeNull();
   });
 
+  it('SM-N38: el entorno del campo colapsado es el MISMO scrim del chat, dentro del pie (hereda su opacidad por panelY)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    const dock = screen.getByTestId('panel-pie-scrim-dock', { includeHiddenElements: true });
+    expect(within(dock).getByTestId('panel-pie-scrim', { includeHiddenElements: true })).toBeTruthy();
+    // anclado a pantalla: NO dentro de la caja acotada del pie (su borde de abajo caía a mitad de pantalla)
+    const pie = screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true });
+    expect(within(pie).queryByTestId('panel-pie-scrim', { includeHiddenElements: true })).toBeNull();
+  });
+
   it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
     await render(
       <ThemeProvider>
