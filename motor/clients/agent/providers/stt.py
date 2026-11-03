@@ -21,7 +21,9 @@ import uuid
 _API_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError, OSError)
 
 DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
-DEFAULT_MODEL = "whisper-large-v3"     # multilingüe, máxima precisión; turbo = fallback si se excede la cuota
+# multilingüe, máxima precisión. `GROQ_STT_MODEL` lo sobreescribe sin deploy de código (p. ej. `whisper-large-v3-turbo`:
+# más barato y con más cupo por hora, algo menos preciso) — cambiar y volver atrás es editar el env del servicio.
+DEFAULT_MODEL = os.environ.get("GROQ_STT_MODEL") or "whisper-large-v3"
 
 
 class GroqSTT:
