@@ -127,6 +127,46 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 
 <!-- TABLA-ESTADO:FIN -->
 
+# ORDEN DE SECUENCIA: el build de release va AL FINAL, no antes
+
+**Orden del operador, 2026-11-02:** *«el build hay que hacerlo al final, cuando terminemos todo,
+porque sino tenemos que volver a repetirlo y no tiene sentido; primero corrijamos todo y dejemos
+todo implementado, y el build al final»*.
+
+**Qué gatea.** Las dos fichas que piden medición en release **no arrancan hasta que la
+implementación esté cerrada**: `SM-I6` (hoy `DOD-PARCIAL`, su `Falta:` pide *«medir en release, en
+el ejercicio final de SM-G4»*) y `SM-L1` (su DoD pide el tiempo real de `entrada` medido con build
+de release). Las dos son **medición**, no implementación: no hay nada que corregir después de
+medirlas, y por eso van últimas.
+
+**El fundamento, medido el 2026-11-02 por frontend2:** un build de EAS tarda **~22 min** y queda
+atado al sha desde el que se compiló (el suyo salió de `fa87d95`). Cualquier ficha que cambie el
+bundle **invalida la medición**, porque mediría una app que ya no es la que se va a entregar. Y hay
+un segundo costo que lo hace peor: el APK de release **reemplaza el dev-client** (mismo
+`applicationId`, verificado), así que instalarlo antes de tiempo le saca Metro a las sesiones que
+están implementando — se pagarían 22 min de build **más** la reinstalación del dev-client, para
+después tener que repetir todo igual.
+
+**🔴 CORRECCIÓN a este mismo documento.** La sección «El eje de la pasada de device» de más abajo
+dice que *«toda precondición que se pueda preparar antes —un tenant fabricado, un build de release,
+un token manipulado— se prepara antes»*. **Para el build de release eso queda SUPERADO por esta
+orden**, y la frase se corrige ahí mismo. El principio sigue valiendo para el resto: un tenant
+fabricado o un token manipulado **no caducan** cuando el código cambia, y el build **sí**. La
+distinción que faltaba no es «se puede preparar antes» sino **«¿sobrevive a que el código siga
+cambiando?»** — y era justo el caso donde dos líneas correctas del mismo doc se cruzaban en un
+agujero ([[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]).
+
+**Lo que SÍ está cerrado y no se vuelve a investigar:** que el build de release **se puede producir
+sin el operador** (EAS, perfil `release-medicion`, keystore remoto ya configurado, cero gates de
+credenciales; local inviable por falta de Android SDK/Java). Ese hallazgo **no caduca** y es lo que
+saca a `SM-I6`/`SM-L1` de la pila «esperando al operador». El entregable durable es el **perfil
+versionado en `eas.json`**; el APK es desechable y se rehace desde el sha que haga falta.
+
+**El disparador para producirlo**, explícito para que no quede como espera indefinida: **toda la
+implementación del sprint mergeada en `main`**. Recién ahí se compila, se instala, se mide
+`SM-I6` + `SM-L1` en la misma pasada de device, y se repone el dev-client con el build
+`development` de EAS.
+
 # El eje de la pasada de device NO es la cuenta — es el ESTADO que la tenencia puede producir
 
 **Agrupé mal, y la corrección costó una pasada de teléfono.** El bloque 2 se llamó «cuenta
@@ -163,9 +203,15 @@ vuelve a salir activo. Tiene que decir *«requiere un tenant SIN Drive conectado
    que hay que mantener corta.
 
 **Lo que esto cambia en la práctica:** la ventana del operador es el recurso más escaso del sprint y
-estaba reservada para fichas que no la necesitaban. Toda precondición que se pueda preparar antes
-—un tenant fabricado, un build de release, un token manipulado— **se prepara antes**, porque una
-ventana gastada esperando una precondición es una ventana perdida.
+estaba reservada para fichas que no la necesitaban. Toda precondición **que no caduque** y se pueda
+preparar antes —un tenant fabricado, un token manipulado— **se prepara antes**, porque una ventana
+gastada esperando una precondición es una ventana perdida.
+
+⚠️ **Hasta el 2026-11-02 esta línea incluía «un build de release» en esa lista, y era un error de
+clasificación.** Un build **caduca**: queda atado al sha del que salió, así que cualquier ficha que
+cambie el bundle lo invalida. La pregunta correcta no es «¿se puede preparar antes?» sino
+**«¿sobrevive a que el código siga cambiando?»**. El build va **al final** por orden del operador
+(ver la sección «ORDEN DE SECUENCIA» arriba); el tenant fabricado y el token siguen yendo antes.
 
 # Enmiendas FUNDADAS al mapa — el « salvo lo que definimos », escrito
 
