@@ -45,7 +45,7 @@ Prototipo: [volver](2026-10-16-relevamiento-capturas/proto-mapa-volver.png) · A
 Prototipo: [ingresar](2026-10-16-relevamiento-capturas/proto-mapa-ingresar.png) · App: [ingresar](2026-10-16-relevamiento-capturas/app-ingresar.png)  
 *Diferencia:* Cambian el logo (con o sin cuadro), el relleno de campos y botones, y falta el aviso «Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estaba»: no aparece en ningún archivo de `apps/mobile` ni de `packages/core`.  
 *Corrección:* Igualar la estructura del formulario al prototipo y agregar el aviso de sesión cerrada (el flujo de «sesión caída sola» ya va directo a este formulario, `EntradaSesion.tsx:25`).  
-*Vínculo:* F10
+*Vínculo:* SM-K6 · F10 (padrón viejo)
 
 **04 · `ingresar-error` — No coinciden** — **CONFORME** · DEVICE  
 Prototipo: [ingresar-error](2026-10-16-relevamiento-capturas/proto-mapa-ingresar-error.png) · App: — (no capturada)  
@@ -78,7 +78,7 @@ Prototipo: [esc](2026-10-16-relevamiento-capturas/proto-mapa-esc.png) · App: [e
 Prototipo: [chat](2026-10-16-relevamiento-capturas/proto-mapa-chat.png) · App: [chat-abierto](2026-10-16-relevamiento-capturas/app-chat-abierto.png) · [mapa-chat-vacio](2026-10-16-relevamiento-capturas/app-mapa-chat-vacio.png)  
 *Diferencia:* El contenido del estado en reposo coincide: «¿En qué te ayudo?», el ejemplo que gira («Gasté 15 lucas en nafta») y la línea fija «Antes de ejecutar algo importante, te lo muestro para que lo confirmes». Cambian la zona de entrada (botón de voz grande, más un «Pausar» que el mapa no tiene) y el botón de voz del campo.  
 *Corrección:* Mismo arreglo que R01: campo + mic chico siempre visibles al pie.  
-*Vínculo:* R01 · C7
+*Vínculo:* SM-I2 · SM-J1 · R01 · C7 (padrón viejo)
 
 
 ### Estados
@@ -87,14 +87,14 @@ Prototipo: [chat](2026-10-16-relevamiento-capturas/proto-mapa-chat.png) · App: 
 Prototipo: [tablero](2026-10-16-relevamiento-capturas/proto-mapa-tablero.png) · App: [mapa-tablero-haciendo](2026-10-16-relevamiento-capturas/app-mapa-tablero-haciendo.png) · [mapa-tablero-hechas](2026-10-16-relevamiento-capturas/app-mapa-tablero-hechas.png) · [mapa-tablero-scroll](2026-10-16-relevamiento-capturas/app-mapa-tablero-scroll.png)  
 *Diferencia:* Las pestañas Para hoy · Haciendo · Hechas, los contadores y la nota al pie («Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.») existen y coinciden. Difieren: el tablero no es una pantalla propia («Tu día» con «Volver»), el título es «Mi día» y no «Tu día», y la app agrega filtros por categoría y un campo «Anotar algo para hoy».  
 *Corrección:* **DECIDIDO (operador, 2026-10-16, pregunta 4): el tablero es pantalla propia, como en el mapa** («Tu día» con «Volver»). El resto (título «Tu día», filtros por categoría y «Anotar algo para hoy», que el mapa no cita) se decide al bajar la ficha.  
-*Vínculo:* C5 · F8
+*Vínculo:* SM-I1 · C5 · F8 (padrón viejo)
 
 **10 · `agenda` — Agenda** — **DIFERENTE · A** · DEVICE  
 Prototipo: [agenda](2026-10-16-relevamiento-capturas/proto-mapa-agenda.png) · App: [agenda](2026-10-16-relevamiento-capturas/app-agenda.png)  
 *Medición 2026-11-02 (device):* Medida con Google Calendar reconectado (5 de 5 apps). Difiere del mapa; detalle en el doc de pendientes (00.bis). [app-agenda](2026-10-16-relevamiento-capturas/app-agenda.png) · [app-apps-conectadas-5-de-5](2026-10-16-relevamiento-capturas/app-apps-conectadas-5-de-5.png)  
 *Diferencia:* La agenda sólo es comparable con Google Calendar conectado; en el canónico está caído (la app dice «Se cayó la conexión con Google Calendar» y oculta «Ver agenda», `PantallaMiDia.tsx:560-566`). Falta confirmar la línea del ahora (mockup 14).  
 *Corrección:* Reconectar Calendar en el usuario canónico y medir.  
-*Vínculo:* F9
+*Vínculo:* SM-N34 · F9 (padrón viejo)
 
 **11 · `detalle` — Detalle** — **CONFORME** · DEVICE  
 Prototipo: [detalle](2026-10-16-relevamiento-capturas/proto-mapa-detalle.png) · App: [mapa-tarjeta-tocada](2026-10-16-relevamiento-capturas/app-mapa-tarjeta-tocada.png) · [mapa-tarjeta-manual-expandida](2026-10-16-relevamiento-capturas/app-mapa-tarjeta-manual-expandida.png)  
@@ -362,7 +362,7 @@ Prototipo: [afip](2026-10-16-relevamiento-capturas/proto-mapa-afip.png) · App: 
 Prototipo: [apps](2026-10-16-relevamiento-capturas/proto-mapa-apps.png) · App: [apps-0](2026-10-16-relevamiento-capturas/app-apps-0.png)  
 *Diferencia:* El grupo «Trabaja sola, de fondo» existe (`PantallaApps.tsx:111,124`). Falta la frase «No puede leerlos» en Gmail: la app dice «Enviá mails desde el chat.» (el comentario `:79` explica que `capacidades` decía «leer y buscar», que el conector no hace). El estado va como botón y no como etiqueta a la derecha; el mapa lista seis apps (con Google Sheets) y la app cinco. «Cada app por lo que habilita» sí se cumple.  
 *Corrección:* Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta.  
-*Vínculo:* F11-apps
+*Vínculo:* SM-K4 · F11-apps (padrón viejo)
 
 **48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
 Prototipo: [plan](2026-10-16-relevamiento-capturas/proto-mapa-plan.png) · App: — (no existe)  

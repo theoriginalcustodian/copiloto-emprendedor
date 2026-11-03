@@ -118,7 +118,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N20** | `sin-issue` | 🟧 DOD-PARCIAL | lo que hereda SM-N21 (cobro y completar_ingreso sin sonda LLM: la sonda de cobro exigiria una factura impaga real que… |
 | **SM-N21** | `sin-issue` | 🟧 DOD-PARCIAL | cobro (marcar_factura_cobrada) y completar_ingreso sin sonda con LLM real (cobro exige factura impaga real; completar… |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | REFUTADO POR EL OPERADOR en device el 2026-11-03 06:40: 'en la pantalla mi dia el campo de texto todavia esta por enc… |
-| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio e… |
+| **SM-N23** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (captura del ANTES con el panel arriba a 390px), DoD 2 (captura del DESPUES mas EL NUMERO: cuantos px de margen… |
 | **SM-N24** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: las capturas de device (chat sin camara, Gastos CON camara, Soporte intacto). Van en la pasada de device. … |
 | **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 5: la zona de ARRIBA (misma pregunta, otro borde) — sin tocar. DoD 3: la card CLARA, que exige forzar piel clara … |
 | **SM-N26** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de la cabecera SIN el indicador. Dueno: frontend1 (venia en su cola N23 -> N28 -> N26). |
@@ -127,7 +127,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
 | **SM-N31** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las… |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
+| **SM-N33** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto … |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -1684,8 +1686,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N23 · `sin-issue` — DENTRO DEL SPRINT: el tirador de ARRIBA queda pegado al borde y compite con el gesto del sistema
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** La MEDICION de device que prueba que el tirador ya responde — y existe el instrumento para hacerla: frontend2 midio el ANTES con metodo declarado (y=53 sobre PanelFunciones-pestana, 4 arrastres con adb motionevent sin que el panel abriera; el shade del sistema se come todo y<~48). Falta el DESPUES con el MISMO metodo y las mismas coordenadas: si el margen corrigio la causa, el mismo gesto que fallaba 4 de 4 ahora abre. Sin repetir el gesto identico no se distingue 'el fix funciono' de 'esta vez le acerte al pixel'. Dueno: frontend1.
-- **Cierre:** 2d257f95 (#1432, ancestro de origin/main): margen fijo bajo la barra de estado para el tirador de arriba.
+- **Falta:** DoD 1 (captura del ANTES con el panel arriba a 390px), DoD 2 (captura del DESPUES mas EL NUMERO: cuantos px de margen quedaron bajo insets.top - un 'quedo mas abajo' sin cifra no es acreditable) y DoD 5 (la tira de abajo sigue midiendo exactamente una card, no se engroso con espacio muerto). La prediccion escrita de frontend1 decia ROJO a y=53 y salio VERDE: la lectura del layout estaba mal, y la causa es que panel-funciones-pestana mide [0,0][720,150] por uiautomator, o sea el gesto cubre la pestana entera y no solo la barra; el shade solo gana por debajo de ~y=47.
+- **Cierre:** 2d257f95 (#1432) margen fijo bajo la barra de estado + 988ba029 (#1443, ancestro de origin/main, 71 lineas en PanelFunciones.tsx/.test.tsx). DoD 3 y 4 CUMPLIDOS en device por frontend1 el 2026-11-03: con motionevent DOWN-MOVE-UP, y=53 abre el panel 6/6 y el shade 0/6; y=90 tambien 6/6; control y=40 abre NotificationShade, que distingue 'no se mueve' de 'el ADB no ejercita nada'. N=6 declarado, por encima del minimo de 5. Condicion: Mi dia con el panel abajo, Metro con --clear desde wt-fe1-h5 HEAD cab346d9 con PanelFunciones IDENTICO a main (988ba029); el resto del bundle NO es main. El primer intento del dia (0/6 y 0/6) esta DESCARTADO: Metro logueaba 'None of the callbacks in the gesture are worklets', o sea los gestos corrian en el hilo JS - era el instrumento, no el fix.
 - **Dueño:** frontend1 (dueño del shell)
 - **Reportado por:** el operador, 2026-11-02: *«está muy pegado al borde, dificulta su
   desplazamiento porque se confunde con el sistema — hay que bajar el tirador hasta una zona
@@ -2330,7 +2332,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Codigo MERGEADO en main (32730046, #1454): el selector Resumen/Preguntar retirado y los montos del mes en negro — las DOS cosas que el operador vio en device hoy. Falta: (1) la captura de device a 390px que lo acredite, bloqueada porque adb devices sale VACIO (cable o autorizacion USB, lo tiene el operador); (2) la re-verificacion en device de que sigue faltando de las 11 secciones del mapa, porque el lado app de la entrada 42 se midio el 2026-10-16 y main tiene 18 dias mas; (3) las 4 secciones faltantes (Por cobrar, En que se te va la plata, la barra del tope de monotributo, Margen por trabajo), que NO se implementan antes del punto 2 para no reimplementar lo que SM-J3 ya pudo haber hecho; (4) el engranaje flotante sin diagnosticar; (5) la entrada 42 del corpus ya corregida en 048a135b (#1453): su Diferencia reescrito contra el DOM y la frase de Preguntar marcada como mal clasificada B.
+- **Falta:** SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUERA del sprint y escalado al operador (pide la categoria del emprendedor + tabla de escala AFIP versionada), no recortado por mi.
+- **Cierre:** Codigo COMPLETO en main: backend 5928f837 (#1459, CI 6/6, 89 passed en VPS con adversarial de mismo CUIT en A y B) + front acdbff54 (#1460, CI 6/6) sobre 32730046 (#1454). Entraron: selector Resumen/Preguntar retirado, montos del mes en negro, las 8 categorias con porcentaje, margen PONDERADO rotulado «Sobre N» con peor trabajo, y N comprobantes por cliente con el null oculto.
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
   arriba, el de resumen y de preguntar… fueron eliminados»*, *«lo implementado en inteligencia de
@@ -2447,3 +2450,90 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ---
 
+### SM-N33 · `sin-issue` — El ranking de mejores clientes agrupa los cobros por NOMBRE, no por identificador
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** hallazgo de backend al cerrar `SM-N32` (#1459 → `5928f837`). **No es
+  presentación: es el dato.** Nace con id propio porque un hallazgo que sólo vive en un mensaje no
+  vuelve a aparecer ([[el-registro-no-se-marcaba-porque-su-id-no-circulaba]]).
+- **Medido:** `_mejores_clientes` en `inteligencia_queries.py` agrupa `copiloto_cobros` por
+  `coalesce(cliente_nombre, receptor_nombre)`. De ahí salen **los dos errores a la vez**, y son
+  opuestos: **dos grafías del mismo cliente dan dos filas** (se subdeclara a quien más compró) y
+  **dos homónimos distintos dan una sola** (se infla a quien no corresponde). El ranking es, por
+  definición, lo que más sufre un agrupamiento equivocado: ordena por el monto que acabamos de mal
+  sumar.
+- **⚠️ Lo que YA está mitigado, dicho para que no se "arregle" dos veces:** el campo
+  `comprobantes` que entró en #1459 devuelve **`null`** cuando hay homónimos, en vez de un número
+  que mentiría. Eso **acota el daño, no lo resuelve**: el `null` avisa en la columna de
+  comprobantes, mientras el **orden y los montos** del ranking siguen saliendo del agrupamiento por
+  nombre. Un mitigador visible hace parecer resuelto lo que no lo está.
+- **DoD:**
+  1. El agrupamiento pasa a un **identificador** (CUIT/ficha de cliente), con la regla escrita para
+     el caso **sin identificador** — ése es el caso difícil y no puede quedar implícito.
+  2. Un test con **dos grafías del mismo cliente** (→ UNA fila) y **dos homónimos con CUIT distinto**
+     (→ DOS filas). Los dos casos, no uno: son los dos sentidos del defecto y un test solo deja
+     mudo al otro.
+  3. El adversarial de aislamiento sigue verde (mismo CUIT en A y B: A ve 0, B ve 1) — es regresión
+     obligatoria, no opcional: la ficha toca justo la clave de agrupamiento.
+  4. Corrida en el VPS, nunca en la PC.
+- **Depende:** nada. No bloquea a nadie.
+- **FUERA del corpus del mapa:** no mueve ningún veredicto de paridad — el mapa no dibuja la clave
+  de agrupamiento. Entra al sprint porque es un defecto de dato **descubierto** por una ficha del
+  sprint, y queda explícito para que no infle el denominador (`DEC-18`).
+
+---
+
+### SM-N34 · `sin-issue` — Las tres faltas de la agenda quedaron HUÉRFANAS dentro de una ficha cerrada
+
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 3 (el evento REPETIDO en «Esta semana»: hay que verificar contra el payload real de /agenda si es dato o defecto ANTES de tocar el front - el front no deduplica, renderiza los grupos como llegan, asi que desde el front no se puede decidir; es un pedido_ a backend) y DoD 4 (captura de device con Google Calendar conectado - la tenencia es de frontend1). DoD 5 (el veredicto de la entrada 10 del corpus) no se puede cerrar hasta la captura: el veredicto se cambia midiendo la app, nunca por el estado de esta ficha.
+- **Cierre:** 64e9f29a (#1462, ancestro de origin/main): «+ Nuevo evento» con el + del mapa, punto de estado de Calendar como punto/color (ya no solo texto) y linea del ahora en Hoy, vista mixta D9. El DoD 1 lo habia cumplido frontend2 midiendo en codigo ANTES de implementar: «Nuevo evento» YA existia en PantallaAgenda.tsx:118 y el punto de estado existia como TEXTO en :109 - implementarlos de cero habria sido rehacer lo que estaba.
+- **Dueño:** frontend2
+- **De dónde sale:** auditoría de `SM-L4` (planificación, 2026-11-03) sobre las entradas que
+  `scripts/mapa-51-estado.py` marcaba como **cubiertas sólo por el nombre**. La entrada **10
+  `agenda`** del corpus sigue `DIFERENTE · A` y la única ficha que la citaba es **`SM-J5`, que está
+  `TERMINADO` como «PREMISA REFUTADA / SIN OBJETO»**.
+- **Medido — y acá está el mecanismo, que es lo que importa:** lo que `SM-J5` refutó fue **una** de
+  sus premisas, la del agrupamiento: la agenda **sí** distingue Hoy · Mañana · Esta semana · Sin
+  hora (`apps/mobile/src/modules/midia/PantallaAgenda.tsx:23-24`, títulos exactos del backend). Pero
+  el cuerpo de esa misma ficha sigue reclamando, sin contradicción alguna, **la línea del ahora
+  (mockup 14)**, **«+ Nuevo evento»**, **el punto de estado** y un evento que aparece **repetido**
+  en «Esta semana». Al cerrarse por la premisa refutada, esas cuatro faltas quedaron **dentro de un
+  ✅** y ninguna ficha viva las cubre. Control: `grep` de «línea del ahora» en el backlog devuelve
+  **sólo** las dos líneas de `SM-J5`.
+- **🔴 Por qué nace ficha nueva en vez de reabrir `SM-J5`:** un hallazgo no reabre un ✅ (`DEC-18`) —
+  un criterio que crece con cada medición no se puede alcanzar. Y el riesgo de clase que esto
+  destapa es más ancho que la agenda: **una ficha con VARIAS premisas se cierra cuando se refuta
+  UNA**, y lo que arrastra al archivo es todo lo demás que decía. Vale revisar si hay otras
+  `TERMINADO · PREMISA REFUTADA` con faltas vivas en el cuerpo.
+- **Medido en código (frontend2, 2026-11-03) — el DoD 1 ya está CUMPLIDO, y recorta la ficha.**
+  `apps/mobile/src/modules/midia/PantallaAgenda.tsx`:
+  - **Línea del ahora: NO existe** (0 hits). Es lo único que hay que implementar de cero.
+  - **«Nuevo evento»: SÍ existe** — botón primario en `:118`, deja el texto en el chat. Le falta
+    sólo el **«+»** del mapa. Implementarlo de nuevo habría sido rehacer lo que ya estaba.
+  - **Punto de estado: existe, pero como TEXTO** «Google Calendar conectada» (`:109`), no como
+    punto/color. No es ausencia: es **otra forma**, así que la decisión es igualar al mapa o
+    documentar la diferencia como `DIFERENTE · B` — las dos salidas son válidas, que quede sin
+    decidir no.
+  - **Repetido: el front NO deduplica** — renderiza los grupos tal como llegan. ⇒ **dato vs defecto
+    no se puede decidir desde el front**: exige el payload real de `/agenda`. Eso es un `pedido_` a
+    backend, no una inspección más de la app.
+- **DoD:**
+  1. **Primero, sin device y sin tocar nada:** decir si la línea del ahora, «+ Nuevo evento» y el
+     punto de estado **existen hoy** en `PantallaAgenda.tsx`, con `path:línea`. Si existen, la ficha
+     cierra con la cita y el veredicto se corrige — no se implementa de nuevo lo que ya está.
+  2. Lo que no exista, implementado según la vista **mixta** (D9): línea de tiempo con línea del
+     ahora para **hoy**, lista para **Mañana** y **Esta semana**.
+  3. El **repetido**: verificar **contra el dato de Calendar si es dato o defecto ANTES de arreglar
+     nada**. Si es dato, se escribe eso y ese punto cierra con la cita. (Este DoD es el de `SM-J5`
+     y sigue siendo el correcto: se hereda, no se reinventa.)
+  4. Captura de device, **con Google Calendar conectado** — sin eso la agenda no es comparable con
+     el mapa (`PantallaMiDia.tsx:560-566` oculta «Ver agenda» cuando la conexión está caída).
+  5. La entrada **10** del corpus pasa a `CONFORME` o a `DIFERENTE · B` **con cita**, y el veredicto
+     se cambia **midiendo la app**, nunca por el estado de esta ficha.
+- **Depende:** Google Calendar conectado en el usuario canónico (mismo disparador que ya tenía la
+  entrada 10) y la tenencia del device, que hoy es de frontend1.
+- **DENTRO del sprint:** es divergencia directa contra el mapa — el criterio declarado del sprint.
+
+---
