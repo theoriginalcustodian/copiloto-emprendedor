@@ -203,7 +203,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
    */
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/facturacion');
     }, []),
   );
   const tema = useTema();
@@ -734,7 +734,7 @@ function BloqueConfigurar({ testID = 'facturacion-cta-configurar' }: { testID?: 
         botones={[
           {
             etiqueta: 'Configurar facturación',
-            onPress: () => empujarUnaVez('/ajustes-afip'),
+            onPress: () => empujarUnaVez('/ajustes-afip', '/facturacion'),
             variante: 'primario',
             testID: `${testID}-boton`,
           },

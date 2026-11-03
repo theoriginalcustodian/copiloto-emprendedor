@@ -30,7 +30,7 @@ export default function PantallaGastosRoute() {
 
   useFocusEffect(
     useCallback(() => {
-      reabrirNavegacion();
+      reabrirNavegacion('/gastos');
     }, []),
   );
 
