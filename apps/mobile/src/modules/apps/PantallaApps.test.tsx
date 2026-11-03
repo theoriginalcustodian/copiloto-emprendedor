@@ -361,6 +361,48 @@ describe('PantallaApps', () => {
     });
   });
 
+  it('SM-K4 · el orden de las filas es el del mapa aunque el servidor las mande en otro', async () => {
+    // Orden de llegada = el que se vio en device (MP, Gmail, Calendar, Docs, Sheets, sin Drive en medio).
+    jest.mocked(listarCatalogo).mockResolvedValue({
+      status: 'ok',
+      servicios: ['mercadopago', 'gmail', 'googlecalendar', 'googledocs', 'googlesheets', 'googledrive'].map((key) =>
+        servicioMock({ key, nombre: key }),
+      ),
+    });
+    render(
+      <ThemeProvider>
+        <PantallaApps />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('app-gmail')).toBeTruthy());
+    expect(screen.getAllByTestId(/^app-[a-z]+$/).map((n) => n.props.testID as string)).toEqual([
+      'app-gmail',
+      'app-googlecalendar',
+      'app-mercadopago',
+      'app-googlesheets',
+      'app-googledocs',
+      'app-googledrive',
+    ]);
+  });
+
+  it('una key que el mapa no conoce no se esconde: va al final de su grupo, en orden de llegada', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({
+      status: 'ok',
+      servicios: ['nueva', 'mercadopago', 'gmail'].map((key) => servicioMock({ key, nombre: key })),
+    });
+    render(
+      <ThemeProvider>
+        <PantallaApps />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('app-nueva')).toBeTruthy());
+    expect(screen.getAllByTestId(/^app-[a-z]+$/).map((n) => n.props.testID as string)).toEqual([
+      'app-gmail',
+      'app-mercadopago',
+      'app-nueva',
+    ]);
+  });
+
   it('el título "Apps conectadas" lo aporta el MarcoGlass propio, una sola vez', async () => {
     await envolver();
     expect(screen.getByTestId('glass-titulo').props.children).toBe('Apps conectadas');
