@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -33,7 +35,7 @@ const TILE_KEYS: AjusteKey[] = [
   'apariencia',
 ];
 
-describe('PantallaAjustes (grilla de iconos)', () => {
+describe('PantallaAjustes (lista de filas, SM-Z5)', () => {
   it('renderiza las 5 entradas del grid', async () => {
     await envolver();
     for (const key of TILE_KEYS) {
@@ -79,21 +81,6 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     }
   });
 
-  /**
-   * 🔴 **La regresión que este test impide.** La grilla armaba sus filas con dos `slice` fijos —
-   * `slice(0,3)` y `slice(3,6)`—, o sea asumía exactamente 6 tiles. Al sumar el séptimo, el tile
-   * nuevo caía FUERA de las dos filas y no se renderizaba: sin error, sin warning, sin nada. Un ícono
-   * que desaparece en silencio porque un array creció es de los defectos más difíciles de notar en
-   * una revisión de código, y trivial de cazar acá.
-   *
-   * Se afirma sobre el ÚLTIMO tile a propósito: es el único que el bug hacía desaparecer, y también
-   * el que lo volvería a sufrir si alguien reintroduce un límite fijo.
-   */
-  it('el último tile del array se renderiza — la grilla no asume un número fijo de tiles', async () => {
-    await envolver();
-    expect(screen.getByTestId('ajuste-tile-facturacionAfip')).toBeTruthy();
-  });
-
   it('mapeo `ajustes`: tres grupos con su rótulo y cada tile bajo el suyo', async () => {
     await envolver();
     const ids: string[] = [];
@@ -127,6 +114,71 @@ describe('PantallaAjustes (grilla de iconos)', () => {
   });
 });
 
+/**
+ * SM-Z5: la lista se compara con el MAPA leyendo su fuente (`index.html` §ajustes de la rama), no con
+ * literales copiados acá -- un test que repite los textos es verde por construcción. Si el mapa cambia un
+ * subtítulo o agrega una fila, esto se pone rojo.
+ */
+const MAPA = join(__dirname, '../../../../../Prototipo frontend/odobi-ui/prototipo/index.html');
+
+/** Filas del mapa que la app NO tiene A PROPÓSITO (enmiendas fundadas, ver `FILAS_AJUSTES`). */
+const ENMIENDAS_DEL_MAPA = ['Cómo hablarle'];
+
+function leerAjustesDelMapa(): { rotulo: string; filas: { titulo: string; subtitulo: string }[] }[] {
+  const html = readFileSync(MAPA, 'utf8');
+  const ini = html.indexOf('<div id="ajustes">');
+  const fin = html.indexOf('<!-- ══════════ Ayuda › Cómo usar la app', ini);
+  const seccion = html.slice(ini, fin);
+  const grupos: { rotulo: string; filas: { titulo: string; subtitulo: string }[] }[] = [];
+  // Cada `.lista-lbl` abre un grupo; las `.aj-fila` siguientes son suyas hasta el próximo rótulo.
+  const rx = /<div class="lista-lbl">([^<]+)<\/div>|<span class="t"><b>([^<]+)<\/b><span>([^<]+)<\/span><\/span>/g;
+  let m: RegExpExecArray | null;
+  while ((m = rx.exec(seccion)) !== null) {
+    if (m[1]) grupos.push({ rotulo: m[1], filas: [] });
+    else grupos[grupos.length - 1].filas.push({ titulo: m[2], subtitulo: m[3] });
+  }
+  return grupos;
+}
+
+describe('SM-Z5: Ajustes es una lista igual al mapa (leído de la fuente)', () => {
+  it('control de ceguera: el parser del mapa ve 3 grupos y 9 filas', () => {
+    const grupos = leerAjustesDelMapa();
+    expect(grupos.map((g) => g.rotulo)).toEqual(['Tu negocio', 'La app', 'Ayuda']);
+    expect(grupos.flatMap((g) => g.filas)).toHaveLength(9);
+  });
+
+  it('cada fila del mapa (menos las enmiendas) está en la app, con su título y su subtítulo', async () => {
+    await envolver();
+    const filasDelMapa = leerAjustesDelMapa().flatMap((g) => g.filas);
+    const presentes = filasDelMapa.filter((f) => !ENMIENDAS_DEL_MAPA.includes(f.titulo));
+    expect(presentes).toHaveLength(8);
+    for (const f of presentes) {
+      expect(screen.getByText(f.titulo)).toBeTruthy();
+      expect(screen.getByText(f.subtitulo)).toBeTruthy();
+    }
+  });
+
+  it('las enmiendas siguen siendo ausencias reales: «Cómo hablarle» no se dibuja', async () => {
+    await envolver();
+    for (const titulo of ENMIENDAS_DEL_MAPA) expect(screen.queryByText(titulo)).toBeNull();
+  });
+
+  it('los rótulos y el orden de los grupos son los del mapa', async () => {
+    await envolver();
+    const rotulos = leerAjustesDelMapa().map((g) => g.rotulo);
+    const enApp = ['negocio', 'app', 'ayuda'].map((id) => screen.getByTestId(`ajustes-grupo-${id}`).props.children);
+    expect(enApp).toEqual(rotulos);
+  });
+
+  it('cada fila lleva su chevron y ningún ícono se repite entre filas', async () => {
+    await envolver();
+    expect(screen.getAllByText('›', { includeHiddenElements: true })).toHaveLength(8);
+    const filas = screen.getAllByTestId(/^ajuste-tile-/);
+    expect(filas).toHaveLength(8);
+    const iconos = filas.map((fila) => within(fila).getByTestId(/^glass-icon-/).props.testID);
+    expect(new Set(iconos).size).toBe(8);
+  });
+});
 describe('SM-N9: encabezado con el nombre comercial', () => {
   it('con nombre cargado lo muestra en la etiqueta del encabezado', async () => {
     leerMock.mockResolvedValue({ status: 'ok', perfil: { nombreComercial: 'El Galpón' } });
