@@ -70,8 +70,8 @@ export interface ComposerProps {
   /** Deshabilita el composer entero -- lo usa `ChatView` mientras el chat todavía no terminó de
    * hidratarse (`estado === null`, ver `useChat.ts`). */
   disabled?: boolean;
-  /** Gastos Fase 2 (foto de ticket). Ausente == sin botón de cámara -- ver el docstring del
-   * componente sobre por qué ésta SÍ vive acá adentro, a diferencia de las demás acciones. */
+  /** Foto adjunta (hoy sólo Soporte). Ausente == sin botón de cámara: el chat no la pasa (SM-N24) --
+   * ver el docstring del componente. */
   onFoto?: () => void;
   /**
    * El texto de invitación del campo. Opcional: el chat general conserva el suyo («Escribí, o hablá…», que
@@ -140,12 +140,11 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
  * está en vuelo.
  *
  * 🔴 **`onFoto` rompe la regla de "sin botones de acción propios", y es la única excepción a
- * propósito** (Gastos Fase 2, OCR de ticket). Las demás acciones se piden hablando o escribiendo
- * ("anotame un gasto de $500") porque el copiloto las entiende por lenguaje natural; "sacame una
- * foto" no es algo que el copiloto pueda ejecutar por sí mismo -- abrir la cámara del teléfono es
- * una capacidad del DISPOSITIVO, no del agente. Por eso necesita un botón, igual que el dictado por
- * voz necesitó `BotonVoz`. Vive DENTRO del composer porque no tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
- * resuelve o cancela, no una máquina de fases.
+ * propósito** — pero ya NO la usa el chat (SM-N24): la foto del comprobante es sólo de Gastos
+ * (`gastos/FotoFuncion`), y el chat no pasa `onFoto`. Hoy lo pasa Soporte, para adjuntar a un ticket.
+ * Abrir la cámara es una capacidad del DISPOSITIVO, no del agente ("sacame una foto" no se puede pedir
+ * hablando), por eso es un botón y no lenguaje natural. Vive DENTRO del composer porque no tiene ciclo
+ * de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se resuelve o cancela.
  */
 export function Composer({
   sendStatus,
