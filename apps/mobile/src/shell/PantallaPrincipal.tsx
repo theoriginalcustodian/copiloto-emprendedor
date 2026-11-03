@@ -290,8 +290,10 @@ export function PantallaPrincipal() {
             onAvisoAlChat={alAvisoAlChat}
             cierreDeAviso={cierreDeAviso}
             pie={
-              // La tira de la conversación tapa el borde de abajo: el handle más su spacer (ver `PanelFunciones`).
-              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + espacioSuperior(insets.top) + ALTO_COMPOSER_REPOSO }} />
+              // La tira de la conversación tapa el borde de abajo: el asa más el campo (ver `PanelFunciones`).
+              // SM-N38: sin el spacer de status bar. Colapsado el panel no pinta superficie, así que ese
+              // espacio sólo dejaba un hueco entre «Para hoy» y la línea; el spacer queda transparente.
+              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + ALTO_COMPOSER_REPOSO }} />
             }
           />
         </PanelFunciones>

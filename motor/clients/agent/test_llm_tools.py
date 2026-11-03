@@ -122,3 +122,47 @@ def test_complete_tools_500_still_triggers_failover(monkeypatch):
     assert t.calls == 2              # 1er intento falla, 2do (failover) responde
     assert out["failed_over"] is True
     assert out["content"] == "ok"
+
+
+_RESP_OK = {"choices": [{"finish_reason": "stop", "message": {"content": "ok", "tool_calls": None}}]}
+
+
+def test_modelo_actual_sigue_mandando_max_tokens_y_nada_de_razonamiento(monkeypatch):
+    """El default de producción (gpt-4o-mini) NO cambia de payload: `max_tokens`, sin `reasoning_effort`."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    t = _FakeTransport(_RESP_OK)
+    _provider(t).complete_tools("sys", [{"role": "user", "content": "hola"}], tools=[])
+    assert t.seen_payload["max_tokens"] == 1500
+    assert "max_completion_tokens" not in t.seen_payload and "reasoning_effort" not in t.seen_payload
+
+
+def test_luna_usa_max_completion_tokens_y_razonamiento_none(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    t = _FakeTransport(_RESP_OK)
+    p = LlmProvider(primary_model="gpt-6-luna", failover_model="gpt-6-luna", quantizations=())
+    p._post = t
+    p.complete_tools("sys", [{"role": "user", "content": "hola"}], tools=[])
+    assert t.seen_payload["model"] == "gpt-6-luna"
+    assert t.seen_payload["max_completion_tokens"] == 1500
+    assert t.seen_payload["reasoning_effort"] == "none"
+    assert "max_tokens" not in t.seen_payload and "temperature" not in t.seen_payload
+
+
+def test_failover_de_otra_familia_reescribe_los_parametros(monkeypatch):
+    """Primario Luna que falla -> failover gpt-4o-mini: el payload del segundo intento vuelve a `max_tokens`."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    vistos = []
+
+    def transporte(url, body, timeout):
+        vistos.append(json.loads(body.decode()))
+        if len(vistos) == 1:
+            raise urllib.error.URLError("caido")
+        return _RESP_OK
+
+    p = LlmProvider(primary_model="gpt-6-luna", failover_model="gpt-4o-mini", quantizations=())
+    p._post = transporte
+    out = p.complete_tools("sys", [{"role": "user", "content": "hola"}], tools=[])
+    assert out["failed_over"] is True
+    assert "max_completion_tokens" in vistos[0] and "max_tokens" not in vistos[0]
+    assert vistos[1]["model"] == "gpt-4o-mini" and vistos[1]["max_tokens"] == 1500
+    assert "max_completion_tokens" not in vistos[1] and "reasoning_effort" not in vistos[1]

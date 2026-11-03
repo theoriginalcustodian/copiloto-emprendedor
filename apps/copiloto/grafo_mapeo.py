@@ -71,7 +71,7 @@ def _fecha(dt: datetime.datetime) -> str:
 def _clave_cliente(nombre: str | None, doc_nro: str | None = None) -> str | None:
     """Clave natural del `Cliente` (v1 §1.1): `doc_nro` si existe; si no, el nombre normalizado. Reusa
     la lógica del índice único de `copiloto_clientes` — no inventar otra, o el grafo y la base discrepan
-    sobre qué es el mismo cliente. [ASSUMED_PENDING_VERIFY]: el homónimo de la clave real
+    sobre qué es el mismo cliente. [ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: la ingesta real al grafo sigue vacía, la clave con homónimo nunca se ejercitó]: el homónimo de la clave real
     (`nombre_normalizado|homonimo`) no está en el dataset sintético, que sólo trae nombre; para el alta
     real, la clave sale de `copiloto_clientes`, no de acá."""
     if doc_nro:

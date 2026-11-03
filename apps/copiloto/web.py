@@ -758,7 +758,7 @@ def _es_cuenta_google(claims: dict) -> bool:
     """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
     claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
     en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`, sólo para cuentas email/password; el caso Google
-    real es `[ASSUMED_PENDING_VERIFY]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
+    real es `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: spikes/gotrue-cambiar-mail-contrasena/RESULT.md:31 sigue diciendo NO verificado]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
     fila es lo seguro, mostrarla llevaría a un error confuso."""
     meta = claims.get("app_metadata") or {}
     proveedores = set(meta.get("providers") or [])

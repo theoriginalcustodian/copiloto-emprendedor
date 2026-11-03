@@ -4964,6 +4964,15 @@
       "id": "panel-pie-abajo",
       "motivo": "SM-N22 (2026-11-02): estructura del panel/escritorio de la app NATIVA (campo de Mi día dentro del panel bajo el asa; reserva de la tira). La web no tiene panel deslizable."
     },
+    "src/shell::panel-fondo-plano": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "panel-fondo-plano",
+      "motivo": "SM-N38 (2026-11-03): fondo plano del panel deslizable de la app NATIVA detras del campo colapsado de Mi dia (igual al del chat). La web no tiene panel deslizable."
+    },
     "src/shell::panel-superficie": {
       "en": [
         "apps/mobile/src/shell/PanelDeslizable.tsx"

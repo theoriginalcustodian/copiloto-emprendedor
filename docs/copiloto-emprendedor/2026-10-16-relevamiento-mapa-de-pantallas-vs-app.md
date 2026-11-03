@@ -101,14 +101,16 @@ Prototipo: [detalle](2026-10-16-relevamiento-capturas/proto-mapa-detalle.png) ·
 *Diferencia:* El mockup 14 deroga el sheet de detalle: la tarjeta se expande en su lugar. En la app, tocar «Presupuesto de Lucía» abre el detalle dentro de la fila (texto explicativo, Monto, Enviado y «Mandarle un recordatorio»). El sheet del prototipo quedó superado.  
 *Corrección:* Ninguna en la app. Retirar el sheet del mapa si todavía figura.
 
-**12 · `grabando` — Grabando** — **DIFERENTE · A** · DEVICE  
+**12 · `grabando` — Grabando** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
 Prototipo: [grabando](2026-10-16-relevamiento-capturas/proto-mapa-grabando.png) · App: [grabando](2026-10-16-relevamiento-capturas/app-mapa-grabando.png) · [deslizando a la izquierda sin armar](2026-10-16-relevamiento-capturas/app-mapa-grabando-deslizando-izquierda-sin-armar.png)  
 *Diferencia:* Medido en Gastos con un dedo sostenido (`adb shell input motionevent DOWN` sin `UP`, sin voz: no hace falta audio para ver la pantalla). Aparecen punto rojo, reloj «0:01» y «‹ Deslizá para cancelar» **debajo** del botón del micrófono, que se pone pálido; arriba, candado, flecha y una franja de onda. El prototipo lo dibuja como una barra al pie, «● 0:09 … deslizá para cancelar ‹», con el micrófono naranja a la derecha. Además el botón «Anotar un gasto» queda aplastado en columna y parte la palabra por sílabas («An/o/tar/un/ga/sto»), y el reloj choca con el chevron («0:01‹»). Causa: `BarraSostenida` se dibuja dentro de `MicFuncion` (`voz/MicFuncion.tsx:145`), en la columna angosta de la fila `filaConMic` (`PantallaGastos.tsx:262`, `:329`), en vez de reemplazar al campo; el comentario de `PistasVoz.tsx:85` dice que «no flota». Ver N8.  
+*Medición 2026-11-03 (código en `origin/main`, SM-N31):* **La causa medida arriba ya no existe.** `PantallaGastos.tsx:317` monta `DockFuncion` → `DockEntrada` (SM-I2/J1), no `MicFuncion` con `BarraSostenida` en `filaConMic`. En `DockEntrada.tsx:42,150-152` la barra sostenida entra por `enLugarDelCampo` del `Composer`: reemplaza al campo en la misma fila, con el mic en su lugar; test `DockEntrada.test.tsx:108`. **Lo que el código NO puede decir** y por eso la etiqueta pasa de A a NO-VERIFICABLE y no a CONFORME: que en el teléfono la barra ocupe el ancho real al pie, que «Anotar un gasto» ya no se parta, y que el cancelar deslizando siga armando tras mover la zona del gesto (`BotonVoz.tsx`). Eso es una captura de device (`adb shell input motionevent` DOWN/MOVE).
 *Corrección:* Que la barra de grabación ocupe el ancho al pie y reemplace al campo, como en el prototipo (N8). El cancelar al deslizar a la izquierda **sí funciona** (verificado en device con `adb`, ver N8: las corridas que no lo armaban medían en píxeles un umbral que está en dp).
 
-**13 · `bloqueado` — Audio bloqueado** — **DIFERENTE · A** · DEVICE  
+**13 · `bloqueado` — Audio bloqueado** — **NO-VERIFICABLE** · DEVICE+CÓDIGO  
 Prototipo: [bloqueado](2026-10-16-relevamiento-capturas/proto-mapa-bloqueado.png) · App: [bloqueado](2026-10-16-relevamiento-capturas/app-mapa-bloqueado.png)  
 *Diferencia:* Con `DOWN` y seis `MOVE` hacia arriba (927 → 700 px) la grabación se fija: aparecen tacho, onda, reloj «0:02», pausa y enviar (círculo rojo). El prototipo los dibuja en una barra al pie con tacho, onda ancha, «0:09», pausa y enviar. En la app los controles flotan a media pantalla en lugar de ir en una barra al pie, la onda es angosta y el reloj la pisa, y «Anotar un gasto» colapsa a una tira vertical vacía a la derecha (mismo N8). Se descartó con el tacho: no se envió nada (la lista de gastos y el hilo del chat quedaron sin cambios).  
+*Medición 2026-11-03 (código en `origin/main`, SM-N31):* Mismo cambio que `grabando`: ya no hay controles flotando a media pantalla en Gastos. Fijado, `DockEntrada.tsx:121-131` renderiza `ControlesFlotantes` (tacho, onda, reloj, pausa, enviar) y oculta el composer en vez de desmontarlo (`:134`, test `DockEntrada.test.tsx:128`). **NO-VERIFICABLE-SIN-APP:** si esa fila queda al pie a ancho completo con la onda ancha y sin que el reloj la pise exige captura de device.
 *Corrección:* Mismo arreglo que «Grabando» (N8): barra al pie, de ancho completo.
 
 **14 · `card` — La card en la función** — **CONFORME** · DEVICE  
@@ -239,16 +241,18 @@ Prototipo: [comousar](2026-10-16-relevamiento-capturas/proto-mapa-comousar.png) 
 *Corrección:* Igualar contenedor y numeración.  
 *Vínculo:* F11-comousar
 
-**34 · `soporte` — Soporte técnico** — **DIFERENTE · A** · DEVICE  
+**34 · `soporte` — Soporte técnico** — **DIFERENTE · B** · CÓDIGO  
 Prototipo: [soporte](2026-10-16-relevamiento-capturas/proto-mapa-soporte.png) · App: [soporte](2026-10-16-relevamiento-capturas/app-soporte.png)  
 *Diferencia:* Falta el clip de adjuntar; la app suma el botón de voz grande y párrafos de aclaración. La barra con campo y mic existe en ambos. El hilo es dato del tenant.  
 *Corrección:* Agregar el clip; quitar el botón de voz grande si el mapa manda.  
+*Medición 2026-11-03 (código, prototipo `prototipo/index.html:2154-2210` contra `PantallaSoporte.tsx`):* (1) **El clip YA existe**: `PantallaSoporte.tsx:168` pasa `onFoto` al dock y `Composer.tsx:76,145` lo dibuja; test `PantallaSoporte.test.tsx:514`. El «Falta el clip» de arriba quedó vencido (SM-K7). (2) Las divergencias que quedan son de **texto y están decididas por escrito**: sin «Antes de 4 h hábiles» porque no hay SLA vigente (`textosSoporte.ts:3-5`, `BL-O7`); «qué viaja» dice asunto + resumen y no «esta conversación» porque es lo único verificado (`textosSoporte.ts:7-9`); el avatar es el isotipo y no el escudo del prototipo, decisión del 2026-09-18 (`PantallaSoporte.tsx:111-120`). (3) **NO-VERIFICABLE-SIN-APP**: si el dock se ve como «botón de voz grande» (la queja del corpus) exige ver la app corriendo; por código el mic es el del `DockEntrada` común. No se marca conforme por las dudas.
 *Vínculo:* F11-soporte-hilo · F11-soporte-ticket
 
-**35 · `feedback` — Contanos qué tal** — **DIFERENTE · A** · DEVICE  
+**35 · `feedback` — Contanos qué tal** — **DIFERENTE · B** · CÓDIGO  
 Prototipo: [feedback](2026-10-16-relevamiento-capturas/proto-mapa-feedback.png) · App: [feedback-0](2026-10-16-relevamiento-capturas/app-feedback-0.png)  
 *Diferencia:* Estructura: campo dentro o fuera de tarjeta; «Mandar» sólido contra deshabilitado; el mes va a la derecha en el prototipo y debajo en la app.  
 *Corrección:* Igualar estructura y posición del mes.  
+*Medición 2026-11-03 (código, prototipo `prototipo/index.html:2181-2210` contra `PantallaFeedback.tsx`):* (1) **El mes ya va a la derecha** de cada fila (`LoPedisteVos.tsx:63-71`, `.cuando` del mapa; SM-K7 TERMINADO). (2) Bajada, pregunta «¿Qué le cambiarías?», placeholder, «Dictarlo»/«Mandar» y la nota de derivación a Soporte coinciden con el prototipo (`PantallaFeedback.tsx:111-133,151,181,222`). (3) **Diferencia que queda y es deliberada**: «Mandar» está deshabilitado con el campo vacío (`PantallaFeedback.tsx:184`, `deshabilitado: !puedeEnviarTexto`); el prototipo lo dibuja siempre sólido. Es un guard (no mandar vacío), no un descuido. (4) **NO-VERIFICABLE-SIN-APP**: si el `CampoTexto` queda dentro de una tarjeta blanca como `.redactar` o suelto exige ver el render; por código no se decide.
 *Vínculo:* F11-feedback
 
 **36 · `hitl` — Confirmación** — **DIFERENTE · A** · DEVICE  
@@ -362,6 +366,7 @@ Prototipo: [afip](2026-10-16-relevamiento-capturas/proto-mapa-afip.png) · App: 
 Prototipo: [apps](2026-10-16-relevamiento-capturas/proto-mapa-apps.png) · App: [apps-0](2026-10-16-relevamiento-capturas/app-apps-0.png)  
 *Diferencia:* El grupo «Trabaja sola, de fondo» existe (`PantallaApps.tsx:111,124`). Falta la frase «No puede leerlos» en Gmail: la app dice «Enviá mails desde el chat.» (el comentario `:79` explica que `capacidades` decía «leer y buscar», que el conector no hace). El estado va como botón y no como etiqueta a la derecha; el mapa lista seis apps (con Google Sheets) y la app cinco. «Cada app por lo que habilita» sí se cumple.  
 *Corrección:* Agregar «No puede leerlos» a Gmail (decisión del mockup 13); revisar Sheets; mover el estado a una etiqueta.  
+*Medición 2026-11-03 (código, prototipo `prototipo/index.html:2332-2346` contra `PantallaApps.tsx` y `catalog.py`):* **Tres de los cuatro puntos de arriba están vencidos.** (1) «No puede leerlos» ya está en Gmail: `catalog.py:73` «Enviá mails desde el chat. No puede leerlos.» con test que lo ata a la capacidad real (`test_catalogo_descripcion_afirma_capacidad.py`). (2) El estado ya es etiqueta a la derecha «● Conectada» (`PantallaApps.tsx:317-334`, SM-K4). (3) El catálogo lista seis apps, Sheets incluida (`catalog.py:60-106`), y el contador «N conectadas de 6» existe (`PantallaApps.tsx:131,263`). **Lo que queda y por eso sigue A:** el texto de las descripciones del catálogo no es el del prototipo: Drive dice «Guardá tus facturas en tu Google Drive.» (`catalog.py:91`) y el prototipo «Archiva tus facturas automáticamente. No se usa por chat.» (`index.html:2344`); Gmail «Enviá mails desde el chat» contra «Mandar correos por vos» (`:2338`), y así las demás. No hay decisión escrita que avale la diferencia; el texto vive en `catalog.py` (backend), no en la app. Corrección: alinear `catalog.py` al mapa o ajustar el mapa a lo que el catálogo ya dice. **NO-VERIFICABLE-SIN-APP:** el render de la píldora y del logo en la fila.
 *Vínculo:* SM-K4 · F11-apps (padrón viejo)
 
 **48 · `plan` — Mi plan** — **DIFERENTE · B** · CÓDIGO — **RESUELTO** (decisión del operador, 2026-10-16: VISIÓN post-beta)  
@@ -376,10 +381,11 @@ Prototipo: [cuenta](2026-10-16-relevamiento-capturas/proto-mapa-cuenta.png) · A
 *Corrección:* Agregar «desde …» y chevrons; decidir «Cambiar el mail» (pregunta 6).  
 *Vínculo:* F11-cuenta · F11-cuenta-b
 
-**50 · `apar` — Apariencia** — **DIFERENTE · A** · DEVICE  
+**50 · `apar` — Apariencia** — **DIFERENTE · B** · CÓDIGO  
 Prototipo: [apar](2026-10-16-relevamiento-capturas/proto-mapa-apar.png) · App: [apariencia](2026-10-16-relevamiento-capturas/app-apariencia.png)  
 *Diferencia:* Cambia el detalle del mosaico (mini-vista contra muestras) y se pierde el chevron; la nota de la app agrega una frase.  
 *Corrección:* Igualar el mosaico y el chevron.  
+*Medición 2026-11-03 (código, prototipo `prototipo/index.html:2393-2408` contra `PantallaSkins.tsx`):* Estructura, título, bajada, «Elegí el tema», dos tarjetas lado a lado y «Como el teléfono» en su fila coinciden (`PantallaSkins.tsx:149-197`). Las diferencias que quedan: (1) la muestra lleva 4 chips (fondo, superficie, acento, acento2) y no los 2 puntos del prototipo; es una **enmienda fundada con test** que fija esos 4 (`PantallaSkins.tsx:145-148`, `PantallaSkins.test`). (2) En «Como el teléfono» el chevron del prototipo (`index.html:2404`) lo ocupa el marcador «✓ Activo» (`PantallaSkins.tsx:125-132`): la fila elige una regla, no abre una pantalla, así que un chevron prometería una navegación que no existe. **Esa sustitución no tiene decisión escrita**: es mi lectura del código; si el operador quiere el chevron, vuelve a ser A. (3) La nota de la app agrega «Se aplica al instante y queda guardado para la próxima sesión.» (`PantallaSkins.tsx:190-193`). **NO-VERIFICABLE-SIN-APP:** el render del mosaico (proporción y peso de los chips).
 *Vínculo:* F11-apariencia
 
 **51 · `hablar` — Cómo hablarle** — **DIFERENTE · A** · DEVICE  

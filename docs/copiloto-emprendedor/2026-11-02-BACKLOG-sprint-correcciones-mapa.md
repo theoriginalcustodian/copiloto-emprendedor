@@ -126,7 +126,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N28** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/3: capturas de device — Mi dia SIN el avatar y sin hueco de 40px, Funciones CON el avatar funcionando (la mit… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
 | **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1/2/5 de DEVICE: capturas app||mapa de las DOS entradas (?ver=splash y ?ver=volver) diciendo por que camino entro… |
-| **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | PREMISA VENCIDA, medido 2026-11-03 (5dfe93a1, #1484): la causa que la ficha declaraba -- BarraSostenida dentro de fil… |
+| **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion d… |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO la captura de device de las secciones, que hoy la tenencia la tiene frontend1. El tope de monotributo queda FUER… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | RE-MEDIDO 2026-11-03. El pedido_ a backend esta CONTESTADO y cerrado, y encontro un defecto REAL que nadie habia pedi… |
@@ -2301,7 +2301,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend2
-- **Falta:** PREMISA VENCIDA, medido 2026-11-03 (5dfe93a1, #1484): la causa que la ficha declaraba -- BarraSostenida dentro de filaConMic -- YA NO EXISTE en main. Gastos monta DockFuncion -> DockEntrada (PantallaGastos.tsx:317), la barra entra por enLugarDelCampo y los controles fijados ocupan la fila (DockEntrada.tsx:42,121-152, tests :108 y :128). La vencieron I2/J1 sin que nadie lo notara, que es la clase que este sprint viene pagando: una Falta vencida se lee como trabajo y se vuelve a despachar. Las entradas 12 y 13 del corpus pasan de DIFERENTE-A a NO-VERIFICABLE, y NO a CONFORME -- el veredicto correcto, porque que la causa se haya ido no prueba que el efecto este bien. FALTA la captura de device: ancho real al pie, «Anotar un gasto» sin partirse, y la regresion del cancelar deslizando, que exige motionevent y nunca input tap. Instrumento mapa-51-estado.py: NO-VERIFICABLE 7 -> 9, A 28 -> 26, en condicion se queda en 16 de 51.
+- **Falta:** Captura de device de grabando (sostenido) y bloqueado (fijado) en Gastos con adb motionevent DOWN/MOVE, y regresion del cancelar deslizando. En codigo la causa medida ya no existe (DockFuncion->DockEntrada, enLugarDelCampo; DockEntrada.test.tsx:108,128): entradas 12 y 13 pasan de A a NO-VERIFICABLE.
 - **Dueño:** frontend2
 - **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
   entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
