@@ -123,3 +123,44 @@ El caso completo, con las 6 lÃ­neas y sus commits:
 `docs/copiloto-emprendedor/Auditorias/2026-11-03-rescate-checkout-compartido-seis-lineas-que-no-estan-en-ningun-commit.md`
 (titular reescrito, no appendeado: de dos artefactos gana el que circula).
 
+
+---
+
+## Refuerzo 2026-11-03 — el daño no es equivocarse: es que el `Falta:` MANDA trabajo
+
+La entrada de arriba mide la base rancia en un **diff**, donde el síntoma es que la dirección se
+invierte. Hay una segunda forma, y es peor, porque no produce una lectura confusa sino una **orden**.
+
+Medí en código los tres puntos de `SM-N34` —el «+ Nuevo evento», el punto de estado y la línea del
+ahora— y escribí en el `Falta:` de la ficha: **«medido en código: no existe»**. Las tres estaban
+mergeadas en `64e9f29a` (#1462): `PantallaAgenda.tsx:126`, `posicionLineaAhora` en
+`packages/core/src/api/agenda.ts`, tests en `lineaAhora.test.ts` y `PantallaAgenda.test.tsx:153`.
+Mi medición corrió contra una base anterior a ese PR. Control negativo: antes de `64e9f29a`, 0 hits.
+
+**Y el DoD 1 de esa misma ficha ordenaba literalmente lo contrario:** *«decir si existen hoy con
+`path:línea`; si existen, la ficha cierra con la cita y NO se implementa de nuevo»*. Así que mi
+`Falta:` mandaba a reimplementar justo lo que el DoD prohíbe reimplementar — y lo hubiera pagado la
+otra sesión, no yo.
+
+**Un `Falta:` medido contra una base rancia no describe un hueco: FABRICA trabajo.** Un diff mal
+leído se corrige cuando alguien lo mira; un `Falta:` escrito en el registro **se ejecuta**, porque
+para eso existe. Por eso un campo que ORDENA tiene un umbral más alto que uno que informa.
+
+**La regla:** antes de escribir «no existe» en un `Falta:` o un `Cierre:`, `git fetch` y medir contra
+`origin/main`, con el control negativo del commit que lo habría agregado (`merge-base --is-ancestor`).
+Y si la ficha tiene un punto del tipo «primero decí si ya existe», ese punto **es** la medición: si tu
+hallazgo lo contradice, el sospechoso es tu base, no el código.
+
+### La mitad simétrica, el mismo día: el resultado de otra sesión se hereda, el MECANISMO no
+
+`SM-N28` cerró sus puntos 4 y 5 con una medición de otra sesión que citaba
+`modules/principal/` y `modules/agenda/`. **Esos paths no existen** — son `src/shell/` y
+`modules/midia/`. Mi grep contra *sus* paths dio **vacío en todo**, y por un momento pareció que nada
+de lo que afirmaba estaba ahí. El contenido era correcto; la cita de path, no.
+
+Las dos caras del mismo día: en N34 tenía razón el peer y la base vieja era mía; en N28 tenía razón
+el peer en el **resultado** y se equivocaba en el **mecanismo**. Lo que sobrevive de una medición
+ajena es **qué** se midió; **dónde** y **cómo** se re-verifica siempre, y por eso un vacío contra un
+path citado de segunda mano es [[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]
+y no un hallazgo. Ver también [[la-cita-de-procedencia-muere-en-el-merge]] y
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]].
