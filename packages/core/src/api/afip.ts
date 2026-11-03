@@ -312,6 +312,13 @@ export interface EstadoAfip {
    * teléfono mostraría "cargá tus datos fiscales" sobre un perfil que existe.
    */
   cuit?: string | null;
+  /**
+   * SM-N44 — el CUIT del PROPIO tenant cuando el pedido fue por un CUIT que no es suyo (el backend
+   * lo echa en `cuit` con `conectado:false`). `null`/ausente = el pedido era del tenant, o no tiene
+   * ninguno vinculado. Existe para que el cliente CORRIJA su caché: una respuesta que dice «no» no
+   * puede ser la fuente de lo que se vuelve a preguntar.
+   */
+  cuitVinculado?: string | null;
   conectado: boolean;
   wsAutorizados: string[];
   perfilCompleto: boolean;
@@ -715,6 +722,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       // silencio — el selector de ambiente habría quedado degradado para siempre, incluso con el
       // backend ya arreglado, y el síntoma ("no anda") no habría apuntado nunca acá.
       cuit?: string;
+      cuit_vinculado?: string | null;
       ambiente?: AmbienteAfip;
       ambientes_vinculados?: AmbienteAfip[];
       /** Ver `EstadoAfip.driveConectado`: `null` significa "no se pudo averiguar", NO "desconectado". */
@@ -723,6 +731,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
     return {
       status: 'ok',
       cuit: raw.cuit,
+      cuitVinculado: raw.cuit_vinculado,
       conectado: raw.conectado,
       wsAutorizados: raw.ws_autorizados,
       perfilCompleto: raw.perfil_completo,

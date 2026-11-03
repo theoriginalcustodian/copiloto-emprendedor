@@ -403,3 +403,61 @@ def test_ADVERSARIAL_A_no_ve_el_listado_ni_el_detalle_de_los_comprobantes_de_B(c
 
     # y B sigue viendo lo suyo — si el fixture de alta fallara en silencio, todo daría vacío por igual
     assert de_b.detalle_por_id(rid_b)["receptor_nombre"] == "Secreto de B"
+
+
+# ---------------------------------------------------------------------------
+# SM-N44: `GET /afip/estado` sin `cuit` resuelve SIEMPRE con el CUIT del tenant del request
+# ---------------------------------------------------------------------------
+
+
+def _app_afip_con_stores_reales(conn_de_tenant):
+    """El endpoint REAL con los stores REALES sobre Postgres (RLS incluido). El tenant del request sale del
+    header `x-t` (en producción sale del JWT vía `require_tenant`); lo demás no interviene en `/afip/estado`."""
+    from fastapi import FastAPI, Header
+    from fastapi.testclient import TestClient
+    from afip_web import create_afip_app
+
+    async def require_tenant(x_t: str = Header()) -> str:    # (sin `Request`: con `from __future__ import annotations` no se resolvería)
+        return x_t
+
+    app_afip = create_afip_app(
+        require_tenant=require_tenant,
+        perfil_store_factory=lambda cid: AfipPerfilStore(conn_de_tenant(cid), cid),
+        cred_store_factory=lambda cid: AfipCredentialStore(conn_de_tenant(cid), cid, CryptoFake()),
+        handoff_factory=lambda cid: None,
+        start_onboarding=lambda *a, **k: "wf",
+        consultar_onboarding=lambda *a, **k: None,
+    )
+    app = FastAPI()
+    app.include_router(app_afip.router)
+    return TestClient(app)
+
+
+def test_adversarial_N44_estado_sin_cuit_nunca_responde_con_el_cuit_de_otro_tenant(conn_de_tenant, tenant_a, tenant_b):
+    """ADVERSARIAL (BOLA / OWASP API1:2023): A y B tienen un CUIT cada uno, y un tercero (C) ninguno.
+    `GET /afip/estado` SIN `cuit` devuelve a cada uno LO SUYO y a C «nada vinculado»: jamás el CUIT de otro.
+    El control positivo (A y B ven el suyo) es lo que impide que «C no ve nada» sea un verde vacío."""
+    cuit_a, cuit_b, tenant_c = "20111111112", "20269996065", str(uuid.uuid4())
+    for tenant, cuit in ((tenant_a, cuit_a), (tenant_b, cuit_b)):
+        AfipCredentialStore(conn_de_tenant(tenant), tenant, CryptoFake()).save(cuit, cert=CERT_FALSO, key=KEY_FALSA)
+        AfipPerfilStore(conn_de_tenant(tenant), tenant).save(
+            cuit, razon_social="X", domicilio_comercial="Calle 1", condicion_iva="monotributo",
+            ingresos_brutos="20-1-2", inicio_actividades=date(2020, 1, 1), punto_venta=1)
+    client = _app_afip_con_stores_reales(conn_de_tenant)
+
+    r_a, r_b = (client.get("/afip/estado", headers={"x-t": t}) for t in (tenant_a, tenant_b))
+    assert r_a.status_code == 200 and r_b.status_code == 200, (r_a.status_code, r_a.text, r_b.status_code, r_b.text)
+    ve_a, ve_b = r_a.json(), r_b.json()
+    assert (ve_a["cuit"], ve_a["conectado"], ve_a["perfil_completo"]) == (cuit_a, True, True)     # control positivo
+    assert (ve_b["cuit"], ve_b["conectado"], ve_b["perfil_completo"]) == (cuit_b, True, True)
+
+    ve_c = client.get("/afip/estado", headers={"x-t": tenant_c}).json()
+    assert ve_c["cuit"] is None and ve_c["conectado"] is False and ve_c["perfil_completo"] is False
+
+    # Y pidiendo EXPLÍCITAMENTE el CUIT ajeno (es lo que hace un teléfono con un CUIT cacheado de otra cuenta):
+    # se responde la verdad del que pregunta (no vinculado), sin filtrar nada del dueño.
+    ajeno = client.get("/afip/estado", params={"cuit": cuit_b}, headers={"x-t": tenant_a}).json()
+    assert ajeno["conectado"] is False and ajeno["perfil_completo"] is False and ajeno["ambientes_vinculados"] == []
+    # SM-N44: la respuesta le dice a A cuál es SU CUIT (para que el cliente se corrija), nunca el de B.
+    assert ajeno["cuit_vinculado"] == cuit_a and cuit_b not in (ajeno["cuit_vinculado"] or "")
+    assert ve_a["cuit_vinculado"] is None and ve_c["cuit_vinculado"] is None      # derivó el suyo, o no tiene

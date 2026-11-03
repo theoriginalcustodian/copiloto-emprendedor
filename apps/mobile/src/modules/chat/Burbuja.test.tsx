@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { SKINS } from '../../theme/tokens';
 import { Burbuja } from './Burbuja';
 import { ListaMensajes } from './ListaMensajes';
 
@@ -58,5 +59,39 @@ describe('Burbuja — AVATARASIST: el isotipo del asistente', () => {
     expect(screen.getByText('Dale.')).toBeTruthy();
     expect(screen.getByText('Segundo.')).toBeTruthy();
     expect(screen.getAllByTestId('chat-bubble-avatar')).toHaveLength(2);
+  });
+});
+
+/**
+ * SM-N43 — los colores de las burbujas salen del PROTOTIPO, no del acento. `prototipo/index.html:385-387` (`.mio`):
+ * fill `--arena-30` #F8E2DB con tinta `--negro` #1A1512; `:330-331` (`.msg`): fill `--blanco` #FFFFFF. Hasta
+ * SM-N43 estaban cruzadas: la propia era terracota profundo con tinta clara y la del asistente un crema que el
+ * prototipo no contiene. El tema oscuro queda fuera (el prototipo no lo tiene) y conserva lo que pintaba.
+ */
+describe('Burbuja — SM-N43: colores del prototipo', () => {
+  const claro = SKINS.claro.glass;
+  const oscuro = SKINS.oscuro.glass;
+
+  it('🔴 tema claro: la propia es arena-30 con tinta negra y la del asistente es blanca', () => {
+    expect([claro.mio1, claro.mio2]).toEqual(['#F8E2DB', '#F8E2DB']);
+    expect(claro.tintaMio).toBe('#1A1512');
+    expect([claro.asistente1, claro.asistente2]).toEqual(['#FFFFFF', '#FFFFFF']);
+  });
+
+  it('control negativo: la propia YA NO es el acento (ub1/ub2), que sigue siendo del HUD y los controles', () => {
+    expect(claro.mio1).not.toBe(claro.ub1);
+    expect(claro.mio2).not.toBe(claro.ub2);
+    expect(claro.ub1).toBe('#B04A2E');
+    expect(oscuro.mio1).toBe(oscuro.ub1); // oscuro: sin cambio de comportamiento
+  });
+
+  it('🔴 la tinta de la propia se pinta en el texto renderizado (no sólo se declara)', async () => {
+    await render(
+      <ThemeProvider>
+        <Burbuja role="user" text="Cobrale 2500 a Lucía" />
+      </ThemeProvider>,
+    );
+    const estilo = [screen.getByText('Cobrale 2500 a Lucía').props.style].flat(Infinity);
+    expect(estilo.some((e: any) => e && e.color === claro.tintaMio)).toBe(true);
   });
 });

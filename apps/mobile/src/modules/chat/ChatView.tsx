@@ -12,6 +12,7 @@ import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { conAlfa } from '../../theme/glass/conAlfa';
+import { ScrimDock } from '../../theme/glass/ScrimDock';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChat } from './useChat';
@@ -259,13 +260,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         style={styles.scrimSuperior}
       />
       <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
-        <LinearGradient
-          testID="chat-dock-scrim"
-          pointerEvents="none"
-          colors={[conAlfa(tema.color.fondo, 0), conAlfa(tema.color.fondo, ALFA_SCRIM_ABAJO)]}
-          locations={[0, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+        <ScrimDock testID="chat-dock-scrim" />
       <DockEntrada
         motivoFallo={estado?.motivoFallo ?? null}
         sendStatus={estado?.sendStatus ?? 'idle'}
@@ -293,7 +288,6 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
 }
 
 /** Opacidad del scrim en el borde inferior del dock. Alta pero no 1: el chat se sigue viendo correr, sólo atenuado. */
-const ALFA_SCRIM_ABAJO = 0.9;
 /** Opacidad del scrim bajo el asa (borde superior de la lista) y su alto. Mismo criterio que el de abajo. */
 const ALFA_SCRIM_ARRIBA = 0.9;
 const ALTO_SCRIM_ARRIBA = 28;

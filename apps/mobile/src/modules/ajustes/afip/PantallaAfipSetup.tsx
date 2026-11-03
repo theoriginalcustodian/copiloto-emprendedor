@@ -74,6 +74,9 @@ const INTERVALO_POLL_MS = 3000;
  *  nunca infinito. Pasado esto, se avisa y se ofrece reintentar en vez de girar para siempre. */
 const TOPE_ESPERA_MS = 10 * 60 * 1000;
 
+/** SM-N35 — lo que dice el campo cuando se toca Guardar con la fecha de inicio sin cerrar. */
+const MENSAJE_FECHA_INCOMPLETA = 'Completá la fecha entera (DD/MM/AAAA).';
+
 const TODAS_LAS_CONDICIONES_IVA: OpcionSelect[] = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
   { valor: 'responsable_inscripto', etiqueta: 'Responsable inscripto' },
@@ -262,6 +265,15 @@ export function PantallaAfipSetup() {
   }
 
   async function guardarPerfilHandler() {
+    // SM-N35: `CampoFecha` emite `''` mientras los tres segmentos no cierran una fecha válida, y el backend
+    // (`PerfilBody.inicio_actividades: date`, sin default) la rechaza con un 422 que llega sin `campo` y
+    // cae en el error genérico: el formulario se ve completo y "no se pudo guardar". Se corta ACÁ, antes de
+    // mandar, y se marca el campo que falta -- el servidor es la red, no el aviso.
+    if (camposPerfil.inicioActividades === '') {
+      setErroresPerfil({ inicio_actividades: MENSAJE_FECHA_INCOMPLETA });
+      setEstadoPerfil('idle');
+      return;
+    }
     setErroresPerfil({});
     setEstadoPerfil('enviando');
     const puntoVenta = Math.trunc(Number(camposPerfil.puntoVenta.replace(',', '.'))) || 0;
@@ -343,7 +355,16 @@ export function PantallaAfipSetup() {
       if (!cacheado) return;
       setCuit(cacheado);
       await precargarPerfil(cacheado);
-      void refrescarEstadoGeneral(cacheado);
+      const r = await refrescarEstadoGeneral(cacheado);
+      // 🔴 SM-N44 — mismo defecto que `PantallaFacturacion`: si el CUIT cacheado no es del tenant, el backend
+      // manda el vinculado y la caché se CORRIGE (se reemplaza, no sólo se muestra), y se recarga con ése.
+      const vinculado = r.estado?.cuitVinculado;
+      if (vinculado && vinculado !== cacheado) {
+        void guardarCuitCacheado(vinculado);
+        setCuit(vinculado);
+        await precargarPerfil(vinculado);
+        void refrescarEstadoGeneral(vinculado);
+      }
     })();
   }, []);
 

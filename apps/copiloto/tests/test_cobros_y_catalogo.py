@@ -543,3 +543,39 @@ def test_corregir_el_monto_a_cero_o_negativo_NO_se_acepta(conn_de_tenant, tenant
     for invalido in (0, -1, "0"):
         with pytest.raises(CobroInvalido):
             store.completar(ingreso["id"], {"monto": invalido})
+
+
+# ── SM-N21: la frase del cobro con el store REAL (el fake de los unit tests mentía el contrato) ────────
+
+@necesita_pg
+def test_N21_cobro_total_con_el_store_real_no_dice_que_quedan_pesos_por_pagar(conn_de_tenant, tenants, monkeypatch):
+    """Hallazgo de la sonda con LLM real: una factura cobrada COMPLETA decía «Todavía quedan $0 por pagar» porque
+    el tool comparaba `resumen["estado"]` (estado del comprobante, 'emitida') con COBRADA. Se ejercita el tool con
+    el `CobroStore` REAL; con un fake que devuelva `estado:"cobrada"` este test saldría verde aunque el bug viva."""
+    from types import SimpleNamespace
+    from tool_catalog import _run_marcar_factura_cobrada
+    monkeypatch.setenv("UC_REPLY_LITERAL", "1")
+    a, _ = tenants
+    _comprobante(conn_de_tenant, a, "70000.00", nro=11)
+    ctx = SimpleNamespace(cliente_id=a)
+    fabrica = lambda cid: CobroStore(conn_de_tenant(cid), cid)       # noqa: E731
+
+    res = _run_marcar_factura_cobrada({"factura": "panadería"}, ctx, str(uuid.uuid4()),
+                                      lambda: "2026-11-03T12:00:00", fabrica)
+    literal = res.observation["reply_literal"]
+    assert literal.startswith("Registré $70.000 de la factura 11 (Panadería).")
+    assert "quedan" not in literal and "quedan" not in res.observation["result"]
+
+
+@necesita_pg
+def test_N21_cobro_parcial_con_el_store_real_SI_dice_cuanto_queda(conn_de_tenant, tenants, monkeypatch):
+    """La mitad negativa del anterior: si el aviso se apagara siempre, el parcial dejaría de decir cuánto falta."""
+    from types import SimpleNamespace
+    from tool_catalog import _run_marcar_factura_cobrada
+    monkeypatch.setenv("UC_REPLY_LITERAL", "1")
+    a, _ = tenants
+    _comprobante(conn_de_tenant, a, "1000.00", nro=12)
+    fabrica = lambda cid: CobroStore(conn_de_tenant(cid), cid)       # noqa: E731
+    res = _run_marcar_factura_cobrada({"factura": "panadería", "monto": "400"}, SimpleNamespace(cliente_id=a),
+                                      str(uuid.uuid4()), lambda: "2026-11-03T12:00:00", fabrica)
+    assert "Todavía quedan $600 por pagar" in res.observation["reply_literal"]

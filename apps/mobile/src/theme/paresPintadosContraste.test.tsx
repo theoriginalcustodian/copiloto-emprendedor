@@ -809,6 +809,11 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `tema.color.acento` (#de7250) como texto/link directo sobre superficies claras neutras --
     // patrón "texto acento sobre tarjeta clara" repetido en detalle de presupuesto/comprobante,
     // botón "confirmar" de PasoResumen, chip seleccionado de CampoSelect.
+    // SM-N43 (2026-11-03): `superficie`/`superficieAlta` pasaron a `#FFFFFF` (las cards y los campos del prototipo
+    // son `--blanco`; `#F5EBD5`/`#FAF7EC` eran hex que el prototipo no contiene). El MISMO acento-como-texto de la deuda
+    // de abajo ahora cae sobre blanco y sobre su overlay: el ratio SUBE (2,95 -> 3,17 y 2,57 -> 2,83), no empeora.
+    '#de7250→#ffffff': { min: 3.16, clase: 'texto', motivo: 'acento como texto (total/CAE de DetallePresupuesto/DetalleComprobante, chip seleccionado de CampoSelect) sobre superficie blanca -- mismo patron que #de7250→#faf7ec, que dejo de existir con SM-N43; el ratio mejora.' },
+    '#de7250→#f2f2f2': { min: 2.82, clase: 'texto', motivo: 'acento como texto de accion (mandar por mail / guardar) sobre el overlay de la superficie blanca -- sucesor de #de7250→#ebe7e0 (SM-N43); el ratio mejora.' },
     '#de7250→#faf7ec': { min: 2.95, clase: 'texto', motivo: 'acento como texto (total/CAE) sobre superficie clara -- DetallePresupuesto/DetalleComprobante.' },
     '#de7250→#eeebe0': { min: 2.65, clase: 'texto', motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie clara.' },
     '#de7250→#ebe7e0': { min: 2.57, clase: 'texto', motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel clara.' },

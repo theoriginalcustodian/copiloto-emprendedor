@@ -86,3 +86,40 @@ base de dos merges atrás, que es exactamente la inversión que describe esta en
 es una base rancia esperando ser usada. Cuando su PR se mergea, el worktree deja de ser un lugar
 donde trabajar y pasa a ser sólo un lugar donde leer. Para el próximo trabajo, uno nuevo desde
 `origin/main`; no le busques la vuelta al que ya tenés abierto.
+
+---
+
+## Refuerzo 2026-11-03 â€” reincidÃ­, y con ESTE archivo abierto para reforzarlo
+
+El mismo defecto, en el mismo checkout compartido, 27 dÃ­as despuÃ©s. Esta vez con un medidor
+**mejor** y por eso mÃ¡s convincente: comparÃ© el **nÃºcleo de prosa sin markup** de cada lÃ­nea
+agregada contra el archivo de `main`, declarÃ© Â«6 lÃ­neas Ãºnicas que no viven en ningÃºn commitÂ»,
+**las commiteÃ© como rescate** (`01d42aab`) y despachÃ© a una sesiÃ³n a portarlas. Las 6 eran
+redacciÃ³n vieja que `main` habÃ­a reemplazado o derogado por decisiÃ³n firmada del operador
+(`fffc3be8`/#1293 Â· `e791cf5e`/#1346 Â· `dc8d2ffa`/#1438). Lo cazÃ³ frontend2 con shas, y la
+verificaciÃ³n contra la historia de `main` le dio razÃ³n entera.
+
+**Lo nuevo que este caso agrega, y es lo que lo vuelve caro:** cuando llegÃ³ la refutaciÃ³n yo estaba
+**abriendo este archivo para escribirle un refuerzo**. La secciÃ³n Â«Â¿y si un commit lo BORRÃ“ a
+propÃ³sito?Â» ya decÃ­a, con esas palabras, que el discriminante es `git log origin/main -S'<token>'`.
+No lo corrÃ­. No por olvido: **leÃ­ la entrada como "ya cubierto"**. Una regla escrita se cita como
+cumplida; lo Ãºnico que la cumple es el comando.
+
+**Y el modo de falla de segundo orden:** antes de equivocarme resolvÃ­ bien una disputa real â€”dos
+medidores propios se contradecÃ­an (`grep` de la frase decÃ­a Â«main la tieneÂ», la lÃ­nea completa decÃ­a
+Â«ausenteÂ») y el nÃºcleo de prosa **era** el sujeto correcto *para la pregunta de la envoltura*.
+Haber ganado esa discusiÃ³n me hizo dar por respondida **otra**: Â«Â¿estÃ¡ en main?Â» no es Â«Â¿lo
+borraron?Â». **Un medidor mÃ¡s fino sobre el eje equivocado no da una respuesta mÃ¡s verdadera, da una
+mÃ¡s difÃ­cil de dudar** â€” y el acierto previo funciona como aval.
+
+Chequeo que queda, antes de rescatar **cualquier cosa** de una base rancia:
+
+1. Â¿la prosa estÃ¡ en `main`? â†’ si no, **no concluyas**: son dos mundos.
+2. `git log origin/main -S'<token>' -- <archivo>` â†’ si devuelve commit, **leÃ© su mensaje**.
+3. si el mensaje dice que lo quitÃ³ a propÃ³sito (decisiÃ³n, derogaciÃ³n, refutaciÃ³n en device),
+   rescatarlo es una regresiÃ³n y el veredicto es **descartable**, no Â«sin respaldoÂ».
+
+El caso completo, con las 6 lÃ­neas y sus commits:
+`docs/copiloto-emprendedor/Auditorias/2026-11-03-rescate-checkout-compartido-seis-lineas-que-no-estan-en-ningun-commit.md`
+(titular reescrito, no appendeado: de dos artefactos gana el que circula).
+

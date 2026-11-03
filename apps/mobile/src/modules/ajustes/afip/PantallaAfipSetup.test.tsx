@@ -100,6 +100,12 @@ async function avanzarAPaso3() {
   await fireEvent.press(screen.getByTestId('afip-arca-paso-2-confirmar'));
 }
 
+async function completarFecha(dia = '15', mes = '01', anio = '2020') {
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-dia'), dia);
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-mes'), mes);
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-anio'), anio);
+}
+
 describe('PantallaAfipSetup', () => {
   beforeEach(() => {
     jest.mocked(almacenClave.leer).mockReset().mockResolvedValue(null);
@@ -331,6 +337,34 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
+  it('SM-N44: si el CUIT cacheado no es del tenant, la caché se CORRIGE con `cuitVinculado` y el perfil se recarga con ése', async () => {
+    const PROPIO = '20111111112';
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoOk({ cuit: CUIT, conectado: false, cuitVinculado: PROPIO }))
+      .mockResolvedValue(estadoOk({ cuit: PROPIO, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), PROPIO));
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(PROPIO));
+    expect(almacenClave.guardar).not.toHaveBeenCalledWith(expect.any(String), CUIT);
+  });
+
+  it('SM-N44 control negativo: sin `cuitVinculado` la caché no se toca', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ cuit: CUIT, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
+    await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+    expect(almacenClave.guardar).not.toHaveBeenCalled();
+  });
+
   it('mapeo `afip`: con vínculo dice «ARCA vinculada · CUIT …» y sin vínculo NO lo afirma; label «Condición frente al IVA»', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
@@ -434,6 +468,29 @@ describe('PantallaAfipSetup', () => {
   // -----------------------------------------------------------------------------------------
   // 422 de guardarPerfil -- pinta el campo correcto.
   // -----------------------------------------------------------------------------------------
+  it('SM-N35: con la fecha de inicio incompleta NO se manda nada y se marca el campo (el 422 llegaría sin campo)', async () => {
+    jest.mocked(guardarPerfil).mockClear();
+    await montar();
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-dia'), '01');
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('afip-perfil-inicio-actividades-error')).toHaveTextContent(
+        'Completá la fecha entera (DD/MM/AAAA).',
+      ),
+    );
+    expect(guardarPerfil).not.toHaveBeenCalled();
+
+    // Control positivo: con la fecha cerrada el MISMO botón sí manda, y el aviso se va.
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+    await completarFecha('01', '01', '2020');
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].inicioActividades).toBe('2020-01-01');
+    expect(screen.queryByTestId('afip-perfil-inicio-actividades-error')).toBeNull();
+  });
+
   it('un 422 de guardarPerfil pinta CADA campo con SU mensaje, código del backend sin traducir', async () => {
     jest.mocked(guardarPerfil).mockRejectedValueOnce(
       new ErrorValidacionFiscal([
@@ -444,6 +501,7 @@ describe('PantallaAfipSetup', () => {
 
     await montar();
     await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await completarFecha();
     await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
 
     await waitFor(() =>
@@ -465,6 +523,7 @@ describe('PantallaAfipSetup', () => {
 
     await montar();
     await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await completarFecha();
     await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
 
     await waitFor(() =>

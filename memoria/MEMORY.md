@@ -52,6 +52,7 @@
 - [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra.
 - [🔭🎚️ La condición que el instrumento EXIGE para VER cambia lo medido](la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido.md) — apagué las animaciones y con eso el tap no abría.
 - [🎯🏹 El ESCALADOR acusa al destinatario, nunca al emisor que no cumplió el disparador](el-escalador-acusa-al-destinatario-nunca-al-emisor-que-no-cumplio-el-disparador.md)
+- [🎨 Verificar una PROPIEDAD de la capa no verifica que SOBRE](verificar-una-propiedad-de-la-capa-no-verifica-que-la-capa-sobre.md) — 3 verdes, 3 propiedades. Diffeá contra X.
 - [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md)
 - [🪄💥 Una orden correcta con el COMANDO INCOMPLETO da un éxito falso](una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md) — sin `--base` podó 1 de 21. Tipeá el literal del doc.
 - [🔍🎭 No era «no caza X»: era en su FORMA real](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el contraste mueve UNA variable.
