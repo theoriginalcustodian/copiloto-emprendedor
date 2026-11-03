@@ -162,9 +162,13 @@ class STTConRespaldo:
 
 
 def build_stt():
-    """STT por defecto del front-door: Groq, con OpenRouter de respaldo SÓLO si hay `OPENROUTER_API_KEY` en el env.
-    Con respaldo, el primario no espera ni reintenta ante un 429 (cae al respaldo en el acto: menor latencia para el
-    usuario); sin respaldo, conserva el reintento acotado de `GroqSTT`."""
-    if os.environ.get("OPENROUTER_API_KEY"):
-        return STTConRespaldo(GroqSTT(reintentos_429=0), OpenRouterSTT())
-    return GroqSTT()
+    """STT por defecto del front-door. Con `OPENROUTER_API_KEY` en el env: OpenRouter PRIMARIO y Groq de respaldo
+    (medido 2026-11-02, 25 llamadas c/u: OpenRouter ~US$0,015/h y 25/25 OK, p50 0,88 s; Groq US$0,04/h, p50 0,32 s y
+    429 al agotar el cupo). `STT_PRIMARIO=groq` invierte el orden SIN tocar código. El primario no espera ni reintenta
+    ante un 429: cae al otro en el acto. Sin `OPENROUTER_API_KEY`: sólo Groq, con su reintento acotado de 429."""
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        return GroqSTT()
+    groq, orr = GroqSTT(reintentos_429=0), OpenRouterSTT()
+    if (os.environ.get("STT_PRIMARIO") or "openrouter").lower() == "groq":
+        return STTConRespaldo(groq, orr)
+    return STTConRespaldo(orr, groq)

@@ -87,10 +87,14 @@ def test_openrouter_sin_key_o_formato_raro_lanza(monkeypatch):
         OpenRouterSTT().transcribe(b"x", filename="a.xyz", content_type="application/octet-stream")
 
 
-def test_build_stt_respaldo_solo_si_hay_key(monkeypatch):
+def test_build_stt_orden_segun_env(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    assert isinstance(build_stt(), GroqSTT)                      # sin key: igual que antes (con su reintento de 429)
+    assert isinstance(build_stt(), GroqSTT)                      # sin key de OpenRouter: sólo Groq (con su reintento de 429)
     monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.delenv("STT_PRIMARIO", raising=False)
+    s = build_stt()                                              # default con las dos keys: OpenRouter primario
+    assert isinstance(s.primario, OpenRouterSTT) and isinstance(s.respaldo, GroqSTT)
+    assert s.respaldo._reintentos_429 == 0                       # el primario no espera: cae al otro en el acto
+    monkeypatch.setenv("STT_PRIMARIO", "groq")
     s = build_stt()
-    assert isinstance(s, STTConRespaldo) and isinstance(s.respaldo, OpenRouterSTT)
-    assert s.primario._reintentos_429 == 0                       # con respaldo no se espera: se cae al respaldo en el acto
+    assert isinstance(s.primario, GroqSTT) and isinstance(s.respaldo, OpenRouterSTT) and s.primario._reintentos_429 == 0
