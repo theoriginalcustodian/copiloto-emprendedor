@@ -93,7 +93,6 @@ export function PantallaCuenta() {
           inalcanzable: se arregla con scroll —que sobrevive a fuente grande—, no achicando nada. */}
       <ScrollView
         ref={scrollRef}
-        testID="cuenta-scroll"
         style={styles.contenedor}
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md }}
       >

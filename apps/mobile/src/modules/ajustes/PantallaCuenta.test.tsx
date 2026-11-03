@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 /**
  * ⚠️ **Se preserva el resto del módulo con `requireActual`.** Antes esto devolvía **sólo** `router`, y
@@ -248,11 +248,15 @@ describe('PantallaCuenta', () => {
     await montar();
     expect(screen.getByTestId('cuenta-legal-aceptar')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
-    const scroll = screen.getByTestId('cuenta-scroll');
-    const dentro = (id: string) => within(scroll).queryByTestId(id) !== null;
-    expect(dentro('cuenta-confirmar-salida')).toBe(true);
-    expect(dentro('cuenta-cerrar-sesion-si')).toBe(true);
-    expect(dentro('cuenta-cerrar-sesion-no')).toBe(true);
+    // Cada elemento accionable de la confirmación tiene un ScrollView por ancestro (host RCTScrollView).
+    const dentroDeScroll = (id: string) => {
+      let n = screen.getByTestId(id).parent;
+      while (n && n.type !== 'RCTScrollView') n = n.parent;
+      return n !== null;
+    };
+    expect(dentroDeScroll('cuenta-confirmar-salida')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-si')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-no')).toBe(true);
   });
 
   it('confirmar cierra la sesión; decir que no, no', async () => {
