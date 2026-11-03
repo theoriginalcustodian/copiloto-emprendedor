@@ -125,7 +125,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N27** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1-4, todos de DEVICE y ninguno hecho: (1) reproduccion del ANTES - se da por acreditada con el reporte del operad… |
 | **SM-N28** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 (el reveal FILMADO entero, no capturado) y DoD 3 (EntradaDiaria en arranque frio con force-stop, filmado, vered… |
-| **SM-N30** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N30** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telef… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -2031,7 +2031,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N30 · `sin-issue` — DENTRO DEL SPRINT: la pantalla de entrada REAL no es la que dibuja el mapa («Volver a entrar»)
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 1 y 5, de DEVICE: captura app||mapa del reveal volver REAL, que exige logout VOLUNTARIO en la canonica — el telefono tiene la cuenta del operador y no se fuerza. Disparador exacto: tenencia canonica habilitada. DoD 3, el boton de pronunciacion: el codigo ya lo soporta detras de pronunciacionAsset y NO hay nada que implementar — falta el ARCHIVO de audio (quien graba 'o-DO-bi' en voz de marca). No es decision pendiente, es un asset inexistente: queda con dueno a nombrar por el operador. DoD 4, camino de sesion caida sola: sin decidir ni implementar — hoy sigue yendo directo al formulario.
+- **Cierre:** 714838ce (#1439): RevealEntrada gana variante splash|reveal — splash INTACTO (glifo O + dobi + tagline, la decision BL-X10 que la orden del operador NO superaba), reveal = Odobi entero + se dice o-DO-bi SIN tagline, como prototipo/index.html:2553. Tests auth+theme 192 verdes, tsc limpio, paridad de testIDs; EntradaSesion.test fija que variante sale por cada camino (volver->Odobi sin tagline; primeraVez->tagline sin Odobi) — ese test es el control durable de la fusion de las dos pantallas. Mas dc8d2ffa (#1438): comentario vencido de textosEntrada.ts corregido, altavoz marcado PENDIENTE DE ASSET en el mapa y leyenda falsa 'en mobile no existe' corregida (DoD 6 y 7).
 - **Dueño:** frontend2 (va pegada a `SM-N29`: misma pantalla, misma pasada de device)
 - **Reportado por:** el operador, 2026-11-02, sobre el mapa `?ver=volver`: *«la pantalla de entrada es
   diferente a la del mapa; la imagen de "volver a entrar" no es la misma que tiene la app»*.
