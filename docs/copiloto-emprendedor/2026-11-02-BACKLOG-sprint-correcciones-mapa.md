@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-L3** | `sin-issue` | ✅ TERMINADO | sin-ejecutar — FUERA DE ALCANCE por decision del operador (2026-11-02, textual): «las facturas no necesitamos probarl… |
-| **SM-L4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierre… |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -879,7 +879,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Las 38 entradas no-conformes pasadas a CONFORME o DIFERENTE-B CON CITA, que exige medir la app: depende de que cierren las fichas que las cubren (22 entradas con ficha DOD-PARCIAL, 5 con PENDIENTE). onb-cumplida, vacio-visto y vacio necesitan datos y dias de uso reales: si no se pueden producir quedan DECLARADAS con su motivo, no contadas como CONFORME. Dueno: planificacion.
+- **Cierre:** El INSTRUMENTO que el DoD exige ya esta en main: scripts/mapa-51-estado.py (4f18d494 / #1448, ancestro de origin/main) cuenta las 51 entradas con collections.Counter y cruza cada divergencia con la ficha que la cubre. Corrida del 2026-11-03: 7 CONFORME, 31 DIFERENTE-A, 6 DIFERENTE-B, 7 NO-VERIFICABLE (13 de 51 en condicion), y 0 de las 38 no-conformes quedan sin ficha — las 2 que faltaban se abrieron como SM-N31.
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
   NO-VERIFICABLE.
