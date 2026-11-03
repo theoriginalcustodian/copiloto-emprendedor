@@ -1151,6 +1151,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::cuenta-desde": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "cuenta-desde",
+      "motivo": "SM-K5: «Desde <mes> de <año>» del mapa cuenta; la web de Cuenta aún no consume fecha_alta de /me. Disparador: se retira si web lo adopta.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::cuenta-email": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"

@@ -38,6 +38,15 @@ function Chevron() {
   );
 }
 
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** SM-K5: `fecha_alta` (`YYYY-MM-DD`) → «marzo de 2021». Cualquier otra forma o `null` → `null`: la línea se omite, no se inventa. */
+export function desdeDeAlta(fecha: string | null | undefined): string | null {
+  const m = typeof fecha === 'string' ? /^(\d{4})-(\d{2})-\d{2}/.exec(fecha) : null;
+  const mes = m ? Number(m[2]) : 0;
+  return m && mes >= 1 && mes <= 12 ? `${MESES[mes - 1]} de ${m[1]}` : null;
+}
+
 export function PantallaCuenta() {
   const tema = useTema();
   const { me, logout } = useSession();
@@ -89,6 +98,11 @@ export function PantallaCuenta() {
             >
               {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
             </Text>
+            {desdeDeAlta(me?.fecha_alta) != null && (
+              <Text testID="cuenta-desde" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Desde {desdeDeAlta(me?.fecha_alta)}
+              </Text>
+            )}
           </View>
         </Row>
 
