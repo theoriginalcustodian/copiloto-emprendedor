@@ -18,10 +18,10 @@ class _FakeGateway:
 
 class _FakeStore:
     def __init__(self): self.tokens = {"access_token": "AT0", "refresh_token": "RT0", "expires_at": 1}
-    def get(self, seller): return dict(self.tokens)
-    def update_tokens(self, seller, *, access_token, refresh_token, expires_at):
+    def get(self, seller_user_id): return dict(self.tokens)
+    def update_tokens(self, seller_user_id, *, access_token, refresh_token, expires_at):
         self.tokens = {"access_token": access_token, "refresh_token": refresh_token, "expires_at": expires_at}
-    def marcar_reauth(self, seller): self.reauth = getattr(self, "reauth", []) + [seller]
+    def marcar_reauth(self, seller_user_id): self.reauth = getattr(self, "reauth", []) + [seller_user_id]
 
 
 @pytest.mark.asyncio

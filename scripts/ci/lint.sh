@@ -164,6 +164,13 @@ python3 -I -X utf8 "$ROOT/scripts/evidencia/auditar-mapeo-vs-codigo.py" --ratche
 # tiene su propio control -- medido el 2026-10-15 en un repo sin ese ref.
 python3 -I -X utf8 "$ROOT/scripts/evidencia/existe-en-main.py" --canario
 
+# FAKES vs STORES REALES (SM-N21): un test verde POR el fake — `estado:"cobrada"` donde el store real dice
+# `estado_cobro` — no prueba nada. El gate mide, sobre los stores de tenant, que ningún fake responda un VALOR que en el
+# real pertenece a otra clave ni acepte un kwarg que el real no acepta. `--autotest` va primero: un gate que no sabe
+# ponerse rojo con el N21 en miniatura no acredita nada. Exenciones/pins: scripts/ci/barrido-fakes-exenciones.json.
+python3 -I -X utf8 "$ROOT/scripts/barrido_fakes_vs_stores.py" --autotest
+python3 -I -X utf8 "$ROOT/scripts/barrido_fakes_vs_stores.py" --check
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Registro UNICO del sprint: coherencia + tabla regenerada (2026-10-14)
 #

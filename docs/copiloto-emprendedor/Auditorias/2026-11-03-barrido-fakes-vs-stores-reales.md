@@ -61,3 +61,38 @@ Los 3 sucios son `PARAM`, todos **ruidosos sin riesgo de verde falso** (una disc
 El barrido caza el síntoma; lo que cierra la clase es el test con el store real y prueba de que sale rojo con el código viejo
 (`test_cobros_y_catalogo.py::test_N21_cobro_total_con_el_store_real_…`, PR #1522). Para los pares limpios, el siguiente paso barato
 no es más AST sino un test de **contrato por par**: mismo caso contra fake y store real (parametrizado), que falla si divergen.
+
+---
+
+## Actualización 2026-11-03 (pedido de planificación): el barrido pasó a GATE
+
+Cierra los puntos 3 y 4 de «Lo que este barrido NO acredita» y el «es barrido, no gate».
+
+1. **Disparador.** `scripts/ci/lint.sh` corre `barrido_fakes_vs_stores.py --autotest` y luego `--check` (exit 1 si algún par
+   sale SUCIO por `VALOR` o `PARAM`, si hay un par ambiguo sin pin, o un pin/exención vencido o `[STALE]`).
+   `--autotest` ejercita el N21 **en miniatura** (store real sintético + fake con `estado:"cobrada"` → debe dar `VALOR`;
+   fake fiel → limpio; kwarg ajeno → `PARAM`; exención viva / `[STALE]` / vencida).
+2. **Canario medido (no declarado).** `--check` sobre `origin/main`: **34 pares · 0 sucios · exit 0**. Contra `3b20a1f1^`
+   (`--check --ref 3b20a1f1^`): **exit 1**, con `VALOR _CobroFake.registrar responde estado='cobrada' (test_plata_por_voz.py:81)
+   · en CobroStore 'cobrada' es valor de estado_cobro, no de estado (cobro_store.py:166)` (y `'parcial'`). Un gate que no se pusiera
+   rojo ahí sería un script que corre.
+3. **Los 3 SUCIO de hoy → arreglados, sin exenciones.** Eran nombres de kwarg (mecánico): `seller`→`seller_user_id`,
+   `p`→`payment`, `vigentes`→`entidad_ids_vigentes`, `nombre`→`normalizado` en los fakes de 6 archivos de test. Al derivar los
+   pares (punto 4) aparecieron más del mismo tipo (`_FakeCred`, `_FakeMpCred*`, `_FakeStore` de refresh, `_TarjetasFake`): mismo
+   arreglo. 124 tests en el VPS verdes tras el renombre. `exenciones: []` — el mecanismo existe (objeto + motivo + `revisar_hasta`,
+   `[STALE]` si el objeto desaparece) pero no se usa.
+4. **El corte, como regla.** Ya no es una lista de 24: son los **stores de tenant** (`apps/copiloto/*.py`, clase `*Store` cuyo
+   `__init__` recibe `cliente_id`) × cada clase `fake/falso/stub` de `tests/` que cubre ≥1/3 de sus métodos públicos con ≥2
+   compartidos (se excluyen dobles de conexión/cliente/transporte). Un store o fake nuevo entra solo: **34 pares derivados**
+   (los 24 + 10 que la lista a mano no tenía). Lo que la regla no puede emparejar (fakes con <2 métodos compartidos: `get`/`save`
+   son nombres genéricos) va en `pares_fijos` del JSON, **10 pines**; un pin cuyo fake desaparece lo marca `[STALE]`; un empate
+   sin pin falla.
+5. **`info-OMITE` triado.** El set global de claves «leídas por producción» era la causa del ruido. Ahora un OMITE sólo cuenta si un
+   consumidor **que el test importa** llama `.metodo(` y lee la clave: con `x["k"]` el test revienta con KeyError (**ruidoso,
+   benigno**); con `.get("k")` el default tapa la ausencia (**silencioso**). Los 46 de `_CobroFake` quedan en **7 silenciosos sobre
+   los 34 pares** (medido: `_CobroFake.registrar`→`falta`; `_PresupuestoFake.cambiar_estado`→`codigo/condicion_iva/contacto/items`;
+   `_FakeStore.resumen_operaciones`→`condicion_iva`; `_FakeCredStore.get`→`public_key`), todos campos opcionales: el fake es mínimo y
+   el test no ejerce esa rama. Eso es **cobertura**, no una forma falsa → se listan en la salida (`TRIAGE info-OMITE-SILENCIOSO`),
+   **no deciden el veredicto**. Cierre: triado y declarado con motivo, no «sin triar».
+
+**Sigue sin acreditar:** dominios que salen de una columna SQL, `Decimal` vs `str`, y los fakes fuera del corte de stores de tenant.

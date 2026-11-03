@@ -82,8 +82,8 @@ class _FakeClienteStore:
                 return c
         return None
 
-    def _siguiente_homonimo(self, nombre):
-        norm = normalizar_nombre(nombre)
+    def _siguiente_homonimo(self, normalizado):
+        norm = normalizar_nombre(normalizado)
         previos = [c.get("homonimo", 0) for c in self._b.get(self._cid, {}).values()
                    if not normalizar_documento(c.get("doc_nro"))
                    and normalizar_nombre(c["nombre"]) == norm]
