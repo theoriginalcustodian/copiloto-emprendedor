@@ -141,6 +141,15 @@ describe('SM-N45 — las secciones del prototipo son CARDS, y la portada sigue s
     // Sin esta mitad, «envolví las seis» no se distingue de «envolví todo»: las dos salen verdes.
     expect(fondo('inteligencia-caja')).not.toBe(fondo('inteligencia-por-cobrar'));
   });
+
+  it('🔴 «Acumulado del año» es la etiqueta de sección FUERA de la card, y el h4 de la card es «Facturado en los últimos 12 meses» (index.html:1996-1998)', async () => {
+    await conTodoCargado();
+    expect(screen.getByTestId('inteligencia-acumulado-rotulo')).toHaveTextContent('Facturado en los últimos 12 meses');
+    expect(screen.getByTestId('inteligencia-acumulado-etiqueta')).toHaveTextContent('Acumulado del año');
+    // Control negativo: la etiqueta NO está dentro de la card (sería el estado de antes, título adentro).
+    expect(screen.getByTestId('inteligencia-acumulado')).not.toContainElement(screen.getByTestId('inteligencia-acumulado-etiqueta'));
+    expect(screen.getByTestId('inteligencia-acumulado-doce-meses')).toHaveTextContent('$4.420.000,00');
+  });
 });
 
 describe('PantallaInteligencia — lo que NO inventa', () => {
