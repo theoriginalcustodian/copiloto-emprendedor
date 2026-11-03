@@ -255,7 +255,7 @@ export interface PerfilFiscal {
   /**
    * SM-N35 — categoría de monotributo (`A`…`K`). Dato DEL EMPRENDEDOR; el tope lo deriva el backend con la escala
    * vigente de ARCA (SM-N36). `null`/ausente = no la cargó (o backend viejo): ESTADO VÁLIDO, nunca un error.
-   * `[ASSUMED_PENDING_VERIFY]` hasta que backend persista `categoria_monotributo` en el perfil.
+   * Backend la persiste y la devuelve en GET desde `4a5bb923` (SM-N36, `afip_web.py` + `afip_credential_store.py`).
    */
   categoriaMonotributo?: string | null;
 }
