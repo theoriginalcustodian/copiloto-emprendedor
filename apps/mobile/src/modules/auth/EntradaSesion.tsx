@@ -30,6 +30,7 @@ export function EntradaSesion() {
   const textos = cierreVoluntario != null ? TEXTOS_REVEAL.volver : TEXTOS_REVEAL.primeraVez;
   return (
     <RevealEntrada
+      variante={cierreVoluntario != null ? 'reveal' : 'splash'}
       primario={textos.primario}
       secundario={cierreVoluntario != null ? textos.secundario : ''}
       onPrimario={() => setPaso({ tipo: 'login', email: cierreVoluntario?.email ?? '' })}
