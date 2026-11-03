@@ -691,6 +691,23 @@ describe('PantallaAfipSetup', () => {
     expect(await screen.findByText(texto)).toBeTruthy();
   });
 
+  it.each([
+    ['dato', 'Corregir mis datos', 'afip-arca-rehacer', 'afip-arca-paso-1'],
+    ['servicio', 'Reintentar', 'afip-arca-reintentar-servicio', 'afip-arca-paso-3'],
+    ['desconocida', 'Rehacer', 'afip-arca-rehacer', 'afip-arca-paso-1'],
+  ] as const)('SM-K3: la acción sigue a la causa «%s» (botón «%s», cae en %s)', async (causa, etiqueta, boton, paso) => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({ conectado: false, onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'x', causa }) }),
+    );
+    await montar();
+    await screen.findByTestId('afip-arca-progreso-fallido');
+    expect(screen.getByTestId(boton)).toHaveTextContent(etiqueta);
+    await fireEvent.press(screen.getByTestId(boton));
+    expect(await screen.findByTestId(paso)).toBeTruthy();
+  });
+
   it('SM-K3: sin causa (backend viejo) no se afirma ninguna', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });

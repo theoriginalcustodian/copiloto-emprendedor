@@ -464,6 +464,22 @@ export function PantallaAfipSetup() {
     setMostrarFormularioArca(true);
   }
 
+  /**
+   * SM-K3 · causa `servicio`: el problema no fue lo que el emprendedor cargó, así que NO se le vuelve a
+   * pedir nada que ya dio. Se conservan CUIT y usuario y se salta directo al paso de la clave. La clave
+   * fiscal es lo único que hay que volver a escribir, y no por fricción nuestra: nunca se guarda (ver
+   * `conectarArca`), así que no existe forma de reintentar el alta sin ella.
+   */
+  function reintentarSinCambiarDatos() {
+    setErrorArca(null);
+    setPoleando(false);
+    setPollTardando(false);
+    setClaveArca('');
+    setEstadoGeneral((prev) => (prev ? { ...prev, onboarding: null } : prev));
+    setPasoArca(3);
+    setMostrarFormularioArca(true);
+  }
+
   async function vincularArcaHandler() {
     // 🔴 La clave se copia a una constante local ANTES de tocar el estado -- lo que sale por
     // `conectarArca` es ESTA copia, y el estado del componente queda vacío de inmediato, no recién
@@ -801,12 +817,22 @@ export function PantallaAfipSetup() {
                     <FilaBotones
                       testID="afip-arca-progreso-botones"
                       botones={[
-                        {
-                          etiqueta: 'Rehacer',
-                          variante: 'primario',
-                          testID: 'afip-arca-rehacer',
-                          onPress: () => iniciarAltaPara(ambienteObjetivo),
-                        },
+                        // SM-K3: la acción sigue a la causa. `dato` → corregir (vuelve al paso 1);
+                        // `servicio` → reintentar con lo ya cargado; `desconocida`/sin causa → el
+                        // «Rehacer» de siempre, sin afirmar nada (no se degrada a `servicio` ante la duda).
+                        onboardingActual.causa === 'servicio'
+                          ? {
+                              etiqueta: 'Reintentar',
+                              variante: 'primario',
+                              testID: 'afip-arca-reintentar-servicio',
+                              onPress: reintentarSinCambiarDatos,
+                            }
+                          : {
+                              etiqueta: onboardingActual.causa === 'dato' ? 'Corregir mis datos' : 'Rehacer',
+                              variante: 'primario',
+                              testID: 'afip-arca-rehacer',
+                              onPress: () => iniciarAltaPara(ambienteObjetivo),
+                            },
                       ]}
                     />
                   </>
