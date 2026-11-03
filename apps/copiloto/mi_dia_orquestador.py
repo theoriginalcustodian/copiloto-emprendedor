@@ -17,9 +17,11 @@ from typing import Callable
 
 from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA,
                              REGLA_FACTURAS_IMPAGAS_VIEJAS,
-                             REGLA_GASTO_MES_ALTO, REGLA_PRESUPUESTOS_ENFRIANDOSE,
+                             REGLA_GASTO_MES_ALTO, REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE,
+                             REGLA_PRESUPUESTOS_ENFRIANDOSE,
                              REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
-                             REGLAS_AUTO_CIERRE, AvisosEmitidosStore, detectar_todos)
+                             REGLAS_AUTO_CIERRE, REGLAS_REARMAN_AL_BAJAR, AvisosEmitidosStore,
+                             detectar_todos)
 from mi_dia_tarjeta_store import TarjetaStore
 
 
@@ -59,6 +61,9 @@ _PLANTILLAS = {
                    + (", así que los cobros de hoy pueden estar incompletos."
                       if d.get("servicio") == "mercadopago" else ".")
                    + " Reconectala y sigo."),
+    REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE:
+        lambda d: (f"Ya llevás facturado el {d.get('porcentaje')} % del tope de monotributo de tu categoría "
+                   f"{d.get('categoria')}. Fijate antes de pasarte."),
 }
 
 
@@ -96,8 +101,10 @@ def avanzar_tablero(conn_factory: Callable, cliente_id: str,
             tarjetas.crear_si_no_existe(regla, c["entidad_tipo"], c["entidad_id"], texto, c["datos"])
             avisos.emitir(regla, c["entidad_tipo"], c["entidad_id"],
                           dias_silencio=c["dias_silencio"], datos=c["datos"])
+        vigentes = {str(c["entidad_id"]) for c in candidatos}
         if regla in REGLAS_AUTO_CIERRE:
-            vigentes = {str(c["entidad_id"]) for c in candidatos}
             tarjetas.cerrar_resueltas(regla, vigentes)
+        if regla in REGLAS_REARMAN_AL_BAJAR:
+            avisos.liberar_ausentes(regla, vigentes)   # «una vez por CRUCE»: si bajó, el próximo cruce avisa
 
     return tarjetas.listar_tablero()
