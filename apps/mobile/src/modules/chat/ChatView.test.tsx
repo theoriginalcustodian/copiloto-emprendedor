@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
@@ -910,7 +911,53 @@ describe('ChatView -- sheet «conectá X»: debe pintar ENCIMA del composer y de
     await renderChatView();
     const orden = ordenDePintado();
     expect(orden).toContain('sheet-requiere-conexion-ancla');
-    expect(orden).toContain('dock-entrada');
-    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('dock-entrada'));
+    // SM-N25: el dock (y la lista) viven DENTRO de `chat-area`, hermano anterior al ancla del sheet.
+    expect(orden).toContain('chat-area');
+    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('chat-area'));
+  });
+});
+
+describe('ChatView -- SM-N25: el campo y el mic FLOTAN sobre la lista', () => {
+  it('el dock es un overlay absoluto anclado abajo, y la lista NO es hermana en flujo (corre por debajo)', async () => {
+    await renderChatView();
+    const dock = screen.getByTestId('chat-dock-flotante');
+    const estilo = StyleSheet.flatten(dock.props.style);
+    expect(estilo).toMatchObject({ position: 'absolute', bottom: 0, left: 0, right: 0 });
+    // La lista vive en un contenedor que llena el área, no como hijo en flujo antes del dock.
+    const lista = screen.getByTestId('lista-mensajes');
+    let nodo = lista.parent;
+    let llenaArea = false;
+    while (nodo != null && nodo.props?.testID !== 'chat-area') {
+      const e = StyleSheet.flatten(nodo.props?.style);
+      if (e?.position === 'absolute' && e.top === 0 && e.bottom === 0) llenaArea = true;
+      nodo = nodo.parent;
+    }
+    expect(nodo?.props?.testID).toBe('chat-area');
+    expect(llenaArea).toBe(true);
+  });
+
+  it('la lista reserva al final el alto REAL medido del dock (el último mensaje se puede scrollear hasta quedar libre)', async () => {
+    await renderChatView();
+    fireEvent(screen.getByTestId('chat-dock-flotante'), 'layout', { nativeEvent: { layout: { height: 120, width: 390, x: 0, y: 0 } } });
+    await waitFor(() => {
+      // El `contentContainerStyle` baja a la `View` interna del scroll: se busca el nodo con ese padding.
+      const paddings: number[] = [];
+      const recorrer = (n: any): void => {
+        if (n == null || typeof n !== 'object') return;
+        const e = StyleSheet.flatten(n.props?.style) as { paddingBottom?: number } | undefined;
+        if (typeof e?.paddingBottom === 'number') paddings.push(e.paddingBottom);
+        for (const h of Array.isArray(n.children) ? n.children : []) recorrer(h);
+      };
+      recorrer(screen.getByTestId('lista-mensajes'));
+      expect(Math.max(...paddings, 0)).toBeGreaterThanOrEqual(120);
+    });
+  });
+
+  it('control negativo: el scrim del dock no captura toques ni es opaco arriba (el contenido se ve correr)', async () => {
+    await renderChatView();
+    const scrim = screen.getByTestId('chat-dock-scrim');
+    expect(scrim.props.pointerEvents).toBe('none');
+    // `colors` llega procesado a ARGB entero: el byte alto es el alfa.
+    expect(Number(scrim.props.colors[0]) >>> 24).toBe(0);
   });
 });
