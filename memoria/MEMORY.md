@@ -140,6 +140,7 @@
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
 - [🧪 El sujeto de prueba ÚNICO no encarna el estado exigido](sujeto-de-prueba-unico-no-encarna-el-estado-que-exige-el-control.md) — 4 fichas, 1 causa
+- [🔌🕳️ `adb devices` vacío NO acredita que no haya teléfono](adb-devices-vacio-no-acredita-que-no-haya-telefono.md) - el server en frío lista antes de enumerar. `wait-for-device` primero.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 
