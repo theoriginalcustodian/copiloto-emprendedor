@@ -60,7 +60,9 @@ _ACTIVITIES = [call_llm_tools, execute_tool, send_channel_message, notify_staff,
 
 
 def build_llm() -> LlmProvider:
-    return LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
+    # `COPILOTO_LLM_MODEL` cambia el modelo del ReAct sin deploy (p. ej. `gpt-6-luna`); sin setear, el de siempre.
+    modelo = os.environ.get("COPILOTO_LLM_MODEL") or "gpt-4o-mini"
+    return LlmProvider(primary_model=modelo, failover_model=modelo,
                        api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
                        quantizations=())
 
