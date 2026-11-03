@@ -53,6 +53,12 @@ describe('EntradaSesion', () => {
     expect(screen.queryByTestId('reveal-entrada-pronunciacion')).toBeNull();
   });
 
+  it('SM-N30 DoD 4: sesión caída SOLA va directo al formulario Y el aviso se ve ahí (no pasa por el reveal)', async () => {
+    await montar(sesion({ avisoSesion: 'Tu sesión se cerró por seguridad. Entrá de nuevo.' }));
+    expect(screen.queryByTestId('reveal-entrada')).toBeNull();
+    expect(screen.getByTestId('login-aviso-sesion')).toBeTruthy();
+  });
+
   it('«Entrar» va al formulario con el mail de la cuenta que salió precargado', async () => {
     await montar(sesion({ cierreVoluntario: { email: 'ana@x.com' } }));
     await fireEvent.press(screen.getByTestId('reveal-entrada-primario'));

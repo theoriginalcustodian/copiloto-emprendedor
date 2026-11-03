@@ -1,4 +1,3 @@
-import { useAudioPlayer, type AudioSource } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -126,20 +125,12 @@ export interface RevealEntradaProps {
   onPrimario: () => void;
   onSecundario: () => void;
   testID?: string;
-  /**
-   * BL-X10 — asset empaquetado de la pronunciación («se dice o-DO-bi» en voz de marca). NO hay
-   * ningún audio en el repo todavía (pedido a operador/Martín, `[ASSUMED_PENDING_VERIFY]`): sin
-   * asset, el botón no se renderiza — sólo queda el texto, como hasta ahora. A diferencia de web
-   * (BL-X12w, `speechSynthesis`), acá NO hay TTS de fallback: la voz de marca es un asset, no una
-   * síntesis genérica.
-   */
-  pronunciacionAsset?: AudioSource | null;
 }
 
 /**
  * La entrada sin sesión (prototipo `#splash` y `#reveal`, `?ver=splash|reveal|volver`). Es UN componente con
  * DOS variantes (`VarianteEntrada`, SM-N30): el `splash` animado del primer ingreso y el `reveal` estático
- * de «volver». Comparten puertas (`TEXTOS_REVEAL`), tema y asset de pronunciación; NO comparten lockup,
+ * de «volver». Comparten puertas (`TEXTOS_REVEAL`) y tema; NO comparten lockup,
  * descriptor ni pronunciación: fusionarlos fue el defecto que SM-N30 separó.
  */
 export function RevealEntrada({
@@ -149,11 +140,9 @@ export function RevealEntrada({
   onPrimario,
   onSecundario,
   testID = 'reveal-entrada',
-  pronunciacionAsset,
 }: RevealEntradaProps) {
   const tema = useTema();
   const reducido = useReducedMotion();
-  const reproductor = useAudioPlayer(pronunciacionAsset ?? null);
   // Color de MARCA fijo (`.rv-word{color:var(--terracota)}`), no `acentoTinta`: el wordmark es el logotipo
   // y su gemelo web usa `--identidad-word`. `letterSpacing:-.02em` del prototipo (46 × .02 ≈ 0,92).
   const estiloLetra = {
@@ -164,28 +153,12 @@ export function RevealEntrada({
     letterSpacing: -0.02 * FONT_WORDMARK,
   };
 
-  function pronunciar() {
-    reproductor.seekTo(0);
-    reproductor.play();
-  }
-
   const esReveal = variante === 'reveal';
   const pronunciacion = (
     <View style={styles.pronunciacion}>
       <Text testID={`${testID}-pronunciacion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
         {PRONUNCIACION_MARCA}
       </Text>
-      {pronunciacionAsset != null && (
-        <Pressable
-          testID={`${testID}-pronunciar`}
-          accessibilityRole="button"
-          accessibilityLabel="Escuchar cómo se pronuncia Odobi"
-          onPress={pronunciar}
-          style={pressableStyle([styles.botonPronunciar, { backgroundColor: tema.color.acentoSuperficie }])}
-        >
-          <Text style={{ color: tema.color.acentoTexto, fontSize: 14 }}>▶</Text>
-        </Pressable>
-      )}
     </View>
   );
 
@@ -263,6 +236,5 @@ const styles = StyleSheet.create({
   lockup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   wordmark: { flexDirection: 'row' },
   pronunciacion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  botonPronunciar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   boton: { alignItems: 'center', justifyContent: 'center' },
 });
