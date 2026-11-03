@@ -40,12 +40,13 @@ import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
 
-/** Alto del handle deslizable = una "card": barra + hint + margen chico (pedido operador 2026-07-18).
- *  Es lo ÚNICO que queda en pantalla cuando el panel baja (la tira de "Subir conversación"), así que
- *  debe ser delgada, del tamaño de una card del historial — NO se le hornea el inset de la status bar
- *  (eso engrosaba la tira de abajo con espacio muerto). La clearance de la status bar la da un
- *  spacer superior FIJO, y el recorrido se acorta en esa misma cantidad (ver `estiloSpacer`). */
-export const ALTO_HANDLE = 56;
+/** Alto del handle deslizable = SÓLO la línea (SM-N38, orden del operador 2026-11-03): barra 44×5 con el padding
+ *  del prototipo (`mockups/09-mi-dia/index.html:123-124`, `.grip{padding:6px 0 2px}`) = 13. Sin texto: el camino
+ *  que no es arrastrar es tocar el composer que asoma debajo (`pieAbajo`, `alTocarCampoDeMiDia`), no un cartel.
+ *  NO se le hornea el inset de la status bar (eso engrosaba la tira de abajo con espacio muerto). La clearance
+ *  de la status bar la da un spacer superior FIJO, y el recorrido se acorta en esa misma cantidad (ver
+ *  `estiloSpacer`). */
+export const ALTO_HANDLE = 13;
 /**
  * SM-N23 — aire FIJO entre la barra de estado y el tirador de arriba. Con 0 la zona de agarre arrancaba
  * pegada al borde (medido en device: frontera exacta en y=47 px, y desde y=30 gana el sistema) y se
@@ -190,8 +191,6 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    * no es un tercer dueño. Ver `translacionPanel`.
    */
   ocultarTira?: SharedValue<number>;
-  /** El texto del borde visible cuando el panel está abajo. Ver `hint` abajo. */
-  hintAbajo?: string;
   /**
    * SM-N22 — lo que asoma BAJO el asa con el panel abajo (el campo de Mi día). El mapa pone la barrita de arrastre
    * INMEDIATAMENTE ENCIMA de «Escribí, o hablá…»; antes el campo vivía en el escritorio y el asa del panel quedaba
@@ -253,7 +252,6 @@ export function PanelDeslizable({
   alBajar,
   arrancaAbajo = false,
   ocultarTira,
-  hintAbajo = 'Subir conversación',
   pieAbajo,
   altoPieAbajo = 0,
   testID,
@@ -426,17 +424,12 @@ export function PanelDeslizable({
       });
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada]);
 
-  const estiloRotuloArriba = useAnimatedStyle(() => ({
-    opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value),
-  }));
-  const estiloRotuloAbajo = useAnimatedStyle(() => ({
-    opacity: opacidadRotuloAbajo(panelY.value, recorrido.value),
-  }));
-
   // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
   // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
   const estiloPieAbajo = useAnimatedStyle(() => ({ opacity: opacidadRotuloAbajo(panelY.value, recorrido.value) }));
   const estiloContenido = useAnimatedStyle(() => ({ flex: 1, opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value) }));
+
+  const estiloSuperficie = useAnimatedStyle(() => ({ opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value) }));
 
   const altoTira = ALTO_HANDLE + espacioSuperior(insets.top) + altoPieAbajo;
   const estiloPanel = useAnimatedStyle(() => ({
@@ -544,36 +537,27 @@ export function PanelDeslizable({
 
       {/* Capa 1 — conversación en cristal, deslizable. */}
       <Animated.View style={[styles.panel, estiloPanel]}>
-        <CristalVidrio nivel="conversacion" style={styles.cristal}>
+        <CristalVidrio nivel="conversacion" style={styles.cristal} sinFondo={pieAbajo != null}>
+          {/* SM-N38: la superficie del panel es una capa propia cuya opacidad la decide `panelY` (no animamos
+              layout): con el panel abajo no queda tarjeta detrás del campo y «Para hoy» se ve entera. */}
+          {pieAbajo != null && (
+            <Animated.View
+              testID="panel-superficie"
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, styles.superficie, { backgroundColor: tema.color.fondo, borderColor: tema.glass.bd }, estiloSuperficie]}
+            />
+          )}
           {/* Spacer de status bar (fijo) — no intercepta toques. */}
           <Animated.View style={estiloSpacer} pointerEvents="none" />
           <GestureDetector gesture={gesto}>
-            <View style={styles.zonaHandle} testID="panel-handle">
+            <View
+              style={styles.zonaHandle}
+              testID="panel-handle"
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={panelAbajo ? 'Subir la conversación' : 'Bajar a Mi día'}
+            >
               <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
-              {/* Pull-hint del template (mono 10px uppercase): los dos montados, uno encima del otro. Ver
-                  `opacidadRotuloAbajo`. */}
-              <View style={styles.hints}>
-                <Animated.Text
-                  testID="panel-hint"
-                  accessibilityElementsHidden={panelAbajo}
-                  importantForAccessibility={panelAbajo ? 'no' : 'auto'}
-                  style={[styles.hint, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }, estiloRotuloArriba]}
-                >
-                  Bajá para volver a Mi día
-                </Animated.Text>
-                <Animated.Text
-                  accessibilityElementsHidden={!panelAbajo}
-                  importantForAccessibility={panelAbajo ? 'auto' : 'no'}
-                  style={[
-                    styles.hint,
-                    StyleSheet.absoluteFill,
-                    { color: tema.color.textoTenue, fontFamily: tema.fuente.mono },
-                    estiloRotuloAbajo,
-                  ]}
-                >
-                  {hintAbajo}
-                </Animated.Text>
-              </View>
             </View>
           </GestureDetector>
           <Animated.View style={estiloContenido}>{children}</Animated.View>
@@ -599,12 +583,10 @@ const styles = StyleSheet.create({
   // el escritorio -- ver el comentario de `RECORRIDO_SIN_MEDIR` arriba.
   panel: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 3 },
   cristal: { flex: 1 },
+  superficie: { borderTopLeftRadius: 40, borderTopRightRadius: 40, borderTopWidth: 1 },
   pieAbajo: { position: 'absolute', left: 0, right: 0 },
-  // Handle card-sized: barra + hint centrados con margen chico (pedido operador 2026-07-18).
-  zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center', gap: 7 },
+  // SM-N38: sólo la línea — `.grip{padding:6px 0 2px}` del prototipo (6 + 5 + 2 = ALTO_HANDLE).
+  zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', paddingTop: 6 },
   // barra del handle (diseño: 44×5, radio 3).
   barraHandle: { width: 44, height: 5, borderRadius: 3 },
-  // `.grip .txt` del prototipo (`index.html:78`): 11 px, `letter-spacing: .02em`, sin mayúsculas.
-  hints: { alignSelf: 'stretch' },
-  hint: { fontSize: 11, letterSpacing: 0.2, textAlign: 'center' },
 });
