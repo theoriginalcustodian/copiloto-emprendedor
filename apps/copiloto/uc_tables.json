@@ -12,6 +12,10 @@
     "model text NOT NULL",
     "tokens bigint",
     "evento text NOT NULL DEFAULT 'llm_turno'",
+    "tokens_entrada bigint",
+    "tokens_salida bigint",
+    "tokens_cacheados bigint",
+    "tokens_razonamiento bigint",
     "created_at timestamptz DEFAULT now()"
   ],
   "mp_credentials": [

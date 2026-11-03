@@ -9,9 +9,10 @@ class _FakeCur:
 
     def execute(self, sql, params):
         assert sql.strip().upper().startswith("INSERT INTO")
-        cliente_id, session_id, model, tokens, evento = params
+        cliente_id, session_id, model, tokens, evento, t_in, t_out, t_cache, t_razon = params
         self._rows.append({"cliente_id": cliente_id, "session_id": session_id, "model": model,
-                           "tokens": tokens, "evento": evento})
+                           "tokens": tokens, "evento": evento, "tokens_entrada": t_in,
+                           "tokens_salida": t_out, "tokens_cacheados": t_cache, "tokens_razonamiento": t_razon})
 
     def __enter__(self): return self
     def __exit__(self, *a): return False
@@ -34,7 +35,8 @@ def test_registrar_llm_turno_con_tokens():
     MeteringStore(conn_factory, "cid-A").registrar(
         session_id="s1", model="deepseek/deepseek-v4-flash", tokens=1234, evento=LLM_TURNO)
     assert rows == [{"cliente_id": "cid-A", "session_id": "s1", "model": "deepseek/deepseek-v4-flash",
-                     "tokens": 1234, "evento": "llm_turno"}]
+                     "tokens": 1234, "evento": "llm_turno", "tokens_entrada": None, "tokens_salida": None,
+                     "tokens_cacheados": None, "tokens_razonamiento": None}]
 
 
 def test_registrar_tool_call_sin_tokens():
@@ -50,3 +52,23 @@ def test_dos_tenants_no_se_pisan():
     MeteringStore(conn_factory, "cid-A").registrar(session_id="s1", model="m", tokens=1, evento=LLM_TURNO)
     MeteringStore(conn_factory, "cid-B").registrar(session_id="s2", model="m", tokens=2, evento=LLM_TURNO)
     assert [r["cliente_id"] for r in rows] == ["cid-A", "cid-B"]
+
+
+def test_registrar_desglose_de_uso():
+    conn_factory, rows = _factory()
+    MeteringStore(conn_factory, "cid-A").registrar(
+        session_id="s1", model="gpt-6-luna", tokens=3808, evento=LLM_TURNO,
+        uso={"entrada": 3771, "salida": 37, "cacheados": 3072, "razonamiento": 0})
+    r = rows[0]
+    assert (r["tokens_entrada"], r["tokens_salida"], r["tokens_cacheados"], r["tokens_razonamiento"]) == (
+        3771, 37, 3072, 0)
+    assert r["tokens"] == 3808   # el total sigue guardándose: las filas viejas y las nuevas se leen igual
+
+
+def test_sin_uso_las_columnas_quedan_NULL_no_cero():
+    """NULL = «el proveedor no lo informó»; 0 = «informado y fue cero». Un 0 inventado se sumaría como gasto
+    medido en el dashboard, que es exactamente lo que esta migración existe para evitar."""
+    conn_factory, rows = _factory()
+    MeteringStore(conn_factory, "cid-A").registrar(session_id="s1", model="tool:x", tokens=None,
+                                                   evento="tool_call:ok")
+    assert rows[0]["tokens_entrada"] is None and rows[0]["tokens_razonamiento"] is None

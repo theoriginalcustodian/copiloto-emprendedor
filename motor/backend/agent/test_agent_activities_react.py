@@ -192,3 +192,44 @@ def test_transcribe_voice_ignora_la_env_vieja_de_debug(capsys, monkeypatch):
     asyncio.run(A.transcribe_voice({"channel": "tg", "file_id": "f-1"}))
     salida = capsys.readouterr().out
     assert "cancelar mi pedido" not in salida
+
+
+# --- desglose de tokens del metering (entrada / salida / cacheados / razonamiento) ---------------------
+
+def test_normalizar_uso_shape_openai_completo():
+    usage = {"prompt_tokens": 3771, "completion_tokens": 37, "total_tokens": 3808,
+             "prompt_tokens_details": {"cached_tokens": 3072},
+             "completion_tokens_details": {"reasoning_tokens": 0}}
+    assert A.normalizar_uso(usage) == {"entrada": 3771, "salida": 37, "cacheados": 3072, "razonamiento": 0}
+
+
+def test_normalizar_uso_sin_detalles_deja_None_no_cero():
+    """Un proveedor que informa entrada/salida pero no el caché: `cacheados` es None (no informado), nunca 0."""
+    assert A.normalizar_uso({"prompt_tokens": 10, "completion_tokens": 2}) == {
+        "entrada": 10, "salida": 2, "cacheados": None, "razonamiento": None}
+
+
+def test_normalizar_uso_sin_entrada_ni_salida_devuelve_None():
+    """Sólo `total_tokens` (o nada): no hay desglose que registrar — el sink sigue recibiendo el total solo."""
+    assert A.normalizar_uso({"total_tokens": 123}) is None
+    assert A.normalizar_uso({}) is None
+    assert A.normalizar_uso(None) is None
+
+
+class _ProvConUsoCompleto:
+    def complete_tools(self, system, messages, tools, *, tool_choice="auto", parallel_tool_calls=False):
+        return {"tool_calls": [], "content": "ok", "finish_reason": "stop", "model": "m", "failed_over": False,
+                "usage": {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120,
+                          "prompt_tokens_details": {"cached_tokens": 64}}}
+
+
+def test_call_llm_tools_pasa_el_desglose_como_sexto_argumento_al_sink():
+    reset_registry()
+    seen = []
+    register_domain("d", system_prompt="SYS", llm_provider=_ProvConUsoCompleto(),
+                    dispatcher=lambda *a: None, tool_schemas=[], tool_executor=None,
+                    context_factory=lambda conv: object(), engine_mode="react",
+                    metering_sink=lambda *a: seen.append(a))
+    asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "cliente_id": "42", "session_id": "s1"}))
+    assert seen == [("42", "s1", "m", 120, "llm_turno",
+                     {"entrada": 100, "salida": 20, "cacheados": 64, "razonamiento": None})]
