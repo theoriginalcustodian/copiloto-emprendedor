@@ -327,12 +327,34 @@ def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None,
     if idx is None:
         raise SystemExit("ficha '%s' no existe en el backlog. Un id inventado no es una orden." % fid)
     gestionados = ("Estado", "Cierre", "Falta", "Dueno-activo", "Decision", "Diferido-a")
+    # Los valores que YA tiene la ficha. Se capturan antes de borrar los bullets porque un campo que
+    # no se pasa por argumento se CONSERVA: hasta el 2026-11-03 se borraba en silencio y el script
+    # respondia OK, asi que un `--marcar X --estado DOD-PARCIAL --falta "..."` se llevaba puesto el
+    # `Cierre:`. Medido ese dia: 12 fichas del sprint vigente sin `Cierre:`, con los shas y la
+    # evidencia migrados a `Falta:` -- el campo que sobrevivia. El gate no podia verlo porque solo
+    # exige `Cierre:` en TERMINADO, asi que la perdida no daba sintoma en DOD-PARCIAL.
+    # Para BORRAR un campo a proposito se pasa la cadena vacia (`--cierre ""`), que es distinto de
+    # no pasarlo: argparse da None en un caso y "" en el otro.
+    previos = {}
     j = idx + 1
     while j < len(lineas) and not lineas[j].startswith("#"):
         mc = RE_CAMPO.match(lineas[j])
         if mc and mc.group("campo").strip() in gestionados:
+            previos[mc.group("campo").strip()] = mc.group("valor").strip()
             lineas[j] = None
         j += 1
+    if cierre is None:
+        cierre = previos.get("Cierre")
+    if dueno is None:
+        dueno = previos.get("Dueno-activo")
+    if decision is None:
+        decision = previos.get("Decision")
+    if diferido_a is None:
+        diferido_a = previos.get("Diferido-a")
+    if falta is None and estado != "TERMINADO":
+        # En TERMINADO no se arrastra: el DoD completo no tiene hueco, y una `Falta:` sobreviviente
+        # dejaria la ficha afirmando las dos cosas.
+        falta = previos.get("Falta")
     nuevos = ["", "- **Estado:** %s" % estado]
     if dueno:
         nuevos.append("- **Dueno-activo:** %s" % dueno)
@@ -351,6 +373,42 @@ def marcar(texto, fid, estado, cierre=None, falta=None, dueno=None,
         del lineas[idx + 1]
     lineas[idx + 1:idx + 1] = nuevos
     return nl.join(lineas)
+
+
+def _autotest_conservacion():
+    """marcar() CONSERVA lo que no se pasa, y la cadena vacia SI borra.
+
+    Las dos mitades hacen falta: sin la primera el script vuelve a comerse la evidencia en silencio,
+    y sin la segunda no habria forma de vaciar un campo a proposito y el arreglo seria una carcel.
+    """
+    base = ("### SM-F9 \u00b7 `#1` \u2014 ficha de prueba\r\n\r\n"
+            "- **Estado:** DOD-PARCIAL\r\n"
+            "- **Falta:** el hueco viejo\r\n"
+            "- **Cierre:** merge deadbee - evidencia que NO se puede perder\r\n"
+            "- **DoD:** algo\r\n")
+    fallos = []
+
+    # POSITIVO: marco solo la Falta -> el Cierre sobrevive.
+    r = marcar(base, "SM-F9", "DOD-PARCIAL", falta="hueco nuevo")
+    if "evidencia que NO se puede perder" not in r:
+        fallos.append("conservacion: el Cierre se borro al marcar solo --falta")
+    if "hueco nuevo" not in r:
+        fallos.append("conservacion: la Falta nueva no se escribio")
+
+    # NEGATIVO del control: si marcar() NO conservara, este mismo caso tendria que fallar. Lo
+    # ejercito al reves -- con la cadena vacia el borrado es explicito y DEBE ocurrir.
+    r2 = marcar(base, "SM-F9", "DOD-PARCIAL", cierre="", falta="hueco nuevo")
+    if "evidencia que NO se puede perder" in r2:
+        fallos.append("borrado explicito: --cierre \"\" no borro el Cierre")
+
+    # TERMINADO no arrastra la Falta: afirmaria el DoD completo y el hueco a la vez.
+    r3 = marcar(base, "SM-F9", "TERMINADO", cierre="merge deadbee - ev")
+    if "el hueco viejo" in r3:
+        fallos.append("TERMINADO arrastro la Falta vieja")
+
+    for f in fallos:
+        print("  [X] %s" % f)
+    return len(fallos)
 
 
 def autotest():
@@ -394,7 +452,9 @@ def autotest():
             "- **DoD:**",
             "- **Estado:** TERMINADO\r\n- **Cierre:** sin-codigo - decision operador\r\n- **DoD:**"), 0),
     ]
-    fallos = 0
+    # Arranca con los 3 casos de conservacion de campos: un control que el lint no corre
+    # envejece sin avisar, y este cubre un borrado que era SILENCIOSO.
+    fallos = _autotest_conservacion()
     for nombre, txt, esperado in casos:
         if not parsear(txt):
             print("  [FALLA] %-26s el parser no vio la ficha de prueba" % nombre)
@@ -420,7 +480,7 @@ def autotest():
         print("  [SKIP ] %-26s sin `origin/main` en este clon: el caso no se puede montar"
               % "TERMINADO sha REAL")
         print("\nautotest: %s (%d fallos de %d casos, 1 salteado)"
-              % ("VERDE" if not fallos else "ROJO", fallos, len(casos)))
+              % ("VERDE" if not fallos else "ROJO", fallos, len(casos) + 3))
         return 1 if fallos else 0
     txt_ok = base.replace("- **DoD:**",
                           "- **Estado:** TERMINADO\r\n- **Cierre:** merge %s - ev\r\n- **DoD:**" % sha_real)
@@ -436,7 +496,7 @@ def autotest():
           % ("OK   " if not errs else "FALLA", "TERMINADO sha REAL", 1 if errs else 0,
              ("| " + errs[0][:62]) if errs else ""))
     print("\nautotest: %s (%d fallos de %d casos)"
-          % ("VERDE" if not fallos else "ROJO", fallos, len(casos) + 1))
+          % ("VERDE" if not fallos else "ROJO", fallos, len(casos) + 4))
     return 1 if fallos else 0
 
 
