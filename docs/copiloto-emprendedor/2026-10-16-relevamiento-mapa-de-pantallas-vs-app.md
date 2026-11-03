@@ -204,17 +204,19 @@ Prototipo: [fact-voz](2026-10-16-relevamiento-capturas/proto-mapa-fact-voz.png) 
 *Corrección:* Medir con una persona y un cliente de prueba.  
 *Vínculo:* K2
 
-**26 · `fact-hitl` — Segundo HITL — emitir** — **DIFERENTE · A** · DEVICE  
+**26 · `fact-hitl` — Segundo HITL — emitir** — **DIFERENTE · B** · DEVICE  
 Prototipo: [fact-hitl](2026-10-16-relevamiento-capturas/proto-mapa-fact-hitl.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medida con facturas reales en Producción (N° 10 y N° 11, $100): la card «Factura C · ARCA» es gate + handoff con un solo botón «Emitir la factura»; falta **Editar** (todos los datos) y **Cancelar**. Defecto grave: cancelar por chat no desactiva la card. [app-mapa-fact-hitl-sin-boton-editar](2026-10-16-relevamiento-capturas/app-mapa-fact-hitl-sin-boton-editar.png) · [app-fact-hitl-cancelada-por-chat-sigue-emitible](2026-10-16-relevamiento-capturas/app-fact-hitl-cancelada-por-chat-sigue-emitible.png)  
 *Diferencia:* La confirmación para emitir (Segundo HITL) no se provocó: emitir es irreversible. Por código: «Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.» y encabezado «Factura C · ARCA» (`TarjetaFacturaPropuesta.tsx:187-202`). El mapa dice «Queda así. Revisala antes de emitir» y «Una factura emitida no se borra».  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Las diferencias medidas el 2026-11-02 ya no existen en el código.** La card ofrece Editar, Cancelar y «Emitir la factura» (`TarjetaFacturaPropuesta.tsx:499,506,515`, SM-H1 #1328; docstring `:43`). Cancelar por chat ya apaga la card: rama `estado === 'cancelada'` en `:196` (`testID` `-cancelada`, título «Factura cancelada.» `:201`) y `:53`; hasta la primera lectura no hay Emitir activo (`:120`). **Lo único pendiente es la recaptura en device** de la card (Editar/Cancelar visibles y la card cancelada): el código ya es conforme, por eso es B y no NO-VERIFICABLE.  
 *Corrección:* Medir en homologación, nunca en producción.  
 *Vínculo:* K2
 
-**27 · `fact-cae` — Emitida — el CAE** — **DIFERENTE · A** · DEVICE  
+**27 · `fact-cae` — Emitida — el CAE** — **DIFERENTE · B** · DEVICE  
 Prototipo: [fact-cae](2026-10-16-relevamiento-capturas/proto-mapa-fact-cae.png) · App: — (no capturada)  
 *Medición 2026-11-02 (device):* Medida con las facturas reales N° 10/11: «Factura emitida.» sin cliente ni número formateado; Drive/Compartir sin mail. Detalle en el doc de pendientes (00.bis).  
 *Diferencia:* El CAE sólo existe tras emitir una factura real.  
+*Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Las diferencias medidas el 2026-11-02 ya no existen en el código.** El recibo móvil lista «Número · importe · cliente · CAE · vencimiento del CAE» (`comprobante.tsx:56`, `TarjetaComprobante.tsx:58`, SM-H5/H6 #1354). La acción de mail existe: `comprobante.tsx:145` llama `mailtoMandarFactura(numeroFormateado(...), link)` (la medición de «Drive/Compartir sin mail» es de 2026-11-02 y el código se movió después). El literal pelado «Factura emitida.» sobrevive sólo en `copiloto-web`, no en mobile. **Pendiente: recaptura en device del recibo** (no de una factura nueva: sirve una ya emitida).  
 *Corrección:* Medir en homologación.  
 *Vínculo:* K2
 
